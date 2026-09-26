@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import Checkbox from "@mui/material/Checkbox";
@@ -108,6 +108,22 @@ type BestVariationsProps = {
    * (see the component note).
    */
   onSelectMove?: (san: readonly string[]) => void;
+  /**
+   * What `showLines` starts as (CTA-90) — the new-game form's Variations
+   * choice, threaded through `BoardPanel` from the session. The header
+   * checkbox stays the live control; this is read once, at mount. Absent:
+   * `true`, today's behaviour.
+   */
+  initialShowLines?: boolean;
+  /**
+   * The header checkbox reported up (CTA-91), so a consumer can treat "the
+   * lines are hidden" as a state of the board rather than of this block
+   * alone — `BoardPanel` hides its status-row score chip while they are.
+   * Called with the seed at mount and on every change, so a consumer that
+   * remounts this block (the engine switched off and on) re-hears the
+   * re-seeded checkbox. Absent: nothing is reported, today's behaviour.
+   */
+  onShowLinesChange?: (shown: boolean) => void;
 };
 
 const sanSx = {
@@ -194,6 +210,8 @@ function BestVariations({
   requested,
   mask,
   onSelectMove,
+  initialShowLines,
+  onShowLinesChange,
 }: BestVariationsProps) {
   const { t } = useTranslation();
 
@@ -202,8 +220,20 @@ function BestVariations({
     mode rather than an expansion: hiding the lines is about the reader, not
     the position, so unlike the expansion set below it is *not* keyed to the
     FEN — a new analysed position must not bring back what they put away.
+    Seeded, not synced: `initialShowLines` (CTA-90) is what a new game starts
+    with, and the checkbox is the live control from there.
   */
-  const [showLines, setShowLines] = useState(true);
+  const [showLines, setShowLines] = useState(initialShowLines ?? true);
+
+  /*
+    The checkbox reported up (CTA-91), seed included: the report is an effect,
+    so a consumer holding a mirror of it re-hears the value whenever this
+    block re-seeds on a remount (`BoardPanel` keeps its own across the
+    engine's switch, this block does not).
+  */
+  useEffect(() => {
+    onShowLinesChange?.(showLines);
+  }, [showLines, onShowLinesChange]);
 
   const [expansion, setExpansion] = useState<Expansion>(() => ({
     fen: analysis.fen,

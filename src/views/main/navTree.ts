@@ -34,6 +34,8 @@ export type NavTreeNode = {
   children?: NavTreeNode[];
   /** Carried from a single-entry folder, for the top-level fold. */
   singleEntry?: boolean;
+  /** Carried from a folder pinned to the sidebar's foot (`NavFolder.pinToBottom`). */
+  pinToBottom?: boolean;
 };
 
 /**
@@ -48,6 +50,7 @@ type FolderLike<Id extends string> = {
   icon: SvgIconComponent;
   children?: readonly FolderLike<Id>[];
   singleEntry?: boolean;
+  pinToBottom?: boolean;
 };
 
 type ScreenLike = {
@@ -78,6 +81,7 @@ export const buildNavTree = <Id extends string>(
     ...nameOf(folder),
     icon: folder.icon,
     ...(folder.singleEntry ? { singleEntry: true } : {}),
+    ...(folder.pinToBottom ? { pinToBottom: true } : {}),
     children: [
       ...buildNavTree(folder.children ?? [], screensOf),
       ...screensOf(folder.id).map((item) => ({
@@ -108,12 +112,12 @@ export const buildNavTree = <Id extends string>(
  *   which is again two-or-more children.
  *
  * Applied **below the top level only**: the top-level rows are app-area
- * groupings (Engine, Library, Tools…), not categories. A top-level folder is
+ * groupings (Engine, Library, Repertoires…), not categories. A top-level folder is
  * folded only by the other rule — `foldSingleEntryFolders`, for a folder
  * marked as one destination — so every level is folded by exactly one of the
  * two.
  */
-export const collapseLeafCategory = (node: NavTreeNode): NavTreeNode => {
+const collapseLeafCategory = (node: NavTreeNode): NavTreeNode => {
   if (node.kind !== "folder") return node;
   const children = (node.children ?? []).map(collapseLeafCategory);
   return children.length === 1 && children[0].kind === "screen"

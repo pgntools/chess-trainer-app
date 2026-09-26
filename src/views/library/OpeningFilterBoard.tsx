@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import IconButton from "@mui/material/IconButton";
+import Link from "@mui/material/Link";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import FirstPageRoundedIcon from "@mui/icons-material/FirstPageRounded";
@@ -12,10 +13,14 @@ import { Chessboard, type ChessboardOptions, type PieceDropHandlerArgs } from "r
 import { useTranslation } from "react-i18next";
 
 import type { OpeningTreeNode } from "../../lib/openingTree";
+import { openingTreeToPgn, type OpeningTreePgnTags } from "../../lib/openingTreePgn";
+import { downloadPgn } from "../../lib/pgnExport";
+import { slugify } from "../../lib/pgnText";
 import { ForceLTR } from "../../theme/ForceLTR";
+import ChanceArrows from "../explorer/ChanceArrows";
 import PromotionPicker, { type PromotionChoice } from "../shared/PromotionPicker";
 import { moveSx, sanTokenSx } from "../shared/moveTokenSx";
-import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
+import OpeningTreePgnDialog from "./OpeningTreePgnDialog";
 
 /**
  * **The opening-moves filter** (CTA-76) — a small board at the foot of a
@@ -28,18 +33,29 @@ import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
  * never played the line — and every change goes out through `onLine`. From the
  * position it reaches, the board shows
  *
- * - the **continuations** as arrows through the shared `nextMoveArrowsOf` —
- *   the most played in the mainline colour, the rest in the side-line colour,
- *   the hovered one in the hover colour — and as a list, lichess-explorer
+ * - the **continuations** as the play-chance arrows over the board
+ *   (`ChanceArrows`, CTA-92) — white with a magenta border, the wider the more
+ *   of the position's games played the move (its share, `child.count /
+ *   node.count`), the hovered one in red — and as a list, lichess-explorer
  *   style: each move with its games, their share, and a White / draw / Black
  *   bar. A click plays it, a hover draws its arrow;
  * - **only those moves**: a drop the games never played is refused and the
  *   piece snaps back. A promotion the games made more than one way asks which
  *   piece, the shared picker over the board.
  *
+ * The tree is cut where the games stop branching (`node.continues`): a
+ * position only one game goes on from offers nothing to choose, and the
+ * caption says so rather than drawing one lone arrow for the rest of it.
+ *
+ * **Save tree as PGN** (CTA-99), the link at the end of the caption row, writes
+ * that tree below the position shown as one PGN file — the moves played lead to
+ * it, the most played move is the line — with each move's counts as
+ * `[%games N]` / `[%prc P]` when the reader asks for them
+ * (`OpeningTreePgnDialog`, `lib/openingTreePgn.ts`). Built only on Save.
+ *
  * `chess.js` only turns the line into a position and SAN into squares here —
- * at most 30 plies, replayed when the line changes. The board is pinned LTR
- * (`ForceLTR`): files run a–h left to right in every language.
+ * up to a game's full length, replayed when the line changes. The board is
+ * pinned LTR (`ForceLTR`): files run a–h left to right in every language.
  */
 
 type Continuation = {
@@ -87,17 +103,20 @@ function ResultBar({ node }: { node: OpeningTreeNode }) {
   );
 }
 
-export type OpeningFilterBoardProps = {
+type OpeningFilterBoardProps = {
   /** The moves played, already matched against the collection's tree. */
   line: readonly string[];
   /** The node `line` reaches. */
   node: OpeningTreeNode;
   onLine: (line: string[]) => void;
+  /** The collection's name — the saved tree's `Event` and its file name. */
+  collectionName: string;
 };
 
-function OpeningFilterBoard({ line, node, onLine }: OpeningFilterBoardProps) {
+function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilterBoardProps) {
   const { t } = useTranslation();
   const [orientation, setOrientation] = useState<"white" | "black">("white");
+  const [saving, setSaving] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null);
 
@@ -148,10 +167,16 @@ function OpeningFilterBoard({ line, node, onLine }: OpeningFilterBoardProps) {
     id: "library-filter-board",
     position: fen,
     boardOrientation: orientation,
-    arrows: nextMoveArrowsOf(continuations, hovered),
     allowDrawingArrows: false,
     canDragPiece: ({ piece }) => piece.pieceType.startsWith(turn),
     onPieceDrop,
+  };
+
+  const saveTree = (tags: OpeningTreePgnTags) => {
+    setSaving(false);
+    downloadPgn(`${slugify(collectionName) || "collection"}-tree`, [
+      openingTreeToPgn(line, node, tags, { Event: collectionName }),
+    ]);
   };
 
   const numbered = line.map((san, index) => (index % 2 === 0 ? `${index / 2 + 1}. ${san}` : san)).join(" ");
@@ -202,6 +227,13 @@ function OpeningFilterBoard({ line, node, onLine }: OpeningFilterBoardProps) {
 
       <ForceLTR sx={{ position: "relative", width: "100%", aspectRatio: "1 / 1" }}>
         <Chessboard options={options} />
+        <ChanceArrows
+          testId="library-filter-arrows"
+          nodes={continuations}
+          chances={continuations.map((move) => move.node.count / node.count)}
+          hoveredId={hovered}
+          orientation={orientation}
+        />
         {promotion && (
           <PromotionPicker
             targetSquare={promotion.to}
@@ -212,18 +244,38 @@ function OpeningFilterBoard({ line, node, onLine }: OpeningFilterBoardProps) {
         )}
       </ForceLTR>
 
-      <Typography
-        variant="caption"
-        dir="ltr"
-        data-testid="library-filter-moves-line"
-        sx={{ color: "text.secondary", minHeight: "1.5em", unicodeBidi: "isolate" }}
-      >
-        {line.length === 0 ? t("library.filters.moves.start") : numbered}
-      </Typography>
+      {/* The row mirrors — the link sits at its inline end — and the moves in it do not. */}
+      <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
+        <Typography
+          variant="caption"
+          dir="ltr"
+          data-testid="library-filter-moves-line"
+          sx={{ flexGrow: 1, minWidth: 0, color: "text.secondary", minHeight: "1.5em", unicodeBidi: "isolate" }}
+        >
+          {line.length === 0 ? t("library.filters.moves.start") : numbered}
+        </Typography>
+        <Link
+          component="button"
+          type="button"
+          variant="caption"
+          onClick={() => setSaving(true)}
+          data-testid="library-filter-moves-save"
+          sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
+        >
+          {t("library.filters.moves.save")}
+        </Link>
+      </Box>
+      <OpeningTreePgnDialog open={saving} onClose={() => setSaving(false)} onSave={saveTree} />
 
       {continuations.length === 0 ? (
         <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid="library-filter-moves-end">
-          {t(node.count === 0 ? "library.filters.moves.none" : "library.filters.moves.end")}
+          {t(
+            node.count === 0
+              ? "library.filters.moves.none"
+              : node.continues
+                ? "library.filters.moves.single"
+                : "library.filters.moves.end",
+          )}
         </Typography>
       ) : (
         <Box

@@ -30,7 +30,7 @@ import { unfileRepertoiresIn } from "./savedRepertoireStore";
 export const MAX_REPERTOIRE_FOLDERS = 100;
 
 /** How long a folder name may be. A name is a label, not a document. */
-export const MAX_REPERTOIRE_FOLDER_NAME = 100;
+const MAX_REPERTOIRE_FOLDER_NAME = 100;
 
 /** What went wrong with a write. One case, but named rather than boolean. */
 export type RepertoireFolderProblem = "storage";
@@ -64,14 +64,6 @@ const write = folders.write;
 const normaliseName = (name: string): string =>
   name.trim().slice(0, MAX_REPERTOIRE_FOLDER_NAME);
 
-/** One folder by id, out of what has been read, or `undefined`. */
-export const findRepertoireFolder = (
-  id: string | null | undefined,
-): RepertoireFolder | undefined =>
-  id === null || id === undefined
-    ? undefined
-    : repertoireFoldersSnapshot()?.find((folder) => folder.id === id);
-
 /**
  * Create a folder, and hand it back — `undefined` when nothing was created: a
  * name that trims to nothing, a full cap, or a failed write. Handed back
@@ -98,6 +90,27 @@ export const createRepertoireFolder = async (
     return [...current, folder];
   });
   return made && problem === undefined ? folder : undefined;
+};
+
+/**
+ * **An import's folders** (CTA-89, Settings' Import), made whole elsewhere —
+ * ids, names and parents — and added at the end in one write, parents before
+ * children as given. All or nothing: past the cap it is refused with
+ * `"too-many"`.
+ */
+export const addRepertoireFolders = async (
+  added: readonly RepertoireFolder[],
+): Promise<RepertoireFolderProblem | "too-many" | undefined> => {
+  if (added.length === 0) return undefined;
+  let tooMany = false;
+  const problem = await write((current) => {
+    if (current.length + added.length > MAX_REPERTOIRE_FOLDERS) {
+      tooMany = true;
+      return current;
+    }
+    return [...current, ...added];
+  });
+  return tooMany ? "too-many" : problem;
 };
 
 /**

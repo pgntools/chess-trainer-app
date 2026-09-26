@@ -10,18 +10,18 @@
     "preview": "vite preview",
     "wirepgn": "node scripts/wirepgn.js",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run --maxWorkers 5"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@fontsource/roboto": "^5.3.0",
     "@mui/icons-material": "^9.4.0",
     "@mui/material": "^9.4.0",
     "@mui/stylis-plugin-rtl": "^9.4.0",
     "@xstate/react": "^6.1.0",
     "chess.js": "^1.4.0",
+    "fflate": "^0.8.3",
     "i18next": "^26.4.1",
     "i18next-browser-languagedetector": "^8.2.1",
     "react": "^19.2.8",
@@ -29,7 +29,6 @@
     "react-dom": "^19.2.8",
     "react-i18next": "^17.0.13",
     "react-router": "^8.3.1",
-    "rxjs": "^7.8.2",
     "xstate": "^5.32.6"
   },
   "devDependencies": {

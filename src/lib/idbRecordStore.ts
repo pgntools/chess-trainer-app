@@ -38,7 +38,7 @@ import { committed, done } from "./idb";
  */
 
 /** What went wrong with a write. */
-export type IdbRecordStoreProblem = "storage";
+type IdbRecordStoreProblem = "storage";
 
 /** One stored row: the row itself, and its place in the list. */
 type Stored = { id: string; seq: number; value: unknown };
@@ -72,6 +72,28 @@ export type IdbRecordStoreOptions<Row> = {
   order: "newest-first" | "oldest-first";
   /** The `BroadcastChannel` other tabs hear this store's writes on. */
   channel: string;
+};
+
+/**
+ * Rows arriving from elsewhere (an import) merged into a newest-first list
+ * **by date**: the arriving rows newest first among themselves (a stable
+ * sort, so rows of one date keep the order they came in), each going before
+ * the first kept row last changed earlier than it. The kept rows are never
+ * re-ordered.
+ */
+export const mergedNewestFirst = <Row extends { updatedAt: string }>(
+  kept: readonly Row[],
+  incoming: readonly Row[],
+): Row[] => {
+  const arriving = [...incoming].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const merged: Row[] = [];
+  let at = 0;
+  for (const row of kept) {
+    while (at < arriving.length && arriving[at].updatedAt > row.updatedAt) merged.push(arriving[at++]);
+    merged.push(row);
+  }
+  while (at < arriving.length) merged.push(arriving[at++]);
+  return merged;
 };
 
 const isStored = (value: unknown): value is Stored => {

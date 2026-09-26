@@ -1,12 +1,13 @@
 import type { SvgIconComponent } from "@mui/icons-material";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import UploadRoundedIcon from "@mui/icons-material/UploadRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
-import LibraryAddRoundedIcon from "@mui/icons-material/LibraryAddRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import SportsEsportsRoundedIcon from "@mui/icons-material/SportsEsportsRounded";
+import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import ViewListRoundedIcon from "@mui/icons-material/ViewListRounded";
 import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
-import DashboardCustomizeRoundedIcon from "@mui/icons-material/DashboardCustomizeRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
 import type { LocalizedText } from "../../lib/localizedText";
@@ -30,23 +31,22 @@ export type NavItem = {
  * the route in `App.tsx` and a string in both catalogs.
  *
  * A **function**, for the reason `navFolders` is one: a dev-only entry is a
- * spread gated on `import.meta.env.DEV` (none today — `chessboard-v2.md` §5).
+ * spread gated on `import.meta.env.DEV` (none today — `chessboard.md` §9.5).
  */
 export const navItems = (): readonly NavItem[] => [
+  /*
+    The engine's Lobby: the games played against the engine, and the new-game
+    form whose Start button is how Play with Engine is reached. Play with
+    Engine has no nav entry of its own; Start, Continue and the `?fen=`
+    hand-offs land on its route, `/engine/play`.
+  */
   {
-    to: "/engine/play",
-    labelKey: "nav.playWithEngine",
+    to: "/engine/games",
+    labelKey: "nav.lobby",
     icon: SportsEsportsRoundedIcon,
     folder: "engine",
   },
-  // Play with Engine v2's games (CTA-74) — the list the nav calls Saved games.
-  {
-    to: "/engine/games",
-    labelKey: "nav.savedGames",
-    icon: HistoryRoundedIcon,
-    folder: "engine",
-  },
-  // Masked Pieces (CTA-79) — Play with Engine in a costume, beside it.
+  // Masked Pieces — Play with Engine in a costume, beside the Lobby.
   {
     to: "/engine/masked",
     labelKey: "nav.maskedPlay",
@@ -70,18 +70,11 @@ export const navItems = (): readonly NavItem[] => [
     icon: UploadFileRoundedIcon,
     folder: "library",
   },
-  {
-    to: "/tools/editor",
-    labelKey: "nav.boardEditor",
-    icon: DashboardCustomizeRoundedIcon,
-    folder: "tools",
-  },
   /*
-    The Analysis Board has no nav entry (CTA-58, mirroring CTA-42's Openings
-    folder): the top-level Analysis folder is a single entry (`navFolders.ts`)
-    that renders as the screen below, and the board is reached from the saved
-    list's New button. The `/tools/analysis` route stays — every `?fen=`,
-    `?game=` and `?analysis=` hand-off still lands there.
+    The Analysis Board has no nav entry: the top-level Analysis folder is a
+    single entry (`navFolders.ts`) that renders as the screen below, and the
+    board is reached from the saved list's New button. Every `?fen=`,
+    `?game=` and `?analysis=` hand-off lands on its route, `/tools/analysis`.
   */
   {
     to: "/tools/analysis/saved",
@@ -90,7 +83,7 @@ export const navItems = (): readonly NavItem[] => [
     folder: "analysis",
   },
   /*
-    The Openings explorer (CTA-78) — the board itself, since nothing on it is
+    The Openings explorer — the board itself, since nothing on it is
     saved: the top-level Openings folder is a single entry (`navFolders.ts`)
     that renders as this screen.
   */
@@ -106,11 +99,24 @@ export const navItems = (): readonly NavItem[] => [
     icon: MenuBookRoundedIcon,
     folder: "repertoires",
   },
+  // Settings (CTA-86): each tab of `/settings/<tab>` is an entry here.
   {
-    to: "/repertoires/new",
-    labelKey: "nav.addRepertoire",
-    icon: LibraryAddRoundedIcon,
-    folder: "repertoires",
+    to: "/settings/export",
+    labelKey: "nav.settingsExport",
+    icon: DownloadRoundedIcon,
+    folder: "settings",
+  },
+  {
+    to: "/settings/import",
+    labelKey: "nav.settingsImport",
+    icon: UploadRoundedIcon,
+    folder: "settings",
+  },
+  {
+    to: "/settings/storage",
+    labelKey: "nav.settingsStorage",
+    icon: StorageRoundedIcon,
+    folder: "settings",
   },
 ];
 

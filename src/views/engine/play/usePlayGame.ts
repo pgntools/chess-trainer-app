@@ -2,11 +2,13 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   DEFAULT_ENGINE_SETTINGS,
-  SETTING_UCI_OPTION,
+  uciOptionsOf,
+  withClampedUciOptions,
   type EngineSettings,
 } from "../../../lib/engineSettings";
 import { parseFen } from "../../../lib/fen";
 import { emptyTree, sanPathTo } from "../../../lib/gameTree";
+import { newGameRequestOf, type NewGameRequest } from "../../../lib/newGameLink";
 import {
   findPlayedGame,
   removePlayedGame,
@@ -22,14 +24,14 @@ import {
   type PlayedGame,
   type PlayedGameMask,
 } from "../../../lib/playedGames";
-import { useAutosave } from "../../dev/core/useAutosave";
-import { turnOf, useBoardCore } from "../../dev/core/useBoardCore";
-import { useEngineModule } from "../../dev/core/useEngineModule";
-import { usePlayToggle } from "../../dev/core/usePlayToggle";
+import { useAutosave } from "../../board/core/useAutosave";
+import { turnOf, useBoardCore } from "../../board/core/useBoardCore";
+import { useEngineModule } from "../../board/core/useEngineModule";
+import { usePlayToggle } from "../../board/core/usePlayToggle";
 
 /**
  * **Play with Engine's session** (CTA-74) — the v2 core
- * ([`.claude/rules/chessboard-v2.md`](../../../../.claude/rules/chessboard-v2.md))
+ * ([`.claude/rules/chessboard.md`](../../../../.claude/rules/chessboard.md) §9)
  * composed for a game against the engine: the Analysis Board's composition
  * (`useAnalysisBoard`), with three differences.
  *
@@ -43,14 +45,15 @@ import { usePlayToggle } from "../../dev/core/usePlayToggle";
  * 1. **Play is on from the start.** A new board — the standard start, or the
  *    `?fen=` hand-off (a position with Black to move sets the reader to Black
  *    and turns the board) — with the reader on the side at the bottom and the
- *    engine answering. Everything that pauses Play on the Analysis Board
+ *    engine answering. The Lobby's Start link (CTA-82) adds the options —
+ *    the settings, the side (which beats the FEN's), the eval bar and the
+ *    pinned lines' start (CTA-90). Everything that pauses Play on the Analysis Board
  *    pauses it here (`usePlayToggle`): a step that is not one move forward,
  *    the reader switching side (the flip, or the header's side toggle), the
  *    engine off, the game over. Pressing Play goes on from wherever the reader
  *    stands, the engine now playing whichever side is at the top.
- * 2. **The game is a tree.** There is no `canMoveAt`: a move played by hand
- *    from an earlier position is a side line under it, and Play resumes from
- *    there. The shipped screen could not branch; this one is the Analysis
+ * 2. **The game is a tree.** A move played by hand from an earlier position
+ *    is a side line under it, and Play resumes from there — the Analysis
  *    Board's rule.
  * 3. **It saves itself.** No Save button — a game played is a game kept
  *    (`useAutosave`). The id is stable for the life of a game. **Replay**
@@ -77,13 +80,23 @@ import { usePlayToggle } from "../../dev/core/usePlayToggle";
 export type PlayGameStart = {
   /** The position the game starts from — the `?fen=` hand-off. */
   fen?: string;
-  /** A played game to go on with — the `?saved=` hand-off. Beats `fen`. */
+  /** A played game to go on with — the `?saved=` hand-off. Beats everything else. */
   resume?: PlayedGame;
+  /**
+   * A new game's options — the Lobby's Start link (`lib/newGameLink.ts`,
+   * CTA-82): settings over the defaults, the reader's side (beats the side to
+   * move of `fen`), the eval bar and whether the pinned lines start shown
+   * (CTA-90). Ignored when `resume` opens.
+   */
+  request?: NewGameRequest;
 };
 
 /**
  * Everything the URL hands a play screen, read once by its route — `?fen=`
- * (validated; an unreadable one starts an ordinary game) and `?saved=`.
+ * (validated; an unreadable one starts an ordinary game), `?saved=`, and a
+ * new game's options (`side`, `skill`, `depth`, `movetime`, `lines`,
+ * `threads`, `hash`, `evalbar`, `variations` — `newGameRequestOf`, each field
+ * validated on its own).
  */
 export const arrivalOf = (params: URLSearchParams): PlayGameStart => {
   let fen: string | undefined;
@@ -96,17 +109,22 @@ export const arrivalOf = (params: URLSearchParams): PlayGameStart => {
       fen = undefined;
     }
   }
-  return { fen, resume: findPlayedGame(params.get("saved")) };
+  return {
+    fen,
+    resume: findPlayedGame(params.get("saved")),
+    request: newGameRequestOf(params),
+  };
 };
 
 export const usePlayGame = (
-  { fen, resume }: PlayGameStart = {},
+  { fen, resume, request }: PlayGameStart = {},
   /** Masked Pieces' costume, stored on the record; absent, an unmasked game. */
   mask?: PlayedGameMask,
 ) => {
   /*
     What the board opens on, built once: a resumed game (parsed, at its place
-    in the tree, facing its side), else a position, else the standard start.
+    in the tree, facing its side), else a position, else the standard start —
+    a new game under the link's options, if it carried any.
     A record that will not parse opens as a new game, like an unreadable
     `?fen=`.
   */
@@ -123,21 +141,28 @@ export const usePlayGame = (
         startedAt: resume.savedAt,
         resigned: resume.resigned,
         stored: true,
+        showEvalBar: true,
+        showLines: true,
       };
     }
-    // A position turns the board, and the reader plays the side to move.
+    /*
+      A position turns the board, and the reader plays the side to move —
+      unless the link names the reader's side, which is the reader's choice.
+    */
     const orientation: "white" | "black" =
-      fen !== undefined && turnOf(fen) === "b" ? "black" : "white";
+      request?.side ?? (fen !== undefined && turnOf(fen) === "b" ? "black" : "white");
     return {
       tree: fen === undefined ? emptyTree() : emptyTree(fen),
       nodeId: null,
       orientation,
-      settings: DEFAULT_ENGINE_SETTINGS,
+      settings: { ...DEFAULT_ENGINE_SETTINGS, ...request?.settings, playAs: orientation },
       evals: new Map(),
       id: newPlayedGameId(),
       startedAt: new Date().toISOString(),
       resigned: undefined,
       stored: false,
+      showEvalBar: request?.evalBar ?? true,
+      showLines: request?.variations ?? true,
     };
   });
 
@@ -149,26 +174,19 @@ export const usePlayGame = (
 
   const [settings, setSettings] = useState<EngineSettings>(start.settings);
   const [engineOn, setEngineOn] = useState(true);
-  const [showEvalBar, setShowEvalBar] = useState(true);
+  const [showEvalBar, setShowEvalBar] = useState(start.showEvalBar);
+  /*
+    What the pinned engine lines start as (CTA-90): the Lobby's Variations
+    choice, seeded once. The block's own header checkbox is the live control
+    from here on, so nothing writes this again — and a resumed game keeps the
+    default, the choice not being part of the record.
+  */
+  const [showLines] = useState(start.showLines);
 
   const onUciOptionsReady = useCallback(
+    // The same object when nothing moved: a new one would re-run the search effect for nothing.
     (clamped: Readonly<Record<string, number>>) =>
-      setSettings((current) => {
-        const next: EngineSettings = {
-          ...current,
-          skillLevel: clamped[SETTING_UCI_OPTION.skillLevel] ?? current.skillLevel,
-          multiPv: clamped[SETTING_UCI_OPTION.multiPv] ?? current.multiPv,
-          threads: clamped[SETTING_UCI_OPTION.threads] ?? current.threads,
-          hashMb: clamped[SETTING_UCI_OPTION.hashMb] ?? current.hashMb,
-        };
-        // A new object here would re-run the search effect for nothing.
-        return next.skillLevel === current.skillLevel &&
-          next.multiPv === current.multiPv &&
-          next.threads === current.threads &&
-          next.hashMb === current.hashMb
-          ? current
-          : next;
-      }),
+      setSettings((current) => withClampedUciOptions(current, clamped)),
     [],
   );
 
@@ -188,12 +206,13 @@ export const usePlayGame = (
     depth: settings.depth,
     moveTimeMs: settings.moveTimeMs,
     uciOptions: useMemo(
-      () => ({
-        [SETTING_UCI_OPTION.skillLevel]: settings.skillLevel,
-        [SETTING_UCI_OPTION.multiPv]: settings.multiPv,
-        [SETTING_UCI_OPTION.threads]: settings.threads,
-        [SETTING_UCI_OPTION.hashMb]: settings.hashMb,
-      }),
+      () =>
+        uciOptionsOf({
+          skillLevel: settings.skillLevel,
+          multiPv: settings.multiPv,
+          threads: settings.threads,
+          hashMb: settings.hashMb,
+        }),
       [settings.skillLevel, settings.multiPv, settings.threads, settings.hashMb],
     ),
     onUciOptionsReady,
@@ -323,6 +342,7 @@ export const usePlayGame = (
     setEngineOn,
     showEvalBar,
     setShowEvalBar,
+    showLines,
     playing: play.playing,
     thinking: play.thinking,
     togglePlaying: () => play.toggle(engine.analysis, evalsByFen),
@@ -335,5 +355,3 @@ export const usePlayGame = (
     problem,
   };
 };
-
-export type PlayGameState = ReturnType<typeof usePlayGame>;

@@ -6,16 +6,20 @@ import {
   activeFilterSummary,
   batchFolderNameOf,
   collectionIdOfStem,
+  collectionImportFileOf,
   collectionNameOfStem,
   collectionRowOf,
   collectionFacetsOf,
   collectionRowsOf,
+  collectionMetadataOf,
   dateBounds,
   openingLabelOf,
   filteredRows,
   mainlinePlies,
+  playersOf,
   MAX_COLLECTION_CHARS,
   readCollectionText,
+  sharedEventOf,
   sortedRows,
 } from "./libraryCollections";
 
@@ -110,11 +114,28 @@ describe("the side panel's filters", () => {
     filteredRows(rows, { text: "", result: "", ...filter }).map((r) => r.number);
 
   it("finds a player's games, either side or the one asked for", () => {
-    expect(numbers({ player: "carlsen" })).toEqual([1, 3]);
-    expect(numbers({ player: "Carlsen", color: "white" })).toEqual([1]);
-    expect(numbers({ player: "carlsen", color: "black" })).toEqual([3]);
+    expect(numbers({ player: ["carlsen"] })).toEqual([1, 3]);
+    expect(numbers({ player: ["Carlsen"], color: "white" })).toEqual([1]);
+    expect(numbers({ player: ["carlsen"], color: "black" })).toEqual([3]);
     // A side alone narrows nothing.
     expect(numbers({ color: "black" })).toEqual([1, 2, 3]);
+  });
+
+  it("keeps a game any of several players is in, on the side asked for (CTA-95)", () => {
+    // Two spellings of one player, or several players: a game is kept when
+    // any name is in it.
+    expect(numbers({ player: ["carlsen", "morphy"] })).toEqual([1, 2, 3]);
+    expect(numbers({ player: ["nepo", "morphy"] })).toEqual([1, 2]);
+    // A side narrows to the games any selected player had it.
+    expect(numbers({ player: ["carlsen", "anderssen"], color: "black" })).toEqual([2, 3]);
+    expect(numbers({ player: ["nepo", "zed"], color: "white" })).toEqual([3]);
+    // A name no game carries narrows nothing on its own...
+    expect(numbers({ player: ["kasparov"] })).toEqual([]);
+    // ...but joins the others with OR.
+    expect(numbers({ player: ["kasparov", "morphy"] })).toEqual([2]);
+    // An empty list, or only blank names, narrows nothing.
+    expect(numbers({ player: [] })).toEqual([1, 2, 3]);
+    expect(numbers({ player: ["  "] })).toEqual([1, 2, 3]);
   });
 
   it("keeps the games whose line begins with the moves played, with the other filters on top", () => {
@@ -129,7 +150,7 @@ describe("the side panel's filters", () => {
     expect(by({ line: ["e4", "e5", "Nf3"] })).toEqual([1]);
     // Longer than a game's line: not a game that began that way.
     expect(by({ line: ["e4", "c5", "Nf3"] })).toEqual([]);
-    expect(by({ line: ["e4"], player: "carlsen" })).toEqual([1]);
+    expect(by({ line: ["e4"], player: ["carlsen"] })).toEqual([1]);
     // A row without a line (an old index) is out once a line is set.
     expect(numbers({ line: ["e4"] })).toEqual([]);
   });
@@ -163,6 +184,22 @@ describe("the side panel's filters", () => {
     expect(numbers({ from: "2023-07-31" })).toEqual([]);
   });
 
+  it("keeps a game only when both players' Elo is within the bounds, and drops one missing an Elo (CTA-103)", () => {
+    const D = GAME({ White: "Amy", Black: "Bob", WhiteElo: "2100", BlackElo: "1900", Result: "*" }, "1. e4 *");
+    const withD = collectionRowsOf({ games: [A, B, C, D] });
+    const elo = (filter: { minElo?: number; maxElo?: number }) =>
+      filteredRows(withD, { text: "", result: "", ...filter }).map((r) => r.number);
+    expect(elo({})).toEqual([1, 2, 3, 4]);
+    expect(elo({ minElo: 1900 })).toEqual([1, 4]);
+    expect(elo({ minElo: 2000 })).toEqual([1]);
+    expect(elo({ maxElo: 2100 })).toEqual([4]);
+    expect(elo({ minElo: 2780, maxElo: 2835 })).toEqual([1]);
+    expect(elo({ minElo: 2790 })).toEqual([]);
+    // Inclusive at both ends, and either bound alone.
+    expect(elo({ minElo: 1900, maxElo: 2100 })).toEqual([4]);
+    expect(elo({ maxElo: 3000 })).toEqual([1, 4]);
+  });
+
   it("reads a partial PGN date as the days it could be", () => {
     expect(dateBounds("2023.07.30")).toEqual(["2023-07-30", "2023-07-30"]);
     expect(dateBounds("1858.10")).toEqual(["1858-10-01", "1858-10-31"]);
@@ -172,12 +209,12 @@ describe("the side panel's filters", () => {
     expect(dateBounds("????")).toBeUndefined();
   });
 
-  it("lists every opening of a real 7,818-game collection, ECO first, in ECO order", () => {
+  it("lists every opening of a real 5,722-game collection, ECO first, in ECO order", () => {
     const reading = readCollectionText(
       readFileSync(join(process.cwd(), "src/test/fixtures/pgn/Carlsen.pgn"), "utf8"),
     );
     if (!reading.ok) throw new Error("the fixture did not read");
-    expect(reading.games).toHaveLength(7818);
+    expect(reading.games).toHaveLength(5722);
     const carlsen = collectionRowsOf({ games: reading.games });
     const { openings, players, events } = collectionFacetsOf(carlsen);
 
@@ -191,8 +228,8 @@ describe("the side panel's filters", () => {
     expect(ecos[0]).toMatch(/^A0/);
     expect(ecos[ecos.length - 1]).toMatch(/^E9/);
     expect(ecos).toEqual([...ecos].sort());
-    expect(players).toContain("Carlsen,Magnus");
-    expect(events.length).toBeGreaterThan(600);
+    expect(players).toContain("Carlsen, Magnus");
+    expect(events.length).toBeGreaterThan(400);
   });
 
   it("offers only what the games carry", () => {
@@ -203,16 +240,66 @@ describe("the side panel's filters", () => {
       results: ["1-0", "0-1", "1/2-1/2"],
       dates: { min: "1848-01-01", max: "2023-07-30" },
     });
+    // A ChessBase-style sub-code (`C44r`) is an ECO code: in ECO order, before any label without one.
+    const subCoded = collectionFacetsOf([
+      { number: 1, result: "*", moves: 1, opening: "Queen's Pawn" },
+      { number: 2, result: "*", moves: 1, eco: "C44r", opening: "Scotch Game" },
+      { number: 3, result: "*", moves: 1, eco: "C44", opening: "King's Pawn Game" },
+      { number: 4, result: "*", moves: 1, eco: "B13e", opening: "Caro-Kann" },
+    ]);
+    expect(subCoded.openings).toEqual(["B13e Caro-Kann", "C44 King's Pawn Game", "C44r Scotch Game", "Queen's Pawn"]);
     const bare = collectionRowsOf({ games: ["1. e4 *"] });
     expect(collectionFacetsOf(bare)).toEqual({ players: [], openings: [], events: [], results: ["*"], dates: undefined });
   });
 });
 
+describe("a text's metadata at a glance (CTA-103)", () => {
+  it("counts the games, players and events, and spans the Elos and the dates", () => {
+    expect(collectionMetadataOf(collectionRowsOf({ games: [A, B, C] }))).toEqual({
+      games: 3,
+      players: 5,
+      events: ["Test Open"],
+      elo: { min: 2780, max: 2835 },
+      dates: { first: "1848", last: "2023.07.30" },
+    });
+  });
+
+  it("orders the dates by the days they could be, and leaves out a span no game carries", () => {
+    const partial = collectionRowsOf({
+      games: [
+        GAME({ Date: "1858.10.??", Event: "B" }, "1. e4 *"),
+        GAME({ Date: "1858.10.05", Event: "A" }, "1. e4 *"),
+        GAME({ Date: "1858", Event: "A" }, "1. e4 *"),
+      ],
+    });
+    expect(collectionMetadataOf(partial)).toMatchObject({ events: ["A", "B"], dates: { first: "1858", last: "1858" } });
+    expect(collectionMetadataOf(collectionRowsOf({ games: ["1. e4 *"] }))).toEqual({
+      games: 1,
+      players: 0,
+      events: [],
+      elo: undefined,
+      dates: undefined,
+    });
+  });
+
+  it("lists the players of the rows, each once, sorted", () => {
+    expect(playersOf(collectionRowsOf({ games: [A, C] }))).toEqual(["Carlsen,M", "Nepo,I", "Zed"]);
+    expect(playersOf([{ white: "Amy" }, {}])).toEqual(["Amy"]);
+  });
+
+  it("names the Event every game shares, and none when they differ or one lacks it", () => {
+    expect(sharedEventOf([{ event: "Club" }, { event: "Club" }])).toBe("Club");
+    expect(sharedEventOf([{ event: "Club" }, { event: "Open" }])).toBeUndefined();
+    expect(sharedEventOf([{ event: "Club" }, {}])).toBeUndefined();
+    expect(sharedEventOf([])).toBeUndefined();
+  });
+});
+
 describe("naming a shipped file", () => {
   it.each([
-    ["WorldCup2023", "World Cup 2023", "worldcup2023"],
-    ["Bucharest2023", "Bucharest 2023", "bucharest2023"],
-    ["Morphy", "Morphy", "morphy"],
+    ["Candidates2024", "Candidates 2024", "candidates2024"],
+    ["TataSteel2025", "Tata Steel 2025", "tatasteel2025"],
+    ["Capablanca", "Capablanca", "capablanca"],
     ["candidates_2024", "Candidates 2024", "candidates-2024"],
   ])("%s is %s at /library/%s", (stem, name, id) => {
     expect(collectionNameOfStem(stem)).toBe(name);
@@ -242,6 +329,21 @@ describe("readCollectionText", () => {
   });
 });
 
+describe("collectionImportFileOf — a text for the import popup (CTA-103)", () => {
+  it("cuts the text into games with their tag-only rows, numbered from 1", () => {
+    const { reading, file } = collectionImportFileOf(`${A}\n\n${B}`, 123, "x/Test.pgn", "Test");
+    expect(reading).toMatchObject({ ok: true, name: "Test Open" });
+    expect(file).toMatchObject({ name: "x/Test.pgn", stem: "Test", size: 123, games: [A, B] });
+    expect(file.rows).toEqual([collectionRowOf(A, 1), collectionRowOf(B, 2)]);
+  });
+
+  it("holds no game for a text that reads none, and says why", () => {
+    const { reading, file } = collectionImportFileOf("hello", 5);
+    expect(reading).toEqual({ ok: false, problem: "unreadable" });
+    expect(file).toEqual({ name: undefined, stem: undefined, size: 5, games: [], rows: [] });
+  });
+});
+
 describe("batchFolderNameOf — where the table's Analyse files a batch (CTA-77)", () => {
   const labels = { games: "12 games", white: "white", black: "black" };
   const none = { text: "", result: "" };
@@ -257,7 +359,7 @@ describe("batchFolderNameOf — where the table's Analyse files a batch (CTA-77)
         {
           text: " najdorf ",
           result: "1-0",
-          player: "Carlsen",
+          player: ["Carlsen"],
           color: "white",
           opening: "B90 Sicilian Defense: Najdorf Variation",
           event: "FIDE World Cup 2023",
@@ -273,18 +375,28 @@ describe("batchFolderNameOf — where the table's Analyse files a batch (CTA-77)
     );
   });
 
+  it("names an opening by its ChessBase-style sub-code too", () => {
+    expect(activeFilterSummary({ ...none, opening: "C44r Scotch Game" }, labels)).toEqual(["C44r"]);
+  });
+
+  it("lists several players as one phrase — the names joined, then the side", () => {
+    expect(
+      activeFilterSummary({ ...none, player: ["Carlsen,Magnus", " Carlsen,M "], color: "white" }, labels),
+    ).toEqual(["Carlsen,Magnus / Carlsen,M", "white"]);
+  });
+
   it("names a side only with a player, and an opening typed without a code as typed", () => {
     expect(activeFilterSummary({ ...none, color: "black", opening: "najdorf" }, labels)).toEqual([
       "najdorf",
     ]);
-    expect(activeFilterSummary({ ...none, player: "Nepo", color: "black" }, labels)).toEqual([
+    expect(activeFilterSummary({ ...none, player: ["Nepo"], color: "black" }, labels)).toEqual([
       "Nepo",
       "black",
     ]);
   });
 
   it("cuts the filter summary, never the collection or the count, to fit", () => {
-    const filter = { ...none, player: "Carlsen", event: "A very long event name ".repeat(6).trim() };
+    const filter = { ...none, player: ["Carlsen"], event: "A very long event name ".repeat(6).trim() };
     const name = batchFolderNameOf("World Cup 2023", filter, labels, 100);
     expect(name).toHaveLength(100);
     expect(name.startsWith("World Cup 2023 — 12 games (Carlsen, A very long")).toBe(true);
@@ -293,7 +405,7 @@ describe("batchFolderNameOf — where the table's Analyse files a batch (CTA-77)
 
   it("drops a summary there is no room left for, and cuts only a name too long on its own", () => {
     const long = "A collection with a name that goes on for a long while";
-    expect(batchFolderNameOf(long, { ...none, player: "Carlsen" }, labels, 70)).toBe(
+    expect(batchFolderNameOf(long, { ...none, player: ["Carlsen"] }, labels, 70)).toBe(
       `${long} — 12 games`,
     );
     const cut = batchFolderNameOf("x".repeat(120), none, labels, 100);

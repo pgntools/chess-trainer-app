@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import i18n from "../../i18n";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
-import { mainline, nodeAtSanPath, type GameTree } from "../../lib/gameTree";
+import { findNode, mainline, nodeAtSanPath, type GameTree } from "../../lib/gameTree";
 import { parsePgnTree } from "../../lib/pgn";
 import { MASK_PRESETS } from "../../lib/pieceMask";
 import {
   NEXT_MOVE_ARROW_COLOR,
+  NEXT_MOVE_ARROW_PALETTES,
   REQUIRED_MOVE_ARROW_COLOR,
   SIDELINE_NEXT_MOVE_ARROW_COLOR,
+  UNTAGGED_NEXT_MOVE_ARROW_COLOR,
 } from "../tools/analysis/nextMoveArrows";
 import type { TreeViewParts } from "./treeView";
 import { useVariationsExplorer, type VariationsExplorerOptions } from "./useVariationsExplorer";
@@ -169,5 +171,200 @@ describe("useVariationsExplorer — a masked board's notation (CTA-79)", () => {
     mount({ nodeId: at(tree, "e4", "e5"), map: {} });
     expect(screen.getByTestId("next")).toHaveTextContent("Nf3");
     expect(screen.getByTestId("x-map-labels")).toHaveTextContent("Nf3");
+  });
+});
+
+describe("useVariationsExplorer — annotation glyphs (CTA-97)", () => {
+  const annotated = parsePgnTree(
+    "1. e4! $14 e5 2. Nf3 (2. f4?! $40 exf4) (2. Nc3 $250) 2... Nc6 *",
+  );
+
+  function Annotated(props: Omit<VariationsExplorerOptions, "testId" | "source">) {
+    const view = useVariationsExplorer({
+      testId: "x",
+      source: {
+        tree: annotated,
+        mainlineNodes: mainline(annotated),
+        nodeId: null,
+        goToNode: vi.fn(),
+        orientation: "white",
+      },
+      ...props,
+    });
+    return (
+      <>
+        <div data-testid="moves">{view.moves}</div>
+        <div data-testid="map">{view.map}</div>
+      </>
+    );
+  }
+
+  const mountAnnotated = (props: Parameters<typeof Annotated>[0] = {}) =>
+    render(
+      <AppThemeWithLang>
+        <Annotated {...props} />
+      </AppThemeWithLang>,
+    );
+
+  it("follows the SAN in the mainline's cells, the move mark first and coloured", () => {
+    mountAnnotated();
+    const cell = screen.getByTestId("move-ply-1");
+    expect(cell).toHaveTextContent("e4!⩲");
+    expect(cell).toHaveAttribute("dir", "ltr");
+    const glyphs = within(screen.getByTestId("move-nags-1"));
+    expect(glyphs.getByText("!")).toHaveAttribute("data-tone", "good");
+    expect(glyphs.getByText("⩲")).not.toHaveAttribute("data-tone");
+    expect(screen.queryByTestId("move-nags-2")).toBeNull();
+  });
+
+  it("follows the SAN in the side lines, a code outside the table as $N", () => {
+    mountAnnotated();
+    const f4 = at(annotated, "e4", "e5", "f4");
+    const token = screen.getByTestId(`tree-move-${f4}`);
+    expect(token).toHaveTextContent("2. f4?!→");
+    expect(within(token).getByText("?!")).toHaveAttribute("data-tone", "dubious");
+    expect(screen.getByTestId(`tree-nags-${at(annotated, "e4", "e5", "Nc3")}`)).toHaveTextContent("$250");
+  });
+
+  it("follows the SAN in the map's labels", () => {
+    mountAnnotated({ map: {} });
+    const e4 = at(annotated, "e4");
+    const label = screen.getByTestId(`x-map-label-${e4}`);
+    expect(label).toHaveTextContent("e4!⩲");
+    expect(label.querySelector('.map-nag[data-tone="good"]')).toHaveTextContent("!");
+  });
+
+  it("still shows the glyphs beside a masked board's coordinates", () => {
+    mountAnnotated({ mask: MASK_PRESETS.nonPawns, map: {} });
+    const nc3 = at(annotated, "e4", "e5", "Nc3");
+    expect(screen.getByTestId(`tree-move-${nc3}`)).toHaveTextContent("b1c3$250");
+    expect(screen.getByTestId(`x-map-label-${nc3}`)).toHaveTextContent("b1c3$250");
+  });
+
+  it("offers Add annotation… in the move menu, which opens the dialog on that move", () => {
+    const onEditTree = vi.fn();
+    mountAnnotated({ onEditTree });
+    fireEvent.contextMenu(screen.getByTestId("move-ply-1"));
+    fireEvent.click(screen.getByTestId("move-menu-annotate"));
+    expect(screen.getByTestId("nag-dialog")).toBeInTheDocument();
+    expect(screen.getByTestId("nag-dialog-move")).toHaveTextContent("1. e4!⩲");
+
+    // Picking the active mark takes it off, through onEditTree like every edit.
+    fireEvent.click(screen.getByTestId("nag-dialog-choice-1"));
+    const [next] = onEditTree.mock.calls[0] as [GameTree];
+    expect(findNode(next, at(annotated, "e4"))?.nags).toEqual([14]);
+  });
+
+  it("offers it from the map's menu too, and nowhere without onEditTree", () => {
+    const { unmount } = mountAnnotated({ onEditTree: vi.fn(), map: {} });
+    fireEvent.contextMenu(screen.getByTestId(`x-map-go-${at(annotated, "e4", "e5")}`));
+    expect(screen.getByTestId("move-menu-annotate")).toBeInTheDocument();
+    unmount();
+
+    mountAnnotated({ map: {} });
+    fireEvent.contextMenu(screen.getByTestId("move-ply-1"));
+    expect(screen.queryByTestId("move-menu-annotate")).toBeNull();
+  });
+});
+
+describe("useVariationsExplorer — the width source and palette (CTA-98)", () => {
+  // 2. Nf3 and 2. f4 carry a games count and 2. Nc3 none; the fork at move 3
+  // carries no tag at all.
+  const tagged = parsePgnTree(
+    "1. e4 e5 2. Nf3 {games:30} (2. f4 {[%games 10]}) (2. Nc3) 2... Nc6 3. Bb5 (3. Bc4) *",
+  );
+
+  function Weighted(props: Omit<VariationsExplorerOptions, "testId" | "source"> & { nodeId: string }) {
+    const { nodeId, ...rest } = props;
+    const view = useVariationsExplorer({
+      testId: "x",
+      source: {
+        tree: tagged,
+        mainlineNodes: mainline(tagged),
+        nodeId,
+        goToNode: vi.fn(),
+        orientation: "white",
+      },
+      ...rest,
+    });
+    report(view);
+    return (
+      <>
+        <div data-testid="next">{view.nextMoves}</div>
+        <div data-testid="overlay">{view.overlay}</div>
+      </>
+    );
+  }
+
+  const mountWeighted = (props: Parameters<typeof Weighted>[0]) =>
+    render(
+      <AppThemeWithLang>
+        <Weighted {...props} />
+      </AppThemeWithLang>,
+    );
+
+  const pathTo = (square: string) =>
+    screen.getByTestId("x-width-arrows-overlay").querySelector(`path[data-to="${square}"]`)!;
+  const widthOf = (square: string) => Number(pathTo(square).getAttribute("stroke-width"));
+
+  it("sizes the tagged moves in the overlay, in the palette's colours, the untagged one gray", () => {
+    const { lichess } = NEXT_MOVE_ARROW_PALETTES;
+    mountWeighted({
+      nodeId: at(tagged, "e4", "e5"),
+      arrows: { show: true, widthSource: "games", palette: "lichess" },
+    });
+    // The library arrows stand down; the overlay draws all three.
+    expect(parts.arrows).toEqual([]);
+    expect(screen.getByTestId("x-width-arrows-overlay").querySelectorAll("path")).toHaveLength(3);
+    expect(pathTo("f3")).toHaveAttribute("fill", lichess.mainline);
+    expect(pathTo("f4")).toHaveAttribute("fill", lichess.sideline);
+    expect(pathTo("c3")).toHaveAttribute("fill", UNTAGGED_NEXT_MOVE_ARROW_COLOR);
+    // 30 games against 10: the wider the more played (the border grows with it).
+    expect(widthOf("f3")).toBeGreaterThan(widthOf("f4"));
+  });
+
+  it("draws the hovered move in the palette's hover colour", () => {
+    const { colorblind } = NEXT_MOVE_ARROW_PALETTES;
+    mountWeighted({
+      nodeId: at(tagged, "e4", "e5"),
+      arrows: { show: true, widthSource: "games", palette: "colorblind" },
+    });
+    fireEvent.mouseEnter(screen.getByTestId(`next-move-${at(tagged, "e4", "e5", "Nc3")}`));
+    expect(pathTo("c3")).toHaveAttribute("fill", colorblind.hovered);
+  });
+
+  it("draws the ordinary palette arrows where no move at the branch carries the tag", () => {
+    const { lichess } = NEXT_MOVE_ARROW_PALETTES;
+    mountWeighted({
+      nodeId: at(tagged, "e4", "e5", "Nf3", "Nc6"),
+      arrows: { show: true, widthSource: "games", palette: "lichess" },
+    });
+    expect(parts.overlay).toBeNull();
+    expect(parts.arrows.map((arrow) => [arrow.endSquare, arrow.color])).toEqual([
+      ["b5", lichess.mainline],
+      ["c4", lichess.sideline],
+    ]);
+  });
+
+  it("sizes nothing while the arrows are off — only a hovered move's, in the palette", () => {
+    const { lichess } = NEXT_MOVE_ARROW_PALETTES;
+    mountWeighted({
+      nodeId: at(tagged, "e4", "e5"),
+      arrows: { show: false, widthSource: "games", palette: "lichess" },
+    });
+    expect(parts.overlay).toBeNull();
+    expect(parts.arrows).toEqual([]);
+    fireEvent.mouseEnter(screen.getByTestId(`next-move-${at(tagged, "e4", "e5", "f4")}`));
+    expect(parts.arrows).toEqual([{ startSquare: "f2", endSquare: "f4", color: lichess.hovered }]);
+  });
+
+  it("sizes by the lines ahead with no tag at all", () => {
+    mountWeighted({
+      nodeId: at(tagged, "e4", "e5", "Nf3", "Nc6"),
+      arrows: { show: true, widthSource: "lines" },
+    });
+    expect(screen.getByTestId("x-width-arrows-overlay").querySelectorAll("path")).toHaveLength(2);
+    // Classic by default.
+    expect(pathTo("b5")).toHaveAttribute("fill", NEXT_MOVE_ARROW_COLOR);
   });
 });

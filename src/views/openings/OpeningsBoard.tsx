@@ -15,9 +15,9 @@ import { analysisHandOffState, lineTreeOf } from "../../lib/analysisHandOff";
 import { parseFen } from "../../lib/fen";
 import type { GameTree } from "../../lib/gameTree";
 import { atParamOf, atParamSans, nodeAtParam, REPERTOIRE_AT_PARAM } from "../../lib/repertoireLink";
-import BoardShell from "../dev/core/BoardShell";
-import { turnOf } from "../dev/core/useBoardCore";
-import { useOpeningBookModule } from "../dev/core/useOpeningBookModule";
+import BoardShell from "../board/core/BoardShell";
+import { turnOf } from "../board/core/useBoardCore";
+import { useOpeningBookModule } from "../board/core/useOpeningBookModule";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import CurrentOpening from "../shared/CurrentOpening";
 import AnalysisExport from "../tools/analysis/AnalysisExport";
@@ -33,7 +33,7 @@ import { openingArrowsOf } from "./openingArrows";
  * **The Openings explorer** (`/openings`, CTA-78) — an opening played through
  * on a full analysis board, with the book's continuations from the position
  * on screen beside it. Composed as the Library's game board is
- * ([`chessboard-v2.md`](../../../.claude/rules/chessboard-v2.md) §4 — no
+ * ([`chessboard.md`](../../../.claude/rules/chessboard.md) §9.4 — no
  * behaviour hook of its own):
  *
  * | Capability | Taken |
@@ -52,8 +52,7 @@ import { openingArrowsOf } from "./openingArrows";
  * router's location state, beside `?at=`). "Play from here" hands the
  * position on screen to Play with Engine as `?fen=`.
  *
- * **Arrivals, read once**: `?fen=` (the Board Editor's "Open in Openings",
- * `CurrentOpening`'s ECO chip — validated with `parseFen`; a position turns
+ * **Arrivals, read once**: `?fen=` (`CurrentOpening`'s ECO chip — validated with `parseFen`; a position turns
  * the board to the side to move) and **`?at=`** — the moves from that start as
  * SAN. The URL is written back with history replace on every step — `?fen=`
  * when the tree does not start at the standard position, `?at=` where the
@@ -264,7 +263,6 @@ function OpeningsBoard() {
             label: t("openings.tabs.load"),
             content: (
               <AnalysisLoad
-                settings={session.settings}
                 onLoadTree={loadTree}
                 onLoadFen={(fen) => {
                   core.loadFen(fen);

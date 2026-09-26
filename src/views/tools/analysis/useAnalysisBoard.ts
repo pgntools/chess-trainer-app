@@ -17,12 +17,12 @@ import {
   saveAnalysis,
   type SavedAnalysisProblem,
 } from "../../../lib/savedAnalysisStore";
-import { turnOf } from "../../dev/core/useBoardCore";
+import { turnOf } from "../../board/core/useBoardCore";
 import { useAnalysisSession } from "./useAnalysisSession";
 
 /**
  * **The Analysis Board's session** (CTA-73) — the v2 core
- * ([`.claude/rules/chessboard-v2.md`](../../../../.claude/rules/chessboard-v2.md))
+ * ([`.claude/rules/chessboard.md`](../../../../.claude/rules/chessboard.md) §9)
  * composed for analysis, plus the one thing that is this screen's own: the
  * **saved record** the session is attached to, and what the reader does with
  * its changes.
@@ -48,7 +48,7 @@ import { useAnalysisSession } from "./useAnalysisSession";
  * flipped (the engine's side changed under it), once the position is over,
  * and whenever the engine is switched off. Off, `onBestMove` does nothing:
  * nothing moves unasked. All of it is the shared `usePlayToggle`
- * (`views/dev/core/`), which Play with Engine runs too (CTA-74).
+ * (`views/board/core/`), which Play with Engine runs too (CTA-74).
  *
  * ## Explicit save, against a baseline
  *
@@ -69,10 +69,10 @@ import { useAnalysisSession } from "./useAnalysisSession";
  * the list and ringed on the map (`extensionIdsOf`, recomputed, never tracked).
  *
  * **A record's settings are the settings screen's** — its name, description,
- * side (`orientation`), arrows and folder. Update keeps the stored ones: a
- * flip or an arrows switch on the board is the session's. A new board's first
- * save takes the side it faces and the arrows switch as it is; a copy takes
- * the original's.
+ * side (`orientation`), arrows (shown, sized and coloured — CTA-98) and
+ * folder. Update keeps the stored ones: a flip or the Arrows tab on the board
+ * is the session's. A new board's first save takes the side it faces and the
+ * arrows as it draws them; a copy takes the original's.
  */
 
 export type AnalysisBoardStart = {
@@ -94,8 +94,14 @@ export type AnalysisBoardStart = {
   at?: string | null;
 };
 
+/** How the board draws its next-move arrows — what a new board's first save keeps (CTA-98). */
+export type AnalysisArrowChoices = Pick<
+  SavedAnalysis,
+  "showArrows" | "arrowWidthSource" | "arrowPalette"
+>;
+
 /** A tree that is nothing yet — the standard start, no moves. */
-export const isBlankTree = (tree: GameTree): boolean =>
+const isBlankTree = (tree: GameTree): boolean =>
   tree.moves.length === 0 && tree.startFen === DEFAULT_POSITION;
 
 export const useAnalysisBoard = ({
@@ -196,6 +202,8 @@ export const useAnalysisBoard = ({
           orientation: stored.orientation,
           description: stored.description,
           showArrows: stored.showArrows,
+          arrowWidthSource: stored.arrowWidthSource,
+          arrowPalette: stored.arrowPalette,
         };
   };
 
@@ -214,9 +222,9 @@ export const useAnalysisBoard = ({
   const saveNew = (
     name: string,
     folderId: string | null,
-    showArrows: boolean,
+    arrows: AnalysisArrowChoices,
   ): Promise<SavedAnalysis | undefined> =>
-    write({ ...recordOf(newSavedAnalysisId()), name: name.trim(), folderId, showArrows });
+    write({ ...recordOf(newSavedAnalysisId()), name: name.trim(), folderId, ...arrows });
 
   /**
    * The write, and the session settled on it once it has landed — against the
@@ -317,5 +325,3 @@ export const useAnalysisBoard = ({
     clearBoard,
   };
 };
-
-export type AnalysisBoardState = ReturnType<typeof useAnalysisBoard>;

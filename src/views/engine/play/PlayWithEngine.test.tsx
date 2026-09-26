@@ -13,34 +13,35 @@ import {
 } from "../../../lib/playedGameStore";
 import { playedGameOf } from "../../../lib/playedGames";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
-import { boardOptions, FakeEngine } from "../../dev/devTestHarness";
+import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
 import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
 
 vi.mock("../../../lib/engine", async () => ({
-  default: (await import("../../dev/devTestHarness")).FakeEngine,
+  default: (await import("../../board/boardTestHarness")).FakeEngine,
 }));
 
 vi.mock("react-chessboard", async () => {
-  const { reactChessboardMock } = await import("../../dev/devTestHarness");
+  const { reactChessboardMock } = await import("../../board/boardTestHarness");
   return reactChessboardMock();
 });
 
 vi.mock("../../../lib/openings", async (importOriginal) => {
-  const { openingsMock } = await import("../../dev/devTestHarness");
+  const { openingsMock } = await import("../../board/boardTestHarness");
   return openingsMock(
     importOriginal as () => Promise<typeof import("../../../lib/openings")>,
   );
 });
 
 import PlayWithEngine from "./PlayWithEngine";
+import { arrivalOf } from "./usePlayGame";
 
 /*
   Play with Engine, v2 (CTA-74): a new board with Play on, the engine playing
   the side not at the bottom, pausing on a step back or a change of side, side
   lines from an earlier position, the autosave to the played-games store, and
   the `?fen=` / `?saved=` arrivals (the old store's ids too). The shared panel
-  and square are asserted with the other v2 boards (`devBoards.test.tsx`,
-  `devPanelPropagation.test.tsx`).
+  and square are asserted with the other v2 boards (`boards.test.tsx`,
+  `panelPropagation.test.tsx`).
 */
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -133,6 +134,76 @@ describe("Play with Engine — a new game", () => {
   it("ignores an unreadable ?fen=", () => {
     mount("/engine/play?fen=nonsense");
     expect(boardOptions().position).toBe(START);
+  });
+});
+
+describe("Play with Engine — a new game's options from the Lobby's link (CTA-82)", () => {
+  const depthValue = () => screen.getByTestId("engine-setting-depth-value").textContent;
+
+  it("takes the side, the settings and the eval bar from the query", () => {
+    mount("/engine/play?side=black&skill=5&depth=8&movetime=2500&lines=2&evalbar=0");
+    expect(boardOptions().position).toBe(START);
+    expect(boardOptions().boardOrientation).toBe("black");
+    // The engine is White and answers at once, at the strength asked for.
+    expect(FakeEngine.latest().setOptions).toContainEqual(["Skill Level", 5]);
+    expect(FakeEngine.latest().setOptions).toContainEqual(["MultiPV", 2]);
+    expect(screen.queryByTestId("eval-bar")).not.toBeInTheDocument();
+    click("play-with-engine-panel-tab-engine");
+    expect(screen.getByText(/Level 5/)).toBeInTheDocument();
+    expect(depthValue()).toBe("8");
+    expect(screen.getByTestId("engine-setting-movetime-value")).toHaveTextContent("2.5s");
+    expect(screen.getByTestId("engine-setting-evalbar").querySelector("input")).not.toBeChecked();
+  });
+
+  it("reads each field on its own: an unreadable one is the default, one out of range is clamped", () => {
+    mount("/engine/play?side=purple&skill=abc&depth=99&evalbar=maybe");
+    expect(boardOptions().boardOrientation).toBe("white");
+    expect(screen.getByTestId("eval-bar")).toBeInTheDocument();
+    click("play-with-engine-panel-tab-engine");
+    expect(screen.getByText(/Level 10/)).toBeInTheDocument();
+    expect(depthValue()).toBe("24");
+  });
+
+  it("lets a side beat the side to move of a ?fen=, and the FEN decide without one", () => {
+    mount(`/engine/play?fen=${encodeURIComponent(AFTER_E4)}&side=white&skill=3`);
+    expect(boardOptions().position).toBe(AFTER_E4);
+    expect(boardOptions().boardOrientation).toBe("white");
+    click("play-with-engine-panel-tab-engine");
+    expect(screen.getByText(/Level 3/)).toBeInTheDocument();
+  });
+
+  it("is beaten by ?saved=", async () => {
+    await savePlayedGame(
+      playedGameOf("s1", parsePgnTree("1. e4 *"), ["e4"], {
+        ...DEFAULT_ENGINE_SETTINGS,
+        playAs: "white",
+        skillLevel: 7,
+      }),
+    );
+    mount("/engine/play?saved=s1&side=black&skill=2");
+    expect(boardOptions().boardOrientation).toBe("white");
+    click("play-with-engine-panel-tab-engine");
+    expect(screen.getByText(/Level 7/)).toBeInTheDocument();
+  });
+
+  it("reads ?side=random as no side at all (CTA-90)", () => {
+    expect(arrivalOf(new URLSearchParams("side=random&skill=4")).request).toEqual({
+      settings: { skillLevel: 4 },
+    });
+  });
+
+  it("starts with the pinned lines hidden when the link says so (CTA-90)", () => {
+    mount("/engine/play?variations=0");
+    // The block is there; its own header checkbox is the live control, unchecked.
+    expect(screen.getByTestId("play-with-engine-panel-variations")).toBeInTheDocument();
+    const toggle = screen.getByTestId("variations-toggle").querySelector("input")!;
+    expect(toggle).not.toBeChecked();
+    expect(screen.queryByTestId("variation-1-pending")).not.toBeInTheDocument();
+
+    // Checking it is the way back: the waiting line returns.
+    fireEvent.click(toggle);
+    expect(toggle).toBeChecked();
+    expect(screen.getByTestId("variation-1-pending")).toBeInTheDocument();
   });
 });
 
@@ -351,6 +422,12 @@ describe("Play with Engine — resuming", () => {
     expect(isPlaying()).toBe(false);
     expect(boardOptions().allowDragging).toBe(false);
   });
+
+  it("resumes with the lines shown whatever the link says beside ?saved= (CTA-90)", async () => {
+    await stored("1. e4 *", ["e4"], "white");
+    mount("/engine/play?saved=p1&variations=0");
+    expect(screen.getByTestId("variations-toggle").querySelector("input")).toBeChecked();
+  });
 });
 
 describe("Play with Engine — resigning", () => {
@@ -389,5 +466,103 @@ describe("Play with Engine — resigning", () => {
     expect(screen.queryByTestId("play-with-engine-resigned")).not.toBeInTheDocument();
     expect(isPlaying()).toBe(true);
     expect(boardOptions().allowDragging).toBe(true);
+  });
+});
+
+/*
+  The game view's own shape (CTA-91): no Map tab, the back button to the
+  Lobby first in the header, the score chip hidden while the engine's lines
+  are, and the game-over treatment once a game has ended.
+*/
+describe("Play with Engine — the game view's shape", () => {
+  it("shows Moves and Engine, and no Map tab", () => {
+    mount();
+    expect(screen.getByTestId("play-with-engine-panel-tab-moves")).toBeInTheDocument();
+    expect(screen.getByTestId("play-with-engine-panel-tab-engine")).toBeInTheDocument();
+    expect(screen.queryByTestId("play-with-engine-panel-tab-map")).not.toBeInTheDocument();
+  });
+
+  it("starts the header with the back button to the Lobby", () => {
+    mount();
+    const back = screen.getByTestId("play-with-engine-back");
+    expect(back).toHaveAttribute("href", "/engine/games");
+    // First in the header, before the opening line and the game's controls.
+    expect(
+      screen.getByTestId("play-with-engine-panel-header").firstElementChild,
+    ).toBe(back);
+    expect(screen.getByTestId("play-with-engine-current-opening")).toBeInTheDocument();
+  });
+
+  it("hides the score chip while the pinned lines are hidden, and returns it with them", () => {
+    mount("/engine/play?variations=0");
+    engineSearches("e2e4 e7e5");
+    // Seeded hidden (CTA-90): the lines are away, and so is the chip (CTA-91)
+    // — the status row itself stays.
+    expect(screen.getByTestId("play-with-engine-panel-variations")).toBeInTheDocument();
+    expect(screen.queryByTestId("play-with-engine-panel-status-score")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("variations-toggle").querySelector("input")!);
+    expect(screen.getByTestId("play-with-engine-panel-status-score")).toHaveTextContent(
+      "+0.20",
+    );
+  });
+});
+
+describe("Play with Engine — the game over", () => {
+  /** One move from a back-rank mate: the rook takes the eighth. */
+  const MATE_IN_ONE = "6k1/5ppp/8/8/8/8/8/K3R3 w - - 0 1";
+
+  it("states the result once the board decides it, and offers the game to the Analysis Board", async () => {
+    mount(`/engine/play?fen=${encodeURIComponent(MATE_IN_ONE)}`);
+    // Nothing has ended yet, and nothing is stored to link.
+    expect(screen.queryByTestId("play-with-engine-ended")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("play-with-engine-open-analysis")).not.toBeInTheDocument();
+
+    expect(drag("e1", "e8")).toBe(true);
+    expect(screen.getByTestId("play-with-engine-ended")).toHaveTextContent("Game over · 1-0");
+    // The button may wait the one autosave between the final move and the
+    // record the link names.
+    expect(screen.queryByTestId("play-with-engine-open-analysis")).not.toBeInTheDocument();
+
+    await waitFor(() => expect(games()).toHaveLength(1));
+    const [game] = games();
+    expect(screen.getByTestId("play-with-engine-open-analysis")).toHaveAttribute(
+      "href",
+      `/tools/analysis?game=${encodeURIComponent(`play/games/${game.id}`)}`,
+    );
+  });
+
+  it("offers a resigned game too, and takes the whole treatment away on Replay", async () => {
+    mount();
+    drag("e2", "e4");
+    engineSearches("e7e5");
+    click("play-with-engine-resign");
+    click("play-with-engine-confirm-ok");
+
+    expect(screen.getByTestId("play-with-engine-resigned")).toHaveTextContent(
+      "You resigned · 0-1",
+    );
+    await waitFor(() => expect(games()).toHaveLength(1));
+    expect(screen.getByTestId("play-with-engine-open-analysis")).toHaveAttribute(
+      "href",
+      `/tools/analysis?game=${encodeURIComponent(`play/games/${games()[0].id}`)}`,
+    );
+
+    click("play-with-engine-replay");
+    click("play-with-engine-confirm-ok");
+    expect(screen.queryByTestId("play-with-engine-resigned")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("play-with-engine-open-analysis")).not.toBeInTheDocument();
+  });
+
+  it("is there for a resumed game that arrives already ended", async () => {
+    await savePlayedGame(
+      playedGameOf("ended", parsePgnTree("1. f3 e5 2. g4 Qh4#"), [], DEFAULT_ENGINE_SETTINGS),
+    );
+    mount("/engine/play?saved=ended");
+    expect(screen.getByTestId("play-with-engine-ended")).toHaveTextContent("Game over · 0-1");
+    expect(screen.getByTestId("play-with-engine-open-analysis")).toHaveAttribute(
+      "href",
+      `/tools/analysis?game=${encodeURIComponent("play/games/ended")}`,
+    );
   });
 });

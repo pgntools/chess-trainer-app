@@ -37,10 +37,11 @@ import { parsePgnTree } from "./pgn";
  * - `eco` / `opening` filled in from the opening book (eco.json) when the
  *   game's tags leave them out — the deepest named position of its mainline,
  *   `openingOfLine`'s rule. A tag the game carries always wins;
- * - `line`, the first {@link LINE_PLIES} plies of its mainline as SAN
- *   (CTA-76) — what the table's opening-moves board merges into a tree
- *   (`lib/openingTree.ts`). Absent for a game that does not start from the
- *   standard position: its moves cannot join a tree that does.
+ * - `line`, its **whole** mainline as SAN (CTA-76, uncapped by CTA-92, which
+ *   measured the deepening at about 3x the index) — what the table's
+ *   opening-moves board merges into a tree (`lib/openingTree.ts`), which cuts
+ *   it where the games stop branching. Absent for a game that does not start
+ *   from the standard position: its moves cannot join a tree that does.
  *
  * The parse is the cost — about 8 ms a game (`chess.js` matching every SAN),
  * so ~80 s for 10,000 — which is why it is paid once and never on view.
@@ -62,16 +63,14 @@ export type CollectionIndex = {
   rows: IndexedRow[];
 };
 
-/**
- * How deep a game's `line` goes — 30 plies, 15 moves: past it the games of
- * even a 10,000-game collection have long since gone their own ways.
- */
-export const LINE_PLIES = 30;
-
 /** The opening a mainline (its positions, in order) ended in, or `undefined`. */
 export type OpeningLookup = (fens: readonly string[]) => { eco: string; name: string } | undefined;
 
-/** A lookup over a book — `openingOfLine` with the position fallback built once. */
+/**
+ * A lookup over a book — `openingOfLine` with the position fallback built once.
+ * Exported for `scripts/wirepgn.js`, which imports it dynamically (so knip
+ * reports it as unused).
+ */
 export const openingLookupOf = (book: OpeningBook): OpeningLookup => {
   const positions = getPositionBook(book);
   return (fens) => openingOfLine(book, positions, fens);
@@ -99,7 +98,7 @@ export const indexedRowOf = (pgn: string, lookup?: OpeningLookup): IndexedRow =>
     const nodes = mainline(tree);
     fens = [tree.startFen, ...nodes.map((node) => node.fen)];
     if (tree.startFen === DEFAULT_POSITION && nodes.length > 0) {
-      line = nodes.slice(0, LINE_PLIES).map((node) => node.san);
+      line = nodes.map((node) => node.san);
     }
   } catch {
     return { ...row, unreadable: true };
@@ -201,11 +200,13 @@ export const textHash = (text: string): string => {
  * file (the new column absent, as an optional field is), and an unknown
  * column is ignored. One row per line, so a re-wired file diffs by game.
  * `line` (CTA-76) is such a later column: its SAN joined by spaces, and a
- * file from before it reads as games with no line.
+ * file from before it reads as games with no line — while one from between
+ * CTA-76 and CTA-92 reads as games whose line stops at 30 plies, which the
+ * opening tree follows as far as it goes.
  * ------------------------------------------------------------------ */
 
-export const COLLECTION_INDEX_FORMAT = "chessapp.collectionIndex";
-export const COLLECTION_INDEX_VERSION = 1;
+const COLLECTION_INDEX_FORMAT = "chessapp.collectionIndex";
+const COLLECTION_INDEX_VERSION = 1;
 
 const TEXT_FIELDS = ["white", "black", "result", "date", "round", "event", "eco", "opening"] as const;
 const NUMBER_FIELDS = ["whiteElo", "blackElo", "moves"] as const;

@@ -1,6 +1,6 @@
 import { sameAnalysisSettings } from "./analysisSettings";
 import type { CatalogGame } from "./gameCatalog";
-import { idbRecordStore } from "./idbRecordStore";
+import { idbRecordStore, mergedNewestFirst } from "./idbRecordStore";
 import {
   MAX_ANALYSIS_DESCRIPTION_CHARS,
   SAVED_ANALYSES_PATH,
@@ -37,8 +37,8 @@ import { ANALYSES_STORE, ANALYSIS_CHANNEL, openAnalysisDb } from "./savedAnalysi
  * hand-off saves a collection's picked games as analyses, and a collection is
  * sized for 5,000–10,000 games — so two whole collections fit. Measured at
  * that size (CTA-77, `src/test/fixtures/pgn/Carlsen.pgn`'s games, under the
- * tests' fake-indexeddb and jsdom): 7,818 records are ~8 MB, written in one
- * batch in ~80 ms and read back in ~60 ms; 20,000 are ~20 MB, ~0.6 s and
+ * tests' fake-indexeddb and jsdom): 5,722 records are ~6 MB, written in one
+ * batch in ~60 ms and read back in ~40 ms; 20,000 are ~20 MB, ~0.6 s and
  * ~0.1 s; and the Saved analyses screen's first page takes ~0.9 s either
  * way, because it parses only the page on screen. `saveAnalysis` still drops
  * the oldest past it; `addAnalyses` refuses rather than drop anything.
@@ -84,6 +84,8 @@ const unchanged = (a: SavedAnalysis, b: SavedAnalysis): boolean =>
   a.folderId === b.folderId &&
   a.description === b.description &&
   a.showArrows === b.showArrows &&
+  a.arrowWidthSource === b.arrowWidthSource &&
+  a.arrowPalette === b.arrowPalette &&
   a.orientation === b.orientation &&
   a.path.length === b.path.length &&
   a.path.every((san, index) => san === b.path[index]) &&
@@ -134,6 +136,30 @@ export const addAnalyses = async (
   return tooMany ? "too-many" : problem;
 };
 
+/**
+ * **An import's analyses** (CTA-89, Settings' Import): the `remove` ids go,
+ * then `add` comes in — each replacing a stored analysis with its id — merged
+ * by date (`mergedNewestFirst`), in one write. All or nothing, as
+ * {@link addAnalyses}: past the cap it is refused with `"too-many"`.
+ */
+export const importAnalyses = async (
+  add: readonly SavedAnalysis[],
+  remove: readonly string[] = [],
+): Promise<SavedAnalysisProblem | undefined> => {
+  let tooMany = false;
+  const problem = await write((current) => {
+    const gone = new Set([...remove, ...add.map((record) => record.id)]);
+    const kept = current.filter((row) => !gone.has(row.id));
+    if (add.length === 0 && kept.length === current.length) return current;
+    if (kept.length + add.length > MAX_SAVED_ANALYSES) {
+      tooMany = true;
+      return current;
+    }
+    return mergedNewestFirst(kept, add);
+  });
+  return tooMany ? "too-many" : problem;
+};
+
 /** Change one record in place — its place in the list kept, `updatedAt` too. */
 const editInPlace = (
   id: string,
@@ -168,7 +194,7 @@ export const renameSavedAnalysis = (
 
 /**
  * **The settings screen's Save** (CTA-73): the name, description, side,
- * arrows and folder, written at once and in place — editing settings is not
+ * arrows (CTA-98: how they are sized and coloured too) and folder, written at once and in place — editing settings is not
  * working on the analysis, so it keeps its place in the list. The texts are
  * trimmed and the description bounded; nothing changed is a no-op.
  */
@@ -183,6 +209,8 @@ export const updateSavedAnalysisSettings = (
       description: edit.description.trim().slice(0, MAX_ANALYSIS_DESCRIPTION_CHARS),
       orientation: edit.orientation,
       showArrows: edit.showArrows,
+      arrowWidthSource: edit.arrowWidthSource,
+      arrowPalette: edit.arrowPalette,
       folderId: edit.folderId,
     };
     return unchanged(row, next) ? row : next;

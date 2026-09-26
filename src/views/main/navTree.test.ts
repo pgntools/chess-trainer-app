@@ -75,15 +75,37 @@ describe("the shipped nav tree", () => {
     }
   });
 
-  it("files Masked Pieces in the Engine folder, beside Play with Engine (CTA-79)", () => {
+  it("files the Lobby and Masked Pieces in the Engine folder (CTA-79, CTA-82)", () => {
     expect(navItemsInFolder("engine").map((item) => item.to)).toEqual([
-      "/engine/play",
       "/engine/games",
       "/engine/masked",
     ]);
+    expect(navItemsInFolder("engine")[0].labelKey).toBe("nav.lobby");
+    // Play with Engine has no entry: the Lobby's Start button reaches it, and
+    // its route is no screen of the tree, so it opens no chain of its own.
+    expect(navItems().map((item) => item.to)).not.toContain("/engine/play");
+    expect(folderPath("/engine/play")).toEqual([]);
     // Its old folder and route are gone, with no redirect.
     expect(navFolders().map((folder) => folder.id)).not.toContain("masked-pieces");
     expect(folderPath("/masked/play")).toEqual([]);
+  });
+
+  it("files Export, Import and Storage in a Settings folder, a folder rather than a single entry (CTA-86, CTA-89, CTA-94)", () => {
+    const settings = navFolders().find((folder) => folder.id === "settings");
+    expect(settings).toMatchObject({ labelKey: "nav.folders.settings" });
+    expect(settings?.singleEntry).toBeFalsy();
+    // Pinned to the sidebar's foot, and the flag reaches the rendered tree.
+    expect(settings?.pinToBottom).toBe(true);
+    expect(navTree().find((node) => node.id === "settings")?.pinToBottom).toBe(true);
+    expect(navTree().filter((node) => node.pinToBottom).map((node) => node.id)).toEqual(["settings"]);
+    expect(navItemsInFolder("settings").map((item) => [item.to, item.labelKey])).toEqual([
+      ["/settings/export", "nav.settingsExport"],
+      ["/settings/import", "nav.settingsImport"],
+      ["/settings/storage", "nav.settingsStorage"],
+    ]);
+    expect(folderPath("/settings/export")).toEqual(["settings"]);
+    expect(folderPath("/settings/import")).toEqual(["settings"]);
+    expect(folderPath("/settings/storage")).toEqual(["settings"]);
   });
 
   it("returns an empty breadcrumb for a path that is not a screen", () => {

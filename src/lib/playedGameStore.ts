@@ -8,7 +8,7 @@ import {
   type PlayedGame,
 } from "./playedGames";
 import { idbDatabase } from "./idb";
-import { idbRecordStore } from "./idbRecordStore";
+import { idbRecordStore, mergedNewestFirst } from "./idbRecordStore";
 
 /**
  * Where the games against the engine are kept (CTA-74; Masked Pieces' too
@@ -39,7 +39,7 @@ import { idbRecordStore } from "./idbRecordStore";
  */
 
 /** The database Play with Engine's (and Masked Pieces') games live in. */
-export const ENGINE_DB_NAME = "chessapp.engine";
+const ENGINE_DB_NAME = "chessapp.engine";
 const DB_VERSION = 1;
 const GAMES_STORE = "games";
 
@@ -49,11 +49,13 @@ const engineDb = idbDatabase(ENGINE_DB_NAME, DB_VERSION, [GAMES_STORE]);
 export const deleteEngineDb = engineDb.remove;
 
 /**
- * How many games are kept — a bound on a flat, unpaged list rather than on
- * the storage (it was the quota's while the games lived in `localStorage`).
- * The oldest falls off the end rather than the newest being refused.
+ * How many games are kept (CTA-100: 500, since the Lobby lists them as a
+ * paginated table) — a bound on the store and on the import, which warns
+ * past it, rather than on the storage (it was the quota's while the games
+ * lived in `localStorage`). The oldest falls off the end rather than the
+ * newest being refused.
  */
-export const MAX_PLAYED_GAMES = 100;
+export const MAX_PLAYED_GAMES = 500;
 
 /** What went wrong with a write. */
 export type PlayedGameProblem = "storage";
@@ -120,6 +122,23 @@ export const savePlayedGame = (game: PlayedGame): Promise<PlayedGameProblem | un
   });
 
 /**
+ * **An import's games** (CTA-89, Settings' Import): the `remove` ids go, then
+ * `add` comes in — each replacing a stored game with its id — merged by date
+ * (`mergedNewestFirst`), in one write. The cap is kept as {@link savePlayedGame}
+ * keeps it, the oldest falling off; nothing to change is a no-op.
+ */
+export const importPlayedGames = (
+  add: readonly PlayedGame[],
+  remove: readonly string[] = [],
+): Promise<PlayedGameProblem | undefined> =>
+  write((current) => {
+    const gone = new Set([...remove, ...add.map((game) => game.id)]);
+    const kept = current.filter((row) => !gone.has(row.id));
+    if (add.length === 0 && kept.length === current.length) return current;
+    return mergedNewestFirst(kept, add).slice(0, MAX_PLAYED_GAMES);
+  });
+
+/**
  * One played game by id, out of what has been read — what resuming one starts
  * from. `undefined` for an unknown id, and also before the first read has
  * landed (a screen arriving by `?saved=` waits for {@link loadPlayedGames}).
@@ -134,10 +153,6 @@ export const removePlayedGame = (id: string): Promise<PlayedGameProblem | undefi
   write((current) =>
     current.some((row) => row.id === id) ? current.filter((row) => row.id !== id) : current,
   );
-
-/** Forget all of them. */
-export const clearPlayedGames = (): Promise<PlayedGameProblem | undefined> =>
-  write((current) => (current.length === 0 ? current : []));
 
 /* Memoised on the snapshot's identity. */
 let live: { games: readonly PlayedGame[]; catalog: GameCatalog } | undefined;

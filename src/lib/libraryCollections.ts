@@ -10,13 +10,15 @@ import { slugify } from "./pgnText";
  *
  * A **collection is one PGN text of many games** — a tournament, a player's
  * games — held as one PGN chunk per game, in file order. It is not a single
- * game or a position, and it does not nest: the Library is one level of
- * collections, each a table of its games, each game an analysis board.
+ * game or a position, and it does not nest: a collection is a table of its
+ * games, each game an analysis board. The Library files collections in
+ * folders (CTA-88, `lib/libraryFolderStore.ts`), but a collection holds no
+ * folder.
  *
  * A game is **addressed by its place in the collection** — its 1-based
  * number, the table's `#` column and the last segment of its route. Nothing in
  * a PGN is an id (two games of one round can share every tag), and a number is
- * what a reader says ("game 12 of the Morphy collection").
+ * what a reader says ("game 12 of the Tal collection").
  *
  * **A row is read without `chess.js`** ({@link collectionRowOf}): the game's
  * tags, read with the same tag reader `parsePgnTree` uses, and its length,
@@ -28,16 +30,16 @@ import { slugify } from "./pgnText";
  */
 
 /** Where a collection came from — the one thing that decides what a save may write. */
-export type CollectionSource = "shipped" | "uploaded";
+type CollectionSource = "shipped" | "uploaded";
 
 /**
- * **The most text one collection may be** — 30,000,000 characters, about
- * 30,000 games of the World Cup file's ~950 characters each. An upload is kept
+ * **The most text one collection may be** — 100,000,000 characters, about
+ * 100,000 games of ~1,000 characters each (the shipped files average ~620). An upload is kept
  * in IndexedDB (`lib/libraryCollectionStore.ts`), whose quota is a share of
  * the disk rather than `localStorage`'s few megabytes, so this is a guard on
  * the tab's memory (a text is held twice while it is read), not on storage.
  */
-export const MAX_COLLECTION_CHARS = 30_000_000;
+export const MAX_COLLECTION_CHARS = 100_000_000;
 
 /**
  * What is known of a collection **without its games** — enough for the
@@ -53,6 +55,12 @@ export type CollectionSummary = {
   count: number;
   /** ISO 8601 — when an upload was added. Absent for a shipped file. */
   addedAt?: string;
+  /**
+   * The folder an upload is filed in (CTA-88) — `null` the top level, as is a
+   * folder that is not there. Absent for a shipped file, which lives in the
+   * Library's fixed Built-in folder.
+   */
+  folderId?: string | null;
 };
 
 export type LibraryCollection = {
@@ -114,10 +122,12 @@ export type CollectionRow = {
    */
   unreadable?: boolean;
   /**
-   * The first 30 plies of its parsed mainline, as SAN (CTA-76) — what the
-   * opening-moves board filters by (`lib/openingTree.ts`). Set by the index's
-   * `chess.js` pass; absent for an unreadable game, one that does not start
-   * from the standard position, and every game of an index from before it.
+   * The game's whole parsed mainline, as SAN (CTA-76, uncapped by CTA-92) —
+   * what the opening-moves board filters by (`lib/openingTree.ts`). Set by
+   * the index's `chess.js` pass; absent for an unreadable game, one that does
+   * not start from the standard position, and every game of an index from
+   * before it — and an index from between the two holds only the game's
+   * first 30 plies, which the tree follows as far as they go.
    */
   line?: readonly string[];
 };
@@ -273,9 +283,14 @@ export type RowFilter = {
   text: string;
   /** One of {@link RESULTS}, or `""` for any. */
   result: string;
-  /** Part of a player's name, case aside — White's or Black's, as `color` says. */
-  player?: string;
-  /** The side `player` had; `""` / absent for either. Nothing without a `player`. */
+  /**
+   * Parts of players' names, case aside — a game is kept when **any** name is
+   * in White's or Black's, as `color` says (CTA-95: several spellings of one
+   * player chosen together). Each name is a substring match exactly as one
+   * name always was; an empty list narrows nothing.
+   */
+  player?: readonly string[];
+  /** The side one of `player` had; `""` / absent for either. Nothing without a `player`. */
   color?: PlayerColor | "";
   /**
    * Part of the opening's label — its ECO code, then its name
@@ -289,6 +304,13 @@ export type RowFilter = {
   from?: string;
   to?: string;
   /**
+   * Inclusive Elo bounds (CTA-103, the import popup's filter): a game is kept
+   * only when **both** players' Elo is within them. Either may be absent; with
+   * either set, a game missing an Elo is out.
+   */
+  minElo?: number;
+  maxElo?: number;
+  /**
    * The opening moves played on the filter board, as SAN from the start
    * (CTA-76): a game is kept when its `line` begins with them. Empty or
    * absent narrows nothing; a game with no `line` is out once it is set.
@@ -298,10 +320,12 @@ export type RowFilter = {
 
 /**
  * The side panel's filters as the table's URL holds them — every field a
- * string, `""` for none (dates as `YYYY-MM-DD`).
+ * string, `""` for none (dates as `YYYY-MM-DD`), but `player`: the chosen
+ * names, the URL's repeated `?player=` params in the order they were chosen
+ * (mutable, as the panel's Autocomplete takes them).
  */
 export type CollectionFilterValues = {
-  player: string;
+  player: string[];
   color: PlayerColor | "";
   opening: string;
   event: string;
@@ -345,6 +369,12 @@ const searchTextOf = (row: CollectionRow): string =>
     .toLowerCase();
 
 /**
+ * An ECO code at the start of an opening label — `B90`, or a ChessBase-style
+ * sub-code with one letter after it, `C44r` (the shipped collections carry them).
+ */
+const ECO_CODE = /^[A-E]\d\d[a-z]?\b/;
+
+/**
  * What the opening filter shows and matches: the ECO code, then the name —
  * `B90 Sicilian Defense: Najdorf Variation`. Either alone when the game has
  * only one; `undefined` with neither.
@@ -379,13 +409,16 @@ const numberedLine = (line: readonly string[]): string =>
  */
 export const activeFilterSummary = (filter: RowFilter, labels: BatchNameLabels): string[] => {
   const parts: string[] = [];
-  const player = filter.player?.trim() ?? "";
-  if (player !== "") parts.push(player);
-  if (player !== "" && (filter.color === "white" || filter.color === "black")) {
+  // The names as one phrase, "/" for the either-spelling the filter means.
+  const players = (filter.player ?? [])
+    .map((name) => name.trim())
+    .filter((name) => name !== "");
+  if (players.length > 0) parts.push(players.join(" / "));
+  if (players.length > 0 && (filter.color === "white" || filter.color === "black")) {
     parts.push(labels[filter.color]);
   }
   const opening = filter.opening?.trim() ?? "";
-  if (opening !== "") parts.push(/^[A-E]\d\d\b/.exec(opening)?.[0] ?? opening);
+  if (opening !== "") parts.push(ECO_CODE.exec(opening)?.[0] ?? opening);
   if ((filter.event ?? "") !== "") parts.push(filter.event as string);
   const from = filter.from ?? "";
   const to = filter.to ?? "";
@@ -400,7 +433,7 @@ export const activeFilterSummary = (filter: RowFilter, labels: BatchNameLabels):
 /**
  * **The name of the analyses folder a batch of picked games goes into**
  * (CTA-77, the table's Analyse): the collection's name, how many games, and —
- * only when some are on — the filters, `World Cup 2023 — 12 games (Carlsen,
+ * only when some are on — the filters, `Tal — 12 games (Petrosian,
  * White, B90, 1.e4 c5)`. Kept within `max` characters (the folder name's
  * limit): the filter summary is cut first, with an ellipsis, and dropped
  * when too little of it would be left to read; only a collection name too
@@ -448,21 +481,34 @@ export const filteredRows = (
   filter: RowFilter,
 ): CollectionRow[] => {
   const words = filter.text.toLowerCase().split(/\s+/).filter(Boolean);
-  const player = filter.player?.trim().toLowerCase() ?? "";
+  // Every name a substring match exactly as one name always was; OR across them (CTA-95).
+  const players = (filter.player ?? [])
+    .map((name) => name.trim().toLowerCase())
+    .filter((name) => name !== "");
   const opening = filter.opening?.trim().toLowerCase() ?? "";
   const event = filter.event ?? "";
   const from = filter.from ?? "";
   const to = filter.to ?? "";
   const line = filter.line ?? [];
+  const { minElo, maxElo } = filter;
+  const eloIn = (elo: number | undefined) =>
+    elo !== undefined && (minElo === undefined || elo >= minElo) && (maxElo === undefined || elo <= maxElo);
   return rows.filter((row) => {
+    if ((minElo !== undefined || maxElo !== undefined) && !(eloIn(row.whiteElo) && eloIn(row.blackElo))) {
+      return false;
+    }
     if (line.length > 0) {
       if (row.line === undefined || row.line.length < line.length) return false;
       if (line.some((san, index) => row.line?.[index] !== san)) return false;
     }
     if (filter.result !== "" && row.result !== filter.result) return false;
-    if (player !== "") {
-      const asWhite = filter.color !== "black" && (row.white?.toLowerCase().includes(player) ?? false);
-      const asBlack = filter.color !== "white" && (row.black?.toLowerCase().includes(player) ?? false);
+    if (players.length > 0) {
+      // Any selected player had the side `color` leaves open — with White or
+      // Black chosen, any of them on that side; one name, today's behaviour.
+      const asWhite =
+        filter.color !== "black" && players.some((name) => row.white?.toLowerCase().includes(name) ?? false);
+      const asBlack =
+        filter.color !== "white" && players.some((name) => row.black?.toLowerCase().includes(name) ?? false);
       if (!asWhite && !asBlack) return false;
     }
     if (opening !== "" && !(openingLabelOf(row)?.toLowerCase().includes(opening) ?? false)) {
@@ -485,11 +531,12 @@ export const filteredRows = (
 /**
  * What a collection's rows offer the side panel's filters — **a filter is
  * shown only where some game carries its field**, since a collection is
- * whatever its PGN says (Morphy's file has no rounds, an upload may have no
- * dates). The lists are distinct and complete — a 7,818-game collection
- * offers its 3,040 openings, every one; `openings` are {@link openingLabelOf}
- * labels in ECO order (A00 to E99, then any without a code), the rest sorted
- * numeric-aware. `dates` is the earliest and latest day any game could be.
+ * whatever its PGN says (a file may have no rounds, an upload may have no
+ * dates). The lists are distinct and complete — the 5,722-game fixture
+ * offers its 1,704 openings, every one; `openings` are {@link openingLabelOf}
+ * labels in ECO order (A00 to E99, a sub-code's `C44r` beside its `C44`,
+ * then any without a code), the rest sorted numeric-aware. `dates` is the
+ * earliest and latest day any game could be.
  */
 export type CollectionFacets = {
   players: string[];
@@ -497,6 +544,20 @@ export type CollectionFacets = {
   events: string[];
   results: string[];
   dates?: { min: string; max: string };
+};
+
+/**
+ * The players of these rows, White's and Black's, each once, sorted as
+ * {@link collectionFacetsOf}'s list — the import popup's player suggestions
+ * over the games its Elo range leaves (CTA-103).
+ */
+export const playersOf = (rows: readonly Pick<CollectionRow, "white" | "black">[]): string[] => {
+  const players = new Set<string>();
+  for (const row of rows) {
+    if (row.white !== undefined) players.add(row.white);
+    if (row.black !== undefined) players.add(row.black);
+  }
+  return [...players].sort(collator.compare);
 };
 
 export const collectionFacetsOf = (rows: readonly CollectionRow[]): CollectionFacets => {
@@ -520,7 +581,7 @@ export const collectionFacetsOf = (rows: readonly CollectionRow[]): CollectionFa
     }
   }
   const sorted = (values: Set<string>) => [...values].sort(collator.compare);
-  const hasEco = (label: string) => /^[A-E]\d\d\b/.test(label);
+  const hasEco = (label: string) => ECO_CODE.test(label);
   return {
     players: sorted(players),
     openings: [...openings].sort(
@@ -533,8 +594,64 @@ export const collectionFacetsOf = (rows: readonly CollectionRow[]): CollectionFa
 };
 
 /**
+ * What a text's games are, at a glance (CTA-103, the import popup's file
+ * info), from their tag-only rows: how many games and distinct players, the
+ * events, the lowest and highest Elo either side had, and the earliest and
+ * latest `Date` as the games write it (`1848`, `2023.07.30`) — ordered by the
+ * days they could be ({@link dateBounds}). A span is absent when no game
+ * carries its tag.
+ */
+export type CollectionMetadata = {
+  games: number;
+  players: number;
+  events: string[];
+  elo?: { min: number; max: number };
+  dates?: { first: string; last: string };
+};
+
+export const collectionMetadataOf = (rows: readonly CollectionRow[]): CollectionMetadata => {
+  const players = new Set<string>();
+  const events = new Set<string>();
+  let elo: { min: number; max: number } | undefined;
+  let first: { date: string; day: string } | undefined;
+  let last: { date: string; day: string } | undefined;
+  for (const row of rows) {
+    if (row.white !== undefined) players.add(row.white);
+    if (row.black !== undefined) players.add(row.black);
+    if (row.event !== undefined) events.add(row.event);
+    for (const value of [row.whiteElo, row.blackElo]) {
+      if (value === undefined) continue;
+      elo = elo === undefined ? { min: value, max: value } : { min: Math.min(elo.min, value), max: Math.max(elo.max, value) };
+    }
+    const bounds = dateBounds(row.date);
+    if (bounds !== undefined && row.date !== undefined) {
+      if (first === undefined || bounds[0] < first.day) first = { date: row.date, day: bounds[0] };
+      if (last === undefined || bounds[1] > last.day) last = { date: row.date, day: bounds[1] };
+    }
+  }
+  return {
+    games: rows.length,
+    players: players.size,
+    events: [...events].sort(collator.compare),
+    elo,
+    dates: first === undefined || last === undefined ? undefined : { first: first.date, last: last.date },
+  };
+};
+
+/**
+ * The `Event` every one of these games shares, when they do — what a
+ * tournament export is called, and so a new collection's name
+ * ({@link readCollectionText}'s `name`, over rows: the games an import keeps).
+ */
+export const sharedEventOf = (rows: readonly Pick<CollectionRow, "event">[]): string | undefined => {
+  const events = new Set(rows.map((row) => row.event));
+  const [event] = events;
+  return events.size === 1 ? event : undefined;
+};
+
+/**
  * A shipped file's name out of its stem — the one naming rule that makes
- * dropping a file in enough: `WorldCup2023` → `World Cup 2023`,
+ * dropping a file in enough: `TataSteel2025` → `Tata Steel 2025`,
  * `candidates_2024` → `Candidates 2024`. Word breaks at a lower-to-upper
  * case change, at a letter-digit boundary and at `_` / `-`.
  */
@@ -549,11 +666,11 @@ export const collectionNameOfStem = (stem: string): string => {
   return words === "" ? stem : words.charAt(0).toUpperCase() + words.slice(1);
 };
 
-/** A shipped file's route segment: its stem, slugified (`WorldCup2023` → `worldcup2023`). */
+/** A shipped file's route segment: its stem, slugified (`TataSteel2025` → `tatasteel2025`). */
 export const collectionIdOfStem = (stem: string): string => slugify(stem) || "collection";
 
 /** Why a text was not taken as a collection. */
-export type CollectionTextProblem = "empty" | "too-large" | "unreadable";
+type CollectionTextProblem = "empty" | "too-large" | "unreadable";
 
 export type CollectionReading =
   | { ok: true; games: string[]; name?: string }
@@ -590,4 +707,47 @@ export const readCollectionText = (text: string): CollectionReading => {
   const events = new Set(games.map((pgn) => gameTag(readPgnParts(pgn).headers, "Event")));
   const [event] = events;
   return events.size === 1 && event !== undefined ? { ok: true, games, name: event } : { ok: true, games };
+};
+
+/**
+ * One text brought in to become a collection (CTA-103, `/library/new`'s
+ * import popup) — a picked `.pgn`, one `.pgn` of a zip, or a paste — cut into
+ * games, each with its tag-only row, so the popup can describe and filter
+ * them before any `chess.js` pass.
+ */
+export type CollectionImportFile = {
+  /** The file's name (a zip entry's path); absent for a paste. */
+  name?: string;
+  /** Its stem — the name fallback; absent for a paste. */
+  stem?: string;
+  /** In bytes. */
+  size: number;
+  games: readonly string[];
+  /** Each game's tag-only row (`collectionRowOf`, no `chess.js`), numbered from 1. */
+  rows: readonly CollectionRow[];
+};
+
+/** What was brought in: the file picked (or the paste) and the texts in it. */
+export type CollectionImportSource = {
+  /** The picked file's name; absent for a paste. */
+  name?: string;
+  size: number;
+  /** A zip's `.pgn` files, else the one text. */
+  zip: boolean;
+  files: readonly CollectionImportFile[];
+};
+
+/** A text read as one import file: its games and their tag-only rows, or why it is none. */
+export const collectionImportFileOf = (
+  text: string,
+  size: number,
+  name?: string,
+  stem?: string,
+): { file: CollectionImportFile; reading: CollectionReading } => {
+  const reading = readCollectionText(text);
+  const games = reading.ok ? reading.games : [];
+  return {
+    reading,
+    file: { name, stem, size, games, rows: games.map((pgn, index) => collectionRowOf(pgn, index + 1)) },
+  };
 };

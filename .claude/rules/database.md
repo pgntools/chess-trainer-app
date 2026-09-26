@@ -51,12 +51,13 @@ wrapper's main features would go unused. §10 says when that changes.
 | Path | What lives there |
 | --- | --- |
 | `src/lib/idb.ts` | **The connection helper**: `idbDatabase(name, version, stores)` → `{ name, open, remove }` (open once, upgrade by adding missing object stores, step aside on `versionchange`, reconnect after a failure; `remove` is the tests' delete), plus `done` (a request as a promise) and `committed` (a transaction's commit as a promise). Every database is opened through it. |
-| `src/lib/idbRecordStore.ts` | **The record-store factory**: a list of rows kept as one IndexedDB record per row, handed out synchronously once read, written through a queue (§3). Every store but the Library's is one of these. |
+| `src/lib/idbRecordStore.ts` | **The record-store factory**: a list of rows kept as one IndexedDB record per row, handed out synchronously once read, written through a queue (§3). Every store but the Library's collections is one of these. |
 | `src/lib/savedAnalysisDb.ts` | The `chessapp.analyses` database (object stores `analyses`, `folders`). |
 | `src/lib/savedRepertoireDb.ts` | The `chessapp.repertoires` database (object stores `repertoires`, `folders`). |
 | `src/lib/playedGameStore.ts` | The `chessapp.engine` database (object store `games`) and its store, in one file (one store, one database). |
-| `src/lib/libraryCollectionStore.ts` | The `chessapp.library` database and its hand-written store (§1.4) — not an `idbRecordStore`, because it reads a collection's rows and games lazily. |
-| `src/lib/savedAnalysisStore.ts`, `savedAnalysisFolderStore.ts`, `savedRepertoireStore.ts`, `savedRepertoireFolderStore.ts` | The other record stores: each one's caps, idempotency comparison and operations, over the factory. |
+| `src/lib/libraryDb.ts` | The `chessapp.library` database (object stores `collections`, `indexes`, `games`, `folders`), version 2. |
+| `src/lib/libraryCollectionStore.ts` | The Library's hand-written collection store (§1.4) — not an `idbRecordStore`, because it reads a collection's rows and games lazily. |
+| `src/lib/savedAnalysisStore.ts`, `savedAnalysisFolderStore.ts`, `savedRepertoireStore.ts`, `savedRepertoireFolderStore.ts`, `libraryFolderStore.ts` | The other record stores: each one's caps, idempotency comparison and operations, over the factory. |
 | `src/lib/playedGames.ts`, `savedAnalyses.ts`, `savedAnalysisFolders.ts`, `savedRepertoires.ts`, `savedRepertoireFolders.ts`, `libraryCollections.ts` | **The records** — what each row is, and its **normaliser** (`playedGameFrom`, `savedAnalysisFrom`, `savedRepertoireFrom`, `analysisFolderFrom`, `repertoireFolderFrom`): the schema, read back leniently. Pure. |
 | `src/views/engine/games/usePlayedGames.ts`, `views/repertoires/useSavedRepertoires.ts` / `useRepertoireFolders.ts`, `views/tools/analysis/saved/useSavedAnalyses.ts` / `useAnalysisFolders.ts` | The `useSyncExternalStore` bindings — `undefined` until the store's first read lands. |
 | `src/views/shared/useStoreRead.ts` | "Can this route mount yet?" — a URL naming a record waits for its store's first read. |
@@ -70,17 +71,20 @@ wrapper's main features would go unused. §10 says when that changes.
 
 | Module | Database | Object store | Store module | Row | Order | Cap |
 | --- | --- | --- | --- | --- | --- | --- |
-| **Engine** (Play with Engine, Masked Pieces) | `chessapp.engine` | `games` | `playedGameStore.ts` | `PlayedGame` | newest first | 100 (oldest dropped) |
+| **Engine** (Play with Engine, Masked Pieces) | `chessapp.engine` | `games` | `playedGameStore.ts` | `PlayedGame` | newest first | 500 (oldest dropped, CTA-100) |
 | **Analyses** | `chessapp.analyses` | `analyses` | `savedAnalysisStore.ts` | `SavedAnalysis` | newest first | 20,000 (a batch past it refused) |
 | | | `folders` | `savedAnalysisFolderStore.ts` | `AnalysisFolder` | oldest first | 100 |
 | **Repertoires** | `chessapp.repertoires` | `repertoires` | `savedRepertoireStore.ts` | `SavedRepertoire` | newest first | 500 (a split past it refused) |
 | | | `folders` | `savedRepertoireFolderStore.ts` | `RepertoireFolder` | oldest first | 100 |
 | **Library** | `chessapp.library` | `collections`, `indexes`, `games` | `libraryCollectionStore.ts` | a summary / index rows / PGN chunks per collection | newest first | 30M characters a collection |
+| | | `folders` | `libraryFolderStore.ts` | `GameFolder` | oldest first | 100 |
 
-Every database is at **version 1**, every object store is keyed by
-`keyPath: "id"`, and **none has an index**. Each database is also the name of
-its `BroadcastChannel` (the analyses' two stores share one channel, and so do
-the repertoires').
+Every database is at **version 1** but the Library's, at **version 2** (CTA-88
+added its `folders` store; the upgrade only created it). Every object store is
+keyed by `keyPath: "id"`, and **none has an index**. Each database is also the
+name of its `BroadcastChannel` (the analyses' two stores share one channel, and
+so do the repertoires' and the Library's — the Library's collection listener
+ignores the folder store's `{ store }` messages).
 
 ### 1.1 Why one database per module
 
@@ -119,8 +123,12 @@ the Library keeps its own store: the `collections` summaries are read whole
 (the list), and a collection's `indexes` and `games` records are read when
 its table or a game opens, then kept (`peekUploadedRows` / `peekUploadedGames`
 synchronously, `loadUploaded…` to read). Its writes go in one transaction
-over the three object stores. Its connection is `lib/idb.ts`'s like every
-other; everything else about it is in [`game-collections.md`](./game-collections.md) §4.
+over the three object stores. A summary carries its `folderId`; the folders
+are a record store of their own in the same database
+(`libraryFolderStore.ts`), and deleting one re-files its collections into its
+parent through the collection store (`refileCollectionsIn`). The connection is
+`lib/libraryDb.ts`'s, over `lib/idb.ts` like every other; everything else about
+it is in [`game-collections.md`](./game-collections.md) §4.
 
 ---
 
@@ -133,9 +141,8 @@ Only preferences, written by libraries rather than by us:
 | `mui-mode` (and MUI's other colour-scheme keys) | MUI's `ThemeProvider` with `colorSchemes` (`theme/AppThemeWithLang.tsx`) | light / dark / system |
 | `i18nextLng` | `i18next-browser-languagedetector` (`i18n.ts`) | the language picked |
 
-Nothing else in `src/` touches `localStorage`. The data stores that once
-lived there moved to IndexedDB, and the one-time move of their old keys has
-been removed too: data under an old `chessapp.*.v1` key is no longer read.
+Nothing else in `src/` touches `localStorage`, and nothing reads the old
+`chessapp.*.v1` keys — do not reuse those names.
 `grep -rn localStorage src --include=*.ts --include=*.tsx | grep -v test`
 should show only comments.
 
@@ -206,6 +213,17 @@ not decide "missing" (or "start a new game") before the store has been read:
 | `/engine/games` | `PlayedGames` | the hook's `undefined` → `played-games-loading` |
 | `/tools/analysis/saved` | `SavedAnalyses` | `saved-analyses-loading` |
 
+A screen that reads **every** store at once — Settings' Export and Import
+(`lib/dataExportSource.ts`, `lib/dataImportTarget.ts`,
+[`import-export.md`](./import-export.md)) — calls each store's `load()`
+before it plans, rather than trusting a snapshot a subscription may not have
+filled yet. The Import then writes through each store's own operations — the
+bulk ones added for it (`importPlayedGames`, `importAnalyses`,
+`importRepertoires`: removals and additions in one write, merged by date with
+`mergedNewestFirst`; `addAnalysisFolders`, `addRepertoireFolders`,
+`addLibraryFolders`: all or nothing under the cap) — and never IndexedDB
+directly.
+
 The reading line's words are the catalog's `*.loading` keys
 (`playedGames.loading`, `repertoires.loading`, `savedAnalyses.loading`).
 
@@ -240,10 +258,10 @@ ignore an answer that is no longer about the record on screen
 
 ## 6. Performance, measured
 
-Measured under the tests' `fake-indexeddb` and jsdom (CTA-77, the Carlsen
-fixture's games as analyses): 7,818 records ≈ 8 MB, written in one batch in
-~80 ms, read back in ~60 ms; 20,000 ≈ 20 MB, ~0.6 s and ~0.1 s. A real
-browser is faster. The engine games (100) and the repertoires (500, but a
+Measured under the tests' `fake-indexeddb` and jsdom (the Carlsen
+fixture's 5,722 games as analyses): 5,722 records ≈ 6 MB, written in one
+batch in ~60 ms, read back in ~40 ms; 20,000 ≈ 20 MB, ~0.6 s and ~0.1 s. A real
+browser is faster. The engine games (500) and the repertoires (500, but a
 course can be most of a megabyte each) are far below that.
 
 ---
@@ -256,9 +274,11 @@ course can be most of a megabyte each) are far below that.
   `localStorage`, then — for every record store — wait for its writes to land
   (`settled…`, twice: a folder delete queues its records' unfiling behind
   it), `reset…`, and delete the three databases (`deleteAnalysisDb`,
-  `deleteEngineDb`, `deleteRepertoireDb`). The Library's tests reset their
-  own (`resetLibraryCollectionStore`). Without the wait, a write a screen left
-  in flight lands in the next test's fresh database.
+  `deleteEngineDb`, `deleteRepertoireDb`). The Library's folder store is
+  settled and reset there with the others; its database is deleted by the
+  Library's own tests (`resetLibraryCollectionStore`, in their `beforeEach`).
+  Without the wait, a write a screen left in flight lands in the next test's
+  fresh database.
 - **The store modules are imported lazily in the teardown**, never at the top
   of `setup.ts`: a setup file's static imports load before a test file's
   `vi.mock`s, and the played games reach `lib/pieceMask.ts`, which would then

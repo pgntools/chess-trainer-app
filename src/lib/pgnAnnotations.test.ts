@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parsePgnGame, parsePgnTree, parsePgnTrees } from "./pgn";
+import { gamesOf } from "./gamesTag";
+import { NAG_SECTIONS, toggleNag } from "./moveAnnotations";
 import {
   deleteFrom,
   gameToPgn,
@@ -10,7 +12,9 @@ import {
   nodeAtSanPath,
   promoteVariation,
   findNode,
+  mainlineGame,
   setComments,
+  setNags,
   treeToPgn,
   type GameTree,
 } from "./gameTree";
@@ -150,6 +154,62 @@ describe("mergeTrees carries annotations", () => {
   });
 });
 
+describe("mergeTrees writes the games tag (CTA-101)", () => {
+  const count = (trees: GameTree[]) =>
+    mergeTrees(trees, trees[0].startFen, {}, { countGames: true });
+  /** Movetexts as one many-game text — a game starts at its `[Event]`. */
+  const text = (...games: string[]) =>
+    games.map((movetext, index) => `[Event "${index + 1}"]\n\n${movetext}`).join("\n\n");
+  const games = (...movetexts: string[]) => parsePgnTrees(text(...movetexts));
+
+  it("sums the counts the games already carry, an untagged move counting 1", () => {
+    const merged = count(
+      games(
+        "1. e4 {[%games 5] King's pawn.} e5 *",
+        "1. e4 {games:2 King's pawn.} c5 *",
+        "1. d4 {Queen's pawn.} *",
+      ),
+    );
+    expect(at(merged, "e4").comments).toEqual(["[%games 7] King's pawn."]);
+    expect(at(merged, "d4").comments).toEqual(["[%games 1] Queen's pawn."]);
+    expect(gamesOf(at(merged, "e4"))).toBe(7);
+    expect(gamesOf(at(merged, "e4", "c5"))).toBe(1);
+  });
+
+  it("takes the old tags out of the joined comment, on the trunk too", () => {
+    const merged = count(
+      games("1. e4 {[%games 4]} e5 {Open.} *", "1. e4 {games:3 Solid.} e5 {[%games 9] Open.} *"),
+    );
+    // Every game played e4 and e5: nothing to tag, and nothing of the old tags left.
+    expect(at(merged, "e4").comments).toEqual(["Solid."]);
+    expect(at(merged, "e4", "e5").comments).toEqual(["Open."]);
+    expect(treeToPgn(merged)).not.toMatch(/games/);
+  });
+
+  it("re-merging a merged tree sums its counts rather than keeping the first", () => {
+    const first = count(games("1. e4 e5 *", "1. e4 c5 *", "1. e4 e5 2. Nf3 *"));
+    const again = count([parsePgnTree(treeToPgn(first)), ...games("1. e4 e5 *", "1. e4 e6 *")]);
+    expect(gamesOf(at(again, "e4", "e5"))).toBe(3);
+    expect(gamesOf(at(again, "e4", "c5"))).toBe(1);
+    expect(gamesOf(at(again, "e4", "e6"))).toBe(1);
+  });
+
+  it("writes it into the PGN, first in the move's comment, and reads back the same", () => {
+    const merged = count(games("1. e4 {Best.} {Also.} *", "1. d4 *"));
+    const pgn = treeToPgn(merged);
+    expect(pgn).toContain("1. e4 { [%games 1] Best. } { Also. } (1. d4 { [%games 1] })");
+    expect(treeToPgn(parsePgnTree(pgn))).toBe(pgn);
+  });
+
+  it("a repertoire merge writes it", () => {
+    const reading = readRepertoireText(text("1. e4 e5 *", "1. e4 c5 *", "1. e4 e5 2. Nf3 *"));
+    if (!reading.ok) throw new Error("unreadable");
+    const record = mergedRepertoireOf("m", reading, "", new Date("2026-09-26T00:00:00Z"))!;
+    expect(record.pgn).toContain("e5 { [%games 2] }");
+    expect(record.pgn).toContain("c5 { [%games 1] }");
+  });
+});
+
 describe("the edits keep annotations on the moves that survive", () => {
   const tree = parsePgnTree(ANNOTATED);
 
@@ -257,5 +317,57 @@ describe("the same comment wrapped two ways is one comment", () => {
   it("but different words are still two comments", () => {
     const tree = parsePgnTree("1. e4 {Good.} {Good!} *");
     expect(at(tree, "e4").comments).toEqual(["Good.", "Good!"]);
+  });
+});
+
+describe("setNags — editing a move's glyphs (CTA-97)", () => {
+  const tree = parsePgnTree(ANNOTATED);
+  const f4 = at(tree, "e4", "e5", "f4");
+
+  it("replaces the list, keeping every id, the comments, and every node off the path", () => {
+    const edited = setNags(tree, f4.id, [2, 17]);
+    expect(at(edited, "e4", "e5", "f4")).toMatchObject({
+      id: f4.id,
+      nags: [2, 17],
+      comments: ["The gambit.", "A second thought."],
+    });
+    // Only the path to the edit is copied: a sibling line and the moves
+    // after the edited one are the same objects.
+    expect(at(edited, "e4", "e5", "Nc3")).toBe(at(tree, "e4", "e5", "Nc3"));
+    expect(at(edited, "e4", "e5", "f4", "exf4")).toBe(at(tree, "e4", "e5", "f4", "exf4"));
+    expect(at(edited, "e4")).not.toBe(at(tree, "e4"));
+    // Immutable: the tree it was given is untouched.
+    expect(f4.nags).toEqual([6]);
+  });
+
+  it("keeps a repeated code once, and removes the field with the last glyph", () => {
+    expect(at(setNags(tree, f4.id, [1, 1, 14]), "e4", "e5", "f4").nags).toEqual([1, 14]);
+    const cleared = setNags(tree, f4.id, []);
+    expect("nags" in at(cleared, "e4", "e5", "f4")).toBe(false);
+    const nf3 = at(tree, "e4", "e5", "Nf3");
+    expect(at(setNags(tree, nf3.id, [3]), "e4", "e5", "Nf3").nags).toEqual([3]);
+  });
+
+  it("hands back the same tree when nothing changes", () => {
+    expect(setNags(tree, f4.id, [6])).toBe(tree);
+    expect(setNags(tree, at(tree, "e4", "e5", "Nf3").id, [])).toBe(tree);
+    expect(setNags(tree, "nope", [1])).toBe(tree);
+  });
+
+  it("round-trips an edited tree through PGN", () => {
+    const [features] = NAG_SECTIONS.filter(({ section }) => section === "features");
+    const attack = features.choices.find((entry) => entry.id === "attackWhite")!;
+    const edited = setNags(tree, f4.id, toggleNag(f4.nags ?? [], "features", attack));
+    const pgn = treeToPgn(edited);
+    expect(pgn).toContain("f4 $6 $40");
+    const reread = parsePgnTree(pgn);
+    expect(at(reread, "e4", "e5", "f4").nags).toEqual([6, 40]);
+    expect(at(reread, "e4").nags).toEqual([1, 14]);
+  });
+
+  it("carries the mainline's glyphs to the list's game, and nothing where there are none", () => {
+    const [e4, e5] = mainlineGame(tree).moves;
+    expect(e4.nags).toEqual([1, 14]);
+    expect("nags" in e5).toBe(false);
   });
 });

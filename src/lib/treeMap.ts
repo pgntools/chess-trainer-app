@@ -219,7 +219,7 @@ export type MapView = { x: number; y: number; k: number };
 export const MAP_INITIAL_K = 2.5;
 
 /** How far a map viewport zooms, out and in. */
-export const MAP_VIEW_MIN_K = 0.05;
+const MAP_VIEW_MIN_K = 0.05;
 export const MAP_VIEW_MAX_K = 8;
 
 const clampK = (k: number) => Math.min(MAP_VIEW_MAX_K, Math.max(MAP_VIEW_MIN_K, k));
@@ -261,9 +261,16 @@ export const centerView = (px: number, py: number, k: number, vw: number, vh: nu
 export const MAP_LABEL_FONT = 4.5;
 export const MAP_LABEL_MIN_K = 1.5;
 /** The most labels drawn at once — a guard for a wide view of a huge tree. */
-export const MAP_LABEL_LIMIT = 2000;
+const MAP_LABEL_LIMIT = 2000;
 
-export type MapLabel = { id: string; san: string; px: number; py: number };
+/** One label: the move, its SAN and glyphs (CTA-97, `nags` as the node has them), and where. */
+export type MapLabel = {
+  id: string;
+  san: string;
+  nags?: readonly number[];
+  px: number;
+  py: number;
+};
 
 /**
  * The moves whose dots fall inside `rect` (drawing coordinates), in the
@@ -279,7 +286,7 @@ export const mapLabelsIn = (
   for (const node of layout.order) {
     const { px, py } = mapPixel(layout.points.get(node.id)!);
     if (px < rect.left || px > rect.right || py < rect.top || py > rect.bottom) continue;
-    labels.push({ id: node.id, san: node.san, px, py });
+    labels.push({ id: node.id, san: node.san, nags: node.nags, px, py });
     if (labels.length >= limit) break;
   }
   return labels;

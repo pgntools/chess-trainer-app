@@ -22,7 +22,6 @@ import {
   savedAnalysisOf,
   savedAnalysisSummary,
   savedAnalysisToTree,
-  splitAnalysesOf,
   batchAnalysesOf,
   type SavedAnalysis,
 } from "./savedAnalyses";
@@ -302,30 +301,32 @@ describe("a saved analysis' name and folder (CTA-73)", () => {
     });
   });
 
+  it("draws its arrows unsized and classic unless it says otherwise (CTA-98)", () => {
+    const written = savedAnalysisOf("a", tree, [], DEFAULT_ANALYSIS_SETTINGS, "white");
+    expect(written).toMatchObject({ arrowWidthSource: "none", arrowPalette: "classic" });
+
+    // A record from before the fields, and one naming values this build does not know.
+    const legacy: Record<string, unknown> = { ...written };
+    delete legacy.arrowWidthSource;
+    delete legacy.arrowPalette;
+    expect(savedAnalysisFrom(legacy)).toMatchObject({
+      arrowWidthSource: "none",
+      arrowPalette: "classic",
+    });
+    expect(
+      savedAnalysisFrom({ ...legacy, arrowWidthSource: "thickness", arrowPalette: 3 }),
+    ).toMatchObject({ arrowWidthSource: "none", arrowPalette: "classic" });
+    expect(
+      savedAnalysisFrom({ ...legacy, arrowWidthSource: "games", arrowPalette: "lichess" }),
+    ).toMatchObject({ arrowWidthSource: "games", arrowPalette: "lichess" });
+  });
+
   it("names a catalog entry by the record's name", () => {
     const saved = {
       ...savedAnalysisOf("a", tree, [], DEFAULT_ANALYSIS_SETTINGS, "white"),
       name: "Immortal",
     };
     expect(savedAnalysisCatalogOf([saved]).games[0].name).toBe("Immortal");
-  });
-
-  it("splits games into one record each, named by the game and filed together", () => {
-    let next = 0;
-    const records = splitAnalysesOf(
-      () => `id${(next += 1)}`,
-      [
-        { name: "Line 1", tree },
-        { name: "Line 2", tree: parsePgnTree("1. d4 d5 *") },
-      ],
-      "folder",
-      DEFAULT_ANALYSIS_SETTINGS,
-    );
-    expect(records.map((record) => [record.id, record.name, record.folderId])).toEqual([
-      ["id1", "Line 1", "folder"],
-      ["id2", "Line 2", "folder"],
-    ]);
-    expect(savedAnalysisToTree(records[1])?.moves[0].san).toBe("d4");
   });
 });
 

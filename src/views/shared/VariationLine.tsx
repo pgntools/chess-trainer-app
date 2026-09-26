@@ -10,6 +10,7 @@ import {
   useScrollWhenCurrent,
 } from "./moveSelection";
 import { menuAnchorOf, type ContextMenuNodeHandler } from "./moveContextMenu";
+import NagGlyphs from "./NagGlyphs";
 
 /**
  * The pieces a side line is drawn with: one clickable move token, and the
@@ -91,7 +92,7 @@ const Token = styled("button")(({ theme }) => ({
   '&[data-extension="true"]': {
     color: (theme.vars ?? theme).palette.success.main,
   },
-  // `selectedTokenSx`.
+  // The selection's highlight.
   '&[aria-current="true"]': {
     backgroundColor: (theme.vars ?? theme).palette.primary.main,
     color: (theme.vars ?? theme).palette.primary.contrastText,
@@ -190,6 +191,7 @@ const MoveToken = memo(function MoveToken({
       }
     >
       {`${prefix}${maskNodeSan(mask, node)}`}
+      <NagGlyphs nags={node.nags} testId={`tree-nags-${node.id}`} />
       {hasComment && (
         <CommentIcon aria-hidden data-testid={`tree-comment-icon-${node.id}`} />
       )}
@@ -279,7 +281,7 @@ export const VariationBlock = memo(function VariationBlock({
  * nested component per move: a 300-move line is one flat run of tokens, not a
  * component 300 deep (which is also what kept React's own recursion shallow).
  */
-export const VariationLine = memo(function VariationLine({
+const VariationLine = memo(function VariationLine({
   nodes,
   startFen,
   forceNumber,

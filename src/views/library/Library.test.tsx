@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { strToU8, zipSync } from "fflate";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
@@ -13,6 +14,12 @@ import {
   resetLibraryCollectionStore,
   uploadedCollectionsSnapshot,
 } from "../../lib/libraryCollectionStore";
+import {
+  createLibraryFolder,
+  libraryFoldersSnapshot,
+  loadLibraryFolders,
+  resetLibraryFolderStore,
+} from "../../lib/libraryFolderStore";
 import {
   collectionFacetsOf,
   collectionRowOf,
@@ -32,15 +39,17 @@ import {
 } from "../../lib/savedAnalysisFolderStore";
 import { downloadPgn } from "../../lib/pgnExport";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
-import { boardOptions, FakeEngine } from "../dev/devTestHarness";
+import { boardOptions, FakeEngine } from "../board/boardTestHarness";
+import { CHANCE_ARROW_BORDER_COLOR, CHANCE_ARROW_FILL_COLOR } from "../explorer/chanceArrows";
+import { HOVERED_NEXT_MOVE_ARROW_COLOR } from "../tools/analysis/nextMoveArrows";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 
 vi.mock("../../lib/engine", async () => ({
-  default: (await import("../dev/devTestHarness")).FakeEngine,
+  default: (await import("../board/boardTestHarness")).FakeEngine,
 }));
 
 vi.mock("react-chessboard", async () => {
-  const { reactChessboardMock } = await import("../dev/devTestHarness");
+  const { reactChessboardMock } = await import("../board/boardTestHarness");
   return reactChessboardMock();
 });
 
@@ -51,7 +60,7 @@ vi.mock("../../lib/pgnExport", async (importOriginal) => ({
 }));
 
 vi.mock("../../lib/openings", async (importOriginal) => {
-  const { openingsMock } = await import("../dev/devTestHarness");
+  const { openingsMock } = await import("../board/boardTestHarness");
   return openingsMock(importOriginal as () => Promise<typeof import("../../lib/openings")>);
 });
 
@@ -66,8 +75,8 @@ import LibraryUpload from "./LibraryUpload";
   paste checked game by game and becoming a collection in IndexedDB, and a game
   on its analysis board — Update / Save as copy in an upload, Save as copy
   into Saved analyses from a shipped file. The board's shared panel and square
-  are asserted with the other v2 boards (`devBoards.test.tsx`,
-  `devPanelPropagation.test.tsx`).
+  are asserted with the other v2 boards (`boards.test.tsx`,
+  `panelPropagation.test.tsx`).
 */
 
 const AFTER_E4_E5 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
@@ -103,8 +112,15 @@ const mount = (entry: string) =>
     </AppThemeWithLang>,
   );
 
-const keep = async (name: string, games: string[]) => {
-  const added = await addCollection(name, games, games.map((pgn) => indexedRowOf(pgn)));
+const keep = async (name: string, games: string[], folderId: string | null = null, at?: string) => {
+  const added = await addCollection(
+    name,
+    games,
+    games.map((pgn) => indexedRowOf(pgn)),
+    at === undefined ? undefined : new Date(at),
+    undefined,
+    folderId,
+  );
   if (!("collection" in added)) throw new Error("not added");
   return added.collection;
 };
@@ -114,7 +130,24 @@ const upload = () => keep("Club games", GAMES);
 const typeInto = (testId: string, value: string) =>
   fireEvent.change(within(screen.getByTestId(testId)).getByRole("combobox"), { target: { value } });
 
-/** The real 7,818-game fixture as an upload — its tags' rows (the chess.js pass would take a minute). */
+/** Import from the popup a file or a paste opens (CTA-103), with no filter set. */
+const confirmImport = async () => {
+  fireEvent.click(await screen.findByTestId("library-import-confirm"));
+};
+
+/** Pick a file in `/library/new`'s file input. */
+const pickFile = (file: File) =>
+  fireEvent.change(screen.getByTestId("library-upload-input"), { target: { files: [file] } });
+
+/** A zip of these files, as a picked `File`. */
+const zipOf = (files: Record<string, string>, name = "Club_Games.zip") =>
+  new File(
+    [zipSync(Object.fromEntries(Object.entries(files).map(([path, text]) => [path, strToU8(text)]))) as BlobPart],
+    name,
+    { type: "application/zip" },
+  );
+
+/** The real 5,722-game fixture as an upload — its tags' rows (the chess.js pass would take a minute). */
 const keepCarlsen = async () => {
   const reading = readCollectionText(
     readFileSync(join(process.cwd(), "src/test/fixtures/pgn/Carlsen.pgn"), "utf8"),
@@ -163,13 +196,14 @@ const rowNumbers = () =>
 
 beforeEach(async () => {
   localStorage.clear();
+  resetLibraryFolderStore();
   await resetLibraryCollectionStore();
   FakeEngine.reset();
   await i18n.changeLanguage("en");
 });
 
 describe("the Library's collections", () => {
-  it("lists the three shipped collections, then the reader's uploads", async () => {
+  it("lists the five shipped collections, then the reader's uploads", async () => {
     const mine = await upload();
     mount("/library");
 
@@ -179,23 +213,27 @@ describe("the Library's collections", () => {
     const names = within(list)
       .getAllByRole("link")
       .map((link) => link.textContent);
-    expect(names[0]).toContain("Bucharest 2023");
-    expect(names[1]).toContain("Morphy");
-    expect(names[2]).toContain("World Cup 2023");
-    expect(names[3]).toContain("Club games");
+    expect(names[0]).toContain("Alekhine");
+    expect(names[1]).toContain("Capablanca");
+    expect(names[2]).toContain("Fischer");
+    expect(names[3]).toContain("Petrosian");
+    expect(names[4]).toContain("Tal");
+    expect(names[5]).toContain("Club games");
     expect(screen.getByTestId(`library-collection-${mine.id}`)).toHaveAttribute(
       "href",
       `/library/${mine.id}`,
     );
-    expect(screen.getByTestId("library-count")).toHaveTextContent("4 collections");
-    expect(within(screen.getByTestId(`library-collection-${mine.id}`)).getByText("3 games")).toBeInTheDocument();
+    expect(screen.getByTestId("library-count")).toHaveTextContent("6 collections");
+    expect(within(screen.getByTestId(`library-row-${mine.id}`)).getByText("3")).toBeInTheDocument();
   });
 
   it("counts the shipped collections off the manifest, fetching nothing", () => {
     mount("/library");
     // On the first frame, no fetch awaited.
-    expect(within(screen.getByTestId("library-collection-morphy")).getByText("211 games")).toBeInTheDocument();
-    expect(within(screen.getByTestId("library-collection-worldcup2023")).getByText("674 games")).toBeInTheDocument();
+    expect(within(screen.getByTestId("library-row-capablanca")).getByText("1,035")).toBeInTheDocument();
+    expect(within(screen.getByTestId("library-row-tal")).getByText("2,636")).toBeInTheDocument();
+    // Built-in holds them all.
+    expect(within(screen.getByTestId("library-folder-builtin")).getByText("8,756")).toBeInTheDocument();
     for (const entry of shippedCollections) {
       expect(peekShippedRows(entry.id)).toBeUndefined();
       expect(peekShippedGames(entry.id)).toBeUndefined();
@@ -207,30 +245,30 @@ describe("the Library's collections", () => {
     mount("/library");
     await screen.findByTestId(`library-collection-${mine.id}`);
 
-    fireEvent.change(screen.getByTestId("library-filter"), { target: { value: "  CUP " } });
+    fireEvent.change(screen.getByTestId("library-filter"), { target: { value: "  TAL " } });
     expect(where()).toContain("q=");
-    expect(screen.getByTestId("library-collection-worldcup2023")).toBeInTheDocument();
-    expect(screen.queryByTestId("library-collection-morphy")).toBeNull();
+    expect(screen.getByTestId("library-collection-tal")).toBeInTheDocument();
+    expect(screen.queryByTestId("library-collection-capablanca")).toBeNull();
     expect(screen.queryByTestId(`library-collection-${mine.id}`)).toBeNull();
-    expect(screen.getByTestId("library-count")).toHaveTextContent("1 of 4 collections");
+    expect(screen.getByTestId("library-count")).toHaveTextContent("1 of 6 collections");
 
     fireEvent.change(screen.getByTestId("library-filter"), { target: { value: "club" } });
     expect(screen.getByTestId(`library-collection-${mine.id}`)).toBeInTheDocument();
-    expect(screen.queryByTestId("library-collection-worldcup2023")).toBeNull();
+    expect(screen.queryByTestId("library-collection-tal")).toBeNull();
 
     fireEvent.change(screen.getByTestId("library-filter"), { target: { value: "nothing like it" } });
     expect(screen.getByTestId("library-no-matches")).toBeInTheDocument();
 
-    cleanupAndMount("/library?q=morphy");
-    expect(screen.getByTestId("library-filter")).toHaveValue("morphy");
-    expect(screen.getByTestId("library-collection-morphy")).toBeInTheDocument();
-    expect(screen.queryByTestId("library-collection-bucharest2023")).toBeNull();
+    cleanupAndMount("/library?q=capablanca");
+    expect(screen.getByTestId("library-filter")).toHaveValue("capablanca");
+    expect(screen.getByTestId("library-collection-capablanca")).toBeInTheDocument();
+    expect(screen.queryByTestId("library-collection-alekhine")).toBeNull();
   });
 
   it("keeps each row's download and delete in a column beside its link, not inside it", async () => {
     const mine = await upload();
     mount("/library");
-    for (const id of ["morphy", mine.id]) {
+    for (const id of ["capablanca", mine.id]) {
       const actions = await screen.findByTestId(`library-collection-actions-${id}`);
       expect(screen.getByTestId(`library-collection-${id}`)).not.toContainElement(actions);
       expect(actions).toContainElement(screen.getByTestId(`library-collection-download-${id}`));
@@ -243,7 +281,7 @@ describe("the Library's collections", () => {
   it("deletes an uploaded collection from its row, asking first — a shipped one has no delete", async () => {
     const mine = await upload();
     mount("/library");
-    expect(screen.queryByTestId("library-collection-delete-morphy")).toBeNull();
+    expect(screen.queryByTestId("library-collection-delete-capablanca")).toBeNull();
     fireEvent.click(await screen.findByTestId(`library-collection-delete-${mine.id}`));
     expect(screen.getByTestId("library-delete-dialog")).toHaveTextContent("Delete Club games?");
     fireEvent.click(screen.getByTestId("library-delete-confirm"));
@@ -256,13 +294,13 @@ describe("the Library's collections", () => {
     vi.mocked(downloadPgn).mockClear();
     const mine = await upload();
     mount("/library");
-    expect(peekShippedGames("morphy")).toBeUndefined();
+    expect(peekShippedGames("capablanca")).toBeUndefined();
 
-    fireEvent.click(screen.getByTestId("library-collection-download-morphy"));
+    fireEvent.click(screen.getByTestId("library-collection-download-capablanca"));
     await waitFor(() => expect(downloadPgn).toHaveBeenCalledTimes(1));
     const [stem, pgns] = vi.mocked(downloadPgn).mock.calls[0];
-    expect(stem).toBe("morphy");
-    expect(pgns).toHaveLength(211);
+    expect(stem).toBe("capablanca");
+    expect(pgns).toHaveLength(1035);
     // The icon is beside the row's link, so the click did not open the collection.
     expect(where()).toBe("/library");
 
@@ -271,11 +309,302 @@ describe("the Library's collections", () => {
   });
 });
 
+describe("the Library's folders (CTA-88)", () => {
+  /** The table's rows, as their test ids, in the order on screen. */
+  const listRows = () =>
+    within(screen.getByTestId("library-collections"))
+      // A closing dialog still hides the page from the accessibility tree.
+      .getAllByRole("row", { hidden: true })
+      .slice(1)
+      .map((row) => row.getAttribute("data-testid"));
+  const folderOf = async (name: string) =>
+    (await loadUploadedCollections()).find((row) => row.name === name)?.folderId;
+  const nameFolder = (name: string) => {
+    fireEvent.change(screen.getByTestId("library-folder-name-input"), { target: { value: name } });
+    fireEvent.click(screen.getByTestId("library-folder-name-save"));
+  };
+  const made = async (name: string, parentId: string | null = null) => {
+    const folder = await createLibraryFolder(name, parentId);
+    if (folder === undefined) throw new Error("not made");
+    return folder;
+  };
+
+  it("keeps the shipped collections in Built-in: first, open, and read-only", async () => {
+    const box = await made("Box");
+    mount("/library");
+    await screen.findByTestId(`library-folder-${box.id}`);
+
+    expect(listRows()).toEqual([
+      "library-folder-builtin",
+      "library-row-alekhine",
+      "library-row-capablanca",
+      "library-row-fischer",
+      "library-row-petrosian",
+      "library-row-tal",
+      `library-folder-${box.id}`,
+    ]);
+    expect(screen.getByTestId("library-folder-builtin-toggle")).toHaveAttribute("aria-expanded", "true");
+    const actions = screen.getByTestId("library-folder-actions-builtin");
+    expect(within(actions).getByTestId("library-folder-download-builtin")).toBeInTheDocument();
+    for (const action of ["upload", "new", "rename", "move", "delete"]) {
+      expect(screen.queryByTestId(`library-folder-${action}-builtin`)).toBeNull();
+      expect(screen.getByTestId(`library-folder-${action}-${box.id}`)).toBeInTheDocument();
+    }
+    // Its collections only download, and have no date.
+    expect(screen.getByTestId("library-collection-download-capablanca")).toBeInTheDocument();
+    expect(screen.queryByTestId("library-collection-move-capablanca")).toBeNull();
+    expect(screen.queryByTestId("library-collection-delete-capablanca")).toBeNull();
+    expect(within(screen.getByTestId("library-row-capablanca")).getByText("—")).toBeInTheDocument();
+    // Nothing can be filed in it.
+    fireEvent.click(screen.getByTestId(`library-folder-move-${box.id}`));
+    expect(screen.queryByTestId("library-folder-picker-builtin")).toBeNull();
+  });
+
+  it("creates folders at the top level and inside one, and opens and closes them in place", async () => {
+    const mine = await upload();
+    mount("/library");
+    await screen.findByTestId(`library-row-${mine.id}`);
+
+    fireEvent.click(screen.getByTestId("library-new-folder"));
+    nameFolder("Openings");
+    await waitFor(() => expect(libraryFoldersSnapshot()).toHaveLength(1));
+    const [openings] = libraryFoldersSnapshot()!;
+    const openingsRow = await screen.findByTestId(`library-folder-${openings.id}`);
+    // Folders come before the collections of their level.
+    expect(listRows().indexOf(`library-folder-${openings.id}`)).toBeLessThan(listRows().indexOf(`library-row-${mine.id}`));
+    expect(within(openingsRow).getByText("Openings")).toHaveAttribute("dir", "auto");
+
+    fireEvent.click(screen.getByTestId(`library-folder-new-${openings.id}`));
+    nameFolder("Sicilian");
+    await waitFor(() => expect(libraryFoldersSnapshot()).toHaveLength(2));
+    const sicilian = libraryFoldersSnapshot()!.find((folder) => folder.name === "Sicilian")!;
+    expect(sicilian.parentId).toBe(openings.id);
+    // Its parent opened to show it.
+    expect(await screen.findByTestId(`library-folder-${sicilian.id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`library-folder-${openings.id}-toggle`)).toHaveAttribute("aria-expanded", "true");
+
+    // A click on the row closes it; on the chevron, opens it again.
+    fireEvent.click(openingsRow);
+    expect(screen.queryByTestId(`library-folder-${sicilian.id}`)).toBeNull();
+    fireEvent.click(screen.getByTestId(`library-folder-${openings.id}-toggle`));
+    expect(screen.getByTestId(`library-folder-${sicilian.id}`)).toBeInTheDocument();
+    // Built-in closes too.
+    fireEvent.click(screen.getByTestId("library-folder-builtin-toggle"));
+    expect(screen.queryByTestId("library-row-capablanca")).toBeNull();
+  });
+
+  it("opens a collection from its row, with a real link in its name", async () => {
+    const box = await made("Box");
+    const mine = await keep("Club games", GAMES, box.id);
+    mount("/library");
+    fireEvent.click(await screen.findByTestId(`library-folder-${box.id}`));
+    expect(screen.getByTestId(`library-collection-${mine.id}`)).toHaveAttribute("href", `/library/${mine.id}`);
+    fireEvent.click(screen.getByTestId(`library-row-${mine.id}`));
+    expect(where()).toBe(`/library/${mine.id}`);
+  });
+
+  it("uploads into a folder from its row, the picker starting there", async () => {
+    const box = await made("Box");
+    mount("/library");
+    fireEvent.click(await screen.findByTestId(`library-folder-upload-${box.id}`));
+    expect(where()).toBe(`/library/new?folder=${box.id}`);
+    expect(await screen.findByTestId(`library-upload-folder-picker-${box.id}`)).toHaveClass("Mui-selected");
+
+    // One game: the upload is a real index pass.
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: GAMES[0] } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    await confirmImport();
+    await waitFor(() => expect(where()).toMatch(/^\/library\/u/), { timeout: 4000 });
+    expect(await folderOf("Club")).toBe(box.id);
+  });
+
+  it("takes a zip of one .pgn like the .pgn itself, and refuses a zip of none or unreadable bytes", async () => {
+    mount("/library/new");
+    expect(screen.getByTestId("library-upload-input")).toHaveAttribute("accept", expect.stringContaining(".zip"));
+
+    pickFile(zipOf({ "notes.txt": "hi" }));
+    expect(await screen.findByTestId("library-upload-problem")).toHaveTextContent(/no \.pgn/i);
+    pickFile(new File(["not a zip"], "broken.zip", { type: "application/zip" }));
+    await waitFor(() => expect(screen.getByTestId("library-upload-problem")).toHaveTextContent(/could not be read/i));
+
+    // One .pgn (beside a resource fork): a new collection, named from the Event its games share.
+    pickFile(zipOf({ "games/x.pgn": GAMES[0], "__MACOSX/games/._x.pgn": "junk" }));
+    expect(await screen.findByTestId("library-import-file-0")).toHaveTextContent("games/x.pgn");
+    await confirmImport();
+    await waitFor(() => expect(where()).toMatch(/^\/library\/u/), { timeout: 4000 });
+    expect(await folderOf("Club")).toBeNull();
+  });
+
+  it("makes one collection per .pgn of a zip, each named by its Event or its file, all in the folder picked (CTA-103)", async () => {
+    const box = await made("Box");
+    mount(`/library/new?folder=${box.id}`);
+    await screen.findByTestId(`library-upload-folder-picker-${box.id}`);
+    // The typed name is a single text's; several files are named by the rule.
+    fireEvent.change(screen.getByTestId("library-upload-name"), { target: { value: "Ignored" } });
+    const mixed = GAMES[0].replace('[Event "Club"]', '[Event "Other"]');
+    pickFile(zipOf({ "one/Club.pgn": GAMES.slice(0, 2).join("\n\n"), "two/Mixed_Bag.pgn": `${GAMES[2]}\n\n${mixed}` }, "Two.zip"));
+
+    expect(await screen.findByTestId("library-import-source")).toHaveTextContent("Two.zip");
+    expect(screen.getByTestId("library-import-source")).toHaveTextContent("4 games");
+    expect(screen.getByTestId("library-import-file-0")).toHaveTextContent("one/Club.pgn");
+    expect(screen.getByTestId("library-import-file-0")).toHaveTextContent("2 games");
+    expect(screen.getByTestId("library-import-file-1")).toHaveTextContent("two/Mixed_Bag.pgn");
+    expect(screen.getByTestId("library-import-several")).toBeInTheDocument();
+    expect(screen.getByTestId("library-import-summary-events")).toHaveTextContent("2 events: Club, Other");
+
+    await confirmImport();
+    await waitFor(() => expect(where()).toBe("/library"), { timeout: 4000 });
+    const kept = await loadUploadedCollections();
+    expect(kept.map((row) => [row.name, row.count, row.folderId]).sort()).toEqual([
+      ["Club", 2, box.id],
+      ["Mixed Bag", 2, box.id],
+    ]);
+  });
+
+  it("files an empty collection in the folder picked, and a folder that is not the reader's at the top level", async () => {
+    const box = await made("Box");
+    mount("/library/new");
+    fireEvent.click(await screen.findByTestId(`library-upload-folder-picker-${box.id}`));
+    fireEvent.change(screen.getByTestId("library-upload-name"), { target: { value: "Picked" } });
+    fireEvent.click(screen.getByTestId("library-upload-empty"));
+    await waitFor(() => expect(where()).toMatch(/^\/library\/u/));
+    expect(await folderOf("Picked")).toBe(box.id);
+
+    for (const folder of ["builtin", "nowhere"]) {
+      cleanupAndMount(`/library/new?folder=${folder}`);
+      expect(await screen.findByTestId("library-upload-folder-top")).toHaveClass("Mui-selected");
+    }
+    fireEvent.change(screen.getByTestId("library-upload-name"), { target: { value: "Loose" } });
+    fireEvent.click(screen.getByTestId("library-upload-empty"));
+    await waitFor(() => expect(where()).toMatch(/^\/library\/u/));
+    expect(await folderOf("Loose")).toBeNull();
+  });
+
+  it("moves a collection and a folder with Move to…, never a folder into its own subtree", async () => {
+    const a = await made("A");
+    const b = await made("B", a.id);
+    const c = await made("C");
+    const mine = await upload();
+    mount("/library");
+
+    fireEvent.click(await screen.findByTestId(`library-collection-move-${mine.id}`));
+    fireEvent.click(within(screen.getByTestId("library-collection-move-dialog")).getByTestId(`library-folder-picker-${b.id}`));
+    await waitFor(async () => expect(await folderOf("Club games")).toBe(b.id));
+    // It left the top level for B, which is closed.
+    await waitFor(() => expect(screen.queryByTestId(`library-row-${mine.id}`)).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId("library-collection-move-dialog")).toBeNull());
+
+    fireEvent.click(screen.getByTestId(`library-folder-move-${a.id}`));
+    expect(screen.queryByTestId(`library-folder-picker-${a.id}`)).toBeNull();
+    expect(screen.queryByTestId(`library-folder-picker-${b.id}`)).toBeNull();
+    fireEvent.click(screen.getByTestId(`library-folder-picker-${c.id}`));
+    await waitFor(() => expect(libraryFoldersSnapshot()?.find((row) => row.id === a.id)?.parentId).toBe(c.id));
+  });
+
+  it("renames a folder, and deletes one keeping its contents in its parent — asking first when it holds any", async () => {
+    const top = await made("Top");
+    const doomed = await made("Doomed", top.id);
+    const kept = await made("Kept", doomed.id);
+    await keep("Inside", GAMES, doomed.id);
+    const empty = await made("Empty");
+    mount("/library");
+
+    fireEvent.click(await screen.findByTestId(`library-folder-rename-${top.id}`));
+    expect(screen.getByTestId("library-folder-name-input")).toHaveValue("Top");
+    nameFolder("Renamed");
+    await waitFor(() => expect(screen.getByTestId(`library-folder-${top.id}`)).toHaveTextContent("Renamed"));
+
+    // An empty folder goes at once.
+    fireEvent.click(screen.getByTestId(`library-folder-delete-${empty.id}`));
+    await waitFor(() => expect(screen.queryByTestId(`library-folder-${empty.id}`)).toBeNull());
+
+    fireEvent.click(screen.getByTestId(`library-folder-${top.id}`));
+    fireEvent.click(await screen.findByTestId(`library-folder-delete-${doomed.id}`));
+    expect(screen.getByTestId("library-folder-delete-counts")).toHaveTextContent("1 collections and 1 sub-folders");
+    expect(screen.getByRole("dialog")).toHaveTextContent(i18n.t("library.folder.deleteConfirm"));
+    fireEvent.click(screen.getByTestId("library-folder-delete-confirm"));
+    await waitFor(async () => expect(await folderOf("Inside")).toBe(top.id));
+    expect((await loadLibraryFolders()).find((row) => row.id === kept.id)?.parentId).toBe(top.id);
+  });
+
+  it("filters by name, opening the folders above a match, and shows a folder whose name matches", async () => {
+    const a = await made("Archive");
+    const b = await made("Blitz", a.id);
+    const mine = await keep("Club games", GAMES, b.id);
+    mount("/library");
+    await screen.findByTestId(`library-folder-${a.id}`);
+    expect(screen.queryByTestId(`library-row-${mine.id}`)).toBeNull();
+
+    fireEvent.change(screen.getByTestId("library-filter"), { target: { value: "club" } });
+    expect(where()).toBe("/library?q=club");
+    expect(listRows()).toEqual([`library-folder-${a.id}`, `library-folder-${b.id}`, `library-row-${mine.id}`]);
+    expect(screen.getByTestId("library-count")).toHaveTextContent("1 of 6 collections");
+
+    // The reader can still close what the filter opened.
+    fireEvent.click(screen.getByTestId(`library-folder-${b.id}-toggle`));
+    expect(listRows()).toEqual([`library-folder-${a.id}`, `library-folder-${b.id}`]);
+
+    fireEvent.change(screen.getByTestId("library-filter"), { target: { value: "blitz" } });
+    expect(listRows()).toEqual([`library-folder-${a.id}`, `library-folder-${b.id}`]);
+    expect(screen.getByTestId(`library-folder-${b.id}-toggle`)).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(screen.getByTestId(`library-folder-${b.id}`));
+    expect(listRows()).toContain(`library-row-${mine.id}`);
+
+    fireEvent.change(screen.getByTestId("library-filter"), { target: { value: "nothing like it" } });
+    expect(screen.getByTestId("library-no-matches")).toBeInTheDocument();
+  });
+
+  it("sorts by Name, Games and Added from the headers, in the URL, folders always first", async () => {
+    const box = await made("Zeta box");
+    const small = await keep("Aardvark", GAMES.slice(0, 1), null, "2026-01-01T00:00:00Z");
+    const big = await keep("Mid", GAMES, null, "2026-03-01T00:00:00Z");
+    mount("/library");
+    await screen.findByTestId(`library-row-${big.id}`);
+    fireEvent.click(screen.getByTestId("library-folder-builtin-toggle"));
+    const order = [`library-folder-builtin`, `library-folder-${box.id}`];
+    expect(listRows()).toEqual([...order, `library-row-${small.id}`, `library-row-${big.id}`]);
+
+    fireEvent.click(screen.getByTestId("library-collections-sort-games"));
+    expect(where()).toBe("/library?sort=games");
+    expect(listRows()).toEqual([...order, `library-row-${big.id}`, `library-row-${small.id}`]);
+    fireEvent.click(screen.getByTestId("library-collections-sort-games"));
+    expect(where()).toBe("/library?sort=games&dir=asc");
+    expect(listRows()).toEqual([...order, `library-row-${small.id}`, `library-row-${big.id}`]);
+
+    fireEvent.click(screen.getByTestId("library-collections-sort-added"));
+    expect(where()).toBe("/library?sort=added");
+    expect(listRows()).toEqual([...order, `library-row-${big.id}`, `library-row-${small.id}`]);
+
+    fireEvent.click(screen.getByTestId("library-collections-sort-name"));
+    expect(where()).toBe("/library");
+    fireEvent.click(screen.getByTestId("library-collections-sort-name"));
+    expect(where()).toBe("/library?dir=desc");
+    expect(listRows()).toEqual([...order, `library-row-${big.id}`, `library-row-${small.id}`]);
+
+    cleanupAndMount("/library?sort=games&dir=asc");
+    await screen.findByTestId(`library-row-${big.id}`);
+    expect(listRows().slice(-2)).toEqual([`library-row-${small.id}`, `library-row-${big.id}`]);
+  });
+
+  it("downloads a folder's whole subtree as one PGN, reading the games only then", async () => {
+    vi.mocked(downloadPgn).mockClear();
+    const top = await made("Top");
+    const inner = await made("Inner", top.id);
+    await keep("B games", GAMES.slice(1), top.id);
+    await keep("A games", GAMES.slice(0, 1), inner.id);
+    mount("/library");
+    fireEvent.click(await screen.findByTestId(`library-folder-download-${top.id}`));
+    await waitFor(() => expect(downloadPgn).toHaveBeenCalledTimes(1));
+    expect(downloadPgn).toHaveBeenLastCalledWith("top", [GAMES[0], GAMES[1], GAMES[2]]);
+    expect(where()).toBe("/library");
+  });
+});
+
 describe("a collection's table", () => {
   it("opens a shipped collection once it is fetched", async () => {
-    mount("/library/bucharest2023");
-    expect(await screen.findByTestId("library-table-name")).toHaveTextContent("Bucharest 2023");
-    expect(screen.getByTestId("library-table-count")).toHaveTextContent("45 games");
+    mount("/library/fischer");
+    expect(await screen.findByTestId("library-table-name")).toHaveTextContent("Fischer");
+    expect(screen.getByTestId("library-table-count")).toHaveTextContent("1063 games");
     expect(screen.getByTestId("library-table-note")).toHaveTextContent(
       i18n.t("library.table.shippedNote"),
     );
@@ -382,6 +711,11 @@ describe("the table's filters", () => {
     expect(within(screen.getByTestId("library-filter-color")).getByTestId("library-filter-color-black")).toBeDisabled();
 
     typeInto("library-filter-player", "carl");
+    // Enter commits the typed part of a name — a chip, not a whole facet value (CTA-95).
+    fireEvent.keyDown(within(screen.getByTestId("library-filter-player")).getByRole("combobox"), {
+      key: "Enter",
+    });
+    expect(within(screen.getByTestId("library-filter-player")).getByText("carl")).toBeInTheDocument();
     // Newest first: "2023.10" is after April.
     expect(rowNumbers()).toEqual(["3", "2", "1"]);
     fireEvent.click(panel().getByTestId("library-filter-color-black"));
@@ -389,6 +723,30 @@ describe("the table's filters", () => {
     expect(where()).toContain("player=carl");
     expect(where()).toContain("color=black");
     expect(screen.getByTestId("library-table-count")).toHaveTextContent("2 of 3 games");
+  });
+
+  it("gathers two spellings of one player, the URL carrying both (CTA-95)", async () => {
+    const mixed = await keep("Spellings", [
+      '[Event "Mixed"]\n[Date "2023.06.01"]\n[White "Carlsen, Magnus"]\n[Black "Nepo"]\n[Result "1-0"]\n\n1. e4 e5 1-0',
+      '[Event "Mixed"]\n[Date "2023.05.01"]\n[White "Ding"]\n[Black "Carlsen,M"]\n[Result "1-0"]\n\n1. d4 d5 1-0',
+      '[Event "Mixed"]\n[Date "2023.04.01"]\n[White "Nepo"]\n[Black "Ding"]\n[Result "1/2-1/2"]\n\n1. c4 1/2-1/2',
+    ]);
+    await mountTable(`/library/${mixed.id}`);
+    const box = within(screen.getByTestId("library-filter-player")).getByRole("combobox");
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    fireEvent.click(await screen.findByRole("option", { name: "Carlsen, Magnus" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Carlsen,M" }));
+    expect(rowNumbers()).toEqual(["1", "2"]);
+    expect(screen.getByTestId("library-table-count")).toHaveTextContent("2 of 3 games");
+    // Every name its own repeated param — a link, or a reload, carries them all.
+    const url = `/library/${mixed.id}?player=${encodeURIComponent("Carlsen, Magnus").replace(/%20/g, "+")}&player=${encodeURIComponent("Carlsen,M")}`;
+    expect(where()).toBe(url);
+    cleanupAndMount(where());
+    await screen.findByTestId("library-table");
+    expect(rowNumbers()).toEqual(["1", "2"]);
+    // The side any of them had: of the two spellings, only "Carlsen,M" was Black.
+    fireEvent.click(panel().getByTestId("library-filter-color-black"));
+    expect(rowNumbers()).toEqual(["2"]);
   });
 
   it("narrows by opening name or ECO, event and dates, all from the URL", async () => {
@@ -443,7 +801,7 @@ describe("the table's filters", () => {
     expect(panel().getByTestId("library-filter-clear")).toBeDisabled();
   });
 
-  it("lists every opening of a real 7,818-game collection, ECO code first — not a first page", async () => {
+  it("lists every opening of a real 5,722-game collection, ECO code first — not a first page", async () => {
     const { rows, id } = await keepCarlsen();
     await mountTable(`/library/${id}`);
 
@@ -456,20 +814,21 @@ describe("the table's filters", () => {
     expect(options[options.length - 1]).toHaveTextContent(/^E9\d/);
 
     // Picking one narrows the table to its games.
-    const pick = options.find((option) => /^B90\b/.test(option.textContent ?? ""))!;
+    // The fixture's codes carry a ChessBase-style sub-code: `B90a`, `B90e`, ….
+    const pick = options.find((option) => /^B90[a-z]?\b/.test(option.textContent ?? ""))!;
     const label = pick.textContent!;
     fireEvent.click(pick);
     const matching = filteredRows(numberedRows(rows), { text: "", result: "", opening: label }).length;
     expect(matching).toBeGreaterThan(0);
-    expect(screen.getByTestId("library-table-count")).toHaveTextContent(`${matching} of 7818 games`);
+    expect(screen.getByTestId("library-table-count")).toHaveTextContent(`${matching} of 5722 games`);
     expect(where()).toContain(`opening=${encodeURIComponent(label).replace(/%20/g, "+")}`);
   }, 60_000);
 
   it("offers a shipped collection's openings, filled from the book where the file has none", async () => {
-    await mountTable("/library/morphy");
+    await mountTable("/library/capablanca");
     typeInto("library-filter-opening", "king's gambit");
     expect(rowNumbers().length).toBeGreaterThan(0);
-    expect(screen.getByTestId("library-table-count")).toHaveTextContent(/of 211 games/);
+    expect(screen.getByTestId("library-table-count")).toHaveTextContent(/of 1035 games/);
   });
 });
 
@@ -479,6 +838,14 @@ describe("the opening-moves filter", () => {
     '[Event "Spring Open"]\n[White "Nepo"]\n[Black "Carlsen"]\n[Result "0-1"]\n\n1. e4 c5 0-1',
     '[Event "Autumn Cup"]\n[White "Ding"]\n[Black "Carlsen"]\n[Result "1/2-1/2"]\n\n1. d4 d5 1/2-1/2',
   ];
+  // Two games that share 32 plies before they part — past the 15-move cap the
+  // index used to cut lines at (CTA-92), so the tree has to hold them.
+  const SHARED_LINE = Array.from({ length: 32 }, (_, index) => ["Nf3", "Nf6", "Ng1", "Ng8"][index % 4]);
+  const SHARED_TEXT = `${"1. Nf3 Nf6 2. Ng1 Ng8 ".repeat(8)}17. `;
+  const LONG = [
+    `[Event "Long"]\n[White "A"]\n[Black "B"]\n[Result "1-0"]\n\n${SHARED_TEXT}e4 e5 *`,
+    `[Event "Long"]\n[White "C"]\n[Black "D"]\n[Result "0-1"]\n\n${SHARED_TEXT}d4 d5 *`,
+  ];
   const moves = () => within(screen.getByTestId("library-filter-moves"));
   const dropOn = (from: string, to: string) => {
     let accepted: boolean | undefined;
@@ -487,21 +854,30 @@ describe("the opening-moves filter", () => {
     });
     return accepted;
   };
+  /** One continuation's arrow, from the play-chance overlay over the board. */
+  const arrowOn = (from: string) =>
+    screen.getByTestId("library-filter-arrows").querySelector(`path[data-from="${from}"]`)!;
 
-  it("draws the whole collection's continuations, most played first, with their games", async () => {
+  it("draws the whole collection's continuations as play-chance arrows, wide by their share", async () => {
     const rich = await keep("Rich", RICH);
     await mountTable(`/library/${rich.id}`);
     expect(boardOptions().id).toBe("library-filter-board");
-    expect(boardOptions().arrows?.map((arrow) => [arrow.startSquare, arrow.endSquare])).toEqual([
-      ["e2", "e4"],
-      ["d2", "d4"],
-    ]);
+    expect(boardOptions().arrows).toBeUndefined(); // the overlay draws them now (CTA-92)
+    expect(arrowOn("e2").getAttribute("data-to")).toBe("e4");
+    expect(arrowOn("d2").getAttribute("data-to")).toBe("d4");
+    // White with the play-chance border — the encoding the repertoires taught.
+    expect(arrowOn("e2")).toHaveAttribute("fill", CHANCE_ARROW_FILL_COLOR);
+    expect(arrowOn("e2")).toHaveAttribute("stroke", CHANCE_ARROW_BORDER_COLOR);
+    // 2 of 3 games played e4: the wider border.
+    expect(Number(arrowOn("e2").getAttribute("stroke-width"))).toBeGreaterThan(
+      Number(arrowOn("d2").getAttribute("stroke-width")),
+    );
     expect(moves().getByTestId("library-filter-move-count-e4")).toHaveTextContent("2 games · 67%");
     expect(moves().getByTestId("library-filter-move-count-d4")).toHaveTextContent("1 game · 33%");
-    // Hovering a move recolours its arrow.
-    const before = boardOptions().arrows?.[1].color;
+    // Hovering a move takes the hover colour.
+    expect(arrowOn("d2")).toHaveAttribute("stroke", CHANCE_ARROW_BORDER_COLOR);
     fireEvent.mouseEnter(moves().getByTestId("library-filter-move-d4"));
-    expect(boardOptions().arrows?.[1].color).not.toBe(before);
+    expect(arrowOn("d2")).toHaveAttribute("stroke", HOVERED_NEXT_MOVE_ARROW_COLOR);
   });
 
   it("narrows the rows to the games that began with the moves played, in the URL", async () => {
@@ -529,12 +905,14 @@ describe("the opening-moves filter", () => {
     const position = boardOptions().position;
     expect(dropOn("e7", "e6")).toBe(false);
     expect(dropOn("e7", "e5")).toBe(true);
-    expect(dropOn("g1", "f3")).toBe(true);
     expect(rowNumbers()).toEqual(["1"]);
     expect(boardOptions().position).not.toBe(position);
+    // Past e5 only game 1 continues, so the tree stops there — the cut (CTA-92):
+    // its move is no longer offered, even though the game played it.
+    expect(dropOn("g1", "f3")).toBe(false);
     expect(dropOn("b8", null as unknown as string)).toBe(false);
     expect(dropOn("b8", "c6")).toBe(false);
-    expect(where()).toContain("line=e4%2Ce5%2CNf3");
+    expect(where()).toContain("line=e4%2Ce5");
   });
 
   it("sits under the player and side, with the other filters under it", async () => {
@@ -558,8 +936,10 @@ describe("the opening-moves filter", () => {
     expect(moves().getByTestId("library-filter-move-count-e4")).toHaveTextContent("1 game · 50%");
     fireEvent.click(moves().getByTestId("library-filter-move-e4"));
     expect(rowNumbers()).toEqual(["2"]);
-    expect(moves().getByTestId("library-filter-move-c5")).toBeInTheDocument();
+    // Past e4 only game 2 continues, so the tree stops — the cut's caption.
+    expect(moves().queryByTestId("library-filter-move-c5")).toBeNull();
     expect(moves().queryByTestId("library-filter-move-e5")).toBeNull();
+    expect(moves().getByTestId("library-filter-moves-end")).toHaveTextContent("Only one game");
     // Only the moves these games played are taken.
     expect(dropOn("e7", "e5")).toBe(false);
     fireEvent.click(within(screen.getByTestId("library-filters")).getByTestId("library-filter-clear"));
@@ -574,10 +954,35 @@ describe("the opening-moves filter", () => {
     expect(where()).toContain("line=e4,e5");
     expect(moves().getByTestId("library-filter-moves-line")).toHaveTextContent("1. e4 e5");
     expect(moves().getByTestId("library-filter-moves-end")).toHaveTextContent("No game the other filters leave");
-    expect(boardOptions().arrows).toEqual([]);
-    // Taking the player off brings the line's games back.
-    typeInto("library-filter-player", "");
+    expect(boardOptions().arrows).toBeUndefined();
+    expect(screen.getByTestId("library-filter-arrows").querySelectorAll("path")).toHaveLength(0);
+    // Taking the player off (the chip's ×) brings the line's games back.
+    fireEvent.click(screen.getByTestId("library-filter-player").querySelector(".MuiChip-deleteIcon")!);
     expect(rowNumbers()).toEqual(["1"]);
+  });
+
+  it("offers continuations past the 15-move cap, and says where the cut lands", async () => {
+    const long = await keep("Long", LONG);
+    await mountTable(`/library/${long.id}?line=${SHARED_LINE.join(",")}`);
+    // 32 plies in — past the cap the lines used to stop at — the games still branch.
+    expect(moves().getByTestId("library-filter-moves-line")).toHaveTextContent("16. Ng1 Ng8");
+    expect(moves().getByTestId("library-filter-move-e4")).toBeInTheDocument();
+    expect(moves().getByTestId("library-filter-move-d4")).toBeInTheDocument();
+    expect(moves().getByTestId("library-filter-move-count-e4")).toHaveTextContent("1 game · 50%");
+    // One of the two games continues from there, so the tree stops and says so.
+    fireEvent.click(moves().getByTestId("library-filter-move-e4"));
+    expect(rowNumbers()).toEqual(["1"]);
+    expect(moves().queryByTestId("library-filter-move-e5")).toBeNull();
+    expect(moves().getByTestId("library-filter-moves-end")).toHaveTextContent(
+      "Only one game in the collection goes further here",
+    );
+  });
+
+  it("still says where the games themselves stopped — no game goes further", async () => {
+    const rich = await keep("Rich", RICH);
+    await mountTable(`/library/${rich.id}?line=e4,c5`);
+    expect(rowNumbers()).toEqual(["2"]);
+    expect(moves().getByTestId("library-filter-moves-end")).toHaveTextContent("No game in the collection");
   });
 
   it("follows a stale line from the URL as far as the games go", async () => {
@@ -598,6 +1003,91 @@ describe("the opening-moves filter", () => {
     await mountTable(`/library/${added.collection.id}?line=e4`);
     expect(screen.queryByTestId("library-filter-moves")).toBeNull();
     expect(rowNumbers()).toEqual(["1", "2", "3"]);
+  });
+
+  describe("Save tree as PGN (CTA-99)", () => {
+    beforeEach(() => vi.mocked(downloadPgn).mockClear());
+    const dialog = () => within(screen.getByTestId("library-filter-moves-save-dialog"));
+    const openSave = () => {
+      fireEvent.click(moves().getByTestId("library-filter-moves-save"));
+      return dialog();
+    };
+    const closed = () =>
+      waitFor(() => expect(screen.queryByTestId("library-filter-moves-save-dialog")).toBeNull());
+
+    it("sits at the end of the caption row, before and after a move is played", async () => {
+      const rich = await keep("Rich", RICH);
+      await mountTable(`/library/${rich.id}`);
+      const row = () => moves().getByTestId("library-filter-moves-line").parentElement!;
+      expect(row()).toContainElement(moves().getByTestId("library-filter-moves-save"));
+      expect(row().lastElementChild).toBe(moves().getByTestId("library-filter-moves-save"));
+      expect(moves().getByTestId("library-filter-moves-save")).toHaveTextContent("Save tree as PGN");
+      fireEvent.click(moves().getByTestId("library-filter-move-e4"));
+      expect(row()).toHaveTextContent("1. e4");
+      expect(row().lastElementChild).toBe(moves().getByTestId("library-filter-moves-save"));
+    });
+
+    it("opens on Add tags with games ticked; No turns the boxes off; neither ticked turns Save off", async () => {
+      const rich = await keep("Rich", RICH);
+      await mountTable(`/library/${rich.id}`);
+      const open = openSave();
+      expect(open.getByText("Should we add games number as tag?")).toBeInTheDocument();
+      expect(open.getByTestId("library-filter-moves-save-tags")).toBeChecked();
+      expect(open.getByTestId("library-filter-moves-save-games")).toBeChecked();
+      expect(open.getByTestId("library-filter-moves-save-prc")).not.toBeChecked();
+      expect(open.getByTestId("library-filter-moves-save-confirm")).toBeEnabled();
+
+      fireEvent.click(open.getByTestId("library-filter-moves-save-no"));
+      expect(open.getByTestId("library-filter-moves-save-games")).toBeDisabled();
+      expect(open.getByTestId("library-filter-moves-save-prc")).toBeDisabled();
+      expect(open.getByTestId("library-filter-moves-save-confirm")).toBeEnabled();
+
+      fireEvent.click(open.getByTestId("library-filter-moves-save-tags"));
+      expect(open.getByTestId("library-filter-moves-save-games")).toBeEnabled();
+      fireEvent.click(open.getByTestId("library-filter-moves-save-games"));
+      expect(open.getByTestId("library-filter-moves-save-confirm")).toBeDisabled();
+      fireEvent.click(open.getByTestId("library-filter-moves-save-prc"));
+      expect(open.getByTestId("library-filter-moves-save-confirm")).toBeEnabled();
+    });
+
+    it("saves the whole tree with [%games N] by default, named after the collection", async () => {
+      const rich = await keep("Rich", RICH);
+      await mountTable(`/library/${rich.id}`);
+      fireEvent.click(openSave().getByTestId("library-filter-moves-save-confirm"));
+      expect(downloadPgn).toHaveBeenCalledTimes(1);
+      expect(downloadPgn).toHaveBeenLastCalledWith("rich-tree", [
+        '[Event "Rich"]\n[Result "*"]\n\n' +
+          "1. e4 { [%games 2] } (1. d4 { [%games 1] }) 1... e5 { [%games 1] } (1... c5 { [%games 1] }) *",
+      ]);
+      await closed();
+    });
+
+    it("writes both tags in one comment, games first, below the line played — which carries none", async () => {
+      const rich = await keep("Rich", RICH);
+      await mountTable(`/library/${rich.id}?line=e4`);
+      const open = openSave();
+      fireEvent.click(open.getByTestId("library-filter-moves-save-prc"));
+      fireEvent.click(open.getByTestId("library-filter-moves-save-confirm"));
+      expect(downloadPgn).toHaveBeenLastCalledWith("rich-tree", [
+        '[Event "Rich"]\n[Result "*"]\n\n' +
+          "1. e4 e5 { [%games 1] [%prc 50] } (1... c5 { [%games 1] [%prc 50] }) *",
+      ]);
+    });
+
+    it("writes the moves alone on No, and Cancel downloads nothing", async () => {
+      const rich = await keep("Rich", RICH);
+      await mountTable(`/library/${rich.id}`);
+      fireEvent.click(openSave().getByTestId("library-filter-moves-save-cancel"));
+      await closed();
+      expect(downloadPgn).not.toHaveBeenCalled();
+
+      const open = openSave();
+      fireEvent.click(open.getByTestId("library-filter-moves-save-no"));
+      fireEvent.click(open.getByTestId("library-filter-moves-save-confirm"));
+      expect(downloadPgn).toHaveBeenLastCalledWith("rich-tree", [
+        '[Event "Rich"]\n[Result "*"]\n\n1. e4 (1. d4) 1... e5 (1... c5) *',
+      ]);
+    });
   });
 });
 
@@ -713,13 +1203,13 @@ describe("analysing the picks (CTA-77)", () => {
   });
 
   it("works on a shipped collection too", async () => {
-    await mountTable("/library/morphy?sort=number");
+    await mountTable("/library/capablanca?sort=number");
     pick(1);
     fireEvent.click(analyse());
-    expect(await notice()).toHaveTextContent("1 game added to Saved analyses, in “Morphy — 1 game”.");
+    expect(await notice()).toHaveTextContent("1 game added to Saved analyses, in “Capablanca — 1 game”.");
     const [saved] = await loadSavedAnalyses();
-    expect(saved.pgn).toBe((peekShippedGames("morphy") ?? [])[0].trim());
-    expect(saved.name).toBe("Morphy, Paul – Morphy, Alonzo");
+    expect(saved.pgn).toBe((peekShippedGames("capablanca") ?? [])[0].trim());
+    expect(saved.name).toBe("Capablanca, Jose – Eschevarria, C.");
   });
 
   it("says why, and leaves nothing behind, when no folder can be made", async () => {
@@ -766,7 +1256,8 @@ describe("adding a collection", () => {
       target: { value: GAMES.join("\n\n") },
     });
     fireEvent.click(screen.getByTestId("library-upload-save"));
-    expect(screen.getByTestId("library-upload-indexing")).toBeInTheDocument();
+    await confirmImport();
+    expect(screen.getByTestId("library-import-indexing")).toBeInTheDocument();
 
     await waitFor(() => expect(where()).toMatch(/^\/library\/u/));
     const [added] = await loadUploadedCollections();
@@ -782,11 +1273,12 @@ describe("adding a collection", () => {
       target: { value: Array.from({ length: 300 }, (_, index) => GAMES[index % 3]).join("\n\n") },
     });
     fireEvent.click(screen.getByTestId("library-upload-save"));
+    await confirmImport();
     await waitFor(() =>
-      expect(screen.getByTestId("library-upload-progress")).not.toHaveTextContent("Checking games… 0 of"),
+      expect(screen.getByTestId("library-import-progress")).not.toHaveTextContent("Checking games… 0 of"),
     );
-    fireEvent.click(screen.getByTestId("library-upload-cancel"));
-    expect(screen.queryByTestId("library-upload-indexing")).toBeNull();
+    fireEvent.click(screen.getByTestId("library-import-cancel"));
+    await waitFor(() => expect(screen.queryByTestId("library-import")).toBeNull());
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(await loadUploadedCollections()).toEqual([]);
     expect(where()).toBe("/library/new");
@@ -811,6 +1303,8 @@ describe("adding a collection", () => {
     expect(screen.queryByTestId("library-upload-empty")).toBeNull();
     fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: GAMES.slice(0, 2).join("\n\n") } });
     fireEvent.click(screen.getByTestId("library-upload-save"));
+    expect(await screen.findByTestId("library-import")).toHaveTextContent("Add games to My picks");
+    await confirmImport();
 
     await waitFor(() => expect(where()).toBe(`/library/${empty.id}`));
     expect(peekUploadedGames(empty.id)).toEqual(GAMES.slice(0, 2));
@@ -820,6 +1314,7 @@ describe("adding a collection", () => {
     cleanupAndMount(`/library/new?into=${empty.id}`);
     fireEvent.change(await screen.findByTestId("library-upload-paste"), { target: { value: GAMES[2] } });
     fireEvent.click(screen.getByTestId("library-upload-save"));
+    await confirmImport();
     await waitFor(() => expect(peekUploadedGames(empty.id)).toEqual(GAMES));
     expect((await loadUploadedCollections())[0]).toMatchObject({ name: "My picks", count: 3 });
   });
@@ -832,10 +1327,10 @@ describe("adding a collection", () => {
   });
 
   it("adds games only to the reader's own collections", async () => {
-    mount("/library/bucharest2023");
+    mount("/library/fischer");
     await screen.findByTestId("library-table");
     expect(screen.queryByTestId("library-table-add-games")).toBeNull();
-    cleanupAndMount("/library/new?into=bucharest2023");
+    cleanupAndMount("/library/new?into=fischer");
     expect(await screen.findByTestId("library-not-found")).toBeInTheDocument();
     cleanupAndMount("/library/new?into=nothing-here");
     expect(await screen.findByTestId("library-not-found")).toBeInTheDocument();
@@ -849,6 +1344,147 @@ describe("adding a collection", () => {
       i18n.t("library.upload.problem.unreadable"),
     );
     expect(await loadUploadedCollections()).toEqual([]);
+  });
+});
+
+describe("the import-options popup (CTA-103)", () => {
+  const RATED = [
+    '[Event "Rated"]\n[Date "2023.05.01"]\n[White "Kim"]\n[Black "Lee"]\n[WhiteElo "2100"]\n[BlackElo "2000"]\n[Result "1-0"]\n\n1. e4 e5 1-0',
+    '[Event "Rated"]\n[Date "2023.06.??"]\n[White "Lee"]\n[Black "Max"]\n[WhiteElo "1800"]\n[BlackElo "2200"]\n[Result "0-1"]\n\n1. d4 d5 0-1',
+    '[Event "Rated"]\n[White "Max"]\n[Black "Kim"]\n[WhiteElo "2300"]\n[Result "*"]\n\n1. c4 *',
+  ];
+  const count = () => screen.getByTestId("library-import-count").textContent;
+  const setField = (testId: string, value: string) =>
+    fireEvent.change(screen.getByTestId(testId), { target: { value } });
+  /** Move the Elo slider's min (0) or max (1) thumb. */
+  const setElo = (thumb: 0 | 1, value: number) =>
+    fireEvent.change(within(screen.getByTestId("library-import-elo")).getAllByRole("slider")[thumb], {
+      target: { value },
+    });
+
+  it("opens for a picked .pgn before any game is checked, saying what came in", async () => {
+    mount("/library/new");
+    pickFile(new File([RATED.join("\n\n")], "Rated_2023.pgn", { type: "application/x-chess-pgn" }));
+    expect(await screen.findByTestId("library-import")).toBeInTheDocument();
+    expect(screen.queryByTestId("library-import-indexing")).toBeNull();
+    expect(screen.getByTestId("library-import-source")).toHaveTextContent("Rated_2023.pgn");
+    expect(screen.getByTestId("library-import-source")).toHaveTextContent(/\d+ B/);
+    expect(screen.getByTestId("library-import-source")).toHaveTextContent("3 games");
+    expect(screen.queryByTestId("library-import-file-0")).toBeNull();
+    expect(screen.getByTestId("library-import-summary-players")).toHaveTextContent("3 players");
+    expect(screen.getByTestId("library-import-summary-elo")).toHaveTextContent("1800–2300");
+    expect(screen.getByTestId("library-import-summary-dates")).toHaveTextContent("2023.05.01 – 2023.06");
+    expect(screen.getByTestId("library-import-summary-events")).toHaveTextContent("1 event: Rated");
+    expect(count()).toBe("3 of 3 games will be imported");
+    expect(await loadUploadedCollections()).toEqual([]);
+  });
+
+  it("narrows by an Elo range slider (both players, a missing Elo out), dates (no date out) and players, live", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: RATED.join("\n\n") } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    await screen.findByTestId("library-import");
+
+    // The slider spans the games' own Elos; left whole it is no filter, the game with no Elo kept.
+    expect(screen.getByTestId("library-import-elo-value")).toHaveTextContent("1800 – 2300");
+    setElo(0, 1900);
+    expect(screen.getByTestId("library-import-elo-value")).toHaveTextContent("1900 – 2300");
+    expect(count()).toBe("1 of 3 games will be imported");
+    setElo(0, 1800);
+    expect(count()).toBe("3 of 3 games will be imported");
+    setElo(1, 2200);
+    expect(count()).toBe("2 of 3 games will be imported");
+    setElo(1, 1850);
+    expect(count()).toBe("0 of 3 games will be imported");
+    expect(screen.getByTestId("library-import-confirm")).toBeDisabled();
+    setElo(1, 2300);
+    expect(count()).toBe("3 of 3 games will be imported");
+
+    setField("library-import-from", "2023-06-10");
+    expect(count()).toBe("1 of 3 games will be imported");
+    setField("library-import-from", "");
+    setField("library-import-to", "2023-12-31");
+    expect(count()).toBe("2 of 3 games will be imported");
+    setField("library-import-to", "");
+
+    const box = within(screen.getByTestId("library-import-player")).getByRole("combobox");
+    fireEvent.change(box, { target: { value: "max" } });
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(count()).toBe("2 of 3 games will be imported");
+    fireEvent.change(box, { target: { value: "Kim" } });
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(count()).toBe("3 of 3 games will be imported");
+  });
+
+  it("suggests only the players of the games the Elo range leaves, worked out when the list opens", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: RATED.join("\n\n") } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    await screen.findByTestId("library-import");
+    const box = within(screen.getByTestId("library-import-player")).getByRole("combobox");
+    const options = () => screen.getAllByRole("option").map((option) => option.textContent);
+
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    expect(options()).toEqual(["Kim", "Lee", "Max"]);
+    fireEvent.keyDown(box, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    expect(screen.getByTestId("library-import")).toBeInTheDocument();
+
+    // Only Kim – Lee (2100 / 2000) is left from 2000 up: Max's games are out of range or unrated.
+    setElo(0, 2000);
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    expect(options()).toEqual(["Kim", "Lee"]);
+  });
+
+  it("checks and keeps only the games the filters leave, named as typed", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-name"), { target: { value: "Strong" } });
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: RATED.join("\n\n") } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    await screen.findByTestId("library-import");
+    setElo(0, 2000);
+    await confirmImport();
+    await waitFor(() => expect(where()).toMatch(/^\/library\/u/), { timeout: 4000 });
+    const [kept] = await loadUploadedCollections();
+    expect(kept).toMatchObject({ name: "Strong", count: 1 });
+    expect(peekUploadedGames(kept.id)).toEqual([RATED[0]]);
+  });
+
+  it("adds every file's kept games of a zip to the one collection (?into=)", async () => {
+    const mine = await keep("Mine", [GAMES[0]]);
+    mount(`/library/new?into=${mine.id}`);
+    await screen.findByTestId("library-upload-title");
+    pickFile(zipOf({ "a.pgn": RATED.slice(0, 2).join("\n\n"), "b.pgn": RATED[2] }));
+    expect(await screen.findByTestId("library-import-several")).toHaveTextContent(/added to this collection/);
+    setElo(1, 2250);
+    // The files' own counts say what each keeps while a filter is on.
+    expect(screen.getByTestId("library-import-file-0")).toHaveTextContent("2 of 2 games kept");
+    expect(screen.getByTestId("library-import-file-1")).toHaveTextContent("0 of 1 game kept");
+    await confirmImport();
+    await waitFor(() => expect(where()).toBe(`/library/${mine.id}`), { timeout: 4000 });
+    expect(peekUploadedGames(mine.id)).toEqual([GAMES[0], RATED[0], RATED[1]]);
+    expect(await loadUploadedCollections()).toHaveLength(1);
+  });
+
+  it("writes nothing when cancelled, or closed with Escape", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: RATED.join("\n\n") } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    fireEvent.click(await screen.findByTestId("library-import-cancel"));
+    await waitFor(() => expect(screen.queryByTestId("library-import")).toBeNull());
+
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    fireEvent.keyDown(await screen.findByTestId("library-import"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("library-import")).toBeNull());
+    expect(where()).toBe("/library/new");
+    expect(await loadUploadedCollections()).toEqual([]);
+  });
+
+  it("opens no popup for an empty collection", async () => {
+    mount("/library/new");
+    fireEvent.click(screen.getByTestId("library-upload-empty"));
+    await waitFor(() => expect(where()).toMatch(/^\/library\/u/));
+    expect(screen.queryByTestId("library-import")).toBeNull();
   });
 });
 
@@ -920,7 +1556,7 @@ describe("a game on its analysis board", () => {
   });
 
   it("keeps a shipped game read-only: its copy goes to Saved analyses", async () => {
-    await mountGame("/library/morphy/1");
+    await mountGame("/library/capablanca/1");
     drag("e2", "e4");
     drag("c7", "c5");
     fireEvent.click(screen.getByTestId("library-game-save"));
@@ -931,7 +1567,7 @@ describe("a game on its analysis board", () => {
 
     await waitFor(() => expect(where()).toContain("/tools/analysis?analysis="));
     const [copy] = savedAnalysesSnapshot() ?? [];
-    expect(copy.name).toBe("Morphy, Paul – Morphy, Alonzo (copy)");
+    expect(copy.name).toBe("Capablanca, Jose – Eschevarria, C. (copy)");
     expect(findSavedAnalysis(copy.id)?.pgn).toContain("1... c5");
     expect(where()).toBe(`/tools/analysis?analysis=${copy.id}`);
   });

@@ -10,20 +10,20 @@ import { MASK_PRESETS } from "../../../lib/pieceMask";
 import { findPlayedGame, playedGamesSnapshot, savePlayedGame } from "../../../lib/playedGameStore";
 import { playedGameOf, type PlayedGameMask } from "../../../lib/playedGames";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
-import { boardOptions, FakeEngine } from "../../dev/devTestHarness";
+import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
 import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
 
 vi.mock("../../../lib/engine", async () => ({
-  default: (await import("../../dev/devTestHarness")).FakeEngine,
+  default: (await import("../../board/boardTestHarness")).FakeEngine,
 }));
 
 vi.mock("react-chessboard", async () => {
-  const { reactChessboardMock } = await import("../../dev/devTestHarness");
+  const { reactChessboardMock } = await import("../../board/boardTestHarness");
   return reactChessboardMock();
 });
 
 vi.mock("../../../lib/openings", async (importOriginal) => {
-  const { openingsMock } = await import("../../dev/devTestHarness");
+  const { openingsMock } = await import("../../board/boardTestHarness");
   return openingsMock(
     importOriginal as () => Promise<typeof import("../../../lib/openings")>,
   );
@@ -37,8 +37,8 @@ import PlayWithEngine from "../play/PlayWithEngine";
   asserted here is the costume and only the costume — where it is drawn,
   where it is written, where it is stored — because everything underneath is
   Play with Engine's own, tested in `PlayWithEngine.test.tsx`, and the shared
-  square and panel with the other v2 boards (`devBoards.test.tsx`,
-  `devPanelPropagation.test.tsx`). The rules: `.claude/rules/masked-pieces.md`.
+  square and panel with the other v2 boards (`boards.test.tsx`,
+  `panelPropagation.test.tsx`). The rules: `.claude/rules/masked-pieces.md`.
 */
 
 const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -235,5 +235,76 @@ describe("Masked Pieces — the game is kept with the engine games", () => {
     mount("/engine/play?saved=m2");
     expect(where()).toBe("/engine/masked?saved=m2");
     expect(boardOptions().id).toBe("masked-play");
+  });
+});
+
+/*
+  The game view's own shape on the masked route (CTA-91): the same tabs
+  minus the Map, the back button first in the header, the score chip hidden
+  with the lines switch, and the game-over treatment handing over the true
+  game — the reveal, not a leak (the reference is the record's PGN, which
+  the costume never touches).
+*/
+describe("Masked Pieces — the game view's shape", () => {
+  it("shows Moves, Engine and Masking, and no Map tab", () => {
+    mount();
+    expect(screen.getByTestId("masked-play-panel-tab-moves")).toBeInTheDocument();
+    expect(screen.getByTestId("masked-play-panel-tab-engine")).toBeInTheDocument();
+    expect(screen.getByTestId("masked-play-panel-tab-masking")).toBeInTheDocument();
+    expect(screen.queryByTestId("masked-play-panel-tab-map")).not.toBeInTheDocument();
+  });
+
+  it("starts the header with the back button to the Lobby", () => {
+    mount();
+    const back = screen.getByTestId("masked-play-back");
+    expect(back).toHaveAttribute("href", "/engine/games");
+    expect(
+      screen.getByTestId("masked-play-panel-header").firstElementChild,
+    ).toBe(back);
+  });
+
+  it("hides the score chip while the lines switch is off, and returns it with it", () => {
+    mount();
+    // The engine has said something about the position…
+    const engine = FakeEngine.latest();
+    act(() => {
+      engine.say({
+        fen: engine.lastSearch,
+        uciMessage: "info",
+        depth: 14,
+        multipv: 1,
+        positionEvaluation: "20",
+        pv: "e2e4 e7e5",
+      });
+    });
+    // …and the panel keeps the chip out of sight with the block (CTA-91).
+    expect(screen.queryByTestId("masked-play-panel-variations")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("masked-play-panel-status-score")).not.toBeInTheDocument();
+
+    openMaskingTab();
+    fireEvent.click(screen.getByTestId("mask-setting-lines"));
+    expect(screen.getByTestId("masked-play-panel-status-score")).toHaveTextContent("+0.20");
+  });
+
+  it("offers an ended game to the Analysis Board — the true game", async () => {
+    await savePlayedGame(
+      playedGameOf(
+        "done",
+        parsePgnTree("1. f3 e5 2. g4 Qh4#"),
+        [],
+        DEFAULT_ENGINE_SETTINGS,
+        undefined,
+        new Date("2026-09-01T10:00:00Z"),
+        undefined,
+        undefined,
+        { pieces: MASK_PRESETS.nonPawns, notation: true },
+      ),
+    );
+    mount("/engine/masked?saved=done");
+    expect(screen.getByTestId("masked-play-ended")).toHaveTextContent("Game over · 0-1");
+    expect(screen.getByTestId("masked-play-open-analysis")).toHaveAttribute(
+      "href",
+      `/tools/analysis?game=${encodeURIComponent("play/games/done")}`,
+    );
   });
 });

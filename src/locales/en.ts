@@ -12,26 +12,32 @@ const en = {
     ariaLabel: "Main navigation",
     toggleColorMode: "Toggle light and dark mode",
     switchLanguage: "Switch language",
-    playWithEngine: "Play with Engine",
-    /** The games played on that screen, kept in this browser — the flat list at `/engine/games` (CTA-74). */
-    savedGames: "Saved games",
-    /** Play with Engine with the pieces in disguise (`/engine/masked`, CTA-79), beside it in the Engine folder. */
+    /**
+     * The engine's lobby at `/engine/games` (CTA-82; "Saved games" until then):
+     * the games played against the engine, and the new-game form whose Start
+     * button is how Play with Engine is reached — it has no nav entry of its own.
+     */
+    lobby: "Lobby",
+    /** Play with Engine with the pieces in disguise (`/engine/masked`, CTA-79), beside the Lobby in the Engine folder. */
     maskedPlay: "Masked Pieces",
     analysisBoard: "Analysis Board",
     savedAnalyses: "Saved analyses",
-    boardEditor: "Board Editor",
     /** The Openings explorer (CTA-78) — shown under the folder's own name, a single entry. */
     openings: "Openings explorer",
-    /** The reader's own repertoires (CTA-61), and the screen they come in on. */
+    /** The reader's own repertoires (CTA-61) — shown under the folder's own name, a single entry (CTA-84). */
     repertoires: "My repertoires",
-    addRepertoire: "Add repertoire",
     /** The Library's two screens (CTA-75): the collections, and adding one. */
     libraryCollections: "Collections",
     addCollection: "Add collection",
+    /** Settings' Export tab (CTA-86), in the Settings folder. */
+    settingsExport: "Export",
+    /** Settings' Import tab (CTA-89), in the Settings folder. */
+    settingsImport: "Import",
+    /** Settings' Storage tab (CTA-94), in the Settings folder. */
+    settingsStorage: "Storage",
     /** Sidebar folders — groupings over the routes, never routes themselves. */
     folders: {
       engine: "Engine",
-      tools: "Tools",
       analysisBoard: "Analysis Board",
       openings: "Openings",
       repertoires: "Repertoires",
@@ -40,6 +46,8 @@ const en = {
        * the rows of `/library`, named from their files and uploads.
        */
       library: "Library",
+      /** The app's own settings (CTA-86) — one screen per tab. */
+      settings: "Settings",
     },
   },
   /** The index screen — a landing page linking out to the real screens. */
@@ -180,6 +188,7 @@ const en = {
     deleteFrom: "Delete from here",
     copyPgn: "Copy variation PGN",
     addComment: "Add comment",
+    addAnnotation: "Add annotation…",
     playChances: "Play chances…",
     copied: "Variation PGN copied",
     copyFailed: "Could not copy — the clipboard is not available here.",
@@ -213,6 +222,50 @@ const en = {
     cancel: "Cancel",
   },
   /** Adding or editing one comment on a move (CTA-69). */
+  /**
+   * The move menu's *Add annotation…* (CTA-97) — a move's NAG glyphs in three
+   * tabs, one per section of `lib/moveAnnotations.ts`'s table. `meaning.*` is
+   * keyed by each choice's `id` there.
+   */
+  nagDialog: {
+    title: "Annotate",
+    help: "One move assessment and one evaluation at a time; pick the active one again to remove it. Features are toggled one by one. Saved with the changes, as NAGs in the PGN.",
+    close: "Close",
+    tabs: {
+      move: "Move Assessment",
+      position: "Position Evaluation",
+      features: "Positional Features & Commentary",
+    },
+    meaning: {
+      good: "Good move",
+      mistake: "Poor move or mistake",
+      brilliant: "Very good or brilliant move",
+      blunder: "Very poor move or blunder",
+      interesting: "Interesting or speculative move",
+      dubious: "Questionable or dubious move",
+      forced: "Only move / forced move",
+      worst: "Worst move",
+      equal: "Equal position",
+      unclear: "Unclear or volatile position",
+      whiteSlight: "White has a slight advantage",
+      blackSlight: "Black has a slight advantage",
+      whiteModerate: "White has a moderate advantage",
+      blackModerate: "Black has a moderate advantage",
+      whiteDecisive: "White has a decisive advantage",
+      blackDecisive: "Black has a decisive advantage",
+      zugzwangWhite: "Zugzwang (White)",
+      zugzwangBlack: "Zugzwang (Black)",
+      initiativeWhite: "Initiative (White)",
+      initiativeBlack: "Initiative (Black)",
+      attackWhite: "Attack (White)",
+      attackBlack: "Attack (Black)",
+      compensation: "Compensation",
+      counterplay: "Counterplay",
+      zeitnot: "Zeitnot (severe time pressure)",
+      withIdea: "With the idea of…",
+      novelty: "Opening novelty",
+    },
+  },
   commentDialog: {
     addTitle: "Comment on",
     editTitle: "Edit the comment on",
@@ -276,6 +329,7 @@ const en = {
       cal: "Arrows",
       csl: "Squares",
       prc: "Play chance",
+      games: "Games",
     },
   },
   moveList: {
@@ -295,12 +349,16 @@ const en = {
   playEngine: {
     tabs: {
       engine: "Engine",
-      /** Play with Engine v2's (CTA-74) — the variations explorer's two tabs. */
+      /** Play with Engine v2's (CTA-74) — the variations explorer's move list. */
       moves: "Moves",
-      map: "Map",
     },
     /** Play with Engine v2's header controls (CTA-74). */
     game: {
+      /**
+       * The header's first control (CTA-91): the way back to the Lobby — an
+       * arrow named by where it goes.
+       */
+      backToLobby: "Back to the Lobby",
       replay: "Replay — start over",
       resign: "Resign",
       cancel: "Cancel",
@@ -316,6 +374,13 @@ const en = {
       },
       /** The footer's line once resigned. */
       resigned: "You resigned · {{result}}",
+      /** The footer's line for an ending decided on the board (CTA-91). */
+      ended: "Game over · {{result}}",
+      /**
+       * The game-over button (CTA-91): the ended game, opened on the
+       * Analysis Board.
+       */
+      openAnalysis: "Open in analysis",
     },
     settings: {
       /** The engine's on/off switch above the tab strip — the tab's own name. */
@@ -337,17 +402,79 @@ const en = {
     },
   },
   /**
-   * The **Saved games** list of Play with Engine v2 (CTA-74,
-   * `views/engine/games/`) — flat, newest first; each game a tree, resumed
-   * where the reader left it.
+   * The engine's **Lobby** (`views/engine/games/`; the Saved games list of
+   * CTA-74, a lobby since CTA-82) — the games, flat and newest first, each a
+   * tree resumed where the reader left it, with their filters; and the
+   * new-game form in the right-hand panel.
    */
   playedGames: {
-    title: "Saved games",
+    title: "Lobby",
     count: "Games: {{count}}",
+    /** The count while a filter narrows the list. */
+    countFiltered: "Games: {{shown}} of {{count}}",
+    /** A filter that leaves nothing. */
+    noMatch: "No games match these filters.",
+    filters: {
+      /** The side the reader played. */
+      color: "Your side",
+      all: "All",
+      white: "White",
+      black: "Black",
+      /** The opening each game reached — the deepest one the book names along its mainline. */
+      opening: "Opening",
+      allOpenings: "All openings",
+      openingLoading: "Reading the openings…",
+    },
+    /**
+     * The games table (CTA-100): its sort headers, what a cell with nothing
+     * to say says, and its pagination — the Library table's own words.
+     */
+    table: {
+      /** The columns, left to right — every one a sort header. */
+      columns: {
+        white: "White",
+        whiteElo: "Elo",
+        black: "Black",
+        blackElo: "Elo",
+        result: "Result",
+        opening: "Opening",
+        moves: "Moves",
+        /** The Masked column — the chip's own word. */
+        masked: "Masked",
+        date: "Date",
+      },
+      /** The reader's side of an Elo cell — an estimate is the engine's alone. */
+      unknown: "Unknown",
+      rowsPerPage: "Rows per page",
+    },
+    /** The right-hand panel: a new game's options, and the button that starts it. */
+    newGame: {
+      title: "New game",
+      side: "Play as",
+      white: "White",
+      black: "Black",
+      /**
+       * The Variations checkbox under the eval bar (CTA-90) — the same choice
+       * as the pinned block's own header checkbox: whether the new game
+       * starts with the engine's lines shown.
+       */
+      variations: "Variations",
+      start: "Start",
+      /** The form's two tabs (CTA-83). */
+      tabs: {
+        game: "Game",
+        editor: "Board editor",
+      },
+      /** On the Game tab while the Board editor holds a position other than the standard start. */
+      customPosition: "The game starts from a custom position.",
+      customPositionEdit: "Edit",
+      customPositionReset: "Use the standard start",
+      /** Above Start while the edited position cannot be played from. */
+      illegal: "Start is off until the position in the Board editor can be played from.",
+    },
     loading: "Reading your saved games…",
     empty: "No saved games yet. Play a game against the engine and it appears here on its own.",
-    hint: "Every game you play against the engine is written down as you play it — side lines too. Pick one up where you left it, or open it on the Analysis Board.",
-    storage: "Saved games are kept in this browser only. Clearing site data removes them, and they do not follow you to another device.",
+    storage: "Your games are kept in this browser only. Clearing site data removes them, and they do not follow you to another device.",
     /** A row's title: the pairing, White first. */
     players: "{{white}} - {{black}}",
     human: "Human",
@@ -359,10 +486,18 @@ const en = {
     unreadable: "This game could not be read.",
     continue: "Continue",
     analyse: "Analysis",
-    remove: "Delete this game",
+    /** The row's pick checkbox: tick it to mark the game for the header's delete. */
+    pick: "Pick {{title}}",
+    /** The pick column's select-all: the rows the table shows, on every page. */
+    selectAll: "Select all the games the table shows",
+    /** The header's delete of the ticked rows, saying how many are ticked. */
+    deletePicked: "Delete picked ({{count}})",
     confirmDelete: {
-      title: "Delete this game?",
-      body: "It is removed from this browser, side lines and all.",
+      /** Asking before the ticked rows go — one game or many. */
+      title_one: "Delete the picked game?",
+      title_other: "Delete {{count}} picked games?",
+      body_one: "It is removed from this browser, side lines and all.",
+      body_other: "They are removed from this browser, side lines and all.",
       cancel: "Cancel",
       confirm: "Delete",
     },
@@ -417,6 +552,24 @@ const en = {
      * single Analysis entry hides (CTA-58), so the board is reached from here.
      */
     new: "New",
+    /**
+     * The panel's new-analysis form (CTA-87): the shared position editor, and
+     * the Start that opens the board on the edited position.
+     */
+    newAnalysis: {
+      title: "New analysis",
+      start: "Start",
+      /** Above Start while the position in the editor cannot be analyzed. */
+      illegal: "Start is off until the position in the board editor can be analyzed.",
+      /** The editor's resets, in the form's header — the panel says "board", the buttons need not. */
+      new: "New",
+      clear: "Clear",
+      flip: "Flip",
+      /** The `.pgn` file pick beside the FEN field. */
+      pgnFile: "PGN",
+      /** The paste box under the editor — the file pick is above it, so no "or". */
+      pasteLabel: "Paste PGN text",
+    },
     /** Picking analyses and taking them out as one `.pgn`, side lines and all. */
     select: "Select this analysis",
     selectAll: "Select all analyses",
@@ -459,13 +612,14 @@ const en = {
     },
   },
   analysis: {
-    /** The Analysis Board's tabs (CTA-73). */
+    /** The Analysis Board's tabs (CTA-73; the Position tab CTA-87). */
     tabs: {
       moves: "Moves",
       map: "Map",
       load: "Load",
       export: "Export",
       engine: "Engine",
+      arrows: "Arrows",
     },
     /**
      * The header's Play toggle (CTA-73): the engine plays the side not at
@@ -518,33 +672,35 @@ const en = {
     /** The Load tab: a PGN (file or paste) or a FEN onto the board, unsaved. */
     load: {
       pgnTitle: "Load a game",
-      pgnHelp: "It opens as a new analysis; save it to keep it. A file of several games can be merged into one tree or split into a folder of analyses.",
+      pgnHelp: "It opens as a new analysis; save it to keep it. A file of several games can be merged into one tree or saved as a games collection in the Library.",
       loaded: "Loaded — a new analysis, not saved yet.",
-      /** A split's folder, when the text names nothing. */
-      splitFolder: "Imported analyses",
-      choice: {
+      /** The popup a PGN of several games opens (CTA-101). */
+      popup: {
         title_one: "This PGN holds {{count}} game",
         title_other: "This PGN holds {{count}} games",
-        explain: "Merge them into one tree on the board, or save each as an analysis of its own.",
-        skipped_one: "{{count}} game has no moves or could not be read, and is left out.",
-        skipped_other: "{{count}} games have no moves or could not be read, and are left out.",
-        merge: "Merge onto the board",
+        explain: "Merge them into one tree on the board, or keep them as a collection of games in the Library.",
+        skipped_one: "{{count}} game has no moves or could not be read, and is left out of a merge.",
+        skipped_other: "{{count}} games have no moves or could not be read, and are left out of a merge.",
+        merge: "Merge games",
         mergeHelp:
-          "One tree: the first game's line is the mainline, and wherever another game leaves it becomes a side line. Comments and move marks are kept. Not saved until you save it.",
+          "One tree: the first game's line is the mainline, and wherever another game leaves it becomes a side line, each move there tagged with how many games played it. Comments and move marks are kept. Not saved until you save it.",
         mergeUnavailable:
           "These games start from different positions, so they cannot share one tree.",
-        split_one: "Save as {{count}} analysis",
-        split_other: "Split into {{count}} analyses",
-        splitHelp:
-          "Each game is saved as an analysis of its own, named after the game, all in a new folder named after the file.",
+        collection: "Save as games collection",
+        collectionHelp:
+          "Every game is kept as it is, in a new collection at the top of the Library, named after the games' event or the file; you go to its table.",
+        indexing: "Checking games… {{done}} of {{total}}",
+        cancel: "Cancel",
+        problem: {
+          unreadable: "No game could be read in that.",
+          index: "The games could not be checked. Nothing was saved.",
+          storage: "It could not be saved — this browser's storage is full or unavailable.",
+        },
       },
       problem: {
         empty: "There is no PGN in that.",
         "too-large": "That is too large to load.",
         unreadable: "That could not be read as PGN.",
-        storage: "It could not be saved — this browser's storage is full or unavailable.",
-        folder: "Could not make a folder for them — the limit is {{max}} folders, or this browser's storage is full.",
-        tooMany: "That would pass the limit of {{max}} analyses in this browser.",
       },
     },
     /** The link to a saved analysis' settings — on the board's header and every list row. */
@@ -581,6 +737,41 @@ const en = {
       variations: "Side lines",
       download: "Download .pgn",
     },
+    /**
+     * The Arrows tab (CTA-98): the next-move arrows switch, what sizes them and
+     * their colours. The same fields sit on a saved analysis' settings screen.
+     */
+    arrows: {
+      showHelp:
+        "Show or hide the arrows of the moves that follow the position on screen. Off, only the move you point at in the next-moves bar gets one.",
+      widthSource: "Next move arrows width source",
+      sources: {
+        none: "None",
+        eval: "Evaluation",
+        games: "Games",
+        prc: "Play chance",
+        lines: "Lines ahead",
+      },
+      sourceHelp: {
+        none: "Colour only — the arrows every board draws.",
+        eval: "The [%eval] in each move's comment: the best move is the widest, the others narrower by what they give up.",
+        games: "The [%games N] in each move's comment: each move's share of the games.",
+        prc: "The prc:N in each move's comment: the play chances, scaled to 100%.",
+        lines: "How many lines follow each move within the next 8 plies — no tag needed.",
+      },
+      /** Under a width source no move in the tree carries. */
+      unavailable: "No move in this analysis carries this tag.",
+      drawnAsNone:
+        "No move in this analysis carries the chosen tag, so the arrows are drawn as None until one does.",
+      palette: "Next move arrows colours",
+      palettes: {
+        classic: "Classic",
+        lichess: "Lichess",
+        colorblind: "Colour-blind safe",
+      },
+      paletteHelp:
+        "The main line, the side lines and the move you point at. A move without the chosen tag, where others have it, is drawn gray.",
+    },
     /** The pinned next-moves bar under the moves list — a fork's choices (CTA-54). */
     nextMoves: "Next moves",
     /** The empty-tree hint of the flowing tree view (the Openings explorer, a Library repertoire line). */
@@ -604,7 +795,7 @@ const en = {
     },
     /** The Load and Export tabs' shared words. */
     position: {
-      chooseFile: "Choose a .pgn file",
+      chooseFile: "Choose a .pgn or .zip file",
       pasteLabel: "Or paste PGN text",
       /** The paste box's button: the text onto the board. */
       loadText: "Load",
@@ -619,10 +810,11 @@ const en = {
     },
   },
   /**
-   * The Board Editor. Chrome only: the FEN, the PGN and the square names are
-   * notation and stay language-independent.
+   * The shared position editor (CTA-83, `views/shared/positionEditor/`) — top
+   * level, like the other shared pieces' keys. Chrome only: the FEN, the PGN
+   * and the square names are notation and stay language-independent.
    */
-  editor: {
+  positionEditor: {
     tabs: {
       position: "Position",
       fen: "FEN",
@@ -656,16 +848,12 @@ const en = {
       /** The standard chess start — a board to begin arranging from. */
       startingPosition: "New board",
       /**
-       * Back to the position the screen was opened on — shown only when it was
-       * opened with one, so it never offers a position that does not exist.
+       * Back to the editor's initial position — shown only when its host gave
+       * one, so it never offers a position that does not exist.
        */
-      arrivalPosition: "Reset",
+      initialPosition: "Reset",
       clearBoard: "Clear board",
       flip: "Flip board",
-      /** The three hand-offs: each opens another screen on the position being edited. */
-      analysis: "Continue on the Analysis Board",
-      play: "Play from here",
-      openings: "Open in Openings",
     },
     problems: {
       title: "This position cannot be played from yet:",
@@ -674,7 +862,7 @@ const en = {
       extraKing: "One side has more than one king.",
       pawnOnBackRank: "A pawn is standing on the first or the last rank.",
       opponentInCheck: "The side not to move is already in check.",
-      /** Under each of the three controls an illegal position switches off. */
+      /** Under the FEN copy button, which an illegal position switches off. */
       blocked: "Fix the position to use this.",
     },
     fen: {
@@ -736,7 +924,7 @@ const en = {
     },
     engineSwitch: "Engine",
     controls: {
-      /** Hand this position off to Play with Engine — the Board Editor's wording. */
+      /** Hand this position off to Play with Engine as `?fen=`. */
       playFromHere: "Play from here",
       /** Hand the whole explored tree to the Analysis Board, as a new board. */
       analysis: "Open on the Analysis Board — everything explored here, as a new unsaved board",
@@ -770,10 +958,17 @@ const en = {
     count_other: "{{count}} collections",
     games_one: "{{count}} game",
     games_other: "{{count}} games",
-    shipped: "Shipped",
-    uploaded: "Uploaded",
-    /** The words box over the list — a collection's name, or part of it. */
-    filter: "Filter collections by name",
+    /** The fixed, read-only top-level folder of the shipped collections (CTA-88). */
+    builtIn: "Built-in",
+    /** The list's columns — a file manager's details view (CTA-88). */
+    columns: {
+      name: "Name",
+      games: "Games",
+      added: "Added",
+      actions: "Actions",
+    },
+    /** The words box over the list — a collection's or a folder's name, or part of it. */
+    filter: "Filter by name",
     shown: "{{shown}} of {{count}} collections",
     noMatches: "No collection's name matches.",
     add: "Add collection",
@@ -781,7 +976,32 @@ const en = {
     download: "Download the whole collection as PGN",
     /** An uploaded collection's row — delete it, asked first. */
     delete: "Delete collection",
-    hint: "A collection is one PGN file of many games — a tournament, a player's games. Open one to sort and filter its games, and open a game to analyse it: side lines, the engine, Play against it, the map and comments.",
+    hint: "A collection is one PGN file of many games — a tournament, a player's games. Open one to sort and filter its games, and open a game to analyse it: side lines, the engine, Play against it, the map and comments. File your collections in folders; the ones that ship with the app are in Built-in.",
+    /**
+     * The reader's folders (CTA-88) — the keys the shared folder dialogs read
+     * (`views/shared/folders/`), and the rows' actions.
+     */
+    folder: {
+      untitled: "Untitled folder",
+      newFolder: "New folder",
+      newSubFolder: "New sub-folder",
+      renameFolder: "Rename folder",
+      moveFolder: "Move folder",
+      moveCollection: "Move collection",
+      moveTo: "Move to…",
+      deleteFolder: "Delete folder",
+      download: "Download everything in this folder as one PGN",
+      uploadHere: "Add a collection here",
+      expand: "Open {{name}}",
+      collapse: "Close {{name}}",
+      topLevel: "Top level",
+      name: "Folder name",
+      save: "Save",
+      cancel: "Cancel",
+      deleteConfirm:
+        "Deleting this folder keeps its contents: its collections and sub-folders move up to the folder it is in.",
+      deleteCounts: "This folder holds {{games}} collections and {{subFolders}} sub-folders.",
+    },
     /** The table screen — `/library/<collection>`. */
     table: {
       back: "All collections",
@@ -883,7 +1103,22 @@ const en = {
         flip: "Flip the board",
         start: "Play a move to keep the games that began with it",
         end: "No game in the collection goes further here",
+        /** Where the tree's cut landed (CTA-92): one game does go on, alone. */
+        single: "Only one game in the collection goes further here",
         none: "No game the other filters leave was played this way",
+        /** Save tree as PGN (CTA-99): the tree below the board's position, as one PGN file. */
+        save: "Save tree as PGN",
+        saveDialog: {
+          title: "Should we add games number as tag?",
+          no: "No",
+          tags: "Add tags",
+          games: "\"games\" tag",
+          gamesHelp: "How many of the games played each move: [%games 12]",
+          prc: "\"prc\" tag",
+          prcHelp: "Each move's share of its position's games, in percent: [%prc 40]",
+          cancel: "Cancel",
+          save: "Save",
+        },
       },
     },
     confirmDelete: {
@@ -896,9 +1131,11 @@ const en = {
     /** `/library/new` — a PGN file or a paste becomes a collection. */
     upload: {
       title: "Add a collection",
-      intro: "A collection is one PGN text of many games — a tournament export, a player's games. It becomes a folder of its own in the Library.",
+      intro: "A collection is one PGN text of many games — a tournament export, a player's games. It becomes a table of its own in the Library.",
       name: "Name",
-      chooseFile: "Choose a .pgn file",
+      /** The folder the new collection is filed in (CTA-88). */
+      folder: "Folder",
+      chooseFile: "Choose a .pgn or .zip file",
       pasteLabel: "Or paste PGN text",
       read_one: "{{count}} game found",
       read_other: "{{count}} games found",
@@ -907,22 +1144,55 @@ const en = {
       emptyName: "New collection",
       /** The same screen adding games to one of the reader's collections — `?into=<id>`. */
       intoTitle: "Add games to {{name}}",
-      intoIntro: "A .pgn file or pasted PGN text of one game or many. Every game is checked, then added at the end of the collection.",
+      intoIntro: "A .pgn file (or a .zip of them) or pasted PGN text of one game or many. Every game is checked, then added at the end of the collection.",
       intoSave: "Add games",
       save: "Add collection",
       pastedName: "Pasted collection",
-      storage: "Collections you add are kept in this browser only. Clearing site data removes them, and they do not follow you to another device. Every game is checked when it is added — a few seconds for a tournament, a minute or more for 10,000 games.",
+      storage: "Collections you add are kept in this browser only. Clearing site data removes them, and they do not follow you to another device. Every game is checked when it is added — a few seconds for a tournament, a minute or more for 10,000 games, and some twenty minutes for the largest collections.",
       /** The index pass over an upload's games, before it is kept. */
       indexing: "Checking games… {{done}} of {{total}}",
       cancel: "Cancel",
+      /**
+       * The import-options popup (CTA-103): what was read, and the filters
+       * applied before the index pass.
+       */
+      options: {
+        title: "Import options",
+        intoTitle: "Add games to {{name}}",
+        pasted: "Pasted text",
+        games_one: "{{count}} game",
+        games_other: "{{count}} games",
+        fileKept_one: "{{kept}} of {{count}} game kept",
+        fileKept_other: "{{kept}} of {{count}} games kept",
+        players_one: "{{count}} player",
+        players_other: "{{count}} players",
+        eloSpan: "Elo",
+        dateSpan: "Dates",
+        events_one: "{{count}} event",
+        events_other: "{{count}} events",
+        filters: "Import only",
+        minElo: "Min Elo",
+        maxElo: "Max Elo",
+        eloHelp: "Both players' Elo within the range. A thumb at its end sets no bound; while one is moved, a game without an Elo is left out.",
+        dateHelp: "A game without a date is left out.",
+        playerFilter: "Players",
+        playersHelp: "Games of any of them — pick from the list or type part of a name.",
+        several: "Each file becomes a collection of its own, named by the Event its games share, else by the file's name.",
+        severalInto: "Every file's games are added to this collection.",
+        count_one: "{{kept}} of {{count}} game will be imported",
+        count_other: "{{kept}} of {{count}} games will be imported",
+        import: "Import",
+      },
       problem: {
         empty: "There is no PGN in that.",
         unreadable: "No game could be read in that.",
-        "too-large": "That is too large — a collection can be up to about 30 million characters (some 30,000 games).",
+        "too-large": "That is too large — a collection can be up to about 100 million characters (some 100,000 games).",
         index: "The games could not be checked. Nothing was added.",
         storage: "It could not be saved — this browser's storage is full or unavailable.",
         missing: "That collection is gone.",
         file: "Could not read that file.",
+        zip: "That zip could not be read.",
+        "zip-empty": "There is no .pgn file in that zip.",
       },
     },
     /** A path the Library does not have. */
@@ -1248,6 +1518,141 @@ const en = {
         tree: "Tree",
         engine: "Engine",
       },
+    },
+  },
+  /** Settings (`/settings/<tab>`, CTA-86) — one tab per concern. */
+  settings: {
+    title: "Settings",
+    tabs: {
+      export: "Export",
+      import: "Import",
+      storage: "Storage",
+    },
+    /** The Export tab: the reader's data as PGN files and a manifest, in one zip. */
+    export: {
+      intro:
+        "Download your data as one .zip: PGN files that any chess program reads, and a manifest.json saying how they fit back together.",
+      categories: {
+        collections: "Collections",
+        games: "Games",
+        analyses: "Analyses",
+        repertoires: "Repertoires",
+      },
+      includeShipped_one: "Include the {{count}} shipped collection",
+      includeShipped_other: "Include the {{count}} shipped collections",
+      run: "Export",
+      working: "Exporting…",
+      done: "Downloaded {{fileName}}.",
+      failed: "The export could not be saved. Nothing was downloaded.",
+      unreadable: "The games of “{{name}}” could not be read. Nothing was downloaded.",
+      panel:
+        "Games and Analyses are one PGN file each; every collection is a file of its own; repertoires are one file per folder, plus one for the unfiled ones. Your uploaded collections always go with Collections — the ones the app ships only when you ask. Nothing is changed or removed.",
+    },
+    /** The Import tab (CTA-89): an Export's zip read back into the app. */
+    import: {
+      intro:
+        "Bring back a .zip made by Export — here or in another browser. You choose what to import and what happens where a folder is already here; nothing is written until you confirm.",
+      choose: "Choose a .zip",
+      reading: "Reading the file…",
+      working: "Importing…",
+      indexing: "Indexing “{{name}}”: {{done}} of {{total}} games",
+      panel:
+        "A clash is a folder that is both in the file and here (Unfiled always is; played games clash as a whole). Merge puts the file's items into it and keeps an item that is already here as it is — importing the same file twice changes nothing. Override replaces what the folder holds with the file's. Skip leaves the folder as it is. Folders that are not here yet are created, empty ones too.",
+      /** The choice dialog. */
+      dialog: {
+        title: "Import {{fileName}}",
+        from: "Exported on {{date}} by version {{version}}.",
+        run: "Import",
+        cancel: "Cancel",
+        shipped_one: "The file holds {{count}} built-in collection. It is not imported: it ships with the app.",
+        shipped_other: "The file holds {{count}} built-in collections. They are not imported: they ship with the app.",
+        conflicts_one: "{{count}} folder is already here:",
+        conflicts_other: "{{count}} folders are already here:",
+        counts: "{{incoming}} in the file · {{existing}} here",
+        folderChoice: "For this folder:",
+        toggle: "Choose for this folder",
+        preview: "Will add {{added}}, replace {{replaced}}, skip {{skipped}}, create {{folders}} folders.",
+        refusedRecords: "Not imported: it would come to {{total}}, past the limit of {{max}}.",
+        refusedFolders: "Not imported: it would need {{total}} folders, past the limit of {{max}}.",
+        dropsOldest_one: "Played games are kept up to {{max}}: the oldest game will be dropped.",
+        dropsOldest_other: "Played games are kept up to {{max}}: the {{count}} oldest games will be dropped.",
+      },
+      choices: {
+        merge: "Merge",
+        override: "Override",
+        skip: "Skip",
+      },
+      choiceHelp: {
+        merge: "The file's items go into the folder; an item already here stays as it is.",
+        override: "What the folder holds is replaced by the file's items.",
+        skip: "Nothing from the file goes into the folder.",
+      },
+      /** How the top level is named in each category's clash list. */
+      top: {
+        collections: "Top level",
+        games: "Your played games",
+        analyses: "Unfiled",
+        repertoires: "Unfiled",
+      },
+      /** The report, one line per category. */
+      result: {
+        done: "{{category}}: {{added}} added, {{replaced}} replaced, {{skipped}} skipped, {{folders}} folders created.",
+        refusedRecords: "{{category}}: not imported — it would come to {{total}}, past the limit of {{max}}.",
+        refusedFolders: "{{category}}: not imported — it would need {{total}} folders, past the limit of {{max}}.",
+        storage: "{{category}}: the browser refused to store it. Part of it may have been written.",
+        tooMany: "{{category}}: not imported — the limit was reached while importing.",
+        indexing: "{{category}}: a collection's games could not be indexed. The collections before it were imported.",
+      },
+      /** The dialog for a file that cannot be imported. */
+      incompatible: {
+        title: "This file cannot be imported",
+        problem: {
+          "not-zip": "“{{fileName}}” is not a .zip file.",
+          "no-manifest": "“{{fileName}}” has no manifest.json, so it was not made by Export.",
+          malformed: "The manifest.json in “{{fileName}}” cannot be read.",
+          foreign: "The manifest.json in “{{fileName}}” is not this app's.",
+          newer: "“{{fileName}}” was made by a newer version of the app (format {{version}}). Update the app to import it.",
+          "missing-file": "“{{fileName}}” does not hold {{path}}, which its manifest names.",
+          unreadable: "{{path}} in “{{fileName}}” does not match its manifest.",
+        },
+        advice: "You can still bring its PGN files in by hand:",
+        collections: "a collection — the Library's upload",
+        analyses: "analyses and played games — the Analysis Board's Load tab",
+        repertoires: "repertoires — Add repertoire",
+        files: "The PGN files in it:",
+        noFiles: "It holds no PGN files.",
+        close: "Close",
+      },
+    },
+    /** The Storage tab (CTA-94): how much space the app's data takes. */
+    storage: {
+      intro:
+        "How much space this app's data takes on this device: the browser's own estimates for the whole origin, and your records — counted exactly, and sized by this app's own estimate, per category.",
+      browser: {
+        title: "Browser storage",
+        usage: "Origin usage (estimate)",
+        indexedDb: "IndexedDB usage (estimate)",
+        /** Where the quota went: the reader's own look-up. */
+        quotaNote: "The storage quota is not shown here; to see it, open your browser's developer tools.",
+      },
+      /** Where the browser reports no number at all. */
+      notAvailable: "Not available",
+      data: {
+        title: "Your data",
+        category: "Category",
+        records: "Records",
+        payload: "Estimated payload",
+        categories: {
+          playedGames: "Engine games",
+          analyses: "Analyses",
+          repertoires: "Repertoires",
+          collectionGames: "Library games",
+        },
+      },
+      note:
+        "Payload sizes are this app's own estimate of what its records hold — not disk usage. The browser may compress, deduplicate and add index overhead, so they do not sum to the storage it reports.",
+      panel:
+        "Nothing here is written or removed. The browser's figures are its own estimates for the whole origin; the per-category sizes are this app's estimate of what your records hold, which the browser may store differently on disk. The built-in collections are files fetched over the network, not records in your browser, so they count towards the origin usage only.",
     },
   },
   footer: {

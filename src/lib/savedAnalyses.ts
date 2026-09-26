@@ -2,6 +2,14 @@ import {
   analysisSettingsFrom,
   type AnalysisSettings,
 } from "./analysisSettings";
+import {
+  arrowPaletteFrom,
+  arrowWidthSourceFrom,
+  DEFAULT_ARROW_PALETTE,
+  DEFAULT_ARROW_WIDTH_SOURCE,
+  type ArrowPaletteId,
+  type ArrowWidthSource,
+} from "./arrowSettings";
 import { gameTag, type Game, type GameHeaders } from "./gameModel";
 import {
   countVariations,
@@ -69,8 +77,11 @@ import { parsePgnGame, parsePgnTree, readPgnTags } from "./pgn";
  * **description**, the **side** the board opens facing (`orientation` — the
  * repertoire's main colour, so a flip on the board is the session's and an
  * Update does not write it), and whether the board opens **showing the
- * next-move arrows** (`showArrows`, on by default). Each reads as its default
- * on a record from before it.
+ * next-move arrows** (`showArrows`, on by default) — and how it draws them
+ * (CTA-98): what sizes each arrow (`arrowWidthSource`, `"none"` by default)
+ * and in which colours (`arrowPalette`, `"classic"`). Each reads as its
+ * default on a record from before it, or on one naming a value this build
+ * does not know.
  */
 
 /** How long a description may be. */
@@ -96,6 +107,13 @@ export type SavedAnalysis = {
   /** Whether the board opens drawing the next-move arrows. */
   showArrows: boolean;
   /**
+   * What sizes the next-move arrows (CTA-98). Kept as chosen even when the
+   * tree no longer carries its tag — the board then draws as `"none"`.
+   */
+  arrowWidthSource: ArrowWidthSource;
+  /** The next-move arrows' colours (CTA-98). */
+  arrowPalette: ArrowPaletteId;
+  /**
    * The reader's name for it. May be empty — a row then names it by its
    * players, or by the generic "Analysis board".
    */
@@ -112,7 +130,7 @@ export type SavedAnalysis = {
 export const SAVED_ANALYSES_PATH = "saved";
 
 /** The `Event` tag a saved analysis carries when it is not a game's. */
-export const SAVED_ANALYSIS_EVENT = "Analysis Board";
+const SAVED_ANALYSIS_EVENT = "Analysis Board";
 
 /**
  * The `White` / `Black` tag a saved analysis carries when it is not a game's.
@@ -152,7 +170,7 @@ const pgnDate = (when: Date): string =>
  * nothing renders it. The tree's *own* headers win over these, so an analysis
  * begun from a library game keeps that game's players and event.
  */
-export const savedAnalysisHeaders = (now: Date = new Date()): GameHeaders => ({
+const savedAnalysisHeaders = (now: Date = new Date()): GameHeaders => ({
   Event: SAVED_ANALYSIS_EVENT,
   Site: "Chess Trainer",
   Date: pgnDate(now),
@@ -216,6 +234,8 @@ export const savedAnalysisOf = (
   folderId: null,
   description: "",
   showArrows: true,
+  arrowWidthSource: DEFAULT_ARROW_WIDTH_SOURCE,
+  arrowPalette: DEFAULT_ARROW_PALETTE,
   savedAt,
   updatedAt: now.toISOString(),
 });
@@ -290,13 +310,21 @@ export const savedAnalysisFrom = (value: unknown): SavedAnalysis | undefined => 
         ? row.description.slice(0, MAX_ANALYSIS_DESCRIPTION_CHARS)
         : "",
     showArrows: typeof row.showArrows === "boolean" ? row.showArrows : true,
+    arrowWidthSource: arrowWidthSourceFrom(row.arrowWidthSource),
+    arrowPalette: arrowPaletteFrom(row.arrowPalette),
   };
 };
 
 /** What the settings screen edits — every field of it, written at once. */
 export type SavedAnalysisSettingsEdit = Pick<
   SavedAnalysis,
-  "name" | "description" | "orientation" | "showArrows" | "folderId"
+  | "name"
+  | "description"
+  | "orientation"
+  | "showArrows"
+  | "arrowWidthSource"
+  | "arrowPalette"
+  | "folderId"
 >;
 
 /** What a row shows about an analysis without opening it. Pure, so it is testable. */
@@ -387,39 +415,19 @@ export const savedAnalysisCatalogOf = (
 };
 
 /**
- * **Split** (CTA-73): each game of a many-game text its own analysis, in file
- * order — named by the game (`readRepertoireText`'s names), opened at its
- * start facing White, worked under `settings`, and filed under `folderId`
- * (the folder the split makes, named after the text). `newId` is called once
- * per record.
- */
-export const splitAnalysesOf = (
-  newId: () => string,
-  games: readonly { name: string; tree: GameTree }[],
-  folderId: string | null,
-  settings: AnalysisSettings,
-  now: Date = new Date(),
-): SavedAnalysis[] =>
-  games.map((game) => ({
-    ...savedAnalysisOf(newId(), game.tree, [], settings, "white", now),
-    name: game.name,
-    folderId,
-  }));
-
-/**
  * **The Library's picked games as analyses** (CTA-77, the collection
  * table's Analyse): each game its own analysis, in the order given — named
- * as a split names a game (`repertoireGameNamesOf`'s names, passed in),
+ * as a repertoire split names a game (`repertoireGameNamesOf`'s names, passed in),
  * opened at its start facing White, worked under `settings`, and filed under
  * `folderId` (the folder the batch makes).
  *
- * Unlike {@link splitAnalysesOf}, the game is **not re-parsed**: its PGN is
+ * The game is **not re-parsed**: its PGN is
  * kept as the collection holds it. A collection's games were each parsed
  * with `parsePgnTree` when it came in — its index marks the ones that would
  * not, and the caller leaves those out — and a stored PGN keeps its side
  * lines and comments by being the text it is; re-writing it through a tree
- * would cost ~10 ms a game on the main thread, over a minute for a
- * 7,818-game pick. It is parsed when the analysis is opened, as any is.
+ * would cost ~10 ms a game on the main thread, about a minute for a
+ * 5,722-game pick. It is parsed when the analysis is opened, as any is.
  */
 export const batchAnalysesOf = (
   newId: () => string,
@@ -436,6 +444,8 @@ export const batchAnalysesOf = (
     orientation: "white",
     description: "",
     showArrows: true,
+    arrowWidthSource: DEFAULT_ARROW_WIDTH_SOURCE,
+    arrowPalette: DEFAULT_ARROW_PALETTE,
     name: game.name,
     folderId,
     savedAt: now.toISOString(),

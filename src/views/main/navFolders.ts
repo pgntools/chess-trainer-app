@@ -1,8 +1,8 @@
 import type { SvgIconComponent } from "@mui/icons-material";
 import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
-import HandymanRoundedIcon from "@mui/icons-material/HandymanRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import MemoryRoundedIcon from "@mui/icons-material/MemoryRounded";
+import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import SnippetFolderRoundedIcon from "@mui/icons-material/SnippetFolderRounded";
 import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 
@@ -49,15 +49,21 @@ export type NavFolder = {
    * entry hides is reached from that screen's own controls, not from here.
    */
   singleEntry?: boolean;
+  /**
+   * The folder is the app's own chrome, not a place in it: a **top-level**
+   * folder so marked renders in its own section at the sidebar's foot, under
+   * a divider, apart from the screens above (`Sidebar.tsx`). It still opens
+   * and closes like any folder, and is still a card on the landing page.
+   */
+  pinToBottom?: boolean;
 };
 
 /**
  * The folder tree, top to bottom.
  *
  * **A function, not a constant**, so a dev-only folder can be a spread gated
- * on `import.meta.env.DEV`, evaluated when the tree is asked for — the
- * Development section's (CTA-60) was one; it closed with its last board in
- * CTA-79, and `chessboard-v2.md` §5 says how to open one again. The Library's collections are
+ * on `import.meta.env.DEV`, evaluated when the tree is asked for
+ * (`chessboard.md` §9.5 says how to open one). The Library's collections are
  * not folders here: they are the rows of the Library screen (`/library`), so
  * a `.pgn` dropped into `src/data/library/` or uploaded by the reader changes
  * that screen, not this tree.
@@ -78,18 +84,12 @@ export const navFolders = (): readonly NavFolder[] => [
     icon: SnippetFolderRoundedIcon,
   },
   {
-    id: "tools",
-    labelKey: "nav.folders.tools",
-    icon: HandymanRoundedIcon,
-  },
-  {
     id: "analysis",
     labelKey: "nav.folders.analysisBoard",
     icon: AccountTreeRoundedIcon,
-    // One destination (CTA-58, mirroring CTA-42's Openings folder): the
-    // saved list is the screen worth reaching for, so the folder renders as
-    // one clickable row to it and the board view leaves the sidebar
-    // entirely — it is the saved list's New button.
+    // One destination: the saved list is the screen worth reaching for, so
+    // the folder renders as one clickable row to it; the board is the saved
+    // list's New button.
     singleEntry: true,
   },
   {
@@ -97,7 +97,7 @@ export const navFolders = (): readonly NavFolder[] => [
     labelKey: "nav.folders.openings",
     icon: TravelExploreRoundedIcon,
     // One destination: the folder renders as one clickable row to the
-    // Openings explorer (CTA-78; the saved list it pointed at before is gone).
+    // Openings explorer.
     singleEntry: true,
   },
   /*
@@ -109,5 +109,21 @@ export const navFolders = (): readonly NavFolder[] => [
     id: "repertoires",
     labelKey: "nav.folders.repertoires",
     icon: MenuBookRoundedIcon,
+    // One destination: the folder renders as one clickable row to the
+    // Repertoires list, whose own "Add repertoire" link reaches
+    // `/repertoires/new`.
+    singleEntry: true,
+  },
+  /*
+    The app's own settings (CTA-86), one screen per tab of `/settings/<tab>`
+    — Export, Import and Storage. A folder rather than a single entry, so a
+    tab added later is one more `navItems()` entry here; pinned to the
+    sidebar's foot, apart from the screens.
+  */
+  {
+    id: "settings",
+    labelKey: "nav.folders.settings",
+    icon: SettingsRoundedIcon,
+    pinToBottom: true,
   },
 ];

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -26,6 +26,17 @@ import chessFavicon from '../../assets/chess-favicon.svg';
  * `calc(var(--mui-spacing))` string the resize maths cannot subtract.
  */
 const BOARD_INSET_PX = 16;
+
+/**
+ * The gap between the board square and the right-hand panel, in pixels
+ * (CTA-82) — the same 16px as the inset, for the same reason: without it a
+ * screen's content ran straight up to the panel's border. A flex `gap` on the
+ * row, so it is logical and needs no mirroring under RTL (the aside mirrors,
+ * the square is `ForceLTR` inside its own box); and subtracted from the width
+ * the square is sized against, like the panel's minimum, so the board stays
+ * square and nothing overflows.
+ */
+const BOARD_PANEL_GAP_PX = 16;
 
 /**
  * The nav rail's width, in pixels.
@@ -187,15 +198,15 @@ const DefaultLayoutViewport = () => {
         const { width, height } = bodyDimentions
         if (width === 0 || height === 0) return { width: 0, height: 0 };
         // Strip the inset from both edges before squaring, and the panel's
-        // minimum from the width: the panel is a sibling inside this row, so
-        // the board never had more than `width - PANEL_MIN_WIDTH_PX` to work
-        // with. Taking it off here is what lets the square grow into the rest —
+        // minimum and the gap before it from the width: the panel is a sibling
+        // inside this row, so the board never had more than
+        // `width - PANEL_MIN_WIDTH_PX - BOARD_PANEL_GAP_PX` to work with. Taking it off here is what lets the square grow into the rest —
         // measured against the row alone it would be sized against space the
         // panel is standing in, and would overflow it.
         const minorSide = Math.max(
             0,
             Math.min(
-                width - PANEL_MIN_WIDTH_PX - BOARD_INSET_PX * 2,
+                width - PANEL_MIN_WIDTH_PX - BOARD_PANEL_GAP_PX - BOARD_INSET_PX * 2,
                 height - BOARD_INSET_PX * 2,
             ),
         )
@@ -210,24 +221,30 @@ const DefaultLayoutViewport = () => {
 
 
     const matches = useMatches();
-    const [curPath, setCurPath] = useState<string>("");
 
-    const updateLocationFn = (match:UIMatch)=>svc.send({
+    const updateLocationFn = useCallback((match:UIMatch)=>svc.send({
         type:"EVENTS.NAVIGATION.ROUTER.MATCH.UPDATE",
         match:match
-    })
+    }),[svc])
 
+
+    // The last pathname the service was told about. A ref, not state: nothing
+    // renders from it — it only keeps the effect from telling the service
+    // about the same route twice — and holding it in state needed a setState
+    // inside the effect (react-hooks/set-state-in-effect).
+    const lastSentPathRef = useRef<string>("");
 
     useEffect(()=>{
         console.log("[TemplatesReadonlyWidgetLayout] matches update", matches);
-        const last_match =  matches.pop()
+        // Read the leaf match; do not pop it out of the router's array.
+        const last_match = matches[matches.length - 1]
         if(undefined === last_match) return
-        if (curPath === last_match.pathname) return
-        setCurPath(last_match.pathname)
+        if (lastSentPathRef.current === last_match.pathname) return
+        lastSentPathRef.current = last_match.pathname
 
         console.log("[TemplatesReadonlyWidgetLayout][updateLocationFn] called", last_match);
         updateLocationFn(last_match)
-    },[matches])
+    },[matches, updateLocationFn])
 
 
 
@@ -313,6 +330,9 @@ const DefaultLayoutViewport = () => {
                             // in `getBoundingClientRect`, then subtracted back
                             // out when the square is computed.
                             p: `${BOARD_INSET_PX}px`,
+                            // Between the square and the panel — taken off the
+                            // square's width above.
+                            gap: `${BOARD_PANEL_GAP_PX}px`,
                             overflow: "hidden",
                         }}
                    >

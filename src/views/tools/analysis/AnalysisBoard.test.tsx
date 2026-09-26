@@ -7,7 +7,13 @@ import { analysisHandOffState } from "../../../lib/analysisHandOff";
 import { DEFAULT_ANALYSIS_SETTINGS } from "../../../lib/analysisSettings";
 import { parsePgnTree } from "../../../lib/pgn";
 import { savedAnalysisOf, type SavedAnalysis } from "../../../lib/savedAnalyses";
-import { analysisFoldersSnapshot, createAnalysisFolder } from "../../../lib/savedAnalysisFolderStore";
+import {
+  addCollection,
+  loadUploadedCollections,
+  loadUploadedGames,
+  resetLibraryCollectionStore,
+} from "../../../lib/libraryCollectionStore";
+import { createAnalysisFolder } from "../../../lib/savedAnalysisFolderStore";
 import {
   findSavedAnalysis,
   resetSavedAnalysisStore,
@@ -15,20 +21,27 @@ import {
   savedAnalysesSnapshot,
 } from "../../../lib/savedAnalysisStore";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
-import { boardOptions, FakeEngine } from "../../dev/devTestHarness";
+import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
 import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
+import { NEXT_MOVE_ARROW_PALETTES, UNTAGGED_NEXT_MOVE_ARROW_COLOR } from "./nextMoveArrows";
 
 vi.mock("../../../lib/engine", async () => ({
-  default: (await import("../../dev/devTestHarness")).FakeEngine,
+  default: (await import("../../board/boardTestHarness")).FakeEngine,
 }));
 
+// The Library's write, spied on so a test can make it fail (CTA-101).
+vi.mock("../../../lib/libraryCollectionStore", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../lib/libraryCollectionStore")>();
+  return { ...actual, addCollection: vi.fn(actual.addCollection) };
+});
+
 vi.mock("react-chessboard", async () => {
-  const { reactChessboardMock } = await import("../../dev/devTestHarness");
+  const { reactChessboardMock } = await import("../../board/boardTestHarness");
   return reactChessboardMock();
 });
 
 vi.mock("../../../lib/openings", async (importOriginal) => {
-  const { openingsMock } = await import("../../dev/devTestHarness");
+  const { openingsMock } = await import("../../board/boardTestHarness");
   return openingsMock(
     importOriginal as () => Promise<typeof import("../../../lib/openings")>,
   );
@@ -39,9 +52,10 @@ import AnalysisBoard from "./AnalysisBoard";
 /*
   The Analysis Board, v2 (CTA-73): the arrivals, the explicit save (a new
   board's dialog, and Update / Save as copy / Discard over a record), the Load
-  tab's one game, merge and split, the Export tab's options and the `?at=`
+  tab's one game, the popup of several (merge, or a games collection —
+  CTA-101), the Export tab's options and the `?at=`
   link. The shared panel and square are asserted with the dev boards'
-  (`devBoards.test.tsx`, `devPanelPropagation.test.tsx`), which include this
+  (`boards.test.tsx`, `panelPropagation.test.tsx`), which include this
   screen.
 */
 
@@ -139,7 +153,7 @@ describe("the Analysis Board's arrivals", () => {
   });
 
   it("opens a Library game (?game=library/…) once its collection's games are read, at ?at=", async () => {
-    mount("/tools/analysis?game=library/morphy/1&at=e4");
+    mount("/tools/analysis?game=library/capablanca/1&at=e4");
     // The shipped PGN chunk is fetched first; the board waits rather than open blank.
     expect(screen.getByTestId("analysis-loading")).toBeInTheDocument();
     await waitFor(() => expect(boardOptions().position).toBe(AFTER_E4));
@@ -340,29 +354,104 @@ describe("the Load tab", () => {
     expect(findSavedAnalysis("a1")?.pgn).not.toContain("e4");
   });
 
-  it("merges several games into one tree on the board", () => {
+  it("still loads a one-move PGN as a game — the Lobby's position rule is its own", () => {
     mount();
-    paste('[Event "A"]\n\n1. e4 e5 *\n\n[Event "B"]\n\n1. e4 c5 *');
-    expect(screen.getByTestId("analysis-choice")).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("analysis-choice-merge"));
+    paste("1. e4 *");
 
+    // `onLoadPosition` is opt-in: without it, a one-move game is a game,
+    // opened at its start rather than at the position after its move.
+    expect(boardOptions().position).toBe(START);
     openTab("export");
-    expect((screen.getByTestId("analysis-export-pgn") as HTMLTextAreaElement).value).toContain(
-      "1. e4 e5 (1... c5)",
-    );
-    expect(listed()).toEqual([]);
+    expect(
+      (screen.getByTestId("analysis-export-pgn") as HTMLTextAreaElement).value,
+    ).toContain("1. e4");
   });
 
-  it("splits several games into a new folder of saved analyses, and goes there", async () => {
-    mount();
-    paste('[Event "Two lines"]\n\n1. e4 e5 *\n\n[Event "Two lines"]\n\n1. d4 d5 *');
-    fireEvent.click(screen.getByTestId("analysis-choice-split"));
+  describe("several games open the popup (CTA-101)", () => {
+    const TWO_LINES = '[Event "Two lines"]\n\n1. e4 e5 *\n\n[Event "Two lines"]\n\n1. e4 c5 *';
 
-    await waitFor(() => expect(where()).toContain("/tools/analysis/saved?folder="));
-    const [folder] = analysisFoldersSnapshot() ?? [];
-    expect(folder.name).toBe("Two lines");
-    expect(listed().map((row) => row.folderId)).toEqual([folder.id, folder.id]);
-    expect(where()).toBe(`/tools/analysis/saved?folder=${folder.id}`);
+    beforeEach(async () => {
+      await resetLibraryCollectionStore();
+      vi.mocked(addCollection).mockClear();
+    });
+
+    it("offers merge and a games collection, and no split", () => {
+      mount();
+      paste(TWO_LINES);
+      const popup = screen.getByTestId("analysis-choice");
+      expect(popup).toHaveTextContent("This PGN holds 2 games");
+      expect(screen.getByTestId("analysis-choice-merge")).toBeEnabled();
+      expect(screen.getByTestId("analysis-choice-collection")).toBeEnabled();
+      expect(screen.queryByTestId("analysis-choice-split")).toBeNull();
+    });
+
+    it("merges them into one tree on the board, the games counted at the branch", () => {
+      mount();
+      paste(TWO_LINES);
+      fireEvent.click(screen.getByTestId("analysis-choice-merge"));
+
+      expect(screen.queryByTestId("analysis-choice")).toBeNull();
+      openTab("export");
+      expect((screen.getByTestId("analysis-export-pgn") as HTMLTextAreaElement).value).toContain(
+        "1. e4 e5 { [%games 1] } (1... c5 { [%games 1] })",
+      );
+      expect(listed()).toEqual([]);
+    });
+
+    it("keeps Merge off, saying why, for games from different starts — the collection stays", () => {
+      mount();
+      paste(
+        '[Event "A"]\n\n1. e4 *\n\n[Event "B"]\n[SetUp "1"]\n[FEN "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"]\n\n1. Kd2 *',
+      );
+      expect(screen.getByTestId("analysis-choice-merge")).toBeDisabled();
+      expect(screen.getByTestId("analysis-choice")).toHaveTextContent("different positions");
+      expect(screen.getByTestId("analysis-choice-collection")).toBeEnabled();
+    });
+
+    it("saves them as a Library collection at the top level, and goes to its table", async () => {
+      mount();
+      paste(TWO_LINES);
+      fireEvent.click(screen.getByTestId("analysis-choice-collection"));
+
+      // The index pass loads the opening book: slow on a busy machine.
+      await waitFor(() => expect(where()).toMatch(/^\/library\/u/), { timeout: 10_000 });
+      const [collection] = await loadUploadedCollections();
+      expect(collection).toMatchObject({ name: "Two lines", count: 2, folderId: null });
+      expect(where()).toBe(`/library/${collection.id}`);
+      expect(await loadUploadedGames(collection.id)).toHaveLength(2);
+      expect(listed()).toEqual([]);
+    });
+
+    it("writes nothing when cancelled, even with the games being checked", async () => {
+      mount();
+      paste(TWO_LINES);
+      fireEvent.click(screen.getByTestId("analysis-choice-collection"));
+      expect(screen.getByTestId("analysis-choice-indexing")).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("analysis-choice-cancel"));
+
+      await waitFor(() => expect(screen.queryByTestId("analysis-choice")).toBeNull());
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+      expect(addCollection).not.toHaveBeenCalled();
+      expect(await loadUploadedCollections()).toEqual([]);
+      expect(where()).toBe("/tools/analysis");
+    });
+
+    it("says so in the popup when the collection cannot be written", async () => {
+      vi.mocked(addCollection).mockResolvedValueOnce({ problem: "storage" });
+      mount();
+      paste(TWO_LINES);
+      fireEvent.click(screen.getByTestId("analysis-choice-collection"));
+
+      expect(
+        await screen.findByTestId("analysis-choice-problem", {}, { timeout: 10_000 }),
+      ).toHaveTextContent(
+        "could not be saved",
+      );
+      expect(screen.getByTestId("analysis-choice")).toBeInTheDocument();
+      expect(where()).toBe("/tools/analysis");
+    });
   });
 
   it("sets a FEN up, facing the side to move", () => {
@@ -616,5 +705,111 @@ describe("Play — the engine's thinking, shown", () => {
     expect(screen.getByTestId("analysis-play-status")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("analysis-play"));
     expect(screen.queryByTestId("analysis-play-status")).toBeNull();
+  });
+});
+
+describe("the Arrows tab (CTA-98)", () => {
+  const radio = (kind: "width" | "palette", id: string) =>
+    screen.getByTestId(`analysis-arrows-${kind}-${id}`);
+
+  it("holds the next-move arrows switch, which the Engine tab no longer does", async () => {
+    await stored("a1", "1. e4 e5 (1... c5) *", ["e4"]);
+    mount("/tools/analysis?analysis=a1");
+    openTab("engine");
+    expect(screen.queryByTestId("analysis-arrows")).toBeNull();
+
+    openTab("arrows");
+    expect(boardOptions().arrows).toHaveLength(2);
+    fireEvent.click(within(screen.getByTestId("analysis-arrows")).getByRole("switch"));
+    expect(boardOptions().arrows).toEqual([]);
+  });
+
+  it("offers a tag only while some move in the tree carries it", async () => {
+    await stored("a1", "1. e4 e5 (1... c5) *", ["e4"]);
+    mount("/tools/analysis?analysis=a1");
+    openTab("arrows");
+    expect(radio("width", "none")).toBeEnabled();
+    expect(radio("width", "lines")).toBeEnabled();
+    expect(radio("width", "eval")).toBeDisabled();
+    expect(radio("width", "games")).toBeDisabled();
+    expect(radio("width", "prc")).toBeDisabled();
+
+    // A comment carrying a count, written through the move menu: offered at once.
+    fireEvent.contextMenu(screen.getByTestId("move-ply-2"), { clientX: 40, clientY: 60 });
+    fireEvent.click(screen.getByTestId("move-menu-comment"));
+    fireEvent.change(screen.getByTestId("comment-dialog-text"), {
+      target: { value: "Most played. games:120" },
+    });
+    fireEvent.click(screen.getByTestId("comment-dialog-save"));
+    expect(radio("width", "games")).toBeEnabled();
+    expect(radio("width", "eval")).toBeDisabled();
+  });
+
+  it("sizes the arrows by the chosen tag, over the board, the untagged move gray", async () => {
+    await stored("a1", "1. e4 e5 {[%eval 0.3]} (1... c5 {[%eval 0.4]}) (1... a5) *", ["e4"]);
+    mount("/tools/analysis?analysis=a1");
+    openTab("arrows");
+    expect(screen.queryByTestId("analysis-width-arrows-overlay")).toBeNull();
+
+    fireEvent.click(radio("width", "eval"));
+    expect(boardOptions().arrows).toEqual([]);
+    const overlay = screen.getByTestId("analysis-width-arrows-overlay");
+    expect(overlay.querySelectorAll("path")).toHaveLength(3);
+    expect(overlay.querySelector('path[data-to="a5"]')).toHaveAttribute(
+      "fill",
+      UNTAGGED_NEXT_MOVE_ARROW_COLOR,
+    );
+  });
+
+  it("recolours every arrow by the palette", async () => {
+    await stored("a1", "1. e4 e5 (1... c5) *", ["e4"]);
+    mount("/tools/analysis?analysis=a1");
+    openTab("arrows");
+    fireEvent.click(radio("palette", "colorblind"));
+    const { colorblind } = NEXT_MOVE_ARROW_PALETTES;
+    expect(boardOptions().arrows?.map((arrow) => arrow.color)).toEqual([
+      colorblind.mainline,
+      colorblind.sideline,
+    ]);
+  });
+
+  it("opens as the record says, keeping a tag the tree lacks but drawing as None", async () => {
+    await stored("a1", "1. e4 e5 (1... c5) *", ["e4"], {
+      arrowWidthSource: "prc",
+      arrowPalette: "lichess",
+    });
+    mount("/tools/analysis?analysis=a1");
+    openTab("arrows");
+    expect(radio("width", "prc")).toBeChecked();
+    expect(radio("width", "prc")).toBeDisabled();
+    expect(screen.getByTestId("analysis-arrows-width-drawn-as-none")).toBeInTheDocument();
+    expect(radio("palette", "lichess")).toBeChecked();
+    // Drawn as None: the library arrows, in the record's palette.
+    expect(screen.queryByTestId("analysis-width-arrows-overlay")).toBeNull();
+    expect(boardOptions().arrows?.[0].color).toBe(NEXT_MOVE_ARROW_PALETTES.lichess.mainline);
+
+    // The record keeps the choice across an Update.
+    drag("g8", "f6");
+    fireEvent.click(screen.getByTestId("analysis-save"));
+    fireEvent.click(screen.getByTestId("analysis-changes-update"));
+    await waitFor(() => expect(findSavedAnalysis("a1")?.path).toEqual(["e4", "Nf6"]));
+    expect(findSavedAnalysis("a1")).toMatchObject({ arrowWidthSource: "prc", arrowPalette: "lichess" });
+  });
+
+  it("keeps a new board's choices on its first save", async () => {
+    mount();
+    drag("e2", "e4");
+    openTab("arrows");
+    fireEvent.click(radio("width", "lines"));
+    fireEvent.click(radio("palette", "colorblind"));
+    fireEvent.click(screen.getByTestId("analysis-save"));
+    fireEvent.change(screen.getByTestId("analysis-save-name"), { target: { value: "Mine" } });
+    fireEvent.click(screen.getByTestId("analysis-save-confirm"));
+    await waitFor(() => expect(listed()).toHaveLength(1));
+    expect(listed()[0]).toMatchObject({
+      showArrows: true,
+      arrowWidthSource: "lines",
+      arrowPalette: "colorblind",
+    });
   });
 });
