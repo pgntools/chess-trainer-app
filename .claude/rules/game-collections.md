@@ -117,12 +117,13 @@ a collection =   ──▶ rows:  CollectionRow[]  (its INDEX, one per game)    
   "Save as copy" goes to Saved analyses. An **uploaded** collection (made from
   a file, a paste, or empty) is the reader's own and takes every write.
 - **Sizing target: 5,000–10,000 games per collection.** A 10,000-game index is
-  about 4.8 MB (one JSON parse; 3.7 MB measured over the 7,818-game fixture,
+  about 4.8 MB (one JSON parse; 3.0 MB measured over the 5,722-game fixture,
   whose `line`s are whole games since CTA-92), and its PGN is about 9.5 MB.
   One text read in is capped at `MAX_COLLECTION_CHARS` = 100,000,000
   characters (about 100,000 games). The cap protects the tab's memory, not
-  storage. The real 7,818-game fixture `src/test/fixtures/pgn/Carlsen.pgn` is
-  the scale every performance claim below was measured at.
+  storage. The real 5,722-game fixture `src/test/fixtures/pgn/Carlsen.pgn` is
+  the test-scale collection. The browser timings below were measured over
+  its 7,818-game predecessor (replaced in CTA-104), a little larger.
 
 ### 1.1 A row — `CollectionRow`
 
@@ -220,8 +221,8 @@ node scripts/wirepgn.js --list | --check | --rebuild | --remove <id>
    `manifest.json`: `{ id, name, pgn, index, games, hash }`, where `hash` is
    `textHash` (FNV-1a, line endings normalised) of the PGN.
 
-The name defaults to `collectionNameOfStem` (`WorldCup2023` → "World Cup
-2023"). The id defaults to `collectionIdOfStem` (the slug, `worldcup2023`),
+The name defaults to `collectionNameOfStem` (`TataSteel2025` → "Tata Steel
+2025"). The id defaults to `collectionIdOfStem` (the slug, `tatasteel2025`),
 which is the route segment. Wiring again over a taken id or file name
 **replaces** that collection. Indexing costs about 8–12 ms a game: two
 minutes for 10,000 games.
@@ -232,16 +233,20 @@ hash no longer matches its entry. `wirepgn --check` exits 1 for the same
 reasons, so it can run in CI. After adding a collection, add its name and
 count to `shippedCollections.test.ts` (it asserts the shipped set).
 
-Three collections ship: `WorldCup2023` (674 games), `Bucharest2023` (45) and
-`Morphy` (211).
+Five collections ship, each one player's games, 8,756 in all: `Alekhine`
+(2,005 games), `Capablanca` (1,035), `Fischer` (1,063), `Petrosian` (2,017)
+and `Tal` (2,636). They replaced (CTA-104) the World Cup 2023, Bucharest 2023
+and Morphy files, which were not free to ship. Their `ECO` tags carry
+ChessBase-style sub-codes (`C44r`), which `collectionFacetsOf` orders beside
+the plain code, and no `Opening` tag.
 
 ### 3.2 Loading — `lib/shippedCollections.ts`
 
-| Cost | When | Size (World Cup / 10k games) |
+| Cost | When | Size (Tal, 2,636 games / 10k games) |
 | --- | --- | --- |
 | manifest | static import, in the bundle | a few hundred bytes |
-| index | lazy chunk, when the table opens | ~350 KB / ~4.8 MB |
-| PGN | lazy chunk, when a game opens or the collection downloads | ~620 KB / ~9.5 MB |
+| index | lazy chunk, when the table opens | ~1.1 MB / ~4.8 MB |
+| PGN | lazy chunk, when a game opens or the collection downloads | ~1.6 MB / ~9.5 MB |
 
 Each is fetched **once** and kept. A failed fetch is kept as `null`, which
 reads as "missing". The index is checked on load (`decodeCollectionIndex`,
@@ -365,7 +370,7 @@ the game's board opens it with:
 - `unreadable` when the parse throws;
 - `eco` / `opening` from eco.json (`OpeningLookup`: the deepest named
   position along the mainline, `openingOfLine`), but only where the tags are
-  missing. This is how Morphy's games, which have no `Opening` tag, get one;
+  missing. This is how the shipped games, which have no `Opening` tag, get one;
 - `line`: the whole mainline as SAN, only from the standard start — stored
   deep (a game averages about 90 plies) and cut at view time by
   `openingTreeOf`, where the collection's branching is known.
@@ -582,9 +587,9 @@ column. The panel (`CollectionFilters`) holds, **in this order**:
 **A filter is shown only where some game carries its field**
 (`collectionFacetsOf`): no dates, no date range; one event, no event picker.
 **The suggestion lists are complete**, never a first page: the Carlsen
-fixture offers 3,040 openings, 1,338 players and 622 events, which open in
-about 100–170 ms in Chrome without virtualization. Clear
-(`library-filter-clear`) removes every `COLLECTION_FILTER_PARAMS` value
+fixture offers 1,704 openings, 1,060 players and 453 events; lists of up
+to 3,040 openings open in about 100–170 ms in Chrome without
+virtualization. Clear (`library-filter-clear`) removes every `COLLECTION_FILTER_PARAMS` value
 (including `line`) and leaves the words box alone.
 
 **Pages**: 50 / 100 / 250 (`?rows=`, default 50) and `?page=`. **All table
@@ -670,12 +675,12 @@ carries the filter, not a hand-made selection.
   from `/library`, never from its table.
 - **Analyse** (`library-picks-analyse`, shipped and uploaded alike): saves the
   picks to **Saved analyses** as one new top-level folder, named by
-  `batchFolderNameOf` (`World Cup 2023 — 12 games (Carlsen, white, B90, 1.e4
+  `batchFolderNameOf` (`Tal — 12 games (Petrosian, white, B90, 1.e4
   c5)`, within the folder name's 100 characters, the filter summary cut
   first), with one analysis per game in collection order, **all or nothing**.
   It creates the folder first, then `addAnalyses(batchAnalysesOf(…))` with
   each PGN **as stored**, not re-parsed (a re-write through a tree would take
-  over a minute on a 7,818-game pick). If the write fails, the folder is
+  about a minute on a 5,722-game pick). If the write fails, the folder is
   removed again. **Unreadable games are left out** and the notice says how
   many. A snackbar (`library-picks-analyse-notice`) links to
   `/tools/analysis/saved?folder=<id>`, and the picks stay.
@@ -734,7 +739,7 @@ reads the upload. It waits the same way for the saved analyses.
 | Rebuilding the opening tree | ~150 ms / 10k rows | SAN merge of whole-game lines, no `chess.js`; the cut prunes as it finishes |
 | Filter lists (7.8k games) | ~100–170 ms to open, no virtualization | plain sets |
 | Indexing | ~8–12 ms / game, off the main thread | worker; paid once |
-| Analyse 7.8k picks | no re-parse | PGN stored as is |
+| Analyse 5.7k picks | no re-parse | PGN stored as is |
 
 A change that parses games on view, fetches the PGN to draw a table, or runs
 `chess.js` per row per render breaks this module's premise. Put the work in
@@ -792,7 +797,7 @@ the index instead (§10.1).
   folderId)`. A dialog left closing still `aria-hidden`s the page, so reading
   the list's rows by role takes `{ hidden: true }`. Helpers in the test file:
   `keep(name, games)` and `upload()` (the three `GAMES`) add a collection;
-  `keepCarlsen()` adds the 7,818-game fixture with **tag-only rows** (the
+  `keepCarlsen()` adds the 5,722-game fixture with **tag-only rows** (the
   full index pass would take a minute); `mountTable` / `mountGame` wait for
   their screen.
 - **jsdom has no `Worker`**, so `indexCollection` uses the in-thread path.
@@ -802,7 +807,7 @@ the index instead (§10.1).
   is asserted.
 - **Order-sensitive assertions**: the table opens newest first. A fixture
   with dates comes back reversed. Mount with `?sort=number` when a test needs
-  collection order (for example, picking game 1 of Morphy).
+  collection order (for example, picking game 1 of Capablanca).
 - Commands: `npx vitest run src/views/library/Library.test.tsx`,
   `npx vitest run src/lib/libraryCollectionStore.test.ts`,
   `npx vitest run src/lib/libraryFolderStore.test.ts`, then `yarn test:run`.

@@ -259,8 +259,8 @@ ignore an answer that is no longer about the record on screen
 ## 6. Performance, measured
 
 Measured under the tests' `fake-indexeddb` and jsdom (the Carlsen
-fixture's games as analyses): 7,818 records ≈ 8 MB, written in one batch in
-~80 ms, read back in ~60 ms; 20,000 ≈ 20 MB, ~0.6 s and ~0.1 s. A real
+fixture's 5,722 games as analyses): 5,722 records ≈ 6 MB, written in one
+batch in ~60 ms, read back in ~40 ms; 20,000 ≈ 20 MB, ~0.6 s and ~0.1 s. A real
 browser is faster. The engine games (500) and the repertoires (500, but a
 course can be most of a megabyte each) are far below that.
 

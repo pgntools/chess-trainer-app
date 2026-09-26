@@ -153,7 +153,7 @@ describe("the Analysis Board's arrivals", () => {
   });
 
   it("opens a Library game (?game=library/…) once its collection's games are read, at ?at=", async () => {
-    mount("/tools/analysis?game=library/morphy/1&at=e4");
+    mount("/tools/analysis?game=library/capablanca/1&at=e4");
     // The shipped PGN chunk is fetched first; the board waits rather than open blank.
     expect(screen.getByTestId("analysis-loading")).toBeInTheDocument();
     await waitFor(() => expect(boardOptions().position).toBe(AFTER_E4));
