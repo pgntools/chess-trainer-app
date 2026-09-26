@@ -394,7 +394,7 @@ describe("the folder tree", () => {
           {/* A game's detail page is a route, not a nav entry — it has no
               chain of its own, and shutting the section the reader is inside
               would be the wrong answer to that. */}
-          <Link to={`${LIST}/morphy`}>go to a collection</Link>
+          <Link to={`${LIST}/capablanca`}>go to a collection</Link>
           <SideBar />
         </MemoryRouter>
       </AppThemeWithLang>,

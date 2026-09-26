@@ -112,7 +112,7 @@ describe("openingTreeOf", () => {
     const tree = openingTreeOf(rows);
     expect(tree.count).toBe(10_000);
     // ~30 ms in a browser; generous here for a loaded CI machine. (The real
-    // 7,818-game fixture, whose lines branch rather than repeat, measures
+    // 7,818-game collection, whose lines branch rather than repeat, measured
     // ~150 ms — the budgets table in game-collections.md §7 carries that.)
     expect(performance.now() - started).toBeLessThan(1500);
   });

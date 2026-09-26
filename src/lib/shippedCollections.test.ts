@@ -44,19 +44,23 @@ describe("the wired folder", () => {
 });
 
 describe("the shipped collections", () => {
-  it("are the three demos, by name, counted without a fetch", () => {
+  it("are the five players' games, by name, counted without a fetch", () => {
     expect(shippedCollections.map((entry) => [entry.id, entry.name, entry.count])).toEqual([
-      ["bucharest2023", "Bucharest 2023", 45],
-      ["morphy", "Morphy", 211],
-      ["worldcup2023", "World Cup 2023", 674],
+      ["alekhine", "Alekhine", 2005],
+      ["capablanca", "Capablanca", 1035],
+      ["fischer", "Fischer", 1063],
+      ["petrosian", "Petrosian", 2017],
+      ["tal", "Tal", 2636],
     ]);
-    expect(peekShippedRows("bucharest2023")).toBeUndefined();
+    expect(peekShippedRows("capablanca")).toBeUndefined();
   });
 
   it.each([
-    ["worldcup2023", 674],
-    ["bucharest2023", 45],
-    ["morphy", 211],
+    ["alekhine", 2005],
+    ["capablanca", 1035],
+    ["fischer", 1063],
+    ["petrosian", 2017],
+    ["tal", 2636],
   ])("%s: its index is its table's rows, and its PGN its games", async (id, count) => {
     const entry = findShippedCollection(id)!;
     const rows = await entry.loadRows();
@@ -73,8 +77,8 @@ describe("the shipped collections", () => {
   });
 
   it("fills an opening in from the book where the file's tags have none", async () => {
-    // Morphy's games carry an ECO and no Opening tag.
-    const rows = await findShippedCollection("morphy")!.loadRows();
+    // Capablanca's games carry an ECO and no Opening tag.
+    const rows = await findShippedCollection("capablanca")!.loadRows();
     expect(rows.every((row) => row.opening !== undefined)).toBe(true);
   });
 });

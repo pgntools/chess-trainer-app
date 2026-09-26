@@ -47,7 +47,7 @@ describe("resolveGameReference", () => {
     ["an unregistered key", "endgames/pawn-endgames/opposition"],
     // The pre-CTA-75 Library's links name no collection and number now.
     ["the old Library's key", "library/queen-vs-rook/chapter-1"],
-    ["a Library game number that is not one", "library/morphy/0"],
+    ["a Library game number that is not one", "library/capablanca/0"],
     ["the pre-CTA-38 key", "pgn/queen-vs-rook/chapter-1"],
     ["a path the store does not have", "play/nope/a"],
     ["an id the store does not have", "play/games/missing"],
@@ -71,12 +71,12 @@ describe("a Library game (CTA-77)", () => {
   });
 
   it("resolves a shipped collection's game after its PGN chunk is fetched", async () => {
-    const reference = libraryGameReference("morphy", 1);
+    const reference = libraryGameReference("capablanca", 1);
     expect(isReferenceRead(reference)).toBe(false);
     expect(resolveGameReference(reference)).toBeUndefined();
     await loadReferencedGames(reference);
     expect(isReferenceRead(reference)).toBe(true);
-    expect(resolveGameReference(reference)?.name).toBe("Morphy, Paul – Morphy, Alonzo");
+    expect(resolveGameReference(reference)?.name).toBe("Capablanca, Jose – Eschevarria, C.");
   });
 
   it("waits for the played games' first read, like a Library game", async () => {

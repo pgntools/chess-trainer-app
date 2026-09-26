@@ -19,9 +19,9 @@ import {
  * - the **manifest** is imported statically — a few hundred bytes — so the
  *   Library lists every collection with its count and fetches nothing;
  * - the **index** is a lazy chunk, fetched when the collection's table opens
- *   (~90 KB for the 674-game World Cup, ~1.4 MB for 10,000 games);
+ *   (~1.1 MB for Tal's 2,636 games, ~4.8 MB for 10,000);
  * - the **PGN** is a lazy chunk, fetched when a game is opened or the
- *   collection downloaded — the whole file, once (~620 KB for the World Cup).
+ *   collection downloaded — the whole file, once (~1.6 MB for Tal).
  *
  * Each is fetched once and kept, and what was fetched can be read
  * synchronously ({@link peekShippedRows} / {@link peekShippedGames}), so a
