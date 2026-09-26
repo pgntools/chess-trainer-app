@@ -8,9 +8,9 @@ import type { CollectionRow } from "./libraryCollections";
  * It is built **in memory from the index's rows** — each row's `line`, its
  * whole mainline as SAN (uncapped by CTA-92), written once when the collection
  * came in (`lib/collectionIndex.ts`) — so nothing is parsed and no `chess.js`
- * runs: 10,000 games of ~90-ply lines merge in about 150 ms (the 7,818-game
- * fixture measured), so the table rebuilds it whenever its other filters
- * change. Keyed by SAN,
+ * runs: 10,000 games of ~90-ply lines merge in about 150 ms (measured over a
+ * real 7,818-game collection), so the table rebuilds it whenever its other
+ * filters change. Keyed by SAN,
  * as `mergeTrees` (`lib/gameTree.ts`) merges a repertoire, but a node records
  * the games through it instead of annotations.
  *

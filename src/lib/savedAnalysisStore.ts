@@ -37,8 +37,8 @@ import { ANALYSES_STORE, ANALYSIS_CHANNEL, openAnalysisDb } from "./savedAnalysi
  * hand-off saves a collection's picked games as analyses, and a collection is
  * sized for 5,000–10,000 games — so two whole collections fit. Measured at
  * that size (CTA-77, `src/test/fixtures/pgn/Carlsen.pgn`'s games, under the
- * tests' fake-indexeddb and jsdom): 7,818 records are ~8 MB, written in one
- * batch in ~80 ms and read back in ~60 ms; 20,000 are ~20 MB, ~0.6 s and
+ * tests' fake-indexeddb and jsdom): 5,722 records are ~6 MB, written in one
+ * batch in ~60 ms and read back in ~40 ms; 20,000 are ~20 MB, ~0.6 s and
  * ~0.1 s; and the Saved analyses screen's first page takes ~0.9 s either
  * way, because it parses only the page on screen. `saveAnalysis` still drops
  * the oldest past it; `addAnalyses` refuses rather than drop anything.

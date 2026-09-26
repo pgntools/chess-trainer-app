@@ -18,7 +18,7 @@ import { slugify } from "./pgnText";
  * A game is **addressed by its place in the collection** — its 1-based
  * number, the table's `#` column and the last segment of its route. Nothing in
  * a PGN is an id (two games of one round can share every tag), and a number is
- * what a reader says ("game 12 of the Morphy collection").
+ * what a reader says ("game 12 of the Tal collection").
  *
  * **A row is read without `chess.js`** ({@link collectionRowOf}): the game's
  * tags, read with the same tag reader `parsePgnTree` uses, and its length,
@@ -34,7 +34,7 @@ type CollectionSource = "shipped" | "uploaded";
 
 /**
  * **The most text one collection may be** — 100,000,000 characters, about
- * 100,000 games of the World Cup file's ~950 characters each. An upload is kept
+ * 100,000 games of ~1,000 characters each (the shipped files average ~620). An upload is kept
  * in IndexedDB (`lib/libraryCollectionStore.ts`), whose quota is a share of
  * the disk rather than `localStorage`'s few megabytes, so this is a guard on
  * the tab's memory (a text is held twice while it is read), not on storage.
@@ -369,6 +369,12 @@ const searchTextOf = (row: CollectionRow): string =>
     .toLowerCase();
 
 /**
+ * An ECO code at the start of an opening label — `B90`, or a ChessBase-style
+ * sub-code with one letter after it, `C44r` (the shipped collections carry them).
+ */
+const ECO_CODE = /^[A-E]\d\d[a-z]?\b/;
+
+/**
  * What the opening filter shows and matches: the ECO code, then the name —
  * `B90 Sicilian Defense: Najdorf Variation`. Either alone when the game has
  * only one; `undefined` with neither.
@@ -412,7 +418,7 @@ export const activeFilterSummary = (filter: RowFilter, labels: BatchNameLabels):
     parts.push(labels[filter.color]);
   }
   const opening = filter.opening?.trim() ?? "";
-  if (opening !== "") parts.push(/^[A-E]\d\d\b/.exec(opening)?.[0] ?? opening);
+  if (opening !== "") parts.push(ECO_CODE.exec(opening)?.[0] ?? opening);
   if ((filter.event ?? "") !== "") parts.push(filter.event as string);
   const from = filter.from ?? "";
   const to = filter.to ?? "";
@@ -427,7 +433,7 @@ export const activeFilterSummary = (filter: RowFilter, labels: BatchNameLabels):
 /**
  * **The name of the analyses folder a batch of picked games goes into**
  * (CTA-77, the table's Analyse): the collection's name, how many games, and —
- * only when some are on — the filters, `World Cup 2023 — 12 games (Carlsen,
+ * only when some are on — the filters, `Tal — 12 games (Petrosian,
  * White, B90, 1.e4 c5)`. Kept within `max` characters (the folder name's
  * limit): the filter summary is cut first, with an ellipsis, and dropped
  * when too little of it would be left to read; only a collection name too
@@ -525,11 +531,12 @@ export const filteredRows = (
 /**
  * What a collection's rows offer the side panel's filters — **a filter is
  * shown only where some game carries its field**, since a collection is
- * whatever its PGN says (Morphy's file has no rounds, an upload may have no
- * dates). The lists are distinct and complete — a 7,818-game collection
- * offers its 3,040 openings, every one; `openings` are {@link openingLabelOf}
- * labels in ECO order (A00 to E99, then any without a code), the rest sorted
- * numeric-aware. `dates` is the earliest and latest day any game could be.
+ * whatever its PGN says (a file may have no rounds, an upload may have no
+ * dates). The lists are distinct and complete — the 5,722-game fixture
+ * offers its 1,704 openings, every one; `openings` are {@link openingLabelOf}
+ * labels in ECO order (A00 to E99, a sub-code's `C44r` beside its `C44`,
+ * then any without a code), the rest sorted numeric-aware. `dates` is the
+ * earliest and latest day any game could be.
  */
 export type CollectionFacets = {
   players: string[];
@@ -574,7 +581,7 @@ export const collectionFacetsOf = (rows: readonly CollectionRow[]): CollectionFa
     }
   }
   const sorted = (values: Set<string>) => [...values].sort(collator.compare);
-  const hasEco = (label: string) => /^[A-E]\d\d\b/.test(label);
+  const hasEco = (label: string) => ECO_CODE.test(label);
   return {
     players: sorted(players),
     openings: [...openings].sort(
@@ -644,7 +651,7 @@ export const sharedEventOf = (rows: readonly Pick<CollectionRow, "event">[]): st
 
 /**
  * A shipped file's name out of its stem — the one naming rule that makes
- * dropping a file in enough: `WorldCup2023` → `World Cup 2023`,
+ * dropping a file in enough: `TataSteel2025` → `Tata Steel 2025`,
  * `candidates_2024` → `Candidates 2024`. Word breaks at a lower-to-upper
  * case change, at a letter-digit boundary and at `_` / `-`.
  */
@@ -659,7 +666,7 @@ export const collectionNameOfStem = (stem: string): string => {
   return words === "" ? stem : words.charAt(0).toUpperCase() + words.slice(1);
 };
 
-/** A shipped file's route segment: its stem, slugified (`WorldCup2023` → `worldcup2023`). */
+/** A shipped file's route segment: its stem, slugified (`TataSteel2025` → `tatasteel2025`). */
 export const collectionIdOfStem = (stem: string): string => slugify(stem) || "collection";
 
 /** Why a text was not taken as a collection. */

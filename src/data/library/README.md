@@ -60,11 +60,17 @@ from.
 
 | File | Games | What it is |
 | --- | --- | --- |
-| `WorldCup2023.pgn` | 674 | FIDE World Cup 2023, Baku |
-| `Bucharest2023.pgn` | 45 | Superbet Classic 2023, Bucharest |
-| `Morphy.pgn` | 211 | Paul Morphy's games |
+| `Alekhine.pgn` | 2,005 | Alexander Alekhine's games |
+| `Capablanca.pgn` | 1,035 | José Raúl Capablanca's games |
+| `Fischer.pgn` | 1,063 | Bobby Fischer's games |
+| `Petrosian.pgn` | 2,017 | Tigran Petrosian's games |
+| `Tal.pgn` | 2,636 | Mikhail Tal's games |
 
-`src/lib/shippedCollections.test.ts` asserts the three names and counts;
+8,756 games in all, free to use (CTA-104 replaced the collections shipped
+before, which were not). Their `ECO` tags carry ChessBase-style sub-codes
+(`C44r`) and no `Opening` tag, so every opening is filled in from the book.
+
+`src/lib/shippedCollections.test.ts` asserts the five names and counts;
 wiring another means adding a row there too.
 
 ## How big
