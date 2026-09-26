@@ -426,8 +426,8 @@ export const savedAnalysisCatalogOf = (
  * with `parsePgnTree` when it came in — its index marks the ones that would
  * not, and the caller leaves those out — and a stored PGN keeps its side
  * lines and comments by being the text it is; re-writing it through a tree
- * would cost ~10 ms a game on the main thread, over a minute for a
- * 7,818-game pick. It is parsed when the analysis is opened, as any is.
+ * would cost ~10 ms a game on the main thread, about a minute for a
+ * 5,722-game pick. It is parsed when the analysis is opened, as any is.
  */
 export const batchAnalysesOf = (
   newId: () => string,

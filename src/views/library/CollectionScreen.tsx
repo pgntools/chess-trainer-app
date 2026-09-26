@@ -137,7 +137,7 @@ import { loadCollectionGames, useCollectionRows } from "./useLibraryCollections"
  * `?player=`, `?color=`, `?opening=`, `?event=`, `?from=`, `?to=`,
  * `?result=`, `?line=`, `?page=`, `?rows=`, written with history replace), so going back
  * from a game finds the table as it was left, and a filtered table is a link.
- * Pages rather than one long table: the World Cup file is 674 rows.
+ * Pages rather than one long table: the Tal file is 2,636 rows.
  */
 
 const ROWS_PER_PAGE = [50, 100, 250] as const;

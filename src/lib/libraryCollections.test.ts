@@ -209,12 +209,12 @@ describe("the side panel's filters", () => {
     expect(dateBounds("????")).toBeUndefined();
   });
 
-  it("lists every opening of a real 7,818-game collection, ECO first, in ECO order", () => {
+  it("lists every opening of a real 5,722-game collection, ECO first, in ECO order", () => {
     const reading = readCollectionText(
       readFileSync(join(process.cwd(), "src/test/fixtures/pgn/Carlsen.pgn"), "utf8"),
     );
     if (!reading.ok) throw new Error("the fixture did not read");
-    expect(reading.games).toHaveLength(7818);
+    expect(reading.games).toHaveLength(5722);
     const carlsen = collectionRowsOf({ games: reading.games });
     const { openings, players, events } = collectionFacetsOf(carlsen);
 
@@ -228,8 +228,8 @@ describe("the side panel's filters", () => {
     expect(ecos[0]).toMatch(/^A0/);
     expect(ecos[ecos.length - 1]).toMatch(/^E9/);
     expect(ecos).toEqual([...ecos].sort());
-    expect(players).toContain("Carlsen,Magnus");
-    expect(events.length).toBeGreaterThan(600);
+    expect(players).toContain("Carlsen, Magnus");
+    expect(events.length).toBeGreaterThan(400);
   });
 
   it("offers only what the games carry", () => {
@@ -240,6 +240,14 @@ describe("the side panel's filters", () => {
       results: ["1-0", "0-1", "1/2-1/2"],
       dates: { min: "1848-01-01", max: "2023-07-30" },
     });
+    // A ChessBase-style sub-code (`C44r`) is an ECO code: in ECO order, before any label without one.
+    const subCoded = collectionFacetsOf([
+      { number: 1, result: "*", moves: 1, opening: "Queen's Pawn" },
+      { number: 2, result: "*", moves: 1, eco: "C44r", opening: "Scotch Game" },
+      { number: 3, result: "*", moves: 1, eco: "C44", opening: "King's Pawn Game" },
+      { number: 4, result: "*", moves: 1, eco: "B13e", opening: "Caro-Kann" },
+    ]);
+    expect(subCoded.openings).toEqual(["B13e Caro-Kann", "C44 King's Pawn Game", "C44r Scotch Game", "Queen's Pawn"]);
     const bare = collectionRowsOf({ games: ["1. e4 *"] });
     expect(collectionFacetsOf(bare)).toEqual({ players: [], openings: [], events: [], results: ["*"], dates: undefined });
   });
@@ -289,9 +297,9 @@ describe("a text's metadata at a glance (CTA-103)", () => {
 
 describe("naming a shipped file", () => {
   it.each([
-    ["WorldCup2023", "World Cup 2023", "worldcup2023"],
-    ["Bucharest2023", "Bucharest 2023", "bucharest2023"],
-    ["Morphy", "Morphy", "morphy"],
+    ["Candidates2024", "Candidates 2024", "candidates2024"],
+    ["TataSteel2025", "Tata Steel 2025", "tatasteel2025"],
+    ["Capablanca", "Capablanca", "capablanca"],
     ["candidates_2024", "Candidates 2024", "candidates-2024"],
   ])("%s is %s at /library/%s", (stem, name, id) => {
     expect(collectionNameOfStem(stem)).toBe(name);
@@ -365,6 +373,10 @@ describe("batchFolderNameOf — where the table's Analyse files a batch (CTA-77)
     ).toBe(
       'World Cup 2023 — 12 games (Carlsen, white, B90, FIDE World Cup 2023, 2023-08-01–…, 1-0, 1.e4 c5 2.Nf3, "najdorf")',
     );
+  });
+
+  it("names an opening by its ChessBase-style sub-code too", () => {
+    expect(activeFilterSummary({ ...none, opening: "C44r Scotch Game" }, labels)).toEqual(["C44r"]);
   });
 
   it("lists several players as one phrase — the names joined, then the side", () => {
