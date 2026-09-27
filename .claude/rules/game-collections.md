@@ -700,9 +700,18 @@ Board), `useVariationsExplorer` (editing on, *Play chances…* off), and
 
 - **Tabs**: Moves (the **next-move arrows switch** `library-game-arrows` at
   its top) · Map · Info (the tags, `GameInfo`) · Export · Engine.
-- **Header**: back (to `state.from`, else the table), players, "Game n of m"
-  and event/round/date/result, the current opening, previous / next, Save,
-  Play and the engine switch.
+- **Header**: back (to `state.from`, else the table), "Game n of m" and
+  event/round/date/result, the current opening, previous / next, Save, Play
+  and the engine switch. The players are not in it (CTA-105): they are
+  **plated beside the board**, at the left end of the captured-pieces strips
+  — each one's result of the game, a thin separator, their Elo and their
+  name (`1 | 2850 Carlsen, Magnus`; the half sign for a draw, nothing for
+  `*` or a missing tag), the top plate the player the orientation puts at
+  the top, so flipping swaps them. This is the one board that passes
+  `BoardShell`'s optional `playerPlates`; the chain ends in
+  `views/shared/PlayerPlate.tsx`, with `playerResultsOf` (in
+  `playerResults.ts`, beside it) mapping the `Result` tag. `gameTitleOf`
+  stays for the export's file stem and the shipped "Save as copy" name.
 - **Opens at** `?at=`, else its `StartPly` tag, else the start. `?at=` is
   written back on every step (history replace, keeping `location.state`).
 - **Nothing is written unless the reader asks.** Save lights up while

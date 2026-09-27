@@ -3,6 +3,7 @@ import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 import { defaultPieces, type PieceRenderObject } from "react-chessboard";
 import type { CapturedPieceLetter } from "../../lib/capturedPieces";
+import PlayerPlate, { type PlayerPlateData } from "./PlayerPlate";
 
 /**
  * One captured-pieces strip: the pieces one side has taken, strongest first,
@@ -27,6 +28,13 @@ import type { CapturedPieceLetter } from "../../lib/capturedPieces";
  * rook is drawn pixel-identically to how the board draws one. Whatever the
  * icons show, the material difference is the caller's to hide: it is derived
  * from the true types and would leak what a mask exists to hide.
+ *
+ * A strip can also carry a **player plate** at its left end (CTA-105) — the
+ * player whose colour it sits beside, their result, Elo and name — as the
+ * row the pieces then share. The plate truncates where the row runs short
+ * and the pieces keep the right edge, so the height arithmetic above is
+ * untouched: the row is still one strip tall. Every board but the Library's
+ * game board passes no plate and gets exactly the strip below as it was.
  */
 
 /** Height of one strip, and the gap between it and the board, in pixels. */
@@ -59,9 +67,15 @@ type CapturedPiecesProps = {
    * costumes on the masked screen, `defaultPieces` everywhere else.
    */
   pieces?: PieceRenderObject;
+  /**
+   * The player whose colour this strip sits beside (CTA-105) — their name,
+   * Elo rating and result of the game, plated at the row's left end. Absent,
+   * the strip renders alone, exactly as it always has.
+   */
+  plate?: PlayerPlateData;
 };
 
-function CapturedPieces({ testId, color, captured, diff, pieces }: CapturedPiecesProps) {
+function CapturedPieces({ testId, color, captured, diff, pieces, plate }: CapturedPiecesProps) {
   const { t } = useTranslation();
 
   // A capture is always of the opponent's man, so the icons are his colour.
@@ -71,7 +85,12 @@ function CapturedPieces({ testId, color, captured, diff, pieces }: CapturedPiece
     return render ? render({ svgStyle: { width: "100%", height: "100%" } }) : letter.toUpperCase();
   };
 
-  return (
+  /*
+    Sharing its row with a plate, the strip keeps the width its pieces need
+    (`flexShrink: 0`) and the plate is what yields (`minWidth: 0`); alone, it
+    is the whole row, as it always was.
+  */
+  const strip = (
     <Box
       data-testid={`${testId}-${color}`}
       role="img"
@@ -83,7 +102,8 @@ function CapturedPieces({ testId, color, captured, diff, pieces }: CapturedPiece
       data-diff={diff ?? undefined}
       sx={{
         height: `${CAPTURED_STRIP_HEIGHT_PX}px`,
-        width: "100%",
+        width: plate === undefined ? "100%" : "auto",
+        flexGrow: plate === undefined ? undefined : 1,
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
@@ -111,6 +131,32 @@ function CapturedPieces({ testId, color, captured, diff, pieces }: CapturedPiece
           {iconFor(letter)}
         </Box>
       ))}
+    </Box>
+  );
+
+  if (plate === undefined) return strip;
+  return (
+    <Box
+      sx={{
+        height: `${CAPTURED_STRIP_HEIGHT_PX}px`,
+        width: "100%",
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        overflow: "hidden",
+        /*
+          Reversed, the strip anchors at the row's right edge and the plate
+          takes what is left — so the pieces accumulate from the row's right
+          edge whatever the widths, and when the icons alone overflow the row
+          it is they that clip from the left, exactly as a plate-less strip
+          clips its own overflow. The board area is `ForceLTR`, so this row
+          runs the one way in every language.
+        */
+        flexDirection: "row-reverse",
+      }}
+    >
+      {strip}
+      <PlayerPlate testId={`${testId}-${color}-plate`} color={color} {...plate} />
     </Box>
   );
 }

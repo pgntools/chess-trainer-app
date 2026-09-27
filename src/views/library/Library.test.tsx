@@ -649,7 +649,10 @@ describe("a collection's table", () => {
     await mountTable(`/library/${mine.id}`);
     fireEvent.click(screen.getByTestId("library-table-row-2"));
     expect(where()).toBe(`/library/${mine.id}/2`);
-    expect(await screen.findByTestId("library-game-title")).toHaveTextContent("Amy – Bob");
+    // The players are plated beside the board (CTA-105); the header's own
+    // line is the caption.
+    expect(await screen.findByTestId("library-game-caption")).toHaveTextContent("Game 2 of 3");
+    expect(screen.queryByTestId("library-game-title")).toBeNull();
   });
 
   it("marks a game its index could not read", async () => {
@@ -1523,6 +1526,56 @@ describe("a game on its analysis board", () => {
     expect(screen.getByTestId("library-game-play")).toBeInTheDocument();
     expect(screen.getByTestId("library-game-caption")).toHaveTextContent("Game 1 of 3");
     expect(screen.getByTestId("library-game-previous")).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("plates each player's result, Elo and name beside the strips", async () => {
+    const mine = await upload();
+    // Game 2: Amy (White, 1900) beat Bob (Black, no Elo tag).
+    await mountGame(`/library/${mine.id}/2`);
+    expect(screen.getByTestId("library-game-captured-white-plate-result")).toHaveTextContent("1");
+    expect(screen.getByTestId("library-game-captured-white-plate-elo")).toHaveTextContent("1900");
+    expect(screen.getByTestId("library-game-captured-white-plate-name")).toHaveTextContent("Amy");
+    expect(screen.getByTestId("library-game-captured-black-plate-result")).toHaveTextContent("0");
+    expect(screen.queryByTestId("library-game-captured-black-plate-elo")).toBeNull();
+    expect(screen.getByTestId("library-game-captured-black-plate-name")).toHaveTextContent("Bob");
+  });
+
+  it("plates the half sign on both sides of a draw, and nothing at all for *", async () => {
+    const mine = await upload();
+    // Game 3: Bob and Zed drew; neither carries an Elo tag.
+    await mountGame(`/library/${mine.id}/3`);
+    for (const side of ["white", "black"] as const) {
+      expect(screen.getByTestId(`library-game-captured-${side}-plate-result`)).toHaveTextContent("½");
+      expect(screen.queryByTestId(`library-game-captured-${side}-plate-elo`)).toBeNull();
+    }
+    const open = await keep(
+      "Open",
+      ['[Event "Open"]\n[White "Kim"]\n[Black "Lee"]\n[Result "*"]\n\n1. e4 e5 *'],
+    );
+    // The file's own second-mount pattern: unmount the first screen first, so
+    // one board is live, not two slowing the mount of this one.
+    cleanupAndMount(`/library/${open.id}/1`);
+    await screen.findByTestId("library-game-board");
+    for (const side of ["white", "black"] as const) {
+      expect(screen.queryByTestId(`library-game-captured-${side}-plate-result`)).toBeNull();
+      expect(screen.queryByTestId(`library-game-captured-${side}-plate-separator`)).toBeNull();
+    }
+    expect(screen.getByTestId("library-game-captured-white-plate-name")).toHaveTextContent("Kim");
+  });
+
+  it("puts the top plate on the player the orientation puts at the top, and swaps on flip", async () => {
+    const mine = await upload();
+    await mountGame(`/library/${mine.id}/2`);
+    const blackPlateAbove = () => {
+      const black = screen.getByTestId("library-game-captured-black-plate");
+      const white = screen.getByTestId("library-game-captured-white-plate");
+      return (black.compareDocumentPosition(white) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    };
+    // Facing White, the top strip is Black's, so Black's plate is the upper.
+    expect(blackPlateAbove()).toBe(true);
+    fireEvent.click(screen.getByTestId("board-control-flip"));
+    expect(boardOptions().boardOrientation).toBe("black");
+    expect(blackPlateAbove()).toBe(false);
   });
 
   it("updates an uploaded game in place", async () => {

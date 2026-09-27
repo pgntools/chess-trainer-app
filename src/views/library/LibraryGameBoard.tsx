@@ -37,6 +37,8 @@ import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import RepertoireChangesBar from "../repertoires/RepertoireChangesBar";
 import CurrentOpening from "../shared/CurrentOpening";
 import GameInfo from "../shared/GameInfo";
+import type { PlayerPlates } from "../shared/PlayerPlate";
+import { playerResultsOf } from "../shared/playerResults";
 import AnalysisExport from "../tools/analysis/AnalysisExport";
 import AnalysisSettingsPanel from "../tools/analysis/AnalysisSettings";
 import EngineThinking from "../tools/analysis/EngineThinking";
@@ -58,6 +60,14 @@ import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
  * The Export tab also hands the game to the **Analysis Board**
  * (`?game=library/<collection>/<n>`, CTA-77) at the position on screen
  * (`?at=`) — the game as the collection holds it, not this session's changes.
+ *
+ * The players are **plated beside the board** (CTA-105), at the left end of
+ * the captured-pieces strips: each one's result of the game, a thin
+ * separator, their Elo and their name (`1 | 2850 Carlsen, Magnus`), the top
+ * plate the player the orientation puts at the top. The panel's header names
+ * the game no more — its first line is the "Game n of m" caption — and
+ * `gameTitleOf` stays for the export's file stem and the shipped "Save as
+ * copy" name.
  *
  * **Nothing is written unless the reader asks**, and what may be written
  * depends on where the collection came from — the changes strip, opened by
@@ -115,6 +125,13 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
   );
   const title = gameTitleOf(row);
   const caption = [row.event, row.round, row.date, row.result].filter(Boolean).join(" · ");
+  // The players, plated beside the board (CTA-105) — everything of it is on
+  // the memoized row already.
+  const results = playerResultsOf(row.result);
+  const playerPlates: PlayerPlates = {
+    white: { name: row.white ?? "?", elo: row.whiteElo, result: results.white },
+    black: { name: row.black ?? "?", elo: row.blackElo, result: results.black },
+  };
 
   const explorer = useVariationsExplorer({
     testId: "library-game",
@@ -212,6 +229,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
       score={topLine?.score ?? null}
       showEvalBar={session.engineOn && session.showEvalBar}
       boardOptions={boardOptions}
+      playerPlates={playerPlates}
       overlay={explorer.overlay}
       panel={{
         header: (
@@ -228,16 +246,9 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
                 <ArrowBackRoundedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
+            {/* The players live on the board's plates (CTA-105); the header's
+                own line is the caption. */}
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-              <Typography
-                variant="subtitle2"
-                data-testid="library-game-title"
-                dir="auto"
-                sx={{ fontWeight: 700, lineHeight: 1.3 }}
-                noWrap
-              >
-                {title}
-              </Typography>
               <Typography
                 variant="caption"
                 data-testid="library-game-caption"

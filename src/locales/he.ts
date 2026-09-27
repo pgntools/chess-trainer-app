@@ -72,6 +72,10 @@ const he: typeof en = {
     evalBar: "הערכה",
     capturedByWhite: "נלקח על ידי הלבן",
     capturedByBlack: "נלקח על ידי השחור",
+    playerWhite: "השחקן הלבן",
+    playerBlack: "השחקן השחור",
+    playerRating: "דירוג {{elo}}",
+    playerResult: "תוצאה {{result}}",
   },
   variations: {
     title: "וריאציות",

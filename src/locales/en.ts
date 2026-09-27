@@ -98,6 +98,14 @@ const en = {
     evalBar: "Evaluation",
     capturedByWhite: "Captured by White",
     capturedByBlack: "Captured by Black",
+    /**
+     * The player plates at the strips' left end (CTA-105) — the parts of one
+     * plate's spoken label, each present only when the plate shows it.
+     */
+    playerWhite: "White player",
+    playerBlack: "Black player",
+    playerRating: "rating {{elo}}",
+    playerResult: "result {{result}}",
   },
   /** The engine's lines — `views/shared/BestVariations.tsx`, on three screens. */
   variations: {
