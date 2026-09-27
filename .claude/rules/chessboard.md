@@ -281,7 +281,12 @@ what shares it.
   shrinks. A strip with nothing in it still renders, so the board does not
   resize on the first capture. The constants and the strip are in
   [`views/shared/CapturedPieces.tsx`](../../src/views/shared/CapturedPieces.tsx).
-  The position editor and the preview boards carry none.
+  The position editor and the preview boards carry none. A strip's left end
+  can carry a **player plate** (CTA-105) — the player's result, Elo and name
+  — as an optional prop down `BoardShell` → `EngineBoardSquare` → the strips,
+  which only the Library's game board passes; the plate truncates where the
+  row runs short, the pieces keep the right edge, and the height arithmetic
+  above is untouched.
 - **A screen that scrolls inside the square divides it itself**: a flex column,
   a `flexShrink: 0` top bar over a `flex: 1; minHeight: 0; overflowY: auto`
   region. **A grid of cards inside it needs `gridAutoRows: "max-content"`** —
