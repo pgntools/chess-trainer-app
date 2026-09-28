@@ -5,30 +5,31 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { SECTIONS } from "../components/sections";
 import DesignGallery from "./DesignGallery";
+import { discoverGallery, discoverPatterns } from "./discover";
+import type { GalleryTier } from "./types";
 
 /** Where the router is — the gallery's links and redirects are asserted by it. */
 function Where() {
   return <span data-testid="where">{useLocation().pathname}</span>;
 }
 
-/** The gallery on its route, the way `views/dev/design/Main.tsx` mounts it. */
-function GalleryRoute(props: { initialThemeId?: string; initialMode?: "light" | "dark" }) {
+type Props = { initialThemeId?: string; initialMode?: "light" | "dark"; tiers?: GalleryTier[] };
+
+/** The gallery on its splat route, the way `views/dev/design/Main.tsx` mounts it. */
+function GalleryRoute(props: Props) {
   return (
     <Routes>
-      <Route
-        path="/dev/design/:section?"
-        element={<SectionPage {...props} />}
-      />
+      <Route path="/dev/design/*" element={<Page {...props} />} />
     </Routes>
   );
 }
 
-function SectionPage(props: { initialThemeId?: string; initialMode?: "light" | "dark" }) {
-  const section = useLocation().pathname.split("/")[3];
-  return <DesignGallery section={section} sectionPath={(id) => `/dev/design/${id}`} {...props} />;
+function Page(props: Props) {
+  const page = useLocation().pathname.slice("/dev/design/".length);
+  return <DesignGallery section={page === "" ? undefined : page} sectionPath={(key) => `/dev/design/${key}`} {...props} />;
 }
 
-const renderGallery = (entry = "/dev/design", props = {}) =>
+const renderGallery = (entry = "/dev/design", props: Props = {}) =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={[entry]}>
@@ -41,52 +42,120 @@ const renderGallery = (entry = "/dev/design", props = {}) =>
 const where = () => screen.getByTestId("where").textContent;
 const preview = () => screen.getByTestId("design-gallery-preview");
 
+const base = discoverGallery();
+const patterns = discoverPatterns();
+const firstOf = (sectionId: string) => base.find((section) => section.id === sectionId)?.modules[0].id;
+
+/** A made-up outside tier, as the dev route hands in Blocks. */
+const BLOCKS: GalleryTier = {
+  id: "blocks",
+  title: "Blocks",
+  sections: [
+    {
+      id: "trees",
+      title: "Trees",
+      modules: [{ id: "Probe", section: "trees", title: "Probe block", demos: [{ name: "Only", render: () => <p>probe</p> }] }],
+    },
+  ],
+};
+
 describe("the design gallery", () => {
-  it("lands /dev/design on the first section's page", () => {
+  it("lands /dev/design on the first component of the first section", () => {
     renderGallery("/dev/design");
-    expect(where()).toBe(`/dev/design/${SECTIONS[0].id}`);
+    expect(where()).toBe(`/dev/design/${SECTIONS[0].id}/${firstOf(SECTIONS[0].id)}`);
     expect(preview()).toHaveAttribute("data-section", SECTIONS[0].id);
   });
 
-  it("lands an unknown section on the first", () => {
-    renderGallery("/dev/design/no-such-section");
-    expect(where()).toBe(`/dev/design/${SECTIONS[0].id}`);
+  it("lands an unknown page on the first", () => {
+    renderGallery("/dev/design/no-such-section/Nope");
+    expect(where()).toBe(`/dev/design/${SECTIONS[0].id}/${firstOf(SECTIONS[0].id)}`);
   });
 
-  it.each(SECTIONS.map((section) => [section.id, section.title]))(
-    "gives %s a page of its own, showing that section alone",
-    (id, title) => {
-      renderGallery(`/dev/design/${id}`);
-      expect(preview()).toHaveAttribute("data-section", id);
-      expect(within(preview()).getAllByTestId(`design-gallery-demo-${id}`).length).toBeGreaterThan(0);
-      for (const other of SECTIONS.filter((section) => section.id !== id)) {
-        expect(within(preview()).queryByTestId(`design-gallery-demo-${other.id}`)).toBeNull();
-      }
-      expect(screen.getByTestId("design-gallery-title")).toHaveTextContent(title);
-    },
-  );
+  it.each(SECTIONS.map((section) => section.id))("keeps the CTA-107 link /dev/design/%s working — its first component", (id) => {
+    renderGallery(`/dev/design/${id}`);
+    expect(where()).toBe(`/dev/design/${id}/${firstOf(id)}`);
+    expect(preview()).toHaveAttribute("data-section", id);
+  });
 
-  it("links every section's page from a menu down the left, the one on screen current", () => {
-    renderGallery("/dev/design/tables");
-    const nav = screen.getByRole("navigation", { name: "Sections" });
-    const links = within(nav).getAllByRole("link");
-    expect(links.map((link) => link.getAttribute("href"))).toEqual(
-      SECTIONS.map((section) => `/dev/design/${section.id}`),
+  it("gives every component a page of its own, showing that component alone", () => {
+    const tables = base.find((section) => section.id === "tables");
+    const frame = tables?.modules.find((entry) => entry.id === "TableFrame");
+    renderGallery("/dev/design/tables/TableFrame");
+    expect(preview()).toHaveAttribute("data-component", "TableFrame");
+    expect(screen.getByTestId("design-gallery-title")).toHaveTextContent("TableFrame");
+    expect(screen.getByTestId("design-gallery-tier")).toHaveTextContent("Base · Tables");
+    expect(within(preview()).getAllByTestId("design-gallery-demo-tables")).toHaveLength(frame?.demos.length ?? -1);
+  });
+
+  it("shows a pattern's page under the Patterns tier", () => {
+    renderGallery("/dev/design/patterns/tables/DataTable");
+    expect(preview()).toHaveAttribute("data-tier", "patterns");
+    expect(preview()).toHaveAttribute("data-section", "patterns/tables");
+    expect(screen.getByTestId("design-gallery-tier")).toHaveTextContent("Patterns · Tables");
+    expect(within(preview()).getAllByTestId("design-gallery-demo-patterns-tables").length).toBeGreaterThan(0);
+  });
+
+  it("shows the tiers handed in after its own, and hides a tier with nothing in it", () => {
+    renderGallery("/dev/design/blocks/trees/Probe", { tiers: [BLOCKS, { id: "empty", title: "Empty", sections: [] }] });
+    expect(preview()).toHaveAttribute("data-tier", "blocks");
+    expect(within(preview()).getByText("probe")).toBeInTheDocument();
+    const tiers = [...screen.getByTestId("design-gallery-nav").children].map(
+      (item) => item.querySelector("[data-testid^='design-gallery-nav-']")?.getAttribute("data-testid"),
     );
-    expect(screen.getByTestId("design-gallery-nav-tables")).toHaveAttribute("aria-current", "page");
-    expect(screen.getByTestId("design-gallery-nav-dialogs")).not.toHaveAttribute("aria-current");
+    expect(tiers).toEqual(["design-gallery-nav-base", "design-gallery-nav-patterns", "design-gallery-nav-blocks"]);
+    expect(screen.queryByTestId("design-gallery-nav-empty")).toBeNull();
   });
 
-  it("goes to a section's page from the menu, keeping the switches as they were", () => {
-    renderGallery("/dev/design/dialogs");
-    fireEvent.click(screen.getByTestId("design-gallery-mode-dark"));
-    fireEvent.click(screen.getByTestId("design-gallery-direction-rtl"));
+  describe("the menu — a collapsible tree", () => {
+    it("opens the chain to the page on screen, and only that chain", () => {
+      renderGallery("/dev/design/patterns/tables/DataTable");
+      expect(screen.getByTestId("design-gallery-nav-patterns")).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByTestId("design-gallery-nav-patterns-tables")).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByTestId("design-gallery-nav-patterns-tables-DataTable")).toHaveAttribute("aria-current", "page");
+      expect(screen.getByTestId("design-gallery-nav-base")).toHaveAttribute("aria-expanded", "false");
+      expect(screen.queryByTestId("design-gallery-nav-tables")).toBeNull();
+    });
 
-    fireEvent.click(screen.getByTestId("design-gallery-nav-forms"));
-    expect(where()).toBe("/dev/design/forms");
-    expect(preview()).toHaveAttribute("data-section", "forms");
-    expect(preview()).toHaveAttribute("data-mode", "dark");
-    expect(preview()).toHaveAttribute("dir", "rtl");
+    it("lists a tier's sections with their component counts, and a section's components as links", () => {
+      renderGallery("/dev/design/tables/TableFrame");
+      const tables = base.find((section) => section.id === "tables");
+      expect(screen.getByTestId("design-gallery-nav-tables")).toHaveTextContent(`Tables${tables?.modules.length}`);
+      const links = within(screen.getByTestId("design-gallery-nav-tables-group")).getAllByRole("link");
+      expect(links.map((link) => link.getAttribute("href"))).toEqual(tables?.modules.map((entry) => `/dev/design/tables/${entry.id}`));
+    });
+
+    it("opens and closes a folder in place, leaving the page as it was", () => {
+      renderGallery("/dev/design/tables/TableFrame");
+      fireEvent.click(screen.getByTestId("design-gallery-nav-patterns"));
+      expect(screen.getByTestId("design-gallery-nav-patterns")).toHaveAttribute("aria-expanded", "true");
+      fireEvent.click(screen.getByTestId("design-gallery-nav-patterns-trees"));
+      expect(screen.getByTestId("design-gallery-nav-patterns-trees-TreeView")).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("design-gallery-nav-tables"));
+      expect(screen.getByTestId("design-gallery-nav-tables")).toHaveAttribute("aria-expanded", "false");
+      expect(where()).toBe("/dev/design/tables/TableFrame");
+    });
+
+    it("goes to a component's page from the menu, keeping what is open and the switches as they were", () => {
+      renderGallery("/dev/design/dialogs/ConfirmDialog");
+      fireEvent.click(screen.getByTestId("design-gallery-mode-dark"));
+      fireEvent.click(screen.getByTestId("design-gallery-direction-rtl"));
+      fireEvent.click(screen.getByTestId("design-gallery-nav-patterns"));
+      fireEvent.click(screen.getByTestId("design-gallery-nav-patterns-trees"));
+
+      fireEvent.click(screen.getByTestId("design-gallery-nav-patterns-trees-TreeView"));
+      expect(where()).toBe("/dev/design/patterns/trees/TreeView");
+      expect(preview()).toHaveAttribute("data-component", "TreeView");
+      expect(preview()).toHaveAttribute("data-mode", "dark");
+      expect(preview()).toHaveAttribute("dir", "rtl");
+      expect(screen.getByTestId("design-gallery-nav-dialogs")).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("counts every pattern section's components", () => {
+      renderGallery("/dev/design/patterns/tables/DataTable");
+      for (const section of patterns) {
+        expect(screen.getByTestId(`design-gallery-nav-patterns-${section.id}`)).toHaveTextContent(String(section.modules.length));
+      }
+    });
   });
 
   it("opens on the default theme, light, left to right", () => {
