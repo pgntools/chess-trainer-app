@@ -5,31 +5,38 @@ import { MemoryRouter } from "react-router";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { themes } from "../themes";
 import DesignGallery from "./DesignGallery";
-import { discoverGallery } from "./discover";
+import { discoverTiers, pageKeyOf } from "./discover";
 
 /*
-  Every section's page under every registered theme, both schemes and both
-  directions (CTA-108, acceptance 3): each renders every one of its demos,
-  and nothing on the way — React, MUI, a prop type — complains. What it looks
-  like is the gallery's to show in a browser; this is that nothing breaks.
+  Every component's page — the Base and Patterns tiers (CTA-108, CTA-110) —
+  under every registered theme, both schemes and both directions: each
+  renders every one of its demos, and nothing on the way — React, MUI, a prop
+  type — complains. What it looks like is the gallery's to show in a browser;
+  this is that nothing breaks. The Blocks tier's pages are
+  `views/dev/design/Main.test.tsx`'s, since the design system cannot import
+  a block.
 
-  Each section is rendered once per theme, the scheme and direction turning
+  Each page is rendered once per theme, the scheme and direction turning
   as the themes go — light LTR, dark RTL, light RTL, dark LTR — so every theme,
   every scheme, every direction and every scheme × direction pair is met on
   every page, at a quarter of the full matrix's cost.
 */
 
-const sections = discoverGallery();
+const pages = discoverTiers().flatMap((tier) =>
+  tier.sections.flatMap((section) =>
+    section.modules.map((entry) => ({ key: `${pageKeyOf(tier.id, section.id)}/${entry.id}`, demos: entry.demos.length })),
+  ),
+);
 const SCHEMES = [
   ["light", "ltr"],
   ["dark", "rtl"],
   ["light", "rtl"],
   ["dark", "ltr"],
 ] as const;
-const combos = sections.flatMap((section) =>
+const combos = pages.flatMap((page) =>
   themes.map((theme, index) => {
     const [mode, direction] = SCHEMES[index % SCHEMES.length];
-    return [section.id, theme.id, mode, direction] as const;
+    return [page.key, theme.id, mode, direction, page.demos] as const;
   }),
 );
 
@@ -50,13 +57,16 @@ describe("the gallery under every theme, scheme and direction", () => {
     expect(new Set(combos.map(([, , mode, direction]) => `${mode} ${direction}`)).size).toBe(Math.min(4, themes.length));
   });
 
-  it.each(combos)("%s under %s · %s · %s renders every demo, with no error", (sectionId, themeId, mode, direction) => {
-    const section = sections.find((candidate) => candidate.id === sectionId);
+  it("covers both of the design system's tiers, DataTable and TreeView among them", () => {
+    expect(pages.map((page) => page.key)).toEqual(expect.arrayContaining(["tables/TableFrame", "patterns/tables/DataTable", "patterns/trees/TreeView"]));
+  });
+
+  it.each(combos)("%s under %s · %s · %s renders every demo, with no error", (pageKey, themeId, mode, direction, demos) => {
     render(
       <AppThemeWithLang>
         <MemoryRouter>
           <DesignGallery
-            section={sectionId}
+            section={pageKey}
             sectionPath={(id) => `/dev/design/${id}`}
             initialThemeId={themeId}
             initialMode={mode}
@@ -69,8 +79,8 @@ describe("the gallery under every theme, scheme and direction", () => {
     expect(preview).toHaveAttribute("data-theme", themeId);
     expect(preview).toHaveAttribute("data-mode", mode);
     expect(preview).toHaveAttribute("dir", direction);
-    const demos = section?.modules.reduce((sum, module) => sum + module.demos.length, 0);
-    expect(within(preview).getAllByTestId(`design-gallery-demo-${sectionId}`)).toHaveLength(demos ?? -1);
+    expect(preview).toHaveAttribute("data-page", pageKey);
+    expect(within(preview).getAllByTestId(/^design-gallery-demo-/)).toHaveLength(demos);
     expect(errors).toEqual([]);
   });
 });

@@ -1,0 +1,260 @@
+# The component hierarchy
+
+How the app's UI is built, and **where a new component goes** (CTA-110). Five
+layers, each built only from the ones below it, each with its own folder, its
+own import rules (enforced by `yarn lint`) and its place in the gallery.
+
+```
+                         knows the domain?   reads stores / routes?   folder
+ ┌───────────────────┐
+ │ 5  Screens        │   yes                 YES — the only layer     src/views/<module>/
+ └─────────┬─────────┘
+           │ compose
+ ┌─────────▼─────────┐
+ │ 4  Blocks         │   yes (lib types,     no — rows, state and     src/blocks/<family>/<Block>/
+ │                   │   pure helpers)       callbacks are props
+ └─────────┬─────────┘
+           │ compose
+ ┌─────────▼─────────┐
+ │ 3  Patterns       │   no                  no                       src/design-system/patterns/<section>/<Pattern>/
+ └─────────┬─────────┘
+           │ compose
+ ┌─────────▼─────────┐
+ │ 2  Base           │   no                  no                       src/design-system/components/<section>/<Component>/
+ │    components     │
+ └─────────┬─────────┘
+           │ wrap
+ ┌─────────▼─────────┐
+ │ 1  MUI atoms      │   —                   —                        @mui/material
+ └───────────────────┘
+```
+
+Under all of them sit the tokens and the theme (`src/design-system/themes/`,
+`src/design-system/theme/` — [README.md](./README.md#themes)): every colour,
+spacing and radius any layer draws.
+
+## The layers
+
+### 1. MUI atoms
+
+`Button`, `Slider`, `Table`, `Dialog`, `TextField`, `Tooltip` … imported one
+per file from `@mui/material/<Name>`. **Never composed by hand in a screen
+when a layer above covers it**: a screen does not write
+`Tooltip` + `span` + `IconButton` again, it uses `IconAction`.
+
+### 2. Base components — `src/design-system/components/<section>/`
+
+Small, generic, **one job**: they wrap one MUI job the app does over and
+over, and know no chess, no record, no store, no route. Twelve sections
+(CTA-108), each documented in [`sections/`](./sections/): `ConfirmDialog`,
+`SwitchField`, `SortHeaderCell`, `PickCell`, `TableFrame`, `IconAction`,
+`PanelTabs`, `EmptyState` …
+
+### 3. Patterns — `src/design-system/patterns/<section>/`
+
+Complex but still **generic**: several base components composed into a
+reusable whole. They know no chess, no record, no store and no route, so
+their demos run on made-up data.
+
+| Pattern | What it is | Reference |
+| --- | --- | --- |
+| `DataTable` | a multi-column table: columns as data, controlled sort and paging, picks with select-all, row actions, row click and link, loading / empty / no-match rows, filter and toolbar slots, density, a sticky header — good at 10,000 rows | [`sections/patterns/tables.md`](./sections/patterns/tables.md) |
+| `TreeView` | a collapsible tree: branches that open in place, leaves that link or select, the node on screen marked, a branch that can also be a destination — the sidebar's look | [`sections/patterns/trees.md`](./sections/patterns/trees.md) |
+
+To come, as the migrations need them: `FilterBar`, `UploadPanel`,
+`SettingsForm` …
+
+### 4. Blocks — `src/blocks/<family>/<Block>/`
+
+Complex and **domain-aware**: they know the app's data shapes — a
+`PlayedGame`, a collection's `CollectionRow`s, a `GameFolder`, a PGN — and may
+use `src/lib/`'s **types and pure helpers** (`openingLabelOf`,
+`gameFolderChildren`). Built from patterns and base components.
+
+**Blocks are presentational.** Their rows, their sort / page / filter state,
+the selection and every callback arrive as **props**; a block never reads a
+store, IndexedDB or the router. A link arrives as a `LinkTarget`
+(`design-system/components/link.ts`), a route change as a callback. That is
+what lets a block run in the gallery on fixtures — and be built and reviewed
+before any screen uses it.
+
+Grouped by **family** (`src/blocks/families.ts`: tables, trees, forms,
+dialogs, lists, cards, panels), so every table sits beside every other table
+in the gallery, whichever module it serves.
+
+| Block | Family | What it is |
+| --- | --- | --- |
+| `ExampleGamesTable` | tables | **The placeholder** that proves the layer's wiring: a collection's rows as a `DataTable`. Deleted when the first real table block lands. |
+| `FolderTree` | trees | The app's one nested-folder model (`GameFolder`, `lib/savedGameFolders.ts`) as a `TreeView`: each folder a destination with a count, its chevron its own button, an optional "everything" row. The second tree view the app has, after the sidebar's. |
+
+To come, with each module's migration: `PlayedGamesTable`,
+`CollectionGamesTable`, `CollectionsTreeTable`, `StorageTable`,
+`PgnImportForm` …
+
+A block's words: the placeholder and `FolderTree` take them as props (a
+`labels` object), so the gallery shows them on fixtures and no catalog key is
+added for a dev-only demo. A block that one screen alone uses may read the
+catalogs (`useTranslation`) instead — its words are the app's.
+
+### 5. Screens — `src/views/<module>/`
+
+Read stores and routes, hold state, compose blocks. **The only layer that
+knows where data comes from.** A screen's hook (`useLibraryCollections`,
+`useTableUrlState` in a screen) belongs here too.
+
+## Where does my component go?
+
+Ask in this order; the first yes decides.
+
+1. **Does it read a store, a route or global state?** → it is a **screen**
+   (or a screen's hook). Split its presentational part out as a block.
+2. **Does it need a domain type or a `src/lib/` helper** — a game, a
+   collection, a folder, a PGN, a result? → a **block**.
+3. **Does it compose several base components into a reusable whole**, with no
+   domain? → a **pattern**.
+4. **Does it wrap one MUI job**, with no domain? → a **base component**.
+
+And:
+
+- **Used by one screen only?** Still a block if it is complex. Blocks exist
+  so complex UI can be built and reviewed standalone, not only for reuse.
+- **A generic piece a block needs** (a tree, a table) is a pattern first, and
+  the block is that pattern over the app's data — `FolderTree` is `TreeView`
+  over `GameFolder`s. The design system's own gallery menu is a `TreeView`
+  too, which it could not be if the tree were a block.
+- **Unsure between pattern and block?** If its demo would need chess data to
+  make sense, it is a block.
+
+## The import rules
+
+Each tier imports only the tiers below it. `yarn lint` enforces them
+(`no-restricted-imports` in `eslint.config.js`, every message pointing
+here); `src/design-system/boundary.test.ts` and `src/blocks/boundary.test.ts`
+test each rule through the project's own config.
+
+| From | May import | Must not import |
+| --- | --- | --- |
+| `src/design-system/**` | MUI, React, its own modules | `src/views/`, `src/lib/`, `src/blocks/` |
+| `src/design-system/components/**` | the above | `src/design-system/patterns/` |
+| `src/design-system/patterns/**` | base components (their section `index.ts`) | — (the design system's rule) |
+| `src/blocks/**` | every design-system tier, `src/lib/`'s types and pure helpers, other blocks | `src/views/`, a store or database module (`src/lib/*Store.ts`, `*Db.ts`, `idb*.ts`), `react-router` |
+| `src/views/**` (screens) | every tier | — |
+
+The one exception inside the design system: `useTableUrlState`, a base
+component, reads the URL through `react-router`'s `useSearchParams` — a
+screen calls it and hands its answer to a table.
+
+**Import from an index.** A screen imports a base component from its
+section's `index.ts`, a pattern from its section's `index.ts`, a block from
+its family's `index.ts` — never a component's own file.
+
+## The folder layout
+
+```
+src/design-system/
+  components/
+    sections.ts                     SECTIONS — the base tier's registry, the gallery's order
+    <section>/index.ts              the section's public surface
+    <section>/<Component>/
+      <Component>.tsx               the component
+      <Component>.test.tsx          its tests
+      <Component>.gallery.tsx       its demos — one per variation
+      index.ts                      re-exported by the section's index
+  patterns/
+    sections.ts                     PATTERN_SECTIONS
+    <section>/index.ts
+    <section>/<Pattern>/            the same four files
+src/blocks/
+  families.ts                       BLOCK_FAMILIES
+  <family>/index.ts                 the family's public surface
+  <family>/<Block>/
+    <Block>.tsx  <Block>.test.tsx  <Block>.gallery.tsx  index.ts
+    fixtures.ts                     sample data typed with src/lib/'s types —
+                                    imported ONLY by the gallery and the test
+```
+
+A folder may hold more (a pure helper beside the component —
+`DataTable/columns.ts`, `FolderTree/folderTreeNodes.ts` — so the component
+file exports components only). The conventions tests check the layout and
+the house rules of every tier (`src/test/tierConventions.ts`, called by each
+tier's `conventions.test.ts`): the files, the index re-export, a `testId`, no
+colour literal, no physical side, and a block's fixtures imported only by its
+gallery and test.
+
+**Adding one:**
+
+| To add | Do |
+| --- | --- |
+| a base component | its folder in its section, a re-export from the section's `index.ts`, an entry in `sections/<section>.md` |
+| a pattern | its folder in its pattern section (a new section: a folder, its `index.ts`, an entry in `patterns/sections.ts`), a re-export, `sections/patterns/<section>.md` |
+| a block | its folder in its family (a new family: an entry in `blocks/families.ts`; the folder and its `index.ts` come with the first block), a re-export, `fixtures.ts`, and a line in the Blocks table above |
+
+## The component rules
+
+Every tier keeps [the base components' rules](./README.md#the-component-rules):
+text as props, a `testId` its parts' ids derive from, colours only from the
+theme, RTL-safe (logical properties, `dir="ltr"` on tokens, `dir="auto"` on a
+reader's words), variations as optional props each with its own demo, a
+`LinkTarget` for anything that goes somewhere. A block adds: **no store, no
+IndexedDB, no router**, and **fixtures typed with `src/lib/`'s own types**, so a
+change to a data shape breaks the fixtures at compile time.
+
+## Build standalone first
+
+A complex component is built **in the gallery, before a screen uses it**:
+
+1. **Build it with fixtures.** Write the block (or pattern) and its
+   `fixtures.ts`; its `*.gallery.tsx` shows it on them. It appears in
+   `/dev/design` with no registration.
+2. **Review every state** in the gallery, a demo each: loading, empty, no
+   match, one row, 10,000 rows, an unreadable row, long names, RTL (the
+   direction switch, with Hebrew names in a demo) — under **every theme**, light
+   and dark (the gallery's switches). The every-theme tests render every demo
+   under every theme, scheme and direction and fail on a console error.
+3. **Then wire the screen**: the screen reads the store and the route, holds
+   the state, and passes it all in.
+
+## The gallery — one catalogue of every tier
+
+`/dev/design` (dev-only, [README.md](./README.md#the-gallery)): the menu down
+the left is a **collapsible tree** — **tier → section → component** (Base,
+Patterns, Blocks) — and **every component is a page of its own**:
+
+| Tier | Page |
+| --- | --- |
+| Base | `/dev/design/<section>/<Component>` (`/dev/design/tables/TableFrame`) |
+| Patterns | `/dev/design/patterns/<section>/<Pattern>` (`/dev/design/patterns/tables/DataTable`) |
+| Blocks | `/dev/design/blocks/<family>/<Block>` (`/dev/design/blocks/trees/FolderTree`) |
+
+A section's own address (`/dev/design/tables`, CTA-107's pages) lands on its
+first component. The chain above the page on screen opens with it; the
+reader opens and closes the rest. The design system cannot import a block,
+so `DesignGallery` takes extra tiers as a prop: the dev route
+(`src/views/dev/design/Main.tsx`) finds `src/blocks/**/*.gallery.tsx` with
+`import.meta.glob` and hands them in as Blocks.
+
+## Naming
+
+- A component is named for **what it is**, in PascalCase, its folder and file
+  the same name: `DataTable/DataTable.tsx`.
+- A block is named for **its data and its kind**: `PlayedGamesTable`,
+  `CollectionGamesTable`, `FolderTree`, `PgnImportForm` — the family is the
+  kind (`…Table` in `tables/`, `…Tree` in `trees/`).
+- A pattern is named for its shape alone, with no domain word: `DataTable`,
+  `TreeView`, `FilterBar`.
+- Test ids: the component takes `testId` and derives its parts from it
+  (`${testId}-row-${id}`), so a screen's tests keep their ids when it
+  migrates.
+
+## Where `src/views/shared/` fits
+
+`src/views/shared/` predates the tiers. Its **chess-aware compositions** —
+`FolderTreeTable`, the saved-list pieces (`SavedList*`, `savedList.ts`), the
+folder dialogs (`folders/`) — are **blocks in all but name**, and move into
+`src/blocks/` as their modules migrate (CTA-109 and after). The **board
+pieces** — `EvalBar`, `CapturedPieces`, `PlayerPlate`, `PromotionPicker`,
+`EngineBoardSquare`, `MoveList`, `VariationLine` — stay where they are: they
+belong to the board core
+([`chessboard.md`](../../.claude/rules/chessboard.md) §9), not to the
+hierarchy. The sidebar's tree (`src/views/main/Sidebar.tsx`) is the app
+shell's; it can move onto `TreeView` when the shell migrates.

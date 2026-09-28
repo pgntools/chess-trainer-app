@@ -18,27 +18,43 @@ replace; moving the screens onto them is a follow-up per module.
 
 ## The layers
 
-The design system lives in **`src/design-system/`**, a folder with a lint
-boundary rather than a workspace package: `yarn lint` fails if a file in it
-imports from `src/views/` or `src/lib/` (`eslint.config.js`,
-`src/design-system/boundary.test.ts`). It knows no chess screen, no store and
-no route. Everything above it depends on it, never the reverse:
+**The reference is [`hierarchy.md`](./hierarchy.md)** (CTA-110): the five
+layers, what belongs in each, the rule for where a new component goes, the
+import rules, the folder layout and the build-standalone-first workflow.
+
+```
+screens           src/views/<module>/                read stores and routes, hold state, compose blocks
+  ▲
+blocks            src/blocks/<family>/<Block>/       complex, DOMAIN-aware, presentational: data and
+  ▲                                                  callbacks as props, built on fixtures in the gallery
+patterns          src/design-system/patterns/        complex, GENERIC compositions of base components
+  ▲                 <section>/index.ts               (DataTable, TreeView)
+base components   src/design-system/components/      one folder per MAIN section, small generic
+  ▲                 <section>/index.ts               components and their variations
+MUI atoms         @mui/material                      Button, Table, Dialog …
+```
+
+Under all of them, the design system's tokens and theme:
 
 ```
 tokens            src/design-system/themes/          a theme is data: palettes, typography, shape,
   │                                                  overrides and the chess tokens; the registry
   ▼
 theme             src/design-system/theme/           buildTheme(theme, mode, direction) → the MUI
-  │                                                  theme; useChessTokens / chessTokensOf; the RTL cache
-  ▼
-components        src/design-system/components/      one folder per MAIN section, generic MUI
-  │                 <section>/index.ts               compositions and their variations
-  ▼
-views/shared      src/views/shared/                  the chess-aware pieces (folders, saved lists,
-  │                                                  PGN input), later rebuilt on the parts above
-  ▼
-screens           src/views/<module>/                compose all of the above
+                                                     theme; useChessTokens / chessTokensOf; the RTL cache
 ```
+
+The design system (`src/design-system/`: tokens, theme, base components,
+patterns, the gallery) is a folder with a lint boundary rather than a
+workspace package: `yarn lint` fails if a file in it imports from
+`src/views/`, `src/lib/` or `src/blocks/`, if a base component imports a
+pattern, and if a block imports a screen, a store or database module or the
+router (`eslint.config.js`; `src/design-system/boundary.test.ts`,
+`src/blocks/boundary.test.ts`). It knows no chess screen, no store and no
+route. Everything above it depends on it, never the reverse.
+`src/views/shared/`'s chess-aware compositions are blocks in all but name
+and move into `src/blocks/` as their modules migrate
+([`hierarchy.md`](./hierarchy.md#where-srcviewsshared-fits)).
 
 `src/theme/` is the app's wiring of it: `AppThemeWithLang` builds the
 reader's theme (`buildTheme(…, "both", direction, locale)`) and owns the
@@ -93,33 +109,41 @@ inside the app's, as the gallery's preview does).
 | To add | Do |
 | --- | --- |
 | **A theme** | A file beside `themes/default.ts` exporting a `ThemeDefinition` (start from a copy of the default; every `chess` group is required), an entry in `themes` in `themes/registry.ts`, and its name `appearance.themes.<id>` in `en.ts` and `he.ts`. No component changes: Settings → Appearance and the gallery list the registry. Never rename an `id` — it is what the reader's choice is stored as. |
-| **A section** | A folder under `components/` with an `index.ts` (the section's public surface) and an entry in `SECTIONS` (`components/sections.ts`), which orders the gallery. |
+| **A section** | A folder under `components/` with an `index.ts` (the section's public surface) and an entry in `SECTIONS` (`components/sections.ts`), which orders the gallery. A pattern section is the same under `patterns/` and `PATTERN_SECTIONS`; a block family an entry in `BLOCK_FAMILIES` (`src/blocks/families.ts`). |
 | **A component** | A folder in its section — `Foo/Foo.tsx`, `Foo/Foo.test.tsx`, `Foo/Foo.gallery.tsx`, `Foo/index.ts` — and a re-export from the section's `index.ts`. **Screens import only from a section's `index.ts`.** It follows [the component rules](#the-component-rules), and its section doc (`sections/<section>.md`) gets an entry. |
+| **A pattern or a block** | [`hierarchy.md`](./hierarchy.md#the-folder-layout) — the same four files (a block adds `fixtures.ts`), in its pattern section or block family. |
 | **A variation** | One more entry in the component's `Foo.gallery.tsx` `demos` (`{ name, render }`), and whatever prop it needs — optional, its absence today's behaviour. |
 
 ### The gallery
 
-`/dev/design/<section>` — **dev-only**, behind the Development section
+`/dev/design/…` — **dev-only**, behind the Development section
 ([`chessboard.md`](../../.claude/rules/chessboard.md) §9.5): its nav folder
 and entry are spreads gated on `import.meta.env.DEV`, its route a
 `React.lazy` import in `App.tsx`'s `devRoutes`, so a production build has no
-chunk of it. Its route carries `handle: FULL_WIDTH_ROUTE`
-(`views/main/routeHandle.ts`), so the shell gives it the whole body — no board
-square, no right-hand panel.
+chunk of it. Its route (`/dev/design/*`, one splat route, so moving between
+pages keeps the gallery and its switches mounted) carries
+`handle: FULL_WIDTH_ROUTE` (`views/main/routeHandle.ts`), so the shell gives
+it the whole body — no board square, no right-hand panel.
 
-**Every section is a page of its own**, `/dev/design/<section>`
-(`/dev/design/dialogs`, `/dev/design/tables`, …), because each will grow
-fast; `/dev/design` and an unknown section land on the first. A menu down the
-gallery's left links the pages, the one on screen marked. It is one
-optional-segment route (`/dev/design/:section?`), so moving between sections
-keeps the theme / scheme / direction switches as they were. The gallery itself
-knows no route: the wrapper (`views/dev/design/Main.tsx`) hands it the section
-from the URL and a `sectionPath(id)`. It finds every `components/**/*.gallery.tsx` with
-`import.meta.glob` (`gallery/discover.ts`) — a gallery module default-exports
-`{ section, title, demos }` and needs no registration — groups the demos by
-section, and previews them under a theme, light / dark and LTR / RTL switch of
-its own, which changes the preview only. Every section's page shows its
-components, each with a demo per variation.
+**One catalogue of every tier, one page per component** (CTA-110): the menu
+down the gallery's left is a collapsible tree — the `TreeView` pattern — of
+**tier → section → component**: Base (`/dev/design/<section>/<Component>`),
+Patterns (`/dev/design/patterns/<section>/<Pattern>`) and Blocks
+(`/dev/design/blocks/<family>/<Block>`). The chain above the page on screen
+opens with it; the reader opens and closes the rest. A section's own address
+(`/dev/design/tables`, CTA-107's pages), `/dev/design` and an unknown page land
+on a component's page. The gallery itself knows no route: the wrapper
+(`views/dev/design/Main.tsx`) hands it the page from the URL and a
+`sectionPath(page)`.
+
+It finds every `components/**/*.gallery.tsx` and `patterns/**/*.gallery.tsx`
+with `import.meta.glob` (`gallery/discover.ts`) — a gallery module
+default-exports `{ section, title, demos }` and needs no registration; its
+page is named by the folder it sits in. The design system may not import a
+block, so the Blocks tier comes in as a prop: the wrapper globs
+`src/blocks/**/*.gallery.tsx`, groups them by `BLOCK_FAMILIES` and passes
+them as `tiers`. Each page previews the component's demos under a theme,
+light / dark and LTR / RTL switch of its own, which changes the preview only.
 
 A `*.gallery.tsx` default-exports data, so it declares no component of its
 own (react-refresh's lint rule). A demo that must be live holds its state in
@@ -128,18 +152,21 @@ dialog is shown open in the page with `gallery/DialogFrame.tsx` (portalled
 into a transformed box, so several can be open at once, none trapping focus);
 tables and cards borrow `gallery/demoTable.tsx` and `gallery/demoPreview.tsx`
 (a preview board in the theme's own squares). `gallery/everyTheme.test.tsx`
-renders every section under every theme, both schemes and both directions
-and fails on any console error.
+renders every base and pattern page, and `views/dev/design/Main.test.tsx`
+every block's page, under every theme, both schemes and both directions, and
+fails on any console error.
 
 After `yarn build`, `grep -r -e "/dev/design" -e "design-gallery" -e
-"DesignGallery" -e ".gallery" dist/` finds nothing (the nav's two label
-strings, `nav.folders.development` and `nav.designSystem`, are in the shipped
+"DesignGallery" -e ".gallery" -e "ExampleGamesTable" -e "FolderTree" -e
+"EXAMPLE_ROWS" dist/` finds nothing (the nav's two label strings,
+`nav.folders.development` and `nav.designSystem`, are in the shipped
 catalogs, as every nav label must be).
 
 ## The component rules
 
-Every component in `components/` (CTA-108), checked where a check can be
-written (`components/conventions.test.ts`, the lint boundary):
+Every component in `components/` (CTA-108) — and every pattern and block
+(CTA-110) — checked where a check can be written (each tier's
+`conventions.test.ts` over `src/test/tierConventions.ts`, the lint boundary):
 
 - **It knows no screen.** Every word it shows arrives as a prop (screens pass
   `t(…)`), so no component adds a locale key; MUI's own words (a pager's
@@ -182,6 +209,16 @@ written (`components/conventions.test.ts`, the lint boundary):
 | Menus | `ContextMenu`, `AnchoredMenu` | [`sections/menus.md`](./sections/menus.md) |
 | Lists | `RecordRow`, `FolderRow`, `PickerList` | [`sections/lists.md`](./sections/lists.md) |
 | Cards | `CardGrid`, `RecordCard`, `FolderCard`, `IconCard` | [`sections/cards.md`](./sections/cards.md) |
+
+The **patterns** (CTA-110), `src/design-system/patterns/`:
+
+| Section | Patterns | Reference |
+| --- | --- | --- |
+| Tables | `DataTable` | [`sections/patterns/tables.md`](./sections/patterns/tables.md) |
+| Trees | `TreeView` | [`sections/patterns/trees.md`](./sections/patterns/trees.md) |
+
+The **blocks** (CTA-110), `src/blocks/`, are listed in
+[`hierarchy.md`](./hierarchy.md#4-blocks--srcblocksfamilyblock).
 
 ## What is in scope
 

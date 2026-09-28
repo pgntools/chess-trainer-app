@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { SECTIONS } from "../components/sections";
-import { discoverGallery, groupGallery } from "./discover";
+import { PATTERN_SECTIONS } from "../patterns/sections";
+import { discoverGallery, discoverPatterns, discoverTiers, galleryEntriesOf, groupGallery, pageKeyOf } from "./discover";
 import type { GalleryModule } from "./types";
 
 const module = (section: string, title: string): GalleryModule =>
@@ -41,5 +42,38 @@ describe("discoverGallery", () => {
       expect(section.modules.map((entry) => entry.title)).not.toContain("Placeholder");
       for (const entry of section.modules) expect(entry.demos.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("galleryEntriesOf", () => {
+  it("names each module by the folder it sits in, whatever its title says", () => {
+    const entries = galleryEntriesOf({
+      "../components/tables/useTableUrlState/useTableUrlState.gallery.tsx": module("tables", "useTableUrlState — the whole table"),
+    });
+    expect(entries.map((entry) => entry.id)).toEqual(["useTableUrlState"]);
+  });
+
+  it("gives a module grouped without a file its title's first word", () => {
+    expect(groupGallery([module("forms", "SnackbarProvider + useSnackbar")])[0].modules[0].id).toBe("SnackbarProvider");
+  });
+});
+
+describe("discoverPatterns / discoverTiers", () => {
+  it("finds every pattern section's patterns, in the registry's order", () => {
+    const sections = discoverPatterns();
+    expect(sections.map((section) => section.id)).toEqual(PATTERN_SECTIONS.map((section) => section.id));
+    expect(sections.flatMap((section) => section.modules.map((entry) => entry.id))).toEqual(["DataTable", "TreeView"]);
+  });
+
+  it("is Base, then Patterns — Blocks is the dev route's to add", () => {
+    expect(discoverTiers().map((tier) => [tier.id, tier.title])).toEqual([
+      ["", "Base"],
+      ["patterns", "Patterns"],
+    ]);
+  });
+
+  it("keys a base section by its id and another tier's under the tier", () => {
+    expect(pageKeyOf("", "tables")).toBe("tables");
+    expect(pageKeyOf("patterns", "tables")).toBe("patterns/tables");
   });
 });

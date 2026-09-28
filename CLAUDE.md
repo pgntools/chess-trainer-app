@@ -61,10 +61,14 @@ engine with the shared harness, `src/views/board/boardTestHarness.tsx`
 ([`chessboard.md`](.claude/rules/chessboard.md) §8).
 
 `npx knip` reports unused code. Expected in its output: the vendored stories,
-the Stockfish worker, and the stores' `settled…` / `delete…Db` helpers, which
+the Stockfish worker, the stores' `settled…` / `delete…Db` helpers, which
 only `src/test/setup.ts` uses (through namespace imports knip does not
-follow). `scripts/wirepgn.js` imports `src/lib` dynamically, so an export it
-uses can look unused — check `scripts/` before removing one.
+follow), and the **public surface of the design system's tiers and of
+`src/blocks/`** (each section's and family's `index.ts` exports and their
+prop types) that no screen imports yet — they are built ahead of the
+screens that migrate onto them. `scripts/wirepgn.js` imports `src/lib`
+dynamically, so an export it uses can look unused — check `scripts/` before
+removing one.
 
 ## The modules
 
@@ -82,7 +86,7 @@ uses can look unused — check `scripts/` before removing one.
 | **Tree views** (how a board shows its game tree) | — | `views/explorer/`, `lib/treeMap.ts` | [`tree-views.md`](.claude/rules/tree-views.md) |
 | **PGN annotations** (comments, `[%cmd]`s, the `prc` and `games` tags, NAG glyphs) | — | `lib/pgn.ts`, `lib/gameTree.ts`, `lib/moveAnnotations.ts`, `lib/playChance.ts`, `lib/gamesTag.ts` | [`pgn-annotations.md`](.claude/rules/pgn-annotations.md) |
 | **The board core** | — | `views/board/core/` | [`chessboard.md`](.claude/rules/chessboard.md) §9 |
-| **The design system** (themes, the MUI component sections, the dev-only gallery) | `/dev/design/<section>` (dev only; one page per section) | `src/design-system/`, `theme/themeChoice.ts`, `views/dev/design/` | [`docs/design/README.md`](docs/design/README.md) |
+| **The design system** and **the component hierarchy** (themes; base components, patterns, blocks; the dev-only gallery) | `/dev/design/…` (dev only; a page per component, the menu a tree of tier → section → component) | `src/design-system/`, `src/blocks/`, `theme/themeChoice.ts`, `views/dev/design/` | [`docs/design/hierarchy.md`](docs/design/hierarchy.md), [`docs/design/README.md`](docs/design/README.md), [`design-system.md`](.claude/rules/design-system.md) |
 | **Stores** (every one IndexedDB) | — | `lib/idb.ts`, `lib/idbRecordStore.ts`, `lib/*Store.ts`, `lib/*Db.ts` | [`database.md`](.claude/rules/database.md) |
 
 ## Layout of the source
@@ -91,13 +95,14 @@ uses can look unused — check `scripts/` before removing one.
 | --- | --- |
 | `src/main.tsx`, `src/App.tsx` | The composition root (`AppThemeWithLang` → `CssBaseline` → `SnackbarProvider` → `App`; imports `./i18n` for its side effect) and the router. `SnackbarProvider` is the design system's one snackbar queue — a screen shows one with `useSnackbar()`. |
 | `src/i18n.ts`, `src/locales/` | i18next setup (`supportedLanguages`, `rtlLanguages`, `asAppLanguage()`) and the inline `en` / `he` catalogs. `he` is typed `typeof en`, so a missing key is a compile error. |
-| `src/design-system/` | **The design system** (CTA-107), a layer of its own that knows no chess screen, store or route — `yarn lint` fails if it imports `src/views/` or `src/lib/`. `themes/` (a theme is data; the registry), `theme/` (`buildTheme`, the `chess` tokens' readers, the RTL cache), `components/<section>/` (one folder per MAIN section, each with an `index.ts` screens import from, each documented in `docs/design/sections/<section>.md` — CTA-108), `gallery/` (the dev-only `/dev/design/<section>`, a page per section). Layers and how to add to them: [`docs/design/README.md`](docs/design/README.md). |
+| `src/design-system/` | **The design system** (CTA-107), a layer of its own that knows no chess screen, store, route or block — `yarn lint` fails if it imports `src/views/`, `src/lib/` or `src/blocks/`. `themes/` (a theme is data; the registry), `theme/` (`buildTheme`, the `chess` tokens' readers, the RTL cache), `components/<section>/` (the **base** tier: one folder per MAIN section, each with an `index.ts` screens import from, each documented in `docs/design/sections/<section>.md` — CTA-108; it may not import a pattern), `patterns/<section>/` (the **patterns** tier: complex but generic — `DataTable`, `TreeView` — CTA-110, `docs/design/sections/patterns/`), `gallery/` (the dev-only `/dev/design/…`, a page per component). |
+| `src/blocks/` | **The blocks** (CTA-110): complex, domain-aware, **presentational** components — rows, state and callbacks arrive as props — grouped by family (`families.ts`: `tables/`, `trees/` …), each a folder with its component, test, gallery, `fixtures.ts` (typed with `src/lib/`'s types, imported only by the gallery and the test) and `index.ts`. May use `src/lib/`'s types and pure helpers; `yarn lint` fails if one imports `src/views/`, a store or database module or `react-router`. Today: the placeholder `ExampleGamesTable` and `FolderTree`. |
 | `src/theme/` | The app's wiring of the look: the `AppThemeWithLang` provider (theme choice, scheme, direction), `themeChoice.ts` (the reader's theme, in `localStorage`), `ForceLTR`, the header controls. |
 | `src/views/main/` | The app shell: `Layout.tsx` (header, sidebar, the board square and the right-hand panel, `BOARD_PANEL_GAP_PX` between them — or, for a route whose `handle` is `FULL_WIDTH_ROUTE` from `routeHandle.ts`, the whole body instead), `rightPanel.tsx` (the route-fillable panel slot), `Sidebar.tsx` and the nav registries. |
 | `src/views/home/` | The landing page at `/` — a card per screen, built from `navTree()`. |
 | `src/views/board/` | **The board core** (`core/`: `useBoardCore`, the capability modules, `BoardShell`, `BoardPanel`), the test harness and the two propagation tests. |
 | `src/views/explorer/` | **The tree views** — the variations explorer every board attaches. |
-| `src/views/shared/` | Pieces the screens share, each taking props and knowing no screen: `MoveList`, `VariationLine`, `BoardControls`, `EvalBar`, `BestVariations`, `PromotionPicker`, `EngineBoardSquare`, `CapturedPieces`, `PlayerPlate`, `CurrentOpening`, `GameInfo`, `OptionSlider`, `CopyableValue`, the saved-list machinery (`savedList.ts`, `SavedList*`), `folders/` and `positionEditor/`, and `boardColors.ts` (the theme's squares as board options). The chess-aware pieces stay here; generic UI parts belong in `src/design-system/`. Their locale keys are top-level (`moveList.*`, `variations.*`, `board.*`, …); the saved-list pieces take each screen's `labelKey` and test-id prefix instead. |
+| `src/views/shared/` | Pieces the screens share, each taking props and knowing no screen: `MoveList`, `VariationLine`, `BoardControls`, `EvalBar`, `BestVariations`, `PromotionPicker`, `EngineBoardSquare`, `CapturedPieces`, `PlayerPlate`, `CurrentOpening`, `GameInfo`, `OptionSlider`, `CopyableValue`, the saved-list machinery (`savedList.ts`, `SavedList*`), `folders/` and `positionEditor/`, and `boardColors.ts` (the theme's squares as board options). The board pieces stay here; generic UI parts belong in `src/design-system/`, and the chess-aware compositions (`FolderTreeTable`, the saved-list pieces, the folder dialogs) are blocks in all but name — they move into `src/blocks/` as their modules migrate ([`hierarchy.md`](docs/design/hierarchy.md#where-srcviewsshared-fits)). Their locale keys are top-level (`moveList.*`, `variations.*`, `board.*`, …); the saved-list pieces take each screen's `labelKey` and test-id prefix instead. |
 | `src/views/engine/`, `tools/analysis/`, `openings/`, `repertoires/`, `library/`, `settings/` | The module screens (table above). Each route renders a layout-only `…Main.tsx` wrapper. |
 | `src/lib/` | Everything pure or storage: the game model and tree, PGN and FEN reading, the engine wrapper and score reading, the stores and records, the opening book. Named per module (table above); the shared core is below. |
 
@@ -145,6 +150,30 @@ GameTree ──mainlineGame()──▶ Game ──▶ MoveList (the mainline's n
   `treeToPgn`.
 - **Node ids do not survive a PGN round trip**, so a place in a tree travels
   as SAN from the start (`sanPathTo` / `nodeAtSanPath`, the `?at=` links).
+
+### The component hierarchy — where a new component goes
+
+Five layers, each built only from the ones below
+([`docs/design/hierarchy.md`](docs/design/hierarchy.md), CTA-110):
+
+```
+screens (src/views/)  →  blocks (src/blocks/)  →  patterns (design-system/patterns/)  →  base (design-system/components/)  →  MUI atoms
+ read stores/routes      domain-aware,             complex, generic                        one MUI job, generic
+                         presentational
+```
+
+- **Reads a store, a route or global state** → a screen (or its hook);
+  split the presentational part out as a block.
+- **Needs a domain type or a `src/lib/` helper** → a block. Used by one
+  screen only? Still a block if it is complex.
+- **Composes several base components, no domain** → a pattern.
+- **Wraps one MUI job, no domain** → a base component.
+
+Blocks are **presentational**: their rows, state and callbacks are props, a
+link a `LinkTarget` — never a store, IndexedDB or the router — so each is
+built and reviewed **in the gallery on fixtures first** (every state, every
+theme, RTL), then wired into its screen. `yarn lint` enforces the import rules.
+Every tier's house rules are one conventions test (`src/test/tierConventions.ts`).
 
 ### The board is pure UI, composed from one core
 
