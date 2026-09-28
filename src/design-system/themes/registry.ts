@@ -1,4 +1,7 @@
+import { brownTheme } from "./brown";
 import { defaultTheme } from "./default";
+import { greenTheme } from "./green";
+import { highContrastTheme } from "./highContrast";
 import type { ThemeDefinition } from "./types";
 
 /** The theme every reader starts on, and where an unknown choice lands. */
@@ -9,7 +12,7 @@ export const DEFAULT_THEME_ID = defaultTheme.id;
  * Adding a theme is a file beside `default.ts` and one entry here — the
  * pickers, the gallery and `buildTheme` read this list and nothing else.
  */
-export const themes: readonly ThemeDefinition[] = [defaultTheme];
+export const themes: readonly ThemeDefinition[] = [defaultTheme, brownTheme, greenTheme, highContrastTheme];
 
 /** Whether `id` names a registered theme. */
 export const isThemeId = (id: unknown): id is string =>

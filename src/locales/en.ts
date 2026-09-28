@@ -1682,6 +1682,9 @@ const en = {
   appearance: {
     themes: {
       default: "Default",
+      brown: "Brown",
+      green: "Green",
+      "high-contrast": "High contrast",
     },
   },
   footer: {
