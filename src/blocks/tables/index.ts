@@ -1,8 +1,10 @@
 /**
  * **The Tables family's public surface** (CTA-110) — a screen imports this
- * family's blocks from here and nowhere deeper. Today it holds only the
- * placeholder that proves the layer's wiring; the real tables
- * (`PlayedGamesTable`, `CollectionGamesTable`, `CollectionsTreeTable`,
- * `StorageTable`) arrive with their modules' migrations.
+ * family's blocks from here and nowhere deeper: each a `DataTable` over one
+ * of the app's own shapes. CTA-109 brought the first two real ones, the
+ * Lobby's games and Settings → Storage's report, and retired the placeholder
+ * that proved the layer; `CollectionGamesTable` and `CollectionsTreeTable`
+ * come with the Library's migration.
  */
-export * from "./ExampleGamesTable";
+export * from "./PlayedGamesTable";
+export * from "./StorageTable";

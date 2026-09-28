@@ -53,8 +53,8 @@ afterEach(() => {
 });
 
 describe("the design gallery's route", () => {
-  it("finds the blocks — the example table and the folder tree among them", () => {
-    expect(BLOCK_PAGES).toEqual(expect.arrayContaining(["blocks/tables/ExampleGamesTable", "blocks/trees/FolderTree"]));
+  it("finds the blocks — the Lobby's table and the folder tree among them", () => {
+    expect(BLOCK_PAGES).toEqual(expect.arrayContaining(["blocks/tables/PlayedGamesTable", "blocks/trees/FolderTree"]));
     for (const page of BLOCK_PAGES) expect(BLOCK_FAMILIES.map((family) => family.id)).toContain(page.split("/")[1]);
   });
 
@@ -76,7 +76,7 @@ describe("the design gallery's route", () => {
 
   it("lands a family's own link on its first block", () => {
     mount("/dev/design/blocks/tables/");
-    expect(screen.getByTestId("where")).toHaveTextContent("/dev/design/blocks/tables/ExampleGamesTable");
+    expect(screen.getByTestId("where")).toHaveTextContent("/dev/design/blocks/tables/PlayedGamesTable");
   });
 
   const SCHEMES = [
