@@ -18,6 +18,7 @@ import { saveAnalysis } from "../../lib/savedAnalysisStore";
 import { createRepertoireFolder } from "../../lib/savedRepertoireFolderStore";
 import { saveRepertoire } from "../../lib/savedRepertoireStore";
 import { shippedCollections } from "../../lib/shippedCollections";
+import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 import SettingsScreen from "./SettingsScreen";
@@ -205,5 +206,38 @@ describe("the Export tab", () => {
     await userEvent.click(screen.getByTestId("settings-export-run"));
     expect(await screen.findByTestId("settings-export-failed")).toBeInTheDocument();
     expect(screen.getByTestId("settings-export-run")).toBeEnabled();
+  });
+});
+
+describe("the Settings section — accessibility (CTA-109)", () => {
+  it.each(["export", "import", "storage", "appearance"])("passes axe on its %s tab", async (tab) => {
+    renderAt(`/settings/${tab}`);
+    expect(await screen.findByTestId(`settings-tab-content-${tab}`)).toBeInTheDocument();
+    await expectNoAxeViolations();
+  });
+
+  it("moves between its tabs from the keyboard — each tab a link", async () => {
+    renderAt("/settings/export");
+    const strip = await screen.findByRole("tablist", { name: "Settings" });
+    within(strip).getByRole("tab", { name: "Export" }).focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(within(strip).getByRole("tab", { name: "Import" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByTestId("settings-tab-content-import")).toBeInTheDocument();
+    expect(screen.getByTestId("settings-tab-import")).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("exports without a pointer, and says so in an alert", async () => {
+    await seed();
+    renderAt("/settings/export");
+    const games = await screen.findByRole("checkbox", { name: /Games/ });
+    games.focus();
+    await userEvent.keyboard(" ");
+    expect(games).toBeChecked();
+    const run = screen.getByRole("button", { name: "Export" });
+    run.focus();
+    await userEvent.keyboard("{Enter}");
+    const done = await screen.findByTestId("settings-export-done");
+    expect(done).toHaveAttribute("role", "alert");
   });
 });
