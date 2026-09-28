@@ -18,6 +18,11 @@ export type FileInputButtonProps = {
   disabled?: boolean;
   /** On the button; the hidden input is `<testId>-input`. */
   testId: string;
+  /**
+   * The hidden input's own test id, for a screen whose tests named it before
+   * it moved onto this button (`settings-import-input`). Absent, `<testId>-input`.
+   */
+  inputTestId?: string;
 };
 
 /**
@@ -36,6 +41,7 @@ function FileInputButton({
   startIcon,
   disabled = false,
   testId,
+  inputTestId = `${testId}-input`,
 }: FileInputButtonProps) {
   return (
     <Button
@@ -53,7 +59,7 @@ function FileInputButton({
         accept={typeof accept === "string" ? accept : accept.join(",")}
         multiple={multiple}
         disabled={disabled}
-        data-testid={`${testId}-input`}
+        data-testid={inputTestId}
         onChange={(event) => {
           const files = [...(event.target.files ?? [])];
           event.target.value = "";

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { defaultPieces } from "react-chessboard";
 
@@ -9,6 +10,7 @@ import { parsePgnTree } from "../../../lib/pgn";
 import { MASK_PRESETS } from "../../../lib/pieceMask";
 import { findPlayedGame, playedGamesSnapshot, savePlayedGame } from "../../../lib/playedGameStore";
 import { playedGameOf, type PlayedGameMask } from "../../../lib/playedGames";
+import { expectNoAxeViolations } from "../../../test/axe";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
 import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
@@ -260,7 +262,8 @@ describe("Masked Pieces — the game view's shape", () => {
     expect(back).toHaveAttribute("href", "/engine/games");
     expect(
       screen.getByTestId("masked-play-panel-header").firstElementChild,
-    ).toBe(back);
+      // The design system's IconAction holds its button in a span (CTA-109).
+    ).toContainElement(back);
   });
 
   it("hides the score chip while the lines switch is off, and returns it with it", () => {
@@ -306,5 +309,39 @@ describe("Masked Pieces — the game view's shape", () => {
       "href",
       `/tools/analysis?game=${encodeURIComponent("play/games/done")}`,
     );
+  });
+});
+
+describe("Masked Pieces — accessibility (CTA-109)", () => {
+  it("passes axe with its Masking tab open, the engine's reply played", async () => {
+    mount();
+    drag("e2", "e4");
+    // Answered, so Play's thinking spinners (views/tools/analysis/, not
+    // migrated here — a known gap in ACCESSIBILITY.md) are not on screen.
+    const engine = FakeEngine.latest();
+    act(() => {
+      engine.say({ fen: engine.lastSearch, uciMessage: "info", depth: 12, multipv: 1, positionEvaluation: "20", pv: "e7e5" });
+    });
+    act(() => {
+      engine.say({ fen: engine.lastSearch, uciMessage: "bestmove", bestMove: "e7e5" });
+    });
+    openMaskingTab();
+    await expectNoAxeViolations();
+  });
+
+  it("works the mask editor without a pointer: a preset, a piece's select, the switches", async () => {
+    mount();
+    openMaskingTab();
+    const identity = within(screen.getByRole("group", { name: "Masking policy" })).getByRole("button", { name: "Show real pieces" });
+    identity.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(identity).toHaveAttribute("aria-pressed", "true");
+    expect(drawnAs("wQ")).toBe(defaultPieces.wQ);
+
+    const lines = screen.getByRole("switch", { name: "Show the engine's best lines" });
+    lines.focus();
+    await userEvent.keyboard(" ");
+    expect(lines).toBeChecked();
+    expect(lines).toHaveAccessibleDescription(/Off by default/);
   });
 });

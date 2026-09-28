@@ -22,14 +22,31 @@ Gallery: `/dev/design/forms`.
 - **Purpose** — a labelled switch or checkbox, with or without a help caption
   that also **describes** the control (`aria-describedby`).
 - **Props** — `label`, `checked`, `onChange(checked)`, `help?`, `size?`,
-  `disabled?`, `testId` (the input; the caption is `-help`).
-  `CheckboxField` adds `indeterminate?`.
+  `disabled?`, `testId` (the input; the caption is `-help`), `testIdOn?:
+  "input" | "control"` (CTA-109 — `control` puts the id on MUI's switch or
+  checkbox around the input, for a screen whose tests reach the input inside
+  it). `CheckboxField` adds `indeterminate?`.
 - **Variations** — small / medium, plain / captioned, disabled; indeterminate
-  (checkbox).
+  (checkbox); the test id on the control.
 - **Replaces** — the six captioned switches (`SwitchOption`, `SwitchSetting`,
   the Arrows tab, the analysis settings screen, the Masking tab twice) and the
   twelve plain ones, which differed in size, margin and test-id placement; the
   Export tab's and the save-tree dialog's checkboxes.
+
+## RadioGroupField
+
+- **Purpose** — one choice of several, as radios (CTA-109): a `fieldset`
+  whose legend (the `FieldLabel` style) names the group, labelled radios the
+  arrow keys move between, an optional help caption that describes it.
+- **Props** — `label`, `options: { value, label, disabled? }[]`, `value`,
+  `onChange(value)`, `row?`, `help?`, `size?` (default `small`), `disabled?`,
+  `testId` (the `radiogroup`; each radio's input `<testId>-<value>`, the help
+  `-help`).
+- **Variations** — in a row; with a help caption that follows the choice; one
+  under another, medium; a choice off and the whole group off.
+- **Replaces** — the Import dialog's two unnamed Merge / Override / Skip
+  groups (per category and per folder). The Appearance tab's theme cards are
+  not plain radios and stay its own ([`migration.md`](../migration.md#44-left-hand-written-and-why)).
 
 ## SideToggle
 
@@ -46,7 +63,8 @@ Gallery: `/dev/design/forms`.
 ## SliderField
 
 - **Purpose** — a labelled slider: the label at the start, the value at the end
-  (`dir="ltr"`), the slider under it, dimmed while off.
+  (`dir="ltr"`), the slider under it, dimmed while off — its notice never
+  (CTA-109: a dimmed warning caption fell to 2.5:1).
 - **Props** — `label`, `value`, `onChange(number)`, `min`, `max`, `step?`,
   `valueLabel?`, `notice?` (a warning caption), `disabled?`, `testId` (the
   parts `-value`, `-input`, `-notice`).
@@ -90,7 +108,8 @@ Gallery: `/dev/design/forms`.
   `<input type="file">`, emptied after each pick so the same file reads again.
 - **Props** — `label`, `accept` (a string or a list), `onFiles(files)`,
   `multiple?`, `variant?`, `size?`, `startIcon?` (`null` for none),
-  `disabled?`, `testId` (the button; the input is `-input`).
+  `disabled?`, `testId` (the button; the input is `-input`), `inputTestId?`
+  (CTA-109 — the input's own id, for a screen whose tests named it).
 - **Replaces** — the file-pick half of the five PGN inputs and the zip input,
   and their two hidden-input techniques
   ([Shared.md → Upload / import flows](../Shared.md#upload--import-flows)).

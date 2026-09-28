@@ -62,10 +62,10 @@ describe("the blocks' lint boundary", () => {
         'import { tableDate } from "../../../design-system/components/tables";',
         'import { DataTable } from "../../../design-system/patterns/tables";',
         'import { useChessTokens } from "../../../design-system/theme";',
-        'import { ExampleGamesTable } from "../ExampleGamesTable";',
+        'import { PlayedGamesTable } from "../PlayedGamesTable";',
         'import Box from "@mui/material/Box";',
         "export type Row = CollectionRow;",
-        "export const used = [tableDate, DataTable, useChessTokens, ExampleGamesTable, Box];",
+        "export const used = [tableDate, DataTable, useChessTokens, PlayedGamesTable, Box];",
       ].join("\n"),
     );
     expect(messages).toEqual([]);

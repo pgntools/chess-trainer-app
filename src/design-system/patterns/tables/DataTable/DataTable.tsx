@@ -97,6 +97,18 @@ export type DataTableBaseProps<R, C extends string = string> = {
   rowLink?: (row: R) => LinkTarget;
   /** The column whose content is the row's link. Default: the first. */
   linkColumn?: C;
+  /**
+   * A row that cannot fill its columns (a record that will not read): its
+   * words, in one cell across every column, the row's pick and actions kept.
+   * `undefined` for an ordinary row. Absent, every row fills its columns.
+   */
+  rowNote?: (row: R) => ReactNode | undefined;
+  /**
+   * The row closes a group — a bolder line under it, for a report whose rows
+   * fall into sections. Asked of each row shown with the one after it on the
+   * page (`undefined` for the last). Absent, no row does.
+   */
+  groupEnd?: (row: R, next: R | undefined) => boolean;
   /** The rows are still being read: one busy row under the header, in place of the rows. */
   loading?: boolean;
   /** "Reading…". */
@@ -118,8 +130,8 @@ export type DataTableBaseProps<R, C extends string = string> = {
   /**
    * The root. The parts: `-frame` (the scrolling region; its table
    * `-frame-table`), `-sort-<column>`, `-select-all`, `-row-<id>`,
-   * `-pick-<id>`, `-link-<id>`, `-actions-<id>`, `-loading`, `-empty`,
-   * `-no-match`, `-pager`.
+   * `-pick-<id>`, `-link-<id>`, `-actions-<id>`, `-note-<id>` (a row's
+   * note), `-loading`, `-empty`, `-no-match`, `-pager`.
    */
   testId: string;
 };
@@ -143,6 +155,10 @@ const DATA_ROW_LINK = "data-row-link";
  *   **row link**; one **loading**, **empty** or **no-match** row under the
  *   header; a **filters** slot and a **toolbar** slot above; **density**; a
  *   sticky header in the one scrolling region, the pager pinned under it.
+ * - A row that cannot fill its columns says why across them (`rowNote`, its
+ *   pick and actions kept); a report's sections end on a bolder line
+ *   (`groupEnd`); a cell can carry a test id of its own (`cellTestId`) —
+ *   CTA-109, each optional.
  * - **10,000 rows**: the only work over every row is the sort (memoised on
  *   the rows and the sort) and the picks' count (on the rows and the picks);
  *   a page is sliced, so a page turn renders one page.
@@ -171,6 +187,8 @@ function DataTable<R, C extends string = string>({
   onRowClick,
   rowLink,
   linkColumn,
+  rowNote,
+  groupEnd,
   loading = false,
   loadingLabel,
   emptyLabel,
@@ -294,9 +312,11 @@ function DataTable<R, C extends string = string>({
               {noMatch ? noMatchLabel : emptyLabel}
             </EmptyTableRow>
           ) : (
-            shown.map((row) => {
+            shown.map((row, index) => {
               const id = rowId(row);
               const isPicked = picked?.has(id) ?? false;
+              const note = rowNote?.(row);
+              const closesGroup = groupEnd?.(row, shown[index + 1]) ?? false;
               return (
                 <TableRow
                   key={id}
@@ -306,11 +326,13 @@ function DataTable<R, C extends string = string>({
                   tabIndex={keyed ? 0 : undefined}
                   onKeyDown={keyed ? (event) => onRowKey(row, event) : undefined}
                   data-testid={`${testId}-row-${id}`}
-                  sx={
-                    clickable
-                      ? (theme) => ({ cursor: "pointer", "&:focus-visible": { ...theme.mixins.focusRing, outlineOffset: -2 } })
-                      : undefined
-                  }
+                  sx={(theme) => ({
+                    ...(clickable && { cursor: "pointer", "&:focus-visible": { ...theme.mixins.focusRing, outlineOffset: -2 } }),
+                    // A group ends: a bolder line than the rows within one.
+                    ...(closesGroup && {
+                      "& > .MuiTableCell-root": { borderBottomWidth: 2, borderBottomStyle: "solid", borderBottomColor: "divider" },
+                    }),
+                  })}
                 >
                   {picks !== undefined && (
                     <PickCell
@@ -320,13 +342,19 @@ function DataTable<R, C extends string = string>({
                       testId={`${testId}-pick-${id}`}
                     />
                   )}
-                  {columns.map((column) => {
+                  {note !== undefined && (
+                    <TableCell colSpan={columns.length} data-testid={`${testId}-note-${id}`} sx={{ color: "text.secondary" }}>
+                      {note}
+                    </TableCell>
+                  )}
+                  {note === undefined && columns.map((column) => {
                     const content = column.render(row);
                     const link = linked === column.id && rowLink !== undefined ? rowLink(row) : undefined;
                     return (
                       <TableCell
                         key={column.id}
                         dir={column.dir}
+                        data-testid={column.cellTestId?.(row)}
                         sx={{
                           width: column.width,
                           ...(column.wrap !== true && { whiteSpace: "nowrap" }),

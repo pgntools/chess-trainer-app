@@ -17,6 +17,12 @@ export type SwitchFieldProps = {
   disabled?: boolean;
   /** On the **input** (the checkbox under the switch); the help is `<testId>-help`. */
   testId: string;
+  /**
+   * Where the test id goes: on the `input` (the default), or on the
+   * `control` — MUI's switch, around the input — for a screen whose tests
+   * reached the input inside it before it moved onto this field.
+   */
+  testIdOn?: "input" | "control";
 };
 
 /**
@@ -25,7 +31,7 @@ export type SwitchFieldProps = {
  * and where the test id went: here the test id is always on the input, the
  * label never takes margins, and the caption is the input's description.
  */
-function SwitchField({ label, checked, onChange, help, size = "medium", disabled = false, testId }: SwitchFieldProps) {
+function SwitchField({ label, checked, onChange, help, size = "medium", disabled = false, testId, testIdOn = "input" }: SwitchFieldProps) {
   const helpId = useId();
   return (
     <Box sx={{ display: "grid", justifyItems: "start" }}>
@@ -37,9 +43,10 @@ function SwitchField({ label, checked, onChange, help, size = "medium", disabled
             size={size}
             checked={checked}
             onChange={(event) => onChange(event.target.checked)}
+            data-testid={testIdOn === "control" ? testId : undefined}
             slotProps={{
               input: {
-                "data-testid": testId,
+                "data-testid": testIdOn === "input" ? testId : undefined,
                 "aria-describedby": help === undefined ? undefined : helpId,
               } as object,
             }}

@@ -7,6 +7,11 @@ the new-game form), Play with Engine (`/engine/play`) and Masked Pieces
 and [`masked-pieces.md`](../../.claude/rules/masked-pieces.md). Template and
 families: [`README.md`](./README.md).
 
+**Migrated onto the design system by CTA-109** (the pilot): each entry below
+is marked with what replaced it, and describes the component as it was.
+The binding decisions, the order of work and the pilot's findings are
+[`migration.md`](./migration.md).
+
 **Documented in [`Shared.md`](./Shared.md), not here**: `BoardPanel` (the
 panel skeleton the game screen fills), `OptionSlider`, `CurrentOpening`, the
 `PositionEditor` hosted by the new-game form, and the explorer's chrome.
@@ -18,6 +23,8 @@ which live in `views/tools/analysis/` and are rendered here.
 ## The Lobby — `views/engine/games/`
 
 ### PlayedGames
+
+> **Migrated (CTA-109)** — the `PlayedGamesTable` block (`blocks/tables/`) over `DataTable`, its sort and page `useTableUrlState`'s; page sizes 25 / 50 / 100 / 250, 50 by default; dates `YYYY-MM-DD`; the row actions one always-visible column at the row's end.
 
 - **Name and location** — `PlayedGames`, `src/views/engine/games/PlayedGames.tsx:251`
 - **Family** — table
@@ -32,6 +39,8 @@ which live in `views/tools/analysis/` and are rendered here.
 
 ### PlayedGameRow
 
+> **Migrated (CTA-109)** — `PlayedGamesTable`'s columns and row actions (`IconAction`s, each named by its row); the unreadable row is `DataTable`'s `rowNote`.
+
 - **Name and location** — `PlayedGameRow`, `src/views/engine/games/PlayedGames.tsx:130`
 - **Family** — table
 - **MUI atoms** — TableRow, TableCell, Checkbox, Tooltip, IconButton, Typography, Chip
@@ -44,6 +53,8 @@ which live in `views/tools/analysis/` and are rendered here.
 - **Verdict** — module-specific but needs design consistency — row actions should follow one rule across the tables.
 
 ### Lobby top bar
+
+> **Migrated (CTA-109)** — `ListScreenHeader`, Delete picked in its actions.
 
 - **Name and location** — inline in `PlayedGames`, `src/views/engine/games/PlayedGames.tsx:417-458`
 - **Family** — toolbar / action bar
@@ -58,6 +69,8 @@ which live in `views/tools/analysis/` and are rendered here.
 
 ### Lobby filter bar
 
+> **Migrated (CTA-109)** — the `PlayedGamesFilters` block (`SideToggle` with "all", `SelectField`), in the table's filters slot.
+
 - **Name and location** — inline in `PlayedGames`, `src/views/engine/games/PlayedGames.tsx:459-511`
 - **Family** — filter bar
 - **MUI atoms** — Box, ToggleButtonGroup, ToggleButton, TextField (`select`), MenuItem
@@ -70,6 +83,8 @@ which live in `views/tools/analysis/` and are rendered here.
 - **Verdict** — module-specific but needs design consistency — filters live in the top bar here and in the panel on the collection table.
 
 ### Lobby loading and empty states
+
+> **Migrated (CTA-109)** — `DataTable`'s loading, empty and no-match rows.
 
 - **Name and location** — inline in `PlayedGames`, `src/views/engine/games/PlayedGames.tsx:513` (loading) and `:568` (empty / no match)
 - **Family** — empty / loading / error state
@@ -84,6 +99,8 @@ which live in `views/tools/analysis/` and are rendered here.
 
 ### Delete picked games dialog
 
+> **Migrated (CTA-109)** — `DeleteManyDialog` — the contained red confirm.
+
 - **Name and location** — inline in `PlayedGames`, `src/views/engine/games/PlayedGames.tsx:602`
 - **Family** — dialog
 - **MUI atoms** — Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button
@@ -96,6 +113,8 @@ which live in `views/tools/analysis/` and are rendered here.
 - **Verdict** — share candidate — the third "delete N picked" dialog.
 
 ### NewGameForm
+
+> **Migrated (CTA-109)** — stays a screen (it hosts the position editor), composed of `PanelTabs`, `SideToggle`, `CheckboxField`, `InlineAlert` and the `EngineSettingsForm` block.
 
 - **Name and location** — `NewGameForm`, `src/views/engine/games/NewGameForm.tsx`
 - **Family** — form / settings group
@@ -110,6 +129,8 @@ which live in `views/tools/analysis/` and are rendered here.
 
 ### Custom-position notice
 
+> **Migrated (CTA-109)** — `InlineAlert` (info), the FEN its `detail`.
+
 - **Name and location** — inline in `NewGameForm`, `src/views/engine/games/NewGameForm.tsx:169-201`
 - **Family** — feedback (alert / snackbar)
 - **MUI atoms** — Alert, Typography, Box, Button
@@ -123,6 +144,8 @@ which live in `views/tools/analysis/` and are rendered here.
 
 ### Side choice
 
+> **Migrated (CTA-109)** — `SideToggle fullWidth` under a `FieldLabel`.
+
 - **Name and location** — inline in `NewGameForm`, `src/views/engine/games/NewGameForm.tsx:202-224`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, ToggleButtonGroup, ToggleButton
@@ -135,6 +158,8 @@ which live in `views/tools/analysis/` and are rendered here.
 - **Verdict** — share candidate — a `SideToggle`.
 
 ### Start footer
+
+> **Migrated (CTA-109)** — its warning an `InlineAlert`; Start and the note unchanged.
 
 - **Name and location** — inline in `NewGameForm`, `src/views/engine/games/NewGameForm.tsx:255-287`
 - **Family** — toolbar / action bar
@@ -153,6 +178,8 @@ which live in `views/tools/analysis/` and are rendered here.
 
 ### EngineSettings
 
+> **Migrated (CTA-109)** — the `EngineSettingsForm` block (`blocks/forms/`: `SliderField`s, the absent / pinned / adjustable rule as `engineOptionState`, a `SwitchField`); `EngineSettings.tsx` is its one-line adapter under the module's ids.
+
 - **Name and location** — `EngineSettings`, `src/views/engine/play/EngineSettings.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, Slider, FormControlLabel, Switch (+ `OptionSlider`)
@@ -165,6 +192,8 @@ which live in `views/tools/analysis/` and are rendered here.
 - **Verdict** — module-specific but needs design consistency — the two Engine tabs share their rows by copy; a `LabeledSlider` would join them.
 
 ### PlayScreen header
+
+> **Migrated (CTA-109)** — `BackButton`, `SideToggle`, `IconAction`s (Replay, Resign), a small `SwitchField` for the engine.
 
 - **Name and location** — inline in `PlayScreen`, `src/views/engine/play/PlayScreen.tsx:205-302`
 - **Family** — toolbar / action bar
@@ -179,6 +208,8 @@ which live in `views/tools/analysis/` and are rendered here.
 
 ### Engine tab body
 
+> **Migrated (CTA-109)** — a small `SwitchField` over `EngineSettingsForm`.
+
 - **Name and location** — inline in `PlayScreen`, `src/views/engine/play/PlayScreen.tsx:326-347`
 - **Family** — form / settings group
 - **MUI atoms** — Box, FormControlLabel, Switch (+ `EngineSettings`)
@@ -191,6 +222,8 @@ which live in `views/tools/analysis/` and are rendered here.
 - **Verdict** — module-specific but needs design consistency — one arrows setting, three placements and two switch sizes in one tab.
 
 ### Game-over treatment
+
+> **Migrated (CTA-109)** — `StatusText` (neutral, emphasised — a `status`); the button unchanged.
 
 - **Name and location** — inline in `PlayScreen`, `src/views/engine/play/PlayScreen.tsx:373-409`
 - **Family** — feedback (alert / snackbar)
@@ -205,6 +238,8 @@ which live in `views/tools/analysis/` and are rendered here.
 
 ### Save-problem line
 
+> **Migrated (CTA-109)** — `StatusText` (error — an `alert`).
+
 - **Name and location** — inline in `PlayScreen`, `src/views/engine/play/PlayScreen.tsx:355-364`
 - **Family** — feedback (alert / snackbar)
 - **MUI atoms** — Typography
@@ -218,6 +253,8 @@ which live in `views/tools/analysis/` and are rendered here.
 
 ### Replay / Resign confirm
 
+> **Migrated (CTA-109)** — `ConfirmDialog tone="destructive"` — the contained red confirm.
+
 - **Name and location** — inline in `PlayScreen`, `src/views/engine/play/PlayScreen.tsx:423-451`
 - **Family** — dialog
 - **MUI atoms** — Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button
@@ -230,6 +267,8 @@ which live in `views/tools/analysis/` and are rendered here.
 - **Verdict** — share candidate — the shared destructive confirm.
 
 ### PlayedGameRead
+
+> **Migrated (CTA-109)** — `LoadingLine`.
 
 - **Name and location** — `PlayedGameRead`, `src/views/engine/play/PlayedGameRead.tsx`
 - **Family** — empty / loading / error state
@@ -248,6 +287,8 @@ which live in `views/tools/analysis/` and are rendered here.
 
 ### MaskEditor
 
+> **Migrated (CTA-109)** — the `MaskEditor` block (`blocks/forms/`): `FieldLabel`, `SelectField`s in two fieldsets, captioned `SwitchField`s; the presets stay a vertical toggle group ([`migration.md`](./migration.md#44-left-hand-written-and-why)).
+
 - **Name and location** — `MaskEditor` and the inner `ColorColumn` (`:53`), `src/views/engine/masked/MaskEditor.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, ToggleButtonGroup, ToggleButton, InputLabel, Select (`native`), FormControlLabel, Switch
@@ -260,6 +301,8 @@ which live in `views/tools/analysis/` and are rendered here.
 - **Verdict** — module-specific but needs design consistency — the native select and the raw font size are unique to it.
 
 ### Masking tab
+
+> **Migrated (CTA-109)** — part of the `MaskEditor` block (the engine-lines switch a captioned `SwitchField`).
 
 - **Name and location** — inline in `MaskedPlayArrival`, `src/views/engine/masked/MaskedPlay.tsx:85-110`
 - **Family** — form / settings group

@@ -27,6 +27,12 @@ export type DataTableColumn<R, C extends string = string> = {
   dir?: "ltr" | "auto";
   /** Let the text wrap. By default a cell keeps to one line and a long one scrolls the table sideways. */
   wrap?: boolean;
+  /**
+   * The cell's own test id, on the cell itself — for a screen whose tests
+   * name its cells from before it moved onto the table (`settings-storage-games-records`).
+   * Absent, a cell has none.
+   */
+  cellTestId?: (row: R) => string;
 };
 
 /** The sort a table shows: the column and which way. */

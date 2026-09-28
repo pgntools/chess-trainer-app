@@ -10,6 +10,11 @@ export type ProgressLineProps = {
   label: string;
   /** The words under the bar ("120 of 800 games") — they describe it. */
   caption?: ReactNode;
+  /**
+   * Read the caption out as it changes — a `status` live region — for a job
+   * the reader waits on (an import). Absent, the caption only describes the bar.
+   */
+  announce?: boolean;
   /** `success` for a coverage bar (how much of a repertoire is learnt). */
   color?: "primary" | "success";
   /** The root's test id; the bar is `<testId>-bar`, the caption `<testId>-caption`. */
@@ -23,7 +28,7 @@ export type ProgressLineProps = {
  * (`aria-valuenow`, 0–100); an indeterminate one reports none, which is how a
  * screen reader tells "under way" from "this far".
  */
-function ProgressLine({ value, label, caption, color = "primary", testId }: ProgressLineProps) {
+function ProgressLine({ value, label, caption, announce = false, color = "primary", testId }: ProgressLineProps) {
   const captionId = useId();
   return (
     <Box data-testid={testId} sx={{ display: "grid", gap: 0.5 }}>
@@ -37,7 +42,13 @@ function ProgressLine({ value, label, caption, color = "primary", testId }: Prog
         sx={{ height: 6, borderRadius: 3 }}
       />
       {caption !== undefined && (
-        <Typography id={captionId} variant="caption" color="text.secondary" data-testid={`${testId}-caption`}>
+        <Typography
+          id={captionId}
+          variant="caption"
+          color="text.secondary"
+          role={announce ? "status" : undefined}
+          data-testid={`${testId}-caption`}
+        >
           {caption}
         </Typography>
       )}

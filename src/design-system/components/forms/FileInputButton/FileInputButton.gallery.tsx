@@ -31,6 +31,7 @@ const gallery: GalleryModule = {
     { name: "Contained (the default)", render: () => live({}) },
     { name: "Outlined, small", render: () => live({ variant: "outlined", size: "small", label: "Load a file" }) },
     { name: "Several files, an accept list", render: () => live({ multiple: true, accept: [".pgn", ".zip"], label: "Choose files" }) },
+    { name: "Its input under a screen's own test id (inputTestId) — looks the same", render: () => live({ label: "Choose a .zip", accept: ".zip", inputTestId: "gallery-zip-input" }) },
     { name: "No icon, disabled", render: () => live({ startIcon: null, disabled: true, label: "Choose a .zip" }) },
   ],
 };

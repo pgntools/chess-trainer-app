@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import Typography from "@mui/material/Typography";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+
+import { LoadingLine } from "../../../design-system/components/states";
 
 import { loadPlayedGames, playedGamesSnapshot } from "../../../lib/playedGameStore";
 import { useStoreRead } from "../../shared/useStoreRead";
@@ -20,11 +21,7 @@ export function PlayedGameRead({ testId, children }: { testId: string; children:
   const [searchParams] = useSearchParams();
   const ready = useStoreRead(searchParams.get("saved") !== null, isRead, loadPlayedGames);
   if (!ready) {
-    return (
-      <Typography data-testid={`${testId}-loading`} sx={{ color: "text.secondary", p: 2 }}>
-        {t("playedGames.loading")}
-      </Typography>
-    );
+    return <LoadingLine testId={`${testId}-loading`}>{t("playedGames.loading")}</LoadingLine>;
   }
   return children;
 }

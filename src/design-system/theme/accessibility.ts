@@ -22,6 +22,10 @@ export const MIN_TARGET_PX = 24;
  * - **the target size**: an icon button is never under {@link MIN_TARGET_PX};
  * - **the control border**: an outlined field rests on the palette's
  *   `controlBorder` (3:1), not MUI's 1.6:1 grey; hover and focus stay MUI's;
+ * - **a toggle button's words** (CTA-109): an unpressed one is written in
+ *   the palette's `text.secondary` — measured at 4.5:1 on every surface —
+ *   not MUI's `action.active`, a 54 % black no test measures, which a
+ *   browser audit found at 4.4:1 on the default and brown pages;
  * - **reduced motion**: no ripple.
  *
  * A theme tunes these through its tokens (`focusRingWidth`, `focusRing`,
@@ -51,6 +55,11 @@ export const accessibilityOverrides = (focusRingWidth: number, reducedMotion: bo
         root: { minWidth: MIN_TARGET_PX, minHeight: MIN_TARGET_PX },
       },
     },
+    MuiToggleButton: {
+      styleOverrides: {
+        root: ({ theme }) => ({ color: paletteColor(theme, (palette) => palette.text.secondary) }),
+      },
+    },
     MuiOutlinedInput: {
       styleOverrides: {
         notchedOutline: ({ theme }) => ({ borderColor: paletteColor(theme, (palette) => palette.controlBorder) }),
@@ -67,7 +76,7 @@ export const focusRingOf = (theme: Parameters<typeof paletteColor>[0], width: nu
 });
 
 /** The component names {@link accessibilityOverrides} owns — a theme's own override of one would be dropped. */
-export const ACCESSIBILITY_OVERRIDDEN = ["MuiButtonBase", "MuiSlider", "MuiIconButton", "MuiOutlinedInput"] as const;
+export const ACCESSIBILITY_OVERRIDDEN = ["MuiButtonBase", "MuiSlider", "MuiIconButton", "MuiToggleButton", "MuiOutlinedInput"] as const;
 
 /**
  * **No motion** (CTA-111), for a reader whose system asks for reduced

@@ -323,6 +323,55 @@ describe("DataTable", () => {
     });
   });
 
+  describe("a row's note, groups and cell ids (CTA-109)", () => {
+    it("fills a noted row with one cell across the columns, its pick and actions kept", () => {
+      mount({
+        rowNote: (row) => (row.id === "b" ? "This row could not be read." : undefined),
+        picks: { picked: new Set(), onChange: vi.fn(), selectAllLabel: "All", pickLabel: (row) => `Pick ${row.id}` },
+        rowActions: (row) => <button type="button">Delete {row.id}</button>,
+        actionsLabel: "Actions",
+      });
+      const noted = within(screen.getByTestId("t-row-b")).getAllByRole("cell");
+      expect(noted).toHaveLength(3);
+      expect(screen.getByTestId("t-note-b")).toHaveAttribute("colspan", "2");
+      expect(screen.getByTestId("t-note-b")).toHaveTextContent("This row could not be read.");
+      expect(screen.getByRole("checkbox", { name: "Pick b" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Delete b" })).toBeInTheDocument();
+      // An ordinary row fills its columns as before.
+      expect(within(screen.getByTestId("t-row-a")).getAllByRole("cell")).toHaveLength(4);
+      expect(screen.queryByTestId("t-note-a")).toBeNull();
+    });
+
+    it("draws a bolder line under a row that closes a group, never under the last", () => {
+      const asked: [string, string | undefined][] = [];
+      mount({
+        groupEnd: (row, next) => {
+          asked.push([row.id, next?.id]);
+          return row.id !== "c";
+        },
+      });
+      expect(asked).toEqual([["a", "b"], ["b", "c"], ["c", "d"], ["d", undefined]]);
+      const firstCell = (id: string) => within(screen.getByTestId(`t-row-${id}`)).getAllByRole("cell")[0];
+      expect(firstCell("a")).toHaveStyle({ borderBottomWidth: "2px" });
+      expect(firstCell("c")).not.toHaveStyle({ borderBottomWidth: "2px" });
+    });
+
+    it("gives a cell the test id its column asks for", () => {
+      render(
+        <DataTable<Row, Column>
+          columns={COLUMNS.map((column) => (column.id === "elo" ? { ...column, cellTestId: (row: Row) => `elo-of-${row.id}` } : column))}
+          rows={ROWS}
+          rowId={(row) => row.id}
+          emptyLabel=""
+          ariaLabel="Players"
+          testId="t"
+        />,
+      );
+      expect(screen.getByTestId("elo-of-a")).toHaveTextContent("2700");
+      expect(screen.getByTestId("elo-of-a").tagName).toBe("TD");
+    });
+  });
+
   describe("slots and density", () => {
     it("puts the toolbar above the filters, both above the table", () => {
       mount({ toolbar: <div data-testid="bar">bar</div>, filters: <div data-testid="filters">filters</div> });

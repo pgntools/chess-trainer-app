@@ -338,6 +338,8 @@ const he: typeof en = {
       },
       unknown: "לא ידוע",
       rowsPerPage: "שורות בעמוד",
+      label: "המשחקים שלך",
+      actions: "פעולות",
     },
     newGame: {
       title: "משחק חדש",
@@ -358,7 +360,8 @@ const he: typeof en = {
     loading: "קורא את המשחקים השמורים שלך…",
     empty: "אין עדיין משחקים שמורים. שחקו מול המנוע והמשחק יופיע כאן מעצמו.",
     storage: "המשחקים שלך נשמרים בדפדפן הזה בלבד. מחיקת נתוני האתר תמחק אותם, והם אינם עוברים למכשיר אחר.",
-    players: "{{white}} - {{black}}",
+    rowTitle: "המשחק {{white}} – {{black}} מ־{{date}}",
+    unreadableTitle: "המשחק שלא ניתן לקרוא מ־{{date}}",
     human: "אדם",
     engine: "Stockfish רמה {{level}}",
     moves_one: "מהלך אחד",
@@ -366,8 +369,8 @@ const he: typeof en = {
     variations_one: "וריאציה אחת",
     variations_other: "{{count}} וריאציות",
     unreadable: "לא ניתן לקרוא את המשחק הזה.",
-    continue: "המשך",
-    analyse: "ניתוח",
+    continueRow: "המשך את {{title}}",
+    analyseRow: "ניתוח {{title}}",
     pick: "בחירת {{title}}",
     selectAll: "בחירת כל המשחקים שהטבלה מציגה",
     deletePicked: "מחיקת הנבחרים ({{count}})",
@@ -1221,6 +1224,7 @@ const he: typeof en = {
     import: {
       intro:
         "החזירו קובץ ‎.zip שנוצר ב„ייצוא” — כאן או בדפדפן אחר. אתם בוחרים מה לייבא ומה יקרה כשתיקייה כבר קיימת כאן; דבר אינו נכתב עד שתאשרו.",
+      progress: "התקדמות הייבוא",
       choose: "בחירת קובץ ‎.zip",
       reading: "קורא את הקובץ…",
       working: "מייבא…",
@@ -1297,6 +1301,8 @@ const he: typeof en = {
         title: "אחסון הדפדפן",
         usage: "שימוש במקור (הערכה)",
         indexedDb: "שימוש ב־IndexedDB (הערכה)",
+        measure: "מדד",
+        size: "גודל",
         /** לאן נעלמה המכסה: הבדיקה של הקורא בעצמו. */
         quotaNote: "מכסת האחסון אינה מוצגת כאן; כדי לראות אותה, פתחו את כלי הפיתוח של הדפדפן.",
       },

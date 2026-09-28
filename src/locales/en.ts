@@ -460,6 +460,10 @@ const en = {
       /** The reader's side of an Elo cell — an estimate is the engine's alone. */
       unknown: "Unknown",
       rowsPerPage: "Rows per page",
+      /** The table's accessible name (CTA-109). */
+      label: "Your games",
+      /** The row actions' column — named for a screen reader, blank on screen. */
+      actions: "Actions",
     },
     /** The right-hand panel: a new game's options, and the button that starts it. */
     newGame: {
@@ -489,8 +493,14 @@ const en = {
     loading: "Reading your saved games…",
     empty: "No saved games yet. Play a game against the engine and it appears here on its own.",
     storage: "Your games are kept in this browser only. Clearing site data removes them, and they do not follow you to another device.",
-    /** A row's title: the pairing, White first. */
-    players: "{{white}} - {{black}}",
+    /**
+     * What a row is called (CTA-109) — its pick's, its Analysis' and its
+     * Continue's names: the pairing, White first, and the day it was begun,
+     * so no two rows' controls read alike.
+     */
+    rowTitle: "the game {{white}} – {{black}} of {{date}}",
+    /** A row whose PGN will not parse has no pairing to name it by. */
+    unreadableTitle: "the unreadable game of {{date}}",
     human: "Human",
     engine: "Stockfish level {{level}}",
     moves_one: "{{count}} move",
@@ -498,8 +508,9 @@ const en = {
     variations_one: "{{count}} side line",
     variations_other: "{{count}} side lines",
     unreadable: "This game could not be read.",
-    continue: "Continue",
-    analyse: "Analysis",
+    /** A row's two actions (CTA-109), each named by its row — the tooltip says the same. */
+    continueRow: "Continue {{title}}",
+    analyseRow: "Analyse {{title}}",
     /** The row's pick checkbox: tick it to mark the game for the header's delete. */
     pick: "Pick {{title}}",
     /** The pick column's select-all: the rows the table shows, on every page. */
@@ -1568,6 +1579,8 @@ const en = {
       intro:
         "Bring back a .zip made by Export — here or in another browser. You choose what to import and what happens where a folder is already here; nothing is written until you confirm.",
       choose: "Choose a .zip",
+      /** The import's progress bar, named for a screen reader (CTA-109). */
+      progress: "Import progress",
       reading: "Reading the file…",
       working: "Importing…",
       indexing: "Indexing “{{name}}”: {{done}} of {{total}} games",
@@ -1647,6 +1660,9 @@ const en = {
         title: "Browser storage",
         usage: "Origin usage (estimate)",
         indexedDb: "IndexedDB usage (estimate)",
+        /** The two columns' headers (CTA-109) — every column of a table is named. */
+        measure: "Measure",
+        size: "Size",
         /** Where the quota went: the reader's own look-up. */
         quotaNote: "The storage quota is not shown here; to see it, open your browser's developer tools.",
       },

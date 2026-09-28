@@ -30,9 +30,9 @@ describe("the design system's lint boundary", () => {
 
   it("rejects an import of src/blocks, from either tier", async () => {
     const code = [
-      'import { ExampleGamesTable } from "../../../blocks/tables";',
+      'import { PlayedGamesTable } from "../../../blocks/tables";',
       'import { BLOCK_FAMILIES } from "../../blocks/families";',
-      "export const used = [ExampleGamesTable, BLOCK_FAMILIES];",
+      "export const used = [PlayedGamesTable, BLOCK_FAMILIES];",
     ].join("\n");
     for (const path of ["src/design-system/components/tables/Probe.ts", "src/design-system/patterns/tables/Probe.ts"]) {
       const messages = await lint(code, path);
@@ -94,9 +94,9 @@ describe("the design system's lint boundary", () => {
         'import { parseFen } from "../../lib/fen";',
         'import { themes } from "../../design-system/themes";',
         'import { DataTable } from "../../design-system/patterns/tables";',
-        'import { ExampleGamesTable } from "../../blocks/tables";',
+        'import { PlayedGamesTable } from "../../blocks/tables";',
         'import { useNavigate } from "react-router";',
-        "export const used = [parseFen, themes, DataTable, ExampleGamesTable, useNavigate];",
+        "export const used = [parseFen, themes, DataTable, PlayedGamesTable, useNavigate];",
       ].join("\n"),
       "src/views/settings/Probe.ts",
     );

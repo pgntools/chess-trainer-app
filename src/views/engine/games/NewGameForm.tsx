@@ -1,18 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Checkbox from "@mui/material/Checkbox";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Tab from "@mui/material/Tab";
-import Tabs from "@mui/material/Tabs";
-import ToggleButton from "@mui/material/ToggleButton";
-import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import { DEFAULT_POSITION } from "chess.js";
 import { Link as RouterLink } from "react-router";
 import { useTranslation } from "react-i18next";
+
+import { InlineAlert } from "../../../design-system/components/feedback";
+import { CheckboxField, FieldLabel, SideToggle } from "../../../design-system/components/forms";
+import { PanelTabs } from "../../../design-system/components/tabs";
 
 import {
   DEFAULT_ENGINE_SETTINGS,
@@ -55,6 +52,11 @@ import EngineSettings from "../play/EngineSettings";
  * standard start), and Start is off while that position cannot be played
  * from. The editor's board faces the side chosen on the Game tab. A `side`
  * on the link still beats the position's side to move (`arrivalOf`).
+ *
+ * Since CTA-109 it is composed of the design system — `PanelTabs`,
+ * `SideToggle`, `CheckboxField`, `InlineAlert` — around the
+ * `EngineSettingsForm` block; it stays a screen composition because it hosts
+ * the position editor (`views/shared/`), which a block may not import.
  */
 
 const FORM_TABS = ["game", "editor"] as const;
@@ -129,27 +131,13 @@ function NewGameForm() {
         {t("playedGames.newGame.title")}
       </Typography>
 
-      <Tabs
+      <PanelTabs
+        tabs={FORM_TABS.map((id) => ({ id, label: t(`playedGames.newGame.tabs.${id}`) }))}
         value={tab}
-        onChange={(_event, next: FormTab) => setTab(next)}
-        variant="fullWidth"
-        sx={{
-          flexShrink: 0,
-          minHeight: 36,
-          borderBottom: "1px solid",
-          borderColor: "divider",
-          "& .MuiTab-root": { minHeight: 36, textTransform: "none", minWidth: 0, px: 1 },
-        }}
-      >
-        {FORM_TABS.map((id) => (
-          <Tab
-            key={id}
-            value={id}
-            label={t(`playedGames.newGame.tabs.${id}`)}
-            data-testid={`new-game-tab-${id}`}
-          />
-        ))}
-      </Tabs>
+        onChange={(next) => setTab(next as FormTab)}
+        ariaLabel={t("playedGames.newGame.title")}
+        testId="new-game"
+      />
 
       {/* The panel's one scrolling region: the aside scrolls nothing itself. */}
       <Box
@@ -167,60 +155,39 @@ function NewGameForm() {
         {tab === "game" && (
           <>
             {customFen !== undefined && (
-              <Alert
-                severity="info"
-                data-testid="new-game-custom-position"
-                sx={{ mb: 2, "& .MuiAlert-message": { minWidth: 0 } }}
-              >
-                <Typography variant="body2">{t("playedGames.newGame.customPosition")}</Typography>
-                <Typography
-                  variant="caption"
-                  component="div"
-                  dir="ltr"
-                  sx={{ fontFamily: "monospace", wordBreak: "break-all", my: 0.5 }}
-                >
-                  {customFen}
-                </Typography>
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                  <Button
-                    size="small"
-                    data-testid="new-game-custom-position-edit"
-                    onClick={() => setTab("editor")}
-                  >
-                    {t("playedGames.newGame.customPositionEdit")}
-                  </Button>
-                  <Button
-                    size="small"
-                    data-testid="new-game-custom-position-reset"
-                    onClick={editor.setStartingPosition}
-                  >
-                    {t("playedGames.newGame.customPositionReset")}
-                  </Button>
-                </Box>
-              </Alert>
+              <Box sx={{ mb: 2 }}>
+                {/* The position in the detail block: machine words, pinned left to right. */}
+                <InlineAlert severity="info" detail={customFen} testId="new-game-custom-position">
+                  {t("playedGames.newGame.customPosition")}
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 0.5 }}>
+                    <Button
+                      size="small"
+                      data-testid="new-game-custom-position-edit"
+                      onClick={() => setTab("editor")}
+                    >
+                      {t("playedGames.newGame.customPositionEdit")}
+                    </Button>
+                    <Button
+                      size="small"
+                      data-testid="new-game-custom-position-reset"
+                      onClick={editor.setStartingPosition}
+                    >
+                      {t("playedGames.newGame.customPositionReset")}
+                    </Button>
+                  </Box>
+                </InlineAlert>
+              </Box>
             )}
             <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>
-                {t("playedGames.newGame.side")}
-              </Typography>
-              <ToggleButtonGroup
-                exclusive
+              <FieldLabel component="span">{t("playedGames.newGame.side")}</FieldLabel>
+              <SideToggle<NewGameSide>
                 fullWidth
-                size="small"
                 value={side}
-                aria-label={t("playedGames.newGame.side")}
-                data-testid="new-game-side"
-                onChange={(_event, next: NewGameSide | null) => {
-                  if (next !== null) setSide(next);
-                }}
-              >
-                <ToggleButton value="white" data-testid="new-game-side-white">
-                  {t("playedGames.newGame.white")}
-                </ToggleButton>
-                <ToggleButton value="black" data-testid="new-game-side-black">
-                  {t("playedGames.newGame.black")}
-                </ToggleButton>
-              </ToggleButtonGroup>
+                onChange={setSide}
+                labels={{ white: t("playedGames.newGame.white"), black: t("playedGames.newGame.black") }}
+                ariaLabel={t("playedGames.newGame.side")}
+                testId="new-game-side"
+              />
             </Box>
 
             <EngineSettings
@@ -237,33 +204,33 @@ function NewGameForm() {
               same choice as the block's own header checkbox on the game view,
               which remains the live control there.
             */}
-            <FormControlLabel
-              sx={{ mt: 2 }}
-              control={
-                <Checkbox
-                  checked={variations}
-                  data-testid="new-game-variations"
-                  onChange={(event) => setVariations(event.target.checked)}
-                />
-              }
-              label={t("playedGames.newGame.variations")}
-            />
+            <Box sx={{ mt: 2 }}>
+              <CheckboxField
+                size="medium"
+                label={t("playedGames.newGame.variations")}
+                checked={variations}
+                onChange={setVariations}
+                // The Lobby's tests reach the input inside the box.
+                testIdOn="control"
+                testId="new-game-variations"
+              />
+            </Box>
           </>
         )}
       </Box>
 
       <Box sx={{ flexShrink: 0, display: "grid", gap: 1 }}>
         {!playable && (
-          <Alert severity="warning" data-testid="new-game-illegal" sx={{ py: 0.5 }}>
+          <InlineAlert severity="warning" dense testId="new-game-illegal">
             {t("playedGames.newGame.illegal")}
             {editor.problems.length > 0 && (
-              <Box component="ul" sx={{ m: 0, pl: 2 }}>
+              <Box component="ul" sx={{ m: 0, paddingInlineStart: 2 }}>
                 {editor.problems.map((problem) => (
                   <li key={problem}>{t(`positionEditor.problems.${problem}`)}</li>
                 ))}
               </Box>
             )}
-          </Alert>
+          </InlineAlert>
         )}
         {/* Off, it is a plain button rather than a link: nothing to follow. */}
         <Button

@@ -24,6 +24,10 @@ describe("SliderField", () => {
     );
     expect(screen.getByTestId("probe-value")).toHaveTextContent("one");
     expect(screen.getByTestId("probe-notice")).toHaveTextContent("Fixed.");
+    // Why it is off is never dimmed with it (CTA-109) — a faded warning fails AA.
+    expect(screen.getByTestId("probe")).not.toHaveStyle({ opacity: "0.6" });
+    expect(screen.getByTestId("probe-notice")).not.toHaveStyle({ opacity: "0.6" });
+    expect(screen.getByTestId("probe-input").closest(".MuiSlider-root")).toHaveStyle({ opacity: "0.6" });
     expect(screen.getByTestId("probe-input")).toBeDisabled();
   });
 });

@@ -18,6 +18,10 @@ const gallery: GalleryModule = {
     { name: "Medium", render: () => live({ size: "medium", label: "Variations" }, false) },
     { name: "With a help caption", render: () => live({ label: "prc", help: "Each move's share of the games, as a play chance." }) },
     { name: "Indeterminate (a parent over its children)", render: () => live({ label: "All categories", indeterminate: true }, false) },
+    {
+      name: "Its test id on the checkbox around the input (testIdOn: control) — looks the same",
+      render: () => live({ size: "medium", label: "Variations", testIdOn: "control" }),
+    },
     { name: "Disabled", render: () => live({ label: "games", disabled: true }) },
   ],
 };

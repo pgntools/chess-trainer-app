@@ -6,12 +6,19 @@ are [`.claude/rules/settings.md`](../../.claude/rules/settings.md) and
 [`import-export.md`](../../.claude/rules/import-export.md). Template and
 families: [`README.md`](./README.md).
 
+**Migrated onto the design system by CTA-109** (the pilot): each entry below
+is marked with what replaced it, and describes the component as it was
+([`migration.md`](./migration.md)). The Appearance tab (CTA-107) came after
+this inventory; its legend is now `FieldLabel`, its theme cards stay its own.
+
 **Documented in [`Shared.md`](./Shared.md), not here**: the Settings folder in
 the sidebar (`SideBar`, pinned to the foot) and the right-panel slot.
 
 ---
 
 ### SettingsScreen
+
+> **Migrated (CTA-109)** — `PanelTabs` — link tabs sized to their words (`fullWidth={false}`).
 
 - **Name and location** — `SettingsScreen`, `src/views/settings/SettingsScreen.tsx`
 - **Family** — tabs
@@ -26,6 +33,8 @@ the sidebar (`SideBar`, pinned to the foot) and the right-panel slot.
 
 ### ExportTab
 
+> **Migrated (CTA-109)** — the `ExportCategoriesForm` block (`CheckboxField`s with their counts); the button unchanged.
+
 - **Name and location** — `ExportTab`, `src/views/settings/ExportTab.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, FormGroup, FormControlLabel, Checkbox, Button, Alert
@@ -38,6 +47,8 @@ the sidebar (`SideBar`, pinned to the foot) and the right-panel slot.
 - **Verdict** — module-specific but needs design consistency — "a category with its count" is written here and in `ImportDialog`; a `CountedCheckbox` would serve both.
 
 ### Export result
+
+> **Migrated (CTA-109)** — `InlineAlert` (success / error — an `alert`).
 
 - **Name and location** — inline in `ExportTab`, `src/views/settings/ExportTab.tsx:175-186`
 - **Family** — feedback (alert / snackbar)
@@ -52,6 +63,8 @@ the sidebar (`SideBar`, pinned to the foot) and the right-panel slot.
 
 ### ImportTab
 
+> **Migrated (CTA-109)** — `FileInputButton` (its input keeps `settings-import-input`).
+
 - **Name and location** — `ImportTab`, `src/views/settings/ImportTab.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, Button, LinearProgress, Alert (+ `ImportDialog`, `IncompatibleImportDialog`)
@@ -64,6 +77,8 @@ the sidebar (`SideBar`, pinned to the foot) and the right-panel slot.
 - **Verdict** — module-specific but needs design consistency — the zip picker is the same label-button idiom as the PGN pickers; a shared `FilePickButton` would take `accept`.
 
 ### Import progress
+
+> **Migrated (CTA-109)** — `ProgressLine`, its caption announced as it changes.
 
 - **Name and location** — inline in `ImportTab`, `src/views/settings/ImportTab.tsx:136-152`
 - **Family** — empty / loading / error state
@@ -78,6 +93,8 @@ the sidebar (`SideBar`, pinned to the foot) and the right-panel slot.
 
 ### Import report
 
+> **Migrated (CTA-109)** — the `ImportReport` block (`blocks/panels/`, an `InlineAlert`).
+
 - **Name and location** — inline in `ImportTab`, `src/views/settings/ImportTab.tsx:154-170`
 - **Family** — feedback (alert / snackbar)
 - **MUI atoms** — Alert, Box
@@ -90,6 +107,8 @@ the sidebar (`SideBar`, pinned to the foot) and the right-panel slot.
 - **Verdict** — module-specific but needs design consistency — pairs with the Export result.
 
 ### ImportDialog
+
+> **Migrated (CTA-109)** — the `ImportDialog` block (`blocks/dialogs/`): `BaseDialog`, `CheckboxField`, `RadioGroupField` (new) for every Merge / Override / Skip, `ExpandToggle`, `InlineAlert`; the caps a prop.
 
 - **Name and location** — `ImportDialog`, `src/views/settings/ImportDialog.tsx:136`, with the inner `ConflictRow` (`:67`) and `choiceRadios` (`:56`)
 - **Family** — dialog
@@ -104,6 +123,8 @@ the sidebar (`SideBar`, pinned to the foot) and the right-panel slot.
 
 ### IncompatibleImportDialog
 
+> **Migrated (CTA-109)** — the `IncompatibleImportDialog` block (`blocks/dialogs/`): `BaseDialog`, its links `LinkTarget`s.
+
 - **Name and location** — `IncompatibleImportDialog`, `src/views/settings/IncompatibleImportDialog.tsx`
 - **Family** — dialog
 - **MUI atoms** — Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Box, Typography, Link, Button
@@ -116,6 +137,8 @@ the sidebar (`SideBar`, pinned to the foot) and the right-panel slot.
 - **Verdict** — module-specific but needs design consistency — its monospace is the plain `"monospace"`, not the notation stack.
 
 ### StorageTab
+
+> **Migrated (CTA-109)** — the `StorageTable` block — two `DataTable`s, each database's section closed by `groupEnd`, a header on the browser table.
 
 - **Name and location** — `StorageTab`, `src/views/settings/StorageTab.tsx` (the inline `browserRow` at `:131`)
 - **Family** — table

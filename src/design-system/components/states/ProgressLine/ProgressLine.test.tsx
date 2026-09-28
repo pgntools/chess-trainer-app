@@ -18,6 +18,14 @@ describe("ProgressLine", () => {
     expect(screen.getByRole("progressbar", { name: "Import progress" })).not.toHaveAttribute("aria-valuenow");
   });
 
+  it("announces its caption as a status only when asked (CTA-109)", () => {
+    const { rerender } = render(<ProgressLine label="Import progress" caption="Reading the file…" testId="probe" />);
+    expect(screen.queryByRole("status")).toBeNull();
+    rerender(<ProgressLine label="Import progress" caption="Reading the file…" announce testId="probe" />);
+    expect(screen.getByRole("status")).toHaveTextContent("Reading the file…");
+    expect(screen.getByRole("progressbar", { name: "Import progress" })).toHaveAccessibleDescription("Reading the file…");
+  });
+
   it("cannot be nameless (CTA-111)", () => {
     // @ts-expect-error — a bar's label is required.
     const nameless = <ProgressLine value={10} testId="probe" />;

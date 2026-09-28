@@ -1,20 +1,13 @@
 import { useState, useSyncExternalStore } from "react";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Checkbox from "@mui/material/Checkbox";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import FormGroup from "@mui/material/FormGroup";
 import Typography from "@mui/material/Typography";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import { useTranslation } from "react-i18next";
 
-import {
-  EXPORT_CATEGORIES,
-  hasExportSelection,
-  type ExportCategory,
-  type ExportSelection,
-} from "../../lib/dataExport";
+import { ExportCategoriesForm } from "../../blocks/forms";
+import { InlineAlert } from "../../design-system/components/feedback";
+import { hasExportSelection, type ExportCategory, type ExportSelection } from "../../lib/dataExport";
 import { exportZip, ExportReadError } from "../../lib/dataExportSource";
 import {
   subscribeUploadedCollections,
@@ -43,6 +36,9 @@ import { RightPanel } from "../main/rightPanel";
  *
  * Reads only. A failure — a collection that cannot be read, a browser that
  * refuses the download — is said here, never thrown.
+ *
+ * The categories are the `ExportCategoriesForm` block (CTA-109); the result is
+ * an `InlineAlert`, an `alert` a screen reader reads as it lands.
  */
 
 const INITIAL: ExportSelection = {
@@ -80,8 +76,8 @@ function ExportTab() {
     repertoires: useCount(subscribeSavedRepertoires, savedRepertoiresSnapshot),
   };
 
-  const tick = (key: keyof ExportSelection) => (_event: unknown, checked: boolean) => {
-    setSelection((current) => ({ ...current, [key]: checked }));
+  const tick = (patch: Partial<ExportSelection>) => {
+    setSelection((current) => ({ ...current, ...patch }));
     setStatus({ kind: "idle" });
   };
 
@@ -111,54 +107,14 @@ function ExportTab() {
           {t("settings.export.intro")}
         </Typography>
 
-        <FormGroup>
-          {EXPORT_CATEGORIES.map((category) => (
-            <Box key={category}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={selection[category]}
-                    onChange={tick(category)}
-                    disabled={working}
-                    data-testid={`settings-export-${category}`}
-                  />
-                }
-                label={
-                  <>
-                    {t(`settings.export.categories.${category}`)}{" "}
-                    <Typography
-                      component="span"
-                      variant="body2"
-                      sx={{ color: "text.secondary" }}
-                      data-testid={`settings-export-${category}-count`}
-                    >
-                      ({counts[category] ?? "…"})
-                    </Typography>
-                  </>
-                }
-              />
-              {category === "collections" && (
-                <FormControlLabel
-                  sx={{ display: "flex", paddingInlineStart: 4 }}
-                  control={
-                    <Checkbox
-                      size="small"
-                      checked={selection.shippedCollections}
-                      onChange={tick("shippedCollections")}
-                      disabled={working || !selection.collections}
-                      data-testid="settings-export-shipped"
-                    />
-                  }
-                  label={
-                    <Typography variant="body2">
-                      {t("settings.export.includeShipped", { count: shippedCollections.length })}
-                    </Typography>
-                  }
-                />
-              )}
-            </Box>
-          ))}
-        </FormGroup>
+        <ExportCategoriesForm
+          selection={selection}
+          onChange={tick}
+          counts={counts}
+          shippedCount={shippedCollections.length}
+          disabled={working}
+          testId="settings-export"
+        />
 
         <Box>
           <Button
@@ -173,16 +129,16 @@ function ExportTab() {
         </Box>
 
         {status.kind === "done" && (
-          <Alert severity="success" data-testid="settings-export-done">
+          <InlineAlert severity="success" testId="settings-export-done">
             {t("settings.export.done", { fileName: status.fileName })}
-          </Alert>
+          </InlineAlert>
         )}
         {status.kind === "failed" && (
-          <Alert severity="error" data-testid="settings-export-failed">
+          <InlineAlert severity="error" testId="settings-export-failed">
             {status.collection === undefined
               ? t("settings.export.failed")
               : t("settings.export.unreadable", { name: status.collection })}
-          </Alert>
+          </InlineAlert>
         )}
       </Box>
 

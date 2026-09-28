@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ThemeProvider, useTheme } from "@mui/material/styles";
 import IconButton from "@mui/material/IconButton";
+import ToggleButton from "@mui/material/ToggleButton";
 
 import { stubReducedMotion } from "../../test/reducedMotion";
 import { themes } from "../themes";
@@ -18,6 +19,13 @@ import { usePrefersReducedMotion } from "./reducedMotion";
 afterEach(() => {
   vi.restoreAllMocks();
 });
+
+/** A colour as the DOM writes it back — `#6d6f72` → `rgb(109, 111, 114)`. */
+const toRgb = (color: string) => {
+  const probe = document.createElement("div");
+  probe.style.color = color;
+  return probe.style.color;
+};
 
 /** A component's `root` style override, resolved against `theme`, as text. */
 const overrideOf = (theme: ReturnType<typeof buildTheme>, component: "MuiButtonBase" | "MuiOutlinedInput", slot: string) => {
@@ -62,6 +70,18 @@ describe("the accessibility baseline in every theme", () => {
     const style = getComputedStyle(screen.getByRole("button", { name: "Close" }));
     expect(style.minWidth).toBe(`${MIN_TARGET_PX}px`);
     expect(style.minHeight).toBe(`${MIN_TARGET_PX}px`);
+  });
+});
+
+describe("a toggle button's words (CTA-109)", () => {
+  it.each(themes.map((theme) => theme.id))("are the measured text.secondary under %s, not MUI's action.active", (id) => {
+    const theme = buildTheme(themes.find((candidate) => candidate.id === id)!, "light", "ltr");
+    render(
+      <ThemeProvider theme={theme}>
+        <ToggleButton value="white">White</ToggleButton>
+      </ThemeProvider>,
+    );
+    expect(getComputedStyle(screen.getByRole("button", { name: "White" })).color).toBe(toRgb(theme.palette.text.secondary));
   });
 });
 

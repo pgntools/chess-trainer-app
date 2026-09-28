@@ -1,12 +1,12 @@
 import Box from "@mui/material/Box";
 import FormControlLabel from "@mui/material/FormControlLabel";
-import FormLabel from "@mui/material/FormLabel";
 import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
 import Typography from "@mui/material/Typography";
 import type { PaletteOptions } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 
+import { FieldLabel } from "../../design-system/components/forms";
 import { themes, type ThemeDefinition } from "../../design-system/themes";
 import { useThemeChoice } from "../../theme/themeChoice";
 
@@ -73,6 +73,10 @@ function BoardPreview({ chess }: { chess: ThemeDefinition["chess"] }) {
  * dark schemes and its board. The choice applies at once and is a preference
  * (`localStorage`, `theme/themeChoice.ts`); light and dark stay the header's
  * switch, under every theme.
+ *
+ * The legend is the design system's `FieldLabel` (CTA-109); each theme stays a
+ * radio card of its own — its previews are the card, which `RadioGroupField`'s
+ * plain labels do not draw (`docs/design/migration.md`).
  */
 function AppearanceTab() {
   const { t } = useTranslation();
@@ -84,9 +88,7 @@ function AppearanceTab() {
         {t("settings.appearance.intro")}
       </Typography>
       <Box component="fieldset" sx={{ border: 0, p: 0, m: 0, display: "grid", gap: 1 }}>
-        <FormLabel component="legend" sx={{ typography: "body2", fontWeight: 600, mb: 0.5 }}>
-          {t("settings.appearance.theme")}
-        </FormLabel>
+        <FieldLabel component="legend">{t("settings.appearance.theme")}</FieldLabel>
         <RadioGroup value={themeId} onChange={(_event, next) => setThemeId(next)} sx={{ gap: 1 }}>
           {themes.map((theme) => (
             <FormControlLabel

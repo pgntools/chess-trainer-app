@@ -43,7 +43,7 @@ its core in [`chessboard.md`](./chessboard.md), the variations explorer in
 | Path | What lives there |
 | --- | --- |
 | `src/views/engine/masked/MaskedPlay.tsx` | **The screen's route.** The arrival (`arrivalOf`, read once), the costume's state — the mask, the notation switch, the engine-lines switch — the Masking tab's content, and the redirect of an unmasked `?saved=` to `/engine/play`. Renders `PlayScreen` with `masking`. |
-| `src/views/engine/masked/MaskEditor.tsx` | **The mask editor**: the three presets, the twelve per-type selects (each row offers only its own colour's six types), the notation switch. Presentational. |
+| `src/blocks/forms/MaskEditor/` | **The mask editor** — a block (CTA-109): the three presets, the twelve per-type selects (each row offers only its own colour's six types), the notation switch and the engine-lines switch. Presentational; ids under the prefix `mask` (`mask-editor`, `mask-preset-<id>`, `mask-select-<type>`, `mask-setting-notation`, `mask-setting-lines`). |
 | `src/views/engine/masked/Main.tsx` | Layout-only wrapper that `App.tsx` routes to (`masked-play-wrapper`). |
 | `src/views/engine/play/PlayScreen.tsx` | **The screen itself**, shared with Play with Engine: `usePlayGame` + `BoardShell` / `BoardPanel` + `useVariationsExplorer`, the header, the tabs, the dialogs, the URL write-back. Its optional `masking` prop (`PlayScreenMasking`) is the whole of what Masked Pieces adds (§2). |
 | `src/views/engine/play/usePlayGame.ts` | **The session**, shared: core + engine + `usePlayToggle` + the autosave. Its second argument, `mask`, is written on the record and read nowhere (§5). Also `arrivalOf`. |
@@ -106,7 +106,7 @@ is Play with Engine's `playEngine.*` / `playedGames.*`. `he` is typed
 MaskedPlay.tsx (route)                      PlayWithEngine.tsx (route)
   arrival = arrivalOf(?fen, ?saved)           arrival = arrivalOf(?fen, ?saved)
   mask · notation · showLines  (state)        (no costume)
-  Masking tab = MaskEditor + lines switch
+  Masking tab = the MaskEditor block
         │                                           │
         └──────────── PlayScreen({ id, arrival, masking? }) ───┘
                         │

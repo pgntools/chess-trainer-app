@@ -103,7 +103,8 @@ long names, RTL, every theme) — then wire the screen.
   - **tests ask by role and name** and drive the keyboard with `userEvent`.
 - A theme's accessibility is tokens: each palette's `focusRing` and
   `controlBorder`, `focusRingWidth`, `contrastThreshold: 4.5`; `buildTheme`
-  owns `MuiButtonBase`, `MuiIconButton`, `MuiSlider` and `MuiOutlinedInput`
+  owns `MuiButtonBase`, `MuiIconButton`, `MuiSlider`, `MuiToggleButton` (its
+  words `text.secondary`, CTA-109) and `MuiOutlinedInput`
   (`theme/accessibility.ts`), so no theme overrides them.
   `themes/contrast.test.ts` measures every theme — fix a failure with the
   smallest token change and list it in `docs/design/README.md`.

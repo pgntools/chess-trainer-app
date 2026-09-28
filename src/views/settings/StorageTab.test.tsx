@@ -23,6 +23,7 @@ import {
   formatBytes,
 } from "../../lib/storageDiagnostics";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
+import { expectNoAxeViolations } from "../../test/axe";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 import SettingsScreen from "./SettingsScreen";
 
@@ -226,5 +227,17 @@ describe("the Storage tab", () => {
 
     expect(await screen.findByText("Estimated payload")).toBeInTheDocument();
     expect(screen.getByText(/not disk usage/)).toBeInTheDocument();
+  });
+});
+
+describe("the Storage tab — accessibility (CTA-109)", () => {
+  it("passes axe once every figure is in, each table named", async () => {
+    await seed();
+    renderAt("/settings/storage");
+    await landed("collectionGames", "3");
+    await browserSaid("settings-storage-usage", "MB");
+    expect(screen.getByRole("table", { name: "Browser storage" })).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Your data" })).toBeInTheDocument();
+    await expectNoAxeViolations();
   });
 });

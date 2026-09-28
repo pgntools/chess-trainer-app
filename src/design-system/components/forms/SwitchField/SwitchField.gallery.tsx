@@ -25,6 +25,10 @@ const gallery: GalleryModule = {
       name: "Small, with a help caption",
       render: () => live({ size: "small", label: "Required moves", help: "Mark the moves you must play here." }),
     },
+    {
+      name: "Its test id on the switch around the input (testIdOn: control) — looks the same",
+      render: () => live({ size: "small", label: "Engine", testIdOn: "control" }),
+    },
     { name: "Disabled", render: () => live({ disabled: true, label: "Threads", help: "Fixed at 1 in this build." }) },
   ],
 };
