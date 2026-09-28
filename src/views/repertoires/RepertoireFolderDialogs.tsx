@@ -57,6 +57,7 @@ export function RepertoireFolderNameDialog({
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <TextField
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- the dialog's field takes the focus as the dialog opens, as WAI-ARIA's dialog pattern asks (ACCESSIBILITY.md)
           autoFocus
           fullWidth
           margin="dense"
