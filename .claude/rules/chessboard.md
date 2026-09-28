@@ -194,6 +194,10 @@ write a colour literal in a board file.**
   board; the position editor, the list previews and the filter board do it
   themselves. Under the default theme these are react-chessboard's own
   defaults, so the board looks as it always has.
+- **Reduced motion rides along** (CTA-111): under `prefers-reduced-motion:
+  reduce` the same options carry `showAnimations: false`, so every board's
+  pieces jump rather than slide; without it the key is absent. Never set
+  `showAnimations` on a board yourself — spread `useBoardSquareOptions()`.
 - Anything else: `useChessTokens()` in a component or hook, or
   `chessTokensOf(theme)` inside an `sx` function. Both fall back to the
   default theme's tokens under a theme `buildTheme` did not make — a test

@@ -57,18 +57,30 @@ and move into `src/blocks/` as their modules migrate
 ([`hierarchy.md`](./hierarchy.md#where-srcviewsshared-fits)).
 
 `src/theme/` is the app's wiring of it: `AppThemeWithLang` builds the
-reader's theme (`buildTheme(…, "both", direction, locale)`) and owns the
+reader's theme (`buildTheme(…, "both", direction, { reducedMotion, localization })`) and owns the
 choice (`themeChoice.ts`, `localStorage` key `chessapp.theme`), the colour
 scheme and the direction; `ForceLTR` keeps the board unmirrored.
 
 ### Themes
 
 A theme is a `ThemeDefinition` (`themes/types.ts`):
-`{ id, labelKey, light, dark, typography, shape, overrides, chess }`.
+`{ id, labelKey, light, dark, focusRingWidth, typography, shape, overrides, chess }`.
 
 - `light` / `dark` are the two colour schemes' palettes. The app builds both
   as CSS variables and the header's switch picks one, so every theme has
-  both; light and dark are never a theme of their own.
+  both; light and dark are never a theme of their own. Each palette **must**
+  carry the accessibility baseline's two colours (CTA-111): `focusRing` (the
+  keyboard focus ring) and `controlBorder` (an outlined field's resting
+  border), both at 3:1 or better on every background — and every theme sets
+  `contrastThreshold: 4.5`, so MUI picks a button's text colour at AA.
+- `focusRingWidth` is the ring's thickness (2 px; 3 in the high-contrast
+  theme). `buildTheme` draws the ring on every MUI button, the slider's thumb
+  and — through `theme.mixins.focusRing` — anything else a component makes
+  focusable, lays the 24 px icon-button floor and the control border over
+  every theme (`theme/accessibility.ts`), and with `reducedMotion` turns every
+  transition and ripple off. A theme tunes them only through these tokens;
+  `MuiButtonBase`, `MuiIconButton`, `MuiSlider` and `MuiOutlinedInput` are the
+  baseline's, never a theme's override.
 - `chess` is **every colour drawn on or over a board** — squares and
   coordinates, the last-move fill, the arrow palettes, the required / untagged
   / play-chance arrows, the book arrows, the move marks' tones, the promotion
@@ -91,7 +103,7 @@ The registered themes, in the order Settings → Appearance lists them:
 | `default` | Default | `themes/default.ts` | The app's look before themes, unchanged; react-chessboard's board. |
 | `brown` | Brown | `themes/brown.ts` | Calm, lichess-like (CTA-108): warm off-white / near-black pages, one blue accent, square-ish corners; lichess's brown board, highlight and arrow brushes. Its squares equal the default's (react-chessboard's defaults *are* lichess's brown) — its board differs in the arrows, book arrows, result bars and map dots. |
 | `green` | Green | `themes/green.ts` | Bold, chess.com-like (CTA-108): the green board, the yellow highlight, green / blue / red arrows, move-classification tones, heavy headings and chunky buttons. |
-| `high-contrast` | High contrast | `themes/highContrast.ts` | WCAG AA or better in both schemes (`themes/themes.test.ts` measures text, status colours, dividers, move marks, coordinates and result bars), a focus ring on everything that takes the keyboard (`MuiButtonBase`), strong borders, `contrastThreshold: 4.5`; a board told apart by lightness and drawn over in the Okabe–Ito palette. |
+| `high-contrast` | High contrast | `themes/highContrast.ts` | WCAG AA or better in both schemes (`themes/themes.test.ts` measures text, status colours, dividers, move marks, coordinates and result bars), a 3 px focus ring in the text colour, strong borders; a board told apart by lightness — its coordinates at AA, the one theme that writes them so — and drawn over in the Okabe–Ito palette. |
 
 The two sites that inspired `brown` and `green` are named only in the files'
 comments: another site's brand is never a theme's id or shown name.
@@ -99,16 +111,52 @@ comments: another site's brand is never a theme's id or shown name.
 share (the selected nav row's tint, a palette colour read through the CSS
 variables when there are any).
 
-`buildTheme(theme, mode, direction, ...locales)` takes `mode` `"both"` (the
-app's: CSS variables, both schemes, switched by `data-mui-color-scheme`) or
-`"light"` / `"dark"` (one fixed scheme and no variables — a theme that can sit
-inside the app's, as the gallery's preview does).
+`buildTheme(theme, mode, direction, { reducedMotion?, localization? })` takes
+`mode` `"both"` (the app's: CSS variables, both schemes, switched by
+`data-mui-color-scheme`) or `"light"` / `"dark"` (one fixed scheme and no
+variables — a theme that can sit inside the app's, as the gallery's preview
+does); `reducedMotion` is the reader's system setting
+(`usePrefersReducedMotion`), `localization` MUI's locale bundles.
+
+#### Accessibility token changes (CTA-111)
+
+`themes/contrast.test.ts` measures every theme in light and dark against
+WCAG 2.2 AA ([`ACCESSIBILITY.md`](../../ACCESSIBILITY.md)). Where one failed,
+the smallest token change fixed it — a colour darkened (light schemes) or
+lightened (dark schemes) along its own hue just until it passed 4.5:1 on
+every surface (the page, the paper, the sunken rail), and nothing else
+touched:
+
+| Theme · scheme | Token | Was | Now | Why |
+| --- | --- | --- | --- | --- |
+| default · light | `text.secondary` | `#667085` | `#646e83` | 4.43:1 on the page |
+| default · light | `error.main` | MUI's `#d32f2f` | `#d22c2c` | 4.43:1 as text on the page |
+| default · light | `warning.main` | MUI's `#ed6c02` | `#b45202` | 2.77:1 as text on the page; white on it 3.12:1 |
+| default · light | `info.main` | MUI's `#0288d1` | `#0273b1` | 3.43:1 as text on the page; white on it 3.86:1 |
+| brown · light | `text.secondary` | `#6b6b6b` | `#6a6a6a` | 4.48:1 on the page |
+| brown · light | `primary.main` | `#1b78d0` | `#186cbc` | 3.81:1 as text (a link, a text button) on the page |
+| brown · light | `error.main` | MUI's `#d32f2f` | `#cb2b2b` | 4.18:1 as text on the page |
+| brown · light | `warning.main` | MUI's `#ed6c02` | `#ae4f01` | 2.62:1 as text on the page |
+| brown · light | `info.main` | MUI's `#0288d1` | `#0270ac` | 3.25:1 as text on the page |
+| brown · light | `success.main` | MUI's `#2e7d32` | `#2d7931` | 4.31:1 as text on the page |
+| brown · dark | `error.main` | MUI's `#f44336` | `#f55145` | 4.19:1 as text on the paper |
+| green · light | `primary.main` | `#5d9948` | `#4a7939` | white on it 3.43:1; 3.03:1 as text on the page |
+| green · light | `error.main` | MUI's `#d32f2f` | `#d12c2c` | 4.40:1 as text on the page |
+| green · light | `warning.main` | MUI's `#ed6c02` | `#b35102` | 2.75:1 as text on the page |
+| green · light | `info.main` | MUI's `#0288d1` | `#0273b1` | 3.41:1 as text on the page |
+| green · dark | `error.main` | MUI's `#f44336` | `#f6675d` | 3.65:1 as text on the page |
+| every theme · both | `contrastThreshold` | MUI's 3 | 4.5 | MUI chose white text at 3:1 (the dark schemes' error buttons 3.68:1, brown dark's primary 3.27:1); now a button's text is picked at AA |
+| every theme · both | `focusRing`, `controlBorder` | — (MUI's outlined border is 1.6:1) | the theme's accent (the text colour in high contrast); a 3:1 grey of the theme's own hue | new tokens: a focus ring and a control border at 3:1 |
+
+The board's coordinates are measured too: the high-contrast theme writes them
+at AA; the default, brown and green themes keep the traditional look (2.30,
+2.30 and 2.84:1) — a known gap, recorded in `ACCESSIBILITY.md`, not changed.
 
 ### Adding things
 
 | To add | Do |
 | --- | --- |
-| **A theme** | A file beside `themes/default.ts` exporting a `ThemeDefinition` (start from a copy of the default; every `chess` group is required), an entry in `themes` in `themes/registry.ts`, and its name `appearance.themes.<id>` in `en.ts` and `he.ts`. No component changes: Settings → Appearance and the gallery list the registry. Never rename an `id` — it is what the reader's choice is stored as. |
+| **A theme** | A file beside `themes/default.ts` exporting a `ThemeDefinition` (start from a copy of the default; every `chess` group, `focusRingWidth` and each palette's `focusRing` and `controlBorder` are required), an entry in `themes` in `themes/registry.ts`, and its name `appearance.themes.<id>` in `en.ts` and `he.ts`. `themes/contrast.test.ts` then measures it against AA — fix what it reports with the smallest token change. No component changes: Settings → Appearance and the gallery list the registry. Never rename an `id` — it is what the reader's choice is stored as. |
 | **A section** | A folder under `components/` with an `index.ts` (the section's public surface) and an entry in `SECTIONS` (`components/sections.ts`), which orders the gallery. A pattern section is the same under `patterns/` and `PATTERN_SECTIONS`; a block family an entry in `BLOCK_FAMILIES` (`src/blocks/families.ts`). |
 | **A component** | A folder in its section — `Foo/Foo.tsx`, `Foo/Foo.test.tsx`, `Foo/Foo.gallery.tsx`, `Foo/index.ts` — and a re-export from the section's `index.ts`. **Screens import only from a section's `index.ts`.** It follows [the component rules](#the-component-rules), and its section doc (`sections/<section>.md`) gets an entry. |
 | **A pattern or a block** | [`hierarchy.md`](./hierarchy.md#the-folder-layout) — the same four files (a block adds `fixtures.ts`), in its pattern section or block family. |
@@ -188,6 +236,9 @@ Every component in `components/` (CTA-108) — and every pattern and block
   direction as `dir`.
 - **Variations are props** — a tone, a size, a density, an optional part —
   whose absence is the base; each has its own gallery demo.
+- **Accessible** (CTA-111, [`hierarchy.md`](./hierarchy.md#accessibility)):
+  its name is a required prop, its states are announced, the keyboard
+  operates all of it, and its every demo passes axe.
 - **A part that can go somewhere takes a `LinkTarget`** (`components/link.ts`):
   react-router's `Link` as `component` with its `to`, or an `href`. The design
   system imports no router of its own; `useTableUrlState` alone reads the URL,
