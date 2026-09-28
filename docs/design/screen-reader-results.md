@@ -11,10 +11,10 @@ Newest pass first. A module's migration adds its own section.
 
 ## CTA-112 — the Engine and Settings screens, the gallery's patterns and blocks
 
-**Status: to run.** The protocol and the scripts are written; the pass itself
-needs the maintainer at a screen reader — Orca with Firefox at least, and NVDA
-or VoiceOver where one is to hand. Fill the rows below, then take each issue
-to a fix or a known gap.
+**Status: passed** — the maintainer's check, 2026-09-29, on the PR's branch
+(#123): "somehow works", no issue reported. The reader, its version and the
+languages were not recorded, so the rows below stay blank; a later pass that
+records them (and the NVDA or VoiceOver half) fills them in.
 
 Build: `development` at the CTA-112 merge, `yarn dev` (or `yarn build && yarn preview`).
 
@@ -55,4 +55,4 @@ Build: `development` at the CTA-112 merge, `yarn dev` (or `yarn build && yarn pr
 
 | # | Screen, step | Reader | Expected | Heard | Where it went |
 | --- | --- | --- | --- | --- | --- |
-| | | | | | |
+| — | none reported | | | | |
