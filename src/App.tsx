@@ -3,6 +3,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { createBrowserRouter, RouterProvider, type RouteObject } from "react-router";
 
 import { DefaultLayout } from './views/main/Layout';
+import { FULL_WIDTH_ROUTE } from './views/main/routeHandle';
 import { default as HomeScreen  } from './views/home/Main'
 import { default as PlayWithEngineScreen  } from './views/engine/play/Main'
 import { default as PlayedGamesScreen  } from './views/engine/games/Main'
@@ -50,7 +51,14 @@ const devScreen = (load: Parameters<typeof lazy>[0]): ReactNode => {
 };
 
 const devRoutes: RouteObject[] = import.meta.env.DEV
-  ? [{ path: "/dev/design", element: devScreen(() => import("./views/dev/design/Main")) }]
+  ? [
+      {
+        path: "/dev/design",
+        element: devScreen(() => import("./views/dev/design/Main")),
+        // Not a board: the gallery takes the whole body (no square, no aside).
+        handle: FULL_WIDTH_ROUTE,
+      },
+    ]
   : [];
 
 

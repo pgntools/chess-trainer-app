@@ -11,6 +11,7 @@ import { Footer } from './Footer';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
 import { LeftPanelOutlet, LeftPanelProvider } from './leftPanel';
+import { isFullWidthRoute } from './routeHandle';
 import { ForceLTR } from '../../theme/ForceLTR';
 import ColorModeIconDropdown from '../../theme/ColorModeIconDropdown';
 import LanguageSwitch from '../../theme/LanguageSwitch';
@@ -221,6 +222,9 @@ const DefaultLayoutViewport = () => {
 
 
     const matches = useMatches();
+    // A route whose `handle` asks for the whole body (`routeHandle.ts`) gets
+    // it: no square, no aside. Every other route gets the shell below as is.
+    const fullWidth = isFullWidthRoute(matches);
 
     const updateLocationFn = useCallback((match:UIMatch)=>svc.send({
         type:"EVENTS.NAVIGATION.ROUTER.MATCH.UPDATE",
@@ -336,6 +340,14 @@ const DefaultLayoutViewport = () => {
                             overflow: "hidden",
                         }}
                    >
+                        {fullWidth ? (
+                            <Box
+                                data-testid="layout-full-body"
+                                sx={{ flexGrow: 1, minWidth: 0, minHeight: 0 }}
+                            >
+                                <Outlet />
+                            </Box>
+                        ) : (<>
                         <Box
                             sx={{
                                 flexShrink: 0,
@@ -419,6 +431,7 @@ const DefaultLayoutViewport = () => {
                             <RightPanelOutlet fallback={<AnalysisPlaceholder />} />
 
                         </Box>
+                        </>)}
 
 
 

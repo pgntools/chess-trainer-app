@@ -21,6 +21,33 @@ describe("the design gallery", () => {
     }
   });
 
+  it("lists every section in a menu down the left, the first marked current", () => {
+    renderGallery();
+    const nav = screen.getByRole("navigation", { name: "Sections" });
+    const links = within(nav).getAllByRole("button");
+    expect(links.map((link) => link.textContent?.replace(/\d+$/, ""))).toEqual(
+      SECTIONS.map((section) => section.title),
+    );
+    expect(screen.getByTestId(`design-gallery-nav-${SECTIONS[0].id}`)).toHaveAttribute("aria-current", "true");
+  });
+
+  it("scrolls the preview to a section picked in the menu, and marks it current", () => {
+    const scrolled: string[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.getAttribute("data-testid") ?? "");
+    };
+    try {
+      renderGallery();
+      fireEvent.click(screen.getByTestId("design-gallery-nav-tables"));
+      expect(scrolled).toEqual(["design-gallery-section-tables"]);
+      expect(screen.getByTestId("design-gallery-nav-tables")).toHaveAttribute("aria-current", "true");
+      expect(screen.getByTestId("design-gallery-nav-dialogs")).not.toHaveAttribute("aria-current");
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
   it("opens on the default theme, light, left to right", () => {
     renderGallery();
     const preview = screen.getByTestId("design-gallery-preview");
