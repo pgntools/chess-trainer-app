@@ -5,8 +5,10 @@ paths:
   - "src/lib/pgnExport*"
   - "src/views/settings/ExportTab*"
   - "src/views/settings/ImportTab*"
-  - "src/views/settings/ImportDialog*"
-  - "src/views/settings/IncompatibleImportDialog*"
+  - "src/blocks/dialogs/ImportDialog/**"
+  - "src/blocks/dialogs/IncompatibleImportDialog/**"
+  - "src/blocks/panels/ImportReport/**"
+  - "src/blocks/forms/ExportCategoriesForm/**"
 ---
 
 # Import and Export — the reader's data as one zip
@@ -32,10 +34,11 @@ testing. The Settings section itself (its routes, tabs and nav) is
 | `src/lib/pgnExport.ts` | `pgnFileOf` (records joined as they stand) and `downloadBinaryFile` (the blob and the `<a download>`; `false` when the browser refuses). |
 | `src/lib/dataImport.ts` | **The import's planner**, pure: `readImport` (zip → a checked, migrated `ImportDump`, or an `ImportProblem` and the zip's `.pgn` files), `migrateManifest` and `MANIFEST_MIGRATIONS`, `importPlanOf` (counts and clashing folders), `defaultImportChoices`, `importWritesOf` (choices → per-store writes, a report, cap problems). No React, no store, no DOM. |
 | `src/lib/dataImportTarget.ts` | **The import's reads and writes**: `loadImportCurrent` (every store, read whole), `IMPORT_CAPS`, `applyImport` (the writes through each store's own operations; an uploaded collection indexed first). |
-| `src/views/settings/ExportTab.tsx` | The Export tab: four checkboxes and the shipped one, counts from the stores' snapshots, the download, an `Alert` on failure. |
-| `src/views/settings/ImportTab.tsx` | The Import tab: the file picker, the progress, the report `Alert`. |
-| `src/views/settings/ImportDialog.tsx` | The choice dialog: categories, counts, Merge / Override / Skip, the clashing folders and their own choices, the preview and the cap warnings. |
-| `src/views/settings/IncompatibleImportDialog.tsx` | The dialog for a zip that cannot be imported. |
+| `src/views/settings/ExportTab.tsx` | The Export tab: the `ExportCategoriesForm` block (four checkboxes and the shipped one, counts from the stores' snapshots), the download, an `InlineAlert` for the result. |
+| `src/views/settings/ImportTab.tsx` | The Import tab: `FileInputButton`, the progress (`ProgressLine`, announced), the `ImportReport` block. |
+| `src/blocks/dialogs/ImportDialog/` | The choice dialog, a block (CTA-109): categories, counts, Merge / Override / Skip (`RadioGroupField`), the clashing folders and their own choices, the preview and the cap warnings. The caps arrive as a prop (`IMPORT_CAPS`, passed by the tab). |
+| `src/blocks/dialogs/IncompatibleImportDialog/` | The dialog for a zip that cannot be imported, a block (CTA-109); its links arrive as `LinkTarget`s. |
+| `src/blocks/panels/ImportReport/` | The report, a line per category, a block (CTA-109). |
 | Store operations added for the import | `importPlayedGames`, `importAnalyses`, `importRepertoires` (remove + add in one write, merged by date — `mergedNewestFirst` in `lib/idbRecordStore.ts`); `addAnalysisFolders`, `addRepertoireFolders`, `addLibraryFolders` (all or nothing under the cap). The collections use `addCollection` (with its id and folder) and `removeCollection`. |
 | Tests | `src/lib/dataExport.test.ts`, `src/lib/dataImport.test.ts`, `src/views/settings/Settings.test.tsx` (the section and Export), `src/views/settings/ImportTab.test.tsx` (Import over the real stores). |
 

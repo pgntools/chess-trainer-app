@@ -58,11 +58,14 @@ their demos run on made-up data.
 
 | Pattern | What it is | Reference |
 | --- | --- | --- |
-| `DataTable` | a multi-column table: columns as data, controlled sort and paging, picks with select-all, row actions, row click and link, loading / empty / no-match rows, filter and toolbar slots, density, a sticky header — good at 10,000 rows | [`sections/patterns/tables.md`](./sections/patterns/tables.md) |
+| `DataTable` | a multi-column table: columns as data, controlled sort and paging, picks with select-all, row actions, row click and link, loading / empty / no-match rows, a row's note across the columns, sections closed by a bolder line, filter and toolbar slots, density, a sticky header — good at 10,000 rows | [`sections/patterns/tables.md`](./sections/patterns/tables.md) |
 | `TreeView` | a collapsible tree: branches that open in place, leaves that link or select, the node on screen marked, a branch that can also be a destination — the sidebar's look | [`sections/patterns/trees.md`](./sections/patterns/trees.md) |
 
 To come, as the migrations need them: `FilterBar`, `UploadPanel`,
-`SettingsForm` …
+`SettingsForm`, `RadioCardGroup` … The pilot (CTA-109) needed none of them:
+the Lobby's filter row is a plain wrapping row inside its block, and Import's
+pick-progress-report is three base components in the screen
+([`migration.md`](./migration.md#44-left-hand-written-and-why)).
 
 ### 4. Blocks — `src/blocks/<family>/<Block>/`
 
@@ -84,17 +87,31 @@ in the gallery, whichever module it serves.
 
 | Block | Family | What it is |
 | --- | --- | --- |
-| `ExampleGamesTable` | tables | **The placeholder** that proves the layer's wiring: a collection's rows as a `DataTable`. Deleted when the first real table block lands. |
+| `PlayedGamesTable` | tables | The Lobby's games (`PlayedGameRow`) as a `DataTable`: sorted by `lib`'s `sortedPlayedGames`, a pick per row with select-all, Analysis / Continue row actions named by the row (`whenPlayed`), an unreadable record's row saying so (CTA-109). |
+| `StorageTable` | tables | Settings → Storage's two read-only `DataTable`s: the browser's estimates, then the reader's records per category with each database's section closed by a bolder line (CTA-109). |
+| `EngineSettingsForm` | forms | The engine's settings — strength, depth, move time, lines, threads, hash, the eval bar — each option-backed slider rendered from what the running engine declared (`engineOptionState`: absent, pinned, adjustable). Play with Engine's and Masked Pieces' Engine tab, the Lobby's new-game form (CTA-109). |
+| `PlayedGamesFilters` | forms | The Lobby's filter row: the side the reader played (`SideToggle` with "all") and the opening each game reached (CTA-109). |
+| `MaskEditor` | forms | Masked Pieces' Masking tab: the presets, the twelve per-type selects (each its own colour's six types), the notation and engine-lines switches (`PieceMask`, CTA-109). |
+| `ExportCategoriesForm` | forms | Settings → Export's categories (`ExportSelection`), each with its count, and the shipped collections' box (CTA-109). |
+| `ImportDialog` | dialogs | Settings → Import's choice dialog over an `ImportDump` and `ImportCurrent`: categories, Merge / Override / Skip per category and per folder (`RadioGroupField`), the preview and the caps, re-planned on every change; writes nothing (CTA-109). |
+| `IncompatibleImportDialog` | dialogs | A zip that cannot be imported (`ImportProblem`): what is wrong, where each kind of PGN comes in by hand (`LinkTarget`s), the zip's `.pgn` files (CTA-109). |
+| `ImportReport` | panels | What an import did (`ImportResults`): a line per category, an `InlineAlert` that is a success or a warning (CTA-109). |
 | `FolderTree` | trees | The app's one nested-folder model (`GameFolder`, `lib/savedGameFolders.ts`) as a `TreeView`: each folder a destination with a count, its chevron its own button, an optional "everything" row. The second tree view the app has, after the sidebar's. |
 
-To come, with each module's migration: `PlayedGamesTable`,
-`CollectionGamesTable`, `CollectionsTreeTable`, `StorageTable`,
-`PgnImportForm` …
+To come, with each module's migration: `CollectionGamesTable`,
+`CollectionsTreeTable`, `PgnImportForm` … How a module migrates — the order
+of work, what each old pattern became, the pilot's findings — is
+[`migration.md`](./migration.md).
 
-A block's words: the placeholder and `FolderTree` take them as props (a
-`labels` object), so the gallery shows them on fixtures and no catalog key is
-added for a dev-only demo. A block that one screen alone uses may read the
-catalogs (`useTranslation`) instead — its words are the app's.
+A block's words: `FolderTree` takes them as props (a `labels` object), so the
+gallery shows them on fixtures and no catalog key is added for a dev-only
+demo. A block that one module alone uses may read the catalogs
+(`useTranslation`) instead — its words are the app's; every CTA-109 block
+does.
+
+A block's test ids: a **table** block takes the screen's `testId` as its
+root, as `DataTable` does; a **form, panel or dialog** block takes it as the
+prefix of every id it sets (`mask` → `mask-editor`, `mask-preset-<id>`).
 
 ### 5. Screens — `src/views/<module>/`
 

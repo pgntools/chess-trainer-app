@@ -50,8 +50,10 @@ Gallery: `/dev/design/states`.
   and described by the caption; a determinate bar reports `aria-valuenow`,
   an indeterminate one none.
 - **Props** — `value?` (0–100, clamped; absent: indeterminate), `label`
-  (the bar's accessible name, required — CTA-111), `caption?`,
-  `color?: "primary" | "success"`, `testId` (`-bar`, `-caption`).
+  (the bar's accessible name, required — CTA-111), `caption?`, `announce?`
+  (CTA-109 — the caption a `status` live region, read out as it changes: an
+  import's progress), `color?: "primary" | "success"`, `testId` (`-bar`,
+  `-caption`).
 - **Variations** — determinate; success (a coverage bar); indeterminate.
 - **Replaces** — the `LinearProgress` bars of indexing, import and the
   Backtracking coverage line.

@@ -205,8 +205,8 @@ every block's page, under every theme, both schemes and both directions, and
 fails on any console error.
 
 After `yarn build`, `grep -r -e "/dev/design" -e "design-gallery" -e
-"DesignGallery" -e ".gallery" -e "ExampleGamesTable" -e "FolderTree" -e
-"EXAMPLE_ROWS" dist/` finds nothing (the nav's two label strings,
+"DesignGallery" -e ".gallery" -e "FolderTree" -e "PLAYED_ROWS" -e
+"NON_PAWNS" -e "SHIPPED_OPTIONS" -e "gallery-" dist/` finds nothing (the nav's two label strings,
 `nav.folders.development` and `nav.designSystem`, are in the shipped
 catalogs, as every nav label must be).
 

@@ -33,8 +33,11 @@ Gallery: `/dev/design/dialogs` — every variation open in its own frame
   `cancelLabel`, `tone?: "default" | "destructive"`, `confirmVariant?:
   "contained" | "text"` (default contained), `busy?` (both buttons off, a
   spinner in the confirm, Escape ignored), `confirmDisabled?`, `width?`,
-  `testId`, `dialogProps?`. Ids: `-message`, `-cancel`, `-confirm`.
-- **Variations** — default / destructive tone; contained / text confirm; busy.
+  `testId`, `confirmTestId?` (CTA-109 — the confirm's own id, for a screen
+  whose tests named it), `dialogProps?`. Ids: `-message`, `-cancel`,
+  `-confirm`.
+- **Variations** — default / destructive tone; contained / text confirm; the
+  confirm under a screen's own id; busy.
 - **Replaces** — the destructive confirms' two looks (Engine and Library's
   text `error` button over `DialogContentText`, the shared and repertoire
   ones' contained `error` over `Typography body2`): Replay / Resign
@@ -47,8 +50,8 @@ Gallery: `/dev/design/dialogs` — every variation open in its own frame
 
 - **Purpose** — delete the picked rows: a destructive confirm with an error
   slot, so a failed write stays in the dialog beside the question.
-- **Props** — as `ConfirmDialog` less `tone` / `confirmVariant`, plus
-  `error?` (an error `Alert`, `-error`).
+- **Props** — as `ConfirmDialog` less `tone` / `confirmVariant` (its
+  `confirmTestId` too), plus `error?` (an error `Alert`, `-error`).
 - **Variations** — plain, with a failed delete, busy.
 - **Replaces** — the three "Delete N picked" dialogs: the Lobby's
   ([Engine.md](../Engine.md)), the collection table's

@@ -17,7 +17,8 @@ Gallery: `/dev/design/patterns/tables/DataTable`.
   only when the sorted column's `sortValue` changes):
   `DataTableColumn<R, C> = { id, header, sortable?, align?: "start" | "end",
   firstDirection?, width?, render(row), sortValue?(row), dir?: "ltr" | "auto",
-  wrap? }`. `render` returns the cell's **content**; the cell (alignment,
+  wrap?, cellTestId?(row) }` (`cellTestId`, CTA-109: a test id on the cell
+  itself, for a screen whose tests name its cells). `render` returns the cell's **content**; the cell (alignment,
   tabular figures for `end`, direction, one line unless `wrap`) is the
   table's.
 - **Props** — `columns`, `rows` (every row the filters leave, all pages),
@@ -28,7 +29,10 @@ Gallery: `/dev/design/patterns/tables/DataTable`.
   onRowsPerPageChange, labelRowsPerPage, labelDisplayedRows? }` (absent: every
   row, no pager), `picks?: { picked, onChange, selectAllLabel, pickLabel(row) }`,
   `rowActions?(row)` + `actionsLabel` (required with them, CTA-111),
-  `onRowClick?(row)`, `rowLink?(row)` + `linkColumn?`, `loading?` +
+  `onRowClick?(row)`, `rowLink?(row)` + `linkColumn?`, `rowNote?(row)` (a
+  row that cannot fill its columns: its words in one cell across them, its
+  pick and actions kept — CTA-109), `groupEnd?(row, next)` (a bolder line
+  under a row that closes a section — CTA-109), `loading?` +
   `loadingLabel?`, `emptyLabel`, `noMatchLabel?` + `filtered?`, `filters?`,
   `toolbar?`, `density?`, `stickyHeader?`, a name — `ariaLabel` or `caption`
   (`TableName`, required) — and `testId`. A column's `header` is required
@@ -41,7 +45,7 @@ Gallery: `/dev/design/patterns/tables/DataTable`.
   table is `aria-busy` while `loading`.
 - **Test ids** — `testId` (the root), `-frame` (its table `-frame-table`),
   `-sort-<column>`, `-select-all`, `-row-<id>`, `-pick-<id>`, `-link-<id>`,
-  `-actions-<id>`, `-loading`, `-empty`, `-no-match`, `-pager`.
+  `-actions-<id>`, `-note-<id>`, `-loading`, `-empty`, `-no-match`, `-pager`.
 - **Also exports** `firstDirectionOf(columns)` — the columns' first
   directions as `useTableUrlState`'s `firstDirection`.
 
@@ -61,8 +65,8 @@ Gallery: `/dev/design/patterns/tables/DataTable`.
 - **Variations** (one demo each) — sort and pages; picks, row actions, a row
   click and a toolbar; a filters slot with no match; sort and pages in the URL
   through `useTableUrlState`; a row link; loading; empty; no match; one row;
-  dense; header not sticky; no paging; long cell text (one line and a
+  a row's note; sections; dense; header not sticky; no paging; long cell text (one line and a
   sideways scroll, a wrapping column); Hebrew names (RTL); 10,000 rows.
-- **Replaces** — `PlayedGames`' and `CollectionTable`'s own tables, as their
-  modules migrate: each becomes a block (`PlayedGamesTable`,
-  `CollectionGamesTable`) over `DataTable`.
+- **Replaces** — `PlayedGames`' own table (now the `PlayedGamesTable` block,
+  CTA-109), Storage's report (`StorageTable`), and — as the Library
+  migrates — `CollectionTable` (`CollectionGamesTable`).

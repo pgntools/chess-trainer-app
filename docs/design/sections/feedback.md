@@ -67,8 +67,9 @@ Gallery: `/dev/design/feedback`.
 
 - **Purpose** — a one-line outcome in its tone's colour, announced: an
   `error` as an `alert`, anything else as a `status`.
-- **Props** — `tone: "error" | "success" | "warning" | "info"`, `children`,
-  `testId`.
+- **Props** — `tone: "error" | "success" | "warning" | "info" | "neutral"`
+  (`neutral` the text's own colour — CTA-109), `children`, `emphasis?`
+  (`body2` in 600 rather than a caption — a game's result), `testId`.
 - **Replaces** — the board screens' save problems (a `caption` in
   `error.main` with `role="alert"`: `PlayScreen`, `AnalysisBoard`,
   `RepertoireChangesBar`) and the success captions (the Load tab,

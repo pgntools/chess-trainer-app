@@ -29,8 +29,9 @@ covers what it adds. The board core, the engine protocol and testing are
 | `src/views/engine/play/usePlayGame.ts` | **The session**: `useBoardCore` + `useEngineModule` + `usePlayToggle` (on from the start) + `useAutosave` to the played-games store; Replay and Resign. Also `arrivalOf` — the URL read once. |
 | `src/views/engine/play/PlayWithEngine.tsx` | The route: the arrival, and a **masked** `?saved=` sent on to `/engine/masked`. |
 | `src/views/engine/play/PlayedGameRead.tsx` | The play routes' wait for the store's first read before `arrivalOf` (`?saved=`). |
-| `src/views/engine/play/EngineSettings.tsx` | The Engine tab — strength (Skill Level, the Elo estimate), depth, move time, lines, threads, hash, the eval bar — rendered from what the running engine declared (absent / pinned / adjustable). Also the body of the Lobby's Game tab. |
-| `src/views/engine/games/PlayedGames.tsx` | **The Lobby** (board square): the games as a sortable, paginated table (CTA-100), with the colour and opening filters. |
+| `src/views/engine/play/EngineSettings.tsx` | The Engine tab — strength (Skill Level, the Elo estimate), depth, move time, lines, threads, hash, the eval bar — rendered from what the running engine declared (absent / pinned / adjustable). Also the body of the Lobby's Game tab. Since CTA-109 a one-line adapter over the `EngineSettingsForm` block (`src/blocks/forms/`, the three-state rule its `engineOptionState.ts`). |
+| `src/views/engine/games/PlayedGames.tsx` | **The Lobby** (board square): `ListScreenHeader`, the `PlayedGamesTable` block over `useTableUrlState`, the `PlayedGamesFilters` block, `DeleteManyDialog` (CTA-109). |
+| `src/blocks/tables/PlayedGamesTable/`, `src/blocks/forms/PlayedGamesFilters/` | The Lobby's table and filters as blocks (CTA-109): the columns, the sort (`lib`'s `sortedPlayedGames`), the row actions named by the row (`whenPlayed`), the unreadable row; the side and opening filters. |
 | `src/views/engine/games/NewGameForm.tsx` | The Lobby's right-hand panel: **Game** and **Board editor** tabs, and **Start**. |
 | `src/views/engine/games/usePlayedGames.ts` | The `useSyncExternalStore` binding (`undefined` until read). |
 | `src/lib/playedGames.ts` | **The record**, pure: `PlayedGame`, `playedGameOf`, `playedGameFrom` (the normaliser), `playedGameSummary` (with the per-side names and Elo the table's columns derive), `playedGameResult`, `resultOfFen`, `playedGameHeaders` (the PGN tags), `playedGameCatalogOf` (`?game=play/games/<id>`), and the table's own sort (CTA-100): `PLAYED_GAME_COLUMNS`, `PlayedGameRow`, `sortedPlayedGames`. |
@@ -113,7 +114,10 @@ was begun on.
   filters — `?sort=`, `?dir=`, `?page=`, `?rows=`, written with history
   replace, so a sorted or filtered table is a shareable link and coming
   back from a game finds it as it was left. A new sort or filter starts at
-  the first page. The table opens **Date-descending, newest first** — the
+  the first page. The page sizes are the design system's one set —
+  **25 / 50 / 100 / 250, 50 by default** (CTA-109); an older `?rows=10` link
+  reads as the default, and a `?page=` past the end as the last page. The
+  table opens **Date-descending, newest first** — the
   order the flat list opened in; a second click on a header turns it, a row
   missing the value sorts last either way, and ties break by date.
 - **Columns**, left to right: the row's controls, then White, White Elo,
@@ -127,22 +131,23 @@ was begun on.
   it applies to what is known. A record whose PGN no longer parses keeps
   its row — it says so across the columns — and can be picked like any
   other.
-- **The row's controls** (CTA-100's follow-up), each in a column of its own:
-  a **pick checkbox** — the collection table's own pattern — then the
-  icon-only **Analysis** (the flask,
+- **The row's controls** (CTA-100's follow-up): a **pick checkbox** — the
+  collection table's own pattern — first, and at the row's end, in one
+  always-visible actions column (CTA-109), the icon-only **Analysis** (the flask,
   `/tools/analysis?game=play/games/<id>`, the true PGN, unmasked) and the
   icon-only **Continue** (the play arrow, `?saved=<id>` — on
   `/engine/masked` for a masked game, which carries a *Masked* chip in its
   own column; **only while the game is still on** — a row whose result is
   decided, a resignation or the mainline's final position through
-  `playedGameResult`, shows none, CTA-90), both with tooltips and
-  `aria-label`s. A column each means an ended game's missing Continue
-  leaves its own cell empty and moves nothing else. **The pick column's
+  `playedGameResult`, shows none, CTA-90), both with tooltips and names that
+  say which game ("Continue the game Human – Stockfish level 5 of
+  2026-09-20 18:30", CTA-109). Dates are `YYYY-MM-DD`, numbers end-aligned. **The pick column's
   header is select-all** — over the rows the filters leave, on every page;
   ticked it adds them all to the picks, unticked it removes just those
   rows. **The delete is the
   picks**: tick rows, and the header's **Delete picked (N)** asks first
-  and removes them all — there is no per-row delete, and with it the
+  and removes them all (`DeleteManyDialog`, a contained red confirm) —
+  there is no per-row delete, and with it the
   shared `SavedListRemoveButton` went (the saved lists had already left it
   for their own bulk delete). The picks are the screen's, not the URL's —
   a link carries the filter, not a hand-made selection.
