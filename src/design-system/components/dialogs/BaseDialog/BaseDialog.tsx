@@ -31,6 +31,8 @@ export type BaseDialogProps = {
   testId: string;
   /** Anything else MUI's `Dialog` takes — a `container`, `keepMounted`, … */
   dialogProps?: ExtraDialogProps;
+  /** The title's own test id, for a screen whose tests named it before (CTA-113). Absent, `<testId>-title`. */
+  titleTestId?: string;
 };
 
 /**
@@ -53,6 +55,7 @@ function BaseDialog({
   titleId: titleIdProp,
   testId,
   dialogProps,
+  titleTestId = `${testId}-title`,
 }: BaseDialogProps) {
   const ownTitleId = useId();
   const titleId = titleIdProp ?? ownTitleId;
@@ -68,7 +71,7 @@ function BaseDialog({
       aria-labelledby={titleId}
       data-testid={testId}
     >
-      <DialogTitle id={titleId} data-testid={`${testId}-title`}>
+      <DialogTitle id={titleId} data-testid={titleTestId}>
         {title}
       </DialogTitle>
       {children !== undefined && (

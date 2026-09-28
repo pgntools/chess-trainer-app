@@ -21,6 +21,8 @@ export type FolderRowProps = {
   actions?: ReactNode;
   /** The row's test id; the open button is `<testId>-open`, the actions `<testId>-actions`. */
   testId: string;
+  /** The open button's own test id, for a screen whose tests named it before it moved onto this row (CTA-113). */
+  openTestId?: string;
 };
 
 /**
@@ -30,12 +32,12 @@ export type FolderRowProps = {
  * in flow so any number of them fit. The analyses' and the repertoires'
  * folder rows were two versions of this.
  */
-function FolderRow({ name, count, onOpen, link, icon, actions, testId }: FolderRowProps) {
+function FolderRow({ name, count, onOpen, link, icon, actions, testId, openTestId = `${testId}-open` }: FolderRowProps) {
   return (
     <ListItem disablePadding divider data-testid={testId} sx={{ gap: 0.5 }}>
       <ListItemButton
         onClick={onOpen}
-        data-testid={`${testId}-open`}
+        data-testid={openTestId}
         sx={{ borderRadius: 1, py: 1, gap: 1.5, minWidth: 0 }}
         {...linkProps(link)}
       >

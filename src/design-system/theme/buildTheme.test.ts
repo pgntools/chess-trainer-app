@@ -50,6 +50,11 @@ describe("buildTheme", () => {
     expect(theme.components?.MuiButton?.defaultProps).toEqual({ disableElevation: true });
   });
 
+  it("carries the monospace token (CTA-113) — the one stack for notation and machine words", () => {
+    expect(build(defaultTheme, "both", "ltr").typography.fontFamilyMonospace).toBe("ui-monospace, SFMono-Regular, Menlo, monospace");
+    expect(build({ ...defaultTheme, typography: { ...defaultTheme.typography, fontFamilyMonospace: "Courier" } }, "light", "ltr").typography.fontFamilyMonospace).toBe("Courier");
+  });
+
   it("takes the direction and merges the locale bundle", () => {
     const theme = buildTheme(defaultTheme, "both", "rtl", { localization: [heIL] });
     expect(theme.direction).toBe("rtl");

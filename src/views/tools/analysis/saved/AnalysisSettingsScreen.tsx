@@ -19,7 +19,7 @@ import {
 } from "../../../../lib/savedAnalyses";
 import { updateSavedAnalysisSettings } from "../../../../lib/savedAnalysisStore";
 import type { AnalysisFolder } from "../../../../lib/savedAnalysisFolders";
-import FolderPicker from "../../../shared/folders/FolderPicker";
+import { FolderPicker } from "../../../../blocks/lists";
 import { ArrowPaletteField, ArrowWidthSourceField } from "../ArrowSettingsFields";
 import { RightPanel } from "../../../main/rightPanel";
 import { useAnalysisFolders } from "./useAnalysisFolders";
@@ -257,12 +257,13 @@ function SettingsForm({
 
         <Section id="folder" label={t("analysis.settingsScreen.sections.folder")}>
           <FolderPicker
-            labelKey="savedAnalyses"
-            idPrefix="analysis-settings-folder"
             folders={folders}
             value={draft.folderId}
             onChange={(folderId) => change({ folderId })}
             noneLabel={t("savedAnalyses.folder.unfiled")}
+            untitledLabel={t("savedAnalyses.folder.untitled")}
+            ariaLabel={t("analysis.settingsScreen.sections.folder")}
+            testId="analysis-settings-folder-picker"
             noneTestId="analysis-settings-folder-unfiled"
           />
         </Section>

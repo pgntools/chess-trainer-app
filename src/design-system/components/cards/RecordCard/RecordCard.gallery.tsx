@@ -39,6 +39,33 @@ const gallery: GalleryModule = {
         ),
     },
     {
+      name: "A third line — the opening a saved analysis reached",
+      render: () =>
+        narrow(
+          <RecordCard
+            preview={demoPreview}
+            name="Najdorf"
+            caption="24 moves · 2026-09-03"
+            detail="Sicilian Defense: Najdorf Variation · B90"
+            onOpen={() => {}}
+            openLabel="Open Najdorf"
+            testId="gallery-record-card-detail"
+          />,
+        ),
+    },
+    {
+      name: "A record that will not read — no button, the reason in its square",
+      render: () =>
+        narrow(
+          <RecordCard
+            preview={<Box sx={{ height: "100%", display: "grid", placeItems: "center", bgcolor: "action.hover", typography: "caption", color: "text.secondary" }}>This record cannot be read.</Box>}
+            name="Broken record"
+            openLabel="Open"
+            testId="gallery-record-card-unreadable"
+          />,
+        ),
+    },
+    {
       name: "Name only, opened by a link",
       render: () => narrow(<RecordCard preview={demoPreview} name="Ruy Lopez" link={{ href: "#card" }} openLabel="Open" testId="gallery-record-card-link" />),
     },

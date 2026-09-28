@@ -3,6 +3,7 @@ import { createTheme, shouldSkipGeneratingVar, type Theme } from "@mui/material/
 import type { ThemeDefinition } from "../themes/types";
 import { accessibilityOverrides, focusRingOf, REDUCED_MOTION_TRANSITIONS } from "./accessibility";
 import "./augment";
+import { MONOSPACE_FONT_FAMILY } from "./typography";
 
 /**
  * Which colour schemes a built theme carries:
@@ -47,7 +48,8 @@ export const buildTheme = (
 ): Theme => {
   const shared = {
     direction,
-    typography: definition.typography,
+    // The monospace token rides with the theme's type (CTA-113); a theme may name its own.
+    typography: { fontFamilyMonospace: MONOSPACE_FONT_FAMILY, ...definition.typography },
     shape: definition.shape,
     components: { ...definition.overrides, ...accessibilityOverrides(definition.focusRingWidth, reducedMotion) },
     chess: definition.chess,

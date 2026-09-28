@@ -32,4 +32,13 @@ describe("AnchoredMenu", () => {
     render(<AnchoredMenu anchorEl={null} onClose={() => {}} entries={[{ id: "a", label: "A" }]} testId="probe" />);
     expect(screen.queryByRole("menu")).toBeNull();
   });
+
+  it("names its entries under another prefix when asked (CTA-113)", () => {
+    const anchor = document.createElement("button");
+    document.body.appendChild(anchor);
+    render(<AnchoredMenu anchorEl={anchor} onClose={() => {}} entries={[{ id: "end", label: "End", link: { href: "/g/end" } }]} entryTestIdPrefix="games-r" testId="games-r-menu" />);
+    expect(screen.getByTestId("games-r-end")).toHaveAttribute("href", "/g/end");
+    expect(screen.getByTestId("games-r-menu")).toBeInTheDocument();
+    anchor.remove();
+  });
 });

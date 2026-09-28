@@ -34,6 +34,9 @@ export type ConfirmDialogProps = {
    * Absent, it is `<testId>-confirm`.
    */
   confirmTestId?: string;
+  /** The cancel button's and the title's own test ids (CTA-113) — see `confirmTestId`. */
+  cancelTestId?: string;
+  titleTestId?: string;
   dialogProps?: ExtraDialogProps;
 };
 
@@ -58,6 +61,8 @@ function ConfirmDialog({
   width = "xs",
   testId,
   confirmTestId = `${testId}-confirm`,
+  cancelTestId = `${testId}-cancel`,
+  titleTestId,
   dialogProps,
 }: ConfirmDialogProps) {
   const color = tone === "destructive" ? "error" : "primary";
@@ -79,10 +84,11 @@ function ConfirmDialog({
       title={title}
       width={width}
       testId={testId}
+      titleTestId={titleTestId}
       dialogProps={dialogProps}
       actions={
         <>
-          <Button onClick={onClose} disabled={busy} data-testid={`${testId}-cancel`}>
+          <Button onClick={onClose} disabled={busy} data-testid={cancelTestId}>
             {cancelLabel}
           </Button>
           <Button

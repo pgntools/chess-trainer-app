@@ -28,6 +28,12 @@ export type AnchoredMenuProps = {
   entries: readonly AnchoredMenuEntry[];
   /** The menu's test id; each entry is `<testId>-<id>`. */
   testId: string;
+  /**
+   * The prefix of the entries' test ids, for a screen whose tests named them
+   * after the button the menu hangs from (CTA-113: `repertoires-games-<id>-end`).
+   * Absent, the menu's own `testId`.
+   */
+  entryTestIdPrefix?: string;
 };
 
 /**
@@ -35,7 +41,7 @@ export type AnchoredMenuProps = {
  * under its anchor, aligned to the anchor's inline end, entries that are
  * actions or real links, the current one marked. Choosing an entry closes it.
  */
-function AnchoredMenu({ anchorEl, onClose, entries, testId }: AnchoredMenuProps) {
+function AnchoredMenu({ anchorEl, onClose, entries, testId, entryTestIdPrefix = testId }: AnchoredMenuProps) {
   const { direction } = useTheme();
   // Popover places by the page's sides, so the inline end is picked here.
   const end = direction === "rtl" ? "left" : "right";
@@ -55,7 +61,7 @@ function AnchoredMenu({ anchorEl, onClose, entries, testId }: AnchoredMenuProps)
           selected={entry.selected}
           disabled={entry.disabled}
           aria-current={entry.selected === true ? "page" : undefined}
-          data-testid={`${testId}-${entry.id}`}
+          data-testid={`${entryTestIdPrefix}-${entry.id}`}
           onClick={() => {
             onClose();
             entry.onClick?.();

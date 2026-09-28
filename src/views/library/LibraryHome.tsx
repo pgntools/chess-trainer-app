@@ -34,12 +34,9 @@ import {
 } from "../../lib/libraryFolderStore";
 import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
-import { gameFolderChildren, gamesInFolder, type GameFolder } from "../../lib/savedGameFolders";
+import { gameFolderChildren, gameFolderSubtree, gamesInFolder, type GameFolder } from "../../lib/savedGameFolders";
 import { shippedCollections } from "../../lib/shippedCollections";
-import FolderDeleteDialog from "../shared/folders/FolderDeleteDialog";
-import FolderMoveDialog from "../shared/folders/FolderMoveDialog";
-import FolderNameDialog from "../shared/folders/FolderNameDialog";
-import FolderPicker from "../shared/folders/FolderPicker";
+import { FolderDeleteDialog, FolderMoveDialog, FolderNameDialog } from "../../blocks/dialogs";
 import FolderTreeTable, { type FolderTreeColumn } from "../shared/folders/FolderTreeTable";
 import { RightPanel } from "../main/rightPanel";
 import { loadCollectionGames, useLibraryFolders, useUploadedCollections } from "./useLibraryCollections";
@@ -124,42 +121,6 @@ function Action({
         </IconButton>
       )}
     </Tooltip>
-  );
-}
-
-/** Move to… for a collection: the shared folder picker, the top level its "none". */
-function CollectionMoveDialog({
-  collection,
-  folders,
-  onMove,
-  onClose,
-}: {
-  collection: Entry | null;
-  folders: readonly GameFolder[];
-  onMove: (folderId: string | null) => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <Dialog open={collection !== null} onClose={onClose} fullWidth maxWidth="xs" data-testid="library-collection-move-dialog">
-      <DialogTitle>{t("library.folder.moveCollection")}</DialogTitle>
-      <DialogContent>
-        <FolderPicker
-          labelKey="library"
-          idPrefix="library-folder"
-          folders={folders}
-          value={collection?.folderId ?? null}
-          onChange={onMove}
-          noneLabel={t("library.folder.topLevel")}
-          noneTestId="library-collection-move-top"
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} data-testid="library-collection-move-cancel">
-          {t("library.folder.cancel")}
-        </Button>
-      </DialogActions>
-    </Dialog>
   );
 }
 
@@ -552,8 +513,6 @@ function LibraryHome() {
         </Typography>
       </RightPanel>
       <FolderNameDialog
-        labelKey="library"
-        idPrefix="library-folder"
         open={naming !== null}
         title={t(naming !== null && "folder" in naming ? "library.folder.renameFolder" : "library.folder.newFolder")}
         initial={naming !== null && "folder" in naming ? naming.folder.name : ""}
@@ -570,40 +529,62 @@ function LibraryHome() {
           });
         }}
         onClose={() => setNaming(null)}
+        labels={{ name: t("library.folder.name"), cancel: t("library.folder.cancel"), save: t("library.folder.save") }}
+        testId="library-folder"
       />
       <FolderMoveDialog
-        labelKey="library"
-        idPrefix="library-folder"
         open={movingFolder !== null}
         folders={folders}
-        folder={movingFolder}
-        currentParentName={t("library.folder.topLevel")}
+        current={movingFolder?.parentId ?? null}
+        exclude={movingFolder === null ? undefined : [...gameFolderSubtree(folders, movingFolder.id)]}
         onMove={(parentId) => {
           if (movingFolder !== null) void moveLibraryFolder(movingFolder.id, parentId);
           setMovingFolder(null);
         }}
         onClose={() => setMovingFolder(null)}
+        labels={{
+          title: t("library.folder.moveFolder"),
+          cancel: t("library.folder.cancel"),
+          none: t("library.folder.topLevel"),
+          untitled: t("library.folder.untitled"),
+          picker: t("library.folder.picker"),
+        }}
+        testId="library-folder"
       />
-      <CollectionMoveDialog
-        collection={movingCollection}
+      <FolderMoveDialog
+        open={movingCollection !== null}
         folders={folders}
+        current={movingCollection?.folderId ?? null}
         onMove={(folderId) => {
           if (movingCollection !== null) void moveCollection(movingCollection.id, folderId);
           setMovingCollection(null);
         }}
         onClose={() => setMovingCollection(null)}
+        labels={{
+          title: t("library.folder.moveCollection"),
+          cancel: t("library.folder.cancel"),
+          none: t("library.folder.topLevel"),
+          untitled: t("library.folder.untitled"),
+          picker: t("library.folder.picker"),
+        }}
+        testId="library-collection"
+        pickerTestId="library-folder-picker"
       />
       <FolderDeleteDialog
-        labelKey="library"
-        idPrefix="library-folder"
         open={deletingFolder !== null}
-        folder={deletingFolder}
-        games={deletingFolder === null ? 0 : collectionsUnder(deletingFolder).length}
-        subFolders={deletingFolder === null ? 0 : gameFolderChildren(folders, deletingFolder.id).length}
+        title={`${t("library.folder.deleteFolder")}: ${deletingFolder?.name ?? ""}`}
+        message={t("library.folder.deleteConfirm")}
+        counts={t("library.folder.deleteCounts", {
+          games: deletingFolder === null ? 0 : collectionsUnder(deletingFolder).length,
+          subFolders: deletingFolder === null ? 0 : gameFolderChildren(folders, deletingFolder.id).length,
+        })}
+        confirmLabel={t("library.folder.deleteFolder")}
+        cancelLabel={t("library.folder.cancel")}
         onConfirm={() => {
           if (deletingFolder !== null) void removeLibraryFolder(deletingFolder.id);
         }}
         onClose={() => setDeletingFolder(null)}
+        testId="library-folder"
       />
       <Dialog
         open={deleting !== null}

@@ -199,6 +199,28 @@ const en = {
     copyFailed: "Could not copy — select the text and copy it by hand.",
   },
   /**
+   * The saved lists' controls, named for their record (CTA-113) — the saved
+   * analyses, the repertoires and the Library's folders share them, so a
+   * screen reader hears which row a button belongs to.
+   */
+  savedList: {
+    openNamed: "Open {{name}}",
+    selectNamed: "Select {{name}}",
+    settingsNamed: "Settings of {{name}}",
+    clearSelected: "Clear the selection",
+    /** The folder trail's name, read before its steps. */
+    breadcrumb: "Folders",
+    folder: {
+      openNamed: "Open folder {{name}}",
+      newNamed: "New folder in {{name}}",
+      uploadNamed: "Upload a collection into {{name}}",
+      downloadNamed: "Download {{name}} as PGN",
+      renameNamed: "Rename {{name}}",
+      moveNamed: "Move {{name}}",
+      deleteNamed: "Delete {{name}}",
+    },
+  },
+  /**
    * Piece masking — the Masking tab of Masked Pieces (`views/engine/masked/`,
    * CTA-79), and the Saved games list's marker. Top-level like the other
    * shared-component namespaces: the mask is a prop the shared move list,
@@ -643,6 +665,8 @@ const en = {
     select: "Select this analysis",
     selectAll: "Select all analyses",
     selected: "{{count}} selected",
+    /** The pager under the list (CTA-113) — the design system's page sizes. */
+    rowsPerPage: "Analyses per page",
     download: "Download selected as PGN",
     deleteSelected: "Delete selected",
     /** Deleting the picks, asked first — the repertoires' dialog with these words. */
@@ -664,6 +688,8 @@ const en = {
       moveFolder: "Move folder",
       /** Filing one analysis — the key the shared move dialog reads. */
       moveGame: "Move analysis",
+      /** The folder list's name in the move dialog (CTA-113). */
+      picker: "Folders",
       deleteFolder: "Delete folder",
       download: "Download this folder as PGN",
       unfiled: "Unfiled",
@@ -1070,6 +1096,8 @@ const en = {
       deleteConfirm:
         "Deleting this folder keeps its contents: its collections and sub-folders move up to the folder it is in.",
       deleteCounts: "This folder holds {{games}} collections and {{subFolders}} sub-folders.",
+      /** The folder list's name in the move dialog (CTA-113). */
+      picker: "Folders",
     },
     /** The table screen — `/library/<collection>`. */
     table: {
@@ -1347,6 +1375,8 @@ const en = {
     empty:
       "No repertoires yet. Add one from a .pgn file, or paste its PGN, and it appears here.",
     hint: "Your own opening repertoires. Open one to read its lines on the board, side lines and all, with the engine beside you.",
+    /** The right-hand panel's heading (CTA-113) — the page's outline has one under the list's title. */
+    panelTitle: "About repertoires",
     storage:
       "Repertoires are kept in this browser only. Clearing site data removes them, and they do not follow you to another device.",
     /** A repertoire whose tags carry no name and the reader typed none. */
@@ -1488,6 +1518,8 @@ const en = {
     /** The games a repertoire is played as (CTA-63) — `lib/repertoireGames.ts`. */
     games: {
       open: "Games",
+      /** The button on a list's row or card, named for its repertoire (CTA-113). */
+      openNamed: "Games of {{name}}",
       end: { title: "Get to the end" },
       backtrack: { title: "Backtracking" },
     },

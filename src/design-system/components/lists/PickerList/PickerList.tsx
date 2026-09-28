@@ -19,6 +19,8 @@ export type PickerListProps = {
   maxHeight?: number;
   /** The list's test id; each row is `<testId>-<id>`, the "none" row `<testId>-none`. */
   testId: string;
+  /** The "none" row's own test id, for a screen whose tests named it before (CTA-113: `analysis-folder-move-top`). */
+  noneTestId?: string;
 };
 
 /**
@@ -28,7 +30,7 @@ export type PickerListProps = {
  * inline start (`2 + depth × 2.5`, so it mirrors), icons before the words
  * with a logical gap.
  */
-function PickerList({ items, value, onChange, ariaLabel, maxHeight, testId }: PickerListProps) {
+function PickerList({ items, value, onChange, ariaLabel, maxHeight, testId, noneTestId = `${testId}-none` }: PickerListProps) {
   return (
     <List
       dense
@@ -50,7 +52,7 @@ function PickerList({ items, value, onChange, ariaLabel, maxHeight, testId }: Pi
               disabled={item.disabled}
               aria-current={selected ? "true" : undefined}
               onClick={() => onChange(item.id)}
-              data-testid={`${testId}-${item.id ?? "none"}`}
+              data-testid={item.id === null ? noneTestId : `${testId}-${item.id}`}
               sx={{ borderRadius: 0.5, paddingInlineStart: 2 + (item.depth ?? 0) * 2.5 }}
             >
               {item.icon !== undefined && (

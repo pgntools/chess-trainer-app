@@ -21,6 +21,9 @@ export type DeleteManyDialogProps = {
   testId: string;
   /** The confirm button's own test id — ConfirmDialog's `confirmTestId`. */
   confirmTestId?: string;
+  /** The cancel button's and the title's own test ids (CTA-113) — ConfirmDialog's. */
+  cancelTestId?: string;
+  titleTestId?: string;
   dialogProps?: ExtraDialogProps;
 };
 

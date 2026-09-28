@@ -6,3 +6,4 @@
 export * from "./RecordRow";
 export * from "./FolderRow";
 export * from "./PickerList";
+export * from "./KeyValueList";

@@ -23,6 +23,11 @@ export type IconActionProps = {
   color?: "default" | "primary" | "error";
   /** `start` / `end` pulls it into the row's padding, as MUI's `edge`. */
   edge?: "start" | "end" | false;
+  /**
+   * It opens a menu (CTA-113): `aria-haspopup="menu"`, and `aria-expanded`
+   * saying whether that menu is open now. Absent, it opens nothing.
+   */
+  popupOpen?: boolean;
   testId: string;
 };
 
@@ -42,6 +47,7 @@ function IconAction({
   pressed,
   color,
   edge = false,
+  popupOpen,
   testId,
 }: IconActionProps) {
   return (
@@ -52,6 +58,8 @@ function IconAction({
           edge={edge}
           aria-label={label}
           aria-pressed={pressed}
+          aria-haspopup={popupOpen === undefined ? undefined : "menu"}
+          aria-expanded={popupOpen}
           color={pressed === true ? "primary" : (color ?? "default")}
           disabled={disabled}
           onClick={onClick}

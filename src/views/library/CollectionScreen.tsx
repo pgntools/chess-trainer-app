@@ -26,6 +26,8 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import PostAddRoundedIcon from "@mui/icons-material/PostAddRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import {
   Link as RouterLink,
   useLocation,
@@ -72,7 +74,7 @@ import {
 import { addAnalyses, MAX_SAVED_ANALYSES } from "../../lib/savedAnalysisStore";
 import { repertoireGameNamesOf } from "../../lib/savedRepertoires";
 import { RightPanel } from "../main/rightPanel";
-import SavedListExportBar from "../shared/SavedListExportBar";
+import { IconAction, SelectionBar } from "../../design-system/components/toolbars";
 import CollectionFilters from "./CollectionFilters";
 import LibraryMiss from "./LibraryMiss";
 import { loadCollectionGames, useCollectionRows } from "./useLibraryCollections";
@@ -438,23 +440,41 @@ function CollectionTable({
               </Button>
             </Tooltip>
           )}
-          <SavedListExportBar
-            testIdPrefix="library-picks"
-            labelKey="library.table.picks"
+          <SelectionBar
             checked={allShownPicked}
             indeterminate={pickedShown > 0 && !allShownPicked}
             onToggleAll={toggleAllShown}
-            selectedCount={picked.size}
-            onClearSelected={() => setPicked(new Set())}
-            onDownload={() => void downloadPicked()}
-            onDelete={
-              collection.source === "uploaded"
-                ? () => {
-                    setDeleteProblem(false);
-                    setDeleting(true);
-                  }
-                : undefined
+            selectAllLabel={t("library.table.picks.selectAll")}
+            count={picked.size}
+            countLabel={t("library.table.picks.selected", { count: picked.size })}
+            onClear={() => setPicked(new Set())}
+            clearLabel={t("savedList.clearSelected")}
+            actions={
+              <>
+                <IconAction
+                  label={t("library.table.picks.download")}
+                  disabled={picked.size === 0}
+                  onClick={() => void downloadPicked()}
+                  testId="library-picks-download"
+                >
+                  <DownloadRoundedIcon fontSize="small" />
+                </IconAction>
+                {collection.source === "uploaded" && (
+                  <IconAction
+                    label={t("library.table.picks.deleteSelected")}
+                    disabled={picked.size === 0}
+                    onClick={() => {
+                      setDeleteProblem(false);
+                      setDeleting(true);
+                    }}
+                    testId="library-picks-delete"
+                  >
+                    <DeleteOutlineRoundedIcon fontSize="small" />
+                  </IconAction>
+                )}
+              </>
             }
+            testId="library-picks"
           />
           <Tooltip title={t(analysing ? "library.table.picks.analysing" : "library.table.picks.analyseHint")}>
             <span>

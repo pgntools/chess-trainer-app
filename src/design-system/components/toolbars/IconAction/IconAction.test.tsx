@@ -53,4 +53,20 @@ describe("IconAction", () => {
     );
     expect(screen.getByRole("link", { name: "Analysis" })).toHaveAttribute("href", "/tools/analysis?game=x");
   });
+
+  it("says it opens a menu, and whether it is open (CTA-113)", () => {
+    const { rerender } = render(
+      <IconAction label="Games" popupOpen={false} testId="probe">
+        <svg />
+      </IconAction>,
+    );
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-haspopup", "menu");
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-expanded", "false");
+    rerender(
+      <IconAction label="Games" popupOpen testId="probe">
+        <svg />
+      </IconAction>,
+    );
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-expanded", "true");
+  });
 });

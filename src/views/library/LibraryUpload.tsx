@@ -17,7 +17,7 @@ import {
   type CollectionImportSource,
   type CollectionSummary,
 } from "../../lib/libraryCollections";
-import FolderPicker from "../shared/folders/FolderPicker";
+import { FolderPicker } from "../../blocks/lists";
 import { RightPanel } from "../main/rightPanel";
 import ImportOptionsDialog from "./ImportOptionsDialog";
 import LibraryMiss from "./LibraryMiss";
@@ -230,12 +230,13 @@ function LibraryUpload({ into, folder = null }: { into?: CollectionSummary; fold
               }}
             >
               <FolderPicker
-                labelKey="library"
-                idPrefix="library-upload-folder"
                 folders={folders}
                 value={folderId}
                 onChange={setFolderId}
                 noneLabel={t("library.folder.topLevel")}
+                untitledLabel={t("library.folder.untitled")}
+                ariaLabel={t("library.upload.folder")}
+                testId="library-upload-folder-picker"
                 noneTestId="library-upload-folder-top"
               />
             </Box>

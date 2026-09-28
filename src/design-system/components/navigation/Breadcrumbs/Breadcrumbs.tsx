@@ -27,6 +27,8 @@ export type BreadcrumbsProps = {
   separator?: ReactNode;
   /** The trail's test id; each crumb is `<testId>-<id>`, the current one `<testId>-current`. */
   testId: string;
+  /** The current place's own test id (CTA-113: a folder trail named it by the folder's id). */
+  currentTestId?: string;
 };
 
 /**
@@ -36,7 +38,7 @@ export type BreadcrumbsProps = {
  * current place is text. Names take `dir="auto"`, and the trail runs the
  * reading direction's way.
  */
-function Breadcrumbs({ crumbs, current, ariaLabel, separator, testId }: BreadcrumbsProps) {
+function Breadcrumbs({ crumbs, current, ariaLabel, separator, testId, currentTestId = `${testId}-current` }: BreadcrumbsProps) {
   return (
     <MuiBreadcrumbs aria-label={ariaLabel} separator={separator} data-testid={testId} sx={{ typography: "body2" }}>
       {crumbs.map((crumb) => (
@@ -57,7 +59,7 @@ function Breadcrumbs({ crumbs, current, ariaLabel, separator, testId }: Breadcru
         variant="body2"
         aria-current="page"
         dir="auto"
-        data-testid={`${testId}-current`}
+        data-testid={currentTestId}
         sx={{ color: "text.primary", fontWeight: 600 }}
       >
         {current}

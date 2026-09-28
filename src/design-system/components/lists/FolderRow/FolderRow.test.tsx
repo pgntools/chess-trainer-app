@@ -21,6 +21,16 @@ describe("FolderRow", () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
+  it("takes its open button's own test id (CTA-113)", () => {
+    render(
+      <List>
+        <FolderRow name="Openings" onOpen={() => {}} openTestId="old-open" testId="probe" />
+      </List>,
+    );
+    expect(screen.getByTestId("old-open")).toHaveTextContent("Openings");
+    expect(screen.queryByTestId("probe-open")).toBeNull();
+  });
+
   it("is a real link when given one", () => {
     render(
       <List>

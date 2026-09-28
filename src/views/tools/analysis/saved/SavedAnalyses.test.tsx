@@ -33,7 +33,7 @@ import {
   saveAnalysis,
   savedAnalysesSnapshot,
 } from "../../../../lib/savedAnalysisStore";
-import { cardSizeTrack } from "../../../shared/cardSize";
+import { cardGridColumns } from "../../../../design-system/components/cards";
 import { RightPanelOutlet, RightPanelProvider } from "../../../main/rightPanel";
 import SavedAnalyses, { SAVED_ANALYSES_PAGE } from "./SavedAnalyses";
 
@@ -376,7 +376,7 @@ describe("Saved analyses — the board view", () => {
     await showBoards();
 
     expect(screen.getByTestId("saved-analyses-grid")).toHaveStyle({
-      gridTemplateColumns: cardSizeTrack("compact"),
+      gridTemplateColumns: cardGridColumns("compact"),
     });
     expect(screen.getByTestId("board-saved-analyses-preview-a1")).toBeInTheDocument();
   });
@@ -559,13 +559,27 @@ describe("Saved analyses — a folder of thousands (CTA-77)", () => {
     expect(screen.getAllByTestId(/^saved-analyses-item-/)).toHaveLength(SAVED_ANALYSES_PAGE);
     expect(screen.getByTestId("saved-analyses-item-r0")).toBeInTheDocument();
 
-    await user.click(within(screen.getByTestId("saved-analyses-pagination")).getByText("2"));
+    // The design system's pager (CTA-113): 25 / 50 / 100 / 250 a page, 50 by default.
+    await user.click(within(screen.getByTestId("saved-analyses-pagination")).getByRole("button", { name: "Go to next page" }));
     expect(screen.getAllByTestId(/^saved-analyses-item-/)).toHaveLength(12);
     expect(screen.getByTestId(`saved-analyses-item-r${total - 1}`)).toBeInTheDocument();
 
     // Select-all takes the whole folder, not the page.
     await user.click(within(screen.getByTestId("saved-analyses-select-all")).getByRole("checkbox"));
     expect(screen.getByTestId("saved-analyses-selected-count")).toHaveTextContent(`${total} selected`);
+  });
+
+  it("offers the design system's page sizes, and goes back to the first page on a new size (CTA-113)", async () => {
+    const user = userEvent.setup();
+    const record = save("x", [[[], ["e4"]]]);
+    await addAnalyses(Array.from({ length: 30 }, (_, index) => ({ ...record, id: `r${index}`, name: `R${index}` })));
+    await renderScreen();
+
+    expect(screen.getAllByTestId(/^saved-analyses-item-/)).toHaveLength(30);
+    await user.click(within(screen.getByTestId("saved-analyses-pagination")).getByRole("combobox"));
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["25", "50", "100", "250"]);
+    await user.click(screen.getByRole("option", { name: "25" }));
+    expect(screen.getAllByTestId(/^saved-analyses-item-/)).toHaveLength(25);
   });
 
   it("has no pager for a folder that fits one page", async () => {

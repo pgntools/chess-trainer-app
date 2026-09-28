@@ -7,3 +7,5 @@ export * from "./IconAction";
 export * from "./ToggleIconAction";
 export * from "./ListScreenHeader";
 export * from "./ActionBar";
+export * from "./ViewToggle";
+export * from "./SelectionBar";

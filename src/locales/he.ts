@@ -137,6 +137,22 @@ const he: typeof en = {
     copied: "הועתק",
     copyFailed: "ההעתקה נכשלה — סמנו את הטקסט והעתיקו ידנית.",
   },
+  savedList: {
+    openNamed: "פתיחת {{name}}",
+    selectNamed: "בחירת {{name}}",
+    settingsNamed: "הגדרות {{name}}",
+    clearSelected: "ניקוי הבחירה",
+    breadcrumb: "תיקיות",
+    folder: {
+      openNamed: "פתיחת התיקייה {{name}}",
+      newNamed: "תיקייה חדשה בתוך {{name}}",
+      uploadNamed: "העלאת אוסף אל {{name}}",
+      downloadNamed: "הורדת {{name}} כ־PGN",
+      renameNamed: "שינוי השם של {{name}}",
+      moveNamed: "העברת {{name}}",
+      deleteNamed: "מחיקת {{name}}",
+    },
+  },
   masking: {
     tab: "הסוואה",
     white: "לבן",
@@ -454,6 +470,7 @@ const he: typeof en = {
     select: "בחירת הניתוח",
     selectAll: "בחירת כל הניתוחים",
     selected: "{{count}} נבחרו",
+    rowsPerPage: "ניתוחים בעמוד",
     download: "הורדת הנבחרים כקובץ PGN",
     deleteSelected: "מחיקת הנבחרים",
     bulkDelete: {
@@ -469,6 +486,7 @@ const he: typeof en = {
       renameFolder: "שינוי שם תיקייה",
       moveFolder: "העברת תיקייה",
       moveGame: "העברת ניתוח",
+      picker: "תיקיות",
       deleteFolder: "מחיקת תיקייה",
       download: "הורדת התיקייה כקובץ PGN",
       unfiled: "ללא תיקייה",
@@ -797,6 +815,7 @@ const he: typeof en = {
       deleteConfirm:
         "מחיקת התיקייה שומרת על תוכנה: האוספים ותתי־התיקיות שבה עוברים לתיקייה שמעליה.",
       deleteCounts: "בתיקייה {{games}} אוספים ו־{{subFolders}} תתי־תיקיות.",
+      picker: "תיקיות",
     },
     table: {
       back: "כל האוספים",
@@ -1026,6 +1045,7 @@ const he: typeof en = {
     empty:
       "אין עדיין רפרטוארים. הוסיפו אחד מקובץ ‎.pgn, או הדביקו את ה-PGN שלו, והוא יופיע כאן.",
     hint: "רפרטוארי הפתיחות שלכם. פתחו אחד כדי לקרוא את הקווים שלו על הלוח, כולל קווי הצד, עם המנוע לצדכם.",
+    panelTitle: "על רפרטוארים",
     storage:
       "הרפרטוארים נשמרים בדפדפן הזה בלבד. ניקוי נתוני האתר מוחק אותם, והם לא עוברים איתכם למכשיר אחר.",
     untitled: "רפרטואר ללא שם",
@@ -1138,6 +1158,7 @@ const he: typeof en = {
     },
     games: {
       open: "משחקים",
+      openNamed: "משחקים עם {{name}}",
       end: { title: "עד סוף הקו" },
       backtrack: { title: "חזרה לאחור" },
     },
