@@ -708,7 +708,10 @@ the reader plays the solution, the engine never moves):
 2. **Supply the slots**: `<BoardShell id="puzzle" core={…} analysis={…}
    evalsByFen={…} panel={{ header, tabs, footer, … }} />`, with the tree view
    from `useVariationsExplorer` (or the puzzle mode, `tree-views.md` §4).
-3. **One route in `App.tsx` and one `navItems()` entry.** A board still being
+3. **One route in `routes.tsx`** — named by its `handle: { title: "pages.<id>" }`,
+   a key in both catalogs, which makes its page title, its `main` and its `h1`
+   (CTA-112; a record it opens goes in the title through `usePageTitle`) —
+   **and one `navItems()` entry.** A board still being
    built goes behind the **Development section** (open today for the design
    gallery, `/dev/design`, CTA-107 — add to it rather than open a second): its
    nav folder and entries are spreads in `navFolders()` / `navItems()` gated

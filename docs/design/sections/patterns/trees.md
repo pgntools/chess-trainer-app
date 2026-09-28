@@ -40,9 +40,12 @@ Gallery: `/dev/design/patterns/trees/TreeView`. Its first block is
   (controlled: the caller opens the chain to what is on screen, and keeps
   the rest as the reader left it), `activeId?`, `onSelect?(node)` (a
   selectable node with no link), `toggleLabel?(node, open)`, `ariaLabel`
-  (required), `testId`.
+  (required), `hint` (required, CTA-112 — how the tree is worked, "Up and
+  down arrows to move, right to open, left to close, Enter to go.": read
+  with the tree by a screen reader, its `aria-describedby`, out of sight; the
+  app's words are `hints.tree`), `testId`.
 - **Test ids** — `testId` (the root list), `-<id>` (a row), `-<id>-toggle`,
-  `-<id>-group` (a branch's open children).
+  `-<id>-group` (a branch's open children), `-hint`.
 - **Also exports** `ancestorsOf(nodes, id)` — the branches above a node,
   outermost first: what to open so it is in view — and `visibleNodes(nodes,
   open)`, the rows in view top to bottom, each with its branch: what the

@@ -95,6 +95,11 @@ long names, RTL, every theme) — then wire the screen.
   - **operable by keyboard**, no trap; a composite widget follows its WAI-ARIA
     pattern (`TreeView`: the tree's); a pointer-only shortcut is `aria-hidden`
     with `tabIndex={-1}` and has a keyboard way;
+  - **explained** (CTA-112): a widget whose keys are not a page's carries a
+    required `hint` read with it (`aria-describedby`, out of sight —
+    `visuallyHidden` in `components/a11y.ts`): `TreeView` always, `DataTable`
+    with a sort or picks; tabs name their panels (`PanelTabs`' `idPrefix` +
+    `tabPanelProps`);
   - **the focus ring from the theme**: MUI's buttons draw it; anything else
     focusable spreads `theme.mixins.focusRing` under `&:focus-visible`;
   - **targets ≥ 24 px** (`MIN_TARGET_PX`) — never pad a control below it;
@@ -104,14 +109,16 @@ long names, RTL, every theme) — then wire the screen.
 - A theme's accessibility is tokens: each palette's `focusRing` and
   `controlBorder`, `focusRingWidth`, `contrastThreshold: 4.5`; `buildTheme`
   owns `MuiButtonBase`, `MuiIconButton`, `MuiSlider`, `MuiToggleButton` (its
-  words `text.secondary`, CTA-109) and `MuiOutlinedInput`
-  (`theme/accessibility.ts`), so no theme overrides them.
+  words `text.secondary`, CTA-109), `MuiOutlinedInput` and `MuiTypography`
+  (a `subtitle1` / `subtitle2` is a `p`, not MUI's `h6` — CTA-112; a title
+  that is a heading says so with `component="h2"`) (`theme/accessibility.ts`),
+  so no theme overrides them.
   `themes/contrast.test.ts` measures every theme — fix a failure with the
   smallest token change and list it in `docs/design/README.md`.
 
 ## 5. The gallery
 
-`/dev/design/…`, dev-only (`App.tsx`'s `devRoutes`, one splat route
+`/dev/design/…`, dev-only (`routes.tsx`'s `devRoutes`, one splat route
 `/dev/design/*`). The menu is a `TreeView` of **tier → section → component**;
 **every component is a page**: `/dev/design/<section>/<Component>`,
 `/dev/design/patterns/<section>/<Pattern>`,

@@ -436,7 +436,7 @@ comment block and the map's toolbar are in. Every one is placed by
 - **MUI atoms** — Box
 - **What it does** — The whole-window shell: header, then a row of the sidebar (`LeftPanelOutlet`, falling back to `SideBar`), the measured board viewport (the square, `ForceLTR`) and the right-hand aside (`RightPanelOutlet`, falling back to the Analysis placeholder), then the footer. Squares the board from a `ResizeObserver` measurement.
 - **API** — none (the router's layout route). Constants `BOARD_INSET_PX` 16, `BOARD_PANEL_GAP_PX` 16, `SIDEBAR_WIDTH_PX` 280, `PANEL_MIN_WIDTH_PX` 320, `PANEL_MAX_WIDTH_PX` 560.
-- **Used by** — `App.tsx`.
+- **Used by** — `routes.tsx`.
 - **Tests** — `main/Layout.test.tsx`.
 - **Styling** — `100vh × 100vw`, `overflow: hidden`; aside `p: 2`, `bgcolor: background.paper`, `borderInlineStart` divider, a non-scrolling column; the square sized by inline `style` (pixels), not `sx`.
 - **Similar elsewhere** — n/a.
@@ -514,7 +514,7 @@ comment block and the map's toolbar are in. Every one is placed by
 - **MUI atoms** — Box, Typography, Card, CardActionArea
 - **What it does** — The landing page: one section per nav folder (an overline heading) with a card per screen, built from `navTree()`.
 - **API** — none.
-- **Used by** — `App.tsx` (`/`, through `home/Main.tsx`).
+- **Used by** — `routes.tsx` (`/`, through `home/Main.tsx`).
 - **Tests** — `home/Home.test.tsx`.
 - **Styling** — `h4` 600 title, `body1 text.secondary` subtitle; section headings `overline`; grid `repeat(auto-fill, minmax(220px, 1fr))` `gap: 1.5`; cards `variant="outlined"`, action area a row `gap: 1.5 p: 1.5`, icon `color="primary"`, label `subtitle1` 500. The only `h4` page title — every other screen titles in `subtitle1` 700.
 - **Similar elsewhere** — the saved lists' card grids ([card grid](#card-grid)).
