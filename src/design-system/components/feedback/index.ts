@@ -1,8 +1,9 @@
 /**
- * **The Feedback section's public surface** (CTA-107) — a screen imports this
- * section's components from here and nowhere deeper. Empty until the
- * section's base components and their variations land (the follow-up Story);
- * each is a folder beside this file: `Foo.tsx`, `Foo.test.tsx`,
- * `Foo.gallery.tsx` and `index.ts`, re-exported here.
+ * **The Feedback section's public surface** (CTA-107, filled by CTA-108) — a
+ * screen imports this section's components from here and nowhere deeper.
+ * The reference is `docs/design/sections/feedback.md`.
  */
-export {};
+export * from "./SnackbarProvider";
+export * from "./InlineAlert";
+export * from "./FeedbackStrip";
+export * from "./StatusText";
