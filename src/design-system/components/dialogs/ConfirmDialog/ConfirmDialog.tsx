@@ -28,6 +28,12 @@ export type ConfirmDialogProps = {
   width?: "xs" | "sm";
   /** The root's test id; the parts are `-message`, `-cancel` and `-confirm`. */
   testId: string;
+  /**
+   * The confirm button's own test id, for a screen whose tests named it
+   * before it moved onto this dialog (`played-games-delete-confirm`).
+   * Absent, it is `<testId>-confirm`.
+   */
+  confirmTestId?: string;
   dialogProps?: ExtraDialogProps;
 };
 
@@ -51,6 +57,7 @@ function ConfirmDialog({
   confirmDisabled = false,
   width = "xs",
   testId,
+  confirmTestId = `${testId}-confirm`,
   dialogProps,
 }: ConfirmDialogProps) {
   const color = tone === "destructive" ? "error" : "primary";
@@ -85,7 +92,7 @@ function ConfirmDialog({
             disabled={busy || confirmDisabled}
             aria-busy={busy || undefined}
             startIcon={busy ? <CircularProgress aria-hidden size={16} color="inherit" /> : undefined}
-            data-testid={`${testId}-confirm`}
+            data-testid={confirmTestId}
           >
             {confirmLabel}
           </Button>

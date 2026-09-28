@@ -10,6 +10,10 @@ const gallery: GalleryModule = {
     { name: "Error — role alert", render: () => <StatusText tone="error" testId="gallery-status-error">The save failed: storage is full.</StatusText> },
     { name: "Success — role status", render: () => <StatusText tone="success" testId="gallery-status-success">Loaded 1 game.</StatusText> },
     {
+      name: "Neutral and emphasised — a game's result under its board",
+      render: () => <StatusText tone="neutral" emphasis testId="gallery-status-neutral">Game over · 1-0</StatusText>,
+    },
+    {
       name: "Warning and info",
       render: () => (
         <Box sx={{ display: "grid", gap: 0.5 }}>

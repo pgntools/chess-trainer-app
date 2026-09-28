@@ -19,6 +19,8 @@ export type DeleteManyDialogProps = {
   busy?: boolean;
   /** The root's test id; the parts are ConfirmDialog's and `-error`. */
   testId: string;
+  /** The confirm button's own test id — ConfirmDialog's `confirmTestId`. */
+  confirmTestId?: string;
   dialogProps?: ExtraDialogProps;
 };
 

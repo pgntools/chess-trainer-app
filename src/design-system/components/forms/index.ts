@@ -6,6 +6,7 @@
 export * from "./FieldLabel";
 export * from "./SwitchField";
 export * from "./CheckboxField";
+export * from "./RadioGroupField";
 export * from "./SideToggle";
 export * from "./SliderField";
 export * from "./SelectField";

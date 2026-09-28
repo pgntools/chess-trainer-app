@@ -23,6 +23,12 @@ describe("FileInputButton", () => {
     expect(input.value).toBe("");
   });
 
+  it("names its input by a test id of the screen's own, when given one (CTA-109)", () => {
+    render(<FileInputButton label="Choose" accept=".zip" onFiles={() => {}} testId="probe" inputTestId="old-input" />);
+    expect(screen.queryByTestId("probe-input")).toBeNull();
+    expect(screen.getByTestId("probe")).toContainElement(screen.getByTestId("old-input"));
+  });
+
   it("does nothing when the pick is cancelled", () => {
     const onFiles = vi.fn();
     render(<FileInputButton label="Choose" accept=".pgn" onFiles={onFiles} testId="probe" />);

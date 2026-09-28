@@ -32,6 +32,14 @@ describe("ConfirmDialog", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("names its confirm by a test id of the screen's own, when given one (CTA-109)", () => {
+    const { onConfirm } = renderConfirm({ confirmTestId: "old-screen-ok" });
+    expect(screen.queryByTestId("probe-confirm")).toBeNull();
+    fireEvent.click(screen.getByTestId("old-screen-ok"));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("probe-cancel")).toBeInTheDocument();
+  });
+
   it("paints a destructive confirm in the error colour, contained by default", () => {
     renderConfirm({ tone: "destructive" });
     const confirm = screen.getByTestId("probe-confirm");

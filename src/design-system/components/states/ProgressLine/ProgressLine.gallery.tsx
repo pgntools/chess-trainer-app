@@ -24,6 +24,14 @@ const gallery: GalleryModule = {
       ),
     },
     {
+      name: "Indeterminate, its caption announced as it changes (announce)",
+      render: () => (
+        <Box sx={{ maxWidth: 360 }}>
+          <ProgressLine label="Import progress" caption="Importing…" announce testId="gallery-progress-line-announced" />
+        </Box>
+      ),
+    },
+    {
       name: "Indeterminate, no caption",
       render: () => (
         <Box sx={{ maxWidth: 360 }}>

@@ -24,14 +24,18 @@ export type SliderFieldProps = {
 /**
  * **A labelled slider** (CTA-108): a header with the label at the start and
  * the value at the end (`dir="ltr"`, so a number never reverses), a small
- * slider under it, the whole dimmed while off. `OptionSlider` and the four
+ * slider under it, dimmed while off. `OptionSlider` and the four
  * depth and move-time rows each wrote this header; this is it once.
+ *
+ * The notice is never dimmed (CTA-109): it says why the slider is off, and at
+ * 60 % a warning caption fell to 2.5:1 — a browser audit of the Engine tab
+ * found it. Only the header and the slider fade.
  */
 function SliderField({ label, value, onChange, min, max, step = 1, valueLabel, notice, disabled = false, testId }: SliderFieldProps) {
   const labelId = useId();
   return (
-    <Box data-testid={testId} sx={{ opacity: disabled ? 0.6 : 1 }}>
-      <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1 }}>
+    <Box data-testid={testId}>
+      <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1, opacity: disabled ? 0.6 : 1 }}>
         <Typography id={labelId} variant="body2" sx={{ fontWeight: 600 }}>
           {label}
         </Typography>
@@ -47,6 +51,7 @@ function SliderField({ label, value, onChange, min, max, step = 1, valueLabel, n
         step={step}
         disabled={disabled}
         onChange={(_event, next) => onChange(Array.isArray(next) ? next[0] : next)}
+        sx={{ opacity: disabled ? 0.6 : 1 }}
         slotProps={{ input: { "aria-labelledby": labelId, "data-testid": `${testId}-input` } as object }}
       />
       {notice !== undefined && (

@@ -52,6 +52,11 @@ const gallery: GalleryModule = {
         framed({ tone: "destructive", confirmVariant: "text", title: "Resign?", message: "The game ends as a loss.", confirmLabel: "Resign" }),
     },
     {
+      name: "The confirm under a screen's own test id (confirmTestId) — looks the same",
+      render: () =>
+        framed({ tone: "destructive", title: "Resign?", message: "The game ends as a loss.", confirmLabel: "Resign", confirmTestId: "gallery-confirm-ok" }),
+    },
+    {
       name: "Busy — carrying out the answer",
       render: () => framed({ tone: "destructive", busy: true, title: "Delete 12 games?", message: "This cannot be undone.", confirmLabel: "Delete" }),
     },

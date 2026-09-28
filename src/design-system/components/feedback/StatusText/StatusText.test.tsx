@@ -14,4 +14,12 @@ describe("StatusText", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Saved.");
     expect(screen.queryByRole("alert")).toBeNull();
   });
+
+  it("states a neutral outcome, emphasised, as a status (CTA-109)", () => {
+    render(<StatusText tone="neutral" emphasis testId="probe">Game over · 1-0</StatusText>);
+    const line = screen.getByRole("status");
+    expect(line).toBe(screen.getByTestId("probe"));
+    expect(line).toHaveClass("MuiTypography-body2");
+    expect(line).toHaveStyle({ fontWeight: "600" });
+  });
 });

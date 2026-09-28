@@ -12,6 +12,13 @@ describe("CheckboxField", () => {
     expect(onChange).toHaveBeenCalledWith(false);
   });
 
+  it("puts the test id on the checkbox around the input instead, when asked (CTA-109)", () => {
+    render(<CheckboxField label="games" checked onChange={() => {}} testId="probe" testIdOn="control" />);
+    const control = screen.getByTestId("probe");
+    expect(control.tagName).not.toBe("INPUT");
+    expect(control.querySelector("input")).toBe(screen.getByRole("checkbox", { name: "games" }));
+  });
+
   it("is described by its help, and can be indeterminate", () => {
     render(<CheckboxField label="All" help="Every category." indeterminate checked={false} onChange={() => {}} testId="probe" />);
     expect(screen.getByRole("checkbox", { name: "All" })).toHaveAccessibleDescription("Every category.");

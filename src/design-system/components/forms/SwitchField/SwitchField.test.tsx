@@ -14,6 +14,16 @@ describe("SwitchField", () => {
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
+  it("puts the test id on the switch around the input instead, when asked (CTA-109)", () => {
+    const onChange = vi.fn();
+    render(<SwitchField label="Engine" checked={false} onChange={onChange} testId="probe" testIdOn="control" />);
+    const control = screen.getByTestId("probe");
+    expect(control.tagName).not.toBe("INPUT");
+    expect(control.querySelector("input")).toBe(screen.getByRole("switch", { name: "Engine" }));
+    fireEvent.click(control.querySelector("input")!);
+    expect(onChange).toHaveBeenCalledWith(true);
+  });
+
   it("describes the switch by its help caption", () => {
     render(<SwitchField label="Lines" help="The engine's best lines." checked onChange={() => {}} testId="probe" />);
     expect(screen.getByTestId("probe-help")).toHaveTextContent("The engine's best lines.");

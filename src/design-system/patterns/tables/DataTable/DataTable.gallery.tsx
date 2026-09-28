@@ -256,6 +256,28 @@ const gallery: GalleryModule<PatternSectionId> = {
     { name: "Empty", render: () => local([], undefined, 200) },
     { name: "No match", render: () => local([], () => ({ filtered: true }), 200) },
     { name: "One row", render: () => local(FEW.slice(0, 1), undefined, 200) },
+    {
+      name: "A row that cannot fill its columns says why across them, its pick kept (rowNote)",
+      render: () =>
+        local(
+          FEW,
+          (state, set) => ({
+            rowNote: (row) => (row.city === undefined ? "This member's record could not be read." : undefined),
+            picks: {
+              picked: state.picked,
+              onChange: (picked) => set({ picked }),
+              selectAllLabel: "Select all",
+              pickLabel: (row) => `Pick ${row.name}`,
+            },
+          }),
+          300,
+        ),
+    },
+    {
+      name: "Sections, each closed by a bolder line (groupEnd — by the first letter of the name)",
+      render: () =>
+        local(FEW, () => ({ sort: undefined, paging: undefined, groupEnd: (row, next) => next !== undefined && next.name[0] !== row.name[0] }), 300),
+    },
     { name: "Dense", render: () => local(FEW, () => ({ density: "dense" }), 300) },
     { name: "Header not sticky", render: () => local(SIXTY, () => ({ stickyHeader: false }), 300) },
     { name: "Without paging — every row, no pager", render: () => local(FEW, () => ({ paging: undefined }), 300) },
