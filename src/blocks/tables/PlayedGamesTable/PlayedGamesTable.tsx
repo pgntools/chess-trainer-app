@@ -195,6 +195,7 @@ function PlayedGamesTable({
       filtered={filtered}
       filters={filters}
       ariaLabel={t("playedGames.table.label")}
+      hint={t("hints.table.sortAndPick")}
       testId={testId}
     />
   );

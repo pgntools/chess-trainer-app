@@ -13,7 +13,7 @@ import WithHook from "../../../gallery/WithHook";
 import WithState from "../../../gallery/WithState";
 import type { PatternSectionId } from "../../sections";
 import { firstDirectionOf, type DataTableColumn, type DataTableSort } from "./columns";
-import DataTable, { type DataTableBaseProps, type DataTableRowActions } from "./DataTable";
+import DataTable, { type DataTableBaseProps, type DataTablePicks, type DataTableRowActions } from "./DataTable";
 
 /** A generic row — the pattern knows no domain, so neither do its demos. */
 type Member = { id: string; name: string; city?: string; rating?: number; visits: number; joined?: string };
@@ -54,6 +54,16 @@ const HEBREW: Member[] = [
 ];
 
 const dash = (value: ReactNode | undefined) => value ?? "–";
+
+/** How the demos' sort and picks are worked — read with the table by a screen reader (CTA-112). */
+const HINT = "Sort by a column from its header button. Tick a row's box to pick it.";
+
+/** What a demo adds: anything of the base, row actions, and picks or its own sort. */
+type Extra = Partial<DataTableBaseProps<Member, Column>> &
+  DataTableRowActions<Member> & {
+    picks?: DataTablePicks<Member>;
+    onSort?: (column: Column, direction: SortDirection) => void;
+  };
 
 const COLUMNS: DataTableColumn<Member, Column>[] = [
   { id: "name", header: "Name", sortable: true, dir: "auto", sortValue: (row) => row.name, render: (row) => row.name },
@@ -104,7 +114,7 @@ const box = (children: ReactNode, height = 360) => (
  */
 const local = (
   rows: readonly Member[],
-  extra: (state: Local, set: (patch: Partial<Local>) => void) => Partial<DataTableBaseProps<Member, Column>> & DataTableRowActions<Member> = () => ({}),
+  extra: (state: Local, set: (patch: Partial<Local>) => void) => Extra = () => ({}),
   height?: number,
 ) => (
   <WithState initial={INITIAL}>
@@ -127,8 +137,10 @@ const local = (
           emptyLabel="No members yet"
           noMatchLabel="No member matches the filters"
           ariaLabel="Members"
+          hint={HINT}
           testId="gallery-data-table"
-          {...extra(state, set)}
+          // Every demo sorts, so the hint above goes with whatever it adds.
+          {...(extra(state, set) as object)}
         />,
         height,
       );
@@ -150,6 +162,17 @@ const gallery: GalleryModule<PatternSectionId> = {
     {
       name: "Sort and pages (click a header; numbers and dates open high first)",
       render: () => local(SIXTY),
+    },
+    {
+      name: "Its navigation hint — out of sight, read with the table (aria-describedby); printed here",
+      render: () => (
+        <Box sx={{ display: "grid", gap: 1 }}>
+          {local(FEW, undefined, 260)}
+          <Typography variant="caption" color="text.secondary">
+            A screen reader hears, entering the table: “Members. {HINT}”
+          </Typography>
+        </Box>
+      ),
     },
     {
       name: "Picks with select-all, row actions (always visible), a row click and a toolbar",
@@ -241,6 +264,7 @@ const gallery: GalleryModule<PatternSectionId> = {
                 }}
                 emptyLabel="No members yet"
                 ariaLabel="Members"
+                hint={HINT}
                 testId="gallery-data-table-url"
               />,
             )

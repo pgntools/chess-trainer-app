@@ -5,7 +5,13 @@ import { MemoryRouter, Link as RouterLink, useLocation } from "react-router";
 
 import type { SortDirection } from "../../../components/tables";
 import { firstDirectionOf, nextSort, type DataTableColumn } from "./columns";
-import DataTable, { type DataTableBaseProps, type DataTableProps, type DataTableRowActions } from "./DataTable";
+import DataTable, {
+  type DataTableBaseProps,
+  type DataTablePicks,
+  type DataTableProps,
+  type DataTableRowActions,
+} from "./DataTable";
+import { expectNoAxeViolations } from "../../../../test/axe";
 
 type Row = { id: string; name?: string; elo?: number };
 type Column = "name" | "elo";
@@ -30,7 +36,16 @@ const COLUMNS: DataTableColumn<Row, Column>[] = [
   },
 ];
 
-const mount = (props: Partial<DataTableBaseProps<Row, Column>> & DataTableRowActions<Row> = {}) =>
+/** What a test may add: anything of the base, row actions, a sort or picks (their hint is given here). */
+type MountProps = Partial<DataTableBaseProps<Row, Column>> &
+  DataTableRowActions<Row> & {
+    onSort?: (column: Column, direction: SortDirection) => void;
+    picks?: DataTablePicks<Row>;
+  };
+
+const HINT = "Sort by a column from its header; tick a row to pick it.";
+
+const mount = (props: MountProps = {}) =>
   render(
     <DataTable<Row, Column>
       columns={COLUMNS}
@@ -38,8 +53,10 @@ const mount = (props: Partial<DataTableBaseProps<Row, Column>> & DataTableRowAct
       rowId={(row) => row.id}
       emptyLabel="No players"
       ariaLabel="Players"
+      hint={HINT}
       testId="t"
-      {...props}
+      // A sort or picks may come in `props`, and the hint above goes with them.
+      {...(props as object)}
     />,
   );
 
@@ -408,7 +425,26 @@ describe("DataTable", () => {
       const nameless = <DataTable<Row, Column> {...base} />;
       // @ts-expect-error — row actions need their column's name.
       const unnamedActions = <DataTable<Row, Column> {...base} ariaLabel="Players" rowActions={() => null} />;
-      expect([nameless, unnamedActions]).toHaveLength(2);
+      // @ts-expect-error — a sort comes with the hint that tells how it is worked (CTA-112).
+      const unexplainedSort = <DataTable<Row, Column> {...base} ariaLabel="Players" onSort={() => {}} />;
+      // @ts-expect-error — and so do picks.
+      const unexplainedPicks = <DataTable<Row, Column> {...base} ariaLabel="Players" picks={picks(new Set())} />;
+      expect([nameless, unnamedActions, unexplainedSort, unexplainedPicks]).toHaveLength(4);
+    });
+
+    it("reads its hint with the table — the region and the table described by it, the words out of sight (CTA-112)", async () => {
+      mount({ onSort: vi.fn(), sort: { column: "name", direction: "asc" }, picks: picks(new Set()) });
+      const table = screen.getByRole("table", { name: "Players" });
+      expect(table).toHaveAccessibleDescription(HINT);
+      expect(screen.getByRole("region", { name: "Players" })).toHaveAccessibleDescription(HINT);
+      expect(screen.getByTestId("t-hint")).toHaveStyle({ position: "absolute" });
+      await expectNoAxeViolations();
+    });
+
+    it("has nothing to explain without a sort or picks", () => {
+      render(<DataTable<Row, Column> columns={COLUMNS} rows={ROWS} rowId={(row) => row.id} emptyLabel="" ariaLabel="Players" testId="t" />);
+      expect(screen.queryByTestId("t-hint")).toBeNull();
+      expect(screen.getByRole("table", { name: "Players" })).not.toHaveAttribute("aria-describedby");
     });
 
     it("marks the table busy while its rows are read", () => {

@@ -11,7 +11,7 @@ import { useTheme } from "@mui/material/styles";
 import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 
-import type { VisibleLabel } from "../../../components/a11y";
+import { visuallyHidden, type VisibleLabel } from "../../../components/a11y";
 import { linkProps, type LinkTarget } from "../../../components/link";
 import { visibleNodes, type VisibleNode } from "./treeNodes";
 
@@ -56,6 +56,13 @@ export type TreeViewProps = {
   /** The tree's accessible name ("Folders") — required (CTA-111). */
   ariaLabel: string;
   /**
+   * How the tree is worked — "Arrow keys to move, right and left to open and
+   * close, Enter to open" — read with it by a screen reader (its
+   * `aria-describedby`), not shown. Required (CTA-112): a tree's keys are
+   * not a web page's, and nothing on screen says what they are.
+   */
+  hint: VisibleLabel;
+  /**
    * The root list. The parts: `-<id>` (a node's row), `-<id>-toggle` (a
    * selectable branch's chevron), `-<id>-group` (a branch's open children).
    */
@@ -66,7 +73,7 @@ export type TreeViewProps = {
 const indentOf = (depth: number) => 2 + depth * 2;
 
 /** What every row needs to know of the tree around it — the keyboard's state and the row elements. */
-type RowContext = Omit<TreeViewProps, "nodes" | "ariaLabel"> & {
+type RowContext = Omit<TreeViewProps, "nodes" | "ariaLabel" | "hint"> & {
   /** The one row the Tab key lands on (the roving tab stop). */
   tabStop: string | undefined;
   onFocusRow: (id: string) => void;
@@ -184,13 +191,14 @@ function TreeRow({ node, depth, ...context }: RowProps) {
  * the rows in view, Home / End go to the first and last, → opens a closed
  * branch or steps into an open one, ← closes an open branch or steps out to
  * its parent (the two arrows swapped under RTL, as the tree mirrors), and
- * Enter follows the row's link, selects it or opens its folder.
+ * Enter follows the row's link, selects it or opens its folder. Those keys
+ * are told in a required `hint`, read with the tree (CTA-112).
  *
  * Every piece of state is the caller's: which branches are open, which node
  * is on screen. It knows no route and no record — the gallery's menu builds
  * its nodes from the tiers, a folder tree block from a store's folders.
  */
-function TreeView({ nodes, ariaLabel, testId, ...rest }: TreeViewProps) {
+function TreeView({ nodes, ariaLabel, hint, testId, ...rest }: TreeViewProps) {
   const { open, onToggle, activeId } = rest;
   const { direction } = useTheme();
   const idBase = useId();
@@ -237,8 +245,21 @@ function TreeView({ nodes, ariaLabel, testId, ...rest }: TreeViewProps) {
     if (handled) event.preventDefault();
   };
 
+  const hintId = `${idBase}-hint`;
   return (
-    <List dense disablePadding role="tree" aria-label={ariaLabel} onKeyDown={onKeyDown} data-testid={testId}>
+    <>
+    <Box id={hintId} data-testid={`${testId}-hint`} sx={visuallyHidden}>
+      {hint}
+    </Box>
+    <List
+      dense
+      disablePadding
+      role="tree"
+      aria-label={ariaLabel}
+      aria-describedby={hintId}
+      onKeyDown={onKeyDown}
+      data-testid={testId}
+    >
       {nodes.map((node) => (
         <TreeRow
           key={node.id}
@@ -253,6 +274,7 @@ function TreeView({ nodes, ariaLabel, testId, ...rest }: TreeViewProps) {
         />
       ))}
     </List>
+    </>
   );
 }
 

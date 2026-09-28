@@ -18,6 +18,7 @@ const folder = (id: string, name: string, parentId: string | null = null): GameF
 
 export const FOLDER_LABELS: FolderTreeLabels = {
   tree: "Folders",
+  hint: "Up and down arrows to move, right to open, left to close, Enter to go.",
   root: "All analyses",
   toggle: (name, open) => `${open ? "Close" : "Open"} ${name}`,
 };

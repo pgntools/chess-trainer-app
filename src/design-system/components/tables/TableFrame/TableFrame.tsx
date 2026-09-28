@@ -20,6 +20,8 @@ export type TableFrameProps = TableName & {
   stickyHeader?: boolean;
   /** The rows are still being read: the table is marked `aria-busy`. */
   busy?: boolean;
+  /** The id of words that tell how to work the table (CTA-112) — its `aria-describedby`, and its region's. */
+  describedBy?: string;
   /** Anything after the table inside the scrolling region (a note under the rows). */
   after?: ReactNode;
   /** The scrolling region's test id; the table is `<testId>-table`, a caption `<testId>-caption`. */
@@ -37,11 +39,12 @@ export type TableFrameProps = TableName & {
  * (`tabIndex={0}`, a named `region`), so a reader without a mouse can scroll a
  * table that holds nothing focusable.
  */
-function TableFrame({ children, density = "normal", stickyHeader = true, ariaLabel, caption, busy = false, after, testId }: TableFrameProps) {
+function TableFrame({ children, density = "normal", stickyHeader = true, ariaLabel, caption, busy = false, describedBy, after, testId }: TableFrameProps) {
   return (
     <TableContainer
       role="region"
       aria-label={ariaLabel}
+      aria-describedby={describedBy}
       tabIndex={0}
       data-testid={testId}
       sx={(theme) => ({ flex: 1, minHeight: 0, "&:focus-visible": { ...theme.mixins.focusRing, outlineOffset: -2 } })}
@@ -51,6 +54,7 @@ function TableFrame({ children, density = "normal", stickyHeader = true, ariaLab
         stickyHeader={stickyHeader}
         aria-label={ariaLabel}
         aria-busy={busy || undefined}
+        aria-describedby={describedBy}
         data-testid={`${testId}-table`}
         data-density={density}
         sx={{

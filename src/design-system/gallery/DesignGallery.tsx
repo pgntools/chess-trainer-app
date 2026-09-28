@@ -83,7 +83,7 @@ type DesignGalleryProps = {
  * component mounted; only its `section` changes).
  *
  * Its words are English and not in the catalogs: the gallery never ships
- * (`App.tsx`'s Development routes), so neither should they.
+ * (`routes.tsx`'s Development routes), so neither should they.
  */
 function DesignGallery({
   section,
@@ -187,6 +187,7 @@ function DesignGallery({
           }
           activeId={activeId}
           ariaLabel="Components"
+          hint="Up and down arrows to move, right to open, left to close, Enter to go."
           testId="design-gallery-nav"
         />
       </Box>
