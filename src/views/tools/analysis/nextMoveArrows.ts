@@ -1,4 +1,5 @@
 import type { Arrow } from "react-chessboard";
+import { defaultChessTokens, type ArrowPaletteTokens } from "../../../design-system/themes";
 import type { ArrowPaletteId } from "../../../lib/arrowSettings";
 import type { VariationNode } from "../../../lib/gameTree";
 
@@ -21,26 +22,33 @@ import type { VariationNode } from "../../../lib/gameTree";
  * play-chance arrows — whose whole point is that the likelier move is the
  * wider — are drawn by the player itself, over the board
  * (`chanceArrows.ts`, CTA-71).
+ *
+ * **The colours are the theme's** (CTA-107): `chess.arrowPalettes` and
+ * `chess.arrows`, read by a board through `useChessTokens`. The constants
+ * below are the **default theme's** values, for the callers and tests that
+ * name one.
  */
+
+const { arrowPalettes, arrows } = defaultChessTokens;
 
 /**
  * The colour of a continuation's arrow — a move on offer. On a board that
  * draws through {@link nextMoveArrowsOf} it is the **mainline's** colour, and
  * the side lines take {@link SIDELINE_NEXT_MOVE_ARROW_COLOR}.
  */
-export const NEXT_MOVE_ARROW_COLOR = "#4caf50";
+export const NEXT_MOVE_ARROW_COLOR = arrowPalettes.classic.mainline;
 
 /**
  * The colour of a side line's arrow — every continuation after `children[0]`,
  * so the reader tells the main move from the alternatives at a glance.
  */
-export const SIDELINE_NEXT_MOVE_ARROW_COLOR = "#2196f3";
+export const SIDELINE_NEXT_MOVE_ARROW_COLOR = arrowPalettes.classic.sideline;
 
 /**
  * The colour a continuation's arrow takes while its token in the bar is
  * hovered, so the reader sees exactly which move a click will play.
  */
-export const HOVERED_NEXT_MOVE_ARROW_COLOR = "#f44336";
+export const HOVERED_NEXT_MOVE_ARROW_COLOR = arrowPalettes.classic.hovered;
 
 /**
  * The colour of a **required** move's arrow — Backtracking's "this is the move
@@ -48,10 +56,10 @@ export const HOVERED_NEXT_MOVE_ARROW_COLOR = "#f44336";
  * only to lines already covered. Apart from the green/blue pair on purpose,
  * since it is an instruction rather than an option.
  */
-export const REQUIRED_MOVE_ARROW_COLOR = "#9c27b0";
+export const REQUIRED_MOVE_ARROW_COLOR = arrows.required;
 
 /** The three colours a board's next-move arrows are drawn in. */
-export type NextMoveArrowColors = { mainline: string; sideline: string; hovered: string };
+export type NextMoveArrowColors = ArrowPaletteTokens;
 
 /**
  * **The palettes** the Analysis Board's Arrows tab offers (CTA-98), each
@@ -61,23 +69,18 @@ export type NextMoveArrowColors = { mainline: string; sideline: string; hovered:
  * - **Lichess** — its board brushes: green, blue, red.
  * - **Colour-blind safe** — Okabe–Ito's blue, orange and reddish purple,
  *   told apart under every common colour blindness.
+ *
+ * The default theme's; a board offers its own theme's `chess.arrowPalettes`.
  */
-export const NEXT_MOVE_ARROW_PALETTES: Readonly<Record<ArrowPaletteId, NextMoveArrowColors>> = {
-  classic: {
-    mainline: NEXT_MOVE_ARROW_COLOR,
-    sideline: SIDELINE_NEXT_MOVE_ARROW_COLOR,
-    hovered: HOVERED_NEXT_MOVE_ARROW_COLOR,
-  },
-  lichess: { mainline: "#15781B", sideline: "#003088", hovered: "#882020" },
-  colorblind: { mainline: "#0072B2", sideline: "#E69F00", hovered: "#CC79A7" },
-};
+export const NEXT_MOVE_ARROW_PALETTES: Readonly<Record<ArrowPaletteId, NextMoveArrowColors>> =
+  arrowPalettes;
 
 /**
  * The arrow of a continuation that carries no tag, where others at its branch
  * do and the arrows are sized by it (CTA-98) — gray and half-transparent, of
  * a fixed modest width.
  */
-export const UNTAGGED_NEXT_MOVE_ARROW_COLOR = "rgba(128, 128, 128, 0.5)";
+export const UNTAGGED_NEXT_MOVE_ARROW_COLOR = arrows.untagged;
 
 /**
  * The arrows for the continuations of the position on screen — the whole

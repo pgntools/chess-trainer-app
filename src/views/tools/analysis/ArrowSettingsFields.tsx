@@ -7,13 +7,13 @@ import RadioGroup from "@mui/material/RadioGroup";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
+import { useChessTokens } from "../../../design-system/theme";
 import {
   ARROW_PALETTES,
   ARROW_WIDTH_SOURCES,
   type ArrowPaletteId,
   type ArrowWidthSource,
 } from "../../../lib/arrowSettings";
-import { NEXT_MOVE_ARROW_PALETTES } from "./nextMoveArrows";
 
 /**
  * **How the next-move arrows are drawn** (CTA-98) — the two choices beside
@@ -103,6 +103,8 @@ export function ArrowPaletteField({
   onChange: (next: ArrowPaletteId) => void;
 }) {
   const { t } = useTranslation();
+  // The swatches are the theme's palettes (CTA-107) — what the board will draw.
+  const { arrowPalettes } = useChessTokens();
   return (
     <FormControl component="fieldset" data-testid={`${idPrefix}-palette`}>
       <FormLabel component="legend" sx={{ typography: "body2", fontWeight: 600, mb: 0.5 }}>
@@ -110,7 +112,7 @@ export function ArrowPaletteField({
       </FormLabel>
       <RadioGroup value={value} onChange={(_event, next) => onChange(next as ArrowPaletteId)}>
         {ARROW_PALETTES.map((id) => {
-          const colors = NEXT_MOVE_ARROW_PALETTES[id];
+          const colors = arrowPalettes[id];
           return (
             <FormControlLabel
               key={id}

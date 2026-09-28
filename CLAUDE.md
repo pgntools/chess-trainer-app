@@ -5,7 +5,8 @@ Engine and Masked Pieces, the Analysis Board, the Openings explorer, the
 repertoire player and the Library's game board — sit inside one app shell,
 reached from a plain landing page at `/`, beside a Settings section whose
 Export tab downloads the reader's data as one zip, whose Import tab puts such
-a zip back, and whose Storage tab shows how much space it all takes. The boards are
+a zip back, whose Storage tab shows how much space it all takes, and whose
+Appearance tab picks the theme. The boards are
 `react-chessboard` v5 driven by `chess.js` and a Stockfish WASM worker, and
 every one is composed from one **board core** (`src/views/board/core/`).
 
@@ -75,12 +76,13 @@ uses can look unused — check `scripts/` before removing one.
 | **Openings explorer** | `/openings` | `views/openings/`, `lib/openings.ts`, `lib/analysisHandOff.ts` | [`openings-explorer.md`](.claude/rules/openings-explorer.md) |
 | **Repertoires** | `/repertoires`, `/repertoires/<id>`, `/…/games/<game>` | `views/repertoires/`, `lib/savedRepertoire*`, `lib/repertoire*`, `lib/playChance.ts` | [`repertoires.md`](.claude/rules/repertoires.md) |
 | **Library** (game collections) | `/library`, `/library/<c>`, `/library/<c>/<n>` | `views/library/`, `lib/library*`, `lib/collectionIndex.ts`, `src/data/library/` | [`game-collections.md`](.claude/rules/game-collections.md) |
-| **Settings** (Export, Import, Storage) | `/settings/<tab>` (`/settings/export`, `/settings/import`, `/settings/storage`) | `views/settings/` | [`settings.md`](.claude/rules/settings.md) |
+| **Settings** (Export, Import, Storage, Appearance) | `/settings/<tab>` (`/settings/export`, `/settings/import`, `/settings/storage`, `/settings/appearance`) | `views/settings/` | [`settings.md`](.claude/rules/settings.md) |
 | **Import / Export** (the reader's data as one zip) | `/settings/export`, `/settings/import` | `lib/dataExport*.ts`, `lib/dataImport*.ts`, `lib/pgnExport.ts`, `views/settings/ExportTab.tsx`, `ImportTab.tsx`, `ImportDialog.tsx`, `IncompatibleImportDialog.tsx` | [`import-export.md`](.claude/rules/import-export.md) |
 | **Position editor** (a component, hosted by the Lobby) | — | `views/shared/positionEditor/`, `lib/positionEditor.ts` | [`position-editor.md`](.claude/rules/position-editor.md) |
 | **Tree views** (how a board shows its game tree) | — | `views/explorer/`, `lib/treeMap.ts` | [`tree-views.md`](.claude/rules/tree-views.md) |
 | **PGN annotations** (comments, `[%cmd]`s, the `prc` and `games` tags, NAG glyphs) | — | `lib/pgn.ts`, `lib/gameTree.ts`, `lib/moveAnnotations.ts`, `lib/playChance.ts`, `lib/gamesTag.ts` | [`pgn-annotations.md`](.claude/rules/pgn-annotations.md) |
 | **The board core** | — | `views/board/core/` | [`chessboard.md`](.claude/rules/chessboard.md) §9 |
+| **The design system** (themes, the MUI component sections, the dev-only gallery) | `/dev/design/<section>` (dev only; one page per section) | `src/design-system/`, `theme/themeChoice.ts`, `views/dev/design/` | [`docs/design/README.md`](docs/design/README.md) |
 | **Stores** (every one IndexedDB) | — | `lib/idb.ts`, `lib/idbRecordStore.ts`, `lib/*Store.ts`, `lib/*Db.ts` | [`database.md`](.claude/rules/database.md) |
 
 ## Layout of the source
@@ -89,12 +91,13 @@ uses can look unused — check `scripts/` before removing one.
 | --- | --- |
 | `src/main.tsx`, `src/App.tsx` | The composition root (`AppThemeWithLang` → `CssBaseline` → `App`; imports `./i18n` for its side effect) and the router. |
 | `src/i18n.ts`, `src/locales/` | i18next setup (`supportedLanguages`, `rtlLanguages`, `asAppLanguage()`) and the inline `en` / `he` catalogs. `he` is typed `typeof en`, so a missing key is a compile error. |
-| `src/theme/` | The look: tokens, the `AppThemeWithLang` provider, the RTL cache, `ForceLTR`, the header controls. |
-| `src/views/main/` | The app shell: `Layout.tsx` (header, sidebar, the board square and the right-hand panel, `BOARD_PANEL_GAP_PX` between them), `rightPanel.tsx` (the route-fillable panel slot), `Sidebar.tsx` and the nav registries. |
+| `src/design-system/` | **The design system** (CTA-107), a layer of its own that knows no chess screen, store or route — `yarn lint` fails if it imports `src/views/` or `src/lib/`. `themes/` (a theme is data; the registry), `theme/` (`buildTheme`, the `chess` tokens' readers, the RTL cache), `components/<section>/` (one folder per MAIN section, each with an `index.ts` screens import from), `gallery/` (the dev-only `/dev/design/<section>`, a page per section). Layers and how to add to them: [`docs/design/README.md`](docs/design/README.md). |
+| `src/theme/` | The app's wiring of the look: the `AppThemeWithLang` provider (theme choice, scheme, direction), `themeChoice.ts` (the reader's theme, in `localStorage`), `ForceLTR`, the header controls. |
+| `src/views/main/` | The app shell: `Layout.tsx` (header, sidebar, the board square and the right-hand panel, `BOARD_PANEL_GAP_PX` between them — or, for a route whose `handle` is `FULL_WIDTH_ROUTE` from `routeHandle.ts`, the whole body instead), `rightPanel.tsx` (the route-fillable panel slot), `Sidebar.tsx` and the nav registries. |
 | `src/views/home/` | The landing page at `/` — a card per screen, built from `navTree()`. |
 | `src/views/board/` | **The board core** (`core/`: `useBoardCore`, the capability modules, `BoardShell`, `BoardPanel`), the test harness and the two propagation tests. |
 | `src/views/explorer/` | **The tree views** — the variations explorer every board attaches. |
-| `src/views/shared/` | Pieces the screens share, each taking props and knowing no screen: `MoveList`, `VariationLine`, `BoardControls`, `EvalBar`, `BestVariations`, `PromotionPicker`, `EngineBoardSquare`, `CapturedPieces`, `PlayerPlate`, `CurrentOpening`, `GameInfo`, `OptionSlider`, `CopyableValue`, the saved-list machinery (`savedList.ts`, `SavedList*`), `folders/` and `positionEditor/`. Their locale keys are top-level (`moveList.*`, `variations.*`, `board.*`, …); the saved-list pieces take each screen's `labelKey` and test-id prefix instead. |
+| `src/views/shared/` | Pieces the screens share, each taking props and knowing no screen: `MoveList`, `VariationLine`, `BoardControls`, `EvalBar`, `BestVariations`, `PromotionPicker`, `EngineBoardSquare`, `CapturedPieces`, `PlayerPlate`, `CurrentOpening`, `GameInfo`, `OptionSlider`, `CopyableValue`, the saved-list machinery (`savedList.ts`, `SavedList*`), `folders/` and `positionEditor/`, and `boardColors.ts` (the theme's squares as board options). The chess-aware pieces stay here; generic UI parts belong in `src/design-system/`. Their locale keys are top-level (`moveList.*`, `variations.*`, `board.*`, …); the saved-list pieces take each screen's `labelKey` and test-id prefix instead. |
 | `src/views/engine/`, `tools/analysis/`, `openings/`, `repertoires/`, `library/`, `settings/` | The module screens (table above). Each route renders a layout-only `…Main.tsx` wrapper. |
 | `src/lib/` | Everything pure or storage: the game model and tree, PGN and FEN reading, the engine wrapper and score reading, the stores and records, the opening book. Named per module (table above); the shared core is below. |
 
@@ -183,17 +186,33 @@ Every store is IndexedDB, one database per module (`chessapp.engine`,
 through `lib/idb.ts`, most over the record-store factory
 `lib/idbRecordStore.ts`. Reads are a kept snapshot, `undefined` until the
 first read lands — a screen arriving by a URL naming a record waits for it.
-Writes are promises and never throw. Only the theme and the language live in
-`localStorage` ([`database.md`](.claude/rules/database.md)).
+Writes are promises and never throw. Only the colour mode, the theme choice
+and the language live in `localStorage` ([`database.md`](.claude/rules/database.md) §2).
 
 ### Theming, direction and language
 
-`AppThemeWithLang` owns **both** the colour scheme and the text direction,
-because direction is *derived from the active i18n language*: changing the
-language swaps the emotion cache, `theme.direction` and the MUI locale bundle
-together. Splitting them across providers reintroduces the mismatch this
-exists to prevent.
+`AppThemeWithLang` owns **the theme, the colour scheme and the text
+direction**, because direction is *derived from the active i18n language*:
+changing the language swaps the emotion cache, `theme.direction` and the MUI
+locale bundle together. Splitting them across providers reintroduces the
+mismatch this exists to prevent.
 
+- **A theme is data** in the design system's registry
+  (`src/design-system/themes/`, CTA-107): its light and dark palettes,
+  typography, shape, component overrides and **`chess` tokens** — every
+  colour drawn on or over a board. `buildTheme(theme, mode, direction)`
+  (`src/design-system/theme/`) makes the MUI theme; `AppThemeWithLang` builds
+  the reader's choice (Settings → Appearance, `theme/themeChoice.ts`, in
+  `localStorage`). **Adding a theme** is a file beside `themes/default.ts`,
+  an entry in `themes/registry.ts` and its `appearance.themes.<id>` name in
+  both catalogs — no component changes
+  ([`docs/design/README.md`](docs/design/README.md)).
+- **A board reads its colours from the theme**, never a literal:
+  `useChessTokens()` / `chessTokensOf(theme)` (the default theme's under a
+  bare test render), `useBoardSquareOptions()` for the squares. The
+  `…_COLOR` constants that remain (`nextMoveArrows.ts`, `chanceArrows.ts`,
+  `lib/openings.ts`, `LAST_MOVE_HIGHLIGHT`) are the **default theme's**
+  values, kept for callers and tests.
 - **Adding a language** is a catalog in `src/locales/`, an entry in
   `supportedLanguages`, and — if it mirrors — one in `rtlLanguages`.
 - **The chessboard must never mirror.** Files run a–h left to right in every

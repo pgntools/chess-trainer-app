@@ -35,6 +35,10 @@ const en = {
     settingsImport: "Import",
     /** Settings' Storage tab (CTA-94), in the Settings folder. */
     settingsStorage: "Storage",
+    /** Settings' Appearance tab (CTA-107), in the Settings folder. */
+    settingsAppearance: "Appearance",
+    /** The dev-only design gallery (CTA-107), in the Development folder. */
+    designSystem: "Design system",
     /** Sidebar folders — groupings over the routes, never routes themselves. */
     folders: {
       engine: "Engine",
@@ -48,6 +52,8 @@ const en = {
       library: "Library",
       /** The app's own settings (CTA-86) — one screen per tab. */
       settings: "Settings",
+      /** The dev-only Development section (`chessboard.md` §9.5). */
+      development: "Development",
     },
   },
   /** The index screen — a landing page linking out to the real screens. */
@@ -1535,6 +1541,7 @@ const en = {
       export: "Export",
       import: "Import",
       storage: "Storage",
+      appearance: "Appearance",
     },
     /** The Export tab: the reader's data as PGN files and a manifest, in one zip. */
     export: {
@@ -1661,6 +1668,20 @@ const en = {
         "Payload sizes are this app's own estimate of what its records hold — not disk usage. The browser may compress, deduplicate and add index overhead, so they do not sum to the storage it reports.",
       panel:
         "Nothing here is written or removed. The browser's figures are its own estimates for the whole origin; the per-category sizes are this app's estimate of what your records hold, which the browser may store differently on disk. The built-in collections are files fetched over the network, not records in your browser, so they count towards the origin usage only.",
+    },
+    /** The Appearance tab (CTA-107): the reader's theme. */
+    appearance: {
+      intro:
+        "Choose how the app looks. A theme restyles every screen and every board at once, and is remembered on this device.",
+      theme: "Theme",
+      /** Light and dark are not a theme: they are the header's switch, under every theme. */
+      modeNote: "Light and dark are the switch in the header; every theme has both.",
+    },
+  },
+  /** The registered themes' names (`src/design-system/themes/`, CTA-107). */
+  appearance: {
+    themes: {
+      default: "Default",
     },
   },
   footer: {

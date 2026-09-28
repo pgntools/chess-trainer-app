@@ -11,6 +11,7 @@ import { createSearchParams, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { ChessboardOptions } from "react-chessboard";
 
+import { useChessTokens } from "../../design-system/theme";
 import { analysisHandOffState, lineTreeOf } from "../../lib/analysisHandOff";
 import { parseFen } from "../../lib/fen";
 import type { GameTree } from "../../lib/gameTree";
@@ -97,6 +98,7 @@ function OpeningsBoard() {
   const session = useAnalysisSession(arrival);
   const { core, engine } = session;
   const book = useOpeningBookModule({ enabled: true, fen: core.fen });
+  const chess = useChessTokens();
 
   const [tab, setTab] = useState("book");
   const [showArrows, setShowArrows] = useState(true);
@@ -112,7 +114,12 @@ function OpeningsBoard() {
     map: { linked: true },
   });
   const boardOptions: ChessboardOptions = {
-    arrows: openingArrowsOf(explorer.arrows, book.nextMoves, book.hoveredMove?.san ?? null),
+    arrows: openingArrowsOf(
+      explorer.arrows,
+      book.nextMoves,
+      book.hoveredMove?.san ?? null,
+      chess.book,
+    ),
   };
   const topLine = engine.analysis.lines.find((line) => line !== undefined);
 

@@ -12,6 +12,7 @@ import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { DefaultLayout } from "./Layout";
 import { RightPanel } from "./rightPanel";
 import { LeftPanel } from "./leftPanel";
+import { FULL_WIDTH_ROUTE } from "./routeHandle";
 
 /** The one throwaway screen most of these tests put behind the `<Outlet />`. */
 const blankScreen: RouteObject[] = [
@@ -180,6 +181,33 @@ describe("board square reflow on window resize", () => {
     await waitFor(() =>
       expect(square).toHaveStyle({ width: "0px", height: "0px" }),
     );
+  });
+});
+
+describe("a full-width route (CTA-107)", () => {
+  const routes: RouteObject[] = [
+    { index: true, element: <div data-testid="screen" /> },
+    { path: "wide", element: <div data-testid="wide-screen" />, handle: FULL_WIDTH_ROUTE },
+  ];
+
+  it("gives a route that asks for it the whole body: no board square, no aside", () => {
+    renderShell(routes, ["/wide"]);
+    expect(screen.getByTestId("layout-full-body")).toContainElement(screen.getByTestId("wide-screen"));
+    expect(screen.queryByTestId("layout-board-square-body")).toBeNull();
+    expect(screen.queryByTestId("layout-board-square-sidebar")).toBeNull();
+    // Not a board, so not pinned LTR: it mirrors with the app.
+    // The nearest `dir` is the document's own, which follows the language.
+    expect(screen.getByTestId("wide-screen").closest("[dir]")).toBe(document.body);
+    // The nav rail stays.
+    expect(screen.getByTestId("layout-sidebar-container")).toBeInTheDocument();
+  });
+
+  it("leaves every other route the square and the aside", async () => {
+    const { router } = renderShell(routes, ["/wide"]);
+    await act(() => router.navigate("/"));
+    expect(screen.queryByTestId("layout-full-body")).toBeNull();
+    expect(screen.getByTestId("layout-board-square-body")).toContainElement(screen.getByTestId("screen"));
+    expect(screen.getByTestId("layout-board-square-sidebar")).toBeInTheDocument();
   });
 });
 

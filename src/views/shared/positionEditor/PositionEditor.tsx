@@ -28,6 +28,7 @@ import { finalFenOf } from "../../../lib/gameModel";
 import { mainlineGame, type GameTree } from "../../../lib/gameTree";
 import { EmptyPgnError, PgnParseError, parsePgnTrees } from "../../../lib/pgn";
 import { ForceLTR } from "../../../theme/ForceLTR";
+import { useBoardSquareOptions } from "../boardColors";
 import FenSetup from "./FenSetup";
 import PgnSetup from "./PgnSetup";
 import PiecePalette from "./PiecePalette";
@@ -117,6 +118,7 @@ function PositionEditor({
   controls,
 }: PositionEditorProps) {
   const { t } = useTranslation();
+  const squareOptions = useBoardSquareOptions();
   const tabs = forms ?? FORM_TAB_IDS;
   const [tab, setTab] = useState<FormTabId>("position");
   /** A `forms` without the current tab reads as its first — the host's list wins. */
@@ -243,6 +245,8 @@ function PositionEditor({
   };
 
   const chessboardOptions: ChessboardOptions = {
+    // The theme's squares (CTA-107).
+    ...squareOptions,
     id: `${testId}-board`,
     position: editor.fen,
     boardOrientation: editor.orientation,

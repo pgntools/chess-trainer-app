@@ -9,6 +9,105 @@ them and plan the design system. Nothing under `src/` changed for them.
 Inventory taken on 2026-09-27, against `development` at `4a56477` (CTA-105
 merged).
 
+The design system's foundation followed it (CTA-107): the layer, the theme
+registry and the dev gallery, below. The inventory is unchanged; the section
+components it points at are the follow-up.
+
+## The layers
+
+The design system lives in **`src/design-system/`**, a folder with a lint
+boundary rather than a workspace package: `yarn lint` fails if a file in it
+imports from `src/views/` or `src/lib/` (`eslint.config.js`,
+`src/design-system/boundary.test.ts`). It knows no chess screen, no store and
+no route. Everything above it depends on it, never the reverse:
+
+```
+tokens            src/design-system/themes/          a theme is data: palettes, typography, shape,
+  │                                                  overrides and the chess tokens; the registry
+  ▼
+theme             src/design-system/theme/           buildTheme(theme, mode, direction) → the MUI
+  │                                                  theme; useChessTokens / chessTokensOf; the RTL cache
+  ▼
+components        src/design-system/components/      one folder per MAIN section, generic MUI
+  │                 <section>/index.ts               compositions and their variations
+  ▼
+views/shared      src/views/shared/                  the chess-aware pieces (folders, saved lists,
+  │                                                  PGN input), later rebuilt on the parts above
+  ▼
+screens           src/views/<module>/                compose all of the above
+```
+
+`src/theme/` is the app's wiring of it: `AppThemeWithLang` builds the
+reader's theme (`buildTheme(…, "both", direction, locale)`) and owns the
+choice (`themeChoice.ts`, `localStorage` key `chessapp.theme`), the colour
+scheme and the direction; `ForceLTR` keeps the board unmirrored.
+
+### Themes
+
+A theme is a `ThemeDefinition` (`themes/types.ts`):
+`{ id, labelKey, light, dark, typography, shape, overrides, chess }`.
+
+- `light` / `dark` are the two colour schemes' palettes. The app builds both
+  as CSS variables and the header's switch picks one, so every theme has
+  both; light and dark are never a theme of their own.
+- `chess` is **every colour drawn on or over a board** — squares and
+  coordinates, the last-move fill, the arrow palettes, the required / untagged
+  / play-chance arrows, the book arrows, the move marks' tones, the promotion
+  scrim, the map's dots, the filter board's result bars. Declared on MUI's
+  `Theme` by module augmentation (`theme/augment.ts`), read through
+  `useChessTokens()` / `chessTokensOf(theme)`, never as CSS variables
+  ([`chessboard.md`](../../.claude/rules/chessboard.md) §3.6).
+- The **default** theme (`themes/default.ts`) is the look the app had before
+  themes existed, ported value for value, and react-chessboard's own board
+  colours. Any stored choice that is not registered falls back to it.
+  Its `chess` tokens are their own MUI-free module (`themes/defaultChess.ts`):
+  the one thing `src/lib/` imports from the design system, for the
+  default-valued constants (`LAST_MOVE_HIGHLIGHT`, the book arrows), without
+  pulling MUI into the collection-index worker.
+
+`buildTheme(theme, mode, direction, ...locales)` takes `mode` `"both"` (the
+app's: CSS variables, both schemes, switched by `data-mui-color-scheme`) or
+`"light"` / `"dark"` (one fixed scheme and no variables — a theme that can sit
+inside the app's, as the gallery's preview does).
+
+### Adding things
+
+| To add | Do |
+| --- | --- |
+| **A theme** | A file beside `themes/default.ts` exporting a `ThemeDefinition` (start from a copy of the default; every `chess` group is required), an entry in `themes` in `themes/registry.ts`, and its name `appearance.themes.<id>` in `en.ts` and `he.ts`. No component changes: Settings → Appearance and the gallery list the registry. Never rename an `id` — it is what the reader's choice is stored as. |
+| **A section** | A folder under `components/` with an `index.ts` (the section's public surface) and an entry in `SECTIONS` (`components/sections.ts`), which orders the gallery. |
+| **A component** | A folder in its section — `Foo/Foo.tsx`, `Foo/Foo.test.tsx`, `Foo/Foo.gallery.tsx`, `Foo/index.ts` — and a re-export from the section's `index.ts`. **Screens import only from a section's `index.ts`.** It takes props, reads the theme, and knows no screen, store or route. |
+| **A variation** | One more entry in the component's `Foo.gallery.tsx` `demos` (`{ name, render }`), and whatever prop it needs — optional, its absence today's behaviour. |
+
+### The gallery
+
+`/dev/design/<section>` — **dev-only**, behind the Development section
+([`chessboard.md`](../../.claude/rules/chessboard.md) §9.5): its nav folder
+and entry are spreads gated on `import.meta.env.DEV`, its route a
+`React.lazy` import in `App.tsx`'s `devRoutes`, so a production build has no
+chunk of it. Its route carries `handle: FULL_WIDTH_ROUTE`
+(`views/main/routeHandle.ts`), so the shell gives it the whole body — no board
+square, no right-hand panel.
+
+**Every section is a page of its own**, `/dev/design/<section>`
+(`/dev/design/dialogs`, `/dev/design/tables`, …), because each will grow
+fast; `/dev/design` and an unknown section land on the first. A menu down the
+gallery's left links the pages, the one on screen marked. It is one
+optional-segment route (`/dev/design/:section?`), so moving between sections
+keeps the theme / scheme / direction switches as they were. The gallery itself
+knows no route: the wrapper (`views/dev/design/Main.tsx`) hands it the section
+from the URL and a `sectionPath(id)`. It finds every `components/**/*.gallery.tsx` with
+`import.meta.glob` (`gallery/discover.ts`) — a gallery module default-exports
+`{ section, title, demos }` and needs no registration — groups the demos by
+section, and previews them under a theme, light / dark and LTR / RTL switch of
+its own, which changes the preview only. Each section ships a placeholder demo
+of plain MUI atoms until its components land.
+
+After `yarn build`, `grep -r -e "/dev/design" -e "design-gallery" -e
+"DesignGallery" -e ".gallery" dist/` finds nothing (the nav's two label
+strings, `nav.folders.development` and `nav.designSystem`, are in the shipped
+catalogs, as every nav label must be).
+
 ## What is in scope
 
 - **In**: every MUI composition that is shared, or complex enough to be worth

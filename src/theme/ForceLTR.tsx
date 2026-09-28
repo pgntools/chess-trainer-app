@@ -3,7 +3,7 @@ import { ThemeProvider, createTheme, useTheme } from "@mui/material/styles";
 import { CacheProvider } from "@emotion/react";
 import Box from "@mui/material/Box";
 import type { SxProps, Theme } from "@mui/material/styles";
-import { ltrCache } from "./rtlCache"; // the plain cache (no rtl plugin)
+import { ltrCache } from "../design-system/theme"; // the plain cache (no rtl plugin)
 
 /**
  * Pins a subtree to left-to-right regardless of the active language: the plain

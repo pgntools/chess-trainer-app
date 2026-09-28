@@ -1,7 +1,9 @@
 //import * as Sentry from "@sentry/react";
-import { createBrowserRouter, RouterProvider } from "react-router";
+import { lazy, Suspense, type ReactNode } from "react";
+import { createBrowserRouter, RouterProvider, type RouteObject } from "react-router";
 
 import { DefaultLayout } from './views/main/Layout';
+import { FULL_WIDTH_ROUTE } from './views/main/routeHandle';
 import { default as HomeScreen  } from './views/home/Main'
 import { default as PlayWithEngineScreen  } from './views/engine/play/Main'
 import { default as PlayedGamesScreen  } from './views/engine/games/Main'
@@ -20,6 +22,47 @@ import { default as RepertoireBoardScreen  } from './views/repertoires/Repertoir
 import { default as RepertoireSettingsScreen  } from './views/repertoires/RepertoireSettingsScreenMain'
 import { default as RepertoireGameScreen  } from './views/repertoires/RepertoireGameMain'
 import { default as SettingsScreen  } from './views/settings/SettingsMain'
+
+/**
+ * The **Development** section's routes (`chessboard.md` §9.5) — today the
+ * design gallery (CTA-107).
+ *
+ * Dev-only, and this array is the whole of the gate. Two things make it
+ * provable rather than hopeful:
+ *
+ * - `import.meta.env.DEV` is replaced by the literal `false` in a production
+ *   build, so the conditional below is dead code;
+ * - every screen is reached through `lazy(() => import(…))` rather than a
+ *   static import at the top of this file, so with the branch dead there is no
+ *   reference to it left for rollup to keep — no dev chunk is emitted at all,
+ *   where a static import would have been bundled whether the route existed
+ *   or not.
+ *
+ * `Suspense` is required by `lazy`, and a screen resolves from the same dev
+ * server in a frame, so the fallback is deliberately nothing.
+ */
+const devScreen = (load: Parameters<typeof lazy>[0]): ReactNode => {
+  const Screen = lazy(load);
+  return (
+    <Suspense fallback={null}>
+      <Screen />
+    </Suspense>
+  );
+};
+
+const devRoutes: RouteObject[] = import.meta.env.DEV
+  ? [
+      {
+        // One page per section (`/dev/design/tables`, …); `/dev/design` and
+        // an unknown section land on the first. One optional-segment route, so
+        // moving between sections keeps the gallery (and its switches) mounted.
+        path: "/dev/design/:section?",
+        element: devScreen(() => import("./views/dev/design/Main")),
+        // Not a board: the gallery takes the whole body (no square, no aside).
+        handle: FULL_WIDTH_ROUTE,
+      },
+    ]
+  : [];
 
 
 const routes = createBrowserRouter(
@@ -131,6 +174,8 @@ const routes = createBrowserRouter(
           path: "/settings/:tab",
           element: <SettingsScreen />
         },
+        // The Development section — dev-only; see `devRoutes` above.
+        ...devRoutes,
 
       ]
     }

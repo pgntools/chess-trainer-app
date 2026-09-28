@@ -1,8 +1,10 @@
 import type { SvgIconComponent } from "@mui/icons-material";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import UploadRoundedIcon from "@mui/icons-material/UploadRounded";
+import ConstructionRoundedIcon from "@mui/icons-material/ConstructionRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
+import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
 import SportsEsportsRoundedIcon from "@mui/icons-material/SportsEsportsRounded";
 import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
@@ -31,7 +33,8 @@ export type NavItem = {
  * the route in `App.tsx` and a string in both catalogs.
  *
  * A **function**, for the reason `navFolders` is one: a dev-only entry is a
- * spread gated on `import.meta.env.DEV` (none today — `chessboard.md` §9.5).
+ * spread gated on `import.meta.env.DEV` (the design gallery's —
+ * `chessboard.md` §9.5).
  */
 export const navItems = (): readonly NavItem[] => [
   /*
@@ -99,6 +102,17 @@ export const navItems = (): readonly NavItem[] => [
     icon: MenuBookRoundedIcon,
     folder: "repertoires",
   },
+  // The Development section — dev-only: the design gallery (CTA-107).
+  ...(import.meta.env.DEV
+    ? [
+        {
+          to: "/dev/design",
+          labelKey: "nav.designSystem",
+          icon: ConstructionRoundedIcon,
+          folder: "development",
+        },
+      ]
+    : []),
   // Settings (CTA-86): each tab of `/settings/<tab>` is an entry here.
   {
     to: "/settings/export",
@@ -116,6 +130,13 @@ export const navItems = (): readonly NavItem[] => [
     to: "/settings/storage",
     labelKey: "nav.settingsStorage",
     icon: StorageRoundedIcon,
+    folder: "settings",
+  },
+  // Appearance (CTA-107): the reader's theme.
+  {
+    to: "/settings/appearance",
+    labelKey: "nav.settingsAppearance",
+    icon: PaletteRoundedIcon,
     folder: "settings",
   },
 ];
