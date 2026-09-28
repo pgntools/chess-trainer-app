@@ -24,6 +24,7 @@ import { ArrowPaletteField, ArrowWidthSourceField } from "../ArrowSettingsFields
 import { RightPanel } from "../../../main/rightPanel";
 import { useAnalysisFolders } from "./useAnalysisFolders";
 import { useSavedAnalyses } from "./useSavedAnalyses";
+import { usePageTitle } from "../../../main/pageTitle";
 
 /**
  * **A saved analysis' settings** (`/tools/analysis/saved/<id>/settings`,
@@ -113,6 +114,7 @@ function SettingsForm({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  usePageTitle(saved.name || t("savedAnalyses.untitled"));
 
   // Where Save and Cancel go: the screen that linked here, else the board.
   const from = (location.state as { from?: unknown } | null)?.from;

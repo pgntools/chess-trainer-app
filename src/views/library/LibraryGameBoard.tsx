@@ -44,6 +44,7 @@ import AnalysisSettingsPanel from "../tools/analysis/AnalysisSettings";
 import EngineThinking from "../tools/analysis/EngineThinking";
 import PlayToggleButton from "../tools/analysis/PlayToggleButton";
 import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
+import { usePageTitle } from "../main/pageTitle";
 
 /**
  * **A Library game** (`/library/<collection>/<game>`, CTA-75) — a game of a
@@ -124,6 +125,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
     [collection, number],
   );
   const title = gameTitleOf(row);
+  usePageTitle(title);
   const caption = [row.event, row.round, row.date, row.result].filter(Boolean).join(" · ");
   // The players, plated beside the board (CTA-105) — everything of it is on
   // the memoized row already.

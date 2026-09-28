@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { CheckboxField, FieldLabel, SideToggle } from "../../../design-system/components/forms";
-import { PanelTabs } from "../../../design-system/components/tabs";
+import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 
 import {
   DEFAULT_ENGINE_SETTINGS,
@@ -127,7 +127,7 @@ function NewGameForm() {
       data-testid="new-game-form"
       sx={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", gap: 1.5 }}
     >
-      <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.3, flexShrink: 0 }}>
+      <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700, lineHeight: 1.3, flexShrink: 0 }}>
         {t("playedGames.newGame.title")}
       </Typography>
 
@@ -136,12 +136,13 @@ function NewGameForm() {
         value={tab}
         onChange={(next) => setTab(next as FormTab)}
         ariaLabel={t("playedGames.newGame.title")}
+        idPrefix="new-game"
         testId="new-game"
       />
 
       {/* The panel's one scrolling region: the aside scrolls nothing itself. */}
       <Box
-        role="tabpanel"
+        {...tabPanelProps("new-game", tab)}
         data-testid={`new-game-tab-content-${tab}`}
         sx={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", pr: 0.5 }}
       >

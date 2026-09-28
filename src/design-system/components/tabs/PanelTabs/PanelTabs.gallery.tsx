@@ -4,6 +4,7 @@ import Typography from "@mui/material/Typography";
 import type { GalleryModule } from "../../../gallery/types";
 import WithState from "../../../gallery/WithState";
 import PanelTabs, { type PanelTab, type PanelTabsProps } from "./PanelTabs";
+import { tabPanelProps } from "./panelIds";
 
 const BOARD_TABS: PanelTab[] = [
   { id: "moves", label: "Moves" },
@@ -19,7 +20,12 @@ const live = (tabs: PanelTab[], initial: string, props: Partial<PanelTabsProps> 
       {(value, setValue) => (
         <>
           <PanelTabs tabs={tabs} value={value} onChange={setValue} ariaLabel="Panel" testId="gallery-tabs" {...props} />
-          <Typography variant="body2" color="text.secondary" sx={{ p: 1 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ p: 1 }}
+            {...(props.idPrefix === undefined ? {} : tabPanelProps(props.idPrefix, value))}
+          >
             The {value} tab's content.
           </Typography>
         </>
@@ -33,6 +39,10 @@ const gallery: GalleryModule = {
   title: "PanelTabs",
   demos: [
     { name: "Compact, full width — the board panel", render: () => live(BOARD_TABS, "moves") },
+    {
+      name: "Each tab naming its panel (idPrefix)",
+      render: () => live(BOARD_TABS, "map", { idPrefix: "gallery-linked" }),
+    },
     {
       name: "A disabled tab",
       render: () => live([...BOARD_TABS.slice(0, 2), { id: "score", label: "Score", disabled: true }, BOARD_TABS[4]], "moves"),

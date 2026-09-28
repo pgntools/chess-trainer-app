@@ -54,6 +54,7 @@ import AnalysisLoad from "./AnalysisLoad";
 import AnalysisSettingsPanel from "./AnalysisSettings";
 import SaveAnalysisDialog from "./SaveAnalysisDialog";
 import { useAnalysisBoard, type AnalysisBoardStart } from "./useAnalysisBoard";
+import { usePageTitle } from "../../main/pageTitle";
 
 /**
  * **The Analysis Board** (`/tools/analysis`, CTA-73) — the board a game or a
@@ -174,6 +175,8 @@ function AnalysisBoard() {
 
   const name =
     record?.name || savedAnalysisDerivedName(core.tree.headers) || t("savedAnalyses.untitled");
+  // A saved analysis is the page (CTA-112); a board with no record is just the board.
+  usePageTitle(record === null ? undefined : name);
 
   /*
     The variations explorer (CTA-72): the parts are placed below. Editing is

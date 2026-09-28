@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Link as RouterLink } from "react-router";
 
 import PanelTabs from "./PanelTabs";
+import { tabPanelProps } from "./panelIds";
+import { expectNoAxeViolations } from "../../../../test/axe";
 
 const TABS = [
   { id: "moves", label: "Moves" },
@@ -18,6 +20,26 @@ describe("PanelTabs", () => {
     expect(screen.getByTestId("probe-tab-moves")).toHaveAttribute("aria-selected", "true");
     fireEvent.click(screen.getByTestId("probe-tab-map"));
     expect(onChange).toHaveBeenCalledWith("map");
+  });
+
+  it("names the panel by its tab under an idPrefix (CTA-112)", async () => {
+    render(
+      <>
+        <PanelTabs tabs={TABS} value="map" onChange={() => {}} ariaLabel="Panel" idPrefix="probe-ids" testId="probe" />
+        <div {...tabPanelProps("probe-ids", "map")}>The map</div>
+      </>,
+    );
+    expect(screen.getByRole("tabpanel", { name: "Map" })).toHaveTextContent("The map");
+    expect(screen.getByRole("tab", { name: "Map" })).toHaveAttribute("aria-controls", "probe-ids-panel-map");
+    // Only the selected tab points at a panel — the others' are not on the page.
+    expect(screen.getByRole("tab", { name: "Moves" })).not.toHaveAttribute("aria-controls");
+    await expectNoAxeViolations();
+  });
+
+  it("gives the tabs no ids without an idPrefix — as before", () => {
+    render(<PanelTabs tabs={TABS} value="moves" onChange={() => {}} ariaLabel="Panel" testId="probe" />);
+    expect(screen.getByTestId("probe-tab-moves")).not.toHaveAttribute("id");
+    expect(screen.getByTestId("probe-tab-moves")).not.toHaveAttribute("aria-controls");
   });
 
   it("keeps a disabled tab off", () => {

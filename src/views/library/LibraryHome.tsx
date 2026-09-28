@@ -43,6 +43,7 @@ import FolderPicker from "../shared/folders/FolderPicker";
 import FolderTreeTable, { type FolderTreeColumn } from "../shared/folders/FolderTreeTable";
 import { RightPanel } from "../main/rightPanel";
 import { loadCollectionGames, useLibraryFolders, useUploadedCollections } from "./useLibraryCollections";
+import { useOwnPageHeading } from "../main/pageTitle";
 
 /**
  * **The Library** (`/library`, CTA-75; folders CTA-88) — a file manager's
@@ -164,6 +165,8 @@ function CollectionMoveDialog({
 
 function LibraryHome() {
   const { t, i18n } = useTranslation();
+  // The header's title is the page's `h1` (CTA-112).
+  useOwnPageHeading();
   const navigate = useNavigate();
   const uploaded = useUploadedCollections();
   const readerFolders = useLibraryFolders();

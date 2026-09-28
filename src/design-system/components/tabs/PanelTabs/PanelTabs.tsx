@@ -3,6 +3,7 @@ import Tabs from "@mui/material/Tabs";
 
 import type { VisibleLabel } from "../../a11y";
 import { linkProps, type LinkTarget } from "../../link";
+import { panelTabIds } from "./panelIds";
 
 /** One tab: its id (the value), its words, and — for a routed strip — where it goes. */
 export type PanelTab = { id: string; label: VisibleLabel; disabled?: boolean; link?: LinkTarget };
@@ -19,6 +20,13 @@ export type PanelTabsProps = {
   fullWidth?: boolean;
   /** The strip's accessible name. */
   ariaLabel: string;
+  /**
+   * Links each tab to its panel (CTA-112): the tabs take ids under this
+   * prefix and the selected one points at its panel (`aria-controls`), which
+   * the host marks with `tabPanelProps(idPrefix, id)`. Unique on the page.
+   * Absent, the tabs carry no ids — as before.
+   */
+  idPrefix?: string;
   /** The strip's test id; each tab is `<testId>-tab-<id>`. */
   testId: string;
 };
@@ -28,9 +36,10 @@ export type PanelTabsProps = {
  * `NewGameForm`, `PositionEditor`, `SettingsScreen` and `NagDialog` each
  * copied: words as written (`textTransform: none`), no minimum tab width, a
  * divider under it. A tab with a `link` is a real link — a routed strip (the
- * Settings tabs) — and `size="tall"` is the dialog's taller strip.
+ * Settings tabs) — and `size="tall"` is the dialog's taller strip. With an
+ * `idPrefix`, each tab names its panel (CTA-112, `tabPanelProps`).
  */
-function PanelTabs({ tabs, value, onChange, size = "compact", fullWidth = true, ariaLabel, testId }: PanelTabsProps) {
+function PanelTabs({ tabs, value, onChange, size = "compact", fullWidth = true, ariaLabel, idPrefix, testId }: PanelTabsProps) {
   const height = size === "compact" ? 36 : 48;
   return (
     <Tabs
@@ -54,6 +63,9 @@ function PanelTabs({ tabs, value, onChange, size = "compact", fullWidth = true, 
           value={tab.id}
           label={tab.label}
           disabled={tab.disabled}
+          id={idPrefix === undefined ? undefined : panelTabIds(idPrefix, tab.id).tab}
+          // Only the selected tab's panel is on the page to point at.
+          aria-controls={idPrefix === undefined || tab.id !== value ? undefined : panelTabIds(idPrefix, tab.id).panel}
           data-testid={`${testId}-tab-${tab.id}`}
           {...linkProps(tab.link)}
         />

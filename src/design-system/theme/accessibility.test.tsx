@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { ThemeProvider, useTheme } from "@mui/material/styles";
 import IconButton from "@mui/material/IconButton";
 import ToggleButton from "@mui/material/ToggleButton";
+import Typography from "@mui/material/Typography";
 
 import { stubReducedMotion } from "../../test/reducedMotion";
 import { themes } from "../themes";
@@ -82,6 +83,24 @@ describe("a toggle button's words (CTA-109)", () => {
       </ThemeProvider>,
     );
     expect(getComputedStyle(screen.getByRole("button", { name: "White" })).color).toBe(toRgb(theme.palette.text.secondary));
+  });
+});
+
+describe("no heading by typeface (CTA-112)", () => {
+  it.each(themes.map((theme) => theme.id))("writes a subtitle as a paragraph under %s, and a heading only where asked", (id) => {
+    const theme = buildTheme(themes.find((candidate) => candidate.id === id)!, "light", "ltr");
+    render(
+      <ThemeProvider theme={theme}>
+        <Typography variant="subtitle1">A bold line</Typography>
+        <Typography variant="subtitle2">A smaller one</Typography>
+        <Typography variant="subtitle1" component="h2">
+          A section
+        </Typography>
+      </ThemeProvider>,
+    );
+    expect(screen.getByText("A bold line").tagName).toBe("P");
+    expect(screen.getByText("A smaller one").tagName).toBe("P");
+    expect(screen.getAllByRole("heading")).toEqual([screen.getByRole("heading", { level: 2, name: "A section" })]);
   });
 });
 

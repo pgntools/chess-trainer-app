@@ -61,6 +61,50 @@ const en = {
     title: "Get started",
     subtitle: "Pick a board or tool to open.",
   },
+  /**
+   * Each screen's name (CTA-112) — its route's `handle.title`: the page title
+   * ("Lobby — Chess Trainer App", the open record's name before it), the
+   * `main` landmark's name and the page's `h1`.
+   */
+  pages: {
+    home: "Home",
+    playWithEngine: "Play with Engine",
+    lobby: "Lobby",
+    maskedPieces: "Masked Pieces",
+    analysisBoard: "Analysis Board",
+    savedAnalyses: "Saved analyses",
+    analysisSettings: "Analysis settings",
+    openings: "Openings explorer",
+    repertoires: "My repertoires",
+    newRepertoire: "New repertoire",
+    repertoire: "Repertoire",
+    repertoireSettings: "Repertoire settings",
+    repertoireGame: "Repertoire game",
+    library: "Library",
+    addCollection: "Add collection",
+    collection: "Collection",
+    libraryGame: "Library game",
+    settings: "Settings",
+    designSystem: "Design system",
+  },
+  /** The app shell's own words for a screen reader (CTA-112). */
+  shell: {
+    /** The first stop of the tab order: straight to the screen. */
+    skipToMain: "Skip to main content",
+    /** The right-hand panel's landmark name. */
+    sidePanel: "Side panel",
+  },
+  /**
+   * How a composite widget is worked (CTA-112) — read with it by a screen
+   * reader (`aria-describedby`), not shown: a tree's and a table's keys are
+   * not a web page's.
+   */
+  hints: {
+    tree: "Up and down arrows to move, right to open, left to close, Enter to go.",
+    table: {
+      sortAndPick: "Sort by a column from its header button. Tick a row's box to pick it.",
+    },
+  },
   language: {
     en: "English",
     he: "עברית",

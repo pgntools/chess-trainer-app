@@ -12,7 +12,7 @@ import type { LocalizedText } from "../../lib/localizedText";
 /**
  * Folders are the groupings in the sidebar. Each screen names exactly one of
  * them in `NavItem.folder`; the folder itself is an id with a name and an icon.
- * Routes stay global — a folder is an organisational overlay over `App.tsx`,
+ * Routes stay global — a folder is an organisational overlay over `routes.tsx`,
  * not a route of its own, so nothing here appears in a URL.
  *
  * `navFolders` is a **tree**: a folder can hold sub-folders and screens at the

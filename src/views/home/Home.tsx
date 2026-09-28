@@ -7,6 +7,7 @@ import Typography from "@mui/material/Typography";
 
 import { asAppLanguage } from "../../i18n";
 import { navLabel, navTree, type NavTreeNode } from "../main/navTree";
+import { useOwnPageHeading } from "../main/pageTitle";
 
 /**
  * The index screen. There is no board here — with the demo screens gone, `"/"`
@@ -30,6 +31,8 @@ const Home = () => {
     renders, resolved the same way. See `navTree.ts`.
   */
   const labelOf = (node: NavTreeNode) => navLabel(node, (key) => t(key), language);
+  // The page's `h1` is this screen's own title (CTA-112).
+  useOwnPageHeading();
 
   return (
     <Box sx={{ height: "100%", overflowY: "auto", p: 1 }}>
@@ -52,6 +55,7 @@ const Home = () => {
           <Box key={node.id} component="section" sx={{ mb: 3 }}>
             <Typography
               variant="overline"
+              component="h2"
               color="text.secondary"
               sx={{ display: "block", mb: 1 }}
             >

@@ -119,8 +119,13 @@ function TreeRow({ node, depth, expanded, pathname, onToggle }: RowProps) {
         )}
       </ListItemButton>
 
+      {/*
+        The folder's rows are a list of their own, nested in its item (CTA-112):
+        a `ul` in the `li`, so the sidebar is a valid list at every depth and a
+        screen reader counts each level's items (axe `listitem`).
+      */}
       <Collapse in={open} unmountOnExit>
-        <List component="div" disablePadding dense>
+        <List disablePadding dense>
           {(node.children ?? []).map((child) => (
             <TreeRow
               key={`${child.kind}:${child.id}`}
@@ -245,9 +250,12 @@ function SidebarLinks({ tree: given }: { tree?: NavTreeNode[] }) {
   );
 }
 
+/*
+  The rail is a plain box: its one landmark is the `nav` inside (CTA-112) — a
+  complementary `aside` around it would announce the sidebar twice.
+*/
 const SideBar = ({ tree }: { tree?: NavTreeNode[] }) => (
   <Box
-    component="aside"
     data-testid="layout-sidebar"
     sx={{
       p: 1,

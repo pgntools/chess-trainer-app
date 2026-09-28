@@ -21,6 +21,7 @@ import {
 import { ReadingRepertoires } from "./RepertoireBoard";
 import { useRepertoireFolders } from "./useRepertoireFolders";
 import { useSavedRepertoires } from "./useSavedRepertoires";
+import { usePageTitle } from "../main/pageTitle";
 
 /**
  * **A repertoire's settings** (`/repertoires/<id>/settings`) — its title,
@@ -84,6 +85,7 @@ function SettingsForm({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  usePageTitle(saved.name || t("repertoires.untitled"));
 
   // Where Save and Cancel go: the screen that linked here, else the board.
   const from = (location.state as { from?: unknown } | null)?.from;

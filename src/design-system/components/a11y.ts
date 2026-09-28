@@ -10,6 +10,24 @@ import type { ReactNode } from "react";
 export type VisibleLabel = Exclude<ReactNode, null | undefined | boolean>;
 
 /**
+ * **Read, not seen** (CTA-112) — the `sx` that takes an element out of sight
+ * but leaves it in the accessibility tree: a screen reader's hint, the page's
+ * `h1` where the design has no visible title. `position: absolute`, so it
+ * takes no room in any layout.
+ */
+export const visuallyHidden = {
+  border: 0,
+  clip: "rect(0 0 0 0)",
+  height: "1px",
+  width: "1px",
+  margin: "-1px",
+  overflow: "hidden",
+  padding: 0,
+  position: "absolute",
+  whiteSpace: "nowrap",
+} as const;
+
+/**
  * **A native checkbox's mixed state** (CTA-111): MUI marks an indeterminate
  * `Checkbox` with `aria-checked="mixed"` alone, which WCAG's checks refuse on
  * a native `<input type="checkbox">` whose own state says otherwise. This ref

@@ -15,6 +15,7 @@ import {
 import RepertoireMergeSplit from "./RepertoireMergeSplit";
 import RepertoirePlayer from "./RepertoirePlayer";
 import { useSavedRepertoires } from "./useSavedRepertoires";
+import { usePageTitle } from "../main/pageTitle";
 
 /**
  * **A repertoire's own view** (`/repertoires/<id>`) — the route: it resolves
@@ -53,6 +54,7 @@ function RepertoireBoard() {
  */
 export function MultiGameRepertoire({ saved }: { saved: SavedRepertoire }) {
   const { t } = useTranslation();
+  usePageTitle(saved.name || t("repertoires.untitled"));
   const navigate = useNavigate();
   const [reading, setReading] = useState<RepertoireReading | null>(null);
 

@@ -29,6 +29,7 @@ import { RightPanel } from "../../main/rightPanel";
 import { useOpeningBook } from "../../shared/useOpeningBook";
 import NewGameForm from "./NewGameForm";
 import { usePlayedGames } from "./usePlayedGames";
+import { useOwnPageHeading } from "../../main/pageTitle";
 
 /**
  * **The Lobby** (`/engine/games`; the Saved games list of CTA-74, a lobby
@@ -65,6 +66,8 @@ import { usePlayedGames } from "./usePlayedGames";
  * strength slider's estimate — and the table sorts them by `lib`'s own rule.
  */
 function PlayedGames() {
+  // The list header's title is the page's `h1` (CTA-112).
+  useOwnPageHeading();
   const { t } = useTranslation();
   const games = usePlayedGames();
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set());

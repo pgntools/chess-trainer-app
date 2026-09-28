@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Tab from "@mui/material/Tab";
@@ -179,6 +179,14 @@ function BoardPanel({
   onFlip,
 }: BoardPanelProps) {
   const { t } = useTranslation();
+  /*
+    Each tab names its panel and the panel its tab (CTA-112), so a screen
+    reader entering the region hears "Moves, tab panel". Ids from `useId`:
+    `testId` is unique per screen, not per page.
+  */
+  const idBase = useId();
+  const tabIdOf = (id: string) => `${idBase}-tab-${id}`;
+  const panelIdOf = (id: string) => `${idBase}-panel-${id}`;
 
   const hasEngine = analysis !== undefined;
   const topLine = analysis?.lines.find((line) => line !== undefined);
@@ -233,6 +241,8 @@ function BoardPanel({
     <Box
       key={tab.id}
       role="tabpanel"
+      id={panelIdOf(tab.id)}
+      aria-labelledby={tabIdOf(tab.id)}
       data-tab-region={tab.id}
       hidden={!visible}
       data-testid={`${testId}-content-${tab.id}`}
@@ -329,6 +339,14 @@ function BoardPanel({
             value={tab.id}
             label={tab.label}
             disabled={tab.disabled}
+            id={tabIdOf(tab.id)}
+            // Only a panel on the page is pointed at: the active one, and any
+            // kept tab already opened.
+            aria-controls={
+              tab.id === active?.id || (isKept(tab.id) && opened.has(tab.id))
+                ? panelIdOf(tab.id)
+                : undefined
+            }
             data-testid={`${testId}-tab-${tab.id}`}
           />
         ))}

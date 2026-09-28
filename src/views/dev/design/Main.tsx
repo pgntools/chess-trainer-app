@@ -7,6 +7,7 @@ import DesignGallery from "../../../design-system/gallery/DesignGallery";
 import { galleryEntriesOf, groupGallery } from "../../../design-system/gallery/discover";
 import type { GalleryModule, GalleryTier } from "../../../design-system/gallery/types";
 import { useThemeChoice } from "../../../theme/themeChoice";
+import { useOwnPageHeading } from "../../main/pageTitle";
 
 /** A page — `/dev/design/<section>/<component>`, `/dev/design/<tier>/<section>/<component>`. */
 const sectionPath = (page: string) => `/dev/design/${page.split("/").map(encodeURIComponent).join("/")}`;
@@ -35,13 +36,15 @@ const TIERS = [blocksTier];
  * (`/dev/design/<section>`, CTA-107), one page per section of each tier —
  * Base, Patterns and Blocks (CTA-110) — opened on the reader's own theme and
  * scheme. `/dev/design` and an unknown page land on the first. Reached only
- * through `App.tsx`'s Development routes, so it never ships.
+ * through `routes.tsx`'s Development routes, so it never ships.
  */
 const Main = () => {
   const page = useParams()["*"]?.replace(/\/+$/, "");
   const { themeId } = useThemeChoice();
   const { mode, systemMode } = useColorScheme();
   const resolved = systemMode ?? mode;
+  // The gallery's own title is the page's `h1` (CTA-112).
+  useOwnPageHeading();
   return (
     <Box data-testid="design-gallery-wrapper" sx={{ height: "100%" }}>
       <DesignGallery
