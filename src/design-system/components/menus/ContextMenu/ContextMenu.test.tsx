@@ -39,7 +39,7 @@ describe("ContextMenu", () => {
   it("carries the theme's direction to its portalled list", () => {
     render(
       <ThemeProvider theme={buildTheme(defaultTheme, "light", "rtl")}>
-        <ContextMenu position={{ top: 0, left: 0 }} onClose={() => {}} entries={[{ id: "a", label: "א", onClick: () => {} }]} testId="probe" />
+        <ContextMenu position={{ top: 0, left: 0 }} onClose={() => {}} entries={[{ id: "a", label: "Promote", onClick: () => {} }]} testId="probe" />
       </ThemeProvider>,
     );
     expect(screen.getByTestId("probe")).toHaveAttribute("dir", "rtl");

@@ -40,7 +40,7 @@ const gallery: GalleryModule = {
     },
     {
       name: "Name only, opened by a link",
-      render: () => narrow(<RecordCard preview={demoPreview} name="ספרדית" link={{ href: "#card" }} openLabel="Open" testId="gallery-record-card-link" />),
+      render: () => narrow(<RecordCard preview={demoPreview} name="Ruy Lopez" link={{ href: "#card" }} openLabel="Open" testId="gallery-record-card-link" />),
     },
   ],
 };

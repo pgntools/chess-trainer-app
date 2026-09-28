@@ -22,7 +22,7 @@ const gallery: GalleryModule = {
       name: "A label, with words in it",
       render: () => (
         <Box sx={{ maxWidth: 360 }}>
-          <WithState initial="טל Tal">
+          <WithState initial="Tal">
             {(value, setValue) => <SearchField value={value} onChange={setValue} label="Words" clearLabel="Clear" testId="gallery-search-label" />}
           </WithState>
         </Box>

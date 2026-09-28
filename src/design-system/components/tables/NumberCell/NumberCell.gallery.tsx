@@ -26,7 +26,7 @@ const gallery: GalleryModule = {
               <NumberCell value={1_610_612} format={bytes} />
             </>,
             <>
-              {textCell("טל")}
+              {textCell("Petrosian")}
               <NumberCell value={undefined} />
               <NumberCell value={-12} secondary />
               <NumberCell value={524_288} format={bytes} />

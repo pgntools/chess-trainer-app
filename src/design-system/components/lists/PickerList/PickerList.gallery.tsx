@@ -13,7 +13,7 @@ const TREE: PickerItem[] = [
   { id: "sicilian", label: "Sicilian", depth: 1, icon: folder },
   { id: "najdorf", label: "Najdorf", depth: 2, icon: folder },
   { id: "endgames", label: "Endgames", icon: folder },
-  { id: "rooks", label: "צריחים", depth: 1, icon: folder },
+  { id: "rooks", label: "Rook endings", depth: 1, icon: folder },
 ];
 
 const gallery: GalleryModule = {

@@ -25,7 +25,7 @@ describe("ListScreenHeader", () => {
   });
 
   it("leaves out the count and actions it is not given, and takes a title direction", () => {
-    render(<ListScreenHeader title="שלום" titleDir="auto" testId="probe" />);
+    render(<ListScreenHeader title="My games" titleDir="auto" testId="probe" />);
     expect(screen.queryByTestId("probe-count")).toBeNull();
     expect(screen.queryByTestId("probe-actions")).toBeNull();
     expect(screen.getByTestId("probe-title")).toHaveAttribute("dir", "auto");

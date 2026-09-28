@@ -35,14 +35,14 @@ const gallery: GalleryModule = {
       render: () => <Breadcrumbs ariaLabel="Folders" crumbs={[]} current="All analyses" testId="gallery-crumbs-top" />,
     },
     {
-      name: "A chevron separator and a mixed-direction name",
+      name: "A chevron separator, the steps as links",
       render: () => (
         <Breadcrumbs
           ariaLabel="Folders"
           separator={<NavigateNextRoundedIcon fontSize="small" sx={{ transform: (theme) => (theme.direction === "rtl" ? "scaleX(-1)" : "none") }} />}
           crumbs={[
             { id: "root", label: "All analyses", link: { href: "#root" } },
-            { id: "he", label: "פתיחות", link: { href: "#he" } },
+            { id: "openings", label: "Openings", link: { href: "#openings" } },
           ]}
           current="Caro-Kann"
           testId="gallery-crumbs-chevron"

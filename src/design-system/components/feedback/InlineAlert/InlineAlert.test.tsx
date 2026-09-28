@@ -24,7 +24,7 @@ describe("InlineAlert", () => {
       <ThemeProvider theme={buildTheme(defaultTheme, "light", "rtl")}>
         <div dir="rtl">
           <InlineAlert severity="error" detail="1. e4 ??" testId="probe">
-            הקובץ לא נקרא.
+            The file could not be read.
           </InlineAlert>
         </div>
       </ThemeProvider>,

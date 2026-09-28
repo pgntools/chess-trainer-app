@@ -22,7 +22,7 @@ describe("BackButton", () => {
   it("points right under RTL — the way back there", () => {
     render(
       <ThemeProvider theme={buildTheme(defaultTheme, "light", "rtl")}>
-        <BackButton label="חזרה" onClick={() => {}} testId="probe" />
+        <BackButton label="Back" onClick={() => {}} testId="probe" />
       </ThemeProvider>,
     );
     expect(screen.getByTestId("probe-icon").style.transform).toBe("scaleX(-1)");

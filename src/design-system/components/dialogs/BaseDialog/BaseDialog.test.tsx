@@ -41,7 +41,7 @@ describe("BaseDialog", () => {
   it("carries the theme's direction, so a portalled dialog mirrors under RTL", () => {
     render(
       <ThemeProvider theme={buildTheme(defaultTheme, "light", "rtl")}>
-        <BaseDialog open onClose={() => {}} testId="probe" title="כותרת" />
+        <BaseDialog open onClose={() => {}} testId="probe" title="Title" />
       </ThemeProvider>,
     );
     expect(screen.getByTestId("probe")).toHaveAttribute("dir", "rtl");

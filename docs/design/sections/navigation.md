@@ -26,8 +26,8 @@ turn.
 - **Props** — `crumbs: { id, label, onClick?, link? }[]`, `current`,
   `ariaLabel`, `separator?` (default `/`), `testId` (each crumb
   `<testId>-<id>`, the current one `-current`).
-- **Variations** — a nested folder; the top alone; a chevron separator with a
-  mixed-direction name.
+- **Variations** — a nested folder; the top alone; a chevron separator with
+  the steps as links.
 - **Replaces** — the hand-built `SavedFolderBreadcrumb`, and its missing last
   separator ([Shared.md → SavedFolderBreadcrumb](../Shared.md#savedfolderbreadcrumb)).
 

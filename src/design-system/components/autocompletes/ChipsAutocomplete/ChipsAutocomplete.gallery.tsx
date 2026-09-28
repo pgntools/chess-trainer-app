@@ -4,7 +4,7 @@ import type { GalleryModule } from "../../../gallery/types";
 import WithState from "../../../gallery/WithState";
 import ChipsAutocomplete, { type ChipsAutocompleteProps } from "./ChipsAutocomplete";
 
-const PLAYERS = ["Tal, Mikhail", "Fischer, Robert James", "Petrosian, Tigran", "Spassky, Boris", "טל, מיכאל", "Botvinnik, Mikhail"];
+const PLAYERS = ["Tal, Mikhail", "Fischer, Robert James", "Petrosian, Tigran", "Spassky, Boris", "Smyslov, Vasily", "Botvinnik, Mikhail"];
 
 const live = (props: Partial<ChipsAutocompleteProps>, initial: string[]) => (
   <Box sx={{ maxWidth: 360 }}>
@@ -21,7 +21,7 @@ const gallery: GalleryModule = {
   title: "ChipsAutocomplete",
   demos: [
     { name: "Several names, typed free (Enter makes a chip)", render: () => live({ placeholder: "Part of a name" }, []) },
-    { name: "limitTags 1 — the rest read +N while not focused", render: () => live({ limitTags: 1 }, ["Tal, Mikhail", "Petrosian, Tigran", "טל, מיכאל"]) },
+    { name: "limitTags 1 — the rest read +N while not focused", render: () => live({ limitTags: 1 }, ["Tal, Mikhail", "Petrosian, Tigran", "Smyslov, Vasily"]) },
     {
       name: "Suggestions only, refreshed on open",
       render: () => (

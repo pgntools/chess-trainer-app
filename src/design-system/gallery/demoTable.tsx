@@ -8,9 +8,9 @@ import TableRow from "@mui/material/TableRow";
 /** A few games, the tables' gallery demos' rows. */
 export const DEMO_GAMES = [
   { id: "g1", white: "Tal, Mikhail", black: "Fischer, Robert James", elo: 2700, moves: 41, date: "1960-05-12" },
-  { id: "g2", white: "Капабланка, Хосе Рауль", black: "Alekhine, Alexander", elo: undefined, moves: 82, date: "1927.11" },
+  { id: "g2", white: "Capablanca, José Raúl", black: "Alekhine, Alexander", elo: undefined, moves: 82, date: "1927.11" },
   { id: "g3", white: "Petrosian, Tigran", black: "Spassky, Boris", elo: 2650, moves: 27, date: undefined },
-  { id: "g4", white: "טל, מיכאל", black: "Botvinnik, Mikhail", elo: 2720, moves: 63, date: "1961-03-20" },
+  { id: "g4", white: "Smyslov, Vasily", black: "Botvinnik, Mikhail", elo: 2720, moves: 63, date: "1961-03-20" },
 ] as const;
 
 /**

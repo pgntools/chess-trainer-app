@@ -7,9 +7,9 @@ const PLAYERS = ["Tal, Mikhail", "Fischer, Robert James", "Petrosian, Tigran"];
 
 describe("ChipsAutocomplete", () => {
   it("shows the chosen names as chips", () => {
-    render(<ChipsAutocomplete label="Players" value={["Tal, Mikhail", "טל"]} onChange={() => {}} options={PLAYERS} testId="probe" />);
+    render(<ChipsAutocomplete label="Players" value={["Tal, Mikhail", "Smyslov, Vasily"]} onChange={() => {}} options={PLAYERS} testId="probe" />);
     const chips = screen.getByTestId("probe").querySelectorAll(".MuiChip-root");
-    expect([...chips].map((chip) => chip.textContent)).toEqual(["Tal, Mikhail", "טל"]);
+    expect([...chips].map((chip) => chip.textContent)).toEqual(["Tal, Mikhail", "Smyslov, Vasily"]);
     expect(chips[1]).toHaveAttribute("dir", "auto");
   });
 

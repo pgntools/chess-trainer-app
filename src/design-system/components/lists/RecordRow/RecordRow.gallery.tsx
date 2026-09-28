@@ -46,7 +46,7 @@ const gallery: GalleryModule = {
       name: "Name and caption only",
       render: () => (
         <List disablePadding>
-          <RecordRow name="ספרד — גרסת ברלין" caption="C65 · 12 moves" testId="gallery-record-plain" />
+          <RecordRow name="Ruy Lopez — the Berlin" caption="C65 · 12 moves" testId="gallery-record-plain" />
         </List>
       ),
     },

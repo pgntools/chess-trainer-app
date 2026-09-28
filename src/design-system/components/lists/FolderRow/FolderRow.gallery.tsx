@@ -46,7 +46,7 @@ const gallery: GalleryModule = {
       name: "A link, its own icon, no actions",
       render: () => (
         <List disablePadding>
-          <FolderRow name="פתיחות לשחור" count="3 repertoires" link={{ href: "#folder" }} icon={<FolderSpecialOutlinedIcon />} testId="gallery-folder-row-link" />
+          <FolderRow name="Openings for Black" count="3 repertoires" link={{ href: "#folder" }} icon={<FolderSpecialOutlinedIcon />} testId="gallery-folder-row-link" />
         </List>
       ),
     },
