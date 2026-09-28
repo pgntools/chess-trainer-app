@@ -43,7 +43,7 @@ describe("buildTheme", () => {
       translucent: "rgba(11, 15, 22, 0.85)",
       sunken: "#0f1621",
     });
-    expect(light?.text).toMatchObject({ primary: "#1f2937", secondary: "#667085" });
+    expect(light?.text).toMatchObject({ primary: "#1f2937", secondary: "#646e83" });
     expect(dark?.divider).toBe("#26313f");
     expect(theme.shape.borderRadius).toBe(10);
     expect(theme.typography.button).toMatchObject({ fontWeight: 700, textTransform: "none" });
@@ -51,7 +51,7 @@ describe("buildTheme", () => {
   });
 
   it("takes the direction and merges the locale bundle", () => {
-    const theme = buildTheme(defaultTheme, "both", "rtl", heIL);
+    const theme = buildTheme(defaultTheme, "both", "rtl", { localization: [heIL] });
     expect(theme.direction).toBe("rtl");
     expect(theme.components?.MuiTablePagination?.defaultProps?.labelRowsPerPage).toBe(
       heIL.components?.MuiTablePagination?.defaultProps?.labelRowsPerPage,

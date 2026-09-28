@@ -1,3 +1,4 @@
 export { buildTheme, type ThemeMode } from "./buildTheme";
 export { chessTokensOf, useChessTokens } from "./chessTokens";
+export { usePrefersReducedMotion } from "./reducedMotion";
 export { ltrCache, rtlCache } from "./rtlCache";

@@ -12,7 +12,7 @@ import { Navigate, Link as RouterLink } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { TreeView, ancestorsOf, type TreeNode } from "../patterns/trees";
-import { buildTheme, ltrCache, rtlCache } from "../theme";
+import { buildTheme, ltrCache, rtlCache, usePrefersReducedMotion } from "../theme";
 import { DEFAULT_THEME_ID, themeById, themes } from "../themes";
 import { discoverTiers, pageKeyOf } from "./discover";
 import type { GalleryEntry, GallerySection, GalleryTier } from "./types";
@@ -98,9 +98,10 @@ function DesignGallery({
   const [mode, setMode] = useState<Mode>(initialMode);
   const [direction, setDirection] = useState<Direction>(initialDirection);
 
+  const reducedMotion = usePrefersReducedMotion();
   const theme = useMemo(
-    () => buildTheme(themeById(themeId), mode, direction),
-    [themeId, mode, direction],
+    () => buildTheme(themeById(themeId), mode, direction, { reducedMotion }),
+    [themeId, mode, direction, reducedMotion],
   );
 
   const { pages, nodes } = useMemo(() => {
@@ -185,6 +186,7 @@ function DesignGallery({
             })
           }
           activeId={activeId}
+          ariaLabel="Components"
           testId="design-gallery-nav"
         />
       </Box>

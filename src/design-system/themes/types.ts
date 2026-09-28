@@ -1,5 +1,14 @@
 import type { PaletteOptions, ThemeOptions } from "@mui/material/styles";
 
+import "../theme/augment";
+
+/**
+ * One colour scheme's palette. The two accessibility colours (CTA-111) are
+ * required, so a new theme cannot leave them to MUI's defaults — MUI's own
+ * outlined-field border is 1.6:1, under WCAG's 3:1 for a control.
+ */
+type SchemePalette = PaletteOptions & { focusRing: string; controlBorder: string };
+
 /**
  * **A theme is data** (CTA-107): everything that makes one look differ from
  * another, and nothing that builds it. `buildTheme` (`../theme/`) turns one
@@ -12,9 +21,11 @@ export type ThemeDefinition = {
   /** Its name, a catalog key (`appearance.themes.<id>`) in both languages. */
   labelKey: string;
   /** The light colour scheme's palette. */
-  light: PaletteOptions;
+  light: SchemePalette;
   /** The dark colour scheme's palette. */
-  dark: PaletteOptions;
+  dark: SchemePalette;
+  /** The keyboard focus ring's thickness in pixels — its colour is each palette's `focusRing`. */
+  focusRingWidth: number;
   typography: ThemeOptions["typography"];
   shape: ThemeOptions["shape"];
   /** MUI component defaults and style overrides (`ThemeOptions["components"]`). */
