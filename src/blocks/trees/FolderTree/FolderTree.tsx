@@ -10,6 +10,8 @@ import { FOLDER_TREE_ROOT, folderTreeNodes } from "./folderTreeNodes";
 export type FolderTreeLabels = {
   /** The tree's accessible name ("Folders"). */
   tree: string;
+  /** How the tree is worked, read with it by a screen reader (CTA-112) — `hints.tree`. */
+  hint: string;
   /** The top-level row, the `null` folder ("All analyses"). Absent, there is no such row. */
   root?: string;
   /** A folder's chevron: "Open ‹name›" / "Close ‹name›". */
@@ -65,6 +67,7 @@ function FolderTree({ folders, counts, selectedId, onSelect, open, onToggle, lab
       onSelect={(node) => onSelect(node.id === FOLDER_TREE_ROOT ? null : node.id)}
       toggleLabel={(node, isOpen) => labels.toggle(String(node.label), isOpen)}
       ariaLabel={labels.tree}
+      hint={labels.hint}
       testId={testId}
     />
   );

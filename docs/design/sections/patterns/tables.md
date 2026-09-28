@@ -35,7 +35,11 @@ Gallery: `/dev/design/patterns/tables/DataTable`.
   under a row that closes a section — CTA-109), `loading?` +
   `loadingLabel?`, `emptyLabel`, `noMatchLabel?` + `filtered?`, `filters?`,
   `toolbar?`, `density?`, `stickyHeader?`, a name — `ariaLabel` or `caption`
-  (`TableName`, required) — and `testId`. A column's `header` is required
+  (`TableName`, required) — a `hint` (**required with `onSort` or `picks`**,
+  CTA-112: how they are worked, "Sort by a column from its header button.
+  Tick a row's box to pick it." — read with the table, the region's and the
+  table's `aria-describedby`, out of sight; the app's words are
+  `hints.table.*`) and `testId`. A column's `header` is required
   words (`VisibleLabel`).
 - **Keyboard** (CTA-111) — the sort headers are buttons, the picks
   checkboxes (each named by its row, select-all mixed when some are picked),
@@ -45,7 +49,8 @@ Gallery: `/dev/design/patterns/tables/DataTable`.
   table is `aria-busy` while `loading`.
 - **Test ids** — `testId` (the root), `-frame` (its table `-frame-table`),
   `-sort-<column>`, `-select-all`, `-row-<id>`, `-pick-<id>`, `-link-<id>`,
-  `-actions-<id>`, `-note-<id>`, `-loading`, `-empty`, `-no-match`, `-pager`.
+  `-actions-<id>`, `-note-<id>`, `-loading`, `-empty`, `-no-match`, `-pager`,
+  `-hint`.
 - **Also exports** `firstDirectionOf(columns)` — the columns' first
   directions as `useTableUrlState`'s `firstDirection`.
 

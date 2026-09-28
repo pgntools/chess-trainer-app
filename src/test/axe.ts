@@ -32,7 +32,35 @@ const NEEDS_A_BROWSER = ["color-contrast", "target-size"];
 export type AxeCheckOptions = {
   /** Further rule ids to switch off, each for a reason the caller states beside the call. */
   disable?: readonly string[];
+  /**
+   * Rules outside WCAG's tags to run as well — a whole page's best-practice
+   * rules (`PAGE_STRUCTURE_RULES`), for a test that renders the app shell
+   * and passes `document.documentElement` as the context (CTA-112).
+   */
+  enable?: readonly string[];
 };
+
+/**
+ * **A page's structure** (CTA-112), axe's best-practice rules for a whole
+ * page: every piece of content in a landmark (`region`), no landmark twice
+ * or twice unnamed, each at the top level, the skip link's target there. The
+ * app shell's tests run them; a component or a demo is not a page. Two more —
+ * `landmark-one-main` and `page-has-heading-one` — come back *incomplete*
+ * under jsdom, never passing or failing, so the shell's tests assert one
+ * `main` and one `h1` by role instead.
+ */
+export const PAGE_STRUCTURE_RULES = [
+  "landmark-no-duplicate-main",
+  "landmark-no-duplicate-banner",
+  "landmark-no-duplicate-contentinfo",
+  "landmark-unique",
+  "landmark-complementary-is-top-level",
+  "landmark-main-is-top-level",
+  "landmark-banner-is-top-level",
+  "landmark-contentinfo-is-top-level",
+  "region",
+  "skip-link",
+] as const;
 
 const describeViolations = (violations: axe.Result[]): string =>
   violations
@@ -43,8 +71,14 @@ const describeViolations = (violations: axe.Result[]): string =>
     .join("\n");
 
 /** The WCAG A / AA violations axe finds in `context` (the whole document by default). */
-const axeViolations = async (context: Element = document.body, { disable = [] }: AxeCheckOptions = {}): Promise<axe.Result[]> => {
-  const off = Object.fromEntries([...NEEDS_A_BROWSER, ...disable].map((id) => [id, { enabled: false }]));
+const axeViolations = async (
+  context: Element = document.body,
+  { disable = [], enable = [] }: AxeCheckOptions = {},
+): Promise<axe.Result[]> => {
+  const off = Object.fromEntries([
+    ...enable.map((id) => [id, { enabled: true }]),
+    ...[...NEEDS_A_BROWSER, ...disable].map((id) => [id, { enabled: false }]),
+  ]);
   const results = await axe.run(context, {
     runOnly: { type: "tag", values: WCAG_AA_TAGS },
     rules: off,

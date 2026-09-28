@@ -167,7 +167,7 @@ at AA; the default, brown and green themes keep the traditional look (2.30,
 `/dev/design/…` — **dev-only**, behind the Development section
 ([`chessboard.md`](../../.claude/rules/chessboard.md) §9.5): its nav folder
 and entry are spreads gated on `import.meta.env.DEV`, its route a
-`React.lazy` import in `App.tsx`'s `devRoutes`, so a production build has no
+`React.lazy` import in `routes.tsx`'s `devRoutes`, so a production build has no
 chunk of it. Its route (`/dev/design/*`, one splat route, so moving between
 pages keeps the gallery and its switches mounted) carries
 `handle: FULL_WIDTH_ROUTE` (`views/main/routeHandle.ts`), so the shell gives

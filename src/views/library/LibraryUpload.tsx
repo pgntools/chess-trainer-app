@@ -22,6 +22,7 @@ import { RightPanel } from "../main/rightPanel";
 import ImportOptionsDialog from "./ImportOptionsDialog";
 import LibraryMiss from "./LibraryMiss";
 import { useCollectionSummary, useLibraryFolders } from "./useLibraryCollections";
+import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 
 /**
  * **Add a collection** (`/library/new`, CTA-75) — a `.pgn` file picked, or
@@ -59,6 +60,9 @@ import { useCollectionSummary, useLibraryFolders } from "./useLibraryCollections
  * A folder that is not the reader's (gone, or Built-in) is the top level.
  */
 function LibraryUpload({ into, folder = null }: { into?: CollectionSummary; folder?: string | null }) {
+  // Its title is the page's `h1`; adding games names the collection (CTA-112).
+  useOwnPageHeading();
+  usePageTitle(into?.name);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const folders = useLibraryFolders() ?? [];

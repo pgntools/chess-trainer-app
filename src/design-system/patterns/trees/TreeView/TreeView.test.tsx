@@ -10,6 +10,7 @@ import { defaultTheme } from "../../../themes";
 
 import TreeView, { type TreeNode, type TreeViewProps } from "./TreeView";
 import { ancestorsOf, visibleNodes } from "./treeNodes";
+import { expectNoAxeViolations } from "../../../../test/axe";
 
 const NODES: TreeNode[] = [
   { id: "home", label: "Home", link: { href: "#home" } },
@@ -24,6 +25,8 @@ const NODES: TreeNode[] = [
   { id: "folder", label: "Folder", selectable: true, secondary: 12, children: [{ id: "sub", label: "Sub" }] },
 ];
 
+const HINT = "Arrow keys to move, Enter to go.";
+
 const mount = (props: Partial<TreeViewProps> = {}) => {
   const onToggle = vi.fn();
   const onSelect = vi.fn();
@@ -35,6 +38,7 @@ const mount = (props: Partial<TreeViewProps> = {}) => {
       onSelect={onSelect}
       toggleLabel={(node, open) => `${open ? "Close" : "Open"} ${String(node.label)}`}
       ariaLabel="Tree"
+      hint={HINT}
       testId="t"
       {...props}
     />,
@@ -114,6 +118,7 @@ describe("TreeView", () => {
           open={new Set()}
           onToggle={vi.fn()}
           ariaLabel="Pages"
+          hint={HINT}
           testId="t"
         />
         <Where />
@@ -143,6 +148,7 @@ function Live({ direction = "ltr", onSelect = vi.fn(), activeId }: { direction?:
         onSelect={onSelect}
         activeId={activeId}
         ariaLabel="Tree"
+        hint={HINT}
         testId="t"
       />
     </ThemeProvider>
@@ -152,6 +158,16 @@ function Live({ direction = "ltr", onSelect = vi.fn(), activeId }: { direction?:
 const item = (name: string) => screen.getByRole("treeitem", { name: new RegExp(`^${name}`) });
 
 describe("TreeView — WAI-ARIA's tree pattern (CTA-111)", () => {
+  it("reads its hint with the tree, out of sight — and cannot go without one (CTA-112)", async () => {
+    mount();
+    expect(screen.getByRole("tree", { name: "Tree" })).toHaveAccessibleDescription(HINT);
+    expect(screen.getByTestId("t-hint")).toHaveStyle({ position: "absolute" });
+    await expectNoAxeViolations();
+    // @ts-expect-error — a tree's keys are told in a hint (CTA-112).
+    const unexplained = <TreeView nodes={NODES} open={new Set()} onToggle={() => {}} ariaLabel="Tree" testId="t" />;
+    expect(unexplained).toBeDefined();
+  });
+
   it("is a named tree of tree items, each at its level, a branch owning its open group", () => {
     mount({ open: new Set(["docs"]) });
     const tree = screen.getByRole("tree", { name: "Tree" });

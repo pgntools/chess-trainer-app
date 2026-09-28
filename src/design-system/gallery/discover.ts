@@ -48,7 +48,7 @@ export const groupGallery = (
  * **Every `*.gallery.tsx` under `components/`** — the base tier — found by
  * Vite's `import.meta.glob` at build time, so a new component's demos appear
  * with no registration. Eager, because the gallery is itself one lazy,
- * dev-only chunk (`App.tsx`'s Development routes): nothing here reaches
+ * dev-only chunk (`routes.tsx`'s Development routes): nothing here reaches
  * production.
  */
 export const discoverGallery = (): GallerySection[] =>

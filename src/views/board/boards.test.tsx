@@ -169,6 +169,23 @@ describe("every v2 board, from the same core", () => {
     unmount();
   });
 
+  it.each(BOARDS)("$name names its tab panel by its tab, whichever is open (CTA-112)", ({ id, Screen }) => {
+    const { unmount } = renderBoard(Screen);
+    const panel = screen.getByTestId(`${id}-panel`);
+    const linked = () => {
+      const tab = within(panel).getByRole("tab", { selected: true });
+      const region = within(panel).getByRole("tabpanel");
+      expect(region).toHaveAttribute("aria-labelledby", tab.id);
+      expect(tab).toHaveAttribute("aria-controls", region.id);
+      expect(region).toHaveAccessibleName(tab.textContent ?? "");
+    };
+    linked();
+    act(() => screen.getByTestId(`${id}-panel-tab-engine`).click());
+    expect(within(panel).getByRole("tab", { selected: true })).toBe(screen.getByTestId(`${id}-panel-tab-engine`));
+    linked();
+    unmount();
+  });
+
   it.each(BOARDS.filter((board) => board.linesShown !== false))(
     "$name pins the engine's lines above its tabs",
     ({ id, Screen }) => {

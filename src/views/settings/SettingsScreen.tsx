@@ -4,12 +4,13 @@ import Typography from "@mui/material/Typography";
 import { Link as RouterLink, Navigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
-import { PanelTabs } from "../../design-system/components/tabs";
+import { PanelTabs, tabPanelProps } from "../../design-system/components/tabs";
 
 import AppearanceTab from "./AppearanceTab";
 import ExportTab from "./ExportTab";
 import ImportTab from "./ImportTab";
 import StorageTab from "./StorageTab";
+import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 
 /**
  * **Settings** (`/settings/<tab>`, CTA-86) — the app's own settings, one tab
@@ -30,6 +31,9 @@ function SettingsScreen() {
   const { t } = useTranslation();
   const { tab } = useParams();
   const active = SETTINGS_TABS.find((candidate) => candidate.id === tab);
+  // The page is the tab — "Export — Settings" (CTA-112); the visible title is its `h1`.
+  usePageTitle(active === undefined ? undefined : t(`settings.tabs.${active.id}`));
+  useOwnPageHeading();
   if (active === undefined) return <Navigate to={`/settings/${SETTINGS_TABS[0].id}`} replace />;
 
   return (
@@ -49,10 +53,11 @@ function SettingsScreen() {
         value={active.id}
         fullWidth={false}
         ariaLabel={t("settings.title")}
+        idPrefix="settings"
         testId="settings"
       />
       <Box
-        role="tabpanel"
+        {...tabPanelProps("settings", active.id)}
         data-testid={`settings-tab-content-${active.id}`}
         sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}
       >

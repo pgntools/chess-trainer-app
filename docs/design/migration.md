@@ -199,8 +199,11 @@ Listed in [`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps) too.
   `views/tools/analysis/`) are unnamed progress bars while the engine
   thinks (axe's `aria-progressbar-name`). They migrate with the Analysis
   module; the screens' axe tests audit a game whose engine has answered.
-- **The board panel's tab panels** (`BoardPanel`) and the new-game form's
-  panel are `role="tabpanel"` without `aria-labelledby` back to their tab.
+- ~~**The board panel's tab panels** (`BoardPanel`) and the new-game form's
+  panel are `role="tabpanel"` without `aria-labelledby` back to their tab.~~
+  Fixed by CTA-112: `BoardPanel` links every tab and its panel, and
+  `PanelTabs` takes an `idPrefix` whose panels a host marks with
+  `tabPanelProps` (the new-game form, Settings).
 - **The boards stay drag-only** — the board accessibility Story.
 
 ### 4.7 The browser pass
@@ -217,9 +220,10 @@ colour contrast and target size on**, which jsdom cannot measure.
 It found the two contrast failures fixed in §4.1. What remains is outside the
 pilot, listed in [`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps):
 
-- **The sidebar** (`views/main/Sidebar.tsx`, the shell) nests an `<li>` in an
+- ~~**The sidebar** (`views/main/Sidebar.tsx`, the shell) nests an `<li>` in an
   `<li>` in an open folder — axe's `listitem` and React's "cannot be a
-  descendant" warning on every page with its folder open.
+  descendant" warning on every page with its folder open.~~ Fixed by CTA-112:
+  an open folder's rows are a `ul` in its `li`.
 - **The board**: its pieces are unnamed `role="button"`s
   (`aria-command-name`, react-chessboard's drag handles) — the board
   accessibility Story.
@@ -251,5 +255,14 @@ pilot, listed in [`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps):
       grep show no gallery, demo or fixture.
 - [ ] The screens checked in the running app under every theme, light and
       dark, and in Hebrew — through the DOM.
+- [ ] Each migrated screen's route named (`handle.title`, `pages.*`), a record
+      it opens reported (`usePageTitle`), a visible title that is the page's
+      `h1` declared (`useOwnPageHeading`), and its page added to
+      `src/pageOutline.test.tsx` — one `h1`, no skipped level, axe's page rules.
+- [ ] **The screen-reader pass** per [the protocol](./screen-reader-testing.md):
+      a script for each migrated screen in its §3, run at least with Orca
+      and Firefox, in English and Hebrew; the rows in
+      [`screen-reader-results.md`](./screen-reader-results.md), every issue
+      fixed or a known gap in `ACCESSIBILITY.md`.
 - [ ] `docs/design/<Module>.md` marked, this file's §4 extended, gaps in
       `ACCESSIBILITY.md`.

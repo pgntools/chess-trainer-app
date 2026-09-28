@@ -58,6 +58,7 @@ import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import RepertoireChangesBar from "./RepertoireChangesBar";
 import RepertoireGamesMenu from "./RepertoireGamesMenu";
 import { useRepertoireGame } from "./useRepertoireGame";
+import { usePageTitle } from "../main/pageTitle";
 
 /**
  * **A repertoire, played** (CTA-63) — the one screen behind a repertoire's own
@@ -203,6 +204,8 @@ function RepertoirePlayer({
   game?: RepertoireGameId;
 }) {
   const { t } = useTranslation();
+  // The repertoire is the page (CTA-112): "Sicilian — Repertoire — …".
+  usePageTitle(saved.name || t("repertoires.untitled"));
   // `options.id`, and the root of every test id here.
   const id = game === undefined ? "repertoire-board" : "repertoire-game";
   const boardPath = `/repertoires/${encodeURIComponent(saved.id)}`;

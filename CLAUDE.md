@@ -98,12 +98,12 @@ removing one.
 
 | Path | What lives there |
 | --- | --- |
-| `src/main.tsx`, `src/App.tsx` | The composition root (`AppThemeWithLang` → `CssBaseline` → `SnackbarProvider` → `App`; imports `./i18n` for its side effect) and the router. `SnackbarProvider` is the design system's one snackbar queue — a screen shows one with `useSnackbar()`. |
+| `src/main.tsx`, `src/App.tsx`, `src/routes.tsx` | The composition root (`AppThemeWithLang` → `CssBaseline` → `SnackbarProvider` → `App`; imports `./i18n` for its side effect), the router, and its route table — every route naming its screen in `handle.title` (a `pages.*` key, CTA-112). `SnackbarProvider` is the design system's one snackbar queue — a screen shows one with `useSnackbar()`. |
 | `src/i18n.ts`, `src/locales/` | i18next setup (`supportedLanguages`, `rtlLanguages`, `asAppLanguage()`) and the inline `en` / `he` catalogs. `he` is typed `typeof en`, so a missing key is a compile error. |
 | `src/design-system/` | **The design system** (CTA-107), a layer of its own that knows no chess screen, store, route or block — `yarn lint` fails if it imports `src/views/`, `src/lib/` or `src/blocks/`. `themes/` (a theme is data; the registry), `theme/` (`buildTheme`, the `chess` tokens' readers, the RTL cache), `components/<section>/` (the **base** tier: one folder per MAIN section, each with an `index.ts` screens import from, each documented in `docs/design/sections/<section>.md` — CTA-108; it may not import a pattern), `patterns/<section>/` (the **patterns** tier: complex but generic — `DataTable`, `TreeView` — CTA-110, `docs/design/sections/patterns/`), `gallery/` (the dev-only `/dev/design/…`, a page per component). |
 | `src/blocks/` | **The blocks** (CTA-110): complex, domain-aware, **presentational** components — rows, state and callbacks arrive as props — grouped by family (`families.ts`: `tables/`, `trees/` …), each a folder with its component, test, gallery, `fixtures.ts` (typed with `src/lib/`'s types, imported only by the gallery and the test) and `index.ts`. May use `src/lib/`'s types and pure helpers; `yarn lint` fails if one imports `src/views/`, a store or database module or `react-router`. Today: `FolderTree`, and the Engine and Settings pilot's (CTA-109) — `PlayedGamesTable`, `StorageTable`, `EngineSettingsForm`, `PlayedGamesFilters`, `MaskEditor`, `ExportCategoriesForm`, `ImportDialog`, `IncompatibleImportDialog`, `ImportReport`. How a module migrates onto them: [`docs/design/migration.md`](docs/design/migration.md). |
 | `src/theme/` | The app's wiring of the look: the `AppThemeWithLang` provider (theme choice, scheme, direction), `themeChoice.ts` (the reader's theme, in `localStorage`), `ForceLTR`, the header controls. |
-| `src/views/main/` | The app shell: `Layout.tsx` (header, sidebar, the board square and the right-hand panel, `BOARD_PANEL_GAP_PX` between them — or, for a route whose `handle` is `FULL_WIDTH_ROUTE` from `routeHandle.ts`, the whole body instead), `rightPanel.tsx` (the route-fillable panel slot), `Sidebar.tsx` and the nav registries. |
+| `src/views/main/` | The app shell: `Layout.tsx` (header, sidebar, the board square and the right-hand panel, `BOARD_PANEL_GAP_PX` between them — or, for a route whose `handle` is `FULL_WIDTH_ROUTE` from `routeHandle.ts`, the whole body instead; and the page's structure, CTA-112: the skip link, the landmarks, `document.title`, the one `h1`, the focus on a move to another screen), `pageTitle.ts` (`usePageTitle(recordName)`, `useOwnPageHeading()` — what a screen tells the shell), `rightPanel.tsx` (the route-fillable panel slot), `Sidebar.tsx` and the nav registries. |
 | `src/views/home/` | The landing page at `/` — a card per screen, built from `navTree()`. |
 | `src/views/board/` | **The board core** (`core/`: `useBoardCore`, the capability modules, `BoardShell`, `BoardPanel`), the test harness and the two propagation tests. |
 | `src/views/explorer/` | **The tree views** — the variations explorer every board attaches. |
@@ -236,7 +236,14 @@ keyboard operates everything with the theme's focus ring, targets are at least
 motion goes through the theme and stops under `prefers-reduced-motion` (the
 boards' piece animation too, through `useBoardSquareOptions`), and every
 gallery demo passes axe in every theme. `yarn lint` runs
-`eslint-plugin-jsx-a11y`'s recommended rules.
+`eslint-plugin-jsx-a11y`'s recommended rules. **The shell carries the page**
+(CTA-112): every route's own title (its `handle.title`, the open record's
+name first through `usePageTitle`), the landmarks and a skip link, one `h1`
+(a screen's visible title declares itself with `useOwnPageHeading`), and the
+focus on a move to another screen. What automation cannot hear, a person
+checks with a screen reader per
+[`docs/design/screen-reader-testing.md`](docs/design/screen-reader-testing.md),
+with every module's migration.
 
 ### Theming, direction and language
 

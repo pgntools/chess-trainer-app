@@ -26,7 +26,11 @@ export const MIN_TARGET_PX = 24;
  *   the palette's `text.secondary` — measured at 4.5:1 on every surface —
  *   not MUI's `action.active`, a 54 % black no test measures, which a
  *   browser audit found at 4.4:1 on the default and brown pages;
- * - **reduced motion**: no ripple.
+ * - **reduced motion**: no ripple;
+ * - **no heading by typeface** (CTA-112): a `subtitle1` / `subtitle2` line
+ *   is a paragraph, not MUI's `h6` — a bold line in a panel or a card was a
+ *   level-six heading, and every page's outline jumped from its `h1` to a
+ *   scatter of them. A title that *is* a heading says so (`component="h2"`).
  *
  * A theme tunes these through its tokens (`focusRingWidth`, `focusRing`,
  * `controlBorder`), never by an override of the same component.
@@ -65,6 +69,9 @@ export const accessibilityOverrides = (focusRingWidth: number, reducedMotion: bo
         notchedOutline: ({ theme }) => ({ borderColor: paletteColor(theme, (palette) => palette.controlBorder) }),
       },
     },
+    MuiTypography: {
+      defaultProps: { variantMapping: { subtitle1: "p", subtitle2: "p" } },
+    },
   };
 };
 
@@ -76,7 +83,14 @@ export const focusRingOf = (theme: Parameters<typeof paletteColor>[0], width: nu
 });
 
 /** The component names {@link accessibilityOverrides} owns — a theme's own override of one would be dropped. */
-export const ACCESSIBILITY_OVERRIDDEN = ["MuiButtonBase", "MuiSlider", "MuiIconButton", "MuiToggleButton", "MuiOutlinedInput"] as const;
+export const ACCESSIBILITY_OVERRIDDEN = [
+  "MuiButtonBase",
+  "MuiSlider",
+  "MuiIconButton",
+  "MuiToggleButton",
+  "MuiOutlinedInput",
+  "MuiTypography",
+] as const;
 
 /**
  * **No motion** (CTA-111), for a reader whose system asks for reduced

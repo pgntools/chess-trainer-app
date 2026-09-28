@@ -41,7 +41,7 @@ the receiving end of the hand-off is [`analysis-board.md`](./analysis-board.md).
 | `src/views/openings/OpeningsBoard.tsx` | **The screen.** Composition only: the arrival (`arrivalOf`), the session, the book, the explorer, the arrows, the URL write-back, the two hand-offs, and the slots of `BoardShell` / `BoardPanel`. No behaviour hook of its own. |
 | `src/views/openings/OpeningBookList.tsx` | **The Book tab.** Presentational: the rows (SAN, the opening's name, the ECO chip), a click plays a move, the pointer reports which row it is over. |
 | `src/views/openings/openingArrows.ts` | **The board's one arrow set.** `openingArrowsOf(treeArrows, book, hoveredSan)` joins the explorer's next-move arrows with the book's. Pure. |
-| `src/views/openings/Main.tsx` | Layout-only wrapper that `App.tsx` routes to (`openings-wrapper`). |
+| `src/views/openings/Main.tsx` | Layout-only wrapper that `routes.tsx` routes to (`openings-wrapper`). |
 | `src/lib/analysisHandOff.ts` | **The hand-off to the Analysis Board** (§5): `analysisHandOffState` / `analysisHandOffOf`, and `lineTreeOf` (one SAN line played from a start, used by this screen's `?at=` arrival). Pure, non-throwing. |
 | `src/lib/openings.ts` | **The opening book**, pure (§2): `loadOpeningBook`, `getPositionBook`, `findOpening`, `nextMoveOpenings` / `knownMoveOpenings`, `openingOfLine`, `stickyOpening`, and the two arrow colours. |
 | `src/views/board/core/useOpeningBookModule.ts` | **The book as a capability module** (`chessboard.md` §9.2.2): the loaded book, the continuations from a FEN, their arrows, the hovered move. This screen is its one consumer. |
@@ -54,7 +54,7 @@ the receiving end of the hand-off is [`analysis-board.md`](./analysis-board.md).
 | `src/views/tools/analysis/AnalysisLoad.tsx`, `AnalysisExport.tsx`, `AnalysisSettings.tsx`, `PlayToggleButton.tsx`, `EngineThinking.tsx` | The Analysis Board's tabs and header pieces, reused as they are. `AnalysisLoad` takes an optional `onCollectionSaved` (the Analysis module's popup, CTA-101) and a `choiceLabelKey` for this screen's inline choice (§3.4). |
 | Tests | `src/views/openings/OpeningsBoard.test.tsx` (the screen), `openingArrows.test.ts`, `src/lib/analysisHandOff.test.ts`, `src/lib/openings.test.ts`, `src/views/shared/CurrentOpening.test.tsx`, the hand-off arrivals in `src/views/tools/analysis/AnalysisBoard.test.tsx`, and the two propagation tests (`src/views/board/boards.test.tsx`, `panelPropagation.test.tsx`). |
 
-Routes and nav: `App.tsx` routes `/openings` to `views/openings/Main`. The
+Routes and nav: `routes.tsx` routes `/openings` to `views/openings/Main`. The
 sidebar's **Openings** folder is `singleEntry` (`navFolders.ts`)
 over one screen, `/openings` (`navItems.ts`, `nav.openings`), so it renders
 as one row under the folder's name.

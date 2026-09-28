@@ -101,6 +101,9 @@ const toggle = (open: ReadonlySet<string>, id: string) => {
   return next;
 };
 
+/** How a tree is worked — read with it by a screen reader, not shown (CTA-112). */
+const HINT = "Up and down arrows to move, right to open, left to close, Enter to go.";
+
 /** The tree over `nodes`, its open branches and its selection held by the demo, opened on `active`'s chain. */
 const demo = (nodes: readonly TreeNode[], active?: string, width = 280) => (
   <WithState<State> initial={{ open: new Set(active === undefined ? [] : ancestorsOf(nodes, active)), active }}>
@@ -114,6 +117,7 @@ const demo = (nodes: readonly TreeNode[], active?: string, width = 280) => (
           onSelect={(node) => set((before) => ({ ...before, active: node.id }))}
           toggleLabel={(node, open) => `${open ? "Close" : "Open"} ${typeof node.label === "string" ? node.label : node.id}`}
           ariaLabel="Demo tree"
+          hint={HINT}
           testId="gallery-tree"
         />
       </Box>
@@ -127,6 +131,17 @@ const gallery: GalleryModule<PatternSectionId> = {
   demos: [
     { name: "A menu — folders open in place, pages link; opened on the page on screen (2025)", render: () => demo(MENU, "2025") },
     {
+      name: "Its navigation hint — out of sight, read with the tree (aria-describedby); printed here",
+      render: () => (
+        <Box sx={{ display: "grid", gap: 1 }}>
+          {demo(MENU)}
+          <Typography variant="caption" color="text.secondary">
+            A screen reader hears: “Demo tree, tree. {HINT}”
+          </Typography>
+        </Box>
+      ),
+    },
+    {
       name: "Folders as destinations — a row selects, its chevron opens it, a count at the end",
       render: () => demo(FOLDERS, "clients"),
     },
@@ -138,7 +153,7 @@ const gallery: GalleryModule<PatternSectionId> = {
       name: "Empty",
       render: () => (
         <Box sx={{ width: 280 }}>
-          <TreeView nodes={[]} open={new Set()} onToggle={() => {}} ariaLabel="Nothing" testId="gallery-tree-empty" />
+          <TreeView nodes={[]} open={new Set()} onToggle={() => {}} ariaLabel="Nothing" hint={HINT} testId="gallery-tree-empty" />
           <Typography variant="caption" color="text.secondary">
             (no nodes — the caller shows its own empty state)
           </Typography>

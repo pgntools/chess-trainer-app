@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback, useSyncExternalStore, type MouseEvent } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -11,7 +11,9 @@ import { Footer } from './Footer';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
 import { LeftPanelOutlet, LeftPanelProvider } from './leftPanel';
-import { isFullWidthRoute } from './routeHandle';
+import { isFullWidthRoute, pageTitleOf, titleKeyOf } from './routeHandle';
+import { createPageTitleStore, PageTitleContext } from './pageTitle';
+import { visuallyHidden } from '../../design-system/components/a11y';
 import { ForceLTR } from '../../theme/ForceLTR';
 import ColorModeIconDropdown from '../../theme/ColorModeIconDropdown';
 import LanguageSwitch from '../../theme/LanguageSwitch';
@@ -152,6 +154,52 @@ const AnalysisPlaceholder = () => {
     );
 };
 
+/** The `main` landmark's id — the skip link's target. */
+const MAIN_ID = 'main-content';
+
+/**
+ * **Skip to main content** (CTA-112, WCAG 2.4.1) — the first stop of the tab
+ * order, out of sight until it has the focus. It moves the focus itself
+ * rather than following its `#` (which would add a history entry the router
+ * then reads as a navigation); the `href` keeps it a real link.
+ */
+const SkipLink = ({ onSkip }: { onSkip: () => void }) => {
+    const { t } = useTranslation();
+    return (
+        <Box
+            component="a"
+            href={`#${MAIN_ID}`}
+            onClick={(event: MouseEvent) => {
+                event.preventDefault();
+                onSkip();
+            }}
+            data-testid="layout-skip-link"
+            sx={(theme) => ({
+                ...visuallyHidden,
+                '&:focus': {
+                    clip: 'auto',
+                    width: 'auto',
+                    height: 'auto',
+                    margin: 0,
+                    overflow: 'visible',
+                    zIndex: theme.zIndex.tooltip,
+                    insetBlockStart: 8,
+                    insetInlineStart: 8,
+                    px: 2,
+                    py: 1,
+                    borderRadius: 1,
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    boxShadow: theme.shadows[4],
+                    ...theme.mixins.focusRing,
+                },
+            })}
+        >
+            {t('shell.skipToMain')}
+        </Box>
+    );
+};
+
 const DefaultLayoutViewport = () => {
 
     const svc = BoardWidgetContext.useActorRef()
@@ -250,11 +298,96 @@ const DefaultLayoutViewport = () => {
         updateLocationFn(last_match)
     },[matches, updateLocationFn])
 
+    /*
+      The page (CTA-112): its title from the route's handle and the record a
+      screen reports (`pageTitle.ts`), written to `document.title`, the `main`
+      landmark's name and — unless the screen renders its own — the page's
+      one `h1`, visually hidden.
+    */
+    const { t } = useTranslation();
+    const [pageStore] = useState(createPageTitleStore);
+    const detail = useSyncExternalStore(pageStore.subscribe, pageStore.getDetail);
+    const ownHeading = useSyncExternalStore(pageStore.subscribe, pageStore.getOwnHeadings) > 0;
+    const titleKey = titleKeyOf(matches);
+    const { title, heading } = pageTitleOf(
+        titleKey === undefined ? undefined : t(titleKey),
+        detail,
+        t('app.brandText'),
+    );
+    useEffect(() => {
+        document.title = title;
+    }, [title]);
+
+    const mainRef = useRef<HTMLElement>(null);
+    /** The shell's hidden `h1` took the focus, and a screen's own may yet replace it. */
+    const shellHeadingFocusedRef = useRef(false);
+    const focusMain = useCallback(() => mainRef.current?.focus(), []);
+    const focusPageHeading = useCallback(() => {
+        const main = mainRef.current;
+        if (main === null) return;
+        const h1 = main.querySelector<HTMLElement>('h1');
+        if (h1 === null) {
+            main.focus();
+            return;
+        }
+        // A screen's own heading is not focusable; made so for this, and only
+        // by script (`-1`), so the tab order does not change.
+        if (!h1.hasAttribute('tabindex')) h1.setAttribute('tabindex', '-1');
+        h1.focus();
+        shellHeadingFocusedRef.current = h1.dataset.shellHeading !== undefined;
+    }, []);
+
+    /*
+      A move to another screen (CTA-112) takes the focus to its heading, which
+      a screen reader then reads — the page it has arrived on. Not on the first
+      load (the browser announces the page), and not within a screen: the
+      screen is its route's title key, so a query string (`?move=`, `?sort=`),
+      a Settings tab or the next Library game leaves the focus where it was.
+      After a tick, so the new screen has mounted and said whether it renders
+      its own heading.
+    */
+    const screenId = titleKey ?? matches[matches.length - 1]?.pathname ?? '';
+    const shownScreenRef = useRef<string | null>(null);
+    useEffect(() => {
+        const previous = shownScreenRef.current;
+        shownScreenRef.current = screenId;
+        if (previous === null || previous === screenId) return;
+        const timer = setTimeout(focusPageHeading, 0);
+        return () => clearTimeout(timer);
+    }, [screenId, focusPageHeading]);
+
+    /*
+      A screen whose heading arrives after its record (a Library collection
+      being read) replaces the shell's hidden one while it has the focus —
+      which would drop the focus on the body. Hand it on to the new heading.
+    */
+    useEffect(() => {
+        if (!ownHeading || !shellHeadingFocusedRef.current) return;
+        shellHeadingFocusedRef.current = false;
+        const active = document.activeElement;
+        if (active === null || active === document.body) focusPageHeading();
+    }, [ownHeading, focusPageHeading]);
+
+    const mainProps = {
+        component: 'main',
+        id: MAIN_ID,
+        ref: mainRef,
+        tabIndex: -1,
+        'aria-label': heading,
+    } as const;
+
+    const pageHeading = ownHeading ? null : (
+        <Box component="h1" data-shell-heading="" data-testid="layout-page-heading" sx={{ ...visuallyHidden, '&:focus': { outline: 'none' } }}>
+            {heading}
+        </Box>
+    );
+
 
 
 
 
     return (
+        <PageTitleContext.Provider value={pageStore}>
         <Box
             data-testid="layout-root"
             component="div"
@@ -269,6 +402,7 @@ const DefaultLayoutViewport = () => {
                 overflow: "hidden",
             }}
         >
+            <SkipLink onSkip={focusMain} />
             <Header />
 
             <Box
@@ -342,20 +476,31 @@ const DefaultLayoutViewport = () => {
                    >
                         {fullWidth ? (
                             <Box
+                                {...mainProps}
                                 data-testid="layout-full-body"
-                                sx={{ flexGrow: 1, minWidth: 0, minHeight: 0 }}
+                                sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, outline: 'none' }}
                             >
+                                {pageHeading}
                                 <Outlet />
                             </Box>
                         ) : (<>
+                        {/*
+                            The screen — the `main` landmark (CTA-112), named
+                            by the page's title. The panel beside it is a
+                            landmark of its own, the complementary aside.
+                        */}
                         <Box
+                            {...mainProps}
+                            data-testid="layout-main"
                             sx={{
+                                outline: 'none',
                                 flexShrink: 0,
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                             }}
                         >
+                            {pageHeading}
                              <Box
                                 data-testid="layout-board-square-body"
                                 // A plain inline style, not `sx`: this is a
@@ -386,6 +531,7 @@ const DefaultLayoutViewport = () => {
 
                          <Box
                             component="aside"
+                            aria-label={t('shell.sidePanel')}
                             data-testid="layout-board-square-sidebar"
                             sx={{
                                 /*
@@ -446,6 +592,7 @@ const DefaultLayoutViewport = () => {
             <Footer />
 
         </Box>
+        </PageTitleContext.Provider>
     )
 }
 

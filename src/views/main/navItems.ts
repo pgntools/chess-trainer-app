@@ -30,7 +30,7 @@ export type NavItem = {
 /**
  * Every screen, in one place. The sidebar builds its tree from this rather than
  * repeating a list item per route, so adding a screen is one entry here plus
- * the route in `App.tsx` and a string in both catalogs.
+ * the route in `routes.tsx` and a string in both catalogs.
  *
  * A **function**, for the reason `navFolders` is one: a dev-only entry is a
  * spread gated on `import.meta.env.DEV` (the design gallery's —

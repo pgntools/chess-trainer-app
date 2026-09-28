@@ -76,6 +76,7 @@ import SavedListExportBar from "../shared/SavedListExportBar";
 import CollectionFilters from "./CollectionFilters";
 import LibraryMiss from "./LibraryMiss";
 import { loadCollectionGames, useCollectionRows } from "./useLibraryCollections";
+import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 
 /**
  * **A collection** (`/library/<collection>`, CTA-75) — its games as a table:
@@ -163,6 +164,9 @@ function CollectionTable({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  // The collection's name is the page's `h1`, and its title (CTA-112).
+  useOwnPageHeading();
+  usePageTitle(collection.name);
   const [params, setParams] = useSearchParams();
   const [deleting, setDeleting] = useState(false);
   const [deleteProblem, setDeleteProblem] = useState(false);

@@ -1,4 +1,4 @@
-import { useMemo, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
+import { useId, useMemo, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -6,7 +6,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import type { LabelDisplayedRowsArgs } from "@mui/material/TablePagination";
 
-import type { VisibleLabel } from "../../../components/a11y";
+import { visuallyHidden, type VisibleLabel } from "../../../components/a11y";
 import { linkProps, type LinkTarget } from "../../../components/link";
 import {
   EmptyTableRow,
@@ -61,7 +61,30 @@ export type DataTableRowActions<R> =
       actionsLabel: string;
     };
 
-/** Everything a `DataTable` takes but its name and its row actions — see {@link DataTableProps}. */
+/**
+ * **The table's keys, and the words that tell of them** (CTA-112) — a sort or
+ * picks come with a `hint`, a short instruction a screen reader reads with the
+ * table ("Sort by a column from its header; tick a row to pick it"), its
+ * `aria-describedby`. A table with neither has nothing to explain, and may
+ * leave it out.
+ */
+type DataTableInteraction<R, C extends string = string> =
+  | { onSort?: undefined; picks?: undefined; hint?: VisibleLabel }
+  | {
+      /**
+       * A header was clicked: the column, and the direction the click asks for (a
+       * new column opens its `firstDirection`, the same one turns). A caller on
+       * `useTableUrlState` passes `(column) => table.sortBy(column)`.
+       */
+      onSort: (column: C, direction: SortDirection) => void;
+      /** Absent, there is no pick column. */
+      picks?: DataTablePicks<R>;
+      /** How the sort and the picks are worked — read with the table, not shown. */
+      hint: VisibleLabel;
+    }
+  | { onSort?: undefined; picks: DataTablePicks<R>; hint: VisibleLabel };
+
+/** Everything a `DataTable` takes but its name, its row actions and its keys — see {@link DataTableProps}. */
 export type DataTableBaseProps<R, C extends string = string> = {
   columns: readonly DataTableColumn<R, C>[];
   /** Every row there is to show — the rows the filters leave, on every page. */
@@ -70,20 +93,12 @@ export type DataTableBaseProps<R, C extends string = string> = {
   rowId: (row: R) => string;
   /** The sort shown. Absent, the rows are shown as they come and no header shows an arrow. */
   sort?: DataTableSort<C>;
-  /**
-   * A header was clicked: the column, and the direction the click asks for (a
-   * new column opens its `firstDirection`, the same one turns). A caller on
-   * `useTableUrlState` passes `(column) => table.sortBy(column)`.
-   */
-  onSort?: (column: C, direction: SortDirection) => void;
   /** The rows arrive in order already; the table only pages them. Default: it sorts by the column's `sortValue`. */
   sorted?: boolean;
   /** How rows the sorted column cannot tell apart are ordered. */
   tieBreak?: (a: R, b: R) => number;
   /** Absent, every row shows and there is no pager. */
   paging?: DataTablePaging;
-  /** Absent, there is no pick column. */
-  picks?: DataTablePicks<R>;
   /**
    * A click anywhere on the row but its picks and actions — and, without a
    * `rowLink`, Enter or Space on the row, which then takes the keyboard focus.
@@ -136,8 +151,14 @@ export type DataTableBaseProps<R, C extends string = string> = {
   testId: string;
 };
 
-/** A data table's props: the base, a name (an `ariaLabel` or a `caption`), and row actions with their column's name. */
-export type DataTableProps<R, C extends string = string> = DataTableBaseProps<R, C> & TableName & DataTableRowActions<R>;
+/**
+ * A data table's props: the base, a name (an `ariaLabel` or a `caption`), row
+ * actions with their column's name, and a sort or picks with their hint.
+ */
+export type DataTableProps<R, C extends string = string> = DataTableBaseProps<R, C> &
+  TableName &
+  DataTableRowActions<R> &
+  DataTableInteraction<R, C>;
 
 const DATA_ROW_LINK = "data-row-link";
 
@@ -166,7 +187,8 @@ const DATA_ROW_LINK = "data-row-link";
  * **Accessible** (CTA-111): named by an `ariaLabel` or a `caption`, every
  * column by its header and the actions column by `actionsLabel`; busy while
  * `loading`; every part reachable by the keyboard — the sort buttons, the
- * picks, a row's link or the row itself, its actions and the pager.
+ * picks, a row's link or the row itself, its actions and the pager; and a
+ * sort or picks explained in a `hint` read with the table (CTA-112).
  *
  * It fills its parent's flex column (`flex: 1; minHeight: 0`). It knows no
  * chess, no store and no route: its words arrive as props, a link as a
@@ -200,8 +222,10 @@ function DataTable<R, C extends string = string>({
   stickyHeader = true,
   ariaLabel,
   caption,
+  hint,
   testId,
 }: DataTableProps<R, C>) {
+  const hintId = useId();
   const sortColumn = sort === undefined ? undefined : columns.find((column) => column.id === sort.column);
   const sortValue = sortColumn?.sortValue;
   const sortId = sort?.column;
@@ -265,7 +289,19 @@ function DataTable<R, C extends string = string>({
     <Box data-testid={testId} sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 1 }}>
       {toolbar !== undefined && <Box sx={{ flexShrink: 0 }}>{toolbar}</Box>}
       {filters !== undefined && <Box sx={{ flexShrink: 0 }}>{filters}</Box>}
-      <TableFrame testId={`${testId}-frame`} density={density} stickyHeader={stickyHeader} busy={loading} {...name}>
+      {hint !== undefined && (
+        <Box id={hintId} data-testid={`${testId}-hint`} sx={visuallyHidden}>
+          {hint}
+        </Box>
+      )}
+      <TableFrame
+        testId={`${testId}-frame`}
+        density={density}
+        stickyHeader={stickyHeader}
+        busy={loading}
+        describedBy={hint === undefined ? undefined : hintId}
+        {...name}
+      >
         <TableHead>
           <TableRow>
             {picks !== undefined && (
