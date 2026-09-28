@@ -10,8 +10,11 @@ Inventory taken on 2026-09-27, against `development` at `4a56477` (CTA-105
 merged).
 
 The design system's foundation followed it (CTA-107): the layer, the theme
-registry and the dev gallery, below. The inventory is unchanged; the section
-components it points at are the follow-up.
+registry and the dev gallery, below. Then its twelve sections were filled
+(CTA-108): base components and their variations, each documented in
+[`sections/`](#the-sections), and three more themes. The inventory is
+unchanged — each section doc names the entries its components are meant to
+replace; moving the screens onto them is a follow-up per module.
 
 ## The layers
 
@@ -65,6 +68,21 @@ A theme is a `ThemeDefinition` (`themes/types.ts`):
   default-valued constants (`LAST_MOVE_HIGHLIGHT`, the book arrows), without
   pulling MUI into the collection-index worker.
 
+The registered themes, in the order Settings → Appearance lists them:
+
+| Id | Name | File | What it is |
+| --- | --- | --- | --- |
+| `default` | Default | `themes/default.ts` | The app's look before themes, unchanged; react-chessboard's board. |
+| `brown` | Brown | `themes/brown.ts` | Calm, lichess-like (CTA-108): warm off-white / near-black pages, one blue accent, square-ish corners; lichess's brown board, highlight and arrow brushes. Its squares equal the default's (react-chessboard's defaults *are* lichess's brown) — its board differs in the arrows, book arrows, result bars and map dots. |
+| `green` | Green | `themes/green.ts` | Bold, chess.com-like (CTA-108): the green board, the yellow highlight, green / blue / red arrows, move-classification tones, heavy headings and chunky buttons. |
+| `high-contrast` | High contrast | `themes/highContrast.ts` | WCAG AA or better in both schemes (`themes/themes.test.ts` measures text, status colours, dividers, move marks, coordinates and result bars), a focus ring on everything that takes the keyboard (`MuiButtonBase`), strong borders, `contrastThreshold: 4.5`; a board told apart by lightness and drawn over in the Okabe–Ito palette. |
+
+The two sites that inspired `brown` and `green` are named only in the files'
+comments: another site's brand is never a theme's id or shown name.
+`themes/overrides.ts` holds the override helpers the themes after the default
+share (the selected nav row's tint, a palette colour read through the CSS
+variables when there are any).
+
 `buildTheme(theme, mode, direction, ...locales)` takes `mode` `"both"` (the
 app's: CSS variables, both schemes, switched by `data-mui-color-scheme`) or
 `"light"` / `"dark"` (one fixed scheme and no variables — a theme that can sit
@@ -76,7 +94,7 @@ inside the app's, as the gallery's preview does).
 | --- | --- |
 | **A theme** | A file beside `themes/default.ts` exporting a `ThemeDefinition` (start from a copy of the default; every `chess` group is required), an entry in `themes` in `themes/registry.ts`, and its name `appearance.themes.<id>` in `en.ts` and `he.ts`. No component changes: Settings → Appearance and the gallery list the registry. Never rename an `id` — it is what the reader's choice is stored as. |
 | **A section** | A folder under `components/` with an `index.ts` (the section's public surface) and an entry in `SECTIONS` (`components/sections.ts`), which orders the gallery. |
-| **A component** | A folder in its section — `Foo/Foo.tsx`, `Foo/Foo.test.tsx`, `Foo/Foo.gallery.tsx`, `Foo/index.ts` — and a re-export from the section's `index.ts`. **Screens import only from a section's `index.ts`.** It takes props, reads the theme, and knows no screen, store or route. |
+| **A component** | A folder in its section — `Foo/Foo.tsx`, `Foo/Foo.test.tsx`, `Foo/Foo.gallery.tsx`, `Foo/index.ts` — and a re-export from the section's `index.ts`. **Screens import only from a section's `index.ts`.** It follows [the component rules](#the-component-rules), and its section doc (`sections/<section>.md`) gets an entry. |
 | **A variation** | One more entry in the component's `Foo.gallery.tsx` `demos` (`{ name, render }`), and whatever prop it needs — optional, its absence today's behaviour. |
 
 ### The gallery
@@ -100,13 +118,70 @@ from the URL and a `sectionPath(id)`. It finds every `components/**/*.gallery.ts
 `import.meta.glob` (`gallery/discover.ts`) — a gallery module default-exports
 `{ section, title, demos }` and needs no registration — groups the demos by
 section, and previews them under a theme, light / dark and LTR / RTL switch of
-its own, which changes the preview only. Each section ships a placeholder demo
-of plain MUI atoms until its components land.
+its own, which changes the preview only. Every section's page shows its
+components, each with a demo per variation.
+
+A `*.gallery.tsx` default-exports data, so it declares no component of its
+own (react-refresh's lint rule). A demo that must be live holds its state in
+`gallery/WithState.tsx` and calls a hook through `gallery/WithHook.tsx`; a
+dialog is shown open in the page with `gallery/DialogFrame.tsx` (portalled
+into a transformed box, so several can be open at once, none trapping focus);
+tables and cards borrow `gallery/demoTable.tsx` and `gallery/demoPreview.tsx`
+(a preview board in the theme's own squares). `gallery/everyTheme.test.tsx`
+renders every section under every theme, both schemes and both directions
+and fails on any console error.
 
 After `yarn build`, `grep -r -e "/dev/design" -e "design-gallery" -e
 "DesignGallery" -e ".gallery" dist/` finds nothing (the nav's two label
 strings, `nav.folders.development` and `nav.designSystem`, are in the shipped
 catalogs, as every nav label must be).
+
+## The component rules
+
+Every component in `components/` (CTA-108), checked where a check can be
+written (`components/conventions.test.ts`, the lint boundary):
+
+- **It knows no screen.** Every word it shows arrives as a prop (screens pass
+  `t(…)`), so no component adds a locale key; MUI's own words (a pager's
+  arrows, "No options") come from the theme's locale bundle. The only
+  character a component supplies is the en dash of an empty cell.
+- **It takes a `testId`** and derives its parts' ids from it
+  (`${testId}-confirm`, …) — on the **input** for a single control — so a
+  screen's tests keep their ids when it migrates.
+- **Colours, spacing, radius and typography come from the theme** — palette
+  keys (`"error.main"`, `"divider"`), spacing units, typography variants,
+  `alpha()` over a palette colour; never a colour literal. Every theme
+  restyles it.
+- **RTL-safe.** Logical properties (`paddingInlineStart`, `marginInlineEnd`,
+  `borderInlineStart`, `textAlign: "end"`), never left / right. A token that
+  must stay LTR (a number, a date, SAN, a FEN) takes `dir="ltr"`; a reader's
+  words take `dir="auto"`. An arrow glyph that points somewhere is mirrored by
+  an inline `transform` from `theme.direction` (the stylis plugin leaves inline
+  styles alone). A portalled part (a dialog, a menu) carries the theme's
+  direction as `dir`.
+- **Variations are props** — a tone, a size, a density, an optional part —
+  whose absence is the base; each has its own gallery demo.
+- **A part that can go somewhere takes a `LinkTarget`** (`components/link.ts`):
+  react-router's `Link` as `component` with its `to`, or an `href`. The design
+  system imports no router of its own; `useTableUrlState` alone reads the URL,
+  through react-router's `useSearchParams`.
+
+## The sections
+
+| Section | Components | Reference |
+| --- | --- | --- |
+| Dialogs | `BaseDialog`, `ConfirmDialog`, `DeleteManyDialog`, `FormDialog`, `ProgressDialog` + `useCancellableJob`, `FullScreenDialog` | [`sections/dialogs.md`](./sections/dialogs.md) |
+| Tables | `TableFrame`, `SortHeaderCell`, `PickHeaderCell`, `PickCell`, `RowActionsCell`, `TablePager`, `EmptyTableRow`, `LoadingTableRow`, `NumberCell`, `DateCell`, `useTableUrlState` + `sortRows` | [`sections/tables.md`](./sections/tables.md) |
+| Forms | `FieldLabel`, `SwitchField`, `CheckboxField`, `SideToggle`, `SliderField`, `SelectField`, `SearchField`, `DateRangeFields`, `FileInputButton`, `SettingsSection`, `SettingsFrame` + `useDraft` | [`sections/forms.md`](./sections/forms.md) |
+| Autocompletes | `ChipsAutocomplete`, `SelectAutocomplete` | [`sections/autocompletes.md`](./sections/autocompletes.md) |
+| Feedback | `SnackbarProvider` + `useSnackbar` (mounted once in `src/main.tsx`), `InlineAlert`, `FeedbackStrip`, `StatusText` | [`sections/feedback.md`](./sections/feedback.md) |
+| States | `LoadingLine`, `LoadingSpinnerLine`, `EmptyState`, `MissState`, `ProgressLine` | [`sections/states.md`](./sections/states.md) |
+| Toolbars | `IconAction`, `ToggleIconAction`, `ListScreenHeader`, `ActionBar` | [`sections/toolbars.md`](./sections/toolbars.md) |
+| Navigation | `BackButton`, `Breadcrumbs`, `ExpandToggle` | [`sections/navigation.md`](./sections/navigation.md) |
+| Tabs | `PanelTabs` | [`sections/tabs.md`](./sections/tabs.md) |
+| Menus | `ContextMenu`, `AnchoredMenu` | [`sections/menus.md`](./sections/menus.md) |
+| Lists | `RecordRow`, `FolderRow`, `PickerList` | [`sections/lists.md`](./sections/lists.md) |
+| Cards | `CardGrid`, `RecordCard`, `FolderCard`, `IconCard` | [`sections/cards.md`](./sections/cards.md) |
 
 ## What is in scope
 

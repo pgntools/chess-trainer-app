@@ -33,6 +33,8 @@ type DesignGalleryProps = {
   initialThemeId?: string;
   /** The scheme it opens on — the app's, from the route. */
   initialMode?: Mode;
+  /** The direction it opens on — left to right unless asked. */
+  initialDirection?: Direction;
 };
 
 /**
@@ -57,11 +59,12 @@ function DesignGallery({
   sectionPath,
   initialThemeId = DEFAULT_THEME_ID,
   initialMode = "light",
+  initialDirection = "ltr",
 }: DesignGalleryProps) {
   const { t } = useTranslation();
   const [themeId, setThemeId] = useState(() => themeById(initialThemeId).id);
   const [mode, setMode] = useState<Mode>(initialMode);
-  const [direction, setDirection] = useState<Direction>("ltr");
+  const [direction, setDirection] = useState<Direction>(initialDirection);
 
   const theme = useMemo(
     () => buildTheme(themeById(themeId), mode, direction),

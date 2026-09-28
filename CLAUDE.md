@@ -89,9 +89,9 @@ uses can look unused — check `scripts/` before removing one.
 
 | Path | What lives there |
 | --- | --- |
-| `src/main.tsx`, `src/App.tsx` | The composition root (`AppThemeWithLang` → `CssBaseline` → `App`; imports `./i18n` for its side effect) and the router. |
+| `src/main.tsx`, `src/App.tsx` | The composition root (`AppThemeWithLang` → `CssBaseline` → `SnackbarProvider` → `App`; imports `./i18n` for its side effect) and the router. `SnackbarProvider` is the design system's one snackbar queue — a screen shows one with `useSnackbar()`. |
 | `src/i18n.ts`, `src/locales/` | i18next setup (`supportedLanguages`, `rtlLanguages`, `asAppLanguage()`) and the inline `en` / `he` catalogs. `he` is typed `typeof en`, so a missing key is a compile error. |
-| `src/design-system/` | **The design system** (CTA-107), a layer of its own that knows no chess screen, store or route — `yarn lint` fails if it imports `src/views/` or `src/lib/`. `themes/` (a theme is data; the registry), `theme/` (`buildTheme`, the `chess` tokens' readers, the RTL cache), `components/<section>/` (one folder per MAIN section, each with an `index.ts` screens import from), `gallery/` (the dev-only `/dev/design/<section>`, a page per section). Layers and how to add to them: [`docs/design/README.md`](docs/design/README.md). |
+| `src/design-system/` | **The design system** (CTA-107), a layer of its own that knows no chess screen, store or route — `yarn lint` fails if it imports `src/views/` or `src/lib/`. `themes/` (a theme is data; the registry), `theme/` (`buildTheme`, the `chess` tokens' readers, the RTL cache), `components/<section>/` (one folder per MAIN section, each with an `index.ts` screens import from, each documented in `docs/design/sections/<section>.md` — CTA-108), `gallery/` (the dev-only `/dev/design/<section>`, a page per section). Layers and how to add to them: [`docs/design/README.md`](docs/design/README.md). |
 | `src/theme/` | The app's wiring of the look: the `AppThemeWithLang` provider (theme choice, scheme, direction), `themeChoice.ts` (the reader's theme, in `localStorage`), `ForceLTR`, the header controls. |
 | `src/views/main/` | The app shell: `Layout.tsx` (header, sidebar, the board square and the right-hand panel, `BOARD_PANEL_GAP_PX` between them — or, for a route whose `handle` is `FULL_WIDTH_ROUTE` from `routeHandle.ts`, the whole body instead), `rightPanel.tsx` (the route-fillable panel slot), `Sidebar.tsx` and the nav registries. |
 | `src/views/home/` | The landing page at `/` — a card per screen, built from `navTree()`. |
@@ -198,7 +198,8 @@ locale bundle together. Splitting them across providers reintroduces the
 mismatch this exists to prevent.
 
 - **A theme is data** in the design system's registry
-  (`src/design-system/themes/`, CTA-107): its light and dark palettes,
+  (`src/design-system/themes/`, CTA-107 — `default`, `brown`, `green` and
+  `high-contrast` since CTA-108): its light and dark palettes,
   typography, shape, component overrides and **`chess` tokens** — every
   colour drawn on or over a board. `buildTheme(theme, mode, direction)`
   (`src/design-system/theme/`) makes the MUI theme; `AppThemeWithLang` builds

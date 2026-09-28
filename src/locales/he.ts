@@ -1329,6 +1329,9 @@ const he: typeof en = {
   appearance: {
     themes: {
       default: "ברירת מחדל",
+      brown: "חום",
+      green: "ירוק",
+      "high-contrast": "ניגודיות גבוהה",
     },
   },
   footer: {

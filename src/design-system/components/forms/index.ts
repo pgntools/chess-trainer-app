@@ -1,8 +1,16 @@
 /**
- * **The Forms section's public surface** (CTA-107) — a screen imports this
- * section's components from here and nowhere deeper. Empty until the
- * section's base components and their variations land (the follow-up Story);
- * each is a folder beside this file: `Foo.tsx`, `Foo.test.tsx`,
- * `Foo.gallery.tsx` and `index.ts`, re-exported here.
+ * **The Forms section's public surface** (CTA-107, filled by CTA-108) — a
+ * screen imports this section's components from here and nowhere deeper.
+ * The reference is `docs/design/sections/forms.md`.
  */
-export {};
+export * from "./FieldLabel";
+export * from "./SwitchField";
+export * from "./CheckboxField";
+export * from "./SideToggle";
+export * from "./SliderField";
+export * from "./SelectField";
+export * from "./SearchField";
+export * from "./DateRangeFields";
+export * from "./FileInputButton";
+export * from "./SettingsSection";
+export * from "./SettingsFrame";

@@ -33,11 +33,12 @@ describe("groupGallery", () => {
 });
 
 describe("discoverGallery", () => {
-  it("finds every section's placeholder demo, with no registration", () => {
+  it("finds every section's components' demos, with no registration — and no placeholder left", () => {
     const sections = discoverGallery();
     expect(sections.map((section) => section.id)).toEqual(SECTIONS.map((section) => section.id));
     for (const section of sections) {
-      expect(section.modules.map((entry) => entry.title)).toContain("Placeholder");
+      expect(section.modules.length).toBeGreaterThan(0);
+      expect(section.modules.map((entry) => entry.title)).not.toContain("Placeholder");
       for (const entry of section.modules) expect(entry.demos.length).toBeGreaterThan(0);
     }
   });
