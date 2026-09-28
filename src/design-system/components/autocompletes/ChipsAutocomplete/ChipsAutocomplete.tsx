@@ -1,10 +1,11 @@
-import type { ReactNode } from "react";
 import Autocomplete from "@mui/material/Autocomplete";
 import Chip from "@mui/material/Chip";
 import TextField from "@mui/material/TextField";
 
+import type { VisibleLabel } from "../../a11y";
+
 export type ChipsAutocompleteProps = {
-  label: ReactNode;
+  label: VisibleLabel;
   /** The chips — every name chosen. */
   value: readonly string[];
   onChange: (value: string[]) => void;

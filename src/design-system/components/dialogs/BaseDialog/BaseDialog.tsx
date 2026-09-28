@@ -5,6 +5,8 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import { useTheme } from "@mui/material/styles";
 
+import type { VisibleLabel } from "../../a11y";
+
 /** The modal props a caller may add — never `open`, `onClose` or the content. */
 export type ExtraDialogProps = Omit<Partial<DialogProps>, "open" | "onClose" | "children" | "title">;
 
@@ -12,7 +14,7 @@ export type BaseDialogProps = {
   open: boolean;
   /** Escape, the backdrop, or the caller's own Cancel. */
   onClose: () => void;
-  title: ReactNode;
+  title: VisibleLabel;
   /** The body, inside `DialogContent`. */
   children?: ReactNode;
   /** The buttons, inside `DialogActions`; absent, there is no actions row. */
@@ -23,6 +25,8 @@ export type BaseDialogProps = {
   fullWidth?: boolean;
   /** Rules above and below the content — for a body that scrolls. */
   dividers?: boolean;
+  /** The title's id, for a part the title also names (a progress bar); absent, one of its own. */
+  titleId?: string;
   /** The root's test id; the parts are `<testId>-title`, `-content` and `-actions`. */
   testId: string;
   /** Anything else MUI's `Dialog` takes — a `container`, `keepMounted`, … */
@@ -31,8 +35,10 @@ export type BaseDialogProps = {
 
 /**
  * **The dialog every dialog is built on** (CTA-108): a title, a body and an
- * actions row at one of two widths, labelled by its title, with a test id on
- * its root. It carries the theme's direction as `dir`, so a dialog portalled
+ * actions row at one of two widths, labelled by its title (a required
+ * `VisibleLabel`, so no dialog is nameless), with a test id on its root.
+ * MUI's modal traps the focus inside while it is open and gives it back to
+ * whatever opened it when it closes. It carries the theme's direction as `dir`, so a dialog portalled
  * outside a mirrored tree still reads the right way.
  */
 function BaseDialog({
@@ -44,10 +50,12 @@ function BaseDialog({
   width = "xs",
   fullWidth = true,
   dividers = false,
+  titleId: titleIdProp,
   testId,
   dialogProps,
 }: BaseDialogProps) {
-  const titleId = useId();
+  const ownTitleId = useId();
+  const titleId = titleIdProp ?? ownTitleId;
   const { direction } = useTheme();
   return (
     <Dialog

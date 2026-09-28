@@ -1,16 +1,20 @@
-import type { ReactNode } from "react";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import TextField from "@mui/material/TextField";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 
-export type SearchFieldProps = {
+import type { VisibleLabel } from "../../a11y";
+
+/**
+ * What names the box (CTA-111) — a visible `label`, or else the
+ * `placeholder`, which then becomes its accessible name. Never neither.
+ */
+export type SearchFieldName = { label: VisibleLabel; placeholder?: string } | { label?: undefined; placeholder: string };
+
+export type SearchFieldProps = SearchFieldName & {
   value: string;
   onChange: (value: string) => void;
-  placeholder?: string;
-  /** A visible label; absent, `placeholder` names the field. */
-  label?: ReactNode;
   /** The clear button's accessible name; the button shows while there is text. */
   clearLabel: string;
   fullWidth?: boolean;
@@ -34,6 +38,7 @@ function SearchField({ value, onChange, placeholder, label, clearLabel, fullWidt
       label={label}
       placeholder={placeholder}
       fullWidth={fullWidth}
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- off unless the caller asks, for a filter that is its dialog's first field (ACCESSIBILITY.md)
       autoFocus={autoFocus}
       onChange={(event) => onChange(event.target.value)}
       onKeyDown={(event) => {

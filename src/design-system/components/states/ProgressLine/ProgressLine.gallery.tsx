@@ -11,7 +11,7 @@ const gallery: GalleryModule = {
       name: "Determinate, primary",
       render: () => (
         <Box sx={{ maxWidth: 360 }}>
-          <ProgressLine value={42} caption="Writing 420 of 1,000 games…" testId="gallery-progress-line" />
+          <ProgressLine value={42} label="Import progress" caption="Writing 420 of 1,000 games…" testId="gallery-progress-line" />
         </Box>
       ),
     },
@@ -19,7 +19,7 @@ const gallery: GalleryModule = {
       name: "Success — a coverage bar",
       render: () => (
         <Box sx={{ maxWidth: 360 }}>
-          <ProgressLine value={76} color="success" caption="76% of the lines learnt" testId="gallery-progress-line-success" />
+          <ProgressLine value={76} color="success" label="Repertoire learnt" caption="76% of the lines learnt" testId="gallery-progress-line-success" />
         </Box>
       ),
     },
@@ -27,7 +27,7 @@ const gallery: GalleryModule = {
       name: "Indeterminate, no caption",
       render: () => (
         <Box sx={{ maxWidth: 360 }}>
-          <ProgressLine testId="gallery-progress-line-indeterminate" />
+          <ProgressLine label="Reading the file" testId="gallery-progress-line-indeterminate" />
         </Box>
       ),
     },

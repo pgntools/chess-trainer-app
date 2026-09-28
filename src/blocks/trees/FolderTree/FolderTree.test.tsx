@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import FolderTree, { type FolderTreeProps } from "./FolderTree";
 import { BROKEN, COUNTS, FOLDER_LABELS, FOLDERS } from "./fixtures";
@@ -25,10 +26,10 @@ const mount = (props: Partial<FolderTreeProps> = {}) => {
 };
 
 const topLevel = () =>
-  within(screen.getByRole("list", { name: "Folders" }))
-    .getAllByRole("listitem")
-    .filter((item) => item.parentElement === screen.getByTestId("ft"))
-    .map((item) => item.querySelector("[data-testid^='ft-']")?.textContent);
+  within(screen.getByRole("tree", { name: "Folders" }))
+    .getAllByRole("treeitem")
+    .filter((item) => item.getAttribute("aria-level") === "1")
+    .map((item) => item.textContent);
 
 describe("FolderTree — the Trees family's folder tree", () => {
   it("lists the top-level row, then the top-level folders by name, each with its count", () => {
@@ -50,8 +51,22 @@ describe("FolderTree — the Trees family's folder tree", () => {
     const { onSelect, onToggle } = mount();
     fireEvent.click(screen.getByTestId("ft-gopenings"));
     expect(onSelect).toHaveBeenCalledWith("gopenings");
-    fireEvent.click(screen.getByRole("button", { name: "Open Openings" }));
+    const chevron = screen.getByTestId("ft-gopenings-toggle");
+    expect(chevron).toHaveAttribute("title", "Open Openings");
+    fireEvent.click(chevron);
     expect(onToggle).toHaveBeenCalledWith("gopenings");
+  });
+
+  it("is reached with Tab on the folder on screen, opened with → and chosen with Enter (CTA-111)", async () => {
+    const user = userEvent.setup();
+    const { onSelect, onToggle } = mount({ selectedId: "gopenings" });
+    await user.tab();
+    expect(screen.getByRole("treeitem", { name: /^Openings/ })).toHaveFocus();
+    await user.keyboard("{ArrowRight}");
+    expect(onToggle).toHaveBeenCalledWith("gopenings");
+    // The top-level row, "All analyses", is the first.
+    await user.keyboard("{Home}{Enter}");
+    expect(onSelect).toHaveBeenCalledWith(null);
   });
 
   it("gives a folder without sub-folders no chevron", () => {

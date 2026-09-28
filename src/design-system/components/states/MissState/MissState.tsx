@@ -5,6 +5,7 @@ import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 
+import type { VisibleLabel } from "../../a11y";
 import { linkProps, type LinkTarget } from "../../link";
 
 export type MissStateProps = {
@@ -13,7 +14,7 @@ export type MissStateProps = {
   /** What is missing and why — the link is old, the record was deleted. */
   children: ReactNode;
   /** The way back's words — "Back to the Library". */
-  backLabel: ReactNode;
+  backLabel: VisibleLabel;
   onBack?: () => void;
   /** The way back as a link. */
   backLink?: LinkTarget;

@@ -57,7 +57,7 @@ const gallery: GalleryModule = {
                     <Typography variant="caption" color="text.secondary">
                       ?sort={table.sort} · ?dir={table.direction} · ?page={table.page} · ?rows={table.rowsPerPage}
                     </Typography>
-                    <TableFrame testId="gallery-url-table">
+                    <TableFrame ariaLabel="Games" testId="gallery-url-table">
                       <TableHead>
                         <TableRow>
                           <PickHeaderCell

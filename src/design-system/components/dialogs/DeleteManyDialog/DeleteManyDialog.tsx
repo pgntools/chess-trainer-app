@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Alert from "@mui/material/Alert";
 
+import type { VisibleLabel } from "../../a11y";
 import type { ExtraDialogProps } from "../BaseDialog/BaseDialog";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 
@@ -9,10 +10,10 @@ export type DeleteManyDialogProps = {
   onClose: () => void;
   onConfirm: () => void;
   /** "Delete N picked games?" — the count is the caller's words. */
-  title: ReactNode;
+  title: VisibleLabel;
   message?: ReactNode;
-  confirmLabel: ReactNode;
-  cancelLabel: ReactNode;
+  confirmLabel: VisibleLabel;
+  cancelLabel: VisibleLabel;
   /** A failed delete's problem, shown in the dialog so the picks stay put. */
   error?: ReactNode;
   busy?: boolean;

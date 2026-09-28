@@ -6,7 +6,7 @@ import TableBody from "@mui/material/TableBody";
 import LoadingTableRow from "./LoadingTableRow";
 
 describe("LoadingTableRow", () => {
-  it("spans every column, busy, with a status line and a spinner", () => {
+  it("spans every column, busy, with a status line and a spinner hidden from assistive technology (CTA-111)", () => {
     render(
       <Table>
         <TableBody>
@@ -18,7 +18,8 @@ describe("LoadingTableRow", () => {
     );
     expect(screen.getByTestId("probe")).toHaveAttribute("aria-busy", "true");
     expect(screen.getByRole("status")).toHaveTextContent("Reading…");
-    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { hidden: true })).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryByRole("progressbar")).toBeNull();
     expect(screen.getByRole("cell")).toHaveAttribute("colspan", "4");
   });
 });

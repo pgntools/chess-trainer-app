@@ -21,7 +21,7 @@ export type ExpandToggleProps = {
  * and never reaches the row.
  */
 function ExpandToggle({ expanded, onToggle, label, controls, testId }: ExpandToggleProps) {
-  const { direction } = useTheme();
+  const { direction, transitions } = useTheme();
   const transform = expanded ? "rotate(90deg)" : direction === "rtl" ? "scaleX(-1)" : "none";
   return (
     <IconButton
@@ -39,7 +39,8 @@ function ExpandToggle({ expanded, onToggle, label, controls, testId }: ExpandTog
       <KeyboardArrowRightRoundedIcon
         fontSize="small"
         data-testid={`${testId}-icon`}
-        style={{ transform, transition: "transform 150ms" }}
+        // The theme's transition, so a reader who asks for reduced motion sees none (CTA-111).
+        style={{ transform, transition: transitions.create("transform", { duration: 150 }) }}
       />
     </IconButton>
   );

@@ -3,13 +3,14 @@ import MuiBreadcrumbs from "@mui/material/Breadcrumbs";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 
+import type { VisibleLabel } from "../../a11y";
 import { linkProps, type LinkTarget } from "../../link";
 
 /** One step of the chain: a place above the current one. */
 export type Crumb = {
   /** Stable, for its test id (`<testId>-<id>`) — a folder's id, `root`. */
   id: string;
-  label: ReactNode;
+  label: VisibleLabel;
   /** Open it — or give a `link`. */
   onClick?: () => void;
   link?: LinkTarget;

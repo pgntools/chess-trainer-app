@@ -1,13 +1,13 @@
-import type { ReactNode } from "react";
 import TableCell from "@mui/material/TableCell";
 import TableSortLabel from "@mui/material/TableSortLabel";
 
+import type { VisibleLabel } from "../../a11y";
 import type { SortDirection } from "../useTableUrlState/sortRows";
 
 export type SortHeaderCellProps<C extends string> = {
   /** The column this header sorts. */
   column: C;
-  label: ReactNode;
+  label: VisibleLabel;
   /** The column the table is sorted by, and which way — `useTableUrlState`'s. */
   sort: C;
   direction: SortDirection;

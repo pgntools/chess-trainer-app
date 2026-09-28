@@ -1,12 +1,13 @@
-import type { ReactNode } from "react";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
+
+import type { VisibleLabel } from "../../a11y";
 
 /** One choice: its value, the words shown, and — for a grouped list — its group's heading. */
 export type AutocompleteOption = { value: string; label: string; group?: string };
 
 export type SelectAutocompleteProps = {
-  label: ReactNode;
+  label: VisibleLabel;
   /** The chosen value, or `null` for none. */
   value: string | null;
   onChange: (value: string | null) => void;

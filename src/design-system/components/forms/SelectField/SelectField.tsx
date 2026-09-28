@@ -2,11 +2,13 @@ import type { ReactNode } from "react";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 
+import type { VisibleLabel } from "../../a11y";
+
 /** One choice. */
 export type SelectOption = { value: string; label: ReactNode; disabled?: boolean };
 
 export type SelectFieldProps = {
-  label: ReactNode;
+  label: VisibleLabel;
   value: string;
   onChange: (value: string) => void;
   options: readonly SelectOption[];

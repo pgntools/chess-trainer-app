@@ -138,7 +138,7 @@ const gallery: GalleryModule<PatternSectionId> = {
       name: "Empty",
       render: () => (
         <Box sx={{ width: 280 }}>
-          <TreeView nodes={[]} open={new Set()} onToggle={() => {}} testId="gallery-tree-empty" />
+          <TreeView nodes={[]} open={new Set()} onToggle={() => {}} ariaLabel="Nothing" testId="gallery-tree-empty" />
           <Typography variant="caption" color="text.secondary">
             (no nodes — the caller shows its own empty state)
           </Typography>

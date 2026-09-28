@@ -7,11 +7,13 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import { useTheme } from "@mui/material/styles";
 
+import type { VisibleLabel } from "../../a11y";
+
 /** One entry of a menu. */
 export type MenuEntry = {
   /** Stable, for its test id (`<testId>-<id>`). */
   id: string;
-  label: ReactNode;
+  label: VisibleLabel;
   /** An icon before the words. */
   icon?: ReactNode;
   onClick: () => void;

@@ -4,8 +4,10 @@ import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Typography from "@mui/material/Typography";
 
+import { nativeIndeterminate, type VisibleLabel } from "../../a11y";
+
 export type CheckboxFieldProps = {
-  label: ReactNode;
+  label: VisibleLabel;
   checked: boolean;
   onChange: (checked: boolean) => void;
   /** Part of a group is ticked (a parent over its children). */
@@ -46,6 +48,7 @@ function CheckboxField({
             onChange={(event) => onChange(event.target.checked)}
             slotProps={{
               input: {
+                ref: nativeIndeterminate(indeterminate),
                 "data-testid": testId,
                 "aria-describedby": help === undefined ? undefined : helpId,
               } as object,

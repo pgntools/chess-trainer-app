@@ -14,12 +14,12 @@ export type LoadingSpinnerLineProps = {
 /**
  * **A spinner beside a line** (CTA-108) — the repertoire upload's and the
  * player's "Reading…": a small ring before the words, the pair announced as a
- * `status`.
+ * `status` — the words alone, the ring being decoration (`aria-hidden`).
  */
 function LoadingSpinnerLine({ children, size = "small", testId }: LoadingSpinnerLineProps) {
   return (
     <Box role="status" data-testid={testId} sx={{ display: "flex", alignItems: "center", gap: 1, color: "text.secondary" }}>
-      <CircularProgress size={size === "small" ? 16 : 24} color="inherit" />
+      <CircularProgress aria-hidden size={size === "small" ? 16 : 24} color="inherit" />
       <Typography variant={size === "small" ? "body2" : "body1"}>{children}</Typography>
     </Box>
   );
