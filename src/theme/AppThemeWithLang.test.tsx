@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useTheme } from "@mui/material/styles";
 import i18n from "../i18n";
+import { stubReducedMotion } from "../test/reducedMotion";
 import AppThemeWithLang from "./AppThemeWithLang";
 import LanguageSwitch from "./LanguageSwitch";
 import { ForceLTR } from "./ForceLTR";
@@ -133,5 +134,26 @@ describe("LanguageSwitch", () => {
     await userEvent.click(screen.getByRole("option", { name: "עברית" }));
 
     await waitFor(() => expect(i18n.language).toBe("he"));
+  });
+});
+
+function MotionProbe() {
+  return <span data-testid="motion">{useTheme().transitions.create("opacity")}</span>;
+}
+
+describe("reduced motion (CTA-111)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("keeps MUI's transitions for a reader who has not asked for less motion", () => {
+    renderThemed(<MotionProbe />);
+    expect(screen.getByTestId("motion").textContent).not.toBe("none");
+  });
+
+  it("turns them off when the reader's system asks for reduced motion", () => {
+    stubReducedMotion();
+    renderThemed(<MotionProbe />);
+    expect(screen.getByTestId("motion")).toHaveTextContent("none");
   });
 });

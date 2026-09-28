@@ -6,7 +6,9 @@ import Typography from "@mui/material/Typography";
 export type ProgressLineProps = {
   /** 0–100; absent, the bar is indeterminate. */
   value?: number;
-  /** The words under the bar — they also name it. */
+  /** The bar's accessible name ("Import progress") — required, so a bar is never nameless (CTA-111). */
+  label: string;
+  /** The words under the bar ("120 of 800 games") — they describe it. */
   caption?: ReactNode;
   /** `success` for a coverage bar (how much of a repertoire is learnt). */
   color?: "primary" | "success";
@@ -16,10 +18,12 @@ export type ProgressLineProps = {
 
 /**
  * **A bar with a caption** (CTA-108) — an import's progress, a repertoire's
- * coverage: MUI's `LinearProgress`, 6 px and rounded, labelled by its
- * caption.
+ * coverage: MUI's `LinearProgress`, 6 px and rounded, named by its `label`
+ * and described by its caption. A determinate bar reports its value
+ * (`aria-valuenow`, 0–100); an indeterminate one reports none, which is how a
+ * screen reader tells "under way" from "this far".
  */
-function ProgressLine({ value, caption, color = "primary", testId }: ProgressLineProps) {
+function ProgressLine({ value, label, caption, color = "primary", testId }: ProgressLineProps) {
   const captionId = useId();
   return (
     <Box data-testid={testId} sx={{ display: "grid", gap: 0.5 }}>
@@ -27,7 +31,8 @@ function ProgressLine({ value, caption, color = "primary", testId }: ProgressLin
         variant={value === undefined ? "indeterminate" : "determinate"}
         value={value === undefined ? undefined : Math.max(0, Math.min(100, value))}
         color={color}
-        aria-labelledby={caption === undefined ? undefined : captionId}
+        aria-label={label}
+        aria-describedby={caption === undefined ? undefined : captionId}
         data-testid={`${testId}-bar`}
         sx={{ height: 6, borderRadius: 3 }}
       />

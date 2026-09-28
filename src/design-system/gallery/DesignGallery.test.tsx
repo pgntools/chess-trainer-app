@@ -120,7 +120,7 @@ describe("the design gallery", () => {
       renderGallery("/dev/design/tables/TableFrame");
       const tables = base.find((section) => section.id === "tables");
       expect(screen.getByTestId("design-gallery-nav-tables")).toHaveTextContent(`Tables${tables?.modules.length}`);
-      const links = within(screen.getByTestId("design-gallery-nav-tables-group")).getAllByRole("link");
+      const links = within(screen.getByTestId("design-gallery-nav-tables-group")).getAllByRole("treeitem");
       expect(links.map((link) => link.getAttribute("href"))).toEqual(tables?.modules.map((entry) => `/dev/design/tables/${entry.id}`));
     });
 

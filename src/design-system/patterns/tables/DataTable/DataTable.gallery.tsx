@@ -13,7 +13,7 @@ import WithHook from "../../../gallery/WithHook";
 import WithState from "../../../gallery/WithState";
 import type { PatternSectionId } from "../../sections";
 import { firstDirectionOf, type DataTableColumn, type DataTableSort } from "./columns";
-import DataTable, { type DataTableProps } from "./DataTable";
+import DataTable, { type DataTableBaseProps, type DataTableRowActions } from "./DataTable";
 
 /** A generic row — the pattern knows no domain, so neither do its demos. */
 type Member = { id: string; name: string; city?: string; rating?: number; visits: number; joined?: string };
@@ -104,7 +104,7 @@ const box = (children: ReactNode, height = 360) => (
  */
 const local = (
   rows: readonly Member[],
-  extra: (state: Local, set: (patch: Partial<Local>) => void) => Partial<DataTableProps<Member, Column>> = () => ({}),
+  extra: (state: Local, set: (patch: Partial<Local>) => void) => Partial<DataTableBaseProps<Member, Column>> & DataTableRowActions<Member> = () => ({}),
   height?: number,
 ) => (
   <WithState initial={INITIAL}>
@@ -240,6 +240,7 @@ const gallery: GalleryModule<PatternSectionId> = {
                   labelRowsPerPage: "Rows per page",
                 }}
                 emptyLabel="No members yet"
+                ariaLabel="Members"
                 testId="gallery-data-table-url"
               />,
             )

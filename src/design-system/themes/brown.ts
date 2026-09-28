@@ -19,18 +19,32 @@ export const brownTheme: ThemeDefinition = {
   id: "brown",
   labelKey: "appearance.themes.brown",
   light: {
-    primary: { main: "#1b78d0" },
+    // WCAG AA (CTA-111): a button's text colour is picked at 4.5:1, not MUI's 3.
+    contrastThreshold: 4.5,
+    // Darkened to AA as text on the page (CTA-111): lichess's #1b78d0, MUI's #d32f2f, #ed6c02, #0288d1 and #2e7d32.
+    primary: { main: "#186cbc" },
+    error: { main: "#cb2b2b" },
+    warning: { main: "#ae4f01" },
+    info: { main: "#0270ac" },
+    success: { main: "#2d7931" },
     background: {
       default: "#edebe9",
       paper: "#ffffff",
       translucent: "rgba(237, 235, 233, 0.88)",
       sunken: "#f5f4f2",
     },
-    text: { primary: "#333333", secondary: "#6b6b6b" },
+    // text.secondary darkened to AA on the page (CTA-111): was #6b6b6b.
+    text: { primary: "#333333", secondary: "#6a6a6a" },
     divider: "#d9d6d2",
+    focusRing: "#186cbc",
+    controlBorder: "#908476",
   },
   dark: {
+    // WCAG AA (CTA-111): a button's text colour is picked at 4.5:1, not MUI's 3.
+    contrastThreshold: 4.5,
     primary: { main: "#3692e7" },
+    // Lightened to AA as text on the paper (CTA-111): MUI's #f44336.
+    error: { main: "#f55145" },
     background: {
       default: "#161512",
       paper: "#262421",
@@ -39,7 +53,10 @@ export const brownTheme: ThemeDefinition = {
     },
     text: { primary: "#bababa", secondary: "#8f8d8a" },
     divider: "#3d3a36",
+    focusRing: "#3692e7",
+    controlBorder: "#746e65",
   },
+  focusRingWidth: 2,
   typography: {
     fontFamily: ['"Noto Sans"', "Roboto", "ui-sans-serif", "system-ui", "-apple-system", '"Segoe UI"', "sans-serif"].join(", "),
     h1: { fontSize: "clamp(26px, 3.6vw, 38px)", lineHeight: 1.1, fontWeight: 500 },

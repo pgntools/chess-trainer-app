@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 
+import type { VisibleLabel } from "../../a11y";
 import BaseDialog, { type ExtraDialogProps } from "../BaseDialog/BaseDialog";
 
 export type FormDialogProps = {
@@ -10,11 +11,11 @@ export type FormDialogProps = {
   onClose: () => void;
   /** Save — from the button, Enter in a one-line field, or Ctrl / ⌘ + Enter anywhere. */
   onSubmit: () => void;
-  title: ReactNode;
+  title: VisibleLabel;
   /** The form's fields. */
   children: ReactNode;
-  submitLabel: ReactNode;
-  cancelLabel: ReactNode;
+  submitLabel: VisibleLabel;
+  cancelLabel: VisibleLabel;
   /** Nothing to save yet (an empty name): the button is off and the keys do nothing. */
   submitDisabled?: boolean;
   /** The save is under way: both buttons off, a spinner in Save, no closing. */
@@ -87,7 +88,7 @@ function FormDialog({
             variant="contained"
             disabled={blocked}
             aria-busy={busy || undefined}
-            startIcon={busy ? <CircularProgress size={16} color="inherit" /> : undefined}
+            startIcon={busy ? <CircularProgress aria-hidden size={16} color="inherit" /> : undefined}
             data-testid={`${testId}-submit`}
           >
             {submitLabel}

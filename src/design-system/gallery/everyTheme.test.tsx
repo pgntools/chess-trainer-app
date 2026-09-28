@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 
+import { AXE_PAGE_TIMEOUT_MS, expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { themes } from "../themes";
 import DesignGallery from "./DesignGallery";
@@ -11,8 +12,9 @@ import { discoverTiers, pageKeyOf } from "./discover";
   Every component's page — the Base and Patterns tiers (CTA-108, CTA-110) —
   under every registered theme, both schemes and both directions: each
   renders every one of its demos, and nothing on the way — React, MUI, a prop
-  type — complains. What it looks like is the gallery's to show in a browser;
-  this is that nothing breaks. The Blocks tier's pages are
+  type — complains, and axe finds no WCAG 2.2 A / AA violation in the demos
+  (CTA-111, `src/test/axe.ts`). What it looks like is the gallery's to show
+  in a browser; this is that nothing breaks. The Blocks tier's pages are
   `views/dev/design/Main.test.tsx`'s, since the design system cannot import
   a block.
 
@@ -61,7 +63,7 @@ describe("the gallery under every theme, scheme and direction", () => {
     expect(pages.map((page) => page.key)).toEqual(expect.arrayContaining(["tables/TableFrame", "patterns/tables/DataTable", "patterns/trees/TreeView"]));
   });
 
-  it.each(combos)("%s under %s · %s · %s renders every demo, with no error", (pageKey, themeId, mode, direction, demos) => {
+  it.each(combos)("%s under %s · %s · %s renders every demo, with no error and no axe violation", async (pageKey, themeId, mode, direction, demos) => {
     render(
       <AppThemeWithLang>
         <MemoryRouter>
@@ -81,6 +83,7 @@ describe("the gallery under every theme, scheme and direction", () => {
     expect(preview).toHaveAttribute("dir", direction);
     expect(preview).toHaveAttribute("data-page", pageKey);
     expect(within(preview).getAllByTestId(/^design-gallery-demo-/)).toHaveLength(demos);
+    await expectNoAxeViolations(preview);
     expect(errors).toEqual([]);
-  });
+  }, AXE_PAGE_TIMEOUT_MS);
 });

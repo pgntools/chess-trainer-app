@@ -63,13 +63,27 @@ describe("SnackbarProvider", () => {
     act(() => api().show({ message: "Copied." }));
     expect(screen.getByTestId("probe-message")).toHaveTextContent("Copied.");
     expect(screen.getByTestId("probe").querySelector(".MuiAlert-root")).toBeNull();
+    // Announced politely (CTA-111): a status, not MUI's alert.
+    expect(screen.getByRole("status")).toHaveTextContent("Copied.");
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("shows a message with a severity as a filled alert, under the message's own test id", () => {
     const api = mountProvider();
     act(() => api().show({ message: "Saved.", severity: "success", testId: "saved-notice" }));
-    expect(screen.getByRole("alert")).toHaveClass("MuiAlert-filled");
+    expect(screen.getByRole("status")).toHaveClass("MuiAlert-filled");
     expect(screen.getByTestId("saved-notice-message")).toHaveTextContent("Saved.");
+  });
+
+  it.each([
+    ["error", "alert"],
+    ["warning", "alert"],
+    ["success", "status"],
+    ["info", "status"],
+  ] as const)("announces a %s message as %s (CTA-111)", (severity, role) => {
+    const api = mountProvider();
+    act(() => api().show({ message: "Words.", severity }));
+    expect(screen.getByRole(role)).toHaveTextContent("Words.");
   });
 
   it("runs its action and closes", async () => {

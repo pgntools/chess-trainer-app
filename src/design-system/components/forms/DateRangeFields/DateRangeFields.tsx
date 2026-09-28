@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
+
+import type { VisibleLabel } from "../../a11y";
 
 /** A range of days as `YYYY-MM-DD`; `""` is an open end. */
 export type DateRange = { from: string; to: string };
@@ -8,8 +9,8 @@ export type DateRange = { from: string; to: string };
 export type DateRangeFieldsProps = {
   value: DateRange;
   onChange: (value: DateRange) => void;
-  fromLabel: ReactNode;
-  toLabel: ReactNode;
+  fromLabel: VisibleLabel;
+  toLabel: VisibleLabel;
   disabled?: boolean;
   /** The inputs are `<testId>-from` and `<testId>-to`. */
   testId: string;

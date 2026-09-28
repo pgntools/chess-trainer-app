@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 
@@ -21,7 +22,8 @@ export type PickerListProps = {
 };
 
 /**
- * **Pick one from a list** (CTA-108) — the folder picker: dense rows, the
+ * **Pick one from a list** (CTA-108) — the folder picker: dense rows (each
+ * button in its own list item, so the list is a list of choices), the
  * chosen one selected (`aria-current`), a tree's depth as an indent from the
  * inline start (`2 + depth × 2.5`, so it mirrors), icons before the words
  * with a logical gap.
@@ -42,22 +44,23 @@ function PickerList({ items, value, onChange, ariaLabel, maxHeight, testId }: Pi
       {items.map((item) => {
         const selected = value !== undefined && item.id === value;
         return (
-          <ListItemButton
-            key={item.id ?? "none"}
-            selected={selected}
-            disabled={item.disabled}
-            aria-current={selected ? "true" : undefined}
-            onClick={() => onChange(item.id)}
-            data-testid={`${testId}-${item.id ?? "none"}`}
-            sx={{ borderRadius: 0.5, paddingInlineStart: 2 + (item.depth ?? 0) * 2.5 }}
-          >
-            {item.icon !== undefined && (
-              <Box aria-hidden="true" sx={{ display: "flex", marginInlineEnd: 1.5, color: "text.secondary" }}>
-                {item.icon}
-              </Box>
-            )}
-            <ListItemText primary={item.label} slotProps={{ primary: { dir: "auto" } }} />
-          </ListItemButton>
+          <ListItem key={item.id ?? "none"} disablePadding>
+            <ListItemButton
+              selected={selected}
+              disabled={item.disabled}
+              aria-current={selected ? "true" : undefined}
+              onClick={() => onChange(item.id)}
+              data-testid={`${testId}-${item.id ?? "none"}`}
+              sx={{ borderRadius: 0.5, paddingInlineStart: 2 + (item.depth ?? 0) * 2.5 }}
+            >
+              {item.icon !== undefined && (
+                <Box aria-hidden="true" sx={{ display: "flex", marginInlineEnd: 1.5, color: "text.secondary" }}>
+                  {item.icon}
+                </Box>
+              )}
+              <ListItemText primary={item.label} slotProps={{ primary: { dir: "auto" } }} />
+            </ListItemButton>
+          </ListItem>
         );
       })}
     </List>

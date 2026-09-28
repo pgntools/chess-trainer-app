@@ -1,11 +1,11 @@
-import type { ReactNode } from "react";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 
+import type { VisibleLabel } from "../../a11y";
 import { linkProps, type LinkTarget } from "../../link";
 
 /** One tab: its id (the value), its words, and — for a routed strip — where it goes. */
-export type PanelTab = { id: string; label: ReactNode; disabled?: boolean; link?: LinkTarget };
+export type PanelTab = { id: string; label: VisibleLabel; disabled?: boolean; link?: LinkTarget };
 
 export type PanelTabsProps = {
   tabs: readonly PanelTab[];

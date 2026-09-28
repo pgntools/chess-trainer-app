@@ -1,4 +1,4 @@
-import { useMemo, type MouseEvent, type ReactNode } from "react";
+import { useMemo, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -6,6 +6,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import type { LabelDisplayedRowsArgs } from "@mui/material/TablePagination";
 
+import type { VisibleLabel } from "../../../components/a11y";
 import { linkProps, type LinkTarget } from "../../../components/link";
 import {
   EmptyTableRow,
@@ -18,6 +19,7 @@ import {
   TablePager,
   sortRows,
   type SortDirection,
+  type TableName,
 } from "../../../components/tables";
 import { nextSort, type DataTableColumn, type DataTableSort } from "./columns";
 
@@ -29,7 +31,7 @@ export type DataTablePaging = {
   onPageChange: (page: number) => void;
   onRowsPerPageChange: (rows: number) => void;
   /** "Rows per page" in the reader's language. */
-  labelRowsPerPage: ReactNode;
+  labelRowsPerPage: VisibleLabel;
   /** "1–50 of 812" — absent, the theme's locale bundle words it. */
   labelDisplayedRows?: (args: LabelDisplayedRowsArgs) => ReactNode;
 };
@@ -46,7 +48,21 @@ export type DataTablePicks<R> = {
   pickLabel: (row: R) => string;
 };
 
-export type DataTableProps<R, C extends string = string> = {
+/**
+ * A row's actions and the name of their column — together or not at all
+ * (CTA-111), so the actions column is never a nameless header.
+ */
+export type DataTableRowActions<R> =
+  | { rowActions?: undefined; actionsLabel?: undefined }
+  | {
+      /** A row's actions — `IconAction`s — in a column of their own at the row's end, always visible. */
+      rowActions: (row: R) => ReactNode;
+      /** The actions column's accessible name ("Actions"). */
+      actionsLabel: string;
+    };
+
+/** Everything a `DataTable` takes but its name and its row actions — see {@link DataTableProps}. */
+export type DataTableBaseProps<R, C extends string = string> = {
   columns: readonly DataTableColumn<R, C>[];
   /** Every row there is to show — the rows the filters leave, on every page. */
   rows: readonly R[];
@@ -68,11 +84,10 @@ export type DataTableProps<R, C extends string = string> = {
   paging?: DataTablePaging;
   /** Absent, there is no pick column. */
   picks?: DataTablePicks<R>;
-  /** A row's actions — `IconAction`s — in a column of their own at the row's end, always visible. */
-  rowActions?: (row: R) => ReactNode;
-  /** The actions column's accessible name ("Actions"). */
-  actionsLabel?: string;
-  /** A click anywhere on the row but its picks and actions. */
+  /**
+   * A click anywhere on the row but its picks and actions — and, without a
+   * `rowLink`, Enter or Space on the row, which then takes the keyboard focus.
+   */
   onRowClick?: (row: R) => void;
   /**
    * Where a row goes: `linkColumn`'s content becomes a real link (for the
@@ -100,8 +115,6 @@ export type DataTableProps<R, C extends string = string> = {
   density?: "normal" | "dense";
   /** The header stays in view while the body scrolls (the default). */
   stickyHeader?: boolean;
-  /** The table's accessible name. */
-  ariaLabel?: string;
   /**
    * The root. The parts: `-frame` (the scrolling region; its table
    * `-frame-table`), `-sort-<column>`, `-select-all`, `-row-<id>`,
@@ -110,6 +123,9 @@ export type DataTableProps<R, C extends string = string> = {
    */
   testId: string;
 };
+
+/** A data table's props: the base, a name (an `ariaLabel` or a `caption`), and row actions with their column's name. */
+export type DataTableProps<R, C extends string = string> = DataTableBaseProps<R, C> & TableName & DataTableRowActions<R>;
 
 const DATA_ROW_LINK = "data-row-link";
 
@@ -130,6 +146,11 @@ const DATA_ROW_LINK = "data-row-link";
  * - **10,000 rows**: the only work over every row is the sort (memoised on
  *   the rows and the sort) and the picks' count (on the rows and the picks);
  *   a page is sliced, so a page turn renders one page.
+ *
+ * **Accessible** (CTA-111): named by an `ariaLabel` or a `caption`, every
+ * column by its header and the actions column by `actionsLabel`; busy while
+ * `loading`; every part reachable by the keyboard — the sort buttons, the
+ * picks, a row's link or the row itself, its actions and the pager.
  *
  * It fills its parent's flex column (`flex: 1; minHeight: 0`). It knows no
  * chess, no store and no route: its words arrive as props, a link as a
@@ -160,6 +181,7 @@ function DataTable<R, C extends string = string>({
   density = "normal",
   stickyHeader = true,
   ariaLabel,
+  caption,
   testId,
 }: DataTableProps<R, C>) {
   const sortColumn = sort === undefined ? undefined : columns.find((column) => column.id === sort.column);
@@ -207,6 +229,16 @@ function DataTable<R, C extends string = string>({
     if (onRowClick !== undefined) onRowClick(row);
     else event.currentTarget.querySelector<HTMLElement>(`[${DATA_ROW_LINK}]`)?.click();
   };
+  // A row with a link is reached through its link; a row with only a click
+  // is a stop of its own, opened by Enter or Space — never when the key was
+  // meant for its pick or an action inside it.
+  const keyed = onRowClick !== undefined && rowLink === undefined;
+  const onRowKey = (row: R, event: KeyboardEvent<HTMLTableRowElement>) => {
+    if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+    event.preventDefault();
+    onRowClick?.(row);
+  };
+  const name: TableName = caption !== undefined ? { caption } : { ariaLabel: ariaLabel ?? "" };
 
   const colSpan = columns.length + (picks === undefined ? 0 : 1) + (rowActions === undefined ? 0 : 1);
   const noMatch = filtered && noMatchLabel !== undefined;
@@ -215,7 +247,7 @@ function DataTable<R, C extends string = string>({
     <Box data-testid={testId} sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 1 }}>
       {toolbar !== undefined && <Box sx={{ flexShrink: 0 }}>{toolbar}</Box>}
       {filters !== undefined && <Box sx={{ flexShrink: 0 }}>{filters}</Box>}
-      <TableFrame testId={`${testId}-frame`} density={density} stickyHeader={stickyHeader} ariaLabel={ariaLabel}>
+      <TableFrame testId={`${testId}-frame`} density={density} stickyHeader={stickyHeader} busy={loading} {...name}>
         <TableHead>
           <TableRow>
             {picks !== undefined && (
@@ -271,8 +303,14 @@ function DataTable<R, C extends string = string>({
                   hover
                   selected={isPicked}
                   onClick={clickable ? (event) => onRow(row, event) : undefined}
+                  tabIndex={keyed ? 0 : undefined}
+                  onKeyDown={keyed ? (event) => onRowKey(row, event) : undefined}
                   data-testid={`${testId}-row-${id}`}
-                  sx={clickable ? { cursor: "pointer" } : undefined}
+                  sx={
+                    clickable
+                      ? (theme) => ({ cursor: "pointer", "&:focus-visible": { ...theme.mixins.focusRing, outlineOffset: -2 } })
+                      : undefined
+                  }
                 >
                   {picks !== undefined && (
                     <PickCell
@@ -304,7 +342,12 @@ function DataTable<R, C extends string = string>({
                             {...{ [DATA_ROW_LINK]: "" }}
                             onClick={(event: MouseEvent) => event.stopPropagation()}
                             data-testid={`${testId}-link-${id}`}
-                            sx={{ color: "inherit", textDecoration: "none", "&:hover, &:focus-visible": { textDecoration: "underline" } }}
+                            sx={(theme) => ({
+                              color: "inherit",
+                              textDecoration: "none",
+                              "&:hover": { textDecoration: "underline" },
+                              "&:focus-visible": { textDecoration: "underline", ...theme.mixins.focusRing },
+                            })}
                           >
                             {content}
                           </Box>

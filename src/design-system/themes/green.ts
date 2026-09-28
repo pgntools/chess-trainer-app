@@ -13,7 +13,13 @@ export const greenTheme: ThemeDefinition = {
   id: "green",
   labelKey: "appearance.themes.green",
   light: {
-    primary: { main: "#5d9948" },
+    // WCAG AA (CTA-111): a button's text colour is picked at 4.5:1, not MUI's 3.
+    contrastThreshold: 4.5,
+    // Darkened to AA — as text on the page, and white text on it (CTA-111): chess.com's #5d9948, MUI's #d32f2f, #ed6c02 and #0288d1.
+    primary: { main: "#4a7939" },
+    error: { main: "#d12c2c" },
+    warning: { main: "#b35102" },
+    info: { main: "#0273b1" },
     background: {
       default: "#f1f1ef",
       paper: "#ffffff",
@@ -22,9 +28,15 @@ export const greenTheme: ThemeDefinition = {
     },
     text: { primary: "#312e2b", secondary: "#5d5a57" },
     divider: "#dcdcd8",
+    focusRing: "#4a7939",
+    controlBorder: "#8b8b7d",
   },
   dark: {
+    // WCAG AA (CTA-111): a button's text colour is picked at 4.5:1, not MUI's 3.
+    contrastThreshold: 4.5,
     primary: { main: "#81b64c" },
+    // Lightened to AA as text on the page (CTA-111): MUI's #f44336.
+    error: { main: "#f6675d" },
     background: {
       default: "#312e2b",
       paper: "#262522",
@@ -33,7 +45,10 @@ export const greenTheme: ThemeDefinition = {
     },
     text: { primary: "#ffffff", secondary: "#b8b6b3" },
     divider: "#45423e",
+    focusRing: "#81b64c",
+    controlBorder: "#7e7871",
   },
+  focusRingWidth: 2,
   typography: {
     fontFamily: ['"Segoe UI"', "system-ui", "-apple-system", "BlinkMacSystemFont", "Roboto", "sans-serif"].join(", "),
     h1: { fontSize: "clamp(28px, 4vw, 44px)", lineHeight: 1.05, letterSpacing: "-0.02em", fontWeight: 800 },

@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+
+import type { VisibleLabel } from "../../a11y";
 
 /** A side, or — with the "all" button — neither in particular. */
 export type SideValue = "white" | "black" | "all";
@@ -10,7 +11,7 @@ export type SideToggleProps<V extends SideValue = "white" | "black"> = {
   /** Never called with nothing: a click on the pressed button is swallowed. */
   onChange: (value: V) => void;
   /** The buttons' words — `all` only with `withAll`. */
-  labels: { white: ReactNode; black: ReactNode; all?: ReactNode };
+  labels: { white: VisibleLabel; black: VisibleLabel; all?: VisibleLabel };
   /** A first button for "either side" (a filter). */
   withAll?: boolean;
   /** Stretch over the row (a form) rather than size to the words. */

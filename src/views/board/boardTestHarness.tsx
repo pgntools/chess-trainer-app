@@ -172,6 +172,7 @@ export const boardOptions = () => {
     position?: string;
     boardOrientation?: "white" | "black";
     allowDragging?: boolean;
+    showAnimations?: boolean;
     pieces?: unknown;
     arrows?: { startSquare: string; endSquare: string; color: string }[];
     onPieceDrop?: (args: {

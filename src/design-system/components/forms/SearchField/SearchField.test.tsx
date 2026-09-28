@@ -24,4 +24,12 @@ describe("SearchField", () => {
     expect(onChange).toHaveBeenNthCalledWith(1, "");
     expect(onChange).toHaveBeenNthCalledWith(2, "");
   });
+
+  it("cannot be nameless: a label or a placeholder names it (CTA-111)", () => {
+    // @ts-expect-error — neither a label nor a placeholder.
+    const nameless = <SearchField value="" onChange={vi.fn()} clearLabel="Clear" testId="probe" />;
+    expect(nameless).toBeTruthy();
+    render(<SearchField value="" onChange={vi.fn()} placeholder="Filter by name" clearLabel="Clear" testId="probe" />);
+    expect(screen.getByRole("searchbox", { name: "Filter by name" })).toBeInTheDocument();
+  });
 });

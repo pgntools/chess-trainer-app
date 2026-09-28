@@ -7,12 +7,13 @@ import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 
+import type { VisibleLabel } from "../../a11y";
 import type { ExtraDialogProps } from "../BaseDialog/BaseDialog";
 
 export type FullScreenDialogProps = {
   open: boolean;
   onClose: () => void;
-  title: ReactNode;
+  title: VisibleLabel;
   /** The close button's tooltip and accessible name. */
   closeLabel: string;
   /** Controls in the header, before the close button. */

@@ -5,12 +5,13 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import { useTheme } from "@mui/material/styles";
 
+import type { VisibleLabel } from "../../a11y";
 import { linkProps, type LinkTarget } from "../../link";
 
 /** One entry: an action, or a place to go. */
 export type AnchoredMenuEntry = {
   id: string;
-  label: ReactNode;
+  label: VisibleLabel;
   icon?: ReactNode;
   onClick?: () => void;
   /** Go somewhere — a real link, so a middle click opens a tab. */

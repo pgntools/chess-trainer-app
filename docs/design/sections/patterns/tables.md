@@ -27,10 +27,18 @@ Gallery: `/dev/design/patterns/tables/DataTable`.
   `tieBreak?`, `paging?: { page, rowsPerPage, onPageChange,
   onRowsPerPageChange, labelRowsPerPage, labelDisplayedRows? }` (absent: every
   row, no pager), `picks?: { picked, onChange, selectAllLabel, pickLabel(row) }`,
-  `rowActions?(row)` + `actionsLabel?`, `onRowClick?(row)`, `rowLink?(row)` +
-  `linkColumn?`, `loading?` + `loadingLabel?`, `emptyLabel`, `noMatchLabel?` +
-  `filtered?`, `filters?`, `toolbar?`, `density?`, `stickyHeader?`,
-  `ariaLabel?`, `testId`.
+  `rowActions?(row)` + `actionsLabel` (required with them, CTA-111),
+  `onRowClick?(row)`, `rowLink?(row)` + `linkColumn?`, `loading?` +
+  `loadingLabel?`, `emptyLabel`, `noMatchLabel?` + `filtered?`, `filters?`,
+  `toolbar?`, `density?`, `stickyHeader?`, a name — `ariaLabel` or `caption`
+  (`TableName`, required) — and `testId`. A column's `header` is required
+  words (`VisibleLabel`).
+- **Keyboard** (CTA-111) — the sort headers are buttons, the picks
+  checkboxes (each named by its row, select-all mixed when some are picked),
+  a row's link a real link, its actions buttons, the pager's arrows buttons.
+  A row with an `onRowClick` and no `rowLink` is a tab stop of its own, opened
+  with Enter or Space (never from a key meant for its pick or an action). The
+  table is `aria-busy` while `loading`.
 - **Test ids** — `testId` (the root), `-frame` (its table `-frame-table`),
   `-sort-<column>`, `-select-all`, `-row-<id>`, `-pick-<id>`, `-link-<id>`,
   `-actions-<id>`, `-loading`, `-empty`, `-no-match`, `-pager`.

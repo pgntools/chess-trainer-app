@@ -24,6 +24,11 @@ Gallery: `/dev/design/feedback`.
   which also closes it. `duration` in ms (default 6000), `null` until
   dismissed. `testId` its own (else the provider's, `app-snackbar`); the parts
   `-message`, `-action`.
+- **Announced by its weight** (CTA-111) — an `error` or `warning` as an
+  `alert` (read at once), anything else — plain, `success`, `info` — as a
+  `status` (read when the reader is idle). A snackbar goes by itself, so an
+  action in one must be reachable some other way too, or the message must
+  stay (`duration: null`).
 - **Outside a provider** `useSnackbar` throws, naming the fix: a test of a
   component that uses it wraps it in a `SnackbarProvider`.
 - **Variations** — plain (3 s), each severity, with an action (10 s), until

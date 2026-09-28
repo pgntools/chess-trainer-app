@@ -83,6 +83,30 @@ long names, RTL, every theme) — then wire the screen.
   `gallery/WithState.tsx` / `WithHook.tsx`.
 - `src/test/tierConventions.ts` checks all of this for each tier (each tier's
   `conventions.test.ts`).
+- **Accessible — WCAG 2.2 AA** (CTA-111; [`hierarchy.md`](../../docs/design/hierarchy.md#accessibility),
+  `ACCESSIBILITY.md`):
+  - **named by a required prop** — `VisibleLabel` (`components/a11y.ts`) or
+    `string`, never optional; a name that goes with an optional part is
+    required with it (a union, as `DataTable`'s `rowActions` + `actionsLabel`);
+    a `@ts-expect-error` case proves it;
+  - **announced**: an outcome `role="status"`, an error `role="alert"`, a
+    region being filled `aria-busy`, a progress bar named with its value; a
+    spinner beside words `aria-hidden`;
+  - **operable by keyboard**, no trap; a composite widget follows its WAI-ARIA
+    pattern (`TreeView`: the tree's); a pointer-only shortcut is `aria-hidden`
+    with `tabIndex={-1}` and has a keyboard way;
+  - **the focus ring from the theme**: MUI's buttons draw it; anything else
+    focusable spreads `theme.mixins.focusRing` under `&:focus-visible`;
+  - **targets ≥ 24 px** (`MIN_TARGET_PX`) — never pad a control below it;
+  - **motion through `theme.transitions`**, never a literal `transition`, so
+    reduced motion stops it;
+  - **tests ask by role and name** and drive the keyboard with `userEvent`.
+- A theme's accessibility is tokens: each palette's `focusRing` and
+  `controlBorder`, `focusRingWidth`, `contrastThreshold: 4.5`; `buildTheme`
+  owns `MuiButtonBase`, `MuiIconButton`, `MuiSlider` and `MuiOutlinedInput`
+  (`theme/accessibility.ts`), so no theme overrides them.
+  `themes/contrast.test.ts` measures every theme — fix a failure with the
+  smallest token change and list it in `docs/design/README.md`.
 
 ## 5. The gallery
 
@@ -98,9 +122,10 @@ or block needs no registration beyond its section / family.
 
 Tests: `gallery/DesignGallery.test.tsx` (pages, menu, switches),
 `gallery/everyTheme.test.tsx` (every base and pattern page under every theme ×
-scheme × direction, no console error — ~1.5 minutes on its own),
-`views/dev/design/Main.test.tsx` (the Blocks tier, every block's page under
-every theme).
+scheme × direction, no console error and no axe violation —
+`expectNoAxeViolations`, `src/test/axe.ts`; ~3 minutes on its own, a page
+allowed `AXE_PAGE_TIMEOUT_MS`), `views/dev/design/Main.test.tsx` (the Blocks
+tier, every block's page under every theme, axe too).
 
 **Nothing of it ships**: after `yarn build`, grep `dist/` for `/dev/design`,
 `design-gallery`, `DesignGallery`, `.gallery`, the blocks' names and their

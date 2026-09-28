@@ -1,6 +1,7 @@
 import { createTheme, shouldSkipGeneratingVar, type Theme } from "@mui/material/styles";
 
 import type { ThemeDefinition } from "../themes/types";
+import { accessibilityOverrides, focusRingOf, REDUCED_MOTION_TRANSITIONS } from "./accessibility";
 import "./augment";
 
 /**
@@ -17,45 +18,61 @@ import "./augment";
  */
 export type ThemeMode = "both" | "light" | "dark";
 
+/** What else a built theme takes besides its theme, scheme and direction. */
+export type BuildThemeOptions = {
+  /**
+   * The reader's system asks for reduced motion (`prefers-reduced-motion:
+   * reduce`, `usePrefersReducedMotion`): no transition and no ripple.
+   * Absent or `false`, MUI's own.
+   */
+  reducedMotion?: boolean;
+  /** MUI's locale bundles (`@mui/material/locale`), merged over it as `createTheme`'s own extra arguments are. */
+  localization?: readonly object[];
+};
+
 /**
  * **Builds the MUI theme** for a registered theme, a mode and a direction.
- * `localization` is MUI's locale bundles (`@mui/material/locale`), merged
- * over it as `createTheme`'s own extra arguments are.
  *
  * The theme's `chess` tokens ride along as `theme.chess`; they are read
- * through `chessTokensOf` / `useChessTokens`, never by a CSS variable.
+ * through `chessTokensOf` / `useChessTokens`, never by a CSS variable. Over
+ * the theme's own component overrides go the accessibility baseline's
+ * (CTA-111, `accessibilityOverrides`): the focus ring, the target size, the
+ * control border and — with `reducedMotion` — no ripple.
  */
 export const buildTheme = (
   definition: ThemeDefinition,
   mode: ThemeMode,
   direction: "ltr" | "rtl",
-  ...localization: object[]
+  { reducedMotion = false, localization = [] }: BuildThemeOptions = {},
 ): Theme => {
   const shared = {
     direction,
     typography: definition.typography,
     shape: definition.shape,
-    components: definition.overrides,
+    components: { ...definition.overrides, ...accessibilityOverrides(definition.focusRingWidth, reducedMotion) },
     chess: definition.chess,
+    ...(reducedMotion && { transitions: REDUCED_MOTION_TRANSITIONS }),
   };
-  if (mode === "both") {
-    return createTheme(
-      {
-        ...shared,
-        cssVariables: {
-          colorSchemeSelector: "data-mui-color-scheme",
-          // The chess tokens are read as values (react-chessboard's options
-          // and SVG attributes take no `var()`), so none becomes a variable.
-          shouldSkipGeneratingVar: (keys: string[]) =>
-            keys[0] === "chess" || shouldSkipGeneratingVar(keys),
-        },
-        colorSchemes: {
-          light: { palette: definition.light },
-          dark: { palette: definition.dark },
-        },
-      },
-      ...localization,
-    );
-  }
-  return createTheme({ ...shared, palette: { ...definition[mode], mode } }, ...localization);
+  const theme =
+    mode === "both"
+      ? createTheme(
+          {
+            ...shared,
+            cssVariables: {
+              colorSchemeSelector: "data-mui-color-scheme",
+              // The chess tokens are read as values (react-chessboard's options
+              // and SVG attributes take no `var()`), so none becomes a variable.
+              shouldSkipGeneratingVar: (keys: string[]) => keys[0] === "chess" || shouldSkipGeneratingVar(keys),
+            },
+            colorSchemes: {
+              light: { palette: definition.light },
+              dark: { palette: definition.dark },
+            },
+          },
+          ...localization,
+        )
+      : createTheme({ ...shared, palette: { ...definition[mode], mode } }, ...localization);
+  // The ring reads the palette as the theme has it — a variable in the app's.
+  theme.mixins.focusRing = focusRingOf(theme, definition.focusRingWidth);
+  return theme;
 };

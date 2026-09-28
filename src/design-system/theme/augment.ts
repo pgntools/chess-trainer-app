@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import type { ChessTokens } from "../themes/types";
 
 /**
@@ -10,6 +12,30 @@ declare module "@mui/material/styles" {
     translucent: string;
     /** Inset surface: the sidebar rail and the right-hand analysis panel. */
     sunken: string;
+  }
+
+  /** The accessibility baseline's colours (CTA-111), one per scheme — both measured by `themes/contrast.test.ts`. */
+  interface Palette {
+    /** The keyboard focus ring, at 3:1 or better against every background. */
+    focusRing: string;
+    /** A form control's resting border (an outlined field), at 3:1 or better against every background. */
+    controlBorder: string;
+  }
+
+  interface PaletteOptions {
+    focusRing?: string;
+    controlBorder?: string;
+  }
+
+  interface Mixins {
+    /**
+     * **The keyboard focus ring** (CTA-111) — the theme's `focusRingWidth`
+     * in its palette's `focusRing`, 2 px off the element. Spread it under
+     * `&:focus-visible` on anything focusable that is not an MUI button (a
+     * scrolling region, a plain link); MUI's buttons draw it already. Absent
+     * under a theme `buildTheme` did not make.
+     */
+    focusRing?: CSSProperties;
   }
 
   interface Theme {

@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Link as RouterLink, useLocation } from "react-router";
 
 import type { SortDirection } from "../../../components/tables";
 import { firstDirectionOf, nextSort, type DataTableColumn } from "./columns";
-import DataTable, { type DataTableProps } from "./DataTable";
+import DataTable, { type DataTableBaseProps, type DataTableProps, type DataTableRowActions } from "./DataTable";
 
 type Row = { id: string; name?: string; elo?: number };
 type Column = "name" | "elo";
@@ -29,13 +30,14 @@ const COLUMNS: DataTableColumn<Row, Column>[] = [
   },
 ];
 
-const mount = (props: Partial<DataTableProps<Row, Column>> = {}) =>
+const mount = (props: Partial<DataTableBaseProps<Row, Column>> & DataTableRowActions<Row> = {}) =>
   render(
     <DataTable<Row, Column>
       columns={COLUMNS}
       rows={ROWS}
       rowId={(row) => row.id}
       emptyLabel="No players"
+      ariaLabel="Players"
       testId="t"
       {...props}
     />,
@@ -46,7 +48,7 @@ const shownIds = () => screen.getAllByTestId(/^t-row-/).map((row) => row.getAttr
 describe("DataTable", () => {
   describe("columns", () => {
     it("renders a header and a cell per column, in the one scrolling frame", () => {
-      mount({ ariaLabel: "Players" });
+      mount();
       expect(screen.getByTestId("t")).toContainElement(screen.getByTestId("t-frame"));
       const table = screen.getByRole("table", { name: "Players" });
       expect(within(table).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["Player", "Elo"]);
@@ -77,7 +79,15 @@ describe("DataTable", () => {
       const { rerender } = mount({ sort: { column: "elo", direction: "desc" } });
       expect(shownIds()).toEqual(["d", "a", "c", "b"]);
       rerender(
-        <DataTable<Row, Column> columns={COLUMNS} rows={ROWS} rowId={(row) => row.id} emptyLabel="" testId="t" sort={{ column: "elo", direction: "asc" }} />,
+        <DataTable<Row, Column>
+          columns={COLUMNS}
+          rows={ROWS}
+          rowId={(row) => row.id}
+          emptyLabel=""
+          ariaLabel="Players"
+          testId="t"
+          sort={{ column: "elo", direction: "asc" }}
+        />,
       );
       expect(shownIds()).toEqual(["c", "a", "d", "b"]);
     });
@@ -162,6 +172,7 @@ describe("DataTable", () => {
           rows,
           rowId: (row: Row) => row.id,
           emptyLabel: "",
+          ariaLabel: "Players",
           testId: "t",
           sort: { column: "elo" as Column, direction: "desc" as SortDirection },
           paging: paging(page),
@@ -243,7 +254,7 @@ describe("DataTable", () => {
     it("never reaches the row click from an action", () => {
       const onRowClick = vi.fn();
       const onDelete = vi.fn();
-      mount({ onRowClick, rowActions: (row) => <button type="button" onClick={() => onDelete(row.id)}>Delete</button> });
+      mount({ onRowClick, actionsLabel: "Actions", rowActions: (row) => <button type="button" onClick={() => onDelete(row.id)}>Delete</button> });
       fireEvent.click(within(screen.getByTestId("t-actions-c")).getByRole("button"));
       expect(onDelete).toHaveBeenCalledWith("c");
       expect(onRowClick).not.toHaveBeenCalled();
@@ -278,6 +289,7 @@ describe("DataTable", () => {
             rows={ROWS}
             rowId={(row) => row.id}
             emptyLabel=""
+            ariaLabel="Players"
             rowLink={(row) => ({ component: RouterLink, to: `/players/${row.id}` })}
             testId="t"
           />
@@ -325,6 +337,129 @@ describe("DataTable", () => {
       mount({ density: "dense" });
       expect(screen.getByTestId("t-frame-table")).toHaveAttribute("data-density", "dense");
       expect(screen.getByTestId("t-frame-table")).toHaveClass("MuiTable-stickyHeader");
+    });
+  });
+
+  describe("accessibility (CTA-111)", () => {
+    const picks = (picked: Set<string>, onChange = vi.fn()) => ({
+      picked,
+      onChange,
+      selectAllLabel: "Select all players",
+      pickLabel: (row: Row) => `Pick ${row.name ?? row.id}`,
+    });
+
+    it("is named by a caption instead of a label, if it has one", () => {
+      render(<DataTable<Row, Column> columns={COLUMNS} rows={ROWS} rowId={(row) => row.id} emptyLabel="" caption="Top players" testId="t" />);
+      expect(screen.getByRole("table", { name: "Top players" })).toBeInTheDocument();
+    });
+
+    it("cannot be nameless, nor have row actions in a nameless column — the types refuse both", () => {
+      const base = { columns: COLUMNS, rows: ROWS, rowId: (row: Row) => row.id, emptyLabel: "", testId: "t" };
+      // @ts-expect-error — a table is named by an ariaLabel or a caption.
+      const nameless = <DataTable<Row, Column> {...base} />;
+      // @ts-expect-error — row actions need their column's name.
+      const unnamedActions = <DataTable<Row, Column> {...base} ariaLabel="Players" rowActions={() => null} />;
+      expect([nameless, unnamedActions]).toHaveLength(2);
+    });
+
+    it("marks the table busy while its rows are read", () => {
+      const { rerender } = mount({ loading: true, loadingLabel: "Reading…" });
+      expect(screen.getByRole("table", { name: "Players" })).toHaveAttribute("aria-busy", "true");
+      expect(screen.getByRole("status")).toHaveTextContent("Reading…");
+      rerender(<DataTable<Row, Column> columns={COLUMNS} rows={ROWS} rowId={(row) => row.id} emptyLabel="" ariaLabel="Players" testId="t" />);
+      expect(screen.getByRole("table", { name: "Players" })).not.toHaveAttribute("aria-busy");
+    });
+
+    it("names every pick by its row, and select-all by its label, a partial pick reading as mixed", () => {
+      mount({ picks: picks(new Set(["a"])) });
+      expect(screen.getByRole("checkbox", { name: "Pick Tal" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "Pick Capablanca" })).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "Select all players" })).toBePartiallyChecked();
+    });
+
+    it("sorts, picks and acts from the keyboard", async () => {
+      const user = userEvent.setup();
+      const onSort = vi.fn();
+      const onChange = vi.fn();
+      const onDelete = vi.fn();
+      mount({
+        sort: { column: "name", direction: "asc" },
+        onSort,
+        picks: picks(new Set(), onChange),
+        actionsLabel: "Actions",
+        rowActions: (row) => (
+          <button type="button" onClick={() => onDelete(row.id)}>
+            Delete {row.id}
+          </button>
+        ),
+      });
+      screen.getByRole("button", { name: /Elo/ }).focus();
+      await user.keyboard("{Enter}");
+      expect(onSort).toHaveBeenCalledWith("elo", "desc");
+
+      screen.getByRole("checkbox", { name: "Pick Petrosian" }).focus();
+      await user.keyboard(" ");
+      expect(onChange).toHaveBeenCalledWith(new Set(["c"]));
+
+      await user.tab();
+      expect(screen.getByRole("button", { name: "Delete c" })).toHaveFocus();
+      await user.keyboard("{Enter}");
+      expect(onDelete).toHaveBeenCalledWith("c");
+    });
+
+    it("opens a row that only has a click with Enter or Space, the row taking the focus — never from a key meant for its pick", async () => {
+      const user = userEvent.setup();
+      const onRowClick = vi.fn();
+      mount({ onRowClick, picks: picks(new Set()) });
+      const row = screen.getByTestId("t-row-c");
+      expect(row).toHaveAttribute("tabindex", "0");
+      row.focus();
+      await user.keyboard("{Enter}");
+      expect(onRowClick).toHaveBeenLastCalledWith(ROWS[2]);
+      await user.keyboard(" ");
+      expect(onRowClick).toHaveBeenCalledTimes(2);
+
+      screen.getByRole("checkbox", { name: "Pick Petrosian" }).focus();
+      await user.keyboard(" ");
+      expect(onRowClick).toHaveBeenCalledTimes(2);
+    });
+
+    it("leaves a row with a link to its link: the row is no stop of its own", () => {
+      render(
+        <MemoryRouter>
+          <DataTable<Row, Column>
+            columns={COLUMNS}
+            rows={ROWS}
+            rowId={(row) => row.id}
+            emptyLabel=""
+            ariaLabel="Players"
+            rowLink={(row) => ({ component: RouterLink, to: `/players/${row.id}` })}
+            testId="t"
+          />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId("t-row-a")).not.toHaveAttribute("tabindex");
+      expect(screen.getByRole("link", { name: "Tal" })).toHaveAttribute("href", "/players/a");
+    });
+
+    it("pages from the keyboard", async () => {
+      const user = userEvent.setup();
+      const onPageChange = vi.fn();
+      const many = Array.from({ length: 60 }, (_, index) => ({ id: `p${index}`, name: `Player ${index}`, elo: 2000 + index }));
+      render(
+        <DataTable<Row, Column>
+          columns={COLUMNS}
+          rows={many}
+          rowId={(row) => row.id}
+          emptyLabel=""
+          ariaLabel="Players"
+          paging={{ page: 0, rowsPerPage: 25, onPageChange, onRowsPerPageChange: vi.fn(), labelRowsPerPage: "Rows per page" }}
+          testId="t"
+        />,
+      );
+      screen.getByRole("button", { name: /next page/i }).focus();
+      await user.keyboard("{Enter}");
+      expect(onPageChange).toHaveBeenCalledWith(1);
     });
   });
 });

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { VisibleLabel } from "../../../components/a11y";
 import type { SortDirection, SortValue } from "../../../components/tables";
 
 /**
@@ -9,8 +10,8 @@ import type { SortDirection, SortValue } from "../../../components/tables";
  */
 export type DataTableColumn<R, C extends string = string> = {
   id: C;
-  /** The header's words. */
-  header: ReactNode;
+  /** The header's words — required, so every column is named. */
+  header: VisibleLabel;
   /** The header is a sort button. Needs `sortValue` unless the caller sorts the rows (`sorted`). */
   sortable?: boolean;
   /** `end` for a number: the cell and its header end-aligned, in tabular figures. Default `start`. */

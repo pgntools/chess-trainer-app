@@ -199,6 +199,28 @@ reader's words), variations as optional props each with its own demo, a
 IndexedDB, no router**, and **fixtures typed with `src/lib/`'s own types**, so a
 change to a data shape breaks the fixtures at compile time.
 
+## Accessibility
+
+The target is **WCAG 2.2 AA** ([`ACCESSIBILITY.md`](../../ACCESSIBILITY.md),
+CTA-111), and the design system carries it: a component, a pattern or a block
+that keeps these rules gives every screen composed from it the same.
+
+| Rule | What it means | Enforced by |
+| --- | --- | --- |
+| **Named** | Every control has an accessible name from its props: an icon action's `label`, a dialog's `title`, a field's `label`, a table's `ariaLabel` or `caption`, a tree's, a list's and a progress bar's `ariaLabel` / `label`, a column's `header`, a row's pick by its row ("Pick game 12"). A name is a required prop typed `VisibleLabel` (`components/a11y.ts` — any words, never `null`, `undefined` or a boolean) or `string`; a name that comes with an optional part is required with it (`DataTable`'s `rowActions` with `actionsLabel`). | `tsc -b` (`@ts-expect-error` cases in `components/a11y.test.tsx`, `TableFrame.test.tsx`, `DataTable.test.tsx`); axe |
+| **Announced** | An outcome is a `status`, an error an `alert` (`StatusText`, the snackbar by its severity); "reading…" is a `status`; a region being filled is `aria-busy` (a table, a busy button); a progress bar is named and says its value — or none, while indeterminate. A spinner beside words is decoration (`aria-hidden`). | the components' tests, by role |
+| **Operable by keyboard** | Everything a pointer can do: every interactive part is a real button, link or input (or takes `tabIndex` and Enter / Space itself, as a clickable table row does), in a sensible order, with no trap. A composite widget follows its WAI-ARIA pattern — `TreeView` the tree's (one tab stop, arrows, Home / End, → / ← mirrored under RTL); a dialog keeps the focus while open and gives it back to its opener (MUI's modal). A pointer-only shortcut (the tree's chevron) is `aria-hidden` and out of the tab order, its job done by the keyboard another way. | `userEvent` keyboard tests, by role and name |
+| **A visible focus** | The theme's focus ring — `focusRingWidth` of the palette's `focusRing`, 3:1 on every surface — on everything focusable: MUI's buttons and the slider draw it; anything else a component makes focusable spreads `theme.mixins.focusRing` under `&:focus-visible`. | `theme/accessibility.test.tsx`; `themes/contrast.test.ts` |
+| **Big enough to hit** | Every pointer target at least 24 × 24 CSS px (WCAG 2.5.8): the theme floors every icon button at `MIN_TARGET_PX`; never shrink a control's padding below it. | `theme/accessibility.test.tsx` |
+| **Readable** | Colours only from the theme, whose tokens are measured: text 4.5:1, a control's border and the focus ring 3:1. A colour a component needs that no token has is a new token, not a literal. | `themes/contrast.test.ts`; `tierConventions.ts` (no literal) |
+| **Still** | Motion through the theme — `theme.transitions.create(…)`, never a literal `transition` — so a reader who asks for reduced motion gets none. | `theme/accessibility.test.tsx` |
+| **Clean under axe** | Every gallery demo passes axe's WCAG 2.2 A / AA rules under every theme, scheme and direction — so every state a demo shows is audited. jsdom cannot measure colour or size, so those two rules are off there; the rows above cover them. | `gallery/everyTheme.test.tsx`, `views/dev/design/Main.test.tsx` (`expectNoAxeViolations`, `src/test/axe.ts`) |
+| **Linted** | `eslint-plugin-jsx-a11y`'s recommended rules. A rule disabled on a line says why, and `ACCESSIBILITY.md` lists it. | `yarn lint` |
+
+A test asks for a component **as a screen reader would**: `getByRole(…, { name })`
+or `getByLabelText`, not only its test id, and drives it with `userEvent`'s
+keyboard.
+
 ## Build standalone first
 
 A complex component is built **in the gallery, before a screen uses it**:
@@ -209,8 +231,9 @@ A complex component is built **in the gallery, before a screen uses it**:
 2. **Review every state** in the gallery, a demo each: loading, empty, no
    match, one row, 10,000 rows, an unreadable row, long names, RTL (the
    direction switch, with Hebrew names in a demo) — under **every theme**, light
-   and dark (the gallery's switches). The every-theme tests render every demo
-   under every theme, scheme and direction and fail on a console error.
+   and dark (the gallery's switches) — and from the keyboard alone. The
+   every-theme tests render every demo under every theme, scheme and direction
+   and fail on a console error or an axe violation ([Accessibility](#accessibility)).
 3. **Then wire the screen**: the screen reads the store and the route, holds
    the state, and passes it all in.
 

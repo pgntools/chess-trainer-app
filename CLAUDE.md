@@ -41,6 +41,7 @@ Node comes from `fnm`, so run these from a shell where it is on `PATH`.
 | Watch mode | `yarn test` |
 | **Wire a PGN collection into the Library** | `node scripts/wirepgn.js path/to/file.pgn` (or `yarn wirepgn …`; `--list`, `--check`, `--rebuild`, `--remove <id>` — [`game-collections.md`](.claude/rules/game-collections.md) §3) |
 | Coverage | `npx vitest run --coverage` |
+| **Audit a render for accessibility** | `await expectNoAxeViolations(element?)` in a test (`src/test/axe.ts`) — axe's WCAG 2.2 A / AA rules, a violation fails it; `stubReducedMotion()` (`src/test/reducedMotion.ts`) renders for a reader who asks for reduced motion |
 
 **Limit the workers to the machine.** At full parallelism the heavier screen
 suites (the boards, the Library, the repertoires) starve each other of CPU:
@@ -58,7 +59,11 @@ store's writes land, resets the stores and deletes their databases
 ([`database.md`](.claude/rules/database.md) §7 — including why fake timers
 must leave `setImmediate` real). Board screens stub `<Chessboard>` and the
 engine with the shared harness, `src/views/board/boardTestHarness.tsx`
-([`chessboard.md`](.claude/rules/chessboard.md) §8).
+([`chessboard.md`](.claude/rules/chessboard.md) §8). **New tests find things by
+role and name** (`getByRole(…, { name })`, `getByLabelText`) and drive the
+keyboard with `userEvent`, so a test that passes is one a screen reader could
+follow; `expectNoAxeViolations` audits a whole render
+([`ACCESSIBILITY.md`](ACCESSIBILITY.md)).
 
 `npx knip` reports unused code. Expected in its output: the vendored stories,
 the Stockfish worker, the stores' `settled…` / `delete…Db` helpers, which
@@ -217,6 +222,21 @@ through `lib/idb.ts`, most over the record-store factory
 first read lands — a screen arriving by a URL naming a record waits for it.
 Writes are promises and never throw. Only the colour mode, the theme choice
 and the language live in `localStorage` ([`database.md`](.claude/rules/database.md) §2).
+
+### Accessibility: WCAG 2.2 AA, carried by the design system
+
+The target is **WCAG 2.2 level AA** ([`ACCESSIBILITY.md`](ACCESSIBILITY.md):
+what is covered, how it is checked, the known gaps — above all that the
+boards are drag-only until the board accessibility Story). The **design
+system carries it** (CTA-111, [`hierarchy.md`](docs/design/hierarchy.md#accessibility)),
+so a screen built from it inherits it: every control's accessible name is a
+required prop, states are announced (`status` / `alert` / `aria-busy`), the
+keyboard operates everything with the theme's focus ring, targets are at least
+24 px, the theme tokens are measured for contrast (`themes/contrast.test.ts`),
+motion goes through the theme and stops under `prefers-reduced-motion` (the
+boards' piece animation too, through `useBoardSquareOptions`), and every
+gallery demo passes axe in every theme. `yarn lint` runs
+`eslint-plugin-jsx-a11y`'s recommended rules.
 
 ### Theming, direction and language
 

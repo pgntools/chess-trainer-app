@@ -3,6 +3,8 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 
+import type { VisibleLabel } from "../../a11y";
+
 export type SettingsFrameProps = {
   /** The sections — `SettingsSection`s. */
   children: ReactNode;
@@ -10,8 +12,8 @@ export type SettingsFrameProps = {
   onSave: () => void;
   /** Drop the draft (and, usually, leave). */
   onCancel: () => void;
-  saveLabel: ReactNode;
-  cancelLabel: ReactNode;
+  saveLabel: VisibleLabel;
+  cancelLabel: VisibleLabel;
   /** Nothing to keep yet (the draft is unchanged, or invalid). */
   saveDisabled?: boolean;
   /** The save is under way: both buttons off, a spinner in Save. */
@@ -75,7 +77,7 @@ function SettingsFrame({
           variant="contained"
           disabled={saveDisabled || busy}
           aria-busy={busy || undefined}
-          startIcon={busy ? <CircularProgress size={16} color="inherit" /> : undefined}
+          startIcon={busy ? <CircularProgress aria-hidden size={16} color="inherit" /> : undefined}
           data-testid={`${testId}-save`}
         >
           {saveLabel}

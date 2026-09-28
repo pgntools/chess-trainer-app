@@ -24,11 +24,16 @@ The comparison ended on five open questions; each has one answer here.
 
 - **Purpose** — the one region that scrolls, both ways (`flex: 1; minHeight:
   0`), around a small table with a sticky header set in 600, never wrapping.
-- **Props** — `children`, `density?: "normal" | "dense"` (dense: body cells
-  `py: 0.25`), `stickyHeader?` (default true), `ariaLabel?`, `after?`
-  (inside the scroll region, after the table), `testId` (the region; the
-  table is `-table`).
-- **Variations** — normal, dense, not sticky.
+- **Props** — `children`, a name — **`ariaLabel` or `caption`, one of the
+  two** (`TableName`, CTA-111; a caption is visible, under the rows) —
+  `density?: "normal" | "dense"` (dense: body cells `py: 0.25`),
+  `stickyHeader?` (default true), `busy?` (`aria-busy` while the rows are
+  read), `after?` (inside the scroll region, after the table), `testId` (the
+  region; the table is `-table`, a caption `-caption`).
+- **Accessible** — the scroll region is a named `region` that takes the focus
+  (`tabIndex={0}`, the theme's ring), so a table with nothing focusable in it
+  still scrolls from the keyboard.
+- **Variations** — normal, dense, not sticky, named by a caption, busy.
 - **Replaces** — the `TableContainer` + `Table size="small" stickyHeader`
   frame of `PlayedGames`, `CollectionTable` and `FolderTreeTable`.
 
@@ -83,7 +88,7 @@ The comparison ended on five open questions; each has one answer here.
 - **Purpose** — a table with nothing to show, or still reading: one row across
   every column, inside the table, the header kept.
 - **Props** — `colSpan`, `children` (the words), `testId`. `LoadingTableRow`
-  adds a spinner and `aria-busy`, its line a `status`.
+  adds a spinner (`aria-hidden`) and `aria-busy`, its line a `status`.
 - **Replaces** — the empty / no-match `Typography` inside (Lobby, collection)
   or outside (Library home) the container, and the loading line above the
   Lobby's table.

@@ -3,19 +3,20 @@ import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import DialogContentText from "@mui/material/DialogContentText";
 
+import type { VisibleLabel } from "../../a11y";
 import BaseDialog, { type ExtraDialogProps } from "../BaseDialog/BaseDialog";
 
 export type ConfirmDialogProps = {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  title: ReactNode;
+  title: VisibleLabel;
   /** The question's body — one `DialogContentText` paragraph. */
   message?: ReactNode;
   /** Anything under the message (counts, a list, an error slot). */
   children?: ReactNode;
-  confirmLabel: ReactNode;
-  cancelLabel: ReactNode;
+  confirmLabel: VisibleLabel;
+  cancelLabel: VisibleLabel;
   /** `destructive` paints the confirm in the error colour. */
   tone?: "default" | "destructive";
   /** A contained confirm (the default) or a text one. */
@@ -83,7 +84,7 @@ function ConfirmDialog({
             variant={confirmVariant}
             disabled={busy || confirmDisabled}
             aria-busy={busy || undefined}
-            startIcon={busy ? <CircularProgress size={16} color="inherit" /> : undefined}
+            startIcon={busy ? <CircularProgress aria-hidden size={16} color="inherit" /> : undefined}
             data-testid={`${testId}-confirm`}
           >
             {confirmLabel}

@@ -4,8 +4,10 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Switch from "@mui/material/Switch";
 import Typography from "@mui/material/Typography";
 
+import type { VisibleLabel } from "../../a11y";
+
 export type SwitchFieldProps = {
-  label: ReactNode;
+  label: VisibleLabel;
   checked: boolean;
   onChange: (checked: boolean) => void;
   /** A caption under it saying what it does — it also describes the switch. */

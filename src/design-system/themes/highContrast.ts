@@ -4,8 +4,8 @@ import type { ThemeDefinition } from "./types";
 
 /**
  * **High contrast** (CTA-108) — every text and control at WCAG AA or better
- * in both schemes (`highContrast.test.ts` measures it), a visible focus ring
- * on everything that takes the keyboard, strong borders, and a board told
+ * in both schemes (`themes.test.ts` and `contrast.test.ts` measure it), a
+ * 3 px focus ring on everything that takes the keyboard, strong borders, and a board told
  * apart by lightness rather than hue, drawn over with the Okabe–Ito palette,
  * which stays distinct under every common colour blindness.
  *
@@ -30,6 +30,8 @@ export const highContrastTheme: ThemeDefinition = {
     },
     text: { primary: "#000000", secondary: "#262626", disabled: "#595959" },
     divider: "#595959",
+    focusRing: "#000000",
+    controlBorder: "#262626",
   },
   dark: {
     contrastThreshold: 4.5,
@@ -46,7 +48,11 @@ export const highContrastTheme: ThemeDefinition = {
     },
     text: { primary: "#ffffff", secondary: "#e6e6e6", disabled: "#a6a6a6" },
     divider: "#a6a6a6",
+    focusRing: "#ffffff",
+    controlBorder: "#e6e6e6",
   },
+  // Thicker than the other themes' 2 px.
+  focusRingWidth: 3,
   typography: {
     fontFamily: ["Roboto", "ui-sans-serif", "system-ui", "-apple-system", '"Segoe UI"', "sans-serif"].join(", "),
     h1: { fontSize: "clamp(28px, 4vw, 42px)", lineHeight: 1.1, fontWeight: 800 },
@@ -56,28 +62,11 @@ export const highContrastTheme: ThemeDefinition = {
   },
   shape: { borderRadius: 4 },
   overrides: {
-    // A focus ring on everything that takes the keyboard.
-    MuiButtonBase: {
-      styleOverrides: {
-        root: ({ theme }) => ({
-          "&.Mui-focusVisible": {
-            outline: "3px solid",
-            outlineColor: paletteColor(theme, (palette) => palette.text.primary),
-            outlineOffset: 2,
-          },
-        }),
-      },
-    },
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: {
         root: { borderRadius: 4 },
         outlined: { borderWidth: 2, "&:hover": { borderWidth: 2 } },
-      },
-    },
-    MuiOutlinedInput: {
-      styleOverrides: {
-        notchedOutline: ({ theme }) => ({ borderColor: paletteColor(theme, (palette) => palette.text.secondary) }),
       },
     },
     MuiLink: { defaultProps: { underline: "always" } },

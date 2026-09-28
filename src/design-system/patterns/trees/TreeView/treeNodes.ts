@@ -22,3 +22,27 @@ export const ancestorsOf = (nodes: readonly TreeNode[], id: string): string[] =>
   };
   return walk(nodes, []) ?? [];
 };
+
+/** A node as the keyboard walks the tree: it, and the branch it sits in (`undefined` at the top). */
+export type VisibleNode = { node: TreeNode; parentId: string | undefined };
+
+/**
+ * **The rows in view, top to bottom** — every node whose branches above are
+ * all open, in the order the tree draws them: what ↓ / ↑, Home and End walk
+ * (WAI-ARIA's tree pattern, CTA-111). Cut at a node already walked, as
+ * {@link ancestorsOf} is.
+ */
+export const visibleNodes = (nodes: readonly TreeNode[], open: ReadonlySet<string>): VisibleNode[] => {
+  const seen = new Set<string>();
+  const shown: VisibleNode[] = [];
+  const walk = (level: readonly TreeNode[], parentId: string | undefined) => {
+    for (const node of level) {
+      if (seen.has(node.id)) continue;
+      seen.add(node.id);
+      shown.push({ node, parentId });
+      if (node.children !== undefined && open.has(node.id)) walk(node.children, node.id);
+    }
+  };
+  walk(nodes, undefined);
+  return shown;
+};

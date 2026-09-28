@@ -82,7 +82,8 @@ Gallery: `/dev/design/dialogs` — every variation open in its own frame
   writing**; a second `run` cancels the first; **unmounting cancels**; a work
   that throws once aborted is `cancelled`, never `failed`.
 - **ProgressDialog props** — `open`, `title`, `children?` (above the bar),
-  `progress?: { done, total } | null` (absent: indeterminate), `caption?`,
+  `progress?: { done, total } | null` (absent: indeterminate), `caption?`
+  (the bar is named by the dialog's title and described by the caption),
   `cancelLabel`, `onCancel` (the button, Escape, the backdrop),
   `cancelDisabled?` (while writing), `width?`, `testId`, `dialogProps?`. Ids:
   `-progress`, `-caption`, `-cancel`.

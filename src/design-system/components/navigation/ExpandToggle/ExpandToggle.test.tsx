@@ -11,7 +11,8 @@ describe("ExpandToggle", () => {
     const onToggle = vi.fn();
     const onRow = vi.fn();
     render(
-      <div onClick={onRow}>
+      // A stand-in for a clickable row; the row's own keyboard access is not under test.
+      <div role="presentation" onClick={onRow}>
         <ExpandToggle expanded={false} onToggle={onToggle} label="Open Openings" testId="probe" />
       </div>,
     );

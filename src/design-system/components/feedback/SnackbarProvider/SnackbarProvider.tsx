@@ -25,6 +25,10 @@ export type SnackbarProviderProps = {
  *   one shows cuts it short; the next opens once the last has left.
  * - A click elsewhere on the page does not dismiss it (MUI's `clickaway`);
  *   Escape, its close button, its action and its timer do.
+ * - **Announced by its weight** (CTA-111): an error or a warning as an
+ *   `alert`, read at once; anything else — a plain message, a success, an
+ *   info — as a `status`, read when the reader is idle, rather than MUI's
+ *   `alert` for every one.
  */
 function SnackbarProvider({ children, testId = "app-snackbar" }: SnackbarProviderProps) {
   const [{ active, open }, dispatch] = useReducer(snackbarQueue, EMPTY_SNACKBAR_QUEUE);
@@ -42,6 +46,7 @@ function SnackbarProvider({ children, testId = "app-snackbar" }: SnackbarProvide
   const api = useMemo(() => ({ show }), [show]);
   const id = active?.testId ?? testId;
   const action = active?.action;
+  const role = active?.severity === "error" || active?.severity === "warning" ? "alert" : "status";
   const actionButton =
     action === undefined ? undefined : (
       <Button
@@ -67,13 +72,14 @@ function SnackbarProvider({ children, testId = "app-snackbar" }: SnackbarProvide
           onClose={close}
           autoHideDuration={active.duration === undefined ? DEFAULT_DURATION_MS : active.duration}
           anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-          slotProps={{ transition: { onEnter: entered, onExited: exited } }}
+          slotProps={{ transition: { onEnter: entered, onExited: exited }, content: { role } }}
           data-testid={id}
           {...(active.severity === undefined
             ? { message: <span data-testid={`${id}-message`}>{active.message}</span>, action: actionButton }
             : {
                 children: (
                   <Alert
+                    role={role}
                     severity={active.severity}
                     variant="filled"
                     onClose={action === undefined ? () => close() : undefined}

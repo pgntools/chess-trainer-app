@@ -18,7 +18,7 @@ Gallery: `/dev/design/states`.
 
 ## LoadingSpinnerLine
 
-- **Purpose** — a small spinner before a line, the pair a `status`.
+- **Purpose** — a small spinner before a line, the pair a `status` — the spinner `aria-hidden`, the words announced.
 - **Props** — `children`, `size?: "small" | "medium"`, `testId`.
 - **Variations** — small (beside `body2`), medium.
 - **Replaces** — the `CircularProgress size={16}` + `body2` lines of the
@@ -46,8 +46,11 @@ Gallery: `/dev/design/states`.
 
 ## ProgressLine
 
-- **Purpose** — a bar with a caption (6 px, rounded), labelled by the caption.
-- **Props** — `value?` (0–100, clamped; absent: indeterminate), `caption?`,
+- **Purpose** — a bar with a caption (6 px, rounded), named by its `label`
+  and described by the caption; a determinate bar reports `aria-valuenow`,
+  an indeterminate one none.
+- **Props** — `value?` (0–100, clamped; absent: indeterminate), `label`
+  (the bar's accessible name, required — CTA-111), `caption?`,
   `color?: "primary" | "success"`, `testId` (`-bar`, `-caption`).
 - **Variations** — determinate; success (a coverage bar); indeterminate.
 - **Replaces** — the `LinearProgress` bars of indexing, import and the

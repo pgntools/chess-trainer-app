@@ -13,17 +13,28 @@ export const defaultTheme: ThemeDefinition = {
   id: "default",
   labelKey: "appearance.themes.default",
   light: {
+    // WCAG AA (CTA-111): a button's text colour is picked at 4.5:1, not MUI's 3.
+    contrastThreshold: 4.5,
     primary: { main: "#2563eb" },
+    // Darkened to AA as text on the page (CTA-111): MUI's #d32f2f, #ed6c02 and #0288d1.
+    error: { main: "#d22c2c" },
+    warning: { main: "#b45202" },
+    info: { main: "#0273b1" },
     background: {
       default: "#eef2f7",
       paper: "#ffffff",
       translucent: "rgba(238, 242, 247, 0.85)",
       sunken: "#f8fafc",
     },
-    text: { primary: "#1f2937", secondary: "#667085" },
+    // text.secondary darkened to AA on the page (CTA-111): was #667085.
+    text: { primary: "#1f2937", secondary: "#646e83" },
     divider: "#dfe5ee",
+    focusRing: "#2563eb",
+    controlBorder: "#7a8ba5",
   },
   dark: {
+    // WCAG AA (CTA-111): a button's text colour is picked at 4.5:1, not MUI's 3.
+    contrastThreshold: 4.5,
     primary: { main: "#60a5fa" },
     background: {
       default: "#0b0f16",
@@ -33,7 +44,10 @@ export const defaultTheme: ThemeDefinition = {
     },
     text: { primary: "#e6ebf3", secondary: "#9aa6b7" },
     divider: "#26313f",
+    focusRing: "#60a5fa",
+    controlBorder: "#576880",
   },
+  focusRingWidth: 2,
   typography: {
     fontFamily: [
       "Roboto",

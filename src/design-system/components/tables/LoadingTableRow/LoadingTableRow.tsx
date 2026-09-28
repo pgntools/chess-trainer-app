@@ -13,7 +13,8 @@ export type LoadingTableRowProps = {
 
 /**
  * **A table whose rows are still being read** (CTA-108): one row across
- * every column, a small spinner beside the caller's line, marked busy — the
+ * every column, a small spinner beside the caller's line (announced as a
+ * `status`; the spinner itself is decoration), marked busy — the
  * header stays, so the table does not jump when the rows land.
  */
 function LoadingTableRow({ colSpan, children, testId }: LoadingTableRowProps) {
@@ -24,7 +25,7 @@ function LoadingTableRow({ colSpan, children, testId }: LoadingTableRowProps) {
           role="status"
           sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1, color: "text.secondary", typography: "body2" }}
         >
-          <CircularProgress size={16} color="inherit" />
+          <CircularProgress aria-hidden size={16} color="inherit" />
           {children}
         </Box>
       </TableCell>

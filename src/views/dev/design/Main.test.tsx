@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { BLOCK_FAMILIES } from "../../../blocks/families";
 import { themes } from "../../../design-system/themes";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
+import { AXE_PAGE_TIMEOUT_MS, expectNoAxeViolations } from "../../../test/axe";
 import { THEME_STORAGE_KEY } from "../../../theme/themeChoice";
 import Main from "./Main";
 
@@ -12,7 +13,8 @@ import Main from "./Main";
   The dev route (CTA-110): it discovers `src/blocks/**\/*.gallery.tsx` and
   hands the gallery a Blocks tier, keeps the CTA-107 links working, and every
   block's page renders under every theme, as the design system's own pages do
-  in `design-system/gallery/everyTheme.test.tsx`.
+  in `design-system/gallery/everyTheme.test.tsx` — and, as there, axe finds
+  no WCAG 2.2 A / AA violation in its demos (CTA-111).
 */
 
 function Where() {
@@ -61,7 +63,7 @@ describe("the design gallery's route", () => {
     expect(preview()).toHaveAttribute("data-tier", "blocks");
     expect(screen.getByTestId("design-gallery-tier")).toHaveTextContent("Blocks · Trees");
     expect(screen.getByTestId("design-gallery-nav-blocks")).toHaveAttribute("aria-expanded", "true");
-    expect(within(screen.getByTestId("design-gallery-nav-blocks-trees-group")).getByRole("link", { name: /FolderTree/ })).toHaveAttribute(
+    expect(within(screen.getByTestId("design-gallery-nav-blocks-trees-group")).getByRole("treeitem", { name: /FolderTree/ })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -85,7 +87,7 @@ describe("the design gallery's route", () => {
   ] as const;
   const combos = BLOCK_PAGES.flatMap((page) => themes.map((theme, index) => [page, theme.id, ...SCHEMES[index % SCHEMES.length]] as const));
 
-  it.each(combos)("%s under %s · %s · %s renders, with no error", (page, themeId, mode, direction) => {
+  it.each(combos)("%s under %s · %s · %s renders, with no error and no axe violation", async (page, themeId, mode, direction) => {
     // The gallery opens on the reader's theme; the scheme and direction are its own switches.
     localStorage.setItem(THEME_STORAGE_KEY, themeId);
     render(
@@ -104,6 +106,7 @@ describe("the design gallery's route", () => {
     expect(preview()).toHaveAttribute("dir", direction);
     expect(within(preview()).getAllByTestId(/^design-gallery-demo-/).length).toBeGreaterThan(0);
     expect(preview()).toHaveAttribute("data-theme", themeId);
+    await expectNoAxeViolations(preview());
     expect(errors).toEqual([]);
-  });
+  }, AXE_PAGE_TIMEOUT_MS);
 });

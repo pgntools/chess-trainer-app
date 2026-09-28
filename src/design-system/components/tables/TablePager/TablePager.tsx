@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import TablePagination, { type LabelDisplayedRowsArgs } from "@mui/material/TablePagination";
 
+import type { VisibleLabel } from "../../a11y";
 import { TABLE_PAGE_SIZES } from "./pageSizes";
 
 export type TablePagerProps = {
@@ -12,7 +13,7 @@ export type TablePagerProps = {
   onPageChange: (page: number) => void;
   onRowsPerPageChange: (rows: number) => void;
   /** "Rows per page" in the reader's language. */
-  labelRowsPerPage: ReactNode;
+  labelRowsPerPage: VisibleLabel;
   /** "1–50 of 812" — absent, the theme's locale bundle words it. */
   labelDisplayedRows?: (args: LabelDisplayedRowsArgs) => ReactNode;
   testId: string;

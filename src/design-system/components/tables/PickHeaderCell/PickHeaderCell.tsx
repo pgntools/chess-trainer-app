@@ -1,6 +1,8 @@
 import Checkbox from "@mui/material/Checkbox";
 import TableCell from "@mui/material/TableCell";
 
+import { nativeIndeterminate } from "../../a11y";
+
 export type PickHeaderCellProps = {
   /** How many rows select-all covers (the rows the filters leave, on every page). */
   total: number;
@@ -29,7 +31,7 @@ function PickHeaderCell({ total, picked, onToggleAll, label, testId }: PickHeade
         indeterminate={picked > 0 && !all}
         disabled={total === 0}
         onChange={onToggleAll}
-        slotProps={{ input: { "aria-label": label } }}
+        slotProps={{ input: { "aria-label": label, ref: nativeIndeterminate(picked > 0 && !all) } as object }}
         data-testid={testId}
       />
     </TableCell>

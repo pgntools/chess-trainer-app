@@ -2,8 +2,10 @@ import type { ReactNode } from "react";
 import Button from "@mui/material/Button";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 
+import type { VisibleLabel } from "../../a11y";
+
 export type FileInputButtonProps = {
-  label: ReactNode;
+  label: VisibleLabel;
   /** The file types offered — `".pgn"`, or a list (`[".pgn", ".zip"]`). */
   accept: string | readonly string[];
   /** The files picked — never called with none. */

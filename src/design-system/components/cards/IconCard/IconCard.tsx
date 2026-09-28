@@ -4,11 +4,12 @@ import Card from "@mui/material/Card";
 import CardActionArea from "@mui/material/CardActionArea";
 import Typography from "@mui/material/Typography";
 
+import type { VisibleLabel } from "../../a11y";
 import { linkProps, type LinkTarget } from "../../link";
 
 export type IconCardProps = {
   icon: ReactNode;
-  label: ReactNode;
+  label: VisibleLabel;
   /** A line under the label saying what is there. */
   description?: ReactNode;
   onClick?: () => void;
