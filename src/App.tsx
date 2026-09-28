@@ -53,7 +53,10 @@ const devScreen = (load: Parameters<typeof lazy>[0]): ReactNode => {
 const devRoutes: RouteObject[] = import.meta.env.DEV
   ? [
       {
-        path: "/dev/design",
+        // One page per section (`/dev/design/tables`, …); `/dev/design` and
+        // an unknown section land on the first. One optional-segment route, so
+        // moving between sections keeps the gallery (and its switches) mounted.
+        path: "/dev/design/:section?",
         element: devScreen(() => import("./views/dev/design/Main")),
         // Not a board: the gallery takes the whole body (no square, no aside).
         handle: FULL_WIDTH_ROUTE,

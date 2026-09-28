@@ -82,7 +82,7 @@ uses can look unused — check `scripts/` before removing one.
 | **Tree views** (how a board shows its game tree) | — | `views/explorer/`, `lib/treeMap.ts` | [`tree-views.md`](.claude/rules/tree-views.md) |
 | **PGN annotations** (comments, `[%cmd]`s, the `prc` and `games` tags, NAG glyphs) | — | `lib/pgn.ts`, `lib/gameTree.ts`, `lib/moveAnnotations.ts`, `lib/playChance.ts`, `lib/gamesTag.ts` | [`pgn-annotations.md`](.claude/rules/pgn-annotations.md) |
 | **The board core** | — | `views/board/core/` | [`chessboard.md`](.claude/rules/chessboard.md) §9 |
-| **The design system** (themes, the MUI component sections, the dev-only gallery) | `/dev/design` (dev only) | `src/design-system/`, `theme/themeChoice.ts`, `views/dev/design/` | [`docs/design/README.md`](docs/design/README.md) |
+| **The design system** (themes, the MUI component sections, the dev-only gallery) | `/dev/design/<section>` (dev only; one page per section) | `src/design-system/`, `theme/themeChoice.ts`, `views/dev/design/` | [`docs/design/README.md`](docs/design/README.md) |
 | **Stores** (every one IndexedDB) | — | `lib/idb.ts`, `lib/idbRecordStore.ts`, `lib/*Store.ts`, `lib/*Db.ts` | [`database.md`](.claude/rules/database.md) |
 
 ## Layout of the source
@@ -91,7 +91,7 @@ uses can look unused — check `scripts/` before removing one.
 | --- | --- |
 | `src/main.tsx`, `src/App.tsx` | The composition root (`AppThemeWithLang` → `CssBaseline` → `App`; imports `./i18n` for its side effect) and the router. |
 | `src/i18n.ts`, `src/locales/` | i18next setup (`supportedLanguages`, `rtlLanguages`, `asAppLanguage()`) and the inline `en` / `he` catalogs. `he` is typed `typeof en`, so a missing key is a compile error. |
-| `src/design-system/` | **The design system** (CTA-107), a layer of its own that knows no chess screen, store or route — `yarn lint` fails if it imports `src/views/` or `src/lib/`. `themes/` (a theme is data; the registry), `theme/` (`buildTheme`, the `chess` tokens' readers, the RTL cache), `components/<section>/` (one folder per MAIN section, each with an `index.ts` screens import from), `gallery/` (the dev-only `/dev/design`). Layers and how to add to them: [`docs/design/README.md`](docs/design/README.md). |
+| `src/design-system/` | **The design system** (CTA-107), a layer of its own that knows no chess screen, store or route — `yarn lint` fails if it imports `src/views/` or `src/lib/`. `themes/` (a theme is data; the registry), `theme/` (`buildTheme`, the `chess` tokens' readers, the RTL cache), `components/<section>/` (one folder per MAIN section, each with an `index.ts` screens import from), `gallery/` (the dev-only `/dev/design/<section>`, a page per section). Layers and how to add to them: [`docs/design/README.md`](docs/design/README.md). |
 | `src/theme/` | The app's wiring of the look: the `AppThemeWithLang` provider (theme choice, scheme, direction), `themeChoice.ts` (the reader's theme, in `localStorage`), `ForceLTR`, the header controls. |
 | `src/views/main/` | The app shell: `Layout.tsx` (header, sidebar, the board square and the right-hand panel, `BOARD_PANEL_GAP_PX` between them — or, for a route whose `handle` is `FULL_WIDTH_ROUTE` from `routeHandle.ts`, the whole body instead), `rightPanel.tsx` (the route-fillable panel slot), `Sidebar.tsx` and the nav registries. |
 | `src/views/home/` | The landing page at `/` — a card per screen, built from `navTree()`. |

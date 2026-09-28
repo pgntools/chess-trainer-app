@@ -81,15 +81,22 @@ inside the app's, as the gallery's preview does).
 
 ### The gallery
 
-`/dev/design` — **dev-only**, behind the Development section
+`/dev/design/<section>` — **dev-only**, behind the Development section
 ([`chessboard.md`](../../.claude/rules/chessboard.md) §9.5): its nav folder
 and entry are spreads gated on `import.meta.env.DEV`, its route a
 `React.lazy` import in `App.tsx`'s `devRoutes`, so a production build has no
 chunk of it. Its route carries `handle: FULL_WIDTH_ROUTE`
 (`views/main/routeHandle.ts`), so the shell gives it the whole body — no board
-square, no right-hand panel. A **section menu** runs down its left: a link per
-section that scrolls the preview to it, the section in view marked as you
-scroll. It finds every `components/**/*.gallery.tsx` with
+square, no right-hand panel.
+
+**Every section is a page of its own**, `/dev/design/<section>`
+(`/dev/design/dialogs`, `/dev/design/tables`, …), because each will grow
+fast; `/dev/design` and an unknown section land on the first. A menu down the
+gallery's left links the pages, the one on screen marked. It is one
+optional-segment route (`/dev/design/:section?`), so moving between sections
+keeps the theme / scheme / direction switches as they were. The gallery itself
+knows no route: the wrapper (`views/dev/design/Main.tsx`) hands it the section
+from the URL and a `sectionPath(id)`. It finds every `components/**/*.gallery.tsx` with
 `import.meta.glob` (`gallery/discover.ts`) — a gallery module default-exports
 `{ section, title, demos }` and needs no registration — groups the demos by
 section, and previews them under a theme, light / dark and LTR / RTL switch of
