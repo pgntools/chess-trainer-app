@@ -27,4 +27,24 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // The design system (CTA-107) is a layer of its own: it knows no chess
+    // screen, no store and no route, so nothing in it may reach into
+    // `src/views/` or `src/lib/`. The screens depend on it, never the reverse.
+    files: ['src/design-system/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^\\.{1,2}/(.*/)?(views|lib)(/.*)?$',
+              message:
+                'src/design-system/ is a separate layer: it must not import from src/views/ or src/lib/ (docs/design/README.md, "The layers").',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ])

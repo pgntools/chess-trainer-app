@@ -1,6 +1,6 @@
+import { useChessTokens } from "../../design-system/theme";
 import type { VariationNode } from "../../lib/gameTree";
 import {
-  CHANCE_ARROW_FILL_COLOR,
   chanceArrowPath,
   chanceArrowSpec,
   type ChanceArrowColors,
@@ -49,7 +49,8 @@ type ChanceArrowsProps = {
   /**
    * Each arrow's own colours, in `nodes` order (CTA-98 — the Analysis Board's
    * width-sized arrows in its palette, an untagged move gray). Absent, or an
-   * `undefined` entry: lichess's white fill and magenta border.
+   * `undefined` entry: the theme's play-chance fill and border (lichess's white
+   * and magenta, under the default theme).
    */
   colors?: readonly (ChanceArrowColors | undefined)[];
 };
@@ -62,6 +63,9 @@ function ChanceArrows({
   orientation,
   colors,
 }: ChanceArrowsProps) {
+  // The theme's play-chance colours (CTA-107), the hover its classic palette's.
+  const { arrows, arrowPalettes } = useChessTokens();
+  const borders = { border: arrows.chanceBorder, hovered: arrowPalettes.classic.hovered };
   return (
     <svg
       data-testid={testId}
@@ -85,6 +89,7 @@ function ChanceArrows({
           orientation,
           chance,
           node.id === hoveredId,
+          borders,
         );
         const own = colors?.[index];
         return (
@@ -93,7 +98,7 @@ function ChanceArrows({
             data-from={node.from}
             data-to={node.to}
             d={chanceArrowPath(spec.points)}
-            fill={own?.fill ?? CHANCE_ARROW_FILL_COLOR}
+            fill={own?.fill ?? arrows.chanceFill}
             stroke={own?.border ?? spec.borderColor}
             strokeWidth={spec.borderWidth * 2}
             strokeLinejoin="round"

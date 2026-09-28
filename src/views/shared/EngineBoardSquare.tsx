@@ -9,6 +9,7 @@ import {
 } from "react-chessboard";
 import { diffForSide, type CapturedSummary } from "../../lib/capturedPieces";
 import type { Score } from "../../lib/engineAnalysis";
+import { useBoardSquareOptions } from "./boardColors";
 import EvalBar, { EVAL_BAR_GAP_PX, EVAL_BAR_TOTAL_PX } from "./EvalBar";
 import PromotionPicker, { type PromotionChoice } from "./PromotionPicker";
 import type { PlayerPlates } from "./PlayerPlate";
@@ -124,8 +125,12 @@ function EngineBoardSquare({
   onResolvePromotion,
 }: EngineBoardSquareProps) {
   const { t } = useTranslation();
+  const squareOptions = useBoardSquareOptions();
 
+  // The theme's squares first (CTA-107), so a screen's own options can still
+  // restyle them.
   const chessboardOptions: ChessboardOptions = {
+    ...squareOptions,
     ...boardOptions,
     id,
     position,

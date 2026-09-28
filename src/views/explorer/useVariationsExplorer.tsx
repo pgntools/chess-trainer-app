@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Arrow } from "react-chessboard";
 import { useTranslation } from "react-i18next";
 
+import { useChessTokens } from "../../design-system/theme";
 import type { ArrowPaletteId, ArrowWidthSource } from "../../lib/arrowSettings";
 import type { Score } from "../../lib/engineAnalysis";
 import {
@@ -19,11 +20,7 @@ import { maskNodeSan, type PieceMask } from "../../lib/pieceMask";
 import { playChances, playChanceOf } from "../../lib/playChance";
 import type { MapCoverage } from "../../lib/treeMap";
 import NextMovesBar from "../tools/analysis/NextMovesBar";
-import {
-  NEXT_MOVE_ARROW_PALETTES,
-  nextMoveArrowsOf,
-  REQUIRED_MOVE_ARROW_COLOR,
-} from "../tools/analysis/nextMoveArrows";
+import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
 import AnnotationsBar, { type CommentEditing } from "./AnnotationsBar";
 import ChanceArrows from "./ChanceArrows";
 import { UNTAGGED_ARROW_CHANCE, weightedArrowColors } from "./chanceArrows";
@@ -172,7 +169,10 @@ export function useVariationsExplorer({
         : undefined,
     [arrowOptions.show, widthSource, continuations],
   );
-  const palette = NEXT_MOVE_ARROW_PALETTES[arrowOptions.palette ?? "classic"];
+  // The theme's arrow colours (CTA-107): the chosen palette, the required
+  // move's and the untagged gray.
+  const chess = useChessTokens();
+  const palette = chess.arrowPalettes[arrowOptions.palette ?? "classic"];
   const hoveredId = hovered?.id ?? null;
 
   // A required move is an instruction, so it is drawn whatever the switch
@@ -184,7 +184,7 @@ export function useVariationsExplorer({
       ? arrowOptions.required.map((node) => ({
           startSquare: node.from,
           endSquare: node.to,
-          color: REQUIRED_MOVE_ARROW_COLOR,
+          color: chess.arrows.required,
         }))
       : chances !== undefined || weights !== undefined
         ? []
@@ -212,7 +212,13 @@ export function useVariationsExplorer({
         nodes={continuations}
         chances={weights.map((weight) => weight ?? UNTAGGED_ARROW_CHANCE)}
         colors={weights.map((weight, index) =>
-          weightedArrowColors(weight, index, continuations[index].id === hoveredId, palette),
+          weightedArrowColors(
+            weight,
+            index,
+            continuations[index].id === hoveredId,
+            palette,
+            chess.arrows.untagged,
+          ),
         )}
         hoveredId={hoveredId}
         orientation={source.orientation}

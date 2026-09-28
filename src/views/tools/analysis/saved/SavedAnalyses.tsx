@@ -46,6 +46,7 @@ import {
   renameAnalysisFolder,
 } from "../../../../lib/savedAnalysisFolderStore";
 import { removeSavedAnalyses } from "../../../../lib/savedAnalysisStore";
+import { useBoardSquareOptions, type BoardSquareOptions } from "../../../shared/boardColors";
 import FolderDeleteDialog from "../../../shared/folders/FolderDeleteDialog";
 import FolderMoveDialog from "../../../shared/folders/FolderMoveDialog";
 import FolderNameDialog from "../../../shared/folders/FolderNameDialog";
@@ -152,7 +153,9 @@ const treeOf = (saved: SavedAnalysis): GameTree | undefined => {
 const previewOptions = (
   saved: SavedAnalysis,
   tree: GameTree,
+  squares: BoardSquareOptions,
 ): ChessboardOptions => ({
+  ...squares,
   id: `saved-analyses-preview-${saved.id}`,
   position: savedAnalysisFen(saved, tree),
   boardOrientation: saved.orientation,
@@ -312,6 +315,7 @@ function SavedAnalysisCard(props: CardProps) {
   const { saved, tree, opening } = props;
   const { t } = useTranslation();
   const { primary, secondary } = useCaption(props);
+  const squares = useBoardSquareOptions();
 
   return (
     <Card variant="outlined" data-testid={`saved-analyses-item-${saved.id}`}>
@@ -342,7 +346,7 @@ function SavedAnalysisCard(props: CardProps) {
         >
           <Box sx={{ p: 1 }}>
             <Box sx={{ width: "100%", aspectRatio: "1 / 1" }}>
-              <Chessboard options={previewOptions(saved, tree)} />
+              <Chessboard options={previewOptions(saved, tree, squares)} />
             </Box>
           </Box>
         </CardActionArea>

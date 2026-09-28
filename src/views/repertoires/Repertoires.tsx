@@ -37,6 +37,7 @@ import {
 import { removeSavedRepertoires } from "../../lib/savedRepertoireStore";
 import { slugify } from "../../lib/pgnText";
 import { RightPanel } from "../main/rightPanel";
+import { useBoardSquareOptions, type BoardSquareOptions } from "../shared/boardColors";
 import SavedListExportBar from "../shared/SavedListExportBar";
 import SavedListViewToggle from "../shared/SavedListViewToggle";
 import {
@@ -89,7 +90,11 @@ import { useSavedRepertoires } from "./useSavedRepertoires";
  *   (`SavedRepertoire.previewFen`), so no card parses a move to draw itself.
  */
 
-const previewOptions = (saved: SavedRepertoire): ChessboardOptions => ({
+const previewOptions = (
+  saved: SavedRepertoire,
+  squares: BoardSquareOptions,
+): ChessboardOptions => ({
+  ...squares,
   id: `repertoires-preview-${saved.id}`,
   position: saved.previewFen,
   // The side the reader plays it from (its settings), as its board opens.
@@ -242,6 +247,7 @@ function RepertoireRow({ saved, checked, onToggle }: ItemProps) {
 function RepertoireCard({ saved, checked, onToggle }: ItemProps) {
   const { t } = useTranslation();
   const { primary, secondary } = useCaption(saved);
+  const squares = useBoardSquareOptions();
 
   return (
     <Card variant="outlined" data-testid={`repertoires-item-${saved.id}`}>
@@ -255,7 +261,7 @@ function RepertoireCard({ saved, checked, onToggle }: ItemProps) {
       >
         <Box sx={{ p: 1 }}>
           <Box sx={{ width: "100%", aspectRatio: "1 / 1" }}>
-            <Chessboard options={previewOptions(saved)} />
+            <Chessboard options={previewOptions(saved, squares)} />
           </Box>
         </Box>
       </CardActionArea>

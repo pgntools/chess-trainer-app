@@ -1,5 +1,7 @@
 import { Chess, type Square } from "chess.js";
 
+import { defaultChessTokens } from "../design-system/themes/defaultChess";
+
 /**
  * Opening lookup over the vendored eco.json database
  * (`src/data/openings/eco{A..E}.json`, ~16,000 positions — see
@@ -205,15 +207,19 @@ export const knownMoveOpenings = (
  * arrow at all: it is the translucent square fill `LAST_MOVE_HIGHLIGHT` lays
  * over its two squares, so the two read as *what can follow* (an arrow) versus
  * *what was played* (a fill) when both are on the board.
+ *
+ * The default theme's `chess.book.known`; the explorer draws its own theme's
+ * (CTA-107).
  */
-export const KNOWN_MOVE_ARROW_COLOR = "#4caf50";
+export const KNOWN_MOVE_ARROW_COLOR = defaultChessTokens.book.known;
 
 /**
  * The colour a known-next-move arrow takes while its list row is hovered — a
  * third distinct hue, neither the amber last-move arrow nor the green of the
  * other known moves, so the reader sees exactly which move a click will play.
+ * The default theme's `chess.book.hovered`.
  */
-export const HOVERED_MOVE_ARROW_COLOR = "#f44336";
+export const HOVERED_MOVE_ARROW_COLOR = defaultChessTokens.book.hovered;
 
 /**
  * The most recent opening a stream of positions resolved to, and the half-move

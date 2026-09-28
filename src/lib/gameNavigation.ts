@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { defaultChessTokens } from "../design-system/themes/defaultChess";
 import { gameTag, initialFenOf, type Game, type GameMove } from "./gameModel";
 
 /**
@@ -12,8 +13,12 @@ import { gameTag, initialFenOf, type Game, type GameMove } from "./gameModel";
  * move already carries. Nothing here re-simulates a game.
  */
 
-/** The translucent fill over the squares of the move that produced the current position. */
-export const LAST_MOVE_HIGHLIGHT = "rgba(155, 199, 0, 0.41)";
+/**
+ * The translucent fill over the squares of the move that produced the current
+ * position — the **default theme's** `chess.lastMove`. A board draws its own
+ * theme's (`useChessTokens`), passing it to {@link lastMoveSquareStyles}.
+ */
+export const LAST_MOVE_HIGHLIGHT = defaultChessTokens.lastMove;
 
 /** One numbered row of the move list: White's move and Black's reply. */
 export type MoveRow = {
@@ -67,14 +72,16 @@ export const initialPlyOf = (game: Game): number => {
  * `options.squareStyles` are external and the board never clears them itself
  * (`.claude/rules/chessboard.md` §3.3) — the caller has to hand it the whole
  * set for the position on screen, so this returns exactly that set rather
- * than something to append to.
+ * than something to append to. `color` is the theme's fill (CTA-107);
+ * absent, the default theme's.
  */
 export const lastMoveSquareStyles = (
   from: string,
   to: string,
+  color: string = LAST_MOVE_HIGHLIGHT,
 ): Record<string, CSSProperties> => ({
-  [from]: { background: LAST_MOVE_HIGHLIGHT },
-  [to]: { background: LAST_MOVE_HIGHLIGHT },
+  [from]: { background: color },
+  [to]: { background: color },
 });
 
 /**

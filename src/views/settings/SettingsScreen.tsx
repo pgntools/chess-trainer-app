@@ -6,6 +6,7 @@ import Typography from "@mui/material/Typography";
 import { Link as RouterLink, Navigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
+import AppearanceTab from "./AppearanceTab";
 import ExportTab from "./ExportTab";
 import ImportTab from "./ImportTab";
 import StorageTab from "./StorageTab";
@@ -21,6 +22,7 @@ const SETTINGS_TABS: readonly { id: string; content: () => ReactNode }[] = [
   { id: "export", content: () => <ExportTab /> },
   { id: "import", content: () => <ImportTab /> },
   { id: "storage", content: () => <StorageTab /> },
+  { id: "appearance", content: () => <AppearanceTab /> },
 ];
 
 function SettingsScreen() {

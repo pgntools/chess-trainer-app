@@ -16,8 +16,11 @@ import type { OpeningTreeNode } from "../../lib/openingTree";
 import { openingTreeToPgn, type OpeningTreePgnTags } from "../../lib/openingTreePgn";
 import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
+import { useChessTokens } from "../../design-system/theme";
+import type { ResultTone } from "../../design-system/themes";
 import { ForceLTR } from "../../theme/ForceLTR";
 import ChanceArrows from "../explorer/ChanceArrows";
+import { useBoardSquareOptions } from "../shared/boardColors";
 import PromotionPicker, { type PromotionChoice } from "../shared/PromotionPicker";
 import { moveSx, sanTokenSx } from "../shared/moveTokenSx";
 import OpeningTreePgnDialog from "./OpeningTreePgnDialog";
@@ -72,9 +75,11 @@ const percent = (part: number, whole: number) => (whole === 0 ? 0 : Math.round((
 
 function ResultBar({ node }: { node: OpeningTreeNode }) {
   const { white, draw, black } = node.results;
+  // The theme's result tones (CTA-107).
+  const tones = useChessTokens().filterBoard;
   const total = white + draw + black;
   if (total === 0) return <Box />;
-  const part = (count: number, bgcolor: string, color: string) =>
+  const part = (count: number, { background: bgcolor, text: color }: ResultTone) =>
     count === 0 ? null : (
       <Box
         sx={{
@@ -96,9 +101,9 @@ function ResultBar({ node }: { node: OpeningTreeNode }) {
     <Box
       sx={{ display: "flex", height: 14, borderRadius: 0.5, overflow: "hidden", border: "1px solid", borderColor: "divider" }}
     >
-      {part(white, "#f5f5f5", "#212121")}
-      {part(draw, "#9e9e9e", "#212121")}
-      {part(black, "#424242", "#f5f5f5")}
+      {part(white, tones.white)}
+      {part(draw, tones.draw)}
+      {part(black, tones.black)}
     </Box>
   );
 }
@@ -116,6 +121,7 @@ type OpeningFilterBoardProps = {
 function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilterBoardProps) {
   const { t } = useTranslation();
   const [orientation, setOrientation] = useState<"white" | "black">("white");
+  const squareOptions = useBoardSquareOptions();
   const [saving, setSaving] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null);
@@ -164,6 +170,8 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
   };
 
   const options: ChessboardOptions = {
+    // The theme's squares (CTA-107).
+    ...squareOptions,
     id: "library-filter-board",
     position: fen,
     boardOrientation: orientation,

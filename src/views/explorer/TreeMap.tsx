@@ -22,6 +22,7 @@ import ZoomOutRoundedIcon from "@mui/icons-material/ZoomOutRounded";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 
+import { chessTokensOf } from "../../design-system/theme";
 import { findNode, pathTo, type GameTree } from "../../lib/gameTree";
 import { isMoveMark, nagGlyph, nagsInPrintOrder, nagTone } from "../../lib/moveAnnotations";
 import { maskNodeSan, type PieceMask } from "../../lib/pieceMask";
@@ -110,8 +111,8 @@ import {
  * hands it the repertoire its coverage is defined on.
  *
  * The drawing is a diagram, not text, so it is pinned left-to-right (`dir`)
- * the way the move numbers are. Its colours are theme tokens, but for the
- * dots' own white and black, which name a side.
+ * the way the move numbers are. Its colours are theme tokens — the palette's,
+ * and the chess tokens' for the dots' own white and black, which name a side.
  */
 
 const stroke = (pick: (palette: Theme["palette"]) => string) => ({
@@ -143,12 +144,12 @@ const drawingSx: SxProps<Theme> = {
     fill: (theme: Theme) => (theme.vars ?? theme).palette.primary.main,
     fontWeight: 700,
   },
-  // Chess colours, not theme ones: a dot says which side moved. The ring under
-  // each is a theme token, so a white dot shows on paper and a black one on
-  // the dark theme's.
+  // Chess colours, not palette ones: a dot says which side moved, in the
+  // theme's `chess.map` tokens (CTA-107). The ring under each is a palette
+  // token, so a white dot shows on paper and a black one on the dark theme's.
   "& .map-dot-ring": stroke((palette) => palette.text.secondary),
-  "& .map-dot-white": { stroke: "#ffffff" },
-  "& .map-dot-black": { stroke: "#000000" },
+  "& .map-dot-white": { stroke: (theme: Theme) => chessTokensOf(theme).map.whiteDot },
+  "& .map-dot-black": { stroke: (theme: Theme) => chessTokensOf(theme).map.blackDot },
   "& .map-hit": { cursor: "pointer" },
   "& .map-hit:hover .map-label": {
     fill: (theme: Theme) => (theme.vars ?? theme).palette.primary.main,

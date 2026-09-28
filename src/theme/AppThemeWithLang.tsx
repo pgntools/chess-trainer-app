@@ -1,20 +1,28 @@
 import * as React from "react";
 import { CacheProvider } from "@emotion/react";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { ThemeProvider } from "@mui/material/styles";
 import { enUS, heIL } from "@mui/material/locale";
 import { useTranslation } from "react-i18next";
 import { asAppLanguage, rtlLanguages, type AppLanguage } from "../i18n";
-import { ltrCache, rtlCache } from "./rtlCache";
-import { colorSchemes, components, shape, typography } from "./themePrimitives";
+import { buildTheme, ltrCache, rtlCache } from "../design-system/theme";
+import { isThemeId, themeById } from "../design-system/themes";
+import {
+  readStoredThemeId,
+  storeThemeId,
+  ThemeChoiceContext,
+  type ThemeChoice,
+} from "./themeChoice";
 
 const getLocale = (language: AppLanguage) => (language === "he" ? heIL : enUS);
 
 /**
- * The single owner of both axes of the look: the color scheme (light/dark, via
- * `colorSchemes` + CSS variables) and the text direction, which is derived from
- * the active i18n language rather than stored separately. Changing the language
- * therefore swaps the emotion cache, the theme `direction` and the MUI locale
- * bundle together, which is why they cannot live in separate providers.
+ * The single owner of every axis of the look: the theme (the reader's choice
+ * from the registry, CTA-107), the color scheme (light/dark, via
+ * `colorSchemes` + CSS variables) and the text direction, which is derived
+ * from the active i18n language rather than stored separately. Changing the
+ * language therefore swaps the emotion cache, the theme `direction` and the
+ * MUI locale bundle together, which is why they cannot live in separate
+ * providers.
  */
 export default function AppThemeWithLang({
   children,
@@ -28,6 +36,19 @@ export default function AppThemeWithLang({
   const cache = direction === "rtl" ? rtlCache : ltrCache;
   const locale = getLocale(language);
 
+  const [themeId, setThemeIdState] = React.useState(readStoredThemeId);
+  const choice = React.useMemo<ThemeChoice>(
+    () => ({
+      themeId,
+      setThemeId: (id) => {
+        if (!isThemeId(id)) return;
+        storeThemeId(id);
+        setThemeIdState(id);
+      },
+    }),
+    [themeId],
+  );
+
   React.useEffect(() => {
     document.documentElement.dir = direction;
     document.documentElement.lang = language;
@@ -35,26 +56,17 @@ export default function AppThemeWithLang({
   }, [direction, language]);
 
   const theme = React.useMemo(
-    () =>
-      createTheme(
-        {
-          direction,
-          cssVariables: { colorSchemeSelector: "data-mui-color-scheme" },
-          colorSchemes,
-          typography,
-          shape,
-          components,
-        },
-        locale,
-      ),
-    [direction, locale],
+    () => buildTheme(themeById(themeId), "both", direction, locale),
+    [themeId, direction, locale],
   );
 
   return (
-    <CacheProvider value={cache}>
-      <ThemeProvider theme={theme} disableTransitionOnChange>
-        {children}
-      </ThemeProvider>
-    </CacheProvider>
+    <ThemeChoiceContext.Provider value={choice}>
+      <CacheProvider value={cache}>
+        <ThemeProvider theme={theme} disableTransitionOnChange>
+          {children}
+        </ThemeProvider>
+      </CacheProvider>
+    </ThemeChoiceContext.Provider>
   );
 }
