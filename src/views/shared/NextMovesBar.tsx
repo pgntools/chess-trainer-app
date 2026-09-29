@@ -2,9 +2,9 @@ import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
-import type { VariationNode } from "../../../lib/gameTree";
-import { maskNodeSan, type PieceMask } from "../../../lib/pieceMask";
-import { moveSx, sanTokenSx } from "../../shared/moveTokenSx";
+import type { VariationNode } from "../../lib/gameTree";
+import { maskNodeSan, type PieceMask } from "../../lib/pieceMask";
+import { moveSx, sanTokenSx } from "./moveTokenSx";
 
 /**
  * The pinned "next moves" bar (CTA-54): the continuations of the position on

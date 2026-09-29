@@ -6,6 +6,7 @@ import { useEffect, type ReactNode } from "react";
 import { Chess } from "chess.js";
 
 import i18n from "../../../../i18n";
+import { expectNoAxeViolations } from "../../../../test/axe";
 import AppThemeWithLang from "../../../../theme/AppThemeWithLang";
 import { analysisHandOffOf } from "../../../../lib/analysisHandOff";
 import { DEFAULT_ANALYSIS_SETTINGS } from "../../../../lib/analysisSettings";
@@ -871,5 +872,44 @@ describe("the new-analysis form (CTA-87)", () => {
       expect(where.current?.pathname).toBe("/tools/analysis/saved");
       expect(savedAnalysesSnapshot() ?? []).toEqual([]);
     });
+  });
+});
+
+describe("Saved analyses — accessible (CTA-113)", () => {
+  it("passes axe in the list, with a folder, an analysis and the form beside them", async () => {
+    await createAnalysisFolder("Openings", null);
+    await saveAnalysis(save("a1", [[[], ["e4", "e5"]]]));
+    await renderScreen();
+    await settleBook();
+    expect(screen.getByRole("heading", { level: 1, name: "Saved analyses" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: i18n.t("savedAnalyses.newAnalysis.title") })).toBeInTheDocument();
+    await expectNoAxeViolations(screen.getByTestId("saved-analyses-screen"));
+  });
+
+  it("passes axe as cards, and empty", async () => {
+    await saveAnalysis(save("a1", [[[], ["e4"]]]));
+    const { unmount } = await renderScreen();
+    await userEvent.click(screen.getByTestId("saved-analyses-view-compact"));
+    await settleBook();
+    await expectNoAxeViolations(screen.getByTestId("saved-analyses-screen"));
+    unmount();
+  });
+
+  it("is worked from the keyboard: the view, a pick, a row's Open named for its analysis", async () => {
+    const user = userEvent.setup();
+    await saveAnalysis({ ...save("a1", [[[], ["e4"]]]), name: "Najdorf" });
+    await renderScreen();
+    // The view toggle is one tab stop; the arrows walk it.
+    screen.getByTestId("saved-analyses-view-list").focus();
+    await user.keyboard("{ArrowRight}{Enter}");
+    expect(screen.getByTestId("saved-analyses-grid")).toBeInTheDocument();
+    screen.getByTestId("saved-analyses-view-compact").focus();
+    await user.keyboard("{ArrowLeft}{Enter}");
+    expect(screen.getByRole("link", { name: "Open Najdorf" })).toHaveAttribute("href", "/tools/analysis?analysis=a1");
+    screen.getByRole("link", { name: "Settings of Najdorf" }).focus();
+    await user.tab();
+    expect(screen.getByRole("checkbox", { name: "Select Najdorf" })).toHaveFocus();
+    await user.keyboard(" ");
+    expect(screen.getByTestId("saved-analyses-selected-count")).toHaveTextContent("1 selected");
   });
 });

@@ -751,7 +751,7 @@ const en = {
       confirm: "Save",
     },
     /**
-     * The changes strip over a saved analysis — `RepertoireChangesBar` with
+     * The changes strip over a saved analysis — the `ChangesStrip` block with
      * this block's words (no protection: an analysis has none).
      */
     changes: {

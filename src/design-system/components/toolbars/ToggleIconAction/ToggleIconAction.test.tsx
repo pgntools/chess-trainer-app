@@ -26,4 +26,21 @@ describe("ToggleIconAction", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onClick).toHaveBeenCalledTimes(1);
   });
+
+  it("lights up while active, and says pressed as it is told — or nothing, for a dialog (CTA-113)", () => {
+    const { rerender } = render(
+      <ToggleIconAction label="Save" onClick={() => {}} active pressed={false} testId="probe">
+        <svg />
+      </ToggleIconAction>,
+    );
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByTestId("probe").className).toMatch(/colorPrimary/);
+    rerender(
+      <ToggleIconAction label="Save" onClick={() => {}} active pressed={null} testId="probe">
+        <svg />
+      </ToggleIconAction>,
+    );
+    expect(screen.getByTestId("probe")).not.toHaveAttribute("aria-pressed");
+    expect(screen.getByTestId("probe").className).toMatch(/colorPrimary/);
+  });
 });

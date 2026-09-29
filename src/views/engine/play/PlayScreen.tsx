@@ -6,7 +6,7 @@ import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
 import { createSearchParams, Link as RouterLink, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useCurrentOpening } from "../../shared/useCurrentOpening";
-import { CurrentOpening } from "../../../blocks/panels";
+import { CurrentOpening, EngineThinking, PlayToggleButton } from "../../../blocks/panels";
 import type { ChessboardOptions } from "react-chessboard";
 import { DEFAULT_POSITION } from "chess.js";
 
@@ -26,8 +26,6 @@ import {
 import type { BoardPanelTab } from "../../board/core/BoardPanel";
 import BoardShell from "../../board/core/BoardShell";
 import { useVariationsExplorer } from "../../explorer/useVariationsExplorer";
-import EngineThinking from "../../tools/analysis/EngineThinking";
-import PlayToggleButton from "../../tools/analysis/PlayToggleButton";
 import EngineSettings from "./EngineSettings";
 import { usePlayGame, type PlayGameStart } from "./usePlayGame";
 

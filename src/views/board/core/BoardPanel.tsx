@@ -4,6 +4,7 @@ import Chip from "@mui/material/Chip";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
+import { visuallyHidden } from "../../../design-system/components/a11y";
 import { FeedbackStrip } from "../../../design-system/components/feedback";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 import { formatScore, type Analysis } from "../../../lib/engineAnalysis";
@@ -251,6 +252,10 @@ function BoardPanel({
         ...(visible ? {} : { display: "none" }),
       }}
     >
+      {/* The open tab's heading in the page's outline (CTA-113) — out of sight, the strip shows it. */}
+      <Typography component="h2" sx={visuallyHidden}>
+        {tab.label}
+      </Typography>
       {tab.content}
     </Box>
   );
@@ -288,6 +293,10 @@ function BoardPanel({
       */}
       {hasEngine && engineOn && showVariations && (
         <FeedbackStrip tone="neutral" maxHeight="40%" testId={`${testId}-variations`}>
+          {/* The page's outline (CTA-113): the engine's lines, a heading a screen reader can jump to. */}
+          <Typography component="h2" sx={visuallyHidden}>
+            {t("variations.title")}
+          </Typography>
           <BestVariations
             analysis={analysis}
             requested={requestedMultiPv}

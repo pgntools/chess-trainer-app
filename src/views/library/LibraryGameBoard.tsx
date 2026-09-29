@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
 import type { ChessboardOptions } from "react-chessboard";
 
-import { CurrentOpening, GameInfo, PgnExportPanel } from "../../blocks/panels";
+import { ChangesStrip, CurrentOpening, EngineThinking, GameInfo, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
 import { AnalysisEngineForm } from "../../blocks/forms";
 import { downloadPgn } from "../../lib/pgnExport";
 import { indexGame } from "../../lib/collectionIndex";
@@ -38,11 +38,8 @@ import { newSavedAnalysisId, savedAnalysisOf } from "../../lib/savedAnalyses";
 import { saveAnalysis } from "../../lib/savedAnalysisStore";
 import BoardShell from "../board/core/BoardShell";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
-import RepertoireChangesBar from "../repertoires/RepertoireChangesBar";
 import type { PlayerPlates } from "../shared/PlayerPlate";
 import { playerResultsOf } from "../shared/playerResults";
-import EngineThinking from "../tools/analysis/EngineThinking";
-import PlayToggleButton from "../tools/analysis/PlayToggleButton";
 import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
 import { usePageTitle } from "../main/pageTitle";
 
@@ -420,7 +417,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
           <>
             {explorer.annotations}
             {session.changed && changesOpen && (
-              <RepertoireChangesBar
+              <ChangesStrip
                 testId="library-game-changes"
                 labelKey={labelKey}
                 readOnly={shipped}
@@ -437,6 +434,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
             )}
             {session.playing && (
               <EngineThinking
+                testId="analysis-play"
                 thinking={session.thinking}
                 depth={engine.analysis.fen === core.fen ? engine.analysis.depth : 0}
               />

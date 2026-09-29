@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import IconButton from "@mui/material/IconButton";
-import Switch from "@mui/material/Switch";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
@@ -16,11 +12,13 @@ import {
   useSearchParams,
 } from "react-router";
 import { useTranslation } from "react-i18next";
-import { useCurrentOpening } from "../../shared/useCurrentOpening";
 import type { ChessboardOptions } from "react-chessboard";
 
-import { CurrentOpening, PgnExportPanel } from "../../../blocks/panels";
+import { ChangesStrip, CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../../blocks/panels";
 import { AnalysisEngineForm } from "../../../blocks/forms";
+import { StatusText } from "../../../design-system/components/feedback";
+import { SwitchField } from "../../../design-system/components/forms";
+import { IconAction, ToggleIconAction } from "../../../design-system/components/toolbars";
 import { downloadPgn } from "../../../lib/pgnExport";
 import { analysisHandOffOf } from "../../../lib/analysisHandOff";
 import {
@@ -48,14 +46,12 @@ import {
 } from "../../../lib/savedAnalysisStore";
 import BoardShell from "../../board/core/BoardShell";
 import { useVariationsExplorer } from "../../explorer/useVariationsExplorer";
-import RepertoireChangesBar from "../../repertoires/RepertoireChangesBar";
 import AnalysisArrows from "./AnalysisArrows";
-import EngineThinking from "./EngineThinking";
-import PlayToggleButton from "./PlayToggleButton";
 import AnalysisLoad from "./AnalysisLoad";
 import SaveAnalysisDialog from "./SaveAnalysisDialog";
 import { useAnalysisBoard, type AnalysisBoardStart } from "./useAnalysisBoard";
 import { usePageTitle } from "../../main/pageTitle";
+import { useCurrentOpening } from "../../shared/useCurrentOpening";
 
 /**
  * **The Analysis Board** (`/tools/analysis`, CTA-73) — the board a game or a
@@ -323,22 +319,17 @@ function AnalysisBoard() {
                 )}
                 <CurrentOpening {...currentOpening} testId="analysis-current-opening" />
               </Box>
-              <Tooltip title={saveLabel}>
-                <span>
-                  <IconButton
-                    size="small"
-                    disabled={!state.canSave}
-                    color={state.unsaved ? "primary" : "default"}
-                    onClick={onSaveClick}
-                    aria-label={saveLabel}
-                    aria-pressed={record !== null && state.changed ? changesOpen : undefined}
-                    data-testid="analysis-save"
-                    sx={{ flexShrink: 0 }}
-                  >
-                    <SaveRoundedIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
+              <ToggleIconAction
+                label={saveLabel}
+                onClick={onSaveClick}
+                disabled={!state.canSave}
+                active={state.unsaved}
+                // Over a record Save opens the changes strip, a toggle; a new board's opens a dialog.
+                pressed={record !== null && state.changed ? changesOpen : null}
+                testId="analysis-save"
+              >
+                <SaveRoundedIcon fontSize="small" />
+              </ToggleIconAction>
               <PlayToggleButton
                 testId="analysis-play"
                 engineOn={state.engineOn}
@@ -346,53 +337,36 @@ function AnalysisBoard() {
                 thinking={state.thinking}
                 onToggle={state.togglePlaying}
               />
-              <Tooltip title={t("savedAnalyses.title")}>
-                <IconButton
-                  size="small"
-                  component={RouterLink}
-                  to="/tools/analysis/saved"
-                  aria-label={t("savedAnalyses.title")}
-                  data-testid="analysis-saved-list"
-                  sx={{ flexShrink: 0 }}
-                >
-                  <FolderOpenRoundedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+              <IconAction
+                label={t("savedAnalyses.title")}
+                link={{ component: RouterLink, to: "/tools/analysis/saved" }}
+                testId="analysis-saved-list"
+              >
+                <FolderOpenRoundedIcon fontSize="small" />
+              </IconAction>
               {record !== null && (
-                // Its settings — off while there are unsaved changes, which
-                // leaving the board would lose.
-                <Tooltip
-                  title={t(
-                    state.unsaved ? "analysis.settingsLink.unsaved" : "analysis.settingsLink.open",
-                  )}
+                // Its settings — off while there are unsaved changes, which leaving the board would lose.
+                <IconAction
+                  label={t(state.unsaved ? "analysis.settingsLink.unsaved" : "analysis.settingsLink.open")}
+                  link={{
+                    component: RouterLink,
+                    to: `/tools/analysis/saved/${encodeURIComponent(record.id)}/settings`,
+                    state: { from: `${location.pathname}${location.search}` },
+                  }}
+                  disabled={state.unsaved}
+                  testId="analysis-settings"
                 >
-                  <span>
-                    <IconButton
-                      size="small"
-                      component={RouterLink}
-                      to={`/tools/analysis/saved/${encodeURIComponent(record.id)}/settings`}
-                      state={{ from: `${location.pathname}${location.search}` }}
-                      disabled={state.unsaved}
-                      aria-label={t("analysis.settingsLink.open")}
-                      data-testid="analysis-settings"
-                      sx={{ flexShrink: 0 }}
-                    >
-                      <SettingsRoundedIcon fontSize="small" />
-                    </IconButton>
-                  </span>
-                </Tooltip>
+                  <SettingsRoundedIcon fontSize="small" />
+                </IconAction>
               )}
-              <FormControlLabel
-                sx={{ flexShrink: 0, marginInlineEnd: 0 }}
-                control={
-                  <Switch
-                    size="small"
-                    checked={state.engineOn}
-                    data-testid="analysis-setting-engine"
-                    onChange={(event) => state.setEngineOn(event.target.checked)}
-                  />
-                }
+              <SwitchField
+                size="small"
                 label={t("analysis.engineSwitch")}
+                checked={state.engineOn}
+                onChange={state.setEngineOn}
+                // The board's tests reach the input inside the switch.
+                testIdOn="control"
+                testId="analysis-setting-engine"
               />
             </>
           ),
@@ -477,7 +451,7 @@ function AnalysisBoard() {
             <>
               {explorer.annotations}
               {record !== null && state.changed && changesOpen && (
-                <RepertoireChangesBar
+                <ChangesStrip
                   testId="analysis-changes"
                   labelKey="analysis.changes"
                   summary={
@@ -492,18 +466,16 @@ function AnalysisBoard() {
                 />
               )}
               {record === null && state.problem !== null && (
-                <Typography
-                  variant="caption"
-                  role="alert"
-                  data-testid="analysis-save-problem"
-                  sx={{ display: "block", color: "error.main", px: 1 }}
-                >
-                  {t(`analysis.changes.problem.${state.problem}`)}
-                </Typography>
+                <Box sx={{ px: 1 }}>
+                  <StatusText tone="error" testId="analysis-save-problem">
+                    {t(`analysis.changes.problem.${state.problem}`)}
+                  </StatusText>
+                </Box>
               )}
               {/* Play's status — the engine thinking, or the reader's move. */}
               {state.playing && (
                 <EngineThinking
+                  testId="analysis-play"
                   thinking={state.thinking}
                   depth={engine.analysis.fen === core.fen ? engine.analysis.depth : 0}
                 />

@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
 import type { ChessboardOptions } from "react-chessboard";
 
-import { CurrentOpening, PgnExportPanel } from "../../blocks/panels";
+import { CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
 import { AnalysisEngineForm } from "../../blocks/forms";
 import { downloadPgn } from "../../lib/pgnExport";
 import { useChessTokens } from "../../design-system/theme";
@@ -25,8 +25,6 @@ import { turnOf } from "../board/core/useBoardCore";
 import { useOpeningBookModule } from "../board/core/useOpeningBookModule";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import AnalysisLoad from "../tools/analysis/AnalysisLoad";
-import EngineThinking from "../tools/analysis/EngineThinking";
-import PlayToggleButton from "../tools/analysis/PlayToggleButton";
 import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
 import OpeningBookList from "./OpeningBookList";
 import { openingArrowsOf } from "./openingArrows";
@@ -312,6 +310,7 @@ function OpeningsBoard() {
             {explorer.annotations}
             {session.playing && (
               <EngineThinking
+                testId="analysis-play"
                 thinking={session.thinking}
                 depth={engine.analysis.fen === core.fen ? engine.analysis.depth : 0}
               />

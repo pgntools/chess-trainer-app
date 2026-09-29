@@ -19,7 +19,7 @@ import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
-import { CurrentOpening } from "../../blocks/panels";
+import { ChangesStrip, CurrentOpening } from "../../blocks/panels";
 import type { ChessboardOptions } from "react-chessboard";
 
 import {
@@ -56,7 +56,6 @@ import { useBoardCore } from "../board/core/useBoardCore";
 import { useEngineModule } from "../board/core/useEngineModule";
 import { useTrainerModule, type TrainerStatus } from "../board/core/useTrainerModule";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
-import RepertoireChangesBar from "./RepertoireChangesBar";
 import RepertoireGamesMenu from "./RepertoireGamesMenu";
 import { useRepertoireGame } from "./useRepertoireGame";
 import { usePageTitle } from "../main/pageTitle";
@@ -94,7 +93,7 @@ import { usePageTitle } from "../main/pageTitle";
  *   writes). While the session's tree differs from the record, the header's
  *   **Save** button (disabled while nothing has changed) takes the primary
  *   colour, and a click on it opens a strip above the footer
- *   (`RepertoireChangesBar.tsx`) that offers **Update this repertoire**
+ *   (the `ChangesStrip` block) that offers **Update this repertoire**
  *   (`withRepertoireTree`, in place — the session becomes the record, and the
  *   additions stop being additions; on a **protected** repertoire — its
  *   settings, on by default — the strip says so and offers a link to its
@@ -840,8 +839,9 @@ function RepertoirePlayer({
             <>
               {explorer.annotations}
               {changed && changesOpen && (
-                <RepertoireChangesBar
+                <ChangesStrip
                   testId={`${id}-changes`}
+                  labelKey="repertoires.changes"
                   summary={
                     // An edit alone (a line promoted or deleted) adds nothing.
                     extensionIds.size === 0
@@ -851,9 +851,9 @@ function RepertoirePlayer({
                   problem={saveProblem}
                   // A protected repertoire (its settings' default): no
                   // Update — its settings instead, where that is switched off.
-                  protectedBy={
+                  protectedLink={
                     saved.settings.protected
-                      ? { settingsPath: `${boardPath}/settings`, from: `${boardPath}${location.search}` }
+                      ? { component: RouterLink, to: `${boardPath}/settings`, state: { from: `${boardPath}${location.search}` } }
                       : undefined
                   }
                   onUpdate={updateRecord}

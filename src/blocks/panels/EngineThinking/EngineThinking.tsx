@@ -4,8 +4,8 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
-/** How often the dots move on — often enough to read as alive. */
-export const THINKING_DOTS_MS = 400;
+import { THINKING_DOTS_MS } from "./thinkingDots";
+
 
 /**
  * **Play's status line** (CTA-73) — what the Analysis Board says while Play
@@ -14,16 +14,17 @@ export const THINKING_DOTS_MS = 400;
  * and the depth the search has reached so far; at the reader's turn, that it
  * is theirs.
  *
- * The dots are a timer of this component's own, cleared on unmount and
+ * A block since CTA-113 (every board with Play shows it). The dots are a
+ * timer of this component's own, cleared on unmount and
  * whenever thinking stops, so nothing ticks while Play is off.
  */
 function EngineThinking({
   thinking,
   depth,
-  testId = "analysis-play",
+  testId,
 }: {
-  /** The root of its test ids — `${testId}-status`, `${testId}-depth`. */
-  testId?: string;
+  /** The root of its test ids — `${testId}-status`, `${testId}-depth` (`analysis-play` on the Analysis Board). */
+  testId: string;
   /** Whether the engine is searching for its move. */
   thinking: boolean;
   /** The depth reached so far in this search; 0 before the first result. */
@@ -53,7 +54,8 @@ function EngineThinking({
         color: thinking ? "primary.main" : "text.secondary",
       }}
     >
-      {thinking && <CircularProgress size={14} thickness={5} />}
+      {/* Beside the words that say it — decoration (CTA-113: it was an unnamed progress bar). */}
+      {thinking && <CircularProgress aria-hidden size={14} thickness={5} />}
       <Typography variant="body2" sx={{ fontWeight: thinking ? 600 : 400 }}>
         {thinking ? t("analysis.play.thinking") : t("analysis.play.yourMove")}
         {thinking && (
