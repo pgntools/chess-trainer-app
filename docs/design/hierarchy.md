@@ -60,12 +60,16 @@ their demos run on made-up data.
 | --- | --- | --- |
 | `DataTable` | a multi-column table: columns as data, controlled sort and paging, picks with select-all, row actions, row click and link, loading / empty / no-match rows, a row's note across the columns, sections closed by a bolder line, filter and toolbar slots, density, a sticky header — good at 10,000 rows | [`sections/patterns/tables.md`](./sections/patterns/tables.md) |
 | `TreeView` | a collapsible tree: branches that open in place, leaves that link or select, the node on screen marked, a branch that can also be a destination — the sidebar's look | [`sections/patterns/trees.md`](./sections/patterns/trees.md) |
+| `UploadPanel` | a file button and a paste box over one text, with a line under them for what was read (CTA-113) | [`sections/patterns/forms.md`](./sections/patterns/forms.md) |
 
-To come, as the migrations need them: `FilterBar`, `UploadPanel`,
-`SettingsForm`, `RadioCardGroup` … The pilot (CTA-109) needed none of them:
-the Lobby's filter row is a plain wrapping row inside its block, and Import's
-pick-progress-report is three base components in the screen
-([`migration.md`](./migration.md#44-left-hand-written-and-why)).
+`DataTable` also draws **tree rows** (CTA-113, `tree`): a details view of
+folders — a depth indent and a named chevron per branch in the first column,
+the rows arriving already walked (`lib/folderTreeRows.ts`). A tree *table*
+(columns, a sort) is this; a tree *view* (one column, the arrow keys) is
+`TreeView`.
+
+Not built, since no two screens asked for one: `FilterBar`, `SettingsForm`,
+`RadioCardGroup` ([`migration.md`](./migration.md#44-left-hand-written-and-why)).
 
 ### 4. Blocks — `src/blocks/<family>/<Block>/`
 
@@ -98,16 +102,32 @@ in the gallery, whichever module it serves.
 | `ImportReport` | panels | What an import did (`ImportResults`): a line per category, an `InlineAlert` that is a success or a warning (CTA-109). |
 | `FolderTree` | trees | The app's one nested-folder model (`GameFolder`, `lib/savedGameFolders.ts`) as a `TreeView`: each folder a destination with a count, its chevron its own button, an optional "everything" row. The second tree view the app has, after the sidebar's. |
 
-To come, with each module's migration: `CollectionGamesTable`,
-`CollectionsTreeTable`, `PgnImportForm` … How a module migrates — the order
-of work, what each old pattern became, the pilot's findings — is
-[`migration.md`](./migration.md).
+CTA-113 moved the rest of the app onto blocks:
+
+| Block | Family | What it is |
+| --- | --- | --- |
+| `CollectionsTreeTable` | tables | The Library home's details view — Built-in, the reader's folders and their collections (`LibraryEntry`, `FolderTreeRow`) as `DataTable` tree rows: Name, Games, Added, the row actions (`FolderActions` for a folder). |
+| `CollectionGamesTable` | tables | A collection's games (`CollectionRow`) as a `DataTable`: the twelve columns sorted by `sortedRows`, picks with select-all over every game the filters leave, the White cell the row's link, an unreadable game marked. |
+| `SavedAnalysesList`, `RepertoiresList` | lists | The saved lists: folders and records as rows or cards, picks, the settings link, a board preview on a card; `savedListView.ts` the view choice. |
+| `FolderActions`, `FolderPicker` | lists | A folder's row actions (new, upload, download, rename, move, delete); the flat folder chooser over `PickerList`. |
+| `OpeningBookList` | lists | The Openings explorer's Book tab: eco.json's continuations (`KnownMoveOpening`) as a named list of buttons, the pointed or focused one reported. |
+| `FolderNameDialog`, `FolderMoveDialog`, `FolderDeleteDialog` | dialogs | The three folder trees' dialogs, their words as `labels`. |
+| `CollectionImportDialog`, `OpeningTreePgnDialog` | dialogs | The Library's import options (what came in, the Elo / date / player filters, the count) and *Save tree as PGN*'s choice. |
+| `AnalysisEngineForm`, `ArrowSettingsFields` | forms | Every board's Engine tab; the Analysis Board's Arrows tab. |
+| `PgnInput`, `FenInput`, `PositionFields` | forms | A PGN from a file or a paste (over `UploadPanel`), a FEN, the position editor's fields. |
+| `MergeSplitChoice`, `CollectionFilters` | forms | A several-games text's merge or split; a collection's filter panel. |
+| `PgnExportPanel`, `GameInfo`, `CurrentOpening`, `ChangesStrip` | panels | Every board's Export and Info tabs, the opening line, the Update / Save as copy / Discard strip. |
+| `PlayToggleButton`, `EngineThinking` | panels | Play's header button and the engine's thinking line. |
+
+How a module migrates — the order of work, what each old pattern became, the
+findings — is [`migration.md`](./migration.md).
 
 A block's words: `FolderTree` takes them as props (a `labels` object), so the
 gallery shows them on fixtures and no catalog key is added for a dev-only
-demo. A block that one module alone uses may read the catalogs
-(`useTranslation`) instead — its words are the app's; every CTA-109 block
-does.
+demo — as do the blocks several modules share (the folder dialogs, the saved
+lists, `ChangesStrip` through a `labelKey`). A block that one module alone
+uses may read the catalogs (`useTranslation`) instead — its words are the
+app's; every CTA-109 block does.
 
 A block's test ids: a **table** block takes the screen's `testId` as its
 root, as `DataTable` does; a **form, panel or dialog** block takes it as the
@@ -291,12 +311,15 @@ so `DesignGallery` takes extra tiers as a prop: the dev route
 ## Where `src/views/shared/` fits
 
 `src/views/shared/` predates the tiers. Its **chess-aware compositions** —
-`FolderTreeTable`, the saved-list pieces (`SavedList*`, `savedList.ts`), the
-folder dialogs (`folders/`) — are **blocks in all but name**, and move into
-`src/blocks/` as their modules migrate (CTA-109 and after). The **board
-pieces** — `EvalBar`, `CapturedPieces`, `PlayerPlate`, `PromotionPicker`,
-`EngineBoardSquare`, `MoveList`, `VariationLine` — stay where they are: they
-belong to the board core
-([`chessboard.md`](../../.claude/rules/chessboard.md) §9), not to the
-hierarchy. The sidebar's tree (`src/views/main/Sidebar.tsx`) is the app
-shell's; it can move onto `TreeView` when the shell migrates.
+`FolderTreeTable`, the saved-list pieces, the folder dialogs, the Engine and
+Export tabs, `GameInfo`, `CurrentOpening`, the inputs — were blocks in all
+but name, and **moved into `src/blocks/`** (CTA-109, CTA-113). What is left
+there is **the board's pieces and hooks** — `EvalBar`, `CapturedPieces`,
+`PlayerPlate`, `PromotionPicker`, `EngineBoardSquare`, `MoveList`,
+`VariationLine`, `BoardControls`, `BestVariations`, `NextMovesBar`, the
+position editor, `useCurrentOpening`, `useStoreRead` — which belong to the
+board core ([`chessboard.md`](../../.claude/rules/chessboard.md) §9), not to
+the hierarchy; they are built of base components where they have chrome. The
+sidebar (`src/views/main/Sidebar.tsx`) is the app shell's and stays
+hand-written: `TreeView`'s keys are a tree's, the sidebar's a page's links
+([`migration.md`](./migration.md#44-left-hand-written-and-why)).

@@ -125,3 +125,10 @@ The comparison ended on five open questions; each has one answer here.
 - **Replaces** — `DEFAULT_SORT`, `defaultDirection`, `isColumn`, `setState`,
   `sortBy`, the page clamp and the three comparators, written inline in
   `PlayedGames`, `CollectionScreen` and `LibraryHome`.
+
+## CTA-113 additions
+
+- `TablePager`'s one set of page sizes (25 / 50 / 100 / 250, 50 by default)
+  now covers Saved analyses and every collection.
+- `PickHeaderCell` and `PickCell` take the ids `DataTable`'s `picks` hands
+  them (`selectAllTestId`, `pickTestId`).

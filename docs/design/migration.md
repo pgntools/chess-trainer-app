@@ -80,6 +80,21 @@ Taken with the product owner on 2026-09-28, before the pilot began.
 | A caption with `role="alert"` / `role="status"` | `StatusText` | base |
 | A line over a `LinearProgress` | `ProgressLine` (`announce` to read its caption out) | base |
 | A label button over a hidden `<input type="file">` | `FileInputButton` | base |
+| *CTA-113, the rest of the app:* | | |
+| `FolderTreeTable` (a hand-built tree of table rows) | `CollectionsTreeTable` over `DataTable`'s `tree` rows | block · pattern |
+| The collection's `Table` + `TablePagination` + select-all in the export bar | `CollectionGamesTable` over `DataTable`, select-all in the header | block · pattern |
+| The saved lists' rows, cards, folder rows and grids (`SavedFolderViews`, `RepertoireFolderViews`, `savedList.ts`, `cardSize.ts`) | `SavedAnalysesList`, `RepertoiresList` over `RecordRow` / `RecordCard` / `FolderRow` / `FolderCard` / `CardGrid`; `FolderActions` | block · base |
+| `SavedListExportBar`, `SavedListViewToggle`, `SavedFolderBreadcrumb` | `SelectionBar`, `ViewToggle`, `Breadcrumbs` | base |
+| The folder dialogs and picker (`views/shared/folders/`) | `FolderNameDialog`, `FolderMoveDialog`, `FolderDeleteDialog`, `FolderPicker` | block |
+| A file button + paste box + games picker (four copies) | `PgnInput` over the `UploadPanel` pattern; `FenInput` | block · pattern |
+| The Engine and Export tabs, `GameInfo`, `CurrentOpening`, `MergeSplitChoice`, the position editor's fields | `AnalysisEngineForm`, `PgnExportPanel`, `GameInfo` (`KeyValueList`), `CurrentOpening`, `MergeSplitChoice`, `PositionFields` | block |
+| `RepertoireChangesBar` (and its copies on the Analysis Board and the Library) | `ChangesStrip` | block |
+| A snackbar kept in a screen's state | `useSnackbar()` — the one queue, in `AppThemeWithLang` since CTA-113 | base |
+| A `Menu` opened from a right click | `ContextMenu` (`open`) | base |
+| A dialog with a text field and Save (comment, play chances, folder name) | `FormDialog` (Enter submits) | base |
+| A progress bar inside a choice dialog (`MultiGameDialog`, the import popup) | `ProgressDialog` in the choice's place over `useCancellableJob` | base |
+| The collection's filters (`Autocomplete` × 3, date `TextField`s, a side `ToggleButtonGroup`, a select) | `CollectionFilters` (`ChipsAutocomplete`, `SideToggle withAll`, `SelectAutocomplete`, `DateRangeFields`, `SelectField`) | block |
+| Home's `Card` + `CardActionArea` grid | `CardGrid` of `IconCard`s | base |
 
 ## 4. The pilot's findings
 
@@ -103,6 +118,27 @@ The four test-id props (`confirmTestId`, `testIdOn`, `inputTestId`,
 `cellTestId`) exist so a module's tests survive its migration unchanged. A
 **new** screen does not need them: it takes the component's own derived ids.
 
+**CTA-113** added, each the same way — optional, its absence today's behaviour:
+
+| Component | Added | Why |
+| --- | --- | --- |
+| `DataTable` | `tree` (`depth`, `open`, `onToggle`, `toggleLabel`, `toggleTestId`) — a depth indent and a named `ExpandToggle` per branch in the first column | The Library's details view is a tree of folders and collections; the user chose to keep it a tree table. |
+| `DataTable` | `rowTestId`, `linkTestId`, `rowLinkLabel`; `picks.selectAllTestId`, `picks.pickTestId`; `rowLink` may answer `undefined` | The Library's ids (`library-row-<id>`, `library-picks-row-<n>`); a collection's White cell named by the whole game. |
+| `SelectionBar` (new, toolbars) | A select-all, a chip counting the picks that clears them, the actions — the select-all optional beside a table | The saved lists' export bar; the collection's, whose select-all moved into the table's header. |
+| `ViewToggle`, `CopyField`, `KeyValueList`, `UploadPanel` (pattern, a new *forms* section) | new | The saved lists' view switch, `CopyableValue`, `GameInfo`'s tags, the four PGN inputs. |
+| `RecordRow`, `RecordCard`, `FolderRow`, `FolderCard`, `CardShell` | `openTestId`, `pickTestId`, `nameTestId`, `descriptionTestId`; a card's `detail` line; a card with neither `onOpen` nor `link` is not a button; `RowAction.ariaLabel` | The saved lists' ids; each control named by its record. |
+| `BaseDialog`, `ConfirmDialog`, `DeleteManyDialog`, `FormDialog` | `titleTestId`, `cancelTestId`, `submitTestId` | Ids that would otherwise collide with a screen's buttons (`analysis-save`). |
+| `ProgressDialog` | `barTestId`, `captionTestId` | The Library's import reads its caption as `library-import-progress`, the bar's derived id. |
+| `SnackbarProvider` | an action's `href` (a real link; a plain click runs `onClick`) and `testId` | The collection's *Open folder*: the snackbar sits outside the router, so a router link cannot render there. |
+| `DateRangeFields` | `bounds` (`min`, `max`) and `inputTestIds` | The collection's and the import's dates stay inside the games' own span. |
+| `RadioGroupField` | `optionTestId` | The tree dialog's radios are `library-filter-moves-save-no`; the group's derived prefix collided with the Save link. |
+| `SelectField` | `testIdOn: "input" \| "display"` | Tests that click the visible combobox. |
+| `SideToggle` | `buttonTestIds` | The position editor's `-turn-w`. |
+| `PanelTabs` | `tabTestIdPrefix` | The board panel's `…-panel-tab-<id>`. |
+| `IconAction` / `ToggleIconAction` | `popupOpen`; `pressed: boolean \| null` | A menu button; a Save that opens a dialog rather than toggling a strip. |
+| `AnchoredMenu`, `ContextMenu`, `PickerList`, `Breadcrumbs`, `ProgressLine`, `FeedbackStrip`, `CardGrid` | `entryTestIdPrefix`; `open`; `noneTestId`; `currentTestId`; `barTestId`; `maxHeight` as a string; `cardGridColumns(size)` | Each one screen's ids or layout. |
+| The theme | `typography.fontFamilyMonospace` (`MONOSPACE_FONT_FAMILY`, `monospaceOf`); brown dark `text.secondary` `#a19f9b` | One monospace token for notation and paths (§4.5's loose end); a raised row read 4.3:1. |
+
 ### 4.2 New blocks
 
 | Block | Family | Used by |
@@ -115,6 +151,12 @@ The four test-id props (`confirmTestId`, `testIdOn`, `inputTestId`,
 | `ExportCategoriesForm` | forms | Settings → Export |
 | `ImportDialog`, `IncompatibleImportDialog` | dialogs | Settings → Import |
 | `ImportReport` | panels | Settings → Import |
+| *CTA-113:* | | |
+| `CollectionsTreeTable`, `CollectionGamesTable` | tables | the Library's home, a collection |
+| `SavedAnalysesList`, `RepertoiresList`, `FolderActions`, `FolderPicker`, `OpeningBookList` | lists | Saved analyses, Repertoires, the Library, the Openings explorer's Book tab |
+| `FolderNameDialog`, `FolderMoveDialog`, `FolderDeleteDialog`, `CollectionImportDialog`, `OpeningTreePgnDialog` | dialogs | the three folder trees; the Library's import and tree export |
+| `AnalysisEngineForm`, `ArrowSettingsFields`, `FenInput`, `PgnInput`, `PositionFields`, `MergeSplitChoice`, `CollectionFilters` | forms | every board's Engine tab; the Analysis Board's Arrows; the loads and uploads; the position editor; the repertoires' choice; a collection's panel |
+| `PgnExportPanel`, `GameInfo`, `CurrentOpening`, `ChangesStrip`, `PlayToggleButton`, `EngineThinking` | panels | every board's Export and Info tabs, header and changes strip |
 
 `ExampleGamesTable`, the placeholder that proved the layer, was deleted with
 the first real table block, as [`hierarchy.md`](./hierarchy.md) promised.
@@ -130,7 +172,15 @@ from sharing a root id.
 
 **Words.** Every pilot block is used by one module, so each reads its words
 from the catalogs (`useTranslation`), as `hierarchy.md` allows; the gallery
-shows them in English.
+shows them in English. CTA-113's blocks used by several modules take their
+words as `labels` props or a `labelKey` (the folder dialogs, the saved lists,
+`ChangesStrip`); a module's own reads its catalog.
+
+**`src/views/shared/` after CTA-113** holds only the board's pieces and hooks
+(the move list, eval bar, captured strips, plates, promotion picker, board
+controls, next-moves bar, position editor, `useCurrentOpening`,
+`useStoreRead`) — every generic part is in the design system and every
+chess-aware composition a block.
 
 ### 4.3 The deliberate changes
 
@@ -159,6 +209,35 @@ Behaviour stayed as it was except for these, each with its tests updated:
   tooltip): the two "the back button is first in the header" assertions ask
   whether the header's first child holds it.
 
+**CTA-113's**, each with its tests updated:
+
+- **Saved analyses' pager**: 25 / 50 / 100 / 250, 50 by default, shown once
+  there are more than 25 rows (was a fixed page). `SavedAnalyses.test.tsx`.
+- **A collection's page sizes**: 25 / 50 / 100 / 250, 50 by default (were
+  50 / 100 / 250); its **select-all** is the table header's (was the export
+  bar's) — its id, `library-picks-select-all`, kept. The empty and no-match
+  line is a table row now, so the Library tests' `rowNumbers()` helper skips
+  it.
+- **The Library home's row actions** are always visible (were on hover and
+  focus), and its dates `YYYY-MM-DD` (were "Sep 1, 2026").
+- **A repertoire's folder choice** in its settings is a list, the chosen row
+  `aria-current` (was a tree, `aria-selected`). `RepertoireSettings.test.tsx`,
+  `RepertoireFolders.test.tsx`.
+- **Every destructive confirm** (delete a collection, a folder, picked games,
+  a move's line) has a contained red button.
+- **Each row's controls are named by their record** ("Open Caro-Kann",
+  "Games of Caro-Kann", "Select Amy – Bob").
+- **`FormDialog` submits on Enter**: the folder name, a comment and the
+  play-chance marks save on Enter in their field.
+- **The Analysis Board's Save** carries no `aria-pressed` while it opens a
+  dialog (a new board), only while it toggles the changes strip.
+- **The collection's *Open folder*** is the app's snackbar's (one at a time,
+  queued) — its id kept.
+- **The Openings explorer's Book rows** are list items, and the keyboard's
+  focus recolours a row's arrow as the pointer does.
+- **The colour toggle and Home's cards** look as the design system draws them
+  (`IconAction`'s tooltip and span, `CardGrid`'s gap).
+
 Smaller visible changes, from the components' one look: the side toggles'
 padding (`SideToggle`), the custom-position notice's order (the text, its two
 buttons, then the FEN in the detail block), the import progress's caption
@@ -174,31 +253,45 @@ every column is named).
 | The import clash's effective-choice `Chip`, its `Collapse` | `blocks/dialogs/ImportDialog` | One-off parts inside a block, no generic job yet. |
 | `NewGameForm` and `PlayScreen` | `views/engine/` | They host the position editor, `BoardShell` / `BoardPanel` and the explorer — pieces a block may not import — so they stay screen compositions, built of base components and blocks. |
 | The Start button and the Open-in-analysis button | `NewGameForm`, `PlayScreen` | A single MUI `Button` each — no composition to replace. |
-| `EngineSettingsForm`'s three-state rule | `blocks/forms/EngineSettingsForm/engineOptionState.ts` | `views/shared/OptionSlider.tsx` keeps the same rule, since the Analysis Board still uses it (rule 1: shared pieces migrate with their module). **When Analyses migrates, `OptionSlider` goes onto `engineOptionState` + `SliderField`.** |
+| ~~`EngineSettingsForm`'s three-state rule~~ | | Done by CTA-113: `OptionSlider` is gone; the Analysis Board's Engine tab is the `AnalysisEngineForm` block over `engineOptionState` + `SliderField`. |
+| *CTA-113:* | | |
+| **The sidebar** (`TreeRow`, folders as `aria-expanded` buttons, screens as links) | `views/main/Sidebar.tsx` | `TreeView` is a WAI-ARIA tree — one roving tab stop, the arrow keys to move — and one list. The sidebar is a `nav` of links, **each a Tab stop**, whose Settings folder is pinned in a foot that never scrolls and grows upwards. Moving it would change its keys and its layout, which the issue allows only if kept exactly; it stays, built of MUI's list atoms under the theme's focus ring. |
+| The language `Select` | `theme/LanguageSwitch.tsx` | A compact header select with an icon in its value and no visible label (`aria-label`); `SelectField` draws a labelled outlined field. |
+| The collection's opening box | `blocks/forms/CollectionFilters` | A free-text single `Autocomplete` (an ECO code's start) — `SelectAutocomplete` chooses one value, `ChipsAutocomplete` many. |
+| The import popup's Elo range slider | `blocks/dialogs/CollectionImportDialog` | Two thumbs on one span; `SliderField` is one value. |
+| The filter board's continuations (SAN buttons with result bars) and the board | `views/library/OpeningFilterBoard.tsx` | A board piece: it replays a line in `chess.js` and draws play-chance arrows. |
+| `NagDialog`'s glyph toggles, `PlayChanceDialog`'s chances grid | `views/explorer/` | Move-annotation grids with no generic job; inside `BaseDialog` / `FormDialog`. |
+| `PlayScore` (the repertoire game's score board) | `views/repertoires/RepertoirePlayer.tsx` | A game's own score and accuracy line. |
+| The single `Button`s (Add games, Analyse, Start, Open in analysis, the quick loads) | the screens | One MUI job each, nothing to compose. |
+| **ChoiceToggle / RadioCardGroup** | — | Not built: no second use appeared (the mask presets and the theme cards stay the only ones). |
 
 ### 4.5 Mismatches and loose ends
 
-- **`lib/storageDiagnostics.ts` mixes a pure helper (`formatBytes`) with a
-  store read** (`estimatedLibraryGamesPayload`). `StorageTable` imports the
-  helper, which the lint rule allows but which pulls the Library's store into
-  the block's graph. Move `formatBytes` to a pure module the next time `lib/`
-  is open.
+- ~~**`lib/storageDiagnostics.ts` mixes a pure helper (`formatBytes`) with a
+  store read**~~ — done by CTA-113: `lib/formatBytes.ts`, which
+  `StorageTable` and `CollectionImportDialog` import.
 - **`IconAction`'s span** changes a header's `firstElementChild` (§4.3) —
   expect it on every board header that migrates.
 - **`SelectField`'s `minWidth: 160`** is wider than a half-panel column; the
   mask editor's selects take `fullWidth` in a two-column grid.
-- **Monospace** — the incompatible dialog's paths use `InlineAlert`'s stack
-  (`ui-monospace, SFMono-Regular, Menlo, monospace`); a typography token for
-  notation and machine words would make it one.
+- ~~**Monospace**~~ — done by CTA-113: `theme.typography.fontFamilyMonospace`
+  (`MONOSPACE_FONT_FAMILY`, `monospaceOf`), read by `InlineAlert`, `CopyField`
+  and the incompatible-import dialog; no literal stack is left.
+- **A gallery-discovery test** (`gallery/discover.test.ts`) lists the
+  patterns by name; a new pattern (CTA-113's `UploadPanel`) must be added
+  there, and a new table block moves `Main.test.tsx`'s "first block".
 
 ### 4.6 Accessibility gaps the pilot did not close
 
 Listed in [`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps) too.
 
-- **Play's thinking spinners** (`PlayToggleButton`, `EngineThinking` —
-  `views/tools/analysis/`) are unnamed progress bars while the engine
-  thinks (axe's `aria-progressbar-name`). They migrate with the Analysis
-  module; the screens' axe tests audit a game whose engine has answered.
+- ~~**Play's thinking spinners**~~ (`PlayToggleButton`, `EngineThinking`)
+  — fixed by CTA-113: both are blocks, the spinner named, the thinking line
+  a polite status.
+- ~~**The pinned engine lines' targets**~~ (`BestVariations`) — fixed by
+  CTA-113: 24 px rows and toggle, the motion the theme's.
+- ~~**The Openings Book list**~~ put buttons straight in a `ul` (axe's
+  `list`) — fixed by CTA-113 (`OpeningBookList`).
 - ~~**The board panel's tab panels** (`BoardPanel`) and the new-game form's
   panel are `role="tabpanel"` without `aria-labelledby` back to their tab.~~
   Fixed by CTA-112: `BoardPanel` links every tab and its panel, and

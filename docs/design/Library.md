@@ -7,6 +7,11 @@ The module's reference is
 [`.claude/rules/game-collections.md`](../../.claude/rules/game-collections.md).
 Template and families: [`README.md`](./README.md).
 
+**Migrated onto the design system by CTA-113**: each entry below is marked
+with what replaced it, and describes the component as it was. The binding
+decisions, the order of work and the findings are
+[`migration.md`](./migration.md).
+
 **Documented in [`Shared.md`](./Shared.md), not here**: `FolderTreeTable`,
 `FolderNameDialog`, `FolderMoveDialog`, `FolderDeleteDialog`, `FolderPicker`,
 `SavedListExportBar`, `GameInfo`, `BoardPanel`, `CurrentOpening` and the
@@ -21,6 +26,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### LibraryHome
 
+> **Migrated (CTA-113)** — the `CollectionsTreeTable` block (`blocks/tables/`) over `DataTable`'s tree rows (a depth indent and a named `ExpandToggle` per folder); the row actions one always-visible column; dates `YYYY-MM-DD`. `FolderTreeTable` is deleted.
+
 - **Name and location** — `LibraryHome`, `src/views/library/LibraryHome.tsx:165`
 - **Family** — table
 - **MUI atoms** — Box, Typography (+ `FolderTreeTable`, the top bar, dialogs below)
@@ -33,6 +40,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — module-specific but needs design consistency — the only screen using `FolderTreeTable`; the sort state helper is shared by copy.
 
 ### Library top bar
+
+> **Migrated (CTA-113)** — `ListScreenHeader`; the count keeps `library-count`.
 
 - **Name and location** — inline in `LibraryHome`, `src/views/library/LibraryHome.tsx:445-491`
 - **Family** — toolbar / action bar
@@ -47,6 +56,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### Library words box
 
+> **Migrated (CTA-113)** — `SearchField` (`library-filter`, its clear `library-filter-clear`).
+
 - **Name and location** — inline in `LibraryHome`, `src/views/library/LibraryHome.tsx:492-501`
 - **Family** — filter bar
 - **MUI atoms** — Box, TextField
@@ -59,6 +70,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — share candidate — one `SearchField` for both words boxes.
 
 ### Action
+
+> **Migrated (CTA-113)** — `IconAction`, inside the `FolderActions` block and the tree table's row actions.
 
 - **Name and location** — `Action`, `src/views/library/LibraryHome.tsx:101`
 - **Family** — toolbar / action bar
@@ -73,6 +86,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### Row actions
 
+> **Migrated (CTA-113)** — a folder's are the `FolderActions` block (with its *Add a collection here* link, `links`); a collection's `IconAction`s — in `DataTable`'s always-visible actions column.
+
 - **Name and location** — `actionsOf`, `src/views/library/LibraryHome.tsx:342-434`
 - **Family** — toolbar / action bar
 - **MUI atoms** — Box (+ `Action`)
@@ -85,6 +100,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — module-specific but needs design consistency — the folder actions' set, order and icons differ in each of the three folder screens.
 
 ### CollectionMoveDialog
+
+> **Migrated (CTA-113)** — the `FolderMoveDialog` block over `FolderPicker`.
 
 - **Name and location** — `CollectionMoveDialog`, `src/views/library/LibraryHome.tsx:130`
 - **Family** — dialog
@@ -99,6 +116,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### Delete collection dialog
 
+> **Migrated (CTA-113)** — `ConfirmDialog tone="destructive"` (`library-delete-dialog`, `-confirm`).
+
 - **Name and location** — inline in `LibraryHome`, `src/views/library/LibraryHome.tsx:605-633`
 - **Family** — dialog
 - **MUI atoms** — Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button
@@ -111,6 +130,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — share candidate — two delete dialogs on one screen, two looks.
 
 ### Library no-matches state
+
+> **Migrated (CTA-113)** — the table's empty row (`DataTable`'s), its words under `library-no-matches`.
 
 - **Name and location** — inline in `LibraryHome`, `src/views/library/LibraryHome.tsx:535-543`
 - **Family** — empty / loading / error state
@@ -129,6 +150,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### CollectionTable
 
+> **Migrated (CTA-113)** — the `CollectionGamesTable` block over `DataTable`: select-all in the header (`library-picks-select-all`), a pick per row (`library-picks-row-<n>`), the White cell the row's link named by the game; page sizes 25 / 50 / 100 / 250, 50 by default.
+
 - **Name and location** — `CollectionTable`, `src/views/library/CollectionScreen.tsx:156`
 - **Family** — table
 - **MUI atoms** — TableContainer, Table, TableHead, TableBody, TableRow, TableCell, TableSortLabel, TablePagination, Checkbox, Tooltip, Box, Typography
@@ -141,6 +164,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — module-specific but needs design consistency — the reference table; its select-all lives in the export bar, not in its empty header checkbox cell.
 
 ### Collection top bar
+
+> **Migrated (CTA-113)** — `ListScreenHeader` with a `BackButton`; the picks' chip and actions a `SelectionBar` without its own select-all.
 
 - **Name and location** — inline in `CollectionTable`, `src/views/library/CollectionScreen.tsx:379-473`
 - **Family** — toolbar / action bar
@@ -155,6 +180,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### Collection words box
 
+> **Migrated (CTA-113)** — `SearchField` in the table's `filters` slot.
+
 - **Name and location** — inline in `CollectionTable`, `src/views/library/CollectionScreen.tsx:475-484`
 - **Family** — filter bar
 - **MUI atoms** — Box, TextField
@@ -167,6 +194,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — share candidate — `SearchField`.
 
 ### Filters panel column
+
+> **Migrated (CTA-113)** — unchanged — the `RightPanel`'s scrolling column, holding the `CollectionFilters` block and the note.
 
 - **Name and location** — inline in `CollectionTable`, `src/views/library/CollectionScreen.tsx:606-630`
 - **Family** — filter bar
@@ -181,6 +210,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### Analyse notice
 
+> **Migrated (CTA-113)** — the app's snackbar, `useSnackbar()` — its *Open folder* action a real link (`href`, the snackbar's new optional prop).
+
 - **Name and location** — inline in `CollectionTable`, `src/views/library/CollectionScreen.tsx:631-663`
 - **Family** — feedback (alert / snackbar)
 - **MUI atoms** — Snackbar, Alert, Button
@@ -193,6 +224,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — module-specific but needs design consistency — the two snackbars should share one style.
 
 ### Delete picked games dialog
+
+> **Migrated (CTA-113)** — `DeleteManyDialog` (its problem the dialog's `error`).
 
 - **Name and location** — inline in `CollectionTable`, `src/views/library/CollectionScreen.tsx:664-699`
 - **Family** — dialog
@@ -207,6 +240,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### Collection route states
 
+> **Migrated (CTA-113)** — `LoadingLine`; the miss `LibraryMiss` over `MissState`.
+
 - **Name and location** — `CollectionScreen`, `src/views/library/CollectionScreen.tsx:705-718`
 - **Family** — empty / loading / error state
 - **MUI atoms** — Typography (+ `LibraryMiss`)
@@ -219,6 +254,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — share candidate — `LoadingLine`, `EmptyState`.
 
 ### CollectionFilters
+
+> **Migrated (CTA-113)** — the `CollectionFilters` block (`blocks/forms/`): `ChipsAutocomplete`, `SideToggle withAll`, `SelectAutocomplete`, `DateRangeFields` (with `bounds`), `SelectField`; the opening board a slot. The opening box stays a free-text `Autocomplete` (§4.4).
 
 - **Name and location** — `CollectionFilters`, `src/views/library/CollectionFilters.tsx`
 - **Family** — filter bar
@@ -233,6 +270,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### OpeningFilterBoard — the chrome
 
+> **Migrated (CTA-113)** — the reset / back / flip buttons are `IconAction`s; the board, arrows and move list stay (a board piece).
+
 - **Name and location** — `OpeningFilterBoard`, `src/views/library/OpeningFilterBoard.tsx` (controls row `:186-226`, caption row `:248-268`)
 - **Family** — toolbar / action bar
 - **MUI atoms** — Box, Typography, Tooltip, IconButton, Link (`component="button"`)
@@ -246,6 +285,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### Continuations list
 
+> **Migrated (CTA-113)** — stays in `OpeningFilterBoard` — a board piece's list of SAN buttons with result bars (§4.4).
+
 - **Name and location** — inline in `OpeningFilterBoard`, `src/views/library/OpeningFilterBoard.tsx:281-307`, with the inner `ResultBar` (`:73`)
 - **Family** — list
 - **MUI atoms** — Box, ButtonBase, Typography
@@ -258,6 +299,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — module-specific but needs design consistency — the result bar's colours are the only hard-coded palette in a list, and ignore dark mode's tokens.
 
 ### OpeningTreePgnDialog
+
+> **Migrated (CTA-113)** — the `OpeningTreePgnDialog` block (`blocks/dialogs/`): `FormDialog`, `RadioGroupField`, two `CheckboxField`s.
 
 - **Name and location** — `OpeningTreePgnDialog`, `src/views/library/OpeningTreePgnDialog.tsx`
 - **Family** — dialog
@@ -276,6 +319,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### LibraryUpload
 
+> **Migrated (CTA-113)** — the `PgnInput` block (over the `UploadPanel` pattern) and the `FolderPicker` block.
+
 - **Name and location** — `LibraryUpload`, `src/views/library/LibraryUpload.tsx:61`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, TextField, Button, Alert (+ `FolderPicker`, `ImportOptionsDialog`)
@@ -288,6 +333,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — share candidate — a shared `PgnInput` (pick + paste + read + problem) under both upload screens.
 
 ### Upload folder picker frame
+
+> **Migrated (CTA-113)** — the `FolderPicker` block.
 
 - **Name and location** — inline in `LibraryUpload`, `src/views/library/LibraryUpload.tsx:211-239`
 - **Family** — form / settings group
@@ -302,6 +349,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### Upload route states
 
+> **Migrated (CTA-113)** — `LoadingLine`; the miss `LibraryMiss` over `MissState`.
+
 - **Name and location** — `LibraryUploadRoute`, `src/views/library/LibraryUpload.tsx:322`
 - **Family** — empty / loading / error state
 - **MUI atoms** — Typography (+ `LibraryMiss`)
@@ -314,6 +363,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — share candidate — `LoadingLine`.
 
 ### ImportOptionsDialog
+
+> **Migrated (CTA-113)** — the `CollectionImportDialog` block (`BaseDialog`, `DateRangeFields`, `ChipsAutocomplete`, `InlineAlert`); the index pass a `ProgressDialog` in its place over `useCancellableJob`. The Elo range slider stays MUI's (§4.4).
 
 - **Name and location** — `ImportOptionsDialog`, `src/views/library/ImportOptionsDialog.tsx`
 - **Family** — dialog
@@ -332,6 +383,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### LibraryGameScreen
 
+> **Migrated (CTA-113)** — `LoadingLine`; an unreadable game `MissState`.
+
 - **Name and location** — `LibraryGameScreen`, `src/views/library/LibraryGameScreen.tsx`
 - **Family** — empty / loading / error state
 - **MUI atoms** — Typography, Box, Button (+ `LibraryMiss`, `LibraryGameBoard`)
@@ -344,6 +397,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — share candidate — the unreadable block is `LibraryMiss` with another message.
 
 ### LibraryMiss
+
+> **Migrated (CTA-113)** — `MissState`.
 
 - **Name and location** — `LibraryMiss`, `src/views/library/LibraryMiss.tsx`
 - **Family** — empty / loading / error state
@@ -358,6 +413,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### LibraryGameBoard header
 
+> **Migrated (CTA-113)** — `BackButton`, `IconAction`s (previous / next), `ToggleIconAction` (Save), `SwitchField` (the engine).
+
 - **Name and location** — inline in `LibraryGameBoard`, `src/views/library/LibraryGameBoard.tsx:235-330`
 - **Family** — toolbar / action bar
 - **MUI atoms** — Tooltip, IconButton, Box, Typography, FormControlLabel, Switch (+ `CurrentOpening`, `PlayToggleButton`)
@@ -371,6 +428,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### Moves-tab arrows switch
 
+> **Migrated (CTA-113)** — `SwitchField`.
+
 - **Name and location** — inline in `LibraryGameBoard`, `src/views/library/LibraryGameBoard.tsx:345-356`
 - **Family** — form / settings group
 - **MUI atoms** — FormControlLabel, Switch
@@ -383,6 +442,8 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — module-specific but needs design consistency — one setting, three homes.
 
 ### Export tab — Open in analysis
+
+> **Migrated (CTA-113)** — unchanged — one `Button` link over the `PgnExportPanel` block.
 
 - **Name and location** — inline in `LibraryGameBoard`, `src/views/library/LibraryGameBoard.tsx:371-395`
 - **Family** — toolbar / action bar

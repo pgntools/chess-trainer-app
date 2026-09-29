@@ -624,8 +624,8 @@ orientation), the engine switched off, the game over, or `finished` (a
 resignation). Pressing Play at the engine's turn with a search of that position
 finished plays at once. The Analysis Board, the Library's game board and the
 Openings explorer start it off; Play with Engine starts it on. The header
-button and status line are `PlayToggleButton.tsx` / `EngineThinking.tsx`
-(`views/tools/analysis/`).
+button and status line are the `PlayToggleButton` / `EngineThinking` blocks
+(`src/blocks/panels/`).
 
 ### 9.3 The shell and the panel
 

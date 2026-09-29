@@ -45,3 +45,18 @@ Gallery: `/dev/design/lists`.
 - **Replaces** — `FolderPicker`'s list (its physical `mr: 1.5`) and the
   repertoire settings' hand-built `FolderSection`
   ([Shared.md → FolderPicker](../Shared.md#folderpicker)).
+
+## KeyValueList
+
+- **Purpose** — named values as a description list (`dl`): a term and its
+  value per row, a value's direction its own (CTA-113).
+- **Props** — `rows` (`{ id, label, value, dir? }`), `ariaLabel?`, `testId`.
+- **Replaces** — `GameInfo`'s hand-built tag grid.
+
+## CTA-113 additions
+
+- `RecordRow`, `RecordCard`, `FolderRow`, `FolderCard` — `openTestId`,
+  `pickTestId`, `nameTestId`, `descriptionTestId`; a card's `detail` line; a
+  card with neither `onOpen` nor `link` is not a button; `RowAction.ariaLabel`
+  (a control named by its record).
+- `PickerList` — `noneTestId`.

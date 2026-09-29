@@ -53,3 +53,36 @@ Gallery: `/dev/design/toolbars`.
   spread apart.
 - **Replaces** — the row layouts of `BoardControls`, the map's toolbar,
   `OpeningFilterBoard`'s back / reset / flip row and the panels' foot rows.
+
+## ViewToggle
+
+- **Purpose** — a list's view switch (list · compact cards · cards): an
+  exclusive `ToggleButtonGroup` of icons, each named, its tooltip describing
+  it (CTA-113).
+- **Props** — `value`, `onChange`, `options` (`{ value, label, icon }`),
+  `ariaLabel`, `testId` (each button `<testId>-<value>`).
+- **Replaces** — `SavedListViewToggle` (Saved analyses, Repertoires).
+
+## SelectionBar
+
+- **Purpose** — what the picks of a list can do: a tri-state select-all, a
+  chip counting the picks that clears them (Delete or Backspace on the chip;
+  the cross is titled), the caller's actions (CTA-113). **Beside a table the
+  select-all is left out** (all four of its props absent) — the table's
+  header has one.
+- **Props** — `checked?`, `indeterminate?`, `onToggleAll?`,
+  `selectAllLabel?` (together or none), `count`, `countLabel`, `onClear`,
+  `clearLabel`, `actions?`, `testId` (`-select-all`, `-selected-count`),
+  `rootTestId?` (default `<testId>-export`).
+- **Variations** — some picked, then all; nothing picked; beside a table.
+- **Replaces** — `SavedListExportBar` (Saved analyses, Repertoires, a
+  collection).
+
+## CTA-113 additions
+
+- `IconAction` — `popupOpen?` (a menu button: `aria-haspopup="menu"`,
+  `aria-expanded`).
+- `ToggleIconAction` — `pressed?: boolean | null`: `null` for a Save that
+  opens a dialog, so it carries no `aria-pressed`.
+- `ListScreenHeader` — used by every list screen; a title the tests read by
+  its old id wraps it in a `span`.

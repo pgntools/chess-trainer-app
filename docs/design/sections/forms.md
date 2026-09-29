@@ -128,3 +128,21 @@ Gallery: `/dev/design/forms`.
   commit }` — the draft Save and Cancel act on.
 - **Replaces** — `AnalysisSettingsScreen`'s `Section` and
   `RepertoireSettingsScreen`'s inline copy of it — one layout written twice.
+
+## CopyField
+
+- **Purpose** — machine words to copy (a FEN, a PGN): its label over a
+  read-only field in the theme's monospace, `dir="ltr"`, and a copy button
+  that says it copied (CTA-113).
+- **Props** — `label`, `value`, `copyLabel`, `copiedLabel`, `failedLabel`,
+  `disabled?`, `disabledHint?`, `maxRows?`, `testId`.
+- **Replaces** — `views/shared/CopyableValue.tsx`.
+
+## CTA-113 additions
+
+- `DateRangeFields` — `bounds?: { min?, max? }` (neither end leaves the span —
+  a collection's first and last game) and `inputTestIds?: { from?, to? }`.
+- `RadioGroupField` — `optionTestId?(value)`: a radio's own id.
+- `SelectField` — `testIdOn?: "input" | "display"`.
+- `SideToggle` — `buttonTestIds?`.
+- `SearchField` — the Library's, a collection's and the lists' words box.

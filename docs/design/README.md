@@ -145,6 +145,7 @@ touched:
 | green · light | `warning.main` | MUI's `#ed6c02` | `#b35102` | 2.75:1 as text on the page |
 | green · light | `info.main` | MUI's `#0288d1` | `#0273b1` | 3.41:1 as text on the page |
 | green · dark | `error.main` | MUI's `#f44336` | `#f6675d` | 3.65:1 as text on the page |
+| brown · dark | `text.secondary` | `#8f8d8a` | `#a19f9b` | 4.3:1 on a raised row (the paper under `action.hover`) — the pinned engine lines' secondary line; measured since CTA-113 |
 | every theme · both | `contrastThreshold` | MUI's 3 | 4.5 | MUI chose white text at 3:1 (the dark schemes' error buttons 3.68:1, brown dark's primary 3.27:1); now a button's text is picked at AA |
 | every theme · both | `focusRing`, `controlBorder` | — (MUI's outlined border is 1.6:1) | the theme's accent (the text colour in high contrast); a 3:1 grey of the theme's own hue | new tokens: a focus ring and a control border at 3:1 |
 
@@ -328,7 +329,7 @@ module-specific but needing design consistency**.
 
 | Doc | Covers |
 | --- | --- |
-| [`Shared.md`](./Shared.md) | `src/views/shared/` (folders, saved-list pieces, `OptionSlider`, `CopyableValue`, `GameInfo`, the position editor's chrome, …), the `BoardPanel` skeleton, the non-tree chrome of `src/views/explorer/` (menu, dialogs, comment block, map toolbar), and the app shell (`src/views/main/`, `src/views/home/`, the header controls in `src/theme/`). **Module docs link here instead of repeating it**, and it carries the **cross-module comparisons** (the four tables, then every family). |
+| [`Shared.md`](./Shared.md) | `src/views/shared/` as the audit found it (folders, saved-list pieces, `OptionSlider`, `CopyableValue`, `GameInfo`, the position editor's chrome, … — each entry marked with the block or component that replaced it, CTA-113), the `BoardPanel` skeleton, the non-tree chrome of `src/views/explorer/` (menu, dialogs, comment block, map toolbar), and the app shell (`src/views/main/`, `src/views/home/`, the header controls in `src/theme/`). **Module docs link here instead of repeating it**, and it carries the **cross-module comparisons** (the four tables, then every family). |
 | [`Engine.md`](./Engine.md) | Play with Engine, Masked Pieces, the Lobby and its new-game form (`src/views/engine/`). |
 | [`Library.md`](./Library.md) | The Library: the folder tree, a collection's table and filters, the upload and its import popup, a game's board panel (`src/views/library/`). |
 | [`Analyses.md`](./Analyses.md) | The Analysis Board's panel, Saved analyses, the new-analysis form, the settings screen, and the board-panel pieces other boards borrow from `src/views/tools/analysis/`. |

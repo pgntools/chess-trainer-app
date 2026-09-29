@@ -75,3 +75,19 @@ Gallery: `/dev/design/patterns/tables/DataTable`.
 - **Replaces** — `PlayedGames`' own table (now the `PlayedGamesTable` block,
   CTA-109), Storage's report (`StorageTable`), and — as the Library
   migrates — `CollectionTable` (`CollectionGamesTable`).
+
+## CTA-113 additions to `DataTable`
+
+- **`tree`** — rows that are a tree, a file manager's details view: `depth(row)`
+  sets the first cell in (`paddingInlineStart`, so it mirrors), `open(row)` is
+  a branch's state (`undefined` for a leaf, which keeps the chevron's room),
+  `onToggle`, `toggleLabel(row, open)` names the chevron (an `ExpandToggle`,
+  `aria-expanded`, its click never the row's), `toggleTestId?`. The rows
+  arrive walked (`lib/folderTreeRows.ts`) — pass `sorted`.
+- `rowTestId(row)`, `linkTestId(row)` — a row's and its link's own ids.
+- `rowLinkLabel(row)` — the row link's name, where the cell's words alone do
+  not tell one row from another (a collection's White cell).
+- `picks.selectAllTestId`, `picks.pickTestId(row)`.
+- `rowLink` may answer `undefined` for a row with no destination (a folder).
+- **An empty or no-match line is a table row** (`-empty`, `-no-match`): a
+  test that counts rows skips it.
