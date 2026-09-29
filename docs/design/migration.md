@@ -95,6 +95,8 @@ Taken with the product owner on 2026-09-28, before the pilot began.
 | A progress bar inside a choice dialog (`MultiGameDialog`, the import popup) | `ProgressDialog` in the choice's place over `useCancellableJob` | base |
 | The collection's filters (`Autocomplete` × 3, date `TextField`s, a side `ToggleButtonGroup`, a select) | `CollectionFilters` (`ChipsAutocomplete`, `SideToggle withAll`, `SelectAutocomplete`, `DateRangeFields`, `SelectField`) | block |
 | Home's `Card` + `CardActionArea` grid | `CardGrid` of `IconCard`s | base |
+| *CTA-116, the loose ends:* | | |
+| `Tooltip` + a text `Button`, the disabled one in a `span` (a collection's *Add games* and *Analyse*, the changes strip's *Update* and *Save as copy*) | `HintButton` | base |
 
 ## 4. The pilot's findings
 
@@ -138,6 +140,15 @@ The four test-id props (`confirmTestId`, `testIdOn`, `inputTestId`,
 | `IconAction` / `ToggleIconAction` | `popupOpen`; `pressed: boolean \| null` | A menu button; a Save that opens a dialog rather than toggling a strip. |
 | `AnchoredMenu`, `ContextMenu`, `PickerList`, `Breadcrumbs`, `ProgressLine`, `FeedbackStrip`, `CardGrid` | `entryTestIdPrefix`; `open`; `noneTestId`; `currentTestId`; `barTestId`; `maxHeight` as a string; `cardGridColumns(size)` | Each one screen's ids or layout. |
 | The theme | `typography.fontFamilyMonospace` (`MONOSPACE_FONT_FAMILY`, `monospaceOf`); brown dark `text.secondary` `#a19f9b` | One monospace token for notation and paths (§4.5's loose end); a raised row read 4.3:1. |
+
+**CTA-116** added, the same way:
+
+| Component | Added | Why |
+| --- | --- | --- |
+| `HintButton` (new, toolbars) | A small `Button` under a tooltip that **describes** it (`aria-describedby` a hidden copy of the hint), in a span so a disabled one keeps it; `link`, `busy` | Three hand-written copies of one composition — and the reason the MUI lock needs no `Tooltip` exception. |
+| `SelectField` | Its 160 px floor is `min(160px, 100%)` | A half-panel column is narrower than 160 px; the mask editor's twelve selects overflowed it, and `fullWidth` only widened the box to the same floor. |
+| `VariationLine` (the side lines' move token) | `minWidth` / `minHeight` `MIN_TARGET_PX` | The first browser pass's finding: a side line's move was 21.5 px tall, a short one 23.7 wide (`target-size`). |
+| `BestVariations` | A collapsed line stops at the last move that fits **whole**, an ellipsis after it (`fitWholeMoves.ts`, measured after layout) | Its last move was cut by the panel's edge to 16–23 px of a button (§4.7) — and a move only half in sight was still a tab stop. A cut move leaves the layout, so it leaves the tab order too. |
 
 ### 4.2 New blocks
 
@@ -262,8 +273,29 @@ every column is named).
 | The filter board's continuations (SAN buttons with result bars) and the board | `views/library/OpeningFilterBoard.tsx` | A board piece: it replays a line in `chess.js` and draws play-chance arrows. |
 | `NagDialog`'s glyph toggles, `PlayChanceDialog`'s chances grid | `views/explorer/` | Move-annotation grids with no generic job; inside `BaseDialog` / `FormDialog`. |
 | `PlayScore` (the repertoire game's score board) | `views/repertoires/RepertoirePlayer.tsx` | A game's own score and accuracy line. |
-| The single `Button`s (Add games, Analyse, Start, Open in analysis, the quick loads) | the screens | One MUI job each, nothing to compose. |
+| The single `Button`s (Start, Open in analysis, the quick loads) | the screens | One MUI job each, nothing to compose. (*Add games* and *Analyse* had a tooltip too: `HintButton` since CTA-116.) |
 | **ChoiceToggle / RadioCardGroup** | — | Not built: no second use appeared (the mask presets and the theme cards stay the only ones). |
+
+#### The MUI lock's exceptions (CTA-116)
+
+`yarn lint` fails an import of an MUI atom the design system wraps from
+`src/views/` or `src/blocks/` ([`hierarchy.md`](./hierarchy.md#the-import-rules)).
+The rows above that keep one are the exceptions, each a per-line
+`eslint-disable-next-line no-restricted-imports -- migration.md §4.4: …` with its
+reason, and **there are five, in four files**:
+
+| File | Import | Why (§4.4 above) |
+| --- | --- | --- |
+| `views/explorer/NagDialog.tsx` | `ToggleButton` | The glyph toggles: a move-annotation grid with no generic job |
+| `blocks/forms/MaskEditor/MaskEditor.tsx` | `ToggleButtonGroup`, `ToggleButton` | The presets: a vertical list of named, exclusive choices — `SideToggle` is the sides alone |
+| `blocks/dialogs/CollectionImportDialog/CollectionImportDialog.tsx` | `Slider` | Two thumbs on one span; `SliderField` is one value |
+| `blocks/forms/CollectionFilters/CollectionFilters.tsx` | `Autocomplete` | The opening box: free text, one value |
+
+`src/views/boundary.test.ts` holds this table to the source — the files, the
+count and the reason on each line — so a sixth is a deliberate edit of both.
+Not exceptions, because not locked: the theme cards' `Radio` and the language
+`Select` (MUI atoms the design system does not wrap), the sidebar's list atoms
+and `DialogContentText`.
 
 ### 4.5 Mismatches and loose ends
 
@@ -272,14 +304,19 @@ every column is named).
   `StorageTable` and `CollectionImportDialog` import.
 - **`IconAction`'s span** changes a header's `firstElementChild` (§4.3) —
   expect it on every board header that migrates.
-- **`SelectField`'s `minWidth: 160`** is wider than a half-panel column; the
-  mask editor's selects take `fullWidth` in a two-column grid.
+- ~~**`SelectField`'s `minWidth: 160`** is wider than a half-panel column; the
+  mask editor's selects take `fullWidth` in a two-column grid.~~ Done by
+  CTA-116: the floor is `min(160px, 100%)`, and the mask editor's selects
+  carry no `fullWidth`.
 - ~~**Monospace**~~ — done by CTA-113: `theme.typography.fontFamilyMonospace`
   (`MONOSPACE_FONT_FAMILY`, `monospaceOf`), read by `InlineAlert`, `CopyField`
   and the incompatible-import dialog; no literal stack is left.
-- **A gallery-discovery test** (`gallery/discover.test.ts`) lists the
+- ~~**A gallery-discovery test** (`gallery/discover.test.ts`) lists the
   patterns by name; a new pattern (CTA-113's `UploadPanel`) must be added
-  there, and a new table block moves `Main.test.tsx`'s "first block".
+  there, and a new table block moves `Main.test.tsx`'s "first block".~~ Done by
+  CTA-116: both read the registries — the patterns off the disk with a glob,
+  the first block off `views/dev/design/blocksTier.ts`, the tier the route
+  itself uses.
 
 ### 4.6 Accessibility gaps the pilot did not close
 
@@ -349,9 +386,21 @@ What remains, in [`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps):
 
 - **The board's pieces** (`aria-command-name`, every board and preview) — the
   board accessibility Story.
-- **An engine line's last move, cut by the panel's edge** (`target-size`:
+- ~~**An engine line's last move, cut by the panel's edge** (`target-size`:
   15.9–22.9 px of it showing, on the boards with the engine on) —
-  `BestVariations`, the board core's.
+  `BestVariations`, the board core's.~~ Fixed by CTA-116 (§4.1).
+
+**From CTA-116 the browser pass is a command**, `yarn test:a11y`: every shipped
+route (21 pages), seeded through the app's own Import — a game still on, a
+finished, a masked and an unreadable one, saved analyses and repertoires (one
+each at the top level and in a folder), two uploaded collections — under every
+theme × scheme × language against the production build, with axe's colour
+contrast and target size on, the console, the document's and the boards'
+direction. It replaces the hand-run passes above
+([`browser-a11y.md`](../../.claude/rules/browser-a11y.md), `ACCESSIBILITY.md`).
+Its first run found one thing the hand passes had not, fixed in §4.1 (a side
+line's move tokens), and measured **reflow at 320 px**: the sidebar leaves the
+content no width, on every route ([`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps)).
 
 ## 5. Checklist for migrating a module
 
@@ -370,11 +419,16 @@ What remains, in [`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps):
       tests updated, each listed here.
 - [ ] Each screen's main states pass `expectNoAxeViolations`; the keyboard
       walk of each part tested with `userEvent`; status changes in live regions.
-- [ ] `npx tsc -b`, `yarn test:run`, `yarn lint` clean; `npx knip` reports
+- [ ] `npx tsc -b`, `yarn test:run`, `yarn lint` clean (a MUI atom the design
+      system wraps is a lint error; §4.4 lists the exceptions); `npx knip` reports
       nothing new but the blocks' prop types; `yarn build` and the `dist/`
       grep show no gallery, demo or fixture.
-- [ ] The screens checked in the running app under every theme, light and
-      dark, and in Hebrew — through the DOM.
+- [ ] The screens' routes are lines in `e2e/a11y/routes.ts` (`routes.spec.ts`
+      fails a shipped route with none), seeded if they list records
+      (`seedZip.ts`), and **`yarn test:a11y`** passes — every theme, light and
+      dark, English and Hebrew, colour contrast and target size included. A new
+      finding is fixed; only a real gap with a plan goes on the allowlist, and
+      in `ACCESSIBILITY.md` first.
 - [ ] Each migrated screen's route named (`handle.title`, `pages.*`), a record
       it opens reported (`usePageTitle`), a visible title that is the page's
       `h1` declared (`useOwnPageHeading`), and its page added to

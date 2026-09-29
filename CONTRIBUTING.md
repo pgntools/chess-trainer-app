@@ -26,14 +26,19 @@ folder, in `yarn dev` only; a production build carries none of them.
 | --- | --- |
 | Type-check | `npx tsc -b` |
 | Type-check and build | `yarn build` |
-| Lint (the import boundaries between the layers, `jsx-a11y`, React's rules) | `yarn lint` |
+| Lint (the import boundaries between the layers, the MUI lock, `jsx-a11y`, React's rules) — **a CI gate** | `yarn lint` |
+| The browser accessibility pass (every route, every theme × light / dark × English / Hebrew; builds first, then ~30 min) | `yarn test:a11y` |
+| The same for the pull-request matrix (default and high-contrast themes, light, both languages) | `yarn test:a11y:quick` |
 | The whole test suite | `yarn test:run` |
 | One test file | `npx vitest run src/path/to/File.test.tsx` |
 | Tests whose name matches | `npx vitest run -t "part of the name"` |
 | Unused code | `npx knip` |
 
 A pull request needs `npx tsc -b` clean, `yarn test:run` green, `yarn lint`
-adding no finding and `npx knip` reporting nothing new. If the suite seems
+clean (CI fails on it) and `npx knip` reporting nothing new. CI also runs the
+browser accessibility pass on every pull request (the reduced matrix); run
+`yarn test:a11y:quick` yourself when you change what a screen looks like — it
+needs Chromium once: `npx playwright install chromium`. If the suite seems
 stuck or times out at random on your machine, it is running too many files at
 once: lower the cap (`npx vitest run --maxWorkers 2`) and re-run a failure on
 its own before treating it as real ([`CLAUDE.md`](CLAUDE.md#commands)).
@@ -67,7 +72,10 @@ Every component is a folder — the component, its test, its gallery demo and
 an `index.ts` — and takes its words as props and a `testId`; colours come
 from the theme, never a literal; sides are logical (`paddingInlineStart`),
 never `left` / `right`. `yarn lint` enforces the import rules between the
-layers. Moving a screen onto the design system follows the checklist in
+layers — and the **MUI lock**: a screen or a block does not import the MUI
+atoms the design system wraps (`Dialog`, `Table`, `Tabs`, `Tooltip`, `Switch`,
+`Slider` …); the error names the component to use
+([`hierarchy.md`](docs/design/hierarchy.md#the-import-rules)). Moving a screen onto the design system follows the checklist in
 [`docs/design/migration.md` §5](docs/design/migration.md#5-checklist-for-migrating-a-module).
 
 A chessboard is composed from the board core, never written from scratch —
@@ -83,6 +91,16 @@ are at least 24 px, motion stops under `prefers-reduced-motion` — so a screen
 built from it inherits it. What automation cannot hear, a person checks with a
 screen reader: [`docs/design/screen-reader-testing.md`](docs/design/screen-reader-testing.md)
 is the protocol.
+
+What jsdom cannot judge — colour contrast of what is painted, target size as
+laid out, the console, direction — the **browser pass** checks: `yarn test:a11y`
+opens every shipped route, seeded, under every theme, light and dark, in
+English and Hebrew, against the production build, and fails on a new axe
+violation (WCAG 2.2 A / AA, contrast and target size included). A new screen is
+a line in `e2e/a11y/routes.ts` — a test fails without it. A violation is fixed;
+it goes on the allowlist (`e2e/a11y/allowlist.ts`) only as a real gap with a
+plan, listed in `ACCESSIBILITY.md` first. The reference is
+[`.claude/rules/browser-a11y.md`](.claude/rules/browser-a11y.md).
 
 ## Create a theme
 

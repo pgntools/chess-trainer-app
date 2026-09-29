@@ -2,6 +2,7 @@ import { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import DialogContentText from "@mui/material/DialogContentText";
+// eslint-disable-next-line no-restricted-imports -- migration.md §4.4: the glyph toggles are a move-annotation grid with no generic job
 import ToggleButton from "@mui/material/ToggleButton";
 import { useTranslation } from "react-i18next";
 

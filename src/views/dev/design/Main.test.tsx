@@ -7,6 +7,7 @@ import { themes } from "../../../design-system/themes";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import { AXE_PAGE_TIMEOUT_MS, expectNoAxeViolations } from "../../../test/axe";
 import { THEME_STORAGE_KEY } from "../../../theme/themeChoice";
+import { blocksTier } from "./blocksTier";
 import Main from "./Main";
 
 /*
@@ -75,8 +76,16 @@ describe("the design gallery's route", () => {
   });
 
   it("lands a family's own link on its first block", () => {
-    mount("/dev/design/blocks/tables/");
-    expect(screen.getByTestId("where")).toHaveTextContent("/dev/design/blocks/tables/CollectionGamesTable");
+    // The route's own registry says which is first (CTA-116): the tier is
+    // read, not a block named here that the next new one would displace.
+    const family = blocksTier.sections[0];
+    mount(`/dev/design/blocks/${family.id}/`);
+    expect(screen.getByTestId("where")).toHaveTextContent(`/dev/design/blocks/${family.id}/${family.modules[0].id}`);
+  });
+
+  it("gives the tier every block that has a gallery, and no other", () => {
+    const tiered = blocksTier.sections.flatMap((section) => section.modules.map((entry) => `blocks/${section.id}/${entry.id}`));
+    expect([...tiered].sort()).toEqual([...BLOCK_PAGES].sort());
   });
 
   const SCHEMES = [

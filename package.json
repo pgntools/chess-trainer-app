@@ -11,7 +11,9 @@
     "wirepgn": "node scripts/wirepgn.js",
     "theme:bootstrap": "node scripts/theme-bootstrap.js",
     "test": "vitest",
-    "test:run": "vitest run --maxWorkers 3"
+    "test:run": "vitest run --maxWorkers 3",
+    "test:a11y": "yarn build && playwright test",
+    "test:a11y:quick": "yarn build && A11Y_MATRIX=reduced playwright test"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
@@ -34,7 +36,9 @@
     "xstate": "^5.32.6"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",

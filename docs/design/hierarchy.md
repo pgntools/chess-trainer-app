@@ -166,16 +166,51 @@ And:
 
 Each tier imports only the tiers below it. `yarn lint` enforces them
 (`no-restricted-imports` in `eslint.config.js`, every message pointing
-here); `src/design-system/boundary.test.ts` and `src/blocks/boundary.test.ts`
-test each rule through the project's own config.
+here); `src/design-system/boundary.test.ts`, `src/blocks/boundary.test.ts` and
+`src/views/boundary.test.ts` test each rule through the project's own config —
+and `yarn lint` is a **CI gate** (`ci.yml`, CTA-116), so a rule is kept for
+every pull request, not only for whoever runs it locally.
 
 | From | May import | Must not import |
 | --- | --- | --- |
 | `src/design-system/**` | MUI, React, its own modules | `src/views/`, `src/lib/`, `src/blocks/` |
 | `src/design-system/components/**` | the above | `src/design-system/patterns/` |
 | `src/design-system/patterns/**` | base components (their section `index.ts`) | — (the design system's rule) |
-| `src/blocks/**` | every design-system tier, `src/lib/`'s types and pure helpers, other blocks | `src/views/`, a store or database module (`src/lib/*Store.ts`, `*Db.ts`, `idb*.ts`), `react-router` |
-| `src/views/**` (screens) | every tier | — |
+| `src/blocks/**` | every design-system tier, `src/lib/`'s types and pure helpers, other blocks | `src/views/`, a store or database module (`src/lib/*Store.ts`, `*Db.ts`, `idb*.ts`), `react-router`, **the locked MUI atoms** |
+| `src/views/**` (screens) | every tier | **the locked MUI atoms** |
+
+**The MUI lock** (CTA-116). A screen and a block build from the design system,
+so neither imports an MUI atom the design system wraps — its own dialog stack,
+table, tabs, tooltip. `MUI_LOCK` in `eslint.config.js` lists them, and each
+message names what to use instead:
+
+| Locked (`@mui/material/…`) | Use |
+| --- | --- |
+| `Dialog`, `DialogTitle`, `DialogContent`, `DialogActions` | `BaseDialog`, `ConfirmDialog`, `DeleteManyDialog`, `FormDialog`, `ProgressDialog`, `FullScreenDialog` |
+| `Table`, `TableHead`, `TableBody`, `TableRow`, `TableCell`, `TableContainer`, `TableFooter`, `TableSortLabel`, `TablePagination` | `DataTable` (pattern), or a block over it |
+| `Tabs`, `Tab` | `PanelTabs` |
+| `Switch` | `SwitchField` |
+| `Snackbar`, `SnackbarContent` | `useSnackbar()` |
+| `Alert`, `AlertTitle` | `InlineAlert` |
+| `Tooltip` | `IconAction` (an icon), `HintButton` (a text button) |
+| `ToggleButtonGroup`, `ToggleButton` | `SideToggle`, `ViewToggle` |
+| `Breadcrumbs` | `Breadcrumbs` |
+| `Menu`, `MenuItem` | `AnchoredMenu`, `ContextMenu` |
+| `Pagination` | `TablePager` |
+| `Slider` | `SliderField` |
+| `Autocomplete` | `SelectAutocomplete`, `ChipsAutocomplete` |
+
+Both spellings are caught, `import Dialog from "@mui/material/Dialog"` and
+`import { Dialog } from "@mui/material"`. `src/design-system/` is exempt — it is
+what wraps them. `DialogContentText` is not locked: it is a dialog body's
+secondary text (a `ConfirmDialog`'s own `message` is one), not a dialog.
+
+**A job no component does yet** is a deliberate exception: the import is
+disabled on its own line with its reason —
+`// eslint-disable-next-line no-restricted-imports -- migration.md §4.4: …` —
+and listed in [`migration.md`](./migration.md#44-left-hand-written-and-why)
+(`src/views/boundary.test.ts` holds that list, its count and the reasons to
+the source). Prefer a component: the exceptions are five imports in four files.
 
 The one exception inside the design system: `useTableUrlState`, a base
 component, reads the URL through `react-router`'s `useSearchParams` — a
@@ -253,7 +288,8 @@ that keeps these rules gives every screen composed from it the same.
 | **Big enough to hit** | Every pointer target at least 24 × 24 CSS px (WCAG 2.5.8): the theme floors every icon button at `MIN_TARGET_PX`; never shrink a control's padding below it. | `theme/accessibility.test.tsx` |
 | **Readable** | Colours only from the theme, whose tokens are measured: text 4.5:1, a control's border and the focus ring 3:1. A colour a component needs that no token has is a new token, not a literal. | `themes/contrast.test.ts`; `tierConventions.ts` (no literal) |
 | **Still** | Motion through the theme — `theme.transitions.create(…)`, never a literal `transition` — so a reader who asks for reduced motion gets none. | `theme/accessibility.test.tsx` |
-| **Clean under axe** | Every gallery demo passes axe's WCAG 2.2 A / AA rules under every theme, scheme and direction — so every state a demo shows is audited. jsdom cannot measure colour or size, so those two rules are off there; the rows above cover them. | `gallery/everyTheme.test.tsx`, `views/dev/design/Main.test.tsx` (`expectNoAxeViolations`, `src/test/axe.ts`) |
+| **Clean under axe** | Every gallery demo passes axe's WCAG 2.2 A / AA rules under every theme, scheme and direction — so every state a demo shows is audited. jsdom cannot measure colour or size, so those two rules are off there; the rows above cover them, and the next row measures them. | `gallery/everyTheme.test.tsx`, `views/dev/design/Main.test.tsx` (`expectNoAxeViolations`, `src/test/axe.ts`) |
+| **Checked in a browser** (CTA-116) | Every shipped route, seeded, passes axe's WCAG 2.2 A / AA rules **with colour contrast and target size on**, with no console error, the document reading right to left under Hebrew and every board left to right — under every theme × scheme × language, against the production build. The known gaps are one allowlist that fails when an entry stops occurring. Reflow at 320 px is measured. | `yarn test:a11y` (`e2e/a11y/`, [`browser-a11y.md`](../../.claude/rules/browser-a11y.md)) |
 | **Linted** | `eslint-plugin-jsx-a11y`'s recommended rules. A rule disabled on a line says why, and `ACCESSIBILITY.md` lists it. | `yarn lint` |
 
 A test asks for a component **as a screen reader would**: `getByRole(…, { name })`

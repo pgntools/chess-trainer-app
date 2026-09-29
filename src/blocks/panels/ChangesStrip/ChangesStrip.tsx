@@ -1,11 +1,11 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
 import { FeedbackStrip, StatusText } from "../../../design-system/components/feedback";
 import { linkProps, type LinkTarget } from "../../../design-system/components/link";
+import { HintButton } from "../../../design-system/components/toolbars";
 
 export type ChangesStripProps = {
   /** The strip; its parts are `-summary`, `-read-only`, `-protected`, `-update`, `-settings`, `-copy`, `-discard`, `-problem`. */
@@ -55,21 +55,17 @@ function ChangesStrip({ testId, labelKey, summary, problem, protectedLink, readO
         actions={
           <>
             {readOnly ? null : protectedLink === undefined ? (
-              <Tooltip title={t(`${labelKey}.updateHelp`)} describeChild>
-                <Button size="small" variant="contained" color="success" onClick={onUpdate} data-testid={`${testId}-update`}>
-                  {t(`${labelKey}.update`)}
-                </Button>
-              </Tooltip>
+              <HintButton hint={t(`${labelKey}.updateHelp`)} variant="contained" color="success" onClick={onUpdate} testId={`${testId}-update`}>
+                {t(`${labelKey}.update`)}
+              </HintButton>
             ) : (
               <Button size="small" variant="outlined" data-testid={`${testId}-settings`} {...linkProps(protectedLink)}>
                 {t(`${labelKey}.protected.settings`)}
               </Button>
             )}
-            <Tooltip title={t(`${labelKey}.copyHelp`)} describeChild>
-              <Button size="small" variant="outlined" onClick={onCopy} data-testid={`${testId}-copy`}>
-                {t(`${labelKey}.copy`)}
-              </Button>
-            </Tooltip>
+            <HintButton hint={t(`${labelKey}.copyHelp`)} variant="outlined" onClick={onCopy} testId={`${testId}-copy`}>
+              {t(`${labelKey}.copy`)}
+            </HintButton>
             <Button size="small" onClick={onDiscard} data-testid={`${testId}-discard`}>
               {t(`${labelKey}.discard`)}
             </Button>

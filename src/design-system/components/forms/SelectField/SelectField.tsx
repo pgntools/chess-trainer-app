@@ -4,6 +4,13 @@ import TextField from "@mui/material/TextField";
 
 import type { VisibleLabel } from "../../a11y";
 
+/**
+ * A select's floor: 160 px, or its container where that is narrower (CTA-116)
+ * — a select in a half-panel column fits it rather than overflowing by the
+ * difference. Where the container is wider nothing changes.
+ */
+const SELECT_MIN_WIDTH = "min(160px, 100%)";
+
 /** One choice. */
 export type SelectOption = { value: string; label: ReactNode; disabled?: boolean };
 
@@ -33,7 +40,9 @@ export type SelectFieldProps = {
  * **A select** (CTA-108): MUI's `TextField select`, small, its label always
  * shrunk (an empty "any" choice still shows its words), the test id on the
  * input. A value the options do not hold is still shown as chosen — a filter
- * read from a URL whose choice has since gone.
+ * read from a URL whose choice has since gone. It is at least 160 px wide, or
+ * as wide as its container where that is narrower, so a grid of selects in a
+ * half-panel column (the mask editor's) fits without `fullWidth`.
  */
 function SelectField({
   label,
@@ -67,7 +76,7 @@ function SelectField({
         },
         inputLabel: { shrink: true },
       }}
-      sx={{ minWidth: 160 }}
+      sx={{ minWidth: SELECT_MIN_WIDTH }}
     >
       {emptyOption !== undefined && (
         <MenuItem value="" data-testid={`${testId}-option`}>

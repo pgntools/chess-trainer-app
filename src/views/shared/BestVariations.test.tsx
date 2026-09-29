@@ -252,11 +252,10 @@ describe("the best variations view", () => {
   });
 
   it("collapses each variation to one line, every move still in the DOM", () => {
-    // CTA-56: collapsed, the row is one line — the moves that fit, the cut
-    // marked by an ellipsis — and the cutting is CSS on the span, so every
-    // move still renders and only the clipping differs. jsdom has no line
-    // boxes, so what a test can read is the span's markers, not the
-    // truncation itself.
+    // CTA-56: collapsed, the row is one line — the moves that fit whole
+    // (CTA-116), the cut marked by an ellipsis. jsdom has no line boxes, so
+    // nothing is cut here and what a test can read is the span's markers;
+    // the fitting itself is `fitWholeMoves.test.ts` and the test below.
     renderVariations({
       fen: DEFAULT_POSITION,
       depth: 18,
@@ -275,6 +274,42 @@ describe("the best variations view", () => {
     expect(screen.getByTestId("variation-1-line")).toHaveTextContent(
       "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. O-O",
     );
+  });
+
+  it("stops a collapsed line at its last whole move, and expanding brings the rest back (CTA-116)", async () => {
+    // A row 200 px wide, each move 55 px and 5 apart: three fit whole (the
+    // third ends at 175) with room for the ellipsis, the fourth would be cut.
+    const rectOf = (left: number, right: number) =>
+      ({ left, right, width: right - left, top: 0, bottom: 24, height: 24, x: left, y: 0, toJSON: () => ({}) }) as DOMRect;
+    const geometry = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      if (this.hasAttribute("data-move")) {
+        const index = Array.from(this.parentElement?.querySelectorAll("[data-move]") ?? []).indexOf(this);
+        return rectOf(index * 60, index * 60 + 55);
+      }
+      if (this.hasAttribute("data-more")) return rectOf(0, 10);
+      if (this.getAttribute("data-testid") === "variation-1-line") return rectOf(0, 200);
+      return rectOf(0, 0);
+    });
+    renderVariations(
+      { fen: DEFAULT_POSITION, depth: 18, lines: [line(1, 32, "e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 e1g1")] },
+      3,
+      { onSelectMove: () => {} },
+    );
+
+    // Every move in sight is a whole button; the cut ones are out of the tab order and the tree.
+    expect(screen.getByRole("button", { name: "2. Nf3" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Nc6" })).toBeNull();
+    expect(screen.getByTestId("variation-1-move-4")).not.toBeVisible();
+    expect(screen.getByTestId("variation-1-more")).toBeVisible();
+    expect(screen.getByTestId("variation-1-line")).toHaveTextContent(
+      "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. O-O",
+    );
+
+    await userEvent.setup().click(screen.getByTestId("variation-1-toggle"));
+    expect(screen.getByRole("button", { name: "Nc6" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "4. O-O" })).toBeVisible();
+    expect(screen.getByTestId("variation-1-more")).not.toBeVisible();
+    geometry.mockRestore();
   });
 
   it("expands a row through its chevron and collapses it the same way", async () => {

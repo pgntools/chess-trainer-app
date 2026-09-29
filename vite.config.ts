@@ -1,4 +1,4 @@
-/// <reference types="vitest/config" />
+import { configDefaults } from 'vitest/config'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import pkg from './package.json' with { type: 'json' }
@@ -34,6 +34,9 @@ export default defineConfig({
   */
   worker: { format: 'es' },
   test: {
+    // `e2e/` is Playwright's (CTA-116): a real browser over the production
+    // build, run by `yarn test:a11y` — not Vitest's.
+    exclude: [...configDefaults.exclude, 'e2e/**'],
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],

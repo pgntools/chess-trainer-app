@@ -1,8 +1,5 @@
 import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import PostAddRoundedIcon from "@mui/icons-material/PostAddRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
@@ -54,7 +51,7 @@ import { SearchField } from "../../design-system/components/forms";
 import { BackButton } from "../../design-system/components/navigation";
 import { LoadingLine } from "../../design-system/components/states";
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZES } from "../../design-system/components/tables";
-import { IconAction, ListScreenHeader, SelectionBar } from "../../design-system/components/toolbars";
+import { HintButton, IconAction, ListScreenHeader, SelectionBar } from "../../design-system/components/toolbars";
 import OpeningFilterBoard from "./OpeningFilterBoard";
 import LibraryMiss from "./LibraryMiss";
 import { loadCollectionGames, useCollectionRows } from "./useLibraryCollections";
@@ -364,19 +361,15 @@ function CollectionTable({
           actions={
             <>
               {collection.source === "uploaded" && (
-                <Tooltip title={t("library.table.addGamesHint")}>
-                  <Button
-                    size="small"
-                    variant={rows.length === 0 ? "contained" : "outlined"}
-                    startIcon={<PostAddRoundedIcon fontSize="small" />}
-                    component={RouterLink}
-                    to={`/library/new?into=${encodeURIComponent(collection.id)}`}
-                    data-testid="library-table-add-games"
-                    sx={{ flexShrink: 0 }}
-                  >
-                    {t("library.table.addGames")}
-                  </Button>
-                </Tooltip>
+                <HintButton
+                  hint={t("library.table.addGamesHint")}
+                  variant={rows.length === 0 ? "contained" : "outlined"}
+                  startIcon={<PostAddRoundedIcon fontSize="small" />}
+                  link={{ component: RouterLink, to: `/library/new?into=${encodeURIComponent(collection.id)}` }}
+                  testId="library-table-add-games"
+                >
+                  {t("library.table.addGames")}
+                </HintButton>
               )}
               {/* The picks' chip and actions; select-all is the table header's. */}
               <SelectionBar
@@ -412,22 +405,17 @@ function CollectionTable({
                 }
                 testId="library-picks"
               />
-              <Tooltip title={t(analysing ? "library.table.picks.analysing" : "library.table.picks.analyseHint")}>
-                <span>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    disabled={picked.size === 0 || analysing}
-                    onClick={() => void analysePicked()}
-                    aria-busy={analysing}
-                    startIcon={analysing ? <CircularProgress size={16} /> : <ShareRoundedIcon fontSize="small" />}
-                    data-testid="library-picks-analyse"
-                    sx={{ flexShrink: 0 }}
-                  >
-                    {t("library.table.picks.analyse")}
-                  </Button>
-                </span>
-              </Tooltip>
+              <HintButton
+                hint={t(analysing ? "library.table.picks.analysing" : "library.table.picks.analyseHint")}
+                variant="outlined"
+                disabled={picked.size === 0 || analysing}
+                onClick={() => void analysePicked()}
+                busy={analysing}
+                startIcon={<ShareRoundedIcon fontSize="small" />}
+                testId="library-picks-analyse"
+              >
+                {t("library.table.picks.analyse")}
+              </HintButton>
             </>
           }
           testId="library-table-header"
