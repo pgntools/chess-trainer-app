@@ -49,14 +49,14 @@ const upload = (
   folderId,
 });
 
-export const FOLDERS: readonly GameFolder[] = [
+const FOLDERS: readonly GameFolder[] = [
   folder(BUILT_IN, "Built-in", null, ""),
   folder("gopenings", "Openings"),
   folder("gsicilian", "Sicilian", "gopenings", "2026-09-10T12:00:00.000Z"),
   folder("gempty", "Nothing yet"),
 ];
 
-export const ENTRIES: readonly LibraryEntry[] = [
+const ENTRIES: readonly LibraryEntry[] = [
   shipped("tal", "Tal", 2636),
   shipped("capablanca", "Capablanca", 1035),
   upload("uclub", "Club games", 120, null, "2026-09-20T12:00:00.000Z"),

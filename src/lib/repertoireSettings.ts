@@ -32,7 +32,7 @@
  */
 
 /** A side of the board. */
-export type RepertoireColor = "white" | "black";
+type RepertoireColor = "white" | "black";
 
 export type RepertoireSettings = {
   /** The reader's own notes on the repertoire — what it is, what it is for. */

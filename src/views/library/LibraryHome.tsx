@@ -22,7 +22,14 @@ import { slugify } from "../../lib/pgnText";
 import { gameFolderChildren, gameFolderSubtree, gamesInFolder, type GameFolder } from "../../lib/savedGameFolders";
 import { shippedCollections } from "../../lib/shippedCollections";
 import { FolderDeleteDialog, FolderMoveDialog, FolderNameDialog } from "../../blocks/dialogs";
-import { CollectionsTreeTable, LIBRARY_TREE_COLUMNS, type LibraryEntry, type LibraryTreeColumn } from "../../blocks/tables";
+import {
+  CollectionsTreeTable,
+  LIBRARY_TREE_COLUMNS,
+  LIBRARY_TREE_DEFAULT_SORT,
+  libraryTreeFirstDirection,
+  type LibraryEntry,
+  type LibraryTreeColumn,
+} from "../../blocks/tables";
 import { ConfirmDialog } from "../../design-system/components/dialogs";
 import { SearchField } from "../../design-system/components/forms";
 import { ListScreenHeader } from "../../design-system/components/toolbars";
@@ -65,9 +72,9 @@ type Entry = LibraryEntry;
 type SortColumn = LibraryTreeColumn;
 type Direction = "asc" | "desc";
 const SORT_COLUMNS: readonly SortColumn[] = LIBRARY_TREE_COLUMNS;
-const DEFAULT_SORT: SortColumn = "name";
+const DEFAULT_SORT = LIBRARY_TREE_DEFAULT_SORT;
 /** Which way a column sorts until the reader turns it: names A to Z, counts and dates high first. */
-const defaultDirection = (column: SortColumn): Direction => (column === "name" ? "asc" : "desc");
+const defaultDirection = libraryTreeFirstDirection;
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
