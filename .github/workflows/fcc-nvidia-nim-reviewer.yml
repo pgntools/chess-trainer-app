@@ -367,7 +367,7 @@ jobs:
         # runner VM, non-root (the flag refuses to run as root).
         #
         # The model is the dispatch input, via DEFAULT_REVIEWER_MODEL.
-        timeout-minutes: 60
+        timeout-minutes: 120
         shell: bash
         working-directory: ${{ steps.worktree.outputs.path }}
         env:
@@ -375,6 +375,8 @@ jobs:
           ANTHROPIC_AUTH_TOKEN: freecc
           CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY: "0"
           CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT: "1"
+          CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: "0"
+          CLAUDE_CODE_MAX_CONTEXT_TOKENS: "1000000"
         run: |
           set -euo pipefail
           claude \
