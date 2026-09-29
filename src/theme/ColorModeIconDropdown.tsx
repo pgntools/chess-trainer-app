@@ -1,11 +1,13 @@
 import DarkModeIcon from "@mui/icons-material/DarkModeRounded";
 import LightModeIcon from "@mui/icons-material/LightModeRounded";
 import Box from "@mui/material/Box";
-import IconButton, { type IconButtonOwnProps } from "@mui/material/IconButton";
 import { useColorScheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 
-export default function ColorModeIconDropdown(props: IconButtonOwnProps) {
+import { IconAction } from "../design-system/components/toolbars";
+
+/** The header's light / dark switch — the design system's `IconAction` (CTA-113), named and with its tooltip. */
+export default function ColorModeIconDropdown() {
   const { mode, systemMode, setMode } = useColorScheme();
   const { t } = useTranslation();
 
@@ -35,19 +37,12 @@ export default function ColorModeIconDropdown(props: IconButtonOwnProps) {
   const resolvedMode = (systemMode || mode) as "light" | "dark";
 
   return (
-    <IconButton
+    <IconAction
+      label={t("nav.toggleColorMode")}
       onClick={() => setMode(resolvedMode === "dark" ? "light" : "dark")}
-      size="small"
-      color="inherit"
-      aria-label={t("nav.toggleColorMode")}
-      title={t("nav.toggleColorMode")}
-      {...props}
+      testId="header-color-mode"
     >
-      {resolvedMode === "dark" ? (
-        <DarkModeIcon fontSize="small" />
-      ) : (
-        <LightModeIcon fontSize="small" />
-      )}
-    </IconButton>
+      {resolvedMode === "dark" ? <DarkModeIcon fontSize="small" /> : <LightModeIcon fontSize="small" />}
+    </IconAction>
   );
 }

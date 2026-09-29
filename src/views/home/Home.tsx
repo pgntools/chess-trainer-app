@@ -1,10 +1,9 @@
 import { Link as RouterLink } from "react-router";
 import { useTranslation } from "react-i18next";
 import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import CardActionArea from "@mui/material/CardActionArea";
 import Typography from "@mui/material/Typography";
 
+import { CardGrid, IconCard } from "../../design-system/components/cards";
 import { asAppLanguage } from "../../i18n";
 import { navLabel, navTree, type NavTreeNode } from "../main/navTree";
 import { useOwnPageHeading } from "../main/pageTitle";
@@ -15,7 +14,8 @@ import { useOwnPageHeading } from "../main/pageTitle";
  *
  * It is built from `navTree()`, the same registry the sidebar renders, so a
  * screen or folder added to `navItems` / `navFolders` shows up here for free and
- * nothing lists the routes twice.
+ * nothing lists the routes twice. Each section is a `CardGrid` of
+ * `IconCard`s (the design system's, CTA-113), a card a real link.
  */
 const screensOf = (node: NavTreeNode): NavTreeNode[] =>
   (node.children ?? []).flatMap((child) =>
@@ -62,36 +62,20 @@ const Home = () => {
               {labelOf(node)}
             </Typography>
 
-            <Box
-              sx={{
-                display: "grid",
-                gap: 1.5,
-                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-              }}
-            >
+            <CardGrid size="medium" testId={`home-section-${node.id}`}>
               {entries.map((entry) => {
                 const Icon = entry.icon;
                 return (
-                  <Card key={entry.to} variant="outlined">
-                    <CardActionArea
-                      component={RouterLink}
-                      to={entry.to as string}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1.5,
-                        p: 1.5,
-                      }}
-                    >
-                      <Icon color="primary" />
-                      <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                        {labelOf(entry)}
-                      </Typography>
-                    </CardActionArea>
-                  </Card>
+                  <IconCard
+                    key={entry.to}
+                    icon={<Icon />}
+                    label={labelOf(entry)}
+                    link={{ component: RouterLink, to: entry.to as string }}
+                    testId={`home-card-${entry.id}`}
+                  />
                 );
               })}
-            </Box>
+            </CardGrid>
           </Box>
         );
       })}

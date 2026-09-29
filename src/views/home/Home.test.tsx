@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 
 import i18n from "../../i18n";
+import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import Home from "./Home";
 
@@ -64,5 +66,20 @@ describe("the landing page", () => {
     expect(cards).toContain("/engine/games");
     expect(cards).not.toContain("/engine/play");
     expect(cards).toContain("/library");
+  });
+});
+
+describe("the landing page — accessible (CTA-113)", () => {
+  it("is its h1 over a section h2 each, passes axe, and its cards are reached in order from the keyboard", async () => {
+    const user = userEvent.setup();
+    renderHome();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    const sections = screen.getAllByRole("heading", { level: 2 });
+    expect(sections.length).toBeGreaterThan(1);
+    await expectNoAxeViolations(document.body);
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getAllByRole("link")[0]);
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getAllByRole("link")[1]);
   });
 });
