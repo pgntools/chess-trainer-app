@@ -326,6 +326,33 @@ pilot, listed in [`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps):
 - A disabled slider's **value** (`engine-setting-hash-value`, green, light) is
   dimmed to 3.8:1 — text of an inactive control, which WCAG 1.4.3 exempts.
 
+**CTA-113's browser pass**, the same way (headless Chrome over the DevTools
+protocol, the dev server, the DOM only): the thirteen routes CTA-113 moved —
+Home, Saved analyses, the Analysis Board and a saved analysis' settings, the
+repertoires' list, upload, player and settings, the Library home, a
+collection (Capablanca), the upload, a Library game, the Openings explorer —
+seeded with a saved analysis and a repertoire through the app's own stores,
+under **every theme, light and dark, in English and Hebrew**: 208 page loads,
+then the six board pages again (96) after the fixes. On each: `dir` (right to
+left under Hebrew, every page), the board's (`ltr`, every board), the console
+(clean), and axe with colour contrast and target size on.
+
+It found, and CTA-113 fixed:
+
+- **The move list's rows were 19 px tall** (`target-size`, 30 on a whole
+  Library game) — `MoveList`'s rows are at least `MIN_TARGET_PX` now.
+- **The current row's evaluation** was dimmed on the primary fill: 3.61:1
+  (default), 3.74 / 3.97 (brown), 3.69 (green) — it is whole on the current
+  row now.
+
+What remains, in [`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps):
+
+- **The board's pieces** (`aria-command-name`, every board and preview) — the
+  board accessibility Story.
+- **An engine line's last move, cut by the panel's edge** (`target-size`:
+  15.9–22.9 px of it showing, on the boards with the engine on) —
+  `BestVariations`, the board core's.
+
 ## 5. Checklist for migrating a module
 
 - [ ] Every piece in `docs/design/<Module>.md` marked with its destination.
