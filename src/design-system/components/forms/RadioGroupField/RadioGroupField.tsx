@@ -25,6 +25,8 @@ export type RadioGroupFieldProps<V extends string = string> = {
   disabled?: boolean;
   /** On the radio group (`role="radiogroup"`); each radio's input is `<testId>-<value>`, the help `<testId>-help`. */
   testId: string;
+  /** A radio's own test id, for a screen whose tests named them before (CTA-113: `library-filter-moves-save-no`). */
+  optionTestId?: (value: V) => string;
 };
 
 /**
@@ -45,6 +47,7 @@ function RadioGroupField<V extends string = string>({
   size = "small",
   disabled = false,
   testId,
+  optionTestId,
 }: RadioGroupFieldProps<V>) {
   const legendId = useId();
   const helpId = useId();
@@ -66,7 +69,7 @@ function RadioGroupField<V extends string = string>({
             key={option.value}
             value={option.value}
             disabled={disabled || option.disabled}
-            control={<Radio size={size} slotProps={{ input: { "data-testid": `${testId}-${option.value}` } as object }} />}
+            control={<Radio size={size} slotProps={{ input: { "data-testid": optionTestId?.(option.value) ?? `${testId}-${option.value}` } as object }} />}
             label={<Typography variant={size === "small" ? "body2" : "body1"}>{option.label}</Typography>}
           />
         ))}

@@ -11,7 +11,7 @@ import { linkProps, type LinkTarget } from "../link";
 export type CardShellProps = {
   /** The square at the top — the action area's content. */
   square: ReactNode;
-  /** Open it — or give a `link`. */
+  /** Open it — or give a `link`. With neither, the square is not a button (a record that will not open). */
   onOpen?: () => void;
   link?: LinkTarget;
   /** The action area's accessible name (the square alone has no words). */
@@ -19,9 +19,21 @@ export type CardShellProps = {
   name: ReactNode;
   /** The line under the name. Always takes its line, empty or not. */
   caption?: ReactNode;
+  /**
+   * A third line under the caption (CTA-113) — the opening a saved analysis
+   * reached. Give every card of a grid one (a blank `" "` where there is
+   * nothing to say) so they stay the same height. Absent, there is no third line.
+   */
+  detail?: ReactNode;
   actions?: ReactNode;
   pick?: { checked: boolean; onToggle: () => void; label: string };
   testId: string;
+  /** The action area's own test id, for a screen whose tests named it before (CTA-113). Absent, `<testId>-open`. */
+  openTestId?: string;
+  /** The pick's own test id (CTA-113). Absent, `<testId>-pick`. */
+  pickTestId?: string;
+  /** The name's own test id (CTA-113). Absent, `<testId>-name`. */
+  nameTestId?: string;
 };
 
 /**
@@ -31,26 +43,46 @@ export type CardShellProps = {
  * a record card side by side in a grid are the same height, which the
  * analyses' folder cards were not.
  */
-export function CardShell({ square, onOpen, link, openLabel, name, caption, actions, pick, testId }: CardShellProps) {
+export function CardShell({
+  square,
+  onOpen,
+  link,
+  openLabel,
+  name,
+  caption,
+  detail,
+  actions,
+  pick,
+  testId,
+  openTestId = `${testId}-open`,
+  pickTestId = `${testId}-pick`,
+  nameTestId = `${testId}-name`,
+}: CardShellProps) {
+  const face = <Box sx={{ aspectRatio: "1 / 1", width: "100%", overflow: "hidden", borderRadius: 0.5 }}>{square}</Box>;
   return (
     <Card variant="outlined" data-testid={testId} sx={{ display: "flex", flexDirection: "column" }}>
-      <CardActionArea
-        onClick={onOpen}
-        aria-label={openLabel}
-        data-testid={`${testId}-open`}
-        sx={{ p: 1 }}
-        {...linkProps(link)}
-      >
-        <Box sx={{ aspectRatio: "1 / 1", width: "100%", overflow: "hidden", borderRadius: 0.5 }}>{square}</Box>
-      </CardActionArea>
+      {onOpen === undefined && link === undefined ? (
+        <Box data-testid={openTestId} sx={{ p: 1 }}>
+          {face}
+        </Box>
+      ) : (
+        <CardActionArea onClick={onOpen} aria-label={openLabel} data-testid={openTestId} sx={{ p: 1 }} {...linkProps(link)}>
+          {face}
+        </CardActionArea>
+      )}
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1, pb: 0.75, minWidth: 0 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="subtitle2" dir="auto" noWrap data-testid={`${testId}-name`} sx={{ fontWeight: 600 }}>
+          <Typography variant="subtitle2" dir="auto" noWrap data-testid={nameTestId} sx={{ fontWeight: 600 }}>
             {name}
           </Typography>
           <Typography variant="caption" color="text.secondary" component="div" noWrap>
             {caption ?? " "}
           </Typography>
+          {detail !== undefined && (
+            <Typography variant="caption" color="text.secondary" component="div" noWrap>
+              {detail}
+            </Typography>
+          )}
         </Box>
         {actions}
         {pick !== undefined && (
@@ -59,7 +91,7 @@ export function CardShell({ square, onOpen, link, openLabel, name, caption, acti
             checked={pick.checked}
             onChange={pick.onToggle}
             slotProps={{ input: { "aria-label": pick.label } }}
-            data-testid={`${testId}-pick`}
+            data-testid={pickTestId}
           />
         )}
       </Box>

@@ -8,6 +8,7 @@ import type { LabelDisplayedRowsArgs } from "@mui/material/TablePagination";
 
 import { visuallyHidden, type VisibleLabel } from "../../../components/a11y";
 import { linkProps, type LinkTarget } from "../../../components/link";
+import { ExpandToggle } from "../../../components/navigation";
 import {
   EmptyTableRow,
   LoadingTableRow,
@@ -46,6 +47,14 @@ export type DataTablePicks<R> = {
   selectAllLabel: string;
   /** A row checkbox's accessible name — the row's own ("Pick game 12"). */
   pickLabel: (row: R) => string;
+  /**
+   * The select-all's and a row checkbox's own test ids (CTA-113), for a
+   * screen whose tests named them before it moved onto this table (a
+   * collection's `library-picks-select-all`, `library-picks-row-<n>`).
+   * Absent, `-select-all` and `-pick-<id>` under the table's `testId`.
+   */
+  selectAllTestId?: string;
+  pickTestId?: (row: R) => string;
 };
 
 /**
@@ -84,6 +93,26 @@ type DataTableInteraction<R, C extends string = string> =
     }
   | { onSort?: undefined; picks: DataTablePicks<R>; hint: VisibleLabel };
 
+/**
+ * **Rows that are a tree** (CTA-113) — a file manager's details view: each
+ * row set in by its depth in the first column, a branch with an
+ * `ExpandToggle` (its own button, `aria-expanded`; a click on it never
+ * reaches the row), a leaf with the toggle's room so the names line up. The
+ * rows arrive already walked (only the open branches' children, in order);
+ * the table only draws them — pass `sorted`, and sort the walk yourself.
+ */
+export type DataTableTree<R> = {
+  /** How deep the row sits — 0 at the top. */
+  depth: (row: R) => number;
+  /** A branch's state — open or not; `undefined` for a leaf. */
+  open: (row: R) => boolean | undefined;
+  onToggle: (row: R) => void;
+  /** The chevron's accessible name — the row's ("Open Openings", "Close Openings"). */
+  toggleLabel: (row: R, open: boolean) => string;
+  /** The chevron's test id. Absent, the row's own test id with `-toggle`. */
+  toggleTestId?: (row: R) => string;
+};
+
 /** Everything a `DataTable` takes but its name, its row actions and its keys — see {@link DataTableProps}. */
 export type DataTableBaseProps<R, C extends string = string> = {
   columns: readonly DataTableColumn<R, C>[];
@@ -109,7 +138,7 @@ export type DataTableBaseProps<R, C extends string = string> = {
    * keyboard, a middle click, a new tab), and — with no `onRowClick` — a
    * click anywhere on the row follows it.
    */
-  rowLink?: (row: R) => LinkTarget;
+  rowLink?: (row: R) => LinkTarget | undefined;
   /** The column whose content is the row's link. Default: the first. */
   linkColumn?: C;
   /**
@@ -124,6 +153,21 @@ export type DataTableBaseProps<R, C extends string = string> = {
    * page (`undefined` for the last). Absent, no row does.
    */
   groupEnd?: (row: R, next: R | undefined) => boolean;
+  /** Rows that are a tree (CTA-113): a depth indent and a chevron in the first column. Absent, a flat table. */
+  tree?: DataTableTree<R>;
+  /**
+   * A row's own test id, and its link's, for a screen whose tests named them
+   * before it moved onto this table (CTA-113: the Library's
+   * `library-folder-<id>` / `library-row-<id>`). Absent, derived from `testId`.
+   */
+  rowTestId?: (row: R) => string;
+  linkTestId?: (row: R) => string;
+  /**
+   * The row link's accessible name, where the cell's words alone would not
+   * tell one row from another (CTA-113: a collection's White cell, named by
+   * the whole game). Absent, the link is named by its content.
+   */
+  rowLinkLabel?: (row: R) => string;
   /** The rows are still being read: one busy row under the header, in place of the rows. */
   loading?: boolean;
   /** "Reading…". */
@@ -176,6 +220,8 @@ const DATA_ROW_LINK = "data-row-link";
  *   **row link**; one **loading**, **empty** or **no-match** row under the
  *   header; a **filters** slot and a **toolbar** slot above; **density**; a
  *   sticky header in the one scrolling region, the pager pinned under it.
+ * - **Tree rows** (`tree`, CTA-113): a depth indent and a chevron per branch
+ *   in the first column — the Library's folder table.
  * - A row that cannot fill its columns says why across them (`rowNote`, its
  *   pick and actions kept); a report's sections end on a bolder line
  *   (`groupEnd`); a cell can carry a test id of its own (`cellTestId`) —
@@ -211,6 +257,10 @@ function DataTable<R, C extends string = string>({
   linkColumn,
   rowNote,
   groupEnd,
+  tree,
+  rowTestId,
+  linkTestId,
+  rowLinkLabel,
   loading = false,
   loadingLabel,
   emptyLabel,
@@ -282,6 +332,30 @@ function DataTable<R, C extends string = string>({
   };
   const name: TableName = caption !== undefined ? { caption } : { ariaLabel: ariaLabel ?? "" };
 
+  /** A cell's content — as it is, or the row's real link (for the keyboard, a middle click, a new tab). */
+  const cellContent = (content: ReactNode, link: LinkTarget | undefined, linkTest: string, linkLabel?: string) =>
+    link === undefined ? (
+      content
+    ) : (
+      <Box
+        component="a"
+        {...linkProps(link)}
+        {...{ [DATA_ROW_LINK]: "" }}
+        onClick={(event: MouseEvent) => event.stopPropagation()}
+        data-testid={linkTest}
+        aria-label={linkLabel}
+        sx={(theme) => ({
+          color: "inherit",
+          textDecoration: "none",
+          minWidth: 0,
+          "&:hover": { textDecoration: "underline" },
+          "&:focus-visible": { textDecoration: "underline", ...theme.mixins.focusRing },
+        })}
+      >
+        {content}
+      </Box>
+    );
+
   const colSpan = columns.length + (picks === undefined ? 0 : 1) + (rowActions === undefined ? 0 : 1);
   const noMatch = filtered && noMatchLabel !== undefined;
 
@@ -310,7 +384,7 @@ function DataTable<R, C extends string = string>({
                 picked={pickedCount}
                 onToggleAll={toggleAll}
                 label={picks.selectAllLabel}
-                testId={`${testId}-select-all`}
+                testId={picks.selectAllTestId ?? `${testId}-select-all`}
               />
             )}
             {columns.map((column) =>
@@ -353,6 +427,7 @@ function DataTable<R, C extends string = string>({
               const isPicked = picked?.has(id) ?? false;
               const note = rowNote?.(row);
               const closesGroup = groupEnd?.(row, shown[index + 1]) ?? false;
+              const rowTest = rowTestId?.(row) ?? `${testId}-row-${id}`;
               return (
                 <TableRow
                   key={id}
@@ -361,7 +436,7 @@ function DataTable<R, C extends string = string>({
                   onClick={clickable ? (event) => onRow(row, event) : undefined}
                   tabIndex={keyed ? 0 : undefined}
                   onKeyDown={keyed ? (event) => onRowKey(row, event) : undefined}
-                  data-testid={`${testId}-row-${id}`}
+                  data-testid={rowTest}
                   sx={(theme) => ({
                     ...(clickable && { cursor: "pointer", "&:focus-visible": { ...theme.mixins.focusRing, outlineOffset: -2 } }),
                     // A group ends: a bolder line than the rows within one.
@@ -375,7 +450,7 @@ function DataTable<R, C extends string = string>({
                       checked={isPicked}
                       onToggle={() => togglePick(id)}
                       label={picks.pickLabel(row)}
-                      testId={`${testId}-pick-${id}`}
+                      testId={picks.pickTestId?.(row) ?? `${testId}-pick-${id}`}
                     />
                   )}
                   {note !== undefined && (
@@ -383,9 +458,12 @@ function DataTable<R, C extends string = string>({
                       {note}
                     </TableCell>
                   )}
-                  {note === undefined && columns.map((column) => {
+                  {note === undefined && columns.map((column, columnIndex) => {
                     const content = column.render(row);
                     const link = linked === column.id && rowLink !== undefined ? rowLink(row) : undefined;
+                    const linkTest = linkTestId?.(row) ?? `${testId}-link-${id}`;
+                    const linkLabel = link === undefined ? undefined : rowLinkLabel?.(row);
+                    const open = tree?.open(row);
                     return (
                       <TableCell
                         key={column.id}
@@ -397,24 +475,23 @@ function DataTable<R, C extends string = string>({
                           ...(column.align === "end" && { textAlign: "end", fontVariantNumeric: "tabular-nums" }),
                         }}
                       >
-                        {link === undefined ? (
-                          content
-                        ) : (
-                          <Box
-                            component="a"
-                            {...linkProps(link)}
-                            {...{ [DATA_ROW_LINK]: "" }}
-                            onClick={(event: MouseEvent) => event.stopPropagation()}
-                            data-testid={`${testId}-link-${id}`}
-                            sx={(theme) => ({
-                              color: "inherit",
-                              textDecoration: "none",
-                              "&:hover": { textDecoration: "underline" },
-                              "&:focus-visible": { textDecoration: "underline", ...theme.mixins.focusRing },
-                            })}
-                          >
-                            {content}
+                        {tree !== undefined && columnIndex === 0 ? (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0, paddingInlineStart: tree.depth(row) * 2.5 }}>
+                            {open === undefined ? (
+                              // A leaf keeps the chevron's room, so its name lines up with its sibling branches'.
+                              <Box aria-hidden="true" sx={{ width: 24, flexShrink: 0 }} />
+                            ) : (
+                              <ExpandToggle
+                                expanded={open}
+                                onToggle={() => tree.onToggle(row)}
+                                label={tree.toggleLabel(row, open)}
+                                testId={tree.toggleTestId?.(row) ?? `${rowTest}-toggle`}
+                              />
+                            )}
+                            {cellContent(content, link, linkTest, linkLabel)}
                           </Box>
+                        ) : (
+                          cellContent(content, link, linkTest, linkLabel)
                         )}
                       </TableCell>
                     );

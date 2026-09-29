@@ -151,27 +151,24 @@ describe("a repertoire's settings screen", () => {
     );
   });
 
-  it("offers the folders as a tree under Unfiled, preselected where it is filed", async () => {
+  // CTA-113: the hand-built one-level tree is the design system's picker list
+  // (the saved analyses' folder picker's), the chosen row `aria-current`.
+  it("offers the folders under Unfiled, preselected where it is filed", async () => {
     await store("a");
     const caro = (await createRepertoireFolder("Caro"))!;
     const slav = (await createRepertoireFolder("Slav"))!;
     await fileRepertoire("a", slav.id);
     await renderSection("/repertoires/a/settings");
 
-    const tree = screen.getByTestId("repertoire-settings-folder");
-    expect(tree).toHaveAttribute("role", "tree");
-    const items = within(tree).getAllByRole("treeitem");
+    const list = screen.getByRole("list", { name: "Folder" });
+    expect(list).toBe(screen.getByTestId("repertoire-settings-folder"));
+    const items = within(list).getAllByRole("button");
     expect(items.map((node) => node.dataset.testid)).toEqual([
       "repertoire-settings-folder-unfiled",
       `repertoire-settings-folder-${caro.id}`,
       `repertoire-settings-folder-${slav.id}`,
     ]);
-    // Unfiled is the root; the folders sit one level under it.
-    expect(items.map((node) => node.getAttribute("aria-level"))).toEqual(["1", "2", "2"]);
-    expect(screen.getByTestId(`repertoire-settings-folder-${slav.id}`)).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    expect(screen.getByTestId(`repertoire-settings-folder-${slav.id}`)).toHaveAttribute("aria-current", "true");
 
     await userEvent.click(screen.getByTestId(`repertoire-settings-folder-${caro.id}`));
     await userEvent.click(screen.getByTestId("repertoire-settings-save"));
@@ -182,10 +179,7 @@ describe("a repertoire's settings screen", () => {
     await store("a");
     const caro = (await createRepertoireFolder("Caro"))!;
     await renderSection("/repertoires/a/settings");
-    expect(screen.getByTestId("repertoire-settings-folder-unfiled")).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    expect(screen.getByTestId("repertoire-settings-folder-unfiled")).toHaveAttribute("aria-current", "true");
 
     await userEvent.click(screen.getByTestId(`repertoire-settings-folder-${caro.id}`));
     await userEvent.click(screen.getByTestId("repertoire-settings-cancel"));

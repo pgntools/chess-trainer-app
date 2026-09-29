@@ -3,6 +3,8 @@ import Alert, { type AlertColor } from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import Box from "@mui/material/Box";
 
+import { monospaceOf } from "../../../theme/typography";
+
 export type InlineAlertProps = {
   severity: AlertColor;
   /** A bold first line. */
@@ -48,7 +50,7 @@ function InlineAlert({ severity, title, children, detail, action, onClose, varia
             whiteSpace: "pre-wrap",
             overflowWrap: "anywhere",
             typography: "caption",
-            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+            fontFamily: monospaceOf,
             textAlign: "start",
           }}
         >

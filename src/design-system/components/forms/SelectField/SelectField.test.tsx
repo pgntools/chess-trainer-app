@@ -29,4 +29,9 @@ describe("SelectField", () => {
     render(<SelectField label="Opening" value="gone" onChange={() => {}} options={OPTIONS} testId="probe" />);
     expect(screen.getByRole("combobox")).toHaveTextContent("gone");
   });
+
+  it("can put its test id on the visible select instead (CTA-113)", async () => {
+    render(<SelectField label="Square" value="" onChange={() => {}} options={[{ value: "e6", label: "e6" }]} testIdOn="display" testId="probe" />);
+    expect(screen.getByTestId("probe")).toHaveAttribute("role", "combobox");
+  });
 });

@@ -9,6 +9,11 @@ export type FolderCardProps = {
   name: ReactNode;
   /** What is in it ("12 games"). */
   count?: ReactNode;
+  /**
+   * A third line (CTA-113), for a grid whose record cards carry one (the
+   * saved analyses' opening): a blank `" "` keeps the folder as tall as they are.
+   */
+  detail?: ReactNode;
   onOpen?: () => void;
   link?: LinkTarget;
   /** The square's accessible name ("Open Openings"). */
@@ -18,6 +23,10 @@ export type FolderCardProps = {
   actions?: ReactNode;
   /** The card's test id; the parts are `-open` and `-name`. */
   testId: string;
+  /** The square's own test id, for a screen whose tests named it before it moved onto this card (CTA-113). */
+  openTestId?: string;
+  /** The name's own test id (CTA-113). */
+  nameTestId?: string;
 };
 
 /**

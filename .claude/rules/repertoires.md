@@ -13,7 +13,9 @@ paths:
   - "src/lib/playChance*"
   - "src/lib/pgnRepertoireExamples*"
   - "src/views/board/core/useTrainerModule.ts"
-  - "src/views/shared/MergeSplitChoice.tsx"
+  - "src/blocks/forms/MergeSplitChoice/**"
+  - "src/blocks/lists/RepertoiresList/**"
+  - "src/blocks/panels/ChangesStrip/**"
 ---
 
 # Repertoires — `/repertoires`
@@ -36,14 +38,14 @@ explorer, [`tree-views.md`](./tree-views.md); the stores
 | Path | What lives there |
 | --- | --- |
 | `src/views/repertoires/Repertoires.tsx` | `/repertoires`: the list over the saved-list machinery, as rows or preview cards (where the repertoire first branches, `repertoires-preview-<id>`), the folders (`?folder=<id>`), checkboxes and the export bar with bulk delete. |
-| `RepertoireFolderViews.tsx`, `RepertoireFolderDialogs.tsx`, `useRepertoireFolders.ts` | Folder rows and cards; the name / delete dialogs and the bulk delete's confirm; the folder store's binding. |
+| `src/blocks/lists/RepertoiresList/`, the folder blocks (`FolderActions`, `Folder*Dialog`), `useRepertoireFolders.ts` | The list's rows and cards, folders and repertoires (CTA-113); the name / delete dialogs; the bulk delete is `DeleteManyDialog`; the folder store's binding. |
 | `RepertoireUpload.tsx` | `/repertoires/new`: a `.pgn` file or pasted text, through **one** function. |
-| `RepertoireMergeSplit.tsx` (over `views/shared/MergeSplitChoice.tsx`) | The merge-or-split choice a text of several games gets — on upload, and on the route of a record saved before the one-game rule. |
+| `RepertoireMergeSplit.tsx` (over the `MergeSplitChoice` block) | The merge-or-split choice a text of several games gets — on upload, and on the route of a record saved before the one-game rule. |
 | `RepertoireBoard.tsx` | `/repertoires/<id>`: the miss, the legacy choice, else the player. |
 | `RepertoireGame.tsx` | `/repertoires/<id>/games/<end\|backtrack>`: a game over the same player. |
 | **`RepertoirePlayer.tsx`** | **The screen**: the core, the engine module, `useTrainerModule`, `useRepertoireGame` and the explorer, in `BoardShell` / `BoardPanel`. |
 | `useRepertoireGame.ts` | A game's session state: the rules, the score, lines finished, coverage. |
-| `RepertoireChangesBar.tsx` | The strip: Update / Save as copy / Discard (also the Analysis Board's and the Library's, under their `labelKey`). |
+| `src/blocks/panels/ChangesStrip/` | The strip: Update / Save as copy / Discard (also the Analysis Board's and the Library's, under their `labelKey`). |
 | `RepertoireGamesMenu.tsx` | The Games menu, on the player and on every list row and card. |
 | `RepertoireSettingsScreen.tsx` + `RepertoireSettingsSections.tsx` | `/repertoires/<id>/settings`: one draft, written on Save. |
 | `useSavedRepertoires.ts` | The store binding (`undefined` until read). |
@@ -185,7 +187,7 @@ RepertoireGame.tsx ──┴─▶ RepertoirePlayer.tsx ── download: treeToP
 
 Nothing is written unasked. While `core.tree !== repertoire` (every edit makes
 a new tree; replaying a move does not), the header's **Save** takes the
-primary colour and opens `RepertoireChangesBar` above the footer:
+primary colour and opens the `ChangesStrip` block above the footer:
 
 - **Update repertoire** — `withRepertoireTree` writes the tree into the record
   (preview and size re-read) and the session becomes the new baseline. On a

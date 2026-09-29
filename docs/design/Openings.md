@@ -7,6 +7,11 @@ own. The module's reference is
 [`.claude/rules/openings-explorer.md`](../../.claude/rules/openings-explorer.md).
 Template and families: [`README.md`](./README.md).
 
+**Migrated onto the design system by CTA-113**: each entry below is marked
+with what replaced it, and describes the component as it was. The binding
+decisions, the order of work and the findings are
+[`migration.md`](./migration.md).
+
 **Nearly all of its panel is borrowed**, and documented where it lives:
 
 | Tab / piece | Component | Doc |
@@ -23,6 +28,8 @@ Template and families: [`README.md`](./README.md).
 
 ### OpeningsBoard header
 
+> **Migrated (CTA-113)** — `IconAction`s (Open in analysis, Play from here) and a `SwitchField` (the engine); the opening the `CurrentOpening` block.
+
 - **Name and location** — inline in `OpeningsBoard`, `src/views/openings/OpeningsBoard.tsx:166-217`
 - **Family** — toolbar / action bar
 - **MUI atoms** — Box, Tooltip, IconButton, FormControlLabel, Switch (+ `CurrentOpening`, `PlayToggleButton`)
@@ -36,6 +43,8 @@ Template and families: [`README.md`](./README.md).
 
 ### Moves-tab arrows switch
 
+> **Migrated (CTA-113)** — `SwitchField`.
+
 - **Name and location** — inline in `OpeningsBoard`, `src/views/openings/OpeningsBoard.tsx:243-257`
 - **Family** — form / settings group
 - **MUI atoms** — FormControlLabel, Switch
@@ -48,6 +57,8 @@ Template and families: [`README.md`](./README.md).
 - **Verdict** — module-specific but needs design consistency — one setting, three homes across the boards.
 
 ### OpeningBookList
+
+> **Migrated (CTA-113)** — the `OpeningBookList` block (`blocks/lists/`): a named list whose rows are `li`s (axe's list rule failed before), the arrow following the keyboard's focus as it follows the pointer.
 
 - **Name and location** — `OpeningBookList`, `src/views/openings/OpeningBookList.tsx`
 - **Family** — list

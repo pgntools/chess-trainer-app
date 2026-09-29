@@ -119,8 +119,12 @@ const en = {
    * `GameInfo.tsx`). Chrome only — SAN itself is language-independent.
    */
   gamePanel: {
+    /** The board panel's tab strip, named (CTA-113). */
+    tabs: "Board panel",
     /** Accessible names for the icon-only board controls. */
     controls: {
+      /** The row's name as a toolbar (CTA-113). */
+      label: "Moves",
       first: "Start position",
       previous: "Previous move",
       next: "Next move",
@@ -128,6 +132,8 @@ const en = {
       flip: "Flip board",
     },
     info: {
+      /** The tag list's accessible name (CTA-113). */
+      title: "Game details",
       empty: "Load a game to see its details.",
       /** Labels for the PGN tags worth naming; anything else shows its raw tag. */
       event: "Event",
@@ -185,7 +191,7 @@ const en = {
       b: "Bishop",
     },
   },
-  /** What `views/shared/OptionSlider.tsx` says about an option it cannot drive. */
+  /** What the engine forms (`blocks/forms`) say about an option they cannot drive. */
   engineOption: {
     /** Shown under a control the running engine build does not have. */
     unsupported: "This engine build has no \"{{option}}\" option.",
@@ -197,6 +203,28 @@ const en = {
     copy: "Copy",
     copied: "Copied",
     copyFailed: "Could not copy — select the text and copy it by hand.",
+  },
+  /**
+   * The saved lists' controls, named for their record (CTA-113) — the saved
+   * analyses, the repertoires and the Library's folders share them, so a
+   * screen reader hears which row a button belongs to.
+   */
+  savedList: {
+    openNamed: "Open {{name}}",
+    selectNamed: "Select {{name}}",
+    settingsNamed: "Settings of {{name}}",
+    clearSelected: "Clear the selection",
+    /** The folder trail's name, read before its steps. */
+    breadcrumb: "Folders",
+    folder: {
+      openNamed: "Open folder {{name}}",
+      newNamed: "New folder in {{name}}",
+      uploadNamed: "Upload a collection into {{name}}",
+      downloadNamed: "Download {{name}} as PGN",
+      renameNamed: "Rename {{name}}",
+      moveNamed: "Move {{name}}",
+      deleteNamed: "Delete {{name}}",
+    },
   },
   /**
    * Piece masking — the Masking tab of Masked Pieces (`views/engine/masked/`,
@@ -325,6 +353,7 @@ const en = {
     },
   },
   commentDialog: {
+    label: "Comment",
     addTitle: "Comment on",
     editTitle: "Edit the comment on",
     placeholder: "What is there to say about this move?",
@@ -337,6 +366,7 @@ const en = {
    * game tree drawn as a tree, in a tab and full screen.
    */
   treeMap: {
+    toolbar: "Map controls",
     title: "Map",
     covered: "Lines covered: {{covered}} of {{total}}",
     label: "The repertoire as a tree: covered lines in green, your way here highlighted",
@@ -643,6 +673,8 @@ const en = {
     select: "Select this analysis",
     selectAll: "Select all analyses",
     selected: "{{count}} selected",
+    /** The pager under the list (CTA-113) — the design system's page sizes. */
+    rowsPerPage: "Analyses per page",
     download: "Download selected as PGN",
     deleteSelected: "Delete selected",
     /** Deleting the picks, asked first — the repertoires' dialog with these words. */
@@ -664,6 +696,8 @@ const en = {
       moveFolder: "Move folder",
       /** Filing one analysis — the key the shared move dialog reads. */
       moveGame: "Move analysis",
+      /** The folder list's name in the move dialog (CTA-113). */
+      picker: "Folders",
       deleteFolder: "Delete folder",
       download: "Download this folder as PGN",
       unfiled: "Unfiled",
@@ -717,7 +751,7 @@ const en = {
       confirm: "Save",
     },
     /**
-     * The changes strip over a saved analysis — `RepertoireChangesBar` with
+     * The changes strip over a saved analysis — the `ChangesStrip` block with
      * this block's words (no protection: an analysis has none).
      */
     changes: {
@@ -885,6 +919,7 @@ const en = {
    */
   positionEditor: {
     tabs: {
+      label: "Forms",
       position: "Position",
       fen: "FEN",
       pgn: "PGN",
@@ -986,6 +1021,8 @@ const en = {
       open: "Explore {{eco}} in the Openings explorer",
     },
     book: {
+      /** The list's accessible name (CTA-113). */
+      label: "Book moves",
       /** The explorer lists only moves the book names — this when it has none. */
       empty: "No known continuations from here.",
       /** Above the list — what a click on a row does. */
@@ -1021,6 +1058,9 @@ const en = {
    * `.pgn` into `src/data/library/` never touches this catalog.
    */
   library: {
+    filterClear: "Clear the filter",
+    /** How the folder table is worked, read with it (CTA-113). */
+    treeHint: "Tab through each row's chevron, which opens or closes a folder, its link and its actions. Sort by a column from its header button.",
     /** `/library` — the collections. */
     title: "Library",
     count_one: "{{count}} collection",
@@ -1070,10 +1110,14 @@ const en = {
       deleteConfirm:
         "Deleting this folder keeps its contents: its collections and sub-folders move up to the folder it is in.",
       deleteCounts: "This folder holds {{games}} collections and {{subFolders}} sub-folders.",
+      /** The folder list's name in the move dialog (CTA-113). */
+      picker: "Folders",
     },
     /** The table screen — `/library/<collection>`. */
     table: {
       back: "All collections",
+      /** The games table's accessible name (CTA-113). */
+      label: "Games",
       filter: "Filter games",
       result: "Result",
       anyResult: "Any result",
@@ -1179,6 +1223,7 @@ const en = {
         save: "Save tree as PGN",
         saveDialog: {
           title: "Should we add games number as tag?",
+          mode: "The games' counts",
           no: "No",
           tags: "Add tags",
           games: "\"games\" tag",
@@ -1347,6 +1392,8 @@ const en = {
     empty:
       "No repertoires yet. Add one from a .pgn file, or paste its PGN, and it appears here.",
     hint: "Your own opening repertoires. Open one to read its lines on the board, side lines and all, with the engine beside you.",
+    /** The right-hand panel's heading (CTA-113) — the page's outline has one under the list's title. */
+    panelTitle: "About repertoires",
     storage:
       "Repertoires are kept in this browser only. Clearing site data removes them, and they do not follow you to another device.",
     /** A repertoire whose tags carry no name and the reader typed none. */
@@ -1488,6 +1535,8 @@ const en = {
     /** The games a repertoire is played as (CTA-63) — `lib/repertoireGames.ts`. */
     games: {
       open: "Games",
+      /** The button on a list's row or card, named for its repertoire (CTA-113). */
+      openNamed: "Games of {{name}}",
       end: { title: "Get to the end" },
       backtrack: { title: "Backtracking" },
     },

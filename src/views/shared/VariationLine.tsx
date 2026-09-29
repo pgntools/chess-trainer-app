@@ -11,6 +11,7 @@ import {
 } from "./moveSelection";
 import { menuAnchorOf, type ContextMenuNodeHandler } from "./moveContextMenu";
 import NagGlyphs from "./NagGlyphs";
+import { MONOSPACE_FONT_FAMILY } from "../../design-system/theme";
 
 /**
  * The pieces a side line is drawn with: one clickable move token, and the
@@ -80,7 +81,7 @@ const Token = styled("button")(({ theme }) => ({
   borderRadius: Number(theme.shape.borderRadius) * 0.5,
   minWidth: 0,
   unicodeBidi: "isolate",
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+  fontFamily: MONOSPACE_FONT_FAMILY,
   fontSize: "0.8125rem",
   "&:hover": { backgroundColor: (theme.vars ?? theme).palette.action.hover },
   "&:focus-visible": {

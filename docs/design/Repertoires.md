@@ -7,6 +7,11 @@ its games (`/repertoires/<id>`, `/…/games/<game>`) and a repertoire's settings
 [`.claude/rules/repertoires.md`](../../.claude/rules/repertoires.md). Template
 and families: [`README.md`](./README.md).
 
+**Migrated onto the design system by CTA-113**: each entry below is marked
+with what replaced it, and describes the component as it was. The binding
+decisions, the order of work and the findings are
+[`migration.md`](./migration.md).
+
 **Documented in [`Shared.md`](./Shared.md), not here**: `SavedListExportBar`,
 `SavedListViewToggle`, the saved-list grid, `MergeSplitChoice`, `BoardPanel`,
 `CurrentOpening` and the explorer's chrome (the Moves list, the Map, the
@@ -24,6 +29,8 @@ analyses uses it) — shared in practice, filed under one module.
 
 ### RepertoiresList
 
+> **Migrated (CTA-113)** — the `RepertoiresList` block (`blocks/lists/`).
+
 - **Name and location** — `RepertoiresList`, `src/views/repertoires/Repertoires.tsx:292` (the route `Repertoires` at `:285`)
 - **Family** — list
 - **MUI atoms** — Box, List, Typography (+ the rows, cards, top bar and dialogs below)
@@ -36,6 +43,8 @@ analyses uses it) — shared in practice, filed under one module.
 - **Verdict** — module-specific but needs design consistency — one list screen written twice; the differences (one-level folders, the Games menu, no paging) are slots.
 
 ### Repertoires top bar
+
+> **Migrated (CTA-113)** — `ListScreenHeader`, `SelectionBar`, `ViewToggle`, `Breadcrumbs`.
 
 - **Name and location** — inline in `RepertoiresList`, `src/views/repertoires/Repertoires.tsx:398-521`
 - **Family** — toolbar / action bar
@@ -50,6 +59,8 @@ analyses uses it) — shared in practice, filed under one module.
 
 ### RepertoireRow
 
+> **Migrated (CTA-113)** — `RecordRow` inside the `RepertoiresList` block.
+
 - **Name and location** — `RepertoireRow`, `src/views/repertoires/Repertoires.tsx:187` (caption hook `useCaption` at `:130`)
 - **Family** — list
 - **MUI atoms** — ListItem, Box, Typography, Button (+ `RepertoireGamesMenu`)
@@ -62,6 +73,8 @@ analyses uses it) — shared in practice, filed under one module.
 - **Verdict** — share candidate — one `SavedRecordRow` with an actions slot.
 
 ### RepertoireCard
+
+> **Migrated (CTA-113)** — `RecordCard` inside the `RepertoiresList` block.
 
 - **Name and location** — `RepertoireCard`, `src/views/repertoires/Repertoires.tsx:242`
 - **Family** — card grid
@@ -76,6 +89,8 @@ analyses uses it) — shared in practice, filed under one module.
 
 ### SettingsLink and SelectBox
 
+> **Migrated (CTA-113)** — `RecordRow` / `RecordCard`'s settings `RowAction` and pick.
+
 - **Name and location** — `SettingsLink` (`:109`) and `SelectBox` (`:153`), `src/views/repertoires/Repertoires.tsx`
 - **Family** — toolbar / action bar
 - **MUI atoms** — Tooltip, IconButton; Checkbox
@@ -88,6 +103,8 @@ analyses uses it) — shared in practice, filed under one module.
 - **Verdict** — share candidate — duplicated word for word.
 
 ### Repertoires body states
+
+> **Migrated (CTA-113)** — `LoadingLine`; empty states the block's.
 
 - **Name and location** — inline in `RepertoiresList`, `src/views/repertoires/Repertoires.tsx:523-532`; `ReadingRepertoires`, `src/views/repertoires/RepertoireBoard.tsx:95`
 - **Family** — empty / loading / error state
@@ -106,6 +123,8 @@ analyses uses it) — shared in practice, filed under one module.
 
 ### RepertoireFolderRow / RepertoireFolderCard
 
+> **Migrated (CTA-113)** — `FolderRow` / `FolderCard` with the `FolderActions` block; `RepertoireFolderViews` is deleted.
+
 - **Name and location** — `RepertoireFolderRow` (`:99`), `RepertoireFolderCard` (`:122`), and the inner `FolderActions` (`:42`) and `FolderCaption` (`:85`), `src/views/repertoires/RepertoireFolderViews.tsx`
 - **Family** — list (row) / card grid (card)
 - **MUI atoms** — ListItem, ListItemButton, Card, CardActionArea, Box, Typography, Tooltip, IconButton
@@ -118,6 +137,8 @@ analyses uses it) — shared in practice, filed under one module.
 - **Verdict** — share candidate — the shared pair with an optional Move and a link mode would replace these.
 
 ### RepertoireFolderNameDialog
+
+> **Migrated (CTA-113)** — the `FolderNameDialog` block.
 
 - **Name and location** — `RepertoireFolderNameDialog`, `src/views/repertoires/RepertoireFolderDialogs.tsx:25`
 - **Family** — dialog
@@ -132,6 +153,8 @@ analyses uses it) — shared in practice, filed under one module.
 
 ### RepertoireFolderDeleteDialog
 
+> **Migrated (CTA-113)** — the `FolderDeleteDialog` block.
+
 - **Name and location** — `RepertoireFolderDeleteDialog`, `src/views/repertoires/RepertoireFolderDialogs.tsx:93`
 - **Family** — dialog
 - **MUI atoms** — Dialog, DialogTitle, DialogContent, DialogActions, Typography, Button
@@ -144,6 +167,8 @@ analyses uses it) — shared in practice, filed under one module.
 - **Verdict** — share candidate — `FolderDeleteDialog` with no sub-folder count.
 
 ### RepertoireBulkDeleteDialog
+
+> **Migrated (CTA-113)** — `DeleteManyDialog`.
 
 - **Name and location** — `RepertoireBulkDeleteDialog`, `src/views/repertoires/RepertoireFolderDialogs.tsx:144`
 - **Family** — dialog
@@ -162,6 +187,8 @@ analyses uses it) — shared in practice, filed under one module.
 
 ### RepertoireUpload
 
+> **Migrated (CTA-113)** — the `PgnInput` block; the page's own `h1`, a panel `h2`.
+
 - **Name and location** — `RepertoireUpload`, `src/views/repertoires/RepertoireUpload.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, TextField, Button, CircularProgress, Alert
@@ -174,6 +201,8 @@ analyses uses it) — shared in practice, filed under one module.
 - **Verdict** — share candidate — a shared `PgnInput` under both upload screens.
 
 ### RepertoireMergeSplit
+
+> **Migrated (CTA-113)** — the `MergeSplitChoice` block.
 
 - **Name and location** — `RepertoireMergeSplit`, `src/views/repertoires/RepertoireMergeSplit.tsx`
 - **Family** — form / settings group
@@ -188,6 +217,8 @@ analyses uses it) — shared in practice, filed under one module.
 
 ### MultiGameRepertoire
 
+> **Migrated (CTA-113)** — `LoadingSpinnerLine` while the text is read, then the `MergeSplitChoice` block (through `RepertoireMergeSplit`).
+
 - **Name and location** — `MultiGameRepertoire`, `src/views/repertoires/RepertoireBoard.tsx:54`
 - **Family** — empty / loading / error state
 - **MUI atoms** — Box, Typography, CircularProgress (+ `RepertoireMergeSplit`)
@@ -200,6 +231,8 @@ analyses uses it) — shared in practice, filed under one module.
 - **Verdict** — module-specific but needs design consistency — its bare spinner has no label, unlike every other reading state.
 
 ### MissingRepertoire
+
+> **Migrated (CTA-113)** — `MissState`; reading `LoadingLine`.
 
 - **Name and location** — `MissingRepertoire`, `src/views/repertoires/RepertoireBoard.tsx:105`
 - **Family** — empty / loading / error state
@@ -218,6 +251,8 @@ analyses uses it) — shared in practice, filed under one module.
 
 ### RepertoirePlayer header
 
+> **Migrated (CTA-113)** — `BackButton`, `IconAction`s, `ToggleIconAction` (Save, Autoplay).
+
 - **Name and location** — inline in `RepertoirePlayer`, `src/views/repertoires/RepertoirePlayer.tsx:577-723`
 - **Family** — toolbar / action bar
 - **MUI atoms** — Box, Typography, CircularProgress, Tooltip, IconButton (+ `CurrentOpening`, `RepertoireGamesMenu`)
@@ -230,6 +265,8 @@ analyses uses it) — shared in practice, filed under one module.
 - **Verdict** — share candidate — `SaveChangesButton`; a back slot that always comes first.
 
 ### Player reading and status lines
+
+> **Migrated (CTA-113)** — `LoadingLine`, `LoadingSpinnerLine`, `StatusText`.
 
 - **Name and location** — inline in `RepertoirePlayer`, `src/views/repertoires/RepertoirePlayer.tsx:540-559`
 - **Family** — feedback (alert / snackbar)
@@ -244,6 +281,8 @@ analyses uses it) — shared in practice, filed under one module.
 
 ### PlaySettings and SwitchSetting
 
+> **Migrated (CTA-113)** — `SwitchField`, `SideToggle`.
+
 - **Name and location** — `PlaySettings` (`:910`) and `SwitchSetting` (`:870`), `src/views/repertoires/RepertoirePlayer.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, ToggleButtonGroup, ToggleButton, FormControlLabel, Switch
@@ -256,6 +295,8 @@ analyses uses it) — shared in practice, filed under one module.
 - **Verdict** — share candidate — `SwitchOption` and `SwitchSetting` are one component twice in one module.
 
 ### PlayScore
+
+> **Migrated (CTA-113)** — stays hand-written (§4.4) — a game's score board, no generic job.
 
 - **Name and location** — `PlayScore`, `src/views/repertoires/RepertoirePlayer.tsx:1007`
 - **Family** — other (a stat panel)
@@ -270,6 +311,8 @@ analyses uses it) — shared in practice, filed under one module.
 
 ### RepertoireGamesMenu
 
+> **Migrated (CTA-113)** — `IconAction` (`popupOpen`) + `AnchoredMenu`.
+
 - **Name and location** — `RepertoireGamesMenu`, `src/views/repertoires/RepertoireGamesMenu.tsx`
 - **Family** — menu
 - **MUI atoms** — Tooltip, IconButton, Menu, MenuItem
@@ -282,6 +325,8 @@ analyses uses it) — shared in practice, filed under one module.
 - **Verdict** — module-specific but needs design consistency — the app's two menus have different densities and item styles.
 
 ### RepertoireChangesBar
+
+> **Migrated (CTA-113)** — the `ChangesStrip` block (`blocks/panels/`), shared with the Analysis Board and the Library; deleted.
 
 - **Name and location** — `RepertoireChangesBar`, `src/views/repertoires/RepertoireChangesBar.tsx`
 - **Family** — toolbar / action bar
@@ -300,6 +345,8 @@ analyses uses it) — shared in practice, filed under one module.
 
 ### RepertoireSettingsScreen
 
+> **Migrated (CTA-113)** — `SettingsFrame`, `MissState`.
+
 - **Name and location** — `RepertoireSettingsScreen` (`:52`) and `SettingsForm` (`:77`), `src/views/repertoires/RepertoireSettingsScreen.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, Divider, Alert, Button
@@ -313,6 +360,8 @@ analyses uses it) — shared in practice, filed under one module.
 
 ### SwitchOption
 
+> **Migrated (CTA-113)** — `SwitchField`.
+
 - **Name and location** — `SwitchOption`, `src/views/repertoires/RepertoireSettingsSections.tsx:58`
 - **Family** — form / settings group
 - **MUI atoms** — Box, FormControlLabel, Switch, Typography
@@ -325,6 +374,8 @@ analyses uses it) — shared in practice, filed under one module.
 - **Verdict** — share candidate — the strongest duplication in the inventory.
 
 ### GeneralSection, BoardSection and FolderSection
+
+> **Migrated (CTA-113)** — `SettingsSection`s; `SideToggle`, `SwitchField`; the folder a `PickerList` (a list, `aria-current` — was a tree).
 
 - **Name and location** — `GeneralSection` (`:92`), `BoardSection` (`:135`), `FolderSection` (`:197`), `src/views/repertoires/RepertoireSettingsSections.tsx`
 - **Family** — form / settings group

@@ -1,10 +1,7 @@
 import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 
-/** A card's least width: `compact` 160 px, `medium` 220 px (Home), `comfortable` 260 px. */
-export type CardSize = "compact" | "medium" | "comfortable";
-
-const MIN_WIDTH: Record<CardSize, number> = { compact: 160, medium: 220, comfortable: 260 };
+import { cardGridColumns, type CardSize } from "./cardGridColumns";
 
 export type CardGridProps = {
   children: ReactNode;
@@ -31,11 +28,11 @@ function CardGrid({ children, size = "compact", scroll = false, ariaLabel, testI
       data-size={size}
       sx={{
         display: "grid",
-        gridTemplateColumns: `repeat(auto-fill, minmax(min(${MIN_WIDTH[size]}px, 100%), 1fr))`,
+        gridTemplateColumns: cardGridColumns(size),
         gridAutoRows: "max-content",
         alignContent: "start",
         gap: 2,
-        ...(scroll && { flex: 1, minHeight: 0, overflowY: "auto", pt: 1.5 }),
+        ...(scroll && { flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", pt: 1.5 }),
       }}
     >
       {children}

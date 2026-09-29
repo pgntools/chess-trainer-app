@@ -2,7 +2,8 @@ import type { EngineOption } from "../../../lib/engine";
 
 /**
  * **What the running engine lets a slider do** (CTA-109) — the three states
- * `views/shared/OptionSlider.tsx` renders, as a pure rule:
+ * the engine forms render (`EngineSettingsForm`, `AnalysisEngineForm` — once
+ * `views/shared/OptionSlider.tsx`), as a pure rule:
  *
  * | The engine declared | The slider |
  * | --- | --- |
@@ -32,5 +33,5 @@ export const engineOptionState = (
   return { kind: "adjustable", min, max };
 };
 
-/** An option's part of a test id — `Skill Level` → `skill-level`, OptionSlider's own rule. */
+/** An option's part of a test id — `Skill Level` → `skill-level`, the engine forms' rule. */
 export const optionSlug = (optionName: string): string => optionName.replace(/\s+/g, "-").toLowerCase();

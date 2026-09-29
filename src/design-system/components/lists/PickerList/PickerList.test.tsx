@@ -22,6 +22,12 @@ describe("PickerList", () => {
     expect(onChange).toHaveBeenCalledWith("b");
   });
 
+  it("takes the none row's own test id (CTA-113)", () => {
+    render(<PickerList items={ITEMS} value={null} onChange={() => {}} ariaLabel="Folder" noneTestId="move-top" testId="probe" />);
+    expect(screen.getByTestId("move-top")).toHaveTextContent("Unfiled");
+    expect(screen.queryByTestId("probe-none")).toBeNull();
+  });
+
   it("chooses nothing while its value is undefined, and can mark the none row", () => {
     const { rerender } = render(<PickerList items={ITEMS} value={undefined} onChange={() => {}} ariaLabel="Folder" testId="probe" />);
     expect(document.querySelector("[aria-current]")).toBeNull();

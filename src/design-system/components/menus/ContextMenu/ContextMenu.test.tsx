@@ -44,4 +44,9 @@ describe("ContextMenu", () => {
     );
     expect(screen.getByTestId("probe")).toHaveAttribute("dir", "rtl");
   });
+
+  it("stays closed while told to, whatever its position (CTA-113)", () => {
+    render(<ContextMenu position={{ top: 10, left: 10 }} open={false} onClose={() => {}} entries={[{ id: "a", label: "A", onClick: () => {} }]} testId="probe" />);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
 });

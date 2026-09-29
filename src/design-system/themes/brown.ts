@@ -51,7 +51,9 @@ export const brownTheme: ThemeDefinition = {
       translucent: "rgba(22, 21, 18, 0.88)",
       sunken: "#1e1c1a",
     },
-    text: { primary: "#bababa", secondary: "#8f8d8a" },
+    // Secondary lightened (CTA-113) to AA on a raised row — the paper under
+    // `action.hover` (the engine lines, the move list's rows): #8f8d8a read 3.65:1.
+    text: { primary: "#bababa", secondary: "#a19f9b" },
     divider: "#3d3a36",
     focusRing: "#3692e7",
     controlBorder: "#746e65",

@@ -13,5 +13,6 @@ export * from "./SelectField";
 export * from "./SearchField";
 export * from "./DateRangeFields";
 export * from "./FileInputButton";
+export * from "./CopyField";
 export * from "./SettingsSection";
 export * from "./SettingsFrame";

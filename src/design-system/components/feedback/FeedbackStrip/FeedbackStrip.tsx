@@ -5,8 +5,8 @@ export type FeedbackStripProps = {
   /** The border's colour: `info` (the comment block), `success` (the changes strip), `neutral` (next moves, the engine lines). */
   tone: "info" | "success" | "neutral";
   children: ReactNode;
-  /** Its height cap, in px; past it the strip scrolls. */
-  maxHeight?: number;
+  /** Its height cap — px, or a share of its column (`"40%"`, CTA-113); past it the strip scrolls. */
+  maxHeight?: number | string;
   /** A row of actions at its end (Update · Save as copy · Discard). */
   actions?: ReactNode;
   /** An accessible name — given one, it is a `region`. */

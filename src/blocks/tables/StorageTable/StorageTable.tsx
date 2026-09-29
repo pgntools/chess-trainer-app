@@ -4,7 +4,8 @@ import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
 import { DataTable, type DataTableColumn } from "../../../design-system/patterns/tables";
-import { formatBytes, type BrowserStorageEstimate } from "../../../lib/storageDiagnostics";
+import { formatBytes } from "../../../lib/formatBytes";
+import type { BrowserStorageEstimate } from "../../../lib/storageDiagnostics";
 
 /** One kind of the reader's records, as the Storage tab counts it. */
 export type StorageCategoryId = "playedGames" | "analyses" | "repertoires" | "collectionGames";

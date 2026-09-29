@@ -74,3 +74,13 @@ Gallery: `/dev/design/feedback`.
   `error.main` with `role="alert"`: `PlayScreen`, `AnalysisBoard`,
   `RepertoireChangesBar`) and the success captions (the Load tab,
   `CopyableValue`).
+
+## CTA-113 additions
+
+- `SnackbarProvider` — mounted by `AppThemeWithLang` (was `main.tsx`), so any
+  tree under the theme has the queue. An action takes `href?` — a real link
+  (a new tab, a middle click) whose plain click runs `onClick` — and
+  `testId?`: the snackbar sits outside the router, so a router link cannot
+  render there; the screen passes `navigate` and `useHref`'s address.
+- `FeedbackStrip` — `maxHeight` takes a CSS length too.
+- `InlineAlert` — its detail in the theme's monospace token.

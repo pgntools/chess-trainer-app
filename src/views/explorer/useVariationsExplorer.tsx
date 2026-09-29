@@ -19,7 +19,7 @@ import { nextMoveWeights } from "../../lib/nextMoveWeights";
 import { maskNodeSan, type PieceMask } from "../../lib/pieceMask";
 import { playChances, playChanceOf } from "../../lib/playChance";
 import type { MapCoverage } from "../../lib/treeMap";
-import NextMovesBar from "../tools/analysis/NextMovesBar";
+import NextMovesBar from "../shared/NextMovesBar";
 import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
 import AnnotationsBar, { type CommentEditing } from "./AnnotationsBar";
 import ChanceArrows from "./ChanceArrows";

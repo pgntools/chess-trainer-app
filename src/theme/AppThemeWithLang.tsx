@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { asAppLanguage, rtlLanguages, type AppLanguage } from "../i18n";
 import { buildTheme, ltrCache, rtlCache, usePrefersReducedMotion } from "../design-system/theme";
 import { isThemeId, themeById } from "../design-system/themes";
+import { SnackbarProvider } from "../design-system/components/feedback";
 import {
   readStoredThemeId,
   storeThemeId,
@@ -66,7 +67,13 @@ export default function AppThemeWithLang({
     <ThemeChoiceContext.Provider value={choice}>
       <CacheProvider value={cache}>
         <ThemeProvider theme={theme} disableTransitionOnChange>
-          {children}
+          {/*
+            The app's one snackbar and its queue (CTA-108): any screen shows
+            one through `useSnackbar()`. Here since CTA-113, inside the theme so
+            it wears the reader's, and so every render in the app's theme — a
+            screen's test too — has the queue its screen may use.
+          */}
+          <SnackbarProvider>{children}</SnackbarProvider>
         </ThemeProvider>
       </CacheProvider>
     </ThemeChoiceContext.Provider>

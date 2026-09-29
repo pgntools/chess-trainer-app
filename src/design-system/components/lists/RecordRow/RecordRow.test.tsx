@@ -29,6 +29,26 @@ describe("RecordRow", () => {
     expect(toggle).toHaveBeenCalledTimes(1);
   });
 
+  it("takes its parts' own test ids and names Open for its row (CTA-113)", () => {
+    render(
+      <List>
+        <RecordRow
+          name="Najdorf"
+          description="Deep lines."
+          primaryAction={{ label: "Open", ariaLabel: "Open Najdorf", onClick: () => {} }}
+          pick={{ checked: false, onToggle: () => {}, label: "Pick Najdorf" }}
+          openTestId="old-open"
+          pickTestId="old-pick"
+          descriptionTestId="old-description"
+          testId="probe"
+        />
+      </List>,
+    );
+    expect(screen.getByTestId("old-open")).toBe(screen.getByRole("button", { name: "Open Najdorf" }));
+    expect(screen.getByTestId("old-pick")).toContainElement(screen.getByRole("checkbox", { name: "Pick Najdorf" }));
+    expect(screen.getByTestId("old-description")).toHaveTextContent("Deep lines.");
+  });
+
   it("opens by a link, and leaves out what it is not given", () => {
     render(
       <List>

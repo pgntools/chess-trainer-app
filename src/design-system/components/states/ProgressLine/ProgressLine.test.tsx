@@ -31,4 +31,9 @@ describe("ProgressLine", () => {
     const nameless = <ProgressLine value={10} testId="probe" />;
     expect(nameless).toBeTruthy();
   });
+
+  it("takes its bar's own test id (CTA-113)", () => {
+    render(<ProgressLine value={50} label="Covered" barTestId="map-progress" testId="probe" />);
+    expect(screen.getByTestId("map-progress")).toHaveAttribute("aria-valuenow", "50");
+  });
 });

@@ -8,7 +8,13 @@ import Typography from "@mui/material/Typography";
 import { linkProps, type LinkTarget } from "../../link";
 
 /** A row's main action — "Open" — as a button or a link. */
-export type RowAction = { label: ReactNode; onClick?: () => void; link?: LinkTarget };
+export type RowAction = {
+  label: ReactNode;
+  onClick?: () => void;
+  link?: LinkTarget;
+  /** Its accessible name, when the label alone would not say which row it opens ("Open Najdorf"). */
+  ariaLabel?: string;
+};
 
 /** The row's pick: its box, its state and its accessible name. */
 export type RowPick = { checked: boolean; onToggle: () => void; label: string };
@@ -26,8 +32,17 @@ export type RecordRowProps = {
   actions?: ReactNode;
   /** A pick box at the row's end. */
   pick?: RowPick;
-  /** The row's test id; the parts are `-name`, `-open` and `-pick`. */
+  /** The row's test id; the parts are `-name`, `-description`, `-open` and `-pick`. */
   testId: string;
+  /**
+   * The parts' own test ids, for a screen whose tests named them before it
+   * moved onto this row (CTA-113: `saved-analyses-open-<id>`). Each absent
+   * one is derived from `testId`.
+   */
+  openTestId?: string;
+  pickTestId?: string;
+  descriptionTestId?: string;
+  nameTestId?: string;
 };
 
 /**
@@ -36,7 +51,19 @@ export type RecordRowProps = {
  * record's other actions and its pick, over a bottom divider. The two saved
  * lists' rows were this, twice.
  */
-function RecordRow({ name, caption, description, primaryAction, actions, pick, testId }: RecordRowProps) {
+function RecordRow({
+  name,
+  caption,
+  description,
+  primaryAction,
+  actions,
+  pick,
+  testId,
+  openTestId = `${testId}-open`,
+  pickTestId = `${testId}-pick`,
+  descriptionTestId = `${testId}-description`,
+  nameTestId = `${testId}-name`,
+}: RecordRowProps) {
   return (
     <ListItem
       disableGutters
@@ -45,7 +72,7 @@ function RecordRow({ name, caption, description, primaryAction, actions, pick, t
       sx={{ py: 1.25, gap: 1, alignItems: "center", flexWrap: "wrap" }}
     >
       <Box sx={{ flex: "1 1 12rem", minWidth: 0 }}>
-        <Typography variant="subtitle2" dir="auto" noWrap data-testid={`${testId}-name`} sx={{ fontWeight: 600 }}>
+        <Typography variant="subtitle2" dir="auto" noWrap data-testid={nameTestId} sx={{ fontWeight: 600 }}>
           {name}
         </Typography>
         {caption !== undefined && (
@@ -54,7 +81,13 @@ function RecordRow({ name, caption, description, primaryAction, actions, pick, t
           </Typography>
         )}
         {description !== undefined && (
-          <Typography variant="body2" color="text.secondary" dir="auto" sx={{ fontStyle: "italic", mt: 0.25 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            dir="auto"
+            data-testid={descriptionTestId}
+            sx={{ fontStyle: "italic", mt: 0.25 }}
+          >
             {description}
           </Typography>
         )}
@@ -65,7 +98,8 @@ function RecordRow({ name, caption, description, primaryAction, actions, pick, t
             size="small"
             variant="contained"
             onClick={primaryAction.onClick}
-            data-testid={`${testId}-open`}
+            aria-label={primaryAction.ariaLabel}
+            data-testid={openTestId}
             {...linkProps(primaryAction.link)}
           >
             {primaryAction.label}
@@ -78,7 +112,7 @@ function RecordRow({ name, caption, description, primaryAction, actions, pick, t
             checked={pick.checked}
             onChange={pick.onToggle}
             slotProps={{ input: { "aria-label": pick.label } }}
-            data-testid={`${testId}-pick`}
+            data-testid={pickTestId}
           />
         )}
       </Box>

@@ -76,11 +76,12 @@ function EvalBar({ score, orientation, label }: EvalBarProps) {
     >
       <Box
         data-testid="eval-bar-white"
-        sx={{
+        sx={(theme) => ({
           height: `${whiteShare * 100}%`,
           bgcolor: "common.white",
-          transition: "height 240ms ease-out",
-        }}
+          // The theme's transition, so reduced motion stops it (CTA-113; was a literal).
+          transition: theme.transitions.create("height", { duration: 240, easing: theme.transitions.easing.easeOut }),
+        })}
       />
     </Box>
   );

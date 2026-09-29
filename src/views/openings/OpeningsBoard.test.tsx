@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
@@ -7,6 +8,7 @@ import i18n from "../../i18n";
 import { analysisHandOffOf } from "../../lib/analysisHandOff";
 import { mainline, treeToPgn } from "../../lib/gameTree";
 import { HOVERED_MOVE_ARROW_COLOR, KNOWN_MOVE_ARROW_COLOR } from "../../lib/openings";
+import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { boardOptions, FakeEngine } from "../board/boardTestHarness";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
@@ -258,5 +260,31 @@ describe("the Openings explorer — the Load tab keeps nothing", () => {
     expect((screen.getByTestId("analysis-export-pgn") as HTMLTextAreaElement).value).toContain(
       "1. e4 e5 (1... c5)",
     );
+  });
+});
+
+describe("the Openings explorer — accessible (CTA-113)", () => {
+  it("passes axe with the book open, and plays a book move from the keyboard, its arrow following the focus", async () => {
+    const user = userEvent.setup();
+    mount();
+    await bookShows("e4");
+    expect(screen.getByRole("list", { name: "Book moves" })).toBeInTheDocument();
+    await expectNoAxeViolations(document.body);
+
+    act(() => screen.getByTestId("openings-book-move-d4").focus());
+    expect(arrowTo("d4")?.color).toBe(HOVERED_MOVE_ARROW_COLOR);
+    await user.keyboard("{Enter}");
+    expect(boardOptions().position).toBe(AFTER_D4);
+  });
+
+  it("names its header's controls, and turns the engine off from the keyboard", async () => {
+    const user = userEvent.setup();
+    mount();
+    expect(screen.getByRole("button", { name: i18n.t("openings.controls.analysis") })).toBeInTheDocument();
+    const engine = screen.getByRole("switch", { name: i18n.t("openings.engineSwitch") });
+    engine.focus();
+    await user.keyboard(" ");
+    expect(engine).not.toBeChecked();
+    await expectNoAxeViolations(document.body);
   });
 });

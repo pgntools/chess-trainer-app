@@ -6,6 +6,14 @@ template and families are [`README.md`](./README.md)'s. The **cross-module
 comparisons** — the four tables first, then every family — are at the end
 of this file.
 
+**Migrated onto the design system by CTA-113**: each entry below is marked
+with what replaced it, and describes the component as it was. What is left
+of `views/shared/` is the board's pieces and hooks — the move list, the eval
+bar, the captured strips, the plates, the promotion picker, the board
+controls, the next-moves bar, the position editor, `useCurrentOpening`,
+`useStoreRead`; everything generic moved into the design system and every
+chess-aware composition into `src/blocks/` ([`migration.md`](./migration.md)).
+
 - [`views/shared/`](#viewsshared)
 - [`views/shared/folders/`](#viewssharedfolders)
 - [`views/shared/positionEditor/` — the chrome](#viewssharedpositioneditor--the-chrome)
@@ -22,6 +30,8 @@ of this file.
 
 ### OptionSlider
 
+> **Migrated (CTA-113)** — the `AnalysisEngineForm` block over `SliderField` and `engineOptionState`; deleted.
+
 - **Name and location** — `OptionSlider`, `src/views/shared/OptionSlider.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, Slider
@@ -34,6 +44,8 @@ of this file.
 - **Verdict** — already shared — split out a plain `LabeledSlider` (header + slider) under it so the four `go`-argument sliders stop copying its header.
 
 ### CopyableValue
+
+> **Migrated (CTA-113)** — `CopyField` (`components/forms/`); deleted.
 
 - **Name and location** — `CopyableValue`, `src/views/shared/CopyableValue.tsx`
 - **Family** — form / settings group
@@ -48,6 +60,8 @@ of this file.
 
 ### GameInfo
 
+> **Migrated (CTA-113)** — the `GameInfo` block (`blocks/panels/`) over `KeyValueList`.
+
 - **Name and location** — `GameInfo`, `src/views/shared/GameInfo.tsx`
 - **Family** — list
 - **MUI atoms** — Box (`component="dl"`), Typography (`dt` / `dd`)
@@ -60,6 +74,8 @@ of this file.
 - **Verdict** — already shared — untested; a generic `KeyValueList` would also serve the Storage tab's browser figures.
 
 ### MergeSplitChoice
+
+> **Migrated (CTA-113)** — the `MergeSplitChoice` block (`blocks/forms/`).
 
 - **Name and location** — `MergeSplitChoice`, `src/views/shared/MergeSplitChoice.tsx`
 - **Family** — form / settings group
@@ -74,6 +90,8 @@ of this file.
 
 ### SavedListExportBar
 
+> **Migrated (CTA-113)** — `SelectionBar` (`components/toolbars/`); deleted.
+
 - **Name and location** — `SavedListExportBar`, `src/views/shared/SavedListExportBar.tsx`
 - **Family** — toolbar / action bar
 - **MUI atoms** — Box, Checkbox, Chip, Tooltip, IconButton
@@ -86,6 +104,8 @@ of this file.
 - **Verdict** — already shared — the Lobby table should use it too, or the bar should grow a "select-all in the header" mode (see [the four tables](#the-four-tables)).
 
 ### SavedListViewToggle
+
+> **Migrated (CTA-113)** — `ViewToggle` (`components/toolbars/`); deleted.
 
 - **Name and location** — `SavedListViewToggle`, `src/views/shared/SavedListViewToggle.tsx`
 - **Family** — toolbar / action bar
@@ -100,6 +120,8 @@ of this file.
 
 ### The saved-list grid (`savedList.ts`, `cardSize.ts`)
 
+> **Migrated (CTA-113)** — `CardGrid` and `cardGridColumns`; `lib/savedListCaption.ts`; `blocks/lists/savedListView.ts`. Deleted.
+
 - **Name and location** — `savedListGridSx`, `savedListDate`, `savedListLine`, `SAVED_LIST_DEFAULT_VIEW` in `src/views/shared/savedList.ts`; `cardSizeTrack` in `src/views/shared/cardSize.ts`
 - **Family** — card grid
 - **MUI atoms** — none (`CSSObject` values for a `Box`)
@@ -112,6 +134,8 @@ of this file.
 - **Verdict** — already shared — the one grid definition the card screens agree on; Home could take a size from it.
 
 ### BoardControls
+
+> **Migrated (CTA-113)** — stays a board piece, built of `ActionBar` + `IconAction`s.
 
 - **Name and location** — `BoardControls`, `src/views/shared/BoardControls.tsx`
 - **Family** — toolbar / action bar
@@ -126,6 +150,8 @@ of this file.
 
 ### BestVariations
 
+> **Migrated (CTA-113)** — stays in the board core's panel; its targets 24 px, its motion the theme's.
+
 - **Name and location** — `BestVariations`, `src/views/shared/BestVariations.tsx` (inner `PendingRow` at `:164`)
 - **Family** — list
 - **MUI atoms** — Box, Typography, FormControlLabel, Checkbox, Chip, ButtonBase, Skeleton
@@ -138,6 +164,8 @@ of this file.
 - **Verdict** — already shared — one block, every board (the propagation guarantee).
 
 ### CurrentOpening
+
+> **Migrated (CTA-113)** — the `CurrentOpening` block (`blocks/panels/`) and the `useCurrentOpening` hook (`views/shared/`).
 
 - **Name and location** — `CurrentOpening`, `src/views/shared/CurrentOpening.tsx`
 - **Family** — navigation
@@ -156,6 +184,8 @@ of this file.
 
 ### FolderTreeTable
 
+> **Migrated (CTA-113)** — `DataTable`'s tree rows and the `CollectionsTreeTable` block; deleted.
+
 - **Name and location** — `FolderTreeTable<T>`, `src/views/shared/folders/FolderTreeTable.tsx`
 - **Family** — table
 - **MUI atoms** — TableContainer, Table, TableHead, TableBody, TableRow, TableCell, TableSortLabel, IconButton, Box
@@ -168,6 +198,8 @@ of this file.
 - **Verdict** — already shared — presentational and generic; only the Library uses it, the saved lists could.
 
 ### SavedFolderRow / SavedFolderCard
+
+> **Migrated (CTA-113)** — `FolderRow` / `FolderCard` with the `FolderActions` block; deleted.
 
 - **Name and location** — `SavedFolderRow` (`:122`), `SavedFolderCard` (`:195`) and the inner `FolderActions` (`:35`), `src/views/shared/folders/SavedFolderViews.tsx`
 - **Family** — list (row) / card grid (card)
@@ -182,6 +214,8 @@ of this file.
 
 ### SavedFolderBreadcrumb
 
+> **Migrated (CTA-113)** — `Breadcrumbs` (`currentTestId`); deleted.
+
 - **Name and location** — `SavedFolderBreadcrumb`, `src/views/shared/folders/SavedFolderBreadcrumb.tsx`
 - **Family** — navigation
 - **MUI atoms** — Box, Button, Typography
@@ -194,6 +228,8 @@ of this file.
 - **Verdict** — already shared — worth rebuilding on MUI `Breadcrumbs`, which also fixes the separator.
 
 ### FolderNameDialog
+
+> **Migrated (CTA-113)** — the `FolderNameDialog` block (`blocks/dialogs/`) over `FormDialog`.
 
 - **Name and location** — `FolderNameDialog`, `src/views/shared/folders/FolderNameDialog.tsx`
 - **Family** — dialog
@@ -208,6 +244,8 @@ of this file.
 
 ### FolderMoveDialog
 
+> **Migrated (CTA-113)** — the `FolderMoveDialog` block over `BaseDialog` and `FolderPicker`.
+
 - **Name and location** — `FolderMoveDialog`, `src/views/shared/folders/FolderMoveDialog.tsx`
 - **Family** — dialog
 - **MUI atoms** — Dialog, DialogTitle, DialogContent, DialogActions, Button (+ `FolderPicker`)
@@ -221,6 +259,8 @@ of this file.
 
 ### FolderDeleteDialog
 
+> **Migrated (CTA-113)** — the `FolderDeleteDialog` block over `ConfirmDialog`.
+
 - **Name and location** — `FolderDeleteDialog`, `src/views/shared/folders/FolderDeleteDialog.tsx`
 - **Family** — dialog
 - **MUI atoms** — Dialog, DialogTitle, DialogContent, DialogActions, Typography, Button
@@ -233,6 +273,8 @@ of this file.
 - **Verdict** — already shared — the reference shape for a destructive confirm.
 
 ### FolderPicker
+
+> **Migrated (CTA-113)** — the `FolderPicker` block (`blocks/lists/`) over `PickerList`.
 
 - **Name and location** — `FolderPicker`, `src/views/shared/folders/FolderPicker.tsx`
 - **Family** — list
@@ -255,6 +297,8 @@ and the rows around the board are in. The contract is
 
 ### PositionEditor
 
+> **Migrated (CTA-113)** — stays a board piece; its chrome `InlineAlert`, `ActionBar`, `PanelTabs`.
+
 - **Name and location** — `PositionEditor`, `src/views/shared/positionEditor/PositionEditor.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Alert, AlertTitle, Button, Tabs, Tab, Typography
@@ -267,6 +311,8 @@ and the rows around the board are in. The contract is
 - **Verdict** — already shared — the problems list is rendered three times (here and in both hosts' footers).
 
 ### PiecePalette
+
+> **Migrated (CTA-113)** — stays a board piece; its trash an `IconAction`.
 
 - **Name and location** — `PiecePalette`, `src/views/shared/positionEditor/PiecePalette.tsx`
 - **Family** — toolbar / action bar
@@ -281,6 +327,8 @@ and the rows around the board are in. The contract is
 
 ### PositionFields
 
+> **Migrated (CTA-113)** — the `PositionFields` block (`blocks/forms/`).
+
 - **Name and location** — `PositionFields`, `src/views/shared/positionEditor/PositionFields.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, ToggleButtonGroup, ToggleButton, FormControl, FormLabel, FormGroup, FormControlLabel, Checkbox, TextField (select), MenuItem
@@ -294,6 +342,8 @@ and the rows around the board are in. The contract is
 
 ### FenSetup
 
+> **Migrated (CTA-113)** — the `FenInput` block (`blocks/forms/`).
+
 - **Name and location** — `FenSetup`, `src/views/shared/positionEditor/FenSetup.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, TextField, Button, Alert (+ `CopyableValue`)
@@ -306,6 +356,8 @@ and the rows around the board are in. The contract is
 - **Verdict** — already shared — one `FenInput` would serve all three.
 
 ### PgnSetup
+
+> **Migrated (CTA-113)** — the `PgnInput` block over the `UploadPanel` pattern.
 
 - **Name and location** — `PgnSetup`, `src/views/shared/positionEditor/PgnSetup.tsx`
 - **Family** — form / settings group
@@ -328,6 +380,8 @@ the right-hand aside through `RightPanel`. The skeleton and its slots are
 
 ### BoardPanel
 
+> **Migrated (CTA-113)** — stays the board core's panel; its strip `PanelTabs`, its pinned block a `FeedbackStrip`, hidden `h2`s for the lines and the open tab.
+
 - **Name and location** — `BoardPanel`, `src/views/board/core/BoardPanel.tsx`
 - **Family** — tabs
 - **MUI atoms** — Box, Tabs, Tab, Typography, Chip (+ `BestVariations`, `BoardControls`)
@@ -349,6 +403,8 @@ comment block and the map's toolbar are in. Every one is placed by
 
 ### MoveContextMenu
 
+> **Migrated (CTA-113)** — `ContextMenu` (`open`), a destructive `ConfirmDialog`, `useSnackbar`.
+
 - **Name and location** — `MoveContextMenu`, `src/views/explorer/MoveContextMenu.tsx`
 - **Family** — menu
 - **MUI atoms** — Menu, MenuItem, ListSubheader, ListItemIcon, ListItemText, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Snackbar
@@ -361,6 +417,8 @@ comment block and the map's toolbar are in. Every one is placed by
 - **Verdict** — already shared — its delete dialog should be the shared destructive confirm.
 
 ### CommentDialog
+
+> **Migrated (CTA-113)** — `FormDialog`.
 
 - **Name and location** — `CommentDialog` / `OpenCommentDialog`, `src/views/explorer/CommentDialog.tsx`
 - **Family** — dialog
@@ -375,6 +433,8 @@ comment block and the map's toolbar are in. Every one is placed by
 
 ### NagDialog
 
+> **Migrated (CTA-113)** — `BaseDialog` with a tall `PanelTabs`; the glyph toggles stay (§4.4).
+
 - **Name and location** — `NagDialog` / `OpenNagDialog`, `src/views/explorer/NagDialog.tsx`
 - **Family** — dialog
 - **MUI atoms** — Dialog, DialogTitle, Tabs, Tab, DialogContent, DialogContentText, ToggleButton, Box, Button
@@ -387,6 +447,8 @@ comment block and the map's toolbar are in. Every one is placed by
 - **Verdict** — already shared — its tab height differs from every other strip.
 
 ### PlayChanceDialog
+
+> **Migrated (CTA-113)** — `FormDialog` with a `StatusText` total; the chances grid stays (§4.4).
 
 - **Name and location** — `PlayChanceDialog` / `OpenPlayChanceDialog`, `src/views/explorer/PlayChanceDialog.tsx`
 - **Family** — dialog
@@ -401,6 +463,8 @@ comment block and the map's toolbar are in. Every one is placed by
 
 ### AnnotationsBar
 
+> **Migrated (CTA-113)** — an info `FeedbackStrip` with `IconAction`s.
+
 - **Name and location** — `AnnotationsBar` and the inner `Comment` (`:158`), `src/views/explorer/AnnotationsBar.tsx`
 - **Family** — feedback (alert / snackbar)
 - **MUI atoms** — Box, Typography, Chip, Tooltip, IconButton
@@ -413,6 +477,8 @@ comment block and the map's toolbar are in. Every one is placed by
 - **Verdict** — already shared — the strip is a de-facto `Callout` with a colour; worth naming.
 
 ### TreeMap — the chrome
+
+> **Migrated (CTA-113)** — `IconAction`, `ActionBar`, `ProgressLine`, `FullScreenDialog`.
 
 - **Name and location** — `TreeMap` (header, progress and full-screen `Dialog`, `:410-531`), `MapViewport` (toolbar, `:674-736`) and `MapButton` (`:256`), `src/views/explorer/TreeMap.tsx`
 - **Family** — toolbar / action bar
@@ -431,6 +497,8 @@ comment block and the map's toolbar are in. Every one is placed by
 
 ### DefaultLayout
 
+> **Migrated (CTA-113)** — stays the shell (`Layout.tsx`) — the page structure of CTA-112.
+
 - **Name and location** — `DefaultLayout` / `DefaultLayoutViewport`, `src/views/main/Layout.tsx:154`
 - **Family** — other (the shell layout)
 - **MUI atoms** — Box
@@ -443,6 +511,8 @@ comment block and the map's toolbar are in. Every one is placed by
 - **Verdict** — module-specific but needs design consistency — the shell; its paddings (aside `p: 2`, inset 16px) are the spacing the screens inside should agree with.
 
 ### Header
+
+> **Migrated (CTA-113)** — stays the shell's `AppBar`; the colour-mode switch an `IconAction`.
 
 - **Name and location** — `Header`, `src/views/main/Layout.tsx:71`
 - **Family** — toolbar / action bar
@@ -457,6 +527,8 @@ comment block and the map's toolbar are in. Every one is placed by
 
 ### AnalysisPlaceholder
 
+> **Migrated (CTA-113)** — stays the shell's fallback — one line of words.
+
 - **Name and location** — `AnalysisPlaceholder`, `src/views/main/Layout.tsx:139`
 - **Family** — empty / loading / error state
 - **MUI atoms** — Typography
@@ -469,6 +541,8 @@ comment block and the map's toolbar are in. Every one is placed by
 - **Verdict** — module-specific but needs design consistency — the "panel note" is one pattern written ten times.
 
 ### SideBar
+
+> **Migrated (CTA-113)** — stays hand-written (§4.4) — `TreeView`'s roving tab stop and single list would change its keys and its pinned foot.
 
 - **Name and location** — `SideBar` (`:248`), `SidebarLinks` (`:150`), `TreeRow` (`:38`), `src/views/main/Sidebar.tsx`
 - **Family** — navigation
@@ -483,6 +557,8 @@ comment block and the map's toolbar are in. Every one is placed by
 
 ### Footer
 
+> **Migrated (CTA-113)** — stays the shell's — a line and a link.
+
 - **Name and location** — `Footer`, `src/views/main/Footer.tsx`
 - **Family** — other
 - **MUI atoms** — Box, Typography, Link
@@ -496,6 +572,8 @@ comment block and the map's toolbar are in. Every one is placed by
 
 ### LanguageSwitch and ColorModeIconDropdown
 
+> **Migrated (CTA-113)** — the colour-mode switch an `IconAction`; the language `Select` stays (§4.4).
+
 - **Name and location** — `LanguageSwitch`, `src/theme/LanguageSwitch.tsx`; `ColorModeIconDropdown`, `src/theme/ColorModeIconDropdown.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — FormControl, Select, MenuItem; IconButton, Box
@@ -508,6 +586,8 @@ comment block and the map's toolbar are in. Every one is placed by
 - **Verdict** — module-specific but needs design consistency — tooltip and naming conventions.
 
 ### Home
+
+> **Migrated (CTA-113)** — `CardGrid` of `IconCard`s per section.
 
 - **Name and location** — `Home`, `src/views/home/Home.tsx`
 - **Family** — card grid

@@ -217,6 +217,33 @@ describe("the move list — evals beside the moves (CTA-50)", () => {
   });
 });
 
+describe("the move list — targets and contrast (CTA-113's browser pass)", () => {
+  /** The element's own rule — jsdom computes neither the logical sizes nor opacity from emotion's classes. */
+  const ownRule = (element: HTMLElement) => {
+    const name = [...element.classList].pop() ?? "";
+    return [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules].map((rule) => rule.cssText)).find((text) => text.startsWith(`.${name} `)) ?? "";
+  };
+
+  it("keeps every row 24 px tall at least, and the current row's eval undimmed on its fill", () => {
+    render(
+      <AppThemeWithLang>
+        <MoveList
+          game={game}
+          currentPly={1}
+          onSelectPly={vi.fn()}
+          evalsByFen={new Map<string, Score>([
+            [game.moves[0].fen, { kind: "cp", value: 30 }],
+            [game.moves[1].fen, { kind: "cp", value: 20 }],
+          ])}
+        />
+      </AppThemeWithLang>,
+    );
+    expect(ownRule(cell(1))).toMatch(/min-height: 24px/);
+    expect(ownRule(screen.getByTestId("move-eval-1"))).toMatch(/opacity: 1;/);
+    expect(ownRule(screen.getByTestId("move-eval-2"))).toMatch(/opacity: 0\.75/);
+  });
+});
+
 describe("the move list — side lines under the moves they branch from (CTA-53)", () => {
   /*
     Hand-built plain data, not a parsed tree: the list renders a side line from

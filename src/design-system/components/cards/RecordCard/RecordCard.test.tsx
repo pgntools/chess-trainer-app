@@ -29,6 +29,32 @@ describe("RecordCard", () => {
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
+  it("takes a third line and its parts' own test ids (CTA-113)", () => {
+    render(
+      <RecordCard
+        preview={null}
+        name="x"
+        caption="24 moves"
+        detail="Sicilian Defense · B20"
+        onOpen={() => {}}
+        openLabel="Open x"
+        pick={{ checked: false, onToggle: () => {}, label: "Pick x" }}
+        openTestId="old-open"
+        pickTestId="old-pick"
+        testId="probe"
+      />,
+    );
+    expect(screen.getByTestId("old-open")).toBe(screen.getByRole("button", { name: "Open x" }));
+    expect(screen.getByTestId("old-pick")).toContainElement(screen.getByRole("checkbox", { name: "Pick x" }));
+    expect(screen.getByTestId("probe")).toHaveTextContent("Sicilian Defense · B20");
+  });
+
+  it("is no button when it has nowhere to go — a record that will not read", () => {
+    render(<RecordCard preview="Cannot be read" name="x" openLabel="Open x" testId="probe" />);
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.getByTestId("probe-open")).toHaveTextContent("Cannot be read");
+  });
+
   it("opens by a link", () => {
     render(<RecordCard preview={null} name="x" link={{ href: "/a/1" }} openLabel="Open x" testId="probe" />);
     expect(screen.getByRole("link", { name: "Open x" })).toHaveAttribute("href", "/a/1");

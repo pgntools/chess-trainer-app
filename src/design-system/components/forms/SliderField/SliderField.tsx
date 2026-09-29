@@ -24,7 +24,7 @@ export type SliderFieldProps = {
 /**
  * **A labelled slider** (CTA-108): a header with the label at the start and
  * the value at the end (`dir="ltr"`, so a number never reverses), a small
- * slider under it, dimmed while off. `OptionSlider` and the four
+ * slider under it, dimmed while off. The option sliders and the four
  * depth and move-time rows each wrote this header; this is it once.
  *
  * The notice is never dimmed (CTA-109): it says why the slider is off, and at

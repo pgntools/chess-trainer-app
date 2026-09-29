@@ -107,3 +107,13 @@ Gallery: `/dev/design/dialogs` — every variation open in its own frame
 - **Variations** — plain; with header actions.
 - **Replaces** — the map's full-screen `Dialog`
   ([Shared.md → TreeMap — the chrome](../Shared.md#treemap--the-chrome)).
+
+## CTA-113 additions
+
+- `BaseDialog` — `titleTestId`. `ConfirmDialog`, `DeleteManyDialog` —
+  `cancelTestId`, `titleTestId`. `FormDialog` — `submitTestId`,
+  `cancelTestId`.
+- `ProgressDialog` — `barTestId`, `captionTestId` (the Library's import reads
+  its caption as `library-import-progress`). With `useCancellableJob` it is
+  the index pass of `MultiGameDialog` and the Library's import, shown in the
+  choice dialog's place.

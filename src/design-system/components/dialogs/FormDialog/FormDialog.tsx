@@ -23,6 +23,10 @@ export type FormDialogProps = {
   width?: "xs" | "sm";
   /** The root's test id; the parts are `-form`, `-cancel` and `-submit`. */
   testId: string;
+  /** The submit button's own test id, for a screen whose tests named it before (CTA-113: `…-name-save`). Absent, `<testId>-submit`. */
+  submitTestId?: string;
+  /** The cancel button's own test id (CTA-113). Absent, `<testId>-cancel`. */
+  cancelTestId?: string;
   dialogProps?: ExtraDialogProps;
 };
 
@@ -45,6 +49,8 @@ function FormDialog({
   busy = false,
   width = "xs",
   testId,
+  submitTestId = `${testId}-submit`,
+  cancelTestId = `${testId}-cancel`,
   dialogProps,
 }: FormDialogProps) {
   const formId = useId();
@@ -79,7 +85,7 @@ function FormDialog({
       dialogProps={dialogProps}
       actions={
         <>
-          <Button onClick={onClose} disabled={busy} data-testid={`${testId}-cancel`}>
+          <Button onClick={onClose} disabled={busy} data-testid={cancelTestId}>
             {cancelLabel}
           </Button>
           <Button
@@ -89,7 +95,7 @@ function FormDialog({
             disabled={blocked}
             aria-busy={busy || undefined}
             startIcon={busy ? <CircularProgress aria-hidden size={16} color="inherit" /> : undefined}
-            data-testid={`${testId}-submit`}
+            data-testid={submitTestId}
           >
             {submitLabel}
           </Button>

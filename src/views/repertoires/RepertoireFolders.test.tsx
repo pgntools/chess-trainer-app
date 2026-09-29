@@ -72,10 +72,8 @@ describe("repertoire folders on the list", () => {
     await userEvent.click(screen.getByTestId(`repertoire-folder-open-${folder.id}`));
     expect(screen.getByTestId("repertoires-title")).toHaveTextContent("Caro");
     await userEvent.click(screen.getByTestId("repertoires-settings-a"));
-    expect(screen.getByTestId(`repertoire-settings-folder-${folder.id}`)).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    // CTA-113: the folder choice is the picker list; the chosen row is `aria-current`.
+    expect(screen.getByTestId(`repertoire-settings-folder-${folder.id}`)).toHaveAttribute("aria-current", "true");
     await userEvent.click(screen.getByTestId("repertoire-settings-folder-unfiled"));
     await userEvent.click(screen.getByTestId("repertoire-settings-save"));
     expect(findSavedRepertoire("a")?.folderId).toBeNull();

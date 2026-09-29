@@ -64,4 +64,10 @@ describe("PanelTabs", () => {
     expect(screen.getByTestId("probe-tab-export")).toHaveAttribute("href", "/settings/export");
     expect(screen.getByTestId("probe-tab-import")).toHaveAttribute("aria-selected", "true");
   });
+
+  it("names its tabs under another prefix when asked (CTA-113)", () => {
+    render(<PanelTabs tabs={[{ id: "fen", label: "FEN" }]} value="fen" ariaLabel="Forms" tabTestIdPrefix="editor" testId="editor-forms" />);
+    expect(screen.getByTestId("editor-tab-fen")).toHaveAttribute("role", "tab");
+    expect(screen.getByTestId("editor-forms")).toBeInTheDocument();
+  });
 });

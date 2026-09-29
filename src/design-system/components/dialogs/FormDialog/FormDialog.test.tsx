@@ -78,4 +78,12 @@ describe("FormDialog", () => {
     fireEvent.click(screen.getByTestId("probe-cancel"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("takes its submit button's own test id (CTA-113)", () => {
+    const { onSubmit, onClose } = renderForm({ submitTestId: "old-save", cancelTestId: "old-cancel" });
+    fireEvent.click(screen.getByTestId("old-save"));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId("old-cancel"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

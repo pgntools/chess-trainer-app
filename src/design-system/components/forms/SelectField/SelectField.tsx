@@ -21,6 +21,12 @@ export type SelectFieldProps = {
   optionDir?: "ltr" | "auto";
   /** On the select's input; each option is `<testId>-option` with its `data-value`. */
   testId: string;
+  /**
+   * Where the test id goes: on the hidden `input` (the default), or on the
+   * `display` — the visible combobox a click opens — for a screen whose tests
+   * clicked it before it moved onto this field (CTA-113).
+   */
+  testIdOn?: "input" | "display";
 };
 
 /**
@@ -40,6 +46,7 @@ function SelectField({
   fullWidth = false,
   optionDir,
   testId,
+  testIdOn = "input",
 }: SelectFieldProps) {
   const known = value === "" || options.some((option) => option.value === value);
   return (
@@ -53,8 +60,11 @@ function SelectField({
       disabled={disabled}
       fullWidth={fullWidth}
       slotProps={{
-        htmlInput: { "data-testid": testId },
-        select: { displayEmpty: emptyOption !== undefined },
+        htmlInput: { "data-testid": testIdOn === "input" ? testId : undefined },
+        select: {
+          displayEmpty: emptyOption !== undefined,
+          ...(testIdOn === "display" && { SelectDisplayProps: { "data-testid": testId } as object }),
+        },
         inputLabel: { shrink: true },
       }}
       sx={{ minWidth: 160 }}

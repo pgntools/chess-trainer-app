@@ -253,6 +253,164 @@ Its patterns and blocks, each on its page, the way a screen would use them:
 5. The dialogs (**ImportDialog**, **IncompatibleImportDialog**,
    `DeleteManyDialog`): §2.9.
 
+### 3.6 Home — `/` (CTA-113)
+
+1. **"Get started, heading level 1"**; title **"Home — Chess Trainer App"**.
+2. H: a **level 2** heading per section (Engine, Analysis Board, Openings,
+   Repertoires, Library, Settings …), in the sidebar's order.
+3. Tab through the cards: each **a link named by its screen** ("Lobby,
+   link", "Analysis Board, link" — which goes to the saved list), in reading
+   order; the icon is not read.
+4. Header: **"Toggle light and dark mode, button"**; Space switches the
+   scheme, the focus stays on it. The language select names itself.
+
+### 3.7 Saved analyses — `/tools/analysis/saved` (CTA-113)
+
+Seed: save two analyses, one in a folder.
+
+1. **"Saved analyses, heading level 1"**; the count read under it.
+2. Tab: the header's actions (**"New"** …); the select-all **"Select all …,
+   checkbox"**; the view switch — **"List, toggle button, pressed"**, its
+   neighbours by the arrow keys ("Compact cards", "Cards").
+3. A folder row: **"Open ‹folder›, button"**, then its actions, each named
+   by the folder ("Rename ‹folder›" …).
+4. A record row: **"Select ‹name›, checkbox"**, **"Open ‹name›, link"**,
+   **"Settings of ‹name›, link"**. Tick two: the chip **"2 selected"**, its
+   Delete clears them ("Clear the selection").
+5. Delete the picks: **"Delete 2 analyses?"** dialog; the red confirm is
+   the last stop; Escape returns the focus.
+6. Inside a folder: the breadcrumb **"Saved analyses, link"**, then the
+   folder's name as the current page.
+7. With more than 25: the pager **"Analyses per page, 50"**, its buttons named.
+8. The side panel: **"New analysis"**, level 2; the position editor's fields,
+   the FEN and PGN boxes named, **Start**.
+
+### 3.8 The Analysis Board — `/tools/analysis` (CTA-113)
+
+1. **"Analysis Board, heading level 1"** (out of sight; the shell's).
+2. The panel: **"Board panel, tab list"**; each tab named, the selected one
+   said; its panel **"‹tab›, tab panel"**.
+3. H: the engine's lines and the open tab each a **level 2** heading
+   (visually hidden).
+4. Header: **"Save, button"** (with changes over a saved record, **pressed**
+   while the changes strip is open — never "pressed" on a new board, whose
+   Save opens a dialog), **Play** (named, pressed or not), the saved list's
+   link, **"Engine, switch, on"**.
+5. While Play thinks: the spinner is named, and the thinking line is read
+   once as a status.
+6. The Load tab: **"Choose a .pgn file"**, the paste box named, **Load**;
+   a text of several games opens **"… games"** dialog with Merge / Save as
+   collection named; its progress named with a value.
+7. The Engine tab: every slider named with its value; the Arrows tab: the
+   switch and the width source radios named as a group.
+8. The Export tab: **FEN**, **PGN** as copy fields, each **"Copy …"**
+   button saying **"Copied"** after.
+9. The move list: right-click (or the menu key) on a move opens a menu of
+   named items; *Delete from here* asks in a dialog whose confirm is red.
+10. `/tools/analysis/saved/<id>/settings`: the screen's title, **level 1**;
+    a level 2 per section; the switches and side toggle named; Save.
+
+### 3.9 Repertoires — `/repertoires`, `/repertoires/new`, `/repertoires/<id>` (CTA-113)
+
+1. The list: **"Repertoires, heading level 1"**; as Saved analyses (§3.7),
+   each row's controls named by the repertoire — **"Open Caro-Kann, link"**,
+   **"Games of Caro-Kann, button, menu, collapsed"**; Enter opens a menu of
+   two games, Escape closes it back onto the button.
+2. `/repertoires/new`: **"Add a repertoire, heading level 1"**, the panel's
+   level 2; the file button and paste box named; a text of several games
+   offers **Merge** / **Split** as named choices.
+3. The player: its title as the **level 1** heading; header — the back
+   link (named by where it goes), **Save** (pressed while the strip is open),
+   **Autoplay** (pressed state), the Games menu; the tabs as §3.8.
+4. The Settings tab: **"Autoplay, switch"**, the side toggle **"White",
+   "Black"** with its pressed state.
+5. `/repertoires/<id>/settings`: level 1 over **"General", "Board", "Folder"**
+   (level 2); the folder choice is **a list of buttons, the chosen one
+   "current"**; Save from the keyboard.
+6. A game (`/…/games/end`): the score read as a status after each verdict.
+
+### 3.10 The Library — `/library` (CTA-113)
+
+Seed: a folder "Openings" holding one upload.
+
+1. **"Library, heading level 1"**; the count under it.
+2. Tab: **"New folder"**, **"Add collection"**, the words box **"Filter by
+   name"** (its clear button named once there are words).
+3. T: **"Collections, table"**, then the hint **"Tab through each row's
+   chevron, which opens or closes a folder, its link and its actions. Sort by
+   a column from its header button."** The headers **"Name, button, sorted
+   ascending"**, "Games", "Added".
+4. A folder row: **"Open Openings, button, collapsed"**; Enter: **expanded**,
+   its collections appear under it. Its actions, each named by the folder:
+   "Add a collection here", "New sub-folder", "Download", "Rename", "Move
+   to…", "Delete".
+5. A collection row: its name **a link**; its actions "Download ‹name›",
+   "Move ‹name› to…", "Delete ‹name›". Delete asks: **"Delete ‹name›?"**, a
+   red confirm; Escape returns the focus.
+6. Built-in: its chevron and its only action, Download; its collections
+   download only.
+
+### 3.11 A collection — `/library/<collection>` (CTA-113)
+
+1. **"‹collection›, heading level 1"** (a Hebrew name read in Hebrew); the
+   count (**"3 games"**, **"2 of 3 games"** under a filter).
+2. Header: **"All collections, link"**; **"Add games"** (an upload's);
+   the chip **"N selected"** once something is picked; **"Download selected
+   as one PGN"**, **"Delete selected games from the collection"** (an
+   upload's), **"Analyse"** — each unavailable at none.
+3. **"Filter games"**, a search box.
+4. T: **"Games, table"**, the hint **"Sort by a column from its header
+   button. Tick a row's box to pick it."**; the header's **"Select all games
+   shown by the filters, checkbox"**, then "#", "White", "Elo", … "Moves"
+   as sort buttons, **"Date … sorted descending"** at the start.
+5. A row: **"Select ‹White› – ‹Black›, checkbox"**; the White cell a link
+   named **"‹White› – ‹Black›"**; SAN-free cells; the result and date read
+   left to right. An unreadable game's `#` says **"This game could not be
+   read …"**.
+6. Analyse: a status snackbar **"N games added to Saved analyses, in
+   “…”."** with an **"Open folder, link"**.
+7. The side panel: **"Filters", level 2**; **"Player"** (a combo box whose
+   names become chips), **"Played as"** (All / White / Black toggle buttons,
+   unavailable until a player is chosen), **"Opening moves"** with reset /
+   back / flip named, **"Save tree as PGN"**; then Opening, Event, From /
+   To, Result — each named.
+8. Save tree as PGN: a dialog, the radios **"No" / "Add tags"** grouped
+   under **"The games' counts"**, the two boxes named with their help.
+
+### 3.12 Adding a collection — `/library/new` (CTA-113)
+
+1. **"Add a collection, heading level 1"**; the name, the folder list, the
+   file button and the paste box named.
+2. Paste three games, **Save**: **"Import options"** dialog — the file line,
+   the summary, **"Minimum Elo" / "Maximum Elo"** sliders with values, the
+   dates, **"Player"**; the count **"3 of 3 games will be imported"** read
+   as a status as the filters change.
+3. **Import**: the dialog becomes a progress dialog, its bar named by the
+   title with a value, the caption **"Checking games… N of M"**; Cancel
+   named (unavailable while writing).
+4. An error: read as an alert inside the dialog.
+
+### 3.13 A Library game — `/library/<collection>/<n>` (CTA-113)
+
+1. **"Game n of m …"** in the header; the board's plates name each player.
+2. Header: **"Back to ‹collection›, link"**, **"Previous game, link"**,
+   **"Next game, link"** (unavailable at the ends), **Save** (pressed while
+   the changes strip is open), Play, **"Engine, switch"**.
+3. The Moves tab: **"Next-move arrows, switch"** above the move list.
+4. An unreadable game: the words and **"Back to ‹collection›, link"**.
+
+### 3.14 The Openings explorer — `/openings` (CTA-113)
+
+1. **"Openings explorer, heading level 1"** (the shell's).
+2. Header: the current opening and its ECO link; **"Open on the Analysis
+   Board — …, button"**, **"Play from here, button"**, Play, **"Engine,
+   switch"**.
+3. The Book tab: the help line, then **"Book moves, list, N items"**; each
+   row a button read **"e4 King's Pawn Game B00"** (SAN and code left to
+   right under Hebrew). Tabbing onto a row redraws its arrow (a sighted
+   check); Enter plays it and the list changes.
+4. Out of the book: **"No known continuations from here."**
+
 ## 4. Recording
 
 One row per screen × reader × browser × language in

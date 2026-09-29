@@ -1,22 +1,14 @@
 import Box from "@mui/material/Box";
-import List from "@mui/material/List";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemIcon from "@mui/material/ListItemIcon";
-import ListItemText from "@mui/material/ListItemText";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Switch from "@mui/material/Switch";
-import type { ReactNode } from "react";
 import TextField from "@mui/material/TextField";
-import ToggleButton from "@mui/material/ToggleButton";
-import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
 import FolderOffRoundedIcon from "@mui/icons-material/FolderOffRounded";
 import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 import { useTranslation } from "react-i18next";
 
+import { FieldLabel, SideToggle, SwitchField } from "../../design-system/components/forms";
+import { PickerList } from "../../design-system/components/lists";
 import {
   MAX_REPERTOIRE_DESCRIPTION_CHARS,
-  type RepertoireColor,
   type RepertoireSettings,
 } from "../../lib/repertoireSettings";
 import { sortedRepertoireFolders } from "../../lib/savedRepertoireFolders";
@@ -54,40 +46,6 @@ export type RepertoireSettingsSectionProps = {
   }) => void;
 };
 
-/** One on/off option, with a line on what it does. */
-function SwitchOption({
-  checked,
-  onChange,
-  label,
-  help,
-  testId,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-  label: ReactNode;
-  help: ReactNode;
-  testId: string;
-}) {
-  return (
-    <Box>
-      <FormControlLabel
-        sx={{ m: 0 }}
-        control={
-          <Switch
-            checked={checked}
-            onChange={(event) => onChange(event.target.checked)}
-            slotProps={{ input: { "data-testid": testId } as object }}
-          />
-        }
-        label={label}
-      />
-      <Typography variant="caption" sx={{ display: "block", color: "text.secondary" }}>
-        {help}
-      </Typography>
-    </Box>
-  );
-}
-
 /** Title and description — what the repertoire is called and what it is. */
 export function GeneralSection({ draft, onChange }: RepertoireSettingsSectionProps) {
   const { t } = useTranslation();
@@ -100,7 +58,7 @@ export function GeneralSection({ draft, onChange }: RepertoireSettingsSectionPro
         placeholder={t("repertoires.untitled")}
         value={draft.name}
         onChange={(event) => onChange({ name: event.target.value })}
-        slotProps={{ htmlInput: { "data-testid": "repertoire-settings-name" } }}
+        slotProps={{ htmlInput: { "data-testid": "repertoire-settings-name", dir: "auto" } }}
       />
       <TextField
         multiline
@@ -120,7 +78,7 @@ export function GeneralSection({ draft, onChange }: RepertoireSettingsSectionPro
           },
         }}
       />
-      <SwitchOption
+      <SwitchField
         checked={draft.settings.protected}
         onChange={(next) => onChange({ settings: { protected: next } })}
         label={t("repertoires.settings.protected")}
@@ -134,43 +92,22 @@ export function GeneralSection({ draft, onChange }: RepertoireSettingsSectionPro
 /** How the board shows it — the side it is played from, and its arrows. */
 export function BoardSection({ draft, onChange }: RepertoireSettingsSectionProps) {
   const { t } = useTranslation();
-  const colors: readonly RepertoireColor[] = ["white", "black"];
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Box>
-        <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>
-          {t("repertoires.settings.color")}
-        </Typography>
-        <ToggleButtonGroup
-          exclusive
-          size="small"
+        <FieldLabel component="span">{t("repertoires.settings.color")}</FieldLabel>
+        <SideToggle
           value={draft.settings.color}
-          onChange={(_event, next: RepertoireColor | null) => {
-            // MUI reports `null` for a click on the pressed button: a side is
-            // always chosen, so that is not a change.
-            if (next !== null) onChange({ settings: { color: next } });
-          }}
-          aria-label={t("repertoires.settings.color")}
-        >
-          {colors.map((color) => (
-            <ToggleButton
-              key={color}
-              value={color}
-              data-testid={`repertoire-settings-color-${color}`}
-              sx={{ textTransform: "none", px: 2 }}
-            >
-              {t(`repertoires.settings.${color}`)}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-        <Typography
-          variant="caption"
-          sx={{ display: "block", color: "text.secondary", mt: 0.75 }}
-        >
+          onChange={(color) => onChange({ settings: { color } })}
+          labels={{ white: t("repertoires.settings.white"), black: t("repertoires.settings.black") }}
+          ariaLabel={t("repertoires.settings.color")}
+          testId="repertoire-settings-color"
+        />
+        <Typography variant="caption" sx={{ display: "block", color: "text.secondary", mt: 0.75 }}>
           {t("repertoires.settings.colorHelp")}
         </Typography>
       </Box>
-      <SwitchOption
+      <SwitchField
         checked={draft.settings.showArrows}
         onChange={(next) => onChange({ settings: { showArrows: next } })}
         label={t("repertoires.settings.showArrows")}
@@ -178,7 +115,7 @@ export function BoardSection({ draft, onChange }: RepertoireSettingsSectionProps
         testId="repertoire-settings-show-arrows"
       />
       {/* Beside the arrows it colours — off until the reader asks for it. */}
-      <SwitchOption
+      <SwitchField
         checked={draft.settings.chanceArrows}
         onChange={(next) => onChange({ settings: { chanceArrows: next } })}
         label={t("repertoires.settings.chanceArrows")}
@@ -197,51 +134,24 @@ export function BoardSection({ draft, onChange }: RepertoireSettingsSectionProps
 export function FolderSection({ draft, onChange }: RepertoireSettingsSectionProps) {
   const { t } = useTranslation();
   const folders = sortedRepertoireFolders(useRepertoireFolders() ?? []);
-
-  const item = (folderId: string | null, label: string, depth: number) => {
-    const selected = draft.folderId === folderId;
-    return (
-      <ListItemButton
-        key={folderId ?? ""}
-        role="treeitem"
-        aria-selected={selected}
-        aria-level={depth + 1}
-        selected={selected}
-        onClick={() => onChange({ folderId })}
-        data-testid={`repertoire-settings-folder-${folderId ?? "unfiled"}`}
-        sx={{ borderRadius: 0.5, paddingInlineStart: 1 + depth * 3 }}
-      >
-        <ListItemIcon sx={{ minWidth: 32 }}>
-          {folderId === null ? (
-            <FolderOffRoundedIcon fontSize="small" />
-          ) : (
-            <FolderRoundedIcon fontSize="small" />
-          )}
-        </ListItemIcon>
-        <ListItemText primary={label} slotProps={{ primary: { noWrap: true } }} />
-      </ListItemButton>
-    );
-  };
-
   return (
-    <Box>
-      <List
-        component="div"
-        dense
-        disablePadding
-        role="tree"
-        aria-label={t("repertoires.settings.folder")}
-        data-testid="repertoire-settings-folder"
-      >
-        {item(null, t("repertoires.folder.unfiled"), 0)}
-        {folders.length > 0 && (
-          <List component="div" dense disablePadding role="group">
-            {folders.map((folder) =>
-              item(folder.id, folder.name || t("repertoires.untitled"), 1),
-            )}
-          </List>
-        )}
-      </List>
+    <Box sx={{ display: "grid", gap: 0.5 }}>
+      <PickerList
+        items={[
+          { id: null, label: t("repertoires.folder.unfiled"), icon: <FolderOffRoundedIcon fontSize="small" /> },
+          ...folders.map((folder) => ({
+            id: folder.id,
+            label: folder.name || t("repertoires.untitled"),
+            depth: 1,
+            icon: <FolderRoundedIcon fontSize="small" />,
+          })),
+        ]}
+        value={draft.folderId}
+        onChange={(folderId) => onChange({ folderId })}
+        ariaLabel={t("repertoires.settings.folder")}
+        testId="repertoire-settings-folder"
+        noneTestId="repertoire-settings-folder-unfiled"
+      />
       <Typography variant="caption" sx={{ display: "block", color: "text.secondary" }}>
         {t(folders.length === 0 ? "repertoires.settings.folderNone" : "repertoires.settings.folderHelp")}
       </Typography>

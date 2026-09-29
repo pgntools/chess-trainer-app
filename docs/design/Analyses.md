@@ -4,6 +4,11 @@
 panel (`/tools/analysis`), Saved analyses (`/tools/analysis/saved`, with the
 new-analysis form in its panel) and a saved analysis' settings
 (`/tools/analysis/saved/<id>/settings`). The folder also holds the panel pieces
+**Migrated onto the design system by CTA-113**: each entry below is marked
+with what replaced it, and describes the component as it was. The binding
+decisions, the order of work and the findings are
+[`migration.md`](./migration.md).
+
 **every board borrows** — the Load, Export and Engine tab bodies, Play's button
 and status line, the next-moves bar — documented here, where they live. The
 module's reference is
@@ -26,6 +31,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### SavedAnalysesList
 
+> **Migrated (CTA-113)** — the `SavedAnalysesList` block (`blocks/lists/`) over `RecordRow` / `RecordCard` / `FolderRow` / `FolderCard`, `CardGrid`.
+
 - **Name and location** — `SavedAnalysesList`, `src/views/tools/analysis/saved/SavedAnalyses.tsx:410` (the route `SavedAnalyses` at `:396`)
 - **Family** — list
 - **MUI atoms** — Box, List, Pagination, Typography (+ the rows, cards, top bar and dialogs below)
@@ -38,6 +45,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — module-specific but needs design consistency — the sister of `RepertoiresList`; the two should become one list screen with module slots.
 
 ### Saved analyses top bar
+
+> **Migrated (CTA-113)** — `ListScreenHeader`, `SelectionBar`, `ViewToggle`, `Breadcrumbs`.
 
 - **Name and location** — inline in `SavedAnalysesList`, `src/views/tools/analysis/saved/SavedAnalyses.tsx:585-665`
 - **Family** — toolbar / action bar
@@ -52,6 +61,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### SavedAnalysisRow
 
+> **Migrated (CTA-113)** — `RecordRow` inside the `SavedAnalysesList` block.
+
 - **Name and location** — `SavedAnalysisRow`, `src/views/tools/analysis/saved/SavedAnalyses.tsx:253` (caption hook `useCaption` at `:186`)
 - **Family** — list
 - **MUI atoms** — ListItem, Box, Typography, Button
@@ -64,6 +75,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — share candidate — one `SavedRecordRow`.
 
 ### SavedAnalysisCard
+
+> **Migrated (CTA-113)** — `RecordCard` inside the `SavedAnalysesList` block.
 
 - **Name and location** — `SavedAnalysisCard`, `src/views/tools/analysis/saved/SavedAnalyses.tsx:311`
 - **Family** — card grid
@@ -78,6 +91,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### SettingsLink and SelectBox
 
+> **Migrated (CTA-113)** — `RecordRow` / `RecordCard`'s settings `RowAction` and pick.
+
 - **Name and location** — `SettingsLink` (`:220`) and `SelectBox` (`:240`), `src/views/tools/analysis/saved/SavedAnalyses.tsx`
 - **Family** — toolbar / action bar
 - **MUI atoms** — Tooltip, IconButton; Checkbox
@@ -91,6 +106,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### Saved analyses body states
 
+> **Migrated (CTA-113)** — `LoadingLine`; empty and no-folder states the block's.
+
 - **Name and location** — inline in `SavedAnalysesList`, `src/views/tools/analysis/saved/SavedAnalyses.tsx:681-697`; the route's reading line at `:400-406`
 - **Family** — empty / loading / error state
 - **MUI atoms** — Box, Typography
@@ -103,6 +120,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — share candidate — `EmptyState`, `LoadingLine`.
 
 ### Saved analyses pagination
+
+> **Migrated (CTA-113)** — `TablePager` — 25 / 50 / 100 / 250, 50 by default, shown above 25 rows.
 
 - **Name and location** — inline in `SavedAnalysesList`, `src/views/tools/analysis/saved/SavedAnalyses.tsx:734-743`
 - **Family** — navigation
@@ -121,6 +140,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### NewAnalysisForm
 
+> **Migrated (CTA-113)** — the `PgnInput` and `FenInput` blocks; `InlineAlert`.
+
 - **Name and location** — `NewAnalysisForm`, `src/views/tools/analysis/saved/NewAnalysisForm.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, Button, TextField, Divider, Alert (+ `PositionEditor`, `MultiGameDialog`)
@@ -133,6 +154,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — module-specific but needs design consistency — share the Lobby-form frame with `NewGameForm`.
 
 ### New-analysis header resets
+
+> **Migrated (CTA-113)** — unchanged buttons in the form's header row.
 
 - **Name and location** — inline in `NewAnalysisForm`, `src/views/tools/analysis/saved/NewAnalysisForm.tsx:103-133`
 - **Family** — toolbar / action bar
@@ -147,6 +170,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### Quick loads row
 
+> **Migrated (CTA-113)** — unchanged — a row of `Button`s.
+
 - **Name and location** — inline in `NewAnalysisForm` (the editor's `controls`), `src/views/tools/analysis/saved/NewAnalysisForm.tsx:147-201`
 - **Family** — form / settings group
 - **MUI atoms** — Box, TextField, Button, Alert
@@ -160,6 +185,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### Paste section
 
+> **Migrated (CTA-113)** — the `PgnInput` block.
+
 - **Name and location** — inline in `NewAnalysisForm`, `src/views/tools/analysis/saved/NewAnalysisForm.tsx:210-262`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, TextField, Button, Alert (+ `MultiGameDialog`)
@@ -172,6 +199,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — share candidate — `AnalysisLoad` split into pieces a host can place would remove the copy.
 
 ### New-analysis Start footer
+
+> **Migrated (CTA-113)** — unchanged — the Start `Button`.
 
 - **Name and location** — inline in `NewAnalysisForm`, `src/views/tools/analysis/saved/NewAnalysisForm.tsx:265-302`
 - **Family** — toolbar / action bar
@@ -190,6 +219,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### AnalysisSettingsScreen
 
+> **Migrated (CTA-113)** — `SettingsFrame`, `SettingsSection`, `SideToggle`, `SwitchField`, `MissState`, `LoadingLine`.
+
 - **Name and location** — `AnalysisSettingsScreen` (`:47`), `SettingsForm` (`:106`) and the inner `Section` (`:84`), `src/views/tools/analysis/saved/AnalysisSettingsScreen.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, Divider, TextField, ToggleButtonGroup, ToggleButton, FormControlLabel, Switch, Alert, Button (+ `ArrowWidthSourceField`, `ArrowPaletteField`, `FolderPicker`)
@@ -207,6 +238,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### AnalysisBoard header
 
+> **Migrated (CTA-113)** — `ToggleIconAction` (Save — `pressed` only when it opens the changes strip), `IconAction`s, `SwitchField`, `StatusText`.
+
 - **Name and location** — inline in `AnalysisBoard`, `src/views/tools/analysis/AnalysisBoard.tsx:293-392`
 - **Family** — toolbar / action bar
 - **MUI atoms** — Box, Typography, Tooltip, IconButton, FormControlLabel, Switch (+ `CurrentOpening`, `PlayToggleButton`)
@@ -219,6 +252,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — share candidate — `SaveChangesButton`, `EngineSwitch`.
 
 ### Analysis save-problem line
+
+> **Migrated (CTA-113)** — `StatusText`.
 
 - **Name and location** — inline in `AnalysisBoard`, `src/views/tools/analysis/AnalysisBoard.tsx:486-495`
 - **Family** — feedback (alert / snackbar)
@@ -233,6 +268,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### AnalysisBoardRoute
 
+> **Migrated (CTA-113)** — `LoadingLine`, `MissState`.
+
 - **Name and location** — `AnalysisBoardRoute`, `src/views/tools/analysis/AnalysisBoard.tsx:533`
 - **Family** — empty / loading / error state
 - **MUI atoms** — Typography
@@ -245,6 +282,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — share candidate — `LoadingLine`.
 
 ### AnalysisLoad
+
+> **Migrated (CTA-113)** — the `PgnInput` and `FenInput` blocks.
 
 - **Name and location** — `AnalysisLoad`, `src/views/tools/analysis/AnalysisLoad.tsx`
 - **Family** — form / settings group
@@ -259,6 +298,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### MultiGameDialog
 
+> **Migrated (CTA-113)** — `BaseDialog` for the choice; the job a `ProgressDialog` over `useCancellableJob`.
+
 - **Name and location** — `MultiGameDialog`, `src/views/tools/analysis/MultiGameDialog.tsx`
 - **Family** — dialog
 - **MUI atoms** — Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Button, LinearProgress, Alert
@@ -271,6 +312,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — share candidate — render `MergeSplitChoice` inside, and share the indexing block with the Library.
 
 ### AnalysisExport
+
+> **Migrated (CTA-113)** — the `PgnExportPanel` block (`blocks/panels/`).
 
 - **Name and location** — `AnalysisExport`, `src/views/tools/analysis/AnalysisExport.tsx`
 - **Family** — form / settings group
@@ -285,6 +328,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### AnalysisSettings
 
+> **Migrated (CTA-113)** — the `AnalysisEngineForm` block (`blocks/forms/`) over `SliderField` and `engineOptionState`; `OptionSlider` is deleted.
+
 - **Name and location** — `AnalysisSettings` (imported as `AnalysisSettingsPanel`), `src/views/tools/analysis/AnalysisSettings.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — Box, Typography, Slider, FormControlLabel, Switch, Button (+ `OptionSlider`)
@@ -297,6 +342,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — already shared — used by four boards; its slider rows should come from a `LabeledSlider`.
 
 ### AnalysisArrows
+
+> **Migrated (CTA-113)** — the `ArrowSettingsFields` block; `SwitchField`.
 
 - **Name and location** — `AnalysisArrows`, `src/views/tools/analysis/AnalysisArrows.tsx`
 - **Family** — form / settings group
@@ -311,6 +358,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### ArrowWidthSourceField and ArrowPaletteField
 
+> **Migrated (CTA-113)** — the `ArrowSettingsFields` block.
+
 - **Name and location** — `ArrowWidthSourceField` (`:35`) and `ArrowPaletteField` (`:96`), `src/views/tools/analysis/ArrowSettingsFields.tsx`
 - **Family** — form / settings group
 - **MUI atoms** — FormControl (`fieldset`), FormLabel, RadioGroup, FormControlLabel, Radio, Box, Typography
@@ -323,6 +372,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — already shared — shared by the board and the settings screen; the legend style is one of five field-label styles.
 
 ### SaveAnalysisDialog
+
+> **Migrated (CTA-113)** — `FormDialog` with the `FolderPicker` block.
 
 - **Name and location** — `SaveAnalysisDialog`, `src/views/tools/analysis/SaveAnalysisDialog.tsx`
 - **Family** — dialog
@@ -337,6 +388,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### PlayToggleButton
 
+> **Migrated (CTA-113)** — the `PlayToggleButton` block (`blocks/panels/`); its spinner named.
+
 - **Name and location** — `PlayToggleButton`, `src/views/tools/analysis/PlayToggleButton.tsx`
 - **Family** — toolbar / action bar
 - **MUI atoms** — Tooltip, IconButton, CircularProgress
@@ -350,6 +403,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### EngineThinking
 
+> **Migrated (CTA-113)** — the `EngineThinking` block (`blocks/panels/`); a named, polite status.
+
 - **Name and location** — `EngineThinking`, `src/views/tools/analysis/EngineThinking.tsx`
 - **Family** — feedback (alert / snackbar)
 - **MUI atoms** — Box, CircularProgress, Typography
@@ -362,6 +417,8 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 - **Verdict** — already shared — like `PlayToggleButton`, filed under one module.
 
 ### NextMovesBar
+
+> **Migrated (CTA-113)** — moved to `views/shared/` — a board piece every board renders.
 
 - **Name and location** — `NextMovesBar`, `src/views/tools/analysis/NextMovesBar.tsx`
 - **Family** — list

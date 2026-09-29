@@ -5,6 +5,8 @@ import FlagRoundedIcon from "@mui/icons-material/FlagRounded";
 import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
 import { createSearchParams, Link as RouterLink, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import { useCurrentOpening } from "../../shared/useCurrentOpening";
+import { CurrentOpening, EngineThinking, PlayToggleButton } from "../../../blocks/panels";
 import type { ChessboardOptions } from "react-chessboard";
 import { DEFAULT_POSITION } from "chess.js";
 
@@ -24,9 +26,6 @@ import {
 import type { BoardPanelTab } from "../../board/core/BoardPanel";
 import BoardShell from "../../board/core/BoardShell";
 import { useVariationsExplorer } from "../../explorer/useVariationsExplorer";
-import CurrentOpening from "../../shared/CurrentOpening";
-import EngineThinking from "../../tools/analysis/EngineThinking";
-import PlayToggleButton from "../../tools/analysis/PlayToggleButton";
 import EngineSettings from "./EngineSettings";
 import { usePlayGame, type PlayGameStart } from "./usePlayGame";
 
@@ -117,6 +116,8 @@ function PlayScreen({
   const costume = masking?.costume;
   const state = usePlayGame(arrival, costume);
   const { core, engine } = state;
+  // The opening on screen, for the panel header (CTA-113: a hook and the `CurrentOpening` block).
+  const currentOpening = useCurrentOpening(core.fen);
 
   /*
     The costume, derived once per mask: the board's and the strips' renderers
@@ -217,7 +218,7 @@ function PlayScreen({
                 testId={`${id}-back`}
               />
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                <CurrentOpening fen={core.fen} testId={`${id}-current-opening`} />
+                <CurrentOpening {...currentOpening} testId={`${id}-current-opening`} />
               </Box>
               {/* The reader's side — the board's orientation. A change pauses Play. */}
               <Box sx={{ flexShrink: 0 }}>

@@ -24,4 +24,10 @@ describe("SideToggle", () => {
     const buttons = within(screen.getByRole("group", { name: "Side" })).getAllByRole("button");
     expect(buttons.map((button) => button.textContent)).toEqual(["All", "White", "Black"]);
   });
+
+  it("takes its buttons' own test ids (CTA-113)", () => {
+    render(<SideToggle value="white" onChange={() => {}} labels={{ white: "White", black: "Black" }} ariaLabel="Side" buttonTestIds={{ white: "turn-w", black: "turn-b" }} testId="probe" />);
+    expect(screen.getByTestId("turn-w")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("turn-b")).toHaveAttribute("aria-pressed", "false");
+  });
 });

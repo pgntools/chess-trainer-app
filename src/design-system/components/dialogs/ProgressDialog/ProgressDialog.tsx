@@ -25,6 +25,13 @@ export type ProgressDialogProps = {
   width?: "xs" | "sm";
   /** The root's test id; the parts are `-progress`, `-caption` and `-cancel`. */
   testId: string;
+  /**
+   * The bar's and the caption's own test ids, for a screen whose tests named
+   * them before (CTA-113: the Library's import reads its caption as
+   * `library-import-progress`). Absent, `-progress` and `-caption`.
+   */
+  barTestId?: string;
+  captionTestId?: string;
   dialogProps?: ExtraDialogProps;
 };
 
@@ -45,6 +52,8 @@ function ProgressDialog({
   cancelDisabled = false,
   width = "xs",
   testId,
+  barTestId = `${testId}-progress`,
+  captionTestId = `${testId}-caption`,
   dialogProps,
 }: ProgressDialogProps) {
   const titleId = useId();
@@ -77,11 +86,11 @@ function ProgressDialog({
           value={percent}
           aria-labelledby={titleId}
           aria-describedby={caption === undefined ? undefined : captionId}
-          data-testid={`${testId}-progress`}
+          data-testid={barTestId}
           sx={{ height: 6, borderRadius: 3 }}
         />
         {caption !== undefined && (
-          <Typography id={captionId} variant="body2" color="text.secondary" data-testid={`${testId}-caption`}>
+          <Typography id={captionId} variant="body2" color="text.secondary" data-testid={captionTestId}>
             {caption}
           </Typography>
         )}

@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import i18n from "../../../../i18n";
+import { expectNoAxeViolations } from "../../../../test/axe";
 import { DEFAULT_ANALYSIS_SETTINGS } from "../../../../lib/analysisSettings";
 import { parsePgnTree } from "../../../../lib/pgn";
 import { savedAnalysisOf } from "../../../../lib/savedAnalyses";
@@ -118,5 +120,37 @@ describe("a saved analysis' settings screen", () => {
     });
     fireEvent.click(screen.getByTestId("analysis-settings-cancel"));
     expect(findSavedAnalysis("a1")?.name).toBe("Open game");
+  });
+});
+
+describe("a saved analysis' settings screen — accessible (CTA-113)", () => {
+  it("is its page's h1 over a section heading each, and passes axe", async () => {
+    await store("a1");
+    mount("a1");
+    await screen.findByTestId("analysis-settings-screen");
+    expect(screen.getByRole("heading", { level: 1, name: "Analysis settings" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["General", "Board", "Folder"]);
+    await expectNoAxeViolations(screen.getByTestId("analysis-settings-screen"));
+  });
+
+  it("is filled in and saved from the keyboard", async () => {
+    const user = userEvent.setup();
+    await store("a1");
+    mount("a1");
+    const name = await screen.findByRole("textbox", { name: "Title" });
+    await user.clear(name);
+    await user.type(name, "Renamed");
+    screen.getByTestId("analysis-settings-color-white").focus();
+    await user.keyboard("{ArrowRight}{Enter}");
+    // Enter in a one-line field saves the form.
+    name.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(findSavedAnalysis("a1")).toMatchObject({ name: "Renamed", orientation: "black" }));
+  });
+
+  it("says a missing analysis with a way back, and passes axe", async () => {
+    mount("gone");
+    expect(await screen.findByRole("link", { name: "Back to saved analyses" })).toHaveAttribute("href", "/tools/analysis/saved");
+    await expectNoAxeViolations(screen.getByTestId("analysis-settings-missing"));
   });
 });

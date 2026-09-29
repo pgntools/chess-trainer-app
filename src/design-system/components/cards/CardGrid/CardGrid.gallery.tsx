@@ -2,7 +2,8 @@ import { demoPreview } from "../../../gallery/demoPreview";
 import type { GalleryModule } from "../../../gallery/types";
 import FolderCard from "../FolderCard/FolderCard";
 import RecordCard from "../RecordCard/RecordCard";
-import CardGrid, { type CardSize } from "./CardGrid";
+import CardGrid from "./CardGrid";
+import type { CardSize } from "./cardGridColumns";
 
 const grid = (size: CardSize) => (
   <CardGrid size={size} testId={`gallery-card-grid-${size}`}>

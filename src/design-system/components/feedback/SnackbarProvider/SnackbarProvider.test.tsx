@@ -95,6 +95,27 @@ describe("SnackbarProvider", () => {
     await waitFor(() => expect(screen.queryByTestId("probe")).toBeNull());
   });
 
+  it("makes an action with an href a real link, whose plain click runs the action (CTA-113)", async () => {
+    const api = mountProvider();
+    const onClick = vi.fn();
+    act(() =>
+      api().show({
+        message: "12 saved.",
+        severity: "success",
+        action: { label: "Open", onClick, href: "/saved?folder=f1", testId: "probe-open" },
+      }),
+    );
+    const link = screen.getByRole("link", { name: "Open" });
+    expect(link).toHaveAttribute("href", "/saved?folder=f1");
+    expect(link).toHaveAttribute("data-testid", "probe-open");
+    // A new tab is the browser's to open; the snackbar stays.
+    fireEvent.click(link, { ctrlKey: true });
+    expect(onClick).not.toHaveBeenCalled();
+    fireEvent.click(link);
+    expect(onClick).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.queryByTestId("probe")).toBeNull());
+  });
+
   it("shows queued messages one after the other, in order", async () => {
     const api = mountProvider();
     act(() => {

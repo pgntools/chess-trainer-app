@@ -47,4 +47,12 @@ describe("RadioGroupField", () => {
     const nameless = <RadioGroupField options={OPTIONS} value="merge" onChange={() => {}} testId="probe" />;
     expect(nameless).toBeTruthy();
   });
+
+  it("takes a radio's own test id (CTA-113)", () => {
+    render(
+      <RadioGroupField label="Choice" options={OPTIONS} value="merge" onChange={() => {}} testId="probe" optionTestId={(value) => `mine-${value}`} />,
+    );
+    expect(screen.getByTestId("mine-skip")).toBe(screen.getByRole("radio", { name: "Skip" }));
+    expect(screen.queryByTestId("probe-skip")).toBeNull();
+  });
 });

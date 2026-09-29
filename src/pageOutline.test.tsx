@@ -56,12 +56,25 @@ describe("the migrated screens' outlines (CTA-112)", () => {
     ["/settings/import", "Settings"],
     ["/settings/storage", "Settings"],
     ["/settings/appearance", "Settings"],
+    // CTA-113: the rest of the app.
+    ["/", "Get started"],
+    ["/tools/analysis", "Analysis Board"],
+    ["/tools/analysis/saved", "Saved analyses"],
+    ["/repertoires", "Repertoires"],
+    ["/repertoires/new", "Add a repertoire"],
+    ["/openings", "Openings"],
+    ["/library", "Library"],
+    ["/library/new", "Add a collection"],
+    ["/library/capablanca", "Capablanca"],
   ])(
     "%s has one h1, “%s”, an outline with no skipped level, and passes axe's page rules",
     async (path, h1) => {
       mountAt(path);
-      await waitFor(() => expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1));
-      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(h1);
+      // A screen that reads a store shows the shell's h1 until its own lands: wait for its.
+      await waitFor(() => {
+        expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(h1);
+      });
       expect(screen.getAllByRole("main")).toHaveLength(1);
       const levels = screen.getAllByRole("heading").map((heading) => Number(heading.tagName.slice(1)));
       expect(skips(levels), outline().join("\n")).toEqual([]);

@@ -1,16 +1,5 @@
 import { useState } from "react";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
-import ListItemIcon from "@mui/material/ListItemIcon";
-import ListItemText from "@mui/material/ListItemText";
-import ListSubheader from "@mui/material/ListSubheader";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import Snackbar from "@mui/material/Snackbar";
 import AddCommentOutlinedIcon from "@mui/icons-material/AddCommentOutlined";
 import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
 import CasinoOutlinedIcon from "@mui/icons-material/CasinoOutlined";
@@ -19,6 +8,10 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import PriorityHighRoundedIcon from "@mui/icons-material/PriorityHighRounded";
 import VerticalAlignTopRoundedIcon from "@mui/icons-material/VerticalAlignTopRounded";
 import { useTranslation } from "react-i18next";
+
+import { ConfirmDialog } from "../../design-system/components/dialogs";
+import { useSnackbar } from "../../design-system/components/feedback";
+import { ContextMenu, type MenuEntry } from "../../design-system/components/menus";
 import {
   commentsAt,
   deleteFrom,
@@ -60,7 +53,10 @@ export type MoveMenuTarget = { nodeId: string; anchor: MenuAnchor };
  * line are offered only inside a side line, where they mean something.
  * Deleting asks first, saying how much goes; copying needs no confirmation and
  * reports whether the clipboard took it (the write needs a secure context and
- * the permission — `CopyableValue`'s rule).
+ * the permission — `CopyField`'s rule) through the app's snackbar.
+ *
+ * Since CTA-113 the design system's: a `ContextMenu` at the pointer, the
+ * delete a destructive `ConfirmDialog`, the copy's outcome `useSnackbar`.
  *
  * Chrome, so it mirrors under Hebrew like the rest of the panel; the move it
  * names is notation and keeps `dir="ltr"`.
@@ -89,10 +85,8 @@ function MoveContextMenu({
   mask?: PieceMask;
 }) {
   const { t } = useTranslation();
+  const { show } = useSnackbar();
   const [deleting, setDeleting] = useState<string | null>(null);
-  // What the last copy did — kept past the snackbar's close, for its fade.
-  const [copied, setCopied] = useState<"copied" | "failed">("copied");
-  const [copyNoticeOpen, setCopyNoticeOpen] = useState(false);
   const [commenting, setCommenting] = useState<string | null>(null);
   const [chancesAt, setChancesAt] = useState<PlayChanceTarget | null>(null);
   const [annotating, setAnnotating] = useState<NagTarget | null>(null);
@@ -141,142 +135,107 @@ function MoveContextMenu({
     if (node === null) return;
     const pgn = linePgn(tree, node.id);
     onClose();
+    let outcome: "copied" | "failed" = "copied";
     try {
       await navigator.clipboard.writeText(pgn);
-      setCopied("copied");
     } catch {
-      setCopied("failed");
+      outcome = "failed";
     }
-    setCopyNoticeOpen(true);
+    show({
+      message: t(`moveMenu.${outcome}`),
+      severity: outcome === "failed" ? "warning" : undefined,
+      duration: 3000,
+      testId: "move-menu-copied",
+    });
   };
+
+  /** The entries, in lichess's order; Promote and Make main line only inside a side line. */
+  const entries: MenuEntry[] = [
+    ...(sideLine
+      ? [
+          { id: "promote", label: t("moveMenu.promote"), icon: <ArrowUpwardRoundedIcon fontSize="small" />, onClick: () => edit(promoteVariation) },
+          { id: "mainline", label: t("moveMenu.makeMainline"), icon: <VerticalAlignTopRoundedIcon fontSize="small" />, onClick: () => edit(makeMainline) },
+        ]
+      : []),
+    {
+      id: "delete",
+      label: t("moveMenu.deleteFrom"),
+      icon: <DeleteOutlineRoundedIcon fontSize="small" />,
+      onClick: () => {
+        if (node !== null) setDeleting(node.id);
+      },
+    },
+    {
+      id: "comment",
+      label: t("moveMenu.addComment"),
+      icon: <AddCommentOutlinedIcon fontSize="small" />,
+      onClick: () => {
+        if (node !== null) setCommenting(node.id);
+      },
+    },
+    {
+      id: "annotate",
+      label: t("moveMenu.addAnnotation"),
+      icon: <PriorityHighRoundedIcon fontSize="small" />,
+      onClick: () => {
+        if (node !== null) setAnnotating({ nodeId: node.id, label: moveText(node) });
+      },
+    },
+    ...(playChances && branchSize > 1
+      ? [
+          {
+            id: "chances",
+            label: t("moveMenu.playChances"),
+            icon: <CasinoOutlinedIcon fontSize="small" />,
+            onClick: () => setChancesAt({ parentId: branchParent?.id ?? null }),
+          },
+        ]
+      : []),
+    { id: "copy", label: t("moveMenu.copyPgn"), icon: <ContentCopyRoundedIcon fontSize="small" />, onClick: () => void copy() },
+  ];
 
   return (
     <>
-      <Menu
+      <ContextMenu
+        position={target?.anchor ?? null}
         open={open && node !== null}
         onClose={onClose}
-        anchorReference="anchorPosition"
-        anchorPosition={target?.anchor}
-        data-testid="move-menu"
-        slotProps={{ list: { dense: true } }}
-      >
-        <ListSubheader sx={{ lineHeight: 2.5 }}>
+        subheader={
           <span dir="ltr" data-testid="move-menu-move">
             {moveText(node)}
           </span>
-        </ListSubheader>
-        {sideLine && (
-          <MenuItem data-testid="move-menu-promote" onClick={() => edit(promoteVariation)}>
-            <ListItemIcon>
-              <ArrowUpwardRoundedIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{t("moveMenu.promote")}</ListItemText>
-          </MenuItem>
-        )}
-        {sideLine && (
-          <MenuItem data-testid="move-menu-mainline" onClick={() => edit(makeMainline)}>
-            <ListItemIcon>
-              <VerticalAlignTopRoundedIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{t("moveMenu.makeMainline")}</ListItemText>
-          </MenuItem>
-        )}
-        <MenuItem
-          data-testid="move-menu-delete"
-          onClick={() => {
-            if (node === null) return;
-            setDeleting(node.id);
-            onClose();
-          }}
-        >
-          <ListItemIcon>
-            <DeleteOutlineRoundedIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t("moveMenu.deleteFrom")}</ListItemText>
-        </MenuItem>
-        <MenuItem
-          data-testid="move-menu-comment"
-          onClick={() => {
-            if (node === null) return;
-            setCommenting(node.id);
-            onClose();
-          }}
-        >
-          <ListItemIcon>
-            <AddCommentOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t("moveMenu.addComment")}</ListItemText>
-        </MenuItem>
-        <MenuItem
-          data-testid="move-menu-annotate"
-          onClick={() => {
-            if (node === null) return;
-            setAnnotating({ nodeId: node.id, label: moveText(node) });
-            onClose();
-          }}
-        >
-          <ListItemIcon>
-            <PriorityHighRoundedIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t("moveMenu.addAnnotation")}</ListItemText>
-        </MenuItem>
-        {playChances && branchSize > 1 && (
-          <MenuItem
-            data-testid="move-menu-chances"
-            onClick={() => {
-              setChancesAt({ parentId: branchParent?.id ?? null });
-              onClose();
-            }}
-          >
-            <ListItemIcon>
-              <CasinoOutlinedIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{t("moveMenu.playChances")}</ListItemText>
-          </MenuItem>
-        )}
-        <MenuItem data-testid="move-menu-copy" onClick={copy}>
-          <ListItemIcon>
-            <ContentCopyRoundedIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t("moveMenu.copyPgn")}</ListItemText>
-        </MenuItem>
-      </Menu>
+        }
+        entries={entries}
+        testId="move-menu"
+      />
 
-      <Dialog
+      <ConfirmDialog
         open={deletingNode !== null}
         onClose={() => setDeleting(null)}
-        data-testid="move-menu-delete-dialog"
+        onConfirm={() => {
+          if (deletingNode !== null) onEditTree(deleteFrom(tree, deletingNode.id));
+          setDeleting(null);
+        }}
+        title={
+          <>
+            {t("moveMenu.deleteTitle")} <span dir="ltr">{moveText(deletingNode)}</span>
+          </>
+        }
+        confirmLabel={t("moveMenu.delete")}
+        cancelLabel={t("moveMenu.cancel")}
+        tone="destructive"
+        testId="move-menu-delete-dialog"
+        cancelTestId="move-menu-delete-cancel"
+        confirmTestId="move-menu-delete-confirm"
       >
-        <DialogTitle>
-          {t("moveMenu.deleteTitle")}{" "}
-          <span dir="ltr">{moveText(deletingNode)}</span>
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText data-testid="move-menu-delete-summary">
-            {counts !== null &&
-              t("moveMenu.deleteSummary", {
-                moves: t("moveMenu.moves", { count: counts.moves }),
-                lines: t("moveMenu.lines", { count: counts.lines }),
-              })}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button data-testid="move-menu-delete-cancel" onClick={() => setDeleting(null)}>
-            {t("moveMenu.cancel")}
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            data-testid="move-menu-delete-confirm"
-            onClick={() => {
-              if (deletingNode !== null) onEditTree(deleteFrom(tree, deletingNode.id));
-              setDeleting(null);
-            }}
-          >
-            {t("moveMenu.delete")}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <DialogContentText data-testid="move-menu-delete-summary">
+          {counts !== null &&
+            t("moveMenu.deleteSummary", {
+              moves: t("moveMenu.moves", { count: counts.moves }),
+              lines: t("moveMenu.lines", { count: counts.lines }),
+            })}
+        </DialogContentText>
+      </ConfirmDialog>
 
       <CommentDialog draft={commentDraft} onClose={() => setCommenting(null)} />
       <NagDialog
@@ -292,13 +251,6 @@ function MoveContextMenu({
         onEditTree={onEditTree}
       />
 
-      <Snackbar
-        open={copyNoticeOpen}
-        autoHideDuration={3000}
-        onClose={() => setCopyNoticeOpen(false)}
-        message={t(`moveMenu.${copied}`)}
-        data-testid="move-menu-copied"
-      />
     </>
   );
 }

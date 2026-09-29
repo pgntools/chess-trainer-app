@@ -1,0 +1,59 @@
+import Box from "@mui/material/Box";
+
+import { demoPreview } from "../../../design-system/gallery/demoPreview";
+import type { GalleryModule } from "../../../design-system/gallery/types";
+import WithState from "../../../design-system/gallery/WithState";
+import type { BlockFamilyId } from "../../families";
+import type { SavedListView } from "../savedListView";
+import { ENTRIES, FOLDERS, HEBREW_ENTRIES, HEBREW_FOLDERS, LONG_ENTRIES, manyEntries } from "./fixtures";
+import SavedAnalysesList, { type SavedAnalysisEntry, type SavedAnalysisFolderEntry } from "./SavedAnalysesList";
+
+const noop = () => {};
+const PAGE = manyEntries(50);
+
+/** The block on fixtures, its picks held by the demo as the screen holds them. */
+const demo = (view: SavedListView, folders: readonly SavedAnalysisFolderEntry[], entries: readonly SavedAnalysisEntry[]) => (
+  <WithState<Set<string>> initial={new Set(["a1"])}>
+    {(picked, setPicked) => (
+      <Box sx={{ height: 420, display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <SavedAnalysesList
+          view={view}
+          folders={folders}
+          entries={entries}
+          picked={picked}
+          onTogglePick={(id) =>
+            setPicked((before) => {
+              const next = new Set(before);
+              if (!next.delete(id)) next.add(id);
+              return next;
+            })
+          }
+          openLink={(saved) => ({ href: `#open-${saved.id}` })}
+          settingsLink={(saved) => ({ href: `#settings-${saved.id}` })}
+          onOpenFolder={noop}
+          folderActions={{ onDownload: noop, onRename: noop, onMove: noop, onDelete: noop }}
+          preview={() => demoPreview}
+          empty={{ label: "No saved analyses yet.", testId: "gallery-saved-analyses-empty" }}
+          testId="gallery-saved-analyses"
+        />
+      </Box>
+    )}
+  </WithState>
+);
+
+const gallery: GalleryModule<BlockFamilyId> = {
+  section: "lists",
+  title: "SavedAnalysesList",
+  demos: [
+    { name: "The list — folders first (one empty), a described analysis, an unnamed one, one that will not read", render: () => demo("list", FOLDERS, ENTRIES) },
+    { name: "Small boards — the opening line under a known one, the others as tall", render: () => demo("compact", FOLDERS, ENTRIES) },
+    { name: "Big boards", render: () => demo("comfortable", FOLDERS, ENTRIES) },
+    { name: "Empty", render: () => demo("list", [], []) },
+    { name: "Long names and a long description", render: () => demo("list", [], LONG_ENTRIES) },
+    { name: "Long names as cards", render: () => demo("compact", [], LONG_ENTRIES) },
+    { name: "Hebrew names (switch to RTL)", render: () => demo("list", HEBREW_FOLDERS, HEBREW_ENTRIES) },
+    { name: "A page of fifty", render: () => demo("list", [], PAGE) },
+  ],
+};
+
+export default gallery;

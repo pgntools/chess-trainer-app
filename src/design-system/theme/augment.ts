@@ -38,6 +38,15 @@ declare module "@mui/material/styles" {
     focusRing?: CSSProperties;
   }
 
+  /** The monospace token (CTA-113, `typography.ts`) — notation and machine words. */
+  interface TypographyVariants {
+    fontFamilyMonospace?: string;
+  }
+
+  interface TypographyVariantsOptions {
+    fontFamilyMonospace?: string;
+  }
+
   interface Theme {
     /**
      * The board's colours (CTA-107). Set on every theme `buildTheme` makes;

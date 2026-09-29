@@ -66,4 +66,12 @@ describe("ConfirmDialog", () => {
     expect(screen.getByTestId("probe-confirm")).toBeDisabled();
     expect(screen.getByTestId("probe-cancel")).toBeEnabled();
   });
+
+  it("takes its title's, cancel's and confirm's own test ids (CTA-113)", () => {
+    renderConfirm({ titleTestId: "old-title", cancelTestId: "old-cancel", confirmTestId: "old-confirm" });
+    expect(screen.getByRole("dialog")).toHaveAccessibleName(screen.getByTestId("old-title").textContent ?? "");
+    expect(screen.getByTestId("old-cancel")).toBeEnabled();
+    expect(screen.getByTestId("old-confirm")).toBeEnabled();
+    expect(screen.queryByTestId("probe-title")).toBeNull();
+  });
 });

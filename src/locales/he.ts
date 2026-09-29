@@ -80,7 +80,9 @@ const he: typeof en = {
     analysisPlaceholder: "ההערכה ורשימת המהלכים יופיעו כאן.",
   },
   gamePanel: {
+    tabs: "לשוניות",
     controls: {
+      label: "מהלכים",
       first: "עמדת פתיחה",
       previous: "המהלך הקודם",
       next: "המהלך הבא",
@@ -88,6 +90,7 @@ const he: typeof en = {
       flip: "היפוך הלוח",
     },
     info: {
+      title: "פרטי המשחק",
       empty: "טענו משחק כדי לראות את פרטיו.",
       event: "אירוע",
       site: "מקום",
@@ -136,6 +139,22 @@ const he: typeof en = {
     copy: "העתקה",
     copied: "הועתק",
     copyFailed: "ההעתקה נכשלה — סמנו את הטקסט והעתיקו ידנית.",
+  },
+  savedList: {
+    openNamed: "פתיחת {{name}}",
+    selectNamed: "בחירת {{name}}",
+    settingsNamed: "הגדרות {{name}}",
+    clearSelected: "ניקוי הבחירה",
+    breadcrumb: "תיקיות",
+    folder: {
+      openNamed: "פתיחת התיקייה {{name}}",
+      newNamed: "תיקייה חדשה בתוך {{name}}",
+      uploadNamed: "העלאת אוסף אל {{name}}",
+      downloadNamed: "הורדת {{name}} כ־PGN",
+      renameNamed: "שינוי השם של {{name}}",
+      moveNamed: "העברת {{name}}",
+      deleteNamed: "מחיקת {{name}}",
+    },
   },
   masking: {
     tab: "הסוואה",
@@ -237,6 +256,7 @@ const he: typeof en = {
     },
   },
   commentDialog: {
+    label: "הערה",
     addTitle: "הערה על",
     editTitle: "עריכת ההערה על",
     placeholder: "מה יש לומר על המסע הזה?",
@@ -245,6 +265,7 @@ const he: typeof en = {
     cancel: "ביטול",
   },
   treeMap: {
+    toolbar: "פקדי המפה",
     title: "מפה",
     covered: "קווים שכוסו: {{covered}} מתוך {{total}}",
     label: "הרפרטואר כעץ: קווים שכוסו בירוק, הדרך שלכם לכאן מודגשת",
@@ -454,6 +475,7 @@ const he: typeof en = {
     select: "בחירת הניתוח",
     selectAll: "בחירת כל הניתוחים",
     selected: "{{count}} נבחרו",
+    rowsPerPage: "ניתוחים בעמוד",
     download: "הורדת הנבחרים כקובץ PGN",
     deleteSelected: "מחיקת הנבחרים",
     bulkDelete: {
@@ -469,6 +491,7 @@ const he: typeof en = {
       renameFolder: "שינוי שם תיקייה",
       moveFolder: "העברת תיקייה",
       moveGame: "העברת ניתוח",
+      picker: "תיקיות",
       deleteFolder: "מחיקת תיקייה",
       download: "הורדת התיקייה כקובץ PGN",
       unfiled: "ללא תיקייה",
@@ -653,6 +676,7 @@ const he: typeof en = {
   },
   positionEditor: {
     tabs: {
+      label: "טפסים",
       position: "עמדה",
       fen: "FEN",
       pgn: "PGN",
@@ -735,6 +759,7 @@ const he: typeof en = {
       open: "לפתוח את {{eco}} במסך הפתיחות",
     },
     book: {
+      label: "מסעי הספר",
       empty: "אין המשכים מוכרים מכאן.",
       help: "לחצו על מהלך כדי לשחק אותו כאן. מהלך מעמדה מוקדמת יותר פותח וריאציה.",
     },
@@ -758,6 +783,8 @@ const he: typeof en = {
     },
   },
   library: {
+    filterClear: "ניקוי הסינון",
+    treeHint: "Tab עובר בכל שורה בין החץ, שפותח או סוגר תיקייה, הקישור והפעולות. מיון לפי עמודה בלחצן שבכותרת שלה.",
     title: "ספרייה",
     count_one: "אוסף אחד",
     count_other: "{{count}} אוספים",
@@ -797,9 +824,11 @@ const he: typeof en = {
       deleteConfirm:
         "מחיקת התיקייה שומרת על תוכנה: האוספים ותתי־התיקיות שבה עוברים לתיקייה שמעליה.",
       deleteCounts: "בתיקייה {{games}} אוספים ו־{{subFolders}} תתי־תיקיות.",
+      picker: "תיקיות",
     },
     table: {
       back: "כל האוספים",
+      label: "משחקים",
       filter: "סינון משחקים",
       result: "תוצאה",
       anyResult: "כל תוצאה",
@@ -885,6 +914,7 @@ const he: typeof en = {
         save: "שמירת העץ כ-PGN",
         saveDialog: {
           title: "להוסיף את מספר המשחקים כתגית?",
+          mode: "ספירת המשחקים",
           no: "לא",
           tags: "הוספת תגיות",
           games: "תגית \"games\"",
@@ -1026,6 +1056,7 @@ const he: typeof en = {
     empty:
       "אין עדיין רפרטוארים. הוסיפו אחד מקובץ ‎.pgn, או הדביקו את ה-PGN שלו, והוא יופיע כאן.",
     hint: "רפרטוארי הפתיחות שלכם. פתחו אחד כדי לקרוא את הקווים שלו על הלוח, כולל קווי הצד, עם המנוע לצדכם.",
+    panelTitle: "על רפרטוארים",
     storage:
       "הרפרטוארים נשמרים בדפדפן הזה בלבד. ניקוי נתוני האתר מוחק אותם, והם לא עוברים איתכם למכשיר אחר.",
     untitled: "רפרטואר ללא שם",
@@ -1138,6 +1169,7 @@ const he: typeof en = {
     },
     games: {
       open: "משחקים",
+      openNamed: "משחקים עם {{name}}",
       end: { title: "עד סוף הקו" },
       backtrack: { title: "חזרה לאחור" },
     },

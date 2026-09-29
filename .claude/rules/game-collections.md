@@ -6,7 +6,11 @@ paths:
   - "src/lib/libraryDb.ts"
   - "src/lib/libraryFolderStore*"
   - "src/lib/folderTreeRows*"
-  - "src/views/shared/folders/FolderTreeTable.tsx"
+  - "src/blocks/tables/CollectionsTreeTable/**"
+  - "src/blocks/tables/CollectionGamesTable/**"
+  - "src/blocks/forms/CollectionFilters/**"
+  - "src/blocks/dialogs/CollectionImportDialog/**"
+  - "src/blocks/dialogs/OpeningTreePgnDialog/**"
   - "src/lib/libraryGameCatalog*"
   - "src/lib/shippedCollections*"
   - "src/lib/collectionIndex*"
@@ -59,13 +63,14 @@ for the Analysis Board and Saved analyses it hands games to.
 | `src/data/library/` | The shipped files: `<Stem>.pgn`, `<Stem>.index.json`, `manifest.json`, and a `README.md` for whoever adds a file. |
 | `scripts/wirepgn.js` | **The wiring CLI** (`yarn wirepgn`): wire, `--list`, `--check`, `--rebuild`, `--remove`, `--dir`. |
 | `src/views/library/LibraryHome.tsx` | `/library`: the folder tree table (Built-in and the reader's folders), the name filter, the sort, each row's actions and the folder dialogs. |
-| `src/views/shared/folders/FolderTreeTable.tsx` | The details view itself — sticky header, sortable columns, indented rows with chevrons, hover actions. Presentational and reusable; the Library is its one consumer. |
+| `src/blocks/tables/CollectionsTreeTable/` | The details view itself (CTA-113): `DataTable`'s tree rows over `folderTreeRows` — sticky header, sortable columns, indented rows with named chevrons, the row actions always visible (`FolderActions` for a folder). Presentational. |
+| `src/blocks/tables/CollectionGamesTable/` | A collection's games as a `DataTable` (CTA-113): the columns, `sortedRows`, the picks with select-all in the header, the White cell's link, the unreadable mark. |
 | `src/views/library/LibraryUpload.tsx` | `/library/new`: a new collection (file, paste, or empty), filed in a folder (`?folder=<id>`, the picker), and `?into=<id>` to add games to an existing one. |
-| `src/views/library/ImportOptionsDialog.tsx` | The import-options popup every file, zip and paste opens on `/library/new` (CTA-103): what came in, the Elo / date / player filters, the index pass over the kept games and the writes. |
+| `src/views/library/ImportOptionsDialog.tsx` | The import-options popup's job (CTA-103): the `CollectionImportDialog` block (what came in, the Elo / date / player filters, the count), then the index pass over the kept games in a `ProgressDialog` (`useCancellableJob`) and the writes. |
 | `src/views/library/CollectionScreen.tsx` | `/library/<collection>`: the table, the picks, the export bar, Analyse, Add games, and deleting games. |
-| `src/views/library/CollectionFilters.tsx` | The table's right-hand panel: players (several names at once, OR'd — CTA-95) and side, the opening board, then opening, event, dates and result. |
+| `src/blocks/forms/CollectionFilters/` | The table's right-hand panel (a block since CTA-113): players (several names at once, OR'd — CTA-95) and side, the opening board (a slot), then opening, event, dates and result. |
 | `src/views/library/OpeningFilterBoard.tsx` | The opening-moves board (`options.id` `library-filter-board`), and its *Save tree as PGN* link. |
-| `src/views/library/OpeningTreePgnDialog.tsx` | *Save tree as PGN*'s choice: No, or Add tags — `games`, `prc`, or both. |
+| `src/blocks/dialogs/OpeningTreePgnDialog/` | *Save tree as PGN*'s choice: No, or Add tags — `games`, `prc`, or both (`FormDialog`, CTA-113). |
 | `src/views/library/LibraryGameScreen.tsx` → `LibraryGameBoard.tsx` | `/library/<collection>/<n>`: resolve and parse the game, then the analysis board. |
 | `src/views/library/useLibraryCollections.ts` | The React bindings: `useUploadedCollections`, `useLibraryFolders`, `useCollectionSummary`, `useCollectionRows`, `useCollectionGames`, `loadCollectionGames`. |
 | `src/views/library/indexCollection.ts` | Runs the worker with progress and cancel, with a jsdom fallback. |
@@ -417,7 +422,8 @@ names.
 
 ### 6.2 `/library` — the folder tree table
 
-A file manager's **details view** (CTA-88): `FolderTreeTable` over rows from
+A file manager's **details view** (CTA-88): the `CollectionsTreeTable` block
+(`DataTable`'s tree rows since CTA-113) over rows from
 `folderTreeRows`, in the screen's flex column under the header bar and the
 words box, **the table the one region that scrolls**, its header sticky.
 
@@ -443,9 +449,9 @@ words box, **the table the one region that scrolls**, its header sticky.
   collection table does (§6.4). **Folders always come before collections at
   every level**, and Built-in before every other folder. Missing values go
   last either way; ties go by name.
-- **Row actions** (icon-only, with tooltips), shown on hover and on keyboard
-  focus (always on a device that cannot hover), in a cell of their own — a
-  click there never reaches the row:
+- **Row actions** (icon-only `IconAction`s, with tooltips), **always visible**
+  (CTA-113 — was on hover and focus) in a column of their own — a click
+  there never reaches the row:
   - a reader's folder (`library-folder-actions-<id>`): *Add a collection here*
     (`library-folder-upload-<id>`, a link to `/library/new?folder=<id>`), *New
     sub-folder* (`-new-`), *Download* (`-download-`: the whole subtree as one
@@ -548,10 +554,10 @@ words box, **the table the one region that scrolls**, its header sticky.
 
 ### 6.4 `/library/<collection>` — the table
 
-**Layout.** A flex column: the header bar (back, name + count, Add games, the
-export bar, Analyse), the words box, then the `TableContainer` (the one
-region that scrolls, both directions, with a sticky header), then the
-pagination pinned under it. The right-hand panel (`RightPanel`) holds the
+**Layout.** A flex column: the `ListScreenHeader` (a `BackButton`, name +
+count, Add games, the `SelectionBar`, Analyse), then the `CollectionGamesTable`
+block — the `SearchField` in its filters slot, the one region that scrolls
+(both directions, a sticky header), the pager pinned under it. The right-hand panel (`RightPanel`) holds the
 filters and, at its foot, the shipped/uploaded note.
 
 **Columns** (`COLLECTION_COLUMNS`): `#`, White, Elo, Black, Elo, Result, Date,
@@ -592,7 +598,8 @@ to 3,040 openings open in about 100–170 ms in Chrome without
 virtualization. Clear (`library-filter-clear`) removes every `COLLECTION_FILTER_PARAMS` value
 (including `line`) and leaves the words box alone.
 
-**Pages**: 50 / 100 / 250 (`?rows=`, default 50) and `?page=`. **All table
+**Pages**: the tables' one set, 25 / 50 / 100 / 250 (`?rows=`, default 50 —
+CTA-113; was 50 / 100 / 250) and `?page=`. **All table
 state is in the URL, written with history replace**, so coming back from a
 game finds the table as it was, and a filtered table can be shared as a link.
 A new filter or sort resets the page. **Picks are not in the URL**: a link
@@ -658,10 +665,11 @@ carries the filter, not a hand-made selection.
 
 ### 6.5 Picks, export, delete, Analyse
 
-- A checkbox per row (`library-picks-row-<n>`) and the shared
-  `SavedListExportBar` (prefix `library-picks`, `labelKey`
-  `library.table.picks`). **Select-all takes every row the filters leave, on
-  every page**, and adds them to the picks. Unticking removes only the rows
+- A checkbox per row (`library-picks-row-<n>`), **select-all in the table's
+  header** (`library-picks-select-all`, CTA-113), and a `SelectionBar` in the
+  top bar holding the chip and the actions (prefix `library-picks`).
+  **Select-all takes every row the filters leave, on every page**, and adds
+  them to the picks. Unticking removes only the rows
   shown. The chip counts every pick.
 - **Download** (`library-picks-download`): one `.pgn` of the picked games in
   collection order, each game exactly as stored,
@@ -682,8 +690,9 @@ carries the filter, not a hand-made selection.
   each PGN **as stored**, not re-parsed (a re-write through a tree would take
   about a minute on a 5,722-game pick). If the write fails, the folder is
   removed again. **Unreadable games are left out** and the notice says how
-  many. A snackbar (`library-picks-analyse-notice`) links to
-  `/tools/analysis/saved?folder=<id>`, and the picks stay.
+  many. The app's snackbar (`useSnackbar`, `library-picks-analyse-notice`)
+  links to `/tools/analysis/saved?folder=<id>` (a real link,
+  `library-picks-analyse-open`), and the picks stay.
 
 ### 6.6 `/library/<collection>/<n>` — the game board
 

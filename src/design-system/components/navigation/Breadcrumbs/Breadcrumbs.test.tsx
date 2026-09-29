@@ -25,6 +25,11 @@ describe("Breadcrumbs", () => {
     expect(openRoot).toHaveBeenCalledTimes(1);
   });
 
+  it("takes the current place's own test id (CTA-113)", () => {
+    render(<Breadcrumbs ariaLabel="Folders" crumbs={[{ id: "root", label: "All", onClick: () => {} }]} current="Sicilian" currentTestId="crumb-f2" testId="probe" />);
+    expect(screen.getByTestId("crumb-f2")).toHaveAttribute("aria-current", "page");
+  });
+
   it("separates every step, the last one included", () => {
     render(
       <Breadcrumbs
