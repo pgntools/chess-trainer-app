@@ -93,7 +93,7 @@ env:
   # Pinned deliberately, same as validator.yml and the comment-triggered twin:
   # a float would let an upstream CLI change break this demo on an unrelated
   # day. Bump them together.
-  CLAUDE_CLI_VERSION: 2.1.278
+  CLAUDE_CLI_VERSION: 2.1.284
   # The dispatch input lists NIM models WITHOUT the `nvidia_nim/` provider
   # prefix that FCC (and `claude --model`) expect; the prefix is prepended here
   # so the input stays a short, readable choice list. Sync this default's value
@@ -302,7 +302,7 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           uv tool install --force --refresh-package free-claude-code \
             --python 3.14.0 \
-            "free-claude-code @ https://github.com/Alishahryar1/free-claude-code/archive/refs/heads/main.zip"
+            "free-claude-code @ git+https://github.com/Alishahryar1/free-claude-code.git@main"
           echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
 
       - name: Start fcc-server (background)
