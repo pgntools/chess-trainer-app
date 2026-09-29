@@ -1060,7 +1060,7 @@ const en = {
   library: {
     filterClear: "Clear the filter",
     /** How the folder table is worked, read with it (CTA-113). */
-    treeHint: "Up and down to move between rows, Tab to reach a row's chevron, its link and its actions; a header sorts.",
+    treeHint: "Tab through each row's chevron, which opens or closes a folder, its link and its actions. Sort by a column from its header button.",
     /** `/library` — the collections. */
     title: "Library",
     count_one: "{{count}} collection",

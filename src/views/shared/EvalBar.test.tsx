@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import i18n from "../../i18n";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
+import { stubReducedMotion } from "../../test/reducedMotion";
 import type { Score } from "../../lib/engineAnalysis";
 import EvalBar from "./EvalBar";
 
@@ -75,5 +76,21 @@ describe("the evaluation bar", () => {
     expect(renderBar({ kind: "cp", value: 100 }, "black")).toHaveStyle({
       flexDirection: "column",
     });
+  });
+});
+
+describe("the eval bar's motion (CTA-113)", () => {
+  /** The element's own rule — jsdom's computed style leaves the `transition` shorthand out. */
+  const ownRule = (element: HTMLElement) => {
+    const name = [...element.classList].pop() ?? "";
+    return [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules].map((rule) => rule.cssText)).find((text) => text.startsWith(`.${name} `)) ?? "";
+  };
+
+  it("slides through the theme's transition, and not at all under reduced motion", () => {
+    const moving = renderBar({ kind: "cp", value: 120 });
+    expect(ownRule(within(moving).getByTestId("eval-bar-white"))).toMatch(/transition: height 240ms/);
+    stubReducedMotion();
+    const still = renderBar({ kind: "cp", value: 120 });
+    expect(ownRule(within(still).getByTestId("eval-bar-white"))).toMatch(/transition: none/);
   });
 });
