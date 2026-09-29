@@ -171,8 +171,9 @@ describe("the theme editor", { timeout: 60_000 }, () => {
 
   it("downloads a theme file that loads back as exactly the edited theme", async () => {
     mount();
-    await retype("Id", "ocean");
-    await retype("Name (English)", "Ocean");
+    // A probe id no theme takes, so the dialog offers the bootstrap command whatever is registered.
+    await retype("Id", "scaffold-probe");
+    await retype("Name (English)", "Scaffold probe");
     await openSection("Palette — light");
     await retype("Primary", "#0a5c8a");
     await retype("Success", "rgba(0, 120, 60, 0.9)");
@@ -188,11 +189,11 @@ describe("the theme editor", { timeout: 60_000 }, () => {
 
     const dialog = await save();
     expect(within(dialog).getByRole("heading", { name: "How to use this file" })).toBeInTheDocument();
-    expect(within(dialog).getByText(/yarn theme:bootstrap --id ocean --name "Ocean"/)).toBeInTheDocument();
-    await userEvent.click(within(dialog).getByRole("button", { name: "Download ocean.ts" }));
+    expect(within(dialog).getByText(/yarn theme:bootstrap --id scaffold-probe --name "Scaffold probe"/)).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Download scaffoldProbe.ts" }));
 
     const { fileName, text } = lastDownload();
-    expect(fileName).toBe("ocean.ts");
+    expect(fileName).toBe("scaffoldProbe.ts");
     const expected = [
       ["light.primary.main", "#0a5c8a"],
       ["light.success.main", "rgba(0, 120, 60, 0.9)"],
@@ -204,10 +205,10 @@ describe("the theme editor", { timeout: 60_000 }, () => {
       ["chess.board.lightSquare", "#dfe8ee"],
     ].reduce<ThemeDefinition>((theme, [path, value]) => withToken(theme, path as string, value), {
       ...brownTheme,
-      id: "ocean",
-      labelKey: "appearance.themes.ocean",
+      id: "scaffold-probe",
+      labelKey: "appearance.themes.scaffold-probe",
     });
-    expect(await loadThemeSource(text, "oceanTheme")).toEqual(expected);
+    expect(await loadThemeSource(text, "scaffoldProbeTheme")).toEqual(expected);
     // The same file the Save dialog offers to copy.
     expect(within(dialog).getByTestId("theme-editor-save-source")).toHaveValue(text);
   });

@@ -13,7 +13,8 @@ import { defaultTheme } from "./default";
   `yarn theme:bootstrap` (CTA-115) run for real against a temporary copy of
   the files it reads and writes (`--root`): the themes folder, the one file
   its types import, and both catalogs. It writes the theme, registers it and
-  names it — or, refusing, writes nothing.
+  names it — or, refusing, writes nothing. The ids are probes no theme would
+  take, so a theme a contributor registers never collides with them.
 */
 
 const ROOT = process.cwd();
@@ -54,39 +55,39 @@ afterEach(() => rmSync(work, { recursive: true, force: true }));
 
 describe("yarn theme:bootstrap", () => {
   it("creates a theme from --from's tokens, registers it and names it in both catalogs", async () => {
-    const { code, out } = run("--id", "ocean", "--name", "Ocean", "--from", "brown");
+    const { code, out } = run("--id", "scaffold-probe", "--name", "Scaffold probe", "--from", "brown");
     expect(code, out).toBe(0);
-    expect(out).toContain("wrote      src/design-system/themes/ocean.ts");
-    expect(out).toContain("/dev/theme-editor?theme=ocean");
+    expect(out).toContain("wrote      src/design-system/themes/scaffoldProbe.ts");
+    expect(out).toContain("/dev/theme-editor?theme=scaffold-probe");
     expect(out).toMatch(/Contrast \(WCAG 2\.2 AA\): \d+ pass, \d+ fail — 0 of the failures required/);
 
-    const source = read("src/design-system/themes/ocean.ts");
-    const ocean = await loadThemeSource(source, "oceanTheme");
-    expect(ocean).toEqual({ ...brownTheme, id: "ocean", labelKey: "appearance.themes.ocean" });
-    expect(read("src/design-system/themes/registry.ts")).toContain('import { oceanTheme } from "./ocean";');
-    expect(read("src/design-system/themes/registry.ts")).toContain("highContrastTheme, oceanTheme];");
-    expect(read("src/locales/en.ts")).toContain('      ocean: "Ocean",\n    },');
-    expect(read("src/locales/he.ts")).toContain('// TODO: translate "Ocean"');
+    const source = read("src/design-system/themes/scaffoldProbe.ts");
+    const probe = await loadThemeSource(source, "scaffoldProbeTheme");
+    expect(probe).toEqual({ ...brownTheme, id: "scaffold-probe", labelKey: "appearance.themes.scaffold-probe" });
+    expect(read("src/design-system/themes/registry.ts")).toContain('import { scaffoldProbeTheme } from "./scaffoldProbe";');
+    expect(read("src/design-system/themes/registry.ts")).toMatch(/\bscaffoldProbeTheme,?\s*\];/);
+    expect(read("src/locales/en.ts")).toContain('      "scaffold-probe": "Scaffold probe",\n    },');
+    expect(read("src/locales/he.ts")).toContain('// TODO: translate "Scaffold probe"');
 
     // It compiles as a theme, and passes the contrast test as brown does.
-    expect(typecheckThemeSource(source, "ocean.ts")).toEqual([]);
-    expect(contrastReport(ocean).filter((check) => check.level === "required" && !check.pass)).toEqual([]);
+    expect(typecheckThemeSource(source, "scaffoldProbe.ts")).toEqual([]);
+    expect(contrastReport(probe).filter((check) => check.level === "required" && !check.pass)).toEqual([]);
   }, 90_000);
 
   it("takes a Hebrew name, and starts from the default theme unless told", async () => {
-    const { code, out } = run("--id", "deep-sea", "--name", "Deep sea", "--name-he", "ים עמוק");
+    const { code, out } = run("--id", "deep-probe", "--name", "Deep probe", "--name-he", "בדיקה עמוקה");
     expect(code, out).toBe(0);
     expect(out).not.toContain("Translate the name");
-    expect(read("src/locales/he.ts")).toContain('      "deep-sea": "ים עמוק",\n    },');
-    const deepSea = await loadThemeSource(read("src/design-system/themes/deepSea.ts"), "deepSeaTheme");
-    expect(deepSea).toEqual({ ...defaultTheme, id: "deep-sea", labelKey: "appearance.themes.deep-sea" });
+    expect(read("src/locales/he.ts")).toContain('      "deep-probe": "בדיקה עמוקה",\n    },');
+    const deepProbe = await loadThemeSource(read("src/design-system/themes/deepProbe.ts"), "deepProbeTheme");
+    expect(deepProbe).toEqual({ ...defaultTheme, id: "deep-probe", labelKey: "appearance.themes.deep-probe" });
   }, 60_000);
 
   it.each([
-    ["an invalid id", ["--id", "Ocean", "--name", "Ocean"], /is not a theme id/],
+    ["an invalid id", ["--id", "Scaffold", "--name", "Scaffold probe"], /is not a theme id/],
     ["a registered id", ["--id", "green", "--name", "Green again"], /"green" is already registered/],
-    ["an unknown --from", ["--id", "ocean", "--name", "Ocean", "--from", "sepia"], /--from "sepia" is not a registered theme/],
-    ["an empty name", ["--id", "ocean", "--name", ""], /--name is empty/],
+    ["an unknown --from", ["--id", "scaffold-probe", "--name", "Scaffold probe", "--from", "sepia-probe"], /--from "sepia-probe" is not a registered theme/],
+    ["an empty name", ["--id", "scaffold-probe", "--name", ""], /--name is empty/],
   ])("refuses %s, and writes nothing", (_case, args, problem) => {
     const before = snapshot();
     const { code, out } = run(...args);
@@ -97,23 +98,23 @@ describe("yarn theme:bootstrap", () => {
   }, 60_000);
 
   it("refuses a file that already exists, and writes nothing", () => {
-    cpSync(join(work, "src/design-system/themes/brown.ts"), join(work, "src/design-system/themes/ocean.ts"));
+    cpSync(join(work, "src/design-system/themes/brown.ts"), join(work, "src/design-system/themes/scaffoldProbe.ts"));
     const before = snapshot();
-    const { code, out } = run("--id", "ocean", "--name", "Ocean");
+    const { code, out } = run("--id", "scaffold-probe", "--name", "Scaffold probe");
     expect(code).toBe(1);
-    expect(out).toContain("src/design-system/themes/ocean.ts already exists");
+    expect(out).toContain("src/design-system/themes/scaffoldProbe.ts already exists");
     expect(snapshot()).toEqual(before);
   }, 60_000);
 
   it("prints the files on --dry-run, and writes nothing", () => {
     const before = snapshot();
-    const { code, out } = run("--id", "ocean", "--name", "Ocean", "--dry-run");
+    const { code, out } = run("--id", "scaffold-probe", "--name", "Scaffold probe", "--dry-run");
     expect(code, out).toBe(0);
     expect(out).toContain("Dry run — nothing is written.");
-    expect(out).toContain("=== src/design-system/themes/ocean.ts (new)\nimport type { ThemeDefinition }");
-    expect(out).toContain('=== src/locales/en.ts\n+       ocean: "Ocean",');
+    expect(out).toContain("=== src/design-system/themes/scaffoldProbe.ts (new)\nimport type { ThemeDefinition }");
+    expect(out).toContain('=== src/locales/en.ts\n+       "scaffold-probe": "Scaffold probe",');
     expect(snapshot()).toEqual(before);
-    expect(existsSync(join(work, "src/design-system/themes/ocean.ts"))).toBe(false);
+    expect(existsSync(join(work, "src/design-system/themes/scaffoldProbe.ts"))).toBe(false);
   }, 60_000);
 
   it("explains itself on --help, and asks for what is missing", () => {
@@ -123,6 +124,6 @@ describe("yarn theme:bootstrap", () => {
     const bare = run();
     expect(bare.code).toBe(1);
     expect(bare.out).toContain("--id and --name are required");
-    expect(run("--id", "ocean", "--name", "Ocean", "--colour", "blue").out).toContain("unknown argument --colour");
+    expect(run("--id", "scaffold-probe", "--name", "Scaffold probe", "--colour", "blue").out).toContain("unknown argument --colour");
   }, 60_000);
 });
