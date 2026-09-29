@@ -256,6 +256,7 @@ const he: typeof en = {
     },
   },
   commentDialog: {
+    label: "הערה",
     addTitle: "הערה על",
     editTitle: "עריכת ההערה על",
     placeholder: "מה יש לומר על המסע הזה?",
@@ -264,6 +265,7 @@ const he: typeof en = {
     cancel: "ביטול",
   },
   treeMap: {
+    toolbar: "פקדי המפה",
     title: "מפה",
     covered: "קווים שכוסו: {{covered}} מתוך {{total}}",
     label: "הרפרטואר כעץ: קווים שכוסו בירוק, הדרך שלכם לכאן מודגשת",

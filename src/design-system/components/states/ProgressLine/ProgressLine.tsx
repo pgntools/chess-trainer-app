@@ -19,6 +19,8 @@ export type ProgressLineProps = {
   color?: "primary" | "success";
   /** The root's test id; the bar is `<testId>-bar`, the caption `<testId>-caption`. */
   testId: string;
+  /** The bar's own test id, for a screen whose tests named it before (CTA-113: the map's `-progress`). */
+  barTestId?: string;
 };
 
 /**
@@ -28,7 +30,7 @@ export type ProgressLineProps = {
  * (`aria-valuenow`, 0–100); an indeterminate one reports none, which is how a
  * screen reader tells "under way" from "this far".
  */
-function ProgressLine({ value, label, caption, announce = false, color = "primary", testId }: ProgressLineProps) {
+function ProgressLine({ value, label, caption, announce = false, color = "primary", testId, barTestId = `${testId}-bar` }: ProgressLineProps) {
   const captionId = useId();
   return (
     <Box data-testid={testId} sx={{ display: "grid", gap: 0.5 }}>
@@ -38,7 +40,7 @@ function ProgressLine({ value, label, caption, announce = false, color = "primar
         color={color}
         aria-label={label}
         aria-describedby={caption === undefined ? undefined : captionId}
-        data-testid={`${testId}-bar`}
+        data-testid={barTestId}
         sx={{ height: 6, borderRadius: 3 }}
       />
       {caption !== undefined && (

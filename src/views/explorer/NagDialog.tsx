@@ -1,15 +1,13 @@
 import { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
-import Tab from "@mui/material/Tab";
-import Tabs from "@mui/material/Tabs";
 import ToggleButton from "@mui/material/ToggleButton";
 import { useTranslation } from "react-i18next";
+
+import { BaseDialog } from "../../design-system/components/dialogs";
+import { PanelTabs, tabPanelProps } from "../../design-system/components/tabs";
+import { MONOSPACE_FONT_FAMILY } from "../../design-system/theme";
 import { findNode, setNags, type GameTree } from "../../lib/gameTree";
 import {
   NAG_SECTIONS,
@@ -35,7 +33,8 @@ export type NagTarget = { nodeId: string; label: string };
  * is given on each render, which is the tree after the last toggle.
  *
  * The move and its glyphs are notation and keep `dir="ltr"`; the meanings are
- * chrome and mirror.
+ * chrome and mirror. A `BaseDialog` with a tall `PanelTabs` since CTA-113,
+ * each tab naming its panel.
  */
 function NagDialog({
   tree,
@@ -74,31 +73,37 @@ function OpenNagDialog({
   const section = NAG_SECTIONS.find((entry) => entry.section === tab) ?? NAG_SECTIONS[0];
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm" data-testid="nag-dialog">
-      <DialogTitle>
-        {t("nagDialog.title")}{" "}
-        <span dir="ltr" data-testid="nag-dialog-move" style={{ unicodeBidi: "isolate" }}>
-          {target.label}
-          <NagGlyphs nags={node?.nags} testId="nag-dialog-glyphs" />
-        </span>
-      </DialogTitle>
-      <Tabs
+    <BaseDialog
+      open
+      onClose={onClose}
+      width="sm"
+      title={
+        <>
+          {t("nagDialog.title")}{" "}
+          <span dir="ltr" data-testid="nag-dialog-move" style={{ unicodeBidi: "isolate" }}>
+            {target.label}
+            <NagGlyphs nags={node?.nags} testId="nag-dialog-glyphs" />
+          </span>
+        </>
+      }
+      actions={
+        <Button data-testid="nag-dialog-close" onClick={onClose}>
+          {t("nagDialog.close")}
+        </Button>
+      }
+      testId="nag-dialog"
+    >
+      <PanelTabs
+        tabs={NAG_SECTIONS.map(({ section: id }) => ({ id, label: t(`nagDialog.tabs.${id}`) }))}
         value={tab}
-        onChange={(_, value: NagSection) => setTab(value)}
-        variant="fullWidth"
-        sx={{ px: 2, borderBottom: 1, borderColor: "divider" }}
-      >
-        {NAG_SECTIONS.map(({ section: id }) => (
-          <Tab
-            key={id}
-            value={id}
-            label={t(`nagDialog.tabs.${id}`)}
-            data-testid={`nag-dialog-tab-${id}`}
-            sx={{ minHeight: 48, px: 1 }}
-          />
-        ))}
-      </Tabs>
-      <DialogContent>
+        onChange={(value) => setTab(value as NagSection)}
+        size="tall"
+        ariaLabel={t("nagDialog.title")}
+        idPrefix="nag-dialog"
+        tabTestIdPrefix="nag-dialog"
+        testId="nag-dialog-tabs"
+      />
+      <Box {...tabPanelProps("nag-dialog", section.section)} sx={{ pt: 1.5 }}>
         <DialogContentText variant="body2" sx={{ mb: 1.5 }}>
           {t("nagDialog.help")}
         </DialogContentText>
@@ -131,12 +136,7 @@ function OpenNagDialog({
               <Box
                 component="span"
                 dir="ltr"
-                sx={{
-                  minWidth: "2ch",
-                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                  fontWeight: 700,
-                  unicodeBidi: "isolate",
-                }}
+                sx={{ minWidth: "2ch", fontFamily: MONOSPACE_FONT_FAMILY, fontWeight: 700, unicodeBidi: "isolate" }}
               >
                 {choice.glyph}
               </Box>
@@ -146,13 +146,8 @@ function OpenNagDialog({
             </ToggleButton>
           ))}
         </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button data-testid="nag-dialog-close" onClick={onClose}>
-          {t("nagDialog.close")}
-        </Button>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </BaseDialog>
   );
 }
 

@@ -353,6 +353,7 @@ const en = {
     },
   },
   commentDialog: {
+    label: "Comment",
     addTitle: "Comment on",
     editTitle: "Edit the comment on",
     placeholder: "What is there to say about this move?",
@@ -365,6 +366,7 @@ const en = {
    * game tree drawn as a tree, in a tab and full screen.
    */
   treeMap: {
+    toolbar: "Map controls",
     title: "Map",
     covered: "Lines covered: {{covered}} of {{total}}",
     label: "The repertoire as a tree: covered lines in green, your way here highlighted",

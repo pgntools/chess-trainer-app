@@ -27,6 +27,12 @@ export type MenuEntry = {
 export type ContextMenuProps = {
   /** Where the pointer was (`clientX` / `clientY`); `null` is closed. */
   position: { top: number; left: number } | null;
+  /**
+   * Open or not, apart from `position` (CTA-113) — so a closing menu keeps
+   * its place while it fades rather than jumping. Absent, it is open while
+   * there is a `position`.
+   */
+  open?: boolean;
   onClose: () => void;
   entries: readonly MenuEntry[];
   /** A heading over the entries — what the menu is about ("12…Nf6"). */
@@ -40,11 +46,11 @@ export type ContextMenuProps = {
  * dense list at the pointer's position, an optional heading, icons, rules
  * between groups. Choosing an entry closes the menu, then runs it.
  */
-function ContextMenu({ position, onClose, entries, subheader, testId }: ContextMenuProps) {
+function ContextMenu({ position, open, onClose, entries, subheader, testId }: ContextMenuProps) {
   const { direction } = useTheme();
   return (
     <Menu
-      open={position !== null}
+      open={(open ?? true) && position !== null}
       onClose={onClose}
       anchorReference="anchorPosition"
       anchorPosition={position ?? undefined}
