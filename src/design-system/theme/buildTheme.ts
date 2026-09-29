@@ -1,5 +1,6 @@
 import { createTheme, shouldSkipGeneratingVar, type Theme } from "@mui/material/styles";
 
+import { componentOverrides } from "../themes/overrides";
 import type { ThemeDefinition } from "../themes/types";
 import { accessibilityOverrides, focusRingOf, REDUCED_MOTION_TRANSITIONS } from "./accessibility";
 import "./augment";
@@ -35,8 +36,10 @@ export type BuildThemeOptions = {
  * **Builds the MUI theme** for a registered theme, a mode and a direction.
  *
  * The theme's `chess` tokens ride along as `theme.chess`; they are read
- * through `chessTokensOf` / `useChessTokens`, never by a CSS variable. Over
- * the theme's own component overrides go the accessibility baseline's
+ * through `chessTokensOf` / `useChessTokens`, never by a CSS variable. The
+ * theme's component knobs become overrides (`componentOverrides`, CTA-115),
+ * its hand-written `overrides` replace theirs component by component, and
+ * over both go the accessibility baseline's
  * (CTA-111, `accessibilityOverrides`): the focus ring, the target size, the
  * control border and — with `reducedMotion` — no ripple.
  */
@@ -51,7 +54,11 @@ export const buildTheme = (
     // The monospace token rides with the theme's type (CTA-113); a theme may name its own.
     typography: { fontFamilyMonospace: MONOSPACE_FONT_FAMILY, ...definition.typography },
     shape: definition.shape,
-    components: { ...definition.overrides, ...accessibilityOverrides(definition.focusRingWidth, reducedMotion) },
+    components: {
+      ...componentOverrides(definition.components),
+      ...definition.overrides,
+      ...accessibilityOverrides(definition.focusRingWidth, reducedMotion),
+    },
     chess: definition.chess,
     ...(reducedMotion && { transitions: REDUCED_MOTION_TRANSITIONS }),
   };

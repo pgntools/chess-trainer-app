@@ -12,7 +12,8 @@ const NEW_THEMES = [brownTheme, greenTheme, highContrastTheme];
 
 describe("the three themes CTA-108 adds", () => {
   it("are registered after the default, which stays first", () => {
-    expect(themes.map((theme) => theme.id)).toEqual(["default", "brown", "green", "high-contrast"]);
+    // A theme added later (`yarn theme:bootstrap`, CTA-115) goes after them.
+    expect(themes.slice(0, 4).map((theme) => theme.id)).toEqual(["default", "brown", "green", "high-contrast"]);
   });
 
   it("keep neutral ids and names — no other site's brand", () => {
