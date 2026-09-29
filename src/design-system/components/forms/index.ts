@@ -9,6 +9,8 @@ export * from "./CheckboxField";
 export * from "./RadioGroupField";
 export * from "./SideToggle";
 export * from "./SliderField";
+export * from "./ColorField";
+export * from "./TextInputField";
 export * from "./SelectField";
 export * from "./SearchField";
 export * from "./DateRangeFields";

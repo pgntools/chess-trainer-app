@@ -16,11 +16,16 @@ Gallery: `/dev/design/tabs`.
   `<idPrefix>-tab-<id>` and the selected one `aria-controls` its panel; the
   host spreads `tabPanelProps(idPrefix, id)` — `role="tabpanel"`, its id,
   `aria-labelledby` its tab — on the panel it renders, so a screen reader
-  names the panel by its tab; absent, the tabs carry no ids), `testId` (each
-  tab `<testId>-tab-<id>`, `BoardPanel`'s own ids).
+  names the panel by its tab; absent, the tabs carry no ids),
+  `orientation?: "horizontal" | "vertical"` (CTA-115: `vertical` stands the
+  strip down the start edge as a sidebar of sections — the tabs stacked, their
+  words at the start, the up and down arrows moving between them, the divider
+  along the inline end; `fullWidth` does not apply; absent, the strip across
+  the top), `testId` (each tab `<testId>-tab-<id>`, `BoardPanel`'s own ids).
 - **Variations** — compact full width (the board panel); each tab naming its
-  panel (`idPrefix`); a disabled tab; tall (a dialog's strip); link tabs sized
-  to their words (a routed strip).
+  panel (`idPrefix`); a disabled tab; tall (a dialog's strip); vertical — a
+  sidebar of sections (the theme editor's); link tabs sized to their words (a
+  routed strip).
 - **Replaces** — the strip `sx` copied into `BoardPanel`, `NewGameForm` and
   `PositionEditor`, `SettingsScreen`'s near-copy with router-link tabs, and
   `NagDialog`'s taller strip.

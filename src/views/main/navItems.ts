@@ -102,13 +102,19 @@ export const navItems = (): readonly NavItem[] => [
     icon: MenuBookRoundedIcon,
     folder: "repertoires",
   },
-  // The Development section — dev-only: the design gallery (CTA-107).
+  // The Development section — dev-only: the design gallery (CTA-107) and the theme editor (CTA-115).
   ...(import.meta.env.DEV
     ? [
         {
           to: "/dev/design",
           labelKey: "nav.designSystem",
           icon: ConstructionRoundedIcon,
+          folder: "development",
+        },
+        {
+          to: "/dev/theme-editor",
+          labelKey: "nav.themeEditor",
+          icon: PaletteRoundedIcon,
           folder: "development",
         },
       ]

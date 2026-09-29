@@ -1,5 +1,4 @@
 import { defaultChessTokens } from "./defaultChess";
-import { paletteColor, primaryTint } from "./overrides";
 import type { ThemeDefinition } from "./types";
 
 /**
@@ -61,28 +60,14 @@ export const highContrastTheme: ThemeDefinition = {
     button: { fontWeight: 700, textTransform: "none" },
   },
   shape: { borderRadius: 4 },
-  overrides: {
-    MuiButton: {
-      defaultProps: { disableElevation: true },
-      styleOverrides: {
-        root: { borderRadius: 4 },
-        outlined: { borderWidth: 2, "&:hover": { borderWidth: 2 } },
-      },
-    },
-    MuiLink: { defaultProps: { underline: "always" } },
-    MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } },
-    MuiListItemButton: {
-      styleOverrides: {
-        root: ({ theme }) => ({
-          borderRadius: 4,
-          "&.Mui-selected": {
-            backgroundColor: primaryTint(theme, 0.24),
-            borderInlineStart: `3px solid ${paletteColor(theme, (palette) => palette.primary.main)}`,
-            "&:hover": { backgroundColor: primaryTint(theme, 0.32) },
-          },
-        }),
-      },
-    },
+  components: {
+    buttonRadius: 4,
+    buttonLip: null,
+    outlinedButtonBorder: 2,
+    // A stronger tint, and a 3 px bar in the primary colour along the start edge.
+    selectedRow: { radius: 4, rest: 0.24, hover: 0.32, accent: 3 },
+    linkUnderline: "always",
+    chipFontWeight: null,
   },
   chess: {
     // Told apart by lightness: a pale grey and a slate, never two hues.

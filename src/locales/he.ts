@@ -26,6 +26,7 @@ const he: typeof en = {
     settingsStorage: "אחסון",
     settingsAppearance: "מראה",
     designSystem: "מערכת עיצוב",
+    themeEditor: "עורך ערכות נושא",
     folders: {
       engine: "מנוע",
       library: "ספרייה",
@@ -60,6 +61,7 @@ const he: typeof en = {
     libraryGame: "משחק מהספרייה",
     settings: "הגדרות",
     designSystem: "מערכת עיצוב",
+    themeEditor: "עורך ערכות נושא",
   },
   shell: {
     skipToMain: "דילוג לתוכן הראשי",
@@ -1401,6 +1403,7 @@ const he: typeof en = {
       brown: "חום",
       green: "ירוק",
       "high-contrast": "ניגודיות גבוהה",
+      console: "מסוף",
     },
   },
   footer: {

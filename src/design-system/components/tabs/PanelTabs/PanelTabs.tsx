@@ -16,8 +16,15 @@ export type PanelTabsProps = {
   onChange?: (id: string) => void;
   /** `compact` (36 px, the board panel's) or `tall` (48 px, a dialog's). */
   size?: "compact" | "tall";
-  /** Share the width equally (the default) or size each tab to its words. */
+  /** Share the width equally (the default) or size each tab to its words. A vertical strip ignores it. */
   fullWidth?: boolean;
+  /**
+   * A strip across the top (the default) or a **sidebar of sections** down
+   * the start edge (CTA-115, the theme editor's): the tabs stacked, their
+   * words at the start, the up and down arrows moving between them, the
+   * divider along the inline end. Absent, today's strip.
+   */
+  orientation?: "horizontal" | "vertical";
   /** The strip's accessible name. */
   ariaLabel: string;
   /**
@@ -43,7 +50,9 @@ export type PanelTabsProps = {
  * copied: words as written (`textTransform: none`), no minimum tab width, a
  * divider under it. A tab with a `link` is a real link — a routed strip (the
  * Settings tabs) — and `size="tall"` is the dialog's taller strip. With an
- * `idPrefix`, each tab names its panel (CTA-112, `tabPanelProps`).
+ * `idPrefix`, each tab names its panel (CTA-112, `tabPanelProps`);
+ * `orientation="vertical"` stands it down the start edge as a sidebar of
+ * sections (CTA-115).
  */
 function PanelTabs({
   tabs,
@@ -51,26 +60,36 @@ function PanelTabs({
   onChange,
   size = "compact",
   fullWidth = true,
+  orientation = "horizontal",
   ariaLabel,
   idPrefix,
   testId,
   tabTestIdPrefix = testId,
 }: PanelTabsProps) {
   const height = size === "compact" ? 36 : 48;
+  const vertical = orientation === "vertical";
+  const stretched = fullWidth && !vertical;
   return (
     <Tabs
       value={value}
       onChange={(_event, next: string) => onChange?.(next)}
-      variant={fullWidth ? "fullWidth" : "scrollable"}
-      scrollButtons={fullWidth ? undefined : "auto"}
+      orientation={orientation}
+      variant={stretched ? "fullWidth" : "scrollable"}
+      scrollButtons={stretched || vertical ? undefined : "auto"}
       aria-label={ariaLabel}
       data-testid={testId}
       sx={{
         flexShrink: 0,
         minHeight: height,
-        borderBottom: "1px solid",
+        ...(vertical ? { borderInlineEnd: "1px solid" } : { borderBottom: "1px solid" }),
         borderColor: "divider",
-        "& .MuiTab-root": { minHeight: height, minWidth: 0, px: 1, textTransform: "none" },
+        "& .MuiTab-root": {
+          minHeight: height,
+          minWidth: 0,
+          px: vertical ? 1.5 : 1,
+          textTransform: "none",
+          ...(vertical && { alignItems: "flex-start", textAlign: "start" }),
+        },
       }}
     >
       {tabs.map((tab) => (

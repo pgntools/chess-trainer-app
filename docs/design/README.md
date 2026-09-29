@@ -64,7 +64,9 @@ scheme and the direction; `ForceLTR` keeps the board unmirrored.
 ### Themes
 
 A theme is a `ThemeDefinition` (`themes/types.ts`):
-`{ id, labelKey, light, dark, focusRingWidth, typography, shape, overrides, chess }`.
+`{ id, labelKey, light, dark, focusRingWidth, typography, shape, components, overrides?, chess }` —
+**data, all of it** (CTA-115), so the theme editor can edit every token and
+the generator (`themes/codegen.ts`) can write it back as a file.
 
 - `light` / `dark` are the two colour schemes' palettes. The app builds both
   as CSS variables and the header's switch picks one, so every theme has
@@ -88,6 +90,16 @@ A theme is a `ThemeDefinition` (`themes/types.ts`):
   `Theme` by module augmentation (`theme/augment.ts`), read through
   `useChessTokens()` / `chessTokensOf(theme)`, never as CSS variables
   ([`chessboard.md`](../../.claude/rules/chessboard.md) §3.6).
+- `components` are the **component knobs** (CTA-115, `ComponentKnobs`):
+  a button's radius, a contained button's darker bottom lip, an outlined
+  button's border width, the selected nav row's radius, tint and start-edge
+  bar, links' underline and a chip's weight — values, `null` for MUI's own.
+  `buildTheme` turns them into MUI overrides through `themes/overrides.ts`'
+  helpers (`componentOverrides`); every theme's buttons are flat and its
+  papers carry no dark-mode gradient. A hand-written MUI override beyond the
+  knobs goes in the optional `overrides` (an entry there replaces the knobs'
+  for its component) — edited in the file, since the editor cannot carry a
+  function. No registered theme has one.
 - The **default** theme (`themes/default.ts`) is the look the app had before
   themes existed, ported value for value, and react-chessboard's own board
   colours. Any stored choice that is not registered falls back to it.
@@ -103,13 +115,26 @@ The registered themes, in the order Settings → Appearance lists them:
 | `default` | Default | `themes/default.ts` | The app's look before themes, unchanged; react-chessboard's board. |
 | `brown` | Brown | `themes/brown.ts` | Calm, lichess-like (CTA-108): warm off-white / near-black pages, one blue accent, square-ish corners; lichess's brown board, highlight and arrow brushes. Its squares equal the default's (react-chessboard's defaults *are* lichess's brown) — its board differs in the arrows, book arrows, result bars and map dots. |
 | `green` | Green | `themes/green.ts` | Bold, chess.com-like (CTA-108): the green board, the yellow highlight, green / blue / red arrows, move-classification tones, heavy headings and chunky buttons. |
-| `high-contrast` | High contrast | `themes/highContrast.ts` | WCAG AA or better in both schemes (`themes/themes.test.ts` measures text, status colours, dividers, move marks, coordinates and result bars), a 3 px focus ring in the text colour, strong borders; a board told apart by lightness — its coordinates at AA, the one theme that writes them so — and drawn over in the Okabe–Ito palette. |
+| `high-contrast` | High contrast | `themes/highContrast.ts` | WCAG AA or better in both schemes (`themes/themes.test.ts` measures text, status colours, dividers, move marks, coordinates and result bars), a 3 px focus ring in the text colour, strong borders; a board told apart by lightness — its coordinates at AA — and drawn over in the Okabe–Ito palette. |
+| `console` | Console | `themes/console.ts` | A Linux terminal (CTA-115, the first theme made with `yarn theme:bootstrap`): the Tango palette gnome-terminal ships as its ANSI colours — the prompt's bright green as the accent, cyan, blue, magenta, yellow, red — near-black pages with a green cast in dark, paper-white in light; everything in one monospace face (JetBrains Mono, bundled — below), square corners, underlined links, the selected nav row barred like a block cursor; a phosphor-green board with cyan / blue / red arrows. Every contrast check passes, the advisory ones too: its coordinates, move marks and result bars are at AA. |
 
 The two sites that inspired `brown` and `green` are named only in the files'
 comments: another site's brand is never a theme's id or shown name.
-`themes/overrides.ts` holds the override helpers the themes after the default
-share (the selected nav row's tint, a palette colour read through the CSS
-variables when there are any).
+`themes/overrides.ts` holds the override helpers the knobs are built with
+(`componentOverrides`, `buttonOverride`, `selectedRowOverride`, a palette
+colour read through the CSS variables when there are any).
+
+**Theme authoring** (CTA-115) is two tools over one generator:
+`yarn theme:bootstrap` (`scripts/theme-bootstrap.js`) scaffolds and registers
+a theme, and the dev-only **theme editor** (`/dev/theme-editor`,
+`views/dev/themeEditor/`) edits every token against a live preview and
+contrast report and downloads the file. Both write through
+`themes/codegen.ts`'s `themeSource`, so the file the script writes and the
+file the editor downloads have one shape; `codegen.test.ts` round-trips every
+registered theme through it. The contrast checks are one pure module,
+`themes/contrast.ts` (`contrastReport`), which `contrast.test.ts`, the
+editor and the script all measure with. The walkthrough is
+[`CONTRIBUTING.md`](../../CONTRIBUTING.md#create-a-theme).
 
 `buildTheme(theme, mode, direction, { reducedMotion?, localization? })` takes
 `mode` `"both"` (the app's: CSS variables, both schemes, switched by
@@ -121,7 +146,10 @@ does); `reducedMotion` is the reader's system setting
 #### Accessibility token changes (CTA-111)
 
 `themes/contrast.test.ts` measures every theme in light and dark against
-WCAG 2.2 AA ([`ACCESSIBILITY.md`](../../ACCESSIBILITY.md)). Where one failed,
+WCAG 2.2 AA ([`ACCESSIBILITY.md`](../../ACCESSIBILITY.md)) — through
+`themes/contrast.ts` since CTA-115, whose **required** checks it enforces;
+the board's coordinates, move marks and result bars are **advisory**,
+reported by the editor and the script but not enforced. Where one failed,
 the smallest token change fixed it — a colour darkened (light schemes) or
 lightened (dark schemes) along its own hue just until it passed 4.5:1 on
 every surface (the page, the paper, the sunken rail), and nothing else
@@ -149,7 +177,17 @@ touched:
 | every theme · both | `contrastThreshold` | MUI's 3 | 4.5 | MUI chose white text at 3:1 (the dark schemes' error buttons 3.68:1, brown dark's primary 3.27:1); now a button's text is picked at AA |
 | every theme · both | `focusRing`, `controlBorder` | — (MUI's outlined border is 1.6:1) | the theme's accent (the text colour in high contrast); a 3:1 grey of the theme's own hue | new tokens: a focus ring and a control border at 3:1 |
 
-The board's coordinates are measured too: the high-contrast theme writes them
+**Fonts.** A theme names its faces in `typography` (`fontFamily`, and
+`fontFamilyMonospace` for notation and machine words). Most stacks are
+system fonts; the one web font bundled is **JetBrains Mono** (OFL, the
+console theme's), from `@fontsource-variable/jetbrains-mono`, imported for
+its `@font-face` rules in `src/main.tsx` — a browser fetches the file only
+when text is set in it, so a reader on another theme downloads nothing. A
+theme that wants another web font adds its Fontsource package and import
+the same way, and keeps a system fallback after it (Hebrew falls through to
+the fallback: JetBrains Mono has no Hebrew).
+
+The board's coordinates are measured too: the high-contrast and console themes write them
 at AA; the default, brown and green themes keep the traditional look (2.30,
 2.30 and 2.84:1) — a known gap, recorded in `ACCESSIBILITY.md`, not changed.
 
@@ -157,7 +195,7 @@ at AA; the default, brown and green themes keep the traditional look (2.30,
 
 | To add | Do |
 | --- | --- |
-| **A theme** | A file beside `themes/default.ts` exporting a `ThemeDefinition` (start from a copy of the default; every `chess` group, `focusRingWidth` and each palette's `focusRing` and `controlBorder` are required), an entry in `themes` in `themes/registry.ts`, and its name `appearance.themes.<id>` in `en.ts` and `he.ts`. `themes/contrast.test.ts` then measures it against AA — fix what it reports with the smallest token change. No component changes: Settings → Appearance and the gallery list the registry. Never rename an `id` — it is what the reader's choice is stored as. |
+| **A theme** | **The tools first** (CTA-115, [`CONTRIBUTING.md`](../../CONTRIBUTING.md#create-a-theme)): `yarn theme:bootstrap --id <id> --name "<Name>" [--name-he "<שם>"] [--from <theme>]` writes the file, registers it and names it in both catalogs (`--dry-run` shows it first; it refuses a taken or invalid id and writes nothing); then tune it in the theme editor (`/dev/theme-editor?theme=<id>`), download `<camelId>.ts` and replace the file; then `npx vitest run src/design-system/themes/contrast.test.ts` and `yarn test:run`. **By hand**, which is what the script does: a file beside `themes/default.ts` exporting a `ThemeDefinition` as `<camelId>Theme` (start from a copy of the default; every `chess` group, every `components` knob, `focusRingWidth` and each palette's `focusRing` and `controlBorder` are required), an entry in `themes` in `themes/registry.ts`, and its name `appearance.themes.<id>` in `en.ts` and `he.ts`. `themes/contrast.test.ts` then measures it against AA — fix what it reports with the smallest token change. No component changes: Settings → Appearance and the gallery list the registry. Never rename an `id` — it is what the reader's choice is stored as. |
 | **A section** | A folder under `components/` with an `index.ts` (the section's public surface) and an entry in `SECTIONS` (`components/sections.ts`), which orders the gallery. A pattern section is the same under `patterns/` and `PATTERN_SECTIONS`; a block family an entry in `BLOCK_FAMILIES` (`src/blocks/families.ts`). |
 | **A component** | A folder in its section — `Foo/Foo.tsx`, `Foo/Foo.test.tsx`, `Foo/Foo.gallery.tsx`, `Foo/index.ts` — and a re-export from the section's `index.ts`. **Screens import only from a section's `index.ts`.** It follows [the component rules](#the-component-rules), and its section doc (`sections/<section>.md`) gets an entry. |
 | **A pattern or a block** | [`hierarchy.md`](./hierarchy.md#the-folder-layout) — the same four files (a block adds `fixtures.ts`), in its pattern section or block family. |
@@ -207,9 +245,32 @@ fails on any console error.
 
 After `yarn build`, `grep -r -e "/dev/design" -e "design-gallery" -e
 "DesignGallery" -e ".gallery" -e "FolderTree" -e "PLAYED_ROWS" -e
-"NON_PAWNS" -e "SHIPPED_OPTIONS" -e "gallery-" dist/` finds nothing (the nav's two label strings,
-`nav.folders.development` and `nav.designSystem`, are in the shipped
-catalogs, as every nav label must be).
+"NON_PAWNS" -e "SHIPPED_OPTIONS" -e "gallery-" -e "/dev/theme-editor" -e
+"theme-editor" -e "ThemeEditor" -e "themeDraft" -e "themeSource" dist/` finds
+nothing (the nav's label keys — `nav.folders.development`,
+`nav.designSystem`, `nav.themeEditor` — and the page titles'
+`pages.designSystem` and `pages.themeEditor` are in the shipped catalogs, as
+every label must be).
+
+**The theme editor** (`/dev/theme-editor`, CTA-115) sits beside the gallery
+in the Development section, behind the same gate (a `devRoutes` entry, a
+`React.lazy` chunk, a nav entry spread on `import.meta.env.DEV`). Down its
+left, a vertical `PanelTabs` of the theme's sections — Theme, Palette —
+light, Palette — dark, Typography, Shape & components, Accessibility, Board,
+Arrows, Annotations, Map & Library (`sections.ts`, which gives every token of
+a theme one field) — each badged while it holds a contrast failure; in the
+middle, the section's fields (`ColorField` for every colour, with its worst
+contrast ratio under it; `SliderField`, `SelectField`, `SwitchField`,
+`TextInputField`); on the right, the preview — `buildTheme(draft)` for one
+scheme in its own emotion cache, as the gallery's, with light / dark and
+LTR / RTL switches, showing a UI sample, a board (squares, last move, the
+arrow palettes, the promotion scrim, the move marks) or the map's dots and
+the result bars as the section asks. The contrast summary stays in view and
+its menu goes to a failing token. It opens any registered theme (`?theme=`)
+or a draft file, undoes, resets a section or the whole theme, and saves by
+download only: the theme's file (`themeSource`) or a draft (JSON, `draft.ts`).
+It writes nothing anywhere, and asks before a page with unsaved changes is
+left.
 
 ## The component rules
 

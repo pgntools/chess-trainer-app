@@ -1,5 +1,3 @@
-import { alpha } from "@mui/material/styles";
-
 import { defaultChessTokens } from "./defaultChess";
 import type { ThemeDefinition } from "./types";
 
@@ -69,40 +67,16 @@ export const defaultTheme: ThemeDefinition = {
     button: { fontWeight: 700, textTransform: "none" },
   },
   shape: { borderRadius: 10 },
-  overrides: {
-    MuiButton: {
-      defaultProps: { disableElevation: true },
-      styleOverrides: {
-        root: { borderRadius: 10 },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: { backgroundImage: "none" },
-      },
-    },
-    MuiListItemButton: {
-      styleOverrides: {
-        root: ({ theme }) => ({
-          borderRadius: 10,
-          "&.Mui-selected": {
-            // `selected` here means "this is the route you are on", so it wants
-            // the same weight as an active nav button rather than the faint
-            // default tint, which is nearly invisible against `background.sunken`.
-            // A theme built for one fixed scheme (the gallery's) has no
-            // variables, so it takes the same tint from the plain palette.
-            backgroundColor: theme.vars
-              ? `rgba(${theme.vars.palette.primary.mainChannel} / 0.16)`
-              : alpha(theme.palette.primary.main, 0.16),
-            "&:hover": {
-              backgroundColor: theme.vars
-                ? `rgba(${theme.vars.palette.primary.mainChannel} / 0.24)`
-                : alpha(theme.palette.primary.main, 0.24),
-            },
-          },
-        }),
-      },
-    },
+  components: {
+    buttonRadius: 10,
+    buttonLip: null,
+    outlinedButtonBorder: null,
+    // `selected` means "this is the route you are on", so it wants the weight
+    // of an active nav button rather than MUI's faint tint, which is nearly
+    // invisible against `background.sunken` (`selectedRowOverride`).
+    selectedRow: { radius: 10, rest: 0.16, hover: 0.24, accent: 0 },
+    linkUnderline: null,
+    chipFontWeight: null,
   },
   chess: defaultChessTokens,
 };

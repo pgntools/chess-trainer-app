@@ -23,8 +23,8 @@ import { default as RepertoireGameScreen  } from './views/repertoires/Repertoire
 import { default as SettingsScreen  } from './views/settings/SettingsMain'
 
 /**
- * The **Development** section's routes (`chessboard.md` §9.5) — today the
- * design gallery (CTA-107).
+ * The **Development** section's routes (`chessboard.md` §9.5) — the design
+ * gallery (CTA-107) and the theme editor (CTA-115).
  *
  * Dev-only, and this array is the whole of the gate. Two things make it
  * provable rather than hopeful:
@@ -61,6 +61,13 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
         element: devScreen(() => import("./views/dev/design/Main")),
         // Not a board: the gallery takes the whole body (no square, no aside).
         handle: { ...FULL_WIDTH_ROUTE, title: "pages.designSystem" },
+      },
+      {
+        // The theme editor (CTA-115): every token of a theme, edited against
+        // a live preview, saved by download. `?theme=<id>` opens that theme.
+        path: "/dev/theme-editor",
+        element: devScreen(() => import("./views/dev/themeEditor/Main")),
+        handle: { ...FULL_WIDTH_ROUTE, title: "pages.themeEditor" },
       },
     ]
   : [];

@@ -40,6 +40,7 @@ Node comes from `fnm`, so run these from a shell where it is on `PATH`.
 | Run tests matching a name | `npx vitest run -t "<substring of the test name>"` |
 | Watch mode | `yarn test` |
 | **Wire a PGN collection into the Library** | `node scripts/wirepgn.js path/to/file.pgn` (or `yarn wirepgn …`; `--list`, `--check`, `--rebuild`, `--remove <id>` — [`game-collections.md`](.claude/rules/game-collections.md) §3) |
+| **Scaffold a new theme** | `yarn theme:bootstrap --id <kebab-id> --name "<Name>"` (`--name-he`, `--from <theme>`, `--dry-run`, `--help`) — writes and registers it; then tune it in the dev-only theme editor, `/dev/theme-editor?theme=<id>` ([`CONTRIBUTING.md`](CONTRIBUTING.md#create-a-theme)) |
 | Coverage | `npx vitest run --coverage` |
 | **Audit a render for accessibility** | `await expectNoAxeViolations(element?)` in a test (`src/test/axe.ts`) — axe's WCAG 2.2 A / AA rules, a violation fails it; `stubReducedMotion()` (`src/test/reducedMotion.ts`) renders for a reader who asks for reduced motion |
 
@@ -72,8 +73,8 @@ follow), and the **public surface of the design system's tiers and of
 `src/blocks/`** (each section's and family's `index.ts` exports and their
 prop types) that no screen imports yet — they are built ahead of the
 screens that migrate onto them. `scripts/wirepgn.js` imports `src/lib`
-dynamically, so an export it uses can look unused — check `scripts/` before
-removing one.
+dynamically (and `scripts/theme-bootstrap.js` `src/design-system/themes/`),
+so an export it uses can look unused — check `scripts/` before removing one.
 
 ## The modules
 
@@ -91,7 +92,7 @@ removing one.
 | **Tree views** (how a board shows its game tree) | — | `views/explorer/`, `lib/treeMap.ts` | [`tree-views.md`](.claude/rules/tree-views.md) |
 | **PGN annotations** (comments, `[%cmd]`s, the `prc` and `games` tags, NAG glyphs) | — | `lib/pgn.ts`, `lib/gameTree.ts`, `lib/moveAnnotations.ts`, `lib/playChance.ts`, `lib/gamesTag.ts` | [`pgn-annotations.md`](.claude/rules/pgn-annotations.md) |
 | **The board core** | — | `views/board/core/` | [`chessboard.md`](.claude/rules/chessboard.md) §9 |
-| **The design system** and **the component hierarchy** (themes; base components, patterns, blocks; the dev-only gallery) | `/dev/design/…` (dev only; a page per component, the menu a tree of tier → section → component) | `src/design-system/`, `src/blocks/`, `theme/themeChoice.ts`, `views/dev/design/` | [`docs/design/hierarchy.md`](docs/design/hierarchy.md), [`docs/design/README.md`](docs/design/README.md), [`design-system.md`](.claude/rules/design-system.md) |
+| **The design system** and **the component hierarchy** (themes; base components, patterns, blocks; the dev-only gallery and theme editor) | `/dev/design/…` (dev only; a page per component, the menu a tree of tier → section → component), `/dev/theme-editor` (dev only, CTA-115) | `src/design-system/`, `src/blocks/`, `theme/themeChoice.ts`, `views/dev/design/`, `views/dev/themeEditor/`, `scripts/theme-bootstrap.js` | [`docs/design/hierarchy.md`](docs/design/hierarchy.md), [`docs/design/README.md`](docs/design/README.md), [`design-system.md`](.claude/rules/design-system.md) |
 | **Stores** (every one IndexedDB) | — | `lib/idb.ts`, `lib/idbRecordStore.ts`, `lib/*Store.ts`, `lib/*Db.ts` | [`database.md`](.claude/rules/database.md) |
 
 ## Layout of the source
@@ -100,7 +101,7 @@ removing one.
 | --- | --- |
 | `src/main.tsx`, `src/App.tsx`, `src/routes.tsx` | The composition root (`AppThemeWithLang` → `CssBaseline` → `App`; imports `./i18n` for its side effect), the router, and its route table — every route naming its screen in `handle.title` (a `pages.*` key, CTA-112). |
 | `src/i18n.ts`, `src/locales/` | i18next setup (`supportedLanguages`, `rtlLanguages`, `asAppLanguage()`) and the inline `en` / `he` catalogs. `he` is typed `typeof en`, so a missing key is a compile error. |
-| `src/design-system/` | **The design system** (CTA-107), a layer of its own that knows no chess screen, store, route or block — `yarn lint` fails if it imports `src/views/`, `src/lib/` or `src/blocks/`. `themes/` (a theme is data; the registry), `theme/` (`buildTheme`, the `chess` tokens' readers, the RTL cache), `components/<section>/` (the **base** tier: one folder per MAIN section, each with an `index.ts` screens import from, each documented in `docs/design/sections/<section>.md` — CTA-108; it may not import a pattern), `patterns/<section>/` (the **patterns** tier: complex but generic — `DataTable`, `TreeView` — CTA-110, `docs/design/sections/patterns/`), `gallery/` (the dev-only `/dev/design/…`, a page per component). |
+| `src/design-system/` | **The design system** (CTA-107), a layer of its own that knows no chess screen, store, route or block — `yarn lint` fails if it imports `src/views/`, `src/lib/` or `src/blocks/`. `themes/` (a theme is data; the registry; and the theme-authoring tools' one generator `codegen.ts`, contrast checks `contrast.ts` and scaffold `bootstrap.ts` — CTA-115), `theme/` (`buildTheme`, the `chess` tokens' readers, the RTL cache), `components/<section>/` (the **base** tier: one folder per MAIN section, each with an `index.ts` screens import from, each documented in `docs/design/sections/<section>.md` — CTA-108; it may not import a pattern), `patterns/<section>/` (the **patterns** tier: complex but generic — `DataTable`, `TreeView` — CTA-110, `docs/design/sections/patterns/`), `gallery/` (the dev-only `/dev/design/…`, a page per component). |
 | `src/blocks/` | **The blocks** (CTA-110): complex, domain-aware, **presentational** components — rows, state and callbacks arrive as props — grouped by family (`families.ts`: `tables/`, `trees/` …), each a folder with its component, test, gallery, `fixtures.ts` (typed with `src/lib/`'s types, imported only by the gallery and the test) and `index.ts`. May use `src/lib/`'s types and pure helpers; `yarn lint` fails if one imports `src/views/`, a store or database module or `react-router`. Every module is on them (CTA-109, CTA-113): tables (`PlayedGamesTable`, `StorageTable`, `CollectionsTreeTable`, `CollectionGamesTable`), lists (`SavedAnalysesList`, `RepertoiresList`, `FolderActions`, `FolderPicker`, `OpeningBookList`), trees (`FolderTree`), dialogs (the folder dialogs, `ImportDialog`, `IncompatibleImportDialog`, `CollectionImportDialog`, `OpeningTreePgnDialog`), forms (`EngineSettingsForm`, `AnalysisEngineForm`, `ArrowSettingsFields`, `PgnInput`, `FenInput`, `PositionFields`, `MergeSplitChoice`, `MaskEditor`, `PlayedGamesFilters`, `CollectionFilters`, `ExportCategoriesForm`) and panels (`PgnExportPanel`, `GameInfo`, `CurrentOpening`, `ChangesStrip`, `PlayToggleButton`, `EngineThinking`, `ImportReport`) — [`hierarchy.md`](docs/design/hierarchy.md#4-blocks--srcblocksfamilyblock). How a module migrates onto them: [`docs/design/migration.md`](docs/design/migration.md). |
 | `src/theme/` | The app's wiring of the look: the `AppThemeWithLang` provider (theme choice, scheme, direction, and — since CTA-113 — the design system's one `SnackbarProvider`, so a screen shows a snackbar with `useSnackbar()`), `themeChoice.ts` (the reader's theme, in `localStorage`), `ForceLTR`, the header controls. |
 | `src/views/main/` | The app shell: `Layout.tsx` (header, sidebar, the board square and the right-hand panel, `BOARD_PANEL_GAP_PX` between them — or, for a route whose `handle` is `FULL_WIDTH_ROUTE` from `routeHandle.ts`, the whole body instead; and the page's structure, CTA-112: the skip link, the landmarks, `document.title`, the one `h1`, the focus on a move to another screen), `pageTitle.ts` (`usePageTitle(recordName)`, `useOwnPageHeading()` — what a screen tells the shell), `rightPanel.tsx` (the route-fillable panel slot), `Sidebar.tsx` and the nav registries. |
@@ -109,6 +110,7 @@ removing one.
 | `src/views/explorer/` | **The tree views** — the variations explorer every board attaches. |
 | `src/views/shared/` | **The board's pieces and hooks** (CTA-113 moved everything else out): `MoveList`, `VariationLine`, `BoardControls`, `BestVariations`, `NextMovesBar`, `EvalBar`, `PromotionPicker`, `EngineBoardSquare`, `CapturedPieces`, `PlayerPlate`, `positionEditor/`, `boardColors.ts` (the theme's squares as board options), and the hooks `useCurrentOpening`, `useOpeningBook`, `useStoreRead`. Generic UI parts are the design system's, and the chess-aware compositions (the folder dialogs, the saved lists, the Engine and Export tabs, `GameInfo`, `CurrentOpening`'s chip, the inputs) are blocks ([`hierarchy.md`](docs/design/hierarchy.md#where-srcviewsshared-fits)). Their locale keys are top-level (`moveList.*`, `variations.*`, `board.*`, …). |
 | `src/views/engine/`, `tools/analysis/`, `openings/`, `repertoires/`, `library/`, `settings/` | The module screens (table above). Each route renders a layout-only `…Main.tsx` wrapper. |
+| `src/views/dev/` | **The Development section** — dev-only, behind `routes.tsx`'s `devRoutes` (never in `dist/`): the gallery's route (`design/`) and the **theme editor** (`themeEditor/`, CTA-115 — every token of a theme edited against a live preview and contrast report, saved by download through `themes/codegen.ts`). |
 | `src/lib/` | Everything pure or storage: the game model and tree, PGN and FEN reading, the engine wrapper and score reading, the stores and records, the opening book. Named per module (table above); the shared core is below. |
 
 The shared core of `src/lib/`: `gameModel.ts` (`Game`, one line), `gameTree.ts`
@@ -255,15 +257,21 @@ mismatch this exists to prevent.
 
 - **A theme is data** in the design system's registry
   (`src/design-system/themes/`, CTA-107 — `default`, `brown`, `green` and
-  `high-contrast` since CTA-108): its light and dark palettes,
-  typography, shape, component overrides and **`chess` tokens** — every
-  colour drawn on or over a board. `buildTheme(theme, mode, direction)`
+  `high-contrast` since CTA-108, `console` — a Linux terminal — since
+  CTA-115): its light and dark palettes,
+  typography, shape, **component knobs** (values `buildTheme` turns into
+  MUI overrides — CTA-115) and **`chess` tokens** — every colour drawn on or
+  over a board. `buildTheme(theme, mode, direction)`
   (`src/design-system/theme/`) makes the MUI theme; `AppThemeWithLang` builds
   the reader's choice (Settings → Appearance, `theme/themeChoice.ts`, in
   `localStorage`). **Adding a theme** is a file beside `themes/default.ts`,
   an entry in `themes/registry.ts` and its `appearance.themes.<id>` name in
-  both catalogs — no component changes
-  ([`docs/design/README.md`](docs/design/README.md)).
+  both catalogs — no component changes. `yarn theme:bootstrap` does all
+  three, and the theme editor (`/dev/theme-editor`) tunes the file and
+  downloads it back, both through one generator (`themes/codegen.ts`) and
+  one contrast module (`themes/contrast.ts`) — CTA-115,
+  [`CONTRIBUTING.md`](CONTRIBUTING.md#create-a-theme),
+  [`docs/design/README.md`](docs/design/README.md).
 - **A board reads its colours from the theme**, never a literal:
   `useChessTokens()` / `chessTokensOf(theme)` (the default theme's under a
   bare test render), `useBoardSquareOptions()` for the squares. The

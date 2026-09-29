@@ -1,5 +1,4 @@
 import { defaultChessTokens } from "./defaultChess";
-import { selectedRowOverride } from "./overrides";
 import type { ThemeDefinition } from "./types";
 
 /**
@@ -57,18 +56,14 @@ export const greenTheme: ThemeDefinition = {
     button: { fontWeight: 800, textTransform: "none" },
   },
   shape: { borderRadius: 6 },
-  overrides: {
-    MuiButton: {
-      defaultProps: { disableElevation: true },
-      styleOverrides: {
-        root: { borderRadius: 6 },
-        // chess.com's chunky buttons: a darker lip along the bottom edge.
-        contained: { boxShadow: "inset 0 -3px 0 rgba(0, 0, 0, 0.22)", "&:hover": { boxShadow: "inset 0 -3px 0 rgba(0, 0, 0, 0.3)" } },
-      },
-    },
-    MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } },
-    MuiListItemButton: selectedRowOverride(6, 0.2, 0.3),
-    MuiChip: { styleOverrides: { root: { fontWeight: 700 } } },
+  components: {
+    buttonRadius: 6,
+    // chess.com's chunky buttons: a darker lip along the bottom edge.
+    buttonLip: { rest: 0.22, hover: 0.3 },
+    outlinedButtonBorder: null,
+    selectedRow: { radius: 6, rest: 0.2, hover: 0.3, accent: 0 },
+    linkUnderline: null,
+    chipFontWeight: 700,
   },
   chess: {
     // chess.com's green board.

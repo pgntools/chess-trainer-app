@@ -28,10 +28,46 @@ export type ThemeDefinition = {
   focusRingWidth: number;
   typography: ThemeOptions["typography"];
   shape: ThemeOptions["shape"];
-  /** MUI component defaults and style overrides (`ThemeOptions["components"]`). */
-  overrides: ThemeOptions["components"];
+  /**
+   * The component knobs (CTA-115) — see {@link ComponentKnobs}. Data, which
+   * `buildTheme` turns into MUI overrides through `overrides.ts`' helpers, so
+   * the theme editor can edit them and the generator can write them.
+   */
+  components: ComponentKnobs;
+  /**
+   * Hand-written MUI component overrides beyond the knobs
+   * (`ThemeOptions["components"]`) — an entry here replaces the knobs' entry
+   * for that component. The theme editor cannot carry them (functions are
+   * not data): they are edited in the file. No registered theme has any.
+   */
+  overrides?: ThemeOptions["components"];
   /** The board's colours — see {@link ChessTokens}. */
   chess: ChessTokens;
+};
+
+/**
+ * **The component knobs** (CTA-115): what a theme may change about MUI's
+ * components, as values. `null` leaves a knob to MUI's own. Every theme's
+ * buttons are flat (no elevation) and its papers carry no dark-mode
+ * gradient; those are not knobs.
+ */
+export type ComponentKnobs = {
+  /** Every button's corner radius, in pixels. */
+  buttonRadius: number;
+  /** A contained button's darker bottom edge — black at these opacities, at rest and hovered (chess.com's chunky buttons). */
+  buttonLip: { rest: number; hover: number } | null;
+  /** An outlined button's border width in pixels — `null` for MUI's 1 px. */
+  outlinedButtonBorder: number | null;
+  /**
+   * The selected nav row (`selectedRowOverride`): its radius, the primary
+   * tint's opacity at rest and hovered, and a bar in the primary colour
+   * along its start edge, in pixels (0 for none).
+   */
+  selectedRow: { radius: number; rest: number; hover: number; accent: number };
+  /** When a link is underlined — `null` for MUI's own (`always`). */
+  linkUnderline: "always" | "hover" | "none" | null;
+  /** A chip's font weight — `null` for MUI's own. */
+  chipFontWeight: number | null;
 };
 
 /** The three colours a board's next-move arrows are drawn in. */

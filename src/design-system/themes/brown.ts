@@ -1,5 +1,4 @@
 import { defaultChessTokens } from "./defaultChess";
-import { selectedRowOverride } from "./overrides";
 import type { ThemeDefinition } from "./types";
 
 /**
@@ -67,13 +66,13 @@ export const brownTheme: ThemeDefinition = {
     button: { fontWeight: 600, textTransform: "none" },
   },
   shape: { borderRadius: 4 },
-  overrides: {
-    MuiButton: {
-      defaultProps: { disableElevation: true },
-      styleOverrides: { root: { borderRadius: 3 } },
-    },
-    MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } },
-    MuiListItemButton: selectedRowOverride(4),
+  components: {
+    buttonRadius: 3,
+    buttonLip: null,
+    outlinedButtonBorder: null,
+    selectedRow: { radius: 4, rest: 0.16, hover: 0.24, accent: 0 },
+    linkUnderline: null,
+    chipFontWeight: null,
   },
   chess: {
     // lichess's brown board: the same squares react-chessboard ships.

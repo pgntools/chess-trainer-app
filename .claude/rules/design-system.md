@@ -113,8 +113,9 @@ long names, RTL, every theme) — then wire the screen.
   (a `subtitle1` / `subtitle2` is a `p`, not MUI's `h6` — CTA-112; a title
   that is a heading says so with `component="h2"`) (`theme/accessibility.ts`),
   so no theme overrides them.
-  `themes/contrast.test.ts` measures every theme — fix a failure with the
-  smallest token change and list it in `docs/design/README.md`.
+  `themes/contrast.test.ts` measures every theme (through `themes/contrast.ts`,
+  CTA-115) — fix a failure with the smallest token change and list it in
+  `docs/design/README.md`.
 
 ## 5. The gallery
 
@@ -137,7 +138,15 @@ tier, every block's page under every theme, axe too).
 
 **Nothing of it ships**: after `yarn build`, grep `dist/` for `/dev/design`,
 `design-gallery`, `DesignGallery`, `.gallery`, the blocks' names and their
-fixtures' — nothing (the two nav label keys excepted).
+fixtures' — nothing (the nav label keys excepted).
+
+**The theme editor** (`/dev/theme-editor`, CTA-115) is the Development
+section's second screen, behind the same gate (`views/dev/themeEditor/`):
+every token of a theme in sections (a vertical `PanelTabs`, `sections.ts` —
+one field per token, which `sections.test.ts` holds it to), a live preview
+built like the gallery's, the contrast report, and saving by download only.
+Grep `dist/` for `/dev/theme-editor`, `theme-editor`, `ThemeEditor`,
+`themeDraft` and `themeSource` too — nothing.
 
 ## 6. Adding
 
@@ -146,4 +155,4 @@ fixtures' — nothing (the two nav label keys excepted).
 | a base component | its folder in `components/<section>/`, the re-export, an entry in `docs/design/sections/<section>.md` |
 | a pattern | its folder in `patterns/<section>/` (a new section: its folder, `index.ts`, an entry in `patterns/sections.ts`), the re-export, `docs/design/sections/patterns/<section>.md` |
 | a block | its folder in `src/blocks/<family>/` with `fixtures.ts` (a new family: an entry in `blocks/families.ts`; its folder and `index.ts` with the first block), the re-export, a row in `hierarchy.md`'s Blocks table |
-| a theme | [`docs/design/README.md`](../../docs/design/README.md#adding-things) |
+| a theme | `yarn theme:bootstrap --id <id> --name "<Name>" [--name-he …] [--from <theme>]` (scaffolds the file, registers it, names it in both catalogs; `--dry-run` first), then the theme editor (`/dev/theme-editor?theme=<id>`) → download `<camelId>.ts` → replace the file → `contrast.test.ts` and `yarn test:run` — [`CONTRIBUTING.md`](../../CONTRIBUTING.md#create-a-theme). The by-hand steps: [`docs/design/README.md`](../../docs/design/README.md#adding-things). A theme is **data** — its component knobs are values (`components`), and the script's and the editor's files both come from `themes/codegen.ts`; the contrast checks are `themes/contrast.ts`, shared by the test, the editor and the script. |
