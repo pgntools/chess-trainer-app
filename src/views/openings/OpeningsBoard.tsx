@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import IconButton from "@mui/material/IconButton";
-import Switch from "@mui/material/Switch";
-import Tooltip from "@mui/material/Tooltip";
 import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 import SportsEsportsRoundedIcon from "@mui/icons-material/SportsEsportsRounded";
 import { DEFAULT_POSITION } from "chess.js";
@@ -14,6 +10,9 @@ import type { ChessboardOptions } from "react-chessboard";
 
 import { CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
 import { AnalysisEngineForm } from "../../blocks/forms";
+import { OpeningBookList } from "../../blocks/lists";
+import { SwitchField } from "../../design-system/components/forms";
+import { IconAction } from "../../design-system/components/toolbars";
 import { downloadPgn } from "../../lib/pgnExport";
 import { useChessTokens } from "../../design-system/theme";
 import { analysisHandOffState, lineTreeOf } from "../../lib/analysisHandOff";
@@ -26,7 +25,6 @@ import { useOpeningBookModule } from "../board/core/useOpeningBookModule";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import AnalysisLoad from "../tools/analysis/AnalysisLoad";
 import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
-import OpeningBookList from "./OpeningBookList";
 import { openingArrowsOf } from "./openingArrows";
 
 /**
@@ -176,33 +174,21 @@ function OpeningsBoard() {
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>
               <CurrentOpening {...currentOpening} testId="openings-current" />
             </Box>
-            <Tooltip title={t("openings.controls.analysis")}>
-              <IconButton
-                size="small"
-                onClick={openInAnalysis}
-                aria-label={t("openings.controls.analysis")}
-                data-testid="openings-open-analysis"
-                sx={{ flexShrink: 0 }}
-              >
-                <AccountTreeRoundedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title={t("openings.controls.playFromHere")}>
-              <IconButton
-                size="small"
-                onClick={() =>
-                  navigate({
-                    pathname: "/engine/play",
-                    search: createSearchParams({ fen: core.fen }).toString(),
-                  })
-                }
-                aria-label={t("openings.controls.playFromHere")}
-                data-testid="openings-play-from-here"
-                sx={{ flexShrink: 0 }}
-              >
-                <SportsEsportsRoundedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            <IconAction label={t("openings.controls.analysis")} onClick={openInAnalysis} testId="openings-open-analysis">
+              <AccountTreeRoundedIcon fontSize="small" />
+            </IconAction>
+            <IconAction
+              label={t("openings.controls.playFromHere")}
+              onClick={() =>
+                navigate({
+                  pathname: "/engine/play",
+                  search: createSearchParams({ fen: core.fen }).toString(),
+                })
+              }
+              testId="openings-play-from-here"
+            >
+              <SportsEsportsRoundedIcon fontSize="small" />
+            </IconAction>
             <PlayToggleButton
               testId="openings-play"
               engineOn={session.engineOn}
@@ -210,17 +196,14 @@ function OpeningsBoard() {
               thinking={session.thinking}
               onToggle={session.togglePlaying}
             />
-            <FormControlLabel
-              sx={{ flexShrink: 0, marginInlineEnd: 0 }}
-              control={
-                <Switch
-                  size="small"
-                  checked={session.engineOn}
-                  data-testid="openings-setting-engine"
-                  onChange={(event) => session.setEngineOn(event.target.checked)}
-                />
-              }
+            <SwitchField
+              size="small"
               label={t("openings.engineSwitch")}
+              checked={session.engineOn}
+              onChange={session.setEngineOn}
+              // The board's tests reach the input inside the switch.
+              testIdOn="control"
+              testId="openings-setting-engine"
             />
           </>
         ),
@@ -241,6 +224,7 @@ function OpeningsBoard() {
                 // Like a drop, at any node: from an earlier position it branches.
                 onPlay={(san) => core.playVariation([san])}
                 onHover={book.setHoveredMove}
+                testId="openings-book"
               />
             ),
           },
@@ -249,18 +233,16 @@ function OpeningsBoard() {
             label: t("openings.tabs.moves"),
             content: (
               <>
-                <FormControlLabel
-                  sx={{ m: 0, px: 1 }}
-                  control={
-                    <Switch
-                      size="small"
-                      checked={showArrows}
-                      data-testid="openings-arrows"
-                      onChange={(event) => setShowArrows(event.target.checked)}
-                    />
-                  }
-                  label={t("analysis.settings.arrows")}
-                />
+                <Box sx={{ px: 1 }}>
+                  <SwitchField
+                    size="small"
+                    label={t("analysis.settings.arrows")}
+                    checked={showArrows}
+                    onChange={setShowArrows}
+                    testIdOn="control"
+                    testId="openings-arrows"
+                  />
+                </Box>
                 {explorer.moves}
               </>
             ),
