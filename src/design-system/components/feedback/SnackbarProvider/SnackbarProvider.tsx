@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useReducer, useRef, type ReactNode, type SyntheticEvent } from "react";
+import { useCallback, useMemo, useReducer, useRef, type MouseEvent, type ReactNode, type SyntheticEvent } from "react";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Snackbar, { type SnackbarCloseReason } from "@mui/material/Snackbar";
@@ -52,8 +52,12 @@ function SnackbarProvider({ children, testId = "app-snackbar" }: SnackbarProvide
       <Button
         color="inherit"
         size="small"
-        data-testid={`${id}-action`}
-        onClick={() => {
+        href={action.href}
+        data-testid={action.testId ?? `${id}-action`}
+        onClick={(event: MouseEvent) => {
+          // A link's modified click (a new tab, a new window) is the browser's; a plain one is the caller's.
+          if (action.href !== undefined && (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)) return;
+          event.preventDefault();
           action.onClick();
           close();
         }}

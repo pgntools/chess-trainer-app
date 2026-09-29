@@ -20,8 +20,8 @@ import { loadSavedRepertoires, saveRepertoire } from "../../lib/savedRepertoireS
 import {
   estimatedGamePgnBytes,
   estimatedPayloadBytes,
-  formatBytes,
 } from "../../lib/storageDiagnostics";
+import { formatBytes } from "../../lib/formatBytes";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { expectNoAxeViolations } from "../../test/axe";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";

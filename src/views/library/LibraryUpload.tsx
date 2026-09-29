@@ -17,6 +17,7 @@ import {
 } from "../../lib/libraryCollections";
 import { PgnInput } from "../../blocks/forms";
 import { FolderPicker } from "../../blocks/lists";
+import { LoadingLine } from "../../design-system/components/states";
 import { RightPanel } from "../main/rightPanel";
 import ImportOptionsDialog from "./ImportOptionsDialog";
 import LibraryMiss from "./LibraryMiss";
@@ -293,11 +294,7 @@ function LibraryUploadRoute() {
   const state = useCollectionSummary(into ?? undefined);
   const folders = useLibraryFolders();
   const { t } = useTranslation();
-  const loading = (
-    <Typography data-testid="library-loading" sx={{ color: "text.secondary", p: 2 }}>
-      {t("library.table.loading")}
-    </Typography>
-  );
+  const loading = <LoadingLine testId="library-loading">{t("library.table.loading")}</LoadingLine>;
   if (into === null) {
     if (folder === null) return <LibraryUpload />;
     if (folders === undefined) return loading;

@@ -47,6 +47,14 @@ export type DataTablePicks<R> = {
   selectAllLabel: string;
   /** A row checkbox's accessible name — the row's own ("Pick game 12"). */
   pickLabel: (row: R) => string;
+  /**
+   * The select-all's and a row checkbox's own test ids (CTA-113), for a
+   * screen whose tests named them before it moved onto this table (a
+   * collection's `library-picks-select-all`, `library-picks-row-<n>`).
+   * Absent, `-select-all` and `-pick-<id>` under the table's `testId`.
+   */
+  selectAllTestId?: string;
+  pickTestId?: (row: R) => string;
 };
 
 /**
@@ -154,6 +162,12 @@ export type DataTableBaseProps<R, C extends string = string> = {
    */
   rowTestId?: (row: R) => string;
   linkTestId?: (row: R) => string;
+  /**
+   * The row link's accessible name, where the cell's words alone would not
+   * tell one row from another (CTA-113: a collection's White cell, named by
+   * the whole game). Absent, the link is named by its content.
+   */
+  rowLinkLabel?: (row: R) => string;
   /** The rows are still being read: one busy row under the header, in place of the rows. */
   loading?: boolean;
   /** "Reading…". */
@@ -246,6 +260,7 @@ function DataTable<R, C extends string = string>({
   tree,
   rowTestId,
   linkTestId,
+  rowLinkLabel,
   loading = false,
   loadingLabel,
   emptyLabel,
@@ -318,7 +333,7 @@ function DataTable<R, C extends string = string>({
   const name: TableName = caption !== undefined ? { caption } : { ariaLabel: ariaLabel ?? "" };
 
   /** A cell's content — as it is, or the row's real link (for the keyboard, a middle click, a new tab). */
-  const cellContent = (content: ReactNode, link: LinkTarget | undefined, linkTest: string) =>
+  const cellContent = (content: ReactNode, link: LinkTarget | undefined, linkTest: string, linkLabel?: string) =>
     link === undefined ? (
       content
     ) : (
@@ -328,6 +343,7 @@ function DataTable<R, C extends string = string>({
         {...{ [DATA_ROW_LINK]: "" }}
         onClick={(event: MouseEvent) => event.stopPropagation()}
         data-testid={linkTest}
+        aria-label={linkLabel}
         sx={(theme) => ({
           color: "inherit",
           textDecoration: "none",
@@ -368,7 +384,7 @@ function DataTable<R, C extends string = string>({
                 picked={pickedCount}
                 onToggleAll={toggleAll}
                 label={picks.selectAllLabel}
-                testId={`${testId}-select-all`}
+                testId={picks.selectAllTestId ?? `${testId}-select-all`}
               />
             )}
             {columns.map((column) =>
@@ -434,7 +450,7 @@ function DataTable<R, C extends string = string>({
                       checked={isPicked}
                       onToggle={() => togglePick(id)}
                       label={picks.pickLabel(row)}
-                      testId={`${testId}-pick-${id}`}
+                      testId={picks.pickTestId?.(row) ?? `${testId}-pick-${id}`}
                     />
                   )}
                   {note !== undefined && (
@@ -446,6 +462,7 @@ function DataTable<R, C extends string = string>({
                     const content = column.render(row);
                     const link = linked === column.id && rowLink !== undefined ? rowLink(row) : undefined;
                     const linkTest = linkTestId?.(row) ?? `${testId}-link-${id}`;
+                    const linkLabel = link === undefined ? undefined : rowLinkLabel?.(row);
                     const open = tree?.open(row);
                     return (
                       <TableCell
@@ -471,10 +488,10 @@ function DataTable<R, C extends string = string>({
                                 testId={tree.toggleTestId?.(row) ?? `${rowTest}-toggle`}
                               />
                             )}
-                            {cellContent(content, link, linkTest)}
+                            {cellContent(content, link, linkTest, linkLabel)}
                           </Box>
                         ) : (
-                          cellContent(content, link, linkTest)
+                          cellContent(content, link, linkTest, linkLabel)
                         )}
                       </TableCell>
                     );

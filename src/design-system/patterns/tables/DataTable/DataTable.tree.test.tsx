@@ -86,3 +86,35 @@ describe("DataTable — tree rows (CTA-113)", () => {
     expect(onRowClick).toHaveBeenCalledWith(ROWS[0]);
   });
 });
+
+describe("DataTable — the picks' and the link's own ids and name (CTA-113)", () => {
+  it("puts the caller's test ids on select-all and each pick, and names a row's link by the caller's words", async () => {
+    const onChange = vi.fn();
+    render(
+      <DataTable<Row, "name" | "games">
+        columns={COLUMNS}
+        rows={ROWS}
+        rowId={(row) => row.id}
+        emptyLabel="Nothing"
+        ariaLabel="Games"
+        picks={{
+          picked: new Set(["loose"]),
+          onChange,
+          selectAllLabel: "Select all",
+          pickLabel: (row) => `Pick ${row.name}`,
+          selectAllTestId: "mine-select-all",
+          pickTestId: (row) => `mine-row-${row.id}`,
+        }}
+        hint="Tick a row to pick it"
+        rowLink={(row) => ({ href: `/g/${row.id}` })}
+        rowLinkLabel={(row) => `${row.name}, ${row.games} games`}
+        testId="probe"
+      />,
+    );
+    expect(within(screen.getByTestId("mine-row-loose")).getByRole("checkbox")).toBeChecked();
+    expect(screen.getByRole("link", { name: "Sicilian, 8 games" })).toHaveAttribute("href", "/g/sicilian");
+    await expectNoAxeViolations(screen.getByTestId("probe"));
+    await userEvent.setup().click(within(screen.getByTestId("mine-select-all")).getByRole("checkbox"));
+    expect(onChange).toHaveBeenCalledWith(new Set(ROWS.map((row) => row.id)));
+  });
+});

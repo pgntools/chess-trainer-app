@@ -58,6 +58,18 @@ const gallery: GalleryModule = {
         />
       ),
     },
+    {
+      name: "Beside a table — no select-all of its own (CTA-113, a collection's games)",
+      render: () => (
+        <SelectionBar
+          count={3}
+          countLabel="3 picked"
+          onClear={() => {}}
+          clearLabel="Clear the picks"
+          testId="gallery-selection-table"
+        />
+      ),
+    },
   ],
 };
 

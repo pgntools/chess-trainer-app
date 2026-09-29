@@ -48,12 +48,12 @@ const gallery: GalleryModule = {
         ]),
     },
     {
-      name: "With an action, 10 s — the collection's Analyse notice",
+      name: "With an action that is a link (href), 10 s — the collection's Analyse notice",
       render: () =>
         buttons([
           {
             name: "Analyse 12 games",
-            message: { message: "12 games saved to Saved analyses.", severity: "success", duration: 10000, action: { label: "Open", onClick: () => {} } },
+            message: { message: "12 games saved to Saved analyses.", severity: "success", duration: 10000, action: { label: "Open", onClick: () => {}, href: "#saved-analyses" } },
           },
         ]),
     },

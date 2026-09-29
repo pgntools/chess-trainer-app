@@ -1021,6 +1021,8 @@ const en = {
       open: "Explore {{eco}} in the Openings explorer",
     },
     book: {
+      /** The list's accessible name (CTA-113). */
+      label: "Book moves",
       /** The explorer lists only moves the book names — this when it has none. */
       empty: "No known continuations from here.",
       /** Above the list — what a click on a row does. */
@@ -1114,6 +1116,8 @@ const en = {
     /** The table screen — `/library/<collection>`. */
     table: {
       back: "All collections",
+      /** The games table's accessible name (CTA-113). */
+      label: "Games",
       filter: "Filter games",
       result: "Result",
       anyResult: "Any result",
@@ -1219,6 +1223,7 @@ const en = {
         save: "Save tree as PGN",
         saveDialog: {
           title: "Should we add games number as tag?",
+          mode: "The games' counts",
           no: "No",
           tags: "Add tags",
           games: "\"games\" tag",

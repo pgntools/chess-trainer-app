@@ -96,24 +96,6 @@ const measure = (value: unknown, seen: Set<object>): number => {
  */
 export const estimatedPayloadBytes = (value: unknown): number => measure(value, new Set());
 
-const UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
-
-/**
- * A byte count as a person reads it: `512 B`, `23.4 KB`, `234 MB`, `2 GB`.
- * Bytes are integers; past them one decimal is plenty, and a three-digit
- * figure needs none.
- */
-export const formatBytes = (bytes: number): string => {
-  let value = Math.max(0, bytes);
-  let unit = 0;
-  while (value >= 1024 && unit < UNITS.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  const text = unit === 0 || value >= 100 ? String(Math.round(value)) : value.toFixed(1);
-  return `${text} ${UNITS[unit]}`;
-};
-
 /** What the browser reports about this origin's storage. Every field is an **estimate**. */
 export type BrowserStorageEstimate = {
   /** The whole origin's usage. */

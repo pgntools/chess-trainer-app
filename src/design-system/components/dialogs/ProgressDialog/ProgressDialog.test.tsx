@@ -32,6 +32,24 @@ describe("ProgressDialog", () => {
     expect(screen.getByTestId("probe-caption")).toHaveTextContent("1 of 4");
   });
 
+  it("takes the bar's and the caption's own test ids (CTA-113)", () => {
+    render(
+      <ProgressDialog
+        open
+        title="Importing"
+        progress={{ done: 1, total: 4 }}
+        caption="1 of 4"
+        cancelLabel="Cancel"
+        onCancel={() => {}}
+        testId="probe"
+        barTestId="mine-bar"
+        captionTestId="mine-caption"
+      />,
+    );
+    expect(screen.getByTestId("mine-bar")).toHaveAttribute("aria-valuenow", "25");
+    expect(screen.getByTestId("mine-caption")).toHaveTextContent("1 of 4");
+  });
+
   it("draws an indeterminate bar before the first report", () => {
     render(<ProgressDialog open title="Importing" cancelLabel="Cancel" onCancel={() => {}} testId="probe" />);
     expect(screen.getByTestId("probe-progress")).not.toHaveAttribute("aria-valuenow");

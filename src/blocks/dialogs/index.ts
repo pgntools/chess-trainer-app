@@ -4,8 +4,10 @@
  * data (an import's zip and choices), each a `BaseDialog` from the design
  * system. They take `dialogProps`, so the gallery opens them in a frame.
  */
+export * from "./CollectionImportDialog";
 export * from "./FolderDeleteDialog";
 export * from "./FolderMoveDialog";
 export * from "./FolderNameDialog";
 export * from "./ImportDialog";
 export * from "./IncompatibleImportDialog";
+export * from "./OpeningTreePgnDialog";

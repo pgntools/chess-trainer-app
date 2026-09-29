@@ -57,10 +57,15 @@ describe("the migrated screens' outlines (CTA-112)", () => {
     ["/settings/storage", "Settings"],
     ["/settings/appearance", "Settings"],
     // CTA-113: the rest of the app.
+    ["/", "Get started"],
     ["/tools/analysis", "Analysis Board"],
     ["/tools/analysis/saved", "Saved analyses"],
     ["/repertoires", "Repertoires"],
     ["/repertoires/new", "Add a repertoire"],
+    ["/openings", "Openings"],
+    ["/library", "Library"],
+    ["/library/new", "Add a collection"],
+    ["/library/capablanca", "Capablanca"],
   ])(
     "%s has one h1, “%s”, an outline with no skipped level, and passes axe's page rules",
     async (path, h1) => {

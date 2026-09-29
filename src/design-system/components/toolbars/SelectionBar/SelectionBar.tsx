@@ -7,14 +7,24 @@ import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 
 import { nativeIndeterminate } from "../../a11y";
 
-export type SelectionBarProps = {
-  /** Every row select-all covers is picked. */
-  checked: boolean;
-  /** Some, not all, are — the tri-state's middle. */
-  indeterminate: boolean;
-  onToggleAll: () => void;
-  /** The select-all box's name and tooltip ("Select all"). */
-  selectAllLabel: string;
+/**
+ * The bar's select-all — all four together, or none (CTA-113): a table whose
+ * select-all is in its own header (`DataTable`) keeps the bar for the chip
+ * and the actions only.
+ */
+type SelectionBarSelectAll =
+  | {
+      /** Every row select-all covers is picked. */
+      checked: boolean;
+      /** Some, not all, are — the tri-state's middle. */
+      indeterminate: boolean;
+      onToggleAll: () => void;
+      /** The select-all box's name and tooltip ("Select all"). */
+      selectAllLabel: string;
+    }
+  | { checked?: undefined; indeterminate?: undefined; onToggleAll?: undefined; selectAllLabel?: undefined };
+
+export type SelectionBarProps = SelectionBarSelectAll & {
   /** How many are picked, over everything the caller keeps picked; the chip shows while there are any. */
   count: number;
   /** The chip's words ("3 picked"). */
@@ -38,7 +48,8 @@ export type SelectionBarProps = {
  * bar: a tri-state select-all (what it covers is the caller's — a folder,
  * the rows a filter leaves), a chip counting the picks that clears them, and
  * the caller's actions. A table's select-all lives in its header instead
- * (`DataTable`); this bar is for a list or a grid of cards, which has none.
+ * (`DataTable`): beside a table the bar leaves its own out (no `onToggleAll`)
+ * and is the chip and the actions only — a collection's games.
  */
 function SelectionBar({
   checked,
@@ -55,16 +66,18 @@ function SelectionBar({
 }: SelectionBarProps) {
   return (
     <Box data-testid={rootTestId} sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
-      <Tooltip title={selectAllLabel}>
-        <Checkbox
-          size="small"
-          checked={checked}
-          indeterminate={indeterminate}
-          onChange={onToggleAll}
-          slotProps={{ input: { "aria-label": selectAllLabel, ref: nativeIndeterminate(indeterminate) } as object }}
-          data-testid={`${testId}-select-all`}
-        />
-      </Tooltip>
+      {onToggleAll !== undefined && (
+        <Tooltip title={selectAllLabel}>
+          <Checkbox
+            size="small"
+            checked={checked}
+            indeterminate={indeterminate}
+            onChange={onToggleAll}
+            slotProps={{ input: { "aria-label": selectAllLabel, ref: nativeIndeterminate(indeterminate) } as object }}
+            data-testid={`${testId}-select-all`}
+          />
+        </Tooltip>
+      )}
       {count > 0 && (
         <Chip
           size="small"

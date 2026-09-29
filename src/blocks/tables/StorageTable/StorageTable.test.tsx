@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
 import i18n from "../../../i18n";
-import { formatBytes } from "../../../lib/storageDiagnostics";
+import { formatBytes } from "../../../lib/formatBytes";
 import { expectNoAxeViolations } from "../../../test/axe";
 import { BROWSER, BROWSER_WITHOUT_INDEXEDDB, CATEGORIES, READING } from "./fixtures";
 import StorageTable, { type StorageTableProps } from "./StorageTable";

@@ -1,12 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import IconButton from "@mui/material/IconButton";
-import Switch from "@mui/material/Switch";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import NavigateBeforeRoundedIcon from "@mui/icons-material/NavigateBeforeRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
@@ -18,6 +13,9 @@ import type { ChessboardOptions } from "react-chessboard";
 
 import { ChangesStrip, CurrentOpening, EngineThinking, GameInfo, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
 import { AnalysisEngineForm } from "../../blocks/forms";
+import { SwitchField } from "../../design-system/components/forms";
+import { BackButton } from "../../design-system/components/navigation";
+import { IconAction, ToggleIconAction } from "../../design-system/components/toolbars";
 import { downloadPgn } from "../../lib/pgnExport";
 import { indexGame } from "../../lib/collectionIndex";
 import { initialPlyOf } from "../../lib/gameNavigation";
@@ -235,18 +233,11 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
       panel={{
         header: (
           <>
-            <Tooltip title={t("library.game.back", { name: collection.name })}>
-              <IconButton
-                size="small"
-                component={RouterLink}
-                to={tablePath}
-                aria-label={t("library.game.back", { name: collection.name })}
-                data-testid="library-game-back"
-                sx={{ flexShrink: 0 }}
-              >
-                <ArrowBackRoundedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            <BackButton
+              label={t("library.game.back", { name: collection.name })}
+              link={{ component: RouterLink, to: tablePath }}
+              testId="library-game-back"
+            />
             {/* The players live on the board's plates (CTA-105); the header's
                 own line is the caption. */}
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>
@@ -263,52 +254,33 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
               </Typography>
               <CurrentOpening {...currentOpening} testId="library-game-current-opening" />
             </Box>
-            <Tooltip title={t("library.game.previous")}>
-              <span>
-                <IconButton
-                  size="small"
-                  component={RouterLink}
-                  to={gamePath(number - 1)}
-                  state={location.state}
-                  disabled={number <= 1}
-                  aria-label={t("library.game.previous")}
-                  data-testid="library-game-previous"
-                >
-                  <NavigateBeforeRoundedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title={t("library.game.next")}>
-              <span>
-                <IconButton
-                  size="small"
-                  component={RouterLink}
-                  to={gamePath(number + 1)}
-                  state={location.state}
-                  disabled={number >= collection.games.length}
-                  aria-label={t("library.game.next")}
-                  data-testid="library-game-next"
-                >
-                  <NavigateNextRoundedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title={saveLabel}>
-              <span>
-                <IconButton
-                  size="small"
-                  disabled={!session.changed}
-                  color={session.changed ? "primary" : "default"}
-                  onClick={() => setChangesOpen((open) => !open)}
-                  aria-label={saveLabel}
-                  aria-pressed={session.changed ? changesOpen : undefined}
-                  data-testid="library-game-save"
-                  sx={{ flexShrink: 0 }}
-                >
-                  <SaveRoundedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
+            <IconAction
+              label={t("library.game.previous")}
+              link={{ component: RouterLink, to: gamePath(number - 1), state: location.state }}
+              disabled={number <= 1}
+              testId="library-game-previous"
+            >
+              <NavigateBeforeRoundedIcon fontSize="small" />
+            </IconAction>
+            <IconAction
+              label={t("library.game.next")}
+              link={{ component: RouterLink, to: gamePath(number + 1), state: location.state }}
+              disabled={number >= collection.games.length}
+              testId="library-game-next"
+            >
+              <NavigateNextRoundedIcon fontSize="small" />
+            </IconAction>
+            <ToggleIconAction
+              label={saveLabel}
+              onClick={() => setChangesOpen((open) => !open)}
+              disabled={!session.changed}
+              active={session.changed}
+              // Pressed while its changes strip is open.
+              pressed={session.changed ? changesOpen : null}
+              testId="library-game-save"
+            >
+              <SaveRoundedIcon fontSize="small" />
+            </ToggleIconAction>
             <PlayToggleButton
               testId="library-game-play"
               engineOn={session.engineOn}
@@ -316,17 +288,14 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
               thinking={session.thinking}
               onToggle={session.togglePlaying}
             />
-            <FormControlLabel
-              sx={{ flexShrink: 0, marginInlineEnd: 0 }}
-              control={
-                <Switch
-                  size="small"
-                  checked={session.engineOn}
-                  data-testid="library-game-setting-engine"
-                  onChange={(event) => session.setEngineOn(event.target.checked)}
-                />
-              }
+            <SwitchField
+              size="small"
               label={t("library.game.engineSwitch")}
+              checked={session.engineOn}
+              onChange={session.setEngineOn}
+              // The board's tests reach the input inside the switch.
+              testIdOn="control"
+              testId="library-game-setting-engine"
             />
           </>
         ),
@@ -343,18 +312,16 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
             label: t("library.game.tabs.moves"),
             content: (
               <>
-                <FormControlLabel
-                  sx={{ m: 0, px: 1 }}
-                  control={
-                    <Switch
-                      size="small"
-                      checked={showArrows}
-                      data-testid="library-game-arrows"
-                      onChange={(event) => setShowArrows(event.target.checked)}
-                    />
-                  }
-                  label={t("library.game.arrows")}
-                />
+                <Box sx={{ px: 1 }}>
+                  <SwitchField
+                    size="small"
+                    label={t("library.game.arrows")}
+                    checked={showArrows}
+                    onChange={setShowArrows}
+                    testIdOn="control"
+                    testId="library-game-arrows"
+                  />
+                </Box>
                 {explorer.moves}
               </>
             ),

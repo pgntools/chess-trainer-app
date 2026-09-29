@@ -187,12 +187,13 @@ const drag = (from: string, to: string) => {
   });
 };
 
-/** The table's rows, as their `#` numbers, in the order on screen. */
+/** The table's rows, as their `#` numbers, in the order on screen — the empty row (a table row since CTA-113) is none. */
 const rowNumbers = () =>
   within(screen.getByTestId("library-table"))
     .getAllByRole("row")
-    .slice(1)
-    .map((row) => row.getAttribute("data-testid")?.replace("library-table-row-", ""));
+    .map((row) => row.getAttribute("data-testid") ?? "")
+    .filter((id) => id.startsWith("library-table-row-"))
+    .map((id) => id.replace("library-table-row-", ""));
 
 beforeEach(async () => {
   localStorage.clear();

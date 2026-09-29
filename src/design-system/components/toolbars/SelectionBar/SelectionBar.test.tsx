@@ -52,4 +52,13 @@ describe("SelectionBar", () => {
     expect(screen.queryByTestId("probe-selected-count")).toBeNull();
     expect(screen.getByTestId("elsewhere")).toBeInTheDocument();
   });
+
+  it("leaves its select-all out beside a table, whose header has one (CTA-113)", () => {
+    render(
+      <SelectionBar count={2} countLabel="2 picked" onClear={() => {}} clearLabel="Clear the picks" actions={<button>Download</button>} testId="probe" />,
+    );
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.getByTestId("probe-selected-count")).toHaveTextContent("2 picked");
+    expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
+  });
 });

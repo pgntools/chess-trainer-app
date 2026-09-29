@@ -1,10 +1,8 @@
 import { useMemo } from "react";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Typography from "@mui/material/Typography";
 import { Link as RouterLink, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
+import { LoadingLine, MissState } from "../../design-system/components/states";
 import type { GameTree } from "../../lib/gameTree";
 import type { LibraryCollection } from "../../lib/libraryCollections";
 import { parsePgnTree } from "../../lib/pgn";
@@ -49,26 +47,19 @@ function LibraryGameScreen() {
   }, [pgn]);
 
   if (state.status === "loading") {
-    return (
-      <Typography data-testid="library-loading" sx={{ color: "text.secondary", p: 2 }}>
-        {t("library.table.loading")}
-      </Typography>
-    );
+    return <LoadingLine testId="library-loading">{t("library.table.loading")}</LoadingLine>;
   }
   if (collection === undefined) return <LibraryMiss what="collection" />;
   if (tree === undefined) return <LibraryMiss what="game" />;
   if (tree === null) {
     return (
-      <Box data-testid="library-game-unreadable" sx={{ p: 2, display: "grid", gap: 2, justifyItems: "start" }}>
-        <Typography>{t("library.game.unreadable")}</Typography>
-        <Button
-          variant="outlined"
-          component={RouterLink}
-          to={`/library/${encodeURIComponent(collection.id)}`}
-        >
-          {t("library.game.back", { name: collection.name })}
-        </Button>
-      </Box>
+      <MissState
+        backLabel={t("library.game.back", { name: collection.name })}
+        backLink={{ component: RouterLink, to: `/library/${encodeURIComponent(collection.id)}` }}
+        testId="library-game-unreadable"
+      >
+        {t("library.game.unreadable")}
+      </MissState>
     );
   }
   return (

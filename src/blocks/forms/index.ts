@@ -5,6 +5,7 @@
  * filters, an export's categories).
  */
 export * from "./AnalysisEngineForm";
+export * from "./CollectionFilters";
 export * from "./ArrowSettingsFields";
 export * from "./EngineSettingsForm";
 export * from "./FenInput";

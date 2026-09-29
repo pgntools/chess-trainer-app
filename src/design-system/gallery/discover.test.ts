@@ -62,7 +62,7 @@ describe("discoverPatterns / discoverTiers", () => {
   it("finds every pattern section's patterns, in the registry's order", () => {
     const sections = discoverPatterns();
     expect(sections.map((section) => section.id)).toEqual(PATTERN_SECTIONS.map((section) => section.id));
-    expect(sections.flatMap((section) => section.modules.map((entry) => entry.id))).toEqual(["DataTable", "TreeView"]);
+    expect(sections.flatMap((section) => section.modules.map((entry) => entry.id))).toEqual(["DataTable", "TreeView", "UploadPanel"]);
   });
 
   it("is Base, then Patterns — Blocks is the dev route's to add", () => {
