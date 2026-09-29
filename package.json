@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "wirepgn": "node scripts/wirepgn.js",
+    "theme:bootstrap": "node scripts/theme-bootstrap.js",
     "test": "vitest",
     "test:run": "vitest run --maxWorkers 3"
   },
