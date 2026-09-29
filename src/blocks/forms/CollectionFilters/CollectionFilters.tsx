@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+// eslint-disable-next-line no-restricted-imports -- migration.md §4.4: the opening box is a free-text single Autocomplete; SelectAutocomplete picks one listed value, ChipsAutocomplete many
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";

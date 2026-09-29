@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+// eslint-disable-next-line no-restricted-imports -- migration.md §4.4: two thumbs on one span; SliderField is one value
 import Slider from "@mui/material/Slider";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";

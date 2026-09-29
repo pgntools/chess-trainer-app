@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 coverage
+# The browser accessibility pass (CTA-116): its reports, traces and seeded state.
+a11y-report
+test-results
 *.local
 
 # Editor directories and files

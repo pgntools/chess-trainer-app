@@ -62,7 +62,13 @@ describe("discoverPatterns / discoverTiers", () => {
   it("finds every pattern section's patterns, in the registry's order", () => {
     const sections = discoverPatterns();
     expect(sections.map((section) => section.id)).toEqual(PATTERN_SECTIONS.map((section) => section.id));
-    expect(sections.flatMap((section) => section.modules.map((entry) => entry.id))).toEqual(["DataTable", "TreeView", "UploadPanel"]);
+    // Every pattern that has a gallery, and no other — read off the disk the
+    // way the gallery does, not listed by name (CTA-116), so a new pattern
+    // needs no edit here.
+    const onDisk = Object.keys(import.meta.glob("../patterns/*/*/*.gallery.tsx")).map((path) => path.split("/").slice(-3, -1).join("/"));
+    const found = sections.flatMap((section) => section.modules.map((entry) => `${section.id}/${entry.id}`));
+    expect(onDisk.length).toBeGreaterThan(0);
+    expect([...found].sort()).toEqual([...onDisk].sort());
   });
 
   it("is Base, then Patterns — Blocks is the dev route's to add", () => {

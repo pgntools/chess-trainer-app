@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import Checkbox from "@mui/material/Checkbox";
@@ -15,6 +15,7 @@ import {
   type Analysis,
 } from "../../lib/engineAnalysis";
 import { maskSanLine, type PieceMask } from "../../lib/pieceMask";
+import { fitWholeMoves } from "./fitWholeMoves";
 import { moveSx, sanTokenSx } from "./moveTokenSx";
 
 /**
@@ -33,11 +34,12 @@ import { moveSx, sanTokenSx } from "./moveTokenSx";
  * A variation is printed one token per move, the move's number inside the token
  * the way the tree viewer's tokens carry theirs (`VariationLine.tsx`) and a
  * plain space between, so the line reads `23. Nf3 Qe7 24. Rd1`. Collapsed —
- * the default — the row is one line: the score plus as many moves as fit, cut
- * at the edge with an ellipsis by CSS (`white-space: nowrap` +
- * `overflow: hidden` + `text-overflow: ellipsis`), never by counting moves,
- * which would mean measuring the panel (CTA-56, lichess the reference).
- * A chevron at the row's end expands that row to the whole PV, wrapping
+ * the default — the row is one line: the score plus as many moves as fit
+ * **whole**, an ellipsis after the last (CTA-116; CTA-56 had CSS clip it at the
+ * edge, which cut the last move to 16–23 px of a button, under WCAG 2.5.8's
+ * 24). The row is measured after layout and the moves that do not fit are
+ * taken out of the layout, so they leave the tab order too
+ * (`fitWholeMoves.ts`). A chevron at the row's end expands that row to the whole PV, wrapping
  * again; clicking it once more collapses it — lichess's disclosure arrow,
  * so the toggle is an explicit control beside the moves and the score stays
  * the plain text it always was. Rows expand independently, and an expansion
@@ -198,6 +200,106 @@ function PendingRow({ rank, text }: { rank: number; text?: string }) {
         }}
       />
     </Box>
+  );
+}
+
+/**
+ * One line's moves (CTA-116): the tokens of a variation in a span that, while
+ * the row is collapsed, is fitted to the panel — it stops at the last move
+ * that fits **whole**, an ellipsis after it, so every move in sight is a full
+ * target and a cut-off one is not left in the tab order (`fitWholeMoves.ts`
+ * has the measuring; the DOM does it, once per commit, before paint). Expanded,
+ * the span wraps and every move shows.
+ *
+ * Every move renders in both states and in a browser only the fitting
+ * differs; `data-expanded` is what a test can read where nothing is laid out.
+ */
+function VariationMoves({
+  rank,
+  expanded,
+  moves,
+  onSelectMove,
+}: {
+  rank: number;
+  expanded: boolean;
+  /** The printed text of each move (numbered, maybe masked), and its true SAN. */
+  moves: readonly { text: string; san: string }[];
+  onSelectMove?: (san: readonly string[]) => void;
+}) {
+  const box = useRef<HTMLSpanElement>(null);
+
+  // After every commit of the row, before paint: the moves or the state changed.
+  useLayoutEffect(() => {
+    if (box.current !== null) fitWholeMoves(box.current);
+  });
+
+  // The row's width changes without the row rendering (the panel resized, the
+  // score beside it grew) and so does a move's when the monospace font lands.
+  useEffect(() => {
+    const element = box.current;
+    if (element === null) return;
+    const refit = () => fitWholeMoves(element);
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(refit);
+    observer?.observe(element);
+    document.fonts?.addEventListener("loadingdone", refit);
+    return () => {
+      observer?.disconnect();
+      document.fonts?.removeEventListener("loadingdone", refit);
+    };
+  }, []);
+
+  return (
+    <Typography
+      component="span"
+      ref={box}
+      dir="ltr"
+      data-testid={`variation-${rank}-line`}
+      data-expanded={expanded}
+      sx={{
+        ...sanSx,
+        color: "text.secondary",
+        minWidth: 0,
+        flexGrow: 1,
+        ...(expanded ? {} : { whiteSpace: "nowrap", overflow: "hidden" }),
+      }}
+    >
+      {moves.map(({ text, san }, index) => (
+        <Fragment key={index}>
+          {/*
+            A plain space between the tokens, so the line reads as one
+            sentence and wraps at the panel's edge.
+          */}
+          {index > 0 && " "}
+          {onSelectMove === undefined ? (
+            <span data-move="">{text}</span>
+          ) : (
+            <ButtonBase
+              dir="ltr"
+              data-move=""
+              data-testid={`variation-${rank}-move-${index + 1}`}
+              data-san={san}
+              onClick={() => onSelectMove(moves.slice(0, index + 1).map((move) => move.san))}
+              // A pointer target of 24 px at least (CTA-113): a move was 17 px tall.
+              sx={{ ...moveSx, ...sanTokenSx, minHeight: MIN_TARGET_PX, minWidth: MIN_TARGET_PX, verticalAlign: "baseline" }}
+            >
+              {text}
+            </ButtonBase>
+          )}
+        </Fragment>
+      ))}
+      {/*
+        The cut, marked — shown by `fitWholeMoves` only where moves were left
+        out. Its glyph is generated content, so the line's text stays its moves.
+      */}
+      <Box
+        component="span"
+        aria-hidden="true"
+        data-more=""
+        data-testid={`variation-${rank}-more`}
+        style={{ display: "none" }}
+        sx={{ "&::before": { content: '"…"' } }}
+      />
+    </Typography>
   );
 }
 
@@ -439,51 +541,12 @@ function BestVariations({
                   `data-expanded` is the state a test can read: jsdom has no
                   line boxes to observe truncation with.
                 */}
-                <Typography
-                  component="span"
-                  dir="ltr"
-                  data-testid={`variation-${line.multipv}-line`}
-                  data-expanded={isExpanded}
-                  sx={{
-                    ...sanSx,
-                    color: "text.secondary",
-                    minWidth: 0,
-                    flexGrow: 1,
-                    ...(isExpanded
-                      ? {}
-                      : {
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }),
-                  }}
-                >
-                  {display.map((san, index) => (
-                    <Fragment key={index}>
-                      {/*
-                        A plain space between the tokens, so the line reads as
-                        one sentence and wraps at the panel's edge.
-                      */}
-                      {index > 0 && " "}
-                      {onSelectMove === undefined ? (
-                        `${prefixes[index]}${san}`
-                      ) : (
-                        <ButtonBase
-                          dir="ltr"
-                          data-testid={`variation-${line.multipv}-move-${index + 1}`}
-                          data-san={line.san[index]}
-                          onClick={() =>
-                            onSelectMove(line.san.slice(0, index + 1))
-                          }
-                          // A pointer target of 24 px at least (CTA-113): a move was 17 px tall.
-                          sx={{ ...moveSx, ...sanTokenSx, minHeight: MIN_TARGET_PX, minWidth: MIN_TARGET_PX, verticalAlign: "baseline" }}
-                        >
-                          {`${prefixes[index]}${san}`}
-                        </ButtonBase>
-                      )}
-                    </Fragment>
-                  ))}
-                </Typography>
+                <VariationMoves
+                  rank={line.multipv}
+                  expanded={isExpanded}
+                  moves={display.map((san, index) => ({ text: `${prefixes[index]}${san}`, san: line.san[index] }))}
+                  onSelectMove={onSelectMove}
+                />
                 {/*
                   The disclosure arrow (CTA-56): lichess's expand icon, sitting
                   at the row's end so the toggle is an explicit control beside

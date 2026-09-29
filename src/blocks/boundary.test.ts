@@ -55,6 +55,51 @@ describe("the blocks' lint boundary", () => {
     expect(messages[0].message).toContain("LinkTarget");
   });
 
+  it("rejects the MUI atoms the design system wraps, naming what to use (CTA-116)", async () => {
+    // The lock is the screens' too (src/views/boundary.test.ts has every atom);
+    // here it is shown to survive the one config entry that also holds the
+    // blocks' own rules — a later entry replaces an earlier one.
+    const messages = await lint(
+      [
+        'import Dialog from "@mui/material/Dialog";',
+        'import Tooltip from "@mui/material/Tooltip";',
+        'import { Tabs } from "@mui/material";',
+        "export const used = [Dialog, Tooltip, Tabs];",
+      ].join("\n"),
+    );
+    expect(messages.map((message) => message.line)).toEqual([1, 2, 3]);
+    expect(messages[0].message).toContain("BaseDialog");
+    expect(messages[1].message).toContain("HintButton");
+    expect(messages[2].message).toContain("PanelTabs");
+    expect(messages[0].message).toContain("docs/design/hierarchy.md");
+  });
+
+  it("keeps the presentational rules beside the MUI lock in one file", async () => {
+    const messages = await lint(
+      [
+        'import Dialog from "@mui/material/Dialog";',
+        'import { useNavigate } from "react-router";',
+        'import { openDb } from "../../../lib/idb";',
+        'import EvalBar from "../../../views/shared/EvalBar";',
+        "export const used = [Dialog, useNavigate, openDb, EvalBar];",
+      ].join("\n"),
+    );
+    expect(messages.map((message) => message.line)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("allows a block to use the atoms the design system does not wrap", async () => {
+    const messages = await lint(
+      [
+        'import Box from "@mui/material/Box";',
+        'import Button from "@mui/material/Button";',
+        'import Chip from "@mui/material/Chip";',
+        'import DialogContentText from "@mui/material/DialogContentText";',
+        "export const used = [Box, Button, Chip, DialogContentText];",
+      ].join("\n"),
+    );
+    expect(messages).toEqual([]);
+  });
+
   it("allows src/lib's types and pure helpers, and every tier of the design system", async () => {
     const messages = await lint(
       [

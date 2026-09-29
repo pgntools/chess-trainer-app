@@ -19,6 +19,7 @@ This file is what every session needs. The rest is in `.claude/rules/`:
 | [`chessboard.md`](.claude/rules/chessboard.md) | always | the board: library conventions, the engine protocol, layout rules, testing, **the board core** (base hook, modules, shell and panel, adding a board) |
 | [`react-chessboard-options-api.md`](.claude/rules/react-chessboard-options-api.md), [`react-chessboard-types-and-helpers.md`](.claude/rules/react-chessboard-types-and-helpers.md) | always | the vendored `react-chessboard` reference |
 | the module files (table below), [`tree-views.md`](.claude/rules/tree-views.md), [`pgn-annotations.md`](.claude/rules/pgn-annotations.md), [`database.md`](.claude/rules/database.md) | when you work on their `paths:` | each module's whole reference |
+| [`browser-a11y.md`](.claude/rules/browser-a11y.md) | when you work on `e2e/`, `playwright.config.ts`, `eslint.config.js` or `ACCESSIBILITY.md` | the MUI lock and the browser accessibility pass (`yarn test:a11y`) |
 
 The full upstream `react-chessboard` docs and all 53 Storybook examples are
 vendored under [`docs/vendor/react-chessboard/`](docs/vendor/react-chessboard/).
@@ -34,7 +35,7 @@ Node comes from `fnm`, so run these from a shell where it is on `PATH`.
 | Dev server | `yarn dev` (a worktree gets its own port — see `.jst/bootstrap.sh`) |
 | Type-check + production build | `yarn build` |
 | Type-check only | `npx tsc -b` (add `--force` to bypass the incremental cache) |
-| Lint | `yarn lint` |
+| Lint — **a CI gate** (the tier import rules, the MUI lock, `jsx-a11y`) | `yarn lint` |
 | **Run the full test suite** | `yarn test:run` (at most 5 files at once — see below) |
 | **Run a single test file** | `npx vitest run <path>` — e.g. `npx vitest run src/theme/AppThemeWithLang.test.tsx` |
 | Run tests matching a name | `npx vitest run -t "<substring of the test name>"` |
@@ -42,6 +43,7 @@ Node comes from `fnm`, so run these from a shell where it is on `PATH`.
 | **Wire a PGN collection into the Library** | `node scripts/wirepgn.js path/to/file.pgn` (or `yarn wirepgn …`; `--list`, `--check`, `--rebuild`, `--remove <id>` — [`game-collections.md`](.claude/rules/game-collections.md) §3) |
 | **Scaffold a new theme** | `yarn theme:bootstrap --id <kebab-id> --name "<Name>"` (`--name-he`, `--from <theme>`, `--dry-run`, `--help`) — writes and registers it; then tune it in the dev-only theme editor, `/dev/theme-editor?theme=<id>` ([`CONTRIBUTING.md`](CONTRIBUTING.md#create-a-theme)) |
 | Coverage | `npx vitest run --coverage` |
+| **Browser accessibility pass** — every shipped route, seeded, under every theme × light / dark × English / Hebrew, against the production build (Playwright + axe, colour contrast and target size on; ~25 min; `npx playwright install chromium` once) | `yarn test:a11y` (`yarn test:a11y:quick` — the pull-request matrix, ~6 min; details in [`browser-a11y.md`](.claude/rules/browser-a11y.md)) |
 | **Audit a render for accessibility** | `await expectNoAxeViolations(element?)` in a test (`src/test/axe.ts`) — axe's WCAG 2.2 A / AA rules, a violation fails it; `stubReducedMotion()` (`src/test/reducedMotion.ts`) renders for a reader who asks for reduced motion |
 
 **Limit the workers to the machine.** At full parallelism the heavier screen
@@ -66,7 +68,7 @@ keyboard with `userEvent`, so a test that passes is one a screen reader could
 follow; `expectNoAxeViolations` audits a whole render
 ([`ACCESSIBILITY.md`](ACCESSIBILITY.md)).
 
-`npx knip` reports unused code. Expected in its output: the vendored stories,
+`npx knip` reports unused code (`knip.json` names the browser pass's specs as entries). Expected in its output: the vendored stories,
 the Stockfish worker, the stores' `settled…` / `delete…Db` helpers, which
 only `src/test/setup.ts` uses (through namespace imports knip does not
 follow), and the **public surface of the design system's tiers and of
@@ -112,6 +114,7 @@ so an export it uses can look unused — check `scripts/` before removing one.
 | `src/views/engine/`, `tools/analysis/`, `openings/`, `repertoires/`, `library/`, `settings/` | The module screens (table above). Each route renders a layout-only `…Main.tsx` wrapper. |
 | `src/views/dev/` | **The Development section** — dev-only, behind `routes.tsx`'s `devRoutes` (never in `dist/`): the gallery's route (`design/`) and the **theme editor** (`themeEditor/`, CTA-115 — every token of a theme edited against a live preview and contrast report, saved by download through `themes/codegen.ts`). |
 | `src/lib/` | Everything pure or storage: the game model and tree, PGN and FEN reading, the engine wrapper and score reading, the stores and records, the opening book. Named per module (table above); the shared core is below. |
+| `e2e/a11y/`, `playwright.config.ts` | **The browser accessibility pass** (CTA-116): the seed (`seedZip.ts`, put in through Settings → Import), the routes, the theme × scheme × language matrix, the checks, the allowlist of known gaps and the reflow measurement — Playwright over `vite preview`, kept out of Vitest. |
 
 The shared core of `src/lib/`: `gameModel.ts` (`Game`, one line), `gameTree.ts`
 (`GameTree`, and every pure edit of one), `pgn.ts` (`parsePgnGames`,
@@ -179,8 +182,14 @@ screens (src/views/)  →  blocks (src/blocks/)  →  patterns (design-system/pa
 Blocks are **presentational**: their rows, state and callbacks are props, a
 link a `LinkTarget` — never a store, IndexedDB or the router — so each is
 built and reviewed **in the gallery on fixtures first** (every state, every
-theme, RTL), then wired into its screen. `yarn lint` enforces the import rules.
-Every tier's house rules are one conventions test (`src/test/tierConventions.ts`).
+theme, RTL), then wired into its screen. `yarn lint` enforces the import rules —
+and, since CTA-116, **the MUI lock**: a screen or a block does not import the
+MUI atoms the design system wraps (`Dialog`, `Table*`, `Tabs`, `Switch`,
+`Snackbar`, `Alert`, `Tooltip`, `ToggleButton*`, `Breadcrumbs`, `Menu*`,
+`Pagination`, `Slider`, `Autocomplete`); the error names the component to use,
+and the five deliberate exceptions carry their reason on the line
+([`browser-a11y.md`](.claude/rules/browser-a11y.md) §1). `yarn lint` is a CI
+gate. Every tier's house rules are one conventions test (`src/test/tierConventions.ts`).
 
 ### The board is pure UI, composed from one core
 
@@ -242,7 +251,12 @@ gallery demo passes axe in every theme. `yarn lint` runs
 (CTA-112): every route's own title (its `handle.title`, the open record's
 name first through `usePageTitle`), the landmarks and a skip link, one `h1`
 (a screen's visible title declares itself with `useOwnPageHeading`), and the
-focus on a move to another screen. What automation cannot hear, a person
+focus on a move to another screen. **A real browser checks what jsdom cannot** (CTA-116, `yarn test:a11y`): every
+shipped route, seeded, under every theme × scheme × language against the
+production build, with axe's colour contrast and target size on — a violation
+fails it, but for one allowlist of known gaps that fails when an entry stops
+occurring; reflow at 320 px is measured. A new screen is a line in
+`e2e/a11y/routes.ts`. What automation cannot hear, a person
 checks with a screen reader per
 [`docs/design/screen-reader-testing.md`](docs/design/screen-reader-testing.md),
 with every module's migration.

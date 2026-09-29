@@ -20,6 +20,23 @@ Gallery: `/dev/design/toolbars`.
   inline-flex`, a bare `span`, none) and the two named helpers, `MapButton`
   and the Library's `Action`.
 
+## HintButton
+
+- **Purpose** — a text button with a hint (CTA-116): a small `Button` under a
+  tooltip that says what it does. Its visible words are its name (WCAG 2.5.3);
+  the hint **describes** it — the button is `aria-describedby` a hidden copy of
+  the hint, read after the name, and the tooltip is for the eyes. It always
+  sits in an inline-flex `span`, so a **disabled** one still shows its tooltip.
+- **Props** — `children` (the words), `hint`, `onClick?`, `link?` (a
+  `LinkTarget`), `variant?: "text" | "outlined" | "contained"` (default text),
+  `color?: "primary" | "success" | "error"`, `startIcon?`, `disabled?`, `busy?`
+  (`aria-busy`, and a hidden spinner in the icon's place), `testId`.
+- **Variations** — outlined, contained and success; disabled; busy; a link.
+- **Replaces** — the same composition written three times: a collection's
+  *Add games* (a link) and *Analyse* (disabled until something is picked, busy
+  while it runs), and the changes strip's *Update* and *Save as copy*. It is
+  why the MUI lock (`hierarchy.md`) needs no exception for a `Tooltip`.
+
 ## ToggleIconAction
 
 - **Purpose** — the board header's Save: primary and `aria-pressed` while

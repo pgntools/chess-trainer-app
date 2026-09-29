@@ -1,6 +1,8 @@
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
+// eslint-disable-next-line no-restricted-imports -- migration.md §4.4: the presets are a vertical list of named, exclusive choices; SideToggle is the sides alone
 import ToggleButton from "@mui/material/ToggleButton";
+// eslint-disable-next-line no-restricted-imports -- migration.md §4.4: as ToggleButton above
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
@@ -103,7 +105,6 @@ function MaskEditor({ mask, onMaskChange, notation, onNotationChange, showLines,
                 return (
                   <SelectField
                     key={type}
-                    fullWidth
                     label={pieceName(letter)}
                     value={mask[type]}
                     // Its own colour's six types, never the other's.

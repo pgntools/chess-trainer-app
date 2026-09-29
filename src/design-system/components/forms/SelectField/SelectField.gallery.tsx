@@ -1,3 +1,5 @@
+import Box from "@mui/material/Box";
+
 import type { GalleryModule } from "../../../gallery/types";
 import WithState from "../../../gallery/WithState";
 import SelectField from "./SelectField";
@@ -39,6 +41,27 @@ const gallery: GalleryModule = {
               fullWidth
               testId="gallery-select-result"
             />
+          )}
+        </WithState>
+      ),
+    },
+    {
+      name: "In a column narrower than its floor — it fits, it does not overflow",
+      render: () => (
+        <WithState initial="1-0">
+          {(value, setValue) => (
+            <Box sx={{ width: 120, outline: "1px dashed", outlineColor: "divider" }}>
+              <SelectField
+                label="Result"
+                value={value}
+                onChange={setValue}
+                options={[
+                  { value: "1-0", label: "White won" },
+                  { value: "0-1", label: "Black won" },
+                ]}
+                testId="gallery-select-narrow"
+              />
+            </Box>
           )}
         </WithState>
       ),
