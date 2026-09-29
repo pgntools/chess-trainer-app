@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Link as RouterLink } from "react-router";
 
 import PanelTabs from "./PanelTabs";
@@ -40,6 +41,40 @@ describe("PanelTabs", () => {
     render(<PanelTabs tabs={TABS} value="moves" onChange={() => {}} ariaLabel="Panel" testId="probe" />);
     expect(screen.getByTestId("probe-tab-moves")).not.toHaveAttribute("id");
     expect(screen.getByTestId("probe-tab-moves")).not.toHaveAttribute("aria-controls");
+  });
+
+  it("stands down the start edge as a sidebar of sections, the up and down arrows moving between them (CTA-115)", async () => {
+    const onChange = vi.fn();
+    render(
+      <PanelTabs
+        tabs={[
+          { id: "theme", label: "Theme" },
+          { id: "light", label: "Palette — light" },
+          { id: "dark", label: "Palette — dark" },
+        ]}
+        value="theme"
+        onChange={onChange}
+        orientation="vertical"
+        ariaLabel="Sections"
+        testId="probe"
+      />,
+    );
+    const list = screen.getByRole("tablist", { name: "Sections" });
+    expect(list).toHaveAttribute("aria-orientation", "vertical");
+    await userEvent.tab();
+    expect(screen.getByRole("tab", { name: "Theme" })).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("tab", { name: "Palette — light" })).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    expect(onChange).toHaveBeenLastCalledWith("dark");
+    await userEvent.keyboard("{ArrowUp}{ArrowUp}");
+    expect(screen.getByRole("tab", { name: "Theme" })).toHaveFocus();
+    await expectNoAxeViolations();
+  });
+
+  it("is a strip across the top by default — the arrows left and right", () => {
+    render(<PanelTabs tabs={TABS} value="moves" onChange={() => {}} ariaLabel="Panel" testId="probe" />);
+    expect(screen.getByRole("tablist", { name: "Panel" })).not.toHaveAttribute("aria-orientation", "vertical");
   });
 
   it("keeps a disabled tab off", () => {

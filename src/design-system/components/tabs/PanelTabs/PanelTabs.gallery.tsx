@@ -61,6 +61,36 @@ const gallery: GalleryModule = {
         ),
     },
     {
+      name: "Vertical — a sidebar of sections (the theme editor's)",
+      render: () => (
+        <Box sx={{ display: "flex", maxWidth: 420 }}>
+          <WithState initial="light">
+            {(value, setValue) => (
+              <>
+                <PanelTabs
+                  tabs={[
+                    { id: "theme", label: "Theme" },
+                    { id: "light", label: "Palette — light" },
+                    { id: "dark", label: "Palette — dark" },
+                    { id: "board", label: "Board" },
+                  ]}
+                  value={value}
+                  onChange={setValue}
+                  orientation="vertical"
+                  ariaLabel="Sections"
+                  idPrefix="gallery-vertical"
+                  testId="gallery-tabs-vertical"
+                />
+                <Typography variant="body2" color="text.secondary" sx={{ p: 2 }} {...tabPanelProps("gallery-vertical", value)}>
+                  The {value} section's fields.
+                </Typography>
+              </>
+            )}
+          </WithState>
+        </Box>
+      ),
+    },
+    {
       name: "Link tabs, sized to their words — a routed strip",
       render: () => (
         <PanelTabs

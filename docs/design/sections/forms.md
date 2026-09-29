@@ -138,6 +138,40 @@ Gallery: `/dev/design/forms`.
   `disabled?`, `disabledHint?`, `maxRows?`, `testId`.
 - **Replaces** — `views/shared/CopyableValue.tsx`.
 
+## ColorField
+
+- **Purpose** — a colour, picked or typed (CTA-115, the theme editor's every
+  token): a swatch over a checkerboard (a translucent colour shows as one)
+  that opens the system's colour picker, and a text input (`dir="ltr"`) that
+  takes `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb()` or `rgba()` — the
+  forms a translucent token needs, which the native picker cannot write.
+  The picker keeps a translucent colour's alpha (`rgba(r, g, b, a)`, MUI's
+  own way of writing it). While the text is not a colour the field is
+  invalid, says so and reports nothing; a new `value` from outside (an undo)
+  replaces the text.
+- **Props** — `label`, `value`, `onChange(colour)` (only ever a valid one),
+  `pickerLabel` (the swatch's accessible name), `invalidText`, `help?` (a
+  caption that describes the input — the editor's contrast ratio),
+  `helpTone?: "success" | "error" | "warning" | "neutral"`, `disabled?`,
+  `id?` (for a host that moves focus to it), `testId` (the text input; the
+  parts `-picker` and `-swatch`).
+- **Variations** — opaque; translucent; a passing caption; a failing one;
+  disabled. The demos take their colours from the theme in view — a gallery
+  draws no colour literal.
+- **Replaces** — nothing: new with the theme editor.
+
+## TextInputField
+
+- **Purpose** — one line of words (CTA-115): the label always shrunk above
+  it (as `SelectField`'s), a caption that describes it, an invalid state.
+- **Props** — `label`, `value`, `onChange(text)`, `helperText?`, `error?`,
+  `placeholder?`, `dir?: "ltr" | "auto"` (machine words, or a reader's own),
+  `disabled?`, `id?`, `testId` (the input).
+- **Variations** — a reader's words; machine words with a caption and a
+  placeholder; invalid; disabled.
+- **Replaces** — nothing yet: the theme editor's ids, names, font stacks and
+  sizes. A screen's bare `TextField` for one line of words can move onto it.
+
 ## CTA-113 additions
 
 - `DateRangeFields` — `bounds?: { min?, max? }` (neither end leaves the span —
