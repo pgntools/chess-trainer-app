@@ -13,8 +13,12 @@ import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import { useCurrentOpening } from "../shared/useCurrentOpening";
 import type { ChessboardOptions } from "react-chessboard";
 
+import { CurrentOpening, GameInfo, PgnExportPanel } from "../../blocks/panels";
+import { AnalysisEngineForm } from "../../blocks/forms";
+import { downloadPgn } from "../../lib/pgnExport";
 import { indexGame } from "../../lib/collectionIndex";
 import { initialPlyOf } from "../../lib/gameNavigation";
 import { libraryGameReference } from "../../lib/gameReference";
@@ -35,12 +39,8 @@ import { saveAnalysis } from "../../lib/savedAnalysisStore";
 import BoardShell from "../board/core/BoardShell";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import RepertoireChangesBar from "../repertoires/RepertoireChangesBar";
-import CurrentOpening from "../shared/CurrentOpening";
-import GameInfo from "../shared/GameInfo";
 import type { PlayerPlates } from "../shared/PlayerPlate";
 import { playerResultsOf } from "../shared/playerResults";
-import AnalysisExport from "../tools/analysis/AnalysisExport";
-import AnalysisSettingsPanel from "../tools/analysis/AnalysisSettings";
 import EngineThinking from "../tools/analysis/EngineThinking";
 import PlayToggleButton from "../tools/analysis/PlayToggleButton";
 import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
@@ -111,6 +111,8 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
 
   const session = useAnalysisSession({ tree, nodeId: start.nodeId, ply: start.ply });
   const { core, engine } = session;
+  // The opening on screen, for the panel header (CTA-113: a hook and the `CurrentOpening` block).
+  const currentOpening = useCurrentOpening(core.fen);
 
   const [tab, setTab] = useState("moves");
   const [showArrows, setShowArrows] = useState(true);
@@ -262,7 +264,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
                 {t("library.game.of", { number, count: collection.games.length })}
                 {caption === "" ? "" : ` · ${caption}`}
               </Typography>
-              <CurrentOpening fen={core.fen} testId="library-game-current-opening" />
+              <CurrentOpening {...currentOpening} testId="library-game-current-opening" />
             </Box>
             <Tooltip title={t("library.game.previous")}>
               <span>
@@ -364,7 +366,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
           {
             id: "info",
             label: t("library.game.tabs.info"),
-            content: <GameInfo game={mainlineGame(core.tree)} />,
+            content: <GameInfo game={mainlineGame(core.tree)} testId="game-info" />,
           },
           {
             id: "export",
@@ -389,10 +391,11 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
                     {t(session.changed ? "library.game.openAnalysisChanged" : "library.game.openAnalysisHelp")}
                   </Typography>
                 </Box>
-                <AnalysisExport
+                <PgnExportPanel
                   fen={core.fen}
                   tree={core.tree}
-                  fileStem={slugify(title) || "game"}
+                  onDownload={(pgn) => downloadPgn(slugify(title) || "game", [pgn])}
+                  testId="analysis"
                 />
               </Box>
             ),
@@ -401,7 +404,8 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
             id: "engine",
             label: t("library.game.tabs.engine"),
             content: (
-              <AnalysisSettingsPanel
+              <AnalysisEngineForm
+                testId="analysis"
                 settings={session.settings}
                 onChange={session.updateSettings}
                 engineOptions={engine.engineOptions}

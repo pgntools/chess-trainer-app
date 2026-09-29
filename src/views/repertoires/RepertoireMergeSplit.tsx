@@ -19,7 +19,7 @@ import {
   MAX_SAVED_REPERTOIRES,
   type SavedRepertoireProblem,
 } from "../../lib/savedRepertoireStore";
-import MergeSplitChoice from "../shared/MergeSplitChoice";
+import { MergeSplitChoice } from "../../blocks/forms";
 
 /**
  * **The choice a text of many games has to make** — merge them into one
@@ -100,7 +100,7 @@ function RepertoireMergeSplit({
   return (
     <MergeSplitChoice
       labelKey="repertoires.choice"
-      testIdPrefix="repertoire-choice"
+      testId="repertoire-choice"
       count={count}
       skipped={reading.skipped}
       mergeable={reading.mergeable}

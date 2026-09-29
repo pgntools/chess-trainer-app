@@ -21,6 +21,8 @@ export type SideToggleProps<V extends SideValue = "white" | "black"> = {
   ariaLabel: string;
   /** The group's test id; the buttons are `<testId>-white`, `-black`, `-all`. */
   testId: string;
+  /** The buttons' own test ids, for a screen whose tests named them before (CTA-113: the editor's `-turn-w`). */
+  buttonTestIds?: Partial<Record<SideValue, string>>;
 };
 
 /**
@@ -37,6 +39,7 @@ function SideToggle<V extends SideValue = "white" | "black">({
   disabled = false,
   ariaLabel,
   testId,
+  buttonTestIds = {},
 }: SideToggleProps<V>) {
   return (
     <ToggleButtonGroup
@@ -52,14 +55,14 @@ function SideToggle<V extends SideValue = "white" | "black">({
       }}
     >
       {withAll && (
-        <ToggleButton value="all" data-testid={`${testId}-all`} sx={{ px: 1.5 }}>
+        <ToggleButton value="all" data-testid={buttonTestIds.all ?? `${testId}-all`} sx={{ px: 1.5 }}>
           {labels.all}
         </ToggleButton>
       )}
-      <ToggleButton value="white" data-testid={`${testId}-white`} sx={{ px: 1.5 }}>
+      <ToggleButton value="white" data-testid={buttonTestIds.white ?? `${testId}-white`} sx={{ px: 1.5 }}>
         {labels.white}
       </ToggleButton>
-      <ToggleButton value="black" data-testid={`${testId}-black`} sx={{ px: 1.5 }}>
+      <ToggleButton value="black" data-testid={buttonTestIds.black ?? `${testId}-black`} sx={{ px: 1.5 }}>
         {labels.black}
       </ToggleButton>
     </ToggleButtonGroup>

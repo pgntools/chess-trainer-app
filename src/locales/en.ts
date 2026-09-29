@@ -119,8 +119,12 @@ const en = {
    * `GameInfo.tsx`). Chrome only — SAN itself is language-independent.
    */
   gamePanel: {
+    /** The board panel's tab strip, named (CTA-113). */
+    tabs: "Board panel",
     /** Accessible names for the icon-only board controls. */
     controls: {
+      /** The row's name as a toolbar (CTA-113). */
+      label: "Moves",
       first: "Start position",
       previous: "Previous move",
       next: "Next move",
@@ -128,6 +132,8 @@ const en = {
       flip: "Flip board",
     },
     info: {
+      /** The tag list's accessible name (CTA-113). */
+      title: "Game details",
       empty: "Load a game to see its details.",
       /** Labels for the PGN tags worth naming; anything else shows its raw tag. */
       event: "Event",
@@ -185,7 +191,7 @@ const en = {
       b: "Bishop",
     },
   },
-  /** What `views/shared/OptionSlider.tsx` says about an option it cannot drive. */
+  /** What the engine forms (`blocks/forms`) say about an option they cannot drive. */
   engineOption: {
     /** Shown under a control the running engine build does not have. */
     unsupported: "This engine build has no \"{{option}}\" option.",
@@ -911,6 +917,7 @@ const en = {
    */
   positionEditor: {
     tabs: {
+      label: "Forms",
       position: "Position",
       fen: "FEN",
       pgn: "PGN",

@@ -66,7 +66,7 @@ export const EMPTY_ANALYSIS: Analysis = { fen: "", depth: 0, lines: [] };
  * A UI bound, not an engine one: this build declares `MultiPV min 1 max 500`, and
  * a slider carrying all 500 puts the range anybody actually uses — the first few
  * lines — inside a few pixels at its left end. It is applied through
- * `OptionSlider`'s `maxOffered`, which only ever *narrows* the engine's range, so
+ * the engine forms' `maxOffered`, which only ever *narrows* the engine's range, so
  * a build declaring fewer than this still wins and the control can never offer a
  * value the engine would refuse.
  */

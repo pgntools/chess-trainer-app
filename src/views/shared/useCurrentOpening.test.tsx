@@ -4,7 +4,13 @@ import { MemoryRouter } from "react-router";
 import i18n from "../../i18n";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import type { OpeningBook } from "../../lib/openings";
-import CurrentOpening from "./CurrentOpening";
+import { CurrentOpening } from "../../blocks/panels";
+import { useCurrentOpening } from "./useCurrentOpening";
+
+/** A board header's line: the hook, and the block it feeds. */
+function OpeningLine({ fen, testId }: { fen: string; testId: string }) {
+  return <CurrentOpening {...useCurrentOpening(fen)} testId={testId} />;
+}
 
 /*
   A one-entry stand-in for the vendored book — a screen test must not pull the
@@ -34,7 +40,7 @@ const START_FEN =
 const line = (fen: string, testId = "test-current-opening") => (
   <MemoryRouter>
     <AppThemeWithLang>
-      <CurrentOpening fen={fen} testId={testId} />
+      <OpeningLine fen={fen} testId={testId} />
     </AppThemeWithLang>
   </MemoryRouter>
 );
@@ -45,7 +51,7 @@ beforeEach(async () => {
   await i18n.changeLanguage("en");
 });
 
-describe("CurrentOpening", () => {
+describe("useCurrentOpening + CurrentOpening", () => {
   it("names the opening at the position on screen, with its ECO code", async () => {
     renderLine(AFTER_E4);
 

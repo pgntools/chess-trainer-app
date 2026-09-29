@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import { Link as RouterLink, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 
+import { PgnInput } from "../../blocks/forms";
 import {
   newSavedRepertoireId,
   readRepertoireText,
@@ -17,6 +15,7 @@ import {
   type RepertoireReading,
 } from "../../lib/savedRepertoires";
 import { saveRepertoire } from "../../lib/savedRepertoireStore";
+import { useOwnPageHeading } from "../main/pageTitle";
 import { RightPanel } from "../main/rightPanel";
 import RepertoireMergeSplit from "./RepertoireMergeSplit";
 
@@ -52,6 +51,8 @@ import RepertoireMergeSplit from "./RepertoireMergeSplit";
 type Problem = RepertoireProblem | "storage";
 
 function RepertoireUpload() {
+  // The visible title is the page's `h1` (CTA-112).
+  useOwnPageHeading();
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -62,7 +63,6 @@ function RepertoireUpload() {
     null,
   );
 
-  const inputRef = useRef<HTMLInputElement>(null);
   const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -113,10 +113,8 @@ function RepertoireUpload() {
     }, 0);
   };
 
-  const onPicked = async (files: FileList | null) => {
-    const file = files?.[0];
-    // Cleared at once, so picking the same file again still fires a change.
-    if (inputRef.current !== null) inputRef.current.value = "";
+  const onPicked = async (files: readonly File[]) => {
+    const file = files[0];
     if (file === undefined) return;
     bringIn(await file.text());
   };
@@ -135,7 +133,7 @@ function RepertoireUpload() {
         }}
       >
         <Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+          <Typography variant="subtitle1" component="h1" sx={{ fontWeight: 700 }} data-testid="repertoire-upload-title">
             {t("repertoires.upload.title")}
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
@@ -149,87 +147,38 @@ function RepertoireUpload() {
           helperText={t("repertoires.upload.nameHelp")}
           value={name}
           onChange={(event) => setName(event.target.value)}
-          slotProps={{ htmlInput: { "data-testid": "repertoire-upload-name" } }}
+          slotProps={{ htmlInput: { "data-testid": "repertoire-upload-name", dir: "auto" } }}
         />
 
-        <Box>
-          {/*
-            A label wrapping a hidden input — the file dialog opens only from a
-            real `<input type="file">`, the Uploads screen's pattern.
-          */}
-          <Button
-            component="label"
-            variant="contained"
-            disabled={busy}
-            startIcon={<UploadFileRoundedIcon />}
-            data-testid="repertoire-upload-pick"
-          >
-            {t("repertoires.upload.pick")}
-            <input
-              ref={inputRef}
-              hidden
-              type="file"
-              accept=".pgn,application/x-chess-pgn,text/plain"
-              data-testid="repertoire-upload-input"
-              onChange={(event) => void onPicked(event.target.files)}
-            />
-          </Button>
-        </Box>
-
-        <TextField
-          multiline
-          minRows={6}
-          maxRows={14}
-          label={t("repertoires.upload.paste")}
-          value={pasted}
-          onChange={(event) => setPasted(event.target.value)}
-          slotProps={{
-            htmlInput: { "data-testid": "repertoire-upload-paste", dir: "ltr" },
+        <PgnInput
+          labels={{
+            file: t("repertoires.upload.pick"),
+            paste: t("repertoires.upload.paste"),
+            submit: t("repertoires.upload.save"),
           }}
+          onFiles={(files) => void onPicked(files)}
+          pasted={pasted}
+          onPastedChange={setPasted}
+          onSubmit={() => bringIn(pasted)}
+          disabled={busy}
+          busy={busy ? t("repertoires.upload.reading") : undefined}
+          problem={
+            problem === null ? null : { message: t(`repertoires.upload.problem.${problem.kind}`), detail: problem.detail }
+          }
+          testId="repertoire-upload"
+          testIds={{ submit: "repertoire-upload-save" }}
         />
-
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            disabled={busy || pasted.trim() === ""}
-            onClick={() => bringIn(pasted)}
-            data-testid="repertoire-upload-save"
-          >
-            {t("repertoires.upload.save")}
-          </Button>
-          {busy && (
-            <Box
-              data-testid="repertoire-upload-busy"
-              sx={{ display: "flex", alignItems: "center", gap: 1, color: "text.secondary" }}
-            >
-              <CircularProgress size={16} />
-              <Typography variant="body2">{t("repertoires.upload.reading")}</Typography>
-            </Box>
-          )}
-        </Box>
 
         {choice !== null && (
-          <RepertoireMergeSplit
-            reading={choice}
-            typedName={name}
-            onDone={(path) => navigate(path)}
-          />
-        )}
-
-        {problem !== null && (
-          <Alert severity="error" data-testid="repertoire-upload-problem">
-            {t(`repertoires.upload.problem.${problem.kind}`)}
-            {problem.detail !== undefined && (
-              <Typography variant="caption" dir="ltr" sx={{ display: "block" }}>
-                {problem.detail}
-              </Typography>
-            )}
-          </Alert>
+          <RepertoireMergeSplit reading={choice} typedName={name} onDone={(path) => navigate(path)} />
         )}
       </Box>
 
       <RightPanel>
-        <Box sx={{ color: "text.secondary" }}>
+        <Box component="section" aria-labelledby="repertoire-upload-panel-title" sx={{ color: "text.secondary" }}>
+          <Typography id="repertoire-upload-panel-title" variant="subtitle2" component="h2" sx={{ fontWeight: 700, color: "text.primary", mb: 1 }}>
+            {t("repertoires.panelTitle")}
+          </Typography>
           <Typography variant="body2" sx={{ mb: 1 }}>
             {t("repertoires.storage")}
           </Typography>

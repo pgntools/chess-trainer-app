@@ -9,6 +9,7 @@ import { BaseDialog, type ExtraDialogProps } from "../../../design-system/compon
 import { linkProps, type LinkTarget } from "../../../design-system/components/link";
 import type { ImportProblem } from "../../../lib/dataImport";
 import { MANUAL_IMPORTS, type ManualImport } from "./manualImports";
+import { MONOSPACE_FONT_FAMILY } from "../../../design-system/theme";
 
 export type IncompatibleImportDialogProps = {
   fileName: string;
@@ -29,7 +30,7 @@ export type IncompatibleImportDialogProps = {
 };
 
 /** Machine words — a path in a zip — in the design system's monospace, never mirrored. */
-const MONOSPACE = "ui-monospace, SFMono-Regular, Menlo, monospace";
+const MONOSPACE = MONOSPACE_FONT_FAMILY;
 
 /**
  * **A zip that cannot be imported** (CTA-109; CTA-89's dialog) — not a zip,

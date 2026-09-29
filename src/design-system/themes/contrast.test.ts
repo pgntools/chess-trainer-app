@@ -44,6 +44,11 @@ const PALETTE_COLOURS = ["primary", "secondary", "error", "warning", "info", "su
 const TONES = ["primary", "error", "warning", "info", "success"] as const;
 
 describe.each(schemes)("%s meets WCAG 2.2 AA", (_name, theme) => {
+  it("text.secondary on a raised row — the paper under action.hover (CTA-113) — at 4.5:1", () => {
+    const row = over(theme.palette.action.hover, theme.palette.background.paper);
+    expect(ratio(theme.palette.text.secondary, row)).toBeGreaterThanOrEqual(TEXT);
+  });
+
   it.each(Object.entries(surfaces(theme)))("text.primary and text.secondary on background.%s at 4.5:1", (_surface, background) => {
     expect(ratio(theme.palette.text.primary, background)).toBeGreaterThanOrEqual(TEXT);
     expect(ratio(theme.palette.text.secondary, background)).toBeGreaterThanOrEqual(TEXT);

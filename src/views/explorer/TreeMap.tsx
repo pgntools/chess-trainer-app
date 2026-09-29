@@ -22,7 +22,7 @@ import ZoomOutRoundedIcon from "@mui/icons-material/ZoomOutRounded";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 
-import { chessTokensOf } from "../../design-system/theme";
+import { MONOSPACE_FONT_FAMILY, chessTokensOf } from "../../design-system/theme";
 import { findNode, pathTo, type GameTree } from "../../lib/gameTree";
 import { isMoveMark, nagGlyph, nagsInPrintOrder, nagTone } from "../../lib/moveAnnotations";
 import { maskNodeSan, type PieceMask } from "../../lib/pieceMask";
@@ -802,7 +802,7 @@ function MapViewport({
                 data-testid={`${testId}-labels`}
                 fontSize={MAP_LABEL_FONT}
                 textAnchor="middle"
-                fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+                fontFamily={MONOSPACE_FONT_FAMILY}
               >
                 {labels.map((label) => {
                   const text = (

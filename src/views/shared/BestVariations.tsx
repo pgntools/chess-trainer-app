@@ -7,6 +7,7 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Skeleton from "@mui/material/Skeleton";
 import Typography from "@mui/material/Typography";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
+import { MIN_TARGET_PX, MONOSPACE_FONT_FAMILY } from "../../design-system/theme";
 import { useTranslation } from "react-i18next";
 import {
   formatScore,
@@ -128,7 +129,7 @@ type BestVariationsProps = {
 
 const sanSx = {
   unicodeBidi: "isolate",
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+  fontFamily: MONOSPACE_FONT_FAMILY,
   fontSize: "0.8125rem",
 } as const;
 
@@ -150,8 +151,11 @@ const scoreSx = {
   minWidth: "3.5rem",
 } as const;
 
-/** The chevron's size: its icon plus the button's padding on each side. */
-const CHEVRON_SIZE = "calc(1.125rem + 4px)";
+/**
+ * The chevron's size: at least the smallest target WCAG 2.2 AA allows (24 px,
+ * `MIN_TARGET_PX`) — it was 22 px, its icon and a little padding (CTA-113).
+ */
+const CHEVRON_SIZE = `${MIN_TARGET_PX}px`;
 
 /**
  * A rank the engine has not reported yet: the row a line will take, the same
@@ -471,7 +475,8 @@ function BestVariations({
                           onClick={() =>
                             onSelectMove(line.san.slice(0, index + 1))
                           }
-                          sx={{ ...moveSx, ...sanTokenSx }}
+                          // A pointer target of 24 px at least (CTA-113): a move was 17 px tall.
+                          sx={{ ...moveSx, ...sanTokenSx, minHeight: MIN_TARGET_PX, minWidth: MIN_TARGET_PX, verticalAlign: "baseline" }}
                         >
                           {`${prefixes[index]}${san}`}
                         </ButtonBase>
@@ -507,18 +512,20 @@ function BestVariations({
                   sx={{
                     flexShrink: 0,
                     alignSelf: "flex-start",
-                    p: 0.25,
+                    width: CHEVRON_SIZE,
+                    height: CHEVRON_SIZE,
                     borderRadius: 0.5,
                     color: "text.secondary",
                     "&:hover": { bgcolor: "action.selected" },
                   }}
                 >
                   <ExpandMoreRoundedIcon
-                    sx={{
+                    sx={(theme) => ({
                       fontSize: "1.125rem",
-                      transition: "transform 150ms",
+                      // The theme's transition, so reduced motion stops it (CTA-111).
+                      transition: theme.transitions.create("transform", { duration: 150 }),
                       ...(isExpanded ? { transform: "rotate(180deg)" } : {}),
-                    }}
+                    })}
                   />
                 </ButtonBase>
               </Box>

@@ -16,8 +16,12 @@ import {
   useSearchParams,
 } from "react-router";
 import { useTranslation } from "react-i18next";
+import { useCurrentOpening } from "../../shared/useCurrentOpening";
 import type { ChessboardOptions } from "react-chessboard";
 
+import { CurrentOpening, PgnExportPanel } from "../../../blocks/panels";
+import { AnalysisEngineForm } from "../../../blocks/forms";
+import { downloadPgn } from "../../../lib/pgnExport";
 import { analysisHandOffOf } from "../../../lib/analysisHandOff";
 import {
   DEFAULT_ARROW_PALETTE,
@@ -45,13 +49,10 @@ import {
 import BoardShell from "../../board/core/BoardShell";
 import { useVariationsExplorer } from "../../explorer/useVariationsExplorer";
 import RepertoireChangesBar from "../../repertoires/RepertoireChangesBar";
-import CurrentOpening from "../../shared/CurrentOpening";
 import AnalysisArrows from "./AnalysisArrows";
-import AnalysisExport from "./AnalysisExport";
 import EngineThinking from "./EngineThinking";
 import PlayToggleButton from "./PlayToggleButton";
 import AnalysisLoad from "./AnalysisLoad";
-import AnalysisSettingsPanel from "./AnalysisSettings";
 import SaveAnalysisDialog from "./SaveAnalysisDialog";
 import { useAnalysisBoard, type AnalysisBoardStart } from "./useAnalysisBoard";
 import { usePageTitle } from "../../main/pageTitle";
@@ -154,6 +155,8 @@ function AnalysisBoard() {
 
   const state = useAnalysisBoard(arrival);
   const { core, engine, record } = state;
+  // The opening on screen, for the panel header (CTA-113: a hook and the `CurrentOpening` block).
+  const currentOpening = useCurrentOpening(core.fen);
 
   const [tab, setTab] = useState("moves");
   // Opens as the record's settings say (on, colour only, classic for a new
@@ -318,7 +321,7 @@ function AnalysisBoard() {
                     {record.description}
                   </Typography>
                 )}
-                <CurrentOpening fen={core.fen} testId="analysis-current-opening" />
+                <CurrentOpening {...currentOpening} testId="analysis-current-opening" />
               </Box>
               <Tooltip title={saveLabel}>
                 <span>
@@ -427,10 +430,11 @@ function AnalysisBoard() {
               id: "export",
               label: t("analysis.tabs.export"),
               content: (
-                <AnalysisExport
+                <PgnExportPanel
                   fen={core.fen}
                   tree={core.tree}
-                  fileStem={slugify(name) || "analysis"}
+                  onDownload={(pgn) => downloadPgn(slugify(name) || "analysis", [pgn])}
+                  testId="analysis"
                 />
               ),
             },
@@ -438,7 +442,8 @@ function AnalysisBoard() {
               id: "engine",
               label: t("analysis.tabs.engine"),
               content: (
-                <AnalysisSettingsPanel
+                <AnalysisEngineForm
+                  testId="analysis"
                   settings={state.settings}
                   onChange={state.updateSettings}
                   engineOptions={engine.engineOptions}

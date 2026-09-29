@@ -80,7 +80,9 @@ const he: typeof en = {
     analysisPlaceholder: "ההערכה ורשימת המהלכים יופיעו כאן.",
   },
   gamePanel: {
+    tabs: "לשוניות",
     controls: {
+      label: "מהלכים",
       first: "עמדת פתיחה",
       previous: "המהלך הקודם",
       next: "המהלך הבא",
@@ -88,6 +90,7 @@ const he: typeof en = {
       flip: "היפוך הלוח",
     },
     info: {
+      title: "פרטי המשחק",
       empty: "טענו משחק כדי לראות את פרטיו.",
       event: "אירוע",
       site: "מקום",
@@ -671,6 +674,7 @@ const he: typeof en = {
   },
   positionEditor: {
     tabs: {
+      label: "טפסים",
       position: "עמדה",
       fen: "FEN",
       pgn: "PGN",

@@ -1,11 +1,9 @@
-import { useMemo, useRef, useState } from "react";
-import Alert from "@mui/material/Alert";
+import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import CreateNewFolderRoundedIcon from "@mui/icons-material/CreateNewFolderRounded";
-import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -17,6 +15,7 @@ import {
   type CollectionImportSource,
   type CollectionSummary,
 } from "../../lib/libraryCollections";
+import { PgnInput } from "../../blocks/forms";
 import { FolderPicker } from "../../blocks/lists";
 import { RightPanel } from "../main/rightPanel";
 import ImportOptionsDialog from "./ImportOptionsDialog";
@@ -72,7 +71,6 @@ function LibraryUpload({ into, folder = null }: { into?: CollectionSummary; fold
   const [problem, setProblem] = useState<string | null>(null);
   /** What was read, open in the import popup. */
   const [source, setSource] = useState<CollectionImportSource | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   /** The one route in, for a file, a zip's files and a paste alike: read, then the popup. */
   const bringIn = (
@@ -114,10 +112,8 @@ function LibraryUpload({ into, folder = null }: { into?: CollectionSummary; fold
     navigate(`/library/${encodeURIComponent(added.collection.id)}`);
   };
 
-  const onPicked = async (files: FileList | null) => {
-    const file = files?.[0];
-    // Cleared at once, so picking the same file again still fires a change.
-    if (inputRef.current !== null) inputRef.current.value = "";
+  const onPicked = async (files: readonly File[]) => {
+    const file = files[0];
     if (file === undefined) return;
     if (isZipFile(file)) {
       let bytes: Uint8Array;
@@ -243,61 +239,27 @@ function LibraryUpload({ into, folder = null }: { into?: CollectionSummary; fold
           </Box>
         )}
 
-        <Box>
-          <Button
-            component="label"
-            variant="contained"
-            startIcon={<UploadFileRoundedIcon />}
-            disabled={source !== null}
-            data-testid="library-upload-pick"
-          >
-            {t("library.upload.chooseFile")}
-            <input
-              ref={inputRef}
-              hidden
-              type="file"
-              accept=".pgn,.zip,application/x-chess-pgn,text/plain,application/zip,application/x-zip-compressed"
-              data-testid="library-upload-input"
-              onChange={(event) => void onPicked(event.target.files)}
-            />
-          </Button>
-        </Box>
-
-        <TextField
-          multiline
-          minRows={6}
-          maxRows={14}
-          label={t("library.upload.pasteLabel")}
-          value={pasted}
-          disabled={source !== null}
-          onChange={(event) => {
-            setPasted(event.target.value);
+        <PgnInput
+          zip
+          labels={{
+            file: t("library.upload.chooseFile"),
+            paste: t("library.upload.pasteLabel"),
+            pasteHelp:
+              pastedReading?.ok === true ? t("library.upload.read", { count: pastedReading.games.length }) : " ",
+            submit: t(into === undefined ? "library.upload.save" : "library.upload.intoSave"),
+          }}
+          onFiles={(files) => void onPicked(files)}
+          pasted={pasted}
+          onPastedChange={(text) => {
+            setPasted(text);
             setProblem(null);
           }}
-          helperText={
-            pastedReading?.ok === true
-              ? t("library.upload.read", { count: pastedReading.games.length })
-              : " "
-          }
-          slotProps={{ htmlInput: { "data-testid": "library-upload-paste", dir: "ltr" } }}
+          onSubmit={() => bringIn([{ text: pasted, size: new Blob([pasted]).size }])}
+          disabled={source !== null}
+          problem={problem === null ? null : { message: t(`library.upload.problem.${problem}`) }}
+          testId="library-upload"
+          testIds={{ submit: "library-upload-save" }}
         />
-
-        <Box>
-          <Button
-            variant="outlined"
-            disabled={pasted.trim() === "" || source !== null}
-            onClick={() => bringIn([{ text: pasted, size: new Blob([pasted]).size }])}
-            data-testid="library-upload-save"
-          >
-            {t(into === undefined ? "library.upload.save" : "library.upload.intoSave")}
-          </Button>
-        </Box>
-
-        {problem !== null && (
-          <Alert severity="error" data-testid="library-upload-problem">
-            {t(`library.upload.problem.${problem}`)}
-          </Alert>
-        )}
       </Box>
       {source !== null && (
         <ImportOptionsDialog

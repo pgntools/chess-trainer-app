@@ -24,6 +24,7 @@ import {
   type ContextMenuNodeHandler,
   type MenuAnchor,
 } from "./moveContextMenu";
+import { MONOSPACE_FONT_FAMILY } from "../../design-system/theme";
 
 /**
  * The lichess-style move list: numbered pairs, the current ply highlighted,
@@ -158,7 +159,7 @@ type MoveListProps = {
  */
 const sanTokenSx = {
   unicodeBidi: "isolate",
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+  fontFamily: MONOSPACE_FONT_FAMILY,
   fontSize: "0.8125rem",
 } as const;
 

@@ -55,8 +55,9 @@ function SaveAnalysisDialog({
       title={t("analysis.save.title")}
       submitLabel={t("analysis.save.confirm")}
       cancelLabel={t("savedAnalyses.folder.cancel")}
-      testId="analysis-save"
+      testId="analysis-save-dialog"
       submitTestId="analysis-save-confirm"
+      cancelTestId="analysis-save-cancel"
     >
       <TextField
         // eslint-disable-next-line jsx-a11y/no-autofocus -- the dialog's field takes the focus as the dialog opens, as WAI-ARIA's dialog pattern asks (ACCESSIBILITY.md)

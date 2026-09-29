@@ -18,6 +18,8 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import { useCurrentOpening } from "../shared/useCurrentOpening";
+import { CurrentOpening } from "../../blocks/panels";
 import type { ChessboardOptions } from "react-chessboard";
 
 import {
@@ -25,6 +27,7 @@ import {
   DEFAULT_ANALYSIS_SETTINGS,
   type AnalysisSettings,
 } from "../../lib/analysisSettings";
+import { AnalysisEngineForm } from "../../blocks/forms";
 import { emptyTree, pathTo, type GameTree } from "../../lib/gameTree";
 import { downloadPgn } from "../../lib/pgnExport";
 import { atParamOf, nodeAtParam, REPERTOIRE_AT_PARAM } from "../../lib/repertoireLink";
@@ -52,8 +55,6 @@ import BoardShell from "../board/core/BoardShell";
 import { useBoardCore } from "../board/core/useBoardCore";
 import { useEngineModule } from "../board/core/useEngineModule";
 import { useTrainerModule, type TrainerStatus } from "../board/core/useTrainerModule";
-import CurrentOpening from "../shared/CurrentOpening";
-import AnalysisSettingsPanel from "../tools/analysis/AnalysisSettings";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import RepertoireChangesBar from "./RepertoireChangesBar";
 import RepertoireGamesMenu from "./RepertoireGamesMenu";
@@ -213,6 +214,8 @@ function RepertoirePlayer({
   const [side, setSide] = useState<Side>(saved.settings.color);
   const trainerColor = side === "white" ? "b" : "w";
   const core = useBoardCore({ orientation: saved.settings.color });
+  // The opening on screen, for the panel header (CTA-113: a hook and the `CurrentOpening` block).
+  const currentOpening = useCurrentOpening(core.fen);
   const { loadTree, goToNode, setOrientation } = core;
 
   /** The repertoire as it arrived — what the trainer answers from. */
@@ -612,7 +615,7 @@ function RepertoirePlayer({
                   </Typography>
                 )
               )}
-              <CurrentOpening fen={core.fen} testId={`${id}-opening`} />
+              <CurrentOpening {...currentOpening} testId={`${id}-opening`} />
             </Box>
             {shown === "loading" && (
               <CircularProgress
@@ -815,7 +818,8 @@ function RepertoirePlayer({
             // Its subject is switched off in Settings until the reader asks.
             disabled: !engineOn,
             content: (
-              <AnalysisSettingsPanel
+              <AnalysisEngineForm
+                testId="analysis"
                 settings={settings}
                 onChange={(patch: Partial<AnalysisSettings>) =>
                   setSettings((current) => ({ ...current, ...patch }))

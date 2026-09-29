@@ -9,8 +9,12 @@ import SportsEsportsRoundedIcon from "@mui/icons-material/SportsEsportsRounded";
 import { DEFAULT_POSITION } from "chess.js";
 import { createSearchParams, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import { useCurrentOpening } from "../shared/useCurrentOpening";
 import type { ChessboardOptions } from "react-chessboard";
 
+import { CurrentOpening, PgnExportPanel } from "../../blocks/panels";
+import { AnalysisEngineForm } from "../../blocks/forms";
+import { downloadPgn } from "../../lib/pgnExport";
 import { useChessTokens } from "../../design-system/theme";
 import { analysisHandOffState, lineTreeOf } from "../../lib/analysisHandOff";
 import { parseFen } from "../../lib/fen";
@@ -20,10 +24,7 @@ import BoardShell from "../board/core/BoardShell";
 import { turnOf } from "../board/core/useBoardCore";
 import { useOpeningBookModule } from "../board/core/useOpeningBookModule";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
-import CurrentOpening from "../shared/CurrentOpening";
-import AnalysisExport from "../tools/analysis/AnalysisExport";
 import AnalysisLoad from "../tools/analysis/AnalysisLoad";
-import AnalysisSettingsPanel from "../tools/analysis/AnalysisSettings";
 import EngineThinking from "../tools/analysis/EngineThinking";
 import PlayToggleButton from "../tools/analysis/PlayToggleButton";
 import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
@@ -97,6 +98,8 @@ function OpeningsBoard() {
 
   const session = useAnalysisSession(arrival);
   const { core, engine } = session;
+  // The opening on screen, for the panel header (CTA-113: a hook and the `CurrentOpening` block).
+  const currentOpening = useCurrentOpening(core.fen);
   const book = useOpeningBookModule({ enabled: true, fen: core.fen });
   const chess = useChessTokens();
 
@@ -173,7 +176,7 @@ function OpeningsBoard() {
         header: (
           <>
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-              <CurrentOpening fen={core.fen} testId="openings-current" />
+              <CurrentOpening {...currentOpening} testId="openings-current" />
             </Box>
             <Tooltip title={t("openings.controls.analysis")}>
               <IconButton
@@ -282,13 +285,14 @@ function OpeningsBoard() {
           {
             id: "export",
             label: t("openings.tabs.export"),
-            content: <AnalysisExport fen={core.fen} tree={core.tree} fileStem="opening" />,
+            content: <PgnExportPanel fen={core.fen} tree={core.tree} onDownload={(pgn) => downloadPgn("opening", [pgn])} testId="analysis" />,
           },
           {
             id: "engine",
             label: t("openings.tabs.engine"),
             content: (
-              <AnalysisSettingsPanel
+              <AnalysisEngineForm
+                testId="analysis"
                 settings={session.settings}
                 onChange={session.updateSettings}
                 engineOptions={engine.engineOptions}

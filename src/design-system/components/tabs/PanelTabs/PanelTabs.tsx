@@ -29,6 +29,12 @@ export type PanelTabsProps = {
   idPrefix?: string;
   /** The strip's test id; each tab is `<testId>-tab-<id>`. */
   testId: string;
+  /**
+   * The prefix of the tabs' test ids, for a host whose tests named its tabs
+   * after itself rather than after the strip (CTA-113: the position editor's
+   * `editor-tab-fen`). Absent, the strip's `testId`.
+   */
+  tabTestIdPrefix?: string;
 };
 
 /**
@@ -39,7 +45,17 @@ export type PanelTabsProps = {
  * Settings tabs) — and `size="tall"` is the dialog's taller strip. With an
  * `idPrefix`, each tab names its panel (CTA-112, `tabPanelProps`).
  */
-function PanelTabs({ tabs, value, onChange, size = "compact", fullWidth = true, ariaLabel, idPrefix, testId }: PanelTabsProps) {
+function PanelTabs({
+  tabs,
+  value,
+  onChange,
+  size = "compact",
+  fullWidth = true,
+  ariaLabel,
+  idPrefix,
+  testId,
+  tabTestIdPrefix = testId,
+}: PanelTabsProps) {
   const height = size === "compact" ? 36 : 48;
   return (
     <Tabs
@@ -66,7 +82,7 @@ function PanelTabs({ tabs, value, onChange, size = "compact", fullWidth = true, 
           id={idPrefix === undefined ? undefined : panelTabIds(idPrefix, tab.id).tab}
           // Only the selected tab's panel is on the page to point at.
           aria-controls={idPrefix === undefined || tab.id !== value ? undefined : panelTabIds(idPrefix, tab.id).panel}
-          data-testid={`${testId}-tab-${tab.id}`}
+          data-testid={`${tabTestIdPrefix}-tab-${tab.id}`}
           {...linkProps(tab.link)}
         />
       ))}

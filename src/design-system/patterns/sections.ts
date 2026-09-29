@@ -14,6 +14,7 @@
 export const PATTERN_SECTIONS = [
   { id: "tables", title: "Tables" },
   { id: "trees", title: "Trees" },
+  { id: "forms", title: "Forms" },
 ] as const;
 
 export type PatternSectionId = (typeof PATTERN_SECTIONS)[number]["id"];
