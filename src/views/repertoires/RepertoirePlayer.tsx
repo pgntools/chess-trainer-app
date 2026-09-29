@@ -2,14 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import IconButton from "@mui/material/IconButton";
-import Switch from "@mui/material/Switch";
-import ToggleButton from "@mui/material/ToggleButton";
-import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
@@ -18,7 +11,6 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { useCurrentOpening } from "../shared/useCurrentOpening";
 import { ChangesStrip, CurrentOpening } from "../../blocks/panels";
 import type { ChessboardOptions } from "react-chessboard";
 
@@ -28,6 +20,9 @@ import {
   type AnalysisSettings,
 } from "../../lib/analysisSettings";
 import { AnalysisEngineForm } from "../../blocks/forms";
+import { FieldLabel, SideToggle, SwitchField } from "../../design-system/components/forms";
+import { BackButton } from "../../design-system/components/navigation";
+import { IconAction, ToggleIconAction } from "../../design-system/components/toolbars";
 import { emptyTree, pathTo, type GameTree } from "../../lib/gameTree";
 import { downloadPgn } from "../../lib/pgnExport";
 import { atParamOf, nodeAtParam, REPERTOIRE_AT_PARAM } from "../../lib/repertoireLink";
@@ -59,6 +54,7 @@ import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import RepertoireGamesMenu from "./RepertoireGamesMenu";
 import { useRepertoireGame } from "./useRepertoireGame";
 import { usePageTitle } from "../main/pageTitle";
+import { useCurrentOpening } from "../shared/useCurrentOpening";
 
 /**
  * **A repertoire, played** (CTA-63) — the one screen behind a repertoire's own
@@ -628,101 +624,57 @@ function RepertoirePlayer({
               <RepertoireGamesMenu id={saved.id} testId={`${id}-games`} />
             )}
             {game === undefined && (
-              <Tooltip
-                title={t(
-                  changed ? "repertoires.changes.saveOpen" : "repertoires.changes.saveNothing",
-                )}
+              <ToggleIconAction
+                label={t(changed ? "repertoires.changes.saveOpen" : "repertoires.changes.saveNothing")}
+                onClick={() => setChangesOpen((open) => !open)}
+                disabled={!changed}
+                active={changed}
+                // Pressed while its changes strip is open.
+                pressed={changed ? changesOpen : null}
+                testId={`${id}-save`}
               >
-                <span>
-                  <IconButton
-                    size="small"
-                    disabled={!changed}
-                    color={changed ? "primary" : "default"}
-                    onClick={() => setChangesOpen((open) => !open)}
-                    aria-label={t("repertoires.changes.saveOpen")}
-                    aria-pressed={changed ? changesOpen : undefined}
-                    data-testid={`${id}-save`}
-                    sx={{ flexShrink: 0 }}
-                  >
-                    <SaveRoundedIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
+                <SaveRoundedIcon fontSize="small" />
+              </ToggleIconAction>
             )}
             {game === undefined && (
               // A second control over the Settings tab's Autoplay: one state, so
               // the two cannot disagree. A game's trainer always plays — no toggle.
-              <Tooltip title={t(autoplay ? "repertoires.play.autoplayOff" : "repertoires.play.autoplayOn")}>
-                <IconButton
-                  size="small"
-                  color={autoplay ? "primary" : "default"}
-                  onClick={() => changeAutoplay(!autoplay)}
-                  aria-label={t(autoplay ? "repertoires.play.autoplayOff" : "repertoires.play.autoplayOn")}
-                  aria-pressed={autoplay}
-                  data-testid={`${id}-play`}
-                  sx={{ flexShrink: 0 }}
-                >
-                  {autoplay ? (
-                    <PauseRoundedIcon fontSize="small" />
-                  ) : (
-                    <PlayArrowRoundedIcon fontSize="small" />
-                  )}
-                </IconButton>
-              </Tooltip>
-            )}
-            <Tooltip title={t("repertoires.play.restart")}>
-              <IconButton
-                size="small"
-                onClick={restart}
-                aria-label={t("repertoires.play.restart")}
-                data-testid={`${id}-restart`}
-                sx={{ flexShrink: 0 }}
+              <IconAction
+                label={t(autoplay ? "repertoires.play.autoplayOff" : "repertoires.play.autoplayOn")}
+                onClick={() => changeAutoplay(!autoplay)}
+                pressed={autoplay}
+                testId={`${id}-play`}
               >
-                <RestartAltRoundedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title={t("repertoires.play.download")}>
-              <span>
-                <IconButton
-                  size="small"
-                  onClick={download}
-                  disabled={shown !== "ready"}
-                  aria-label={t("repertoires.play.download")}
-                  data-testid={`${id}-download`}
-                  sx={{ flexShrink: 0 }}
-                >
-                  <DownloadRoundedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
+                {autoplay ? <PauseRoundedIcon fontSize="small" /> : <PlayArrowRoundedIcon fontSize="small" />}
+              </IconAction>
+            )}
+            <IconAction label={t("repertoires.play.restart")} onClick={restart} testId={`${id}-restart`}>
+              <RestartAltRoundedIcon fontSize="small" />
+            </IconAction>
+            <IconAction
+              label={t("repertoires.play.download")}
+              onClick={download}
+              disabled={shown !== "ready"}
+              testId={`${id}-download`}
+            >
+              <DownloadRoundedIcon fontSize="small" />
+            </IconAction>
             {game === undefined ? (
-              <Tooltip title={t("repertoires.settings.open")}>
-                <IconButton
-                  size="small"
-                  component={RouterLink}
-                  to={`${boardPath}/settings`}
-                  // Back to this position, link and all.
-                  state={{ from: `${boardPath}${location.search}` }}
-                  aria-label={t("repertoires.settings.open")}
-                  data-testid={`${id}-settings`}
-                  sx={{ flexShrink: 0 }}
-                >
-                  <SettingsRoundedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+              <IconAction
+                label={t("repertoires.settings.open")}
+                // Back to this position, link and all.
+                link={{ component: RouterLink, to: `${boardPath}/settings`, state: { from: `${boardPath}${location.search}` } }}
+                testId={`${id}-settings`}
+              >
+                <SettingsRoundedIcon fontSize="small" />
+              </IconAction>
             ) : (
-              <Tooltip title={t("repertoires.play.back")}>
-                <IconButton
-                  size="small"
-                  component={RouterLink}
-                  to={boardPath}
-                  aria-label={t("repertoires.play.back")}
-                  data-testid={`${id}-back`}
-                  sx={{ flexShrink: 0 }}
-                >
-                  <ArrowBackRoundedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+              <BackButton
+                label={t("repertoires.play.back")}
+                link={{ component: RouterLink, to: boardPath }}
+                edge={false}
+                testId={`${id}-back`}
+              />
             )}
           </>
         ),
@@ -874,40 +826,6 @@ function RepertoirePlayer({
 }
 
 /** One on/off setting: the switch, and a line on what it does. */
-function SwitchSetting({
-  testId,
-  checked,
-  onChange,
-  label,
-  help,
-}: {
-  testId: string;
-  checked: boolean;
-  onChange: (next: boolean) => void;
-  label: string;
-  help: string;
-}) {
-  return (
-    <Box>
-      <FormControlLabel
-        sx={{ m: 0 }}
-        control={
-          <Switch
-            size="small"
-            checked={checked}
-            data-testid={testId}
-            onChange={(event) => onChange(event.target.checked)}
-          />
-        }
-        label={label}
-      />
-      <Typography variant="caption" sx={{ display: "block", color: "text.secondary" }}>
-        {help}
-      </Typography>
-    </Box>
-  );
-}
-
 /**
  * The Settings tab: the session's knobs — side, Autoplay (the player's only),
  * arrows, the play-chance arrows' switch (the player's only too), engine —
@@ -948,31 +866,25 @@ function PlaySettings({
       sx={{ display: "flex", flexDirection: "column", gap: 2, p: 1 }}
     >
       <Box>
-        <Typography variant="subtitle2" id={`${id}-side-label`} sx={{ fontWeight: 600 }}>
+        <FieldLabel component="span" id={`${id}-side-label`}>
           {t("repertoires.play.side")}
-        </Typography>
-        <ToggleButtonGroup
-          exclusive
-          size="small"
+        </FieldLabel>
+        <SideToggle
           value={side}
-          onChange={(_, next: Side | null) => onSideChange(next)}
-          aria-labelledby={`${id}-side-label`}
-          data-testid={`${id}-side`}
-          sx={{ my: 0.5 }}
-        >
-          <ToggleButton value="white" data-testid={`${id}-side-white`}>
-            {t("repertoires.play.white")}
-          </ToggleButton>
-          <ToggleButton value="black" data-testid={`${id}-side-black`}>
-            {t("repertoires.play.black")}
-          </ToggleButton>
-        </ToggleButtonGroup>
-        <Typography variant="caption" sx={{ display: "block", color: "text.secondary" }}>
+          onChange={onSideChange}
+          labels={{ white: t("repertoires.play.white"), black: t("repertoires.play.black") }}
+          ariaLabel={t("repertoires.play.side")}
+          testId={`${id}-side`}
+        />
+        <Typography variant="caption" sx={{ display: "block", color: "text.secondary", mt: 0.5 }}>
           {t("repertoires.play.sideHelp")}
         </Typography>
       </Box>
       {autoplay !== undefined && (
-        <SwitchSetting
+        <SwitchField
+          size="small"
+          // The player's tests reach the input inside the switch.
+          testIdOn="control"
           testId={`${id}-setting-autoplay`}
           checked={autoplay}
           onChange={onAutoplayChange}
@@ -980,7 +892,10 @@ function PlaySettings({
           help={t("repertoires.play.autoplayHelp")}
         />
       )}
-      <SwitchSetting
+      <SwitchField
+          size="small"
+          // The player's tests reach the input inside the switch.
+          testIdOn="control"
         testId={`${id}-arrows`}
         checked={showArrows}
         onChange={onShowArrowsChange}
@@ -988,7 +903,10 @@ function PlaySettings({
         help={t("repertoires.play.arrowsHelp")}
       />
       {chanceArrows !== undefined && (
-        <SwitchSetting
+        <SwitchField
+          size="small"
+          // The player's tests reach the input inside the switch.
+          testIdOn="control"
           testId={`${id}-chance-arrows`}
           checked={chanceArrows}
           onChange={onChanceArrowsChange}
@@ -996,7 +914,10 @@ function PlaySettings({
           help={t("repertoires.play.chanceArrowsHelp")}
         />
       )}
-      <SwitchSetting
+      <SwitchField
+          size="small"
+          // The player's tests reach the input inside the switch.
+          testIdOn="control"
         testId={`${id}-setting-engine`}
         checked={engineOn}
         onChange={onEngineOnChange}

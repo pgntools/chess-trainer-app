@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import { Link as RouterLink, useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
+
+import { LoadingLine, LoadingSpinnerLine, MissState } from "../../design-system/components/states";
 
 import {
   isMultiGameRepertoire,
@@ -65,14 +65,14 @@ export function MultiGameRepertoire({ saved }: { saved: SavedRepertoire }) {
 
   return (
     <Box data-testid="repertoire-board-multi" sx={{ height: "100%", overflowY: "auto" }}>
-      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+      <Typography variant="subtitle1" component="h2" dir="auto" sx={{ fontWeight: 700 }}>
         {saved.name || t("repertoires.untitled")}
       </Typography>
       <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
         {t("repertoires.choice.legacy")}
       </Typography>
       {reading === null ? (
-        <CircularProgress size={16} data-testid="repertoire-board-reading" />
+        <LoadingSpinnerLine testId="repertoire-board-reading">{t("repertoires.upload.reading")}</LoadingSpinnerLine>
       ) : reading.ok && reading.games.length > 1 ? (
         <RepertoireMergeSplit
           reading={reading}
@@ -96,25 +96,20 @@ export function MultiGameRepertoire({ saved }: { saved: SavedRepertoire }) {
  */
 export function ReadingRepertoires() {
   const { t } = useTranslation();
-  return (
-    <Typography data-testid="repertoires-loading" sx={{ color: "text.secondary", p: 2 }}>
-      {t("repertoires.loading")}
-    </Typography>
-  );
+  return <LoadingLine testId="repertoires-loading">{t("repertoires.loading")}</LoadingLine>;
 }
 
 /** An id this browser does not hold — the board's miss, and the play screen's. */
 export function MissingRepertoire() {
   const { t } = useTranslation();
   return (
-    <Box data-testid="repertoire-board-missing" sx={{ py: 4, textAlign: "center" }}>
-      <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
-        {t("repertoires.detail.missing")}
-      </Typography>
-      <Button component={RouterLink} to="/repertoires" variant="outlined" size="small">
-        {t("repertoires.detail.back")}
-      </Button>
-    </Box>
+    <MissState
+      backLabel={t("repertoires.detail.back")}
+      backLink={{ component: RouterLink, to: "/repertoires" }}
+      testId="repertoire-board-missing"
+    >
+      {t("repertoires.detail.missing")}
+    </MissState>
   );
 }
 
