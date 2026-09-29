@@ -5,6 +5,10 @@ import AppThemeWithLang from './theme/AppThemeWithLang'
 // Side-effect import: initialises i18next before the tree reads a language.
 import './i18n'
 import './index.css'
+// The console theme's face (JetBrains Mono, OFL). Only its @font-face rules
+// load here: a browser fetches the font file when text is set in it, so a
+// reader on another theme downloads nothing.
+import '@fontsource-variable/jetbrains-mono'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(

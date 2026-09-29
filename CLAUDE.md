@@ -257,7 +257,8 @@ mismatch this exists to prevent.
 
 - **A theme is data** in the design system's registry
   (`src/design-system/themes/`, CTA-107 — `default`, `brown`, `green` and
-  `high-contrast` since CTA-108): its light and dark palettes,
+  `high-contrast` since CTA-108, `console` — a Linux terminal — since
+  CTA-115): its light and dark palettes,
   typography, shape, **component knobs** (values `buildTheme` turns into
   MUI overrides — CTA-115) and **`chess` tokens** — every colour drawn on or
   over a board. `buildTheme(theme, mode, direction)`

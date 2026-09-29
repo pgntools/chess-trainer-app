@@ -81,8 +81,8 @@ describe("the contrast report", () => {
 });
 
 /**
- * **The board's coordinates on their squares.** The high-contrast theme
- * writes them at AA; the others keep the traditional board look — the
+ * **The board's coordinates on their squares.** The high-contrast and
+ * console themes write them at AA; the others keep the traditional board look — the
  * coordinates in the other square's colour — and are a known gap
  * (ACCESSIBILITY.md), measured here so the document stays true: a change to
  * one of these boards' squares shows up as a changed ratio. A theme added
@@ -100,8 +100,8 @@ const coordinates = ({ chess: { board } }: ThemeDefinition) => ({
 });
 
 describe("the board's coordinates on their squares", () => {
-  it("are at AA in the high-contrast theme", () => {
-    const measured = coordinates(themes.find((theme) => theme.id === "high-contrast")!);
+  it.each(["high-contrast", "console"])("are at AA in the %s theme", (id) => {
+    const measured = coordinates(themes.find((theme) => theme.id === id)!);
     expect(measured.light).toBeGreaterThanOrEqual(TEXT_AA);
     expect(measured.dark).toBeGreaterThanOrEqual(TEXT_AA);
   });

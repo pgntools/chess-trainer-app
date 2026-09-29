@@ -1403,6 +1403,7 @@ const he: typeof en = {
       brown: "חום",
       green: "ירוק",
       "high-contrast": "ניגודיות גבוהה",
+      console: "מסוף",
     },
   },
   footer: {

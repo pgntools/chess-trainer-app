@@ -115,7 +115,8 @@ The registered themes, in the order Settings → Appearance lists them:
 | `default` | Default | `themes/default.ts` | The app's look before themes, unchanged; react-chessboard's board. |
 | `brown` | Brown | `themes/brown.ts` | Calm, lichess-like (CTA-108): warm off-white / near-black pages, one blue accent, square-ish corners; lichess's brown board, highlight and arrow brushes. Its squares equal the default's (react-chessboard's defaults *are* lichess's brown) — its board differs in the arrows, book arrows, result bars and map dots. |
 | `green` | Green | `themes/green.ts` | Bold, chess.com-like (CTA-108): the green board, the yellow highlight, green / blue / red arrows, move-classification tones, heavy headings and chunky buttons. |
-| `high-contrast` | High contrast | `themes/highContrast.ts` | WCAG AA or better in both schemes (`themes/themes.test.ts` measures text, status colours, dividers, move marks, coordinates and result bars), a 3 px focus ring in the text colour, strong borders; a board told apart by lightness — its coordinates at AA, the one theme that writes them so — and drawn over in the Okabe–Ito palette. |
+| `high-contrast` | High contrast | `themes/highContrast.ts` | WCAG AA or better in both schemes (`themes/themes.test.ts` measures text, status colours, dividers, move marks, coordinates and result bars), a 3 px focus ring in the text colour, strong borders; a board told apart by lightness — its coordinates at AA — and drawn over in the Okabe–Ito palette. |
+| `console` | Console | `themes/console.ts` | A Linux terminal (CTA-115, the first theme made with `yarn theme:bootstrap`): the Tango palette gnome-terminal ships as its ANSI colours — the prompt's bright green as the accent, cyan, blue, magenta, yellow, red — near-black pages with a green cast in dark, paper-white in light; everything in one monospace face (JetBrains Mono, bundled — below), square corners, underlined links, the selected nav row barred like a block cursor; a phosphor-green board with cyan / blue / red arrows. Every contrast check passes, the advisory ones too: its coordinates, move marks and result bars are at AA. |
 
 The two sites that inspired `brown` and `green` are named only in the files'
 comments: another site's brand is never a theme's id or shown name.
@@ -176,7 +177,17 @@ touched:
 | every theme · both | `contrastThreshold` | MUI's 3 | 4.5 | MUI chose white text at 3:1 (the dark schemes' error buttons 3.68:1, brown dark's primary 3.27:1); now a button's text is picked at AA |
 | every theme · both | `focusRing`, `controlBorder` | — (MUI's outlined border is 1.6:1) | the theme's accent (the text colour in high contrast); a 3:1 grey of the theme's own hue | new tokens: a focus ring and a control border at 3:1 |
 
-The board's coordinates are measured too: the high-contrast theme writes them
+**Fonts.** A theme names its faces in `typography` (`fontFamily`, and
+`fontFamilyMonospace` for notation and machine words). Most stacks are
+system fonts; the one web font bundled is **JetBrains Mono** (OFL, the
+console theme's), from `@fontsource-variable/jetbrains-mono`, imported for
+its `@font-face` rules in `src/main.tsx` — a browser fetches the file only
+when text is set in it, so a reader on another theme downloads nothing. A
+theme that wants another web font adds its Fontsource package and import
+the same way, and keeps a system fallback after it (Hebrew falls through to
+the fallback: JetBrains Mono has no Hebrew).
+
+The board's coordinates are measured too: the high-contrast and console themes write them
 at AA; the default, brown and green themes keep the traditional look (2.30,
 2.30 and 2.84:1) — a known gap, recorded in `ACCESSIBILITY.md`, not changed.
 

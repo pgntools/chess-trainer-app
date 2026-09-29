@@ -1,4 +1,5 @@
 import { brownTheme } from "./brown";
+import { consoleTheme } from "./console";
 import { defaultTheme } from "./default";
 import { greenTheme } from "./green";
 import { highContrastTheme } from "./highContrast";
@@ -12,7 +13,13 @@ export const DEFAULT_THEME_ID = defaultTheme.id;
  * Adding a theme is a file beside `default.ts` and one entry here — the
  * pickers, the gallery and `buildTheme` read this list and nothing else.
  */
-export const themes: readonly ThemeDefinition[] = [defaultTheme, brownTheme, greenTheme, highContrastTheme];
+export const themes: readonly ThemeDefinition[] = [
+  defaultTheme,
+  brownTheme,
+  greenTheme,
+  highContrastTheme,
+  consoleTheme,
+];
 
 /** Whether `id` names a registered theme. */
 export const isThemeId = (id: unknown): id is string =>

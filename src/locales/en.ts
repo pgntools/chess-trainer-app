@@ -1797,6 +1797,7 @@ const en = {
       brown: "Brown",
       green: "Green",
       "high-contrast": "High contrast",
+      console: "Console",
     },
   },
   footer: {

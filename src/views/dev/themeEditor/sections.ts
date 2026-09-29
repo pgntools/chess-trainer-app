@@ -132,7 +132,16 @@ export const SECTIONS: readonly SectionSpec[] = [
     groups: [
       {
         title: "Font",
-        fields: [{ path: "typography.fontFamily", label: "Font family", help: "A CSS font stack, first choice first.", kind: "text", placeholder: "Roboto, sans-serif" }],
+        fields: [
+          { path: "typography.fontFamily", label: "Font family", help: "A CSS font stack, first choice first.", kind: "text", placeholder: "Roboto, sans-serif" },
+          {
+            path: "typography.fontFamilyMonospace",
+            label: "Monospace font family",
+            help: "Notation and machine words — SAN, a FEN, a PGN. Empty: the app's own stack.",
+            kind: "text",
+            placeholder: "ui-monospace, Menlo, monospace",
+          },
+        ],
       },
       heading("h1", "Heading 1 — a screen's title"),
       heading("h2", "Heading 2"),

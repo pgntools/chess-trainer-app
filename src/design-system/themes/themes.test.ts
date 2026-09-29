@@ -3,6 +3,8 @@ import { getContrastRatio, type Theme } from "@mui/material/styles";
 
 import { buildTheme, chessTokensOf } from "../theme";
 import { brownTheme } from "./brown";
+import { consoleTheme } from "./console";
+import { contrastReport } from "./contrast";
 import { defaultTheme } from "./default";
 import { greenTheme } from "./green";
 import { highContrastTheme } from "./highContrast";
@@ -93,5 +95,39 @@ describe("the high-contrast theme meets WCAG AA", () => {
     const styles = typeof root === "function" ? root({ theme } as never) : root;
     expect(JSON.stringify(styles)).toContain("Mui-focusVisible");
     expect(JSON.stringify(styles)).toContain("outline");
+  });
+});
+
+describe("the console theme — a Linux terminal", () => {
+  it("is registered after the four before it", () => {
+    expect(themes[4]).toBe(consoleTheme);
+    expect(consoleTheme.labelKey).toBe("appearance.themes.console");
+  });
+
+  it("builds in every mode and direction, carrying its board", () => {
+    for (const mode of ["both", "light", "dark"] as const) {
+      for (const direction of ["ltr", "rtl"] as const) {
+        expect(chessTokensOf(buildTheme(consoleTheme, mode, direction))).toEqual(consoleTheme.chess);
+      }
+    }
+  });
+
+  it("sets everything in its terminal face — the text and the notation — bundled font first", () => {
+    const { typography } = buildTheme(consoleTheme, "dark", "ltr");
+    expect(typography.fontFamily).toMatch(/^"JetBrains Mono Variable", /);
+    expect(typography.fontFamily).toMatch(/monospace$/);
+    expect(typography.fontFamilyMonospace).toBe(typography.fontFamily);
+  });
+
+  it("passes every contrast check, the board's advisory ones too — its coordinates, move marks and result bars at AA", () => {
+    const failures = contrastReport(consoleTheme).filter((check) => !check.pass);
+    expect(failures.map((check) => `${check.scheme ?? "board"} · ${check.label}`)).toEqual([]);
+  });
+
+  it("draws square boxes, and the selected row with a bar like a block cursor", () => {
+    expect(consoleTheme.components.buttonRadius).toBe(0);
+    expect(consoleTheme.components.selectedRow).toMatchObject({ radius: 0, accent: 3 });
+    expect(consoleTheme.chess.board).not.toEqual(defaultTheme.chess.board);
+    expect(consoleTheme.chess.arrowPalettes.classic).not.toEqual(defaultTheme.chess.arrowPalettes.classic);
   });
 });
