@@ -39,6 +39,8 @@ const en = {
     settingsAppearance: "Appearance",
     /** The dev-only design gallery (CTA-107), in the Development folder. */
     designSystem: "Design system",
+    /** The dev-only theme editor (CTA-115), in the Development folder. */
+    themeEditor: "Theme editor",
     /** Sidebar folders — groupings over the routes, never routes themselves. */
     folders: {
       engine: "Engine",
@@ -86,6 +88,7 @@ const en = {
     libraryGame: "Library game",
     settings: "Settings",
     designSystem: "Design system",
+    themeEditor: "Theme editor",
   },
   /** The app shell's own words for a screen reader (CTA-112). */
   shell: {
