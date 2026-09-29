@@ -6,14 +6,17 @@ import DriveFileMoveRoundedIcon from "@mui/icons-material/DriveFileMoveRounded";
 import DriveFileRenameOutlineRoundedIcon from "@mui/icons-material/DriveFileRenameOutlineRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 
+import type { LinkTarget } from "../../../design-system/components/link";
 import { IconAction } from "../../../design-system/components/toolbars";
 import { FOLDER_ACTIONS, type FolderAction } from "./folderActions";
 
 export type FolderActionsProps = {
   /** The folder's id — the tail of every action's test id. */
   folderId: string;
-  /** What each action does; an action with no handler is not shown. */
+  /** What each action does; an action with no handler (and no link) is not shown. */
   on: Partial<Record<FolderAction, () => void>>;
+  /** Actions that go somewhere instead — a real link ("Add a collection here", to the upload). */
+  links?: Partial<Record<FolderAction, LinkTarget>>;
   /** Each action's name — its tooltip and accessible name. Name the folder in it ("Rename Openings"), so a list of folders reads apart. */
   labels: Partial<Record<FolderAction, string>>;
   /** Actions that are shown but off — a download of an empty folder. */
@@ -42,16 +45,17 @@ const ICONS: Record<FolderAction, typeof DownloadRoundedIcon> = {
  *
  * Presentational: every action is the caller's callback.
  */
-function FolderActions({ folderId, on, labels, disabled, testId }: FolderActionsProps) {
+function FolderActions({ folderId, on, links, disabled, labels, testId }: FolderActionsProps) {
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
-      {FOLDER_ACTIONS.filter((action) => on[action] !== undefined).map((action) => {
+      {FOLDER_ACTIONS.filter((action) => on[action] !== undefined || links?.[action] !== undefined).map((action) => {
         const Icon = ICONS[action];
         return (
           <IconAction
             key={action}
             label={labels[action] ?? action}
             onClick={on[action]}
+            link={links?.[action]}
             disabled={disabled?.[action]}
             testId={`${testId}-${action}-${folderId}`}
           >

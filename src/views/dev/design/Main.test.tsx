@@ -76,7 +76,7 @@ describe("the design gallery's route", () => {
 
   it("lands a family's own link on its first block", () => {
     mount("/dev/design/blocks/tables/");
-    expect(screen.getByTestId("where")).toHaveTextContent("/dev/design/blocks/tables/PlayedGamesTable");
+    expect(screen.getByTestId("where")).toHaveTextContent("/dev/design/blocks/tables/CollectionsTreeTable");
   });
 
   const SCHEMES = [

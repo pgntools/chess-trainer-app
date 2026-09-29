@@ -1056,6 +1056,9 @@ const en = {
    * `.pgn` into `src/data/library/` never touches this catalog.
    */
   library: {
+    filterClear: "Clear the filter",
+    /** How the folder table is worked, read with it (CTA-113). */
+    treeHint: "Up and down to move between rows, Tab to reach a row's chevron, its link and its actions; a header sorts.",
     /** `/library` — the collections. */
     title: "Library",
     count_one: "{{count}} collection",

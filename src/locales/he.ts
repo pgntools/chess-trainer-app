@@ -782,6 +782,8 @@ const he: typeof en = {
     },
   },
   library: {
+    filterClear: "ניקוי הסינון",
+    treeHint: "חצים למעלה ולמטה לתנועה בין השורות, Tab אל החץ, הקישור והפעולות של שורה; כותרת ממיינת.",
     title: "ספרייה",
     count_one: "אוסף אחד",
     count_other: "{{count}} אוספים",
