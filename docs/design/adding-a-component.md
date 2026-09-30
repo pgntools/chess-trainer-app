@@ -180,13 +180,14 @@ Run from the worktree, in a shell where `fnm`'s Node is on `PATH`.
 - [ ] `yarn build`, then nothing of the gallery, a demo or a fixture in `dist/`.
       — *by review* (CI runs the build, not the grep):
 
-      ```sh
-      grep -rlE "/dev/design|design-gallery|DesignGallery|\.gallery|<Name>|<a fixture's name>" dist/
-      ```
+  ```sh
+  grep -rlE "/dev/design|design-gallery|DesignGallery|\.gallery|<Name>|<a fixture's name>" dist/
+  ```
 
-      Expect no file (the Stockfish runtime's own `/dev/stdin` and `/dev/tty`
-      are not this). A component that ships in a screen appears there by name
-      — check the gallery and fixture words, not the component's.
+  Expect no file (the Stockfish runtime's own `/dev/stdin` and `/dev/tty`
+  are not this). The minified build keeps no component's name, so `<Name>`
+  matches only a string: read a hit before calling it a leak — `ContextMenu`
+  is a key's name in a dependency, `SnackbarProvider` its own error message.
 - [ ] `yarn test:a11y:quick` when a **shipped screen** changed or a component
       now renders on one (~6 min; `yarn test:a11y` for the full matrix). — the
       Accessibility workflow (`a11y.yml`) on every pull request; a new screen is

@@ -48,14 +48,17 @@ const isTest = (path: string) => /\.test\.tsx?$/.test(path);
 const withoutComments = (code: string) => code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
 
 /**
- * **Whether a doc has a component's entry** (CTA-117): a heading naming it
- * (`## PanelTabs`, any depth from `##`), or a table row whose *first cell*
- * names it in backticks (`| \`FolderTree\` | trees | … |`, several to a cell
- * allowed) — a mention in prose, or in another column, is not an entry.
+ * **Whether a doc has a component's entry** (CTA-117): a heading that *opens*
+ * with its name (`## PanelTabs`, any depth from `##`; one heading may open
+ * with several, `## SwitchField / CheckboxField`), or a table row whose
+ * *first cell* names it in backticks (`| \`FolderTree\` | trees | … |`,
+ * several to a cell allowed) — a mention in prose, later in a heading
+ * (`## CTA-113 additions to \`DataTable\``) or in another column is not an
+ * entry.
  */
 export const hasDocEntry = (doc: string, name: string, form: DocEntryForm): boolean =>
   form === "heading"
-    ? new RegExp(`^#{2,4}\\s+.*\\b${name}\\b`, "m").test(doc)
+    ? new RegExp(`^#{2,4}\\s+(?:\`?\\w+\`?\\s*/\\s*)*\`?${name}\`?(?![\\w-])`, "m").test(doc)
     : new RegExp(`^\\|[^|]*\`${name}\`[^|]*\\|`, "m").test(doc);
 
 /** A literal `transition: "…"` — motion must go through `theme.transitions`, which reduced motion stops. */

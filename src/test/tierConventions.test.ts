@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import hierarchy from "../../docs/design/hierarchy.md?raw";
+import patternTables from "../../docs/design/sections/patterns/tables.md?raw";
 import tabs from "../../docs/design/sections/tabs.md?raw";
 import { hasDocEntry, hasLiteralTransition, hasOwnFocusStyle } from "./tierConventions";
 
@@ -31,6 +32,21 @@ describe("hasDocEntry — a heading (base components, patterns)", () => {
 
   it("does not take a top-level title for an entry", () => {
     expect(hasDocEntry("# PanelTabs\n", "PanelTabs", "heading")).toBe(false);
+  });
+
+  it("finds each name of a heading that opens with several", () => {
+    expect(hasDocEntry("## SwitchField / CheckboxField\n", "SwitchField", "heading")).toBe(true);
+    expect(hasDocEntry("## SwitchField / CheckboxField\n", "CheckboxField", "heading")).toBe(true);
+    expect(hasDocEntry("## useTableUrlState (+ `sortRows`)\n", "useTableUrlState", "heading")).toBe(true);
+  });
+
+  it("does not take a heading that only mentions the component — the real patterns doc with DataTable's own heading cut", () => {
+    expect(hasDocEntry(patternTables, "DataTable", "heading")).toBe(true);
+    const without = patternTables.replace(/^## DataTable$/m, "");
+    expect(without).not.toBe(patternTables);
+    // `## CTA-113 additions to \`DataTable\`` is still there.
+    expect(without).toMatch(/^## .+DataTable/m);
+    expect(hasDocEntry(without, "DataTable", "heading")).toBe(false);
   });
 });
 
