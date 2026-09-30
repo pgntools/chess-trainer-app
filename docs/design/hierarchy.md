@@ -59,6 +59,8 @@ their demos run on made-up data.
 | Pattern | What it is | Reference |
 | --- | --- | --- |
 | `DataTable` | a multi-column table: columns as data, controlled sort and paging, picks with select-all, row actions, row click and link, loading / empty / no-match rows, a row's note across the columns, sections closed by a bolder line, filter and toolbar slots, density, a sticky header — good at 10,000 rows | [`sections/patterns/tables.md`](./sections/patterns/tables.md) |
+| `StandingsTable` | a Swiss tournament's standings: a row per competitor in rank order, one cell per round showing the result only (`ResultMark`: `1`, `½`, `0`, `*`, a dash), the points and tie-break columns that are data — every row shown, the frame scrolling both ways (CTA-120) | [`sections/patterns/tables.md`](./sections/patterns/tables.md#standingstable) |
+| `CrossTable` | a round robin's crosstable: a row and a column per competitor, every result between two in the cell where they meet, the diagonal blank, the points and the tie-break columns — real row and column headers (CTA-120) | [`sections/patterns/tables.md`](./sections/patterns/tables.md#crosstable) |
 | `TreeView` | a collapsible tree: branches that open in place, leaves that link or select, the node on screen marked, a branch that can also be a destination — the sidebar's look | [`sections/patterns/trees.md`](./sections/patterns/trees.md) |
 | `UploadPanel` | a file button and a paste box over one text, with a line under them for what was read (CTA-113) | [`sections/patterns/forms.md`](./sections/patterns/forms.md) |
 
@@ -118,6 +120,14 @@ CTA-113 moved the rest of the app onto blocks:
 | `MergeSplitChoice`, `CollectionFilters` | forms | A several-games text's merge or split; a collection's filter panel. |
 | `PgnExportPanel`, `GameInfo`, `CurrentOpening`, `ChangesStrip` | panels | Every board's Export and Info tabs, the opening line, the Update / Save as copy / Discard strip. |
 | `PlayToggleButton`, `EngineThinking` | panels | Play's header button and the engine's thinking line. |
+
+CTA-120 built the tournament tables ahead of their screen — only the gallery
+shows them yet:
+
+| Block | Family | What it is |
+| --- | --- | --- |
+| `SwissStandingsTable` | tables | A Swiss tournament's standings (`Tournament`, `lib/tournament.ts`) as a `StandingsTable`: the title before the name and the federation after it, the rating, a result per round named by its round, colour and opponent, the points, and the tie-breaks the tournament was ranked by (Buchholz, Sonneborn-Berger). `*` is an unfinished game, a dash a round the file holds no game of. |
+| `RoundRobinCrossTable` | tables | A round robin's crosstable (`Tournament` ranked with `ROUND_ROBIN_TIE_BREAKS`) as a `CrossTable`: every game between two players in round order (`gamesBetween`) — two in a double round robin — then the points and Sonneborn-Berger. |
 
 How a module migrates — the order of work, what each old pattern became, the
 findings — is [`migration.md`](./migration.md).

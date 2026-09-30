@@ -13,4 +13,5 @@ export * from "./EmptyTableRow";
 export * from "./LoadingTableRow";
 export * from "./NumberCell";
 export * from "./DateCell";
+export * from "./ResultMark";
 export * from "./useTableUrlState";

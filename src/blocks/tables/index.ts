@@ -10,3 +10,6 @@ export * from "./CollectionGamesTable";
 export * from "./CollectionsTreeTable";
 export * from "./PlayedGamesTable";
 export * from "./StorageTable";
+// CTA-120: the tournament tables — a `StandingsTable` and a `CrossTable` over `lib/tournament.ts`, built ahead of their screen.
+export * from "./SwissStandingsTable";
+export * from "./RoundRobinCrossTable";

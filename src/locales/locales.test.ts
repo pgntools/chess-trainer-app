@@ -47,6 +47,11 @@ describe("translation catalogs", () => {
       "playedGames.players",
       // The arrow palette named after the site whose colours it takes — a brand.
       "analysis.arrows.palettes.lichess",
+      // The tournament tables' headers (CTA-120): a number sign, and the two
+      // tie-breaks' initialisms — each read by its translated full name.
+      "tournament.columns.rank",
+      "tournament.columns.buchholz",
+      "tournament.columns.sonnebornBerger",
     ]);
 
     const untranslated = leafKeys(en).filter(
