@@ -9,4 +9,9 @@ describeTierConventions({
   sections: PATTERN_SECTIONS,
   everySectionFilled: true,
   fixtures: false,
+  docs: {
+    sources: import.meta.glob<string>("../../../docs/design/sections/patterns/*.md", { query: "?raw", import: "default", eager: true }),
+    file: (section) => `sections/patterns/${section}.md`,
+    form: "heading",
+  },
 });

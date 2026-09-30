@@ -250,14 +250,17 @@ A folder may hold more (a pure helper beside the component —
 file exports components only). The conventions tests check the layout and
 the house rules of every tier (`src/test/tierConventions.ts`, called by each
 tier's `conventions.test.ts`): the files, the index re-export, a `testId`, no
-colour literal, no physical side, and a block's fixtures imported only by its
-gallery and test.
+colour literal, no physical side, no literal `transition`, a `:focus-visible`
+that spreads the theme's ring, a gallery with a demo, **its entry in the docs**
+(CTA-117 — a heading in its section's doc, or a row of the Blocks table above)
+and a block's fixtures imported only by its gallery and test.
 
-**Adding one:**
+**Adding one:** the checklist to work down, from the tier to the pull request,
+is [`adding-a-component.md`](./adding-a-component.md). The shape of each entry:
 
 | To add | Do |
 | --- | --- |
-| a base component | its folder in its section, a re-export from the section's `index.ts`, an entry in `sections/<section>.md` |
+| a base component | its folder in its section, a re-export from the section's `index.ts`, an entry in `sections/<section>.md` (a `## Name` heading) |
 | a pattern | its folder in its pattern section (a new section: a folder, its `index.ts`, an entry in `patterns/sections.ts`), a re-export, `sections/patterns/<section>.md` |
 | a block | its folder in its family (a new family: an entry in `blocks/families.ts`; the folder and its `index.ts` come with the first block), a re-export, `fixtures.ts`, and a line in the Blocks table above |
 

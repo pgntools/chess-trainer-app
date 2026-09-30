@@ -64,6 +64,10 @@ not a feature request.
 
 ## For contributors
 
+Adding a component? Work down
+[`docs/design/adding-a-component.md`](docs/design/adding-a-component.md) — its
+accessibility ticks name what checks each; the list below is the short form.
+
 - Build a component in the design system, in the gallery, first — the axe
   check and the contrast test then cover it in every theme
   ([`docs/design/hierarchy.md`](docs/design/hierarchy.md#accessibility)).
