@@ -1,32 +1,49 @@
-import { test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { applyPreferences, open, watchErrors, type ReflowRecord } from "./checks";
-import { LANGUAGES } from "./matrix";
+import { comboName, reflowCombos } from "./matrix";
 import { ROUTES } from "./routes";
 
 /*
-  Reflow (WCAG 1.4.10, CTA-116): content must be usable at 320 CSS px wide
-  without scrolling in two dimensions — the width of a 1280 px window at 400 %
-  zoom. It is **measured, not gated**: every route is opened at 320 × 256 and
-  the horizontal overflow recorded, and the findings go to ACCESSIBILITY.md's
-  known gaps with a plan. Nothing here fails on an overflow; it fails only if
-  the page cannot be opened and measured.
+  Reflow (WCAG 1.4.10, CTA-116 measured it, CTA-118 gates it): content must be
+  usable at 320 CSS px wide without scrolling in two dimensions — the width of
+  a 1280 px window at 400 % zoom. Every route is opened at 320 × 256 and held
+  to three things:
 
-  Measured once per language in the default theme, light: reflow is about the
-  layout, which the theme's colours do not change.
+    - the page does not scroll sideways;
+    - `main` has the viewport less the shell's inset — until CTA-118 the
+      sidebar was a permanent 280 px rail and `main` came out 0 px wide on all
+      21 routes, so none of the page could be read;
+    - nothing reaches past the edge that no scrolling box of its own contains
+      — a table scrolls inside its region rather than widening the page.
+
+  The measurements still go to `a11y-report/summary.md`, one row a route.
+
+  Measured under every theme of the selected matrix, in both languages, in one
+  colour scheme — `reflowCombos()` says why (a theme carries typography, shape
+  and component knobs and can change a box's size; a colour scheme cannot).
 */
 
 const VIEWPORT = { width: 320, height: 256 } as const;
 
-for (const language of LANGUAGES) {
-  test.describe(`reflow at 320 px · ${language}`, () => {
-    test.use({ viewport: VIEWPORT, locale: language === "he" ? "he-IL" : "en-US" });
+/**
+ * The shell's board inset, a side (`views/main/Layout.tsx`'s `BOARD_INSET_PX`)
+ * — repeated rather than imported, because this spec runs in node and that
+ * module is the app's React shell. What `main` must have is the viewport less
+ * both insets.
+ */
+const SHELL_INSET_PX = 16;
+const MAIN_MIN_WIDTH_PX = VIEWPORT.width - SHELL_INSET_PX * 2;
+
+for (const combo of reflowCombos()) {
+  test.describe(`reflow at 320 px · ${comboName(combo)}`, () => {
+    test.use({ viewport: VIEWPORT, locale: combo.language === "he" ? "he-IL" : "en-US" });
 
     for (const route of ROUTES) {
       test(route.id, async ({ page }, testInfo) => {
-        await applyPreferences(page, { theme: "default", scheme: "light", language });
+        await applyPreferences(page, combo);
         watchErrors(page);
-        await open(page, route, { onScreen: false });
+        await open(page, route);
 
         const measured = await page.evaluate(() => {
           const width = document.documentElement.clientWidth;
@@ -61,8 +78,21 @@ for (const language of LANGUAGES) {
           };
         });
 
-        const record: ReflowRecord = { route: route.id, language, ...measured };
+        const record: ReflowRecord = { route: route.id, theme: combo.theme, language: combo.language, ...measured };
         await testInfo.attach("reflow-record", { body: JSON.stringify(record), contentType: "application/json" });
+
+        const where = `${route.id} under ${comboName(combo)}`;
+        // Soft, so one route reports everything wrong with it at once.
+        expect.soft(measured.pageOverflowPx, `${where} scrolls sideways at ${VIEWPORT.width} px`).toBeLessThanOrEqual(1);
+        expect
+          .soft(measured.mainWidthPx, `${where}: main has the viewport less the shell's inset`)
+          .toBeGreaterThanOrEqual(MAIN_MIN_WIDTH_PX);
+        expect
+          .soft(
+            measured.offenders.map((offender) => `${offender.selector} (+${offender.overflowPx} px)`),
+            `${where}: elements past the edge that no scrolling box of their own contains`,
+          )
+          .toEqual([]);
       });
     }
   });

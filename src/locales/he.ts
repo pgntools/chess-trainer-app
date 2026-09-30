@@ -66,6 +66,7 @@ const he: typeof en = {
   shell: {
     skipToMain: "דילוג לתוכן הראשי",
     sidePanel: "לוח צד",
+    openNav: "פתיחת הניווט",
   },
   hints: {
     tree: "חצים למעלה ולמטה כדי לנוע, ימינה כדי לסגור, שמאלה כדי לפתוח, Enter כדי לעבור.",

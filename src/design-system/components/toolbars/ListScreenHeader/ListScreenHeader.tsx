@@ -10,7 +10,12 @@ export type ListScreenHeaderProps = {
   back?: ReactNode;
   /** The screen's actions, at the row's end. */
   actions?: ReactNode;
-  /** Let the actions wrap under the title on a narrow square (the saved lists). */
+  /**
+   * Let the **title** wrap to a second line instead of being cut with an
+   * ellipsis (the saved lists, whose titles are a reader's folder names). The
+   * *actions* drop under the title whenever the row runs short whatever this
+   * says — see the component.
+   */
   wrap?: boolean;
   /** A second row under the first — filters, a search box. */
   children?: ReactNode;
@@ -25,6 +30,13 @@ export type ListScreenHeaderProps = {
  * the actions — over a bottom divider, fixed above the one region that
  * scrolls. Five screens wrote it with three spacings; this is the one
  * (`pb: 1.5`, `mb: 0.5`, `gap: 1`). The title is the screen's heading (`h1`).
+ *
+ * **The row always wraps** (CTA-118): the title box may shrink to nothing
+ * (`minWidth: 0`, so a long title ellipses), and with the actions pinned
+ * (`flexShrink: 0`) a narrow square — 288 px at the 320 px viewport WCAG
+ * 1.4.10 asks about — crushed the `h1` to zero width, which is a heading no
+ * one can read. Wrapping moves the actions to a line of their own instead;
+ * with room for both nothing wraps, so no window that fits them changes.
  */
 function ListScreenHeader({ title, count, back, actions, wrap = false, children, titleDir, testId }: ListScreenHeaderProps) {
   return (
@@ -32,7 +44,7 @@ function ListScreenHeader({ title, count, back, actions, wrap = false, children,
       data-testid={testId}
       sx={{ flexShrink: 0, pb: 1.5, mb: 0.5, borderBottom: "1px solid", borderColor: "divider" }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: wrap ? "wrap" : "nowrap" }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
         {back}
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>
           <Typography
@@ -58,7 +70,7 @@ function ListScreenHeader({ title, count, back, actions, wrap = false, children,
         {actions !== undefined && (
           <Box
             data-testid={`${testId}-actions`}
-            sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, flexWrap: wrap ? "wrap" : "nowrap" }}
+            sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, flexWrap: "wrap" }}
           >
             {actions}
           </Box>
