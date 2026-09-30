@@ -74,7 +74,7 @@ included — leave it off.
 | `a11y.spec.ts` | Every route × every combination: `check`. |
 | `allowlist.ts` | The known gaps — the only violations let through. |
 | `allowlist.spec.ts` | Each entry's `gap` is a phrase in ACCESSIBILITY.md's Known gaps. |
-| `reflow.spec.ts` | Every route at 320 × 256, once per language: measured, never failed. |
+| `reflow.spec.ts` | Every route at 320 × 256, once per language: **the reflow gate** (CTA-118) — no sideways scroll, `main` at least the viewport less the shell's inset, nothing past the edge outside a scrolling box of its own. |
 | `summaryReporter.ts` | `a11y-report/summary.md` and `.json`; **fails the run on a stale allowlist entry**. |
 
 **What `check` asks of a page**, soft-asserted so one page reports all of it:
@@ -97,11 +97,23 @@ filtered run never fails an entry it did not visit. Adding one is the last resor
 first.
 
 **Reflow.** WCAG 1.4.10 asks for content usable at 320 CSS px wide. Each route is
-opened at 320 × 256 and `pageOverflowPx` (sideways scroll), `mainWidthPx` and the
-widest offenders are recorded; the table is in `summary.md` and the findings in
-ACCESSIBILITY.md's known gaps with a plan. Today `main` is 0 px wide everywhere:
-the sidebar is a fixed 280 px with no breakpoint. `open` waits for elements to
-be *attached*, not visible, at that width.
+opened at 320 × 256, in both languages, and held to three things (CTA-118 —
+until then this was measured and never failed, because the sidebar was a fixed
+280 px with no breakpoint and `main` came out 0 px wide everywhere):
+
+- `pageOverflowPx` — the page does not scroll sideways;
+- `mainWidthPx` — `main` has at least the viewport less the shell's inset
+  (320 − 2 × 16 = 288 px; `SHELL_INSET_PX` in the spec repeats
+  `Layout.tsx`'s `BOARD_INSET_PX`, which a node spec cannot import);
+- `offenders` — nothing reaches past the edge that no scrolling box of its own
+  contains, so a table scrolls inside its region rather than widening the page.
+
+All three are soft, so a route reports everything wrong with it at once, and
+all three are still recorded in `summary.md`'s reflow table. **A new screen
+passes them or it does not ship**: under the shell's breakpoint (`md`, a media
+query in `Layout.tsx`) the sidebar is a drawer opened from the header
+(`NavDrawer`, the design system's) and the board's panel stacks under the
+square.
 
 **Adding a route**: a line in `routes.ts` (`routes.spec.ts` fails without), and
 seed what it lists in `seedZip.ts`. **Adding a theme**: nothing — the full matrix

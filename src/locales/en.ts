@@ -96,6 +96,11 @@ const en = {
     skipToMain: "Skip to main content",
     /** The right-hand panel's landmark name. */
     sidePanel: "Side panel",
+    /**
+     * The header button that opens the navigation under a narrow window
+     * (CTA-118), where the sidebar is a drawer rather than a rail.
+     */
+    openNav: "Open navigation",
   },
   /**
    * How a composite widget is worked (CTA-112) — read with it by a screen

@@ -341,9 +341,17 @@ function CollectionTable({
   return (
     <>
       <Box data-testid="library-table-screen" sx={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+        {/*
+          `wrap`: the actions — back, Add games, the picks' bar — take more
+          than a narrow square has, and without it they squeezed the title
+          (the page's `h1`) to nothing at 320 px, which CTA-118's reflow gate
+          fails. It is what the two saved lists already pass; on a window with
+          room the row never wraps, so nothing above the breakpoint changes.
+        */}
         <ListScreenHeader
           title={<span data-testid="library-table-name">{collection.name}</span>}
           titleDir="auto"
+          wrap
           count={
             <span data-testid="library-table-count">
               {shown.length === rows.length

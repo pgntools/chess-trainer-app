@@ -399,8 +399,35 @@ contrast and target size on, the console, the document's and the boards'
 direction. It replaces the hand-run passes above
 ([`browser-a11y.md`](../../.claude/rules/browser-a11y.md), `ACCESSIBILITY.md`).
 Its first run found one thing the hand passes had not, fixed in §4.1 (a side
-line's move tokens), and measured **reflow at 320 px**: the sidebar leaves the
-content no width, on every route ([`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps)).
+line's move tokens), and measured **reflow at 320 px**: the sidebar left the
+content no width, on every route.
+
+**CTA-118 closed that and turned the measurement into a gate.** The shell has
+one breakpoint (`md`, `SHELL_COMPACT_BREAKPOINT` in `views/main/Layout.tsx`),
+read with `useMediaQuery` rather than in CSS because what changes under it is
+not only styling:
+
+- the rail becomes a **drawer** opened from the header — a new base component,
+  [`NavDrawer`](sections/navigation.md#navdrawer) (a named modal `dialog`
+  that keeps the focus, hands it back to its opener, and closes on Escape, on
+  the backdrop and on a navigation), holding the very same
+  `LeftPanelOutlet` / `<SideBar/>`, so the tree, the one open chain, the
+  pinned Settings foot and the exact-path active state are untouched;
+- the board's **panel stacks under the square**: the viewport becomes a
+  scrolling column, the square is measured against the width alone (down to a
+  floor, so a short window still shows a board and scrolls to the panel), and
+  the panel takes a minimum height of its own — `BoardPanel`'s `flex: 1`
+  scrolling section has no height to divide otherwise. The board arithmetic
+  stays in `EngineBoardSquare.tsx`; nothing here copies the `calc()`.
+
+Above the breakpoint the shell is exactly what it was, and every Sidebar,
+Layout and board test passes unchanged (jsdom answers every media query
+`false`). The one screen defect the gate found: on the Library's collection
+the header's actions squeezed its `h1` to nothing at 320 px — it now passes
+`ListScreenHeader`'s existing `wrap`, as the two saved lists already did.
+The reflow row is gone from [`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps);
+what the gate asks is in
+[`browser-a11y.md`](../../.claude/rules/browser-a11y.md).
 
 ## 5. Checklist for migrating a module
 

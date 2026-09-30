@@ -69,7 +69,7 @@ export default class SummaryReporter implements Reporter {
     const byRoute = new Map<string, ReflowRecord[]>();
     for (const record of reflow) byRoute.set(record.route, [...(byRoute.get(record.route) ?? []), record]);
     if (byRoute.size > 0) {
-      lines.push("## Reflow at 320 CSS px (measured, not gated)", "");
+      lines.push("## Reflow at 320 CSS px (gated — CTA-118)", "");
       lines.push("| Route | `main` width | Sideways scroll, en | Sideways scroll, he | Widest element past the edge |", "| --- | --- | --- | --- | --- |");
       for (const [route, records] of byRoute) {
         const of = (language: string) => records.find((record) => record.language === language);

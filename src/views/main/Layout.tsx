@@ -4,8 +4,13 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import { Link as RouterLink, Outlet, useMatches, type UIMatch } from 'react-router';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import type { Theme } from '@mui/material/styles';
+import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
+import { Link as RouterLink, Outlet, useLocation, useMatches, type UIMatch } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { NavDrawer } from '../../design-system/components/navigation';
+import { IconAction } from '../../design-system/components/toolbars';
 import { default as SideBar } from './Sidebar';
 import { Footer } from './Footer';
 import { BoardWidgetContext } from './service';
@@ -71,7 +76,36 @@ const SIDEBAR_WIDTH_PX = 280;
 const PANEL_MIN_WIDTH_PX = 320;
 const PANEL_MAX_WIDTH_PX = 560;
 
-const Header = () => {
+/**
+ * **The shell's one breakpoint** (CTA-118, WCAG 1.4.10 Reflow). Below it the
+ * window has no room for a 280px rail beside a board beside a 320px panel —
+ * at 320 CSS px, which is a 1280px window at 400% zoom, it had none for any
+ * of them and `main` came out 0px wide. Under it the rail becomes a drawer
+ * off the header and the panel stacks under the square; above it the shell is
+ * exactly what it was.
+ *
+ * One breakpoint rather than two: the rail and the panel are the same 280 +
+ * 320 px of fixed chrome, so they stop fitting together.
+ */
+const SHELL_COMPACT_BREAKPOINT = 'md';
+
+/**
+ * The stacked panel's least height, in pixels. Stacked, the panel has no
+ * height of its own to divide — the row that gave it one is gone — and
+ * `BoardPanel`'s `flex: 1` scrolling region would collapse to nothing. This is
+ * what it divides instead; the board viewport scrolls as a whole.
+ */
+const STACKED_PANEL_MIN_HEIGHT_PX = 420;
+
+/**
+ * The stacked board square's least side, in pixels. Stacked, the square is
+ * bound by the width and by the height as it always was — but a short window
+ * (320 × 256 is what reflow is measured at) would leave it nothing, so it
+ * keeps at least this much and the viewport scrolls down to the panel.
+ */
+const STACKED_BOARD_MIN_PX = 280;
+
+const Header = ({ compact, onOpenNav }: { compact: boolean; onOpenNav: () => void }) => {
     const { t } = useTranslation();
 
     return (
@@ -89,6 +123,22 @@ const Header = () => {
             }}
         >
             <Toolbar variant="dense" sx={{ gap: 2, minHeight: 56 }}>
+                {/*
+                    Under the breakpoint the sidebar is a drawer, and this is
+                    what opens it (CTA-118) — a real button with a required
+                    name, in the bar that already holds the shell's controls.
+                */}
+                {compact && (
+                    <IconAction
+                        label={t('shell.openNav')}
+                        onClick={onOpenNav}
+                        edge="start"
+                        testId="layout-nav-button"
+                    >
+                        <MenuRoundedIcon fontSize="small" />
+                    </IconAction>
+                )}
+
                 <Box
                     component={RouterLink}
                     to="/"
@@ -98,6 +148,7 @@ const Header = () => {
                         gap: 1.25,
                         color: 'text.primary',
                         textDecoration: 'none',
+                        minWidth: 0,
                         // Pushes everything after it to the far end of the bar,
                         // in whichever direction "far end" currently means.
                         marginInlineEnd: 'auto',
@@ -117,9 +168,19 @@ const Header = () => {
                                     overflow:"hidden"
                                 }}
                             />
+                    {/*
+                        Under the breakpoint the name goes out of sight rather
+                        than away: the mark alone is the home link, and the
+                        words stay its accessible name. The bar has 288px to
+                        work with at 320 and the controls need all of it.
+                    */}
                     <Typography
                         component="span"
-                        sx={{ fontWeight: 800, letterSpacing: '-0.01em' }}
+                        sx={{
+                            fontWeight: 800,
+                            letterSpacing: '-0.01em',
+                            ...(compact ? visuallyHidden : {}),
+                        }}
                     >
                         {t('app.brandText')}
                     </Typography>
@@ -204,6 +265,14 @@ const DefaultLayoutViewport = () => {
 
     const svc = BoardWidgetContext.useActorRef()
 
+    /*
+      The shell's one breakpoint (CTA-118). A media query rather than a CSS
+      one, because what changes is not only the styling: under it the rail is
+      a drawer (a different element, mounted only while it is open) and the
+      board square is measured against the width alone.
+    */
+    const compact = useMediaQuery((theme: Theme) => theme.breakpoints.down(SHELL_COMPACT_BREAKPOINT));
+
     // The board area is sized in pixels because `react-chessboard` fills its
     // container and has no intrinsic size. `ref` sits on the padded board
     // viewport (the row that holds the square + the analysis aside), so the
@@ -252,19 +321,33 @@ const DefaultLayoutViewport = () => {
         // `width - PANEL_MIN_WIDTH_PX - BOARD_PANEL_GAP_PX` to work with. Taking it off here is what lets the square grow into the rest —
         // measured against the row alone it would be sized against space the
         // panel is standing in, and would overflow it.
-        const minorSide = Math.max(
-            0,
-            Math.min(
-                width - PANEL_MIN_WIDTH_PX - BOARD_PANEL_GAP_PX - BOARD_INSET_PX * 2,
-                height - BOARD_INSET_PX * 2,
-            ),
-        )
+        //
+        // Stacked (CTA-118), the panel is no longer a sibling in the row but
+        // the box below, so none of the width is spoken for: the square takes
+        // what the inset leaves, still bound by the height — down to
+        // `STACKED_BOARD_MIN_PX`, past which the viewport scrolls rather than
+        // the board shrink away.
+        const minorSide = compact
+            ? Math.max(
+                0,
+                Math.min(
+                    width - BOARD_INSET_PX * 2,
+                    Math.max(height - BOARD_INSET_PX * 2, STACKED_BOARD_MIN_PX),
+                ),
+            )
+            : Math.max(
+                0,
+                Math.min(
+                    width - PANEL_MIN_WIDTH_PX - BOARD_PANEL_GAP_PX - BOARD_INSET_PX * 2,
+                    height - BOARD_INSET_PX * 2,
+                ),
+            )
         return {
             width: minorSide,
             height: minorSide,
         }
 
-    },[bodyDimentions])
+    },[bodyDimentions, compact])
 
 
 
@@ -273,6 +356,28 @@ const DefaultLayoutViewport = () => {
     // A route whose `handle` asks for the whole body (`routeHandle.ts`) gets
     // it: no square, no aside. Every other route gets the shell below as is.
     const fullWidth = isFullWidthRoute(matches);
+
+    /*
+      The navigation drawer (CTA-118), open only under the breakpoint. It
+      closes on a navigation — `location.key` changes on every one, a link to
+      the route already shown included — and when the window grows back past
+      the breakpoint, where the rail is on screen and a sheet over it would
+      only be in the way. Both are adjusted during render against what was
+      last seen, React's own answer to "reset state when a value changes"
+      (as `Sidebar.tsx` follows the route); an effect would paint the open
+      drawer for a frame first, and `react-hooks/set-state-in-effect` rejects
+      it.
+    */
+    const location = useLocation();
+    const [navOpen, setNavOpen] = useState(false);
+    const [seenLocationKey, setSeenLocationKey] = useState(location.key);
+    if (seenLocationKey !== location.key) {
+        setSeenLocationKey(location.key);
+        if (navOpen) setNavOpen(false);
+    }
+    if (navOpen && !compact) setNavOpen(false);
+    const openNav = useCallback(() => setNavOpen(true), []);
+    const closeNav = useCallback(() => setNavOpen(false), []);
 
     const updateLocationFn = useCallback((match:UIMatch)=>svc.send({
         type:"EVENTS.NAVIGATION.ROUTER.MATCH.UPDATE",
@@ -403,7 +508,7 @@ const DefaultLayoutViewport = () => {
             }}
         >
             <SkipLink onSkip={focusMain} />
-            <Header />
+            <Header compact={compact} onOpenNav={openNav} />
 
             <Box
                  data-testid="layout-wrapper"
@@ -419,27 +524,41 @@ const DefaultLayoutViewport = () => {
                     overflow: "hidden",
                 }}
             >
-                <Box
-                    data-testid="layout-sidebar-container"
-                    sx={{
-                        width: `${SIDEBAR_WIDTH_PX}px`,
-                        flexShrink: 0,
-                        display: "flex",
-                        flexDirection: "column"
-                    }}
-                >
-                    {/*
-                        The per-route left-panel slot (`leftPanel.tsx`), mirroring
-                        the aside's `RightPanelOutlet` below. A screen may render
-                        `<LeftPanel>` to replace the nav tree for as long as it
-                        is mounted (no shipped screen does today); with none
-                        registered the outlet renders `<SideBar/>` and this box is
-                        exactly what it always was. Same fixed width either way —
-                        this slot swaps *content*, not the row's proportions.
-                    */}
-                    <LeftPanelOutlet fallback={<SideBar />} />
+                {/*
+                    The rail, or — under the breakpoint (CTA-118) — the drawer
+                    it becomes, opened from the header and holding exactly the
+                    same thing. Either way the per-route left-panel slot
+                    (`leftPanel.tsx`) is what fills it, mirroring the aside's
+                    `RightPanelOutlet` below: a screen may render `<LeftPanel>`
+                    to replace the nav tree for as long as it is mounted (no
+                    shipped screen does today); with none registered the outlet
+                    renders `<SideBar/>`. The slot swaps *content*, not the
+                    row's proportions.
+                */}
+                {compact ? (
+                    <NavDrawer
+                        open={navOpen}
+                        onClose={closeNav}
+                        label={t('nav.ariaLabel')}
+                        width={SIDEBAR_WIDTH_PX}
+                        testId="layout-nav-drawer"
+                    >
+                        <LeftPanelOutlet fallback={<SideBar />} />
+                    </NavDrawer>
+                ) : (
+                    <Box
+                        data-testid="layout-sidebar-container"
+                        sx={{
+                            width: `${SIDEBAR_WIDTH_PX}px`,
+                            flexShrink: 0,
+                            display: "flex",
+                            flexDirection: "column"
+                        }}
+                    >
+                        <LeftPanelOutlet fallback={<SideBar />} />
 
-                </Box>
+                    </Box>
+                )}
 
                 <Box
                    data-testid="layout-body-container"
@@ -459,10 +578,17 @@ const DefaultLayoutViewport = () => {
                             display: "flex",
                             flexGrow:1,
                             minHeight: 0,
+                            // Stacked (CTA-118): the panel goes under the
+                            // square instead of beside it, and the column
+                            // scrolls — the two together are taller than a
+                            // narrow window, and downwards is the one
+                            // direction WCAG 1.4.10 allows.
+                            flexDirection: compact ? "column" : "row",
                             // Only bites once the panel is at its maximum and
                             // the square at its height: then, and only then, is
-                            // there anything left over to centre.
-                            justifyContent: "center",
+                            // there anything left over to centre. Stacked there
+                            // is nothing to centre — the column starts at the top.
+                            justifyContent: compact ? "flex-start" : "center",
                             // The shell-level board inset (was `p: 2` on one
                             // Main wrapper only). Measured together with the box
                             // in `getBoundingClientRect`, then subtracted back
@@ -471,7 +597,8 @@ const DefaultLayoutViewport = () => {
                             // Between the square and the panel — taken off the
                             // square's width above.
                             gap: `${BOARD_PANEL_GAP_PX}px`,
-                            overflow: "hidden",
+                            overflowX: "hidden",
+                            overflowY: compact ? "auto" : "hidden",
                         }}
                    >
                         {fullWidth ? (
@@ -498,6 +625,12 @@ const DefaultLayoutViewport = () => {
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
+                                // Stacked, `main` is the column's full width —
+                                // the square is centred inside it — so the
+                                // screen has the viewport less the shell's
+                                // inset whatever the square's side works out
+                                // to (CTA-118, the reflow gate).
+                                ...(compact ? { alignSelf: "stretch" } : {}),
                             }}
                         >
                             {pageHeading}
@@ -540,10 +673,8 @@ const DefaultLayoutViewport = () => {
                                   on a wide window, where the square is bound by
                                   height long before it is bound by width.
                                 */
-                                flexGrow: 1,
+                                flexGrow: compact ? 0 : 1,
                                 flexShrink: 0,
-                                minWidth: `${PANEL_MIN_WIDTH_PX}px`,
-                                maxWidth: `${PANEL_MAX_WIDTH_PX}px`,
                                 /*
                                   A column, and it does not scroll itself: a
                                   panel that wants a section pinned to the foot
@@ -560,8 +691,29 @@ const DefaultLayoutViewport = () => {
                                 overflow: "hidden",
                                 p: 2,
                                 bgcolor: "background.paper",
-                                borderInlineStart: "1px solid",
                                 borderColor: "divider",
+                                /*
+                                  Stacked (CTA-118) the panel is the box under
+                                  the square, not the column beside it: it takes
+                                  the whole width, and a height of its own —
+                                  `BoardPanel` is a flex column whose one
+                                  scrolling section is `flex: 1`, which
+                                  collapses to nothing without one. Last in the
+                                  object, so it has the `minHeight: 0` above.
+                                  The viewport scrolls down to it.
+                                */
+                                ...(compact
+                                    ? {
+                                        alignSelf: "stretch",
+                                        minWidth: 0,
+                                        minHeight: `${STACKED_PANEL_MIN_HEIGHT_PX}px`,
+                                        borderBlockStart: "1px solid",
+                                    }
+                                    : {
+                                        minWidth: `${PANEL_MIN_WIDTH_PX}px`,
+                                        maxWidth: `${PANEL_MAX_WIDTH_PX}px`,
+                                        borderInlineStart: "1px solid",
+                                    }),
                             }}
                         >
                             {/*

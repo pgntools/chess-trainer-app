@@ -45,9 +45,10 @@ export const watchErrors = (page: Page): string[] => {
 
 /**
  * Opens a route and waits until it has what it shows: its heading, its data,
- * its board, its engine's first line. `onScreen: false` waits for them to be in
- * the page rather than on it — the reflow measurement, at a width where the
- * shell's sidebar leaves `main` none (ACCESSIBILITY.md).
+ * its board, its engine's first line. `onScreen: false` waits for them to be
+ * in the page rather than on it — for a width at which something is
+ * deliberately not shown. Nothing needs it since CTA-118 gave the shell its
+ * breakpoint, the reflow measurement included.
  */
 export const open = async (page: Page, route: PageRoute, { onScreen = true }: { onScreen?: boolean } = {}): Promise<void> => {
   const shown = (locator: Locator) => (onScreen ? expect(locator).toBeVisible() : expect(locator).toBeAttached());
