@@ -78,6 +78,10 @@ atoms the design system wraps (`Dialog`, `Table`, `Tabs`, `Tooltip`, `Switch`,
 ([`hierarchy.md`](docs/design/hierarchy.md#the-import-rules)). Moving a screen onto the design system follows the checklist in
 [`docs/design/migration.md` §5](docs/design/migration.md#5-checklist-for-migrating-a-module).
 
+**Adding one component** — from the choice of tier to the pull request — is one
+checklist, each tick naming the command or test that enforces it (or "by
+review"): [`docs/design/adding-a-component.md`](docs/design/adding-a-component.md).
+
 A chessboard is composed from the board core, never written from scratch —
 [`.claude/rules/chessboard.md`](.claude/rules/chessboard.md) §9.
 

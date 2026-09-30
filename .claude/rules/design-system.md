@@ -150,6 +150,11 @@ Grep `dist/` for `/dev/theme-editor`, `theme-editor`, `ThemeEditor`,
 
 ## 6. Adding
 
+**A component:** work down [`docs/design/adding-a-component.md`](../../docs/design/adding-a-component.md)
+— one checklist, every tick naming its check or "by review"; the table below
+is only the shape of each tier's entry. The tier's `conventions.test.ts` fails
+a component with no entry in its doc.
+
 | To add | Do |
 | --- | --- |
 | a base component | its folder in `components/<section>/`, the re-export, an entry in `docs/design/sections/<section>.md` |

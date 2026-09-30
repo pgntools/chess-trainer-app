@@ -10,8 +10,14 @@ import { describe, expect, it } from "vitest";
       section's (a family's) `index.ts`;
     - every section registered is filled (a family may wait for its first block);
     - it takes a `testId`;
-    - it draws no colour literal and uses no physical side;
+    - it draws no colour literal and uses no physical side, no literal
+      `transition`, and a `:focus-visible` it writes spreads the theme's ring;
+    - its gallery shows at least one demo;
+    - it has its entry in the docs — a heading in its section's doc (base,
+      patterns), a row of the Blocks table (blocks);
     - a block's fixtures are imported by its gallery and its test only.
+
+  What nothing here checks is docs/design/adding-a-component.md's "by review".
 */
 
 type TierRules = {
@@ -25,12 +31,46 @@ type TierRules = {
   everySectionFilled: boolean;
   /** The component folder holds a `fixtures.ts`, imported only by its gallery and its test (the blocks). */
   fixtures: boolean;
+  /** Where the tier documents its components (`docs/design/`), as text. */
+  docs: {
+    /** The doc files by glob path (`../../../docs/design/sections/tabs.md`). */
+    sources: Record<string, string>;
+    /** The path, from `docs/design/`, of the file a section's components are documented in. */
+    file: (section: string) => string;
+    /** A heading per component (`## PanelTabs`), or a row of a table (`| \`FolderTree\` | trees | … |`). */
+    form: DocEntryForm;
+  };
 };
+
+export type DocEntryForm = "heading" | "row";
 
 const isTest = (path: string) => /\.test\.tsx?$/.test(path);
 const withoutComments = (code: string) => code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
 
-export const describeTierConventions = ({ tier, sources, sections, everySectionFilled, fixtures }: TierRules) => {
+/**
+ * **Whether a doc has a component's entry** (CTA-117): a heading that *opens*
+ * with its name (`## PanelTabs`, any depth from `##`; one heading may open
+ * with several, `## SwitchField / CheckboxField`), or a table row whose
+ * *first cell* names it in backticks (`| \`FolderTree\` | trees | … |`,
+ * several to a cell allowed) — a mention in prose, later in a heading
+ * (`## CTA-113 additions to \`DataTable\``) or in another column is not an
+ * entry.
+ */
+export const hasDocEntry = (doc: string, name: string, form: DocEntryForm): boolean =>
+  form === "heading"
+    ? new RegExp(`^#{2,4}\\s+(?:\`?\\w+\`?\\s*/\\s*)*\`?${name}\`?(?![\\w-])`, "m").test(doc)
+    : new RegExp(`^\\|[^|]*\`${name}\`[^|]*\\|`, "m").test(doc);
+
+/** A literal `transition: "…"` — motion must go through `theme.transitions`, which reduced motion stops. */
+export const hasLiteralTransition = (code: string): boolean => /\btransition\s*:\s*["'`]/.test(withoutComments(code));
+
+/** A `:focus-visible` rule in a file that never mentions the theme's `focusRing`. */
+export const hasOwnFocusStyle = (code: string): boolean => {
+  const text = withoutComments(code);
+  return /focus-visible/.test(text) && !/focusRing/.test(text);
+};
+
+export const describeTierConventions = ({ tier, sources, sections, everySectionFilled, fixtures, docs }: TierRules) => {
   const files = Object.keys(sources);
   /** `./<section>/<Name>/…` → the component folders. */
   const folders = [
@@ -81,6 +121,30 @@ export const describeTierConventions = ({ tier, sources, sections, everySectionF
       const text = withoutComments(sources[path]);
       expect(text).not.toMatch(/\b(marginLeft|marginRight|paddingLeft|paddingRight|borderLeft|borderRight|ml|mr|pl|pr)\s*:/);
       expect(text).not.toMatch(/textAlign:\s*"(left|right)"/);
+    });
+
+    it.each(code)("%s writes no literal transition", (path) => {
+      expect(hasLiteralTransition(sources[path]), "use theme.transitions.create(…)").toBe(false);
+    });
+
+    it.each(code)("%s draws no focus ring of its own", (path) => {
+      expect(hasOwnFocusStyle(sources[path]), "spread theme.mixins.focusRing under &:focus-visible").toBe(false);
+    });
+
+    it.each(folders)("%s has a gallery demo", (folder) => {
+      const name = folder.split("/")[1];
+      expect(sources[`./${folder}/${name}.gallery.tsx`]).toMatch(/\bname:\s*["'`]/);
+    });
+
+    it.each(folders)("%s has its entry in the docs", (folder) => {
+      const [section, name] = folder.split("/");
+      const file = docs.file(section);
+      const doc = Object.entries(docs.sources).find(([path]) => path.endsWith(`/${file}`))?.[1];
+      expect(doc, `docs/design/${file} (the file of ${section}'s components) exists`).toBeDefined();
+      expect(
+        hasDocEntry(doc ?? "", name, docs.form),
+        docs.form === "heading" ? `docs/design/${file} has a heading naming ${name}` : `docs/design/${file} has a table row naming ${name}`,
+      ).toBe(true);
     });
 
     if (fixtures) {
