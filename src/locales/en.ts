@@ -1387,6 +1387,56 @@ const en = {
     },
   },
   /**
+   * The **tournament tables** (CTA-120) — the Swiss standings and the
+   * round-robin crosstable (`src/blocks/tables/`). Built ahead of the
+   * tournaments section: only the dev gallery shows them yet.
+   */
+  tournament: {
+    /** The headings: an abbreviation in view, its `…Name` read in its place and shown on hover. */
+    columns: {
+      rank: "#",
+      rankName: "Rank",
+      player: "Player",
+      rating: "Rtg",
+      ratingName: "Rating",
+      points: "Pts",
+      pointsName: "Points",
+      buchholz: "BH",
+      buchholzName: "Buchholz",
+      sonnebornBerger: "SB",
+      sonnebornBergerName: "Sonneborn-Berger",
+    },
+    /** A round column's full name — its header shows the number alone. */
+    round: "Round {{round}}",
+    /**
+     * A result's words, read in its glyph's place: the round, the colour
+     * played, the opponent and the result. `…NoRound` is a game whose Round
+     * tag names none.
+     */
+    game: {
+      white: "Round {{round}}, White against {{opponent}}: {{result}}",
+      black: "Round {{round}}, Black against {{opponent}}: {{result}}",
+      whiteNoRound: "White against {{opponent}}: {{result}}",
+      blackNoRound: "Black against {{opponent}}: {{result}}",
+    },
+    result: {
+      win: "win",
+      draw: "draw",
+      loss: "loss",
+      unfinished: "unfinished",
+    },
+    /** A round, or a pair, the file holds no game of — not a bye: the tables show what the file has. */
+    noGame: "Round {{round}}: no game in the file",
+    noGameAgainst: "No game against {{opponent}} in the file",
+    /** Under the table: what the two glyphs that are not numbers mean. */
+    legend: {
+      unfinished: "unfinished game",
+      none: "no game in the file",
+    },
+    loading: "Reading the tournament…",
+    empty: "No games to show.",
+  },
+  /**
    * The **Repertoires** section (CTA-61) — the reader's own opening
    * repertoires, brought in as a `.pgn` file or pasted text, listed like the
    * saved screens and read on the unified v2 board. The list reuses the

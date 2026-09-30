@@ -105,6 +105,27 @@ The comparison ended on five open questions; each has one answer here.
   right-aligned (Library home, Storage); `savedListDate`'s short month, the
   PGN's own date and `dateStyle: medium` — three date formats.
 
+## ResultMark
+
+- **Purpose** (CTA-120) — one result in a table, as a glyph: `1`, `½`, `0`,
+  `*` for a game not finished, an en dash for no game — toned by its outcome
+  (`success.main`, `error.main`, `text.secondary`; a win in bold), pinned
+  `dir="ltr"`, every glyph in one box of the same width (`½` is wider than
+  `1`) so a column of marks lines up. The glyph is text, so the tone is never
+  the only signal. What the two competition patterns (`StandingsTable`,
+  `CrossTable`) draw every result with, so they cannot drift apart.
+- **Props** — `outcome: "win" | "draw" | "loss" | "unfinished" | "none"`
+  (`ResultOutcome`), `label` (**required** — the mark's words, everything the
+  glyph leaves out: "Round 3, against Ada Lovelace: win"), `legend?` (a
+  legend's entry: the glyph, then its words in view — "* = unfinished game"),
+  `testId?`. `RESULT_GLYPHS` is the glyph of each outcome.
+- **Accessible** — the glyph is `aria-hidden` and the `label` is read in its
+  place, out of sight (`visuallyHidden`, positioned against the mark so it
+  scrolls with its table): a cell of marks is named by their words. Put a
+  space between two marks in one cell — it is what keeps their words apart.
+- **Variations** (one demo each) — the five outcomes; several in one cell; a
+  legend's entries; a Hebrew legend (RTL).
+
 ## useTableUrlState (+ `sortRows`)
 
 - **Purpose** — a table's sort and paging in the URL: `?sort=`, `?dir=`,
