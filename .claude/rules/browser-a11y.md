@@ -74,7 +74,7 @@ included — leave it off.
 | `a11y.spec.ts` | Every route × every combination: `check`. |
 | `allowlist.ts` | The known gaps — the only violations let through. |
 | `allowlist.spec.ts` | Each entry's `gap` is a phrase in ACCESSIBILITY.md's Known gaps. |
-| `reflow.spec.ts` | Every route at 320 × 256, once per language: **the reflow gate** (CTA-118) — no sideways scroll, `main` at least the viewport less the shell's inset, nothing past the edge outside a scrolling box of its own. |
+| `reflow.spec.ts` | Every route at 320 × 256, under `reflowCombos()` (the matrix's themes × both languages, one scheme): **the reflow gate** (CTA-118) — no sideways scroll, `main` at least the viewport less the shell's inset, nothing past the edge outside a scrolling box of its own. |
 | `summaryReporter.ts` | `a11y-report/summary.md` and `.json`; **fails the run on a stale allowlist entry**. |
 
 **What `check` asks of a page**, soft-asserted so one page reports all of it:
@@ -97,9 +97,11 @@ filtered run never fails an entry it did not visit. Adding one is the last resor
 first.
 
 **Reflow.** WCAG 1.4.10 asks for content usable at 320 CSS px wide. Each route is
-opened at 320 × 256, in both languages, and held to three things (CTA-118 —
-until then this was measured and never failed, because the sidebar was a fixed
-280 px with no breakpoint and `main` came out 0 px wide everywhere):
+opened at 320 × 256 under **every theme of the selected matrix, in both
+languages** (`reflowCombos()` in `matrix.ts`), and held to three things
+(CTA-118 — until then this was measured, never failed and read the default
+theme alone, because the sidebar was a fixed 280 px with no breakpoint and
+`main` came out 0 px wide everywhere):
 
 - `pageOverflowPx` — the page does not scroll sideways;
 - `mainWidthPx` — `main` has at least the viewport less the shell's inset
@@ -109,7 +111,17 @@ until then this was measured and never failed, because the sidebar was a fixed
   contains, so a table scrolls inside its region rather than widening the page.
 
 All three are soft, so a route reports everything wrong with it at once, and
-all three are still recorded in `summary.md`'s reflow table. **A new screen
+all three are still recorded in `summary.md`'s reflow table — one row a route,
+each cell that route's *worst* reading and the combination it came from.
+
+**Why themes but not schemes.** A theme is data, and its typography, shape and
+component knobs are part of it (CTA-115), so a theme can change how big a box
+is and reflow cannot be judged in the default one alone. A colour scheme
+cannot: a theme's light and dark palettes differ in colour and nothing else
+(`themes/types.ts`), so a row that fits at 320 px in light fits in dark.
+Measuring both would double the pass for no finding. **A new theme joins the
+gate with no edit here** — `reflowCombos()` reads the same registry the matrix
+does. **A new screen
 passes them or it does not ship**: under the shell's breakpoint (`md`, a media
 query in `Layout.tsx`) the sidebar is a drawer opened from the header
 (`NavDrawer`, the design system's) and the board's panel stacks under the

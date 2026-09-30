@@ -39,4 +39,27 @@ export const matrixName = (): MatrixName => {
   return asked;
 };
 
+/**
+ * **What reflow is measured under** (CTA-118): the selected matrix's themes
+ * and languages, in **one colour scheme**.
+ *
+ * A theme is data, and its typography, shape and component knobs are part of
+ * it (CTA-115) — a theme can change how big a box is, so reflow cannot be
+ * judged in the default one alone. A **colour scheme cannot**: a theme's
+ * light and dark palettes differ in colour and in nothing else
+ * (`themes/types.ts`), so a row that fits at 320 px in light fits in dark.
+ * Measuring both would double the pass for no finding.
+ */
+export const reflowCombos = (): readonly Combo[] => {
+  const seen = new Set<string>();
+  return MATRICES[matrixName()]
+    .filter(({ theme, language }) => {
+      const key = `${theme}\u0000${language}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((combo) => ({ ...combo, scheme: "light" as const }));
+};
+
 export const comboName = ({ theme, scheme, language }: Combo): string => `${theme} · ${scheme} · ${language}`;

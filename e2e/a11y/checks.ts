@@ -84,6 +84,8 @@ export type PageRecord = {
 /** What the reflow measurement found on one page (`reflow.spec.ts`). */
 export type ReflowRecord = {
   route: string;
+  /** The theme it was measured under — a theme's typography and shape can change a box's size. */
+  theme: string;
   language: Language;
   /** The page's scroll width less its client width: how far it scrolls sideways. 0: it does not. */
   pageOverflowPx: number;

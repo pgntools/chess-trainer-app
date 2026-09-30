@@ -43,7 +43,7 @@ export default class SummaryReporter implements Reporter {
     const page = attachment<PageRecord>(result, "a11y-record");
     if (page !== undefined) this.pages.set(`${comboName(page.combo)} › ${page.route}`, page);
     const reflow = attachment<ReflowRecord>(result, "reflow-record");
-    if (reflow !== undefined) this.reflow.set(`${reflow.language} › ${reflow.route}`, reflow);
+    if (reflow !== undefined) this.reflow.set(`${reflow.theme} › ${reflow.language} › ${reflow.route}`, reflow);
     if (test.outcome() === "unexpected") this.failed += 1;
   }
 
@@ -69,14 +69,22 @@ export default class SummaryReporter implements Reporter {
     const byRoute = new Map<string, ReflowRecord[]>();
     for (const record of reflow) byRoute.set(record.route, [...(byRoute.get(record.route) ?? []), record]);
     if (byRoute.size > 0) {
+      // A route is measured under every theme of the matrix × both languages,
+      // so each cell is that route's worst reading: the narrowest `main`, the
+      // widest sideways scroll, the element furthest past the edge — and the
+      // combination it came from, which is what a failure has to be chased in.
+      const themes = [...new Set(reflow.map((record) => record.theme))];
       lines.push("## Reflow at 320 CSS px (gated — CTA-118)", "");
-      lines.push("| Route | `main` width | Sideways scroll, en | Sideways scroll, he | Widest element past the edge |", "| --- | --- | --- | --- | --- |");
+      lines.push(`Worst of ${themes.length} theme${themes.length === 1 ? "" : "s"} (${themes.join(", ")}) × English, Hebrew, light.`, "");
+      lines.push("| Route | narrowest `main` | worst sideways scroll, en | worst sideways scroll, he | furthest element past the edge |", "| --- | --- | --- | --- | --- |");
       for (const [route, records] of byRoute) {
-        const of = (language: string) => records.find((record) => record.language === language);
-        const px = (record: ReflowRecord | undefined) => (record === undefined ? "—" : record.pageOverflowPx > 0 ? `${record.pageOverflowPx} px` : "none");
-        const widest = records.flatMap((record) => record.offenders.map((offender) => ({ ...offender, language: record.language }))).sort((a, b) => b.overflowPx - a.overflowPx)[0];
-        const main = of("en")?.mainWidthPx;
-        lines.push(`| ${route} | ${main === undefined ? "—" : `${main} px`} | ${px(of("en"))} | ${px(of("he"))} | ${widest === undefined ? "" : `\`${widest.selector}\` (+${widest.overflowPx} px, ${widest.language})`} |`);
+        const worstOf = (language: string) => records.filter((record) => record.language === language).sort((a, b) => b.pageOverflowPx - a.pageOverflowPx)[0];
+        const px = (record: ReflowRecord | undefined) => (record === undefined ? "—" : record.pageOverflowPx > 0 ? `${record.pageOverflowPx} px (${record.theme})` : "none");
+        const widest = records.flatMap((record) => record.offenders.map((offender) => ({ ...offender, where: `${record.theme}, ${record.language}` }))).sort((a, b) => b.overflowPx - a.overflowPx)[0];
+        const narrowest = [...records].sort((a, b) => a.mainWidthPx - b.mainWidthPx)[0];
+        lines.push(
+          `| ${route} | ${narrowest === undefined ? "—" : `${narrowest.mainWidthPx} px (${narrowest.theme}, ${narrowest.language})`} | ${px(worstOf("en"))} | ${px(worstOf("he"))} | ${widest === undefined ? "" : `\`${widest.selector}\` (+${widest.overflowPx} px, ${widest.where})`} |`,
+        );
       }
       lines.push("");
     }

@@ -422,12 +422,29 @@ not only styling:
 
 Above the breakpoint the shell is exactly what it was, and every Sidebar,
 Layout and board test passes unchanged (jsdom answers every media query
-`false`). The one screen defect the gate found: on the Library's collection
-the header's actions squeezed its `h1` to nothing at 320 px — it now passes
-`ListScreenHeader`'s existing `wrap`, as the two saved lists already did.
-The reflow row is gone from [`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps);
-what the gate asks is in
-[`browser-a11y.md`](../../.claude/rules/browser-a11y.md).
+`false`).
+
+The gate runs under **every theme** of the selected matrix, in both languages,
+in one colour scheme — a theme carries typography, shape and component knobs
+and can change a box's size (CTA-115), while a scheme changes only colour. A
+new theme joins it with no edit.
+
+**What it found was one defect, in a shared component.** A list screen's
+header gives its title box `minWidth: 0` and pins its actions
+(`flexShrink: 0`), so on a narrow square the actions crushed the `h1` to zero
+width — a heading no one can read. It showed first on the Library's
+collection, then on the Library home, which passed under the default theme on
+one machine and failed on another and failed outright under **console**, whose
+type is wider: exactly the kind of margin the theme axis exists to catch.
+Fixed once, in [`ListScreenHeader`](sections/toolbars.md#listscreenheader)
+itself — its row wraps, so the actions drop to a line of their own instead of
+squeezing the heading, and with room for both nothing wraps and no window that
+fits them changes. `wrap` keeps its old meaning: let the *title* run to a
+second line instead of being cut.
+
+The reflow row is gone from
+[`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps); what the gate asks is
+in [`browser-a11y.md`](../../.claude/rules/browser-a11y.md).
 
 ## 5. Checklist for migrating a module
 

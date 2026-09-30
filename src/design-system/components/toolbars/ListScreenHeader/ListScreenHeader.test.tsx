@@ -24,6 +24,27 @@ describe("ListScreenHeader", () => {
     expect(order).toEqual(["Back", "Library", "New folder"]);
   });
 
+  /*
+    CTA-118: the title box shrinks to nothing (`minWidth: 0`) and the actions
+    are pinned (`flexShrink: 0`), so on a narrow square the row used to crush
+    the `h1` to zero width — a heading no one can read, and what WCAG 1.4.10's
+    reflow gate failed on. The row wraps instead, whatever `wrap` says; `wrap`
+    is now only about the title's own second line.
+  */
+  it("wraps its row so the actions can never crush the heading (CTA-118)", () => {
+    const { rerender } = render(<ListScreenHeader title="Library" actions={<button>New folder</button>} testId="probe" />);
+    const row = screen.getByTestId("probe-actions").parentElement;
+    expect(row).toHaveStyle({ flexWrap: "wrap" });
+    expect(screen.getByTestId("probe-actions")).toHaveStyle({ flexWrap: "wrap" });
+
+    // What `wrap` still decides is the title's own line: cut with an ellipsis
+    // by default, run to a second line when asked. The row wraps either way.
+    expect(screen.getByTestId("probe-title")).toHaveStyle({ whiteSpace: "nowrap" });
+    rerender(<ListScreenHeader title="Library" actions={<button>New folder</button>} wrap testId="probe" />);
+    expect(screen.getByTestId("probe-actions").parentElement).toHaveStyle({ flexWrap: "wrap" });
+    expect(screen.getByTestId("probe-title")).not.toHaveStyle({ whiteSpace: "nowrap" });
+  });
+
   it("leaves out the count and actions it is not given, and takes a title direction", () => {
     render(<ListScreenHeader title="My games" titleDir="auto" testId="probe" />);
     expect(screen.queryByTestId("probe-count")).toBeNull();
