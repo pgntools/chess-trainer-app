@@ -66,6 +66,7 @@ const he: typeof en = {
   shell: {
     skipToMain: "דילוג לתוכן הראשי",
     sidePanel: "לוח צד",
+    openNav: "פתיחת הניווט",
   },
   hints: {
     tree: "חצים למעלה ולמטה כדי לנוע, ימינה כדי לסגור, שמאלה כדי לפתוח, Enter כדי לעבור.",
@@ -1050,6 +1051,42 @@ const he: typeof en = {
         missing: "האוסף או המשחק כבר לא קיימים.",
       },
     },
+  },
+  tournament: {
+    columns: {
+      rank: "#",
+      rankName: "מקום",
+      player: "שחקן",
+      rating: "דירוג",
+      ratingName: "דירוג",
+      points: "נק׳",
+      pointsName: "נקודות",
+      buchholz: "BH",
+      buchholzName: "בוכהולץ",
+      sonnebornBerger: "SB",
+      sonnebornBergerName: "זונבורן־ברגר",
+    },
+    round: "סיבוב {{round}}",
+    game: {
+      white: "סיבוב {{round}}, בלבן מול {{opponent}}: {{result}}",
+      black: "סיבוב {{round}}, בשחור מול {{opponent}}: {{result}}",
+      whiteNoRound: "בלבן מול {{opponent}}: {{result}}",
+      blackNoRound: "בשחור מול {{opponent}}: {{result}}",
+    },
+    result: {
+      win: "ניצחון",
+      draw: "תיקו",
+      loss: "הפסד",
+      unfinished: "לא הסתיים",
+    },
+    noGame: "סיבוב {{round}}: אין משחק בקובץ",
+    noGameAgainst: "אין בקובץ משחק מול {{opponent}}",
+    legend: {
+      unfinished: "משחק שלא הסתיים",
+      none: "אין משחק בקובץ",
+    },
+    loading: "קורא את הטורניר…",
+    empty: "אין משחקים להצגה.",
   },
   repertoires: {
     title: "רפרטוארים",

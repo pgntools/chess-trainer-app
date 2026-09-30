@@ -51,10 +51,16 @@ Gallery: `/dev/design/toolbars`.
   count, the actions, over a bottom divider; one spacing (`pb: 1.5`, `mb:
   0.5`, `gap: 1`).
 - **Props** — `title`, `count?`, `back?` (a `BackButton`), `actions?`,
-  `wrap?`, `children?` (a second row), `titleDir?`, `testId` (`-title`,
-  `-count`, `-actions`).
+  `wrap?` (let the **title** wrap to a second line instead of ellipsis),
+  `children?` (a second row), `titleDir?`, `testId` (`-title`, `-count`,
+  `-actions`).
 - **Variations** — title and count with one action; with back and a long
   reader-typed title; wrapping actions with a second row.
+- **The row always wraps** (CTA-118) — the title box shrinks to nothing and
+  the actions are pinned, so a narrow square used to crush the `h1` to zero
+  width (WCAG 1.4.10, the reflow gate). The actions drop to a line of their
+  own instead; with room for both, nothing wraps and no window that fits them
+  changes.
 - **Replaces** — the five list top bars and their three spacings
   (`PlayedGames`, `LibraryHome`, `CollectionScreen`, `SavedAnalyses`,
   `Repertoires`).

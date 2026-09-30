@@ -1,10 +1,13 @@
 # Tables patterns — `src/design-system/patterns/tables/`
 
-The first pattern (CTA-110), built from the [Tables section's
-parts](../tables.md). Import from `patterns/tables`. Where a pattern belongs
-in the hierarchy: [`hierarchy.md`](../../hierarchy.md).
+`DataTable`, the first pattern (CTA-110), and the two competition tables,
+`StandingsTable` and `CrossTable` (CTA-120) — each built from the [Tables
+section's parts](../tables.md). Import from `patterns/tables`. Where a
+pattern belongs in the hierarchy: [`hierarchy.md`](../../hierarchy.md).
 
-Gallery: `/dev/design/patterns/tables/DataTable`.
+Gallery: `/dev/design/patterns/tables/DataTable`,
+`/dev/design/patterns/tables/StandingsTable`,
+`/dev/design/patterns/tables/CrossTable`.
 
 ## DataTable
 
@@ -91,3 +94,88 @@ Gallery: `/dev/design/patterns/tables/DataTable`.
 - `rowLink` may answer `undefined` for a row with no destination (a folder).
 - **An empty or no-match line is a table row** (`-empty`, `-no-match`): a
   test that counts rows skips it.
+
+## StandingsTable
+
+- **Purpose** (CTA-120) — a Swiss tournament's standings: a row per
+  competitor in rank order with the rank, the name, an optional rating,
+  **one cell per round**, the points and the tie-break columns. Generic — a
+  competitor is anything ranked by points; it knows no chess. Every row
+  shows (no paging): the one frame scrolls both ways, so many rows scroll
+  under a sticky header and many rounds sideways. It fills its parent's flex
+  column (`flex: 1; minHeight: 0`).
+- **A round's cell shows the result only** — lichess's Swiss standings: `1`,
+  `½`, `0`, toned by its outcome, `*` for an unfinished game, a dash for no
+  game ([`ResultMark`](../tables.md#resultmark)). Who it was against is in
+  the mark's `label`, read in the glyph's place.
+- **Rows** — `StandingsRow = Competitor & { rounds }`: `Competitor = { id,
+  rank, name, prefix?, suffix?, rating?, points, tieBreaks? }` (a `prefix` is
+  a few muted words before the name — a title; a `suffix` after it — where
+  from; `tieBreaks` the tie-break columns' values by column id), and `rounds`
+  one entry per round, each **every result of that round** as `ResultEntry =
+  { outcome, label }` (one, as a rule). A round with no game is the caller's
+  own `none` entry, so its words say so; an entry left out is an empty cell.
+  The rows come ranked — the table orders nothing.
+- **The tie-breaks are data** — `tieBreaks?: TieBreakColumn[]`, each `{ id,
+  header, name?, format? }`: a caller adds or removes one without changing
+  the table.
+- **Props** — `rows`, `rounds` (how many round columns), `labels: { rank,
+  name, rating?, points, round(n) }` (`rank`, `rating` and `points` a
+  `ColumnHeading = { header, name? }` — an abbreviation in view, its full
+  `name` read in its place and shown on hover; no `rating` heading, no rating
+  column; `round(n)` a round column's full name, its header the number
+  alone), `tieBreaks?`, `formatPoints?`, `legend?: ResultEntry[]` (under the
+  table, out of its scroll, while it has rows: "* = unfinished game"),
+  `loading?` +
+  `loadingLabel?`, `emptyLabel`, `density?`, `stickyHeader?`, a name —
+  `ariaLabel` or `caption` (`TableName`, **required**) — and `testId`.
+- **Accessible** — named by an `ariaLabel` or a `caption`; `aria-busy` while
+  `loading`; the name is its **row's header** (`th scope="row"`) and every
+  column has one; a result is read by its words and never told by its colour
+  alone; the scrolling frame takes the keyboard focus (`TableFrame`), the
+  table holding nothing else to focus. Names are `dir="auto"`, numbers and
+  results `dir="ltr"`; the table mirrors under RTL.
+- **Test ids** — `testId` (the root), `-frame` (its table `-frame-table`),
+  `-row-<id>` (`-name`, `-points`, `-<tie-break id>`), a round's cell
+  `-round-<id>-<round>`, `-loading`, `-empty`, `-legend`.
+- **Variations** (one demo each) — every kind of cell with titles, ratings
+  and two tie-breaks; the bare table (no rating, no tie-breaks, no legend);
+  loading; empty; one row; ninety-nine rows; thirty rounds (a sideways
+  scroll); long names; Hebrew names under a caption (RTL); the header not
+  sticky.
+
+## CrossTable
+
+- **Purpose** (CTA-120) — a round robin's crosstable, a **separate
+  component** from `StandingsTable`: a row **and** a column per competitor in
+  rank order, the cell where two meet holding **every result between them**
+  (one in a single round robin, two in a double), the diagonal blank; then
+  the points and the tie-break columns. Generic, as `StandingsTable` is, and
+  sharing its `Competitor`, `ResultEntry`, `TieBreakColumn` and
+  `CompetitorLabels` (`patterns/tables/competitors.ts`) and its cells
+  (`competitorCells.tsx`).
+- **A cell shows the results only** — the same glyphs and tones as
+  `StandingsTable`'s ([`ResultMark`](../tables.md#resultmark)), a space
+  between two; the round and the opponent are in each mark's `label`. An
+  unfinished tournament is cells with fewer results than the rest.
+- **Rows** — `CrossTableRow = Competitor & { results }`: `results` every
+  result against another competitor, by that competitor's `id`, in order. A
+  pair with no game yet is an empty cell, or the caller's own `none` entry.
+  A competitor's column is headed by its **rank**, as a printed crosstable's
+  is, and read by its name. The columns follow the rows' order.
+- **Props** — `rows`, `labels: { rank, name, rating?, points }`,
+  `tieBreaks?`, `formatPoints?`, `legend?`, `loading?` + `loadingLabel?`
+  (while loading there are no competitors' columns), `emptyLabel`,
+  `density?`, `stickyHeader?`, a name — `ariaLabel` or `caption`
+  (`TableName`, **required**) — and `testId`.
+- **Accessible** — as `StandingsTable`; the rows' and the columns' headers
+  are real ones (`th` with `scope="row"` / `scope="col"`), so a screen reader
+  names **both** competitors of a cell.
+- **Test ids** — `testId` (the root), `-frame` (its table `-frame-table`),
+  `-row-<id>` (`-name`, `-points`, `-<tie-break id>`), a competitor's column
+  `-column-<id>`, the cell of a row against a column
+  `-cell-<row id>-<column id>` (the diagonal's too), `-loading`, `-empty`,
+  `-legend`.
+- **Variations** (one demo each) — a double round robin; a single one; an
+  unfinished double one; the bare table; loading; empty; long names; Hebrew
+  names under a caption (RTL); dense with the header not sticky.

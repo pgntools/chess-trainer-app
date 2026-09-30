@@ -14,4 +14,10 @@ describeTierConventions({
   sections: BLOCK_FAMILIES,
   everySectionFilled: false,
   fixtures: true,
+  // Every block is a row of hierarchy.md's Blocks table (CTA-117).
+  docs: {
+    sources: import.meta.glob<string>("../../docs/design/hierarchy.md", { query: "?raw", import: "default", eager: true }),
+    file: () => "hierarchy.md",
+    form: "row",
+  },
 });

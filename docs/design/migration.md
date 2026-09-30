@@ -399,8 +399,52 @@ contrast and target size on, the console, the document's and the boards'
 direction. It replaces the hand-run passes above
 ([`browser-a11y.md`](../../.claude/rules/browser-a11y.md), `ACCESSIBILITY.md`).
 Its first run found one thing the hand passes had not, fixed in §4.1 (a side
-line's move tokens), and measured **reflow at 320 px**: the sidebar leaves the
-content no width, on every route ([`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps)).
+line's move tokens), and measured **reflow at 320 px**: the sidebar left the
+content no width, on every route.
+
+**CTA-118 closed that and turned the measurement into a gate.** The shell has
+one breakpoint (`md`, `SHELL_COMPACT_BREAKPOINT` in `views/main/Layout.tsx`),
+read with `useMediaQuery` rather than in CSS because what changes under it is
+not only styling:
+
+- the rail becomes a **drawer** opened from the header — a new base component,
+  [`NavDrawer`](sections/navigation.md#navdrawer) (a named modal `dialog`
+  that keeps the focus, hands it back to its opener, and closes on Escape, on
+  the backdrop and on a navigation), holding the very same
+  `LeftPanelOutlet` / `<SideBar/>`, so the tree, the one open chain, the
+  pinned Settings foot and the exact-path active state are untouched;
+- the board's **panel stacks under the square**: the viewport becomes a
+  scrolling column, the square is measured against the width alone (down to a
+  floor, so a short window still shows a board and scrolls to the panel), and
+  the panel takes a minimum height of its own — `BoardPanel`'s `flex: 1`
+  scrolling section has no height to divide otherwise. The board arithmetic
+  stays in `EngineBoardSquare.tsx`; nothing here copies the `calc()`.
+
+Above the breakpoint the shell is exactly what it was, and every Sidebar,
+Layout and board test passes unchanged (jsdom answers every media query
+`false`).
+
+The gate runs under **every theme** of the selected matrix, in both languages,
+in one colour scheme — a theme carries typography, shape and component knobs
+and can change a box's size (CTA-115), while a scheme changes only colour. A
+new theme joins it with no edit.
+
+**What it found was one defect, in a shared component.** A list screen's
+header gives its title box `minWidth: 0` and pins its actions
+(`flexShrink: 0`), so on a narrow square the actions crushed the `h1` to zero
+width — a heading no one can read. It showed first on the Library's
+collection, then on the Library home, which passed under the default theme on
+one machine and failed on another and failed outright under **console**, whose
+type is wider: exactly the kind of margin the theme axis exists to catch.
+Fixed once, in [`ListScreenHeader`](sections/toolbars.md#listscreenheader)
+itself — its row wraps, so the actions drop to a line of their own instead of
+squeezing the heading, and with room for both nothing wraps and no window that
+fits them changes. `wrap` keeps its old meaning: let the *title* run to a
+second line instead of being cut.
+
+The reflow row is gone from
+[`ACCESSIBILITY.md`](../../ACCESSIBILITY.md#known-gaps); what the gate asks is
+in [`browser-a11y.md`](../../.claude/rules/browser-a11y.md).
 
 ## 5. Checklist for migrating a module
 
