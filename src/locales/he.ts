@@ -24,6 +24,9 @@ const he: typeof en = {
     settingsExport: "ייצוא",
     settingsImport: "ייבוא",
     settingsStorage: "אחסון",
+    settingsAppearance: "מראה",
+    designSystem: "מערכת עיצוב",
+    themeEditor: "עורך ערכות נושא",
     folders: {
       engine: "מנוע",
       library: "ספרייה",
@@ -31,11 +34,45 @@ const he: typeof en = {
       openings: "פתיחות",
       repertoires: "רפרטוארים",
       settings: "הגדרות",
+      development: "פיתוח",
     },
   },
   home: {
     title: "בואו נתחיל",
     subtitle: "בחרו לוח או כלי כדי לפתוח.",
+  },
+  pages: {
+    home: "דף הבית",
+    playWithEngine: "משחק מול המנוע",
+    lobby: "לובי",
+    maskedPieces: "כלים מוסווים",
+    analysisBoard: "לוח ניתוח",
+    savedAnalyses: "ניתוחים שמורים",
+    analysisSettings: "הגדרות ניתוח",
+    openings: "סייר הפתיחות",
+    repertoires: "הרפרטוארים שלי",
+    newRepertoire: "רפרטואר חדש",
+    repertoire: "רפרטואר",
+    repertoireSettings: "הגדרות רפרטואר",
+    repertoireGame: "משחק רפרטואר",
+    library: "ספרייה",
+    addCollection: "הוספת אוסף",
+    collection: "אוסף",
+    libraryGame: "משחק מהספרייה",
+    settings: "הגדרות",
+    designSystem: "מערכת עיצוב",
+    themeEditor: "עורך ערכות נושא",
+  },
+  shell: {
+    skipToMain: "דילוג לתוכן הראשי",
+    sidePanel: "לוח צד",
+    openNav: "פתיחת הניווט",
+  },
+  hints: {
+    tree: "חצים למעלה ולמטה כדי לנוע, ימינה כדי לסגור, שמאלה כדי לפתוח, Enter כדי לעבור.",
+    table: {
+      sortAndPick: "מיון לפי עמודה בלחצן שבכותרת שלה. סימון התיבה של שורה בוחר אותה.",
+    },
   },
   language: {
     en: "English",
@@ -46,7 +83,9 @@ const he: typeof en = {
     analysisPlaceholder: "ההערכה ורשימת המהלכים יופיעו כאן.",
   },
   gamePanel: {
+    tabs: "לשוניות",
     controls: {
+      label: "מהלכים",
       first: "עמדת פתיחה",
       previous: "המהלך הקודם",
       next: "המהלך הבא",
@@ -54,6 +93,7 @@ const he: typeof en = {
       flip: "היפוך הלוח",
     },
     info: {
+      title: "פרטי המשחק",
       empty: "טענו משחק כדי לראות את פרטיו.",
       event: "אירוע",
       site: "מקום",
@@ -72,6 +112,10 @@ const he: typeof en = {
     evalBar: "הערכה",
     capturedByWhite: "נלקח על ידי הלבן",
     capturedByBlack: "נלקח על ידי השחור",
+    playerWhite: "השחקן הלבן",
+    playerBlack: "השחקן השחור",
+    playerRating: "דירוג {{elo}}",
+    playerResult: "תוצאה {{result}}",
   },
   variations: {
     title: "וריאציות",
@@ -98,6 +142,22 @@ const he: typeof en = {
     copy: "העתקה",
     copied: "הועתק",
     copyFailed: "ההעתקה נכשלה — סמנו את הטקסט והעתיקו ידנית.",
+  },
+  savedList: {
+    openNamed: "פתיחת {{name}}",
+    selectNamed: "בחירת {{name}}",
+    settingsNamed: "הגדרות {{name}}",
+    clearSelected: "ניקוי הבחירה",
+    breadcrumb: "תיקיות",
+    folder: {
+      openNamed: "פתיחת התיקייה {{name}}",
+      newNamed: "תיקייה חדשה בתוך {{name}}",
+      uploadNamed: "העלאת אוסף אל {{name}}",
+      downloadNamed: "הורדת {{name}} כ־PGN",
+      renameNamed: "שינוי השם של {{name}}",
+      moveNamed: "העברת {{name}}",
+      deleteNamed: "מחיקת {{name}}",
+    },
   },
   masking: {
     tab: "הסוואה",
@@ -199,6 +259,7 @@ const he: typeof en = {
     },
   },
   commentDialog: {
+    label: "הערה",
     addTitle: "הערה על",
     editTitle: "עריכת ההערה על",
     placeholder: "מה יש לומר על המסע הזה?",
@@ -207,6 +268,7 @@ const he: typeof en = {
     cancel: "ביטול",
   },
   treeMap: {
+    toolbar: "פקדי המפה",
     title: "מפה",
     covered: "קווים שכוסו: {{covered}} מתוך {{total}}",
     label: "הרפרטואר כעץ: קווים שכוסו בירוק, הדרך שלכם לכאן מודגשת",
@@ -331,6 +393,8 @@ const he: typeof en = {
       },
       unknown: "לא ידוע",
       rowsPerPage: "שורות בעמוד",
+      label: "המשחקים שלך",
+      actions: "פעולות",
     },
     newGame: {
       title: "משחק חדש",
@@ -351,7 +415,8 @@ const he: typeof en = {
     loading: "קורא את המשחקים השמורים שלך…",
     empty: "אין עדיין משחקים שמורים. שחקו מול המנוע והמשחק יופיע כאן מעצמו.",
     storage: "המשחקים שלך נשמרים בדפדפן הזה בלבד. מחיקת נתוני האתר תמחק אותם, והם אינם עוברים למכשיר אחר.",
-    players: "{{white}} - {{black}}",
+    rowTitle: "המשחק {{white}} – {{black}} מ־{{date}}",
+    unreadableTitle: "המשחק שלא ניתן לקרוא מ־{{date}}",
     human: "אדם",
     engine: "Stockfish רמה {{level}}",
     moves_one: "מהלך אחד",
@@ -359,8 +424,8 @@ const he: typeof en = {
     variations_one: "וריאציה אחת",
     variations_other: "{{count}} וריאציות",
     unreadable: "לא ניתן לקרוא את המשחק הזה.",
-    continue: "המשך",
-    analyse: "ניתוח",
+    continueRow: "המשך את {{title}}",
+    analyseRow: "ניתוח {{title}}",
     pick: "בחירת {{title}}",
     selectAll: "בחירת כל המשחקים שהטבלה מציגה",
     deletePicked: "מחיקת הנבחרים ({{count}})",
@@ -413,6 +478,7 @@ const he: typeof en = {
     select: "בחירת הניתוח",
     selectAll: "בחירת כל הניתוחים",
     selected: "{{count}} נבחרו",
+    rowsPerPage: "ניתוחים בעמוד",
     download: "הורדת הנבחרים כקובץ PGN",
     deleteSelected: "מחיקת הנבחרים",
     bulkDelete: {
@@ -428,6 +494,7 @@ const he: typeof en = {
       renameFolder: "שינוי שם תיקייה",
       moveFolder: "העברת תיקייה",
       moveGame: "העברת ניתוח",
+      picker: "תיקיות",
       deleteFolder: "מחיקת תיקייה",
       download: "הורדת התיקייה כקובץ PGN",
       unfiled: "ללא תיקייה",
@@ -612,6 +679,7 @@ const he: typeof en = {
   },
   positionEditor: {
     tabs: {
+      label: "טפסים",
       position: "עמדה",
       fen: "FEN",
       pgn: "PGN",
@@ -694,6 +762,7 @@ const he: typeof en = {
       open: "לפתוח את {{eco}} במסך הפתיחות",
     },
     book: {
+      label: "מסעי הספר",
       empty: "אין המשכים מוכרים מכאן.",
       help: "לחצו על מהלך כדי לשחק אותו כאן. מהלך מעמדה מוקדמת יותר פותח וריאציה.",
     },
@@ -717,6 +786,8 @@ const he: typeof en = {
     },
   },
   library: {
+    filterClear: "ניקוי הסינון",
+    treeHint: "Tab עובר בכל שורה בין החץ, שפותח או סוגר תיקייה, הקישור והפעולות. מיון לפי עמודה בלחצן שבכותרת שלה.",
     title: "ספרייה",
     count_one: "אוסף אחד",
     count_other: "{{count}} אוספים",
@@ -756,9 +827,11 @@ const he: typeof en = {
       deleteConfirm:
         "מחיקת התיקייה שומרת על תוכנה: האוספים ותתי־התיקיות שבה עוברים לתיקייה שמעליה.",
       deleteCounts: "בתיקייה {{games}} אוספים ו־{{subFolders}} תתי־תיקיות.",
+      picker: "תיקיות",
     },
     table: {
       back: "כל האוספים",
+      label: "משחקים",
       filter: "סינון משחקים",
       result: "תוצאה",
       anyResult: "כל תוצאה",
@@ -844,6 +917,7 @@ const he: typeof en = {
         save: "שמירת העץ כ-PGN",
         saveDialog: {
           title: "להוסיף את מספר המשחקים כתגית?",
+          mode: "ספירת המשחקים",
           no: "לא",
           tags: "הוספת תגיות",
           games: "תגית \"games\"",
@@ -978,6 +1052,42 @@ const he: typeof en = {
       },
     },
   },
+  tournament: {
+    columns: {
+      rank: "#",
+      rankName: "מקום",
+      player: "שחקן",
+      rating: "דירוג",
+      ratingName: "דירוג",
+      points: "נק׳",
+      pointsName: "נקודות",
+      buchholz: "BH",
+      buchholzName: "בוכהולץ",
+      sonnebornBerger: "SB",
+      sonnebornBergerName: "זונבורן־ברגר",
+    },
+    round: "סיבוב {{round}}",
+    game: {
+      white: "סיבוב {{round}}, בלבן מול {{opponent}}: {{result}}",
+      black: "סיבוב {{round}}, בשחור מול {{opponent}}: {{result}}",
+      whiteNoRound: "בלבן מול {{opponent}}: {{result}}",
+      blackNoRound: "בשחור מול {{opponent}}: {{result}}",
+    },
+    result: {
+      win: "ניצחון",
+      draw: "תיקו",
+      loss: "הפסד",
+      unfinished: "לא הסתיים",
+    },
+    noGame: "סיבוב {{round}}: אין משחק בקובץ",
+    noGameAgainst: "אין בקובץ משחק מול {{opponent}}",
+    legend: {
+      unfinished: "משחק שלא הסתיים",
+      none: "אין משחק בקובץ",
+    },
+    loading: "קורא את הטורניר…",
+    empty: "אין משחקים להצגה.",
+  },
   repertoires: {
     title: "רפרטוארים",
     count: "רפרטוארים: {{count}}",
@@ -985,6 +1095,7 @@ const he: typeof en = {
     empty:
       "אין עדיין רפרטוארים. הוסיפו אחד מקובץ ‎.pgn, או הדביקו את ה-PGN שלו, והוא יופיע כאן.",
     hint: "רפרטוארי הפתיחות שלכם. פתחו אחד כדי לקרוא את הקווים שלו על הלוח, כולל קווי הצד, עם המנוע לצדכם.",
+    panelTitle: "על רפרטוארים",
     storage:
       "הרפרטוארים נשמרים בדפדפן הזה בלבד. ניקוי נתוני האתר מוחק אותם, והם לא עוברים איתכם למכשיר אחר.",
     untitled: "רפרטואר ללא שם",
@@ -1097,6 +1208,7 @@ const he: typeof en = {
     },
     games: {
       open: "משחקים",
+      openNamed: "משחקים עם {{name}}",
       end: { title: "עד סוף הקו" },
       backtrack: { title: "חזרה לאחור" },
     },
@@ -1190,6 +1302,7 @@ const he: typeof en = {
       export: "ייצוא",
       import: "ייבוא",
       storage: "אחסון",
+      appearance: "מראה",
     },
     export: {
       intro:
@@ -1213,6 +1326,7 @@ const he: typeof en = {
     import: {
       intro:
         "החזירו קובץ ‎.zip שנוצר ב„ייצוא” — כאן או בדפדפן אחר. אתם בוחרים מה לייבא ומה יקרה כשתיקייה כבר קיימת כאן; דבר אינו נכתב עד שתאשרו.",
+      progress: "התקדמות הייבוא",
       choose: "בחירת קובץ ‎.zip",
       reading: "קורא את הקובץ…",
       working: "מייבא…",
@@ -1289,6 +1403,8 @@ const he: typeof en = {
         title: "אחסון הדפדפן",
         usage: "שימוש במקור (הערכה)",
         indexedDb: "שימוש ב־IndexedDB (הערכה)",
+        measure: "מדד",
+        size: "גודל",
         /** לאן נעלמה המכסה: הבדיקה של הקורא בעצמו. */
         quotaNote: "מכסת האחסון אינה מוצגת כאן; כדי לראות אותה, פתחו את כלי הפיתוח של הדפדפן.",
       },
@@ -1310,6 +1426,21 @@ const he: typeof en = {
         "נפח מוערך הוא הערכה של האפליקציה עצמה לתוכן הרשומות — לא נפח על הדיסק. הדפדפן עשוי לדחוס, לבטל כפילויות ולהוסיף תקורה של אינדקסים, ולכן הנפחים אינם מסתכמים בנפח שהוא מדווח.",
       panel:
         "שום דבר כאן אינו נכתב או נמחק. המספרים של הדפדפן הם הערכות שלו למקור כולו; הנפח לפי קטגוריה הוא הערכה של האפליקציה לתוכן הרשומות שלכם, שהדפדפן עשוי לאחסן אחרת על הדיסק. האוספים המובנים הם קבצים שנמשכים ברשת, לא רשומות בדפדפן שלכם, ולכן הם נכללים רק בשימוש במקור.",
+    },
+    appearance: {
+      intro:
+        "בחרו איך האפליקציה נראית. ערכת נושא מעצבת מחדש כל מסך וכל לוח בבת אחת, ונשמרת במכשיר זה.",
+      theme: "ערכת נושא",
+      modeNote: "מצב בהיר או כהה נבחר במתג שבכותרת; לכל ערכת נושא יש את שניהם.",
+    },
+  },
+  appearance: {
+    themes: {
+      default: "ברירת מחדל",
+      brown: "חום",
+      green: "ירוק",
+      "high-contrast": "ניגודיות גבוהה",
+      console: "מסוף",
     },
   },
   footer: {

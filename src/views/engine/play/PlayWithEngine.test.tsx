@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import i18n from "../../../i18n";
@@ -12,6 +13,7 @@ import {
   savePlayedGame,
 } from "../../../lib/playedGameStore";
 import { playedGameOf } from "../../../lib/playedGames";
+import { expectNoAxeViolations } from "../../../test/axe";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
 import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
@@ -489,7 +491,8 @@ describe("Play with Engine — the game view's shape", () => {
     // First in the header, before the opening line and the game's controls.
     expect(
       screen.getByTestId("play-with-engine-panel-header").firstElementChild,
-    ).toBe(back);
+      // The design system's IconAction holds its button in a span (CTA-109).
+    ).toContainElement(back);
     expect(screen.getByTestId("play-with-engine-current-opening")).toBeInTheDocument();
   });
 
@@ -564,5 +567,49 @@ describe("Play with Engine — the game over", () => {
       "href",
       `/tools/analysis?game=${encodeURIComponent("play/games/ended")}`,
     );
+  });
+});
+
+describe("Play with Engine — accessibility (CTA-109)", () => {
+  it("passes axe with a game in progress", async () => {
+    mount();
+    drag("e2", "e4");
+    engineSearches("e7e5");
+    await expectNoAxeViolations();
+  });
+
+  it("passes axe once the game is over, its result a status that is read out", async () => {
+    mount();
+    drag("e2", "e4");
+    click("play-with-engine-resign");
+    click("play-with-engine-confirm-ok");
+    expect(screen.getByTestId("play-with-engine-resigned")).toHaveAttribute("role", "status");
+    await expectNoAxeViolations();
+  });
+
+  it("asks before Replay from the keyboard, and gives the focus back to Replay", async () => {
+    mount();
+    drag("e2", "e4");
+    const replay = screen.getByRole("button", { name: "Replay — start over" });
+    replay.focus();
+    await userEvent.keyboard("{Enter}");
+    const dialog = await screen.findByRole("dialog", { name: "Start over?" });
+    expect(dialog).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(replay).toHaveFocus();
+  });
+
+  it("works the Engine tab without a pointer: the arrows switch and a slider", async () => {
+    mount();
+    fireEvent.click(screen.getByTestId("play-with-engine-panel-tab-engine"));
+    const arrows = screen.getByRole("switch", { name: "Show next-move arrows" });
+    arrows.focus();
+    await userEvent.keyboard(" ");
+    expect(arrows).not.toBeChecked();
+    const depth = screen.getByRole("slider", { name: "Search depth" });
+    depth.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(screen.getByTestId("engine-setting-depth-value")).toHaveTextContent(String(DEFAULT_ENGINE_SETTINGS.depth + 1));
   });
 });

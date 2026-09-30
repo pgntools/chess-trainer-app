@@ -1,0 +1,127 @@
+name: Accessibility
+
+# The browser accessibility pass (CTA-116, `yarn test:a11y`): Playwright drives
+# Chromium over the production build — every shipped route, seeded through the
+# app's own Import — and axe checks what jsdom cannot: colour contrast, target
+# size, real layout. The suite is `e2e/a11y/`; what it lets through is
+# `e2e/a11y/allowlist.ts`, and an entry that stops occurring fails it too.
+#
+#  - every pull request runs the REDUCED matrix: the default and high-contrast
+#    themes, light, English and Hebrew (4 combinations of every route), in one job;
+#  - the nightly schedule and a manual run (workflow_dispatch) run the FULL one:
+#    every theme, both colour schemes, both languages (20 of them) — some 470
+#    page loads, each with a WASM chess engine on a board page, so it is split
+#    over six jobs (Playwright's --shard) rather than one that runs for hours.
+#
+# Separate from ci.yml because it needs a browser and takes minutes, not
+# seconds, and because a nightly run has nothing to do with a push.
+on:
+  pull_request:
+  schedule:
+    # 02:17 UTC every day.
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      matrix:
+        description: "Which matrix to run"
+        type: choice
+        options: [full, reduced]
+        default: full
+
+jobs:
+  # Which matrix, and how many jobs it is split over.
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      shards: ${{ steps.plan.outputs.shards }}
+      total: ${{ steps.plan.outputs.total }}
+    steps:
+      - id: plan
+        env:
+          ASKED: ${{ github.event_name == 'pull_request' && 'reduced' || inputs.matrix || 'full' }}
+        run: |
+          echo "matrix=$ASKED" >> "$GITHUB_OUTPUT"
+          if [ "$ASKED" = "reduced" ]; then
+            echo 'shards=[1]' >> "$GITHUB_OUTPUT"
+            echo 'total=1' >> "$GITHUB_OUTPUT"
+          else
+            echo 'shards=[1,2,3,4,5,6]' >> "$GITHUB_OUTPUT"
+            echo 'total=6' >> "$GITHUB_OUTPUT"
+          fi
+
+  a11y:
+    needs: plan
+    name: a11y (${{ needs.plan.outputs.matrix }}, ${{ matrix.shard }}/${{ needs.plan.outputs.total }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      # A finding on one shard must not hide the others' reports.
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    env:
+      A11Y_MATRIX: ${{ needs.plan.outputs.matrix }}
+      # The runner has four cores; a board page runs a WASM engine, so more
+      # workers only starve each other of the engine's first line.
+      A11Y_WORKERS: 3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+
+      - run: yarn install --frozen-lockfile
+
+      # Chromium is ~150 MB; it is downloaded once per Playwright version. The
+      # browser's own system libraries are not part of that cache, so they are
+      # installed either way.
+      - name: Read Playwright's version
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright's Chromium
+        id: browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium and its system libraries
+        if: steps.browsers.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Chromium's system libraries
+        if: steps.browsers.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      # The production build the pass runs against; `vite preview` serves it
+      # under the deployed base path (`playwright.config.ts`'s webServer).
+      - run: yarn build
+
+      # Every shard seeds the app itself (the `setup` project runs in each).
+      - name: Run the accessibility pass (${{ env.A11Y_MATRIX }} matrix, shard ${{ matrix.shard }}/${{ needs.plan.outputs.total }})
+        run: npx playwright test --shard=${{ matrix.shard }}/${{ needs.plan.outputs.total }}
+
+      # The report is the point of a failed run: Playwright's HTML report, its
+      # JSON results, this pass's summary and the traces of the pages that failed.
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-report-${{ env.A11Y_MATRIX }}-${{ matrix.shard }}
+          path: |
+            a11y-report
+            !a11y-report/.state
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Summarise
+        if: always()
+        run: |
+          if [ -f a11y-report/summary.md ]; then
+            cat a11y-report/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi

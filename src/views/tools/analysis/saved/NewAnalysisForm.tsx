@@ -1,15 +1,15 @@
 import { useMemo } from "react";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
-import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import { Link as RouterLink, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 
+import { FenInput, PGN_ACCEPT, PgnInput } from "../../../../blocks/forms";
+import { InlineAlert, StatusText } from "../../../../design-system/components/feedback";
+import { FieldLabel, FileInputButton } from "../../../../design-system/components/forms";
 import { analysisHandOffState } from "../../../../lib/analysisHandOff";
 import { parseFen } from "../../../../lib/fen";
 import { START_POSITION } from "../../../../lib/positionEditor";
@@ -101,7 +101,8 @@ function NewAnalysisForm() {
       {/* The editor's resets, in the header: the row under the board is the
           quick loads' (the `controls` slot below). */}
       <Box sx={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 1 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.3, flex: 1 }}>
+        {/* The panel's heading, under the list's h1 (CTA-113). */}
+        <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700, lineHeight: 1.3, flex: 1 }}>
           {t("savedAnalyses.newAnalysis.title")}
         </Typography>
         <Box sx={{ display: "flex", gap: 0.5, flexShrink: 0 }}>
@@ -145,58 +146,34 @@ function NewAnalysisForm() {
           boardMaxWidth={EDITOR_BOARD_MAX_PX}
           forms={["position"]}
           controls={
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              {/*
-                The quick loads, side by side where the resets were: a FEN
-                sets the position up (Enter applies it), a `.pgn` pick is read
-                by the same route as the paste box below.
-              */}
-              <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                <TextField
-                  size="small"
+            /*
+              The quick loads, side by side where the resets were: a FEN sets
+              the position up (Enter applies it), a `.pgn` pick is read by the
+              same route as the paste box below.
+            */
+            <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start", flexWrap: "wrap" }}>
+              <Box sx={{ flex: "1 1 14rem", minWidth: 0 }}>
+                <FenInput
+                  inline
                   label={t("analysis.position.fenLabel")}
+                  submitLabel={t("analysis.position.loadFen")}
                   value={load.fenText}
-                  onChange={(event) => load.setFenText(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      load.applyFen();
-                    }
-                  }}
-                  sx={{ flex: 1 }}
-                  slotProps={{
-                    htmlInput: { "data-testid": "new-analysis-fen-input", dir: "ltr" },
-                  }}
+                  onChange={load.setFenText}
+                  onSubmit={load.applyFen}
+                  error={load.fenProblem}
+                  testId="new-analysis"
+                  errorTestId="new-analysis-fen-problem"
                 />
-                {/* A label wrapping a hidden input — the file dialog opens only
-                    from a real `<input type="file">`. */}
-                <Button
-                  component="label"
-                  size="small"
-                  variant="outlined"
-                  startIcon={<UploadFileRoundedIcon />}
-                  sx={{ flexShrink: 0 }}
-                  data-testid="new-analysis-pgn"
-                >
-                  {t("savedAnalyses.newAnalysis.pgnFile")}
-                  <input
-                    hidden
-                    type="file"
-                    accept=".pgn,application/x-chess-pgn,text/plain"
-                    data-testid="new-analysis-pgn-input"
-                    onChange={(event) => {
-                      void load.onPicked(event.target.files);
-                      // Cleared at once, so picking the same file again still fires a change.
-                      event.target.value = "";
-                    }}
-                  />
-                </Button>
               </Box>
-              {load.fenProblem !== null && (
-                <Alert severity="error" data-testid="new-analysis-fen-problem">
-                  {load.fenProblem}
-                </Alert>
-              )}
+              <FileInputButton
+                label={t("savedAnalyses.newAnalysis.pgnFile")}
+                accept={PGN_ACCEPT}
+                onFiles={(files) => void load.onPicked(files)}
+                variant="outlined"
+                size="small"
+                testId="new-analysis-pgn"
+                inputTestId="new-analysis-pgn-input"
+              />
             </Box>
           }
         />
@@ -207,48 +184,22 @@ function NewAnalysisForm() {
           through. The choice, the problem and the done line are the
           pipeline's, like everything else in this form.
         */}
-        <Box
-          data-testid="new-analysis-load"
-          sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
-        >
-          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-            {t("analysis.load.pgnTitle")}
-          </Typography>
-          <TextField
-            multiline
-            minRows={4}
-            maxRows={10}
-            size="small"
-            label={t("savedAnalyses.newAnalysis.pasteLabel")}
-            value={load.pasted}
-            onChange={(event) => load.setPasted(event.target.value)}
-            slotProps={{ htmlInput: { "data-testid": "new-analysis-paste", dir: "ltr" } }}
+        <Box data-testid="new-analysis-load" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <FieldLabel component="span">{t("analysis.load.pgnTitle")}</FieldLabel>
+          <PgnInput
+            labels={{ paste: t("savedAnalyses.newAnalysis.pasteLabel"), submit: t("analysis.position.loadText") }}
+            pasted={load.pasted}
+            onPastedChange={load.setPasted}
+            onSubmit={() => load.bringIn(load.pasted)}
+            submitVariant="contained"
+            problem={load.problem === null ? null : { message: load.problem }}
+            testId="new-analysis"
+            testIds={{ submit: "new-analysis-load-text" }}
           />
-          <Box>
-            <Button
-              size="small"
-              variant="contained"
-              disabled={load.pasted.trim() === ""}
-              onClick={() => load.bringIn(load.pasted)}
-              data-testid="new-analysis-load-text"
-            >
-              {t("analysis.position.loadText")}
-            </Button>
-          </Box>
-          {load.problem !== null && (
-            <Alert severity="error" data-testid="new-analysis-problem">
-              {load.problem}
-            </Alert>
-          )}
           {load.loaded && (
-            <Typography
-              variant="caption"
-              role="status"
-              data-testid="new-analysis-done"
-              sx={{ color: "success.main" }}
-            >
+            <StatusText tone="success" testId="new-analysis-done">
               {t("analysis.load.loaded")}
-            </Typography>
+            </StatusText>
           )}
           {load.choice !== null && (
             <MultiGameDialog
@@ -264,16 +215,16 @@ function NewAnalysisForm() {
 
       <Box sx={{ flexShrink: 0, display: "grid", gap: 1 }}>
         {!analyzable && (
-          <Alert severity="warning" data-testid="new-analysis-illegal" sx={{ py: 0.5 }}>
+          <InlineAlert severity="warning" dense testId="new-analysis-illegal">
             {t("savedAnalyses.newAnalysis.illegal")}
             {editor.problems.length > 0 && (
-              <Box component="ul" sx={{ m: 0, pl: 2 }}>
+              <Box component="ul" sx={{ m: 0, paddingInlineStart: 2 }}>
                 {editor.problems.map((problem) => (
                   <li key={problem}>{t(`positionEditor.problems.${problem}`)}</li>
                 ))}
               </Box>
             )}
-          </Alert>
+          </InlineAlert>
         )}
         {/* Off, it is a plain button rather than a link: nothing to follow. */}
         <Button

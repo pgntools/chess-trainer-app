@@ -6,6 +6,7 @@ import { useEffect, type ReactNode } from "react";
 import { Chess } from "chess.js";
 
 import i18n from "../../../../i18n";
+import { expectNoAxeViolations } from "../../../../test/axe";
 import AppThemeWithLang from "../../../../theme/AppThemeWithLang";
 import { analysisHandOffOf } from "../../../../lib/analysisHandOff";
 import { DEFAULT_ANALYSIS_SETTINGS } from "../../../../lib/analysisSettings";
@@ -33,7 +34,7 @@ import {
   saveAnalysis,
   savedAnalysesSnapshot,
 } from "../../../../lib/savedAnalysisStore";
-import { cardSizeTrack } from "../../../shared/cardSize";
+import { cardGridColumns } from "../../../../design-system/components/cards";
 import { RightPanelOutlet, RightPanelProvider } from "../../../main/rightPanel";
 import SavedAnalyses, { SAVED_ANALYSES_PAGE } from "./SavedAnalyses";
 
@@ -376,7 +377,7 @@ describe("Saved analyses — the board view", () => {
     await showBoards();
 
     expect(screen.getByTestId("saved-analyses-grid")).toHaveStyle({
-      gridTemplateColumns: cardSizeTrack("compact"),
+      gridTemplateColumns: cardGridColumns("compact"),
     });
     expect(screen.getByTestId("board-saved-analyses-preview-a1")).toBeInTheDocument();
   });
@@ -559,13 +560,27 @@ describe("Saved analyses — a folder of thousands (CTA-77)", () => {
     expect(screen.getAllByTestId(/^saved-analyses-item-/)).toHaveLength(SAVED_ANALYSES_PAGE);
     expect(screen.getByTestId("saved-analyses-item-r0")).toBeInTheDocument();
 
-    await user.click(within(screen.getByTestId("saved-analyses-pagination")).getByText("2"));
+    // The design system's pager (CTA-113): 25 / 50 / 100 / 250 a page, 50 by default.
+    await user.click(within(screen.getByTestId("saved-analyses-pagination")).getByRole("button", { name: "Go to next page" }));
     expect(screen.getAllByTestId(/^saved-analyses-item-/)).toHaveLength(12);
     expect(screen.getByTestId(`saved-analyses-item-r${total - 1}`)).toBeInTheDocument();
 
     // Select-all takes the whole folder, not the page.
     await user.click(within(screen.getByTestId("saved-analyses-select-all")).getByRole("checkbox"));
     expect(screen.getByTestId("saved-analyses-selected-count")).toHaveTextContent(`${total} selected`);
+  });
+
+  it("offers the design system's page sizes, and goes back to the first page on a new size (CTA-113)", async () => {
+    const user = userEvent.setup();
+    const record = save("x", [[[], ["e4"]]]);
+    await addAnalyses(Array.from({ length: 30 }, (_, index) => ({ ...record, id: `r${index}`, name: `R${index}` })));
+    await renderScreen();
+
+    expect(screen.getAllByTestId(/^saved-analyses-item-/)).toHaveLength(30);
+    await user.click(within(screen.getByTestId("saved-analyses-pagination")).getByRole("combobox"));
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["25", "50", "100", "250"]);
+    await user.click(screen.getByRole("option", { name: "25" }));
+    expect(screen.getAllByTestId(/^saved-analyses-item-/)).toHaveLength(25);
   });
 
   it("has no pager for a folder that fits one page", async () => {
@@ -857,5 +872,44 @@ describe("the new-analysis form (CTA-87)", () => {
       expect(where.current?.pathname).toBe("/tools/analysis/saved");
       expect(savedAnalysesSnapshot() ?? []).toEqual([]);
     });
+  });
+});
+
+describe("Saved analyses — accessible (CTA-113)", () => {
+  it("passes axe in the list, with a folder, an analysis and the form beside them", async () => {
+    await createAnalysisFolder("Openings", null);
+    await saveAnalysis(save("a1", [[[], ["e4", "e5"]]]));
+    await renderScreen();
+    await settleBook();
+    expect(screen.getByRole("heading", { level: 1, name: "Saved analyses" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: i18n.t("savedAnalyses.newAnalysis.title") })).toBeInTheDocument();
+    await expectNoAxeViolations(screen.getByTestId("saved-analyses-screen"));
+  });
+
+  it("passes axe as cards, and empty", async () => {
+    await saveAnalysis(save("a1", [[[], ["e4"]]]));
+    const { unmount } = await renderScreen();
+    await userEvent.click(screen.getByTestId("saved-analyses-view-compact"));
+    await settleBook();
+    await expectNoAxeViolations(screen.getByTestId("saved-analyses-screen"));
+    unmount();
+  });
+
+  it("is worked from the keyboard: the view, a pick, a row's Open named for its analysis", async () => {
+    const user = userEvent.setup();
+    await saveAnalysis({ ...save("a1", [[[], ["e4"]]]), name: "Najdorf" });
+    await renderScreen();
+    // The view toggle is one tab stop; the arrows walk it.
+    screen.getByTestId("saved-analyses-view-list").focus();
+    await user.keyboard("{ArrowRight}{Enter}");
+    expect(screen.getByTestId("saved-analyses-grid")).toBeInTheDocument();
+    screen.getByTestId("saved-analyses-view-compact").focus();
+    await user.keyboard("{ArrowLeft}{Enter}");
+    expect(screen.getByRole("link", { name: "Open Najdorf" })).toHaveAttribute("href", "/tools/analysis?analysis=a1");
+    screen.getByRole("link", { name: "Settings of Najdorf" }).focus();
+    await user.tab();
+    expect(screen.getByRole("checkbox", { name: "Select Najdorf" })).toHaveFocus();
+    await user.keyboard(" ");
+    expect(screen.getByTestId("saved-analyses-selected-count")).toHaveTextContent("1 selected");
   });
 });

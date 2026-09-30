@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import type { ReactNode } from "react";
 
 import i18n from "../../i18n";
+import { stubReducedMotion } from "../../test/reducedMotion";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 
@@ -168,6 +169,23 @@ describe("every v2 board, from the same core", () => {
     unmount();
   });
 
+  it.each(BOARDS)("$name names its tab panel by its tab, whichever is open (CTA-112)", ({ id, Screen }) => {
+    const { unmount } = renderBoard(Screen);
+    const panel = screen.getByTestId(`${id}-panel`);
+    const linked = () => {
+      const tab = within(panel).getByRole("tab", { selected: true });
+      const region = within(panel).getByRole("tabpanel");
+      expect(region).toHaveAttribute("aria-labelledby", tab.id);
+      expect(tab).toHaveAttribute("aria-controls", region.id);
+      expect(region).toHaveAccessibleName(tab.textContent ?? "");
+    };
+    linked();
+    act(() => screen.getByTestId(`${id}-panel-tab-engine`).click());
+    expect(within(panel).getByRole("tab", { selected: true })).toBe(screen.getByTestId(`${id}-panel-tab-engine`));
+    linked();
+    unmount();
+  });
+
   it.each(BOARDS.filter((board) => board.linesShown !== false))(
     "$name pins the engine's lines above its tabs",
     ({ id, Screen }) => {
@@ -215,6 +233,25 @@ describe("every v2 board, from the same core", () => {
 
     expect(FakeEngine.latest().lastSearch).toBe(boardOptions().position);
 
+    unmount();
+  });
+});
+
+describe("reduced motion, on every board (CTA-111)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each(BOARDS)("$name animates its pieces as it always has without the preference", ({ Screen }) => {
+    const { unmount } = renderBoard(Screen);
+    expect(boardOptions().showAnimations).toBeUndefined();
+    unmount();
+  });
+
+  it.each(BOARDS)("$name moves its pieces without animation when the reader asks for reduced motion", ({ Screen }) => {
+    stubReducedMotion();
+    const { unmount } = renderBoard(Screen);
+    expect(boardOptions().showAnimations).toBe(false);
     unmount();
   });
 });

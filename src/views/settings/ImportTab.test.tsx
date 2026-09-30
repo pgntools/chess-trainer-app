@@ -67,6 +67,7 @@ import {
 } from "../../lib/savedRepertoireStore";
 import type { SavedRepertoire } from "../../lib/savedRepertoires";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
+import { expectNoAxeViolations } from "../../test/axe";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 import SettingsScreen from "./SettingsScreen";
 
@@ -453,5 +454,44 @@ describe("the Import tab", () => {
     await waitFor(() => expect(screen.queryByTestId("settings-import-incompatible")).not.toBeInTheDocument());
     expect(await loadPlayedGames()).toEqual([]);
     expect(await loadUploadedCollections()).toEqual([]);
+  });
+});
+
+describe("the Import tab — accessibility (CTA-109)", () => {
+  it("passes axe with its choice dialog open, and works it from the keyboard", async () => {
+    await seed();
+    const bytes = await exported();
+    renderImport();
+    await pick(bytes);
+    await dialog();
+    await expectNoAxeViolations();
+
+    // A clash's choice is a radio group: the arrow keys move it.
+    const merge = radio("settings-import-analyses-choice", "Merge");
+    merge.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(radio("settings-import-analyses-choice", "Override")).toBeChecked();
+    // A category's box is a checkbox: Space unticks it.
+    tick("games").focus();
+    await userEvent.keyboard(" ");
+    expect(tick("games")).not.toBeChecked();
+  });
+
+  it("passes axe with its incompatible-file dialog open", async () => {
+    renderImport();
+    await pick(strToU8("not a zip"), "notes.zip");
+    await screen.findByTestId("settings-import-incompatible");
+    await expectNoAxeViolations();
+  });
+
+  it("reports an import in an alert, read out as it lands", async () => {
+    await seed();
+    const bytes = await exported();
+    renderImport();
+    await pick(bytes);
+    await dialog();
+    const done = await importAndWait();
+    expect(done).toHaveAttribute("role", "alert");
+    await expectNoAxeViolations();
   });
 });

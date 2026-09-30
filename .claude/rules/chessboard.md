@@ -180,6 +180,36 @@ a legal promotion among `chessGame.moves({ square, verbose: true })`, stash
 (`promotion` / `resolvePromotion`). Hardcoding `promotion: 'q'` is a demo-only
 shortcut. Worked example: `stories/advanced-examples/PiecePromotion.stories.tsx`.
 
+### 3.6 Colours come from the theme
+
+Every colour drawn on or over a board is a **`chess` token** of the reader's
+theme (CTA-107, `src/design-system/themes/types.ts`): the squares and their
+coordinates, the last-move fill, the next-move arrow palettes, the required,
+untagged and play-chance arrows, the book arrows, the move marks' tones, the
+promotion scrim, the map's dots and the filter board's result bars. **Never
+write a colour literal in a board file.**
+
+- The squares: spread `useBoardSquareOptions()` (`views/shared/boardColors.ts`)
+  into the board's options — `EngineBoardSquare` does it for every game
+  board; the position editor, the list previews and the filter board do it
+  themselves. Under the default theme these are react-chessboard's own
+  defaults, so the board looks as it always has.
+- **Reduced motion rides along** (CTA-111): under `prefers-reduced-motion:
+  reduce` the same options carry `showAnimations: false`, so every board's
+  pieces jump rather than slide; without it the key is absent. Never set
+  `showAnimations` on a board yourself — spread `useBoardSquareOptions()`.
+- Anything else: `useChessTokens()` in a component or hook, or
+  `chessTokensOf(theme)` inside an `sx` function. Both fall back to the
+  default theme's tokens under a theme `buildTheme` did not make — a test
+  that renders a board without `AppThemeWithLang` still has every colour.
+- A pure helper takes the colour as an **optional** argument whose default is
+  the default theme's (`lastMoveSquareStyles`, `chanceArrowSpec`,
+  `weightedArrowColors`, `openingArrowsOf`), and the `…_COLOR` constants are
+  the default theme's values — the backward-compatible shape §9.6 asks for.
+- A token is read as a value, not a CSS variable (`buildTheme` skips the
+  `chess` group): react-chessboard's options and SVG attributes take no
+  `var()`.
+
 ---
 
 ## 4. Stockfish engine integration
@@ -281,7 +311,12 @@ what shares it.
   shrinks. A strip with nothing in it still renders, so the board does not
   resize on the first capture. The constants and the strip are in
   [`views/shared/CapturedPieces.tsx`](../../src/views/shared/CapturedPieces.tsx).
-  The position editor and the preview boards carry none.
+  The position editor and the preview boards carry none. A strip's left end
+  can carry a **player plate** (CTA-105) — the player's result, Elo and name
+  — as an optional prop down `BoardShell` → `EngineBoardSquare` → the strips,
+  which only the Library's game board passes; the plate truncates where the
+  row runs short, the pieces keep the right edge, and the height arithmetic
+  above is untouched.
 - **A screen that scrolls inside the square divides it itself**: a flex column,
   a `flexShrink: 0` top bar over a `flex: 1; minHeight: 0; overflowY: auto`
   region. **A grid of cards inside it needs `gridAutoRows: "max-content"`** —
@@ -589,8 +624,8 @@ orientation), the engine switched off, the game over, or `finished` (a
 resignation). Pressing Play at the engine's turn with a search of that position
 finished plays at once. The Analysis Board, the Library's game board and the
 Openings explorer start it off; Play with Engine starts it on. The header
-button and status line are `PlayToggleButton.tsx` / `EngineThinking.tsx`
-(`views/tools/analysis/`).
+button and status line are the `PlayToggleButton` / `EngineThinking` blocks
+(`src/blocks/panels/`).
 
 ### 9.3 The shell and the panel
 
@@ -673,10 +708,15 @@ the reader plays the solution, the engine never moves):
 2. **Supply the slots**: `<BoardShell id="puzzle" core={…} analysis={…}
    evalsByFen={…} panel={{ header, tabs, footer, … }} />`, with the tree view
    from `useVariationsExplorer` (or the puzzle mode, `tree-views.md` §4).
-3. **One route in `App.tsx` and one `navItems()` entry.** A board still being
-   built goes behind a **Development section**: its nav folder and entries are
-   spreads in `navFolders()` / `navItems()` gated on `import.meta.env.DEV`, its
-   route a `React.lazy` import inside an `import.meta.env.DEV ? [...] : []`
+3. **One route in `routes.tsx`** — named by its `handle: { title: "pages.<id>" }`,
+   a key in both catalogs, which makes its page title, its `main` and its `h1`
+   (CTA-112; a record it opens goes in the title through `usePageTitle`) —
+   **and one `navItems()` entry.** A board still being
+   built goes behind the **Development section** (open today for the design
+   gallery, `/dev/design`, CTA-107, and the theme editor, `/dev/theme-editor`,
+   CTA-115 — add to it rather than open a second): its
+   nav folder and entries are spreads in `navFolders()` / `navItems()` gated
+   on `import.meta.env.DEV`, its route a `React.lazy` import inside an `import.meta.env.DEV ? [...] : []`
    array (so the production bundle carries no chunk of it), and a store it
    writes gets dev-prefixed database names (§9.2.4). Verify after `yarn build`
    by grepping `dist/` for its paths, test ids and database names (the

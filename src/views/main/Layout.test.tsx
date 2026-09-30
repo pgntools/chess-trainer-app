@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   createMemoryRouter,
   Link,
@@ -8,10 +9,12 @@ import {
   type RouteObject,
 } from "react-router";
 import i18n from "../../i18n";
+import { expectNoAxeViolations, PAGE_STRUCTURE_RULES } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { DefaultLayout } from "./Layout";
 import { RightPanel } from "./rightPanel";
 import { LeftPanel } from "./leftPanel";
+import { FULL_WIDTH_ROUTE } from "./routeHandle";
 
 /** The one throwaway screen most of these tests put behind the `<Outlet />`. */
 const blankScreen: RouteObject[] = [
@@ -180,6 +183,33 @@ describe("board square reflow on window resize", () => {
     await waitFor(() =>
       expect(square).toHaveStyle({ width: "0px", height: "0px" }),
     );
+  });
+});
+
+describe("a full-width route (CTA-107)", () => {
+  const routes: RouteObject[] = [
+    { index: true, element: <div data-testid="screen" /> },
+    { path: "wide", element: <div data-testid="wide-screen" />, handle: FULL_WIDTH_ROUTE },
+  ];
+
+  it("gives a route that asks for it the whole body: no board square, no aside", () => {
+    renderShell(routes, ["/wide"]);
+    expect(screen.getByTestId("layout-full-body")).toContainElement(screen.getByTestId("wide-screen"));
+    expect(screen.queryByTestId("layout-board-square-body")).toBeNull();
+    expect(screen.queryByTestId("layout-board-square-sidebar")).toBeNull();
+    // Not a board, so not pinned LTR: it mirrors with the app.
+    // The nearest `dir` is the document's own, which follows the language.
+    expect(screen.getByTestId("wide-screen").closest("[dir]")).toBe(document.body);
+    // The nav rail stays.
+    expect(screen.getByTestId("layout-sidebar-container")).toBeInTheDocument();
+  });
+
+  it("leaves every other route the square and the aside", async () => {
+    const { router } = renderShell(routes, ["/wide"]);
+    await act(() => router.navigate("/"));
+    expect(screen.queryByTestId("layout-full-body")).toBeNull();
+    expect(screen.getByTestId("layout-board-square-body")).toContainElement(screen.getByTestId("screen"));
+    expect(screen.getByTestId("layout-board-square-sidebar")).toBeInTheDocument();
   });
 });
 
@@ -460,5 +490,166 @@ describe("fixed-width rails", () => {
       }),
     );
     grbc.mockRestore();
+  });
+});
+
+/*
+  Under the shell's breakpoint (CTA-118, WCAG 1.4.10): the rail becomes a
+  drawer opened from the header, and the board's panel stacks under the
+  square. jsdom answers every media query `false`, which is the desktop shell
+  — what every test above renders; these stub the narrow window instead.
+*/
+describe("the shell under its breakpoint (CTA-118)", () => {
+  /*
+    A window under the breakpoint: the `max-width` queries match, nothing else
+    does (`prefers-reduced-motion`, `prefers-color-scheme` answer as they
+    always do). Assigned and put back by hand rather than through `vi.spyOn`:
+    `setup.ts` gives jsdom its `matchMedia` as a mock of its own, and
+    restoring a spy over it leaves that one without an implementation.
+  */
+  const wideWindow = window.matchMedia;
+  const stubCompactWindow = () => {
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: /max-width/.test(query),
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }) as unknown as MediaQueryList) as typeof window.matchMedia;
+  };
+
+  const navButton = () => screen.getByRole("button", { name: i18n.t("shell.openNav") });
+
+  afterEach(() => {
+    window.matchMedia = wideWindow;
+    vi.restoreAllMocks();
+  });
+
+  it("has no rail: the navigation is a drawer the header opens", async () => {
+    stubCompactWindow();
+    const user = userEvent.setup();
+    renderShell();
+
+    expect(screen.queryByTestId("layout-sidebar-container")).toBeNull();
+    // Closed, nothing of it is in the page — not the tree, not the sheet.
+    expect(screen.queryByTestId("layout-nav-drawer")).toBeNull();
+    expect(screen.queryByRole("navigation", { name: i18n.t("nav.ariaLabel") })).toBeNull();
+
+    await user.click(navButton());
+
+    const sheet = await screen.findByRole("dialog", { name: i18n.t("nav.ariaLabel") });
+    // The same tree the rail held, links and all.
+    expect(within(sheet).getByRole("navigation", { name: i18n.t("nav.ariaLabel") })).toBeInTheDocument();
+    expect(within(sheet).getAllByRole("link").length).toBeGreaterThan(0);
+  });
+
+  it("closes the drawer on Escape and gives the focus back to its opener", async () => {
+    stubCompactWindow();
+    const user = userEvent.setup();
+    renderShell();
+
+    const opener = navButton();
+    await user.click(opener);
+    await screen.findByRole("dialog", { name: i18n.t("nav.ariaLabel") });
+    expect(opener).not.toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(opener).toHaveFocus();
+  });
+
+  it("closes the drawer on a navigation", async () => {
+    stubCompactWindow();
+    const user = userEvent.setup();
+    const { router } = renderShell();
+
+    await user.click(navButton());
+    await screen.findByRole("dialog", { name: i18n.t("nav.ariaLabel") });
+
+    await act(() => router.navigate("/tools/analysis"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("stacks the panel under the square, and scrolls the column rather than the page", () => {
+    stubCompactWindow();
+    renderShell();
+
+    const viewport = screen.getByTestId("layout-board-viewport");
+    expect(viewport).toHaveStyle({ flexDirection: "column", overflowX: "hidden", overflowY: "auto" });
+    // The panel is the box below, not a column beside: nothing caps its width.
+    expect(screen.getByTestId("layout-board-square-sidebar")).toHaveStyle({ minHeight: "420px" });
+  });
+
+  it("gives the square the whole width, with none of it reserved for the panel", async () => {
+    stubCompactWindow();
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    // A 320px window is what reflow is measured at; the shell's inset is 16px a side.
+    grbc.mockReturnValue(rect(320, 600));
+
+    renderShell();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("layout-board-square-body")).toHaveStyle({ width: "288px", height: "288px" }),
+    );
+  });
+
+  it("keeps the square usable in a short window, where the column scrolls to the panel", async () => {
+    stubCompactWindow();
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    // 320 x 256 — the reflow viewport. The height would leave 224px; the floor holds.
+    grbc.mockReturnValue(rect(320, 256));
+
+    renderShell();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("layout-board-square-body")).toHaveStyle({ width: "280px", height: "280px" }),
+    );
+  });
+
+  it("names the home link by the brand even with the words out of sight", () => {
+    stubCompactWindow();
+    renderShell();
+    expect(screen.getByRole("link", { name: i18n.t("app.brandText") })).toHaveAttribute("href", "/");
+  });
+
+  it("passes an accessibility audit, drawer open", async () => {
+    stubCompactWindow();
+    const user = userEvent.setup();
+    renderShell();
+
+    await user.click(navButton());
+    await screen.findByRole("dialog", { name: i18n.t("nav.ariaLabel") });
+
+    await expectNoAxeViolations(document.documentElement, { enable: PAGE_STRUCTURE_RULES });
+  });
+
+  it("still gives a full-width route the whole body, with the drawer to reach the rest by", () => {
+    stubCompactWindow();
+    renderShell(
+      [
+        { index: true, element: <div data-testid="screen" /> },
+        { path: "wide", element: <div data-testid="wide-screen" />, handle: FULL_WIDTH_ROUTE },
+      ],
+      ["/wide"],
+    );
+
+    expect(screen.getByTestId("layout-full-body")).toContainElement(screen.getByTestId("wide-screen"));
+    expect(screen.queryByTestId("layout-board-square-body")).toBeNull();
+    // The shell's page structure (CTA-112) is untouched by the breakpoint.
+    expect(screen.getByTestId("layout-skip-link")).toBeInTheDocument();
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(navButton()).toBeInTheDocument();
+  });
+
+  it("is the desktop shell again above the breakpoint", () => {
+    renderShell();
+    expect(screen.getByTestId("layout-sidebar-container")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: i18n.t("shell.openNav") })).toBeNull();
+    expect(screen.getByTestId("layout-board-viewport")).toHaveStyle({ flexDirection: "row" });
   });
 });

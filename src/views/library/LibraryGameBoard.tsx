@@ -1,20 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import IconButton from "@mui/material/IconButton";
-import Switch from "@mui/material/Switch";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import NavigateBeforeRoundedIcon from "@mui/icons-material/NavigateBeforeRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import { useCurrentOpening } from "../shared/useCurrentOpening";
 import type { ChessboardOptions } from "react-chessboard";
 
+import { ChangesStrip, CurrentOpening, EngineThinking, GameInfo, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
+import { AnalysisEngineForm } from "../../blocks/forms";
+import { SwitchField } from "../../design-system/components/forms";
+import { BackButton } from "../../design-system/components/navigation";
+import { IconAction, ToggleIconAction } from "../../design-system/components/toolbars";
+import { downloadPgn } from "../../lib/pgnExport";
 import { indexGame } from "../../lib/collectionIndex";
 import { initialPlyOf } from "../../lib/gameNavigation";
 import { libraryGameReference } from "../../lib/gameReference";
@@ -34,14 +36,10 @@ import { newSavedAnalysisId, savedAnalysisOf } from "../../lib/savedAnalyses";
 import { saveAnalysis } from "../../lib/savedAnalysisStore";
 import BoardShell from "../board/core/BoardShell";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
-import RepertoireChangesBar from "../repertoires/RepertoireChangesBar";
-import CurrentOpening from "../shared/CurrentOpening";
-import GameInfo from "../shared/GameInfo";
-import AnalysisExport from "../tools/analysis/AnalysisExport";
-import AnalysisSettingsPanel from "../tools/analysis/AnalysisSettings";
-import EngineThinking from "../tools/analysis/EngineThinking";
-import PlayToggleButton from "../tools/analysis/PlayToggleButton";
+import type { PlayerPlates } from "../shared/PlayerPlate";
+import { playerResultsOf } from "../shared/playerResults";
 import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
+import { usePageTitle } from "../main/pageTitle";
 
 /**
  * **A Library game** (`/library/<collection>/<game>`, CTA-75) — a game of a
@@ -58,6 +56,14 @@ import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
  * The Export tab also hands the game to the **Analysis Board**
  * (`?game=library/<collection>/<n>`, CTA-77) at the position on screen
  * (`?at=`) — the game as the collection holds it, not this session's changes.
+ *
+ * The players are **plated beside the board** (CTA-105), at the left end of
+ * the captured-pieces strips: each one's result of the game, a thin
+ * separator, their Elo and their name (`1 | 2850 Carlsen, Magnus`), the top
+ * plate the player the orientation puts at the top. The panel's header names
+ * the game no more — its first line is the "Game n of m" caption — and
+ * `gameTitleOf` stays for the export's file stem and the shipped "Save as
+ * copy" name.
  *
  * **Nothing is written unless the reader asks**, and what may be written
  * depends on where the collection came from — the changes strip, opened by
@@ -100,6 +106,8 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
 
   const session = useAnalysisSession({ tree, nodeId: start.nodeId, ply: start.ply });
   const { core, engine } = session;
+  // The opening on screen, for the panel header (CTA-113: a hook and the `CurrentOpening` block).
+  const currentOpening = useCurrentOpening(core.fen);
 
   const [tab, setTab] = useState("moves");
   const [showArrows, setShowArrows] = useState(true);
@@ -114,7 +122,15 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
     [collection, number],
   );
   const title = gameTitleOf(row);
+  usePageTitle(title);
   const caption = [row.event, row.round, row.date, row.result].filter(Boolean).join(" · ");
+  // The players, plated beside the board (CTA-105) — everything of it is on
+  // the memoized row already.
+  const results = playerResultsOf(row.result);
+  const playerPlates: PlayerPlates = {
+    white: { name: row.white ?? "?", elo: row.whiteElo, result: results.white },
+    black: { name: row.black ?? "?", elo: row.blackElo, result: results.black },
+  };
 
   const explorer = useVariationsExplorer({
     testId: "library-game",
@@ -212,32 +228,19 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
       score={topLine?.score ?? null}
       showEvalBar={session.engineOn && session.showEvalBar}
       boardOptions={boardOptions}
+      playerPlates={playerPlates}
       overlay={explorer.overlay}
       panel={{
         header: (
           <>
-            <Tooltip title={t("library.game.back", { name: collection.name })}>
-              <IconButton
-                size="small"
-                component={RouterLink}
-                to={tablePath}
-                aria-label={t("library.game.back", { name: collection.name })}
-                data-testid="library-game-back"
-                sx={{ flexShrink: 0 }}
-              >
-                <ArrowBackRoundedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            <BackButton
+              label={t("library.game.back", { name: collection.name })}
+              link={{ component: RouterLink, to: tablePath }}
+              testId="library-game-back"
+            />
+            {/* The players live on the board's plates (CTA-105); the header's
+                own line is the caption. */}
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-              <Typography
-                variant="subtitle2"
-                data-testid="library-game-title"
-                dir="auto"
-                sx={{ fontWeight: 700, lineHeight: 1.3 }}
-                noWrap
-              >
-                {title}
-              </Typography>
               <Typography
                 variant="caption"
                 data-testid="library-game-caption"
@@ -249,54 +252,35 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
                 {t("library.game.of", { number, count: collection.games.length })}
                 {caption === "" ? "" : ` · ${caption}`}
               </Typography>
-              <CurrentOpening fen={core.fen} testId="library-game-current-opening" />
+              <CurrentOpening {...currentOpening} testId="library-game-current-opening" />
             </Box>
-            <Tooltip title={t("library.game.previous")}>
-              <span>
-                <IconButton
-                  size="small"
-                  component={RouterLink}
-                  to={gamePath(number - 1)}
-                  state={location.state}
-                  disabled={number <= 1}
-                  aria-label={t("library.game.previous")}
-                  data-testid="library-game-previous"
-                >
-                  <NavigateBeforeRoundedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title={t("library.game.next")}>
-              <span>
-                <IconButton
-                  size="small"
-                  component={RouterLink}
-                  to={gamePath(number + 1)}
-                  state={location.state}
-                  disabled={number >= collection.games.length}
-                  aria-label={t("library.game.next")}
-                  data-testid="library-game-next"
-                >
-                  <NavigateNextRoundedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title={saveLabel}>
-              <span>
-                <IconButton
-                  size="small"
-                  disabled={!session.changed}
-                  color={session.changed ? "primary" : "default"}
-                  onClick={() => setChangesOpen((open) => !open)}
-                  aria-label={saveLabel}
-                  aria-pressed={session.changed ? changesOpen : undefined}
-                  data-testid="library-game-save"
-                  sx={{ flexShrink: 0 }}
-                >
-                  <SaveRoundedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
+            <IconAction
+              label={t("library.game.previous")}
+              link={{ component: RouterLink, to: gamePath(number - 1), state: location.state }}
+              disabled={number <= 1}
+              testId="library-game-previous"
+            >
+              <NavigateBeforeRoundedIcon fontSize="small" />
+            </IconAction>
+            <IconAction
+              label={t("library.game.next")}
+              link={{ component: RouterLink, to: gamePath(number + 1), state: location.state }}
+              disabled={number >= collection.games.length}
+              testId="library-game-next"
+            >
+              <NavigateNextRoundedIcon fontSize="small" />
+            </IconAction>
+            <ToggleIconAction
+              label={saveLabel}
+              onClick={() => setChangesOpen((open) => !open)}
+              disabled={!session.changed}
+              active={session.changed}
+              // Pressed while its changes strip is open.
+              pressed={session.changed ? changesOpen : null}
+              testId="library-game-save"
+            >
+              <SaveRoundedIcon fontSize="small" />
+            </ToggleIconAction>
             <PlayToggleButton
               testId="library-game-play"
               engineOn={session.engineOn}
@@ -304,17 +288,14 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
               thinking={session.thinking}
               onToggle={session.togglePlaying}
             />
-            <FormControlLabel
-              sx={{ flexShrink: 0, marginInlineEnd: 0 }}
-              control={
-                <Switch
-                  size="small"
-                  checked={session.engineOn}
-                  data-testid="library-game-setting-engine"
-                  onChange={(event) => session.setEngineOn(event.target.checked)}
-                />
-              }
+            <SwitchField
+              size="small"
               label={t("library.game.engineSwitch")}
+              checked={session.engineOn}
+              onChange={session.setEngineOn}
+              // The board's tests reach the input inside the switch.
+              testIdOn="control"
+              testId="library-game-setting-engine"
             />
           </>
         ),
@@ -331,18 +312,16 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
             label: t("library.game.tabs.moves"),
             content: (
               <>
-                <FormControlLabel
-                  sx={{ m: 0, px: 1 }}
-                  control={
-                    <Switch
-                      size="small"
-                      checked={showArrows}
-                      data-testid="library-game-arrows"
-                      onChange={(event) => setShowArrows(event.target.checked)}
-                    />
-                  }
-                  label={t("library.game.arrows")}
-                />
+                <Box sx={{ px: 1 }}>
+                  <SwitchField
+                    size="small"
+                    label={t("library.game.arrows")}
+                    checked={showArrows}
+                    onChange={setShowArrows}
+                    testIdOn="control"
+                    testId="library-game-arrows"
+                  />
+                </Box>
                 {explorer.moves}
               </>
             ),
@@ -351,7 +330,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
           {
             id: "info",
             label: t("library.game.tabs.info"),
-            content: <GameInfo game={mainlineGame(core.tree)} />,
+            content: <GameInfo game={mainlineGame(core.tree)} testId="game-info" />,
           },
           {
             id: "export",
@@ -376,10 +355,11 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
                     {t(session.changed ? "library.game.openAnalysisChanged" : "library.game.openAnalysisHelp")}
                   </Typography>
                 </Box>
-                <AnalysisExport
+                <PgnExportPanel
                   fen={core.fen}
                   tree={core.tree}
-                  fileStem={slugify(title) || "game"}
+                  onDownload={(pgn) => downloadPgn(slugify(title) || "game", [pgn])}
+                  testId="analysis"
                 />
               </Box>
             ),
@@ -388,7 +368,8 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
             id: "engine",
             label: t("library.game.tabs.engine"),
             content: (
-              <AnalysisSettingsPanel
+              <AnalysisEngineForm
+                testId="analysis"
                 settings={session.settings}
                 onChange={session.updateSettings}
                 engineOptions={engine.engineOptions}
@@ -403,7 +384,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
           <>
             {explorer.annotations}
             {session.changed && changesOpen && (
-              <RepertoireChangesBar
+              <ChangesStrip
                 testId="library-game-changes"
                 labelKey={labelKey}
                 readOnly={shipped}
@@ -420,6 +401,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
             )}
             {session.playing && (
               <EngineThinking
+                testId="analysis-play"
                 thinking={session.thinking}
                 depth={engine.analysis.fen === core.fen ? engine.analysis.depth : 0}
               />

@@ -1,3 +1,5 @@
+import { MONOSPACE_FONT_FAMILY } from "../../design-system/theme";
+
 /**
  * The sx of a move token: the typography, the box model and the selected
  * highlight the variation line draws its tokens with, and the tree's
@@ -12,7 +14,7 @@
 /** The shape of a SAN token — the move list's cells and numbers carry the same. */
 export const sanTokenSx = {
   unicodeBidi: "isolate",
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+  fontFamily: MONOSPACE_FONT_FAMILY,
   fontSize: "0.8125rem",
 } as const;
 

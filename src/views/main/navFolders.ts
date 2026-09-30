@@ -1,5 +1,6 @@
 import type { SvgIconComponent } from "@mui/icons-material";
 import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
+import ConstructionRoundedIcon from "@mui/icons-material/ConstructionRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import MemoryRoundedIcon from "@mui/icons-material/MemoryRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
@@ -11,7 +12,7 @@ import type { LocalizedText } from "../../lib/localizedText";
 /**
  * Folders are the groupings in the sidebar. Each screen names exactly one of
  * them in `NavItem.folder`; the folder itself is an id with a name and an icon.
- * Routes stay global — a folder is an organisational overlay over `App.tsx`,
+ * Routes stay global — a folder is an organisational overlay over `routes.tsx`,
  * not a route of its own, so nothing here appears in a URL.
  *
  * `navFolders` is a **tree**: a folder can hold sub-folders and screens at the
@@ -120,6 +121,20 @@ export const navFolders = (): readonly NavFolder[] => [
     tab added later is one more `navItems()` entry here; pinned to the
     sidebar's foot, apart from the screens.
   */
+  /*
+    The Development section (`chessboard.md` §9.5) — dev-only: the design
+    gallery (CTA-107). A spread gated on `import.meta.env.DEV`, so a
+    production build has no such folder.
+  */
+  ...(import.meta.env.DEV
+    ? [
+        {
+          id: "development",
+          labelKey: "nav.folders.development",
+          icon: ConstructionRoundedIcon,
+        },
+      ]
+    : []),
   {
     id: "settings",
     labelKey: "nav.folders.settings",

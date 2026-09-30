@@ -7,13 +7,8 @@ import {
   type ReactNode,
 } from "react";
 import Box from "@mui/material/Box";
-import Dialog from "@mui/material/Dialog";
-import IconButton from "@mui/material/IconButton";
-import LinearProgress from "@mui/material/LinearProgress";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import AbcRoundedIcon from "@mui/icons-material/AbcRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import FitScreenRoundedIcon from "@mui/icons-material/FitScreenRounded";
 import FullscreenRoundedIcon from "@mui/icons-material/FullscreenRounded";
 import MyLocationRoundedIcon from "@mui/icons-material/MyLocationRounded";
@@ -22,6 +17,10 @@ import ZoomOutRoundedIcon from "@mui/icons-material/ZoomOutRounded";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 
+import { FullScreenDialog } from "../../design-system/components/dialogs";
+import { ProgressLine } from "../../design-system/components/states";
+import { ActionBar, IconAction } from "../../design-system/components/toolbars";
+import { MONOSPACE_FONT_FAMILY, chessTokensOf } from "../../design-system/theme";
 import { findNode, pathTo, type GameTree } from "../../lib/gameTree";
 import { isMoveMark, nagGlyph, nagsInPrintOrder, nagTone } from "../../lib/moveAnnotations";
 import { maskNodeSan, type PieceMask } from "../../lib/pieceMask";
@@ -110,8 +109,8 @@ import {
  * hands it the repertoire its coverage is defined on.
  *
  * The drawing is a diagram, not text, so it is pinned left-to-right (`dir`)
- * the way the move numbers are. Its colours are theme tokens, but for the
- * dots' own white and black, which name a side.
+ * the way the move numbers are. Its colours are theme tokens — the palette's,
+ * and the chess tokens' for the dots' own white and black, which name a side.
  */
 
 const stroke = (pick: (palette: Theme["palette"]) => string) => ({
@@ -143,12 +142,12 @@ const drawingSx: SxProps<Theme> = {
     fill: (theme: Theme) => (theme.vars ?? theme).palette.primary.main,
     fontWeight: 700,
   },
-  // Chess colours, not theme ones: a dot says which side moved. The ring under
-  // each is a theme token, so a white dot shows on paper and a black one on
-  // the dark theme's.
+  // Chess colours, not palette ones: a dot says which side moved, in the
+  // theme's `chess.map` tokens (CTA-107). The ring under each is a palette
+  // token, so a white dot shows on paper and a black one on the dark theme's.
   "& .map-dot-ring": stroke((palette) => palette.text.secondary),
-  "& .map-dot-white": { stroke: "#ffffff" },
-  "& .map-dot-black": { stroke: "#000000" },
+  "& .map-dot-white": { stroke: (theme: Theme) => chessTokensOf(theme).map.whiteDot },
+  "& .map-dot-black": { stroke: (theme: Theme) => chessTokensOf(theme).map.blackDot },
   "& .map-hit": { cursor: "pointer" },
   "& .map-hit:hover .map-label": {
     fill: (theme: Theme) => (theme.vars ?? theme).palette.primary.main,
@@ -249,37 +248,6 @@ function MapLayers({
         <title>{t("treeMap.here")}</title>
       </circle>
     </>
-  );
-}
-
-/** One icon button with its tooltip — the map's toolbars are rows of these. */
-function MapButton({
-  label,
-  testId,
-  onClick,
-  pressed,
-  children,
-}: {
-  label: string;
-  testId: string;
-  onClick: () => void;
-  /** A toggle's state; absent for a plain button. */
-  pressed?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <Tooltip title={label}>
-      <IconButton
-        size="small"
-        onClick={onClick}
-        aria-label={label}
-        aria-pressed={pressed}
-        color={pressed ? "primary" : "default"}
-        data-testid={testId}
-      >
-        {children}
-      </IconButton>
-    </Tooltip>
   );
 }
 
@@ -418,13 +386,15 @@ function TreeMap({
             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
               {t("treeMap.covered", { covered, total: coverage.total })}
             </Typography>
-            <LinearProgress
-              variant="determinate"
-              color="success"
-              value={coverage.total === 0 ? 0 : (covered / coverage.total) * 100}
-              data-testid={`${testId}-progress`}
-              sx={{ my: 0.5, height: 6, borderRadius: 3 }}
-            />
+            <Box sx={{ my: 0.5 }}>
+              <ProgressLine
+                color="success"
+                value={coverage.total === 0 ? 0 : (covered / coverage.total) * 100}
+                label={t("treeMap.covered", { covered, total: coverage.total })}
+                testId={`${testId}-progress-line`}
+                barTestId={`${testId}-progress`}
+              />
+            </Box>
           </>
         )}
         <Typography
@@ -447,88 +417,58 @@ function TreeMap({
         onContextMenuNode={openMenu}
         fallbackSize={() => ({ width: 320, height: 360 })}
         extraButtons={
-          <MapButton
+          <IconAction
             label={t("treeMap.fullScreen")}
             testId={`${testId}-fullscreen`}
             onClick={() => setFullScreen(true)}
           >
             <FullscreenRoundedIcon fontSize="small" />
-          </MapButton>
+          </IconAction>
         }
         sx={{ flex: 1, minHeight: 240 }}
       />
 
-      <Dialog
-        fullScreen
+      <FullScreenDialog
         open={fullScreen}
         onClose={() => setFullScreen(false)}
-        aria-labelledby={`${testId}-dialog-title`}
-        data-testid={`${testId}-dialog`}
-      >
-        {fullScreen && (
-          <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                px: 2,
-                py: 1,
-                borderBottom: "1px solid",
-                borderColor: "divider",
-                flexShrink: 0,
-              }}
-            >
-              <Typography
-                variant="h6"
-                component="h2"
-                id={`${testId}-dialog-title`}
-                sx={{ fontWeight: 700, marginInlineEnd: 1 }}
-              >
-                {t("treeMap.title")}
+        title={t("treeMap.title")}
+        closeLabel={t("treeMap.close")}
+        actions={
+          <Box sx={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+            {coverage !== undefined && (
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                {t("treeMap.covered", { covered, total: coverage.total })}
               </Typography>
-              <Box sx={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-                {coverage !== undefined && (
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                    {t("treeMap.covered", { covered, total: coverage.total })}
-                  </Typography>
-                )}
-                <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  {summary}
-                </Typography>
-              </Box>
-              <MapButton
-                label={t("treeMap.close")}
-                testId={`${testId}-dialog-close`}
-                onClick={() => setFullScreen(false)}
-              >
-                <CloseRoundedIcon />
-              </MapButton>
-            </Box>
-            <MapViewport
-              testId={`${testId}-dialog`}
-              drawing={drawing}
-              nodeId={nodeId}
-              showMoves={showMoves}
-              onShowMovesChange={setShowMoves}
-              onSelectNode={
-                onSelectNode === undefined
-                  ? undefined
-                  : (id) => {
-                      onSelectNode(id);
-                      setFullScreen(false);
-                    }
-              }
-              onContextMenuNode={openMenu}
-              fallbackSize={() => ({
-                width: window.innerWidth,
-                height: window.innerHeight - TOOLBAR_ESTIMATE_PX,
-              })}
-              sx={{ flex: 1, minHeight: 0, px: 2, pb: 2 }}
-            />
+            )}
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+              {summary}
+            </Typography>
           </Box>
-        )}
-      </Dialog>
+        }
+        testId={`${testId}-dialog`}
+      >
+        <MapViewport
+          testId={`${testId}-dialog`}
+          drawing={drawing}
+          nodeId={nodeId}
+          showMoves={showMoves}
+          onShowMovesChange={setShowMoves}
+          onSelectNode={
+            onSelectNode === undefined
+              ? undefined
+              : (id) => {
+                  onSelectNode(id);
+                  setFullScreen(false);
+                }
+          }
+          onContextMenuNode={openMenu}
+          fallbackSize={() => ({
+            width: window.innerWidth,
+            height: window.innerHeight - TOOLBAR_ESTIMATE_PX,
+          })}
+          sx={{ flex: 1, minHeight: 0, px: 2, pb: 2 }}
+        />
+      </FullScreenDialog>
 
       {onEditTree !== undefined && (
         <MoveContextMenu
@@ -672,7 +612,7 @@ function MapViewport({
 
   return (
     <Box sx={[{ display: "flex", flexDirection: "column" }, ...(Array.isArray(sx) ? sx : [sx])]}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, flexShrink: 0, flexWrap: "wrap" }}>
+      <ActionBar dense ariaLabel={t("treeMap.toolbar")} testId={`${testId}-toolbar`}>
         <Typography
           variant="caption"
           sx={{
@@ -686,21 +626,21 @@ function MapViewport({
             ? t("treeMap.zoomToRead")
             : t("treeMap.mouseHint")}
         </Typography>
-        <MapButton
+        <IconAction
           label={t("treeMap.showMoves")}
           testId={`${testId}-show-moves`}
           pressed={showMoves}
           onClick={() => onShowMovesChange(!showMoves)}
         >
           <AbcRoundedIcon fontSize="small" />
-        </MapButton>
-        <MapButton
+        </IconAction>
+        <IconAction
           label={t("treeMap.zoomOut")}
           testId={`${testId}-zoom-out`}
           onClick={() => zoomBy(1 / BUTTON_ZOOM)}
         >
           <ZoomOutRoundedIcon fontSize="small" />
-        </MapButton>
+        </IconAction>
         <Typography
           variant="caption"
           dir="ltr"
@@ -709,14 +649,14 @@ function MapViewport({
         >
           {`${Math.round(view.k * 100)}%`}
         </Typography>
-        <MapButton
+        <IconAction
           label={t("treeMap.zoomIn")}
           testId={`${testId}-zoom-in`}
           onClick={() => zoomBy(BUTTON_ZOOM)}
         >
           <ZoomInRoundedIcon fontSize="small" />
-        </MapButton>
-        <MapButton
+        </IconAction>
+        <IconAction
           label={t("treeMap.fit")}
           testId={`${testId}-fit`}
           onClick={() => {
@@ -725,16 +665,16 @@ function MapViewport({
           }}
         >
           <FitScreenRoundedIcon fontSize="small" />
-        </MapButton>
-        <MapButton
+        </IconAction>
+        <IconAction
           label={t("treeMap.here")}
           testId={`${testId}-locate`}
           onClick={() => setView((current) => centred(current.k))}
         >
           <MyLocationRoundedIcon fontSize="small" />
-        </MapButton>
+        </IconAction>
         {extraButtons}
-      </Box>
+      </ActionBar>
 
       <Box
         ref={viewport}
@@ -801,7 +741,7 @@ function MapViewport({
                 data-testid={`${testId}-labels`}
                 fontSize={MAP_LABEL_FONT}
                 textAnchor="middle"
-                fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+                fontFamily={MONOSPACE_FONT_FAMILY}
               >
                 {labels.map((label) => {
                   const text = (

@@ -13,7 +13,15 @@ paths:
   - "src/lib/gameReference*"
   - "src/lib/gameCatalog*"
   - "src/lib/pgnExport*"
-  - "src/views/shared/folders/**"
+  - "src/blocks/lists/SavedAnalysesList/**"
+  - "src/blocks/lists/FolderActions/**"
+  - "src/blocks/lists/FolderPicker/**"
+  - "src/blocks/dialogs/Folder*/**"
+  - "src/blocks/forms/AnalysisEngineForm/**"
+  - "src/blocks/forms/ArrowSettingsFields/**"
+  - "src/blocks/forms/PgnInput/**"
+  - "src/blocks/forms/FenInput/**"
+  - "src/blocks/panels/**"
 ---
 
 # The Analysis Board and Saved analyses — `/tools/analysis`
@@ -39,18 +47,18 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/views/tools/analysis/AnalysisLoad.tsx` | The Load tab: a PGN by file or paste (one game; several open the popup) or a FEN, over `useAnalysisLoad`. `onCollectionSaved`, `choiceLabelKey` and `onLoadPosition` optional — the Openings explorer passes no `onCollectionSaved`, so its choice stays inline and merge-only. |
 | `src/views/tools/analysis/MultiGameDialog.tsx` | **The popup a PGN of several games opens** (CTA-101): Merge games, or Save as games collection (index pass with progress and Cancel, `addCollection` at the Library's top level, then `/library/<id>`). The Board's Load tab and the Lobby's form both render it. |
 | `src/views/tools/analysis/useAnalysisLoad.ts` | **The Load route's state** (CTA-96): the pipeline behind `AnalysisLoad`, on its own so a host can place its pieces itself — the analyses Lobby's form puts the FEN field and the `.pgn` pick in its editor's row and the paste box below. |
-| `src/views/tools/analysis/AnalysisExport.tsx` | The Export tab: FEN, PGN with or without comments / NAGs / side lines, copy and download. |
-| `src/views/tools/analysis/AnalysisSettings.tsx` | The Engine tab (depth, move time, lines, the eval bar, Clear) — also the repertoire player's and the Openings explorer's. |
-| `src/views/tools/analysis/AnalysisArrows.tsx`, `ArrowSettingsFields.tsx` | The Arrows tab (CTA-98, §1.1): the next-move arrows switch, the width source and the palette. The two fields are shared with the settings screen. |
+| `src/blocks/panels/PgnExportPanel/` | The Export tab (every board's): FEN, PGN with or without comments / NAGs / side lines, copy and download. |
+| `src/blocks/forms/AnalysisEngineForm/` | The Engine tab (depth, move time, lines, the eval bar, Clear) — every board's but Play's; each slider rendered from what the engine declared (`engineOptionState`). |
+| `src/views/tools/analysis/AnalysisArrows.tsx`, `src/blocks/forms/ArrowSettingsFields/` | The Arrows tab (CTA-98, §1.1): the next-move arrows switch, the width source and the palette. The fields block is shared with the settings screen. |
 | `src/views/tools/analysis/SaveAnalysisDialog.tsx` | A new board's name and folder. |
-| `src/views/tools/analysis/PlayToggleButton.tsx`, `EngineThinking.tsx` | Play's header button and status line, shared with every board that has Play. |
+| `src/blocks/panels/PlayToggleButton/`, `EngineThinking/` | Play's header button and status line, shared with every board that has Play. |
 | `src/views/tools/analysis/useTreeNavigation.ts` | The core's navigation (node id as state, the keys). |
-| `src/views/tools/analysis/nextMoveArrows.ts`, `NextMovesBar.tsx` | The next-move arrows and bar every board draws through ([`tree-views.md`](./tree-views.md)). |
+| `src/views/tools/analysis/nextMoveArrows.ts`, `src/views/shared/NextMovesBar.tsx` | The next-move arrows and bar every board draws through ([`tree-views.md`](./tree-views.md)). |
 | `src/views/tools/analysis/saved/SavedAnalyses.tsx` | `/tools/analysis/saved`: the list and preview cards, the folders, the picks and bulk delete. |
 | `src/views/tools/analysis/saved/NewAnalysisForm.tsx` | The saved list's right-hand panel (CTA-87/96): the shared position editor over a **Start** that opens the Analysis Board on the edited position; the form's header carries the editor's resets (New, Clear, Flip), its `controls` row the FEN field and the `.pgn` pick, and under the editor the paste box — `useAnalysisLoad` placed by hand, a whole game handed to the board as `analysisHandOff` location state, a position PGN or FEN setting the editor up ([`position-editor.md`](./position-editor.md) §4). |
 | `src/views/tools/analysis/saved/AnalysisSettingsScreen.tsx` | `/tools/analysis/saved/<id>/settings`. |
 | `src/views/tools/analysis/saved/useSavedAnalyses.ts`, `useAnalysisFolders.ts` | The store bindings (`undefined` until read). |
-| `src/views/shared/folders/` | The nested-folder components (rows, cards, breadcrumb, name / move / delete dialogs, picker), each taking a `labelKey` and a test-id prefix. |
+| `src/blocks/lists/SavedAnalysesList/`, `FolderActions/`, `FolderPicker/`; `src/blocks/dialogs/Folder*Dialog/` | The list (rows and cards, folders and records) and the nested-folder pieces — a folder's actions, the picker, the name / move / delete dialogs — each taking its words as `labels` and a test-id prefix (CTA-113). |
 | `src/lib/savedAnalyses.ts` | **The record**, pure: `SavedAnalysis`, `savedAnalysisOf`, `savedAnalysisFrom` (the normaliser), `savedAnalysisDerivedName`, `batchAnalysesOf`, `savedAnalysisCatalogOf`. |
 | `src/lib/savedAnalysisStore.ts` | **The store** (`chessapp.analyses`, object store `analyses`): `saveAnalysis`, `addAnalyses`, `fileSavedAnalysis`, `renameSavedAnalysis`, `updateSavedAnalysisSettings`, `removeSavedAnalyses`, `unfileAnalysesIn`, `findSavedAnalysisGame`; cap `MAX_SAVED_ANALYSES` (20,000). |
 | `src/lib/savedAnalysisFolders.ts` + `savedAnalysisFolderStore.ts` | The folders: an `AnalysisFolder` *is* a `GameFolder` (`lib/savedGameFolders.ts`, the nested model: cycles cut, dangling parents read as top level); create / rename / move (never into its own subtree) / delete (sub-folders re-parent, analyses become Unfiled); cap 100. |
@@ -151,7 +159,7 @@ whole of "changed" (every edit makes a new tree; replaying a move that is
 there does not).
 
 - **Over a record** (`?analysis=`, or once saved) the header's **Save** lights
-  and opens the changes strip (`RepertoireChangesBar` under this screen's
+  and opens the changes strip (the `ChangesStrip` block under this screen's
   `labelKey`): **Update analysis** (the record takes the tree, the place in
   it, the orientation and the settings; its name and folder stay), **Save as
   copy** ("‹name› (copy)", same folder; the session goes on in it) or
@@ -261,7 +269,7 @@ validated, ignored when it does not resolve, taken as *initial* state.
   own (`forms={["position"]}`, the fields always shown —
   [`position-editor.md`](./position-editor.md)).
 - **A list or preview boards** at the saved lists' two card sizes
-  (`views/shared/cardSize.ts`), each card showing the position and side the
+  (`CardGrid`'s `cardGridColumns`), each card showing the position and side the
   reader **was standing on** (`options.id` `saved-analyses-preview-<id>`).
 - **Every row and card** has an **Open** button (a card's board), the settings
   gear and a checkbox; the export bar (select-all takes the whole folder)

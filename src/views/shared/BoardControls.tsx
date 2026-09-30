@@ -1,6 +1,4 @@
 import Box from "@mui/material/Box";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
 import FirstPageRoundedIcon from "@mui/icons-material/FirstPageRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
@@ -8,9 +6,14 @@ import LastPageRoundedIcon from "@mui/icons-material/LastPageRounded";
 import SwapVertRoundedIcon from "@mui/icons-material/SwapVertRounded";
 import { useTranslation } from "react-i18next";
 
+import { ActionBar, IconAction } from "../../design-system/components/toolbars";
+
 /**
  * The board's control strip: jump to start, step back, step forward, jump to
  * the end, and flip the board.
+ *
+ * Since CTA-113 an `ActionBar` (a named `toolbar`, the rule above it) of
+ * `IconAction`s, whose span keeps a disabled step's tooltip.
  *
  * Presentational — every button is a call back out, so the ply state stays in
  * the board core (`useTreeNavigation`) and this renders against a fixture in tests. It sits at
@@ -75,50 +78,25 @@ function BoardControls({
   ];
 
   return (
-    <Box
-      data-testid="board-controls"
-      sx={{
-        flexShrink: 0,
-        display: "flex",
-        alignItems: "center",
-        gap: 0.5,
-        pt: 1,
-        borderTop: "1px solid",
-        borderColor: "divider",
-      }}
-    >
+    <ActionBar divider="top" dense ariaLabel={t("gamePanel.controls.label")} testId="board-controls">
       {steps.map((step) => (
-        // A disabled button takes no pointer events, so the tooltip needs a
-        // wrapper that still does — otherwise it never opens at the ends.
-        <Tooltip key={step.key} title={step.label}>
-          <Box component="span" sx={{ display: "inline-flex" }}>
-            <IconButton
-              size="small"
-              aria-label={step.label}
-              data-testid={`board-control-${step.key}`}
-              disabled={step.disabled}
-              onClick={step.onClick}
-            >
-              {step.icon}
-            </IconButton>
-          </Box>
-        </Tooltip>
-      ))}
-
-      <Tooltip title={t("gamePanel.controls.flip")}>
-        <IconButton
-          size="small"
-          aria-label={t("gamePanel.controls.flip")}
-          data-testid="board-control-flip"
-          onClick={onFlip}
-          // Pushed to the trailing edge — it acts on the board, not on the
-          // game, so it does not belong in the run of step buttons.
-          sx={{ marginInlineStart: "auto" }}
+        <IconAction
+          key={step.key}
+          label={step.label}
+          disabled={step.disabled}
+          onClick={step.onClick}
+          testId={`board-control-${step.key}`}
         >
+          {step.icon}
+        </IconAction>
+      ))}
+      {/* Pushed to the trailing edge — it acts on the board, not on the game. */}
+      <Box sx={{ marginInlineStart: "auto", display: "flex" }}>
+        <IconAction label={t("gamePanel.controls.flip")} onClick={onFlip} testId="board-control-flip">
           <SwapVertRoundedIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-    </Box>
+        </IconAction>
+      </Box>
+    </ActionBar>
   );
 }
 

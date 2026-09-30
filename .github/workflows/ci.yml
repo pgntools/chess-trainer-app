@@ -1,8 +1,10 @@
 name: CI
 
-# The build + typecheck gate, closed by a machine rather than by whoever
-# remembers to run `yarn build` locally. `development` is the integration branch
-# every feature PR targets, so it is the one push trigger worth having.
+# The build + lint + test gate, closed by a machine rather than by whoever
+# remembers to run `yarn build` or `yarn lint` locally. `development` is the
+# integration branch every feature PR targets, so it is the one push trigger
+# worth having. The browser accessibility pass is its own workflow
+# (a11y.yml, CTA-116): it needs Chromium and a production build of its own.
 on:
   pull_request:
   push:
@@ -27,10 +29,13 @@ jobs:
       # `tsc -b` over the app *and* the tests, then the production build.
       - run: yarn build
 
+      # A gate (CTA-116). It carries what nothing else enforces once a change
+      # is out of its author's hands: the design system's tier import rules,
+      # the MUI lock (no screen or block imports an atom the design system
+      # wraps) and `eslint-plugin-jsx-a11y`. It exits 0 on the whole tree.
+      - run: yarn lint
+
       # `--coverage` is a readout here, not a gate: vite.config.ts has a
       # coverage block but no thresholds, so the numbers are reported without
       # failing CI. Add thresholds there if the team wants it enforced.
       - run: yarn test:run --coverage
-
-      # `yarn lint` is deliberately NOT run: CLAUDE.md documents that it exits
-      # non-zero on pre-existing findings in the board / XState modules.

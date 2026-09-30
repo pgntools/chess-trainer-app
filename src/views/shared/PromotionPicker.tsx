@@ -6,6 +6,7 @@ import {
   defaultPieces,
   type PieceRenderObject,
 } from "react-chessboard";
+import { chessTokensOf } from "../../design-system/theme";
 
 /**
  * The promotion picker: the four choices, stacked over the file the pawn is
@@ -72,7 +73,8 @@ function PromotionPicker({
         sx={{
           position: "absolute",
           inset: 0,
-          bgcolor: "rgba(0, 0, 0, 0.35)",
+          // The theme's scrim (CTA-107).
+          bgcolor: (theme) => chessTokensOf(theme).promotion.scrim,
           zIndex: 10,
         }}
       />

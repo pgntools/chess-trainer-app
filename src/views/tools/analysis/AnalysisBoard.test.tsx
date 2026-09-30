@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import i18n from "../../../i18n";
+import { expectNoAxeViolations } from "../../../test/axe";
 import { analysisHandOffState } from "../../../lib/analysisHandOff";
 import { DEFAULT_ANALYSIS_SETTINGS } from "../../../lib/analysisSettings";
 import { parsePgnTree } from "../../../lib/pgn";
@@ -811,5 +813,36 @@ describe("the Arrows tab (CTA-98)", () => {
       arrowWidthSource: "lines",
       arrowPalette: "colorblind",
     });
+  });
+});
+
+describe("the Analysis Board — accessible (CTA-113)", () => {
+  it.each(["moves", "map", "load", "export", "engine", "arrows"])("passes axe on its %s tab", async (tab) => {
+    mount();
+    drag("e2", "e4");
+    fireEvent.click(screen.getByTestId(`analysis-panel-tab-${tab}`));
+    await expectNoAxeViolations(screen.getByTestId("analysis-panel"));
+  });
+
+  it("walks its tabs with the arrow keys, each tab naming its panel's heading", async () => {
+    const user = userEvent.setup();
+    mount();
+    screen.getByRole("tab", { name: "Moves" }).focus();
+    await user.keyboard("{ArrowRight}{Enter}");
+    expect(screen.getByRole("tab", { selected: true })).toHaveTextContent("Map");
+    expect(screen.getByRole("heading", { level: 2, name: "Map" })).toBeInTheDocument();
+  });
+
+  it("names its header's actions and saves a new board from the keyboard", async () => {
+    const user = userEvent.setup();
+    mount();
+    drag("e2", "e4");
+    const save = screen.getByTestId("analysis-save");
+    expect(save).not.toHaveAttribute("aria-pressed");
+    save.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("dialog", { name: i18n.t("analysis.save.title") })).toBeInTheDocument();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(listed()).toHaveLength(1));
   });
 });

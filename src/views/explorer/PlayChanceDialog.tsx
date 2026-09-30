@@ -1,15 +1,14 @@
 import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
 import InputAdornment from "@mui/material/InputAdornment";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
+
+import { FormDialog } from "../../design-system/components/dialogs";
+import { StatusText } from "../../design-system/components/feedback";
+import { MONOSPACE_FONT_FAMILY } from "../../design-system/theme";
 import { findNode, plyLabel, type GameTree, type VariationNode } from "../../lib/gameTree";
 import {
   formatPercent,
@@ -123,6 +122,7 @@ function OpenPlayChanceDialog({
 
   const save = () => {
     if (invalid) return;
+    // FormDialog closes nothing itself; this closes after the edit.
     const values = new Map(
       moves.map((node) => {
         const mark = marks.get(node.id);
@@ -135,9 +135,18 @@ function OpenPlayChanceDialog({
   };
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="xs" data-testid="play-chance-dialog">
-      <DialogTitle>
-        {parent === null ? (
+    <FormDialog
+      open
+      onClose={onClose}
+      onSubmit={save}
+      submitLabel={t("playChance.save")}
+      cancelLabel={t("playChance.cancel")}
+      submitDisabled={invalid}
+      testId="play-chance-dialog"
+      submitTestId="play-chance-save"
+      cancelTestId="play-chance-cancel"
+      title={
+        parent === null ? (
           t("playChance.titleStart")
         ) : (
           <>
@@ -146,9 +155,10 @@ function OpenPlayChanceDialog({
               {label(parent)}
             </span>
           </>
-        )}
-      </DialogTitle>
-      <DialogContent>
+        )
+      }
+    >
+      <Box>
         <DialogContentText variant="body2" sx={{ mb: 1.5 }}>
           {t("playChance.help")}
         </DialogContentText>
@@ -180,7 +190,7 @@ function OpenPlayChanceDialog({
                 <Typography
                   variant="body2"
                   dir="ltr"
-                  sx={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", unicodeBidi: "isolate" }}
+                  sx={{ fontFamily: MONOSPACE_FONT_FAMILY, unicodeBidi: "isolate" }}
                 >
                   {node.san}
                 </Typography>
@@ -215,25 +225,14 @@ function OpenPlayChanceDialog({
             );
           })}
         </Box>
-        <Typography
-          variant="caption"
-          data-testid="play-chance-total"
-          sx={{ display: "block", mt: 1.5, color: invalid ? "error.main" : "text.secondary" }}
-        >
-          {invalid
-            ? t("playChance.invalid")
-            : t("playChance.total", { total: formatPercent(markedTotal) })}
-        </Typography>
-      </DialogContent>
-      <DialogActions>
-        <Button data-testid="play-chance-cancel" onClick={onClose}>
-          {t("playChance.cancel")}
-        </Button>
-        <Button variant="contained" data-testid="play-chance-save" disabled={invalid} onClick={save}>
-          {t("playChance.save")}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        <Box sx={{ mt: 1.5 }}>
+          {/* Announced: an alert while a mark will not read, the total otherwise. */}
+          <StatusText tone={invalid ? "error" : "neutral"} testId="play-chance-total">
+            {invalid ? t("playChance.invalid") : t("playChance.total", { total: formatPercent(markedTotal) })}
+          </StatusText>
+        </Box>
+      </Box>
+    </FormDialog>
   );
 }
 

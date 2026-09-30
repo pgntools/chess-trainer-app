@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Box from "@mui/material/Box";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
+
+import { StorageTable, type StorageCategory } from "../../blocks/tables";
 
 import {
   subscribeUploadedCollections,
@@ -18,7 +15,6 @@ import { savedRepertoiresSnapshot, subscribeSavedRepertoires } from "../../lib/s
 import {
   estimatedLibraryGamesPayload,
   estimatedPayloadBytes,
-  formatBytes,
   readBrowserStorage,
   type BrowserStorageEstimate,
 } from "../../lib/storageDiagnostics";
@@ -48,7 +44,7 @@ import { RightPanel } from "../main/rightPanel";
  * pattern: a subscription starts each read), so nothing is read twice. The
  * Library's games are the bulk case and are never read: each collection's
  * games are estimated from its index rows. Reads only: nothing is written,
- * and nothing throws.
+ * and nothing throws. The two tables are the `StorageTable` block (CTA-109).
  */
 
 /** One store's live list — a subscription starts the first read. */
@@ -120,22 +116,12 @@ function StorageTab() {
     Library's games (chessapp.library). The folders and the collections'
     summaries are tiny beside what they file, and are not listed.
   */
-  const categories = [
+  const categories: StorageCategory[] = [
     { id: "playedGames", section: "engine", records: playedGames?.length, payload: playedPayload },
     { id: "analyses", section: "analyses", records: analyses?.length, payload: analysesPayload },
     { id: "repertoires", section: "repertoires", records: repertoires?.length, payload: repertoiresPayload },
     { id: "collectionGames", section: "library", records: gamesCount, payload: gamesPayload },
-  ] as const;
-
-  /** One browser figure: "…" while the estimate is out, "not available" where the browser reports none. */
-  const browserRow = (testId: string, labelKey: string, value: number | null | undefined) => (
-    <TableRow>
-      <TableCell>{t(labelKey)}</TableCell>
-      <TableCell align="right" data-testid={testId}>
-        {value === undefined ? "…" : value === null ? t("settings.storage.notAvailable") : <span dir="ltr">{formatBytes(value)}</span>}
-      </TableCell>
-    </TableRow>
-  );
+  ];
 
   return (
     <>
@@ -144,73 +130,7 @@ function StorageTab() {
           {t("settings.storage.intro")}
         </Typography>
 
-        <Box data-testid="settings-storage-browser">
-          <Typography variant="subtitle2" component="h2">
-            {t("settings.storage.browser.title")}
-          </Typography>
-          <Table size="small">
-            <TableBody>
-              {browserRow("settings-storage-usage", "settings.storage.browser.usage", browser?.usage)}
-              {browserRow(
-                "settings-storage-indexeddb",
-                "settings.storage.browser.indexedDb",
-                browser?.indexedDB,
-              )}
-            </TableBody>
-          </Table>
-          <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
-            {t("settings.storage.browser.quotaNote")}
-          </Typography>
-        </Box>
-
-        <Box data-testid="settings-storage-data">
-          <Typography variant="subtitle2" component="h2">
-            {t("settings.storage.data.title")}
-          </Typography>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>{t("settings.storage.data.category")}</TableCell>
-                <TableCell align="right">{t("settings.storage.data.records")}</TableCell>
-                <TableCell align="right">{t("settings.storage.data.payload")}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {categories.map((category, index) => (
-                <TableRow
-                  key={category.id}
-                  sx={
-                    index + 1 < categories.length && categories[index + 1].section !== category.section
-                      ? {
-                          // A section ends: a bolder line than the rows within one.
-                          "& .MuiTableCell-root": {
-                            borderBottomWidth: 2,
-                            borderBottomStyle: "solid",
-                            borderBottomColor: "divider",
-                          },
-                        }
-                      : undefined
-                  }
-                >
-                  <TableCell>{t(`settings.storage.data.categories.${category.id}`)}</TableCell>
-                  <TableCell align="right" data-testid={`settings-storage-${category.id}-records`}>
-                    {category.records === undefined ? "…" : category.records}
-                  </TableCell>
-                  <TableCell align="right" data-testid={`settings-storage-${category.id}-payload`}>
-                    {category.payload === undefined ? (
-                      "…"
-                    ) : (
-                      <span dir="ltr">{formatBytes(category.payload)}</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
-            {t("settings.storage.note")}
-          </Typography>
-        </Box>
+        <StorageTable browser={browser} categories={categories} testId="settings-storage" />
       </Box>
 
       <RightPanel>

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 
 import i18n from "../../../i18n";
@@ -8,10 +9,12 @@ import { parsePgnTree } from "../../../lib/pgn";
 import { playedGamesSnapshot, savePlayedGame } from "../../../lib/playedGameStore";
 import { playedGameOf } from "../../../lib/playedGames";
 import { MASK_PRESETS } from "../../../lib/pieceMask";
+import { expectNoAxeViolations } from "../../../test/axe";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
 import type { OpeningBook } from "../../../lib/openings";
 import { FakeEngine } from "../../board/boardTestHarness";
+import { whenPlayed } from "../../../blocks/tables";
 import PlayedGames from "./PlayedGames";
 
 /*
@@ -109,10 +112,11 @@ const listed = () =>
 
 /**
  * One readable row's data cells, in the table's column order — after the
- * pick checkbox and the Analysis and Continue columns.
+ * pick checkbox (the row's actions have a column of their own at its end
+ * since CTA-109).
  */
 const cells = (id: string) =>
-  within(screen.getByTestId(`played-games-row-${id}`)).getAllByRole("cell").slice(3);
+  within(screen.getByTestId(`played-games-row-${id}`)).getAllByRole("cell").slice(1);
 
 /** Tick a row's pick checkbox. */
 const tick = (id: string) =>
@@ -170,7 +174,8 @@ describe("Lobby — the list", () => {
     expect(a[6]).toHaveTextContent(/^1/);
     expect(a[6]).toHaveTextContent("1 side line");
     expect(a[4]).toHaveTextContent("*");
-    expect(a[8]).toHaveTextContent("Sep 1, 2026");
+    // The table's one date format (CTA-109).
+    expect(a[8]).toHaveTextContent("2026-09-01");
     expect(cells("m")[4]).toHaveTextContent("0-1");
     // The table mirrors under Hebrew; its notation and dates never do (the
     // `dir` attribute, not a CSS direction the RTL plugin would flip).
@@ -182,13 +187,17 @@ describe("Lobby — the list", () => {
   it("continues a game on Play with Engine, and hands it to the Analysis Board", async () => {
     await store("a", "1. e4 *");
     mount();
-    // Icon-only buttons: the link is the icon, its name the label.
-    expect(screen.getByTestId("played-games-continue-a")).toHaveAttribute("aria-label", "Continue");
+    // Icon-only links: the link is the icon, its name the label — naming its row (CTA-109).
+    expect(screen.getByTestId("played-games-continue-a")).toHaveAccessibleName(
+      `Continue the game Human – Stockfish level 5 of ${whenPlayed("2026-09-20T10:00:00Z")}`,
+    );
     expect(screen.getByTestId("played-games-continue-a")).toHaveAttribute(
       "href",
       "/engine/play?saved=a",
     );
-    expect(screen.getByTestId("played-games-analysis-a")).toHaveAttribute("aria-label", "Analysis");
+    expect(screen.getByTestId("played-games-analysis-a")).toHaveAccessibleName(
+      `Analyse the game Human – Stockfish level 5 of ${whenPlayed("2026-09-20T10:00:00Z")}`,
+    );
     expect(screen.getByTestId("played-games-analysis-a")).toHaveAttribute(
       "href",
       `/tools/analysis?game=${encodeURIComponent("play/games/a")}`,
@@ -212,14 +221,14 @@ describe("Lobby — the list", () => {
     expect(screen.getByTestId("played-games-analysis-mated")).toBeInTheDocument();
     expect(screen.getByTestId("played-games-analysis-resigned")).toBeInTheDocument();
     expect(screen.getByTestId("played-games-pick-resigned")).toBeInTheDocument();
-    // A column each: a game without Continue keeps every other control where
-    // it is — the rows are the same shape, one cell of them just empty.
+    // The actions share one column (CTA-109): a game without Continue keeps
+    // every other cell where it is — the rows are the same shape.
     expect(
       within(screen.getByTestId("played-games-row-live")).getAllByRole("cell"),
-    ).toHaveLength(12);
+    ).toHaveLength(11);
     expect(
       within(screen.getByTestId("played-games-row-mated")).getAllByRole("cell"),
-    ).toHaveLength(12);
+    ).toHaveLength(11);
   });
 
   it("deletes the ticked games only once asked", async () => {
@@ -260,13 +269,11 @@ describe("Lobby — the table (CTA-100)", () => {
     await seed(1);
     mount();
     expect(
-      within(screen.getByTestId("played-games-table"))
+      within(screen.getByTestId("played-games-frame-table"))
         .getAllByRole("columnheader")
         .map((head) => head.textContent),
     ).toEqual([
-      // The pick, Analysis and Continue — a column each — then the data columns.
-      "",
-      "",
+      // The pick, the data columns, then the row actions' column (CTA-109).
       "",
       "White",
       "Elo",
@@ -277,6 +284,7 @@ describe("Lobby — the table (CTA-100)", () => {
       "Moves",
       "Masked",
       "Date",
+      "",
     ]);
   });
 
@@ -307,38 +315,58 @@ describe("Lobby — the table (CTA-100)", () => {
   });
 
   it("pages the table, and a new filter or a new rows-per-page starts at the first page", async () => {
-    await seed(28);
+    await seed(52);
     mount();
-    // 25 rows a default page holds, of 28.
-    expect(screen.getAllByTestId(/^played-games-row-/)).toHaveLength(25);
-    expect(screen.getByTestId("played-games-count")).toHaveTextContent("Games: 28");
+    // 50 rows a default page holds (CTA-109's one page-size set), of 52.
+    expect(screen.getAllByTestId(/^played-games-row-/)).toHaveLength(50);
+    expect(screen.getByTestId("played-games-count")).toHaveTextContent("Games: 52");
 
     fireEvent.click(screen.getByRole("button", { name: "Go to next page" }));
-    expect(screen.getAllByTestId(/^played-games-row-/)).toHaveLength(3);
+    expect(screen.getAllByTestId(/^played-games-row-/)).toHaveLength(2);
     expect(screen.getByTestId("where")).toHaveTextContent("/engine/games?page=1");
 
-    fireEvent.mouseDown(within(screen.getByTestId("played-games-pagination")).getByRole("combobox"));
-    fireEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: "10" }));
-    expect(screen.getAllByTestId(/^played-games-row-/)).toHaveLength(10);
-    expect(screen.getByTestId("where")).toHaveTextContent("/engine/games?rows=10");
+    fireEvent.mouseDown(within(screen.getByTestId("played-games-pager")).getByRole("combobox"));
+    fireEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: "25" }));
+    expect(screen.getAllByTestId(/^played-games-row-/)).toHaveLength(25);
+    expect(screen.getByTestId("where")).toHaveTextContent("/engine/games?rows=25");
 
     // The filter starts the table over at its first page.
     fireEvent.click(screen.getByTestId("played-games-filter-color-white"));
-    expect(screen.getByTestId("where")).toHaveTextContent("/engine/games?rows=10&color=white");
-    expect(listed()[0]).toBe("g27");
+    expect(screen.getByTestId("where")).toHaveTextContent("/engine/games?rows=25&color=white");
+    expect(listed()[0]).toBe("g51");
+  });
+
+  it("offers the one page-size set, 25 / 50 / 100 / 250, 50 by default (CTA-109)", async () => {
+    await seed(1);
+    mount();
+    const pager = screen.getByTestId("played-games-pager");
+    expect(within(pager).getByRole("combobox")).toHaveTextContent("50");
+    fireEvent.mouseDown(within(pager).getByRole("combobox"));
+    expect(
+      within(screen.getByRole("listbox")).getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["25", "50", "100", "250"]);
+  });
+
+  it("reads an older link's ?rows=10 as the default, and clamps its ?page= (CTA-109)", async () => {
+    await seed(52);
+    mount("/engine/games?rows=10&page=3");
+    // Ten is no longer a page size: a page holds 50, and page 3 of two is the last.
+    expect(within(screen.getByTestId("played-games-pager")).getByRole("combobox")).toHaveTextContent("50");
+    expect(screen.getAllByTestId(/^played-games-row-/)).toHaveLength(2);
+    expect(listed()).toEqual(["g01", "g00"]);
   });
 
   it("reads the sort, the rows and the page from the URL", async () => {
-    await seed(12);
-    const table = mount("/engine/games?sort=moves&dir=asc&rows=10&page=1");
+    await seed(27);
+    const table = mount("/engine/games?sort=moves&dir=asc&rows=25&page=1");
     expect(screen.getAllByTestId(/^played-games-row-/)).toHaveLength(2);
     // Moves ascending: the one-move games first, so the page holds the last two.
-    expect(listed()).toEqual(["g09", "g11"]);
+    expect(listed()).toEqual(["g23", "g25"]);
 
     // A page past the end is clamped to the last one there is.
     table.unmount();
     mount("/engine/games?page=5");
-    expect(screen.getAllByTestId(/^played-games-row-/)).toHaveLength(12);
+    expect(screen.getAllByTestId(/^played-games-row-/)).toHaveLength(27);
   });
 
   it("selects all over the rows the table shows, and unticks without losing other picks", async () => {
@@ -376,8 +404,9 @@ describe("Lobby — the table (CTA-100)", () => {
     });
     mount();
     const row = screen.getByTestId("played-games-row-bad");
-    // The three control cells (empty: nothing opens) and the note across the columns.
-    expect(within(row).getAllByRole("cell")).toHaveLength(4);
+    // The pick, the note across the columns, and the actions' cell (empty:
+    // nothing opens) — CTA-109's one actions column.
+    expect(within(row).getAllByRole("cell")).toHaveLength(3);
     expect(row).toHaveTextContent("This game could not be read.");
     expect(within(row).getByTestId("played-games-pick-bad")).toBeInTheDocument();
     expect(within(row).queryByTestId("played-games-continue-bad")).not.toBeInTheDocument();
@@ -626,5 +655,101 @@ describe("Lobby — the new-game form's Board editor (CTA-83)", () => {
     fireEvent.click(screen.getByTestId("new-game-tab-game"));
     expect(screen.getByTestId("new-game-illegal")).toBeInTheDocument();
     expect(screen.getByTestId("new-game-start")).toBeDisabled();
+  });
+});
+
+describe("Lobby — accessibility (CTA-109)", () => {
+  /** Games a minute apart, the newest last. */
+  const seed = async (count: number) => {
+    for (let index = 0; index < count; index += 1) {
+      const when = new Date(Date.parse("2026-09-01T10:00:00Z") + index * 60_000).toISOString();
+      await store(`g${String(index).padStart(2, "0")}`, index % 2 === 0 ? "1. e4 *" : "1. d4 d5 2. c4 *", "white", when);
+    }
+  };
+
+  it("passes axe with games, the new-game form beside them", async () => {
+    await store("a", "1. e4 (1. d4) 1... e5 *");
+    await store("m", "1. f3 e5 2. g4 Qh4# 0-1");
+    mount();
+    await expectNoAxeViolations();
+  });
+
+  it("passes axe with no games yet", async () => {
+    mount();
+    await screen.findByTestId("played-games-empty");
+    await expectNoAxeViolations();
+  });
+
+  it("is worked by the keyboard alone: sort, picks, select-all, a row's action and the pages", async () => {
+    await seed(52);
+    mount();
+    const table = within(screen.getByRole("table", { name: "Your games" }));
+
+    // A sort header is a button: Enter sorts by it.
+    table.getByRole("button", { name: "Moves" }).focus();
+    await userEvent.keyboard("{Enter}");
+    expect(screen.getByTestId("where")).toHaveTextContent("/engine/games?sort=moves");
+
+    // A pick is a checkbox named by its row: Space ticks it. (The newest game,
+    // g51, is on the first page of the moves, high first.)
+    const newest = whenPlayed("2026-09-01T10:51:00Z");
+    table.getByRole("checkbox", { name: `Pick the game Human – Stockfish level 5 of ${newest}` }).focus();
+    await userEvent.keyboard(" ");
+    expect(screen.getByRole("button", { name: "Delete picked (1)" })).toBeInTheDocument();
+
+    // Select-all, from the header: every row the table shows, on every page.
+    table.getByRole("checkbox", { name: "Select all the games the table shows" }).focus();
+    await userEvent.keyboard(" ");
+    expect(screen.getByRole("button", { name: "Delete picked (52)" })).toBeInTheDocument();
+    await userEvent.keyboard(" ");
+    expect(screen.queryByTestId("played-games-delete-picked")).not.toBeInTheDocument();
+
+    // A row's action is a real link, reached by Tab.
+    const continued = table.getByRole("link", { name: `Continue the game Human – Stockfish level 5 of ${newest}` });
+    continued.focus();
+    expect(continued).toHaveFocus();
+    expect(continued).toHaveAttribute("href", "/engine/play?saved=g51");
+
+    // The pager's arrows are buttons.
+    screen.getByRole("button", { name: "Go to next page" }).focus();
+    await userEvent.keyboard("{Enter}");
+    expect(screen.getByTestId("where")).toHaveTextContent("page=1");
+  });
+
+  it("asks before deleting from the keyboard, and gives the focus back to Delete picked", async () => {
+    await store("a", "1. e4 *");
+    mount();
+    within(screen.getByRole("table", { name: "Your games" })).getAllByRole("checkbox")[1].focus();
+    await userEvent.keyboard(" ");
+    const deletePicked = screen.getByRole("button", { name: "Delete picked (1)" });
+    deletePicked.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByRole("dialog", { name: "Delete the picked game?" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(deletePicked).toHaveFocus();
+    expect(playedGamesSnapshot()).toHaveLength(1);
+  });
+
+  it("works the new-game form without a pointer: the tabs, the side, the Variations box", async () => {
+    mount();
+    screen.getByRole("tab", { name: "Game" }).focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: "Board editor" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(screen.getByTestId("new-game-tab-editor")).toHaveAttribute("aria-selected", "true");
+    screen.getByRole("tab", { name: "Game" }).focus();
+    await userEvent.keyboard("{Enter}");
+
+    const black = within(screen.getByRole("group", { name: "Play as" })).getByRole("button", { name: "Black" });
+    black.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(black).toHaveAttribute("aria-pressed", "true");
+
+    const variations = screen.getByRole("checkbox", { name: "Variations" });
+    variations.focus();
+    await userEvent.keyboard(" ");
+    expect(variations).not.toBeChecked();
+    expect(screen.getByTestId("new-game-start").getAttribute("href")).toContain("variations=0");
   });
 });

@@ -1,12 +1,12 @@
 import { useState, type ComponentType } from "react";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import { Link as RouterLink, useLocation, useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
+import { StatusText } from "../../design-system/components/feedback";
+import { SettingsFrame, SettingsSection } from "../../design-system/components/forms";
+import { MissState } from "../../design-system/components/states";
 import type { RepertoireFolder } from "../../lib/savedRepertoireFolders";
 import type { SavedRepertoire } from "../../lib/savedRepertoires";
 import { fileRepertoire, updateRepertoireSettings } from "../../lib/savedRepertoireStore";
@@ -21,6 +21,7 @@ import {
 import { ReadingRepertoires } from "./RepertoireBoard";
 import { useRepertoireFolders } from "./useRepertoireFolders";
 import { useSavedRepertoires } from "./useSavedRepertoires";
+import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 
 /**
  * **A repertoire's settings** (`/repertoires/<id>/settings`) — its title,
@@ -33,6 +34,9 @@ import { useSavedRepertoires } from "./useSavedRepertoires";
  * `updateRepertoireSettings` (and the folder through `fileRepertoire`) — in
  * place, so the repertoire keeps its place in the list. Cancel drops the draft. Both go back where the reader came from
  * (the router state a link here passes), or to the repertoire's board.
+ *
+ * A `SettingsFrame` of `SettingsSection`s since CTA-113 (the title the
+ * page's `h1`, each section an `h2`), the analyses' settings screen's shape.
  *
  * Adding an option never touches this file unless it needs a new *section*;
  * then it is one entry in {@link SECTIONS}.
@@ -60,14 +64,13 @@ function RepertoireSettingsScreen() {
 
   if (saved === undefined) {
     return (
-      <Box data-testid="repertoire-settings-missing" sx={{ py: 4, textAlign: "center" }}>
-        <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
-          {t("repertoires.detail.missing")}
-        </Typography>
-        <Button component={RouterLink} to="/repertoires" variant="outlined" size="small">
-          {t("repertoires.detail.back")}
-        </Button>
-      </Box>
+      <MissState
+        backLabel={t("repertoires.detail.back")}
+        backLink={{ component: RouterLink, to: "/repertoires" }}
+        testId="repertoire-settings-missing"
+      >
+        {t("repertoires.detail.missing")}
+      </MissState>
     );
   }
   // Keyed, so the draft is seeded from this record and no other.
@@ -81,9 +84,12 @@ function SettingsForm({
   saved: SavedRepertoire;
   folders: readonly RepertoireFolder[];
 }) {
+  // The screen's title is the page's `h1` (CTA-112).
+  useOwnPageHeading();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  usePageTitle(saved.name || t("repertoires.untitled"));
 
   // Where Save and Cancel go: the screen that linked here, else the board.
   const from = (location.state as { from?: unknown } | null)?.from;
@@ -101,6 +107,7 @@ function SettingsForm({
         : null,
   }));
   const [failed, setFailed] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const onChange: RepertoireSettingsSectionProps["onChange"] = (patch) =>
     setDraft((current) => ({
@@ -111,11 +118,13 @@ function SettingsForm({
     }));
 
   const save = async () => {
+    setBusy(true);
     const problem =
       (await updateRepertoireSettings(saved.id, draft.name.trim(), {
         ...draft.settings,
         description: draft.settings.description.trim(),
       })) ?? (await fileRepertoire(saved.id, draft.folderId));
+    setBusy(false);
     if (problem !== undefined) {
       setFailed(true);
       return;
@@ -125,56 +134,38 @@ function SettingsForm({
 
   return (
     <>
-      <Box
-        data-testid="repertoire-settings-screen"
-        sx={{
-          height: "100%",
-          minHeight: 0,
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+      <Box data-testid="repertoire-settings-screen" sx={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box sx={{ flexShrink: 0 }}>
+          <Typography variant="subtitle1" component="h1" sx={{ fontWeight: 700 }}>
             {t("repertoires.settings.title")}
           </Typography>
-          <Typography variant="body2" sx={{ color: "text.secondary" }} noWrap>
+          <Typography variant="body2" dir="auto" sx={{ color: "text.secondary" }} noWrap>
             {saved.name || t("repertoires.untitled")}
           </Typography>
         </Box>
 
-        {SECTIONS.map(({ id, labelKey, Body }, index) => (
-          <Box key={id} data-testid={`repertoire-settings-section-${id}`}>
-            {index > 0 && <Divider sx={{ mb: 2 }} />}
-            <Typography
-              variant="overline"
-              sx={{ display: "block", color: "text.secondary", mb: 1 }}
-            >
-              {t(labelKey)}
-            </Typography>
-            <Body draft={draft} onChange={onChange} />
-          </Box>
-        ))}
-
-        {failed && (
-          <Alert severity="error" data-testid="repertoire-settings-problem">
-            {t("repertoires.settings.problem")}
-          </Alert>
-        )}
-
-        <Box sx={{ display: "flex", gap: 1, pb: 1 }}>
-          <Button variant="contained" onClick={() => void save()} data-testid="repertoire-settings-save">
-            {t("repertoires.settings.save")}
-          </Button>
-          <Button
-            component={RouterLink}
-            to={back}
-            data-testid="repertoire-settings-cancel"
+        <Box sx={{ flex: 1, minHeight: 0 }}>
+          <SettingsFrame
+            onSave={() => void save()}
+            onCancel={() => navigate(back)}
+            saveLabel={t("repertoires.settings.save")}
+            cancelLabel={t("repertoires.settings.cancel")}
+            busy={busy}
+            footer={
+              failed && (
+                <StatusText tone="error" testId="repertoire-settings-problem">
+                  {t("repertoires.settings.problem")}
+                </StatusText>
+              )
+            }
+            testId="repertoire-settings"
           >
-            {t("repertoires.settings.cancel")}
-          </Button>
+            {SECTIONS.map(({ id, labelKey, Body }) => (
+              <SettingsSection key={id} title={t(labelKey)} testId={`repertoire-settings-section-${id}`}>
+                <Body draft={draft} onChange={onChange} />
+              </SettingsSection>
+            ))}
+          </SettingsFrame>
         </Box>
       </Box>
 

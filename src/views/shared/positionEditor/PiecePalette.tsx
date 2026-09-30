@@ -1,9 +1,8 @@
 import Box from "@mui/material/Box";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { useTranslation } from "react-i18next";
 import { SparePiece } from "react-chessboard";
+import { IconAction } from "../../../design-system/components/toolbars";
 
 /**
  * One row of spare pieces — black above the board, white below it, as on
@@ -96,19 +95,12 @@ function PiecePalette({ testId, color, onClear }: PiecePaletteProps) {
         );
       })}
 
-      <Tooltip title={clearLabel}>
-        <IconButton
-          size="small"
-          aria-label={clearLabel}
-          data-testid={`${testId}-trash-${color}`}
-          onClick={onClear}
-          // Set off from the pieces: everything to its left is something to
-          // add, and it is the one thing that takes away.
-          sx={{ marginInlineStart: 1, flexShrink: 0 }}
-        >
+      {/* Set off from the pieces: everything before it adds, it is the one thing that takes away. */}
+      <Box sx={{ marginInlineStart: 1, display: "flex", flexShrink: 0 }}>
+        <IconAction label={clearLabel} onClick={onClear} testId={`${testId}-trash-${color}`}>
           <DeleteOutlineRoundedIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
+        </IconAction>
+      </Box>
     </Box>
   );
 }

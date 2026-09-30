@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import i18n from "../../i18n";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import CapturedPieces from "./CapturedPieces";
+import type { PlayerPlateData } from "./PlayerPlate";
 import type { CapturedPieceLetter } from "../../lib/capturedPieces";
 
 /*
@@ -32,6 +33,7 @@ const renderStrip = (
     color: "white" | "black";
     captured: readonly CapturedPieceLetter[];
     diff: number | null;
+    plate: PlayerPlateData;
   }> = {},
 ) =>
   render(
@@ -41,6 +43,7 @@ const renderStrip = (
         color={overrides.color ?? "white"}
         captured={overrides.captured ?? []}
         diff={overrides.diff ?? null}
+        plate={overrides.plate}
       />
     </AppThemeWithLang>,
   );
@@ -101,5 +104,30 @@ describe("CapturedPieces — the strip beside the board", () => {
 
     expect(screen.getByTestId("strip-black")).toBeInTheDocument();
     expect(screen.queryByTestId(/^strip-black-piece-/)).not.toBeInTheDocument();
+  });
+
+  it("carries a player plate at the row's left end when one is passed", () => {
+    renderStrip({ plate: { name: "Carlsen, Magnus", elo: 2850, result: "1" } });
+
+    const strip = screen.getByTestId("strip-white");
+    const plate = screen.getByTestId("strip-white-plate");
+    /*
+      The row runs reversed — the only jsdom-visible token of the layout, so
+      it is asserted: the strip anchors at the row's right edge and the
+      plate, though it follows the strip in the DOM, renders to its left.
+    */
+    expect(strip.compareDocumentPosition(plate) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(strip.parentElement).toHaveStyle({ flexDirection: "row-reverse" });
+    // The strip keeps its own name: the plate sits beside it, not inside it.
+    expect(strip).toHaveAttribute("aria-label", "Captured by White");
+    expect(plate).toHaveTextContent("1");
+    expect(plate).toHaveTextContent("2850");
+    expect(plate).toHaveTextContent("Carlsen, Magnus");
+  });
+
+  it("renders no plate unless one is passed", () => {
+    renderStrip();
+
+    expect(screen.queryByTestId("strip-white-plate")).toBeNull();
   });
 });

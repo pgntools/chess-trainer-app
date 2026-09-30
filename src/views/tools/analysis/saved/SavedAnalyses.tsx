@@ -1,35 +1,29 @@
 import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import CardActionArea from "@mui/material/CardActionArea";
-import Checkbox from "@mui/material/Checkbox";
-import IconButton from "@mui/material/IconButton";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import Pagination from "@mui/material/Pagination";
-import Tooltip from "@mui/material/Tooltip";
-import Typography from "@mui/material/Typography";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CreateNewFolderRoundedIcon from "@mui/icons-material/CreateNewFolderRounded";
-import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import ViewComfyRounded from "@mui/icons-material/ViewComfyRounded";
+import ViewListRounded from "@mui/icons-material/ViewListRounded";
+import ViewModuleRounded from "@mui/icons-material/ViewModuleRounded";
 import { Link as RouterLink, useLocation, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Chessboard, type ChessboardOptions } from "react-chessboard";
+import { Chessboard } from "react-chessboard";
 
+import { FolderDeleteDialog, FolderMoveDialog, FolderNameDialog } from "../../../../blocks/dialogs";
+import { SAVED_LIST_DEFAULT_VIEW, SavedAnalysesList, type SavedListView } from "../../../../blocks/lists";
+import { DeleteManyDialog } from "../../../../design-system/components/dialogs";
+import { Breadcrumbs } from "../../../../design-system/components/navigation";
+import { LoadingLine } from "../../../../design-system/components/states";
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZES, TablePager } from "../../../../design-system/components/tables";
+import { IconAction, ListScreenHeader, SelectionBar, ViewToggle } from "../../../../design-system/components/toolbars";
 import { mainlineGame, type GameTree } from "../../../../lib/gameTree";
-import {
-  openingOfLine,
-  type OpeningEntry,
-} from "../../../../lib/openings";
+import { openingOfLine, type OpeningEntry } from "../../../../lib/openings";
 import { downloadPgn } from "../../../../lib/pgnExport";
 import { slugify } from "../../../../lib/pgnText";
-import {
-  savedAnalysisFen,
-  savedAnalysisSummary,
-  savedAnalysisToTree,
-  type SavedAnalysis,
-} from "../../../../lib/savedAnalyses";
+import { savedAnalysisFen, savedAnalysisToTree, type SavedAnalysis } from "../../../../lib/savedAnalyses";
 import {
   analysesHere,
   analysesInFolder,
@@ -46,24 +40,11 @@ import {
   renameAnalysisFolder,
 } from "../../../../lib/savedAnalysisFolderStore";
 import { removeSavedAnalyses } from "../../../../lib/savedAnalysisStore";
-import FolderDeleteDialog from "../../../shared/folders/FolderDeleteDialog";
-import FolderMoveDialog from "../../../shared/folders/FolderMoveDialog";
-import FolderNameDialog from "../../../shared/folders/FolderNameDialog";
-import { SavedFolderBreadcrumb } from "../../../shared/folders/SavedFolderBreadcrumb";
-import { SavedFolderCard, SavedFolderRow } from "../../../shared/folders/SavedFolderViews";
+import { useOwnPageHeading, usePageTitle } from "../../../main/pageTitle";
 import { RightPanel } from "../../../main/rightPanel";
-import { RepertoireBulkDeleteDialog } from "../../../repertoires/RepertoireFolderDialogs";
-import SavedListExportBar from "../../../shared/SavedListExportBar";
-import SavedListViewToggle from "../../../shared/SavedListViewToggle";
-import NewAnalysisForm from "./NewAnalysisForm";
-import {
-  SAVED_LIST_DEFAULT_VIEW,
-  savedListDate,
-  savedListGridSx,
-  savedListLine,
-  type SavedListView,
-} from "../../../shared/savedList";
+import { useBoardSquareOptions } from "../../../shared/boardColors";
 import { useOpeningBook } from "../../../shared/useOpeningBook";
+import NewAnalysisForm from "./NewAnalysisForm";
 import { useAnalysisFolders } from "./useAnalysisFolders";
 import { useSavedAnalyses } from "./useSavedAnalyses";
 
@@ -73,61 +54,48 @@ import { useSavedAnalyses } from "./useSavedAnalyses";
  * folders, as rows or as preview boards at the saved lists' two card sizes.
  * The right-hand panel is the **new-analysis form** (CTA-87,
  * `NewAnalysisForm.tsx`): the shared position editor and a **Start** that
- * opens the Analysis Board on the edited position — the Lobby-of-analyses
- * counterpart of the engine Lobby's new-game form.
+ * opens the Analysis Board on the edited position.
  *
- * Since CTA-73 it is laid out as the **Repertoires list**
- * (`views/repertoires/Repertoires.tsx`), without that list's Games menu:
+ * Since CTA-113 it is the design system's composition, and holds only the
+ * state: a `ListScreenHeader` (the title the page's `h1`, the count, New,
+ * New folder, the `SelectionBar` and the `ViewToggle`), the folder trail
+ * (`Breadcrumbs`), the **`SavedAnalysesList`** block (the rows or cards — the
+ * repertoires' `RepertoiresList` is its sister, one look) and a
+ * `TablePager`. The folder dialogs are the `blocks/dialogs` ones; the bulk
+ * delete is `DeleteManyDialog`.
  *
  * - **One destination.** An analysis opens on the Analysis Board
  *   (`?analysis=<id>`) — the Open button on a row, the board itself on a card.
- *   There is no Play with Engine button here: the board has Play
- *   from here and its Export tab, and the `?game=analysis/saved/<id>`
- *   reference still resolves for any screen that hands one on.
  * - **Its settings, from a gear** on every row and card
  *   (`AnalysisSettingsScreen.tsx`: title, description, side, next-move arrows
- *   and the folder it is filed under — which is where an analysis moves
- *   between folders).
+ *   and the folder it is filed under).
  * - **Deleting is in bulk, and in every view.** No row or card deletes itself:
- *   each carries a checkbox — the cards too — so the export bar (select-all,
- *   the count, the download and a delete that asks first) shows in all three
- *   views, and switching view keeps the picks.
- *
- * What is the analyses' own:
- *
- * - **A row is named by the reader's name**, then how far the mainline runs,
- *   how many side lines were tried, where the reader stopped and when — and
- *   the description beneath, as the repertoires print theirs.
+ *   each carries a pick — the cards too — so the selection bar shows in all
+ *   three views, and switching view keeps the picks.
  * - **A card previews where the reader was standing** — a tree has no final
  *   position, so the record carries that place as SAN from the root
  *   (`lib/savedAnalyses.ts`) — facing the analysis' own side, with the opening
  *   the mainline reached beneath it.
- * - **Folders nest** (`lib/savedAnalysisFolders.ts`, the saved games' model,
- *   through that screen's folder rows, cards, breadcrumb and dialogs): folders
- *   first, then this folder's analyses; create under the folder the reader is
- *   in, rename, move anywhere but its own subtree, delete keeping the contents
- *   (an empty folder at once, otherwise after a confirmation), and download a
- *   folder's whole subtree as one `.pgn`. The folder the reader is standing in
- *   is `?folder=<id>` — the board's split lands there. **The picks persist
- *   across folders**: select-all adds what is on screen, and the chip counts
- *   the whole picked set.
+ * - **Folders nest** (`lib/savedAnalysisFolders.ts`): folders first, then this
+ *   folder's analyses; create under the folder the reader is in, rename, move
+ *   anywhere but its own subtree, delete keeping the contents (an empty
+ *   folder at once, otherwise after a confirmation), and download a folder's
+ *   whole subtree as one `.pgn`. The folder the reader is standing in is
+ *   `?folder=<id>`. **The picks persist across folders**: select-all adds
+ *   what is here, and the chip counts the whole picked set.
  * - **A record the store has and cannot parse is still listed**, says so and
  *   can still be picked — to delete it, or to export its stored PGN intact.
- * - **Paged, and parsed a page at a time** (CTA-77). The store is IndexedDB
- *   and holds thousands of analyses (a Library batch is a folder of them), so
- *   a folder's analyses show {@link SAVED_ANALYSES_PAGE} at a time, and only
- *   the page on screen is parsed (each record once, kept while it is the
- *   stored one) — the rows, the counts and the picks read the records
- *   without parsing them. Until the store's first read lands the screen says
- *   it is reading.
+ * - **Paged, and parsed a page at a time** (CTA-77; the design system's page
+ *   sizes since CTA-113 — 25 / 50 / 100 / 250, 50 by default). The store holds
+ *   thousands of analyses (a Library batch is a folder of them), so only the
+ *   page on screen is parsed (each record once, kept while it is the stored
+ *   one) — the rows, the counts and the picks read the records without
+ *   parsing them. The pager shows once a folder holds more than the smallest
+ *   page. Until the store's first read lands the screen says it is reading.
  */
 
-/**
- * How many analyses a page shows, in every view — a folder of a Library
- * batch holds thousands, and each row parses its tree (and each card draws a
- * board). 48 fills whole rows of two, three, four or six cards.
- */
-export const SAVED_ANALYSES_PAGE = 48;
+/** How many analyses a page shows by default, in every view — the design system's one default. */
+export const SAVED_ANALYSES_PAGE = DEFAULT_TABLE_PAGE_SIZE;
 
 /*
   Each record's tree, parsed once and kept while the record is the stored one
@@ -144,253 +112,13 @@ const treeOf = (saved: SavedAnalysis): GameTree | undefined => {
   return tree ?? undefined;
 };
 
-/**
- * A card's preview board. Read-only, and showing the position the reader was
- * standing on. Each board takes the analysis' own id, since `options.id` has to
- * be unique across the page and this screen shows many at once.
- */
-const previewOptions = (
-  saved: SavedAnalysis,
-  tree: GameTree,
-): ChessboardOptions => ({
-  id: `saved-analyses-preview-${saved.id}`,
-  position: savedAnalysisFen(saved, tree),
-  boardOrientation: saved.orientation,
-  allowDragging: false,
-  allowDrawingArrows: false,
-  showNotation: false,
-});
-
-const boardPath = (saved: SavedAnalysis) =>
-  `/tools/analysis?analysis=${encodeURIComponent(saved.id)}`;
-
-type ItemProps = {
-  saved: SavedAnalysis;
-  /** The record's PGN as a tree, or `undefined` for one that will not read. */
-  tree: GameTree | undefined;
-  /** Whether it is picked. */
-  checked: boolean;
-  onToggle: () => void;
-};
-
-type CardProps = ItemProps & {
-  /** What the mainline opened with, once the book has loaded and if it names one. */
-  opening: OpeningEntry | undefined;
-};
-
-/**
- * The lines that identify an analysis in either view: its name, then how big
- * it is, how far in the reader got, and when. A hook because every part of it
- * is translated.
- */
-const useCaption = ({ saved, tree }: Pick<ItemProps, "saved" | "tree">) => {
-  const { t, i18n } = useTranslation();
-  const summary = savedAnalysisSummary(saved, tree);
-
-  return {
-    // The reader's name — a record from before names is named by its tags
-    // (`savedAnalysisFrom`), which is the players of a game it was begun from.
-    primary: saved.name || t("savedAnalyses.untitled"),
-    secondary:
-      tree === undefined
-        ? t("savedAnalyses.unreadable")
-        : savedListLine([
-            t("savedAnalyses.moves", { count: summary.moves }),
-            // Zero side lines is not a fact worth a slot on a two-line card.
-            summary.variations > 0
-              ? t("savedAnalyses.variations", { count: summary.variations })
-              : "",
-            summary.ply > 0 ? t("savedAnalyses.atPly", { ply: summary.ply }) : "",
-            savedListDate(saved.updatedAt, i18n.language),
-          ]),
-  };
-};
-
-const ellipsis = {
-  display: "block",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-} as const;
-
-/**
- * The settings link — a gear on the row and the card. It hands the list as it
- * stands as `from`, so Save and Cancel come back here, inside this folder.
- */
-function SettingsLink({ saved }: { saved: SavedAnalysis }) {
-  const { t } = useTranslation();
-  const location = useLocation();
-  return (
-    <Tooltip title={t("analysis.settingsLink.open")}>
-      <IconButton
-        size="small"
-        component={RouterLink}
-        to={`/tools/analysis/saved/${encodeURIComponent(saved.id)}/settings`}
-        state={{ from: `${location.pathname}${location.search}` }}
-        aria-label={t("analysis.settingsLink.open")}
-        data-testid={`saved-analyses-settings-${saved.id}`}
-      >
-        <SettingsRoundedIcon fontSize="small" />
-      </IconButton>
-    </Tooltip>
-  );
-}
-
-/** The pick — on the row and the card, over the list's one picked set. */
-function SelectBox({ saved, checked, onToggle }: ItemProps) {
-  const { t } = useTranslation();
-  return (
-    <Checkbox
-      size="small"
-      checked={checked}
-      onChange={onToggle}
-      slotProps={{ input: { "aria-label": t("savedAnalyses.select") } }}
-      data-testid={`saved-analyses-select-${saved.id}`}
-    />
-  );
-}
-
-function SavedAnalysisRow(props: ItemProps) {
-  const { saved, tree } = props;
-  const { t } = useTranslation();
-  const { primary, secondary } = useCaption(props);
-
-  return (
-    <ListItem
-      disableGutters
-      data-testid={`saved-analyses-item-${saved.id}`}
-      sx={{
-        display: "flex",
-        flexWrap: "wrap",
-        alignItems: "center",
-        gap: 1.5,
-        py: 1.25,
-        borderBottom: "1px solid",
-        borderColor: "divider",
-      }}
-    >
-      <Box sx={{ minWidth: 0, flex: "1 1 12rem" }}>
-        <Typography variant="subtitle2" dir="auto" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
-          {primary}
-        </Typography>
-        <Typography variant="caption" sx={{ ...ellipsis, color: "text.secondary" }}>
-          {secondary}
-        </Typography>
-        {saved.description !== "" && (
-          <Typography
-            variant="caption"
-            dir="auto"
-            data-testid={`saved-analyses-description-${saved.id}`}
-            sx={{ ...ellipsis, color: "text.secondary", fontStyle: "italic" }}
-          >
-            {saved.description}
-          </Typography>
-        )}
-      </Box>
-
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
-        {/* A record that will not read has nothing to open — only a pick. */}
-        {tree !== undefined && (
-          <Button
-            component={RouterLink}
-            to={boardPath(saved)}
-            size="small"
-            variant="contained"
-            data-testid={`saved-analyses-open-${saved.id}`}
-          >
-            {t("savedAnalyses.open")}
-          </Button>
-        )}
-        <SettingsLink saved={saved} />
-        <SelectBox {...props} />
-      </Box>
-    </ListItem>
-  );
-}
-
-function SavedAnalysisCard(props: CardProps) {
-  const { saved, tree, opening } = props;
-  const { t } = useTranslation();
-  const { primary, secondary } = useCaption(props);
-
-  return (
-    <Card variant="outlined" data-testid={`saved-analyses-item-${saved.id}`}>
-      {/* The board *is* the open button. A record with no readable tree has no
-          position to draw, so it gets the message in the same square. */}
-      {tree === undefined ? (
-        <Box
-          sx={{
-            m: 1,
-            aspectRatio: "1 / 1",
-            display: "grid",
-            placeItems: "center",
-            p: 1,
-            borderRadius: 1,
-            bgcolor: "action.hover",
-          }}
-        >
-          <Typography variant="caption" sx={{ color: "text.secondary", textAlign: "center" }}>
-            {t("savedAnalyses.unreadable")}
-          </Typography>
-        </Box>
-      ) : (
-        <CardActionArea
-          component={RouterLink}
-          to={boardPath(saved)}
-          data-testid={`saved-analyses-open-${saved.id}`}
-          aria-label={t("savedAnalyses.open")}
-        >
-          <Box sx={{ p: 1 }}>
-            <Box sx={{ width: "100%", aspectRatio: "1 / 1" }}>
-              <Chessboard options={previewOptions(saved, tree)} />
-            </Box>
-          </Box>
-        </CardActionArea>
-      )}
-
-      {/* Outside the action area on purpose: a button inside a button is
-          neither valid HTML nor reliably clickable. */}
-      <Box sx={{ px: 1, pb: 1, display: "flex", alignItems: "center", gap: 0.5 }}>
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography
-            variant="caption"
-            dir="auto"
-            sx={{ ...ellipsis, fontWeight: 600, lineHeight: 1.3 }}
-          >
-            {primary}
-          </Typography>
-          <Typography variant="caption" sx={{ ...ellipsis, color: "text.secondary" }}>
-            {secondary}
-          </Typography>
-          {/* The one fact a reader recognises a line by. Absent until the book
-              has loaded, and for a line it does not name. */}
-          {opening !== undefined && (
-            <Typography
-              variant="caption"
-              dir="ltr"
-              data-testid={`saved-analyses-opening-${saved.id}`}
-              sx={{ ...ellipsis, color: "text.secondary" }}
-            >
-              {`${opening.name} · ${opening.eco}`}
-            </Typography>
-          )}
-        </Box>
-        <SettingsLink saved={saved} />
-        <SelectBox {...props} />
-      </Box>
-    </Card>
-  );
-}
+const boardPath = (saved: SavedAnalysis) => `/tools/analysis?analysis=${encodeURIComponent(saved.id)}`;
 
 /** What the name dialog is open for — a folder made, or renamed. */
-type NameDialogState =
-  | { mode: "create"; parentId: string | null }
-  | { mode: "rename"; folder: AnalysisFolder }
-  | null;
+type NameDialogState = { mode: "create"; parentId: string | null } | { mode: "rename"; folder: AnalysisFolder } | null;
 
 /** A folder's download stem: its name slugified, else the fixed one. */
-const folderStem = (folder: AnalysisFolder): string =>
-  slugify(folder.name) || "saved-analyses";
+const folderStem = (folder: AnalysisFolder): string => slugify(folder.name) || "saved-analyses";
 
 /** The route: the list, once the store's first read has landed. */
 function SavedAnalyses() {
@@ -398,24 +126,17 @@ function SavedAnalyses() {
   const analyses = useSavedAnalyses();
   const folders = useAnalysisFolders();
   if (analyses === undefined || folders === undefined) {
-    return (
-      <Typography data-testid="saved-analyses-loading" sx={{ color: "text.secondary", p: 2 }}>
-        {t("savedAnalyses.loading")}
-      </Typography>
-    );
+    return <LoadingLine testId="saved-analyses-loading">{t("savedAnalyses.loading")}</LoadingLine>;
   }
-  return <SavedAnalysesList analyses={analyses} folders={folders} />;
+  return <SavedAnalysesScreen analyses={analyses} folders={folders} />;
 }
 
-function SavedAnalysesList({
-  analyses,
-  folders,
-}: {
-  analyses: readonly SavedAnalysis[];
-  folders: readonly AnalysisFolder[];
-}) {
+function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAnalysis[]; folders: readonly AnalysisFolder[] }) {
+  // The header's title is the page's `h1` (CTA-112).
+  useOwnPageHeading();
   const { t } = useTranslation();
-
+  const location = useLocation();
+  const squares = useBoardSquareOptions();
   const [view, setView] = useState<SavedListView>(SAVED_LIST_DEFAULT_VIEW);
 
   /*
@@ -425,61 +146,49 @@ function SavedAnalysesList({
   */
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedFolder = searchParams.get("folder");
-  const currentFolder =
-    requestedFolder === null
-      ? undefined
-      : folders.find((folder) => folder.id === requestedFolder);
+  const currentFolder = requestedFolder === null ? undefined : folders.find((folder) => folder.id === requestedFolder);
   const browseId = currentFolder?.id ?? null;
-  const openFolder = (id: string | null) =>
-    setSearchParams(id === null ? {} : { folder: id });
+  usePageTitle(currentFolder === undefined ? undefined : currentFolder.name || t("savedAnalyses.folder.untitled"));
+  const openFolder = (id: string | null) => setSearchParams(id === null ? {} : { folder: id });
   const foldersHere = analysisFolderChildren(folders, browseId);
-  const crumbs =
-    currentFolder === undefined ? [] : analysisFolderPath(folders, currentFolder.id);
+  const crumbs = currentFolder === undefined ? [] : analysisFolderPath(folders, currentFolder.id);
   // Keyed on what the URL asks for: the folder it resolves to is read off the same `folders`.
   const rowsHere = useMemo(
-    () =>
-      analysesHere(
-        analyses,
-        folders,
-        folders.some((folder) => folder.id === requestedFolder) ? requestedFolder : null,
-      ),
+    () => analysesHere(analyses, folders, folders.some((folder) => folder.id === requestedFolder) ? requestedFolder : null),
     [analyses, folders, requestedFolder],
   );
 
   /* The page on screen — back to the first whenever the reader changes folder. */
-  const [paging, setPaging] = useState<{ folder: string | null; page: number }>({
+  const [paging, setPaging] = useState<{ folder: string | null; page: number; rowsPerPage: number }>({
     folder: browseId,
     page: 0,
+    rowsPerPage: SAVED_ANALYSES_PAGE,
   });
-  const pageCount = Math.max(1, Math.ceil(rowsHere.length / SAVED_ANALYSES_PAGE));
+  const { rowsPerPage } = paging;
+  const pageCount = Math.max(1, Math.ceil(rowsHere.length / rowsPerPage));
   const page = paging.folder === browseId ? Math.min(paging.page, pageCount - 1) : 0;
-  const pageRows = useMemo(
-    () => rowsHere.slice(page * SAVED_ANALYSES_PAGE, (page + 1) * SAVED_ANALYSES_PAGE),
-    [rowsHere, page],
-  );
+  const pageRows = useMemo(() => rowsHere.slice(page * rowsPerPage, (page + 1) * rowsPerPage), [rowsHere, page, rowsPerPage]);
 
   const [nameDialog, setNameDialog] = useState<NameDialogState>(null);
   const [moving, setMoving] = useState<AnalysisFolder | null>(null);
   const [deleting, setDeleting] = useState<AnalysisFolder | null>(null);
   const [deletingPicked, setDeletingPicked] = useState(false);
-  // The count asked about, held past the confirm so the dialog's closing
-  // transition does not read "Delete 0".
+  // The count and the folder asked about, held past the confirm so the
+  // dialogs' closing transitions do not read "Delete 0" or lose the name.
   const [askedCount, setAskedCount] = useState(0);
+  const [askedFolder, setAskedFolder] = useState<AnalysisFolder | null>(null);
 
   /*
     The page's trees: the side lines are counted and the node the reader was
     standing on found in them, and a record that will not parse has none.
   */
-  const entriesHere = useMemo(
-    () => pageRows.map((saved) => ({ saved, tree: treeOf(saved) })),
-    [pageRows],
-  );
+  const pageTrees = useMemo(() => pageRows.map((saved) => ({ saved, tree: treeOf(saved) })), [pageRows]);
 
   /*
-    Which analyses are picked for export. Held as a set of ids rather than a
-    flag per row, so one deleted — here or in another tab — simply falls out of
-    the count: everything below reads the selection *through* `analyses`. The
-    picks persist across folders; select-all **adds** the rows on screen, and
+    Which analyses are picked. Held as a set of ids rather than a flag per
+    row, so one deleted — here or in another tab — simply falls out of the
+    count: everything below reads the selection *through* `analyses`. The
+    picks persist across folders; select-all **adds** the rows here, and
     unchecking it removes just those.
   */
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
@@ -504,36 +213,27 @@ function SavedAnalysesList({
       return next;
     });
 
-  const downloadSelected = () =>
-    downloadPgn(
-      "chess-trainer-analyses",
-      selected.map((saved) => saved.pgn),
-    );
-
   /** One `.pgn` of everything under the folder — the set its count stands for. */
   const downloadFolder = (folder: AnalysisFolder) =>
-    downloadPgn(
-      folderStem(folder),
-      analysesInFolder(analyses, folders, folder.id).map((row) => row.pgn),
-    );
+    downloadPgn(folderStem(folder), analysesInFolder(analyses, folders, folder.id).map((row) => row.pgn));
 
   /*
     Delete keeps the contents (`removeAnalysisFolder`). Standing inside what is
     deleted, the reader moves to its parent — where its sub-folders went.
   */
   const confirmDelete = (folder: AnalysisFolder) => {
-    if (browseId !== null && analysisFolderSubtree(folders, folder.id).has(browseId)) {
-      openFolder(folder.parentId);
-    }
+    if (browseId !== null && analysisFolderSubtree(folders, folder.id).has(browseId)) openFolder(folder.parentId);
     void removeAnalysisFolder(folder.id);
   };
 
   const startDelete = (folder: AnalysisFolder) => {
-    const isEmpty =
-      analysesUnderFolder(analyses, folders, folder.id) === 0 &&
-      analysisFolderChildren(folders, folder.id).length === 0;
-    if (isEmpty) confirmDelete(folder);
-    else setDeleting(folder);
+    const isEmpty = analysesUnderFolder(analyses, folders, folder.id) === 0 && analysisFolderChildren(folders, folder.id).length === 0;
+    if (isEmpty) {
+      confirmDelete(folder);
+      return;
+    }
+    setAskedFolder(folder);
+    setDeleting(folder);
   };
 
   const book = useOpeningBook();
@@ -543,202 +243,180 @@ function SavedAnalysesList({
     **mainline** is what is named: it is what the analysis is of, where a side
     line is one thing tried inside it.
   */
-  const openings = useMemo(() => {
-    const found = new Map<string, OpeningEntry>();
-    if (book === null) return found;
+  const entries = useMemo(
+    () =>
+      pageTrees.map(({ saved, tree }) => {
+        let opening: OpeningEntry | undefined;
+        if (book !== null && tree !== undefined) {
+          opening = openingOfLine(book.book, book.positions, mainlineGame(tree).moves.map((move) => move.fen));
+        }
+        return { saved, tree, opening };
+      }),
+    [pageTrees, book],
+  );
 
-    for (const { saved, tree } of entriesHere) {
-      if (tree === undefined) continue;
-      const opening = openingOfLine(
-        book.book,
-        book.positions,
-        mainlineGame(tree).moves.map((move) => move.fen),
-      );
-      if (opening !== undefined) found.set(saved.id, opening);
-    }
-    return found;
-  }, [entriesHere, book]);
-
-  const folderProps = (folder: AnalysisFolder) => ({
-    folder,
-    labelKey: "savedAnalyses",
-    testIdPrefix: "saved-analyses",
-    count: analysesUnderFolder(analyses, folders, folder.id),
-    onOpen: openFolder,
-    onDownload: downloadFolder,
-    onRename: (renamed: AnalysisFolder) => setNameDialog({ mode: "rename", folder: renamed }),
-    onMove: setMoving,
-    onDelete: startDelete,
-  });
+  // Save and Cancel on a settings screen come back to this list as it stands.
+  const from = `${location.pathname}${location.search}`;
+  const folderName = (folder: AnalysisFolder) => folder.name || t("savedAnalyses.folder.untitled");
 
   return (
     <>
-      <Box
-        data-testid="saved-analyses-screen"
-        sx={{
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          minHeight: 0,
-        }}
-      >
-        <Box
-          data-testid="saved-analyses-top-bar"
-          sx={{
-            flexShrink: 0,
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            gap: 1.5,
-            pb: 1.5,
-            mb: 0.5,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-          }}
-        >
-          <Box sx={{ minWidth: 0, marginInlineEnd: "auto" }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
-              {t("savedAnalyses.title")}
-            </Typography>
-            <Typography
-              data-testid="saved-analyses-count"
-              variant="caption"
-              sx={{ display: "block", color: "text.secondary" }}
-            >
-              {t("savedAnalyses.count", { count: analyses.length })}
-            </Typography>
-          </Box>
+      <Box data-testid="saved-analyses-screen" sx={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <ListScreenHeader
+          title={t("savedAnalyses.title")}
+          count={t("savedAnalyses.count", { count: analyses.length })}
+          wrap
+          actions={
+            <>
+              {/*
+                The board this screen's sidebar entry hides (CTA-58): the Analysis
+                folder is a single entry to *this* screen, so a fresh board is
+                reached from here. No query params — a blank Analysis Board.
+              */}
+              <Button
+                size="small"
+                variant="outlined"
+                component={RouterLink}
+                to="/tools/analysis"
+                startIcon={<AddRoundedIcon fontSize="small" />}
+                data-testid="saved-analyses-new"
+              >
+                {t("savedAnalyses.new")}
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<CreateNewFolderRoundedIcon fontSize="small" />}
+                data-testid="saved-analyses-new-folder"
+                onClick={() => setNameDialog({ mode: "create", parentId: browseId })}
+              >
+                {t("savedAnalyses.folder.newFolder")}
+              </Button>
+              {/* The selection bar, in every view: the cards carry picks too. */}
+              {analyses.length > 0 && (
+                <SelectionBar
+                  checked={rowsHere.length > 0 && selectedHere.length === rowsHere.length}
+                  indeterminate={selectedHere.length > 0 && selectedHere.length < rowsHere.length}
+                  onToggleAll={toggleAllHere}
+                  selectAllLabel={t("savedAnalyses.selectAll")}
+                  count={selected.length}
+                  countLabel={t("savedAnalyses.selected", { count: selected.length })}
+                  onClear={() => setPicked(new Set())}
+                  clearLabel={t("savedList.clearSelected")}
+                  actions={
+                    <>
+                      <IconAction
+                        label={t("savedAnalyses.download")}
+                        disabled={selected.length === 0}
+                        onClick={() => downloadPgn("chess-trainer-analyses", selected.map((saved) => saved.pgn))}
+                        testId="saved-analyses-download"
+                      >
+                        <DownloadRoundedIcon fontSize="small" />
+                      </IconAction>
+                      <IconAction
+                        label={t("savedAnalyses.deleteSelected")}
+                        disabled={selected.length === 0}
+                        onClick={() => {
+                          setAskedCount(selected.length);
+                          setDeletingPicked(true);
+                        }}
+                        testId="saved-analyses-delete"
+                      >
+                        <DeleteOutlineRoundedIcon fontSize="small" />
+                      </IconAction>
+                    </>
+                  }
+                  testId="saved-analyses"
+                />
+              )}
+              {/* Switching view keeps the picks: every view has them. */}
+              <ViewToggle<SavedListView>
+                value={view}
+                onChange={setView}
+                options={[
+                  { value: "list", label: t("savedAnalyses.view.list"), icon: <ViewListRounded fontSize="small" /> },
+                  { value: "compact", label: t("savedAnalyses.view.compact"), icon: <ViewComfyRounded fontSize="small" /> },
+                  { value: "comfortable", label: t("savedAnalyses.view.comfortable"), icon: <ViewModuleRounded fontSize="small" /> },
+                ]}
+                ariaLabel={t("savedAnalyses.view.label")}
+                testId="saved-analyses-view"
+              />
+            </>
+          }
+          testId="saved-analyses"
+        />
 
-          {/*
-            The board this screen's sidebar entry hides (CTA-58): the Analysis
-            folder is a single entry to *this* screen, so a fresh board is
-            reached from here. No query params — a blank Analysis Board.
-          */}
-          <Button
-            size="small"
-            variant="outlined"
-            component={RouterLink}
-            to="/tools/analysis"
-            startIcon={<AddRoundedIcon fontSize="small" />}
-            data-testid="saved-analyses-new"
-          >
-            {t("savedAnalyses.new")}
-          </Button>
-
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<CreateNewFolderRoundedIcon fontSize="small" />}
-            data-testid="saved-analyses-new-folder"
-            onClick={() => setNameDialog({ mode: "create", parentId: browseId })}
-          >
-            {t("savedAnalyses.folder.newFolder")}
-          </Button>
-
-          {/* The export bar, in every view: the cards carry checkboxes too. */}
-          {analyses.length > 0 && (
-            <SavedListExportBar
-              testIdPrefix="saved-analyses"
-              labelKey="savedAnalyses"
-              checked={rowsHere.length > 0 && selectedHere.length === rowsHere.length}
-              indeterminate={
-                selectedHere.length > 0 && selectedHere.length < rowsHere.length
-              }
-              onToggleAll={toggleAllHere}
-              selectedCount={selected.length}
-              onClearSelected={() => setPicked(new Set())}
-              onDownload={downloadSelected}
-              onDelete={() => {
-                setAskedCount(selected.length);
-                setDeletingPicked(true);
-              }}
+        {currentFolder !== undefined && (
+          <Box sx={{ flexShrink: 0, py: 0.5 }}>
+            <Breadcrumbs
+              ariaLabel={t("savedList.breadcrumb")}
+              crumbs={[
+                { id: "root", label: t("savedAnalyses.folder.root"), onClick: () => openFolder(null) },
+                ...crumbs.slice(0, -1).map((crumb) => ({ id: crumb.id, label: folderName(crumb), onClick: () => openFolder(crumb.id) })),
+              ]}
+              current={folderName(currentFolder)}
+              currentTestId={`saved-analyses-breadcrumb-${currentFolder.id}`}
+              testId="saved-analyses-breadcrumb"
             />
-          )}
-
-          {/* Switching view keeps the picks: every view has the checkboxes. */}
-          <SavedListViewToggle
-            value={view}
-            onChange={setView}
-            labelKey="savedAnalyses"
-            testIdPrefix="saved-analyses"
-          />
-        </Box>
-
-        {crumbs.length > 0 && (
-          <SavedFolderBreadcrumb
-            crumbs={crumbs}
-            onOpen={openFolder}
-            labelKey="savedAnalyses"
-            testIdPrefix="saved-analyses"
-          />
+          </Box>
         )}
 
         {/*
-          The one region that scrolls. The shell hands this screen a fixed-height
-          box and scrolls nothing inside it. Folders first, then this folder's
+          The one region that scrolls. Folders first, then this folder's
           analyses: the reader drills into a folder, they do not scroll past it.
         */}
-        {foldersHere.length === 0 && rowsHere.length === 0 ? (
-          <Box
-            data-testid="saved-analyses-body"
-            sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}
-          >
-            <Typography
-              data-testid={
-                browseId === null ? "saved-analyses-empty" : "saved-analyses-folder-empty"
-              }
-              variant="body2"
-              sx={{ color: "text.secondary", textAlign: "center", py: 4 }}
-            >
-              {browseId === null
-                ? t("savedAnalyses.empty")
-                : t("savedAnalyses.folder.empty")}
-            </Typography>
-          </Box>
-        ) : view === "list" ? (
-          <Box
-            data-testid="saved-analyses-body"
-            sx={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}
-          >
-            <List disablePadding>
-              {foldersHere.map((folder) => (
-                <SavedFolderRow key={folder.id} {...folderProps(folder)} />
-              ))}
-              {entriesHere.map((entry) => (
-                <SavedAnalysisRow
-                  key={entry.saved.id}
-                  {...entry}
-                  checked={picked.has(entry.saved.id)}
-                  onToggle={() => togglePicked(entry.saved.id)}
-                />
-              ))}
-            </List>
-          </Box>
-        ) : (
-          <Box data-testid="saved-analyses-grid" sx={savedListGridSx(view)}>
-            {foldersHere.map((folder) => (
-              <SavedFolderCard key={folder.id} {...folderProps(folder)} />
-            ))}
-            {entriesHere.map((entry) => (
-              <SavedAnalysisCard
-                key={entry.saved.id}
-                {...entry}
-                checked={picked.has(entry.saved.id)}
-                onToggle={() => togglePicked(entry.saved.id)}
-                opening={openings.get(entry.saved.id)}
+        <SavedAnalysesList
+          view={view}
+          folders={foldersHere.map((folder) => ({ folder, count: analysesUnderFolder(analyses, folders, folder.id) }))}
+          entries={entries}
+          picked={picked}
+          onTogglePick={togglePicked}
+          openLink={(saved) => ({ component: RouterLink, to: boardPath(saved) })}
+          settingsLink={(saved) => ({
+            component: RouterLink,
+            to: `/tools/analysis/saved/${encodeURIComponent(saved.id)}/settings`,
+            state: { from },
+          })}
+          onOpenFolder={openFolder}
+          folderActions={{
+            onDownload: downloadFolder,
+            onRename: (folder) => setNameDialog({ mode: "rename", folder }),
+            onMove: setMoving,
+            onDelete: startDelete,
+          }}
+          preview={({ saved, tree }) => (
+            <Box sx={{ width: "100%", aspectRatio: "1 / 1" }}>
+              <Chessboard
+                options={{
+                  ...squares,
+                  // `options.id` is unique on the page: this screen shows many boards at once.
+                  id: `saved-analyses-preview-${saved.id}`,
+                  position: savedAnalysisFen(saved, tree),
+                  boardOrientation: saved.orientation,
+                  allowDragging: false,
+                  allowDrawingArrows: false,
+                  showNotation: false,
+                }}
               />
-            ))}
-          </Box>
-        )}
+            </Box>
+          )}
+          empty={
+            browseId === null
+              ? { label: t("savedAnalyses.empty"), testId: "saved-analyses-empty" }
+              : { label: t("savedAnalyses.folder.empty"), testId: "saved-analyses-folder-empty" }
+          }
+          testId="saved-analyses"
+        />
 
-        {pageCount > 1 && (
-          <Pagination
-            count={pageCount}
-            page={page + 1}
-            onChange={(_event, next) => setPaging({ folder: browseId, page: next - 1 })}
-            size="small"
-            data-testid="saved-analyses-pagination"
-            sx={{ flexShrink: 0, display: "flex", justifyContent: "center", pt: 1 }}
+        {rowsHere.length > TABLE_PAGE_SIZES[0] && (
+          <TablePager
+            count={rowsHere.length}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            onPageChange={(next) => setPaging({ folder: browseId, page: next, rowsPerPage })}
+            onRowsPerPageChange={(rows) => setPaging({ folder: browseId, page: 0, rowsPerPage: rows })}
+            labelRowsPerPage={t("savedAnalyses.rowsPerPage")}
+            testId="saved-analyses-pagination"
           />
         )}
       </Box>
@@ -748,8 +426,6 @@ function SavedAnalysesList({
       </RightPanel>
 
       <FolderNameDialog
-        labelKey="savedAnalyses"
-        idPrefix="analysis-folder"
         open={nameDialog !== null}
         title={
           nameDialog === null
@@ -758,54 +434,72 @@ function SavedAnalysesList({
               ? t("savedAnalyses.folder.newFolder")
               : t("savedAnalyses.folder.renameFolder")
         }
-        initial={
-          nameDialog === null || nameDialog.mode === "create" ? "" : nameDialog.folder.name
-        }
+        initial={nameDialog === null || nameDialog.mode === "create" ? "" : nameDialog.folder.name}
         onSave={(name) => {
           if (nameDialog === null) return;
           if (nameDialog.mode === "create") void createAnalysisFolder(name, nameDialog.parentId);
           else void renameAnalysisFolder(nameDialog.folder.id, name);
         }}
         onClose={() => setNameDialog(null)}
+        labels={{
+          name: t("savedAnalyses.folder.name"),
+          cancel: t("savedAnalyses.folder.cancel"),
+          save: t("savedAnalyses.folder.save"),
+        }}
+        testId="analysis-folder"
       />
       <FolderMoveDialog
-        labelKey="savedAnalyses"
-        idPrefix="analysis-folder"
         open={moving !== null}
         folders={folders}
-        folder={moving}
-        currentParentName={t("savedAnalyses.folder.topLevel")}
+        current={moving?.parentId ?? null}
+        exclude={moving === null ? undefined : [...analysisFolderSubtree(folders, moving.id)]}
         onMove={(newParentId) => {
           if (moving !== null) void moveAnalysisFolder(moving.id, newParentId);
           setMoving(null);
         }}
         onClose={() => setMoving(null)}
+        labels={{
+          title: t("savedAnalyses.folder.moveFolder"),
+          cancel: t("savedAnalyses.folder.cancel"),
+          none: t("savedAnalyses.folder.topLevel"),
+          untitled: t("savedAnalyses.folder.untitled"),
+          picker: t("savedAnalyses.folder.picker"),
+        }}
+        testId="analysis-folder"
       />
-      <RepertoireBulkDeleteDialog
-        labelKey="savedAnalyses"
-        testIdPrefix="saved-analyses"
+      <DeleteManyDialog
         open={deletingPicked}
-        count={askedCount}
+        onClose={() => setDeletingPicked(false)}
         onConfirm={() => {
           // One write for the lot; the picks go with them.
           void removeSavedAnalyses(selected.map((saved) => saved.id));
           setPicked(new Set());
+          setDeletingPicked(false);
         }}
-        onClose={() => setDeletingPicked(false)}
+        title={t("savedAnalyses.bulkDelete.title", { count: askedCount })}
+        message={t("savedAnalyses.bulkDelete.text")}
+        confirmLabel={t("savedAnalyses.bulkDelete.confirm")}
+        cancelLabel={t("savedAnalyses.folder.cancel")}
+        testId="saved-analyses-delete-dialog"
+        titleTestId="saved-analyses-delete-title"
+        cancelTestId="saved-analyses-delete-cancel"
+        confirmTestId="saved-analyses-delete-confirm"
       />
       <FolderDeleteDialog
-        labelKey="savedAnalyses"
-        idPrefix="analysis-folder"
         open={deleting !== null}
-        folder={deleting}
-        games={deleting === null ? 0 : analysesUnderFolder(analyses, folders, deleting.id)}
-        subFolders={
-          deleting === null ? 0 : analysisFolderChildren(folders, deleting.id).length
-        }
+        title={`${t("savedAnalyses.folder.deleteFolder")}: ${askedFolder === null ? "" : folderName(askedFolder)}`}
+        message={t("savedAnalyses.folder.deleteConfirm")}
+        counts={t("savedAnalyses.folder.deleteCounts", {
+          games: askedFolder === null ? 0 : analysesUnderFolder(analyses, folders, askedFolder.id),
+          subFolders: askedFolder === null ? 0 : analysisFolderChildren(folders, askedFolder.id).length,
+        })}
+        confirmLabel={t("savedAnalyses.folder.deleteFolder")}
+        cancelLabel={t("savedAnalyses.folder.cancel")}
         onConfirm={() => {
           if (deleting !== null) confirmDelete(deleting);
         }}
         onClose={() => setDeleting(null)}
+        testId="analysis-folder"
       />
     </>
   );

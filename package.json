@@ -9,13 +9,17 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "wirepgn": "node scripts/wirepgn.js",
+    "theme:bootstrap": "node scripts/theme-bootstrap.js",
     "test": "vitest",
-    "test:run": "vitest run --maxWorkers 5"
+    "test:run": "vitest run --maxWorkers 3",
+    "test:a11y": "yarn build && playwright test",
+    "test:a11y:quick": "yarn build && A11Y_MATRIX=reduced playwright test"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@mui/icons-material": "^9.4.0",
     "@mui/material": "^9.4.0",
     "@mui/stylis-plugin-rtl": "^9.4.0",
@@ -32,7 +36,9 @@
     "xstate": "^5.32.6"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -42,7 +48,9 @@
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/coverage-v8": "^4.1.11",
+    "axe-core": "^4.13.0",
     "eslint": "^10.9.1",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.5",
     "fake-indexeddb": "^6.2.5",

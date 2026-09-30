@@ -94,7 +94,7 @@ export const storeMultiGameRepertoire = async (id: string, text: string, name = 
 };
 
 /**
- * The section's five routes, mounted at `path`, as `App.tsx` mounts them —
+ * The section's five routes, mounted at `path`, as `routes.tsx` mounts them —
  * once both stores' first reads have landed (IndexedDB), so a test asserts
  * the screen rather than its "reading" line. What the routes show before the
  * read is asserted on its own (`Repertoires.test.tsx`).

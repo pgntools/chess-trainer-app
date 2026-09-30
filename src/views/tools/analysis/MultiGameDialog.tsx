@@ -1,17 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import Alert from "@mui/material/Alert";
+import { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import LinearProgress from "@mui/material/LinearProgress";
 import Typography from "@mui/material/Typography";
 import CallMergeRoundedIcon from "@mui/icons-material/CallMergeRounded";
 import LibraryBooksRoundedIcon from "@mui/icons-material/LibraryBooksRounded";
 import { useTranslation } from "react-i18next";
 
+import { BaseDialog, ProgressDialog, useCancellableJob } from "../../../design-system/components/dialogs";
+import { InlineAlert } from "../../../design-system/components/feedback";
 import { addCollection } from "../../../lib/libraryCollectionStore";
 import { collectionNameOfStem, readCollectionText } from "../../../lib/libraryCollections";
 import { indexCollection } from "../../library/indexCollection";
@@ -35,6 +31,10 @@ type CollectionProblem = "unreadable" | "index" | "storage";
  *   level, named by the same rule — the `Event` every game shares, else the
  *   file name's words, else "Pasted collection". `onSaved` takes the reader to
  *   its table.
+ *
+ * Since CTA-113 the design system's: the choice a `BaseDialog`, the job a
+ * `ProgressDialog` in its place over `useCancellableJob` (the abort, the
+ * progress and the write-lock the Library's import popup shares).
  *
  * Cancel, Escape, the backdrop or the popup going away stop the index pass and
  * write nothing. The one moment nothing can be stopped is the write itself,
@@ -60,15 +60,8 @@ function MultiGameDialog({
   const { t } = useTranslation();
   const { reading } = choice;
   const count = reading.games.length;
-  /** The index pass under way: how far it has got. */
-  const [indexing, setIndexing] = useState<{ done: number; total: number } | null>(null);
-  const [writing, setWriting] = useState(false);
+  const job = useCancellableJob();
   const [problem, setProblem] = useState<CollectionProblem | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const busy = indexing !== null || writing;
-
-  // The popup going away stops the pass.
-  useEffect(() => () => abortRef.current?.abort(), []);
 
   const saveCollection = async () => {
     const collection = readCollectionText(choice.text);
@@ -77,66 +70,71 @@ function MultiGameDialog({
       return;
     }
     const name =
-      collection.name ??
-      (choice.fileStem === undefined
-        ? t("library.upload.pastedName")
-        : collectionNameOfStem(choice.fileStem));
-
-    const controller = new AbortController();
-    abortRef.current = controller;
+      collection.name ?? (choice.fileStem === undefined ? t("library.upload.pastedName") : collectionNameOfStem(choice.fileStem));
     setProblem(null);
-    setIndexing({ done: 0, total: collection.games.length });
-    let rows;
-    try {
-      rows = await indexCollection(
-        collection.games,
-        (done, total) => setIndexing({ done, total }),
-        controller.signal,
-      );
-    } catch {
-      // Cancelled: the popup is already gone. Anything else failed.
-      if (!controller.signal.aborted) {
-        setIndexing(null);
-        setProblem("index");
-      }
+    const outcome = await job.run({
+      // The index pass: stoppable, in a worker, reporting as it goes.
+      work: (signal, report) => indexCollection(collection.games, (done, total) => report({ done, total }), signal),
+      // The write: once begun, never cut short.
+      write: (rows) => addCollection(name, collection.games, rows),
+    });
+    if (outcome.status === "cancelled") return;
+    if (outcome.status === "failed") {
+      setProblem("index");
       return;
-    } finally {
-      if (abortRef.current === controller) abortRef.current = null;
     }
-    if (controller.signal.aborted) return;
-
-    setWriting(true);
-    const added = await addCollection(name, collection.games, rows);
-    setWriting(false);
-    setIndexing(null);
-    if ("problem" in added) {
+    if ("problem" in outcome.value) {
       setProblem("storage");
       return;
     }
-    onSaved(added.collection.id);
+    onSaved(outcome.value.collection.id);
   };
 
   const cancel = () => {
-    if (writing) return;
-    abortRef.current?.abort();
-    abortRef.current = null;
-    onClose();
+    if (job.cancel()) onClose();
   };
 
+  // The job under way: a progress dialog in the choice's place, Cancel off while it writes.
+  if (job.busy) {
+    return (
+      <ProgressDialog
+        open
+        title={t("analysis.load.popup.title", { count })}
+        progress={job.progress ?? { done: 0, total: count }}
+        caption={t("analysis.load.popup.indexing", { done: job.progress?.done ?? 0, total: job.progress?.total ?? count })}
+        cancelLabel={t("analysis.load.popup.cancel")}
+        onCancel={cancel}
+        cancelDisabled={job.phase === "writing"}
+        testId={testIdPrefix}
+      >
+        <Box data-testid={`${testIdPrefix}-indexing`}>
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            {t("analysis.load.popup.collectionHelp")}
+          </Typography>
+        </Box>
+      </ProgressDialog>
+    );
+  }
+
   return (
-    <Dialog open onClose={cancel} maxWidth="xs" fullWidth data-testid={testIdPrefix}>
-      <DialogTitle>{t("analysis.load.popup.title", { count })}</DialogTitle>
-      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <BaseDialog
+      open
+      onClose={cancel}
+      title={t("analysis.load.popup.title", { count })}
+      testId={testIdPrefix}
+      actions={
+        <Button onClick={cancel} data-testid={`${testIdPrefix}-cancel`}>
+          {t("analysis.load.popup.cancel")}
+        </Button>
+      }
+    >
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <Box>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
             {t("analysis.load.popup.explain")}
           </Typography>
           {reading.skipped > 0 && (
-            <Typography
-              variant="caption"
-              data-testid={`${testIdPrefix}-skipped`}
-              sx={{ display: "block", color: "text.secondary", mt: 0.5 }}
-            >
+            <Typography variant="caption" data-testid={`${testIdPrefix}-skipped`} sx={{ display: "block", color: "text.secondary", mt: 0.5 }}>
               {t("analysis.load.popup.skipped", { count: reading.skipped })}
             </Typography>
           )}
@@ -146,18 +144,15 @@ function MultiGameDialog({
           <Button
             variant="contained"
             startIcon={<CallMergeRoundedIcon />}
-            disabled={!reading.mergeable || busy}
+            disabled={!reading.mergeable}
             onClick={onMerge}
+            aria-describedby={`${testIdPrefix}-merge-help`}
             data-testid={`${testIdPrefix}-merge`}
           >
             {t("analysis.load.popup.merge")}
           </Button>
-          <Typography variant="caption" sx={{ display: "block", color: "text.secondary", mt: 0.5 }}>
-            {t(
-              reading.mergeable
-                ? "analysis.load.popup.mergeHelp"
-                : "analysis.load.popup.mergeUnavailable",
-            )}
+          <Typography id={`${testIdPrefix}-merge-help`} variant="caption" sx={{ display: "block", color: "text.secondary", mt: 0.5 }}>
+            {t(reading.mergeable ? "analysis.load.popup.mergeHelp" : "analysis.load.popup.mergeUnavailable")}
           </Typography>
         </Box>
 
@@ -165,41 +160,24 @@ function MultiGameDialog({
           <Button
             variant="outlined"
             startIcon={<LibraryBooksRoundedIcon />}
-            disabled={busy}
             onClick={() => void saveCollection()}
+            aria-describedby={`${testIdPrefix}-collection-help`}
             data-testid={`${testIdPrefix}-collection`}
           >
             {t("analysis.load.popup.collection")}
           </Button>
-          <Typography variant="caption" sx={{ display: "block", color: "text.secondary", mt: 0.5 }}>
+          <Typography id={`${testIdPrefix}-collection-help`} variant="caption" sx={{ display: "block", color: "text.secondary", mt: 0.5 }}>
             {t("analysis.load.popup.collectionHelp")}
           </Typography>
         </Box>
 
-        {indexing !== null && (
-          <Box data-testid={`${testIdPrefix}-indexing`} sx={{ display: "grid", gap: 1 }}>
-            <Typography variant="body2" data-testid={`${testIdPrefix}-progress`}>
-              {t("analysis.load.popup.indexing", { done: indexing.done, total: indexing.total })}
-            </Typography>
-            <LinearProgress
-              variant="determinate"
-              value={indexing.total === 0 ? 0 : (100 * indexing.done) / indexing.total}
-            />
-          </Box>
-        )}
-
         {problem !== null && (
-          <Alert severity="error" data-testid={`${testIdPrefix}-problem`}>
+          <InlineAlert severity="error" testId={`${testIdPrefix}-problem`}>
             {t(`analysis.load.popup.problem.${problem}`)}
-          </Alert>
+          </InlineAlert>
         )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={cancel} disabled={writing} data-testid={`${testIdPrefix}-cancel`}>
-          {t("analysis.load.popup.cancel")}
-        </Button>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </BaseDialog>
   );
 }
 

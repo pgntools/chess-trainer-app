@@ -1,23 +1,8 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import CreateNewFolderRoundedIcon from "@mui/icons-material/CreateNewFolderRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import DriveFileMoveRoundedIcon from "@mui/icons-material/DriveFileMoveRounded";
-import DriveFileRenameOutlineRoundedIcon from "@mui/icons-material/DriveFileRenameOutlineRounded";
-import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
-import FolderSpecialRoundedIcon from "@mui/icons-material/FolderSpecialRounded";
-import TableChartOutlinedIcon from "@mui/icons-material/TableChartOutlined";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -34,21 +19,30 @@ import {
 } from "../../lib/libraryFolderStore";
 import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
-import { gameFolderChildren, gamesInFolder, type GameFolder } from "../../lib/savedGameFolders";
+import { gameFolderChildren, gameFolderSubtree, gamesInFolder, type GameFolder } from "../../lib/savedGameFolders";
 import { shippedCollections } from "../../lib/shippedCollections";
-import FolderDeleteDialog from "../shared/folders/FolderDeleteDialog";
-import FolderMoveDialog from "../shared/folders/FolderMoveDialog";
-import FolderNameDialog from "../shared/folders/FolderNameDialog";
-import FolderPicker from "../shared/folders/FolderPicker";
-import FolderTreeTable, { type FolderTreeColumn } from "../shared/folders/FolderTreeTable";
+import { FolderDeleteDialog, FolderMoveDialog, FolderNameDialog } from "../../blocks/dialogs";
+import {
+  CollectionsTreeTable,
+  LIBRARY_TREE_COLUMNS,
+  LIBRARY_TREE_DEFAULT_SORT,
+  libraryTreeFirstDirection,
+  type LibraryEntry,
+  type LibraryTreeColumn,
+} from "../../blocks/tables";
+import { ConfirmDialog } from "../../design-system/components/dialogs";
+import { SearchField } from "../../design-system/components/forms";
+import { ListScreenHeader } from "../../design-system/components/toolbars";
 import { RightPanel } from "../main/rightPanel";
 import { loadCollectionGames, useLibraryFolders, useUploadedCollections } from "./useLibraryCollections";
+import { useOwnPageHeading } from "../main/pageTitle";
 
 /**
  * **The Library** (`/library`, CTA-75; folders CTA-88) — a file manager's
  * details view of the collections: a table of folders and collections, the
- * folders opening and closing in place (`FolderTreeTable`, rows from
- * `lib/folderTreeRows.ts`).
+ * folders opening and closing in place (the `CollectionsTreeTable` block on
+ * `DataTable`'s tree rows since CTA-113, rows from `lib/folderTreeRows.ts`),
+ * under a `ListScreenHeader` and a `SearchField`.
  *
  * - **Built-in** is a fixed top-level folder, always first and open at the
  *   start, holding the shipped collections (wired by `scripts/wirepgn.js`).
@@ -60,7 +54,7 @@ import { loadCollectionGames, useLibraryFolders, useUploadedCollections } from "
  *   collections move up to its parent.
  * - **Columns**: Name, Games (a folder's is its whole subtree's), Added (an
  *   upload's date; a folder's creation; a dash for Built-in), and the row's
- *   actions, shown on hover and focus. Name, Games and Added sort (`?sort=`,
+ *   actions, always visible (CTA-113, the tables' rule). Name, Games and Added sort (`?sort=`,
  *   `?dir=`, history replace, only what is not the default — Name, A to Z);
  *   folders always come before collections at every level.
  * - **A words box** (`?q=`, history replace) keeps the collections and
@@ -73,14 +67,14 @@ import { loadCollectionGames, useLibraryFolders, useUploadedCollections } from "
  */
 
 /** A collection as the tree files it: its folder resolved. */
-type Entry = CollectionSummary & { folderId: string | null };
+type Entry = LibraryEntry;
 
-type SortColumn = "name" | "games" | "added";
+type SortColumn = LibraryTreeColumn;
 type Direction = "asc" | "desc";
-const SORT_COLUMNS: readonly SortColumn[] = ["name", "games", "added"];
-const DEFAULT_SORT: SortColumn = "name";
+const SORT_COLUMNS: readonly SortColumn[] = LIBRARY_TREE_COLUMNS;
+const DEFAULT_SORT = LIBRARY_TREE_DEFAULT_SORT;
 /** Which way a column sorts until the reader turns it: names A to Z, counts and dates high first. */
-const defaultDirection = (column: SortColumn): Direction => (column === "name" ? "asc" : "desc");
+const defaultDirection = libraryTreeFirstDirection;
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
@@ -98,72 +92,10 @@ const byKey =
 /** A collection's download stem — its name as a file name. */
 const stemOf = (name: string, fallback: string) => slugify(name) || fallback;
 
-function Action({
-  label,
-  testId,
-  onClick,
-  to,
-  children,
-}: {
-  label: string;
-  testId: string;
-  onClick?: () => void;
-  to?: string;
-  children: ReactNode;
-}) {
-  return (
-    <Tooltip title={label}>
-      {to === undefined ? (
-        <IconButton size="small" aria-label={label} data-testid={testId} onClick={onClick}>
-          {children}
-        </IconButton>
-      ) : (
-        <IconButton size="small" aria-label={label} data-testid={testId} component={RouterLink} to={to}>
-          {children}
-        </IconButton>
-      )}
-    </Tooltip>
-  );
-}
-
-/** Move to… for a collection: the shared folder picker, the top level its "none". */
-function CollectionMoveDialog({
-  collection,
-  folders,
-  onMove,
-  onClose,
-}: {
-  collection: Entry | null;
-  folders: readonly GameFolder[];
-  onMove: (folderId: string | null) => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <Dialog open={collection !== null} onClose={onClose} fullWidth maxWidth="xs" data-testid="library-collection-move-dialog">
-      <DialogTitle>{t("library.folder.moveCollection")}</DialogTitle>
-      <DialogContent>
-        <FolderPicker
-          labelKey="library"
-          idPrefix="library-folder"
-          folders={folders}
-          value={collection?.folderId ?? null}
-          onChange={onMove}
-          noneLabel={t("library.folder.topLevel")}
-          noneTestId="library-collection-move-top"
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} data-testid="library-collection-move-cancel">
-          {t("library.folder.cancel")}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
 function LibraryHome() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  // The header's title is the page's `h1` (CTA-112).
+  useOwnPageHeading();
   const navigate = useNavigate();
   const uploaded = useUploadedCollections();
   const readerFolders = useLibraryFolders();
@@ -289,7 +221,13 @@ function LibraryHome() {
   const [movingFolder, setMovingFolder] = useState<GameFolder | null>(null);
   const [movingCollection, setMovingCollection] = useState<Entry | null>(null);
   const [deletingFolder, setDeletingFolder] = useState<GameFolder | null>(null);
-  const [deleting, setDeleting] = useState<CollectionSummary | null>(null);
+  const [deleting, setDeletingState] = useState<CollectionSummary | null>(null);
+  // The collection asked about, held past the dialog's close so its closing transition keeps the words.
+  const [askedCollection, setAskedCollection] = useState<CollectionSummary | null>(null);
+  const setDeleting = (collection: CollectionSummary | null) => {
+    if (collection !== null) setAskedCollection(collection);
+    setDeletingState(collection);
+  };
 
   const collectionsUnder = (folder: GameFolder) => gamesInFolder(entries, allFolders, folder.id);
 
@@ -316,232 +254,77 @@ function LibraryHome() {
     else setDeletingFolder(row.folder);
   };
 
-  const dateFormat = useMemo(() => new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" }), [i18n.language]);
-  const dateOf = (iso: string | undefined) => {
-    if (iso === undefined || iso === "") return "—";
-    const date = new Date(iso);
-    return Number.isNaN(date.getTime()) ? "—" : dateFormat.format(date);
-  };
-
-  const columns: FolderTreeColumn<Entry>[] = [
-    {
-      id: "games",
-      label: t("library.columns.games"),
-      sortable: true,
-      align: "right",
-      render: (row) => (row.kind === "folder" ? row.size : row.item.count).toLocaleString(i18n.language),
-    },
-    {
-      id: "added",
-      label: t("library.columns.added"),
-      sortable: true,
-      render: (row) => dateOf(row.kind === "folder" ? row.folder.savedAt : row.item.addedAt),
-    },
-  ];
-
-  const actionsOf = (row: FolderTreeRow<Entry>) => {
-    if (row.kind === "folder") {
-      const { folder } = row;
-      const own = folder.id !== BUILT_IN_FOLDER_ID;
-      return (
-        <Box data-testid={`library-folder-actions-${folder.id}`} sx={{ display: "flex", gap: 0.25 }}>
-          {own && (
-            <Action
-              label={t("library.folder.uploadHere")}
-              testId={`library-folder-upload-${folder.id}`}
-              to={`/library/new?folder=${encodeURIComponent(folder.id)}`}
-            >
-              <UploadFileRoundedIcon fontSize="small" />
-            </Action>
-          )}
-          {own && (
-            <Action
-              label={t("library.folder.newSubFolder")}
-              testId={`library-folder-new-${folder.id}`}
-              onClick={() => setNaming({ parentId: folder.id })}
-            >
-              <CreateNewFolderRoundedIcon fontSize="small" />
-            </Action>
-          )}
-          <Action
-            label={t("library.folder.download")}
-            testId={`library-folder-download-${folder.id}`}
-            onClick={() => void downloadFolder(folder)}
-          >
-            <DownloadRoundedIcon fontSize="small" />
-          </Action>
-          {own && (
-            <Action
-              label={t("library.folder.renameFolder")}
-              testId={`library-folder-rename-${folder.id}`}
-              onClick={() => setNaming({ folder })}
-            >
-              <DriveFileRenameOutlineRoundedIcon fontSize="small" />
-            </Action>
-          )}
-          {own && (
-            <Action
-              label={t("library.folder.moveTo")}
-              testId={`library-folder-move-${folder.id}`}
-              onClick={() => setMovingFolder(folder)}
-            >
-              <DriveFileMoveRoundedIcon fontSize="small" />
-            </Action>
-          )}
-          {own && (
-            <Action
-              label={t("library.folder.deleteFolder")}
-              testId={`library-folder-delete-${folder.id}`}
-              onClick={() => startDeleteFolder(row)}
-            >
-              <DeleteOutlineRoundedIcon fontSize="small" />
-            </Action>
-          )}
-        </Box>
-      );
-    }
-    const { item } = row;
-    const own = item.source === "uploaded";
-    return (
-      <Box data-testid={`library-collection-actions-${item.id}`} sx={{ display: "flex", gap: 0.25 }}>
-        <Action
-          label={t("library.download")}
-          testId={`library-collection-download-${item.id}`}
-          onClick={() => void download(item)}
-        >
-          <DownloadRoundedIcon fontSize="small" />
-        </Action>
-        {own && (
-          <Action
-            label={t("library.folder.moveTo")}
-            testId={`library-collection-move-${item.id}`}
-            onClick={() => setMovingCollection(item)}
-          >
-            <DriveFileMoveRoundedIcon fontSize="small" />
-          </Action>
-        )}
-        {own && (
-          <Action
-            label={t("library.delete")}
-            testId={`library-collection-delete-${item.id}`}
-            onClick={() => setDeleting(item)}
-          >
-            <DeleteOutlineRoundedIcon fontSize="small" />
-          </Action>
-        )}
-      </Box>
-    );
-  };
-
   const setText = (value: string) => setState({ q: value });
   const hrefOf = (collection: Entry) => `/library/${encodeURIComponent(collection.id)}`;
 
   return (
     <>
-      <Box
-        data-testid="library-screen"
-        sx={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}
-      >
-        <Box
-          sx={{
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            pb: 1.5,
-            mb: 0.5,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-          }}
+      <Box data-testid="library-screen" sx={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <ListScreenHeader
+          title={t("library.title")}
+          count={
+            // The count keeps the id the Library's tests have always read it by.
+            <span data-testid="library-count">
+              {needle === "" ? t("library.count", { count: total }) : t("library.shown", { shown: shownItems, count: total })}
+            </span>
+          }
+          actions={
+            <>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<CreateNewFolderRoundedIcon />}
+                onClick={() => setNaming({ parentId: null })}
+                disabled={readerFolders === undefined}
+                data-testid="library-new-folder"
+              >
+                {t("library.folder.newFolder")}
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<UploadFileRoundedIcon />}
+                component={RouterLink}
+                to="/library/new"
+                data-testid="library-add"
+              >
+                {t("library.add")}
+              </Button>
+            </>
+          }
+          testId="library-header"
         >
-          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <Typography variant="subtitle1" component="h1" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
-              {t("library.title")}
-            </Typography>
-            <Typography
-              data-testid="library-count"
-              variant="caption"
-              sx={{ display: "block", color: "text.secondary" }}
-            >
-              {needle === ""
-                ? t("library.count", { count: total })
-                : t("library.shown", { shown: shownItems, count: total })}
-            </Typography>
-          </Box>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<CreateNewFolderRoundedIcon />}
-            onClick={() => setNaming({ parentId: null })}
-            disabled={readerFolders === undefined}
-            data-testid="library-new-folder"
-          >
-            {t("library.folder.newFolder")}
-          </Button>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<UploadFileRoundedIcon />}
-            component={RouterLink}
-            to="/library/new"
-            data-testid="library-add"
-          >
-            {t("library.add")}
-          </Button>
-        </Box>
-        <Box sx={{ flexShrink: 0, display: "flex", py: 1 }}>
-          <TextField
-            size="small"
+          <SearchField
             label={t("library.filter")}
             value={text}
-            onChange={(event) => setText(event.target.value)}
-            slotProps={{ htmlInput: { "data-testid": "library-filter" } }}
-            sx={{ flex: 1 }}
+            onChange={setText}
+            clearLabel={t("library.filterClear")}
+            testId="library-filter"
           />
-        </Box>
+        </ListScreenHeader>
         {/* The one region that scrolls: the shell scrolls nothing in the square. */}
-        <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-          <FolderTreeTable<Entry>
-            testId="library-collections"
-            rows={rows}
-            nameLabel={t("library.columns.name")}
-            columns={columns}
-            actionsLabel={t("library.columns.actions")}
-            sort={sort}
-            direction={direction}
-            onSort={sortBy}
-            folderName={folderLabel}
-            itemName={(entry) => entry.name}
-            hrefOf={hrefOf}
-            onOpenItem={(entry) => navigate(hrefOf(entry))}
-            onToggle={toggle}
-            toggleLabel={(folder, isOpen) =>
-              t(isOpen ? "library.folder.collapse" : "library.folder.expand", { name: folderLabel(folder) })
-            }
-            actionsOf={actionsOf}
-            rowTestId={(row) =>
-              row.kind === "folder" ? `library-folder-${row.folder.id}` : `library-row-${row.item.id}`
-            }
-            linkTestId={(entry) => `library-collection-${entry.id}`}
-            folderIcon={(folder) =>
-              folder.id === BUILT_IN_FOLDER_ID ? (
-                <FolderSpecialRoundedIcon fontSize="small" color="primary" />
-              ) : (
-                <FolderRoundedIcon fontSize="small" />
-              )
-            }
-            itemIcon={() => <TableChartOutlinedIcon fontSize="small" />}
-          />
-          {rows.length === 0 && (
-            <Typography
-              data-testid="library-no-matches"
-              variant="body2"
-              sx={{ color: "text.secondary", textAlign: "center", py: 4 }}
-            >
-              {t("library.noMatches")}
-            </Typography>
-          )}
-        </Box>
+        <CollectionsTreeTable
+          rows={rows}
+          sort={{ column: sort, direction }}
+          onSort={sortBy}
+          onToggle={toggle}
+          collectionLink={(entry) => ({ component: RouterLink, to: hrefOf(entry) })}
+          onOpenCollection={(entry) => navigate(hrefOf(entry))}
+          builtInFolderId={BUILT_IN_FOLDER_ID}
+          actions={{
+            uploadLink: (folder) => ({ component: RouterLink, to: `/library/new?folder=${encodeURIComponent(folder.id)}` }),
+            onNewFolder: (folder) => setNaming({ parentId: folder.id }),
+            onDownloadFolder: (folder) => void downloadFolder(folder),
+            onRenameFolder: (folder) => setNaming({ folder }),
+            onMoveFolder: setMovingFolder,
+            onDeleteFolder: startDeleteFolder,
+            onDownloadCollection: (collection) => void download(collection),
+            onMoveCollection: setMovingCollection,
+            onDeleteCollection: setDeleting,
+          }}
+          filtered={needle !== ""}
+          testId="library-collections"
+        />
       </Box>
       <RightPanel>
         <Typography variant="body2" sx={{ color: "text.secondary" }}>
@@ -549,8 +332,6 @@ function LibraryHome() {
         </Typography>
       </RightPanel>
       <FolderNameDialog
-        labelKey="library"
-        idPrefix="library-folder"
         open={naming !== null}
         title={t(naming !== null && "folder" in naming ? "library.folder.renameFolder" : "library.folder.newFolder")}
         initial={naming !== null && "folder" in naming ? naming.folder.name : ""}
@@ -567,70 +348,79 @@ function LibraryHome() {
           });
         }}
         onClose={() => setNaming(null)}
+        labels={{ name: t("library.folder.name"), cancel: t("library.folder.cancel"), save: t("library.folder.save") }}
+        testId="library-folder"
       />
       <FolderMoveDialog
-        labelKey="library"
-        idPrefix="library-folder"
         open={movingFolder !== null}
         folders={folders}
-        folder={movingFolder}
-        currentParentName={t("library.folder.topLevel")}
+        current={movingFolder?.parentId ?? null}
+        exclude={movingFolder === null ? undefined : [...gameFolderSubtree(folders, movingFolder.id)]}
         onMove={(parentId) => {
           if (movingFolder !== null) void moveLibraryFolder(movingFolder.id, parentId);
           setMovingFolder(null);
         }}
         onClose={() => setMovingFolder(null)}
+        labels={{
+          title: t("library.folder.moveFolder"),
+          cancel: t("library.folder.cancel"),
+          none: t("library.folder.topLevel"),
+          untitled: t("library.folder.untitled"),
+          picker: t("library.folder.picker"),
+        }}
+        testId="library-folder"
       />
-      <CollectionMoveDialog
-        collection={movingCollection}
+      <FolderMoveDialog
+        open={movingCollection !== null}
         folders={folders}
+        current={movingCollection?.folderId ?? null}
         onMove={(folderId) => {
           if (movingCollection !== null) void moveCollection(movingCollection.id, folderId);
           setMovingCollection(null);
         }}
         onClose={() => setMovingCollection(null)}
+        labels={{
+          title: t("library.folder.moveCollection"),
+          cancel: t("library.folder.cancel"),
+          none: t("library.folder.topLevel"),
+          untitled: t("library.folder.untitled"),
+          picker: t("library.folder.picker"),
+        }}
+        testId="library-collection"
+        pickerTestId="library-folder-picker"
       />
       <FolderDeleteDialog
-        labelKey="library"
-        idPrefix="library-folder"
         open={deletingFolder !== null}
-        folder={deletingFolder}
-        games={deletingFolder === null ? 0 : collectionsUnder(deletingFolder).length}
-        subFolders={deletingFolder === null ? 0 : gameFolderChildren(folders, deletingFolder.id).length}
+        title={`${t("library.folder.deleteFolder")}: ${deletingFolder?.name ?? ""}`}
+        message={t("library.folder.deleteConfirm")}
+        counts={t("library.folder.deleteCounts", {
+          games: deletingFolder === null ? 0 : collectionsUnder(deletingFolder).length,
+          subFolders: deletingFolder === null ? 0 : gameFolderChildren(folders, deletingFolder.id).length,
+        })}
+        confirmLabel={t("library.folder.deleteFolder")}
+        cancelLabel={t("library.folder.cancel")}
         onConfirm={() => {
           if (deletingFolder !== null) void removeLibraryFolder(deletingFolder.id);
         }}
         onClose={() => setDeletingFolder(null)}
+        testId="library-folder"
       />
-      <Dialog
+      <ConfirmDialog
         open={deleting !== null}
         onClose={() => setDeleting(null)}
-        data-testid="library-delete-dialog"
-      >
-        {deleting !== null && (
-          <>
-            <DialogTitle>{t("library.confirmDelete.title", { name: deleting.name })}</DialogTitle>
-            <DialogContent>
-              <DialogContentText>
-                {t("library.confirmDelete.body", { count: deleting.count })}
-              </DialogContentText>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setDeleting(null)}>{t("library.confirmDelete.cancel")}</Button>
-              <Button
-                color="error"
-                data-testid="library-delete-confirm"
-                onClick={async () => {
-                  await removeCollection(deleting.id);
-                  setDeleting(null);
-                }}
-              >
-                {t("library.confirmDelete.confirm")}
-              </Button>
-            </DialogActions>
-          </>
-        )}
-      </Dialog>
+        onConfirm={async () => {
+          if (deleting === null) return;
+          await removeCollection(deleting.id);
+          setDeleting(null);
+        }}
+        title={t("library.confirmDelete.title", { name: askedCollection?.name ?? "" })}
+        message={t("library.confirmDelete.body", { count: askedCollection?.count ?? 0 })}
+        confirmLabel={t("library.confirmDelete.confirm")}
+        cancelLabel={t("library.confirmDelete.cancel")}
+        tone="destructive"
+        testId="library-delete-dialog"
+        confirmTestId="library-delete-confirm"
+      />
     </>
   );
 }

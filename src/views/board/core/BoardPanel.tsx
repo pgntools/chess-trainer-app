@@ -1,10 +1,12 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
-import Tab from "@mui/material/Tab";
-import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
+
+import { visuallyHidden } from "../../../design-system/components/a11y";
+import { FeedbackStrip } from "../../../design-system/components/feedback";
+import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 import { formatScore, type Analysis } from "../../../lib/engineAnalysis";
 import type { PieceMask } from "../../../lib/pieceMask";
 import BestVariations from "../../shared/BestVariations";
@@ -179,6 +181,12 @@ function BoardPanel({
   onFlip,
 }: BoardPanelProps) {
   const { t } = useTranslation();
+  /*
+    Each tab names its panel and the panel its tab (CTA-112), so a screen
+    reader entering the region hears "Moves, tab panel". Ids from `useId`:
+    `testId` is unique per screen, not per page.
+  */
+  const idBase = useId();
 
   const hasEngine = analysis !== undefined;
   const topLine = analysis?.lines.find((line) => line !== undefined);
@@ -232,7 +240,7 @@ function BoardPanel({
   const region = (tab: BoardPanelTab, visible: boolean) => (
     <Box
       key={tab.id}
-      role="tabpanel"
+      {...tabPanelProps(idBase, tab.id)}
       data-tab-region={tab.id}
       hidden={!visible}
       data-testid={`${testId}-content-${tab.id}`}
@@ -244,6 +252,10 @@ function BoardPanel({
         ...(visible ? {} : { display: "none" }),
       }}
     >
+      {/* The open tab's heading in the page's outline (CTA-113) — out of sight, the strip shows it. */}
+      <Typography component="h2" sx={visuallyHidden}>
+        {tab.label}
+      </Typography>
       {tab.content}
     </Box>
   );
@@ -280,21 +292,11 @@ function BoardPanel({
         that has no engine to be off.
       */}
       {hasEngine && engineOn && showVariations && (
-        <Box
-          data-testid={`${testId}-variations`}
-          sx={{
-            flexShrink: 0,
-            maxHeight: "40%",
-            overflowY: "auto",
-            bgcolor: "background.paper",
-            border: "1px solid",
-            borderColor: "divider",
-            borderRadius: 1,
-            px: 1,
-            pt: 0.75,
-            pb: 0.5,
-          }}
-        >
+        <FeedbackStrip tone="neutral" maxHeight="40%" testId={`${testId}-variations`}>
+          {/* The page's outline (CTA-113): the engine's lines, a heading a screen reader can jump to. */}
+          <Typography component="h2" sx={visuallyHidden}>
+            {t("variations.title")}
+          </Typography>
           <BestVariations
             analysis={analysis}
             requested={requestedMultiPv}
@@ -303,36 +305,18 @@ function BoardPanel({
             initialShowLines={initialShowLines}
             onShowLinesChange={setLinesShown}
           />
-        </Box>
+        </FeedbackStrip>
       )}
 
-      <Tabs
+      <PanelTabs
+        tabs={tabs.map((tab) => ({ id: tab.id, label: tab.label, disabled: tab.disabled }))}
         value={active?.id ?? false}
-        onChange={(_event, next: string) => onTabChange(next)}
-        variant="fullWidth"
-        sx={{
-          flexShrink: 0,
-          minHeight: 36,
-          borderBottom: "1px solid",
-          borderColor: "divider",
-          "& .MuiTab-root": {
-            minHeight: 36,
-            textTransform: "none",
-            minWidth: 0,
-            px: 1,
-          },
-        }}
-      >
-        {tabs.map((tab) => (
-          <Tab
-            key={tab.id}
-            value={tab.id}
-            label={tab.label}
-            disabled={tab.disabled}
-            data-testid={`${testId}-tab-${tab.id}`}
-          />
-        ))}
-      </Tabs>
+        onChange={onTabChange}
+        ariaLabel={t("gamePanel.tabs")}
+        idPrefix={idBase}
+        tabTestIdPrefix={testId}
+        testId={`${testId}-tabs`}
+      />
 
       {/*
         The one line of status that belongs above every tab: the evaluation of

@@ -35,6 +35,12 @@ const en = {
     settingsImport: "Import",
     /** Settings' Storage tab (CTA-94), in the Settings folder. */
     settingsStorage: "Storage",
+    /** Settings' Appearance tab (CTA-107), in the Settings folder. */
+    settingsAppearance: "Appearance",
+    /** The dev-only design gallery (CTA-107), in the Development folder. */
+    designSystem: "Design system",
+    /** The dev-only theme editor (CTA-115), in the Development folder. */
+    themeEditor: "Theme editor",
     /** Sidebar folders — groupings over the routes, never routes themselves. */
     folders: {
       engine: "Engine",
@@ -48,12 +54,64 @@ const en = {
       library: "Library",
       /** The app's own settings (CTA-86) — one screen per tab. */
       settings: "Settings",
+      /** The dev-only Development section (`chessboard.md` §9.5). */
+      development: "Development",
     },
   },
   /** The index screen — a landing page linking out to the real screens. */
   home: {
     title: "Get started",
     subtitle: "Pick a board or tool to open.",
+  },
+  /**
+   * Each screen's name (CTA-112) — its route's `handle.title`: the page title
+   * ("Lobby — Chess Trainer App", the open record's name before it), the
+   * `main` landmark's name and the page's `h1`.
+   */
+  pages: {
+    home: "Home",
+    playWithEngine: "Play with Engine",
+    lobby: "Lobby",
+    maskedPieces: "Masked Pieces",
+    analysisBoard: "Analysis Board",
+    savedAnalyses: "Saved analyses",
+    analysisSettings: "Analysis settings",
+    openings: "Openings explorer",
+    repertoires: "My repertoires",
+    newRepertoire: "New repertoire",
+    repertoire: "Repertoire",
+    repertoireSettings: "Repertoire settings",
+    repertoireGame: "Repertoire game",
+    library: "Library",
+    addCollection: "Add collection",
+    collection: "Collection",
+    libraryGame: "Library game",
+    settings: "Settings",
+    designSystem: "Design system",
+    themeEditor: "Theme editor",
+  },
+  /** The app shell's own words for a screen reader (CTA-112). */
+  shell: {
+    /** The first stop of the tab order: straight to the screen. */
+    skipToMain: "Skip to main content",
+    /** The right-hand panel's landmark name. */
+    sidePanel: "Side panel",
+    /**
+     * The header button that opens the navigation under a narrow window
+     * (CTA-118), where the sidebar is a drawer rather than a rail.
+     */
+    openNav: "Open navigation",
+  },
+  /**
+   * How a composite widget is worked (CTA-112) — read with it by a screen
+   * reader (`aria-describedby`), not shown: a tree's and a table's keys are
+   * not a web page's.
+   */
+  hints: {
+    tree: "Up and down arrows to move, right to open, left to close, Enter to go.",
+    table: {
+      sortAndPick: "Sort by a column from its header button. Tick a row's box to pick it.",
+    },
   },
   language: {
     en: "English",
@@ -69,8 +127,12 @@ const en = {
    * `GameInfo.tsx`). Chrome only — SAN itself is language-independent.
    */
   gamePanel: {
+    /** The board panel's tab strip, named (CTA-113). */
+    tabs: "Board panel",
     /** Accessible names for the icon-only board controls. */
     controls: {
+      /** The row's name as a toolbar (CTA-113). */
+      label: "Moves",
       first: "Start position",
       previous: "Previous move",
       next: "Next move",
@@ -78,6 +140,8 @@ const en = {
       flip: "Flip board",
     },
     info: {
+      /** The tag list's accessible name (CTA-113). */
+      title: "Game details",
       empty: "Load a game to see its details.",
       /** Labels for the PGN tags worth naming; anything else shows its raw tag. */
       event: "Event",
@@ -98,6 +162,14 @@ const en = {
     evalBar: "Evaluation",
     capturedByWhite: "Captured by White",
     capturedByBlack: "Captured by Black",
+    /**
+     * The player plates at the strips' left end (CTA-105) — the parts of one
+     * plate's spoken label, each present only when the plate shows it.
+     */
+    playerWhite: "White player",
+    playerBlack: "Black player",
+    playerRating: "rating {{elo}}",
+    playerResult: "result {{result}}",
   },
   /** The engine's lines — `views/shared/BestVariations.tsx`, on three screens. */
   variations: {
@@ -127,7 +199,7 @@ const en = {
       b: "Bishop",
     },
   },
-  /** What `views/shared/OptionSlider.tsx` says about an option it cannot drive. */
+  /** What the engine forms (`blocks/forms`) say about an option they cannot drive. */
   engineOption: {
     /** Shown under a control the running engine build does not have. */
     unsupported: "This engine build has no \"{{option}}\" option.",
@@ -139,6 +211,28 @@ const en = {
     copy: "Copy",
     copied: "Copied",
     copyFailed: "Could not copy — select the text and copy it by hand.",
+  },
+  /**
+   * The saved lists' controls, named for their record (CTA-113) — the saved
+   * analyses, the repertoires and the Library's folders share them, so a
+   * screen reader hears which row a button belongs to.
+   */
+  savedList: {
+    openNamed: "Open {{name}}",
+    selectNamed: "Select {{name}}",
+    settingsNamed: "Settings of {{name}}",
+    clearSelected: "Clear the selection",
+    /** The folder trail's name, read before its steps. */
+    breadcrumb: "Folders",
+    folder: {
+      openNamed: "Open folder {{name}}",
+      newNamed: "New folder in {{name}}",
+      uploadNamed: "Upload a collection into {{name}}",
+      downloadNamed: "Download {{name}} as PGN",
+      renameNamed: "Rename {{name}}",
+      moveNamed: "Move {{name}}",
+      deleteNamed: "Delete {{name}}",
+    },
   },
   /**
    * Piece masking — the Masking tab of Masked Pieces (`views/engine/masked/`,
@@ -267,6 +361,7 @@ const en = {
     },
   },
   commentDialog: {
+    label: "Comment",
     addTitle: "Comment on",
     editTitle: "Edit the comment on",
     placeholder: "What is there to say about this move?",
@@ -279,6 +374,7 @@ const en = {
    * game tree drawn as a tree, in a tab and full screen.
    */
   treeMap: {
+    toolbar: "Map controls",
     title: "Map",
     covered: "Lines covered: {{covered}} of {{total}}",
     label: "The repertoire as a tree: covered lines in green, your way here highlighted",
@@ -446,6 +542,10 @@ const en = {
       /** The reader's side of an Elo cell — an estimate is the engine's alone. */
       unknown: "Unknown",
       rowsPerPage: "Rows per page",
+      /** The table's accessible name (CTA-109). */
+      label: "Your games",
+      /** The row actions' column — named for a screen reader, blank on screen. */
+      actions: "Actions",
     },
     /** The right-hand panel: a new game's options, and the button that starts it. */
     newGame: {
@@ -475,8 +575,14 @@ const en = {
     loading: "Reading your saved games…",
     empty: "No saved games yet. Play a game against the engine and it appears here on its own.",
     storage: "Your games are kept in this browser only. Clearing site data removes them, and they do not follow you to another device.",
-    /** A row's title: the pairing, White first. */
-    players: "{{white}} - {{black}}",
+    /**
+     * What a row is called (CTA-109) — its pick's, its Analysis' and its
+     * Continue's names: the pairing, White first, and the day it was begun,
+     * so no two rows' controls read alike.
+     */
+    rowTitle: "the game {{white}} – {{black}} of {{date}}",
+    /** A row whose PGN will not parse has no pairing to name it by. */
+    unreadableTitle: "the unreadable game of {{date}}",
     human: "Human",
     engine: "Stockfish level {{level}}",
     moves_one: "{{count}} move",
@@ -484,8 +590,9 @@ const en = {
     variations_one: "{{count}} side line",
     variations_other: "{{count}} side lines",
     unreadable: "This game could not be read.",
-    continue: "Continue",
-    analyse: "Analysis",
+    /** A row's two actions (CTA-109), each named by its row — the tooltip says the same. */
+    continueRow: "Continue {{title}}",
+    analyseRow: "Analyse {{title}}",
     /** The row's pick checkbox: tick it to mark the game for the header's delete. */
     pick: "Pick {{title}}",
     /** The pick column's select-all: the rows the table shows, on every page. */
@@ -574,6 +681,8 @@ const en = {
     select: "Select this analysis",
     selectAll: "Select all analyses",
     selected: "{{count}} selected",
+    /** The pager under the list (CTA-113) — the design system's page sizes. */
+    rowsPerPage: "Analyses per page",
     download: "Download selected as PGN",
     deleteSelected: "Delete selected",
     /** Deleting the picks, asked first — the repertoires' dialog with these words. */
@@ -595,6 +704,8 @@ const en = {
       moveFolder: "Move folder",
       /** Filing one analysis — the key the shared move dialog reads. */
       moveGame: "Move analysis",
+      /** The folder list's name in the move dialog (CTA-113). */
+      picker: "Folders",
       deleteFolder: "Delete folder",
       download: "Download this folder as PGN",
       unfiled: "Unfiled",
@@ -648,7 +759,7 @@ const en = {
       confirm: "Save",
     },
     /**
-     * The changes strip over a saved analysis — `RepertoireChangesBar` with
+     * The changes strip over a saved analysis — the `ChangesStrip` block with
      * this block's words (no protection: an analysis has none).
      */
     changes: {
@@ -816,6 +927,7 @@ const en = {
    */
   positionEditor: {
     tabs: {
+      label: "Forms",
       position: "Position",
       fen: "FEN",
       pgn: "PGN",
@@ -917,6 +1029,8 @@ const en = {
       open: "Explore {{eco}} in the Openings explorer",
     },
     book: {
+      /** The list's accessible name (CTA-113). */
+      label: "Book moves",
       /** The explorer lists only moves the book names — this when it has none. */
       empty: "No known continuations from here.",
       /** Above the list — what a click on a row does. */
@@ -952,6 +1066,9 @@ const en = {
    * `.pgn` into `src/data/library/` never touches this catalog.
    */
   library: {
+    filterClear: "Clear the filter",
+    /** How the folder table is worked, read with it (CTA-113). */
+    treeHint: "Tab through each row's chevron, which opens or closes a folder, its link and its actions. Sort by a column from its header button.",
     /** `/library` — the collections. */
     title: "Library",
     count_one: "{{count}} collection",
@@ -1001,10 +1118,14 @@ const en = {
       deleteConfirm:
         "Deleting this folder keeps its contents: its collections and sub-folders move up to the folder it is in.",
       deleteCounts: "This folder holds {{games}} collections and {{subFolders}} sub-folders.",
+      /** The folder list's name in the move dialog (CTA-113). */
+      picker: "Folders",
     },
     /** The table screen — `/library/<collection>`. */
     table: {
       back: "All collections",
+      /** The games table's accessible name (CTA-113). */
+      label: "Games",
       filter: "Filter games",
       result: "Result",
       anyResult: "Any result",
@@ -1110,6 +1231,7 @@ const en = {
         save: "Save tree as PGN",
         saveDialog: {
           title: "Should we add games number as tag?",
+          mode: "The games' counts",
           no: "No",
           tags: "Add tags",
           games: "\"games\" tag",
@@ -1265,6 +1387,56 @@ const en = {
     },
   },
   /**
+   * The **tournament tables** (CTA-120) — the Swiss standings and the
+   * round-robin crosstable (`src/blocks/tables/`). Built ahead of the
+   * tournaments section: only the dev gallery shows them yet.
+   */
+  tournament: {
+    /** The headings: an abbreviation in view, its `…Name` read in its place and shown on hover. */
+    columns: {
+      rank: "#",
+      rankName: "Rank",
+      player: "Player",
+      rating: "Rtg",
+      ratingName: "Rating",
+      points: "Pts",
+      pointsName: "Points",
+      buchholz: "BH",
+      buchholzName: "Buchholz",
+      sonnebornBerger: "SB",
+      sonnebornBergerName: "Sonneborn-Berger",
+    },
+    /** A round column's full name — its header shows the number alone. */
+    round: "Round {{round}}",
+    /**
+     * A result's words, read in its glyph's place: the round, the colour
+     * played, the opponent and the result. `…NoRound` is a game whose Round
+     * tag names none.
+     */
+    game: {
+      white: "Round {{round}}, White against {{opponent}}: {{result}}",
+      black: "Round {{round}}, Black against {{opponent}}: {{result}}",
+      whiteNoRound: "White against {{opponent}}: {{result}}",
+      blackNoRound: "Black against {{opponent}}: {{result}}",
+    },
+    result: {
+      win: "win",
+      draw: "draw",
+      loss: "loss",
+      unfinished: "unfinished",
+    },
+    /** A round, or a pair, the file holds no game of — not a bye: the tables show what the file has. */
+    noGame: "Round {{round}}: no game in the file",
+    noGameAgainst: "No game against {{opponent}} in the file",
+    /** Under the table: what the two glyphs that are not numbers mean. */
+    legend: {
+      unfinished: "unfinished game",
+      none: "no game in the file",
+    },
+    loading: "Reading the tournament…",
+    empty: "No games to show.",
+  },
+  /**
    * The **Repertoires** section (CTA-61) — the reader's own opening
    * repertoires, brought in as a `.pgn` file or pasted text, listed like the
    * saved screens and read on the unified v2 board. The list reuses the
@@ -1278,6 +1450,8 @@ const en = {
     empty:
       "No repertoires yet. Add one from a .pgn file, or paste its PGN, and it appears here.",
     hint: "Your own opening repertoires. Open one to read its lines on the board, side lines and all, with the engine beside you.",
+    /** The right-hand panel's heading (CTA-113) — the page's outline has one under the list's title. */
+    panelTitle: "About repertoires",
     storage:
       "Repertoires are kept in this browser only. Clearing site data removes them, and they do not follow you to another device.",
     /** A repertoire whose tags carry no name and the reader typed none. */
@@ -1419,6 +1593,8 @@ const en = {
     /** The games a repertoire is played as (CTA-63) — `lib/repertoireGames.ts`. */
     games: {
       open: "Games",
+      /** The button on a list's row or card, named for its repertoire (CTA-113). */
+      openNamed: "Games of {{name}}",
       end: { title: "Get to the end" },
       backtrack: { title: "Backtracking" },
     },
@@ -1527,6 +1703,7 @@ const en = {
       export: "Export",
       import: "Import",
       storage: "Storage",
+      appearance: "Appearance",
     },
     /** The Export tab: the reader's data as PGN files and a manifest, in one zip. */
     export: {
@@ -1553,6 +1730,8 @@ const en = {
       intro:
         "Bring back a .zip made by Export — here or in another browser. You choose what to import and what happens where a folder is already here; nothing is written until you confirm.",
       choose: "Choose a .zip",
+      /** The import's progress bar, named for a screen reader (CTA-109). */
+      progress: "Import progress",
       reading: "Reading the file…",
       working: "Importing…",
       indexing: "Indexing “{{name}}”: {{done}} of {{total}} games",
@@ -1632,6 +1811,9 @@ const en = {
         title: "Browser storage",
         usage: "Origin usage (estimate)",
         indexedDb: "IndexedDB usage (estimate)",
+        /** The two columns' headers (CTA-109) — every column of a table is named. */
+        measure: "Measure",
+        size: "Size",
         /** Where the quota went: the reader's own look-up. */
         quotaNote: "The storage quota is not shown here; to see it, open your browser's developer tools.",
       },
@@ -1653,6 +1835,24 @@ const en = {
         "Payload sizes are this app's own estimate of what its records hold — not disk usage. The browser may compress, deduplicate and add index overhead, so they do not sum to the storage it reports.",
       panel:
         "Nothing here is written or removed. The browser's figures are its own estimates for the whole origin; the per-category sizes are this app's estimate of what your records hold, which the browser may store differently on disk. The built-in collections are files fetched over the network, not records in your browser, so they count towards the origin usage only.",
+    },
+    /** The Appearance tab (CTA-107): the reader's theme. */
+    appearance: {
+      intro:
+        "Choose how the app looks. A theme restyles every screen and every board at once, and is remembered on this device.",
+      theme: "Theme",
+      /** Light and dark are not a theme: they are the header's switch, under every theme. */
+      modeNote: "Light and dark are the switch in the header; every theme has both.",
+    },
+  },
+  /** The registered themes' names (`src/design-system/themes/`, CTA-107). */
+  appearance: {
+    themes: {
+      default: "Default",
+      brown: "Brown",
+      green: "Green",
+      "high-contrast": "High contrast",
+      console: "Console",
     },
   },
   footer: {

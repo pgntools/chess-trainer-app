@@ -5,6 +5,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { useChessTokens } from "../../../design-system/theme";
 import { lastMoveSquareStyles } from "../../../lib/gameNavigation";
 import {
   fenAtNode,
@@ -185,6 +186,7 @@ export const useTreeNavigation = (
   }, [goToPly, lastPly, ply, tree, selected]);
 
   const current = findNode(tree, selected);
+  const { lastMove } = useChessTokens();
 
   return {
     nodeId: selected,
@@ -195,10 +197,11 @@ export const useTreeNavigation = (
     /*
       A fresh map every render, and the whole set for this position. Styles
       passed through `options.squareStyles` are external and the board never
-      clears them itself (`.claude/rules/chessboard.md` §3.3).
+      clears them itself (`.claude/rules/chessboard.md` §3.3). In the
+      theme's last-move colour (CTA-107).
     */
     squareStyles:
-      current === null ? {} : lastMoveSquareStyles(current.from, current.to),
+      current === null ? {} : lastMoveSquareStyles(current.from, current.to, lastMove),
     goToNode,
     goToPly,
   };

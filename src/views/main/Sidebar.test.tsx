@@ -9,6 +9,7 @@ import SideBar from "./Sidebar";
 import { navItemsInFolder } from "./navItems";
 import { navFolders, type NavFolder } from "./navFolders";
 import { folderPath, navLabel, navTree, type NavTreeNode } from "./navTree";
+import { expectNoAxeViolations } from "../../test/axe";
 
 const renderAt = (path: string, tree?: NavTreeNode[]) =>
   render(
@@ -588,5 +589,50 @@ describe("the sidebar mirrors under RTL", () => {
     );
     expect(screenRow.cache).toBe("muiltr");
     expect(indent(screenRow.css)).toBeGreaterThan(0);
+  });
+});
+
+describe("a valid list at every depth (CTA-112)", () => {
+  it("nests an open folder's rows in a list of their own, inside its item", () => {
+    renderAt(ADD_COLLECTION);
+    const link = screen.getByRole("link", { name: i18n.t("nav.addCollection") });
+    const item = link.closest("li");
+    expect(item?.parentElement?.tagName).toBe("UL");
+    // That list sits in the folder's own item.
+    expect(item?.parentElement?.closest("li")).toContainElement(libraryFolder());
+    expect(screen.getAllByRole("list").length).toBeGreaterThan(2);
+  });
+
+  it("passes axe with folders open, two levels down too, and React warns of no nesting", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const deep: NavTreeNode[] = [
+      {
+        kind: "folder",
+        id: "outer",
+        label: { en: "Outer", he: "חיצוני" },
+        icon: GridViewRoundedIcon,
+        children: [
+          {
+            kind: "folder",
+            id: "inner",
+            label: { en: "Inner", he: "פנימי" },
+            icon: GridViewRoundedIcon,
+            children: [{ kind: "screen", id: "/deep", to: "/deep", label: { en: "Deep", he: "עמוק" }, icon: GridViewRoundedIcon }],
+          },
+        ],
+      },
+    ];
+    renderAt("/deep", deep);
+    expect(screen.getByRole("link", { name: "Deep" })).toBeVisible();
+    await expectNoAxeViolations();
+    const nesting = error.mock.calls.filter((call) => /cannot be a descendant|cannot contain a nested/.test(String(call[0])));
+    expect(nesting).toEqual([]);
+    error.mockRestore();
+  });
+
+  it("is one landmark — the named nav — not an aside around it", () => {
+    renderAt("/");
+    expect(screen.queryByRole("complementary")).toBeNull();
+    expect(screen.getByRole("navigation", { name: i18n.t("nav.ariaLabel") })).toBeInTheDocument();
   });
 });

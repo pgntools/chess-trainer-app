@@ -1,9 +1,7 @@
 import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
-import IconButton from "@mui/material/IconButton";
 import Link from "@mui/material/Link";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import FirstPageRoundedIcon from "@mui/icons-material/FirstPageRounded";
 import NavigateBeforeRoundedIcon from "@mui/icons-material/NavigateBeforeRounded";
@@ -16,11 +14,15 @@ import type { OpeningTreeNode } from "../../lib/openingTree";
 import { openingTreeToPgn, type OpeningTreePgnTags } from "../../lib/openingTreePgn";
 import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
+import { OpeningTreePgnDialog } from "../../blocks/dialogs";
+import { IconAction } from "../../design-system/components/toolbars";
+import { useChessTokens } from "../../design-system/theme";
+import type { ResultTone } from "../../design-system/themes";
 import { ForceLTR } from "../../theme/ForceLTR";
 import ChanceArrows from "../explorer/ChanceArrows";
+import { useBoardSquareOptions } from "../shared/boardColors";
 import PromotionPicker, { type PromotionChoice } from "../shared/PromotionPicker";
 import { moveSx, sanTokenSx } from "../shared/moveTokenSx";
-import OpeningTreePgnDialog from "./OpeningTreePgnDialog";
 
 /**
  * **The opening-moves filter** (CTA-76) — a small board at the foot of a
@@ -72,9 +74,11 @@ const percent = (part: number, whole: number) => (whole === 0 ? 0 : Math.round((
 
 function ResultBar({ node }: { node: OpeningTreeNode }) {
   const { white, draw, black } = node.results;
+  // The theme's result tones (CTA-107).
+  const tones = useChessTokens().filterBoard;
   const total = white + draw + black;
   if (total === 0) return <Box />;
-  const part = (count: number, bgcolor: string, color: string) =>
+  const part = (count: number, { background: bgcolor, text: color }: ResultTone) =>
     count === 0 ? null : (
       <Box
         sx={{
@@ -96,9 +100,9 @@ function ResultBar({ node }: { node: OpeningTreeNode }) {
     <Box
       sx={{ display: "flex", height: 14, borderRadius: 0.5, overflow: "hidden", border: "1px solid", borderColor: "divider" }}
     >
-      {part(white, "#f5f5f5", "#212121")}
-      {part(draw, "#9e9e9e", "#212121")}
-      {part(black, "#424242", "#f5f5f5")}
+      {part(white, tones.white)}
+      {part(draw, tones.draw)}
+      {part(black, tones.black)}
     </Box>
   );
 }
@@ -116,6 +120,7 @@ type OpeningFilterBoardProps = {
 function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilterBoardProps) {
   const { t } = useTranslation();
   const [orientation, setOrientation] = useState<"white" | "black">("white");
+  const squareOptions = useBoardSquareOptions();
   const [saving, setSaving] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null);
@@ -164,6 +169,8 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
   };
 
   const options: ChessboardOptions = {
+    // The theme's squares (CTA-107).
+    ...squareOptions,
     id: "library-filter-board",
     position: fen,
     boardOrientation: orientation,
@@ -187,42 +194,29 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
         <Typography variant="body2" sx={{ flexGrow: 1, fontWeight: 600 }}>
           {t("library.filters.moves.title")}
         </Typography>
-        <Tooltip title={t("library.filters.moves.reset")}>
-          <span>
-            <IconButton
-              size="small"
-              disabled={line.length === 0}
-              onClick={() => onLine([])}
-              aria-label={t("library.filters.moves.reset")}
-              data-testid="library-filter-moves-reset"
-            >
-              <FirstPageRoundedIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title={t("library.filters.moves.back")}>
-          <span>
-            <IconButton
-              size="small"
-              disabled={line.length === 0}
-              onClick={() => onLine(line.slice(0, -1))}
-              aria-label={t("library.filters.moves.back")}
-              data-testid="library-filter-moves-back"
-            >
-              <NavigateBeforeRoundedIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title={t("library.filters.moves.flip")}>
-          <IconButton
-            size="small"
-            onClick={() => setOrientation((side) => (side === "white" ? "black" : "white"))}
-            aria-label={t("library.filters.moves.flip")}
-            data-testid="library-filter-moves-flip"
-          >
-            <SwapVertRoundedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        <IconAction
+          label={t("library.filters.moves.reset")}
+          disabled={line.length === 0}
+          onClick={() => onLine([])}
+          testId="library-filter-moves-reset"
+        >
+          <FirstPageRoundedIcon fontSize="small" />
+        </IconAction>
+        <IconAction
+          label={t("library.filters.moves.back")}
+          disabled={line.length === 0}
+          onClick={() => onLine(line.slice(0, -1))}
+          testId="library-filter-moves-back"
+        >
+          <NavigateBeforeRoundedIcon fontSize="small" />
+        </IconAction>
+        <IconAction
+          label={t("library.filters.moves.flip")}
+          onClick={() => setOrientation((side) => (side === "white" ? "black" : "white"))}
+          testId="library-filter-moves-flip"
+        >
+          <SwapVertRoundedIcon fontSize="small" />
+        </IconAction>
       </Box>
 
       <ForceLTR sx={{ position: "relative", width: "100%", aspectRatio: "1 / 1" }}>
@@ -265,7 +259,13 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
           {t("library.filters.moves.save")}
         </Link>
       </Box>
-      <OpeningTreePgnDialog open={saving} onClose={() => setSaving(false)} onSave={saveTree} />
+      <OpeningTreePgnDialog
+        open={saving}
+        onClose={() => setSaving(false)}
+        onSave={saveTree}
+        testId="library-filter-moves-save-dialog"
+        partsTestId="library-filter-moves-save"
+      />
 
       {continuations.length === 0 ? (
         <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid="library-filter-moves-end">

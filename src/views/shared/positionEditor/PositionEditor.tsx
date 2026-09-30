@@ -1,16 +1,6 @@
-import {
-  useState,
-  type ChangeEvent,
-  type DragEvent,
-  type FormEvent,
-  type ReactNode,
-} from "react";
-import Alert from "@mui/material/Alert";
-import AlertTitle from "@mui/material/AlertTitle";
+import { useState, type DragEvent, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Tab from "@mui/material/Tab";
-import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
 import GridOnRoundedIcon from "@mui/icons-material/GridOnRounded";
 import RestoreRoundedIcon from "@mui/icons-material/RestoreRounded";
@@ -23,15 +13,18 @@ import {
   type ChessboardOptions,
   type PieceDropHandlerArgs,
 } from "react-chessboard";
+import { FenInput, PgnInput, PositionFields } from "../../../blocks/forms";
+import { InlineAlert } from "../../../design-system/components/feedback";
+import { CopyField, FieldLabel } from "../../../design-system/components/forms";
+import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
+import { ActionBar } from "../../../design-system/components/toolbars";
 import { FenParseError } from "../../../lib/fen";
 import { finalFenOf } from "../../../lib/gameModel";
 import { mainlineGame, type GameTree } from "../../../lib/gameTree";
 import { EmptyPgnError, PgnParseError, parsePgnTrees } from "../../../lib/pgn";
 import { ForceLTR } from "../../../theme/ForceLTR";
-import FenSetup from "./FenSetup";
-import PgnSetup from "./PgnSetup";
+import { useBoardSquareOptions } from "../boardColors";
 import PiecePalette from "./PiecePalette";
-import PositionFields from "./PositionFields";
 import type { PositionEditorState } from "./usePositionEditor";
 
 /**
@@ -117,6 +110,7 @@ function PositionEditor({
   controls,
 }: PositionEditorProps) {
   const { t } = useTranslation();
+  const squareOptions = useBoardSquareOptions();
   const tabs = forms ?? FORM_TAB_IDS;
   const [tab, setTab] = useState<FormTabId>("position");
   /** A `forms` without the current tab reads as its first — the host's list wins. */
@@ -185,20 +179,7 @@ function PositionEditor({
     reader.readAsText(file);
   };
 
-  const onFileChosen = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) loadFromFile(file);
-    // Clear the input so re-picking the same file fires `change` again.
-    event.target.value = "";
-  };
-
-  const onSubmitPgn = (event: FormEvent) => {
-    event.preventDefault();
-    loadPgnText(pgnText);
-  };
-
-  const onLoadFen = (event: FormEvent) => {
-    event.preventDefault();
+  const onLoadFen = () => {
     try {
       editor.loadFen(fenText);
       setFenError(null);
@@ -243,6 +224,8 @@ function PositionEditor({
   };
 
   const chessboardOptions: ChessboardOptions = {
+    // The theme's squares (CTA-107).
+    ...squareOptions,
     id: `${testId}-board`,
     position: editor.fen,
     boardOrientation: editor.orientation,
@@ -318,20 +301,15 @@ function PositionEditor({
       }}
     >
       {editor.problems.length > 0 && (
-        <Alert
-          severity="warning"
-          data-testid={`${testId}-problems`}
-          sx={{ py: 0.5 }}
-        >
-          <AlertTitle sx={{ mb: 0 }}>{t("positionEditor.problems.title")}</AlertTitle>
-          <Box component="ul" sx={{ m: 0, pl: 2 }}>
+        <InlineAlert severity="warning" title={t("positionEditor.problems.title")} dense testId={`${testId}-problems`}>
+          <Box component="ul" sx={{ m: 0, paddingInlineStart: 2 }}>
             {editor.problems.map((problem) => (
               <li key={problem} data-testid={`${testId}-problem-${problem}`}>
                 {t(`positionEditor.problems.${problem}`)}
               </li>
             ))}
           </Box>
-        </Alert>
+        </InlineAlert>
       )}
 
       <ForceLTR
@@ -369,16 +347,9 @@ function PositionEditor({
         The row under the board: the built-in resets, or the host's node —
         which brings its own layout with it.
       */}
-      <Box
-        data-testid={`${testId}-controls`}
-        sx={
-          controls === undefined
-            ? { display: "flex", flexWrap: "wrap", gap: 1 }
-            : undefined
-        }
-      >
-        {controls ??
-          resets.map((reset) => (
+      {controls === undefined ? (
+        <ActionBar testId={`${testId}-controls`}>
+          {resets.map((reset) => (
             <Button
               key={reset.key}
               size="small"
@@ -390,7 +361,11 @@ function PositionEditor({
               {reset.label}
             </Button>
           ))}
-      </Box>
+        </ActionBar>
+      ) : (
+        // The host's node brings its own layout with it.
+        <Box data-testid={`${testId}-controls`}>{controls}</Box>
+      )}
 
       <Typography
         variant="caption"
@@ -401,39 +376,20 @@ function PositionEditor({
       </Typography>
 
       {strip && (
-        <Tabs
+        <PanelTabs
+          tabs={tabs.map((id) => ({ id, label: t(`positionEditor.tabs.${id}`) }))}
           value={activeTab}
-          onChange={(_event, next: FormTabId) => setTab(next)}
-          variant="fullWidth"
-          sx={{
-            minHeight: 36,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            "& .MuiTab-root": {
-              minHeight: 36,
-              textTransform: "none",
-              minWidth: 0,
-              px: 1,
-            },
-          }}
-        >
-          {tabs.map((id) => (
-            <Tab
-              key={id}
-              value={id}
-              label={t(`positionEditor.tabs.${id}`)}
-              data-testid={`${testId}-tab-${id}`}
-            />
-          ))}
-        </Tabs>
+          onChange={(next) => setTab(next as FormTabId)}
+          ariaLabel={t("positionEditor.tabs.label")}
+          idPrefix={`${testId}-forms`}
+          tabTestIdPrefix={testId}
+          testId={`${testId}-forms`}
+        />
       )}
 
       {/* No strip, no tabpanel: with one form there is nothing it would be a
           panel *of*. The test id stays, so a host's tests read the same either way. */}
-      <Box
-        role={strip ? "tabpanel" : undefined}
-        data-testid={`${testId}-tab-content-${activeTab}`}
-      >
+      <Box {...(strip ? tabPanelProps(`${testId}-forms`, activeTab) : {})} data-testid={`${testId}-tab-content-${activeTab}`}>
         {activeTab === "position" && (
           <PositionFields
             testId={testId}
@@ -444,28 +400,62 @@ function PositionEditor({
           />
         )}
         {activeTab === "fen" && (
-          <FenSetup
-            testId={testId}
-            fenText={fenText}
-            onFenTextChange={setFenText}
-            onLoadFen={onLoadFen}
-            error={fenError}
-            currentFen={editor.fen}
-            canCopy={editor.isValid}
-          />
+          <Box data-testid={`${testId}-fen-setup`} sx={{ display: "grid", gap: 2 }}>
+            <Box>
+              <FieldLabel component="span">{t("positionEditor.fen.title")}</FieldLabel>
+              <FenInput
+                label={t("positionEditor.fen.label")}
+                submitLabel={t("positionEditor.fen.load")}
+                value={fenText}
+                onChange={setFenText}
+                onSubmit={onLoadFen}
+                error={fenError}
+                testId={testId}
+              />
+            </Box>
+            {/* What comes out is whatever is on the board, illegal boards
+                included — it is the copy that is off while the position is broken. */}
+            <CopyField
+              label={t("positionEditor.fen.currentFen")}
+              value={editor.fen}
+              copyLabel={t("copyable.copy")}
+              copiedLabel={t("copyable.copied")}
+              failedLabel={t("copyable.copyFailed")}
+              disabled={!editor.isValid}
+              disabledHint={t("positionEditor.problems.blocked")}
+              testId={`${testId}-current-fen`}
+            />
+          </Box>
         )}
         {activeTab === "pgn" && (
-          <PgnSetup
-            testId={testId}
-            games={games}
-            selected={selected}
-            onSelectGame={selectGame}
-            error={pgnError}
-            pgnText={pgnText}
-            onPgnTextChange={setPgnText}
-            onSubmitPgn={onSubmitPgn}
-            onFileChosen={onFileChosen}
-          />
+          <Box data-testid={`${testId}-pgn-setup`}>
+            <FieldLabel component="span">{t("positionEditor.pgn.title")}</FieldLabel>
+            <PgnInput
+              labels={{
+                file: t("positionEditor.pgn.chooseFile"),
+                fileHint: t("positionEditor.pgn.dropHint"),
+                paste: t("positionEditor.pgn.pasteLabel"),
+                pasteHelp: t("positionEditor.pgn.hint"),
+                submit: t("positionEditor.pgn.load"),
+                games: {
+                  title: t("positionEditor.pgn.gamesTitle"),
+                  versus: t("positionEditor.pgn.versus"),
+                  fallback: (index) => t("positionEditor.pgn.gameFallback", { number: index + 1 }),
+                },
+              }}
+              onFiles={(files) => loadFromFile(files[0])}
+              pasted={pgnText}
+              onPastedChange={setPgnText}
+              onSubmit={() => loadPgnText(pgnText)}
+              fileVariant="contained"
+              problem={pgnError === null ? null : { message: pgnError }}
+              games={games}
+              selectedGame={selected}
+              onSelectGame={selectGame}
+              testId={`${testId}-pgn`}
+              testIds={{ input: `${testId}-pgn-file-input`, paste: `${testId}-pgn-input`, problem: `${testId}-pgn-error`, games: `${testId}-game-picker` }}
+            />
+          </Box>
         )}
       </Box>
     </Box>

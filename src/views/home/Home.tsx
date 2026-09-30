@@ -1,12 +1,12 @@
 import { Link as RouterLink } from "react-router";
 import { useTranslation } from "react-i18next";
 import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import CardActionArea from "@mui/material/CardActionArea";
 import Typography from "@mui/material/Typography";
 
+import { CardGrid, IconCard } from "../../design-system/components/cards";
 import { asAppLanguage } from "../../i18n";
 import { navLabel, navTree, type NavTreeNode } from "../main/navTree";
+import { useOwnPageHeading } from "../main/pageTitle";
 
 /**
  * The index screen. There is no board here — with the demo screens gone, `"/"`
@@ -14,7 +14,8 @@ import { navLabel, navTree, type NavTreeNode } from "../main/navTree";
  *
  * It is built from `navTree()`, the same registry the sidebar renders, so a
  * screen or folder added to `navItems` / `navFolders` shows up here for free and
- * nothing lists the routes twice.
+ * nothing lists the routes twice. Each section is a `CardGrid` of
+ * `IconCard`s (the design system's, CTA-113), a card a real link.
  */
 const screensOf = (node: NavTreeNode): NavTreeNode[] =>
   (node.children ?? []).flatMap((child) =>
@@ -30,6 +31,8 @@ const Home = () => {
     renders, resolved the same way. See `navTree.ts`.
   */
   const labelOf = (node: NavTreeNode) => navLabel(node, (key) => t(key), language);
+  // The page's `h1` is this screen's own title (CTA-112).
+  useOwnPageHeading();
 
   return (
     <Box sx={{ height: "100%", overflowY: "auto", p: 1 }}>
@@ -52,42 +55,27 @@ const Home = () => {
           <Box key={node.id} component="section" sx={{ mb: 3 }}>
             <Typography
               variant="overline"
+              component="h2"
               color="text.secondary"
               sx={{ display: "block", mb: 1 }}
             >
               {labelOf(node)}
             </Typography>
 
-            <Box
-              sx={{
-                display: "grid",
-                gap: 1.5,
-                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-              }}
-            >
+            <CardGrid size="medium" testId={`home-section-${node.id}`}>
               {entries.map((entry) => {
                 const Icon = entry.icon;
                 return (
-                  <Card key={entry.to} variant="outlined">
-                    <CardActionArea
-                      component={RouterLink}
-                      to={entry.to as string}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1.5,
-                        p: 1.5,
-                      }}
-                    >
-                      <Icon color="primary" />
-                      <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                        {labelOf(entry)}
-                      </Typography>
-                    </CardActionArea>
-                  </Card>
+                  <IconCard
+                    key={entry.to}
+                    icon={<Icon />}
+                    label={labelOf(entry)}
+                    link={{ component: RouterLink, to: entry.to as string }}
+                    testId={`home-card-${entry.id}`}
+                  />
                 );
               })}
-            </Box>
+            </CardGrid>
           </Box>
         );
       })}

@@ -6,6 +6,7 @@ import type { Score } from "../../../lib/engineAnalysis";
 import { pathTo } from "../../../lib/gameTree";
 import { RightPanel } from "../../main/rightPanel";
 import EngineBoardSquare from "../../shared/EngineBoardSquare";
+import type { PlayerPlates } from "../../shared/PlayerPlate";
 import BoardPanel, { type BoardPanelProps } from "./BoardPanel";
 import type { BoardCore } from "./useBoardCore";
 
@@ -70,6 +71,13 @@ type BoardShellProps = {
   /** Renderers for the captured strips' icons — a mask's costumes, or default. */
   capturedPieces?: PieceRenderObject;
   /**
+   * A player plate at the left end of each captured strip (CTA-105) — the
+   * players' names, Elo ratings and results of the game, keyed by colour so
+   * the orientation decides which plate is at the top. Absent, no board
+   * renders one: only the Library's game board passes it.
+   */
+  playerPlates?: PlayerPlates;
+  /**
    * Whether dragging is allowed at all. An open promotion picker always blocks
    * it — the move it is asking about has not been decided yet — so a screen
    * passing `true` still gets that guard.
@@ -109,6 +117,7 @@ function BoardShell({
   showEvalBar = true,
   boardOptions,
   capturedPieces,
+  playerPlates,
   allowDragging = true,
   hideMaterialDiff = false,
   overlay,
@@ -152,6 +161,7 @@ function BoardShell({
           score={score}
           captured={captured}
           capturedPieces={capturedPieces}
+          playerPlates={playerPlates}
           promotion={core.promotion}
           // The side promoting is the side to move in the position the pawn is
           // being pushed from — on a branching board that is either colour.

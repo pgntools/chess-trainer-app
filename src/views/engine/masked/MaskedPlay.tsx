@@ -1,18 +1,13 @@
 import { useMemo, useState } from "react";
-import Box from "@mui/material/Box";
-import Divider from "@mui/material/Divider";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Switch from "@mui/material/Switch";
-import Typography from "@mui/material/Typography";
 import { createSearchParams, Navigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
+import { MaskEditor } from "../../../blocks/forms";
 import { MASK_PRESETS, type PieceMask } from "../../../lib/pieceMask";
 import type { PlayedGameMask } from "../../../lib/playedGames";
 import PlayScreen, { type PlayScreenMasking } from "../play/PlayScreen";
 import { PlayedGameRead } from "../play/PlayedGameRead";
 import { arrivalOf } from "../play/usePlayGame";
-import MaskEditor from "./MaskEditor";
 
 /**
  * **Masked Pieces** (`/engine/masked`, v2 since CTA-79) — Play with Engine
@@ -35,7 +30,8 @@ import MaskEditor from "./MaskEditor";
  *   hides, so it waits to be asked for. The eval bar and the engine switch
  *   behave as on Play with Engine.
  *
- * All three are edited in a fourth tab, **Masking**. The first two ride on the
+ * All three are edited in a fourth tab, **Masking** — the `MaskEditor` block
+ * (`blocks/forms/`, CTA-109). The first two ride on the
  * saved game's record (`PlayedGameMask`), so Continue in Saved games reopens
  * the game here in the same disguise; the lines switch is the session's.
  *
@@ -83,30 +79,15 @@ function MaskedPlayArrival() {
       id: "masking",
       label: t("masking.tab"),
       content: (
-        <Box sx={{ display: "grid", gap: 2 }}>
-          <MaskEditor
-            mask={mask}
-            onMaskChange={setMask}
-            maskNotation={notation}
-            onMaskNotationChange={setNotation}
-          />
-          <Divider />
-          <Box>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={showLines}
-                  data-testid="mask-setting-lines"
-                  onChange={(event) => setShowLines(event.target.checked)}
-                />
-              }
-              label={t("masking.lines")}
-            />
-            <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
-              {t("masking.linesHint")}
-            </Typography>
-          </Box>
-        </Box>
+        <MaskEditor
+          mask={mask}
+          onMaskChange={setMask}
+          notation={notation}
+          onNotationChange={setNotation}
+          showLines={showLines}
+          onShowLinesChange={setShowLines}
+          testId="mask"
+        />
       ),
     },
   };

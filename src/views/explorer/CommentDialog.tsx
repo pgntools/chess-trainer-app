@@ -1,11 +1,8 @@
 import { useState } from "react";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
 import TextField from "@mui/material/TextField";
 import { useTranslation } from "react-i18next";
+
+import { FormDialog } from "../../design-system/components/dialogs";
 
 /** What a comment dialog is open on: the move, and the text it starts with. */
 export type CommentDraft = {
@@ -28,7 +25,8 @@ export type CommentDraft = {
  * `replaceTree` like every other edit — so it is a session change the Save
  * strip offers to keep, and Discard takes it back.
  *
- * Mounted only while open (`draft !== null`), so each opening starts from
+ * A `FormDialog` (CTA-113): Ctrl / ⌘ + Enter saves, a plain Enter is a new
+ * line. Mounted only while open (`draft !== null`), so each opening starts from
  * its own `initial` without an effect to reset the field.
  */
 function CommentDialog({
@@ -45,51 +43,44 @@ function OpenCommentDialog({ draft, onClose }: { draft: CommentDraft; onClose: (
   const { t } = useTranslation();
   const [text, setText] = useState(draft.initial);
   const adding = draft.initial === "";
-  const save = () => {
-    draft.onSave(text);
-    onClose();
-  };
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm" data-testid="comment-dialog">
-      <DialogTitle>
-        {t(adding ? "commentDialog.addTitle" : "commentDialog.editTitle")}{" "}
-        <span dir="ltr">{draft.label}</span>
-      </DialogTitle>
-      <DialogContent>
-        <TextField
-          autoFocus
-          multiline
-          minRows={3}
-          maxRows={12}
-          fullWidth
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={(event) => {
-            // Ctrl/⌘+Enter saves; a plain Enter is a new line in the comment.
-            if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) save();
-          }}
-          placeholder={t("commentDialog.placeholder")}
-          helperText={t("commentDialog.help")}
-          slotProps={{ htmlInput: { "data-testid": "comment-dialog-text", dir: "auto" } }}
-          sx={{ mt: 0.5 }}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button data-testid="comment-dialog-cancel" onClick={onClose}>
-          {t("commentDialog.cancel")}
-        </Button>
-        <Button
-          variant="contained"
-          data-testid="comment-dialog-save"
-          // Adding nothing is not a change; emptying an existing one deletes it.
-          disabled={adding && text.trim() === ""}
-          onClick={save}
-        >
-          {t("commentDialog.save")}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <FormDialog
+      open
+      onClose={onClose}
+      onSubmit={() => {
+        draft.onSave(text);
+        onClose();
+      }}
+      title={
+        <>
+          {t(adding ? "commentDialog.addTitle" : "commentDialog.editTitle")} <span dir="ltr">{draft.label}</span>
+        </>
+      }
+      submitLabel={t("commentDialog.save")}
+      cancelLabel={t("commentDialog.cancel")}
+      // Adding nothing is not a change; emptying an existing one deletes it.
+      submitDisabled={adding && text.trim() === ""}
+      width="sm"
+      testId="comment-dialog"
+      submitTestId="comment-dialog-save"
+    >
+      <TextField
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- the dialog's field takes the focus as the dialog opens, as WAI-ARIA's dialog pattern asks (ACCESSIBILITY.md)
+        autoFocus
+        multiline
+        minRows={3}
+        maxRows={12}
+        fullWidth
+        // Named, where it had only a placeholder (CTA-113).
+        label={t("commentDialog.label")}
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        placeholder={t("commentDialog.placeholder")}
+        helperText={t("commentDialog.help")}
+        slotProps={{ htmlInput: { "data-testid": "comment-dialog-text", dir: "auto" } }}
+      />
+    </FormDialog>
   );
 }
 

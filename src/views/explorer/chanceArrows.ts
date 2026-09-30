@@ -1,3 +1,4 @@
+import { defaultChessTokens } from "../../design-system/themes";
 import {
   HOVERED_NEXT_MOVE_ARROW_COLOR,
   UNTAGGED_NEXT_MOVE_ARROW_COLOR,
@@ -35,11 +36,18 @@ import {
 /** A point in the overlay's own units — square fractions, `0..8`. */
 export type ChanceArrowPoint = { x: number; y: number };
 
-/** The border of every play-chance arrow — lichess's own magenta. */
-export const CHANCE_ARROW_BORDER_COLOR = "#d500f9";
+/**
+ * The border of every play-chance arrow — lichess's own magenta. The default
+ * theme's `chess.arrows.chanceBorder`; a board passes its own theme's
+ * (CTA-107).
+ */
+export const CHANCE_ARROW_BORDER_COLOR = defaultChessTokens.arrows.chanceBorder;
 
-/** The fill of every play-chance arrow — white, as lichess draws them. */
-export const CHANCE_ARROW_FILL_COLOR = "#ffffff";
+/**
+ * The fill of every play-chance arrow — white, as lichess draws them. The
+ * default theme's `chess.arrows.chanceFill`.
+ */
+export const CHANCE_ARROW_FILL_COLOR = defaultChessTokens.arrows.chanceFill;
 
 /** The hairline — a move the trainer almost never plays. Square units. */
 export const CHANCE_ARROW_MIN_WIDTH = 0.05;
@@ -93,9 +101,12 @@ export type ChanceArrowSpec = {
   opacity: number;
 };
 
+/** The two border colours a play-chance arrow is outlined in — at rest and hovered. */
+export type ChanceArrowBorders = { border: string; hovered: string };
+
 /**
  * The geometry of one arrow — `chance` 0–1, `hovered` the next-moves bar's
- * hover. The widths, opacities and head proportions inside are taste; the
+ * hover, `borders` the theme's colours (CTA-107; absent, the default theme's). The widths, opacities and head proportions inside are taste; the
  * encoding they serve (wider and sharper the likelier) is the contract, and
  * every clamp keeps even a one-square move an arrow: the tail never starts
  * past 30% of the move, the head never eats more than 45% of it, and a head
@@ -107,6 +118,10 @@ export const chanceArrowSpec = (
   orientation: "white" | "black",
   chance: number,
   hovered = false,
+  borders: ChanceArrowBorders = {
+    border: CHANCE_ARROW_BORDER_COLOR,
+    hovered: HOVERED_NEXT_MOVE_ARROW_COLOR,
+  },
 ): ChanceArrowSpec => {
   const a = squareCenterOf(from, orientation);
   const b = squareCenterOf(to, orientation);
@@ -144,9 +159,7 @@ export const chanceArrowSpec = (
       at(tail, half),
     ],
     borderWidth,
-    borderColor: hovered
-      ? HOVERED_NEXT_MOVE_ARROW_COLOR
-      : CHANCE_ARROW_BORDER_COLOR,
+    borderColor: hovered ? borders.hovered : borders.border,
     // The sharper the likelier: the certain arrow is opaque, a rare one fades.
     // A hovered one is the move a click is about to play — full sharpness.
     opacity: hovered ? 1 : 0.6 + 0.4 * c,
@@ -170,16 +183,18 @@ export const UNTAGGED_ARROW_CHANCE = 0.3;
  * width sources): the palette's mainline or side-line colour, fill and
  * border, the sharper the wider (the spec's opacity); a move with no tag
  * (`weight` `null`) gray and half-transparent; the hovered one the palette's
- * hover colour, fully opaque, whichever it is.
+ * hover colour, fully opaque, whichever it is. `untagged` is the theme's
+ * gray (CTA-107; absent, the default theme's).
  */
 export const weightedArrowColors = (
   weight: number | null,
   index: number,
   hovered: boolean,
   palette: NextMoveArrowColors,
+  untagged: string = UNTAGGED_NEXT_MOVE_ARROW_COLOR,
 ): ChanceArrowColors => {
   if (hovered) return { fill: palette.hovered, border: palette.hovered, opacity: 1 };
-  if (weight === null) return { fill: UNTAGGED_NEXT_MOVE_ARROW_COLOR, border: "none", opacity: 1 };
+  if (weight === null) return { fill: untagged, border: "none", opacity: 1 };
   const color = index === 0 ? palette.mainline : palette.sideline;
   return { fill: color, border: color };
 };

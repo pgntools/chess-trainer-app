@@ -1,25 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import IconButton from "@mui/material/IconButton";
-import Switch from "@mui/material/Switch";
-import ToggleButton from "@mui/material/ToggleButton";
-import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
-import Tooltip from "@mui/material/Tooltip";
-import Typography from "@mui/material/Typography";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import FlagRoundedIcon from "@mui/icons-material/FlagRounded";
 import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
 import { createSearchParams, Link as RouterLink, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import { useCurrentOpening } from "../../shared/useCurrentOpening";
+import { CurrentOpening, EngineThinking, PlayToggleButton } from "../../../blocks/panels";
 import type { ChessboardOptions } from "react-chessboard";
 import { DEFAULT_POSITION } from "chess.js";
+
+import { ConfirmDialog } from "../../../design-system/components/dialogs";
+import { StatusText } from "../../../design-system/components/feedback";
+import { SideToggle, SwitchField } from "../../../design-system/components/forms";
+import { BackButton } from "../../../design-system/components/navigation";
+import { IconAction } from "../../../design-system/components/toolbars";
 
 import { isAnyMasked, maskedPieces } from "../../../lib/pieceMask";
 import { PLAY_REFERENCE_KEY } from "../../../lib/gameReference";
@@ -31,9 +26,6 @@ import {
 import type { BoardPanelTab } from "../../board/core/BoardPanel";
 import BoardShell from "../../board/core/BoardShell";
 import { useVariationsExplorer } from "../../explorer/useVariationsExplorer";
-import CurrentOpening from "../../shared/CurrentOpening";
-import EngineThinking from "../../tools/analysis/EngineThinking";
-import PlayToggleButton from "../../tools/analysis/PlayToggleButton";
 import EngineSettings from "./EngineSettings";
 import { usePlayGame, type PlayGameStart } from "./usePlayGame";
 
@@ -79,6 +71,13 @@ import { usePlayGame, type PlayGameStart } from "./usePlayGame";
  * and a switch for the pinned lines. Nothing underneath changes: the core,
  * the engine and the store see the true game.
  *
+ * **Its own controls are the design system's** (CTA-109): the header's
+ * `BackButton`, `SideToggle`, `IconAction`s and `SwitchField`, the Engine
+ * tab's `EngineSettingsForm` block, the footer's `StatusText` lines (the save
+ * problem an `alert`, the result a `status` — both read out as they appear)
+ * and the Replay / Resign `ConfirmDialog` with its contained red confirm. The
+ * board, the panel and the explorer are the board core's, untouched.
+ *
  * **Arrivals, read once** (`arrivalOf`, `usePlayGame.ts`): `?fen=` (a position — the
  * reader plays the side to move, the board facing it) and `?saved=<id>` (a
  * played game, at the node and on the side it was left). Once the game is
@@ -117,6 +116,8 @@ function PlayScreen({
   const costume = masking?.costume;
   const state = usePlayGame(arrival, costume);
   const { core, engine } = state;
+  // The opening on screen, for the panel header (CTA-113: a hook and the `CurrentOpening` block).
+  const currentOpening = useCurrentOpening(core.fen);
 
   /*
     The costume, derived once per mask: the board's and the strips' renderers
@@ -210,49 +211,26 @@ function PlayScreen({
                 board screen — the inline start. An arrow, named by where it
                 goes rather than what it shows.
               */}
-              <Tooltip title={t("playEngine.game.backToLobby")}>
-                <IconButton
-                  size="small"
-                  component={RouterLink}
-                  to="/engine/games"
-                  aria-label={t("playEngine.game.backToLobby")}
-                  data-testid={`${id}-back`}
-                  sx={{ flexShrink: 0 }}
-                >
-                  <ArrowBackRoundedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+              <BackButton
+                label={t("playEngine.game.backToLobby")}
+                link={{ component: RouterLink, to: "/engine/games" }}
+                edge={false}
+                testId={`${id}-back`}
+              />
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                <CurrentOpening fen={core.fen} testId={`${id}-current-opening`} />
+                <CurrentOpening {...currentOpening} testId={`${id}-current-opening`} />
               </Box>
               {/* The reader's side — the board's orientation. A change pauses Play. */}
-              <ToggleButtonGroup
-                exclusive
-                size="small"
-                value={state.settings.playAs}
-                disabled={state.resigned !== undefined}
-                aria-label={t("playEngine.settings.playAs")}
-                data-testid={`${id}-side`}
-                onChange={(_event, next: "white" | "black" | null) => {
-                  if (next) state.updateSettings({ playAs: next });
-                }}
-                sx={{ flexShrink: 0 }}
-              >
-                <ToggleButton
-                  value="white"
-                  data-testid={`${id}-side-white`}
-                  sx={{ py: 0.25, px: 1 }}
-                >
-                  {t("playEngine.settings.white")}
-                </ToggleButton>
-                <ToggleButton
-                  value="black"
-                  data-testid={`${id}-side-black`}
-                  sx={{ py: 0.25, px: 1 }}
-                >
-                  {t("playEngine.settings.black")}
-                </ToggleButton>
-              </ToggleButtonGroup>
+              <Box sx={{ flexShrink: 0 }}>
+                <SideToggle
+                  value={state.settings.playAs}
+                  onChange={(playAs) => state.updateSettings({ playAs })}
+                  disabled={state.resigned !== undefined}
+                  labels={{ white: t("playEngine.settings.white"), black: t("playEngine.settings.black") }}
+                  ariaLabel={t("playEngine.settings.playAs")}
+                  testId={`${id}-side`}
+                />
+              </Box>
               <PlayToggleButton
                 testId={`${id}-play`}
                 engineOn={state.engineOn}
@@ -261,44 +239,33 @@ function PlayScreen({
                 onToggle={state.togglePlaying}
                 disabled={state.resigned !== undefined}
               />
-              <Tooltip title={t("playEngine.game.replay")}>
-                <IconButton
+              <IconAction
+                label={t("playEngine.game.replay")}
+                // Nothing played, nothing to discard: no need to ask.
+                onClick={() => (hasMoves ? setConfirming("replay") : replay())}
+                testId={`${id}-replay`}
+              >
+                <ReplayRoundedIcon fontSize="small" />
+              </IconAction>
+              <IconAction
+                label={t("playEngine.game.resign")}
+                disabled={!state.canResign}
+                onClick={() => setConfirming("resign")}
+                testId={`${id}-resign`}
+              >
+                <FlagRoundedIcon fontSize="small" />
+              </IconAction>
+              <Box sx={{ flexShrink: 0 }}>
+                <SwitchField
                   size="small"
-                  // Nothing played, nothing to discard: no need to ask.
-                  onClick={() => (hasMoves ? setConfirming("replay") : replay())}
-                  aria-label={t("playEngine.game.replay")}
-                  data-testid={`${id}-replay`}
-                  sx={{ flexShrink: 0 }}
-                >
-                  <ReplayRoundedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title={t("playEngine.game.resign")}>
-                <span>
-                  <IconButton
-                    size="small"
-                    disabled={!state.canResign}
-                    onClick={() => setConfirming("resign")}
-                    aria-label={t("playEngine.game.resign")}
-                    data-testid={`${id}-resign`}
-                    sx={{ flexShrink: 0 }}
-                  >
-                    <FlagRoundedIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <FormControlLabel
-                sx={{ flexShrink: 0, marginInlineEnd: 0 }}
-                control={
-                  <Switch
-                    size="small"
-                    checked={state.engineOn}
-                    data-testid={`${id}-setting-engine`}
-                    onChange={(event) => state.setEngineOn(event.target.checked)}
-                  />
-                }
-                label={t("playEngine.settings.engineOn")}
-              />
+                  label={t("playEngine.settings.engineOn")}
+                  checked={state.engineOn}
+                  onChange={state.setEngineOn}
+                  // The screen's tests reach the input inside the switch.
+                  testIdOn="control"
+                  testId={`${id}-setting-engine`}
+                />
+              </Box>
             </>
           ),
           analysis: engine.analysis,
@@ -325,17 +292,12 @@ function PlayScreen({
               label: t("playEngine.tabs.engine"),
               content: (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                  <FormControlLabel
-                    sx={{ m: 0 }}
-                    control={
-                      <Switch
-                        size="small"
-                        checked={showArrows}
-                        data-testid={`${id}-arrows`}
-                        onChange={(event) => setShowArrows(event.target.checked)}
-                      />
-                    }
+                  <SwitchField
+                    size="small"
                     label={t("analysis.settings.arrows")}
+                    checked={showArrows}
+                    onChange={setShowArrows}
+                    testId={`${id}-arrows`}
                   />
                   <EngineSettings
                     settings={state.settings}
@@ -353,14 +315,11 @@ function PlayScreen({
             <>
               {explorer.annotations}
               {state.problem !== null && (
-                <Typography
-                  variant="caption"
-                  role="alert"
-                  data-testid={`${id}-save-problem`}
-                  sx={{ display: "block", color: "error.main", px: 1 }}
-                >
-                  {t("playedGames.problem.storage")}
-                </Typography>
+                <Box sx={{ px: 1 }}>
+                  <StatusText tone="error" testId={`${id}-save-problem`}>
+                    {t("playedGames.problem.storage")}
+                  </StatusText>
+                </Box>
               )}
               {/*
                 The game's ending (CTA-91), lichess's game-over treatment: the
@@ -372,25 +331,17 @@ function PlayScreen({
               */}
               {result !== "*" && (
                 <>
-                  {state.resigned === undefined ? (
-                    <Typography
-                      role="status"
-                      variant="body2"
-                      data-testid={`${id}-ended`}
-                      sx={{ px: 1, py: 0.5, fontWeight: 600 }}
-                    >
-                      {t("playEngine.game.ended", { result })}
-                    </Typography>
-                  ) : (
-                    <Typography
-                      role="status"
-                      variant="body2"
-                      data-testid={`${id}-resigned`}
-                      sx={{ px: 1, py: 0.5, fontWeight: 600 }}
-                    >
-                      {t("playEngine.game.resigned", { result })}
-                    </Typography>
-                  )}
+                  <Box sx={{ px: 1, py: 0.5 }}>
+                    {state.resigned === undefined ? (
+                      <StatusText tone="neutral" emphasis testId={`${id}-ended`}>
+                        {t("playEngine.game.ended", { result })}
+                      </StatusText>
+                    ) : (
+                      <StatusText tone="neutral" emphasis testId={`${id}-resigned`}>
+                        {t("playEngine.game.resigned", { result })}
+                      </StatusText>
+                    )}
+                  </Box>
                   {state.savedId !== null && (
                     <Button
                       component={RouterLink}
@@ -420,35 +371,26 @@ function PlayScreen({
           ),
         }}
       />
-      <Dialog
+      {/* Both game-ending actions ask first — the contained red confirm (CTA-109). */}
+      <ConfirmDialog
         open={confirming !== null}
         onClose={() => setConfirming(null)}
-        data-testid={`${id}-confirm`}
-      >
-        <DialogTitle>{t(`playEngine.game.${confirming ?? "replay"}Confirm.title`)}</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {t(`playEngine.game.${confirming ?? "replay"}Confirm.body`)}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirming(null)}>{t("playEngine.game.cancel")}</Button>
-          <Button
-            color="error"
-            data-testid={`${id}-confirm-ok`}
-            onClick={() => {
-              if (confirming === "resign") {
-                setConfirming(null);
-                state.resign();
-              } else {
-                replay();
-              }
-            }}
-          >
-            {t(`playEngine.game.${confirming ?? "replay"}Confirm.confirm`)}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={() => {
+          if (confirming === "resign") {
+            setConfirming(null);
+            state.resign();
+          } else {
+            replay();
+          }
+        }}
+        tone="destructive"
+        title={t(`playEngine.game.${confirming ?? "replay"}Confirm.title`)}
+        message={t(`playEngine.game.${confirming ?? "replay"}Confirm.body`)}
+        confirmLabel={t(`playEngine.game.${confirming ?? "replay"}Confirm.confirm`)}
+        cancelLabel={t("playEngine.game.cancel")}
+        testId={`${id}-confirm`}
+        confirmTestId={`${id}-confirm-ok`}
+      />
     </>
   );
 }

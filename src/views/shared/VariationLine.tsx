@@ -11,6 +11,7 @@ import {
 } from "./moveSelection";
 import { menuAnchorOf, type ContextMenuNodeHandler } from "./moveContextMenu";
 import NagGlyphs from "./NagGlyphs";
+import { MIN_TARGET_PX, MONOSPACE_FONT_FAMILY } from "../../design-system/theme";
 
 /**
  * The pieces a side line is drawn with: one clickable move token, and the
@@ -78,9 +79,14 @@ const Token = styled("button")(({ theme }) => ({
   paddingInline: theme.spacing(0.5),
   paddingBlock: theme.spacing(0.125),
   borderRadius: Number(theme.shape.borderRadius) * 0.5,
-  minWidth: 0,
+  // A pointer target of 24 px at least (WCAG 2.5.8; CTA-116): a side line's
+  // move was 21.5 px tall, and a short one 23.7 wide. The main line's cells
+  // got theirs in CTA-113 (`MoveList`).
+  minWidth: MIN_TARGET_PX,
+  minHeight: MIN_TARGET_PX,
+  justifyContent: "center",
   unicodeBidi: "isolate",
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+  fontFamily: MONOSPACE_FONT_FAMILY,
   fontSize: "0.8125rem",
   "&:hover": { backgroundColor: (theme.vars ?? theme).palette.action.hover },
   "&:focus-visible": {

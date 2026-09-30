@@ -1,13 +1,10 @@
-import { useRef } from "react";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import { useTranslation } from "react-i18next";
 
-import MergeSplitChoice from "../../shared/MergeSplitChoice";
+import { FenInput, MergeSplitChoice, PgnInput } from "../../../blocks/forms";
+import { StatusText } from "../../../design-system/components/feedback";
+import { FieldLabel } from "../../../design-system/components/forms";
 import MultiGameDialog from "./MultiGameDialog";
 import { useAnalysisLoad, type AnalysisLoadConfig } from "./useAnalysisLoad";
 
@@ -42,86 +39,42 @@ function AnalysisLoad({
   choiceLabelKey?: string;
 }) {
   const { t } = useTranslation();
-  const inputRef = useRef<HTMLInputElement>(null);
   const load = useAnalysisLoad({ onLoadTree, onLoadFen, onLoadPosition, onCollectionSaved });
 
   return (
-    <Box
-      data-testid="analysis-load"
-      sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 1 }}
-    >
-      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-        {t("analysis.load.pgnTitle")}
-      </Typography>
-      <Typography variant="caption" sx={{ color: "text.secondary", mt: -1 }}>
-        {t("analysis.load.pgnHelp")}
-      </Typography>
+    <Box data-testid="analysis-load" sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 1 }}>
       <Box>
-        {/* A label wrapping a hidden input — the file dialog opens only from a
-            real `<input type="file">`. */}
-        <Button
-          component="label"
-          size="small"
-          variant="outlined"
-          startIcon={<UploadFileRoundedIcon />}
-          data-testid="analysis-load-pick"
-        >
-          {t("analysis.position.chooseFile")}
-          <input
-            ref={inputRef}
-            hidden
-            type="file"
-            accept=".pgn,application/x-chess-pgn,text/plain"
-            data-testid="analysis-load-input"
-            onChange={(event) => {
-              void load.onPicked(event.target.files);
-              // Cleared at once, so picking the same file again still fires a change.
-              if (inputRef.current !== null) inputRef.current.value = "";
-            }}
-          />
-        </Button>
-      </Box>
-      <TextField
-        multiline
-        minRows={4}
-        maxRows={10}
-        size="small"
-        label={t("analysis.position.pasteLabel")}
-        value={load.pasted}
-        onChange={(event) => load.setPasted(event.target.value)}
-        slotProps={{ htmlInput: { "data-testid": "analysis-load-paste", dir: "ltr" } }}
-      />
-      <Box>
-        <Button
-          size="small"
-          variant="contained"
-          disabled={load.pasted.trim() === ""}
-          onClick={() => load.bringIn(load.pasted)}
-          data-testid="analysis-load-text"
-        >
-          {t("analysis.position.loadText")}
-        </Button>
-      </Box>
-      {load.problem !== null && (
-        <Alert severity="error" data-testid="analysis-load-problem">
-          {load.problem}
-        </Alert>
-      )}
-      {load.loaded && (
-        <Typography
-          variant="caption"
-          role="status"
-          data-testid="analysis-load-done"
-          sx={{ color: "success.main" }}
-        >
-          {t("analysis.load.loaded")}
+        <FieldLabel component="span">{t("analysis.load.pgnTitle")}</FieldLabel>
+        <Typography variant="caption" component="p" sx={{ color: "text.secondary", m: 0 }}>
+          {t("analysis.load.pgnHelp")}
         </Typography>
+      </Box>
+      <PgnInput
+        labels={{
+          file: t("analysis.position.chooseFile"),
+          paste: t("analysis.position.pasteLabel"),
+          submit: t("analysis.position.loadText"),
+        }}
+        onFiles={(files) => void load.onPicked(files)}
+        pasted={load.pasted}
+        onPastedChange={load.setPasted}
+        onSubmit={() => load.bringIn(load.pasted)}
+        submitVariant="contained"
+        fileVariant="outlined"
+        problem={load.problem === null ? null : { message: load.problem }}
+        testId="analysis-load"
+        testIds={{ submit: "analysis-load-text" }}
+      />
+      {load.loaded && (
+        <StatusText tone="success" testId="analysis-load-done">
+          {t("analysis.load.loaded")}
+        </StatusText>
       )}
       {load.choice !== null &&
         (onCollectionSaved === undefined ? (
           <MergeSplitChoice
             labelKey={choiceLabelKey}
-            testIdPrefix="analysis-choice"
+            testId="analysis-choice"
             count={load.choice.reading.games.length}
             skipped={load.choice.reading.skipped}
             mergeable={load.choice.reading.mergeable}
@@ -139,40 +92,20 @@ function AnalysisLoad({
         ))}
 
       {onLoadFen !== undefined && (
-        <>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, mt: 1 }}>
-            {t("analysis.position.fenTitle")}
-          </Typography>
-          <TextField
-            size="small"
+        <Box sx={{ mt: 1 }}>
+          <FieldLabel component="span">{t("analysis.position.fenTitle")}</FieldLabel>
+          <FenInput
             label={t("analysis.position.fenLabel")}
+            submitLabel={t("analysis.position.loadFen")}
             value={load.fenText}
-            onChange={(event) => load.setFenText(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                load.applyFen();
-              }
-            }}
-            slotProps={{ htmlInput: { "data-testid": "analysis-load-fen-input", dir: "ltr" } }}
+            onChange={load.setFenText}
+            onSubmit={load.applyFen}
+            error={load.fenProblem}
+            testId="analysis-load"
+            submitTestId="analysis-load-fen"
+            errorTestId="analysis-load-fen-problem"
           />
-          <Box>
-            <Button
-              size="small"
-              variant="outlined"
-              disabled={load.fenText.trim() === ""}
-              onClick={load.applyFen}
-              data-testid="analysis-load-fen"
-            >
-              {t("analysis.position.loadFen")}
-            </Button>
-          </Box>
-          {load.fenProblem !== null && (
-            <Alert severity="error" data-testid="analysis-load-fen-problem">
-              {load.fenProblem}
-            </Alert>
-          )}
-        </>
+        </Box>
       )}
     </Box>
   );

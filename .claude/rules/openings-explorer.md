@@ -4,7 +4,9 @@ paths:
   - "src/lib/openings*"
   - "src/lib/analysisHandOff*"
   - "src/views/board/core/useOpeningBookModule.ts"
-  - "src/views/shared/CurrentOpening*"
+  - "src/views/shared/useCurrentOpening*"
+  - "src/blocks/panels/CurrentOpening/**"
+  - "src/blocks/lists/OpeningBookList/**"
   - "src/views/shared/useOpeningBook.ts"
   - "src/data/openings/**"
   - "scripts/vendorOpenings.mjs"
@@ -39,22 +41,22 @@ the receiving end of the hand-off is [`analysis-board.md`](./analysis-board.md).
 | Path | What lives there |
 | --- | --- |
 | `src/views/openings/OpeningsBoard.tsx` | **The screen.** Composition only: the arrival (`arrivalOf`), the session, the book, the explorer, the arrows, the URL write-back, the two hand-offs, and the slots of `BoardShell` / `BoardPanel`. No behaviour hook of its own. |
-| `src/views/openings/OpeningBookList.tsx` | **The Book tab.** Presentational: the rows (SAN, the opening's name, the ECO chip), a click plays a move, the pointer reports which row it is over. |
+| `src/blocks/lists/OpeningBookList/` | **The Book tab** (a block since CTA-113). Presentational: a named list, each row (SAN, the opening's name, the ECO chip) a button that plays its move; the row the pointer **or the keyboard's focus** is on is reported, so its arrow recolours. |
 | `src/views/openings/openingArrows.ts` | **The board's one arrow set.** `openingArrowsOf(treeArrows, book, hoveredSan)` joins the explorer's next-move arrows with the book's. Pure. |
-| `src/views/openings/Main.tsx` | Layout-only wrapper that `App.tsx` routes to (`openings-wrapper`). |
+| `src/views/openings/Main.tsx` | Layout-only wrapper that `routes.tsx` routes to (`openings-wrapper`). |
 | `src/lib/analysisHandOff.ts` | **The hand-off to the Analysis Board** (§5): `analysisHandOffState` / `analysisHandOffOf`, and `lineTreeOf` (one SAN line played from a start, used by this screen's `?at=` arrival). Pure, non-throwing. |
 | `src/lib/openings.ts` | **The opening book**, pure (§2): `loadOpeningBook`, `getPositionBook`, `findOpening`, `nextMoveOpenings` / `knownMoveOpenings`, `openingOfLine`, `stickyOpening`, and the two arrow colours. |
 | `src/views/board/core/useOpeningBookModule.ts` | **The book as a capability module** (`chessboard.md` §9.2.2): the loaded book, the continuations from a FEN, their arrows, the hovered move. This screen is its one consumer. |
-| `src/views/shared/CurrentOpening.tsx` | The live "current opening" line every game screen's panel carries (sticky), whose ECO chip links **into** this screen (`/openings?fen=`). |
+| `src/views/shared/useCurrentOpening.ts` + `src/blocks/panels/CurrentOpening/` | The live "current opening" line every game screen's panel carries (sticky) — the hook reads the book, the block draws it — whose ECO chip links **into** this screen (`/openings?fen=`). |
 | `src/views/shared/useOpeningBook.ts` | The book for the saved lists' cards (`openingOfLine` under each card). Not used here. |
 | `src/data/openings/eco{A..E}.json` | The vendored book, ~3.2 MB, five lazy chunks. |
 | `scripts/vendorOpenings.mjs` | Re-vendors the book from an eco.json checkout (§2.1). Manual, not part of the build. |
 | `src/views/tools/analysis/AnalysisBoard.tsx`, `useAnalysisBoard.ts` | The **receiving** end of the hand-off: `arrivalOf(params, location.state)` and the `handOff` start option (§5.3). |
 | `src/views/tools/analysis/useAnalysisSession.ts` | The session this screen composes (core + engine + Play + a baseline), shared with the Analysis Board and the Library's game board. |
-| `src/views/tools/analysis/AnalysisLoad.tsx`, `AnalysisExport.tsx`, `AnalysisSettings.tsx`, `PlayToggleButton.tsx`, `EngineThinking.tsx` | The Analysis Board's tabs and header pieces, reused as they are. `AnalysisLoad` takes an optional `onCollectionSaved` (the Analysis module's popup, CTA-101) and a `choiceLabelKey` for this screen's inline choice (§3.4). |
-| Tests | `src/views/openings/OpeningsBoard.test.tsx` (the screen), `openingArrows.test.ts`, `src/lib/analysisHandOff.test.ts`, `src/lib/openings.test.ts`, `src/views/shared/CurrentOpening.test.tsx`, the hand-off arrivals in `src/views/tools/analysis/AnalysisBoard.test.tsx`, and the two propagation tests (`src/views/board/boards.test.tsx`, `panelPropagation.test.tsx`). |
+| `src/views/tools/analysis/AnalysisLoad.tsx`; the blocks `PgnExportPanel`, `AnalysisEngineForm`, `PlayToggleButton`, `EngineThinking` | The Analysis Board's tabs and header pieces, reused as they are. `AnalysisLoad` takes an optional `onCollectionSaved` (the Analysis module's popup, CTA-101) and a `choiceLabelKey` for this screen's inline choice (§3.4). |
+| Tests | `src/views/openings/OpeningsBoard.test.tsx` (the screen), `openingArrows.test.ts`, `src/lib/analysisHandOff.test.ts`, `src/lib/openings.test.ts`, `src/views/shared/useCurrentOpening.test.tsx`, `src/blocks/lists/OpeningBookList/OpeningBookList.test.tsx`, the hand-off arrivals in `src/views/tools/analysis/AnalysisBoard.test.tsx`, and the two propagation tests (`src/views/board/boards.test.tsx`, `panelPropagation.test.tsx`). |
 
-Routes and nav: `App.tsx` routes `/openings` to `views/openings/Main`. The
+Routes and nav: `routes.tsx` routes `/openings` to `views/openings/Main`. The
 sidebar's **Openings** folder is `singleEntry` (`navFolders.ts`)
 over one screen, `/openings` (`navItems.ts`, `nav.openings`), so it renders
 as one row under the folder's name.
@@ -200,7 +202,7 @@ Three React entry points share that one promise. Pick by what you need:
 | **Moves** (`moves`) | the next-move arrows switch (`openings-arrows`), then `explorer.moves` | Kept mounted. The move menu edits (`onEditTree: core.replaceTree`); *Play chances…* is off. |
 | **Map** (`map`) | `explorer.map` (`linked: true`) | Kept mounted. |
 | **Load** (`load`) | `AnalysisLoad` **without `onCollectionSaved`**, `choiceLabelKey="openings.load.choice"` | One game or a merge replaces the tree (`core.loadTree` + `engine.clearAnalysis`); a FEN is `core.loadFen` (it turns the board). Several games get the inline, merge-only choice — **no popup and no collection**, because this screen keeps nothing — and the merge writes **no `[%games]` tags** (CTA-101). |
-| **Export** (`export`) | `AnalysisExport` (`fileStem="opening"`) | FEN, and the PGN with or without comments, NAGs and side lines. |
+| **Export** (`export`) | the `PgnExportPanel` block | FEN, and the PGN with or without comments, NAGs and side lines. |
 | **Engine** (`engine`) | `AnalysisSettings` with `onClear` | **Clear** is `core.reset()` + `engine.clearAnalysis()`: back to the tree's **own start** (`startFenRef`): the `?fen=` position, or a loaded game's start. It is not the standard position. |
 
 ### 3.2 The arrows — `openingArrowsOf`
@@ -424,7 +426,7 @@ the old one: a reload may still be holding it.
 | `/openings?at=…` opens at the start | the `?at=` SANs are not legal from the `?fen=` start (or `?fen=` is missing for a non-standard start): `lineTreeOf` stops at the first bad SAN | the link's `fen` and `at` |
 | Clear goes to a position that is not the standard start | by design: Clear returns to the tree's own start (`?fen=` or a loaded game's) | §3.1 |
 | Clicking the ECO chip on `/openings` does nothing | known: same route, no remount, arrival read once (§3.3) | §9.8 |
-| Hebrew UI shows SAN reversed | a token lost its `dir="ltr"` | `OpeningBookList.tsx` |
+| Hebrew UI shows SAN reversed | a token lost its `dir="ltr"` | `blocks/lists/OpeningBookList` |
 
 ---
 

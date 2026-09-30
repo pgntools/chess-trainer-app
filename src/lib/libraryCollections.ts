@@ -271,7 +271,7 @@ export const sortedRows = (
 };
 
 /** The side a player had — what narrows a player filter to their games as White or as Black. */
-export type PlayerColor = "white" | "black";
+type PlayerColor = "white" | "black";
 
 /**
  * The narrowing the table offers: words in any column (the box over the

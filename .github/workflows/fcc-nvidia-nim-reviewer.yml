@@ -93,7 +93,7 @@ env:
   # Pinned deliberately, same as validator.yml and the comment-triggered twin:
   # a float would let an upstream CLI change break this demo on an unrelated
   # day. Bump them together.
-  CLAUDE_CLI_VERSION: 2.1.278
+  CLAUDE_CLI_VERSION: 2.1.284
   # The dispatch input lists NIM models WITHOUT the `nvidia_nim/` provider
   # prefix that FCC (and `claude --model`) expect; the prefix is prepended here
   # so the input stays a short, readable choice list. Sync this default's value
@@ -114,7 +114,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    if: github.triggering_actor == github.repository_owner
+    # if: github.triggering_actor == github.repository_owner - not relevant for org account
     outputs:
       pr_exists: ${{ steps.check_branch.outputs.pr_exists }}
       pr_number: ${{ steps.check_branch.outputs.pr_number }}
@@ -187,7 +187,7 @@ jobs:
     name: Reviewer skill (Claude)
     needs: check_branch
     if: needs.check_branch.outputs.pr_exists == '1'
-    environment: production
+    # environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -301,8 +301,8 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           uv tool install --force --refresh-package free-claude-code \
-            --python 3.14.0 \
-            "free-claude-code @ https://github.com/Alishahryar1/free-claude-code/archive/refs/heads/main.zip"
+            --python 3.14.7 \
+            "free-claude-code @ git+https://github.com/Alishahryar1/free-claude-code.git@main"
           echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
 
       - name: Start fcc-server (background)
@@ -367,7 +367,7 @@ jobs:
         # runner VM, non-root (the flag refuses to run as root).
         #
         # The model is the dispatch input, via DEFAULT_REVIEWER_MODEL.
-        timeout-minutes: 60
+        timeout-minutes: 120
         shell: bash
         working-directory: ${{ steps.worktree.outputs.path }}
         env:
@@ -375,6 +375,8 @@ jobs:
           ANTHROPIC_AUTH_TOKEN: freecc
           CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY: "0"
           CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT: "1"
+          CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: "0"
+          CLAUDE_CODE_MAX_CONTEXT_TOKENS: "1000000"
         run: |
           set -euo pipefail
           claude \

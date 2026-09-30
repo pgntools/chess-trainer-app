@@ -80,8 +80,11 @@ const downloadBlob = (fileName: string, blob: () => Blob): boolean => {
   }
 };
 
-/** Hand a string to the browser to save. `false` if the browser refused. */
-const downloadTextFile = (
+/**
+ * Hand a string to the browser to save. `false` if the browser refused. The
+ * theme editor (CTA-115) saves a theme's source and its draft through it.
+ */
+export const downloadTextFile = (
   fileName: string,
   text: string,
   type = "application/x-chess-pgn",

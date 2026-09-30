@@ -20,6 +20,8 @@ import {
  * - the book row under the pointer recolours its move's arrow, whichever set
  *   drew it, so the reader sees what a click will play.
  *
+ * `colors` is the theme's book pair (CTA-107); absent, the default theme's.
+ *
  * Pure data in a file of its own, beside the screen, for Vite's fast refresh
  * (a component file exports only components).
  */
@@ -27,6 +29,10 @@ export const openingArrowsOf = (
   treeArrows: readonly Arrow[],
   book: readonly Pick<KnownMoveOpening, "san" | "from" | "to">[],
   hoveredSan: string | null,
+  colors: { known: string; hovered: string } = {
+    known: KNOWN_MOVE_ARROW_COLOR,
+    hovered: HOVERED_MOVE_ARROW_COLOR,
+  },
 ): Arrow[] => {
   const key = (from: string, to: string) => `${from}-${to}`;
   const hoveredKey = (() => {
@@ -35,7 +41,7 @@ export const openingArrowsOf = (
   })();
   const recoloured = (arrow: Arrow): Arrow =>
     key(arrow.startSquare, arrow.endSquare) === hoveredKey
-      ? { ...arrow, color: HOVERED_MOVE_ARROW_COLOR }
+      ? { ...arrow, color: colors.hovered }
       : arrow;
 
   const arrows = treeArrows.map(recoloured);
@@ -44,7 +50,7 @@ export const openingArrowsOf = (
     if (drawn.has(key(move.from, move.to))) continue;
     drawn.add(key(move.from, move.to));
     arrows.push(
-      recoloured({ startSquare: move.from, endSquare: move.to, color: KNOWN_MOVE_ARROW_COLOR }),
+      recoloured({ startSquare: move.from, endSquare: move.to, color: colors.known }),
     );
   }
   return arrows;

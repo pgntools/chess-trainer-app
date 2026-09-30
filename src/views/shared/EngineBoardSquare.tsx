@@ -9,8 +9,10 @@ import {
 } from "react-chessboard";
 import { diffForSide, type CapturedSummary } from "../../lib/capturedPieces";
 import type { Score } from "../../lib/engineAnalysis";
+import { useBoardSquareOptions } from "./boardColors";
 import EvalBar, { EVAL_BAR_GAP_PX, EVAL_BAR_TOTAL_PX } from "./EvalBar";
 import PromotionPicker, { type PromotionChoice } from "./PromotionPicker";
+import type { PlayerPlates } from "./PlayerPlate";
 import CapturedPieces, {
   CAPTURED_STRIPS_TOTAL_PX,
   CAPTURED_STRIP_GAP_PX,
@@ -84,6 +86,14 @@ type EngineBoardSquareProps = {
   /** The captured-pieces summary for the game on screen (`lib/capturedPieces.ts`). */
   captured: CapturedSummary;
   /**
+   * A plate per player colour, at the left end of each captured-pieces strip
+   * (CTA-105) — the players' names, Elo ratings and results of the game. The
+   * top and bottom strips each pick their own colour, so flipping the board
+   * swaps the plates with the strips. Absent, no plate renders anywhere: only
+   * the Library's game board passes one.
+   */
+  playerPlates?: PlayerPlates;
+  /**
    * Renderers for the strips' icons, keyed by the twelve piece types — the
    * mask's costumes on the masked screen, `defaultPieces` everywhere else.
    */
@@ -108,14 +118,19 @@ function EngineBoardSquare({
   showEvalBar,
   score,
   captured,
+  playerPlates,
   capturedPieces,
   promotion,
   humanColor,
   onResolvePromotion,
 }: EngineBoardSquareProps) {
   const { t } = useTranslation();
+  const squareOptions = useBoardSquareOptions();
 
+  // The theme's squares first (CTA-107), so a screen's own options can still
+  // restyle them.
   const chessboardOptions: ChessboardOptions = {
+    ...squareOptions,
     ...boardOptions,
     id,
     position,
@@ -188,6 +203,7 @@ function EngineBoardSquare({
           captured={captured.captured[topColor]}
           diff={diffForSide(captured.materialDiff, topColor)}
           pieces={capturedPieces}
+          plate={playerPlates?.[topColor]}
         />
 
         {/*
@@ -230,6 +246,7 @@ function EngineBoardSquare({
           captured={captured.captured[bottomColor]}
           diff={diffForSide(captured.materialDiff, bottomColor)}
           pieces={capturedPieces}
+          plate={playerPlates?.[bottomColor]}
         />
       </Box>
     </Box>

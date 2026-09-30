@@ -131,7 +131,7 @@ export const useAnalysisLoad = ({
   };
 
   /** A file picked — its text read and brought in. The input clears itself. */
-  const onPicked = async (files: FileList | null) => {
+  const onPicked = async (files: ArrayLike<File> | null) => {
     const file = files?.[0];
     if (file === undefined) return;
     bringIn(await file.text(), file.name.replace(/\.pgn$/i, ""));

@@ -24,6 +24,7 @@ import {
   type ContextMenuNodeHandler,
   type MenuAnchor,
 } from "./moveContextMenu";
+import { MIN_TARGET_PX, MONOSPACE_FONT_FAMILY } from "../../design-system/theme";
 
 /**
  * The lichess-style move list: numbered pairs, the current ply highlighted,
@@ -158,7 +159,7 @@ type MoveListProps = {
  */
 const sanTokenSx = {
   unicodeBidi: "isolate",
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+  fontFamily: MONOSPACE_FONT_FAMILY,
   fontSize: "0.8125rem",
 } as const;
 
@@ -173,6 +174,8 @@ const cellSx = {
   borderRadius: 0.5,
   minWidth: 0,
   width: "100%",
+  // A row is a target: never under 24 px tall (WCAG 2.5.8 — CTA-113's browser pass read 19).
+  minHeight: MIN_TARGET_PX,
 } as const;
 
 const selectedCellSx = {
@@ -299,7 +302,8 @@ function FilledCell({
         <Typography
           component="span"
           data-testid={`move-eval-${move.ply}`}
-          sx={evalTokenSx}
+          // Dimmed on the page, whole on the current row's fill (3.6:1 dimmed — CTA-113's browser pass).
+          sx={isCurrent ? { ...evalTokenSx, opacity: 1 } : evalTokenSx}
         >
           {evalText}
         </Typography>
@@ -347,7 +351,7 @@ function StartRow({
           component="span"
           dir="ltr"
           data-testid="move-eval-0"
-          sx={evalTokenSx}
+          sx={isCurrent ? { ...evalTokenSx, opacity: 1 } : evalTokenSx}
         >
           {evalText}
         </Typography>

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.e2e.tsbuildinfo",
+    // The suite reads the app's pure modules (`src/lib`, the theme registry) to
+    // build its seed and its matrix, and runs in the browser page too: both libs.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "resolveJsonModule": true
+  },
+  "include": ["playwright.config.ts", "e2e"]
+}
