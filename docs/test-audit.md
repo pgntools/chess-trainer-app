@@ -4,7 +4,10 @@ A pass over the suite after it was split into the `unit`, `ui` and `gallery`
 groups (CTA-123): every file over about 3 s, every overlap the issue named,
 and what was done about each. Times are CI's (`ubuntu-latest`, four cores,
 `--maxWorkers 3`), from the CTA-123 pull request's run (#36859242210) unless
-said otherwise. The gallery's are from the last development push before the
+said otherwise. **CI's runners differ in speed by up to 2.5× between the jobs
+of one run** (this branch's first run: 0.73× to 1.80× the baseline, measured
+on the files neither run changed), so a shard's wall time is not comparable
+across runs; compare a file's time divided by its job's factor. The gallery's are from the last development push before the
 split (#36850661425), its only CI run so far. The before/after group timings
 are in the pull request.
 
@@ -56,7 +59,7 @@ dispatched yet, and its schedule (which fires on `main`) will not run until
 | --- | --- | --- | --- |
 | `views/library/Library.test.tsx` | ui | 62.0 s, 93 tests | **Split** into `Library.test.tsx` (the list, folders, a table, a game, settings), `LibraryFilters.test.tsx`, `LibraryPicks.test.tsx` and `LibraryImport.test.tsx`, with `libraryTestKit.tsx`. All 93 tests kept, unchanged but for the next row. |
 | ↳ *lists every opening of a real 5,722-game collection* | ui | 10.5 s | **Trimmed**: the 1,704 options are read with `hidden: true` from the open listbox. Kept the real fixture, since its scale is the point: the list is complete, not a first page. |
-| `views/dev/themeEditor/ThemeEditor.test.tsx` | ui | 45.8 s, 19 tests | **Trimmed**: one select-and-paste per edit instead of a clear and a paste; the pointer-events check off; the four axe-per-section tests folded into one that walks the same four sections on one mount. The same assertions; about a fifth or more of the file's time, measured locally. |
+| `views/dev/themeEditor/ThemeEditor.test.tsx` | ui | 45.8 s, 19 tests | **Trimmed**: one select-and-paste per edit instead of a clear and a paste; the pointer-events check off; the four axe-per-section tests folded into one that walks the same four sections on one mount. The same assertions. Faster locally by 10–30 %; on CI, with the runner's speed taken out, about the same (45.8 s → 48.5 s): the cost is the preview's re-renders themselves. |
 | `views/tools/analysis/saved/SavedAnalyses.test.tsx` | ui | 23.2 s, 46 tests | **Kept.** No hot spot: the slowest tests (a multi-game paste kept as a collection, axe in two views, a folder past one page) are each about 2–3 s of real work, and none repeats another. |
 | `views/tools/analysis/AnalysisBoard.test.tsx` | ui | 20.9 s, 56 tests | **Kept.** Spread thin over 56 tests (every arrival, Save, Load, Export, Play, the Arrows tab); the axe tests audit tabs the browser pass does not open (Export, Engine). |
 | `pageOutline.test.tsx` | ui | 20.0 s, 16 tests | **Kept.** Each case renders the real route in the real shell. The browser pass runs only WCAG-tagged axe, not the page-structure rules (`region`, the landmark rules) or the outline, so it does not cover these. |

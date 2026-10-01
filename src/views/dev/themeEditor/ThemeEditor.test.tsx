@@ -40,10 +40,9 @@ const mount = (entry = "/dev/theme-editor?theme=brown") =>
 /*
   One user for the file, with user-event's pointer-events check off: before
   each pointer action it asks jsdom for the computed style of the target and
-  every ancestor, and the editor's preview is a page of restyled parts — with
-  the pasted edits below, a fifth or more off the file's time (CTA-124).
-  Nothing here is hidden from the pointer by CSS alone; a disabled control is
-  asserted `toBeDisabled`.
+  every ancestor, and the editor's preview is a page of restyled parts
+  (CTA-124). Nothing here is hidden from the pointer by CSS alone; a disabled
+  control is asserted `toBeDisabled`.
 */
 const userEvent = userEventApi.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
 
