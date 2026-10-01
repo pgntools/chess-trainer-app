@@ -103,6 +103,30 @@ that is contention for the CPU, not pileup, and well inside the 90 s
 `AXE_PAGE_TIMEOUT_MS`. On CI the pre-split one-file matrix took 1,219 s
 (`Main.test.tsx`) and 873 s (`everyTheme.test.tsx`) of test time, and failed.
 
+## The groups on CI, before and after
+
+The pull request gate's jobs, before (the CTA-123 pull request's run,
+#36859242210) and after (this branch's two runs, #36881931631 and
+#36882624555). A job's **wall time is not comparable across runs** — the
+runners differ by up to 2.5× (see the note at the top) — so each after-shard
+is divided by its runner's factor, measured on the files this change did not
+touch. The number is a shard's summed test time:
+
+| Group / shard | Before | After (both runs, adjusted) |
+| --- | --- | --- |
+| `unit` (81 files) | 28.4 s | 28 s — unchanged |
+| `ui` shard 1 | 112.5 s | ~122 s — flat |
+| `ui` shard 2 | 124.1 s | ~122 s — flat |
+| `ui` shard 3 (held `Library.test.tsx`) | 197.4 s | ~163 s (−17 %) |
+| **the slowest shard** | 197.4 s | **~163 s (−17 %)** |
+
+The gain is where the audit put it: splitting `Library.test.tsx` let the
+shards balance, so the critical path is 17 % shorter. Nothing got slower
+beyond a runner's noise (ThemeEditor's edits measured flat on CI, 45.8 s →
+48.5 s adjusted — the file's cost is its preview's re-renders, which the
+edits only trimmed the number of).
+
+
 ## The overlaps the issue named
 
 1. **Per-component tests vs the gallery matrix rendering the same demos —
