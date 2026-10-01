@@ -36,13 +36,15 @@ Node comes from `fnm`, so run these from a shell where it is on `PATH`.
 | Type-check + production build | `yarn build` |
 | Type-check only | `npx tsc -b` (add `--force` to bypass the incremental cache) |
 | Lint — **a CI gate** (the tier import rules, the MUI lock, `jsx-a11y`) | `yarn lint` |
-| **Run the full test suite** | `yarn test:run` (at most 5 files at once — see below) |
-| **Run a single test file** | `npx vitest run <path>` — e.g. `npx vitest run src/theme/AppThemeWithLang.test.tsx` |
-| Run tests matching a name | `npx vitest run -t "<substring of the test name>"` |
-| Watch mode | `yarn test` |
+| **Run the test suite** — the pull-request gate, the `unit` and `ui` groups (below) | `yarn test:run` (at most 3 files at once — see below) |
+| Run one test group | `yarn test:unit` (every `*.test.ts`), `yarn test:ui` (every `*.test.tsx`), `yarn test:gallery` (the gallery's axe matrix, `*.matrix.test.tsx` — ~35 min of tests, not in the gate) |
+| **Run a single test file** | `npx vitest run <path>` — e.g. `npx vitest run src/theme/AppThemeWithLang.test.tsx` (any group's file) |
+| Run tests matching a name | `npx vitest run -t "<substring of the test name>"` (every group — add `--project unit --project ui` to leave the gallery out) |
+| Watch mode | `yarn test` (`unit` and `ui`) |
+| Check that every test file is in exactly one group — **a CI gate** | `yarn test:groups` |
 | **Wire a PGN collection into the Library** | `node scripts/wirepgn.js path/to/file.pgn` (or `yarn wirepgn …`; `--list`, `--check`, `--rebuild`, `--remove <id>` — [`game-collections.md`](.claude/rules/game-collections.md) §3) |
 | **Scaffold a new theme** | `yarn theme:bootstrap --id <kebab-id> --name "<Name>"` (`--name-he`, `--from <theme>`, `--dry-run`, `--help`) — writes and registers it; then tune it in the dev-only theme editor, `/dev/theme-editor?theme=<id>` ([`CONTRIBUTING.md`](CONTRIBUTING.md#create-a-theme)) |
-| Coverage | `npx vitest run --coverage` |
+| Coverage (CI measures it on a push to `development` and nightly, not on a pull request) | `yarn test:run --coverage` |
 | **Browser accessibility pass** — every shipped route, seeded, under every theme × light / dark × English / Hebrew, against the production build (Playwright + axe, colour contrast and target size on; ~25 min; `npx playwright install chromium` once) | `yarn test:a11y` (`yarn test:a11y:quick` — the pull-request matrix, ~6 min; details in [`browser-a11y.md`](.claude/rules/browser-a11y.md)) |
 | **Audit a render for accessibility** | `await expectNoAxeViolations(element?)` in a test (`src/test/axe.ts`) — axe's WCAG 2.2 A / AA rules, a violation fails it; `stubReducedMotion()` (`src/test/reducedMotion.ts`) renders for a reader who asks for reduced motion |
 
@@ -50,10 +52,27 @@ Node comes from `fnm`, so run these from a shell where it is on `PATH`.
 suites (the boards, the Library, the repertoires) starve each other of CPU:
 the suite seems stuck, and tests fail on timeouts — a different set on every
 run, each passing when re-run alone. That is scheduling, not a broken test. So
-`test:run` is `vitest run --maxWorkers 5`, tuned for our machine; on another
-system, inspect a full run and set the cap to suit it
-(`npx vitest run --maxWorkers <n>`; `--fileParallelism=false` runs one file at a
-time). Re-run a failure on its own before treating it as real.
+`test:run` and each group's script carry `--maxWorkers 3` — what CI's
+four-core runners take; on another system, inspect a full run and set the cap
+to suit it (`npx vitest run --maxWorkers <n>`; `--fileParallelism=false` runs
+one file at a time). Re-run a failure on its own before treating it as real.
+
+**The suite is three groups** (CTA-123) — Vitest projects in `vite.config.ts`,
+set by file name, so a test joins one by what it is called:
+
+| Group | Files | Runs |
+| --- | --- | --- |
+| `unit` | every `src/**/*.test.ts` — the pure logic and the stores; none renders | every pull request (`ci.yml`, one job) |
+| `ui` | every `src/**/*.test.tsx` — components, blocks and screens on jsdom | every pull request (`ci.yml`, three jobs, `--shard`) |
+| `gallery` | every `src/**/*.matrix.test.tsx` — the gallery's axe matrix, every base, pattern and block page under every theme × scheme × direction ([`src/test/galleryMatrix/`](src/test/galleryMatrix/slices.ts), cut into slice files so it runs in parallel) | nightly and on demand (`nightly.yml`, four jobs) — **not on a pull request** |
+
+A test that renders is a `.tsx`; a `.test.ts` renders nothing. `yarn
+test:groups` (CI's lint job) fails when a file under `src/` is in no group
+or in two. The pull-request gate keeps the gallery's cheap checks — that its
+matrix meets every theme, scheme and direction, over every page
+(`gallery/everyTheme.test.tsx`, `views/dev/design/Main.test.tsx`); a change
+to a gallery page or a theme should run `yarn test:gallery` (or the
+`Nightly tests` workflow, by hand, on its branch) before it merges.
 
 Tests are Vitest + Testing Library on jsdom. `src/test/setup.ts` stubs
 `matchMedia` (MUI's colour-scheme provider reads it), gives jsdom an IndexedDB

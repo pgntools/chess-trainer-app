@@ -130,11 +130,18 @@ Base and Patterns are discovered in `gallery/discover.ts`; Blocks by the route
 or block needs no registration beyond its section / family.
 
 Tests: `gallery/DesignGallery.test.tsx` (pages, menu, switches),
-`gallery/everyTheme.test.tsx` (every base and pattern page under every theme ×
-scheme × direction, no console error and no axe violation —
-`expectNoAxeViolations`, `src/test/axe.ts`; ~3 minutes on its own, a page
-allowed `AXE_PAGE_TIMEOUT_MS`), `views/dev/design/Main.test.tsx` (the Blocks
-tier, every block's page under every theme, axe too).
+`views/dev/design/Main.test.tsx` (the route, the Blocks tier), and **the
+gallery's axe matrix** — every base, pattern and block page under every
+theme × scheme × direction, no console error and no axe violation
+(`expectNoAxeViolations`, `src/test/axe.ts`; a page allowed
+`AXE_PAGE_TIMEOUT_MS`). The matrix is `src/test/galleryMatrix/`
+(`designSystem.tsx`, `blocks.tsx`), cut into `*.matrix.test.tsx` slice files
+(`slices.ts`): the **`gallery` test group** (CTA-123), ~35 minutes of tests,
+run nightly and on demand (`nightly.yml`) and **not on a pull request** — so
+after changing a gallery page, a component's look or a theme, run
+`yarn test:gallery` yourself. The pull-request gate keeps its cheap half:
+`gallery/everyTheme.test.tsx` and `Main.test.tsx` hold the matrix to every
+page and every theme, and `slices.test.ts` to every slice.
 
 **Nothing of it ships**: after `yarn build`, grep `dist/` for `/dev/design`,
 `design-gallery`, `DesignGallery`, `.gallery`, the blocks' names and their

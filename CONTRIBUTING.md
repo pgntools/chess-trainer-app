@@ -29,7 +29,8 @@ folder, in `yarn dev` only; a production build carries none of them.
 | Lint (the import boundaries between the layers, the MUI lock, `jsx-a11y`, React's rules) — **a CI gate** | `yarn lint` |
 | The browser accessibility pass (every route, every theme × light / dark × English / Hebrew; builds first, then ~30 min) | `yarn test:a11y` |
 | The same for the pull-request matrix (default and high-contrast themes, light, both languages) | `yarn test:a11y:quick` |
-| The whole test suite | `yarn test:run` |
+| The test suite — the pull-request gate (the `unit` and `ui` groups) | `yarn test:run` |
+| One group: the pure logic, the rendered components and screens, the gallery's axe matrix (~35 min, nightly in CI) | `yarn test:unit`, `yarn test:ui`, `yarn test:gallery` |
 | One test file | `npx vitest run src/path/to/File.test.tsx` |
 | Tests whose name matches | `npx vitest run -t "part of the name"` |
 | Unused code | `npx knip` |
