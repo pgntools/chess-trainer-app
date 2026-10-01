@@ -257,8 +257,10 @@ describe("StandingsTable", () => {
 
     it("shows every row — ninety-nine of them, no paging", () => {
       mount({ rows: Array.from({ length: 99 }, (_, index) => ({ ...ROWS[1], id: `m${index}`, rank: index + 1, name: `Member ${index + 1}` })) });
-      expect(screen.getAllByRole("rowheader")).toHaveLength(99);
-      expect(screen.getByRole("rowheader", { name: "Member 99" })).toBeInTheDocument();
+      // One role query, its last row named: a second, by name, walks all ninety-nine again (CTA-124).
+      const rows = screen.getAllByRole("rowheader");
+      expect(rows).toHaveLength(99);
+      expect(rows.at(-1)).toHaveAccessibleName("Member 99");
     });
 
     it("keeps a long name on one line, for the frame to scroll", () => {

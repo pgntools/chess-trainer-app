@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -70,6 +70,17 @@ import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { expectNoAxeViolations } from "../../test/axe";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 import SettingsScreen from "./SettingsScreen";
+
+/*
+  An imported collection is indexed, and the index pass names each game's
+  opening from the real book — some 3 MB of JSON read on the first import of
+  the file. Nothing here asserts an opening (a collection is compared by its
+  games, not its rows), so the book is the shared stub's empty one (CTA-124).
+*/
+vi.mock("../../lib/openings", async (importOriginal) => {
+  const { openingsMock } = await import("../board/boardTestHarness");
+  return openingsMock(importOriginal as () => Promise<typeof import("../../lib/openings")>);
+});
 
 /*
   Settings' Import tab (CTA-89), over the real stores — fake-indexeddb, which

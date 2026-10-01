@@ -153,7 +153,9 @@ describe("SwissStandingsTable", () => {
     it("keeps an unfinished game in its round", () => {
       mount({ tournament: SOFIA });
       expect(glyphs(CHEPARINOV, 9)[3]).toBe("*");
-      expect(screen.getByRole("cell", { name: "Round 4, White against Ristic, Luka: unfinished" })).toBe(screen.getByTestId(`t-round-${CHEPARINOV}-4`));
+      // Asked within the player's row: a role query over the whole 99 × 9 table names every cell (CTA-124).
+      const row = within(screen.getByTestId(`t-row-${CHEPARINOV}`));
+      expect(row.getByRole("cell", { name: "Round 4, White against Ristic, Luka: unfinished" })).toBe(screen.getByTestId(`t-round-${CHEPARINOV}-4`));
     });
   });
 
