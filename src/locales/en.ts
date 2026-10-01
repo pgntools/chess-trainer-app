@@ -1172,6 +1172,24 @@ const en = {
           tooMany: "Saved analyses holds at most {{max}} analyses, and these would pass it. Nothing was saved.",
           storage: "The browser refused to store the games — its storage may be full. Nothing was saved.",
         },
+        /**
+         * The Save-as-collection hand-off (CTA-122): the picked games written
+         * as one new uploaded collection, each game exactly as stored, named
+         * by the reader after a name derived like Analyse's folder name.
+         */
+        saveAs: "Save as collection",
+        /** The name dialog (`SaveAsCollectionDialog`). */
+        saveAsTitle: "Save as a collection",
+        saveAsName: "Collection name",
+        saveAsCount_one: "{{count}} game will be saved as a new collection of its own.",
+        saveAsCount_other: "{{count}} games will be saved as a new collection of their own.",
+        saveAsConfirm: "Create collection",
+        saveAsCancel: "Cancel",
+        saveAsReadProblem: "The games could not be read. Nothing was created.",
+        saveAsProblem: "The collection could not be created — this browser's storage may be full or unavailable. Nothing was created.",
+        savedCollection_one: "“{{name}}” created with {{count}} game.",
+        savedCollection_other: "“{{name}}” created with {{count}} games.",
+        openCollection: "Open collection",
       },
       /** The `#` cell's mark on a game the index could not parse. */
       unreadable: "This game could not be read — its moves have an error.",

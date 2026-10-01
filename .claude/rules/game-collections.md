@@ -12,6 +12,7 @@ paths:
   - "src/blocks/forms/CollectionSettingsForm/**"
   - "src/blocks/dialogs/CollectionImportDialog/**"
   - "src/blocks/dialogs/OpeningTreePgnDialog/**"
+  - "src/blocks/dialogs/SaveAsCollectionDialog/**"
   - "src/lib/libraryGameCatalog*"
   - "src/lib/shippedCollections*"
   - "src/lib/collectionIndex*"
@@ -49,7 +50,7 @@ for the Analysis Board and Saved analyses it hands games to.
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`. **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together). |
+| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`. **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together). |
 | `src/lib/collectionZip.ts` | **A picked `.zip`** (CTA-102, CTA-103): `readCollectionZip` (every `.pgn` in it, bounded, non-throwing), `isZipFile`. |
 | `src/lib/collectionIndex.ts` | **The index**: `IndexedRow`, `indexedRowOf` (tags + a `parsePgnTree` pass), `indexGame` (one game, with the app's book), `buildCollectionIndex` / `buildCollectionIndexAsync`, `numberedRows`, `textHash`, `OpeningLookup` / `loadOpeningLookup`, and the file format: `encodeCollectionIndex` / `decodeCollectionIndex`, `COLLECTION_INDEX_FORMAT` / `COLLECTION_INDEX_VERSION`. |
 | `src/lib/collectionIndex.worker.ts` | The index pass for an upload, off the main thread. |
@@ -74,6 +75,7 @@ for the Analysis Board and Saved analyses it hands games to.
 | `src/blocks/forms/CollectionFilters/` | The table's right-hand panel (a block since CTA-113): players (several names at once, OR'd — CTA-95) and side, the opening board (a slot), then opening, event, dates and result. |
 | `src/views/library/OpeningFilterBoard.tsx` | The opening-moves board (`options.id` `library-filter-board`), and its *Save tree as PGN* link. |
 | `src/blocks/dialogs/OpeningTreePgnDialog/` | *Save tree as PGN*'s choice: No, or Add tags — `games`, `prc`, or both (`FormDialog`, CTA-113). |
+| `src/blocks/dialogs/SaveAsCollectionDialog/` | *Save as collection*'s name dialog (CTA-122): the derived name to edit, the count under it, a busy state and a problem slot — presentational, the write the screen's (`CollectionScreen.tsx`). |
 | `src/views/library/LibraryGameScreen.tsx` → `LibraryGameBoard.tsx` | `/library/<collection>/<n>`: resolve and parse the game, then the analysis board. |
 | `src/views/library/useLibraryCollections.ts` | The React bindings: `useUploadedCollections`, `useLibraryFolders`, `useCollectionSummary`, `useCollectionRows`, `useCollectionGames`, `loadCollectionGames`. |
 | `src/views/library/indexCollection.ts` | Runs the worker with progress and cancel, with a jsdom fallback. |
@@ -735,6 +737,20 @@ URL is the miss.
   many. The app's snackbar (`useSnackbar`, `library-picks-analyse-notice`)
   links to `/tools/analysis/saved?folder=<id>` (a real link,
   `library-picks-analyse-open`), and the picks stay.
+- **Save as collection** (`library-picks-collection`, CTA-122, shipped and
+  uploaded alike — the result is always a new **uploaded** collection): the
+  name asked first in `SaveAsCollectionDialog` (`library-picks-collection-dialog`),
+  prefilled with `batchFolderNameOf` over `MAX_COLLECTION_NAME_CHARS` (the
+  same derivation as Analyse's folder name). On confirm, the picked games'
+  PGNs are written **exactly as stored, never re-parsed** (the Analyse
+  discipline), each with its row straight off the index (the table's
+  `CollectionRow` minus its `number`), in one all-or-nothing
+  `addCollection` — new id, top-level folder, no description, no tournament
+  mark, so a duplicate name never collides (the id is minted, never taken
+  from the name). A failure is answered **in the dialog** and nothing is
+  created. The snackbar (`library-picks-collection-notice`) links to the new
+  collection's table (`library-picks-collection-open`); the picks stay —
+  this write renumbers nothing.
 
 ### 6.6 `/library/<collection>/<n>` — the game board
 

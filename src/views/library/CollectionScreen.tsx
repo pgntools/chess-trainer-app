@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import LibraryAddRoundedIcon from "@mui/icons-material/LibraryAddRounded";
 import PostAddRoundedIcon from "@mui/icons-material/PostAddRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
@@ -10,13 +11,15 @@ import { Link as RouterLink, useHref, useLocation, useNavigate, useParams, useSe
 import { useTranslation } from "react-i18next";
 
 import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
-import { removeCollectionGames } from "../../lib/libraryCollectionStore";
+import type { IndexedRow } from "../../lib/collectionIndex";
+import { addCollection, removeCollectionGames } from "../../lib/libraryCollectionStore";
 import {
   batchFolderNameOf,
   COLLECTION_COLUMNS,
   COLLECTION_FILTER_PARAMS,
   collectionFacetsOf,
   filteredRows,
+  MAX_COLLECTION_NAME_CHARS,
   RESULTS,
   type CollectionColumn,
   type CollectionFilterValues,
@@ -44,6 +47,7 @@ import {
 import { addAnalyses, MAX_SAVED_ANALYSES } from "../../lib/savedAnalysisStore";
 import { repertoireGameNamesOf } from "../../lib/savedRepertoires";
 import { RightPanel } from "../main/rightPanel";
+import { SaveAsCollectionDialog } from "../../blocks/dialogs";
 import { CollectionFilters } from "../../blocks/forms";
 import { CollectionGamesTable, COLLECTION_DEFAULT_SORT, collectionFirstDirection } from "../../blocks/tables";
 import { DeleteManyDialog } from "../../design-system/components/dialogs";
@@ -103,6 +107,17 @@ import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
  * many** — it would open on no board — rather than refusing the whole batch.
  * The app's snackbar (`useSnackbar`) says how many went where, with a link
  * to the folder; the picks stay.
+ *
+ * **Save as collection** (CTA-122), the fourth action on the picks, shipped
+ * and uploaded collections alike: the picked games written as one **new
+ * uploaded collection** of their own, each game exactly as stored and its
+ * row straight off the index (no re-parse, the Analyse discipline) — the
+ * name asked first in a dialog (`SaveAsCollectionDialog`), prefilled with the
+ * name derived the way Analyse derives its folder name, within the
+ * collection-name cap. The write is one all-or-nothing `addCollection`
+ * (top-level folder, no description, no tournament mark); a failure is
+ * answered in the dialog and nothing is created. The snackbar links to the
+ * new collection; the picks stay.
  *
  * **The rows are the collection's index** (`lib/collectionIndex.ts`), read
  * whole — no game is parsed, or even fetched, to draw the table: a shipped
@@ -205,6 +220,11 @@ function CollectionTable({
   // The table orders them (`CollectionGamesTable`, `sortedRows`).
   const shown = useMemo(() => filteredRows(narrowed, { text: "", result: "", line }), [narrowed, line]);
   const [analysing, setAnalysing] = useState(false);
+  /** The Save-as-collection dialog: open, the name it opens with, the write under way, and its last problem. */
+  const [savingAs, setSavingAs] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [savingCollection, setSavingCollection] = useState(false);
+  const [saveProblem, setSaveProblem] = useState<"read" | "storage" | null>(null);
 
   /** The picks into Saved analyses: a new folder, a record per readable game — or nothing. */
   const analysePicked = async () => {
@@ -273,6 +293,74 @@ function CollectionTable({
       });
     } finally {
       setAnalysing(false);
+    }
+  };
+
+  /**
+   * The name the Save-as-collection dialog opens with — derived the way
+   * Analyse derives its folder name (`batchFolderNameOf`: the collection,
+   * the count, the filters that are on), within the collection-name cap.
+   */
+  const derivedSaveName = () =>
+    batchFolderNameOf(
+      collection.name,
+      { text, result, player, color, opening: openingName, event, from, to, line },
+      {
+        games: t("library.games", { count: picked.size }),
+        white: t("library.table.picks.white"),
+        black: t("library.table.picks.black"),
+      },
+      MAX_COLLECTION_NAME_CHARS,
+    );
+
+  /**
+   * The picks as one new uploaded collection (CTA-122): each game exactly as
+   * stored — no re-parse, its row straight off the index — in one
+   * all-or-nothing `addCollection`. A failure is answered in the dialog,
+   * nothing created; a success closes it and links to the new collection.
+   */
+  const savePickedAsCollection = async (name: string) => {
+    setSaveProblem(null);
+    setSavingCollection(true);
+    try {
+      const games = await loadCollectionGames(collection);
+      if (games === null) {
+        setSaveProblem("read");
+        return;
+      }
+      const chunks: string[] = [];
+      const indexed: IndexedRow[] = [];
+      for (const pick of [...picked].sort((a, b) => a - b)) {
+        const pgn = games[pick - 1];
+        const row = rows[pick - 1];
+        if (pgn === undefined || row === undefined) continue;
+        chunks.push(pgn);
+        // The index's row is the table's minus its place — nothing is re-parsed.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { number, ...indexRow } = row;
+        indexed.push(indexRow);
+      }
+      const made = await addCollection(name, chunks, indexed);
+      if ("problem" in made) {
+        setSaveProblem("storage");
+        return;
+      }
+      setSavingAs(false);
+      const path = `/library/${encodeURIComponent(made.collection.id)}`;
+      show({
+        severity: "success",
+        duration: 10_000,
+        testId: "library-picks-collection-notice",
+        action: {
+          label: t("library.table.picks.openCollection"),
+          onClick: () => navigate(path),
+          href: hrefOf(path),
+          testId: "library-picks-collection-open",
+        },
+        message: t("library.table.picks.savedCollection", { count: chunks.length, name }),
+      });
+    } finally {
+      setSavingCollection(false);
     }
   };
 
@@ -416,6 +504,19 @@ function CollectionTable({
                         <DeleteOutlineRoundedIcon fontSize="small" />
                       </IconAction>
                     )}
+                    {/* Shipped and uploaded alike (CTA-122): the result is always a new uploaded collection. */}
+                    <IconAction
+                      label={t("library.table.picks.saveAs")}
+                      disabled={picked.size === 0}
+                      onClick={() => {
+                        setSaveProblem(null);
+                        setSaveName(derivedSaveName());
+                        setSavingAs(true);
+                      }}
+                      testId="library-picks-collection"
+                    >
+                      <LibraryAddRoundedIcon fontSize="small" />
+                    </IconAction>
                   </>
                 }
                 testId="library-picks"
@@ -513,6 +614,25 @@ function CollectionTable({
         error={deleteProblem ? t("library.table.confirmDeleteGames.problem") : undefined}
         testId="library-picks-delete-dialog"
         confirmTestId="library-picks-delete-confirm"
+      />
+      {/* CTA-122: the picks as a new collection — the write is all-or-nothing, so the dialog closes on success, not on save. */}
+      <SaveAsCollectionDialog
+        open={savingAs}
+        initial={saveName}
+        count={picked.size}
+        busy={savingCollection}
+        error={
+          saveProblem === null
+            ? undefined
+            : t(
+                saveProblem === "read"
+                  ? "library.table.picks.saveAsReadProblem"
+                  : "library.table.picks.saveAsProblem",
+              )
+        }
+        onSave={(name) => void savePickedAsCollection(name)}
+        onClose={() => setSavingAs(false)}
+        testId="library-picks-collection-dialog"
       />
     </>
   );

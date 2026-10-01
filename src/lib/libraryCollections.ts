@@ -87,6 +87,15 @@ export type CollectionTournament = {
 /** The most characters a collection's description may be (CTA-121) — the repertoire's cap, for the same reason. */
 export const MAX_COLLECTION_DESCRIPTION_CHARS = 2000;
 
+/**
+ * The cap on a collection's **name** as this app's own fields write it — a
+ * derived one (`batchFolderNameOf`, CTA-122's *Save as collection*) and the
+ * dialog that edits it: 100, the folder names' cap. The store keeps whatever
+ * it is given, so a longer name arrived at another way (an import, an older
+ * record) is never cut.
+ */
+export const MAX_COLLECTION_NAME_CHARS = 100;
+
 export type LibraryCollection = {
   /** Its route segment: a shipped file's slug, or an upload's minted id. */
   id: string;
