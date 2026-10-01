@@ -7,6 +7,7 @@ import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { THEME_STORAGE_KEY } from "../../theme/themeChoice";
 import Main from "../../views/dev/design/Main";
 import { AXE_PAGE_TIMEOUT_MS, expectNoAxeViolations } from "../axe";
+import { flushEmotionCaches } from "../emotionCaches";
 import { MATRIX_SLICES, sliceOf } from "./slices";
 
 /*
@@ -46,6 +47,8 @@ export function blocksMatrix(slice: number) {
   });
   afterEach(() => {
     vi.restoreAllMocks();
+    // Each test's theme leaves its rules behind; without this a slice's later pages slow down (CTA-124).
+    flushEmotionCaches();
   });
 
   describe(`the design gallery's route — every block under every theme (${slice}/${MATRIX_SLICES.blocks})`, () => {

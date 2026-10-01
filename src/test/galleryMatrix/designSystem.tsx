@@ -7,6 +7,7 @@ import { discoverTiers, pageKeyOf } from "../../design-system/gallery/discover";
 import { themes } from "../../design-system/themes";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { AXE_PAGE_TIMEOUT_MS, expectNoAxeViolations } from "../axe";
+import { flushEmotionCaches } from "../emotionCaches";
 import { MATRIX_SLICES, sliceOf } from "./slices";
 
 /*
@@ -55,6 +56,8 @@ export function designSystemMatrix(slice: number) {
   });
   afterEach(() => {
     vi.restoreAllMocks();
+    // Each test's theme leaves its rules behind; without this a slice's later pages slow down (CTA-124).
+    flushEmotionCaches();
   });
 
   describe(`the gallery under every theme, scheme and direction (${slice}/${MATRIX_SLICES.designSystem})`, () => {
