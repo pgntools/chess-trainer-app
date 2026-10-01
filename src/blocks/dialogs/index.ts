@@ -11,3 +11,4 @@ export * from "./FolderNameDialog";
 export * from "./ImportDialog";
 export * from "./IncompatibleImportDialog";
 export * from "./OpeningTreePgnDialog";
+export * from "./SaveAsCollectionDialog";

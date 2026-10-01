@@ -11,6 +11,7 @@ import {
   addCollection,
   loadUploadedCollections,
   peekUploadedGames,
+  peekUploadedRows,
   resetLibraryCollectionStore,
   updateCollectionSettings,
   uploadedCollectionsSnapshot,
@@ -1253,6 +1254,116 @@ describe("analysing the picks (CTA-77)", () => {
     vi.restoreAllMocks();
     expect(await loadAnalysisFolders()).toEqual([]);
     expect(await loadSavedAnalyses()).toEqual([]);
+  });
+});
+
+describe("saving the picks as a collection (CTA-122)", () => {
+  const saveAs = () => screen.getByTestId("library-picks-collection");
+  const pick = (number: number) =>
+    fireEvent.click(within(screen.getByTestId(`library-picks-row-${number}`)).getByRole("checkbox"));
+  const notice = () => screen.findByTestId("library-picks-collection-notice", {}, { timeout: 10_000 });
+
+  it("is offered beside the picks' actions, and only once a game is picked", async () => {
+    const mine = await upload();
+    await mountTable(`/library/${mine.id}`);
+    expect(saveAs()).toBeDisabled();
+    pick(2);
+    expect(saveAs()).toBeEnabled();
+  });
+
+  it("writes the picks as one new uploaded collection, named as derived, and links to it", async () => {
+    const mine = await upload();
+    await mountTable(`/library/${mine.id}?player=Amy`);
+    pick(2);
+    pick(1);
+    fireEvent.click(saveAs());
+    // The dialog, prefilled with the derived name (the way Analyse names its folder).
+    expect(screen.getByRole("dialog", { name: "Save as a collection" })).toBeInTheDocument();
+    expect(screen.getByTestId("library-picks-collection-dialog-input")).toHaveValue("Club games — 2 games (Amy)");
+    expect(screen.getByTestId("library-picks-collection-dialog-count")).toHaveTextContent(
+      "2 games will be saved as a new collection of their own.",
+    );
+    fireEvent.click(screen.getByTestId("library-picks-collection-dialog-submit"));
+
+    expect(await notice()).toHaveTextContent("“Club games — 2 games (Amy)” created with 2 games.");
+    const made = (await loadUploadedCollections()).find((row) => row.id !== mine.id);
+    expect(made).toMatchObject({ name: "Club games — 2 games (Amy)", count: 2, folderId: null });
+    // Each game exactly as stored, each row straight off the index, in collection order.
+    expect(peekUploadedGames(made!.id)).toEqual([GAMES[0], GAMES[1]]);
+    expect(peekUploadedRows(made!.id)).toEqual(numberedRows([indexedRowOf(GAMES[0]), indexedRowOf(GAMES[1])]));
+    expect(screen.getByTestId("library-picks-collection-open")).toHaveAttribute("href", `/library/${made!.id}`);
+    // The picks stay; the source collection is untouched.
+    expect(screen.getByTestId("library-picks-selected-count")).toHaveTextContent("2 selected");
+    expect((await loadUploadedCollections()).find((row) => row.id === mine.id)).toMatchObject({ count: 3 });
+  });
+
+  it("saves under an edited name, and a duplicate name does not collide", async () => {
+    const mine = await upload();
+    await mountTable(`/library/${mine.id}`);
+    pick(1);
+    fireEvent.click(saveAs());
+    fireEvent.change(screen.getByTestId("library-picks-collection-dialog-input"), { target: { value: "My picks" } });
+    fireEvent.click(screen.getByTestId("library-picks-collection-dialog-submit"));
+    await notice();
+    // The same typed name again: another collection, its own minted id.
+    fireEvent.click(saveAs());
+    const input = screen.getByTestId("library-picks-collection-dialog-input");
+    fireEvent.change(input, { target: { value: "My picks" } });
+    fireEvent.click(screen.getByTestId("library-picks-collection-dialog-submit"));
+    await waitFor(async () =>
+      expect((await loadUploadedCollections()).filter((row) => row.name === "My picks")).toHaveLength(2),
+    );
+    const named = (await loadUploadedCollections()).filter((row) => row.name === "My picks");
+    expect(new Set(named.map((row) => row.id)).size).toBe(2);
+    expect(named.every((row) => row.id !== mine.id && row.id.startsWith("u"))).toBe(true);
+  });
+
+  it("keeps Create collection off while the name is blank", async () => {
+    const mine = await upload();
+    await mountTable(`/library/${mine.id}`);
+    pick(1);
+    fireEvent.click(saveAs());
+    fireEvent.change(screen.getByTestId("library-picks-collection-dialog-input"), { target: { value: "" } });
+    expect(screen.getByTestId("library-picks-collection-dialog-submit")).toBeDisabled();
+  });
+
+  it("works on a shipped collection too, its games exactly as the file holds them", async () => {
+    await mountTable("/library/capablanca?sort=number");
+    pick(1);
+    fireEvent.click(saveAs());
+    fireEvent.click(screen.getByTestId("library-picks-collection-dialog-submit"));
+    expect(await notice()).toHaveTextContent("Capablanca — 1 game");
+    const [made] = await loadUploadedCollections();
+    expect(made).toMatchObject({ name: "Capablanca — 1 game", count: 1 });
+    // Exactly as stored — no re-parse, not even the trim Analyse gives a record.
+    expect(peekUploadedGames(made.id)).toEqual([(peekShippedGames("capablanca") ?? [])[0]]);
+  });
+
+  it("shows the problem in the dialog and creates nothing when the write fails", async () => {
+    const mine = await upload();
+    await mountTable(`/library/${mine.id}`);
+    const put = IDBObjectStore.prototype.put;
+    vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+      this: IDBObjectStore,
+      value: unknown,
+      key?: IDBValidKey,
+    ) {
+      // A collection's games record — the write this test must break.
+      if ((value as { games?: string[] }).games !== undefined) {
+        throw new DOMException("full", "QuotaExceededError");
+      }
+      return put.call(this, value, key);
+    });
+    pick(1);
+    fireEvent.click(saveAs());
+    fireEvent.click(screen.getByTestId("library-picks-collection-dialog-submit"));
+    expect(await screen.findByTestId("library-picks-collection-dialog-error")).toHaveTextContent(
+      "The collection could not be created",
+    );
+    vi.restoreAllMocks();
+    // Nothing was created, and the dialog stays open to be answered again.
+    expect((await loadUploadedCollections()).filter((row) => row.id !== mine.id)).toEqual([]);
+    expect(screen.getByRole("dialog", { name: "Save as a collection" })).toBeInTheDocument();
   });
 });
 

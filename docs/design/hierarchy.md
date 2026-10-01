@@ -115,6 +115,7 @@ CTA-113 moved the rest of the app onto blocks:
 | `OpeningBookList` | lists | The Openings explorer's Book tab: eco.json's continuations (`KnownMoveOpening`) as a named list of buttons, the pointed or focused one reported. |
 | `FolderNameDialog`, `FolderMoveDialog`, `FolderDeleteDialog` | dialogs | The three folder trees' dialogs, their words as `labels`. |
 | `CollectionImportDialog`, `OpeningTreePgnDialog` | dialogs | The Library's import options (what came in, the Elo / date / player filters, the count) and *Save tree as PGN*'s choice. |
+| `SaveAsCollectionDialog` | dialogs | The collection table's *Save as collection* (CTA-122): the derived name to edit, the count under it, a busy state and a problem slot — the write is the screen's. |
 | `AnalysisEngineForm`, `ArrowSettingsFields` | forms | Every board's Engine tab; the Analysis Board's Arrows tab. |
 | `PgnInput`, `FenInput`, `PositionFields` | forms | A PGN from a file or a paste (over `UploadPanel`), a FEN, the position editor's fields. |
 | `MergeSplitChoice`, `CollectionFilters` | forms | A several-games text's merge or split; a collection's filter panel. |

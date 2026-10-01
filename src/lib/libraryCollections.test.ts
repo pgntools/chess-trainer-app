@@ -18,6 +18,7 @@ import {
   mainlinePlies,
   playersOf,
   MAX_COLLECTION_CHARS,
+  MAX_COLLECTION_NAME_CHARS,
   readCollectionText,
   sharedEventOf,
   sortedRows,
@@ -411,5 +412,28 @@ describe("batchFolderNameOf — where the table's Analyse files a batch (CTA-77)
     const cut = batchFolderNameOf("x".repeat(120), none, labels, 100);
     expect(cut).toHaveLength(100);
     expect(cut.endsWith("… — 12 games")).toBe(true);
+  });
+
+  it("derives a collection's name the same way (CTA-122), within the collection-name cap", () => {
+    const filter = {
+      ...none,
+      player: ["Capablanca, Jose"],
+      color: "white" as const,
+      opening: "D02 Queen's Gambit Declined",
+      line: ["d4", "d5", "c4"],
+    };
+    expect(batchFolderNameOf("Capablanca", filter, labels, MAX_COLLECTION_NAME_CHARS)).toBe(
+      "Capablanca — 12 games (Capablanca, Jose, white, D02, 1.d4 d5 2.c4)",
+    );
+    // However much is on, never past the cap: a summary too long is cut.
+    const long = batchFolderNameOf(
+      "Capablanca",
+      { ...filter, event: "New York 1913 ".repeat(6).trimEnd() },
+      labels,
+      MAX_COLLECTION_NAME_CHARS,
+    );
+    expect(long).toHaveLength(MAX_COLLECTION_NAME_CHARS);
+    expect(long.startsWith("Capablanca — 12 games (Capablanca, Jose, white, D02, New York 1913")).toBe(true);
+    expect(long.endsWith("…)")).toBe(true);
   });
 });
