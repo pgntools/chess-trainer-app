@@ -118,6 +118,7 @@ CTA-113 moved the rest of the app onto blocks:
 | `AnalysisEngineForm`, `ArrowSettingsFields` | forms | Every board's Engine tab; the Analysis Board's Arrows tab. |
 | `PgnInput`, `FenInput`, `PositionFields` | forms | A PGN from a file or a paste (over `UploadPanel`), a FEN, the position editor's fields. |
 | `MergeSplitChoice`, `CollectionFilters` | forms | A several-games text's merge or split; a collection's filter panel. |
+| `CollectionSettingsForm` | forms | A collection's settings (CTA-121): the title, the description, and the tournament mark — a `SwitchField` off with its reason while the games do not share one `Event`, then the five formats as radios (only Swiss and Round robin selectable) with each one's description under the group. |
 | `PgnExportPanel`, `GameInfo`, `CurrentOpening`, `ChangesStrip` | panels | Every board's Export and Info tabs, the opening line, the Update / Save as copy / Discard strip. |
 | `PlayToggleButton`, `EngineThinking` | panels | Play's header button and the engine's thinking line. |
 

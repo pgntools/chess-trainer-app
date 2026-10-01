@@ -14,6 +14,7 @@ import { default as OpeningsScreen  } from './views/openings/Main'
 import { default as LibraryScreen  } from './views/library/LibraryHomeMain'
 import { default as LibraryUploadScreen  } from './views/library/LibraryUploadMain'
 import { default as LibraryCollectionScreen  } from './views/library/CollectionScreenMain'
+import { default as LibraryCollectionSettingsScreen  } from './views/library/CollectionSettingsScreenMain'
 import { default as LibraryGameScreen  } from './views/library/LibraryGameScreenMain'
 import { default as RepertoiresScreen  } from './views/repertoires/RepertoiresMain'
 import { default as RepertoireUploadScreen  } from './views/repertoires/RepertoireUploadMain'
@@ -187,6 +188,13 @@ export const appRoutes: RouteObject[] = [
           path: "/library/:collectionId",
           element: <LibraryCollectionScreen />,
           handle: { title: "pages.collection" }
+        },
+        // A collection's settings (CTA-121) — its title, description and
+        // tournament mark. A static segment, so it ranks above `:game`.
+        {
+          path: "/library/:collectionId/settings",
+          element: <LibraryCollectionSettingsScreen />,
+          handle: { title: "pages.collectionSettings" }
         },
         {
           path: "/library/:collectionId/:game",

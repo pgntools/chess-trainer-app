@@ -96,7 +96,11 @@ const applyCollections = async (
     } catch {
       return "indexing";
     }
-    const written = await addCollection(collection.name, collection.games, rows, now, collection.id, collection.folderId);
+    // The settings the zip carries beside the games (CTA-121): the description, the tournament mark.
+    const written = await addCollection(collection.name, collection.games, rows, now, collection.id, collection.folderId, {
+      description: collection.description,
+      tournament: collection.tournament,
+    });
     if ("problem" in written) return "storage";
   }
   return undefined;
