@@ -76,8 +76,10 @@ to a gallery page or a theme should run `yarn test:gallery` (or the
 
 Tests are Vitest + Testing Library on jsdom. `src/test/setup.ts` stubs
 `matchMedia` (MUI's colour-scheme provider reads it), gives jsdom an IndexedDB
-(`fake-indexeddb`), and between tests clears `localStorage`, lets every
-store's writes land, resets the stores and deletes their databases
+(`fake-indexeddb`), lets a `findBy…` / `waitFor` wait 5 s rather than 1 (a
+loaded machine, as the worker note above — CTA-124), and between tests
+clears `localStorage`, lets every store's writes land, resets the stores and
+deletes their databases
 ([`database.md`](.claude/rules/database.md) §7 — including why fake timers
 must leave `setImmediate` real). Board screens stub `<Chessboard>` and the
 engine with the shared harness, `src/views/board/boardTestHarness.tsx`
