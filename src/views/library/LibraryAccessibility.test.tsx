@@ -15,6 +15,13 @@ import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
   The Library as a screen reader and a keyboard meet it (CTA-113): each
   screen's main states pass axe, its title is the page's h1 over its
   sections' h2s, and its parts are worked from the keyboard.
+
+  A screen as it first opens is not audited here: the browser pass
+  (`e2e/a11y/`, every pull request) opens each Library route seeded — the
+  list, a collection's table, Add a collection, a game, the settings — and
+  runs axe there with colour contrast and target size on. Here axe runs on
+  the states it never reaches: a folder opened, picks made, a dialog open, a
+  filter leaving nothing, the tournament mark's states (CTA-124).
 */
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
@@ -79,7 +86,6 @@ describe("the Library home — accessible", () => {
     mount("/library");
     expect(await screen.findByRole("heading", { level: 1, name: "Library" })).toBeInTheDocument();
     await screen.findByTestId(`library-folder-${folder.id}`);
-    await expectNoAxeViolations(document.body);
 
     const toggle = screen.getByRole("button", { name: /Openings/, expanded: false });
     toggle.focus();
@@ -104,7 +110,6 @@ describe("a collection's table — accessible", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Club games" })).toBeInTheDocument();
     await screen.findByTestId("library-table-row-1");
     expect(screen.getByRole("heading", { level: 2, name: i18n.t("library.filters.title") })).toBeInTheDocument();
-    await expectNoAxeViolations(document.body);
 
     // Every game is a link named by its players.
     expect(screen.getByRole("link", { name: "Amy – Bob" })).toHaveAttribute("href", `/library/${club.id}/2`);
@@ -137,10 +142,9 @@ describe("a collection's table — accessible", () => {
 });
 
 describe("adding a collection — accessible", () => {
-  it("passes axe, and so does the import popup a paste opens", async () => {
+  it("is its page's h1, and the import popup a paste opens passes axe", async () => {
     mount("/library/new");
     expect(await screen.findByRole("heading", { level: 1, name: i18n.t("library.upload.title") })).toBeInTheDocument();
-    await expectNoAxeViolations(document.body);
     fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: GAMES.join("\n\n") } });
     fireEvent.click(screen.getByTestId("library-upload-save"));
     const dialog = await screen.findByRole("dialog");
@@ -150,12 +154,11 @@ describe("adding a collection — accessible", () => {
 });
 
 describe("a Library game — accessible", () => {
-  it("passes axe on its board, its header worked from the keyboard", async () => {
+  it("works its header from the keyboard", async () => {
     const user = userEvent.setup();
     const club = await keep("Club games");
     mount(`/library/${club.id}/2`);
     await screen.findByTestId("library-game-board");
-    await expectNoAxeViolations(document.body);
     const next = screen.getByRole("link", { name: i18n.t("library.game.next") });
     expect(next).toHaveAttribute("href", `/library/${club.id}/3`);
     const engine = screen.getByRole("switch", { name: i18n.t("library.game.engineSwitch") });
