@@ -681,18 +681,20 @@ describe("Lobby — accessibility (CTA-109)", () => {
   });
 
   it("is worked by the keyboard alone: sort, picks, select-all, a row's action and the pages", async () => {
-    await seed(52);
-    mount();
+    // Two pages of the smallest size, not of the default 50: each query by name
+    // below names every row's controls, and half the rows is half the work (CTA-124).
+    await seed(26);
+    mount("/engine/games?rows=25");
     const table = within(screen.getByRole("table", { name: "Your games" }));
 
     // A sort header is a button: Enter sorts by it.
     table.getByRole("button", { name: "Moves" }).focus();
     await userEvent.keyboard("{Enter}");
-    expect(screen.getByTestId("where")).toHaveTextContent("/engine/games?sort=moves");
+    expect(screen.getByTestId("where")).toHaveTextContent("/engine/games?rows=25&sort=moves");
 
     // A pick is a checkbox named by its row: Space ticks it. (The newest game,
-    // g51, is on the first page of the moves, high first.)
-    const newest = whenPlayed("2026-09-01T10:51:00Z");
+    // g25, is on the first page of the moves, high first.)
+    const newest = whenPlayed("2026-09-01T10:25:00Z");
     table.getByRole("checkbox", { name: `Pick the game Human – Stockfish level 5 of ${newest}` }).focus();
     await userEvent.keyboard(" ");
     expect(screen.getByRole("button", { name: "Delete picked (1)" })).toBeInTheDocument();
@@ -700,7 +702,7 @@ describe("Lobby — accessibility (CTA-109)", () => {
     // Select-all, from the header: every row the table shows, on every page.
     table.getByRole("checkbox", { name: "Select all the games the table shows" }).focus();
     await userEvent.keyboard(" ");
-    expect(screen.getByRole("button", { name: "Delete picked (52)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete picked (26)" })).toBeInTheDocument();
     await userEvent.keyboard(" ");
     expect(screen.queryByTestId("played-games-delete-picked")).not.toBeInTheDocument();
 
@@ -708,7 +710,7 @@ describe("Lobby — accessibility (CTA-109)", () => {
     const continued = table.getByRole("link", { name: `Continue the game Human – Stockfish level 5 of ${newest}` });
     continued.focus();
     expect(continued).toHaveFocus();
-    expect(continued).toHaveAttribute("href", "/engine/play?saved=g51");
+    expect(continued).toHaveAttribute("href", "/engine/play?saved=g25");
 
     // The pager's arrows are buttons.
     screen.getByRole("button", { name: "Go to next page" }).focus();

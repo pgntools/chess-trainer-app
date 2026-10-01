@@ -4,7 +4,18 @@ import "@testing-library/jest-dom/vitest";
 // API, so the store's own code is what the tests run.
 import "fake-indexeddb/auto";
 import { afterEach, vi } from "vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
+
+/*
+  How long a `findBy…` / `waitFor` waits: 5 s, not testing-library's 1 s —
+  for the reason `vite.config.ts` raises the per-test timeout. A screen that
+  writes IndexedDB and then navigates lands within a second alone, but not
+  always with three heavy files on the other workers: Library's post-write
+  waits ran out that way, a different one each run, each passing when re-run
+  alone (CTA-124). A wait that is met returns at once, so only a real miss
+  takes longer to report. A call that needs longer still passes its own.
+*/
+configure({ asyncUtilTimeout: 5_000 });
 
 // MUI's color-scheme provider reads `prefers-color-scheme`, which jsdom does not
 // implement. Without this every render throws before a single assertion runs.

@@ -98,7 +98,7 @@ chess-aware composition into `src/blocks/` ([`migration.md`](./migration.md)).
 - **What it does** — The picks' bar: a tri-state select-all, a chip counting the picks (its delete clears them), a download, and an optional bulk delete. The caller computes the tri-state (what select-all covers differs per screen).
 - **API** — `checked`, `indeterminate`, `onToggleAll`, `selectedCount`, `onClearSelected`, `onDownload`, `onDelete?`, `labelKey` (`selectAll`, `selected`, `download`, `deleteSelected`), `testIdPrefix` (`-export`, `-select-all`, `-selected-count`, `-download`, `-delete`).
 - **Used by** — `SavedAnalyses`, `Repertoires`, `CollectionScreen`.
-- **Tests** — `tools/analysis/saved/SavedAnalyses.test.tsx`, `repertoires/Repertoires.test.tsx`, `library/Library.test.tsx`.
+- **Tests** — `tools/analysis/saved/SavedAnalyses.test.tsx`, `repertoires/Repertoires.test.tsx`, `library/Library.test.tsx`, `library/LibraryPicks.test.tsx`.
 - **Styling** — row `gap: 0.5`, `flexShrink: 0`; `Checkbox size="small"` inside a `Tooltip`; icon buttons `size="small"` in inline-flex spans for their tooltips.
 - **Similar elsewhere** — The Lobby (`PlayedGames`) does the same job without it: select-all in the table header, a text **Delete picked (N)** button, no chip, no download.
 - **Verdict** — already shared — the Lobby table should use it too, or the bar should grow a "select-all in the header" mode (see [the four tables](#the-four-tables)).
@@ -690,7 +690,7 @@ they differ today.
 | Empty / no match | `body2 text.secondary` centred `py: 4`, **inside** the container, two test ids | same, one test id | the same text **outside** the component, in `LibraryHome` | — |
 | Count | caption under the title: "N games" / "N of M" | same | same ("N collections" / "N of M") | — |
 | RTL | names `dir="auto"`, result / date `dir="ltr"` | same, plus `marginInlineStart` on the icon | indent `paddingInlineStart`, chevron flipped inline | bytes `dir="ltr"` |
-| Tests | `engine/games/PlayedGames.test.tsx` (sort, pagination, picks) | `library/Library.test.tsx` (sort, filters, picks; **pagination untested**) | `library/Library.test.tsx` | `settings/StorageTab.test.tsx` |
+| Tests | `engine/games/PlayedGames.test.tsx` (sort, pagination, picks) | `library/Library.test.tsx`, `LibraryFilters.test.tsx`, `LibraryPicks.test.tsx` (sort, filters, picks; **pagination untested**) | `library/Library.test.tsx` | `settings/StorageTab.test.tsx` |
 
 What a shared table would need to reconcile: **where select-all lives**
 (header vs. export bar), **how row actions show** (always-visible icon

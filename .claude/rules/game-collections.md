@@ -81,7 +81,7 @@ for the Analysis Board and Saved analyses it hands games to.
 | `src/views/library/indexCollection.ts` | Runs the worker with progress and cancel, with a jsdom fallback. |
 | `src/views/library/LibraryMiss.tsx` | The "no such collection / game" screen. |
 | `src/views/library/*Main.tsx` | Layout-only wrappers that `routes.tsx` routes to. |
-| Tests | `src/lib/libraryCollections.test.ts`, `collectionZip.test.ts`, `collectionIndex.test.ts`, `openingTree.test.ts`, `openingTreePgn.test.ts`, `shippedCollections.test.ts`, `libraryCollectionStore.test.ts`, `libraryFolderStore.test.ts` (folder CRUD, `folderId`, the v1 → v2 upgrade), `folderTreeRows.test.ts`, `wirepgn.test.ts`, `gameReference.test.ts` (the `library` key), `src/views/library/Library.test.tsx` (every screen), and `views/tools/analysis/AnalysisBoard.test.tsx` (a `?game=library/…` arrival). |
+| Tests | `src/lib/libraryCollections.test.ts`, `collectionZip.test.ts`, `collectionIndex.test.ts`, `openingTree.test.ts`, `openingTreePgn.test.ts`, `shippedCollections.test.ts`, `libraryCollectionStore.test.ts`, `libraryFolderStore.test.ts` (folder CRUD, `folderId`, the v1 → v2 upgrade), `folderTreeRows.test.ts`, `wirepgn.test.ts`, `gameReference.test.ts` (the `library` key), `src/views/library/Library.test.tsx` (the list, folders, a table, a game, settings), `LibraryFilters.test.tsx` (the panel's filters, the opening-moves board), `LibraryPicks.test.tsx` (download, Analyse, Save as collection), `LibraryImport.test.tsx` (adding a collection, the import popup) — sharing `libraryTestKit.tsx`, and `views/tools/analysis/AnalysisBoard.test.tsx` (a `?game=library/…` arrival). |
 
 Locale keys all live under `library.*` in `src/locales/en.ts` / `he.ts`
 (`he` is typed `typeof en`, so a missing key is a compile error). The only
@@ -857,13 +857,19 @@ the index instead (§10.1).
 ## 9. Testing
 
 - **Where**: pure logic in `src/lib/*.test.ts` (listed in §0). Screens in
-  `src/views/library/Library.test.tsx`, one file that mounts every Library
-  route in a `MemoryRouter` with `RightPanelProvider` and a `Where` probe
-  (`where()` returns the current path and search).
+  four files under `src/views/library/` — `Library.test.tsx`,
+  `LibraryFilters.test.tsx`, `LibraryPicks.test.tsx`, `LibraryImport.test.tsx`
+  (one file until CTA-124, split so the suite's shards and workers can share
+  what was its longest file) — each mounting every Library route through
+  `libraryTestKit.tsx`'s `mount`: a `MemoryRouter` with `RightPanelProvider`
+  and a probe (`where()` returns the current path and search). A new screen
+  test goes in the file whose screen it drives; a helper two of them need, in
+  the kit.
 - **Stubs**: `react-chessboard` → `reactChessboardMock()`, `lib/engine` →
   `FakeEngine`, `lib/openings` → `openingsMock` (all from
   `views/board/boardTestHarness.tsx`). `downloadPgn` is mocked to capture what it
-  was given. `boardOptions()` reads the last board's options, which is how the
+  was given. Each file declares the four `vi.mock`s itself — a mock is hoisted
+  only in the file that writes it, so the kit cannot carry them. `boardOptions()` reads the last board's options, which is how the
   tests drive drops (`onPieceDrop`) and assert arrows and positions.
 - **IndexedDB** is `fake-indexeddb` (`src/test/setup.ts`). Call
   `resetLibraryFolderStore()` and `resetLibraryCollectionStore()` (which
@@ -871,11 +877,12 @@ the index instead (§10.1).
   forgets the folder store, as it does every record store. Seed folders with
   `createLibraryFolder` and a filed collection with `keep(name, games,
   folderId)`. A dialog left closing still `aria-hidden`s the page, so reading
-  the list's rows by role takes `{ hidden: true }`. Helpers in the test file:
+  the list's rows by role takes `{ hidden: true }`. Helpers in the kit:
   `keep(name, games)` and `upload()` (the three `GAMES`) add a collection;
   `keepCarlsen()` adds the 5,722-game fixture with **tag-only rows** (the
-  full index pass would take a minute); `mountTable` / `mountGame` wait for
-  their screen.
+  full index pass would take a minute), its text imported only then;
+  `mountTable` / `mountGame` wait for their screen; `resetLibrary` is every
+  file's `beforeEach`.
 - **jsdom has no `Worker`**, so `indexCollection` uses the in-thread path.
   Uploads in tests are real index passes, so keep pasted texts small.
 - **Shipped data** is real in tests (the globs resolve). `peekShipped*` stay
@@ -884,7 +891,7 @@ the index instead (§10.1).
 - **Order-sensitive assertions**: the table opens newest first. A fixture
   with dates comes back reversed. Mount with `?sort=number` when a test needs
   collection order (for example, picking game 1 of Capablanca).
-- Commands: `npx vitest run src/views/library/Library.test.tsx`,
+- Commands: `npx vitest run src/views/library/` (the four screen files),
   `npx vitest run src/lib/libraryCollectionStore.test.ts`,
   `npx vitest run src/lib/libraryFolderStore.test.ts`, then `yarn test:run`.
 

@@ -106,7 +106,9 @@ describe("wirepgn", () => {
   it("refuses a file with no game, and prints its usage for nothing to do", () => {
     writeFileSync(join(work, "Empty.pgn"), "just words\n");
     expect(run(join(work, "Empty.pgn")).out).toContain("no game could be read");
-    expect(run().code).toBe(1);
-    expect(run().out).toContain("Usage:");
+    // One run read twice — each is a process of its own (CTA-124).
+    const bare = run();
+    expect(bare.code).toBe(1);
+    expect(bare.out).toContain("Usage:");
   }, 60_000);
 });
