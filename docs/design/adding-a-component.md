@@ -136,9 +136,9 @@ the gallery, on fixtures, before any screen uses it.
       *by review*
 - [ ] **An RTL demo**: a Hebrew name or label somewhere a reader's words are
       shown. — *by review*. (Every demo is rendered under both directions,
-      every theme and both schemes, with no console error and no axe violation:
-      `gallery/everyTheme.test.tsx` for base components and patterns,
-      `views/dev/design/Main.test.tsx` for blocks.)
+      every theme and both schemes, with no console error and no axe violation,
+      by the gallery's axe matrix, `src/test/galleryMatrix/` — the `gallery`
+      test group, not in the pull-request gate: run `yarn test:gallery`.)
 - [ ] Looked at under **every theme**, light and dark (the gallery's switches),
       and worked through **from the keyboard alone**. — *by review*
 
@@ -175,6 +175,8 @@ Run from the worktree, in a shell where `fnm`'s Node is on `PATH`.
 - [ ] `yarn lint` — no new finding. (CI gate.)
 - [ ] `yarn test:run` — green; a failure on its own re-run is real, a timeout
       under load is not ([`CLAUDE.md`](../../CLAUDE.md#commands)). (CI.)
+- [ ] `yarn test:gallery` — green: the gallery's axe matrix, every page under
+      every theme. (Nightly, not on a pull request — CTA-123.)
 - [ ] `npx knip` — reports nothing new but the design system's and the blocks'
       public surface that no screen imports yet. — *by review* (not in CI)
 - [ ] `yarn build`, then nothing of the gallery, a demo or a fixture in `dist/`.

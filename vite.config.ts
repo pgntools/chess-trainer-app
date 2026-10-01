@@ -53,6 +53,29 @@ export default defineConfig({
       example repertoire carry their own longer timeouts, in place, where the reason is.
     */
     testTimeout: 20000,
+    /*
+      The suite in three groups (CTA-123), each run on its own —
+      `yarn test:unit`, `yarn test:ui`, `yarn test:gallery` — and each its own
+      job in CI. The boundaries are file names, so no test moves to join one:
+
+      - `unit`: every `*.test.ts` — the pure logic and the stores; none renders.
+      - `ui`: every `*.test.tsx` — components, blocks and screens on jsdom.
+      - `gallery`: every `*.matrix.test.tsx` — the gallery's axe matrix, every
+        page under every theme (`src/test/galleryMatrix/`). Some 35 minutes
+        of tests, so it is not in the pull-request gate: `.github/workflows/
+        nightly.yml` runs it nightly and on demand.
+
+      `yarn test:run` is the gate — `unit` and `ui`. `scripts/check-test-groups.js`
+      asserts every test file under `src/` is in exactly one group.
+    */
+    projects: [
+      { extends: true, test: { name: 'unit', include: ['src/**/*.test.ts'] } },
+      {
+        extends: true,
+        test: { name: 'ui', include: ['src/**/*.test.tsx'], exclude: [...configDefaults.exclude, 'src/**/*.matrix.test.tsx'] },
+      },
+      { extends: true, test: { name: 'gallery', include: ['src/**/*.matrix.test.tsx'] } },
+    ],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],

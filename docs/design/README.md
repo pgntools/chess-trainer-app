@@ -238,10 +238,11 @@ own (react-refresh's lint rule). A demo that must be live holds its state in
 dialog is shown open in the page with `gallery/DialogFrame.tsx` (portalled
 into a transformed box, so several can be open at once, none trapping focus);
 tables and cards borrow `gallery/demoTable.tsx` and `gallery/demoPreview.tsx`
-(a preview board in the theme's own squares). `gallery/everyTheme.test.tsx`
-renders every base and pattern page, and `views/dev/design/Main.test.tsx`
-every block's page, under every theme, both schemes and both directions, and
-fails on any console error.
+(a preview board in the theme's own squares). The gallery's axe matrix,
+`src/test/galleryMatrix/`, renders every base, pattern and block page under
+every theme, both schemes and both directions, and fails on any console error
+or axe violation — the `gallery` test group (`yarn test:gallery`), run
+nightly rather than on a pull request (CTA-123).
 
 After `yarn build`, `grep -r -e "/dev/design" -e "design-gallery" -e
 "DesignGallery" -e ".gallery" -e "FolderTree" -e "PLAYED_ROWS" -e

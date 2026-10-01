@@ -45,8 +45,8 @@ use), turned into `no-restricted-imports` `paths` (the barrel) and `patterns`
 - A locked atom that needs wrapping is a **design-system change first**
   (backward compatible, tested, demoed — `migration.md` §2), never an exception
   to save the trouble.
-- `yarn lint` runs in CI (`ci.yml`: build → lint → tests) and exits 0 on the
-  whole tree; keep it there.
+- `yarn lint` runs in CI (`ci.yml`: build, lint and the test groups, side by
+  side — CTA-123) and exits 0 on the whole tree; keep it there.
 
 ## 2. The browser pass
 
