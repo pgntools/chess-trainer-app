@@ -12,6 +12,7 @@ import {
   loadUploadedCollections,
   peekUploadedGames,
   resetLibraryCollectionStore,
+  updateCollectionSettings,
   uploadedCollectionsSnapshot,
 } from "../../lib/libraryCollectionStore";
 import {
@@ -65,6 +66,7 @@ vi.mock("../../lib/openings", async (importOriginal) => {
 });
 
 import CollectionScreen from "./CollectionScreen";
+import CollectionSettingsScreen from "./CollectionSettingsScreen";
 import LibraryGameScreen from "./LibraryGameScreen";
 import LibraryHome from "./LibraryHome";
 import LibraryUpload from "./LibraryUpload";
@@ -102,6 +104,7 @@ const mount = (entry: string) =>
             <Route path="/library" element={<LibraryHome />} />
             <Route path="/library/new" element={<LibraryUpload />} />
             <Route path="/library/:collectionId" element={<CollectionScreen />} />
+            <Route path="/library/:collectionId/settings" element={<CollectionSettingsScreen />} />
             <Route path="/library/:collectionId/:game" element={<LibraryGameScreen />} />
             <Route path="*" element={<div data-testid="elsewhere" />} />
           </Routes>
@@ -1647,6 +1650,117 @@ describe("a game on its analysis board", () => {
     mount(`/library/${mine.id}/9`);
     expect(await screen.findByTestId("library-not-found")).toHaveTextContent(
       i18n.t("library.notFound.game"),
+    );
+  });
+});
+
+describe("a collection's settings (CTA-121)", () => {
+  /** Mount the settings of the entry's collection, the form waited for. */
+  const mountSettings = async (entry: string) => {
+    mount(entry);
+    await screen.findByTestId("library-settings-form");
+  };
+
+  it("edits the collection's title and description, saving them for the list, the table and the page title", async () => {
+    const mine = await upload();
+    // The table's header has the gear for an upload; it goes back to the table as it was.
+    mount(`/library/${mine.id}`);
+    await screen.findByTestId("library-table");
+    fireEvent.click(screen.getByTestId("library-table-settings"));
+    expect(where()).toBe(`/library/${mine.id}/settings`);
+
+    fireEvent.change(screen.getByTestId("library-settings-form-name"), { target: { value: "  Club nights  " } });
+    fireEvent.change(screen.getByTestId("library-settings-form-description"), { target: { value: "Every Tuesday." } });
+    fireEvent.click(screen.getByTestId("library-settings-save"));
+
+    await screen.findByTestId("library-table");
+    expect(screen.getByTestId("library-table-name")).toHaveTextContent("Club nights");
+    expect(screen.getByTestId("library-table-description")).toHaveTextContent("Every Tuesday.");
+    expect(uploadedCollectionsSnapshot()?.[0]).toMatchObject({ name: "Club nights", description: "Every Tuesday." });
+    // The page title follows the record's name through the shell (`usePageTitle`);
+    // outside the shell (this mount) the hook is a no-op, so the header and the
+    // list above are what is asserted.
+  });
+
+  it("refuses to save a blank title", async () => {
+    const mine = await upload();
+    await mountSettings(`/library/${mine.id}/settings`);
+    fireEvent.change(screen.getByTestId("library-settings-form-name"), { target: { value: "   " } });
+    expect(screen.getByTestId("library-settings-save")).toBeDisabled();
+    expect(uploadedCollectionsSnapshot()?.[0].name).toBe("Club games");
+  });
+
+  it("marks a one-event collection as a tournament — Swiss, the default type when first switched on", async () => {
+    const mine = await upload();
+    await mountSettings(`/library/${mine.id}/settings`);
+    const mark = screen.getByTestId("library-settings-form-tournament-switch");
+    expect(mark).toBeEnabled();
+    expect(mark).not.toBeChecked();
+    // No type is offered while the mark is off.
+    expect(screen.queryByTestId("library-settings-form-type-swiss")).toBeNull();
+
+    fireEvent.click(mark);
+    expect(screen.getByTestId("library-settings-form-type-swiss")).toBeChecked();
+    fireEvent.click(screen.getByTestId("library-settings-save"));
+
+    await screen.findByTestId("library-table");
+    expect(uploadedCollectionsSnapshot()?.[0].tournament).toEqual({ enabled: true, type: "swiss" });
+  });
+
+  it("offers Round robin beside Swiss — the other three formats shown, but not selectable", async () => {
+    const mine = await upload();
+    await mountSettings(`/library/${mine.id}/settings`);
+    fireEvent.click(screen.getByTestId("library-settings-form-tournament-switch"));
+    expect(screen.getByTestId("library-settings-form-type-roundRobin")).toBeEnabled();
+    for (const format of ["knockout", "arena", "match"]) {
+      const radio = screen.getByTestId(`library-settings-form-type-${format}`);
+      expect(radio).toBeDisabled();
+      expect(screen.getByTestId(`library-settings-form-${format}-description`)).toHaveTextContent(/Best for/);
+    }
+
+    fireEvent.click(screen.getByTestId("library-settings-form-type-roundRobin"));
+    fireEvent.click(screen.getByTestId("library-settings-save"));
+
+    await screen.findByTestId("library-table");
+    expect(uploadedCollectionsSnapshot()?.[0].tournament).toEqual({ enabled: true, type: "roundRobin" });
+  });
+
+  it("keeps the mark off a collection whose games do not share one event, and off an empty one — the reason beside the switch", async () => {
+    const mixed = await keep("Mixed", [...GAMES, '[Event "Other"]\n[White "E"]\n[Black "F"]\n\n1. e4 *']);
+    await mountSettings(`/library/${mixed.id}/settings`);
+    const mark = screen.getByTestId("library-settings-form-tournament-switch");
+    expect(mark).toBeDisabled();
+    expect(mark).not.toBeChecked();
+    expect(mark).toHaveAccessibleDescription(/only when every game in it shares one Event/);
+    expect(screen.queryByTestId("library-settings-form-type-swiss")).toBeNull();
+
+    // An empty collection cannot be a tournament either — the same message.
+    const empty = await keep("Empty", []);
+    cleanupAndMount(`/library/${empty.id}/settings`);
+    await screen.findByTestId("library-settings-form");
+    expect(screen.getByTestId("library-settings-form-tournament-switch")).toBeDisabled();
+
+    // A mark stored under games that stopped sharing one event reads as off — the stored setting kept.
+    await updateCollectionSettings(mixed.id, { tournament: { enabled: true, type: "swiss" } });
+    cleanupAndMount(`/library/${mixed.id}/settings`);
+    await screen.findByTestId("library-settings-form");
+    const kept = screen.getByTestId("library-settings-form-tournament-switch");
+    expect(kept).toBeDisabled();
+    expect(kept).not.toBeChecked();
+    expect(uploadedCollectionsSnapshot()?.find((c) => c.id === mixed.id)?.tournament).toEqual({
+      enabled: true,
+      type: "swiss",
+    });
+  });
+
+  it("gives a shipped collection no settings entry — the table no gear, the URL the miss", async () => {
+    mount("/library/capablanca");
+    await screen.findByTestId("library-table");
+    expect(screen.queryByTestId("library-table-settings")).toBeNull();
+
+    cleanupAndMount("/library/capablanca/settings");
+    expect(await screen.findByTestId("library-not-found")).toHaveTextContent(
+      i18n.t("library.notFound.collection"),
     );
   });
 });

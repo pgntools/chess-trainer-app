@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import PostAddRoundedIcon from "@mui/icons-material/PostAddRounded";
+import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
@@ -379,6 +380,20 @@ function CollectionTable({
                 clearLabel={t("savedList.clearSelected")}
                 actions={
                   <>
+                    {collection.source === "uploaded" && (
+                      <IconAction
+                        label={t("library.table.settings")}
+                        link={{
+                          component: RouterLink,
+                          // Back to this table, filter and all.
+                          to: `/library/${encodeURIComponent(collection.id)}/settings`,
+                          state: { from: cameFrom },
+                        }}
+                        testId="library-table-settings"
+                      >
+                        <SettingsRoundedIcon fontSize="small" />
+                      </IconAction>
+                    )}
                     <IconAction
                       label={t("library.table.picks.download")}
                       disabled={picked.size === 0}
@@ -420,6 +435,18 @@ function CollectionTable({
           }
           testId="library-table-header"
         />
+
+        {/* The reader's own description (CTA-121), under the header when there is one. */}
+        {collection.description !== undefined && (
+          <Typography
+            variant="body2"
+            dir="auto"
+            data-testid="library-table-description"
+            sx={{ flexShrink: 0, color: "text.secondary", px: 1, pb: 0.5, whiteSpace: "pre-line" }}
+          >
+            {collection.description}
+          </Typography>
+        )}
 
         <CollectionGamesTable
           rows={shown}

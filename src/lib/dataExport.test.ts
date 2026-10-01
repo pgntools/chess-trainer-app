@@ -126,7 +126,7 @@ describe("buildExport", () => {
     const { manifest } = build({}, { games: true, repertoires: true });
     expect(manifest).toMatchObject({
       format: "chessapp-export",
-      formatVersion: 1,
+      formatVersion: 2,
       appVersion: "9.9.9",
       exportedAt: NOW.toISOString(),
       categories: ["games", "repertoires"],
@@ -346,6 +346,29 @@ describe("buildExport", () => {
     const bundle = build({ collections }, { shippedCollections: true });
     expect(bundle.files).toEqual([]);
     expect(bundle.manifest.includeShippedCollections).toBe(false);
+  });
+
+  it("carries an upload's description and tournament mark beside its games (CTA-121)", () => {
+    const described: CollectionSummary = {
+      ...summary("u1", "Mine", "uploaded", 1),
+      description: "Six rounds.",
+      tournament: { enabled: true, type: "swiss" },
+    };
+    const plain = summary("u2", "Yours", "uploaded", 1);
+    const bundle = build({ collections: [{ summary: described, games: [pgn("U")] }, { summary: plain, games: [pgn("V")] }] });
+    expect(bundle.manifest.files.map((file) => (file.kind === "collection" ? file.collection : null))).toEqual([
+      {
+        id: "u1",
+        name: "Mine",
+        source: "uploaded",
+        games: 1,
+        folderPath: [],
+        description: "Six rounds.",
+        tournament: { enabled: true, type: "swiss" },
+      },
+      // A collection with neither is written without either — an older record, or none made.
+      { id: "u2", name: "Yours", source: "uploaded", games: 1, folderPath: [] },
+    ]);
   });
 });
 

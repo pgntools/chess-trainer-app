@@ -215,6 +215,78 @@ describe("reading a zip", () => {
     expect(dump.shippedCollections).toBe(1);
   });
 
+  it("reads a collection's description and tournament mark back (CTA-121)", () => {
+    const bytes = zipOf({
+      collections: [
+        {
+          summary: {
+            ...uploaded("u1", "Club games", "lc"),
+            description: "Six rounds.",
+            tournament: { enabled: true, type: "roundRobin" },
+          },
+          games: [pgn("Club 1"), pgn("Club 2")],
+        },
+      ],
+      collectionFolders: [folder("lc", "Club")],
+    });
+    expect(dumpOf(bytes).collections).toEqual([
+      {
+        record: {
+          id: "u1",
+          name: "Club games",
+          games: [pgn("Club 1"), pgn("Club 2")],
+          description: "Six rounds.",
+          tournament: { enabled: true, type: "roundRobin" },
+        },
+        folder: ["Club"],
+      },
+    ]);
+    // A mark not shaped as one is refused, not read.
+    const broken = rezip(bytes, (m) => ({
+      ...m,
+      files: (m.files as Record<string, unknown>[]).map((file) =>
+        file.kind === "collection"
+          ? { ...file, collection: { ...(file.collection as Record<string, unknown>), tournament: { enabled: true } } }
+          : file,
+      ),
+    }));
+    expect(readImport(broken)).toMatchObject({ ok: false, problem: { kind: "unreadable", path: "collections/club/club-games.pgn" } });
+  });
+
+  it("reads a version-1 zip through the table — its collections simply without the settings (CTA-121)", () => {
+    const v1 = rezip(
+      zipOf({
+        collections: [
+          {
+            summary: { ...uploaded("u1", "Club games"), description: "Six rounds.", tournament: { enabled: true, type: "swiss" } },
+            games: [pgn("Club 1"), pgn("Club 2")],
+          },
+        ],
+      }),
+      (m) => ({
+        ...m,
+        formatVersion: 1,
+        files: (m.files as Record<string, unknown>[]).map((file) => {
+          if (file.kind !== "collection") return file;
+          const collection = { ...(file.collection as Record<string, unknown>) };
+          delete collection.description;
+          delete collection.tournament;
+          return { ...file, collection };
+        }),
+      }),
+    );
+    const dump = dumpOf(v1);
+    expect(dump.collections).toEqual([
+      { record: { id: "u1", name: "Club games", games: [pgn("Club 1"), pgn("Club 2")] }, folder: [] },
+    ]);
+    // The same zip stamped past this build's version is refused as newer.
+    expect(readImport(rezip(v1, (m) => ({ ...m, formatVersion: 3 })))).toMatchObject({
+      ok: false,
+      problem: { kind: "newer", version: 3 },
+    });
+  });
+
+
   it("cuts a legacy multi-game repertoire back out whole", () => {
     const legacy = repertoire("r9", null, { pgn: `${pgn("One")}\n\n${pgn("Two")}` });
     const dump = dumpOf(zipOf({ repertoires: [legacy, repertoire("r8", null)] }));
@@ -261,7 +333,7 @@ describe("reading a zip", () => {
     ["no manifest", zipSync({ "games.pgn": strToU8(pgn("x")) }), { kind: "no-manifest" }],
     ["a manifest that is not JSON", zipSync({ "manifest.json": strToU8("{") }), { kind: "malformed" }],
     ["someone else's format", rezip(zipOf(), (m) => ({ ...m, format: "other" })), { kind: "foreign" }],
-    ["a newer version", rezip(zipOf(), (m) => ({ ...m, formatVersion: 2 })), { kind: "newer", version: 2 }],
+    ["a newer version", rezip(zipOf(), (m) => ({ ...m, formatVersion: 3 })), { kind: "newer", version: 3 }],
     ["no version", rezip(zipOf(), (m) => ({ ...m, formatVersion: undefined })), { kind: "malformed" }],
     ["no files list", rezip(zipOf(), (m) => ({ ...m, files: undefined })), { kind: "malformed" }],
     ["a missing file", rezip(zipOf(), (m) => m, ["analyses.pgn"]), { kind: "missing-file", path: "analyses.pgn" }],
@@ -307,7 +379,7 @@ describe("reading a zip", () => {
 
 describe("migrations", () => {
   it("passes the current version through unchanged", () => {
-    const manifest = { format: "chessapp-export", formatVersion: 1 };
+    const manifest = { format: "chessapp-export", formatVersion: 2 };
     expect(migrateManifest(manifest)).toBe(manifest);
   });
 
@@ -328,18 +400,19 @@ describe("migrations", () => {
   });
 
   it("reads an older zip through the table", () => {
-    // Pretend this build reads version 2, which renamed `files` from `entries`.
+    // Pretend this build reads version 3, where version 2 renamed `files` from `entries`
+    // — one step above the real v1 → v2 (the collections' settings, CTA-121).
     const older = rezip(zipOf({ playedGames: [played("g1")] }, { ...ALL, collections: false }), (m) => {
       const { files, ...rest } = m;
-      return { ...rest, entries: files };
+      return { ...rest, entries: files, formatVersion: 2 };
     });
     const migrations = {
-      1: ({ entries, ...rest }: Record<string, unknown>) => ({ ...rest, files: entries, formatVersion: 2 }),
+      2: ({ entries, ...rest }: Record<string, unknown>) => ({ ...rest, files: entries, formatVersion: 3 }),
     };
-    const reading = readImport(older, { migrations, version: 2 });
+    const reading = readImport(older, { migrations, version: 3 });
     expect(reading.ok && reading.dump.games.map((game) => game.id)).toEqual(["g1"]);
     // Without the migration the same zip is not readable.
-    expect(readImport(older)).toMatchObject({ ok: false, problem: { kind: "malformed" } });
+    expect(readImport(older, { version: 3 })).toMatchObject({ ok: false, problem: { kind: "malformed" } });
   });
 });
 

@@ -61,7 +61,31 @@ export type CollectionSummary = {
    * Library's fixed Built-in folder.
    */
   folderId?: string | null;
+  /**
+   * The reader's own description of the collection (CTA-121), shown under
+   * its name on its games screen. Absent for none.
+   */
+  description?: string;
+  /**
+   * Marked as a tournament (CTA-121) — a **stored setting**: the games decide
+   * whether it reads as one ({@link canBeTournament}). Absent for off.
+   */
+  tournament?: CollectionTournament;
 };
+
+/** The formats a collection can be marked as (CTA-121) — the last three are stored but not selectable yet. */
+export const TOURNAMENT_FORMATS = ["swiss", "roundRobin", "knockout", "arena", "match"] as const;
+
+export type TournamentFormat = (typeof TOURNAMENT_FORMATS)[number];
+
+/** A collection marked as a tournament (CTA-121). Swiss and Round robin are live; the rest are coming. */
+export type CollectionTournament = {
+  enabled: boolean;
+  type: TournamentFormat;
+};
+
+/** The most characters a collection's description may be (CTA-121) — the repertoire's cap, for the same reason. */
+export const MAX_COLLECTION_DESCRIPTION_CHARS = 2000;
 
 export type LibraryCollection = {
   /** Its route segment: a shipped file's slug, or an upload's minted id. */
@@ -648,6 +672,27 @@ export const sharedEventOf = (rows: readonly Pick<CollectionRow, "event">[]): st
   const [event] = events;
   return events.size === 1 ? event : undefined;
 };
+
+/**
+ * Whether a collection's games allow marking it a tournament (CTA-121): at
+ * least one game, and every game sharing one `Event` — read off the index
+ * rows alone, so no game is parsed or fetched for it. A game with no `Event`
+ * is a value of its own ({@link sharedEventOf}), so a mix of tagged and
+ * untagged games is more than one event, and an empty collection is none.
+ */
+export const canBeTournament = (rows: readonly Pick<CollectionRow, "event">[]): boolean =>
+  rows.length > 0 && sharedEventOf(rows) !== undefined;
+
+/**
+ * Whether a collection **reads as** a tournament (CTA-121): its stored mark
+ * is on **and** its games still allow it ({@link canBeTournament}). Games
+ * added later under another `Event` leave the stored setting untouched but
+ * read as off — the mark comes back once the games share one event again.
+ */
+export const isTournamentCollection = (
+  summary: Pick<CollectionSummary, "tournament">,
+  rows: readonly Pick<CollectionRow, "event">[],
+): boolean => summary.tournament?.enabled === true && canBeTournament(rows);
 
 /**
  * A shipped file's name out of its stem — the one naming rule that makes

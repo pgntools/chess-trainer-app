@@ -85,6 +85,7 @@ const en = {
     library: "Library",
     addCollection: "Add collection",
     collection: "Collection",
+    collectionSettings: "Collection settings",
     libraryGame: "Library game",
     settings: "Settings",
     designSystem: "Design system",
@@ -1198,6 +1199,49 @@ const en = {
       },
       shippedNote: "This collection ships with the app. Its games are read-only: changes you make on a game are saved as a copy in Saved analyses.",
       uploadedNote: "You added this collection; it is kept in this browser only. Changes to a game can update it in place or be saved as a copy next to it.",
+      /** The header's gear, to the collection's settings (CTA-121). */
+      settings: "Collection settings",
+    },
+    /**
+     * A collection's settings — `/library/<collection>/settings` (CTA-121):
+     * the `CollectionSettingsForm` block's words, and the screen's own.
+     */
+    settings: {
+      /** The screen's `h1`. */
+      title: "Collection settings",
+      general: "General",
+      name: "Title",
+      nameHelp: "What the collection is called in the Library.",
+      description: "Description",
+      descriptionHelp: "Shown under the collection's name, here and on its games screen.",
+      tournamentSection: "Tournament",
+      tournament: "Mark as tournament",
+      tournamentHelp: "A tournament's games can be shown as standings and crosstables.",
+      tournamentBlocked:
+        "A collection can be marked as a tournament only when every game in it shares one Event. First narrow the collection to the games of one tournament event.",
+      comingLater: "coming later",
+      type: "Tournament type",
+      save: "Save",
+      cancel: "Cancel",
+      problem: "The settings could not be saved — this browser's storage may be full or unavailable.",
+      /** The five formats (CTA-121); the last three are stored but not selectable yet. */
+      formats: {
+        swiss: "Swiss system",
+        roundRobin: "Round robin",
+        knockout: "Knockout (elimination)",
+        arena: "Arena",
+        match: "Match play",
+      },
+      /** Each format's one-line description, under the type's radios. */
+      formatDescriptions: {
+        swiss:
+          "players are paired each round against opponents with the same or similar score; no one is eliminated. Best for large open weekend tournaments.",
+        roundRobin:
+          "every participant plays every other once (or twice in a double round robin). Best for small, elite fields and championships.",
+        knockout: "a loss eliminates a player from first prize. Best for high-stakes events (like the World Cup).",
+        arena: "continuous, time-based online pairing focused on volume and win streaks. Best for fast online play.",
+        match: "a head-to-head series of games between two players. Best for World Championship matches.",
+      },
     },
     /**
      * The table's filters, in the right-hand panel — each shown only where

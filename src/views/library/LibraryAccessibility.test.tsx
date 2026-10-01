@@ -29,6 +29,7 @@ vi.mock("../../lib/openings", async (importOriginal) => {
 });
 
 import CollectionScreen from "./CollectionScreen";
+import CollectionSettingsScreen from "./CollectionSettingsScreen";
 import LibraryGameScreen from "./LibraryGameScreen";
 import LibraryHome from "./LibraryHome";
 import LibraryUpload from "./LibraryUpload";
@@ -48,6 +49,7 @@ const mount = (entry: string) =>
             <Route path="/library" element={<LibraryHome />} />
             <Route path="/library/new" element={<LibraryUpload />} />
             <Route path="/library/:collectionId" element={<CollectionScreen />} />
+            <Route path="/library/:collectionId/settings" element={<CollectionSettingsScreen />} />
             <Route path="/library/:collectionId/:game" element={<LibraryGameScreen />} />
           </Routes>
           <RightPanelOutlet />
@@ -172,6 +174,50 @@ describe("a Library game — accessible", () => {
       "href",
       `/library/${added.collection.id}`,
     );
+    await expectNoAxeViolations(document.body);
+  });
+});
+
+describe("a collection's settings — accessible (CTA-121)", () => {
+  it("is its page's h1 over its sections' h2s, and passes axe with the mark off", async () => {
+    const club = await keep("Club games");
+    mount(`/library/${club.id}/settings`);
+    expect(await screen.findByTestId("library-settings-form")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Collection settings" })).toBeInTheDocument();
+    for (const section of ["General", "Tournament"]) {
+      expect(screen.getByRole("heading", { level: 2, name: section })).toBeInTheDocument();
+    }
+    expect(screen.getByRole("switch", { name: "Mark as tournament" })).not.toBeChecked();
+    await expectNoAxeViolations(document.body);
+  });
+
+  it("names the mark by its label and its reason when the games will not allow it, and the types by their names", async () => {
+    // GAMES holds two events, so the mark is off with its reason — the message is the switch's description.
+    const mixed = await keep("Mixed club");
+    mount(`/library/${mixed.id}/settings`);
+    const blocked = await screen.findByRole("switch", { name: "Mark as tournament" });
+    expect(blocked).toBeDisabled();
+    expect(blocked).toHaveAccessibleDescription(/only when every game in it shares one Event/);
+    await expectNoAxeViolations(document.body);
+  });
+
+  it("marks and types from the keyboard, the reason gone once it is allowed", async () => {
+    // One event, so the mark can be switched on: the club's games above are two "Club" events and one "Open".
+    const one = '[Event "Club"]\n[Date "2023.04.02"]\n[White "Zed"]\n[Black "Amy"]\n[Result "0-1"]\n\n1. e4 e5 0-1';
+    const added = await addCollection("One club", [one], [indexedRowOf(one)]);
+    if (!("collection" in added)) throw new Error("not added");
+    mount(`/library/${added.collection.id}/settings`);
+    const mark = await screen.findByRole("switch", { name: "Mark as tournament" });
+    mark.focus();
+    await userEvent.keyboard(" ");
+    const types = screen.getByRole("radiogroup", { name: "Tournament type" });
+    await expectNoAxeViolations(document.body);
+    const swiss = within(types).getByRole("radio", { name: "Swiss system" });
+    expect(swiss).toBeChecked();
+    swiss.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(within(types).getByRole("radio", { name: "Round robin" })).toBeChecked();
+    expect(mark).toHaveAccessibleDescription(/standings and crosstables/);
     await expectNoAxeViolations(document.body);
   });
 });

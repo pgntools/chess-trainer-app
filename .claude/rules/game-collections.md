@@ -9,6 +9,7 @@ paths:
   - "src/blocks/tables/CollectionsTreeTable/**"
   - "src/blocks/tables/CollectionGamesTable/**"
   - "src/blocks/forms/CollectionFilters/**"
+  - "src/blocks/forms/CollectionSettingsForm/**"
   - "src/blocks/dialogs/CollectionImportDialog/**"
   - "src/blocks/dialogs/OpeningTreePgnDialog/**"
   - "src/lib/libraryGameCatalog*"
@@ -48,7 +49,7 @@ for the Analysis Board and Saved analyses it hands games to.
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`. |
+| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`. **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together). |
 | `src/lib/collectionZip.ts` | **A picked `.zip`** (CTA-102, CTA-103): `readCollectionZip` (every `.pgn` in it, bounded, non-throwing), `isZipFile`. |
 | `src/lib/collectionIndex.ts` | **The index**: `IndexedRow`, `indexedRowOf` (tags + a `parsePgnTree` pass), `indexGame` (one game, with the app's book), `buildCollectionIndex` / `buildCollectionIndexAsync`, `numberedRows`, `textHash`, `OpeningLookup` / `loadOpeningLookup`, and the file format: `encodeCollectionIndex` / `decodeCollectionIndex`, `COLLECTION_INDEX_FORMAT` / `COLLECTION_INDEX_VERSION`. |
 | `src/lib/collectionIndex.worker.ts` | The index pass for an upload, off the main thread. |
@@ -56,7 +57,7 @@ for the Analysis Board and Saved analyses it hands games to.
 | `src/lib/openingTreePgn.ts` | **The opening tree as PGN** (CTA-99): `openingTreeToPgn(line, node, tags, headers)` — the subtree below the board's position, the line played leading to it, each move's `[%games N]` / `[%prc P]` as asked (`OpeningTreePgnTags`). Written through `gameTree.ts`'s `moveTreeToPgn`, no `chess.js`. |
 | `src/lib/shippedCollections.ts` | **Shipped collections**: the manifest (a static import) and two lazy globs (`*.pgn`, `*.index.json`, `?raw`). `shippedCollectionsOf` (takes its inputs as parameters, for tests), `shippedCollections`, `findShippedCollection`, `peekShippedRows` / `peekShippedGames`, `subscribeShipped`. |
 | `src/lib/libraryDb.ts` | **The database**, `chessapp.library` (version 2): its four object store names, the channel, `openLibraryDb` and `deleteLibraryDb`. Both stores below open it. |
-| `src/lib/libraryCollectionStore.ts` | **Uploaded collections, in IndexedDB** (`chessapp.library`). Reads: `uploadedCollectionsSnapshot`, `subscribeUploadedCollections`, `loadUploadedCollections`, `peekUploadedRows` / `loadUploadedRows`, `peekUploadedGames` / `loadUploadedGames`. Writes: `addCollection` (into a folder, optionally), `removeCollection`, `moveCollection` (Move to…), `refileCollectionsIn` (a folder deleted), `replaceCollectionGame` (Update), `insertCollectionGame` (Save as copy), `appendCollectionGames` (Add games), `removeCollectionGames` (delete picked). Also `newCollectionId` and `resetLibraryCollectionStore` (for tests). |
+| `src/lib/libraryCollectionStore.ts` | **Uploaded collections, in IndexedDB** (`chessapp.library`). Reads: `uploadedCollectionsSnapshot`, `subscribeUploadedCollections`, `loadUploadedCollections`, `peekUploadedRows` / `loadUploadedRows`, `peekUploadedGames` / `loadUploadedGames`. Writes: `addCollection` (into a folder, optionally — with the settings an import restores, CTA-121), `removeCollection`, `moveCollection` (Move to…), `updateCollectionSettings` (the settings screen, CTA-121 — the summary alone), `refileCollectionsIn` (a folder deleted), `replaceCollectionGame` (Update), `insertCollectionGame` (Save as copy), `appendCollectionGames` (Add games), `removeCollectionGames` (delete picked). Also `newCollectionId` and `resetLibraryCollectionStore` (for tests). |
 | `src/lib/libraryFolderStore.ts` | **The reader's folders** (CTA-88), the `folders` object store over `idbRecordStore`: `libraryFoldersSnapshot`, `subscribeLibraryFolders`, `loadLibraryFolders`, `createLibraryFolder`, `renameLibraryFolder`, `moveLibraryFolder` (never into its own subtree), `removeLibraryFolder` (keeps the contents), `BUILT_IN_FOLDER_ID`, `MAX_LIBRARY_FOLDERS` (100). A folder is the app's one nested-folder model, `GameFolder` (`lib/savedGameFolders.ts`). |
 | `src/lib/folderTreeRows.ts` | **A folder tree as table rows**, pure and generic over anything with a `folderId`: folders first, a pinned folder first, sizes over subtrees, closed folders' contents left out, the filter that opens the way to a match. |
 | `src/lib/libraryGameCatalog.ts` | **A Library game as a `?game=` reference**: `library/<collection>/<n>`. `findLibraryGame`, `libraryReferenceRead`, `loadLibraryReferenceGames`, `libraryReferencePathOf`. Registered in `lib/gameReference.ts`. |
@@ -68,6 +69,8 @@ for the Analysis Board and Saved analyses it hands games to.
 | `src/views/library/LibraryUpload.tsx` | `/library/new`: a new collection (file, paste, or empty), filed in a folder (`?folder=<id>`, the picker), and `?into=<id>` to add games to an existing one. |
 | `src/views/library/ImportOptionsDialog.tsx` | The import-options popup's job (CTA-103): the `CollectionImportDialog` block (what came in, the Elo / date / player filters, the count), then the index pass over the kept games in a `ProgressDialog` (`useCancellableJob`) and the writes. |
 | `src/views/library/CollectionScreen.tsx` | `/library/<collection>`: the table, the picks, the export bar, Analyse, Add games, and deleting games. |
+| `src/blocks/forms/CollectionSettingsForm/` | A collection's settings form, a block (CTA-121): the title, the description, and the tournament mark with its five formats (three not selectable yet) — presentational, wired by the settings screen. |
+| `src/views/library/CollectionSettingsScreen.tsx` | `/library/<collection>/settings` (CTA-121): the `CollectionSettingsForm` block over one draft, saved whole through `updateCollectionSettings` — uploads only; a shipped id is the miss. |
 | `src/blocks/forms/CollectionFilters/` | The table's right-hand panel (a block since CTA-113): players (several names at once, OR'd — CTA-95) and side, the opening board (a slot), then opening, event, dates and result. |
 | `src/views/library/OpeningFilterBoard.tsx` | The opening-moves board (`options.id` `library-filter-board`), and its *Save tree as PGN* link. |
 | `src/blocks/dialogs/OpeningTreePgnDialog/` | *Save tree as PGN*'s choice: No, or Add tags — `games`, `prc`, or both (`FormDialog`, CTA-113). |
@@ -278,7 +281,7 @@ shared `lib/idb.ts`.
 
 | Object store | Record | Read by |
 | --- | --- | --- |
-| `collections` | `{ id, name, addedAt, count, folderId }` | the list, which stays small |
+| `collections` | `{ id, name, addedAt, count, folderId, description?, tournament? }` | the list, which stays small |
 | `indexes` | `{ id, rows: IndexedRow[] }` | the table |
 | `games` | `{ id, games: string[] }` | a board, a download |
 | `folders` | `{ id, seq, value: GameFolder }` (an `idbRecordStore` row) | the list |
@@ -289,8 +292,11 @@ collection, not all of them. The database is opened in `lib/libraryDb.ts` at
 created `folders` (`onupgradeneeded` creates any missing store), so no
 reader's collection was touched. **`folderId` needed no migration**: a summary
 from before it has none, and an absent `folderId` — or one naming a folder that
-is not there — reads as the top level. A future schema change bumps the
-version again (§10.4).
+is not there — reads as the top level. **So did CTA-121's `description` and
+`tournament`** (a stored mark `{ enabled, type }`, `type` one of all five
+formats so the later ones need no schema change): absent reads as no
+description / the mark off, the CTA-88 precedent again. A future schema
+change bumps the version again (§10.4).
 
 ### 4.3 Writes
 
@@ -306,6 +312,7 @@ the caches, re-reads the summaries and announces the change to other tabs.
 | `addCollection(name, games, rows, now?, id?, folderId?)` | upload, empty collection | New id (`u` + `newRecordId`, so it can never collide with a shipped slug). Empty `games` is allowed. Filed in `folderId` (default `null`, the top level). |
 | `removeCollection(id)` | `/library` row delete | Deletes all three records. An unknown id is a no-op. |
 | `moveCollection(id, folderId)` | `/library` row's Move to… | Rewrites the summary's `folderId` only. An unknown id answers `"missing"`; the same folder is a no-op. |
+| `updateCollectionSettings(id, patch)` | the settings screen (CTA-121) | Rewrites the summary's `name`, `description` and `tournament` only — `moveCollection`'s shape. A blank title is not written; `description: ""` removes it; a patch that changes nothing is a no-op. An unknown id answers `"missing"`. |
 | `refileCollectionsIn(folderId, parentId)` | `removeLibraryFolder` | Every collection filed directly in the folder moves to its parent, in one transaction. |
 | `replaceCollectionGame(id, n, pgn, row)` | game board Update | Rewrites in place. |
 | `insertCollectionGame(id, n, pgn, row)` | game board Save as copy | Inserts at `n`; later games move down. |
@@ -414,6 +421,7 @@ or a count mismatch gives `undefined`.
 | `/library/new?folder=<id>` | `LibraryUpload`, the picker starting at that folder (a folder row's *Add a collection here*); an unknown or Built-in id is the top level | the folders, waited for |
 | `/library/new?into=<id>` | `LibraryUpload` (add games; uploaded collections only, otherwise the miss) | that summary |
 | `/library/<collection>` | `CollectionScreen` | summary + rows |
+| `/library/<collection>/settings` | `CollectionSettingsScreen` (CTA-121) — uploads only; a shipped or missing id is the miss | summary + rows |
 | `/library/<collection>/<n>` | `LibraryGameScreen` → `LibraryGameBoard` | summary + games |
 
 `new` is a static segment, so it ranks above `:collectionId`. **Never give a
@@ -555,10 +563,15 @@ words box, **the table the one region that scrolls**, its header sticky.
 ### 6.4 `/library/<collection>` — the table
 
 **Layout.** A flex column: the `ListScreenHeader` (a `BackButton`, name +
-count, Add games, the `SelectionBar`, Analyse), then the `CollectionGamesTable`
+count, Add games, the `SelectionBar`, Analyse), then — under the header, when
+the summary has one — the collection's **description** (CTA-121,
+`library-table-description`), then the `CollectionGamesTable`
 block — the `SearchField` in its filters slot, the one region that scrolls
 (both directions, a sticky header), the pager pinned under it. The right-hand panel (`RightPanel`) holds the
-filters and, at its foot, the shipped/uploaded note.
+filters and, at its foot, the shipped/uploaded note. An **uploaded**
+collection's header also carries the **Settings gear** (`library-table-settings`,
+CTA-121), a link to `/library/<collection>/settings` that passes `state.from`
+so the settings screen's Save and Cancel return to the same filtered view.
 
 **Columns** (`COLLECTION_COLUMNS`): `#`, White, Elo, Black, Elo, Result, Date,
 Round, Event, ECO, Opening, Moves. The `#` cell carries the unreadable mark
@@ -662,6 +675,35 @@ carries the filter, not a hand-made selection.
     ([`pgn-annotations.md`](./pgn-annotations.md) §3).
   - The file opens on the Analysis Board through Load, and round-trips
     through `parsePgnTree` / `treeToPgn` unchanged.
+
+#### 6.4.2 The settings screen — `/library/<collection>/settings` (CTA-121)
+
+An upload's title, a description, and the **tournament mark** — one draft,
+written whole on Save through `updateCollectionSettings`; Save and Cancel go
+back to `state.from` (the table's filtered view), else the table. The form is
+the `CollectionSettingsForm` block; the screen owns the draft and the write.
+- **Title** — required; a blank one keeps Save off. **Description** — a
+  multi-line text (`MAX_COLLECTION_DESCRIPTION_CHARS`, 2,000), `""` for none,
+  shown under the table's header when there is one.
+- **The tournament mark is stored; the games decide whether it reads as one.**
+  The switch can be turned on only when `canBeTournament(rows)` — at least one
+  game, every game sharing one `Event` (`sharedEventOf` off the **index rows**;
+  a game with no `Event` is a value of its own, so a mix is more than one
+  event, and an empty collection is none). No games are loaded for the verdict.
+  Off, the switch is disabled with its reason as its description
+  (`library.settings.tournamentBlocked`) and no type is offered.
+- **Five formats, two live.** On, the type is radios: Swiss (the default when
+  first switched on) and Round robin selectable; Knockout, Arena and Match
+  play shown disabled ("coming later") — the type is stored as the five-value
+  union, so wiring them later needs no schema change. Each format's one-line
+  description sits under the group, all five at once.
+- **Games added later under another `Event`** leave the stored mark untouched
+  but it reads as off everywhere (`isTournamentCollection`) — until the games
+  share one event again. The switch shows off with the same reason, and saving
+  keeps what is stored.
+
+Shipped collections have no settings entry: no gear on their table, and the
+URL is the miss.
 
 ### 6.5 Picks, export, delete, Analyse
 
