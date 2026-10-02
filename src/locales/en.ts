@@ -127,6 +127,18 @@ const en = {
     missingArticle: "There is no article at this address.",
     missingFolder: "There is no Blog folder at this address.",
   },
+  /** `<InlinePgnGame>` (CTA-126): an excerpt of a game in an article (`views/shared/ExcerptBoard.tsx`). */
+  inlinePgn: {
+    label: "The game, from {{from}} to {{to}}",
+    start: "The start",
+    moves: "The moves",
+    first: "To the first move shown",
+    back: "One move back",
+    next: "One move on",
+    last: "To the last move shown",
+    flip: "Flip the board",
+    unreadable: "This game's PGN does not read.",
+  },
   demoBoard: {
     reset: "Back to the start",
     back: "Take back a move",

@@ -39,6 +39,7 @@ export type BlogArticleEntry = {
 
 export const BLOG_FOLDERS: readonly BlogFolder[] = [
   { path: "components", title: { en: "Components", he: "רכיבים" } },
+  { path: "inline-pgn", title: { en: "Games in an article", he: "משחקים בתוך מאמר" } },
   { path: "guides", title: { en: "Guides", he: "מדריכים" } },
 ];
 
@@ -97,6 +98,38 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     summary: {
       en: "<NavCards>: the app's screens, by section — the landing page as it first was.",
       he: "<NavCards>: מסכי האפליקציה לפי אזורים — דף הנחיתה כפי שהיה בהתחלה.",
+    },
+  },
+  {
+    path: "inline-pgn/the-component",
+    title: { en: "A game in an article: InlinePgnGame", he: "משחק בתוך מאמר: InlinePgnGame" },
+    summary: {
+      en: "<InlinePgnGame>: a window of a game's moves on a board, side lines and all — every prop.",
+      he: "<InlinePgnGame>: חלון של מהלכי משחק על לוח, כולל וריאנטים — כל המאפיינים.",
+    },
+  },
+  {
+    path: "inline-pgn/windows",
+    title: { en: "Windows: from, to and start", he: "חלונות: from, to ו-start" },
+    summary: {
+      en: "Which moves a board shows, and where it opens — by move number or by ply.",
+      he: "אילו מהלכים לוח מציג, והיכן הוא נפתח — לפי מספר מהלך או לפי חצי-מהלך.",
+    },
+  },
+  {
+    path: "inline-pgn/variations",
+    title: { en: "Side lines", he: "וריאנטים" },
+    summary: {
+      en: "Side lines nested where they branch, a board opened inside one, and the game's comments.",
+      he: "וריאנטים מקוננים במקום שבו הם מתפצלים, לוח שנפתח בתוך אחד, וההערות של המשחק.",
+    },
+  },
+  {
+    path: "inline-pgn/rubinstein-capablanca-1911",
+    title: { en: "Rubinstein – Capablanca, San Sebastian 1911", he: "רובינשטיין – קפבלנקה, סן סבסטיאן 1911" },
+    summary: {
+      en: "A game review: Capablanca's own notes, with nine boards on the one game.",
+      he: "סקירת משחק: ההערות של קפבלנקה עצמו, עם תשעה לוחות על אותו משחק.",
     },
   },
   {

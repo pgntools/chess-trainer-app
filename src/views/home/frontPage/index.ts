@@ -3,6 +3,7 @@ import type { MDXComponents } from "mdx/types";
 import { BoardRow } from "./BoardRow";
 import { CollectionCard } from "./CollectionCard";
 import { CollectionGameBoard } from "./CollectionGameBoard";
+import { InlinePgnGame } from "./InlinePgnGame";
 import { NavCards } from "./NavCards";
 import { Anchor, CodeBlock, H1, H2, H3, InlineCode, List, ListItem, OrderedList, Paragraph, Rule } from "./Prose";
 import { RepertoireBoardEmbed } from "./RepertoireBoardEmbed";
@@ -21,6 +22,7 @@ import { StoredGameEmbed } from "./StoredGameEmbed";
  * | `<CollectionGameBoard game="/library/<c>/<n>" startMove="17" />` | a Library game on a board |
  * | `<RepertoireBoard _id="/repertoires/<id>" startMove="1" fallback="e4-white" />` | a repertoire on a board, or a shipped sample where the reader has none |
  * | `<CollectionCard _id="/library/<c>" showGame="52" />` | a collection: a board on one game, a short table of its games |
+ * | `<InlinePgnGame pgn={game} from="5" to="15..." start="11" />` | an excerpt of a PGN: a window of its moves, side lines nested, on a board — one game as often as an article likes |
  * | `<StoredGameEmbed reference="…" />` | any stored game by its `?game=` reference (`analysis/saved/<id>`, `play/games/<id>`, …) |
  * | `<NavCards />` | every screen as a card, by section — the landing page before CTA-126 |
  *
@@ -45,5 +47,6 @@ export const frontPageComponents: MDXComponents = {
   RepertoireBoard: RepertoireBoardEmbed,
   CollectionCard,
   StoredGameEmbed,
+  InlinePgnGame,
   NavCards,
 };

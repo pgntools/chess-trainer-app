@@ -75,12 +75,36 @@ export const numberedLine = (line: readonly string[], startFen?: string): string
 const MOVE_NUMBER = /^(\.\.\.|…)?\s*(\d+)\s*(\.\.\.|…|\.)?$/;
 
 /**
+ * **A move number as a ply** — how many half-moves from `startFen` (the
+ * standard start when absent) reach the position after it: `"12"` or `"12."`
+ * is after White's 12th move, `"12..."` (or `"...12"`) after Black's, `"0"`
+ * the start (never below 0). `undefined` for anything that is not a move
+ * number — a line of SAN, say. Not clamped to a game: that is the caller's.
+ */
+export const plyOfMoveNumber = (text: string | undefined, startFen?: string): number | undefined => {
+  const numbered = MOVE_NUMBER.exec((text ?? "").trim());
+  if (numbered === null) return undefined;
+  const [, before, digits, after] = numbered;
+  const black = before !== undefined || (after !== undefined && after !== ".");
+  const chess = startFen === undefined ? new Chess() : new Chess(startFen);
+  const offset = (Number(digits) - chess.moveNumber()) * 2;
+  return Math.max(0, offset + (chess.turn() === "w" ? (black ? 2 : 1) : black ? 1 : 0));
+};
+
+/** A line of SAN as an author writes it — `"1. e4 c5 2. Nf3"` or `"e4 c5 Nf3"` — as its moves. */
+export const sansOfLine = (text: string): string[] =>
+  text
+    .trim()
+    .split(/\s+/)
+    .map((token) => token.replace(/^\d+\.+/, "").replace(/^…/, ""))
+    .filter((token) => token !== "");
+
+/**
  * **Where a board opens** — a `startMove` as an author writes it, read into the
  * line of SAN that reaches it from the tree's start:
  *
- * - a **move number** walks the mainline: `"12"` or `"12."` is the position
- *   after White's 12th move, `"12..."` (or `"...12"`) after Black's; `"0"` is
- *   the start. Numbered from the start position's own move number, and
+ * - a **move number** walks the mainline ({@link plyOfMoveNumber}): `"12"`
+ *   after White's 12th move, `"12..."` after Black's, `"0"` the start —
  *   clamped to the mainline's end, as `?move=` is;
  * - a **line** — `"1. e4 c5 2. Nf3"`, or bare `"e4 c5 Nf3"` — follows those
  *   moves, side lines included, as far as the tree holds them.
@@ -90,13 +114,8 @@ const MOVE_NUMBER = /^(\.\.\.|…)?\s*(\d+)\s*(\.\.\.|…|\.)?$/;
 export const startLineOf = (root: DemoNode, startMove: string | undefined, startFen?: string): string[] => {
   const text = (startMove ?? "").trim();
   if (text === "") return [];
-  const numbered = MOVE_NUMBER.exec(text);
-  if (numbered !== null) {
-    const [, before, digits, after] = numbered;
-    const black = before !== undefined || (after !== undefined && after !== ".");
-    const chess = startFen === undefined ? new Chess() : new Chess(startFen);
-    const offset = (Number(digits) - chess.moveNumber()) * 2;
-    const plies = offset + (chess.turn() === "w" ? (black ? 2 : 1) : black ? 1 : 0);
+  const plies = plyOfMoveNumber(text, startFen);
+  if (plies !== undefined) {
     const line: string[] = [];
     let node = root;
     while (line.length < plies && node.children.length > 0) {
@@ -105,9 +124,5 @@ export const startLineOf = (root: DemoNode, startMove: string | undefined, start
     }
     return line;
   }
-  const sans = text
-    .split(/\s+/)
-    .map((token) => token.replace(/^\d+\.+/, "").replace(/^…/, ""))
-    .filter((token) => token !== "");
-  return demoNodeAt(root, sans).line;
+  return demoNodeAt(root, sansOfLine(text)).line;
 };

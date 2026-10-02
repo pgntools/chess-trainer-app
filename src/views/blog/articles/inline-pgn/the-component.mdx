@@ -1,0 +1,44 @@
+export const miniature = `[Event "Paris"]
+[White "Morphy, Paul"]
+[Black "Duke Karl / Count Isouard"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 d6 3. d4 Bg4 4. dxe5 Bxf3 5. Qxf3 dxe5 6. Bc4 Nf6 7. Qb3 Qe7
+8. Nc3 c6 9. Bg5 b5 10. Nxb5! cxb5 11. Bxb5+ Nbd7 12. O-O-O Rd8 13. Rxd7! Rxd7
+14. Rd1 Qe6 15. Bxd7+ Nxd7 16. Qb8+! Nxb8 17. Rd8# 1-0`
+
+`<InlinePgnGame>` puts a game into an article: a window of its moves on a board, beside the moves as PGN writes them, side lines and all. One game can be shown as many times as the article has positions to talk about — each board its own window, opened where the text needs it.
+
+<InlinePgnGame pgn={miniature} from="9" to="17" start="12" caption="Morphy's Opera Game: the last nine moves, opened before 13. Rxd7!" />
+
+## The markup
+
+The game is written once, at the top of the article, and every board takes it:
+
+```mdx
+export const miniature = `[Event "Paris"]
+1. e4 e5 2. Nf3 d6 … 16. Qb8+! Nxb8 17. Rd8# 1-0`
+
+<InlinePgnGame pgn={miniature} from="9" to="17" start="12" caption="…" />
+```
+
+A longer game is better kept in a file of its own beside the article, imported as text — the [game review](/blog/inline-pgn/rubinstein-capablanca-1911) does that:
+
+```mdx
+import game from "./rubinstein-capablanca-1911.pgn?raw"
+
+<InlinePgnGame pgn={game} from="13..." to="17" />
+```
+
+## The props
+
+- `pgn` — the game, as PGN. Its first game is read, with its side lines, comments and `!` / `?` marks.
+- `from`, `to` — the first and last position the reader can reach, as move numbers: `"9"` is the position after White's 9th move, `"9..."` after Black's. Absent: the start and the end. See [Windows](/blog/inline-pgn/windows).
+- `start` — where the board opens: a move number, or a line of moves that may go into a side line. Absent: `from`. See [Side lines](/blog/inline-pgn/variations).
+- `fromPly`, `toPly`, `startPly` — the same three in plies, the start being 0: ply 21 is the position after White's 11th move. A ply wins over a move number.
+- `variations` — the side lines that branch inside the window, shown by default; `variations={false}` shows the mainline alone.
+- `comments` — show the PGN comment of the move on the board, under the moves.
+- `orientation` — `"black"` to face the board from Black's side.
+- `caption` — a line above the board; it also names the board for a screen reader.
+
+The reader steps with the buttons above the board, clicks a move in the list, or drags a piece along an arrow — but only within the window. The board's arrows are the moves on from the position: green the game's, blue a side line's.

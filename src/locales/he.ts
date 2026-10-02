@@ -99,6 +99,17 @@ const he: typeof en = {
     missingArticle: "אין מאמר בכתובת הזו.",
     missingFolder: "אין תיקיית בלוג בכתובת הזו.",
   },
+  inlinePgn: {
+    label: "המשחק, מ-{{from}} עד {{to}}",
+    start: "ההתחלה",
+    moves: "המהלכים",
+    first: "למהלך הראשון המוצג",
+    back: "מהלך אחד אחורה",
+    next: "מהלך אחד קדימה",
+    last: "למהלך האחרון המוצג",
+    flip: "היפוך הלוח",
+    unreadable: "ה-PGN של המשחק הזה אינו קריא.",
+  },
   demoBoard: {
     reset: "חזרה להתחלה",
     back: "החזרת מהלך",

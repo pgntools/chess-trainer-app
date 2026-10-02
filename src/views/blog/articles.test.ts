@@ -58,7 +58,7 @@ describe("the Blog's registry (CTA-126)", () => {
 
 describe("the Blog's tree", () => {
   it("lists a folder's own folders and articles, one level down", () => {
-    expect(blogFolderContents("").folders.map((folder) => folder.path)).toEqual(["components", "guides"]);
+    expect(blogFolderContents("").folders.map((folder) => folder.path)).toEqual(["components", "inline-pgn", "guides"]);
     expect(blogFolderContents("").articles).toEqual([]);
     expect(blogFolderContents("guides").articles.map((article) => article.path)).toEqual(["guides/writing-an-article"]);
     expect(blogArticleCount("components")).toBe(7);

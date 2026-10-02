@@ -255,6 +255,26 @@ export const appRoutes: RouteObject[] = [
           handle: { title: "pages.blogArticle" }
         },
         {
+          path: "/blog/inline-pgn/the-component",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/inline-pgn/windows",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/inline-pgn/variations",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/inline-pgn/rubinstein-capablanca-1911",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
           path: "/blog/guides/writing-an-article",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }

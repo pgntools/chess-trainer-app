@@ -106,6 +106,8 @@ describe("a Blog article (CTA-126)", () => {
       renderAt(`/blog/${path}`, "article");
       expect((await screen.findAllByRole("heading", { level: 2 })).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      // Every game it writes in reads.
+      expect(screen.queryByText("This game's PGN does not read.")).not.toBeInTheDocument();
     },
   );
 });
