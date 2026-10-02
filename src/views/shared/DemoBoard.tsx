@@ -240,7 +240,8 @@ function DemoBoard({
                 onMouseEnter={() => setHovered(move.id)}
                 onFocus={() => setHovered(move.id)}
                 onBlur={() => setHovered(null)}
-                sx={{ ...moveSx, ...sanTokenSx, justifySelf: "start" }}
+                // At least 24 px each way (WCAG 2.5.8) — several moves stack in the list.
+                sx={{ ...moveSx, ...sanTokenSx, justifySelf: "start", minHeight: 24, minWidth: 24 }}
               >
                 {move.san}
               </ButtonBase>

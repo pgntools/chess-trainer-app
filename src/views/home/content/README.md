@@ -58,5 +58,9 @@ line in `../frontPage/index.ts` and a row here.
   catalogs' (`home.*`, `demoBoard.*` in `src/locales/`), so it follows the
   language; the document's own prose is per document.
 
+**The Blog** (`/blog`, `src/views/blog/`) renders its articles with the same
+components, and its Components folder shows each of them on a page of its
+own with its markup — the place to try a new view before it reaches this page.
+
 Check a change with `npx vitest run src/views/home` (the page renders, one
 `h1`, axe) and `yarn build`.

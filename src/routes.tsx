@@ -22,6 +22,8 @@ import { default as RepertoireBoardScreen  } from './views/repertoires/Repertoir
 import { default as RepertoireSettingsScreen  } from './views/repertoires/RepertoireSettingsScreenMain'
 import { default as RepertoireGameScreen  } from './views/repertoires/RepertoireGameMain'
 import { default as SettingsScreen  } from './views/settings/SettingsMain'
+import { default as BlogIndexScreen  } from './views/blog/BlogIndexMain'
+import { default as BlogArticleScreen  } from './views/blog/BlogArticleMain'
 
 /**
  * The **Development** section's routes (`chessboard.md` §9.5) — the design
@@ -200,6 +202,62 @@ export const appRoutes: RouteObject[] = [
           path: "/library/:collectionId/:game",
           element: <LibraryGameScreen />,
           handle: { title: "pages.libraryGame" }
+        },
+        // The Blog (CTA-126): its index, a folder of it (any depth — the
+        // splat ranks below every static article path), and one line per
+        // article: the article named by its address in
+        // `views/blog/articles.ts`, its document `articles/<path>.mdx`. A new
+        // article is a line here and one in `e2e/a11y/routes.ts`
+        // (`views/blog/articles.test.ts` holds them to the registry).
+        {
+          path: "/blog",
+          element: <BlogIndexScreen />,
+          handle: { title: "pages.blog" }
+        },
+        {
+          path: "/blog/*",
+          element: <BlogIndexScreen />,
+          handle: { title: "pages.blog" }
+        },
+        {
+          path: "/blog/components/game-boards-3col",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/components/start-move",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/components/repertoires-2col",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/components/collection-wide-view-1",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/components/collection-wide-view-2",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/components/stored-game-embed",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/components/nav-cards",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/guides/writing-an-article",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
         },
         // Settings (CTA-86): one tab per segment — Export today. `/settings`
         // and an unknown tab land on the first.

@@ -4,12 +4,13 @@ import { BoardRow } from "./BoardRow";
 import { CollectionCard } from "./CollectionCard";
 import { CollectionGameBoard } from "./CollectionGameBoard";
 import { NavCards } from "./NavCards";
-import { Anchor, H1, H2, H3, List, ListItem, OrderedList, Paragraph, Rule } from "./Prose";
+import { Anchor, CodeBlock, H1, H2, H3, InlineCode, List, ListItem, OrderedList, Paragraph, Rule } from "./Prose";
 import { RepertoireBoardEmbed } from "./RepertoireBoardEmbed";
 import { StoredGameEmbed } from "./StoredGameEmbed";
 
 /**
- * **What the front page's MDX document is rendered with** (CTA-126): its
+ * **What the front page's MDX document — and every Blog article — is
+ * rendered with** (CTA-126): its
  * Markdown in the theme's typography (`Prose.tsx`), and the app's components
  * it may embed, by name, with no `import` (`content/README.md` has every
  * prop):
@@ -37,6 +38,8 @@ export const frontPageComponents: MDXComponents = {
   li: ListItem,
   a: Anchor,
   hr: Rule,
+  pre: CodeBlock,
+  code: InlineCode,
   BoardRow,
   CollectionGameBoard,
   RepertoireBoard: RepertoireBoardEmbed,

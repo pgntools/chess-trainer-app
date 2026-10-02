@@ -1,7 +1,9 @@
 import type { SvgIconComponent } from "@mui/icons-material";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import UploadRoundedIcon from "@mui/icons-material/UploadRounded";
+import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import ConstructionRoundedIcon from "@mui/icons-material/ConstructionRounded";
+import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
@@ -13,6 +15,7 @@ import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
 import type { LocalizedText } from "../../lib/localizedText";
+import { BLOG_ARTICLES, blogNavFolderId, blogParentOf } from "../blog/articles";
 import type { NavFolderId } from "./navFolders";
 
 export type NavItem = {
@@ -101,6 +104,23 @@ export const navItems = (): readonly NavItem[] => [
     labelKey: "nav.repertoires",
     icon: MenuBookRoundedIcon,
     folder: "repertoires",
+  },
+  /*
+    The Blog (CTA-126): its index, and every article in its folder — read off
+    `views/blog/articles.ts`, each named by its data label.
+  */
+  ...BLOG_ARTICLES.map((article) => ({
+    to: `/blog/${article.path}`,
+    label: article.title,
+    icon: ArticleRoundedIcon,
+    folder: blogNavFolderId(blogParentOf(article.path)),
+  })),
+  // After the articles: a folder's sub-folders render above its own screens.
+  {
+    to: "/blog",
+    labelKey: "nav.blogIndex",
+    icon: DashboardRoundedIcon,
+    folder: "blog",
   },
   // The Development section — dev-only: the design gallery (CTA-107) and the theme editor (CTA-115).
   ...(import.meta.env.DEV

@@ -9,8 +9,8 @@ import Typography from "@mui/material/Typography";
  * **The front page's prose, in the theme** (CTA-126) — what the MDX
  * document's Markdown becomes: `#` the page's one `h1` (the screen declares it
  * its own heading, `useOwnPageHeading`), `##` and `###` its sections, a
- * paragraph, a list, a link — each the design's typography rather than the
- * browser's. A link to a path of the app (`[the Library](/library)`) is a
+ * paragraph, a list, a link, code — each the design's typography rather than
+ * the browser's. The Blog's articles are rendered with the same map. A link to a path of the app (`[the Library](/library)`) is a
  * router link, so it carries the app's base path; any other is a plain one.
  *
  * Mirroring needs nothing here: every spacing is logical (`paddingInlineStart`),
@@ -80,6 +80,56 @@ export function Anchor({ href = "", children }: ComponentPropsWithoutRef<"a">) {
     </Link>
   ) : (
     <Link href={href}>{children}</Link>
+  );
+}
+
+/**
+ * A code block — an article showing the markup of its own example. Machine
+ * words: pinned left to right (`dir`, which the RTL plugin leaves alone),
+ * and wrapped rather than scrolled, so no region needs a keyboard stop.
+ */
+export function CodeBlock({ children }: ComponentPropsWithoutRef<"pre">) {
+  return (
+    <Box
+      component="pre"
+      dir="ltr"
+      sx={{
+        mt: 0,
+        mb: 2,
+        p: 1.5,
+        borderRadius: 1,
+        bgcolor: "action.hover",
+        fontFamily: "monospace",
+        fontSize: "0.875rem",
+        whiteSpace: "pre-wrap",
+        overflowWrap: "anywhere",
+        "& code": { bgcolor: "transparent", p: 0 },
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
+/** Inline code — a prop's name, a value. Left to right, as a SAN cell is. */
+export function InlineCode({ children }: ComponentPropsWithoutRef<"code">) {
+  return (
+    <Box
+      component="code"
+      dir="ltr"
+      sx={{
+        fontFamily: "monospace",
+        fontSize: "0.9em",
+        // The primary text colour: a paragraph's secondary grey on the code's tint falls short of 4.5:1.
+        color: "text.primary",
+        bgcolor: "action.hover",
+        px: 0.5,
+        borderRadius: 0.5,
+        unicodeBidi: "isolate",
+      }}
+    >
+      {children}
+    </Box>
   );
 }
 

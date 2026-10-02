@@ -26,6 +26,8 @@ const en = {
     openings: "Openings explorer",
     /** The reader's own repertoires (CTA-61) — shown under the folder's own name, a single entry (CTA-84). */
     repertoires: "My repertoires",
+    /** The Blog's index (CTA-126), `/blog`. */
+    blogIndex: "All articles",
     /** The Library's two screens (CTA-75): the collections, and adding one. */
     libraryCollections: "Collections",
     addCollection: "Add collection",
@@ -47,6 +49,8 @@ const en = {
       analysisBoard: "Analysis Board",
       openings: "Openings",
       repertoires: "Repertoires",
+      /** The Blog (CTA-126) — MDX articles in nested folders, named by their data. */
+      blog: "Blog",
       /**
        * The Library (CTA-75). Its collections are not folders here — they are
        * the rows of `/library`, named from their files and uploads.
@@ -108,6 +112,21 @@ const en = {
     },
   },
   /** The front page's demo mini-boards (CTA-126, `views/shared/DemoBoard.tsx`). */
+  /** The Blog (CTA-126, `views/blog/`). */
+  blog: {
+    title: "Blog",
+    breadcrumbs: "Where this is in the Blog",
+    folders: "Folders",
+    articlesHeading: "Articles",
+    articles_one: "{{count}} article",
+    articles_other: "{{count}} articles",
+    openFolder: "Open {{name}}",
+    noArticles: "No articles here yet",
+    loading: "Loading the article…",
+    missingTitle: "Not found",
+    missingArticle: "There is no article at this address.",
+    missingFolder: "There is no Blog folder at this address.",
+  },
   demoBoard: {
     reset: "Back to the start",
     back: "Take back a move",
@@ -124,6 +143,9 @@ const en = {
    */
   pages: {
     home: "Home",
+    /** The Blog (CTA-126): its index and folders, and one article — its title goes first. */
+    blog: "Blog",
+    blogArticle: "Article",
     playWithEngine: "Play with Engine",
     lobby: "Lobby",
     maskedPieces: "Masked Pieces",

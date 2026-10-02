@@ -1,0 +1,17 @@
+`<StoredGameEmbed>` shows any game the app can hand to the Analysis Board, by the same `?game=` reference: a Library game, a saved analysis, a game against the engine. `<CollectionGameBoard>` is this, addressed by a Library game's path.
+
+<BoardRow columns={2}>
+  <StoredGameEmbed reference="library/capablanca/1" startMove="2..." />
+</BoardRow>
+
+## The markup
+
+```mdx
+<StoredGameEmbed reference="library/capablanca/1" startMove="2..." />
+```
+
+- `library/<collection>/<number>` — a game of a Library collection;
+- `analysis/saved/<id>` — one of the reader's saved analyses;
+- `play/games/<id>` — one of the reader's games against the engine.
+
+Saved analyses and played games are the reader's own, on one device: anywhere else the embed says the game is not here. Its button opens the same reference on the Analysis Board.
