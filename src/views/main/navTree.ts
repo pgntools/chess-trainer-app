@@ -178,9 +178,9 @@ export const foldSingleEntryFolders = (tree: NavTreeNode[]): NavTreeNode[] =>
   });
 
 /** Build the tree fresh from the registries. Cheap — a handful of nodes. */
-export const navTree = (): NavTreeNode[] =>
+export const navTree = (developerMode?: boolean): NavTreeNode[] =>
   collapseLeafCategories(
-    foldSingleEntryFolders(buildNavTree(navFolders(), navItemsInFolder)),
+    foldSingleEntryFolders(buildNavTree(navFolders(developerMode), (folder) => navItemsInFolder(folder, developerMode))),
   );
 
 /**

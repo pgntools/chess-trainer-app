@@ -10,21 +10,6 @@ import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import type { LocalizedText } from "../../lib/localizedText";
 
 /**
- * Folders are the groupings in the sidebar. Each screen names exactly one of
- * them in `NavItem.folder`; the folder itself is an id with a name and an icon.
- * Routes stay global — a folder is an organisational overlay over `routes.tsx`,
- * not a route of its own, so nothing here appears in a URL.
- *
- * `navFolders` is a **tree**: a folder can hold sub-folders and screens at the
- * same time, to any depth. Nesting one is a data edit here; the renderer in
- * `Sidebar.tsx` recurses and needs no change.
- *
- * To add a folder: place it in `authoredFolders` (nested or not), give it a
- * `labelKey` present in both `en.ts` and `he.ts`, and set `folder` on the
- * screens that join it.
- */
-
-/**
  * A folder id. A plain string rather than a union of the authored ids, so a
  * folder built from data (the `label` case) needs no TypeScript edit. Authored
  * ids are written out below, where a typo is caught by the screen that fails
@@ -59,86 +44,100 @@ export type NavFolder = {
   pinToBottom?: boolean;
 };
 
+const DEVELOPER_MODE_STORAGE_KEY = "chessapp.developerMode";
+
+const readDeveloperMode = (): boolean => {
+  try {
+    return localStorage.getItem(DEVELOPER_MODE_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+};
+
 /**
  * The folder tree, top to bottom.
  *
  * **A function, not a constant**, so a dev-only folder can be a spread gated
- * on `import.meta.env.DEV`, evaluated when the tree is asked for
+ * on the developer mode preference, evaluated when the tree is asked for
  * (`chessboard.md` §9.5 says how to open one). The Library's collections are
  * not folders here: they are the rows of the Library screen (`/library`), so
  * a `.pgn` dropped into `src/data/library/` or uploaded by the reader changes
  * that screen, not this tree.
  */
-export const navFolders = (): readonly NavFolder[] => [
-  {
-    id: "engine",
-    labelKey: "nav.folders.engine",
-    icon: MemoryRoundedIcon,
-  },
-  /*
-    The Library (CTA-75): collections of games — the shipped `.pgn` files and
-    the reader's uploads — each a table, each game an analysis board.
-  */
-  {
-    id: "library",
-    labelKey: "nav.folders.library",
-    icon: SnippetFolderRoundedIcon,
-  },
-  {
-    id: "analysis",
-    labelKey: "nav.folders.analysisBoard",
-    icon: AccountTreeRoundedIcon,
-    // One destination: the saved list is the screen worth reaching for, so
-    // the folder renders as one clickable row to it; the board is the saved
-    // list's New button.
-    singleEntry: true,
-  },
-  {
-    id: "openings",
-    labelKey: "nav.folders.openings",
-    icon: TravelExploreRoundedIcon,
-    // One destination: the folder renders as one clickable row to the
-    // Openings explorer.
-    singleEntry: true,
-  },
-  /*
-    The reader's own repertoires (CTA-61): the list and the screen they are
-    brought in on. A repertoire's board is reached from its row, not from here —
-    `/repertoires/<id>` is a route, not a nav entry, like a library item.
-  */
-  {
-    id: "repertoires",
-    labelKey: "nav.folders.repertoires",
-    icon: MenuBookRoundedIcon,
-    // One destination: the folder renders as one clickable row to the
-    // Repertoires list, whose own "Add repertoire" link reaches
-    // `/repertoires/new`.
-    singleEntry: true,
-  },
-  /*
-    The app's own settings (CTA-86), one screen per tab of `/settings/<tab>`
-    — Export, Import and Storage. A folder rather than a single entry, so a
-    tab added later is one more `navItems()` entry here; pinned to the
-    sidebar's foot, apart from the screens.
-  */
-  /*
-    The Development section (`chessboard.md` §9.5) — dev-only: the design
-    gallery (CTA-107). A spread gated on `import.meta.env.DEV`, so a
-    production build has no such folder.
-  */
-  ...(import.meta.env.DEV
-    ? [
-        {
-          id: "development",
-          labelKey: "nav.folders.development",
-          icon: ConstructionRoundedIcon,
-        },
-      ]
-    : []),
-  {
-    id: "settings",
-    labelKey: "nav.folders.settings",
-    icon: SettingsRoundedIcon,
-    pinToBottom: true,
-  },
-];
+export const navFolders = (developerMode?: boolean): readonly NavFolder[] => {
+  const isDevMode = developerMode ?? readDeveloperMode();
+  return [
+    {
+      id: "engine",
+      labelKey: "nav.folders.engine",
+      icon: MemoryRoundedIcon,
+    },
+    /*
+      The Library (CTA-75): collections of games — the shipped `.pgn` files and
+      the reader's uploads — each a table, each game an analysis board.
+    */
+    {
+      id: "library",
+      labelKey: "nav.folders.library",
+      icon: SnippetFolderRoundedIcon,
+    },
+    {
+      id: "analysis",
+      labelKey: "nav.folders.analysisBoard",
+      icon: AccountTreeRoundedIcon,
+      // One destination: the saved list is the screen worth reaching for, so
+      // the folder renders as one clickable row to it; the board is the saved
+      // list's New button.
+      singleEntry: true,
+    },
+    {
+      id: "openings",
+      labelKey: "nav.folders.openings",
+      icon: TravelExploreRoundedIcon,
+      // One destination: the folder renders as one clickable row to the
+      // Openings explorer.
+      singleEntry: true,
+    },
+    /*
+      The reader's own repertoires (CTA-61): the list and the screen they are
+      brought in on. A repertoire's board is reached from its row, not from here —
+      `/repertoires/<id>` is a route, not a nav entry, like a library item.
+    */
+    {
+      id: "repertoires",
+      labelKey: "nav.folders.repertoires",
+      icon: MenuBookRoundedIcon,
+      // One destination: the folder renders as one clickable row to the
+      // Repertoires list, whose own "Add repertoire" link reaches
+      // `/repertoires/new`.
+      singleEntry: true,
+    },
+    /*
+      The app's own settings (CTA-86), one screen per tab of `/settings/<tab>`
+      — Export, Import and Storage. A folder rather than a single entry, so a
+      tab added later is one more `navItems()` entry here; pinned to the
+      sidebar's foot, apart from the screens.
+    */
+    /*
+      The Development section (`chessboard.md` §9.5) — controlled by the
+      developer mode preference (CTA-125). The dev routes remain gated by
+      `import.meta.env.DEV` in routes.tsx so they don't bloat production bundles.
+      The sidebar visibility is controlled by the user preference at runtime.
+    */
+    ...(isDevMode
+      ? [
+          {
+            id: "development",
+            labelKey: "nav.folders.development",
+            icon: ConstructionRoundedIcon,
+          },
+        ]
+      : []),
+    {
+      id: "settings",
+      labelKey: "nav.folders.settings",
+      icon: SettingsRoundedIcon,
+      pinToBottom: true,
+    },
+  ];
+};

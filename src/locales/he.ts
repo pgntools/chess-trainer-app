@@ -25,6 +25,7 @@ const he: typeof en = {
     settingsImport: "ייבוא",
     settingsStorage: "אחסון",
     settingsAppearance: "מראה",
+    settingsSystem: "מערכת",
     designSystem: "מערכת עיצוב",
     themeEditor: "עורך ערכות נושא",
     folders: {
@@ -34,6 +35,7 @@ const he: typeof en = {
       openings: "פתיחות",
       repertoires: "רפרטוארים",
       settings: "הגדרות",
+      /** The Development section (CTA-125) — controlled by the developer mode preference. */
       development: "פיתוח",
     },
   },
@@ -1365,6 +1367,7 @@ const he: typeof en = {
       import: "ייבוא",
       storage: "אחסון",
       appearance: "מראה",
+      system: "מערכת",
     },
     export: {
       intro:
@@ -1494,6 +1497,15 @@ const he: typeof en = {
         "בחרו איך האפליקציה נראית. ערכת נושא מעצבת מחדש כל מסך וכל לוח בבת אחת, ונשמרת במכשיר זה.",
       theme: "ערכת נושא",
       modeNote: "מצב בהיר או כהה נבחר במתג שבכותרת; לכל ערכת נושא יש את שניהם.",
+    },
+    /** The System tab (CTA-125): developer mode toggle. */
+    system: {
+      intro:
+        "כלי פיתוח ותכונות ניסיוניות.",
+      developerMode: "מצב מפתח",
+      developerModeLabel: "הפעלת מצב מפתח",
+      developerModeDescription:
+        "הצגת מדור הפיתוח בסרגל הצד (גלריית מערכת העיצוב, עורך ערכות נושא). מסלולי הפיתוח נשארים לא זמינים בבניית הפצה.",
     },
   },
   appearance: {
