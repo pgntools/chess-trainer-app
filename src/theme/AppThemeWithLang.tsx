@@ -13,6 +13,12 @@ import {
   ThemeChoiceContext,
   type ThemeChoice,
 } from "./themeChoice";
+import {
+  readStoredDeveloperMode,
+  storeDeveloperMode,
+  DeveloperModeContext,
+  type DeveloperMode,
+} from "./developerMode";
 
 const getLocale = (language: AppLanguage) => (language === "he" ? heIL : enUS);
 
@@ -51,6 +57,18 @@ export default function AppThemeWithLang({
     [themeId],
   );
 
+  const [developerModeEnabled, setDeveloperModeEnabledState] = React.useState(readStoredDeveloperMode);
+  const developerMode = React.useMemo<DeveloperMode>(
+    () => ({
+      enabled: developerModeEnabled,
+      setEnabled: (enabled) => {
+        storeDeveloperMode(enabled);
+        setDeveloperModeEnabledState(enabled);
+      },
+    }),
+    [developerModeEnabled],
+  );
+
   React.useEffect(() => {
     document.documentElement.dir = direction;
     document.documentElement.lang = language;
@@ -65,17 +83,19 @@ export default function AppThemeWithLang({
 
   return (
     <ThemeChoiceContext.Provider value={choice}>
-      <CacheProvider value={cache}>
-        <ThemeProvider theme={theme} disableTransitionOnChange>
-          {/*
-            The app's one snackbar and its queue (CTA-108): any screen shows
-            one through `useSnackbar()`. Here since CTA-113, inside the theme so
-            it wears the reader's, and so every render in the app's theme — a
-            screen's test too — has the queue its screen may use.
-          */}
-          <SnackbarProvider>{children}</SnackbarProvider>
-        </ThemeProvider>
-      </CacheProvider>
+      <DeveloperModeContext.Provider value={developerMode}>
+        <CacheProvider value={cache}>
+          <ThemeProvider theme={theme} disableTransitionOnChange>
+            {/*
+              The app's one snackbar and its queue (CTA-108): any screen shows
+              one through `useSnackbar()`. Here since CTA-113, inside the theme so
+              it wears the reader's, and so every render in the app's theme — a
+              screen's test too — has the queue its screen may use.
+            */}
+            <SnackbarProvider>{children}</SnackbarProvider>
+          </ThemeProvider>
+        </CacheProvider>
+      </DeveloperModeContext.Provider>
     </ThemeChoiceContext.Provider>
   );
 }

@@ -15,6 +15,16 @@ import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import type { LocalizedText } from "../../lib/localizedText";
 import type { NavFolderId } from "./navFolders";
 
+const DEVELOPER_MODE_STORAGE_KEY = "chessapp.developerMode";
+
+const readDeveloperMode = (): boolean => {
+  try {
+    return localStorage.getItem(DEVELOPER_MODE_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+};
+
 export type NavItem = {
   /** Route path, matched against `useLocation().pathname` for the active state. */
   to: string;
@@ -33,120 +43,124 @@ export type NavItem = {
  * the route in `routes.tsx` and a string in both catalogs.
  *
  * A **function**, for the reason `navFolders` is one: a dev-only entry is a
- * spread gated on `import.meta.env.DEV` (the design gallery's —
- * `chessboard.md` §9.5).
+ * spread gated on the developer mode preference (CTA-125).
  */
-export const navItems = (): readonly NavItem[] => [
-  /*
-    The engine's Lobby: the games played against the engine, and the new-game
-    form whose Start button is how Play with Engine is reached. Play with
-    Engine has no nav entry of its own; Start, Continue and the `?fen=`
-    hand-offs land on its route, `/engine/play`.
-  */
-  {
-    to: "/engine/games",
-    labelKey: "nav.lobby",
-    icon: SportsEsportsRoundedIcon,
-    folder: "engine",
-  },
-  // Masked Pieces — Play with Engine in a costume, beside the Lobby.
-  {
-    to: "/engine/masked",
-    labelKey: "nav.maskedPlay",
-    icon: VisibilityOffRoundedIcon,
-    folder: "engine",
-  },
-  /*
-    The Library (CTA-75): the collections, and the screen one is brought in
-    on. A collection's table and a game's board are reached from the list —
-    routes, not nav entries.
-  */
-  {
-    to: "/library",
-    labelKey: "nav.libraryCollections",
-    icon: ViewListRoundedIcon,
-    folder: "library",
-  },
-  {
-    to: "/library/new",
-    labelKey: "nav.addCollection",
-    icon: UploadFileRoundedIcon,
-    folder: "library",
-  },
-  /*
-    The Analysis Board has no nav entry: the top-level Analysis folder is a
-    single entry (`navFolders.ts`) that renders as the screen below, and the
-    board is reached from the saved list's New button. Every `?fen=`,
-    `?game=` and `?analysis=` hand-off lands on its route, `/tools/analysis`.
-  */
-  {
-    to: "/tools/analysis/saved",
-    labelKey: "nav.savedAnalyses",
-    icon: HistoryRoundedIcon,
-    folder: "analysis",
-  },
-  /*
-    The Openings explorer — the board itself, since nothing on it is
-    saved: the top-level Openings folder is a single entry (`navFolders.ts`)
-    that renders as this screen.
-  */
-  {
-    to: "/openings",
-    labelKey: "nav.openings",
-    icon: TravelExploreRoundedIcon,
-    folder: "openings",
-  },
-  {
-    to: "/repertoires",
-    labelKey: "nav.repertoires",
-    icon: MenuBookRoundedIcon,
-    folder: "repertoires",
-  },
-  // The Development section — dev-only: the design gallery (CTA-107) and the theme editor (CTA-115).
-  ...(import.meta.env.DEV
-    ? [
-        {
-          to: "/dev/design",
-          labelKey: "nav.designSystem",
-          icon: ConstructionRoundedIcon,
-          folder: "development",
-        },
-        {
-          to: "/dev/theme-editor",
-          labelKey: "nav.themeEditor",
-          icon: PaletteRoundedIcon,
-          folder: "development",
-        },
-      ]
-    : []),
-  // Settings (CTA-86): each tab of `/settings/<tab>` is an entry here.
-  {
-    to: "/settings/export",
-    labelKey: "nav.settingsExport",
-    icon: DownloadRoundedIcon,
-    folder: "settings",
-  },
-  {
-    to: "/settings/import",
-    labelKey: "nav.settingsImport",
-    icon: UploadRoundedIcon,
-    folder: "settings",
-  },
-  {
-    to: "/settings/storage",
-    labelKey: "nav.settingsStorage",
-    icon: StorageRoundedIcon,
-    folder: "settings",
-  },
-  // Appearance (CTA-107): the reader's theme.
-  {
-    to: "/settings/appearance",
-    labelKey: "nav.settingsAppearance",
-    icon: PaletteRoundedIcon,
-    folder: "settings",
-  },
-];
+export const navItems = (developerMode?: boolean): readonly NavItem[] => {
+  const isDevMode = developerMode ?? readDeveloperMode();
+  return [
+    /*
+      The engine's Lobby: the games played against the engine, and the new-game
+      form whose Start button is how Play with Engine is reached. Play with
+      Engine has no nav entry of its own; Start, Continue and the `?fen=`
+      hand-offs land on its route, `/engine/play`.
+    */
+    {
+      to: "/engine/games",
+      labelKey: "nav.lobby",
+      icon: SportsEsportsRoundedIcon,
+      folder: "engine",
+    },
+    // Masked Pieces — Play with Engine in a costume, beside the Lobby.
+    {
+      to: "/engine/masked",
+      labelKey: "nav.maskedPlay",
+      icon: VisibilityOffRoundedIcon,
+      folder: "engine",
+    },
+    /*
+      The Library (CTA-75): the collections, and the screen one is brought in
+      on. A collection's table and a game's board are reached from the list —
+      routes, not nav entries.
+    */
+    {
+      to: "/library",
+      labelKey: "nav.libraryCollections",
+      icon: ViewListRoundedIcon,
+      folder: "library",
+    },
+    {
+      to: "/library/new",
+      labelKey: "nav.addCollection",
+      icon: UploadFileRoundedIcon,
+      folder: "library",
+    },
+    /*
+      The Analysis Board has no nav entry: the top-level Analysis folder is a
+      single entry (`navFolders.ts`) that renders as the screen below, and the
+      board is reached from the saved list's New button. Every `?fen=`,
+      `?game=` and `?analysis=` hand-off lands on its route, `/tools/analysis`.
+    */
+    {
+      to: "/tools/analysis/saved",
+      labelKey: "nav.savedAnalyses",
+      icon: HistoryRoundedIcon,
+      folder: "analysis",
+    },
+    /*
+      The Openings explorer — the board itself, since nothing on it is
+      saved: the top-level Openings folder is a single entry (`navFolders.ts`)
+      that renders as this screen.
+    */
+    {
+      to: "/openings",
+      labelKey: "nav.openings",
+      icon: TravelExploreRoundedIcon,
+      folder: "openings",
+    },
+    {
+      to: "/repertoires",
+      labelKey: "nav.repertoires",
+      icon: MenuBookRoundedIcon,
+      folder: "repertoires",
+    },
+    // The Development section — controlled by the developer mode preference (CTA-125).
+    // The dev routes remain gated by `import.meta.env.DEV` in routes.tsx so they don't bloat production bundles.
+    // The sidebar visibility is controlled by the user preference at runtime.
+    ...(isDevMode
+      ? [
+          {
+            to: "/dev/design",
+            labelKey: "nav.designSystem",
+            icon: ConstructionRoundedIcon,
+            folder: "development",
+          },
+          {
+            to: "/dev/theme-editor",
+            labelKey: "nav.themeEditor",
+            icon: PaletteRoundedIcon,
+            folder: "development",
+          },
+        ]
+      : []),
+    // Settings (CTA-86): each tab of `/settings/<tab>` is an entry here.
+    {
+      to: "/settings/export",
+      labelKey: "nav.settingsExport",
+      icon: DownloadRoundedIcon,
+      folder: "settings",
+    },
+    {
+      to: "/settings/import",
+      labelKey: "nav.settingsImport",
+      icon: UploadRoundedIcon,
+      folder: "settings",
+    },
+    {
+      to: "/settings/storage",
+      labelKey: "nav.settingsStorage",
+      icon: StorageRoundedIcon,
+      folder: "settings",
+    },
+    // Appearance (CTA-107): the reader's theme.
+    {
+      to: "/settings/appearance",
+      labelKey: "nav.settingsAppearance",
+      icon: PaletteRoundedIcon,
+      folder: "settings",
+    },
+  ];
+};
 
 /** The screens filed under one folder, in registration order. */
-export const navItemsInFolder = (folder: NavFolderId): readonly NavItem[] =>
-  navItems().filter((item) => item.folder === folder);
+export const navItemsInFolder = (folder: NavFolderId, developerMode?: boolean): readonly NavItem[] =>
+  navItems(developerMode).filter((item) => item.folder === folder);

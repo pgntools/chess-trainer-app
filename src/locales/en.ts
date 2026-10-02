@@ -37,6 +37,8 @@ const en = {
     settingsStorage: "Storage",
     /** Settings' Appearance tab (CTA-107), in the Settings folder. */
     settingsAppearance: "Appearance",
+    /** Settings' System tab (CTA-125), in the Settings folder. */
+    settingsSystem: "System",
     /** The dev-only design gallery (CTA-107), in the Development folder. */
     designSystem: "Design system",
     /** The dev-only theme editor (CTA-115), in the Development folder. */
@@ -54,7 +56,7 @@ const en = {
       library: "Library",
       /** The app's own settings (CTA-86) — one screen per tab. */
       settings: "Settings",
-      /** The dev-only Development section (`chessboard.md` §9.5). */
+      /** The Development section (CTA-125) — controlled by the developer mode preference. */
       development: "Development",
     },
   },
@@ -1766,6 +1768,7 @@ const en = {
       import: "Import",
       storage: "Storage",
       appearance: "Appearance",
+      system: "System",
     },
     /** The Export tab: the reader's data as PGN files and a manifest, in one zip. */
     export: {
@@ -1905,6 +1908,15 @@ const en = {
       theme: "Theme",
       /** Light and dark are not a theme: they are the header's switch, under every theme. */
       modeNote: "Light and dark are the switch in the header; every theme has both.",
+    },
+    /** The System tab (CTA-125): developer mode toggle. */
+    system: {
+      intro:
+        "Developer tools and experimental features.",
+      developerMode: "Developer mode",
+      developerModeLabel: "Enable developer mode",
+      developerModeDescription:
+        "Show the Development section in the sidebar (Design system gallery, Theme editor). The dev routes remain unavailable in production builds.",
     },
   },
   /** The registered themes' names (`src/design-system/themes/`, CTA-107). */

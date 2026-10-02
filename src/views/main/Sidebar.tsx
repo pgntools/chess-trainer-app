@@ -12,6 +12,7 @@ import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 import { Link as RouterLink, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { asAppLanguage } from "../../i18n";
+import { useDeveloperMode } from "../../theme/developerMode";
 import {
   folderChain,
   folderPath,
@@ -152,7 +153,7 @@ function TreeRow({ node, depth, expanded, pathname, onToggle }: RowProps) {
  * mount. `tree` is injectable so tests can exercise deeper nesting than the
  * shipped tree.
  */
-function SidebarLinks({ tree: given }: { tree?: NavTreeNode[] }) {
+function SidebarLinks({ tree: given, developerMode }: { tree?: NavTreeNode[]; developerMode?: boolean }) {
   const { pathname } = useLocation();
   const { t } = useTranslation();
 
@@ -160,7 +161,7 @@ function SidebarLinks({ tree: given }: { tree?: NavTreeNode[] }) {
     `navTree()` is a walk over a few dozen nodes; memoising it keeps the
     identity stable — the open-chain state below is seeded from it.
   */
-  const tree = useMemo(() => given ?? navTree(), [given]);
+  const tree = useMemo(() => given ?? navTree(developerMode), [given, developerMode]);
 
   /*
     The single open chain, top down — the ancestors of one folder, never two
@@ -254,28 +255,32 @@ function SidebarLinks({ tree: given }: { tree?: NavTreeNode[] }) {
   The rail is a plain box: its one landmark is the `nav` inside (CTA-112) — a
   complementary `aside` around it would announce the sidebar twice.
 */
-const SideBar = ({ tree }: { tree?: NavTreeNode[] }) => (
-  <Box
-    data-testid="layout-sidebar"
-    sx={{
-      p: 1,
-      display: "flex",
-      flexDirection: "column",
-      flexGrow: 1,
-      // The nav divides the height itself: the screens scroll, the pinned foot
-      // stays (`SidebarLinks`).
-      minHeight: 0,
-      overflow: "hidden",
-      bgcolor: "background.sunken",
-      // A logical border, so it sits between the rail and the body in both
-      // directions — under RTL the sidebar is on the right and this flips with
-      // it, which `borderRight` would not.
-      borderInlineEnd: "1px solid",
-      borderColor: "divider",
-    }}
-  >
-    <SidebarLinks tree={tree} />
-  </Box>
-);
+function SideBar({ tree }: { tree?: NavTreeNode[] } = {}) {
+  const { enabled: developerMode } = useDeveloperMode();
+
+  return (
+    <Box
+      data-testid="layout-sidebar"
+      sx={{
+        p: 1,
+        display: "flex",
+        flexDirection: "column",
+        flexGrow: 1,
+        // The nav divides the height itself: the screens scroll, the pinned foot
+        // stays (`SidebarLinks`).
+        minHeight: 0,
+        overflow: "hidden",
+        bgcolor: "background.sunken",
+        // A logical border, so it sits between the rail and the body in both
+        // directions — under RTL the sidebar is on the right and this flips with
+        // it, which `borderRight` would not.
+        borderInlineEnd: "1px solid",
+        borderColor: "divider",
+      }}
+    >
+      <SidebarLinks tree={tree} developerMode={developerMode} />
+    </Box>
+  );
+}
 
 export default SideBar;
