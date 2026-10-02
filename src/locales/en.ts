@@ -60,28 +60,7 @@ const en = {
   },
   /** The index screen — a landing page linking out to the real screens. */
   home: {
-    /** The front page's demo boards (CTA-126), one per shipped sample. */
-    samples: {
-      game: {
-        title: "A game",
-        description: "Morphy's Opera Game, Paris 1858 — follow the arrow to the mate.",
-        label: "Sample game board",
-        start: "Play the game's first move",
-      },
-      repertoire: {
-        title: "A repertoire",
-        description: "1. e4 for White — each reply as likely as the trainer plays it.",
-        label: "Sample repertoire board",
-        start: "Play a move of the repertoire",
-      },
-      collection: {
-        title: "A collection",
-        description: "Capablanca's first games — each move with its games and their results.",
-        label: "Sample collection board",
-        start: "Play a move to see how the games went on",
-      },
-    },
-    /** The front page's embedded stored game (CTA-126). */
+    /** The front page's embedded stored games (CTA-126) — `<CollectionGameBoard>`, `<StoredGameEmbed>`. */
     embed: {
       loading: "Loading the game…",
       missing: "The game this page embeds is not here.",
@@ -90,6 +69,42 @@ const en = {
       open: "Open on the Analysis Board",
       white: "White",
       black: "Black",
+    },
+    /** `<RepertoireBoard>` (CTA-126). */
+    repertoire: {
+      loading: "Loading the repertoire…",
+      missing: "The repertoire this page embeds is not on this device.",
+      untitled: "Untitled repertoire",
+      forWhite: "A repertoire for White",
+      forBlack: "A repertoire for Black",
+      sampleNote: "A sample repertoire that comes with the app",
+      label: "{{name}} — repertoire board",
+      start: "Play a move of the repertoire",
+      open: "Open the repertoire",
+      add: "Add your own repertoire",
+      samples: {
+        "e4-white": "1. e4 for White",
+        "caro-kann-black": "The Caro-Kann for Black",
+      },
+    },
+    /** `<CollectionCard>` (CTA-126). */
+    collection: {
+      loading: "Loading the collection…",
+      missing: "The collection this page embeds is not here.",
+      games_one: "{{formatted}} game",
+      games_other: "{{formatted}} games",
+      open: "Open the collection",
+      table: "Games of {{name}}",
+      empty: "No games",
+      earlier: "Earlier games",
+      later: "Later games",
+      columns: {
+        number: "No.",
+        white: "White",
+        black: "Black",
+        result: "Result",
+        year: "Year",
+      },
     },
   },
   /** The front page's demo mini-boards (CTA-126, `views/shared/DemoBoard.tsx`). */
@@ -100,10 +115,7 @@ const en = {
     flip: "Flip the board",
     start: "Play a move",
     end: "The line ends here",
-    single: "Only one game goes further here",
     moves: "Moves from here",
-    games_one: "{{count}} game",
-    games_other: "{{count}} games",
   },
   /**
    * Each screen's name (CTA-112) — its route's `handle.title`: the page title

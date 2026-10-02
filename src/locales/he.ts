@@ -38,27 +38,6 @@ const he: typeof en = {
     },
   },
   home: {
-    samples: {
-      game: {
-        title: "משחק",
-        description: "משחק האופרה של מורפי, פריז 1858 — עקבו אחרי החץ עד המט.",
-        label: "לוח משחק לדוגמה",
-        start: "שחקו את המהלך הראשון של המשחק",
-      },
-      repertoire: {
-        title: "רפרטואר",
-        // The leading mark (LRM) keeps "1. e4" reading left to right at the start of a Hebrew line.
-        description: "\u200e1. e4 ללבן — כל תשובה בסבירות שבה המאמן משחק אותה.",
-        label: "לוח רפרטואר לדוגמה",
-        start: "שחקו מהלך מהרפרטואר",
-      },
-      collection: {
-        title: "אוסף",
-        description: "המשחקים הראשונים של קפבלנקה — כל מהלך עם משחקיו ותוצאותיהם.",
-        label: "לוח אוסף לדוגמה",
-        start: "שחקו מהלך כדי לראות איך המשחקים המשיכו",
-      },
-    },
     embed: {
       loading: "טוען את המשחק…",
       missing: "המשחק שהדף הזה מטמיע אינו כאן.",
@@ -68,6 +47,41 @@ const he: typeof en = {
       white: "לבן",
       black: "שחור",
     },
+    repertoire: {
+      loading: "טוען את הרפרטואר…",
+      missing: "הרפרטואר שהדף הזה מטמיע אינו במכשיר הזה.",
+      untitled: "רפרטואר ללא שם",
+      forWhite: "רפרטואר ללבן",
+      forBlack: "רפרטואר לשחור",
+      sampleNote: "רפרטואר לדוגמה שמגיע עם האפליקציה",
+      label: "{{name}} — לוח הרפרטואר",
+      start: "שחקו מהלך מהרפרטואר",
+      open: "פתיחת הרפרטואר",
+      add: "הוספת רפרטואר משלכם",
+      samples: {
+        // The leading mark (LRM) keeps "1. e4" reading left to right at the start of a Hebrew line.
+        "e4-white": "\u200e1. e4 ללבן",
+        "caro-kann-black": "קארו-קאן לשחור",
+      },
+    },
+    collection: {
+      loading: "טוען את האוסף…",
+      missing: "האוסף שהדף הזה מטמיע אינו כאן.",
+      games_one: "משחק אחד",
+      games_other: "{{formatted}} משחקים",
+      open: "פתיחת האוסף",
+      table: "המשחקים של {{name}}",
+      empty: "אין משחקים",
+      earlier: "משחקים קודמים",
+      later: "משחקים הבאים",
+      columns: {
+        number: "מס׳",
+        white: "לבן",
+        black: "שחור",
+        result: "תוצאה",
+        year: "שנה",
+      },
+    },
   },
   demoBoard: {
     reset: "חזרה להתחלה",
@@ -76,10 +90,7 @@ const he: typeof en = {
     flip: "היפוך הלוח",
     start: "שחקו מהלך",
     end: "הקו מסתיים כאן",
-    single: "רק משחק אחד ממשיך מכאן",
     moves: "מהלכים מכאן",
-    games_one: "משחק אחד",
-    games_other: "{{count}} משחקים",
   },
   pages: {
     home: "דף הבית",

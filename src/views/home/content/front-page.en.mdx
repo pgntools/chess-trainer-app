@@ -6,10 +6,9 @@
   Markdown is rendered in the theme's typography. Keep exactly one "#" heading
   — it is the page's h1. The app's components are available by name, with no
   import (src/views/home/frontPage/index.ts lists them; content/README.md
-  says what each takes).
+  says what each takes). An address is the one the screen has in the address
+  bar: /library/<collection>/<n>, /repertoires/<id>, /library/<collection>.
 */}
-
-import { EXAMPLE_GAME_REFERENCE } from "./placeholders";
 
 # Get started
 
@@ -17,16 +16,33 @@ Pick a board or tool to open — or try one right here first.
 
 ## Try a board
 
-Each board replays a small sample that ships with the app. Drag a piece along an arrow, or pick a move from the list under the board: the wider the arrow, the likelier the move.
+Three games from the [Library](/library), each opening just before its famous move. Drag a piece along the arrow, or pick the move from the list under the board.
 
-<SampleBoards />
+<BoardRow>
+  <CollectionGameBoard game="/library/fischer/50" startMove="17" />
+  <CollectionGameBoard game="/library/fischer/908" startMove="7" />
+  <CollectionGameBoard game="/library/capablanca/442" startMove="8" />
+</BoardRow>
 
-## A game from the Library
+## Repertoires
 
-A stored game, embedded straight from the [Library](/library) — step through it here, or open it on the Analysis Board.
+A repertoire answers every move the way the trainer would: the wider the arrow, the likelier the reply.
 
-{/* PLACEHOLDER: the game is EXAMPLE_GAME_REFERENCE in ./placeholders.ts — replace it there. */}
-<StoredGameEmbed reference={EXAMPLE_GAME_REFERENCE} />
+{/*
+  PLACEHOLDER: replace each _id with a repertoire's address (/repertoires/<id>).
+  A repertoire lives on the reader's own device, so where it is not there the
+  board shows its fallback, a sample that ships with the app.
+*/}
+<BoardRow>
+  <RepertoireBoard _id="/repertoires/REPLACE-WITH-A-REPERTOIRE-ID" fallback="e4-white" startMove="1" />
+  <RepertoireBoard _id="/repertoires/REPLACE-WITH-A-REPERTOIRE-ID-2" fallback="caro-kann-black" startMove="1..." />
+</BoardRow>
+
+## A collection
+
+<BoardRow>
+  <CollectionCard _id="/library/fischer" showGame="52" />
+</BoardRow>
 
 ## Every screen
 

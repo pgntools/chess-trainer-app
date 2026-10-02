@@ -1,20 +1,23 @@
 # The front page's sample data
 
-What the front page's demo boards replay (CTA-126,
-`src/views/home/samples.ts`) — bundled as text and parsed the first time a
+The sample repertoires a front-page `<RepertoireBoard fallback="…" />` shows
+when the repertoire it names is not on the reader's device (CTA-126,
+`src/views/home/repertoireSamples.ts`) — repertoires are the reader's own,
+and none ships with the app. Bundled as text and parsed the first time a
 board asks.
 
-| File | What it is | How the board reads it |
-| --- | --- | --- |
-| `game.pgn` | one game — Morphy's Opera Game, Paris 1858 | its moves (and any side lines): the next move's arrow, the game's line |
-| `repertoire.pgn` | a small 1. e4 repertoire for White, side lines and all | each branch weighted by its play chance — `{ prc:N }` on the move, else the lines under it (`src/lib/playChance.ts`), as the repertoire trainer plays it |
-| `collection.pgn` | a slice of a Library collection: the first 24 games of `src/data/library/Capablanca.pgn` | merged into the opening tree the Library's opening-moves filter draws: each move with its games, their share and their results |
+| File | `fallback` | Played from | What it is |
+| --- | --- | --- | --- |
+| `repertoires/e4-white.pgn` | `e4-white` | White | 1. e4 against 1... e5, the Sicilian, the French and the Caro-Kann |
+| `repertoires/caro-kann-black.pgn` | `caro-kann-black` | Black | the Caro-Kann against 2. d4, 2. Nc3 and 2. c4, the Advance and the Exchange |
 
-**Swapping one** is replacing the file: any PGN that parses from the standard
-start. Keep the files small — they are in the front page's bundle. If a
-sample's subject changes, change its title and line in the catalogs
-(`home.samples.<id>` in `src/locales/en.ts` and `he.ts`) and the assertions
-of `src/views/home/samples.test.ts`.
+Each branch is weighted by its play chance — `{ prc:N }` on the move, else the
+lines under it (`src/lib/playChance.ts`) — as the repertoire trainer plays it.
 
-This folder is not the Library's: `scripts/wirepgn.js` and
-`src/lib/shippedCollections.ts` read `src/data/library/` only.
+**Adding one** is a PGN file here, an entry in `repertoireSamples.ts` (its id
+and side) and its name under `home.repertoire.samples` in both catalogs
+(`src/locales/en.ts`, `he.ts`). Keep the files small — they are in the front
+page's bundle. `src/views/home/repertoireSamples.test.ts` checks they read.
+
+The games the page shows are not here: they are the Library's shipped
+collections (`src/data/library/`), embedded by address.

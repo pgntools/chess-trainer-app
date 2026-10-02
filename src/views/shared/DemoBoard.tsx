@@ -17,29 +17,29 @@ import ChanceArrows from "../explorer/ChanceArrows";
 import { useBoardSquareOptions } from "./boardColors";
 import { moveSx, sanTokenSx } from "./moveTokenSx";
 import PromotionPicker, { type PromotionChoice } from "./PromotionPicker";
-import ResultBar from "./ResultBar";
 
 /**
  * **A demo mini-board** (CTA-126) — the front page's interactive boards, in
  * the style of the Library's opening-moves filter (`OpeningFilterBoard`,
- * CTA-76): the reader replays a tree of moves (`lib/demoTree.ts` — a sample
- * game, a repertoire, a collection's openings, or a stored game), and from
- * each position the board offers exactly the tree's continuations:
+ * CTA-76): the reader replays a tree of moves (`lib/demoTree.ts` — a Library
+ * game, a repertoire, any stored game), and from each position the board
+ * offers exactly the tree's continuations:
  *
  * - drawn as the **play-chance arrows** (`ChanceArrows`) — the wider the
- *   likelier (a repertoire's play chance, a collection's share of the games),
- *   the hovered one in the hover colour — and listed beside the board, each a
- *   button that plays it, with its share (and, for a collection, its games
- *   and a White / draw / Black `ResultBar`);
+ *   likelier (a repertoire's play chance), the hovered one in the hover
+ *   colour — and listed under the board, each a button that plays it, with
+ *   its share where there is a choice;
  * - **only those moves** are taken: a drop the tree does not hold snaps back.
  *   A promotion the tree makes more than one way asks which piece, through the
  *   shared picker;
  * - start, back, next (the first continuation — the mainline, or the most
  *   played) and flip, above the board.
  *
- * Presentational: the tree and the start position arrive as props; the line
- * played, the orientation and the hover are the board's own state, since
- * nothing outside it needs them. The board is pinned LTR (`ForceLTR`, it is
+ * Presentational: the tree, the start position and where the board opens
+ * (`initialLine`, `initialOrientation`) arrive as props; the line played, the
+ * orientation and the hover are then the board's own state, since nothing
+ * outside it needs them. "Back to the start" is the tree's start, wherever the
+ * board opened. The board is pinned LTR (`ForceLTR`, it is
  * outside the shell's board area), its squares and the reduced-motion switch
  * are the theme's (`useBoardSquareOptions`), and every colour drawn over it is
  * a `chess` token. `chess.js` only turns the line into a position and SAN
@@ -69,14 +69,27 @@ type DemoBoardProps = {
   startFen?: string;
   /** The caption before a move is played; `demoBoard.start` when absent. */
   startCaption?: string;
+  /** The moves the board opens after (`startLineOf`); the start when absent. Read on mount. */
+  initialLine?: readonly string[];
+  /** Which way the board opens facing; the side to move at the start when absent. Read on mount. */
+  initialOrientation?: "white" | "black";
 };
 
-function DemoBoard({ boardId, testId, label, root, startFen, startCaption }: DemoBoardProps) {
+function DemoBoard({
+  boardId,
+  testId,
+  label,
+  root,
+  startFen,
+  startCaption,
+  initialLine,
+  initialOrientation,
+}: DemoBoardProps) {
   const { t } = useTranslation();
   const squareOptions = useBoardSquareOptions();
-  const [played, setPlayed] = useState<string[]>([]);
-  const [orientation, setOrientation] = useState<"white" | "black">(() =>
-    startFen !== undefined && new Chess(startFen).turn() === "b" ? "black" : "white",
+  const [played, setPlayed] = useState<string[]>(() => [...(initialLine ?? [])]);
+  const [orientation, setOrientation] = useState<"white" | "black">(
+    () => initialOrientation ?? (startFen !== undefined && new Chess(startFen).turn() === "b" ? "black" : "white"),
   );
   const [hovered, setHovered] = useState<string | null>(null);
   const [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null);
@@ -138,12 +151,7 @@ function DemoBoard({ boardId, testId, label, root, startFen, startCaption }: Dem
     onPieceDrop,
   };
 
-  const noteOf = (move: Continuation): string => {
-    if (move.node.count !== undefined) {
-      return `${t("demoBoard.games", { count: move.node.count })} · ${percent(move.node.chance)}%`;
-    }
-    return continuations.length > 1 ? `${percent(move.node.chance)}%` : "";
-  };
+  const noteOf = (move: Continuation): string => (continuations.length > 1 ? `${percent(move.node.chance)}%` : "");
 
   return (
     <Box role="group" aria-label={label} data-testid={testId} sx={{ display: "grid", gap: 1, minWidth: 0 }}>
@@ -213,14 +221,14 @@ function DemoBoard({ boardId, testId, label, root, startFen, startCaption }: Dem
 
       {continuations.length === 0 ? (
         <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid={`${testId}-end`}>
-          {t(node.continues ? "demoBoard.single" : "demoBoard.end")}
+          {t("demoBoard.end")}
         </Typography>
       ) : (
         <Box
           role="list"
           aria-label={t("demoBoard.moves")}
           data-testid={`${testId}-moves`}
-          sx={{ display: "grid", gridTemplateColumns: "auto auto 1fr", alignItems: "center", columnGap: 1, rowGap: 0.25 }}
+          sx={{ display: "grid", gridTemplateColumns: "auto 1fr", alignItems: "center", columnGap: 1, rowGap: 0.25 }}
           onMouseLeave={() => setHovered(null)}
         >
           {continuations.map((move) => (
@@ -236,10 +244,9 @@ function DemoBoard({ boardId, testId, label, root, startFen, startCaption }: Dem
               >
                 {move.san}
               </ButtonBase>
-              <Typography variant="caption" sx={{ color: "text.secondary", textAlign: "end", whiteSpace: "nowrap" }}>
+              <Typography variant="caption" sx={{ color: "text.secondary", whiteSpace: "nowrap" }}>
                 {noteOf(move)}
               </Typography>
-              {move.node.results ? <ResultBar results={move.node.results} /> : <Box />}
             </Box>
           ))}
         </Box>

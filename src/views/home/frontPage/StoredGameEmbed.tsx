@@ -6,7 +6,7 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 
 import { InlineAlert } from "../../../design-system/components/feedback";
-import { demoTreeOfGameTree } from "../../../lib/demoTree";
+import { demoTreeOfGameTree, startLineOf } from "../../../lib/demoTree";
 import {
   isAnalysisReference,
   isReferenceRead,
@@ -34,19 +34,25 @@ import DemoBoard from "../../shared/DemoBoard";
  * A Library game reads its collection's PGN chunk on the first visit — the
  * Library's own lazy load (`lib/shippedCollections.ts`), fetched once.
  *
- * The front page's reference is a **placeholder** — `content/placeholders.ts`
- * says how to swap it.
+ * `startMove` is where the board opens (`startLineOf`: `"17"` after White's
+ * 17th move, `"17..."` after Black's, or a line of SAN). The board's id and
+ * test ids come from the reference, so a page embeds each game once.
+ * `<CollectionGameBoard>` is this, addressed by a Library game's path.
  */
 
 type StoredGameEmbedProps = {
   /** A `?game=` reference — `library/capablanca/1`. */
   reference: string;
+  /** Where the board opens — a move number (`"17"`, `"17..."`) or a line of SAN. The start when absent. */
+  startMove?: string;
+  /** What the "not here" notice names — the reference when absent (`<CollectionGameBoard>` passes its path). */
+  shownAs?: string;
 };
 
 const isRead = (reference: string) =>
   (!isAnalysisReference(reference) || savedAnalysesSnapshot() !== undefined) && isReferenceRead(reference);
 
-export function StoredGameEmbed({ reference }: StoredGameEmbedProps) {
+export function StoredGameEmbed({ reference, startMove, shownAs }: StoredGameEmbedProps) {
   const { t } = useTranslation();
   const [readReference, setReadReference] = useState<string | null>(() => (isRead(reference) ? reference : null));
   const ready = readReference === reference;
@@ -77,18 +83,19 @@ export function StoredGameEmbed({ reference }: StoredGameEmbedProps) {
   }, [ready, reference]);
   const root = useMemo(() => (tree ? demoTreeOfGameTree(tree) : undefined), [tree]);
 
-  const testId = "home-stored-game";
+  const slug = slugify(reference) || "game";
+  const testId = `home-game-${slug}`;
   if (tree === undefined) {
     return (
-      <Typography role="status" data-testid={`${testId}-loading`} sx={{ color: "text.secondary", mb: 3 }}>
+      <Typography role="status" data-testid={`${testId}-loading`} sx={{ color: "text.secondary" }}>
         {t("home.embed.loading")}
       </Typography>
     );
   }
   if (tree === null || root === undefined) {
     return (
-      <Box sx={{ mb: 3 }}>
-        <InlineAlert severity="info" testId={`${testId}-missing`} detail={reference}>
+      <Box>
+        <InlineAlert severity="info" testId={`${testId}-missing`} detail={shownAs ?? reference}>
           {t("home.embed.missing")}
         </InlineAlert>
       </Box>
@@ -104,7 +111,7 @@ export function StoredGameEmbed({ reference }: StoredGameEmbedProps) {
   const players = `${white} – ${black}`;
 
   return (
-    <Box data-testid={testId} sx={{ display: "grid", gap: 1, maxWidth: 360, mb: 3 }}>
+    <Box data-testid={testId} sx={{ display: "grid", gap: 1, minWidth: 0, maxWidth: 480 }}>
       <Box>
         <Typography variant="subtitle1" component="p" sx={{ fontWeight: 600 }} data-testid={`${testId}-players`}>
           {players}
@@ -121,12 +128,13 @@ export function StoredGameEmbed({ reference }: StoredGameEmbedProps) {
         )}
       </Box>
       <DemoBoard
-        boardId={`front-page-embed-${slugify(reference) || "game"}`}
+        boardId={`front-page-game-${slug}`}
         testId={`${testId}-board`}
         label={t("home.embed.label", { players })}
         root={root}
         startFen={tree.startFen}
         startCaption={t("home.embed.start")}
+        initialLine={startLineOf(root, startMove, tree.startFen)}
       />
       <Button
         component={RouterLink}

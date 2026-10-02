@@ -1,41 +1,27 @@
 import { Chess } from "chess.js";
 
 import type { GameTree, VariationNode } from "./gameTree";
-import type { OpeningTreeNode } from "./openingTree";
 import { playChances } from "./playChance";
 
 /**
  * **A demo board's tree** (CTA-126) — what the front page's mini-boards
  * (`views/shared/DemoBoard.tsx`) walk: from each position, the moves on offer
- * and how likely each is, which is all a board that only *replays* needs. One
- * shape for the three kinds of thing the front page shows, each a pure
- * adapter below:
+ * and how likely each is, which is all a board that only *replays* needs. It
+ * is read off a `GameTree` (`parsePgnTree`) — a Library game, a repertoire —
+ * each move's chance its **play chance** (`lib/playChance.ts`: the `prc`
+ * marks, else the lines under it — so a game's one move is a certainty, and a
+ * repertoire answers as the trainer would).
  *
- * - **a game** or **a repertoire** — a `GameTree` (`parsePgnTree`), each move's
- *   chance its **play chance** (`lib/playChance.ts`: the `prc` marks, else the
- *   lines under it — so a plain game's one move is a certainty, and a
- *   repertoire answers as the trainer would);
- * - **a collection** — an `OpeningTreeNode` (`lib/openingTree.ts`, the
- *   Library's opening-moves filter), each move's chance its share of the
- *   position's games, with the games' count and results kept for the list.
- *
- * The children are in the source's order, so `children[0]` is the mainline
- * (a tree) or the most played move (a collection) — what a board's "next"
- * plays. Pure.
+ * The children are in the tree's order, so `children[0]` is the mainline —
+ * what a board's "next" plays. Pure.
  */
 export type DemoNode = {
   /** The move that reached this node; `""` at the root. */
   san: string;
   /** Its share among its siblings, 0–1 — the arrow's width. The root's is 1. */
   chance: number;
-  /** The games through it — a collection's node only. */
-  count?: number;
-  /** What those games ended in — a collection's node only. */
-  results?: OpeningTreeNode["results"];
-  /** The continuations; `children[0]` first. */
+  /** The continuations; `children[0]` the mainline. */
   children: readonly DemoNode[];
-  /** A collection's cut (`OpeningTreeNode.continues`): one game goes on from here, alone. */
-  continues?: true;
 };
 
 const fromVariations = (san: string, chance: number, moves: readonly VariationNode[]): DemoNode => {
@@ -49,18 +35,6 @@ const fromVariations = (san: string, chance: number, moves: readonly VariationNo
 
 /** A game or a repertoire, side lines and all, its chances the play chances. */
 export const demoTreeOfGameTree = (tree: GameTree): DemoNode => fromVariations("", 1, tree.moves);
-
-/** A collection's opening tree, its chances the games' shares. */
-export const demoTreeOfOpeningTree = (node: OpeningTreeNode, chance = 1): DemoNode => ({
-  san: node.san,
-  chance,
-  count: node.count,
-  results: node.results,
-  children: node.children.map((child) =>
-    demoTreeOfOpeningTree(child, node.count === 0 ? 0 : child.count / node.count),
-  ),
-  ...(node.continues ? { continues: true as const } : {}),
-});
 
 /**
  * Walk `line` down from `root` as far as the tree follows it — the matched
@@ -95,4 +69,45 @@ export const numberedLine = (line: readonly string[], startFen?: string): string
       return index === 0 ? `${number}... ${san}` : san;
     })
     .join(" ");
+};
+
+/** `12`, `12.` (White's 12th), `12...`, `...12` or `…12` (Black's 12th). */
+const MOVE_NUMBER = /^(\.\.\.|…)?\s*(\d+)\s*(\.\.\.|…|\.)?$/;
+
+/**
+ * **Where a board opens** — a `startMove` as an author writes it, read into the
+ * line of SAN that reaches it from the tree's start:
+ *
+ * - a **move number** walks the mainline: `"12"` or `"12."` is the position
+ *   after White's 12th move, `"12..."` (or `"...12"`) after Black's; `"0"` is
+ *   the start. Numbered from the start position's own move number, and
+ *   clamped to the mainline's end, as `?move=` is;
+ * - a **line** — `"1. e4 c5 2. Nf3"`, or bare `"e4 c5 Nf3"` — follows those
+ *   moves, side lines included, as far as the tree holds them.
+ *
+ * Absent or unreadable: the start. Never throws.
+ */
+export const startLineOf = (root: DemoNode, startMove: string | undefined, startFen?: string): string[] => {
+  const text = (startMove ?? "").trim();
+  if (text === "") return [];
+  const numbered = MOVE_NUMBER.exec(text);
+  if (numbered !== null) {
+    const [, before, digits, after] = numbered;
+    const black = before !== undefined || (after !== undefined && after !== ".");
+    const chess = startFen === undefined ? new Chess() : new Chess(startFen);
+    const offset = (Number(digits) - chess.moveNumber()) * 2;
+    const plies = offset + (chess.turn() === "w" ? (black ? 2 : 1) : black ? 1 : 0);
+    const line: string[] = [];
+    let node = root;
+    while (line.length < plies && node.children.length > 0) {
+      node = node.children[0];
+      line.push(node.san);
+    }
+    return line;
+  }
+  const sans = text
+    .split(/\s+/)
+    .map((token) => token.replace(/^\d+\.+/, "").replace(/^…/, ""))
+    .filter((token) => token !== "");
+  return demoNodeAt(root, sans).line;
 };

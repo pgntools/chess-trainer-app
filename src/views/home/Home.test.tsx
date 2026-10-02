@@ -33,19 +33,34 @@ beforeEach(async () => {
   await i18n.changeLanguage("en");
 });
 
+/** Every embed on the English page has read what it shows. */
+const settled = async () => {
+  for (const id of [
+    "home-game-library-fischer-50",
+    "home-game-library-fischer-908",
+    "home-game-library-capablanca-442",
+    "home-repertoire-sample-e4-white",
+    "home-repertoire-sample-caro-kann-black",
+    "home-game-library-fischer-52",
+  ]) {
+    await screen.findByTestId(id);
+  }
+};
+
 describe("the front page — an MDX document (CTA-126)", () => {
   it("renders the English document: its one h1, its sections, and declares the h1 its own", async () => {
     const store = createPageTitleStore();
     renderHome(store);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1, name: "Get started" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Try a board" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Every screen" })).toBeInTheDocument();
+    for (const name of ["Try a board", "Repertoires", "A collection", "Every screen"]) {
+      expect(screen.getByRole("heading", { level: 2, name })).toBeInTheDocument();
+    }
     // The shell's hidden h1 steps aside (CTA-112).
     expect(store.getOwnHeadings()).toBe(1);
     // A Markdown link to a path of the app is a router link.
     expect(screen.getByRole("link", { name: "Library" })).toHaveAttribute("href", "/library");
-    await screen.findByTestId("home-stored-game");
+    await settled();
   });
 
   it("renders the Hebrew document under Hebrew", async () => {
@@ -53,24 +68,30 @@ describe("the front page — an MDX document (CTA-126)", () => {
     renderHome();
     expect(screen.getByRole("heading", { level: 1, name: "בואו נתחיל" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "כל המסכים" })).toBeInTheDocument();
-    await screen.findByTestId("home-stored-game");
+    await settled();
   });
 
-  it("embeds the three demo boards and the stored game, each board with its own id", async () => {
+  it("lays its embeds out in rows — three games, two repertoires, one collection — each board with its own id", async () => {
     renderHome();
-    expect(screen.getByRole("group", { name: "Sample game board" })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Sample repertoire board" })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Sample collection board" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: "A repertoire" })).toBeInTheDocument();
+    await settled();
+    const rows = screen.getAllByTestId("home-board-row");
+    expect(rows.map((row) => within(row).getAllByTestId("board").length)).toEqual([3, 2, 1]);
 
-    await screen.findByTestId("home-stored-game");
     const ids = screen.getAllByTestId("board").map((board) => board.getAttribute("data-board-id"));
     expect(ids).toEqual([
-      "front-page-sample-game",
-      "front-page-sample-repertoire",
-      "front-page-sample-collection",
-      "front-page-embed-library-capablanca-1",
+      "front-page-game-library-fischer-50",
+      "front-page-game-library-fischer-908",
+      "front-page-game-library-capablanca-442",
+      "front-page-repertoire-sample-e4-white",
+      "front-page-repertoire-sample-caro-kann-black",
+      "front-page-game-library-fischer-52",
     ]);
+    // The Game of the Century, just before 17... Be6.
+    expect(screen.getByTestId("home-game-library-fischer-50-players")).toHaveTextContent("Fischer, R.");
+    expect(within(screen.getByTestId("home-game-library-fischer-50")).getByRole("button", { name: "Be6" })).toBeInTheDocument();
+    // The placeholder repertoires are on no device: their samples stand in.
+    expect(screen.getAllByText("A sample repertoire that comes with the app")).toHaveLength(2);
+    expect(screen.getByRole("region", { name: "Fischer" })).toBeInTheDocument();
   });
 });
 
@@ -119,7 +140,7 @@ describe("the front page — accessible (CTA-113, CTA-126)", () => {
   it("passes axe, and its cards are reached in order from the keyboard", async () => {
     const user = userEvent.setup();
     renderHome();
-    await screen.findByTestId("home-stored-game");
+    await settled();
     await expectNoAxeViolations(document.body);
     const cards = cardLinks();
     cards[0].focus();

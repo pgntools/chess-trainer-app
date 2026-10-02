@@ -3,8 +3,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../i18n";
-import { demoTreeOfGameTree, demoTreeOfOpeningTree, type DemoNode } from "../../lib/demoTree";
-import { openingTreeOf } from "../../lib/openingTree";
+import { demoTreeOfGameTree, type DemoNode } from "../../lib/demoTree";
 import { parsePgnTree } from "../../lib/pgn";
 import { expectNoAxeViolations } from "../../test/axe";
 import { stubReducedMotion } from "../../test/reducedMotion";
@@ -58,6 +57,8 @@ describe("the demo board (CTA-126)", () => {
   it("takes a dropped continuation, draws the next position's arrows, and refuses any other move", () => {
     renderBoard(repertoire());
     expect(arrowCount()).toBe(1);
+    // A lone continuation carries no share.
+    expect(screen.getByRole("list", { name: "Moves from here" }).textContent).toBe("e4");
 
     expect(drop("d2", "d4")).toBe(false);
     expect(drop("e2", null)).toBe(false);
@@ -119,21 +120,24 @@ describe("the demo board (CTA-126)", () => {
     expect(screen.getByTestId("demo-line")).toHaveTextContent("50. e8=N");
   });
 
-  it("shows a collection's games, their share and their results beside each move", () => {
-    const root = demoTreeOfOpeningTree(
-      openingTreeOf([
-        { line: ["e4", "e5"], result: "1-0" },
-        { line: ["e4", "c5"], result: "0-1" },
-        { line: ["d4", "d5"], result: "1/2-1/2" },
-      ]),
+  it("opens where it is told — after a line, facing a side — and goes back to the tree's own start", async () => {
+    const user = userEvent.setup();
+    render(
+      <DemoBoard
+        boardId="demo-test-board"
+        testId="demo"
+        label="Sample board"
+        root={repertoire()}
+        initialLine={["e4", "c5"]}
+        initialOrientation="black"
+      />,
     );
-    renderBoard(root);
-    const moves = screen.getByRole("list", { name: "Moves from here" });
-    expect(moves).toHaveTextContent("2 games · 67%");
-    expect(moves).toHaveTextContent("1 game · 33%");
-    drop("d2", "d4");
-    // One game goes on from here alone: the tree is cut, and the caption says so.
-    expect(screen.getByTestId("demo-end")).toHaveTextContent("Only one game goes further here");
+    expect(screen.getByTestId("demo-line")).toHaveTextContent("1. e4 c5");
+    expect(boardOptions().boardOrientation).toBe("black");
+    expect(screen.getByRole("button", { name: "Nf3" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Back to the start" }));
+    expect(boardOptions().position).toBe(START);
   });
 
   it("turns the pieces' animation off for a reader who asks for reduced motion", () => {

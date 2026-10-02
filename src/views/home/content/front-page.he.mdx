@@ -3,24 +3,35 @@
   front-page.en.mdx; keep the two in step. See that file's note.
 */}
 
-import { EXAMPLE_GAME_REFERENCE } from "./placeholders";
-
 # בואו נתחיל
 
 בחרו לוח או כלי כדי לפתוח — או נסו אחד כאן קודם.
 
 ## נסו לוח
 
-כל לוח משחזר דוגמה קטנה שמגיעה עם האפליקציה. גררו כלי לאורך חץ, או בחרו מהלך מהרשימה שמתחת ללוח: ככל שהחץ רחב יותר, כך המהלך סביר יותר.
+שלושה משחקים מה[ספרייה](/library), כל אחד נפתח רגע לפני המהלך המפורסם שלו. גררו כלי לאורך החץ, או בחרו את המהלך מהרשימה שמתחת ללוח.
 
-<SampleBoards />
+<BoardRow>
+  <CollectionGameBoard game="/library/fischer/50" startMove="17" />
+  <CollectionGameBoard game="/library/fischer/908" startMove="7" />
+  <CollectionGameBoard game="/library/capablanca/442" startMove="8" />
+</BoardRow>
 
-## משחק מהספרייה
+## רפרטוארים
 
-משחק שמור, מוטמע ישירות מה[ספרייה](/library) — עברו עליו כאן, או פתחו אותו בלוח הניתוח.
+רפרטואר עונה על כל מהלך כפי שהמאמן היה עונה: ככל שהחץ רחב יותר, כך התשובה סבירה יותר.
 
-{/* PLACEHOLDER: the game is EXAMPLE_GAME_REFERENCE in ./placeholders.ts — replace it there. */}
-<StoredGameEmbed reference={EXAMPLE_GAME_REFERENCE} />
+{/* PLACEHOLDER: replace each _id with a repertoire's address — see front-page.en.mdx. */}
+<BoardRow>
+  <RepertoireBoard _id="/repertoires/REPLACE-WITH-A-REPERTOIRE-ID" fallback="e4-white" startMove="1" />
+  <RepertoireBoard _id="/repertoires/REPLACE-WITH-A-REPERTOIRE-ID-2" fallback="caro-kann-black" startMove="1..." />
+</BoardRow>
+
+## אוסף
+
+<BoardRow>
+  <CollectionCard _id="/library/fischer" showGame="52" />
+</BoardRow>
 
 ## כל המסכים
 

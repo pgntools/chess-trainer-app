@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { demoNodeAt, demoTreeOfGameTree, demoTreeOfOpeningTree, numberedLine } from "./demoTree";
-import { openingTreeOf } from "./openingTree";
+import { demoNodeAt, demoTreeOfGameTree, numberedLine, startLineOf } from "./demoTree";
 import { parsePgnTree } from "./pgn";
 
 describe("demoTreeOfGameTree", () => {
@@ -17,35 +16,6 @@ describe("demoTreeOfGameTree", () => {
     const replies = root.children[0].children;
     expect(replies.map((node) => node.san)).toEqual(["e5", "c5", "e6"]);
     expect(replies.map((node) => node.chance)).toEqual([0.5, 0.3, 0.2]);
-    // A tree's node carries no games.
-    expect(replies[0].count).toBeUndefined();
-  });
-});
-
-describe("demoTreeOfOpeningTree", () => {
-  it("makes each move's chance its share of the position's games, and keeps the games' counts and results", () => {
-    const root = demoTreeOfOpeningTree(
-      openingTreeOf([
-        { line: ["e4", "e5"], result: "1-0" },
-        { line: ["e4", "c5"], result: "0-1" },
-        { line: ["e4", "c5"], result: "1/2-1/2" },
-        { line: ["d4", "d5"], result: "1-0" },
-      ]),
-    );
-    expect(root.count).toBe(4);
-    expect(root.children.map((node) => [node.san, node.chance, node.count])).toEqual([
-      ["e4", 0.75, 3],
-      ["d4", 0.25, 1],
-    ]);
-    const e4 = root.children[0];
-    expect(e4.results).toEqual({ white: 1, draw: 1, black: 1 });
-    expect(e4.children.map((node) => [node.san, node.chance])).toEqual([
-      ["c5", 2 / 3],
-      ["e5", 1 / 3],
-    ]);
-    // Where one game goes on alone, the tree is cut, and says so.
-    expect(root.children[1].children).toEqual([]);
-    expect(root.children[1].continues).toBe(true);
   });
 });
 
@@ -66,5 +36,43 @@ describe("numberedLine", () => {
   it("numbers from a position's own move number and side to move", () => {
     expect(numberedLine(["Kb3", "e8=Q"], "8/4P3/8/8/8/8/k7/4K3 b - - 0 40")).toBe("40... Kb3 41. e8=Q");
     expect(numberedLine([])).toBe("");
+  });
+});
+
+describe("startLineOf — where a board opens", () => {
+  const root = demoTreeOfGameTree(parsePgnTree("1. e4 e5 (1... c5 2. Nf3) 2. Nf3 Nc6 3. Bb5 *"));
+
+  it.each([
+    ["1", ["e4"]],
+    ["1.", ["e4"]],
+    ["2", ["e4", "e5", "Nf3"]],
+    ["1...", ["e4", "e5"]],
+    ["...1", ["e4", "e5"]],
+    ["…2", ["e4", "e5", "Nf3", "Nc6"]],
+    ["0", []],
+    // Past the end: the mainline's end, as `?move=` clamps.
+    ["40", ["e4", "e5", "Nf3", "Nc6", "Bb5"]],
+  ])("a move number, %s, walks the mainline", (startMove, line) => {
+    expect(startLineOf(root, startMove)).toEqual(line);
+  });
+
+  it("follows a line of SAN, numbered or bare, into a side line, as far as the tree holds it", () => {
+    expect(startLineOf(root, "1. e4 c5 2. Nf3")).toEqual(["e4", "c5", "Nf3"]);
+    expect(startLineOf(root, "e4 c5")).toEqual(["e4", "c5"]);
+    expect(startLineOf(root, "1.e4 1...c5")).toEqual(["e4", "c5"]);
+    expect(startLineOf(root, "1. e4 e6")).toEqual(["e4"]);
+  });
+
+  it("opens at the start for nothing, or for words it cannot read", () => {
+    expect(startLineOf(root, undefined)).toEqual([]);
+    expect(startLineOf(root, "  ")).toEqual([]);
+    expect(startLineOf(root, "the middle")).toEqual([]);
+  });
+
+  it("numbers from a position's own move number and side to move", () => {
+    const fen = "8/4P3/8/8/8/8/k7/4K3 b - - 0 40";
+    const fromPosition = demoTreeOfGameTree(parsePgnTree(`[SetUp "1"]\n[FEN "${fen}"]\n\n40... Kb3 41. e8=Q *`));
+    expect(startLineOf(fromPosition, "40...", fen)).toEqual(["Kb3"]);
+    expect(startLineOf(fromPosition, "41", fen)).toEqual(["Kb3", "e8=Q"]);
   });
 });
