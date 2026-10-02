@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { mainline, plyLabel } from "../../../lib/gameTree";
-import { parsePgnTree } from "../../../lib/pgn";
+import { parsePgnTree, splitPgnGames } from "../../../lib/pgn";
 import { resolveExcerpt } from "../../../lib/pgnExcerpt";
 import ExcerptBoard from "../../shared/ExcerptBoard";
 
@@ -24,15 +24,22 @@ import ExcerptBoard from "../../shared/ExcerptBoard";
  * `startPly` say the same in plies (0 the start) and win. Absent: the whole
  * game, opened at its start. `variations={false}` shows the mainline alone;
  * `comments` shows the PGN comment of the move on screen; `orientation`
- * which way the board faces; `caption` a line above it.
+ * which way the board faces; `caption` a line above it. `game` picks one
+ * game of a PGN holding several (a lichess study's chapters), 1-based. The
+ * shapes a comment draws — lichess's `[%cal]` arrows, `[%csl]` circles — are
+ * on the board at their position; `shapes={false}` leaves them off.
  *
  * Each board's id is the instance's own (`useId`), so one game can be
  * embedded any number of times on a page. A PGN that will not read says so.
  */
 
 type InlinePgnGameProps = {
-  /** The game as PGN — its first game, side lines, comments and NAGs kept. */
+  /** The game as PGN — side lines, comments and NAGs kept. */
   pgn: string;
+  /** Which game of a PGN holding several, 1-based. Default the first. */
+  game?: number | string;
+  /** Draw the PGN's `[%cal]` arrows and `[%csl]` circles. Default on. */
+  shapes?: boolean;
   from?: string;
   to?: string;
   start?: string;
@@ -55,6 +62,8 @@ const plyOf = (value: number | string | undefined): number | undefined => {
 
 export function InlinePgnGame({
   pgn,
+  game,
+  shapes,
   from,
   to,
   start,
@@ -71,11 +80,16 @@ export function InlinePgnGame({
 
   const parsed = useMemo(() => {
     try {
-      return { tree: parsePgnTree(pgn) };
+      // Only the game shown is read: another chapter's slip cannot cost this board.
+      const chunks = splitPgnGames(pgn);
+      const index = (plyOf(game) ?? 1) - 1;
+      const chunk = chunks[index];
+      if (chunk === undefined) return { error: `game ${index + 1} of ${chunks.length}` };
+      return { tree: parsePgnTree(chunk) };
     } catch (error) {
       return { error: error instanceof Error ? error.message : String(error) };
     }
-  }, [pgn]);
+  }, [pgn, game]);
   const window = useMemo(
     () =>
       parsed.tree === undefined
@@ -119,6 +133,7 @@ export function InlinePgnGame({
       window={window}
       orientation={orientation}
       showComments={comments}
+      shapes={shapes}
       caption={caption}
     />
   );

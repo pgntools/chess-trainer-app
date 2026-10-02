@@ -92,6 +92,8 @@ export const highContrastTheme: ThemeDefinition = {
       chanceBorder: "#000000",
     },
     book: { known: "#0072b2", hovered: "#d55e00" },
+    // A PGN's drawn shapes keep lichess's brushes, so a study reads as it was drawn.
+    drawing: defaultChessTokens.drawing,
     // Okabe–Ito families, each darkened to AA on white and lightened to AA on black.
     nag: {
       good: { light: "#00704f", dark: "#3fd6a5" },

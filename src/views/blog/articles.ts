@@ -125,6 +125,14 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
+    path: "inline-pgn/arrows-and-circles",
+    title: { en: "Arrows and circles: [%cal] and [%csl]", he: "חצים ועיגולים: [%cal] ו-[%csl]" },
+    summary: {
+      en: "The shapes a lichess study draws, drawn back from its PGN — a study on drawing them, chapter by chapter.",
+      he: "הצורות שסטודיו של lichess מצייר, מצוירות מחדש מה-PGN שלו — סטודיו על ציורן, פרק אחר פרק.",
+    },
+  },
+  {
     path: "inline-pgn/rubinstein-capablanca-1911",
     title: { en: "Rubinstein – Capablanca, San Sebastian 1911", he: "רובינשטיין – קפבלנקה, סן סבסטיאן 1911" },
     summary: {

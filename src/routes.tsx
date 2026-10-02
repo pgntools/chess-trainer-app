@@ -270,6 +270,11 @@ export const appRoutes: RouteObject[] = [
           handle: { title: "pages.blogArticle" }
         },
         {
+          path: "/blog/inline-pgn/arrows-and-circles",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
           path: "/blog/inline-pgn/rubinstein-capablanca-1911",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }

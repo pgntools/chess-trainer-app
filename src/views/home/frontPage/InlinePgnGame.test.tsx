@@ -114,6 +114,69 @@ describe("<InlinePgnGame> (CTA-126)", () => {
     expect(screen.queryByTestId("board")).not.toBeInTheDocument();
   });
 
+  describe("a PGN's drawn shapes — [%cal] arrows, [%csl] circles", () => {
+    const DRAWN = [
+      '[Event "First"]',
+      "",
+      "{ The start. } { [%csl Gd4][%cal Ge2e4,Rd2d4] } 1. e4 { Now Black. [%cal Ge7e5,Bc7c5] [%csl Rf7] } e5 2. Nf3 *",
+      "",
+      '[Event "Second"]',
+      "",
+      "1. d4 { [%csl Yd4] } d5 *",
+    ].join("\n");
+
+    it("draws a position's arrows in their brushes in place of the next-move arrows, and its circles on their squares", () => {
+      render(<InlinePgnGame pgn={DRAWN} comments />);
+      // At the start: the opening comment's drawing — lichess's green and red brushes.
+      expect(boardOptions().arrows).toEqual([
+        { startSquare: "e2", endSquare: "e4", color: "#15781B" },
+        { startSquare: "d2", endSquare: "d4", color: "#882020" },
+      ]);
+      const circles = screen.getByTestId(/-circles$/).querySelectorAll("circle");
+      expect([...circles].map((circle) => circle.getAttribute("data-square"))).toEqual(["d4"]);
+      // d4, for White: file 3, rank 3 from the bottom — x 3.5, y 4.5.
+      expect([circles[0].getAttribute("cx"), circles[0].getAttribute("cy")]).toEqual(["3.5", "4.5"]);
+      // The words, without the commands.
+      expect(screen.getByTestId(/-comment$/)).toHaveTextContent(/^The start\.$/);
+    });
+
+    it("draws each position's own, and turns its circles with the board", async () => {
+      const user = userEvent.setup();
+      render(<InlinePgnGame pgn={DRAWN} orientation="black" />);
+      await user.click(screen.getByRole("button", { name: "1. e4" }));
+      expect(boardOptions().arrows?.map((arrow) => `${arrow.startSquare}${arrow.endSquare}`)).toEqual(["e7e5", "c7c5"]);
+      const circle = screen.getByTestId(/-circles$/).querySelector("circle")!;
+      // f7, from Black's side: x 7 - 5 + .5, y 6 + .5.
+      expect([circle.getAttribute("cx"), circle.getAttribute("cy")]).toEqual(["2.5", "6.5"]);
+      // A position with no drawing has its next-move arrows back.
+      await user.click(screen.getByRole("button", { name: "1... e5" }));
+      expect(boardOptions().arrows?.map((arrow) => arrow.endSquare)).toEqual(["f3"]);
+      expect(screen.queryByTestId(/-circles$/)).not.toBeInTheDocument();
+    });
+
+    it("leaves the drawings off with shapes={false}", () => {
+      render(<InlinePgnGame pgn={DRAWN} shapes={false} />);
+      expect(boardOptions().arrows?.map((arrow) => arrow.endSquare)).toEqual(["e4"]);
+      expect(screen.queryByTestId(/-circles$/)).not.toBeInTheDocument();
+    });
+
+    it("shows the game of a PGN that game picks", () => {
+      render(<InlinePgnGame pgn={DRAWN} game={2} />);
+      expect(screen.getByRole("button", { name: "1. d4" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "1. e4" })).not.toBeInTheDocument();
+    });
+
+    it("reads only the game it shows, and says when there is no such game", () => {
+      render(<InlinePgnGame pgn={`${DRAWN}\n\n[Event "Broken"]\n\n1. e4 e5 2. Ke4 *`} game="2" />);
+      expect(screen.getByRole("button", { name: "1. d4" })).toBeInTheDocument();
+    });
+
+    it("says there is no such game when game is past the file's last", () => {
+      render(<InlinePgnGame pgn={DRAWN} game={9} />);
+      expect(screen.getByText("This game's PGN does not read.")).toBeInTheDocument();
+    });
+  });
+
   it("passes axe", async () => {
     render(<InlinePgnGame pgn={PGN} start="2" comments />);
     await expectNoAxeViolations();

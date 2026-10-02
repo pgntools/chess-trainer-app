@@ -34,6 +34,8 @@ export const defaultChessTokens: ChessTokens = {
     chanceBorder: "#d500f9",
   },
   book: { known: "#4caf50", hovered: "#f44336" },
+  // Lichess's four brushes, as a study draws a PGN's [%cal] / [%csl].
+  drawing: { green: "#15781B", red: "#882020", yellow: "#e68f00", blue: "#003088" },
   // Lichess's families — `!` and `!!` green, `?` orange, `??` red, `!?`
   // magenta, `?!` blue — the light shade dark enough to read on white
   // paper, the dark one light enough for the dark scheme's.

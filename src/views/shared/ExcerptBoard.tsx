@@ -12,15 +12,17 @@ import { useTranslation } from "react-i18next";
 
 import { IconAction } from "../../design-system/components/toolbars";
 import { MIN_TARGET_PX, MONOSPACE_FONT_FAMILY, useChessTokens } from "../../design-system/theme";
+import { drawsShapes, shapesOf } from "../../lib/boardShapes";
 import { findNode, pathTo, type GameTree } from "../../lib/gameTree";
 import { lastMoveSquareStyles } from "../../lib/gameNavigation";
 import { excerptTokens, isInExcerpt, moveName, type ExcerptToken, type ExcerptWindow } from "../../lib/pgnExcerpt";
-import { withoutPlayChance } from "../../lib/playChance";
+import { readComment } from "../../lib/moveAnnotations";
 import { ForceLTR } from "../../theme/ForceLTR";
 import NagGlyphs from "./NagGlyphs";
 import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
 import { useBoardSquareOptions } from "./boardColors";
 import PromotionPicker, { type PromotionChoice } from "./PromotionPicker";
+import ShapeCircles from "./ShapeCircles";
 
 /**
  * **An excerpt of a game, on a board** (CTA-126) — what an article's
@@ -37,7 +39,13 @@ import PromotionPicker, { type PromotionChoice } from "./PromotionPicker";
  *   that the window holds (a promotion made more than one way asks, through
  *   the shared picker), anything else snaps back.
  * - Above the board: to the window's first position, back, forward (along
- *   the line on screen), to its last, and flip. With `showComments`, the
+ *   the line on screen), to its last, and flip.
+ * - **The shapes the PGN draws** at the position on screen — lichess's
+ *   `[%cal]` arrows and `[%csl]` circles in the move's comment (the game's
+ *   opening comment at its start; `lib/boardShapes.ts`), in the theme's
+ *   brushes. Where the position carries a drawing, it is the board's message,
+ *   and the next-move arrows step aside (the move list still offers the
+ *   moves); `shapes={false}` turns drawings off. With `showComments`, the
  *   move on screen's PGN comment sits under the moves.
  *
  * Presentational: the tree and the window arrive as props, the position on
@@ -58,6 +66,8 @@ type ExcerptBoardProps = {
   showComments?: boolean;
   /** A line above the board — what this excerpt is for. */
   caption?: ReactNode;
+  /** Draw the PGN's `[%cal]` / `[%csl]` shapes. Default on. */
+  shapes?: boolean;
 };
 
 /** A move of the list — `VariationLine`'s token: monospace, 24 px, current by `aria-current`. */
@@ -98,7 +108,17 @@ const MoveNumber = styled("span")(({ theme }) => ({
   paddingInlineStart: theme.spacing(0.5),
 }));
 
-function ExcerptBoard({ boardId, testId, label, tree, window, orientation: initialOrientation, showComments, caption }: ExcerptBoardProps) {
+function ExcerptBoard({
+  boardId,
+  testId,
+  label,
+  tree,
+  window,
+  orientation: initialOrientation,
+  showComments,
+  caption,
+  shapes: drawShapes = true,
+}: ExcerptBoardProps) {
   const { t } = useTranslation();
   const squareOptions = useBoardSquareOptions();
   const tokens = useChessTokens();
@@ -121,6 +141,16 @@ function ExcerptBoard({ boardId, testId, label, tree, window, orientation: initi
     setPromotion(null);
     setNodeId(id);
   };
+
+  // The position's own comments — the move's, or the game's opening one at its start.
+  const comments: readonly string[] = node === undefined ? (tree.comments ?? []) : (node.comments ?? []);
+  // What they say, the commands (`[%cal]`, `[%eval]`, `prc:` …) taken out.
+  const comment = comments
+    .flatMap((raw) => readComment(raw).paragraphs)
+    .filter((text) => text.trim() !== "")
+    .join("\n\n");
+  const drawing = shapesOf(drawShapes ? comments : []);
+  const drawn = drawsShapes(drawing);
 
   const onPieceDrop = ({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean => {
     if (targetSquare === null) return false;
@@ -149,7 +179,9 @@ function ExcerptBoard({ boardId, testId, label, tree, window, orientation: initi
     position: fen,
     boardOrientation: orientation,
     allowDrawingArrows: false,
-    arrows: nextMoveArrowsOf(onward, null, tokens.arrowPalettes.classic),
+    arrows: drawn
+      ? drawing.arrows.map(({ brush, from, to }) => ({ startSquare: from, endSquare: to, color: tokens.drawing[brush] }))
+      : nextMoveArrowsOf(onward, null, tokens.arrowPalettes.classic),
     squareStyles: node === undefined ? {} : lastMoveSquareStyles(node.from, node.to, tokens.lastMove),
     canDragPiece: ({ piece }) => piece.pieceType.startsWith(turn),
     onPieceDrop,
@@ -193,8 +225,6 @@ function ExcerptBoard({ boardId, testId, label, tree, window, orientation: initi
       ),
     );
 
-  const comments: readonly string[] = node === undefined ? (tree.comments ?? []) : (node.comments ?? []);
-  const comment = comments.map(withoutPlayChance).filter((text) => text !== "").join(" ");
   const onScreen = node === undefined ? t("inlinePgn.start") : moveName(tree.startFen, node);
 
   return (
@@ -250,6 +280,7 @@ function ExcerptBoard({ boardId, testId, label, tree, window, orientation: initi
           </Box>
           <ForceLTR sx={{ position: "relative", width: "100%", aspectRatio: "1 / 1" }}>
             <Chessboard options={options} />
+            {drawn && <ShapeCircles circles={drawing.circles} orientation={orientation} testId={`${testId}-circles`} />}
             {promotion && (
               <PromotionPicker targetSquare={promotion.to} orientation={orientation} color={turn} onSelect={resolvePromotion} />
             )}

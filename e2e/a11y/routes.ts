@@ -138,6 +138,7 @@ export const ROUTES: readonly PageRoute[] = [
   { id: "blog-inline-pgn-the-component", pattern: "/blog/inline-pgn/the-component", path: "blog/inline-pgn/the-component", board: true },
   { id: "blog-inline-pgn-windows", pattern: "/blog/inline-pgn/windows", path: "blog/inline-pgn/windows", board: true },
   { id: "blog-inline-pgn-variations", pattern: "/blog/inline-pgn/variations", path: "blog/inline-pgn/variations", board: true },
+  { id: "blog-inline-pgn-arrows-and-circles", pattern: "/blog/inline-pgn/arrows-and-circles", path: "blog/inline-pgn/arrows-and-circles", board: true },
   { id: "blog-inline-pgn-rubinstein-capablanca-1911", pattern: "/blog/inline-pgn/rubinstein-capablanca-1911", path: "blog/inline-pgn/rubinstein-capablanca-1911", board: true },
   { id: "blog-writing-an-article", pattern: "/blog/guides/writing-an-article", path: "blog/guides/writing-an-article" },
   { id: "settings-export", pattern: "/settings/:tab", path: "settings/export" },

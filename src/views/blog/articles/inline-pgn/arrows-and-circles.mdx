@@ -1,0 +1,68 @@
+import study from "./drawing-arrows-study.pgn?raw"
+
+A lichess study draws on its board — arrows for moves and plans, circles round squares — and keeps the drawing in the PGN, inside the move's comment. `<InlinePgnGame>` draws them back: whatever a position's comment draws is on the board when the board is at that position.
+
+The boards below are the chapters of the lichess study *General Guidelines on Drawing Arrows* by CreativeBro, its PGN exported as it is. Each chapter is one game of the file, picked with `game`.
+
+## How a PGN writes them
+
+Two commands, inside a comment:
+
+```
+{ [%cal Ge2e4,Rd7d5] }   arrows: a brush, then the from and to squares
+{ [%csl Gd4,Re5] }       circles: a brush, then the square
+```
+
+The brush is one letter — `G` green, `R` red, `Y` yellow (lichess's orange), `B` blue. The comment after a move draws on the position that move reaches; a comment before the first move draws on the starting position. On lichess, a right-click drag draws in green, with Shift in red, with Alt in blue, and with both in orange.
+
+Where a position carries a drawing, the drawing is the board's message: the arrows to the next moves step aside, and the moves stay in the list beside the board.
+
+## The four brushes
+
+The study's introduction draws one of each — an arrow and a circle per brush.
+
+<InlinePgnGame pgn={study} game={1} comments />
+
+```mdx
+import study from "./drawing-arrows-study.pgn?raw"
+
+<InlinePgnGame pgn={study} game={1} comments />
+```
+
+## Green: good moves now
+
+Green arrows are the good moves in the position on the board; green circles a good piece or an outpost. Step to 1. e4: Black's good answers are drawn there.
+
+<InlinePgnGame pgn={study} game={2} comments />
+
+## Blue: ideas and plans
+
+Blue arrows are ideas for later — themes and plans rather than the move to play now; blue circles squares that will matter. In the French Advance: the knight's road to f5, ...c5 and ...f6 against White's centre, c3 and f4 to hold it.
+
+<InlinePgnGame pgn={study} game={3} comments />
+
+## Red: the opponent's threats
+
+Red arrows are the threats; red circles weak or threatened squares. The Fried Liver: f7 is attacked twice. Seen from Black's side, who must answer:
+
+<InlinePgnGame pgn={study} game={4} comments orientation="black" />
+
+## Yellow: the choices
+
+Yellow (lichess's orange) arrows are the moves to choose between; a yellow circle marks the main one. Here the drawing and the side lines say the same thing: 1. Nf3, with 1. Qc2, 1. Qb3 and 1. e3 beside it.
+
+<InlinePgnGame pgn={study} game={5} comments />
+
+## All four in a game
+
+The study's last chapter, a French Advance, uses every brush move by move. Step through it: each position draws its own.
+
+<InlinePgnGame pgn={study} game={6} comments />
+
+## The props
+
+- `game` — which game of a PGN holding several, counted from 1. A lichess study exports one game per chapter.
+- `shapes={false}` — leave the drawings off, and show the arrows to the next moves instead.
+- `comments` — the comment's words under the moves; the drawing commands are taken out of them.
+
+The colours are the theme's: each theme has its four brushes.
