@@ -46,6 +46,8 @@ of one of those shows "not here" to everyone else — except a
 instead, marked as a sample. **The page's two repertoire addresses are
 placeholders** (`REPLACE-WITH-A-REPERTOIRE-ID`): swap them in both documents.
 
+**The keyboard.** Every board on the page steps with ← / → (and Home / End from inside it): the keys drive the board the reader last clicked or tabbed into — ringed — or, before any is touched, the first in view (`views/shared/useBoardKeys.ts`). Nothing to write: every board does it.
+
 **What it costs.** A Library embed reads its collection's PGN (and a card its
 index too) — the Library's own lazy chunks, fetched once: the page as
 shipped reads Fischer's and Capablanca's (~1.8 MB before compression). Each

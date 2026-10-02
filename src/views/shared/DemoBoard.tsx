@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import Typography from "@mui/material/Typography";
+import type { Theme } from "@mui/material/styles";
 import FirstPageRoundedIcon from "@mui/icons-material/FirstPageRounded";
 import NavigateBeforeRoundedIcon from "@mui/icons-material/NavigateBeforeRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
@@ -17,6 +18,7 @@ import ChanceArrows from "../explorer/ChanceArrows";
 import { useBoardSquareOptions } from "./boardColors";
 import { moveSx, sanTokenSx } from "./moveTokenSx";
 import PromotionPicker, { type PromotionChoice } from "./PromotionPicker";
+import { useBoardKeys } from "./useBoardKeys";
 
 /**
  * **A demo mini-board** (CTA-126) — the front page's interactive boards, in
@@ -33,7 +35,9 @@ import PromotionPicker, { type PromotionChoice } from "./PromotionPicker";
  *   A promotion the tree makes more than one way asks which piece, through the
  *   shared picker;
  * - start, back, next (the first continuation — the mainline, or the most
- *   played) and flip, above the board.
+ *   played) and flip, above the board — and ← / → / Home / End from the
+ *   keyboard, on whichever board of the page the reader last touched
+ *   (`useBoardKeys`), which is ringed.
  *
  * Presentational: the tree, the start position and where the board opens
  * (`initialLine`, `initialOrientation`) arrive as props; the line played, the
@@ -117,6 +121,27 @@ function DemoBoard({
   };
   const play = (san: string) => goTo([...line, san]);
 
+  // ← / → / Home / End, when this is the board the reader last touched (`useBoardKeys`).
+  const keys = useBoardKeys({
+    back: () => {
+      if (line.length > 0) goTo(line.slice(0, -1));
+    },
+    next: () => {
+      if (continuations.length > 0) play(continuations[0].san);
+    },
+    first: () => goTo([]),
+    last: () => {
+      // On along the first continuation at every step, to the line's end.
+      const end = [...line];
+      let at = node;
+      while (at.children.length > 0) {
+        at = at.children[0];
+        end.push(at.san);
+      }
+      goTo(end);
+    },
+  });
+
   const onPieceDrop = ({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean => {
     if (targetSquare === null) return false;
     const matching = continuations.filter((move) => move.from === sourceSquare && move.to === targetSquare);
@@ -154,7 +179,24 @@ function DemoBoard({
   const noteOf = (move: Continuation): string => (continuations.length > 1 ? `${percent(move.node.chance)}%` : "");
 
   return (
-    <Box role="group" aria-label={label} data-testid={testId} sx={{ display: "grid", gap: 1, minWidth: 0 }}>
+    <Box
+      role="group"
+      aria-label={label}
+      data-testid={testId}
+      {...keys}
+      sx={{
+        display: "grid",
+        gap: 1,
+        minWidth: 0,
+        // The board the keys drive (`useBoardKeys`) is ringed.
+        '&:focus': { outline: "none" },
+        '&[data-keys-active="true"]': {
+          outline: (theme: Theme) => `2px solid ${(theme.vars ?? theme).palette.primary.main}`,
+          outlineOffset: 4,
+          borderRadius: 1,
+        },
+      }}
+    >
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 0.5 }}>
         <IconAction
           label={t("demoBoard.reset")}

@@ -146,6 +146,18 @@ describe("the demo board (CTA-126)", () => {
     expect(boardOptions().showAnimations).toBe(false);
   });
 
+  it("steps from the keyboard once touched — ← / →, and Home / End to the line's ends (useBoardKeys)", async () => {
+    const user = userEvent.setup();
+    renderBoard(repertoire());
+    await user.click(screen.getByRole("group", { name: "Sample board" }));
+    await user.keyboard("{ArrowRight}{ArrowRight}");
+    expect(screen.getByTestId("demo-line")).toHaveTextContent("1. e4 e5");
+    await user.keyboard("{End}");
+    expect(screen.getByTestId("demo-line")).toHaveTextContent("1. e4 e5 2. Nf3");
+    await user.keyboard("{ArrowLeft}{Home}");
+    expect(boardOptions().position).toBe(START);
+  });
+
   it("passes axe", async () => {
     renderBoard(repertoire());
     drop("e2", "e4");

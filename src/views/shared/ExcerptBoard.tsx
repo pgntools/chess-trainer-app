@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import { styled } from "@mui/material/styles";
+import { styled, type Theme } from "@mui/material/styles";
 import FirstPageRoundedIcon from "@mui/icons-material/FirstPageRounded";
 import LastPageRoundedIcon from "@mui/icons-material/LastPageRounded";
 import NavigateBeforeRoundedIcon from "@mui/icons-material/NavigateBeforeRounded";
@@ -23,6 +23,7 @@ import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
 import { useBoardSquareOptions } from "./boardColors";
 import PromotionPicker, { type PromotionChoice } from "./PromotionPicker";
 import ShapeCircles from "./ShapeCircles";
+import { useBoardKeys } from "./useBoardKeys";
 
 /**
  * **An excerpt of a game, on a board** (CTA-126) — what an article's
@@ -39,7 +40,9 @@ import ShapeCircles from "./ShapeCircles";
  *   that the window holds (a promotion made more than one way asks, through
  *   the shared picker), anything else snaps back.
  * - Above the board: to the window's first position, back, forward (along
- *   the line on screen), to its last, and flip.
+ *   the line on screen), to its last, and flip — and the same from the
+ *   keyboard, ← / → / Home / End, on whichever board of the page the reader
+ *   last touched (`useBoardKeys`), which is ringed.
  * - **The shapes the PGN draws** at the position on screen — lichess's
  *   `[%cal]` arrows and `[%csl]` circles in the move's comment (the game's
  *   opening comment at its start; `lib/boardShapes.ts`), in the theme's
@@ -173,6 +176,18 @@ function ExcerptBoard({
     if (piece !== null && move !== undefined) goTo(move.id);
   };
 
+  // ← / → / Home / End, when this is the board the reader last touched (`useBoardKeys`).
+  const keys = useBoardKeys({
+    back: () => {
+      if (parentId !== undefined && reachable(parentId)) goTo(parentId);
+    },
+    next: () => {
+      if (onward.length > 0) goTo(onward[0].id);
+    },
+    first: () => goTo(window.fromId),
+    last: () => goTo(window.toId),
+  });
+
   const options: ChessboardOptions = {
     ...squareOptions,
     id: boardId,
@@ -228,7 +243,25 @@ function ExcerptBoard({
   const onScreen = node === undefined ? t("inlinePgn.start") : moveName(tree.startFen, node);
 
   return (
-    <Box role="group" aria-label={label} data-testid={testId} sx={{ display: "grid", gap: 1, minWidth: 0, mb: 3 }}>
+    <Box
+      role="group"
+      aria-label={label}
+      data-testid={testId}
+      {...keys}
+      sx={{
+        display: "grid",
+        gap: 1,
+        minWidth: 0,
+        mb: 3,
+        // The board the keys drive (`useBoardKeys`) is ringed.
+        '&:focus': { outline: "none" },
+        '&[data-keys-active="true"]': {
+          outline: (theme: Theme) => `2px solid ${(theme.vars ?? theme).palette.primary.main}`,
+          outlineOffset: 4,
+          borderRadius: 1,
+        },
+      }}
+    >
       {caption !== undefined && (
         <Typography variant="subtitle2" component="p" sx={{ fontWeight: 600 }}>
           {caption}
