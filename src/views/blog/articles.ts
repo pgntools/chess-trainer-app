@@ -128,8 +128,8 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     path: "inline-pgn/arrows-and-circles",
     title: { en: "Arrows and circles: [%cal] and [%csl]", he: "חצים ועיגולים: [%cal] ו-[%csl]" },
     summary: {
-      en: "The shapes a lichess study draws, drawn back from its PGN — a study on drawing them, chapter by chapter.",
-      he: "הצורות שסטודיו של lichess מצייר, מצוירות מחדש מה-PGN שלו — סטודיו על ציורן, פרק אחר פרק.",
+      en: "The arrows and circles a lichess study draws, read back from its PGN — five drawn positions and games.",
+      he: "החצים והעיגולים שסטודיו של lichess מצייר, נקראים מחדש מה-PGN שלו — חמש עמדות ומשחקים מצוירים.",
     },
   },
   {
