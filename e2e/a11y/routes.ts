@@ -36,7 +36,8 @@ export const drawsPieces = (route: PageRoute): boolean => route.board === true |
 const byTestId = (id: string) => (page: Page) => page.getByTestId(id);
 
 export const ROUTES: readonly PageRoute[] = [
-  { id: "home", pattern: "/", path: "" },
+  // The front page (CTA-126) draws its demo boards and an embedded stored game.
+  { id: "home", pattern: "/", path: "", board: true, ready: byTestId("home-stored-game") },
   { id: "lobby", pattern: "/engine/games", path: "engine/games", ready: byTestId("played-games-row-e2e-on") },
   { id: "play-with-engine", pattern: "/engine/play", path: "engine/play", board: true },
   { id: "masked-pieces", pattern: "/engine/masked", path: "engine/masked", board: true },

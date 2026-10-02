@@ -16,11 +16,10 @@ import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
 import { OpeningTreePgnDialog } from "../../blocks/dialogs";
 import { IconAction } from "../../design-system/components/toolbars";
-import { useChessTokens } from "../../design-system/theme";
-import type { ResultTone } from "../../design-system/themes";
 import { ForceLTR } from "../../theme/ForceLTR";
 import ChanceArrows from "../explorer/ChanceArrows";
 import { useBoardSquareOptions } from "../shared/boardColors";
+import ResultBar from "../shared/ResultBar";
 import PromotionPicker, { type PromotionChoice } from "../shared/PromotionPicker";
 import { moveSx, sanTokenSx } from "../shared/moveTokenSx";
 
@@ -71,41 +70,6 @@ type Continuation = {
 };
 
 const percent = (part: number, whole: number) => (whole === 0 ? 0 : Math.round((part / whole) * 100));
-
-function ResultBar({ node }: { node: OpeningTreeNode }) {
-  const { white, draw, black } = node.results;
-  // The theme's result tones (CTA-107).
-  const tones = useChessTokens().filterBoard;
-  const total = white + draw + black;
-  if (total === 0) return <Box />;
-  const part = (count: number, { background: bgcolor, text: color }: ResultTone) =>
-    count === 0 ? null : (
-      <Box
-        sx={{
-          flexGrow: count,
-          flexBasis: 0,
-          bgcolor,
-          color,
-          fontSize: 10,
-          lineHeight: "14px",
-          textAlign: "center",
-          overflow: "hidden",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {percent(count, total) >= 15 ? `${percent(count, total)}%` : ""}
-      </Box>
-    );
-  return (
-    <Box
-      sx={{ display: "flex", height: 14, borderRadius: 0.5, overflow: "hidden", border: "1px solid", borderColor: "divider" }}
-    >
-      {part(white, tones.white)}
-      {part(draw, tones.draw)}
-      {part(black, tones.black)}
-    </Box>
-  );
-}
 
 type OpeningFilterBoardProps = {
   /** The moves played, already matched against the collection's tree. */
@@ -301,7 +265,7 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
               >
                 {t("library.games", { count: move.node.count })} · {percent(move.node.count, node.count)}%
               </Typography>
-              <ResultBar node={move.node} />
+              <ResultBar results={move.node.results} />
             </Box>
           ))}
         </Box>

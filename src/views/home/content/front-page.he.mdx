@@ -1,0 +1,27 @@
+{/*
+  THE FRONT PAGE (CTA-126) — what "/" shows, in Hebrew. Its English twin is
+  front-page.en.mdx; keep the two in step. See that file's note.
+*/}
+
+import { EXAMPLE_GAME_REFERENCE } from "./placeholders";
+
+# בואו נתחיל
+
+בחרו לוח או כלי כדי לפתוח — או נסו אחד כאן קודם.
+
+## נסו לוח
+
+כל לוח משחזר דוגמה קטנה שמגיעה עם האפליקציה. גררו כלי לאורך חץ, או בחרו מהלך מהרשימה שמתחת ללוח: ככל שהחץ רחב יותר, כך המהלך סביר יותר.
+
+<SampleBoards />
+
+## משחק מהספרייה
+
+משחק שמור, מוטמע ישירות מה[ספרייה](/library) — עברו עליו כאן, או פתחו אותו בלוח הניתוח.
+
+{/* PLACEHOLDER: the game is EXAMPLE_GAME_REFERENCE in ./placeholders.ts — replace it there. */}
+<StoredGameEmbed reference={EXAMPLE_GAME_REFERENCE} />
+
+## כל המסכים
+
+<NavCards headingLevel={3} />

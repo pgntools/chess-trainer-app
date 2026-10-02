@@ -1,6 +1,7 @@
 import { configDefaults } from 'vitest/config'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import mdx from '@mdx-js/rollup'
 import pkg from './package.json' with { type: 'json' }
 
 // https://vite.dev/config/
@@ -24,7 +25,23 @@ export default defineConfig({
     react-router as `import.meta.env.BASE_URL`.
   */
   base: '/chess-trainer-app/',
-  plugins: [react()],
+  /*
+    The front page at `/` is an MDX document (CTA-126,
+    `src/views/home/content/`), compiled to a React component **at build time**
+    by `@mdx-js/rollup` — no MDX compiler ships to the browser. It runs
+    `enforce: 'pre'`, before the React plugin, so the JSX it emits is then
+    transformed (and fast-refreshed in dev) like any `.tsx`: hence `.mdx` in
+    the React plugin's `include`. Vitest uses this config, so a test imports a
+    `.mdx` file exactly as the app does.
+
+    **`.mdx` only.** The plugin compiles plain `.md` by default too, which
+    would turn every doc under `docs/` a test reads as text (`?raw` — the tiers'
+    conventions tests check each component's doc entry) into a component.
+  */
+  plugins: [
+    { enforce: 'pre', ...mdx({ mdExtensions: [], include: /\.mdx$/ }) },
+    react({ include: /\.(mdx|js|jsx|ts|tsx)$/ }),
+  ],
   /*
     The Library indexes an upload in a module worker
     (`src/lib/collectionIndex.worker.ts`), which loads the opening book's five

@@ -1,0 +1,33 @@
+{/*
+  THE FRONT PAGE (CTA-126) — what "/" shows, in English. Its Hebrew twin is
+  front-page.he.mdx; keep the two in step. Edit, rebuild, done: the document
+  is compiled at build time (@mdx-js/rollup), nothing is fetched at runtime.
+
+  Markdown is rendered in the theme's typography. Keep exactly one "#" heading
+  — it is the page's h1. The app's components are available by name, with no
+  import (src/views/home/frontPage/index.ts lists them; content/README.md
+  says what each takes).
+*/}
+
+import { EXAMPLE_GAME_REFERENCE } from "./placeholders";
+
+# Get started
+
+Pick a board or tool to open — or try one right here first.
+
+## Try a board
+
+Each board replays a small sample that ships with the app. Drag a piece along an arrow, or pick a move from the list under the board: the wider the arrow, the likelier the move.
+
+<SampleBoards />
+
+## A game from the Library
+
+A stored game, embedded straight from the [Library](/library) — step through it here, or open it on the Analysis Board.
+
+{/* PLACEHOLDER: the game is EXAMPLE_GAME_REFERENCE in ./placeholders.ts — replace it there. */}
+<StoredGameEmbed reference={EXAMPLE_GAME_REFERENCE} />
+
+## Every screen
+
+<NavCards headingLevel={3} />

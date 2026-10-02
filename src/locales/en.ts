@@ -60,8 +60,50 @@ const en = {
   },
   /** The index screen — a landing page linking out to the real screens. */
   home: {
-    title: "Get started",
-    subtitle: "Pick a board or tool to open.",
+    /** The front page's demo boards (CTA-126), one per shipped sample. */
+    samples: {
+      game: {
+        title: "A game",
+        description: "Morphy's Opera Game, Paris 1858 — follow the arrow to the mate.",
+        label: "Sample game board",
+        start: "Play the game's first move",
+      },
+      repertoire: {
+        title: "A repertoire",
+        description: "1. e4 for White — each reply as likely as the trainer plays it.",
+        label: "Sample repertoire board",
+        start: "Play a move of the repertoire",
+      },
+      collection: {
+        title: "A collection",
+        description: "Capablanca's first games — each move with its games and their results.",
+        label: "Sample collection board",
+        start: "Play a move to see how the games went on",
+      },
+    },
+    /** The front page's embedded stored game (CTA-126). */
+    embed: {
+      loading: "Loading the game…",
+      missing: "The game this page embeds is not here.",
+      label: "{{players}} — game board",
+      start: "Play the game's first move",
+      open: "Open on the Analysis Board",
+      white: "White",
+      black: "Black",
+    },
+  },
+  /** The front page's demo mini-boards (CTA-126, `views/shared/DemoBoard.tsx`). */
+  demoBoard: {
+    reset: "Back to the start",
+    back: "Take back a move",
+    next: "Next move",
+    flip: "Flip the board",
+    start: "Play a move",
+    end: "The line ends here",
+    single: "Only one game goes further here",
+    moves: "Moves from here",
+    games_one: "{{count}} game",
+    games_other: "{{count}} games",
   },
   /**
    * Each screen's name (CTA-112) — its route's `handle.title`: the page title

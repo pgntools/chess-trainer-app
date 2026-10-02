@@ -38,8 +38,48 @@ const he: typeof en = {
     },
   },
   home: {
-    title: "בואו נתחיל",
-    subtitle: "בחרו לוח או כלי כדי לפתוח.",
+    samples: {
+      game: {
+        title: "משחק",
+        description: "משחק האופרה של מורפי, פריז 1858 — עקבו אחרי החץ עד המט.",
+        label: "לוח משחק לדוגמה",
+        start: "שחקו את המהלך הראשון של המשחק",
+      },
+      repertoire: {
+        title: "רפרטואר",
+        // The leading mark (LRM) keeps "1. e4" reading left to right at the start of a Hebrew line.
+        description: "\u200e1. e4 ללבן — כל תשובה בסבירות שבה המאמן משחק אותה.",
+        label: "לוח רפרטואר לדוגמה",
+        start: "שחקו מהלך מהרפרטואר",
+      },
+      collection: {
+        title: "אוסף",
+        description: "המשחקים הראשונים של קפבלנקה — כל מהלך עם משחקיו ותוצאותיהם.",
+        label: "לוח אוסף לדוגמה",
+        start: "שחקו מהלך כדי לראות איך המשחקים המשיכו",
+      },
+    },
+    embed: {
+      loading: "טוען את המשחק…",
+      missing: "המשחק שהדף הזה מטמיע אינו כאן.",
+      label: "{{players}} — לוח המשחק",
+      start: "שחקו את המהלך הראשון של המשחק",
+      open: "פתיחה בלוח הניתוח",
+      white: "לבן",
+      black: "שחור",
+    },
+  },
+  demoBoard: {
+    reset: "חזרה להתחלה",
+    back: "החזרת מהלך",
+    next: "המהלך הבא",
+    flip: "היפוך הלוח",
+    start: "שחקו מהלך",
+    end: "הקו מסתיים כאן",
+    single: "רק משחק אחד ממשיך מכאן",
+    moves: "מהלכים מכאן",
+    games_one: "משחק אחד",
+    games_other: "{{count}} משחקים",
   },
   pages: {
     home: "דף הבית",
