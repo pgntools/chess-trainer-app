@@ -6,8 +6,10 @@ import { MemoryRouter } from "react-router";
 import i18n from "../../i18n";
 import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
+import { findBlogArticle } from "../blog/articles";
 import { createPageTitleStore, PageTitleContext, type PageTitleStore } from "../main/pageTitle";
 import Home from "./Home";
+import { FRONT_PAGE_ARTICLE } from "./frontPageArticle";
 
 // The demo boards and the embed draw real boards: stubbed, as every board screen's are (chessboard.md §8).
 vi.mock("react-chessboard", async () => {
@@ -47,13 +49,19 @@ const settled = async () => {
   }
 };
 
-describe("the front page — an MDX document (CTA-126)", () => {
-  it("renders the English document: its one h1, its sections, and declares the h1 its own", async () => {
+describe("the front page — one MDX article (CTA-126)", () => {
+  it("shows an article the Blog has", () => {
+    expect(FRONT_PAGE_ARTICLE).toBe("get-started");
+    expect(findBlogArticle(FRONT_PAGE_ARTICLE)).toBeDefined();
+  });
+
+  it("is the article's title as its one h1, declared its own, then the article's sections", async () => {
     const store = createPageTitleStore();
     renderHome(store);
-    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1, name: "Get started" })).toBeInTheDocument();
-    for (const name of ["Try a board", "Repertoires", "A collection", "Every screen"]) {
+    expect(await screen.findByRole("heading", { level: 2, name: "Try a board" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    for (const name of ["Repertoires", "A collection", "Every screen"]) {
       expect(screen.getByRole("heading", { level: 2, name })).toBeInTheDocument();
     }
     // The shell's hidden h1 steps aside (CTA-112).
@@ -63,11 +71,13 @@ describe("the front page — an MDX document (CTA-126)", () => {
     await settled();
   });
 
-  it("renders the Hebrew document under Hebrew", async () => {
+  it("is titled in Hebrew under Hebrew, its English article pinned left to right", async () => {
     await i18n.changeLanguage("he");
     renderHome();
     expect(screen.getByRole("heading", { level: 1, name: "בואו נתחיל" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "כל המסכים" })).toBeInTheDocument();
+    const section = await screen.findByRole("heading", { level: 2, name: "Every screen" });
+    expect(section.closest("[lang]")).toHaveAttribute("lang", "en");
+    expect(section.closest("[dir]")).toHaveAttribute("dir", "ltr");
     await settled();
   });
 
@@ -96,8 +106,9 @@ describe("the front page — an MDX document (CTA-126)", () => {
 });
 
 describe("the front page's nav cards — the landing page as it was", () => {
-  it("shows one Openings card, linking to the explorer itself", () => {
+  it("shows one Openings card, linking to the explorer itself", async () => {
     renderHome();
+    await screen.findByTestId("home-nav-cards");
 
     // The single entry — the same one the sidebar shows, under the same name.
     // Nothing on the explorer is saved, so the folder's destination is the
@@ -108,8 +119,9 @@ describe("the front page's nav cards — the landing page as it was", () => {
     expect(cardLinks().map((link) => link.getAttribute("href"))).not.toContain("/openings/saved");
   });
 
-  it("shows one Analysis Board card linking to the saved list, and none to the board", () => {
+  it("shows one Analysis Board card linking to the saved list, and none to the board", async () => {
     renderHome();
+    await screen.findByTestId("home-nav-cards");
 
     // The single entry — the same one the sidebar shows, under the same name
     // (CTA-58, mirroring CTA-42's Openings folder).
@@ -121,8 +133,9 @@ describe("the front page's nav cards — the landing page as it was", () => {
     expect(cardLinks().map((link) => link.getAttribute("href"))).not.toContain("/tools/analysis");
   });
 
-  it("still shows a card per screen of every other section, each under a section heading", () => {
+  it("still shows a card per screen of every other section, each under a section heading", async () => {
     renderHome();
+    await screen.findByTestId("home-nav-cards");
 
     // One card per screen node in the tree — the Library's among them.
     const cards = cardLinks().map((link) => link.getAttribute("href"));

@@ -18,7 +18,7 @@ import { parsePgnTree } from "../../lib/pgn";
 export const REPERTOIRE_SAMPLE_IDS = ["e4-white", "caro-kann-black"] as const;
 export type RepertoireSampleId = (typeof REPERTOIRE_SAMPLE_IDS)[number];
 
-export type RepertoireSample = {
+type RepertoireSample = {
   root: DemoNode;
   /** The side it is played from — the board opens facing it. */
   color: "white" | "black";

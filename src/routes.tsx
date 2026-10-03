@@ -220,6 +220,11 @@ export const appRoutes: RouteObject[] = [
           handle: { title: "pages.blog" }
         },
         {
+          path: "/blog/get-started",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
           path: "/blog/components/game-boards-3col",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }

@@ -29,7 +29,7 @@ import { mainline, nodeAtSanPath, pathTo, plyLabel, type GameTree, type Variatio
  * off, the window is the mainline alone.
  */
 
-export type ExcerptOptions = {
+type ExcerptOptions = {
   fromPly?: number;
   toPly?: number;
   startPly?: number;

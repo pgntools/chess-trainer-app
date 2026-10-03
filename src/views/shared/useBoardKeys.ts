@@ -24,7 +24,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalSto
  * is the document's order.
  */
 
-export type BoardKeyHandlers = {
+type BoardKeyHandlers = {
   back?: () => void;
   next?: () => void;
   first?: () => void;

@@ -29,7 +29,7 @@ export type BlogFolder = {
   title: LocalizedText;
 };
 
-export type BlogArticleEntry = {
+type BlogArticleEntry = {
   /** `components/game-boards-3col` — the address under `/blog/`, and the file under `articles/`. */
   path: string;
   title: LocalizedText;
@@ -44,6 +44,15 @@ export const BLOG_FOLDERS: readonly BlogFolder[] = [
 ];
 
 export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
+  {
+    // The front page shows this one (`views/home/frontPageArticle.ts`).
+    path: "get-started",
+    title: { en: "Get started", he: "בואו נתחיל" },
+    summary: {
+      en: "The front page: three famous games, two repertoires, a collection and every screen of the app.",
+      he: "דף הבית: שלושה משחקים מפורסמים, שני רפרטוארים, אוסף וכל מסכי האפליקציה.",
+    },
+  },
   {
     path: "components/game-boards-3col",
     title: { en: "Three game boards in a row", he: "שלושה לוחות משחק בשורה" },
@@ -211,6 +220,16 @@ export const blogFolderContents = (
   folders: BLOG_FOLDERS.filter((folder) => parentOf(folder.path) === path),
   articles: BLOG_ARTICLES.filter((article) => parentOf(article.path) === path),
 });
+
+/**
+ * Every article in the order the sidebar draws them: in each folder, its
+ * sub-folders' articles first (in `BLOG_FOLDERS`' order, depth first), then
+ * its own — a folder's sub-folders render above its own screens (`navTree.ts`).
+ */
+export const blogArticlesInTreeOrder = (folder = ""): BlogArticleEntry[] => [
+  ...BLOG_FOLDERS.filter((child) => parentOf(child.path) === folder).flatMap((child) => blogArticlesInTreeOrder(child.path)),
+  ...BLOG_ARTICLES.filter((article) => parentOf(article.path) === folder),
+];
 
 /** How many articles sit anywhere under a folder. */
 export const blogArticleCount = (path: string): number =>

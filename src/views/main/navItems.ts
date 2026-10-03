@@ -15,7 +15,7 @@ import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
 import type { LocalizedText } from "../../lib/localizedText";
-import { BLOG_ARTICLES, blogNavFolderId, blogParentOf } from "../blog/articles";
+import { blogArticlesInTreeOrder, blogNavFolderId, blogParentOf } from "../blog/articles";
 import type { NavFolderId } from "./navFolders";
 
 export type NavItem = {
@@ -109,7 +109,7 @@ export const navItems = (): readonly NavItem[] => [
     The Blog (CTA-126): its index, and every article in its folder — read off
     `views/blog/articles.ts`, each named by its data label.
   */
-  ...BLOG_ARTICLES.map((article) => ({
+  ...blogArticlesInTreeOrder().map((article) => ({
     to: `/blog/${article.path}`,
     label: article.title,
     icon: ArticleRoundedIcon,

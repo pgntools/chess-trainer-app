@@ -1,26 +1,27 @@
-# The front page
+# What an MDX article can embed
 
-What `/` shows (CTA-126) is an **MDX document** — Markdown with the app's
-components in it — compiled to a React component **at build time** by
-`@mdx-js/rollup` (`vite.config.ts`). Customising the page is editing a file
-here and rebuilding; nothing is fetched or compiled in the browser.
+Every page written in MDX (CTA-126) — the Blog's articles, and the one of them
+the front page shows — is Markdown with the app's components in it, compiled
+to a React component **at build time** by `@mdx-js/rollup` (`vite.config.ts`);
+nothing is fetched or compiled in the browser.
 
-| File | What it is |
+| Where | What |
 | --- | --- |
-| `front-page.en.mdx` | the page in English |
-| `front-page.he.mdx` | the page in Hebrew — keep it in step with the English |
-| `index.ts` | the documents by language (`Record<AppLanguage, …>`: a language without a document is a compile error) |
+| `src/views/blog/articles/<path>.mdx` | an article (`<path>.he.mdx` beside it when translated) — `src/views/blog/articles/guides/writing-an-article.mdx` is the how-to |
+| `src/views/blog/articles.ts` | the articles' registry: their titles, the page's `h1` |
+| `src/views/home/frontPageArticle.ts` | **which article the front page shows** — one line |
+| this folder | the components below, and `index.ts`, the map that gives them their names |
 
 ## Writing the document
 
-- **Markdown** is rendered in the theme's typography (`../frontPage/Prose.tsx`):
-  `#` is the page's one `h1` — keep exactly one; `##` / `###` are its
-  sections; a link to a path of the app (`[the Library](/library)`) is a
-  router link. A comment is `{/* … */}` (HTML comments are not MDX).
+- **Markdown** is rendered in the theme's typography (`Prose.tsx`): the page
+  draws the article's title as its one `h1`, so the document starts at `##`;
+  a link to a path of the app (`[the Library](/library)`) is a router link;
+  a fenced block is code, pinned left to right. A comment is `{/* … */}`
+  (HTML comments are not MDX).
 - **The app's components** are available by name, with no `import`
-  (`../frontPage/index.ts` maps them). An **address** is the one the screen
-  shows in the address bar — copy it from there; the leading slash is
-  optional.
+  (`index.ts` maps them). An **address** is the one the screen shows in the
+  address bar — copy it from there; the leading slash is optional.
 
 | Component | Props | What it shows |
 | --- | --- | --- |
@@ -45,27 +46,27 @@ on every reader's device; an uploaded collection, a repertoire, a saved
 analysis or a played game is on the device it was made on only. So an embed
 of one of those shows "not here" to everyone else — except a
 `<RepertoireBoard>` with a `fallback`, which shows that shipped sample
-instead, marked as a sample. **The page's two repertoire addresses are
-placeholders** (`REPLACE-WITH-A-REPERTOIRE-ID`): swap them in both documents.
+instead, marked as a sample. **The front page's two repertoire addresses are
+placeholders** (`REPLACE-WITH-A-REPERTOIRE-ID`, in `get-started.mdx`).
 
 **The keyboard.** Every board on the page steps with ← / → (and Home / End from inside it): the keys drive the board the reader last clicked or tabbed into — ringed — or, before any is touched, the first in view (`views/shared/useBoardKeys.ts`). Nothing to write: every board does it.
 
 **What it costs.** A Library embed reads its collection's PGN (and a card its
-index too) — the Library's own lazy chunks, fetched once: the page as
-shipped reads Fischer's and Capablanca's (~1.8 MB before compression). Each
+index too) — the Library's own lazy chunks, fetched once: the front page
+as shipped reads Fischer's and Capablanca's (~1.8 MB before compression). Each
 board's id comes from what it shows, so embed each game, repertoire and
 collection once on the page.
 
 A name not in the map fails the page when it renders. A new component is a
-line in `../frontPage/index.ts` and a row here.
+line in `index.ts` and a row here.
 
 - **Text in a component** (its buttons, captions, the samples' names) is the
-  catalogs' (`home.*`, `demoBoard.*` in `src/locales/`), so it follows the
-  language; the document's own prose is per document.
+  catalogs' (`home.*`, `demoBoard.*`, `inlinePgn.*` in `src/locales/`), so it
+  follows the language; an article's own prose is its document's (English,
+  or a `.he.mdx` beside it).
 
-**The Blog** (`/blog`, `src/views/blog/`) renders its articles with the same
-components, and its Components folder shows each of them on a page of its
-own with its markup — the place to try a new view before it reaches this page.
+The Blog's Components and *Games in an article* folders show each component on
+a page of its own, with its markup.
 
-Check a change with `npx vitest run src/views/home` (the page renders, one
-`h1`, axe) and `yarn build`.
+Check a change with `npx vitest run src/views/home src/views/blog` (every
+article renders, one `h1`, every PGN reads, axe) and `yarn build`.

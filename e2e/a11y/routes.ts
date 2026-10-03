@@ -93,6 +93,13 @@ export const ROUTES: readonly PageRoute[] = [
   { id: "blog", pattern: "/blog", path: "blog" },
   { id: "blog-folder", pattern: "/blog/*", path: "blog/components" },
   {
+    id: "blog-get-started",
+    pattern: "/blog/get-started",
+    path: "blog/get-started",
+    board: true,
+    ready: byTestId("home-game-library-fischer-52"),
+  },
+  {
     id: "blog-game-boards-3col",
     pattern: "/blog/components/game-boards-3col",
     path: "blog/components/game-boards-3col",

@@ -10,11 +10,11 @@ import { RepertoireBoardEmbed } from "./RepertoireBoardEmbed";
 import { StoredGameEmbed } from "./StoredGameEmbed";
 
 /**
- * **What the front page's MDX document — and every Blog article — is
- * rendered with** (CTA-126): its
+ * **What every MDX article — the Blog's, and the one the front page shows —
+ * is rendered with** (CTA-126): its
  * Markdown in the theme's typography (`Prose.tsx`), and the app's components
- * it may embed, by name, with no `import` (`content/README.md` has every
- * prop):
+ * it may embed, by name, with no `import` (`README.md` beside this file has
+ * every prop):
  *
  * | In the document | What it is |
  * | --- | --- |
@@ -28,9 +28,9 @@ import { StoredGameEmbed } from "./StoredGameEmbed";
  *
  * A component the document names that is not here fails the page at render
  * (MDX's own check), so a new one is a line in this map — and a row in the
- * table above and in `content/README.md`.
+ * table above and in `README.md`.
  */
-export const frontPageComponents: MDXComponents = {
+export const mdxComponents: MDXComponents = {
   h1: H1,
   h2: H2,
   h3: H3,
