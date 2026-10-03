@@ -50,7 +50,7 @@ for the Analysis Board and Saved analyses it hands games to.
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`. **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together). |
+| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`, `eventGroupsOf` (rows grouped by their `Event` — the import's *Split by event*, CTA-127). **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together). |
 | `src/lib/collectionZip.ts` | **A picked `.zip`** (CTA-102, CTA-103): `readCollectionZip` (every `.pgn` in it, bounded, non-throwing), `isZipFile`. |
 | `src/lib/collectionIndex.ts` | **The index**: `IndexedRow`, `indexedRowOf` (tags + a `parsePgnTree` pass), `indexGame` (one game, with the app's book), `buildCollectionIndex` / `buildCollectionIndexAsync`, `numberedRows`, `textHash`, `OpeningLookup` / `loadOpeningLookup`, and the file format: `encodeCollectionIndex` / `decodeCollectionIndex`, `COLLECTION_INDEX_FORMAT` / `COLLECTION_INDEX_VERSION`. |
 | `src/lib/collectionIndex.worker.ts` | The index pass for an upload, off the main thread. |
@@ -68,7 +68,7 @@ for the Analysis Board and Saved analyses it hands games to.
 | `src/blocks/tables/CollectionsTreeTable/` | The details view itself (CTA-113): `DataTable`'s tree rows over `folderTreeRows` — sticky header, sortable columns, indented rows with named chevrons, the row actions always visible (`FolderActions` for a folder). Presentational. |
 | `src/blocks/tables/CollectionGamesTable/` | A collection's games as a `DataTable` (CTA-113): the columns, `sortedRows`, the picks with select-all in the header, the White cell's link, the unreadable mark. |
 | `src/views/library/LibraryUpload.tsx` | `/library/new`: a new collection (file, paste, or empty), filed in a folder (`?folder=<id>`, the picker), and `?into=<id>` to add games to an existing one. |
-| `src/views/library/ImportOptionsDialog.tsx` | The import-options popup's job (CTA-103): the `CollectionImportDialog` block (what came in, the Elo / date / player filters, the count), then the index pass over the kept games in a `ProgressDialog` (`useCancellableJob`) and the writes. |
+| `src/views/library/ImportOptionsDialog.tsx` | The import-options popup's job (CTA-103): the `CollectionImportDialog` block (what came in, the Elo / date / player filters, the count, the *Split by event* switch — CTA-127), then the index pass over the kept games in a `ProgressDialog` (`useCancellableJob`) and the writes — the split's folders through `createLibraryFolder`, taken back with the collections when a write fails. |
 | `src/views/library/CollectionScreen.tsx` | `/library/<collection>`: the table, the picks, the export bar, Analyse, Add games, and deleting games. |
 | `src/blocks/forms/CollectionSettingsForm/` | A collection's settings form, a block (CTA-121): the title, the description, and the tournament mark with its five formats (three not selectable yet) — presentational, wired by the settings screen. |
 | `src/views/library/CollectionSettingsScreen.tsx` | `/library/<collection>/settings` (CTA-121): the `CollectionSettingsForm` block over one draft, saved whole through `updateCollectionSettings` — uploads only; a shipped id is the miss. |
@@ -531,6 +531,24 @@ words box, **the table the one region that scrolls**, its header sticky.
   - **Import** runs **one** index pass over the kept games of every file
     (`library-import-indexing`, the progress bar, Cancel), then writes. A
     file keeping no game makes nothing.
+  - **Split by event** (CTA-127, `library-import-split`), offered on every
+    new-collection import — never on *Add games* — and disabled with its
+    reason (`library.upload.options.split*`) where nothing would split: the
+    filters apply first, and a split that would make exactly one collection
+    per file (every file's kept games share one `Event`, or none of them has
+    one) is not offered. On: each file that keeps games becomes **one folder**
+    (`createLibraryFolder`, named the same way as today's collection — the
+    typed name, else the file's stem words, else "Pasted collection"; a
+    single text's folder is one) filed in the folder the picker offers,
+    holding **one collection per event** (`eventGroupsOf`: first appearance
+    first, the games in file order within each), the games with no `Event`
+    in one "Unknown" collection (`library.upload.unknown`), each name within
+    the collection-name cap. The kept games' one index pass is untouched —
+    rows are sliced per group afterwards — and the write stays all or
+    nothing: a failure takes back the collections **and the folders**, and
+    the popup says why (a refused folder write is `library.upload.problem.folder`).
+    The reader lands on `/library` when more than one collection was made,
+    on the one collection's table when exactly one was — today's rule.
   - **Cancel**, Escape, the backdrop or leaving the screen stop the pass and
     write nothing; the popup does not close during the write itself.
 - **Checked before it is kept**: the worker's index pass, in the popup. Nothing
@@ -540,8 +558,10 @@ words box, **the table the one region that scrolls**, its header sticky.
   "Pasted collection". **A zip of several `.pgn`s is one collection per
   file**, each named by the `Event` its kept games share, else its entry's
   words (the typed name is a single text's), all filed in the chosen folder;
-  the reader lands on `/library` (one collection: its table). A failed write
-  removes the collections that import had already added — all or nothing.
+  the reader lands on `/library` (one collection: its table). **Split by
+  event** (above) makes the folders instead. A failed write removes the
+  collections — and, on a split, the folders — that import had already
+  added: all or nothing.
 - **The folder** (CTA-88): a `FolderPicker` (`library-upload-folder-picker`,
   shown once the reader has a folder) files the new collection — the top
   level by default, or the `?folder=<id>` the upload was started from. The

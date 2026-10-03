@@ -4,8 +4,9 @@ import userEvent from "@testing-library/user-event";
 
 import "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
+import type { CollectionImportSource, CollectionRow } from "../../../lib/libraryCollections";
 import CollectionImportDialog from "./CollectionImportDialog";
-import { ONE_FILE, PASTE, ZIP } from "./fixtures";
+import { ONE_EVENT, ONE_FILE, PASTE, ZIP } from "./fixtures";
 
 describe("CollectionImportDialog (CTA-113)", () => {
   it("says what came in, and filters it by Elo, dates and players before anything is kept", async () => {
@@ -53,5 +54,55 @@ describe("CollectionImportDialog (CTA-113)", () => {
     expect(screen.getByRole("dialog")).toHaveTextContent("Club games");
     await userEvent.keyboard("{Escape}");
     expect(onCancel).toHaveBeenCalled();
+  });
+});
+
+describe("CollectionImportDialog — Split by event (CTA-127)", () => {
+  const importWith = (onImport: (kept: CollectionRow[][], splitByEvent: boolean) => void, source: CollectionImportSource = ONE_FILE) =>
+    render(<CollectionImportDialog source={source} onCancel={() => {}} onImport={onImport} testId="import" />);
+
+  it("offers the split on every new-collection import, on by the reader, and hands the choice over", async () => {
+    const onImport = vi.fn();
+    importWith(onImport);
+    const split = screen.getByTestId("import-split");
+    expect(split).not.toBeDisabled();
+    expect(screen.getByTestId("import-split-help")).toHaveTextContent("one collection per event");
+    await expectNoAxeViolations(screen.getByRole("dialog"));
+    await userEvent.click(split);
+    await userEvent.click(screen.getByTestId("import-confirm"));
+    expect(onImport.mock.calls[0][1]).toBe(true);
+  });
+
+  it("is off with its reason where every kept game shares one Event", () => {
+    importWith(() => {}, ONE_EVENT);
+    const split = screen.getByTestId("import-split");
+    expect(split).toBeDisabled();
+    expect(split).not.toBeChecked();
+    expect(screen.getByTestId("import-split-help")).toHaveTextContent("share one Event");
+  });
+
+  it("is off with its reason where no kept game has an Event", () => {
+    importWith(() => {}, PASTE);
+    expect(screen.getByTestId("import-split")).toBeDisabled();
+    expect(screen.getByTestId("import-split-help")).toHaveTextContent("no game kept has an Event");
+  });
+
+  it("follows the filters: what the Elo range leaves decides whether there is anything to split", () => {
+    importWith(() => {});
+    // All three games kept: two events, so the split is on offer.
+    expect(screen.getByTestId("import-split")).not.toBeDisabled();
+    // Only the two "Club" games (2023) are in range — one event left, nothing to split.
+    fireEvent.change(screen.getByTestId("import-from"), { target: { value: "2023-01-01" } });
+    fireEvent.change(screen.getByTestId("import-to"), { target: { value: "2023-12-31" } });
+    const split = screen.getByTestId("import-split");
+    expect(split).toBeDisabled();
+    expect(screen.getByTestId("import-split-help")).toHaveTextContent("share one Event");
+  });
+
+  it("is never offered on Add games", () => {
+    render(
+      <CollectionImportDialog source={ONE_FILE} onCancel={() => {}} onImport={() => {}} testId="import" intoName="Club games" />,
+    );
+    expect(screen.queryByTestId("import-split")).toBeNull();
   });
 });

@@ -9,11 +9,12 @@ import { useTranslation } from "react-i18next";
 import { ChipsAutocomplete } from "../../../design-system/components/autocompletes";
 import { BaseDialog, type ExtraDialogProps } from "../../../design-system/components/dialogs";
 import { InlineAlert } from "../../../design-system/components/feedback";
-import { DateRangeFields } from "../../../design-system/components/forms";
+import { DateRangeFields, SwitchField } from "../../../design-system/components/forms";
 import { formatBytes } from "../../../lib/formatBytes";
 import {
   collectionFacetsOf,
   collectionMetadataOf,
+  eventGroupsOf,
   filteredRows,
   playersOf,
   type CollectionImportSource,
@@ -30,12 +31,17 @@ export type CollectionImportDialogProps = {
   problem?: ReactNode;
   /** Cancel, Escape or the backdrop. */
   onCancel: () => void;
-  /** Import: each file's rows the filters keep, in file order (a file may keep none). */
-  onImport: (kept: CollectionRow[][]) => void;
+  /**
+   * Import: each file's rows the filters keep, in file order (a file may keep
+   * none), and whether *Split by event* is on — a new-collection import's
+   * choice; `false` where the switch is not offered (*Add games*).
+   */
+  onImport: (kept: CollectionRow[][], splitByEvent: boolean) => void;
   /**
    * The root, and its parts: `-source`, `-file-<n>`, `-summary` (`-players`,
    * `-elo`, `-dates`, `-events`), `-elo` (`-elo-value`), `-from`, `-to`,
-   * `-player`, `-several`, `-count`, `-problem`, `-cancel`, `-confirm`.
+   * `-player`, `-several`, `-split` (`-split-help`), `-count`, `-problem`,
+   * `-cancel`, `-confirm`.
    */
   testId: string;
   dialogProps?: ExtraDialogProps;
@@ -61,9 +67,16 @@ export type CollectionImportDialogProps = {
  *   `filteredRows`, so they cannot drift from the table's. A live "N of M"
  *   count; Import is off at none.
  *
+ * - ***Split by event*** (CTA-127), offered on every new-collection import —
+ *   never on *Add games* — and off with its reason where the kept games would
+ *   make exactly one collection per file anyway (every file's kept games
+ *   share one `Event`, or none of them has one). The filters are applied
+ *   first, so the switch and its reason follow them live.
+ *
  * Presentational: the index pass and the writes are the screen's — it hands
- * `onImport` the kept rows and shows its progress in a `ProgressDialog` in
- * this one's place. Its words are the Library's (`library.upload.*`).
+ * `onImport` the kept rows and the split choice, and shows its progress in a
+ * `ProgressDialog` in this one's place. Its words are the Library's
+ * (`library.upload.*`).
  */
 function CollectionImportDialog({ source, intoName, problem, onCancel, onImport, testId, dialogProps }: CollectionImportDialogProps) {
   const { t } = useTranslation();
@@ -72,6 +85,8 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
   const [eloRange, setEloRange] = useState<[number, number] | null>(null);
   const [dates, setDates] = useState({ from: "", to: "" });
   const [players, setPlayers] = useState<string[]>([]);
+  /** *Split by event* (CTA-127): one folder per file, one collection per event. */
+  const [splitByEvent, setSplitByEvent] = useState(false);
 
   const allRows = useMemo(() => source.files.flatMap((file) => file.rows), [source]);
   const metadata = useMemo(() => collectionMetadataOf(allRows), [allRows]);
@@ -102,6 +117,20 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
   const filtering = players.length > 0 || minElo !== undefined || maxElo !== undefined || dates.from !== "" || dates.to !== "";
   const eventsShown = metadata.events.slice(0, 3).join(", ");
 
+  // The split follows the filters: only the kept games are grouped, so a
+  // split that would make exactly one collection per file is not offered.
+  const splittable = kept.some((rows) => eventGroupsOf(rows).length > 1);
+  // A switch the filters turned off reads off, and imports off — until the
+  // filters let it back on, where the reader left it.
+  const splitting = splitByEvent && splittable;
+  const splitHelp = !splittable
+    ? keptCount === 0
+      ? t("library.upload.options.splitNothingKept")
+      : kept.every((rows) => rows.every((row) => row.event === undefined))
+        ? t("library.upload.options.splitNoEvents")
+        : t("library.upload.options.splitOneEvent")
+    : t("library.upload.options.splitHelp");
+
   return (
     <BaseDialog
       open
@@ -115,7 +144,12 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
           <Button onClick={onCancel} data-testid={id("cancel")}>
             {t("library.upload.cancel")}
           </Button>
-          <Button variant="contained" disabled={keptCount === 0} onClick={() => onImport(kept)} data-testid={id("confirm")}>
+          <Button
+            variant="contained"
+            disabled={keptCount === 0}
+            onClick={() => onImport(kept, splitting)}
+            data-testid={id("confirm")}
+          >
             {t(intoName === undefined ? "library.upload.options.import" : "library.upload.intoSave")}
           </Button>
         </>
@@ -249,9 +283,30 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
           </Box>
         )}
 
+        {/* Offered on every new-collection import, never on Add games — and
+            off with its reason where the split would make one collection per
+            file anyway (CTA-127). The reason rides the same description the
+            help does, so it is read with the switch. */}
+        {intoName === undefined && (
+          <SwitchField
+            label={t("library.upload.options.split")}
+            checked={splitting}
+            onChange={setSplitByEvent}
+            disabled={!splittable}
+            help={splitHelp}
+            testId={id("split")}
+          />
+        )}
+
         {source.files.length > 1 && (
           <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid={id("several")}>
-            {t(intoName === undefined ? "library.upload.options.several" : "library.upload.options.severalInto")}
+            {t(
+              intoName === undefined
+                ? splitting
+                  ? "library.upload.options.severalSplit"
+                  : "library.upload.options.several"
+                : "library.upload.options.severalInto",
+            )}
           </Typography>
         )}
 

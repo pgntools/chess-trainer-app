@@ -32,3 +32,14 @@ export const ZIP: CollectionImportSource = {
   zip: true,
   files: [read(CLUB, "club.pgn", "club"), read(HEBREW, "מועדון.pgn", "מועדון")],
 };
+
+/** A tournament export: every game one Event — nothing to split (CTA-127). */
+const RATED = [game("Kim", "Lee", 2100, 2000, "2023.05.01", "Rated"), game("Lee", "Max", 1800, 2200, "2023.06.02", "Rated")].join(
+  "\n\n",
+);
+export const ONE_EVENT: CollectionImportSource = {
+  name: "rated.pgn",
+  size: RATED.length,
+  zip: false,
+  files: [read(RATED, "rated.pgn", "rated")],
+};

@@ -693,6 +693,31 @@ export const canBeTournament = (rows: readonly Pick<CollectionRow, "event">[]): 
   rows.length > 0 && sharedEventOf(rows) !== undefined;
 
 /**
+ * Rows grouped by their `Event` — the import popup's *Split by event*
+ * (CTA-127): one group per event in order of first appearance, the rows
+ * without an `Event` together in one group of their own (`event: undefined`),
+ * each group's rows in the order they came. Generic, so the caller can carry
+ * whatever it needs beside the row (the indexed row of the same game) through
+ * the grouping. Two groups are what makes a split worth offering.
+ */
+export const eventGroupsOf = <T extends { event?: string }>(
+  rows: readonly T[],
+): { event?: string; rows: T[] }[] => {
+  const groups: { event?: string; rows: T[] }[] = [];
+  const byEvent = new Map<string | undefined, { event?: string; rows: T[] }>();
+  for (const row of rows) {
+    let group = byEvent.get(row.event);
+    if (group === undefined) {
+      group = { event: row.event, rows: [] };
+      byEvent.set(row.event, group);
+      groups.push(group);
+    }
+    group.rows.push(row);
+  }
+  return groups;
+};
+
+/**
  * Whether a collection **reads as** a tournament (CTA-121): its stored mark
  * is on **and** its games still allow it ({@link canBeTournament}). Games
  * added later under another `Event` leave the stored setting untouched but
