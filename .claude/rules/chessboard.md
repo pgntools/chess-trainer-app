@@ -87,7 +87,10 @@ return <Chessboard options={chessboardOptions} />;
 - **Always set `options.id`** to a stable string, **unique on the page** (the
   default `"chessboard"` collides; the id is also the DOM id and is used by
   drag sensors). A list screen that renders a board per card takes the item's
-  id — `saved-analyses-preview-<id>`, `repertoires-preview-<id>`.
+  id — `saved-analyses-preview-<id>`, `repertoires-preview-<id>`; the front page's demo boards (CTA-126) take
+  theirs from what they show — `front-page-game-<reference, slugified>`,
+  `front-page-repertoire-<id>` (or `-sample-<sample>`), so a page embeds each
+  item once.
 - **No `boardWidth` prop in v5.** The board fills its parent; size it by
   constraining the container (`views/main/Layout.tsx`'s board square).
 - **`ChessboardProvider`** is needed only for spare pieces or
@@ -740,7 +743,8 @@ a second panel, or a locale block repeating `moveList.*` / `variations.*` /
 - **Mirror under RTL.** A panel token that must stay LTR takes the `dir`
   attribute, not a CSS declaration (the RTL stylis plugin flips it).
 - **Share an `options.id`** — `analysis`, `play-with-engine`, `masked-play`,
-  `openings`, `library-game`, `repertoire-board`, `repertoire-game`.
+  `openings`, `library-game`, `repertoire-board`, `repertoire-game`, and the
+  front page's `front-page-game-…` / `front-page-repertoire-…` (CTA-126).
 - **Change a shared piece incompatibly.** Under `views/shared/`,
   `views/explorer/`, `views/board/core/` or `src/lib/`, a new behaviour is an
   optional prop whose absence is today's behaviour, with every screen's tests

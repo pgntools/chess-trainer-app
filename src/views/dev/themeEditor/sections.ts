@@ -286,6 +286,15 @@ export const SECTIONS: readonly SectionSpec[] = [
         ],
       },
       {
+        title: "A PGN's drawn shapes ([%cal] arrows, [%csl] circles)",
+        fields: [
+          { path: "chess.drawing.green", label: "The green brush (G)", kind: "color" },
+          { path: "chess.drawing.red", label: "The red brush (R)", kind: "color" },
+          { path: "chess.drawing.yellow", label: "The yellow brush (Y)", kind: "color" },
+          { path: "chess.drawing.blue", label: "The blue brush (B)", kind: "color" },
+        ],
+      },
+      {
         title: "The opening book's arrows",
         fields: [
           { path: "chess.book.known", label: "A book move", kind: "color" },

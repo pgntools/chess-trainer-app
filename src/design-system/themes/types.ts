@@ -120,6 +120,12 @@ export type ChessTokens = {
   };
   /** The Openings explorer's book-continuation arrows. */
   book: { known: string; hovered: string };
+  /**
+   * **The shapes a PGN draws** (CTA-126) — lichess's `[%cal Ge2e4]` arrows
+   * and `[%csl Gd4]` circles, by their brush: `G` green, `R` red, `Y` yellow,
+   * `B` blue (`lib/boardShapes.ts`).
+   */
+  drawing: { green: string; red: string; yellow: string; blue: string };
   /** The move marks (`!`, `?`, …) by tone, one shade per colour scheme. */
   nag: Record<
     "good" | "brilliant" | "interesting" | "dubious" | "mistake" | "blunder",

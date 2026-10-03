@@ -1,0 +1,64 @@
+import drawn from "./arrows-and-circles.pgn?raw"
+
+Annotators on lichess draw on the board as they write: an arrow for a move or a route, a circle round a square that matters. The study keeps each drawing in its PGN, inside the comment of the position it belongs to, so the file carries it wherever it goes. `<InlinePgnGame>` reads those drawings back and puts them on its board.
+
+Every board below takes one game of the same file, picked with `game`.
+
+## The commands
+
+A drawing is a command inside a comment:
+
+```
+{ [%cal Ge2e4,Yg1f3] }   arrows — a colour letter, a from square, a to square
+{ [%csl Rd5,Bc5] }       circles — a colour letter and a square
+```
+
+The colour letters are lichess's four brushes: `G` green, `R` red, `Y` yellow, `B` blue. Several entries go in one command, separated by commas, and a comment may hold both commands — or come with a comment of words beside it.
+
+A drawing belongs to a position: the comment after a move draws on the position that move reaches, and a comment before the first move draws on the starting position. Step through a game and each position shows its own.
+
+## The four brushes
+
+One arrow and one circle in each colour, on the starting position.
+
+<InlinePgnGame pgn={drawn} game={1} comments />
+
+```mdx
+import drawn from "./arrows-and-circles.pgn?raw"
+
+<InlinePgnGame pgn={drawn} game={1} comments />
+```
+
+## Two threats at once
+
+A short trap from the open games, the threats in red. Black lets the e5-pawn go, and when the knight takes it, the queen attacks two things at once. Step on to the end: the last position circles the mated king.
+
+<InlinePgnGame pgn={drawn} game={2} start="4..." comments orientation="black" />
+
+## A plan
+
+Arrows can chain into a route. In this Queen's Gambit structure, blue arrows walk White's b-pawn up to b5 to strike at c6, and Black answers with a plan of its own on the other wing.
+
+<InlinePgnGame pgn={drawn} game={3} start="11" comments />
+
+## The choices
+
+Yellow arrows for the moves to choose between, and a circle on the usual one. The side lines are in the file too, each with a drawing of its own.
+
+<InlinePgnGame pgn={drawn} game={4} start="2..." comments />
+
+## A whole game, drawn
+
+The Opera Game, Paris 1858, annotated move by move: the pins in red, the attacking lines in green. Every comment draws something.
+
+<InlinePgnGame pgn={drawn} game={5} start="3..." comments />
+
+## When a position is drawn on
+
+A position's drawing is the board's message, so its arrows replace the arrows to the next moves; the moves stay in the list beside the board. Where a position has no drawing, those arrows come back.
+
+- `game` — which game of a PGN holding several, counted from 1. A lichess study exports one game per chapter.
+- `shapes={false}` — leave the drawings off and show the arrows to the next moves.
+- `comments` — the comment's words under the moves, with the drawing commands taken out.
+
+The colours are the theme's: each theme has its own four brushes.

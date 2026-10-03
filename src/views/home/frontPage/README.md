@@ -1,0 +1,72 @@
+# What an MDX article can embed
+
+Every page written in MDX (CTA-126) — the Blog's articles, and the one of them
+the front page shows — is Markdown with the app's components in it, compiled
+to a React component **at build time** by `@mdx-js/rollup` (`vite.config.ts`);
+nothing is fetched or compiled in the browser.
+
+| Where | What |
+| --- | --- |
+| `src/views/blog/articles/<path>.mdx` | an article (`<path>.he.mdx` beside it when translated) — `src/views/blog/articles/guides/writing-an-article.mdx` is the how-to |
+| `src/views/blog/articles.ts` | the articles' registry: their titles, the page's `h1` |
+| `src/views/home/frontPageArticle.ts` | **which article the front page shows** — one line |
+| this folder | the components below, and `index.ts`, the map that gives them their names |
+
+## Writing the document
+
+- **Markdown** is rendered in the theme's typography (`Prose.tsx`): the page
+  draws the article's title as its one `h1`, so the document starts at `##`;
+  a link to a path of the app (`[the Library](/library)`) is a router link;
+  a fenced block is code, pinned left to right. A comment is `{/* … */}`
+  (HTML comments are not MDX).
+- **The app's components** are available by name, with no `import`
+  (`index.ts` maps them). An **address** is the one the screen shows in the
+  address bar — copy it from there; the leading slash is optional.
+
+| Component | Props | What it shows |
+| --- | --- | --- |
+| `<BoardRow>` | `columns?` (default: how many children) | the embeds inside it side by side, from the `sm` breakpoint up; one column below it |
+| `<CollectionGameBoard />` | `game="/library/<collection>/<n>"`, `startMove?` | a Library game on a board the reader steps through, with a link to the Analysis Board |
+| `<RepertoireBoard />` | `_id="/repertoires/<id>"`, `startMove?`, `fallback?: "e4-white" \| "caro-kann-black"` | a repertoire on a board facing its side, each branch's arrows as wide as the trainer's play chances, with a link to it |
+| `<CollectionCard />` | `_id="/library/<collection>"`, `showGame?` (default 1), `startMove?`, `rows?` (default 8) | a collection across its row: its name and size, a board on game `showGame`, and a short table of its games — the page holding that game, with earlier / later — a row's click putting it on the board |
+| `<InlinePgnGame />` | `pgn={…}`, `from?`, `to?`, `start?` (move numbers; `start` also a SAN line, into a side line), `fromPly?` / `toPly?` / `startPly?` (plies, which win), `variations?` (default on), `comments?`, `orientation?`, `caption?`, `game?` (which game of a PGN holding several, 1-based), `shapes?` (the comments' `[%cal]` arrows and `[%csl]` circles, default on) | an excerpt of a PGN — a window of its moves beside a board, side lines nested — one game as many times as a page likes, each board its own id; the Blog's *Games in an article* folder shows every prop |
+| `<StoredGameEmbed />` | `reference="…"`, `startMove?` | any stored game by its `?game=` reference (`library/<c>/<n>`, `analysis/saved/<id>`, `play/games/<id>`) |
+| `<NavCards />` | `headingLevel?: 2 \| 3` (default `2`) | every screen as a card, by section — built from `navTree()`, so a screen added to `navItems` appears with no edit here. Alone, it is the landing page as it was before CTA-126 |
+
+**`showNextMoveArrow`** — every board above takes it: `showNextMoveArrow={false}` draws no arrows to the next moves over the board (the moves stay in its list, and an `<InlinePgnGame>`'s drawn `[%cal]` arrows still show). On by default.
+
+**`startMove`** is where a board opens: a move number walks the mainline —
+`"17"` (or `"17."`) is the position after White's 17th move, `"17..."` (or
+`"...17"`) after Black's, `"0"` the start — or a line of SAN, numbered or
+not (`"1. e4 c5 2. Nf3"`, `"e4 c5 Nf3"`), which may go into a side line.
+Absent, the start. "Back to the start" on the board is the game's start.
+
+**Whose data it is.** A shipped Library collection (`src/data/library/`) is
+on every reader's device; an uploaded collection, a repertoire, a saved
+analysis or a played game is on the device it was made on only. So an embed
+of one of those shows "not here" to everyone else — except a
+`<RepertoireBoard>` with a `fallback`, which shows that shipped sample
+instead, marked as a sample. **The front page's two repertoire addresses are
+placeholders** (`REPLACE-WITH-A-REPERTOIRE-ID`, in `get-started.mdx`).
+
+**The keyboard.** Every board on the page steps with ← / → (and Home / End from inside it): the keys drive the board the reader last clicked or tabbed into — ringed — or, before any is touched, the first in view (`views/shared/useBoardKeys.ts`). Nothing to write: every board does it.
+
+**What it costs.** A Library embed reads its collection's PGN (and a card its
+index too) — the Library's own lazy chunks, fetched once: the front page
+as shipped reads Fischer's and Capablanca's (~1.8 MB before compression). Each
+board's id comes from what it shows, so embed each game, repertoire and
+collection once on the page.
+
+A name not in the map fails the page when it renders. A new component is a
+line in `index.ts` and a row here.
+
+- **Text in a component** (its buttons, captions, the samples' names) is the
+  catalogs' (`home.*`, `demoBoard.*`, `inlinePgn.*` in `src/locales/`), so it
+  follows the language; an article's own prose is its document's (English,
+  or a `.he.mdx` beside it).
+
+The Blog's Components and *Games in an article* folders show each component on
+a page of its own, with its markup.
+
+Check a change with `npx vitest run src/views/home src/views/blog` (every
+article renders, one `h1`, every PGN reads, axe) and `yarn build`.

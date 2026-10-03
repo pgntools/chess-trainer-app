@@ -140,15 +140,21 @@ describe("the shipped nav tree", () => {
     expect(navLabelKeys().every((key) => typeof key === "string")).toBe(true);
   });
 
-  it("names every shipped node by a catalog key", () => {
-    // Nothing shipped is named by data since the old Library's generated
-    // folders went (CTA-75), so every node is one `locales.test.ts` covers.
-    // `label` stays supported; the fixtures below carry it.
+  it("names every shipped node by a catalog key — but the Blog's, named by its registry in both languages", () => {
+    // The Blog's folders and articles (CTA-126) are named by
+    // `views/blog/articles.ts`, as data — so they must carry every language
+    // themselves; every other node is a catalog key `locales.test.ts` covers.
     const dataNamed = new TreeManager<NavTreeNode>(navTree())
       .toArray()
       .filter((node) => node.labelKey === undefined);
 
-    expect(dataNamed).toEqual([]);
+    expect(dataNamed.length).toBeGreaterThan(0);
+    for (const node of dataNamed) {
+      const inBlog = node.kind === "screen" ? node.to?.startsWith("/blog/") : node.id.startsWith("blog/");
+      expect(inBlog, `${node.id} is named by data`).toBe(true);
+      expect(node.label?.en, `${node.id} in English`).toBeTruthy();
+      expect(node.label?.he, `${node.id} in Hebrew`).toBeTruthy();
+    }
   });
 });
 

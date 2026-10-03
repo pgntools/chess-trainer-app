@@ -1,0 +1,19 @@
+A repertoire answers every move the way the trainer would: the wider the arrow, the likelier the reply. Each board faces the side its repertoire is played from.
+
+<BoardRow>
+  <RepertoireBoard _id="/repertoires/REPLACE-WITH-A-REPERTOIRE-ID" fallback="e4-white" startMove="1" />
+  <RepertoireBoard _id="/repertoires/REPLACE-WITH-A-REPERTOIRE-ID-2" fallback="caro-kann-black" startMove="1..." />
+</BoardRow>
+
+## The markup
+
+```mdx
+<BoardRow>
+  <RepertoireBoard _id="/repertoires/<id>" fallback="e4-white" startMove="1" />
+  <RepertoireBoard _id="/repertoires/<id>" fallback="caro-kann-black" startMove="1..." />
+</BoardRow>
+```
+
+- `_id` is the repertoire's address, `/repertoires/<id>`. The two above are placeholders, so both boards show their fallback.
+- `fallback` is a sample that ships with the app — `e4-white` or `caro-kann-black` — shown, marked as a sample, wherever the repertoire is not. Repertoires live on the reader's own device, so on anyone else's the address names nothing.
+- Without a `fallback`, a missing repertoire says so in place of its board.

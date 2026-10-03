@@ -116,6 +116,8 @@ export const consoleTheme: ThemeDefinition = {
       chanceBorder: "#d500f9",
     },
     book: { known: "#06989a", hovered: "#cc0000" },
+    // A PGN's drawn shapes in a terminal's four colours (Tango's green, red, yellow, blue).
+    drawing: { green: "#4e9a06", red: "#cc0000", yellow: "#c4a000", blue: "#3465a4" },
     // The ANSI families — green, cyan, magenta, blue, orange, red — at AA on each scheme's paper.
     nag: {
       good: { light: "#3b6e0a", dark: "#8ae234" },

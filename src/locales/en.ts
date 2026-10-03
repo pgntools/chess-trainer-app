@@ -26,6 +26,8 @@ const en = {
     openings: "Openings explorer",
     /** The reader's own repertoires (CTA-61) — shown under the folder's own name, a single entry (CTA-84). */
     repertoires: "My repertoires",
+    /** The Blog's index (CTA-126), `/blog`. */
+    blogIndex: "All articles",
     /** The Library's two screens (CTA-75): the collections, and adding one. */
     libraryCollections: "Collections",
     addCollection: "Add collection",
@@ -47,6 +49,8 @@ const en = {
       analysisBoard: "Analysis Board",
       openings: "Openings",
       repertoires: "Repertoires",
+      /** The Blog (CTA-126) — MDX articles in nested folders, named by their data. */
+      blog: "Blog",
       /**
        * The Library (CTA-75). Its collections are not folders here — they are
        * the rows of `/library`, named from their files and uploads.
@@ -60,8 +64,89 @@ const en = {
   },
   /** The index screen — a landing page linking out to the real screens. */
   home: {
-    title: "Get started",
-    subtitle: "Pick a board or tool to open.",
+    /** The front page's embedded stored games (CTA-126) — `<CollectionGameBoard>`, `<StoredGameEmbed>`. */
+    embed: {
+      loading: "Loading the game…",
+      missing: "The game this page embeds is not here.",
+      label: "{{players}} — game board",
+      start: "Play the game's first move",
+      open: "Open on the Analysis Board",
+      white: "White",
+      black: "Black",
+    },
+    /** `<RepertoireBoard>` (CTA-126). */
+    repertoire: {
+      loading: "Loading the repertoire…",
+      missing: "The repertoire this page embeds is not on this device.",
+      untitled: "Untitled repertoire",
+      forWhite: "A repertoire for White",
+      forBlack: "A repertoire for Black",
+      sampleNote: "A sample repertoire that comes with the app",
+      label: "{{name}} — repertoire board",
+      start: "Play a move of the repertoire",
+      open: "Open the repertoire",
+      add: "Add your own repertoire",
+      samples: {
+        "e4-white": "1. e4 for White",
+        "caro-kann-black": "The Caro-Kann for Black",
+      },
+    },
+    /** `<CollectionCard>` (CTA-126). */
+    collection: {
+      loading: "Loading the collection…",
+      missing: "The collection this page embeds is not here.",
+      games_one: "{{formatted}} game",
+      games_other: "{{formatted}} games",
+      open: "Open the collection",
+      table: "Games of {{name}}",
+      empty: "No games",
+      earlier: "Earlier games",
+      later: "Later games",
+      columns: {
+        number: "No.",
+        white: "White",
+        black: "Black",
+        result: "Result",
+        year: "Year",
+      },
+    },
+  },
+  /** The front page's demo mini-boards (CTA-126, `views/shared/DemoBoard.tsx`). */
+  /** The Blog (CTA-126, `views/blog/`). */
+  blog: {
+    title: "Blog",
+    breadcrumbs: "Where this is in the Blog",
+    folders: "Folders",
+    articlesHeading: "Articles",
+    articles_one: "{{count}} article",
+    articles_other: "{{count}} articles",
+    openFolder: "Open {{name}}",
+    noArticles: "No articles here yet",
+    loading: "Loading the article…",
+    missingTitle: "Not found",
+    missingArticle: "There is no article at this address.",
+    missingFolder: "There is no Blog folder at this address.",
+  },
+  /** `<InlinePgnGame>` (CTA-126): an excerpt of a game in an article (`views/shared/ExcerptBoard.tsx`). */
+  inlinePgn: {
+    label: "The game, from {{from}} to {{to}}",
+    start: "The start",
+    moves: "The moves",
+    first: "To the first move shown",
+    back: "One move back",
+    next: "One move on",
+    last: "To the last move shown",
+    flip: "Flip the board",
+    unreadable: "This game's PGN does not read.",
+  },
+  demoBoard: {
+    reset: "Back to the start",
+    back: "Take back a move",
+    next: "Next move",
+    flip: "Flip the board",
+    start: "Play a move",
+    end: "The line ends here",
+    moves: "Moves from here",
   },
   /**
    * Each screen's name (CTA-112) — its route's `handle.title`: the page title
@@ -70,6 +155,9 @@ const en = {
    */
   pages: {
     home: "Home",
+    /** The Blog (CTA-126): its index and folders, and one article — its title goes first. */
+    blog: "Blog",
+    blogArticle: "Article",
     playWithEngine: "Play with Engine",
     lobby: "Lobby",
     maskedPieces: "Masked Pieces",

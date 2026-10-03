@@ -89,6 +89,8 @@ export const greenTheme: ThemeDefinition = {
       chanceBorder: "#e040fb",
     },
     book: { known: "#81b64c", hovered: "#fa412d" },
+    // A PGN's drawn shapes keep lichess's brushes, so a study reads as it was drawn.
+    drawing: defaultChessTokens.drawing,
     // chess.com's move-classification colours, a darker shade on white paper.
     nag: {
       good: { light: "#4f7f24", dark: "#96bc4b" },

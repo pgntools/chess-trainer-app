@@ -49,6 +49,7 @@ const TOKENS: ChessTokens = vi.hoisted(() => ({
   },
   arrows: { required: "#aaaaaa", untagged: "#bbbbbb", chanceFill: "#cccccc", chanceBorder: "#dddddd" },
   book: { known: "#121212", hovered: "#343434" },
+  drawing: { green: "#131313", red: "#141414", yellow: "#151515", blue: "#161616" },
   nag: {
     good: { light: "#010101", dark: "#020202" },
     brilliant: { light: "#030303", dark: "#040404" },

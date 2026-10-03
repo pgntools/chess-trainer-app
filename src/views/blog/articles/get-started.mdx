@@ -1,0 +1,35 @@
+Pick a board or tool to open — or try one right here first.
+
+## Try a board
+
+Three games from the [Library](/library), each opening just before its famous move. Drag a piece along the arrow, or pick the move from the list under the board.
+
+<BoardRow>
+  <CollectionGameBoard game="/library/fischer/50" startMove="17" />
+  <CollectionGameBoard game="/library/fischer/908" startMove="7" />
+  <CollectionGameBoard game="/library/capablanca/442" startMove="8" />
+</BoardRow>
+
+## Repertoires
+
+A repertoire answers every move the way the trainer would: the wider the arrow, the likelier the reply.
+
+{/*
+  PLACEHOLDER: replace each _id with a repertoire's address (/repertoires/<id>).
+  A repertoire lives on the reader's own device, so where it is not there the
+  board shows its fallback, a sample that ships with the app.
+*/}
+<BoardRow>
+  <RepertoireBoard _id="/repertoires/REPLACE-WITH-A-REPERTOIRE-ID" fallback="e4-white" startMove="1" />
+  <RepertoireBoard _id="/repertoires/REPLACE-WITH-A-REPERTOIRE-ID-2" fallback="caro-kann-black" startMove="1..." />
+</BoardRow>
+
+## A collection
+
+<BoardRow>
+  <CollectionCard _id="/library/fischer" showGame="52" />
+</BoardRow>
+
+## Every screen
+
+<NavCards headingLevel={3} />

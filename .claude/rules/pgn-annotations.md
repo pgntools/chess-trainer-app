@@ -113,7 +113,7 @@ The PGN-spec embedded command form, as lichess, ChessBase and the chess.com
 exports write them. `readComment` takes every one out of the prose and shows
 it as a **chip** in the comment block (`AnnotationsBar`): the key's label,
 then the value, pinned LTR. The value is **shown as written, never
-interpreted** — nothing draws `[%cal]` arrows on the board or feeds `[%eval]`
+interpreted** — the game boards draw no `[%cal]` arrows and feed no `[%eval]`
 into the eval bar today. The one reading beyond the chip is the Analysis
 Board's arrows, which can be sized by `[%eval]` (CTA-98, §3).
 
@@ -122,14 +122,26 @@ Board's arrows, which can be sized by `[%eval]` (CTA-98, §3).
 | `%eval` | `[%eval 6.91]`, `[%eval #-3]` | Eval | **yes** — the Analysis Board's *Evaluation* arrow widths (§3) |
 | `%clk` | `[%clk 0:22:33]` | Clock | no |
 | `%emt` | `[%emt 0:00:12]` | Time spent | no |
-| `%cal` | `[%cal Ge2e4,Rd7d5]` | Arrows | no — not drawn |
-| `%csl` | `[%csl Gd4,Re5]` | Squares | no — not drawn |
+| `%cal` | `[%cal Ge2e4,Rd7d5]` | Arrows | **yes** — drawn on an article's `<InlinePgnGame>` board (CTA-126, below); not on the game boards |
+| `%csl` | `[%csl Gd4,Re5]` | Squares | **yes** — drawn as circles on an `<InlinePgnGame>` board (CTA-126) |
 | `%prc` | `[%prc 40]` | Play chance | **yes** — the trainer and the arrows (§3) |
 | `%games` | `[%games 12]` | Games | **yes** — the Analysis Board's *Games* arrow widths (§3) |
 | any other `%key` | `[%foo bar]` | the key itself | no — kept and written back |
 
 A key must start with a letter (`[A-Za-z][\w-]*`). Commands are part of the
 comment text, so the comment dialog shows and edits them verbatim.
+
+### `[%cal]` and `[%csl]` drawn — `lib/boardShapes.ts` (CTA-126)
+
+`shapesOf(comments)` reads lichess's study drawings out of a position's
+comments (the move's, or the tree's own at the start): arrows `[%cal Ge2e4]`
+and circles `[%csl Gd4]`, by brush — `G` green, `R` red, `Y` yellow, `B` blue
+— each shape once, in order; an arrow from a square to itself is a circle, an
+entry that is no brush and squares is skipped. They are drawn in the theme's
+`chess.drawing` brushes on the Blog's `<InlinePgnGame>` board
+(`views/shared/ExcerptBoard.tsx`: arrows through react-chessboard's `arrows`,
+circles by the `ShapeCircles` overlay), where a drawn position's drawing
+replaces the next-move arrows. The text is untouched — still the storage.
 
 ### The engine-evaluation shapes analysis exports write
 
