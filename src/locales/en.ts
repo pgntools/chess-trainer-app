@@ -1566,6 +1566,12 @@ const en = {
       buchholzName: "Buchholz",
       sonnebornBerger: "SB",
       sonnebornBergerName: "Sonneborn-Berger",
+      /** A team event's (CTA-128). */
+      team: "Team",
+      matchPoints: "MP",
+      matchPointsName: "Match points",
+      boardPoints: "BP",
+      boardPointsName: "Board points",
     },
     /** A round column's full name — its header shows the number alone. */
     round: "Round {{round}}",
@@ -1604,6 +1610,47 @@ const en = {
       /** The event's name where no game carries an Event tag. */
       untitled: "The tournament",
       unreadable: "This tournament's PGN holds no game.",
+      /** The other formats' embeds (CTA-128). */
+      bracket: "{{event}} — bracket",
+      match: "{{event}} — the match",
+      notAMatch: "This PGN is not a match: its games are not all between the same two players.",
+    },
+    /** A knockout's bracket (CTA-128): the rounds' names, a match in words. */
+    knockout: {
+      round: "Round {{round}}",
+      final: "Final",
+      semiFinals: "Semi-finals",
+      quarterFinals: "Quarter-finals",
+      winners: "Winners' bracket",
+      losers: "Losers' bracket",
+      /** One side of a match, read: the name and the score — a team's board points after it. */
+      side: "{{name}} {{score}}",
+      teamSide: "{{name}} {{score}} ({{boardPoints}} board points)",
+      through: "{{name}} goes through",
+      loading: "Reading the bracket…",
+      empty: "No matches to show.",
+    },
+    /** A match between two players (CTA-128): a column per game. */
+    match: {
+      game: "Game {{game}}",
+      result: {
+        white: "Game {{game}}, White against {{opponent}}: {{result}}",
+        black: "Game {{game}}, Black against {{opponent}}: {{result}}",
+      },
+    },
+    /** A team tournament's standings (CTA-128): a round's cell is the team's board points in its match. */
+    team: {
+      match: "Round {{round}} against {{opponent}}: {{own}}–{{other}}, {{outcome}}",
+      outcome: {
+        win: "won",
+        draw: "drawn",
+        loss: "lost",
+        unfinished: "unfinished",
+      },
+      noMatch: "Round {{round}}: no match in the file",
+      legend: {
+        unfinished: "a match with a game unfinished",
+      },
     },
   },
   /**

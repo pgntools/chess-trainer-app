@@ -4,11 +4,18 @@ import { render, screen } from "@testing-library/react";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import swissPgn from "../../blog/articles/tournaments/20th-werner-obermeyer-swiss-5r.pgn?raw";
-import candidatesPgn from "../../blog/articles/tournaments/wchfidecand26-drr14r.pgn?raw";
-import greenHillsPgn from "../../blog/articles/tournaments/greenhillsrapid26-srr7r.pgn?raw";
+import candidatesPgn from "../../blog/articles/tournaments/wchcand26.pgn?raw";
+import greenHillsPgn from "../../blog/articles/tournaments/greenhillsrapid26.pgn?raw";
+import knockoutPgn from "../../blog/articles/tournaments/chned26.pgn?raw";
+import matchPgn from "../../blog/articles/tournaments/clutchlegends26.pgn?raw";
+import doubleEliminationPgn from "../../blog/articles/tournaments/esportswcuppl26.pgn?raw";
+import teamKnockoutPgn from "../../blog/articles/tournaments/fidewrbtf26.pgn?raw";
 import { mdxComponents } from "./index";
+import { KnockoutBracketEmbed } from "./KnockoutBracketEmbed";
+import { MatchTableEmbed } from "./MatchTableEmbed";
 import { RoundRobinCrossTableEmbed } from "./RoundRobinCrossTableEmbed";
 import { SwissStandingsEmbed } from "./SwissStandingsEmbed";
+import { TeamStandingsEmbed } from "./TeamStandingsEmbed";
 
 /*
   The tournament tables' MDX embeds (CTA-128): a PGN of a tournament's games
@@ -32,6 +39,9 @@ describe("the tournament table embeds (CTA-128)", () => {
   it("are what an article's <SwissStandingsTable> and <RoundRobinCrossTable> name", () => {
     expect(mdxComponents.SwissStandingsTable).toBe(SwissStandingsEmbed);
     expect(mdxComponents.RoundRobinCrossTable).toBe(RoundRobinCrossTableEmbed);
+    expect(mdxComponents.KnockoutBracket).toBe(KnockoutBracketEmbed);
+    expect(mdxComponents.MatchTable).toBe(MatchTableEmbed);
+    expect(mdxComponents.TeamStandingsTable).toBe(TeamStandingsEmbed);
   });
 
   it("<RoundRobinCrossTable>: a double round robin's crosstable, both meetings in a cell, named after its event", async () => {
@@ -73,5 +83,36 @@ describe("the tournament table embeds (CTA-128)", () => {
     await i18n.changeLanguage("he");
     render(<RoundRobinCrossTableEmbed pgn={greenHillsPgn} />);
     expect(screen.getByRole("table", { name: "Green Hills Masters Rapid — טבלה צולבת" })).toBeInTheDocument();
+  });
+
+  it("<KnockoutBracket>: a knockout's bracket, named after its event", async () => {
+    render(<KnockoutBracketEmbed pgn={knockoutPgn} />);
+    expect(screen.getByRole("region", { name: "ch-NED KO 2026 — bracket" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Final" })).toBeInTheDocument();
+    await expectNoAxeViolations();
+  });
+
+  it("<KnockoutBracket losersFromRound=\"51\">: a double elimination's two brackets", () => {
+    render(<KnockoutBracketEmbed pgn={doubleEliminationPgn} losersFromRound="51" />);
+    expect(screen.getByRole("region", { name: "Esports World Cup PI 2026 — bracket — Winners' bracket" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Esports World Cup PI 2026 — bracket — Losers' bracket" })).toBeInTheDocument();
+  });
+
+  it("<KnockoutBracket>: a team knockout, in legs", () => {
+    render(<KnockoutBracketEmbed pgn={teamKnockoutPgn} />);
+    expect(screen.getByText(/^Team MGD1 2 \(8½ board points\), Kazchess 0/)).toBeInTheDocument();
+  });
+
+  it("<MatchTable>: a match, and a PGN that is not one", () => {
+    const { unmount } = render(<MatchTableEmbed pgn={matchPgn} />);
+    expect(screen.getByRole("table", { name: "Clutch Chess: The Legends 2026 — the match" })).toBeInTheDocument();
+    unmount();
+    render(<MatchTableEmbed pgn={greenHillsPgn} />);
+    expect(screen.getByText(/is not a match/)).toBeInTheDocument();
+  });
+
+  it("<TeamStandingsTable>: a team event's standings, named after its event", () => {
+    render(<TeamStandingsEmbed pgn={teamKnockoutPgn} />);
+    expect(screen.getByRole("table", { name: "FIDE World Bl Team Final — standings" })).toBeInTheDocument();
   });
 });

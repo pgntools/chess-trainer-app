@@ -70,3 +70,14 @@ export const tournamentLegend = (t: TFunction, shows: { unfinished: boolean; non
   ...(shows.unfinished ? [{ outcome: "unfinished" as const, label: t("tournament.legend.unfinished") }] : []),
   ...(shows.none ? [{ outcome: "none" as const, label: t("tournament.legend.none") }] : []),
 ];
+
+/**
+ * A score as a chess table writes it (CTA-128): halves as `½` — `2½`, `½`,
+ * `3`. For a match's score and a team's board points, where `2.5` would read
+ * as a decimal.
+ */
+export const formatScore = (value: number): string => {
+  const whole = Math.floor(value);
+  const half = value - whole >= 0.5;
+  return half ? (whole === 0 ? "½" : `${whole}½`) : String(whole);
+};

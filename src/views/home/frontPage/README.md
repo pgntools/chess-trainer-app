@@ -33,6 +33,9 @@ nothing is fetched or compiled in the browser.
 | `<StoredGameEmbed />` | `reference="…"`, `startMove?` | any stored game by its `?game=` reference (`library/<c>/<n>`, `analysis/saved/<id>`, `play/games/<id>`) |
 | `<SwissStandingsTable />` | `pgn={…}` (the tournament's games, usually `import games from "./event.pgn?raw"`), `density?: "normal" \| "dense"` | a Swiss's standings (`src/blocks/tables/SwissStandingsTable`): a row per player ranked by points, Buchholz, then Sonneborn-Berger, a cell per round — read from the games' tags alone, named after their `Event`; a file of the top boards only is the standings of those games. The Blog's *Tournaments* folder shows it |
 | `<RoundRobinCrossTable />` | `pgn={…}`, `density?` | a round robin's crosstable (`src/blocks/tables/RoundRobinCrossTable`): a row and a column per player ranked by points, then Sonneborn-Berger, each meeting's games in its cell — two in a double round robin. The Blog's *Tournaments* folder shows it, single and double |
+| `<KnockoutBracket />` | `pgn={…}`, `losersFromRound?` (where a double elimination's losers' bracket starts — TWIC's `51`), `density?` | a knockout's bracket (`src/blocks/tables/KnockoutBracket`): a column per round, a box per match — `Round "R.G"` is round R, game G of its match, tiebreaks counted — the side that went through marked; a file whose games all name their teams is a team knockout, scored in legs with the board points beside them. The Blog's *Demo tables* folder shows a knockout, a double elimination and a team knockout |
+| `<MatchTable />` | `pgn={…}`, `density?` | a match between two players (`src/blocks/tables/MatchTable`): two rows, a column per game, the score — every game a point, as its `Result` says; a PGN of more than two players says it is not a match |
+| `<TeamStandingsTable />` | `pgn={…}`, `density?` | a team tournament's standings (`src/blocks/tables/TeamStandingsTable`): its games name their teams (`WhiteTeam`, `BlackTeam`); a row per team, each round's cell its board points in that match, ranked by match points (2 a win, 1 a draw), then board points |
 | `<NavCards />` | `headingLevel?: 2 \| 3` (default `2`) | every screen as a card, by section — built from `navTree()`, so a screen added to `navItems` appears with no edit here. Alone, it is the landing page as it was before CTA-126 |
 
 **`showNextMoveArrow`** — every board above takes it: `showNextMoveArrow={false}` draws no arrows to the next moves over the board (the moves stay in its list, and an `<InlinePgnGame>`'s drawn `[%cal]` arrows still show). On by default.
@@ -68,7 +71,7 @@ line in `index.ts` and a row here.
   or a `.he.mdx` beside it).
 
 The Blog's Components and *Games in an article* folders show each component on
-a page of its own, with its markup; the *Tournaments* folder the two tables.
+a page of its own, with its markup; the *Tournaments* folder the tables, and its *Demo tables* folder one page per format.
 
 Check a change with `npx vitest run src/views/home src/views/blog` (every
 article renders, one `h1`, every PGN reads, axe) and `yarn build`.

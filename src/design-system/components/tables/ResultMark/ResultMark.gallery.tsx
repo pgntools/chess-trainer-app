@@ -66,6 +66,24 @@ const gallery: GalleryModule = {
       ),
     },
     {
+      name: "A caller's own glyphs — a team match's board points, toned by the match's outcome (CTA-128)",
+      render: () =>
+        demoTable(<>{textCell("Team")}{textCell("1")}{textCell("2")}{textCell("3")}</>, [
+          <>
+            {textCell("Lovelace Club")}
+            <TableCell>
+              <ResultMark outcome="win" glyph="4½" label="Round 1, against Turing Club: 4½–1½, won" />
+            </TableCell>
+            <TableCell>
+              <ResultMark outcome="draw" glyph="3" label="Round 2, against Hopper Club: 3–3, drawn" />
+            </TableCell>
+            <TableCell>
+              <ResultMark outcome="loss" glyph="1½" label="Round 3, against Knuth Club: 1½–4½, lost" />
+            </TableCell>
+          </>,
+        ]),
+    },
+    {
       name: "A Hebrew legend (switch the direction to RTL)",
       render: () => (
         <Box sx={{ display: "flex", flexWrap: "wrap", columnGap: 3, typography: "caption" }}>

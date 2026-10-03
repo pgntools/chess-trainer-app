@@ -4,12 +4,15 @@ import { BoardRow } from "./BoardRow";
 import { CollectionCard } from "./CollectionCard";
 import { CollectionGameBoard } from "./CollectionGameBoard";
 import { InlinePgnGame } from "./InlinePgnGame";
+import { KnockoutBracketEmbed } from "./KnockoutBracketEmbed";
+import { MatchTableEmbed } from "./MatchTableEmbed";
 import { NavCards } from "./NavCards";
 import { Anchor, CodeBlock, H1, H2, H3, InlineCode, List, ListItem, OrderedList, Paragraph, Rule } from "./Prose";
 import { RepertoireBoardEmbed } from "./RepertoireBoardEmbed";
 import { RoundRobinCrossTableEmbed } from "./RoundRobinCrossTableEmbed";
 import { StoredGameEmbed } from "./StoredGameEmbed";
 import { SwissStandingsEmbed } from "./SwissStandingsEmbed";
+import { TeamStandingsEmbed } from "./TeamStandingsEmbed";
 
 /**
  * **What every MDX article — the Blog's, and the one the front page shows —
@@ -28,6 +31,9 @@ import { SwissStandingsEmbed } from "./SwissStandingsEmbed";
  * | `<StoredGameEmbed reference="…" />` | any stored game by its `?game=` reference (`analysis/saved/<id>`, `play/games/<id>`, …) |
  * | `<SwissStandingsTable pgn={games} />` | a Swiss's standings from its games' PGN — a row per player, a cell per round (CTA-128) |
  * | `<RoundRobinCrossTable pgn={games} />` | a round robin's crosstable from its games' PGN — single or double (CTA-128) |
+ * | `<KnockoutBracket pgn={games} losersFromRound="51" />` | a knockout's bracket — a double elimination's two with `losersFromRound`, a team knockout's in legs (CTA-128) |
+ * | `<MatchTable pgn={games} />` | a match between two players: a column per game, the score (CTA-128) |
+ * | `<TeamStandingsTable pgn={games} />` | a team tournament's standings: board points per round, match points, board points (CTA-128) |
  * | `<NavCards />` | every screen as a card, by section — the landing page before CTA-126 |
  *
  * A component the document names that is not here fails the page at render
@@ -54,5 +60,8 @@ export const mdxComponents: MDXComponents = {
   InlinePgnGame,
   SwissStandingsTable: SwissStandingsEmbed,
   RoundRobinCrossTable: RoundRobinCrossTableEmbed,
+  KnockoutBracket: KnockoutBracketEmbed,
+  MatchTable: MatchTableEmbed,
+  TeamStandingsTable: TeamStandingsEmbed,
   NavCards,
 };

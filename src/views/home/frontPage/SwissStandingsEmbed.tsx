@@ -31,7 +31,7 @@ type SwissStandingsEmbedProps = {
 export function SwissStandingsEmbed({ pgn, density }: SwissStandingsEmbedProps) {
   const { t } = useTranslation();
   const read = usePgnTournament(pgn, SWISS_TIE_BREAKS);
-  if (read.tournament === undefined) {
+  if (read.made === undefined) {
     return (
       <InlineAlert severity="warning" testId="tournament-standings-unreadable" detail={read.error}>
         {t("tournament.embed.unreadable")}
@@ -40,7 +40,7 @@ export function SwissStandingsEmbed({ pgn, density }: SwissStandingsEmbedProps) 
   }
   return (
     <SwissStandingsTable
-      tournament={read.tournament}
+      tournament={read.made}
       ariaLabel={t("tournament.embed.standings", { event: read.event ?? t("tournament.embed.untitled") })}
       density={density}
       testId={`tournament-standings-${read.slug}`}

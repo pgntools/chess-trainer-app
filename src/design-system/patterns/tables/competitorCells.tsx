@@ -148,7 +148,7 @@ export function ResultsCell({ results, testId }: ResultsCellProps) {
       {results.map((result, index) => (
         <Fragment key={index}>
           {index > 0 && " "}
-          <ResultMark outcome={result.outcome} label={result.label} />
+          <ResultMark outcome={result.outcome} label={result.label} glyph={result.glyph} />
         </Fragment>
       ))}
     </TableCell>

@@ -80,6 +80,14 @@ describe("ResultMark", () => {
     expect(screen.getByTestId("loss").querySelector("[aria-hidden]")).not.toHaveStyle({ fontWeight: 700 });
   });
 
+  it("shows a caller's own glyph in the outcome's tone, read by its words all the same (CTA-128)", () => {
+    inCell(<ResultMark outcome="win" glyph="4½" label="Round 1, against Turing Club: 4½–1½, won" testId="probe" />);
+    const glyph = screen.getByTestId("probe").querySelector("[aria-hidden]");
+    expect(glyph).toHaveTextContent("4½");
+    expect(glyph).toHaveStyle({ fontWeight: 700 });
+    expect(screen.getByRole("cell", { name: "Round 1, against Turing Club: 4½–1½, won" })).toBeInTheDocument();
+  });
+
   it("shows its words as a legend's entry", () => {
     render(<ResultMark legend outcome="unfinished" label="unfinished game" testId="probe" />);
     expect(screen.getByTestId("probe")).toHaveTextContent("* = unfinished game");

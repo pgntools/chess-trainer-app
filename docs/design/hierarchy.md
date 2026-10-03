@@ -61,6 +61,7 @@ their demos run on made-up data.
 | `DataTable` | a multi-column table: columns as data, controlled sort and paging, picks with select-all, row actions, row click and link, loading / empty / no-match rows, a row's note across the columns, sections closed by a bolder line, filter and toolbar slots, density, a sticky header — good at 10,000 rows | [`sections/patterns/tables.md`](./sections/patterns/tables.md) |
 | `StandingsTable` | a Swiss tournament's standings: a row per competitor in rank order, one cell per round showing the result only (`ResultMark`: `1`, `½`, `0`, `*`, a dash), the points and tie-break columns that are data — every row shown, the frame scrolling both ways (CTA-120) | [`sections/patterns/tables.md`](./sections/patterns/tables.md#standingstable) |
 | `CrossTable` | a round robin's crosstable: a row and a column per competitor, every result between two in the cell where they meet, the diagonal blank, the points and the tie-break columns — real row and column headers (CTA-120) | [`sections/patterns/tables.md`](./sections/patterns/tables.md#crosstable) |
+| `Bracket` | a knockout's bracket: a column per round, a box per match — two sides, each a name, a score and a muted detail, the side that went through bold and marked — each match read by its words; a named region that scrolls sideways (CTA-128) | [`sections/patterns/tables.md`](./sections/patterns/tables.md#bracket) |
 | `TreeView` | a collapsible tree: branches that open in place, leaves that link or select, the node on screen marked, a branch that can also be a destination — the sidebar's look | [`sections/patterns/trees.md`](./sections/patterns/trees.md) |
 | `UploadPanel` | a file button and a paste box over one text, with a line under them for what was read (CTA-113) | [`sections/patterns/forms.md`](./sections/patterns/forms.md) |
 
@@ -126,12 +127,16 @@ CTA-113 moved the rest of the app onto blocks:
 CTA-120 built the tournament tables ahead of their screen; their first
 consumer is the Blog (CTA-128), through the MDX embeds `<SwissStandingsTable>`
 and `<RoundRobinCrossTable>` (`views/home/frontPage/`) in its *Tournaments*
-articles:
+articles. CTA-128 added the other formats' — a knockout's bracket, a match,
+a team event's standings — embedded the same way:
 
 | Block | Family | What it is |
 | --- | --- | --- |
 | `SwissStandingsTable` | tables | A Swiss tournament's standings (`Tournament`, `lib/tournament.ts`) as a `StandingsTable`: the title before the name and the federation after it, the rating, a result per round named by its round, colour and opponent, the points, and the tie-breaks the tournament was ranked by (Buchholz, Sonneborn-Berger). `*` is an unfinished game, a dash a round the file holds no game of. |
 | `RoundRobinCrossTable` | tables | A round robin's crosstable (`Tournament` ranked with `ROUND_ROBIN_TIE_BREAKS`) as a `CrossTable`: every game between two players in round order (`gamesBetween`) — two in a double round robin — then the points and Sonneborn-Berger. |
+| `KnockoutBracket` | tables | A knockout's bracket (`Knockout`, `lib/knockout.ts`, CTA-128) as a `Bracket`: a column per round, a box per match — each side's title, name and score (tiebreak games counted; a team knockout's legs won, its board points muted beside them), the side that went through marked and said in words. A plain knockout's last rounds are named as they halve to the final; a double elimination is two brackets, the winners' over the losers', each named. |
+| `MatchTable` | tables | A match between two players (`Match`, `lib/match.ts`, CTA-128) as a `StandingsTable`: two rows, the leader first, a column per game — the result for its row's player, read with the game, the colour and the opponent — and the score, halves as `½`. |
+| `TeamStandingsTable` | tables | A team tournament's standings (`TeamTournament`, `lib/teamTournament.ts`, CTA-128) as a `StandingsTable`: a row per team, a round's cell its board points in that match (`ResultMark`'s own `glyph`), toned as the match went and read with the opponent and the score both ways, then the match points and the board points it is ranked by. |
 
 How a module migrates — the order of work, what each old pattern became, the
 findings — is [`migration.md`](./migration.md).

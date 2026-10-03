@@ -118,13 +118,15 @@ The comparison ended on five open questions; each has one answer here.
   (`ResultOutcome`), `label` (**required** — the mark's words, everything the
   glyph leaves out: "Round 3, against Ada Lovelace: win"), `legend?` (a
   legend's entry: the glyph, then its words in view — "* = unfinished game"),
-  `testId?`. `RESULT_GLYPHS` is the glyph of each outcome.
+  `glyph?` (CTA-128: text in place of the outcome's glyph, toned by the
+  outcome all the same — a team match's board points, "4½"), `testId?`.
+  `RESULT_GLYPHS` is the glyph of each outcome.
 - **Accessible** — the glyph is `aria-hidden` and the `label` is read in its
   place, out of sight (`visuallyHidden`, positioned against the mark so it
   scrolls with its table): a cell of marks is named by their words. Put a
   space between two marks in one cell — it is what keeps their words apart.
 - **Variations** (one demo each) — the five outcomes; several in one cell; a
-  legend's entries; a Hebrew legend (RTL).
+  legend's entries; a Hebrew legend (RTL); a caller's own glyphs (scores).
 
 ## useTableUrlState (+ `sortRows`)
 

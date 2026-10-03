@@ -31,7 +31,7 @@ type RoundRobinCrossTableEmbedProps = {
 export function RoundRobinCrossTableEmbed({ pgn, density }: RoundRobinCrossTableEmbedProps) {
   const { t } = useTranslation();
   const read = usePgnTournament(pgn, ROUND_ROBIN_TIE_BREAKS);
-  if (read.tournament === undefined) {
+  if (read.made === undefined) {
     return (
       <InlineAlert severity="warning" testId="tournament-crosstable-unreadable" detail={read.error}>
         {t("tournament.embed.unreadable")}
@@ -40,7 +40,7 @@ export function RoundRobinCrossTableEmbed({ pgn, density }: RoundRobinCrossTable
   }
   return (
     <RoundRobinCrossTable
-      tournament={read.tournament}
+      tournament={read.made}
       ariaLabel={t("tournament.embed.crosstable", { event: read.event ?? t("tournament.embed.untitled") })}
       density={density}
       testId={`tournament-crosstable-${read.slug}`}
