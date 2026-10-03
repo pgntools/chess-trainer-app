@@ -123,8 +123,10 @@ CTA-113 moved the rest of the app onto blocks:
 | `PgnExportPanel`, `GameInfo`, `CurrentOpening`, `ChangesStrip` | panels | Every board's Export and Info tabs, the opening line, the Update / Save as copy / Discard strip. |
 | `PlayToggleButton`, `EngineThinking` | panels | Play's header button and the engine's thinking line. |
 
-CTA-120 built the tournament tables ahead of their screen — only the gallery
-shows them yet:
+CTA-120 built the tournament tables ahead of their screen; their first
+consumer is the Blog (CTA-128), through the MDX embeds `<SwissStandingsTable>`
+and `<RoundRobinCrossTable>` (`views/home/frontPage/`) in its *Tournaments*
+articles:
 
 | Block | Family | What it is |
 | --- | --- | --- |

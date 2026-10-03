@@ -1550,7 +1550,7 @@ const en = {
   /**
    * The **tournament tables** (CTA-120) — the Swiss standings and the
    * round-robin crosstable (`src/blocks/tables/`). Built ahead of the
-   * tournaments section: only the dev gallery shows them yet.
+   * tournaments section; the Blog's articles embed them (CTA-128, `embed`).
    */
   tournament: {
     /** The headings: an abbreviation in view, its `…Name` read in its place and shown on hover. */
@@ -1596,6 +1596,15 @@ const en = {
     },
     loading: "Reading the tournament…",
     empty: "No games to show.",
+    /** The MDX embeds (CTA-128): `<SwissStandingsTable>` and `<RoundRobinCrossTable>` in an article. */
+    embed: {
+      /** The table's accessible name, after the games' Event tag. */
+      standings: "{{event}} — standings",
+      crosstable: "{{event}} — crosstable",
+      /** The event's name where no game carries an Event tag. */
+      untitled: "The tournament",
+      unreadable: "This tournament's PGN holds no game.",
+    },
   },
   /**
    * The **Repertoires** section (CTA-61) — the reader's own opening

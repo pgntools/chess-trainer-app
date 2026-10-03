@@ -7,7 +7,9 @@ import { InlinePgnGame } from "./InlinePgnGame";
 import { NavCards } from "./NavCards";
 import { Anchor, CodeBlock, H1, H2, H3, InlineCode, List, ListItem, OrderedList, Paragraph, Rule } from "./Prose";
 import { RepertoireBoardEmbed } from "./RepertoireBoardEmbed";
+import { RoundRobinCrossTableEmbed } from "./RoundRobinCrossTableEmbed";
 import { StoredGameEmbed } from "./StoredGameEmbed";
+import { SwissStandingsEmbed } from "./SwissStandingsEmbed";
 
 /**
  * **What every MDX article — the Blog's, and the one the front page shows —
@@ -24,6 +26,8 @@ import { StoredGameEmbed } from "./StoredGameEmbed";
  * | `<CollectionCard _id="/library/<c>" showGame="52" />` | a collection: a board on one game, a short table of its games |
  * | `<InlinePgnGame pgn={game} from="5" to="15..." start="11" />` | an excerpt of a PGN: a window of its moves, side lines nested, on a board — one game as often as an article likes |
  * | `<StoredGameEmbed reference="…" />` | any stored game by its `?game=` reference (`analysis/saved/<id>`, `play/games/<id>`, …) |
+ * | `<SwissStandingsTable pgn={games} />` | a Swiss's standings from its games' PGN — a row per player, a cell per round (CTA-128) |
+ * | `<RoundRobinCrossTable pgn={games} />` | a round robin's crosstable from its games' PGN — single or double (CTA-128) |
  * | `<NavCards />` | every screen as a card, by section — the landing page before CTA-126 |
  *
  * A component the document names that is not here fails the page at render
@@ -48,5 +52,7 @@ export const mdxComponents: MDXComponents = {
   CollectionCard,
   StoredGameEmbed,
   InlinePgnGame,
+  SwissStandingsTable: SwissStandingsEmbed,
+  RoundRobinCrossTable: RoundRobinCrossTableEmbed,
   NavCards,
 };

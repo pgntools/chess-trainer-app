@@ -1240,6 +1240,12 @@ const he: typeof en = {
     },
     loading: "קורא את הטורניר…",
     empty: "אין משחקים להצגה.",
+    embed: {
+      standings: "{{event}} — טבלת הדירוג",
+      crosstable: "{{event}} — טבלה צולבת",
+      untitled: "הטורניר",
+      unreadable: "ה-PGN של הטורניר הזה אינו מכיל אף משחק.",
+    },
   },
   repertoires: {
     title: "רפרטוארים",
