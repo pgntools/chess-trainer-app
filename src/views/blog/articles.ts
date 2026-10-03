@@ -40,6 +40,7 @@ type BlogArticleEntry = {
 export const BLOG_FOLDERS: readonly BlogFolder[] = [
   { path: "components", title: { en: "Components", he: "רכיבים" } },
   { path: "inline-pgn", title: { en: "Games in an article", he: "משחקים בתוך מאמר" } },
+  { path: "tournaments", title: { en: "Tournaments", he: "טורנירים" } },
   { path: "guides", title: { en: "Guides", he: "מדריכים" } },
 ];
 
@@ -147,6 +148,30 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     summary: {
       en: "A game review: Capablanca's own notes, with nine boards on the one game.",
       he: "סקירת משחק: ההערות של קפבלנקה עצמו, עם תשעה לוחות על אותו משחק.",
+    },
+  },
+  {
+    path: "tournaments/fide-candidates-2026",
+    title: { en: "FIDE Candidates 2026", he: "טורניר המועמדים 2026" },
+    summary: {
+      en: "A double round robin: eight players, fourteen rounds — <RoundRobinCrossTable> and three of its games.",
+      he: "טורניר כל-נגד-כל כפול: שמונה שחקנים, ארבעה-עשר סבבים — <RoundRobinCrossTable> ושלושה ממשחקיו.",
+    },
+  },
+  {
+    path: "tournaments/werner-obermeyer-swiss-2026",
+    title: { en: "20th Werner-Obermeyer", he: "טורניר ורנר-אוברמאייר ה-20" },
+    summary: {
+      en: "A Swiss: five rounds, the top boards of each — <SwissStandingsTable> and three of its games.",
+      he: "טורניר שוויצרי: חמישה סבבים, הלוחות העליונים של כל סבב — <SwissStandingsTable> ושלושה ממשחקיו.",
+    },
+  },
+  {
+    path: "tournaments/green-hills-masters-rapid-2026",
+    title: { en: "Green Hills Masters Rapid", he: "טורניר המאסטרים המהיר גרין הילס" },
+    summary: {
+      en: "A single round robin: eight players, seven rounds of rapid — <RoundRobinCrossTable> and three of its games.",
+      he: "טורניר כל-נגד-כל: שמונה שחקנים, שבעה סבבים של שחמט מהיר — <RoundRobinCrossTable> ושלושה ממשחקיו.",
     },
   },
   {

@@ -285,6 +285,21 @@ export const appRoutes: RouteObject[] = [
           handle: { title: "pages.blogArticle" }
         },
         {
+          path: "/blog/tournaments/fide-candidates-2026",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/tournaments/werner-obermeyer-swiss-2026",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/tournaments/green-hills-masters-rapid-2026",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
           path: "/blog/guides/writing-an-article",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
