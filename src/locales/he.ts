@@ -1120,10 +1120,20 @@ const he: typeof en = {
         playersHelp: "משחקים של כל אחד מהם — בחרו מהרשימה או הקלידו חלק משם.",
         several: "כל קובץ הופך לאוסף משלו, שנקרא על שם האירוע המשותף למשחקיו, ואם אין — על שם הקובץ.",
         severalInto: "המשחקים של כל הקבצים נוספים לאוסף הזה.",
+        /** What a split import makes of a zip's several files (CTA-127). */
+        severalSplit: "כל קובץ הופך לתיקייה משלו, ובה אוסף אחד לכל אירוע.",
         count_one: "{{kept}} מתוך משחק אחד ייובאו",
         count_other: "{{kept}} מתוך {{count}} משחקים ייובאו",
         import: "ייבוא",
+        /** The *Split by event* option of a new-collection import (CTA-127). */
+        split: "פיצול לפי אירוע",
+        splitHelp: "תיקייה על שם הקובץ, ובה אוסף אחד לכל אירוע. משחקים בלי אירוע נכנסים לאוסף אחד של \"לא ידוע\".",
+        splitOneEvent: "אין מה לפצל — המשחקים שנשמרו בכל קובץ חולקים אירוע אחד.",
+        splitNoEvents: "אין מה לפצל — לאף משחק שנשמר אין אירוע.",
+        splitNothingKept: "אין מה לפצל — שום משחק לא ייובא.",
       },
+      /** The collection the games with no Event go into, when an import splits by event (CTA-127). */
+      unknown: "לא ידוע",
       problem: {
         empty: "אין בזה PGN.",
         unreadable: "לא ניתן לקרוא בזה אף משחק.",
@@ -1134,6 +1144,7 @@ const he: typeof en = {
         file: "לא ניתן לקרוא את הקובץ.",
         zip: "לא ניתן לקרוא את קובץ ה-zip.",
         "zip-empty": "אין קובץ ‎.pgn ב-zip הזה.",
+        folder: "לא ניתן היה ליצור את התיקייה — האחסון של הדפדפן מלא או לא זמין, או שאין מקום לתיקייה נוספת.",
       },
     },
     notFound: {

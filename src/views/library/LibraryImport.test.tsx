@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 
 import i18n from "../../i18n";
-import { loadUploadedCollections, peekUploadedGames } from "../../lib/libraryCollectionStore";
+import {
+  addCollection,
+  loadUploadedCollections,
+  peekUploadedGames,
+} from "../../lib/libraryCollectionStore";
+import { loadLibraryFolders } from "../../lib/libraryFolderStore";
 import {
   GAMES,
   where,
@@ -33,6 +38,14 @@ vi.mock("../../lib/pgnExport", async (importOriginal) => ({
 vi.mock("../../lib/openings", async (importOriginal) => {
   const { openingsMock } = await import("../board/boardTestHarness");
   return openingsMock(importOriginal as () => Promise<typeof import("../../lib/openings")>);
+});
+
+// The one write the rollback test fails on purpose (CTA-127): a spy over the
+// real `addCollection`, so the first collection of a split lands and the
+// second refuses. Everything else the module exports is the real thing.
+vi.mock("../../lib/libraryCollectionStore", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/libraryCollectionStore")>();
+  return { ...actual, addCollection: vi.fn(actual.addCollection) };
 });
 
 /*
@@ -282,5 +295,105 @@ describe("the import-options popup (CTA-103)", () => {
     fireEvent.click(screen.getByTestId("library-upload-empty"));
     await waitFor(() => expect(where()).toMatch(/^\/library\/u/));
     expect(screen.queryByTestId("library-import")).toBeNull();
+  });
+});
+
+describe("Split by event (CTA-127)", () => {
+  // A game with no `Event` can only lead the text (the splitter cuts where an
+  // `[Event …]` follows a blank line), so the untagged game goes first.
+  const SPLIT = [
+    '[White "Kim"]\n[Black "Lee"]\n[Result "*"]\n\n1. Nf3 *',
+    '[Event "Club"]\n[White "Zed"]\n[Black "Amy"]\n[Result "0-1"]\n\n1. e4 e5 0-1',
+    '[Event "Spring Open"]\n[White "Bob"]\n[Black "Dana"]\n[Result "1-0"]\n\n1. d4 d5 1-0',
+    '[Event "Club"]\n[White "Amy"]\n[Black "Zed"]\n[Result "1/2-1/2"]\n\n1. c4 1/2-1/2',
+  ];
+  const RATED_ONE_EVENT = [
+    '[Event "Rated"]\n[White "Kim"]\n[Black "Lee"]\n[Result "1-0"]\n\n1. e4 e5 1-0',
+    '[Event "Rated"]\n[White "Lee"]\n[Black "Max"]\n[Result "0-1"]\n\n1. d4 d5 0-1',
+  ].join("\n\n");
+  const splitSwitch = () => screen.getByTestId("library-import-split");
+
+  it("splits a single text into one folder holding one collection per event, the untagged games in one Unknown", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-name"), { target: { value: "My events" } });
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: SPLIT.join("\n\n") } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    expect(await screen.findByTestId("library-import")).toBeInTheDocument();
+    expect(splitSwitch()).toBeEnabled();
+    fireEvent.click(splitSwitch());
+    await confirmImport();
+    await waitFor(() => expect(where()).toBe("/library"), { timeout: 4000 });
+
+    // One folder named as the collection would have been, holding one
+    // collection per event in first-appearance order, its games in file order.
+    const folders = await loadLibraryFolders();
+    expect(folders).toHaveLength(1);
+    const [folder] = folders;
+    expect(folder).toMatchObject({ name: "My events", parentId: null });
+    const collections = await loadUploadedCollections();
+    expect(collections.map((collection) => collection.name).sort()).toEqual(["Club", "Spring Open", "Unknown"]);
+    for (const collection of collections) expect(collection.folderId).toBe(folder.id);
+    const gamesOf = (name: string) =>
+      peekUploadedGames(collections.find((collection) => collection.name === name)!.id);
+    expect(gamesOf("Club")).toEqual([SPLIT[1], SPLIT[3]]);
+    expect(gamesOf("Spring Open")).toEqual([SPLIT[2]]);
+    expect(gamesOf("Unknown")).toEqual([SPLIT[0]]);
+  });
+
+  it("splits a zip into one folder per file keeping games, each split by event inside, at the top level", async () => {
+    mount("/library/new");
+    pickFile(zipOf({ "a.pgn": SPLIT.slice(1).join("\n\n"), "b.pgn": GAMES[0] }));
+    expect(await screen.findByTestId("library-import")).toBeInTheDocument();
+    expect(screen.getByTestId("library-import-several")).toHaveTextContent(/collection of its own/);
+    fireEvent.click(splitSwitch());
+    expect(screen.getByTestId("library-import-several")).toHaveTextContent(/folder of its own/);
+    await confirmImport();
+    await waitFor(() => expect(where()).toBe("/library"), { timeout: 4000 });
+
+    // A folder per file that keeps games — `a.pgn` split by its two events,
+    // `b.pgn` named by the Event its games share (the collection-name
+    // derivation), holding them as one collection.
+    const folders = await loadLibraryFolders();
+    expect(folders.map((row) => row.name).sort()).toEqual(["A", "Club"]);
+    const collections = await loadUploadedCollections();
+    expect(collections).toHaveLength(3);
+    const of = (name: string) => collections.filter((collection) => collection.folderId === folders.find((row) => row.name === name)!.id);
+    expect(of("A").map((collection) => collection.name).sort()).toEqual(["Club", "Spring Open"]);
+    expect(of("Club")).toMatchObject([{ name: "Club", count: 1 }]);
+    expect(peekUploadedGames(of("Club")[0].id)).toEqual([GAMES[0]]);
+  });
+
+  it("offers the split off with its reason where every kept game shares one Event, and imports unsplit", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: RATED_ONE_EVENT } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    const split = await screen.findByTestId("library-import-split");
+    expect(split).toBeDisabled();
+    expect(screen.getByTestId("library-import-split-help")).toHaveTextContent(/share one Event/);
+    await confirmImport();
+    await waitFor(() => expect(where()).toMatch(/^\/library\/u/), { timeout: 4000 });
+    const [collection] = await loadUploadedCollections();
+    expect(collection).toMatchObject({ name: "Rated", folderId: null, count: 2 });
+    expect(await loadLibraryFolders()).toEqual([]);
+  });
+
+  it("takes back the collections and the folders a failed split had already made, and says why", async () => {
+    // The first collection of the split lands; the second write refuses, so
+    // everything the import had made — collections and folder — goes again.
+    const realAdd = vi.mocked(addCollection).getMockImplementation()!;
+    vi.mocked(addCollection)
+      .mockImplementationOnce(realAdd)
+      .mockImplementationOnce(async () => ({ problem: "storage" }));
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: SPLIT.slice(1).join("\n\n") } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    fireEvent.click(await screen.findByTestId("library-import-split"));
+    await confirmImport();
+    expect(await screen.findByTestId("library-import-problem")).toHaveTextContent(
+      i18n.t("library.upload.problem.storage"),
+    );
+    expect(where()).toBe("/library/new");
+    expect(await loadUploadedCollections()).toEqual([]);
+    expect(await loadLibraryFolders()).toEqual([]);
   });
 });

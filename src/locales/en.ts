@@ -1451,10 +1451,20 @@ const en = {
         playersHelp: "Games of any of them — pick from the list or type part of a name.",
         several: "Each file becomes a collection of its own, named by the Event its games share, else by the file's name.",
         severalInto: "Every file's games are added to this collection.",
+        /** What a split import makes of a zip's several files (CTA-127). */
+        severalSplit: "Each file becomes a folder of its own, holding one collection per event.",
         count_one: "{{kept}} of {{count}} game will be imported",
         count_other: "{{kept}} of {{count}} games will be imported",
         import: "Import",
+        /** The *Split by event* option of a new-collection import (CTA-127). */
+        split: "Split by event",
+        splitHelp: "A folder named after the file, holding one collection per event. Games with no Event go into one \"Unknown\" collection.",
+        splitOneEvent: "Nothing to split — the games kept of each file share one Event.",
+        splitNoEvents: "Nothing to split — no game kept has an Event.",
+        splitNothingKept: "Nothing to split — no game will be imported.",
       },
+      /** The collection the games with no Event go into, when an import splits by event (CTA-127). */
+      unknown: "Unknown",
       problem: {
         empty: "There is no PGN in that.",
         unreadable: "No game could be read in that.",
@@ -1465,6 +1475,7 @@ const en = {
         file: "Could not read that file.",
         zip: "That zip could not be read.",
         "zip-empty": "There is no .pgn file in that zip.",
+        folder: "The folder could not be created — this browser's storage is full or unavailable, or there is no room for another folder.",
       },
     },
     /** A path the Library does not have. */

@@ -13,6 +13,7 @@ import {
   collectionRowsOf,
   collectionMetadataOf,
   dateBounds,
+  eventGroupsOf,
   openingLabelOf,
   filteredRows,
   mainlinePlies,
@@ -293,6 +294,26 @@ describe("a text's metadata at a glance (CTA-103)", () => {
     expect(sharedEventOf([{ event: "Club" }, { event: "Open" }])).toBeUndefined();
     expect(sharedEventOf([{ event: "Club" }, {}])).toBeUndefined();
     expect(sharedEventOf([])).toBeUndefined();
+  });
+
+  it("groups the rows by Event for a split import, first appearance first and the untagged together", () => {
+    // Generic: what is carried beside the row travels through the grouping.
+    const rows = [
+      { event: "Club", n: 1 },
+      { event: undefined, n: 2 },
+      { event: "Open", n: 3 },
+      { event: "Club", n: 4 },
+      { event: undefined, n: 5 },
+    ];
+    expect(eventGroupsOf(rows)).toEqual([
+      { event: "Club", rows: [{ event: "Club", n: 1 }, { event: "Club", n: 4 }] },
+      { event: undefined, rows: [{ event: undefined, n: 2 }, { event: undefined, n: 5 }] },
+      { event: "Open", rows: [{ event: "Open", n: 3 }] },
+    ]);
+    // One event, or no event at all: one group — nothing to split.
+    expect(eventGroupsOf([{ event: "Club" }, { event: "Club" }])).toHaveLength(1);
+    expect(eventGroupsOf([{ event: undefined }, { event: undefined }])).toHaveLength(1);
+    expect(eventGroupsOf([])).toEqual([]);
   });
 });
 
