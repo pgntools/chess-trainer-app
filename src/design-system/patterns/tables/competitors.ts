@@ -8,8 +8,12 @@ import type { ResultMarkProps } from "../../components/tables";
   anything ranked by points — the patterns know no chess.
 */
 
-/** One result in a cell: its outcome (the glyph and its tone) and the words read in its place. */
-export type ResultEntry = Pick<ResultMarkProps, "outcome" | "label">;
+/**
+ * One result in a cell: its outcome (the glyph and its tone) and the words
+ * read in its place — and, where the outcome's own glyph will not do, the
+ * text shown instead (a team match's board points, CTA-128).
+ */
+export type ResultEntry = Pick<ResultMarkProps, "outcome" | "label" | "glyph">;
 
 /**
  * A column's heading: its words, and — where they are an abbreviation

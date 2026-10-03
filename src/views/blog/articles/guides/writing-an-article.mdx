@@ -24,6 +24,7 @@ The components are used by name, with no `import`:
 - `<CollectionCard _id="/library/<c>" showGame="1" />` — a collection;
 - `<StoredGameEmbed reference="…" />` — any stored game;
 - `<InlinePgnGame pgn={game} from="5" to="15" start="11" />` — a window of a PGN of your own, as often as you like — see [Games in an article](/blog/inline-pgn);
+- `<SwissStandingsTable pgn={games} />`, `<RoundRobinCrossTable pgn={games} />`, `<KnockoutBracket pgn={games} />`, `<MatchTable pgn={games} />`, `<TeamStandingsTable pgn={games} />` — a tournament's table, from a PGN of its games: a Swiss's standings, a round robin's crosstable, a knockout's bracket (a double elimination's with `losersFromRound`), a match, a team event's standings — see [Demo tables](/blog/tournaments/demo-tables), a page per format;
 - `<NavCards />` — every screen.
 
 Every board among them takes `showNextMoveArrow={false}` to leave the arrows to the next moves off — for a position the reader should find the move in.

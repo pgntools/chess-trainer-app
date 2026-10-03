@@ -285,6 +285,56 @@ export const appRoutes: RouteObject[] = [
           handle: { title: "pages.blogArticle" }
         },
         {
+          path: "/blog/tournaments/fide-candidates-2026",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/tournaments/werner-obermeyer-swiss-2026",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/tournaments/green-hills-masters-rapid-2026",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/tournaments/demo-tables/swiss",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/tournaments/demo-tables/single-round-robin",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/tournaments/demo-tables/double-round-robin",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/tournaments/demo-tables/knockout",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/tournaments/demo-tables/double-elimination",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/tournaments/demo-tables/match",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
+          path: "/blog/tournaments/demo-tables/team",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
           path: "/blog/guides/writing-an-article",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }

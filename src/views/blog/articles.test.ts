@@ -58,10 +58,13 @@ describe("the Blog's registry (CTA-126)", () => {
 
 describe("the Blog's tree", () => {
   it("lists a folder's own folders and articles, one level down", () => {
-    expect(blogFolderContents("").folders.map((folder) => folder.path)).toEqual(["components", "inline-pgn", "guides"]);
+    expect(blogFolderContents("").folders.map((folder) => folder.path)).toEqual(["components", "inline-pgn", "tournaments", "guides"]);
     expect(blogFolderContents("").articles.map((article) => article.path)).toEqual(["get-started"]);
     expect(blogFolderContents("guides").articles.map((article) => article.path)).toEqual(["guides/writing-an-article"]);
     expect(blogArticleCount("components")).toBe(7);
+    expect(blogArticleCount("tournaments")).toBe(10);
+    expect(blogFolderContents("tournaments").folders.map((folder) => folder.path)).toEqual(["tournaments/demo-tables"]);
+    expect(blogArticleCount("tournaments/demo-tables")).toBe(7);
   });
 
   it("walks the folders above an article, for its breadcrumbs", () => {

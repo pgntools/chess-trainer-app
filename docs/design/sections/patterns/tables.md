@@ -7,7 +7,8 @@ pattern belongs in the hierarchy: [`hierarchy.md`](../../hierarchy.md).
 
 Gallery: `/dev/design/patterns/tables/DataTable`,
 `/dev/design/patterns/tables/StandingsTable`,
-`/dev/design/patterns/tables/CrossTable`.
+`/dev/design/patterns/tables/CrossTable`,
+`/dev/design/patterns/tables/Bracket`.
 
 ## DataTable
 
@@ -179,3 +180,37 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
 - **Variations** (one demo each) — a double round robin; a single one; an
   unfinished double one; the bare table; loading; empty; long names; Hebrew
   names under a caption (RTL); dense with the header not sticky.
+
+## Bracket
+
+- **Purpose** (CTA-128) — a knockout's bracket: a **column per round**, left
+  to right, each a list of its matches; a match a box of two lines — a
+  side's name (a muted `prefix` before it), its score and a muted `detail`
+  after it (a team's board points) — the side that went through **bold and
+  marked** with a bar at its start (`borderInlineStart`, so it mirrors). The
+  columns stretch to one height and space their matches evenly, so a later
+  round's match sits between the two that fed it — the caller sends each
+  round **in bracket order**. Generic — a competitor is anything with a
+  score; it knows no chess. A double elimination is two of them, one per
+  bracket.
+- **Data** — `BracketRound = { id, title, matches }`, `BracketMatch = { id,
+  sides: [BracketSide, BracketSide], label }`, `BracketSide = { id, name,
+  prefix?, score, detail?, winner? }`. The scores are written by the caller
+  ("2½"); `label` is the match in words ("Burg, Twan 1½, Sokolov, Ivan 2½:
+  Sokolov, Ivan goes through").
+- **Props** — `rounds`, `ariaLabel` (**required**), `emptyLabel`,
+  `loading?` + `loadingLabel?`, `density?`, `testId`.
+- **Accessible** — a named `region` that takes the keyboard focus and
+  scrolls sideways (a bracket is two-dimensional: WCAG 1.4.10 allows it), its
+  ring the theme's; each round a `list` named by its title (`aria-labelledby`
+  — no heading, so an article's outline is its own); each match a list item
+  read by its `label` in place of its two lines, which are `aria-hidden` — so
+  who went through is said in words, never told by the weight or the bar
+  alone. `aria-busy` and a `status` while `loading`. Names `dir="auto"`,
+  scores `dir="ltr"`; the columns run right to left under RTL.
+- **Test ids** — `testId` (the region), `-round-<id>` (`-title`),
+  `-match-<id>`, a side's line `-match-<id>-<side id>` (`data-winner`),
+  `-loading`, `-empty`.
+- **Variations** (one demo each) — a knockout of eight; a team knockout with
+  details; unfinished (a level final); loading; empty; long names; Hebrew
+  names (RTL); dense.
