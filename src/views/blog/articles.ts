@@ -41,6 +41,7 @@ export const BLOG_FOLDERS: readonly BlogFolder[] = [
   { path: "components", title: { en: "Components", he: "רכיבים" } },
   { path: "inline-pgn", title: { en: "Games in an article", he: "משחקים בתוך מאמר" } },
   { path: "tournaments", title: { en: "Tournaments", he: "טורנירים" } },
+  { path: "tournaments/demo-tables", title: { en: "Demo tables", he: "טבלאות לדוגמה" } },
   { path: "guides", title: { en: "Guides", he: "מדריכים" } },
 ];
 
@@ -172,6 +173,62 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     summary: {
       en: "A single round robin: eight players, seven rounds of rapid — <RoundRobinCrossTable> and three of its games.",
       he: "טורניר כל-נגד-כל: שמונה שחקנים, שבעה סבבים של שחמט מהיר — <RoundRobinCrossTable> ושלושה ממשחקיו.",
+    },
+  },
+  {
+    path: "tournaments/demo-tables/swiss",
+    title: { en: "Swiss", he: "שוויצרי" },
+    summary: {
+      en: "<SwissStandingsTable>: the 112th British Championship — 108 players, nine rounds, ranked by points, Buchholz and Sonneborn-Berger.",
+      he: "<SwissStandingsTable>: אליפות בריטניה ה-112 — 108 שחקנים, תשעה סיבובים, דירוג לפי נקודות, בוכהולץ וזונבורן־ברגר.",
+    },
+  },
+  {
+    path: "tournaments/demo-tables/single-round-robin",
+    title: { en: "Single round robin", he: "כל-נגד-כל" },
+    summary: {
+      en: "<RoundRobinCrossTable>: the Green Hills Resort Masters 2026 — eight players, each met once.",
+      he: "<RoundRobinCrossTable>: גרין הילס מאסטרס 2026 — שמונה שחקנים, כל זוג נפגש פעם אחת.",
+    },
+  },
+  {
+    path: "tournaments/demo-tables/double-round-robin",
+    title: { en: "Double round robin", he: "כל-נגד-כל כפול" },
+    summary: {
+      en: "<RoundRobinCrossTable>: the FIDE Candidates 2026 — eight players, each met twice, two results a cell.",
+      he: "<RoundRobinCrossTable>: טורניר המועמדים 2026 — שמונה שחקנים, כל זוג נפגש פעמיים, שתי תוצאות בכל משבצת.",
+    },
+  },
+  {
+    path: "tournaments/demo-tables/knockout",
+    title: { en: "Knockout", he: "נוקאאוט" },
+    summary: {
+      en: "<KnockoutBracket>: the Dutch Championship 2026 — sixteen players, four rounds, tiebreaks counted.",
+      he: "<KnockoutBracket>: אליפות הולנד 2026 — שישה-עשר שחקנים, ארבעה סיבובים, כולל משחקי שובר שוויון.",
+    },
+  },
+  {
+    path: "tournaments/demo-tables/double-elimination",
+    title: { en: "Double-elimination knockout", he: "נוקאאוט כפול" },
+    summary: {
+      en: "<KnockoutBracket losersFromRound>: the Esports World Cup 2026 play-in — a winners' and a losers' bracket.",
+      he: "<KnockoutBracket losersFromRound>: שלב הכניסה של גביע העולם באיספורט 2026 — בית מנצחים ובית מפסידים.",
+    },
+  },
+  {
+    path: "tournaments/demo-tables/match",
+    title: { en: "Match", he: "משחק בין שניים" },
+    summary: {
+      en: "<MatchTable>: Clutch Chess: The Legends 2026 — Topalov against Kasparov, twelve games.",
+      he: "<MatchTable>: Clutch Chess: The Legends 2026 — טופאלוב מול קספרוב, שנים-עשר משחקים.",
+    },
+  },
+  {
+    path: "tournaments/demo-tables/team",
+    title: { en: "Team events", he: "אירועי קבוצות" },
+    summary: {
+      en: "<TeamStandingsTable> and a team <KnockoutBracket>: the FIDE World Rapid and Blitz Team Championships 2026.",
+      he: "<TeamStandingsTable> ו-<KnockoutBracket> של קבוצות: אליפויות העולם לקבוצות בשחמט מהיר ובזק 2026.",
     },
   },
   {

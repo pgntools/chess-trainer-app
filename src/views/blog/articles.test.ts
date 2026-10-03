@@ -62,7 +62,9 @@ describe("the Blog's tree", () => {
     expect(blogFolderContents("").articles.map((article) => article.path)).toEqual(["get-started"]);
     expect(blogFolderContents("guides").articles.map((article) => article.path)).toEqual(["guides/writing-an-article"]);
     expect(blogArticleCount("components")).toBe(7);
-    expect(blogArticleCount("tournaments")).toBe(3);
+    expect(blogArticleCount("tournaments")).toBe(10);
+    expect(blogFolderContents("tournaments").folders.map((folder) => folder.path)).toEqual(["tournaments/demo-tables"]);
+    expect(blogArticleCount("tournaments/demo-tables")).toBe(7);
   });
 
   it("walks the folders above an article, for its breadcrumbs", () => {
