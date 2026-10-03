@@ -19,11 +19,13 @@ type CollectionGameBoardProps = {
   game: string;
   /** Where the board opens — `"17"` (after White's 17th move), `"17..."` (after Black's), or a line of SAN. */
   startMove?: string;
+  /** Draw the arrows to the next moves. Default on. */
+  showNextMoveArrow?: boolean;
 };
 
-export function CollectionGameBoard({ game, startMove }: CollectionGameBoardProps) {
+export function CollectionGameBoard({ game, startMove, showNextMoveArrow }: CollectionGameBoardProps) {
   const path = libraryGamePathOf(game);
   // An address that is not a game's resolves to nothing, and says so.
   const reference = path === undefined ? `library/${game}` : libraryGameReference(path.collectionId, path.number);
-  return <StoredGameEmbed reference={reference} startMove={startMove} shownAs={game} />;
+  return <StoredGameEmbed reference={reference} startMove={startMove} shownAs={game} showNextMoveArrow={showNextMoveArrow} />;
 }

@@ -40,6 +40,8 @@ type InlinePgnGameProps = {
   game?: number | string;
   /** Draw the PGN's `[%cal]` arrows and `[%csl]` circles. Default on. */
   shapes?: boolean;
+  /** Draw the arrows to the next moves (a PGN's own drawing is not one of them). Default on. */
+  showNextMoveArrow?: boolean;
   from?: string;
   to?: string;
   start?: string;
@@ -64,6 +66,7 @@ export function InlinePgnGame({
   pgn,
   game,
   shapes,
+  showNextMoveArrow,
   from,
   to,
   start,
@@ -134,6 +137,7 @@ export function InlinePgnGame({
       orientation={orientation}
       showComments={comments}
       shapes={shapes}
+      nextMoveArrows={showNextMoveArrow}
       caption={caption}
     />
   );

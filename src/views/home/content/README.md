@@ -32,6 +32,8 @@ here and rebuilding; nothing is fetched or compiled in the browser.
 | `<StoredGameEmbed />` | `reference="…"`, `startMove?` | any stored game by its `?game=` reference (`library/<c>/<n>`, `analysis/saved/<id>`, `play/games/<id>`) |
 | `<NavCards />` | `headingLevel?: 2 \| 3` (default `2`) | every screen as a card, by section — built from `navTree()`, so a screen added to `navItems` appears with no edit here. Alone, it is the landing page as it was before CTA-126 |
 
+**`showNextMoveArrow`** — every board above takes it: `showNextMoveArrow={false}` draws no arrows to the next moves over the board (the moves stay in its list, and an `<InlinePgnGame>`'s drawn `[%cal]` arrows still show). On by default.
+
 **`startMove`** is where a board opens: a move number walks the mainline —
 `"17"` (or `"17."`) is the position after White's 17th move, `"17..."` (or
 `"...17"`) after Black's, `"0"` the start — or a line of SAN, numbered or

@@ -177,6 +177,15 @@ describe("<InlinePgnGame> (CTA-126)", () => {
     });
   });
 
+  it("draws no next-move arrows with showNextMoveArrow={false}, but still a PGN's own drawing", async () => {
+    const user = userEvent.setup();
+    render(<InlinePgnGame pgn={"1. e4 { [%cal Ge7e5] } e5 2. Nf3 *"} showNextMoveArrow={false} />);
+    expect(boardOptions().arrows).toEqual([]);
+    expect(screen.getByRole("button", { name: "1. e4" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "1. e4" }));
+    expect(boardOptions().arrows?.map((arrow) => arrow.endSquare)).toEqual(["e5"]);
+  });
+
   it("passes axe", async () => {
     render(<InlinePgnGame pgn={PGN} start="2" comments />);
     await expectNoAxeViolations();

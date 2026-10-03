@@ -36,6 +36,18 @@ describe("<CollectionGameBoard> (CTA-126)", () => {
     expect(boardOptions().id).toBe("front-page-game-library-capablanca-442");
   });
 
+  it("passes showNextMoveArrow={false} on to its board", async () => {
+    render(
+      <MemoryRouter>
+        <CollectionGameBoard game="/library/capablanca/442" startMove="8" showNextMoveArrow={false} />
+      </MemoryRouter>,
+    );
+    await screen.findByTestId("home-game-library-capablanca-442-players");
+    expect(screen.queryByTestId("home-game-library-capablanca-442-board-arrows")).not.toBeInTheDocument();
+    // The move is still there to play.
+    expect(screen.getByRole("button", { name: "d5" })).toBeInTheDocument();
+  });
+
   it.each(["/library/capablanca", "/repertoires/x/1", "/library/capablanca/0"])(
     "says an address that is no game's, %s, names nothing",
     async (game) => {

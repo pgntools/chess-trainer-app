@@ -41,6 +41,8 @@ type CollectionCardProps = {
   startMove?: string;
   /** How many games the table shows at a time. Default 8. */
   rows?: number | string;
+  /** Draw the arrows to the next moves on its board. Default on. */
+  showNextMoveArrow?: boolean;
 };
 
 const DEFAULT_ROWS = 8;
@@ -50,7 +52,7 @@ const wholeAtLeastOne = (value: number | string | undefined, fallback: number): 
   return number !== undefined && Number.isInteger(number) && number >= 1 ? number : fallback;
 };
 
-export function CollectionCard({ _id, showGame, startMove, rows: rowsPerPage }: CollectionCardProps) {
+export function CollectionCard({ _id, showGame, startMove, rows: rowsPerPage, showNextMoveArrow }: CollectionCardProps) {
   const { t, i18n } = useTranslation();
   const collectionId = collectionPathOf(_id);
   const state = useCollectionRows(collectionId);
@@ -145,6 +147,7 @@ export function CollectionCard({ _id, showGame, startMove, rows: rowsPerPage }: 
           key={game}
           reference={libraryGameReference(summary.id, game)}
           startMove={picked ? undefined : startMove}
+          showNextMoveArrow={showNextMoveArrow}
         />
         <Box sx={{ display: "grid", gap: 1, minWidth: 0 }}>
           <DataTable

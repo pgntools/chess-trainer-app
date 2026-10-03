@@ -77,6 +77,8 @@ type DemoBoardProps = {
   initialLine?: readonly string[];
   /** Which way the board opens facing; the side to move at the start when absent. Read on mount. */
   initialOrientation?: "white" | "black";
+  /** Draw the arrows to the next moves over the board. Default on; off, the list under the board still offers them. */
+  nextMoveArrows?: boolean;
 };
 
 function DemoBoard({
@@ -88,6 +90,7 @@ function DemoBoard({
   startCaption,
   initialLine,
   initialOrientation,
+  nextMoveArrows = true,
 }: DemoBoardProps) {
   const { t } = useTranslation();
   const squareOptions = useBoardSquareOptions();
@@ -233,13 +236,15 @@ function DemoBoard({
 
       <ForceLTR sx={{ position: "relative", width: "100%", aspectRatio: "1 / 1" }}>
         <Chessboard options={options} />
-        <ChanceArrows
-          testId={`${testId}-arrows`}
-          nodes={continuations}
-          chances={continuations.map((move) => move.node.chance)}
-          hoveredId={hovered}
-          orientation={orientation}
-        />
+        {nextMoveArrows && (
+          <ChanceArrows
+            testId={`${testId}-arrows`}
+            nodes={continuations}
+            chances={continuations.map((move) => move.node.chance)}
+            hoveredId={hovered}
+            orientation={orientation}
+          />
+        )}
         {promotion && (
           <PromotionPicker
             targetSquare={promotion.to}

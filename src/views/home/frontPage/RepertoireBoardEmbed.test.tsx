@@ -62,6 +62,12 @@ describe("<RepertoireBoard> (CTA-126)", () => {
     expect(screen.getByRole("link", { name: "Add your own repertoire" })).toHaveAttribute("href", "/repertoires/new");
   });
 
+  it("passes showNextMoveArrow={false} on to its board", async () => {
+    renderBoard({ _id: "/repertoires/none", fallback: "e4-white", startMove: "1", showNextMoveArrow: false });
+    await screen.findByTestId("home-repertoire-sample-e4-white-name");
+    expect(screen.queryByTestId("home-repertoire-sample-e4-white-board-arrows")).not.toBeInTheDocument();
+  });
+
   it("says the repertoire is not here when it has no fallback", async () => {
     renderBoard({ _id: "/repertoires/not-on-this-device" });
     expect(await screen.findByText("The repertoire this page embeds is not on this device.")).toBeInTheDocument();

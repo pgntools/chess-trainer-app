@@ -158,6 +158,14 @@ describe("the demo board (CTA-126)", () => {
     expect(boardOptions().position).toBe(START);
   });
 
+  it("draws no next-move arrows with nextMoveArrows={false} — the list still offers the moves", () => {
+    render(
+      <DemoBoard boardId="demo-test-board" testId="demo" label="Sample board" root={repertoire()} nextMoveArrows={false} />,
+    );
+    expect(screen.queryByTestId("demo-arrows")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "e4" })).toBeInTheDocument();
+  });
+
   it("passes axe", async () => {
     renderBoard(repertoire());
     drop("e2", "e4");

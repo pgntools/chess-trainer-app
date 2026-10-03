@@ -19,3 +19,15 @@
 ```
 
 The board's "Back to the start" goes to the game's own start, wherever it opened.
+
+## Without the arrows
+
+An arrow on the board gives the next move away. For a position the reader should think about first, `showNextMoveArrow={false}` leaves the arrows off; the move is still in the list under the board.
+
+<BoardRow columns={2}>
+  <CollectionGameBoard game="/library/capablanca/4" startMove="5" showNextMoveArrow={false} />
+</BoardRow>
+
+```mdx
+<CollectionGameBoard game="/library/capablanca/4" startMove="5" showNextMoveArrow={false} />
+```

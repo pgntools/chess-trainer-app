@@ -36,6 +36,8 @@ type RepertoireBoardEmbedProps = {
   startMove?: string;
   /** The sample shown when the repertoire is not on this device: `e4-white`, `caro-kann-black`. */
   fallback?: RepertoireSampleId;
+  /** Draw the arrows to the next moves. Default on. */
+  showNextMoveArrow?: boolean;
 };
 
 type Shown =
@@ -44,7 +46,7 @@ type Shown =
   | { kind: "saved"; id: string; name: string; root: DemoNode; startFen: string; color: "white" | "black" }
   | { kind: "sample"; sample: RepertoireSampleId; root: DemoNode; color: "white" | "black" };
 
-export function RepertoireBoardEmbed({ _id, startMove, fallback }: RepertoireBoardEmbedProps) {
+export function RepertoireBoardEmbed({ _id, startMove, fallback, showNextMoveArrow }: RepertoireBoardEmbedProps) {
   const { t } = useTranslation();
   const repertoires = useSavedRepertoires();
   const id = repertoirePathOf(_id);
@@ -109,6 +111,7 @@ export function RepertoireBoardEmbed({ _id, startMove, fallback }: RepertoireBoa
         startCaption={t("home.repertoire.start")}
         initialLine={startLineOf(shown.root, startMove, shown.kind === "saved" ? shown.startFen : undefined)}
         initialOrientation={shown.color}
+        nextMoveArrows={showNextMoveArrow}
       />
       {shown.kind === "saved" ? (
         <Button

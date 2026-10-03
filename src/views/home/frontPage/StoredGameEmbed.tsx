@@ -47,12 +47,14 @@ type StoredGameEmbedProps = {
   startMove?: string;
   /** What the "not here" notice names — the reference when absent (`<CollectionGameBoard>` passes its path). */
   shownAs?: string;
+  /** Draw the arrows to the next moves. Default on. */
+  showNextMoveArrow?: boolean;
 };
 
 const isRead = (reference: string) =>
   (!isAnalysisReference(reference) || savedAnalysesSnapshot() !== undefined) && isReferenceRead(reference);
 
-export function StoredGameEmbed({ reference, startMove, shownAs }: StoredGameEmbedProps) {
+export function StoredGameEmbed({ reference, startMove, shownAs, showNextMoveArrow }: StoredGameEmbedProps) {
   const { t } = useTranslation();
   const [readReference, setReadReference] = useState<string | null>(() => (isRead(reference) ? reference : null));
   const ready = readReference === reference;
@@ -135,6 +137,7 @@ export function StoredGameEmbed({ reference, startMove, shownAs }: StoredGameEmb
         startFen={tree.startFen}
         startCaption={t("home.embed.start")}
         initialLine={startLineOf(root, startMove, tree.startFen)}
+        nextMoveArrows={showNextMoveArrow}
       />
       <Button
         component={RouterLink}

@@ -34,6 +34,7 @@ import game from "./rubinstein-capablanca-1911.pgn?raw"
 
 - `pgn` — the game, as PGN. Its first game is read, with its side lines, comments and `!` / `?` marks.
 - `game` — which game of a PGN holding several, counted from 1 (a lichess study's chapters). Default the first.
+- `showNextMoveArrow={false}` — no arrows to the next moves on the board (green the game's, blue a side line's); the moves stay in the list, and a comment's own drawing still shows.
 - `shapes` — the arrows and circles a comment draws (`[%cal]`, `[%csl]`), on by default; `shapes={false}` leaves them off. See [Arrows and circles](/blog/inline-pgn/arrows-and-circles).
 - `from`, `to` — the first and last position the reader can reach, as move numbers: `"9"` is the position after White's 9th move, `"9..."` after Black's. Absent: the start and the end. See [Windows](/blog/inline-pgn/windows).
 - `start` — where the board opens: a move number, or a line of moves that may go into a side line. Absent: `from`. See [Side lines](/blog/inline-pgn/variations).

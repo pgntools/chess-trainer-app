@@ -71,6 +71,8 @@ type ExcerptBoardProps = {
   caption?: ReactNode;
   /** Draw the PGN's `[%cal]` / `[%csl]` shapes. Default on. */
   shapes?: boolean;
+  /** Draw the arrows to the next moves over the board. Default on; off, the move list still offers them. */
+  nextMoveArrows?: boolean;
 };
 
 /** A move of the list — `VariationLine`'s token: monospace, 24 px, current by `aria-current`. */
@@ -121,6 +123,7 @@ function ExcerptBoard({
   showComments,
   caption,
   shapes: drawShapes = true,
+  nextMoveArrows = true,
 }: ExcerptBoardProps) {
   const { t } = useTranslation();
   const squareOptions = useBoardSquareOptions();
@@ -196,7 +199,9 @@ function ExcerptBoard({
     allowDrawingArrows: false,
     arrows: drawn
       ? drawing.arrows.map(({ brush, from, to }) => ({ startSquare: from, endSquare: to, color: tokens.drawing[brush] }))
-      : nextMoveArrowsOf(onward, null, tokens.arrowPalettes.classic),
+      : nextMoveArrows
+        ? nextMoveArrowsOf(onward, null, tokens.arrowPalettes.classic)
+        : [],
     squareStyles: node === undefined ? {} : lastMoveSquareStyles(node.from, node.to, tokens.lastMove),
     canDragPiece: ({ piece }) => piece.pieceType.startsWith(turn),
     onPieceDrop,
