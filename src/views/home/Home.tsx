@@ -28,7 +28,7 @@ const Home = () => {
   useOwnPageHeading();
 
   return (
-    <Box data-testid="home-page" sx={{ height: "100%", overflowY: "auto", p: 1 }}>
+    <Box data-testid="home-page" sx={{ p: 1 }}>
       <Typography variant="h4" component="h1" sx={{ fontWeight: 600, mb: 1 }}>
         {article === undefined ? t("blog.missingTitle") : localizedText(article.title, language)}
       </Typography>

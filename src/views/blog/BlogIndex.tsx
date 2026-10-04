@@ -46,7 +46,7 @@ function BlogIndex() {
         ];
 
   return (
-    <Box data-testid="blog-index" sx={{ height: "100%", overflowY: "auto", p: 1 }}>
+    <Box data-testid="blog-index" sx={{ p: 1 }}>
       {crumbs.length > 0 && (
         <Breadcrumbs ariaLabel={t("blog.breadcrumbs")} crumbs={crumbs} current={title} testId="blog-index-crumbs" />
       )}

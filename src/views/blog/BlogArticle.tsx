@@ -36,7 +36,7 @@ function BlogArticle() {
   ];
 
   return (
-    <Box data-testid="blog-article" sx={{ height: "100%", overflowY: "auto", p: 1 }}>
+    <Box data-testid="blog-article" sx={{ p: 1 }}>
       <Breadcrumbs
         ariaLabel={t("blog.breadcrumbs")}
         crumbs={crumbs}

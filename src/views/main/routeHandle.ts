@@ -13,6 +13,14 @@ export type ShellHandle = {
    */
   fullWidth?: boolean;
   /**
+   * The screen is an article — the front page and the Blog (CTA-130): the
+   * full body as `fullWidth` gives it, with the content in one column
+   * centred at a readable width (`ARTICLE_MAX_WIDTH_PX`),
+   * the whole body's width on a window narrower than that. The column
+   * scrolls the page, not the screen inside it. Implies `fullWidth`.
+   */
+  article?: boolean;
+  /**
    * The screen's name — a catalog key (`pages.*`), CTA-112. The shell makes
    * the page title of it ("Lobby — Chess Trainer App"), names the `main`
    * landmark by it and renders it as the page's `h1`. It is also the screen's
@@ -26,11 +34,26 @@ export type ShellHandle = {
 /** The handle a full-width route carries. */
 export const FULL_WIDTH_ROUTE: ShellHandle = { fullWidth: true };
 
+/**
+ * An article's column at its widest, in pixels (CTA-130): prose at a readable
+ * line length on a wide window, and still room for a row of three boards or a
+ * crosstable. A maximum, not a width — under it the column is the body's
+ * whole width, down to 320 px (WCAG 1.4.10, the reflow gate).
+ */
+export const ARTICLE_MAX_WIDTH_PX = 960;
+
+/** The handle an article route carries — the front page and every Blog route (CTA-130). */
+export const ARTICLE_ROUTE: ShellHandle = { fullWidth: true, article: true };
+
 const handleOf = (match: UIMatch): ShellHandle | undefined => match.handle as ShellHandle | undefined;
 
-/** Whether any matched route asks for the full body. */
+/** Whether any matched route asks for the full body — an article does too. */
 export const isFullWidthRoute = (matches: readonly UIMatch[]): boolean =>
-  matches.some((match) => handleOf(match)?.fullWidth === true);
+  matches.some((match) => handleOf(match)?.fullWidth === true || handleOf(match)?.article === true);
+
+/** Whether any matched route asks for the article look (CTA-130). */
+export const isArticleRoute = (matches: readonly UIMatch[]): boolean =>
+  matches.some((match) => handleOf(match)?.article === true);
 
 /** The deepest matched route's title key, or `undefined` for a route that names none. */
 export const titleKeyOf = (matches: readonly UIMatch[]): string | undefined =>

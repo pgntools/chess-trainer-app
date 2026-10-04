@@ -14,7 +14,8 @@ import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { DefaultLayout } from "./Layout";
 import { RightPanel } from "./rightPanel";
 import { LeftPanel } from "./leftPanel";
-import { FULL_WIDTH_ROUTE } from "./routeHandle";
+import { ForceLTR } from "../../theme/ForceLTR";
+import { ARTICLE_MAX_WIDTH_PX, ARTICLE_ROUTE, FULL_WIDTH_ROUTE } from "./routeHandle";
 
 /** The one throwaway screen most of these tests put behind the `<Outlet />`. */
 const blankScreen: RouteObject[] = [
@@ -210,6 +211,58 @@ describe("a full-width route (CTA-107)", () => {
     expect(screen.queryByTestId("layout-full-body")).toBeNull();
     expect(screen.getByTestId("layout-board-square-body")).toContainElement(screen.getByTestId("screen"));
     expect(screen.getByTestId("layout-board-square-sidebar")).toBeInTheDocument();
+  });
+});
+
+describe("an article route — the front page, the Blog (CTA-130)", () => {
+  /** An article's kind of screen: prose, and a board that pins itself as `DemoBoard` does. */
+  const Article = () => (
+    <div data-testid="article-screen">
+      <p data-testid="article-prose">Prose</p>
+      <ForceLTR>
+        <div data-testid="article-board" />
+      </ForceLTR>
+    </div>
+  );
+  const routes: RouteObject[] = [
+    { index: true, element: <div data-testid="screen" /> },
+    { path: "article", element: <Article />, handle: ARTICLE_ROUTE },
+    { path: "wide", element: <div data-testid="wide-screen" />, handle: FULL_WIDTH_ROUTE },
+  ];
+
+  it("is the whole body, the content in one centred column at a readable width — no square, no aside", () => {
+    renderShell(routes, ["/article"]);
+    const body = screen.getByTestId("layout-full-body");
+    const column = screen.getByTestId("layout-article-column");
+    expect(body).toContainElement(column);
+    expect(column).toContainElement(screen.getByTestId("article-screen"));
+    expect(column).toHaveStyle({ width: "100%", maxWidth: `${ARTICLE_MAX_WIDTH_PX}px` });
+    // The body scrolls the article, so the scrollbar is the page's.
+    expect(body).toHaveStyle({ overflowY: "auto" });
+    expect(screen.queryByTestId("layout-board-square-body")).toBeNull();
+    expect(screen.queryByTestId("layout-board-square-sidebar")).toBeNull();
+    expect(screen.getByRole("main")).toBe(body);
+    // The nav rail stays.
+    expect(screen.getByTestId("layout-sidebar-container")).toBeInTheDocument();
+  });
+
+  it("leaves a full-width route its whole width, and a board route its square and aside", async () => {
+    const { router } = renderShell(routes, ["/wide"]);
+    expect(screen.getByTestId("layout-full-body")).toContainElement(screen.getByTestId("wide-screen"));
+    expect(screen.queryByTestId("layout-article-column")).toBeNull();
+    await act(() => router.navigate("/"));
+    expect(screen.queryByTestId("layout-full-body")).toBeNull();
+    expect(screen.getByTestId("layout-board-square-body")).toContainElement(screen.getByTestId("screen"));
+    expect(screen.getByTestId("layout-board-square-sidebar")).toBeInTheDocument();
+  });
+
+  it("mirrors under Hebrew — no shell ForceLTR — while a board it embeds stays left to right", async () => {
+    await i18n.changeLanguage("he");
+    renderShell(routes, ["/article"]);
+    expect(nearestCache(screen.getByTestId("layout-article-column"))).toBe("muirtl");
+    expect(screen.getByTestId("article-prose").closest("[dir]")).toBe(document.body);
+    expect(screen.getByTestId("article-board").closest("[dir]")).toHaveAttribute("dir", "ltr");
+    expect(nearestCache(screen.getByTestId("article-board"))).toBe("muiltr");
   });
 });
 
@@ -643,6 +696,23 @@ describe("the shell under its breakpoint (CTA-118)", () => {
     expect(screen.getByTestId("layout-skip-link")).toBeInTheDocument();
     expect(screen.getAllByRole("main")).toHaveLength(1);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(navButton()).toBeInTheDocument();
+  });
+
+  it("gives an article the body's whole width under the breakpoint, its column still the page", () => {
+    stubCompactWindow();
+    renderShell(
+      [
+        { index: true, element: <div data-testid="screen" /> },
+        { path: "article", element: <p data-testid="article-screen">Prose</p>, handle: ARTICLE_ROUTE },
+      ],
+      ["/article"],
+    );
+
+    // A maximum, not a width: under it the column is the whole body (the reflow gate).
+    expect(screen.getByTestId("layout-article-column")).toHaveStyle({ width: "100%", maxWidth: `${ARTICLE_MAX_WIDTH_PX}px` });
+    expect(screen.getByTestId("layout-article-column")).toContainElement(screen.getByTestId("article-screen"));
+    expect(screen.queryByTestId("layout-board-square-sidebar")).toBeNull();
     expect(navButton()).toBeInTheDocument();
   });
 

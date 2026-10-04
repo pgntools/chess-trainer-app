@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { createMemoryRouter, MemoryRouter, RouterProvider } from "react-router";
 
 import i18n from "../../i18n";
 import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
+import { InlinePgnGame } from "../home/frontPage/InlinePgnGame";
+import { RepertoireBoardEmbed } from "../home/frontPage/RepertoireBoardEmbed";
+import { DefaultLayout } from "../main/Layout";
 import { createPageTitleStore, PageTitleContext, type PageTitleStore } from "../main/pageTitle";
+import { ARTICLE_ROUTE } from "../main/routeHandle";
 import { BLOG_ARTICLES } from "./articles";
 import BlogArticle from "./BlogArticle";
 import BlogIndex from "./BlogIndex";
@@ -113,4 +117,58 @@ describe("a Blog article (CTA-126)", () => {
       expect(document.querySelector('[data-testid^="tournament-"][data-testid$="-unreadable"]')).toBeNull();
     },
   );
+});
+
+describe("an article's boards under Hebrew, with no shell ForceLTR (CTA-130)", () => {
+  /*
+    An article is the shell's full body, which mirrors with the app: nothing
+    above a board pins it left to right any more. Every board an article
+    embeds is one of two — `DemoBoard` (`<CollectionGameBoard>`,
+    `<RepertoireBoard>`, `<CollectionCard>`, `<StoredGameEmbed>`) or
+    `ExcerptBoard` (`<InlinePgnGame>`) — and each pins itself. Rendered here
+    straight into the article column, as a translated article's document
+    would be (an untranslated one sits in `ArticleBody`'s own `ForceLTR`).
+  */
+  it("keeps every board's files a to h left to right while the prose mirrors", async () => {
+    await i18n.changeLanguage("he");
+    const router = createMemoryRouter(
+      [
+        {
+          path: "/",
+          element: <DefaultLayout />,
+          children: [
+            {
+              path: "blog/translated",
+              handle: ARTICLE_ROUTE,
+              element: (
+                <>
+                  <p data-testid="prose">מאמר</p>
+                  <InlinePgnGame pgn="1. e4 e5 2. Nf3 *" />
+                  <RepertoireBoardEmbed _id="/repertoires/none" fallback="e4-white" />
+                </>
+              ),
+            },
+          ],
+        },
+      ],
+      { initialEntries: ["/blog/translated"] },
+    );
+    render(
+      <AppThemeWithLang>
+        <RouterProvider router={router} />
+      </AppThemeWithLang>,
+    );
+
+    await screen.findByTestId("home-repertoire-sample-e4-white-name");
+    const column = screen.getByTestId("layout-article-column");
+    expect(screen.queryByTestId("layout-board-square-sidebar")).toBeNull();
+    expect(screen.getByTestId("prose").closest("[dir]")).toBe(document.body);
+    const boards = within(column).getAllByTestId("board");
+    expect(boards).toHaveLength(2);
+    for (const board of boards) {
+      expect(board.closest("[dir]")).toHaveAttribute("dir", "ltr");
+      // Inside the column, not above it: the board's own ForceLTR.
+      expect(column).toContainElement(board.closest("[dir]") as HTMLElement);
+    }
+  });
 });

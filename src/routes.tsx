@@ -2,7 +2,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import type { RouteObject } from "react-router";
 
 import { DefaultLayout } from './views/main/Layout';
-import { FULL_WIDTH_ROUTE } from './views/main/routeHandle';
+import { ARTICLE_ROUTE, FULL_WIDTH_ROUTE } from './views/main/routeHandle';
 import { default as HomeScreen  } from './views/home/Main'
 import { default as PlayWithEngineScreen  } from './views/engine/play/Main'
 import { default as PlayedGamesScreen  } from './views/engine/games/Main'
@@ -93,7 +93,7 @@ export const appRoutes: RouteObject[] = [
       ,
       children: [
         {
-          index: true, element: <HomeScreen />, handle: { title: "pages.home" }
+          index: true, element: <HomeScreen />, handle: { ...ARTICLE_ROUTE, title: "pages.home" }
         },
         {
           path: "/engine/play",
@@ -208,161 +208,163 @@ export const appRoutes: RouteObject[] = [
         // article: the article named by its address in
         // `views/blog/articles.ts`, its document `articles/<path>.mdx`. A new
         // article is a line here and one in `e2e/a11y/routes.ts`
-        // (`views/blog/articles.test.ts` holds them to the registry).
+        // (`views/blog/articles.test.ts` holds them to the registry). Every
+        // one, and the front page above, is an article (`ARTICLE_ROUTE`,
+        // CTA-130): no board square, no aside, one centred column.
         {
           path: "/blog",
           element: <BlogIndexScreen />,
-          handle: { title: "pages.blog" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blog" }
         },
         {
           path: "/blog/*",
           element: <BlogIndexScreen />,
-          handle: { title: "pages.blog" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blog" }
         },
         {
           path: "/blog/get-started",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/components/game-boards-3col",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/components/start-move",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/components/repertoires-2col",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/components/collection-wide-view-1",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/components/collection-wide-view-2",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/components/stored-game-embed",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/components/nav-cards",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/inline-pgn/the-component",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/inline-pgn/windows",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/inline-pgn/variations",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/inline-pgn/arrows-and-circles",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/inline-pgn/rubinstein-capablanca-1911",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/tournaments/olympiad-2026",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/tournaments/fide-candidates-2026",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/tournaments/werner-obermeyer-swiss-2026",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/tournaments/green-hills-masters-rapid-2026",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/demo-tables/swiss",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/demo-tables/single-round-robin",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/demo-tables/double-round-robin",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/demo-tables/knockout",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/demo-tables/double-elimination",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/demo-tables/match",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/demo-tables/team",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/demo-tables/from-a-collection",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/demo-tables/knockout-from-a-collection",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/demo-tables/double-elimination-from-a-collection",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/demo-tables/team-from-a-collection",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         {
           path: "/blog/writing-an-article/guide",
           element: <BlogArticleScreen />,
-          handle: { title: "pages.blogArticle" }
+          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
         },
         // Settings (CTA-86): one tab per segment — Export today. `/settings`
         // and an unknown tab land on the first.
