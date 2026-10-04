@@ -9,7 +9,7 @@ import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { expectNoAxeViolations, PAGE_STRUCTURE_RULES } from "../../test/axe";
 import { DefaultLayout } from "./Layout";
 import { useOwnPageHeading, usePageTitle } from "./pageTitle";
-import { FULL_WIDTH_ROUTE } from "./routeHandle";
+import { ARTICLE_ROUTE, FULL_WIDTH_ROUTE } from "./routeHandle";
 
 /*
   The page a screen reader walks (CTA-112): the title, the landmarks, the skip
@@ -51,6 +51,17 @@ const Collection = () => {
 /** A full-width screen — the design gallery's kind. */
 const Wide = () => <p>The gallery</p>;
 
+/** An article — the front page's and the Blog's kind (CTA-130): its title is its own `h1`. */
+const Article = () => {
+  useOwnPageHeading();
+  return (
+    <>
+      <h1>Get started</h1>
+      <p>The article.</p>
+    </>
+  );
+};
+
 const routes: RouteObject[] = [
   { index: true, element: <Plain />, handle: { title: "pages.home" } },
   { path: "/engine/games", element: <OwnHeading />, handle: { title: "pages.lobby" } },
@@ -58,6 +69,7 @@ const routes: RouteObject[] = [
   { path: "/settings/import", element: <WithRecord name="Import" />, handle: { title: "pages.settings" } },
   { path: "/library/c", element: <Late />, handle: { title: "pages.collection" } },
   { path: "/dev/design", element: <Wide />, handle: { ...FULL_WIDTH_ROUTE, title: "pages.designSystem" } },
+  { path: "/blog/get-started", element: <Article />, handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" } },
 ];
 
 const renderShell = (initialEntries: string[] = ["/"]) => {
@@ -123,6 +135,14 @@ describe("landmarks and the skip link (CTA-112)", () => {
     expect(screen.queryByRole("complementary")).toBeNull();
   });
 
+  it("gives an article the one main, its own h1, and no panel (CTA-130)", () => {
+    renderShell(["/blog/get-started"]);
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    expect(within(screen.getByRole("main")).getByRole("heading", { level: 1, name: "Get started" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.queryByRole("complementary")).toBeNull();
+  });
+
   it("puts the skip link first in the tab order; it takes the focus to main", async () => {
     const user = userEvent.setup();
     renderShell();
@@ -151,6 +171,11 @@ describe("landmarks and the skip link (CTA-112)", () => {
 
   it("passes them on a full-width screen too", async () => {
     renderShell(["/dev/design"]);
+    await expectNoAxeViolations(document.documentElement, { enable: PAGE_STRUCTURE_RULES });
+  });
+
+  it("passes them on an article too", async () => {
+    renderShell(["/blog/get-started"]);
     await expectNoAxeViolations(document.documentElement, { enable: PAGE_STRUCTURE_RULES });
   });
 });

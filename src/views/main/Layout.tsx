@@ -16,7 +16,7 @@ import { Footer } from './Footer';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
 import { LeftPanelOutlet, LeftPanelProvider } from './leftPanel';
-import { isFullWidthRoute, pageTitleOf, titleKeyOf } from './routeHandle';
+import { ARTICLE_MAX_WIDTH_PX, isArticleRoute, isFullWidthRoute, pageTitleOf, titleKeyOf } from './routeHandle';
 import { createPageTitleStore, PageTitleContext } from './pageTitle';
 import { visuallyHidden } from '../../design-system/components/a11y';
 import { ForceLTR } from '../../theme/ForceLTR';
@@ -356,6 +356,8 @@ const DefaultLayoutViewport = () => {
     // A route whose `handle` asks for the whole body (`routeHandle.ts`) gets
     // it: no square, no aside. Every other route gets the shell below as is.
     const fullWidth = isFullWidthRoute(matches);
+    // An article (the front page, the Blog — CTA-130) is that, centred.
+    const article = isArticleRoute(matches);
 
     /*
       The navigation drawer (CTA-118), open only under the breakpoint. It
@@ -605,10 +607,41 @@ const DefaultLayoutViewport = () => {
                             <Box
                                 {...mainProps}
                                 data-testid="layout-full-body"
-                                sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, outline: 'none' }}
+                                sx={{
+                                    flexGrow: 1,
+                                    minWidth: 0,
+                                    minHeight: 0,
+                                    outline: 'none',
+                                    // An article scrolls here, the body's
+                                    // whole height, so the scrollbar is the
+                                    // page's and not the column's.
+                                    ...(article ? { overflowY: 'auto' } : {}),
+                                }}
                             >
-                                {pageHeading}
-                                <Outlet />
+                                {article ? (
+                                    /*
+                                      The article's column (CTA-130): centred,
+                                      at most a readable width, the whole body
+                                      under it — so it reflows at 320 px. No
+                                      ForceLTR: the boards an article embeds
+                                      pin themselves (`DemoBoard`,
+                                      `ExcerptBoard`), and the prose mirrors.
+                                    */
+                                    <Box
+                                        data-testid="layout-article-column"
+                                        sx={{
+                                            width: '100%',
+                                            maxWidth: `${ARTICLE_MAX_WIDTH_PX}px`,
+                                            marginInline: 'auto',
+                                        }}
+                                    >
+                                        {pageHeading}
+                                        <Outlet />
+                                    </Box>
+                                ) : (<>
+                                    {pageHeading}
+                                    <Outlet />
+                                </>)}
                             </Box>
                         ) : (<>
                         {/*

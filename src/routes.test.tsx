@@ -67,6 +67,16 @@ describe("every route's page title (CTA-112)", () => {
     expect(titleAt(path)).toBe(title);
   });
 
+  it("makes the front page and every Blog route an article, and no other (CTA-130)", () => {
+    for (const route of leaves(appRoutes)) {
+      const handle = route.handle as ShellHandle | undefined;
+      const article = route.index === true || route.path === "/blog" || (route.path ?? "").startsWith("/blog/");
+      expect(handle?.article === true, `route ${route.path ?? "(index)"}`).toBe(article);
+      // An article is the full body: no board square, no aside.
+      if (article) expect(handle?.fullWidth, `route ${route.path ?? "(index)"}`).toBe(true);
+    }
+  });
+
   it("puts an open record's name first, in either language", async () => {
     await i18n.changeLanguage("en");
     expect(titleAt("/library/tal", "Tal")).toBe("Tal — Collection — Chess Trainer App");
