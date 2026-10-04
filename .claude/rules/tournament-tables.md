@@ -22,6 +22,7 @@ paths:
   - "src/views/home/frontPage/*Embed*"
   - "src/views/home/frontPage/pgnTournament.ts"
   - "src/views/blog/articles/tournaments/**"
+  - "src/views/blog/articles/writing-an-article/demo-tables/**"
   - "src/test/fixtures/tournamentGames.ts"
   - "src/test/fixtures/formatGames.ts"
 ---
@@ -33,8 +34,10 @@ a **Swiss's standings**, a **round robin's crosstable** (single or double),
 a **knockout's bracket** (and a double elimination's two, and a team
 knockout's), a **two-player match**, a **team event's standings**. Built
 ahead of their screen (CTA-120, CTA-128); today their one consumer is the
-Blog — the *Tournaments* folder (`/blog/tournaments/…`) and its *Demo
-tables* subfolder, a page per format (`/blog/tournaments/demo-tables/<format>`).
+Blog — the *Tournaments* folder (`/blog/tournaments/…`), and *Writing an
+article → Demo tables*, a page per format
+(`/blog/writing-an-article/demo-tables/<format>`, its files under
+`articles/writing-an-article/demo-tables/`).
 
 This file is the one reference: the layers, how each format is read from its
 tags, the rules each table ranks by, the MDX embeds with every prop, how a
@@ -242,8 +245,9 @@ shows its table and no boards, and its page says so.
 
 1. **The PGN** beside the article, under `src/views/blog/articles/tournaments/`
    — TWIC's own file name (`chgbr26.pgn`). One copy: the articles share it
-   (`../chgbr26.pgn?raw` from `demo-tables/`).
-2. **The article** `…/tournaments/<name>.mdx` (or `demo-tables/<format>.mdx`):
+   (`../../tournaments/chgbr26.pgn?raw` from `writing-an-article/demo-tables/`).
+2. **The article** `…/tournaments/<name>.mdx` (or
+   `writing-an-article/demo-tables/<format>.mdx`):
    an intro, the table, the markup or selected games, and **a Source
    section crediting TWIC** — the event's page and its PGN:
 

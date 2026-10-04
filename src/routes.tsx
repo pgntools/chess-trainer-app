@@ -225,62 +225,62 @@ export const appRoutes: RouteObject[] = [
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/components/game-boards-3col",
+          path: "/blog/writing-an-article/components/game-boards-3col",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/components/start-move",
+          path: "/blog/writing-an-article/components/start-move",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/components/repertoires-2col",
+          path: "/blog/writing-an-article/components/repertoires-2col",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/components/collection-wide-view-1",
+          path: "/blog/writing-an-article/components/collection-wide-view-1",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/components/collection-wide-view-2",
+          path: "/blog/writing-an-article/components/collection-wide-view-2",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/components/stored-game-embed",
+          path: "/blog/writing-an-article/components/stored-game-embed",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/components/nav-cards",
+          path: "/blog/writing-an-article/components/nav-cards",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/inline-pgn/the-component",
+          path: "/blog/writing-an-article/inline-pgn/the-component",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/inline-pgn/windows",
+          path: "/blog/writing-an-article/inline-pgn/windows",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/inline-pgn/variations",
+          path: "/blog/writing-an-article/inline-pgn/variations",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/inline-pgn/arrows-and-circles",
+          path: "/blog/writing-an-article/inline-pgn/arrows-and-circles",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/inline-pgn/rubinstein-capablanca-1911",
+          path: "/blog/writing-an-article/inline-pgn/rubinstein-capablanca-1911",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
@@ -300,42 +300,42 @@ export const appRoutes: RouteObject[] = [
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/tournaments/demo-tables/swiss",
+          path: "/blog/writing-an-article/demo-tables/swiss",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/tournaments/demo-tables/single-round-robin",
+          path: "/blog/writing-an-article/demo-tables/single-round-robin",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/tournaments/demo-tables/double-round-robin",
+          path: "/blog/writing-an-article/demo-tables/double-round-robin",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/tournaments/demo-tables/knockout",
+          path: "/blog/writing-an-article/demo-tables/knockout",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/tournaments/demo-tables/double-elimination",
+          path: "/blog/writing-an-article/demo-tables/double-elimination",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/tournaments/demo-tables/match",
+          path: "/blog/writing-an-article/demo-tables/match",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/tournaments/demo-tables/team",
+          path: "/blog/writing-an-article/demo-tables/team",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },
         {
-          path: "/blog/guides/writing-an-article",
+          path: "/blog/writing-an-article/guide",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }
         },

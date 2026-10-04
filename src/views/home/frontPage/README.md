@@ -7,7 +7,7 @@ nothing is fetched or compiled in the browser.
 
 | Where | What |
 | --- | --- |
-| `src/views/blog/articles/<path>.mdx` | an article (`<path>.he.mdx` beside it when translated) — `src/views/blog/articles/guides/writing-an-article.mdx` is the how-to |
+| `src/views/blog/articles/<path>.mdx` | an article (`<path>.he.mdx` beside it when translated) — `src/views/blog/articles/writing-an-article/guide.mdx` is the how-to |
 | `src/views/blog/articles.ts` | the articles' registry: their titles, the page's `h1` |
 | `src/views/home/frontPageArticle.ts` | **which article the front page shows** — one line |
 | this folder | the components below, and `index.ts`, the map that gives them their names |

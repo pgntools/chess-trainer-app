@@ -20,7 +20,7 @@ import type { LocalizedText } from "../../lib/localizedText";
  *
  * The article's title is its page's `h1` (the screen renders it), so the
  * document itself starts below it, at `##`. The
- * how-to is itself an article: `articles/guides/writing-an-article.mdx`.
+ * how-to is itself an article: `articles/writing-an-article/guide.mdx`.
  */
 
 export type BlogFolder = {
@@ -38,11 +38,12 @@ type BlogArticleEntry = {
 };
 
 export const BLOG_FOLDERS: readonly BlogFolder[] = [
-  { path: "components", title: { en: "Components", he: "רכיבים" } },
-  { path: "inline-pgn", title: { en: "Games in an article", he: "משחקים בתוך מאמר" } },
   { path: "tournaments", title: { en: "Tournaments", he: "טורנירים" } },
-  { path: "tournaments/demo-tables", title: { en: "Demo tables", he: "טבלאות לדוגמה" } },
-  { path: "guides", title: { en: "Guides", he: "מדריכים" } },
+  // How an article is written, and every component it may embed shown at work (CTA-128 gathered them here).
+  { path: "writing-an-article", title: { en: "Writing an article", he: "כתיבת מאמר" } },
+  { path: "writing-an-article/components", title: { en: "Components", he: "רכיבים" } },
+  { path: "writing-an-article/inline-pgn", title: { en: "Games in an article", he: "משחקים בתוך מאמר" } },
+  { path: "writing-an-article/demo-tables", title: { en: "Demo tables", he: "טבלאות לדוגמה" } },
 ];
 
 export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
@@ -56,7 +57,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/game-boards-3col",
+    path: "writing-an-article/components/game-boards-3col",
     title: { en: "Three game boards in a row", he: "שלושה לוחות משחק בשורה" },
     summary: {
       en: "<CollectionGameBoard> three times in a <BoardRow>: Library games, each opened before its famous move.",
@@ -64,7 +65,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/start-move",
+    path: "writing-an-article/components/start-move",
     title: { en: "Where a board opens: startMove", he: "איפה לוח נפתח: startMove" },
     summary: {
       en: "The forms startMove takes — White's move, Black's move, a line of moves.",
@@ -72,7 +73,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/repertoires-2col",
+    path: "writing-an-article/components/repertoires-2col",
     title: { en: "Two repertoires side by side", he: "שני רפרטוארים זה לצד זה" },
     summary: {
       en: "<RepertoireBoard> twice: a reader's repertoire, or its shipped sample.",
@@ -80,7 +81,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/collection-wide-view-1",
+    path: "writing-an-article/components/collection-wide-view-1",
     title: { en: "A collection across the page", he: "אוסף לרוחב הדף" },
     summary: {
       en: "<CollectionCard>: a board on one game and a short table of the collection's games.",
@@ -88,7 +89,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/collection-wide-view-2",
+    path: "writing-an-article/components/collection-wide-view-2",
     title: { en: "A collection, a longer table", he: "אוסף, טבלה ארוכה יותר" },
     summary: {
       en: "<CollectionCard> with more rows, opened at a move.",
@@ -96,7 +97,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/stored-game-embed",
+    path: "writing-an-article/components/stored-game-embed",
     title: { en: "Any stored game", he: "כל משחק שמור" },
     summary: {
       en: "<StoredGameEmbed>: a game by its ?game= reference — a Library game, a saved analysis, a game against the engine.",
@@ -104,7 +105,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/nav-cards",
+    path: "writing-an-article/components/nav-cards",
     title: { en: "Every screen as cards", he: "כל המסכים ככרטיסים" },
     summary: {
       en: "<NavCards>: the app's screens, by section — the landing page as it first was.",
@@ -112,7 +113,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "inline-pgn/the-component",
+    path: "writing-an-article/inline-pgn/the-component",
     title: { en: "A game in an article: InlinePgnGame", he: "משחק בתוך מאמר: InlinePgnGame" },
     summary: {
       en: "<InlinePgnGame>: a window of a game's moves on a board, side lines and all — every prop.",
@@ -120,7 +121,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "inline-pgn/windows",
+    path: "writing-an-article/inline-pgn/windows",
     title: { en: "Windows: from, to and start", he: "חלונות: from, to ו-start" },
     summary: {
       en: "Which moves a board shows, and where it opens — by move number or by ply.",
@@ -128,7 +129,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "inline-pgn/variations",
+    path: "writing-an-article/inline-pgn/variations",
     title: { en: "Side lines", he: "וריאנטים" },
     summary: {
       en: "Side lines nested where they branch, a board opened inside one, and the game's comments.",
@@ -136,7 +137,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "inline-pgn/arrows-and-circles",
+    path: "writing-an-article/inline-pgn/arrows-and-circles",
     title: { en: "Arrows and circles: [%cal] and [%csl]", he: "חצים ועיגולים: [%cal] ו-[%csl]" },
     summary: {
       en: "The arrows and circles a lichess study draws, read back from its PGN — five drawn positions and games.",
@@ -144,7 +145,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "inline-pgn/rubinstein-capablanca-1911",
+    path: "writing-an-article/inline-pgn/rubinstein-capablanca-1911",
     title: { en: "Rubinstein – Capablanca, San Sebastian 1911", he: "רובינשטיין – קפבלנקה, סן סבסטיאן 1911" },
     summary: {
       en: "A game review: Capablanca's own notes, with nine boards on the one game.",
@@ -176,7 +177,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "tournaments/demo-tables/swiss",
+    path: "writing-an-article/demo-tables/swiss",
     title: { en: "Swiss", he: "שוויצרי" },
     summary: {
       en: "<SwissStandingsTable>: the 112th British Championship — 108 players, nine rounds, ranked by points, Buchholz and Sonneborn-Berger.",
@@ -184,7 +185,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "tournaments/demo-tables/single-round-robin",
+    path: "writing-an-article/demo-tables/single-round-robin",
     title: { en: "Single round robin", he: "כל-נגד-כל" },
     summary: {
       en: "<RoundRobinCrossTable>: the Green Hills Resort Masters 2026 — eight players, each met once.",
@@ -192,7 +193,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "tournaments/demo-tables/double-round-robin",
+    path: "writing-an-article/demo-tables/double-round-robin",
     title: { en: "Double round robin", he: "כל-נגד-כל כפול" },
     summary: {
       en: "<RoundRobinCrossTable>: the FIDE Candidates 2026 — eight players, each met twice, two results a cell.",
@@ -200,7 +201,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "tournaments/demo-tables/knockout",
+    path: "writing-an-article/demo-tables/knockout",
     title: { en: "Knockout", he: "נוקאאוט" },
     summary: {
       en: "<KnockoutBracket>: the Dutch Championship 2026 — sixteen players, four rounds, tiebreaks counted.",
@@ -208,7 +209,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "tournaments/demo-tables/double-elimination",
+    path: "writing-an-article/demo-tables/double-elimination",
     title: { en: "Double-elimination knockout", he: "נוקאאוט כפול" },
     summary: {
       en: "<KnockoutBracket losersFromRound>: the Esports World Cup 2026 — the play-in's winners' and losers' brackets, then the final stage.",
@@ -216,7 +217,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "tournaments/demo-tables/match",
+    path: "writing-an-article/demo-tables/match",
     title: { en: "Match", he: "משחק בין שניים" },
     summary: {
       en: "<MatchTable>: Clutch Chess: The Legends 2026 — Topalov against Kasparov, twelve games.",
@@ -224,7 +225,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "tournaments/demo-tables/team",
+    path: "writing-an-article/demo-tables/team",
     title: { en: "Team events", he: "אירועי קבוצות" },
     summary: {
       en: "<TeamStandingsTable> and a team <KnockoutBracket>: the FIDE World Rapid and Blitz Team Championships 2026.",
@@ -232,7 +233,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "guides/writing-an-article",
+    path: "writing-an-article/guide",
     title: { en: "Writing an article", he: "כתיבת מאמר" },
     summary: {
       en: "Where an article's file goes, the lines that give it an address, and what it may embed.",
@@ -245,7 +246,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
 
 const files = import.meta.glob<{ default: MDXContent }>("./articles/**/*.mdx");
 
-/** `./articles/components/x.he.mdx` → `components/x`, `he`. */
+/** `./articles/writing-an-article/components/x.he.mdx` → `writing-an-article/components/x`, `he`. */
 const fileParts = (file: string): { path: string; language: string } => {
   const match = /^\.\/articles\/(.+?)(?:\.([a-z]{2}))?\.mdx$/.exec(file);
   return match === null ? { path: file, language: "" } : { path: match[1], language: match[2] ?? "en" };

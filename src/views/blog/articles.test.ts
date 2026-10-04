@@ -58,23 +58,30 @@ describe("the Blog's registry (CTA-126)", () => {
 
 describe("the Blog's tree", () => {
   it("lists a folder's own folders and articles, one level down", () => {
-    expect(blogFolderContents("").folders.map((folder) => folder.path)).toEqual(["components", "inline-pgn", "tournaments", "guides"]);
+    expect(blogFolderContents("").folders.map((folder) => folder.path)).toEqual(["tournaments", "writing-an-article"]);
     expect(blogFolderContents("").articles.map((article) => article.path)).toEqual(["get-started"]);
-    expect(blogFolderContents("guides").articles.map((article) => article.path)).toEqual(["guides/writing-an-article"]);
-    expect(blogArticleCount("components")).toBe(7);
-    expect(blogArticleCount("tournaments")).toBe(10);
-    expect(blogFolderContents("tournaments").folders.map((folder) => folder.path)).toEqual(["tournaments/demo-tables"]);
-    expect(blogArticleCount("tournaments/demo-tables")).toBe(7);
+    // The guide, and the demos of everything an article may embed (CTA-128).
+    expect(blogFolderContents("writing-an-article").articles.map((article) => article.path)).toEqual(["writing-an-article/guide"]);
+    expect(blogFolderContents("writing-an-article").folders.map((folder) => folder.path)).toEqual([
+      "writing-an-article/components",
+      "writing-an-article/inline-pgn",
+      "writing-an-article/demo-tables",
+    ]);
+    expect(blogArticleCount("writing-an-article/components")).toBe(7);
+    expect(blogArticleCount("writing-an-article/demo-tables")).toBe(7);
+    expect(blogArticleCount("writing-an-article")).toBe(20);
+    expect(blogFolderContents("tournaments").folders).toEqual([]);
+    expect(blogArticleCount("tournaments")).toBe(3);
   });
 
   it("walks the folders above an article, for its breadcrumbs", () => {
-    expect(blogFolderChain("components/nav-cards").map((folder) => folder.path)).toEqual(["components"]);
+    expect(blogFolderChain("writing-an-article/components/nav-cards").map((folder) => folder.path)).toEqual(["writing-an-article", "writing-an-article/components"]);
     expect(blogFolderChain("top-level")).toEqual([]);
   });
 
   it("falls back to the English document in a language an article has none in", () => {
-    expect(articleDocument("components/nav-cards", "he")?.language).toBe("en");
-    expect(articleDocument("components/nav-cards", "en")?.language).toBe("en");
+    expect(articleDocument("writing-an-article/components/nav-cards", "he")?.language).toBe("en");
+    expect(articleDocument("writing-an-article/components/nav-cards", "en")?.language).toBe("en");
     expect(articleDocument("nowhere", "en")).toBeUndefined();
   });
 });
