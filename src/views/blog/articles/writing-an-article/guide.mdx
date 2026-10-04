@@ -6,6 +6,8 @@ Write `src/views/blog/articles/<path>.mdx` — for example `tournaments/my-event
 
 Start the document below its title: the page shows the title as its heading, so use `##` and `###` for sections, never `#`.
 
+To see it as you write, run `yarn dev` and open the MDX editor, `/dev/mdx-editor`, in the sidebar's Development folder: the MDX goes on the left, and the right shows it as the Blog will, with every component below and the Library's games. It can open any article to start from. It saves nothing to the repository: copy the text or download the `.mdx` file, and put it here.
+
 ## 2. The registry
 
 Add the article to `BLOG_ARTICLES` in `src/views/blog/articles.ts`: its path, its title and a one-line summary, each in English and Hebrew. A new folder is an entry in `BLOG_FOLDERS` there — folders nest, `writing-an-article/components` inside `writing-an-article`. The sidebar's Blog folder and the index pages read both lists.

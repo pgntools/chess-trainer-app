@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react'
 import mdx from '@mdx-js/rollup'
 import pkg from './package.json' with { type: 'json' }
 
+const mdxPlugin = mdx({ mdExtensions: [], include: /\.mdx$/ })
+
 // https://vite.dev/config/
 export default defineConfig({
   /*
@@ -37,9 +39,18 @@ export default defineConfig({
     **`.mdx` only.** The plugin compiles plain `.md` by default too, which
     would turn every doc under `docs/` a test reads as text (`?raw` — the tiers'
     conventions tests check each component's doc entry) into a component.
+
+    **`?raw` stays text.** The plugin strips an id's query before matching, so
+    `x.mdx?raw` — the dev-only MDX editor opening an article's source
+    (`src/views/dev/mdxEditor/articleSources.ts`) — would be compiled too;
+    such an id is left to Vite, which makes it the file's text.
   */
   plugins: [
-    { enforce: 'pre', ...mdx({ mdExtensions: [], include: /\.mdx$/ }) },
+    {
+      enforce: 'pre',
+      ...mdxPlugin,
+      transform: (code: string, id: string) => (/[?&]raw\b/.test(id) ? undefined : mdxPlugin.transform(code, id)),
+    },
     react({ include: /\.(mdx|js|jsx|ts|tsx)$/ }),
   ],
   /*

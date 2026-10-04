@@ -27,7 +27,7 @@ import { default as BlogArticleScreen  } from './views/blog/BlogArticleMain'
 
 /**
  * The **Development** section's routes (`chessboard.md` §9.5) — the design
- * gallery (CTA-107) and the theme editor (CTA-115).
+ * gallery (CTA-107), the theme editor (CTA-115) and the MDX editor.
  *
  * Dev-only, and this array is the whole of the gate. Two things make it
  * provable rather than hopeful:
@@ -71,6 +71,14 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
         path: "/dev/theme-editor",
         element: devScreen(() => import("./views/dev/themeEditor/Main")),
         handle: { ...FULL_WIDTH_ROUTE, title: "pages.themeEditor" },
+      },
+      {
+        // The MDX editor: an article's MDX beside its live rendering, with
+        // every component an article embeds. Compiled in the browser, so
+        // the MDX compiler is in this dev chunk alone.
+        path: "/dev/mdx-editor",
+        element: devScreen(() => import("./views/dev/mdxEditor/Main")),
+        handle: { ...FULL_WIDTH_ROUTE, title: "pages.mdxEditor" },
       },
     ]
   : [];

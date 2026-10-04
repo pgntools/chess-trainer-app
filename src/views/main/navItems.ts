@@ -4,6 +4,7 @@ import UploadRoundedIcon from "@mui/icons-material/UploadRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import ConstructionRoundedIcon from "@mui/icons-material/ConstructionRounded";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
+import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
@@ -122,7 +123,7 @@ export const navItems = (): readonly NavItem[] => [
     icon: DashboardRoundedIcon,
     folder: "blog",
   },
-  // The Development section — dev-only: the design gallery (CTA-107) and the theme editor (CTA-115).
+  // The Development section — dev-only: the design gallery (CTA-107), the theme editor (CTA-115) and the MDX editor.
   ...(import.meta.env.DEV
     ? [
         {
@@ -135,6 +136,12 @@ export const navItems = (): readonly NavItem[] => [
           to: "/dev/theme-editor",
           labelKey: "nav.themeEditor",
           icon: PaletteRoundedIcon,
+          folder: "development",
+        },
+        {
+          to: "/dev/mdx-editor",
+          labelKey: "nav.mdxEditor",
+          icon: EditNoteRoundedIcon,
           folder: "development",
         },
       ]
