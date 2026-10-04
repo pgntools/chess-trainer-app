@@ -1,17 +1,20 @@
 import { Component, Suspense, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Popover from "@mui/material/Popover";
 import Typography from "@mui/material/Typography";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import type { MDXContent } from "mdx/types";
 
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
-import { SelectField, SwitchField } from "../../../design-system/components/forms";
+import { SwitchField } from "../../../design-system/components/forms";
+import { TreeView, type TreeNode } from "../../../design-system/patterns/trees";
 import { downloadTextFile } from "../../../lib/pgnExport";
 import { mdxComponents } from "../../home/frontPage";
-import { articleImportResolver, articleSources, folderOf, loadArticleSource } from "./articleSources";
+import { articleImportResolver, articleTree, folderOf, loadArticleSource, type ArticleTreeNode } from "./articleSources";
 import { compileMdx, SOURCE_LINE_COMPONENT } from "./compileMdx";
 import { STARTER_DOCUMENT } from "./starterDocument";
 import { useScrollSync } from "./useScrollSync";
@@ -26,9 +29,10 @@ import { useScrollSync } from "./useScrollSync";
  * - **A document that will not compile** keeps the last one that did on the
  *   right, under the error and where it is. **A component that throws** (a
  *   prop it cannot read) is caught there, and the next compile tries again.
- * - **An article** can be opened as a starting point — from the select, or
- *   from the edit icon beside an article's title (`?article=<file>`, which
- *   `Main` hands in as `arrivingArticle`); its
+ * - **An article** can be opened as a starting point — from the tree beside
+ *   the toolbar (the Blog's folders as they are on disk, a folder's articles
+ *   under it), or from the edit icon beside an article's title
+ *   (`?article=<file>`, which `Main` hands in as `arrivingArticle`); its
  *   `import games from "./x.pgn?raw"` reads the file beside it.
  * - **The panes scroll together** (`useScrollSync.ts`) while "Scroll
  *   together" is on: scrolling either brings the other to the same block.
@@ -51,8 +55,22 @@ export const COMPILE_DELAY_MS = 300;
 
 const DRAFT_KEY = "chessapp.dev.mdxEditor.draft";
 const SOURCE_ID = "mdx-editor-source";
-/** The article files it can open — fixed for the build. */
-const SOURCES = articleSources();
+
+/** The article tree it can open — fixed for the build, as the files are. */
+const ARTICLE_TREE: TreeNode[] = articleTree().map(function toNode(node: ArticleTreeNode): TreeNode {
+  return { id: node.id, label: node.label, children: node.children === undefined ? undefined : node.children.map(toNode) };
+});
+
+/** The folders from the root down to the one `file` sits in — what the tree opens on. */
+const openChainOf = (file: string): ReadonlySet<string> => {
+  const chain = new Set<string>();
+  let path = "";
+  for (const part of folderOf(file).split("/").filter(Boolean)) {
+    path = path === "" ? part : `${path}/${part}`;
+    chain.add(path);
+  }
+  return chain;
+};
 
 type Draft = { source: string; file: string };
 /** What the tab keeps: the draft, and the text it was opened as — so a kept draft still counts as changed. */
@@ -157,6 +175,10 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   const [opened, setOpened] = useState(kept?.opened ?? draft.source);
   const [notice, setNotice] = useState<string>();
   const [scrollTogether, setScrollTogether] = useState(true);
+  // The article tree's picker: hung from the "Open an article" button, the
+  // tree opening on the folder of the article being edited.
+  const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
+  const [openFolders, setOpenFolders] = useState<ReadonlySet<string>>(new Set());
   const sourceRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   useScrollSync({ enabled: scrollTogether, source: sourceRef, preview: previewRef });
@@ -222,17 +244,49 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
             {`${draft.file === "" ? "A new article" : `Editing ${draft.file}.mdx`}${dirty ? " — changed" : ""} · imports resolve from articles/${folder === "" ? "" : `${folder}/`}`}
           </Typography>
         </Box>
-        <Box sx={{ minWidth: 240 }}>
-          <SelectField
-            label="Open an article"
-            value=""
-            emptyOption="Choose an article…"
-            onChange={(file) => file !== "" && void openArticle(file)}
-            options={SOURCES.map((source) => ({ value: source.file, label: source.label }))}
-            optionDir="auto"
-            testId="mdx-editor-open"
-          />
-        </Box>
+        <Button
+          size="small"
+          startIcon={<FolderOpenRoundedIcon />}
+          aria-haspopup="true"
+          aria-expanded={pickerAnchor !== null}
+          onClick={(event) => {
+            setOpenFolders(openChainOf(draft.file));
+            setPickerAnchor(event.currentTarget);
+          }}
+          data-testid="mdx-editor-open"
+        >
+          Open an article
+        </Button>
+        <Popover
+          open={pickerAnchor !== null}
+          anchorEl={pickerAnchor}
+          onClose={() => setPickerAnchor(null)}
+          anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+          transformOrigin={{ vertical: "top", horizontal: "left" }}
+        >
+          <Box sx={{ maxHeight: 360, overflowY: "auto", py: 1, minWidth: 280 }}>
+            <TreeView
+              nodes={ARTICLE_TREE}
+              open={openFolders}
+              onToggle={(id) =>
+                setOpenFolders((before) => {
+                  const next = new Set(before);
+                  if (next.has(id)) next.delete(id);
+                  else next.add(id);
+                  return next;
+                })
+              }
+              activeId={draft.file === "" ? undefined : draft.file}
+              onSelect={(node) => {
+                setPickerAnchor(null);
+                void openArticle(node.id);
+              }}
+              ariaLabel="Articles"
+              hint="Arrow keys to move, right and left to open and close, Enter to open"
+              testId="mdx-editor-open-tree"
+            />
+          </Box>
+        </Popover>
         <Button size="small" startIcon={<ContentCopyRoundedIcon />} onClick={() => void copy()} data-testid="mdx-editor-copy">
           Copy MDX
         </Button>

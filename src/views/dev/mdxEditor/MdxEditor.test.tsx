@@ -121,11 +121,16 @@ describe("the MDX editor", () => {
     expect(screen.queryByTestId("mdx-editor-render-error")).not.toBeInTheDocument();
   });
 
-  it("opens an article, its PGN import read from the file beside it", async () => {
+  it("opens an article from the tree, its PGN import read from the file beside it", async () => {
     const user = userEvent.setup();
     mount();
-    await user.click(screen.getByRole("combobox", { name: "Open an article" }));
-    await user.click(await screen.findByRole("option", { name: /— tournaments\/werner-obermeyer-swiss-2026$/ }));
+    await user.click(screen.getByRole("button", { name: "Open an article" }));
+    // The picker is the Blog's tree: the article sits inside its folder.
+    const folder = screen.getByRole("treeitem", { name: "Tournaments" });
+    expect(folder).toHaveAttribute("aria-expanded", "false");
+    await user.click(folder);
+    expect(folder).toHaveAttribute("aria-expanded", "true");
+    await user.click(screen.getByRole("treeitem", { name: "20th Werner-Obermeyer" }));
     // The article's file is read lazily, as the app reads it.
     expect(await screen.findByText("Editing tournaments/werner-obermeyer-swiss-2026.mdx", { exact: false })).toHaveAttribute("data-testid", "mdx-editor-editing");
     expect((source() as HTMLTextAreaElement).value).toContain('import games from "./20th-werner-obermeyer-swiss-5r.pgn?raw"');

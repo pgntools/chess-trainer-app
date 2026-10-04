@@ -1,4 +1,4 @@
-import { BLOG_ARTICLES } from "../../blog/articles";
+import { BLOG_ARTICLES, BLOG_FOLDERS, findBlogFolder } from "../../blog/articles";
 import type { ImportResolver } from "./compileMdx";
 
 /**
@@ -16,22 +16,66 @@ const ARTICLES_DIR = "../../blog/articles/";
 const mdxFiles = import.meta.glob<string>("../../blog/articles/**/*.mdx", { query: "?raw", import: "default" });
 const pgnFiles = import.meta.glob<string>("../../blog/articles/**/*.pgn", { query: "?raw", import: "default" });
 
-/** One article file the editor can open: `tournaments/olympiad-2026` (or `….he` for a translation). */
-export type ArticleSource = { file: string; label: string };
-
 /** `../../blog/articles/a/b.he.mdx` → `a/b.he`. */
 const fileOf = (key: string) => key.slice(ARTICLES_DIR.length).replace(/\.mdx$/, "");
 
-/** Every article file, in the Blog's order (its translations after it), each labelled by its English title. */
-export const articleSources = (): ArticleSource[] => {
+/** One node of the article tree: a folder of articles, or a file to open. */
+export type ArticleTreeNode = {
+  /** The folder's path (`tournaments`) or the file's (`tournaments/olympiad-2026`). */
+  id: string;
+  /** A folder: its registered name ("Tournaments"), else its own segment. A file: its article's English title (a translation marked beside it), else its own name. */
+  label: string;
+  /** The file a click opens — absent on a folder. */
+  file?: string;
+  /** A folder's sub-folders and articles. */
+  children?: ArticleTreeNode[];
+};
+
+/** A file's label: its article's English title (a translation marked beside it), else the file's own name. */
+const labelOf = (file: string): string => {
+  const article = BLOG_ARTICLES.find((candidate) => file === candidate.path || file.startsWith(`${candidate.path}.`));
+  if (article === undefined) return file.split("/").at(-1) ?? file;
+  return file === article.path ? article.title.en : `${article.title.en} (${file.slice(article.path.length + 1)})`;
+};
+
+/** A folder's label: its registered name, else its own path segment. */
+const folderLabel = (folder: string): string => findBlogFolder(folder)?.title.en ?? folder.split("/").at(-1) ?? folder;
+
+/**
+ * Every article file as the Blog's tree — the folders the articles sit in,
+ * a folder's sub-folders above its own articles (as the sidebar draws them),
+ * the registered ones in the Blog's order, each article's translations right
+ * after it, and a file or folder the registry does not name at its end: the
+ * editor opens what sits on disk, not only what is registered.
+ */
+export const articleTree = (): ArticleTreeNode[] => {
   const files = Object.keys(mdxFiles).map(fileOf);
-  const titled = BLOG_ARTICLES.flatMap((article) =>
-    files
-      .filter((file) => file === article.path || file.startsWith(`${article.path}.`))
-      .map((file) => ({ file, label: file === article.path ? `${article.title.en} — ${file}` : `${article.title.en} (${file.slice(article.path.length + 1)}) — ${file}` })),
+  // The registry's order first, then any file it does not name, as the glob lists them.
+  const listed = BLOG_ARTICLES.flatMap((article) =>
+    files.filter((file) => file === article.path || file.startsWith(`${article.path}.`)),
   );
-  const listed = new Set(titled.map((source) => source.file));
-  return [...titled, ...files.filter((file) => !listed.has(file)).map((file) => ({ file, label: file }))];
+  const listedSet = new Set(listed);
+  const ordered = [...listed, ...files.filter((file) => !listedSet.has(file))];
+
+  // Every folder path with a file somewhere under it, at every depth.
+  const foldersUnder = new Set<string>();
+  for (const file of ordered) {
+    const parts = folderOf(file).split("/").filter(Boolean);
+    for (let depth = 1; depth <= parts.length; depth += 1) foldersUnder.add(parts.slice(0, depth).join("/"));
+  }
+
+  const nodesUnder = (folder: string): ArticleTreeNode[] => {
+    const registered = BLOG_FOLDERS.filter((entry) => foldersUnder.has(entry.path) && folderOf(entry.path) === folder).map(
+      (entry) => entry.path,
+    );
+    const registeredSet = new Set(registered);
+    const unregistered = [...foldersUnder].filter((path) => folderOf(path) === folder && !registeredSet.has(path));
+    return [
+      ...[...registered, ...unregistered].map((path) => ({ id: path, label: folderLabel(path), children: nodesUnder(path) })),
+      ...ordered.filter((file) => folderOf(file) === folder).map((file) => ({ id: file, label: labelOf(file), file })),
+    ];
+  };
+  return nodesUnder("");
 };
 
 /** An article file's MDX source, or `undefined` for no such file. */
