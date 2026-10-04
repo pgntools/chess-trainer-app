@@ -77,6 +77,7 @@ lib    src/lib/                          tournamentOf · knockoutOf · matchOf �
 | Two-player match | `matchOf(headers)` | `StandingsTable` | `MatchTable` | `<MatchTable>` | `match` (Clutch Chess 2026) |
 | Team Swiss / round robin | `teamTournamentOf(headers)` | `StandingsTable` | `TeamStandingsTable` | `<TeamStandingsTable>` | `team` (World Rapid Team 2026); the article `tournaments/olympiad-2026` (both Olympiads, with flags) |
 | Team knockout | `knockoutOf(headers)` — teams detected | `Bracket` | `KnockoutBracket` | `<KnockoutBracket>` | `team` (World Blitz Team final) |
+| **A Library collection** (Swiss, round robin or match) | the collection's games' tags → `tournamentOf` / `matchOf` | as above | `SwissStandingsTable`, `RoundRobinCrossTable`, `MatchTable` with `playerLink` / `gameLink` | `<CollectionTournamentTable _id="/library/<c>">` | `from-a-collection` (the shipped Candidates 2026, `/library/candidates2026`) |
 
 Every reader takes `GameHeaders[]` — `splitPgnGames(pgn).map(readPgnTags)` —
 and **replays no move**: a 1,650-game team file reads in ~50 ms.
@@ -173,6 +174,24 @@ import games from "./chgbr26.pgn?raw"
 | `<KnockoutBracket>` | `pgn` or `load`, `losersFromRound?` (a double elimination: `"51"`), `density?` | `tournament-bracket-<event slug>` (`-winners`, `-losers`) |
 | `<MatchTable>` | `pgn` or `load`, `density?`, `rowsPerPage?` | `tournament-match-<event slug>` |
 | `<TeamStandingsTable>` | `pgn` or `load`, `density?`, `rowsPerPage?` | `tournament-team-standings-<event slug>` |
+| `<CollectionTournamentTable>` | `_id="/library/<c>"`, `format?: "swiss" \| "roundRobin" \| "match"`, `playerLink?` (default on), `gameLink?` (default on), `density?`, `rowsPerPage?` | `tournament-collection-<c>-<format>` (`-loading` while read) |
+
+**`<CollectionTournamentTable>`** (CTA-128) — a tournament from the
+**Library** instead of a PGN beside the article: add the event's PGN to the
+Library, mark it a tournament in its settings (or pass `format`), and embed it
+by its address. It reads the collection's **games** (their own tags — titles,
+FIDE ids, countries — which the index rows do not keep), exactly as the PGN
+embeds read a file. The format: `format`, else the collection's stored mark
+where its games still share one event (`isTournamentCollection`), else a
+Swiss; a shipped collection has no mark (the manifest carries none), so its
+article names the format. **The links**, both on by default:
+`playerLink` makes each name a link to the collection's table filtered by that
+player (`/library/<c>?player=<name>`), `gameLink` each result a link to its
+game (`/library/<c>/<n>`, `n` the game's place in the collection) with the
+article as `state.from`, so the board's back button returns to it;
+`playerLink={false}` / `gameLink={false}` leave them text. An upload is on its
+own device only: an article naming one says "not in this browser's Library"
+to every other reader — the demo uses the shipped Candidates 2026.
 
 - **`load`** in place of `pgn`, for a large file (CTA-128): a function that
   imports it — `load={() => import("./olym26.pgn?raw")}` — so the file is a
@@ -245,6 +264,13 @@ shows its table and no boards, and its page says so.
   (`TablePaging`, `patterns/tables/paging.ts`, `DataTable`'s shape); the
   patterns' conventions test fails a `…Table` pattern without it. **A table
   added later takes it too.**
+- **Links** (CTA-128) — a block takes optional `playerLink(player)` and
+  `gameLink(game)` (`TournamentLinks`, `blocks/tables/tournamentTable.ts`; a
+  `LinkTarget` or `undefined`): the name becomes a link (its chip and flag
+  outside it), and every result a link read by its words, a 24 px target
+  (`Competitor.link`, `ResultEntry.link` in the patterns). Swiss standings,
+  the crosstable and the match table take them; the bracket and the team
+  table do not.
 - **Accessibility** — every table named by its event; rows' (and a
   crosstable's columns') headers real `th`s; a bracket a named region that
   scrolls sideways, each round a named list, each match read whole ("Burg,

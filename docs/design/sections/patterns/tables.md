@@ -125,10 +125,14 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   prefix's place, `{ label, tone, name? }` — a title read in full; a `flag`
   a `Flag` in the suffix's place, `{ code, label, before? }`, the suffix its
   fallback — `before` sets it at the name's start instead, as a team's
-  country is; `tieBreaks` the tie-break columns' values by column id), and `rounds`
+  country is; a `link`, a `LinkTarget`, makes the name a link — the
+  competitor's games — the chip and the flag outside it; `tieBreaks` the tie-break columns' values by column id), and `rounds`
   one entry per round, each **every result of that round** as `ResultEntry =
   { outcome, label }` (one, as a rule). A round with no game is the caller's
   own `none` entry, so its words say so; an entry left out is an empty cell.
+  An entry's optional `link` (CTA-128) makes its mark a link to its game,
+  read by its `label`, a target of 24 px at least (`MIN_TARGET_PX`), the
+  theme's ring on focus.
   The rows come ranked — the table orders nothing.
 - **The tie-breaks are data** — `tieBreaks?: TieBreakColumn[]`, each `{ id,
   header, name?, format? }`: a caller adds or removes one without changing

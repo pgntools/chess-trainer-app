@@ -19,6 +19,14 @@
       "hash": "be99fa3a"
     },
     {
+      "id": "candidates2026",
+      "name": "FIDE Candidates 2026",
+      "pgn": "wchcand26.pgn",
+      "index": "wchcand26.index.json",
+      "games": 56,
+      "hash": "79d21999"
+    },
+    {
       "id": "fischer",
       "name": "Fischer",
       "pgn": "Fischer.pgn",

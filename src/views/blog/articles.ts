@@ -241,6 +241,14 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
+    path: "writing-an-article/demo-tables/from-a-collection",
+    title: { en: "From a Library collection", he: "מאוסף בספרייה" },
+    summary: {
+      en: "<CollectionTournamentTable>: a tournament from the Library — names linked to each player's games, results to each game.",
+      he: "<CollectionTournamentTable>: טורניר מהספרייה — שמות מקושרים למשחקי כל שחקן, ותוצאות לכל משחק.",
+    },
+  },
+  {
     path: "writing-an-article/guide",
     title: { en: "Writing an article", he: "כתיבת מאמר" },
     summary: {

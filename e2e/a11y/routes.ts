@@ -216,6 +216,12 @@ export const ROUTES: readonly PageRoute[] = [
     path: "blog/writing-an-article/demo-tables/team",
     ready: byTestId("tournament-team-standings-fide-world-rapid-team"),
   },
+  {
+    id: "blog-tournaments-demo-from-a-collection",
+    pattern: "/blog/writing-an-article/demo-tables/from-a-collection",
+    path: "blog/writing-an-article/demo-tables/from-a-collection",
+    ready: byTestId("tournament-collection-candidates2026-roundRobin"),
+  },
   { id: "blog-writing-an-article", pattern: "/blog/writing-an-article/guide", path: "blog/writing-an-article/guide" },
   { id: "settings-export", pattern: "/settings/:tab", path: "settings/export" },
   { id: "settings-import", pattern: "/settings/:tab", path: "settings/import" },

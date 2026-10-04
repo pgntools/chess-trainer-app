@@ -44,10 +44,12 @@ describe("the wired folder", () => {
 });
 
 describe("the shipped collections", () => {
-  it("are the five players' games, by name, counted without a fetch", () => {
+  it("are the five players' games and one tournament, by name, counted without a fetch", () => {
     expect(shippedCollections.map((entry) => [entry.id, entry.name, entry.count])).toEqual([
       ["alekhine", "Alekhine", 2005],
       ["capablanca", "Capablanca", 1035],
+      // CTA-128: a tournament, for the Blog's <CollectionTournamentTable> to show on every device.
+      ["candidates2026", "FIDE Candidates 2026", 56],
       ["fischer", "Fischer", 1063],
       ["petrosian", "Petrosian", 2017],
       ["tal", "Tal", 2636],
@@ -61,6 +63,7 @@ describe("the shipped collections", () => {
     ["fischer", 1063],
     ["petrosian", 2017],
     ["tal", 2636],
+    ["candidates2026", 56],
   ])("%s: its index is its table's rows, and its PGN its games", async (id, count) => {
     const entry = findShippedCollection(id)!;
     const rows = await entry.loadRows();

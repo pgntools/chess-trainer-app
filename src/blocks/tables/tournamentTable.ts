@@ -1,5 +1,6 @@
 import type { TFunction } from "i18next";
 
+import type { LinkTarget } from "../../design-system/components/link";
 import type { LabelChipTone } from "../../design-system/components/tables";
 import type { Competitor, CompetitorBadge, CompetitorFlag, CompetitorLabels, ResultEntry, TieBreakColumn } from "../../design-system/patterns/tables";
 import { federationFlagOf } from "../../lib/federations";
@@ -89,12 +90,29 @@ export const playerMarks = (t: TFunction, language: string, player: TournamentPl
   flag: federationFlag(player, language),
 });
 
-/** A standing as a row's competitor: the title as a chip before the name, the federation as a flag after it, the rating in its column. */
-export const competitorOf = (t: TFunction, language: string, { rank, player, points, tieBreaks }: TournamentStanding): Competitor => ({
+/**
+ * Where a table's names and results lead (CTA-128) — both optional: a
+ * player's name to their games, a result to its game (`game`, its index in
+ * the headers the tournament was read from). Absent, or `undefined` for one
+ * player or game, plain text.
+ */
+export type TournamentLinks = {
+  playerLink?: (player: TournamentPlayer) => LinkTarget | undefined;
+  gameLink?: (game: number) => LinkTarget | undefined;
+};
+
+/** A standing as a row's competitor: the title as a chip before the name, the federation as a flag after it, the rating in its column — the name a link where `playerLink` gives one. */
+export const competitorOf = (
+  t: TFunction,
+  language: string,
+  { rank, player, points, tieBreaks }: TournamentStanding,
+  playerLink?: TournamentLinks["playerLink"],
+): Competitor => ({
   id: player.id,
   rank,
   name: player.name,
   ...playerMarks(t, language, player),
+  link: playerLink?.(player),
   rating: player.rating,
   points,
   tieBreaks,
@@ -109,8 +127,14 @@ export const playerNames = (tournament: Tournament): ReadonlyMap<string, string>
  * place — the round, the colour played, the opponent and the result
  * ("Round 3, White against Giri, Anish: draw").
  */
-export const resultEntryOf = (t: TFunction, game: PlayerGame, names: ReadonlyMap<string, string>): ResultEntry => ({
+export const resultEntryOf = (
+  t: TFunction,
+  game: PlayerGame,
+  names: ReadonlyMap<string, string>,
+  gameLink?: TournamentLinks["gameLink"],
+): ResultEntry => ({
   outcome: game.outcome,
+  link: gameLink?.(game.game),
   label: t(`tournament.game.${game.color}${game.round === undefined ? "NoRound" : ""}`, {
     round: game.round,
     opponent: names.get(game.opponent) ?? game.opponent,

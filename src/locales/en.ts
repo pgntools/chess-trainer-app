@@ -1627,6 +1627,8 @@ const en = {
       bracket: "{{event}} — bracket",
       match: "{{event}} — the match",
       notAMatch: "This PGN is not a match: its games are not all between the same two players.",
+      /** <CollectionTournamentTable> naming a collection this browser's Library does not hold. */
+      collectionMissing: "This collection is not in this browser's Library.",
     },
     /** A knockout's bracket (CTA-128): the rounds' names, a match in words. */
     knockout: {

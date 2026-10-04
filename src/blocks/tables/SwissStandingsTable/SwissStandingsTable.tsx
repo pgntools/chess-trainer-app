@@ -3,9 +3,9 @@ import { useTranslation } from "react-i18next";
 
 import { StandingsTable, type StandingsRow, type TablePaging } from "../../../design-system/patterns/tables";
 import type { Tournament } from "../../../lib/tournament";
-import { competitorOf, formatPoints, playerNames, resultEntryOf, tieBreakColumns, tournamentLabels, tournamentLegend } from "../tournamentTable";
+import { competitorOf, formatPoints, playerNames, resultEntryOf, tieBreakColumns, tournamentLabels, tournamentLegend, type TournamentLinks } from "../tournamentTable";
 
-export type SwissStandingsTableProps = {
+export type SwissStandingsTableProps = TournamentLinks & {
   /**
    * The tournament — `tournamentOf(headers)` (`lib/tournament.ts`), ranked
    * by points, then Buchholz, then Sonneborn-Berger. `undefined` while its
@@ -43,7 +43,7 @@ export type SwissStandingsTableProps = {
  * Presentational: the tournament is a prop (a screen reads the games and
  * calls `tournamentOf`). Its words are the app's (`tournament.*`).
  */
-function SwissStandingsTable({ tournament, ariaLabel, density, paging, testId }: SwissStandingsTableProps) {
+function SwissStandingsTable({ tournament, ariaLabel, density, paging, playerLink, gameLink, testId }: SwissStandingsTableProps) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
 
@@ -51,14 +51,14 @@ function SwissStandingsTable({ tournament, ariaLabel, density, paging, testId }:
     if (tournament === undefined) return [];
     const names = playerNames(tournament);
     return tournament.standings.map((standing) => ({
-      ...competitorOf(t, language, standing),
+      ...competitorOf(t, language, standing, playerLink),
       rounds: standing.rounds.map((games, index) =>
         games.length === 0
           ? [{ outcome: "none" as const, label: t("tournament.noGame", { round: index + 1 }) }]
-          : games.map((game) => resultEntryOf(t, game, names)),
+          : games.map((game) => resultEntryOf(t, game, names, gameLink)),
       ),
     }));
-  }, [tournament, t, language]);
+  }, [tournament, t, language, playerLink, gameLink]);
 
   const legend = useMemo(
     () =>

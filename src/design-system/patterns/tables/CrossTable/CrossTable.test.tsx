@@ -302,4 +302,18 @@ describe("CrossTable", () => {
       expect(screen.getByTestId("t-pager")).toBeInTheDocument();
     });
   });
+
+  describe("links (CTA-128)", () => {
+    it("makes each result of a cell its own link", () => {
+      const [ada] = ROWS;
+      mount({
+        rows: [
+          { ...ada, results: { ...ada.results, alan: ada.results.alan.map((result, index) => ({ ...result, link: { href: `/games/${index + 1}` } })) } },
+          ...ROWS.slice(1),
+        ],
+      });
+      expect(within(cell("ada", "alan")).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(["/games/1", "/games/2"]);
+      expect(within(cell("ada", "alan")).getByRole("link", { name: "Round 4, against Alan Turing: draw" })).toBeInTheDocument();
+    });
+  });
 });

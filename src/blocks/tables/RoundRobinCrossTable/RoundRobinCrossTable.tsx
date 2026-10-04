@@ -3,9 +3,9 @@ import { useTranslation } from "react-i18next";
 
 import { CrossTable, type CrossTableRow, type TablePaging } from "../../../design-system/patterns/tables";
 import { gamesBetween, type Tournament } from "../../../lib/tournament";
-import { competitorOf, formatPoints, playerNames, resultEntryOf, tieBreakColumns, tournamentLabels, tournamentLegend } from "../tournamentTable";
+import { competitorOf, formatPoints, playerNames, resultEntryOf, tieBreakColumns, tournamentLabels, tournamentLegend, type TournamentLinks } from "../tournamentTable";
 
-export type RoundRobinCrossTableProps = {
+export type RoundRobinCrossTableProps = TournamentLinks & {
   /**
    * The tournament — `tournamentOf(headers, ROUND_ROBIN_TIE_BREAKS)`
    * (`lib/tournament.ts`), ranked by points, then Sonneborn-Berger.
@@ -43,7 +43,7 @@ export type RoundRobinCrossTableProps = {
  * Presentational: the tournament is a prop (a screen reads the games and
  * calls `tournamentOf`). Its words are the app's (`tournament.*`).
  */
-function RoundRobinCrossTable({ tournament, ariaLabel, density, paging, testId }: RoundRobinCrossTableProps) {
+function RoundRobinCrossTable({ tournament, ariaLabel, density, paging, playerLink, gameLink, testId }: RoundRobinCrossTableProps) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
 
@@ -51,7 +51,7 @@ function RoundRobinCrossTable({ tournament, ariaLabel, density, paging, testId }
     if (tournament === undefined) return [];
     const names = playerNames(tournament);
     return tournament.standings.map((standing) => ({
-      ...competitorOf(t, language, standing),
+      ...competitorOf(t, language, standing, playerLink),
       results: Object.fromEntries(
         tournament.standings
           .filter((other) => other !== standing)
@@ -61,12 +61,12 @@ function RoundRobinCrossTable({ tournament, ariaLabel, density, paging, testId }
               player.id,
               games.length === 0
                 ? [{ outcome: "none" as const, label: t("tournament.noGameAgainst", { opponent: player.name }) }]
-                : games.map((game) => resultEntryOf(t, game, names)),
+                : games.map((game) => resultEntryOf(t, game, names, gameLink)),
             ];
           }),
       ),
     }));
-  }, [tournament, t, language]);
+  }, [tournament, t, language, playerLink, gameLink]);
 
   const legend = useMemo(
     () =>

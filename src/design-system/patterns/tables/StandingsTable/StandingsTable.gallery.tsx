@@ -122,6 +122,17 @@ const gallery: GalleryModule<PatternSectionId> = {
           })),
         }, 300),
     },
+    {
+      name: "Names and results as links — a name to the player's games, a result to its game, each a 24 px target (CTA-128)",
+      render: () =>
+        demo({ names: DEMO_NAMES.slice(0, 4), extras }, 3, {
+          rows: standingsRowsOf(demoLeague({ names: DEMO_NAMES.slice(0, 4), rounds: 3, extras }), 3).map((row, index) => ({
+            ...row,
+            link: { href: `#player-${index + 1}` },
+            rounds: row.rounds.map((results, round) => results.map((result) => (result.outcome === "none" ? result : { ...result, link: { href: `#game-${index + 1}-${round + 1}` } }))),
+          })),
+        }, 240),
+    },
     { name: "Thirty rounds — the frame scrolls sideways", render: () => demo({ names: demoNames(12), extras }, 30) },
     { name: "Long names — one line each, and a sideways scroll", render: () => demo({ names: DEMO_LONG_NAMES, extras }, 3, {}, 240) },
     {

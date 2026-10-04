@@ -146,7 +146,10 @@ green, CM and WCM purple, any other title the primary colour), read in full
 reader's language), the tag's letters its fallback where there is no flag
 (CTA-128, `blocks/tables/tournamentTable.ts`: `titleBadgeOf`,
 `federationFlag`, `playerMarks`). And every table among them takes the
-optional `paging` its pattern does.
+optional `paging` its pattern does. The Swiss standings, the crosstable and
+the match table also take optional `playerLink(player)` and `gameLink(game)`
+(`TournamentLinks`): a name, and each result, as a link — the Blog's
+`<CollectionTournamentTable>` sends them into a Library collection.
 
 How a module migrates — the order of work, what each old pattern became, the
 findings — is [`migration.md`](./migration.md).

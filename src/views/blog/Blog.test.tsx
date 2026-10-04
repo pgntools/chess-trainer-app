@@ -38,7 +38,7 @@ describe("the Blog's index (CTA-126)", () => {
     const writing = screen.getByRole("link", { name: "Open Writing an article" });
     expect(writing).toHaveAttribute("href", "/blog/writing-an-article");
     // Every article under it, its sub-folders' too: the guide, and the components', games' and tables' demos.
-    expect(screen.getByText("20 articles")).toBeInTheDocument();
+    expect(screen.getByText("21 articles")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Tournaments" })).toBeInTheDocument();
     await expectNoAxeViolations();
   });

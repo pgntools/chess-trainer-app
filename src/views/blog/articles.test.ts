@@ -68,8 +68,8 @@ describe("the Blog's tree", () => {
       "writing-an-article/demo-tables",
     ]);
     expect(blogArticleCount("writing-an-article/components")).toBe(7);
-    expect(blogArticleCount("writing-an-article/demo-tables")).toBe(7);
-    expect(blogArticleCount("writing-an-article")).toBe(20);
+    expect(blogArticleCount("writing-an-article/demo-tables")).toBe(8);
+    expect(blogArticleCount("writing-an-article")).toBe(21);
     expect(blogFolderContents("tournaments").folders).toEqual([]);
     expect(blogArticleCount("tournaments")).toBe(4);
   });

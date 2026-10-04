@@ -3,6 +3,7 @@ import type { MDXComponents } from "mdx/types";
 import { BoardRow } from "./BoardRow";
 import { CollectionCard } from "./CollectionCard";
 import { CollectionGameBoard } from "./CollectionGameBoard";
+import { CollectionTournamentEmbed } from "./CollectionTournamentEmbed";
 import { InlinePgnGame } from "./InlinePgnGame";
 import { KnockoutBracketEmbed } from "./KnockoutBracketEmbed";
 import { MatchTableEmbed } from "./MatchTableEmbed";
@@ -33,6 +34,7 @@ import { TeamStandingsEmbed } from "./TeamStandingsEmbed";
  * | `<RoundRobinCrossTable pgn={games} />` | a round robin's crosstable from its games' PGN — single or double (CTA-128) |
  * | `<KnockoutBracket pgn={games} losersFromRound="51" />` | a knockout's bracket — a double elimination's two with `losersFromRound`, a team knockout's in legs (CTA-128) |
  * | `<MatchTable pgn={games} />` | a match between two players: a column per game, the score (CTA-128) |
+ * | `<CollectionTournamentTable _id="/library/<c>" playerLink gameLink />` | a Library collection's tournament table — names linked to the player's games, results to each game (CTA-128) |
  * | `<TeamStandingsTable pgn={games} />` | a team tournament's standings: board points per round, match points, board points (CTA-128) |
  * | `<NavCards />` | every screen as a card, by section — the landing page before CTA-126 |
  *
@@ -63,5 +65,6 @@ export const mdxComponents: MDXComponents = {
   KnockoutBracket: KnockoutBracketEmbed,
   MatchTable: MatchTableEmbed,
   TeamStandingsTable: TeamStandingsEmbed,
+  CollectionTournamentTable: CollectionTournamentEmbed,
   NavCards,
 };

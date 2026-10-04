@@ -65,12 +65,14 @@ from.
 | `Fischer.pgn` | 1,063 | Bobby Fischer's games |
 | `Petrosian.pgn` | 2,017 | Tigran Petrosian's games |
 | `Tal.pgn` | 2,636 | Mikhail Tal's games |
+| `wchcand26.pgn` | 56 | **FIDE Candidates 2026** — a double round robin, from The Week in Chess (CTA-128): the tournament the Blog's `<CollectionTournamentTable>` demo reads (`/library/candidates2026`) |
 
-8,756 games in all, free to use (CTA-104 replaced the collections shipped
-before, which were not). Their `ECO` tags carry ChessBase-style sub-codes
+8,812 games in all. The five players' collections are free to use (CTA-104
+replaced the collections shipped before, which were not); the Candidates is
+TWIC's file, credited where the Blog shows it, as its articles' PGNs are. Their `ECO` tags carry ChessBase-style sub-codes
 (`C44r`) and no `Opening` tag, so every opening is filled in from the book.
 
-`src/lib/shippedCollections.test.ts` asserts the five names and counts;
+`src/lib/shippedCollections.test.ts` asserts the six names and counts;
 wiring another means adding a row there too.
 
 ## How big

@@ -1264,6 +1264,7 @@ const he: typeof en = {
       bracket: "{{event}} — טבלת נוקאאוט",
       match: "{{event}} — המשחק",
       notAMatch: "ה-PGN הזה אינו משחק בין שניים: לא כל המשחקים בו הם בין אותם שני שחקנים.",
+      collectionMissing: "האוסף הזה אינו נמצא בספרייה של הדפדפן הזה.",
     },
     knockout: {
       round: "סיבוב {{round}}",

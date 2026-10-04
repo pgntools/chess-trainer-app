@@ -373,4 +373,31 @@ describe("StandingsTable", () => {
       expect(first).not.toHaveTextContent("UZB");
     });
   });
+
+  describe("links (CTA-128)", () => {
+    it("makes a name a link, and a result a link read by its words, each a target of 24 px", async () => {
+      const user = userEvent.setup();
+      mount({
+        rows: [
+          {
+            ...ROWS[0],
+            link: { href: "/games?player=ada" },
+            rounds: [[{ ...ROWS[0].rounds[0][0], link: { href: "/games/1" } }], ...ROWS[0].rounds.slice(1)],
+          },
+          ROWS[1],
+        ],
+      });
+      const name = screen.getByRole("link", { name: "Ada Lovelace" });
+      expect(name).toHaveAttribute("href", "/games?player=ada");
+      const result = screen.getByRole("link", { name: ROWS[0].rounds[0][0].label });
+      expect(result).toHaveAttribute("href", "/games/1");
+      expect(result).toHaveStyle({ minWidth: "24px", minHeight: "24px" });
+      // Only what was given a link is one.
+      expect(screen.getAllByRole("link")).toHaveLength(2);
+      await user.tab();
+      await user.tab();
+      expect(name).toHaveFocus();
+      await expectNoAxeViolations();
+    });
+  });
 });

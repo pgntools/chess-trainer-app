@@ -1,8 +1,12 @@
 import { Fragment } from "react";
 import Box from "@mui/material/Box";
+import Link from "@mui/material/Link";
 import TableCell from "@mui/material/TableCell";
+import type { Theme } from "@mui/material/styles";
 
 import { visuallyHidden } from "../../components/a11y";
+import { linkProps, type LinkTarget } from "../../components/link";
+import { MIN_TARGET_PX } from "../../theme";
 import { Flag, LabelChip, NumberCell, ResultMark } from "../../components/tables";
 import type { ColumnHeading, Competitor, CompetitorLabels, ResultEntry, TieBreakColumn } from "./competitors";
 
@@ -12,6 +16,12 @@ import type { ColumnHeading, Competitor, CompetitorLabels, ResultEntry, TieBreak
   tie-breaks at its end, a cell of results between, and the legend under the
   table. One place, so the two tables cannot drift apart.
 */
+
+/** A link in a competition table (CTA-128): the theme's ring on focus, underlined on hover only — the cell says it is one by its colour and its pointer. */
+const linkSx = (theme: Theme) => ({ "&:focus-visible": { ...theme.mixins.focusRing, outlineOffset: 1 } });
+
+/** A link's element and its target: react-router's `Link` and its `to`, or an anchor's `href` (`linkProps`). */
+const asLink = (link: LinkTarget) => linkProps(link) as Record<string, unknown>;
 
 /** A column that takes only the room its content needs — the name's column gets the rest. */
 const NARROW = { width: "1%", whiteSpace: "nowrap" } as const;
@@ -91,7 +101,13 @@ export function CompetitorCells({ competitor, rating, testId }: CompetitorCellsP
             <Flag code={flag.code} label={flag.label} fallback={suffix === undefined ? undefined : muted(suffix, true)} testId={`${testId}-flag`} />{" "}
           </>
         )}
-        <bdi dir="auto">{name}</bdi>
+        {competitor.link === undefined ? (
+          <bdi dir="auto">{name}</bdi>
+        ) : (
+          <Link {...asLink(competitor.link)} underline="hover" data-testid={`${testId}-link`} sx={linkSx}>
+            <bdi dir="auto">{name}</bdi>
+          </Link>
+        )}
         {flag?.before === true ? null : flag !== undefined ? (
           <>
             {" "}
@@ -160,7 +176,27 @@ export function ResultsCell({ results, testId }: ResultsCellProps) {
       {results.map((result, index) => (
         <Fragment key={index}>
           {index > 0 && " "}
-          <ResultMark outcome={result.outcome} label={result.label} glyph={result.glyph} />
+          {result.link === undefined ? (
+            <ResultMark outcome={result.outcome} label={result.label} glyph={result.glyph} />
+          ) : (
+            // A result that opens its game (CTA-128): a target of 24 px at least, read by the mark's words.
+            <Link
+              {...asLink(result.link)}
+              underline="hover"
+              data-testid={`${testId}-link-${index}`}
+              sx={(theme: Theme) => ({
+                ...linkSx(theme),
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: MIN_TARGET_PX,
+                minHeight: MIN_TARGET_PX,
+                verticalAlign: "middle",
+              })}
+            >
+              <ResultMark outcome={result.outcome} label={result.label} glyph={result.glyph} />
+            </Link>
+          )}
         </Fragment>
       ))}
     </TableCell>

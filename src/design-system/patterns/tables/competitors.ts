@@ -1,4 +1,5 @@
 import type { VisibleLabel } from "../../components/a11y";
+import type { LinkTarget } from "../../components/link";
 import type { LabelChipProps, ResultMarkProps } from "../../components/tables";
 
 /** A mark before a name, as a chip (CTA-128) — a title: "GM" in its tone, read "Grandmaster". */
@@ -24,7 +25,10 @@ export type CompetitorFlag = { code: string; label: string; before?: boolean };
  * read in its place — and, where the outcome's own glyph will not do, the
  * text shown instead (a team match's board points, CTA-128).
  */
-export type ResultEntry = Pick<ResultMarkProps, "outcome" | "label" | "glyph">;
+export type ResultEntry = Pick<ResultMarkProps, "outcome" | "label" | "glyph"> & {
+  /** Where the result leads — its game (CTA-128). The mark becomes a link, read by its `label`. */
+  link?: LinkTarget;
+};
 
 /**
  * A column's heading: its words, and — where they are an abbreviation
@@ -59,6 +63,8 @@ export type Competitor = {
   badge?: CompetitorBadge;
   /** A flag after the name — the federation (CTA-128). Shown in place of `suffix`, which stays its fallback. */
   flag?: CompetitorFlag;
+  /** Where the name leads — the competitor's games, say (CTA-128). The name becomes a link; the chip and the flag stay outside it. */
+  link?: LinkTarget;
   /** Shown in its own column when the table has the column's heading (`labels.rating`). */
   rating?: number;
   points: number;
