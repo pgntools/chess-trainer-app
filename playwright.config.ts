@@ -12,7 +12,14 @@ import { BASE_URL, PORT, REPORT_DIR, STATE_PATH } from "./e2e/a11y/env";
   matrix. The reports (the HTML one, the JSON results and this pass's own
   summary, which also fails the run on a stale allowlist entry) land in
   `a11y-report/`.
+
+  `A11Y_CHROMIUM` runs the pass on a Chromium already on the machine instead
+  of Playwright's own download — a cloud container whose pre-installed
+  browser is an older build than this Playwright expects, and whose network
+  will not fetch the new one (`A11Y_CHROMIUM=/opt/pw-browsers/chromium`).
+  Unset, nothing changes.
 */
+const chromium = process.env.A11Y_CHROMIUM;
 export default defineConfig({
   testDir: "./e2e/a11y",
   outputDir: "./a11y-report/traces",
@@ -40,6 +47,7 @@ export default defineConfig({
     trace: "retain-on-failure",
     // A desktop window, wide enough for the shell's sidebar, the board and its panel.
     viewport: { width: 1440, height: 900 },
+    ...(chromium !== undefined && chromium !== "" && { launchOptions: { executablePath: chromium } }),
   },
   projects: [
     // Puts the seed in through the app's own Import and keeps the browser's

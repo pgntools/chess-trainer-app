@@ -55,7 +55,16 @@ yarn test:a11y          # yarn build, then playwright test — the full matrix
 yarn test:a11y:quick    # the pull-request matrix
 npx playwright install chromium     # once, for a new machine
 A11Y_MATRIX=reduced npx playwright test -g "high-contrast · light · he"     # part of it, built already
+A11Y_CHROMIUM=/opt/pw-browsers/chromium A11Y_MATRIX=reduced npx playwright test -g "blog-tournaments|seed"   # a cloud container: its own Chromium, some routes
 ```
+
+**`A11Y_CHROMIUM`** (CTA-128) runs the pass on a Chromium already on the
+machine — `playwright.config.ts` sets it as `launchOptions.executablePath`.
+A cloud container's pre-installed browser (`/opt/pw-browsers/chromium`) is
+an older build than this Playwright expects, and its network will not fetch
+the new one; `npx playwright install` fails there, so do not run it. Unset,
+nothing changes. `-g` picks tests by name — a route's id; add `seed` (the
+setup project) when picking routes.
 
 Playwright + `@axe-core/playwright` over `vite preview` of the **production
 build** under `/chess-trainer-app/` (`playwright.config.ts`; `A11Y_PORT` moves
