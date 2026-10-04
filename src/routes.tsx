@@ -285,6 +285,11 @@ export const appRoutes: RouteObject[] = [
           handle: { title: "pages.blogArticle" }
         },
         {
+          path: "/blog/tournaments/olympiad-2026",
+          element: <BlogArticleScreen />,
+          handle: { title: "pages.blogArticle" }
+        },
+        {
           path: "/blog/tournaments/fide-candidates-2026",
           element: <BlogArticleScreen />,
           handle: { title: "pages.blogArticle" }

@@ -13,6 +13,11 @@ import { outcomesOf, POINTS, roundPartsOf, type GameOutcome } from "./tournament
  * standings rank by match points, then board points. A match with an
  * unfinished game is unfinished: it shows its board points so far and
  * scores no match point.
+ *
+ * **A team's federation** (CTA-128) is its players' — `WhiteCountry` /
+ * `BlackCountry` — where every one of its games that carries the tag agrees
+ * (an Olympiad's national teams); a club of several federations, or a file
+ * with no such tag, has none. Never read from the team's name.
  */
 
 export type TeamMatch = {
@@ -33,6 +38,8 @@ export type TeamStanding = {
   rank: number;
   /** The team's name — what tells two teams apart. */
   team: string;
+  /** Its players' federation, where they all share one ("UZB"). */
+  federation?: string;
   matchPoints: number;
   boardPoints: number;
   /** One entry per round: the team's match of that round (none where the file holds no game of it). */
@@ -56,6 +63,13 @@ type Meeting = { round: number; teams: [string, string]; points: [number, number
 /** The team tournament the games make. A game that names no two different teams, or no round, is left out. */
 export const teamTournamentOf = (games: readonly GameHeaders[]): TeamTournament => {
   const meetings = new Map<string, Meeting>();
+  const federations = new Map<string, Set<string>>();
+  const seeFederation = (team: string, federation: string | undefined) => {
+    if (federation === undefined) return;
+    const seen = federations.get(team) ?? new Set<string>();
+    seen.add(federation);
+    federations.set(team, seen);
+  };
   let read = 0;
   let unfinishedGames = 0;
 
@@ -65,6 +79,8 @@ export const teamTournamentOf = (games: readonly GameHeaders[]): TeamTournament 
     const [round] = roundPartsOf(gameTag(headers, "Round"));
     if (white === undefined || black === undefined || white === black || round === undefined) continue;
 
+    seeFederation(white, gameTag(headers, "WhiteCountry"));
+    seeFederation(black, gameTag(headers, "BlackCountry"));
     const teams = [white, black].sort() as [string, string];
     const key = `${round}-${teams.join("\u0000")}`;
     const meeting = meetings.get(key) ?? { round, teams, points: [0, 0], boards: 0, unfinished: false };
@@ -95,8 +111,15 @@ export const teamTournamentOf = (games: readonly GameHeaders[]): TeamTournament 
     });
   }
 
+  /** The one federation a team's players share, if they do. */
+  const federationOf = (team: string): string | undefined => {
+    const seen = federations.get(team);
+    return seen?.size === 1 ? [...seen][0] : undefined;
+  };
+
   const unranked = [...byTeam.entries()].map(([team, matches]) => ({
     team,
+    ...(federationOf(team) !== undefined && { federation: federationOf(team) }),
     matchPoints: matches.reduce(
       (sum, match) => sum + (match.outcome === "win" ? TEAM_MATCH_POINTS.win : match.outcome === "draw" ? TEAM_MATCH_POINTS.draw : 0),
       0,

@@ -61,11 +61,15 @@ export const titleBadgeOf = (t: TFunction, title: string | undefined): Competito
   return tone === undefined ? { label: title, tone: "primary" } : { label: title, tone, name: t(`tournament.titles.${known}`) };
 };
 
-/** A player's federation as a flag, named in `language` (CTA-128) — `undefined` for none, or a code with no flag. */
-export const federationFlag = (player: TournamentPlayer, language: string): CompetitorFlag | undefined => {
-  const flag = federationFlagOf(player.federation, language);
+/** A federation tag as a flag, named in `language` (CTA-128) — `undefined` for none, or a code with no flag. */
+export const flagOfFederation = (federation: string | undefined, language: string): CompetitorFlag | undefined => {
+  const flag = federationFlagOf(federation, language);
   return flag === undefined ? undefined : { code: flag.code, label: flag.name };
 };
+
+/** A player's — or a team's — federation as a flag (CTA-128). */
+export const federationFlag = (player: TournamentPlayer, language: string): CompetitorFlag | undefined =>
+  flagOfFederation(player.federation, language);
 
 /**
  * A player's marks around the name (CTA-128): the title as a chip before it,

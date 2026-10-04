@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { StandingsTable, type StandingsRow, type TieBreakColumn, type TablePaging } from "../../../design-system/patterns/tables";
 import type { TeamTournament } from "../../../lib/teamTournament";
-import { formatScore } from "../tournamentTable";
+import { flagOfFederation, formatScore } from "../tournamentTable";
 
 export type TeamStandingsTableProps = {
   /** The tournament — `teamTournamentOf(headers)` (`lib/teamTournament.ts`). `undefined` while its games are read. */
@@ -25,7 +25,8 @@ export type TeamStandingsTableProps = {
 
 /**
  * **A team tournament's standings** (CTA-128) — `StandingsTable` over a
- * `TeamTournament`, the Olympiad's table: a row per team in rank order, **a
+ * `TeamTournament`, the Olympiad's table: a row per team in rank order — its
+ * flag after its name where its players share one — **a
  * cell per round showing the team's board points** in that round's match,
  * toned as the match went (won, drawn, lost — the opponent and the score
  * both ways in its words), then the match points and the board points the
@@ -35,7 +36,8 @@ export type TeamStandingsTableProps = {
  * calls `teamTournamentOf`). Its words are the app's (`tournament.*`).
  */
 function TeamStandingsTable({ tournament, ariaLabel, density, paging, testId }: TeamStandingsTableProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
 
   const rows = useMemo<StandingsRow[]>(() => {
     if (tournament === undefined) return [];
@@ -44,6 +46,9 @@ function TeamStandingsTable({ tournament, ariaLabel, density, paging, testId }: 
       id: String(standing.rank),
       rank: standing.rank,
       name: standing.team,
+      // The flag its players all share — an Olympiad's national team; a club has none (CTA-128).
+      suffix: standing.federation,
+      flag: flagOfFederation(standing.federation, language),
       points: standing.matchPoints,
       tieBreaks: { boardPoints: standing.boardPoints },
       rounds: standing.rounds.map((matches, index) =>
@@ -62,7 +67,7 @@ function TeamStandingsTable({ tournament, ariaLabel, density, paging, testId }: 
             })),
       ),
     }));
-  }, [tournament, t]);
+  }, [tournament, t, language]);
 
   const tieBreaks = useMemo<TieBreakColumn[]>(
     () => [{ id: "boardPoints", header: t("tournament.columns.boardPoints"), name: t("tournament.columns.boardPointsName"), format: formatScore }],

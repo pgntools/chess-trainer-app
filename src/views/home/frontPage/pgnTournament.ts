@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { TABLE_PAGE_SIZES } from "../../../design-system/components/tables";
@@ -30,31 +30,75 @@ export const pgnEventOf = (pgn: string): PgnEvent | { error: string } => {
 };
 
 /**
- * What an embed made of its PGN: the event and its `made` (a tournament, a
- * knockout, a match) — or why it has none.
+ * **Where an embed's PGN comes from** (CTA-128): `pgn`, the text itself
+ * (`import games from "./event.pgn?raw"`, in the article's own chunk) — or
+ * `load`, a function that imports it (`load={() => import("./olym26.pgn?raw")}`),
+ * so a large file is a chunk of its own, fetched when the table shows, and
+ * the article opens at once. `pgn` wins.
  */
-export type PgnMade<T> = { made: T; event: string | undefined; slug: string; error?: undefined } | { error: string; made?: undefined };
+export type PgnSourceProps = {
+  pgn?: string;
+  load?: () => Promise<string | { default: string }>;
+};
+
+/** A source's text: `text`, or why there is none (`error`) — neither while `load` is under way. */
+export type PgnText = { text?: string; error?: string };
+
+/** {@link PgnSourceProps} as text. `load` is called once, on mount — a new function on a later render is not a new file. */
+export const usePgnSource = ({ pgn, load }: PgnSourceProps): PgnText => {
+  const loadOnMount = useRef(load);
+  const [loaded, setLoaded] = useState<PgnText>({});
+  useEffect(() => {
+    const loader = loadOnMount.current;
+    if (pgn !== undefined || loader === undefined) return;
+    let live = true;
+    loader().then(
+      (module) => live && setLoaded({ text: typeof module === "string" ? module : module.default }),
+      (error: unknown) => live && setLoaded({ error: error instanceof Error ? error.message : String(error) }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [pgn]);
+  if (pgn !== undefined) return { text: pgn };
+  if (load === undefined) return { error: "no pgn and nothing to load" };
+  return loaded;
+};
 
 /**
- * {@link pgnEventOf}, then `make` over its headers — read again only when the
- * PGN or `make` changes, so pass a stable `make` (a module-level function, or
- * a `useCallback`). `make` answering `undefined` is an error (`notMade`).
+ * What an embed made of its PGN: the event and its `made` (a tournament, a
+ * knockout, a match) — or why it has none, or that its file is still loading.
  */
-export const usePgnEvent = <T,>(pgn: string, make: (headers: GameHeaders[]) => T | undefined, notMade = "not this kind of event"): PgnMade<T> =>
-  useMemo(() => {
-    const read = pgnEventOf(pgn);
+export type PgnMade<T> =
+  | { made: T; event: string | undefined; slug: string; error?: undefined; loading?: undefined }
+  | { error: string; made?: undefined; loading?: undefined }
+  | { loading: true; made?: undefined; error?: undefined };
+
+/**
+ * {@link pgnEventOf} over a source's text, then `make` over its headers —
+ * read again only when the text or `make` changes, so pass a stable `make` (a
+ * module-level function, or a `useCallback`). `make` answering `undefined` is
+ * an error (`notMade`).
+ */
+export const usePgnEvent = <T,>(source: PgnText, make: (headers: GameHeaders[]) => T | undefined, notMade = "not this kind of event"): PgnMade<T> => {
+  const { text, error } = source;
+  return useMemo(() => {
+    if (error !== undefined) return { error };
+    if (text === undefined) return { loading: true };
+    const read = pgnEventOf(text);
     if ("error" in read) return { error: read.error };
     const made = make(read.headers);
     return made === undefined ? { error: notMade } : { made, event: read.event, slug: read.slug };
-  }, [pgn, make, notMade]);
+  }, [text, error, make, notMade]);
+};
 
 /** A tournament read from a PGN of its games — the Swiss standings' and the crosstable's. */
 export type PgnTournament = PgnMade<Tournament>;
 
 /** {@link usePgnEvent} for `tournamentOf`, ranked by `tieBreaks`. */
-export const usePgnTournament = (pgn: string, tieBreaks: readonly TieBreak[]): PgnTournament =>
+export const usePgnTournament = (source: PgnText, tieBreaks: readonly TieBreak[]): PgnTournament =>
   usePgnEvent(
-    pgn,
+    source,
     useCallback((headers: GameHeaders[]) => tournamentOf(headers, tieBreaks), [tieBreaks]),
   );
 

@@ -109,6 +109,15 @@ describe("knockoutOf", () => {
       expect(match.sides.map((side) => side.boardPoints)).toEqual([10, 8]);
     });
 
+    it("gives a team a federation only where its players' tags agree — this file has none", () => {
+      const ko = knockoutOf([
+        { Round: "1.1", White: "A1", Black: "B1", WhiteTeam: "Alpha", BlackTeam: "Beta", WhiteCountry: "UZB", BlackCountry: "GER", Result: "1-0" },
+        { Round: "1.2", White: "B2", Black: "A2", WhiteTeam: "Beta", BlackTeam: "Alpha", WhiteCountry: "FRA", BlackCountry: "UZB", Result: "0-1" },
+      ]);
+      expect(ko.winners.rounds[0].matches[0].sides.map((side) => side.competitor.federation)).toEqual(["UZB", undefined]);
+      expect(knockout.winners.rounds[0].matches[0].sides[0].competitor.federation).toBeUndefined();
+    });
+
     it("finds its match for third place too", () => {
       expect(knockout.winners.rounds[3].matches.map((match) => [names(match), match.thirdPlace])).toEqual([
         [["Endgame.AI", "Dragon Chilling"], undefined],

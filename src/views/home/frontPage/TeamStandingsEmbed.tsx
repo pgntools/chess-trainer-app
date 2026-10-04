@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { TeamStandingsTable } from "../../../blocks/tables";
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { teamTournamentOf } from "../../../lib/teamTournament";
-import { usePgnEvent, useEmbedPaging } from "./pgnTournament";
+import { usePgnEvent, useEmbedPaging, usePgnSource, type PgnSourceProps } from "./pgnTournament";
 
 /**
  * **A team tournament's standings in an article** (CTA-128) —
@@ -18,19 +18,28 @@ import { usePgnEvent, useEmbedPaging } from "./pgnTournament";
  * in it says so.
  */
 
-type TeamStandingsEmbedProps = {
-  /** The event's games as PGN — only their tags are read. */
-  pgn: string;
+type TeamStandingsEmbedProps = PgnSourceProps & {
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
   /** Page the rows, this many a page — 25, 50, 100 or 250 (CTA-128). Absent, every row shows. */
   rowsPerPage?: number | string;
 };
 
-export function TeamStandingsEmbed({ pgn, density, rowsPerPage }: TeamStandingsEmbedProps) {
+export function TeamStandingsEmbed({ pgn, load, density, rowsPerPage }: TeamStandingsEmbedProps) {
   const { t } = useTranslation();
   const paging = useEmbedPaging(rowsPerPage);
-  const read = usePgnEvent(pgn, teamTournamentOf);
+  const read = usePgnEvent(usePgnSource({ pgn, load }), teamTournamentOf);
+  if (read.loading) {
+    // The file is a chunk of its own, on its way: the table's own "reading" state, named until its event is known.
+    return (
+      <TeamStandingsTable
+        tournament={undefined}
+        ariaLabel={t("tournament.embed.standings", { event: t("tournament.embed.untitled") })}
+        density={density}
+        testId="tournament-team-standings-loading"
+      />
+    );
+  }
   if (read.made === undefined) {
     return (
       <InlineAlert severity="warning" testId="tournament-team-standings-unreadable" detail={read.error}>

@@ -44,6 +44,27 @@ export const CLUB_LEAGUE: TeamTournament = teamTournamentOf([
   ...match(3, "Dijkstra Club", "Turing Club", [L, L, D, W]),
 ]);
 
+/** National teams carry their players' federation on every game (an Olympiad's file). */
+const national = (games: GameHeaders[], federations: Readonly<Record<string, string>>): GameHeaders[] =>
+  games.map((game) => ({ ...game, WhiteCountry: federations[game.WhiteTeam], BlackCountry: federations[game.BlackTeam] }));
+
+/**
+ * Four national teams over two rounds, each player tagged with the team's
+ * federation — a flag after each name (CTA-128); and one team, "Mixed", of
+ * two federations — no flag.
+ */
+export const NATIONS: TeamTournament = teamTournamentOf([
+  ...national(match(1, "Uzbekistan", "Germany", [W, D, D, W]), { Uzbekistan: "UZB", Germany: "GER" }),
+  ...national(match(1, "India", "England", [D, W, L, W]), { India: "IND", England: "ENG" }),
+  ...national(match(2, "Uzbekistan", "India", [D, D, W, D]), { Uzbekistan: "UZB", India: "IND" }),
+  ...national(match(2, "Germany", "England", [L, D, D, D]), { Germany: "GER", England: "ENG" }),
+  // "Mixed": boards 1–2 French, 3–4 Spanish; "Nomads" all Dutch.
+  ...match(2, "Mixed", "Nomads", [W, W, L, D]).map((game, index) => {
+    const mixed = index < 2 ? "FRA" : "ESP";
+    return game.WhiteTeam === "Mixed" ? { ...game, WhiteCountry: mixed, BlackCountry: "NED" } : { ...game, WhiteCountry: "NED", BlackCountry: mixed };
+  }),
+]);
+
 /** Two Hebrew-named clubs, one match. */
 export const HEBREW: TeamTournament = teamTournamentOf(match(1, "מכבי", "הפועל", [W, D, L, W]));
 

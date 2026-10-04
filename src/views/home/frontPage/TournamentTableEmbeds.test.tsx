@@ -128,4 +128,19 @@ describe("the tournament table embeds (CTA-128)", () => {
     render(<SwissStandingsEmbed pgn={britishPgn} rowsPerPage="7" />);
     expect(screen.getAllByRole("rowheader")).toHaveLength(108);
   });
+
+  it("loads a large PGN as its own chunk — load={() => import(…)} — reading meanwhile, then the table, flags and all", async () => {
+    render(<TeamStandingsEmbed load={() => import("../../blog/articles/tournaments/olym26.pgn?raw")} rowsPerPage="25" />);
+    expect(screen.getByRole("table")).toHaveAttribute("aria-busy", "true");
+    const table = await screen.findByRole("table", { name: "46th Olympiad 2026 — standings" });
+    expect(table).not.toHaveAttribute("aria-busy");
+    const [first] = screen.getAllByRole("rowheader");
+    expect(first).toHaveAccessibleName("Uzbekistan Uzbekistan");
+    expect(screen.getAllByRole("rowheader")).toHaveLength(25);
+  });
+
+  it("says so when a load fails", async () => {
+    render(<MatchTableEmbed load={() => Promise.reject(new Error("gone"))} />);
+    expect(await screen.findByText("This tournament's PGN holds no game.")).toBeInTheDocument();
+  });
 });

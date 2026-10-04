@@ -71,7 +71,7 @@ describe("the Blog's tree", () => {
     expect(blogArticleCount("writing-an-article/demo-tables")).toBe(7);
     expect(blogArticleCount("writing-an-article")).toBe(20);
     expect(blogFolderContents("tournaments").folders).toEqual([]);
-    expect(blogArticleCount("tournaments")).toBe(3);
+    expect(blogArticleCount("tournaments")).toBe(4);
   });
 
   it("walks the folders above an article, for its breadcrumbs", () => {

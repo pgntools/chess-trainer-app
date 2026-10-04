@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
-import { CLUB_LEAGUE, EMPTY, HEBREW } from "./fixtures";
+import { CLUB_LEAGUE, EMPTY, HEBREW, NATIONS } from "./fixtures";
 import TeamStandingsTable, { type TeamStandingsTableProps } from "./TeamStandingsTable";
 
 const mount = (props: Partial<TeamStandingsTableProps> = {}) =>
@@ -39,6 +39,14 @@ describe("TeamStandingsTable", () => {
     expect(screen.getByTestId("t-legend")).toHaveTextContent("a match with a game unfinished");
     expect(screen.getByTestId("t-legend")).toHaveTextContent("no game in the file");
     expect(screen.getAllByText("Round 2: no match in the file")).toHaveLength(2);
+  });
+
+  it("shows a national team's flag — its players' federation — and none for a club of several (CTA-128)", () => {
+    mount({ tournament: NATIONS });
+    const uzbekistan = screen.getByRole("rowheader", { name: "Uzbekistan Uzbekistan" });
+    expect(within(uzbekistan).getByRole("img", { name: "Uzbekistan" })).toHaveAttribute("data-flag", "uz");
+    expect(screen.getByRole("rowheader", { name: "England England" })).toBeInTheDocument();
+    expect(within(screen.getByRole("rowheader", { name: "Mixed" })).queryByRole("img")).not.toBeInTheDocument();
   });
 
   it("is busy while the games are read, and says so for a file with none", () => {

@@ -14,7 +14,8 @@ import { outcomesOf, playerOf, POINTS, roundPartsOf, type GameOutcome, type Tour
  *   from `losersFromRound` (TWIC's 51 and up: `"51.1"` is the losers'
  *   bracket's first round). Absent, there is one bracket.
  * - **A team knockout** — every game names a `WhiteTeam` and a `BlackTeam` —
- *   is a match between the teams; `G` is then a *leg* (a mini-match on every
+ *   is a match between the teams (a team's federation its players', where
+ *   every tag agrees — never its name); `G` is then a *leg* (a mini-match on every
  *   board at once), won on its board points, and the match's score is the
  *   legs won (½ for a drawn leg), its board points kept beside it.
  *
@@ -99,7 +100,7 @@ type Building = {
 
 const teamOf = (headers: GameHeaders, side: "White" | "Black"): TournamentPlayer | undefined => {
   const name = gameTag(headers, `${side}Team`);
-  return name === undefined ? undefined : { id: name, name };
+  return name === undefined ? undefined : { id: name, name, federation: gameTag(headers, `${side}Country`) };
 };
 
 /**
@@ -128,6 +129,8 @@ const inBracketOrder = (rounds: KnockoutMatch[][]): KnockoutMatch[][] => {
 export const knockoutOf = (games: readonly GameHeaders[], { losersFromRound }: { losersFromRound?: number } = {}): Knockout => {
   const teams = games.length > 0 && games.every((headers) => teamOf(headers, "White") !== undefined && teamOf(headers, "Black") !== undefined);
   const matches = new Map<string, Building>();
+  /** Every federation a team's players' tags name — one, or the team has none. */
+  const teamFederations = new Map<string, Set<string>>();
   let read = 0;
   let unfinished = 0;
 
@@ -159,6 +162,11 @@ export const knockoutOf = (games: readonly GameHeaders[], { losersFromRound }: {
         rating: own.competitor.rating ?? seen.rating,
         federation: own.competitor.federation ?? seen.federation,
       };
+      if (teams && seen.federation !== undefined) {
+        const federations = teamFederations.get(seen.id) ?? new Set<string>();
+        federations.add(seen.federation);
+        teamFederations.set(seen.id, federations);
+      }
     }
 
     read += 1;
@@ -191,6 +199,12 @@ export const knockoutOf = (games: readonly GameHeaders[], { losersFromRound }: {
     return { building: match, scores };
   });
 
+  /** A team, with the one federation its players share — or none. */
+  const teamWithFederation = (team: TournamentPlayer): TournamentPlayer => {
+    const federations = teamFederations.get(team.id);
+    return { ...team, federation: federations?.size === 1 ? [...federations][0] : undefined };
+  };
+
   /** Whether a competitor plays in a later round of the same bracket. */
   const playsOn = (competitor: string, bracket: string, round: number) =>
     built.some(({ building }) => building.bracket === bracket && building.round > round && building.sides.some((side) => side.competitor.id === competitor));
@@ -200,7 +214,7 @@ export const knockoutOf = (games: readonly GameHeaders[], { losersFromRound }: {
     const [a, b] = building.sides.map((side) => playsOn(side.competitor.id, bracket, round));
     const winner = scores[0] > scores[1] ? 0 : scores[1] > scores[0] ? 1 : a !== b ? (a ? 0 : 1) : undefined;
     const sideOf = (index: 0 | 1): KnockoutSide => ({
-      competitor: building.sides[index].competitor,
+      competitor: teams ? teamWithFederation(building.sides[index].competitor) : building.sides[index].competitor,
       score: scores[index],
       ...(teams && { boardPoints: building.sides[index].boardPoints }),
     });

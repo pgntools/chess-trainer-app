@@ -66,6 +66,20 @@ describe("teamTournamentOf", () => {
       expect(tournament.standings[0].rounds[0][0].outcome).toBe("unfinished");
     });
 
+    it("gives a team its players' federation when every tag agrees — never one from its name (CTA-128)", () => {
+      const tournament = teamTournamentOf([
+        { ...board("1.1", "Uzbekistan", "Clubbers", "1-0"), WhiteCountry: "UZB", BlackCountry: "GER" },
+        { ...board("1.2", "Clubbers", "Uzbekistan", "0-1"), WhiteCountry: "FRA", BlackCountry: "UZB" },
+        board("2.1", "Uzbekistan", "Nameless", "1-0"),
+      ]);
+      const of = (team: string) => tournament.standings.find((standing) => standing.team === team)!;
+      expect(of("Uzbekistan").federation).toBe("UZB");
+      // Two federations among its players: none.
+      expect(of("Clubbers").federation).toBeUndefined();
+      // No tag at all: none — "Nameless" is not read as a country.
+      expect(of("Nameless").federation).toBeUndefined();
+    });
+
     it("leaves out a game that names no teams", () => {
       expect(teamTournamentOf([{ Round: "1.1", White: "Ann", Black: "Bob", Result: "1-0" }]).games).toBe(0);
     });

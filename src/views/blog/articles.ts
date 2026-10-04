@@ -57,6 +57,14 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
+    path: "tournaments/olympiad-2026",
+    title: { en: "46th Chess Olympiad 2026", he: "האולימפיאדה ה-46 בשחמט 2026" },
+    summary: {
+      en: "Samarkand: the Open and the Women's, two Swisses of national teams — <TeamStandingsTable> with flags, each file loaded on its own.",
+      he: "סמרקנד: הפתוחה ושל הנשים, שני טורנירים שוויצריים של נבחרות — <TeamStandingsTable> עם דגלים, כל קובץ נטען בנפרד.",
+    },
+  },
+  {
     path: "writing-an-article/components/game-boards-3col",
     title: { en: "Three game boards in a row", he: "שלושה לוחות משחק בשורה" },
     summary: {

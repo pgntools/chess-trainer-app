@@ -42,7 +42,7 @@ const roundTitle = (t: TFunction, bracket: Bracketed, index: number, named: bool
 /** One side of a match as a bracket's line: the title before the name, the score — a team's board points after it. */
 const sideOf = (t: TFunction, language: string, match: KnockoutMatch, index: 0 | 1, teams: boolean): BracketSide => {
   const side = match.sides[index];
-  const flag = teams ? undefined : federationFlag(side.competitor, language);
+  const flag = federationFlag(side.competitor, language);
   return {
     id: String(index),
     name: side.competitor.name,

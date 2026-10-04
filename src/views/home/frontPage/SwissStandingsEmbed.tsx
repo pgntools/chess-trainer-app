@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SwissStandingsTable } from "../../../blocks/tables";
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { SWISS_TIE_BREAKS } from "../../../lib/tournament";
-import { usePgnTournament, useEmbedPaging } from "./pgnTournament";
+import { usePgnTournament, useEmbedPaging, usePgnSource, type PgnSourceProps } from "./pgnTournament";
 
 /**
  * **A Swiss tournament's standings in an article** (CTA-128) —
@@ -21,19 +21,28 @@ import { usePgnTournament, useEmbedPaging } from "./pgnTournament";
  * (`lib/tournament.ts`). A PGN with no game in it says so.
  */
 
-type SwissStandingsEmbedProps = {
-  /** The tournament's games as PGN — only their tags are read. */
-  pgn: string;
+type SwissStandingsEmbedProps = PgnSourceProps & {
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
   /** Page the rows, this many a page — 25, 50, 100 or 250 (CTA-128). Absent, every row shows. */
   rowsPerPage?: number | string;
 };
 
-export function SwissStandingsEmbed({ pgn, density, rowsPerPage }: SwissStandingsEmbedProps) {
+export function SwissStandingsEmbed({ pgn, load, density, rowsPerPage }: SwissStandingsEmbedProps) {
   const { t } = useTranslation();
   const paging = useEmbedPaging(rowsPerPage);
-  const read = usePgnTournament(pgn, SWISS_TIE_BREAKS);
+  const read = usePgnTournament(usePgnSource({ pgn, load }), SWISS_TIE_BREAKS);
+  if (read.loading) {
+    // The file is a chunk of its own, on its way: the table's own "reading" state, named until its event is known.
+    return (
+      <SwissStandingsTable
+        tournament={undefined}
+        ariaLabel={t("tournament.embed.standings", { event: t("tournament.embed.untitled") })}
+        density={density}
+        testId="tournament-standings-loading"
+      />
+    );
+  }
   if (read.made === undefined) {
     return (
       <InlineAlert severity="warning" testId="tournament-standings-unreadable" detail={read.error}>

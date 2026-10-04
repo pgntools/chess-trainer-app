@@ -75,7 +75,7 @@ lib    src/lib/                          tournamentOf · knockoutOf · matchOf �
 | Knockout | `knockoutOf(headers)` | `Bracket` | `KnockoutBracket` | `<KnockoutBracket>` | `knockout` (Dutch Ch. 2026) |
 | Double elimination | `knockoutOf(headers, { losersFromRound: 51 })` | `Bracket` ×2 | `KnockoutBracket` | `<KnockoutBracket losersFromRound="51">` | `double-elimination` (Esports World Cup 2026) |
 | Two-player match | `matchOf(headers)` | `StandingsTable` | `MatchTable` | `<MatchTable>` | `match` (Clutch Chess 2026) |
-| Team Swiss / round robin | `teamTournamentOf(headers)` | `StandingsTable` | `TeamStandingsTable` | `<TeamStandingsTable>` | `team` (World Rapid Team 2026) |
+| Team Swiss / round robin | `teamTournamentOf(headers)` | `StandingsTable` | `TeamStandingsTable` | `<TeamStandingsTable>` | `team` (World Rapid Team 2026); the article `tournaments/olympiad-2026` (both Olympiads, with flags) |
 | Team knockout | `knockoutOf(headers)` — teams detected | `Bracket` | `KnockoutBracket` | `<KnockoutBracket>` | `team` (World Blitz Team final) |
 
 Every reader takes `GameHeaders[]` — `splitPgnGames(pgn).map(readPgnTags)` —
@@ -168,12 +168,20 @@ import games from "./chgbr26.pgn?raw"
 
 | Embed | Props | Test ids |
 | --- | --- | --- |
-| `<SwissStandingsTable>` | `pgn`, `density?: "normal" \| "dense"`, `rowsPerPage?` | `tournament-standings-<event slug>` |
-| `<RoundRobinCrossTable>` | `pgn`, `density?`, `rowsPerPage?` | `tournament-crosstable-<event slug>` |
-| `<KnockoutBracket>` | `pgn`, `losersFromRound?` (a double elimination: `"51"`), `density?` | `tournament-bracket-<event slug>` (`-winners`, `-losers`) |
-| `<MatchTable>` | `pgn`, `density?`, `rowsPerPage?` | `tournament-match-<event slug>` |
-| `<TeamStandingsTable>` | `pgn`, `density?`, `rowsPerPage?` | `tournament-team-standings-<event slug>` |
+| `<SwissStandingsTable>` | `pgn` or `load`, `density?: "normal" \| "dense"`, `rowsPerPage?` | `tournament-standings-<event slug>` |
+| `<RoundRobinCrossTable>` | `pgn` or `load`, `density?`, `rowsPerPage?` | `tournament-crosstable-<event slug>` |
+| `<KnockoutBracket>` | `pgn` or `load`, `losersFromRound?` (a double elimination: `"51"`), `density?` | `tournament-bracket-<event slug>` (`-winners`, `-losers`) |
+| `<MatchTable>` | `pgn` or `load`, `density?`, `rowsPerPage?` | `tournament-match-<event slug>` |
+| `<TeamStandingsTable>` | `pgn` or `load`, `density?`, `rowsPerPage?` | `tournament-team-standings-<event slug>` |
 
+- **`load`** in place of `pgn`, for a large file (CTA-128): a function that
+  imports it — `load={() => import("./olym26.pgn?raw")}` — so the file is a
+  chunk of its own, fetched when the page opens, and the article does not
+  carry it. The table shows its "reading" state meanwhile (named "The
+  tournament — …", test id `tournament-…-loading`), then the event's. Every
+  table embed takes it (`usePgnSource`, `pgnTournament.ts`); `load` is
+  called once, on mount; `pgn` wins if both are given; a load that fails is
+  the unreadable warning. Use it from ~1 MB up: the Olympiad's 5 MB files.
 - **`rowsPerPage`** pages a long table — **25, 50, 100 or 250** (the one
   `TABLE_PAGE_SIZES`); any other value, or none, shows every row. The pager
   sits under the table and each row keeps its own rank. The bracket has no
@@ -228,7 +236,11 @@ shows its table and no boards, and its page says so.
   `WLS` have their own flags) and names it in the reader's language
   (`Intl.DisplayNames`). A code with no flag shows its letters. Each SVG is its
   own file, fetched when shown (`?url&no-inline`); a team's name is **never**
-  guessed into a flag — flags come from the tags alone.
+  guessed into a flag — flags come from the tags alone. **A team's flag** is
+  its players' federation where every tagged game of theirs agrees
+  (`teamTournamentOf`, `knockoutOf`: an Olympiad's national teams); a club of
+  several federations, or players under FIDE's flag (`FID`, no flag), has
+  none.
 - **Paging** — every table pattern takes the optional `paging` prop
   (`TablePaging`, `patterns/tables/paging.ts`, `DataTable`'s shape); the
   patterns' conventions test fails a `…Table` pattern without it. **A table
@@ -313,7 +325,8 @@ A11Y_MATRIX=reduced npx playwright test -g "blog-tournaments|seed"
 
 - **No Chess960 boards** (§4).
 - **No byes, forfeits or official standings** — the file's games only (§2).
-- **No flags on TWIC's files** — they carry no country tags.
+- **Flags only where the tags are** — most TWIC files carry no country
+  tags (the Olympiads do).
 - **Bundle**: an article chunk holds its PGNs (the team page ~1.9 MB, lazy);
   the flags' URL map (~14 KB) is in the main chunk, the 272 SVGs only fetched
   when shown.

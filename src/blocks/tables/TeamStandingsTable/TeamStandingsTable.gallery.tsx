@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import type { TeamTournament } from "../../../lib/teamTournament";
 import type { BlockFamilyId } from "../../families";
-import { CLUB_LEAGUE, EMPTY, HEBREW } from "./fixtures";
+import { CLUB_LEAGUE, EMPTY, HEBREW, NATIONS } from "./fixtures";
 import TeamStandingsTable, { type TeamStandingsTableProps } from "./TeamStandingsTable";
 
 /** The block in a box of a definite height and the preview's own width, so the frame scrolls inside it, both ways. */
@@ -20,6 +20,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
     {
       name: "A club league — board points in each round's cell, toned as the match went; a match with a game unfinished (*); a round with no match (–)",
       render: () => demo(CLUB_LEAGUE, "Club league — standings"),
+    },
+    {
+      name: "National teams — each its flag, the one its players all share; a team of mixed federations none (CTA-128)",
+      render: () => demo(NATIONS, "Nations' cup — standings", 260),
     },
     { name: "Still being read", render: () => demo(undefined, "Team standings, loading", 160) },
     { name: "A file with no game in it", render: () => demo(EMPTY, "Team standings, empty", 160) },

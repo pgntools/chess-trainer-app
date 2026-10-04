@@ -5,7 +5,7 @@ import { KnockoutBracket } from "../../../blocks/tables";
 import { InlineAlert } from "../../../design-system/components/feedback";
 import type { GameHeaders } from "../../../lib/gameModel";
 import { knockoutOf } from "../../../lib/knockout";
-import { usePgnEvent } from "./pgnTournament";
+import { usePgnEvent, usePgnSource, type PgnSourceProps } from "./pgnTournament";
 
 /**
  * **A knockout's bracket in an article** (CTA-128) —
@@ -22,22 +22,31 @@ import { usePgnEvent } from "./pgnTournament";
  * so.
  */
 
-type KnockoutBracketEmbedProps = {
-  /** The event's games as PGN — only their tags are read. */
-  pgn: string;
+type KnockoutBracketEmbedProps = PgnSourceProps & {
   /** Where a double elimination's losers' bracket starts — TWIC's `51`. Absent, one bracket. */
   losersFromRound?: number | string;
   /** `dense` tightens the match boxes. */
   density?: "normal" | "dense";
 };
 
-export function KnockoutBracketEmbed({ pgn, losersFromRound, density }: KnockoutBracketEmbedProps) {
+export function KnockoutBracketEmbed({ pgn, load, losersFromRound, density }: KnockoutBracketEmbedProps) {
   const { t } = useTranslation();
   const losers = losersFromRound === undefined || losersFromRound === "" ? undefined : Number(losersFromRound);
   const read = usePgnEvent(
-    pgn,
+    usePgnSource({ pgn, load }),
     useCallback((headers: GameHeaders[]) => knockoutOf(headers, { losersFromRound: Number.isFinite(losers) ? losers : undefined }), [losers]),
   );
+  if (read.loading) {
+    // The file is a chunk of its own, on its way: the table's own "reading" state, named until its event is known.
+    return (
+      <KnockoutBracket
+        knockout={undefined}
+        ariaLabel={t("tournament.embed.bracket", { event: t("tournament.embed.untitled") })}
+        density={density}
+        testId="tournament-bracket-loading"
+      />
+    );
+  }
   if (read.made === undefined) {
     return (
       <InlineAlert severity="warning" testId="tournament-bracket-unreadable" detail={read.error}>

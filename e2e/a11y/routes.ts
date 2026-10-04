@@ -148,6 +148,12 @@ export const ROUTES: readonly PageRoute[] = [
   { id: "blog-inline-pgn-arrows-and-circles", pattern: "/blog/writing-an-article/inline-pgn/arrows-and-circles", path: "blog/writing-an-article/inline-pgn/arrows-and-circles", board: true },
   { id: "blog-inline-pgn-rubinstein-capablanca-1911", pattern: "/blog/writing-an-article/inline-pgn/rubinstein-capablanca-1911", path: "blog/writing-an-article/inline-pgn/rubinstein-capablanca-1911", board: true },
   {
+    id: "blog-tournaments-olympiad-2026",
+    pattern: "/blog/tournaments/olympiad-2026",
+    path: "blog/tournaments/olympiad-2026",
+    ready: byTestId("tournament-team-standings-46th-olympiad-women-2026"),
+  },
+  {
     id: "blog-tournaments-fide-candidates-2026",
     pattern: "/blog/tournaments/fide-candidates-2026",
     path: "blog/tournaments/fide-candidates-2026",
