@@ -6,6 +6,7 @@ import { expectNoAxeViolations } from "../../../test/axe";
 import swissPgn from "../../blog/articles/tournaments/20th-werner-obermeyer-swiss-5r.pgn?raw";
 import candidatesPgn from "../../blog/articles/tournaments/wchcand26.pgn?raw";
 import greenHillsPgn from "../../blog/articles/tournaments/greenhillsrapid26.pgn?raw";
+import britishPgn from "../../blog/articles/tournaments/chgbr26.pgn?raw";
 import knockoutPgn from "../../blog/articles/tournaments/chned26.pgn?raw";
 import matchPgn from "../../blog/articles/tournaments/clutchlegends26.pgn?raw";
 import doubleEliminationPgn from "../../blog/articles/tournaments/esportswcuppl26.pgn?raw";
@@ -114,5 +115,15 @@ describe("the tournament table embeds (CTA-128)", () => {
   it("<TeamStandingsTable>: a team event's standings, named after its event", () => {
     render(<TeamStandingsEmbed pgn={teamKnockoutPgn} />);
     expect(screen.getByRole("table", { name: "FIDE World Bl Team Final — standings" })).toBeInTheDocument();
+  });
+
+  it("pages a long table when the document asks — rowsPerPage, one of the pager's sizes", () => {
+    const { unmount } = render(<SwissStandingsEmbed pgn={britishPgn} rowsPerPage="25" />);
+    expect(screen.getAllByRole("rowheader")).toHaveLength(25);
+    expect(screen.getByTestId("tournament-standings-112th-ch-gbr-2026-pager")).toHaveTextContent("Rows per page");
+    unmount();
+    // A size the pager does not offer: no paging, every row.
+    render(<SwissStandingsEmbed pgn={britishPgn} rowsPerPage="7" />);
+    expect(screen.getAllByRole("rowheader")).toHaveLength(108);
   });
 });

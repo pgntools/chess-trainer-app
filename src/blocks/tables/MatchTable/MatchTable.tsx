@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { StandingsTable, type StandingsRow } from "../../../design-system/patterns/tables";
+import { StandingsTable, type StandingsRow, type TablePaging } from "../../../design-system/patterns/tables";
 import type { Match } from "../../../lib/match";
 import { formatScore, tournamentLabels, tournamentLegend } from "../tournamentTable";
 
@@ -12,6 +12,8 @@ export type MatchTableProps = {
   ariaLabel: string;
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
+  /** Cut the rows into pages, the pager under the table — for a long one (CTA-128). Absent, every row shows. */
+  paging?: TablePaging;
   /**
    * The table's root, and every id under it (`StandingsTable`'s): `-row-<player id>`
    * (`-name`, `-points`), a game's cell `-round-<player id>-<game>`, `-loading`, `-empty`, `-legend`.
@@ -30,7 +32,7 @@ export type MatchTableProps = {
  * Presentational: the match is a prop (a screen reads the games and calls
  * `matchOf`). Its words are the app's (`tournament.*`).
  */
-function MatchTable({ match, ariaLabel, density, testId }: MatchTableProps) {
+function MatchTable({ match, ariaLabel, density, paging, testId }: MatchTableProps) {
   const { t } = useTranslation();
 
   const rows = useMemo<StandingsRow[]>(() => {
@@ -72,6 +74,7 @@ function MatchTable({ match, ariaLabel, density, testId }: MatchTableProps) {
       loadingLabel={t("tournament.loading")}
       emptyLabel={t("tournament.empty")}
       density={density}
+      paging={paging}
       ariaLabel={ariaLabel}
       testId={testId}
     />

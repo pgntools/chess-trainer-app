@@ -4,7 +4,6 @@ import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import type { LabelDisplayedRowsArgs } from "@mui/material/TablePagination";
 
 import { visuallyHidden, type VisibleLabel } from "../../../components/a11y";
 import { linkProps, type LinkTarget } from "../../../components/link";
@@ -22,20 +21,11 @@ import {
   type SortDirection,
   type TableName,
 } from "../../../components/tables";
+import { type TablePaging } from "../paging";
 import { nextSort, type DataTableColumn, type DataTableSort } from "./columns";
 
-/** Controlled paging — `useTableUrlState`'s, or any other source's. */
-export type DataTablePaging = {
-  /** Zero-based. A page past the last shows the last. */
-  page: number;
-  rowsPerPage: number;
-  onPageChange: (page: number) => void;
-  onRowsPerPageChange: (rows: number) => void;
-  /** "Rows per page" in the reader's language. */
-  labelRowsPerPage: VisibleLabel;
-  /** "1–50 of 812" — absent, the theme's locale bundle words it. */
-  labelDisplayedRows?: (args: LabelDisplayedRowsArgs) => ReactNode;
-};
+/** Controlled paging — the table patterns' one shape (`../paging.ts`). */
+export type DataTablePaging = TablePaging;
 
 /** Controlled picks: a checkbox per row, select-all in the header. */
 export type DataTablePicks<R> = {

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { CrossTable, type CrossTableRow } from "../../../design-system/patterns/tables";
+import { CrossTable, type CrossTableRow, type TablePaging } from "../../../design-system/patterns/tables";
 import { gamesBetween, type Tournament } from "../../../lib/tournament";
 import { competitorOf, formatPoints, playerNames, resultEntryOf, tieBreakColumns, tournamentLabels, tournamentLegend } from "../tournamentTable";
 
@@ -16,6 +16,8 @@ export type RoundRobinCrossTableProps = {
   ariaLabel: string;
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
+  /** Cut the rows into pages, the pager under the table — for a long one (CTA-128). Absent, every row shows. */
+  paging?: TablePaging;
   /**
    * The table's root, and every id under it (`CrossTable`'s): `-frame`,
    * `-row-<player id>` (`-name`, `-points`, `-sonnebornBerger`), a player's
@@ -41,7 +43,7 @@ export type RoundRobinCrossTableProps = {
  * Presentational: the tournament is a prop (a screen reads the games and
  * calls `tournamentOf`). Its words are the app's (`tournament.*`).
  */
-function RoundRobinCrossTable({ tournament, ariaLabel, density, testId }: RoundRobinCrossTableProps) {
+function RoundRobinCrossTable({ tournament, ariaLabel, density, paging, testId }: RoundRobinCrossTableProps) {
   const { t } = useTranslation();
 
   const rows = useMemo<CrossTableRow[]>(() => {
@@ -85,6 +87,7 @@ function RoundRobinCrossTable({ tournament, ariaLabel, density, testId }: RoundR
       loadingLabel={t("tournament.loading")}
       emptyLabel={t("tournament.empty")}
       density={density}
+      paging={paging}
       ariaLabel={ariaLabel}
       testId={testId}
     />

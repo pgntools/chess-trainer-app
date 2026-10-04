@@ -11,3 +11,5 @@ export * from "./CrossTable";
 export * from "./Bracket";
 // What the two competition tables share (CTA-120): a competitor, a result, a tie-break column.
 export type { ColumnHeading, Competitor, CompetitorLabels, ResultEntry, TieBreakColumn } from "./competitors";
+// Every table pattern's optional paging (CTA-128): one shape, `DataTable`'s.
+export type { TablePaging } from "./paging";

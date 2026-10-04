@@ -1245,6 +1245,7 @@ const he: typeof en = {
     },
     loading: "קורא את הטורניר…",
     empty: "אין משחקים להצגה.",
+    rowsPerPage: "שורות בעמוד",
     embed: {
       standings: "{{event}} — טבלת הדירוג",
       crosstable: "{{event}} — טבלה צולבת",

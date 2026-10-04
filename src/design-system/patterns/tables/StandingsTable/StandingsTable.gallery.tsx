@@ -14,6 +14,7 @@ import {
   type DemoLeagueOptions,
 } from "../../../gallery/demoLeague";
 import type { GalleryModule } from "../../../gallery/types";
+import WithState from "../../../gallery/WithState";
 import type { PatternSectionId } from "../../sections";
 import StandingsTable, { type StandingsTableProps } from "./StandingsTable";
 
@@ -76,6 +77,24 @@ const gallery: GalleryModule<PatternSectionId> = {
     {
       name: "Ninety-nine rows, no paging — the rows scroll under the header",
       render: () => demo({ names: demoNames(99), extras, unfinished: true, absent: (index, round) => (index + round) % 9 === 0 }, 9, { density: "dense" }, 360),
+    },
+    {
+      name: "Ninety-nine rows, paged — 25 a page, the pager under the frame, each row keeping its own rank (CTA-128)",
+      render: () => (
+        <WithState initial={{ page: 0, rowsPerPage: 25 }}>
+          {(state, setState) =>
+            demo({ names: demoNames(99), extras }, 5, {
+              density: "dense",
+              paging: {
+                ...state,
+                onPageChange: (page) => setState((old) => ({ ...old, page })),
+                onRowsPerPageChange: (rowsPerPage) => setState({ page: 0, rowsPerPage }),
+                labelRowsPerPage: "Rows per page",
+              },
+            }, 420)
+          }
+        </WithState>
+      ),
     },
     { name: "Thirty rounds — the frame scrolls sideways", render: () => demo({ names: demoNames(12), extras }, 30) },
     { name: "Long names — one line each, and a sideways scroll", render: () => demo({ names: DEMO_LONG_NAMES, extras }, 3, {}, 240) },

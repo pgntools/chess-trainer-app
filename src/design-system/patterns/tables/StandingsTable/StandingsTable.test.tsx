@@ -314,4 +314,36 @@ describe("StandingsTable", () => {
       await expectNoAxeViolations();
     });
   });
+
+  describe("paging (CTA-128)", () => {
+    /** Thirty rows, ranked 1–30: more than a page of 25. */
+    const MANY = Array.from({ length: 30 }, (_, index) => ({ ...ROWS[0], prefix: undefined, suffix: undefined, id: `p${index + 1}`, rank: index + 1, name: `Player ${index + 1}` }));
+    const paging = (page: number, onPageChange: (page: number) => void = () => {}) => ({
+      page,
+      rowsPerPage: 25,
+      onPageChange,
+      onRowsPerPageChange: () => {},
+      labelRowsPerPage: "Rows per page",
+    });
+
+    it("shows every row with no paging, and no pager", () => {
+      mount({ rows: MANY });
+      expect(screen.getAllByRole("rowheader")).toHaveLength(30);
+      expect(screen.queryByTestId("t-pager")).not.toBeInTheDocument();
+    });
+
+    it("shows a page of rows, each keeping its own rank, and a pager that turns it", async () => {
+      const user = userEvent.setup();
+      const turned: number[] = [];
+      const { rerender } = mount({ rows: MANY, paging: paging(0, (page: number) => turned.push(page)) });
+      expect(screen.getAllByRole("rowheader")).toHaveLength(25);
+      await user.click(within(screen.getByTestId("t-pager")).getByRole("button", { name: /next page/i }));
+      expect(turned).toEqual([1]);
+      rerender(
+        <StandingsTable rows={MANY} rounds={3} labels={LABELS} emptyLabel="No games yet" ariaLabel="Standings" testId="t" paging={paging(1)} />,
+      );
+      expect(screen.getAllByRole("rowheader").map((header) => header.textContent)).toEqual(["Player 26", "Player 27", "Player 28", "Player 29", "Player 30"]);
+      expect(screen.getByTestId("t-row-p26").firstElementChild).toHaveTextContent("26");
+    });
+  });
 });

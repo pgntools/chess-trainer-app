@@ -11,7 +11,7 @@ Each game names its teams in two tags, `WhiteTeam` and `BlackTeam`, and every ga
 
 48 teams, twelve rounds, six boards. A round's cell is the team's board points in that match, toned as the match went. A screen reader hears the opponent and the score both ways, for example "Round 1 against …: 4½–1½, won". Dragon Chilling won on 18 match points, ahead of Hexamind Chess Team and Team MGD1, also on 18, on board points.
 
-<TeamStandingsTable pgn={rapid} density="dense" />
+<TeamStandingsTable pgn={rapid} density="dense" rowsPerPage="25" />
 
 ## The blitz final stage: a knockout of teams
 
@@ -25,7 +25,7 @@ Sixteen teams. Each match is played in legs, all six boards at once, and a leg i
 import rapid from "./fidewrt26.pgn?raw"
 import blitz from "./fidewrbtf26.pgn?raw"
 
-<TeamStandingsTable pgn={rapid} density="dense" />
+<TeamStandingsTable pgn={rapid} density="dense" rowsPerPage="25" />
 
 <KnockoutBracket pgn={blitz} density="dense" />
 ```

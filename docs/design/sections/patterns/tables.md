@@ -5,6 +5,15 @@
 section's parts](../tables.md). Import from `patterns/tables`. Where a
 pattern belongs in the hierarchy: [`hierarchy.md`](../../hierarchy.md).
 
+**Every table takes paging** (CTA-128): each table pattern — `DataTable`,
+`StandingsTable`, `CrossTable`, and any table pattern to come — takes the
+optional `paging` prop, one shape for all (`TablePaging`,
+`patterns/tables/paging.ts`: `{ page, rowsPerPage, onPageChange,
+onRowsPerPageChange, labelRowsPerPage, labelDisplayedRows? }`, controlled,
+`rowsPerPage` one of `TABLE_PAGE_SIZES`). Absent, every row shows; present,
+the rows are cut into pages and `TablePager` sits under the frame. The
+patterns' conventions test fails a `…Table` pattern that does not declare it.
+
 Gallery: `/dev/design/patterns/tables/DataTable`,
 `/dev/design/patterns/tables/StandingsTable`,
 `/dev/design/patterns/tables/CrossTable`,
@@ -128,8 +137,10 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   alone), `tieBreaks?`, `formatPoints?`, `legend?: ResultEntry[]` (under the
   table, out of its scroll, while it has rows: "* = unfinished game"),
   `loading?` +
-  `loadingLabel?`, `emptyLabel`, `density?`, `stickyHeader?`, a name —
-  `ariaLabel` or `caption` (`TableName`, **required**) — and `testId`.
+  `loadingLabel?`, `emptyLabel`, `density?`, `stickyHeader?`, `paging?`
+  (CTA-128: a page of rows, the pager under the frame; each row keeps its
+  own rank), a name — `ariaLabel` or `caption` (`TableName`, **required**)
+  — and `testId`.
 - **Accessible** — named by an `ariaLabel` or a `caption`; `aria-busy` while
   `loading`; the name is its **row's header** (`th scope="row"`) and every
   column has one; a result is read by its words and never told by its colour
@@ -138,11 +149,11 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   results `dir="ltr"`; the table mirrors under RTL.
 - **Test ids** — `testId` (the root), `-frame` (its table `-frame-table`),
   `-row-<id>` (`-name`, `-points`, `-<tie-break id>`), a round's cell
-  `-round-<id>-<round>`, `-loading`, `-empty`, `-legend`.
+  `-round-<id>-<round>`, `-loading`, `-empty`, `-legend`, `-pager`.
 - **Variations** (one demo each) — every kind of cell with titles, ratings
   and two tie-breaks; the bare table (no rating, no tie-breaks, no legend);
-  loading; empty; one row; ninety-nine rows; thirty rounds (a sideways
-  scroll); long names; Hebrew names under a caption (RTL); the header not
+  loading; empty; one row; ninety-nine rows; ninety-nine rows paged;
+  thirty rounds (a sideways scroll); long names; Hebrew names under a caption (RTL); the header not
   sticky.
 
 ## CrossTable
@@ -167,7 +178,8 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
 - **Props** — `rows`, `labels: { rank, name, rating?, points }`,
   `tieBreaks?`, `formatPoints?`, `legend?`, `loading?` + `loadingLabel?`
   (while loading there are no competitors' columns), `emptyLabel`,
-  `density?`, `stickyHeader?`, a name — `ariaLabel` or `caption`
+  `density?`, `stickyHeader?`, `paging?` (CTA-128: the rows are paged,
+  every competitor keeps its column), a name — `ariaLabel` or `caption`
   (`TableName`, **required**) — and `testId`.
 - **Accessible** — as `StandingsTable`; the rows' and the columns' headers
   are real ones (`th` with `scope="row"` / `scope="col"`), so a screen reader
@@ -176,10 +188,11 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   `-row-<id>` (`-name`, `-points`, `-<tie-break id>`), a competitor's column
   `-column-<id>`, the cell of a row against a column
   `-cell-<row id>-<column id>` (the diagonal's too), `-loading`, `-empty`,
-  `-legend`.
+  `-legend`, `-pager`.
 - **Variations** (one demo each) — a double round robin; a single one; an
   unfinished double one; the bare table; loading; empty; long names; Hebrew
-  names under a caption (RTL); dense with the header not sticky.
+  names under a caption (RTL); thirty members paged; dense with the header
+  not sticky.
 
 ## Bracket
 

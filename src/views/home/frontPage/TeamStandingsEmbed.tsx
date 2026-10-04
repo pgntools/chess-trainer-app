@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { TeamStandingsTable } from "../../../blocks/tables";
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { teamTournamentOf } from "../../../lib/teamTournament";
-import { usePgnEvent } from "./pgnTournament";
+import { usePgnEvent, useEmbedPaging } from "./pgnTournament";
 
 /**
  * **A team tournament's standings in an article** (CTA-128) —
@@ -23,10 +23,13 @@ type TeamStandingsEmbedProps = {
   pgn: string;
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
+  /** Page the rows, this many a page — 25, 50, 100 or 250 (CTA-128). Absent, every row shows. */
+  rowsPerPage?: number | string;
 };
 
-export function TeamStandingsEmbed({ pgn, density }: TeamStandingsEmbedProps) {
+export function TeamStandingsEmbed({ pgn, density, rowsPerPage }: TeamStandingsEmbedProps) {
   const { t } = useTranslation();
+  const paging = useEmbedPaging(rowsPerPage);
   const read = usePgnEvent(pgn, teamTournamentOf);
   if (read.made === undefined) {
     return (
@@ -40,6 +43,7 @@ export function TeamStandingsEmbed({ pgn, density }: TeamStandingsEmbedProps) {
       tournament={read.made}
       ariaLabel={t("tournament.embed.standings", { event: read.event ?? t("tournament.embed.untitled") })}
       density={density}
+      paging={paging}
       testId={`tournament-team-standings-${read.slug}`}
     />
   );

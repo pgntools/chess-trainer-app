@@ -291,4 +291,15 @@ describe("CrossTable", () => {
       await expectNoAxeViolations();
     });
   });
+
+  describe("paging (CTA-128)", () => {
+    it("pages the rows and keeps every competitor's column", () => {
+      const many: CrossTableRow[] = Array.from({ length: 30 }, (_, index) => ({ id: `p${index + 1}`, rank: index + 1, name: `Player ${index + 1}`, points: 0, results: {} }));
+      mount({ rows: many, paging: { page: 1, rowsPerPage: 25, onPageChange: () => {}, onRowsPerPageChange: () => {}, labelRowsPerPage: "Rows per page" } });
+      expect(screen.getAllByRole("rowheader")).toHaveLength(5);
+      expect(screen.getByTestId("t-column-p1")).toBeInTheDocument();
+      expect(screen.getByTestId("t-column-p30")).toBeInTheDocument();
+      expect(screen.getByTestId("t-pager")).toBeInTheDocument();
+    });
+  });
 });

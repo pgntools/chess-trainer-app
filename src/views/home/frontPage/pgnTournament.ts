@@ -1,4 +1,8 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { TABLE_PAGE_SIZES } from "../../../design-system/components/tables";
+import type { TablePaging } from "../../../design-system/patterns/tables";
 
 import { gameTag, type GameHeaders } from "../../../lib/gameModel";
 import { readPgnTags, splitPgnGames } from "../../../lib/pgn";
@@ -53,3 +57,23 @@ export const usePgnTournament = (pgn: string, tieBreaks: readonly TieBreak[]): P
     pgn,
     useCallback((headers: GameHeaders[]) => tournamentOf(headers, tieBreaks), [tieBreaks]),
   );
+
+/**
+ * **An embed's paging** (CTA-128) — `rowsPerPage` from the document
+ * (`<SwissStandingsTable pgn={games} rowsPerPage="25" />`): absent, or not a
+ * page size the pager offers (`TABLE_PAGE_SIZES`: 25, 50, 100, 250), no
+ * paging; else the page, held here, starting at the first.
+ */
+export const useEmbedPaging = (rowsPerPage: number | string | undefined): TablePaging | undefined => {
+  const { t } = useTranslation();
+  const asked = rowsPerPage === undefined || rowsPerPage === "" ? Number.NaN : Number(rowsPerPage);
+  const size = TABLE_PAGE_SIZES.includes(asked) ? asked : undefined;
+  const [state, setState] = useState({ page: 0, rowsPerPage: size ?? 25 });
+  if (size === undefined) return undefined;
+  return {
+    ...state,
+    onPageChange: (page) => setState((old) => ({ ...old, page })),
+    onRowsPerPageChange: (rows) => setState({ page: 0, rowsPerPage: rows }),
+    labelRowsPerPage: t("tournament.rowsPerPage"),
+  };
+};

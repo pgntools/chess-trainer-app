@@ -1602,6 +1602,8 @@ const en = {
     },
     loading: "Reading the tournament…",
     empty: "No games to show.",
+    /** A paged table's pager (CTA-128). */
+    rowsPerPage: "Rows per page",
     /** The MDX embeds (CTA-128): `<SwissStandingsTable>` and `<RoundRobinCrossTable>` in an article. */
     embed: {
       /** The table's accessible name, after the games' Event tag. */

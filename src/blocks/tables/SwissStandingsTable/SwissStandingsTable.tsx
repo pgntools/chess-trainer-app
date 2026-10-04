@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { StandingsTable, type StandingsRow } from "../../../design-system/patterns/tables";
+import { StandingsTable, type StandingsRow, type TablePaging } from "../../../design-system/patterns/tables";
 import type { Tournament } from "../../../lib/tournament";
 import { competitorOf, formatPoints, playerNames, resultEntryOf, tieBreakColumns, tournamentLabels, tournamentLegend } from "../tournamentTable";
 
@@ -16,6 +16,8 @@ export type SwissStandingsTableProps = {
   ariaLabel: string;
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
+  /** Cut the rows into pages, the pager under the table — for a long one (CTA-128). Absent, every row shows. */
+  paging?: TablePaging;
   /**
    * The table's root, and every id under it (`StandingsTable`'s): `-frame`,
    * `-row-<player id>` (`-name`, `-points`, `-buchholz`, `-sonnebornBerger`),
@@ -41,7 +43,7 @@ export type SwissStandingsTableProps = {
  * Presentational: the tournament is a prop (a screen reads the games and
  * calls `tournamentOf`). Its words are the app's (`tournament.*`).
  */
-function SwissStandingsTable({ tournament, ariaLabel, density, testId }: SwissStandingsTableProps) {
+function SwissStandingsTable({ tournament, ariaLabel, density, paging, testId }: SwissStandingsTableProps) {
   const { t } = useTranslation();
 
   const rows = useMemo<StandingsRow[]>(() => {
@@ -78,6 +80,7 @@ function SwissStandingsTable({ tournament, ariaLabel, density, testId }: SwissSt
       loadingLabel={t("tournament.loading")}
       emptyLabel={t("tournament.empty")}
       density={density}
+      paging={paging}
       ariaLabel={ariaLabel}
       testId={testId}
     />

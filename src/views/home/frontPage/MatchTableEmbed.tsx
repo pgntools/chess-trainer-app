@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { MatchTable } from "../../../blocks/tables";
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { matchOf } from "../../../lib/match";
-import { usePgnEvent } from "./pgnTournament";
+import { usePgnEvent, useEmbedPaging } from "./pgnTournament";
 
 /**
  * **A match between two players in an article** (CTA-128) —
@@ -22,10 +22,13 @@ type MatchTableEmbedProps = {
   pgn: string;
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
+  /** Page the rows, this many a page — 25, 50, 100 or 250 (CTA-128). Absent, every row shows. */
+  rowsPerPage?: number | string;
 };
 
-export function MatchTableEmbed({ pgn, density }: MatchTableEmbedProps) {
+export function MatchTableEmbed({ pgn, density, rowsPerPage }: MatchTableEmbedProps) {
   const { t } = useTranslation();
+  const paging = useEmbedPaging(rowsPerPage);
   const read = usePgnEvent(pgn, matchOf, "not a match between two players");
   if (read.made === undefined) {
     return (
@@ -39,6 +42,7 @@ export function MatchTableEmbed({ pgn, density }: MatchTableEmbedProps) {
       match={read.made}
       ariaLabel={t("tournament.embed.match", { event: read.event ?? t("tournament.embed.untitled") })}
       density={density}
+      paging={paging}
       testId={`tournament-match-${read.slug}`}
     />
   );

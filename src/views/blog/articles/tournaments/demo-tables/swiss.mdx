@@ -12,14 +12,16 @@ The file holds 468 games over nine rounds, a few short of every board, so a play
 
 A row per player, ranked by points, then Buchholz, then Sonneborn-Berger, with a cell per round. A cell shows the result only; its round, colour and opponent are in its name, for example "Round 3, White against …: win".
 
-<SwissStandingsTable pgn={games} density="dense" />
+<SwissStandingsTable pgn={games} density="dense" rowsPerPage="25" />
+
+A long table can be cut into pages: `rowsPerPage="25"` shows 25 players at a time, with a pager under the table. The pager offers 25, 50, 100 and 250, and each row keeps its own rank.
 
 ## The markup
 
 ```mdx
 import games from "./chgbr26.pgn?raw"
 
-<SwissStandingsTable pgn={games} density="dense" />
+<SwissStandingsTable pgn={games} density="dense" rowsPerPage="25" />
 ```
 
 ## Source

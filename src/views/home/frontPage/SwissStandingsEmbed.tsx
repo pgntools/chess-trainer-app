@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SwissStandingsTable } from "../../../blocks/tables";
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { SWISS_TIE_BREAKS } from "../../../lib/tournament";
-import { usePgnTournament } from "./pgnTournament";
+import { usePgnTournament, useEmbedPaging } from "./pgnTournament";
 
 /**
  * **A Swiss tournament's standings in an article** (CTA-128) —
@@ -26,10 +26,13 @@ type SwissStandingsEmbedProps = {
   pgn: string;
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
+  /** Page the rows, this many a page — 25, 50, 100 or 250 (CTA-128). Absent, every row shows. */
+  rowsPerPage?: number | string;
 };
 
-export function SwissStandingsEmbed({ pgn, density }: SwissStandingsEmbedProps) {
+export function SwissStandingsEmbed({ pgn, density, rowsPerPage }: SwissStandingsEmbedProps) {
   const { t } = useTranslation();
+  const paging = useEmbedPaging(rowsPerPage);
   const read = usePgnTournament(pgn, SWISS_TIE_BREAKS);
   if (read.made === undefined) {
     return (
@@ -43,6 +46,7 @@ export function SwissStandingsEmbed({ pgn, density }: SwissStandingsEmbedProps) 
       tournament={read.made}
       ariaLabel={t("tournament.embed.standings", { event: read.event ?? t("tournament.embed.untitled") })}
       density={density}
+      paging={paging}
       testId={`tournament-standings-${read.slug}`}
     />
   );
