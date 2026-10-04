@@ -14,10 +14,31 @@ name: CI
 #
 # Coverage is measured on a push to `development` (and nightly), not on a pull
 # request: there the tests run once, in one job, with `--coverage`.
+#
+# Skipping the gate (CTA-129), two ways:
+#
+#   paths-ignore  — a change that touches nothing but documentation (docs/,
+#                   any .md, .claude/) skips this gate: the run is skipped only
+#                   when EVERY changed file matches, so a PR that also touches
+#                   code still runs it. Blog articles (.mdx under src/) are
+#                   shipped app content and are NOT in the list.
+#   [skip ci]     — GitHub's native marker: `[skip ci]`, `[ci skip]`, `[no ci]`
+#                   in the head commit message or the PR title skips EVERY
+#                   push/pull_request workflow of the repo — deploy-pages
+#                   included — so it is for a minor touch only, and never for
+#                   a PR whose merge carries app changes.
 on:
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.claude/**'
   push:
     branches: [development]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.claude/**'
   workflow_dispatch:
 
 # A new push to a pull request's branch makes its running checks moot.
@@ -29,11 +50,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          # Matches the Node the reference workflows pin. This repo pins nothing
-          # in-tree (no .nvmrc, no engines) — local dev Node comes from fnm.
+          # 24, not the newest: jsdom 30's `engines` field skips odd-numbered
+          # Node entirely (^22.22.2 || ^24.15.0 || >=26), so a 25 here fails
+          # `yarn install` outright. This repo pins nothing in-tree (no .nvmrc,
+          # no engines) — local dev Node comes from fnm.
           node-version: 24
           cache: yarn
       - run: yarn install --frozen-lockfile
@@ -43,8 +66,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: yarn
@@ -62,8 +85,8 @@ jobs:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: yarn
@@ -80,8 +103,8 @@ jobs:
       matrix:
         shard: [1, 2, 3]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: yarn
@@ -98,8 +121,8 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: yarn

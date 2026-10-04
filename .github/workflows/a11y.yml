@@ -15,8 +15,17 @@ name: Accessibility
 #
 # Separate from ci.yml because it needs a browser and takes minutes, not
 # seconds, and because a nightly run has nothing to do with a push.
+#
+# A docs-only pull request skips the browser pass through the same
+# `paths-ignore` as ci.yml (CTA-129) — a change with nothing but documentation
+# to check needs no axe run. Anything else (including .mdx blog articles,
+# which are app content) still runs it.
 on:
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.claude/**'
   schedule:
     # 02:17 UTC every day.
     - cron: "17 2 * * *"
@@ -67,9 +76,9 @@ jobs:
       A11Y_WORKERS: 3
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: yarn
