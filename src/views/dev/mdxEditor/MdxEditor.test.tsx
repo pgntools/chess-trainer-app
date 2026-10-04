@@ -94,6 +94,22 @@ describe("the MDX editor", () => {
     expect(screen.queryByTestId("mdx-editor-compile-error")).not.toBeInTheDocument();
   });
 
+  it("marks where each block's source line starts in the preview, and scrolls the panes together until switched off", async () => {
+    const user = userEvent.setup();
+    mount();
+    setSource("export const x = 1\n\n## One\n\nWords\n\n{/* a note */}\n\n## Two");
+    await within(preview()).findByRole("heading", { name: "Two" });
+    const lines = Array.from(preview().querySelectorAll<HTMLElement>("[data-source-line]"), (marker) => marker.dataset.sourceLine);
+    // Not the export or the comment, which draw nothing.
+    expect(lines).toEqual(["3", "5", "9"]);
+    expect(within(preview()).getByRole("heading", { name: "One" }).previousElementSibling).toHaveAttribute("data-source-line", "3");
+
+    const together = screen.getByRole("switch", { name: "Scroll together" });
+    expect(together).toBeChecked();
+    await user.click(together);
+    expect(together).not.toBeChecked();
+  });
+
   it("contains a component that throws, and renders again on the next compile", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.spyOn(console, "warn").mockImplementation(() => {});

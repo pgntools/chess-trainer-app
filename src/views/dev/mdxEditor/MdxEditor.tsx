@@ -8,12 +8,13 @@ import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import type { MDXContent } from "mdx/types";
 
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
-import { SelectField } from "../../../design-system/components/forms";
+import { SelectField, SwitchField } from "../../../design-system/components/forms";
 import { downloadTextFile } from "../../../lib/pgnExport";
 import { mdxComponents } from "../../home/frontPage";
 import { articleImportResolver, articleSources, folderOf, loadArticleSource } from "./articleSources";
-import { compileMdx } from "./compileMdx";
+import { compileMdx, SOURCE_LINE_COMPONENT } from "./compileMdx";
 import { STARTER_DOCUMENT } from "./starterDocument";
+import { useScrollSync } from "./useScrollSync";
 
 /**
  * **The MDX editor** (dev-only, `/dev/mdx-editor`) — an article's MDX on the
@@ -29,11 +30,21 @@ import { STARTER_DOCUMENT } from "./starterDocument";
  *   from the edit icon beside an article's title (`?article=<file>`, which
  *   `Main` hands in as `arrivingArticle`); its
  *   `import games from "./x.pgn?raw"` reads the file beside it.
+ * - **The panes scroll together** (`useScrollSync.ts`) while "Scroll
+ *   together" is on: scrolling either brings the other to the same block.
  * - **Nothing is written to the repository**: the text is copied or
  *   downloaded as a `.mdx`, to put under `src/views/blog/articles/` (the
  *   guide article says what else an article needs). The draft is kept for
  *   the tab's session, so a reload or a visit to another screen keeps it.
  */
+
+/** Where a source line's block starts in the preview — `compileMdx.ts`'s marker, drawn as nothing. */
+function SourceLineMarker({ line }: { line?: string }) {
+  return <Box component="span" aria-hidden data-source-line={line} sx={{ display: "block", height: 0 }} />;
+}
+
+/** The article components, and the source-line marker the compiled document places before each block. */
+const PREVIEW_COMPONENTS = { ...mdxComponents, [SOURCE_LINE_COMPONENT]: SourceLineMarker };
 
 /** How long typing must pause before the document is compiled again. */
 export const COMPILE_DELAY_MS = 300;
@@ -145,6 +156,10 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   const [draft, setDraft] = useState<Draft>(() => (kept === undefined ? { source: STARTER_DOCUMENT, file: "" } : { source: kept.source, file: kept.file }));
   const [opened, setOpened] = useState(kept?.opened ?? draft.source);
   const [notice, setNotice] = useState<string>();
+  const [scrollTogether, setScrollTogether] = useState(true);
+  const sourceRef = useRef<HTMLTextAreaElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  useScrollSync({ enabled: scrollTogether, source: sourceRef, preview: previewRef });
   const folder = folderOf(draft.file);
   const compiled = useCompiled(draft.source, folder);
 
@@ -256,6 +271,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           </Typography>
           <Box
             component="textarea"
+            ref={sourceRef}
             id={SOURCE_ID}
             data-testid="mdx-editor-source"
             dir="ltr"
@@ -289,9 +305,13 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
             <StatusText tone="neutral" testId="mdx-editor-state">
               {pending ? "Compiling…" : error !== undefined ? "Not compiled" : "Up to date"}
             </StatusText>
+            <Box sx={{ marginInlineStart: "auto" }}>
+              <SwitchField label="Scroll together" checked={scrollTogether} onChange={setScrollTogether} size="small" testId="mdx-editor-scroll-together" />
+            </Box>
           </Box>
           <Box
             role="region"
+            ref={previewRef}
             aria-labelledby="mdx-editor-preview-label"
             data-testid="mdx-editor-preview"
             sx={{ flex: 1, minHeight: 0, overflowY: { md: "auto" }, p: 2, border: 1, borderColor: "divider", borderRadius: 1, bgcolor: "background.default" }}
@@ -313,7 +333,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
                     </Typography>
                   }
                 >
-                  <Content components={mdxComponents} />
+                  <Content components={PREVIEW_COMPONENTS} />
                 </Suspense>
               </PreviewBoundary>
             )}

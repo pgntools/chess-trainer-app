@@ -22,7 +22,38 @@ import * as runtime from "react/jsx-runtime";
  *
  * Any other import line is an error. Neither is touched inside a fenced code
  * block, where an article shows its markup.
+ *
+ * **Source lines.** Before each top-level block the document gets a marker,
+ * `<MdxEditorSourceLine line="12" />` (`SOURCE_LINE_COMPONENT`), which the
+ * editor draws as an empty, zero-height element carrying `data-source-line`:
+ * where that line's block sits in the preview, so the two panes can scroll
+ * together (`scrollSync.ts`). Imports keep their lines, so the numbers are the
+ * editor's.
  */
+
+/** The component the source-line markers name — the editor supplies it beside the article components. */
+export const SOURCE_LINE_COMPONENT = "MdxEditorSourceLine";
+
+/** The little of an MDX syntax tree the markers need. */
+type SyntaxNode = { type: string; position?: { start: { line: number } }; children?: SyntaxNode[] };
+
+/** The top-level blocks that draw nothing of their own: an `export`, a `{/* comment *\/}`. */
+const UNDRAWN = new Set(["mdxjsEsm", "mdxFlowExpression"]);
+
+/** A remark plugin: a source-line marker before each top-level block. */
+const remarkSourceLines = () => (tree: SyntaxNode) => {
+  tree.children = (tree.children ?? []).flatMap((node) => {
+    const line = node.position?.start.line;
+    if (line === undefined || UNDRAWN.has(node.type)) return [node];
+    const marker = {
+      type: "mdxJsxFlowElement",
+      name: SOURCE_LINE_COMPONENT,
+      attributes: [{ type: "mdxJsxAttribute", name: "line", value: String(line) }],
+      children: [],
+    };
+    return [marker, node];
+  });
+};
 
 /** The compiled document, or why it would not compile. */
 export type CompileResult =
@@ -103,7 +134,7 @@ export const compileMdx = async (source: string, resolver: ImportResolver): Prom
   (globalThis as Record<string, unknown>)[IMPORTER] = async (key: string) => ({ default: await resolver.load(key) });
   if (!resolved.ok) return { ok: false, message: resolved.message, line: resolved.line };
   try {
-    const { default: Content } = await evaluate(resolved.source, { ...runtime, development: false });
+    const { default: Content } = await evaluate(resolved.source, { ...runtime, development: false, remarkPlugins: [remarkSourceLines] });
     return { ok: true, Content };
   } catch (error) {
     return describeError(error);
