@@ -62,6 +62,23 @@ const gallery: GalleryModule<PatternSectionId> = {
         }),
     },
     {
+      name: "A final round with a match for third place, captioned",
+      render: () =>
+        demo({
+          rounds: [
+            ...EIGHT.slice(0, 2),
+            {
+              id: "3",
+              title: "Final",
+              matches: [
+                match("7", "Ada Lovelace", "Frances Allen", "2½", "1½"),
+                { ...match("8", "Donald Knuth", "Barbara Liskov", "1", "2"), caption: "Match for third place" },
+              ],
+            },
+          ],
+        }),
+    },
+    {
       name: "Unfinished — the final level, no winner yet",
       render: () => demo({ rounds: [...EIGHT.slice(0, 2), { id: "3", title: "Final", matches: [match("7", "Ada Lovelace", "Frances Allen", "1", "1")] }] }),
     },

@@ -211,8 +211,8 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     path: "tournaments/demo-tables/double-elimination",
     title: { en: "Double-elimination knockout", he: "נוקאאוט כפול" },
     summary: {
-      en: "<KnockoutBracket losersFromRound>: the Esports World Cup 2026 play-in — a winners' and a losers' bracket.",
-      he: "<KnockoutBracket losersFromRound>: שלב הכניסה של גביע העולם באיספורט 2026 — בית מנצחים ובית מפסידים.",
+      en: "<KnockoutBracket losersFromRound>: the Esports World Cup 2026 — the play-in's winners' and losers' brackets, then the final stage.",
+      he: "<KnockoutBracket losersFromRound>: גביע העולם באיספורט 2026 — בית המנצחים ובית המפסידים של שלב הכניסה, ואז השלב הסופי.",
     },
   },
   {

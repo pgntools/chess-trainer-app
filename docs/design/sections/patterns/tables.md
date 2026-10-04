@@ -194,7 +194,9 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   score; it knows no chess. A double elimination is two of them, one per
   bracket.
 - **Data** — `BracketRound = { id, title, matches }`, `BracketMatch = { id,
-  sides: [BracketSide, BracketSide], label }`, `BracketSide = { id, name,
+  sides: [BracketSide, BracketSide], label, caption? }` (`caption`: a few
+  muted words over the box — "Match for third place" — said in `label`
+  too), `BracketSide = { id, name,
   prefix?, score, detail?, winner? }`. The scores are written by the caller
   ("2½"); `label` is the match in words ("Burg, Twan 1½, Sokolov, Ivan 2½:
   Sokolov, Ivan goes through").
@@ -212,5 +214,6 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   `-match-<id>`, a side's line `-match-<id>-<side id>` (`data-winner`),
   `-loading`, `-empty`.
 - **Variations** (one demo each) — a knockout of eight; a team knockout with
-  details; unfinished (a level final); loading; empty; long names; Hebrew
+  details; a final round with a captioned match for third place; unfinished
+  (a level final); loading; empty; long names; Hebrew
   names (RTL); dense.

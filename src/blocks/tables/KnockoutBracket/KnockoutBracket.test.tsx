@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
-import { BLITZ_TEAMS, DUTCH, EMPTY, ESPORTS, HEBREW, UNFINISHED } from "./fixtures";
+import { BLITZ_TEAMS, DUTCH, EMPTY, ESPORTS, ESPORTS_FINAL, HEBREW, UNFINISHED } from "./fixtures";
 import KnockoutBracket, { type KnockoutBracketProps } from "./KnockoutBracket";
 
 const mount = (props: Partial<KnockoutBracketProps> = {}) =>
@@ -42,6 +42,15 @@ describe("KnockoutBracket", () => {
     expect(screen.getByRole("region", { name: "Play-in — bracket — Losers' bracket" })).toBeInTheDocument();
     expect(titles("k-losers")).toEqual(["Round 1", "Round 2", "Round 3", "Round 4"]);
     expect(within(screen.getByTestId("k-losers")).getByText("Esipenko, Andrey 1½, Artemiev, Vladislav ½: Esipenko, Andrey goes through")).toBeInTheDocument();
+  });
+
+  it("names the round with a match for third place the final, and captions that match", () => {
+    mount({ knockout: ESPORTS_FINAL });
+    expect(titles("k-winners")).toEqual(["Quarter-finals", "Semi-finals", "Final"]);
+    expect(screen.getByTestId("k-winners-match-3-2-caption")).toHaveTextContent("Match for third place");
+    expect(
+      screen.getByText("Match for third place: Nakamura, Hikaru 4, Firouzja, Alireza 1: Nakamura, Hikaru goes through"),
+    ).toBeInTheDocument();
   });
 
   it("scores a team knockout in legs, the board points beside them and in the words", () => {

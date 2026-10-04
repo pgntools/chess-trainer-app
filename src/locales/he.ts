@@ -1264,6 +1264,7 @@ const he: typeof en = {
       side: "{{name}} {{score}}",
       teamSide: "{{name}} {{score}} ({{boardPoints}} נקודות לוח)",
       through: "{{name}} עולה לשלב הבא",
+      thirdPlace: "משחק על המקום השלישי",
       loading: "קורא את טבלת הנוקאאוט…",
       empty: "אין מפגשים להצגה.",
     },

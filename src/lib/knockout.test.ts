@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DOUBLE_ELIMINATION_GAMES, KNOCKOUT_GAMES, TEAM_KNOCKOUT_GAMES } from "../test/fixtures/formatGames";
+import { DOUBLE_ELIMINATION_GAMES, FINAL_STAGE_GAMES, KNOCKOUT_GAMES, TEAM_KNOCKOUT_GAMES } from "../test/fixtures/formatGames";
 import type { GameHeaders } from "./gameModel";
 import { knockoutOf, type KnockoutMatch, type KnockoutRound } from "./knockout";
 
@@ -77,6 +77,26 @@ describe("knockoutOf", () => {
     });
   });
 
+  describe("the Esports World Cup 2026's final stage — a knockout with a match for third place", () => {
+    const knockout = knockoutOf(FINAL_STAGE_GAMES);
+
+    it("puts the final first in the last round, and the semi-finals' losers' match after it, for third place", () => {
+      const last = knockout.winners.rounds[2];
+      expect(last.matches.map(names)).toEqual([
+        ["Carlsen, Magnus", "Lazavik, Denis"],
+        ["Nakamura, Hikaru", "Firouzja, Alireza"],
+      ]);
+      expect(last.matches.map((match) => match.thirdPlace)).toEqual([undefined, true]);
+      expect(winnersOf(last)).toEqual(["Carlsen, Magnus", "Nakamura, Hikaru"]);
+    });
+
+    it("counts both parts of the final in one match", () => {
+      const final = knockout.winners.rounds[2].matches[0];
+      expect(final.games).toHaveLength(8);
+      expect(scores(final)).toEqual([6, 2]);
+    });
+  });
+
   describe("the World Blitz Team final stage 2026 — a team knockout in legs", () => {
     const knockout = knockoutOf(TEAM_KNOCKOUT_GAMES);
 
@@ -87,6 +107,13 @@ describe("knockoutOf", () => {
       expect(match.legs).toBe(3);
       expect(scores(match)).toEqual([2, 1]);
       expect(match.sides.map((side) => side.boardPoints)).toEqual([10, 8]);
+    });
+
+    it("finds its match for third place too", () => {
+      expect(knockout.winners.rounds[3].matches.map((match) => [names(match), match.thirdPlace])).toEqual([
+        [["Endgame.AI", "Dragon Chilling"], undefined],
+        [["Hexamind Chess Team", "Uzbekistan"], true],
+      ]);
     });
 
     it("scores a drawn leg ½ to each team", () => {

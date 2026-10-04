@@ -1627,6 +1627,8 @@ const en = {
       side: "{{name}} {{score}}",
       teamSide: "{{name}} {{score}} ({{boardPoints}} board points)",
       through: "{{name}} goes through",
+      /** The caption over a match for third place, and the words it is read with. */
+      thirdPlace: "Match for third place",
       loading: "Reading the bracket…",
       empty: "No matches to show.",
     },

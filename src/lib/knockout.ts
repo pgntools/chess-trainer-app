@@ -21,6 +21,10 @@ import { outcomesOf, playerOf, POINTS, roundPartsOf, type GameOutcome, type Tour
  * A match's winner is the side with the higher score; on a level score (an
  * Armageddon draw, a tiebreak the file leaves out), the side that plays on
  * in a later round of the same bracket; else none.
+ *
+ * **A match for third place** — in a bracket's last round, between two sides
+ * that both lost in the round before — is marked `thirdPlace` and comes after
+ * the final.
  */
 
 /** One side of a match: a player — or, in a team event, the team, by its name. */
@@ -57,6 +61,8 @@ export type KnockoutMatch = {
   legs?: number;
   /** Which side went through: `0`, `1`, or `undefined` where the file does not tell. */
   winner: 0 | 1 | undefined;
+  /** The match for third place: in the last round, between two of the round before's losers. */
+  thirdPlace?: boolean;
 };
 
 export type KnockoutRound = {
@@ -215,6 +221,17 @@ export const knockoutOf = (games: readonly GameHeaders[], { losersFromRound }: {
     const byRound = Array.from({ length: last }, (_, index) =>
       own.filter((entry) => entry.round === index + 1).map((entry) => entry.match),
     );
+    // The last round's match between two of the round before's losers is for third place, after the final.
+    if (last >= 2 && byRound[last - 1].length >= 2) {
+      const losers = new Set(
+        byRound[last - 2].flatMap((match) => (match.winner === undefined ? [] : [match.sides[1 - match.winner].competitor.id])),
+      );
+      const isThird = (match: KnockoutMatch) => match.sides.every((side) => losers.has(side.competitor.id));
+      byRound[last - 1] = [
+        ...byRound[last - 1].filter((match) => !isThird(match)),
+        ...byRound[last - 1].filter(isThird).map((match) => ({ ...match, thirdPlace: true })),
+      ];
+    }
     return {
       rounds: inBracketOrder(byRound)
         .map((matchesOfRound, index) => ({ round: index + 1, matches: matchesOfRound }))

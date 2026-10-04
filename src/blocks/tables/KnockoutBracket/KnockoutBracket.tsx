@@ -31,7 +31,8 @@ export type KnockoutBracketProps = {
 /** A round's name: "Round 2" — or, in a plain knockout, the last three rounds' own when they halve to one match. */
 const roundTitle = (t: TFunction, bracket: Bracketed, index: number, named: boolean): string => {
   const fromEnd = bracket.rounds.length - 1 - index;
-  const sizes = bracket.rounds.slice(index).map((round) => round.matches.length);
+  // A match for third place beside the final does not count: its round is still the final.
+  const sizes = bracket.rounds.slice(index).map((round) => round.matches.filter((match) => !match.thirdPlace).length);
   // Each round from here to the final halves: 4, 2, 1 — the stages have their names.
   const halving = sizes.every((size, step) => size === 2 ** (sizes.length - 1 - step));
   if (named && halving && fromEnd <= 2) return t(["tournament.knockout.final", "tournament.knockout.semiFinals", "tournament.knockout.quarterFinals"][fromEnd]);
@@ -62,10 +63,12 @@ const roundsOf = (t: TFunction, bracket: Bracketed, teams: boolean, named: boole
           : t("tournament.knockout.side", { name: side.competitor.name, score: formatScore(side.score) }),
       );
       const through = match.winner === undefined ? "" : `: ${t("tournament.knockout.through", { name: match.sides[match.winner].competitor.name })}`;
+      const caption = match.thirdPlace ? t("tournament.knockout.thirdPlace") : undefined;
       return {
+        ...(caption !== undefined && { caption }),
         // Its place, not its players: a test id with no names in it ("2-3", round 2's third match).
         id: `${round.round}-${position + 1}`,
-        label: `${words.join(", ")}${through}`,
+        label: `${caption === undefined ? "" : `${caption}: `}${words.join(", ")}${through}`,
         sides: [sideOf(match, 0, teams), sideOf(match, 1, teams)],
       };
     }),
@@ -77,7 +80,8 @@ const roundsOf = (t: TFunction, bracket: Bracketed, teams: boolean, named: boole
  * score after it (game points; in a team knockout the legs won, the board
  * points muted beside them), the side that went through marked. A plain
  * knockout's last rounds take their names when they halve to the final —
- * Quarter-finals, Semi-finals, Final; anything else is "Round n".
+ * Quarter-finals, Semi-finals, Final; anything else is "Round n". A match for
+ * third place sits under the final, captioned.
  *
  * **A double elimination** is two brackets, one under the other, each under
  * its name — the winners', then the losers' — and each read by the bracket's

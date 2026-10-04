@@ -61,6 +61,12 @@ describe("Bracket", () => {
     expect(within(line).getByText("2½")).toHaveAttribute("dir", "ltr");
   });
 
+  it("shows a match's caption over its box, out of the screen reader's way", () => {
+    mount({ rounds: [{ id: "1", title: "Final", matches: [{ ...match("1", "Ada", "Alan", ["2", "0"], 0), caption: "Match for third place" }] }] });
+    expect(screen.getByTestId("b-match-1-caption")).toHaveTextContent("Match for third place");
+    expect(screen.getByTestId("b-match-1-caption").closest("[aria-hidden]")).not.toBeNull();
+  });
+
   it("says it is reading, busy, and that it has nothing — in place of the rounds", () => {
     const { unmount } = mount({ loading: true, loadingLabel: "Reading…" });
     expect(screen.getByRole("status")).toHaveTextContent("Reading…");

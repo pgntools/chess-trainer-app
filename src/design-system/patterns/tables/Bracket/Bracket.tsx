@@ -29,6 +29,8 @@ export type BracketMatch = {
    * Sokolov, Ivan goes through").
    */
   label: string;
+  /** A few muted words over the box — "Match for third place". Say them in `label` too: the box is read by its label alone. */
+  caption?: string;
 };
 
 export type BracketRound = {
@@ -136,6 +138,14 @@ function Bracket({ rounds, ariaLabel, emptyLabel, loading = false, loadingLabel,
                         {match.label}
                       </Box>
                       <Box aria-hidden="true">
+                        {match.caption !== undefined && (
+                          <Box
+                            data-testid={`${testId}-match-${match.id}-caption`}
+                            sx={{ typography: "caption", color: "text.secondary", px: 1, pt: 0.25 }}
+                          >
+                            {match.caption}
+                          </Box>
+                        )}
                         {match.sides.map((side, index) => (
                           <Box
                             key={side.id}
@@ -151,7 +161,7 @@ function Bracket({ rounds, ariaLabel, emptyLabel, loading = false, loadingLabel,
                               py: dense ? 0.25 : 0.5,
                               borderInlineStart: 3,
                               borderInlineStartColor: side.winner ? "primary.main" : "transparent",
-                              ...(index === 1 && { borderTop: 1, borderTopColor: "divider" }),
+                              ...((index === 1 || match.caption !== undefined) && { borderTop: 1, borderTopColor: "divider" }),
                               fontWeight: side.winner ? 700 : 400,
                             }}
                           >

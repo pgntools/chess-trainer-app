@@ -1,6 +1,6 @@
 import type { GameHeaders } from "../../../lib/gameModel";
 import { knockoutOf, type Knockout } from "../../../lib/knockout";
-import { DOUBLE_ELIMINATION_GAMES, KNOCKOUT_GAMES, TEAM_KNOCKOUT_GAMES } from "../../../test/fixtures/formatGames";
+import { DOUBLE_ELIMINATION_GAMES, FINAL_STAGE_GAMES, KNOCKOUT_GAMES, TEAM_KNOCKOUT_GAMES } from "../../../test/fixtures/formatGames";
 
 /*
   Sample knockouts (CTA-128), each made by `lib/knockout.ts`'s own
@@ -13,6 +13,9 @@ export const DUTCH: Knockout = knockoutOf(KNOCKOUT_GAMES);
 
 /** The Esports World Cup 2026's play-in, the real file: a double elimination of 8, the losers' bracket from round 51. */
 export const ESPORTS: Knockout = knockoutOf(DOUBLE_ELIMINATION_GAMES, { losersFromRound: 51 });
+
+/** The Esports World Cup 2026's final stage, the real file: a knockout of 8, the final and the match for third place in round 3. */
+export const ESPORTS_FINAL: Knockout = knockoutOf(FINAL_STAGE_GAMES);
 
 /** The World Blitz Team Championship 2026's final stage, the real file: 16 teams, legs of six boards. */
 export const BLITZ_TEAMS: Knockout = knockoutOf(TEAM_KNOCKOUT_GAMES);
