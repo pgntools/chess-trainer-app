@@ -1,19 +1,14 @@
 import { useCallback, useMemo } from "react";
-import { Link as RouterLink, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { MatchTable, RoundRobinCrossTable, SwissStandingsTable } from "../../../blocks/tables";
-import type { LinkTarget } from "../../../design-system/components/link";
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { gameTag, type GameHeaders } from "../../../lib/gameModel";
 import { isTournamentCollection, type CollectionSummary } from "../../../lib/libraryCollections";
 import { matchOf } from "../../../lib/match";
-import { readPgnTags } from "../../../lib/pgn";
-import { slugify } from "../../../lib/pgnText";
 import { ROUND_ROBIN_TIE_BREAKS, SWISS_TIE_BREAKS, tournamentOf, type TournamentPlayer } from "../../../lib/tournament";
-import { useCollectionGames } from "../../library/useLibraryCollections";
+import { useCollectionEvent } from "./collectionEvent";
 import { useEmbedPaging } from "./pgnTournament";
-import { collectionPathOf } from "./paths";
 
 /**
  * **A tournament from the Library** (CTA-128) —
@@ -67,36 +62,21 @@ const formatOf = (asked: string | undefined, summary: CollectionSummary, headers
 
 export function CollectionTournamentEmbed({ _id, format, playerLink = true, gameLink = true, density, rowsPerPage }: CollectionTournamentEmbedProps) {
   const { t } = useTranslation();
-  const location = useLocation();
   const paging = useEmbedPaging(rowsPerPage);
-  const collectionId = collectionPathOf(_id);
-  const state = useCollectionGames(collectionId);
-  const testId = `tournament-collection-${slugify(collectionId ?? "") || "collection"}`;
-
-  const games = state.status === "ready" ? state.value : undefined;
-  const headers = useMemo(() => games?.map(readPgnTags), [games]);
+  const { state, headers, event, missing, testId, toPlayers, toGame } = useCollectionEvent(_id);
 
   // The links: to the collection's table filtered by a player, to a game on its board (back to here).
-  const from = `${location.pathname}${location.search}`;
-  const toPlayer = useCallback(
-    (player: TournamentPlayer): LinkTarget => ({ component: RouterLink, to: `/library/${collectionId}?player=${encodeURIComponent(player.name)}` }),
-    [collectionId],
-  );
-  const toGame = useCallback(
-    (game: number): LinkTarget => ({ component: RouterLink, to: `/library/${collectionId}/${game + 1}`, state: { from } }),
-    [collectionId, from],
-  );
+  const toPlayer = useCallback((player: TournamentPlayer) => toPlayers([player.name]), [toPlayers]);
   const links = { playerLink: playerLink ? toPlayer : undefined, gameLink: gameLink ? toGame : undefined };
 
   const drawn = useMemo(() => {
     if (state.status !== "ready" || headers === undefined) return undefined;
     const kind = formatOf(format, state.summary, headers);
-    const event = headers.map((game) => gameTag(game, "Event")).find((name) => name !== undefined) ?? state.summary.name;
     if (kind === "match") return { kind, event, match: matchOf(headers) };
     return { kind, event, tournament: tournamentOf(headers, kind === "roundRobin" ? ROUND_ROBIN_TIE_BREAKS : SWISS_TIE_BREAKS) };
-  }, [state, headers, format]);
+  }, [state, headers, format, event]);
 
-  if (collectionId === undefined || state.status === "missing") {
+  if (missing) {
     return (
       <InlineAlert severity="info" testId={`${testId}-missing`} detail={_id}>
         {t("tournament.embed.collectionMissing")}

@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import type { Knockout } from "../../../lib/knockout";
 import type { BlockFamilyId } from "../../families";
-import { BLITZ_TEAMS, DUTCH, EMPTY, ESPORTS, HEBREW, UNFINISHED } from "./fixtures";
+import { BLITZ_TEAMS, DUTCH, EMPTY, ESPORTS, ESPORTS_FINAL, HEBREW, UNFINISHED } from "./fixtures";
 import KnockoutBracket, { type KnockoutBracketProps } from "./KnockoutBracket";
 
 /** The block at the preview's own width (it asks for none and takes all there is), so its brackets scroll sideways inside it. */
@@ -33,6 +33,23 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "Still being read", render: () => demo(undefined, "Bracket, loading") },
     { name: "A file with no game in it", render: () => demo(EMPTY, "Bracket, empty") },
     { name: "Hebrew names (switch the direction to RTL)", render: () => demo(HEBREW, "גביע — טבלת נוקאאוט") },
+    {
+      name: "Linked (CTA-128) — the Esports final stage: each name to its games, each match's games under it",
+      render: () =>
+        demo(ESPORTS_FINAL, "Esports World Cup final stage — bracket", {
+          playerLink: (player) => ({ href: `#player-${encodeURIComponent(player.id)}` }),
+          gameLink: (game) => ({ href: `#game-${game + 1}` }),
+        }),
+    },
+    {
+      name: "Linked (CTA-128) — the World Blitz Team final stage: each team to its games, each leg to its first board",
+      render: () =>
+        demo(BLITZ_TEAMS, "World Blitz Team final stage — bracket", {
+          density: "dense",
+          playerLink: (team) => ({ href: `#team-${encodeURIComponent(team.id)}` }),
+          gameLink: (game) => ({ href: `#game-${game + 1}` }),
+        }),
+    },
   ],
 };
 

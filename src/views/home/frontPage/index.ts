@@ -3,6 +3,8 @@ import type { MDXComponents } from "mdx/types";
 import { BoardRow } from "./BoardRow";
 import { CollectionCard } from "./CollectionCard";
 import { CollectionGameBoard } from "./CollectionGameBoard";
+import { CollectionDoubleEliminationEmbed, CollectionKnockoutEmbed } from "./CollectionKnockoutEmbed";
+import { CollectionTeamStandingsEmbed } from "./CollectionTeamStandingsEmbed";
 import { CollectionTournamentEmbed } from "./CollectionTournamentEmbed";
 import { InlinePgnGame } from "./InlinePgnGame";
 import { KnockoutBracketEmbed } from "./KnockoutBracketEmbed";
@@ -35,6 +37,9 @@ import { TeamStandingsEmbed } from "./TeamStandingsEmbed";
  * | `<KnockoutBracket pgn={games} losersFromRound="51" />` | a knockout's bracket — a double elimination's two with `losersFromRound`, a team knockout's in legs (CTA-128) |
  * | `<MatchTable pgn={games} />` | a match between two players: a column per game, the score (CTA-128) |
  * | `<CollectionTournamentTable _id="/library/<c>" playerLink gameLink />` | a Library collection's tournament table — names linked to the player's games, results to each game (CTA-128) |
+ * | `<CollectionKnockoutBracket _id="/library/<c>" playerLink gameLink />` | a Library collection's knockout bracket — a team knockout too; names linked, each match's games (a team match's legs) under it (CTA-128) |
+ * | `<CollectionDoubleEliminationBracket _id="/library/<c>" losersFromRound="51" />` | the same, a double elimination: the winners' bracket over the losers' (from round 51 by default) |
+ * | `<CollectionTeamStandingsTable _id="/library/<c>" teamLink gameLink />` | a Library collection's team standings — a team linked to its players' games, each round's match to its first board (CTA-128) |
  * | `<TeamStandingsTable pgn={games} />` | a team tournament's standings: board points per round, match points, board points (CTA-128) |
  * | `<NavCards />` | every screen as a card, by section — the landing page before CTA-126 |
  *
@@ -66,5 +71,8 @@ export const mdxComponents: MDXComponents = {
   MatchTable: MatchTableEmbed,
   TeamStandingsTable: TeamStandingsEmbed,
   CollectionTournamentTable: CollectionTournamentEmbed,
+  CollectionKnockoutBracket: CollectionKnockoutEmbed,
+  CollectionDoubleEliminationBracket: CollectionDoubleEliminationEmbed,
+  CollectionTeamStandingsTable: CollectionTeamStandingsEmbed,
   NavCards,
 };

@@ -28,6 +28,14 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "Still being read", render: () => demo(undefined, "Team standings, loading", 160) },
     { name: "A file with no game in it", render: () => demo(EMPTY, "Team standings, empty", 160) },
     { name: "Hebrew names (switch the direction to RTL)", render: () => demo(HEBREW, "ליגה — טבלה", 180, { density: "dense" }) },
+    {
+      name: "Linked (CTA-128) — each team's name to its games, each round's match to its first board",
+      render: () =>
+        demo(CLUB_LEAGUE, "Club league — standings", 300, {
+          teamLink: (team) => ({ href: `#team-${encodeURIComponent(team)}` }),
+          gameLink: (game) => ({ href: `#game-${game + 1}` }),
+        }),
+    },
   ],
 };
 

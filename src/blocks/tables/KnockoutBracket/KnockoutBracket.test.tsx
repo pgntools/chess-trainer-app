@@ -87,4 +87,41 @@ describe("KnockoutBracket", () => {
     mount({ knockout: ESPORTS });
     await expectNoAxeViolations();
   });
+
+  describe("links (CTA-128)", () => {
+    const toGame = (game: number) => ({ href: `#game-${game}` });
+
+    it("makes each name a link where playerLink gives one", () => {
+      mount({ playerLink: (player) => (player.name.startsWith("Tiviakov") ? { href: "#tiviakov" } : undefined) });
+      const final = screen.getByRole("list", { name: "Final" });
+      expect(within(final).getByRole("link", { name: "Tiviakov, Sergei" })).toHaveAttribute("href", "#tiviakov");
+      // `undefined` for a player leaves the name as text.
+      expect(within(final).queryByRole("link", { name: /Vrolijk/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("list", { name: "Games" })).not.toBeInTheDocument();
+    });
+
+    it("lists a match's games under it, each showing the first side's points and read whole", () => {
+      mount({ gameLink: toGame });
+      const final = within(screen.getByRole("list", { name: "Final" })).getByRole("list", { name: "Games" });
+      const links = within(final).getAllByRole("link");
+      const match = DUTCH.winners.rounds.at(-1)!.matches[0];
+      expect(links).toHaveLength(match.games.length);
+      expect(links[0]).toHaveAttribute("href", `#game-${match.games[0].game}`);
+      expect(links[0]).toHaveAccessibleName(/^Game 1: .+ – .+, (1–0|0–1|½–½)$/);
+      expect(links.map((link) => link.textContent).every((text) => ["1", "½", "0"].includes(text ?? ""))).toBe(true);
+    });
+
+    it("links a team match by its legs, each to its first board, its board points both ways", async () => {
+      mount({ knockout: BLITZ_TEAMS, ariaLabel: "Blitz — bracket", gameLink: toGame, playerLink: (team) => ({ href: `#${team.id}` }) });
+      const match = BLITZ_TEAMS.winners.rounds[0].matches[0];
+      const legs = screen.getByTestId("k-winners-match-1-1-games");
+      expect(within(legs).getAllByRole("link")).toHaveLength(match.legs!);
+      const first = within(legs).getAllByRole("link")[0];
+      expect(first).toHaveAttribute("href", `#game-${match.games[0].game}`);
+      expect(first.textContent).toMatch(/^\d½?–\d½?$/);
+      expect(first).toHaveAccessibleName(new RegExp(`^Leg 1: ${match.sides[0].competitor.name} .+ — opens its first board$`));
+      expect(screen.getAllByRole("link", { name: match.sides[0].competitor.name }).length).toBeGreaterThan(0);
+      await expectNoAxeViolations();
+    });
+  });
 });

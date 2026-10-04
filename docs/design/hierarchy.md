@@ -149,7 +149,12 @@ reader's language), the tag's letters its fallback where there is no flag
 optional `paging` its pattern does. The Swiss standings, the crosstable and
 the match table also take optional `playerLink(player)` and `gameLink(game)`
 (`TournamentLinks`): a name, and each result, as a link — the Blog's
-`<CollectionTournamentTable>` sends them into a Library collection.
+`<CollectionTournamentTable>` sends them into a Library collection. So do
+`KnockoutBracket` (`playerLink`, and `gameLink` — each match's games, a team
+match's legs, as a row of links under it, `Bracket`'s `games`) and
+`TeamStandingsTable` (`teamLink`, and `gameLink` — a round's match to its
+first board), for `<CollectionKnockoutBracket>`,
+`<CollectionDoubleEliminationBracket>` and `<CollectionTeamStandingsTable>`.
 
 How a module migrates — the order of work, what each old pattern became, the
 findings — is [`migration.md`](./migration.md).

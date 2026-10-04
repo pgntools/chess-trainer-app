@@ -1,0 +1,37 @@
+The [double-elimination bracket](/blog/writing-an-article/demo-tables/double-elimination) reads a PGN kept beside the article. This one reads a **collection in the Library**, with the same links as [`<CollectionKnockoutBracket>`](/blog/writing-an-article/demo-tables/knockout-from-a-collection): each name to that player's games, each match's games under it. The example is the play-in of the Esports World Cup 2026, which ships in the Library's Built-in folder.
+
+## How to use it
+
+1. Add the event's PGN to the [Library](/library). Its address is shown in the address bar: `/library/<collection>`.
+2. Embed it by its address:
+
+```mdx
+<CollectionDoubleEliminationBracket _id="/library/esportsplayin2026" />
+```
+
+The Week in Chess numbers the losers' bracket's rounds from 51, so the component starts the losers' bracket there unless told otherwise. A file numbered another way says where: `losersFromRound="101"`.
+
+## The brackets, linked
+
+The winners' bracket over the losers', each a column per round. Wei Yi won the winners' bracket. Andrey Esipenko lost his first match to Wei, then won four in a row in the losers' bracket. Select a name for the player's games, and a game under a match to open it on the Library's board, whose back button returns here.
+
+<CollectionDoubleEliminationBracket _id="/library/esportsplayin2026" />
+
+## Links off
+
+`playerLink={false}` and `gameLink={false}` leave the names as text and draw no games under the matches, the brackets as `<KnockoutBracket>` draws them:
+
+```mdx
+<CollectionDoubleEliminationBracket _id="/library/esportsplayin2026" playerLink={false} gameLink={false} density="dense" />
+```
+
+## Every prop
+
+- `_id` — the collection's address, `/library/<collection>`.
+- `losersFromRound` — where the losers' bracket starts, `51` by default.
+- `playerLink`, `gameLink` — the two links, on by default.
+- `density="dense"` — tightens the boxes.
+
+## Source
+
+The games are from [The Week in Chess](https://theweekinchess.com) (TWIC), by Mark Crowther — the event's page, [Esports World Cup 2026](https://theweekinchess.com/chessnews/events/esports-world-cup-2026), and its PGN, [esportswcuppl26.pgn](https://theweekinchess.com/assets/files/pgn/esportswcuppl26.pgn).

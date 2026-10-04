@@ -63,7 +63,7 @@ vi.mock("../../lib/openings", async (importOriginal) => {
 beforeEach(resetLibrary);
 
 describe("the Library's collections", () => {
-  it("lists the six shipped collections, then the reader's uploads", async () => {
+  it("lists the ten shipped collections, then the reader's uploads", async () => {
     const mine = await upload();
     mount("/library");
 
@@ -75,17 +75,21 @@ describe("the Library's collections", () => {
       .map((link) => link.textContent);
     expect(names[0]).toContain("Alekhine");
     expect(names[1]).toContain("Capablanca");
-    // CTA-128: a tournament ships too, for the Blog's <CollectionTournamentTable>.
-    expect(names[2]).toContain("FIDE Candidates 2026");
-    expect(names[3]).toContain("Fischer");
-    expect(names[4]).toContain("Petrosian");
-    expect(names[5]).toContain("Tal");
-    expect(names[6]).toContain("Club games");
+    // CTA-128: tournaments ship too, for the Blog's <Collection…Table> and <Collection…Bracket>.
+    expect(names[2]).toContain("Esports World Cup 2026 — play-in");
+    expect(names[3]).toContain("FIDE Candidates 2026");
+    expect(names[4]).toContain("Fischer");
+    expect(names[5]).toContain("Netherlands Championship 2026");
+    expect(names[6]).toContain("Petrosian");
+    expect(names[7]).toContain("Tal");
+    expect(names[8]).toContain("World Blitz Team 2026 — final stage");
+    expect(names[9]).toContain("World Rapid Team 2026");
+    expect(names[10]).toContain("Club games");
     expect(screen.getByTestId(`library-collection-${mine.id}`)).toHaveAttribute(
       "href",
       `/library/${mine.id}`,
     );
-    expect(screen.getByTestId("library-count")).toHaveTextContent("7 collections");
+    expect(screen.getByTestId("library-count")).toHaveTextContent("11 collections");
     expect(within(screen.getByTestId(`library-row-${mine.id}`)).getByText("3")).toBeInTheDocument();
   });
 
@@ -95,7 +99,7 @@ describe("the Library's collections", () => {
     expect(within(screen.getByTestId("library-row-capablanca")).getByText("1,035")).toBeInTheDocument();
     expect(within(screen.getByTestId("library-row-tal")).getByText("2,636")).toBeInTheDocument();
     // Built-in holds them all.
-    expect(within(screen.getByTestId("library-folder-builtin")).getByText("8,812")).toBeInTheDocument();
+    expect(within(screen.getByTestId("library-folder-builtin")).getByText("10,754")).toBeInTheDocument();
     for (const entry of shippedCollections) {
       expect(peekShippedRows(entry.id)).toBeUndefined();
       expect(peekShippedGames(entry.id)).toBeUndefined();
@@ -112,7 +116,7 @@ describe("the Library's collections", () => {
     expect(screen.getByTestId("library-collection-tal")).toBeInTheDocument();
     expect(screen.queryByTestId("library-collection-capablanca")).toBeNull();
     expect(screen.queryByTestId(`library-collection-${mine.id}`)).toBeNull();
-    expect(screen.getByTestId("library-count")).toHaveTextContent("1 of 7 collections");
+    expect(screen.getByTestId("library-count")).toHaveTextContent("1 of 11 collections");
 
     fireEvent.change(screen.getByTestId("library-filter"), { target: { value: "club" } });
     expect(screen.getByTestId(`library-collection-${mine.id}`)).toBeInTheDocument();
@@ -200,10 +204,14 @@ describe("the Library's folders (CTA-88)", () => {
       "library-folder-builtin",
       "library-row-alekhine",
       "library-row-capablanca",
+      "library-row-esportsplayin2026",
       "library-row-candidates2026",
       "library-row-fischer",
+      "library-row-netherlands2026",
       "library-row-petrosian",
       "library-row-tal",
+      "library-row-worldblitzteam2026",
+      "library-row-worldrapidteam2026",
       `library-folder-${box.id}`,
     ]);
     expect(screen.getByTestId("library-folder-builtin-toggle")).toHaveAttribute("aria-expanded", "true");
@@ -392,7 +400,7 @@ describe("the Library's folders (CTA-88)", () => {
 
   it("filters by name, opening the folders above a match, and shows a folder whose name matches", async () => {
     const a = await made("Archive");
-    const b = await made("Blitz", a.id);
+    const b = await made("Bullet", a.id);
     const mine = await keep("Club games", GAMES, b.id);
     mount("/library");
     await screen.findByTestId(`library-folder-${a.id}`);
@@ -401,13 +409,13 @@ describe("the Library's folders (CTA-88)", () => {
     fireEvent.change(screen.getByTestId("library-filter"), { target: { value: "club" } });
     expect(where()).toBe("/library?q=club");
     expect(listRows()).toEqual([`library-folder-${a.id}`, `library-folder-${b.id}`, `library-row-${mine.id}`]);
-    expect(screen.getByTestId("library-count")).toHaveTextContent("1 of 7 collections");
+    expect(screen.getByTestId("library-count")).toHaveTextContent("1 of 11 collections");
 
     // The reader can still close what the filter opened.
     fireEvent.click(screen.getByTestId(`library-folder-${b.id}-toggle`));
     expect(listRows()).toEqual([`library-folder-${a.id}`, `library-folder-${b.id}`]);
 
-    fireEvent.change(screen.getByTestId("library-filter"), { target: { value: "blitz" } });
+    fireEvent.change(screen.getByTestId("library-filter"), { target: { value: "bullet" } });
     expect(listRows()).toEqual([`library-folder-${a.id}`, `library-folder-${b.id}`]);
     expect(screen.getByTestId(`library-folder-${b.id}-toggle`)).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(screen.getByTestId(`library-folder-${b.id}`));

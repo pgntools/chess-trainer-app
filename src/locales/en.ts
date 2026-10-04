@@ -1629,6 +1629,8 @@ const en = {
       notAMatch: "This PGN is not a match: its games are not all between the same two players.",
       /** <CollectionTournamentTable> naming a collection this browser's Library does not hold. */
       collectionMissing: "This collection is not in this browser's Library.",
+      /** <CollectionTeamStandingsTable> over a collection whose games name no teams. */
+      notATeamEvent: "This collection is not a team event: its games name no teams.",
     },
     /** A knockout's bracket (CTA-128): the rounds' names, a match in words. */
     knockout: {
@@ -1646,6 +1648,12 @@ const en = {
       thirdPlace: "Match for third place",
       loading: "Reading the bracket…",
       empty: "No matches to show.",
+      /** A match's games as links under it (CTA-128): the list's name, and each link's words. */
+      games: "Games",
+      game: "Game {{number}}: {{white}} – {{black}}, {{result}}",
+      /** A team match's legs as links, each opening the leg's first board. */
+      legs: "Legs",
+      leg: "Leg {{leg}}: {{first}} {{own}}, {{second}} {{other}} — opens its first board",
     },
     /** A match between two players (CTA-128): a column per game. */
     match: {

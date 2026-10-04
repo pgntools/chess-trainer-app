@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import { StandingsTable, type StandingsRow, type TieBreakColumn, type TablePaging } from "../../../design-system/patterns/tables";
 import type { TeamTournament } from "../../../lib/teamTournament";
-import { formatScore, teamFlag } from "../tournamentTable";
+import type { LinkTarget } from "../../../design-system/components/link";
+import { formatScore, teamFlag, type TournamentLinks } from "../tournamentTable";
 
 export type TeamStandingsTableProps = {
   /** The tournament — `teamTournamentOf(headers)` (`lib/teamTournament.ts`). `undefined` while its games are read. */
@@ -14,6 +15,14 @@ export type TeamStandingsTableProps = {
   density?: "normal" | "dense";
   /** Cut the rows into pages, the pager under the table — for a long one (CTA-128). Absent, every row shows. */
   paging?: TablePaging;
+  /** Each team's name a link — to its games, say (CTA-128). Absent, or `undefined` for one, plain text. */
+  teamLink?: (team: string) => LinkTarget | undefined;
+  /**
+   * Each round's match a link (CTA-128): `game` is the match's first game's
+   * index in the headers the tournament was read from — board 1, as The
+   * Week in Chess writes a match. Absent, plain text.
+   */
+  gameLink?: TournamentLinks["gameLink"];
   /**
    * The table's root, and every id under it (`StandingsTable`'s): `-row-<n>`
    * (the team ranked n: `-name`, `-points` — the match points —
@@ -26,16 +35,20 @@ export type TeamStandingsTableProps = {
 /**
  * **A team tournament's standings** (CTA-128) — `StandingsTable` over a
  * `TeamTournament`, the Olympiad's table: a row per team in rank order — its
- * flag after its name where its players share one — **a
+ * flag before its name where its players share one — **a
  * cell per round showing the team's board points** in that round's match,
  * toned as the match went (won, drawn, lost — the opponent and the score
  * both ways in its words), then the match points and the board points the
  * teams are ranked by.
  *
+ * **Links** (CTA-128), both optional: `teamLink` makes each team's name a
+ * link, `gameLink` each round's match, opening its first board.
+ *
  * Presentational: the tournament is a prop (a screen reads the games and
- * calls `teamTournamentOf`). Its words are the app's (`tournament.*`).
+ * calls `teamTournamentOf`), and so are the links. Its words are the app's
+ * (`tournament.*`).
  */
-function TeamStandingsTable({ tournament, ariaLabel, density, paging, testId }: TeamStandingsTableProps) {
+function TeamStandingsTable({ tournament, ariaLabel, density, paging, teamLink, gameLink, testId }: TeamStandingsTableProps) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
 
@@ -49,6 +62,7 @@ function TeamStandingsTable({ tournament, ariaLabel, density, paging, testId }: 
       // The flag its players all share — an Olympiad's national team; a club has none (CTA-128). Before the name, as a title is.
       suffix: standing.federation,
       flag: teamFlag(standing.federation, language),
+      link: teamLink?.(standing.team),
       points: standing.matchPoints,
       tieBreaks: { boardPoints: standing.boardPoints },
       rounds: standing.rounds.map((matches, index) =>
@@ -57,6 +71,7 @@ function TeamStandingsTable({ tournament, ariaLabel, density, paging, testId }: 
           : matches.map((match) => ({
               outcome: match.outcome,
               glyph: formatScore(match.boardPoints),
+              link: match.games?.[0] === undefined ? undefined : gameLink?.(match.games[0]),
               label: t("tournament.team.match", {
                 round: match.round,
                 opponent: match.opponent,
@@ -67,7 +82,7 @@ function TeamStandingsTable({ tournament, ariaLabel, density, paging, testId }: 
             })),
       ),
     }));
-  }, [tournament, t, language]);
+  }, [tournament, t, language, teamLink, gameLink]);
 
   const tieBreaks = useMemo<TieBreakColumn[]>(
     () => [{ id: "boardPoints", header: t("tournament.columns.boardPoints"), name: t("tournament.columns.boardPointsName"), format: formatScore }],

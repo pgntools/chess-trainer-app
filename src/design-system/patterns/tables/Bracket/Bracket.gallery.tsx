@@ -109,6 +109,29 @@ const gallery: GalleryModule<PatternSectionId> = {
         }),
     },
     { name: "Dense", render: () => demo({ density: "dense" }) },
+    {
+      name: "Linked — each name to its games, each game under its match (CTA-128)",
+      render: () =>
+        demo({
+          gamesLabel: "Games",
+          rounds: EIGHT.map((round) => ({
+            ...round,
+            matches: round.matches.map((one) => ({
+              ...one,
+              sides: [
+                { ...one.sides[0], link: { href: `#player-${one.id}-a` } },
+                { ...one.sides[1], link: { href: `#player-${one.id}-b` } },
+              ] as const,
+              games: ["1", "½", "0", "½"].map((label, index) => ({
+                id: String(index + 1),
+                label,
+                name: `Game ${index + 1}: ${one.sides[0].name} ${label}`,
+                link: { href: `#game-${one.id}-${index + 1}` },
+              })),
+            })),
+          })),
+        }),
+    },
   ],
 };
 

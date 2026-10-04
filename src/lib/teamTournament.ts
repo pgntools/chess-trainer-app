@@ -31,6 +31,8 @@ export type TeamMatch = {
   boards: number;
   /** The match as this team saw it. */
   outcome: GameOutcome;
+  /** Its games' indexes in the headers given, in the file's order — board 1 first, as The Week in Chess writes a match. */
+  games?: readonly number[];
 };
 
 export type TeamStanding = {
@@ -58,7 +60,7 @@ export type TeamTournament = {
 /** Match points for a won and a drawn match — the Olympiad's 2 and 1. */
 export const TEAM_MATCH_POINTS = { win: 2, draw: 1 } as const;
 
-type Meeting = { round: number; teams: [string, string]; points: [number, number]; boards: number; unfinished: boolean };
+type Meeting = { round: number; teams: [string, string]; points: [number, number]; boards: number; unfinished: boolean; games: number[] };
 
 /** The team tournament the games make. A game that names no two different teams, or no round, is left out. */
 export const teamTournamentOf = (games: readonly GameHeaders[]): TeamTournament => {
@@ -73,22 +75,23 @@ export const teamTournamentOf = (games: readonly GameHeaders[]): TeamTournament 
   let read = 0;
   let unfinishedGames = 0;
 
-  for (const headers of games) {
+  games.forEach((headers, game) => {
     const white = gameTag(headers, "WhiteTeam");
     const black = gameTag(headers, "BlackTeam");
     const [round] = roundPartsOf(gameTag(headers, "Round"));
-    if (white === undefined || black === undefined || white === black || round === undefined) continue;
+    if (white === undefined || black === undefined || white === black || round === undefined) return;
 
     seeFederation(white, gameTag(headers, "WhiteCountry"));
     seeFederation(black, gameTag(headers, "BlackCountry"));
     const teams = [white, black].sort() as [string, string];
     const key = `${round}-${teams.join("\u0000")}`;
-    const meeting = meetings.get(key) ?? { round, teams, points: [0, 0], boards: 0, unfinished: false };
+    const meeting = meetings.get(key) ?? { round, teams, points: [0, 0], boards: 0, unfinished: false, games: [] };
     meetings.set(key, meeting);
 
     const [whiteOutcome, blackOutcome] = outcomesOf(headers.Result);
     read += 1;
     meeting.boards += 1;
+    meeting.games.push(game);
     if (whiteOutcome === "unfinished") {
       unfinishedGames += 1;
       meeting.unfinished = true;
@@ -96,7 +99,7 @@ export const teamTournamentOf = (games: readonly GameHeaders[]): TeamTournament 
     const whiteIndex = teams[0] === white ? 0 : 1;
     meeting.points[whiteIndex] += POINTS[whiteOutcome];
     meeting.points[1 - whiteIndex] += POINTS[blackOutcome];
-  }
+  });
 
   const rounds = Math.max(0, ...[...meetings.values()].map((meeting) => meeting.round));
   const byTeam = new Map<string, TeamMatch[]>();
@@ -106,7 +109,7 @@ export const teamTournamentOf = (games: readonly GameHeaders[]): TeamTournament 
       const other = meeting.points[1 - index];
       const outcome: GameOutcome = meeting.unfinished ? "unfinished" : own > other ? "win" : own < other ? "loss" : "draw";
       const list = byTeam.get(team) ?? [];
-      list.push({ round: meeting.round, opponent: meeting.teams[1 - index], boardPoints: own, opponentBoardPoints: other, boards: meeting.boards, outcome });
+      list.push({ round: meeting.round, opponent: meeting.teams[1 - index], boardPoints: own, opponentBoardPoints: other, boards: meeting.boards, outcome, games: meeting.games });
       byTeam.set(team, list);
     });
   }
@@ -136,4 +139,25 @@ export const teamTournamentOf = (games: readonly GameHeaders[]): TeamTournament 
     unfinished: unfinishedGames,
     standings: unranked.map((standing, index) => ({ rank: index + 1, ...standing })),
   };
+};
+
+/**
+ * **Who played for each team** (CTA-128): every name its games give it —
+ * `White` under `WhiteTeam`, `Black` under `BlackTeam` — each once, in the
+ * order the file first shows them. What a team's link is made of: the
+ * Library filters a collection by players, not by team.
+ */
+export const teamPlayersOf = (games: readonly GameHeaders[]): ReadonlyMap<string, readonly string[]> => {
+  const players = new Map<string, string[]>();
+  const see = (team: string | undefined, player: string | undefined) => {
+    if (team === undefined || player === undefined) return;
+    const list = players.get(team) ?? [];
+    if (!list.includes(player)) list.push(player);
+    players.set(team, list);
+  };
+  for (const headers of games) {
+    see(gameTag(headers, "WhiteTeam"), gameTag(headers, "White"));
+    see(gameTag(headers, "BlackTeam"), gameTag(headers, "Black"));
+  }
+  return players;
 };

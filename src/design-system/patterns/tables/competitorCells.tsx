@@ -5,10 +5,10 @@ import TableCell from "@mui/material/TableCell";
 import type { Theme } from "@mui/material/styles";
 
 import { visuallyHidden } from "../../components/a11y";
-import { linkProps, type LinkTarget } from "../../components/link";
 import { MIN_TARGET_PX } from "../../theme";
 import { Flag, LabelChip, NumberCell, ResultMark } from "../../components/tables";
 import type { ColumnHeading, Competitor, CompetitorLabels, ResultEntry, TieBreakColumn } from "./competitors";
+import { asLink, linkSx } from "./tableLinks";
 
 /*
   The cells `StandingsTable` and `CrossTable` both draw (CTA-120): a
@@ -16,12 +16,6 @@ import type { ColumnHeading, Competitor, CompetitorLabels, ResultEntry, TieBreak
   tie-breaks at its end, a cell of results between, and the legend under the
   table. One place, so the two tables cannot drift apart.
 */
-
-/** A link in a competition table (CTA-128): the theme's ring on focus, underlined on hover only — the cell says it is one by its colour and its pointer. */
-const linkSx = (theme: Theme) => ({ "&:focus-visible": { ...theme.mixins.focusRing, outlineOffset: 1 } });
-
-/** A link's element and its target: react-router's `Link` and its `to`, or an anchor's `href` (`linkProps`). */
-const asLink = (link: LinkTarget) => linkProps(link) as Record<string, unknown>;
 
 /** A column that takes only the room its content needs — the name's column gets the rest. */
 const NARROW = { width: "1%", whiteSpace: "nowrap" } as const;

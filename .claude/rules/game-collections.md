@@ -257,6 +257,15 @@ Blog's `<CollectionTournamentTable>` demo
 every reader has. Shipped summaries carry no tournament mark (the manifest
 has none), so the embed is told its format (`format="roundRobin"`).
 
+Four more ship with it, each the demo of a Library-backed table: a knockout,
+**`netherlands2026`** (46 games, `chned26.pgn`); a double elimination,
+**`esportsplayin2026`** (30, `esportswcuppl26.pgn`); a knockout of teams,
+**`worldblitzteam2026`** (216, `fidewrbtf26.pgn`); and a Swiss of teams,
+**`worldrapidteam2026`** (1,650, `fidewrt26.pgn`) — read by
+`<CollectionKnockoutBracket>`, `<CollectionDoubleEliminationBracket>` and
+`<CollectionTeamStandingsTable>` (`.claude/rules/tournament-tables.md`). Ten
+shipped collections, 10,754 games, listed by name in Built-in.
+
 ### 3.2 Loading — `lib/shippedCollections.ts`
 
 | Cost | When | Size (Tal, 2,636 games / 10k games) |

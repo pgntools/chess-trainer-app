@@ -78,6 +78,9 @@ lib    src/lib/                          tournamentOf · knockoutOf · matchOf �
 | Team Swiss / round robin | `teamTournamentOf(headers)` | `StandingsTable` | `TeamStandingsTable` | `<TeamStandingsTable>` | `team` (World Rapid Team 2026); the article `tournaments/olympiad-2026` (both Olympiads, with flags) |
 | Team knockout | `knockoutOf(headers)` — teams detected | `Bracket` | `KnockoutBracket` | `<KnockoutBracket>` | `team` (World Blitz Team final) |
 | **A Library collection** (Swiss, round robin or match) | the collection's games' tags → `tournamentOf` / `matchOf` | as above | `SwissStandingsTable`, `RoundRobinCrossTable`, `MatchTable` with `playerLink` / `gameLink` | `<CollectionTournamentTable _id="/library/<c>">` | `from-a-collection` (the shipped Candidates 2026, `/library/candidates2026`) |
+| **A Library collection**: a knockout (players or teams) | `knockoutOf` | `Bracket` (its `link`s, its `games` row) | `KnockoutBracket` with `playerLink` / `gameLink` | `<CollectionKnockoutBracket _id="/library/<c>">` | `knockout-from-a-collection` (`/library/netherlands2026`, `/library/worldblitzteam2026`) |
+| **A Library collection**: a double elimination | `knockoutOf(headers, { losersFromRound: 51 })` | `Bracket` ×2 | `KnockoutBracket` with `playerLink` / `gameLink` | `<CollectionDoubleEliminationBracket _id="/library/<c>">` | `double-elimination-from-a-collection` (`/library/esportsplayin2026`) |
+| **A Library collection**: a team Swiss / round robin | `teamTournamentOf` + `teamPlayersOf` | `StandingsTable` | `TeamStandingsTable` with `teamLink` / `gameLink` | `<CollectionTeamStandingsTable _id="/library/<c>">` | `team-from-a-collection` (`/library/worldrapidteam2026`) |
 
 Every reader takes `GameHeaders[]` — `splitPgnGames(pgn).map(readPgnTags)` —
 and **replays no move**: a 1,650-game team file reads in ~50 ms.
@@ -175,6 +178,9 @@ import games from "./chgbr26.pgn?raw"
 | `<MatchTable>` | `pgn` or `load`, `density?`, `rowsPerPage?` | `tournament-match-<event slug>` |
 | `<TeamStandingsTable>` | `pgn` or `load`, `density?`, `rowsPerPage?` | `tournament-team-standings-<event slug>` |
 | `<CollectionTournamentTable>` | `_id="/library/<c>"`, `format?: "swiss" \| "roundRobin" \| "match"`, `playerLink?` (default on), `gameLink?` (default on), `density?`, `rowsPerPage?` | `tournament-collection-<c>-<format>` (`-loading` while read) |
+| `<CollectionKnockoutBracket>` | `_id="/library/<c>"`, `losersFromRound?`, `playerLink?` (default on), `gameLink?` (default on), `density?` | `tournament-collection-<c>-knockout` (`-winners`, `-losers`) |
+| `<CollectionDoubleEliminationBracket>` | as `<CollectionKnockoutBracket>`, `losersFromRound` `51` by default | `tournament-collection-<c>-doubleElimination` |
+| `<CollectionTeamStandingsTable>` | `_id="/library/<c>"`, `teamLink?` (default on), `gameLink?` (default on), `density?`, `rowsPerPage?` | `tournament-collection-<c>-team` |
 
 **`<CollectionTournamentTable>`** (CTA-128) — a tournament from the
 **Library** instead of a PGN beside the article: add the event's PGN to the
@@ -192,6 +198,36 @@ article as `state.from`, so the board's back button returns to it;
 `playerLink={false}` / `gameLink={false}` leave them text. An upload is on its
 own device only: an article naming one says "not in this browser's Library"
 to every other reader — the demo uses the shipped Candidates 2026.
+
+**The knockouts and team events from the Library** (CTA-128) are three
+embeds of their own, each a fixed table (no `format`), over the same
+`useCollectionEvent` hook (`frontPage/collectionEvent.ts` — the collection's
+games' tags, its event's name, the two links):
+
+- **`<CollectionKnockoutBracket>`** — `KnockoutBracket` over `knockoutOf`; a
+  team knockout too, where every game names its teams.
+  **`<CollectionDoubleEliminationBracket>`** is the same with
+  `losersFromRound` defaulting to TWIC's `51`.
+- **`<CollectionTeamStandingsTable>`** — `TeamStandingsTable` over
+  `teamTournamentOf`; a collection whose games name no teams says so
+  (`tournament.embed.notATeamEvent`).
+- **A name's link** — a player's, `?player=<name>`; **a team's, every one of
+  its players** (`teamPlayersOf`: every name its games give it,
+  `?player=a&player=b…`), since the Library filters by player, not by team —
+  its filter keeps a game any of them played, a name matched as a
+  substring, so a player whose name is part of another's brings that
+  player's games too.
+- **A game's link** — in a bracket, a row of links under each match
+  (`Bracket`'s `games`, a list named "Games"): **one per game**, showing the
+  first side's points (1, ½, 0) and read whole ("Game 1: Vrolijk, Liam –
+  Tiviakov, Sergei, 0–1"); in a **team** match **one per leg** ("Legs"),
+  showing the leg's board points both ways and opening its first board. In
+  the team standings, **each round's cell opens its match's first board**
+  (`TeamMatch.games[0]`). A team match's boards follow one another in a
+  TWIC file, so the Library board's Next walks the rest.
+- The ids add the table's word, not its format: `-knockout`,
+  `-doubleElimination`, `-team` — so one collection shows once per embed on
+  a page (the demo pages show the links-off markup without rendering it).
 
 - **`load`** in place of `pgn`, for a large file (CTA-128): a function that
   imports it — `load={() => import("./olym26.pgn?raw")}` — so the file is a
@@ -356,3 +392,8 @@ A11Y_MATRIX=reduced npx playwright test -g "blog-tournaments|seed"
 - **Bundle**: an article chunk holds its PGNs (the team page ~1.9 MB, lazy);
   the flags' URL map (~14 KB) is in the main chunk, the 272 SVGs only fetched
   when shown.
+- **A team's link is its players'** — the Library filters by player, so a
+  team's name links to every one of its players' games (§4); a player whose
+  name is part of another's (a substring) brings that player's games too.
+  A team match's link opens its first board, not the match.
+- **Arenas** have no table, from a PGN or from the Library.

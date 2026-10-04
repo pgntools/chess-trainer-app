@@ -99,4 +99,51 @@ describe("Bracket", () => {
     mount();
     await expectNoAxeViolations();
   });
+
+  describe("links (CTA-128)", () => {
+    const linked: BracketRound[] = [
+      {
+        id: "1",
+        title: "Final",
+        matches: [
+          {
+            ...match("1", "Ada", "Alan", ["1½", "½"], 0),
+            sides: [
+              { id: "a", name: "Ada", score: "1½", winner: true, prefix: "Dr", link: { href: "#ada" } },
+              { id: "b", name: "Alan", score: "½" },
+            ],
+            games: [
+              { id: "1", label: "1", name: "Game 1: Ada 1, Alan 0", link: { href: "#game-1" } },
+              { id: "2", label: "½", name: "Game 2: Ada ½, Alan ½", link: { href: "#game-2" } },
+            ],
+          },
+        ],
+      },
+    ];
+
+    it("makes a side's name a link, read alone beside the match's words — the rest of its line hidden", () => {
+      mount({ rounds: linked, gamesLabel: "Games" });
+      const link = screen.getByRole("link", { name: "Ada" });
+      expect(link).toHaveAttribute("href", "#ada");
+      expect(link.closest("[aria-hidden]")).toBeNull();
+      expect(screen.getByText("Dr").closest("[aria-hidden]")).not.toBeNull();
+      expect(screen.getByText("1½").closest("[aria-hidden]")).not.toBeNull();
+      // A side with no link stays hidden whole.
+      expect(screen.getByTestId("b-match-1-b")).toHaveAttribute("aria-hidden", "true");
+    });
+
+    it("lists a match's games as links under it, each read by its own words", async () => {
+      mount({ rounds: linked, gamesLabel: "Games" });
+      const games = screen.getByRole("list", { name: "Games" });
+      expect(within(games).getByRole("link", { name: "Game 2: Ada ½, Alan ½" })).toHaveAttribute("href", "#game-2");
+      expect(within(games).getAllByRole("link")).toHaveLength(2);
+      await expectNoAxeViolations();
+    });
+
+    it("draws no games row where a match has none", () => {
+      mount();
+      expect(screen.queryByTestId("b-match-1-games")).not.toBeInTheDocument();
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    });
+  });
 });

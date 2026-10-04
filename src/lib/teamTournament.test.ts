@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import teamSwissPgn from "../views/blog/articles/tournaments/fidewrt26.pgn?raw";
 import type { GameHeaders } from "./gameModel";
 import { readPgnTags, splitPgnGames } from "./pgn";
-import { teamTournamentOf } from "./teamTournament";
+import { teamPlayersOf, teamTournamentOf } from "./teamTournament";
 
 /*
   The team tournament helper (CTA-128) over the FIDE World Rapid Team
@@ -83,5 +83,29 @@ describe("teamTournamentOf", () => {
     it("leaves out a game that names no teams", () => {
       expect(teamTournamentOf([{ Round: "1.1", White: "Ann", Black: "Bob", Result: "1-0" }]).games).toBe(0);
     });
+
+    it("keeps each match's games, in the file's order, both ways (CTA-128)", () => {
+      const tournament = teamTournamentOf([
+        { Round: "1.1", White: "Ann", Black: "Bob", Result: "1-0" },
+        board("1.1", "Ajax", "Brugge", "1-0"),
+        board("1.2", "Brugge", "Ajax", "1/2-1/2"),
+        board("2.1", "Ajax", "Celtic", "0-1"),
+      ]);
+      const of = (team: string) => tournament.standings.find((standing) => standing.team === team)!;
+      expect(of("Ajax").rounds.map((matches) => matches.map((match) => match.games))).toEqual([[[1, 2]], [[3]]]);
+      expect(of("Brugge").rounds[0][0].games).toEqual([1, 2]);
+    });
+  });
+});
+
+describe("teamPlayersOf", () => {
+  it("names each team's players once, in the order the file first shows them", () => {
+    const players = teamPlayersOf([
+      { White: "Ann", Black: "Bob", WhiteTeam: "Ajax", BlackTeam: "Brugge" },
+      { White: "Bob", Black: "Cid", WhiteTeam: "Brugge", BlackTeam: "Ajax" },
+      { White: "Ann", Black: "Dan", WhiteTeam: "Ajax", BlackTeam: "Brugge" },
+      { White: "Eve", Black: "Fay" },
+    ]);
+    expect(Object.fromEntries(players)).toEqual({ Ajax: ["Ann", "Cid"], Brugge: ["Bob", "Dan"] });
   });
 });

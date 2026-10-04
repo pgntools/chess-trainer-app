@@ -1265,6 +1265,7 @@ const he: typeof en = {
       match: "{{event}} — המשחק",
       notAMatch: "ה-PGN הזה אינו משחק בין שניים: לא כל המשחקים בו הם בין אותם שני שחקנים.",
       collectionMissing: "האוסף הזה אינו נמצא בספרייה של הדפדפן הזה.",
+      notATeamEvent: "האוסף הזה אינו אירוע קבוצתי: המשחקים בו אינם נוקבים בשמות קבוצות.",
     },
     knockout: {
       round: "סיבוב {{round}}",
@@ -1279,6 +1280,10 @@ const he: typeof en = {
       thirdPlace: "משחק על המקום השלישי",
       loading: "קורא את טבלת הנוקאאוט…",
       empty: "אין מפגשים להצגה.",
+      games: "משחקים",
+      game: "משחק {{number}}: {{white}} – {{black}}, {{result}}",
+      legs: "מקצים",
+      leg: "מקצה {{leg}}: {{first}} {{own}}, {{second}} {{other}} — פותח את הלוח הראשון שלו",
     },
     match: {
       game: "משחק {{game}}",

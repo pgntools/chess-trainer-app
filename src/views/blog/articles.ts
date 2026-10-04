@@ -249,6 +249,30 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
+    path: "writing-an-article/demo-tables/knockout-from-a-collection",
+    title: { en: "A knockout from the Library", he: "נוקאאוט מהספרייה" },
+    summary: {
+      en: "<CollectionKnockoutBracket>: a knockout from the Library — a team knockout too; names linked to their games, each match's games under it.",
+      he: "<CollectionKnockoutBracket>: נוקאאוט מהספרייה — גם של קבוצות; שמות מקושרים למשחקיהם, ומשחקי כל מפגש מתחתיו.",
+    },
+  },
+  {
+    path: "writing-an-article/demo-tables/double-elimination-from-a-collection",
+    title: { en: "A double elimination from the Library", he: "הדחה כפולה מהספרייה" },
+    summary: {
+      en: "<CollectionDoubleEliminationBracket>: the winners' and losers' brackets from the Library, names and games linked.",
+      he: "<CollectionDoubleEliminationBracket>: בית המנצחים ובית המפסידים מהספרייה, שמות ומשחקים מקושרים.",
+    },
+  },
+  {
+    path: "writing-an-article/demo-tables/team-from-a-collection",
+    title: { en: "A team event from the Library", he: "אירוע קבוצתי מהספרייה" },
+    summary: {
+      en: "<CollectionTeamStandingsTable>: a team Swiss from the Library — each team linked to its players' games, each match to its first board.",
+      he: "<CollectionTeamStandingsTable>: שוויצרי קבוצתי מהספרייה — כל קבוצה מקושרת למשחקי שחקניה, וכל מפגש ללוח הראשון שלו.",
+    },
+  },
+  {
     path: "writing-an-article/guide",
     title: { en: "Writing an article", he: "כתיבת מאמר" },
     summary: {

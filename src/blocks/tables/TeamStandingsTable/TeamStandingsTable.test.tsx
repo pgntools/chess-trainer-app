@@ -69,4 +69,25 @@ describe("TeamStandingsTable", () => {
     mount();
     await expectNoAxeViolations();
   });
+
+  describe("links (CTA-128)", () => {
+    it("makes each team's name a link where teamLink gives one, and leaves the cells as text", () => {
+      mount({ teamLink: (team) => (team === "Lovelace Club" ? { href: "#lovelace" } : undefined) });
+      expect(screen.getByRole("link", { name: "Lovelace Club" })).toHaveAttribute("href", "#lovelace");
+      expect(screen.getAllByRole("link")).toHaveLength(1);
+    });
+
+    it("makes each round's match a link to its first board, read by the match's words", async () => {
+      mount({ gameLink: (game) => ({ href: `#game-${game}` }) });
+      const first = CLUB_LEAGUE.standings[0].rounds[0][0];
+      const link = within(screen.getByTestId("t-round-1-1")).getByRole("link");
+      expect(link).toHaveAttribute("href", `#game-${first.games![0]}`);
+      expect(link).toHaveAccessibleName("Round 1 against Turing Club: 2½–1½, won");
+      // A round with no match has nothing to open.
+      const gap = CLUB_LEAGUE.standings.findIndex((standing) => standing.rounds.some((round) => round.length === 0));
+      const round = CLUB_LEAGUE.standings[gap].rounds.findIndex((matches) => matches.length === 0);
+      expect(within(screen.getByTestId(`t-round-${gap + 1}-${round + 1}`)).queryByRole("link")).not.toBeInTheDocument();
+      await expectNoAxeViolations();
+    });
+  });
 });

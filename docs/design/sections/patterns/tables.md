@@ -215,27 +215,33 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   score; it knows no chess. A double elimination is two of them, one per
   bracket.
 - **Data** — `BracketRound = { id, title, matches }`, `BracketMatch = { id,
-  sides: [BracketSide, BracketSide], label, caption? }` (`caption`: a few
+  sides: [BracketSide, BracketSide], label, caption?, games? }` (`caption`: a few
   muted words over the box — "Match for third place" — said in `label`
-  too), `BracketSide = { id, name,
-  prefix?, badge?, flag?, score, detail?, winner? }` (`badge` and `flag` as
-  a `Competitor`'s, CTA-128). The scores are written by the caller
+  too; `games`: `BracketGame = { id, label, name, link }`, a row of links
+  under the lines, CTA-128), `BracketSide = { id, name,
+  prefix?, badge?, flag?, score, detail?, winner?, link? }` (`badge` and `flag` as
+  a `Competitor`'s, CTA-128; `link` makes the name a link). The scores are written by the caller
   ("2½"); `label` is the match in words ("Burg, Twan 1½, Sokolov, Ivan 2½:
   Sokolov, Ivan goes through").
 - **Props** — `rounds`, `ariaLabel` (**required**), `emptyLabel`,
-  `loading?` + `loadingLabel?`, `density?`, `testId`.
+  `loading?` + `loadingLabel?`, `density?`, `gamesLabel?` (the name of a
+  match's list of games — "Games"), `testId`.
 - **Accessible** — a named `region` that takes the keyboard focus and
   scrolls sideways (a bracket is two-dimensional: WCAG 1.4.10 allows it), its
   ring the theme's; each round a `list` named by its title (`aria-labelledby`
   — no heading, so an article's outline is its own); each match a list item
   read by its `label` in place of its two lines, which are `aria-hidden` — so
   who went through is said in words, never told by the weight or the bar
-  alone. `aria-busy` and a `status` while `loading`. Names `dir="auto"`,
+  alone. **Links** (CTA-128): a side with a `link` hides all of its line but
+  the name's link, which is read after the label; a match's `games` are a
+  list named `gamesLabel`, each link read by its `name` (its visible `label`
+  is a few characters), at least 24 px, the theme's focus ring. `aria-busy` and a `status` while `loading`. Names `dir="auto"`,
   scores `dir="ltr"`; the columns run right to left under RTL.
 - **Test ids** — `testId` (the region), `-round-<id>` (`-title`),
-  `-match-<id>`, a side's line `-match-<id>-<side id>` (`data-winner`),
-  `-loading`, `-empty`.
+  `-match-<id>`, a side's line `-match-<id>-<side id>` (`data-winner`; its
+  name's link `-link`), the games `-match-<id>-games` (a game's link
+  `-games-<game id>`), `-loading`, `-empty`.
 - **Variations** (one demo each) — a knockout of eight; a team knockout with
   details; a final round with a captioned match for third place; unfinished
   (a level final); loading; empty; long names; Hebrew
-  names (RTL); dense.
+  names (RTL); dense; linked (each name, each match's games).
