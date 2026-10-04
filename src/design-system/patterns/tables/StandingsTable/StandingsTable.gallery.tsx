@@ -96,6 +96,32 @@ const gallery: GalleryModule<PatternSectionId> = {
         </WithState>
       ),
     },
+    {
+      name: "Titles as chips, federations as flags — a code with no flag falls back to its words (CTA-128)",
+      render: () =>
+        demo({ names: DEMO_NAMES.slice(0, 6), extras }, 4, {
+          rows: standingsRowsOf(demoLeague({ names: DEMO_NAMES.slice(0, 6), rounds: 4, extras }), 4).map((row, index) => ({
+            ...row,
+            badge: ([
+              { label: "GM", tone: "warning", name: "Grandmaster" },
+              { label: "IM", tone: "info", name: "International Master" },
+              { label: "FM", tone: "success", name: "FIDE Master" },
+              { label: "CM", tone: "secondary", name: "Candidate Master" },
+              undefined,
+              { label: "WGM", tone: "warning", name: "Woman Grandmaster" },
+            ] as const)[index],
+            flag: [
+              { code: "gb-eng", label: "England" },
+              { code: "de", label: "Germany" },
+              { code: "us", label: "United States" },
+              undefined,
+              { code: "zz", label: "Nowhere" },
+              { code: "in", label: "India" },
+            ][index],
+            suffix: ["ENG", "GER", "USA", undefined, "ZZZ", "IND"][index],
+          })),
+        }, 300),
+    },
     { name: "Thirty rounds — the frame scrolls sideways", render: () => demo({ names: demoNames(12), extras }, 30) },
     { name: "Long names — one line each, and a sideways scroll", render: () => demo({ names: DEMO_LONG_NAMES, extras }, 3, {}, 240) },
     {

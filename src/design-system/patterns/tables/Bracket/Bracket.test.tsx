@@ -67,6 +67,24 @@ describe("Bracket", () => {
     expect(screen.getByTestId("b-match-1-caption").closest("[aria-hidden]")).not.toBeNull();
   });
 
+  it("shows a side's chip before its name and its flag after it (CTA-128)", () => {
+    const [semis] = ROUNDS;
+    const first = semis.matches[0];
+    mount({
+      rounds: [
+        {
+          ...semis,
+          matches: [
+            { ...first, sides: [{ ...first.sides[0], badge: { label: "GM", tone: "warning", name: "Grandmaster" }, flag: { code: "fr", label: "France" } }, first.sides[1]] },
+          ],
+        },
+      ],
+    });
+    const line = screen.getByTestId("b-match-1-a");
+    expect(within(line).getByText("GM")).toBeInTheDocument();
+    expect(line.querySelector("img[data-flag='fr']")).not.toBeNull();
+  });
+
   it("says it is reading, busy, and that it has nothing — in place of the rounds", () => {
     const { unmount } = mount({ loading: true, loadingLabel: "Reading…" });
     expect(screen.getByRole("status")).toHaveTextContent("Reading…");

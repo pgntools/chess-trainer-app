@@ -44,13 +44,14 @@ export type RoundRobinCrossTableProps = {
  * calls `tournamentOf`). Its words are the app's (`tournament.*`).
  */
 function RoundRobinCrossTable({ tournament, ariaLabel, density, paging, testId }: RoundRobinCrossTableProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
 
   const rows = useMemo<CrossTableRow[]>(() => {
     if (tournament === undefined) return [];
     const names = playerNames(tournament);
     return tournament.standings.map((standing) => ({
-      ...competitorOf(standing),
+      ...competitorOf(t, language, standing),
       results: Object.fromEntries(
         tournament.standings
           .filter((other) => other !== standing)
@@ -65,7 +66,7 @@ function RoundRobinCrossTable({ tournament, ariaLabel, density, paging, testId }
           }),
       ),
     }));
-  }, [tournament, t]);
+  }, [tournament, t, language]);
 
   const legend = useMemo(
     () =>

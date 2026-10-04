@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import TableCell from "@mui/material/TableCell";
 
 import { visuallyHidden } from "../../components/a11y";
-import { NumberCell, ResultMark } from "../../components/tables";
+import { Flag, LabelChip, NumberCell, ResultMark } from "../../components/tables";
 import type { ColumnHeading, Competitor, CompetitorLabels, ResultEntry, TieBreakColumn } from "./competitors";
 
 /*
@@ -64,29 +64,35 @@ type CompetitorCellsProps = {
 /**
  * A row's start: the rank, the name as the **row's header** (`th
  * scope="row"`, so a screen reader names the competitor with every cell of
- * the row) with its prefix and suffix muted around it, and the rating.
+ * the row) with its prefix and suffix muted around it — or a chip before it
+ * and a flag after (CTA-128) — and the rating.
  */
 export function CompetitorCells({ competitor, rating, testId }: CompetitorCellsProps) {
-  const { rank, name, prefix, suffix } = competitor;
+  const { rank, name, prefix, suffix, badge, flag } = competitor;
+  const muted = (words: string, small = false) => (
+    <Box component="bdi" dir="auto" sx={{ color: "text.secondary", ...(small && { typography: "caption" }) }}>
+      {words}
+    </Box>
+  );
   return (
     <>
       <NumberCell value={rank} secondary />
       <TableCell component="th" scope="row" data-testid={`${testId}-name`} sx={{ whiteSpace: "nowrap" }}>
-        {prefix !== undefined && (
+        {badge !== undefined ? (
           <>
-            <Box component="bdi" dir="auto" sx={{ color: "text.secondary" }}>
-              {prefix}
-            </Box>{" "}
+            <LabelChip {...badge} testId={`${testId}-badge`} />{" "}
           </>
+        ) : (
+          prefix !== undefined && <>{muted(prefix)} </>
         )}
         <bdi dir="auto">{name}</bdi>
-        {suffix !== undefined && (
+        {flag !== undefined ? (
           <>
             {" "}
-            <Box component="bdi" dir="auto" sx={{ color: "text.secondary", typography: "caption" }}>
-              {suffix}
-            </Box>
+            <Flag code={flag.code} label={flag.label} fallback={suffix === undefined ? undefined : muted(suffix, true)} testId={`${testId}-flag`} />
           </>
+        ) : (
+          suffix !== undefined && <> {muted(suffix, true)}</>
         )}
       </TableCell>
       {rating && <NumberCell value={competitor.rating} secondary />}

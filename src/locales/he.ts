@@ -1246,6 +1246,16 @@ const he: typeof en = {
     loading: "קורא את הטורניר…",
     empty: "אין משחקים להצגה.",
     rowsPerPage: "שורות בעמוד",
+    titles: {
+      GM: "רב-אמן",
+      IM: "אמן בינלאומי",
+      FM: "אמן FIDE",
+      CM: "מועמד לאמן",
+      WGM: "רבת-אמן",
+      WIM: "אמנית בינלאומית",
+      WFM: "אמנית FIDE",
+      WCM: "מועמדת לאמנית",
+    },
     embed: {
       standings: "{{event}} — טבלת הדירוג",
       crosstable: "{{event}} — טבלה צולבת",

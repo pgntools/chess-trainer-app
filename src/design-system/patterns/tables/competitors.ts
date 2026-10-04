@@ -1,5 +1,11 @@
 import type { VisibleLabel } from "../../components/a11y";
-import type { ResultMarkProps } from "../../components/tables";
+import type { LabelChipProps, ResultMarkProps } from "../../components/tables";
+
+/** A mark before a name, as a chip (CTA-128) — a title: "GM" in its tone, read "Grandmaster". */
+export type CompetitorBadge = Pick<LabelChipProps, "label" | "tone" | "name">;
+
+/** Where a competitor is from, as a flag (CTA-128) — `Flag`'s code ("de", "gb-eng") and the country's name. */
+export type CompetitorFlag = { code: string; label: string };
 
 /*
   What the two competition tables share (CTA-120) — `StandingsTable` and
@@ -44,6 +50,10 @@ export type Competitor = {
   prefix?: string;
   /** A few words after the name, muted — where they are from. */
   suffix?: string;
+  /** A chip before the name — a title (CTA-128). Shown in place of `prefix`. */
+  badge?: CompetitorBadge;
+  /** A flag after the name — the federation (CTA-128). Shown in place of `suffix`, which stays its fallback. */
+  flag?: CompetitorFlag;
   /** Shown in its own column when the table has the column's heading (`labels.rating`). */
   rating?: number;
   points: number;

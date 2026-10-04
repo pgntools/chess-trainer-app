@@ -32,7 +32,7 @@ describe("KnockoutBracket", () => {
     expect(within(first).getAllByRole("listitem")).toHaveLength(8);
     expect(within(first).getByText("Burg, Twan 1½, Sokolov, Ivan 2½: Sokolov, Ivan goes through")).toBeInTheDocument();
     expect(screen.getByTestId("k-winners-match-4-1-0")).toHaveAttribute("data-winner", "true");
-    expect(screen.getByTestId("k-winners-match-4-1-0")).toHaveTextContent("GM Tiviakov, Sergei3");
+    expect(screen.getByTestId("k-winners-match-4-1-0")).toHaveTextContent(/Tiviakov, Sergei3$/);
   });
 
   it("draws a double elimination as two brackets, each named — rounds numbered, no stage names", () => {

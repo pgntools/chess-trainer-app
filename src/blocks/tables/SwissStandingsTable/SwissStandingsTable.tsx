@@ -44,20 +44,21 @@ export type SwissStandingsTableProps = {
  * calls `tournamentOf`). Its words are the app's (`tournament.*`).
  */
 function SwissStandingsTable({ tournament, ariaLabel, density, paging, testId }: SwissStandingsTableProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
 
   const rows = useMemo<StandingsRow[]>(() => {
     if (tournament === undefined) return [];
     const names = playerNames(tournament);
     return tournament.standings.map((standing) => ({
-      ...competitorOf(standing),
+      ...competitorOf(t, language, standing),
       rounds: standing.rounds.map((games, index) =>
         games.length === 0
           ? [{ outcome: "none" as const, label: t("tournament.noGame", { round: index + 1 }) }]
           : games.map((game) => resultEntryOf(t, game, names)),
       ),
     }));
-  }, [tournament, t]);
+  }, [tournament, t, language]);
 
   const legend = useMemo(
     () =>

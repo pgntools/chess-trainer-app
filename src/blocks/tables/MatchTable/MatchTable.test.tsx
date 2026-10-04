@@ -37,7 +37,7 @@ describe("MatchTable", () => {
   it("writes a half point as ½, and explains an unfinished game", () => {
     mount({ match: UNFINISHED });
     expect(screen.getByTestId("m-legend")).toHaveTextContent("unfinished game");
-    expect(screen.getAllByRole("rowheader")[0]).toHaveTextContent("GM Lovelace, Ada ENG");
+    expect(screen.getAllByRole("rowheader")[0]).toHaveAccessibleName("Grandmaster Lovelace, Ada England");
     expect(screen.getAllByRole("row")[1]).toHaveTextContent("1½");
   });
 

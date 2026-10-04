@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
+import { readText } from "../../../test/readText";
 import swissPgn from "../../blog/articles/tournaments/20th-werner-obermeyer-swiss-5r.pgn?raw";
 import candidatesPgn from "../../blog/articles/tournaments/wchcand26.pgn?raw";
 import greenHillsPgn from "../../blog/articles/tournaments/greenhillsrapid26.pgn?raw";
@@ -24,7 +25,8 @@ import { TeamStandingsEmbed } from "./TeamStandingsEmbed";
   tie-breaks of its kind. The PGNs are the Tournaments articles' own.
 */
 
-const names = () => screen.getAllByRole("rowheader").map((header) => header.textContent);
+// Each row by its accessible name: a title read in full, a federation by its country (CTA-128).
+const names = () => screen.getAllByRole("rowheader").map((header) => readText(header));
 const glyphs = (cell: HTMLElement) => [...cell.querySelectorAll("[aria-hidden]")].map((glyph) => glyph.textContent);
 
 // FIDE ids, as the tags carry them.
@@ -48,7 +50,7 @@ describe("the tournament table embeds (CTA-128)", () => {
   it("<RoundRobinCrossTable>: a double round robin's crosstable, both meetings in a cell, named after its event", async () => {
     render(<RoundRobinCrossTableEmbed pgn={candidatesPgn} />);
     expect(screen.getByRole("table", { name: "FIDE Candidates 2026 — crosstable" })).toBeInTheDocument();
-    expect(names()[0]).toBe("GM Sindarov, Javokhir");
+    expect(names()[0]).toBe("Grandmaster Sindarov, Javokhir");
     expect(names()).toHaveLength(8);
     // Round 7, a draw; round 13, a draw.
     expect(glyphs(screen.getByTestId(`tournament-crosstable-fide-candidates-2026-cell-${SINDAROV}-${GIRI}`))).toEqual(["½", "½"]);
@@ -60,7 +62,7 @@ describe("the tournament table embeds (CTA-128)", () => {
   it("<RoundRobinCrossTable>: a single round robin, one game a cell", () => {
     render(<RoundRobinCrossTableEmbed pgn={greenHillsPgn} />);
     expect(screen.getByRole("table", { name: "Green Hills Masters Rapid — crosstable" })).toBeInTheDocument();
-    expect(names().slice(0, 3)).toEqual(["GM Yakubboev, Nodirbek", "GM Artemiev, Vladislav", "GM Abdusattorov, Nodirbek"]);
+    expect(names().slice(0, 3)).toEqual(["Grandmaster Yakubboev, Nodirbek", "Grandmaster Artemiev, Vladislav", "Grandmaster Abdusattorov, Nodirbek"]);
     expect(screen.getByTestId(`tournament-crosstable-green-hills-masters-rapid-row-${YAKUBBOEV}-points`)).toHaveTextContent("6.0");
   });
 
@@ -68,7 +70,7 @@ describe("the tournament table embeds (CTA-128)", () => {
     render(<SwissStandingsEmbed pgn={swissPgn} />);
     expect(screen.getByRole("table", { name: "20th Werner-Obermeyer — standings" })).toBeInTheDocument();
     // Level on 4 points: Krivoborodov first on Buchholz.
-    expect(names().slice(0, 4)).toEqual(["GM Krivoborodov,E", "Stoettner,Moritz", "GM Korneev,O", "GM Milov,L"]);
+    expect(names().slice(0, 4)).toEqual(["Grandmaster Krivoborodov,E", "Stoettner,Moritz", "Grandmaster Korneev,O", "Grandmaster Milov,L"]);
     expect(names()).toHaveLength(17);
     // The file is the top four boards a round: the legend explains the dashes.
     expect(screen.getByTestId("tournament-standings-20th-werner-obermeyer-legend")).toHaveTextContent("no game in the file");

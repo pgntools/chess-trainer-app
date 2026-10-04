@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { StandingsTable, type StandingsRow, type TablePaging } from "../../../design-system/patterns/tables";
 import type { Match } from "../../../lib/match";
-import { formatScore, tournamentLabels, tournamentLegend } from "../tournamentTable";
+import { formatScore, playerMarks, tournamentLabels, tournamentLegend } from "../tournamentTable";
 
 export type MatchTableProps = {
   /** The match — `matchOf(headers)` (`lib/match.ts`). `undefined` while its games are read. */
@@ -33,7 +33,8 @@ export type MatchTableProps = {
  * `matchOf`). Its words are the app's (`tournament.*`).
  */
 function MatchTable({ match, ariaLabel, density, paging, testId }: MatchTableProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
 
   const rows = useMemo<StandingsRow[]>(() => {
     if (match === undefined) return [];
@@ -43,8 +44,7 @@ function MatchTable({ match, ariaLabel, density, paging, testId }: MatchTablePro
         id: player.id,
         rank: index + 1,
         name: player.name,
-        prefix: player.title,
-        suffix: player.federation,
+        ...playerMarks(t, language, player),
         rating: player.rating,
         points: match.points[index],
         rounds: match.games.map((game, number) => [
@@ -59,7 +59,7 @@ function MatchTable({ match, ariaLabel, density, paging, testId }: MatchTablePro
         ]),
       };
     });
-  }, [match, t]);
+  }, [match, t, language]);
 
   const legend = useMemo(() => tournamentLegend(t, { unfinished: (match?.unfinished ?? 0) > 0, none: false }), [match, t]);
 

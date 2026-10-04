@@ -1604,6 +1604,17 @@ const en = {
     empty: "No games to show.",
     /** A paged table's pager (CTA-128). */
     rowsPerPage: "Rows per page",
+    /** The FIDE titles, read in place of their chips' letters (CTA-128). */
+    titles: {
+      GM: "Grandmaster",
+      IM: "International Master",
+      FM: "FIDE Master",
+      CM: "Candidate Master",
+      WGM: "Woman Grandmaster",
+      WIM: "Woman International Master",
+      WFM: "Woman FIDE Master",
+      WCM: "Woman Candidate Master",
+    },
     /** The MDX embeds (CTA-128): `<SwissStandingsTable>` and `<RoundRobinCrossTable>` in an article. */
     embed: {
       /** The table's accessible name, after the games' Event tag. */

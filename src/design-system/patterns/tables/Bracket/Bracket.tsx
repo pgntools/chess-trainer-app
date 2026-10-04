@@ -2,6 +2,8 @@ import { useId, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 
 import { visuallyHidden } from "../../../components/a11y";
+import { Flag, LabelChip } from "../../../components/tables";
+import type { CompetitorBadge, CompetitorFlag } from "../competitors";
 
 /** One side of a match: who, and what they scored. */
 export type BracketSide = {
@@ -11,6 +13,10 @@ export type BracketSide = {
   name: string;
   /** A few words before the name, muted — a title. */
   prefix?: string;
+  /** A chip before the name — a title (CTA-128). Shown in place of `prefix`. */
+  badge?: CompetitorBadge;
+  /** A flag after the name — the federation (CTA-128). */
+  flag?: CompetitorFlag;
   /** The score, as the caller writes it ("2½"). */
   score: string;
   /** A few muted words after the score — a team's board points, "(8½)". */
@@ -166,14 +172,26 @@ function Bracket({ rounds, ariaLabel, emptyLabel, loading = false, loadingLabel,
                             }}
                           >
                             <Box component="span" sx={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {side.prefix !== undefined && (
+                              {side.badge !== undefined ? (
                                 <>
-                                  <Box component="bdi" dir="auto" sx={{ color: "text.secondary", fontWeight: 400 }}>
-                                    {side.prefix}
-                                  </Box>{" "}
+                                  <LabelChip {...side.badge} />{" "}
                                 </>
+                              ) : (
+                                side.prefix !== undefined && (
+                                  <>
+                                    <Box component="bdi" dir="auto" sx={{ color: "text.secondary", fontWeight: 400 }}>
+                                      {side.prefix}
+                                    </Box>{" "}
+                                  </>
+                                )
                               )}
                               <bdi dir="auto">{side.name}</bdi>
+                              {side.flag !== undefined && (
+                                <>
+                                  {" "}
+                                  <Flag code={side.flag.code} label={side.flag.label} />
+                                </>
+                              )}
                             </Box>
                             <Box component="span" dir="ltr" sx={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
                               {side.score}

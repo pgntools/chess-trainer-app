@@ -5,7 +5,7 @@ import Box from "@mui/material/Box";
 
 import { Bracket, type BracketRound, type BracketSide } from "../../../design-system/patterns/tables";
 import type { Knockout, KnockoutBracket as Bracketed, KnockoutMatch } from "../../../lib/knockout";
-import { formatScore } from "../tournamentTable";
+import { federationFlag, formatScore, titleBadgeOf } from "../tournamentTable";
 
 export type KnockoutBracketProps = {
   /**
@@ -40,19 +40,22 @@ const roundTitle = (t: TFunction, bracket: Bracketed, index: number, named: bool
 };
 
 /** One side of a match as a bracket's line: the title before the name, the score — a team's board points after it. */
-const sideOf = (match: KnockoutMatch, index: 0 | 1, teams: boolean): BracketSide => {
+const sideOf = (t: TFunction, language: string, match: KnockoutMatch, index: 0 | 1, teams: boolean): BracketSide => {
   const side = match.sides[index];
+  const flag = teams ? undefined : federationFlag(side.competitor, language);
   return {
     id: String(index),
     name: side.competitor.name,
     prefix: side.competitor.title,
+    badge: titleBadgeOf(t, side.competitor.title),
+    ...(flag !== undefined && { flag }),
     score: formatScore(side.score),
     ...(teams && { detail: `(${formatScore(side.boardPoints ?? 0)})` }),
     winner: match.winner === index,
   };
 };
 
-const roundsOf = (t: TFunction, bracket: Bracketed, teams: boolean, named: boolean): BracketRound[] =>
+const roundsOf = (t: TFunction, language: string, bracket: Bracketed, teams: boolean, named: boolean): BracketRound[] =>
   bracket.rounds.map((round, index) => ({
     id: String(round.round),
     title: roundTitle(t, bracket, index, named),
@@ -69,7 +72,7 @@ const roundsOf = (t: TFunction, bracket: Bracketed, teams: boolean, named: boole
         // Its place, not its players: a test id with no names in it ("2-3", round 2's third match).
         id: `${round.round}-${position + 1}`,
         label: `${caption === undefined ? "" : `${caption}: `}${words.join(", ")}${through}`,
-        sides: [sideOf(match, 0, teams), sideOf(match, 1, teams)],
+        sides: [sideOf(t, language, match, 0, teams), sideOf(t, language, match, 1, teams)],
       };
     }),
   }));
@@ -91,16 +94,17 @@ const roundsOf = (t: TFunction, bracket: Bracketed, teams: boolean, named: boole
  * `knockoutOf`). Its words are the app's (`tournament.knockout.*`).
  */
 function KnockoutBracket({ knockout, ariaLabel, density, testId }: KnockoutBracketProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
   const double = knockout?.losers !== undefined;
 
   const brackets = useMemo(() => {
     if (knockout === undefined) return undefined;
-    const winners = { id: "winners", title: t("tournament.knockout.winners"), rounds: roundsOf(t, knockout.winners, knockout.teams, !double) };
+    const winners = { id: "winners", title: t("tournament.knockout.winners"), rounds: roundsOf(t, language, knockout.winners, knockout.teams, !double) };
     return knockout.losers === undefined
       ? [winners]
-      : [winners, { id: "losers", title: t("tournament.knockout.losers"), rounds: roundsOf(t, knockout.losers, knockout.teams, false) }];
-  }, [knockout, double, t]);
+      : [winners, { id: "losers", title: t("tournament.knockout.losers"), rounds: roundsOf(t, language, knockout.losers, knockout.teams, false) }];
+  }, [knockout, double, t, language]);
 
   const common = { emptyLabel: t("tournament.knockout.empty"), loadingLabel: t("tournament.knockout.loading"), density };
   if (brackets === undefined) {

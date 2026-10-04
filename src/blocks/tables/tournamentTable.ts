@@ -1,7 +1,9 @@
 import type { TFunction } from "i18next";
 
-import type { Competitor, CompetitorLabels, ResultEntry, TieBreakColumn } from "../../design-system/patterns/tables";
-import type { PlayerGame, TieBreak, Tournament, TournamentStanding } from "../../lib/tournament";
+import type { LabelChipTone } from "../../design-system/components/tables";
+import type { Competitor, CompetitorBadge, CompetitorFlag, CompetitorLabels, ResultEntry, TieBreakColumn } from "../../design-system/patterns/tables";
+import { federationFlagOf } from "../../lib/federations";
+import type { PlayerGame, TieBreak, Tournament, TournamentPlayer, TournamentStanding } from "../../lib/tournament";
 
 /*
   What the two tournament blocks share (CTA-120) — `SwissStandingsTable` and
@@ -35,13 +37,54 @@ export const tieBreakColumns = (t: TFunction, tieBreaks: readonly TieBreak[]): T
     format: FORMATS[id],
   }));
 
-/** A standing as a row's competitor: the title before the name, the federation after it, the rating in its column. */
-export const competitorOf = ({ rank, player, points, tieBreaks }: TournamentStanding): Competitor => ({
+/** The FIDE titles' tones (CTA-128): a grandmaster's gold, then blue, green and purple down the titles — a woman's title in its counterpart's. */
+const TITLE_TONES: Readonly<Record<string, LabelChipTone>> = {
+  GM: "warning",
+  WGM: "warning",
+  IM: "info",
+  WIM: "info",
+  FM: "success",
+  WFM: "success",
+  CM: "secondary",
+  WCM: "secondary",
+};
+
+/**
+ * A player's title as a chip (CTA-128): its tone, and — for a FIDE title —
+ * what it stands for, read in its place ("Grandmaster"). Any other title
+ * (a national one) is a chip in the primary tone, read as written.
+ */
+export const titleBadgeOf = (t: TFunction, title: string | undefined): CompetitorBadge | undefined => {
+  if (title === undefined) return undefined;
+  const known = title.toUpperCase();
+  const tone = TITLE_TONES[known];
+  return tone === undefined ? { label: title, tone: "primary" } : { label: title, tone, name: t(`tournament.titles.${known}`) };
+};
+
+/** A player's federation as a flag, named in `language` (CTA-128) — `undefined` for none, or a code with no flag. */
+export const federationFlag = (player: TournamentPlayer, language: string): CompetitorFlag | undefined => {
+  const flag = federationFlagOf(player.federation, language);
+  return flag === undefined ? undefined : { code: flag.code, label: flag.name };
+};
+
+/**
+ * A player's marks around the name (CTA-128): the title as a chip before it,
+ * the federation as a flag after it — the words they replace kept as their
+ * fallbacks.
+ */
+export const playerMarks = (t: TFunction, language: string, player: TournamentPlayer) => ({
+  prefix: player.title,
+  suffix: player.federation,
+  badge: titleBadgeOf(t, player.title),
+  flag: federationFlag(player, language),
+});
+
+/** A standing as a row's competitor: the title as a chip before the name, the federation as a flag after it, the rating in its column. */
+export const competitorOf = (t: TFunction, language: string, { rank, player, points, tieBreaks }: TournamentStanding): Competitor => ({
   id: player.id,
   rank,
   name: player.name,
-  prefix: player.title,
-  suffix: player.federation,
+  ...playerMarks(t, language, player),
   rating: player.rating,
   points,
   tieBreaks,

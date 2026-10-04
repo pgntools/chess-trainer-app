@@ -346,4 +346,24 @@ describe("StandingsTable", () => {
       expect(screen.getByTestId("t-row-p26").firstElementChild).toHaveTextContent("26");
     });
   });
+
+  describe("chips and flags (CTA-128)", () => {
+    it("shows a badge as a chip before the name and a flag after it, both read by their words", () => {
+      mount({
+        rows: [
+          { ...ROWS[0], badge: { label: "GM", tone: "warning", name: "Grandmaster" }, flag: { code: "fr", label: "France" }, suffix: "FRA" },
+          { ...ROWS[1], flag: { code: "zz", label: "Nowhere" }, suffix: "ZZZ" },
+        ],
+      });
+      const [first, second] = screen.getAllByRole("rowheader");
+      expect(first).toHaveAccessibleName(/^Grandmaster Ada Lovelace France$/);
+      expect(within(first).getByRole("img", { name: "France" })).toBeInTheDocument();
+      // The chip takes the prefix's place, the flag the suffix's.
+      expect(first).not.toHaveTextContent("Dr");
+      expect(first).not.toHaveTextContent("FRA");
+      // A code with no flag falls back to the suffix.
+      expect(second).toHaveTextContent("ZZZ");
+      expect(within(second).queryByRole("img")).not.toBeInTheDocument();
+    });
+  });
 });

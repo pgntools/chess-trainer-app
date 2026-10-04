@@ -138,6 +138,16 @@ a team event's standings — embedded the same way:
 | `MatchTable` | tables | A match between two players (`Match`, `lib/match.ts`, CTA-128) as a `StandingsTable`: two rows, the leader first, a column per game — the result for its row's player, read with the game, the colour and the opponent — and the score, halves as `½`. |
 | `TeamStandingsTable` | tables | A team tournament's standings (`TeamTournament`, `lib/teamTournament.ts`, CTA-128) as a `StandingsTable`: a row per team, a round's cell its board points in that match (`ResultMark`'s own `glyph`), toned as the match went and read with the opponent and the score both ways, then the match points and the board points it is ranked by. |
 
+Every tournament block shows a player's **title as a chip** — a
+`LabelChip` in its tone (GM and WGM gold, IM and WIM blue, FM and WFM
+green, CM and WCM purple, any other title the primary colour), read in full
+("Grandmaster") — and the **federation as a flag** (`Flag`, from the
+`WhiteCountry` / `BlackCountry` tag through `lib/federations.ts`, named in the
+reader's language), the tag's letters its fallback where there is no flag
+(CTA-128, `blocks/tables/tournamentTable.ts`: `titleBadgeOf`,
+`federationFlag`, `playerMarks`). And every table among them takes the
+optional `paging` its pattern does.
+
 How a module migrates — the order of work, what each old pattern became, the
 findings — is [`migration.md`](./migration.md).
 
