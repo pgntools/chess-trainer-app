@@ -25,7 +25,9 @@ import { STARTER_DOCUMENT } from "./starterDocument";
  * - **A document that will not compile** keeps the last one that did on the
  *   right, under the error and where it is. **A component that throws** (a
  *   prop it cannot read) is caught there, and the next compile tries again.
- * - **An article** can be opened as a starting point; its
+ * - **An article** can be opened as a starting point — from the select, or
+ *   from the edit icon beside an article's title (`?article=<file>`, which
+ *   `Main` hands in as `arrivingArticle`); its
  *   `import games from "./x.pgn?raw"` reads the file beside it.
  * - **Nothing is written to the repository**: the text is copied or
  *   downloaded as a `.mdx`, to put under `src/views/blog/articles/` (the
@@ -131,7 +133,14 @@ class PreviewBoundary extends Component<BoundaryProps, BoundaryState> {
 const whereOf = ({ line, column }: { line?: number; column?: number }) =>
   line === undefined ? "" : column === undefined ? `Line ${line}: ` : `Line ${line}, column ${column}: `;
 
-function MdxEditor() {
+type MdxEditorProps = {
+  /** An article file to open on arrival — `tournaments/olympiad-2026`, `get-started.he` — replacing the draft. */
+  arrivingArticle?: string;
+  /** Called once that file is open (or found missing), so the address can drop it. */
+  onArrived?: () => void;
+};
+
+function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   const [kept] = useState(readKept);
   const [draft, setDraft] = useState<Draft>(() => (kept === undefined ? { source: STARTER_DOCUMENT, file: "" } : { source: kept.source, file: kept.file }));
   const [opened, setOpened] = useState(kept?.opened ?? draft.source);
@@ -140,6 +149,25 @@ function MdxEditor() {
   const compiled = useCompiled(draft.source, folder);
 
   useEffect(() => writeKept({ ...draft, opened }), [draft, opened]);
+
+  // Arriving from an article's edit icon: that article replaces the draft — the reader asked for it.
+  useEffect(() => {
+    if (arrivingArticle === undefined) return;
+    let live = true;
+    void loadArticleSource(arrivingArticle).then((source) => {
+      if (!live) return;
+      if (source === undefined) setNotice(`No article file ${arrivingArticle}.mdx.`);
+      else {
+        setDraft({ source, file: arrivingArticle });
+        setOpened(source);
+        setNotice(`Opened ${arrivingArticle}.mdx.`);
+      }
+      onArrived?.();
+    });
+    return () => {
+      live = false;
+    };
+  }, [arrivingArticle, onArrived]);
 
   const dirty = draft.source !== opened;
   const replace = (next: Draft, message: string) => {

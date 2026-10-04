@@ -8,6 +8,7 @@ import { asAppLanguage } from "../../i18n";
 import { localizedText } from "../../lib/localizedText";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import ArticleBody from "./ArticleBody";
+import { ArticleEditLink } from "./ArticleEditLink";
 import { blogFolderChain, findBlogArticle } from "./articles";
 
 /**
@@ -43,9 +44,12 @@ function BlogArticle() {
         current={title ?? t("blog.missingTitle")}
         testId="blog-article-crumbs"
       />
-      <Typography variant="h4" component="h1" sx={{ fontWeight: 600, mt: 1, mb: 2 }}>
-        {title ?? t("blog.missingTitle")}
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1, mb: 2 }}>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
+          {title ?? t("blog.missingTitle")}
+        </Typography>
+        {article !== undefined && <ArticleEditLink path={article.path} language={language} />}
+      </Box>
       {article === undefined ? (
         <Typography color="text.secondary" data-testid="blog-article-missing">
           {t("blog.missingArticle")}

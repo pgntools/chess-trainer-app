@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import { downloadTextFile } from "../../../lib/pgnExport";
 import { expectNoAxeViolations } from "../../../test/axe";
@@ -25,11 +25,25 @@ vi.mock("../../../lib/pgnExport", async (importOriginal) => ({
   downloadTextFile: vi.fn(() => true),
 }));
 
-const mount = () =>
+/** Where the router is — the editor drops `?article=` once it has opened the file. */
+function Where() {
+  const location = useLocation();
+  return <p data-testid="where">{`${location.pathname}${location.search}`}</p>;
+}
+
+const mount = (entry = "/dev/mdx-editor") =>
   render(
-    <MemoryRouter initialEntries={["/dev/mdx-editor"]}>
+    <MemoryRouter initialEntries={[entry]}>
       <Routes>
-        <Route path="/dev/mdx-editor" element={<Main />} />
+        <Route
+          path="/dev/mdx-editor"
+          element={
+            <>
+              <Main />
+              <Where />
+            </>
+          }
+        />
       </Routes>
     </MemoryRouter>,
   );
@@ -102,6 +116,27 @@ describe("the MDX editor", () => {
     expect(await within(preview()).findByRole("heading", { name: "The standings" })).toBeInTheDocument();
     expect(await within(preview()).findAllByRole("table")).not.toHaveLength(0);
     expect(screen.queryByTestId("mdx-editor-compile-error")).not.toBeInTheDocument();
+  });
+
+  it("opens the article an edit icon names, over the kept draft, then drops it from the address", async () => {
+    mount();
+    setSource("## A draft of my own");
+    await within(preview()).findByRole("heading", { name: "A draft of my own" });
+    cleanup();
+
+    mount("/dev/mdx-editor?article=tournaments%2Fwerner-obermeyer-swiss-2026");
+    expect(await screen.findByTestId("mdx-editor-notice")).toHaveTextContent("Opened tournaments/werner-obermeyer-swiss-2026.mdx.");
+    expect((source() as HTMLTextAreaElement).value).toContain('import games from "./20th-werner-obermeyer-swiss-5r.pgn?raw"');
+    expect(screen.getByTestId("mdx-editor-editing")).not.toHaveTextContent("changed");
+    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent(/^\/dev\/mdx-editor$/));
+    expect(await within(preview()).findByRole("heading", { name: "The standings" })).toBeInTheDocument();
+  });
+
+  it("says so when the article an address names has no file, keeping the draft", async () => {
+    mount("/dev/mdx-editor?article=nowhere");
+    expect(await screen.findByTestId("mdx-editor-notice")).toHaveTextContent("No article file nowhere.mdx.");
+    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent(/^\/dev\/mdx-editor$/));
+    expect((source() as HTMLTextAreaElement).value).toContain("## A draft");
   });
 
   it("says an import it cannot read, and where", async () => {

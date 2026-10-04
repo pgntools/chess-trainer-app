@@ -5,6 +5,7 @@ import Typography from "@mui/material/Typography";
 import { asAppLanguage } from "../../i18n";
 import { localizedText } from "../../lib/localizedText";
 import ArticleBody from "../blog/ArticleBody";
+import { ArticleEditLink } from "../blog/ArticleEditLink";
 import { findBlogArticle } from "../blog/articles";
 import { useOwnPageHeading } from "../main/pageTitle";
 import { FRONT_PAGE_ARTICLE } from "./frontPageArticle";
@@ -29,9 +30,12 @@ const Home = () => {
 
   return (
     <Box data-testid="home-page" sx={{ p: 1 }}>
-      <Typography variant="h4" component="h1" sx={{ fontWeight: 600, mb: 1 }}>
-        {article === undefined ? t("blog.missingTitle") : localizedText(article.title, language)}
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
+          {article === undefined ? t("blog.missingTitle") : localizedText(article.title, language)}
+        </Typography>
+        {article !== undefined && <ArticleEditLink path={FRONT_PAGE_ARTICLE} language={language} />}
+      </Box>
       <ArticleBody path={FRONT_PAGE_ARTICLE} language={language} />
     </Box>
   );
