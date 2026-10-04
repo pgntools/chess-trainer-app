@@ -312,7 +312,7 @@ Every component in `components/` (CTA-108) — and every pattern and block
 | Section | Components | Reference |
 | --- | --- | --- |
 | Dialogs | `BaseDialog`, `ConfirmDialog`, `DeleteManyDialog`, `FormDialog`, `ProgressDialog` + `useCancellableJob`, `FullScreenDialog` | [`sections/dialogs.md`](./sections/dialogs.md) |
-| Tables | `TableFrame`, `SortHeaderCell`, `PickHeaderCell`, `PickCell`, `RowActionsCell`, `TablePager`, `EmptyTableRow`, `LoadingTableRow`, `NumberCell`, `DateCell`, `ResultMark`, `useTableUrlState` + `sortRows` | [`sections/tables.md`](./sections/tables.md) |
+| Tables | `TableFrame`, `SortHeaderCell`, `PickHeaderCell`, `PickCell`, `RowActionsCell`, `TablePager`, `EmptyTableRow`, `LoadingTableRow`, `NumberCell`, `DateCell`, `ResultMark`, `LabelChip`, `Flag` (CTA-128), `useTableUrlState` + `sortRows` | [`sections/tables.md`](./sections/tables.md) |
 | Forms | `FieldLabel`, `SwitchField`, `CheckboxField`, `SideToggle`, `SliderField`, `SelectField`, `SearchField`, `DateRangeFields`, `FileInputButton`, `SettingsSection`, `SettingsFrame` + `useDraft` | [`sections/forms.md`](./sections/forms.md) |
 | Autocompletes | `ChipsAutocomplete`, `SelectAutocomplete` | [`sections/autocompletes.md`](./sections/autocompletes.md) |
 | Feedback | `SnackbarProvider` + `useSnackbar` (mounted once in `src/main.tsx`), `InlineAlert`, `FeedbackStrip`, `StatusText` | [`sections/feedback.md`](./sections/feedback.md) |

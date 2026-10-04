@@ -1550,7 +1550,7 @@ const en = {
   /**
    * The **tournament tables** (CTA-120) — the Swiss standings and the
    * round-robin crosstable (`src/blocks/tables/`). Built ahead of the
-   * tournaments section: only the dev gallery shows them yet.
+   * tournaments section; the Blog's articles embed them (CTA-128, `embed`).
    */
   tournament: {
     /** The headings: an abbreviation in view, its `…Name` read in its place and shown on hover. */
@@ -1566,6 +1566,12 @@ const en = {
       buchholzName: "Buchholz",
       sonnebornBerger: "SB",
       sonnebornBergerName: "Sonneborn-Berger",
+      /** A team event's (CTA-128). */
+      team: "Team",
+      matchPoints: "MP",
+      matchPointsName: "Match points",
+      boardPoints: "BP",
+      boardPointsName: "Board points",
     },
     /** A round column's full name — its header shows the number alone. */
     round: "Round {{round}}",
@@ -1596,6 +1602,81 @@ const en = {
     },
     loading: "Reading the tournament…",
     empty: "No games to show.",
+    /** A paged table's pager (CTA-128). */
+    rowsPerPage: "Rows per page",
+    /** The FIDE titles, read in place of their chips' letters (CTA-128). */
+    titles: {
+      GM: "Grandmaster",
+      IM: "International Master",
+      FM: "FIDE Master",
+      CM: "Candidate Master",
+      WGM: "Woman Grandmaster",
+      WIM: "Woman International Master",
+      WFM: "Woman FIDE Master",
+      WCM: "Woman Candidate Master",
+    },
+    /** The MDX embeds (CTA-128): `<SwissStandingsTable>` and `<RoundRobinCrossTable>` in an article. */
+    embed: {
+      /** The table's accessible name, after the games' Event tag. */
+      standings: "{{event}} — standings",
+      crosstable: "{{event}} — crosstable",
+      /** The event's name where no game carries an Event tag. */
+      untitled: "The tournament",
+      unreadable: "This tournament's PGN holds no game.",
+      /** The other formats' embeds (CTA-128). */
+      bracket: "{{event}} — bracket",
+      match: "{{event}} — the match",
+      notAMatch: "This PGN is not a match: its games are not all between the same two players.",
+      /** <CollectionTournamentTable> naming a collection this browser's Library does not hold. */
+      collectionMissing: "This collection is not in this browser's Library.",
+      /** <CollectionTeamStandingsTable> over a collection whose games name no teams. */
+      notATeamEvent: "This collection is not a team event: its games name no teams.",
+    },
+    /** A knockout's bracket (CTA-128): the rounds' names, a match in words. */
+    knockout: {
+      round: "Round {{round}}",
+      final: "Final",
+      semiFinals: "Semi-finals",
+      quarterFinals: "Quarter-finals",
+      winners: "Winners' bracket",
+      losers: "Losers' bracket",
+      /** One side of a match, read: the name and the score — a team's board points after it. */
+      side: "{{name}} {{score}}",
+      teamSide: "{{name}} {{score}} ({{boardPoints}} board points)",
+      through: "{{name}} goes through",
+      /** The caption over a match for third place, and the words it is read with. */
+      thirdPlace: "Match for third place",
+      loading: "Reading the bracket…",
+      empty: "No matches to show.",
+      /** A match's games as links under it (CTA-128): the list's name, and each link's words. */
+      games: "Games",
+      game: "Game {{number}}: {{white}} – {{black}}, {{result}}",
+      /** A team match's legs as links, each opening the leg's first board. */
+      legs: "Legs",
+      leg: "Leg {{leg}}: {{first}} {{own}}, {{second}} {{other}} — opens its first board",
+    },
+    /** A match between two players (CTA-128): a column per game. */
+    match: {
+      game: "Game {{game}}",
+      result: {
+        white: "Game {{game}}, White against {{opponent}}: {{result}}",
+        black: "Game {{game}}, Black against {{opponent}}: {{result}}",
+      },
+    },
+    /** A team tournament's standings (CTA-128): a round's cell is the team's board points in its match. */
+    team: {
+      match: "Round {{round}} against {{opponent}}: {{own}}–{{other}}, {{outcome}}",
+      outcome: {
+        win: "won",
+        draw: "drawn",
+        loss: "lost",
+        unfinished: "unfinished",
+      },
+      noMatch: "Round {{round}}: no match in the file",
+      legend: {
+        unfinished: "a match with a game unfinished",
+      },
+    },
   },
   /**
    * The **Repertoires** section (CTA-61) — the reader's own opening

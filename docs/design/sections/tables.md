@@ -118,13 +118,15 @@ The comparison ended on five open questions; each has one answer here.
   (`ResultOutcome`), `label` (**required** — the mark's words, everything the
   glyph leaves out: "Round 3, against Ada Lovelace: win"), `legend?` (a
   legend's entry: the glyph, then its words in view — "* = unfinished game"),
-  `testId?`. `RESULT_GLYPHS` is the glyph of each outcome.
+  `glyph?` (CTA-128: text in place of the outcome's glyph, toned by the
+  outcome all the same — a team match's board points, "4½"), `testId?`.
+  `RESULT_GLYPHS` is the glyph of each outcome.
 - **Accessible** — the glyph is `aria-hidden` and the `label` is read in its
   place, out of sight (`visuallyHidden`, positioned against the mark so it
   scrolls with its table): a cell of marks is named by their words. Put a
   space between two marks in one cell — it is what keeps their words apart.
 - **Variations** (one demo each) — the five outcomes; several in one cell; a
-  legend's entries; a Hebrew legend (RTL).
+  legend's entries; a Hebrew legend (RTL); a caller's own glyphs (scores).
 
 ## useTableUrlState (+ `sortRows`)
 
@@ -153,3 +155,37 @@ The comparison ended on five open questions; each has one answer here.
   now covers Saved analyses and every collection.
 - `PickHeaderCell` and `PickCell` take the ids `DataTable`'s `picks` hands
   them (`selectAllTestId`, `pickTestId`).
+
+## LabelChip
+
+- **Purpose** (CTA-128) — a label as a small filled chip, a line high,
+  beside words: a player's title in a table ("GM"). Not a control — it does
+  nothing when pressed and takes no focus.
+- **Props** — `label` (the letters in view), `tone: "primary" | "secondary"
+  | "success" | "warning" | "info" | "error"` (`LabelChipTone` — the palette
+  colours whose `contrastText` on `main` every theme measures,
+  `themes/contrast.ts`), `name?` (what the letters stand for — read in their
+  place, out of sight, and shown on hover: "Grandmaster"), `testId?`.
+- **Accessible** — the letters are text, so the tone is never the only
+  signal; with a `name` the letters are `aria-hidden` and the name is read.
+- **Variations** (one demo each) — the six tones beside names; no name;
+  Hebrew (RTL).
+
+## Flag
+
+- **Purpose** (CTA-128) — a country's flag, 4:3 and one text line high,
+  inline beside words: a player's federation in a table. The `flag-icons`
+  package's SVGs (MIT), the same on every system — an emoji flag is two
+  letters on Windows — and the parts of the United Kingdom have their own.
+  Each flag is its own file (`flagUrls.ts`: a `?url&no-inline` glob), fetched
+  only when shown.
+- **Props** — `code` (the flag's code as `flag-icons` names it: an ISO 3166
+  region, `"de"`, or a part of one, `"gb-eng"`; case does not matter),
+  `label` (the country's name — the image's text alternative and its title on
+  hover), `fallback?` (what shows for a code with no flag), `testId?`. A
+  FIDE federation code becomes a flag code in `src/lib/federations.ts`, not
+  here.
+- **Accessible** — an `img` read by the country's name; a ring in the
+  theme's divider keeps a white flag's edge on a white page.
+- **Variations** (one demo each) — beside names (the UK's parts too); a code
+  with no flag; a larger line; Hebrew (RTL).

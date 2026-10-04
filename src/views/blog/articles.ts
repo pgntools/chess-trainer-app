@@ -20,7 +20,7 @@ import type { LocalizedText } from "../../lib/localizedText";
  *
  * The article's title is its page's `h1` (the screen renders it), so the
  * document itself starts below it, at `##`. The
- * how-to is itself an article: `articles/guides/writing-an-article.mdx`.
+ * how-to is itself an article: `articles/writing-an-article/guide.mdx`.
  */
 
 export type BlogFolder = {
@@ -38,9 +38,12 @@ type BlogArticleEntry = {
 };
 
 export const BLOG_FOLDERS: readonly BlogFolder[] = [
-  { path: "components", title: { en: "Components", he: "רכיבים" } },
-  { path: "inline-pgn", title: { en: "Games in an article", he: "משחקים בתוך מאמר" } },
-  { path: "guides", title: { en: "Guides", he: "מדריכים" } },
+  { path: "tournaments", title: { en: "Tournaments", he: "טורנירים" } },
+  // How an article is written, and every component it may embed shown at work (CTA-128 gathered them here).
+  { path: "writing-an-article", title: { en: "Writing an article", he: "כתיבת מאמר" } },
+  { path: "writing-an-article/components", title: { en: "Components", he: "רכיבים" } },
+  { path: "writing-an-article/inline-pgn", title: { en: "Games in an article", he: "משחקים בתוך מאמר" } },
+  { path: "writing-an-article/demo-tables", title: { en: "Demo tables", he: "טבלאות לדוגמה" } },
 ];
 
 export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
@@ -54,7 +57,15 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/game-boards-3col",
+    path: "tournaments/olympiad-2026",
+    title: { en: "46th Chess Olympiad 2026", he: "האולימפיאדה ה-46 בשחמט 2026" },
+    summary: {
+      en: "Samarkand: the Open and the Women's, two Swisses of national teams — <TeamStandingsTable> with flags, each file loaded on its own.",
+      he: "סמרקנד: הפתוחה ושל הנשים, שני טורנירים שוויצריים של נבחרות — <TeamStandingsTable> עם דגלים, כל קובץ נטען בנפרד.",
+    },
+  },
+  {
+    path: "writing-an-article/components/game-boards-3col",
     title: { en: "Three game boards in a row", he: "שלושה לוחות משחק בשורה" },
     summary: {
       en: "<CollectionGameBoard> three times in a <BoardRow>: Library games, each opened before its famous move.",
@@ -62,7 +73,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/start-move",
+    path: "writing-an-article/components/start-move",
     title: { en: "Where a board opens: startMove", he: "איפה לוח נפתח: startMove" },
     summary: {
       en: "The forms startMove takes — White's move, Black's move, a line of moves.",
@@ -70,7 +81,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/repertoires-2col",
+    path: "writing-an-article/components/repertoires-2col",
     title: { en: "Two repertoires side by side", he: "שני רפרטוארים זה לצד זה" },
     summary: {
       en: "<RepertoireBoard> twice: a reader's repertoire, or its shipped sample.",
@@ -78,7 +89,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/collection-wide-view-1",
+    path: "writing-an-article/components/collection-wide-view-1",
     title: { en: "A collection across the page", he: "אוסף לרוחב הדף" },
     summary: {
       en: "<CollectionCard>: a board on one game and a short table of the collection's games.",
@@ -86,7 +97,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/collection-wide-view-2",
+    path: "writing-an-article/components/collection-wide-view-2",
     title: { en: "A collection, a longer table", he: "אוסף, טבלה ארוכה יותר" },
     summary: {
       en: "<CollectionCard> with more rows, opened at a move.",
@@ -94,7 +105,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/stored-game-embed",
+    path: "writing-an-article/components/stored-game-embed",
     title: { en: "Any stored game", he: "כל משחק שמור" },
     summary: {
       en: "<StoredGameEmbed>: a game by its ?game= reference — a Library game, a saved analysis, a game against the engine.",
@@ -102,7 +113,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "components/nav-cards",
+    path: "writing-an-article/components/nav-cards",
     title: { en: "Every screen as cards", he: "כל המסכים ככרטיסים" },
     summary: {
       en: "<NavCards>: the app's screens, by section — the landing page as it first was.",
@@ -110,7 +121,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "inline-pgn/the-component",
+    path: "writing-an-article/inline-pgn/the-component",
     title: { en: "A game in an article: InlinePgnGame", he: "משחק בתוך מאמר: InlinePgnGame" },
     summary: {
       en: "<InlinePgnGame>: a window of a game's moves on a board, side lines and all — every prop.",
@@ -118,7 +129,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "inline-pgn/windows",
+    path: "writing-an-article/inline-pgn/windows",
     title: { en: "Windows: from, to and start", he: "חלונות: from, to ו-start" },
     summary: {
       en: "Which moves a board shows, and where it opens — by move number or by ply.",
@@ -126,7 +137,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "inline-pgn/variations",
+    path: "writing-an-article/inline-pgn/variations",
     title: { en: "Side lines", he: "וריאנטים" },
     summary: {
       en: "Side lines nested where they branch, a board opened inside one, and the game's comments.",
@@ -134,7 +145,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "inline-pgn/arrows-and-circles",
+    path: "writing-an-article/inline-pgn/arrows-and-circles",
     title: { en: "Arrows and circles: [%cal] and [%csl]", he: "חצים ועיגולים: [%cal] ו-[%csl]" },
     summary: {
       en: "The arrows and circles a lichess study draws, read back from its PGN — five drawn positions and games.",
@@ -142,7 +153,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "inline-pgn/rubinstein-capablanca-1911",
+    path: "writing-an-article/inline-pgn/rubinstein-capablanca-1911",
     title: { en: "Rubinstein – Capablanca, San Sebastian 1911", he: "רובינשטיין – קפבלנקה, סן סבסטיאן 1911" },
     summary: {
       en: "A game review: Capablanca's own notes, with nine boards on the one game.",
@@ -150,7 +161,119 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
     },
   },
   {
-    path: "guides/writing-an-article",
+    path: "tournaments/fide-candidates-2026",
+    title: { en: "FIDE Candidates 2026", he: "טורניר המועמדים 2026" },
+    summary: {
+      en: "A double round robin: eight players, fourteen rounds — <RoundRobinCrossTable> and three of its games.",
+      he: "טורניר כל-נגד-כל כפול: שמונה שחקנים, ארבעה-עשר סבבים — <RoundRobinCrossTable> ושלושה ממשחקיו.",
+    },
+  },
+  {
+    path: "tournaments/werner-obermeyer-swiss-2026",
+    title: { en: "20th Werner-Obermeyer", he: "טורניר ורנר-אוברמאייר ה-20" },
+    summary: {
+      en: "A Swiss: five rounds, the top boards of each — <SwissStandingsTable> and three of its games.",
+      he: "טורניר שוויצרי: חמישה סבבים, הלוחות העליונים של כל סבב — <SwissStandingsTable> ושלושה ממשחקיו.",
+    },
+  },
+  {
+    path: "tournaments/green-hills-masters-rapid-2026",
+    title: { en: "Green Hills Masters Rapid", he: "טורניר המאסטרים המהיר גרין הילס" },
+    summary: {
+      en: "A single round robin: eight players, seven rounds of rapid — <RoundRobinCrossTable> and three of its games.",
+      he: "טורניר כל-נגד-כל: שמונה שחקנים, שבעה סבבים של שחמט מהיר — <RoundRobinCrossTable> ושלושה ממשחקיו.",
+    },
+  },
+  {
+    path: "writing-an-article/demo-tables/swiss",
+    title: { en: "Swiss", he: "שוויצרי" },
+    summary: {
+      en: "<SwissStandingsTable>: the 112th British Championship — 108 players, nine rounds, ranked by points, Buchholz and Sonneborn-Berger.",
+      he: "<SwissStandingsTable>: אליפות בריטניה ה-112 — 108 שחקנים, תשעה סיבובים, דירוג לפי נקודות, בוכהולץ וזונבורן־ברגר.",
+    },
+  },
+  {
+    path: "writing-an-article/demo-tables/single-round-robin",
+    title: { en: "Single round robin", he: "כל-נגד-כל" },
+    summary: {
+      en: "<RoundRobinCrossTable>: the Green Hills Resort Masters 2026 — eight players, each met once.",
+      he: "<RoundRobinCrossTable>: גרין הילס מאסטרס 2026 — שמונה שחקנים, כל זוג נפגש פעם אחת.",
+    },
+  },
+  {
+    path: "writing-an-article/demo-tables/double-round-robin",
+    title: { en: "Double round robin", he: "כל-נגד-כל כפול" },
+    summary: {
+      en: "<RoundRobinCrossTable>: the FIDE Candidates 2026 — eight players, each met twice, two results a cell.",
+      he: "<RoundRobinCrossTable>: טורניר המועמדים 2026 — שמונה שחקנים, כל זוג נפגש פעמיים, שתי תוצאות בכל משבצת.",
+    },
+  },
+  {
+    path: "writing-an-article/demo-tables/knockout",
+    title: { en: "Knockout", he: "נוקאאוט" },
+    summary: {
+      en: "<KnockoutBracket>: the Dutch Championship 2026 — sixteen players, four rounds, tiebreaks counted.",
+      he: "<KnockoutBracket>: אליפות הולנד 2026 — שישה-עשר שחקנים, ארבעה סיבובים, כולל משחקי שובר שוויון.",
+    },
+  },
+  {
+    path: "writing-an-article/demo-tables/double-elimination",
+    title: { en: "Double-elimination knockout", he: "נוקאאוט כפול" },
+    summary: {
+      en: "<KnockoutBracket losersFromRound>: the Esports World Cup 2026 — the play-in's winners' and losers' brackets, then the final stage.",
+      he: "<KnockoutBracket losersFromRound>: גביע העולם באיספורט 2026 — בית המנצחים ובית המפסידים של שלב הכניסה, ואז השלב הסופי.",
+    },
+  },
+  {
+    path: "writing-an-article/demo-tables/match",
+    title: { en: "Match", he: "משחק בין שניים" },
+    summary: {
+      en: "<MatchTable>: Clutch Chess: The Legends 2026 — Topalov against Kasparov, twelve games.",
+      he: "<MatchTable>: Clutch Chess: The Legends 2026 — טופאלוב מול קספרוב, שנים-עשר משחקים.",
+    },
+  },
+  {
+    path: "writing-an-article/demo-tables/team",
+    title: { en: "Team events", he: "אירועי קבוצות" },
+    summary: {
+      en: "<TeamStandingsTable> and a team <KnockoutBracket>: the FIDE World Rapid and Blitz Team Championships 2026.",
+      he: "<TeamStandingsTable> ו-<KnockoutBracket> של קבוצות: אליפויות העולם לקבוצות בשחמט מהיר ובזק 2026.",
+    },
+  },
+  {
+    path: "writing-an-article/demo-tables/from-a-collection",
+    title: { en: "From a Library collection", he: "מאוסף בספרייה" },
+    summary: {
+      en: "<CollectionTournamentTable>: a tournament from the Library — names linked to each player's games, results to each game.",
+      he: "<CollectionTournamentTable>: טורניר מהספרייה — שמות מקושרים למשחקי כל שחקן, ותוצאות לכל משחק.",
+    },
+  },
+  {
+    path: "writing-an-article/demo-tables/knockout-from-a-collection",
+    title: { en: "A knockout from the Library", he: "נוקאאוט מהספרייה" },
+    summary: {
+      en: "<CollectionKnockoutBracket>: a knockout from the Library — a team knockout too; names linked to their games, each match's games under it.",
+      he: "<CollectionKnockoutBracket>: נוקאאוט מהספרייה — גם של קבוצות; שמות מקושרים למשחקיהם, ומשחקי כל מפגש מתחתיו.",
+    },
+  },
+  {
+    path: "writing-an-article/demo-tables/double-elimination-from-a-collection",
+    title: { en: "A double elimination from the Library", he: "הדחה כפולה מהספרייה" },
+    summary: {
+      en: "<CollectionDoubleEliminationBracket>: the winners' and losers' brackets from the Library, names and games linked.",
+      he: "<CollectionDoubleEliminationBracket>: בית המנצחים ובית המפסידים מהספרייה, שמות ומשחקים מקושרים.",
+    },
+  },
+  {
+    path: "writing-an-article/demo-tables/team-from-a-collection",
+    title: { en: "A team event from the Library", he: "אירוע קבוצתי מהספרייה" },
+    summary: {
+      en: "<CollectionTeamStandingsTable>: a team Swiss from the Library — each team linked to its players' games, each match to its first board.",
+      he: "<CollectionTeamStandingsTable>: שוויצרי קבוצתי מהספרייה — כל קבוצה מקושרת למשחקי שחקניה, וכל מפגש ללוח הראשון שלו.",
+    },
+  },
+  {
+    path: "writing-an-article/guide",
     title: { en: "Writing an article", he: "כתיבת מאמר" },
     summary: {
       en: "Where an article's file goes, the lines that give it an address, and what it may embed.",
@@ -163,7 +286,7 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [
 
 const files = import.meta.glob<{ default: MDXContent }>("./articles/**/*.mdx");
 
-/** `./articles/components/x.he.mdx` → `components/x`, `he`. */
+/** `./articles/writing-an-article/components/x.he.mdx` → `writing-an-article/components/x`, `he`. */
 const fileParts = (file: string): { path: string; language: string } => {
   const match = /^\.\/articles\/(.+?)(?:\.([a-z]{2}))?\.mdx$/.exec(file);
   return match === null ? { path: file, language: "" } : { path: match[1], language: match[2] ?? "en" };

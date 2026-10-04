@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { CrossTable, type CrossTableRow } from "../../../design-system/patterns/tables";
+import { CrossTable, type CrossTableRow, type TablePaging } from "../../../design-system/patterns/tables";
 import { gamesBetween, type Tournament } from "../../../lib/tournament";
-import { competitorOf, formatPoints, playerNames, resultEntryOf, tieBreakColumns, tournamentLabels, tournamentLegend } from "../tournamentTable";
+import { competitorOf, formatPoints, playerNames, resultEntryOf, tieBreakColumns, tournamentLabels, tournamentLegend, type TournamentLinks } from "../tournamentTable";
 
-export type RoundRobinCrossTableProps = {
+export type RoundRobinCrossTableProps = TournamentLinks & {
   /**
    * The tournament — `tournamentOf(headers, ROUND_ROBIN_TIE_BREAKS)`
    * (`lib/tournament.ts`), ranked by points, then Sonneborn-Berger.
@@ -16,6 +16,8 @@ export type RoundRobinCrossTableProps = {
   ariaLabel: string;
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
+  /** Cut the rows into pages, the pager under the table — for a long one (CTA-128). Absent, every row shows. */
+  paging?: TablePaging;
   /**
    * The table's root, and every id under it (`CrossTable`'s): `-frame`,
    * `-row-<player id>` (`-name`, `-points`, `-sonnebornBerger`), a player's
@@ -41,14 +43,15 @@ export type RoundRobinCrossTableProps = {
  * Presentational: the tournament is a prop (a screen reads the games and
  * calls `tournamentOf`). Its words are the app's (`tournament.*`).
  */
-function RoundRobinCrossTable({ tournament, ariaLabel, density, testId }: RoundRobinCrossTableProps) {
-  const { t } = useTranslation();
+function RoundRobinCrossTable({ tournament, ariaLabel, density, paging, playerLink, gameLink, testId }: RoundRobinCrossTableProps) {
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
 
   const rows = useMemo<CrossTableRow[]>(() => {
     if (tournament === undefined) return [];
     const names = playerNames(tournament);
     return tournament.standings.map((standing) => ({
-      ...competitorOf(standing),
+      ...competitorOf(t, language, standing, playerLink),
       results: Object.fromEntries(
         tournament.standings
           .filter((other) => other !== standing)
@@ -58,12 +61,12 @@ function RoundRobinCrossTable({ tournament, ariaLabel, density, testId }: RoundR
               player.id,
               games.length === 0
                 ? [{ outcome: "none" as const, label: t("tournament.noGameAgainst", { opponent: player.name }) }]
-                : games.map((game) => resultEntryOf(t, game, names)),
+                : games.map((game) => resultEntryOf(t, game, names, gameLink)),
             ];
           }),
       ),
     }));
-  }, [tournament, t]);
+  }, [tournament, t, language, playerLink, gameLink]);
 
   const legend = useMemo(
     () =>
@@ -85,6 +88,7 @@ function RoundRobinCrossTable({ tournament, ariaLabel, density, testId }: RoundR
       loadingLabel={t("tournament.loading")}
       emptyLabel={t("tournament.empty")}
       density={density}
+      paging={paging}
       ariaLabel={ariaLabel}
       testId={testId}
     />

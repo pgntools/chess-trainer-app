@@ -1,0 +1,47 @@
+The [knockout's bracket](/blog/writing-an-article/demo-tables/knockout) reads a PGN kept beside the article. This one reads a **collection in the Library**. Each name links to that player's games in the collection, and each match lists its games under it, a link each to the game on the Library's board. The example is the Netherlands Championship 2026, which ships in the Library's Built-in folder so that every reader has it.
+
+## How to use it
+
+1. Add the knockout's PGN to the [Library](/library). Its address is shown in the address bar: `/library/<collection>`.
+2. Embed it by its address:
+
+```mdx
+<CollectionKnockoutBracket _id="/library/netherlands2026" />
+```
+
+An uploaded collection is kept in its own browser only. An article that names one shows "not in this browser's Library" to every other reader, so share an article that uses a shipped collection, or the PGN itself with [`<KnockoutBracket>`](/blog/writing-an-article/demo-tables/knockout).
+
+## The bracket, linked
+
+Select a name to open the collection filtered to that player's games. Under each match, a link per game shows the points of the match's first player in it: 1, ½ or 0. A screen reader hears each game whole, for example "Game 1: Vrolijk, Liam – Tiviakov, Sergei, 0–1". The game opens on the Library's board, whose back button returns here. Sergei Tiviakov won the title, beating Liam Vrolijk 3–1 in the final.
+
+<CollectionKnockoutBracket _id="/library/netherlands2026" />
+
+## A knockout of teams
+
+A collection whose every game names its teams is a team knockout, as with `<KnockoutBracket>`. The example is the final stage of the FIDE World Blitz Team Championship 2026, also in Built-in. A team's name opens the collection filtered to all its players' games, since the Library filters by player, not by team. Under each match, a link per **leg** shows its board points both ways and opens its first board. The board's Next button steps through the other boards of the leg, which follow it in the file.
+
+<CollectionKnockoutBracket _id="/library/worldblitzteam2026" density="dense" />
+
+```mdx
+<CollectionKnockoutBracket _id="/library/worldblitzteam2026" density="dense" />
+```
+
+## Links off
+
+Both links are on by default. `playerLink={false}` and `gameLink={false}` leave the names as text and draw no games under the matches, the bracket as `<KnockoutBracket>` draws it:
+
+```mdx
+<CollectionKnockoutBracket _id="/library/netherlands2026" playerLink={false} gameLink={false} density="dense" />
+```
+
+## Every prop
+
+- `_id` — the collection's address, `/library/<collection>`.
+- `playerLink`, `gameLink` — the two links, on by default.
+- `losersFromRound` — where a losers' bracket starts. For a double elimination, use [`<CollectionDoubleEliminationBracket>`](/blog/writing-an-article/demo-tables/double-elimination-from-a-collection), which starts it at 51 by default.
+- `density="dense"` — tightens the boxes.
+
+## Source
+
+The games are from [The Week in Chess](https://theweekinchess.com) (TWIC), by Mark Crowther — the events' pages, [Netherlands Championships 2026](https://theweekinchess.com/chessnews/events/netherland-championships-2026) and [FIDE World Rapid and Blitz Team Championships 2026](https://theweekinchess.com/chessnews/events/fide-world-rapid-and-blitz-team-championships-2026), and their PGNs, [chned26.pgn](https://theweekinchess.com/assets/files/pgn/chned26.pgn) and [fidewrbtf26.pgn](https://theweekinchess.com/assets/files/pgn/fidewrbtf26.pgn).

@@ -243,12 +243,28 @@ hash no longer matches its entry. `wirepgn --check` exits 1 for the same
 reasons, so it can run in CI. After adding a collection, add its name and
 count to `shippedCollections.test.ts` (it asserts the shipped set).
 
-Five collections ship, each one player's games, 8,756 in all: `Alekhine`
+Five of the shipped collections are one player's games each, 8,756 in all: `Alekhine`
 (2,005 games), `Capablanca` (1,035), `Fischer` (1,063), `Petrosian` (2,017)
 and `Tal` (2,636). They replaced (CTA-104) the World Cup 2023, Bucharest 2023
 and Morphy files, which were not free to ship. Their `ECO` tags carry
 ChessBase-style sub-codes (`C44r`), which `collectionFacetsOf` orders beside
 the plain code, and no `Opening` tag.
+
+A sixth ships since CTA-128: **`candidates2026`, the FIDE Candidates 2026**
+(56 games, `wchcand26.pgn`, from The Week in Chess) — a tournament, so the
+Blog's `<CollectionTournamentTable>` demo
+(`/blog/writing-an-article/demo-tables/from-a-collection`) reads a collection
+every reader has. Shipped summaries carry no tournament mark (the manifest
+has none), so the embed is told its format (`format="roundRobin"`).
+
+Four more ship with it, each the demo of a Library-backed table: a knockout,
+**`netherlands2026`** (46 games, `chned26.pgn`); a double elimination,
+**`esportsplayin2026`** (30, `esportswcuppl26.pgn`); a knockout of teams,
+**`worldblitzteam2026`** (216, `fidewrbtf26.pgn`); and a Swiss of teams,
+**`worldrapidteam2026`** (1,650, `fidewrt26.pgn`) — read by
+`<CollectionKnockoutBracket>`, `<CollectionDoubleEliminationBracket>` and
+`<CollectionTeamStandingsTable>` (`.claude/rules/tournament-tables.md`). Ten
+shipped collections, 10,754 games, listed by name in Built-in.
 
 ### 3.2 Loading — `lib/shippedCollections.ts`
 

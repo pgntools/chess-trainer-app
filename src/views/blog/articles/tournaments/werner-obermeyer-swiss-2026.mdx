@@ -1,0 +1,41 @@
+import games from "./20th-werner-obermeyer-swiss-5r.pgn?raw"
+
+The 20th Werner-Obermeyer open, played in Ortenburg, Germany, from 11 to 13 September 2026: a five-round Swiss, in which players are paired each round against opponents on the same or a similar score, and no one is knocked out.
+
+{/* Placeholder notes: the words are the article's own and may be rewritten; the table and the boards read the tournament's PGN beside this file. */}
+
+## The tournament
+
+The PGN holds the first four boards of each round — 20 games — so the standings below are those of the games in the file, not the official ones. A player who played on a lower board in a round has a dash there: no game in the file, not a bye.
+
+Krivoborodov and Moritz Stoettner both finished on 4 points from 5; Krivoborodov is ranked first on Buchholz. Korneev and Milov followed on 3.5.
+
+## The standings
+
+Players are ranked by points, then Buchholz, then Sonneborn-Berger. A round's cell shows the result; its round, colour and opponent are in its name.
+
+<SwissStandingsTable pgn={games} />
+
+## Selected games
+
+### Round 2: Schork – Krivoborodov
+
+White's queen took two pawns on the kingside; Black's rook and bishop took the rest of it. Black won in 20 moves. The board opens after 6. Qxg7.
+
+<InlinePgnGame pgn={games} game="5" start="6" orientation="black" caption="Round 2: Schork – Krivoborodov, 0-1" />
+
+### Round 2: Hoecher – Stoettner
+
+Black castled queenside and pushed the g- and h-pawns. The game ended in mate on a1. The board opens after 28... f5.
+
+<InlinePgnGame pgn={games} game="7" from="20" start="28..." orientation="black" caption="Round 2: Hoecher – Stoettner, 0-1" />
+
+### Round 5: Stoettner – Tischler
+
+A King's Indian in the last round. Stoettner won, and so finished level on points with Krivoborodov. The board opens after 29... Bxa2+.
+
+<InlinePgnGame pgn={games} game="19" from="17" start="29..." caption="Round 5: Stoettner – Tischler, 1-0" />
+
+## Source
+
+The games are from [The Week in Chess](https://theweekinchess.com) (TWIC), by Mark Crowther — [issue 1662](https://theweekinchess.com/html/twic1662.html#22), 14 September 2026, as the PGN's own `Source` tags say.

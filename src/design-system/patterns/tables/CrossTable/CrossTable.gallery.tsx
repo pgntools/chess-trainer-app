@@ -7,12 +7,14 @@ import {
   DEMO_LEGEND,
   DEMO_LONG_NAMES,
   DEMO_NAMES,
+  demoNames,
   DEMO_TIE_BREAKS,
   crossTableRowsOf,
   demoLeague,
   type DemoLeagueOptions,
 } from "../../../gallery/demoLeague";
 import type { GalleryModule } from "../../../gallery/types";
+import WithState from "../../../gallery/WithState";
 import type { PatternSectionId } from "../../sections";
 import CrossTable, { type CrossTableProps } from "./CrossTable";
 
@@ -77,6 +79,24 @@ const gallery: GalleryModule<PatternSectionId> = {
     {
       name: "Hebrew names, named by a caption (switch the direction to RTL)",
       render: () => demo({ names: DEMO_HEBREW_NAMES, rounds: 10, unfinished: true }, { ariaLabel: undefined, caption: "טבלת התוצאות" }),
+    },
+    {
+      name: "Thirty members, paged — 25 rows a page, every member's column kept (CTA-128)",
+      render: () => (
+        <WithState initial={{ page: 0, rowsPerPage: 25 }}>
+          {(state, setState) =>
+            demo({ names: demoNames(30), rounds: 3, extras }, {
+              density: "dense",
+              paging: {
+                ...state,
+                onPageChange: (page) => setState((old) => ({ ...old, page })),
+                onRowsPerPageChange: (rowsPerPage) => setState({ page: 0, rowsPerPage }),
+                labelRowsPerPage: "Rows per page",
+              },
+            }, 420)
+          }
+        </WithState>
+      ),
     },
     { name: "Dense, the header not sticky", render: () => demo({ names: DEMO_NAMES, rounds: 7, extras }, { density: "dense", stickyHeader: false }, 260) },
   ],

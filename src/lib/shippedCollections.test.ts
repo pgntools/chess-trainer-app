@@ -44,13 +44,19 @@ describe("the wired folder", () => {
 });
 
 describe("the shipped collections", () => {
-  it("are the five players' games, by name, counted without a fetch", () => {
+  it("are the five players' games and five tournaments, by name, counted without a fetch", () => {
     expect(shippedCollections.map((entry) => [entry.id, entry.name, entry.count])).toEqual([
       ["alekhine", "Alekhine", 2005],
       ["capablanca", "Capablanca", 1035],
+      // CTA-128: tournaments, for the Blog's <Collection…Table> and <Collection…Bracket> to show on every device.
+      ["esportsplayin2026", "Esports World Cup 2026 — play-in", 30],
+      ["candidates2026", "FIDE Candidates 2026", 56],
       ["fischer", "Fischer", 1063],
+      ["netherlands2026", "Netherlands Championship 2026", 46],
       ["petrosian", "Petrosian", 2017],
       ["tal", "Tal", 2636],
+      ["worldblitzteam2026", "World Blitz Team 2026 — final stage", 216],
+      ["worldrapidteam2026", "World Rapid Team 2026", 1650],
     ]);
     expect(peekShippedRows("capablanca")).toBeUndefined();
   });
@@ -61,6 +67,11 @@ describe("the shipped collections", () => {
     ["fischer", 1063],
     ["petrosian", 2017],
     ["tal", 2636],
+    ["candidates2026", 56],
+    ["esportsplayin2026", 30],
+    ["netherlands2026", 46],
+    ["worldblitzteam2026", 216],
+    ["worldrapidteam2026", 1650],
   ])("%s: its index is its table's rows, and its PGN its games", async (id, count) => {
     const entry = findShippedCollection(id)!;
     const rows = await entry.loadRows();

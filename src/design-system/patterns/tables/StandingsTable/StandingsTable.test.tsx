@@ -314,4 +314,90 @@ describe("StandingsTable", () => {
       await expectNoAxeViolations();
     });
   });
+
+  describe("paging (CTA-128)", () => {
+    /** Thirty rows, ranked 1–30: more than a page of 25. */
+    const MANY = Array.from({ length: 30 }, (_, index) => ({ ...ROWS[0], prefix: undefined, suffix: undefined, id: `p${index + 1}`, rank: index + 1, name: `Player ${index + 1}` }));
+    const paging = (page: number, onPageChange: (page: number) => void = () => {}) => ({
+      page,
+      rowsPerPage: 25,
+      onPageChange,
+      onRowsPerPageChange: () => {},
+      labelRowsPerPage: "Rows per page",
+    });
+
+    it("shows every row with no paging, and no pager", () => {
+      mount({ rows: MANY });
+      expect(screen.getAllByRole("rowheader")).toHaveLength(30);
+      expect(screen.queryByTestId("t-pager")).not.toBeInTheDocument();
+    });
+
+    it("shows a page of rows, each keeping its own rank, and a pager that turns it", async () => {
+      const user = userEvent.setup();
+      const turned: number[] = [];
+      const { rerender } = mount({ rows: MANY, paging: paging(0, (page: number) => turned.push(page)) });
+      expect(screen.getAllByRole("rowheader")).toHaveLength(25);
+      await user.click(within(screen.getByTestId("t-pager")).getByRole("button", { name: /next page/i }));
+      expect(turned).toEqual([1]);
+      rerender(
+        <StandingsTable rows={MANY} rounds={3} labels={LABELS} emptyLabel="No games yet" ariaLabel="Standings" testId="t" paging={paging(1)} />,
+      );
+      expect(screen.getAllByRole("rowheader").map((header) => header.textContent)).toEqual(["Player 26", "Player 27", "Player 28", "Player 29", "Player 30"]);
+      expect(screen.getByTestId("t-row-p26").firstElementChild).toHaveTextContent("26");
+    });
+  });
+
+  describe("chips and flags (CTA-128)", () => {
+    it("shows a badge as a chip before the name and a flag after it, both read by their words", () => {
+      mount({
+        rows: [
+          { ...ROWS[0], badge: { label: "GM", tone: "warning", name: "Grandmaster" }, flag: { code: "fr", label: "France" }, suffix: "FRA" },
+          { ...ROWS[1], flag: { code: "zz", label: "Nowhere" }, suffix: "ZZZ" },
+        ],
+      });
+      const [first, second] = screen.getAllByRole("rowheader");
+      expect(first).toHaveAccessibleName(/^Grandmaster Ada Lovelace France$/);
+      expect(within(first).getByRole("img", { name: "France" })).toBeInTheDocument();
+      // The chip takes the prefix's place, the flag the suffix's.
+      expect(first).not.toHaveTextContent("Dr");
+      expect(first).not.toHaveTextContent("FRA");
+      // A code with no flag falls back to the suffix.
+      expect(second).toHaveTextContent("ZZZ");
+      expect(within(second).queryByRole("img")).not.toBeInTheDocument();
+    });
+
+    it("sets a flag before the name when it says so — a team's country, where a title stands", () => {
+      mount({ rows: [{ ...ROWS[0], prefix: undefined, flag: { code: "uz", label: "Uzbekistan", before: true }, suffix: "UZB" }] });
+      const [first] = screen.getAllByRole("rowheader");
+      expect(first).toHaveAccessibleName("Uzbekistan Ada Lovelace");
+      expect(first).not.toHaveTextContent("UZB");
+    });
+  });
+
+  describe("links (CTA-128)", () => {
+    it("makes a name a link, and a result a link read by its words, each a target of 24 px", async () => {
+      const user = userEvent.setup();
+      mount({
+        rows: [
+          {
+            ...ROWS[0],
+            link: { href: "/games?player=ada" },
+            rounds: [[{ ...ROWS[0].rounds[0][0], link: { href: "/games/1" } }], ...ROWS[0].rounds.slice(1)],
+          },
+          ROWS[1],
+        ],
+      });
+      const name = screen.getByRole("link", { name: "Ada Lovelace" });
+      expect(name).toHaveAttribute("href", "/games?player=ada");
+      const result = screen.getByRole("link", { name: ROWS[0].rounds[0][0].label });
+      expect(result).toHaveAttribute("href", "/games/1");
+      expect(result).toHaveStyle({ minWidth: "24px", minHeight: "24px" });
+      // Only what was given a link is one.
+      expect(screen.getAllByRole("link")).toHaveLength(2);
+      await user.tab();
+      await user.tab();
+      expect(name).toHaveFocus();
+      await expectNoAxeViolations();
+    });
+  });
 });

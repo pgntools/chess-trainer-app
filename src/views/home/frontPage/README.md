@@ -7,7 +7,7 @@ nothing is fetched or compiled in the browser.
 
 | Where | What |
 | --- | --- |
-| `src/views/blog/articles/<path>.mdx` | an article (`<path>.he.mdx` beside it when translated) — `src/views/blog/articles/guides/writing-an-article.mdx` is the how-to |
+| `src/views/blog/articles/<path>.mdx` | an article (`<path>.he.mdx` beside it when translated) — `src/views/blog/articles/writing-an-article/guide.mdx` is the how-to |
 | `src/views/blog/articles.ts` | the articles' registry: their titles, the page's `h1` |
 | `src/views/home/frontPageArticle.ts` | **which article the front page shows** — one line |
 | this folder | the components below, and `index.ts`, the map that gives them their names |
@@ -31,6 +31,17 @@ nothing is fetched or compiled in the browser.
 | `<CollectionCard />` | `_id="/library/<collection>"`, `showGame?` (default 1), `startMove?`, `rows?` (default 8) | a collection across its row: its name and size, a board on game `showGame`, and a short table of its games — the page holding that game, with earlier / later — a row's click putting it on the board |
 | `<InlinePgnGame />` | `pgn={…}`, `from?`, `to?`, `start?` (move numbers; `start` also a SAN line, into a side line), `fromPly?` / `toPly?` / `startPly?` (plies, which win), `variations?` (default on), `comments?`, `orientation?`, `caption?`, `game?` (which game of a PGN holding several, 1-based), `shapes?` (the comments' `[%cal]` arrows and `[%csl]` circles, default on) | an excerpt of a PGN — a window of its moves beside a board, side lines nested — one game as many times as a page likes, each board its own id; the Blog's *Games in an article* folder shows every prop |
 | `<StoredGameEmbed />` | `reference="…"`, `startMove?` | any stored game by its `?game=` reference (`library/<c>/<n>`, `analysis/saved/<id>`, `play/games/<id>`) |
+| `<SwissStandingsTable />` | `pgn={…}` (the tournament's games, usually `import games from "./event.pgn?raw"`), `density?: "normal" \| "dense"` | a Swiss's standings (`src/blocks/tables/SwissStandingsTable`): a row per player ranked by points, Buchholz, then Sonneborn-Berger, a cell per round — read from the games' tags alone, named after their `Event`; a file of the top boards only is the standings of those games. The Blog's *Tournaments* folder shows it |
+| `<RoundRobinCrossTable />` | `pgn={…}`, `density?` | a round robin's crosstable (`src/blocks/tables/RoundRobinCrossTable`): a row and a column per player ranked by points, then Sonneborn-Berger, each meeting's games in its cell — two in a double round robin. The Blog's *Tournaments* folder shows it, single and double |
+| `<KnockoutBracket />` | `pgn={…}` (or `load`), `losersFromRound?` (where a double elimination's losers' bracket starts — TWIC's `51`), `density?` | a knockout's bracket (`src/blocks/tables/KnockoutBracket`): a column per round, a box per match — `Round "R.G"` is round R, game G of its match, tiebreaks counted — the side that went through marked; a file whose games all name their teams is a team knockout, scored in legs with the board points beside them. The Blog's *Demo tables* folder shows a knockout, a double elimination and a team knockout |
+| `<MatchTable />` | `pgn={…}`, `density?` | a match between two players (`src/blocks/tables/MatchTable`): two rows, a column per game, the score — every game a point, as its `Result` says; a PGN of more than two players says it is not a match |
+| `<TeamStandingsTable />` | `pgn={…}` or `load={() => import("./big.pgn?raw")}`, `density?`, `rowsPerPage?` | a team tournament's standings (`src/blocks/tables/TeamStandingsTable`): its games name their teams (`WhiteTeam`, `BlackTeam`); a row per team, its flag where its players share a federation (an Olympiad's), each round's cell its board points in that match, ranked by match points (2 a win, 1 a draw), then board points |
+| `<CollectionTournamentTable />` | `_id="/library/<collection>"`, `format?: "swiss" \| "roundRobin" \| "match"`, `playerLink?` / `gameLink?` (default on; `={false}` for text), `density?`, `rowsPerPage?` | a **Library collection's** tournament table (CTA-128): read from its games' tags; each name a link to the collection filtered by that player, each result a link to its game on the Library's board (whose back returns to the article). The format: `format`, else the collection's tournament mark, else a Swiss. An upload shows on its own device only — *Writing an article → Demo tables → From a Library collection* uses the shipped Candidates 2026 |
+| `<CollectionKnockoutBracket />` | `_id="/library/<collection>"`, `losersFromRound?`, `playerLink?` / `gameLink?` (default on), `density?` | a **Library collection's** knockout bracket (CTA-128) — a team knockout too: each name a link to the collection filtered by that player (a team's, by all its players), each match's games under it as links to the Library's board (a team match's legs, each to its first board). *Demo tables → A knockout from the Library* uses the shipped Netherlands Championship and World Blitz Team 2026 |
+| `<CollectionDoubleEliminationBracket />` | as above, `losersFromRound` `51` by default | the same for a double elimination: the winners' bracket over the losers'. *Demo tables → A double elimination from the Library* uses the shipped Esports World Cup play-in |
+| `<CollectionTeamStandingsTable />` | `_id="/library/<collection>"`, `teamLink?` / `gameLink?` (default on), `density?`, `rowsPerPage?` | a **Library collection's** team standings (CTA-128): each team a link to the collection filtered by its players, each round's match a link to its first board. *Demo tables → A team event from the Library* uses the shipped World Rapid Team 2026 |
+
+**A large PGN** (CTA-128) — every tournament table takes `load={() => import("./event.pgn?raw")}` in place of `pgn={…}`: the file becomes a chunk of its own, fetched when the page opens, the table reading meanwhile. Use it for a file of a megabyte or more (the Olympiad article's 5 MB files). `rowsPerPage="25"` (or 50, 100, 250) pages any of the tables.
 | `<NavCards />` | `headingLevel?: 2 \| 3` (default `2`) | every screen as a card, by section — built from `navTree()`, so a screen added to `navItems` appears with no edit here. Alone, it is the landing page as it was before CTA-126 |
 
 **`showNextMoveArrow`** — every board above takes it: `showNextMoveArrow={false}` draws no arrows to the next moves over the board (the moves stay in its list, and an `<InlinePgnGame>`'s drawn `[%cal]` arrows still show). On by default.
@@ -61,12 +72,12 @@ A name not in the map fails the page when it renders. A new component is a
 line in `index.ts` and a row here.
 
 - **Text in a component** (its buttons, captions, the samples' names) is the
-  catalogs' (`home.*`, `demoBoard.*`, `inlinePgn.*` in `src/locales/`), so it
+  catalogs' (`home.*`, `demoBoard.*`, `inlinePgn.*`, `tournament.*` in `src/locales/`), so it
   follows the language; an article's own prose is its document's (English,
   or a `.he.mdx` beside it).
 
 The Blog's Components and *Games in an article* folders show each component on
-a page of its own, with its markup.
+a page of its own, with its markup; the *Tournaments* folder the tables, and its *Demo tables* folder one page per format.
 
 Check a change with `npx vitest run src/views/home src/views/blog` (every
 article renders, one `h1`, every PGN reads, axe) and `yarn build`.

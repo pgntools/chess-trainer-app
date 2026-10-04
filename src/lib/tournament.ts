@@ -85,20 +85,39 @@ export type Tournament = {
   standings: readonly TournamentStanding[];
 };
 
+/** A `Result` tag as what it was worth to White and to Black — anything else is `unfinished` for both. */
 const SCORES: Readonly<Record<string, readonly [GameOutcome, GameOutcome]>> = {
   "1-0": ["win", "loss"],
   "0-1": ["loss", "win"],
   "1/2-1/2": ["draw", "draw"],
 };
 
-const POINTS: Readonly<Record<GameOutcome, number>> = { win: 1, draw: 0.5, loss: 0, unfinished: 0 };
+/** What a game's `Result` tag was worth to White and to Black (CTA-128: the other formats' helpers read games the same way). */
+export const outcomesOf = (result: string | undefined): readonly [GameOutcome, GameOutcome] =>
+  SCORES[result?.trim() ?? ""] ?? ["unfinished", "unfinished"];
 
-const positiveInteger = (value: string | undefined): number | undefined => {
+/** An outcome's points: a win 1, a draw ½, a loss or an unfinished game nothing. */
+export const POINTS: Readonly<Record<GameOutcome, number>> = { win: 1, draw: 0.5, loss: 0, unfinished: 0 };
+
+/** A tag's leading positive integer — `Round "3.12"` is round 3; anything else `undefined`. */
+export const positiveInteger = (value: string | undefined): number | undefined => {
   const number = value === undefined ? Number.NaN : Number.parseInt(value, 10);
   return Number.isInteger(number) && number > 0 ? number : undefined;
 };
 
-const playerOf = (headers: GameHeaders, side: "White" | "Black"): TournamentPlayer | undefined => {
+/**
+ * A `Round` tag's two parts (CTA-128): `"3.12"` is `[3, 12]` — a Swiss's
+ * round and board, a knockout's round and the game of its match, a team
+ * event's round and its running board or leg. Either is `undefined` where the
+ * tag names none.
+ */
+export const roundPartsOf = (round: string | undefined): readonly [number | undefined, number | undefined] => {
+  const [major, minor] = (round ?? "").trim().split(".");
+  return [positiveInteger(major), positiveInteger(minor)];
+};
+
+/** One side of a game as a player — `undefined` where the tag names no one. */
+export const playerOf = (headers: GameHeaders, side: "White" | "Black"): TournamentPlayer | undefined => {
   const name = gameTag(headers, side);
   if (name === undefined) return undefined;
   const fideId = gameTag(headers, `${side}FideId`);
@@ -156,7 +175,7 @@ export const tournamentOf = (
     if (white === undefined || black === undefined || white.id === black.id) return;
 
     const round = positiveInteger(gameTag(headers, "Round"));
-    const [whiteOutcome, blackOutcome] = SCORES[headers.Result?.trim() ?? ""] ?? ["unfinished", "unfinished"];
+    const [whiteOutcome, blackOutcome] = outcomesOf(headers.Result);
     read += 1;
     if (whiteOutcome === "unfinished") unfinished += 1;
     lastRound = Math.max(lastRound, round ?? 0);

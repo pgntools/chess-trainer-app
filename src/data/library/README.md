@@ -65,12 +65,18 @@ from.
 | `Fischer.pgn` | 1,063 | Bobby Fischer's games |
 | `Petrosian.pgn` | 2,017 | Tigran Petrosian's games |
 | `Tal.pgn` | 2,636 | Mikhail Tal's games |
+| `wchcand26.pgn` | 56 | **FIDE Candidates 2026** — a double round robin, from The Week in Chess (CTA-128): the tournament the Blog's `<CollectionTournamentTable>` demo reads (`/library/candidates2026`) |
+| `chned26.pgn` | 46 | **Netherlands Championship 2026** — a knockout (CTA-128): `<CollectionKnockoutBracket>`'s demo (`/library/netherlands2026`) |
+| `esportswcuppl26.pgn` | 30 | **Esports World Cup 2026 — play-in** — a double elimination (CTA-128): `<CollectionDoubleEliminationBracket>`'s demo (`/library/esportsplayin2026`) |
+| `fidewrbtf26.pgn` | 216 | **World Blitz Team 2026 — final stage** — a knockout of teams (CTA-128): `<CollectionKnockoutBracket>`'s team demo (`/library/worldblitzteam2026`) |
+| `fidewrt26.pgn` | 1,650 | **World Rapid Team 2026** — a Swiss of teams (CTA-128): `<CollectionTeamStandingsTable>`'s demo (`/library/worldrapidteam2026`) |
 
-8,756 games in all, free to use (CTA-104 replaced the collections shipped
-before, which were not). Their `ECO` tags carry ChessBase-style sub-codes
+10,754 games in all. The five players' collections are free to use (CTA-104
+replaced the collections shipped before, which were not); the five tournaments are
+TWIC's files, credited where the Blog shows it, as its articles' PGNs are. Their `ECO` tags carry ChessBase-style sub-codes
 (`C44r`) and no `Opening` tag, so every opening is filled in from the book.
 
-`src/lib/shippedCollections.test.ts` asserts the five names and counts;
+`src/lib/shippedCollections.test.ts` asserts the ten names and counts;
 wiring another means adding a row there too.
 
 ## How big

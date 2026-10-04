@@ -35,23 +35,25 @@ describe("the Blog's index (CTA-126)", () => {
     renderAt("/blog", "index", store);
     expect(screen.getByRole("heading", { level: 1, name: "Blog" })).toBeInTheDocument();
     expect(store.getOwnHeadings()).toBe(1);
-    const components = screen.getByRole("link", { name: "Open Components" });
-    expect(components).toHaveAttribute("href", "/blog/components");
-    expect(screen.getByText("7 articles")).toBeInTheDocument();
-    expect(screen.getByText("1 article")).toBeInTheDocument();
+    const writing = screen.getByRole("link", { name: "Open Writing an article" });
+    expect(writing).toHaveAttribute("href", "/blog/writing-an-article");
+    // Every article under it, its sub-folders' too: the guide, and the components', games' and tables' demos.
+    expect(screen.getByText("24 articles")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Tournaments" })).toBeInTheDocument();
     await expectNoAxeViolations();
   });
 
   it("opens a folder: the trail back, and its articles with their summaries", async () => {
     const store = createPageTitleStore();
-    renderAt("/blog/components", "index", store);
+    renderAt("/blog/writing-an-article/components", "index", store);
     expect(screen.getByRole("heading", { level: 1, name: "Components" })).toBeInTheDocument();
     expect(store.getDetail()).toBe("Components");
     const trail = screen.getByRole("navigation", { name: "Where this is in the Blog" });
     expect(within(trail).getByRole("link", { name: "Blog" })).toHaveAttribute("href", "/blog");
+    expect(within(trail).getByRole("link", { name: "Writing an article" })).toHaveAttribute("href", "/blog/writing-an-article");
     const cards = within(screen.getByTestId("blog-articles")).getAllByRole("link");
     expect(cards.map((card) => card.getAttribute("href"))).toEqual(
-      BLOG_ARTICLES.filter((article) => article.path.startsWith("components/")).map((article) => `/blog/${article.path}`),
+      BLOG_ARTICLES.filter((article) => article.path.startsWith("writing-an-article/components/")).map((article) => `/blog/${article.path}`),
     );
     expect(screen.getByText(/the landing page as it first was/)).toBeInTheDocument();
     await expectNoAxeViolations();
@@ -66,19 +68,19 @@ describe("the Blog's index (CTA-126)", () => {
     await i18n.changeLanguage("he");
     renderAt("/blog", "index");
     expect(screen.getByRole("heading", { level: 1, name: "בלוג" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "פתיחת רכיבים" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "פתיחת כתיבת מאמר" })).toBeInTheDocument();
   });
 });
 
 describe("a Blog article (CTA-126)", () => {
   it("is its title as the page's h1 and title, a trail back through its folder, then its document", async () => {
     const store = createPageTitleStore();
-    renderAt("/blog/components/nav-cards", "article", store);
+    renderAt("/blog/writing-an-article/components/nav-cards", "article", store);
     expect(screen.getByRole("heading", { level: 1, name: "Every screen as cards" })).toBeInTheDocument();
     expect(store.getOwnHeadings()).toBe(1);
     expect(store.getDetail()).toBe("Every screen as cards");
     const trail = screen.getByRole("navigation", { name: "Where this is in the Blog" });
-    expect(within(trail).getByRole("link", { name: "Components" })).toHaveAttribute("href", "/blog/components");
+    expect(within(trail).getByRole("link", { name: "Components" })).toHaveAttribute("href", "/blog/writing-an-article/components");
 
     expect(await screen.findByRole("heading", { level: 2, name: "The markup" })).toBeInTheDocument();
     // The markup it shows reads left to right.
@@ -88,7 +90,7 @@ describe("a Blog article (CTA-126)", () => {
 
   it("shows its English document left to right, as English, under Hebrew", async () => {
     await i18n.changeLanguage("he");
-    renderAt("/blog/guides/writing-an-article", "article");
+    renderAt("/blog/writing-an-article/guide", "article");
     expect(screen.getByRole("heading", { level: 1, name: "כתיבת מאמר" })).toBeInTheDocument();
     const section = await screen.findByRole("heading", { level: 2, name: "1. The file" });
     expect(section.closest("[lang]")).toHaveAttribute("lang", "en");
@@ -96,7 +98,7 @@ describe("a Blog article (CTA-126)", () => {
   });
 
   it("says so for an address that names no article", () => {
-    renderAt("/blog/components/nowhere", "article");
+    renderAt("/blog/writing-an-article/components/nowhere", "article");
     expect(screen.getByText("There is no article at this address.")).toBeInTheDocument();
   });
 
@@ -106,8 +108,9 @@ describe("a Blog article (CTA-126)", () => {
       renderAt(`/blog/${path}`, "article");
       expect((await screen.findAllByRole("heading", { level: 2 })).length).toBeGreaterThan(0);
       expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-      // Every game it writes in reads.
+      // Every game it writes in reads, and every tournament table its PGN (CTA-128).
       expect(screen.queryByText("This game's PGN does not read.")).not.toBeInTheDocument();
+      expect(document.querySelector('[data-testid^="tournament-"][data-testid$="-unreadable"]')).toBeNull();
     },
   );
 });

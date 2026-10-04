@@ -1,0 +1,27 @@
+import games from "../../tournaments/chned26.pgn?raw"
+
+A **knockout**: players meet in pairs, and the loser of each match is out. Sixteen players make four rounds, eight matches, then four, two and one. The example is the Dutch Championship 2026, played in Amsterdam from 4 to 11 July.
+
+## The format
+
+Each match is a mini-match of two games. A level score goes to tiebreak games, faster ones, in the same round, as many as it takes. In the PGN, `Round "2.5"` is round 2, the fifth game of its match. The bracket counts every game, tiebreaks included: Liam Vrolijk and Sipke Ernst drew their first four games in round 2, and Vrolijk won the next two.
+
+Sergei Tiviakov won the title, beating Vrolijk 3–1 in the final.
+
+## The bracket
+
+A column per round, a box per match, each side's score after its name. The side that went through is bold and marked with a bar. The rounds are ordered so that the two matches whose winners meet next sit one above the other. A screen reader hears each match whole, for example "Burg, Twan 1½, Sokolov, Ivan 2½: Sokolov, Ivan goes through". The last three rounds take their names: Quarter-finals, Semi-finals, Final.
+
+<KnockoutBracket pgn={games} />
+
+## The markup
+
+```mdx
+import games from "./chned26.pgn?raw"
+
+<KnockoutBracket pgn={games} />
+```
+
+## Source
+
+The games are from [The Week in Chess](https://theweekinchess.com) (TWIC), by Mark Crowther — the event's page, [Netherlands Championships 2026](https://theweekinchess.com/chessnews/events/netherland-championships-2026), and its PGN, [chned26.pgn](https://theweekinchess.com/assets/files/pgn/chned26.pgn).

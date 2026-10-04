@@ -1,0 +1,39 @@
+import games from "./wchcand26.pgn?raw"
+
+The FIDE Candidates Tournament 2026, played in Pegeia, Cyprus, from 29 March: eight players, a double round robin — each meets every other twice, once with each colour — over fourteen rounds, 56 games in all. The winner earns the right to challenge the World Champion.
+
+{/* Placeholder notes: the words are the article's own and may be rewritten; the table and the boards read the tournament's PGN beside this file. */}
+
+## The tournament
+
+Javokhir Sindarov took first place with 10 points from 14, a point and a half clear of Anish Giri on 8.5. Fabiano Caruana was third with 7.5, ahead of Wei Yi on 7 and Hikaru Nakamura on 6.5. Matthias Bluebaum and R Praggnanandhaa finished level on 6, Bluebaum ahead on Sonneborn-Berger, and Andrey Esipenko was last with 4.5.
+
+## The crosstable
+
+Players are ranked by points, then by Sonneborn-Berger. Where two players meet, the cell holds both of their games, in round order. Each result's round and colour are in its name.
+
+<RoundRobinCrossTable pgn={games} />
+
+## Selected games
+
+### Round 3: Praggnanandhaa – Sindarov
+
+Sindarov gave up a knight on b4 to keep White's king in the centre, and won in 40 moves. The board opens after 13... Nxb4.
+
+<InlinePgnGame pgn={games} game="9" start="13..." orientation="black" caption="Round 3: Praggnanandhaa – Sindarov, 0-1" />
+
+### Round 4: Sindarov – Caruana
+
+A Queen's Gambit Accepted, won by White: after four rounds Sindarov had 3.5 points. The board opens after 27. d5.
+
+<InlinePgnGame pgn={games} game="13" start="27" caption="Round 4: Sindarov – Caruana, 1-0" />
+
+### Round 9: Caruana – Giri
+
+A long, manoeuvring Giuoco Piano, won by Black — one of Giri's four wins. The board opens after 42... f5+.
+
+<InlinePgnGame pgn={games} game="34" start="42..." orientation="black" caption="Round 9: Caruana – Giri, 0-1" />
+
+## Source
+
+The games are from [The Week in Chess](https://theweekinchess.com) (TWIC), by Mark Crowther — the event's page, [FIDE Candidates Tournaments 2026](https://theweekinchess.com/chessnews/events/fide-candidates-tournaments-2026), and its PGN, [wchcand26.pgn](https://theweekinchess.com/assets/files/pgn/wchcand26.pgn).

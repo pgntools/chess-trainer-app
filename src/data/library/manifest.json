@@ -19,12 +19,36 @@
       "hash": "be99fa3a"
     },
     {
+      "id": "esportsplayin2026",
+      "name": "Esports World Cup 2026 — play-in",
+      "pgn": "esportswcuppl26.pgn",
+      "index": "esportswcuppl26.index.json",
+      "games": 30,
+      "hash": "eaa81918"
+    },
+    {
+      "id": "candidates2026",
+      "name": "FIDE Candidates 2026",
+      "pgn": "wchcand26.pgn",
+      "index": "wchcand26.index.json",
+      "games": 56,
+      "hash": "79d21999"
+    },
+    {
       "id": "fischer",
       "name": "Fischer",
       "pgn": "Fischer.pgn",
       "index": "Fischer.index.json",
       "games": 1063,
       "hash": "9b3c85b8"
+    },
+    {
+      "id": "netherlands2026",
+      "name": "Netherlands Championship 2026",
+      "pgn": "chned26.pgn",
+      "index": "chned26.index.json",
+      "games": 46,
+      "hash": "64edc721"
     },
     {
       "id": "petrosian",
@@ -41,6 +65,22 @@
       "index": "Tal.index.json",
       "games": 2636,
       "hash": "bd64c9ca"
+    },
+    {
+      "id": "worldblitzteam2026",
+      "name": "World Blitz Team 2026 — final stage",
+      "pgn": "fidewrbtf26.pgn",
+      "index": "fidewrbtf26.index.json",
+      "games": 216,
+      "hash": "93f3f4f2"
+    },
+    {
+      "id": "worldrapidteam2026",
+      "name": "World Rapid Team 2026",
+      "pgn": "fidewrt26.pgn",
+      "index": "fidewrt26.index.json",
+      "games": 1650,
+      "hash": "466d7108"
     }
   ]
 }

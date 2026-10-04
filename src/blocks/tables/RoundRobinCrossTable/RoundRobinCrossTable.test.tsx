@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
+import { readText } from "../../../test/readText";
 import { CANDIDATES, EMPTY, HEBREW, LONG_NAMES, MISSING_GAME, SINGLE, UNFINISHED } from "./fixtures";
 import RoundRobinCrossTable, { type RoundRobinCrossTableProps } from "./RoundRobinCrossTable";
 
@@ -12,10 +13,12 @@ const mount = (props: Partial<RoundRobinCrossTableProps> = {}) =>
 
 const cell = (row: string, column: string) => screen.getByTestId(`t-cell-${row}-${column}`);
 const glyphs = (row: string, column: string) => [...cell(row, column).querySelectorAll("[aria-hidden]")].map((glyph) => glyph.textContent);
-const names = () => screen.getAllByRole("rowheader").map((header) => header.textContent);
+// Each row by its accessible name: a title read in full, a federation by its country (CTA-128).
+const names = () => screen.getAllByRole("rowheader").map((header) => readText(header));
 
 // The Candidates' FIDE ids.
 const SINDAROV = "14205483";
+const CARUANA = "2020009";
 const GIRI = "24116068";
 const ESIPENKO = "24175439";
 const BLUEBAUM = "24651516";
@@ -35,14 +38,14 @@ describe("RoundRobinCrossTable", () => {
       mount();
       // The file carries no country tags, so no federation follows a name.
       expect(names()).toEqual([
-        "GM Sindarov, Javokhir",
-        "GM Giri, Anish",
-        "GM Caruana, Fabiano",
-        "GM Wei, Yi",
-        "GM Nakamura, Hikaru",
-        "GM Bluebaum, Matthias",
-        "GM Praggnanandhaa, R",
-        "GM Esipenko, Andrey",
+        "Grandmaster Sindarov, Javokhir",
+        "Grandmaster Giri, Anish",
+        "Grandmaster Caruana, Fabiano",
+        "Grandmaster Wei, Yi",
+        "Grandmaster Nakamura, Hikaru",
+        "Grandmaster Bluebaum, Matthias",
+        "Grandmaster Praggnanandhaa, R",
+        "Grandmaster Esipenko, Andrey",
       ]);
       expect(screen.getByTestId(`t-row-${SINDAROV}-points`)).toHaveTextContent("10.0");
       expect(screen.getByTestId(`t-row-${SINDAROV}-sonnebornBerger`)).toHaveTextContent("64.75");
@@ -80,7 +83,7 @@ describe("RoundRobinCrossTable", () => {
       expect(column).toBe(screen.getByTestId(`t-column-${GIRI}`));
       expect(column).toHaveAttribute("scope", "col");
       expect(column).toHaveTextContent("2");
-      expect(within(screen.getByTestId(`t-row-${SINDAROV}`)).getByRole("rowheader", { name: "GM Sindarov, Javokhir" })).toHaveAttribute("scope", "row");
+      expect(within(screen.getByTestId(`t-row-${SINDAROV}`)).getByRole("rowheader", { name: "Grandmaster Sindarov, Javokhir" })).toHaveAttribute("scope", "row");
     });
 
     it("holds exactly two results in every cell off the diagonal, and none on it", () => {
@@ -117,7 +120,7 @@ describe("RoundRobinCrossTable", () => {
     it("draws a single one as one result a cell", () => {
       mount({ tournament: SINGLE });
       // Three on 2 points and the same Sonneborn-Berger: the rating decides.
-      expect(names()).toEqual(["GM Botvinnik, Mikhail RUS", "GM Tal, Mikhail LAT", "GM Smyslov, Vasily", "Newcomer, Nina"]);
+      expect(names()).toEqual(["Grandmaster Botvinnik, Mikhail Russia", "Grandmaster Tal, Mikhail Latvia", "Grandmaster Smyslov, Vasily", "Newcomer, Nina"]);
       expect(glyphs(TAL, BOTVINNIK)).toEqual(["½"]);
       expect(glyphs(TAL, "Newcomer, Nina")).toEqual(["1"]);
       expect(glyphs("Newcomer, Nina", TAL)).toEqual(["0"]);
@@ -178,7 +181,7 @@ describe("RoundRobinCrossTable", () => {
       expect(table.getByRole("columnheader", { name: "זונבורן־ברגר" })).toBeInTheDocument();
       expect(table.getByRole("columnheader", { name: "כהן, דנה" })).toBeInTheDocument();
       expect(table.getByRole("cell", { name: "סיבוב 1, בלבן מול כהן, דנה: ניצחון סיבוב 4, בשחור מול כהן, דנה: תיקו" })).toBeInTheDocument();
-      expect(within(table.getByRole("rowheader", { name: "WIM כהן, דנה ISR" })).getByText("כהן, דנה")).toHaveAttribute("dir", "auto");
+      expect(within(table.getByRole("rowheader", { name: "אמנית בינלאומית כהן, דנה ישראל" })).getByText("כהן, דנה")).toHaveAttribute("dir", "auto");
     });
   });
 
@@ -204,6 +207,25 @@ describe("RoundRobinCrossTable", () => {
       loading.unmount();
       mount({ tournament: EMPTY });
       await expectNoAxeViolations();
+    });
+  });
+
+  describe("links (CTA-128)", () => {
+    it("makes each name a link to the player's games and each result a link to its game — only when asked", () => {
+      const { unmount } = mount();
+      expect(screen.queryAllByRole("link")).toEqual([]);
+      unmount();
+      mount({ playerLink: (player) => ({ href: `/games?player=${player.name}` }), gameLink: (game) => ({ href: `/games/${game + 1}` }) });
+      expect(screen.getByRole("link", { name: "Sindarov, Javokhir" })).toHaveAttribute("href", "/games?player=Sindarov, Javokhir");
+      // Sindarov – Caruana, round 4, game 13 of the file; Caruana – Sindarov, round 11, game 41.
+      const links = within(cell(SINDAROV, CARUANA)).getAllByRole("link");
+      expect(links.map((link) => link.getAttribute("href"))).toEqual(["/games/13", "/games/41"]);
+      expect(links[0]).toHaveAccessibleName("Round 4, White against Caruana, Fabiano: win");
+    });
+
+    it("leaves a player or a game the caller gives no link to as text", () => {
+      mount({ playerLink: (player) => (player.id === SINDAROV ? { href: "/sindarov" } : undefined) });
+      expect(screen.getAllByRole("link")).toHaveLength(1);
     });
   });
 });
