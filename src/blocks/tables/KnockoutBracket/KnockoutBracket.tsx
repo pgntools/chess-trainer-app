@@ -5,7 +5,7 @@ import Box from "@mui/material/Box";
 
 import { Bracket, type BracketRound, type BracketSide } from "../../../design-system/patterns/tables";
 import type { Knockout, KnockoutBracket as Bracketed, KnockoutMatch } from "../../../lib/knockout";
-import { federationFlag, formatScore, titleBadgeOf } from "../tournamentTable";
+import { federationFlag, formatScore, teamFlag, titleBadgeOf } from "../tournamentTable";
 
 export type KnockoutBracketProps = {
   /**
@@ -42,7 +42,8 @@ const roundTitle = (t: TFunction, bracket: Bracketed, index: number, named: bool
 /** One side of a match as a bracket's line: the title before the name, the score — a team's board points after it. */
 const sideOf = (t: TFunction, language: string, match: KnockoutMatch, index: 0 | 1, teams: boolean): BracketSide => {
   const side = match.sides[index];
-  const flag = federationFlag(side.competitor, language);
+  // A team's flag before its name, a player's after it (CTA-128).
+  const flag = teams ? teamFlag(side.competitor.federation, language) : federationFlag(side.competitor, language);
   return {
     id: String(index),
     name: side.competitor.name,

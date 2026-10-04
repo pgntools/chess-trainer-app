@@ -123,8 +123,9 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   (a `prefix` is a few muted words before the name — a title; a `suffix`
   after it — where from; CTA-128: a `badge` is a `LabelChip` in the
   prefix's place, `{ label, tone, name? }` — a title read in full; a `flag`
-  a `Flag` in the suffix's place, `{ code, label }`, the suffix its
-  fallback; `tieBreaks` the tie-break columns' values by column id), and `rounds`
+  a `Flag` in the suffix's place, `{ code, label, before? }`, the suffix its
+  fallback — `before` sets it at the name's start instead, as a team's
+  country is; `tieBreaks` the tie-break columns' values by column id), and `rounds`
   one entry per round, each **every result of that round** as `ResultEntry =
   { outcome, label }` (one, as a rule). A round with no game is the caller's
   own `none` entry, so its words say so; an entry left out is an empty cell.

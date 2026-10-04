@@ -45,6 +45,8 @@ describe("TeamStandingsTable", () => {
     mount({ tournament: NATIONS });
     const uzbekistan = screen.getByRole("rowheader", { name: "Uzbekistan Uzbekistan" });
     expect(within(uzbekistan).getByRole("img", { name: "Uzbekistan" })).toHaveAttribute("data-flag", "uz");
+    // Before the name, where a player's title stands.
+    expect(uzbekistan.querySelector("img")!.compareDocumentPosition(within(uzbekistan).getByText("Uzbekistan"))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(screen.getByRole("rowheader", { name: "England England" })).toBeInTheDocument();
     expect(within(screen.getByRole("rowheader", { name: "Mixed" })).queryByRole("img")).not.toBeInTheDocument();
   });

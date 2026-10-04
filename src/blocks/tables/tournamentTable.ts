@@ -67,6 +67,12 @@ export const flagOfFederation = (federation: string | undefined, language: strin
   return flag === undefined ? undefined : { code: flag.code, label: flag.name };
 };
 
+/** A team's country as a flag at its name's start, where a player's title stands (CTA-128). */
+export const teamFlag = (federation: string | undefined, language: string): CompetitorFlag | undefined => {
+  const flag = flagOfFederation(federation, language);
+  return flag === undefined ? undefined : { ...flag, before: true };
+};
+
 /** A player's — or a team's — federation as a flag (CTA-128). */
 export const federationFlag = (player: TournamentPlayer, language: string): CompetitorFlag | undefined =>
   flagOfFederation(player.federation, language);

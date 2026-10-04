@@ -365,5 +365,12 @@ describe("StandingsTable", () => {
       expect(second).toHaveTextContent("ZZZ");
       expect(within(second).queryByRole("img")).not.toBeInTheDocument();
     });
+
+    it("sets a flag before the name when it says so — a team's country, where a title stands", () => {
+      mount({ rows: [{ ...ROWS[0], prefix: undefined, flag: { code: "uz", label: "Uzbekistan", before: true }, suffix: "UZB" }] });
+      const [first] = screen.getAllByRole("rowheader");
+      expect(first).toHaveAccessibleName("Uzbekistan Ada Lovelace");
+      expect(first).not.toHaveTextContent("UZB");
+    });
   });
 });

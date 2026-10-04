@@ -185,8 +185,13 @@ function Bracket({ rounds, ariaLabel, emptyLabel, loading = false, loadingLabel,
                                   </>
                                 )
                               )}
+                              {side.flag?.before === true && (
+                                <>
+                                  <Flag code={side.flag.code} label={side.flag.label} />{" "}
+                                </>
+                              )}
                               <bdi dir="auto">{side.name}</bdi>
-                              {side.flag !== undefined && (
+                              {side.flag !== undefined && side.flag.before !== true && (
                                 <>
                                   {" "}
                                   <Flag code={side.flag.code} label={side.flag.label} />

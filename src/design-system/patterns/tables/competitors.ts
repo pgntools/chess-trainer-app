@@ -4,8 +4,13 @@ import type { LabelChipProps, ResultMarkProps } from "../../components/tables";
 /** A mark before a name, as a chip (CTA-128) — a title: "GM" in its tone, read "Grandmaster". */
 export type CompetitorBadge = Pick<LabelChipProps, "label" | "tone" | "name">;
 
-/** Where a competitor is from, as a flag (CTA-128) — `Flag`'s code ("de", "gb-eng") and the country's name. */
-export type CompetitorFlag = { code: string; label: string };
+/**
+ * Where a competitor is from, as a flag (CTA-128) — `Flag`'s code ("de",
+ * "gb-eng") and the country's name. After the name by default (a player's
+ * federation); `before` sets it at the name's start, as a title chip is (a
+ * team's country).
+ */
+export type CompetitorFlag = { code: string; label: string; before?: boolean };
 
 /*
   What the two competition tables share (CTA-120) — `StandingsTable` and

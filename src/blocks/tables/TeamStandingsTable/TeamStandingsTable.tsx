@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { StandingsTable, type StandingsRow, type TieBreakColumn, type TablePaging } from "../../../design-system/patterns/tables";
 import type { TeamTournament } from "../../../lib/teamTournament";
-import { flagOfFederation, formatScore } from "../tournamentTable";
+import { formatScore, teamFlag } from "../tournamentTable";
 
 export type TeamStandingsTableProps = {
   /** The tournament — `teamTournamentOf(headers)` (`lib/teamTournament.ts`). `undefined` while its games are read. */
@@ -46,9 +46,9 @@ function TeamStandingsTable({ tournament, ariaLabel, density, paging, testId }: 
       id: String(standing.rank),
       rank: standing.rank,
       name: standing.team,
-      // The flag its players all share — an Olympiad's national team; a club has none (CTA-128).
+      // The flag its players all share — an Olympiad's national team; a club has none (CTA-128). Before the name, as a title is.
       suffix: standing.federation,
-      flag: flagOfFederation(standing.federation, language),
+      flag: teamFlag(standing.federation, language),
       points: standing.matchPoints,
       tieBreaks: { boardPoints: standing.boardPoints },
       rounds: standing.rounds.map((matches, index) =>

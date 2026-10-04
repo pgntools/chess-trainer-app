@@ -65,7 +65,8 @@ type CompetitorCellsProps = {
  * A row's start: the rank, the name as the **row's header** (`th
  * scope="row"`, so a screen reader names the competitor with every cell of
  * the row) with its prefix and suffix muted around it — or a chip before it
- * and a flag after (CTA-128) — and the rating.
+ * and a flag after, or before it too when the flag says so (CTA-128) — and
+ * the rating.
  */
 export function CompetitorCells({ competitor, rating, testId }: CompetitorCellsProps) {
   const { rank, name, prefix, suffix, badge, flag } = competitor;
@@ -85,8 +86,13 @@ export function CompetitorCells({ competitor, rating, testId }: CompetitorCellsP
         ) : (
           prefix !== undefined && <>{muted(prefix)} </>
         )}
+        {flag?.before === true && (
+          <>
+            <Flag code={flag.code} label={flag.label} fallback={suffix === undefined ? undefined : muted(suffix, true)} testId={`${testId}-flag`} />{" "}
+          </>
+        )}
         <bdi dir="auto">{name}</bdi>
-        {flag !== undefined ? (
+        {flag?.before === true ? null : flag !== undefined ? (
           <>
             {" "}
             <Flag code={flag.code} label={flag.label} fallback={suffix === undefined ? undefined : muted(suffix, true)} testId={`${testId}-flag`} />
