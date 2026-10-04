@@ -29,12 +29,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           # Matches the Node the reference workflows pin. This repo pins nothing
           # in-tree (no .nvmrc, no engines) — local dev Node comes from fnm.
-          node-version: 24
+          node-version: 25
           cache: yarn
       - run: yarn install --frozen-lockfile
       # `tsc -b` over the app *and* the tests, then the production build.
@@ -43,10 +43,10 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 25
           cache: yarn
       - run: yarn install --frozen-lockfile
       # A gate (CTA-116). It carries what nothing else enforces once a change
@@ -62,10 +62,10 @@ jobs:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 25
           cache: yarn
       - run: yarn install --frozen-lockfile
       - run: yarn test:unit
@@ -80,10 +80,10 @@ jobs:
       matrix:
         shard: [1, 2, 3]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 25
           cache: yarn
       - run: yarn install --frozen-lockfile
       # The runner has four cores; `--maxWorkers 3` leaves one to Vitest itself.
@@ -98,10 +98,10 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 25
           cache: yarn
       - run: yarn install --frozen-lockfile
       - run: yarn test:run --coverage
