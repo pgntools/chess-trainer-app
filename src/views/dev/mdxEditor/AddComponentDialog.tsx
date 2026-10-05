@@ -11,12 +11,14 @@ import { InlineAlert, StatusText } from "../../../design-system/components/feedb
 import { RadioGroupField, SwitchField, TextInputField } from "../../../design-system/components/forms";
 import { TreeView, type TreeNode } from "../../../design-system/patterns/trees";
 import { libraryGameReference, loadReferencedGames, resolveGameReference } from "../../../lib/gameReference";
-import { loadUploadedCollections } from "../../../lib/libraryCollectionStore";
+import { loadUploadedCollections, loadUploadedGames } from "../../../lib/libraryCollectionStore";
 import type { CollectionSummary, TournamentFormat } from "../../../lib/libraryCollections";
+import { readPgnTags, splitPgnGames } from "../../../lib/pgn";
 import { findShippedCollection } from "../../../lib/shippedCollections";
+import { guessTournamentKind, type TournamentGuess } from "../../../lib/tournamentKind";
 import { collectionPathOf, libraryGamePathOf } from "../../home/frontPage/paths";
 import { articleImportResolver } from "./articleSources";
-import { CATALOG, catalogFor, componentOf, type ExampleSource, type LibraryGame, type MovesLine } from "./componentCatalog";
+import { CATALOG, catalogFor, componentOf, TOURNAMENT_ENTRY, type ExampleSource, type LibraryGame, type MovesLine } from "./componentCatalog";
 import { COLUMNS, SIDE_COLUMN, TEXTAREA_SX } from "./dialogLayout";
 import { SnippetPreview } from "./mdxPreview";
 import { articlePgnsOf, pgnDefinitionsIn, type ArticlePgn } from "./pgnImports";
@@ -39,6 +41,19 @@ const libraryPgnOf = async (collection: string, number: number): Promise<{ name:
   await loadReferencedGames(reference);
   return resolveGameReference(reference);
 };
+
+/** A Library collection's games, each its PGN — a shipped one's or an upload's; `undefined` where it cannot be read. */
+const collectionGamesOf = async (collection: string): Promise<readonly string[] | undefined> => {
+  try {
+    const shipped = findShippedCollection(collection);
+    return (shipped === undefined ? await loadUploadedGames(collection) : await shipped.loadGames()) ?? undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/** The kind of tournament a set of games looks like — from their tags alone. */
+const guessOf = (games: readonly string[]): TournamentGuess | undefined => guessTournamentKind(games.map(readPgnTags));
 
 /** A game's first moves, for a sentence — or a short opening where it gave none. */
 const movesOf = (source: { moves?: MovesLine }) => source.moves?.line ?? "1. e4 e5 2. Nf3 Nc6";
@@ -99,13 +114,17 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
   const [openFolders, setOpenFolders] = useState<ReadonlySet<string>>(() => new Set(CATALOG.map((folder) => folder.id)));
   /** The puzzle mock's one setting. */
   const [hideNext, setHideNext] = useState(true);
+  /** What kind of tournament the chosen game's file (or collection) looks like — for the source it was worked out for. */
+  const [guessed, setGuessed] = useState<{ source: string; guess?: TournamentGuess }>();
 
   const chosenPgn = pgns.find((pgn) => pgn.name === choice);
   useEffect(() => {
     if (chosenPgn === undefined) return;
     let live = true;
     void textOf(chosenPgn, folder, attached).then((text) => {
-      if (live) setMoves({ name: chosenPgn.name, moves: text === undefined ? undefined : movesLineOf(text) });
+      if (!live) return;
+      setMoves({ name: chosenPgn.name, moves: text === undefined ? undefined : movesLineOf(text) });
+      setGuessed({ source: chosenPgn.name, guess: text === undefined ? undefined : guessOf(splitPgnGames(text)) });
     });
     return () => {
       live = false;
@@ -130,7 +149,11 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
       const game = await libraryPgnOf(collection, gamePath.number);
       if (game === undefined) return setLookup({ looking: false, problem: `The Library has no game ${gamePath.number} in the collection ${collection}.` });
       setLookup(undefined);
-      return setFound({ id: `/library/${collection}/${gamePath.number}`, game: { collection, number: gamePath.number }, label: game.name, moves: movesLineOf(game.pgn) });
+      const id = `/library/${collection}/${gamePath.number}`;
+      setFound({ id, game: { collection, number: gamePath.number }, label: game.name, moves: movesLineOf(game.pgn) });
+      // The tournament tables show the game's collection: guess from all of it.
+      const games = await collectionGamesOf(collection);
+      return setGuessed({ source: id, guess: games === undefined ? undefined : guessOf(games) });
     }
     const summary = await collectionSummaryOf(collection);
     if (summary === undefined) return setLookup({ looking: false, problem: `The Library has no collection ${collection}.` });
@@ -144,6 +167,8 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
       label: `${summary.name} — ${summary.count.toLocaleString()} games${format}`,
       moves: first === undefined ? undefined : movesLineOf(first.pgn),
     });
+    const games = await collectionGamesOf(collection);
+    setGuessed({ source: `/library/${collection}`, guess: games === undefined ? undefined : guessOf(games) });
   };
 
   const source: ExampleSource | undefined =
@@ -157,13 +182,20 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
   const sourceName = choice === LIBRARY ? found?.id : chosenPgn?.name;
 
   const folders = source === undefined ? [] : catalogFor(source);
-  const entry = folders.flatMap((folder) => folder.entries).find((candidate) => candidate.id === component);
+  const entries = folders.flatMap((folder) => folder.entries);
+  const entry = entries.find((candidate) => candidate.id === component);
+  // The tournament table the games look like they want — a suggestion, the reader's to take.
+  const guess = guessed !== undefined && guessed.source === sourceName ? guessed.guess : undefined;
+  const suggested = guess === undefined ? undefined : entries.find((candidate) => candidate.id === TOURNAMENT_ENTRY[guess.kind]);
   const nodes: TreeNode[] = folders.map((folder) => ({
     id: folder.id,
     label: folder.title,
     icon: <FolderRoundedIcon fontSize="small" />,
     secondary: folder.entries.length,
-    children: folder.entries.map((candidate) => ({ id: candidate.id, label: candidate.mock === true ? `${candidate.label} — mock` : candidate.label })),
+    children: folder.entries.map((candidate) => ({
+      id: candidate.id,
+      label: `${candidate.label}${candidate.mock === true ? " — mock" : ""}${candidate.id === suggested?.id ? " — suggested" : ""}`,
+    })),
   }));
   const written = entry === undefined || source === undefined ? "" : (entry.code(source) ?? "");
   // The puzzle mock's switch is the sketch's one attribute.
@@ -292,23 +324,44 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
               Pick the game first: the components that fit it show here.
             </StatusText>
           ) : (
-            <TreeView
-              nodes={nodes}
-              open={openFolders}
-              onToggle={(id) =>
-                setOpenFolders((before) => {
-                  const next = new Set(before);
-                  if (next.has(id)) next.delete(id);
-                  else next.add(id);
-                  return next;
-                })
-              }
-              activeId={component}
-              onSelect={(node) => setComponent(node.id)}
-              ariaLabel="What the game is"
-              hint="Arrow keys to move, right and left to open and close a folder, Enter to pick a component"
-              testId={`${ID}-components`}
-            />
+            <>
+              {suggested !== undefined && guess !== undefined && (
+                <InlineAlert severity="info" title={`Suggested: ${suggested.label}`} testId={`${ID}-suggested`}>
+                  <Box sx={{ display: "grid", gap: 1, justifyItems: "start" }}>
+                    <span>{`The games look like it — ${guess.reason}.`}</span>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => {
+                        setComponent(suggested.id);
+                        setOpenFolders((before) => new Set([...before, "tournament"]));
+                      }}
+                      disabled={component === suggested.id}
+                      data-testid={`${ID}-suggested-pick`}
+                    >
+                      {component === suggested.id ? "Picked" : "Pick it"}
+                    </Button>
+                  </Box>
+                </InlineAlert>
+              )}
+              <TreeView
+                nodes={nodes}
+                open={openFolders}
+                onToggle={(id) =>
+                  setOpenFolders((before) => {
+                    const next = new Set(before);
+                    if (next.has(id)) next.delete(id);
+                    else next.add(id);
+                    return next;
+                  })
+                }
+                activeId={component}
+                onSelect={(node) => setComponent(node.id)}
+                ariaLabel="What the game is"
+                hint="Arrow keys to move, right and left to open and close a folder, Enter to pick a component"
+                testId={`${ID}-components`}
+              />
+            </>
           )}
         </Box>
 

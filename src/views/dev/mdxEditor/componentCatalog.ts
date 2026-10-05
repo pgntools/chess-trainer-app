@@ -1,3 +1,5 @@
+import type { TournamentKind } from "../../../lib/tournamentKind";
+
 /**
  * **The components an article embeds, as examples to drop in** (CTA-137) —
  * the MDX editor's Add PGN dialog, its Output element step: folders by
@@ -192,7 +194,10 @@ export const CATALOG: readonly CatalogFolder[] = [
         id: "tournament-match",
         label: "Match",
         summary: "Two players: a column per game, the score",
-        code: (source) => (pgnOf(source) === undefined ? undefined : `<MatchTable pgn={${pgnOf(source)}} />`),
+        code: (source) => {
+          const game = libraryOf(source);
+          return game === undefined ? `<MatchTable pgn={${pgnOf(source)}} />` : `<CollectionTournamentTable _id="/library/${game.collection}" format="match" />`;
+        },
       },
       {
         id: "tournament-team",
@@ -234,6 +239,17 @@ export const CATALOG: readonly CatalogFolder[] = [
     ],
   },
 ];
+
+/** The Tournament entry that shows each kind of tournament — what Add component suggests from `guessTournamentKind`. */
+export const TOURNAMENT_ENTRY: Readonly<Record<TournamentKind, string>> = {
+  swiss: "tournament-swiss",
+  roundRobin: "tournament-round-robin",
+  knockout: "tournament-knockout",
+  teamKnockout: "tournament-knockout",
+  doubleElimination: "tournament-double-elimination",
+  match: "tournament-match",
+  teamSwiss: "tournament-team",
+};
 
 /** The catalog for one game: each folder with only the entries that show something of it. */
 export const catalogFor = (source: ExampleSource): CatalogFolder[] =>
