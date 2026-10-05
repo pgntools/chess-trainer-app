@@ -57,9 +57,9 @@ describe("the path guard", () => {
     expect(refusal(3)).toBe("No path to write.");
   });
 
-  it("writes only .mdx and .pgn, under Blog names", () => {
-    expect(refusal("tournaments/x.js")).toMatch(/only .mdx and .pgn/);
-    expect(refusal("tournaments/x.mdx.txt")).toMatch(/only .mdx and .pgn/);
+  it("writes only .mdx, .pgn and images, under Blog names", () => {
+    expect(refusal("tournaments/x.js")).toMatch(/only .mdx, .pgn and image/);
+    expect(refusal("tournaments/x.mdx.txt")).toMatch(/only .mdx, .pgn and image/);
     expect(refusal("Tournaments/x.mdx")).toMatch(/the folder "Tournaments" is not a Blog name/);
     expect(refusal("tournaments/My Article.mdx")).toMatch(/not an article's name/);
     expect(refusal("tournaments/x.hebrew.mdx")).toMatch(/not an article's name/);
@@ -301,8 +301,10 @@ describe("deleting folders", () => {
     mkdirSync(join(root, "tournaments", "club"));
     writeFileSync(join(root, "tournaments", "club", "index.mdx"), "---\ntitle: Club\n---\n");
     writeFileSync(join(root, "tournaments", "club", "cover.png"), "png");
+    writeFileSync(join(root, "tournaments", "club", "notes.txt"), "notes");
     const handle = createStorageHandler({ root });
-    expect(listFolders(root).find((folder) => folder.path === "tournaments/club")?.others).toEqual(["cover.png"]);
+    // An image is one of the articles' files; anything else is "other" — and goes with the folder all the same.
+    expect(listFolders(root).find((folder) => folder.path === "tournaments/club")).toMatchObject({ files: ["cover.png", "index.mdx"], others: ["notes.txt"] });
     const answer = handle(del(["get-started.mdx"], ["tournaments/club"]));
     expect(JSON.parse(answer.body ?? "")).toEqual({ deleted: ["get-started.mdx"], deletedFolders: ["tournaments/club"] });
     expect(existsSync(join(root, "tournaments", "club"))).toBe(false);
@@ -322,3 +324,28 @@ describe("deleting folders", () => {
     expect(existsSync(join(work, "outside"))).toBe(true);
   });
 });
+
+describe("images", () => {
+  it("writes an image from base64, byte for byte, lists it with the articles' files, and says who imports it", () => {
+    const handle = createStorageHandler({ root });
+    const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff]);
+    const written = handle(put({ path: "tournaments/board.png", content: bytes.toString("base64"), encoding: "base64" }));
+    expect(written.status).toBe(201);
+    expect(readFileSync(join(root, "tournaments", "board.png"))).toEqual(bytes);
+    expect(listFolders(root).find((folder) => folder.path === "tournaments")?.files).toContain("board.png");
+
+    writeFileSync(join(root, "tournaments", "cup.mdx"), 'import board from "./board.png"\n\n<img src={board} alt="The board" />');
+    expect(JSON.parse(handle({ method: "GET", url: "/importers?path=tournaments%2Fboard.png", ...LOCAL }).body ?? "").importers).toEqual(["tournaments/cup.mdx"]);
+    expect(handle(del2(["tournaments/board.png"])).status).toBe(200);
+    expect(existsSync(join(root, "tournaments", "board.png"))).toBe(false);
+  });
+
+  it("refuses an image's name that is not one, and a file that is neither article, PGN nor image", () => {
+    expect(refusal("tournaments/my photo.png")).toMatch(/not an image's name/);
+    expect(refusal("tournaments/x.svg")).toMatch(/only .mdx, .pgn and image/);
+  });
+});
+
+function del2(paths: string[]): StorageRequest {
+  return { method: "DELETE", url: "/files", contentType: "application/json", body: JSON.stringify({ paths }), ...LOCAL };
+}

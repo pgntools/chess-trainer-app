@@ -14,6 +14,11 @@ const ARTICLES_DIR = "../../views/blog/articles/";
 
 const mdxFiles = import.meta.glob<string>("../../views/blog/articles/**/*.mdx", { query: "?raw", import: "default" });
 const pgnFiles = import.meta.glob<string>("../../views/blog/articles/**/*.pgn", { query: "?raw", import: "default" });
+/** The images beside the articles, each as the URL Vite serves it at — what `import photo from "./photo.png"` gives. */
+const imageFiles = import.meta.glob<string>("../../views/blog/articles/**/*.{png,jpg,jpeg,webp,gif}", { query: "?url", import: "default" });
+
+/** An image an article may import. */
+const IMAGE = /\.(?:png|jpe?g|webp|gif)$/i;
 
 /** An article file's MDX source, or `undefined` for no such file. */
 export const loadArticleSource = async (file: string): Promise<string | undefined> => mdxFiles[`${ARTICLES_DIR}${file}.mdx`]?.();
@@ -38,18 +43,21 @@ const keyOf = (folder: string, specifier: string): string | undefined => {
 
 /**
  * An article's imports, resolved from `folder` as the bundler would from an
- * article there. Only a `.pgn?raw`. `attached` (a path under `articles/` →
- * its text) is a PGN the editor has just written, read before the glob has
- * caught up with the file.
+ * article there: a `.pgn?raw` (its text) or an image (its URL). `attached`
+ * (a path under `articles/` → a PGN's text, an image's object URL) is a
+ * file the editor has just written, read before the glob has caught up.
  */
 export const articleImportResolver = (folder: string, attached: Readonly<Record<string, string>> = {}): ImportResolver => ({
   keyOf: (specifier) => {
-    if (!specifier.endsWith(".pgn?raw")) return undefined;
+    const image = IMAGE.test(specifier);
+    if (!specifier.endsWith(".pgn?raw") && !image) return undefined;
     const key = keyOf(folder, specifier);
-    return key !== undefined && (key in pgnFiles || key.slice(ARTICLES_DIR.length) in attached) ? key : undefined;
+    return key !== undefined && (key in (image ? imageFiles : pgnFiles) || key.slice(ARTICLES_DIR.length) in attached) ? key : undefined;
   },
   load: (key) => {
-    const text = attached[key.slice(ARTICLES_DIR.length)];
-    return text !== undefined ? Promise.resolve(text) : pgnFiles[key]();
+    // Written this session: a PGN's text, or an image's object URL.
+    const written = attached[key.slice(ARTICLES_DIR.length)];
+    if (written !== undefined) return Promise.resolve(written);
+    return IMAGE.test(key) ? imageFiles[key]() : pgnFiles[key]();
   },
 });

@@ -152,3 +152,28 @@ export const withoutPgn = (body: string, name: string): string => {
   }
   return body;
 };
+
+/** A file the article imports beside it — a PGN or an image — by the name it binds and the file's path from the article. */
+export type ArticleAsset = { name: string; file: string; kind: "pgn" | "image" };
+
+/** Every PGN and image file the article imports — what deleting it may take too. */
+export const articleAssetsOf = (body: string): ArticleAsset[] =>
+  [...body.matchAll(/^[ \t]*import\s+([A-Za-z_$][\w$]*)\s+from\s+["']([^"'\n]+\.(pgn|png|jpe?g|webp|gif))(?:\?raw)?["']/gim)].map((match) => ({
+    name: match[1],
+    file: match[2],
+    kind: match[3].toLowerCase() === "pgn" ? "pgn" : "image",
+  }));
+
+/**
+ * The body importing an image beside the article — `import <name> from
+ * "./<file>"`, after the imports it starts with, or at its top — unless it
+ * imports that file already.
+ */
+export const withImageImport = (body: string, name: string, file: string): string => {
+  if (articleAssetsOf(body).some((asset) => asset.file === `./${file}`)) return body;
+  const line = `import ${name} from "./${file}"`;
+  const lines = body.split("\n");
+  const leading = leadingImports(lines);
+  if (leading > 0) return [...lines.slice(0, leading), line, ...lines.slice(leading)].join("\n");
+  return body.trim() === "" ? `${line}\n` : `${line}\n\n${body}`;
+};

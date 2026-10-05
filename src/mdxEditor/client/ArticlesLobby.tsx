@@ -6,6 +6,7 @@ import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import NoteAddOutlinedIcon from "@mui/icons-material/NoteAddOutlined";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import TableChartOutlinedIcon from "@mui/icons-material/TableChartOutlined";
@@ -38,12 +39,15 @@ import {
 import { useGitStatus } from "./useGitStatus";
 
 const ID = "mdx-lobby";
+/** An image beside an article. */
+const IMAGE = /\.(?:png|jpe?g|webp|gif)$/i;
 
 /** One row of the lobby: a folder, an article file (an English article, a translation or a folder's index), or a PGN file. */
 type LobbyRow =
   | { kind: "folder"; path: string; title: string; depth: number; open: boolean; articles: number }
   | { kind: "article"; path: string; file: string; name: string; facts: ArticleFacts; translation: boolean; index: boolean; depth: number }
-  | { kind: "pgn"; path: string; name: string; depth: number };
+  | { kind: "pgn"; path: string; name: string; depth: number }
+  | { kind: "image"; path: string; name: string; depth: number };
 
 type LobbyColumn = "name" | "title" | "date" | "git";
 
@@ -94,6 +98,10 @@ const rowsOf = (folders: readonly StorageFolder[], open: ReadonlySet<string>, ne
       const path = join(folder.path, name);
       if (matches(path)) rows.push({ kind: "pgn", path, name, depth });
     }
+    for (const name of folder.files.filter((file) => IMAGE.test(file)).sort()) {
+      const path = join(folder.path, name);
+      if (matches(path)) rows.push({ kind: "image", path, name, depth });
+    }
   };
   walk("", 0);
   return rows;
@@ -106,7 +114,7 @@ const rowsOf = (folders: readonly StorageFolder[], open: ReadonlySet<string>, ne
  * article's title and date, a draft marked, and a warning where git has not
  * got it as it is. Each row's actions: an article's Edit (the editor),
  * its page on the Blog and Delete (`DeleteArticleDialog`, as in the
- * editor); a PGN's Delete, saying which articles import it; a folder's page
+ * editor); a PGN's or an image's Delete, saying which articles import it; a folder's page
  * on the Blog. Rows are ticked to delete several together — folders whole,
  * articles with their translations — one confirmation naming every file
  * (`DeletePicksDialog`, `deletionPlan.ts`). New article starts one in the
@@ -200,7 +208,7 @@ function ArticlesLobby() {
       id: "name",
       header: "Name",
       render: (row) => {
-        const Icon = row.kind === "folder" ? FolderRoundedIcon : row.kind === "pgn" ? TableChartOutlinedIcon : row.translation ? TranslateRoundedIcon : ArticleOutlinedIcon;
+        const Icon = row.kind === "folder" ? FolderRoundedIcon : row.kind === "pgn" ? TableChartOutlinedIcon : row.kind === "image" ? ImageOutlinedIcon : row.translation ? TranslateRoundedIcon : ArticleOutlinedIcon;
         const unsynced = row.kind === "folder" ? folderUnsynced(row.path) : gitOf(row.path) !== undefined;
         return (
           <Box component="span" sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
@@ -229,7 +237,7 @@ function ArticlesLobby() {
           </Box>
         ) : (
           <Box component="span" sx={{ color: "text.secondary" }}>
-            PGN
+            {row.kind === "pgn" ? "PGN" : "Image"}
           </Box>
         ),
     },
@@ -246,7 +254,7 @@ function ArticlesLobby() {
         if (gitFiles === undefined) return "—";
         if (row.kind === "folder") return folderUnsynced(row.path) ? "not synced" : "in git";
         const file = gitOf(row.path);
-        return file === undefined ? "in git" : `${GIT_STATE_WORDS[file.state]}${file.bytes !== undefined && row.kind === "pgn" ? `, ${sizeOf(file.bytes)}` : ""}`;
+        return file === undefined ? "in git" : `${GIT_STATE_WORDS[file.state]}${file.bytes !== undefined && row.kind !== "article" ? `, ${sizeOf(file.bytes)}` : ""}`;
       },
     },
   ];
@@ -259,7 +267,7 @@ function ArticlesLobby() {
         </IconAction>
       );
     }
-    if (row.kind === "pgn") {
+    if (row.kind === "pgn" || row.kind === "image") {
       return (
         <IconAction label={`Delete ${row.path}`} onClick={() => void askDeletePgn(row.path)} disabled={busy} testId={`${ID}-delete-${row.path}`}>
           <DeleteOutlineRoundedIcon fontSize="small" />
@@ -399,7 +407,7 @@ function ArticlesLobby() {
         open={deletingPgn !== undefined}
         onClose={() => setDeletingPgn(undefined)}
         onConfirm={() => deletingPgn !== undefined && void deleteFiles([deletingPgn.path])}
-        title="Delete the PGN file?"
+        title={deletingPgn?.path.endsWith(".pgn") === false ? "Delete the image?" : "Delete the PGN file?"}
         message={
           deletingPgn === undefined ? undefined : (
             <>

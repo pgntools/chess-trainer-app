@@ -11,6 +11,7 @@ import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import SyncProblemRoundedIcon from "@mui/icons-material/SyncProblemRounded";
+import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DriveFileMoveOutlinedIcon from "@mui/icons-material/DriveFileMoveOutlined";
@@ -38,16 +39,17 @@ import { MetadataPane } from "./MetadataPane";
 import { PreviewBoundary } from "./mdxPreview";
 import { PREVIEW_COMPONENTS, useCompiled, whereOf } from "./useCompiled";
 import AddComponentDialog from "./AddComponentDialog";
+import AddImageDialog, { type ImageToAdd } from "./AddImageDialog";
 import AddPgnDialog, { type PgnToAdd } from "./AddPgnDialog";
 import { insertBlock } from "./componentCatalog";
-import { articlePgnsOf, usesOf, withInlinePgn, withoutPgn, withPgnImports } from "./pgnImports";
+import { articleAssetsOf, articlePgnsOf, usesOf, withImageImport, withInlinePgn, withoutPgn, withPgnImports } from "./pgnImports";
 import { BIG_PGN_BYTES, pgnBytesOf, sizeOf } from "./pgnPages";
 import { starterFrontmatter, todayIso } from "./metadataYaml";
 import DeleteArticleDialog from "./DeleteArticleDialog";
 import GitStatusDialog from "./GitStatusDialog";
 import SaveArticleDialog from "./SaveArticleDialog";
 import { STARTER_DOCUMENT } from "./starterDocument";
-import { ARTICLES_DIR, deleteStorageFiles, GIT_STATE_WORDS, listStorageFolders, STORAGE_COMMAND, STORAGE_URL, unsyncedFoldersOf, writeStorageFile, type StorageFolder } from "./storageClient";
+import { ARTICLES_DIR, base64Of, deleteStorageFiles, GIT_STATE_WORDS, listStorageFolders, STORAGE_COMMAND, STORAGE_URL, unsyncedFoldersOf, writeStorageFile, type StorageFolder } from "./storageClient";
 import { useGitStatus } from "./useGitStatus";
 import { useScrollSync } from "./useScrollSync";
 
@@ -79,7 +81,9 @@ import { useScrollSync } from "./useScrollSync";
  *   together" is on, both are shown and the Content tab is open: scrolling
  *   either brings the other to the same block.
  * - **The header** (CTA-137): the title, and the actions in one toolbar at
- *   its inline end — what goes into the content (Add PGN, Add component),
+ *   its inline end — what goes into the content (Add PGN, Add component,
+ *   Add image — `AddImageDialog`: an image beside the article, its alt
+ *   text asked for, shown where the caret is),
  *   then where it goes (Save as…, Save), the rest under More (New article,
  *   Copy MDX, Download .mdx, Delete article… — `DeleteArticleDialog`: the
  *   file, its translations with it, the PGN files only it imports if
@@ -161,6 +165,8 @@ type SaveStep =
   | { kind: "save" }
   | { kind: "save-as" }
   | { kind: "write"; file: string; overwrite: boolean }
+  /** An image beside the article, shown where the caret is — Add image. */
+  | { kind: "image"; image: ImageToAdd; overwrite: boolean }
   /** The article being edited, its translations and the PGN files chosen, deleted — Delete article. */
   | { kind: "delete"; paths: string[] }
   /**
@@ -194,6 +200,7 @@ const NOTICE_ICONS: readonly [RegExp, typeof InfoOutlinedIcon][] = [
   [/^Copied /, ContentCopyRoundedIcon],
   [/^Downloaded /, DownloadRoundedIcon],
   [/^Inserted /, WidgetsRoundedIcon],
+  [/^Added \S+\.(?:png|jpe?g|webp|gif) /i, AddPhotoAlternateOutlinedIcon],
   [/^(Added |Wrote the PGN)/, UploadFileRoundedIcon],
   [/^(Removed|Deleted) /, DeleteOutlineRoundedIcon],
   [/^Moved the /, DriveFileMoveOutlinedIcon],
@@ -222,6 +229,8 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
   const git = useGitStatus();
   const [gitOpen, setGitOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
+  const [imageError, setImageError] = useState<string>();
   const gitFiles = git.status?.kind === "status" ? git.status.files : undefined;
   const fileInGit = draft.file === "" || gitFiles === undefined ? undefined : (gitFiles.find((candidate) => candidate.path === `${draft.file}.mdx`)?.state ?? "committed");
   /** The header's More menu — the button it hangs from while open. */
@@ -484,11 +493,41 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
     setNotice(`Deleted ${result.paths.join(", ")} — the text stays in the editor, unsaved, until you start a new article.`);
   };
 
+  /**
+   * An image written beside the article, as a PGN file is, and shown where
+   * the caret is: its import at the top (`withImageImport`; a file the
+   * article imports already keeps its name), an `<img>` — in a `<figure>`
+   * with its caption — in place. The preview shows it at once, from the
+   * file itself.
+   */
+  const addImage = async (step: Extract<SaveStep, { kind: "image" }>) => {
+    const { image, overwrite } = step;
+    const path = pathIn(folder, image.fileName);
+    setBusy(true);
+    const result = await writeStorageFile(path, await base64Of(image.file), overwrite, "base64");
+    setBusy(false);
+    if (result.kind === "down") return setDown(step);
+    if (result.kind === "exists") return setConflict({ path, step: { ...step, overwrite: true } });
+    if (result.kind === "refused") return setImageError(result.message);
+    setAttached((before) => ({ ...before, [path]: URL.createObjectURL(image.file) }));
+    git.refresh();
+    const name = articleAssetsOf(draft.body).find((asset) => asset.file === `./${image.fileName}`)?.name ?? image.name;
+    // Words in JSX: as a string expression, so a quote or a brace in them stays words.
+    const img = `<img src={${name}} alt={${JSON.stringify(image.alt)}} style={{ maxWidth: "100%" }} />`;
+    const code = image.caption === "" ? img : `<figure>\n  ${img}\n  <figcaption>{${JSON.stringify(image.caption)}}</figcaption>\n</figure>`;
+    const caret = sourceRef.current?.selectionStart ?? draft.body.length;
+    setDraft((current) => ({ ...current, body: withImageImport(insertBlock(current.body, caret, code), name, image.fileName) }));
+    setImageOpen(false);
+    setTab("content");
+    setNotice(`Added ${path} and showed it where the cursor was.`);
+  };
+
   const run = (step: SaveStep) => {
     if (step.kind === "save") return draft.file === "" ? openSaveDialog() : write(draft.file, true);
     if (step.kind === "save-as") return openSaveDialog();
     if (step.kind === "write") return write(step.file, step.overwrite);
     if (step.kind === "delete") return deleteFiles(step.paths);
+    if (step.kind === "image") return addImage(step);
     return addPgns(step);
   };
 
@@ -520,6 +559,19 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
             </Button>
             <Button size="small" variant="outlined" startIcon={<WidgetsRoundedIcon />} onClick={() => setAddComponent({})} disabled={busy} data-testid="mdx-editor-add-component">
               Add component
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<AddPhotoAlternateOutlinedIcon />}
+              onClick={() => {
+                setImageError(undefined);
+                setImageOpen(true);
+              }}
+              disabled={busy}
+              data-testid="mdx-editor-add-image"
+            >
+              Add image
             </Button>
             <Box aria-hidden sx={{ alignSelf: "stretch", borderInlineStart: 1, borderColor: "divider", mx: 0.5, my: 0.5 }} />
             {/* Where it goes. */}
@@ -655,6 +707,22 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
       )}
       {deleteOpen && draft.file !== "" && (
         <DeleteArticleDialog open onClose={() => setDeleteOpen(false)} file={draft.file} body={draft.body} gitFiles={gitFiles} onDelete={(paths) => void run({ kind: "delete", paths })} busy={busy} />
+      )}
+      {imageOpen && (
+        <AddImageDialog
+          open
+          onClose={() => setImageOpen(false)}
+          hasFile={draft.file !== ""}
+          folder={folder}
+          body={draft.body}
+          onAdd={(image) => void run({ kind: "image", image, overwrite: false })}
+          onSaveFirst={() => {
+            setImageOpen(false);
+            void run({ kind: "save-as" });
+          }}
+          busy={busy}
+          error={imageError}
+        />
       )}
       <GitStatusDialog open={gitOpen} onClose={() => setGitOpen(false)} status={git.status} onRefresh={git.refresh} />
       {addComponent !== undefined && (

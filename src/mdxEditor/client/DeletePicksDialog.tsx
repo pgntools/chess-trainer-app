@@ -47,7 +47,8 @@ function Paths({ paths }: { paths: readonly string[] }) {
  */
 function DeletePicksDialog({ open, onClose, plan, gitFiles, onConfirm, busy, error }: DeletePicksDialogProps) {
   const deleted = deletedFilesOf(plan);
-  const pgnsGoing = deleted.filter((path) => path.endsWith(".pgn"));
+  // The PGN files and images that go: an article that stays and imports one would no longer build.
+  const pgnsGoing = deleted.filter((path) => /\.(?:pgn|png|jpe?g|webp|gif)$/i.test(path));
   /** Each PGN that goes, and the articles that stay and import it — `undefined` while asked. */
   const [broken, setBroken] = useState<{ pgn: string; importers: string[] }[]>();
   useEffect(() => {
@@ -62,7 +63,7 @@ function DeletePicksDialog({ open, onClose, plan, gitFiles, onConfirm, busy, err
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const notInGit = gitFiles === undefined ? [] : deleted.filter((path) => gitFiles.some((file) => file.path === path && file.state === "new"));
-  const count = plan.folders.length + plan.articles.length + plan.pgns.length;
+  const count = plan.folders.length + plan.articles.length + plan.pgns.length + plan.images.length;
 
   return (
     <ConfirmDialog
@@ -95,6 +96,7 @@ function DeletePicksDialog({ open, onClose, plan, gitFiles, onConfirm, busy, err
               {[
                 plural(plan.inFolders.articles.length, "article file"),
                 plural(plan.inFolders.pgns.length, "PGN file"),
+                ...(plan.inFolders.images.length > 0 ? [plural(plan.inFolders.images.length, "image")] : []),
                 ...(plan.inFolders.others.length > 0 ? [`${plural(plan.inFolders.others.length, "other file")} (${plan.inFolders.others.map((path) => path.split("/").at(-1)).join(", ")})`] : []),
               ].join(", ")}
             </Typography>
@@ -127,9 +129,17 @@ function DeletePicksDialog({ open, onClose, plan, gitFiles, onConfirm, busy, err
             <Paths paths={plan.pgns} />
           </Box>
         )}
+        {plan.images.length > 0 && (
+          <Box data-testid={`${ID}-images`}>
+            <Typography variant="subtitle2" component="h3">
+              {plural(plan.images.length, "image")}
+            </Typography>
+            <Paths paths={plan.images} />
+          </Box>
+        )}
         {broken === undefined ? (
           <Typography role="status" variant="body2" color="text.secondary">
-            Asking which articles import the PGN files…
+            Asking which articles import the PGN files and images…
           </Typography>
         ) : (
           broken.length > 0 && (

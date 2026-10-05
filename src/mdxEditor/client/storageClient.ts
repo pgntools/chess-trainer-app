@@ -53,14 +53,18 @@ export const listStorageFolders = async (): Promise<{ kind: "folders"; folders: 
   return { kind: "folders", folders: body.folders ?? [] };
 };
 
-/** `path` (under `articles/`, `.mdx` or `.pgn`) written with `content`, over a file already there only with `overwrite`. */
-export const writeStorageFile = async (path: string, content: string, overwrite = false): Promise<WriteResult> => {
+/**
+ * `path` (under `articles/`: `.mdx`, `.pgn` or an image) written with
+ * `content` — an image's bytes as base64 (`encoding`) — over a file already
+ * there only with `overwrite`.
+ */
+export const writeStorageFile = async (path: string, content: string, overwrite = false, encoding?: "base64"): Promise<WriteResult> => {
   let response: Response;
   try {
     response = await fetch(`${STORAGE_URL}/files`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path, content, overwrite }),
+      body: JSON.stringify({ path, content, overwrite, ...(encoding === undefined ? {} : { encoding }) }),
     });
   } catch {
     return { kind: "down" };
@@ -134,4 +138,12 @@ export const deleteStorageFiles = async (
   if (!response.ok) return { kind: "refused", message: await errorOf(response) };
   const body = (await response.json()) as { deleted?: string[]; deletedFolders?: string[] };
   return { kind: "deleted", paths: body.deleted ?? [], folders: body.deletedFolders ?? [] };
+};
+
+/** A file's bytes as base64 — how an image travels to the service. */
+export const base64Of = async (file: Blob): Promise<string> => {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  for (let start = 0; start < bytes.length; start += 0x8000) binary += String.fromCharCode(...bytes.subarray(start, start + 0x8000));
+  return btoa(binary);
 };

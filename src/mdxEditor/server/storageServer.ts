@@ -3,7 +3,8 @@
  * `yarn mdx-editor:start` (`start.ts`) beside Vite.
  *
  * A small local server the MDX editor (`/dev/mdx-editor`) saves through: it
- * writes an article's `.mdx`, or a `.pgn` an article imports, straight into
+ * writes an article's `.mdx`, or a `.pgn` or an image (`.png`, `.jpg`,
+ * `.webp`, `.gif`) an article imports, straight into
  * `src/views/blog/articles/`, where Vite's watcher picks it up. Node alone
  * (`node:http`, run as TypeScript by Node's own type stripping) — no
  * dependency, and nothing of it ships.
@@ -19,14 +20,15 @@
  *                    or { available: false, reason } outside a checkout.
  *                    Read only: it runs `git status` on articles/ alone, and
  *                    nothing from the request reaches the command.
- *   GET  /importers?path=<a .pgn> → { importers: [<.mdx>…] } — the articles
- *                    that import it (`import x from "./….pgn?raw"`)
+ *   GET  /importers?path=<a .pgn or an image> → { importers: [<.mdx>…] } —
+ *                    the articles that import it
  *   DELETE /files  { paths, folders? } → { deleted, deletedFolders } — each
  *                    path an existing .mdx or .pgn file, each folder an
  *                    existing folder under articles/ (never articles/ itself),
  *                    deleted with everything in it; all checked before any
  *                    goes
- *   PUT  /files    { path, content, overwrite? } → 201 { written, created, foldersCreated }
+ *   PUT  /files    { path, content, encoding?, overwrite? } → 201 { written, created, foldersCreated }
+ *                    — `encoding: "base64"` for an image's bytes
  *                    409 { error, exists: path } when the file is there and
  *                    `overwrite` is not set
  *
@@ -67,6 +69,11 @@ const SEGMENT = /^[a-z0-9][a-z0-9-]*$/;
 const MDX_NAME = /^[a-z0-9][a-z0-9-]*(?:\.[a-z]{2})?\.mdx$/;
 /** A PGN's name: letters, digits, dots, dashes and underscores, `.pgn`. */
 const PGN_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*\.pgn$/;
+/** An image an article shows: a PNG, a JPEG, a WebP or a GIF. */
+const IMAGE = /\.(?:png|jpe?g|webp|gif)$/i;
+const IMAGE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpe?g|webp|gif)$/i;
+/** The files the service lists, writes and deletes: an article, a PGN, an image. */
+const ARTICLE_FILE = /\.(?:mdx|pgn|png|jpe?g|webp|gif)$/i;
 
 export type StorageRequest = {
   method: string;
@@ -145,11 +152,12 @@ export const resolveArticlePath = (root: string, path: unknown): { absolute: str
   if (parts.some((part) => part === ".." || part === "." || part === "")) throw new Refused(`${path}: leaves articles/ or has an empty folder — give it as folder/name.`);
   const name = parts.at(-1) ?? "";
   const folders = parts.slice(0, -1);
-  if (!name.endsWith(".mdx") && !name.endsWith(".pgn")) throw new Refused(`${path}: only .mdx and .pgn files are written.`);
+  if (!ARTICLE_FILE.test(name)) throw new Refused(`${path}: only .mdx, .pgn and image (.png, .jpg, .webp, .gif) files are written.`);
   const bad = folders.find((folder) => !SEGMENT.test(folder));
   if (bad !== undefined) throw new Refused(`${path}: the folder "${bad}" is not a Blog name — lower-case words and dashes.`);
   if (name.endsWith(".mdx") && !MDX_NAME.test(name)) throw new Refused(`${path}: "${name}" is not an article's name — lower-case words and dashes, then .mdx (.he.mdx for a translation).`);
   if (name.endsWith(".pgn") && !PGN_NAME.test(name)) throw new Refused(`${path}: "${name}" is not a PGN's name — letters, digits, dots, dashes and underscores.`);
+  if (IMAGE.test(name) && !IMAGE_NAME.test(name)) throw new Refused(`${path}: "${name}" is not an image's name — letters, digits, dots, dashes and underscores.`);
 
   const base = resolve(root);
   const absolute = resolve(base, ...parts);
@@ -270,10 +278,10 @@ export const listFolders = (root: string): StorageFolder[] => {
   const walk = (path: string) => {
     const dir = join(root, ...path.split("/").filter(Boolean));
     const entries = readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));
-    const files = entries.filter((entry) => entry.isFile() && /\.(?:mdx|pgn)$/.test(entry.name)).map((entry) => entry.name);
+    const files = entries.filter((entry) => entry.isFile() && ARTICLE_FILE.test(entry.name)).map((entry) => entry.name);
     const articles = Object.fromEntries(files.filter((name) => name.endsWith(".mdx")).map((name) => [name, factsOf(join(dir, name))]));
     const title = articles["index.mdx"]?.title;
-    const others = entries.filter((entry) => entry.isFile() && !/\.(?:mdx|pgn)$/.test(entry.name)).map((entry) => entry.name);
+    const others = entries.filter((entry) => entry.isFile() && !ARTICLE_FILE.test(entry.name)).map((entry) => entry.name);
     folders.push({ path, ...(title === undefined ? {} : { title }), files, articles, others });
     for (const entry of entries) if (entry.isDirectory() && SEGMENT.test(entry.name)) walk(path === "" ? entry.name : `${path}/${entry.name}`);
   };
@@ -282,9 +290,9 @@ export const listFolders = (root: string): StorageFolder[] => {
 };
 
 /**
- * The articles that import a PGN file — every `.mdx` under `root` with an
- * `import <name> from "<relative path>.pgn?raw"` that, read from its own
- * folder, names `pgnPath` (relative to `root`).
+ * The articles that import a PGN or an image — every `.mdx` under `root`
+ * with an `import <name> from "<relative path>.pgn?raw"` (or `.png`, …)
+ * that, read from its own folder, names `pgnPath` (relative to `root`).
  */
 const importersOf = (root: string, pgnPath: string): string[] => {
   const importers: string[] = [];
@@ -292,7 +300,7 @@ const importersOf = (root: string, pgnPath: string): string[] => {
     for (const file of folder.files.filter((name) => name.endsWith(".mdx"))) {
       const path = folder.path === "" ? file : `${folder.path}/${file}`;
       const text = readFileSync(join(root, ...path.split("/")), "utf8");
-      for (const match of text.matchAll(/^\s*import\s+[A-Za-z_$][\w$]*\s+from\s+["']([^"'\n]+\.pgn)\?raw["']/gm)) {
+      for (const match of text.matchAll(/^\s*import\s+[A-Za-z_$][\w$]*\s+from\s+["']([^"'\n]+\.(?:pgn|png|jpe?g|webp|gif))(?:\?raw)?["']/gim)) {
         const parts = folder.path === "" ? [] : folder.path.split("/");
         for (const part of match[1].split("/")) {
           if (part === "." || part === "") continue;
@@ -382,7 +390,7 @@ export const createStorageHandler = ({ root, origins, git }: StorageOptions) => 
     }
     if (request.method === "PUT" && route === "/files") {
       if (!(request.contentType ?? "").startsWith("application/json")) return json(415, { error: "A write is JSON: { path, content, overwrite? }." }, cors);
-      let payload: { path?: unknown; content?: unknown; overwrite?: unknown };
+      let payload: { path?: unknown; content?: unknown; encoding?: unknown; overwrite?: unknown };
       try {
         payload = JSON.parse(request.body ?? "") as typeof payload;
       } catch {
@@ -405,7 +413,8 @@ export const createStorageHandler = ({ root, origins, git }: StorageOptions) => 
           writeFileSync(join(dir, "index.mdx"), stubIndexOf(folder.at(-1) ?? ""));
           foldersCreated.push(folder.join("/"));
         }
-        writeFileSync(absolute, payload.content);
+        // An image arrives as base64; anything else is the text itself.
+        writeFileSync(absolute, payload.encoding === "base64" ? Buffer.from(payload.content, "base64") : payload.content);
         return json(exists ? 200 : 201, { written: path, created: !exists, foldersCreated }, cors);
       } catch (error) {
         if (error instanceof Refused) return json(400, { error: error.message }, cors);

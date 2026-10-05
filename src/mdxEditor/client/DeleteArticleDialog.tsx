@@ -6,7 +6,7 @@ import { ConfirmDialog } from "../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../design-system/components/feedback";
 import { CheckboxField } from "../../design-system/components/forms";
 import { folderOf } from "./articleSources";
-import { articlePgnsOf } from "./pgnImports";
+import { articleAssetsOf } from "./pgnImports";
 import { ARTICLES_DIR, listStorageFolders, readImporters, type GitFile } from "./storageClient";
 
 const ID = "mdx-editor-delete";
@@ -44,7 +44,7 @@ const pathFrom = (folder: string, specifier: string): string | undefined => {
 /**
  * **Delete an article** (CTA-137) — the file being edited, asked about
  * first. Its **translations** go with it (a translation without its English
- * file fails the build), listed; the **PGN files it imports** are offered
+ * file fails the build), listed; the **PGN files and images it imports** are offered
  * one by one, off to begin with, and one another article imports too is
  * kept, saying which. Whether git can bring them back is said: a file git
  * has never had is gone for good.
@@ -55,8 +55,8 @@ function DeleteArticleDialog({ open, onClose, file, body, gitFiles, onDelete, bu
   const english = !/\.[a-z]{2}$/.test(name);
   const [translations, setTranslations] = useState<string[]>();
   const [pgns, setPgns] = useState<ImportedPgn[]>(() =>
-    articlePgnsOf(body).flatMap((pgn) => {
-      const path = pgn.kind === "file" ? pathFrom(folder, pgn.file) : undefined;
+    articleAssetsOf(body).flatMap((asset) => {
+      const path = pathFrom(folder, asset.file);
       return path === undefined ? [] : [{ path, others: undefined }];
     }),
   );
@@ -137,7 +137,7 @@ function DeleteArticleDialog({ open, onClose, file, body, gitFiles, onDelete, bu
         {pgns.length > 0 && (
           <Box data-testid={`${ID}-pgns`} sx={{ display: "grid", gap: 0.5 }}>
             <Typography variant="subtitle2" component="h3">
-              The PGN files it imports
+              The PGN files and images it imports
             </Typography>
             {pgns.map((pgn) => (
               <CheckboxField

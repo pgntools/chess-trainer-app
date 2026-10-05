@@ -9,7 +9,7 @@ import type { StorageFolder } from "./storageClient";
  *   inside another picked one is taken with it;
  * - an **article** goes with its **translations** (`x.he.mdx` beside
  *   `x.mdx`): the build refuses a translation whose English file is gone;
- * - a **PGN** goes alone;
+ * - a **PGN** or an **image** goes alone;
  * - anything inside a folder that goes is the folder's, not counted twice.
  */
 
@@ -17,12 +17,13 @@ export type DeletionPlan = {
   /** The folders to delete, each the topmost picked — with everything under them. */
   folders: string[];
   /** Files under those folders, by kind — what the confirmation says goes with them. */
-  inFolders: { articles: string[]; pgns: string[]; others: string[] };
+  inFolders: { articles: string[]; pgns: string[]; images: string[]; others: string[] };
   /** The articles picked outside them, and the translations that go with them. */
   articles: string[];
   translations: string[];
-  /** The PGN files picked outside them. */
+  /** The PGN files and the images picked outside them. */
   pgns: string[];
+  images: string[];
   /** Every file deleted outside the folders — what the service's `paths` is. */
   files: string[];
 };
@@ -41,10 +42,10 @@ export const deletionPlanOf = (picked: Iterable<string>, folders: readonly Stora
   const topFolders = pickedFolders.filter((path) => !pickedFolders.some((other) => other !== path && under(path, other))).sort();
   const covered = (path: string) => topFolders.some((folder) => path.startsWith(`${folder}/`));
 
-  const inFolders = { articles: [] as string[], pgns: [] as string[], others: [] as string[] };
+  const inFolders = { articles: [] as string[], pgns: [] as string[], images: [] as string[], others: [] as string[] };
   for (const folder of folders) {
     if (!topFolders.some((top) => under(folder.path, top))) continue;
-    for (const file of folder.files) (file.endsWith(".mdx") ? inFolders.articles : inFolders.pgns).push(join(folder.path, file));
+    for (const file of folder.files) (file.endsWith(".mdx") ? inFolders.articles : file.endsWith(".pgn") ? inFolders.pgns : inFolders.images).push(join(folder.path, file));
     for (const file of folder.others ?? []) inFolders.others.push(join(folder.path, file));
   }
 
@@ -62,15 +63,17 @@ export const deletionPlanOf = (picked: Iterable<string>, folders: readonly Stora
     }
   }
   const pgns = picks.filter((pick) => pick.kind === "pgn" && !covered(pick.path)).map((pick) => pick.path);
+  const images = picks.filter((pick) => pick.kind === "image" && !covered(pick.path)).map((pick) => pick.path);
   return {
     folders: topFolders,
     inFolders,
     articles,
     translations: [...translations].sort(),
     pgns,
-    files: [...articles, ...translations, ...pgns],
+    images,
+    files: [...articles, ...translations, ...pgns, ...images],
   };
 };
 
 /** Every file the plan deletes — inside its folders and out. */
-export const deletedFilesOf = (plan: DeletionPlan): string[] => [...plan.inFolders.articles, ...plan.inFolders.pgns, ...plan.inFolders.others, ...plan.files];
+export const deletedFilesOf = (plan: DeletionPlan): string[] => [...plan.inFolders.articles, ...plan.inFolders.pgns, ...plan.inFolders.images, ...plan.inFolders.others, ...plan.files];

@@ -11,7 +11,7 @@ import type { StorageFolder } from "./storageClient";
 
 const folders: StorageFolder[] = [
   { path: "", files: ["get-started.he.mdx", "get-started.mdx"] },
-  { path: "club", files: ["index.mdx", "night.mdx", "night.he.mdx", "games.pgn"], others: ["cover.png"] },
+  { path: "club", files: ["index.mdx", "night.mdx", "night.he.mdx", "games.pgn", "cover.png"], others: ["notes.txt"] },
   { path: "club/winter", files: ["index.mdx", "round.pgn"] },
   { path: "tournaments", files: ["cup.mdx", "cup.he.mdx", "cup.pgn"] },
 ];
@@ -23,7 +23,8 @@ describe("deletionPlanOf", () => {
     expect(plan.inFolders).toEqual({
       articles: ["club/index.mdx", "club/night.mdx", "club/night.he.mdx", "club/winter/index.mdx"],
       pgns: ["club/games.pgn", "club/winter/round.pgn"],
-      others: ["club/cover.png"],
+      images: ["club/cover.png"],
+      others: ["club/notes.txt"],
     });
     // The article inside the folder is the folder's, not counted twice.
     expect(plan.files).toEqual([]);
