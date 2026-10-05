@@ -68,8 +68,8 @@ describe("the front page — one MDX article (CTA-126)", () => {
     expect(store.getOwnHeadings()).toBe(1);
     // A Markdown link to a path of the app is a router link.
     expect(screen.getByRole("link", { name: "Library" })).toHaveAttribute("href", "/library");
-    // In yarn dev, its article opens in the MDX editor from beside the title.
-    expect(screen.getByRole("link", { name: "Edit in the MDX editor" })).toHaveAttribute("href", "/dev/mdx-editor?article=get-started");
+    // No edit link beside the title: the MDX editor's lobby has the articles' Edit (CTA-137).
+    expect(screen.queryByRole("link", { name: "Edit in the MDX editor" })).not.toBeInTheDocument();
     await settled();
   });
 
