@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
@@ -16,7 +16,7 @@ import { libraryGamePathOf } from "../../home/frontPage/paths";
 import { CATALOG, catalogFor, componentOf, type LibraryGame, type MovesLine } from "./componentCatalog";
 import { SnippetPreview } from "./mdxPreview";
 import { IDENTIFIER, namesIn, pgnDefinitionsIn, pgnImportName } from "./pgnImports";
-import { GAMES_PER_PAGE, HUGE_PGN_CHARS, movesLineOf, pgnPagesOf } from "./pgnPages";
+import { BIG_PGN_BYTES, GAMES_PER_PAGE, movesLineOf, pgnBytesOf, pgnPagesOf, sizeOf } from "./pgnPages";
 
 /** A PGN's file name — what the storage service takes. */
 const PGN_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]*\.pgn$/;
@@ -113,8 +113,12 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
   const taken = namesIn(body);
   const [tab, setTab] = useState<"pgn" | "output">("pgn");
   const [kind, setKind] = useState<SourceKind>("pgn");
-  const [how, setHow] = useState<PgnHolding>(hasFile ? "file" : "inline");
+  const [chosenHow, setHow] = useState<PgnHolding>(hasFile ? "file" : "inline");
   const [text, setText] = useState("");
+  // A big PGN goes in only as a file: inline it would be compiled on every keystroke, and kept with the draft.
+  const bytes = useMemo(() => pgnBytesOf(text), [text]);
+  const big = bytes > BIG_PGN_BYTES;
+  const how: PgnHolding = big ? "file" : chosenHow;
   const [fileName, setFileName] = useState("");
   const [name, setName] = useState("");
   /** A big upload shown in part: its pages, and how many of them are shown. The whole file is still what is added. */
@@ -155,7 +159,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
     const uploaded = await file.text();
     setText(uploaded);
     // A big file: enough of it to see how it is written, not all of it in the box.
-    const paged = uploaded.length > HUGE_PGN_CHARS ? pgnPagesOf(uploaded) : undefined;
+    const paged = pgnBytesOf(uploaded) > BIG_PGN_BYTES ? pgnPagesOf(uploaded) : undefined;
     setCut(paged !== undefined && paged.pages.length > 1 ? { ...paged, shown: 1 } : undefined);
     setFileName(file.name);
     setName(pgnImportName(file.name, taken));
@@ -281,20 +285,24 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                     row
                     options={[
                       { value: "file", label: "As a file" },
-                      { value: "inline", label: "Inline" },
+                      { value: "inline", label: `Inline — up to ${sizeOf(BIG_PGN_BYTES)}`, disabled: big },
                     ]}
                     value={how}
                     onChange={setHow}
                     help={
-                      how === "file"
-                        ? "A .pgn beside the article, written now by the storage service and imported — best for a long game or a whole event."
-                        : "Written into the content as export const — nothing to save but the article."
+                      big
+                        ? `This PGN is ${sizeOf(bytes)} — over ${sizeOf(BIG_PGN_BYTES)} it goes in as a file beside the article, never written into the content.`
+                        : how === "file"
+                          ? "A .pgn beside the article, written now by the storage service and imported — best for a long game or a whole event."
+                          : "Written into the content as export const — nothing to save but the article."
                     }
                     testId={`${ID}-how`}
                   />
                   {how === "file" && !hasFile && (
                     <InlineAlert severity="info" title="The article has no folder yet" testId={`${ID}-no-folder`}>
-                      A file goes beside the article: save the article first, or add the PGN inline.
+                      {big
+                        ? `A file goes beside the article: save the article first — at ${sizeOf(bytes)} this PGN is too big to add inline.`
+                        : "A file goes beside the article: save the article first, or add the PGN inline."}
                     </InlineAlert>
                   )}
                   <TextInputField
@@ -423,7 +431,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: "1 1 220px", minWidth: 0 }}>
                         <ContentCutRoundedIcon fontSize="small" aria-hidden sx={{ color: "text.secondary" }} />
                         <Typography variant="body2" id={`${ID}-cut`}>
-                          {`Cut here — showing ${Math.min(cut.shown * GAMES_PER_PAGE, cut.games).toLocaleString()} of ${cut.games.toLocaleString()} games (${(text.length / 1024 / 1024).toFixed(1)} MB). The whole file is what is added.`}
+                          {`Cut here — showing ${Math.min(cut.shown * GAMES_PER_PAGE, cut.games).toLocaleString()} of ${cut.games.toLocaleString()} games (${sizeOf(bytes)}). The whole file is what is added.`}
                         </Typography>
                       </Box>
                       <Box sx={{ flex: "1 1 200px", minWidth: 160 }}>

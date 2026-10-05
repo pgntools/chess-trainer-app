@@ -25,6 +25,7 @@ import { PREVIEW_COMPONENTS, useCompiled, whereOf } from "./useCompiled";
 import AddPgnDialog, { type PgnToAdd } from "./AddPgnDialog";
 import { insertBlock } from "./componentCatalog";
 import { withInlinePgn, withPgnImports } from "./pgnImports";
+import { BIG_PGN_BYTES, pgnBytesOf, sizeOf } from "./pgnPages";
 import { starterFrontmatter, todayIso } from "./metadataYaml";
 import SaveArticleDialog from "./SaveArticleDialog";
 import { STARTER_DOCUMENT } from "./starterDocument";
@@ -340,6 +341,8 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   /** A PGN from the Add PGN dialog: written beside the article and imported, or written into the content. */
   const addPgn = ({ how, name, fileName, text }: PgnToAdd) => {
     if (how === "file") return void run({ kind: "pgn", folder, files: [{ file: fileName, text, name }], overwrite: [], into: "article" });
+    // Never a big PGN inline: the dialog offers none, and this holds it whatever asks.
+    if (pgnBytesOf(text) > BIG_PGN_BYTES) return setNotice(`A PGN over ${sizeOf(BIG_PGN_BYTES)} goes in as a file beside the article, not inline.`);
     setDraft((current) => ({ ...current, body: withInlinePgn(current.body, name, text) }));
     const message = `Wrote the PGN into the content as ${name}: give it to a component as pgn={${name}}.`;
     setNotice(message);

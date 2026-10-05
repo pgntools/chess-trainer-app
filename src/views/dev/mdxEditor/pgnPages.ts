@@ -6,8 +6,19 @@ import { parsePgnGames, splitPgnGames } from "../../../lib/pgn";
  * and adds it whole. A page is a run of whole games.
  */
 
-/** Above this many characters an uploaded PGN is shown cut. */
-export const HUGE_PGN_CHARS = 100_000;
+/**
+ * **100 KB** — above it a PGN is big: an upload is shown cut, and it can go
+ * into an article only as a file beside it, never inline — written into
+ * the content, it is compiled on every keystroke, kept with the draft and
+ * read back on every reload.
+ */
+export const BIG_PGN_BYTES = 100 * 1024;
+
+/** A PGN's size in bytes, as a file of it would be. */
+export const pgnBytesOf = (text: string): number => new TextEncoder().encode(text).length;
+
+/** A size for a sentence: `1.7 MB`, `84 KB`. */
+export const sizeOf = (bytes: number): string => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
 /** How many games make a page. */
 export const GAMES_PER_PAGE = 10;
