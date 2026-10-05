@@ -396,7 +396,9 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           variant="outlined"
           startIcon={<UploadFileRoundedIcon />}
           onClick={() => {
+            // A fresh dialog: step 1 again, nothing added yet.
             setAddPgnError(undefined);
+            setPgnAdded(undefined);
             setAddPgnOpen(true);
           }}
           disabled={busy}

@@ -46,11 +46,14 @@ export const pgnNamesIn = (body: string): string[] =>
  * Every PGN the body binds, as the source that binds it — each
  * `import x from "./….pgn?raw"` line and each `export const x = \`…\``
  * literal, whole — so a piece of MDX put after them reads the article's
- * PGNs by their names (the Add PGN dialog's preview). `lines`: how many
- * lines they take, with the blank line after them.
+ * PGNs by their names (the Add PGN dialog's preview); only those `names`
+ * bind, when given. `lines`: how many lines they take, with the blank line
+ * after them.
  */
-export const pgnDefinitionsIn = (body: string): { source: string; lines: number } => {
-  const found = [...body.matchAll(/^[ \t]*(?:import\s+[A-Za-z_$][\w$]*\s+from\s+["'][^"'\n]+\.pgn\?raw["'];?|export\s+const\s+[A-Za-z_$][\w$]*\s*=\s*`(?:\\[\s\S]|[^`\\])*`)/gm)].map((match) => match[0].trim());
+export const pgnDefinitionsIn = (body: string, names?: readonly string[]): { source: string; lines: number } => {
+  const found = [...body.matchAll(/^[ \t]*(?:import\s+[A-Za-z_$][\w$]*\s+from\s+["'][^"'\n]+\.pgn\?raw["'];?|export\s+const\s+[A-Za-z_$][\w$]*\s*=\s*`(?:\\[\s\S]|[^`\\])*`)/gm)]
+    .map((match) => match[0].trim())
+    .filter((definition) => names === undefined || names.includes(/^(?:import|export\s+const)\s+([A-Za-z_$][\w$]*)/.exec(definition)?.[1] ?? ""));
   if (found.length === 0) return { source: "", lines: 0 };
   const source = `${found.join("\n")}\n\n`;
   return { source, lines: source.split("\n").length - 1 };

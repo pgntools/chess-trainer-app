@@ -11,7 +11,7 @@ import { PickerList } from "../../../design-system/components/lists";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 import { COMPONENT_EXAMPLES } from "./componentCatalog";
 import { SnippetPreview } from "./mdxPreview";
-import { IDENTIFIER, namesIn, pgnDefinitionsIn, pgnImportName, pgnNamesIn } from "./pgnImports";
+import { IDENTIFIER, namesIn, pgnDefinitionsIn, pgnImportName } from "./pgnImports";
 
 /** A PGN's file name — what the storage service takes. */
 const PGN_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]*\.pgn$/;
@@ -57,7 +57,7 @@ type AddPgnDialogProps = {
   hasFile: boolean;
   /** The article's folder under `articles/`, where a PGN file goes. */
   folder: string;
-  /** The article's content — the names it binds (a new PGN may take none of them), and the PGNs the examples read. */
+  /** The article's content — the names it binds, which a new PGN may take none of, and where the PGNs added here are defined. */
   body: string;
   /** PGNs written this session, by path under `articles/` — the preview reads them before the build's glob has caught up. */
   attached: Readonly<Record<string, string>>;
@@ -74,7 +74,8 @@ type AddPgnDialogProps = {
 
 /**
  * **Add PGN** (CTA-137) — the MDX editor's way to give an article a game
- * and show it, in two tabs.
+ * and show it, in two steps: step 2 opens once step 1 has added a PGN, and
+ * reads only the PGNs added here — never one the content had already.
  *
  * - **PGN file**: upload a `.pgn` or paste one, name it, and choose how the
  *   article holds it — **as a file** beside the article (written by the
@@ -94,7 +95,6 @@ type AddPgnDialogProps = {
  */
 function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, onInsert, busy, added, error }: AddPgnDialogProps) {
   const taken = namesIn(body);
-  const pgnNames = pgnNamesIn(body);
   const [tab, setTab] = useState<"pgn" | "output">("pgn");
   const [how, setHow] = useState<PgnHolding>(hasFile ? "file" : "inline");
   const [text, setText] = useState("");
@@ -102,11 +102,14 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
   const [name, setName] = useState("");
   const [component, setComponent] = useState<string>();
   const [chosenPgn, setChosenPgn] = useState<string>();
+  /** The PGNs added in this dialog, in order — what step 2 offers; until there is one, it is closed. */
+  const [names, setNames] = useState<string[]>([]);
 
-  // A PGN added: the Output element tab, reading it, and the form cleared for the next.
+  // A PGN added: step 2, reading it, and the form cleared for the next.
   const [seenSeq, setSeenSeq] = useState(added?.seq);
   if (added !== undefined && added.seq !== seenSeq) {
     setSeenSeq(added.seq);
+    setNames((before) => [...before.filter((known) => known !== added.name), added.name]);
     setTab("output");
     setChosenPgn(added.name);
     setText("");
@@ -131,8 +134,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
   const blocked = text.trim() === "" || nameProblem !== undefined || fileProblem !== undefined || (how === "file" && !hasFile) || busy;
   const path = `${folder === "" ? "" : `${folder}/`}${theFile}`;
 
-  const names = [...new Set([...pgnNames, ...(added === undefined ? [] : [added.name])])];
-  const pgn = chosenPgn !== undefined && names.includes(chosenPgn) ? chosenPgn : (names.at(-1) ?? "games");
+  const pgn = chosenPgn !== undefined && names.includes(chosenPgn) ? chosenPgn : (names.at(-1) ?? "");
   const example = COMPONENT_EXAMPLES.find((candidate) => candidate.name === component);
   const items = (usesPgn: boolean) =>
     COMPONENT_EXAMPLES.filter((candidate) => candidate.usesPgn === usesPgn).map((candidate) => ({
@@ -146,8 +148,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
     }));
 
   // What the preview compiles: the content's PGNs, then the code — which reads them by name.
-  const definitions = pgnDefinitionsIn(body);
-  const previewless = example?.usesPgn === true && names.length === 0;
+  const definitions = pgnDefinitionsIn(body, names);
 
   // The code on the right: the picked example, for the reader to adjust before copying or inserting it.
   const exampleCode = example?.code(pgn) ?? "";
@@ -186,11 +187,12 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
     >
       <PanelTabs
         tabs={[
-          { id: "pgn", label: "PGN file" },
-          { id: "output", label: "Output element" },
+          { id: "pgn", label: "1. PGN file" },
+          // Step 2 opens once there is a PGN to show.
+          { id: "output", label: "2. Output element", disabled: names.length === 0 },
         ]}
         value={tab}
-        onChange={(id) => setTab(id === "output" ? "output" : "pgn")}
+        onChange={(id) => setTab(id === "output" && names.length > 0 ? "output" : "pgn")}
         size="compact"
         fullWidth={false}
         ariaLabel="Add PGN"
@@ -305,13 +307,19 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                 borderColor: { md: "divider" },
               }}
             >
-              {names.length === 0 ? (
-                <StatusText tone="neutral" testId={`${ID}-no-pgn`}>
-                  The article has no PGN yet — add one in the PGN file tab. The examples read it as games.
+              {names.length === 1 ? (
+                <StatusText tone="neutral" testId={`${ID}-reading`}>
+                  <>
+                    {"The examples read "}
+                    <Box component="code" dir="ltr">
+                      {pgn}
+                    </Box>
+                    {" — the PGN just added."}
+                  </>
                 </StatusText>
               ) : (
                 <SelectField
-                  label="The PGN the examples read"
+                  label="The PGN the examples read — added here"
                   value={pgn}
                   onChange={setChosenPgn}
                   options={names.map((value) => ({ value, label: value }))}
@@ -376,26 +384,20 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                     )}
                   </Box>
                   <Typography variant="subtitle2" component="h3" id={`${ID}-preview-label`}>
-                    {previewless ? "Preview" : `Preview — reading ${pgn}`}
+                    {`Preview — reading ${pgn}`}
                   </Typography>
                   <Box
                     role="region"
                     aria-labelledby={`${ID}-preview-label`}
                     sx={{ flex: 1, minHeight: 240, overflowY: "auto", p: 2, border: 1, borderColor: "divider", borderRadius: 1, bgcolor: "background.default" }}
                   >
-                    {previewless ? (
-                      <StatusText tone="neutral" testId={`${ID}-preview-none`}>
-                        The article has no PGN for it to read yet — add one in the PGN file tab to see it here.
-                      </StatusText>
-                    ) : (
-                      <SnippetPreview
-                        source={`${definitions.source}${code}`}
-                        folder={folder}
-                        attached={attached}
-                        lineOffset={definitions.lines}
-                        testId={`${ID}-preview`}
-                      />
-                    )}
+                    <SnippetPreview
+                      source={`${definitions.source}${code}`}
+                      folder={folder}
+                      attached={attached}
+                      lineOffset={definitions.lines}
+                      testId={`${ID}-preview`}
+                    />
                   </Box>
                 </>
               )}
