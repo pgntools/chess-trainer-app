@@ -3,10 +3,11 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import ContentCutRoundedIcon from "@mui/icons-material/ContentCutRounded";
 
 import { BaseDialog } from "../../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
-import { FileInputButton, RadioGroupField, SelectField, TextInputField } from "../../../design-system/components/forms";
+import { FileInputButton, RadioGroupField, SelectField, SliderField, TextInputField } from "../../../design-system/components/forms";
 import { PickerList } from "../../../design-system/components/lists";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 import { libraryGameReference, loadReferencedGames, resolveGameReference } from "../../../lib/gameReference";
@@ -14,6 +15,7 @@ import { libraryGamePathOf } from "../../home/frontPage/paths";
 import { LIBRARY_EXAMPLES, PGN_EXAMPLES, type ComponentExample, type LibraryGame } from "./componentCatalog";
 import { SnippetPreview } from "./mdxPreview";
 import { IDENTIFIER, namesIn, pgnDefinitionsIn, pgnImportName } from "./pgnImports";
+import { GAMES_PER_PAGE, HUGE_PGN_CHARS, pgnPagesOf } from "./pgnPages";
 
 /** A PGN's file name — what the storage service takes. */
 const PGN_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]*\.pgn$/;
@@ -111,6 +113,8 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
   const [text, setText] = useState("");
   const [fileName, setFileName] = useState("");
   const [name, setName] = useState("");
+  /** A big upload shown in part: its pages, and how many of them are shown. The whole file is still what is added. */
+  const [cut, setCut] = useState<{ pages: string[]; games: number; shown: number }>();
   const [address, setAddress] = useState("");
   const [lookup, setLookup] = useState<{ looking: true } | { looking: false; problem: string }>();
   /** The Library game found last — its PGN shown beside the address. */
@@ -132,12 +136,17 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
     setSeenSeq(added.seq);
     addSource({ kind: "pgn", id: added.name, name: added.name });
     setText("");
+    setCut(undefined);
     setFileName("");
     setName("");
   }
 
   const upload = async (file: File) => {
-    setText(await file.text());
+    const uploaded = await file.text();
+    setText(uploaded);
+    // A big file: enough of it to see how it is written, not all of it in the box.
+    const paged = uploaded.length > HUGE_PGN_CHARS ? pgnPagesOf(uploaded) : undefined;
+    setCut(paged !== undefined && paged.pages.length > 1 ? { ...paged, shown: 1 } : undefined);
     setFileName(file.name);
     setName(pgnImportName(file.name, taken));
   };
@@ -389,11 +398,55 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                     data-testid={`${ID}-text`}
                     dir="ltr"
                     spellCheck={false}
-                    value={text}
+                    // Cut, the box is a view of the file: read only, so what it shows never stands for what is added.
+                    readOnly={cut !== undefined}
+                    aria-describedby={cut === undefined ? undefined : `${ID}-cut`}
+                    value={cut === undefined ? text : cut.pages.slice(0, cut.shown).join("\n\n")}
                     placeholder={'[Event "…"]\n\n1. e4 e5 …'}
                     onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setText(event.target.value)}
-                    sx={TEXTAREA_SX}
+                    sx={cut === undefined ? TEXTAREA_SX : { ...TEXTAREA_SX, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}
                   />
+                  {cut !== undefined && (
+                    <Box
+                      data-testid={`${ID}-cut`}
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        gap: 2,
+                        mt: -0.5,
+                        px: 1.5,
+                        py: 1,
+                        border: 1,
+                        borderTop: "1px dashed",
+                        borderColor: "divider",
+                        borderBottomLeftRadius: 4,
+                        borderBottomRightRadius: 4,
+                        bgcolor: "action.hover",
+                      }}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: "1 1 220px", minWidth: 0 }}>
+                        <ContentCutRoundedIcon fontSize="small" aria-hidden sx={{ color: "text.secondary" }} />
+                        <Typography variant="body2" id={`${ID}-cut`}>
+                          {`Cut here — showing ${Math.min(cut.shown * GAMES_PER_PAGE, cut.games).toLocaleString()} of ${cut.games.toLocaleString()} games (${(text.length / 1024 / 1024).toFixed(1)} MB). The whole file is what is added.`}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ flex: "1 1 200px", minWidth: 160 }}>
+                        <SliderField
+                          label="Pages shown"
+                          value={cut.shown}
+                          onChange={(shown) => setCut({ ...cut, shown })}
+                          min={1}
+                          max={cut.pages.length}
+                          valueLabel={`${cut.shown} / ${cut.pages.length}`}
+                          testId={`${ID}-pages`}
+                        />
+                      </Box>
+                      <Button size="small" onClick={() => setCut(undefined)} data-testid={`${ID}-show-all`}>
+                        Show all
+                      </Button>
+                    </Box>
+                  )}
                 </>
               ) : found === undefined ? (
                 <StatusText tone="neutral" testId={`${ID}-game-pgn-none`}>
