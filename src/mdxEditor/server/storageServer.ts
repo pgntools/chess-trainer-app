@@ -91,7 +91,7 @@ export type StorageOptions = {
 
 /** A folder under `articles/`, as `GET /folders` lists it. */
 /** An article file's frontmatter, as much as a list needs: its title, its date, whether it is a draft. */
-export type ArticleFacts = { title?: string; date?: string; draft?: boolean };
+type ArticleFacts = { title?: string; date?: string; draft?: boolean };
 
 export type StorageFolder = {
   path: string;
@@ -164,7 +164,7 @@ export const resolveArticlePath = (root: string, path: unknown): { absolute: str
 
 /** A file of articles/ that git has not got as it is. */
 export type GitFileState = "new" | "changed" | "deleted" | "renamed";
-export type GitFile = { path: string; state: GitFileState; bytes?: number };
+type GitFile = { path: string; state: GitFileState; bytes?: number };
 
 /**
  * `git status --porcelain=v1 -z` read: each entry's state and its path
@@ -196,7 +196,7 @@ const runGit =
     execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 16 * 1024 * 1024 });
 
 /** What git has not got of the articles folder — or why it cannot say. */
-export const gitStatusOf = (root: string, git: (args: readonly string[]) => string = runGit(root)) => {
+const gitStatusOf = (root: string, git: (args: readonly string[]) => string = runGit(root)) => {
   try {
     const prefix = git(["rev-parse", "--show-prefix"]).trim();
     const branch = git(["rev-parse", "--abbrev-ref", "HEAD"]).trim();
@@ -259,7 +259,7 @@ export const listFolders = (root: string): StorageFolder[] => {
  * `import <name> from "<relative path>.pgn?raw"` that, read from its own
  * folder, names `pgnPath` (relative to `root`).
  */
-export const importersOf = (root: string, pgnPath: string): string[] => {
+const importersOf = (root: string, pgnPath: string): string[] => {
   const importers: string[] = [];
   for (const folder of listFolders(root)) {
     for (const file of folder.files.filter((name) => name.endsWith(".mdx"))) {

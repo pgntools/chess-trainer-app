@@ -12,8 +12,7 @@ import MdxEditor from "./MdxEditor";
  * `yarn mdx-editor:start`, so it — and the MDX compiler it loads — never
  * ships.
  *
- * `?article=<file>` (an article's edit icon, `../ArticleEditLink`, or the
- * lobby's Edit) opens that article file, `?new` (the lobby's New article)
+ * `?article=<file>` (the lobby's Edit) opens that article file, `?new` (the lobby's New article)
  * starts a new one; once done the parameter is dropped, so a reload keeps
  * the edited draft rather than opening it afresh.
  */

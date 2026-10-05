@@ -9,14 +9,11 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
-import WarningAmberRounded from "@mui/icons-material/WarningAmberRounded";
 import { Link as RouterLink, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { LabelChip } from "../../design-system/components/tables";
 import { asAppLanguage } from "../../i18n";
 import { InLanguage } from "../../theme/InLanguage";
-import { MDX_EDITOR_ENABLED } from "../../mdxEditor/enabled";
-import { useUnsyncedNavIds } from "../../mdxEditor/navMarks";
 import {
   folderChain,
   folderPath,
@@ -37,12 +34,10 @@ type RowProps = {
   expanded: (id: string) => boolean;
   pathname: string;
   onToggle: (id: string) => void;
-  /** The rows to mark "not synced with git" — the MDX editor's (`src/mdxEditor/navMarks.ts`); empty without it. */
-  unsynced: ReadonlySet<string>;
 };
 
 /** One row, plus — for a folder — its collapsible body, recursively. */
-function TreeRow({ node, depth, expanded, pathname, onToggle, unsynced }: RowProps) {
+function TreeRow({ node, depth, expanded, pathname, onToggle }: RowProps) {
   const { t, i18n } = useTranslation();
   const Icon = node.icon;
   /*
@@ -59,10 +54,6 @@ function TreeRow({ node, depth, expanded, pathname, onToggle, unsynced }: RowPro
     indent leftwards, which `paddingLeft` would not do.
   */
   const paddingInlineStart = indentOf(depth);
-  // A Blog row holding a file git has not got — only under the MDX editor; the words are its hover title and its name.
-  const unsyncedMark = MDX_EDITOR_ENABLED && unsynced.has(node.id) ? (
-    <WarningAmberRounded fontSize="small" titleAccess="Not synced with git" data-testid={`nav-unsynced-${node.id}`} sx={{ color: "warning.main", flexShrink: 0 }} />
-  ) : null;
 
   if (node.kind === "screen") {
     // Exact match rather than a prefix test: a `startsWith` check would light up
@@ -98,7 +89,6 @@ function TreeRow({ node, depth, expanded, pathname, onToggle, unsynced }: RowPro
             }}
           />
           {node.draft === true && <LabelChip label={t("blog.draft")} tone="warning" testId={`nav-draft-${node.id}`} />}
-          {unsyncedMark}
         </ListItemButton>
       </ListItem>
     );
@@ -127,7 +117,6 @@ function TreeRow({ node, depth, expanded, pathname, onToggle, unsynced }: RowPro
             primary: { sx: { fontWeight: 700, color: "text.primary" } },
           }}
         />
-        {unsyncedMark}
         {open ? (
           <ExpandLessRounded fontSize="small" sx={{ color: "text.secondary" }} />
         ) : (
@@ -150,7 +139,6 @@ function TreeRow({ node, depth, expanded, pathname, onToggle, unsynced }: RowPro
               expanded={expanded}
               pathname={pathname}
               onToggle={onToggle}
-              unsynced={unsynced}
             />
           ))}
         </List>
@@ -172,7 +160,6 @@ function TreeRow({ node, depth, expanded, pathname, onToggle, unsynced }: RowPro
 function SidebarLinks({ tree: given }: { tree?: NavTreeNode[] }) {
   const { pathname } = useLocation();
   const { t } = useTranslation();
-  const unsynced = useUnsyncedNavIds();
 
   /*
     `navTree()` is a walk over a few dozen nodes; memoising it keeps the
@@ -230,7 +217,6 @@ function SidebarLinks({ tree: given }: { tree?: NavTreeNode[] }) {
         expanded={expanded}
         pathname={pathname}
         onToggle={toggle}
-        unsynced={unsynced}
       />
     ));
 

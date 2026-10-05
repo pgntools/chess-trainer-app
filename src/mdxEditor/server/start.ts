@@ -3,8 +3,8 @@
  * **`yarn mdx-editor:start`** (CTA-137) — the MDX editor, in one command:
  * its storage service (`storageServer.ts`) and Vite's dev server with the
  * editor compiled in (`VITE_MDX_EDITOR=1`, read by `../enabled.ts`). Plain
- * `yarn dev` has no editor — no route, no sidebar entry, no edit icon on an
- * article — and a production build never has one.
+ * `yarn dev` has no editor — no route, no sidebar folder — and a production
+ * build never has one.
  *
  *   yarn mdx-editor:start              Vite on this checkout's port (.env.local's VITE_DEV_PORT, else Vite's own)
  *   yarn mdx-editor:start --port 5300  any of Vite's own flags, passed on

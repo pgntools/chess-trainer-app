@@ -15,7 +15,7 @@ let status: GitStatus | undefined;
 const listeners = new Set<() => void>();
 
 /** Ask the service again; every reader hears the answer. */
-export const refreshGitStatus = (): void => {
+const refreshGitStatus = (): void => {
   void readGitStatus().then((next) => {
     status = next;
     for (const listener of listeners) listener();
