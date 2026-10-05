@@ -43,6 +43,7 @@ nothing is fetched or compiled in the browser.
 
 **A large PGN** (CTA-128) — every tournament table takes `load={() => import("./event.pgn?raw")}` in place of `pgn={…}`: the file becomes a chunk of its own, fetched when the page opens, the table reading meanwhile. Use it for a file of a megabyte or more (the Olympiad article's 5 MB files). `rowsPerPage="25"` (or 50, 100, 250) pages any of the tables.
 | `<NavCards />` | `headingLevel?: 2 \| 3` (default `2`) | every screen as a card, by section — built from `navTree()`, so a screen added to `navItems` appears with no edit here. Alone, it is the landing page as it was before CTA-126 |
+| `<ArticleImage />` | `src={…}` (`import photo from "./photo.png"` beside the article), `alt?` (`""` decorative), `caption?`, `width?` (`"60%"` of the column), `maxHeight?` (`"50vh"` of the window), `align?: "start" \| "center" \| "end"`, `fit?: "contain" \| "cover"`, `rounded?`, `border?`, `shadow?`, `link?` (opens full size) | an image in an article, lazy, in a figure with its caption (CTA-137) — the MDX editor's Add image writes it and its Image props sets it |
 
 **`showNextMoveArrow`** — every board above takes it: `showNextMoveArrow={false}` draws no arrows to the next moves over the board (the moves stay in its list, and an `<InlinePgnGame>`'s drawn `[%cal]` arrows still show). On by default.
 

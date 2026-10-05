@@ -1,5 +1,6 @@
 import type { MDXComponents } from "mdx/types";
 
+import { ArticleImage } from "./ArticleImage";
 import { BoardRow } from "./BoardRow";
 import { CollectionCard } from "./CollectionCard";
 import { CollectionGameBoard } from "./CollectionGameBoard";
@@ -42,6 +43,7 @@ import { TeamStandingsEmbed } from "./TeamStandingsEmbed";
  * | `<CollectionTeamStandingsTable _id="/library/<c>" teamLink gameLink />` | a Library collection's team standings — a team linked to its players' games, each round's match to its first board (CTA-128) |
  * | `<TeamStandingsTable pgn={games} />` | a team tournament's standings: board points per round, match points, board points (CTA-128) |
  * | `<NavCards />` | every screen as a card, by section — the landing page before CTA-126 |
+ * | `<ArticleImage src={photo} alt="…" width="60%" caption="…" />` | an image beside the article (`import photo from "./photo.png"`) — its width, height, place, fit, corners, border, shadow and a full-size link (CTA-137) |
  *
  * A component the document names that is not here fails the page at render
  * (MDX's own check), so a new one is a line in this map — and a row in the
@@ -75,4 +77,5 @@ export const mdxComponents: MDXComponents = {
   CollectionDoubleEliminationBracket: CollectionDoubleEliminationEmbed,
   CollectionTeamStandingsTable: CollectionTeamStandingsEmbed,
   NavCards,
+  ArticleImage,
 };

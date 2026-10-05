@@ -20,7 +20,10 @@ type FieldBase = {
 
 /** One prop as a field: words, a number, on or off, or one of a few. */
 export type SettingField =
-  | (FieldBase & { kind: "text"; placeholder?: string })
+  /** `keepEmpty`: an empty value is written (`alt=""` — a decorative image), not left out. */
+  | (FieldBase & { kind: "text"; placeholder?: string; keepEmpty?: boolean })
+  /** A size as a slider: `<n><unit>` (`60%`, `50vh`); `none` is the component's own — the prop is left out there. */
+  | (FieldBase & { kind: "slider"; min: number; max: number; step: number; unit: "%" | "vh"; none: number })
   | (FieldBase & { kind: "number"; placeholder?: string })
   /** `on` is the component's own default — the prop is written only when it differs. */
   | (FieldBase & { kind: "switch"; on: boolean })
@@ -61,6 +64,27 @@ const losersFromRound: SettingField = {
 };
 const playerLink: SettingField = { prop: "playerLink", kind: "switch", on: true, label: "Names link to their games", help: "Each name opens the collection filtered by that player." };
 const gameLink: SettingField = { prop: "gameLink", kind: "switch", on: true, label: "Results link to the game", help: "Each result opens its game on the Library's board." };
+
+/** `<ArticleImage>`'s look — what Add image sets before the image goes in. */
+export const IMAGE_APPEARANCE: readonly SettingField[] = [
+  { prop: "width", kind: "slider", label: "Width", min: 10, max: 100, step: 5, unit: "%", none: 100, help: "Of the article's column." },
+  { prop: "maxHeight", kind: "slider", label: "Height at most", min: 10, max: 100, step: 5, unit: "vh", none: 100, help: "Of the window's height — 100 for no limit." },
+  {
+    prop: "align",
+    kind: "choice",
+    label: "Placed",
+    none: "In the middle",
+    options: [
+      { value: "start", label: "At the start of the line" },
+      { value: "end", label: "At its end" },
+    ],
+  },
+  { prop: "fit", kind: "choice", label: "Kept to its height by", none: "Showing all of it", options: [{ value: "cover", label: "Cropping it to fill" }] },
+  { prop: "rounded", kind: "switch", on: false, label: "Rounded corners" },
+  { prop: "border", kind: "switch", on: false, label: "A thin border" },
+  { prop: "shadow", kind: "switch", on: false, label: "A shadow" },
+  { prop: "link", kind: "switch", on: false, label: "Opens full size on a click", help: "In a new tab." },
+];
 
 /** Every component's settings, by its name — the ones Add component offers. */
 export const SETTINGS: Readonly<Record<string, readonly SettingField[]>> = {
@@ -127,10 +151,15 @@ export const SETTINGS: Readonly<Record<string, readonly SettingField[]>> = {
   // The mocks — a sketch of what they would take.
   PlayerGames: [{ prop: "player", kind: "text", label: "The player", placeholder: "Carlsen, Magnus", help: "As the PGN's White and Black tags name them." }],
   PuzzleBoard: [{ prop: "hideNextMoves", kind: "switch", on: false, label: "Next moves hidden", help: "Each shown once the reader plays it on the board." }],
+  ArticleImage: [
+    { prop: "alt", kind: "text", keepEmpty: true, label: "Alt text", help: "What the image shows, for a reader who cannot see it. Empty: decorative, said by no one." },
+    { prop: "caption", kind: "text", label: "Caption", help: "A line under the image, seen by everyone." },
+    ...IMAGE_APPEARANCE,
+  ],
 };
 
 /** One prop as written: its name, and its value — a string, an expression's source, or a bare prop (true). */
-type Attribute = { prop: string; value: { string: string } | { expression: string } | { bare: true } };
+export type Attribute = { prop: string; value: { string: string } | { expression: string } | { bare: true } };
 
 /** A component's markup, read: its name and its props in order — `undefined` for anything but one self-closing element. */
 export const elementOf = (code: string): { component: string; attributes: Attribute[] } | undefined => {
@@ -173,6 +202,11 @@ const attributeOf = (field: SettingField, value: string | boolean | undefined): 
     if (typeof value !== "boolean" || value === field.on) return undefined;
     return value ? field.prop : `${field.prop}={false}`;
   }
+  if (field.kind === "slider") {
+    const number = typeof value === "string" ? Number.parseFloat(value) : Number.NaN;
+    return Number.isNaN(number) || number === field.none ? undefined : `${field.prop}="${number}${field.unit}"`;
+  }
+  if (field.kind === "text" && field.keepEmpty === true && typeof value === "string" && value.trim() === "") return `${field.prop}=""`;
   if (typeof value !== "string" || value.trim() === "") return undefined;
   // A string with a double quote in it cannot be an attribute's quoted text: it is written as a string expression.
   return value.includes('"') ? `${field.prop}={${JSON.stringify(value)}}` : `${field.prop}="${value}"`;
@@ -190,4 +224,32 @@ export const writeElement = (component: string, attributes: readonly Attribute[]
     .map(({ prop, value }) => ("bare" in value ? prop : "string" in value ? `${prop}="${value.string}"` : `${prop}={${value.expression}}`));
   const set = fields.map((field) => attributeOf(field, values[field.prop])).filter((attribute): attribute is string => attribute !== undefined);
   return `<${component}${[...kept, ...set].map((attribute) => ` ${attribute}`).join("")} />`;
+};
+
+/**
+ * Every `<name … />` in the body — where it starts and ends, and its
+ * markup — read past quotes and braces, so a `>` inside an attribute's
+ * text (`caption={"a > b"}`) does not end it. Only self-closing elements.
+ */
+export const elementsIn = (body: string, name: string): { start: number; end: number; code: string }[] => {
+  const found: { start: number; end: number; code: string }[] = [];
+  const opening = new RegExp(`<${name}(?=[\\s/>])`, "g");
+  for (const match of body.matchAll(opening)) {
+    let depth = 0;
+    let quote: string | undefined;
+    for (let index = match.index + match[0].length; index < body.length; index += 1) {
+      const char = body[index];
+      if (quote !== undefined) {
+        if (char === "\\") index += 1;
+        else if (char === quote) quote = undefined;
+      } else if (char === '"' || char === "'") quote = char;
+      else if (char === "{") depth += 1;
+      else if (char === "}") depth -= 1;
+      else if (depth === 0 && char === ">") {
+        if (body[index - 1] === "/") found.push({ start: match.index, end: index + 1, code: body.slice(match.index, index + 1) });
+        break;
+      }
+    }
+  }
+  return found;
 };

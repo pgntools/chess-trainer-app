@@ -7,7 +7,10 @@ import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternate
 import { BaseDialog } from "../../design-system/components/dialogs";
 import { InlineAlert } from "../../design-system/components/feedback";
 import { CheckboxField, FileInputButton, TextInputField } from "../../design-system/components/forms";
+import { ArticleImage } from "../../views/home/frontPage/ArticleImage";
+import { IMAGE_APPEARANCE, SETTINGS, writeElement, type SettingValues } from "./componentSettings";
 import { COLUMNS, SIDE_COLUMN } from "./dialogLayout";
+import { SettingsFields } from "./SettingsForm";
 import { IDENTIFIER, namesIn, pgnImportName } from "./pgnImports";
 import { sizeOf } from "./pgnPages";
 
@@ -17,8 +20,20 @@ const IMAGE_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpe?g|webp|gif)$/i;
 /** The images an article takes — what the build bundles and every browser shows. */
 const ACCEPT = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
 
-/** An image the reader adds: the file, its name beside the article, the name the article binds it to, its alt text and its caption. */
-export type ImageToAdd = { file: File; fileName: string; name: string; alt: string; caption: string };
+/** An image the reader adds: the file, its name beside the article, the name the article binds it to, and the `<ArticleImage>` that shows it. */
+export type ImageToAdd = { file: File; fileName: string; name: string; code: string };
+
+/** The appearance's values as `<ArticleImage>`'s props — for the preview. */
+const appearanceProps = (values: SettingValues) => ({
+  width: typeof values.width === "string" ? values.width : undefined,
+  maxHeight: typeof values.maxHeight === "string" && values.maxHeight !== "100vh" ? values.maxHeight : undefined,
+  align: values.align === "start" ? ("start" as const) : values.align === "end" ? ("end" as const) : undefined,
+  fit: values.fit === "cover" ? ("cover" as const) : undefined,
+  rounded: values.rounded === true,
+  border: values.border === true,
+  shadow: values.shadow === true,
+  link: values.link === true,
+});
 
 type AddImageDialogProps = {
   open: boolean;
@@ -51,7 +66,10 @@ const cleanName = (name: string): string => {
  * **Add image** (CTA-137) — an image beside the article, written by the
  * storage service as a PGN is (so the lobby lists it and deletes it), and
  * shown where the caret is: `import <name> from "./<file>"` at the top, an
- * `<img src={<name>} alt="…" />` in place. Its **alt text** is asked for —
+ * `<ArticleImage src={<name>} alt="…" />` in place, its **appearance** set
+ * here (`IMAGE_APPEARANCE`: width and height as sliders, place, fit,
+ * corners, border, shadow, a full-size link) and seen in the preview as the
+ * article will show it. Its **alt text** is asked for —
  * what a screen reader says of it (WCAG 1.1.1) — or the image marked as
  * decorative, which says nothing. An article with no folder yet is saved
  * first.
@@ -64,6 +82,8 @@ function AddImageDialog({ open, onClose, hasFile, folder, body, onAdd, onSaveFir
   const [alt, setAlt] = useState("");
   const [decorative, setDecorative] = useState(false);
   const [caption, setCaption] = useState("");
+  /** How it looks — `<ArticleImage>`'s width, height, place, fit, corners, border, shadow, link. */
+  const [appearance, setAppearance] = useState<SettingValues>({});
   // The picked image, shown — its object URL let go once another is picked or the dialog closes.
   const [preview, setPreview] = useState<string>();
   useEffect(() => {
@@ -104,7 +124,15 @@ function AddImageDialog({ open, onClose, hasFile, folder, body, onAdd, onSaveFir
           </Button>
           <Button
             variant="contained"
-            onClick={() => file !== undefined && onAdd({ file, fileName, name: theName, alt: decorative ? "" : alt.trim(), caption: caption.trim() })}
+            onClick={() =>
+              file !== undefined &&
+              onAdd({
+                file,
+                fileName,
+                name: theName,
+                code: writeElement("ArticleImage", [{ prop: "src", value: { expression: theName } }], SETTINGS.ArticleImage, { ...appearance, alt: decorative ? "" : alt.trim(), caption: caption.trim() }),
+              })
+            }
             disabled={blocked}
             aria-busy={busy || undefined}
             data-testid={`${ID}-add`}
@@ -166,6 +194,10 @@ function AddImageDialog({ open, onClose, hasFile, folder, body, onAdd, onSaveFir
             helperText={nameProblem ?? `What the markup reads: <img src={${theName === "" ? "…" : theName}} />.`}
             testId={`${ID}-name`}
           />
+          <Typography variant="subtitle2" component="h3">
+            Appearance
+          </Typography>
+          <SettingsFields fields={IMAGE_APPEARANCE} values={appearance} onChange={(prop, value) => setAppearance((before) => ({ ...before, [prop]: value }))} testId={`${ID}-appearance`} />
           {error !== undefined && (
             <InlineAlert severity="error" title="The service would not write it" testId={`${ID}-error`}>
               {error}
@@ -176,23 +208,14 @@ function AddImageDialog({ open, onClose, hasFile, folder, body, onAdd, onSaveFir
           <Typography variant="subtitle2" component="h3">
             Preview
           </Typography>
-          <Box
-            sx={{ flex: 1, minHeight: 240, display: "grid", placeItems: "center", p: 2, border: 1, borderColor: "divider", borderRadius: 1, bgcolor: "background.default", overflow: "auto" }}
-            data-testid={`${ID}-preview`}
-          >
+          <Box sx={{ flex: 1, minHeight: 240, p: 2, border: 1, borderColor: "divider", borderRadius: 1, bgcolor: "background.default", overflow: "auto" }} data-testid={`${ID}-preview`}>
             {preview === undefined ? (
               <Typography variant="body2" color="text.secondary">
                 Choose an image to see it here.
               </Typography>
             ) : (
-              <Box component="figure" sx={{ m: 0, display: "grid", gap: 1, justifyItems: "center" }}>
-                <Box component="img" src={preview} alt={decorative ? "" : alt} sx={{ maxWidth: "100%", maxHeight: 420, objectFit: "contain" }} />
-                {caption.trim() !== "" && (
-                  <Typography component="figcaption" variant="body2" color="text.secondary">
-                    {caption}
-                  </Typography>
-                )}
-              </Box>
+              // As the article will show it: the component itself, the picked file its image.
+              <ArticleImage src={preview} alt={decorative ? "" : alt} caption={caption.trim()} {...appearanceProps(appearance)} />
             )}
           </Box>
         </Box>

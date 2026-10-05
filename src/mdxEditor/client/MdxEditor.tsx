@@ -12,6 +12,7 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import SyncProblemRoundedIcon from "@mui/icons-material/SyncProblemRounded";
 import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DriveFileMoveOutlinedIcon from "@mui/icons-material/DriveFileMoveOutlined";
@@ -40,6 +41,8 @@ import { PreviewBoundary } from "./mdxPreview";
 import { PREVIEW_COMPONENTS, useCompiled, whereOf } from "./useCompiled";
 import AddComponentDialog from "./AddComponentDialog";
 import AddImageDialog, { type ImageToAdd } from "./AddImageDialog";
+import { elementsIn } from "./componentSettings";
+import ImagePropsDialog from "./ImagePropsDialog";
 import AddPgnDialog, { type PgnToAdd } from "./AddPgnDialog";
 import { insertBlock } from "./componentCatalog";
 import { articleAssetsOf, articlePgnsOf, usesOf, withImageImport, withInlinePgn, withoutPgn, withPgnImports } from "./pgnImports";
@@ -83,7 +86,8 @@ import { useScrollSync } from "./useScrollSync";
  * - **The header** (CTA-137): the title, and the actions in one toolbar at
  *   its inline end — what goes into the content (Add PGN, Add component,
  *   Add image — `AddImageDialog`: an image beside the article, its alt
- *   text asked for, shown where the caret is),
+ *   text asked for, shown where the caret is as an `<ArticleImage>`; Image
+ *   props — `ImagePropsDialog`: an image of the content's, its settings),
  *   then where it goes (Save as…, Save), the rest under More (New article,
  *   Copy MDX, Download .mdx, Delete article… — `DeleteArticleDialog`: the
  *   file, its translations with it, the PGN files only it imports if
@@ -201,6 +205,7 @@ const NOTICE_ICONS: readonly [RegExp, typeof InfoOutlinedIcon][] = [
   [/^Downloaded /, DownloadRoundedIcon],
   [/^Inserted /, WidgetsRoundedIcon],
   [/^Added \S+\.(?:png|jpe?g|webp|gif) /i, AddPhotoAlternateOutlinedIcon],
+  [/^Updated the image/, TuneRoundedIcon],
   [/^(Added |Wrote the PGN)/, UploadFileRoundedIcon],
   [/^(Removed|Deleted) /, DeleteOutlineRoundedIcon],
   [/^Moved the /, DriveFileMoveOutlinedIcon],
@@ -231,6 +236,9 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
   const [imageError, setImageError] = useState<string>();
+  /** Image props: open, on the caret it opened at. */
+  const [imageProps, setImageProps] = useState<{ caret: number }>();
+  const hasImages = elementsIn(draft.body, "ArticleImage").length > 0;
   const gitFiles = git.status?.kind === "status" ? git.status.files : undefined;
   const fileInGit = draft.file === "" || gitFiles === undefined ? undefined : (gitFiles.find((candidate) => candidate.path === `${draft.file}.mdx`)?.state ?? "committed");
   /** The header's More menu — the button it hangs from while open. */
@@ -496,8 +504,8 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
   /**
    * An image written beside the article, as a PGN file is, and shown where
    * the caret is: its import at the top (`withImageImport`; a file the
-   * article imports already keeps its name), an `<img>` — in a `<figure>`
-   * with its caption — in place. The preview shows it at once, from the
+   * article imports already keeps its name), its `<ArticleImage>` — as
+   * the dialog set it — in place. The preview shows it at once, from the
    * file itself.
    */
   const addImage = async (step: Extract<SaveStep, { kind: "image" }>) => {
@@ -511,10 +519,9 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
     if (result.kind === "refused") return setImageError(result.message);
     setAttached((before) => ({ ...before, [path]: URL.createObjectURL(image.file) }));
     git.refresh();
+    // A file the article imports already keeps the name it has there.
     const name = articleAssetsOf(draft.body).find((asset) => asset.file === `./${image.fileName}`)?.name ?? image.name;
-    // Words in JSX: as a string expression, so a quote or a brace in them stays words.
-    const img = `<img src={${name}} alt={${JSON.stringify(image.alt)}} style={{ maxWidth: "100%" }} />`;
-    const code = image.caption === "" ? img : `<figure>\n  ${img}\n  <figcaption>{${JSON.stringify(image.caption)}}</figcaption>\n</figure>`;
+    const code = image.code.replace(`src={${image.name}}`, `src={${name}}`);
     const caret = sourceRef.current?.selectionStart ?? draft.body.length;
     setDraft((current) => ({ ...current, body: withImageImport(insertBlock(current.body, caret, code), name, image.fileName) }));
     setImageOpen(false);
@@ -572,6 +579,16 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
               data-testid="mdx-editor-add-image"
             >
               Add image
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<TuneRoundedIcon />}
+              onClick={() => setImageProps({ caret: sourceRef.current?.selectionStart ?? 0 })}
+              disabled={busy || !hasImages}
+              data-testid="mdx-editor-image-props"
+            >
+              Image props
             </Button>
             <Box aria-hidden sx={{ alignSelf: "stretch", borderInlineStart: 1, borderColor: "divider", mx: 0.5, my: 0.5 }} />
             {/* Where it goes. */}
@@ -707,6 +724,22 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
       )}
       {deleteOpen && draft.file !== "" && (
         <DeleteArticleDialog open onClose={() => setDeleteOpen(false)} file={draft.file} body={draft.body} gitFiles={gitFiles} onDelete={(paths) => void run({ kind: "delete", paths })} busy={busy} />
+      )}
+      {imageProps !== undefined && (
+        <ImagePropsDialog
+          open
+          onClose={() => setImageProps(undefined)}
+          body={draft.body}
+          caret={imageProps.caret}
+          folder={folder}
+          attached={attached}
+          onApply={(start, end, code) => {
+            setDraft((current) => ({ ...current, body: `${current.body.slice(0, start)}${code}${current.body.slice(end)}` }));
+            setImageProps(undefined);
+            setTab("content");
+            setNotice("Updated the image's settings.");
+          }}
+        />
       )}
       {imageOpen && (
         <AddImageDialog

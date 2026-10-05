@@ -8,7 +8,7 @@ import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 
 import { BaseDialog } from "../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../design-system/components/feedback";
-import { RadioGroupField, SelectField, SwitchField, TextInputField } from "../../design-system/components/forms";
+import { RadioGroupField, TextInputField } from "../../design-system/components/forms";
 import { TreeView, type TreeNode } from "../../design-system/patterns/trees";
 import { libraryGameReference, loadReferencedGames, resolveGameReference } from "../../lib/gameReference";
 import { loadUploadedCollections, loadUploadedGames } from "../../lib/libraryCollectionStore";
@@ -19,9 +19,9 @@ import { guessTournamentKind, type TournamentGuess } from "./tournamentKind";
 import { collectionPathOf, libraryGamePathOf } from "../../views/home/frontPage/paths";
 import { articleImportResolver } from "./articleSources";
 import { CATALOG, catalogFor, componentOf, TOURNAMENT_ENTRY, type ExampleSource, type LibraryGame, type MovesLine } from "./componentCatalog";
-import { elementOf, SETTINGS, valuesOf, writeElement, type SettingField } from "./componentSettings";
 import { COLUMNS, ELLIPSIS, SIDE_COLUMN, TEXTAREA_SX } from "./dialogLayout";
 import { SnippetPreview } from "./mdxPreview";
+import SettingsForm from "./SettingsForm";
 import { articlePgnsOf, pgnDefinitionsIn, type ArticlePgn } from "./pgnImports";
 import { movesLineOf, pgnBytesOf, sizeOf } from "./pgnPages";
 
@@ -83,80 +83,6 @@ const textOf = async (pgn: ArticlePgn, folder: string, attached: Readonly<Record
   const key = resolver.keyOf(`${pgn.file}?raw`);
   return key === undefined ? undefined : resolver.load(key);
 };
-
-/**
- * **The component's settings, as a form** — read from the code and written
- * back to it (`componentSettings.ts`), so the code stays the one source: a
- * change here rewrites it, and the code typed by hand shows here.
- */
-function SettingsForm({ code, onCode }: { code: string; onCode: (code: string) => void }) {
-  const element = elementOf(code);
-  const fields = element === undefined ? undefined : SETTINGS[element.component];
-  if (element === undefined) {
-    return (
-      <StatusText tone="neutral" testId={`${ID}-settings-none`}>
-        The code is not one component the form can read — several of them, or one half typed. Its settings show here again once it is.
-      </StatusText>
-    );
-  }
-  if (fields === undefined || fields.length === 0) {
-    return (
-      <StatusText tone="neutral" testId={`${ID}-settings-none`}>
-        {`<${element.component}> has no settings to set here — its code is all there is.`}
-      </StatusText>
-    );
-  }
-  const values = valuesOf(element.attributes, fields);
-  const set = (prop: string, value: string | boolean) => onCode(writeElement(element.component, element.attributes, fields, { ...values, [prop]: value }));
-  const fieldOf = (field: SettingField) => {
-    const testId = `${ID}-setting-${field.prop}`;
-    const value = values[field.prop];
-    if (field.kind === "switch") {
-      return (
-        <Box key={field.prop}>
-          <SwitchField label={field.label} checked={typeof value === "boolean" ? value : field.on} onChange={(checked) => set(field.prop, checked)} size="small" testId={testId} />
-          {field.help !== undefined && (
-            <Typography variant="caption" color="text.secondary" component="p">
-              {field.help}
-            </Typography>
-          )}
-        </Box>
-      );
-    }
-    if (field.kind === "choice") {
-      return (
-        <SelectField
-          key={field.prop}
-          label={field.label}
-          value={typeof value === "string" ? value : ""}
-          onChange={(chosen) => set(field.prop, chosen)}
-          options={field.options}
-          emptyOption={field.none}
-          helperText={field.help}
-          testId={testId}
-        />
-      );
-    }
-    return (
-      <TextInputField
-        key={field.prop}
-        label={field.label}
-        value={typeof value === "string" ? value : ""}
-        onChange={(typed) => set(field.prop, typed)}
-        type={field.kind === "number" ? "number" : "text"}
-        placeholder={field.placeholder}
-        dir="ltr"
-        helperText={field.help}
-        testId={testId}
-      />
-    );
-  };
-  return (
-    <Box data-testid={`${ID}-settings`} sx={{ display: "grid", gap: 1.5 }}>
-      {fields.map(fieldOf)}
-    </Box>
-  );
-}
 
 /**
  * **Add component** (CTA-137) — a component that shows a game, put into
@@ -498,7 +424,7 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
                     Settings
                   </Typography>
                   <Box sx={{ minHeight: 0, overflowY: { lg: "auto" }, pe: { lg: 1 } }}>
-                    <SettingsForm code={code} onCode={setCode} />
+                    <SettingsForm code={code} onCode={setCode} testId={`${ID}-settings`} />
                   </Box>
                 </Box>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minHeight: 0 }}>
