@@ -83,5 +83,5 @@ Gallery: `/dev/design/patterns/trees/TreeView` and
   row marked; nothing on screen, the branches closed; long names (an
   ellipsis).
 - **Used by** — none yet; it was born as the MDX editor's article picker
-  (`views/dev/mdxEditor/`), which moved to a typed autocomplete
+  (`src/mdxEditor/client/`), which moved to a typed autocomplete
   (`SelectAutocomplete`) once its articles grew past browsing.

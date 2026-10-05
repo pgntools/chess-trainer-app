@@ -2,11 +2,11 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
-import { asAppLanguage } from "../../../i18n";
-import { articleImageFile, languageAwareOptions, shareImageOf, type ShareImage, type ShareImageLevel } from "../../../lib/shareImage";
-import { SITE_SHARE_IMAGE, shareSectionImage, SHARE_SECTIONS } from "../../../assets/share/sections";
-import { BLOG_ARTICLES_DIR, blogParentOf } from "../../blog/articles";
-import { folderLevels } from "../../blog/blogPageMeta";
+import { asAppLanguage } from "../../i18n";
+import { articleImageFile, languageAwareOptions, shareImageOf, type ShareImage, type ShareImageLevel } from "../../lib/shareImage";
+import { SITE_SHARE_IMAGE, shareSectionImage, SHARE_SECTIONS } from "../../assets/share/sections";
+import { BLOG_ARTICLES_DIR, blogParentOf } from "../../views/blog/articles";
+import { folderLevels } from "../../views/blog/blogPageMeta";
 
 /**
  * Every image the chain may name, as the dev server serves it — keyed

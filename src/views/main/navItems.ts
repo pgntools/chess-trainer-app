@@ -18,6 +18,7 @@ import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import type { LocalizedText } from "../../lib/localizedText";
 import { blogArticlesInTreeOrder, blogNavFolderId, blogParentOf } from "../blog/articles";
 import type { NavFolderId } from "./navFolders";
+import { MDX_EDITOR_ENABLED } from "../../mdxEditor/enabled";
 
 export type NavItem = {
   /** Route path, matched against `useLocation().pathname` for the active state. */
@@ -142,12 +143,17 @@ export const navItems = (): readonly NavItem[] => [
           icon: PaletteRoundedIcon,
           folder: "development",
         },
-        {
-          to: "/dev/mdx-editor",
-          labelKey: "nav.mdxEditor",
-          icon: EditNoteRoundedIcon,
-          folder: "development",
-        },
+        // Only under `yarn mdx-editor:start` (src/mdxEditor/enabled.ts).
+        ...(MDX_EDITOR_ENABLED
+          ? [
+              {
+                to: "/dev/mdx-editor",
+                labelKey: "nav.mdxEditor",
+                icon: EditNoteRoundedIcon,
+                folder: "development",
+              },
+            ]
+          : []),
       ]
     : []),
   // Settings (CTA-86): each tab of `/settings/<tab>` is an entry here.

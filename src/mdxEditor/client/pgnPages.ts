@@ -1,4 +1,4 @@
-import { parsePgnGames, splitPgnGames } from "../../../lib/pgn";
+import { parsePgnGames, splitPgnGames } from "../../lib/pgn";
 
 /**
  * **A big PGN, seen a page at a time** (CTA-137) — the Add PGN dialog shows

@@ -5,9 +5,9 @@ import Typography from "@mui/material/Typography";
 import ContentCutRoundedIcon from "@mui/icons-material/ContentCutRounded";
 import WidgetsRoundedIcon from "@mui/icons-material/WidgetsRounded";
 
-import { BaseDialog } from "../../../design-system/components/dialogs";
-import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
-import { FileInputButton, RadioGroupField, SliderField, TextInputField } from "../../../design-system/components/forms";
+import { BaseDialog } from "../../design-system/components/dialogs";
+import { InlineAlert, StatusText } from "../../design-system/components/feedback";
+import { FileInputButton, RadioGroupField, SliderField, TextInputField } from "../../design-system/components/forms";
 import { COLUMNS, ELLIPSIS, SIDE_COLUMN, TEXTAREA_SX } from "./dialogLayout";
 import { articlePgnsOf, IDENTIFIER, namesIn, pgnImportName, usesOf } from "./pgnImports";
 import { BIG_PGN_BYTES, GAMES_PER_PAGE, pgnBytesOf, pgnPagesOf, sizeOf } from "./pgnPages";

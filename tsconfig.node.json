@@ -25,5 +25,5 @@
     "noUncheckedSideEffectImports": true
   },
   // The Blog's plugin (CTA-135) reads `src/lib/articleFrontmatter.ts`, which is checked here too.
-  "include": ["vite.config.ts", "plugins", "scripts/*.ts"]
+  "include": ["vite.config.ts", "plugins"]
 }

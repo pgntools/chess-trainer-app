@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "wirepgn": "node scripts/wirepgn.js",
     "theme:bootstrap": "node scripts/theme-bootstrap.js",
-    "mdx-editor:start": "node scripts/mdx-editor-server.ts",
+    "mdx-editor:start": "node src/mdxEditor/server/start.ts",
     "test": "vitest --project unit --project ui",
     "test:run": "vitest run --project unit --project ui --maxWorkers 3",
     "test:unit": "vitest run --project unit --maxWorkers 3",

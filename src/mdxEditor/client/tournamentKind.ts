@@ -1,5 +1,5 @@
-import { gameTag, type GameHeaders } from "./gameModel";
-import { playerOf, roundPartsOf } from "./tournament";
+import { gameTag, type GameHeaders } from "../../lib/gameModel";
+import { playerOf, roundPartsOf } from "../../lib/tournament";
 
 /**
  * **What kind of tournament a file of games is — a guess** (CTA-137), from

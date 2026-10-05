@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createStorageHandler, listFolders, resolveArticlePath, startServer, stubIndexOf, type StorageRequest } from "../../../../scripts/mdx-editor-server.ts";
+import { createStorageHandler, listFolders, resolveArticlePath, startServer, stubIndexOf, type StorageRequest } from "./storageServer.ts";
 
 /*
   `yarn mdx-editor:start` (CTA-137) — the MDX editor's storage service,

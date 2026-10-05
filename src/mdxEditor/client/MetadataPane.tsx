@@ -4,10 +4,10 @@ import Typography from "@mui/material/Typography";
 import DataObjectRoundedIcon from "@mui/icons-material/DataObjectRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 
-import { ChipsAutocomplete } from "../../../design-system/components/autocompletes";
-import { InlineAlert } from "../../../design-system/components/feedback";
-import { SwitchField, TextInputField } from "../../../design-system/components/forms";
-import { ViewToggle } from "../../../design-system/components/toolbars";
+import { ChipsAutocomplete } from "../../design-system/components/autocompletes";
+import { InlineAlert } from "../../design-system/components/feedback";
+import { SwitchField, TextInputField } from "../../design-system/components/forms";
+import { ViewToggle } from "../../design-system/components/toolbars";
 import {
   FRONTMATTER_KEYS,
   keysFor,
@@ -16,8 +16,8 @@ import {
   type ArticleFileKind,
   type FrontmatterIssue,
   type FrontmatterKey,
-} from "../../../lib/articleFrontmatter";
-import type { BlogArticleEntry } from "../../blog/articles";
+} from "../../lib/articleFrontmatter";
+import type { BlogArticleEntry } from "../../views/blog/articles";
 import { setMetadataKey, type MetadataValue } from "./metadataYaml";
 import { SharePreview } from "./SharePreview";
 

@@ -1,12 +1,12 @@
-#!/usr/bin/env node
 /**
- * **The MDX editor's storage service** (CTA-137) — `yarn mdx-editor:start`.
+ * **The MDX editor's storage service** (CTA-137) — started by
+ * `yarn mdx-editor:start` (`start.ts`) beside Vite.
  *
- * A small local server the dev-only MDX editor (`/dev/mdx-editor`) saves
- * through: it writes an article's `.mdx`, or a `.pgn` an article imports,
- * straight into `src/views/blog/articles/`, where `yarn dev`'s watcher picks
- * it up. Node alone (`node:http`, run as TypeScript by Node's own type
- * stripping) — no dependency, and nothing of it ships.
+ * A small local server the MDX editor (`/dev/mdx-editor`) saves through: it
+ * writes an article's `.mdx`, or a `.pgn` an article imports, straight into
+ * `src/views/blog/articles/`, where Vite's watcher picks it up. Node alone
+ * (`node:http`, run as TypeScript by Node's own type stripping) — no
+ * dependency, and nothing of it ships.
  *
  *   GET  /health   → { ok: true, service, articles }
  *   GET  /folders  → { folders: [{ path, title?, files }] } — every folder under
@@ -30,13 +30,12 @@
  * when that is set. A write must be JSON, so a page elsewhere cannot send one
  * without the preflight this refuses.
  *
- * It listens on `127.0.0.1:5172`, or `VITE_MDX_EDITOR_PORT` — read from the
- * environment or `.env` / `.env.local`, the same variable the editor reads.
+ * It listens on `127.0.0.1:5172`, or `VITE_MDX_EDITOR_PORT` — the same
+ * variable the editor reads (`start.ts` reads `.env.local` / `.env` for it).
  */
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server } from "node:http";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 /** The port the editor and the server agree on, unless `VITE_MDX_EDITOR_PORT` says otherwise. */
 export const DEFAULT_PORT = 5172;
@@ -87,7 +86,7 @@ const originAllowed = (origin: string, origins: readonly string[] | undefined): 
   origins === undefined ? LOOPBACK_ORIGIN.test(origin) : origins.includes(origin);
 
 /** `new-folder` → "New folder" — a stub index's title. */
-export const titleFromName = (name: string): string => {
+const titleFromName = (name: string): string => {
   const words = name.replace(/-+/g, " ").trim();
   return words === "" ? name : `${words[0].toUpperCase()}${words.slice(1)}`;
 };
@@ -281,26 +280,3 @@ export const startServer = ({ port, host = "127.0.0.1", ...options }: StorageOpt
     server.listen(port, host, () => done(server));
   });
 };
-
-/* --- run as a command ------------------------------------------------ */
-
-if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const ROOT = fileURLToPath(new URL("..", import.meta.url));
-  for (const file of [".env.local", ".env"]) {
-    // The editor's port lives in Vite's env files; a variable already set wins, so `.env.local` is read before `.env`, as Vite ranks them.
-    if (existsSync(join(ROOT, file))) process.loadEnvFile(join(ROOT, file));
-  }
-  const port = Number(process.env.VITE_MDX_EDITOR_PORT ?? DEFAULT_PORT);
-  const origins = process.env.MDX_EDITOR_ORIGINS?.split(",").map((origin) => origin.trim()).filter(Boolean);
-  const root = join(ROOT, ...ARTICLES.split("/"));
-  startServer({ port, root, origins }).then(
-    () => {
-      console.log(`mdx-editor: the storage service is on http://127.0.0.1:${port}, writing under ${ARTICLES}${sep}`);
-      console.log(`mdx-editor: ${origins === undefined ? "answering local origins" : `answering ${origins.join(", ")}`} — Ctrl+C stops it`);
-    },
-    (error: NodeJS.ErrnoException) => {
-      console.error(error.code === "EADDRINUSE" ? `mdx-editor: port ${port} is taken — is the service already running? (VITE_MDX_EDITOR_PORT picks another)` : `mdx-editor: ${error.message}`);
-      process.exit(1);
-    },
-  );
-}

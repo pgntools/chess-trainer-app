@@ -5,7 +5,7 @@ import Typography from "@mui/material/Typography";
 import { asAppLanguage } from "../../i18n";
 import { localizedTextOf } from "../../lib/localizedText";
 import ArticleBody from "../blog/ArticleBody";
-import { ArticleEditLink } from "../blog/ArticleEditLink";
+import { ArticleEditLink } from "../../mdxEditor/ArticleEditLink";
 import { ArticleHeader } from "../blog/ArticleHeader";
 import { findBlogArticle } from "../blog/articles";
 import { useOwnPageHeading } from "../main/pageTitle";

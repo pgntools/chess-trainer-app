@@ -2,7 +2,7 @@ import { Component, Suspense, type ErrorInfo, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
-import { InlineAlert } from "../../../design-system/components/feedback";
+import { InlineAlert } from "../../design-system/components/feedback";
 import { PREVIEW_COMPONENTS, useCompiled, whereOf } from "./useCompiled";
 
 /**

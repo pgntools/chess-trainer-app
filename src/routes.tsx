@@ -25,6 +25,7 @@ import { default as SettingsScreen  } from './views/settings/SettingsMain'
 import { default as BlogScreen  } from './views/blog/BlogMain'
 import { blogPageMeta } from './views/blog/blogPageMeta'
 import { collectionPageMeta } from './views/library/collectionPageMeta'
+import { MDX_EDITOR_ENABLED } from "./mdxEditor/enabled";
 
 /**
  * The **Development** section's routes (`chessboard.md` §9.5) — the design
@@ -73,14 +74,19 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
         element: devScreen(() => import("./views/dev/themeEditor/Main")),
         handle: { ...FULL_WIDTH_ROUTE, title: "pages.themeEditor" },
       },
-      {
-        // The MDX editor: an article's MDX beside its live rendering, with
-        // every component an article embeds. Compiled in the browser, so
-        // the MDX compiler is in this dev chunk alone.
-        path: "/dev/mdx-editor",
-        element: devScreen(() => import("./views/dev/mdxEditor/Main")),
-        handle: { ...FULL_WIDTH_ROUTE, title: "pages.mdxEditor" },
-      },
+      // The MDX editor (src/mdxEditor/): an article's MDX beside its live
+      // rendering, with every component an article embeds. Compiled in the
+      // browser, so the MDX compiler is in this dev chunk alone — and only
+      // under `yarn mdx-editor:start` (MDX_EDITOR_ENABLED), not plain `yarn dev`.
+      ...(MDX_EDITOR_ENABLED
+        ? [
+            {
+              path: "/dev/mdx-editor",
+              element: devScreen(() => import("./mdxEditor/client/Main")),
+              handle: { ...FULL_WIDTH_ROUTE, title: "pages.mdxEditor" },
+            },
+          ]
+        : []),
     ]
   : [];
 

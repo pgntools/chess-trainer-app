@@ -3,10 +3,10 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 
-import { FormDialog } from "../../../design-system/components/dialogs";
-import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
-import { TextInputField } from "../../../design-system/components/forms";
-import { TreeView, ancestorsOf, type TreeNode } from "../../../design-system/patterns/trees";
+import { FormDialog } from "../../design-system/components/dialogs";
+import { InlineAlert, StatusText } from "../../design-system/components/feedback";
+import { TextInputField } from "../../design-system/components/forms";
+import { TreeView, ancestorsOf, type TreeNode } from "../../design-system/patterns/trees";
 import { ARTICLES_DIR, type StorageFolder } from "./storageClient";
 
 /** An article's file name: a slug (or `index`), a language's two letters optional — no `.mdx`. */

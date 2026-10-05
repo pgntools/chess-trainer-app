@@ -9,7 +9,7 @@ import { localizedTextOf } from "../../lib/localizedText";
 import { InLanguage } from "../../theme/InLanguage";
 import { useOwnPageHeading } from "../main/pageTitle";
 import ArticleBody from "./ArticleBody";
-import { ArticleEditLink } from "./ArticleEditLink";
+import { ArticleEditLink } from "../../mdxEditor/ArticleEditLink";
 import { ArticleHeader } from "./ArticleHeader";
 import { blogFolderChain, blogPathOf, findBlogArticle } from "./articles";
 

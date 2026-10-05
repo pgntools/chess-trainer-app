@@ -1,4 +1,4 @@
-import type { TournamentKind } from "../../../lib/tournamentKind";
+import type { TournamentKind } from "./tournamentKind";
 
 /**
  * **The components an article embeds, as examples to drop in** (CTA-137) —

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mdxComponents } from "../../home/frontPage";
+import { mdxComponents } from "../../views/home/frontPage";
 import { CATALOG, catalogFor, componentOf, insertBlock, type ExampleSource } from "./componentCatalog";
 
 /*

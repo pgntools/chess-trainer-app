@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MDXContent } from "mdx/types";
 
-import { mdxComponents } from "../../home/frontPage";
+import { mdxComponents } from "../../views/home/frontPage";
 import { articleImportResolver } from "./articleSources";
 import { compileMdx, SOURCE_LINE_COMPONENT } from "./compileMdx";
 import SourceLineMarker from "./SourceLineMarker";

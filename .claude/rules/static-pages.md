@@ -120,7 +120,7 @@ language-aware: `x.he.png` beside `x.png`, a translation's own file.
   (Playwright's Chromium, the catalogs' words) and committed; their alt texts
   are `share.*` in both catalogs.
 - The MDX editor's Metadata tab shows what a page shares as and from which
-  level (`views/dev/mdxEditor/SharePreview.tsx`).
+  level (`src/mdxEditor/client/SharePreview.tsx`).
 
 ## 4. The language in the URL — `src/lib/languagePath.ts`
 

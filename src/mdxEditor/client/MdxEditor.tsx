@@ -15,17 +15,17 @@ import VerticalSplitRoundedIcon from "@mui/icons-material/VerticalSplitRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import WidgetsRoundedIcon from "@mui/icons-material/WidgetsRounded";
 
-import { ConfirmDialog } from "../../../design-system/components/dialogs";
-import { AnchoredMenu } from "../../../design-system/components/menus";
-import { ActionBar, IconAction, ViewToggle } from "../../../design-system/components/toolbars";
-import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
-import { SwitchField } from "../../../design-system/components/forms";
-import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
-import { articleFileName, joinFrontmatter, parseFrontmatterYaml, splitFrontmatter } from "../../../lib/articleFrontmatter";
-import { downloadTextFile } from "../../../lib/pgnExport";
-import { ArticleHeader } from "../../blog/ArticleHeader";
-import { findBlogArticle } from "../../blog/articles";
-import { ARTICLE_MAX_WIDTH_PX } from "../../main/routeHandle";
+import { ConfirmDialog } from "../../design-system/components/dialogs";
+import { AnchoredMenu } from "../../design-system/components/menus";
+import { ActionBar, IconAction, ViewToggle } from "../../design-system/components/toolbars";
+import { InlineAlert, StatusText } from "../../design-system/components/feedback";
+import { SwitchField } from "../../design-system/components/forms";
+import { PanelTabs, tabPanelProps } from "../../design-system/components/tabs";
+import { articleFileName, joinFrontmatter, parseFrontmatterYaml, splitFrontmatter } from "../../lib/articleFrontmatter";
+import { downloadTextFile } from "../../lib/pgnExport";
+import { ArticleHeader } from "../../views/blog/ArticleHeader";
+import { findBlogArticle } from "../../views/blog/articles";
+import { ARTICLE_MAX_WIDTH_PX } from "../../views/main/routeHandle";
 import { folderOf, loadArticleSource } from "./articleSources";
 import { MetadataPane } from "./MetadataPane";
 import { PreviewBoundary } from "./mdxPreview";
@@ -74,7 +74,7 @@ import { useScrollSync } from "./useScrollSync";
  *   Copy MDX, Download .mdx); under it, the file being edited, whether it
  *   has unsaved changes, and where its imports resolve from.
  * - **Saving** (CTA-137) goes through a local storage service,
- *   `yarn mdx-editor:start` (`scripts/mdx-editor-server.ts`, called through
+ *   `yarn mdx-editor:start` (`../server/storageServer.ts`, called through
  *   `storageClient.ts`), which writes into `src/views/blog/articles/`. Save
  *   writes an opened article over its own file; a new article, or Save as,
  *   asks where (`SaveArticleDialog`: a folder, or a new sub-folder, and a

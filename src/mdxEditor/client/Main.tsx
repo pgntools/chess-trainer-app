@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import Box from "@mui/material/Box";
 import { useSearchParams } from "react-router";
 
-import { useOwnPageHeading } from "../../main/pageTitle";
+import { useOwnPageHeading } from "../../views/main/pageTitle";
 import MdxEditor from "./MdxEditor";
 
 /**
@@ -11,7 +11,7 @@ import MdxEditor from "./MdxEditor";
  * only through `routes.tsx`'s Development routes, so it — and the MDX
  * compiler it loads — never ships.
  *
- * `?article=<file>` (an article's edit icon, `views/blog/ArticleEditLink`)
+ * `?article=<file>` (an article's edit icon, `../ArticleEditLink`)
  * opens that article file; once it is open the parameter is dropped, so a
  * reload keeps the edited draft rather than opening the article afresh.
  */

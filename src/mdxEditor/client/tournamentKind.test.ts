@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { readPgnTags, splitPgnGames } from "./pgn";
+import { readPgnTags, splitPgnGames } from "../../lib/pgn";
 import { guessTournamentKind, type TournamentKind } from "./tournamentKind";
-import werner from "../views/blog/articles/tournaments/20th-werner-obermeyer-swiss-5r.pgn?raw";
-import british from "../views/blog/articles/tournaments/chgbr26.pgn?raw";
-import dutch from "../views/blog/articles/tournaments/chned26.pgn?raw";
-import clutch from "../views/blog/articles/tournaments/clutchlegends26.pgn?raw";
-import esportsFinal from "../views/blog/articles/tournaments/esportswcupfin26.pgn?raw";
-import esportsPlayIn from "../views/blog/articles/tournaments/esportswcuppl26.pgn?raw";
-import blitzTeams from "../views/blog/articles/tournaments/fidewrbtf26.pgn?raw";
-import rapidTeams from "../views/blog/articles/tournaments/fidewrt26.pgn?raw";
-import greenHills from "../views/blog/articles/tournaments/greenhillsrapid26.pgn?raw";
-import olympiad from "../views/blog/articles/tournaments/olym26.pgn?raw";
-import candidates from "../views/blog/articles/tournaments/wchcand26.pgn?raw";
+import werner from "../../views/blog/articles/tournaments/20th-werner-obermeyer-swiss-5r.pgn?raw";
+import british from "../../views/blog/articles/tournaments/chgbr26.pgn?raw";
+import dutch from "../../views/blog/articles/tournaments/chned26.pgn?raw";
+import clutch from "../../views/blog/articles/tournaments/clutchlegends26.pgn?raw";
+import esportsFinal from "../../views/blog/articles/tournaments/esportswcupfin26.pgn?raw";
+import esportsPlayIn from "../../views/blog/articles/tournaments/esportswcuppl26.pgn?raw";
+import blitzTeams from "../../views/blog/articles/tournaments/fidewrbtf26.pgn?raw";
+import rapidTeams from "../../views/blog/articles/tournaments/fidewrt26.pgn?raw";
+import greenHills from "../../views/blog/articles/tournaments/greenhillsrapid26.pgn?raw";
+import olympiad from "../../views/blog/articles/tournaments/olym26.pgn?raw";
+import candidates from "../../views/blog/articles/tournaments/wchcand26.pgn?raw";
 
 /*
   The guess at a file's kind of tournament (CTA-137), held to every shipped

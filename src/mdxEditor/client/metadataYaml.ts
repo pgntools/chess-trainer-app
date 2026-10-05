@@ -1,6 +1,6 @@
 import { isMap, isScalar, isSeq, parseDocument, type Document } from "yaml";
 
-import { FRONTMATTER_KEYS, type FrontmatterKey } from "../../../lib/articleFrontmatter";
+import { FRONTMATTER_KEYS, type FrontmatterKey } from "../../lib/articleFrontmatter";
 
 /**
  * **The Metadata tab's edits** (CTA-135) — a form field changed is one key

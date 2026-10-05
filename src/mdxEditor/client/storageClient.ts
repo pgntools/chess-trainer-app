@@ -1,6 +1,6 @@
 /**
  * **The MDX editor's side of its storage service** (CTA-137) — the local
- * server `yarn mdx-editor:start` runs (`scripts/mdx-editor-server.ts`), which
+ * server `yarn mdx-editor:start` runs (`../server/storageServer.ts`), which
  * writes into `src/views/blog/articles/`. Every call answers in words the
  * editor can act on — the service being down among them — and none throws.
  */

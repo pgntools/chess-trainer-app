@@ -10,10 +10,10 @@ import type { ImportResolver } from "./compileMdx";
  * a `?raw` import to Vite rather than to the MDX compiler.
  */
 
-const ARTICLES_DIR = "../../blog/articles/";
+const ARTICLES_DIR = "../../views/blog/articles/";
 
-const mdxFiles = import.meta.glob<string>("../../blog/articles/**/*.mdx", { query: "?raw", import: "default" });
-const pgnFiles = import.meta.glob<string>("../../blog/articles/**/*.pgn", { query: "?raw", import: "default" });
+const mdxFiles = import.meta.glob<string>("../../views/blog/articles/**/*.mdx", { query: "?raw", import: "default" });
+const pgnFiles = import.meta.glob<string>("../../views/blog/articles/**/*.pgn", { query: "?raw", import: "default" });
 
 /** An article file's MDX source, or `undefined` for no such file. */
 export const loadArticleSource = async (file: string): Promise<string | undefined> => mdxFiles[`${ARTICLES_DIR}${file}.mdx`]?.();

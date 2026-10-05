@@ -3,10 +3,10 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
-import { downloadTextFile } from "../../../lib/pgnExport";
+import { downloadTextFile } from "../../lib/pgnExport";
 import { starterFrontmatter, todayIso } from "./metadataYaml";
-import { expectNoAxeViolations } from "../../../test/axe";
-import { resetLibrary } from "../../library/libraryTestKit";
+import { expectNoAxeViolations } from "../../test/axe";
+import { resetLibrary } from "../../views/library/libraryTestKit";
 import Main from "./Main";
 
 /*
@@ -17,12 +17,12 @@ import Main from "./Main";
 */
 
 vi.mock("react-chessboard", async () => {
-  const { reactChessboardMock } = await import("../../board/boardTestHarness");
+  const { reactChessboardMock } = await import("../../views/board/boardTestHarness");
   return reactChessboardMock();
 });
 
-vi.mock("../../../lib/pgnExport", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../../../lib/pgnExport")>()),
+vi.mock("../../lib/pgnExport", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/pgnExport")>()),
   downloadTextFile: vi.fn(() => true),
 }));
 

@@ -161,7 +161,8 @@ export default defineConfig([
     // A screen builds from the design system, blocks and the board's pieces —
     // not from the MUI atoms the design system wraps (CTA-116, MUI_LOCK).
     // Nothing else of a screen is restricted, so this entry is the lock alone.
-    files: ['src/views/**/*.{ts,tsx}'],
+    // The MDX editor (src/mdxEditor/, CTA-137) is screens too, in a folder of its own.
+    files: ['src/views/**/*.{ts,tsx}', 'src/mdxEditor/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': ['error', { paths: MUI_LOCK_PATHS, patterns: MUI_LOCK_PATTERNS }],
     },
