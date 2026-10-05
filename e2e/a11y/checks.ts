@@ -21,17 +21,28 @@ import { drawsPieces, type PageRoute } from "./routes";
 /** The rule sets `src/test/axe.ts` runs, so the two passes judge by the same standard. */
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
 
-/** The theme, the colour scheme and the language a page is opened under — the app's own preference keys. */
-export const applyPreferences = async (page: Page, { theme, scheme, language }: Combo): Promise<void> => {
+/**
+ * The theme and the colour scheme a page is opened under — the app's own
+ * preference keys. The language is not one (CTA-136): it is the address's,
+ * and `open` visits each page at its language's own (`localizedPath`).
+ */
+export const applyPreferences = async (page: Page, { theme, scheme }: Combo): Promise<void> => {
   await page.addInitScript(
-    ([themeId, mode, lang]) => {
+    ([themeId, mode]) => {
       localStorage.setItem("chessapp.theme", themeId);
       localStorage.setItem("mui-mode", mode);
-      localStorage.setItem("i18nextLng", lang);
     },
-    [theme, scheme, language],
+    [theme, scheme],
   );
 };
+
+/**
+ * **A route's address in a language** (CTA-136): the default language's is
+ * the route's own; another's carries its prefix — `he/library`, `he/` — as a
+ * reader following a Hebrew link arrives. Relative to the base, as every path
+ * here is.
+ */
+export const localizedPath = (path: string, language: Language): string => (language === "en" ? path : `${language}/${path}`);
 
 /** Console errors and uncaught exceptions of a page, collected from now on. */
 export const watchErrors = (page: Page): string[] => {
@@ -50,9 +61,13 @@ export const watchErrors = (page: Page): string[] => {
  * deliberately not shown. Nothing needs it since CTA-118 gave the shell its
  * breakpoint, the reflow measurement included.
  */
-export const open = async (page: Page, route: PageRoute, { onScreen = true }: { onScreen?: boolean } = {}): Promise<void> => {
+export const open = async (
+  page: Page,
+  route: PageRoute,
+  { onScreen = true, language = "en" }: { onScreen?: boolean; language?: Language } = {},
+): Promise<void> => {
   const shown = (locator: Locator) => (onScreen ? expect(locator).toBeVisible() : expect(locator).toBeAttached());
-  await page.goto(route.path);
+  await page.goto(localizedPath(route.path, language));
   await shown(page.locator("main h1").first());
   if (route.ready !== undefined) await shown(route.ready(page).first());
   if (route.board === true) await shown(page.locator('[id$="-square-a8"]').first());

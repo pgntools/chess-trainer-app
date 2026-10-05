@@ -13,3 +13,17 @@ export const localizedText = (
   text: LocalizedText | undefined,
   language: AppLanguage,
 ): string => (text === undefined ? "" : (text[language] ?? text.en));
+
+/**
+ * The active language's text **and the language it is in** — English when it
+ * fell back (CTA-135), so the place that shows it can mark it `lang="en"`
+ * (WCAG 3.1.2): a screen reader then reads it in English, and it runs left
+ * to right inside a mirrored page.
+ */
+export const localizedTextOf = (
+  text: LocalizedText | undefined,
+  language: AppLanguage,
+): { text: string; language: AppLanguage } => {
+  const own = text?.[language];
+  return own === undefined ? { text: text?.en ?? "", language: "en" } : { text: own, language };
+};

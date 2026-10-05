@@ -1,0 +1,79 @@
+# build-swa — builds the site for Azure Static Web Apps and deploys it to
+# https://chessapp.dev/ (CTA-136), the canonical host: every page of both
+# deployments names its URL here (canonical, og:url, hreflang, the share
+# images), and only this host serves robots.txt, the sitemap, real 301s and
+# a fallback with status 200 (docs/static-pages-proposal.md §10). Its twin,
+# build-gh.yml, deploys the same site to GitHub Pages.
+#
+# The same triggers as build-gh.yml — a push to main touching the app, and
+# workflow_dispatch, which release.yml's publish-pages job fires by this
+# workflow's `name:` ("Deploy to Azure Static Web Apps" — rename both
+# together) after a release's version bump.
+#
+# The build is build.yml with BASE_PATH=/ — the base is baked into every
+# asset URL, so this host's build is its own — and DEPLOY_TARGET=swa, which
+# writes staticwebapp.config.json (the fallback to the app's template, the
+# Blog's 301s, headers), sitemap.xml and robots.txt into dist/. The deploy
+# uploads dist/ as it is: `skip_app_build`, nothing built again by Azure.
+#
+# PRECONDITION, not fixable from this repository: the Static Web App exists,
+# chessapp.dev is its custom domain, and its deployment token is the
+# repository secret AZURE_STATIC_WEB_APPS_API_TOKEN (Azure portal -> the app
+# -> Manage deployment token). Until then the deploy job fails on the token.
+name: Deploy to Azure Static Web Apps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "scripts/**"
+      - "plugins/**"
+      - "index.html"
+      - "package.json"
+      - "yarn.lock"
+      - "vite.config.ts"
+      - "tsconfig*.json"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/build-swa.yml"
+  workflow_dispatch:
+
+# As build-gh.yml: one deploy at a time, none cancelled half-way.
+concurrency:
+  group: swa
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build the site
+    uses: ./.github/workflows/build.yml
+    with:
+      deploy_target: swa
+      base_path: /
+
+  deploy:
+    name: Deploy to Azure Static Web Apps
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: azure-static-web-apps
+      url: https://chessapp.dev/
+    steps:
+      - name: Download dist/
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-swa
+          path: dist
+
+      - name: Deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: dist
+          skip_app_build: true
+          skip_api_build: true

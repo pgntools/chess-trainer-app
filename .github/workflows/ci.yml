@@ -24,7 +24,7 @@ name: CI
 #                   shipped app content and are NOT in the list.
 #   [skip ci]     — GitHub's native marker: `[skip ci]`, `[ci skip]`, `[no ci]`
 #                   in the head commit message or the PR title skips EVERY
-#                   push/pull_request workflow of the repo — deploy-pages
+#                   push/pull_request workflow of the repo — both deploys
 #                   included — so it is for a minor touch only, and never for
 #                   a PR whose merge carries app changes.
 on:
@@ -60,8 +60,15 @@ jobs:
           node-version: 24
           cache: yarn
       - run: yarn install --frozen-lockfile
-      # `tsc -b` over the app *and* the tests, then the production build.
+      # `tsc -b` over the app *and* the tests, then the production build and
+      # its pre-render — every page a static index.html (CTA-136).
       - run: yarn build
+      # The Blog as built (CTA-135): nothing of a draft (the fixture draft
+      # keeps that honest), no article body in the entry chunk, each in its own.
+      - run: yarn check:blog-build
+      # The pages as written (CTA-136): every one there in every language,
+      # its head and its content; 404.html the app's template.
+      - run: yarn check:pages
 
   lint:
     runs-on: ubuntu-latest

@@ -9,6 +9,7 @@ import type { Theme } from '@mui/material/styles';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import { Link as RouterLink, Outlet, useLocation, useMatches, type UIMatch } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { asAppLanguage } from '../../i18n';
 import { NavDrawer } from '../../design-system/components/navigation';
 import { IconAction } from '../../design-system/components/toolbars';
 import { default as SideBar } from './Sidebar';
@@ -16,7 +17,7 @@ import { Footer } from './Footer';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
 import { LeftPanelOutlet, LeftPanelProvider } from './leftPanel';
-import { ARTICLE_MAX_WIDTH_PX, isArticleRoute, isFullWidthRoute, pageTitleOf, titleKeyOf } from './routeHandle';
+import { ARTICLE_MAX_WIDTH_PX, descriptionKeyOf, isArticleRoute, isFullWidthRoute, pageMetaOf, pageTitleOf, screenIdOf, titleKeyOf } from './routeHandle';
 import { createPageTitleStore, PageTitleContext } from './pageTitle';
 import { visuallyHidden } from '../../design-system/components/a11y';
 import { ForceLTR } from '../../theme/ForceLTR';
@@ -406,24 +407,30 @@ const DefaultLayoutViewport = () => {
     },[matches, updateLocationFn])
 
     /*
-      The page (CTA-112): its title from the route's handle and the record a
-      screen reports (`pageTitle.ts`), written to `document.title`, the `main`
+      The page (CTA-112): its title from the route's handle — the page the
+      address names first, for a route with `meta` (CTA-135) — and the record
+      a screen reports (`pageTitle.ts`): the document's `<title>`, the `main`
       landmark's name and — unless the screen renders its own — the page's
       one `h1`, visually hidden.
+
+      The `<title>` and the description are **rendered** (below), not written
+      in an effect: React 19 hoists them into `<head>`, so a page rendered to
+      HTML ahead of time carries them as the browser's does (CTA-135).
     */
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [pageStore] = useState(createPageTitleStore);
-    const detail = useSyncExternalStore(pageStore.subscribe, pageStore.getDetail);
-    const ownHeading = useSyncExternalStore(pageStore.subscribe, pageStore.getOwnHeadings) > 0;
+    const detail = useSyncExternalStore(pageStore.subscribe, pageStore.getDetail, pageStore.getDetail);
+    const ownHeading = useSyncExternalStore(pageStore.subscribe, pageStore.getOwnHeadings, pageStore.getOwnHeadings) > 0;
     const titleKey = titleKeyOf(matches);
+    const meta = pageMetaOf(matches, asAppLanguage(i18n.language));
     const { title, heading } = pageTitleOf(
         titleKey === undefined ? undefined : t(titleKey),
-        detail,
+        meta?.title ?? detail,
         t('app.brandText'),
     );
-    useEffect(() => {
-        document.title = title;
-    }, [title]);
+    // The page's description, else its screen's (CTA-136).
+    const descriptionKey = descriptionKeyOf(titleKey);
+    const description = meta?.description ?? (descriptionKey !== undefined && i18n.exists(descriptionKey) ? t(descriptionKey) : undefined);
 
     const mainRef = useRef<HTMLElement>(null);
     /** The shell's hidden `h1` took the focus, and a screen's own may yet replace it. */
@@ -449,11 +456,12 @@ const DefaultLayoutViewport = () => {
       a screen reader then reads — the page it has arrived on. Not on the first
       load (the browser announces the page), and not within a screen: the
       screen is its route's title key, so a query string (`?move=`, `?sort=`),
-      a Settings tab or the next Library game leaves the focus where it was.
+      a Settings tab or the next Library game leaves the focus where it was —
+      but each page of a route with `meta` (a Blog article, CTA-135) is its own.
       After a tick, so the new screen has mounted and said whether it renders
       its own heading.
     */
-    const screenId = titleKey ?? matches[matches.length - 1]?.pathname ?? '';
+    const screenId = screenIdOf(matches);
     const shownScreenRef = useRef<string | null>(null);
     useEffect(() => {
         const previous = shownScreenRef.current;
@@ -495,6 +503,8 @@ const DefaultLayoutViewport = () => {
 
     return (
         <PageTitleContext.Provider value={pageStore}>
+        <title>{title}</title>
+        {description !== undefined && <meta name="description" content={description} />}
         <Box
             data-testid="layout-root"
             component="div"

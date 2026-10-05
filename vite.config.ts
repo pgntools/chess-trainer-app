@@ -2,9 +2,18 @@ import { configDefaults } from 'vitest/config'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import mdx from '@mdx-js/rollup'
+import remarkFrontmatter from 'remark-frontmatter'
 import pkg from './package.json' with { type: 'json' }
+import { blogArticles } from './plugins/blogArticles.ts'
 
-const mdxPlugin = mdx({ mdExtensions: [], include: /\.mdx$/ })
+/** `BASE_PATH` as Vite's `base` — a leading and a trailing slash; unset or empty, the GitHub Pages project site's. */
+const basePathOf = (value: string | undefined): string => {
+  const trimmed = (value ?? '').trim().replace(/^\/+|\/+$/g, '')
+  if (value === undefined || value.trim() === '') return '/chess-trainer-app/'
+  return trimmed === '' ? '/' : `/${trimmed}/`
+}
+
+const mdxPlugin = mdx({ mdExtensions: [], include: /\.mdx$/, remarkPlugins: [remarkFrontmatter] })
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -19,14 +28,17 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   /*
-    The app is published as a GitHub Pages *project* site at
-    https://kantorv.github.io/chess-trainer-app/, so every asset URL and the
-    router basename have to carry that sub-path. Vite rewrites `/src/...` and
-    the hashed asset links in index.html against this at build time; in dev
-    (and under Vitest) it stays `/`. `src/App.tsx` feeds the same value to
-    react-router as `import.meta.env.BASE_URL`.
+    The sub-path the app is served under (CTA-136): `/chess-trainer-app/` for
+    the GitHub Pages *project* site (https://kantorv.github.io/chess-trainer-app/,
+    the default, so every local command and test is unchanged), `/` for Azure
+    Static Web Apps on https://chessapp.dev/ — `BASE_PATH=/`, set by the
+    `build-swa` workflow. Every asset URL and the router basename carry it:
+    Vite rewrites `/src/...` and the hashed asset links in index.html against
+    it at build time, and `src/App.tsx` feeds the same value to react-router
+    as `import.meta.env.BASE_URL`. The base is baked into the build, so each
+    host is its own build (`.github/workflows/build.yml`).
   */
-  base: '/chess-trainer-app/',
+  base: basePathOf(process.env.BASE_PATH),
   /*
     The front page at `/` is an MDX document (CTA-126,
     `src/views/home/content/`), compiled to a React component **at build time**
@@ -44,8 +56,16 @@ export default defineConfig({
     `x.mdx?raw` — the dev-only MDX editor opening an article's source
     (`src/views/dev/mdxEditor/articleSources.ts`) — would be compiled too;
     such an id is left to Vite, which makes it the file's text.
+
+    **Frontmatter is read, never drawn** (CTA-135). An article starts with a
+    `---` block of its metadata; `remark-frontmatter` parses it out of the
+    document, so it renders nothing (unparsed, it would be a rule and a
+    heading). The metadata itself reaches the app through `blogArticles`
+    (`plugins/blogArticles.ts`): the Blog's manifest, `virtual:blog-articles`
+    — every file's metadata checked, eager, and each body a lazy chunk.
   */
   plugins: [
+    blogArticles({ dir: 'src/views/blog/articles' }),
     {
       enforce: 'pre',
       ...mdxPlugin,

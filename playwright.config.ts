@@ -56,8 +56,18 @@ export default defineConfig({
     {
       name: "a11y",
       testMatch: /\.spec\.ts$/,
+      testIgnore: /static\.spec\.ts$/,
       dependencies: ["setup"],
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, storageState: STATE_PATH },
+    },
+    // The pre-rendered pages without the app (CTA-136): what a crawler and a
+    // link preview read. The spec blocks every script the page loads; the
+    // browser's own scripting stays on, because axe runs in it (with it off,
+    // axe's timers never fire). Nothing to seed — no script reads a store.
+    {
+      name: "static",
+      testMatch: /static\.spec\.ts$/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
     },
   ],
   webServer: {

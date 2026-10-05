@@ -1,5 +1,45 @@
 import type { UIMatch } from "react-router";
 
+import type { AppLanguage } from "../../i18n";
+import type { ShareImageLevel } from "../../lib/shareImage";
+
+/**
+ * **What a page is, from its address alone** (CTA-135) — what a route's
+ * `handle.meta` returns for one match. A pure function of the URL and the
+ * app's data, so the browser and a page rendered ahead of time read the same
+ * thing; the shell renders it into the document's `<head>`.
+ */
+export type PageMeta = {
+  /** The page's own name, first in its title — "Every screen as cards — Blog — Chess Trainer App". */
+  title?: string;
+  /** The page's `<meta name="description">`. */
+  description?: string;
+  /**
+   * What the page is to a link preview (CTA-136): `article` (a Blog article,
+   * with its dates and tags below) or `website` — the default.
+   */
+  kind?: "article" | "website";
+  /** `YYYY-MM-DD` — an article's `article:published_time`. */
+  published?: string;
+  /** `YYYY-MM-DD` — an article's `article:modified_time`. */
+  modified?: string;
+  tags?: readonly string[];
+  /**
+   * The languages the page is written in (CTA-136) — a page of its own in
+   * each: its `hreflang` alternates, the sitemap's entries. Under another
+   * language it shows the default language's body, so its canonical is the
+   * default language's page. Absent: every language (a screen, translated
+   * whole through the catalogs).
+   */
+  languages?: readonly AppLanguage[];
+  /**
+   * The page's own levels of its share image's chain, nearest first — its
+   * own image, its folders' (`lib/shareImage.ts`). The section's and the
+   * site's follow them in every page's head.
+   */
+  images?: readonly ShareImageLevel[];
+};
+
 /**
  * What a route may tell the shell through its `handle` (react-router's
  * per-route data, read by `Layout.tsx` with `useMatches`). Optional: a route
@@ -29,6 +69,15 @@ export type ShellHandle = {
    * leaves the focus where it was.
    */
   title?: string;
+  /**
+   * **The page at this address** (CTA-135), for a route whose one pattern
+   * serves many pages — the Blog's `/blog/*`: its name and description from
+   * the match, in the reader's language. Its `title` goes before the route's,
+   * ahead of anything a screen reports through `usePageTitle`; and each
+   * address is a page of its own, so moving between two takes the focus to
+   * the new one's heading. Absent, the route is titled as it always was.
+   */
+  meta?: (match: UIMatch, language: AppLanguage) => PageMeta;
 };
 
 /** The handle a full-width route carries. */
@@ -54,6 +103,36 @@ export const isFullWidthRoute = (matches: readonly UIMatch[]): boolean =>
 /** Whether any matched route asks for the article look (CTA-130). */
 export const isArticleRoute = (matches: readonly UIMatch[]): boolean =>
   matches.some((match) => handleOf(match)?.article === true);
+
+/** The deepest matched route that describes its pages, or `undefined`. */
+const metaMatchOf = (matches: readonly UIMatch[]): UIMatch | undefined =>
+  [...matches].reverse().find((match) => handleOf(match)?.meta !== undefined);
+
+/** The page's metadata from the deepest matched route with a `meta`, or `undefined` for none (CTA-135). */
+export const pageMetaOf = (matches: readonly UIMatch[], language: AppLanguage): PageMeta | undefined => {
+  const match = metaMatchOf(matches);
+  return match === undefined ? undefined : handleOf(match)?.meta?.(match, language);
+};
+
+/**
+ * Which screen the reader is on, for the focus (CTA-112): the route's title
+ * key — so a query string or a Settings tab stays on the screen — but every
+ * address of a route with `meta` is a page of its own (CTA-135).
+ */
+export const screenIdOf = (matches: readonly UIMatch[]): string => {
+  const titleKey = titleKeyOf(matches);
+  const leaf = matches[matches.length - 1]?.pathname ?? "";
+  if (metaMatchOf(matches) !== undefined) return `${titleKey ?? ""}:${leaf}`;
+  return titleKey ?? leaf;
+};
+
+/**
+ * A screen's description's catalog key (CTA-136) — `pages.library` →
+ * `pageDescriptions.library` — the page's `<meta name="description">` where
+ * its `meta` gives none. Not every screen has one: ask the catalog.
+ */
+export const descriptionKeyOf = (titleKey: string | undefined): string | undefined =>
+  titleKey?.startsWith("pages.") === true ? `pageDescriptions.${titleKey.slice("pages.".length)}` : undefined;
 
 /** The deepest matched route's title key, or `undefined` for a route that names none. */
 export const titleKeyOf = (matches: readonly UIMatch[]): string | undefined =>

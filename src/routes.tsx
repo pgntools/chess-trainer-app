@@ -22,8 +22,9 @@ import { default as RepertoireBoardScreen  } from './views/repertoires/Repertoir
 import { default as RepertoireSettingsScreen  } from './views/repertoires/RepertoireSettingsScreenMain'
 import { default as RepertoireGameScreen  } from './views/repertoires/RepertoireGameMain'
 import { default as SettingsScreen  } from './views/settings/SettingsMain'
-import { default as BlogIndexScreen  } from './views/blog/BlogIndexMain'
-import { default as BlogArticleScreen  } from './views/blog/BlogArticleMain'
+import { default as BlogScreen  } from './views/blog/BlogMain'
+import { blogPageMeta } from './views/blog/blogPageMeta'
+import { collectionPageMeta } from './views/library/collectionPageMeta'
 
 /**
  * The **Development** section's routes (`chessboard.md` §9.5) — the design
@@ -197,7 +198,9 @@ export const appRoutes: RouteObject[] = [
         {
           path: "/library/:collectionId",
           element: <LibraryCollectionScreen />,
-          handle: { title: "pages.collection" }
+          // A shipped collection's name and count, from the manifest — its
+          // page is rendered ahead of time (CTA-136).
+          handle: { title: "pages.collection", meta: collectionPageMeta }
         },
         // A collection's settings (CTA-121) — its title, description and
         // tournament mark. A static segment, so it ranks above `:game`.
@@ -211,168 +214,17 @@ export const appRoutes: RouteObject[] = [
           element: <LibraryGameScreen />,
           handle: { title: "pages.libraryGame" }
         },
-        // The Blog (CTA-126): its index, a folder of it (any depth — the
-        // splat ranks below every static article path), and one line per
-        // article: the article named by its address in
-        // `views/blog/articles.ts`, its document `articles/<path>.mdx`. A new
-        // article is a line here and one in `e2e/a11y/routes.ts`
-        // (`views/blog/articles.test.ts` holds them to the registry). Every
-        // one, and the front page above, is an article (`ARTICLE_ROUTE`,
-        // CTA-130): no board square, no aside, one centred column.
-        {
-          path: "/blog",
-          element: <BlogIndexScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blog" }
-        },
+        // The Blog (CTA-126): one route for every page of it (CTA-135) — its
+        // index, a folder at any depth, an article, an old address an
+        // article redirects from. An article is a file,
+        // `views/blog/articles/<path>.mdx`, and nothing else: no line here.
+        // Its handle's `meta` names the page the address shows
+        // (`blogPageMeta.ts`), which the shell puts first in the page title.
+        // An article (`ARTICLE_ROUTE`, CTA-130), as the front page above.
         {
           path: "/blog/*",
-          element: <BlogIndexScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blog" }
-        },
-        {
-          path: "/blog/get-started",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/components/game-boards-3col",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/components/start-move",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/components/repertoires-2col",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/components/collection-wide-view-1",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/components/collection-wide-view-2",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/components/stored-game-embed",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/components/nav-cards",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/inline-pgn/the-component",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/inline-pgn/windows",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/inline-pgn/variations",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/inline-pgn/arrows-and-circles",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/inline-pgn/rubinstein-capablanca-1911",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/tournaments/olympiad-2026",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/tournaments/fide-candidates-2026",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/tournaments/werner-obermeyer-swiss-2026",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/tournaments/green-hills-masters-rapid-2026",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/demo-tables/swiss",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/demo-tables/single-round-robin",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/demo-tables/double-round-robin",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/demo-tables/knockout",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/demo-tables/double-elimination",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/demo-tables/match",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/demo-tables/team",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/demo-tables/from-a-collection",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/demo-tables/knockout-from-a-collection",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/demo-tables/double-elimination-from-a-collection",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/demo-tables/team-from-a-collection",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
-        },
-        {
-          path: "/blog/writing-an-article/guide",
-          element: <BlogArticleScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" }
+          element: <BlogScreen />,
+          handle: { ...ARTICLE_ROUTE, title: "pages.blog", meta: blogPageMeta }
         },
         // Settings (CTA-86): one tab per segment — Export today. `/settings`
         // and an unknown tab land on the first.

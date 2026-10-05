@@ -263,25 +263,28 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # The version bump above is pushed by GITHUB_TOKEN, and a GITHUB_TOKEN push
-  # emits no workflow runs, so deploy-pages.yml's `push` trigger never sees
-  # that commit. This job is what tells it — and it DISPATCHES rather than
-  # calling deploy-pages.yml as a reusable workflow: a called workflow runs in
+  # emits no workflow runs, so the deploys' `push` triggers never see that
+  # commit. This job is what tells them — both hosts (CTA-136): build-gh.yml
+  # (GitHub Pages) and build-swa.yml (chessapp.dev), each by its `name:`. It
+  # DISPATCHES rather than calling them as reusable workflows: a called workflow runs in
   # this workflow's `pull_request` context, so `github.ref` would stay
   # `refs/pull/<n>/merge`, which the `github-pages` environment refuses. A
   # dispatch creates its own run at `refs/heads/main`. `workflow_dispatch` is
   # also the documented exception to "GITHUB_TOKEN pushes trigger nothing".
   publish-pages:
-    name: Publish the app to GitHub Pages
+    name: Publish the app to GitHub Pages and chessapp.dev
     needs: release
     if: ${{ !cancelled() && needs.release.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       actions: write
     steps:
-      - name: Dispatch the Pages deploy against main
+      - name: Dispatch both deploys against main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           gh workflow run "Deploy to GitHub Pages" --ref main --repo "${{ github.repository }}"
           echo "::notice::Dispatched 'Deploy to GitHub Pages' on main."
+          gh workflow run "Deploy to Azure Static Web Apps" --ref main --repo "${{ github.repository }}"
+          echo "::notice::Dispatched 'Deploy to Azure Static Web Apps' on main."

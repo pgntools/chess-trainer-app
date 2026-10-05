@@ -2,10 +2,12 @@
  * **The page's title and heading** (CTA-112) — what a screen tells the shell
  * about the page it is, so a screen reader hears where it is.
  *
- * The shell (`Layout.tsx`) owns the page's structure: it writes
- * `document.title`, names the `main` landmark and renders the page's one
+ * The shell (`Layout.tsx`) owns the page's structure: it renders the
+ * document's `<title>`, names the `main` landmark and renders the page's one
  * `h1`, visually hidden. The screen's name comes from its route's `handle`
- * (`routeHandle.ts`); a screen adds only what the route cannot know:
+ * (`routeHandle.ts`) — and, for a route whose pattern serves many pages (the
+ * Blog's), the page's own name from its `meta` (CTA-135), ahead of what a
+ * screen reports; a screen adds only what the route cannot know:
  *
  * | Hook | Called by | What it tells the shell |
  * | --- | --- | --- |

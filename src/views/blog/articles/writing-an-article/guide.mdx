@@ -1,20 +1,45 @@
-An article is an MDX file — Markdown with the app's components in it — compiled when the app is built. Writing one takes four steps.
+---
+title: Writing an article
+summary: Where an article's file goes, the frontmatter that describes it, and what it may embed.
+order: 10
+---
+
+An article is an MDX file — Markdown with the app's components in it — compiled when the app is built. It is one file: what it says, and at its top, what it is.
 
 ## 1. The file
 
-Write `src/views/blog/articles/<path>.mdx` — for example `tournaments/my-event.mdx`. Its address is then `/blog/tournaments/my-event`. A Hebrew version, when there is one, is `<path>.he.mdx` beside it; without one, the English is shown under Hebrew too, left to right.
+Write `src/views/blog/articles/<path>.mdx` — for example `tournaments/my-event.mdx`. Its address is then `/blog/tournaments/my-event`: the Blog's one route serves every article, so there is no route to add, and the browser accessibility pass finds it on its own.
 
 Start the document below its title: the page shows the title as its heading, so use `##` and `###` for sections, never `#`.
 
-To see it as you write, run `yarn dev` and open the MDX editor, `/dev/mdx-editor`, in the sidebar's Development folder: the MDX goes on the left, and the right shows it as the Blog will, with every component below and the Library's games. It can open any article to start from. It saves nothing to the repository: copy the text or download the `.mdx` file, and put it here.
+To see it as you write, run `yarn dev` and open the MDX editor, `/dev/mdx-editor`, in the sidebar's Development folder: the content goes on the left, and the right shows it as the Blog will, with every component below and the Library's games. Its Metadata tab is the frontmatter, as a form or as YAML, checked as the build checks it. It can open any article to start from. It saves nothing to the repository: copy the text or download the `.mdx` file, and put it here.
 
-## 2. The registry
+## 2. The frontmatter
 
-Add the article to `BLOG_ARTICLES` in `src/views/blog/articles.ts`: its path, its title and a one-line summary, each in English and Hebrew. A new folder is an entry in `BLOG_FOLDERS` there — folders nest, `writing-an-article/components` inside `writing-an-article`. The sidebar's Blog folder and the index pages read both lists.
+The file starts with its metadata, between two `---` lines:
 
-## 3. The routes
+```mdx
+---
+title: My event
+summary: One line about it, for the folder's page.
+date: 2026-10-05
+---
 
-Give the article its line in `src/routes.tsx`, beside the other articles (copy one: its `ARTICLE_ROUTE` handle is what shows it as an article, centred, with no board square beside it), and one in `e2e/a11y/routes.ts`, so the browser accessibility pass visits it. `src/views/blog/articles.test.ts` fails when a file, the registry and the routes disagree.
+## The standings
+```
+
+- `title` and `summary` are required. `description` is the page's description for search and sharing (without one, the summary).
+- `date` is the day it is published. In a folder, the articles with an `order` come first, lowest first; the rest follow by `date`, newest first. `updated` is the day it last changed.
+- `draft: true` shows it in `yarn dev`, marked *Draft*, and leaves it out of the built app altogether. `tags` and `redirectFrom` — the old addresses of an article that moved — are there too.
+- `image` is the picture a shared link to the article shows: a PNG or JPEG beside the file, 1200 × 630, named from it — `./cover.png` — with `imageAlt`, the words that say what it shows. Without one, the article shares its folder's (a folder's `index.mdx` takes an `image` too), else the Blog's card. The MDX editor's Metadata tab shows which.
+
+A mistake — no title, a key the Blog does not know, a date that is not one — stops the build, naming the file.
+
+## 3. Translations and folders
+
+A Hebrew version is `<path>.he.mdx` beside it, with its own `title` and `summary`. Its body may wait: with frontmatter alone, the Hebrew title shows over the English text, which is shown left to right. Where there is no `.he.mdx` at all, the English title is shown, marked as English. The keys that place an article — `order`, `date`, `draft` and the rest — are the English file's alone.
+
+A folder is a directory. Its `index.mdx` names it — `title`, `summary` and `order` among its sibling folders — and whatever it says below its frontmatter introduces the folder on its page; `index.he.mdx` translates it. So no article is called `index`.
 
 ## 4. What it may embed
 

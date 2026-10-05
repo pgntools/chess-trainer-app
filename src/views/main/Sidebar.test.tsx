@@ -39,8 +39,9 @@ const ADD_COLLECTION = "/library/new";
  * same resolver the sidebar uses, so a node named by data (`label`) is named
  * the way the app renders it.
  */
-const nameOf = (node: { labelKey?: string; label?: Parameters<typeof navLabel>[0]["label"] }) =>
-  navLabel(node, (key) => i18n.t(key), "en");
+/** A row's accessible name — a draft's chip (CTA-135, `yarn dev` and tests only) read after it. */
+const nameOf = (node: { labelKey?: string; label?: Parameters<typeof navLabel>[0]["label"]; draft?: boolean }) =>
+  `${navLabel(node, (key) => i18n.t(key), "en")}${node.draft === true ? " Draft" : ""}`;
 
 /** A folder's rendered name, at any depth — so a test can name its row. */
 const folderNameOf = (
@@ -634,5 +635,30 @@ describe("a valid list at every depth (CTA-112)", () => {
     renderAt("/");
     expect(screen.queryByRole("complementary")).toBeNull();
     expect(screen.getByRole("navigation", { name: i18n.t("nav.ariaLabel") })).toBeInTheDocument();
+  });
+});
+
+describe("a row named by data (CTA-135)", () => {
+  const tree: NavTreeNode[] = [
+    { kind: "screen", id: "/blog/english", to: "/blog/english", label: { en: "Only in English: [%cal]" }, icon: GridViewRoundedIcon, draft: true },
+    { kind: "screen", id: "/blog/both", to: "/blog/both", label: { en: "In both", he: "בשתיהן" }, icon: GridViewRoundedIcon },
+  ];
+
+  it("marks an English name shown under Hebrew as English, left to right, and a draft with its chip", async () => {
+    await i18n.changeLanguage("he");
+    renderAt("/", tree);
+    const english = screen.getByText("Only in English: [%cal]");
+    expect(english).toHaveAttribute("lang", "en");
+    expect(english).toHaveAttribute("dir", "ltr");
+    expect(screen.getByRole("link", { name: "Only in English: [%cal] טיוטה" })).toBeInTheDocument();
+    expect(screen.getByTestId("nav-draft-/blog/english")).toHaveTextContent("טיוטה");
+    // A name in the reader's language is not marked, and a published row carries no chip.
+    expect(screen.getByText("בשתיהן")).not.toHaveAttribute("lang");
+    expect(screen.queryByTestId("nav-draft-/blog/both")).not.toBeInTheDocument();
+  });
+
+  it("marks nothing in English", () => {
+    renderAt("/", tree);
+    expect(screen.getByText("Only in English: [%cal]")).not.toHaveAttribute("lang");
   });
 });

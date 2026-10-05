@@ -52,6 +52,7 @@ import SaveAnalysisDialog from "./SaveAnalysisDialog";
 import { useAnalysisBoard, type AnalysisBoardStart } from "./useAnalysisBoard";
 import { usePageTitle } from "../../main/pageTitle";
 import { useCurrentOpening } from "../../shared/useCurrentOpening";
+import { useUnsavedWorkGuard } from "../../main/unsavedWork";
 
 /**
  * **The Analysis Board** (`/tools/analysis`, CTA-73) — the board a game or a
@@ -253,14 +254,7 @@ function AnalysisBoard() {
   };
 
   // Leaving with changes unsaved — a reload, a closed tab — asks first.
-  useEffect(() => {
-    if (!state.unsaved) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [state.unsaved]);
+  useUnsavedWorkGuard(state.unsaved);
 
   const onSaveClick = () => {
     if (record === null) setSaveOpen(true);
