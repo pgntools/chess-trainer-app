@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 
+import { blogArticleRoutes } from "./blogRoutes";
 import { SEED } from "./seedZip";
 
 /*
@@ -28,12 +29,70 @@ export type PageRoute = {
   pieces?: boolean;
   /** What tells the page has its data, beyond its heading — the seeded row it lists. */
   ready?: (page: Page) => Locator;
+  /**
+   * Visited once per language — the default theme, light — rather than under
+   * the whole matrix (CTA-135): a Blog article outside `BLOG_SAMPLE`, the same
+   * components on other data as one inside it. `visits()` in `matrix.ts`.
+   */
+  oncePerLanguage?: true;
 };
 
 /** Whether the page draws chess pieces: a board's, or an editor's palette. */
 export const drawsPieces = (route: PageRoute): boolean => route.board === true || route.pieces === true;
 
 const byTestId = (id: string) => (page: Page) => page.getByTestId(id);
+
+/*
+  **The Blog's articles** (CTA-135) are not listed by hand: `blogRoutes.ts`
+  reads them from their files, a line each — `blog-<path, dashed>` — and
+  whether one draws a board from the embeds it uses. Every article is
+  visited in the default theme, light, in both languages; the sample below,
+  an article per family of embeds plus the front page's, under the whole
+  matrix. What is kept by hand is only this: the sample, and what shows that
+  an article has its data.
+*/
+
+/** The articles checked under every theme, scheme and language — a family of embeds each. */
+export const BLOG_SAMPLE: readonly string[] = [
+  "get-started", // the front page: Library games, repertoires, a collection's card, the screens' cards
+  "writing-an-article/guide", // prose and markup
+  "writing-an-article/components/stored-game-embed",
+  "writing-an-article/inline-pgn/the-component",
+  "writing-an-article/inline-pgn/arrows-and-circles", // the theme's drawing brushes
+  "tournaments/olympiad-2026", // a team event's standings, flags
+  "writing-an-article/demo-tables/swiss",
+  "writing-an-article/demo-tables/double-round-robin",
+  "writing-an-article/demo-tables/knockout",
+  "writing-an-article/demo-tables/double-elimination",
+  "writing-an-article/demo-tables/match",
+  "writing-an-article/demo-tables/from-a-collection", // names and results linked into the Library
+];
+
+/** What shows an article has its data — the test id of an embed it draws once it has read it. */
+export const BLOG_READY: Readonly<Record<string, string>> = {
+  "get-started": "home-game-library-fischer-52",
+  "writing-an-article/components/game-boards-3col": "home-game-library-capablanca-442",
+  "writing-an-article/components/start-move": "home-game-library-fischer-891",
+  "writing-an-article/components/repertoires-2col": "home-repertoire-sample-caro-kann-black",
+  "writing-an-article/components/collection-wide-view-1": "home-game-library-fischer-52",
+  "writing-an-article/components/collection-wide-view-2": "home-game-library-capablanca-442",
+  "writing-an-article/components/stored-game-embed": "home-game-library-capablanca-1",
+  "tournaments/olympiad-2026": "tournament-team-standings-46th-olympiad-women-2026",
+  "tournaments/fide-candidates-2026": "tournament-crosstable-fide-candidates-2026",
+  "tournaments/werner-obermeyer-swiss-2026": "tournament-standings-20th-werner-obermeyer",
+  "tournaments/green-hills-masters-rapid-2026": "tournament-crosstable-green-hills-masters-rapid",
+  "writing-an-article/demo-tables/swiss": "tournament-standings-112th-ch-gbr-2026",
+  "writing-an-article/demo-tables/single-round-robin": "tournament-crosstable-green-hills-masters-rapid",
+  "writing-an-article/demo-tables/double-round-robin": "tournament-crosstable-fide-candidates-2026",
+  "writing-an-article/demo-tables/knockout": "tournament-bracket-ch-ned-ko-2026",
+  "writing-an-article/demo-tables/double-elimination": "tournament-bracket-esports-world-cup-pi-2026",
+  "writing-an-article/demo-tables/match": "tournament-match-clutch-chess-the-legends-2026",
+  "writing-an-article/demo-tables/team": "tournament-team-standings-fide-world-rapid-team",
+  "writing-an-article/demo-tables/from-a-collection": "tournament-collection-candidates2026-roundRobin",
+  "writing-an-article/demo-tables/knockout-from-a-collection": "tournament-collection-netherlands2026-knockout",
+  "writing-an-article/demo-tables/double-elimination-from-a-collection": "tournament-collection-esportsplayin2026-doubleElimination",
+  "writing-an-article/demo-tables/team-from-a-collection": "tournament-collection-worldrapidteam2026-team",
+};
 
 export const ROUTES: readonly PageRoute[] = [
   // The front page (CTA-126) draws boards: Library games, repertoires, a collection's card.
@@ -89,160 +148,21 @@ export const ROUTES: readonly PageRoute[] = [
   },
   { id: "library-upload", pattern: "/library/new", path: "library/new" },
   { id: "library-game", pattern: "/library/:collectionId/:game", path: `library/${SEED.collectionId}/1`, board: true },
-  // The Blog (CTA-126): its index, a folder, and every article — each article its own line.
-  { id: "blog", pattern: "/blog", path: "blog" },
+  // The Blog (CTA-126): its index and a folder; its articles follow, read from their files (CTA-135).
+  { id: "blog", pattern: "/blog/*", path: "blog" },
   { id: "blog-folder", pattern: "/blog/*", path: "blog/writing-an-article/components" },
-  {
-    id: "blog-get-started",
-    pattern: "/blog/get-started",
-    path: "blog/get-started",
-    board: true,
-    ready: byTestId("home-game-library-fischer-52"),
-  },
-  {
-    id: "blog-game-boards-3col",
-    pattern: "/blog/writing-an-article/components/game-boards-3col",
-    path: "blog/writing-an-article/components/game-boards-3col",
-    board: true,
-    ready: byTestId("home-game-library-capablanca-442"),
-  },
-  {
-    id: "blog-start-move",
-    pattern: "/blog/writing-an-article/components/start-move",
-    path: "blog/writing-an-article/components/start-move",
-    board: true,
-    ready: byTestId("home-game-library-fischer-891"),
-  },
-  {
-    id: "blog-repertoires-2col",
-    pattern: "/blog/writing-an-article/components/repertoires-2col",
-    path: "blog/writing-an-article/components/repertoires-2col",
-    board: true,
-    ready: byTestId("home-repertoire-sample-caro-kann-black"),
-  },
-  {
-    id: "blog-collection-wide-view-1",
-    pattern: "/blog/writing-an-article/components/collection-wide-view-1",
-    path: "blog/writing-an-article/components/collection-wide-view-1",
-    board: true,
-    ready: byTestId("home-game-library-fischer-52"),
-  },
-  {
-    id: "blog-collection-wide-view-2",
-    pattern: "/blog/writing-an-article/components/collection-wide-view-2",
-    path: "blog/writing-an-article/components/collection-wide-view-2",
-    board: true,
-    ready: byTestId("home-game-library-capablanca-442"),
-  },
-  {
-    id: "blog-stored-game-embed",
-    pattern: "/blog/writing-an-article/components/stored-game-embed",
-    path: "blog/writing-an-article/components/stored-game-embed",
-    board: true,
-    ready: byTestId("home-game-library-capablanca-1"),
-  },
-  { id: "blog-nav-cards", pattern: "/blog/writing-an-article/components/nav-cards", path: "blog/writing-an-article/components/nav-cards" },
-  { id: "blog-inline-pgn-the-component", pattern: "/blog/writing-an-article/inline-pgn/the-component", path: "blog/writing-an-article/inline-pgn/the-component", board: true },
-  { id: "blog-inline-pgn-windows", pattern: "/blog/writing-an-article/inline-pgn/windows", path: "blog/writing-an-article/inline-pgn/windows", board: true },
-  { id: "blog-inline-pgn-variations", pattern: "/blog/writing-an-article/inline-pgn/variations", path: "blog/writing-an-article/inline-pgn/variations", board: true },
-  { id: "blog-inline-pgn-arrows-and-circles", pattern: "/blog/writing-an-article/inline-pgn/arrows-and-circles", path: "blog/writing-an-article/inline-pgn/arrows-and-circles", board: true },
-  { id: "blog-inline-pgn-rubinstein-capablanca-1911", pattern: "/blog/writing-an-article/inline-pgn/rubinstein-capablanca-1911", path: "blog/writing-an-article/inline-pgn/rubinstein-capablanca-1911", board: true },
-  {
-    id: "blog-tournaments-olympiad-2026",
-    pattern: "/blog/tournaments/olympiad-2026",
-    path: "blog/tournaments/olympiad-2026",
-    ready: byTestId("tournament-team-standings-46th-olympiad-women-2026"),
-  },
-  {
-    id: "blog-tournaments-fide-candidates-2026",
-    pattern: "/blog/tournaments/fide-candidates-2026",
-    path: "blog/tournaments/fide-candidates-2026",
-    board: true,
-    ready: byTestId("tournament-crosstable-fide-candidates-2026"),
-  },
-  {
-    id: "blog-tournaments-werner-obermeyer-swiss-2026",
-    pattern: "/blog/tournaments/werner-obermeyer-swiss-2026",
-    path: "blog/tournaments/werner-obermeyer-swiss-2026",
-    board: true,
-    ready: byTestId("tournament-standings-20th-werner-obermeyer"),
-  },
-  {
-    id: "blog-tournaments-green-hills-masters-rapid-2026",
-    pattern: "/blog/tournaments/green-hills-masters-rapid-2026",
-    path: "blog/tournaments/green-hills-masters-rapid-2026",
-    board: true,
-    ready: byTestId("tournament-crosstable-green-hills-masters-rapid"),
-  },
-  {
-    id: "blog-tournaments-demo-swiss",
-    pattern: "/blog/writing-an-article/demo-tables/swiss",
-    path: "blog/writing-an-article/demo-tables/swiss",
-    ready: byTestId("tournament-standings-112th-ch-gbr-2026"),
-  },
-  {
-    id: "blog-tournaments-demo-single-round-robin",
-    pattern: "/blog/writing-an-article/demo-tables/single-round-robin",
-    path: "blog/writing-an-article/demo-tables/single-round-robin",
-    ready: byTestId("tournament-crosstable-green-hills-masters-rapid"),
-  },
-  {
-    id: "blog-tournaments-demo-double-round-robin",
-    pattern: "/blog/writing-an-article/demo-tables/double-round-robin",
-    path: "blog/writing-an-article/demo-tables/double-round-robin",
-    ready: byTestId("tournament-crosstable-fide-candidates-2026"),
-  },
-  {
-    id: "blog-tournaments-demo-knockout",
-    pattern: "/blog/writing-an-article/demo-tables/knockout",
-    path: "blog/writing-an-article/demo-tables/knockout",
-    ready: byTestId("tournament-bracket-ch-ned-ko-2026"),
-  },
-  {
-    id: "blog-tournaments-demo-double-elimination",
-    pattern: "/blog/writing-an-article/demo-tables/double-elimination",
-    path: "blog/writing-an-article/demo-tables/double-elimination",
-    ready: byTestId("tournament-bracket-esports-world-cup-pi-2026"),
-  },
-  {
-    id: "blog-tournaments-demo-match",
-    pattern: "/blog/writing-an-article/demo-tables/match",
-    path: "blog/writing-an-article/demo-tables/match",
-    ready: byTestId("tournament-match-clutch-chess-the-legends-2026"),
-  },
-  {
-    id: "blog-tournaments-demo-team",
-    pattern: "/blog/writing-an-article/demo-tables/team",
-    path: "blog/writing-an-article/demo-tables/team",
-    ready: byTestId("tournament-team-standings-fide-world-rapid-team"),
-  },
-  {
-    id: "blog-tournaments-demo-from-a-collection",
-    pattern: "/blog/writing-an-article/demo-tables/from-a-collection",
-    path: "blog/writing-an-article/demo-tables/from-a-collection",
-    ready: byTestId("tournament-collection-candidates2026-roundRobin"),
-  },
-  {
-    id: "blog-tournaments-demo-knockout-from-a-collection",
-    pattern: "/blog/writing-an-article/demo-tables/knockout-from-a-collection",
-    path: "blog/writing-an-article/demo-tables/knockout-from-a-collection",
-    ready: byTestId("tournament-collection-netherlands2026-knockout"),
-  },
-  {
-    id: "blog-tournaments-demo-double-elimination-from-a-collection",
-    pattern: "/blog/writing-an-article/demo-tables/double-elimination-from-a-collection",
-    path: "blog/writing-an-article/demo-tables/double-elimination-from-a-collection",
-    ready: byTestId("tournament-collection-esportsplayin2026-doubleElimination"),
-  },
-  {
-    id: "blog-tournaments-demo-team-from-a-collection",
-    pattern: "/blog/writing-an-article/demo-tables/team-from-a-collection",
-    path: "blog/writing-an-article/demo-tables/team-from-a-collection",
-    ready: byTestId("tournament-collection-worldrapidteam2026-team"),
-  },
-  { id: "blog-writing-an-article", pattern: "/blog/writing-an-article/guide", path: "blog/writing-an-article/guide" },
   { id: "settings-export", pattern: "/settings/:tab", path: "settings/export" },
   { id: "settings-import", pattern: "/settings/:tab", path: "settings/import" },
   { id: "settings-storage", pattern: "/settings/:tab", path: "settings/storage" },
   { id: "settings-appearance", pattern: "/settings/:tab", path: "settings/appearance" },
+  ...blogArticleRoutes().map(
+    ({ path, board }): PageRoute => ({
+      id: `blog-${path.replaceAll("/", "-")}`,
+      pattern: "/blog/*",
+      path: `blog/${path}`,
+      ...(board ? { board: true } : {}),
+      ...(path in BLOG_READY ? { ready: byTestId(BLOG_READY[path]) } : {}),
+      ...(BLOG_SAMPLE.includes(path) ? {} : { oncePerLanguage: true }),
+    }),
+  ),
 ];

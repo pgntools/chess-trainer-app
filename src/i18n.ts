@@ -3,15 +3,10 @@ import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import en from "./locales/en";
 import he from "./locales/he";
+import { defaultLanguage, supportedLanguages, type AppLanguage } from "./languages";
 
-export const supportedLanguages = ["en", "he"] as const;
-
-export type AppLanguage = (typeof supportedLanguages)[number];
-
-/** Languages whose layout mirrors. `AppThemeWithLang` derives direction from this. */
-export const rtlLanguages: readonly AppLanguage[] = ["he"];
-
-export const defaultLanguage: AppLanguage = "en";
+// The list lives in `languages.ts`, which the build reads too (it carries no i18next).
+export { defaultLanguage, rtlLanguages, supportedLanguages, type AppLanguage } from "./languages";
 
 /**
  * Catalogs are inlined rather than fetched through i18next-http-backend: this

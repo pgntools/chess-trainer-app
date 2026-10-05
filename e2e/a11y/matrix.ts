@@ -62,4 +62,12 @@ export const reflowCombos = (): readonly Combo[] => {
     .map((combo) => ({ ...combo, scheme: "light" as const }));
 };
 
+/**
+ * **Whether a route is visited under a combination** (CTA-135): every one is,
+ * but a route marked `oncePerLanguage` (a Blog article outside the sample,
+ * `routes.ts`) only in the default theme, light — still in every language.
+ */
+export const visits = (route: { oncePerLanguage?: true }, { theme, scheme }: Combo): boolean =>
+  route.oncePerLanguage !== true || (theme === "default" && scheme === "light");
+
 export const comboName = ({ theme, scheme, language }: Combo): string => `${theme} · ${scheme} · ${language}`;

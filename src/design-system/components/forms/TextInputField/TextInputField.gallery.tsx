@@ -26,6 +26,12 @@ const gallery: GalleryModule = {
       render: () => live("Ocean Blue", { label: "Id", dir: "ltr", error: true, helperText: "Lower-case words joined by dashes." }),
     },
     { name: "Disabled", render: () => live("default", { label: "Id", dir: "ltr", disabled: true }) },
+    {
+      name: "Several lines — a summary",
+      render: () => live("Where an article's file goes, and what it may embed.", { label: "Summary", dir: "auto", multiline: true }),
+    },
+    { name: "A number", render: () => live("70", { label: "Order", type: "number", helperText: "Empty: not pinned." }) },
+    { name: "A date", render: () => live("2026-09-14", { label: "Date", type: "date" }) },
   ],
 };
 

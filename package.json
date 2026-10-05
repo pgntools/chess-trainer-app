@@ -16,6 +16,7 @@
     "test:ui": "vitest run --project ui --maxWorkers 3",
     "test:gallery": "vitest run --project gallery --maxWorkers 3",
     "test:groups": "node scripts/check-test-groups.js",
+    "check:blog-build": "node scripts/check-dist-blog.js",
     "test:a11y": "yarn build && playwright test",
     "test:a11y:quick": "yarn build && A11Y_MATRIX=reduced playwright test"
   },
@@ -39,7 +40,9 @@
     "react-dom": "^19.2.8",
     "react-i18next": "^17.0.13",
     "react-router": "^8.3.1",
-    "xstate": "^5.32.6"
+    "remark-frontmatter": "^5.0.0",
+    "xstate": "^5.32.6",
+    "yaml": "^2"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

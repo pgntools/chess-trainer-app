@@ -10,10 +10,16 @@ import type { MDXContent } from "mdx/types";
 import { SelectAutocomplete } from "../../../design-system/components/autocompletes";
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
 import { SwitchField } from "../../../design-system/components/forms";
+import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
+import { articleFileName, joinFrontmatter, parseFrontmatterYaml, splitFrontmatter } from "../../../lib/articleFrontmatter";
 import { downloadTextFile } from "../../../lib/pgnExport";
+import { ArticleHeader } from "../../blog/ArticleHeader";
+import { findBlogArticle } from "../../blog/articles";
 import { mdxComponents } from "../../home/frontPage";
 import { articleImportResolver, articleOptions, folderOf, loadArticleSource } from "./articleSources";
 import { compileMdx, SOURCE_LINE_COMPONENT } from "./compileMdx";
+import { MetadataPane } from "./MetadataPane";
+import { starterFrontmatter, todayIso } from "./metadataYaml";
 import { STARTER_DOCUMENT } from "./starterDocument";
 import { useScrollSync } from "./useScrollSync";
 
@@ -32,12 +38,19 @@ import { useScrollSync } from "./useScrollSync";
  *   from the edit icon beside an article's title (`?article=<file>`, which
  *   `Main` hands in as `arrivingArticle`); its
  *   `import games from "./x.pgn?raw"` reads the file beside it.
+ * - **Content and Metadata** (CTA-135): a file opens split in two — its
+ *   body in the Content tab, its frontmatter in the Metadata tab
+ *   (`MetadataPane`: a form, or the YAML, checked as the build checks it) —
+ *   and Copy and Download join them back into one `.mdx`. The preview draws
+ *   the article's header from the metadata, as the article's page does. A
+ *   new article starts as a draft, dated today.
  * - **The panes scroll together** (`useScrollSync.ts`) while "Scroll
- *   together" is on: scrolling either brings the other to the same block.
+ *   together" is on and the Content tab is open: scrolling either brings the
+ *   other to the same block.
  * - **Nothing is written to the repository**: the text is copied or
  *   downloaded as a `.mdx`, to put under `src/views/blog/articles/` (the
- *   guide article says what else an article needs). The draft is kept for
- *   the tab's session, so a reload or a visit to another screen keeps it.
+ *   guide article says the rest). The draft is kept for the tab's session,
+ *   so a reload or a visit to another screen keeps it.
  */
 
 /** Where a source line's block starts in the preview — `compileMdx.ts`'s marker, drawn as nothing. */
@@ -56,15 +69,27 @@ const SOURCE_ID = "mdx-editor-source";
 /** The articles it can open, typed to find — fixed for the build, as the files are. */
 const ARTICLE_OPTIONS = articleOptions();
 
-type Draft = { source: string; file: string };
-/** What the tab keeps: the draft, and the text it was opened as — so a kept draft still counts as changed. */
+/** What is being edited: the frontmatter's YAML (`undefined` for a file with none), the body, and the file it came from. */
+type Draft = { yaml: string | undefined; body: string; file: string };
+/** What the tab keeps: the draft, and the file's text as it was opened — so a kept draft still counts as changed. */
 type Kept = Draft & { opened: string };
+
+/** A file's text as a draft — split into its frontmatter and its body. */
+const draftOf = (source: string, file: string): Draft => ({ ...splitFrontmatter(source), file });
+/** The draft as one file again. */
+const textOf = (draft: Draft): string => joinFrontmatter(draft.yaml, draft.body);
+/** A new article: the starter document, a draft dated today. */
+const starterDraft = (): Draft => ({ yaml: starterFrontmatter(todayIso()), body: STARTER_DOCUMENT, file: "" });
 
 const readKept = (): Kept | undefined => {
   try {
-    const value = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? "null") as Partial<Kept> | null;
-    if (typeof value?.source !== "string") return undefined;
-    return { source: value.source, file: typeof value.file === "string" ? value.file : "", opened: typeof value.opened === "string" ? value.opened : value.source };
+    const value = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? "null") as (Partial<Kept> & { source?: unknown }) | null;
+    if (value === null) return undefined;
+    const file = typeof value.file === "string" ? value.file : "";
+    // Kept before the editor split a file in two: one text.
+    const draft = typeof value.body === "string" ? { yaml: typeof value.yaml === "string" ? value.yaml : undefined, body: value.body, file } : typeof value.source === "string" ? draftOf(value.source, file) : undefined;
+    if (draft === undefined) return undefined;
+    return { ...draft, opened: typeof value.opened === "string" ? value.opened : textOf(draft) };
   } catch {
     return undefined;
   }
@@ -155,17 +180,34 @@ type MdxEditorProps = {
 
 function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   const [kept] = useState(readKept);
-  const [draft, setDraft] = useState<Draft>(() => (kept === undefined ? { source: STARTER_DOCUMENT, file: "" } : { source: kept.source, file: kept.file }));
-  const [opened, setOpened] = useState(kept?.opened ?? draft.source);
+  const [draft, setDraft] = useState<Draft>(() => (kept === undefined ? starterDraft() : { yaml: kept.yaml, body: kept.body, file: kept.file }));
+  const [opened, setOpened] = useState(() => kept?.opened ?? textOf(draft));
   const [notice, setNotice] = useState<string>();
   const [scrollTogether, setScrollTogether] = useState(true);
+  const [tab, setTab] = useState<"content" | "metadata">("content");
   const sourceRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
-  useScrollSync({ enabled: scrollTogether, source: sourceRef, preview: previewRef });
+  useScrollSync({ enabled: scrollTogether && tab === "content", source: sourceRef, preview: previewRef });
   const folder = folderOf(draft.file);
-  const compiled = useCompiled(draft.source, folder);
+  const compiled = useCompiled(draft.body, folder);
+  const source = textOf(draft);
+
+  // What the file is, by its name — which keys its frontmatter takes; a new one is an article in English.
+  const fileName = articleFileName(`${draft.file === "" ? "new-article" : draft.file}.mdx`);
+  const metadata = parseFrontmatterYaml(draft.yaml ?? "");
+  const header = metadata.ok && metadata.data !== null && typeof metadata.data === "object" ? (metadata.data as Record<string, unknown>) : {};
+  const english = fileName.kind === "article" ? findBlogArticle(fileName.path) : undefined;
+  // A body that starts with a `---` block — a whole file pasted into Content.
+  const pastedFrontmatter = splitFrontmatter(draft.body).yaml !== undefined;
 
   useEffect(() => writeKept({ ...draft, opened }), [draft, opened]);
+
+  /** A file's text opened: split in two, and "changed" measured from it as the editor would write it back. */
+  const open = (text: string, file: string) => {
+    const next = draftOf(text, file);
+    setDraft(next);
+    setOpened(textOf(next));
+  };
 
   // Arriving from an article's edit icon: that article replaces the draft — the reader asked for it.
   useEffect(() => {
@@ -175,8 +217,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
       if (!live) return;
       if (source === undefined) setNotice(`No article file ${arrivingArticle}.mdx.`);
       else {
-        setDraft({ source, file: arrivingArticle });
-        setOpened(source);
+        open(source, arrivingArticle);
         setNotice(`Opened ${arrivingArticle}.mdx.`);
       }
       onArrived?.();
@@ -186,31 +227,39 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
     };
   }, [arrivingArticle, onArrived]);
 
-  const dirty = draft.source !== opened;
-  const replace = (next: Draft, message: string) => {
+  const dirty = source !== opened;
+  const replace = (text: string, file: string, message: string) => {
     if (dirty && !window.confirm("Replace the text in the editor? Its changes will be lost.")) return;
-    setDraft(next);
-    setOpened(next.source);
+    open(text, file);
     setNotice(message);
   };
 
   const openArticle = async (file: string) => {
-    const source = await loadArticleSource(file);
-    if (source === undefined) setNotice(`No article file ${file}.mdx.`);
-    else replace({ source, file }, `Opened ${file}.mdx.`);
+    const text = await loadArticleSource(file);
+    if (text === undefined) setNotice(`No article file ${file}.mdx.`);
+    else replace(text, file, `Opened ${file}.mdx.`);
+  };
+
+  /** A `---` block pasted at the top of Content moves to Metadata, over what is there. */
+  const moveFrontmatter = () => {
+    const moved = splitFrontmatter(draft.body);
+    if ((draft.yaml ?? "").trim() !== "" && !window.confirm("Replace the metadata with the block from the content?")) return;
+    setDraft({ ...draft, yaml: moved.yaml, body: moved.body });
+    setNotice("Moved the --- block into Metadata.");
   };
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(draft.source);
+      await navigator.clipboard.writeText(source);
       setNotice("Copied the MDX.");
     } catch {
       setNotice("The browser refused to copy — select the text and copy it by hand.");
     }
   };
 
-  const fileName = `${draft.file === "" ? "article" : draft.file.split("/").at(-1)}.mdx`;
-  const download = () => setNotice(downloadTextFile(fileName, draft.source, "text/markdown") ? `Downloaded ${fileName}.` : "The browser refused the download.");
+  const downloadName = `${draft.file === "" ? "article" : draft.file.split("/").at(-1)}.mdx`;
+  const download = () => setNotice(downloadTextFile(downloadName, source, "text/markdown") ? `Downloaded ${downloadName}.` : "The browser refused the download.");
+  const starter = starterDraft();
 
   const { Content, error, pending, version } = compiled;
   return (
@@ -244,8 +293,8 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
         <Button
           size="small"
           startIcon={<RestartAltRoundedIcon />}
-          onClick={() => replace({ source: STARTER_DOCUMENT, file: "" }, "Started a new article.")}
-          disabled={draft.file === "" && draft.source === STARTER_DOCUMENT}
+          onClick={() => replace(textOf(starter), "", "Started a new article.")}
+          disabled={draft.file === "" && source === textOf(starter)}
           data-testid="mdx-editor-reset"
         >
           New article
@@ -268,35 +317,70 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
         }}
       >
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minHeight: 0 }}>
-          <Typography component="label" htmlFor={SOURCE_ID} variant="subtitle2">
-            MDX source
-          </Typography>
-          <Box
-            component="textarea"
-            ref={sourceRef}
-            id={SOURCE_ID}
-            data-testid="mdx-editor-source"
-            dir="ltr"
-            spellCheck={false}
-            value={draft.source}
-            onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setDraft({ ...draft, source: event.target.value })}
-            sx={{
-              flex: 1,
-              minHeight: { xs: "50vh", md: 0 },
-              resize: "none",
-              p: 1.5,
-              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
-              fontSize: 13,
-              lineHeight: 1.5,
-              tabSize: 2,
-              color: "text.primary",
-              bgcolor: "background.paper",
-              border: 1,
-              borderColor: "divider",
-              borderRadius: 1,
-              "&:focus-visible": { outline: 2, outlineStyle: "solid", outlineColor: "primary.main", outlineOffset: 1 },
-            }}
+          <PanelTabs
+            tabs={[
+              { id: "content", label: "Content" },
+              { id: "metadata", label: "Metadata" },
+            ]}
+            value={tab}
+            onChange={(id) => setTab(id === "metadata" ? "metadata" : "content")}
+            size="compact"
+            fullWidth={false}
+            ariaLabel="What to edit"
+            idPrefix="mdx-editor-pane"
+            testId="mdx-editor-tabs"
           />
+          <Box {...tabPanelProps("mdx-editor-pane", tab)} sx={{ display: "flex", flexDirection: "column", gap: 0.5, flex: 1, minHeight: 0, pt: 1 }}>
+            {tab === "content" ? (
+              <>
+                <Typography component="label" htmlFor={SOURCE_ID} variant="subtitle2">
+                  MDX source
+                </Typography>
+                {pastedFrontmatter && (
+                  <InlineAlert severity="info" title="This text starts with a --- block" testId="mdx-editor-pasted-frontmatter">
+                    {"That is the file's metadata, which the Metadata tab keeps. "}
+                    <Button size="small" onClick={moveFrontmatter} data-testid="mdx-editor-move-frontmatter">
+                      Move it to Metadata
+                    </Button>
+                  </InlineAlert>
+                )}
+                <Box
+                  component="textarea"
+                  ref={sourceRef}
+                  id={SOURCE_ID}
+                  data-testid="mdx-editor-source"
+                  dir="ltr"
+                  spellCheck={false}
+                  value={draft.body}
+                  onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setDraft({ ...draft, body: event.target.value })}
+                  sx={{
+                    flex: 1,
+                    minHeight: { xs: "50vh", md: 0 },
+                    resize: "none",
+                    p: 1.5,
+                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                    tabSize: 2,
+                    color: "text.primary",
+                    bgcolor: "background.paper",
+                    border: 1,
+                    borderColor: "divider",
+                    borderRadius: 1,
+                    "&:focus-visible": { outline: 2, outlineStyle: "solid", outlineColor: "primary.main", outlineOffset: 1 },
+                  }}
+                />
+              </>
+            ) : (
+              <MetadataPane
+                yaml={draft.yaml ?? ""}
+                onChange={(yaml) => setDraft({ ...draft, yaml })}
+                kind={fileName.kind}
+                language={fileName.language}
+                english={english}
+              />
+            )}
+          </Box>
         </Box>
 
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minHeight: 0 }}>
@@ -324,6 +408,16 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
                   {`${whereOf(error)}${error.message}`}
                   {Content !== undefined && " — showing the last version that did."}
                 </InlineAlert>
+              </Box>
+            )}
+            {typeof header.title === "string" && (
+              <Box sx={{ mb: 2 }} data-testid="mdx-editor-preview-header">
+                <ArticleHeader
+                  title={header.title}
+                  draft={header.draft === true}
+                  date={typeof header.date === "string" ? header.date : undefined}
+                  updated={typeof header.updated === "string" ? header.updated : undefined}
+                />
               </Box>
             )}
             {Content !== undefined && (

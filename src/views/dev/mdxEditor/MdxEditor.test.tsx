@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import { downloadTextFile } from "../../../lib/pgnExport";
+import { starterFrontmatter, todayIso } from "./metadataYaml";
 import { expectNoAxeViolations } from "../../../test/axe";
 import { resetLibrary } from "../../library/libraryTestKit";
 import Main from "./Main";
@@ -49,6 +50,8 @@ const mount = (entry = "/dev/mdx-editor") =>
   );
 
 const source = () => screen.getByRole("textbox", { name: "MDX source" });
+const metadataTab = () => screen.getByRole("tab", { name: "Metadata" });
+const contentTab = () => screen.getByRole("tab", { name: "Content" });
 const preview = () => screen.getByRole("region", { name: "Preview" });
 /** Replace the whole document, as a paste would. */
 const setSource = (text: string) => fireEvent.change(source(), { target: { value: text } });
@@ -175,7 +178,8 @@ describe("the MDX editor", () => {
     expect(source()).toHaveValue("## Mine");
 
     await user.click(screen.getByRole("button", { name: "Download .mdx" }));
-    expect(vi.mocked(downloadTextFile)).toHaveBeenLastCalledWith("article.mdx", "## Mine", "text/markdown");
+    // The metadata and the content, joined back into one file (CTA-135).
+    expect(vi.mocked(downloadTextFile)).toHaveBeenLastCalledWith("article.mdx", `---\n${starterFrontmatter(todayIso())}---\n\n## Mine`, "text/markdown");
     expect(screen.getByTestId("mdx-editor-notice")).toHaveTextContent("Downloaded article.mdx.");
   });
 
@@ -195,5 +199,106 @@ describe("the MDX editor", () => {
     setSource("## Accessible\n\nWords.");
     await within(preview()).findByRole("heading", { name: "Accessible" });
     await expectNoAxeViolations();
+  });
+});
+
+describe("the MDX editor's Content and Metadata (CTA-135)", () => {
+  it("opens a file in two — its body in Content, its frontmatter in Metadata — and draws the header from the metadata", async () => {
+    const user = userEvent.setup();
+    mount("/dev/mdx-editor?article=tournaments%2Fwerner-obermeyer-swiss-2026");
+    await screen.findByText("Opened tournaments/werner-obermeyer-swiss-2026.mdx.");
+    expect((source() as HTMLTextAreaElement).value.startsWith('import games from "./20th-werner-obermeyer-swiss-5r.pgn?raw"')).toBe(true);
+    expect((source() as HTMLTextAreaElement).value).not.toContain("---");
+    // The preview's header, as the article's page draws it.
+    const header = within(preview()).getByTestId("mdx-editor-preview-header");
+    expect(within(header).getByRole("heading", { name: "20th Werner-Obermeyer" })).toBeInTheDocument();
+    expect(within(header).getByTestId("article-dates")).toHaveTextContent("Published Sep 11, 2026");
+
+    await user.click(metadataTab());
+    expect(screen.getByRole("textbox", { name: "Title (required)" })).toHaveValue("20th Werner-Obermeyer");
+    expect(screen.getByTestId("mdx-editor-meta-date")).toHaveValue("2026-09-11");
+    await user.click(screen.getByRole("button", { name: "YAML" }));
+    expect(screen.getByRole("textbox", { name: "Metadata YAML" })).toHaveValue(
+      'title: 20th Werner-Obermeyer\nsummary: "A Swiss: five rounds, the top boards of each — <SwissStandingsTable> and three of its games."\ndate: 2026-09-11\n',
+    );
+    expect(screen.getByTestId("mdx-editor-editing")).not.toHaveTextContent("changed");
+  });
+
+  it("edits the metadata in the form, shows it in the YAML and the header, and joins it back on copy", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    mount();
+    setSource("## Body");
+    await user.click(metadataTab());
+    const title = screen.getByRole("textbox", { name: "Title (required)" });
+    await user.clear(title);
+    // Validated as the build validates it, against its field.
+    expect(screen.getByText("title is required")).toBeInTheDocument();
+    await user.type(title, "My event");
+    await user.click(screen.getByRole("switch", { name: "Draft — in yarn dev only, not in the build" }));
+    expect(within(preview()).getByRole("heading", { name: "My event" })).toBeInTheDocument();
+    expect(within(preview()).queryByTestId("article-draft")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "YAML" }));
+    expect(screen.getByRole("textbox", { name: "Metadata YAML" })).toHaveValue(
+      `title: My event\nsummary: One line about it, for the index pages.\ndate: ${todayIso()}\n`,
+    );
+    await user.click(screen.getByRole("button", { name: "Copy MDX" }));
+    expect(writeText).toHaveBeenCalledWith(`---\ntitle: My event\nsummary: One line about it, for the index pages.\ndate: ${todayIso()}\n---\n\n## Body`);
+  });
+
+  it("starts a new article as a draft dated today, marked in the preview", async () => {
+    mount();
+    const header = await within(preview()).findByTestId("mdx-editor-preview-header");
+    expect(within(header).getByRole("heading", { name: "A new article" })).toBeInTheDocument();
+    expect(within(header).getByTestId("article-draft")).toHaveTextContent("Draft");
+  });
+
+  it("keeps YAML that does not parse in the YAML view, saying where, and keeps a key it does not know", async () => {
+    const user = userEvent.setup();
+    mount();
+    await user.click(metadataTab());
+    await user.click(screen.getByRole("button", { name: "YAML" }));
+    const yaml = screen.getByRole("textbox", { name: "Metadata YAML" });
+    fireEvent.change(yaml, { target: { value: "title: [unclosed\n" } });
+    expect(screen.getByTestId("mdx-editor-meta-yaml-error")).toHaveTextContent(/Line \d+: Flow sequence/);
+    await user.click(screen.getByRole("button", { name: "Form" }));
+    // Nothing for the form to show: still the YAML.
+    expect(screen.getByRole("textbox", { name: "Metadata YAML" })).toBeInTheDocument();
+
+    fireEvent.change(yaml, { target: { value: "title: T\nsummary: S\nslug: x # mine\n" } });
+    expect(screen.getByTestId("mdx-editor-meta-issues")).toHaveTextContent('unknown key "slug"');
+    await user.click(screen.getByRole("button", { name: "Form" }));
+    expect(screen.getByTestId("mdx-editor-meta-unknown-slug")).toHaveTextContent("an unknown key, kept as written");
+    await user.type(screen.getByRole("textbox", { name: "Title (required)" }), "wo");
+    await user.click(screen.getByRole("button", { name: "YAML" }));
+    expect(screen.getByRole("textbox", { name: "Metadata YAML" })).toHaveValue("title: Two\nsummary: S\nslug: x # mine\n");
+  });
+
+  it("gives a translation its own words only, and shows what the English file says", async () => {
+    const user = userEvent.setup();
+    mount("/dev/mdx-editor?article=tournaments%2Folympiad-2026.he");
+    await screen.findByText("Opened tournaments/olympiad-2026.he.mdx.");
+    await user.click(metadataTab());
+    expect(screen.getByRole("textbox", { name: "Title (required)" })).toHaveValue("האולימפיאדה ה-46 בשחמט 2026");
+    expect(screen.queryByTestId("mdx-editor-meta-date")).not.toBeInTheDocument();
+    expect(screen.getByTestId("mdx-editor-meta-english")).toHaveTextContent("From the English file: date 2026-09-16.");
+  });
+
+  it("offers to move a --- block pasted into Content into Metadata", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    mount();
+    setSource("---\ntitle: Pasted\nsummary: S\n---\n\n## Pasted body");
+    // It draws nothing in the preview, and takes no line marker.
+    expect(await within(preview()).findByRole("heading", { name: "Pasted body" })).toBeInTheDocument();
+    expect(Array.from(preview().querySelectorAll<HTMLElement>("[data-source-line]"), (marker) => marker.dataset.sourceLine)).toEqual(["6"]);
+    await user.click(screen.getByRole("button", { name: "Move it to Metadata" }));
+    expect(source()).toHaveValue("## Pasted body");
+    await user.click(metadataTab());
+    expect(screen.getByRole("textbox", { name: "Title (required)" })).toHaveValue("Pasted");
+    await user.click(contentTab());
+    expect(screen.queryByTestId("mdx-editor-pasted-frontmatter")).not.toBeInTheDocument();
   });
 });

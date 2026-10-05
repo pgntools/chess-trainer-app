@@ -99,6 +99,9 @@ const he: typeof en = {
     missingTitle: "לא נמצא",
     missingArticle: "אין מאמר בכתובת הזו.",
     missingFolder: "אין תיקיית בלוג בכתובת הזו.",
+    draft: "טיוטה",
+    published: "פורסם ב-{{date}}",
+    updated: "עודכן ב-{{date}}",
   },
   inlinePgn: {
     label: "המשחק, מ-{{from}} עד {{to}}",
@@ -123,7 +126,6 @@ const he: typeof en = {
   pages: {
     home: "דף הבית",
     blog: "בלוג",
-    blogArticle: "מאמר",
     playWithEngine: "משחק מול המנוע",
     lobby: "לובי",
     maskedPieces: "כלים מוסווים",

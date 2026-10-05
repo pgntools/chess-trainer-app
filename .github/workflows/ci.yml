@@ -62,6 +62,9 @@ jobs:
       - run: yarn install --frozen-lockfile
       # `tsc -b` over the app *and* the tests, then the production build.
       - run: yarn build
+      # The Blog as built (CTA-135): nothing of a draft (the fixture draft
+      # keeps that honest), no article body in the entry chunk, each in its own.
+      - run: yarn check:blog-build
 
   lint:
     runs-on: ubuntu-latest

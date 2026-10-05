@@ -29,6 +29,8 @@ export type NavItem = {
   icon: SvgIconComponent;
   /** The folder this screen hangs under in the sidebar — an id from `navFolders`. */
   folder: NavFolderId;
+  /** Not yet published — a Blog draft, listed in `yarn dev` only (CTA-135). */
+  draft?: boolean;
 };
 
 /**
@@ -108,13 +110,15 @@ export const navItems = (): readonly NavItem[] => [
   },
   /*
     The Blog (CTA-126): its index, and every article in its folder — read off
-    `views/blog/articles.ts`, each named by its data label.
+    `views/blog/articles.ts`, each named by its data label; a draft, which
+    only `yarn dev` lists, is marked (CTA-135).
   */
   ...blogArticlesInTreeOrder().map((article) => ({
     to: `/blog/${article.path}`,
     label: article.title,
     icon: ArticleRoundedIcon,
     folder: blogNavFolderId(blogParentOf(article.path)),
+    ...(article.draft ? { draft: true } : {}),
   })),
   // After the articles: a folder's sub-folders render above its own screens.
   {

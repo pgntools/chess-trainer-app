@@ -128,6 +128,11 @@ const en = {
     missingTitle: "Not found",
     missingArticle: "There is no article at this address.",
     missingFolder: "There is no Blog folder at this address.",
+    /** A draft's mark — shown in `yarn dev` only, where drafts are listed (CTA-135). */
+    draft: "Draft",
+    /** The line under an article's title (CTA-135): its frontmatter's `date` and `updated`. */
+    published: "Published {{date}}",
+    updated: "Updated {{date}}",
   },
   /** `<InlinePgnGame>` (CTA-126): an excerpt of a game in an article (`views/shared/ExcerptBoard.tsx`). */
   inlinePgn: {
@@ -157,9 +162,8 @@ const en = {
    */
   pages: {
     home: "Home",
-    /** The Blog (CTA-126): its index and folders, and one article — its title goes first. */
+    /** The Blog (CTA-126) — every page of it, one route (CTA-135): a folder's or an article's name goes first. */
     blog: "Blog",
-    blogArticle: "Article",
     playWithEngine: "Play with Engine",
     lobby: "Lobby",
     maskedPieces: "Masked Pieces",

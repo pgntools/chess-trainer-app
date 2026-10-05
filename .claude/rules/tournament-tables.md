@@ -334,12 +334,15 @@ shows its table and no boards, and its page says so.
    A file with only TWIC's issue in its tags credits the issue
    (`https://theweekinchess.com/html/twic<n>.html#<anchor>`). Every fact the
    prose states is read off the file (`tournamentOf` & co. in a scratch test).
-3. **Register it**: an entry in `src/views/blog/articles.ts` (`title` and
-   `summary` in `en` and `he`; a new folder in `BLOG_FOLDERS`), a route line
-   in `src/routes.tsx`, a line in `e2e/a11y/routes.ts` (`ready:
-   byTestId("tournament-…-<event slug>")`; `board: true` where it has a
-   board). `articles.test.ts` holds the four lists to each other — and its
-   folder counts.
+3. **Its frontmatter** (CTA-135) is the whole registration: `title`,
+   `summary` and `date` (the event's, from its PGN's `EventDate` — the
+   *Tournaments* folder sorts newest first) at the top of the `.mdx`, and a
+   frontmatter-only `<path>.he.mdx` with its Hebrew `title` and `summary`; a
+   new folder is a directory with an `index.mdx` naming it. The Blog's one
+   route serves it and the browser pass reads it from the file; add
+   `ready: "tournament-…-<event slug>"` to `BLOG_READY` in
+   `e2e/a11y/routes.ts` (and the path to `BLOG_SAMPLE` for a new kind of
+   table). `articles.test.ts` holds the folder counts and orders.
 4. `npx vitest run src/views/blog src/views/home`.
 
 ## 7. Adding a format or a table

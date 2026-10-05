@@ -3,12 +3,12 @@ import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 
 import { IconAction } from "../../design-system/components/toolbars";
 import type { AppLanguage } from "../../i18n";
-import { articleDocument } from "./articles";
+import { articleFileOf } from "./articles";
 
 type ArticleEditLinkProps = {
   /** The article's path — `tournaments/olympiad-2026`. */
   path: string;
-  /** The language the page shows it in: its file is that document's (`<path>.he.mdx`), else the English one. */
+  /** The language the page shows it in: its file is that document's (`<path>.he.mdx`), else the English one — a translation of the title alone included. */
   language: AppLanguage;
 };
 
@@ -23,9 +23,8 @@ type ArticleEditLinkProps = {
  */
 export function ArticleEditLink({ path, language }: ArticleEditLinkProps) {
   if (!import.meta.env.DEV) return null;
-  const document = articleDocument(path, language);
-  if (document === undefined) return null;
-  const file = document.language === "en" ? path : `${path}.${document.language}`;
+  const file = articleFileOf(path, language);
+  if (file === undefined) return null;
   return (
     <IconAction
       label="Edit in the MDX editor"

@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
-import { ROUTES } from "./routes";
+import { blogArticleRoutes } from "./blogRoutes";
+import { BLOG_READY, BLOG_SAMPLE, ROUTES } from "./routes";
 
 /*
   The pass visits every shipped route (CTA-116) — so the list of routes it
@@ -41,4 +42,13 @@ test("the lines have unique names and paths that keep the base", () => {
   expect(new Set(ids).size).toBe(ids.length);
   // A leading slash would drop `/chess-trainer-app/` and open a 404.
   expect(ROUTES.filter((route) => route.path.startsWith("/")).map((route) => route.id)).toEqual([]);
+});
+
+test("every published Blog article is visited, and the hand-kept lists name articles that are there (CTA-135)", () => {
+  const articles = blogArticleRoutes().map((article) => article.path);
+  expect(articles.length, "the articles were read").toBeGreaterThan(20);
+  const visited = new Set(ROUTES.map((route) => route.path));
+  expect(articles.filter((path) => !visited.has(`blog/${path}`))).toEqual([]);
+  // A renamed or removed article would otherwise drop out of the sample silently.
+  expect([...BLOG_SAMPLE, ...Object.keys(BLOG_READY)].filter((path) => !articles.includes(path))).toEqual([]);
 });
