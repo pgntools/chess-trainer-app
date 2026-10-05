@@ -43,6 +43,8 @@ const en = {
     designSystem: "Design system",
     /** The dev-only theme editor (CTA-115), in the Development folder. */
     themeEditor: "Theme editor",
+    /** The dev-only MDX editor — an article's MDX beside its rendering — in the Development folder. */
+    mdxEditor: "MDX editor",
     /** Sidebar folders — groupings over the routes, never routes themselves. */
     folders: {
       engine: "Engine",
@@ -178,6 +180,7 @@ const en = {
     settings: "Settings",
     designSystem: "Design system",
     themeEditor: "Theme editor",
+    mdxEditor: "MDX editor",
   },
   /** The app shell's own words for a screen reader (CTA-112). */
   shell: {

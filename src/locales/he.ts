@@ -28,6 +28,7 @@ const he: typeof en = {
     settingsAppearance: "מראה",
     designSystem: "מערכת עיצוב",
     themeEditor: "עורך ערכות נושא",
+    mdxEditor: "עורך MDX",
     folders: {
       engine: "מנוע",
       library: "ספרייה",
@@ -143,6 +144,7 @@ const he: typeof en = {
     settings: "הגדרות",
     designSystem: "מערכת עיצוב",
     themeEditor: "עורך ערכות נושא",
+    mdxEditor: "עורך MDX",
   },
   shell: {
     skipToMain: "דילוג לתוכן הראשי",

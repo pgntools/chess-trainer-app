@@ -716,8 +716,9 @@ the reader plays the solution, the engine never moves):
    (CTA-112; a record it opens goes in the title through `usePageTitle`) —
    **and one `navItems()` entry.** A board still being
    built goes behind the **Development section** (open today for the design
-   gallery, `/dev/design`, CTA-107, and the theme editor, `/dev/theme-editor`,
-   CTA-115 — add to it rather than open a second): its
+   gallery, `/dev/design`, CTA-107, the theme editor, `/dev/theme-editor`,
+   CTA-115, and the MDX editor, `/dev/mdx-editor` — add to it rather than
+   open a second): its
    nav folder and entries are spreads in `navFolders()` / `navItems()` gated
    on `import.meta.env.DEV`, its route a `React.lazy` import inside an `import.meta.env.DEV ? [...] : []`
    array (so the production bundle carries no chunk of it), and a store it

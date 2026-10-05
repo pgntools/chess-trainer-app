@@ -104,6 +104,15 @@ describe("a Blog article (CTA-126)", () => {
   it("says so for an address that names no article", () => {
     renderAt("/blog/writing-an-article/components/nowhere", "article");
     expect(screen.getByText("There is no article at this address.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Edit in the MDX editor" })).not.toBeInTheDocument();
+  });
+
+  it("links, in yarn dev, to its file in the MDX editor — the English one where the page shows it under Hebrew", async () => {
+    renderAt("/blog/tournaments/olympiad-2026", "article");
+    expect(screen.getByRole("link", { name: "Edit in the MDX editor" })).toHaveAttribute("href", "/dev/mdx-editor?article=tournaments%2Folympiad-2026");
+    await i18n.changeLanguage("he");
+    renderAt("/blog/writing-an-article/guide", "article");
+    expect(screen.getAllByRole("link", { name: "Edit in the MDX editor" }).at(-1)).toHaveAttribute("href", "/dev/mdx-editor?article=writing-an-article%2Fguide");
   });
 
   it.each(BLOG_ARTICLES.map((article) => article.path))(

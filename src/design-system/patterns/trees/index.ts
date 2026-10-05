@@ -4,3 +4,4 @@
  * reference is `docs/design/sections/patterns/trees.md`.
  */
 export * from "./TreeView";
+export * from "./TreePicker";
