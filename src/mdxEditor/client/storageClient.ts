@@ -105,3 +105,26 @@ export const unsyncedFoldersOf = (files: readonly GitFile[]): ReadonlySet<string
   }
   return folders;
 };
+
+/** The articles importing a PGN file (a path under `articles/`) — `undefined` when the service cannot say. */
+export const readImporters = async (path: string): Promise<string[] | undefined> => {
+  try {
+    const response = await fetch(`${STORAGE_URL}/importers?path=${encodeURIComponent(path)}`);
+    if (!response.ok) return undefined;
+    return ((await response.json()) as { importers?: string[] }).importers ?? [];
+  } catch {
+    return undefined;
+  }
+};
+
+/** Files under `articles/` deleted — all of them, or none when the service refuses one. */
+export const deleteStorageFiles = async (paths: readonly string[]): Promise<{ kind: "deleted"; paths: string[] } | { kind: "refused"; message: string } | { kind: "down" }> => {
+  let response: Response;
+  try {
+    response = await fetch(`${STORAGE_URL}/files`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paths }) });
+  } catch {
+    return { kind: "down" };
+  }
+  if (!response.ok) return { kind: "refused", message: await errorOf(response) };
+  return { kind: "deleted", paths: ((await response.json()) as { deleted?: string[] }).deleted ?? [] };
+};

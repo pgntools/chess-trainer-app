@@ -43,10 +43,11 @@ import { insertBlock } from "./componentCatalog";
 import { articlePgnsOf, usesOf, withInlinePgn, withoutPgn, withPgnImports } from "./pgnImports";
 import { BIG_PGN_BYTES, pgnBytesOf, sizeOf } from "./pgnPages";
 import { starterFrontmatter, todayIso } from "./metadataYaml";
+import DeleteArticleDialog from "./DeleteArticleDialog";
 import GitStatusDialog from "./GitStatusDialog";
 import SaveArticleDialog from "./SaveArticleDialog";
 import { STARTER_DOCUMENT } from "./starterDocument";
-import { ARTICLES_DIR, GIT_STATE_WORDS, listStorageFolders, STORAGE_COMMAND, STORAGE_URL, unsyncedFoldersOf, writeStorageFile, type StorageFolder } from "./storageClient";
+import { ARTICLES_DIR, deleteStorageFiles, GIT_STATE_WORDS, listStorageFolders, STORAGE_COMMAND, STORAGE_URL, unsyncedFoldersOf, writeStorageFile, type StorageFolder } from "./storageClient";
 import { useGitStatus } from "./useGitStatus";
 import { useScrollSync } from "./useScrollSync";
 
@@ -80,7 +81,9 @@ import { useScrollSync } from "./useScrollSync";
  * - **The header** (CTA-137): the title, and the actions in one toolbar at
  *   its inline end — what goes into the content (Add PGN, Add component),
  *   then where it goes (Save as…, Save), the rest under More (New article,
- *   Copy MDX, Download .mdx); under it, the file being edited, whether it
+ *   Copy MDX, Download .mdx, Delete article… — `DeleteArticleDialog`: the
+ *   file, its translations with it, the PGN files only it imports if
+ *   chosen, and whether git can bring them back); under it, the file being edited, whether it
  *   has unsaved changes, whether git has it as it is, how many article
  *   files git has not got (`GitStatusDialog`, the service's read-only
  *   `git status`, refreshed on focus and after every write), and where its
@@ -158,6 +161,8 @@ type SaveStep =
   | { kind: "save" }
   | { kind: "save-as" }
   | { kind: "write"; file: string; overwrite: boolean }
+  /** The article being edited, its translations and the PGN files chosen, deleted — Delete article. */
+  | { kind: "delete"; paths: string[] }
   /**
    * PGNs into `folder`, beside the article, which imports them at once;
    * `overwrite` names the ones the reader agreed to replace.
@@ -190,7 +195,7 @@ const NOTICE_ICONS: readonly [RegExp, typeof InfoOutlinedIcon][] = [
   [/^Downloaded /, DownloadRoundedIcon],
   [/^Inserted /, WidgetsRoundedIcon],
   [/^(Added |Wrote the PGN)/, UploadFileRoundedIcon],
-  [/^Removed /, DeleteOutlineRoundedIcon],
+  [/^(Removed|Deleted) /, DeleteOutlineRoundedIcon],
   [/^Moved the /, DriveFileMoveOutlinedIcon],
 ];
 
@@ -214,6 +219,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   /** What git has not got of the articles — read by the service, refreshed after every write. */
   const git = useGitStatus();
   const [gitOpen, setGitOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const gitFiles = git.status?.kind === "status" ? git.status.files : undefined;
   const fileInGit = draft.file === "" || gitFiles === undefined ? undefined : (gitFiles.find((candidate) => candidate.path === `${draft.file}.mdx`)?.state ?? "committed");
   /** The header's More menu — the button it hangs from while open. */
@@ -439,10 +445,29 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
     setNotice(`Inserted ${code.split(/[\s>]/)[0]}> into the content.`);
   };
 
+  /**
+   * Files deleted — the article being edited and what goes with it. The
+   * text stays in the editor, an article with no file and unsaved, so Save
+   * as can put it back.
+   */
+  const deleteFiles = async (paths: string[]) => {
+    setBusy(true);
+    const result = await deleteStorageFiles(paths);
+    setBusy(false);
+    if (result.kind === "down") return setDown({ kind: "delete", paths });
+    if (result.kind === "refused") return setNotice(result.message);
+    setDeleteOpen(false);
+    setDraft((current) => ({ ...current, file: "" }));
+    setOpened("");
+    git.refresh();
+    setNotice(`Deleted ${result.paths.join(", ")} — the text stays in the editor, unsaved, until you start a new article.`);
+  };
+
   const run = (step: SaveStep) => {
     if (step.kind === "save") return draft.file === "" ? openSaveDialog() : write(draft.file, true);
     if (step.kind === "save-as") return openSaveDialog();
     if (step.kind === "write") return write(step.file, step.overwrite);
+    if (step.kind === "delete") return deleteFiles(step.paths);
     return addPgns(step);
   };
 
@@ -499,6 +524,8 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
                 },
                 { id: "copy", label: "Copy MDX", icon: <ContentCopyRoundedIcon fontSize="small" />, onClick: () => void copy() },
                 { id: "download", label: "Download .mdx", icon: <DownloadRoundedIcon fontSize="small" />, onClick: download },
+                // Only an article with a file of its own; asked about first.
+                { id: "delete", label: "Delete article…", icon: <DeleteOutlineRoundedIcon fontSize="small" />, onClick: () => setDeleteOpen(true), disabled: draft.file === "" || busy },
               ]}
               testId="mdx-editor-more-menu"
               entryTestIdPrefix="mdx-editor"
@@ -604,6 +631,9 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           added={pgnAdded}
           error={addPgnError}
         />
+      )}
+      {deleteOpen && draft.file !== "" && (
+        <DeleteArticleDialog open onClose={() => setDeleteOpen(false)} file={draft.file} body={draft.body} gitFiles={gitFiles} onDelete={(paths) => void run({ kind: "delete", paths })} busy={busy} />
       )}
       <GitStatusDialog open={gitOpen} onClose={() => setGitOpen(false)} status={git.status} onRefresh={git.refresh} />
       {addComponent !== undefined && (

@@ -162,7 +162,7 @@ describe("the handler", () => {
     expect(JSON.parse(response.body ?? "").error).toMatch(/leaves articles/);
     expect(handle(put({ path: "x.mdx" })).status).toBe(400);
     expect(handle({ ...put({}), body: "{not json" }).status).toBe(400);
-    expect(handle({ method: "DELETE", url: "/files", ...LOCAL }).status).toBe(404);
+    expect(handle({ method: "POST", url: "/files", ...LOCAL }).status).toBe(404);
     expect(existsSync(join(work, "escape.mdx"))).toBe(false);
   });
 });
@@ -227,5 +227,54 @@ describe("the git status (read only)", () => {
       },
     });
     expect(JSON.parse(outside({ method: "GET", url: "/git-status", ...LOCAL }).body ?? "")).toEqual({ available: false, reason: "git could not say: fatal: not a git repository" });
+  });
+});
+
+describe("deleting, and who imports a PGN", () => {
+  const del = (paths: unknown, extra: Partial<StorageRequest> = {}): StorageRequest => ({
+    method: "DELETE",
+    url: "/files",
+    contentType: "application/json",
+    body: JSON.stringify({ paths }),
+    ...LOCAL,
+    ...extra,
+  });
+
+  it("deletes the files asked for — all of them, or none when one is refused", () => {
+    writeFileSync(join(root, "tournaments", "cup.he.mdx"), "---\ntitle: C\n---\n");
+    const handle = createStorageHandler({ root });
+    const refused = handle(del(["tournaments/cup.he.mdx", "tournaments/missing.mdx"]));
+    expect(refused.status).toBe(400);
+    expect(JSON.parse(refused.body ?? "").error).toBe("tournaments/missing.mdx is not there.");
+    expect(existsSync(join(root, "tournaments", "cup.he.mdx"))).toBe(true);
+
+    const deleted = handle(del(["tournaments/cup.mdx", "tournaments/cup.he.mdx", "tournaments/cup.pgn"]));
+    expect(deleted.status).toBe(200);
+    expect(JSON.parse(deleted.body ?? "")).toEqual({ deleted: ["tournaments/cup.mdx", "tournaments/cup.he.mdx", "tournaments/cup.pgn"] });
+    expect(existsSync(join(root, "tournaments", "cup.mdx"))).toBe(false);
+    // The folder and its index stay.
+    expect(existsSync(join(root, "tournaments", "index.mdx"))).toBe(true);
+  });
+
+  it("refuses a path out, a folder, another extension, and a delete that is not JSON", () => {
+    const handle = createStorageHandler({ root });
+    expect(handle(del(["../outside/x.mdx"])).status).toBe(400);
+    expect(handle(del(["tournaments"])).status).toBe(400);
+    expect(handle(del(["tournaments/notes.txt"])).status).toBe(400);
+    expect(handle(del([])).status).toBe(400);
+    expect(handle(del(["tournaments/cup.mdx"], { contentType: "text/plain" })).status).toBe(415);
+    expect(existsSync(join(root, "tournaments", "cup.mdx"))).toBe(true);
+    expect(handle({ method: "OPTIONS", url: "/files", ...LOCAL }).headers["Access-Control-Allow-Methods"]).toContain("DELETE");
+  });
+
+  it("says which articles import a PGN, read from each article's folder", () => {
+    writeFileSync(join(root, "tournaments", "cup.mdx"), 'import games from "./cup.pgn?raw"\n\n## Cup');
+    writeFileSync(join(root, "get-started.mdx"), 'import cup from "./tournaments/cup.pgn?raw"\nimport other from "./other.pgn?raw"\n');
+    mkdirSync(join(root, "tournaments", "deeper"));
+    writeFileSync(join(root, "tournaments", "deeper", "again.mdx"), "import g from '../cup.pgn?raw'\n");
+    const handle = createStorageHandler({ root });
+    const answer = handle({ method: "GET", url: "/importers?path=tournaments%2Fcup.pgn", ...LOCAL });
+    expect(JSON.parse(answer.body ?? "").importers.sort()).toEqual(["get-started.mdx", "tournaments/cup.mdx", "tournaments/deeper/again.mdx"]);
+    expect(handle({ method: "GET", url: "/importers?path=..%2Fx.pgn", ...LOCAL }).status).toBe(400);
   });
 });

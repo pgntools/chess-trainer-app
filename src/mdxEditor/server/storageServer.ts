@@ -18,6 +18,10 @@
  *                    or { available: false, reason } outside a checkout.
  *                    Read only: it runs `git status` on articles/ alone, and
  *                    nothing from the request reaches the command.
+ *   GET  /importers?path=<a .pgn> → { importers: [<.mdx>…] } — the articles
+ *                    that import it (`import x from "./….pgn?raw"`)
+ *   DELETE /files  { paths } → { deleted } — each an existing .mdx or .pgn
+ *                    file, all checked before any is deleted
  *   PUT  /files    { path, content, overwrite? } → 201 { written, created, foldersCreated }
  *                    409 { error, exists: path } when the file is there and
  *                    `overwrite` is not set
@@ -27,7 +31,9 @@
  * file that is not `.mdx` or `.pgn`; a folder or `.mdx` name that is not a
  * Blog path (lower-case words and dashes). A folder the path names that is
  * not there yet is made, with a stub `index.mdx` titled from its name, so the
- * Blog registers it. Nothing is ever moved or deleted.
+ * Blog registers it. Nothing is moved, and nothing deleted but on a
+ * `DELETE /files` — files only, never a folder, each path guarded as a
+ * write is.
  *
  * **Who it answers** (403 otherwise): a request whose `Host` is this
  * machine's loopback (no DNS rebinding) and, from a browser, whose `Origin`
@@ -40,7 +46,7 @@
  * variable the editor reads (`start.ts` reads `.env.local` / `.env` for it).
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
@@ -225,6 +231,34 @@ export const listFolders = (root: string): StorageFolder[] => {
   return folders;
 };
 
+/**
+ * The articles that import a PGN file — every `.mdx` under `root` with an
+ * `import <name> from "<relative path>.pgn?raw"` that, read from its own
+ * folder, names `pgnPath` (relative to `root`).
+ */
+export const importersOf = (root: string, pgnPath: string): string[] => {
+  const importers: string[] = [];
+  for (const folder of listFolders(root)) {
+    for (const file of folder.files.filter((name) => name.endsWith(".mdx"))) {
+      const path = folder.path === "" ? file : `${folder.path}/${file}`;
+      const text = readFileSync(join(root, ...path.split("/")), "utf8");
+      for (const match of text.matchAll(/^\s*import\s+[A-Za-z_$][\w$]*\s+from\s+["']([^"'\n]+\.pgn)\?raw["']/gm)) {
+        const parts = folder.path === "" ? [] : folder.path.split("/");
+        for (const part of match[1].split("/")) {
+          if (part === "." || part === "") continue;
+          if (part === "..") parts.pop();
+          else parts.push(part);
+        }
+        if (parts.join("/") === pgnPath) {
+          importers.push(path);
+          break;
+        }
+      }
+    }
+  }
+  return importers;
+};
+
 const json = (status: number, value: unknown, headers: Record<string, string>): StorageResponse => ({
   status,
   headers: { ...headers, "Content-Type": "application/json; charset=utf-8" },
@@ -250,12 +284,46 @@ export const createStorageHandler = ({ root, origins, git }: StorageOptions) => 
     if (request.method === "OPTIONS") {
       return {
         status: 204,
-        headers: { ...cors, "Access-Control-Allow-Methods": "GET, PUT, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "600" },
+        headers: { ...cors, "Access-Control-Allow-Methods": "GET, PUT, DELETE, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "600" },
       };
     }
     if (request.method === "GET" && route === "/health") return json(200, { ok: true, service: "mdx-editor-storage", articles: ARTICLES }, cors);
     if (request.method === "GET" && route === "/folders") return json(200, { folders: listFolders(root) }, cors);
     if (request.method === "GET" && route === "/git-status") return json(200, gitStatusOf(root, git), cors);
+    if (request.method === "GET" && route === "/importers") {
+      const path = new URLSearchParams(request.url.split("?")[1] ?? "").get("path") ?? "";
+      try {
+        resolveArticlePath(root, path);
+      } catch (error) {
+        if (error instanceof Refused) return json(400, { error: error.message }, cors);
+        throw error;
+      }
+      return json(200, { importers: importersOf(root, path) }, cors);
+    }
+    if (request.method === "DELETE" && route === "/files") {
+      if (!(request.contentType ?? "").startsWith("application/json")) return json(415, { error: "A delete is JSON: { paths }." }, cors);
+      let payload: { paths?: unknown };
+      try {
+        payload = JSON.parse(request.body ?? "") as typeof payload;
+      } catch {
+        return json(400, { error: "The body is not JSON." }, cors);
+      }
+      const paths = Array.isArray(payload?.paths) ? payload.paths : [];
+      if (paths.length === 0) return json(400, { error: "No file to delete." }, cors);
+      try {
+        // Every path checked before any file goes: all of them, or none.
+        const files = paths.map((path) => {
+          const { absolute } = resolveArticlePath(root, path);
+          if (!existsSync(absolute)) throw new Refused(`${String(path)} is not there.`);
+          return { path: path as string, absolute };
+        });
+        for (const { absolute } of files) unlinkSync(absolute);
+        return json(200, { deleted: files.map(({ path }) => path) }, cors);
+      } catch (error) {
+        if (error instanceof Refused) return json(400, { error: error.message }, cors);
+        throw error;
+      }
+    }
     if (request.method === "PUT" && route === "/files") {
       if (!(request.contentType ?? "").startsWith("application/json")) return json(415, { error: "A write is JSON: { path, content, overwrite? }." }, cors);
       let payload: { path?: unknown; content?: unknown; overwrite?: unknown };
@@ -288,7 +356,7 @@ export const createStorageHandler = ({ root, origins, git }: StorageOptions) => 
         throw error;
       }
     }
-    return json(404, { error: `No ${request.method} ${route} here — /health, /folders, /git-status and PUT /files.` }, cors);
+    return json(404, { error: `No ${request.method} ${route} here — /health, /folders, /git-status, /importers, PUT /files and DELETE /files.` }, cors);
   };
   return handle;
 };
@@ -322,7 +390,7 @@ export const startServer = ({ port, host = "127.0.0.1", ...options }: StorageOpt
           origin: header("origin"),
           host: header("host"),
           contentType: header("content-type"),
-          body: request.method === "PUT" ? await readBody(request) : undefined,
+          body: request.method === "PUT" || request.method === "DELETE" ? await readBody(request) : undefined,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -331,6 +399,7 @@ export const startServer = ({ port, host = "127.0.0.1", ...options }: StorageOpt
       response.writeHead(result.status, result.headers);
       response.end(result.body);
       if (request.method === "PUT" && result.status < 300) console.log(`mdx-editor: wrote ${ARTICLES}/${(JSON.parse(result.body ?? "{}") as { written?: string }).written}`);
+      if (request.method === "DELETE" && result.status < 300) console.log(`mdx-editor: deleted ${((JSON.parse(result.body ?? "{}") as { deleted?: string[] }).deleted ?? []).map((path) => `${ARTICLES}/${path}`).join(", ")}`);
     })();
   });
   return new Promise((done, fail) => {
