@@ -16,7 +16,7 @@ import SourceLineMarker from "./SourceLineMarker";
 export const PREVIEW_COMPONENTS = { ...mdxComponents, [SOURCE_LINE_COMPONENT]: SourceLineMarker };
 
 /** How long typing must pause before the document is compiled again. */
-export const COMPILE_DELAY_MS = 300;
+const COMPILE_DELAY_MS = 300;
 
 /** What the preview shows: the last document that compiled, and what is wrong with the newest one. */
 export type Compiled = {

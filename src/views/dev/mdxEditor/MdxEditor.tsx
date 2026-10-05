@@ -8,10 +8,13 @@ import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SaveAsRoundedIcon from "@mui/icons-material/SaveAsRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import WidgetsRoundedIcon from "@mui/icons-material/WidgetsRounded";
 
-import { SelectAutocomplete } from "../../../design-system/components/autocompletes";
 import { ConfirmDialog } from "../../../design-system/components/dialogs";
+import { AnchoredMenu } from "../../../design-system/components/menus";
+import { ActionBar, IconAction } from "../../../design-system/components/toolbars";
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
 import { SwitchField } from "../../../design-system/components/forms";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
@@ -19,7 +22,7 @@ import { articleFileName, joinFrontmatter, parseFrontmatterYaml, splitFrontmatte
 import { downloadTextFile } from "../../../lib/pgnExport";
 import { ArticleHeader } from "../../blog/ArticleHeader";
 import { findBlogArticle } from "../../blog/articles";
-import { articleOptions, folderOf, loadArticleSource } from "./articleSources";
+import { folderOf, loadArticleSource } from "./articleSources";
 import { MetadataPane } from "./MetadataPane";
 import { PreviewBoundary } from "./mdxPreview";
 import { PREVIEW_COMPONENTS, useCompiled, whereOf } from "./useCompiled";
@@ -44,10 +47,9 @@ import { useScrollSync } from "./useScrollSync";
  * - **A document that will not compile** keeps the last one that did on the
  *   right, under the error and where it is. **A component that throws** (a
  *   prop it cannot read) is caught there, and the next compile tries again.
- * - **An article** can be opened as a starting point — typed to find in the
- *   autocomplete beside the toolbar (the Blog's folders as its groups), or
- *   from the edit icon beside an article's title (`?article=<file>`, which
- *   `Main` hands in as `arrivingArticle`); its
+ * - **An article** is opened from the edit icon beside its title on the
+ *   Blog, in `yarn dev` (`?article=<file>`, which `Main` hands in as
+ *   `arrivingArticle`); its
  *   `import games from "./x.pgn?raw"` reads the file beside it.
  * - **Content and Metadata** (CTA-135): a file opens split in two — its
  *   body in the Content tab, its frontmatter in the Metadata tab
@@ -58,6 +60,11 @@ import { useScrollSync } from "./useScrollSync";
  * - **The panes scroll together** (`useScrollSync.ts`) while "Scroll
  *   together" is on and the Content tab is open: scrolling either brings the
  *   other to the same block.
+ * - **The header** (CTA-137): the title, and the actions in one toolbar at
+ *   its inline end — what goes into the content (Add PGN, Add component),
+ *   then where it goes (Save as…, Save), the rest under More (New article,
+ *   Copy MDX, Download .mdx); under it, the file being edited, whether it
+ *   has unsaved changes, and where its imports resolve from.
  * - **Saving** (CTA-137) goes through a local storage service,
  *   `yarn mdx-editor:start` (`scripts/mdx-editor-server.ts`, called through
  *   `storageClient.ts`), which writes into `src/views/blog/articles/`. Save
@@ -86,8 +93,6 @@ import { useScrollSync } from "./useScrollSync";
 
 const DRAFT_KEY = "chessapp.dev.mdxEditor.draft";
 const SOURCE_ID = "mdx-editor-source";
-/** The articles it can open, typed to find — fixed for the build, as the files are. */
-const ARTICLE_OPTIONS = articleOptions();
 
 /** What is being edited: the frontmatter's YAML (`undefined` for a file with none), the body, and the file it came from. */
 type Draft = { yaml: string | undefined; body: string; file: string };
@@ -168,6 +173,8 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   const [draft, setDraft] = useState<Draft>(() => (kept === undefined ? starterDraft() : { yaml: kept.yaml, body: kept.body, file: kept.file }));
   const [opened, setOpened] = useState(() => kept?.opened ?? textOf(draft));
   const [notice, setNotice] = useState<string>();
+  /** The header's More menu — the button it hangs from while open. */
+  const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null);
   const [scrollTogether, setScrollTogether] = useState(true);
   const [tab, setTab] = useState<"content" | "metadata">("content");
   const sourceRef = useRef<HTMLTextAreaElement>(null);
@@ -219,12 +226,6 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
     if (dirty && !window.confirm("Replace the text in the editor? Its changes will be lost.")) return;
     open(text, file);
     setNotice(message);
-  };
-
-  const openArticle = async (file: string) => {
-    const text = await loadArticleSource(file);
-    if (text === undefined) setNotice(`No article file ${file}.mdx.`);
-    else replace(text, file, `Opened ${file}.mdx.`);
   };
 
   /** A `---` block pasted at the top of Content moves to Metadata, over what is there. */
@@ -401,65 +402,84 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   const { Content, error, pending, version } = compiled;
   return (
     <Box data-testid="mdx-editor" sx={{ height: { md: "100%" }, minHeight: 0, display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5, flexShrink: 0 }}>
-        <Box sx={{ flexGrow: 1, minWidth: 200 }}>
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
+      {/* The header: the title and the actions, then what is being edited. */}
+      <Box component="header" data-testid="mdx-editor-header" sx={{ flexShrink: 0, display: "grid", gap: 1, pb: 1.5, borderBottom: 1, borderColor: "divider" }}>
+        <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 2, rowGap: 1 }}>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 700, letterSpacing: "-0.01em", flexGrow: 1 }}>
             MDX editor
           </Typography>
-          <Typography variant="body2" color="text.secondary" data-testid="mdx-editor-editing">
-            {`${draft.file === "" ? "A new article" : `Editing ${draft.file}.mdx`}${dirty ? " — changed" : ""} · imports resolve from articles/${folder === "" ? "" : `${folder}/`}`}
+          <ActionBar justify="end" ariaLabel="The article" testId="mdx-editor-actions">
+            {/* What goes into the content. */}
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<UploadFileRoundedIcon />}
+              onClick={() => {
+                // A fresh dialog: nothing added yet.
+                setAddPgnError(undefined);
+                setPgnAdded(undefined);
+                setAddPgnOpen(true);
+              }}
+              disabled={busy}
+              data-testid="mdx-editor-add-pgn"
+            >
+              Add PGN
+            </Button>
+            <Button size="small" variant="outlined" startIcon={<WidgetsRoundedIcon />} onClick={() => setAddComponent({})} disabled={busy} data-testid="mdx-editor-add-component">
+              Add component
+            </Button>
+            <Box aria-hidden sx={{ alignSelf: "stretch", borderInlineStart: 1, borderColor: "divider", mx: 0.5, my: 0.5 }} />
+            {/* Where it goes. */}
+            <Button size="small" startIcon={<SaveAsRoundedIcon />} onClick={() => void run({ kind: "save-as" })} disabled={busy} data-testid="mdx-editor-save-as">
+              Save as…
+            </Button>
+            <Button size="small" variant="contained" disableElevation startIcon={<SaveRoundedIcon />} onClick={() => void run({ kind: "save" })} disabled={busy} data-testid="mdx-editor-save">
+              Save
+            </Button>
+            <IconAction label="More" onClick={(event) => setMoreAnchor(event.currentTarget)} popupOpen={moreAnchor !== null} testId="mdx-editor-more">
+              <MoreVertRoundedIcon />
+            </IconAction>
+            <AnchoredMenu
+              anchorEl={moreAnchor}
+              onClose={() => setMoreAnchor(null)}
+              entries={[
+                {
+                  id: "reset",
+                  label: "New article",
+                  icon: <RestartAltRoundedIcon fontSize="small" />,
+                  onClick: () => replace(textOf(starter), "", "Started a new article."),
+                  disabled: draft.file === "" && source === textOf(starter),
+                },
+                { id: "copy", label: "Copy MDX", icon: <ContentCopyRoundedIcon fontSize="small" />, onClick: () => void copy() },
+                { id: "download", label: "Download .mdx", icon: <DownloadRoundedIcon fontSize="small" />, onClick: download },
+              ]}
+              testId="mdx-editor-more-menu"
+              entryTestIdPrefix="mdx-editor"
+            />
+          </ActionBar>
+        </Box>
+        <Box data-testid="mdx-editor-editing" sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 1.5, rowGap: 0.5, minWidth: 0 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0, color: "text.secondary" }}>
+            <DescriptionOutlinedIcon fontSize="small" aria-hidden />
+            {draft.file === "" ? (
+              <Typography variant="body2">A new article — not saved yet</Typography>
+            ) : (
+              <Typography variant="body2" sx={{ minWidth: 0 }}>
+                {"Editing "}
+                <Box component="code" dir="ltr" title={`src/views/blog/articles/${draft.file}.mdx`} sx={{ color: "text.primary", fontWeight: 600 }}>
+                  {`${draft.file}.mdx`}
+                </Box>
+              </Typography>
+            )}
+          </Box>
+          <StatusText tone={dirty ? "warning" : "success"} testId="mdx-editor-dirty">
+            {dirty ? "● Unsaved changes" : "No changes"}
+          </StatusText>
+          <Typography variant="body2" color="text.secondary">
+            {"Imports resolve from "}
+            <Box component="code" dir="ltr">{`articles/${folder === "" ? "" : `${folder}/`}`}</Box>
           </Typography>
         </Box>
-        <Box sx={{ minWidth: 280 }}>
-          <SelectAutocomplete
-            label="Open an article"
-            value={null}
-            onChange={(file) => file !== null && void openArticle(file)}
-            options={ARTICLE_OPTIONS}
-            placeholder="Type to find an article…"
-            clearable={false}
-            testId="mdx-editor-open"
-          />
-        </Box>
-        <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} onClick={() => void run({ kind: "save" })} disabled={busy} data-testid="mdx-editor-save">
-          Save
-        </Button>
-        <Button size="small" startIcon={<SaveAsRoundedIcon />} onClick={() => void run({ kind: "save-as" })} disabled={busy} data-testid="mdx-editor-save-as">
-          Save as…
-        </Button>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<UploadFileRoundedIcon />}
-          onClick={() => {
-            // A fresh dialog: nothing added yet.
-            setAddPgnError(undefined);
-            setPgnAdded(undefined);
-            setAddPgnOpen(true);
-          }}
-          disabled={busy}
-          data-testid="mdx-editor-add-pgn"
-        >
-          Add PGN
-        </Button>
-        <Button size="small" variant="outlined" startIcon={<WidgetsRoundedIcon />} onClick={() => setAddComponent({})} disabled={busy} data-testid="mdx-editor-add-component">
-          Add component
-        </Button>
-        <Button size="small" startIcon={<ContentCopyRoundedIcon />} onClick={() => void copy()} data-testid="mdx-editor-copy">
-          Copy MDX
-        </Button>
-        <Button size="small" startIcon={<DownloadRoundedIcon />} onClick={download} data-testid="mdx-editor-download">
-          Download .mdx
-        </Button>
-        <Button
-          size="small"
-          startIcon={<RestartAltRoundedIcon />}
-          onClick={() => replace(textOf(starter), "", "Started a new article.")}
-          disabled={draft.file === "" && source === textOf(starter)}
-          data-testid="mdx-editor-reset"
-        >
-          New article
-        </Button>
       </Box>
       {notice !== undefined && (
         <StatusText tone="info" testId="mdx-editor-notice">
