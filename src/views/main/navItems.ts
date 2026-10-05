@@ -143,17 +143,13 @@ export const navItems = (): readonly NavItem[] => [
           icon: PaletteRoundedIcon,
           folder: "development",
         },
-        // Only under `yarn mdx-editor:start` (src/mdxEditor/enabled.ts).
-        ...(MDX_EDITOR_ENABLED
-          ? [
-              {
-                to: "/dev/mdx-editor",
-                labelKey: "nav.mdxEditor",
-                icon: EditNoteRoundedIcon,
-                folder: "development",
-              },
-            ]
-          : []),
+      ]
+    : []),
+  // The MDX editor (CTA-137), in its own folder — only under `yarn mdx-editor:start` (src/mdxEditor/enabled.ts).
+  ...(MDX_EDITOR_ENABLED
+    ? [
+        { to: "/dev/mdx-editor", labelKey: "nav.mdxArticles", icon: ArticleRoundedIcon, folder: "mdx-editor" },
+        { to: "/dev/mdx-editor/edit", labelKey: "nav.mdxEditor", icon: EditNoteRoundedIcon, folder: "mdx-editor" },
       ]
     : []),
   // Settings (CTA-86): each tab of `/settings/<tab>` is an entry here.

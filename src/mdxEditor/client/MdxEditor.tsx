@@ -52,7 +52,8 @@ import { useGitStatus } from "./useGitStatus";
 import { useScrollSync } from "./useScrollSync";
 
 /**
- * **The MDX editor** (dev-only, `/dev/mdx-editor`) — an article's MDX on the
+ * **The MDX editor** (`/dev/mdx-editor/edit`; its lobby, the articles, is
+ * `/dev/mdx-editor`) — an article's MDX on the
  * left, rendered on the right as the Blog renders it: the same components
  * (`views/home/frontPage/index.ts`), named with no `import`, reading the same
  * Library, repertoires and stored games. It is compiled in the browser
@@ -207,11 +208,13 @@ function NoticeIcon({ notice }: { notice: string }) {
 type MdxEditorProps = {
   /** An article file to open on arrival — `tournaments/olympiad-2026`, `get-started.he` — replacing the draft. */
   arrivingArticle?: string;
-  /** Called once that file is open (or found missing), so the address can drop it. */
+  /** Start a new article on arrival — the lobby's New article (`?new`); a draft with changes is asked about first. */
+  arrivingNew?: boolean;
+  /** Called once that file is open (or found missing), or the new article started, so the address can drop it. */
   onArrived?: () => void;
 };
 
-function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
+function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEditorProps = {}) {
   const [kept] = useState(readKept);
   const [draft, setDraft] = useState<Draft>(() => (kept === undefined ? starterDraft() : { yaml: kept.yaml, body: kept.body, file: kept.file }));
   const [opened, setOpened] = useState(() => kept?.opened ?? textOf(draft));
@@ -271,6 +274,25 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
       live = false;
     };
   }, [arrivingArticle, onArrived]);
+
+  // Arriving from the lobby's New article: the starter replaces the draft — asked about first if the draft has changes.
+  useEffect(() => {
+    if (!arrivingNew) return;
+    let live = true;
+    void Promise.resolve().then(() => {
+      if (!live) return;
+      if (textOf(draft) === opened || window.confirm("Start a new article? The changes in the editor will be lost.")) {
+        open(textOf(starterDraft()), "");
+        setNotice("Started a new article.");
+      }
+      onArrived?.();
+    });
+    return () => {
+      live = false;
+    };
+    // Once, on arrival: the draft as it is then is what is asked about.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arrivingNew, onArrived]);
 
   const dirty = source !== opened;
   const replace = (text: string, file: string, message: string) => {

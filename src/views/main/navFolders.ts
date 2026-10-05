@@ -2,6 +2,7 @@ import type { SvgIconComponent } from "@mui/icons-material";
 import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import ConstructionRoundedIcon from "@mui/icons-material/ConstructionRounded";
+import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import MemoryRoundedIcon from "@mui/icons-material/MemoryRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
@@ -11,6 +12,7 @@ import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 
 import type { LocalizedText } from "../../lib/localizedText";
 import { BLOG_FOLDERS, blogNavFolderId, blogParentOf, type BlogFolder } from "../blog/articles";
+import { MDX_EDITOR_ENABLED } from "../../mdxEditor/enabled";
 
 /**
  * Folders are the groupings in the sidebar. Each screen names exactly one of
@@ -149,6 +151,8 @@ export const navFolders = (): readonly NavFolder[] => [
     gallery (CTA-107). A spread gated on `import.meta.env.DEV`, so a
     production build has no such folder.
   */
+  // The MDX editor's own folder (CTA-137) — its article lobby and the editor; only under `yarn mdx-editor:start`.
+  ...(MDX_EDITOR_ENABLED ? [{ id: "mdx-editor", labelKey: "nav.folders.mdxEditor", icon: EditNoteRoundedIcon }] : []),
   ...(import.meta.env.DEV
     ? [
         {

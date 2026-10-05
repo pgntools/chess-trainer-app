@@ -78,11 +78,18 @@ describe("the path guard", () => {
 });
 
 describe("the folder list", () => {
-  it("lists every folder, the root first, with its index's title and its .mdx and .pgn files", () => {
+  it("lists every folder, the root first, with its index's title, its .mdx and .pgn files and each article's facts", () => {
     writeFileSync(join(root, "tournaments", "notes.txt"), "x");
+    writeFileSync(join(root, "tournaments", "draft.mdx"), "---\ntitle: 'It''s a draft'\ndate: 2026-10-05\ndraft: true\n---\n");
     expect(listFolders(root)).toEqual([
-      { path: "", files: ["get-started.mdx"] },
-      { path: "tournaments", title: "Tournaments: 2026", files: ["cup.mdx", "cup.pgn", "index.mdx"] },
+      { path: "", files: ["get-started.mdx"], articles: { "get-started.mdx": { title: "Get started" } } },
+      {
+        path: "tournaments",
+        title: "Tournaments: 2026",
+        files: ["cup.mdx", "cup.pgn", "draft.mdx", "index.mdx"],
+        // Each article's title, date and draft, read from its frontmatter.
+        articles: { "cup.mdx": { title: "Cup" }, "draft.mdx": { title: "It's a draft", date: "2026-10-05", draft: true }, "index.mdx": { title: "Tournaments: 2026" } },
+      },
     ]);
   });
 });

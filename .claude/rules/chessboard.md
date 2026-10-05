@@ -717,7 +717,7 @@ the reader plays the solution, the engine never moves):
    **and one `navItems()` entry.** A board still being
    built goes behind the **Development section** (open today for the design
    gallery, `/dev/design`, CTA-107, the theme editor, `/dev/theme-editor`,
-   CTA-115, and the MDX editor, `/dev/mdx-editor` — add to it rather than
+   CTA-115; the MDX editor, CTA-137, has a sidebar folder of its own and lives in `src/mdxEditor/` — add to it rather than
    open a second): its
    nav folder and entries are spreads in `navFolders()` / `navItems()` gated
    on `import.meta.env.DEV`, its route a `React.lazy` import inside an `import.meta.env.DEV ? [...] : []`

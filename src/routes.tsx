@@ -81,7 +81,13 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
       ...(MDX_EDITOR_ENABLED
         ? [
             {
+              // The articles, as a tree of folders with each one's actions — the editor's lobby.
               path: "/dev/mdx-editor",
+              element: devScreen(() => import("./mdxEditor/client/LobbyMain")),
+              handle: { ...FULL_WIDTH_ROUTE, title: "pages.mdxArticles" },
+            },
+            {
+              path: "/dev/mdx-editor/edit",
               element: devScreen(() => import("./mdxEditor/client/Main")),
               handle: { ...FULL_WIDTH_ROUTE, title: "pages.mdxEditor" },
             },

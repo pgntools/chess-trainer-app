@@ -9,9 +9,10 @@
  * dependency, and nothing of it ships.
  *
  *   GET  /health   → { ok: true, service, articles }
- *   GET  /folders  → { folders: [{ path, title?, files }] } — every folder under
- *                    articles/ (the root is ""), its index's title, its .mdx
- *                    and .pgn files
+ *   GET  /folders  → { folders: [{ path, title?, files, articles }] } — every
+ *                    folder under articles/ (the root is ""), its index's
+ *                    title, its .mdx and .pgn files, and each .mdx's title,
+ *                    date and draft
  *   GET  /git-status → { available: true, branch, files: [{ path, state, bytes? }] }
  *                    — what git has not got of articles/: each file not
  *                    committed as it is, new, changed, deleted or renamed;
@@ -89,7 +90,16 @@ export type StorageOptions = {
 };
 
 /** A folder under `articles/`, as `GET /folders` lists it. */
-export type StorageFolder = { path: string; title?: string; files: string[] };
+/** An article file's frontmatter, as much as a list needs: its title, its date, whether it is a draft. */
+export type ArticleFacts = { title?: string; date?: string; draft?: boolean };
+
+export type StorageFolder = {
+  path: string;
+  title?: string;
+  files: string[];
+  /** Each `.mdx` file's facts, by its name. */
+  articles: Record<string, ArticleFacts>;
+};
 
 class Refused extends Error {}
 
@@ -201,11 +211,8 @@ export const gitStatusOf = (root: string, git: (args: readonly string[]) => stri
 };
 
 /** The `title:` of an `index.mdx`'s frontmatter — enough to name a folder in a picker. */
-const titleOf = (indexFile: string): string | undefined => {
-  const block = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync(indexFile, "utf8"));
-  const line = block?.[1].split(/\r?\n/).find((candidate) => candidate.startsWith("title:"));
-  if (line === undefined) return undefined;
-  const value = line.slice("title:".length).trim();
+/** A frontmatter line's value — a plain, a double- or a single-quoted YAML scalar. */
+const scalarOf = (value: string): string | undefined => {
   if (/^".*"$/.test(value)) {
     try {
       return JSON.parse(value) as string;
@@ -216,6 +223,21 @@ const titleOf = (indexFile: string): string | undefined => {
   return /^'.*'$/.test(value) ? value.slice(1, -1).replace(/''/g, "'") : value || undefined;
 };
 
+/** A `.mdx` file's title, date and draft from its frontmatter — read line by line, enough for a list. */
+const factsOf = (file: string): ArticleFacts => {
+  const block = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync(file, "utf8"));
+  const facts: ArticleFacts = {};
+  for (const line of block?.[1].split(/\r?\n/) ?? []) {
+    const match = /^(title|date|draft):\s*(.*)$/.exec(line);
+    if (match === null) continue;
+    const value = scalarOf(match[2].trim());
+    if (value === undefined) continue;
+    if (match[1] === "draft") facts.draft = value === "true";
+    else facts[match[1] as "title" | "date"] = value;
+  }
+  return facts;
+};
+
 /** Every folder under `root`, the root first and each folder's sub-folders after it, with its `.mdx` and `.pgn` files. */
 export const listFolders = (root: string): StorageFolder[] => {
   const folders: StorageFolder[] = [];
@@ -223,8 +245,9 @@ export const listFolders = (root: string): StorageFolder[] => {
     const dir = join(root, ...path.split("/").filter(Boolean));
     const entries = readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));
     const files = entries.filter((entry) => entry.isFile() && /\.(?:mdx|pgn)$/.test(entry.name)).map((entry) => entry.name);
-    const title = files.includes("index.mdx") ? titleOf(join(dir, "index.mdx")) : undefined;
-    folders.push({ path, ...(title === undefined ? {} : { title }), files });
+    const articles = Object.fromEntries(files.filter((name) => name.endsWith(".mdx")).map((name) => [name, factsOf(join(dir, name))]));
+    const title = articles["index.mdx"]?.title;
+    folders.push({ path, ...(title === undefined ? {} : { title }), files, articles });
     for (const entry of entries) if (entry.isDirectory() && SEGMENT.test(entry.name)) walk(path === "" ? entry.name : `${path}/${entry.name}`);
   };
   walk("");

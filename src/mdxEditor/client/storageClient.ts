@@ -14,8 +14,11 @@ export const ARTICLES_DIR = "src/views/blog/articles";
 const PORT = Number(import.meta.env.VITE_MDX_EDITOR_PORT ?? 5172);
 export const STORAGE_URL = `http://127.0.0.1:${PORT}`;
 
-/** A folder under `articles/` — `""` is the root — with its index's title and its `.mdx` and `.pgn` files. */
-export type StorageFolder = { path: string; title?: string; files: string[] };
+/** An article file's title, date and draft, from its frontmatter. */
+export type ArticleFacts = { title?: string; date?: string; draft?: boolean };
+
+/** A folder under `articles/` — `""` is the root — with its index's title, its `.mdx` and `.pgn` files, and each `.mdx`'s facts. */
+export type StorageFolder = { path: string; title?: string; files: string[]; articles?: Record<string, ArticleFacts> };
 
 /** What a write came to. */
 export type WriteResult =

@@ -17,7 +17,7 @@ type ArticleEditLinkProps = {
  * **Edit this article** — under `yarn mdx-editor:start` only
  * (`MDX_EDITOR_ENABLED`): an icon beside an article's title (a Blog
  * article's page, the front page) opening the file the page shows in the
- * MDX editor (`/dev/mdx-editor?article=<file>`). It is only a link, so the
+ * MDX editor (`/dev/mdx-editor/edit?article=<file>`). It is only a link, so the
  * shipped page imports nothing of the editor; and the switch is the literal
  * `false` in a production build, so there it renders nothing. Its words are
  * English, as the Development section's are.
@@ -29,7 +29,7 @@ export function ArticleEditLink({ path, language }: ArticleEditLinkProps) {
   return (
     <IconAction
       label="Edit in the MDX editor"
-      link={{ component: RouterLink, to: `/dev/mdx-editor?article=${encodeURIComponent(file)}` }}
+      link={{ component: RouterLink, to: `/dev/mdx-editor/edit?article=${encodeURIComponent(file)}` }}
       testId="article-edit"
     >
       <EditNoteRoundedIcon fontSize="small" />

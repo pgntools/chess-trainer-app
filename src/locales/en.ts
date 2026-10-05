@@ -54,8 +54,9 @@ const en = {
     designSystem: "Design system",
     /** The dev-only theme editor (CTA-115), in the Development folder. */
     themeEditor: "Theme editor",
-    /** The dev-only MDX editor — an article's MDX beside its rendering — in the Development folder. */
-    mdxEditor: "MDX editor",
+    /** The MDX editor (CTA-137, `yarn mdx-editor:start` only): its article lobby and the editor itself, in its own folder. */
+    mdxArticles: "Articles",
+    mdxEditor: "Editor",
     /** Sidebar folders — groupings over the routes, never routes themselves. */
     folders: {
       engine: "Engine",
@@ -73,6 +74,8 @@ const en = {
       settings: "Settings",
       /** The dev-only Development section (`chessboard.md` §9.5). */
       development: "Development",
+      /** The MDX editor's own folder (CTA-137) — only under `yarn mdx-editor:start`. */
+      mdxEditor: "MDX editor",
     },
   },
   /** The index screen — a landing page linking out to the real screens. */
@@ -196,6 +199,7 @@ const en = {
     designSystem: "Design system",
     themeEditor: "Theme editor",
     mdxEditor: "MDX editor",
+    mdxArticles: "MDX editor — articles",
   },
   /**
    * **Each screen's description** (CTA-136) — its page's `<meta name="description">`
