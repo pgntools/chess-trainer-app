@@ -8,7 +8,7 @@ import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 
 import { BaseDialog } from "../../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
-import { RadioGroupField, SwitchField, TextInputField } from "../../../design-system/components/forms";
+import { RadioGroupField, SelectField, SwitchField, TextInputField } from "../../../design-system/components/forms";
 import { TreeView, type TreeNode } from "../../../design-system/patterns/trees";
 import { libraryGameReference, loadReferencedGames, resolveGameReference } from "../../../lib/gameReference";
 import { loadUploadedCollections, loadUploadedGames } from "../../../lib/libraryCollectionStore";
@@ -19,6 +19,7 @@ import { guessTournamentKind, type TournamentGuess } from "../../../lib/tourname
 import { collectionPathOf, libraryGamePathOf } from "../../home/frontPage/paths";
 import { articleImportResolver } from "./articleSources";
 import { CATALOG, catalogFor, componentOf, TOURNAMENT_ENTRY, type ExampleSource, type LibraryGame, type MovesLine } from "./componentCatalog";
+import { elementOf, SETTINGS, valuesOf, writeElement, type SettingField } from "./componentSettings";
 import { COLUMNS, SIDE_COLUMN, TEXTAREA_SX } from "./dialogLayout";
 import { SnippetPreview } from "./mdxPreview";
 import { articlePgnsOf, pgnDefinitionsIn, type ArticlePgn } from "./pgnImports";
@@ -84,6 +85,80 @@ const textOf = async (pgn: ArticlePgn, folder: string, attached: Readonly<Record
 };
 
 /**
+ * **The component's settings, as a form** — read from the code and written
+ * back to it (`componentSettings.ts`), so the code stays the one source: a
+ * change here rewrites it, and the code typed by hand shows here.
+ */
+function SettingsForm({ code, onCode }: { code: string; onCode: (code: string) => void }) {
+  const element = elementOf(code);
+  const fields = element === undefined ? undefined : SETTINGS[element.component];
+  if (element === undefined) {
+    return (
+      <StatusText tone="neutral" testId={`${ID}-settings-none`}>
+        The code is not one component the form can read — several of them, or one half typed. Its settings show here again once it is.
+      </StatusText>
+    );
+  }
+  if (fields === undefined || fields.length === 0) {
+    return (
+      <StatusText tone="neutral" testId={`${ID}-settings-none`}>
+        {`<${element.component}> has no settings to set here — its code is all there is.`}
+      </StatusText>
+    );
+  }
+  const values = valuesOf(element.attributes, fields);
+  const set = (prop: string, value: string | boolean) => onCode(writeElement(element.component, element.attributes, fields, { ...values, [prop]: value }));
+  const fieldOf = (field: SettingField) => {
+    const testId = `${ID}-setting-${field.prop}`;
+    const value = values[field.prop];
+    if (field.kind === "switch") {
+      return (
+        <Box key={field.prop}>
+          <SwitchField label={field.label} checked={typeof value === "boolean" ? value : field.on} onChange={(checked) => set(field.prop, checked)} size="small" testId={testId} />
+          {field.help !== undefined && (
+            <Typography variant="caption" color="text.secondary" component="p">
+              {field.help}
+            </Typography>
+          )}
+        </Box>
+      );
+    }
+    if (field.kind === "choice") {
+      return (
+        <SelectField
+          key={field.prop}
+          label={field.label}
+          value={typeof value === "string" ? value : ""}
+          onChange={(chosen) => set(field.prop, chosen)}
+          options={field.options}
+          emptyOption={field.none}
+          helperText={field.help}
+          testId={testId}
+        />
+      );
+    }
+    return (
+      <TextInputField
+        key={field.prop}
+        label={field.label}
+        value={typeof value === "string" ? value : ""}
+        onChange={(typed) => set(field.prop, typed)}
+        type={field.kind === "number" ? "number" : "text"}
+        placeholder={field.placeholder}
+        dir="ltr"
+        helperText={field.help}
+        testId={testId}
+      />
+    );
+  };
+  return (
+    <Box data-testid={`${ID}-settings`} sx={{ display: "grid", gap: 1.5 }}>
+      {fields.map(fieldOf)}
+    </Box>
+  );
+}
+
+/**
  * **Add component** (CTA-137) — a component that shows a game, put into
  * the content, in the order it is chosen:
  *
@@ -98,8 +173,9 @@ const textOf = async (pgn: ArticlePgn, folder: string, attached: Readonly<Record
  *    (`componentCatalog.ts`).
  *
  * The one picked shows its markup in a box on top — to adjust, copy or
- * insert at the caret — and, filling the rest, the component rendered as
- * the article will render it.
+ * insert at the caret — and under it, side by side, its **Settings** (a
+ * form over its props, so nobody needs to know them: `componentSettings.ts`)
+ * and the component rendered as the article will render it.
  */
 function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn, onInsert, onAddPgn }: AddComponentDialogProps) {
   const pgns = articlePgnsOf(body);
@@ -112,8 +188,6 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
   const [moves, setMoves] = useState<{ name: string; moves?: MovesLine }>();
   const [component, setComponent] = useState<string>();
   const [openFolders, setOpenFolders] = useState<ReadonlySet<string>>(() => new Set(CATALOG.map((folder) => folder.id)));
-  /** The puzzle mock's one setting. */
-  const [hideNext, setHideNext] = useState(true);
   /** What kind of tournament the chosen game's file (or collection) looks like — for the source it was worked out for. */
   const [guessed, setGuessed] = useState<{ source: string; guess?: TournamentGuess }>();
 
@@ -197,9 +271,7 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
       label: `${candidate.label}${candidate.mock === true ? " — mock" : ""}${candidate.id === suggested?.id ? " — suggested" : ""}`,
     })),
   }));
-  const written = entry === undefined || source === undefined ? "" : (entry.code(source) ?? "");
-  // The puzzle mock's switch is the sketch's one attribute.
-  const exampleCode = entry?.id === "puzzle-board" && !hideNext ? written.replace(" hideNextMoves", "") : written;
+  const exampleCode = entry === undefined || source === undefined ? "" : (entry.code(source) ?? "");
 
   // What the preview compiles: the chosen PGN's definition in the content, then the code that reads it by name.
   const definitions = source?.kind === "pgn" ? pgnDefinitionsIn(body, [source.name]) : { source: "", lines: 0 };
@@ -408,35 +480,53 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
                   </StatusText>
                 )}
               </Box>
-              <Typography variant="subtitle2" component="h3" id={`${ID}-preview-label`}>
-                {entry.mock === true ? "Preview — a mock" : `Preview — ${sourceName ?? ""}`}
-              </Typography>
               <Box
-                role="region"
-                aria-labelledby={`${ID}-preview-label`}
-                sx={{ flex: 1, minHeight: 240, overflowY: "auto", p: 2, border: 1, borderColor: "divider", borderRadius: 1, bgcolor: "background.default" }}
+                sx={{
+                  flex: 1,
+                  minHeight: 0,
+                  display: "grid",
+                  gap: 2,
+                  gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(240px, 320px) minmax(0, 1fr)" },
+                  gridTemplateRows: { lg: "minmax(0, 1fr)" },
+                }}
               >
-                {entry.mock === true ? (
-                  <Box data-testid={`${ID}-mock-preview`} sx={{ display: "grid", gap: 1.5, maxWidth: 520 }}>
-                    <Typography variant="subtitle1" component="p" sx={{ fontWeight: 600 }}>
-                      {`${entry.label} — how it would look`}
-                    </Typography>
-                    {entry.id === "puzzle-board" ? (
-                      <>
-                        <SwitchField label="Next moves hidden" checked={hideNext} onChange={setHideNext} size="small" testId={`${ID}-mock-hide-next`} />
-                        <Typography variant="body2">
-                          {hideNext
-                            ? `A board at the position after ${movesOf(source)} — the moves after it hidden, each shown once the reader plays it on the board.`
-                            : `A board at the position after ${movesOf(source)}, the moves after it listed beside it, as a game shows them.`}
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minHeight: 0 }}>
+                  <Typography variant="subtitle2" component="h3">
+                    Settings
+                  </Typography>
+                  <Box sx={{ minHeight: 0, overflowY: { lg: "auto" }, pe: { lg: 1 } }}>
+                    <SettingsForm code={code} onCode={setCode} />
+                  </Box>
+                </Box>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minHeight: 0 }}>
+                  <Typography variant="subtitle2" component="h3" id={`${ID}-preview-label`}>
+                    {entry.mock === true ? "Preview — a mock" : `Preview — ${sourceName ?? ""}`}
+                  </Typography>
+                  <Box
+                    role="region"
+                    aria-labelledby={`${ID}-preview-label`}
+                    sx={{ flex: 1, minHeight: 240, overflowY: "auto", p: 2, border: 1, borderColor: "divider", borderRadius: 1, bgcolor: "background.default" }}
+                  >
+                    {entry.mock === true ? (
+                      <Box data-testid={`${ID}-mock-preview`} sx={{ display: "grid", gap: 1.5, maxWidth: 520 }}>
+                        <Typography variant="subtitle1" component="p" sx={{ fontWeight: 600 }}>
+                          {`${entry.label} — how it would look`}
                         </Typography>
-                      </>
+                        {entry.id === "puzzle-board" ? (
+                          <Typography variant="body2">
+                            {/\bhideNextMoves(?!=\{false\})/.test(code)
+                              ? `A board at the position after ${movesOf(source)} — the moves after it hidden, each shown once the reader plays it on the board.`
+                              : `A board at the position after ${movesOf(source)}, the moves after it listed beside it, as a game shows them.`}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2">{entry.summary.replace(/^Not built yet — /, "")}.</Typography>
+                        )}
+                      </Box>
                     ) : (
-                      <Typography variant="body2">{entry.summary.replace(/^Not built yet — /, "")}.</Typography>
+                      <SnippetPreview source={`${definitions.source}${code}`} folder={folder} attached={attached} lineOffset={definitions.lines} testId={`${ID}-preview`} />
                     )}
                   </Box>
-                ) : (
-                  <SnippetPreview source={`${definitions.source}${code}`} folder={folder} attached={attached} lineOffset={definitions.lines} testId={`${ID}-preview`} />
-                )}
+                </Box>
               </Box>
             </>
           )}
