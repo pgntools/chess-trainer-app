@@ -482,37 +482,40 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           </ActionBar>
         </Box>
         <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 2, rowGap: 1 }}>
-          <Box data-testid="mdx-editor-editing" sx={{ flex: "1 1 auto", display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 1.5, rowGap: 0.5, minWidth: 0 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0, color: "text.secondary" }}>
-              <DescriptionOutlinedIcon fontSize="small" aria-hidden />
-              {draft.file === "" ? (
-                <Typography variant="body2">A new article — not saved yet</Typography>
-              ) : (
-                <Typography variant="body2" sx={{ minWidth: 0 }}>
-                  {"Editing "}
-                  <Box component="code" dir="ltr" title={`src/views/blog/articles/${draft.file}.mdx`} sx={{ color: "text.primary", fontWeight: 600 }}>
-                    {`${draft.file}.mdx`}
-                  </Box>
-                </Typography>
-              )}
-            </Box>
-            <StatusText tone={dirty ? "warning" : "success"} testId="mdx-editor-dirty">
-              {dirty ? "● Unsaved changes" : "No changes"}
-            </StatusText>
-            {fileInGit !== undefined && (
-              <StatusText tone={fileInGit === "committed" ? "neutral" : "info"} testId="mdx-editor-git-file">
-                {fileInGit === "committed" ? "In git" : `Git: ${GIT_STATE_WORDS[fileInGit]}`}
+          <Box sx={{ flex: "1 1 auto", minWidth: 0, display: "grid", gap: 0.25, justifyItems: "start" }}>
+            <Box data-testid="mdx-editor-editing" sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 1.5, rowGap: 0.5, minWidth: 0 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0, color: "text.secondary" }}>
+                <DescriptionOutlinedIcon fontSize="small" aria-hidden />
+                {draft.file === "" ? (
+                  <Typography variant="body2">A new article — not saved yet</Typography>
+                ) : (
+                  <Typography variant="body2" sx={{ minWidth: 0 }}>
+                    {"Editing "}
+                    <Box component="code" dir="ltr" title={`src/views/blog/articles/${draft.file}.mdx`} sx={{ color: "text.primary", fontWeight: 600 }}>
+                      {`${draft.file}.mdx`}
+                    </Box>
+                  </Typography>
+                )}
+              </Box>
+              <StatusText tone={dirty ? "warning" : "success"} testId="mdx-editor-dirty">
+                {dirty ? "● Unsaved changes" : "No changes"}
               </StatusText>
-            )}
+              {fileInGit !== undefined && (
+                <StatusText tone={fileInGit === "committed" ? "neutral" : "info"} testId="mdx-editor-git-file">
+                  {fileInGit === "committed" ? "In git" : `Git: ${GIT_STATE_WORDS[fileInGit]}`}
+                </StatusText>
+              )}
+              <Typography variant="body2" color="text.secondary">
+                {"Imports resolve from "}
+                <Box component="code" dir="ltr">{`articles/${folder === "" ? "" : `${folder}/`}`}</Box>
+              </Typography>
+            </Box>
+            {/* Under what is being edited: what git has not got of the articles. */}
             {gitFiles !== undefined && gitFiles.length > 0 && (
-              <Button size="small" color="warning" startIcon={<SyncProblemRoundedIcon />} onClick={() => setGitOpen(true)} data-testid="mdx-editor-git">
+              <Button size="small" color="warning" startIcon={<SyncProblemRoundedIcon />} onClick={() => setGitOpen(true)} sx={{ px: 0.5, minWidth: 0 }} data-testid="mdx-editor-git">
                 {`${gitFiles.length === 1 ? "1 file" : `${gitFiles.length} files`} not synced`}
               </Button>
             )}
-            <Typography variant="body2" color="text.secondary">
-              {"Imports resolve from "}
-              <Box component="code" dir="ltr">{`articles/${folder === "" ? "" : `${folder}/`}`}</Box>
-            </Typography>
           </Box>
           {/* What the panes show — at the row's end, opposite what is being edited. */}
           <Box sx={{ marginInlineStart: "auto" }}>
