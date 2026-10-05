@@ -25,6 +25,7 @@ import { articleFileName, joinFrontmatter, parseFrontmatterYaml, splitFrontmatte
 import { downloadTextFile } from "../../../lib/pgnExport";
 import { ArticleHeader } from "../../blog/ArticleHeader";
 import { findBlogArticle } from "../../blog/articles";
+import { ARTICLE_MAX_WIDTH_PX } from "../../main/routeHandle";
 import { folderOf, loadArticleSource } from "./articleSources";
 import { MetadataPane } from "./MetadataPane";
 import { PreviewBoundary } from "./mdxPreview";
@@ -60,9 +61,10 @@ import { useScrollSync } from "./useScrollSync";
  *   and Copy and Download join them back into one `.mdx`. The preview draws
  *   the article's header from the metadata, as the article's page does. A
  *   new article starts as a draft, dated today.
- * - **What it shows** (CTA-137): a toggle above the panes — the code alone,
- *   both side by side (the default), or the preview alone; a pane out of
- *   view is hidden, not unmounted.
+ * - **What it shows** (CTA-137): a toggle at the end of the header's
+ *   second row — the code alone, both side by side (the default), or the
+ *   preview alone, a lone pane centred as wide as a Blog article
+ *   (`ARTICLE_MAX_WIDTH_PX`); a pane out of view is hidden, not unmounted.
  * - **The panes scroll together** (`useScrollSync.ts`) while "Scroll
  *   together" is on, both are shown and the Content tab is open: scrolling
  *   either brings the other to the same block.
@@ -466,27 +468,43 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
             />
           </ActionBar>
         </Box>
-        <Box data-testid="mdx-editor-editing" sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 1.5, rowGap: 0.5, minWidth: 0 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0, color: "text.secondary" }}>
-            <DescriptionOutlinedIcon fontSize="small" aria-hidden />
-            {draft.file === "" ? (
-              <Typography variant="body2">A new article — not saved yet</Typography>
-            ) : (
-              <Typography variant="body2" sx={{ minWidth: 0 }}>
-                {"Editing "}
-                <Box component="code" dir="ltr" title={`src/views/blog/articles/${draft.file}.mdx`} sx={{ color: "text.primary", fontWeight: 600 }}>
-                  {`${draft.file}.mdx`}
-                </Box>
-              </Typography>
-            )}
+        <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 2, rowGap: 1 }}>
+          <Box data-testid="mdx-editor-editing" sx={{ flex: "1 1 auto", display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 1.5, rowGap: 0.5, minWidth: 0 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0, color: "text.secondary" }}>
+              <DescriptionOutlinedIcon fontSize="small" aria-hidden />
+              {draft.file === "" ? (
+                <Typography variant="body2">A new article — not saved yet</Typography>
+              ) : (
+                <Typography variant="body2" sx={{ minWidth: 0 }}>
+                  {"Editing "}
+                  <Box component="code" dir="ltr" title={`src/views/blog/articles/${draft.file}.mdx`} sx={{ color: "text.primary", fontWeight: 600 }}>
+                    {`${draft.file}.mdx`}
+                  </Box>
+                </Typography>
+              )}
+            </Box>
+            <StatusText tone={dirty ? "warning" : "success"} testId="mdx-editor-dirty">
+              {dirty ? "● Unsaved changes" : "No changes"}
+            </StatusText>
+            <Typography variant="body2" color="text.secondary">
+              {"Imports resolve from "}
+              <Box component="code" dir="ltr">{`articles/${folder === "" ? "" : `${folder}/`}`}</Box>
+            </Typography>
           </Box>
-          <StatusText tone={dirty ? "warning" : "success"} testId="mdx-editor-dirty">
-            {dirty ? "● Unsaved changes" : "No changes"}
-          </StatusText>
-          <Typography variant="body2" color="text.secondary">
-            {"Imports resolve from "}
-            <Box component="code" dir="ltr">{`articles/${folder === "" ? "" : `${folder}/`}`}</Box>
-          </Typography>
+          {/* What the panes show — at the row's end, opposite what is being edited. */}
+          <Box sx={{ marginInlineStart: "auto" }}>
+            <ViewToggle
+              value={view}
+              onChange={setView}
+              options={[
+                { value: "code", label: "Code only", icon: <CodeRoundedIcon fontSize="small" /> },
+                { value: "split", label: "Code and preview, side by side", icon: <VerticalSplitRoundedIcon fontSize="small" /> },
+                { value: "preview", label: "Preview only", icon: <VisibilityRoundedIcon fontSize="small" /> },
+              ]}
+              ariaLabel="What the editor shows"
+              testId="mdx-editor-view"
+            />
+          </Box>
         </Box>
       </Box>
       {notice !== undefined && (
@@ -584,26 +602,14 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
         testId="mdx-editor-conflict"
       />
 
-      <Box sx={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
-        <ViewToggle
-          value={view}
-          onChange={setView}
-          options={[
-            { value: "code", label: "Code only", icon: <CodeRoundedIcon fontSize="small" /> },
-            { value: "split", label: "Code and preview, side by side", icon: <VerticalSplitRoundedIcon fontSize="small" /> },
-            { value: "preview", label: "Preview only", icon: <VisibilityRoundedIcon fontSize="small" /> },
-          ]}
-          ariaLabel="What the editor shows"
-          testId="mdx-editor-view"
-        />
-      </Box>
-
       <Box
         sx={{
           flex: { md: 1 },
           minHeight: 0,
           display: "grid",
-          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: view === "split" ? "minmax(0, 1fr) minmax(0, 1fr)" : "minmax(0, 1fr)" },
+          // One pane alone: a centred column as wide as a Blog article's.
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: view === "split" ? "minmax(0, 1fr) minmax(0, 1fr)" : `minmax(0, ${ARTICLE_MAX_WIDTH_PX}px)` },
+          justifyContent: "center",
           gridTemplateRows: { md: "minmax(0, 1fr)" },
           gap: 2,
         }}
