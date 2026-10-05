@@ -4,28 +4,32 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import ContentCutRoundedIcon from "@mui/icons-material/ContentCutRounded";
+import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 
 import { BaseDialog } from "../../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
-import { FileInputButton, RadioGroupField, SelectField, SliderField, TextInputField } from "../../../design-system/components/forms";
-import { PickerList } from "../../../design-system/components/lists";
+import { FileInputButton, RadioGroupField, SelectField, SliderField, SwitchField, TextInputField } from "../../../design-system/components/forms";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
+import { TreeView, type TreeNode } from "../../../design-system/patterns/trees";
 import { libraryGameReference, loadReferencedGames, resolveGameReference } from "../../../lib/gameReference";
 import { libraryGamePathOf } from "../../home/frontPage/paths";
-import { LIBRARY_EXAMPLES, PGN_EXAMPLES, type ComponentExample, type LibraryGame } from "./componentCatalog";
+import { CATALOG, catalogFor, componentOf, type LibraryGame, type MovesLine } from "./componentCatalog";
 import { SnippetPreview } from "./mdxPreview";
 import { IDENTIFIER, namesIn, pgnDefinitionsIn, pgnImportName } from "./pgnImports";
-import { GAMES_PER_PAGE, HUGE_PGN_CHARS, pgnPagesOf } from "./pgnPages";
+import { GAMES_PER_PAGE, HUGE_PGN_CHARS, movesLineOf, pgnPagesOf } from "./pgnPages";
 
 /** A PGN's file name — what the storage service takes. */
 const PGN_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]*\.pgn$/;
 const ID = "mdx-editor-add-pgn";
 
+/** A game's first moves, for a sentence — or a short opening where it gave none. */
+const movesOf = (source: { moves?: MovesLine }) => source.moves?.line ?? "1. e4 e5 2. Nf3 Nc6";
+
 /** Where step 1's game comes from: a PGN of the article's own, or a game in the Library. */
 type SourceKind = "pgn" | "library";
 
 /** A game step 1 gave step 2: a PGN added to the article, by the name it binds, or a Library game, by its address. */
-type Source = { kind: "pgn"; id: string; name: string } | { kind: "library"; id: string; game: LibraryGame; label: string };
+type Source = { kind: "pgn"; id: string; name: string; moves?: MovesLine } | { kind: "library"; id: string; game: LibraryGame; label: string; moves?: MovesLine };
 
 /** Both tabs: a column of controls at the inline start, the text it is about filling the rest — one over the other below `md`. */
 const COLUMNS = {
@@ -123,6 +127,12 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
   /** The games step 1 gave step 2, in order — until there is one, step 2 is closed. */
   const [sources, setSources] = useState<Source[]>([]);
   const [chosen, setChosen] = useState<string>();
+  /** The PGN as it was when Add was pressed — the box is cleared once it is added, and its first moves are the Position examples'. */
+  const [addedText, setAddedText] = useState("");
+  /** Step 2's folders open — all of them, to begin with. */
+  const [openFolders, setOpenFolders] = useState<ReadonlySet<string>>(() => new Set(CATALOG.map((folder) => folder.id)));
+  /** The puzzle mock's one setting. */
+  const [hideNext, setHideNext] = useState(true);
 
   const addSource = (source: Source) => {
     setSources((before) => [...before.filter((known) => known.id !== source.id), source]);
@@ -134,7 +144,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
   const [seenSeq, setSeenSeq] = useState(added?.seq);
   if (added !== undefined && added.seq !== seenSeq) {
     setSeenSeq(added.seq);
-    addSource({ kind: "pgn", id: added.name, name: added.name });
+    addSource({ kind: "pgn", id: added.name, name: added.name, moves: movesLineOf(addedText) });
     setText("");
     setCut(undefined);
     setFileName("");
@@ -163,7 +173,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
     setLookup(undefined);
     const id = `/library/${path.collectionId}/${path.number}`;
     setFound({ address: id, label: game.name, pgn: game.pgn });
-    addSource({ kind: "library", id, game: { collection: path.collectionId, number: path.number }, label: game.name });
+    addSource({ kind: "library", id, game: { collection: path.collectionId, number: path.number }, label: game.name, moves: movesLineOf(game.pgn) });
   };
 
   const theName = name.trim() === "" ? pgnImportName("games.pgn", taken) : name.trim();
@@ -179,36 +189,18 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
 
   // Step 2: the game it shows, and the components that fit it.
   const source = sources.find((candidate) => candidate.id === chosen) ?? sources.at(-1);
-  const groups: { title: string; examples: readonly ComponentExample[] }[] =
-    source === undefined
-      ? []
-      : source.kind === "pgn"
-        ? [{ title: "From the PGN", examples: PGN_EXAMPLES }]
-        : [
-            { title: "This game", examples: LIBRARY_EXAMPLES.filter((candidate) => candidate.shows === "game") },
-            { title: "Its collection", examples: LIBRARY_EXAMPLES.filter((candidate) => candidate.shows === "collection") },
-          ];
-  const example = groups.flatMap((group) => group.examples).find((candidate) => candidate.name === component);
-  const itemsOf = (examples: readonly ComponentExample[]) =>
-    examples.map((candidate) => ({
-      id: candidate.name,
-      label: (
-        <>
-          <Box component="span" dir="ltr" sx={{ fontFamily: "monospace" }}>{`<${candidate.name}>`}</Box>
-          {` — ${candidate.summary}`}
-        </>
-      ),
-    }));
-  const exampleCode =
-    example === undefined || source === undefined
-      ? ""
-      : example.takes === "pgn"
-        ? source.kind === "pgn"
-          ? example.code(source.name)
-          : ""
-        : source.kind === "library"
-          ? example.code(source.game)
-          : "";
+  const folders = source === undefined ? [] : catalogFor(source);
+  const entry = folders.flatMap((folder) => folder.entries).find((candidate) => candidate.id === component);
+  const nodes: TreeNode[] = folders.map((folder) => ({
+    id: folder.id,
+    label: folder.title,
+    icon: <FolderRoundedIcon fontSize="small" />,
+    secondary: folder.entries.length,
+    children: folder.entries.map((candidate) => ({ id: candidate.id, label: candidate.mock === true ? `${candidate.label} — mock` : candidate.label })),
+  }));
+  const written = entry === undefined || source === undefined ? "" : (entry.code(source) ?? "");
+  // The puzzle mock's switch is the sketch's one attribute.
+  const exampleCode = entry?.id === "puzzle-board" && !hideNext ? written.replace(" hideNextMoves", "") : written;
   const sourceLabel = (candidate: Source) => (candidate.kind === "pgn" ? `${candidate.name} — the PGN added` : `${candidate.label} — ${candidate.id}`);
 
   // What the preview compiles: a PGN's definition in the content, then the code that reads it by name.
@@ -330,7 +322,10 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                   <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
                     <Button
                       variant="contained"
-                      onClick={() => onAdd({ how, name: theName, fileName: theFile, text })}
+                      onClick={() => {
+                        setAddedText(text);
+                        onAdd({ how, name: theName, fileName: theFile, text });
+                      }}
                       disabled={blocked}
                       aria-busy={busy || undefined}
                       data-testid={`${ID}-add`}
@@ -499,23 +494,26 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                     testId={`${ID}-showing-select`}
                   />
                 ))}
-              {groups.map((group) => (
-                <Box key={group.title}>
-                  <Typography variant="subtitle2" component="p" sx={{ mb: 0.5 }}>
-                    {group.title}
-                  </Typography>
-                  <PickerList
-                    items={itemsOf(group.examples)}
-                    value={component}
-                    onChange={(id) => id !== null && setComponent(id)}
-                    ariaLabel={group.title}
-                    testId={`${ID}-components-${group.title.toLowerCase().replace(/\W+/g, "-")}`}
-                  />
-                </Box>
-              ))}
+              <TreeView
+                nodes={nodes}
+                open={openFolders}
+                onToggle={(id) =>
+                  setOpenFolders((before) => {
+                    const next = new Set(before);
+                    if (next.has(id)) next.delete(id);
+                    else next.add(id);
+                    return next;
+                  })
+                }
+                activeId={component}
+                onSelect={(node) => setComponent(node.id)}
+                ariaLabel="What the game is"
+                hint="Arrow keys to move, right and left to open and close a folder, Enter to pick a component"
+                testId={`${ID}-components`}
+              />
             </Box>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minHeight: 0, overflowY: { md: "auto" } }}>
-              {example === undefined || source === undefined ? (
+              {entry === undefined || source === undefined ? (
                 <StatusText tone="neutral" testId={`${ID}-pick`}>
                   Pick a component on the left: its code shows here, to adjust, copy or insert into the content, and the component under it.
                 </StatusText>
@@ -523,12 +521,17 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                 <>
                   <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", columnGap: 1 }}>
                     <Typography component="label" htmlFor={`${ID}-code`} variant="subtitle2">
-                      {`Code — <${example.name}>`}
+                      {`${entry.label} — <${componentOf(code) ?? componentOf(exampleCode) ?? "…"}>`}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {example.summary}
+                      {entry.summary}
                     </Typography>
                   </Box>
+                  {entry.mock === true && (
+                    <InlineAlert severity="info" title="A mock — not built yet" testId={`${ID}-mock`}>
+                      The code is a sketch of what it would take; there is nothing to insert until the component is built.
+                    </InlineAlert>
+                  )}
                   <Box
                     component="textarea"
                     id={`${ID}-code`}
@@ -540,7 +543,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                     sx={{ ...TEXTAREA_SX, flex: "none", minHeight: 72, height: 112 }}
                   />
                   <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
-                    <Button variant="contained" onClick={() => onInsert(code)} disabled={code.trim() === ""} data-testid={`${ID}-insert`}>
+                    <Button variant="contained" onClick={() => onInsert(code)} disabled={code.trim() === "" || entry.mock === true} data-testid={`${ID}-insert`}>
                       Insert into the content
                     </Button>
                     <Button startIcon={<ContentCopyRoundedIcon />} onClick={() => void copy()} disabled={code.trim() === ""} data-testid={`${ID}-copy`}>
@@ -553,14 +556,34 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                     )}
                   </Box>
                   <Typography variant="subtitle2" component="h3" id={`${ID}-preview-label`}>
-                    {`Preview — ${source.kind === "pgn" ? source.name : source.id}`}
+                    {entry.mock === true ? "Preview — a mock" : `Preview — ${source.kind === "pgn" ? source.name : source.id}`}
                   </Typography>
                   <Box
                     role="region"
                     aria-labelledby={`${ID}-preview-label`}
                     sx={{ flex: 1, minHeight: 240, overflowY: "auto", p: 2, border: 1, borderColor: "divider", borderRadius: 1, bgcolor: "background.default" }}
                   >
-                    <SnippetPreview source={`${definitions.source}${code}`} folder={folder} attached={attached} lineOffset={definitions.lines} testId={`${ID}-preview`} />
+                    {entry.mock === true ? (
+                      <Box data-testid={`${ID}-mock-preview`} sx={{ display: "grid", gap: 1.5, maxWidth: 520 }}>
+                        <Typography variant="subtitle1" component="p" sx={{ fontWeight: 600 }}>
+                          {`${entry.label} — how it would look`}
+                        </Typography>
+                        {entry.id === "puzzle-board" ? (
+                          <>
+                            <SwitchField label="Next moves hidden" checked={hideNext} onChange={setHideNext} size="small" testId={`${ID}-mock-hide-next`} />
+                            <Typography variant="body2">
+                              {hideNext
+                                ? `A board at the position after ${movesOf(source)} — the moves after it hidden, each shown once the reader plays it on the board.`
+                                : `A board at the position after ${movesOf(source)}, the moves after it listed beside it, as a game shows them.`}
+                            </Typography>
+                          </>
+                        ) : (
+                          <Typography variant="body2">{entry.summary.replace(/^Not built yet — /, "")}.</Typography>
+                        )}
+                      </Box>
+                    ) : (
+                      <SnippetPreview source={`${definitions.source}${code}`} folder={folder} attached={attached} lineOffset={definitions.lines} testId={`${ID}-preview`} />
+                    )}
                   </Box>
                 </>
               )}

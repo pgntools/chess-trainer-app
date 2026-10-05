@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { mdxComponents } from "../../home/frontPage";
-import { COMPONENT_EXAMPLES, insertBlock } from "./componentCatalog";
+import { CATALOG, catalogFor, componentOf, insertBlock, type ExampleSource } from "./componentCatalog";
 
 /*
   The Add PGN dialog's examples (CTA-137): each a component an article can
@@ -10,16 +10,32 @@ import { COMPONENT_EXAMPLES, insertBlock } from "./componentCatalog";
 */
 
 describe("the component examples", () => {
-  it("name only components an article embeds, each once, each written for its game", () => {
-    const names = COMPONENT_EXAMPLES.map((example) => example.name);
-    expect(new Set(names).size).toBe(names.length);
-    for (const example of COMPONENT_EXAMPLES) {
-      expect(Object.keys(mdxComponents)).toContain(example.name);
-      const code = example.takes === "pgn" ? example.code("club") : example.code({ collection: "cup", number: 7 });
-      expect(code.startsWith(`<${example.name}`)).toBe(true);
-      if (example.takes === "pgn") expect(code).toContain("pgn={club}");
-      else expect(code).toContain(example.shows === "game" ? "cup/7" : "/library/cup");
+  const pgn: ExampleSource = { kind: "pgn", name: "club", moves: { line: "1. d4 d5", start: "1..." } };
+  const library: ExampleSource = { kind: "library", game: { collection: "cup", number: 7 } };
+
+  it("give each entry its own id, and name only components an article embeds — but a mock's", () => {
+    const ids = CATALOG.flatMap((folder) => folder.entries.map((entry) => entry.id));
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const entry of CATALOG.flatMap((folder) => folder.entries)) {
+      for (const source of [pgn, library]) {
+        const code = entry.code(source);
+        if (code === undefined) continue;
+        const component = componentOf(code);
+        expect(component).toBeDefined();
+        if (entry.mock !== true) expect(Object.keys(mdxComponents)).toContain(component);
+      }
     }
+  });
+
+  it("write each for the game it is given: a PGN by its name, a Library game by its address, a position by its moves", () => {
+    const codeOf = (source: ExampleSource, id: string) => catalogFor(source).flatMap((folder) => folder.entries).find((entry) => entry.id === id)?.code(source);
+    expect(codeOf(pgn, "tournament-swiss")).toContain("pgn={club}");
+    expect(codeOf(library, "tournament-swiss")).toBe('<CollectionTournamentTable _id="/library/cup" />');
+    expect(codeOf(library, "single-board")).toContain('game="/library/cup/7"');
+    expect(codeOf(pgn, "single-board")).toBeUndefined();
+    expect(codeOf(pgn, "position-moves")).toBe('<InlinePgnGame pgn="1. d4 d5" start="1..." caption="…" />');
+    // Every folder, for either kind of game.
+    expect(catalogFor(library).map((folder) => folder.title)).toEqual(["Single game", "Specific player", "Repertoire", "Tournament", "Position", "Puzzle"]);
   });
 });
 
