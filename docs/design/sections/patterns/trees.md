@@ -1,11 +1,13 @@
 # Trees patterns — `src/design-system/patterns/trees/`
 
 The tree view (CTA-110): one collapsible tree for every tree the app draws —
-the sidebar's navigation, the gallery's own menu, the reader's folders. Import
+the sidebar's navigation, the gallery's own menu, the reader's folders — and
+a tree hung from a button for picking a node out of one. Import
 from `patterns/trees`. Where a pattern belongs in the hierarchy:
 [`hierarchy.md`](../../hierarchy.md).
 
-Gallery: `/dev/design/patterns/trees/TreeView`. Its first block is
+Gallery: `/dev/design/patterns/trees/TreeView` and
+`/dev/design/patterns/trees/TreePicker`. Its first block is
 `FolderTree` (`/dev/design/blocks/trees/FolderTree`, `src/blocks/trees/`).
 
 ## TreeView
@@ -57,3 +59,29 @@ Gallery: `/dev/design/patterns/trees/TreeView`. Its first block is
   the `FolderTree` block.
 - **Replaces** — the sidebar's `TreeRow` (`src/views/main/Sidebar.tsx`) when
   the app shell migrates, and the folder pickers' indented lists.
+
+## TreePicker
+
+- **Purpose** — a `TreeView` hung from a labelled button, for picking a node
+  out of a tree (an "Open an article" on a toolbar): the button opens the
+  tree under itself, picking a node hands it to the caller and closes, and
+  Escape or a click away closes it, the focus back on the button.
+- **State** — the picker's own, and nothing else is the caller's: which
+  branches the reader opens lives and dies with the popover, seeded each
+  time it opens from the chain to `activeId` (the node on screen, its row
+  marked as `TreeView` marks it), as the sidebar opens the route's chain.
+  The caller gives the nodes and takes the pick.
+- **Props** — `nodes`, `activeId?`, `onSelect(node)`, `label` (the button's
+  words), `icon?` (before them), `treeLabel` (the tree's accessible name),
+  `hint` (`TreeView`'s, required — how the tree is worked, read with it),
+  `testId`.
+- **Test ids** — `testId` (the button); the tree's are `TreeView`'s under
+  `<testId>-tree` (`-tree` the root list, `-tree-<id>` a row,
+  `-tree-<id>-toggle` a selectable branch's chevron, `-tree-<id>-group` its
+  open children).
+- **Variations** (one demo each) — the chain to the node on screen open, its
+  row marked; nothing on screen, the branches closed; long names (an
+  ellipsis).
+- **Used by** — none yet; it was born as the MDX editor's article picker
+  (`views/dev/mdxEditor/`), which moved to a typed autocomplete
+  (`SelectAutocomplete`) once its articles grew past browsing.

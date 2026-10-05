@@ -78,6 +78,27 @@ export const articleTree = (): ArticleTreeNode[] => {
   return nodesUnder("");
 };
 
+/** One choice of the autocomplete picker: an article file, its title, and the folder it sits in. */
+export type ArticleOption = { value: string; label: string; group: string };
+
+/**
+ * Every article file as one flat list to type to find — the tree above
+ * flattened in its own order, each article filed under its folders' names
+ * joined by " / " (a root article under "(root)"), so the picker's groups
+ * are the Blog's folders.
+ */
+export const articleOptions = (): ArticleOption[] => {
+  const options: ArticleOption[] = [];
+  const walk = (nodes: readonly ArticleTreeNode[], folder: string) => {
+    for (const node of nodes) {
+      if (node.children === undefined) options.push({ value: node.id, label: node.label, group: folder === "" ? "(root)" : folder });
+      else walk(node.children, folder === "" ? node.label : `${folder} / ${node.label}`);
+    }
+  };
+  walk(articleTree(), "");
+  return options;
+};
+
 /** An article file's MDX source, or `undefined` for no such file. */
 export const loadArticleSource = async (file: string): Promise<string | undefined> => mdxFiles[`${ARTICLES_DIR}${file}.mdx`]?.();
 
