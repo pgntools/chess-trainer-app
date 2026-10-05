@@ -11,6 +11,12 @@ import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import SyncProblemRoundedIcon from "@mui/icons-material/SyncProblemRounded";
+import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import DriveFileMoveOutlinedIcon from "@mui/icons-material/DriveFileMoveOutlined";
+import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import NoteAddOutlinedIcon from "@mui/icons-material/NoteAddOutlined";
 import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
 import VerticalSplitRoundedIcon from "@mui/icons-material/VerticalSplitRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
@@ -174,6 +180,24 @@ const slugOf = (title: unknown): string =>
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "")
     : "";
+
+/** What the notice says was done, as an icon — by the words it starts with, an info icon for anything else (a refusal, a file not found). */
+const NOTICE_ICONS: readonly [RegExp, typeof InfoOutlinedIcon][] = [
+  [/^Opened /, FolderOpenRoundedIcon],
+  [/^Saved /, CheckCircleOutlineRoundedIcon],
+  [/^Started a new article/, NoteAddOutlinedIcon],
+  [/^Copied /, ContentCopyRoundedIcon],
+  [/^Downloaded /, DownloadRoundedIcon],
+  [/^Inserted /, WidgetsRoundedIcon],
+  [/^(Added |Wrote the PGN)/, UploadFileRoundedIcon],
+  [/^Removed /, DeleteOutlineRoundedIcon],
+  [/^Moved the /, DriveFileMoveOutlinedIcon],
+];
+
+function NoticeIcon({ notice }: { notice: string }) {
+  const Icon = NOTICE_ICONS.find(([words]) => words.test(notice))?.[1] ?? InfoOutlinedIcon;
+  return <Icon fontSize="small" aria-hidden />;
+}
 
 type MdxEditorProps = {
   /** An article file to open on arrival — `tournaments/olympiad-2026`, `get-started.he` — replacing the draft. */
@@ -510,11 +534,23 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
                 <Box component="code" dir="ltr">{`articles/${folder === "" ? "" : `${folder}/`}`}</Box>
               </Typography>
             </Box>
-            {/* Under what is being edited: what git has not got of the articles. */}
-            {gitFiles !== undefined && gitFiles.length > 0 && (
-              <Button size="small" color="warning" startIcon={<SyncProblemRoundedIcon />} onClick={() => setGitOpen(true)} sx={{ px: 0.5, minWidth: 0 }} data-testid="mdx-editor-git">
-                {`${gitFiles.length === 1 ? "1 file" : `${gitFiles.length} files`} not synced`}
-              </Button>
+            {/* Under what is being edited: what git has not got of the articles, and what was done last. */}
+            {((gitFiles !== undefined && gitFiles.length > 0) || notice !== undefined) && (
+              <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 2, rowGap: 0.5, minWidth: 0 }}>
+                {gitFiles !== undefined && gitFiles.length > 0 && (
+                  <Button size="small" color="warning" startIcon={<SyncProblemRoundedIcon />} onClick={() => setGitOpen(true)} sx={{ px: 0.5, minWidth: 0 }} data-testid="mdx-editor-git">
+                    {`${gitFiles.length === 1 ? "1 file" : `${gitFiles.length} files`} not synced`}
+                  </Button>
+                )}
+                {notice !== undefined && (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0, color: "info.main" }}>
+                    <NoticeIcon notice={notice} />
+                    <StatusText tone="info" testId="mdx-editor-notice">
+                      {notice}
+                    </StatusText>
+                  </Box>
+                )}
+              </Box>
             )}
           </Box>
           {/* What the panes show — at the row's end, opposite what is being edited. */}
@@ -533,11 +569,6 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           </Box>
         </Box>
       </Box>
-      {notice !== undefined && (
-        <StatusText tone="info" testId="mdx-editor-notice">
-          {notice}
-        </StatusText>
-      )}
 
       {saveDialog !== undefined && (
         <SaveArticleDialog
