@@ -263,8 +263,10 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
                     sx={{ ...ELLIPSIS, maxWidth: { xs: "calc(100vw - 140px)", md: 300 } }}
                   >
                     <code>{pgn.name}</code>
+                    {/* Its own text, between the two: a space at a span's edge is lost from the radio's name. */}
+                    {" — "}
                     <Box component="span" sx={{ color: "text.secondary" }}>
-                      {` — ${pgn.kind === "file" ? pgn.file : `inline, ${sizeOf(pgnBytesOf(pgn.text))}`}`}
+                      {pgn.kind === "file" ? pgn.file : `inline, ${sizeOf(pgnBytesOf(pgn.text))}`}
                     </Box>
                   </Box>
                 ),
