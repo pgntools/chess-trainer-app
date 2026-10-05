@@ -11,7 +11,10 @@ import { InlineAlert, StatusText } from "../../../design-system/components/feedb
 import { RadioGroupField, SwitchField, TextInputField } from "../../../design-system/components/forms";
 import { TreeView, type TreeNode } from "../../../design-system/patterns/trees";
 import { libraryGameReference, loadReferencedGames, resolveGameReference } from "../../../lib/gameReference";
-import { libraryGamePathOf } from "../../home/frontPage/paths";
+import { loadUploadedCollections } from "../../../lib/libraryCollectionStore";
+import type { CollectionSummary, TournamentFormat } from "../../../lib/libraryCollections";
+import { findShippedCollection } from "../../../lib/shippedCollections";
+import { collectionPathOf, libraryGamePathOf } from "../../home/frontPage/paths";
 import { articleImportResolver } from "./articleSources";
 import { CATALOG, catalogFor, componentOf, type ExampleSource, type LibraryGame, type MovesLine } from "./componentCatalog";
 import { COLUMNS, SIDE_COLUMN, TEXTAREA_SX } from "./dialogLayout";
@@ -22,6 +25,20 @@ import { movesLineOf, pgnBytesOf, sizeOf } from "./pgnPages";
 const ID = "mdx-editor-add-component";
 /** The source choice that is a Library game rather than one of the article's PGNs. */
 const LIBRARY = "library:";
+
+/** A tournament format, for a sentence. */
+const FORMAT_WORDS: Record<TournamentFormat, string> = { swiss: "a Swiss", roundRobin: "a round robin", knockout: "a knockout", arena: "an arena", match: "a match" };
+
+/** A collection's summary — a shipped one's, or an upload's once the Library's list is read. */
+const collectionSummaryOf = async (id: string): Promise<CollectionSummary | undefined> =>
+  findShippedCollection(id) ?? (await loadUploadedCollections()).find((candidate) => candidate.id === id);
+
+/** A Library game's PGN, read — `undefined` for no such game. */
+const libraryPgnOf = async (collection: string, number: number): Promise<{ name: string; pgn: string } | undefined> => {
+  const reference = libraryGameReference(collection, number);
+  await loadReferencedGames(reference);
+  return resolveGameReference(reference);
+};
 
 /** A game's first moves, for a sentence — or a short opening where it gave none. */
 const movesOf = (source: { moves?: MovesLine }) => source.moves?.line ?? "1. e4 e5 2. Nf3 Nc6";
@@ -56,8 +73,10 @@ const textOf = async (pgn: ArticlePgn, folder: string, attached: Readonly<Record
  * the content, in the order it is chosen:
  *
  * 1. **The game** — one of the article's PGNs (Add PGN's; one PGN can feed
- *    as many components as the article likes), or a game in the Library
- *    by its address, `/library/<collection>/<n>`, looked up.
+ *    as many components as the article likes), or the Library by an
+ *    address — a whole collection's, `/library/<collection>` (a
+ *    tournament's tables, its card, its games), or one game's,
+ *    `/library/<collection>/<n>` — looked up.
  * 2. **The component** — a tree of folders by what the game is (a single
  *    game, a player's, a set, a repertoire, a tournament, a position, a
  *    puzzle), holding only the components that fit that game
@@ -95,17 +114,36 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chosenPgn?.name, chosenPgn?.kind === "file" ? chosenPgn.file : undefined, folder, attached]);
 
-  /** The address looked up in the Library: the game it names becomes the source, or the field says why not. */
-  const lookUpLibraryGame = async () => {
-    const path = libraryGamePathOf(address);
-    if (path === undefined) return setLookup({ looking: false, problem: "A game's address is /library/<collection>/<n> — copy it from the game's page." });
+  /**
+   * The address looked up in the Library — a game's, or a whole
+   * collection's — and what it names becomes the source; or the field says
+   * why not.
+   */
+  const lookUpLibrary = async () => {
+    const gamePath = libraryGamePathOf(address);
+    const collection = gamePath?.collectionId ?? collectionPathOf(address);
+    if (collection === undefined) {
+      return setLookup({ looking: false, problem: "An address is a game's — /library/<collection>/<n> — or a collection's — /library/<collection>. Copy it from its page." });
+    }
     setLookup({ looking: true });
-    const reference = libraryGameReference(path.collectionId, path.number);
-    await loadReferencedGames(reference);
-    const game = resolveGameReference(reference);
-    if (game === undefined) return setLookup({ looking: false, problem: `The Library has no game ${path.number} in the collection ${path.collectionId}.` });
+    if (gamePath !== undefined) {
+      const game = await libraryPgnOf(collection, gamePath.number);
+      if (game === undefined) return setLookup({ looking: false, problem: `The Library has no game ${gamePath.number} in the collection ${collection}.` });
+      setLookup(undefined);
+      return setFound({ id: `/library/${collection}/${gamePath.number}`, game: { collection, number: gamePath.number }, label: game.name, moves: movesLineOf(game.pgn) });
+    }
+    const summary = await collectionSummaryOf(collection);
+    if (summary === undefined) return setLookup({ looking: false, problem: `The Library has no collection ${collection}.` });
+    // Its first game's opening — what the Position and Puzzle examples start from.
+    const first = await libraryPgnOf(collection, 1);
     setLookup(undefined);
-    setFound({ id: `/library/${path.collectionId}/${path.number}`, game: { collection: path.collectionId, number: path.number }, label: game.name, moves: movesLineOf(game.pgn) });
+    const format = summary.tournament?.enabled === true ? `, ${FORMAT_WORDS[summary.tournament.type]}` : "";
+    setFound({
+      id: `/library/${collection}`,
+      game: { collection },
+      label: `${summary.name} — ${summary.count.toLocaleString()} games${format}`,
+      moves: first === undefined ? undefined : movesLineOf(first.pgn),
+    });
   };
 
   const source: ExampleSource | undefined =
@@ -198,7 +236,7 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
                   </>
                 ),
               })),
-              { value: LIBRARY, label: "A game in the Library — by its address" },
+              { value: LIBRARY, label: "The Library — a game or a whole collection, by its address" },
             ]}
             value={choice ?? ""}
             onChange={(value) => {
@@ -210,28 +248,32 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
           {choice === LIBRARY && (
             <>
               <TextInputField
-                label="The game's address"
+                label="The address"
                 value={address}
                 onChange={(value) => {
                   setAddress(value);
                   setLookup(undefined);
                 }}
-                placeholder="/library/<collection>/<n>"
+                placeholder="/library/<collection> or /library/<collection>/<n>"
                 dir="ltr"
                 error={lookup?.looking === false}
-                helperText={lookup?.looking === false ? lookup.problem : "As the address bar shows it on the game's page — /library/ugmuub1nqfeoh2/4511."}
+                helperText={
+                  lookup?.looking === false
+                    ? lookup.problem
+                    : "As the address bar shows it — a whole collection, /library/candidates2026, or one game of it, /library/candidates2026/12."
+                }
                 testId={`${ID}-address`}
               />
               <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
                 <Button
                   variant="contained"
                   size="small"
-                  onClick={() => void lookUpLibraryGame()}
+                  onClick={() => void lookUpLibrary()}
                   disabled={address.trim() === "" || lookup?.looking === true}
                   aria-busy={lookup?.looking === true || undefined}
                   data-testid={`${ID}-use-game`}
                 >
-                  Use this game
+                  Look it up
                 </Button>
                 {found !== undefined && (
                   <StatusText tone="info" testId={`${ID}-found`}>

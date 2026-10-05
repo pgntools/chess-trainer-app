@@ -4,15 +4,15 @@
  * what the game is (a single game, a player's, a set of games gathered by
  * no rule, a repertoire, a tournament, a position, a puzzle), each holding the components that show that.
  * Every entry writes its markup for the game step 1 chose — a PGN of the
- * article's own (`pgn={<its name>}`) or a game in the Library (its
- * address) — or nothing, where no component shows that from that kind of
+ * article's own (`pgn={<its name>}`) or a game or a whole collection in the
+ * Library (its address) — or nothing, where no component shows that from that kind of
  * game, and is left out. Every component named is one of
  * `views/home/frontPage/index.ts`'s `mdxComponents` (the test holds them to
  * it), but a `mock`'s: a sketch of a component not built yet.
  */
 
-/** A Library game, by its address's parts. */
-export type LibraryGame = { collection: string; number: number };
+/** A Library collection, or one game of it — by its address's parts (`/library/<collection>` or `/library/<collection>/<n>`). */
+export type LibraryGame = { collection: string; number?: number };
 
 /** A game's first moves as one line of SAN, and where a board opens at their end. */
 export type MovesLine = { line: string; start: string };
@@ -37,7 +37,14 @@ export type CatalogFolder = { id: string; title: string; entries: readonly Catal
 
 const pgnOf = (source: ExampleSource) => (source.kind === "pgn" ? source.name : undefined);
 const libraryOf = (source: ExampleSource) => (source.kind === "library" ? source.game : undefined);
-const gamePath = ({ collection, number }: LibraryGame) => `/library/${collection}/${number}`;
+const gamePath = (collection: string, number: number) => `/library/${collection}/${number}`;
+/** One Library game — `undefined` for a whole collection, which a single-game component cannot show. */
+const oneGameOf = (source: ExampleSource) => {
+  const game = libraryOf(source);
+  return game?.number === undefined ? undefined : { collection: game.collection, number: game.number };
+};
+/** `showGame="<n>"` for a game, nothing for a whole collection. */
+const showGameOf = (game: LibraryGame) => (game.number === undefined ? "" : ` showGame="${game.number}"`);
 /** The first moves, or a short opening where the game gave none. */
 const movesOf = (source: ExampleSource): MovesLine => source.moves ?? { line: "1. e4 e5 2. Nf3 Nc6", start: "2..." };
 
@@ -60,8 +67,8 @@ export const CATALOG: readonly CatalogFolder[] = [
         label: "The game on a board",
         summary: "The Library game on a board, with a link to open it",
         code: (source) => {
-          const game = libraryOf(source);
-          return game === undefined ? undefined : `<CollectionGameBoard game="${gamePath(game)}" startMove="1" />`;
+          const game = oneGameOf(source);
+          return game === undefined ? undefined : `<CollectionGameBoard game="${gamePath(game.collection, game.number)}" startMove="1" />`;
         },
       },
       {
@@ -69,7 +76,7 @@ export const CATALOG: readonly CatalogFolder[] = [
         label: "The game, by its reference",
         summary: "The Library game on a board, by its stored-game reference",
         code: (source) => {
-          const game = libraryOf(source);
+          const game = oneGameOf(source);
           return game === undefined ? undefined : `<StoredGameEmbed reference="library/${game.collection}/${game.number}" startMove="1" />`;
         },
       },
@@ -82,10 +89,10 @@ export const CATALOG: readonly CatalogFolder[] = [
       {
         id: "player-collection",
         label: "The player's collection",
-        summary: "A collection of the player's games: a board on this one, a table of them all",
+        summary: "A collection of the player's games: a board on one, a table of them all",
         code: (source) => {
           const game = libraryOf(source);
-          return game === undefined ? undefined : `<CollectionCard _id="/library/${game.collection}" showGame="${game.number}" />`;
+          return game === undefined ? undefined : `<CollectionCard _id="/library/${game.collection}"${showGameOf(game)} />`;
         },
       },
       {
@@ -108,17 +115,17 @@ export const CATALOG: readonly CatalogFolder[] = [
         code: (source) => {
           const name = pgnOf(source);
           if (name !== undefined) return `<BoardRow>\n${[1, 2, 3].map((game) => `  <InlinePgnGame pgn={${name}} game="${game}" />`).join("\n")}\n</BoardRow>`;
-          const { collection, number } = libraryOf(source) ?? { collection: "", number: 1 };
-          return `<BoardRow>\n${[0, 1, 2].map((step) => `  <CollectionGameBoard game="${gamePath({ collection, number: number + step })}" />`).join("\n")}\n</BoardRow>`;
+          const { collection, number = 1 } = libraryOf(source) ?? { collection: "" };
+          return `<BoardRow>\n${[0, 1, 2].map((step) => `  <CollectionGameBoard game="${gamePath(collection, number + step)}" />`).join("\n")}\n</BoardRow>`;
         },
       },
       {
         id: "set-collection",
         label: "The set as a collection",
-        summary: "The Library collection the game is in: a board on it, a table of the set's games",
+        summary: "The Library collection: a board on one game, a table of the set's games",
         code: (source) => {
           const game = libraryOf(source);
-          return game === undefined ? undefined : `<CollectionCard _id="/library/${game.collection}" showGame="${game.number}" />`;
+          return game === undefined ? undefined : `<CollectionCard _id="/library/${game.collection}"${showGameOf(game)} />`;
         },
       },
     ],
