@@ -5,9 +5,12 @@ import Typography from "@mui/material/Typography";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
+import SaveAsRoundedIcon from "@mui/icons-material/SaveAsRounded";
+import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import type { MDXContent } from "mdx/types";
 
 import { SelectAutocomplete } from "../../../design-system/components/autocompletes";
+import { ConfirmDialog } from "../../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
 import { SwitchField } from "../../../design-system/components/forms";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
@@ -20,7 +23,9 @@ import { articleImportResolver, articleOptions, folderOf, loadArticleSource } fr
 import { compileMdx, SOURCE_LINE_COMPONENT } from "./compileMdx";
 import { MetadataPane } from "./MetadataPane";
 import { starterFrontmatter, todayIso } from "./metadataYaml";
+import SaveArticleDialog from "./SaveArticleDialog";
 import { STARTER_DOCUMENT } from "./starterDocument";
+import { ARTICLES_DIR, listStorageFolders, STORAGE_COMMAND, STORAGE_URL, writeStorageFile, type StorageFolder } from "./storageClient";
 import { useScrollSync } from "./useScrollSync";
 
 /**
@@ -47,10 +52,17 @@ import { useScrollSync } from "./useScrollSync";
  * - **The panes scroll together** (`useScrollSync.ts`) while "Scroll
  *   together" is on and the Content tab is open: scrolling either brings the
  *   other to the same block.
- * - **Nothing is written to the repository**: the text is copied or
- *   downloaded as a `.mdx`, to put under `src/views/blog/articles/` (the
- *   guide article says the rest). The draft is kept for the tab's session,
- *   so a reload or a visit to another screen keeps it.
+ * - **Saving** (CTA-137) goes through a local storage service,
+ *   `yarn mdx-editor:start` (`scripts/mdx-editor-server.ts`, called through
+ *   `storageClient.ts`), which writes into `src/views/blog/articles/`. Save
+ *   writes an opened article over its own file; a new article, or Save as,
+ *   asks where (`SaveArticleDialog`: a folder, or a new sub-folder, and a
+ *   name), and Save as somewhere else writes a new file, leaving the first
+ *   alone. Writing over another file asks first; a service that is not
+ *   running is a dialog naming the command. Nothing is moved or deleted.
+ *   Copy and Download still give the text without the service. The draft is
+ *   kept for the tab's session, so a reload or a visit to another screen
+ *   keeps it.
  */
 
 /** Where a source line's block starts in the preview — `compileMdx.ts`'s marker, drawn as nothing. */
@@ -171,6 +183,29 @@ class PreviewBoundary extends Component<BoundaryProps, BoundaryState> {
 const whereOf = ({ line, column }: { line?: number; column?: number }) =>
   line === undefined ? "" : column === undefined ? `Line ${line}: ` : `Line ${line}, column ${column}: `;
 
+/**
+ * A step of saving, kept as what was asked rather than as a closure — so a
+ * retry (the service started, a replacement confirmed) runs against the
+ * draft as it is then.
+ */
+type SaveStep =
+  | { kind: "save" }
+  | { kind: "save-as" }
+  | { kind: "write"; file: string; overwrite: boolean }
+  | { kind: "pgn"; folder: string; file: File; overwrite: boolean };
+
+/** The save dialog's state: the folders the service listed, and what it opened with. */
+type SaveDialogState = { folders: StorageFolder[]; folder: string; name: string };
+
+/** A title as a file name: lower-case words and dashes — "" for one with no Latin letters. */
+const slugOf = (title: unknown): string =>
+  typeof title === "string"
+    ? title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+    : "";
+
 type MdxEditorProps = {
   /** An article file to open on arrival — `tournaments/olympiad-2026`, `get-started.he` — replacing the draft. */
   arrivingArticle?: string;
@@ -261,6 +296,69 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   const download = () => setNotice(downloadTextFile(downloadName, source, "text/markdown") ? `Downloaded ${downloadName}.` : "The browser refused the download.");
   const starter = starterDraft();
 
+  // Saving through the storage service (CTA-137).
+  const [saveDialog, setSaveDialog] = useState<SaveDialogState>();
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string>();
+  const [pgnNotice, setPgnNotice] = useState<string>();
+  /** The step the service was down for — retried from its dialog. */
+  const [down, setDown] = useState<SaveStep>();
+  /** A file already there, and the step that writes over it. */
+  const [conflict, setConflict] = useState<{ path: string; step: SaveStep }>();
+
+  const refused = (message: string) => (saveDialog === undefined ? setNotice(message) : setSaveError(message));
+
+  const openSaveDialog = async () => {
+    const listed = await listStorageFolders();
+    if (listed.kind === "down") return setDown({ kind: "save-as" });
+    if (listed.kind === "refused") return setNotice(listed.message);
+    setSaveError(undefined);
+    setPgnNotice(undefined);
+    setSaveDialog({
+      folders: listed.folders,
+      folder: folderOf(draft.file),
+      name: draft.file === "" ? slugOf(header.title) : (draft.file.split("/").at(-1) ?? ""),
+    });
+  };
+
+  const write = async (file: string, overwrite: boolean) => {
+    const text = source;
+    setBusy(true);
+    const result = await writeStorageFile(`${file}.mdx`, text, overwrite);
+    setBusy(false);
+    if (result.kind === "down") return setDown({ kind: "write", file, overwrite });
+    if (result.kind === "exists") return setConflict({ path: result.path, step: { kind: "write", file, overwrite: true } });
+    if (result.kind === "refused") return refused(result.message);
+    // The draft is now that file's: "changed" counts from what was written.
+    setDraft((current) => ({ ...current, file }));
+    setOpened(text);
+    setSaveDialog(undefined);
+    const made = result.foldersCreated.length === 0 ? "" : ` — and made ${result.foldersCreated.map((folder) => `${folder}/`).join(", ")} with an index.mdx`;
+    setNotice(`Saved ${ARTICLES_DIR}/${result.path}${made}.`);
+  };
+
+  const addPgn = async (folder: string, file: File, overwrite: boolean) => {
+    const path = folder === "" ? file.name : `${folder}/${file.name}`;
+    setBusy(true);
+    const result = await writeStorageFile(path, await file.text(), overwrite);
+    setBusy(false);
+    if (result.kind === "down") return setDown({ kind: "pgn", folder, file, overwrite });
+    if (result.kind === "exists") return setConflict({ path, step: { kind: "pgn", folder, file, overwrite: true } });
+    if (result.kind === "refused") return refused(result.message);
+    setSaveError(undefined);
+    setPgnNotice(`Added ${path} — import it as "./${file.name}?raw".`);
+    // A folder the write made is one the picker should now show.
+    const listed = await listStorageFolders();
+    if (listed.kind === "folders") setSaveDialog((before) => (before === undefined ? before : { ...before, folders: listed.folders }));
+  };
+
+  const run = (step: SaveStep) => {
+    if (step.kind === "save") return draft.file === "" ? openSaveDialog() : write(draft.file, true);
+    if (step.kind === "save-as") return openSaveDialog();
+    if (step.kind === "write") return write(step.file, step.overwrite);
+    return addPgn(step.folder, step.file, step.overwrite);
+  };
+
   const { Content, error, pending, version } = compiled;
   return (
     <Box data-testid="mdx-editor" sx={{ height: { md: "100%" }, minHeight: 0, display: "flex", flexDirection: "column", gap: 1.5 }}>
@@ -284,6 +382,12 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
             testId="mdx-editor-open"
           />
         </Box>
+        <Button size="small" variant="contained" startIcon={<SaveRoundedIcon />} onClick={() => void run({ kind: "save" })} disabled={busy} data-testid="mdx-editor-save">
+          Save
+        </Button>
+        <Button size="small" startIcon={<SaveAsRoundedIcon />} onClick={() => void run({ kind: "save-as" })} disabled={busy} data-testid="mdx-editor-save-as">
+          Save as…
+        </Button>
         <Button size="small" startIcon={<ContentCopyRoundedIcon />} onClick={() => void copy()} data-testid="mdx-editor-copy">
           Copy MDX
         </Button>
@@ -305,6 +409,58 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           {notice}
         </StatusText>
       )}
+
+      {saveDialog !== undefined && (
+        <SaveArticleDialog
+          open
+          onClose={() => setSaveDialog(undefined)}
+          folders={saveDialog.folders}
+          initialFolder={saveDialog.folder}
+          initialName={saveDialog.name}
+          onSave={(file) => void run({ kind: "write", file, overwrite: file === draft.file })}
+          onAddPgn={(folder, file) => void run({ kind: "pgn", folder, file, overwrite: false })}
+          busy={busy}
+          pgnNotice={pgnNotice}
+          error={saveError}
+        />
+      )}
+      <ConfirmDialog
+        open={down !== undefined}
+        onClose={() => setDown(undefined)}
+        onConfirm={() => {
+          const step = down;
+          setDown(undefined);
+          if (step !== undefined) void run(step);
+        }}
+        title="The storage service is not running"
+        message={
+          <>
+            {`The MDX editor saves through a small local service, and nothing answers at ${STORAGE_URL}. Start it in a terminal at the checkout's root with `}
+            <Box component="code" dir="ltr">
+              {STORAGE_COMMAND}
+            </Box>
+            {", then retry."}
+          </>
+        }
+        confirmLabel="Retry"
+        cancelLabel="Close"
+        testId="mdx-editor-service-down"
+      />
+      <ConfirmDialog
+        open={conflict !== undefined}
+        onClose={() => setConflict(undefined)}
+        onConfirm={() => {
+          const step = conflict?.step;
+          setConflict(undefined);
+          if (step !== undefined) void run(step);
+        }}
+        title="Replace a file that is there?"
+        message={conflict === undefined ? undefined : `${ARTICLES_DIR}/${conflict.path} is already there. Replace it with this one?`}
+        confirmLabel="Replace"
+        cancelLabel="Cancel"
+        tone="destructive"
+        testId="mdx-editor-conflict"
+      />
 
       <Box
         sx={{

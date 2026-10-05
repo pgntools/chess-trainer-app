@@ -12,7 +12,7 @@ Write `src/views/blog/articles/<path>.mdx` — for example `tournaments/my-event
 
 Start the document below its title: the page shows the title as its heading, so use `##` and `###` for sections, never `#`.
 
-To see it as you write, run `yarn dev` and open the MDX editor, `/dev/mdx-editor`, in the sidebar's Development folder: the content goes on the left, and the right shows it as the Blog will, with every component below and the Library's games. Its Metadata tab is the frontmatter, as a form or as YAML, checked as the build checks it. It can open any article to start from. It saves nothing to the repository: copy the text or download the `.mdx` file, and put it here.
+To see it as you write, run `yarn dev` and open the MDX editor, `/dev/mdx-editor`, in the sidebar's Development folder: the content goes on the left, and the right shows it as the Blog will, with every component below and the Library's games. Its Metadata tab is the frontmatter, as a form or as YAML, checked as the build checks it. It can open any article to start from. To save into the repository, start its storage service in a second terminal, `yarn mdx-editor:start`: then Save writes an opened article over its own file, and a new one — or Save as — asks for a folder (or a new sub-folder, made with its `index.mdx`) and a file name, and takes a `.pgn` for the folder too. It asks before writing over another file, and moves or deletes nothing. Without the service, copy the text or download the `.mdx` file, and put it here.
 
 ## 2. The frontmatter
 

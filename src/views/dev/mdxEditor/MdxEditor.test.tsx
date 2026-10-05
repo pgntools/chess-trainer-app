@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
@@ -300,5 +300,169 @@ describe("the MDX editor's Content and Metadata (CTA-135)", () => {
     expect(screen.getByRole("textbox", { name: "Title (required)" })).toHaveValue("Pasted");
     await user.click(contentTab());
     expect(screen.queryByTestId("mdx-editor-pasted-frontmatter")).not.toBeInTheDocument();
+  });
+});
+
+/*
+  Saving through the storage service (CTA-137), with `fetch` standing in for
+  `yarn mdx-editor:start`: the files it holds, and whether it is up.
+*/
+type Service = { up: boolean; files: Map<string, string>; writes: { path: string; content: string; overwrite: boolean }[] };
+
+const stubService = (files: Record<string, string> = {}): Service => {
+  const service: Service = { up: true, files: new Map(Object.entries(files)), writes: [] };
+  const reply = (status: number, body: unknown) => ({ ok: status < 300, status, json: async () => body }) as Response;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (!service.up) throw new TypeError("Failed to fetch");
+      const route = new URL(url).pathname;
+      if (route === "/folders") {
+        const folders = new Map<string, string[]>([["", []]]);
+        for (const path of [...service.files.keys()].sort()) {
+          const parts = path.split("/");
+          for (let depth = 1; depth < parts.length; depth += 1) if (!folders.has(parts.slice(0, depth).join("/"))) folders.set(parts.slice(0, depth).join("/"), []);
+          folders.get(parts.slice(0, -1).join("/"))?.push(parts.at(-1) ?? "");
+        }
+        return reply(200, { folders: [...folders].map(([path, names]) => ({ path, ...(path === "tournaments" ? { title: "Tournaments" } : {}), files: names })) });
+      }
+      const { path, content, overwrite } = JSON.parse(String(init?.body)) as Service["writes"][number];
+      if (path.includes("..")) return reply(400, { error: `${path}: leaves articles/.` });
+      if (service.files.has(path) && !overwrite) return reply(409, { error: `${path} is already there.`, exists: path });
+      const created = service.files.has(path) ? [] : path.split("/").slice(0, -1).filter((_, index, parts) => ![...service.files.keys()].some((file) => file.startsWith(`${parts.slice(0, index + 1).join("/")}/`))).map((_, index, made) => made.slice(0, index + 1).join("/"));
+      service.writes.push({ path, content, overwrite });
+      service.files.set(path, content);
+      return reply(201, { written: path, created: true, foldersCreated: created });
+    }),
+  );
+  return service;
+};
+
+const saveDialog = () => screen.getByRole("dialog", { name: "Save the article" });
+
+describe("the MDX editor's Save (CTA-137)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("always shows Save, and says how to start the service when it is not running, then retries", async () => {
+    const user = userEvent.setup();
+    const service = stubService({ "tournaments/index.mdx": "x" });
+    service.up = false;
+    mount();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const down = await screen.findByRole("dialog", { name: "The storage service is not running" });
+    expect(down).toHaveTextContent("yarn mdx-editor:start");
+    expect(down).toHaveTextContent("http://127.0.0.1:5172");
+
+    service.up = true;
+    await user.click(within(down).getByRole("button", { name: "Retry" }));
+    // A new article has no file yet: Save asks where.
+    expect(await screen.findByRole("dialog", { name: "Save the article" })).toBeInTheDocument();
+    await expectNoAxeViolations(saveDialog());
+  });
+
+  it("saves a new article where the reader picks, and tracks that file from then on", async () => {
+    const user = userEvent.setup();
+    const service = stubService({ "get-started.mdx": "x", "tournaments/index.mdx": "x", "tournaments/cup.mdx": "x" });
+    mount();
+    setSource("## Body");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = await screen.findByRole("dialog", { name: "Save the article" });
+    // The name starts from the title, the folder at the root.
+    const name = within(dialog).getByRole("textbox", { name: "File name" });
+    expect(name).toHaveValue("a-new-article");
+    await user.click(within(dialog).getByRole("treeitem", { name: "Tournaments (tournaments/)" }));
+    await user.clear(name);
+    await user.type(name, "my-event");
+    expect(within(dialog).getByTestId("mdx-editor-save-path")).toHaveTextContent("src/views/blog/articles/tournaments/my-event.mdx");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByTestId("mdx-editor-notice")).toHaveTextContent("Saved src/views/blog/articles/tournaments/my-event.mdx.");
+    expect(service.writes).toEqual([{ path: "tournaments/my-event.mdx", content: `---\n${starterFrontmatter(todayIso())}---\n\n## Body`, overwrite: false }]);
+    expect(screen.queryByRole("dialog", { name: "Save the article" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("mdx-editor-editing")).toHaveTextContent("Editing tournaments/my-event.mdx");
+    expect(screen.getByTestId("mdx-editor-editing")).not.toHaveTextContent("changed");
+
+    // From now on Save writes that file in place.
+    setSource("## Body, again");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(service.writes).toHaveLength(2));
+    expect(service.writes[1]).toMatchObject({ path: "tournaments/my-event.mdx", overwrite: true });
+  });
+
+  it("writes an opened article over its own file, with no dialog", async () => {
+    const user = userEvent.setup();
+    const service = stubService({ "tournaments/werner-obermeyer-swiss-2026.mdx": "old" });
+    mount("/dev/mdx-editor?article=tournaments%2Fwerner-obermeyer-swiss-2026");
+    await screen.findByText("Opened tournaments/werner-obermeyer-swiss-2026.mdx.");
+    setSource("## Rewritten");
+    expect(screen.getByTestId("mdx-editor-editing")).toHaveTextContent("— changed");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Saved src/views/blog/articles/tournaments/werner-obermeyer-swiss-2026.mdx.")).toBeInTheDocument();
+    expect(service.writes).toEqual([{ path: "tournaments/werner-obermeyer-swiss-2026.mdx", content: expect.stringContaining("## Rewritten"), overwrite: true }]);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByTestId("mdx-editor-editing")).not.toHaveTextContent("changed");
+  });
+
+  it("saves as a new file elsewhere, leaving the original, and asks before writing over another file", async () => {
+    const user = userEvent.setup();
+    const service = stubService({ "tournaments/index.mdx": "x", "tournaments/werner-obermeyer-swiss-2026.mdx": "old", "tournaments/taken.mdx": "theirs" });
+    mount("/dev/mdx-editor?article=tournaments%2Fwerner-obermeyer-swiss-2026");
+    await screen.findByText("Opened tournaments/werner-obermeyer-swiss-2026.mdx.");
+    await user.click(screen.getByRole("button", { name: "Save as…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Save the article" });
+    const name = within(dialog).getByRole("textbox", { name: "File name" });
+    expect(name).toHaveValue("werner-obermeyer-swiss-2026");
+    await user.clear(name);
+    await user.type(name, "taken");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    // The service reports the file there; nothing is written until the reader says so.
+    const conflict = await screen.findByRole("dialog", { name: "Replace a file that is there?" });
+    expect(conflict).toHaveTextContent("src/views/blog/articles/tournaments/taken.mdx is already there.");
+    expect(service.files.get("tournaments/taken.mdx")).toBe("theirs");
+    await user.click(within(conflict).getByRole("button", { name: "Replace" }));
+
+    expect(await screen.findByText("Saved src/views/blog/articles/tournaments/taken.mdx.")).toBeInTheDocument();
+    expect(service.writes.map(({ path, overwrite }) => ({ path, overwrite }))).toEqual([{ path: "tournaments/taken.mdx", overwrite: true }]);
+    expect(service.files.get("tournaments/werner-obermeyer-swiss-2026.mdx")).toBe("old");
+    expect(screen.getByTestId("mdx-editor-editing")).toHaveTextContent("Editing tournaments/taken.mdx");
+  });
+
+  it("makes a new sub-folder, takes a PGN into it, and refuses a translation with no English file beside it", async () => {
+    const user = userEvent.setup();
+    const service = stubService({ "tournaments/index.mdx": "x", "tournaments/cup.mdx": "x" });
+    mount();
+    await user.click(screen.getByRole("button", { name: "Save as…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Save the article" });
+    await user.click(within(dialog).getByRole("treeitem", { name: "Tournaments (tournaments/)" }));
+    const name = within(dialog).getByRole("textbox", { name: "File name" });
+    await user.clear(name);
+    await user.type(name, "cup.he");
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeEnabled();
+    await user.clear(name);
+    await user.type(name, "final.he");
+    expect(within(dialog).getByText("A translation goes beside its English file, and tournaments/final.mdx is not there.")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
+
+    await user.type(within(dialog).getByRole("textbox", { name: "New sub-folder (optional)" }), "club-nights");
+    await user.clear(name);
+    await user.type(name, "round-one");
+    expect(within(dialog).getByTestId("mdx-editor-save-path")).toHaveTextContent("src/views/blog/articles/tournaments/club-nights/round-one.mdx");
+    await user.upload(within(dialog).getByTestId("mdx-editor-save-pgn-input"), new File(["1. e4 *"], "games.pgn", { type: "application/x-chess-pgn" }));
+    expect(await within(dialog).findByText('Added tournaments/club-nights/games.pgn — import it as "./games.pgn?raw".')).toBeInTheDocument();
+    expect(service.writes[0]).toEqual({ path: "tournaments/club-nights/games.pgn", content: "1. e4 *", overwrite: false });
+
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(await screen.findByTestId("mdx-editor-notice")).toHaveTextContent("Saved src/views/blog/articles/tournaments/club-nights/round-one.mdx.");
+  });
+
+  it("shows what the service refuses in the dialog", async () => {
+    const user = userEvent.setup();
+    stubService({});
+    mount();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.upload(within(await screen.findByRole("dialog", { name: "Save the article" })).getByTestId("mdx-editor-save-pgn-input"), new File(["x"], "..pgn"));
+    // The fake refuses any "..", as the service refuses a path out.
+    expect(await within(saveDialog()).findByTestId("mdx-editor-save-error")).toHaveTextContent("leaves articles/");
   });
 });
