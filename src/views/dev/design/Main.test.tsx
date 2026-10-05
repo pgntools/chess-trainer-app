@@ -62,7 +62,8 @@ describe("the design gallery's route", () => {
   it("shows the Blocks tier after Base and Patterns, a family's blocks under it", () => {
     mount("/dev/design/blocks/trees/FolderTree");
     expect(preview()).toHaveAttribute("data-tier", "blocks");
-    expect(screen.getByTestId("design-gallery-tier")).toHaveTextContent("Blocks · Trees");
+    expect(screen.getByTestId("design-gallery-breadcrumbs-blocks")).toHaveTextContent("Blocks");
+    expect(screen.getByTestId("design-gallery-breadcrumbs-blocks-trees")).toHaveTextContent("Trees");
     expect(screen.getByTestId("design-gallery-nav-blocks")).toHaveAttribute("aria-expanded", "true");
     expect(within(screen.getByTestId("design-gallery-nav-blocks-trees-group")).getByRole("treeitem", { name: /FolderTree/ })).toHaveAttribute(
       "aria-current",

@@ -11,6 +11,7 @@ import { ThemeProvider } from "@mui/material/styles";
 import { Navigate, Link as RouterLink } from "react-router";
 import { useTranslation } from "react-i18next";
 
+import { Breadcrumbs } from "../components/navigation";
 import { TreeView, ancestorsOf, type TreeNode } from "../patterns/trees";
 import { buildTheme, ltrCache, rtlCache, usePrefersReducedMotion } from "../theme";
 import { DEFAULT_THEME_ID, themeById, themes } from "../themes";
@@ -47,6 +48,8 @@ type DesignGalleryProps = {
   section: string | undefined;
   /** Where a page is — the route's business, handed in, so the gallery knows no route. */
   sectionPath: (page: string) => string;
+  /** Where the gallery starts — the tier crumb's link, handed in for the same reason. */
+  startPath: string;
   /**
    * Tiers from outside the design system, after its own Base and Patterns
    * (CTA-110): the dev route discovers `src/blocks/` and hands it in as
@@ -73,7 +76,8 @@ type DesignGalleryProps = {
  * in as `tiers` — Blocks (`/dev/design/blocks/<family>/<block>`). One
  * catalogue of every tier. The chain above the page on screen opens with it;
  * the reader opens and closes the rest, and they stay as left while the pages
- * change.
+ * change. The page's own title is a `Breadcrumbs` trail — tier, section, the
+ * component on screen — so the way up is the way back (CTA-133).
  *
  * The preview is its **own** theme — `buildTheme` for one fixed scheme, which
  * carries no CSS variables, so it sits inside the app's theme without fighting
@@ -88,6 +92,7 @@ type DesignGalleryProps = {
 function DesignGallery({
   section,
   sectionPath,
+  startPath,
   initialThemeId = DEFAULT_THEME_ID,
   initialMode = "light",
   initialDirection = "ltr",
@@ -195,12 +200,15 @@ function DesignGallery({
       <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", gap: 1 }}>
         <Box sx={{ flexShrink: 0, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1 }}>
           <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="overline" color="text.secondary" data-testid="design-gallery-tier" sx={{ display: "block", lineHeight: 1.5 }}>
-              {page.tier.title} · {page.section.title}
-            </Typography>
-            <Typography variant="h3" component="h2" data-testid="design-gallery-title">
-              {page.entry.title}
-            </Typography>
+            <Breadcrumbs
+              ariaLabel="Gallery"
+              testId="design-gallery-breadcrumbs"
+              crumbs={[
+                { id: tierNodeId(page.tier), label: page.tier.title, link: { component: RouterLink, to: startPath } },
+                { id: slugOf(page.sectionKey), label: page.section.title, link: { component: RouterLink, to: sectionPath(page.sectionKey) } },
+              ]}
+              current={page.entry.title}
+            />
           </Box>
           <TextField
             select
