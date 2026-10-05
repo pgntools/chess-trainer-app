@@ -7,11 +7,12 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import type { MDXContent } from "mdx/types";
 
+import { SelectAutocomplete } from "../../../design-system/components/autocompletes";
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
-import { SelectField, SwitchField } from "../../../design-system/components/forms";
+import { SwitchField } from "../../../design-system/components/forms";
 import { downloadTextFile } from "../../../lib/pgnExport";
 import { mdxComponents } from "../../home/frontPage";
-import { articleImportResolver, articleSources, folderOf, loadArticleSource } from "./articleSources";
+import { articleImportResolver, articleOptions, folderOf, loadArticleSource } from "./articleSources";
 import { compileMdx, SOURCE_LINE_COMPONENT } from "./compileMdx";
 import { STARTER_DOCUMENT } from "./starterDocument";
 import { useScrollSync } from "./useScrollSync";
@@ -26,7 +27,8 @@ import { useScrollSync } from "./useScrollSync";
  * - **A document that will not compile** keeps the last one that did on the
  *   right, under the error and where it is. **A component that throws** (a
  *   prop it cannot read) is caught there, and the next compile tries again.
- * - **An article** can be opened as a starting point — from the select, or
+ * - **An article** can be opened as a starting point — typed to find in the
+ *   autocomplete beside the toolbar (the Blog's folders as its groups), or
  *   from the edit icon beside an article's title (`?article=<file>`, which
  *   `Main` hands in as `arrivingArticle`); its
  *   `import games from "./x.pgn?raw"` reads the file beside it.
@@ -51,8 +53,8 @@ export const COMPILE_DELAY_MS = 300;
 
 const DRAFT_KEY = "chessapp.dev.mdxEditor.draft";
 const SOURCE_ID = "mdx-editor-source";
-/** The article files it can open — fixed for the build. */
-const SOURCES = articleSources();
+/** The articles it can open, typed to find — fixed for the build, as the files are. */
+const ARTICLE_OPTIONS = articleOptions();
 
 type Draft = { source: string; file: string };
 /** What the tab keeps: the draft, and the text it was opened as — so a kept draft still counts as changed. */
@@ -222,14 +224,14 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
             {`${draft.file === "" ? "A new article" : `Editing ${draft.file}.mdx`}${dirty ? " — changed" : ""} · imports resolve from articles/${folder === "" ? "" : `${folder}/`}`}
           </Typography>
         </Box>
-        <Box sx={{ minWidth: 240 }}>
-          <SelectField
+        <Box sx={{ minWidth: 280 }}>
+          <SelectAutocomplete
             label="Open an article"
-            value=""
-            emptyOption="Choose an article…"
-            onChange={(file) => file !== "" && void openArticle(file)}
-            options={SOURCES.map((source) => ({ value: source.file, label: source.label }))}
-            optionDir="auto"
+            value={null}
+            onChange={(file) => file !== null && void openArticle(file)}
+            options={ARTICLE_OPTIONS}
+            placeholder="Type to find an article…"
+            clearable={false}
             testId="mdx-editor-open"
           />
         </Box>
