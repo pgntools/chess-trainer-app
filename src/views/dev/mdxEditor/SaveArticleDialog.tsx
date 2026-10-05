@@ -5,7 +5,7 @@ import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 
 import { FormDialog } from "../../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
-import { FileInputButton, TextInputField } from "../../../design-system/components/forms";
+import { TextInputField } from "../../../design-system/components/forms";
 import { TreeView, ancestorsOf, type TreeNode } from "../../../design-system/patterns/trees";
 import { ARTICLES_DIR, type StorageFolder } from "./storageClient";
 
@@ -42,12 +42,8 @@ type SaveArticleDialogProps = {
   initialName: string;
   /** Save the draft as `<folder>/<name>.mdx`. */
   onSave: (file: string) => void;
-  /** Put PGN files into `folder`, beside the article — which imports them when it is saved there. */
-  onAddPgn: (folder: string, files: File[]) => void;
   /** A write is under way. */
   busy: boolean;
-  /** What the last PGN write came to. */
-  pgnNotice?: string;
   /** Why the last write was refused. */
   error?: string;
 };
@@ -56,11 +52,11 @@ type SaveArticleDialogProps = {
  * **Where to save an article** (CTA-137): a folder of the Blog's — or a new
  * sub-folder of it, which the service makes with a stub `index.mdx` — and a
  * file name (a slug; `.he` for a translation), the path it comes to shown as
- * it is typed. A `.pgn` goes into the same folder from here, and the article
- * imports it when it is saved there. Writing over another file is asked about after the service reports
- * it, by the editor.
+ * it is typed. Writing over another file is asked about after the service
+ * reports it, by the editor. (A PGN goes in through Add PGN, which opens
+ * this first for an article with no folder yet.)
  */
-function SaveArticleDialog({ open, onClose, folders, initialFolder, initialName, onSave, onAddPgn, busy, pgnNotice, error }: SaveArticleDialogProps) {
+function SaveArticleDialog({ open, onClose, folders, initialFolder, initialName, onSave, busy, error }: SaveArticleDialogProps) {
   const known = folders.some((folder) => folder.path === initialFolder) ? initialFolder : "";
   const [folder, setFolder] = useState(known);
   const [newFolder, setNewFolder] = useState("");
@@ -75,7 +71,7 @@ function SaveArticleDialog({ open, onClose, folders, initialFolder, initialName,
 
   const folderProblem =
     newFolder.trim() !== "" && !FOLDER_NAME.test(newFolder.trim()) ? "A folder's name is lower-case words and dashes — it is part of the address." : undefined;
-  // One already there (a PGN put into it a moment ago) is simply where the file goes.
+  // One already there is simply where the file goes.
   const folderThere = newFolder.trim() !== "" && folders.some((candidate) => candidate.path === target);
   const nameProblem =
     name === ""
@@ -152,23 +148,6 @@ function SaveArticleDialog({ open, onClose, folders, initialFolder, initialName,
       <StatusText tone="neutral" testId="mdx-editor-save-path">
         <span dir="ltr">{path}</span>
       </StatusText>
-      <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
-        <FileInputButton
-          label="Add PGN to this folder"
-          accept=".pgn"
-          multiple
-          onFiles={(picked) => onAddPgn(target, picked)}
-          variant="outlined"
-          size="small"
-          disabled={busy || folderProblem !== undefined}
-          testId="mdx-editor-save-pgn"
-        />
-        {pgnNotice !== undefined && (
-          <StatusText tone="info" testId="mdx-editor-save-pgn-notice">
-            {pgnNotice}
-          </StatusText>
-        )}
-      </Box>
       {error !== undefined && (
         <InlineAlert severity="error" title="The service would not write it" testId="mdx-editor-save-error">
           {error}

@@ -70,8 +70,8 @@ import { useScrollSync } from "./useScrollSync";
  *   content as `export const <name> = \`…\`` (`pgnImports.ts`); the preview
  *   reads either at once. Its Output element tab gives each component's
  *   markup reading that PGN (`componentCatalog.ts`), to copy or insert at
- *   the caret. The save dialog also takes a PGN, which the article imports
- *   when it is saved there.
+ *   the caret. A PGN file for an article with no folder yet saves the
+ *   article first (the save dialog), then goes beside it.
  *   Copy and Download still give the text without the service. The draft is
  *   kept for the tab's session, so a reload or a visit to another screen
  *   keeps it.
@@ -128,11 +128,10 @@ type SaveStep =
   | { kind: "save-as" }
   | { kind: "write"; file: string; overwrite: boolean }
   /**
-   * PGNs into `folder`; `overwrite` names the ones the reader agreed to
-   * replace. `into` the article: its body imports them at once; the save
-   * dialog: when the article is saved in that folder.
+   * PGNs into `folder`, beside the article, which imports them at once;
+   * `overwrite` names the ones the reader agreed to replace.
    */
-  | { kind: "pgn"; folder: string; files: PgnFile[]; overwrite: readonly string[]; into: "article" | "dialog" };
+  | { kind: "pgn"; folder: string; files: PgnFile[]; overwrite: readonly string[] };
 
 /** A PGN to write: its file's name, its text, and — from Add PGN — the name the article binds it to. */
 type PgnFile = { file: string; text: string; name?: string };
@@ -247,9 +246,6 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   const [saveDialog, setSaveDialog] = useState<SaveDialogState>();
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<string>();
-  const [pgnNotice, setPgnNotice] = useState<string>();
-  /** PGNs the save dialog put into a folder — imported by the article when it is saved there. */
-  const [dialogPgns, setDialogPgns] = useState<{ folder: string; file: string }[]>([]);
   /** The step the service was down for — retried from its dialog. */
   const [down, setDown] = useState<SaveStep>();
   /** A file already there, and the step that writes over it. */
@@ -269,8 +265,6 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
     if (listed.kind === "down") return setDown({ kind: "save-as" });
     if (listed.kind === "refused") return setNotice(listed.message);
     setSaveError(undefined);
-    setPgnNotice(undefined);
-    setDialogPgns([]);
     setSaveDialog({
       folders: listed.folders,
       folder: folderOf(draft.file),
@@ -299,7 +293,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
       held = { file: heldPgn.fileName, name: heldPgn.name };
     }
     // A PGN put where the article is going is imported by it.
-    const pgns = [...dialogPgns.filter((pgn) => pgn.folder === folderOf(file)).map((pgn) => pgn.file), ...(held === undefined ? [] : [held])];
+    const pgns = held === undefined ? [] : [held];
     const { body, imports } = withPgnImports(draft.body, pgns);
     const text = textOf({ ...draft, body });
     const result = await writeStorageFile(`${file}.mdx`, text, overwrite);
@@ -311,7 +305,6 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
     setDraft((current) => ({ ...current, file, body: pgns.length === 0 ? current.body : body }));
     setOpened(text);
     setSaveDialog(undefined);
-    setDialogPgns([]);
     const made = result.foldersCreated.length === 0 ? "" : ` — and made ${result.foldersCreated.map((folder) => `${folder}/`).join(", ")} with an index.mdx`;
     const imported = imports.length === 0 ? "" : ` It imports ${imports.map((pgn) => `${pgn.file} as ${pgn.name}`).join(", ")}.`;
     setNotice(`Saved ${ARTICLES_DIR}/${result.path}${made}.${imported}`);
@@ -325,7 +318,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
 
   /** PGNs into `folder`, one by one — stopping at the first the service will not take, to go on from there. */
   const addPgns = async (step: Extract<SaveStep, { kind: "pgn" }>) => {
-    const { folder, files, overwrite, into } = step;
+    const { folder, files, overwrite } = step;
     const added: (PgnFile & { path: string })[] = [];
     setBusy(true);
     for (const [index, pgn] of files.entries()) {
@@ -345,23 +338,14 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
     if (added.length === 0) return;
     setAttached((before) => ({ ...before, ...Object.fromEntries(added.map((pgn) => [pgn.path, pgn.text])) }));
     const paths = added.map((pgn) => pgn.path).join(", ");
-    if (into === "article") {
-      // The article imports what was attached to it, at once.
-      const entries = added.map((pgn) => (pgn.name === undefined ? pgn.file : { file: pgn.file, name: pgn.name }));
-      const { imports } = withPgnImports(draft.body, entries);
-      setDraft((current) => ({ ...current, body: withPgnImports(current.body, entries).body }));
-      const message = `Added ${paths} — imported as ${imports.map((pgn) => pgn.name).join(", ")}: give it to a component as pgn={${imports[0].name}}.`;
-      setNotice(message);
-      setAddPgnError(undefined);
-      setPgnAdded((before) => ({ seq: (before?.seq ?? 0) + 1, name: imports[0].name, message }));
-      return;
-    }
-    setSaveError(undefined);
-    setDialogPgns((before) => [...before, ...added.map((pgn) => ({ folder, file: pgn.file }))]);
-    setPgnNotice(`Added ${paths} — the article imports it when it is saved in ${folder === "" ? "articles" : folder}/.`);
-    // A folder the write made is one the picker should now show.
-    const listed = await listStorageFolders();
-    if (listed.kind === "folders") setSaveDialog((before) => (before === undefined ? before : { ...before, folders: listed.folders }));
+    // The article imports what was attached to it, at once.
+    const entries = added.map((pgn) => (pgn.name === undefined ? pgn.file : { file: pgn.file, name: pgn.name }));
+    const { imports } = withPgnImports(draft.body, entries);
+    setDraft((current) => ({ ...current, body: withPgnImports(current.body, entries).body }));
+    const message = `Added ${paths} — imported as ${imports.map((pgn) => pgn.name).join(", ")}: give it to a component as pgn={${imports[0].name}}.`;
+    setNotice(message);
+    setAddPgnError(undefined);
+    setPgnAdded((before) => ({ seq: (before?.seq ?? 0) + 1, name: imports[0].name, message }));
   };
 
   /** A PGN from the Add PGN dialog: written beside the article and imported, or written into the content. */
@@ -371,7 +355,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
       setHeldPgn({ name, fileName, text, overwrite: false });
       return void openSaveDialog();
     }
-    if (how === "file") return void run({ kind: "pgn", folder, files: [{ file: fileName, text, name }], overwrite: [], into: "article" });
+    if (how === "file") return void run({ kind: "pgn", folder, files: [{ file: fileName, text, name }], overwrite: [] });
     // Never a big PGN inline: the dialog offers none, and this holds it whatever asks.
     if (pgnBytesOf(text) > BIG_PGN_BYTES) return setNotice(`A PGN over ${sizeOf(BIG_PGN_BYTES)} goes in as a file beside the article, not inline.`);
     setDraft((current) => ({ ...current, body: withInlinePgn(current.body, name, text) }));
@@ -474,13 +458,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           initialFolder={saveDialog.folder}
           initialName={saveDialog.name}
           onSave={(file) => void run({ kind: "write", file, overwrite: file === draft.file })}
-          onAddPgn={(folder, files) =>
-            void Promise.all(files.map(async (file) => ({ file: file.name, text: await file.text() }))).then((pgns) =>
-              run({ kind: "pgn", folder, files: pgns, overwrite: [], into: "dialog" }),
-            )
-          }
           busy={busy}
-          pgnNotice={pgnNotice}
           error={saveError}
         />
       )}
