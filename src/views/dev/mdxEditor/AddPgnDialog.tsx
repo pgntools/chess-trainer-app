@@ -8,7 +8,7 @@ import WidgetsRoundedIcon from "@mui/icons-material/WidgetsRounded";
 import { BaseDialog } from "../../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
 import { FileInputButton, RadioGroupField, SliderField, TextInputField } from "../../../design-system/components/forms";
-import { COLUMNS, SIDE_COLUMN, TEXTAREA_SX } from "./dialogLayout";
+import { COLUMNS, ELLIPSIS, SIDE_COLUMN, TEXTAREA_SX } from "./dialogLayout";
 import { articlePgnsOf, IDENTIFIER, namesIn, pgnImportName, usesOf } from "./pgnImports";
 import { BIG_PGN_BYTES, GAMES_PER_PAGE, pgnBytesOf, pgnPagesOf, sizeOf } from "./pgnPages";
 
@@ -137,6 +137,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, onAdd, onRemove, o
               <Box component="ul" aria-labelledby={`${ID}-list-label`} data-testid={`${ID}-list`} sx={{ listStyle: "none", m: 0, p: 0, display: "grid", gap: 0.5 }}>
                 {pgns.map((pgn) => {
                   const uses = usesOf(body, pgn.name);
+                  const detail = `${pgn.kind === "file" ? pgn.file : `inline, ${sizeOf(pgnBytesOf(pgn.text))}`} · ${uses === 0 ? "not used yet" : `used ${uses}×`}`;
                   return (
                     <Box
                       component="li"
@@ -145,18 +146,18 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, onAdd, onRemove, o
                       sx={{ display: "flex", alignItems: "center", gap: 1, px: 1, py: 0.5, border: 1, borderColor: "divider", borderRadius: 1 }}
                     >
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Box component="code" dir="ltr" sx={{ fontWeight: 600 }}>
+                        {/* A long name or file cut short — the whole of it on hover. */}
+                        <Box component="code" dir="ltr" title={pgn.name} sx={{ ...ELLIPSIS, fontWeight: 600 }}>
                           {pgn.name}
                         </Box>
-                        <Typography variant="body2" color="text.secondary" noWrap>
-                          <span dir="ltr">{pgn.kind === "file" ? pgn.file : `inline, ${sizeOf(pgnBytesOf(pgn.text))}`}</span>
-                          {` · ${uses === 0 ? "not used yet" : `used ${uses}×`}`}
+                        <Typography variant="body2" color="text.secondary" dir="ltr" title={detail} sx={ELLIPSIS}>
+                          {detail}
                         </Typography>
                       </Box>
-                      <Button size="small" startIcon={<WidgetsRoundedIcon />} onClick={() => onAddComponent(pgn.name)} data-testid={`${ID}-list-${pgn.name}-component`}>
+                      <Button size="small" startIcon={<WidgetsRoundedIcon />} onClick={() => onAddComponent(pgn.name)} sx={{ flexShrink: 0 }} data-testid={`${ID}-list-${pgn.name}-component`}>
                         Add component
                       </Button>
-                      <Button size="small" color="error" onClick={() => onRemove(pgn.name)} disabled={busy} data-testid={`${ID}-list-${pgn.name}-remove`}>
+                      <Button size="small" color="error" onClick={() => onRemove(pgn.name)} disabled={busy} sx={{ flexShrink: 0 }} data-testid={`${ID}-list-${pgn.name}-remove`}>
                         Remove
                       </Button>
                     </Box>
@@ -216,7 +217,13 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, onAdd, onRemove, o
               placeholder={theFile}
               dir="ltr"
               error={fileProblem !== undefined}
-              helperText={fileProblem ?? <span dir="ltr">{`src/views/blog/articles/${path}`}</span>}
+              helperText={
+                fileProblem ?? (
+                  <Box component="span" dir="ltr" title={`src/views/blog/articles/${path}`} sx={ELLIPSIS}>
+                    {`src/views/blog/articles/${path}`}
+                  </Box>
+                )
+              }
               testId={`${ID}-file-name`}
             />
           )}

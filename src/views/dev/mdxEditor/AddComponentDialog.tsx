@@ -20,7 +20,7 @@ import { collectionPathOf, libraryGamePathOf } from "../../home/frontPage/paths"
 import { articleImportResolver } from "./articleSources";
 import { CATALOG, catalogFor, componentOf, TOURNAMENT_ENTRY, type ExampleSource, type LibraryGame, type MovesLine } from "./componentCatalog";
 import { elementOf, SETTINGS, valuesOf, writeElement, type SettingField } from "./componentSettings";
-import { COLUMNS, SIDE_COLUMN, TEXTAREA_SX } from "./dialogLayout";
+import { COLUMNS, ELLIPSIS, SIDE_COLUMN, TEXTAREA_SX } from "./dialogLayout";
 import { SnippetPreview } from "./mdxPreview";
 import { articlePgnsOf, pgnDefinitionsIn, type ArticlePgn } from "./pgnImports";
 import { movesLineOf, pgnBytesOf, sizeOf } from "./pgnPages";
@@ -328,16 +328,19 @@ function AddComponentDialog({ open, onClose, folder, body, attached, initialPgn,
             options={[
               ...pgns.map((pgn) => ({
                 value: pgn.name,
+                // A long name or file cut short — the whole of it on hover.
                 label: (
-                  <>
-                    <Box component="code" dir="ltr">
-                      {pgn.name}
-                    </Box>
+                  <Box
+                    component="span"
+                    dir="ltr"
+                    title={`${pgn.name} — ${pgn.kind === "file" ? pgn.file : `inline, ${sizeOf(pgnBytesOf(pgn.text))}`}`}
+                    sx={{ ...ELLIPSIS, maxWidth: { xs: "calc(100vw - 140px)", md: 300 } }}
+                  >
+                    <code>{pgn.name}</code>
                     <Box component="span" sx={{ color: "text.secondary" }}>
-                      {" — "}
-                      <span dir="ltr">{pgn.kind === "file" ? pgn.file : `inline, ${sizeOf(pgnBytesOf(pgn.text))}`}</span>
+                      {` — ${pgn.kind === "file" ? pgn.file : `inline, ${sizeOf(pgnBytesOf(pgn.text))}`}`}
                     </Box>
-                  </>
+                  </Box>
                 ),
               })),
               { value: LIBRARY, label: "The Library — a game or a whole collection, by its address" },

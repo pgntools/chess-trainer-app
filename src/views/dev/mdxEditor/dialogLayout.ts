@@ -15,7 +15,15 @@ export const COLUMNS = {
 } as const;
 
 /** The inline-start column: a stack of controls, scrolling on its own from `md`. */
-export const SIDE_COLUMN = { display: "grid", gap: 2, alignContent: "start", minHeight: 0, overflowY: { md: "auto" } } as const;
+export const SIDE_COLUMN = {
+  display: "grid",
+  gap: 2,
+  alignContent: "start",
+  minHeight: 0,
+  overflowY: { md: "auto" },
+  // A grid item is as wide as its longest unbreakable line unless told otherwise — a long file name would push the column wide.
+  "& > *": { minWidth: 0 },
+} as const;
 
 /** A box of machine text — a PGN, a component's markup — as the editor's own source box. */
 export const TEXTAREA_SX = {
@@ -33,3 +41,6 @@ export const TEXTAREA_SX = {
   borderRadius: 1,
   "&:focus-visible": { outline: 2, outlineStyle: "solid", outlineColor: "primary.main", outlineOffset: 1 },
 } as const;
+
+/** One line cut with an ellipsis where it runs out of room — its whole text a `title`, read on hover. */
+export const ELLIPSIS = { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } as const;
