@@ -9,7 +9,7 @@
 export const COLUMNS = {
   display: "grid",
   gap: 2,
-  gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(260px, 380px) minmax(0, 1fr)" },
+  gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(340px, 520px) minmax(0, 1fr)" },
   gridTemplateRows: { md: "minmax(0, 1fr)" },
   height: { md: "max(440px, calc(100vh - 200px))" },
 } as const;
@@ -21,6 +21,9 @@ export const SIDE_COLUMN = {
   alignContent: "start",
   minHeight: 0,
   overflowY: { md: "auto" },
+  // Never sideways: what is too long is cut with an ellipsis (`ELLIPSIS`). A little room either side keeps the focus rings in.
+  overflowX: "hidden",
+  px: 0.5,
   // A grid item is as wide as its longest unbreakable line unless told otherwise — a long file name would push the column wide.
   "& > *": { minWidth: 0 },
 } as const;
