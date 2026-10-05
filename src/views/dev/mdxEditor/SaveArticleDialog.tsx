@@ -42,8 +42,10 @@ type SaveArticleDialogProps = {
   initialName: string;
   /** Save the draft as `<folder>/<name>.mdx`. */
   onSave: (file: string) => void;
-  /** Put a PGN file into `folder`, beside the article. */
-  onAddPgn: (folder: string, file: File) => void;
+  /** Put PGN files into `folder`, beside the article — which imports them when it is saved there. */
+  onAddPgn: (folder: string, files: File[]) => void;
+  /** Opened by Add PGN for an article with no folder yet: say how a PGN goes with it. */
+  forPgn?: boolean;
   /** A write is under way. */
   busy: boolean;
   /** What the last PGN write came to. */
@@ -56,11 +58,12 @@ type SaveArticleDialogProps = {
  * **Where to save an article** (CTA-137): a folder of the Blog's — or a new
  * sub-folder of it, which the service makes with a stub `index.mdx` — and a
  * file name (a slug; `.he` for a translation), the path it comes to shown as
- * it is typed. A `.pgn` the article imports goes into the same folder from
- * here. Writing over another file is asked about after the service reports
+ * it is typed. A `.pgn` goes into the same folder from here, and the article
+ * imports it when it is saved there — how Add PGN works for an article with
+ * no folder yet (`forPgn`). Writing over another file is asked about after the service reports
  * it, by the editor.
  */
-function SaveArticleDialog({ open, onClose, folders, initialFolder, initialName, onSave, onAddPgn, busy, pgnNotice, error }: SaveArticleDialogProps) {
+function SaveArticleDialog({ open, onClose, folders, initialFolder, initialName, onSave, onAddPgn, forPgn = false, busy, pgnNotice, error }: SaveArticleDialogProps) {
   const known = folders.some((folder) => folder.path === initialFolder) ? initialFolder : "";
   const [folder, setFolder] = useState(known);
   const [newFolder, setNewFolder] = useState("");
@@ -102,6 +105,11 @@ function SaveArticleDialog({ open, onClose, folders, initialFolder, initialName,
       width="sm"
       testId="mdx-editor-save-dialog"
     >
+      {forPgn && (
+        <InlineAlert severity="info" title="A PGN goes in the article's folder" testId="mdx-editor-save-for-pgn">
+          Pick the folder and name the article, add the PGN, then save: the article imports it.
+        </InlineAlert>
+      )}
       <Box>
         <Typography variant="subtitle2" component="p" id="mdx-editor-save-folder-label">
           Folder
@@ -154,9 +162,10 @@ function SaveArticleDialog({ open, onClose, folders, initialFolder, initialName,
       </StatusText>
       <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
         <FileInputButton
-          label="Add a .pgn to this folder"
+          label="Add PGN to this folder"
           accept=".pgn"
-          onFiles={(picked) => onAddPgn(target, picked[0])}
+          multiple
+          onFiles={(picked) => onAddPgn(target, picked)}
           variant="outlined"
           size="small"
           disabled={busy || folderProblem !== undefined}

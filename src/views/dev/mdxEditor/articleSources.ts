@@ -124,12 +124,20 @@ const keyOf = (folder: string, specifier: string): string | undefined => {
   return `${ARTICLES_DIR}${parts.join("/")}`;
 };
 
-/** An article's imports, resolved from `folder` as the bundler would from an article there. Only a `.pgn?raw`. */
-export const articleImportResolver = (folder: string): ImportResolver => ({
+/**
+ * An article's imports, resolved from `folder` as the bundler would from an
+ * article there. Only a `.pgn?raw`. `attached` (a path under `articles/` →
+ * its text) is a PGN the editor has just written, read before the glob has
+ * caught up with the file.
+ */
+export const articleImportResolver = (folder: string, attached: Readonly<Record<string, string>> = {}): ImportResolver => ({
   keyOf: (specifier) => {
     if (!specifier.endsWith(".pgn?raw")) return undefined;
     const key = keyOf(folder, specifier);
-    return key !== undefined && key in pgnFiles ? key : undefined;
+    return key !== undefined && (key in pgnFiles || key.slice(ARTICLES_DIR.length) in attached) ? key : undefined;
   },
-  load: (key) => pgnFiles[key](),
+  load: (key) => {
+    const text = attached[key.slice(ARTICLES_DIR.length)];
+    return text !== undefined ? Promise.resolve(text) : pgnFiles[key]();
+  },
 });

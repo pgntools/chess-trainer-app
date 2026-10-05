@@ -449,11 +449,15 @@ describe("the MDX editor's Save (CTA-137)", () => {
     await user.type(name, "round-one");
     expect(within(dialog).getByTestId("mdx-editor-save-path")).toHaveTextContent("src/views/blog/articles/tournaments/club-nights/round-one.mdx");
     await user.upload(within(dialog).getByTestId("mdx-editor-save-pgn-input"), new File(["1. e4 *"], "games.pgn", { type: "application/x-chess-pgn" }));
-    expect(await within(dialog).findByText('Added tournaments/club-nights/games.pgn — import it as "./games.pgn?raw".')).toBeInTheDocument();
+    expect(await within(dialog).findByText("Added tournaments/club-nights/games.pgn — the article imports it when it is saved in tournaments/club-nights/.")).toBeInTheDocument();
     expect(service.writes[0]).toEqual({ path: "tournaments/club-nights/games.pgn", content: "1. e4 *", overwrite: false });
 
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(await screen.findByTestId("mdx-editor-notice")).toHaveTextContent("Saved src/views/blog/articles/tournaments/club-nights/round-one.mdx.");
+    expect(await screen.findByTestId("mdx-editor-notice")).toHaveTextContent("Saved src/views/blog/articles/tournaments/club-nights/round-one.mdx. It imports games.pgn as games.");
+    // Saved with the import, so nothing is left changed.
+    expect(service.files.get("tournaments/club-nights/round-one.mdx")).toContain('import games from "./games.pgn?raw"');
+    expect((source() as HTMLTextAreaElement).value).toMatch(/^import games from "\.\/games\.pgn\?raw"\n\n/);
+    expect(screen.getByTestId("mdx-editor-editing")).not.toHaveTextContent("changed");
   });
 
   it("shows what the service refuses in the dialog", async () => {
@@ -464,5 +468,49 @@ describe("the MDX editor's Save (CTA-137)", () => {
     await user.upload(within(await screen.findByRole("dialog", { name: "Save the article" })).getByTestId("mdx-editor-save-pgn-input"), new File(["x"], "..pgn"));
     // The fake refuses any "..", as the service refuses a path out.
     expect(await within(saveDialog()).findByTestId("mdx-editor-save-error")).toHaveTextContent("leaves articles/");
+  });
+
+  it("adds a PGN to an opened article's folder, importing it in the content, the preview reading it at once", async () => {
+    const user = userEvent.setup();
+    const service = stubService({ "tournaments/werner-obermeyer-swiss-2026.mdx": "x", "tournaments/club.pgn": "theirs" });
+    mount("/dev/mdx-editor?article=tournaments%2Fwerner-obermeyer-swiss-2026");
+    await screen.findByText("Opened tournaments/werner-obermeyer-swiss-2026.mdx.");
+    setSource('import games from "./20th-werner-obermeyer-swiss-5r.pgn?raw"\n\n## Standings');
+    await within(preview()).findByRole("heading", { name: "Standings" });
+
+    const pgn = '[Event "Club"]\n[White "Amy"]\n[Black "Bob"]\n[Result "1-0"]\n\n1. e4 e5 1-0';
+    await user.upload(screen.getByTestId("mdx-editor-add-pgn-input"), [new File([pgn], "round-2.pgn"), new File(["1. d4 *"], "club.pgn")]);
+    // The first is written; the second is there already, and asked about.
+    const conflict = await screen.findByRole("dialog", { name: "Replace a file that is there?" });
+    expect(conflict).toHaveTextContent("src/views/blog/articles/tournaments/club.pgn is already there.");
+    expect(service.files.get("tournaments/round-2.pgn")).toBe(pgn);
+    await user.click(within(conflict).getByRole("button", { name: "Replace" }));
+    await waitFor(() => expect(service.files.get("tournaments/club.pgn")).toBe("1. d4 *"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(service.writes.map(({ path, overwrite }) => ({ path, overwrite }))).toEqual([
+      { path: "tournaments/round-2.pgn", overwrite: false },
+      { path: "tournaments/club.pgn", overwrite: true },
+    ]);
+
+    expect(source()).toHaveValue(
+      'import games from "./20th-werner-obermeyer-swiss-5r.pgn?raw"\nimport round2 from "./round-2.pgn?raw"\nimport club from "./club.pgn?raw"\n\n## Standings',
+    );
+    expect(screen.getByTestId("mdx-editor-notice")).toHaveTextContent("Added tournaments/club.pgn — imported as club: give it to a component as pgn={club}.");
+    expect(screen.getByTestId("mdx-editor-editing")).toHaveTextContent("— changed");
+
+    // The new file is not in the build's glob yet; the preview reads what was written.
+    setSource(`${(source() as HTMLTextAreaElement).value}\n\n{round2.includes("Amy") ? "Read it" : "Missed it"}`);
+    expect(await within(preview()).findByText("Read it")).toBeInTheDocument();
+    expect(screen.queryByTestId("mdx-editor-compile-error")).not.toBeInTheDocument();
+  });
+
+  it("opens the save dialog from Add PGN for an article with no folder yet", async () => {
+    const user = userEvent.setup();
+    stubService({ "tournaments/index.mdx": "x" });
+    mount();
+    await user.click(screen.getByRole("button", { name: "Add PGN" }));
+    const dialog = await screen.findByRole("dialog", { name: "Save the article" });
+    expect(within(dialog).getByTestId("mdx-editor-save-for-pgn")).toHaveTextContent("add the PGN, then save");
+    expect(within(dialog).getByRole("button", { name: "Add PGN to this folder" })).toBeInTheDocument();
   });
 });
