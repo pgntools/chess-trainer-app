@@ -259,6 +259,8 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   const [addPgnOpen, setAddPgnOpen] = useState(false);
   const [pgnAdded, setPgnAdded] = useState<{ seq: number; name: string; message: string }>();
   const [addPgnError, setAddPgnError] = useState<string>();
+  /** A PGN file Add PGN holds while an article with no folder yet is saved — then written beside it, and imported. */
+  const [heldPgn, setHeldPgn] = useState<{ name: string; fileName: string; text: string; overwrite: boolean }>();
 
   const refused = (message: string) => (addPgnOpen ? setAddPgnError(message) : saveDialog === undefined ? setNotice(message) : setSaveError(message));
 
@@ -277,11 +279,29 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   };
 
   const write = async (file: string, overwrite: boolean) => {
-    // A PGN the dialog put where the article is going is imported by it.
-    const pgns = dialogPgns.filter((pgn) => pgn.folder === folderOf(file)).map((pgn) => pgn.file);
+    setBusy(true);
+    // A PGN file Add PGN holds for an article with no folder yet: beside it, now that it has one.
+    let held: { file: string; name: string } | undefined;
+    if (heldPgn !== undefined) {
+      const path = pathIn(folderOf(file), heldPgn.fileName);
+      const written = await writeStorageFile(path, heldPgn.text, heldPgn.overwrite);
+      if (written.kind !== "written") {
+        setBusy(false);
+        if (written.kind === "down") return setDown({ kind: "write", file, overwrite });
+        if (written.kind === "refused") return refused(written.message);
+        // There already: asked about, and on Replace the whole save goes again, writing over it.
+        setHeldPgn({ ...heldPgn, overwrite: true });
+        return setConflict({ path, step: { kind: "write", file, overwrite } });
+      }
+      setAttached((before) => ({ ...before, [path]: heldPgn.text }));
+      // Written: a retry of the save (the article's own file asked about) writes it again without asking.
+      setHeldPgn({ ...heldPgn, overwrite: true });
+      held = { file: heldPgn.fileName, name: heldPgn.name };
+    }
+    // A PGN put where the article is going is imported by it.
+    const pgns = [...dialogPgns.filter((pgn) => pgn.folder === folderOf(file)).map((pgn) => pgn.file), ...(held === undefined ? [] : [held])];
     const { body, imports } = withPgnImports(draft.body, pgns);
     const text = textOf({ ...draft, body });
-    setBusy(true);
     const result = await writeStorageFile(`${file}.mdx`, text, overwrite);
     setBusy(false);
     if (result.kind === "down") return setDown({ kind: "write", file, overwrite });
@@ -295,6 +315,12 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
     const made = result.foldersCreated.length === 0 ? "" : ` — and made ${result.foldersCreated.map((folder) => `${folder}/`).join(", ")} with an index.mdx`;
     const imported = imports.length === 0 ? "" : ` It imports ${imports.map((pgn) => `${pgn.file} as ${pgn.name}`).join(", ")}.`;
     setNotice(`Saved ${ARTICLES_DIR}/${result.path}${made}.${imported}`);
+    if (held !== undefined) {
+      // Add PGN's step 2, on the PGN it held.
+      const name = imports.find((pgn) => pgn.file === held.file)?.name ?? held.name;
+      setHeldPgn(undefined);
+      setPgnAdded((before) => ({ seq: (before?.seq ?? 0) + 1, name, message: `Saved the article as ${result.path}, and added ${pathIn(folderOf(file), held.file)} beside it — imported as ${name}.` }));
+    }
   };
 
   /** PGNs into `folder`, one by one — stopping at the first the service will not take, to go on from there. */
@@ -340,6 +366,11 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
 
   /** A PGN from the Add PGN dialog: written beside the article and imported, or written into the content. */
   const addPgn = ({ how, name, fileName, text }: PgnToAdd) => {
+    if (how === "file" && draft.file === "") {
+      // No folder for the file yet: the article is saved first, and the PGN goes beside it (`write`).
+      setHeldPgn({ name, fileName, text, overwrite: false });
+      return void openSaveDialog();
+    }
     if (how === "file") return void run({ kind: "pgn", folder, files: [{ file: fileName, text, name }], overwrite: [], into: "article" });
     // Never a big PGN inline: the dialog offers none, and this holds it whatever asks.
     if (pgnBytesOf(text) > BIG_PGN_BYTES) return setNotice(`A PGN over ${sizeOf(BIG_PGN_BYTES)} goes in as a file beside the article, not inline.`);
@@ -434,7 +465,11 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
       {saveDialog !== undefined && (
         <SaveArticleDialog
           open
-          onClose={() => setSaveDialog(undefined)}
+          onClose={() => {
+            setSaveDialog(undefined);
+            // Not saved, so a PGN held for it goes nowhere.
+            setHeldPgn(undefined);
+          }}
           folders={saveDialog.folders}
           initialFolder={saveDialog.folder}
           initialName={saveDialog.name}

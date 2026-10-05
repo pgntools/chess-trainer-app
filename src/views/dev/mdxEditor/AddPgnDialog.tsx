@@ -188,7 +188,8 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
       ? `The content already binds ${theName}.`
       : undefined;
   const fileProblem = how === "file" && !PGN_FILE.test(theFile) ? "A file name is letters, digits, dots, dashes and underscores, then .pgn." : undefined;
-  const blocked = text.trim() === "" || nameProblem !== undefined || fileProblem !== undefined || (how === "file" && !hasFile) || busy;
+  // An article with no folder yet is saved first, its PGN file then put beside it — the editor does both.
+  const blocked = text.trim() === "" || nameProblem !== undefined || fileProblem !== undefined || busy;
   const path = `${folder === "" ? "" : `${folder}/`}${theFile}`;
 
   // Step 2: the game it shows, and the components that fit it.
@@ -300,9 +301,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                   />
                   {how === "file" && !hasFile && (
                     <InlineAlert severity="info" title="The article has no folder yet" testId={`${ID}-no-folder`}>
-                      {big
-                        ? `A file goes beside the article: save the article first — at ${sizeOf(bytes)} this PGN is too big to add inline.`
-                        : "A file goes beside the article: save the article first, or add the PGN inline."}
+                      A file goes beside the article, so Add asks where to save the article first, then puts the PGN beside it and imports it.
                     </InlineAlert>
                   )}
                   <TextInputField
@@ -338,7 +337,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                       aria-busy={busy || undefined}
                       data-testid={`${ID}-add`}
                     >
-                      Add to the article
+                      {how === "file" && !hasFile ? "Save the article, then add" : "Add to the article"}
                     </Button>
                     {added !== undefined && (
                       <StatusText tone="info" testId={`${ID}-added`}>
