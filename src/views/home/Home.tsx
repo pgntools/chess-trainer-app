@@ -3,9 +3,10 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
 import { asAppLanguage } from "../../i18n";
-import { localizedText } from "../../lib/localizedText";
+import { localizedTextOf } from "../../lib/localizedText";
 import ArticleBody from "../blog/ArticleBody";
 import { ArticleEditLink } from "../blog/ArticleEditLink";
+import { ArticleHeader } from "../blog/ArticleHeader";
 import { findBlogArticle } from "../blog/articles";
 import { useOwnPageHeading } from "../main/pageTitle";
 import { FRONT_PAGE_ARTICLE } from "./frontPageArticle";
@@ -20,21 +21,33 @@ import { FRONT_PAGE_ARTICLE } from "./frontPageArticle";
  *
  * The page keeps its shell duties (CTA-112): its route names it
  * (`pages.home`), and its visible title is the page's `h1`, so the screen
- * declares it its own.
+ * declares it its own. The header is the Blog article's (`ArticleHeader`,
+ * CTA-135): an English title under Hebrew marked so, the article's dates.
  */
 const Home = () => {
   const { t, i18n } = useTranslation();
   const language = asAppLanguage(i18n.language);
   const article = findBlogArticle(FRONT_PAGE_ARTICLE);
+  const title = article === undefined ? undefined : localizedTextOf(article.title, language);
   useOwnPageHeading();
 
   return (
     <Box data-testid="home-page" sx={{ p: 1 }}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
-          {article === undefined ? t("blog.missingTitle") : localizedText(article.title, language)}
-        </Typography>
-        {article !== undefined && <ArticleEditLink path={FRONT_PAGE_ARTICLE} language={language} />}
+      <Box sx={{ mb: 1 }}>
+        {article === undefined || title === undefined ? (
+          <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
+            {t("blog.missingTitle")}
+          </Typography>
+        ) : (
+          <ArticleHeader
+            title={title.text}
+            titleLanguage={title.language}
+            draft={article.draft}
+            date={article.date}
+            updated={article.updated}
+            action={<ArticleEditLink path={FRONT_PAGE_ARTICLE} language={language} />}
+          />
+        )}
       </Box>
       <ArticleBody path={FRONT_PAGE_ARTICLE} language={language} />
     </Box>

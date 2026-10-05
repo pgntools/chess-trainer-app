@@ -1,6 +1,6 @@
 import type { SvgIconComponent } from "@mui/icons-material";
 import type { AppLanguage } from "../../i18n";
-import { localizedText, type LocalizedText } from "../../lib/localizedText";
+import { localizedText, localizedTextOf, type LocalizedText } from "../../lib/localizedText";
 import { TreeManager } from "../../lib/treeManager";
 import { navItemsInFolder } from "./navItems";
 import { navFolders } from "./navFolders";
@@ -36,6 +36,8 @@ export type NavTreeNode = {
   singleEntry?: boolean;
   /** Carried from a folder pinned to the sidebar's foot (`NavFolder.pinToBottom`). */
   pinToBottom?: boolean;
+  /** A screen not yet published — a Blog draft in `yarn dev` (CTA-135); the row is marked. */
+  draft?: boolean;
 };
 
 /**
@@ -58,6 +60,7 @@ type ScreenLike = {
   labelKey?: string;
   label?: LocalizedText;
   icon: SvgIconComponent;
+  draft?: boolean;
 };
 
 /** Carry across whichever of the two naming fields the input has. */
@@ -90,6 +93,7 @@ export const buildNavTree = <Id extends string>(
         ...nameOf(item),
         icon: item.icon,
         to: item.to,
+        ...(item.draft ? { draft: true } : {}),
       })),
     ],
   }));
@@ -225,6 +229,20 @@ export const navLabel = (
   node.labelKey !== undefined
     ? translate(node.labelKey)
     : localizedText(node.label, language);
+
+/**
+ * A node's name **and, for a data label, the language it is in** — English
+ * where the label has none of the reader's (CTA-135), so the row can mark it
+ * (`InLanguage`). A catalog key is always in the reader's language.
+ */
+export const navLabelOf = (
+  node: Pick<NavTreeNode, "labelKey" | "label">,
+  translate: (key: string) => string,
+  language: AppLanguage,
+): { text: string; language: AppLanguage } =>
+  node.labelKey !== undefined
+    ? { text: translate(node.labelKey), language }
+    : localizedTextOf(node.label, language);
 
 /**
  * Every **catalog key** the sidebar renders, folders and screens alike. The

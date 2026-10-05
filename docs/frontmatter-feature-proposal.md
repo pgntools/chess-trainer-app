@@ -1,8 +1,15 @@
 # Proposal: frontmatter for Blog articles
 
-Status: **draft — research and findings, nothing implemented.** Every
-question raised is decided — recorded in §10 and folded into the sections
-they touch.
+Status: **implemented (CTA-135).** Every question raised is decided —
+recorded in §10 and folded into the sections they touch. One departure from
+§3.2, found while building it: the manifest is **one virtual module**,
+`virtual:blog-articles` (`plugins/blogArticles.ts`), not a `?frontmatter`
+query under an `import.meta.glob`. A glob's keys are the paths of every file
+it matches, drafts too, and they land in the entry chunk — so with a glob a
+draft's path ships whatever the plugin answers for its module. The virtual
+module lists only what a build ships: each file's metadata, and an
+`import()` for each body (none for a frontmatter-only translation). The rest
+stands as written; `yarn check:blog-build` holds a build to §4.4 and §9.
 Scope: the Blog (`src/views/blog/`), the front page that is one of its
 articles, the dev-only MDX editor (`src/views/dev/mdxEditor/`), and the
 build (`vite.config.ts`).

@@ -1,7 +1,7 @@
 import { test } from "@playwright/test";
 
 import { applyPreferences, check, open, watchErrors } from "./checks";
-import { comboName, MATRICES, matrixName } from "./matrix";
+import { comboName, MATRICES, matrixName, visits } from "./matrix";
 import { ROUTES } from "./routes";
 
 /*
@@ -20,7 +20,7 @@ for (const combo of matrix) {
       locale: combo.language === "he" ? "he-IL" : "en-US",
     });
 
-    for (const route of ROUTES) {
+    for (const route of ROUTES.filter((candidate) => visits(candidate, combo))) {
       test(route.id, async ({ page }, testInfo) => {
         await applyPreferences(page, combo);
         const errors = watchErrors(page);

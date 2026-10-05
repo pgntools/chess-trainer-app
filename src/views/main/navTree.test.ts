@@ -153,7 +153,8 @@ describe("the shipped nav tree", () => {
       const inBlog = node.kind === "screen" ? node.to?.startsWith("/blog/") : node.id.startsWith("blog/");
       expect(inBlog, `${node.id} is named by data`).toBe(true);
       expect(node.label?.en, `${node.id} in English`).toBeTruthy();
-      expect(node.label?.he, `${node.id} in Hebrew`).toBeTruthy();
+      // A draft (CTA-135, listed in yarn dev only) may wait for its translation — the fixture one does, on purpose.
+      if (node.draft !== true) expect(node.label?.he, `${node.id} in Hebrew`).toBeTruthy();
     }
   });
 });

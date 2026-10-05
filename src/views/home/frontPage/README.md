@@ -7,8 +7,8 @@ nothing is fetched or compiled in the browser.
 
 | Where | What |
 | --- | --- |
-| `src/views/blog/articles/<path>.mdx` | an article (`<path>.he.mdx` beside it when translated) — `src/views/blog/articles/writing-an-article/guide.mdx` is the how-to |
-| `src/views/blog/articles.ts` | the articles' registry: their titles, the page's `h1` |
+| `src/views/blog/articles/<path>.mdx` | an article — its frontmatter (`title`, `summary`, `order`, `date` …) then its document; `<path>.he.mdx` beside it when translated, its own title (a title alone shows over the English document) — `src/views/blog/articles/writing-an-article/guide.mdx` is the how-to |
+| `src/views/blog/articles.ts` | the Blog's registry, built from the files' frontmatter (CTA-135, `plugins/blogArticles.ts`): the titles, the folders, the order |
 | `src/views/home/frontPageArticle.ts` | **which article the front page shows** — one line |
 | this folder | the components below, and `index.ts`, the map that gives them their names |
 

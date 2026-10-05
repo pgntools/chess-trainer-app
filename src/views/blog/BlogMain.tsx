@@ -1,12 +1,12 @@
 import Box from "@mui/material/Box";
 
-import BlogIndex from "./BlogIndex";
+import BlogPage from "./BlogPage";
 
 /** Layout-only wrapper, as on every other screen — the shell centres and scrolls the article (CTA-130). */
-const BlogIndexMain = () => (
-  <Box data-testid="blog-index-wrapper">
-    <BlogIndex />
+const BlogMain = () => (
+  <Box data-testid="blog-wrapper">
+    <BlogPage />
   </Box>
 );
 
-export default BlogIndexMain;
+export default BlogMain;

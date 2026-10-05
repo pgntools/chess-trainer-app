@@ -1,3 +1,9 @@
+---
+title: "Arrows and circles: [%cal] and [%csl]"
+summary: The arrows and circles a lichess study draws, read back from its PGN — five drawn positions and games.
+order: 40
+---
+
 import drawn from "./arrows-and-circles.pgn?raw"
 
 Annotators on lichess draw on the board as they write: an arrow for a move or a route, a circle round a square that matters. The study keeps each drawing in its PGN, inside the comment of the position it belongs to, so the file carries it wherever it goes. `<InlinePgnGame>` reads those drawings back and puts them on its board.

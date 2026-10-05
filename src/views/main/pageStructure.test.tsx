@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMemoryRouter, RouterProvider, type RouteObject } from "react-router";
+import { createMemoryRouter, RouterProvider, type RouteObject, type UIMatch } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import i18n from "../../i18n";
@@ -58,9 +58,14 @@ const Article = () => {
     <>
       <h1>Get started</h1>
       <p>The article.</p>
+      <button type="button">Article action</button>
     </>
   );
 };
+
+/** A route whose one pattern serves many pages, as the Blog's does (CTA-135): each page named from the match. */
+const pagesMeta = (match: UIMatch) =>
+  match.pathname.endsWith("/get-started") ? { title: "Get started", description: "Where to begin." } : { title: "Another page" };
 
 const routes: RouteObject[] = [
   { index: true, element: <Plain />, handle: { title: "pages.home" } },
@@ -69,7 +74,7 @@ const routes: RouteObject[] = [
   { path: "/settings/import", element: <WithRecord name="Import" />, handle: { title: "pages.settings" } },
   { path: "/library/c", element: <Late />, handle: { title: "pages.collection" } },
   { path: "/dev/design", element: <Wide />, handle: { ...FULL_WIDTH_ROUTE, title: "pages.designSystem" } },
-  { path: "/blog/get-started", element: <Article />, handle: { ...ARTICLE_ROUTE, title: "pages.blogArticle" } },
+  { path: "/blog/*", element: <Article />, handle: { ...ARTICLE_ROUTE, title: "pages.blog", meta: pagesMeta } },
 ];
 
 const renderShell = (initialEntries: string[] = ["/"]) => {
@@ -112,6 +117,27 @@ describe("the page title (CTA-112)", () => {
     await i18n.changeLanguage("he");
     renderShell(["/settings/export"]);
     await waitFor(() => expect(document.title).toBe("Export — הגדרות — אפליקציית אימון שחמט"));
+  });
+
+  it("puts first the page a route's meta names for the address, with its description (CTA-135)", async () => {
+    const router = renderShell(["/blog/get-started"]);
+    expect(document.title).toBe("Get started — Blog — Chess Trainer App");
+    expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute("content", "Where to begin.");
+    await act(() => router.navigate("/blog/elsewhere"));
+    expect(document.title).toBe("Another page — Blog — Chess Trainer App");
+    expect(document.head.querySelector('meta[name="description"]')).toBeNull();
+    // A route without meta is titled as it always was.
+    await act(() => router.navigate("/engine/games"));
+    expect(document.title).toBe("Lobby — Chess Trainer App");
+  });
+
+  it("is rendered into the head — one title, ahead of the page's static one (CTA-135)", () => {
+    const fallback = document.createElement("title");
+    fallback.textContent = "Chess Trainer App";
+    document.head.append(fallback);
+    renderShell(["/engine/games"]);
+    expect(document.title).toBe("Lobby — Chess Trainer App");
+    fallback.remove();
   });
 });
 
@@ -233,6 +259,14 @@ describe("moving to another screen (CTA-112)", () => {
     await act(() => router.navigate("/settings/import?page=2"));
     await tick();
     expect(screen.getByRole("button", { name: "Record action" })).toHaveFocus();
+  });
+
+  it("takes the focus to the heading on a move between two pages of one route with meta — each address its own page (CTA-135)", async () => {
+    const router = renderShell(["/blog/get-started"]);
+    screen.getByRole("button", { name: "Article action" }).focus();
+    await act(() => router.navigate("/blog/elsewhere"));
+    await tick();
+    expect(screen.getByRole("heading", { level: 1, name: "Get started" })).toHaveFocus();
   });
 
   it("hands the focus on to a heading that arrives with its record", async () => {

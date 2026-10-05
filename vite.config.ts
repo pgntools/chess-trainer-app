@@ -2,9 +2,11 @@ import { configDefaults } from 'vitest/config'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import mdx from '@mdx-js/rollup'
+import remarkFrontmatter from 'remark-frontmatter'
 import pkg from './package.json' with { type: 'json' }
+import { blogArticles } from './plugins/blogArticles.ts'
 
-const mdxPlugin = mdx({ mdExtensions: [], include: /\.mdx$/ })
+const mdxPlugin = mdx({ mdExtensions: [], include: /\.mdx$/, remarkPlugins: [remarkFrontmatter] })
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -44,8 +46,16 @@ export default defineConfig({
     `x.mdx?raw` — the dev-only MDX editor opening an article's source
     (`src/views/dev/mdxEditor/articleSources.ts`) — would be compiled too;
     such an id is left to Vite, which makes it the file's text.
+
+    **Frontmatter is read, never drawn** (CTA-135). An article starts with a
+    `---` block of its metadata; `remark-frontmatter` parses it out of the
+    document, so it renders nothing (unparsed, it would be a rule and a
+    heading). The metadata itself reaches the app through `blogArticles`
+    (`plugins/blogArticles.ts`): the Blog's manifest, `virtual:blog-articles`
+    — every file's metadata checked, eager, and each body a lazy chunk.
   */
   plugins: [
+    blogArticles({ dir: 'src/views/blog/articles' }),
     {
       enforce: 'pre',
       ...mdxPlugin,
