@@ -10,11 +10,14 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
+import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
+import VerticalSplitRoundedIcon from "@mui/icons-material/VerticalSplitRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import WidgetsRoundedIcon from "@mui/icons-material/WidgetsRounded";
 
 import { ConfirmDialog } from "../../../design-system/components/dialogs";
 import { AnchoredMenu } from "../../../design-system/components/menus";
-import { ActionBar, IconAction } from "../../../design-system/components/toolbars";
+import { ActionBar, IconAction, ViewToggle } from "../../../design-system/components/toolbars";
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
 import { SwitchField } from "../../../design-system/components/forms";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
@@ -57,9 +60,12 @@ import { useScrollSync } from "./useScrollSync";
  *   and Copy and Download join them back into one `.mdx`. The preview draws
  *   the article's header from the metadata, as the article's page does. A
  *   new article starts as a draft, dated today.
+ * - **What it shows** (CTA-137): a toggle above the panes — the code alone,
+ *   both side by side (the default), or the preview alone; a pane out of
+ *   view is hidden, not unmounted.
  * - **The panes scroll together** (`useScrollSync.ts`) while "Scroll
- *   together" is on and the Content tab is open: scrolling either brings the
- *   other to the same block.
+ *   together" is on, both are shown and the Content tab is open: scrolling
+ *   either brings the other to the same block.
  * - **The header** (CTA-137): the title, and the actions in one toolbar at
  *   its inline end — what goes into the content (Add PGN, Add component),
  *   then where it goes (Save as…, Save), the rest under More (New article,
@@ -179,7 +185,9 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   const [tab, setTab] = useState<"content" | "metadata">("content");
   const sourceRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
-  useScrollSync({ enabled: scrollTogether && tab === "content", source: sourceRef, preview: previewRef });
+  /** What the panes show: the code alone, both side by side, or the preview alone. */
+  const [view, setView] = useState<"code" | "split" | "preview">("split");
+  useScrollSync({ enabled: scrollTogether && tab === "content" && view === "split", source: sourceRef, preview: previewRef });
   const folder = folderOf(draft.file);
   /** PGNs written this session, by path under `articles/` — the preview reads them before the glob catches up with the files. */
   const [attached, setAttached] = useState<Readonly<Record<string, string>>>({});
@@ -576,17 +584,32 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
         testId="mdx-editor-conflict"
       />
 
+      <Box sx={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+        <ViewToggle
+          value={view}
+          onChange={setView}
+          options={[
+            { value: "code", label: "Code only", icon: <CodeRoundedIcon fontSize="small" /> },
+            { value: "split", label: "Code and preview, side by side", icon: <VerticalSplitRoundedIcon fontSize="small" /> },
+            { value: "preview", label: "Preview only", icon: <VisibilityRoundedIcon fontSize="small" /> },
+          ]}
+          ariaLabel="What the editor shows"
+          testId="mdx-editor-view"
+        />
+      </Box>
+
       <Box
         sx={{
           flex: { md: 1 },
           minHeight: 0,
           display: "grid",
-          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) minmax(0, 1fr)" },
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: view === "split" ? "minmax(0, 1fr) minmax(0, 1fr)" : "minmax(0, 1fr)" },
           gridTemplateRows: { md: "minmax(0, 1fr)" },
           gap: 2,
         }}
       >
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minHeight: 0 }}>
+        {/* A pane out of view is hidden, not unmounted: the text keeps its undo and its scroll, the preview its compile. */}
+        <Box sx={{ display: view === "preview" ? "none" : "flex", flexDirection: "column", gap: 0.5, minHeight: 0 }}>
           <PanelTabs
             tabs={[
               { id: "content", label: "Content" },
@@ -654,7 +677,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           </Box>
         </Box>
 
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minHeight: 0 }}>
+        <Box sx={{ display: view === "code" ? "none" : "flex", flexDirection: "column", gap: 0.5, minHeight: 0 }}>
           <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
             <Typography variant="subtitle2" id="mdx-editor-preview-label">
               Preview
@@ -662,9 +685,11 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
             <StatusText tone="neutral" testId="mdx-editor-state">
               {pending ? "Compiling…" : error !== undefined ? "Not compiled" : "Up to date"}
             </StatusText>
-            <Box sx={{ marginInlineStart: "auto" }}>
-              <SwitchField label="Scroll together" checked={scrollTogether} onChange={setScrollTogether} size="small" testId="mdx-editor-scroll-together" />
-            </Box>
+            {view === "split" && (
+              <Box sx={{ marginInlineStart: "auto" }}>
+                <SwitchField label="Scroll together" checked={scrollTogether} onChange={setScrollTogether} size="small" testId="mdx-editor-scroll-together" />
+              </Box>
+            )}
           </Box>
           <Box
             role="region"
