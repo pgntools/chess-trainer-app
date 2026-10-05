@@ -17,7 +17,7 @@ import { Footer } from './Footer';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
 import { LeftPanelOutlet, LeftPanelProvider } from './leftPanel';
-import { ARTICLE_MAX_WIDTH_PX, isArticleRoute, isFullWidthRoute, pageMetaOf, pageTitleOf, screenIdOf, titleKeyOf } from './routeHandle';
+import { ARTICLE_MAX_WIDTH_PX, descriptionKeyOf, isArticleRoute, isFullWidthRoute, pageMetaOf, pageTitleOf, screenIdOf, titleKeyOf } from './routeHandle';
 import { createPageTitleStore, PageTitleContext } from './pageTitle';
 import { visuallyHidden } from '../../design-system/components/a11y';
 import { ForceLTR } from '../../theme/ForceLTR';
@@ -419,8 +419,8 @@ const DefaultLayoutViewport = () => {
     */
     const { t, i18n } = useTranslation();
     const [pageStore] = useState(createPageTitleStore);
-    const detail = useSyncExternalStore(pageStore.subscribe, pageStore.getDetail);
-    const ownHeading = useSyncExternalStore(pageStore.subscribe, pageStore.getOwnHeadings) > 0;
+    const detail = useSyncExternalStore(pageStore.subscribe, pageStore.getDetail, pageStore.getDetail);
+    const ownHeading = useSyncExternalStore(pageStore.subscribe, pageStore.getOwnHeadings, pageStore.getOwnHeadings) > 0;
     const titleKey = titleKeyOf(matches);
     const meta = pageMetaOf(matches, asAppLanguage(i18n.language));
     const { title, heading } = pageTitleOf(
@@ -428,6 +428,9 @@ const DefaultLayoutViewport = () => {
         meta?.title ?? detail,
         t('app.brandText'),
     );
+    // The page's description, else its screen's (CTA-136).
+    const descriptionKey = descriptionKeyOf(titleKey);
+    const description = meta?.description ?? (descriptionKey !== undefined && i18n.exists(descriptionKey) ? t(descriptionKey) : undefined);
 
     const mainRef = useRef<HTMLElement>(null);
     /** The shell's hidden `h1` took the focus, and a screen's own may yet replace it. */
@@ -501,7 +504,7 @@ const DefaultLayoutViewport = () => {
     return (
         <PageTitleContext.Provider value={pageStore}>
         <title>{title}</title>
-        {meta?.description !== undefined && <meta name="description" content={meta.description} />}
+        {description !== undefined && <meta name="description" content={description} />}
         <Box
             data-testid="layout-root"
             component="div"

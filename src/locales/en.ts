@@ -13,6 +13,17 @@ const en = {
     toggleColorMode: "Toggle light and dark mode",
     switchLanguage: "Switch language",
     /**
+     * The language switch's question while a screen holds unsaved work
+     * (CTA-136): the language is in the address, so switching makes the
+     * router anew and the screen remounts.
+     */
+    switchLanguageConfirm: {
+      title: "Switch language?",
+      message: "Switching language reloads the screen — unsaved changes will be lost.",
+      confirm: "Switch",
+      cancel: "Stay",
+    },
+    /**
      * The engine's lobby at `/engine/games` (CTA-82; "Saved games" until then):
      * the games played against the engine, and the new-game form whose Start
      * button is how Play with Engine is reached — it has no nav entry of its own.
@@ -185,6 +196,47 @@ const en = {
     designSystem: "Design system",
     themeEditor: "Theme editor",
     mdxEditor: "MDX editor",
+  },
+  /**
+   * **Each screen's description** (CTA-136) — its page's `<meta name="description">`
+   * and the words under its title in a shared link's preview, keyed as
+   * `pages.*`. Every screen the build pre-renders has one
+   * (`views/main/documentHead.ts`).
+   */
+  pageDescriptions: {
+    home: "A chess trainer in the browser: play the engine, analyse games, explore openings, drill your repertoires and replay master games.",
+    blog: "Articles about the app and about chess: tournaments told through their games, and how to write an article with live boards and tables.",
+    playWithEngine: "Play a game against Stockfish in your browser, at the strength you choose, with the evaluation and the moves beside the board.",
+    lobby: "Your games against the engine, newest first — carry one on or review it, or start a new game from any position.",
+    maskedPieces: "Play the engine with the pieces in disguise, and train your board vision by remembering what stands where.",
+    analysisBoard: "Analyse a game or a position with Stockfish: side lines, comments, arrows and the engine's best lines, kept in your browser.",
+    savedAnalyses: "Your analysis boards, kept in your browser and filed in folders.",
+    openings: "Explore the chess openings move by move: every named line, and where each move leads.",
+    repertoires: "Your opening repertoires, and a trainer that plays against you from them.",
+    newRepertoire: "Bring in an opening repertoire from a PGN file or pasted text.",
+    library: "Collections of chess games — Alekhine, Capablanca, Fischer, Petrosian, Tal and this year's tournaments — and your own, to search and replay.",
+    addCollection: "Add a collection of games to the Library from a PGN file, a zip or pasted text.",
+    collection: "A collection of chess games: search it, filter by player, opening, event and date, and replay any game on a board.",
+    /** A shipped collection's own page (`/library/<collection>`) — its name and its count. */
+    collectionNamed: "{{name}}: {{games}} chess games to search, filter by player, opening, event and date, and replay on a board.",
+    settings: "Export your data as one zip and bring it back, see how much space it takes, and choose how the app looks.",
+  },
+  /**
+   * **A shared link's image** (CTA-136, `lib/shareImage.ts`): the words read
+   * out for a screen's section image, and for the site's own — the last of
+   * the chain, for a page with no image nearer to it.
+   */
+  share: {
+    defaultImageAlt: "Chess Trainer App — a chessboard beside the app's name",
+    sections: {
+      engine: "Play with Engine — a chessboard beside the section's name",
+      analysis: "Analysis Board — a chessboard beside the section's name",
+      openings: "Openings explorer — a chessboard beside the section's name",
+      repertoires: "Repertoires — a chessboard beside the section's name",
+      library: "Library — a chessboard beside the section's name",
+      blog: "Blog — a chessboard beside the section's name",
+      settings: "Settings — a chessboard beside the section's name",
+    },
   },
   /** The app shell's own words for a screen reader (CTA-112). */
   shell: {

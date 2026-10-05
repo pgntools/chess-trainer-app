@@ -55,6 +55,7 @@ import RepertoireGamesMenu from "./RepertoireGamesMenu";
 import { useRepertoireGame } from "./useRepertoireGame";
 import { usePageTitle } from "../main/pageTitle";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
+import { useUnsavedWorkGuard } from "../main/unsavedWork";
 
 /**
  * **A repertoire, played** (CTA-63) — the one screen behind a repertoire's own
@@ -510,14 +511,7 @@ function RepertoirePlayer({
   };
 
   // Leaving with changes unsaved — a reload, a closed tab — asks first.
-  useEffect(() => {
-    if (!changed) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [changed]);
+  useUnsavedWorkGuard(changed);
 
   /** The Engine tab's "Clear": the repertoire as the record has it, from the start. */
   const clear = () => {

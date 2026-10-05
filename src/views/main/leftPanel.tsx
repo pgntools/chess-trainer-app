@@ -116,7 +116,7 @@ export function LeftPanelProvider({ children }: { children: ReactNode }) {
 export function LeftPanelOutlet({ fallback }: { fallback?: ReactNode }) {
     const slot = usePanelSlot('LeftPanelOutlet');
     const occupied =
-        useSyncExternalStore(slot.subscribe, slot.getOccupants) > 0;
+        useSyncExternalStore(slot.subscribe, slot.getOccupants, slot.getOccupants) > 0;
 
     // Stable for the life of the slot — see `rightPanel.tsx` for why this is
     // not `slot.setHost` passed directly as the ref.
@@ -153,7 +153,7 @@ export function LeftPanel({ children }: { children: ReactNode }) {
         return () => slot.release();
     }, [slot]);
 
-    const host = useSyncExternalStore(slot.subscribe, slot.getHost);
+    const host = useSyncExternalStore(slot.subscribe, slot.getHost, slot.getHost);
 
     return host === null ? null : createPortal(children, host);
 }

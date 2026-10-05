@@ -1,4 +1,10 @@
-# Builds the Vite app and deploys dist/ to GitHub Pages.
+# build-gh — builds the site for GitHub Pages and deploys it there:
+# https://kantorv.github.io/chess-trainer-app/ (CTA-136; deploy-pages.yml until
+# then). Its twin, build-swa.yml, deploys the same site to chessapp.dev — the
+# canonical host every page names (docs/static-pages-proposal.md §10).
+#
+# THE NAME IS A CONTRACT: release.yml's publish-pages job dispatches this
+# workflow by its `name:`, "Deploy to GitHub Pages". Rename both together.
 #
 # Two triggers, each for a different reason:
 #
@@ -13,7 +19,15 @@
 # called workflow runs in the caller's context, so `github.ref` would stay
 # `refs/pull/<n>/merge` from release.yml's pull_request trigger, and the
 # `github-pages` environment only allows `main`. A dispatch creates its own
-# run at `refs/heads/main`.
+# run at `refs/heads/main`. (The build itself is a called workflow,
+# build.yml: only the deploy job needs the environment.)
+#
+# GitHub Pages serves no SPA fallback and no redirects: the build writes
+# 404.html — the app's template, which boots the app at any address no page
+# is written for (a reader's record), with status 404 — and a refresh page at
+# each of the Blog's old addresses. It cannot serve robots.txt or a sitemap
+# (a project site's would sit at the user site's root); build-swa.yml's host
+# does.
 #
 # PRECONDITION, not fixable from this repository: Settings -> Pages -> Build
 # and deployment -> Source must be "GitHub Actions". Until a human does that,
@@ -26,12 +40,15 @@ on:
     paths:
       - "src/**"
       - "public/**"
+      - "scripts/**"
+      - "plugins/**"
       - "index.html"
       - "package.json"
       - "yarn.lock"
       - "vite.config.ts"
       - "tsconfig*.json"
-      - ".github/workflows/deploy-pages.yml"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/build-gh.yml"
   workflow_dispatch:
 
 # Serialize deploys without cancelling one in flight: a half-deployed Pages
@@ -47,39 +64,11 @@ permissions:
 
 jobs:
   build:
-    name: Build the Vite app
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: yarn
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Build
-        run: yarn build
-
-      # GitHub Pages serves no SPA fallback: a hard load of a client-side
-      # route (e.g. /chess-trainer-app/analyze) would 404. Serving index.html
-      # for unknown paths lets react-router's browser router boot and render
-      # the right route from window.location — the URL is preserved, no
-      # redirect dance needed.
-      - name: SPA fallback for client-side routes
-        run: cp dist/index.html dist/404.html
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v6
-
-      - name: Upload dist/ as a Pages artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: dist
+    name: Build the site
+    uses: ./.github/workflows/build.yml
+    with:
+      deploy_target: gh
+      base_path: /chess-trainer-app/
 
   deploy:
     name: Deploy to GitHub Pages

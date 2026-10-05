@@ -19,6 +19,7 @@ import {
 } from "../../../lib/articleFrontmatter";
 import type { BlogArticleEntry } from "../../blog/articles";
 import { setMetadataKey, type MetadataValue } from "./metadataYaml";
+import { SharePreview } from "./SharePreview";
 
 type MetadataPaneProps = {
   /** The frontmatter's YAML, as it will be written between the `---` lines. */
@@ -29,6 +30,8 @@ type MetadataPaneProps = {
   language: string;
   /** For a translation: its article as the English file describes it — the keys it may not repeat, shown. */
   english?: BlogArticleEntry;
+  /** The article's or folder's path under `/blog/` — where its share image is looked for (CTA-136). */
+  path?: string;
 };
 
 /** The field each key gets, and its words. */
@@ -41,7 +44,7 @@ const FIELDS: Record<FrontmatterKey, { label: string; control: "text" | "lines" 
   updated: { label: "Updated", control: "date" },
   tags: { label: "Tags", control: "list" },
   draft: { label: "Draft — in yarn dev only, not in the build", control: "switch" },
-  image: { label: "Share image", control: "text", hint: "A path under public/." },
+  image: { label: "Share image", control: "text", hint: "A PNG or JPEG beside the file, 1200 × 630 — ./cover.png. Empty: the nearest folder's, else the section's." },
   imageAlt: { label: "Share image's words", control: "text", hint: "What the image shows — required with an image." },
   redirectFrom: { label: "Old addresses", control: "list", hint: "Paths under /blog/ that lead here — tournaments/old-name." },
 };
@@ -69,9 +72,10 @@ const englishLine = (article: BlogArticleEntry): string =>
  * What the form offers follows the file: an article's English file every
  * key; a translation its own words only, the English file's `order`, `date`
  * and the rest shown beside them; a folder's `index` its name, summary,
- * description and order.
+ * description, order and share image. Under them, the image a shared link
+ * to the page shows, and where it comes from (CTA-136, `SharePreview`).
  */
-export function MetadataPane({ yaml, onChange, kind, language, english }: MetadataPaneProps) {
+export function MetadataPane({ yaml, onChange, kind, language, english, path = "" }: MetadataPaneProps) {
   const [view, setView] = useState<"form" | "yaml">("form");
   const parsed = parseFrontmatterYaml(yaml);
   const data = parsed.ok && parsed.data !== null && typeof parsed.data === "object" && !Array.isArray(parsed.data) ? (parsed.data as Record<string, unknown>) : {};
@@ -195,6 +199,7 @@ export function MetadataPane({ yaml, onChange, kind, language, english }: Metada
       ) : (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2, overflowY: { md: "auto" }, minHeight: 0, pt: 1 }}>
           {keysFor(kind, language).map(field)}
+          <SharePreview kind={kind} path={path} language={language} image={data.image} imageAlt={data.imageAlt} />
           {english !== undefined && language !== "en" && (
             <Typography variant="body2" color="text.secondary" data-testid="mdx-editor-meta-english">
               {`From the English file: ${englishLine(english)}.`}

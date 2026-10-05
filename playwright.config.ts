@@ -56,8 +56,16 @@ export default defineConfig({
     {
       name: "a11y",
       testMatch: /\.spec\.ts$/,
+      testIgnore: /static\.spec\.ts$/,
       dependencies: ["setup"],
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, storageState: STATE_PATH },
+    },
+    // The pre-rendered pages with JavaScript off (CTA-136): what a crawler
+    // and a link preview read. Nothing to seed — no script reads a store.
+    {
+      name: "static",
+      testMatch: /static\.spec\.ts$/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, javaScriptEnabled: false },
     },
   ],
   webServer: {

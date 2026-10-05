@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && yarn build:prerender",
+    "build:prerender": "vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "wirepgn": "node scripts/wirepgn.js",
@@ -17,6 +18,7 @@
     "test:gallery": "vitest run --project gallery --maxWorkers 3",
     "test:groups": "node scripts/check-test-groups.js",
     "check:blog-build": "node scripts/check-dist-blog.js",
+    "check:pages": "node scripts/check-dist-pages.js",
     "test:a11y": "yarn build && playwright test",
     "test:a11y:quick": "yarn build && A11Y_MATRIX=reduced playwright test"
   },
@@ -34,7 +36,6 @@
     "fflate": "^0.8.3",
     "flag-icons": "^7.5.0",
     "i18next": "^26.4.1",
-    "i18next-browser-languagedetector": "^8.2.1",
     "react": "^19.2.8",
     "react-chessboard": "^5.12.1",
     "react-dom": "^19.2.8",
@@ -46,6 +47,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
+    "@emotion/server": "^11.11.0",
     "@eslint/js": "^10.0.1",
     "@mdx-js/rollup": "^3.1.1",
     "@playwright/test": "^1.63.0",

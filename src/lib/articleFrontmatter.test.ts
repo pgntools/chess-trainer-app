@@ -71,7 +71,7 @@ describe("the schema", () => {
       updated: "2026-10-01",
       tags: ["a", "b"],
       draft: false,
-      image: "share/x.png",
+      image: "./share/x.png",
       imageAlt: "A board",
       redirectFrom: ["old/place"],
     };
@@ -105,12 +105,21 @@ describe("the schema", () => {
 
   it("gives a folder's index the folder's keys only", () => {
     expect(messages({ title: "Tournaments", date: "2026-01-01" }, folder)).toEqual([
-      '"date" is not a folder\'s — a folder\'s index takes title, summary, description and order',
+      '"date" is not a folder\'s — a folder\'s index takes title, summary, description, order, image and imageAlt',
     ]);
+    // A folder's image is the one for every page under it with none nearer (CTA-136).
+    expect(messages({ title: "Tournaments", image: "./cover.png", imageAlt: "A board" }, folder)).toEqual([]);
   });
 
   it("wants an image's words with it, and redirects as Blog paths", () => {
-    expect(messages({ title: "T", summary: "S", image: "x.png" }, english)).toEqual(["imageAlt is required with an image — what the image shows"]);
+    expect(messages({ title: "T", summary: "S", image: "./x.png" }, english)).toEqual(["imageAlt is required with an image — what the image shows"]);
+    // Beside the file, and a format every previewer shows (CTA-136).
+    for (const image of ["x.png", "/x.png", "./x.webp", "./x.svg", "https://example.com/x.png"]) {
+      expect(messages({ title: "T", summary: "S", image, imageAlt: "A board" }, english)).toEqual([
+        "image must be a PNG or JPEG beside the file — ./cover.png, ../olympiad.jpg",
+      ]);
+    }
+    expect(messages({ title: "T", summary: "S", image: "../covers/x.JPG", imageAlt: "A board" }, english)).toEqual([]);
     expect(messages({ title: "T", summary: "S", redirectFrom: ["/blog/old"] }, english)).toEqual([
       "redirectFrom must be a list of Blog paths — tournaments/old-name, no leading slash",
     ]);

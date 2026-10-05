@@ -1,6 +1,7 @@
 import type { UIMatch } from "react-router";
 
 import type { AppLanguage } from "../../i18n";
+import type { ShareImageLevel } from "../../lib/shareImage";
 
 /**
  * **What a page is, from its address alone** (CTA-135) — what a route's
@@ -13,6 +14,30 @@ export type PageMeta = {
   title?: string;
   /** The page's `<meta name="description">`. */
   description?: string;
+  /**
+   * What the page is to a link preview (CTA-136): `article` (a Blog article,
+   * with its dates and tags below) or `website` — the default.
+   */
+  kind?: "article" | "website";
+  /** `YYYY-MM-DD` — an article's `article:published_time`. */
+  published?: string;
+  /** `YYYY-MM-DD` — an article's `article:modified_time`. */
+  modified?: string;
+  tags?: readonly string[];
+  /**
+   * The languages the page is written in (CTA-136) — a page of its own in
+   * each: its `hreflang` alternates, the sitemap's entries. Under another
+   * language it shows the default language's body, so its canonical is the
+   * default language's page. Absent: every language (a screen, translated
+   * whole through the catalogs).
+   */
+  languages?: readonly AppLanguage[];
+  /**
+   * The page's own levels of its share image's chain, nearest first — its
+   * own image, its folders' (`lib/shareImage.ts`). The section's and the
+   * site's follow them in every page's head.
+   */
+  images?: readonly ShareImageLevel[];
 };
 
 /**
@@ -100,6 +125,14 @@ export const screenIdOf = (matches: readonly UIMatch[]): string => {
   if (metaMatchOf(matches) !== undefined) return `${titleKey ?? ""}:${leaf}`;
   return titleKey ?? leaf;
 };
+
+/**
+ * A screen's description's catalog key (CTA-136) — `pages.library` →
+ * `pageDescriptions.library` — the page's `<meta name="description">` where
+ * its `meta` gives none. Not every screen has one: ask the catalog.
+ */
+export const descriptionKeyOf = (titleKey: string | undefined): string | undefined =>
+  titleKey?.startsWith("pages.") === true ? `pageDescriptions.${titleKey.slice("pages.".length)}` : undefined;
 
 /** The deepest matched route's title key, or `undefined` for a route that names none. */
 export const titleKeyOf = (matches: readonly UIMatch[]): string | undefined =>

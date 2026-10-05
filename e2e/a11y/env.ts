@@ -9,8 +9,16 @@ import { resolve } from "node:path";
 /** The port `vite preview` is given. `A11Y_PORT` moves it, e.g. to run two worktrees at once. */
 export const PORT = Number(process.env.A11Y_PORT ?? 4173);
 
-/** `vite.config.ts`'s `base`. */
-const BASE_PATH = "/chess-trainer-app/";
+/**
+ * `vite.config.ts`'s `base` — from the same `BASE_PATH` the build reads
+ * (CTA-136), so the pass runs against either host's build; unset, the GitHub
+ * Pages project site's.
+ */
+const BASE_PATH = ((value) => {
+  if (value === undefined || value.trim() === "") return "/chess-trainer-app/";
+  const trimmed = value.trim().replace(/^\/+|\/+$/g, "");
+  return trimmed === "" ? "/" : `/${trimmed}/`;
+})(process.env.BASE_PATH);
 
 /** Every route is visited relative to this, so it ends in a slash. */
 export const BASE_URL = `http://localhost:${PORT}${BASE_PATH}`;

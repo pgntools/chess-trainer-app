@@ -180,12 +180,15 @@ describe("the Blog's one route (CTA-135)", () => {
     const folder = renderInShell("/blog/writing-an-article/components");
     expect(await screen.findByRole("heading", { level: 1, name: "Components" })).toBeInTheDocument();
     expect(document.title).toBe("Components — Blog — Chess Trainer App");
-    expect(description()).toBeUndefined();
+    // A folder is described by its index's summary (CTA-136).
+    expect(description()).toMatch(/^The embeds that read the Library/);
     folder.unmount();
 
     renderInShell("/blog");
     expect(await screen.findByRole("heading", { level: 1, name: "Blog" })).toBeInTheDocument();
     expect(document.title).toBe("Blog — Chess Trainer App");
+    // The Blog's own index, by the Blog's screen description.
+    expect(description()).toBe(i18n.t("pageDescriptions.blog"));
   });
 
   it("titles the page in the reader's language", async () => {
