@@ -378,6 +378,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
                 kind={fileName.kind}
                 language={fileName.language}
                 english={english}
+                path={fileName.path}
               />
             )}
           </Box>

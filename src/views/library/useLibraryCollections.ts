@@ -95,7 +95,8 @@ const load = (summary: CollectionSummary, part: Part): Promise<unknown> => {
 function useCollectionPart<T>(id: string | undefined, part: Part): CollectionPart<T> {
   const state = useCollectionSummary(id);
   const summary = state.status === "ready" ? state.summary : undefined;
-  const value = useSyncExternalStore(subscribeAll, () => peek(summary, part)) as T | null | undefined;
+  const read = () => peek(summary, part);
+  const value = useSyncExternalStore(subscribeAll, read, read) as T | null | undefined;
 
   useEffect(() => {
     if (summary !== undefined && value === undefined) void load(summary, part);

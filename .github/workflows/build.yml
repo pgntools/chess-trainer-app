@@ -1,0 +1,82 @@
+# The site, built for one host (CTA-136) — called by each host's deploy:
+# build-gh.yml (GitHub Pages) and build-swa.yml (Azure Static Web Apps).
+#
+# The base path is baked into every asset URL, so each host is a build of its
+# own — two builds per release, not one artifact deployed twice — and this
+# workflow is the one place both are made, so they cannot drift apart. It
+# installs, runs `yarn build` (type-check, the browser bundle, the server
+# bundle and the pre-render: every page as a static index.html, the host's own
+# files — scripts/prerender.mjs), holds dist/ to the build checks, and uploads
+# it for the caller's deploy job.
+#
+# Calling the BUILD is safe where calling the deploy is not: build-gh.yml is
+# dispatched (not called) by release.yml because the `github-pages`
+# environment refuses a `refs/pull/…` ref, and that concerns its deploy job,
+# which stays in the dispatched workflow.
+name: Build the site
+
+on:
+  workflow_call:
+    inputs:
+      deploy_target:
+        description: "gh (GitHub Pages) or swa (Azure Static Web Apps) — picks the host's own outputs"
+        type: string
+        required: true
+      base_path:
+        description: "The sub-path the host serves the app under — /chess-trainer-app/ or /"
+        type: string
+        required: true
+      canonical_url:
+        description: "The canonical host every canonical, og:url, hreflang and image URL names, on both hosts"
+        type: string
+        default: "https://chessapp.dev/"
+
+jobs:
+  build:
+    name: Build and pre-render (${{ inputs.deploy_target }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build and pre-render
+        run: yarn build
+        env:
+          BASE_PATH: ${{ inputs.base_path }}
+          DEPLOY_TARGET: ${{ inputs.deploy_target }}
+          CANONICAL_URL: ${{ inputs.canonical_url }}
+
+      # The Blog as built (no draft, a chunk per article) and the pages as
+      # written (every one there, its head, its language; the fallback the
+      # template; on swa the sitemap) — scripts/check-dist-*.js.
+      - name: Check the build
+        run: |
+          yarn check:blog-build
+          yarn check:pages
+
+      - name: Configure Pages
+        if: inputs.deploy_target == 'gh'
+        uses: actions/configure-pages@v6
+
+      - name: Upload dist/ as a Pages artifact
+        if: inputs.deploy_target == 'gh'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+      - name: Upload dist/ for the deploy
+        if: inputs.deploy_target != 'gh'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ inputs.deploy_target }}
+          path: dist
+          if-no-files-found: error

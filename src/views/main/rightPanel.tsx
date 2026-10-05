@@ -149,7 +149,7 @@ export function RightPanelProvider({ children }: { children: ReactNode }) {
 export function RightPanelOutlet({ fallback }: { fallback?: ReactNode }) {
     const slot = usePanelSlot('RightPanelOutlet');
     const occupied =
-        useSyncExternalStore(slot.subscribe, slot.getOccupants) > 0;
+        useSyncExternalStore(slot.subscribe, slot.getOccupants, slot.getOccupants) > 0;
 
     /*
       Stable for the life of the slot, and deliberately not `slot.setHost`
@@ -210,7 +210,7 @@ export function RightPanel({ children }: { children: ReactNode }) {
         return () => slot.release();
     }, [slot]);
 
-    const host = useSyncExternalStore(slot.subscribe, slot.getHost);
+    const host = useSyncExternalStore(slot.subscribe, slot.getHost, slot.getHost);
 
     // `null` on the very first render — `acquire()` above is what makes the
     // outlet render a host at all. The next render, in the same commit, has it.

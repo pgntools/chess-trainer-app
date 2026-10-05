@@ -51,7 +51,7 @@ import { RightPanel } from "../main/rightPanel";
 const useRows = <Row,>(
   subscribe: (onChange: () => void) => () => void,
   snapshot: () => readonly Row[] | undefined,
-): readonly Row[] | undefined => useSyncExternalStore(subscribe, snapshot);
+): readonly Row[] | undefined => useSyncExternalStore(subscribe, snapshot, snapshot);
 
 /** What the rows hold, estimated. `undefined` while the read is out — shown as "…". */
 const usePayload = (rows: readonly unknown[] | undefined): number | undefined =>

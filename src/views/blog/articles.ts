@@ -5,6 +5,7 @@ import { articles as manifest } from "virtual:blog-articles";
 import type { AppLanguage } from "../../i18n";
 import type { ArticleFrontmatter } from "../../lib/articleFrontmatter";
 import type { LocalizedText } from "../../lib/localizedText";
+import { articleImageFile } from "../../lib/shareImage";
 
 /**
  * **The Blog** (CTA-126) — articles written as MDX, in folders that nest, each
@@ -45,6 +46,9 @@ export type BlogFolder = {
   /** A line about it, from its `index.mdx`. */
   summary?: LocalizedText;
   order?: number;
+  /** The share image of every page under it with none nearer (CTA-136) — each language's file, repository-relative. */
+  image?: LocalizedText;
+  imageAlt?: LocalizedText;
 };
 
 export type BlogArticleEntry = {
@@ -64,8 +68,14 @@ export type BlogArticleEntry = {
   tags?: readonly string[];
   /** Listed only in `yarn dev`, marked. */
   draft: boolean;
-  image?: string;
+  /**
+   * Its share image (CTA-136): each language's file — a translation's own,
+   * else the English one — repository-relative, as the build reads it.
+   */
+  image?: LocalizedText;
   imageAlt?: LocalizedText;
+  /** The languages it has a body in — a page of its own in each; another language shows the English body. */
+  languages: readonly AppLanguage[];
   /** Old paths that lead here. */
   redirectFrom?: readonly string[];
 };
@@ -82,6 +92,9 @@ for (const entry of manifest) {
   grouped.get(key)!.set(entry.language, entry);
 }
 
+/** Where the Blog's files are, repository-relative — a share image is named relative to its file. */
+export const BLOG_ARTICLES_DIR = "src/views/blog/articles";
+
 /** One text key across a page's files — English required, as every language falls back to it. */
 const localized = (files: Map<AppLanguage, Entry>, key: "title" | "summary" | "description" | "imageAlt"): LocalizedText | undefined => {
   const english = files.get("en")?.meta[key];
@@ -96,6 +109,17 @@ const localized = (files: Map<AppLanguage, Entry>, key: "title" | "summary" | "d
 
 const englishOf = (files: Map<AppLanguage, Entry>): ArticleFrontmatter => files.get("en")!.meta;
 const parentOf = (path: string): string => path.split("/").slice(0, -1).join("/");
+
+/** A page's share image per language, resolved against the folder its files sit in — a translation's own, else the English file's. */
+const imagesOf = (files: Map<AppLanguage, Entry>, dir: string): LocalizedText | undefined => {
+  const english = files.get("en")?.meta.image;
+  if (english === undefined) return undefined;
+  const text: LocalizedText = { en: articleImageFile(BLOG_ARTICLES_DIR, dir, english) };
+  for (const [language, file] of files) {
+    if (language !== "en" && file.meta.image !== undefined) text[language] = articleImageFile(BLOG_ARTICLES_DIR, dir, file.meta.image);
+  }
+  return text;
+};
 const byEnglishTitle = (a: { title: LocalizedText }, b: { title: LocalizedText }) => a.title.en.localeCompare(b.title.en);
 
 /**
@@ -128,8 +152,9 @@ export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [...grouped]
       updated: english.updated,
       tags: english.tags,
       draft: files.get("en")!.draft,
-      image: english.image,
+      image: imagesOf(files, parentOf(files.get("en")!.path)),
       imageAlt: localized(files, "imageAlt"),
+      languages: [...files].filter(([, file]) => file.hasBody).map(([language]) => language),
       redirectFrom: english.redirectFrom,
     };
   })
@@ -147,9 +172,29 @@ export const BLOG_FOLDERS: readonly BlogFolder[] = (() => {
     .map((path): BlogFolder => {
       const files = grouped.get(`folder:${path}`);
       if (files === undefined) return { path, title: { en: path.split("/").at(-1) ?? path } };
-      return { path, title: localized(files, "title")!, summary: localized(files, "summary"), order: englishOf(files).order };
+      return {
+        path,
+        title: localized(files, "title")!,
+        summary: localized(files, "summary"),
+        order: englishOf(files).order,
+        image: imagesOf(files, path),
+        imageAlt: localized(files, "imageAlt"),
+      };
     })
     .sort(compareBlogFolders);
+})();
+
+/** The Blog's own folder — `articles/index.mdx`, its share image the top of every Blog page's walk up (CTA-136) — or `undefined` without one. */
+export const BLOG_ROOT: BlogFolder | undefined = (() => {
+  const files = grouped.get("folder:");
+  if (files === undefined || !files.has("en")) return undefined;
+  return {
+    path: "",
+    title: localized(files, "title")!,
+    summary: localized(files, "summary"),
+    image: imagesOf(files, ""),
+    imageAlt: localized(files, "imageAlt"),
+  };
 })();
 
 /* --- the files ----------------------------------------------------- */

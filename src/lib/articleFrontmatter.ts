@@ -52,7 +52,12 @@ export type ArticleFrontmatter = {
   tags?: string[];
   /** In `yarn dev` only, marked; absent from a production build. */
   draft?: boolean;
-  /** A share image, `public/`-relative — with `imageAlt`. */
+  /**
+   * The page's share image (CTA-136) — a PNG or JPEG beside the file, named
+   * relative to it (`./cover.png`, `../olympiad.png`), with `imageAlt`. A
+   * translation's own is taken first in its language; a folder's index
+   * gives one to every page under it that has none (`lib/shareImage.ts`).
+   */
   image?: string;
   imageAlt?: string;
   /** Old addresses (paths under `/blog/`) that redirect here — a moved article's links keep working. */
@@ -81,8 +86,8 @@ export type FrontmatterKey = (typeof FRONTMATTER_KEYS)[number];
 /** The keys an article's translation carries — the rest it takes from the English file. */
 export const TRANSLATION_KEYS: readonly FrontmatterKey[] = ["title", "summary", "description", "image", "imageAlt"];
 
-/** The keys a folder's `index.mdx` takes. */
-export const FOLDER_KEYS: readonly FrontmatterKey[] = ["title", "summary", "description", "order"];
+/** The keys a folder's `index.mdx` takes — its share image too, the one for every page under it with none nearer (CTA-136). */
+export const FOLDER_KEYS: readonly FrontmatterKey[] = ["title", "summary", "description", "order", "image", "imageAlt"];
 
 /** The keys a file of this kind and language may carry. */
 export const keysFor = (kind: ArticleFileKind, language: string): readonly FrontmatterKey[] =>
@@ -159,6 +164,10 @@ const isIsoDate = (value: unknown): value is string =>
 /** A Blog path — lower-case words and dashes, `/` between folders, no leading slash. */
 const BLOG_PATH = /^[a-z0-9][a-z0-9-]*(?:\/[a-z0-9][a-z0-9-]*)*$/;
 
+/** A share image's path: relative to the file (`./`, `../`), a PNG or a JPEG — what every previewer takes. */
+const isShareImagePath = (value: unknown): value is string =>
+  typeof value === "string" && /^\.\.?\/(?:[^/\\]+\/)*[^/\\]+\.(?:png|jpe?g)$/i.test(value);
+
 const list = (keys: readonly string[]): string => `${keys.slice(0, -1).join(", ")} and ${keys.at(-1)}`;
 
 /**
@@ -203,7 +212,9 @@ export const validateFrontmatter = (
   }
   if (has("tags") && !isTextList(record.tags)) issues.push({ key: "tags", message: "tags must be a list of words" });
   if (has("draft") && typeof record.draft !== "boolean") issues.push({ key: "draft", message: "draft must be true or false" });
-  if (has("image") && !isText(record.image)) issues.push({ key: "image", message: "image must be a path" });
+  if (has("image") && !isShareImagePath(record.image)) {
+    issues.push({ key: "image", message: "image must be a PNG or JPEG beside the file — ./cover.png, ../olympiad.jpg" });
+  }
   if (has("imageAlt") && !isText(record.imageAlt)) issues.push({ key: "imageAlt", message: "imageAlt must be words" });
   if (language === "en" && has("image") && !has("imageAlt")) issues.push({ key: "imageAlt", message: "imageAlt is required with an image — what the image shows" });
   if (language === "en" && has("imageAlt") && !has("image")) issues.push({ key: "image", message: "imageAlt without an image" });

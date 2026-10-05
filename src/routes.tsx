@@ -24,6 +24,7 @@ import { default as RepertoireGameScreen  } from './views/repertoires/Repertoire
 import { default as SettingsScreen  } from './views/settings/SettingsMain'
 import { default as BlogScreen  } from './views/blog/BlogMain'
 import { blogPageMeta } from './views/blog/blogPageMeta'
+import { collectionPageMeta } from './views/library/collectionPageMeta'
 
 /**
  * The **Development** section's routes (`chessboard.md` §9.5) — the design
@@ -197,7 +198,9 @@ export const appRoutes: RouteObject[] = [
         {
           path: "/library/:collectionId",
           element: <LibraryCollectionScreen />,
-          handle: { title: "pages.collection" }
+          // A shipped collection's name and count, from the manifest — its
+          // page is rendered ahead of time (CTA-136).
+          handle: { title: "pages.collection", meta: collectionPageMeta }
         },
         // A collection's settings (CTA-121) — its title, description and
         // tournament mark. A static segment, so it ranks above `:game`.

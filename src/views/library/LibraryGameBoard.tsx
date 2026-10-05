@@ -40,6 +40,7 @@ import type { PlayerPlates } from "../shared/PlayerPlate";
 import { playerResultsOf } from "../shared/playerResults";
 import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
 import { usePageTitle } from "../main/pageTitle";
+import { useUnsavedWorkGuard } from "../main/unsavedWork";
 
 /**
  * **A Library game** (`/library/<collection>/<game>`, CTA-75) — a game of a
@@ -157,12 +158,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
   }, [linkedAt, searchParams, setSearchParams, location.state]);
 
   // Leaving with changes unsaved — a reload, a closed tab — asks first.
-  useEffect(() => {
-    if (!session.changed) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [session.changed]);
+  useUnsavedWorkGuard(session.changed);
 
   const from = (location.state as { from?: string } | null)?.from;
   const tablePath = from ?? `/library/${encodeURIComponent(collection.id)}`;

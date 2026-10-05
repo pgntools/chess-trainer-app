@@ -24,7 +24,7 @@ for (const combo of matrix) {
       test(route.id, async ({ page }, testInfo) => {
         await applyPreferences(page, combo);
         const errors = watchErrors(page);
-        await open(page, route);
+        await open(page, route, { language: combo.language });
         await check(page, testInfo, route, combo, errors);
       });
     }

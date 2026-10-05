@@ -149,6 +149,7 @@ describe("the Blog's tree", () => {
       title: { en: path },
       summary: { en: "" },
       draft: false,
+      languages: ["en"],
       ...more,
     });
     const sorted = [

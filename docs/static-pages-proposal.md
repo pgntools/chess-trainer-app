@@ -1,8 +1,16 @@
 # Proposal: static pages — indexable and shareable
 
-Status: **draft — research and findings, nothing implemented.** Every
-question raised so far is decided (§15); what remains open is for the
-spike to answer (§13, phase 0).
+Status: **implemented in CTA-136** — phases 0–5 (§13); 6 and 7 stay
+optional. How it is built is [`.claude/rules/static-pages.md`](../.claude/rules/static-pages.md).
+The spike's answers (phase 0): every page renders on the server —
+`react-chessboard` and MUI included — once each `useSyncExternalStore` has a
+server snapshot; React's `prerender` writes a lazy article in place given an
+unbounded `progressiveChunkSize`; ~120 pages take ~15 s. Where the build
+differs from the text below: the share images are copied and hashed by the
+pre-render rather than pulled through `import.meta.glob` (§6.3 — the same
+content-hashed URLs, with no image in the browser's bundle), and the shell's
+hidden `h1` is dropped from a page that renders its own (an effect decides it
+in the browser, which does not run on the server).
 Depends on: [`frontmatter-feature-proposal.md`](frontmatter-feature-proposal.md)
 — its manifest, its one Blog route and its `handle.meta` (§6.2 there).
 

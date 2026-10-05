@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -33,6 +33,7 @@ import SaveDialog from "./SaveDialog";
 import { fieldIdOf, FIELDS, SECTIONS, sectionOfToken, type SectionSpec } from "./sections";
 import ThemePreview from "./ThemePreview";
 import TokenField from "./TokenField";
+import { useUnsavedWorkGuard } from "../../main/unsavedWork";
 
 type ThemeEditorProps = {
   /** The registered theme it opens on. */
@@ -126,12 +127,7 @@ function ThemeEditor({ initialThemeId, namesOf }: ThemeEditorProps) {
   );
 
   // Leaving with unsaved changes asks first — the draft lives nowhere else.
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  useUnsavedWorkGuard(dirty);
 
   /** A new draft, undoable — a run of changes to one token is one step. */
   const change = (next: ThemeDraft, path: string) => {

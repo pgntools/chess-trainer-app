@@ -125,10 +125,12 @@ describe("the page title (CTA-112)", () => {
     expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute("content", "Where to begin.");
     await act(() => router.navigate("/blog/elsewhere"));
     expect(document.title).toBe("Another page — Blog — Chess Trainer App");
-    expect(document.head.querySelector('meta[name="description"]')).toBeNull();
-    // A route without meta is titled as it always was.
+    // A page whose meta gives no description has its screen's (CTA-136).
+    expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute("content", i18n.t("pageDescriptions.blog"));
+    // A route without meta is titled as it always was, and described as its screen.
     await act(() => router.navigate("/engine/games"));
     expect(document.title).toBe("Lobby — Chess Trainer App");
+    expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute("content", i18n.t("pageDescriptions.lobby"));
   });
 
   it("is rendered into the head — one title, ahead of the page's static one (CTA-135)", () => {
