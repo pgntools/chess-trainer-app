@@ -10,7 +10,8 @@ import { FileInputButton, RadioGroupField, SelectField, TextInputField } from ".
 import { PickerList } from "../../../design-system/components/lists";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 import { COMPONENT_EXAMPLES } from "./componentCatalog";
-import { IDENTIFIER, pgnImportName } from "./pgnImports";
+import { SnippetPreview } from "./mdxPreview";
+import { IDENTIFIER, namesIn, pgnDefinitionsIn, pgnImportName, pgnNamesIn } from "./pgnImports";
 
 /** A PGN's file name — what the storage service takes. */
 const PGN_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]*\.pgn$/;
@@ -21,7 +22,9 @@ const COLUMNS = {
   display: "grid",
   gap: 2,
   gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(260px, 360px) minmax(0, 1fr)" },
-  minHeight: { md: 440 },
+  // From md the tabs fill the dialog's height, each column scrolling on its own; below it the page scrolls.
+  gridTemplateRows: { md: "minmax(0, 1fr)" },
+  height: { md: "max(440px, calc(100vh - 260px))" },
 } as const;
 
 /** A box of machine text — a PGN, a component's markup — as the editor's own source box. */
@@ -54,10 +57,10 @@ type AddPgnDialogProps = {
   hasFile: boolean;
   /** The article's folder under `articles/`, where a PGN file goes. */
   folder: string;
-  /** Every name the content binds, which a new PGN may not take. */
-  taken: ReadonlySet<string>;
-  /** The names the content binds to a PGN — what the examples can read. */
-  pgnNames: readonly string[];
+  /** The article's content — the names it binds (a new PGN may take none of them), and the PGNs the examples read. */
+  body: string;
+  /** PGNs written this session, by path under `articles/` — the preview reads them before the build's glob has caught up. */
+  attached: Readonly<Record<string, string>>;
   onAdd: (pgn: PgnToAdd) => void;
   /** Put an example into the content. */
   onInsert: (code: string) => void;
@@ -81,12 +84,17 @@ type AddPgnDialogProps = {
  * - **Output element**: the components an article embeds, in a sidebar at
  *   the inline start; the one picked shows its markup beside them, reading
  *   the PGN by its name, in a box to adjust, copy or insert at the caret.
+ *   Above, the code in a box to adjust, copy or insert; below, filling the
+ *   rest, the component rendered as the article will render it — reading
+ *   the content's PGNs (`pgnDefinitionsIn`), the chosen one by its name.
  *   Adding a PGN turns here, with it chosen.
  *
  * The dialog is the window's width (`width="full"`); each tab two columns
  * from `md`, one over the other below it.
  */
-function AddPgnDialog({ open, onClose, hasFile, folder, taken, pgnNames, onAdd, onInsert, busy, added, error }: AddPgnDialogProps) {
+function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, onInsert, busy, added, error }: AddPgnDialogProps) {
+  const taken = namesIn(body);
+  const pgnNames = pgnNamesIn(body);
   const [tab, setTab] = useState<"pgn" | "output">("pgn");
   const [how, setHow] = useState<PgnHolding>(hasFile ? "file" : "inline");
   const [text, setText] = useState("");
@@ -136,6 +144,10 @@ function AddPgnDialog({ open, onClose, hasFile, folder, taken, pgnNames, onAdd, 
         </>
       ),
     }));
+
+  // What the preview compiles: the content's PGNs, then the code — which reads them by name.
+  const definitions = pgnDefinitionsIn(body);
+  const previewless = example?.usesPgn === true && names.length === 0;
 
   // The code on the right: the picked example, for the reader to adjust before copying or inserting it.
   const exampleCode = example?.code(pgn) ?? "";
@@ -188,7 +200,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, taken, pgnNames, onAdd, 
       <Box {...tabPanelProps(ID, tab)} sx={{ ...COLUMNS, pt: 2 }}>
         {tab === "pgn" ? (
           <>
-            <Box sx={{ display: "grid", gap: 2, alignContent: "start" }}>
+            <Box sx={{ display: "grid", gap: 2, alignContent: "start", minHeight: 0, overflowY: { md: "auto" } }}>
               <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
                 <FileInputButton label="Upload PGN" accept=".pgn" onFiles={(files) => void upload(files[0])} variant="outlined" size="small" testId={`${ID}-upload`} />
                 <Typography variant="body2" color="text.secondary">
@@ -320,7 +332,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, taken, pgnNames, onAdd, 
                 <PickerList items={items(false)} value={component} onChange={(id) => id !== null && setComponent(id)} ariaLabel="From the app's data" testId={`${ID}-data-components`} />
               </Box>
             </Box>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minHeight: 0 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minHeight: 0, overflowY: { md: "auto" } }}>
               {added !== undefined && (
                 <StatusText tone="info" testId={`${ID}-added-output`}>
                   {added.message}
@@ -332,12 +344,14 @@ function AddPgnDialog({ open, onClose, hasFile, folder, taken, pgnNames, onAdd, 
                 </StatusText>
               ) : (
                 <>
-                  <Typography component="label" htmlFor={`${ID}-code`} variant="subtitle2">
-                    {`Code — <${example.name}>`}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {example.summary}
-                  </Typography>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", columnGap: 1 }}>
+                    <Typography component="label" htmlFor={`${ID}-code`} variant="subtitle2">
+                      {`Code — <${example.name}>`}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {example.summary}
+                    </Typography>
+                  </Box>
                   <Box
                     component="textarea"
                     id={`${ID}-code`}
@@ -346,7 +360,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, taken, pgnNames, onAdd, 
                     spellCheck={false}
                     value={code}
                     onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setCode(event.target.value)}
-                    sx={TEXTAREA_SX}
+                    sx={{ ...TEXTAREA_SX, flex: "none", minHeight: 72, height: 112 }}
                   />
                   <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
                     <Button variant="contained" onClick={() => onInsert(code)} disabled={code.trim() === ""} data-testid={`${ID}-insert`}>
@@ -359,6 +373,28 @@ function AddPgnDialog({ open, onClose, hasFile, folder, taken, pgnNames, onAdd, 
                       <StatusText tone={copied === "copied" ? "success" : "error"} testId={`${ID}-copied`}>
                         {copied === "copied" ? "Copied." : "Could not copy — select the text instead."}
                       </StatusText>
+                    )}
+                  </Box>
+                  <Typography variant="subtitle2" component="h3" id={`${ID}-preview-label`}>
+                    {previewless ? "Preview" : `Preview — reading ${pgn}`}
+                  </Typography>
+                  <Box
+                    role="region"
+                    aria-labelledby={`${ID}-preview-label`}
+                    sx={{ flex: 1, minHeight: 240, overflowY: "auto", p: 2, border: 1, borderColor: "divider", borderRadius: 1, bgcolor: "background.default" }}
+                  >
+                    {previewless ? (
+                      <StatusText tone="neutral" testId={`${ID}-preview-none`}>
+                        The article has no PGN for it to read yet — add one in the PGN file tab to see it here.
+                      </StatusText>
+                    ) : (
+                      <SnippetPreview
+                        source={`${definitions.source}${code}`}
+                        folder={folder}
+                        attached={attached}
+                        lineOffset={definitions.lines}
+                        testId={`${ID}-preview`}
+                      />
                     )}
                   </Box>
                 </>

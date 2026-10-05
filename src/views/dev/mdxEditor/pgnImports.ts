@@ -42,6 +42,20 @@ export const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 export const pgnNamesIn = (body: string): string[] =>
   [...body.matchAll(/^\s*(?:import\s+([A-Za-z_$][\w$]*)\s+from\s+["'][^"']+\.pgn\?raw["']|export\s+const\s+([A-Za-z_$][\w$]*)\s*=\s*`)/gm)].map((match) => match[1] ?? match[2]);
 
+/**
+ * Every PGN the body binds, as the source that binds it — each
+ * `import x from "./….pgn?raw"` line and each `export const x = \`…\``
+ * literal, whole — so a piece of MDX put after them reads the article's
+ * PGNs by their names (the Add PGN dialog's preview). `lines`: how many
+ * lines they take, with the blank line after them.
+ */
+export const pgnDefinitionsIn = (body: string): { source: string; lines: number } => {
+  const found = [...body.matchAll(/^[ \t]*(?:import\s+[A-Za-z_$][\w$]*\s+from\s+["'][^"'\n]+\.pgn\?raw["'];?|export\s+const\s+[A-Za-z_$][\w$]*\s*=\s*`(?:\\[\s\S]|[^`\\])*`)/gm)].map((match) => match[0].trim());
+  if (found.length === 0) return { source: "", lines: 0 };
+  const source = `${found.join("\n")}\n\n`;
+  return { source, lines: source.split("\n").length - 1 };
+};
+
 /** The number of lines the body starts with that are imports. */
 const leadingImports = (lines: readonly string[]): number => {
   let leading = 0;

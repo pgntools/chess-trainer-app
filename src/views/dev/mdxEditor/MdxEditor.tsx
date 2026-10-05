@@ -1,4 +1,4 @@
-import { Component, Suspense, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
@@ -8,7 +8,6 @@ import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SaveAsRoundedIcon from "@mui/icons-material/SaveAsRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
-import type { MDXContent } from "mdx/types";
 
 import { SelectAutocomplete } from "../../../design-system/components/autocompletes";
 import { ConfirmDialog } from "../../../design-system/components/dialogs";
@@ -19,13 +18,13 @@ import { articleFileName, joinFrontmatter, parseFrontmatterYaml, splitFrontmatte
 import { downloadTextFile } from "../../../lib/pgnExport";
 import { ArticleHeader } from "../../blog/ArticleHeader";
 import { findBlogArticle } from "../../blog/articles";
-import { mdxComponents } from "../../home/frontPage";
-import { articleImportResolver, articleOptions, folderOf, loadArticleSource } from "./articleSources";
-import { compileMdx, SOURCE_LINE_COMPONENT } from "./compileMdx";
+import { articleOptions, folderOf, loadArticleSource } from "./articleSources";
 import { MetadataPane } from "./MetadataPane";
+import { PreviewBoundary } from "./mdxPreview";
+import { PREVIEW_COMPONENTS, useCompiled, whereOf } from "./useCompiled";
 import AddPgnDialog, { type PgnToAdd } from "./AddPgnDialog";
 import { insertBlock } from "./componentCatalog";
-import { namesIn, pgnNamesIn, withInlinePgn, withPgnImports } from "./pgnImports";
+import { withInlinePgn, withPgnImports } from "./pgnImports";
 import { starterFrontmatter, todayIso } from "./metadataYaml";
 import SaveArticleDialog from "./SaveArticleDialog";
 import { STARTER_DOCUMENT } from "./starterDocument";
@@ -77,16 +76,6 @@ import { useScrollSync } from "./useScrollSync";
  *   keeps it.
  */
 
-/** Where a source line's block starts in the preview — `compileMdx.ts`'s marker, drawn as nothing. */
-function SourceLineMarker({ line }: { line?: string }) {
-  return <Box component="span" aria-hidden data-source-line={line} sx={{ display: "block", height: 0 }} />;
-}
-
-/** The article components, and the source-line marker the compiled document places before each block. */
-const PREVIEW_COMPONENTS = { ...mdxComponents, [SOURCE_LINE_COMPONENT]: SourceLineMarker };
-
-/** How long typing must pause before the document is compiled again. */
-export const COMPILE_DELAY_MS = 300;
 
 const DRAFT_KEY = "chessapp.dev.mdxEditor.draft";
 const SOURCE_ID = "mdx-editor-source";
@@ -127,73 +116,6 @@ const writeKept = (kept: Kept) => {
   }
 };
 
-/** What the preview shows: the last document that compiled, and what is wrong with the newest one. */
-type Compiled = {
-  Content?: MDXContent;
-  /** Bumped on every successful compile, so the preview's error boundary starts afresh. */
-  version: number;
-  error?: { message: string; line?: number; column?: number };
-  pending: boolean;
-};
-
-/** The document compiled `COMPILE_DELAY_MS` after it last changed — the newest compile wins. `attached`: PGNs just written, by path under `articles/`. */
-const useCompiled = (source: string, folder: string, attached: Readonly<Record<string, string>>): Compiled => {
-  const [compiled, setCompiled] = useState<Compiled>({ version: 0, pending: true });
-  const latest = useRef(0);
-
-  useEffect(() => {
-    const run = ++latest.current;
-    const timer = setTimeout(() => {
-      void compileMdx(source, articleImportResolver(folder, attached)).then((result) => {
-        if (run !== latest.current) return;
-        setCompiled((before) =>
-          result.ok
-            ? { Content: result.Content, version: before.version + 1, pending: false }
-            : { ...before, error: { message: result.message, line: result.line, column: result.column }, pending: false },
-        );
-      });
-    }, COMPILE_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [source, folder, attached]);
-
-  // Typing marks the preview stale at once; the compile above clears it.
-  const [seen, setSeen] = useState({ source, folder });
-  if (seen.source !== source || seen.folder !== folder) {
-    setSeen({ source, folder });
-    if (!compiled.pending) setCompiled({ ...compiled, pending: true });
-  }
-  return compiled;
-};
-
-type BoundaryProps = { children: ReactNode };
-type BoundaryState = { error?: Error };
-
-/** A component in the document that throws is caught here rather than taking the page down. */
-class PreviewBoundary extends Component<BoundaryProps, BoundaryState> {
-  state: BoundaryState = {};
-
-  static getDerivedStateFromError(error: Error): BoundaryState {
-    return { error };
-  }
-
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.warn("MDX editor: a component in the document threw", error, info.componentStack);
-  }
-
-  render() {
-    if (this.state.error !== undefined) {
-      return (
-        <InlineAlert severity="error" title="A component in the document failed" testId="mdx-editor-render-error">
-          {this.state.error.message}
-        </InlineAlert>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-const whereOf = ({ line, column }: { line?: number; column?: number }) =>
-  line === undefined ? "" : column === undefined ? `Line ${line}: ` : `Line ${line}, column ${column}: `;
 
 /**
  * A step of saving, kept as what was asked rather than as a closure — so a
@@ -528,8 +450,8 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           onClose={() => setAddPgnOpen(false)}
           hasFile={draft.file !== ""}
           folder={folder}
-          taken={namesIn(draft.body)}
-          pgnNames={pgnNamesIn(draft.body)}
+          body={draft.body}
+          attached={attached}
           onAdd={addPgn}
           onInsert={insertExample}
           busy={busy}
