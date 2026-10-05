@@ -116,3 +116,39 @@ export const withPgnImports = (body: string, files: readonly (string | PgnImport
   if (leading > 0) return { body: [...lines.slice(0, leading), ...added, ...lines.slice(leading)].join("\n"), imports };
   return { body: body.trim() === "" ? `${added.join("\n")}\n` : `${added.join("\n")}\n\n${body}`, imports };
 };
+
+/** One of the article's PGNs — a file beside it, imported, or one written into the content. */
+export type ArticlePgn = { name: string; kind: "file"; file: string } | { name: string; kind: "inline"; text: string };
+
+const DEFINITION = /^[ \t]*(?:import\s+([A-Za-z_$][\w$]*)\s+from\s+["']([^"'\n]+\.pgn)\?raw["'];?|export\s+const\s+([A-Za-z_$][\w$]*)\s*=\s*`((?:\\[\s\S]|[^`\\])*)`)[ \t]*$/gm;
+
+/**
+ * **The article's PGNs** (CTA-137) — read from the content itself, so the
+ * list is never out of step with it: each `import x from "./….pgn?raw"`
+ * (a file beside the article) and each `export const x = \`…\`` (a PGN
+ * written in), in the order they appear. An inline one's text is the
+ * literal's, its escapes undone.
+ */
+export const articlePgnsOf = (body: string): ArticlePgn[] =>
+  [...body.matchAll(DEFINITION)].map((match) =>
+    match[1] !== undefined
+      ? { name: match[1], kind: "file", file: match[2] }
+      : { name: match[3], kind: "inline", text: match[4].replace(/\\([`\\$])/g, "$1") },
+  );
+
+/** How many times the content uses a name, its own definition aside — the components reading a PGN. */
+export const usesOf = (body: string, name: string): number => Math.max(0, (body.match(new RegExp(`(?<![\\w$])${name.replace(/\$/g, "\\$")}(?![\\w$])`, "g")) ?? []).length - 1);
+
+/** The content without a PGN's definition — its import line or its inline block, and the blank line after it. */
+export const withoutPgn = (body: string, name: string): string => {
+  for (const match of body.matchAll(DEFINITION)) {
+    if ((match[1] ?? match[3]) !== name) continue;
+    const start = match.index;
+    let end = start + match[0].length;
+    if (body[end] === "\n") end += 1;
+    // A blank line left between two blocks goes too, so none doubles.
+    if (body[end] === "\n" && (start === 0 || body[start - 1] === "\n")) end += 1;
+    return body.slice(0, start) + body.slice(end);
+  }
+  return body;
+};

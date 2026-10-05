@@ -20,7 +20,7 @@ export type MovesLine = { line: string; start: string };
 /** The game the examples are written for: a PGN the article binds, by its name, or a Library game — each with its first moves. */
 export type ExampleSource = { kind: "pgn"; name: string; moves?: MovesLine } | { kind: "library"; game: LibraryGame; moves?: MovesLine };
 
-export type CatalogEntry = {
+type CatalogEntry = {
   /** Unique across the catalog — a tree row's id. */
   id: string;
   /** What it shows, in a word or two — "Swiss standings". */

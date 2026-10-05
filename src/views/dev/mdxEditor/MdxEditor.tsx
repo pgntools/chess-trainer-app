@@ -8,6 +8,7 @@ import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SaveAsRoundedIcon from "@mui/icons-material/SaveAsRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
+import WidgetsRoundedIcon from "@mui/icons-material/WidgetsRounded";
 
 import { SelectAutocomplete } from "../../../design-system/components/autocompletes";
 import { ConfirmDialog } from "../../../design-system/components/dialogs";
@@ -22,9 +23,10 @@ import { articleOptions, folderOf, loadArticleSource } from "./articleSources";
 import { MetadataPane } from "./MetadataPane";
 import { PreviewBoundary } from "./mdxPreview";
 import { PREVIEW_COMPONENTS, useCompiled, whereOf } from "./useCompiled";
+import AddComponentDialog from "./AddComponentDialog";
 import AddPgnDialog, { type PgnToAdd } from "./AddPgnDialog";
 import { insertBlock } from "./componentCatalog";
-import { withInlinePgn, withPgnImports } from "./pgnImports";
+import { articlePgnsOf, usesOf, withInlinePgn, withoutPgn, withPgnImports } from "./pgnImports";
 import { BIG_PGN_BYTES, pgnBytesOf, sizeOf } from "./pgnPages";
 import { starterFrontmatter, todayIso } from "./metadataYaml";
 import SaveArticleDialog from "./SaveArticleDialog";
@@ -64,14 +66,18 @@ import { useScrollSync } from "./useScrollSync";
  *   name), and Save as somewhere else writes a new file, leaving the first
  *   alone. Writing over another file asks first; a service that is not
  *   running is a dialog naming the command. Nothing is moved or deleted.
- *   **Add PGN** (`AddPgnDialog`) takes a PGN — uploaded or pasted — as a
- *   file beside the article, written by the service and imported
- *   (`import <name> from "./<file>.pgn?raw"`), or inline, written into the
- *   content as `export const <name> = \`…\`` (`pgnImports.ts`); the preview
- *   reads either at once. Its Output element tab gives each component's
- *   markup reading that PGN (`componentCatalog.ts`), to copy or insert at
- *   the caret. A PGN file for an article with no folder yet saves the
- *   article first (the save dialog), then goes beside it.
+ * - **A PGN, and the components that show it** (CTA-137) — apart, as one
+ *   PGN can feed several components. **Add PGN** (`AddPgnDialog`) lists the
+ *   article's PGNs, read from the content (`articlePgnsOf`), removes one,
+ *   and adds one — uploaded or pasted — as a file beside the article,
+ *   written by the service and imported (`import <name> from
+ *   "./<file>.pgn?raw"`; an article with no folder yet is saved first), or
+ *   inline, written into the content as `export const <name> = \`…\``
+ *   (up to 100 KB). **Add component** (`AddComponentDialog`) takes one of
+ *   those PGNs, or a Library game by its address, then a component that
+ *   fits it (`componentCatalog.ts`), its markup to copy or insert at the
+ *   caret over the component rendered. The preview reads a PGN just
+ *   written at once.
  *   Copy and Download still give the text without the service. The draft is
  *   kept for the tab's session, so a reload or a visit to another screen
  *   keeps it.
@@ -253,6 +259,8 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
 
   // Add PGN (CTA-137): the dialog, and what its last add came to.
   const [addPgnOpen, setAddPgnOpen] = useState(false);
+  /** Add component: open, and the PGN it opened on (Add PGN's "Add component"). */
+  const [addComponent, setAddComponent] = useState<{ pgn?: string }>();
   const [pgnAdded, setPgnAdded] = useState<{ seq: number; name: string; message: string }>();
   const [addPgnError, setAddPgnError] = useState<string>();
   /** A PGN file Add PGN holds while an article with no folder yet is saved — then written beside it, and imported. */
@@ -364,11 +372,21 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
     setPgnAdded((before) => ({ seq: (before?.seq ?? 0) + 1, name, message }));
   };
 
+  /** A PGN taken out of the content — its import or its inline block. A file stays on disk: nothing is deleted. */
+  const removePgn = (name: string) => {
+    const pgn = articlePgnsOf(draft.body).find((candidate) => candidate.name === name);
+    if (pgn === undefined) return;
+    const uses = usesOf(draft.body, name);
+    if (uses > 0 && !window.confirm(`The content uses ${name} ${uses === 1 ? "once" : `${uses} times`} — remove the PGN anyway? What reads it will not render.`)) return;
+    setDraft((current) => ({ ...current, body: withoutPgn(current.body, name) }));
+    setNotice(pgn.kind === "file" ? `Removed ${name} from the content — ${pgn.file} stays beside the article.` : `Removed ${name}, written in, from the content.`);
+  };
+
   /** An example from the dialog, put into the content where the caret is (at its end with no caret). */
   const insertExample = (code: string) => {
     const caret = sourceRef.current?.selectionStart ?? draft.body.length;
     setDraft((current) => ({ ...current, body: insertBlock(current.body, caret, code) }));
-    setAddPgnOpen(false);
+    setAddComponent(undefined);
     setTab("content");
     setNotice(`Inserted ${code.split(/[\s>]/)[0]}> into the content.`);
   };
@@ -414,7 +432,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           variant="outlined"
           startIcon={<UploadFileRoundedIcon />}
           onClick={() => {
-            // A fresh dialog: step 1 again, nothing added yet.
+            // A fresh dialog: nothing added yet.
             setAddPgnError(undefined);
             setPgnAdded(undefined);
             setAddPgnOpen(true);
@@ -423,6 +441,9 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           data-testid="mdx-editor-add-pgn"
         >
           Add PGN
+        </Button>
+        <Button size="small" variant="outlined" startIcon={<WidgetsRoundedIcon />} onClick={() => setAddComponent({})} disabled={busy} data-testid="mdx-editor-add-component">
+          Add component
         </Button>
         <Button size="small" startIcon={<ContentCopyRoundedIcon />} onClick={() => void copy()} data-testid="mdx-editor-copy">
           Copy MDX
@@ -469,12 +490,32 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           hasFile={draft.file !== ""}
           folder={folder}
           body={draft.body}
-          attached={attached}
           onAdd={addPgn}
-          onInsert={insertExample}
+          onRemove={removePgn}
+          onAddComponent={(pgn) => {
+            setAddPgnOpen(false);
+            setAddComponent({ pgn });
+          }}
           busy={busy}
           added={pgnAdded}
           error={addPgnError}
+        />
+      )}
+      {addComponent !== undefined && (
+        <AddComponentDialog
+          open
+          onClose={() => setAddComponent(undefined)}
+          folder={folder}
+          body={draft.body}
+          attached={attached}
+          initialPgn={addComponent.pgn}
+          onInsert={insertExample}
+          onAddPgn={() => {
+            setAddComponent(undefined);
+            setAddPgnError(undefined);
+            setPgnAdded(undefined);
+            setAddPgnOpen(true);
+          }}
         />
       )}
       <ConfirmDialog

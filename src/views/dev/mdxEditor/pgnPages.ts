@@ -24,7 +24,7 @@ export const sizeOf = (bytes: number): string => (bytes >= 1024 * 1024 ? `${(byt
 export const GAMES_PER_PAGE = 10;
 
 /** The PGN's games, each its tags and its moves — split where a blank line comes before a tag. */
-export const pgnGamesOf = (text: string): string[] =>
+const pgnGamesOf = (text: string): string[] =>
   text
     .trim()
     .split(/\r?\n[ \t]*\r?\n(?=\[)/)
