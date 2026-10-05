@@ -20,6 +20,14 @@ describe("BaseDialog", () => {
     expect(screen.getByRole("dialog", { name: "Title" })).toBeInTheDocument();
   });
 
+  it("takes the window's width at width full, and caps it at xs by default (CTA-137)", () => {
+    const { unmount } = render(<BaseDialog open onClose={() => {}} testId="probe" title="Title" width="full" />);
+    expect(screen.getByRole("dialog", { name: "Title" }).className).toMatch(/MuiDialog-paperWidthFalse/);
+    unmount();
+    render(<BaseDialog open onClose={() => {}} testId="probe" title="Title" />);
+    expect(screen.getByRole("dialog", { name: "Title" }).className).toMatch(/MuiDialog-paperWidthXs/);
+  });
+
   it("leaves out the content and actions rows it is not given", () => {
     render(<BaseDialog open onClose={() => {}} testId="probe" title="Title" />);
     expect(screen.queryByTestId("probe-content")).toBeNull();

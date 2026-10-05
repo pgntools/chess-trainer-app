@@ -15,10 +15,11 @@ Gallery: `/dev/design/dialogs` — every variation open in its own frame
 - **Purpose** — the dialog every dialog is built on: a title, a body, an
   actions row, at one of two widths, labelled by its title.
 - **Props** — `open`, `onClose`, `title`, `children?` (the body, in
-  `DialogContent`), `actions?` (in `DialogActions`), `width?: "xs" | "sm"`
-  (default `xs`), `fullWidth?` (default `true`), `dividers?`, `testId`,
+  `DialogContent`), `actions?` (in `DialogActions`), `width?: "xs" | "sm" |
+  "full"` (default `xs`; `full` the window's width less a margin, 8 px on a
+  phone, 32 px from `sm` — a workspace, the MDX editor's Add PGN, CTA-137), `fullWidth?` (default `true`), `dividers?`, `testId`,
   `dialogProps?`. Ids: `<testId>`, `-title`, `-content`, `-actions`.
-- **Variations** — `xs` / `sm`; full width or sized to the content; dividers
+- **Variations** — `xs` / `sm` / `full`; full width or sized to the content; dividers
   (a scrolling body); no actions row.
 - **Replaces** — the bare `Dialog` + `DialogTitle` + `DialogContent` +
   `DialogActions` stack of every entry in
