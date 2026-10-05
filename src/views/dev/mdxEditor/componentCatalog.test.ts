@@ -35,7 +35,7 @@ describe("the component examples", () => {
     expect(codeOf(pgn, "single-board")).toBeUndefined();
     expect(codeOf(pgn, "position-moves")).toBe('<InlinePgnGame pgn="1. d4 d5" start="1..." caption="…" />');
     // Every folder, for either kind of game.
-    expect(catalogFor(library).map((folder) => folder.title)).toEqual(["Single game", "Specific player", "Repertoire", "Tournament", "Position", "Puzzle"]);
+    expect(catalogFor(library).map((folder) => folder.title)).toEqual(["Single game", "Specific player", "Games set", "Repertoire", "Tournament", "Position", "Puzzle"]);
   });
 });
 

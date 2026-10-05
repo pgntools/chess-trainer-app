@@ -1,8 +1,8 @@
 /**
  * **The components an article embeds, as examples to drop in** (CTA-137) —
  * the MDX editor's Add PGN dialog, its Output element step: folders by
- * what the game is (a single game, a player's, a repertoire, a tournament,
- * a position, a puzzle), each holding the components that show that.
+ * what the game is (a single game, a player's, a set of games gathered by
+ * no rule, a repertoire, a tournament, a position, a puzzle), each holding the components that show that.
  * Every entry writes its markup for the game step 1 chose — a PGN of the
  * article's own (`pgn={<its name>}`) or a game in the Library (its
  * address) — or nothing, where no component shows that from that kind of
@@ -94,6 +94,32 @@ export const CATALOG: readonly CatalogFolder[] = [
         summary: "Not built yet — one player's games out of the PGN, as a table and a board",
         mock: true,
         code: (source) => (pgnOf(source) === undefined ? undefined : `<PlayerGames pgn={${pgnOf(source)}} player="…" />`),
+      },
+    ],
+  },
+  {
+    id: "games-set",
+    title: "Games set",
+    entries: [
+      {
+        id: "set-row",
+        label: "Its games side by side",
+        summary: "A row of the set's first games, each on a board of its own — any games, gathered by no rule",
+        code: (source) => {
+          const name = pgnOf(source);
+          if (name !== undefined) return `<BoardRow>\n${[1, 2, 3].map((game) => `  <InlinePgnGame pgn={${name}} game="${game}" />`).join("\n")}\n</BoardRow>`;
+          const { collection, number } = libraryOf(source) ?? { collection: "", number: 1 };
+          return `<BoardRow>\n${[0, 1, 2].map((step) => `  <CollectionGameBoard game="${gamePath({ collection, number: number + step })}" />`).join("\n")}\n</BoardRow>`;
+        },
+      },
+      {
+        id: "set-collection",
+        label: "The set as a collection",
+        summary: "The Library collection the game is in: a board on it, a table of the set's games",
+        code: (source) => {
+          const game = libraryOf(source);
+          return game === undefined ? undefined : `<CollectionCard _id="/library/${game.collection}" showGame="${game.number}" />`;
+        },
       },
     ],
   },
