@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { pgnImportName, withPgnImports } from "./pgnImports";
+import { pgnImportName, pgnNamesIn, withInlinePgn, withPgnImports } from "./pgnImports";
 
 /*
   The import line the MDX editor adds for a PGN attached to an article
@@ -44,5 +44,22 @@ describe("withPgnImports", () => {
     ]);
     expect(result.body).toBe('import games from "./cup.pgn?raw"\nimport olym262 from "./olym26.pgn?raw"\nexport const olym26 = 1\n\n## Title');
     expect(withPgnImports(body, ["cup.pgn"]).body).toBe(body);
+  });
+});
+
+describe("withInlinePgn", () => {
+  it("writes the PGN into the body after its imports, escaped so the text is the PGN's own", () => {
+    const pgn = '[Event "A `quoted` ${x} \\\\ cup"]\n\n1. e4 *\n';
+    const body = withInlinePgn('import games from "./cup.pgn?raw"\n## Title', "club", pgn);
+    expect(body).toBe('import games from "./cup.pgn?raw"\n\nexport const club = `[Event "A \\`quoted\\` \\${x} \\\\\\\\ cup"]\n\n1. e4 *`\n\n## Title');
+    // The template literal reads back to the PGN exactly.
+    const literal = /export const club = (`[\s\S]*`)\n\n## Title/.exec(body)?.[1] ?? "";
+    expect(new Function(`return ${literal}`)()).toBe(pgn.trim());
+    expect(withInlinePgn("", "g", "1. d4 *")).toBe("export const g = `1. d4 *`\n");
+    expect(withInlinePgn("## T", "g", "1. d4 *")).toBe("export const g = `1. d4 *`\n\n## T");
+  });
+
+  it("lists the names a component can take as its PGN, imported or written in", () => {
+    expect(pgnNamesIn('import games from "./cup.pgn?raw"\nimport x from "./y.js"\n\nexport const club = `1. e4 *`\nexport const n = 3')).toEqual(["games", "club"]);
   });
 });

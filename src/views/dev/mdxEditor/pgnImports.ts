@@ -11,7 +11,7 @@ export type PgnImport = { file: string; name: string };
 const IMPORT_LINE = /^\s*import\s+([A-Za-z_$][\w$]*)\s+from\s+["']([^"']+)["']/;
 
 /** Every name the body binds at its top level — its imports and exports — which a new import may not take. */
-const namesIn = (body: string): Set<string> =>
+export const namesIn = (body: string): Set<string> =>
   new Set([...body.matchAll(/^\s*(?:import\s+([A-Za-z_$][\w$]*)\s+from|export\s+(?:const|let|var|function)\s+([A-Za-z_$][\w$]*))/gm)].map((match) => match[1] ?? match[2]));
 
 /**
@@ -31,12 +31,47 @@ export const pgnImportName = (file: string, taken: ReadonlySet<string>): string 
   return name;
 };
 
+/** A name an article can bind: a JavaScript identifier. */
+export const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+
+/**
+ * The names the body binds to a PGN — an `import x from "./….pgn?raw"`, or
+ * an `export const x = \`…\`` written in it — in the order they appear:
+ * what a component's `pgn={…}` can take.
+ */
+export const pgnNamesIn = (body: string): string[] =>
+  [...body.matchAll(/^\s*(?:import\s+([A-Za-z_$][\w$]*)\s+from\s+["'][^"']+\.pgn\?raw["']|export\s+const\s+([A-Za-z_$][\w$]*)\s*=\s*`)/gm)].map((match) => match[1] ?? match[2]);
+
+/** The number of lines the body starts with that are imports. */
+const leadingImports = (lines: readonly string[]): number => {
+  let leading = 0;
+  while (leading < lines.length && IMPORT_LINE.test(lines[leading])) leading += 1;
+  return leading;
+};
+
+/**
+ * The body with a PGN written into it (CTA-137) — `export const <name> =
+ * \`<the PGN>\`` after its imports, a blank line either side — so it needs
+ * no file. A backtick, a backslash or a `${` in the PGN is escaped, so the
+ * text is the PGN's exactly.
+ */
+export const withInlinePgn = (body: string, name: string, pgn: string): string => {
+  const escaped = pgn.trim().replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
+  const block = `export const ${name} = \`${escaped}\``;
+  const lines = body.split("\n");
+  const leading = leadingImports(lines);
+  if (leading === 0) return body.trim() === "" ? `${block}\n` : `${block}\n\n${body}`;
+  const rest = lines.slice(leading);
+  return [...lines.slice(0, leading), "", block, ...(rest[0] === "" ? rest : ["", ...rest])].join("\n");
+};
+
 /**
  * The body importing each of `files` (PGNs beside the article): a file it
  * imports already keeps its line and name; the others get a line each,
- * after the imports the body starts with, or at its top.
+ * after the imports the body starts with, or at its top — under the name
+ * given with it, else one made from the file's.
  */
-export const withPgnImports = (body: string, files: readonly string[]): { body: string; imports: PgnImport[] } => {
+export const withPgnImports = (body: string, files: readonly (string | PgnImport)[]): { body: string; imports: PgnImport[] } => {
   const lines = body.split("\n");
   const existing = new Map<string, string>();
   for (const line of lines) {
@@ -46,21 +81,21 @@ export const withPgnImports = (body: string, files: readonly string[]): { body: 
   const taken = namesIn(body);
   const imports: PgnImport[] = [];
   const added: string[] = [];
-  for (const file of files) {
+  for (const entry of files) {
+    const file = typeof entry === "string" ? entry : entry.file;
     const known = existing.get(`./${file}`);
     if (known !== undefined) {
       imports.push({ file, name: known });
       continue;
     }
-    const name = pgnImportName(file, taken);
+    const name = typeof entry === "string" ? pgnImportName(file, taken) : entry.name;
     taken.add(name);
     existing.set(`./${file}`, name);
     imports.push({ file, name });
     added.push(`import ${name} from "./${file}?raw"`);
   }
   if (added.length === 0) return { body, imports };
-  let leading = 0;
-  while (leading < lines.length && IMPORT_LINE.test(lines[leading])) leading += 1;
+  const leading = leadingImports(lines);
   if (leading > 0) return { body: [...lines.slice(0, leading), ...added, ...lines.slice(leading)].join("\n"), imports };
   return { body: body.trim() === "" ? `${added.join("\n")}\n` : `${added.join("\n")}\n\n${body}`, imports };
 };
