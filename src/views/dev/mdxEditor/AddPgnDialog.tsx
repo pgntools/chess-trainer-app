@@ -249,7 +249,7 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, onAdd, onRemove, o
           )}
         </Box>
 
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minHeight: 0 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minHeight: 0, overflowY: { md: "auto" } }}>
           <Typography component="label" htmlFor={`${ID}-text`} variant="subtitle2">
             PGN
           </Typography>

@@ -5,13 +5,14 @@
  * the editor's own monospace box for machine text.
  */
 
-/** Two columns from `md`, filling the dialog's height, each scrolling on its own; below `md` one over the other, the page scrolling. */
+/** Two columns from `md`, filling the dialog's body, each scrolling on its own; below `md` one over the other, the body scrolling. */
 export const COLUMNS = {
   display: "grid",
   gap: 2,
   gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(340px, 520px) minmax(0, 1fr)" },
   gridTemplateRows: { md: "minmax(0, 1fr)" },
-  height: { md: "max(440px, calc(100vh - 200px))" },
+  // From md the dialog (width="full") has a definite height: the columns fill its body exactly, so the body itself never scrolls.
+  height: { md: "100%" },
 } as const;
 
 /** The inline-start column: a stack of controls, scrolling on its own from `md`. */

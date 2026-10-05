@@ -7,12 +7,13 @@ import { useTheme, type SxProps, type Theme } from "@mui/material/styles";
 
 import type { VisibleLabel } from "../../a11y";
 
-/** `width="full"`: the window less a margin either side — 8 px on a phone, 32 px from `sm` up. */
+/** `width="full"`: the window less a margin either side — 8 px on a phone, 32 px from `sm` up — and from `md` its whole height, so the body's room is definite. */
 const FULL_WIDTH_SX: SxProps<Theme> = {
   "& .MuiDialog-paper": {
     m: { xs: 1, sm: 4 },
     width: { xs: "calc(100% - 16px)", sm: "calc(100% - 64px)" },
     maxHeight: { xs: "calc(100% - 16px)", sm: "calc(100% - 64px)" },
+    height: { md: "calc(100% - 64px)" },
   },
 };
 
@@ -31,7 +32,8 @@ export type BaseDialogProps = {
   /**
    * The paper's cap — `xs` for a question or a short form, `sm` for a longer
    * body, `full` for a workspace (CTA-137): the window's width less a margin,
-   * narrower on a phone.
+   * narrower on a phone — and from `md` its height too, so a body can fill
+   * the room between the title and the actions exactly (`height: 100%`).
    */
   width?: "xs" | "sm" | "full";
   /** Stretch to the cap (the default) rather than to the content. */
