@@ -9,13 +9,21 @@ import { InlineAlert, StatusText } from "../../../design-system/components/feedb
 import { FileInputButton, RadioGroupField, SelectField, TextInputField } from "../../../design-system/components/forms";
 import { PickerList } from "../../../design-system/components/lists";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
-import { COMPONENT_EXAMPLES } from "./componentCatalog";
+import { libraryGameReference, loadReferencedGames, resolveGameReference } from "../../../lib/gameReference";
+import { libraryGamePathOf } from "../../home/frontPage/paths";
+import { LIBRARY_EXAMPLES, PGN_EXAMPLES, type ComponentExample, type LibraryGame } from "./componentCatalog";
 import { SnippetPreview } from "./mdxPreview";
 import { IDENTIFIER, namesIn, pgnDefinitionsIn, pgnImportName } from "./pgnImports";
 
 /** A PGN's file name — what the storage service takes. */
 const PGN_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]*\.pgn$/;
 const ID = "mdx-editor-add-pgn";
+
+/** Where step 1's game comes from: a PGN of the article's own, or a game in the Library. */
+type SourceKind = "pgn" | "library";
+
+/** A game step 1 gave step 2: a PGN added to the article, by the name it binds, or a Library game, by its address. */
+type Source = { kind: "pgn"; id: string; name: string } | { kind: "library"; id: string; game: LibraryGame; label: string };
 
 /** Both tabs: a column of controls at the inline start, the text it is about filling the rest — one over the other below `md`. */
 const COLUMNS = {
@@ -66,7 +74,7 @@ type AddPgnDialogProps = {
   onInsert: (code: string) => void;
   /** A PGN file is being written. */
   busy: boolean;
-  /** What the last add came to; a new `seq` turns to the Output element tab with that PGN. */
+  /** What the last PGN add came to; a new `seq` turns to the Output element tab with that PGN. */
   added?: { seq: number; name: string; message: string };
   /** Why the service would not write it. */
   error?: string;
@@ -74,21 +82,23 @@ type AddPgnDialogProps = {
 
 /**
  * **Add PGN** (CTA-137) — the MDX editor's way to give an article a game
- * and show it, in two steps: step 2 opens once step 1 has added a PGN, and
- * reads only the PGNs added here — never one the content had already.
+ * and show it, in two steps: step 2 opens once step 1 has a game for it,
+ * and shows only the games step 1 gave it in this dialog.
  *
- * - **PGN file**: upload a `.pgn` or paste one, name it, and choose how the
- *   article holds it — **as a file** beside the article (written by the
- *   storage service, `import <name> from "./<file>.pgn?raw"`; an article
- *   with no file yet has no folder for it), or **inline** (`export const
- *   <name> = \`…\`` in the content — nothing to save but the article).
- * - **Output element**: the components an article embeds, in a sidebar at
- *   the inline start; the one picked shows its markup beside them, reading
- *   the PGN by its name, in a box to adjust, copy or insert at the caret.
- *   Above, the code in a box to adjust, copy or insert; below, filling the
- *   rest, the component rendered as the article will render it — reading
- *   the content's PGNs (`pgnDefinitionsIn`), the chosen one by its name.
- *   Adding a PGN turns here, with it chosen.
+ * - **1. PGN file** — the game, from one of two places:
+ *   - **a PGN** — uploaded or pasted, named, and held **as a file** beside
+ *     the article (written by the storage service, `import <name> from
+ *     "./<file>.pgn?raw"`; an article with no file yet has no folder for
+ *     it) or **inline** (`export const <name> = \`…\`` in the content —
+ *     nothing to save but the article);
+ *   - **a game in the Library** — its address, `/library/<collection>/<n>`,
+ *     as its page shows it, looked up before step 2 opens on it.
+ * - **2. Output element** — in a sidebar at the inline start, only the
+ *   components that fit that game: a PGN's (`pgn={…}`), or a Library
+ *   game's and its collection's. The one picked shows its markup in a box
+ *   on top — to adjust, copy or insert at the caret — and, filling the
+ *   rest, the component rendered as the article will render it (a PGN read
+ *   through its definition in the content, `pgnDefinitionsIn`).
  *
  * The dialog is the window's width (`width="full"`); each tab two columns
  * from `md`, one over the other below it.
@@ -96,22 +106,31 @@ type AddPgnDialogProps = {
 function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, onInsert, busy, added, error }: AddPgnDialogProps) {
   const taken = namesIn(body);
   const [tab, setTab] = useState<"pgn" | "output">("pgn");
+  const [kind, setKind] = useState<SourceKind>("pgn");
   const [how, setHow] = useState<PgnHolding>(hasFile ? "file" : "inline");
   const [text, setText] = useState("");
   const [fileName, setFileName] = useState("");
   const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [lookup, setLookup] = useState<{ looking: true } | { looking: false; problem: string }>();
+  /** The Library game found last — its PGN shown beside the address. */
+  const [found, setFound] = useState<{ address: string; label: string; pgn: string }>();
   const [component, setComponent] = useState<string>();
-  const [chosenPgn, setChosenPgn] = useState<string>();
-  /** The PGNs added in this dialog, in order — what step 2 offers; until there is one, it is closed. */
-  const [names, setNames] = useState<string[]>([]);
+  /** The games step 1 gave step 2, in order — until there is one, step 2 is closed. */
+  const [sources, setSources] = useState<Source[]>([]);
+  const [chosen, setChosen] = useState<string>();
+
+  const addSource = (source: Source) => {
+    setSources((before) => [...before.filter((known) => known.id !== source.id), source]);
+    setChosen(source.id);
+    setTab("output");
+  };
 
   // A PGN added: step 2, reading it, and the form cleared for the next.
   const [seenSeq, setSeenSeq] = useState(added?.seq);
   if (added !== undefined && added.seq !== seenSeq) {
     setSeenSeq(added.seq);
-    setNames((before) => [...before.filter((known) => known !== added.name), added.name]);
-    setTab("output");
-    setChosenPgn(added.name);
+    addSource({ kind: "pgn", id: added.name, name: added.name });
     setText("");
     setFileName("");
     setName("");
@@ -121,6 +140,21 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
     setText(await file.text());
     setFileName(file.name);
     setName(pgnImportName(file.name, taken));
+  };
+
+  /** The address looked up in the Library: step 2 opens on the game, or step 1 says why not. */
+  const lookUpLibraryGame = async () => {
+    const path = libraryGamePathOf(address);
+    if (path === undefined) return setLookup({ looking: false, problem: "A game's address is /library/<collection>/<n> — copy it from the game's page." });
+    setLookup({ looking: true });
+    const reference = libraryGameReference(path.collectionId, path.number);
+    await loadReferencedGames(reference);
+    const game = resolveGameReference(reference);
+    if (game === undefined) return setLookup({ looking: false, problem: `The Library has no game ${path.number} in the collection ${path.collectionId}.` });
+    setLookup(undefined);
+    const id = `/library/${path.collectionId}/${path.number}`;
+    setFound({ address: id, label: game.name, pgn: game.pgn });
+    addSource({ kind: "library", id, game: { collection: path.collectionId, number: path.number }, label: game.name });
   };
 
   const theName = name.trim() === "" ? pgnImportName("games.pgn", taken) : name.trim();
@@ -134,10 +168,20 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
   const blocked = text.trim() === "" || nameProblem !== undefined || fileProblem !== undefined || (how === "file" && !hasFile) || busy;
   const path = `${folder === "" ? "" : `${folder}/`}${theFile}`;
 
-  const pgn = chosenPgn !== undefined && names.includes(chosenPgn) ? chosenPgn : (names.at(-1) ?? "");
-  const example = COMPONENT_EXAMPLES.find((candidate) => candidate.name === component);
-  const items = (usesPgn: boolean) =>
-    COMPONENT_EXAMPLES.filter((candidate) => candidate.usesPgn === usesPgn).map((candidate) => ({
+  // Step 2: the game it shows, and the components that fit it.
+  const source = sources.find((candidate) => candidate.id === chosen) ?? sources.at(-1);
+  const groups: { title: string; examples: readonly ComponentExample[] }[] =
+    source === undefined
+      ? []
+      : source.kind === "pgn"
+        ? [{ title: "From the PGN", examples: PGN_EXAMPLES }]
+        : [
+            { title: "This game", examples: LIBRARY_EXAMPLES.filter((candidate) => candidate.shows === "game") },
+            { title: "Its collection", examples: LIBRARY_EXAMPLES.filter((candidate) => candidate.shows === "collection") },
+          ];
+  const example = groups.flatMap((group) => group.examples).find((candidate) => candidate.name === component);
+  const itemsOf = (examples: readonly ComponentExample[]) =>
+    examples.map((candidate) => ({
       id: candidate.name,
       label: (
         <>
@@ -146,12 +190,22 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
         </>
       ),
     }));
+  const exampleCode =
+    example === undefined || source === undefined
+      ? ""
+      : example.takes === "pgn"
+        ? source.kind === "pgn"
+          ? example.code(source.name)
+          : ""
+        : source.kind === "library"
+          ? example.code(source.game)
+          : "";
+  const sourceLabel = (candidate: Source) => (candidate.kind === "pgn" ? `${candidate.name} — the PGN added` : `${candidate.label} — ${candidate.id}`);
 
-  // What the preview compiles: the content's PGNs, then the code — which reads them by name.
-  const definitions = pgnDefinitionsIn(body, names);
+  // What the preview compiles: a PGN's definition in the content, then the code that reads it by name.
+  const definitions = source?.kind === "pgn" ? pgnDefinitionsIn(body, [source.name]) : { source: "", lines: 0 };
 
-  // The code on the right: the picked example, for the reader to adjust before copying or inserting it.
-  const exampleCode = example?.code(pgn) ?? "";
+  // The code on top: the picked example, for the reader to adjust before copying or inserting it.
   const [code, setCode] = useState(exampleCode);
   const [seenCode, setSeenCode] = useState(exampleCode);
   const [copied, setCopied] = useState<"copied" | "failed">();
@@ -188,11 +242,11 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
       <PanelTabs
         tabs={[
           { id: "pgn", label: "1. PGN file" },
-          // Step 2 opens once there is a PGN to show.
-          { id: "output", label: "2. Output element", disabled: names.length === 0 },
+          // Step 2 opens once step 1 has a game for it.
+          { id: "output", label: "2. Output element", disabled: sources.length === 0 },
         ]}
         value={tab}
-        onChange={(id) => setTab(id === "output" && names.length > 0 ? "output" : "pgn")}
+        onChange={(id) => setTab(id === "output" && sources.length > 0 ? "output" : "pgn")}
         size="compact"
         fullWidth={false}
         ariaLabel="Add PGN"
@@ -203,92 +257,156 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
         {tab === "pgn" ? (
           <>
             <Box sx={{ display: "grid", gap: 2, alignContent: "start", minHeight: 0, overflowY: { md: "auto" } }}>
-              <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
-                <FileInputButton label="Upload PGN" accept=".pgn" onFiles={(files) => void upload(files[0])} variant="outlined" size="small" testId={`${ID}-upload`} />
-                <Typography variant="body2" color="text.secondary">
-                  or paste it into the box
-                </Typography>
-              </Box>
               <RadioGroupField
-                label="How the article holds it"
-                row
+                label="Where the game comes from"
                 options={[
-                  { value: "file", label: "As a file" },
-                  { value: "inline", label: "Inline" },
+                  { value: "pgn", label: "A PGN — upload or paste it" },
+                  { value: "library", label: "A game in the Library — by its address" },
                 ]}
-                value={how}
-                onChange={setHow}
-                help={
-                  how === "file"
-                    ? "A .pgn beside the article, written now by the storage service and imported — best for a long game or a whole event."
-                    : "Written into the content as export const — nothing to save but the article."
-                }
-                testId={`${ID}-how`}
+                value={kind}
+                onChange={setKind}
+                testId={`${ID}-source`}
               />
-              {how === "file" && !hasFile && (
-                <InlineAlert severity="info" title="The article has no folder yet" testId={`${ID}-no-folder`}>
-                  A file goes beside the article: save the article first, or add the PGN inline.
-                </InlineAlert>
-              )}
-              <TextInputField
-                label="Name in the article"
-                value={name}
-                onChange={setName}
-                placeholder={theName}
-                dir="ltr"
-                error={nameProblem !== undefined}
-                helperText={nameProblem ?? `What a component reads: pgn={${theName}}.`}
-                testId={`${ID}-name`}
-              />
-              {how === "file" && (
-                <TextInputField
-                  label="File name"
-                  value={fileName}
-                  onChange={setFileName}
-                  placeholder={theFile}
-                  dir="ltr"
-                  error={fileProblem !== undefined}
-                  helperText={fileProblem ?? <span dir="ltr">{`src/views/blog/articles/${path}`}</span>}
-                  testId={`${ID}-file-name`}
-                />
-              )}
-              <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
-                <Button
-                  variant="contained"
-                  onClick={() => onAdd({ how, name: theName, fileName: theFile, text })}
-                  disabled={blocked}
-                  aria-busy={busy || undefined}
-                  data-testid={`${ID}-add`}
-                >
-                  Add to the article
-                </Button>
-                {added !== undefined && (
-                  <StatusText tone="info" testId={`${ID}-added`}>
-                    {added.message}
-                  </StatusText>
-                )}
-              </Box>
-              {error !== undefined && (
-                <InlineAlert severity="error" title="The service would not write it" testId={`${ID}-error`}>
-                  {error}
-                </InlineAlert>
+              {kind === "pgn" ? (
+                <>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
+                    <FileInputButton label="Upload PGN" accept=".pgn" onFiles={(files) => void upload(files[0])} variant="outlined" size="small" testId={`${ID}-upload`} />
+                    <Typography variant="body2" color="text.secondary">
+                      or paste it into the box
+                    </Typography>
+                  </Box>
+                  <RadioGroupField
+                    label="How the article holds it"
+                    row
+                    options={[
+                      { value: "file", label: "As a file" },
+                      { value: "inline", label: "Inline" },
+                    ]}
+                    value={how}
+                    onChange={setHow}
+                    help={
+                      how === "file"
+                        ? "A .pgn beside the article, written now by the storage service and imported — best for a long game or a whole event."
+                        : "Written into the content as export const — nothing to save but the article."
+                    }
+                    testId={`${ID}-how`}
+                  />
+                  {how === "file" && !hasFile && (
+                    <InlineAlert severity="info" title="The article has no folder yet" testId={`${ID}-no-folder`}>
+                      A file goes beside the article: save the article first, or add the PGN inline.
+                    </InlineAlert>
+                  )}
+                  <TextInputField
+                    label="Name in the article"
+                    value={name}
+                    onChange={setName}
+                    placeholder={theName}
+                    dir="ltr"
+                    error={nameProblem !== undefined}
+                    helperText={nameProblem ?? `What a component reads: pgn={${theName}}.`}
+                    testId={`${ID}-name`}
+                  />
+                  {how === "file" && (
+                    <TextInputField
+                      label="File name"
+                      value={fileName}
+                      onChange={setFileName}
+                      placeholder={theFile}
+                      dir="ltr"
+                      error={fileProblem !== undefined}
+                      helperText={fileProblem ?? <span dir="ltr">{`src/views/blog/articles/${path}`}</span>}
+                      testId={`${ID}-file-name`}
+                    />
+                  )}
+                  <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
+                    <Button
+                      variant="contained"
+                      onClick={() => onAdd({ how, name: theName, fileName: theFile, text })}
+                      disabled={blocked}
+                      aria-busy={busy || undefined}
+                      data-testid={`${ID}-add`}
+                    >
+                      Add to the article
+                    </Button>
+                    {added !== undefined && (
+                      <StatusText tone="info" testId={`${ID}-added`}>
+                        {added.message}
+                      </StatusText>
+                    )}
+                  </Box>
+                  {error !== undefined && (
+                    <InlineAlert severity="error" title="The service would not write it" testId={`${ID}-error`}>
+                      {error}
+                    </InlineAlert>
+                  )}
+                </>
+              ) : (
+                <>
+                  <TextInputField
+                    label="The game's address"
+                    value={address}
+                    onChange={(value) => {
+                      setAddress(value);
+                      setLookup(undefined);
+                    }}
+                    placeholder="/library/<collection>/<n>"
+                    dir="ltr"
+                    error={lookup?.looking === false}
+                    helperText={lookup?.looking === false ? lookup.problem : "As the address bar shows it on the game's page — /library/ugmuub1nqfeoh2/4511."}
+                    testId={`${ID}-address`}
+                  />
+                  <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
+                    <Button
+                      variant="contained"
+                      onClick={() => void lookUpLibraryGame()}
+                      disabled={address.trim() === "" || lookup?.looking === true}
+                      aria-busy={lookup?.looking === true || undefined}
+                      data-testid={`${ID}-use-game`}
+                    >
+                      Use this game
+                    </Button>
+                    {found !== undefined && (
+                      <StatusText tone="info" testId={`${ID}-found`}>
+                        {`Found ${found.label}.`}
+                      </StatusText>
+                    )}
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Nothing is added to the article: its components name the game by its address.
+                  </Typography>
+                </>
               )}
             </Box>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minHeight: 0 }}>
-              <Typography component="label" htmlFor={`${ID}-text`} variant="subtitle2">
-                PGN
-              </Typography>
-              <Box
-                component="textarea"
-                id={`${ID}-text`}
-                data-testid={`${ID}-text`}
-                dir="ltr"
-                spellCheck={false}
-                value={text}
-                placeholder={'[Event "…"]\n\n1. e4 e5 …'}
-                onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setText(event.target.value)}
-                sx={TEXTAREA_SX}
-              />
+              {kind === "pgn" ? (
+                <>
+                  <Typography component="label" htmlFor={`${ID}-text`} variant="subtitle2">
+                    PGN
+                  </Typography>
+                  <Box
+                    component="textarea"
+                    id={`${ID}-text`}
+                    data-testid={`${ID}-text`}
+                    dir="ltr"
+                    spellCheck={false}
+                    value={text}
+                    placeholder={'[Event "…"]\n\n1. e4 e5 …'}
+                    onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setText(event.target.value)}
+                    sx={TEXTAREA_SX}
+                  />
+                </>
+              ) : found === undefined ? (
+                <StatusText tone="neutral" testId={`${ID}-game-pgn-none`}>
+                  The game's PGN shows here once it is found.
+                </StatusText>
+              ) : (
+                <>
+                  <Typography component="label" htmlFor={`${ID}-game-pgn`} variant="subtitle2">
+                    {`The game's PGN — ${found.address}`}
+                  </Typography>
+                  <Box component="textarea" id={`${ID}-game-pgn`} data-testid={`${ID}-game-pgn`} dir="ltr" readOnly value={found.pgn} sx={TEXTAREA_SX} />
+                </>
+              )}
             </Box>
           </>
         ) : (
@@ -307,48 +425,46 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                 borderColor: { md: "divider" },
               }}
             >
-              {names.length === 1 ? (
-                <StatusText tone="neutral" testId={`${ID}-reading`}>
-                  <>
-                    {"The examples read "}
-                    <Box component="code" dir="ltr">
-                      {pgn}
-                    </Box>
-                    {" — the PGN just added."}
-                  </>
-                </StatusText>
-              ) : (
-                <SelectField
-                  label="The PGN the examples read — added here"
-                  value={pgn}
-                  onChange={setChosenPgn}
-                  options={names.map((value) => ({ value, label: value }))}
-                  optionDir="ltr"
-                  testId={`${ID}-pgn`}
-                />
-              )}
-              <Box>
-                <Typography variant="subtitle2" component="p" sx={{ mb: 0.5 }}>
-                  From the article's PGN
-                </Typography>
-                <PickerList items={items(true)} value={component} onChange={(id) => id !== null && setComponent(id)} ariaLabel="From the article's PGN" testId={`${ID}-pgn-components`} />
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" component="p" sx={{ mb: 0.5 }}>
-                  From the app's data
-                </Typography>
-                <PickerList items={items(false)} value={component} onChange={(id) => id !== null && setComponent(id)} ariaLabel="From the app's data" testId={`${ID}-data-components`} />
-              </Box>
+              {source !== undefined &&
+                (sources.length === 1 ? (
+                  <StatusText tone="neutral" testId={`${ID}-showing`}>
+                    <>
+                      {"The examples show "}
+                      <Box component="span" dir="ltr" sx={{ fontFamily: "monospace" }}>
+                        {source.kind === "pgn" ? source.name : source.id}
+                      </Box>
+                      {source.kind === "pgn" ? " — the PGN just added." : ` — ${source.label}.`}
+                    </>
+                  </StatusText>
+                ) : (
+                  <SelectField
+                    label="The game the examples show"
+                    value={source.id}
+                    onChange={setChosen}
+                    options={sources.map((candidate) => ({ value: candidate.id, label: sourceLabel(candidate) }))}
+                    optionDir="ltr"
+                    testId={`${ID}-showing-select`}
+                  />
+                ))}
+              {groups.map((group) => (
+                <Box key={group.title}>
+                  <Typography variant="subtitle2" component="p" sx={{ mb: 0.5 }}>
+                    {group.title}
+                  </Typography>
+                  <PickerList
+                    items={itemsOf(group.examples)}
+                    value={component}
+                    onChange={(id) => id !== null && setComponent(id)}
+                    ariaLabel={group.title}
+                    testId={`${ID}-components-${group.title.toLowerCase().replace(/\W+/g, "-")}`}
+                  />
+                </Box>
+              ))}
             </Box>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minHeight: 0, overflowY: { md: "auto" } }}>
-              {added !== undefined && (
-                <StatusText tone="info" testId={`${ID}-added-output`}>
-                  {added.message}
-                </StatusText>
-              )}
-              {example === undefined ? (
+              {example === undefined || source === undefined ? (
                 <StatusText tone="neutral" testId={`${ID}-pick`}>
-                  Pick a component on the left: its code shows here, to adjust, copy or insert into the content.
+                  Pick a component on the left: its code shows here, to adjust, copy or insert into the content, and the component under it.
                 </StatusText>
               ) : (
                 <>
@@ -384,20 +500,14 @@ function AddPgnDialog({ open, onClose, hasFile, folder, body, attached, onAdd, o
                     )}
                   </Box>
                   <Typography variant="subtitle2" component="h3" id={`${ID}-preview-label`}>
-                    {`Preview — reading ${pgn}`}
+                    {`Preview — ${source.kind === "pgn" ? source.name : source.id}`}
                   </Typography>
                   <Box
                     role="region"
                     aria-labelledby={`${ID}-preview-label`}
                     sx={{ flex: 1, minHeight: 240, overflowY: "auto", p: 2, border: 1, borderColor: "divider", borderRadius: 1, bgcolor: "background.default" }}
                   >
-                    <SnippetPreview
-                      source={`${definitions.source}${code}`}
-                      folder={folder}
-                      attached={attached}
-                      lineOffset={definitions.lines}
-                      testId={`${ID}-preview`}
-                    />
+                    <SnippetPreview source={`${definitions.source}${code}`} folder={folder} attached={attached} lineOffset={definitions.lines} testId={`${ID}-preview`} />
                   </Box>
                 </>
               )}

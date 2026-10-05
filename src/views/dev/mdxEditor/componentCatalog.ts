@@ -1,107 +1,122 @@
 /**
  * **The components an article embeds, as examples to drop in** (CTA-137) —
- * the MDX editor's Add PGN dialog, its Output element tab. Every name is one
- * of `views/home/frontPage/index.ts`'s `mdxComponents` (the test holds them
- * to it), and every example is markup a shipped article uses, so inserted
- * as it is it renders: a PGN's components take the article's PGN by the
- * name it is bound to, the others the shipped Library's records.
+ * the MDX editor's Add PGN dialog, its Output element step. Every name is
+ * one of `views/home/frontPage/index.ts`'s `mdxComponents` (the test holds
+ * them to it), and each example is written for the game step 1 chose:
+ *
+ * - **a PGN** of the article's own (uploaded or pasted) — the components
+ *   that read one, `pgn={<its name>}`;
+ * - **a game in the Library** (`/library/<collection>/<n>`) — the
+ *   components that show that game, and those that show its collection.
  */
 
-export type ComponentExample = {
+/** A Library game, by its address's parts. */
+export type LibraryGame = { collection: string; number: number };
+
+export type PgnExample = {
+  takes: "pgn";
   /** The component's name in the document — `SwissStandingsTable`. */
   name: string;
   /** What it draws, in a line. */
   summary: string;
-  /** Whether it reads a PGN of the article's — `pgn={…}`. */
-  usesPgn: boolean;
-  /** The markup, the PGN's name put in. */
+  /** The markup, reading the PGN by its name. */
   code: (pgn: string) => string;
 };
 
-export const COMPONENT_EXAMPLES: readonly ComponentExample[] = [
+export type LibraryExample = {
+  takes: "library";
+  name: string;
+  summary: string;
+  /** Whether it shows the game itself, or the collection it is in. */
+  shows: "game" | "collection";
+  /** The markup, naming the game (or its collection). */
+  code: (game: LibraryGame) => string;
+};
+
+export type ComponentExample = PgnExample | LibraryExample;
+
+export const PGN_EXAMPLES: readonly PgnExample[] = [
   {
+    takes: "pgn",
     name: "InlinePgnGame",
     summary: "A window of the game's moves on a board, side lines and all",
-    usesPgn: true,
     code: (pgn) => `<InlinePgnGame pgn={${pgn}} from="1" to="20" start="10" caption="…" />`,
   },
   {
+    takes: "pgn",
     name: "SwissStandingsTable",
     summary: "A Swiss's standings: a row per player, a cell per round",
-    usesPgn: true,
     code: (pgn) => `<SwissStandingsTable pgn={${pgn}} density="dense" rowsPerPage="25" />`,
   },
-  { name: "RoundRobinCrossTable", summary: "A round robin's crosstable, single or double", usesPgn: true, code: (pgn) => `<RoundRobinCrossTable pgn={${pgn}} />` },
+  { takes: "pgn", name: "RoundRobinCrossTable", summary: "A round robin's crosstable, single or double", code: (pgn) => `<RoundRobinCrossTable pgn={${pgn}} />` },
   {
+    takes: "pgn",
     name: "KnockoutBracket",
     summary: "A knockout's bracket — a double elimination's with losersFromRound",
-    usesPgn: true,
     code: (pgn) => `<KnockoutBracket pgn={${pgn}} />`,
   },
-  { name: "MatchTable", summary: "A match between two players: a column per game, the score", usesPgn: true, code: (pgn) => `<MatchTable pgn={${pgn}} />` },
+  { takes: "pgn", name: "MatchTable", summary: "A match between two players: a column per game, the score", code: (pgn) => `<MatchTable pgn={${pgn}} />` },
   {
+    takes: "pgn",
     name: "TeamStandingsTable",
     summary: "A team event's standings: board points per round, match points",
-    usesPgn: true,
     code: (pgn) => `<TeamStandingsTable pgn={${pgn}} density="dense" rowsPerPage="25" />`,
   },
-  {
-    name: "CollectionGameBoard",
-    summary: "A Library game on a board",
-    usesPgn: false,
-    code: () => `<CollectionGameBoard game="/library/fischer/891" startMove="1. c4 c5 2. Nc3" />`,
-  },
-  {
-    name: "BoardRow",
-    summary: "Boards side by side",
-    usesPgn: false,
-    code: () =>
-      `<BoardRow>\n  <CollectionGameBoard game="/library/capablanca/2" startMove="4" />\n  <CollectionGameBoard game="/library/capablanca/3" startMove="4..." />\n</BoardRow>`,
-  },
-  {
-    name: "CollectionCard",
-    summary: "A Library collection: a board on one game, a short table of its games",
-    usesPgn: false,
-    code: () => `<CollectionCard _id="/library/fischer" showGame="52" />`,
-  },
-  {
-    name: "RepertoireBoard",
-    summary: "A repertoire on a board — a shipped sample where the reader has none",
-    usesPgn: false,
-    code: () => `<RepertoireBoard _id="/repertoires/REPLACE-WITH-A-REPERTOIRE-ID" fallback="e4-white" startMove="1" />`,
-  },
-  {
-    name: "StoredGameEmbed",
-    summary: "Any stored game, by its ?game= reference",
-    usesPgn: false,
-    code: () => `<StoredGameEmbed reference="library/capablanca/1" startMove="2..." />`,
-  },
-  {
-    name: "CollectionTournamentTable",
-    summary: "A Library collection's tournament table, names and results linked",
-    usesPgn: false,
-    code: () => `<CollectionTournamentTable _id="/library/candidates2026" format="roundRobin" />`,
-  },
-  {
-    name: "CollectionKnockoutBracket",
-    summary: "A Library collection's knockout bracket",
-    usesPgn: false,
-    code: () => `<CollectionKnockoutBracket _id="/library/worldblitzteam2026" density="dense" />`,
-  },
-  {
-    name: "CollectionDoubleEliminationBracket",
-    summary: "A Library collection's double elimination: winners' over losers' bracket",
-    usesPgn: false,
-    code: () => `<CollectionDoubleEliminationBracket _id="/library/esportsplayin2026" />`,
-  },
-  {
-    name: "CollectionTeamStandingsTable",
-    summary: "A Library collection's team standings",
-    usesPgn: false,
-    code: () => `<CollectionTeamStandingsTable _id="/library/worldrapidteam2026" density="dense" rowsPerPage="25" />`,
-  },
-  { name: "NavCards", summary: "Every screen as a card, by section", usesPgn: false, code: () => `<NavCards headingLevel={3} />` },
 ];
+
+export const LIBRARY_EXAMPLES: readonly LibraryExample[] = [
+  {
+    takes: "library",
+    name: "CollectionGameBoard",
+    summary: "The game on a board, with a link to open it",
+    shows: "game",
+    code: ({ collection, number }) => `<CollectionGameBoard game="/library/${collection}/${number}" startMove="1" />`,
+  },
+  {
+    takes: "library",
+    name: "StoredGameEmbed",
+    summary: "The game on a board, by its stored-game reference",
+    shows: "game",
+    code: ({ collection, number }) => `<StoredGameEmbed reference="library/${collection}/${number}" startMove="1" />`,
+  },
+  {
+    takes: "library",
+    name: "CollectionCard",
+    summary: "The collection: a board on this game, a short table of its games",
+    shows: "collection",
+    code: ({ collection, number }) => `<CollectionCard _id="/library/${collection}" showGame="${number}" />`,
+  },
+  {
+    takes: "library",
+    name: "CollectionTournamentTable",
+    summary: "The collection's tournament table, names and results linked",
+    shows: "collection",
+    code: ({ collection }) => `<CollectionTournamentTable _id="/library/${collection}" />`,
+  },
+  {
+    takes: "library",
+    name: "CollectionKnockoutBracket",
+    summary: "The collection's knockout bracket",
+    shows: "collection",
+    code: ({ collection }) => `<CollectionKnockoutBracket _id="/library/${collection}" />`,
+  },
+  {
+    takes: "library",
+    name: "CollectionDoubleEliminationBracket",
+    summary: "The collection's double elimination: winners' over losers' bracket",
+    shows: "collection",
+    code: ({ collection }) => `<CollectionDoubleEliminationBracket _id="/library/${collection}" />`,
+  },
+  {
+    takes: "library",
+    name: "CollectionTeamStandingsTable",
+    summary: "The collection's team standings",
+    shows: "collection",
+    code: ({ collection }) => `<CollectionTeamStandingsTable _id="/library/${collection}" />`,
+  },
+];
+
+export const COMPONENT_EXAMPLES: readonly ComponentExample[] = [...PGN_EXAMPLES, ...LIBRARY_EXAMPLES];
 
 /**
  * `code` put into the body as a block of its own, where `at` (a caret's
