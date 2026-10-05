@@ -87,7 +87,7 @@ included — leave it off.
 | `allowlist.ts` | The known gaps — the only violations let through. |
 | `allowlist.spec.ts` | Each entry's `gap` is a phrase in ACCESSIBILITY.md's Known gaps. |
 | `reflow.spec.ts` | Every route at 320 × 256, under `reflowCombos()` (the matrix's themes × both languages, one scheme): **the reflow gate** (CTA-118) — no sideways scroll, `main` at least the viewport less the shell's inset, nothing past the edge outside a scrolling box of its own. |
-| `static.spec.ts` | **The `static` project** (CTA-136): every `dist/**/index.html` the pre-render wrote, in both languages, with **JavaScript off** — what a crawler and a link preview read: status 200, one `h1`, an article's text in the HTML, and `check` (default theme, light). No seed: no script reads a store. |
+| `static.spec.ts` | **The `static` project** (CTA-136): every `dist/**/index.html` the pre-render wrote, in both languages, **without the app** (every script request refused — not JavaScript off, under which axe's timers never fire) — what a crawler and a link preview read: status 200, one `h1`, an article's text in the HTML, and `check` (default theme, light). No seed: no script reads a store. |
 | `summaryReporter.ts` | `a11y-report/summary.md` and `.json`; **fails the run on a stale allowlist entry**. |
 
 **What `check` asks of a page**, soft-asserted so one page reports all of it:

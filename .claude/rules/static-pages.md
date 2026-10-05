@@ -171,7 +171,10 @@ the repository secret `AZURE_STATIC_WEB_APPS_API_TOKEN`.
   sitemap exactly the self-canonical pages.
 - The browser pass visits Hebrew at `/he/…` addresses (`open(…, { language })`),
   and its **`static` project** (`e2e/a11y/static.spec.ts`) opens every
-  `dist/**/index.html` with **JavaScript off** — status 200, one `h1`, an
-  article's text, and `check()` (axe with contrast, direction, boards LTR).
+  `dist/**/index.html` **without the app** — every script request refused,
+  what a crawler that runs none reads — status 200, one `h1`, an article's
+  text, and `check()` (axe with contrast, direction, boards LTR). Not with
+  the browser's JavaScript off: axe runs in the page, and there its timers
+  never fire.
 - By hand, per release: a few URLs through Facebook's sharing debugger, X's
   card validator and LinkedIn's post inspector; Search Console on chessapp.dev.

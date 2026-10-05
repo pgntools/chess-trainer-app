@@ -9,9 +9,12 @@ import type { PageRoute } from "./routes";
 
 /*
   **The pages as a crawler reads them** (CTA-136) — the `static` project of
-  `playwright.config.ts`, which runs with **JavaScript off**: what a search
-  engine's first pass and every link preview (Facebook, X, LinkedIn, Slack,
-  WhatsApp, Telegram) receive. Every page the build pre-rendered — each
+  `playwright.config.ts`, which opens each page **with every script it loads
+  blocked** — the app never runs: what a search engine's first pass and every
+  link preview (Facebook, X, LinkedIn, Slack, WhatsApp, Telegram) receive.
+  (Not with the browser's JavaScript switched off: axe runs in the page, and
+  there its timers never fire. The one inline script a page carries is MUI's,
+  which sets the colour-scheme attribute and nothing else.) Every page the build pre-rendered — each
   `index.html` under `dist/` (`scripts/prerender.mjs`), the front page, the
   Blog, every screen and the shipped collections, in every language — must
   carry its heading and its content in the HTML itself, read in its URL's
@@ -19,7 +22,7 @@ import type { PageRoute } from "./routes";
   (`checks.ts`: axe's WCAG 2.2 A / AA with colour contrast and target size,
   the document's direction, the boards left to right).
 
-  Default theme, light: with no script, no preference is read.
+  Default theme, light: with no app, no preference is read.
 */
 
 type StaticPage = { id: string; path: string; language: Language; article: boolean };
@@ -42,6 +45,8 @@ const staticPages = (): StaticPage[] =>
 for (const page of staticPages()) {
   test(page.id, async ({ page: tab }, testInfo) => {
     const errors = watchErrors(tab);
+    // No app: every script the page asks for is refused.
+    await tab.route("**/*", (request) => (request.request().resourceType() === "script" ? request.abort() : request.continue()));
     const response = await tab.goto(page.path);
     expect(response?.status(), "served with status 200").toBe(200);
 
@@ -53,6 +58,8 @@ for (const page of staticPages()) {
 
     const board = (await tab.locator('[id$="-square-a8"]').count()) > 0;
     const route: PageRoute = { id: page.id, pattern: "static", path: page.path, ...(board && { board: true }) };
-    await check(tab, testInfo, route, { theme: "default", scheme: "light", language: page.language }, errors);
+    // The scripts refused above are reported as failed loads; nothing else may be.
+    const others = errors.filter((error) => !/Failed to load resource: net::ERR_FAILED/.test(error));
+    await check(tab, testInfo, route, { theme: "default", scheme: "light", language: page.language }, others);
   });
 }
