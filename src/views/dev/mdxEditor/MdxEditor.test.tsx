@@ -543,10 +543,13 @@ describe("the MDX editor's Save (CTA-137)", () => {
     expect(await within(dialog).findByTestId("mdx-editor-add-pgn-added-output")).toHaveTextContent("Wrote the PGN into the content as miniature");
     expect(service.writes).toEqual([]);
     await user.click(within(dialog).getByRole("button", { name: /<InlinePgnGame>/ }));
+    // The code is the reader's to adjust before it goes in.
+    const code = within(dialog).getByRole("textbox", { name: "Code — <InlinePgnGame>" });
+    fireEvent.change(code, { target: { value: '<InlinePgnGame pgn={miniature} from="1" to="2" />' } });
     await user.click(within(dialog).getByRole("button", { name: "Insert into the content" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(source()).toHaveValue('export const miniature = `[Event "Paris"]\n\n1. e4 e5 2. Nf3 d6 1-0`\n\n## Body\n\n<InlinePgnGame pgn={miniature} from="1" to="20" start="10" caption="…" />\n');
+    expect(source()).toHaveValue('export const miniature = `[Event "Paris"]\n\n1. e4 e5 2. Nf3 d6 1-0`\n\n## Body\n\n<InlinePgnGame pgn={miniature} from="1" to="2" />\n');
     await waitFor(() => expect(screen.getByTestId("mdx-editor-state")).toHaveTextContent("Up to date"));
     expect(screen.queryByTestId("mdx-editor-compile-error")).not.toBeInTheDocument();
     expect(screen.queryByTestId("mdx-editor-render-error")).not.toBeInTheDocument();
@@ -569,8 +572,16 @@ describe("the MDX editor's Save (CTA-137)", () => {
     await expectNoAxeViolations(dialog);
     await user.click(within(dialog).getByRole("tab", { name: "Output element" }));
     expect(within(dialog).getByTestId("mdx-editor-add-pgn-no-pgn")).toHaveTextContent("The examples read it as games.");
+    // The components in the sidebar, the code beside them once one is picked.
+    expect(within(dialog).getByTestId("mdx-editor-add-pgn-pick")).toHaveTextContent("Pick a component on the left");
+    expect(within(within(dialog).getByTestId("mdx-editor-add-pgn-sidebar")).getAllByRole("button")).toHaveLength(16);
     await user.click(within(dialog).getByRole("button", { name: /<MatchTable>/ }));
-    expect(within(dialog).getByTestId("mdx-editor-add-pgn-code")).toHaveValue("<MatchTable pgn={games} />");
+    expect(within(dialog).getByRole("textbox", { name: "Code — <MatchTable>" })).toHaveValue("<MatchTable pgn={games} />");
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await user.click(within(dialog).getByRole("button", { name: "Copy the code" }));
+    expect(writeText).toHaveBeenCalledWith("<MatchTable pgn={games} />");
+    expect(within(dialog).getByTestId("mdx-editor-add-pgn-copied")).toHaveTextContent("Copied.");
     await expectNoAxeViolations(dialog);
   });
 });
