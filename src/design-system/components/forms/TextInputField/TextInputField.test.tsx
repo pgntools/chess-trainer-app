@@ -49,4 +49,17 @@ describe("TextInputField", () => {
     render(<TextInputField label="Name" value="Ocean" onChange={() => {}} helperText="Its English name." testId="probe" />);
     await expectNoAxeViolations();
   });
+
+  it("takes several lines, a number or a date — the value a string all the same (CTA-135)", async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<TextInputField label="Summary" value={"One\nTwo"} onChange={onChange} multiline testId="summary" />);
+    expect(screen.getByRole("textbox", { name: "Summary" }).tagName).toBe("TEXTAREA");
+    rerender(<TextInputField label="Order" value="70" onChange={onChange} type="number" testId="order" />);
+    expect(screen.getByRole("spinbutton", { name: "Order" })).toHaveValue(70);
+    await userEvent.setup().type(screen.getByRole("spinbutton", { name: "Order" }), "1");
+    expect(onChange).toHaveBeenLastCalledWith("701");
+    rerender(<TextInputField label="Date" value="2026-09-14" onChange={onChange} type="date" testId="date" />);
+    expect(screen.getByTestId("date")).toHaveAttribute("type", "date");
+    expect(screen.getByTestId("date")).toHaveValue("2026-09-14");
+  });
 });

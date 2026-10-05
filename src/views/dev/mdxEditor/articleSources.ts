@@ -1,3 +1,4 @@
+import { articleFileName } from "../../../lib/articleFrontmatter";
 import { BLOG_ARTICLES, BLOG_FOLDERS, findBlogFolder } from "../../blog/articles";
 import type { ImportResolver } from "./compileMdx";
 
@@ -23,7 +24,7 @@ const fileOf = (key: string) => key.slice(ARTICLES_DIR.length).replace(/\.mdx$/,
 export type ArticleTreeNode = {
   /** The folder's path (`tournaments`) or the file's (`tournaments/olympiad-2026`). */
   id: string;
-  /** A folder: its registered name ("Tournaments"), else its own segment. A file: its article's English title (a translation marked beside it), else its own name. */
+  /** A folder: its name ("Tournaments"), else its own segment. A file: its article's English title (a translation marked beside it), a folder's index so called, else its own name. */
   label: string;
   /** The file a click opens — absent on a folder. */
   file?: string;
@@ -31,11 +32,13 @@ export type ArticleTreeNode = {
   children?: ArticleTreeNode[];
 };
 
-/** A file's label: its article's English title (a translation marked beside it), else the file's own name. */
+/** A file's label: its article's English title, or "<folder> — its index" (a translation's language beside it), else the file's own name. */
 const labelOf = (file: string): string => {
-  const article = BLOG_ARTICLES.find((candidate) => file === candidate.path || file.startsWith(`${candidate.path}.`));
-  if (article === undefined) return file.split("/").at(-1) ?? file;
-  return file === article.path ? article.title.en : `${article.title.en} (${file.slice(article.path.length + 1)})`;
+  const { path, language, kind } = articleFileName(`${file}.mdx`);
+  const translation = language === "en" ? "" : ` (${language})`;
+  if (kind === "folder") return `${path === "" ? "The Blog" : folderLabel(path)} — its index${translation}`;
+  const article = BLOG_ARTICLES.find((candidate) => candidate.path === path);
+  return article === undefined ? (file.split("/").at(-1) ?? file) : `${article.title.en}${translation}`;
 };
 
 /** A folder's label: its registered name, else its own path segment. */
@@ -50,12 +53,13 @@ const folderLabel = (folder: string): string => findBlogFolder(folder)?.title.en
  */
 export const articleTree = (): ArticleTreeNode[] => {
   const files = Object.keys(mdxFiles).map(fileOf);
-  // The registry's order first, then any file it does not name, as the glob lists them.
+  // A folder's index first, then the registry's order, then any file it does not name, as the glob lists them.
+  const indexes = files.filter((file) => articleFileName(`${file}.mdx`).kind === "folder");
   const listed = BLOG_ARTICLES.flatMap((article) =>
     files.filter((file) => file === article.path || file.startsWith(`${article.path}.`)),
   );
-  const listedSet = new Set(listed);
-  const ordered = [...listed, ...files.filter((file) => !listedSet.has(file))];
+  const listedSet = new Set([...indexes, ...listed]);
+  const ordered = [...indexes, ...listed, ...files.filter((file) => !listedSet.has(file))];
 
   // Every folder path with a file somewhere under it, at every depth.
   const foldersUnder = new Set<string>();
