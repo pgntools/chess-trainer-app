@@ -19,8 +19,10 @@ const join = (folder: string, name: string) => (folder === "" ? name : `${folder
 const parentOf = (path: string) => path.split("/").slice(0, -1).join("/");
 
 /** The service's folders as one tree under the Blog's root — each a branch the reader can pick. */
-const folderTree = (folders: readonly StorageFolder[]): TreeNode[] => {
+const folderTree = (folders: readonly StorageFolder[], unsynced?: ReadonlySet<string>): TreeNode[] => {
   const nodeOf = (folder: StorageFolder): TreeNode => ({
+    // A folder holding a file git has not got: marked, so it is not forgotten.
+    secondary: unsynced?.has(folder.path) === true ? "not synced" : undefined,
     id: nodeIdOf(folder.path),
     label: folder.path === "" ? "articles/ — the Blog's root" : `${folder.title ?? folder.path.split("/").at(-1)} (${folder.path.split("/").at(-1)}/)`,
     icon: <FolderRoundedIcon fontSize="small" />,
@@ -40,6 +42,8 @@ type SaveArticleDialogProps = {
   initialFolder: string;
   /** The name it opens with — the draft's own, or none for a new article. */
   initialName: string;
+  /** The folders holding a file git has not got — marked "not synced". Absent, git's state is not known. */
+  unsynced?: ReadonlySet<string>;
   /** Save the draft as `<folder>/<name>.mdx`. */
   onSave: (file: string) => void;
   /** A write is under way. */
@@ -56,12 +60,12 @@ type SaveArticleDialogProps = {
  * reports it, by the editor. (A PGN goes in through Add PGN, which opens
  * this first for an article with no folder yet.)
  */
-function SaveArticleDialog({ open, onClose, folders, initialFolder, initialName, onSave, busy, error }: SaveArticleDialogProps) {
+function SaveArticleDialog({ open, onClose, folders, initialFolder, initialName, unsynced, onSave, busy, error }: SaveArticleDialogProps) {
   const known = folders.some((folder) => folder.path === initialFolder) ? initialFolder : "";
   const [folder, setFolder] = useState(known);
   const [newFolder, setNewFolder] = useState("");
   const [name, setName] = useState(initialName);
-  const nodes = folderTree(folders);
+  const nodes = folderTree(folders, unsynced);
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set([nodeIdOf(""), ...ancestorsOf(nodes, nodeIdOf(known))]));
 
   const target = newFolder.trim() === "" ? folder : join(folder, newFolder.trim());

@@ -67,3 +67,41 @@ export const writeStorageFile = async (path: string, content: string, overwrite 
   const body = (await response.json()) as { written?: string; foldersCreated?: string[] };
   return { kind: "written", path: body.written ?? path, foldersCreated: body.foldersCreated ?? [] };
 };
+
+/** A file of the articles folder that git has not got as it is: new, changed, deleted or renamed. */
+export type GitFile = { path: string; state: "new" | "changed" | "deleted" | "renamed"; bytes?: number };
+
+/** A file's state, in words. */
+export const GIT_STATE_WORDS: Readonly<Record<GitFile["state"], string>> = {
+  new: "not in git yet",
+  changed: "changed since the last commit",
+  deleted: "deleted, not committed",
+  renamed: "renamed, not committed",
+};
+
+/** What git has not got of the articles folder — or that it cannot say, or that the service is down. */
+export type GitStatus = { kind: "status"; branch: string; files: GitFile[] } | { kind: "unavailable"; reason: string } | { kind: "down" };
+
+/** The articles folder's git status, from the service — read only. */
+export const readGitStatus = async (): Promise<GitStatus> => {
+  let response: Response;
+  try {
+    response = await fetch(`${STORAGE_URL}/git-status`);
+  } catch {
+    return { kind: "down" };
+  }
+  if (!response.ok) return { kind: "unavailable", reason: await errorOf(response) };
+  const body = (await response.json()) as { available?: boolean; branch?: string; files?: GitFile[]; reason?: string };
+  return body.available === true ? { kind: "status", branch: body.branch ?? "", files: body.files ?? [] } : { kind: "unavailable", reason: body.reason ?? "git could not say." };
+};
+
+/** The folders (under articles/, `""` its root) holding a file git has not got — and every folder above one. */
+export const unsyncedFoldersOf = (files: readonly GitFile[]): ReadonlySet<string> => {
+  const folders = new Set<string>();
+  for (const { path } of files) {
+    const parts = path.split("/").slice(0, -1);
+    folders.add("");
+    for (let depth = 1; depth <= parts.length; depth += 1) folders.add(parts.slice(0, depth).join("/"));
+  }
+  return folders;
+};

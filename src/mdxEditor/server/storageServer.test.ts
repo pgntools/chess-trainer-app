@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createStorageHandler, listFolders, resolveArticlePath, startServer, stubIndexOf, type StorageRequest } from "./storageServer.ts";
+import { createStorageHandler, listFolders, parseGitStatus, resolveArticlePath, startServer, stubIndexOf, type StorageRequest } from "./storageServer.ts";
 
 /*
   `yarn mdx-editor:start` (CTA-137) — the MDX editor's storage service,
@@ -187,5 +187,45 @@ describe("the service behind node:http", () => {
     } finally {
       await new Promise((done) => server.close(done));
     }
+  });
+});
+
+describe("the git status (read only)", () => {
+  it("reads git's porcelain: new, changed, deleted and renamed files under articles/, a rename's old path skipped", () => {
+    const porcelain = [
+      "?? src/views/blog/articles/club/new.mdx",
+      " M src/views/blog/articles/get-started.mdx",
+      "D  src/views/blog/articles/old.pgn",
+      "R  src/views/blog/articles/moved.mdx",
+      "src/views/blog/articles/before.mdx",
+      "A  src/views/blog/articles/staged.pgn",
+      " M src/other/file.ts",
+      "",
+    ].join("\0");
+    expect(parseGitStatus(porcelain, "src/views/blog/articles/")).toEqual([
+      { path: "club/new.mdx", state: "new" },
+      { path: "get-started.mdx", state: "changed" },
+      { path: "old.pgn", state: "deleted" },
+      { path: "moved.mdx", state: "renamed" },
+      { path: "staged.pgn", state: "new" },
+    ]);
+  });
+
+  it("answers the branch and each file with its size — and why not, outside a checkout", () => {
+    const git = (args: readonly string[]) =>
+      args[0] === "rev-parse" ? (args[1] === "--show-prefix" ? "src/views/blog/articles/\n" : "feature/x\n") : "?? src/views/blog/articles/tournaments/cup.pgn\0";
+    const handle = createStorageHandler({ root, git });
+    expect(JSON.parse(handle({ method: "GET", url: "/git-status", ...LOCAL }).body ?? "")).toEqual({
+      available: true,
+      branch: "feature/x",
+      files: [{ path: "tournaments/cup.pgn", state: "new", bytes: 7 }],
+    });
+    const outside = createStorageHandler({
+      root,
+      git: () => {
+        throw new Error("fatal: not a git repository");
+      },
+    });
+    expect(JSON.parse(outside({ method: "GET", url: "/git-status", ...LOCAL }).body ?? "")).toEqual({ available: false, reason: "git could not say: fatal: not a git repository" });
   });
 });

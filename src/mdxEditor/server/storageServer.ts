@@ -12,6 +12,12 @@
  *   GET  /folders  → { folders: [{ path, title?, files }] } — every folder under
  *                    articles/ (the root is ""), its index's title, its .mdx
  *                    and .pgn files
+ *   GET  /git-status → { available: true, branch, files: [{ path, state, bytes? }] }
+ *                    — what git has not got of articles/: each file not
+ *                    committed as it is, new, changed, deleted or renamed;
+ *                    or { available: false, reason } outside a checkout.
+ *                    Read only: it runs `git status` on articles/ alone, and
+ *                    nothing from the request reaches the command.
  *   PUT  /files    { path, content, overwrite? } → 201 { written, created, foldersCreated }
  *                    409 { error, exists: path } when the file is there and
  *                    `overwrite` is not set
@@ -33,6 +39,7 @@
  * It listens on `127.0.0.1:5172`, or `VITE_MDX_EDITOR_PORT` — the same
  * variable the editor reads (`start.ts` reads `.env.local` / `.env` for it).
  */
+import { execFileSync } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
@@ -69,6 +76,8 @@ export type StorageResponse = { status: number; headers: Record<string, string>;
 export type StorageOptions = {
   /** The articles folder — the only place anything is written. */
   root: string;
+  /** Runs `git` with these arguments in `root`, its output as text — the tests' stand-in. Absent, the real `git`. */
+  git?: (args: readonly string[]) => string;
   /** The origins a browser may call from; absent, any loopback origin. */
   origins?: readonly string[];
 };
@@ -137,6 +146,54 @@ export const resolveArticlePath = (root: string, path: unknown): { absolute: str
   return { absolute, folders, name };
 };
 
+/** A file of articles/ that git has not got as it is. */
+export type GitFileState = "new" | "changed" | "deleted" | "renamed";
+export type GitFile = { path: string; state: GitFileState; bytes?: number };
+
+/**
+ * `git status --porcelain=v1 -z` read: each entry's state and its path
+ * under articles/ — `prefix` (`git rev-parse --show-prefix`, the folder's
+ * path in the checkout) taken off. A rename's old path, which follows it,
+ * is skipped; an entry outside the folder is left out.
+ */
+export const parseGitStatus = (porcelain: string, prefix: string): { path: string; state: GitFileState }[] => {
+  const entries = porcelain.split("\0");
+  const files: { path: string; state: GitFileState }[] = [];
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (entry.length < 4) continue;
+    const code = entry.slice(0, 2);
+    const path = entry.slice(3);
+    // A rename or a copy names its old path in the next entry.
+    if (code.includes("R") || code.includes("C")) index += 1;
+    if (!path.startsWith(prefix)) continue;
+    const state: GitFileState = code === "??" || code.includes("A") ? "new" : code.includes("D") ? "deleted" : code.includes("R") ? "renamed" : "changed";
+    files.push({ path: path.slice(prefix.length), state });
+  }
+  return files;
+};
+
+/** The real `git`, in `cwd`. */
+const runGit =
+  (cwd: string) =>
+  (args: readonly string[]): string =>
+    execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 16 * 1024 * 1024 });
+
+/** What git has not got of the articles folder — or why it cannot say. */
+export const gitStatusOf = (root: string, git: (args: readonly string[]) => string = runGit(root)) => {
+  try {
+    const prefix = git(["rev-parse", "--show-prefix"]).trim();
+    const branch = git(["rev-parse", "--abbrev-ref", "HEAD"]).trim();
+    const files: GitFile[] = parseGitStatus(git(["status", "--porcelain=v1", "-z", "--untracked-files=all", "--", "."]), prefix).map((file) => {
+      const absolute = join(root, ...file.path.split("/"));
+      return existsSync(absolute) ? { ...file, bytes: statSync(absolute).size } : file;
+    });
+    return { available: true as const, branch, files };
+  } catch (error) {
+    return { available: false as const, reason: `git could not say: ${(error as Error).message.split("\n")[0]}` };
+  }
+};
+
 /** The `title:` of an `index.mdx`'s frontmatter — enough to name a folder in a picker. */
 const titleOf = (indexFile: string): string | undefined => {
   const block = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync(indexFile, "utf8"));
@@ -179,7 +236,7 @@ const json = (status: number, value: unknown, headers: Record<string, string>): 
  * under `root` written on the way. `startServer` puts it behind `node:http`;
  * the tests call it as it is.
  */
-export const createStorageHandler = ({ root, origins }: StorageOptions) => {
+export const createStorageHandler = ({ root, origins, git }: StorageOptions) => {
   const handle = (request: StorageRequest): StorageResponse => {
     const cors: Record<string, string> = {};
     if (request.host === undefined || !LOOPBACK.test(request.host)) return json(403, { error: "This service answers on this machine's loopback address only." }, cors);
@@ -198,6 +255,7 @@ export const createStorageHandler = ({ root, origins }: StorageOptions) => {
     }
     if (request.method === "GET" && route === "/health") return json(200, { ok: true, service: "mdx-editor-storage", articles: ARTICLES }, cors);
     if (request.method === "GET" && route === "/folders") return json(200, { folders: listFolders(root) }, cors);
+    if (request.method === "GET" && route === "/git-status") return json(200, gitStatusOf(root, git), cors);
     if (request.method === "PUT" && route === "/files") {
       if (!(request.contentType ?? "").startsWith("application/json")) return json(415, { error: "A write is JSON: { path, content, overwrite? }." }, cors);
       let payload: { path?: unknown; content?: unknown; overwrite?: unknown };
@@ -230,7 +288,7 @@ export const createStorageHandler = ({ root, origins }: StorageOptions) => {
         throw error;
       }
     }
-    return json(404, { error: `No ${request.method} ${route} here — /health, /folders and PUT /files.` }, cors);
+    return json(404, { error: `No ${request.method} ${route} here — /health, /folders, /git-status and PUT /files.` }, cors);
   };
   return handle;
 };

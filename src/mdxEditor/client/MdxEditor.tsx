@@ -10,6 +10,7 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
+import SyncProblemRoundedIcon from "@mui/icons-material/SyncProblemRounded";
 import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
 import VerticalSplitRoundedIcon from "@mui/icons-material/VerticalSplitRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
@@ -36,9 +37,11 @@ import { insertBlock } from "./componentCatalog";
 import { articlePgnsOf, usesOf, withInlinePgn, withoutPgn, withPgnImports } from "./pgnImports";
 import { BIG_PGN_BYTES, pgnBytesOf, sizeOf } from "./pgnPages";
 import { starterFrontmatter, todayIso } from "./metadataYaml";
+import GitStatusDialog from "./GitStatusDialog";
 import SaveArticleDialog from "./SaveArticleDialog";
 import { STARTER_DOCUMENT } from "./starterDocument";
-import { ARTICLES_DIR, listStorageFolders, STORAGE_COMMAND, STORAGE_URL, writeStorageFile, type StorageFolder } from "./storageClient";
+import { ARTICLES_DIR, GIT_STATE_WORDS, listStorageFolders, STORAGE_COMMAND, STORAGE_URL, unsyncedFoldersOf, writeStorageFile, type StorageFolder } from "./storageClient";
+import { useGitStatus } from "./useGitStatus";
 import { useScrollSync } from "./useScrollSync";
 
 /**
@@ -72,7 +75,10 @@ import { useScrollSync } from "./useScrollSync";
  *   its inline end — what goes into the content (Add PGN, Add component),
  *   then where it goes (Save as…, Save), the rest under More (New article,
  *   Copy MDX, Download .mdx); under it, the file being edited, whether it
- *   has unsaved changes, and where its imports resolve from.
+ *   has unsaved changes, whether git has it as it is, how many article
+ *   files git has not got (`GitStatusDialog`, the service's read-only
+ *   `git status`, refreshed on focus and after every write), and where its
+ *   imports resolve from.
  * - **Saving** (CTA-137) goes through a local storage service,
  *   `yarn mdx-editor:start` (`../server/storageServer.ts`, called through
  *   `storageClient.ts`), which writes into `src/views/blog/articles/`. Save
@@ -181,6 +187,11 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
   const [draft, setDraft] = useState<Draft>(() => (kept === undefined ? starterDraft() : { yaml: kept.yaml, body: kept.body, file: kept.file }));
   const [opened, setOpened] = useState(() => kept?.opened ?? textOf(draft));
   const [notice, setNotice] = useState<string>();
+  /** What git has not got of the articles — read by the service, refreshed after every write. */
+  const git = useGitStatus();
+  const [gitOpen, setGitOpen] = useState(false);
+  const gitFiles = git.status?.kind === "status" ? git.status.files : undefined;
+  const fileInGit = draft.file === "" || gitFiles === undefined ? undefined : (gitFiles.find((candidate) => candidate.path === `${draft.file}.mdx`)?.state ?? "committed");
   /** The header's More menu — the button it hangs from while open. */
   const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null);
   const [scrollTogether, setScrollTogether] = useState(true);
@@ -324,6 +335,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
     setDraft((current) => ({ ...current, file, body: pgns.length === 0 ? current.body : body }));
     setOpened(text);
     setSaveDialog(undefined);
+    git.refresh();
     const made = result.foldersCreated.length === 0 ? "" : ` — and made ${result.foldersCreated.map((folder) => `${folder}/`).join(", ")} with an index.mdx`;
     const imported = imports.length === 0 ? "" : ` It imports ${imports.map((pgn) => `${pgn.file} as ${pgn.name}`).join(", ")}.`;
     setNotice(`Saved ${ARTICLES_DIR}/${result.path}${made}.${imported}`);
@@ -356,6 +368,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
     setBusy(false);
     if (added.length === 0) return;
     setAttached((before) => ({ ...before, ...Object.fromEntries(added.map((pgn) => [pgn.path, pgn.text])) }));
+    git.refresh();
     const paths = added.map((pgn) => pgn.path).join(", ");
     // The article imports what was attached to it, at once.
     const entries = added.map((pgn) => (pgn.name === undefined ? pgn.file : { file: pgn.file, name: pgn.name }));
@@ -486,6 +499,16 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
             <StatusText tone={dirty ? "warning" : "success"} testId="mdx-editor-dirty">
               {dirty ? "● Unsaved changes" : "No changes"}
             </StatusText>
+            {fileInGit !== undefined && (
+              <StatusText tone={fileInGit === "committed" ? "neutral" : "info"} testId="mdx-editor-git-file">
+                {fileInGit === "committed" ? "In git" : `Git: ${GIT_STATE_WORDS[fileInGit]}`}
+              </StatusText>
+            )}
+            {gitFiles !== undefined && gitFiles.length > 0 && (
+              <Button size="small" color="warning" startIcon={<SyncProblemRoundedIcon />} onClick={() => setGitOpen(true)} data-testid="mdx-editor-git">
+                {`${gitFiles.length === 1 ? "1 file" : `${gitFiles.length} files`} not synced`}
+              </Button>
+            )}
             <Typography variant="body2" color="text.secondary">
               {"Imports resolve from "}
               <Box component="code" dir="ltr">{`articles/${folder === "" ? "" : `${folder}/`}`}</Box>
@@ -524,6 +547,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           folders={saveDialog.folders}
           initialFolder={saveDialog.folder}
           initialName={saveDialog.name}
+          unsynced={gitFiles === undefined ? undefined : unsyncedFoldersOf(gitFiles)}
           onSave={(file) => void run({ kind: "write", file, overwrite: file === draft.file })}
           busy={busy}
           error={saveError}
@@ -547,6 +571,7 @@ function MdxEditor({ arrivingArticle, onArrived }: MdxEditorProps = {}) {
           error={addPgnError}
         />
       )}
+      <GitStatusDialog open={gitOpen} onClose={() => setGitOpen(false)} status={git.status} onRefresh={git.refresh} />
       {addComponent !== undefined && (
         <AddComponentDialog
           open
