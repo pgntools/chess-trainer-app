@@ -20,6 +20,7 @@ This file is what every session needs. The rest is in `.claude/rules/`:
 | [`react-chessboard-options-api.md`](.claude/rules/react-chessboard-options-api.md), [`react-chessboard-types-and-helpers.md`](.claude/rules/react-chessboard-types-and-helpers.md) | always | the vendored `react-chessboard` reference |
 | the module files (table below), [`tree-views.md`](.claude/rules/tree-views.md), [`pgn-annotations.md`](.claude/rules/pgn-annotations.md), [`database.md`](.claude/rules/database.md) | when you work on their `paths:` | each module's whole reference |
 | [`browser-a11y.md`](.claude/rules/browser-a11y.md) | when you work on `e2e/`, `playwright.config.ts`, `eslint.config.js` or `ACCESSIBILITY.md` | the MUI lock and the browser accessibility pass (`yarn test:a11y`) |
+| [`static-pages.md`](.claude/rules/static-pages.md) | when you work on the boot, the server entry, the pre-render, the head, the share images, the language in the URL or the deploy workflows | every page pre-rendered as a static `index.html` per language, its head and share image, `/he/` in the URL, the two hosts (CTA-136) |
 
 The full upstream `react-chessboard` docs and all 53 Storybook examples are
 vendored under [`docs/vendor/react-chessboard/`](docs/vendor/react-chessboard/).
@@ -33,7 +34,7 @@ Node comes from `fnm`, so run these from a shell where it is on `PATH`.
 | Task | Command |
 | --- | --- |
 | Dev server | `yarn dev` (a worktree gets its own port — see `.jst/bootstrap.sh`) |
-| Type-check + production build | `yarn build` |
+| Type-check + production build — **and the pre-render**: every page a static `index.html` per language (CTA-136, [`static-pages.md`](.claude/rules/static-pages.md)) | `yarn build` (`BASE_PATH=/ DEPLOY_TARGET=swa yarn build` — the chessapp.dev build) |
 | Type-check only | `npx tsc -b` (add `--force` to bypass the incremental cache) |
 | Lint — **a CI gate** (the tier import rules, the MUI lock, `jsx-a11y`) | `yarn lint` |
 | **Run the test suite** — the pull-request gate, the `unit` and `ui` groups (below) | `yarn test:run` (at most 3 files at once — see below) |
@@ -43,6 +44,8 @@ Node comes from `fnm`, so run these from a shell where it is on `PATH`.
 | Watch mode | `yarn test` (`unit` and `ui`) |
 | Check that every test file is in exactly one group — **a CI gate** | `yarn test:groups` |
 | Check the Blog as built — no draft in `dist/`, no article body in the entry chunk, each in its own (CTA-135) — **a CI gate**, after `yarn build` | `yarn check:blog-build` |
+| Check the pages as built — every page in every language with its head and content, `404.html` the template, the `swa` sitemap — **a CI gate**, after `yarn build` | `yarn check:pages` |
+| Redraw the section and site share images (`src/assets/share/`, committed) | `node scripts/share-images.mjs` (`--only <id>`) |
 | **Wire a PGN collection into the Library** | `node scripts/wirepgn.js path/to/file.pgn` (or `yarn wirepgn …`; `--list`, `--check`, `--rebuild`, `--remove <id>` — [`game-collections.md`](.claude/rules/game-collections.md) §3) |
 | **Scaffold a new theme** | `yarn theme:bootstrap --id <kebab-id> --name "<Name>"` (`--name-he`, `--from <theme>`, `--dry-run`, `--help`) — writes and registers it; then tune it in the dev-only theme editor, `/dev/theme-editor?theme=<id>` ([`CONTRIBUTING.md`](CONTRIBUTING.md#create-a-theme)) |
 | Coverage (CI measures it on a push to `development` and nightly, not on a pull request) | `yarn test:run --coverage` |
@@ -121,13 +124,14 @@ so an export it uses can look unused — check `scripts/` before removing one.
 | **The board core** | — | `views/board/core/` | [`chessboard.md`](.claude/rules/chessboard.md) §9 |
 | **The design system** and **the component hierarchy** (themes; base components, patterns, blocks; the dev-only gallery and theme editor) | `/dev/design/…` (dev only; a page per component, the menu a tree of tier → section → component), `/dev/theme-editor` (dev only, CTA-115) | `src/design-system/`, `src/blocks/`, `theme/themeChoice.ts`, `views/dev/design/`, `views/dev/themeEditor/`, `scripts/theme-bootstrap.js` | [`docs/design/hierarchy.md`](docs/design/hierarchy.md), [`docs/design/README.md`](docs/design/README.md), [`design-system.md`](.claude/rules/design-system.md) |
 | **Stores** (every one IndexedDB) | — | `lib/idb.ts`, `lib/idbRecordStore.ts`, `lib/*Store.ts`, `lib/*Db.ts` | [`database.md`](.claude/rules/database.md) |
+| **Static pages** (CTA-136 — the front page, the Blog, every screen and the shipped collections pre-rendered per language; the head and share image; `/he/` in the URL; GitHub Pages and chessapp.dev) | every route, `/he/…` too | `src/entry-server.tsx`, `scripts/prerender.mjs`, `scripts/check-dist-pages.js`, `views/main/documentHead.ts`, `lib/shareImage.ts`, `src/assets/share/`, `lib/languagePath.ts`, `views/main/unsavedWork.ts`, `.github/workflows/build*.yml` | [`static-pages.md`](.claude/rules/static-pages.md) |
 
 ## Layout of the source
 
 | Path | What lives there |
 | --- | --- |
-| `src/main.tsx`, `src/App.tsx`, `src/routes.tsx` | The composition root (`AppThemeWithLang` → `CssBaseline` → `App`; imports `./i18n` for its side effect), the router, and its route table — every route naming its screen in `handle.title` (a `pages.*` key, CTA-112). |
-| `src/i18n.ts`, `src/locales/` | i18next setup (`supportedLanguages`, `rtlLanguages`, `asAppLanguage()`) and the inline `en` / `he` catalogs. `he` is typed `typeof en`, so a missing key is a compile error. |
+| `src/main.tsx`, `src/App.tsx`, `src/routes.tsx` | The composition root (`AppThemeWithLang` → `CssBaseline` → `App`; imports `./i18n` for its side effect; **replaces** a pre-rendered page's markup, CTA-136), the router — its `basename` the base and the language's prefix, made anew on a change of language — and its route table, every route naming its screen in `handle.title` (a `pages.*` key, CTA-112; its description `pageDescriptions.*`). `src/entry-server.tsx` renders the same tree in Node for the pre-render. |
+| `src/i18n.ts`, `src/locales/` | i18next setup (`supportedLanguages`, `rtlLanguages`, `asAppLanguage()`) and the inline `en` / `he` catalogs. `he` is typed `typeof en`, so a missing key is a compile error. **The language is the URL's** (CTA-136): `/he/…`, English unprefixed; a stored preference only routes an unprefixed arrival (`lib/languagePath.ts`). |
 | `src/design-system/` | **The design system** (CTA-107), a layer of its own that knows no chess screen, store, route or block — `yarn lint` fails if it imports `src/views/`, `src/lib/` or `src/blocks/`. `themes/` (a theme is data; the registry; and the theme-authoring tools' one generator `codegen.ts`, contrast checks `contrast.ts` and scaffold `bootstrap.ts` — CTA-115), `theme/` (`buildTheme`, the `chess` tokens' readers, the RTL cache), `components/<section>/` (the **base** tier: one folder per MAIN section, each with an `index.ts` screens import from, each documented in `docs/design/sections/<section>.md` — CTA-108; it may not import a pattern), `patterns/<section>/` (the **patterns** tier: complex but generic — `DataTable`, `TreeView`, the competition tables `StandingsTable` and `CrossTable` (CTA-120) and a knockout's `Bracket` (CTA-128) — CTA-110, `docs/design/sections/patterns/`), `gallery/` (the dev-only `/dev/design/…`, a page per component). |
 | `src/blocks/` | **The blocks** (CTA-110): complex, domain-aware, **presentational** components — rows, state and callbacks arrive as props — grouped by family (`families.ts`: `tables/`, `trees/` …), each a folder with its component, test, gallery, `fixtures.ts` (typed with `src/lib/`'s types, imported only by the gallery and the test) and `index.ts`. May use `src/lib/`'s types and pure helpers; `yarn lint` fails if one imports `src/views/`, a store or database module or `react-router`. Every module is on them (CTA-109, CTA-113): tables (`PlayedGamesTable`, `StorageTable`, `CollectionsTreeTable`, `CollectionGamesTable`, and — ahead of their screen, CTA-120, CTA-128 — `SwissStandingsTable`, `RoundRobinCrossTable`, `KnockoutBracket`, `MatchTable`, `TeamStandingsTable`), lists (`SavedAnalysesList`, `RepertoiresList`, `FolderActions`, `FolderPicker`, `OpeningBookList`), trees (`FolderTree`), dialogs (the folder dialogs, `ImportDialog`, `IncompatibleImportDialog`, `CollectionImportDialog`, `OpeningTreePgnDialog`, `SaveAsCollectionDialog`), forms (`EngineSettingsForm`, `AnalysisEngineForm`, `ArrowSettingsFields`, `PgnInput`, `FenInput`, `PositionFields`, `MergeSplitChoice`, `MaskEditor`, `PlayedGamesFilters`, `CollectionFilters`, `ExportCategoriesForm`, `CollectionSettingsForm`) and panels (`PgnExportPanel`, `GameInfo`, `CurrentOpening`, `ChangesStrip`, `PlayToggleButton`, `EngineThinking`, `ImportReport`) — [`hierarchy.md`](docs/design/hierarchy.md#4-blocks--srcblocksfamilyblock). How a module migrates onto them: [`docs/design/migration.md`](docs/design/migration.md). |
 | `src/theme/` | The app's wiring of the look: the `AppThemeWithLang` provider (theme choice, scheme, direction, and — since CTA-113 — the design system's one `SnackbarProvider`, so a screen shows a snackbar with `useSnackbar()`), `themeChoice.ts` (the reader's theme, in `localStorage`), `ForceLTR`, the header controls. |
@@ -319,7 +323,9 @@ mismatch this exists to prevent.
   `lib/openings.ts`, `LAST_MOVE_HIGHLIGHT`) are the **default theme's**
   values, kept for callers and tests.
 - **Adding a language** is a catalog in `src/locales/`, an entry in
-  `supportedLanguages`, and — if it mirrors — one in `rtlLanguages`.
+  `supportedLanguages`, and — if it mirrors — one in `rtlLanguages`; and its
+  Open Graph locale in `OG_LOCALES` (`views/main/documentHead.ts`). Its URL
+  prefix (`/<lang>/…`) and its pre-rendered pages follow (CTA-136).
 - **The chessboard must never mirror.** Files run a–h left to right in every
   language; a mirrored board would put a1 bottom-right while `chess.js` and the
   engine still call it bottom-left. `Layout.tsx` wraps the board area in
