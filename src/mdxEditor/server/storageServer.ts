@@ -21,8 +21,11 @@
  *                    nothing from the request reaches the command.
  *   GET  /importers?path=<a .pgn> → { importers: [<.mdx>…] } — the articles
  *                    that import it (`import x from "./….pgn?raw"`)
- *   DELETE /files  { paths } → { deleted } — each an existing .mdx or .pgn
- *                    file, all checked before any is deleted
+ *   DELETE /files  { paths, folders? } → { deleted, deletedFolders } — each
+ *                    path an existing .mdx or .pgn file, each folder an
+ *                    existing folder under articles/ (never articles/ itself),
+ *                    deleted with everything in it; all checked before any
+ *                    goes
  *   PUT  /files    { path, content, overwrite? } → 201 { written, created, foldersCreated }
  *                    409 { error, exists: path } when the file is there and
  *                    `overwrite` is not set
@@ -47,7 +50,7 @@
  * variable the editor reads (`start.ts` reads `.env.local` / `.env` for it).
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
@@ -99,6 +102,8 @@ export type StorageFolder = {
   files: string[];
   /** Each `.mdx` file's facts, by its name. */
   articles: Record<string, ArticleFacts>;
+  /** Its other files — a share image (`cover.png`) — which go with it when the folder is deleted. */
+  others: string[];
 };
 
 class Refused extends Error {}
@@ -160,6 +165,27 @@ export const resolveArticlePath = (root: string, path: unknown): { absolute: str
   if (!inside(realBase, realpathSync(existing))) throw new Refused(`${path}: leads out of articles/ through a link.`);
   if (existsSync(absolute) && !statSync(absolute).isFile()) throw new Refused(`${path}: is a folder, not a file.`);
   return { absolute, folders, name };
+};
+
+/**
+ * **The folder guard**: `path` (relative to `root`) checked and resolved
+ * to a folder under it that may be deleted — Blog names all the way down,
+ * never `root` itself, there, a folder and no link, and, its links
+ * followed, still under `root`.
+ */
+export const resolveArticleFolder = (root: string, path: unknown): string => {
+  if (typeof path !== "string" || path.trim() === "") throw new Refused("articles/ itself is never deleted.");
+  const parts = path.split("/");
+  const bad = parts.find((part) => !SEGMENT.test(part));
+  if (bad !== undefined) throw new Refused(`${path}: "${bad}" is not a Blog folder's name.`);
+  const base = resolve(root);
+  const absolute = resolve(base, ...parts);
+  if (!inside(base, absolute) || absolute === base) throw new Refused(`${path}: leaves articles/.`);
+  const found = lstatSync(absolute, { throwIfNoEntry: false });
+  if (found === undefined) throw new Refused(`${path}/ is not there.`);
+  if (found.isSymbolicLink() || !found.isDirectory()) throw new Refused(`${path}: is not a folder.`);
+  if (!inside(realpathSync(base), realpathSync(absolute))) throw new Refused(`${path}: leads out of articles/.`);
+  return absolute;
 };
 
 /** A file of articles/ that git has not got as it is. */
@@ -247,7 +273,8 @@ export const listFolders = (root: string): StorageFolder[] => {
     const files = entries.filter((entry) => entry.isFile() && /\.(?:mdx|pgn)$/.test(entry.name)).map((entry) => entry.name);
     const articles = Object.fromEntries(files.filter((name) => name.endsWith(".mdx")).map((name) => [name, factsOf(join(dir, name))]));
     const title = articles["index.mdx"]?.title;
-    folders.push({ path, ...(title === undefined ? {} : { title }), files, articles });
+    const others = entries.filter((entry) => entry.isFile() && !/\.(?:mdx|pgn)$/.test(entry.name)).map((entry) => entry.name);
+    folders.push({ path, ...(title === undefined ? {} : { title }), files, articles, others });
     for (const entry of entries) if (entry.isDirectory() && SEGMENT.test(entry.name)) walk(path === "" ? entry.name : `${path}/${entry.name}`);
   };
   walk("");
@@ -324,15 +351,16 @@ export const createStorageHandler = ({ root, origins, git }: StorageOptions) => 
       return json(200, { importers: importersOf(root, path) }, cors);
     }
     if (request.method === "DELETE" && route === "/files") {
-      if (!(request.contentType ?? "").startsWith("application/json")) return json(415, { error: "A delete is JSON: { paths }." }, cors);
-      let payload: { paths?: unknown };
+      if (!(request.contentType ?? "").startsWith("application/json")) return json(415, { error: "A delete is JSON: { paths, folders? }." }, cors);
+      let payload: { paths?: unknown; folders?: unknown };
       try {
         payload = JSON.parse(request.body ?? "") as typeof payload;
       } catch {
         return json(400, { error: "The body is not JSON." }, cors);
       }
       const paths = Array.isArray(payload?.paths) ? payload.paths : [];
-      if (paths.length === 0) return json(400, { error: "No file to delete." }, cors);
+      const folderPaths = Array.isArray(payload?.folders) ? payload.folders : [];
+      if (paths.length === 0 && folderPaths.length === 0) return json(400, { error: "Nothing to delete." }, cors);
       try {
         // Every path checked before any file goes: all of them, or none.
         const files = paths.map((path) => {
@@ -340,8 +368,13 @@ export const createStorageHandler = ({ root, origins, git }: StorageOptions) => 
           if (!existsSync(absolute)) throw new Refused(`${String(path)} is not there.`);
           return { path: path as string, absolute };
         });
+        const folders = folderPaths.map((path) => ({ path: path as string, absolute: resolveArticleFolder(root, path) }));
         for (const { absolute } of files) unlinkSync(absolute);
-        return json(200, { deleted: files.map(({ path }) => path) }, cors);
+        // The deepest first, so a folder inside another one is gone before it.
+        for (const { absolute } of [...folders].sort((a, b) => b.absolute.length - a.absolute.length)) {
+          if (existsSync(absolute)) rmSync(absolute, { recursive: true });
+        }
+        return json(200, { deleted: files.map(({ path }) => path), deletedFolders: folders.map(({ path }) => path) }, cors);
       } catch (error) {
         if (error instanceof Refused) return json(400, { error: error.message }, cors);
         throw error;

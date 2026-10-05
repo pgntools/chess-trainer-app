@@ -17,10 +17,12 @@ import { ConfirmDialog } from "../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../design-system/components/feedback";
 import { SearchField } from "../../design-system/components/forms";
 import { LabelChip } from "../../design-system/components/tables";
-import { IconAction, ListScreenHeader } from "../../design-system/components/toolbars";
+import { IconAction, ListScreenHeader, SelectionBar } from "../../design-system/components/toolbars";
 import { DataTable, type DataTableColumn } from "../../design-system/patterns/tables";
 import { loadArticleSource } from "./articleSources";
 import DeleteArticleDialog from "./DeleteArticleDialog";
+import DeletePicksDialog from "./DeletePicksDialog";
+import { deletionPlanOf } from "./deletionPlan";
 import { sizeOf } from "./pgnPages";
 import {
   ARTICLES_DIR,
@@ -105,7 +107,10 @@ const rowsOf = (folders: readonly StorageFolder[], open: ReadonlySet<string>, ne
  * got it as it is. Each row's actions: an article's Edit (the editor),
  * its page on the Blog and Delete (`DeleteArticleDialog`, as in the
  * editor); a PGN's Delete, saying which articles import it; a folder's page
- * on the Blog. New article starts one in the editor.
+ * on the Blog. Rows are ticked to delete several together — folders whole,
+ * articles with their translations — one confirmation naming every file
+ * (`DeletePicksDialog`, `deletionPlan.ts`). New article starts one in the
+ * editor.
  */
 function ArticlesLobby() {
   const navigate = useNavigate();
@@ -119,6 +124,10 @@ function ArticlesLobby() {
   const [deletingArticle, setDeletingArticle] = useState<{ file: string; body: string }>();
   /** The PGN file being asked about, with the articles importing it. */
   const [deletingPgn, setDeletingPgn] = useState<{ path: string; importers: string[] | undefined }>();
+  /** The picked rows — `folder:<path>`, `article:<path>`, `pgn:<path>` — and the confirmation of deleting them. */
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const [askingPicks, setAskingPicks] = useState(false);
+  const [picksError, setPicksError] = useState<string>();
   const git = useGitStatus();
   const gitFiles = git.status?.kind === "status" ? git.status.files : undefined;
   const gitOf = (path: string): GitFile | undefined => gitFiles?.find((candidate) => candidate.path === path);
@@ -156,6 +165,25 @@ function ArticlesLobby() {
     setDeletingArticle(undefined);
     setDeletingPgn(undefined);
     setNotice(`Deleted ${result.paths.join(", ")}.`);
+    load();
+    git.refresh();
+  };
+
+  /** The picks deleted — folders whole, articles with their translations, PGN files — then the picks cleared. */
+  const deletePicks = async () => {
+    if (folders === undefined) return;
+    const plan = deletionPlanOf(picked, folders);
+    setBusy(true);
+    const result = await deleteStorageFiles(plan.files, plan.folders);
+    setBusy(false);
+    if (result.kind !== "deleted") {
+      setPicksError(result.kind === "down" ? `The storage service is not running — start the editor with ${STORAGE_COMMAND}.` : result.message);
+      return;
+    }
+    setAskingPicks(false);
+    setPicked(new Set());
+    const folderWords = result.folders.length === 0 ? "" : ` and ${result.folders.length === 1 ? "1 folder" : `${result.folders.length} folders`} (${result.folders.map((folder) => `${folder}/`).join(", ")})`;
+    setNotice(`Deleted ${result.paths.length === 1 ? "1 file" : `${result.paths.length} files`}${folderWords}.`);
     load();
     git.refresh();
   };
@@ -282,15 +310,43 @@ function ArticlesLobby() {
         </InlineAlert>
       ) : (
         <Box sx={{ flex: { md: 1 }, minHeight: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-          <Box sx={{ maxWidth: 360 }}>
-            <SearchField value={needle} onChange={setNeedle} placeholder="Find a file or a title" clearLabel="Clear the search" testId={`${ID}-search`} />
+          <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2 }}>
+            <Box sx={{ flex: "0 1 360px", minWidth: 220 }}>
+              <SearchField value={needle} onChange={setNeedle} placeholder="Find a file or a title" clearLabel="Clear the search" testId={`${ID}-search`} />
+            </Box>
+            <SelectionBar
+              count={picked.size}
+              countLabel={`${picked.size} selected`}
+              onClear={() => setPicked(new Set())}
+              clearLabel="Clear the selection"
+              actions={
+                <IconAction
+                  label="Delete the selected"
+                  onClick={() => {
+                    setPicksError(undefined);
+                    setAskingPicks(true);
+                  }}
+                  disabled={picked.size === 0 || busy}
+                  testId={`${ID}-delete-picked`}
+                >
+                  <DeleteOutlineRoundedIcon fontSize="small" />
+                </IconAction>
+              }
+              testId={`${ID}-selection`}
+            />
           </Box>
           <DataTable<LobbyRow, LobbyColumn>
             columns={columns}
             rows={rows}
             rowId={(row) => `${row.kind}:${row.path}`}
             sorted
-            hint="Arrow keys to move between rows, Enter to open a folder or edit an article"
+            hint="Arrow keys to move between rows, Enter to open a folder or edit an article; tick rows to delete them together"
+            picks={{
+              picked,
+              onChange: setPicked,
+              selectAllLabel: "Select all the rows shown",
+              pickLabel: (row) => `Select ${row.kind === "folder" ? `the folder ${row.path}/` : row.path}`,
+            }}
             tree={{
               depth: (row) => row.depth,
               open: (row) => (row.kind === "folder" ? row.open : undefined),
@@ -317,6 +373,17 @@ function ArticlesLobby() {
         </Box>
       )}
 
+      {askingPicks && folders !== undefined && (
+        <DeletePicksDialog
+          open
+          onClose={() => setAskingPicks(false)}
+          plan={deletionPlanOf(picked, folders)}
+          gitFiles={gitFiles}
+          onConfirm={() => void deletePicks()}
+          busy={busy}
+          error={picksError}
+        />
+      )}
       {deletingArticle !== undefined && (
         <DeleteArticleDialog
           open

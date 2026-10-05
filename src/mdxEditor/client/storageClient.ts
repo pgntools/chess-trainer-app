@@ -18,7 +18,7 @@ export const STORAGE_URL = `http://127.0.0.1:${PORT}`;
 export type ArticleFacts = { title?: string; date?: string; draft?: boolean };
 
 /** A folder under `articles/` — `""` is the root — with its index's title, its `.mdx` and `.pgn` files, and each `.mdx`'s facts. */
-export type StorageFolder = { path: string; title?: string; files: string[]; articles?: Record<string, ArticleFacts> };
+export type StorageFolder = { path: string; title?: string; files: string[]; articles?: Record<string, ArticleFacts>; others?: string[] };
 
 /** What a write came to. */
 export type WriteResult =
@@ -120,14 +120,18 @@ export const readImporters = async (path: string): Promise<string[] | undefined>
   }
 };
 
-/** Files under `articles/` deleted — all of them, or none when the service refuses one. */
-export const deleteStorageFiles = async (paths: readonly string[]): Promise<{ kind: "deleted"; paths: string[] } | { kind: "refused"; message: string } | { kind: "down" }> => {
+/** Files under `articles/`, and folders with everything in them, deleted — all of them, or none when the service refuses one. */
+export const deleteStorageFiles = async (
+  paths: readonly string[],
+  folders: readonly string[] = [],
+): Promise<{ kind: "deleted"; paths: string[]; folders: string[] } | { kind: "refused"; message: string } | { kind: "down" }> => {
   let response: Response;
   try {
-    response = await fetch(`${STORAGE_URL}/files`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paths }) });
+    response = await fetch(`${STORAGE_URL}/files`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paths, folders }) });
   } catch {
     return { kind: "down" };
   }
   if (!response.ok) return { kind: "refused", message: await errorOf(response) };
-  return { kind: "deleted", paths: ((await response.json()) as { deleted?: string[] }).deleted ?? [] };
+  const body = (await response.json()) as { deleted?: string[]; deletedFolders?: string[] };
+  return { kind: "deleted", paths: body.deleted ?? [], folders: body.deletedFolders ?? [] };
 };

@@ -82,13 +82,15 @@ describe("the folder list", () => {
     writeFileSync(join(root, "tournaments", "notes.txt"), "x");
     writeFileSync(join(root, "tournaments", "draft.mdx"), "---\ntitle: 'It''s a draft'\ndate: 2026-10-05\ndraft: true\n---\n");
     expect(listFolders(root)).toEqual([
-      { path: "", files: ["get-started.mdx"], articles: { "get-started.mdx": { title: "Get started" } } },
+      { path: "", files: ["get-started.mdx"], articles: { "get-started.mdx": { title: "Get started" } }, others: [] },
       {
         path: "tournaments",
         title: "Tournaments: 2026",
         files: ["cup.mdx", "cup.pgn", "draft.mdx", "index.mdx"],
         // Each article's title, date and draft, read from its frontmatter.
         articles: { "cup.mdx": { title: "Cup" }, "draft.mdx": { title: "It's a draft", date: "2026-10-05", draft: true }, "index.mdx": { title: "Tournaments: 2026" } },
+        // What else is in it — what deleting the folder takes too.
+        others: ["notes.txt"],
       },
     ]);
   });
@@ -257,7 +259,7 @@ describe("deleting, and who imports a PGN", () => {
 
     const deleted = handle(del(["tournaments/cup.mdx", "tournaments/cup.he.mdx", "tournaments/cup.pgn"]));
     expect(deleted.status).toBe(200);
-    expect(JSON.parse(deleted.body ?? "")).toEqual({ deleted: ["tournaments/cup.mdx", "tournaments/cup.he.mdx", "tournaments/cup.pgn"] });
+    expect(JSON.parse(deleted.body ?? "")).toEqual({ deleted: ["tournaments/cup.mdx", "tournaments/cup.he.mdx", "tournaments/cup.pgn"], deletedFolders: [] });
     expect(existsSync(join(root, "tournaments", "cup.mdx"))).toBe(false);
     // The folder and its index stay.
     expect(existsSync(join(root, "tournaments", "index.mdx"))).toBe(true);
@@ -283,5 +285,40 @@ describe("deleting, and who imports a PGN", () => {
     const answer = handle({ method: "GET", url: "/importers?path=tournaments%2Fcup.pgn", ...LOCAL });
     expect(JSON.parse(answer.body ?? "").importers.sort()).toEqual(["get-started.mdx", "tournaments/cup.mdx", "tournaments/deeper/again.mdx"]);
     expect(handle({ method: "GET", url: "/importers?path=..%2Fx.pgn", ...LOCAL }).status).toBe(400);
+  });
+});
+
+describe("deleting folders", () => {
+  const del = (paths: unknown[], folders: unknown[]): StorageRequest => ({
+    method: "DELETE",
+    url: "/files",
+    contentType: "application/json",
+    body: JSON.stringify({ paths, folders }),
+    ...LOCAL,
+  });
+
+  it("deletes a folder with everything in it — a share image too — beside files", () => {
+    mkdirSync(join(root, "tournaments", "club"));
+    writeFileSync(join(root, "tournaments", "club", "index.mdx"), "---\ntitle: Club\n---\n");
+    writeFileSync(join(root, "tournaments", "club", "cover.png"), "png");
+    const handle = createStorageHandler({ root });
+    expect(listFolders(root).find((folder) => folder.path === "tournaments/club")?.others).toEqual(["cover.png"]);
+    const answer = handle(del(["get-started.mdx"], ["tournaments/club"]));
+    expect(JSON.parse(answer.body ?? "")).toEqual({ deleted: ["get-started.mdx"], deletedFolders: ["tournaments/club"] });
+    expect(existsSync(join(root, "tournaments", "club"))).toBe(false);
+    expect(existsSync(join(root, "get-started.mdx"))).toBe(false);
+    expect(existsSync(join(root, "tournaments", "cup.mdx"))).toBe(true);
+  });
+
+  it("never deletes articles/ itself, nor a folder out, nor one not there — and then nothing at all", () => {
+    const handle = createStorageHandler({ root });
+    expect(JSON.parse(handle(del([], [""])).body ?? "").error).toBe("articles/ itself is never deleted.");
+    expect(handle(del([], ["../outside"])).status).toBe(400);
+    expect(handle(del([], ["tournaments/cup.mdx"])).status).toBe(400);
+    symlinkSync(join(work, "outside"), join(root, "linked"));
+    expect(handle(del([], ["linked"])).status).toBe(400);
+    expect(JSON.parse(handle(del(["get-started.mdx"], ["nowhere"])).body ?? "").error).toBe("nowhere/ is not there.");
+    expect(existsSync(join(root, "get-started.mdx"))).toBe(true);
+    expect(existsSync(join(work, "outside"))).toBe(true);
   });
 });
