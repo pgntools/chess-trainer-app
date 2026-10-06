@@ -52,6 +52,19 @@ describe("guessTournamentKind", () => {
     expect(guess(rapidTeams)?.facts).toMatchObject({ competitors: 48, teams: true, rounds: 12 });
   });
 
+  it("reads games with no rounds and more games than players as an arena (CTA-142) — Lichess's way", () => {
+    // Round "-" everywhere; five players, nine games, the same pairs again.
+    const arenaGame = (white: string, black: string) => game("-", white, black);
+    const arena = [
+      ["A", "B"], ["B", "A"], ["A", "B"], ["A", "C"], ["C", "A"], ["B", "C"], ["D", "E"], ["A", "D"], ["E", "B"],
+    ].map(([white, black]) => arenaGame(white, black));
+    expect(guessTournamentKind(arena)).toMatchObject({ kind: "arena", reason: "5 players, 9 games and no rounds: an arena", facts: { competitors: 5, games: 9, rounds: 0 } });
+    // A few games with no rounds — fewer than players — is still a Swiss's top boards, not an arena.
+    expect(guessTournamentKind(arena.slice(6))?.kind).toBe("swiss");
+    // Every pair met: a round robin, rounds or not.
+    expect(guessTournamentKind([arenaGame("A", "B"), arenaGame("A", "C"), arenaGame("B", "C"), arenaGame("B", "A")])?.kind).toBe("roundRobin");
+  });
+
   it("guesses nothing from a game or none", () => {
     expect(guessTournamentKind([])).toBeUndefined();
     expect(guessTournamentKind([game("1", "A", "B")])).toBeUndefined();

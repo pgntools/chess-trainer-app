@@ -25,13 +25,12 @@ import {
   filteredRows,
   playersOf,
   type CollectionImportSource,
-  isTableFormat,
   TOURNAMENT_FORMATS,
-  tableFormatOfKind,
+  formatOfKind,
   type CollectionRow,
   type CollectionTournament,
   type RowFilter,
-  type TournamentTableFormat,
+  type TournamentFormat,
 } from "../../../lib/libraryCollections";
 
 /**
@@ -48,7 +47,7 @@ export type ImportTournamentChoice = {
    * event's name — as the reader left it in the table (the guess, unless
    * changed); `undefined` for none.
    */
-  eventType?: (fileIndex: number, event: string) => TournamentTableFormat | undefined;
+  eventType?: (fileIndex: number, event: string) => TournamentFormat | undefined;
 };
 
 /** One event of a split, as the type table lists it. */
@@ -61,7 +60,7 @@ type EventRow = {
   players: number;
   dates?: { first: string; last: string };
   /** The type its games look like, where they tell. */
-  guess?: TournamentTableFormat;
+  guess?: TournamentFormat;
 };
 
 /** An event's key in the type table: its file and its name. */
@@ -134,7 +133,7 @@ export type CollectionImportDialogProps = {
  *   (on by default) and, under it, **every event in a table** — its name
  *   (and file, in a zip), games, players and dates, and a type select set to
  *   the type its games look like ("Not a tournament" where they do not
- *   tell), every format with a table offered, for the reader to change any
+ *   tell), every format offered, for the reader to change any
  *   before Import. The guess
  *   reads the games' tags — read once, when first needed — so it is known
  *   before anything is indexed.
@@ -232,7 +231,7 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
           games: group.rows.length,
           players: metadata.players,
           ...(metadata.dates !== undefined && { dates: metadata.dates }),
-          ...(guess !== undefined && { guess: tableFormatOfKind(guess.kind) }),
+          ...(guess !== undefined && { guess: formatOfKind(guess.kind) }),
         };
       }),
     );
@@ -241,7 +240,7 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
   const typeOf = (row: EventRow): string => eventTypes[row.key] ?? row.guess ?? NO_TYPE;
   // Until the reader picks a type, the mark's type is the guess's — so the switch turns it on with it.
   const shownMark: CollectionTournament =
-    suggestion !== undefined && !mark.enabled && !markTouched ? { enabled: false, type: tableFormatOfKind(suggestion.kind) } : mark;
+    suggestion !== undefined && !mark.enabled && !markTouched ? { enabled: false, type: formatOfKind(suggestion.kind) } : mark;
   const choice = (): ImportTournamentChoice => ({
     ...(oneEvent && mark.enabled && { mark }),
     ...(newCollection &&
@@ -250,14 +249,14 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
         eventType: (fileIndex: number, event: string) => {
           const row = events.find((candidate) => candidate.key === eventKeyOf(fileIndex, event));
           const type = row === undefined ? NO_TYPE : typeOf(row);
-          return type !== NO_TYPE && isTableFormat(type as TournamentTableFormat) ? (type as TournamentTableFormat) : undefined;
+          return (TOURNAMENT_FORMATS as readonly string[]).includes(type) ? (type as TournamentFormat) : undefined;
         },
       }),
   });
 
   const typeOptions = [
     { value: NO_TYPE, label: t("library.upload.options.notTournament") },
-    ...TOURNAMENT_FORMATS.filter(isTableFormat).map((format) => ({ value: format, label: t(`library.settings.formats.${format}`) })),
+    ...TOURNAMENT_FORMATS.map((format) => ({ value: format, label: t(`library.settings.formats.${format}`) })),
   ];
   const eventColumns: DataTableColumn<EventRow>[] = [
     {

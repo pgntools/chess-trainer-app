@@ -773,14 +773,14 @@ describe("a collection's settings (CTA-121)", () => {
     expect(uploadedCollectionsSnapshot()?.[0].tournament).toEqual({ enabled: true, type: "swiss" });
   });
 
-  it("offers every format with a table — Arena alone shown but not selectable (CTA-142)", async () => {
+  it("offers every format — Arena among them (CTA-142)", async () => {
     const mine = await upload();
     await mountSettings(`/library/${mine.id}/settings`);
     fireEvent.click(screen.getByTestId("library-settings-form-tournament-switch"));
     for (const format of ["roundRobin", "knockout", "doubleElimination", "match", "teamSwiss", "teamKnockout"]) {
       expect(screen.getByTestId(`library-settings-form-type-${format}`)).toBeEnabled();
     }
-    expect(screen.getByTestId("library-settings-form-type-arena")).toBeDisabled();
+    expect(screen.getByTestId("library-settings-form-type-arena")).toBeEnabled();
     expect(screen.getByTestId("library-settings-form-arena-description")).toHaveTextContent(/Best for/);
 
     fireEvent.click(screen.getByTestId("library-settings-form-type-knockout"));

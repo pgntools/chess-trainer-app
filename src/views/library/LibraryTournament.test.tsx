@@ -208,6 +208,35 @@ describe("a tournament collection's view", () => {
   });
 });
 
+describe("an arena (CTA-142)", () => {
+  // Lichess's way: Round "-" everywhere, more games than players, the same pairs again.
+  const ARENA = [
+    ["Ann", "Bea"], ["Bea", "Ann"], ["Ann", "Bea"], ["Ann", "Cid"], ["Cid", "Ann"], ["Bea", "Cid"], ["Dan", "Eve"], ["Ann", "Dan"], ["Eve", "Bea"],
+  ].map(([white, black], index) => `[Event "Titled Arena"]\n[Round "-"]\n[White "${white}"]\n[Black "${black}"]\n[Result "${index % 3 === 0 ? "1-0" : "1/2-1/2"}"]\n\n1. e4 *`);
+
+  it("is suggested as an arena on its games table", async () => {
+    const arena = await keep("Titled Arena", ARENA);
+    await mountTable(`/library/${arena.id}`);
+    expect(await screen.findByTestId("library-table-suggestion-text")).toHaveTextContent("Arena: 5 players, 9 games and no rounds.");
+  });
+
+  it("marked so, shows its event and says it has no standings table yet — every player's record on Participants", async () => {
+    const user = userEvent.setup();
+    const arena = await marked("arena", ARENA, "Titled Arena");
+    mount(`/library/${arena.id}`);
+    expect(await screen.findByTestId("library-tournament-no-table")).toHaveTextContent(
+      "Arena has no standings table yet — every player's record is on the Participants tab.",
+    );
+    expect(screen.getByTestId("library-tournament-info-facts-type")).toHaveTextContent("Arena");
+    // No rounds to count.
+    expect(screen.queryByTestId("library-tournament-info-facts-rounds")).toBeNull();
+    await user.click(tab("participants"));
+    const table = await screen.findByRole("table", { name: "Titled Arena — Participants" });
+    expect(within(table).getAllByRole("row")).toHaveLength(6);
+    expect(readText(within(table).getAllByRole("row")[1])).toMatch(/Ann/);
+  });
+});
+
 describe("a collection that does not read as a tournament", () => {
   it("keeps its games table, with no tabs", async () => {
     const plain = await upload();

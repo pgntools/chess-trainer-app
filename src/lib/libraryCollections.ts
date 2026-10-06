@@ -113,10 +113,11 @@ export const isTableFormat = (format: TournamentFormat): format is TournamentTab
 
 /**
  * The format a guessed kind of tournament is marked as (CTA-142,
- * `lib/tournamentKind.ts`) — the same word: every kind the guesser names is a
- * format with a table, which this function's type holds it to.
+ * `lib/tournamentKind.ts`) — the same word: every kind the guesser names is
+ * a format a collection can be marked as (an arena among them, which has no
+ * table yet), which this function's type holds it to.
  */
-export const tableFormatOfKind = (kind: TournamentKind): TournamentTableFormat => kind;
+export const formatOfKind = (kind: TournamentKind): TournamentFormat => kind;
 
 /** A collection marked as a tournament (CTA-121): every format but `arena` is live (CTA-142). */
 export type CollectionTournament = {

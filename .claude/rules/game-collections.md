@@ -56,7 +56,7 @@ for the Analysis Board and Saved analyses it hands games to.
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`, `eventGroupsOf` (rows grouped by their `Event` — the import's *Split by event*, CTA-127). **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together); since CTA-142 every format with a table (`TournamentTableFormat`, `isTableFormat` — all but `arena`), `tableFormatOfKind` (a guess's kind as a format), the summary's kept verdict `sharedEvent`, and `readsAsTournament` (the verdict from what is at hand — the list's, which reads no index), `isPotentialTournament` (an upload never marked either way whose games share one event). |
+| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`, `eventGroupsOf` (rows grouped by their `Event` — the import's *Split by event*, CTA-127). **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together); since CTA-142 every format selectable — `arena` too, though it has no table (`TournamentTableFormat`, `isTableFormat`: all but `arena`) — `formatOfKind` (a guess's kind as a format), the summary's kept verdict `sharedEvent`, and `readsAsTournament` (the verdict from what is at hand — the list's, which reads no index), `isPotentialTournament` (an upload never marked either way whose games share one event). |
 | `src/lib/collectionZip.ts` | **A picked `.zip`** (CTA-102, CTA-103): `readCollectionZip` (every `.pgn` in it, bounded, non-throwing), `isZipFile`. |
 | `src/lib/collectionIndex.ts` | **The index**: `IndexedRow`, `indexedRowOf` (tags + a `parsePgnTree` pass), `indexGame` (one game, with the app's book), `buildCollectionIndex` / `buildCollectionIndexAsync`, `numberedRows`, `textHash`, `OpeningLookup` / `loadOpeningLookup`, and the file format: `encodeCollectionIndex` / `decodeCollectionIndex`, `COLLECTION_INDEX_FORMAT` / `COLLECTION_INDEX_VERSION`. |
 | `src/lib/collectionIndex.worker.ts` | The index pass for an upload, off the main thread. |
@@ -79,7 +79,7 @@ for the Analysis Board and Saved analyses it hands games to.
 | `src/views/library/TournamentCollection.tsx`, `tournamentTabs.ts` | **The tournament view** (CTA-142, §6.4.3): Info, Participants and Games tabs, the tab the URL's (`tournamentTabOf`). |
 | `src/lib/tournamentParticipants.ts` | **Each player's record** (CTA-142): `participantsOf` (score, games, W / D / L, performance, longest unbeaten run — over `tournamentOf`, tags only), `topPlayersOf` (the standouts). |
 | `src/blocks/cards/TournamentInfo/`, `tables/ParticipantsTable/`, `panels/TopPlayers/`, `lists/TeamRosters/` | The tournament view's blocks (CTA-142): the event's facts, every player's record (sortable), the standouts, a team event's teams and their players. |
-| `src/blocks/forms/CollectionSettingsForm/` | A collection's settings form, a block (CTA-121): the title, the description, and the tournament mark with its formats (every one with a table selectable since CTA-142; Arena "coming later") and the type the games look like (`TournamentSuggestion`, its Apply) — presentational, wired by the settings screen. |
+| `src/blocks/forms/CollectionSettingsForm/` | A collection's settings form, a block (CTA-121): the title, the description, and the tournament mark with its formats (every one selectable since CTA-142, Arena's label saying it has no standings table yet) and the type the games look like (`TournamentSuggestion`, its Apply) — presentational, wired by the settings screen. |
 | `src/views/library/CollectionSettingsScreen.tsx` | `/library/<collection>/settings` (CTA-121): the `CollectionSettingsForm` block over one draft, saved whole through `updateCollectionSettings` — uploads only; a shipped id is the miss. |
 | `src/blocks/forms/CollectionFilters/` | The table's right-hand panel (a block since CTA-113): players (several names at once, OR'd — CTA-95) and side, the opening board (a slot), then opening, event, dates and result. |
 | `src/views/library/OpeningFilterBoard.tsx` | The opening-moves board (`options.id` `library-filter-board`), and its *Save tree as PGN* link. |
@@ -244,12 +244,13 @@ node scripts/wirepgn.js --list | --check | --rebuild | --remove <id>
    reads as the summary's mark — on, its `sharedEvent` true — so the
    collection opens in the tournament view (§6.4.3) and shows a trophy in
    the list (§6.2) for every reader. `--tournament <type>` names the format
-   (any with a table: `swiss`, `roundRobin`, `knockout`,
-   `doubleElimination`, `match`, `teamSwiss`, `teamKnockout`); bare, or
+   (`swiss`, `roundRobin`, `knockout`, `doubleElimination`, `match`,
+   `teamSwiss`, `teamKnockout`, `arena`); bare, or
    `auto`, takes the guess from the games' tags (`guessTournamentKind`,
    `src/lib/tournamentKind.ts`) and prints it with its reason; `none` takes
    a mark off. It refuses games that do not share one `Event`
-   (`canBeTournament`, the settings screen's rule) and `arena` (no table).
+   (`canBeTournament`, the settings screen's rule) and a word that is no
+   format.
    **Re-wiring without it keeps the mark** the entry had; `--rebuild`
    never touches it. `--list` shows each mark. An unknown format in the
    manifest is read as no mark.
@@ -627,7 +628,7 @@ words box, **the table the one region that scrolls**, its header sticky.
     `DataTable`): its name (and its file, in a zip), games, players and
     dates, and a **type select** (`-event-types-type-<n>`) set to the type
     its games look like — "Not a tournament" where they do not tell (an
-    event of one game, say) — every format with a table offered, so the
+    event of one game, say) — every format offered, so the
     reader changes any before Import. "Unknown" (the games with no `Event`)
     is listed with no select: it cannot be a tournament. Each event's
     collection is written with the type the table holds
@@ -816,12 +817,15 @@ the `CollectionSettingsForm` block; the screen owns the draft and the write.
   event, and an empty collection is none). No games are loaded for the verdict.
   Off, the switch is disabled with its reason as its description
   (`library.settings.tournamentBlocked`) and no type is offered.
-- **Every format with a table** (CTA-142; CTA-121 had Swiss and Round robin
-  only). On, the type is radios: Swiss (the default when first switched
-  on), Round robin, Knockout, Double elimination, Match play, Team Swiss /
-  round robin and Team knockout selectable; Arena shown disabled ("coming
-  later" — no table). Each format's one-line description sits under the
-  group, all at once.
+- **Every format** (CTA-142; CTA-121 had Swiss and Round robin only). On,
+  the type is radios: Swiss (the default when first switched on), Round
+  robin, Knockout, Double elimination, Match play, Team Swiss / round robin,
+  Team knockout and **Arena** — selectable since the guess recognises an
+  arena, its label saying it has "no standings table yet": its tournament
+  view's Info tab says so where the table would be, and its Participants
+  tab is whole (each player's score, W / D / L, performance — game points,
+  not Lichess's arena points with streaks and berserk). Each format's
+  one-line description sits under the group, all at once.
 - **The suggested type** (CTA-142, `TournamentSuggestion`): the screen reads
   the collection's **games** (their own tags — teams, FIDE ids — which the
   rows do not keep) and `guessTournamentKind` names the kind they look like;

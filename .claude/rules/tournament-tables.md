@@ -97,13 +97,15 @@ CTA-137; moved from the MDX editor into `src/lib/` by CTA-142, so a shipped
 screen can use it): `guessTournamentKind(headers)` → `{ kind, reason, facts }`
 — a match (two players), a double elimination (rounds from 51), a knockout
 or team knockout (each round's field among the round before's, fewer at the
-end), a round robin (≥ 90 % of the pairs met; twice for a double), else a
-Swiss or a team event. `reason` is one English line (the MDX editor's);
+end), a round robin (≥ 90 % of the pairs met; twice for a double), an
+**arena** (no round number in any game and more games than players —
+Lichess writes `Round "-"`; CTA-142), else a Swiss or a team event. `reason` is one English line (the MDX editor's);
 `facts` (competitors, rounds, a knockout's field round by round, twice, teams)
 let a screen say it in the reader's language
 (`library.settings.suggestion.reasons.*`). Its kinds are exactly the
-Library's stored formats with a table (`tableFormatOfKind`,
-`lib/libraryCollections.ts`). Used by the MDX editor (Components' Add a
+Library's stored formats (`formatOfKind`, `lib/libraryCollections.ts`) —
+an arena among them, which has no table: the MDX editor offers the Swiss
+standings for one (players ranked by points). Used by the MDX editor (Components' Add a
 component, the Components gallery), the Library's settings (the suggested
 type), its tournament view (the misfit's suggestion) and `wirepgn
 --tournament`. Held to every TWIC file the Blog ships
@@ -327,7 +329,7 @@ same way; only the player links differ (the view's open its Games tab,
 | `knockout`, `teamKnockout` | `KnockoutView` (teams detected from the tags) |
 | `doubleElimination` | `KnockoutView` with `losersFromRound` 51 |
 | `teamSwiss` | `TeamStandingsView`, 50 rows a page |
-| `arena` | none yet — said so |
+| `arena` | none yet — said so, pointing at the Participants tab (every player's record) |
 
 Its Participants tab reads every player's record with
 `lib/tournamentParticipants.ts` (`participantsOf` over `tournamentOf`, so a

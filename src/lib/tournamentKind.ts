@@ -22,13 +22,16 @@ import { playerOf, roundPartsOf } from "./tournament";
  *    knockout for teams);
  * 4. **nearly every pair met** → a **round robin** (double where they met
  *    twice);
- * 5. else a **Swiss** — and for teams, a team event's standings.
+ * 5. **no round numbers at all, and more games than players** → an
+ *    **arena** (CTA-142: Lichess writes `Round "-"`, and its players play as
+ *    many games as the clock allows, the same opponents again);
+ * 6. else a **Swiss** — and for teams, a team event's standings.
  *
  * A partial file (the top boards of a Swiss) still reads as a Swiss: its
  * rounds' players are not each among the round before's.
  */
 
-export type TournamentKind = "match" | "doubleElimination" | "knockout" | "teamKnockout" | "roundRobin" | "swiss" | "teamSwiss";
+export type TournamentKind = "match" | "doubleElimination" | "knockout" | "teamKnockout" | "roundRobin" | "swiss" | "teamSwiss" | "arena";
 
 /**
  * What a guess was read from (CTA-142) — the numbers its `reason` is made
@@ -129,6 +132,11 @@ export const guessTournamentKind = (games: readonly GameHeaders[]): TournamentGu
     const twice = pairCounts.filter((count) => count >= 2).length >= ROUND_ROBIN_SHARE * possible;
     const what = teams ? "a team round robin" : twice ? "a double round robin" : "a round robin";
     return { kind: teams ? "teamSwiss" : "roundRobin", reason: `${competitors.size} ${word}, every pair met${twice ? " twice" : ""}: ${what}`, facts: { ...facts, twice } };
+  }
+
+  // No round anywhere, and the players played more games than there are of them: an arena's pairing on the clock.
+  if (!teams && rounds.length === 0 && pairings.length > competitors.size) {
+    return { kind: "arena", reason: `${competitors.size} players, ${pairings.length} games and no rounds: an arena`, facts };
   }
 
   const roundsWords = rounds.length === 0 ? "" : `, ${rounds.length} rounds`;

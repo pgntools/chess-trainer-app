@@ -72,6 +72,7 @@ export const KIND_WORDS: Readonly<Record<TournamentKind, string>> = {
   roundRobin: "a round robin",
   swiss: "a Swiss",
   teamSwiss: "a team Swiss",
+  arena: "an arena",
 };
 
 /** Each kind of source, for a sentence — and its address's shape. */
@@ -160,7 +161,8 @@ export const GALLERY: readonly GalleryFolder[] = [
         summary: "A Swiss: a row per player, a cell per round — from a PGN, or a Library collection with its names linked",
         reads: TABLE,
         sample: { file: "tournaments/20th-werner-obermeyer-swiss-5r.pgn" },
-        tournament: ["swiss"],
+        // An arena too (CTA-142): its players ranked by points, which is what the standings show.
+        tournament: ["swiss", "arena"],
         markup: table("SwissStandingsTable", ' density="dense" rowsPerPage="25"'),
       },
       {

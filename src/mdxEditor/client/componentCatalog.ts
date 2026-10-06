@@ -234,6 +234,8 @@ export const TOURNAMENT_ENTRY: Readonly<Record<TournamentKind, string>> = {
   doubleElimination: "tournament-double-elimination",
   match: "tournament-match",
   teamSwiss: "tournament-team",
+  // An arena has no table of its own (CTA-142): its players ranked by points, the Swiss standings' way, is the nearest.
+  arena: "tournament-swiss",
 };
 
 /** The catalog for one game: each folder with only the entries that show something of it. */

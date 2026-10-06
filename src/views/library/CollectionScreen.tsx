@@ -23,7 +23,7 @@ import {
   isTournamentCollection,
   MAX_COLLECTION_NAME_CHARS,
   RESULTS,
-  tableFormatOfKind,
+  formatOfKind,
   type CollectionColumn,
   type CollectionFilterValues,
   type CollectionRow,
@@ -619,8 +619,8 @@ function CollectionTable({
               <TournamentSuggestion
                 guess={suggestion}
                 selected={false}
-                onApply={() => void applySuggestion(tableFormatOfKind(suggestion.kind))}
-                onDismiss={() => void mark({ enabled: false, type: tableFormatOfKind(suggestion.kind) })}
+                onApply={() => void applySuggestion(formatOfKind(suggestion.kind))}
+                onDismiss={() => void mark({ enabled: false, type: formatOfKind(suggestion.kind) })}
                 disabled={marking}
                 testId="library-table-suggestion"
               />

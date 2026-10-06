@@ -118,10 +118,9 @@ describe("wirepgn", () => {
     expect(mark()).toBe("roundRobin");
     expect(run(file, "--tournament", "none").code).toBe(0);
     expect(mark()).toBeUndefined();
-    // Arena has no table to draw.
-    const arena = run(file, "--tournament", "arena");
-    expect(arena.code).toBe(1);
-    expect(arena.out).toContain("not a format with a table");
+    // Any format, an arena too (CTA-142) — but not a word that is none.
+    expect(run(file, "--tournament", "arena").code).toBe(0);
+    expect(mark()).toBe("arena");
   }, 60_000);
 
   it("refuses to mark games that do not share one Event", () => {

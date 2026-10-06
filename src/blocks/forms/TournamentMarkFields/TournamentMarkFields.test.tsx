@@ -28,9 +28,10 @@ describe("TournamentMarkFields", () => {
     await expectNoAxeViolations(document.body);
   });
 
-  it("offers every format with a table, Arena off, and changes the type", async () => {
+  it("offers every format — Arena too, its label saying it has no standings table yet — and changes the type", async () => {
     render(<Live initial={KNOCKOUT} />);
-    expect(screen.getByTestId("probe-type-arena")).toBeDisabled();
+    expect(screen.getByTestId("probe-type-arena")).toBeEnabled();
+    expect(screen.getByTestId("probe-type-arena")).toHaveAccessibleName(/no standings table yet/);
     await userEvent.click(screen.getByTestId("probe-type-match"));
     expect(screen.getByTestId("probe-type-match")).toBeChecked();
   });

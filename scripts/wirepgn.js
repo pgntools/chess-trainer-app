@@ -25,7 +25,7 @@
  * `--tournament` (CTA-142) marks it a tournament in the manifest, so it opens
  * in the Library's tournament view for every reader: `--tournament <type>`
  * names the format (`swiss`, `roundRobin`, `knockout`, `doubleElimination`,
- * `match`, `teamSwiss`, `teamKnockout`), a bare `--tournament` (or `auto`)
+ * `match`, `teamSwiss`, `teamKnockout`, `arena`), a bare `--tournament` (or `auto`)
  * takes the app's guess from the games' tags (`lib/tournamentKind.ts`), and
  * `--tournament none` takes a mark off. Its games must share one `Event`
  * (`canBeTournament`), as the settings screen asks of an upload. Re-wiring
@@ -61,7 +61,7 @@ const USAGE = `Usage:
   node scripts/wirepgn.js --remove <id>                            unwire one, deleting its files
 Options:
   --tournament [type]   mark it a tournament: swiss, roundRobin, knockout, doubleElimination,
-                        match, teamSwiss or teamKnockout; bare or "auto" for the guess from
+                        match, teamSwiss, teamKnockout or arena; bare or "auto" for the guess from
                         its tags; "none" to take a mark off (re-wiring without it keeps it)
   --dir <path>          the collections folder (default: src/data/library)`;
 
@@ -189,7 +189,7 @@ const indexFile = (lib, lookup, dir, stem, text, label) => {
 /**
  * The manifest's tournament mark for a file being wired (CTA-142): the
  * format asked for, the guess for `auto`, nothing for `none` — refused over
- * games that do not share one `Event`, and for a format with no table.
+ * games that do not share one `Event`.
  */
 const tournamentMarkOf = (lib, asked, games, rows) => {
   if (asked === "none") return undefined;
@@ -200,9 +200,7 @@ const tournamentMarkOf = (lib, asked, games, rows) => {
     console.log(`  tournament: ${guess.kind} — ${guess.reason}`);
     return guess.kind;
   }
-  if (!lib.TOURNAMENT_FORMATS.includes(asked) || !lib.isTableFormat(asked)) {
-    fail(`--tournament: ${asked} is not a format with a table (${lib.TOURNAMENT_FORMATS.filter(lib.isTableFormat).join(", ")})`);
-  }
+  if (!lib.TOURNAMENT_FORMATS.includes(asked)) fail(`--tournament: ${asked} is not a format (${lib.TOURNAMENT_FORMATS.join(", ")})`);
   console.log(`  tournament: ${asked}`);
   return asked;
 };

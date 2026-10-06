@@ -61,7 +61,7 @@ describe("CollectionSettingsForm", () => {
     expect(onChange).toHaveBeenLastCalledWith({ tournament: { enabled: true, type: "swiss" } });
   });
 
-  it("offers every format with a table — Arena alone not selectable — each with its description (CTA-142)", () => {
+  it("offers every format — Arena's label saying it has no standings table yet — each with its description (CTA-142)", () => {
     mount(SWISS, true);
     expect(screen.getByTestId("probe-type-swiss")).toBeChecked();
     for (const format of ["roundRobin", "knockout", "doubleElimination", "match", "teamSwiss", "teamKnockout"]) {
@@ -69,9 +69,9 @@ describe("CollectionSettingsForm", () => {
       expect(screen.getByTestId(`probe-${format}-description`)).toHaveTextContent(/Best for/);
     }
     const arena = screen.getByTestId("probe-type-arena");
-    // Not selectable, its own label saying so, and its description still there to read.
-    expect(arena).toBeDisabled();
-    expect(arena).toHaveAccessibleName(/coming later/i);
+    // Selectable since an arena is recognised (CTA-142), its own label saying it has no table yet.
+    expect(arena).toBeEnabled();
+    expect(arena).toHaveAccessibleName(/no standings table yet/i);
     expect(screen.getByTestId("probe-arena-description")).toHaveTextContent(/Best for/);
     expect(screen.getByTestId("probe-swiss-description")).toHaveTextContent("no one is eliminated");
     expect(screen.getByTestId("probe-roundRobin-description")).toHaveTextContent("plays every other");

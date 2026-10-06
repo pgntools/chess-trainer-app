@@ -15,6 +15,7 @@ export const suggestionReasonOf = (t: TFunction, guess: TournamentGuess): string
   const key = (() => {
     switch (guess.kind) {
       case "match":
+      case "arena":
       case "doubleElimination":
       case "knockout":
       case "teamKnockout":

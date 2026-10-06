@@ -1068,7 +1068,7 @@ const he: typeof en = {
       tournamentHelp: "אפשר להציג את משחקי טורניר כטבלאות תוצאות וטבלאות מפגשים.",
       tournamentBlocked:
         "אפשר לסמן אוסף כטורניר רק כשכל המשחקים בו חולקים אירוע אחד. קודם צמצמו את האוסף למשחקי אירוע טורניר אחד.",
-      comingLater: "בקרוב",
+      comingLater: "עדיין בלי טבלת דירוג",
       type: "סוג הטורניר",
       save: "שמירה",
       cancel: "ביטול",
@@ -1122,6 +1122,7 @@ const he: typeof en = {
           swissNoRounds: "{{competitors}} שחקנים, כל אחד פוגש כמה מהאחרים",
           teamSwiss: "{{competitors}} קבוצות ב־{{rounds}} סיבובים, כל אחת פוגשת כמה מהאחרות",
           teamSwissNoRounds: "{{competitors}} קבוצות, כל אחת פוגשת כמה מהאחרות",
+          arena: "{{competitors}} שחקנים, {{games}} משחקים וללא סיבובים",
         },
       },
     },
@@ -1156,7 +1157,7 @@ const he: typeof en = {
         misfit: "המשחקים אינם נקראים כ{{type}}.",
         misfitSuggest: "המשחקים אינם נקראים כ{{type}} — הם נראים כמו {{guess}}: {{reason}}.",
         changeType: "שינוי הסוג",
-        noTable: "ל{{type}} אין עדיין טבלה.",
+        noTable: "ל{{type}} אין עדיין טבלת דירוג — הרישום של כל שחקן נמצא בלשונית המשתתפים.",
       },
       participants: {
         title: "משתתפים",

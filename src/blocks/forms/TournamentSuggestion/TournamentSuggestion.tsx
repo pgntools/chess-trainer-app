@@ -6,7 +6,7 @@ import TipsAndUpdatesOutlinedIcon from "@mui/icons-material/TipsAndUpdatesOutlin
 import { useTranslation } from "react-i18next";
 
 import { IconAction } from "../../../design-system/components/toolbars";
-import { tableFormatOfKind } from "../../../lib/libraryCollections";
+import { formatOfKind } from "../../../lib/libraryCollections";
 import type { TournamentGuess } from "../../../lib/tournamentKind";
 import { suggestionReasonOf } from "./suggestionReason";
 
@@ -40,7 +40,7 @@ export type TournamentSuggestionProps = {
  */
 function TournamentSuggestion({ guess, selected, onApply, onDismiss, disabled = false, testId }: TournamentSuggestionProps) {
   const { t } = useTranslation();
-  const type = t(`library.settings.formats.${tableFormatOfKind(guess.kind)}`);
+  const type = t(`library.settings.formats.${formatOfKind(guess.kind)}`);
   return (
     <Box
       data-testid={testId}

@@ -1410,7 +1410,8 @@ const en = {
       tournamentHelp: "A tournament's games can be shown as standings and crosstables.",
       tournamentBlocked:
         "A collection can be marked as a tournament only when every game in it shares one Event. First narrow the collection to the games of one tournament event.",
-      comingLater: "coming later",
+      /** Arena (CTA-142): markable, its view showing no standings table yet. */
+      comingLater: "no standings table yet",
       type: "Tournament type",
       save: "Save",
       cancel: "Cancel",
@@ -1473,6 +1474,8 @@ const en = {
           swissNoRounds: "{{competitors}} players, each meeting a few of the others",
           teamSwiss: "{{competitors}} teams over {{rounds}} rounds, each meeting a few of the others",
           teamSwissNoRounds: "{{competitors}} teams, each meeting a few of the others",
+          /** CTA-142: no round numbers, more games than players — Lichess's arenas. */
+          arena: "{{competitors}} players, {{games}} games and no rounds",
         },
       },
     },
@@ -1519,7 +1522,7 @@ const en = {
         misfit: "The games do not read as {{type}}.",
         misfitSuggest: "The games do not read as {{type}} — they look like {{guess}}: {{reason}}.",
         changeType: "Change the type",
-        noTable: "{{type}} has no table yet.",
+        noTable: "{{type}} has no standings table yet — every player's record is on the Participants tab.",
       },
       /** The Participants tab. */
       participants: {

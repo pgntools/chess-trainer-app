@@ -22,7 +22,7 @@ import { gameTag, type GameHeaders } from "../../lib/gameModel";
 import {
   collectionMetadataOf,
   sharedEventOf,
-  tableFormatOfKind,
+  formatOfKind,
   type CollectionRow,
   type CollectionSummary,
   type TournamentFormat,
@@ -168,10 +168,10 @@ function Misfit({ collection, headers, type }: { collection: CollectionSummary; 
   const { t } = useTranslation();
   const location = useLocation();
   const guess = useMemo(() => guessTournamentKind(headers), [headers]);
-  if (guess === undefined || tableFormatOfKind(guess.kind) === type) return null;
+  if (guess === undefined || formatOfKind(guess.kind) === type) return null;
   const words = {
     type: t(`library.settings.formats.${type}`),
-    guess: t(`library.settings.formats.${tableFormatOfKind(guess.kind)}`),
+    guess: t(`library.settings.formats.${formatOfKind(guess.kind)}`),
     reason: suggestionReasonOf(t, guess),
   };
   return (
