@@ -91,6 +91,12 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
               element: devScreen(() => import("./mdxEditor/client/Main")),
               handle: { ...FULL_WIDTH_ROUTE, title: "pages.mdxEditor" },
             },
+            {
+              // Every component an article embeds, each set up with a form and rendered live — a sandbox (CTA-140).
+              path: "/dev/mdx-editor/components",
+              element: devScreen(() => import("./mdxEditor/client/ComponentGalleryMain")),
+              handle: { ...FULL_WIDTH_ROUTE, title: "pages.mdxComponents" },
+            },
           ]
         : []),
     ]

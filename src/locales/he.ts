@@ -36,6 +36,7 @@ const he: typeof en = {
     themeEditor: "עורך ערכות נושא",
     mdxArticles: "מאמרים",
     mdxEditor: "עורך",
+    mdxComponents: "גלריית רכיבים",
     folders: {
       engine: "מנוע",
       library: "ספרייה",
@@ -156,6 +157,7 @@ const he: typeof en = {
     themeEditor: "עורך ערכות נושא",
     mdxEditor: "עורך MDX",
     mdxArticles: "עורך MDX — מאמרים",
+    mdxComponents: "עורך MDX — גלריית רכיבים",
   },
   pageDescriptions: {
     home: "מאמן שחמט בדפדפן: משחק מול המנוע, ניתוח משחקים, סיור בפתיחות, אימון הרפרטואר וצפייה במשחקי אמנים.",
