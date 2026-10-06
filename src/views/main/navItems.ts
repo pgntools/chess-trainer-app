@@ -5,6 +5,7 @@ import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import ConstructionRoundedIcon from "@mui/icons-material/ConstructionRounded";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
+import WidgetsRoundedIcon from "@mui/icons-material/WidgetsRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
@@ -134,6 +135,7 @@ export const navItems = (): readonly NavItem[] => [
     ? [
         { to: "/dev/mdx-editor", labelKey: "nav.mdxArticles", icon: ArticleRoundedIcon, folder: "mdx-editor" },
         { to: "/dev/mdx-editor/edit", labelKey: "nav.mdxEditor", icon: EditNoteRoundedIcon, folder: "mdx-editor" },
+        { to: "/dev/mdx-editor/components", labelKey: "nav.mdxComponents", icon: WidgetsRoundedIcon, folder: "mdx-editor" },
       ]
     : []),
   ...(import.meta.env.DEV

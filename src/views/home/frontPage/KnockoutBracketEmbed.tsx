@@ -1,11 +1,5 @@
-import { useCallback } from "react";
-import { useTranslation } from "react-i18next";
-
-import { KnockoutBracket } from "../../../blocks/tables";
-import { InlineAlert } from "../../../design-system/components/feedback";
-import type { GameHeaders } from "../../../lib/gameModel";
-import { knockoutOf } from "../../../lib/knockout";
-import { usePgnEvent, usePgnSource, type PgnSourceProps } from "./pgnTournament";
+import { EmbedSource, type EmbedSourceProps } from "./embedSource";
+import { KnockoutView } from "./tournamentEmbedViews";
 
 /**
  * **A knockout's bracket in an article** (CTA-128) —
@@ -20,46 +14,29 @@ import { usePgnEvent, usePgnSource, type PgnSourceProps } from "./pgnTournament"
  * is named after the `Event` tag ("ch-NED KO 2026 — bracket"), and its ids
  * are `tournament-bracket-<event, slugified>`. A PGN with no game in it says
  * so.
+ *
+ * **Any source** (CTA-140): `pgn={games}` (or `load`) for a PGN of the
+ * article's own, or `src` — a Library collection's address
+ * (`src="/library/<collection>"`), or any other the app keeps
+ * (`lib/embedSource.ts`) — read by `<EmbedSource>`; a Library source's
+ * names and results link into the Library (`tournamentEmbedViews.tsx`).
  */
 
-type KnockoutBracketEmbedProps = PgnSourceProps & {
+type KnockoutBracketEmbedProps = EmbedSourceProps & {
   /** Where a double elimination's losers' bracket starts — TWIC's `51`. Absent, one bracket. */
   losersFromRound?: number | string;
   /** `dense` tightens the match boxes. */
   density?: "normal" | "dense";
+  /** A Library source: each name a link to the collection's games of that player — or team. Default on. */
+  playerLink?: boolean;
+  /** A Library source: each match's games as links under it, to the Library's board. Default on. */
+  gameLink?: boolean;
 };
 
-export function KnockoutBracketEmbed({ pgn, load, losersFromRound, density }: KnockoutBracketEmbedProps) {
-  const { t } = useTranslation();
-  const losers = losersFromRound === undefined || losersFromRound === "" ? undefined : Number(losersFromRound);
-  const read = usePgnEvent(
-    usePgnSource({ pgn, load }),
-    useCallback((headers: GameHeaders[]) => knockoutOf(headers, { losersFromRound: Number.isFinite(losers) ? losers : undefined }), [losers]),
-  );
-  if (read.loading) {
-    // The file is a chunk of its own, on its way: the table's own "reading" state, named until its event is known.
-    return (
-      <KnockoutBracket
-        knockout={undefined}
-        ariaLabel={t("tournament.embed.bracket", { event: t("tournament.embed.untitled") })}
-        density={density}
-        testId="tournament-bracket-loading"
-      />
-    );
-  }
-  if (read.made === undefined) {
-    return (
-      <InlineAlert severity="warning" testId="tournament-bracket-unreadable" detail={read.error}>
-        {t("tournament.embed.unreadable")}
-      </InlineAlert>
-    );
-  }
+export function KnockoutBracketEmbed({ src, pgn, load, ...table }: KnockoutBracketEmbedProps) {
   return (
-    <KnockoutBracket
-      knockout={read.made}
-      ariaLabel={t("tournament.embed.bracket", { event: read.event ?? t("tournament.embed.untitled") })}
-      density={density}
-      testId={`tournament-bracket-${read.slug}`}
-    />
+    <EmbedSource src={src} pgn={pgn} load={load}>
+      {(read) => <KnockoutView read={read} {...table} />}
+    </EmbedSource>
   );
 }

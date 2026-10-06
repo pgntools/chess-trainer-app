@@ -41,8 +41,8 @@ const cut = (text: string, length = 28) => (text.length > length ? `${text.slice
 /**
  * A component's words, for the list: its name, and what it reads — the PGN
  * it is given by name (`pgn={games}` → `games`), moves written in (cut
- * short), or a Library or stored game's address (`_id`, `game`,
- * `reference`).
+ * short), or what it reads by address (`src`, CTA-140; the older `_id`,
+ * `game`, `reference`).
  */
 export const componentLabelOf = (code: string): { component: string; reads?: string } => {
   const element = elementOf(code);
@@ -53,7 +53,7 @@ export const componentLabelOf = (code: string): { component: string; reads?: str
       ? pgn.expression
       : pgn !== undefined && !("bare" in pgn)
         ? cut(textOf(element.attributes, "pgn") ?? "")
-        : (textOf(element.attributes, "_id") ?? textOf(element.attributes, "game") ?? textOf(element.attributes, "reference"));
+        : (textOf(element.attributes, "src") ?? textOf(element.attributes, "_id") ?? textOf(element.attributes, "game") ?? textOf(element.attributes, "reference"));
   return { component: element.component, reads };
 };
 

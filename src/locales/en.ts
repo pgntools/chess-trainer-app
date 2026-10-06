@@ -54,9 +54,10 @@ const en = {
     designSystem: "Design system",
     /** The dev-only theme editor (CTA-115), in the Development folder. */
     themeEditor: "Theme editor",
-    /** The MDX editor (CTA-137, `yarn mdx-editor:start` only): its article lobby and the editor itself, in its own folder. */
+    /** The MDX editor (CTA-137, `yarn mdx-editor:start` only): its article lobby and the editor itself, in its own folder — and its Components gallery (CTA-140). */
     mdxArticles: "Articles",
     mdxEditor: "Editor",
+    mdxComponents: "Components gallery",
     /** Sidebar folders — groupings over the routes, never routes themselves. */
     folders: {
       engine: "Engine",
@@ -200,6 +201,7 @@ const en = {
     themeEditor: "Theme editor",
     mdxEditor: "MDX editor",
     mdxArticles: "MDX editor — articles",
+    mdxComponents: "MDX editor — components gallery",
   },
   /**
    * **Each screen's description** (CTA-136) — its page's `<meta name="description">`
@@ -1694,6 +1696,8 @@ const en = {
       collectionMissing: "This collection is not in this browser's Library.",
       /** <CollectionTeamStandingsTable> over a collection whose games name no teams. */
       notATeamEvent: "This collection is not a team event: its games name no teams.",
+      /** A table over an analysis, a played game or a repertoire (CTA-140) that this browser does not hold. */
+      sourceMissing: "This is not in this browser — it is a reader's own, kept where it was made.",
     },
     /** A knockout's bracket (CTA-128): the rounds' names, a match in words. */
     knockout: {

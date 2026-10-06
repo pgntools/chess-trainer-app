@@ -9,12 +9,9 @@ import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import { InlineAlert, StatusText } from "../../design-system/components/feedback";
 import { RadioGroupField, TextInputField } from "../../design-system/components/forms";
 import { TreeView, type TreeNode } from "../../design-system/patterns/trees";
-import { libraryGameReference, loadReferencedGames, resolveGameReference } from "../../lib/gameReference";
-import { loadUploadedCollections, loadUploadedGames } from "../../lib/libraryCollectionStore";
-import type { CollectionSummary, TournamentFormat } from "../../lib/libraryCollections";
-import { readPgnTags, splitPgnGames } from "../../lib/pgn";
-import { findShippedCollection } from "../../lib/shippedCollections";
-import { guessTournamentKind, type TournamentGuess } from "./tournamentKind";
+import { splitPgnGames } from "../../lib/pgn";
+import type { TournamentGuess } from "./tournamentKind";
+import { collectionGamesOf, collectionSummaryOf, FORMAT_WORDS, guessOf, libraryPgnOf } from "./libraryLookup";
 import { collectionPathOf, libraryGamePathOf } from "../../views/home/frontPage/paths";
 import { pgnTextOf } from "./articleSources";
 import { CATALOG, catalogFor, componentOf, TOURNAMENT_ENTRY, type ExampleSource, type LibraryGame, type MovesLine } from "./componentCatalog";
@@ -29,33 +26,6 @@ import { movesLineOf, pgnBytesOf, sizeOf } from "./pgnPages";
 const ID = "mdx-editor-components";
 /** The source choice that is a Library game rather than one of the article's PGNs. */
 const LIBRARY = "library:";
-
-/** A tournament format, for a sentence. */
-const FORMAT_WORDS: Record<TournamentFormat, string> = { swiss: "a Swiss", roundRobin: "a round robin", knockout: "a knockout", arena: "an arena", match: "a match" };
-
-/** A collection's summary — a shipped one's, or an upload's once the Library's list is read. */
-const collectionSummaryOf = async (id: string): Promise<CollectionSummary | undefined> =>
-  findShippedCollection(id) ?? (await loadUploadedCollections()).find((candidate) => candidate.id === id);
-
-/** A Library game's PGN, read — `undefined` for no such game. */
-const libraryPgnOf = async (collection: string, number: number): Promise<{ name: string; pgn: string } | undefined> => {
-  const reference = libraryGameReference(collection, number);
-  await loadReferencedGames(reference);
-  return resolveGameReference(reference);
-};
-
-/** A Library collection's games, each its PGN — a shipped one's or an upload's; `undefined` where it cannot be read. */
-const collectionGamesOf = async (collection: string): Promise<readonly string[] | undefined> => {
-  try {
-    const shipped = findShippedCollection(collection);
-    return (shipped === undefined ? await loadUploadedGames(collection) : await shipped.loadGames()) ?? undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-/** The kind of tournament a set of games looks like — from their tags alone. */
-const guessOf = (games: readonly string[]): TournamentGuess | undefined => guessTournamentKind(games.map(readPgnTags));
 
 /** A game's first moves, for a sentence — or a short opening where it gave none. */
 const movesOf = (source: { moves?: MovesLine }) => source.moves?.line ?? "1. e4 e5 2. Nf3 Nc6";

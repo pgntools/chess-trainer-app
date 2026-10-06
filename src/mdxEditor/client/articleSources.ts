@@ -70,3 +70,12 @@ export const pgnTextOf = async (pgn: ArticlePgn, folder: string, attached: Reado
   const key = resolver.keyOf(`${pgn.file}?raw`);
   return key === undefined ? undefined : resolver.load(key);
 };
+
+/** The path under `articles/` of each file a glob holds, in order. */
+const pathsOf = (files: Record<string, unknown>): string[] => Object.keys(files).map((key) => key.slice(ARTICLES_DIR.length)).sort();
+
+/** Every PGN beside the Blog's articles, by its path under `articles/` — what the Components gallery reads a component from (CTA-140). */
+export const articlePgnFiles = (): string[] => pathsOf(pgnFiles);
+
+/** Every image beside the Blog's articles, by its path under `articles/` — the Components gallery's `<ArticleImage>` (CTA-140). */
+export const articleImageFiles = (): string[] => pathsOf(imageFiles);

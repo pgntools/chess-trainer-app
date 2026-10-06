@@ -36,6 +36,7 @@ const he: typeof en = {
     themeEditor: "עורך ערכות נושא",
     mdxArticles: "מאמרים",
     mdxEditor: "עורך",
+    mdxComponents: "גלריית רכיבים",
     folders: {
       engine: "מנוע",
       library: "ספרייה",
@@ -156,6 +157,7 @@ const he: typeof en = {
     themeEditor: "עורך ערכות נושא",
     mdxEditor: "עורך MDX",
     mdxArticles: "עורך MDX — מאמרים",
+    mdxComponents: "עורך MDX — גלריית רכיבים",
   },
   pageDescriptions: {
     home: "מאמן שחמט בדפדפן: משחק מול המנוע, ניתוח משחקים, סיור בפתיחות, אימון הרפרטואר וצפייה במשחקי אמנים.",
@@ -1308,6 +1310,7 @@ const he: typeof en = {
       notAMatch: "ה-PGN הזה אינו משחק בין שניים: לא כל המשחקים בו הם בין אותם שני שחקנים.",
       collectionMissing: "האוסף הזה אינו נמצא בספרייה של הדפדפן הזה.",
       notATeamEvent: "האוסף הזה אינו אירוע קבוצתי: המשחקים בו אינם נוקבים בשמות קבוצות.",
+      sourceMissing: "זה אינו נמצא בדפדפן הזה — הוא שייך לקורא, ונשמר במקום שבו נוצר.",
     },
     knockout: {
       round: "סיבוב {{round}}",

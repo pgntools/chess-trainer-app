@@ -1,11 +1,13 @@
 import { useId, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import Typography from "@mui/material/Typography";
 
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { mainline, plyLabel } from "../../../lib/gameTree";
 import { parsePgnTree, splitPgnGames } from "../../../lib/pgn";
 import { resolveExcerpt } from "../../../lib/pgnExcerpt";
 import ExcerptBoard from "../../shared/ExcerptBoard";
+import { EmbedSource } from "./embedSource";
 
 /**
  * **A game written into an article** (CTA-126) —
@@ -31,11 +33,20 @@ import ExcerptBoard from "../../shared/ExcerptBoard";
  *
  * Each board's id is the instance's own (`useId`), so one game can be
  * embedded any number of times on a page. A PGN that will not read says so.
+ *
+ * **Any source** (CTA-140): `src` in place of `pgn` names a game the app
+ * keeps, by its screen's path (`lib/embedSource.ts`) — a Library game
+ * (`/library/<c>/<n>`), or a collection with `game` picking one of it, a
+ * saved analysis, a played game, a repertoire (its whole tree) — read by
+ * `<EmbedSource>`, then shown as a PGN of the article's own is. `src` may
+ * also be the PGN's text.
  */
 
 type InlinePgnGameProps = {
   /** The game as PGN — side lines, comments and NAGs kept. */
-  pgn: string;
+  pgn?: string;
+  /** Where the game is, in place of `pgn`: an app path (`/library/<c>/<n>`, `/repertoires/<id>`, …) — or a PGN's text. */
+  src?: string;
   /** Which game of a PGN holding several, 1-based. Default the first. */
   game?: number | string;
   /** Draw the PGN's `[%cal]` arrows and `[%csl]` circles. Default on. */
@@ -62,7 +73,37 @@ const plyOf = (value: number | string | undefined): number | undefined => {
   return typeof number === "number" && Number.isFinite(number) ? number : undefined;
 };
 
-export function InlinePgnGame({
+export function InlinePgnGame({ src, pgn, game, ...shown }: InlinePgnGameProps) {
+  const { t } = useTranslation();
+  const instance = useId().replace(/[^a-zA-Z0-9]/g, "");
+  if (src === undefined) return <InlinePgnBoard pgn={pgn ?? ""} game={game} {...shown} />;
+  return (
+    <EmbedSource src={src}>
+      {(read) => {
+        if (read.status === "loading") {
+          return (
+            <Typography role="status" data-testid={`inline-pgn-${instance}-loading`} sx={{ color: "text.secondary" }}>
+              {t("home.embed.loading")}
+            </Typography>
+          );
+        }
+        if (read.status === "missing") {
+          return (
+            <InlineAlert severity="info" testId={`inline-pgn-${instance}-missing`} detail={read.detail}>
+              {t("home.embed.missing")}
+            </InlineAlert>
+          );
+        }
+        // A PGN's text holds its games as written; a stored source's games are each one: `game` picks among them.
+        if (read.status === "unreadable") return <InlinePgnBoard pgn="" {...shown} />;
+        return <InlinePgnBoard pgn={read.games.join("\n\n")} game={game} {...shown} />;
+      }}
+    </EmbedSource>
+  );
+}
+
+/** The board over a PGN's text — what `<InlinePgnGame>` shows, whatever its source. */
+function InlinePgnBoard({
   pgn,
   game,
   shapes,
@@ -77,7 +118,7 @@ export function InlinePgnGame({
   comments,
   orientation,
   caption,
-}: InlinePgnGameProps) {
+}: Omit<InlinePgnGameProps, "src" | "pgn"> & { pgn: string }) {
   const { t } = useTranslation();
   const instance = useId().replace(/[^a-zA-Z0-9]/g, "");
 

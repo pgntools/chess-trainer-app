@@ -15,6 +15,7 @@ import {
 } from "../../../lib/gameReference";
 import { gameTag } from "../../../lib/gameModel";
 import { parsePgnTree } from "../../../lib/pgn";
+import { gameReferenceOf, sourceAddressOf } from "../../../lib/embedSource";
 import { slugify } from "../../../lib/pgnText";
 import { loadSavedAnalyses, savedAnalysesSnapshot } from "../../../lib/savedAnalysisStore";
 import DemoBoard from "../../shared/DemoBoard";
@@ -42,7 +43,13 @@ import DemoBoard from "../../shared/DemoBoard";
 
 type StoredGameEmbedProps = {
   /** A `?game=` reference — `library/capablanca/1`. */
-  reference: string;
+  reference?: string;
+  /**
+   * Or the game's app path (CTA-140, `lib/embedSource.ts`) — a Library game
+   * (`/library/<c>/<n>`), a saved analysis (`/tools/analysis?analysis=<id>`),
+   * a played game (`/engine/play?saved=<id>`). `reference` wins.
+   */
+  src?: string;
   /** Where the board opens — a move number (`"17"`, `"17..."`) or a line of SAN. The start when absent. */
   startMove?: string;
   /** What the "not here" notice names — the reference when absent (`<CollectionGameBoard>` passes its path). */
@@ -54,7 +61,15 @@ type StoredGameEmbedProps = {
 const isRead = (reference: string) =>
   (!isAnalysisReference(reference) || savedAnalysesSnapshot() !== undefined) && isReferenceRead(reference);
 
-export function StoredGameEmbed({ reference, startMove, shownAs, showNextMoveArrow }: StoredGameEmbedProps) {
+export function StoredGameEmbed({ reference: given, src, startMove, shownAs, showNextMoveArrow }: StoredGameEmbedProps) {
+  const address = given === undefined && src !== undefined ? sourceAddressOf(src) : undefined;
+  // A path that names no stored game resolves to nothing, and says so — by the path it was given.
+  const reference = given ?? (address === undefined ? undefined : gameReferenceOf(address)) ?? `unknown/${src ?? ""}`;
+  return <StoredGame reference={reference} startMove={startMove} shownAs={shownAs ?? src} showNextMoveArrow={showNextMoveArrow} />;
+}
+
+/** The board over a resolved reference. */
+function StoredGame({ reference, startMove, shownAs, showNextMoveArrow }: Omit<StoredGameEmbedProps, "src" | "reference"> & { reference: string }) {
   const { t } = useTranslation();
   const [readReference, setReadReference] = useState<string | null>(() => (isRead(reference) ? reference : null));
   const ready = readReference === reference;
