@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import type React from "react";
+import { defaultChessTokens } from "../../design-system/themes/defaultChess";
 import i18n from "../../i18n";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { findNode, mainline, nodeAtSanPath, type GameTree } from "../../lib/gameTree";
@@ -366,5 +368,162 @@ describe("useVariationsExplorer — the width source and palette (CTA-98)", () =
     expect(screen.getByTestId("x-width-arrows-overlay").querySelectorAll("path")).toHaveLength(2);
     // Classic by default.
     expect(pathTo("b5")).toHaveAttribute("fill", NEXT_MOVE_ARROW_COLOR);
+  });
+});
+
+describe("useVariationsExplorer — the PGN's shapes (CTA-143)", () => {
+  // The game's opening comment rings d4; 1. e4's comment draws a red arrow
+  // and a yellow ring beside its prose.
+  const drawn = parsePgnTree(
+    "{[%csl Gd4]} 1. e4 {Sharp. [%cal Rd7d5][%csl Ye5]} e5 2. Nf3 (2. f4 {prc:75}) (2. Nc3 {prc:25}) *",
+  );
+  const { drawing } = defaultChessTokens;
+
+  function Drawn(props: Omit<VariationsExplorerOptions, "testId" | "source"> & { nodeId: string | null }) {
+    const { nodeId, ...rest } = props;
+    const view = useVariationsExplorer({
+      testId: "x",
+      source: {
+        tree: drawn,
+        mainlineNodes: mainline(drawn),
+        nodeId,
+        goToNode: vi.fn(),
+        orientation: "white",
+      },
+      ...rest,
+    });
+    report(view);
+    return (
+      <>
+        <div data-testid="annotations">{view.annotations}</div>
+        <div data-testid="overlay">{view.overlay}</div>
+      </>
+    );
+  }
+
+  const mountDrawn = (props: Parameters<typeof Drawn>[0]) =>
+    render(
+      <AppThemeWithLang>
+        <Drawn {...props} />
+      </AppThemeWithLang>,
+    );
+
+  const circles = () =>
+    [...screen.getByTestId("x-shape-circles").querySelectorAll("circle")].map((circle) => [
+      circle.getAttribute("data-square"),
+      circle.getAttribute("stroke"),
+    ]);
+
+  /** A mouse event as react-chessboard's square handlers receive it. */
+  const mouse = (button: number, keys: { shiftKey?: boolean; altKey?: boolean } = {}) =>
+    ({ button, shiftKey: false, altKey: false, ctrlKey: false, metaKey: false, ...keys }) as unknown as React.MouseEvent;
+  type SquareHandler = (args: { square: string; piece: null }, event: React.MouseEvent) => void;
+  const press = (square: string, event: React.MouseEvent) =>
+    act(() => (parts.boardOptions.onSquareMouseDown as SquareHandler)({ square, piece: null }, event));
+  const pass = (square: string) =>
+    act(() => parts.boardOptions.onMouseOverSquare!({ square, piece: null }));
+  const release = (square: string, event: React.MouseEvent) =>
+    act(() => (parts.boardOptions.onSquareMouseUp as SquareHandler)({ square, piece: null }, event));
+
+  it("draws the move's arrows with the next-move arrows, and its circles over the board, in the theme's brushes", () => {
+    mountDrawn({ nodeId: at(drawn, "e4"), annotations: true, arrows: { show: true } });
+    expect(parts.arrows).toEqual([
+      { startSquare: "e7", endSquare: "e5", color: NEXT_MOVE_ARROW_COLOR },
+      { startSquare: "d7", endSquare: "d5", color: drawing.red },
+    ]);
+    expect(circles()).toEqual([["e5", drawing.yellow]]);
+    // The commands are drawn, not read: the block shows the prose alone.
+    expect(screen.getByTestId("x-annotations")).toHaveTextContent("Sharp.");
+    expect(screen.getByTestId("x-annotations")).not.toHaveTextContent(/cal|csl|d7d5/);
+  });
+
+  it("draws the game's opening comment at the start, and nothing where the comment block is off", () => {
+    const { unmount } = mountDrawn({ nodeId: null, annotations: true });
+    expect(circles()).toEqual([["d4", drawing.green]]);
+    unmount();
+
+    // A repertoire game: a test the drawing would answer.
+    mountDrawn({ nodeId: at(drawn, "e4"), arrows: { show: true } });
+    expect(parts.arrows).toEqual([{ startSquare: "e7", endSquare: "e5", color: NEXT_MOVE_ARROW_COLOR }]);
+    expect(parts.overlay).toBeNull();
+    expect(parts.boardOptions).toEqual({});
+  });
+
+  it("keeps the required move and the play-chance overlay alongside the shapes", () => {
+    const required = [findNode(drawn, at(drawn, "e4", "e5"))!];
+    const { unmount } = mountDrawn({ nodeId: at(drawn, "e4"), annotations: true, arrows: { show: true, required } });
+    expect(parts.arrows).toEqual([
+      { startSquare: "e7", endSquare: "e5", color: REQUIRED_MOVE_ARROW_COLOR },
+      { startSquare: "d7", endSquare: "d5", color: drawing.red },
+    ]);
+    unmount();
+
+    const atBranch = parsePgnTree(
+      "1. e4 e5 {[%csl Gf3]} 2. Nf3 (2. f4 {prc:75}) (2. Nc3 {prc:25}) *",
+    );
+    function Branch() {
+      report(
+        useVariationsExplorer({
+          testId: "x",
+          source: { tree: atBranch, mainlineNodes: mainline(atBranch), nodeId: at(atBranch, "e4", "e5"), goToNode: vi.fn(), orientation: "white" },
+          annotations: true,
+          arrows: { show: true, chances: true },
+        }),
+      );
+      return <div data-testid="overlay">{parts.overlay}</div>;
+    }
+    render(
+      <AppThemeWithLang>
+        <Branch />
+      </AppThemeWithLang>,
+    );
+    expect(screen.getByTestId("x-chance-arrows-overlay")).toBeInTheDocument();
+    expect(circles()).toEqual([["f3", drawing.green]]);
+  });
+
+  it("writes a right-drag into the comment as an arrow, in the modifier's brush, with a preview while drawing", () => {
+    const onEditTree = vi.fn();
+    mountDrawn({ nodeId: at(drawn, "e4"), annotations: true, onEditTree });
+    // The library's own right-drag arrows are off: every shape is the comment's.
+    expect(parts.boardOptions.allowDrawingArrows).toBe(false);
+
+    press("g8", mouse(2, { altKey: true }));
+    pass("g7");
+    pass("f6");
+    expect(parts.arrows).toContainEqual({ startSquare: "g8", endSquare: "f6", color: drawing.blue });
+    release("f6", mouse(2));
+
+    const [next] = onEditTree.mock.calls[0] as [GameTree];
+    expect(findNode(next, at(drawn, "e4"))?.comments).toEqual(["Sharp. [%cal Rd7d5,Bg8f6][%csl Ye5]"]);
+    // The preview is gone once released.
+    expect(parts.arrows).not.toContainEqual(expect.objectContaining({ startSquare: "g8" }));
+  });
+
+  it("writes a right-click as a circle, and one drawn again comes off, the prose kept", () => {
+    const onEditTree = vi.fn();
+    mountDrawn({ nodeId: at(drawn, "e4"), annotations: true, onEditTree });
+    // Shift + Alt is yellow: the ring on e5 is drawn again, so it comes off.
+    press("e5", mouse(2, { shiftKey: true, altKey: true }));
+    release("e5", mouse(2));
+    const [next] = onEditTree.mock.calls[0] as [GameTree];
+    expect(findNode(next, at(drawn, "e4"))?.comments).toEqual(["Sharp. [%cal Rd7d5]"]);
+  });
+
+  it("writes into the game's opening comment at the start, and ignores the left button", () => {
+    const onEditTree = vi.fn();
+    mountDrawn({ nodeId: null, annotations: true, onEditTree });
+    press("e2", mouse(0));
+    release("e4", mouse(0));
+    expect(onEditTree).not.toHaveBeenCalled();
+
+    press("d4", mouse(2, { shiftKey: true }));
+    release("d4", mouse(2));
+    const [next] = onEditTree.mock.calls[0] as [GameTree];
+    expect(next.comments).toEqual(["[%csl Rd4]"]);
+  });
+
+  it("leaves a board that does not edit its own temporary drawing", () => {
+    mountDrawn({ nodeId: at(drawn, "e4"), annotations: true });
+    expect(parts.boardOptions).toEqual({});
   });
 });

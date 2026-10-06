@@ -179,8 +179,16 @@ export const boardOptions = () => {
       sourceSquare: string;
       targetSquare: string | null;
     }) => boolean;
+    /** The drawing gestures a board that writes shapes takes (CTA-143). */
+    allowDrawingArrows?: boolean;
+    onSquareMouseDown?: (args: { square: string; piece: null }, event: MouseLike) => void;
+    onMouseOverSquare?: (args: { square: string; piece: null }) => void;
+    onSquareMouseUp?: (args: { square: string; piece: null }, event: MouseLike) => void;
   };
 };
+
+/** The fields of a mouse event a board's square handlers read. */
+type MouseLike = { button: number; shiftKey: boolean; altKey: boolean; ctrlKey: boolean; metaKey: boolean };
 
 /** A tiny type alias so a test can name a rendered screen without `any`. */
 export type Screen = () => ReactNode;

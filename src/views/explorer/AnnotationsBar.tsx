@@ -120,7 +120,7 @@ function AnnotationsBar({
           )}
         </Typography>
 
-        {annotations.before.length > 0 && (
+        {annotations.before.some(readable) && (
           <Box data-testid={`${testId}-before`} sx={{ mt: 0.5 }}>
             <Typography variant="caption" sx={{ color: "text.secondary" }}>
               {t("annotations.before")}
@@ -161,7 +161,15 @@ export type CommentEditing = {
   onDelete: (kind: CommentKind, index: number) => void;
 };
 
-/** One comment: its paragraphs, then its attributes as chips. */
+/** Whether a comment has anything to read — words or an attribute. */
+const readable = (comment: ReadComment): boolean =>
+  comment.paragraphs.length > 0 || comment.attributes.length > 0;
+
+/**
+ * One comment: its paragraphs, then its attributes as chips. One with
+ * neither — a comment that only draws shapes, which the board shows
+ * (CTA-143) — renders nothing, so the block does not list an empty row.
+ */
 function Comment({
   comment,
   testId,
@@ -176,6 +184,7 @@ function Comment({
   onDelete?: () => void;
 }) {
   const { t } = useTranslation();
+  if (!readable(comment)) return null;
   return (
     <Box
       data-testid={testId}

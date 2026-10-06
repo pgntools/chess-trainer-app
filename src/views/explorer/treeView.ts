@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Arrow } from "react-chessboard";
+import type { Arrow, ChessboardOptions } from "react-chessboard";
 import type { GameTree, VariationNode } from "../../lib/gameTree";
 
 /**
@@ -12,8 +12,8 @@ import type { GameTree, VariationNode } from "../../lib/gameTree";
  * reader stands in it, which the v2 core's `useBoardCore` return already
  * *is*, structurally — plus the mode's own options, and gets back
  * {@link TreeViewParts}: ready-made pieces it places into its own slots
- * (`BoardPanel`'s tabs and footer, `BoardShell`'s `boardOptions.arrows` and
- * `overlay`). The view never renders a panel, a shell or a tab strip, and it
+ * (`BoardPanel`'s tabs and footer, `BoardShell`'s `boardOptions` — `arrows`
+ * and the rest — and `overlay`). The view never renders a panel, a shell or a tab strip, and it
  * never learns what the screen is — no saved record, no trainer, no game:
  * those arrive as plain options (a set of ids to tint, a coverage, a list of
  * required moves) or stay the screen's.
@@ -39,8 +39,8 @@ export type TreeViewSource = {
 };
 
 /**
- * What a view hands back. Every part is optional but `moves`, `arrows` and
- * `overlay`: a part the mode or its options leave out is `undefined`, and the
+ * What a view hands back. Every part is optional but `moves`, `arrows`,
+ * `overlay` and `boardOptions`: a part the mode or its options leave out is `undefined`, and the
  * screen simply has nothing to place.
  */
 export type TreeViewParts = {
@@ -56,4 +56,10 @@ export type TreeViewParts = {
   arrows: Arrow[];
   /** Drawn over the board (`BoardShell`'s `overlay`); `null` for none. */
   overlay: ReactNode;
+  /**
+   * The board's other options — the drawing gestures a view writes into the
+   * tree (CTA-143); `{}` for none. Spread into `BoardShell`'s
+   * `boardOptions` beside `arrows`.
+   */
+  boardOptions: ChessboardOptions;
 };

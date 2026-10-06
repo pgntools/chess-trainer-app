@@ -170,7 +170,11 @@ newSquares[move.to] = {
 Arrows passed in via `options.arrows` are **controlled**: never auto-cleared
 on click or position change. Recompute the whole array whenever the position
 changes. User-drawn (right-drag) arrows are separate and follow
-`clearArrowsOnClick` / `clearArrowsOnPositionChange`. Every board's next-move
+`clearArrowsOnClick` / `clearArrowsOnPositionChange` — except on a board
+whose explorer edits the tree, which switches them off
+(`allowDrawingArrows: false`) and writes the reader's right-drags and
+right-clicks into the move's comment as `[%cal]` / `[%csl]`, every shape then
+drawn from the comment (CTA-143, [`tree-views.md`](./tree-views.md) §2). Every board's next-move
 arrows come from one helper, `nextMoveArrowsOf`
 (`views/tools/analysis/nextMoveArrows.ts`).
 

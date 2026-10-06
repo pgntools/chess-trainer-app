@@ -148,6 +148,7 @@ function PlayScreen({
     mask: notationMask,
   });
   const boardOptions: ChessboardOptions = {
+    ...explorer.boardOptions,
     arrows: explorer.arrows,
     ...(pieces === undefined ? {} : { pieces }),
   };

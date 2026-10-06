@@ -5,6 +5,7 @@ import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
 import CasinoOutlinedIcon from "@mui/icons-material/CasinoOutlined";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import GestureRoundedIcon from "@mui/icons-material/GestureRounded";
 import PriorityHighRoundedIcon from "@mui/icons-material/PriorityHighRounded";
 import VerticalAlignTopRoundedIcon from "@mui/icons-material/VerticalAlignTopRounded";
 import { useTranslation } from "react-i18next";
@@ -30,6 +31,7 @@ import { maskNodeSan, type PieceMask } from "../../lib/pieceMask";
 import CommentDialog, { type CommentDraft } from "./CommentDialog";
 import NagDialog, { type NagTarget } from "./NagDialog";
 import PlayChanceDialog, { type PlayChanceTarget } from "./PlayChanceDialog";
+import ShapesDialog, { type ShapesTarget } from "./ShapesDialog";
 import type { MenuAnchor } from "../shared/moveContextMenu";
 
 /** The move a menu was opened on, and where. */
@@ -43,7 +45,8 @@ export type MoveMenuTarget = { nodeId: string; anchor: MenuAnchor };
  * and, on a move with alternatives, set the **play chances** of the branch
  * it belongs to (`PlayChanceDialog`; lichess-tools' `prc:N`,
  * `lib/playChance.ts`) — and, since CTA-97, annotate it with NAG glyphs
- * (`NagDialog`; `setNags`).
+ * (`NagDialog`; `setNags`) — and, since CTA-143, manage the arrows and circles
+ * its comment draws (`ShapesDialog`; `toggleShape` / `clearShapes`).
  *
  * Opened by `TreeMoveList` when its consumer passes `onEditTree`, at the
  * pointer (`anchorReference="anchorPosition"`). Every edit is a pure tree
@@ -90,6 +93,7 @@ function MoveContextMenu({
   const [commenting, setCommenting] = useState<string | null>(null);
   const [chancesAt, setChancesAt] = useState<PlayChanceTarget | null>(null);
   const [annotating, setAnnotating] = useState<NagTarget | null>(null);
+  const [drawingAt, setDrawingAt] = useState<ShapesTarget | null>(null);
 
   // A target the tree no longer holds (an edit landed first) opens nothing.
   const node = target === null ? null : findNode(tree, target.nodeId);
@@ -181,6 +185,14 @@ function MoveContextMenu({
         if (node !== null) setAnnotating({ nodeId: node.id, label: moveText(node) });
       },
     },
+    {
+      id: "shapes",
+      label: t("moveMenu.shapes"),
+      icon: <GestureRoundedIcon fontSize="small" />,
+      onClick: () => {
+        if (node !== null) setDrawingAt({ nodeId: node.id, label: moveText(node) });
+      },
+    },
     ...(playChances && branchSize > 1
       ? [
           {
@@ -242,6 +254,12 @@ function MoveContextMenu({
         tree={tree}
         target={annotating}
         onClose={() => setAnnotating(null)}
+        onEditTree={onEditTree}
+      />
+      <ShapesDialog
+        tree={tree}
+        target={drawingAt}
+        onClose={() => setDrawingAt(null)}
         onEditTree={onEditTree}
       />
       <PlayChanceDialog

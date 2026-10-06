@@ -437,6 +437,7 @@ const en = {
     copyPgn: "Copy variation PGN",
     addComment: "Add comment",
     addAnnotation: "Add annotation…",
+    shapes: "Arrows and circles…",
     playChances: "Play chances…",
     copied: "Variation PGN copied",
     copyFailed: "Could not copy — the clipboard is not available here.",
@@ -475,6 +476,32 @@ const en = {
    * tabs, one per section of `lib/moveAnnotations.ts`'s table. `meaning.*` is
    * keyed by each choice's `id` there.
    */
+  /**
+   * The arrows and circles a move's comment draws (CTA-143) — lichess's
+   * `[%cal]` / `[%csl]`, managed from the move menu.
+   */
+  shapesDialog: {
+    title: "Arrows and circles",
+    help: "Drawn on the board at this move. On the board itself, right-drag to draw an arrow and right-click a square for a circle (Shift red, Alt blue, both yellow). Saved with the changes, in the move's comment as lichess writes them.",
+    list: "Drawn at this move",
+    empty: "Nothing is drawn at this move.",
+    arrow: "Arrow",
+    circle: "Circle",
+    brush: "Colour",
+    brushes: { green: "Green", red: "Red", yellow: "Yellow", blue: "Blue" },
+    /** `shape` is the row's shape, already worded ("Arrow e2 → e4"). */
+    recolour: "{{shape}}: {{brush}}",
+    remove: "Remove {{shape}}",
+    removeAll: "Remove all",
+    add: "Add",
+    kind: "Shape",
+    from: "From",
+    to: "To",
+    at: "Square",
+    square: "A square, a1 to h8",
+    exists: "Already drawn in this colour.",
+    close: "Close",
+  },
   nagDialog: {
     title: "Annotate",
     help: "One move assessment and one evaluation at a time; pick the active one again to remove it. Features are toggled one by one. Saved with the changes, as NAGs in the PGN.",
@@ -835,8 +862,42 @@ const en = {
     select: "Select this analysis",
     selectAll: "Select all analyses",
     selected: "{{count}} selected",
-    /** The pager under the list (CTA-113) — the design system's page sizes. */
+    /** The pager under the list and the table (CTA-113) — the design system's page sizes. */
     rowsPerPage: "Analyses per page",
+    /**
+     * The list view's games table (CTA-144): one row per analysis, its columns
+     * the game's own fields read off its tags, every one a sort header.
+     */
+    table: {
+      label: "Saved analyses in this folder",
+      actions: "Actions",
+      columns: {
+        name: "Name",
+        white: "White",
+        whiteElo: "Elo",
+        black: "Black",
+        blackElo: "Elo",
+        result: "Result",
+        date: "Date",
+        event: "Event",
+        round: "Round",
+        eco: "ECO",
+        opening: "Opening",
+        moves: "Moves",
+        updated: "Updated",
+      },
+      /** The words box over the table — names, players, event, opening and notes. */
+      filter: "Filter analyses",
+      filterClear: "Clear the words",
+      /** The filter leaves no row — told apart from an empty folder. */
+      noMatch: "No analysis matches the filter.",
+      clearFilter: "Clear the filter",
+      /** A folder row's chevron — it opens or closes the folder in place. */
+      expand: "Open {{name}}",
+      collapse: "Close {{name}}",
+      /** Read with the table: how its folders, sort and picks are worked. */
+      hint: "Folders come first: a folder's arrow opens it in place, its name goes into it. Sort by a column from its header button. Tick an analysis' box to pick it.",
+    },
     download: "Download selected as PGN",
     deleteSelected: "Delete selected",
     /** Deleting the picks, asked first — the repertoires' dialog with these words. */

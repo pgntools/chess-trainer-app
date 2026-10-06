@@ -113,6 +113,7 @@ function OpeningsBoard() {
     map: { linked: true },
   });
   const boardOptions: ChessboardOptions = {
+    ...explorer.boardOptions,
     arrows: openingArrowsOf(
       explorer.arrows,
       book.nextMoves,
