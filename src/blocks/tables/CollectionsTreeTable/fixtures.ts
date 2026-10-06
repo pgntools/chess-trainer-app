@@ -62,6 +62,9 @@ const ENTRIES: readonly LibraryEntry[] = [
   upload("uclub", "Club games", 120, null, "2026-09-20T12:00:00.000Z"),
   upload("unajdorf", "Najdorf lines", 42, "gsicilian"),
   upload("ublitz", "בליץ", 7, "gopenings"),
+  // CTA-142: one marked as a tournament whose games share one event, and one whose no longer do.
+  { ...upload("ucup", "Club championship 2026", 42, null), tournament: { enabled: true, type: "swiss" }, sharedEvent: true },
+  { ...upload("umixed", "Cup and friendlies", 50, null), tournament: { enabled: true, type: "swiss" }, sharedEvent: false },
 ];
 
 const byName = (a: { name: string }, b: { name: string }) =>

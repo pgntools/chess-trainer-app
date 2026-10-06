@@ -7,6 +7,7 @@ import { expectNoAxeViolations } from "../../../test/axe";
 import CollectionsTreeTable, {
   type CollectionsTreeTableProps,
 } from "./CollectionsTreeTable";
+import { readsAsTournament } from "../../../lib/libraryCollections";
 import { BUILT_IN, rowsOpen } from "./fixtures";
 
 const mount = (props: Partial<CollectionsTreeTableProps> = {}) => {
@@ -119,5 +120,23 @@ describe("CollectionsTreeTable", () => {
     expect(
       within(screen.getByTestId("library-row-tal")).getByText("—"),
     ).toBeInTheDocument();
+  });
+
+  it("marks a collection that reads as a tournament with a trophy, its name read with the word (CTA-142)", async () => {
+    mount({ isTournament: (collection) => readsAsTournament(collection) });
+    const icon = screen.getByTestId("library-tournament-icon-ucup");
+    expect(icon).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("link", { name: "Club championship 2026, Tournament" })).toBe(
+      screen.getByTestId("library-collection-ucup"),
+    );
+    // Marked, but its games no longer share one event: a table like the rest.
+    expect(screen.queryByTestId("library-tournament-icon-umixed")).toBeNull();
+    expect(screen.getByRole("link", { name: "Cup and friendlies" })).toBeInTheDocument();
+    await expectNoAxeViolations(screen.getByTestId("probe"));
+  });
+
+  it("marks nothing without the verdict", () => {
+    mount();
+    expect(screen.queryByTestId("library-tournament-icon-ucup")).toBeNull();
   });
 });

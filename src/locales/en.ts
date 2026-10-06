@@ -1415,13 +1415,16 @@ const en = {
       save: "Save",
       cancel: "Cancel",
       problem: "The settings could not be saved — this browser's storage may be full or unavailable.",
-      /** The five formats (CTA-121); the last three are stored but not selectable yet. */
+      /** The formats (CTA-121; CTA-142 added the double elimination and the two team ones) — every one but Arena selectable. */
       formats: {
         swiss: "Swiss system",
         roundRobin: "Round robin",
         knockout: "Knockout (elimination)",
-        arena: "Arena",
+        doubleElimination: "Double elimination",
         match: "Match play",
+        teamSwiss: "Team Swiss / round robin",
+        teamKnockout: "Team knockout",
+        arena: "Arena",
       },
       /** Each format's one-line description, under the type's radios. */
       formatDescriptions: {
@@ -1430,8 +1433,122 @@ const en = {
         roundRobin:
           "every participant plays every other once (or twice in a double round robin). Best for small, elite fields and championships.",
         knockout: "a loss eliminates a player from first prize. Best for high-stakes events (like the World Cup).",
-        arena: "continuous, time-based online pairing focused on volume and win streaks. Best for fast online play.",
+        doubleElimination:
+          "a player is out only after a second lost match: the losers of the winners' bracket play on in a losers' bracket. Best for esports-style events.",
         match: "a head-to-head series of games between two players. Best for World Championship matches.",
+        teamSwiss:
+          "teams meet on every board at once, a match a round, ranked by match points then board points. Best for Olympiads and team championships.",
+        teamKnockout: "teams meet in matches of several legs, the loser of each out. Best for team cups and the final stages of team events.",
+        arena: "continuous, time-based online pairing focused on volume and win streaks. Best for fast online play.",
+      },
+      /**
+       * The type the games look like (CTA-142, `lib/tournamentKind.ts`): the
+       * suggestion over the type's radios, Apply putting it in the draft.
+       */
+      suggestion: {
+        title: "Suggested type",
+        /** The guess and why, in a line. */
+        text: "{{type}}: {{reason}}.",
+        apply: "Apply",
+        applyName: "Apply the suggested type, {{type}}",
+        /** Once the draft holds it. */
+        selected: "Selected — press Save to keep it.",
+        /** Why — the numbers the guess was read from. */
+        reasons: {
+          match: "{{games}} games, every one between the same two players",
+          doubleElimination: "its rounds are numbered from 51 on — a losers' bracket, as The Week in Chess numbers it",
+          knockout: "{{competitors}} players, fewer each round ({{sizes}})",
+          teamKnockout: "{{competitors}} teams, fewer each round ({{sizes}})",
+          roundRobin: "{{competitors}} players, every pair met",
+          roundRobinTwice: "{{competitors}} players, every pair met twice",
+          teamRoundRobin: "{{competitors}} teams, every pair met",
+          swiss: "{{competitors}} players over {{rounds}} rounds, each meeting a few of the others",
+          swissNoRounds: "{{competitors}} players, each meeting a few of the others",
+          teamSwiss: "{{competitors}} teams over {{rounds}} rounds, each meeting a few of the others",
+          teamSwissNoRounds: "{{competitors}} teams, each meeting a few of the others",
+        },
+      },
+    },
+    /**
+     * A collection marked as a tournament (CTA-142): the list's mark, and
+     * its own view at `/library/<collection>` — the Info, Participants and
+     * Games tabs.
+     */
+    tournament: {
+      /** The list's word for its icon, read with the collection's name. */
+      mark: "Tournament",
+      tabs: {
+        label: "The tournament",
+        info: "Info",
+        participants: "Participants",
+        games: "Games",
+      },
+      /** The event card (the `TournamentInfo` block). */
+      info: {
+        title: "The event",
+        type: "Type",
+        event: "Event",
+        site: "Site",
+        dates: "Dates",
+        rounds: "Rounds",
+        players: "Players",
+        teams: "Teams",
+        games: "Games",
+        unfinished_one: "{{count}} game unfinished",
+        unfinished_other: "{{count}} games unfinished",
+      },
+      /** The Info tab's table, and what is said when the games do not fit its type. */
+      table: {
+        title: "The table",
+        loading: "Reading the tournament's games…",
+        unreadable: "This collection's games could not be read.",
+        misfit: "The games do not read as {{type}}.",
+        misfitSuggest: "The games do not read as {{type}} — they look like {{guess}}: {{reason}}.",
+        changeType: "Change the type",
+        noTable: "{{type}} has no table yet.",
+      },
+      /** The Participants tab. */
+      participants: {
+        title: "Participants",
+        teams: "Teams",
+        players: "Players",
+        top: "Top players",
+        empty: "No players in these games.",
+        columns: {
+          player: "Player",
+          team: "Team",
+          rating: "Rtg",
+          ratingName: "Rating",
+          score: "Pts",
+          scoreName: "Points",
+          games: "G",
+          gamesName: "Games",
+          wins: "W",
+          winsName: "Wins",
+          draws: "D",
+          drawsName: "Draws",
+          losses: "L",
+          lossesName: "Losses",
+          performance: "Perf",
+          performanceName: "Performance",
+        },
+        /** The top players' summary (the `TopPlayers` block). */
+        standouts: {
+          score: "Best score",
+          scoreValue: "{{points}} of {{games}}",
+          performance: "Best performance",
+          wins: "Most wins",
+          winsValue_one: "{{count}} win",
+          winsValue_other: "{{count}} wins",
+          unbeaten: "Longest unbeaten run",
+          unbeatenValue_one: "{{count}} game",
+          unbeatenValue_other: "{{count}} games",
+        },
+        /** A team and its players (the `TeamRosters` block). */
+        teamPoints: "{{matchPoints}} match points, {{boardPoints}} board points",
+        teamPlayers_one: "{{count}} player",
+        teamPlayers_other: "{{count}} players",
+        sortHint: "Sort by a column's header.",
       },
     },
     /**

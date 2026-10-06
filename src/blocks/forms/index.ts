@@ -16,3 +16,4 @@ export * from "./MergeSplitChoice";
 export * from "./PgnInput";
 export * from "./PlayedGamesFilters";
 export * from "./PositionFields";
+export * from "./TournamentSuggestion";

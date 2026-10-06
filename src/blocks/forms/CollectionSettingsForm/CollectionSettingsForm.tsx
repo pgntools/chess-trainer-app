@@ -5,10 +5,14 @@ import { useTranslation } from "react-i18next";
 
 import { RadioGroupField, SettingsSection, SwitchField } from "../../../design-system/components/forms";
 import {
+  isTableFormat,
   MAX_COLLECTION_DESCRIPTION_CHARS,
+  tableFormatOfKind,
   TOURNAMENT_FORMATS,
   type TournamentFormat,
 } from "../../../lib/libraryCollections";
+import type { TournamentGuess } from "../../../lib/tournamentKind";
+import { TournamentSuggestion } from "../TournamentSuggestion";
 
 /** What the form edits (CTA-121): the title, the description, and the tournament mark. */
 export type CollectionSettingsDraft = {
@@ -28,6 +32,13 @@ export type CollectionSettingsFormProps = {
    * — and the mark reads as off whatever is stored (`isTournamentCollection`).
    */
   canBeTournament: boolean;
+  /**
+   * The type the games look like (CTA-142, `guessTournamentKind` over their
+   * tags), shown with an Apply that turns the mark on with it. Absent — no
+   * guess, or the games still being read — nothing is suggested; nor is
+   * anything while the games cannot be a tournament.
+   */
+  suggestion?: TournamentGuess;
   /** A save is under way: every field off. */
   disabled?: boolean;
   /** The form's root and the prefix of every id under it. */
@@ -36,10 +47,12 @@ export type CollectionSettingsFormProps = {
 
 /**
  * **A collection's settings** (CTA-121) — its title, a description, and the
- * tournament mark with its type: the five formats as radios, only Swiss and
- * Round robin selectable, each with its one-line description under the
- * group. Presentational: the draft and the games' verdict are props, a
- * change leaves as a patch, and nothing is written here — the screen
+ * tournament mark with its type: the formats as radios, every one with a
+ * table selectable (CTA-142; Arena "coming later"), each with its one-line
+ * description under the group — and, over them, the type the games look
+ * like with an Apply (`TournamentSuggestion`). Presentational: the draft,
+ * the games' verdict and the guess are props, a change leaves as a patch,
+ * and nothing is written here — the screen
  * (`views/library/CollectionSettingsScreen.tsx`) saves through
  * `updateCollectionSettings`. Its words are the app's (`library.settings.*`).
  */
@@ -47,6 +60,7 @@ function CollectionSettingsForm({
   value,
   onChange,
   canBeTournament,
+  suggestion,
   disabled = false,
   testId,
 }: CollectionSettingsFormProps) {
@@ -97,6 +111,15 @@ function CollectionSettingsForm({
             disabled={disabled || !canBeTournament}
             testId={`${testId}-tournament-switch`}
           />
+          {canBeTournament && suggestion !== undefined && (
+            <TournamentSuggestion
+              guess={suggestion}
+              selected={marked && value.tournament.type === tableFormatOfKind(suggestion.kind)}
+              onApply={() => onChange({ tournament: { enabled: true, type: tableFormatOfKind(suggestion.kind) } })}
+              disabled={disabled}
+              testId={`${testId}-suggestion`}
+            />
+          )}
           {marked && (
             <>
               <RadioGroupField
@@ -104,18 +127,18 @@ function CollectionSettingsForm({
                 options={TOURNAMENT_FORMATS.map((format) => ({
                   value: format,
                   label:
-                    // The three not selectable yet say so in their own label.
-                    format === "swiss" || format === "roundRobin"
+                    // Arena — no table yet — says so in its own label.
+                    isTableFormat(format)
                       ? t(`library.settings.formats.${format}`)
                       : `${t(`library.settings.formats.${format}`)} — ${t("library.settings.comingLater")}`,
-                  disabled: format !== "swiss" && format !== "roundRobin",
+                  disabled: !isTableFormat(format),
                 }))}
                 value={value.tournament.type}
                 onChange={(type) => onChange({ tournament: { enabled: true, type } })}
                 disabled={disabled}
                 testId={`${testId}-type`}
               />
-              {/* Each format's one-line description, all five at once — the three not selectable yet included. */}
+              {/* Each format's one-line description, all at once — Arena's too. */}
               <Box sx={{ display: "grid", gap: 0.5 }}>
                 {TOURNAMENT_FORMATS.map((format) => (
                   <Typography

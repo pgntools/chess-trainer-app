@@ -109,7 +109,7 @@ CTA-113 moved the rest of the app onto blocks:
 
 | Block | Family | What it is |
 | --- | --- | --- |
-| `CollectionsTreeTable` | tables | The Library home's details view — Built-in, the reader's folders and their collections (`LibraryEntry`, `FolderTreeRow`) as `DataTable` tree rows: Name, Games, Added, the row actions (`FolderActions` for a folder). |
+| `CollectionsTreeTable` | tables | The Library home's details view — Built-in, the reader's folders and their collections (`LibraryEntry`, `FolderTreeRow`) as `DataTable` tree rows: Name, Games, Added, the row actions (`FolderActions` for a folder); a collection that reads as a tournament a trophy, its name read with "Tournament" (CTA-142). |
 | `CollectionGamesTable` | tables | A collection's games (`CollectionRow`) as a `DataTable`: the twelve columns sorted by `sortedRows`, picks with select-all over every game the filters leave, the White cell the row's link, an unreadable game marked. |
 | `SavedAnalysesList`, `RepertoiresList` | lists | The saved lists: folders and records as rows or cards, picks, the settings link, a board preview on a card; `savedListView.ts` the view choice. |
 | `FolderActions`, `FolderPicker` | lists | A folder's row actions (new, upload, download, rename, move, delete); the flat folder chooser over `PickerList`. |
@@ -120,7 +120,8 @@ CTA-113 moved the rest of the app onto blocks:
 | `AnalysisEngineForm`, `ArrowSettingsFields` | forms | Every board's Engine tab; the Analysis Board's Arrows tab. |
 | `PgnInput`, `FenInput`, `PositionFields` | forms | A PGN from a file or a paste (over `UploadPanel`), a FEN, the position editor's fields. |
 | `MergeSplitChoice`, `CollectionFilters` | forms | A several-games text's merge or split; a collection's filter panel. |
-| `CollectionSettingsForm` | forms | A collection's settings (CTA-121): the title, the description, and the tournament mark — a `SwitchField` off with its reason while the games do not share one `Event`, then the five formats as radios (only Swiss and Round robin selectable) with each one's description under the group. |
+| `CollectionSettingsForm` | forms | A collection's settings (CTA-121): the title, the description, and the tournament mark — a `SwitchField` off with its reason while the games do not share one `Event`, the type the games look like (`TournamentSuggestion`, CTA-142), then the formats as radios (every one with a table selectable, Arena "coming later") with each one's description under the group. |
+| `TournamentSuggestion` | forms | The tournament type a collection's games look like (`TournamentGuess`, `lib/tournamentKind.ts`, CTA-142): the format named in the settings' words with its reason, localized from the guess's facts, and an Apply that puts it in the draft — off, with "press Save", once the draft holds it. |
 | `PgnExportPanel`, `GameInfo`, `CurrentOpening`, `ChangesStrip` | panels | Every board's Export and Info tabs, the opening line, the Update / Save as copy / Discard strip. |
 | `PlayToggleButton`, `EngineThinking` | panels | Play's header button and the engine's thinking line. |
 
@@ -137,6 +138,10 @@ a team event's standings — embedded the same way:
 | `KnockoutBracket` | tables | A knockout's bracket (`Knockout`, `lib/knockout.ts`, CTA-128) as a `Bracket`: a column per round, a box per match — each side's title, name and score (tiebreak games counted; a team knockout's legs won, its board points muted beside them), the side that went through marked and said in words. A plain knockout's last rounds are named as they halve to the final; a double elimination is two brackets, the winners' over the losers', each named. |
 | `MatchTable` | tables | A match between two players (`Match`, `lib/match.ts`, CTA-128) as a `StandingsTable`: two rows, the leader first, a column per game — the result for its row's player, read with the game, the colour and the opponent — and the score, halves as `½`. |
 | `TeamStandingsTable` | tables | A team tournament's standings (`TeamTournament`, `lib/teamTournament.ts`, CTA-128) as a `StandingsTable`: a row per team, its flag where its players share a federation, a round's cell its board points in that match (`ResultMark`'s own `glyph`), toned as the match went and read with the opponent and the score both ways, then the match points and the board points it is ranked by. |
+| `ParticipantsTable` | tables | A tournament's players (`Participant`, `lib/tournamentParticipants.ts`, CTA-142) as a sortable `DataTable`: the standings' rank, the player (title chip, name — a link to their games — and flag), a team event's team, the rating, the points, the games, W / D / L and the performance (a dash where none). The Library's tournament view's Participants tab. |
+| `TopPlayers` | panels | A tournament's standouts (`TopPlayers`, `topPlayersOf`, CTA-142): the best score, performance, most wins and longest unbeaten run, a card each naming the player and the figure; one no one reached left out. |
+| `TeamRosters` | lists | A team event's teams (`TeamRoster`: `teamTournamentOf`'s standing and `teamPlayersOf`'s names, CTA-142): each team's flag, name, match and board points, and its players, every name a link. |
+| `TournamentInfo` | cards | A tournament's event at a glance (`TournamentFacts`, CTA-142): the reader's description, then the type, event, site, dates, rounds and counts its games give, as a `KeyValueList` under its own heading. The Library's tournament view's Info tab. |
 
 Every tournament block shows a player's **title as a chip** — a
 `LabelChip` in its tone (GM and WGM gold, IM and WIM blue, FM and WFM
