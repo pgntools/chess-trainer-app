@@ -47,6 +47,8 @@ export type GalleryEntry = {
   pgnName?: string;
   /** The component's markup for its source — `guess`, the kind of tournament the games look like. */
   markup: (target: Target | undefined, guess?: TournamentKind) => string;
+  /** The entry that shows the same from a Library collection — where a heavy PGN saved as one is opened, for an entry that reads no collection. */
+  libraryTwin?: string;
   /** Not built yet: a sketch of how it would look, and its code — never rendered. */
   mock?: { sketch: string };
   /** An image: its source is an image, not a game (`imageSnippetOf`). */
@@ -85,6 +87,7 @@ export const GALLERY: readonly GalleryFolder[] = [
     entries: [
       {
         id: "inline-pgn-game",
+        libraryTwin: "collection-game-board",
         component: "InlinePgnGame",
         label: "A PGN's game",
         summary: "A window of a PGN's game on a board, its moves beside it, side lines nested",
@@ -139,6 +142,7 @@ export const GALLERY: readonly GalleryFolder[] = [
     entries: [
       {
         id: "swiss-standings",
+        libraryTwin: "collection-tournament-table",
         component: "SwissStandingsTable",
         label: "Swiss standings",
         summary: "A Swiss from its PGN: a row per player, a cell per round",
@@ -149,6 +153,7 @@ export const GALLERY: readonly GalleryFolder[] = [
       },
       {
         id: "round-robin-cross-table",
+        libraryTwin: "collection-tournament-table",
         component: "RoundRobinCrossTable",
         label: "Round robin crosstable",
         summary: "A round robin from its PGN: every player against every other, single or double",
@@ -159,6 +164,7 @@ export const GALLERY: readonly GalleryFolder[] = [
       },
       {
         id: "knockout-bracket",
+        libraryTwin: "collection-knockout-bracket",
         component: "KnockoutBracket",
         label: "Knockout bracket",
         summary: "A knockout from its PGN: each round's matches, the winners going on",
@@ -169,6 +175,7 @@ export const GALLERY: readonly GalleryFolder[] = [
       },
       {
         id: "team-knockout-bracket",
+        libraryTwin: "collection-team-knockout-bracket",
         component: "KnockoutBracket",
         label: "Team knockout",
         summary: "A knockout of teams from its PGN: each match in legs",
@@ -179,6 +186,7 @@ export const GALLERY: readonly GalleryFolder[] = [
       },
       {
         id: "double-elimination-bracket",
+        libraryTwin: "collection-double-elimination-bracket",
         component: "KnockoutBracket",
         label: "Double elimination",
         summary: "A double elimination from its PGN: the winners' bracket over the losers'",
@@ -189,6 +197,7 @@ export const GALLERY: readonly GalleryFolder[] = [
       },
       {
         id: "match-table",
+        libraryTwin: "collection-tournament-table",
         component: "MatchTable",
         label: "Match",
         summary: "A match from its PGN: two players, a column per game, the score",
@@ -199,6 +208,7 @@ export const GALLERY: readonly GalleryFolder[] = [
       },
       {
         id: "team-standings",
+        libraryTwin: "collection-team-standings",
         component: "TeamStandingsTable",
         label: "Team standings",
         summary: "A team Swiss from its PGN: board points per round, match points",
@@ -371,7 +381,7 @@ export const misfitOf = (entry: GalleryEntry, source: GallerySource): string | u
 };
 
 /** The entry that shows a kind of tournament from the same kind of source — what a misfit's games want instead. */
-const entryForKind = (kind: TournamentKind, reads: SourceKind): GalleryEntry | undefined =>
+export const entryForKind = (kind: TournamentKind, reads: SourceKind): GalleryEntry | undefined =>
   galleryEntries().find((candidate) => candidate.tournament?.includes(kind) === true && candidate.reads.includes(reads));
 
 /** Where a tournament table's games look like another kind of tournament: what they look like, and the table that shows that — `undefined` where they fit, or nothing can be said. */
@@ -424,3 +434,27 @@ export const builtInsOf = (entry: GalleryEntry, pgnFiles: readonly string[], col
   else if (entry.reads.includes("game")) for (const { id, name } of collections) add(libraryExample({ collection: id, number: 1 }, name));
   return examples;
 };
+
+/** **A heavy PGN** — more games than this, or over `BIG_PGN_BYTES`: asked about before it goes anywhere (saved to disk, saved as a collection, or pasted anyway). */
+export const HEAVY_GAMES = 100;
+
+/**
+ * Where a heavy PGN saved as a Library collection is shown: the entry
+ * itself where it reads a collection; else, for a tournament table, the
+ * Library's table for the kind of tournament the games look like; else its
+ * Library twin — `undefined` where nothing shows a collection of it.
+ */
+export const libraryEntryFor = (entry: GalleryEntry, guess: TournamentGuess | undefined): GalleryEntry | undefined => {
+  if (entry.reads.includes("collection") || entry.reads.includes("game")) return entry;
+  if (entry.tournament !== undefined && guess !== undefined) {
+    const byKind = entryForKind(guess.kind, "collection");
+    if (byKind !== undefined) return byKind;
+  }
+  return galleryEntries().find((candidate) => candidate.id === entry.libraryTwin);
+};
+
+/** A saved collection as the source an entry reads: the collection, or its first game for an entry that shows one game. */
+export const collectionSourceFor = (entry: GalleryEntry, collection: string): GallerySource => ({
+  kind: "library",
+  game: entry.reads.includes("collection") ? { collection } : { collection, number: 1 },
+});

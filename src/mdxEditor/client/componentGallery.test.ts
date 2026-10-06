@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { splitPgnGames } from "../../lib/pgn";
 import { mdxComponents } from "../../views/home/frontPage";
 import { elementsIn, SETTINGS } from "./componentSettings";
-import { builtInsOf, GALLERY, galleryEntries, imageSnippetOf, misfitOf, SAMPLE_IMAGE, sampleOf, snippetOf, sourceKindOf, tournamentMisfitOf } from "./componentGallery";
+import { builtInsOf, collectionSourceFor, GALLERY, galleryEntries, libraryEntryFor, imageSnippetOf, misfitOf, SAMPLE_IMAGE, sampleOf, snippetOf, sourceKindOf, tournamentMisfitOf } from "./componentGallery";
 import { guessOf } from "./libraryLookup";
 
 /*
@@ -120,5 +120,24 @@ describe("the gallery's index", () => {
     expect(byId("board-row").map((example) => example.id)).toEqual(["/library/capablanca", ...files, "/library/tal"]);
     expect(byId("nav-cards")).toEqual([]);
     for (const entry of entries) for (const example of builtInsOf(entry, files, collections)) expect(misfitOf(entry, example.source), `${entry.id} ${example.id}`).toBeUndefined();
+  });
+
+  it("finds where a PGN saved as a collection is shown: the entry, the Library's table for its games, or its twin", () => {
+    const byId = (id: string) => {
+      const entry = entries.find((candidate) => candidate.id === id);
+      if (entry === undefined) throw new Error(`no ${id}`);
+      return entry;
+    };
+    expect(libraryEntryFor(byId("collection-card"), undefined)?.id).toBe("collection-card");
+    expect(libraryEntryFor(byId("swiss-standings"), undefined)?.id).toBe("collection-tournament-table");
+    expect(libraryEntryFor(byId("swiss-standings"), { kind: "teamSwiss", reason: "" })?.id).toBe("collection-team-standings");
+    expect(libraryEntryFor(byId("inline-pgn-game"), undefined)?.id).toBe("collection-game-board");
+    expect(libraryEntryFor(byId("puzzle-board"), undefined)).toBeUndefined();
+    // Every PGN entry's twin reads the Library.
+    for (const entry of entries.filter((candidate) => candidate.libraryTwin !== undefined)) {
+      expect(libraryEntryFor(entry, undefined)?.reads.some((kind) => kind !== "pgn"), entry.id).toBe(true);
+    }
+    expect(collectionSourceFor(byId("collection-game-board"), "u1")).toEqual({ kind: "library", game: { collection: "u1", number: 1 } });
+    expect(collectionSourceFor(byId("collection-tournament-table"), "u1")).toEqual({ kind: "library", game: { collection: "u1" } });
   });
 });

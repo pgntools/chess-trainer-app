@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
@@ -6,24 +6,19 @@ import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternate
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
-import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 
-import { FormDialog } from "../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../design-system/components/feedback";
-import { FileInputButton, RadioGroupField, SelectField, TextInputField } from "../../design-system/components/forms";
+import { FileInputButton, RadioGroupField, SelectField } from "../../design-system/components/forms";
 import { ListScreenHeader } from "../../design-system/components/toolbars";
 import { TreeView, type TreeNode } from "../../design-system/patterns/trees";
 import { splitPgnGames } from "../../lib/pgn";
 import { shippedCollections } from "../../lib/shippedCollections";
-import { articleImageFiles, articleImportResolver, articlePgnFiles, folderOf } from "./articleSources";
-import type { LibraryGame } from "./componentCatalog";
+import { articleImageFiles, articleImportResolver, articlePgnFiles } from "./articleSources";
 import {
   builtInsOf,
   GALLERY,
   galleryEntries,
   imageSnippetOf,
-  libraryGameOf,
-  misfitOf,
   SAMPLE_IMAGE,
   sampleOf,
   snippetOf,
@@ -34,14 +29,14 @@ import {
 } from "./componentGallery";
 import { elementsIn } from "./componentSettings";
 import { LIST_COLUMN, TEXTAREA_SX } from "./dialogLayout";
-import { collectionGamesOf, collectionSummaryOf, FORMAT_WORDS, guessOf, libraryPgnOf } from "./libraryLookup";
+import GallerySourceDialog from "./GallerySourceDialog";
+import { fileNameOf, GALLERY_ID, type Applied } from "./gallerySource";
+import { collectionGamesOf, guessOf } from "./libraryLookup";
 import { SnippetPreview } from "./mdxPreview";
-import { BIG_PGN_BYTES, pgnBytesOf, sizeOf } from "./pgnPages";
 import SettingsForm from "./SettingsForm";
-import { ARTICLES_DIR, listStorageFolders, STORAGE_COMMAND, writeStorageFile } from "./storageClient";
 import type { TournamentGuess } from "./tournamentKind";
 
-const ID = "mdx-component-gallery";
+const ID = GALLERY_ID;
 /** Nothing written this session: the gallery reads only what is on disk, and a picked image (`attached` of its own). */
 const NOTHING_ATTACHED: Readonly<Record<string, string>> = {};
 const IMAGE_TYPES = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
@@ -51,28 +46,6 @@ const IMAGES = articleImageFiles();
 /** The Library's shipped collections — a built-in example for a component that reads the Library. */
 const SHIPPED = shippedCollections.map(({ id, name }) => ({ id, name }));
 
-/** Where a component reads its games from: a built-in example, a PGN file uploaded, one pasted, or the Library. */
-type Choice = "builtin" | "upload" | "paste" | "library";
-
-/** The source an entry reads, with how it was chosen — so the dialog opens on it again — and in words for the pane. */
-type Applied = {
-  source: GallerySource;
-  words: string;
-  /** `written`: the PGN went to that file, under `articles/`, rather than into the code. */
-  origin:
-    | { kind: "builtin"; id: string }
-    | { kind: "upload"; name: string; text: string; written?: string }
-    | { kind: "paste"; text: string; written?: string }
-    | { kind: "library"; address: string };
-  /** A file just written, by its path under `articles/` → its text — read before the build's glob has caught up. */
-  attached?: Readonly<Record<string, string>>;
-};
-
-/** How the code holds an uploaded or pasted PGN — the PGNs section's rule: written in up to `BIG_PGN_BYTES`, a file beside the Blog's articles above it. */
-type Holding = "inline" | "file";
-const PGN_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]*\.pgn$/;
-/** A file's name as a PGN file of the Blog's — letters, digits, dots, dashes and underscores, then `.pgn`. */
-const pgnFileNameOf = (name: string): string => `${fileNameOf(name.replace(/\.pgn$/i, "")) || "games"}.pgn`;
 /** A source's games, each its PGN — `undefined` where they cannot be read. */
 const gamesOf = async (source: GallerySource, attached: Readonly<Record<string, string>>): Promise<readonly string[] | undefined> => {
   if (source.kind === "pasted") return splitPgnGames(source.text);
@@ -92,9 +65,6 @@ const keyOf = (source: GallerySource | undefined): string | undefined =>
         ? `pasted:${source.text}`
         : `library:${source.game.collection}/${source.game.number ?? ""}`;
 
-/** A picked file's name as an article would import it — letters, digits, dots, dashes and underscores. */
-const fileNameOf = (name: string): string => name.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[^A-Za-z0-9]+/, "") || "image.png";
-
 /** Where an import line's path is from — copied into an article, it reads from the article's own folder. */
 const importNote = (path: string) =>
   `The import line reads ${path} from the Blog's root, src/views/blog/articles/. In an article, write the path from the article's own folder — ../ for each folder up — or put a copy of the file beside it.`;
@@ -104,319 +74,6 @@ const sampleApplied = (entry: GalleryEntry, builtIns: readonly BuiltInExample[])
   const first = builtIns[0];
   return first === undefined || sampleOf(entry) === undefined ? undefined : { source: first.source, words: `Built-in example — ${first.label}`, origin: { kind: "builtin", id: first.id } };
 };
-
-/**
- * **Add / update PGN** — where an entry reads its games from, chosen in a
- * dialog: a built-in example (the entry's own first, chosen until another
- * is), a PGN file uploaded or one pasted — held as the PGNs section
- * holds one: written into the code (`export const`) up to
- * `BIG_PGN_BYTES`, above it only as a file the storage service writes
- * into an existing folder of the Blog's (a new one would be a Blog folder),
- * never over another, and imported — or the Library by an address, looked up as Components' Add a component does. A source that
- * does not fit the component says so, and cannot be used.
- */
-function SourceDialog({
-  entry,
-  builtIns,
-  current,
-  onClose,
-  onApply,
-}: {
-  entry: GalleryEntry;
-  builtIns: readonly BuiltInExample[];
-  current: Applied | undefined;
-  onClose: () => void;
-  onApply: (applied: Applied) => void;
-}) {
-  const origin = current?.origin;
-  const [choice, setChoice] = useState<Choice>(origin?.kind ?? "builtin");
-  const [builtIn, setBuiltIn] = useState(origin?.kind === "builtin" ? origin.id : (builtIns[0]?.id ?? ""));
-  const [uploaded, setUploaded] = useState<{ name: string; text: string } | undefined>(origin?.kind === "upload" ? { name: origin.name, text: origin.text } : undefined);
-  const [reading, setReading] = useState<string>();
-  const [pasted, setPasted] = useState(origin?.kind === "paste" ? origin.text : "");
-  const [address, setAddress] = useState(origin?.kind === "library" ? origin.address : "");
-  const [lookup, setLookup] = useState<{ looking: true } | { looking: false; problem: string }>();
-  const [found, setFound] = useState<{ address: string; game: LibraryGame; label: string } | undefined>(
-    origin?.kind === "library" && current !== undefined && current.source.kind === "library" ? { address: origin.address, game: current.source.game, label: current.words.replace(/^The Library — /, "") } : undefined,
-  );
-
-  /** The address looked up: a game's or a collection's, found — or the field says why not. */
-  const lookUp = async () => {
-    const game = libraryGameOf(address);
-    if (game === undefined) {
-      return setLookup({ looking: false, problem: "An address is a game's — /library/<collection>/<n> — or a collection's — /library/<collection>. Copy it from its page." });
-    }
-    setLookup({ looking: true });
-    if (game.number !== undefined) {
-      const pgn = await libraryPgnOf(game.collection, game.number);
-      if (pgn === undefined) return setLookup({ looking: false, problem: `The Library has no game ${game.number} in the collection ${game.collection}.` });
-      setLookup(undefined);
-      return setFound({ address, game, label: `${pgn.name} — /library/${game.collection}/${game.number}` });
-    }
-    const summary = await collectionSummaryOf(game.collection);
-    if (summary === undefined) return setLookup({ looking: false, problem: `The Library has no collection ${game.collection}.` });
-    setLookup(undefined);
-    const format = summary.tournament?.enabled === true ? `, ${FORMAT_WORDS[summary.tournament.type]}` : "";
-    setFound({ address, game, label: `${summary.name} — ${summary.count.toLocaleString()} games${format}` });
-  };
-
-  const upload = async (file: File) => {
-    setReading(file.name);
-    const text = await file.text();
-    setReading(undefined);
-    setUploaded({ name: file.name, text });
-    setFileName(pgnFileNameOf(file.name));
-    setWriteProblem(undefined);
-  };
-
-  // An uploaded or pasted PGN: written into the code, or — over BIG_PGN_BYTES always — a file beside the Blog's articles.
-  const written = origin?.kind === "upload" || origin?.kind === "paste" ? origin.written : undefined;
-  const text = choice === "upload" ? (uploaded?.text ?? "") : choice === "paste" ? pasted : "";
-  const bytes = useMemo(() => pgnBytesOf(text), [text]);
-  const games = useMemo(() => (text.trim() === "" ? 0 : splitPgnGames(text).length), [text]);
-  const big = bytes > BIG_PGN_BYTES;
-  const [chosenHolding, setHolding] = useState<Holding>(written === undefined ? "inline" : "file");
-  const holding: Holding = big ? "file" : chosenHolding;
-  const sampleFolder = entry.sample !== undefined && "file" in entry.sample ? folderOf(entry.sample.file) : "";
-  const [folder, setFolder] = useState(written === undefined ? sampleFolder : folderOf(written));
-  const [fileName, setFileName] = useState(written?.split("/").at(-1) ?? (origin?.kind === "upload" ? pgnFileNameOf(origin.name) : "games.pgn"));
-  const [folders, setFolders] = useState<{ kind: "folders"; paths: string[] } | { kind: "down" } | { kind: "refused"; message: string }>();
-  const [writing, setWriting] = useState(false);
-  const [writeProblem, setWriteProblem] = useState<string>();
-  const wantsFolders = (choice === "upload" || choice === "paste") && holding === "file" && folders === undefined;
-  useEffect(() => {
-    if (!wantsFolders) return;
-    let live = true;
-    void listStorageFolders().then((listed) => {
-      if (live) setFolders(listed.kind === "folders" ? { kind: "folders", paths: listed.folders.map((candidate) => candidate.path) } : listed);
-    });
-    return () => {
-      live = false;
-    };
-  }, [wantsFolders]);
-  const path = `${folder === "" ? "" : `${folder}/`}${fileName.trim()}`;
-  const fileProblem = PGN_FILE.test(fileName.trim()) ? undefined : "A file name is letters, digits, dots, dashes and underscores, then .pgn.";
-  const gameCount = `${games.toLocaleString()} game${games === 1 ? "" : "s"}`;
-
-  // What the choice comes to — `undefined` while there is nothing to use yet.
-  const example = builtIns.find((candidate) => candidate.id === builtIn);
-  const draft: Applied | undefined =
-    choice === "builtin"
-      ? example === undefined
-        ? undefined
-        : { source: example.source, words: `Built-in example — ${example.label}`, origin: { kind: "builtin", id: example.id } }
-      : choice === "upload" || choice === "paste"
-        ? text.trim() === ""
-          ? undefined
-          : holding === "inline"
-            ? {
-                source: { kind: "pasted", text },
-                words: choice === "upload" ? `Uploaded — ${uploaded?.name ?? ""}, ${gameCount}` : `Pasted — ${gameCount}`,
-                origin: choice === "upload" ? { kind: "upload", name: uploaded?.name ?? "", text } : { kind: "paste", text },
-              }
-            : folders?.kind !== "folders" || fileProblem !== undefined
-              ? undefined
-              : {
-                  source: { kind: "file", file: path },
-                  words: `${choice === "upload" ? `Uploaded — ${uploaded?.name ?? ""}` : "Pasted"}, written to ${path} — ${gameCount}`,
-                  origin: choice === "upload" ? { kind: "upload", name: uploaded?.name ?? "", text, written: path } : { kind: "paste", text, written: path },
-                  attached: { [path]: text },
-                }
-        : found === undefined || found.address !== address
-            ? undefined
-            : { source: { kind: "library", game: found.game }, words: `The Library — ${found.label}`, origin: { kind: "library", address } };
-  const misfit = draft === undefined ? undefined : misfitOf(entry, draft.source);
-  const reads = entry.reads.includes("pgn") ? "PGN" : "game";
-
-  return (
-    <FormDialog
-      open
-      onClose={onClose}
-      onSubmit={() => {
-        // Enter in the address looks it up; the next one uses it.
-        if (choice === "library" && draft === undefined) return void lookUp();
-        if (draft === undefined || misfit !== undefined) return;
-        // A file: written first — never over another — unless it is the one this PGN already went to.
-        const toWrite = (choice === "upload" || choice === "paste") && holding === "file";
-        if (!toWrite || (path === written && current?.attached?.[path] === text)) return onApply(draft);
-        setWriting(true);
-        setWriteProblem(undefined);
-        void writeStorageFile(path, text).then((result) => {
-          setWriting(false);
-          if (result.kind === "written") return onApply(draft);
-          setWriteProblem(
-            result.kind === "exists"
-              ? `${path} is there already — give the file another name.`
-              : result.kind === "down"
-                ? `The storage service is not answering — start the editor with ${STORAGE_COMMAND}.`
-                : result.message,
-          );
-        });
-      }}
-      title={`Add / update ${reads} — <${entry.component}>`}
-      submitLabel="Use it"
-      cancelLabel="Cancel"
-      submitDisabled={misfit !== undefined || (draft === undefined && !(choice === "library" && address.trim() !== ""))}
-      busy={writing}
-      width="sm"
-      testId={`${ID}-source-dialog`}
-    >
-      <Box sx={{ display: "grid", gap: 2, "& > *": { minWidth: 0 } }}>
-        <RadioGroupField<Choice>
-          label="Where it reads from"
-          options={[
-            { value: "builtin", label: "A built-in example" },
-            ...(entry.reads.includes("pgn")
-              ? [
-                  { value: "upload" as const, label: "Upload a PGN file" },
-                  { value: "paste" as const, label: "Paste a PGN" },
-                ]
-              : []),
-            { value: "library", label: "The Library — a game or a whole collection, by its address" },
-          ]}
-          value={choice}
-          onChange={setChoice}
-          size="small"
-          testId={`${ID}-source`}
-        />
-        {choice === "builtin" && (
-          <SelectField
-            label="The example"
-            value={builtIn}
-            onChange={setBuiltIn}
-            options={builtIns.map((candidate) => ({ value: candidate.id, label: candidate.label }))}
-            optionDir="ltr"
-            fullWidth
-            helperText="Each one shipped with the app: a PGN beside the Blog's articles, or a Library collection."
-            testId={`${ID}-builtin`}
-          />
-        )}
-        {choice === "upload" && (
-          <Box sx={{ display: "grid", gap: 1, justifyItems: "start" }}>
-            <FileInputButton label="Choose a PGN file" accept=".pgn" onFiles={(files) => void upload(files[0])} variant="outlined" size="small" startIcon={<UploadFileRoundedIcon />} testId={`${ID}-upload`} />
-            {reading !== undefined && (
-              <Typography role="status" variant="body2" color="text.secondary">
-                {`Reading ${reading}…`}
-              </Typography>
-            )}
-            {uploaded !== undefined && reading === undefined && (
-              <StatusText tone="info" testId={`${ID}-uploaded`}>
-                {`${uploaded.name} — ${gameCount}, ${sizeOf(bytes)}.`}
-              </StatusText>
-            )}
-          </Box>
-        )}
-        {choice === "paste" && (
-          <TextInputField
-            label="The PGN"
-            value={pasted}
-            onChange={setPasted}
-            multiline
-            dir="ltr"
-            placeholder={'[Event "…"]\n\n1. e4 e5 2. Nf3 *'}
-            testId={`${ID}-pasted`}
-          />
-        )}
-        {(choice === "upload" || choice === "paste") && text.trim() !== "" && (
-          <>
-            <RadioGroupField<Holding>
-              label="How the code holds it"
-              options={[
-                { value: "inline", label: `Inline — written into the code, up to ${sizeOf(BIG_PGN_BYTES)}`, disabled: big },
-                { value: "file", label: "As a file beside the Blog's articles, imported" },
-              ]}
-              value={holding}
-              onChange={setHolding}
-              size="small"
-              help={
-                big
-                  ? `This PGN is ${sizeOf(bytes)} — over ${sizeOf(BIG_PGN_BYTES)} it goes in as a file, never written into the code: compiled there on every change, it would hold the page up.`
-                  : holding === "inline"
-                    ? "Written into the code as it is (export const), so the article needs no file."
-                    : "A .pgn written now by the storage service — never over another file — and imported."
-              }
-              testId={`${ID}-holding`}
-            />
-            {holding === "file" &&
-              (folders === undefined ? (
-                <Typography role="status" variant="body2" color="text.secondary">
-                  Asking the storage service for the Blog's folders…
-                </Typography>
-              ) : folders.kind !== "folders" ? (
-                <InlineAlert severity="error" title="No file can be written" testId={`${ID}-no-service`}>
-                  {folders.kind === "down" ? `The storage service is not answering — start the editor with ${STORAGE_COMMAND}.` : folders.message}
-                </InlineAlert>
-              ) : (
-                <>
-                  <SelectField
-                    label="The folder"
-                    value={folder}
-                    onChange={setFolder}
-                    options={folders.paths.map((candidate) => ({ value: candidate, label: candidate === "" ? "The Blog's root" : candidate }))}
-                    optionDir="ltr"
-                    fullWidth
-                    helperText="An existing folder under src/views/blog/articles/ — a new one would be a new Blog folder."
-                    testId={`${ID}-folder`}
-                  />
-                  <TextInputField
-                    label="The file name"
-                    value={fileName}
-                    onChange={(value) => {
-                      setFileName(value);
-                      setWriteProblem(undefined);
-                    }}
-                    dir="ltr"
-                    error={fileProblem !== undefined || writeProblem !== undefined}
-                    helperText={fileProblem ?? writeProblem ?? `Written to ${ARTICLES_DIR}/${path}.`}
-                    testId={`${ID}-file-name`}
-                  />
-                </>
-              ))}
-          </>
-        )}
-        {choice === "library" && (
-          <>
-            <TextInputField
-              label="The address"
-              value={address}
-              onChange={(value) => {
-                setAddress(value);
-                setLookup(undefined);
-              }}
-              placeholder="/library/<collection> or /library/<collection>/<n>"
-              dir="ltr"
-              error={lookup?.looking === false}
-              helperText={lookup?.looking === false ? lookup.problem : "As the address bar shows it — a whole collection, /library/candidates2026, or one game of it, /library/candidates2026/12."}
-              testId={`${ID}-address`}
-            />
-            <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => void lookUp()}
-                disabled={address.trim() === "" || lookup?.looking === true}
-                aria-busy={lookup?.looking === true || undefined}
-                data-testid={`${ID}-look-up`}
-              >
-                Look it up
-              </Button>
-              {found !== undefined && found.address === address && (
-                <StatusText tone="info" testId={`${ID}-found`}>
-                  {`Found ${found.label}.`}
-                </StatusText>
-              )}
-            </Box>
-          </>
-        )}
-        {misfit !== undefined && (
-          <InlineAlert severity="warning" title="That does not fit" testId={`${ID}-misfit`}>
-            {misfit}
-          </InlineAlert>
-        )}
-      </Box>
-    </FormDialog>
-  );
-}
 
 /** `<ArticleImage>`'s source: an image beside the Blog's articles, or a file of the reader's — shown from this tab alone, never written. */
 function ImagePicker({ onImage }: { onImage: (image: { snippet: string; attached: Readonly<Record<string, string>>; note: string } | undefined) => void }) {
@@ -497,10 +154,10 @@ function ImagePicker({ onImage }: { onImage: (image: { snippet: string; attached
  * as an article renders it. The code is the one source: the form rewrites
  * it, typing in it re-reads the form and the preview.
  */
-function EntryPane({ entry }: { entry: GalleryEntry }) {
+function EntryPane({ entry, arrival, onSwitch }: { entry: GalleryEntry; arrival?: Applied; onSwitch: (entryId: string, applied: Applied) => void }) {
   const builtIns = builtInsOf(entry, PGN_FILES, SHIPPED);
-  // The entry's own sample until another source is chosen in Add / update PGN.
-  const [applied, setApplied] = useState(() => sampleApplied(entry, builtIns));
+  // The entry's own sample until another source is chosen in Add / update PGN — or the source it was opened on.
+  const [applied, setApplied] = useState(() => arrival ?? sampleApplied(entry, builtIns));
   const [choosing, setChoosing] = useState(false);
   const source = applied?.source;
   const [image, setImage] = useState<{ snippet: string; attached: Readonly<Record<string, string>>; note: string }>();
@@ -583,14 +240,16 @@ function EntryPane({ entry }: { entry: GalleryEntry }) {
         </Box>
       )}
       {choosing && (
-        <SourceDialog
+        <GallerySourceDialog
           entry={entry}
           builtIns={builtIns}
           current={applied}
           onClose={() => setChoosing(false)}
-          onApply={(next) => {
-            setApplied(next);
+          onApply={(next, entryId) => {
             setChoosing(false);
+            // A collection saved for an entry that reads none opens on the Library's entry for it.
+            if (entryId === entry.id) setApplied(next);
+            else onSwitch(entryId, next);
           }}
         />
       )}
@@ -701,6 +360,8 @@ function EntryPane({ entry }: { entry: GalleryEntry }) {
 function ComponentGallery() {
   const entries = galleryEntries();
   const [active, setActive] = useState(entries[0].id);
+  /** The source an entry was switched to with — a heavy PGN saved as a collection, opened in the Library's entry. */
+  const [arrival, setArrival] = useState<{ entryId: string; applied: Applied }>();
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set(GALLERY.map((folder) => folder.id)));
   const entry = entries.find((candidate) => candidate.id === active) ?? entries[0];
   const nodes: TreeNode[] = GALLERY.map((folder) => ({
@@ -740,14 +401,25 @@ function ComponentGallery() {
               })
             }
             activeId={entry.id}
-            onSelect={(node) => setActive(node.id)}
+            onSelect={(node) => {
+              setActive(node.id);
+              setArrival(undefined);
+            }}
             ariaLabel="Components"
             hint="Arrow keys to move, right and left to open and close a folder, Enter to pick a component"
             testId={`${ID}-tree`}
           />
         </Box>
         {/* A fresh pane for each entry: its source, its code and its form start again. */}
-        <EntryPane key={entry.id} entry={entry} />
+        <EntryPane
+          key={`${entry.id}:${arrival?.entryId === entry.id ? arrival.applied.words : ""}`}
+          entry={entry}
+          arrival={arrival?.entryId === entry.id ? arrival.applied : undefined}
+          onSwitch={(entryId, applied) => {
+            setArrival({ entryId, applied });
+            setActive(entryId);
+          }}
+        />
       </Box>
     </Box>
   );
