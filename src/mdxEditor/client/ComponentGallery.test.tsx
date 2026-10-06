@@ -122,7 +122,7 @@ describe("the Components gallery (CTA-140)", () => {
     expect(within(dialog).getByRole("radio", { name: "Paste a PGN" })).toBeChecked();
     await user.click(within(dialog).getByRole("radio", { name: "Upload a PGN file" }));
     await user.upload(within(dialog).getByTestId("mdx-component-gallery-upload-input"), new File(['[Event "Club"]\n[White "X"]\n[Black "Y"]\n[Result "*"]\n\n1. c4 *'], "club.pgn"));
-    expect(await within(dialog).findByTestId("mdx-component-gallery-uploaded")).toHaveTextContent("club.pgn — 1 game.");
+    expect(await within(dialog).findByTestId("mdx-component-gallery-uploaded")).toHaveTextContent("club.pgn — 1 game, 1 KB.");
     await user.click(within(dialog).getByRole("button", { name: "Use it" }));
     expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Uploaded — club.pgn, 1 game");
     expect(code()).toHaveValue('export const games = `[Event "Club"]\n[White "X"]\n[Black "Y"]\n[Result "*"]\n\n1. c4 *`\n\n<SwissStandingsTable pgn={games} density="dense" rowsPerPage="25" />');
@@ -138,6 +138,64 @@ describe("the Components gallery (CTA-140)", () => {
     await expectNoAxeViolations(dialog);
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Uploaded — club.pgn, 1 game");
+  });
+
+  it("writes a PGN over 100 KB to a file beside the Blog's articles, never into the code — as the PGNs section does", async () => {
+    const user = userEvent.setup();
+    const writes: { path: string; content: string; overwrite: boolean }[] = [];
+    const reply = (status: number, body: unknown) => ({ ok: status < 300, status, json: async () => body }) as Response;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        const { pathname } = new URL(url);
+        if (pathname === "/folders") return reply(200, { folders: [{ path: "", files: [] }, { path: "tournaments", title: "Tournaments", files: ["chned26.pgn"] }] });
+        if (pathname === "/files" && init?.method === "PUT") {
+          const body = JSON.parse(String(init.body)) as { path: string; content: string; overwrite: boolean };
+          writes.push(body);
+          return body.path === "tournaments/taken.pgn" ? reply(409, { error: "exists" }) : reply(201, { written: body.path, created: true, foldersCreated: [] });
+        }
+        return reply(404, {});
+      }),
+    );
+    mount();
+    await pick(user, "Swiss standings");
+    await user.click(screen.getByRole("button", { name: "Add / update PGN…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add / update PGN — <SwissStandingsTable>" });
+    await user.click(within(dialog).getByRole("radio", { name: "Upload a PGN file" }));
+    const game = (round: number) => `[Event "Big Open"]\n[White "Player ${round}"]\n[Black "Player ${round + 1}"]\n[Round "${round}"]\n[Result "1-0"]\n\n1. e4 { ${"A long note. ".repeat(250)}} e5 1-0`;
+    // Over 100 KB in its comments, so the table it draws stays small.
+    const big = Array.from({ length: 40 }, (_, index) => game(index + 1)).join("\n\n");
+    await user.upload(within(dialog).getByTestId("mdx-component-gallery-upload-input"), new File([big], "Big Open.pgn"));
+    expect(await within(dialog).findByTestId("mdx-component-gallery-uploaded")).toHaveTextContent(/^Big Open\.pgn — 40 games, 1\d\d KB\.$/);
+    // Over 100 KB: a file, never inline.
+    expect(within(dialog).getByRole("radio", { name: /^Inline/ })).toBeDisabled();
+    expect(within(dialog).getByRole("radio", { name: /^As a file/ })).toBeChecked();
+    // The sample's own folder, the upload's name.
+    expect(await within(dialog).findByRole("combobox", { name: "The folder" })).toHaveTextContent("tournaments");
+    const name = within(dialog).getByRole("textbox", { name: "The file name" });
+    expect(name).toHaveValue("Big-Open.pgn");
+    // Never over another file.
+    await user.clear(name);
+    await user.type(name, "taken.pgn");
+    await user.click(within(dialog).getByRole("button", { name: "Use it" }));
+    expect(await within(dialog).findByText("tournaments/taken.pgn is there already — give the file another name.")).toBeInTheDocument();
+    await user.clear(name);
+    await user.type(name, "big-open.pgn");
+    await user.click(within(dialog).getByRole("button", { name: "Use it" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(writes.at(-1)).toEqual({ path: "tournaments/big-open.pgn", content: big, overwrite: false });
+    expect(code()).toHaveValue('import games from "./tournaments/big-open.pgn?raw"\n\n<SwissStandingsTable pgn={games} density="dense" rowsPerPage="25" />');
+    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Uploaded — Big Open.pgn, written to tournaments/big-open.pgn — 40 games");
+    // The preview reads the file just written, before the build has caught up.
+    await waitFor(() => expect(within(preview()).getByTestId("mdx-component-gallery-preview")).not.toHaveAttribute("aria-busy"), { timeout: 10_000 });
+    expect(within(preview()).queryByTestId("mdx-component-gallery-preview-error")).not.toBeInTheDocument();
+    // Reopened on the file, Use it again writes nothing more.
+    await user.click(screen.getByRole("button", { name: "Add / update PGN…" }));
+    const again = await screen.findByRole("dialog", { name: "Add / update PGN — <SwissStandingsTable>" });
+    expect(within(again).getByRole("textbox", { name: "The file name" })).toHaveValue("big-open.pgn");
+    await user.click(within(again).getByRole("button", { name: "Use it" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(writes).toHaveLength(2);
   });
 
   it("finds a Library address for a component that reads the Library, Enter looking it up", async () => {
