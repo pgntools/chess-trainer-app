@@ -57,7 +57,7 @@ type SaveArticleDialogProps = {
  * sub-folder of it, which the service makes with a stub `index.mdx` — and a
  * file name (a slug; `.he` for a translation), the path it comes to shown as
  * it is typed. Writing over another file is asked about after the service
- * reports it, by the editor. (A PGN goes in through Add PGN, which opens
+ * reports it, by the editor. (A PGN goes in through PGNs, which opens
  * this first for an article with no folder yet.)
  */
 function SaveArticleDialog({ open, onClose, folders, initialFolder, initialName, unsynced, onSave, busy, error }: SaveArticleDialogProps) {

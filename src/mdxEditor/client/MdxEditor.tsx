@@ -12,6 +12,8 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import SyncProblemRoundedIcon from "@mui/icons-material/SyncProblemRounded";
 import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
+import DriveFileRenameOutlineRoundedIcon from "@mui/icons-material/DriveFileRenameOutlineRounded";
+import PhotoLibraryOutlinedIcon from "@mui/icons-material/PhotoLibraryOutlined";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
@@ -39,13 +41,13 @@ import { folderOf, loadArticleSource } from "./articleSources";
 import { MetadataPane } from "./MetadataPane";
 import { PreviewBoundary } from "./mdxPreview";
 import { PREVIEW_COMPONENTS, useCompiled, whereOf } from "./useCompiled";
-import AddComponentDialog from "./AddComponentDialog";
-import AddImageDialog, { type ImageToAdd } from "./AddImageDialog";
-import { elementsIn } from "./componentSettings";
-import ImagePropsDialog from "./ImagePropsDialog";
-import AddPgnDialog, { type PgnToAdd } from "./AddPgnDialog";
-import { insertBlock } from "./componentCatalog";
-import { articleAssetsOf, articlePgnsOf, usesOf, withImageImport, withInlinePgn, withoutPgn, withPgnImports } from "./pgnImports";
+import ComponentsDialog from "./ComponentsDialog";
+import ImagesDialog, { type ImageToAdd } from "./ImagesDialog";
+import { elementOf, elementsIn } from "./componentSettings";
+import PgnsDialog, { type PgnToAdd } from "./PgnsDialog";
+import { componentOf, insertedBlock } from "./componentCatalog";
+import { withoutElement } from "./contentElements";
+import { articleAssetsOf, articlePgnsOf, usesOf, withImageImport, withInlinePgn, withInlinePgnText, withoutPgn, withPgnImports, withRenamedPgn } from "./pgnImports";
 import { BIG_PGN_BYTES, pgnBytesOf, sizeOf } from "./pgnPages";
 import { starterFrontmatter, todayIso } from "./metadataYaml";
 import DeleteArticleDialog from "./DeleteArticleDialog";
@@ -84,11 +86,9 @@ import { useScrollSync } from "./useScrollSync";
  *   together" is on, both are shown and the Content tab is open: scrolling
  *   either brings the other to the same block.
  * - **The header** (CTA-137): the title, and the actions in one toolbar at
- *   its inline end — what goes into the content (Add PGN, Add component,
- *   Add image — `AddImageDialog`: an image beside the article, its alt
- *   text asked for, shown where the caret is as an `<ArticleImage>`; Image
- *   props — `ImagePropsDialog`: an image of the content's, its settings),
- *   then where it goes (Save as…, Save), the rest under More (New article,
+ *   its inline end — what goes into the content, a section each (PGNs,
+ *   Components, Images — below), then where it goes (Save as…, Save), the
+ *   rest under More (New article,
  *   Copy MDX, Download .mdx, Delete article… — `DeleteArticleDialog`: the
  *   file, its translations with it, the PGN files only it imports if
  *   chosen, and whether git can bring them back); under it, the file being edited, whether it
@@ -104,17 +104,31 @@ import { useScrollSync } from "./useScrollSync";
  *   name), and Save as somewhere else writes a new file, leaving the first
  *   alone. Writing over another file asks first; a service that is not
  *   running is a dialog naming the command. Nothing is moved or deleted.
- * - **A PGN, and the components that show it** (CTA-137) — apart, as one
- *   PGN can feed several components. **Add PGN** (`AddPgnDialog`) lists the
- *   article's PGNs, read from the content (`articlePgnsOf`), removes one,
- *   and adds one — uploaded or pasted — as a file beside the article,
- *   written by the service and imported (`import <name> from
- *   "./<file>.pgn?raw"`; an article with no folder yet is saved first), or
- *   inline, written into the content as `export const <name> = \`…\``
- *   (up to 100 KB). **Add component** (`AddComponentDialog`) takes one of
- *   those PGNs, or a Library game by its address, then a component that
- *   fits it (`componentCatalog.ts`), its markup to copy or insert at the
- *   caret over the component rendered. The preview reads a PGN just
+ * - **The sections — PGNs, Components, Images** (CTA-137, CTA-139): a
+ *   dialog each (`SectionDialog`), the article's items of that kind listed
+ *   at the inline start (the one the caret is in chosen first; none, and it
+ *   opens on Add), the chosen one's editor beside it — edit it in place,
+ *   remove it (asked first), **show it in the content** (the dialog closes,
+ *   the caret goes to it in the MDX source, scrolled into view) — and an
+ *   Add entry last, without leaving the dialog. A PGN and the components
+ *   that show it are apart, as one PGN can feed several components.
+ *   **PGNs** (`PgnsDialog`) reads the article's PGNs from the content
+ *   (`articlePgnsOf`): one is renamed (its definition and every `pgn={…}`
+ *   reading it, `withRenamedPgn`), its text edited when it is inline (up to
+ *   100 KB; a file's is shown, read only), handed to Components; one is
+ *   added — uploaded or pasted — as a file beside the article, written by
+ *   the service and imported (`import <name> from "./<file>.pgn?raw"`; an
+ *   article with no folder yet is saved first), or inline, written into
+ *   the content as `export const <name> = \`…\`` (up to 100 KB).
+ *   **Components** (`ComponentsDialog`) lists the catalog's components in
+ *   the content (`componentsIn`), each edited as a form beside its code
+ *   over the component rendered; Add takes one of the PGNs, or a Library
+ *   game by its address, then a component that fits it
+ *   (`componentCatalog.ts`), inserted at the caret. **Images**
+ *   (`ImagesDialog`) lists the `<ArticleImage>`s, each its settings as a
+ *   form, removed with its import once nothing reads it (the file stays);
+ *   Add writes an image beside the article, its alt text asked for, and
+ *   shows it where the caret is. The preview reads a PGN or an image just
  *   written at once.
  *   Copy and Download still give the text without the service. The draft is
  *   kept for the tab's session, so a reload or a visit to another screen
@@ -169,7 +183,7 @@ type SaveStep =
   | { kind: "save" }
   | { kind: "save-as" }
   | { kind: "write"; file: string; overwrite: boolean }
-  /** An image beside the article, shown where the caret is — Add image. */
+  /** An image beside the article, shown where the caret is — Images' Add an image. */
   | { kind: "image"; image: ImageToAdd; overwrite: boolean }
   /** The article being edited, its translations and the PGN files chosen, deleted — Delete article. */
   | { kind: "delete"; paths: string[] }
@@ -179,7 +193,7 @@ type SaveStep =
    */
   | { kind: "pgn"; folder: string; files: PgnFile[]; overwrite: readonly string[] };
 
-/** A PGN to write: its file's name, its text, and — from Add PGN — the name the article binds it to. */
+/** A PGN to write: its file's name, its text, and — from PGNs' Add a PGN — the name the article binds it to. */
 type PgnFile = { file: string; text: string; name?: string };
 
 /** The save dialog's state: the folders the service listed, and what it opened with. */
@@ -205,7 +219,8 @@ const NOTICE_ICONS: readonly [RegExp, typeof InfoOutlinedIcon][] = [
   [/^Downloaded /, DownloadRoundedIcon],
   [/^Inserted /, WidgetsRoundedIcon],
   [/^Added \S+\.(?:png|jpe?g|webp|gif) /i, AddPhotoAlternateOutlinedIcon],
-  [/^Updated the image/, TuneRoundedIcon],
+  [/^Updated /, TuneRoundedIcon],
+  [/^Renamed /, DriveFileRenameOutlineRoundedIcon],
   [/^(Added |Wrote the PGN)/, UploadFileRoundedIcon],
   [/^(Removed|Deleted) /, DeleteOutlineRoundedIcon],
   [/^Moved the /, DriveFileMoveOutlinedIcon],
@@ -234,11 +249,18 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
   const git = useGitStatus();
   const [gitOpen, setGitOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [imageOpen, setImageOpen] = useState(false);
+  /**
+   * The section open — PGNs, Components or Images — and where the caret was
+   * when it opened: the item it sits in is chosen first, and what is added
+   * goes there (then after what was added). `add` opens it on Add, with
+   * `pgn` chosen for a component (PGNs' "Add a component with it").
+   */
+  const [section, setSection] = useState<{ kind: "pgns" | "components" | "images"; caret: number; add?: boolean; pgn?: string }>();
+  /** What the last action in the open section came to — said in it, as the notice says it. */
+  const [sectionMessage, setSectionMessage] = useState<string>();
+  /** A component or an image just put in, by where it starts — its section's list moves to it. */
+  const [picked, setPicked] = useState<{ seq: number; start: number }>();
   const [imageError, setImageError] = useState<string>();
-  /** Image props: open, on the caret it opened at. */
-  const [imageProps, setImageProps] = useState<{ caret: number }>();
-  const hasImages = elementsIn(draft.body, "ArticleImage").length > 0;
   const gitFiles = git.status?.kind === "status" ? git.status.files : undefined;
   const fileInGit = draft.file === "" || gitFiles === undefined ? undefined : (gitFiles.find((candidate) => candidate.path === `${draft.file}.mdx`)?.state ?? "committed");
   /** The header's More menu — the button it hangs from while open. */
@@ -246,6 +268,8 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
   const [scrollTogether, setScrollTogether] = useState(true);
   const [tab, setTab] = useState<"content" | "metadata">("content");
   const sourceRef = useRef<HTMLTextAreaElement>(null);
+  /** Show in the content: where the caret goes, and the line it is on — done once the source is on screen. */
+  const [reveal, setReveal] = useState<{ start: number; line: number }>();
   const previewRef = useRef<HTMLDivElement>(null);
   /** What the panes show: the code alone, both side by side, or the preview alone. */
   const [view, setView] = useState<"code" | "split" | "preview">("split");
@@ -265,6 +289,16 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
   const pastedFrontmatter = splitFrontmatter(draft.body).yaml !== undefined;
 
   useEffect(() => writeKept({ ...draft, opened }), [draft, opened]);
+
+  // Show in the content: the caret on the item, its line scrolled to a third of the way down (the preview follows, scrolling together).
+  useEffect(() => {
+    const textarea = sourceRef.current;
+    if (reveal === undefined || textarea === null) return;
+    textarea.focus();
+    textarea.setSelectionRange(reveal.start, reveal.start);
+    const lineHeight = Number.parseFloat(getComputedStyle(textarea).lineHeight);
+    textarea.scrollTop = Math.max(0, reveal.line * (Number.isNaN(lineHeight) ? 19.5 : lineHeight) - textarea.clientHeight / 3);
+  }, [reveal]);
 
   /** A file's text opened: split in two, and "changed" measured from it as the editor would write it back. */
   const open = (text: string, file: string) => {
@@ -347,16 +381,35 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
   /** A file already there, and the step that writes over it. */
   const [conflict, setConflict] = useState<{ path: string; step: SaveStep }>();
 
-  // Add PGN (CTA-137): the dialog, and what its last add came to.
-  const [addPgnOpen, setAddPgnOpen] = useState(false);
-  /** Add component: open, and the PGN it opened on (Add PGN's "Add component"). */
-  const [addComponent, setAddComponent] = useState<{ pgn?: string }>();
+  // PGNs (CTA-137, CTA-139): what its last add came to.
   const [pgnAdded, setPgnAdded] = useState<{ seq: number; name: string; message: string }>();
   const [addPgnError, setAddPgnError] = useState<string>();
-  /** A PGN file Add PGN holds while an article with no folder yet is saved — then written beside it, and imported. */
+  /** A PGN file PGNs' Add holds while an article with no folder yet is saved — then written beside it, and imported. */
   const [heldPgn, setHeldPgn] = useState<{ name: string; fileName: string; text: string; overwrite: boolean }>();
 
-  const refused = (message: string) => (addPgnOpen ? setAddPgnError(message) : saveDialog === undefined ? setNotice(message) : setSaveError(message));
+  const refused = (message: string) => (section?.kind === "pgns" ? setAddPgnError(message) : saveDialog === undefined ? setNotice(message) : setSaveError(message));
+
+  /** What was done, said in the header's notice and in the open section. */
+  const report = (message: string) => {
+    setNotice(message);
+    setSectionMessage(message);
+  };
+
+  /** A section opened fresh — nothing said in it yet — on the caret as it is now. */
+  const openSection = (kind: "pgns" | "components" | "images", extra: { add?: boolean; pgn?: string } = {}) => {
+    setSectionMessage(undefined);
+    setAddPgnError(undefined);
+    setImageError(undefined);
+    setSection((before) => ({ kind, caret: before?.caret ?? sourceRef.current?.selectionStart ?? draft.body.length, ...extra }));
+  };
+
+  /** Show in the content: the section closed, the source on screen with the caret on `start`. */
+  const show = (start: number) => {
+    setSection(undefined);
+    setTab("content");
+    setView((before) => (before === "preview" ? "split" : before));
+    setReveal({ start, line: draft.body.slice(0, start).split("\n").length - 1 });
+  };
 
   const openSaveDialog = async () => {
     const listed = await listStorageFolders();
@@ -372,7 +425,7 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
 
   const write = async (file: string, overwrite: boolean) => {
     setBusy(true);
-    // A PGN file Add PGN holds for an article with no folder yet: beside it, now that it has one.
+    // A PGN file PGNs' Add holds for an article with no folder yet: beside it, now that it has one.
     let held: { file: string; name: string } | undefined;
     if (heldPgn !== undefined) {
       const path = pathIn(folderOf(file), heldPgn.fileName);
@@ -408,10 +461,12 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
     const imported = imports.length === 0 ? "" : ` It imports ${imports.map((pgn) => `${pgn.file} as ${pgn.name}`).join(", ")}.`;
     setNotice(`Saved ${ARTICLES_DIR}/${result.path}${made}.${imported}`);
     if (held !== undefined) {
-      // Add PGN's step 2, on the PGN it held.
+      // PGNs' Add, step 2, on the PGN it held.
       const name = imports.find((pgn) => pgn.file === held.file)?.name ?? held.name;
+      const message = `Saved the article as ${result.path}, and added ${pathIn(folderOf(file), held.file)} beside it — imported as ${name}.`;
       setHeldPgn(undefined);
-      setPgnAdded((before) => ({ seq: (before?.seq ?? 0) + 1, name, message: `Saved the article as ${result.path}, and added ${pathIn(folderOf(file), held.file)} beside it — imported as ${name}.` }));
+      setSectionMessage(message);
+      setPgnAdded((before) => ({ seq: (before?.seq ?? 0) + 1, name, message }));
     }
   };
 
@@ -443,12 +498,12 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
     const { imports } = withPgnImports(draft.body, entries);
     setDraft((current) => ({ ...current, body: withPgnImports(current.body, entries).body }));
     const message = `Added ${paths} — imported as ${imports.map((pgn) => pgn.name).join(", ")}: give it to a component as pgn={${imports[0].name}}.`;
-    setNotice(message);
+    report(message);
     setAddPgnError(undefined);
     setPgnAdded((before) => ({ seq: (before?.seq ?? 0) + 1, name: imports[0].name, message }));
   };
 
-  /** A PGN from the Add PGN dialog: written beside the article and imported, or written into the content. */
+  /** A PGN from PGNs' Add a PGN: written beside the article and imported, or written into the content. */
   const addPgn = ({ how, name, fileName, text }: PgnToAdd) => {
     if (how === "file" && draft.file === "") {
       // No folder for the file yet: the article is saved first, and the PGN goes beside it (`write`).
@@ -460,7 +515,7 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
     if (pgnBytesOf(text) > BIG_PGN_BYTES) return setNotice(`A PGN over ${sizeOf(BIG_PGN_BYTES)} goes in as a file beside the article, not inline.`);
     setDraft((current) => ({ ...current, body: withInlinePgn(current.body, name, text) }));
     const message = `Wrote the PGN into the content as ${name}: give it to a component as pgn={${name}}.`;
-    setNotice(message);
+    report(message);
     setPgnAdded((before) => ({ seq: (before?.seq ?? 0) + 1, name, message }));
   };
 
@@ -471,16 +526,49 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
     const uses = usesOf(draft.body, name);
     if (uses > 0 && !window.confirm(`The content uses ${name} ${uses === 1 ? "once" : `${uses} times`} — remove the PGN anyway? What reads it will not render.`)) return;
     setDraft((current) => ({ ...current, body: withoutPgn(current.body, name) }));
-    setNotice(pgn.kind === "file" ? `Removed ${name} from the content — ${pgn.file} stays beside the article.` : `Removed ${name}, written in, from the content.`);
+    report(pgn.kind === "file" ? `Removed ${name} from the content — ${pgn.file} stays beside the article.` : `Removed ${name}, written in, from the content.`);
   };
 
-  /** An example from the dialog, put into the content where the caret is (at its end with no caret). */
+  /** A PGN bound under another name — its definition and every `pgn={…}` that reads it. */
+  const renamePgn = (from: string, to: string) => {
+    const uses = usesOf(draft.body, from);
+    setDraft((current) => ({ ...current, body: withRenamedPgn(current.body, from, to) }));
+    report(`Renamed ${from} to ${to}${uses === 0 ? "" : `, and the ${uses === 1 ? "one use" : `${uses} uses`} of it`}.`);
+  };
+
+  /** An inline PGN's new text — never over 100 KB, which goes in as a file. */
+  const updatePgnText = (name: string, text: string) => {
+    if (pgnBytesOf(text) > BIG_PGN_BYTES) return report(`A PGN over ${sizeOf(BIG_PGN_BYTES)} goes in as a file beside the article, not inline.`);
+    setDraft((current) => ({ ...current, body: withInlinePgnText(current.body, name, text) }));
+    report(`Updated ${name}'s text.`);
+  };
+
+  /** The section's caret moved past what was just put in, so the next goes after it; and the list moved to it. */
+  const putIn = (start: number, code: string) => {
+    setSection((before) => (before === undefined ? before : { ...before, caret: start + code.length }));
+    setPicked((before) => ({ seq: (before?.seq ?? 0) + 1, start }));
+  };
+
+  /** An example from Components' Add, put into the content where the caret was. */
   const insertExample = (code: string) => {
-    const caret = sourceRef.current?.selectionStart ?? draft.body.length;
-    setDraft((current) => ({ ...current, body: insertBlock(current.body, caret, code) }));
-    setAddComponent(undefined);
-    setTab("content");
-    setNotice(`Inserted ${code.split(/[\s>]/)[0]}> into the content.`);
+    const inserted = insertedBlock(draft.body, section?.caret ?? draft.body.length, code);
+    setDraft((current) => ({ ...current, body: inserted.body }));
+    putIn(inserted.start, code);
+    report(`Inserted ${code.split(/[\s>]/)[0]}> into the content.`);
+  };
+
+  /** An element's new markup — a component's, an image's — in place of the old. */
+  const applyElement = (start: number, end: number, code: string, message: string) => {
+    setDraft((current) => ({ ...current, body: `${current.body.slice(0, start)}${code}${current.body.slice(end)}` }));
+    report(message);
+  };
+
+  /** An element taken out of the content, asked about first — and `importName`'s import once nothing else reads it. */
+  const removeElement = (start: number, end: number, question: string, message: (importGone: boolean) => string, importName?: string) => {
+    if (!window.confirm(question)) return;
+    const body = withoutElement(draft.body, start, end, importName);
+    setDraft((current) => ({ ...current, body }));
+    report(message(importName !== undefined && !articleAssetsOf(body).some((asset) => asset.name === importName)));
   };
 
   /**
@@ -522,11 +610,13 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
     // A file the article imports already keeps the name it has there.
     const name = articleAssetsOf(draft.body).find((asset) => asset.file === `./${image.fileName}`)?.name ?? image.name;
     const code = image.code.replace(`src={${image.name}}`, `src={${name}}`);
-    const caret = sourceRef.current?.selectionStart ?? draft.body.length;
-    setDraft((current) => ({ ...current, body: withImageImport(insertBlock(current.body, caret, code), name, image.fileName) }));
-    setImageOpen(false);
-    setTab("content");
-    setNotice(`Added ${path} and showed it where the cursor was.`);
+    const inserted = insertedBlock(draft.body, section?.caret ?? draft.body.length, code);
+    const body = withImageImport(inserted.body, name, image.fileName);
+    setDraft((current) => ({ ...current, body }));
+    // Its import may have gone in above it: where it starts now.
+    putIn(elementsIn(body, "ArticleImage").find((element) => element.start >= inserted.start && element.code === code)?.start ?? inserted.start, code);
+    setImageError(undefined);
+    report(`Added ${path} and showed it where the cursor was.`);
   };
 
   const run = (step: SaveStep) => {
@@ -548,47 +638,15 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
             MDX editor
           </Typography>
           <ActionBar justify="end" ariaLabel="The article" testId="mdx-editor-actions">
-            {/* What goes into the content. */}
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<UploadFileRoundedIcon />}
-              onClick={() => {
-                // A fresh dialog: nothing added yet.
-                setAddPgnError(undefined);
-                setPgnAdded(undefined);
-                setAddPgnOpen(true);
-              }}
-              disabled={busy}
-              data-testid="mdx-editor-add-pgn"
-            >
-              Add PGN
+            {/* What goes into the content — a section each. */}
+            <Button size="small" variant="outlined" startIcon={<UploadFileRoundedIcon />} onClick={() => openSection("pgns")} disabled={busy} data-testid="mdx-editor-pgns">
+              PGNs
             </Button>
-            <Button size="small" variant="outlined" startIcon={<WidgetsRoundedIcon />} onClick={() => setAddComponent({})} disabled={busy} data-testid="mdx-editor-add-component">
-              Add component
+            <Button size="small" variant="outlined" startIcon={<WidgetsRoundedIcon />} onClick={() => openSection("components")} disabled={busy} data-testid="mdx-editor-components">
+              Components
             </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<AddPhotoAlternateOutlinedIcon />}
-              onClick={() => {
-                setImageError(undefined);
-                setImageOpen(true);
-              }}
-              disabled={busy}
-              data-testid="mdx-editor-add-image"
-            >
-              Add image
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<TuneRoundedIcon />}
-              onClick={() => setImageProps({ caret: sourceRef.current?.selectionStart ?? 0 })}
-              disabled={busy || !hasImages}
-              data-testid="mdx-editor-image-props"
-            >
-              Image props
+            <Button size="small" variant="outlined" startIcon={<PhotoLibraryOutlinedIcon />} onClick={() => openSection("images")} disabled={busy} data-testid="mdx-editor-images">
+              Images
             </Button>
             <Box aria-hidden sx={{ alignSelf: "stretch", borderInlineStart: 1, borderColor: "divider", mx: 0.5, my: 0.5 }} />
             {/* Where it goes. */}
@@ -704,75 +762,78 @@ function MdxEditor({ arrivingArticle, arrivingNew = false, onArrived }: MdxEdito
           error={saveError}
         />
       )}
-      {addPgnOpen && (
-        <AddPgnDialog
+      {section?.kind === "pgns" && (
+        <PgnsDialog
           open
-          onClose={() => setAddPgnOpen(false)}
+          onClose={() => setSection(undefined)}
           hasFile={draft.file !== ""}
           folder={folder}
           body={draft.body}
+          attached={attached}
+          caret={section.caret}
+          startOnAdd={section.add}
           onAdd={addPgn}
           onRemove={removePgn}
-          onAddComponent={(pgn) => {
-            setAddPgnOpen(false);
-            setAddComponent({ pgn });
-          }}
+          onRename={renamePgn}
+          onUpdateText={updatePgnText}
+          onShow={show}
+          onAddComponent={(pgn) => openSection("components", { add: true, pgn })}
           busy={busy}
           added={pgnAdded}
           error={addPgnError}
+          message={sectionMessage}
         />
       )}
       {deleteOpen && draft.file !== "" && (
         <DeleteArticleDialog open onClose={() => setDeleteOpen(false)} file={draft.file} body={draft.body} gitFiles={gitFiles} onDelete={(paths) => void run({ kind: "delete", paths })} busy={busy} />
       )}
-      {imageProps !== undefined && (
-        <ImagePropsDialog
+      {section?.kind === "images" && (
+        <ImagesDialog
           open
-          onClose={() => setImageProps(undefined)}
-          body={draft.body}
-          caret={imageProps.caret}
-          folder={folder}
-          attached={attached}
-          onApply={(start, end, code) => {
-            setDraft((current) => ({ ...current, body: `${current.body.slice(0, start)}${code}${current.body.slice(end)}` }));
-            setImageProps(undefined);
-            setTab("content");
-            setNotice("Updated the image's settings.");
-          }}
-        />
-      )}
-      {imageOpen && (
-        <AddImageDialog
-          open
-          onClose={() => setImageOpen(false)}
+          onClose={() => setSection(undefined)}
           hasFile={draft.file !== ""}
           folder={folder}
           body={draft.body}
+          attached={attached}
+          caret={section.caret}
           onAdd={(image) => void run({ kind: "image", image, overwrite: false })}
-          onSaveFirst={() => {
-            setImageOpen(false);
-            void run({ kind: "save-as" });
-          }}
+          // The section stays open under the save dialog: saved, the image can go in.
+          onSaveFirst={() => void run({ kind: "save-as" })}
+          onApply={(start, end, code) => applyElement(start, end, code, "Updated the image's settings.")}
+          onRemove={({ start, end, src, file }) =>
+            removeElement(
+              start,
+              end,
+              `Remove the image ${file} from the content? The file stays beside the article.`,
+              (importGone) => `Removed the image ${file} from the content${importGone ? ", and its import" : ""} — the file stays beside the article.`,
+              src,
+            )
+          }
+          onShow={show}
           busy={busy}
           error={imageError}
+          picked={picked}
+          message={sectionMessage}
         />
       )}
       <GitStatusDialog open={gitOpen} onClose={() => setGitOpen(false)} status={git.status} onRefresh={git.refresh} />
-      {addComponent !== undefined && (
-        <AddComponentDialog
+      {section?.kind === "components" && (
+        <ComponentsDialog
           open
-          onClose={() => setAddComponent(undefined)}
+          onClose={() => setSection(undefined)}
           folder={folder}
           body={draft.body}
           attached={attached}
-          initialPgn={addComponent.pgn}
+          caret={section.caret}
+          startOnAdd={section.add}
+          initialPgn={section.pgn}
           onInsert={insertExample}
-          onAddPgn={() => {
-            setAddComponent(undefined);
-            setAddPgnError(undefined);
-            setPgnAdded(undefined);
-            setAddPgnOpen(true);
-          }}
+          onApply={(start, end, code) => applyElement(start, end, code, `Updated <${elementOf(code)?.component ?? componentOf(code) ?? "the component"}> in the content.`)}
+          onRemove={({ component, start, end }) => removeElement(start, end, `Remove <${component}> from the content?`, () => `Removed <${component}> from the content.`)}
+          onShow={show}
+          onAddPgn={() => openSection("pgns", { add: true })}
+          picked={picked}
+          message={sectionMessage}
         />
       )}
       <ConfirmDialog

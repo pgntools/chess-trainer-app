@@ -65,7 +65,7 @@ const gallery: GalleryModule = {
               onClose={noop}
               width="full"
               testId="gallery-base-dialog-full"
-              title="Add PGN"
+              title="PGNs"
               actions={<Button onClick={noop}>Close</Button>}
               dialogProps={dialogProps}
             >

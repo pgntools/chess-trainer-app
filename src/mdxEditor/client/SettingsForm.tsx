@@ -97,7 +97,7 @@ export function SettingsFields({ fields, values, onChange, testId = ID }: Settin
  * **A component's settings, as a form** — read from its code and written
  * back to it (`componentSettings.ts`), so the code stays the one source: a
  * change here rewrites it, and the code typed by hand shows here. Add
- * component's and Image props'.
+ * component's, and the Components and Images sections' editors.
  */
 function SettingsForm({ code, onCode, testId = ID }: { code: string; onCode: (code: string) => void; testId?: string }) {
   const element = elementOf(code);

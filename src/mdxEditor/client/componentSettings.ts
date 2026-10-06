@@ -65,7 +65,7 @@ const losersFromRound: SettingField = {
 const playerLink: SettingField = { prop: "playerLink", kind: "switch", on: true, label: "Names link to their games", help: "Each name opens the collection filtered by that player." };
 const gameLink: SettingField = { prop: "gameLink", kind: "switch", on: true, label: "Results link to the game", help: "Each result opens its game on the Library's board." };
 
-/** `<ArticleImage>`'s look — what Add image sets before the image goes in. */
+/** `<ArticleImage>`'s look — what Images' Add an image sets before the image goes in, and an image's settings after. */
 export const IMAGE_APPEARANCE: readonly SettingField[] = [
   { prop: "width", kind: "slider", label: "Width", min: 10, max: 100, step: 5, unit: "%", none: 100, help: "Of the article's column." },
   { prop: "maxHeight", kind: "slider", label: "Height at most", min: 10, max: 100, step: 5, unit: "vh", none: 100, help: "Of the window's height — 100 for no limit." },
@@ -86,7 +86,7 @@ export const IMAGE_APPEARANCE: readonly SettingField[] = [
   { prop: "link", kind: "switch", on: false, label: "Opens full size on a click", help: "In a new tab." },
 ];
 
-/** Every component's settings, by its name — the ones Add component offers. */
+/** Every component's settings, by its name — the ones the Components and Images sections edit. */
 export const SETTINGS: Readonly<Record<string, readonly SettingField[]>> = {
   InlinePgnGame: [
     { prop: "game", kind: "number", label: "Which game", placeholder: "1", help: "For a PGN holding several games, 1 the first." },

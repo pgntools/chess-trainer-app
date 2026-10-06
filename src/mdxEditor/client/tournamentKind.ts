@@ -5,7 +5,7 @@ import { playerOf, roundPartsOf } from "../../lib/tournament";
  * **What kind of tournament a file of games is — a guess** (CTA-137), from
  * the games' tags alone, as The Week in Chess writes them
  * (`.claude/rules/tournament-tables.md` §2): which table shows it best.
- * The MDX editor's Add component suggests it; nothing decides by it.
+ * The MDX editor's Components section suggests it; nothing decides by it.
  *
  * The competitors are the players — or the teams, where every game names
  * both (`WhiteTeam`, `BlackTeam`). In order:
