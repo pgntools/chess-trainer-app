@@ -87,6 +87,15 @@ describe("CollectionGamesTable (CTA-113)", () => {
     expect(screen.getByRole("checkbox", { name: "Select Unknown – Tal, Mikhail" })).toBeChecked();
   });
 
+  it("keeps a long opening to one line, truncated with an ellipsis, the whole string on hover", () => {
+    render(<Harness />);
+    // The whole opening, on hover, for every row that carries one — the long one and the short.
+    const long = screen.getByTitle("King's Indian, fianchetto, classical main line");
+    expect(long).toHaveTextContent("King's Indian, fianchetto, classical main line");
+    expect(long).toHaveStyle({ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" });
+    expect(screen.getByTitle("Caro-Kann")).toBeInTheDocument();
+  });
+
   it("says whether the collection is empty or the filters leave nothing, under one id", () => {
     const { unmount } = render(<Harness rows={[]} collectionEmpty />);
     expect(screen.getByTestId("games-empty")).toHaveTextContent("This collection has no games yet");
