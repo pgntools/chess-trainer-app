@@ -96,8 +96,32 @@ export const brushOfKeys = (keys: {
   return first && second ? "yellow" : first ? "red" : second ? "blue" : "green";
 };
 
-/** A shape command with the horizontal space around it — so taking one out leaves the prose as it was. */
+/** A shape command with the horizontal space around it. */
 const SPACED_COMMAND = /([ \t]*)\[%(cal|csl)\s+([^\]]*)\]([ \t]*)/gi;
+
+/** Marks a command taken out, until the space around it is settled. */
+const GONE = "\uE000";
+/** A run of commands taken out, with the space around them. */
+const GONE_RUN = /[ \t]*(?:\uE000[ \t]*)+/g;
+
+/**
+ * Each shape command of `text` rewritten by `rewrite` — its new text, or
+ * `null` to take it out. Commands taken out go with the space around them: a
+ * run of them between two words leaves the one space the words had, and at
+ * either end of the comment nothing — so the prose reads as it did.
+ */
+const rewriteShapeCommands = (
+  text: string,
+  rewrite: (name: string, body: string, whole: string) => string | null,
+): string =>
+  text
+    .replace(SPACED_COMMAND, (whole, before: string, name: string, body: string, after: string) => {
+      const next = rewrite(name, body, whole.slice(before.length, whole.length - after.length));
+      return next === null ? `${before}${GONE}${after}` : `${before}${next}${after}`;
+    })
+    .replace(GONE_RUN, (run: string, offset: number, all: string) =>
+      offset === 0 || offset + run.length === all.length || !/[ \t]/.test(run) ? "" : " ",
+    );
 
 /** The squares an entry of a `kind` command draws on — `e4` for a circle, `e2e4` for an arrow — or `undefined` for a malformed one. */
 const entrySquares = (kind: string, entry: string): { letter: string; squares: string } | undefined => {
@@ -170,7 +194,7 @@ export const toggleShape = (comments: readonly string[], shape: DrawnShape): str
   const remove = brushes.has(shape.brush);
   let recoloured = false;
   return comments.map((text) =>
-    text.replace(SPACED_COMMAND, (whole, before: string, name: string, body: string, after: string) => {
+    rewriteShapeCommands(text, (name, body, whole) => {
       const entries = body.split(",").map((entry) => entry.trim()).filter((entry) => entry !== "");
       const kept: string[] = [];
       for (const entry of entries) {
@@ -184,12 +208,18 @@ export const toggleShape = (comments: readonly string[], shape: DrawnShape): str
         kept.push(`${letter}${entry.slice(1)}`);
       }
       if (kept.length === entries.length && kept.every((entry, index) => entry === entries[index])) return whole;
-      if (kept.length > 0) return `${before}[%${name} ${kept.join(",")}]${after}`;
-      // The command goes, and with it one side's space — so the prose's words keep one between them.
-      return before !== "" && after !== "" ? " " : "";
+      return kept.length > 0 ? `[%${name} ${kept.join(",")}]` : null;
     }),
   );
 };
 
 /** A comment with its `[%cal]` / `[%csl]` commands taken out — what is left to read. */
 export const withoutShapes = (text: string): string => text.replace(SPACED_COMMAND, " ");
+
+/**
+ * **Every shape taken out of the comments** (CTA-143) — the move menu's
+ * *Remove all*: each `[%cal]` / `[%csl]` command goes, the prose and the other
+ * commands stay; a comment left empty is dropped by `setComments`. Pure.
+ */
+export const clearShapes = (comments: readonly string[]): string[] =>
+  comments.map((text) => rewriteShapeCommands(text, () => null));

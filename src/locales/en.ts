@@ -437,6 +437,7 @@ const en = {
     copyPgn: "Copy variation PGN",
     addComment: "Add comment",
     addAnnotation: "Add annotation…",
+    shapes: "Arrows and circles…",
     playChances: "Play chances…",
     copied: "Variation PGN copied",
     copyFailed: "Could not copy — the clipboard is not available here.",
@@ -475,6 +476,32 @@ const en = {
    * tabs, one per section of `lib/moveAnnotations.ts`'s table. `meaning.*` is
    * keyed by each choice's `id` there.
    */
+  /**
+   * The arrows and circles a move's comment draws (CTA-143) — lichess's
+   * `[%cal]` / `[%csl]`, managed from the move menu.
+   */
+  shapesDialog: {
+    title: "Arrows and circles",
+    help: "Drawn on the board at this move. On the board itself, right-drag to draw an arrow and right-click a square for a circle (Shift red, Alt blue, both yellow). Saved with the changes, in the move's comment as lichess writes them.",
+    list: "Drawn at this move",
+    empty: "Nothing is drawn at this move.",
+    arrow: "Arrow",
+    circle: "Circle",
+    brush: "Colour",
+    brushes: { green: "Green", red: "Red", yellow: "Yellow", blue: "Blue" },
+    /** `shape` is the row's shape, already worded ("Arrow e2 → e4"). */
+    recolour: "{{shape}}: {{brush}}",
+    remove: "Remove {{shape}}",
+    removeAll: "Remove all",
+    add: "Add",
+    kind: "Shape",
+    from: "From",
+    to: "To",
+    at: "Square",
+    square: "A square, a1 to h8",
+    exists: "Already drawn in this colour.",
+    close: "Close",
+  },
   nagDialog: {
     title: "Annotate",
     help: "One move assessment and one evaluation at a time; pick the active one again to remove it. Features are toggled one by one. Saved with the changes, as NAGs in the PGN.",

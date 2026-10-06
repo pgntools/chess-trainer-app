@@ -168,6 +168,13 @@ them back into the comment**, as in a lichess study:
   comment at the start) through `onEditTree` — a session change, saved with
   the record and written in the exported PGN with comments.
 
+**Managed from the move** too: the move menu's *Arrows and circles…*
+(`ShapesDialog`) lists the move's shapes — each recoloured or removed through
+`toggleShape`, one added by its squares, and *Remove all* (`clearShapes`).
+Taking a command out takes the space around it, so the prose reads as it
+did: a run of removed commands between two words leaves one space, at either
+end of the comment none.
+
 **A comment that only draws is not one to read**: `readComment` takes the
 two commands out of the prose and makes no chip of them, so such a comment
 reads empty — the block lists no row for it and is not shown where it is all
@@ -316,7 +323,8 @@ touched by it:
 | `src/lib/gameTree.ts` | The node fields; `setComments` / `commentsAt`, `setNags`; `mergeTrees`' joining and its `games` counting; `treeToPgn` and `PgnExportOptions`; `moveTreeToPgn` — the same writer over moves with no board (`PgnMove`: SAN, ply, annotations). |
 | `src/lib/openingTreePgn.ts` | The Library's *Save tree as PGN*: an opening tree's counts written as `[%games N]` / `[%prc P]` (§3). |
 | `src/lib/moveAnnotations.ts` | `readComment` (commands, the eval shapes, `prc` and `games` → chips; `[%cal]` / `[%csl]` out of the prose, no chip), `annotationsAt`; the NAG table and its rules. |
-| `src/lib/boardShapes.ts` | `[%cal]` / `[%csl]`: `shapesOf` (reading), `toggleShape` (a drawn shape written into the comments), `brushOfKeys`, `withoutShapes` (what `hasComments` reads) — CTA-126, CTA-143. |
+| `src/lib/boardShapes.ts` | `[%cal]` / `[%csl]`: `shapesOf` (reading), `toggleShape` (a drawn shape written into the comments), `clearShapes` (*Remove all*), `brushOfKeys`, `withoutShapes` (what `hasComments` reads) — CTA-126, CTA-143. |
+| `src/views/explorer/ShapesDialog.tsx` | The move menu's *Arrows and circles…* (CTA-143). |
 | `src/lib/playChance.ts` | `prc`: reading, writing, the chance rules. |
 | `src/lib/gamesTag.ts` | `games`: `gamesInText`, `withoutGames`, `gamesOf`. |
 | `src/lib/nextMoveWeights.ts` | The Analysis Board's arrow widths from `[%eval]`, `games`, `prc` or the lines ahead; which of them a tree carries. |
@@ -332,4 +340,5 @@ Tests: `lib/pgnAnnotations.test.ts` (parse, write, merge, the merge's
 `lib/nextMoveWeights.test.ts` (the `games` and `[%eval]` readers, the widths),
 `lib/boardShapes.test.ts` (reading, and `toggleShape`'s add / remove /
 recolour and round trip), `views/explorer/NagDialog.test.tsx`,
-`views/explorer/useVariationsExplorer.test.tsx` (the shapes drawn and written).
+`views/explorer/useVariationsExplorer.test.tsx` (the shapes drawn and written),
+`views/explorer/ShapesDialog.test.tsx` (the menu's dialog).

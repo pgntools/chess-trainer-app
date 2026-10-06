@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { brushOfKeys, drawsShapes, shapesOf, toggleShape, withoutShapes } from "./boardShapes";
+import { brushOfKeys, clearShapes, drawsShapes, shapesOf, toggleShape, withoutShapes } from "./boardShapes";
 import { findNode, setComments, treeToPgn } from "./gameTree";
 import { parsePgnTree } from "./pgn";
 
@@ -63,6 +63,9 @@ describe("toggleShape — a drawn shape written into the comments (CTA-143)", ()
       "Sharp. [%cal Rd7d5] more [%eval 0.3]",
     ]);
     expect(toggleShape(["Before [%csl Rd4] after."], circle)).toEqual(["Before after."]);
+    // A command emptied beside another keeps the words apart.
+    expect(toggleShape(["Sharp. [%csl Rd4][%cal Ge2e4] more"], circle)).toEqual(["Sharp. [%cal Ge2e4] more"]);
+    expect(toggleShape(["Sharp.[%csl Rd4] more"], circle)).toEqual(["Sharp. more"]);
     // Every entry drawing it, in every comment; an arrow to its own square is that circle.
     expect(toggleShape(["[%csl Rd4]", "[%cal Rd4d4,Ge2e4]"], circle)).toEqual(["", "[%cal Ge2e4]"]);
   });
@@ -112,5 +115,14 @@ describe("withoutShapes (CTA-143)", () => {
   it("takes the shapes out and leaves the rest", () => {
     expect(withoutShapes("[%csl Gd4][%cal Ge2e4]").trim()).toBe("");
     expect(withoutShapes("Sharp. [%cal Ge2e4] [%eval 0.3]")).toContain("[%eval 0.3]");
+  });
+});
+
+describe("clearShapes (CTA-143)", () => {
+  it("takes every shape command out, the prose and other commands kept", () => {
+    expect(clearShapes(["Sharp. [%cal Rd7d5][%csl Ye5] more [%eval 0.3]", "[%csl Gd4]"])).toEqual([
+      "Sharp. more [%eval 0.3]",
+      "",
+    ]);
   });
 });
