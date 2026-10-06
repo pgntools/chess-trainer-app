@@ -34,7 +34,7 @@ import { participantsOf, topPlayersOf } from "../../lib/tournamentParticipants";
 import { EmbedSource, type SourceRead } from "../home/frontPage/embedSource";
 import { KnockoutView, StandingsView, TeamStandingsView } from "../home/frontPage/tournamentEmbedViews";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
-import { RightPanel } from "../main/rightPanel";
+import { NoRightPanel, RightPanel } from "../main/rightPanel";
 import { tournamentTabOf, TOURNAMENT_TABS, type TournamentTab } from "./tournamentTabs";
 
 /**
@@ -49,11 +49,13 @@ import { tournamentTabOf, TOURNAMENT_TABS, type TournamentTab } from "./tourname
  *   `tournamentEmbedViews.tsx`), a name linking to the Games tab filtered by
  *   that player, a result to the game on the Library's board. Games that do
  *   not read as the type say so, with the type they look like
- *   (`guessTournamentKind`).
- * - **Participants**: the standouts (`TopPlayers`), a team event's teams and
- *   their players (`TeamRosters`), and every player's record
- *   (`ParticipantsTable`, `participantsOf`) — each name a link to the Games
- *   tab filtered by that player.
+ *   (`guessTournamentKind`). No right-hand panel: the tab takes its room
+ *   (`NoRightPanel`).
+ * - **Participants**: a team event's teams and their players
+ *   (`TeamRosters`) and every player's record (`ParticipantsTable`,
+ *   `participantsOf`) — each name a link to the Games tab filtered by that
+ *   player — and, in the right-hand panel, the statistics (the standouts,
+ *   `TopPlayers`).
  * - **Games**: the collection's games table, exactly as an unmarked
  *   collection's (`CollectionTable` — its filters' panel, picks, Analyse,
  *   its URL state), the strip under its header.
@@ -216,6 +218,16 @@ function InfoTab({ collection, rows, read }: { collection: CollectionSummary; ro
 
 const TEAM_TYPES: readonly TournamentFormat[] = ["teamSwiss", "teamKnockout"];
 
+/** Where the collection comes from — the Library's note under a collection's panel. */
+function SourceNote({ collection }: { collection: CollectionSummary }) {
+  const { t } = useTranslation();
+  return (
+    <Typography variant="body2" data-testid="library-table-note" sx={{ color: "text.secondary" }}>
+      {t(collection.source === "shipped" ? "library.table.shippedNote" : "library.table.uploadedNote")}
+    </Typography>
+  );
+}
+
 function ParticipantsTab({ collection, read }: { collection: CollectionSummary; read: SourceRead }) {
   const { t } = useTranslation();
   const [sort, setSort] = useState<DataTableSort<ParticipantsColumn>>(PARTICIPANTS_DEFAULT_SORT);
@@ -236,17 +248,37 @@ function ParticipantsTab({ collection, read }: { collection: CollectionSummary; 
   }, [team, headers]);
   const toPlayer = useCallback((player: TournamentPlayer) => gamesOfPlayers(collection.id, [player.name]), [collection.id]);
 
-  if (read.status === "loading") return <LoadingLine testId="library-tournament-participants-loading">{t("library.tournament.table.loading")}</LoadingLine>;
+  // The right-hand panel: the statistics — the standouts — over the shipped / uploaded note.
+  const panel = (
+    <RightPanel>
+      {/* The aside does not scroll; the panel is its own scrolling column. */}
+      <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", display: "grid", alignContent: "start", gap: 3 }}>
+        {top !== undefined && <TopPlayers top={top} playerLink={toPlayer} testId="library-tournament-top" />}
+        <SourceNote collection={collection} />
+      </Box>
+    </RightPanel>
+  );
+  if (read.status === "loading") {
+    return (
+      <>
+        <LoadingLine testId="library-tournament-participants-loading">{t("library.tournament.table.loading")}</LoadingLine>
+        {panel}
+      </>
+    );
+  }
   if (read.status !== "ready" || participants === undefined || top === undefined) {
     return (
-      <InlineAlert severity="warning" testId="library-tournament-participants-unreadable">
-        {t("library.tournament.table.unreadable")}
-      </InlineAlert>
+      <>
+        <InlineAlert severity="warning" testId="library-tournament-participants-unreadable">
+          {t("library.tournament.table.unreadable")}
+        </InlineAlert>
+        {panel}
+      </>
     );
   }
   return (
     <Box sx={{ display: "grid", gap: 2, alignContent: "start", minWidth: 0 }}>
-      <TopPlayers top={top} playerLink={toPlayer} testId="library-tournament-top" />
+      {panel}
       {rosters !== undefined && rosters.length > 0 && (
         <TeamRosters
           teams={rosters}
@@ -328,11 +360,8 @@ function TournamentOverview({
           </EmbedSource>
         </Box>
       </Box>
-      <RightPanel>
-        <Typography variant="body2" data-testid="library-table-note" sx={{ color: "text.secondary" }}>
-          {t(collection.source === "shipped" ? "library.table.shippedNote" : "library.table.uploadedNote")}
-        </Typography>
-      </RightPanel>
+      {/* Info has nothing for the right-hand panel and takes its room; Participants fills it with its statistics. */}
+      {tab === "info" && <NoRightPanel />}
     </>
   );
 }

@@ -12,7 +12,7 @@ import i18n from "../../i18n";
 import { expectNoAxeViolations, PAGE_STRUCTURE_RULES } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { DefaultLayout } from "./Layout";
-import { RightPanel } from "./rightPanel";
+import { NoRightPanel, RightPanel } from "./rightPanel";
 import { LeftPanel } from "./leftPanel";
 import { ForceLTR } from "../../theme/ForceLTR";
 import { ARTICLE_MAX_WIDTH_PX, ARTICLE_ROUTE, FULL_WIDTH_ROUTE } from "./routeHandle";
@@ -184,6 +184,46 @@ describe("board square reflow on window resize", () => {
     await waitFor(() =>
       expect(square).toHaveStyle({ width: "0px", height: "0px" }),
     );
+  });
+});
+
+describe("a screen with no aside (CTA-142)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** One screen that drops the aside while its switch is on, and keeps its own state either way. */
+  const Toggling = () => {
+    const [hidden, setHidden] = useState(true);
+    const [count, setCount] = useState(0);
+    return (
+      <div data-testid="screen">
+        <button onClick={() => setHidden((on) => !on)}>toggle</button>
+        <button onClick={() => setCount((c) => c + 1)}>bump {count}</button>
+        {hidden && <NoRightPanel />}
+      </div>
+    );
+  };
+
+  it("draws no aside and gives the screen the whole row, without remounting it", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(800, 600));
+    renderShell([{ index: true, element: <Toggling /> }]);
+
+    expect(screen.queryByTestId("layout-board-square-sidebar")).toBeNull();
+    const area = screen.getByTestId("layout-board-square-body");
+    // The row less the inset on both edges: 800 - 32 by 600 - 32, a rectangle.
+    await waitFor(() => expect(area).toHaveStyle({ width: "768px", height: "568px" }));
+    expect(area).toContainElement(screen.getByTestId("screen"));
+
+    fireEvent.click(screen.getByRole("button", { name: "bump 0" }));
+    fireEvent.click(screen.getByRole("button", { name: "toggle" }));
+    // The aside is back, the square too — and the screen kept its state: it was not remounted.
+    expect(screen.getByTestId("layout-board-square-sidebar")).toBeInTheDocument();
+    await waitFor(() => expect(area).toHaveStyle({ width: "432px", height: "432px" }));
+    expect(screen.getByRole("button", { name: "bump 1" })).toBeInTheDocument();
+  });
+
+  it("does nothing outside the shell", () => {
+    render(<NoRightPanel />);
   });
 });
 

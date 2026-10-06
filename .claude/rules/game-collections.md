@@ -821,10 +821,13 @@ the tab's panel (`tabPanelProps`, `library-tournament-panel-<tab>`):
   (a team's to all its players), results to the game on the Library's board
   (its back returning here). Games whose guess (`guessTournamentKind`) is
   another type get an `InlineAlert` saying so and naming the type they look
-  like, with *Change the type* (an upload's settings).
-- **Participants** — the standouts (`TopPlayers`: best score, best
-  performance, most wins, longest unbeaten run), a team event's teams and
-  their players (`TeamRosters`, `teamTournamentOf` + `teamPlayersOf`), and
+  like, with *Change the type* (an upload's settings). **No right-hand
+  panel**: the tab renders `NoRightPanel` (`views/main/rightPanel.tsx`), so
+  the shell draws no aside and the tab takes the whole row.
+- **Participants** — in the right-hand panel, the **Statistics** (the
+  standouts, `TopPlayers`: best score, best performance, most wins, longest
+  unbeaten run) over the shipped / uploaded note; in the tab, a team event's
+  teams and their players (`TeamRosters`, `teamTournamentOf` + `teamPlayersOf`), and
   every player's record (`ParticipantsTable` over `participantsOf`:
   rank, title and flag, team, rating, points, games, W / D / L,
   performance — the opponents' average plus `400·log10(p / (1 − p))`, held
@@ -833,8 +836,7 @@ the tab's panel (`tabPanelProps`, `library-tournament-panel-<tab>`):
 - **Games** — `CollectionTable` itself, its behaviour, test ids and URL state
   (`?player=`, `?sort=` …, written beside `?tab=games`) untouched; the strip
   sits under its header and the table region is the tab's panel. The
-  filters' right-hand panel is this tab's; Info and Participants put only
-  the shipped / uploaded note there.
+  filters' right-hand panel is this tab's.
 
 Info and Participants read the collection's **games** (a shipped PGN's
 chunk, an upload's record) — their tags only (`readPgnTags` over each

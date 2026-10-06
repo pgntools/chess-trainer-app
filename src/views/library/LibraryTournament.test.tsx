@@ -69,6 +69,8 @@ describe("a tournament collection's view", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Club games");
     expect(tab("info")).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tabpanel", { name: "Info" })).toBe(screen.getByTestId("library-tournament-panel-info"));
+    // Info has no right-hand panel: nothing is registered in it.
+    expect(screen.queryByTestId("layout-right-panel")).toBeNull();
     expect(tab("participants")).toHaveAttribute("href", `/library/${cup.id}?tab=participants`);
 
     await user.click(tab("participants"));
@@ -161,6 +163,9 @@ describe("a tournament collection's view", () => {
     const table = await screen.findByRole("table", { name: "FIDE Candidates 2026 — Participants" }, { timeout: 15_000 });
     expect(within(table).getAllByRole("row")).toHaveLength(9);
     expect(readText(within(table).getAllByRole("row")[1])).toMatch(/^1\s*Grandmaster Sindarov, Javokhir/);
+    // The statistics are the right-hand panel's.
+    expect(screen.getByTestId("layout-right-panel")).toContainElement(screen.getByTestId("library-tournament-top"));
+    expect(within(screen.getByTestId("library-tournament-top")).getByRole("heading", { name: "Statistics" })).toBeInTheDocument();
     expect(screen.getByTestId("library-tournament-top-score")).toHaveTextContent("Sindarov, Javokhir");
     expect(screen.getByTestId("library-tournament-top-score-value")).toHaveTextContent("10.0 of 14");
     expect(within(table).getByRole("link", { name: "Giri, Anish" })).toHaveAttribute("href", "/library/candidates2026?tab=games&player=Giri%2C%20Anish");

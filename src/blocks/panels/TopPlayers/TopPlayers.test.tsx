@@ -13,7 +13,7 @@ beforeEach(async () => {
 describe("TopPlayers", () => {
   it("names each standout and the figure, the names linked", async () => {
     render(<TopPlayers top={ONE_LEADER} playerLink={(player) => ({ href: `/p/${player.name}` })} testId="probe" />);
-    expect(screen.getByRole("heading", { level: 2, name: "Top players" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Statistics" })).toBeInTheDocument();
     expect(screen.getByTestId("probe-score")).toHaveTextContent("Best score");
     expect(screen.getByTestId("probe-score-value")).toHaveTextContent("2.0 of 2");
     expect(screen.getByTestId("probe-wins-value")).toHaveTextContent("2 wins");

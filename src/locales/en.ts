@@ -1512,7 +1512,7 @@ const en = {
         title: "Participants",
         teams: "Teams",
         players: "Players",
-        top: "Top players",
+        top: "Statistics",
         empty: "No players in these games.",
         columns: {
           player: "Player",

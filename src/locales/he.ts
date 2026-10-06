@@ -1156,7 +1156,7 @@ const he: typeof en = {
         title: "משתתפים",
         teams: "קבוצות",
         players: "שחקנים",
-        top: "השחקנים הבולטים",
+        top: "סטטיסטיקה",
         empty: "אין שחקנים במשחקים האלה.",
         columns: {
           player: "שחקן",
