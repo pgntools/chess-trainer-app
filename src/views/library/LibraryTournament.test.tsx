@@ -69,8 +69,8 @@ describe("a tournament collection's view", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Club games");
     expect(tab("info")).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tabpanel", { name: "Info" })).toBe(screen.getByTestId("library-tournament-panel-info"));
-    // Info keeps the right-hand panel — the same width as the other tabs — with the note in it.
-    expect(screen.getByTestId("layout-right-panel")).toContainElement(screen.getByTestId("library-table-note"));
+    // Info registers nothing in the right-hand panel: it spans the panel's room (HideRightPanel).
+    expect(screen.queryByTestId("layout-right-panel")).toBeNull();
     expect(tab("participants")).toHaveAttribute("href", `/library/${cup.id}?tab=participants`);
 
     await user.click(tab("participants"));

@@ -64,7 +64,8 @@ Gallery: `/dev/design/forms`.
 
 - **Purpose** — a labelled slider: the label at the start, the value at the end
   (`dir="ltr"`), the slider under it, dimmed while off — its notice never
-  (CTA-109: a dimmed warning caption fell to 2.5:1).
+  (CTA-109: a dimmed warning caption fell to 2.5:1), nor its header
+  (CTA-142: the dimmed value fell to 4.0:1).
 - **Props** — `label`, `value`, `onChange(number)`, `min`, `max`, `step?`,
   `valueLabel?`, `notice?` (a warning caption), `disabled?`, `testId` (the
   parts `-value`, `-input`, `-notice`).

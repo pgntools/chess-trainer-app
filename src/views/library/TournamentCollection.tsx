@@ -34,7 +34,7 @@ import { participantsOf, topPlayersOf } from "../../lib/tournamentParticipants";
 import { EmbedSource, type SourceRead } from "../home/frontPage/embedSource";
 import { KnockoutView, StandingsView, TeamStandingsView } from "../home/frontPage/tournamentEmbedViews";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
-import { RightPanel } from "../main/rightPanel";
+import { HideRightPanel, RightPanel } from "../main/rightPanel";
 import { tournamentTabOf, TOURNAMENT_TABS, type TournamentTab } from "./tournamentTabs";
 
 /**
@@ -49,7 +49,8 @@ import { tournamentTabOf, TOURNAMENT_TABS, type TournamentTab } from "./tourname
  *   `tournamentEmbedViews.tsx`), a name linking to the Games tab filtered by
  *   that player, a result to the game on the Library's board. Games that do
  *   not read as the type say so, with the type they look like
- *   (`guessTournamentKind`).
+ *   (`guessTournamentKind`). No right-hand panel: the tab spans its room
+ *   (`HideRightPanel`), the left edge and the height those of the other tabs.
  * - **Participants**: every player's record (`ParticipantsTable`,
  *   `participantsOf`) — each name a link to the Games tab filtered by that
  *   player — and, in the right-hand panel, the statistics (the standouts,
@@ -375,12 +376,8 @@ function TournamentOverview({
           </EmbedSource>
         </Box>
       </Box>
-      {/* Participants fills the right-hand panel itself (its statistics and teams); Info shows the note. */}
-      {tab === "info" && (
-        <RightPanel>
-          <SourceNote collection={collection} />
-        </RightPanel>
-      )}
+      {/* Info spans the right-hand panel's room (the same left edge and height, the panel's width added); Participants fills the panel itself. */}
+      {tab === "info" && <HideRightPanel />}
     </>
   );
 }

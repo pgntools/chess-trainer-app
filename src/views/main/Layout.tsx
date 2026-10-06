@@ -16,6 +16,7 @@ import { default as SideBar } from './Sidebar';
 import { Footer } from './Footer';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
+import { useRightPanelHidden } from './rightPanelSlot';
 import { LeftPanelOutlet, LeftPanelProvider } from './leftPanel';
 import { ARTICLE_MAX_WIDTH_PX, descriptionKeyOf, isArticleRoute, isFullWidthRoute, pageMetaOf, pageTitleOf, screenIdOf, titleKeyOf } from './routeHandle';
 import { createPageTitleStore, PageTitleContext } from './pageTitle';
@@ -349,6 +350,26 @@ const DefaultLayoutViewport = () => {
         }
 
     },[bodyDimentions, compact])
+
+    /*
+      A screen that spans the aside (`HideRightPanel`, CTA-142 — the Library's
+      tournament Info tab): no aside, and the screen's area the square's
+      height, reaching across the gap and the aside's room — the width the
+      aside would have taken (its flex share, within its bounds) — so the
+      row is centred exactly as with the aside and nothing moves as it comes
+      and goes. Stacked, the square is the column's width already: there is
+      only no panel under it.
+    */
+    const asideHidden = useRightPanelHidden();
+    const areaDimentions = useMemo<Rect>(() => {
+        if (!asideHidden || compact || boardDimentions.width === 0) return boardDimentions;
+        const inner = bodyDimentions.width - BOARD_INSET_PX * 2;
+        const aside = Math.min(
+            PANEL_MAX_WIDTH_PX,
+            Math.max(PANEL_MIN_WIDTH_PX, inner - boardDimentions.width - BOARD_PANEL_GAP_PX),
+        );
+        return { width: boardDimentions.width + BOARD_PANEL_GAP_PX + aside, height: boardDimentions.height };
+    }, [asideHidden, compact, boardDimentions, bodyDimentions])
 
 
 
@@ -684,8 +705,8 @@ const DefaultLayoutViewport = () => {
                                 // it changes on every resize — no reason to mint
                                 // a fresh emotion class each time.
                                 style={{
-                                    width: `${boardDimentions.width}px`,
-                                    height: `${boardDimentions.height}px`,
+                                    width: `${areaDimentions.width}px`,
+                                    height: `${areaDimentions.height}px`,
                                 }}
                             >
                                 {/*
@@ -705,7 +726,7 @@ const DefaultLayoutViewport = () => {
                             </Box>
                         </Box>
 
-                         <Box
+                         {!asideHidden && <Box
                             component="aside"
                             aria-label={t('shell.sidePanel')}
                             data-testid="layout-board-square-sidebar"
@@ -718,6 +739,17 @@ const DefaultLayoutViewport = () => {
                                 */
                                 flexGrow: compact ? 0 : 1,
                                 flexShrink: 0,
+                                /*
+                                  From nothing, not from its content (CTA-142):
+                                  with an `auto` basis a panel whose content is
+                                  wide (a list's long lines, a table) started at
+                                  its 560 px cap whatever the square left, so on
+                                  a 1500 × 900 window the row overflowed and the
+                                  square was clipped under the sidebar. From 0 it
+                                  grows into exactly what the square leaves,
+                                  held between its min and max.
+                                */
+                                ...(compact ? {} : { flexBasis: 0 }),
                                 /*
                                   A column, and it does not scroll itself: a
                                   panel that wants a section pinned to the foot
@@ -771,7 +803,7 @@ const DefaultLayoutViewport = () => {
                             */}
                             <RightPanelOutlet fallback={<AnalysisPlaceholder />} />
 
-                        </Box>
+                        </Box>}
                         </>)}
 
 

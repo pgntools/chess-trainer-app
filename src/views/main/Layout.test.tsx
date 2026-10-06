@@ -12,7 +12,7 @@ import i18n from "../../i18n";
 import { expectNoAxeViolations, PAGE_STRUCTURE_RULES } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { DefaultLayout } from "./Layout";
-import { RightPanel } from "./rightPanel";
+import { HideRightPanel, RightPanel } from "./rightPanel";
 import { LeftPanel } from "./leftPanel";
 import { ForceLTR } from "../../theme/ForceLTR";
 import { ARTICLE_MAX_WIDTH_PX, ARTICLE_ROUTE, FULL_WIDTH_ROUTE } from "./routeHandle";
@@ -184,6 +184,59 @@ describe("board square reflow on window resize", () => {
     await waitFor(() =>
       expect(square).toHaveStyle({ width: "0px", height: "0px" }),
     );
+  });
+});
+
+describe("a screen that spans the aside (CTA-142)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** One screen that spans the aside while its switch is on, and keeps its own state either way. */
+  const Toggling = () => {
+    const [hidden, setHidden] = useState(true);
+    const [count, setCount] = useState(0);
+    return (
+      <div data-testid="screen">
+        <button onClick={() => setHidden((on) => !on)}>toggle</button>
+        <button onClick={() => setCount((c) => c + 1)}>bump {count}</button>
+        {hidden && <HideRightPanel />}
+      </div>
+    );
+  };
+
+  it("draws no aside; the area keeps the square's start and height and reaches across the aside's room — without a remount", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(800, 600));
+    renderShell([{ index: true, element: <Toggling /> }]);
+
+    expect(screen.queryByTestId("layout-board-square-sidebar")).toBeNull();
+    const area = screen.getByTestId("layout-board-square-body");
+    // The square (432), the gap (16) and the aside's 320: 768 wide, the square's 432 high.
+    await waitFor(() => expect(area).toHaveStyle({ width: "768px", height: "432px" }));
+    expect(area).toContainElement(screen.getByTestId("screen"));
+
+    fireEvent.click(screen.getByRole("button", { name: "bump 0" }));
+    fireEvent.click(screen.getByRole("button", { name: "toggle" }));
+    // The aside is back, the square too — and the screen kept its state: it was not remounted.
+    expect(screen.getByTestId("layout-board-square-sidebar")).toBeInTheDocument();
+    await waitFor(() => expect(area).toHaveStyle({ width: "432px", height: "432px" }));
+    expect(screen.getByRole("button", { name: "bump 1" })).toBeInTheDocument();
+  });
+
+  it("takes the aside's width within its bounds — on a wide window, its 560 px at most", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(1400, 600));
+    renderShell([{ index: true, element: <HideRightPanel /> }]);
+    // The square min(1400 - 320 - 16 - 32, 600 - 32) = 568, the gap, and the aside's 560 cap.
+    await waitFor(() => expect(screen.getByTestId("layout-board-square-body")).toHaveStyle({ width: "1144px", height: "568px" }));
+  });
+
+  it("does nothing outside the shell", () => {
+    render(<HideRightPanel />);
+  });
+
+  it("grows the aside from nothing, so wide content never sets its width and overflows the row", () => {
+    renderShell();
+    expect(screen.getByTestId("layout-board-square-sidebar")).toHaveStyle({ flexBasis: "0" });
   });
 });
 

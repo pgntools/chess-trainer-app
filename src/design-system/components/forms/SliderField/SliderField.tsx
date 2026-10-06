@@ -24,18 +24,20 @@ export type SliderFieldProps = {
 /**
  * **A labelled slider** (CTA-108): a header with the label at the start and
  * the value at the end (`dir="ltr"`, so a number never reverses), a small
- * slider under it, dimmed while off. The option sliders and the four
+ * slider under it, the slider dimmed while off. The option sliders and the four
  * depth and move-time rows each wrote this header; this is it once.
  *
  * The notice is never dimmed (CTA-109): it says why the slider is off, and at
  * 60 % a warning caption fell to 2.5:1 — a browser audit of the Engine tab
- * found it. Only the header and the slider fade.
+ * found it. Nor is the header (CTA-142): its value in the secondary text
+ * colour fell to 4.0:1 at 60 % — the browser audit again, once the Lobby's
+ * panel was shown whole. Only the slider fades.
  */
 function SliderField({ label, value, onChange, min, max, step = 1, valueLabel, notice, disabled = false, testId }: SliderFieldProps) {
   const labelId = useId();
   return (
     <Box data-testid={testId}>
-      <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1, opacity: disabled ? 0.6 : 1 }}>
+      <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1 }}>
         <Typography id={labelId} variant="body2" sx={{ fontWeight: 600 }}>
           {label}
         </Typography>

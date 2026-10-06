@@ -825,8 +825,10 @@ the tab's panel (`tabPanelProps`, `library-tournament-panel-<tab>`):
   responsive**: the card and the table side by side where both fit, else
   the table wraps under the card — each centred, the table its own width,
   scrolling sideways in its region past the screen's (no page overflow at
-  320 px). The right-hand panel holds the shipped / uploaded note — every
-  tab keeps the panel, so switching tabs never changes the screen's width.
+  320 px). **It spans the right-hand panel's room**: the tab renders
+  `HideRightPanel` (`views/main/rightPanel.tsx`), so the shell draws no
+  aside and the tab's area — the square's left edge and height — reaches to
+  where the panel's end would be; nothing moves as the tabs change.
 - **Participants** — in the right-hand panel, the **Statistics** (the
   standouts, `TopPlayers`: best score, best performance, most wins, longest
   unbeaten run), then a team event's **Teams** — a line each, one on top of

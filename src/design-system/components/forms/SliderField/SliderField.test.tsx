@@ -28,6 +28,8 @@ describe("SliderField", () => {
     expect(screen.getByTestId("probe")).not.toHaveStyle({ opacity: "0.6" });
     expect(screen.getByTestId("probe-notice")).not.toHaveStyle({ opacity: "0.6" });
     expect(screen.getByTestId("probe-input").closest(".MuiSlider-root")).toHaveStyle({ opacity: "0.6" });
+    // Nor is the header (CTA-142): its secondary-coloured value would fall below 4.5:1.
+    expect(screen.getByTestId("probe-value").parentElement).not.toHaveStyle({ opacity: "0.6" });
     expect(screen.getByTestId("probe-input")).toBeDisabled();
   });
 });
