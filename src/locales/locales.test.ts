@@ -51,6 +51,9 @@ describe("translation catalogs", () => {
       "playedGames.players",
       // A knockout's side read aloud, "name score" (CTA-128): nothing in it but the two values.
       "tournament.knockout.side",
+      // The tournament-type suggestion's line, "type: reason." (CTA-142): the
+      // two values and their punctuation, nothing to translate around them.
+      "library.settings.suggestion.text",
       // The arrow palette named after the site whose colours it takes — a brand.
       "analysis.arrows.palettes.lichess",
       // The tournament tables' headers (CTA-120): a number sign, and the two
