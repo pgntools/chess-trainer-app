@@ -414,7 +414,7 @@ is viewed**.
 | Caller | Function |
 | --- | --- |
 | `wirepgn` | `buildCollectionIndex` (sync), book shards from disk |
-| upload / Add games (the import popup) | `indexCollection` → `collectionIndex.worker.ts` (a **module** worker, `worker: { format: 'es' }` in `vite.config.ts`, because it loads the book's chunks with dynamic `import()`), with progress about 10 times a second and cancel by `terminate()`. Under jsdom (no `Worker`) it falls back to `buildCollectionIndexAsync` in yielding batches. |
+| upload / Add games (the import popup) | `indexCollection` → `collectionIndex.worker.ts` (a **module** worker, `worker: { format: 'es' }` in `vite.config.ts`, because it loads the book's chunks with dynamic `import()`), with progress about 10 times a second and cancel by `terminate()`. Under jsdom (no `Worker`) it falls back to `buildCollectionIndexAsync` in yielding batches — and so does a worker that fails (will not start, throws, answers an error or what cannot be read), its cause logged with `console.error` (CTA-141). |
 | Update / Save as copy on a game | `indexGame(pgn)` (one row, with the app's book) |
 
 **The file format** (`<Stem>.index.json`): a JSON head

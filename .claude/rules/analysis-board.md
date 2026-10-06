@@ -44,8 +44,8 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/views/tools/analysis/AnalysisBoard.tsx` | **The screen**: the arrivals (`arrivalOf`), the slots, the header, the URL write-back. `AnalysisBoardRoute` waits for the stores a URL names. |
 | `src/views/tools/analysis/useAnalysisSession.ts` | **The shareable session**: core + engine + `usePlayToggle` + a **baseline** (the tree as it arrived or was last kept), `changed`, `extensionIds`. The Library's game board and the Openings explorer compose it too. |
 | `src/views/tools/analysis/useAnalysisBoard.ts` | That session plus **the saved record**: Save / Update / Save as copy / Discard, the Load tab's new boards, the arrival precedence. |
-| `src/views/tools/analysis/AnalysisLoad.tsx` | The Load tab: a PGN by file or paste (one game; several open the popup) or a FEN, over `useAnalysisLoad`. `onCollectionSaved`, `choiceLabelKey` and `onLoadPosition` optional — the Openings explorer passes no `onCollectionSaved`, so its choice stays inline and merge-only. |
-| `src/views/tools/analysis/MultiGameDialog.tsx` | **The popup a PGN of several games opens** (CTA-101): Merge games, or Save as games collection (index pass with progress and Cancel, `addCollection` at the Library's top level, then `/library/<id>`). The Board's Load tab and the Lobby's form both render it. |
+| `src/views/tools/analysis/AnalysisLoad.tsx` | The Load tab: a PGN by file or paste (one game; several open the popup) or a FEN, over `useAnalysisLoad`. `onCollectionSaved`, `onAnalysesSaved` (CTA-141), `choiceLabelKey` and `onLoadPosition` optional — the Openings explorer passes no `onCollectionSaved`, so its choice stays inline and merge-only. |
+| `src/views/tools/analysis/MultiGameDialog.tsx` | **The popup a PGN of several games opens** (CTA-101): Merge games, Save as games collection (index pass with progress and Cancel, `addCollection` at the Library's top level, then `/library/<id>`), or Save to Saved analyses (CTA-141: a folder's name, then a new top-level folder with an analysis per game — `analysisGamesOfText`, `batchAnalysesOf` — then `/tools/analysis/saved?folder=<id>`). The Board's Load tab and the Lobby's form both render it. |
 | `src/views/tools/analysis/useAnalysisLoad.ts` | **The Load route's state** (CTA-96): the pipeline behind `AnalysisLoad`, on its own so a host can place its pieces itself — the analyses Lobby's form puts the FEN field and the `.pgn` pick in its editor's row and the paste box below. |
 | `src/blocks/panels/PgnExportPanel/` | The Export tab (every board's): FEN, PGN with or without comments / NAGs / side lines, copy and download. |
 | `src/blocks/forms/AnalysisEngineForm/` | The Engine tab (depth, move time, lines, the eval bar, Clear) — every board's but Play's; each slider rendered from what the engine declared (`engineOptionState`). |
@@ -59,7 +59,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/views/tools/analysis/saved/AnalysisSettingsScreen.tsx` | `/tools/analysis/saved/<id>/settings`. |
 | `src/views/tools/analysis/saved/useSavedAnalyses.ts`, `useAnalysisFolders.ts` | The store bindings (`undefined` until read). |
 | `src/blocks/lists/SavedAnalysesList/`, `FolderActions/`, `FolderPicker/`; `src/blocks/dialogs/Folder*Dialog/` | The list (rows and cards, folders and records) and the nested-folder pieces — a folder's actions, the picker, the name / move / delete dialogs — each taking its words as `labels` and a test-id prefix (CTA-113). |
-| `src/lib/savedAnalyses.ts` | **The record**, pure: `SavedAnalysis`, `savedAnalysisOf`, `savedAnalysisFrom` (the normaliser), `savedAnalysisDerivedName`, `batchAnalysesOf`, `savedAnalysisCatalogOf`. |
+| `src/lib/savedAnalyses.ts` | **The record**, pure: `SavedAnalysis`, `savedAnalysisOf`, `savedAnalysisFrom` (the normaliser), `savedAnalysisDerivedName`, `batchAnalysesOf`, `analysisGamesOfText` (a text's games as analyses, CTA-141), `savedAnalysisCatalogOf`. |
 | `src/lib/savedAnalysisStore.ts` | **The store** (`chessapp.analyses`, object store `analyses`): `saveAnalysis`, `addAnalyses`, `fileSavedAnalysis`, `renameSavedAnalysis`, `updateSavedAnalysisSettings`, `removeSavedAnalyses`, `unfileAnalysesIn`, `findSavedAnalysisGame`; cap `MAX_SAVED_ANALYSES` (20,000). |
 | `src/lib/savedAnalysisFolders.ts` + `savedAnalysisFolderStore.ts` | The folders: an `AnalysisFolder` *is* a `GameFolder` (`lib/savedGameFolders.ts`, the nested model: cycles cut, dangling parents read as top level); create / rename / move (never into its own subtree) / delete (sub-folders re-parent, analyses become Unfiled); cap 100. |
 | `src/lib/analysisSettings.ts` | `AnalysisSettings`, the defaults, `ANALYSIS_UCI_OPTION`, `analysisSettingsFrom`. |
@@ -94,7 +94,7 @@ screen).
 - **Load is a new analysis.** The Load tab reads a PGN the way a repertoire is
   read (`readRepertoireText`): one game goes onto the board unsaved; **several
   open a popup** (`MultiGameDialog`, CTA-101) with the game count, the skipped
-  count and two choices:
+  count and three choices:
   - **Merge games** — one tree on the board, unsaved, written with
     `[%games N]` on every move where the games part
     ([`pgn-annotations.md`](./pgn-annotations.md) §1, *Merging*). Off, saying
@@ -106,10 +106,26 @@ screen).
     every game shares, else the file name's words, else "Pasted collection"),
     and the reader lands on `/library/<id>`. Cancel, Escape or the popup going
     away stop the index pass and write nothing; a failed pass or write is said
-    in the popup.
+    in the popup — the check (`problem.index`) told from the write
+    (`problem.write` / `storage`) — and its cause logged with `console.error`
+    (CTA-141). A worker that fails falls back to indexing on the page
+    (`indexCollection`), logged too.
+  - **Save to Saved analyses** (CTA-141) — always offered. A `FormDialog` in
+    the popup's place asks for the folder's name: the file name's words
+    (`collectionNameOfStem`), for a paste the `Event` every game shares, else
+    "Analysed games", capped at `MAX_ANALYSIS_FOLDER_NAME`; an empty name
+    cannot be saved, and **Back** returns to the choices, writing nothing. Save
+    is the Library's Analyse (§4, [`game-collections.md`](./game-collections.md)
+    §6.5), all or nothing: `createAnalysisFolder` at the top level, then
+    `addAnalyses(batchAnalysesOf(…))` over `analysisGamesOfText` — every game
+    that `parsePgnTree` reads, **a position alone included**, in file order,
+    its PGN as the text holds it, named by its chapter / players / event
+    (`repertoireGameNamesOf`); the unreadable ones are left out and counted. A
+    refused folder (the cap) or a refused write (`MAX_SAVED_ANALYSES`,
+    storage) is said in the dialog, and the folder is taken back. The reader
+    lands on `/tools/analysis/saved?folder=<id>` (`onAnalysesSaved`).
 
-  There is **no split into saved analyses** any more. A FEN is a position: it
-  turns the board.
+  A FEN is a position: it turns the board.
 - **Export** writes the FEN, and the PGN with or without comments, NAGs and
   side lines (`treeToPgn`'s `PgnExportOptions`).
 
@@ -264,7 +280,8 @@ validated, ignored when it does not resolve, taken as *initial* state.
   merge, from the same popup as the board's — `MultiGameDialog`, counted) is
   handed to the board as `analysisHandOff` location state facing White (a game
   does not turn the board); a text of several kept as a games collection
-  lands on its Library table; a PGN of a single move or none, like a FEN, sets the editor up
+  lands on its Library table, one kept as analyses (CTA-141) on its new
+  folder here; a PGN of a single move or none, like a FEN, sets the editor up
   instead (`onLoadPosition` / `onLoadFen`). The editor offers no tabs of its
   own (`forms={["position"]}`, the fields always shown —
   [`position-editor.md`](./position-editor.md)).
