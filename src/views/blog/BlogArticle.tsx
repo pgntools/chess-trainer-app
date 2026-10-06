@@ -9,7 +9,6 @@ import { localizedTextOf } from "../../lib/localizedText";
 import { InLanguage } from "../../theme/InLanguage";
 import { useOwnPageHeading } from "../main/pageTitle";
 import ArticleBody from "./ArticleBody";
-import { ArticleEditLink } from "./ArticleEditLink";
 import { ArticleHeader } from "./ArticleHeader";
 import { blogFolderChain, blogPathOf, findBlogArticle } from "./articles";
 
@@ -65,7 +64,6 @@ function BlogArticle() {
             draft={article.draft}
             date={article.date}
             updated={article.updated}
-            action={<ArticleEditLink path={article.path} language={language} />}
           />
         )}
       </Box>

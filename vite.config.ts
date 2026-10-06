@@ -54,7 +54,7 @@ export default defineConfig({
 
     **`?raw` stays text.** The plugin strips an id's query before matching, so
     `x.mdx?raw` — the dev-only MDX editor opening an article's source
-    (`src/views/dev/mdxEditor/articleSources.ts`) — would be compiled too;
+    (`src/mdxEditor/client/articleSources.ts`) — would be compiled too;
     such an id is left to Vite, which makes it the file's text.
 
     **Frontmatter is read, never drawn** (CTA-135). An article starts with a
@@ -86,6 +86,9 @@ export default defineConfig({
     // build, run by `yarn test:a11y` — not Vitest's.
     exclude: [...configDefaults.exclude, 'e2e/**'],
     environment: 'jsdom',
+    // The MDX editor is in the build only under `yarn mdx-editor:start`
+    // (src/mdxEditor/enabled.ts); the tests run with it in, as that command does.
+    env: { VITE_MDX_EDITOR: '1' },
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     /*

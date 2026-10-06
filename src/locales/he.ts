@@ -34,7 +34,8 @@ const he: typeof en = {
     settingsAppearance: "מראה",
     designSystem: "מערכת עיצוב",
     themeEditor: "עורך ערכות נושא",
-    mdxEditor: "עורך MDX",
+    mdxArticles: "מאמרים",
+    mdxEditor: "עורך",
     folders: {
       engine: "מנוע",
       library: "ספרייה",
@@ -44,6 +45,7 @@ const he: typeof en = {
       blog: "בלוג",
       settings: "הגדרות",
       development: "פיתוח",
+      mdxEditor: "עורך MDX",
     },
   },
   home: {
@@ -153,6 +155,7 @@ const he: typeof en = {
     designSystem: "מערכת עיצוב",
     themeEditor: "עורך ערכות נושא",
     mdxEditor: "עורך MDX",
+    mdxArticles: "עורך MDX — מאמרים",
   },
   pageDescriptions: {
     home: "מאמן שחמט בדפדפן: משחק מול המנוע, ניתוח משחקים, סיור בפתיחות, אימון הרפרטואר וצפייה במשחקי אמנים.",

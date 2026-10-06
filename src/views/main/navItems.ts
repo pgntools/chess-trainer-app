@@ -18,6 +18,7 @@ import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import type { LocalizedText } from "../../lib/localizedText";
 import { blogArticlesInTreeOrder, blogNavFolderId, blogParentOf } from "../blog/articles";
 import type { NavFolderId } from "./navFolders";
+import { MDX_EDITOR_ENABLED } from "../../mdxEditor/enabled";
 
 export type NavItem = {
   /** Route path, matched against `useLocation().pathname` for the active state. */
@@ -128,6 +129,13 @@ export const navItems = (): readonly NavItem[] => [
     folder: "blog",
   },
   // The Development section — dev-only: the design gallery (CTA-107), the theme editor (CTA-115) and the MDX editor.
+  // The MDX editor (CTA-137), in its own folder — only under `yarn mdx-editor:start` (src/mdxEditor/enabled.ts).
+  ...(MDX_EDITOR_ENABLED
+    ? [
+        { to: "/dev/mdx-editor", labelKey: "nav.mdxArticles", icon: ArticleRoundedIcon, folder: "mdx-editor" },
+        { to: "/dev/mdx-editor/edit", labelKey: "nav.mdxEditor", icon: EditNoteRoundedIcon, folder: "mdx-editor" },
+      ]
+    : []),
   ...(import.meta.env.DEV
     ? [
         {
@@ -140,12 +148,6 @@ export const navItems = (): readonly NavItem[] => [
           to: "/dev/theme-editor",
           labelKey: "nav.themeEditor",
           icon: PaletteRoundedIcon,
-          folder: "development",
-        },
-        {
-          to: "/dev/mdx-editor",
-          labelKey: "nav.mdxEditor",
-          icon: EditNoteRoundedIcon,
           folder: "development",
         },
       ]
