@@ -7,7 +7,7 @@ import { PREVIEW_COMPONENTS, useCompiled, whereOf } from "./useCompiled";
 
 /**
  * **What the MDX editor renders MDX with** — its preview pane's parts, and
- * the Add PGN dialog's preview of one component (CTA-137): the source-line
+ * the sections' preview of one component (CTA-137): the source-line
  * marker, the boundary that contains a component that throws, and a piece
  * of MDX rendered whole.
  */
@@ -40,8 +40,8 @@ export class PreviewBoundary extends Component<BoundaryProps, BoundaryState> {
 }
 
 /**
- * **A piece of MDX rendered as an article renders it** — the Add PGN
- * dialog's preview of the component it is about to insert: compiled a
+ * **A piece of MDX rendered as an article renders it** — a section's
+ * preview of the component or image it edits or is about to insert: compiled a
  * moment after it last changed, with `folder`'s imports (and the PGNs just
  * `attached`); a code that will not compile says where — `lineOffset`
  * taking off the lines put before it — over the last one that did.

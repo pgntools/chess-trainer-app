@@ -1,7 +1,7 @@
 import { parsePgnGames, splitPgnGames } from "../../lib/pgn";
 
 /**
- * **A big PGN, seen a page at a time** (CTA-137) — the Add PGN dialog shows
+ * **A big PGN, seen a page at a time** (CTA-137) — the PGNs section shows
  * an uploaded file this size only in part, enough to see how it is written,
  * and adds it whole. A page is a run of whole games.
  */
@@ -41,8 +41,8 @@ export const pgnPagesOf = (text: string): { pages: string[]; games: number } => 
 /**
  * The first `plies` moves of a PGN's first game as one line of SAN —
  * `1. e4 e5 2. Nf3 Nc6` — and where a board opens at their end (`"2..."`):
- * a position by its moves alone, with no game behind it (the Add PGN
- * dialog's Position examples). `undefined` for a PGN that will not parse.
+ * a position by its moves alone, with no game behind it (the Components
+ * section's Position examples). `undefined` for a PGN that will not parse.
  */
 export const movesLineOf = (text: string, plies = 8): { line: string; start: string } | undefined => {
   try {

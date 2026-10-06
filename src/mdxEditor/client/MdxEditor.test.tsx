@@ -14,8 +14,8 @@ import Main from "./Main";
   the left is compiled in the browser and rendered on the right with the
   components every article embeds — the Library's data and all; a document
   that will not compile keeps the last one that did, a component that
-  throws is contained. It saves, adds PGNs, components and images, and
-  deletes, through its storage service — `fetch` stands in for it here,
+  throws is contained. It saves, lists, edits and adds the article's PGNs,
+  components and images (a section each), and deletes, through its storage service — `fetch` stands in for it here,
   down unless a test starts it (`stubService`).
 */
 
@@ -53,7 +53,8 @@ const mount = (entry = "/dev/mdx-editor/edit") =>
   );
 
 const WERNER = "/dev/mdx-editor/edit?article=tournaments%2Fwerner-obermeyer-swiss-2026";
-const source = () => screen.getByRole("textbox", { name: "MDX source" });
+// Hidden from the accessibility tree too — behind an open dialog, which a section's test reads it through.
+const source = () => screen.getByRole("textbox", { name: "MDX source", hidden: true });
 const metadataTab = () => screen.getByRole("tab", { name: "Metadata" });
 const contentTab = () => screen.getByRole("tab", { name: "Content" });
 const preview = () => screen.getByRole("region", { name: "Preview" });
@@ -561,64 +562,151 @@ describe("the MDX editor and git (CTA-137)", () => {
 const MATCH_PGN =
   '[Event "Club"]\n[Round "1"]\n[White "Amy"]\n[Black "Bob"]\n[Result "1-0"]\n\n1. e4 e5 2. Nf3 Nc6 1-0\n\n[Event "Club"]\n[Round "2"]\n[White "Bob"]\n[Black "Amy"]\n[Result "1/2-1/2"]\n\n1. d4 d5 1/2-1/2';
 
-describe("the MDX editor's Add PGN (CTA-137)", () => {
-  it("lists the article's PGNs, read from the content, and adds one as a file beside an opened article", async () => {
+/** A section of the header — PGNs, Components, Images — opened: its dialog. */
+const openSection = async (user: ReturnType<typeof userEvent.setup>, name: "PGNs" | "Components" | "Images") => {
+  await user.click(screen.getByRole("button", { name }));
+  return screen.findByRole("dialog", { name });
+};
+/** The section's list — the article's items, an Add entry last. */
+const listIn = (dialog: HTMLElement, name: string) => within(dialog).getByRole("list", { name });
+/** Where the source's caret is. */
+const caret = () => (source() as HTMLTextAreaElement).selectionStart;
+
+describe("the MDX editor's PGNs (CTA-137, CTA-139)", () => {
+  it("lists the article's PGNs, read from the content, and adds one as a file beside an opened article, moving to it", async () => {
     const user = userEvent.setup();
     const service = stubService({ "tournaments/werner-obermeyer-swiss-2026.mdx": "x", "tournaments/round-2.pgn": "theirs" });
     mount(WERNER);
     await screen.findByText("Opened tournaments/werner-obermeyer-swiss-2026.mdx.");
     setSource('import games from "./20th-werner-obermeyer-swiss-5r.pgn?raw"\n\n## Standings\n\n<SwissStandingsTable pgn={games} />');
 
-    await user.click(screen.getByRole("button", { name: "Add PGN" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add PGN" });
-    // The article's own, and how often the content reads it.
-    expect(within(dialog).getByTestId("mdx-editor-add-pgn-list-games")).toHaveTextContent("./20th-werner-obermeyer-swiss-5r.pgn · used 1×");
+    const dialog = await openSection(user, "PGNs");
+    // The article's own, how often the content reads it — the first chosen.
+    const list = listIn(dialog, "The article's PGNs");
+    expect(within(list).getByRole("button", { name: /^games/ })).toHaveTextContent("./20th-werner-obermeyer-swiss-5r.pgn · used 1×");
+    expect(within(list).getByRole("button", { name: /^games/ })).toHaveAttribute("aria-current", "true");
+    // A file's text, read only.
+    const fileText = within(within(dialog).getByRole("region", { name: "The PGN games" })).getByRole("textbox", { name: "PGN — ./20th-werner-obermeyer-swiss-5r.pgn, read only" });
+    expect(fileText).toHaveAttribute("readonly");
+    await waitFor(() => expect((fileText as HTMLTextAreaElement).value).toContain('[Event "20th Werner-Obermeyer"]'));
+
+    await user.click(within(list).getByRole("button", { name: "Add a PGN" }));
+    const add = within(dialog).getByRole("region", { name: "Add a PGN" });
     // An article with a file takes a PGN as a file by default.
-    expect(within(dialog).getByRole("radio", { name: "As a file" })).toBeChecked();
-    await user.upload(within(dialog).getByTestId("mdx-editor-add-pgn-upload-input"), new File([MATCH_PGN], "round-2.pgn"));
-    expect(within(dialog).getByRole("textbox", { name: "PGN" })).toHaveValue(MATCH_PGN);
-    expect(within(dialog).getByRole("textbox", { name: "Name in the article" })).toHaveValue("round2");
-    expect(within(dialog).getByRole("textbox", { name: "File name" })).toHaveValue("round-2.pgn");
-    await user.click(within(dialog).getByRole("button", { name: "Add to the article" }));
+    expect(within(add).getByRole("radio", { name: "As a file" })).toBeChecked();
+    await user.upload(within(add).getByTestId("mdx-editor-pgns-upload-input"), new File([MATCH_PGN], "round-2.pgn"));
+    expect(within(add).getByRole("textbox", { name: "PGN" })).toHaveValue(MATCH_PGN);
+    expect(within(add).getByRole("textbox", { name: "Name in the article" })).toHaveValue("round2");
+    expect(within(add).getByRole("textbox", { name: "File name" })).toHaveValue("round-2.pgn");
+    await user.click(within(add).getByRole("button", { name: "Add to the article" }));
 
     // The file is there already: asked about, then written over.
     const conflict = await screen.findByRole("dialog", { name: "Replace a file that is there?" });
     await user.click(within(conflict).getByRole("button", { name: "Replace" }));
     await waitFor(() => expect(service.files.get("tournaments/round-2.pgn")).toBe(MATCH_PGN));
     expect(service.writes.map(({ path, overwrite }) => ({ path, overwrite }))).toEqual([{ path: "tournaments/round-2.pgn", overwrite: true }]);
-    expect(await within(dialog).findByTestId("mdx-editor-add-pgn-list-round2")).toHaveTextContent("./round-2.pgn · not used yet");
-    expect(within(dialog).getByTestId("mdx-editor-add-pgn-added")).toHaveTextContent("Added tournaments/round-2.pgn — imported as round2");
+    // The list moves to it, and the dialog says what was done.
+    const added = await within(dialog).findByRole("region", { name: "The PGN round2" });
+    expect(added).toHaveTextContent("./round-2.pgn · not used yet");
+    expect(within(list).getByRole("button", { name: /^round2/ })).toHaveAttribute("aria-current", "true");
+    expect(within(dialog).getByTestId("mdx-editor-pgns-message")).toHaveTextContent("Added tournaments/round-2.pgn — imported as round2");
     await expectNoAxeViolations(dialog);
     await user.click(within(dialog).getByRole("button", { name: "Close" }));
     await noDialog();
     expect((source() as HTMLTextAreaElement).value.startsWith('import games from "./20th-werner-obermeyer-swiss-5r.pgn?raw"\nimport round2 from "./round-2.pgn?raw"\n')).toBe(true);
   });
 
-  it("writes a pasted PGN into a new article inline — nothing to save — and removes it, asking while it is read", async () => {
+  it("opens on Add for an article with none, writes a pasted PGN inline — nothing to save — and removes it, asking while it is read", async () => {
     const user = userEvent.setup();
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const service = stubService({});
     mount();
     setSource("## Body\n\n<InlinePgnGame pgn={miniature} />");
-    await user.click(screen.getByRole("button", { name: "Add PGN" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add PGN" });
-    expect(within(dialog).getByRole("radio", { name: "Inline — up to 100 KB" })).toBeChecked();
-    fireEvent.change(within(dialog).getByRole("textbox", { name: "PGN" }), { target: { value: '[Event "Paris"]\n\n1. e4 e5 2. Nf3 d6 1-0' } });
-    const name = within(dialog).getByRole("textbox", { name: "Name in the article" });
+    const dialog = await openSection(user, "PGNs");
+    expect(within(dialog).getByTestId("mdx-editor-pgns-list-empty")).toHaveTextContent("None yet.");
+    const add = within(dialog).getByRole("region", { name: "Add a PGN" });
+    expect(within(add).getByRole("radio", { name: "Inline — up to 100 KB" })).toBeChecked();
+    fireEvent.change(within(add).getByRole("textbox", { name: "PGN" }), { target: { value: '[Event "Paris"]\n\n1. e4 e5 2. Nf3 d6 1-0' } });
+    const name = within(add).getByRole("textbox", { name: "Name in the article" });
     await user.type(name, "2bad");
-    expect(within(dialog).getByRole("button", { name: "Add to the article" })).toBeDisabled();
+    expect(within(add).getByRole("button", { name: "Add to the article" })).toBeDisabled();
     await user.clear(name);
     await user.type(name, "miniature");
-    await user.click(within(dialog).getByRole("button", { name: "Add to the article" }));
-    expect(await within(dialog).findByTestId("mdx-editor-add-pgn-list-miniature")).toHaveTextContent("inline, 1 KB · used 1×");
+    await user.click(within(add).getByRole("button", { name: "Add to the article" }));
+    expect(await within(dialog).findByRole("region", { name: "The PGN miniature" })).toHaveTextContent("inline, 1 KB · used 1×");
     expect(service.writes).toEqual([]);
 
     await user.click(within(dialog).getByRole("button", { name: "Remove" }));
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining("The content uses miniature once"));
-    expect(within(dialog).getByTestId("mdx-editor-add-pgn-list-none")).toBeInTheDocument();
+    expect(within(dialog).getByTestId("mdx-editor-pgns-list-empty")).toBeInTheDocument();
+    expect(within(dialog).getByRole("region", { name: "Add a PGN" })).toBeInTheDocument();
+    expect(within(dialog).getByTestId("mdx-editor-pgns-message")).toHaveTextContent("Removed miniature, written in, from the content.");
     await user.click(within(dialog).getByRole("button", { name: "Close" }));
     await noDialog();
     expect(source()).toHaveValue("## Body\n\n<InlinePgnGame pgn={miniature} />");
+  });
+
+  it("renames a PGN — its definition and every pgn={…} that reads it — refusing a name the content binds", async () => {
+    const user = userEvent.setup();
+    mount();
+    setSource('import games from "./20th-werner-obermeyer-swiss-5r.pgn?raw"\n\nexport const club = `1. e4 *`\n\n<SwissStandingsTable pgn={games} />\n\n<InlinePgnGame pgn={games} game="2" />');
+    const dialog = await openSection(user, "PGNs");
+    const pane = within(dialog).getByRole("region", { name: "The PGN games" });
+    const name = within(pane).getByRole("textbox", { name: "Name in the article" });
+    await user.clear(name);
+    await user.type(name, "club");
+    expect(within(pane).getByText("The content already binds club.")).toBeInTheDocument();
+    expect(within(pane).getByRole("button", { name: "Rename" })).toBeDisabled();
+    await user.clear(name);
+    await user.type(name, "werner");
+    await user.click(within(pane).getByRole("button", { name: "Rename" }));
+
+    // Still on it, under its new name.
+    expect(await within(dialog).findByRole("region", { name: "The PGN werner" })).toBeInTheDocument();
+    expect(within(dialog).getByTestId("mdx-editor-pgns-message")).toHaveTextContent("Renamed games to werner, and the 2 uses of it.");
+    expect(screen.getByTestId("mdx-editor-notice")).toHaveTextContent("Renamed games to werner");
+    expect(source()).toHaveValue('import werner from "./20th-werner-obermeyer-swiss-5r.pgn?raw"\n\nexport const club = `1. e4 *`\n\n<SwissStandingsTable pgn={werner} />\n\n<InlinePgnGame pgn={werner} game="2" />');
+  });
+
+  it("edits an inline PGN's text, refusing one over 100 KB", async () => {
+    const user = userEvent.setup();
+    mount();
+    setSource("export const club = `1. e4 *`\n\n<InlinePgnGame pgn={club} />");
+    const dialog = await openSection(user, "PGNs");
+    const pane = within(dialog).getByRole("region", { name: "The PGN club" });
+    const text = within(pane).getByRole("textbox", { name: "PGN" });
+    expect(text).toHaveValue("1. e4 *");
+    expect(within(pane).getByRole("button", { name: "Update the text" })).toBeDisabled();
+    fireEvent.change(text, { target: { value: "x".repeat(101 * 1024) } });
+    expect(within(pane).getByTestId("mdx-editor-pgns-too-big")).toHaveTextContent("goes in as a file beside the article");
+    expect(within(pane).getByRole("button", { name: "Update the text" })).toBeDisabled();
+    fireEvent.change(text, { target: { value: "1. d4 `d5` *" } });
+    await user.click(within(pane).getByRole("button", { name: "Update the text" }));
+    expect(source()).toHaveValue("export const club = `1. d4 \\`d5\\` *`\n\n<InlinePgnGame pgn={club} />");
+    expect(within(dialog).getByTestId("mdx-editor-pgns-message")).toHaveTextContent("Updated club's text.");
+  });
+
+  it("shows a PGN in the content — the Content tab, the caret on its definition — and hands one to Components", async () => {
+    const user = userEvent.setup();
+    mount();
+    const body = "## Body\n\nexport const club = `1. e4 *`\n\nexport const cup = `1. d4 *`";
+    setSource(body);
+    await user.click(metadataTab());
+    let dialog = await openSection(user, "PGNs");
+    await user.click(within(listIn(dialog, "The article's PGNs")).getByRole("button", { name: /^cup/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Show in the content" }));
+    await noDialog();
+    expect(contentTab()).toHaveAttribute("aria-selected", "true");
+    expect(source()).toHaveFocus();
+    expect(caret()).toBe(body.indexOf("export const cup"));
+
+    // Opened again, on the caret: cup chosen first.
+    dialog = await openSection(user, "PGNs");
+    expect(within(dialog).getByRole("region", { name: "The PGN cup" })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Add a component with it" }));
+    const components = await screen.findByRole("dialog", { name: "Components" });
+    expect(within(components).getByRole("region", { name: "Add a component" })).toBeInTheDocument();
+    expect(within(components).getByRole("radio", { name: /^cup — inline/ })).toBeChecked();
   });
 
   it("shows a big upload cut, a page of games at a time, and takes it only as a file", async () => {
@@ -627,10 +715,10 @@ describe("the MDX editor's Add PGN (CTA-137)", () => {
     mount();
     const game = (index: number) => `[Event "Big"]\n[Round "${index}"]\n[White "Player ${index}"]\n[Black "Player ${index + 1}"]\n[Result "1-0"]\n\n${"1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 ".repeat(4)}1-0`;
     const big = Array.from({ length: 400 }, (_, index) => game(index + 1)).join("\n\n");
-    await user.click(screen.getByRole("button", { name: "Add PGN" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add PGN" });
-    await user.upload(within(dialog).getByTestId("mdx-editor-add-pgn-upload-input"), new File([big], "big.pgn"));
-    const cut = within(dialog).getByTestId("mdx-editor-add-pgn-cut");
+    setSource("## Body");
+    const dialog = await openSection(user, "PGNs");
+    await user.upload(within(dialog).getByTestId("mdx-editor-pgns-upload-input"), new File([big], "big.pgn"));
+    const cut = within(dialog).getByTestId("mdx-editor-pgns-cut");
     expect(cut).toHaveTextContent(/Cut here — showing 10 of 400 games \(\d+ KB\)/);
     expect((within(dialog).getByRole("textbox", { name: "PGN" }) as HTMLTextAreaElement).value.split('[Event "Big"]')).toHaveLength(11);
     // Over 100 KB: a file, never inline — and the article has no folder yet, so it is saved first.
@@ -646,10 +734,9 @@ describe("the MDX editor's Add PGN (CTA-137)", () => {
     const service = stubService({ "tournaments/index.mdx": "x" });
     mount();
     setSource("## Body");
-    await user.click(screen.getByRole("button", { name: "Add PGN" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add PGN" });
+    const dialog = await openSection(user, "PGNs");
     await user.click(within(dialog).getByRole("radio", { name: "As a file" }));
-    expect(within(dialog).getByTestId("mdx-editor-add-pgn-no-folder")).toBeInTheDocument();
+    expect(within(dialog).getByTestId("mdx-editor-pgns-no-folder")).toBeInTheDocument();
     fireEvent.change(within(dialog).getByRole("textbox", { name: "PGN" }), { target: { value: MATCH_PGN } });
     await user.type(within(dialog).getByRole("textbox", { name: "Name in the article" }), "match");
     await user.click(within(dialog).getByRole("button", { name: "Save the article, then add" }));
@@ -660,37 +747,41 @@ describe("the MDX editor's Add PGN (CTA-137)", () => {
     await waitFor(() => expect(service.writes).toHaveLength(2));
     expect(service.writes[0]).toMatchObject({ path: "tournaments/match.pgn", content: MATCH_PGN, overwrite: false });
     expect(service.writes[1]).toMatchObject({ path: "tournaments/a-new-article.mdx", content: expect.stringContaining('import match from "./match.pgn?raw"\n\n## Body') });
-    expect(await within(dialog).findByTestId("mdx-editor-add-pgn-added")).toHaveTextContent("Saved the article as tournaments/a-new-article.mdx, and added tournaments/match.pgn beside it");
+    expect(await within(dialog).findByTestId("mdx-editor-pgns-message")).toHaveTextContent("Saved the article as tournaments/a-new-article.mdx, and added tournaments/match.pgn beside it");
+    expect(within(dialog).getByRole("region", { name: "The PGN match" })).toBeInTheDocument();
   });
 });
 
-describe("the MDX editor's Add component (CTA-137)", () => {
-  it("takes the game first, then a component that fits it — its settings a form, its code inserted at the caret", async () => {
+describe("the MDX editor's Components (CTA-137, CTA-139)", () => {
+  it("opens on Add for an article with none: the game first, then a component that fits it — inserted at the caret, the list moving to it", async () => {
     const user = userEvent.setup();
     stubService({});
     mount();
     setSource("export const opera = `1. e4 e5 2. Nf3 d6 *`\n\n## Body\n\nThe game:");
     // The caret at the end, after "The game:".
     (source() as HTMLTextAreaElement).setSelectionRange(63, 63);
-    await user.click(screen.getByRole("button", { name: "Add component" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add component" });
-    expect(within(dialog).getByTestId("mdx-editor-add-component-pick-game")).toBeInTheDocument();
+    const dialog = await openSection(user, "Components");
+    const add = within(dialog).getByRole("region", { name: "Add a component" });
+    expect(within(add).getByTestId("mdx-editor-components-pick-game")).toBeInTheDocument();
     // A PGN written in is one to pick.
-    await user.click(within(dialog).getByRole("radio", { name: /^opera — inline/ }));
-    await user.click(within(dialog).getByRole("treeitem", { name: "The game on a board" }));
-    const code = within(dialog).getByRole("textbox", { name: "The game on a board — <InlinePgnGame>" });
+    await user.click(within(add).getByRole("radio", { name: /^opera — inline/ }));
+    await user.click(within(add).getByRole("treeitem", { name: "The game on a board" }));
+    const code = within(add).getByRole("textbox", { name: "The game on a board — <InlinePgnGame>" });
     expect(code).toHaveValue('<InlinePgnGame pgn={opera} game="1" caption="…" />');
     // The form writes the code: side lines off is a prop the component reads.
-    await user.click(within(dialog).getByRole("switch", { name: "Side lines" }));
+    await user.click(within(add).getByRole("switch", { name: "Side lines" }));
     expect(code).toHaveValue('<InlinePgnGame pgn={opera} game="1" caption="…" variations={false} />');
     // And the code typed by hand shows in the form.
     fireEvent.change(code, { target: { value: '<InlinePgnGame pgn={opera} caption="Opera" />' } });
-    expect(within(dialog).getByRole("textbox", { name: "Caption" })).toHaveValue("Opera");
-    await user.click(within(dialog).getByRole("button", { name: "Insert into the content" }));
+    expect(within(add).getByRole("textbox", { name: "Caption" })).toHaveValue("Opera");
+    await user.click(within(add).getByRole("button", { name: "Insert into the content" }));
 
-    await noDialog();
+    // Still open, on what went in.
+    expect(await within(dialog).findByRole("region", { name: "The component <InlinePgnGame> — opera" })).toBeInTheDocument();
+    expect(within(listIn(dialog, "The article's components")).getByRole("button", { name: /^<InlinePgnGame>/ })).toHaveAttribute("aria-current", "true");
     expect(source()).toHaveValue('export const opera = `1. e4 e5 2. Nf3 d6 *`\n\n## Body\n\nThe game:\n\n<InlinePgnGame pgn={opera} caption="Opera" />\n');
     expect(screen.getByTestId("mdx-editor-notice")).toHaveTextContent("Inserted <InlinePgnGame> into the content.");
+    await expectNoAxeViolations(dialog);
   });
 
   it("suggests the table a PGN's games look like, and offers a mock it cannot insert", async () => {
@@ -698,17 +789,16 @@ describe("the MDX editor's Add component (CTA-137)", () => {
     stubService({});
     mount();
     setSource(`export const club = \`${MATCH_PGN}\`\n\n## Body`);
-    await user.click(screen.getByRole("button", { name: "Add component" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add component" });
+    const dialog = await openSection(user, "Components");
     await user.click(within(dialog).getByRole("radio", { name: /^club — inline/ }));
-    const suggested = await within(dialog).findByTestId("mdx-editor-add-component-suggested");
+    const suggested = await within(dialog).findByTestId("mdx-editor-components-suggested");
     expect(suggested).toHaveTextContent("Suggested: Match");
     expect(suggested).toHaveTextContent("2 games, every one between the same two players: a match");
     await user.click(within(suggested).getByRole("button", { name: "Pick it" }));
     expect(within(dialog).getByRole("textbox", { name: "Match — <MatchTable>" })).toHaveValue("<MatchTable pgn={club} />");
 
     await user.click(within(dialog).getByRole("treeitem", { name: "Puzzle board — mock" }));
-    expect(within(dialog).getByTestId("mdx-editor-add-component-mock")).toBeInTheDocument();
+    expect(within(dialog).getByTestId("mdx-editor-components-mock")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Insert into the content" })).toBeDisabled();
     await expectNoAxeViolations(dialog);
   });
@@ -717,8 +807,8 @@ describe("the MDX editor's Add component (CTA-137)", () => {
     const user = userEvent.setup();
     stubService({});
     mount();
-    await user.click(screen.getByRole("button", { name: "Add component" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add component" });
+    setSource("## Body");
+    const dialog = await openSection(user, "Components");
     await user.click(within(dialog).getByRole("radio", { name: "The Library — a game or a whole collection, by its address" }));
     const address = within(dialog).getByRole("textbox", { name: "The address" });
     await user.type(address, "/library/nowhere");
@@ -727,76 +817,164 @@ describe("the MDX editor's Add component (CTA-137)", () => {
     await user.clear(address);
     await user.type(address, "/library/candidates2026");
     await user.click(within(dialog).getByRole("button", { name: "Look it up" }));
-    expect(await within(dialog).findByTestId("mdx-editor-add-component-found")).toHaveTextContent(/^Found .*Candidates.* — \d+ games/);
-    const suggested = await within(dialog).findByTestId("mdx-editor-add-component-suggested");
+    expect(await within(dialog).findByTestId("mdx-editor-components-found")).toHaveTextContent(/^Found .*Candidates.* — \d+ games/);
+    const suggested = await within(dialog).findByTestId("mdx-editor-components-suggested");
     expect(suggested).toHaveTextContent("Suggested: Round robin crosstable");
     await user.click(within(suggested).getByRole("button", { name: "Pick it" }));
     expect(within(dialog).getByRole("textbox", { name: "Round robin crosstable — <CollectionTournamentTable>" })).toHaveValue('<CollectionTournamentTable _id="/library/candidates2026" format="roundRobin" />');
     // A whole collection: no single-game component to offer.
     expect(within(dialog).queryByRole("treeitem", { name: "The game on a board" })).not.toBeInTheDocument();
   });
+
+  it("lists the content's components — the one the caret is in first — and edits one in place", async () => {
+    const user = userEvent.setup();
+    mount();
+    const body = 'export const club = `1. e4 e5 *`\n\n<InlinePgnGame pgn={club} />\n\n<CollectionTournamentTable _id="/library/candidates2026" />\n\n<ArticleImage src="/x.png" alt="Not a component" />';
+    setSource(body);
+    (source() as HTMLTextAreaElement).setSelectionRange(body.indexOf("_id"), body.indexOf("_id"));
+    const dialog = await openSection(user, "Components");
+    const list = listIn(dialog, "The article's components");
+    // An image is Images', not a component.
+    expect(within(list).getAllByRole("button").map((row) => row.textContent)).toEqual(["<InlinePgnGame>club", "<CollectionTournamentTable>/library/candidates2026", "Add a component"]);
+    expect(within(list).getByRole("button", { name: /^<CollectionTournamentTable>/ })).toHaveAttribute("aria-current", "true");
+
+    await user.click(within(list).getByRole("button", { name: /^<InlinePgnGame>/ }));
+    const pane = within(dialog).getByRole("region", { name: "The component <InlinePgnGame> — club" });
+    const code = within(pane).getByRole("textbox", { name: "Code — <InlinePgnGame>" });
+    expect(code).toHaveValue("<InlinePgnGame pgn={club} />");
+    const apply = within(pane).getByRole("button", { name: "Apply" });
+    expect(apply).toBeDisabled();
+    await user.click(within(pane).getByRole("switch", { name: "Side lines" }));
+    expect(code).toHaveValue("<InlinePgnGame pgn={club} variations={false} />");
+    // Rendered with the PGN it reads compiled ahead of it.
+    expect(await within(pane).findByTestId("mdx-editor-components-component-preview")).not.toHaveTextContent("does not compile");
+    await user.click(apply);
+    expect((source() as HTMLTextAreaElement).value).toContain("\n\n<InlinePgnGame pgn={club} variations={false} />\n\n<CollectionTournamentTable");
+    expect(within(dialog).getByTestId("mdx-editor-components-message")).toHaveTextContent("Updated <InlinePgnGame> in the content.");
+    expect(within(dialog).getByRole("region", { name: "The component <InlinePgnGame> — club" })).toBeInTheDocument();
+    await expectNoAxeViolations(dialog);
+  });
+
+  it("removes a component, asked about first, and shows one in the content", async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValue(true);
+    mount();
+    const body = '## Body\n\n<MatchTable pgn={club} />\n\n<CollectionTournamentTable _id="/library/candidates2026" />\n';
+    setSource(body);
+    (source() as HTMLTextAreaElement).setSelectionRange(0, 0);
+    let dialog = await openSection(user, "Components");
+    expect(within(dialog).getByRole("region", { name: "The component <MatchTable> — club" })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Remove" }));
+    expect(confirm).toHaveBeenLastCalledWith("Remove <MatchTable> from the content?");
+    expect(source()).toHaveValue(body);
+    await user.click(within(dialog).getByRole("button", { name: "Remove" }));
+    expect(source()).toHaveValue('## Body\n\n<CollectionTournamentTable _id="/library/candidates2026" />\n');
+    expect(within(dialog).getByTestId("mdx-editor-components-message")).toHaveTextContent("Removed <MatchTable> from the content.");
+    // The next one chosen in its place.
+    const next = within(dialog).getByRole("region", { name: "The component <CollectionTournamentTable> — /library/candidates2026" });
+    await user.click(within(next).getByRole("button", { name: "Show in the content" }));
+    await noDialog();
+    expect(source()).toHaveFocus();
+    expect(caret()).toBe("## Body\n\n".length);
+
+    // The last one gone: Add.
+    dialog = await openSection(user, "Components");
+    await user.click(within(dialog).getByRole("button", { name: "Remove" }));
+    expect(source()).toHaveValue("## Body\n");
+    expect(within(dialog).getByRole("region", { name: "Add a component" })).toBeInTheDocument();
+  });
 });
 
-describe("the MDX editor's images (CTA-137)", () => {
+describe("the MDX editor's Images (CTA-137, CTA-139)", () => {
   beforeEach(() => {
     // jsdom has no object URLs: the picked file's stand-in.
     Object.defineProperty(URL, "createObjectURL", { value: vi.fn(() => "blob:photo"), configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: vi.fn(), configurable: true });
   });
 
-  it("adds an image beside the article — its alt text asked for, its look set — as an <ArticleImage> where the caret is", async () => {
+  it("opens on Add for an article with none: an image beside the article — its alt text asked for, its look set — then edits it in place", async () => {
     const user = userEvent.setup();
     const service = stubService({ "tournaments/werner-obermeyer-swiss-2026.mdx": "x" });
     mount(WERNER);
     await screen.findByText("Opened tournaments/werner-obermeyer-swiss-2026.mdx.");
     setSource('import games from "./20th-werner-obermeyer-swiss-5r.pgn?raw"\n\n## The final position');
-    expect(screen.getByRole("button", { name: "Image props" })).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: "Add image" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add image" });
-    await user.upload(within(dialog).getByTestId("mdx-editor-add-image-upload-input"), new File(["png"], "My Photo.PNG", { type: "image/png" }));
-    expect(within(dialog).getByRole("textbox", { name: "File name" })).toHaveValue("my-photo.png");
-    expect(within(dialog).getByRole("textbox", { name: "Name in the article" })).toHaveValue("myPhoto");
+    const dialog = await openSection(user, "Images");
+    const add = within(dialog).getByRole("region", { name: "Add an image" });
+    await user.upload(within(add).getByTestId("mdx-editor-images-upload-input"), new File(["png"], "My Photo.PNG", { type: "image/png" }));
+    expect(within(add).getByRole("textbox", { name: "File name" })).toHaveValue("my-photo.png");
+    expect(within(add).getByRole("textbox", { name: "Name in the article" })).toHaveValue("myPhoto");
     // No alt text, no image — unless it says nothing (decorative).
-    const add = within(dialog).getByRole("button", { name: "Add to the article" });
-    expect(add).toBeDisabled();
-    await user.type(within(dialog).getByRole("textbox", { name: "Alt text" }), "The final position");
-    await user.click(within(dialog).getByRole("switch", { name: "Rounded corners" }));
+    const addButton = within(add).getByRole("button", { name: "Add to the article" });
+    expect(addButton).toBeDisabled();
+    await user.type(within(add).getByRole("textbox", { name: "Alt text" }), "The final position");
+    await user.click(within(add).getByRole("switch", { name: "Rounded corners" }));
     // The preview is the component itself.
-    expect(within(within(dialog).getByTestId("mdx-editor-add-image-preview")).getByRole("img", { name: "The final position" })).toHaveAttribute("src", "blob:photo");
-    await user.click(add);
+    expect(within(within(add).getByTestId("mdx-editor-images-preview")).getByRole("img", { name: "The final position" })).toHaveAttribute("src", "blob:photo");
+    await user.click(addButton);
 
-    await noDialog();
+    // Still open, on the image just put in.
+    const pane = await within(dialog).findByRole("region", { name: "The image The final position" });
     expect(service.writes).toEqual([{ path: "tournaments/my-photo.png", content: "cG5n", overwrite: false, encoding: "base64" }]);
     expect(source()).toHaveValue(
       'import games from "./20th-werner-obermeyer-swiss-5r.pgn?raw"\nimport myPhoto from "./my-photo.png"\n\n## The final position\n\n<ArticleImage src={myPhoto} alt="The final position" rounded />\n',
     );
     expect(screen.getByTestId("mdx-editor-notice")).toHaveTextContent("Added tournaments/my-photo.png and showed it where the cursor was.");
+    expect(within(listIn(dialog, "The article's images")).getByRole("button", { name: "The final position — ./my-photo.png" })).toHaveAttribute("aria-current", "true");
+
+    // Its settings as a form, applied in place — the image read from the file just written.
+    expect(within(pane).getByRole("textbox", { name: "Code — <ArticleImage>" })).toHaveValue('<ArticleImage src={myPhoto} alt="The final position" rounded />');
+    expect(await within(within(pane).getByRole("region", { name: "Preview" })).findByRole("img", { name: "The final position" })).toHaveAttribute("src", "blob:photo");
+    await user.click(within(pane).getByRole("switch", { name: "A shadow" }));
+    await user.type(within(pane).getByRole("textbox", { name: "Caption" }), "White mates");
+    await user.click(within(pane).getByRole("button", { name: "Apply" }));
+    expect((source() as HTMLTextAreaElement).value).toContain('<ArticleImage src={myPhoto} alt="The final position" caption="White mates" rounded shadow />');
+    expect(within(dialog).getByTestId("mdx-editor-images-message")).toHaveTextContent("Updated the image's settings.");
+    await expectNoAxeViolations(dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    await noDialog();
     // The preview reads the file just written.
     expect(await within(preview()).findByRole("img", { name: "The final position" })).toHaveAttribute("src", "blob:photo");
-
-    // Image props: its settings as a form, applied in place.
-    await user.click(screen.getByRole("button", { name: "Image props" }));
-    const props = await screen.findByRole("dialog", { name: "Image props" });
-    expect(within(props).getByRole("textbox", { name: "Code — ./my-photo.png" })).toHaveValue('<ArticleImage src={myPhoto} alt="The final position" rounded />');
-    await user.click(within(props).getByRole("switch", { name: "A shadow" }));
-    const caption = within(props).getByRole("textbox", { name: "Caption" });
-    await user.type(caption, "White mates");
-    await user.click(within(props).getByRole("button", { name: "Apply" }));
-    await noDialog();
-    expect((source() as HTMLTextAreaElement).value).toContain('<ArticleImage src={myPhoto} alt="The final position" caption="White mates" rounded shadow />');
-    expect(screen.getByTestId("mdx-editor-notice")).toHaveTextContent("Updated the image's settings.");
   });
 
-  it("asks an article with no folder to be saved first", async () => {
+  it("asks an article with no folder to be saved first, staying open under the save dialog", async () => {
     const user = userEvent.setup();
     stubService({});
     mount();
-    await user.click(screen.getByRole("button", { name: "Add image" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add image" });
-    expect(within(dialog).getByTestId("mdx-editor-add-image-no-folder")).toBeInTheDocument();
+    const dialog = await openSection(user, "Images");
+    expect(within(dialog).getByTestId("mdx-editor-images-no-folder")).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Save the article first" }));
     expect(await screen.findByRole("dialog", { name: "Save the article" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Images", hidden: true })).toBeInTheDocument();
+  });
+
+  it("opens on the image the caret is in, shows it in the content, and removes images — the import with the last that reads it", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    mount();
+    const body = 'import photo from "./photo.png"\n\n## Body\n\n<ArticleImage src={photo} alt="The hall" />\n\n<ArticleImage src={photo} alt="" caption="Again" />\n';
+    setSource(body);
+    const second = body.lastIndexOf("<ArticleImage");
+    (source() as HTMLTextAreaElement).setSelectionRange(second + 3, second + 3);
+    let dialog = await openSection(user, "Images");
+    const list = listIn(dialog, "The article's images");
+    expect(within(list).getByRole("button", { name: "Decorative — ./photo.png" })).toHaveAttribute("aria-current", "true");
+    await user.click(within(dialog).getByRole("button", { name: "Show in the content" }));
+    await noDialog();
+    expect(caret()).toBe(second);
+
+    dialog = await openSection(user, "Images");
+    await user.click(within(listIn(dialog, "The article's images")).getByRole("button", { name: "The hall — ./photo.png" }));
+    await user.click(within(dialog).getByRole("button", { name: "Remove" }));
+    expect(confirm).toHaveBeenLastCalledWith("Remove the image ./photo.png from the content? The file stays beside the article.");
+    // The other still reads the import: it stays.
+    expect(source()).toHaveValue('import photo from "./photo.png"\n\n## Body\n\n<ArticleImage src={photo} alt="" caption="Again" />\n');
+    expect(within(dialog).getByTestId("mdx-editor-images-message")).toHaveTextContent("Removed the image ./photo.png from the content — the file stays beside the article.");
+    await user.click(within(dialog).getByRole("button", { name: "Remove" }));
+    expect(source()).toHaveValue("## Body\n");
+    expect(within(dialog).getByTestId("mdx-editor-images-message")).toHaveTextContent("Removed the image ./photo.png from the content, and its import");
+    expect(within(dialog).getByRole("region", { name: "Add an image" })).toBeInTheDocument();
   });
 });
 
