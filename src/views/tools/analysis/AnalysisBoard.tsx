@@ -391,6 +391,9 @@ function AnalysisBoard() {
                   onCollectionSaved={(collectionId) =>
                     navigate(`/library/${encodeURIComponent(collectionId)}`)
                   }
+                  onAnalysesSaved={(folderId) =>
+                    navigate(`/tools/analysis/saved?folder=${encodeURIComponent(folderId)}`)
+                  }
                 />
               ),
             },

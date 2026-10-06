@@ -852,6 +852,28 @@ describe("the new-analysis form (CTA-87)", () => {
       expect(collection.name).toBe("Pasted collection");
     });
 
+    it("saves several games to a new Saved analyses folder named after the file, and opens it (CTA-141)", async () => {
+      await renderScreen();
+      await pickAndLoad(TWO_GAMES);
+      fireEvent.click(screen.getByRole("button", { name: "Save to Saved analyses" }));
+      const dialog = screen.getByRole("dialog", { name: "Save to Saved analyses" });
+      expect(within(dialog).getByRole("textbox", { name: "Folder name" })).toHaveValue("Game");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+      await waitFor(() => expect(where.current?.search).toMatch(/^\?folder=/));
+      const [folder] = analysisFoldersSnapshot() ?? [];
+      expect(folder).toMatchObject({ name: "Game", parentId: null });
+      expect(where.current).toMatchObject({
+        pathname: "/tools/analysis/saved",
+        search: `?folder=${encodeURIComponent(folder.id)}`,
+      });
+      expect((savedAnalysesSnapshot() ?? []).map((row) => [row.name, row.folderId])).toEqual([
+        ["One", folder.id],
+        ["Two", folder.id],
+      ]);
+      await waitFor(() => expect(screen.queryByTestId("new-analysis-choice")).toBeNull());
+    });
+
     it("cancelling the popup keeps nothing and stays", async () => {
       await renderScreen();
       await pasteAndLoad(TWO_GAMES);

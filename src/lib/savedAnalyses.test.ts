@@ -23,6 +23,7 @@ import {
   savedAnalysisSummary,
   savedAnalysisToTree,
   batchAnalysesOf,
+  analysisGamesOfText,
   type SavedAnalysis,
 } from "./savedAnalyses";
 
@@ -355,5 +356,45 @@ describe("batchAnalysesOf — the Library's picked games (CTA-77)", () => {
     expect(tree.moves[0].children.map((node) => node.san)).toEqual(["e5", "c5"]);
     // A record the store would read back as it was written.
     expect(savedAnalysisFrom(records[0])).toEqual(records[0]);
+  });
+});
+
+describe("analysisGamesOfText — a text of several games as analyses (CTA-141)", () => {
+  const chapter = (name: string, body: string, fen?: string) =>
+    [
+      `[Event "Queen vs Rook: ${name}"]`,
+      `[ChapterName "${name}"]`,
+      ...(fen === undefined ? [] : [`[FEN "${fen}"]`, '[SetUp "1"]']),
+      "",
+      body,
+    ].join("\n");
+  const POSITION = "8/8/2k5/3r4/4Q3/5K2/8/8 w - - 1 1";
+
+  it("keeps every game that reads, in file order, as written and named by its chapter", () => {
+    const first = chapter("Introduction", "{ Begin here. } 1. Qh4 { [%cal Gh4d8] } *", POSITION);
+    const second = chapter("Line", "1. e4 e5 (1... c5 2. Nf3) 2. Nf3 *");
+    const { games, skipped } = analysisGamesOfText([first, second].join("\n\n"));
+    expect(skipped).toBe(0);
+    expect(games).toEqual([
+      { name: "Introduction", pgn: first },
+      { name: "Line", pgn: second },
+    ]);
+  });
+
+  it("keeps a game that is only a position, and counts only the ones that will not read", () => {
+    const position = chapter("Just a position", "*", POSITION);
+    const broken = chapter("Broken", "1. e4 e5 2. Qxx9 *");
+    const fine = chapter("Fine", "1. d4 *");
+    const { games, skipped } = analysisGamesOfText([position, broken, fine].join("\n\n"));
+    expect(games.map((game) => game.name)).toEqual(["Just a position", "Fine"]);
+    expect(skipped).toBe(1);
+    expect(parsePgnTree(games[0].pgn).startFen).toBe(POSITION);
+  });
+
+  it("names a game with no chapter by its players, else its event", () => {
+    const { games } = analysisGamesOfText(
+      ['[Event "Open"]\n[White "A"]\n[Black "B"]\n\n1. e4 *', '[Event "Blitz"]\n\n1. d4 *'].join("\n\n"),
+    );
+    expect(games.map((game) => game.name)).toEqual(["A – B", "Blitz"]);
   });
 });

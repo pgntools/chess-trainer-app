@@ -21,8 +21,9 @@ import { useAnalysisLoad, type AnalysisLoadConfig } from "./useAnalysisLoad";
  * goes onto the board. **Several**, on the Analysis Board (`onCollectionSaved`),
  * open the popup (`MultiGameDialog`, CTA-101): **merge** them into one tree,
  * which goes onto the board unsaved like one game, with `[%games N]` at its
- * branches; or **save them as a games collection** in the Library, where the
- * reader is taken. Without `onCollectionSaved` — the Openings explorer — the
+ * branches; **save them as a games collection** in the Library, where the
+ * reader is taken; or **save each as an analysis** in a new Saved analyses
+ * folder (`onAnalysesSaved`, CTA-141), where the reader is taken. Without `onCollectionSaved` — the Openings explorer — the
  * choice is inline and merge-only (`MergeSplitChoice` with no split), and
  * counts nothing. A PGN of a position and no moves loads as that position. A
  * **FEN** is a position: it turns the board to the side to move, where a game
@@ -33,13 +34,14 @@ function AnalysisLoad({
   onLoadFen,
   onLoadPosition,
   onCollectionSaved,
+  onAnalysesSaved,
   choiceLabelKey = "openings.load.choice",
 }: AnalysisLoadConfig & {
   /** The inline merge-only choice's locale block — a board with no popup. */
   choiceLabelKey?: string;
 }) {
   const { t } = useTranslation();
-  const load = useAnalysisLoad({ onLoadTree, onLoadFen, onLoadPosition, onCollectionSaved });
+  const load = useAnalysisLoad({ onLoadTree, onLoadFen, onLoadPosition, onCollectionSaved, onAnalysesSaved });
 
   return (
     <Box data-testid="analysis-load" sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 1 }}>
@@ -88,6 +90,7 @@ function AnalysisLoad({
             onMerge={load.merge}
             onClose={load.dismiss}
             onSaved={load.collectionSaved}
+            onAnalysesSaved={load.analysesSaved}
           />
         ))}
 
