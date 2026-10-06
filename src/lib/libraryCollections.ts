@@ -274,7 +274,8 @@ export type SortDirection = "asc" | "desc";
 
 const collator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
 
-const compareValues = (a: string | number, b: string | number): number =>
+/** Two present cell values, ascending: numbers numerically, text numeric-aware (`1.10` after `1.9`). */
+export const compareValues = (a: string | number, b: string | number): number =>
   typeof a === "number" && typeof b === "number"
     ? a - b
     : collator.compare(String(a), String(b));
