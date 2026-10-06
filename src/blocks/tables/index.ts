@@ -9,6 +9,8 @@
 export * from "./CollectionGamesTable";
 export * from "./CollectionsTreeTable";
 export * from "./PlayedGamesTable";
+// CTA-144: the Saved analyses screen's list view — a folder's analyses as a games table.
+export * from "./SavedAnalysesTable";
 export * from "./StorageTable";
 // CTA-120: the tournament tables — a `StandingsTable` and a `CrossTable` over `lib/tournament.ts`, built ahead of their screen; the Blog's MDX embeds are their first consumer (CTA-128).
 export * from "./SwissStandingsTable";

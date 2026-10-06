@@ -130,8 +130,11 @@ export type SavedAnalysis = {
 /** The saved analyses' catalog path — their `?game=analysis/<path>/<id>` segment. */
 export const SAVED_ANALYSES_PATH = "saved";
 
-/** The `Event` tag a saved analysis carries when it is not a game's. */
-const SAVED_ANALYSIS_EVENT = "Analysis Board";
+/**
+ * The `Event` tag a saved analysis carries when it is not a game's — a
+ * placeholder, which the Saved analyses table reads as no event (CTA-144).
+ */
+export const SAVED_ANALYSIS_EVENT = "Analysis Board";
 
 /**
  * The `White` / `Black` tag a saved analysis carries when it is not a game's.

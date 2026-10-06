@@ -39,6 +39,10 @@ describe("translation catalogs", () => {
       // The Lobby table's own Elo columns, the same two initialisms (CTA-100).
       "playedGames.table.columns.whiteElo",
       "playedGames.table.columns.blackElo",
+      // The Saved analyses table's, the same initialisms (CTA-144).
+      "savedAnalyses.table.columns.whiteElo",
+      "savedAnalyses.table.columns.blackElo",
+      "savedAnalyses.table.columns.eco",
       "positionEditor.tabs.fen",
       "positionEditor.tabs.pgn",
       // The quick-load row's file pick: the initialism is the whole label.

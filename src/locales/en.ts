@@ -862,8 +862,42 @@ const en = {
     select: "Select this analysis",
     selectAll: "Select all analyses",
     selected: "{{count}} selected",
-    /** The pager under the list (CTA-113) — the design system's page sizes. */
+    /** The pager under the list and the table (CTA-113) — the design system's page sizes. */
     rowsPerPage: "Analyses per page",
+    /**
+     * The list view's games table (CTA-144): one row per analysis, its columns
+     * the game's own fields read off its tags, every one a sort header.
+     */
+    table: {
+      label: "Saved analyses in this folder",
+      actions: "Actions",
+      columns: {
+        name: "Name",
+        white: "White",
+        whiteElo: "Elo",
+        black: "Black",
+        blackElo: "Elo",
+        result: "Result",
+        date: "Date",
+        event: "Event",
+        round: "Round",
+        eco: "ECO",
+        opening: "Opening",
+        moves: "Moves",
+        updated: "Updated",
+      },
+      /** The words box over the table — names, players, event, opening and notes. */
+      filter: "Filter analyses",
+      filterClear: "Clear the words",
+      /** The filter leaves no row — told apart from an empty folder. */
+      noMatch: "No analysis matches the filter.",
+      clearFilter: "Clear the filter",
+      /** A folder row's chevron — it opens or closes the folder in place. */
+      expand: "Open {{name}}",
+      collapse: "Close {{name}}",
+      /** Read with the table: how its folders, sort and picks are worked. */
+      hint: "Folders come first: a folder's arrow opens it in place, its name goes into it. Sort by a column from its header button. Tick an analysis' box to pick it.",
+    },
     download: "Download selected as PGN",
     deleteSelected: "Delete selected",
     /** Deleting the picks, asked first — the repertoires' dialog with these words. */

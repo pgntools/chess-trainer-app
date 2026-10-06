@@ -45,6 +45,12 @@ export type DataTablePicks<R> = {
    */
   selectAllTestId?: string;
   pickTestId?: (row: R) => string;
+  /**
+   * Whether a row can be picked (CTA-144: a folder row among the analyses
+   * of a tree table). A row it turns down has an empty pick cell and is left
+   * out of select-all and its count. Absent, every row can.
+   */
+  canPick?: (row: R) => boolean;
 };
 
 /**
@@ -281,16 +287,18 @@ function DataTable<R, C extends string = string>({
   const shown = paging === undefined ? ordered : ordered.slice(page * paging.rowsPerPage, (page + 1) * paging.rowsPerPage);
 
   const picked = picks?.picked;
+  const canPick = picks?.canPick;
+  const pickable = useMemo(() => (canPick === undefined ? rows : rows.filter(canPick)), [rows, canPick]);
   const pickedCount = useMemo(
-    () => (picked === undefined ? 0 : rows.reduce((count, row) => (picked.has(rowId(row)) ? count + 1 : count), 0)),
-    [rows, picked, rowId],
+    () => (picked === undefined ? 0 : pickable.reduce((count, row) => (picked.has(rowId(row)) ? count + 1 : count), 0)),
+    [pickable, picked, rowId],
   );
 
   const toggleAll = () => {
     if (picks === undefined) return;
     const next = new Set(picks.picked);
-    const all = rows.length > 0 && pickedCount >= rows.length;
-    for (const row of rows) {
+    const all = pickable.length > 0 && pickedCount >= pickable.length;
+    for (const row of pickable) {
       if (all) next.delete(rowId(row));
       else next.add(rowId(row));
     }
@@ -370,7 +378,7 @@ function DataTable<R, C extends string = string>({
           <TableRow>
             {picks !== undefined && (
               <PickHeaderCell
-                total={rows.length}
+                total={pickable.length}
                 picked={pickedCount}
                 onToggleAll={toggleAll}
                 label={picks.selectAllLabel}
@@ -435,7 +443,8 @@ function DataTable<R, C extends string = string>({
                     }),
                   })}
                 >
-                  {picks !== undefined && (
+                  {picks !== undefined && canPick?.(row) === false && <TableCell padding="checkbox" />}
+                  {picks !== undefined && canPick?.(row) !== false && (
                     <PickCell
                       checked={isPicked}
                       onToggle={() => togglePick(id)}
