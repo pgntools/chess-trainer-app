@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { readPgnTags, splitPgnGames } from "../../lib/pgn";
+import { readPgnTags, splitPgnGames } from "./pgn";
 import { guessTournamentKind, type TournamentKind } from "./tournamentKind";
-import werner from "../../views/blog/articles/tournaments/20th-werner-obermeyer-swiss-5r.pgn?raw";
-import british from "../../views/blog/articles/tournaments/chgbr26.pgn?raw";
-import dutch from "../../views/blog/articles/tournaments/chned26.pgn?raw";
-import clutch from "../../views/blog/articles/tournaments/clutchlegends26.pgn?raw";
-import esportsFinal from "../../views/blog/articles/tournaments/esportswcupfin26.pgn?raw";
-import esportsPlayIn from "../../views/blog/articles/tournaments/esportswcuppl26.pgn?raw";
-import blitzTeams from "../../views/blog/articles/tournaments/fidewrbtf26.pgn?raw";
-import rapidTeams from "../../views/blog/articles/tournaments/fidewrt26.pgn?raw";
-import greenHills from "../../views/blog/articles/tournaments/greenhillsrapid26.pgn?raw";
-import olympiad from "../../views/blog/articles/tournaments/olym26.pgn?raw";
-import candidates from "../../views/blog/articles/tournaments/wchcand26.pgn?raw";
+import werner from "../views/blog/articles/tournaments/20th-werner-obermeyer-swiss-5r.pgn?raw";
+import british from "../views/blog/articles/tournaments/chgbr26.pgn?raw";
+import dutch from "../views/blog/articles/tournaments/chned26.pgn?raw";
+import clutch from "../views/blog/articles/tournaments/clutchlegends26.pgn?raw";
+import esportsFinal from "../views/blog/articles/tournaments/esportswcupfin26.pgn?raw";
+import esportsPlayIn from "../views/blog/articles/tournaments/esportswcuppl26.pgn?raw";
+import blitzTeams from "../views/blog/articles/tournaments/fidewrbtf26.pgn?raw";
+import rapidTeams from "../views/blog/articles/tournaments/fidewrt26.pgn?raw";
+import greenHills from "../views/blog/articles/tournaments/greenhillsrapid26.pgn?raw";
+import olympiad from "../views/blog/articles/tournaments/olym26.pgn?raw";
+import candidates from "../views/blog/articles/tournaments/wchcand26.pgn?raw";
 
 /*
   The guess at a file's kind of tournament (CTA-137), held to every shipped
@@ -43,6 +43,13 @@ describe("guessTournamentKind", () => {
   it("says why, in a line", () => {
     expect(guess(candidates)?.reason).toBe("8 players, every pair met twice: a double round robin");
     expect(guess(dutch)?.reason).toMatch(/^16 players, fewer each round \(16 → 8 → 4 → 2\): a knockout$/);
+  });
+
+  it("hands back what it read the guess from, for a screen to say in its own words (CTA-142)", () => {
+    expect(guess(candidates)?.facts).toEqual({ games: 56, competitors: 8, teams: false, rounds: 14, twice: true });
+    expect(guess(dutch)?.facts).toMatchObject({ competitors: 16, teams: false, sizes: [16, 8, 4, 2] });
+    expect(guess(clutch)?.facts).toMatchObject({ competitors: 2, teams: false });
+    expect(guess(rapidTeams)?.facts).toMatchObject({ competitors: 48, teams: true, rounds: 12 });
   });
 
   it("guesses nothing from a game or none", () => {

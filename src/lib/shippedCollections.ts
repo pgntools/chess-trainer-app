@@ -2,8 +2,10 @@ import manifestFile from "../data/library/manifest.json";
 import { decodeCollectionIndex, numberedRows } from "./collectionIndex";
 import {
   collectionGamesOf,
+  TOURNAMENT_FORMATS,
   type CollectionRow,
   type CollectionSummary,
+  type TournamentFormat,
 } from "./libraryCollections";
 
 /**
@@ -46,7 +48,16 @@ export type ShippedCollectionEntry = CollectionSummary & {
   loadGames: () => Promise<readonly string[]>;
 };
 
-type ManifestEntry = { id: string; name: string; pgn: string; index: string; games: number };
+/**
+ * A manifest entry. `tournament` (CTA-142) is the collection's tournament
+ * mark — a format, written by `wirepgn --tournament`, which wires it only
+ * over games that share one `Event` — so the collection opens in the
+ * tournament view for every reader. Absent for none; an unknown format is
+ * read as none.
+ */
+type ManifestEntry = { id: string; name: string; pgn: string; index: string; games: number; tournament?: TournamentFormat };
+
+const isFormat = (value: unknown): value is TournamentFormat => (TOURNAMENT_FORMATS as readonly unknown[]).includes(value);
 
 const manifestEntryOf = (value: unknown): ManifestEntry | undefined => {
   if (typeof value !== "object" || value === null) return undefined;
@@ -57,7 +68,14 @@ const manifestEntryOf = (value: unknown): ManifestEntry | undefined => {
     typeof entry.pgn === "string" &&
     typeof entry.index === "string" &&
     typeof entry.games === "number"
-    ? { id: entry.id, name: entry.name, pgn: entry.pgn, index: entry.index, games: entry.games }
+    ? {
+        id: entry.id,
+        name: entry.name,
+        pgn: entry.pgn,
+        index: entry.index,
+        games: entry.games,
+        ...(isFormat(entry.tournament) && { tournament: entry.tournament }),
+      }
     : undefined;
 };
 
@@ -128,6 +146,8 @@ export const shippedCollectionsOf = (
       name: entry.name,
       source: "shipped",
       count: entry.games,
+      // The mark the manifest names — on, over games wirepgn found sharing one `Event` (a shipped file never changes after).
+      ...(entry.tournament !== undefined && { tournament: { enabled: true, type: entry.tournament }, sharedEvent: true }),
       loadRows: once(rowsCache, entry.id, async () => {
         const decoded = decodeCollectionIndex(JSON.parse(await index()));
         if (decoded === undefined || decoded.rows.length !== entry.games) {

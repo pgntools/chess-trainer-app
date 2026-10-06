@@ -232,6 +232,42 @@ describe("collection settings (CTA-121)", () => {
   });
 });
 
+describe("the games' verdict and the new formats (CTA-142)", () => {
+  const cup = (white: string, event = "Cup") => `[Event "${event}"]\n[White "${white}"]\n[Black "Z"]\n\n1. e4 e5 *`;
+
+  it("keeps whether every game shares one Event, through every write of the games", async () => {
+    const mine = await added("Cup", [cup("A"), cup("B")]);
+    expect(mine.sharedEvent).toBe(true);
+    expect(await appendCollectionGames(mine.id, [cup("C", "Open")], [indexedRowOf(cup("C", "Open"))])).toBeUndefined();
+    expect(uploadedCollectionsSnapshot()?.[0].sharedEvent).toBe(false);
+    expect(await removeCollectionGames(mine.id, [3])).toBeUndefined();
+    expect(uploadedCollectionsSnapshot()?.[0].sharedEvent).toBe(true);
+    // Games with no Event share none.
+    expect((await added("Loose")).sharedEvent).toBe(false);
+  });
+
+  it("stores every format with a table, and reads an older record's mark unchanged", async () => {
+    const mine = await added();
+    for (const type of ["knockout", "doubleElimination", "match", "teamSwiss", "teamKnockout"] as const) {
+      expect(await updateCollectionSettings(mine.id, { tournament: { enabled: true, type } })).toBeUndefined();
+      const fresh = await reload();
+      expect((await fresh.loadUploadedCollections()).find((c) => c.id === mine.id)?.tournament).toEqual({ enabled: true, type });
+    }
+    // A record written before CTA-142: its type kept, and no verdict — read as unknown.
+    const db = (await (await import("./libraryDb")).openLibraryDb()) as IDBDatabase;
+    db.transaction(["collections"], "readwrite").objectStore("collections").put({
+      id: mine.id,
+      name: "Old",
+      addedAt: mine.addedAt,
+      count: 2,
+      tournament: { enabled: true, type: "arena" },
+    });
+    const read = (await (await reload()).loadUploadedCollections()).find((c) => c.id === mine.id);
+    expect(read?.tournament).toEqual({ enabled: true, type: "arena" });
+    expect(read?.sharedEvent).toBeUndefined();
+  });
+});
+
 describe("without IndexedDB", () => {
   it("reads empty and reports every write, never throwing", async () => {
     await resetLibraryCollectionStore();

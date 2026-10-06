@@ -116,6 +116,26 @@ describe("reading a manifest", () => {
     expect((await entries[0].loadRows()).map((row) => row.number)).toEqual([1, 2]);
   });
 
+  it("marks the shipped tournaments from the manifest, each with the table it is drawn as (CTA-142)", () => {
+    expect(
+      shippedCollections.filter((entry) => entry.tournament !== undefined).map((entry) => [entry.id, entry.tournament?.type, entry.sharedEvent]),
+    ).toEqual([
+      ["esportsplayin2026", "doubleElimination", true],
+      ["candidates2026", "roundRobin", true],
+      ["netherlands2026", "knockout", true],
+      ["worldblitzteam2026", "teamKnockout", true],
+      ["worldrapidteam2026", "teamSwiss", true],
+    ]);
+    expect(findShippedCollection("tal")?.tournament).toBeUndefined();
+    // An unknown format is read as no mark.
+    const [entry] = shippedCollectionsOf(
+      { collections: [{ id: "t-cup", name: "Cup", pgn: "A.pgn", index: "A.index.json", games: 2, tournament: "bughouse" }] },
+      loaders({ "A.pgn": PGN }),
+      loaders({ "A.index.json": INDEX }),
+    );
+    expect(entry.tournament).toBeUndefined();
+  });
+
   it("leaves out a malformed entry, one whose files are missing, and a taken id", () => {
     const entries = shippedCollectionsOf(
       {

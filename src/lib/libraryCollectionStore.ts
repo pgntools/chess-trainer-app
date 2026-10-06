@@ -1,5 +1,6 @@
 import { numberedRows, type IndexedRow } from "./collectionIndex";
 import {
+  canBeTournament,
   TOURNAMENT_FORMATS,
   type CollectionRow,
   type CollectionSummary,
@@ -92,6 +93,8 @@ type StoredSummary = {
   description?: string;
   /** The tournament mark (CTA-121) — absent on an older record, and for off. */
   tournament?: StoredTournament;
+  /** Whether every game shares one `Event` (CTA-142, `canBeTournament`) — kept by every write of the games; absent on an older record. */
+  sharedEvent?: boolean;
 };
 type StoredIndex = { id: string; rows: IndexedRow[] };
 type StoredGames = { id: string; games: string[] };
@@ -127,6 +130,7 @@ const summaryOf = (row: StoredSummary): CollectionSummary => ({
   folderId: typeof row.folderId === "string" && row.folderId !== "" ? row.folderId : null,
   description: typeof row.description === "string" && row.description !== "" ? row.description : undefined,
   tournament: isStoredTournament(row.tournament) ? { ...row.tournament } : undefined,
+  sharedEvent: typeof row.sharedEvent === "boolean" ? row.sharedEvent : undefined,
 });
 
 const isStoredSummary = (value: unknown): value is StoredSummary => {
@@ -283,6 +287,7 @@ export const addCollection = async (
     folderId,
     description: settings.description,
     tournament: settings.tournament,
+    sharedEvent: canBeTournament(rows),
   };
   try {
     const db = await openDb();
@@ -448,7 +453,8 @@ const editGames = async (
     }
     tx.objectStore(GAMES).put({ id, games } satisfies StoredGames);
     tx.objectStore(INDEXES).put({ id, rows } satisfies StoredIndex);
-    tx.objectStore(COLLECTIONS).put({ ...summary, count: games.length } satisfies StoredSummary);
+    // The games' verdict changes with them (CTA-142): a game added under another `Event`, the last odd one deleted.
+    tx.objectStore(COLLECTIONS).put({ ...summary, count: games.length, sharedEvent: canBeTournament(rows) } satisfies StoredSummary);
     await outcome;
     written = { games, rows };
   } catch {

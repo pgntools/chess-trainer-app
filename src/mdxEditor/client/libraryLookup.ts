@@ -6,7 +6,7 @@ import { readPgnTags } from "../../lib/pgn";
 import { loadSavedAnalyses } from "../../lib/savedAnalysisStore";
 import { loadSavedRepertoires, savedRepertoiresSnapshot } from "../../lib/savedRepertoireStore";
 import { findShippedCollection } from "../../lib/shippedCollections";
-import { guessTournamentKind, type TournamentGuess } from "./tournamentKind";
+import { guessTournamentKind, type TournamentGuess } from "../../lib/tournamentKind";
 
 /**
  * **The Library, as the MDX editor looks a game up in it** (CTA-137) — a
@@ -16,7 +16,16 @@ import { guessTournamentKind, type TournamentGuess } from "./tournamentKind";
  */
 
 /** A tournament format, for a sentence. */
-export const FORMAT_WORDS: Record<TournamentFormat, string> = { swiss: "a Swiss", roundRobin: "a round robin", knockout: "a knockout", arena: "an arena", match: "a match" };
+export const FORMAT_WORDS: Record<TournamentFormat, string> = {
+  swiss: "a Swiss",
+  roundRobin: "a round robin",
+  knockout: "a knockout",
+  doubleElimination: "a double elimination",
+  match: "a match",
+  teamSwiss: "a team event",
+  teamKnockout: "a team knockout",
+  arena: "an arena",
+};
 
 /** A collection's summary — a shipped one's, or an upload's once the Library's list is read. */
 export const collectionSummaryOf = async (id: string): Promise<CollectionSummary | undefined> =>

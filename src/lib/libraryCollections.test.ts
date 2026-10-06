@@ -21,8 +21,11 @@ import {
   MAX_COLLECTION_CHARS,
   MAX_COLLECTION_NAME_CHARS,
   readCollectionText,
+  readsAsTournament,
   sharedEventOf,
   sortedRows,
+  tableFormatOfKind,
+  TOURNAMENT_FORMATS,
 } from "./libraryCollections";
 
 const GAME = (tags: Record<string, string>, moves: string) =>
@@ -456,5 +459,28 @@ describe("batchFolderNameOf — where the table's Analyse files a batch (CTA-77)
     expect(long).toHaveLength(MAX_COLLECTION_NAME_CHARS);
     expect(long.startsWith("Capablanca — 12 games (Capablanca, Jose, white, D02, New York 1913")).toBe(true);
     expect(long.endsWith("…)")).toBe(true);
+  });
+});
+
+describe("the tournament mark, read from what is at hand (CTA-142)", () => {
+  const ONE_EVENT = [{ event: "Cup" }, { event: "Cup" }];
+  const TWO_EVENTS = [{ event: "Cup" }, { event: "Open" }];
+  const marked = { tournament: { enabled: true, type: "swiss" as const } };
+
+  it("goes by the rows where they are read, else the kept verdict, else the mark alone", () => {
+    expect(readsAsTournament(marked, ONE_EVENT)).toBe(true);
+    expect(readsAsTournament({ ...marked, sharedEvent: true }, TWO_EVENTS)).toBe(false);
+    expect(readsAsTournament({ ...marked, sharedEvent: false })).toBe(false);
+    expect(readsAsTournament({ ...marked, sharedEvent: true }, null)).toBe(true);
+    // A record from before the verdict was kept: the mark alone.
+    expect(readsAsTournament(marked)).toBe(true);
+    expect(readsAsTournament({ tournament: { enabled: false, type: "swiss" }, sharedEvent: true }, ONE_EVENT)).toBe(false);
+    expect(readsAsTournament({}, ONE_EVENT)).toBe(false);
+  });
+
+  it("keeps CTA-121's five formats and adds the three with tables, arena last", () => {
+    for (const format of ["swiss", "roundRobin", "knockout", "arena", "match"]) expect(TOURNAMENT_FORMATS).toContain(format);
+    expect(TOURNAMENT_FORMATS.at(-1)).toBe("arena");
+    expect(tableFormatOfKind("teamKnockout")).toBe("teamKnockout");
   });
 });

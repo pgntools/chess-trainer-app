@@ -2,7 +2,7 @@ import { gameTag, type GameHeaders } from "../../lib/gameModel";
 import { readPgnTags, splitPgnGames } from "../../lib/pgn";
 import { roundPartsOf } from "../../lib/tournament";
 import { BIG_PGN_BYTES, pgnBytesOf } from "./pgnPages";
-import { guessTournamentKind, type TournamentGuess } from "./tournamentKind";
+import { guessTournamentKind, type TournamentGuess } from "../../lib/tournamentKind";
 
 /**
  * **What a PGN file holds, at a glance** (CTA-140) — what the Components

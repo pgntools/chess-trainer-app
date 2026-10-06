@@ -1,6 +1,6 @@
 import { sourceAddressOf, sourcePathOf, type SourceAddress, type SourceKind as AddressKind } from "../../lib/embedSource";
 import { withInlinePgn, withPgnImports } from "./pgnImports";
-import type { TournamentGuess, TournamentKind } from "./tournamentKind";
+import type { TournamentGuess, TournamentKind } from "../../lib/tournamentKind";
 
 /**
  * **The Components gallery's index** (CTA-140) — every component an article

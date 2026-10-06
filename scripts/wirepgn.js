@@ -3,7 +3,7 @@
  * **Wire a PGN collection into the Library** (CTA-75) — the one way a shipped
  * collection is added, re-indexed or removed.
  *
- *   node scripts/wirepgn.js path/to/Candidates2024.pgn [--name "…"] [--id …]
+ *   node scripts/wirepgn.js path/to/Candidates2024.pgn [--name "…"] [--id …] [--tournament [type]]
  *   node scripts/wirepgn.js --list
  *   node scripts/wirepgn.js --check          # exit 1 when anything is stale (CI)
  *   node scripts/wirepgn.js --rebuild        # every index again (a new index format)
@@ -21,6 +21,15 @@
  *    file names, the game count and the PGN's hash — which is what the
  *    Library lists, with no fetch, and what `shippedCollections.test.ts`
  *    checks every file and index against.
+ *
+ * `--tournament` (CTA-142) marks it a tournament in the manifest, so it opens
+ * in the Library's tournament view for every reader: `--tournament <type>`
+ * names the format (`swiss`, `roundRobin`, `knockout`, `doubleElimination`,
+ * `match`, `teamSwiss`, `teamKnockout`), a bare `--tournament` (or `auto`)
+ * takes the app's guess from the games' tags (`lib/tournamentKind.ts`), and
+ * `--tournament none` takes a mark off. Its games must share one `Event`
+ * (`canBeTournament`), as the settings screen asks of an upload. Re-wiring
+ * without it keeps the mark the collection had.
  *
  * The name defaults to the file name's words (`Candidates2024` →
  * "Candidates 2024"), the id to its slug (`candidates2024` —
@@ -44,13 +53,20 @@ const MANIFEST_FORMAT = "chessapp.libraryManifest";
 const MANIFEST_VERSION = 1;
 
 const USAGE = `Usage:
-  node scripts/wirepgn.js <file.pgn> [--name "Name"] [--id slug]   wire (or re-wire) a collection
+  node scripts/wirepgn.js <file.pgn> [--name "Name"] [--id slug] [--tournament [type]]
+                                                                   wire (or re-wire) a collection
   node scripts/wirepgn.js --list                                   the wired collections
   node scripts/wirepgn.js --check                                  exit 1 if a file or index is stale
   node scripts/wirepgn.js --rebuild                                re-index every collection
   node scripts/wirepgn.js --remove <id>                            unwire one, deleting its files
 Options:
-  --dir <path>   the collections folder (default: src/data/library)`;
+  --tournament [type]   mark it a tournament: swiss, roundRobin, knockout, doubleElimination,
+                        match, teamSwiss or teamKnockout; bare or "auto" for the guess from
+                        its tags; "none" to take a mark off (re-wiring without it keeps it)
+  --dir <path>          the collections folder (default: src/data/library)`;
+
+/** What `--tournament` may be followed by — anything else after it is not its value. */
+const TOURNAMENT_VALUES = new Set(["auto", "none", "swiss", "roundRobin", "knockout", "doubleElimination", "match", "teamSwiss", "teamKnockout", "arena"]);
 
 const fail = (message) => {
   console.error(`wirepgn: ${message}`);
@@ -77,6 +93,14 @@ const parseArgs = (argv) => {
     else if (arg === "--name") args.name = value();
     else if (arg === "--id") args.id = value();
     else if (arg === "--dir") args.dir = value();
+    else if (arg === "--tournament") {
+      // A value is optional: bare, the guess.
+      const next = argv[index + 1];
+      if (next !== undefined && TOURNAMENT_VALUES.has(next)) {
+        args.tournament = next;
+        index += 1;
+      } else args.tournament = "auto";
+    }
     else if (arg.startsWith("--")) fail(`unknown option ${arg}\n\n${USAGE}`);
     else args.files.push(arg);
   }
@@ -89,11 +113,13 @@ const load = async (path) =>
   (await runnerImport(join(ROOT, path), { configFile: false, root: ROOT, logLevel: "silent" })).module;
 
 const loadLib = async () => {
-  const [index, collections] = await Promise.all([
+  const [index, collections, pgn, kind] = await Promise.all([
     load("src/lib/collectionIndex.ts"),
     load("src/lib/libraryCollections.ts"),
+    load("src/lib/pgn.ts"),
+    load("src/lib/tournamentKind.ts"),
   ]);
-  return { ...index, ...collections };
+  return { ...index, ...collections, readPgnTags: pgn.readPgnTags, guessTournamentKind: kind.guessTournamentKind };
 };
 
 /**
@@ -157,7 +183,28 @@ const indexFile = (lib, lookup, dir, stem, text, label) => {
     `  ${games.length.toLocaleString("en")} games (${unreadable} unreadable) in ${seconds}s — ` +
       `PGN ${kb(text.length)}, index ${kb(encoded.length)}`,
   );
-  return { index: indexName, games: games.length, hash: index.hash };
+  return { numbers: { index: indexName, games: games.length, hash: index.hash }, games, rows: index.rows };
+};
+
+/**
+ * The manifest's tournament mark for a file being wired (CTA-142): the
+ * format asked for, the guess for `auto`, nothing for `none` — refused over
+ * games that do not share one `Event`, and for a format with no table.
+ */
+const tournamentMarkOf = (lib, asked, games, rows) => {
+  if (asked === "none") return undefined;
+  if (!lib.canBeTournament(rows)) fail("--tournament: its games do not share one Event tag, so it cannot be a tournament");
+  if (asked === "auto") {
+    const guess = lib.guessTournamentKind(games.map(lib.readPgnTags));
+    if (guess === undefined) fail("--tournament: the games' tags do not say what kind of tournament — name its type");
+    console.log(`  tournament: ${guess.kind} — ${guess.reason}`);
+    return guess.kind;
+  }
+  if (!lib.TOURNAMENT_FORMATS.includes(asked) || !lib.isTableFormat(asked)) {
+    fail(`--tournament: ${asked} is not a format with a table (${lib.TOURNAMENT_FORMATS.filter(lib.isTableFormat).join(", ")})`);
+  }
+  console.log(`  tournament: ${asked}`);
+  return asked;
 };
 
 const wire = async (dir, source, options) => {
@@ -186,10 +233,15 @@ const wire = async (dir, source, options) => {
 
   console.log(`Wiring "${name}" (${id}) from ${source}`);
   writeFileSync(join(dir, pgn), text);
-  const numbers = indexFile(lib, loadLookup(lib), dir, stem, text, pgn);
+  const { numbers, games, rows } = indexFile(lib, loadLookup(lib), dir, stem, text, pgn);
+  // The mark asked for; without --tournament, the one the collection had.
+  const tournament =
+    options.tournament === undefined
+      ? replaced.find((entry) => entry.id === id)?.tournament
+      : tournamentMarkOf(lib, options.tournament, games, rows);
   manifest.collections = [
     ...manifest.collections.filter((entry) => !replaced.includes(entry)),
-    { id, name, pgn, ...numbers },
+    { id, name, pgn, ...numbers, ...(tournament === undefined ? {} : { tournament }) },
   ];
   writeManifest(dir, manifest);
   console.log(
@@ -207,7 +259,7 @@ const rebuild = async (dir) => {
     const path = join(dir, entry.pgn);
     if (!existsSync(path)) fail(`${entry.pgn} is missing — run --remove ${entry.id}`);
     const stem = entry.pgn.replace(/\.pgn$/, "");
-    Object.assign(entry, indexFile(lib, lookup, dir, stem, readFileSync(path, "utf8"), entry.pgn));
+    Object.assign(entry, indexFile(lib, lookup, dir, stem, readFileSync(path, "utf8"), entry.pgn).numbers);
   }
   writeManifest(dir, manifest);
 };
@@ -227,7 +279,8 @@ const list = (dir) => {
   const { collections } = readManifest(dir);
   if (collections.length === 0) console.log("No collections are wired.");
   for (const entry of collections) {
-    console.log(`${entry.id.padEnd(24)} ${String(entry.games).padStart(7)} games  ${entry.name}  (${entry.pgn})`);
+    const mark = entry.tournament === undefined ? "" : `  [${entry.tournament}]`;
+    console.log(`${entry.id.padEnd(24)} ${String(entry.games).padStart(7)} games  ${entry.name}  (${entry.pgn})${mark}`);
   }
 };
 

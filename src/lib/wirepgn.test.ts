@@ -103,6 +103,34 @@ describe("wirepgn", () => {
     expect(run("--remove", "club-cup2024").code).toBe(1);
   }, 60_000);
 
+  it("marks a tournament — the guess, a format named, kept on a re-wire, taken off with none (CTA-142)", () => {
+    const file = join(work, "Club_Cup2024.pgn");
+    const mark = () => manifest().collections[0].tournament;
+    // Bare: the guess from the tags — four players meeting a few of the others.
+    const guessed = run(file, "--tournament");
+    expect(guessed.code, guessed.out).toBe(0);
+    expect(guessed.out).toContain("tournament: swiss");
+    expect(mark()).toBe("swiss");
+    expect(run(file, "--tournament", "roundRobin").code).toBe(0);
+    expect(mark()).toBe("roundRobin");
+    // Re-wiring without the option keeps it; `none` takes it off.
+    expect(run(file).code).toBe(0);
+    expect(mark()).toBe("roundRobin");
+    expect(run(file, "--tournament", "none").code).toBe(0);
+    expect(mark()).toBeUndefined();
+    // Arena has no table to draw.
+    const arena = run(file, "--tournament", "arena");
+    expect(arena.code).toBe(1);
+    expect(arena.out).toContain("not a format with a table");
+  }, 60_000);
+
+  it("refuses to mark games that do not share one Event", () => {
+    writeFileSync(join(work, "Mixed.pgn"), [GAMES[0], GAMES[2].replace('"Cup"', '"Open"')].join("\n\n"));
+    const { code, out } = run(join(work, "Mixed.pgn"), "--tournament");
+    expect(code).toBe(1);
+    expect(out).toContain("do not share one Event");
+  }, 60_000);
+
   it("refuses a file with no game, and prints its usage for nothing to do", () => {
     writeFileSync(join(work, "Empty.pgn"), "just words\n");
     expect(run(join(work, "Empty.pgn")).out).toContain("no game could be read");

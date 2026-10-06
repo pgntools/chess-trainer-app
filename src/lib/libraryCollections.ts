@@ -1,3 +1,4 @@
+import type { TournamentKind } from "./tournamentKind";
 import { gameTag } from "./gameModel";
 import { readPgnParts, splitPgnGames } from "./pgn";
 import { slugify } from "./pgnText";
@@ -68,17 +69,56 @@ export type CollectionSummary = {
   description?: string;
   /**
    * Marked as a tournament (CTA-121) — a **stored setting**: the games decide
-   * whether it reads as one ({@link canBeTournament}). Absent for off.
+   * whether it reads as one ({@link canBeTournament}). Absent for off. A
+   * shipped collection's is its manifest entry's (CTA-142, `wirepgn
+   * --tournament`).
    */
   tournament?: CollectionTournament;
+  /**
+   * The games' verdict, kept beside the mark (CTA-142): whether every game
+   * shares one `Event` ({@link canBeTournament} over the rows), recomputed by
+   * every write of an upload's games — so the Library's list can tell a
+   * tournament without reading an index ({@link readsAsTournament}). Absent
+   * on a record written before it.
+   */
+  sharedEvent?: boolean;
 };
 
-/** The formats a collection can be marked as (CTA-121) — the last three are stored but not selectable yet. */
-export const TOURNAMENT_FORMATS = ["swiss", "roundRobin", "knockout", "arena", "match"] as const;
+/**
+ * The formats a collection can be marked as (CTA-121; CTA-142 added
+ * `doubleElimination`, `teamSwiss` and `teamKnockout`) — every one a table
+ * draws, and `arena`, stored but not selectable yet (no table). In the
+ * order the settings offer them. **Only ever added to**: a stored mark and an
+ * export zip are checked against this list, so a value taken out would make
+ * an older record unreadable.
+ */
+export const TOURNAMENT_FORMATS = [
+  "swiss",
+  "roundRobin",
+  "knockout",
+  "doubleElimination",
+  "match",
+  "teamSwiss",
+  "teamKnockout",
+  "arena",
+] as const;
 
 export type TournamentFormat = (typeof TOURNAMENT_FORMATS)[number];
 
-/** A collection marked as a tournament (CTA-121). Swiss and Round robin are live; the rest are coming. */
+/** The formats with a table (CTA-142) — every one but `arena`: what the settings let a reader pick, and the tournament view draws. */
+export type TournamentTableFormat = Exclude<TournamentFormat, "arena">;
+
+/** Whether a format has a table to draw (CTA-142) — every one but `arena`. */
+export const isTableFormat = (format: TournamentFormat): format is TournamentTableFormat => format !== "arena";
+
+/**
+ * The format a guessed kind of tournament is marked as (CTA-142,
+ * `lib/tournamentKind.ts`) — the same word: every kind the guesser names is a
+ * format with a table, which this function's type holds it to.
+ */
+export const tableFormatOfKind = (kind: TournamentKind): TournamentTableFormat => kind;
+
+/** A collection marked as a tournament (CTA-121): every format but `arena` is live (CTA-142). */
 export type CollectionTournament = {
   enabled: boolean;
   type: TournamentFormat;
@@ -727,6 +767,22 @@ export const isTournamentCollection = (
   summary: Pick<CollectionSummary, "tournament">,
   rows: readonly Pick<CollectionRow, "event">[],
 ): boolean => summary.tournament?.enabled === true && canBeTournament(rows);
+
+/**
+ * Whether a collection reads as a tournament **from what is at hand**
+ * (CTA-142) — the Library's list, which reads no index: the rows, where they
+ * have been read ({@link isTournamentCollection}); else the summary's kept
+ * verdict (`sharedEvent`); else — a record from before it, its rows not read
+ * — the stored mark alone.
+ */
+export const readsAsTournament = (
+  summary: Pick<CollectionSummary, "tournament" | "sharedEvent">,
+  rows?: readonly Pick<CollectionRow, "event">[] | null,
+): boolean => {
+  if (summary.tournament?.enabled !== true) return false;
+  if (rows !== undefined && rows !== null) return canBeTournament(rows);
+  return summary.sharedEvent !== false;
+};
 
 /**
  * A shipped file's name out of its stem — the one naming rule that makes
