@@ -31,8 +31,8 @@ type ArticleImageProps = {
  * and no taller than `maxHeight` of the window, at the start, middle or end
  * of its line (sides that mirror under RTL), kept whole or cropped, rounded,
  * bordered or shadowed, its caption under it, opening full size on a click
- * where `link`. Lazy: read only as it comes into view. The MDX editor's Add
- * image writes it, and its Image props sets it.
+ * where `link`. Lazy: read only as it comes into view. The MDX editor's
+ * Images section writes it and sets it.
  */
 export function ArticleImage({ src, alt = "", caption, width, maxHeight, align = "center", fit = "contain", rounded = false, border = false, shadow = false, link = false }: ArticleImageProps) {
   const image = (

@@ -18,7 +18,7 @@ Gallery: `/dev/design/dialogs` — every variation open in its own frame
   `DialogContent`), `actions?` (in `DialogActions`), `width?: "xs" | "sm" |
   "full"` (default `xs`; `full` the window's width less a margin, 8 px on a
   phone, 32 px from `sm`, and from `md` its height too, so a body can fill it
-  exactly — a workspace, the MDX editor's Add PGN, CTA-137), `fullWidth?` (default `true`), `dividers?`, `testId`,
+  exactly — a workspace, the MDX editor's sections, CTA-137, CTA-139), `fullWidth?` (default `true`), `dividers?`, `testId`,
   `dialogProps?`. Ids: `<testId>`, `-title`, `-content`, `-actions`.
 - **Variations** — `xs` / `sm` / `full`; full width or sized to the content; dividers
   (a scrolling body); no actions row.
