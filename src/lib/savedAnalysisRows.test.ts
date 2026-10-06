@@ -4,7 +4,10 @@ import { DEFAULT_ANALYSIS_SETTINGS } from "./analysisSettings";
 import { emptyTree } from "./gameTree";
 import { parsePgnTree } from "./pgn";
 import { batchAnalysesOf, savedAnalysisOf, type SavedAnalysis } from "./savedAnalyses";
+import type { GameFolder } from "./savedGameFolders";
 import {
+  analysisTreeRows,
+  compareAnalysisFolders,
   filteredAnalysisRows,
   savedAnalysisFirstDirection,
   savedAnalysisRowOf,
@@ -35,6 +38,7 @@ const imported = (pgn: string, id = "g1", updatedAt = "2026-09-07T10:00:00.000Z"
 });
 
 const row = (patch: Partial<SavedAnalysisRow> & { id: string }): SavedAnalysisRow => ({
+  folderId: null,
   name: "",
   description: "",
   moves: 0,
@@ -46,6 +50,7 @@ describe("savedAnalysisRowOf — a record's tags as a row", () => {
   it("reads the game's fields off its tags, without parsing the tree", () => {
     expect(savedAnalysisRowOf({ ...imported(GAME), description: "Prep" })).toEqual({
       id: "g1",
+      folderId: null,
       name: "Carlsen, Magnus – Giri, Anish",
       description: "Prep",
       white: "Carlsen, Magnus",
@@ -161,5 +166,66 @@ describe("filteredAnalysisRows", () => {
 
   it("keeps every row for no words", () => {
     expect(filteredAnalysisRows(rows, "  ")).toBe(rows);
+  });
+});
+
+describe("analysisTreeRows — folders and analyses as one tree (CTA-144)", () => {
+  const folder = (id: string, name: string, parentId: string | null = null, updatedAt = "2026-09-01"): GameFolder => ({
+    id,
+    name,
+    parentId,
+    savedAt: "2026-01-01",
+    updatedAt,
+  });
+  const FOLDERS = [folder("fo", "Openings", null, "2026-09-05"), folder("ft", "Tata Steel", null, "2026-09-01"), folder("fs", "Sicilian", "fo")];
+  const ROWS = [
+    row({ id: "top", name: "My Berlin", updated: "2026-09-04" }),
+    row({ id: "najdorf", folderId: "fs", name: "Najdorf prep", opening: "Sicilian, Najdorf", updated: "2026-09-03" }),
+    row({ id: "giri", folderId: "ft", name: "Carlsen – Giri", white: "Carlsen", updated: "2026-09-02" }),
+    row({ id: "anand", folderId: "ft", name: "Anand – Aronian", white: "Anand", updated: "2026-09-06" }),
+  ];
+  const keys = (rows: ReturnType<typeof analysisTreeRows>["rows"]) =>
+    rows.map((r) => (r.kind === "folder" ? `${"  ".repeat(r.depth)}[${r.folder.id} ${r.size}]` : `${"  ".repeat(r.depth)}${r.item.id}`));
+  const walk = (open: string[], column: "name" | "white" | "updated" = "updated", direction: "asc" | "desc" = "desc", text = "") =>
+    analysisTreeRows({ folders: FOLDERS, rows: ROWS, isOpen: (id, auto) => auto || open.includes(id), column, direction, text });
+
+  it("puts the folders first at every level, their analyses under them only while open, each folder sized by its subtree", () => {
+    expect(keys(walk([]).rows)).toEqual(["[fo 1]", "[ft 2]", "top"]);
+    expect(keys(walk(["ft"]).rows)).toEqual(["[fo 1]", "[ft 2]", "  anand", "  giri", "top"]);
+    expect(keys(walk(["fo", "fs"]).rows)).toEqual(["[fo 1]", "  [fs 1]", "    najdorf", "[ft 2]", "top"]);
+  });
+
+  it("orders the analyses within a level by the column, and the folders by name or by when they changed", () => {
+    expect(keys(walk(["ft"], "white", "asc").rows)).toEqual(["[fo 1]", "[ft 2]", "  anand", "  giri", "top"]);
+    expect(keys(walk(["ft"], "white", "desc").rows)).toEqual(["[fo 1]", "[ft 2]", "  giri", "  anand", "top"]);
+    expect(keys(walk([], "name", "desc").rows)).toEqual(["[ft 2]", "[fo 1]", "top"]);
+    expect(keys(walk([], "updated", "asc").rows)).toEqual(["[ft 2]", "[fo 1]", "top"]);
+  });
+
+  it("filters by words, opening the folders above a matching analysis, and keeps a matching folder whole", () => {
+    const found = walk([], "updated", "desc", "najdorf");
+    expect(keys(found.rows)).toEqual(["[fo 1]", "  [fs 1]", "    najdorf"]);
+    expect(found.shownItems).toBe(1);
+    // A folder named by the words keeps everything in it, closed until opened.
+    expect(keys(walk([], "updated", "desc", "tata").rows)).toEqual(["[ft 2]"]);
+    expect(walk([], "updated", "desc", "nothing").rows).toEqual([]);
+  });
+
+  it("seen from inside a folder — its subtree without it — puts its contents at the top level", () => {
+    const inside = analysisTreeRows({
+      folders: [FOLDERS[2]],
+      rows: ROWS.filter((r) => r.folderId === "fo" || r.folderId === "fs"),
+      isOpen: () => false,
+      column: "updated",
+      direction: "desc",
+      text: "",
+    });
+    expect(keys(inside.rows)).toEqual(["[fs 1]"]);
+  });
+
+  it("sorts an untitled folder last", () => {
+    const untitled = folder("fu", "");
+    expect([untitled, FOLDERS[0]].sort(compareAnalysisFolders("name", "asc")).map((f) => f.id)).toEqual(["fo", "fu"]);
+    expect([untitled, FOLDERS[0]].sort(compareAnalysisFolders("name", "desc")).map((f) => f.id)).toEqual(["fo", "fu"]);
   });
 });

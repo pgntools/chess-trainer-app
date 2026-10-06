@@ -1,7 +1,9 @@
+import { folderTreeRows, type FolderTreeRow, type FolderTreeRows } from "./folderTreeRows";
 import { mainlineGame, type GameTree } from "./gameTree";
 import { collectionRowOf, compareValues, type SortDirection } from "./libraryCollections";
 import { readPgnTags } from "./pgn";
 import { SAVED_ANALYSIS_EVENT, SAVED_ANALYSIS_PLAYER, savedAnalysisDerivedName, type SavedAnalysis } from "./savedAnalyses";
+import type { GameFolder } from "./savedGameFolders";
 
 /**
  * **A saved analysis as a games-table row** (CTA-144) — the Saved analyses
@@ -21,7 +23,8 @@ import { SAVED_ANALYSIS_EVENT, SAVED_ANALYSIS_PLAYER, savedAnalysisDerivedName, 
  *   ({@link savedAnalysisRowWith}): that the record will not read, and the
  *   opening the book names over the mainline where the tags name none.
  * - Sorted by {@link sortedAnalysisRows} (the Library's rule: missing values
- *   last either way) and narrowed by {@link filteredAnalysisRows}.
+ *   last either way) and narrowed by {@link filteredAnalysisRows} — or,
+ *   with the folders, walked into one tree table by {@link analysisTreeRows}.
  */
 
 /** The table's columns, left to right — every one a sort header. */
@@ -47,6 +50,8 @@ export type SavedAnalysisColumn = (typeof SAVED_ANALYSIS_COLUMNS)[number];
 export type SavedAnalysisRow = {
   /** The record's id — the row's key, its pick, its link. */
   id: string;
+  /** The folder it is filed under, `null` for Unfiled — where the tree table puts it. */
+  folderId: string | null;
   /** The reader's name, else the one its tags give it (players, else event); `""` for neither — shown as the generic. */
   name: string;
   /** The reader's notes. May be empty. */
@@ -81,6 +86,7 @@ export const savedAnalysisRowOf = (saved: SavedAnalysis): SavedAnalysisRow => {
   const { white, whiteElo, black, blackElo, result, date, event, round, eco, opening, moves } = collectionRowOf(saved.pgn, 0);
   return {
     id: saved.id,
+    folderId: saved.folderId,
     name: saved.name || savedAnalysisDerivedName(readPgnTags(saved.pgn)),
     description: saved.description,
     white: real(white, SAVED_ANALYSIS_PLAYER),
@@ -133,18 +139,14 @@ const newestFirst = (a: SavedAnalysisRow, b: SavedAnalysisRow): number =>
   a.updated < b.updated ? 1 : a.updated > b.updated ? -1 : 0;
 
 /**
- * The rows sorted by one column — the Library's `sortedRows` rule: numbers
+ * Two rows in one column's order — the Library's `sortedRows` rule: numbers
  * numerically, text numeric-aware, **a missing value last in either
  * direction**; ties keep the newest-updated order whichever way the column
- * runs. A new array, stable.
+ * runs.
  */
-export const sortedAnalysisRows = (
-  rows: readonly SavedAnalysisRow[],
-  column: SavedAnalysisColumn,
-  direction: SortDirection,
-): SavedAnalysisRow[] => {
-  const sign = direction === "asc" ? 1 : -1;
-  return [...rows].sort((a, b) => {
+export const compareAnalysisRows =
+  (column: SavedAnalysisColumn, direction: SortDirection) =>
+  (a: SavedAnalysisRow, b: SavedAnalysisRow): number => {
     const left = a[column];
     const right = b[column];
     const leftMissing = left === undefined || left === "";
@@ -153,9 +155,32 @@ export const sortedAnalysisRows = (
       if (leftMissing === rightMissing) return newestFirst(a, b);
       return leftMissing ? 1 : -1;
     }
-    return sign * compareValues(left, right) || newestFirst(a, b);
-  });
-};
+    return (direction === "asc" ? 1 : -1) * compareValues(left, right) || newestFirst(a, b);
+  };
+
+/** The rows sorted by one column ({@link compareAnalysisRows}). A new array, stable. */
+export const sortedAnalysisRows = (
+  rows: readonly SavedAnalysisRow[],
+  column: SavedAnalysisColumn,
+  direction: SortDirection,
+): SavedAnalysisRow[] => [...rows].sort(compareAnalysisRows(column, direction));
+
+/**
+ * Two folders in the table's order: by name under the Name column, by when
+ * they were last changed under Updated — each the way the column runs — and
+ * by name, A to Z, under any other (a folder has no players or openings). An
+ * untitled folder's name is missing, so last.
+ */
+export const compareAnalysisFolders =
+  (column: SavedAnalysisColumn, direction: SortDirection) =>
+  (a: GameFolder, b: GameFolder): number => {
+    if (column === "updated") {
+      const order = a.updatedAt < b.updatedAt ? -1 : a.updatedAt > b.updatedAt ? 1 : 0;
+      return (direction === "asc" ? 1 : -1) * order;
+    }
+    if (a.name === "" || b.name === "") return a.name === b.name ? 0 : a.name === "" ? 1 : -1;
+    return (column === "name" && direction === "desc" ? -1 : 1) * compareValues(a.name, b.name);
+  };
 
 /** The words a row is found by: its name and notes, the players and their Elos, the event, round, date and opening. */
 const searchTextOf = (row: SavedAnalysisRow): string =>
@@ -164,12 +189,67 @@ const searchTextOf = (row: SavedAnalysisRow): string =>
     .join(" ")
     .toLowerCase();
 
+const wordsOf = (text: string): string[] => text.toLowerCase().split(/\s+/).filter(Boolean);
+
 /** The rows holding every word of `text`, case aside — all of them for no words. */
 export const filteredAnalysisRows = (rows: readonly SavedAnalysisRow[], text: string): readonly SavedAnalysisRow[] => {
-  const words = text.toLowerCase().split(/\s+/).filter(Boolean);
+  const words = wordsOf(text);
   if (words.length === 0) return rows;
   return rows.filter((row) => {
     const haystack = searchTextOf(row);
     return words.every((word) => haystack.includes(word));
+  });
+};
+
+/** One row of the tree table: a folder, or an analysis. */
+export type AnalysisTreeRow = FolderTreeRow<SavedAnalysisRow>;
+
+/**
+ * **The folders and analyses as the rows of one tree table** (CTA-144) —
+ * `folderTreeRows`, the Library's walk: folders before analyses at every
+ * level, each at its depth, an open folder's contents under it. The folders
+ * in {@link compareAnalysisFolders}' order, the analyses in
+ * {@link compareAnalysisRows}'; a folder's size is how many analyses its
+ * whole subtree holds. The words keep the analyses holding every one and the
+ * folders whose name does (with everything in them), and **open the folders
+ * above a matching analysis** by themselves.
+ *
+ * `folders` and `rows` are the ones in view: a folder whose parent is not
+ * among them, and an analysis whose folder is not, sit at the top level — so
+ * a folder's subtree, without the folder, is that folder seen from inside.
+ */
+export const analysisTreeRows = ({
+  folders,
+  rows,
+  isOpen,
+  column,
+  direction,
+  text,
+}: {
+  folders: readonly GameFolder[];
+  rows: readonly SavedAnalysisRow[];
+  /** Whether a folder shows its contents; `auto`, whether the words open it. */
+  isOpen: (folderId: string, auto: boolean) => boolean;
+  column: SavedAnalysisColumn;
+  direction: SortDirection;
+  text: string;
+}): FolderTreeRows<SavedAnalysisRow> => {
+  const words = wordsOf(text);
+  return folderTreeRows({
+    folders,
+    items: rows,
+    isOpen,
+    compareFolders: compareAnalysisFolders(column, direction),
+    compareItems: compareAnalysisRows(column, direction),
+    sizeOf: () => 1,
+    ...(words.length > 0 && {
+      match: {
+        folder: (folder) => words.every((word) => folder.name.toLowerCase().includes(word)),
+        item: (row) => {
+          const haystack = searchTextOf(row);
+          return words.every((word) => haystack.includes(word));
+        },
+      },
+    }),
   });
 };

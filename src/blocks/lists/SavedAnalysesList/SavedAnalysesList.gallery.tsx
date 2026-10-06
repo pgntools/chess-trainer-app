@@ -1,5 +1,4 @@
 import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
 
 import { demoPreview } from "../../../design-system/gallery/demoPreview";
 import type { GalleryModule } from "../../../design-system/gallery/types";
@@ -13,20 +12,10 @@ const noop = () => {};
 const PAGE = manyEntries(50);
 
 /** The block on fixtures, its picks held by the demo as the screen holds them. */
-/** What the list view's `table` slot holds on the screen — the `SavedAnalysesTable` block, its own gallery page. */
-const TABLE_SLOT = (
-  <Box sx={{ flex: 1, minHeight: 0, display: "grid", placeItems: "center", border: 1, borderColor: "divider", borderStyle: "dashed" }}>
-    <Typography variant="body2" color="text.secondary">
-      The folder&apos;s games table (SavedAnalysesTable)
-    </Typography>
-  </Box>
-);
-
 const demo = (
-  view: SavedListView,
+  view: Exclude<SavedListView, "list">,
   folders: readonly SavedAnalysisFolderEntry[],
   entries: readonly SavedAnalysisEntry[],
-  table?: typeof TABLE_SLOT,
 ) => (
   <WithState<Set<string>> initial={new Set(["a1"])}>
     {(picked, setPicked) => (
@@ -35,7 +24,6 @@ const demo = (
           view={view}
           folders={folders}
           entries={entries}
-          table={table}
           picked={picked}
           onTogglePick={(id) =>
             setPicked((before) => {
@@ -61,14 +49,11 @@ const gallery: GalleryModule<BlockFamilyId> = {
   section: "lists",
   title: "SavedAnalysesList",
   demos: [
-    { name: "The list — folders first (one empty), then the games table", render: () => demo("list", FOLDERS, [], TABLE_SLOT) },
-    { name: "The list — folders only (no analysis here)", render: () => demo("list", FOLDERS, []) },
-    { name: "Small boards — the opening line under a known one, the others as tall", render: () => demo("compact", FOLDERS, ENTRIES) },
+    { name: "Small boards — folders first (one empty), the opening line under a known one, the others as tall", render: () => demo("compact", FOLDERS, ENTRIES) },
     { name: "Big boards", render: () => demo("comfortable", FOLDERS, ENTRIES) },
-    { name: "Empty", render: () => demo("list", [], []) },
-    { name: "Long names as cards", render: () => demo("compact", [], LONG_ENTRIES) },
+    { name: "Empty", render: () => demo("compact", [], []) },
+    { name: "Long names and a long description", render: () => demo("compact", [], LONG_ENTRIES) },
     { name: "Hebrew names (switch to RTL)", render: () => demo("compact", HEBREW_FOLDERS, HEBREW_ENTRIES) },
-    { name: "Hebrew folders over the table (switch to RTL)", render: () => demo("list", HEBREW_FOLDERS, [], TABLE_SLOT) },
     { name: "A page of fifty", render: () => demo("compact", [], PAGE) },
   ],
 };

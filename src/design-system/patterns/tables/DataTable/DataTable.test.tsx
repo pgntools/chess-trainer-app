@@ -251,6 +251,18 @@ describe("DataTable", () => {
       expect([...onChange.mock.calls[0][0]]).toEqual(["hidden"]);
     });
 
+    it("leaves a row it may not pick without a pick, and out of select-all and its count (CTA-144)", () => {
+      const onChange = vi.fn();
+      mount({ picks: { ...picks(["a", "c"], onChange), canPick: (row: Row) => row.id !== "b" } });
+      expect(screen.queryByRole("checkbox", { name: "Pick Capablanca" })).toBeNull();
+      // The row keeps its pick column's cell, so its cells line up.
+      expect(within(screen.getByTestId("t-row-b")).getAllByRole("cell")).toHaveLength(3);
+      const all = screen.getByRole("checkbox", { name: "Select all" });
+      expect(all).toHaveAttribute("data-indeterminate", "true");
+      fireEvent.click(all);
+      expect([...onChange.mock.calls[0][0]].sort()).toEqual(["a", "c", "d"]);
+    });
+
     it("never reaches the row click from a pick", () => {
       const onRowClick = vi.fn();
       mount({ picks: picks([]), onRowClick });

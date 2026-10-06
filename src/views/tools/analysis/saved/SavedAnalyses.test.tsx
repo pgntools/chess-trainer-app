@@ -592,7 +592,7 @@ describe("Saved analyses — the games table (CTA-144)", () => {
     within(screen.getByTestId("saved-analyses-table-frame-table"))
       .getAllByRole("row")
       .slice(1)
-      .map((row) => row.getAttribute("data-testid")?.replace("saved-analyses-item-", ""));
+      .map((row) => row.getAttribute("data-testid")?.replace(/^saved-analyses-item-/, ""));
 
   it("shows each analysis' game fields off its tags, newest updated first, a board's placeholders as empty cells", async () => {
     await saveAnalysis(CARLSEN);
@@ -712,6 +712,40 @@ describe("Saved analyses — the games table (CTA-144)", () => {
     expect(where.current?.search).not.toContain("page=");
     await user.type(screen.getByRole("searchbox", { name: "Filter analyses" }), `R${total - 1}`);
     expect(rowIds()).toEqual([`r${total - 1}`]);
+  });
+
+  it("puts the folders in the table first, opening one in place, its analyses under it", async () => {
+    const user = userEvent.setup();
+    const folder = (await createAnalysisFolder("Tata Steel 2024", null))!;
+    await saveAnalysis({ ...CARLSEN, folderId: folder.id });
+    await saveAnalysis(ANAND);
+    await renderScreen();
+
+    expect(rowIds()).toEqual([`saved-analyses-folder-${folder.id}`, "g2"]);
+    expect(screen.getByTestId(`saved-analyses-folder-${folder.id}`)).toHaveTextContent("1 analysis");
+    await user.click(within(screen.getByTestId("saved-analyses-table-frame-table")).getByRole("button", { name: "Open Tata Steel 2024" }));
+    expect(rowIds()).toEqual([`saved-analyses-folder-${folder.id}`, "g1", "g2"]);
+    // A folder has no pick; select-all takes the analyses shown.
+    await user.click(screen.getByRole("checkbox", { name: "Select all analyses" }));
+    expect(screen.getByTestId("saved-analyses-selected-count")).toHaveTextContent("2 selected");
+    // Its name goes into it, the sort kept.
+    await user.click(header("White"));
+    await user.click(screen.getByRole("link", { name: "Open folder Tata Steel 2024" }));
+    expect(where.current?.search).toBe(`?sort=white&folder=${folder.id}`);
+    expect(rowIds()).toEqual(["g1"]);
+  });
+
+  it("finds an analysis in a closed folder by its words, opening the way to it", async () => {
+    const user = userEvent.setup();
+    const openings = (await createAnalysisFolder("Openings", null))!;
+    const candidates = (await createAnalysisFolder("Candidates", openings.id))!;
+    await saveAnalysis({ ...ANAND, folderId: candidates.id });
+    await saveAnalysis(CARLSEN);
+    await renderScreen();
+
+    expect(rowIds()).toEqual([`saved-analyses-folder-${openings.id}`, "g1"]);
+    await user.type(screen.getByRole("searchbox", { name: "Filter analyses" }), "aronian");
+    expect(rowIds()).toEqual([`saved-analyses-folder-${openings.id}`, `saved-analyses-folder-${candidates.id}`, "g2"]);
   });
 
   it("leaves the card views as they were — no table, no words box", async () => {

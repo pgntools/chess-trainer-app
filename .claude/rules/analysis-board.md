@@ -58,9 +58,9 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/views/tools/analysis/saved/NewAnalysisForm.tsx` | The saved list's right-hand panel (CTA-87/96): the shared position editor over a **Start** that opens the Analysis Board on the edited position; the form's header carries the editor's resets (New, Clear, Flip), its `controls` row the FEN field and the `.pgn` pick, and under the editor the paste box — `useAnalysisLoad` placed by hand, a whole game handed to the board as `analysisHandOff` location state, a position PGN or FEN setting the editor up ([`position-editor.md`](./position-editor.md) §4). |
 | `src/views/tools/analysis/saved/AnalysisSettingsScreen.tsx` | `/tools/analysis/saved/<id>/settings`. |
 | `src/views/tools/analysis/saved/useSavedAnalyses.ts`, `useAnalysisFolders.ts` | The store bindings (`undefined` until read). |
-| `src/blocks/tables/SavedAnalysesTable/` | **The list view** (CTA-144): a folder's analyses as a `DataTable` — Name, White, Elo, Black, Elo, Result, Date, Event, Round, ECO, Opening, Moves, Updated — over rows the screen filters and orders; the words box in its filters slot, a no-match row with its Clear. |
-| `src/lib/savedAnalysisRows.ts` | **An analysis as a table row**, pure (CTA-144): `savedAnalysisRowOf` (the tags, through the Library's `collectionRowOf` — no `chess.js`; the placeholders read as absent), `savedAnalysisRowWith` (unreadable, the book's opening where the tags name none), `sortedAnalysisRows`, `filteredAnalysisRows`, `SAVED_ANALYSIS_COLUMNS`, `SAVED_ANALYSES_DEFAULT_SORT`, `savedAnalysisFirstDirection`. |
-| `src/blocks/lists/SavedAnalysesList/`, `FolderActions/`, `FolderPicker/`; `src/blocks/dialogs/Folder*Dialog/` | The list (the folders over the table's slot, or folders and records as cards) and the nested-folder pieces — a folder's actions, the picker, the name / move / delete dialogs — each taking its words as `labels` and a test-id prefix (CTA-113). |
+| `src/blocks/tables/SavedAnalysesTable/` | **The list view** (CTA-144): the folders and analyses as one tree table on `DataTable`'s tree rows — folders first, opened in place; an analysis' Name, White, Elo, Black, Elo, Result, Date, Event, Round, ECO, Opening, Moves, Updated — over rows the screen walks (`analysisTreeRows`); the words box in its filters slot, a no-match row with its Clear. |
+| `src/lib/savedAnalysisRows.ts` | **An analysis as a table row**, pure (CTA-144): `savedAnalysisRowOf` (the tags, through the Library's `collectionRowOf` — no `chess.js`; the placeholders read as absent), `savedAnalysisRowWith` (unreadable, the book's opening where the tags name none), `analysisTreeRows` (folders and analyses as one tree's rows, over `folderTreeRows`), `compareAnalysisRows` / `compareAnalysisFolders`, `sortedAnalysisRows`, `filteredAnalysisRows`, `SAVED_ANALYSIS_COLUMNS`, `SAVED_ANALYSES_DEFAULT_SORT`, `savedAnalysisFirstDirection`. |
+| `src/blocks/lists/SavedAnalysesList/`, `FolderActions/`, `FolderPicker/`; `src/blocks/dialogs/Folder*Dialog/` | The card views (folders and records as cards) and the nested-folder pieces — a folder's actions, the picker, the name / move / delete dialogs — each taking its words as `labels` and a test-id prefix (CTA-113). |
 | `src/lib/savedAnalyses.ts` | **The record**, pure: `SavedAnalysis`, `savedAnalysisOf`, `savedAnalysisFrom` (the normaliser), `savedAnalysisDerivedName`, `batchAnalysesOf`, `analysisGamesOfText` (a text's games as analyses, CTA-141), `savedAnalysisCatalogOf`. |
 | `src/lib/savedAnalysisStore.ts` | **The store** (`chessapp.analyses`, object store `analyses`): `saveAnalysis`, `addAnalyses`, `fileSavedAnalysis`, `renameSavedAnalysis`, `updateSavedAnalysisSettings`, `removeSavedAnalyses`, `unfileAnalysesIn`, `findSavedAnalysisGame`; cap `MAX_SAVED_ANALYSES` (20,000). |
 | `src/lib/savedAnalysisFolders.ts` + `savedAnalysisFolderStore.ts` | The folders: an `AnalysisFolder` *is* a `GameFolder` (`lib/savedGameFolders.ts`, the nested model: cycles cut, dangling parents read as top level); create / rename / move (never into its own subtree) / delete (sub-folders re-parent, analyses become Unfiled); cap 100. |
@@ -295,11 +295,17 @@ validated, ignored when it does not resolve, taken as *initial* state.
   instead (`onLoadPosition` / `onLoadFen`). The editor offers no tabs of its
   own (`forms={["position"]}`, the fields always shown —
   [`position-editor.md`](./position-editor.md)).
-- **A games table, or preview boards** at the saved lists' two card sizes
+- **A tree table, or preview boards** at the saved lists' two card sizes
   (`CardGrid`'s `cardGridColumns`), each card showing the position and side the
   reader **was standing on** (`options.id` `saved-analyses-preview-<id>`).
 - **The table** (CTA-144, the list view and the default — most analyses are
-  imported games): **Name** (the reader's name, else the players, else
+  imported games) is **a tree table, the Library list's** (`analysisTreeRows`
+  over `lib/folderTreeRows.ts`, the `DataTable`'s tree rows): the folders
+  first at every level, each with its subtree's count, opened in place by
+  its chevron or a click on its row (its analyses indented under it — the open
+  folders are the screen's state, not the URL's), its name a link into it
+  (`?folder=`), its actions download / rename / move / delete; a folder has
+  no pick. An analysis row: **Name** (the reader's name, else the players, else
   "Analysis board"; the row's link to the board, the description under it),
   White, Elo, Black, Elo, Result, Date, Event, Round, ECO, Opening, Moves,
   Updated — read off the PGN tags without parsing the tree
@@ -309,25 +315,26 @@ validated, ignored when it does not resolve, taken as *initial* state.
   - **Every header sorts**, both ways, missing values last, ties
     newest-updated first; the default is Updated, newest first. A **words box**
     (`?q=`) matches names, notes, players, Elos, event, round, date, ECO and
-    opening. The sort and the words cover **the whole folder**, the page is cut
-    after them; the sort, the page, its size and the words are the URL's
+    opening, and the folders' names, opening the folders above a match. The
+    sort (within each level; folders by name, or by when they changed under
+    Updated) and the words cover **everything in view** — the whole tree, or
+    a `?folder=`'s subtree seen from inside it — and the page is cut after
+    them; the sort, the page, its size and the words are the URL's
     (`useTableUrlState`, history replace), so a settings screen or a board
     comes back to the table as it was. A new sort, filter or folder starts at
     the first page; a new folder drops the words and keeps the sort. Nothing
     matching says so (`saved-analyses-table-no-match`) with a Clear.
   - **ECO and Opening from the book** where the tags name none
-    (`openingOfLine` over the mainline): over the whole folder while it holds
-    at most 250 analyses (the largest page — every record parsed once and
-    kept, so those columns sort and filter by it and every unreadable record
-    is marked); in a larger folder for the page on screen only, the sort and
-    the filter reading the tags alone.
-  - Folders come first, above the table (at most part of its height,
-    scrolling on their own).
+    (`openingOfLine` over the mainline): over every analysis the open folders
+    show while they are at most 250 (the largest page — every record parsed
+    once and kept, so those columns sort and filter by it and every
+    unreadable record is marked); past that for the page on screen only, the
+    sort and the filter reading the tags alone.
 - **Every row and card** has its link to the board (a row's name, a card's
   board), the settings gear and a checkbox; the export bar downloads the picks
-  and deletes them in bulk, asking first. Select-all takes the whole folder —
-  the table's, in its header, the rows the filter leaves; the cards', in the
-  bar. The picks persist across folders and views.
+  and deletes them in bulk, asking first. Select-all — the table's, in its
+  header, over the analyses shown (the filter's, the open folders'); the
+  cards', in the bar, over the folder's. The picks persist across folders and views.
 - **Folders** are created, renamed, moved (never into their own subtree),
   deleted keeping their contents (sub-folders re-parent, analyses Unfiled) and
   downloaded as one `.pgn`.

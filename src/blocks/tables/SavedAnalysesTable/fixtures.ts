@@ -1,4 +1,5 @@
 import type { SavedAnalysisRow } from "../../../lib/savedAnalysisRows";
+import type { GameFolder } from "../../../lib/savedGameFolders";
 
 /*
   A folder's sample analyses (CTA-144), typed with `src/lib/`'s own row, so a
@@ -8,6 +9,7 @@ import type { SavedAnalysisRow } from "../../../lib/savedAnalysisRows";
 
 const row = (id: string, fields: Partial<SavedAnalysisRow>): SavedAnalysisRow => ({
   id,
+  folderId: null,
   name: "",
   description: "",
   moves: 0,
@@ -45,10 +47,49 @@ export const ANALYSIS_ROWS: readonly SavedAnalysisRow[] = [
   row("broken", { name: "Broken record", unreadable: true, updated: "2026-09-02T10:00:00.000Z" }),
 ];
 
+const folder = (id: string, name: string, parentId: string | null = null, updatedAt = "2026-09-01T10:00:00.000Z"): GameFolder => ({
+  id,
+  name,
+  parentId,
+  savedAt: "2026-08-01T10:00:00.000Z",
+  updatedAt,
+});
+
+/** Folders: one with a sub-folder, one of imported games, one empty. */
+export const ANALYSIS_FOLDERS: readonly GameFolder[] = [
+  folder("fopen", "Openings", null, "2026-09-06T10:00:00.000Z"),
+  folder("fsic", "Sicilian", "fopen"),
+  folder("ftata", "Tata Steel 2024", null, "2026-09-02T10:00:00.000Z"),
+  folder("fempty", "Empty folder"),
+];
+
+/** Analyses filed in those folders — the tree's contents. */
+export const FILED_ROWS: readonly SavedAnalysisRow[] = [
+  row("giri", {
+    folderId: "ftata",
+    name: "Carlsen, Magnus – Giri, Anish",
+    white: "Carlsen, Magnus",
+    whiteElo: 2830,
+    black: "Giri, Anish",
+    blackElo: 2749,
+    result: "1-0",
+    date: "2024.01",
+    event: "Tata Steel",
+    round: "3",
+    eco: "C65",
+    opening: "Ruy Lopez, Berlin Defence",
+    moves: 41,
+    updated: "2026-09-02T10:00:00.000Z",
+  }),
+  row("najdorf", { folderId: "fsic", name: "Najdorf, the poisoned pawn", eco: "B97", opening: "Sicilian, Najdorf", moves: 22 }),
+];
+
 /** Hebrew names and events, for the RTL pass. */
+export const HEBREW_FOLDERS: readonly GameFolder[] = [folder("fh", "פתיחות")];
+
 export const HEBREW_ROWS: readonly SavedAnalysisRow[] = [
   row("h1", { name: "טל – בוטבינניק", white: "טל, מיכאל", black: "בוטבינניק, מיכאל", result: "1-0", date: "1960.03.15", event: "אליפות העולם", moves: 41 }),
-  row("h2", { name: "ההכנה שלי", description: "הקו הראשי עם 4.O-O", eco: "C67", opening: "Ruy Lopez, Berlin Defence", moves: 18 }),
+  row("h2", { folderId: "fh", name: "ההכנה שלי", description: "הקו הראשי עם 4.O-O", eco: "C67", opening: "Ruy Lopez, Berlin Defence", moves: 18 }),
 ];
 
 /** `count` analyses — a Library batch is a folder of thousands. */

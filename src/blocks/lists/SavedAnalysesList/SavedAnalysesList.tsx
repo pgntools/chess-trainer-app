@@ -1,13 +1,11 @@
 import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
-import List from "@mui/material/List";
 import Typography from "@mui/material/Typography";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { useTranslation } from "react-i18next";
 
 import { CardGrid, FolderCard, RecordCard } from "../../../design-system/components/cards";
 import type { LinkTarget } from "../../../design-system/components/link";
-import { FolderRow } from "../../../design-system/components/lists";
 import { EmptyState } from "../../../design-system/components/states";
 import { IconAction } from "../../../design-system/components/toolbars";
 import type { GameTree } from "../../../lib/gameTree";
@@ -33,17 +31,12 @@ export type SavedAnalysisFolderActions = {
 };
 
 export type SavedAnalysesListProps = {
-  view: SavedListView;
+  /** The card size — the list view is the screen's tree table (`SavedAnalysesTable`, CTA-144). */
+  view: Exclude<SavedListView, "list">;
   /** The folders where the reader stands — drawn first: the reader drills into a folder, not past it. */
   folders: readonly SavedAnalysisFolderEntry[];
-  /** The page's analyses — the cards'. The list view shows the `table` instead. */
+  /** The page's analyses. */
   entries: readonly SavedAnalysisEntry[];
-  /**
-   * The list view's analyses (CTA-144): the games table — a
-   * `SavedAnalysesTable` — under the folders. Absent while the folder holds no
-   * analysis.
-   */
-  table?: ReactNode;
   /** The picked ids — over every folder; the list reads its own rows through them. */
   picked: ReadonlySet<string>;
   onTogglePick: (id: string) => void;
@@ -59,8 +52,8 @@ export type SavedAnalysesListProps = {
   /** No folder and no analysis here: what to say, and the note's test id. */
   empty: { label: ReactNode; testId: string };
   /**
-   * The prefix of every id: the body `<testId>-body` (the list) or
-   * `<testId>-grid` (the cards); a card `<testId>-item-<id>`, its
+   * The prefix of every id: the grid `<testId>-grid` (`<testId>-body` holding
+   * the empty note); a card `<testId>-item-<id>`, its
    * `-open-<id>`, `-select-<id>`, `-settings-<id>`, `-name-<id>`,
    * `-opening-<id>`; a folder `<testId>-folder-<id>`, `-folder-open-<id>`
    * and its actions `-folder-<action>-<id>`.
@@ -69,13 +62,12 @@ export type SavedAnalysesListProps = {
 };
 
 /**
- * **The saved analyses, as a table or cards** (CTA-113) — the body of
+ * **The saved analyses as cards** (CTA-113) — the card views of
  * `/tools/analysis/saved`: the folders where the reader stands, then this
- * folder's analyses — in the list view the folders as rows (`FolderRow`) over
- * the screen's games table (the `table` slot, a `SavedAnalysesTable` since
- * CTA-144, which replaced the analyses' own rows), or as preview boards at a
- * card size (`FolderCard`, `RecordCard` in a `CardGrid`). The repertoires'
- * list (`RepertoiresList`) is the cards' sister.
+ * folder's analyses, as preview boards at a card size (`FolderCard`,
+ * `RecordCard` in a `CardGrid`). The list view, once this block's rows, is
+ * the screen's tree table since CTA-144 (`SavedAnalysesTable`). The
+ * repertoires' list (`RepertoiresList`) is its sister.
  *
  * - **A card** previews the place the reader stood (the screen's `preview`),
  *   and adds the opening the mainline reached as a third line — every card
@@ -92,7 +84,6 @@ function SavedAnalysesList({
   view,
   folders,
   entries,
-  table,
   picked,
   onTogglePick,
   openLink,
@@ -105,7 +96,7 @@ function SavedAnalysesList({
 }: SavedAnalysesListProps) {
   const { t, i18n } = useTranslation();
 
-  if (folders.length === 0 && entries.length === 0 && table === undefined) {
+  if (folders.length === 0 && entries.length === 0) {
     return (
       <Box data-testid={`${testId}-body`} sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
         <EmptyState testId={empty.testId}>{empty.label}</EmptyState>
@@ -164,39 +155,6 @@ function SavedAnalysesList({
       />
     );
   };
-
-  if (view === "list") {
-    return (
-      <Box data-testid={`${testId}-body`} sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-        {folders.length > 0 && (
-          // Beside a table the folders take at most part of the height, scrolling on their own; alone, all of it.
-          <Box
-            sx={{
-              minHeight: 0,
-              overflowY: "auto",
-              overflowX: "hidden",
-              ...(table === undefined ? { flex: 1 } : { flex: "0 1 auto", maxHeight: "40%" }),
-            }}
-          >
-            <List disablePadding aria-label={t("savedList.breadcrumb")}>
-              {folders.map((entry) => (
-                <FolderRow
-                  key={entry.folder.id}
-                  name={folderName(entry.folder)}
-                  count={t("savedAnalyses.folder.count", { count: entry.count })}
-                  onOpen={() => onOpenFolder(entry.folder.id)}
-                  actions={actionsOf(entry)}
-                  testId={`${testId}-folder-${entry.folder.id}`}
-                  openTestId={`${testId}-folder-open-${entry.folder.id}`}
-                />
-              ))}
-            </List>
-          </Box>
-        )}
-        {table}
-      </Box>
-    );
-  }
 
   return (
     <CardGrid scroll size={view} ariaLabel={t("savedAnalyses.title")} testId={`${testId}-grid`}>

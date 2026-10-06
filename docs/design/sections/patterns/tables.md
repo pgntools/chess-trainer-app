@@ -101,6 +101,9 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
 - `rowLinkLabel(row)` — the row link's name, where the cell's words alone do
   not tell one row from another (a collection's White cell).
 - `picks.selectAllTestId`, `picks.pickTestId(row)`.
+- `picks.canPick(row)` (CTA-144) — a row it turns down (a folder among a
+  tree's items) has an empty pick cell and is left out of select-all and its
+  count; absent, every row can be picked.
 - `rowLink` may answer `undefined` for a row with no destination (a folder).
 - **An empty or no-match line is a table row** (`-empty`, `-no-match`): a
   test that counts rows skips it.

@@ -8,7 +8,7 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import ViewComfyRounded from "@mui/icons-material/ViewComfyRounded";
 import ViewListRounded from "@mui/icons-material/ViewListRounded";
 import ViewModuleRounded from "@mui/icons-material/ViewModuleRounded";
-import { Link as RouterLink, useLocation, useSearchParams } from "react-router";
+import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Chessboard } from "react-chessboard";
 
@@ -18,7 +18,7 @@ import { SavedAnalysesTable } from "../../../../blocks/tables";
 import { DeleteManyDialog } from "../../../../design-system/components/dialogs";
 import { SearchField } from "../../../../design-system/components/forms";
 import { Breadcrumbs } from "../../../../design-system/components/navigation";
-import { LoadingLine } from "../../../../design-system/components/states";
+import { EmptyState, LoadingLine } from "../../../../design-system/components/states";
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZES, TablePager, useTableUrlState } from "../../../../design-system/components/tables";
 import { IconAction, ListScreenHeader, SelectionBar, ViewToggle } from "../../../../design-system/components/toolbars";
 import { mainlineGame, type GameTree } from "../../../../lib/gameTree";
@@ -27,13 +27,12 @@ import { downloadPgn } from "../../../../lib/pgnExport";
 import { slugify } from "../../../../lib/pgnText";
 import { savedAnalysisFen, savedAnalysisToTree, type SavedAnalysis } from "../../../../lib/savedAnalyses";
 import {
-  filteredAnalysisRows,
+  analysisTreeRows,
   SAVED_ANALYSES_DEFAULT_SORT,
   SAVED_ANALYSIS_COLUMNS,
   savedAnalysisFirstDirection,
   savedAnalysisRowOf,
   savedAnalysisRowWith,
-  sortedAnalysisRows,
   type AnalysisOpeningLookup,
   type SavedAnalysisRow,
 } from "../../../../lib/savedAnalysisRows";
@@ -72,30 +71,35 @@ import { useSavedAnalyses } from "./useSavedAnalyses";
  * Since CTA-113 it is the design system's composition, and holds only the
  * state: a `ListScreenHeader` (the title the page's `h1`, the count, New,
  * New folder, the `SelectionBar` and the `ViewToggle`), the folder trail
- * (`Breadcrumbs`), the **`SavedAnalysesList`** block (the folders, and the
- * cards — the repertoires' `RepertoiresList` is its sister, one look) with,
- * in the list view, the **`SavedAnalysesTable`** block in its `table` slot
- * (CTA-144), and the cards' `TablePager`. The folder dialogs are the
+ * (`Breadcrumbs`), in the list view the **`SavedAnalysesTable`** block (the
+ * folders and analyses as one tree table, CTA-144), in the card views the
+ * **`SavedAnalysesList`** block (the repertoires' `RepertoiresList` is its
+ * sister, one look) and their `TablePager`. The folder dialogs are the
  * `blocks/dialogs` ones; the bulk delete is `DeleteManyDialog`.
  *
- * - **The list view is a games table** (CTA-144) — most saved analyses are
- *   imported games, and a folder of them is put in order: Name, White, Elo,
+ * - **The list view is a tree table** (CTA-144) — the folders first at every
+ *   level, each opened in place by its chevron (or its row), its analyses
+ *   indented under it, its name a link into it; the open folders are the
+ *   screen's state. Most saved analyses are imported games, and a folder of
+ *   them is put in order: Name, White, Elo,
  *   Black, Elo, Result, Date, Event, Round, ECO, Opening, Moves, Updated, each
  *   a sort header, read off the record's PGN tags without parsing it
  *   (`lib/savedAnalysisRows.ts`; a board's own placeholders read as empty);
  *   newest updated first until a header is clicked; a words box over names,
- *   players, event, opening and notes. **The sort and the filter cover the
- *   whole folder**, and the page is cut after them. The sort, the page, its
+ *   players, event, opening and notes — and the folders' names — opening the
+ *   folders above a match by themselves. **The sort and the filter cover
+ *   everything in view** (the whole tree, or a `?folder=`'s subtree), within
+ *   each level, and the page is cut after them. The sort, the page, its
  *   size and the words are the URL's (`useTableUrlState`: `?sort=`, `?dir=`,
  *   `?page=`, `?rows=`, `?q=`, history replace), so coming back from a board
  *   or a settings screen finds the table as it was; a new sort, filter or
  *   folder starts at the first page, and a new folder drops the words.
  * - **The opening the book names** fills ECO and Opening where the tags name
- *   none — over the whole folder while it holds at most
- *   `SAVED_ANALYSES_PARSE_ALL` analyses (the largest page: no folder costs
- *   more to read than one page always did), so those columns sort and filter
- *   by it; in a larger folder (a Library batch) only for the page on screen,
- *   and the sort and the filter read the tags alone.
+ *   none — over every analysis the open folders show while they are at most
+ *   `SAVED_ANALYSES_PARSE_ALL` (the largest page: nothing costs more to read
+ *   than one page always did), so those columns sort and filter by it; past
+ *   that (an open Library batch) only for the page on screen, and the sort
+ *   and the filter read the tags alone.
  *
  * - **One destination.** An analysis opens on the Analysis Board
  *   (`?analysis=<id>`) — a row's name, the board itself on a card.
@@ -205,6 +209,7 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
   useOwnPageHeading();
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const squares = useBoardSquareOptions();
   const [view, setView] = useState<SavedListView>(SAVED_LIST_DEFAULT_VIEW);
 
@@ -218,16 +223,17 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
   const currentFolder = requestedFolder === null ? undefined : folders.find((folder) => folder.id === requestedFolder);
   const browseId = currentFolder?.id ?? null;
   usePageTitle(currentFolder === undefined ? undefined : currentFolder.name || t("savedAnalyses.folder.untitled"));
-  /* A new folder starts at its first page, without the words typed over the last; the sort and the page size stay. */
-  const openFolder = (id: string | null) =>
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      if (id === null) next.delete("folder");
-      else next.set("folder", id);
-      next.delete("page");
-      next.delete("q");
-      return next;
-    });
+  /* A folder's search: into it at its first page, without the words typed over the last; the sort and the page size stay. */
+  const folderSearch = (id: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (id === null) next.delete("folder");
+    else next.set("folder", id);
+    next.delete("page");
+    next.delete("q");
+    const search = next.toString();
+    return search === "" ? "" : `?${search}`;
+  };
+  const openFolder = (id: string | null) => setSearchParams(folderSearch(id));
   const foldersHere = analysisFolderChildren(folders, browseId);
   const crumbs = currentFolder === undefined ? [] : analysisFolderPath(folders, currentFolder.id);
   // Keyed on what the URL asks for: the folder it resolves to is read off the same `folders`.
@@ -244,39 +250,94 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
   );
 
   /*
-    The table's rows (CTA-144): every analysis here off its tags — read whole,
-    parse and book included, while the folder is small enough — then the
-    words, then the sort, all over the whole folder; the page is cut after.
+    The tree table (CTA-144): the folders and analyses in view — everything,
+    or a folder's subtree seen from inside it — walked into one table, folders
+    first at every level, an open folder's contents under it.
   */
   const text = searchParams.get("q") ?? "";
-  const parseAll = rowsHere.length <= SAVED_ANALYSES_PARSE_ALL;
-  const folderRows = useMemo(
-    () => (isList ? rowsHere.map((saved) => (parseAll ? readRowOf(saved, lookup) : tagRowOf(saved))) : []),
-    [isList, rowsHere, parseAll, lookup],
+  // Keyed on what the URL asks for, as `rowsHere` is: the folder it resolves to is read off the same `folders`.
+  const scopeFolders = useMemo(() => {
+    const scope = folders.some((folder) => folder.id === requestedFolder) ? requestedFolder : null;
+    if (scope === null) return folders;
+    const subtree = analysisFolderSubtree(folders, scope);
+    return folders.filter((folder) => folder.id !== scope && subtree.has(folder.id));
+  }, [folders, requestedFolder]);
+  const scopeAnalyses = useMemo(() => {
+    const scope = folders.some((folder) => folder.id === requestedFolder) ? requestedFolder : null;
+    return scope === null ? analyses : analysesInFolder(analyses, folders, scope);
+  }, [analyses, folders, requestedFolder]);
+
+  /*
+    Which folders are open: the reader's own toggles, kept by id; one never
+    toggled is open while the words open it (above a match). Not the URL's —
+    the Library's tree keeps its open folders the same way.
+  */
+  const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(new Map());
+
+  /*
+    The analyses the open folders show (the words aside) are read whole —
+    parse and book — while there are at most `SAVED_ANALYSES_PARSE_ALL`, so
+    the book's openings sort and filter with the tags; the rest are their
+    tags until their row is on screen.
+  */
+  const readWhole = useMemo(() => {
+    const inScope = new Map(scopeFolders.map((folder) => [folder.id, folder]));
+    const shown = new Map<string, boolean>();
+    const folderShown = (id: string): boolean => {
+      const known = shown.get(id);
+      if (known !== undefined) return known;
+      const folder = inScope.get(id);
+      // A folder out of view is the scope itself — its contents are the top level.
+      const result =
+        folder === undefined ||
+        ((toggled.get(id) ?? false) && (folder.parentId === null || folderShown(folder.parentId)));
+      shown.set(id, result);
+      return result;
+    };
+    const visible = scopeAnalyses.filter((saved) => saved.folderId === null || folderShown(saved.folderId));
+    return visible.length <= SAVED_ANALYSES_PARSE_ALL ? new Set(visible) : new Set<SavedAnalysis>();
+  }, [scopeFolders, scopeAnalyses, toggled]);
+  const treeItems = useMemo(
+    () => (isList ? scopeAnalyses.map((saved) => (readWhole.has(saved) ? readRowOf(saved, lookup) : tagRowOf(saved))) : []),
+    [isList, scopeAnalyses, readWhole, lookup],
   );
-  const filteredRows = useMemo(() => filteredAnalysisRows(folderRows, text), [folderRows, text]);
   const table = useTableUrlState({
     columns: SAVED_ANALYSIS_COLUMNS,
     defaultSort: SAVED_ANALYSES_DEFAULT_SORT,
     firstDirection: savedAnalysisFirstDirection,
     defaultRowsPerPage: SAVED_ANALYSES_PAGE,
-    count: isList ? filteredRows.length : rowsHere.length,
   });
-  const { page, rowsPerPage } = table;
-  const orderedRows = useMemo(
-    () => sortedAnalysisRows(filteredRows, table.sort, table.direction),
-    [filteredRows, table.sort, table.direction],
+  const walked = useMemo(
+    () =>
+      isList
+        ? analysisTreeRows({
+            folders: scopeFolders,
+            rows: treeItems,
+            isOpen: (id, auto) => toggled.get(id) ?? auto,
+            column: table.sort,
+            direction: table.direction,
+            text,
+          }).rows
+        : [],
+    [isList, scopeFolders, treeItems, toggled, table.sort, table.direction, text],
   );
-  // A folder too big to read whole is read a page at a time: the page on screen, in the order shown.
+  const { rowsPerPage } = table;
+  // A page past the last (rows gone since the URL was written) reads as the last.
+  const page = Math.min(table.page, Math.max(0, Math.ceil((isList ? walked.length : rowsHere.length) / rowsPerPage) - 1));
+  // The page on screen read for what it shows — a row's book opening, an unreadable record marked.
   const tableRows = useMemo(() => {
-    if (parseAll) return orderedRows;
-    const byId = new Map(rowsHere.map((saved) => [saved.id, saved]));
+    const byId = new Map(scopeAnalyses.map((saved) => [saved.id, saved]));
     const from = page * rowsPerPage;
-    return orderedRows.map((row, index) => {
-      const saved = index >= from && index < from + rowsPerPage ? byId.get(row.id) : undefined;
-      return saved === undefined ? row : readRowOf(saved, lookup);
+    return walked.map((row, index) => {
+      if (row.kind === "folder" || index < from || index >= from + rowsPerPage) return row;
+      const saved = byId.get(row.item.id);
+      return saved === undefined ? row : { ...row, item: readRowOf(saved, lookup) };
     });
-  }, [parseAll, orderedRows, rowsHere, page, rowsPerPage, lookup]);
+  }, [walked, scopeAnalyses, page, rowsPerPage, lookup]);
+  const toggleFolder = (id: string) => {
+    const shownOpen = walked.find((row) => row.kind === "folder" && row.folder.id === id);
+    setToggled((before) => new Map(before).set(id, !(shownOpen?.kind === "folder" && shownOpen.open)));
+  };
 
   /* The cards' page — the folder as it comes, newest first. */
   const pageRows = useMemo(
@@ -400,6 +461,14 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
     testId: "saved-analyses",
   };
 
+  /* What a folder's actions do — a tree table's folder row, or a card. */
+  const folderActions = {
+    onDownload: downloadFolder,
+    onRename: (folder: AnalysisFolder) => setNameDialog({ mode: "rename", folder }),
+    onMove: setMoving,
+    onDelete: startDelete,
+  };
+
   // Save and Cancel on a settings screen come back to this list as it stands.
   const from = `${location.pathname}${location.search}`;
   const folderName = (folder: AnalysisFolder) => folder.name || t("savedAnalyses.folder.untitled");
@@ -490,27 +559,37 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
         )}
 
         {/*
-          The one region that scrolls. Folders first, then this folder's
-          analyses: the reader drills into a folder, they do not scroll past it.
+          The one region that scrolls. The list view is the tree table — the
+          folders first at every level, opened in place (CTA-144); the cards
+          show this folder's folders, then its analyses.
         */}
-        <SavedAnalysesList
-          view={view}
-          folders={foldersHere.map((folder) => ({ folder, count: analysesUnderFolder(analyses, folders, folder.id) }))}
-          entries={entries}
-          table={
-            isList && rowsHere.length > 0 ? (
+        {isList ? (
+          scopeFolders.length === 0 && scopeAnalyses.length === 0 ? (
+            <Box data-testid="saved-analyses-body" sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+              {browseId === null ? (
+                <EmptyState testId="saved-analyses-empty">{t("savedAnalyses.empty")}</EmptyState>
+              ) : (
+                <EmptyState testId="saved-analyses-folder-empty">{t("savedAnalyses.folder.empty")}</EmptyState>
+              )}
+            </Box>
+          ) : (
+            <Box data-testid="saved-analyses-body" sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
               <SavedAnalysesTable
                 rows={tableRows}
                 sort={{ column: table.sort, direction: table.direction }}
                 onSort={table.sortBy}
+                onToggle={toggleFolder}
+                folderLink={(folder) => ({ component: RouterLink, to: `${location.pathname}${folderSearch(folder.id)}` })}
+                folderActions={folderActions}
                 paging={
-                  orderedRows.length > TABLE_PAGE_SIZES[0]
+                  walked.length > TABLE_PAGE_SIZES[0]
                     ? { page, rowsPerPage, onPageChange: table.setPage, onRowsPerPageChange: table.setRowsPerPage }
                     : undefined
                 }
                 picked={picked}
                 onPickedChange={setPicked}
                 openLink={(row) => ({ component: RouterLink, to: boardPath(row) })}
+                onOpenAnalysis={(row) => navigate(boardPath(row))}
                 settingsLink={(row) => ({
                   component: RouterLink,
                   to: `/tools/analysis/saved/${encodeURIComponent(row.id)}/settings`,
@@ -532,47 +611,49 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
                 openTestId="saved-analyses-open"
                 pickTestId="saved-analyses-select"
                 selectAllTestId="saved-analyses-select-all"
-              />
-            ) : undefined
-          }
-          picked={picked}
-          onTogglePick={togglePicked}
-          openLink={(saved) => ({ component: RouterLink, to: boardPath(saved) })}
-          settingsLink={(saved) => ({
-            component: RouterLink,
-            to: `/tools/analysis/saved/${encodeURIComponent(saved.id)}/settings`,
-            state: { from },
-          })}
-          onOpenFolder={openFolder}
-          folderActions={{
-            onDownload: downloadFolder,
-            onRename: (folder) => setNameDialog({ mode: "rename", folder }),
-            onMove: setMoving,
-            onDelete: startDelete,
-          }}
-          preview={({ saved, tree }) => (
-            <Box sx={{ width: "100%", aspectRatio: "1 / 1" }}>
-              <Chessboard
-                options={{
-                  ...squares,
-                  // `options.id` is unique on the page: this screen shows many boards at once.
-                  id: `saved-analyses-preview-${saved.id}`,
-                  position: savedAnalysisFen(saved, tree),
-                  boardOrientation: saved.orientation,
-                  allowDragging: false,
-                  allowDrawingArrows: false,
-                  showNotation: false,
-                }}
+                folderTestId="saved-analyses-folder"
               />
             </Box>
-          )}
-          empty={
-            browseId === null
-              ? { label: t("savedAnalyses.empty"), testId: "saved-analyses-empty" }
-              : { label: t("savedAnalyses.folder.empty"), testId: "saved-analyses-folder-empty" }
-          }
-          testId="saved-analyses"
-        />
+          )
+        ) : (
+          <SavedAnalysesList
+            view={view}
+            folders={foldersHere.map((folder) => ({ folder, count: analysesUnderFolder(analyses, folders, folder.id) }))}
+            entries={entries}
+            picked={picked}
+            onTogglePick={togglePicked}
+            openLink={(saved) => ({ component: RouterLink, to: boardPath(saved) })}
+            settingsLink={(saved) => ({
+              component: RouterLink,
+              to: `/tools/analysis/saved/${encodeURIComponent(saved.id)}/settings`,
+              state: { from },
+            })}
+            onOpenFolder={openFolder}
+            folderActions={folderActions}
+            preview={({ saved, tree }) => (
+              <Box sx={{ width: "100%", aspectRatio: "1 / 1" }}>
+                <Chessboard
+                  options={{
+                    ...squares,
+                    // `options.id` is unique on the page: this screen shows many boards at once.
+                    id: `saved-analyses-preview-${saved.id}`,
+                    position: savedAnalysisFen(saved, tree),
+                    boardOrientation: saved.orientation,
+                    allowDragging: false,
+                    allowDrawingArrows: false,
+                    showNotation: false,
+                  }}
+                />
+              </Box>
+            )}
+            empty={
+              browseId === null
+                ? { label: t("savedAnalyses.empty"), testId: "saved-analyses-empty" }
+                : { label: t("savedAnalyses.folder.empty"), testId: "saved-analyses-folder-empty" }
+            }
+            testId="saved-analyses"
+          />
+        )}
 
         {/* The cards' pager; the table carries its own. */}
         {!isList && rowsHere.length > TABLE_PAGE_SIZES[0] && (

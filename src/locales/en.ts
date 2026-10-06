@@ -892,6 +892,11 @@ const en = {
       /** The filter leaves no row — told apart from an empty folder. */
       noMatch: "No analysis matches the filter.",
       clearFilter: "Clear the filter",
+      /** A folder row's chevron — it opens or closes the folder in place. */
+      expand: "Open {{name}}",
+      collapse: "Close {{name}}",
+      /** Read with the table: how its folders, sort and picks are worked. */
+      hint: "Folders come first: a folder's arrow opens it in place, its name goes into it. Sort by a column from its header button. Tick an analysis' box to pick it.",
     },
     download: "Download selected as PGN",
     deleteSelected: "Delete selected",
