@@ -1,4 +1,5 @@
 import type { ImportResolver } from "./compileMdx";
+import type { ArticlePgn } from "./pgnImports";
 
 /**
  * **The Blog's files as text** — what the MDX editor opens an article from,
@@ -61,3 +62,11 @@ export const articleImportResolver = (folder: string, attached: Readonly<Record<
     return IMAGE.test(key) ? imageFiles[key]() : pgnFiles[key]();
   },
 });
+
+/** A PGN of the article's — its text written in, or read from its file beside the article; `undefined` for a file not there. */
+export const pgnTextOf = async (pgn: ArticlePgn, folder: string, attached: Readonly<Record<string, string>>): Promise<string | undefined> => {
+  if (pgn.kind === "inline") return pgn.text;
+  const resolver = articleImportResolver(folder, attached);
+  const key = resolver.keyOf(`${pgn.file}?raw`);
+  return key === undefined ? undefined : resolver.load(key);
+};

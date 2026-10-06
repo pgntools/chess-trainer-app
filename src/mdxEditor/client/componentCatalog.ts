@@ -2,7 +2,7 @@ import type { TournamentKind } from "./tournamentKind";
 
 /**
  * **The components an article embeds, as examples to drop in** (CTA-137) —
- * the MDX editor's Add PGN dialog, its Output element step: folders by
+ * the MDX editor's Components section, its Add a component: folders by
  * what the game is (a single game, a player's, a set of games gathered by
  * no rule, a repertoire, a tournament, a position, a puzzle), each holding the components that show that.
  * Every entry writes its markup for the game step 1 chose — a PGN of the
@@ -240,7 +240,7 @@ export const CATALOG: readonly CatalogFolder[] = [
   },
 ];
 
-/** The Tournament entry that shows each kind of tournament — what Add component suggests from `guessTournamentKind`. */
+/** The Tournament entry that shows each kind of tournament — what Components' Add a component suggests from `guessTournamentKind`. */
 export const TOURNAMENT_ENTRY: Readonly<Record<TournamentKind, string>> = {
   swiss: "tournament-swiss",
   roundRobin: "tournament-round-robin",
@@ -259,11 +259,15 @@ export const catalogFor = (source: ExampleSource): CatalogFolder[] =>
  * `code` put into the body as a block of its own, where `at` (a caret's
  * offset) is: after the line it is on, a blank line either side.
  */
-export const insertBlock = (body: string, at: number, code: string): string => {
+export const insertBlock = (body: string, at: number, code: string): string => insertedBlock(body, at, code).body;
+
+/** `insertBlock`, and where the code starts in what it gives — so a list can pick what was just put in (CTA-139). */
+export const insertedBlock = (body: string, at: number, code: string): { body: string; start: number } => {
   const caret = Math.max(0, Math.min(at, body.length));
   const lineEnd = body.indexOf("\n", caret);
   const cut = lineEnd === -1 ? body.length : lineEnd;
   const before = body.slice(0, cut).replace(/\s+$/, "");
   const after = body.slice(cut).replace(/^\s+/, "");
-  return `${before === "" ? "" : `${before}\n\n`}${code}${after === "" ? "\n" : `\n\n${after}`}`;
+  const head = before === "" ? "" : `${before}\n\n`;
+  return { body: `${head}${code}${after === "" ? "\n" : `\n\n${after}`}`, start: head.length };
 };

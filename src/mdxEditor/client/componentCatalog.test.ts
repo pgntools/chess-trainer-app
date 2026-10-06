@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { mdxComponents } from "../../views/home/frontPage";
-import { CATALOG, catalogFor, componentOf, insertBlock, type ExampleSource } from "./componentCatalog";
+import { CATALOG, catalogFor, componentOf, insertBlock, insertedBlock, type ExampleSource } from "./componentCatalog";
 
 /*
-  The Add PGN dialog's examples (CTA-137): each a component an article can
+  The Components section's examples (CTA-137): each a component an article can
   name, written for a PGN or a Library game, and inserted as a block of its
   own where the caret is.
 */
@@ -46,5 +46,15 @@ describe("insertBlock", () => {
     expect(insertBlock(body, body.length, "<X />")).toBe(`${body}\n\n<X />\n`);
     expect(insertBlock(body, 0, "<X />")).toBe("## One\n\n<X />\n\nWords here\n\n## Two");
     expect(insertBlock("", 0, "<X />")).toBe("<X />\n");
+  });
+});
+
+describe("insertedBlock (CTA-139)", () => {
+  it("says where the code starts in what it gives", () => {
+    for (const [body, at] of [["## A\n\nWords", 4], ["", 0], ["Words", 0]] as const) {
+      const { body: next, start } = insertedBlock(body, at, "<MatchTable pgn={x} />");
+      expect(next).toBe(insertBlock(body, at, "<MatchTable pgn={x} />"));
+      expect(next.slice(start).startsWith("<MatchTable pgn={x} />")).toBe(true);
+    }
   });
 });

@@ -46,7 +46,7 @@ export const pgnNamesIn = (body: string): string[] =>
  * Every PGN the body binds, as the source that binds it — each
  * `import x from "./….pgn?raw"` line and each `export const x = \`…\``
  * literal, whole — so a piece of MDX put after them reads the article's
- * PGNs by their names (the Add PGN dialog's preview); only those `names`
+ * PGNs by their names (a component's preview in the Components section); only those `names`
  * bind, when given. `lines`: how many lines they take, with the blank line
  * after them.
  */
@@ -66,6 +66,9 @@ const leadingImports = (lines: readonly string[]): number => {
   return leading;
 };
 
+/** A PGN as a template literal's text: a backtick, a backslash or a `${` escaped, so the text is the PGN's exactly. */
+const escapedPgn = (pgn: string): string => pgn.trim().replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
+
 /**
  * The body with a PGN written into it (CTA-137) — `export const <name> =
  * \`<the PGN>\`` after its imports, a blank line either side — so it needs
@@ -73,8 +76,7 @@ const leadingImports = (lines: readonly string[]): number => {
  * text is the PGN's exactly.
  */
 export const withInlinePgn = (body: string, name: string, pgn: string): string => {
-  const escaped = pgn.trim().replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
-  const block = `export const ${name} = \`${escaped}\``;
+  const block = `export const ${name} = \`${escapedPgn(pgn)}\``;
   const lines = body.split("\n");
   const leading = leadingImports(lines);
   if (leading === 0) return body.trim() === "" ? `${block}\n` : `${block}\n\n${body}`;
@@ -117,8 +119,8 @@ export const withPgnImports = (body: string, files: readonly (string | PgnImport
   return { body: body.trim() === "" ? `${added.join("\n")}\n` : `${added.join("\n")}\n\n${body}`, imports };
 };
 
-/** One of the article's PGNs — a file beside it, imported, or one written into the content. */
-export type ArticlePgn = { name: string; kind: "file"; file: string } | { name: string; kind: "inline"; text: string };
+/** One of the article's PGNs — a file beside it, imported, or one written into the content — and where its definition is in the content. */
+export type ArticlePgn = ({ name: string; kind: "file"; file: string } | { name: string; kind: "inline"; text: string }) & { start: number; end: number };
 
 const DEFINITION = /^[ \t]*(?:import\s+([A-Za-z_$][\w$]*)\s+from\s+["']([^"'\n]+\.pgn)\?raw["'];?|export\s+const\s+([A-Za-z_$][\w$]*)\s*=\s*`((?:\\[\s\S]|[^`\\])*)`)[ \t]*$/gm;
 
@@ -130,14 +132,28 @@ const DEFINITION = /^[ \t]*(?:import\s+([A-Za-z_$][\w$]*)\s+from\s+["']([^"'\n]+
  * literal's, its escapes undone.
  */
 export const articlePgnsOf = (body: string): ArticlePgn[] =>
-  [...body.matchAll(DEFINITION)].map((match) =>
-    match[1] !== undefined
-      ? { name: match[1], kind: "file", file: match[2] }
-      : { name: match[3], kind: "inline", text: match[4].replace(/\\([`\\$])/g, "$1") },
-  );
+  [...body.matchAll(DEFINITION)].map((match) => {
+    const span = { start: match.index, end: match.index + match[0].length };
+    return match[1] !== undefined
+      ? { name: match[1], kind: "file", file: match[2], ...span }
+      : { name: match[3], kind: "inline", text: match[4].replace(/\\([`\\$])/g, "$1"), ...span };
+  });
 
-/** How many times the content uses a name, its own definition aside — the components reading a PGN. */
-export const usesOf = (body: string, name: string): number => Math.max(0, (body.match(new RegExp(`(?<![\\w$])${name.replace(/\$/g, "\\$")}(?![\\w$])`, "g")) ?? []).length - 1);
+/** A name as a regular expression's text — `$` taken literally. */
+const literal = (name: string) => name.replace(/\$/g, "\\$");
+
+/**
+ * How many times the content uses a name, its own definition aside — the
+ * components reading a PGN, an image. The import lines and the PGNs written
+ * in are no use of anything, so a file's path (`"./games.pgn?raw"`) or a
+ * PGN's text is never counted.
+ */
+export const usesOf = (body: string, name: string): number => {
+  const rest = body.replace(/^[ \t]*import\s[^\n]*$/gm, "").replace(DEFINITION, "");
+  const found = (rest.match(new RegExp(`(?<![\\w$])${literal(name)}(?![\\w$])`, "g")) ?? []).length;
+  // Its own `export const` that is not a PGN — a definition, not a use.
+  return Math.max(0, found - (new RegExp(`^[ \\t]*export\\s+(?:const|let|var|function)\\s+${literal(name)}(?![\\w$])`, "m").test(rest) ? 1 : 0));
+};
 
 /** The content without a PGN's definition — its import line or its inline block, and the blank line after it. */
 export const withoutPgn = (body: string, name: string): string => {
@@ -151,6 +167,29 @@ export const withoutPgn = (body: string, name: string): string => {
     return body.slice(0, start) + body.slice(end);
   }
   return body;
+};
+
+/**
+ * The content with a PGN bound under another name (CTA-139) — its
+ * definition (the import line, or the `export const`) and every
+ * `pgn={<from>}` that reads it; nothing else is touched. The caller checks
+ * `to` is an `IDENTIFIER` the content does not bind already.
+ */
+export const withRenamedPgn = (body: string, from: string, to: string): string => {
+  const match = [...body.matchAll(DEFINITION)].find((candidate) => (candidate[1] ?? candidate[3]) === from);
+  const defined =
+    match === undefined
+      ? body
+      : body.slice(0, match.index) + match[0].replace(new RegExp(`^([ \\t]*(?:import|export\\s+const)\\s+)${literal(from)}`), (_, head: string) => `${head}${to}`) + body.slice(match.index + match[0].length);
+  return defined.replace(new RegExp(`(\\bpgn=\\{\\s*)${literal(from)}(\\s*\\})`, "g"), (_, open: string, close: string) => `${open}${to}${close}`);
+};
+
+/** The content with an inline PGN's text replaced (CTA-139) — escaped as `withInlinePgn` writes it; a name with no inline PGN leaves it as it was. */
+export const withInlinePgnText = (body: string, name: string, pgn: string): string => {
+  const match = [...body.matchAll(DEFINITION)].find((candidate) => candidate[3] === name);
+  if (match === undefined) return body;
+  const definition = match[0].replace(/`[\s\S]*`/, () => `\`${escapedPgn(pgn)}\``);
+  return body.slice(0, match.index) + definition + body.slice(match.index + match[0].length);
 };
 
 /** A file the article imports beside it — a PGN or an image — by the name it binds and the file's path from the article. */

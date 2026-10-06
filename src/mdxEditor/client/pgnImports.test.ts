@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { pgnImportName, pgnNamesIn, withInlinePgn, withPgnImports } from "./pgnImports";
+import { articlePgnsOf, pgnImportName, usesOf, pgnNamesIn, withInlinePgn, withInlinePgnText, withPgnImports, withRenamedPgn } from "./pgnImports";
 
 /*
   The import line the MDX editor adds for a PGN attached to an article
@@ -61,5 +61,50 @@ describe("withInlinePgn", () => {
 
   it("lists the names a component can take as its PGN, imported or written in", () => {
     expect(pgnNamesIn('import games from "./cup.pgn?raw"\nimport x from "./y.js"\n\nexport const club = `1. e4 *`\nexport const n = 3')).toEqual(["games", "club"]);
+  });
+});
+
+describe("articlePgnsOf", () => {
+  it("says where each PGN's definition is in the content", () => {
+    const body = 'import games from "./cup.pgn?raw"\n\nexport const club = `1. e4 *`\n\n## T';
+    const [games, club] = articlePgnsOf(body);
+    expect(body.slice(games.start, games.end)).toBe('import games from "./cup.pgn?raw"');
+    expect(body.slice(club.start, club.end)).toBe("export const club = `1. e4 *`");
+  });
+});
+
+describe("withRenamedPgn (CTA-139)", () => {
+  it("renames an import and every pgn={…} that reads it, and nothing else", () => {
+    const body = 'import games from "./cup.pgn?raw"\n\n<SwissStandingsTable pgn={games} />\n\n<InlinePgnGame pgn={ games } game="2" />\n\nThe games were long. <MatchTable pgn={gamesB} />';
+    expect(withRenamedPgn(body, "games", "cup")).toBe(
+      'import cup from "./cup.pgn?raw"\n\n<SwissStandingsTable pgn={cup} />\n\n<InlinePgnGame pgn={ cup } game="2" />\n\nThe games were long. <MatchTable pgn={gamesB} />',
+    );
+  });
+
+  it("renames a PGN written in, a $ in either name taken as it is", () => {
+    const body = "export const $club = `1. e4 *`\n\n<InlinePgnGame pgn={$club} />";
+    expect(withRenamedPgn(body, "$club", "my$games")).toBe("export const my$games = `1. e4 *`\n\n<InlinePgnGame pgn={my$games} />");
+  });
+});
+
+describe("withInlinePgnText (CTA-139)", () => {
+  it("writes an inline PGN's new text, escaped, leaving the rest of the content as it was", () => {
+    const body = 'import games from "./cup.pgn?raw"\n\nexport const club = `1. e4 *`\n\n## T';
+    const pgn = '[Event "`x`"]\n\n1. d4 *';
+    const rewritten = withInlinePgnText(body, "club", pgn);
+    expect(rewritten).toBe('import games from "./cup.pgn?raw"\n\nexport const club = `[Event "\\`x\\`"]\n\n1. d4 *`\n\n## T');
+    expect(articlePgnsOf(rewritten).find((candidate) => candidate.name === "club")).toMatchObject({ kind: "inline", text: pgn });
+    // Only an inline PGN's.
+    expect(withInlinePgnText(body, "games", pgn)).toBe(body);
+  });
+});
+
+describe("usesOf", () => {
+  it("counts what reads a name — never its import's path, a PGN's text or its own definition", () => {
+    const body = 'import games from "./games.pgn?raw"\nimport photo from "./photo.png"\n\nexport const club = `[Event "games"]`\nexport const n = 3\n\n<SwissStandingsTable pgn={games} />\n\n<ArticleImage src={photo} alt="The hall" />\n\n{n}';
+    expect(usesOf(body, "games")).toBe(1);
+    expect(usesOf(body, "photo")).toBe(1);
+    expect(usesOf(body, "club")).toBe(0);
+    expect(usesOf(body, "n")).toBe(1);
   });
 });
