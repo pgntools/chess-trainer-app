@@ -12,7 +12,8 @@ import { FileInputButton, RadioGroupField, SelectField } from "../../design-syst
 import { ListScreenHeader } from "../../design-system/components/toolbars";
 import { TreeView, type TreeNode } from "../../design-system/patterns/trees";
 import { splitPgnGames } from "../../lib/pgn";
-import { shippedCollections } from "../../lib/shippedCollections";
+import { findShippedCollection, shippedCollections } from "../../lib/shippedCollections";
+import { isBrowserOnly, sourcePathOf } from "../../lib/embedSource";
 import { articleImageFiles, articleImportResolver, articlePgnFiles } from "./articleSources";
 import {
   builtInsOf,
@@ -49,7 +50,8 @@ const SHIPPED = shippedCollections.map(({ id, name }) => ({ id, name }));
 /** A source's games, each its PGN — `undefined` where they cannot be read. */
 const gamesOf = async (source: GallerySource, attached: Readonly<Record<string, string>>): Promise<readonly string[] | undefined> => {
   if (source.kind === "pasted") return splitPgnGames(source.text);
-  if (source.kind === "library") return collectionGamesOf(source.game.collection);
+  // A tournament's games: a collection's; any other address names one game, which no table is guessed from.
+  if (source.kind === "address") return source.address.kind === "collection" ? collectionGamesOf(source.address.collection) : undefined;
   const resolver = articleImportResolver("", attached);
   const key = resolver.keyOf(`./${source.file}?raw`);
   return key === undefined ? undefined : splitPgnGames(await resolver.load(key));
@@ -63,7 +65,7 @@ const keyOf = (source: GallerySource | undefined): string | undefined =>
       ? `file:${source.file}`
       : source.kind === "pasted"
         ? `pasted:${source.text}`
-        : `library:${source.game.collection}/${source.game.number ?? ""}`;
+        : `address:${sourcePathOf(source.address)}`;
 
 /** Where an import line's path is from — copied into an article, it reads from the article's own folder. */
 const importNote = (path: string) =>
@@ -238,6 +240,11 @@ function EntryPane({ entry, arrival, onSwitch }: { entry: GalleryEntry; arrival?
             {entry.reads.includes("pgn") ? "Add / update PGN…" : "Add / update game…"}
           </Button>
         </Box>
+      )}
+      {source?.kind === "address" && isBrowserOnly(source.address, (id) => findShippedCollection(id) !== undefined) && (
+        <InlineAlert severity="info" title="In this browser only" testId={`${ID}-browser-only`}>
+          It is yours, kept where you made it: an article naming it shows "not in this browser" to every other reader, and on the published site.
+        </InlineAlert>
       )}
       {choosing && (
         <GallerySourceDialog

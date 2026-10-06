@@ -30,8 +30,8 @@ describe("the component examples", () => {
   it("write each for the game it is given: a PGN by its name, a Library game by its address, a position by its moves", () => {
     const codeOf = (source: ExampleSource, id: string) => catalogFor(source).flatMap((folder) => folder.entries).find((entry) => entry.id === id)?.code(source);
     expect(codeOf(pgn, "tournament-swiss")).toContain("pgn={club}");
-    expect(codeOf(library, "tournament-swiss")).toBe('<CollectionTournamentTable _id="/library/cup" />');
-    expect(codeOf(library, "single-board")).toContain('game="/library/cup/7"');
+    expect(codeOf(library, "tournament-swiss")).toBe('<SwissStandingsTable src="/library/cup" density="dense" rowsPerPage="25" />');
+    expect(codeOf(library, "single-board")).toContain('src="/library/cup/7"');
     expect(codeOf(pgn, "single-board")).toBeUndefined();
     expect(codeOf(pgn, "position-moves")).toBe('<InlinePgnGame pgn="1. d4 d5" start="1..." caption="…" />');
     // Every folder, for either kind of game.

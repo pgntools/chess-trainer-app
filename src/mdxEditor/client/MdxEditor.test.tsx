@@ -821,7 +821,8 @@ describe("the MDX editor's Components (CTA-137, CTA-139)", () => {
     const suggested = await within(dialog).findByTestId("mdx-editor-components-suggested");
     expect(suggested).toHaveTextContent("Suggested: Round robin crosstable");
     await user.click(within(suggested).getByRole("button", { name: "Pick it" }));
-    expect(within(dialog).getByRole("textbox", { name: "Round robin crosstable — <CollectionTournamentTable>" })).toHaveValue('<CollectionTournamentTable _id="/library/candidates2026" format="roundRobin" />');
+    // One component, any source (CTA-140): the crosstable over the collection's address.
+    expect(within(dialog).getByRole("textbox", { name: "Round robin crosstable — <RoundRobinCrossTable>" })).toHaveValue('<RoundRobinCrossTable src="/library/candidates2026" />');
     // A whole collection: no single-game component to offer.
     expect(within(dialog).queryByRole("treeitem", { name: "The game on a board" })).not.toBeInTheDocument();
   });

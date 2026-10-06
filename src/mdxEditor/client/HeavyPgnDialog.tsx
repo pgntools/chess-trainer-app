@@ -164,7 +164,7 @@ function HeavyPgnDialog({
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState<{ done: number; total: number } | "writing">();
 
-  const target = libraryEntryFor(entry, stats.guess);
+  const target = libraryEntryFor(entry);
   const best = stats.guess === undefined ? undefined : entryForKind(stats.guess.kind, "pgn");
   const path = `${folder === "" ? "" : `${folder}/`}${fileName.trim()}`;
   const origin = (extra: { written?: string } = {}): Applied["origin"] => (kind === "upload" ? { kind, name: name ?? "", text, ...extra } : { kind, text, ...extra });
@@ -209,7 +209,7 @@ function HeavyPgnDialog({
         {
           source: collectionSourceFor(target, made.collection.id),
           words: `Saved as a Library collection — ${made.collection.name}, ${address} — ${gamesWords(made.collection.count)}`,
-          origin: { kind: "library", address },
+          origin: { kind: "address", address },
         },
         target.id,
       );

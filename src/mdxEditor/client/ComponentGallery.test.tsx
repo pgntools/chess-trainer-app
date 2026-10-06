@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 
 import { expectNoAxeViolations } from "../../test/axe";
+import { readRepertoireText, savedRepertoireOf } from "../../lib/savedRepertoires";
+import { saveRepertoire } from "../../lib/savedRepertoireStore";
 import ComponentGalleryMain from "./ComponentGalleryMain";
 
 /*
@@ -49,7 +51,7 @@ describe("the Components gallery (CTA-140)", () => {
     const folders = within(tree()).getAllByRole("treeitem", { expanded: true });
     expect(folders).toHaveLength(5);
     ["Boards", "Tournament tables", "Images", "Other", "Future components"].forEach((title, index) => expect(folders[index]).toHaveTextContent(new RegExp(`^${title}\\d`)));
-    expect(within(tree()).getByRole("treeitem", { name: "A PGN's game" })).toHaveAttribute("aria-current", "page");
+    expect(within(tree()).getByRole("treeitem", { name: "A game, its moves beside it" })).toHaveAttribute("aria-current", "page");
     expect(code()).toHaveValue('import game from "./writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn?raw"\n\n<InlinePgnGame pgn={game} />');
     expect(screen.getByTestId("mdx-component-gallery-note")).toHaveTextContent("from the Blog's root, src/views/blog/articles/");
     // The sample, compiled with its import, rendered as an article renders it.
@@ -72,18 +74,18 @@ describe("the Components gallery (CTA-140)", () => {
   it("picks an entry from the tree by the keyboard, and opens it on its own sample", async () => {
     const user = userEvent.setup();
     mount();
-    within(tree()).getByRole("treeitem", { name: "A PGN's game" }).focus();
-    // Down through the Boards to the Library game.
+    within(tree()).getByRole("treeitem", { name: "A game, its moves beside it" }).focus();
+    // Down through the Boards to the stored game.
     await user.keyboard("{ArrowDown}{Enter}");
-    expect(within(tree()).getByRole("treeitem", { name: "A Library game" })).toHaveAttribute("aria-current", "page");
-    expect(code()).toHaveValue('<CollectionGameBoard game="/library/capablanca/1" />');
-    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Built-in example — Capablanca, game 1 — /library/capablanca/1 (the default)");
+    expect(within(tree()).getByRole("treeitem", { name: "A stored game" })).toHaveAttribute("aria-current", "page");
+    expect(code()).toHaveValue('<StoredGameEmbed src="/library/capablanca/2" />');
+    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Built-in example — Capablanca, game 2 — /library/capablanca/2 (the default)");
     expect(screen.getByRole("button", { name: "Add / update game…" })).toBeInTheDocument();
     await pick(user, "Match");
     expect(code()).toHaveValue('import games from "./tournaments/clutchlegends26.pgn?raw"\n\n<MatchTable pgn={games} />');
   });
 
-  it("adds or updates the PGN in a dialog: a built-in example, an upload, a paste, the Library — and says when one does not fit", async () => {
+  it("adds or updates the PGN in a dialog: a built-in example, an upload, a paste, an address — and says when one does not fit", async () => {
     const user = userEvent.setup();
     mount();
     await pick(user, "Swiss standings");
@@ -127,17 +129,52 @@ describe("the Components gallery (CTA-140)", () => {
     expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Uploaded — club.pgn, 1 game");
     expect(code()).toHaveValue('export const games = `[Event "Club"]\n[White "X"]\n[Black "Y"]\n[Result "*"]\n\n1. c4 *`\n\n<SwissStandingsTable pgn={games} density="dense" rowsPerPage="25" />');
 
-    // A Swiss table reads a PGN: a Library collection does not fit it, and cannot be used.
+    // A table reads one game of the Library no more than a PGN's one game: it does not fit, and cannot be used.
     dialog = await open();
-    await user.click(within(dialog).getByRole("radio", { name: /^The Library/ }));
-    await user.type(within(dialog).getByRole("textbox", { name: "The address" }), "/library/capablanca");
+    await user.click(within(dialog).getByRole("radio", { name: /^An address in the app/ }));
+    const addressField = within(dialog).getByRole("textbox", { name: "The address" });
+    await user.type(addressField, "/library/capablanca/3");
     await user.click(within(dialog).getByRole("button", { name: "Look it up" }));
-    expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent("Found Capablanca — 1,035 games.");
-    expect(within(dialog).getByTestId("mdx-component-gallery-misfit")).toHaveTextContent("<SwissStandingsTable> does not read a whole Library collection: it reads a PGN.");
+    expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent(/^Found Capablanca, Jose – /);
+    expect(within(dialog).getByTestId("mdx-component-gallery-misfit")).toHaveTextContent("<SwissStandingsTable> does not read one Library game: it reads a PGN or a whole Library collection, /library/<collection>.");
     expect(within(dialog).getByRole("button", { name: "Use it" })).toBeDisabled();
     await expectNoAxeViolations(dialog);
-    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
-    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Uploaded — club.pgn, 1 game");
+
+    // One component, any source: the same table over a Library collection, copied off the address bar.
+    await user.clear(addressField);
+    await user.type(addressField, "http://localhost:5214/chess-trainer-app/library/candidates2026");
+    await user.click(within(dialog).getByRole("button", { name: "Look it up" }));
+    expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent("Found FIDE Candidates 2026 — 56 games.");
+    await user.click(within(dialog).getByRole("button", { name: "Use it" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(code()).toHaveValue('<SwissStandingsTable src="/library/candidates2026" density="dense" rowsPerPage="25" />');
+    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("The Library — FIDE Candidates 2026 — 56 games");
+    // A shipped collection is everyone's: no browser-only note.
+    expect(screen.queryByTestId("mdx-component-gallery-browser-only")).not.toBeInTheDocument();
+    expect(await screen.findByTestId("mdx-component-gallery-other-kind")).toHaveTextContent("The games look like a round robin");
+  });
+
+  it("reads the reader's own records by their address — and says they are in this browser only", async () => {
+    const user = userEvent.setup();
+    const reading = readRepertoireText(['[Event "My Caro"]', "", "1. e4 c6 2. d4 d5 *"].join("\n"));
+    if (!reading.ok) throw new Error("fixture does not read");
+    await saveRepertoire(savedRepertoireOf("caro", reading.games[0], "", reading.name));
+    mount();
+    await user.click(screen.getByRole("button", { name: "Add / update PGN…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add / update PGN — <InlinePgnGame>" });
+    await user.click(within(dialog).getByRole("radio", { name: /^An address in the app/ }));
+    await user.type(within(dialog).getByRole("textbox", { name: "The address" }), "/repertoires/nope{Enter}");
+    expect(await within(dialog).findByText("This browser has no repertoire nope.")).toBeInTheDocument();
+    await user.clear(within(dialog).getByRole("textbox", { name: "The address" }));
+    await user.type(within(dialog).getByRole("textbox", { name: "The address" }), "/repertoires/caro{Enter}");
+    expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent("Found My Caro.");
+    expect(within(dialog).getByTestId("mdx-component-gallery-browser-only")).toHaveTextContent("not in this browser");
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(code()).toHaveValue('<InlinePgnGame src="/repertoires/caro" />');
+    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("A repertoire — My Caro");
+    expect(screen.getByTestId("mdx-component-gallery-browser-only")).toBeInTheDocument();
+    expect(await within(preview()).findByRole("group", { name: "The game, from The start to 2... d5" }, { timeout: 10_000 })).toBeInTheDocument();
   });
 
   describe("a heavy PGN — over 100 games", () => {
@@ -227,19 +264,20 @@ describe("the Components gallery (CTA-140)", () => {
       expect(writes).toHaveLength(2);
     });
 
-    it("saves it as a Library collection, then opens the Library's table for it on its address", async () => {
+    it("saves it as a Library collection, then reads it by its address — in the same table", async () => {
       const user = userEvent.setup();
       stubService();
       const dialog = await uploadHeavy(user);
-      // A Swiss table reads no collection: the Library's table for a match takes it.
-      await user.click(within(dialog).getByRole("radio", { name: "Save as a Library collection, then read it by its address — in Standings — from the Library, <CollectionTournamentTable>" }));
+      await user.click(within(dialog).getByRole("radio", { name: "Save as a Library collection, then read it by its address" }));
       expect(within(dialog).getByRole("textbox", { name: "The collection's name" })).toHaveValue("Big Match");
       await user.click(within(dialog).getByRole("button", { name: "Save as a collection" }));
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), { timeout: 20_000 });
-      expect(within(tree()).getByRole("treeitem", { name: "Standings — from the Library" })).toHaveAttribute("aria-current", "page");
+      expect(within(tree()).getByRole("treeitem", { name: "Swiss standings" })).toHaveAttribute("aria-current", "page");
       expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent(/^Saved as a Library collection — Big Match, \/library\/u[\w-]+ — 120 games$/);
-      // Marked a match in the Library — the table's format follows the games.
-      await waitFor(() => expect((code() as HTMLTextAreaElement).value).toMatch(/^<CollectionTournamentTable _id="\/library\/u[\w-]+" format="match" \/>$/));
+      expect((code() as HTMLTextAreaElement).value).toMatch(/^<SwissStandingsTable src="\/library\/u[\w-]+" density="dense" rowsPerPage="25" \/>$/);
+      // An upload is this browser's only, and its games look like a match.
+      expect(screen.getByTestId("mdx-component-gallery-browser-only")).toBeInTheDocument();
+      expect(await screen.findByTestId("mdx-component-gallery-other-kind")).toHaveTextContent("The games look like a match");
     }, 40_000);
 
     it("pastes it anyway, written into the code — warned first", async () => {
@@ -281,7 +319,7 @@ describe("the Components gallery (CTA-140)", () => {
     });
   });
 
-  it("finds a Library address for a component that reads the Library, Enter looking it up", async () => {
+  it("finds an address for a component that reads the Library, Enter looking it up", async () => {
     const user = userEvent.setup();
     mount();
     await pick(user, "A Library collection");
@@ -289,9 +327,9 @@ describe("the Components gallery (CTA-140)", () => {
     const dialog = await screen.findByRole("dialog", { name: "Add / update game — <CollectionCard>" });
     // No PGN for a component that reads the Library alone.
     expect(within(dialog).queryByRole("radio", { name: "Paste a PGN" })).not.toBeInTheDocument();
-    await user.click(within(dialog).getByRole("radio", { name: /^The Library/ }));
+    await user.click(within(dialog).getByRole("radio", { name: /^An address in the app/ }));
     await user.type(within(dialog).getByRole("textbox", { name: "The address" }), "/somewhere{Enter}");
-    expect(within(dialog).getByRole("textbox", { name: "The address" })).toHaveAccessibleDescription(/^An address is a game's/);
+    expect(within(dialog).getByRole("textbox", { name: "The address" })).toHaveAccessibleDescription(/^An address is a screen's/);
     await user.clear(within(dialog).getByRole("textbox", { name: "The address" }));
     await user.type(within(dialog).getByRole("textbox", { name: "The address" }), "/library/tal{Enter}");
     expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent(/^Found Tal — /);

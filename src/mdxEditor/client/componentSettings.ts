@@ -64,6 +64,8 @@ const losersFromRound: SettingField = {
 };
 const playerLink: SettingField = { prop: "playerLink", kind: "switch", on: true, label: "Names link to their games", help: "Each name opens the collection filtered by that player." };
 const gameLink: SettingField = { prop: "gameLink", kind: "switch", on: true, label: "Results link to the game", help: "Each result opens its game on the Library's board." };
+/** A table that reads any source (CTA-140): its links are a Library source's alone. */
+const libraryOnly = (field: SettingField): SettingField => ({ ...field, help: `${field.help ?? ""} A Library source only — a PGN has nowhere to link to.`.trim() });
 
 /** `<ArticleImage>`'s look — what Images' Add an image sets before the image goes in, and an image's settings after. */
 export const IMAGE_APPEARANCE: readonly SettingField[] = [
@@ -123,11 +125,16 @@ export const SETTINGS: Readonly<Record<string, readonly SettingField[]>> = {
     startMove,
     nextMoveArrows,
   ],
-  SwissStandingsTable: [density, rowsPerPage],
-  RoundRobinCrossTable: [density, rowsPerPage],
-  KnockoutBracket: [losersFromRound, density],
-  MatchTable: [density, rowsPerPage],
-  TeamStandingsTable: [density, rowsPerPage],
+  SwissStandingsTable: [density, rowsPerPage, libraryOnly(playerLink), libraryOnly(gameLink)],
+  RoundRobinCrossTable: [density, rowsPerPage, libraryOnly(playerLink), libraryOnly(gameLink)],
+  KnockoutBracket: [losersFromRound, density, libraryOnly(playerLink), libraryOnly(gameLink)],
+  MatchTable: [density, rowsPerPage, libraryOnly(playerLink), libraryOnly(gameLink)],
+  TeamStandingsTable: [
+    density,
+    rowsPerPage,
+    libraryOnly({ ...playerLink, prop: "teamLink", label: "Teams link to their games", help: "Each team opens the collection filtered by its players." }),
+    libraryOnly(gameLink),
+  ],
   CollectionTournamentTable: [
     {
       prop: "format",

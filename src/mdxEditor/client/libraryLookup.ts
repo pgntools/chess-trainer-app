@@ -1,7 +1,10 @@
+import { gameReferenceOf, type SourceAddress } from "../../lib/embedSource";
 import { libraryGameReference, loadReferencedGames, resolveGameReference } from "../../lib/gameReference";
 import { loadUploadedCollections, loadUploadedGames } from "../../lib/libraryCollectionStore";
 import type { CollectionSummary, TournamentFormat } from "../../lib/libraryCollections";
 import { readPgnTags } from "../../lib/pgn";
+import { loadSavedAnalyses } from "../../lib/savedAnalysisStore";
+import { loadSavedRepertoires, savedRepertoiresSnapshot } from "../../lib/savedRepertoireStore";
 import { findShippedCollection } from "../../lib/shippedCollections";
 import { guessTournamentKind, type TournamentGuess } from "./tournamentKind";
 
@@ -38,3 +41,33 @@ export const collectionGamesOf = async (collection: string): Promise<readonly st
 
 /** The kind of tournament a set of games looks like — from their tags alone. */
 export const guessOf = (games: readonly string[]): TournamentGuess | undefined => guessTournamentKind(games.map(readPgnTags));
+
+/**
+ * **What an app address names, in words** (CTA-140) — the Components
+ * gallery's "an address in the app": a Library collection or game, a saved
+ * analysis, a played game or a repertoire, read from its store — or why it
+ * is not here.
+ */
+export const describeAddress = async (address: SourceAddress): Promise<{ label: string } | { problem: string }> => {
+  if (address.kind === "collection") {
+    const summary = await collectionSummaryOf(address.collection);
+    if (summary === undefined) return { problem: `The Library has no collection ${address.collection}.` };
+    const format = summary.tournament?.enabled === true ? `, ${FORMAT_WORDS[summary.tournament.type]}` : "";
+    return { label: `${summary.name} — ${summary.count.toLocaleString()} games${format}` };
+  }
+  if (address.kind === "libraryGame") {
+    const game = await libraryPgnOf(address.collection, address.number);
+    return game === undefined ? { problem: `The Library has no game ${address.number} in the collection ${address.collection}.` } : { label: game.name };
+  }
+  if (address.kind === "repertoire") {
+    await loadSavedRepertoires();
+    const saved = savedRepertoiresSnapshot()?.find((candidate) => candidate.id === address.id);
+    return saved === undefined ? { problem: `This browser has no repertoire ${address.id}.` } : { label: saved.name.trim() || "An untitled repertoire" };
+  }
+  const reference = gameReferenceOf(address) ?? "";
+  if (address.kind === "analysis") await loadSavedAnalyses();
+  await loadReferencedGames(reference);
+  const game = resolveGameReference(reference);
+  if (game !== undefined) return { label: game.name };
+  return { problem: `This browser has no ${address.kind === "analysis" ? "saved analysis" : "played game"} ${address.id}.` };
+};

@@ -8,15 +8,25 @@ import { FormDialog } from "../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../design-system/components/feedback";
 import { FileInputButton, RadioGroupField, SelectField, TextInputField } from "../../design-system/components/forms";
 import { splitPgnGames } from "../../lib/pgn";
-import type { LibraryGame } from "./componentCatalog";
-import { HEAVY_GAMES, libraryGameOf, misfitOf, type BuiltInExample, type GalleryEntry } from "./componentGallery";
+import { isBrowserOnly, sourceAddressOf, sourcePathOf, type SourceAddress } from "../../lib/embedSource";
+import { findShippedCollection } from "../../lib/shippedCollections";
+import { HEAVY_GAMES, misfitOf, type BuiltInExample, type GalleryEntry } from "./componentGallery";
 import { GALLERY_ID, gamesWords, type Applied, type Choice } from "./gallerySource";
 import HeavyPgnDialog from "./HeavyPgnDialog";
-import { collectionSummaryOf, FORMAT_WORDS, libraryPgnOf } from "./libraryLookup";
+import { describeAddress } from "./libraryLookup";
 import { pgnBytesOf, sizeOf } from "./pgnPages";
 import { isHeavyPgn } from "./pgnStats";
 
 const ID = GALLERY_ID;
+
+/** Each kind of address, for the pane's line. */
+const KIND_NAMES: Readonly<Record<SourceAddress["kind"], string>> = {
+  collection: "The Library",
+  libraryGame: "The Library",
+  analysis: "A saved analysis",
+  playedGame: "A played game",
+  repertoire: "A repertoire",
+};
 
 /**
  * **Add / update PGN** (CTA-140) — where a Components gallery entry reads
@@ -50,34 +60,30 @@ function GallerySourceDialog({
   const [uploaded, setUploaded] = useState<{ name: string; text: string } | undefined>(origin?.kind === "upload" ? { name: origin.name, text: origin.text } : undefined);
   const [reading, setReading] = useState<string>();
   const [pasted, setPasted] = useState(origin?.kind === "paste" ? origin.text : "");
-  const [address, setAddress] = useState(origin?.kind === "library" ? origin.address : "");
+  const [address, setAddress] = useState(origin?.kind === "address" ? origin.address : "");
   const [lookup, setLookup] = useState<{ looking: true } | { looking: false; problem: string }>();
-  const [found, setFound] = useState<{ address: string; game: LibraryGame; label: string } | undefined>(
-    origin?.kind === "library" && current !== undefined && current.source.kind === "library"
-      ? { address: origin.address, game: current.source.game, label: current.words.replace(/^The Library — /, "") }
+  const [found, setFound] = useState<{ address: string; named: SourceAddress; label: string } | undefined>(
+    origin?.kind === "address" && current !== undefined && current.source.kind === "address"
+      ? { address: origin.address, named: current.source.address, label: current.words.replace(/^[^—]*— /, "") }
       : undefined,
   );
   /** The heavy-PGN dialog, open over this one. */
   const [weighing, setWeighing] = useState(false);
 
-  /** The address looked up: a game's or a collection's, found — or the field says why not. */
+  /** The address looked up — whatever it names in the app, found in its store — or the field says why not. */
   const lookUp = async () => {
-    const game = libraryGameOf(address);
-    if (game === undefined) {
-      return setLookup({ looking: false, problem: "An address is a game's — /library/<collection>/<n> — or a collection's — /library/<collection>. Copy it from its page." });
+    const named = sourceAddressOf(address);
+    if (named === undefined) {
+      return setLookup({
+        looking: false,
+        problem: "An address is a screen's, as the address bar shows it: /library/<collection>, /library/<collection>/<n>, /tools/analysis?analysis=<id>, /engine/play?saved=<id> or /repertoires/<id>.",
+      });
     }
     setLookup({ looking: true });
-    if (game.number !== undefined) {
-      const pgn = await libraryPgnOf(game.collection, game.number);
-      if (pgn === undefined) return setLookup({ looking: false, problem: `The Library has no game ${game.number} in the collection ${game.collection}.` });
-      setLookup(undefined);
-      return setFound({ address, game, label: `${pgn.name} — /library/${game.collection}/${game.number}` });
-    }
-    const summary = await collectionSummaryOf(game.collection);
-    if (summary === undefined) return setLookup({ looking: false, problem: `The Library has no collection ${game.collection}.` });
+    const described = await describeAddress(named);
+    if ("problem" in described) return setLookup({ looking: false, problem: described.problem });
     setLookup(undefined);
-    const format = summary.tournament?.enabled === true ? `, ${FORMAT_WORDS[summary.tournament.type]}` : "";
-    setFound({ address, game, label: `${summary.name} — ${summary.count.toLocaleString()} games${format}` });
+    setFound({ address, named, label: described.label });
   };
 
   // An uploaded or pasted PGN: its weight, read once per text.
@@ -113,7 +119,7 @@ function GallerySourceDialog({
             }
         : found === undefined || found.address !== address
           ? undefined
-          : { source: { kind: "library", game: found.game }, words: `The Library — ${found.label}`, origin: { kind: "library", address } };
+          : { source: { kind: "address", address: found.named }, words: `${KIND_NAMES[found.named.kind]} — ${found.label}`, origin: { kind: "address", address: sourcePathOf(found.named) } };
   const misfit = draft === undefined ? undefined : misfitOf(entry, draft.source);
   const reads = entry.reads.includes("pgn") ? "PGN" : "game";
   const pgnChosen = (choice === "upload" || choice === "paste") && text.trim() !== "";
@@ -125,7 +131,7 @@ function GallerySourceDialog({
         onClose={onClose}
         onSubmit={() => {
           // Enter in the address looks it up; the next one uses it.
-          if (choice === "library" && draft === undefined) return void lookUp();
+          if (choice === "address" && draft === undefined) return void lookUp();
           // A heavy PGN: asked about first. The file it already went to is offered again there.
           if (pgnChosen && heavy) return setWeighing(true);
           if (draft !== undefined && misfit === undefined) onApply(draft, entry.id);
@@ -133,7 +139,7 @@ function GallerySourceDialog({
         title={`Add / update ${reads} — <${entry.component}>`}
         submitLabel={pgnChosen && heavy ? "Choose how to use it…" : "Use it"}
         cancelLabel="Cancel"
-        submitDisabled={misfit !== undefined || (draft === undefined && !(choice === "library" && address.trim() !== "") && !(pgnChosen && heavy))}
+        submitDisabled={misfit !== undefined || (draft === undefined && !(choice === "address" && address.trim() !== "") && !(pgnChosen && heavy))}
         width="sm"
         testId={`${ID}-source-dialog`}
       >
@@ -148,7 +154,7 @@ function GallerySourceDialog({
                     { value: "paste" as const, label: "Paste a PGN" },
                   ]
                 : []),
-              { value: "library", label: "The Library — a game or a whole collection, by its address" },
+              { value: "address", label: "An address in the app — a Library collection or game, a saved analysis, a played game, a repertoire" },
             ]}
             value={choice}
             onChange={setChoice}
@@ -198,7 +204,7 @@ function GallerySourceDialog({
                 </Button>
               </Box>
             ))}
-          {choice === "library" && (
+          {choice === "address" && (
             <>
               <TextInputField
                 label="The address"
@@ -207,10 +213,10 @@ function GallerySourceDialog({
                   setAddress(value);
                   setLookup(undefined);
                 }}
-                placeholder="/library/<collection> or /library/<collection>/<n>"
+                placeholder="/library/candidates2026, /tools/analysis?analysis=…"
                 dir="ltr"
                 error={lookup?.looking === false}
-                helperText={lookup?.looking === false ? lookup.problem : "As the address bar shows it — a whole collection, /library/candidates2026, or one game of it, /library/candidates2026/12."}
+                helperText={lookup?.looking === false ? lookup.problem : "Copy it from the address bar on its screen — the host and all."}
                 testId={`${ID}-address`}
               />
               <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
@@ -230,6 +236,11 @@ function GallerySourceDialog({
                   </StatusText>
                 )}
               </Box>
+              {found !== undefined && found.address === address && isBrowserOnly(found.named, (id) => findShippedCollection(id) !== undefined) && (
+                <InlineAlert severity="info" title="In this browser only" testId={`${ID}-browser-only`}>
+                  It is yours, kept where you made it: an article naming it shows "not in this browser" to every other reader, and on the published site.
+                </InlineAlert>
+              )}
             </>
           )}
           {misfit !== undefined && (

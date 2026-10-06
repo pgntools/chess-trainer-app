@@ -50,6 +50,12 @@ const showGameOf = (game: LibraryGame) => (game.number === undefined ? "" : ` sh
 /** The first moves, or a short opening where the game gave none. */
 const movesOf = (source: ExampleSource): MovesLine => source.moves ?? { line: "1. e4 e5 2. Nf3 Nc6", start: "2..." };
 
+/** A tournament table for the game: a PGN by its name, or — one component, any source (CTA-140) — a Library collection by its address. */
+const tableOf = (source: ExampleSource, name: string, extra: string): string => {
+  const game = libraryOf(source);
+  return game === undefined ? `<${name} pgn={${pgnOf(source)}}${extra} />` : `<${name} src="/library/${game.collection}"${extra} />`;
+};
+
 /** A component's name, from the markup it is written as — `<SwissStandingsTable …` → `SwissStandingsTable`. */
 export const componentOf = (code: string): string | undefined => /^\s*<([A-Z]\w*)/.exec(code)?.[1];
 
@@ -61,25 +67,22 @@ export const CATALOG: readonly CatalogFolder[] = [
       {
         id: "single-inline",
         label: "The game on a board",
-        summary: "The PGN's game, its moves beside the board — the first game of a PGN holding several",
-        code: (source) => (pgnOf(source) === undefined ? undefined : `<InlinePgnGame pgn={${pgnOf(source)}} game="1" caption="…" />`),
+        summary: "The game, its moves beside the board — the first game of a PGN holding several",
+        code: (source) => {
+          const name = pgnOf(source);
+          if (name !== undefined) return `<InlinePgnGame pgn={${name}} game="1" caption="…" />`;
+          // One component, any source (CTA-140): a Library game by its address.
+          const game = oneGameOf(source);
+          return game === undefined ? undefined : `<InlinePgnGame src="${gamePath(game.collection, game.number)}" caption="…" />`;
+        },
       },
       {
         id: "single-board",
         label: "The game on a board",
-        summary: "The Library game on a board, with a link to open it",
+        summary: "The Library game on a board, its players over it, with a link to open it",
         code: (source) => {
           const game = oneGameOf(source);
-          return game === undefined ? undefined : `<CollectionGameBoard game="${gamePath(game.collection, game.number)}" startMove="1" />`;
-        },
-      },
-      {
-        id: "single-stored",
-        label: "The game, by its reference",
-        summary: "The Library game on a board, by its stored-game reference",
-        code: (source) => {
-          const game = oneGameOf(source);
-          return game === undefined ? undefined : `<StoredGameEmbed reference="library/${game.collection}/${game.number}" startMove="1" />`;
+          return game === undefined ? undefined : `<StoredGameEmbed src="${gamePath(game.collection, game.number)}" startMove="1" />`;
         },
       },
     ],
@@ -118,7 +121,7 @@ export const CATALOG: readonly CatalogFolder[] = [
           const name = pgnOf(source);
           if (name !== undefined) return `<BoardRow>\n${[1, 2, 3].map((game) => `  <InlinePgnGame pgn={${name}} game="${game}" />`).join("\n")}\n</BoardRow>`;
           const { collection, number = 1 } = libraryOf(source) ?? { collection: "" };
-          return `<BoardRow>\n${[0, 1, 2].map((step) => `  <CollectionGameBoard game="${gamePath(collection, number + step)}" />`).join("\n")}\n</BoardRow>`;
+          return `<BoardRow>\n${[0, 1, 2].map((step) => `  <StoredGameEmbed src="${gamePath(collection, number + step)}" />`).join("\n")}\n</BoardRow>`;
         },
       },
       {
@@ -158,55 +161,37 @@ export const CATALOG: readonly CatalogFolder[] = [
         id: "tournament-swiss",
         label: "Swiss standings",
         summary: "A row per player, a cell per round",
-        code: (source) => {
-          const game = libraryOf(source);
-          return game === undefined ? `<SwissStandingsTable pgn={${pgnOf(source)}} density="dense" rowsPerPage="25" />` : `<CollectionTournamentTable _id="/library/${game.collection}" />`;
-        },
+        code: (source) => tableOf(source, "SwissStandingsTable", ' density="dense" rowsPerPage="25"'),
       },
       {
         id: "tournament-round-robin",
         label: "Round robin crosstable",
         summary: "Every player against every other, single or double",
-        code: (source) => {
-          const game = libraryOf(source);
-          return game === undefined ? `<RoundRobinCrossTable pgn={${pgnOf(source)}} />` : `<CollectionTournamentTable _id="/library/${game.collection}" format="roundRobin" />`;
-        },
+        code: (source) => tableOf(source, "RoundRobinCrossTable", ""),
       },
       {
         id: "tournament-knockout",
         label: "Knockout bracket",
         summary: "Each round's matches, the winners going on — a team knockout's in legs",
-        code: (source) => {
-          const game = libraryOf(source);
-          return game === undefined ? `<KnockoutBracket pgn={${pgnOf(source)}} />` : `<CollectionKnockoutBracket _id="/library/${game.collection}" />`;
-        },
+        code: (source) => tableOf(source, "KnockoutBracket", ""),
       },
       {
         id: "tournament-double-elimination",
         label: "Double elimination",
         summary: "The winners' bracket over the losers'",
-        code: (source) => {
-          const game = libraryOf(source);
-          return game === undefined ? `<KnockoutBracket pgn={${pgnOf(source)}} losersFromRound="51" />` : `<CollectionDoubleEliminationBracket _id="/library/${game.collection}" />`;
-        },
+        code: (source) => tableOf(source, "KnockoutBracket", ' losersFromRound="51"'),
       },
       {
         id: "tournament-match",
         label: "Match",
         summary: "Two players: a column per game, the score",
-        code: (source) => {
-          const game = libraryOf(source);
-          return game === undefined ? `<MatchTable pgn={${pgnOf(source)}} />` : `<CollectionTournamentTable _id="/library/${game.collection}" format="match" />`;
-        },
+        code: (source) => tableOf(source, "MatchTable", ""),
       },
       {
         id: "tournament-team",
         label: "Team standings",
         summary: "Board points per round, match points",
-        code: (source) => {
-          const game = libraryOf(source);
-          return game === undefined ? `<TeamStandingsTable pgn={${pgnOf(source)}} density="dense" rowsPerPage="25" />` : `<CollectionTeamStandingsTable _id="/library/${game.collection}" />`;
-        },
+        code: (source) => tableOf(source, "TeamStandingsTable", ' density="dense" rowsPerPage="25"'),
       },
     ],
   },

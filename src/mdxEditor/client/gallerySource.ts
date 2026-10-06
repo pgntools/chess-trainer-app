@@ -13,8 +13,8 @@ import { listStorageFolders, STORAGE_COMMAND, writeStorageFile } from "./storage
 /** The prefix of every test id on the gallery's page. */
 export const GALLERY_ID = "mdx-component-gallery";
 
-/** Where a component reads its games from: a built-in example, a PGN file uploaded, one pasted, or the Library. */
-export type Choice = "builtin" | "upload" | "paste" | "library";
+/** Where a component reads its games from: a built-in example, a PGN file uploaded, one pasted, or an address in the app. */
+export type Choice = "builtin" | "upload" | "paste" | "address";
 
 /** The source an entry reads, with how it was chosen — so the dialog opens on it again — and in words for the pane. */
 export type Applied = {
@@ -25,7 +25,8 @@ export type Applied = {
     | { kind: "builtin"; id: string }
     | { kind: "upload"; name: string; text: string; written?: string }
     | { kind: "paste"; text: string; written?: string }
-    | { kind: "library"; address: string };
+    /** An app path (`lib/embedSource.ts`), as it was given. */
+    | { kind: "address"; address: string };
   /** A file just written, by its path under `articles/` → its text — read before the build's glob has caught up. */
   attached?: Readonly<Record<string, string>>;
 };
