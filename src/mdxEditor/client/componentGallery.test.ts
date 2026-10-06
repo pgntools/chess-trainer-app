@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { splitPgnGames } from "../../lib/pgn";
 import { mdxComponents } from "../../views/home/frontPage";
 import { elementsIn, SETTINGS } from "./componentSettings";
-import { GALLERY, galleryEntries, imageSnippetOf, misfitOf, SAMPLE_IMAGE, sampleOf, snippetOf, sourceKindOf, tournamentMisfitOf } from "./componentGallery";
+import { builtInsOf, GALLERY, galleryEntries, imageSnippetOf, misfitOf, SAMPLE_IMAGE, sampleOf, snippetOf, sourceKindOf, tournamentMisfitOf } from "./componentGallery";
 import { guessOf } from "./libraryLookup";
 
 /*
@@ -100,5 +100,25 @@ describe("the gallery's index", () => {
     expect(tournamentMisfitOf(swiss, { kind: "file", file: "x.pgn" }, { kind: "match", reason: "12 games between two players" })).toBe(
       "The games look like a match — 12 games between two players. <SwissStandingsTable> may not show them as they are: try Match, <MatchTable>.",
     );
+  });
+
+  it("offers as built-in examples only what fits: the entry's own first, then the Blog's PGNs or the shipped collections", () => {
+    const files = ["tournaments/chned26.pgn", "tournaments/20th-werner-obermeyer-swiss-5r.pgn"];
+    const collections = [{ id: "tal", name: "Tal" }, { id: "capablanca", name: "Capablanca" }];
+    const byId = (id: string) => {
+      const entry = entries.find((candidate) => candidate.id === id);
+      if (entry === undefined) throw new Error(`no ${id}`);
+      return builtInsOf(entry, files, collections);
+    };
+    expect(byId("swiss-standings").map((example) => example.label)).toEqual([
+      "tournaments/20th-werner-obermeyer-swiss-5r.pgn (the default)",
+      "tournaments/chned26.pgn",
+    ]);
+    expect(byId("collection-game-board").map((example) => example.id)).toEqual(["/library/capablanca/1", "/library/tal/1"]);
+    expect(byId("collection-card").map((example) => example.label)).toEqual(["Capablanca — /library/capablanca (the default)", "Tal — /library/tal"]);
+    // A component that reads a PGN or the Library: both.
+    expect(byId("board-row").map((example) => example.id)).toEqual(["/library/capablanca", ...files, "/library/tal"]);
+    expect(byId("nav-cards")).toEqual([]);
+    for (const entry of entries) for (const example of builtInsOf(entry, files, collections)) expect(misfitOf(entry, example.source), `${entry.id} ${example.id}`).toBeUndefined();
   });
 });

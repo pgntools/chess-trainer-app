@@ -77,47 +77,86 @@ describe("the Components gallery (CTA-140)", () => {
     await user.keyboard("{ArrowDown}{Enter}");
     expect(within(tree()).getByRole("treeitem", { name: "A Library game" })).toHaveAttribute("aria-current", "page");
     expect(code()).toHaveValue('<CollectionGameBoard game="/library/capablanca/1" />');
-    expect(screen.getByRole("radio", { name: /^The sample — Capablanca, game 1/ })).toBeChecked();
+    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Built-in example — Capablanca, game 1 — /library/capablanca/1 (the default)");
+    expect(screen.getByRole("button", { name: "Add / update game…" })).toBeInTheDocument();
     await pick(user, "Match");
     expect(code()).toHaveValue('import games from "./tournaments/clutchlegends26.pgn?raw"\n\n<MatchTable pgn={games} />');
   });
 
-  it("switches the source: a pasted PGN written in, a Blog file, the Library by an address — and says when one does not fit", async () => {
+  it("adds or updates the PGN in a dialog: a built-in example, an upload, a paste, the Library — and says when one does not fit", async () => {
     const user = userEvent.setup();
     mount();
     await pick(user, "Swiss standings");
-    await user.click(screen.getByRole("radio", { name: "A PGN pasted here" }));
-    expect(screen.getByTestId("mdx-component-gallery-waiting")).toBeInTheDocument();
-    fireEvent.change(screen.getByRole("textbox", { name: "The PGN" }), {
+    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Built-in example — tournaments/20th-werner-obermeyer-swiss-5r.pgn (the default)");
+    const open = async () => {
+      await user.click(screen.getByRole("button", { name: "Add / update PGN…" }));
+      return screen.findByRole("dialog", { name: "Add / update PGN — <SwissStandingsTable>" });
+    };
+
+    // A built-in example: the default chosen, another picked from the list.
+    let dialog = await open();
+    expect(within(dialog).getByRole("radio", { name: "A built-in example" })).toBeChecked();
+    await user.click(within(dialog).getByRole("combobox", { name: "The example" }));
+    await user.click(await screen.findByRole("option", { name: "tournaments/chned26.pgn" }));
+    await user.click(within(dialog).getByRole("button", { name: "Use it" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(code()).toHaveValue('import games from "./tournaments/chned26.pgn?raw"\n\n<SwissStandingsTable pgn={games} density="dense" rowsPerPage="25" />');
+    // A knockout's games, not a Swiss's: said, the table still shown.
+    expect(await screen.findByTestId("mdx-component-gallery-other-kind")).toHaveTextContent("The games look like a knockout");
+
+    // Pasted: written into the code.
+    dialog = await open();
+    await user.click(within(dialog).getByRole("radio", { name: "Paste a PGN" }));
+    expect(within(dialog).getByRole("button", { name: "Use it" })).toBeDisabled();
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "The PGN" }), {
       target: { value: '[Event "M"]\n[White "A"]\n[Black "B"]\n[Round "1"]\n[Result "1-0"]\n\n1. e4 1-0\n\n[Event "M"]\n[White "B"]\n[Black "A"]\n[Round "2"]\n[Result "0-1"]\n\n1. d4 0-1' },
     });
+    await user.click(within(dialog).getByRole("button", { name: "Use it" }));
+    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Pasted — 2 games");
     expect((code() as HTMLTextAreaElement).value).toMatch(/^export const games = `\[Event "M"\][\s\S]*`\n\n<SwissStandingsTable pgn=\{games\} density="dense" rowsPerPage="25" \/>$/);
-    // Two players, every game theirs: a match, not a Swiss — said, the table still shown.
-    expect(await screen.findByTestId("mdx-component-gallery-other-kind")).toHaveTextContent("The games look like a match");
-    expect(screen.getByTestId("mdx-component-gallery-other-kind")).toHaveTextContent("try Match, <MatchTable>");
+    expect(await screen.findByTestId("mdx-component-gallery-other-kind")).toHaveTextContent("try Match, <MatchTable>");
 
-    await user.click(screen.getByRole("radio", { name: "A PGN beside the Blog's articles" }));
-    expect(code()).toHaveValue('import games from "./tournaments/20th-werner-obermeyer-swiss-5r.pgn?raw"\n\n<SwissStandingsTable pgn={games} density="dense" rowsPerPage="25" />');
+    // Uploaded: read here, written into the code too.
+    dialog = await open();
+    // It opens on what is in use.
+    expect(within(dialog).getByRole("radio", { name: "Paste a PGN" })).toBeChecked();
+    await user.click(within(dialog).getByRole("radio", { name: "Upload a PGN file" }));
+    await user.upload(within(dialog).getByTestId("mdx-component-gallery-upload-input"), new File(['[Event "Club"]\n[White "X"]\n[Black "Y"]\n[Result "*"]\n\n1. c4 *'], "club.pgn"));
+    expect(await within(dialog).findByTestId("mdx-component-gallery-uploaded")).toHaveTextContent("club.pgn — 1 game.");
+    await user.click(within(dialog).getByRole("button", { name: "Use it" }));
+    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Uploaded — club.pgn, 1 game");
+    expect(code()).toHaveValue('export const games = `[Event "Club"]\n[White "X"]\n[Black "Y"]\n[Result "*"]\n\n1. c4 *`\n\n<SwissStandingsTable pgn={games} density="dense" rowsPerPage="25" />');
 
-    // A Swiss table reads a PGN: a Library collection does not fit it.
-    await user.click(screen.getByRole("radio", { name: /^The Library/ }));
-    await user.type(screen.getByRole("textbox", { name: "The address" }), "/library/capablanca");
-    await user.click(screen.getByRole("button", { name: "Look it up" }));
-    expect(await screen.findByTestId("mdx-component-gallery-found")).toHaveTextContent("Found Capablanca — 1,035 games.");
-    expect(screen.getByTestId("mdx-component-gallery-misfit")).toHaveTextContent("<SwissStandingsTable> does not read a whole Library collection: it reads a PGN.");
-    expect(screen.queryByRole("textbox", { name: "The code" })).not.toBeInTheDocument();
+    // A Swiss table reads a PGN: a Library collection does not fit it, and cannot be used.
+    dialog = await open();
+    await user.click(within(dialog).getByRole("radio", { name: /^The Library/ }));
+    await user.type(within(dialog).getByRole("textbox", { name: "The address" }), "/library/capablanca");
+    await user.click(within(dialog).getByRole("button", { name: "Look it up" }));
+    expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent("Found Capablanca — 1,035 games.");
+    expect(within(dialog).getByTestId("mdx-component-gallery-misfit")).toHaveTextContent("<SwissStandingsTable> does not read a whole Library collection: it reads a PGN.");
+    expect(within(dialog).getByRole("button", { name: "Use it" })).toBeDisabled();
+    await expectNoAxeViolations(dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Uploaded — club.pgn, 1 game");
+  });
 
-    // The same address fits a collection's card.
+  it("finds a Library address for a component that reads the Library, Enter looking it up", async () => {
+    const user = userEvent.setup();
+    mount();
     await pick(user, "A Library collection");
-    await user.click(screen.getByRole("radio", { name: /^The Library/ }));
-    await user.type(screen.getByRole("textbox", { name: "The address" }), "/library/tal");
-    await user.click(screen.getByRole("button", { name: "Look it up" }));
+    await user.click(screen.getByRole("button", { name: "Add / update game…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add / update game — <CollectionCard>" });
+    // No PGN for a component that reads the Library alone.
+    expect(within(dialog).queryByRole("radio", { name: "Paste a PGN" })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("radio", { name: /^The Library/ }));
+    await user.type(within(dialog).getByRole("textbox", { name: "The address" }), "/somewhere{Enter}");
+    expect(within(dialog).getByRole("textbox", { name: "The address" })).toHaveAccessibleDescription(/^An address is a game's/);
+    await user.clear(within(dialog).getByRole("textbox", { name: "The address" }));
+    await user.type(within(dialog).getByRole("textbox", { name: "The address" }), "/library/tal{Enter}");
+    expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent(/^Found Tal — /);
+    await user.keyboard("{Enter}");
     await waitFor(() => expect(code()).toHaveValue('<CollectionCard _id="/library/tal" />'));
-    // An address that is none says so.
-    await user.clear(screen.getByRole("textbox", { name: "The address" }));
-    await user.type(screen.getByRole("textbox", { name: "The address" }), "/somewhere");
-    await user.click(screen.getByRole("button", { name: "Look it up" }));
-    expect(screen.getByRole("textbox", { name: "The address" })).toHaveAccessibleDescription(/^An address is a game's/);
+    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent(/^The Library — Tal — /);
   });
 
   it("copies the code, and writes nothing", async () => {

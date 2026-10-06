@@ -396,3 +396,31 @@ export const snippetOf = (entry: GalleryEntry, source: GallerySource | undefined
 
 /** `<ArticleImage>`'s snippet: the image imported by its path — from the Blog's root for a Blog's image — then the element. */
 export const imageSnippetOf = (path: string, alt = "…"): string => `import photo from "./${path}"\n\n<ArticleImage src={photo} alt="${alt}" />`;
+
+/** A built-in example an entry can read: its id (a select's value), its words, and the source. */
+export type BuiltInExample = { id: string; label: string; source: GallerySource };
+
+/**
+ * The built-in examples an entry can be switched to — the ones that fit
+ * it: its own sample first, then each PGN beside the Blog's articles (for
+ * a component that reads a PGN) and each shipped Library collection (as a
+ * collection, or its first game for one that reads a single game).
+ */
+export const builtInsOf = (entry: GalleryEntry, pgnFiles: readonly string[], collections: readonly { id: string; name: string }[]): BuiltInExample[] => {
+  const sample = sampleOf(entry);
+  const examples: BuiltInExample[] = [];
+  const add = (example: BuiltInExample) => {
+    if (!examples.some((candidate) => candidate.id === example.id)) examples.push(example);
+  };
+  const libraryExample = (game: LibraryGame, name: string): BuiltInExample => {
+    const address = game.number === undefined ? `/library/${game.collection}` : `/library/${game.collection}/${game.number}`;
+    return { id: address, label: game.number === undefined ? `${name} — ${address}` : `${name}, game ${game.number} — ${address}`, source: { kind: "library", game } };
+  };
+  const nameOf = (collection: string) => collections.find((candidate) => candidate.id === collection)?.name ?? collection;
+  if (sample?.kind === "file") add({ id: sample.file, label: `${sample.file} (the default)`, source: sample });
+  if (sample?.kind === "library") add({ ...libraryExample(sample.game, nameOf(sample.game.collection)), label: `${libraryExample(sample.game, nameOf(sample.game.collection)).label} (the default)` });
+  if (entry.reads.includes("pgn")) for (const file of pgnFiles) add({ id: file, label: file, source: { kind: "file", file } });
+  if (entry.reads.includes("collection")) for (const { id, name } of collections) add(libraryExample({ collection: id }, name));
+  else if (entry.reads.includes("game")) for (const { id, name } of collections) add(libraryExample({ collection: id, number: 1 }, name));
+  return examples;
+};
