@@ -56,7 +56,7 @@ for the Analysis Board and Saved analyses it hands games to.
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`, `eventGroupsOf` (rows grouped by their `Event` — the import's *Split by event*, CTA-127). **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together); since CTA-142 every format with a table (`TournamentTableFormat`, `isTableFormat` — all but `arena`), `tableFormatOfKind` (a guess's kind as a format), the summary's kept verdict `sharedEvent`, and `readsAsTournament` (the verdict from what is at hand — the list's, which reads no index). |
+| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`, `eventGroupsOf` (rows grouped by their `Event` — the import's *Split by event*, CTA-127). **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together); since CTA-142 every format with a table (`TournamentTableFormat`, `isTableFormat` — all but `arena`), `tableFormatOfKind` (a guess's kind as a format), the summary's kept verdict `sharedEvent`, and `readsAsTournament` (the verdict from what is at hand — the list's, which reads no index), `isPotentialTournament` (an upload never marked either way whose games share one event). |
 | `src/lib/collectionZip.ts` | **A picked `.zip`** (CTA-102, CTA-103): `readCollectionZip` (every `.pgn` in it, bounded, non-throwing), `isZipFile`. |
 | `src/lib/collectionIndex.ts` | **The index**: `IndexedRow`, `indexedRowOf` (tags + a `parsePgnTree` pass), `indexGame` (one game, with the app's book), `buildCollectionIndex` / `buildCollectionIndexAsync`, `numberedRows`, `textHash`, `OpeningLookup` / `loadOpeningLookup`, and the file format: `encodeCollectionIndex` / `decodeCollectionIndex`, `COLLECTION_INDEX_FORMAT` / `COLLECTION_INDEX_VERSION`. |
 | `src/lib/collectionIndex.worker.ts` | The index pass for an upload, off the main thread. |
@@ -501,7 +501,16 @@ words box, **the table the one region that scrolls**, its header sticky.
   collection that reads as one from its summary (`readsAsTournament`: the
   mark, and the kept `sharedEvent`; no index is read) — shows a trophy
   (`library-tournament-icon-<id>`, `aria-hidden`) where the others show a
-  table, its name read with ", Tournament".
+  table, its name read with ", Tournament". **A potential tournament**
+  (`isPotentialTournament`: an upload never marked either way, its kept
+  `sharedEvent` true, two games or more) has a **warning triangle first
+  among its row's actions** (`library-potential-tournament-<id>`): a link to
+  its table, where the type is suggested (§6.4), its tooltip and name saying
+  why ("Potential tournament: … games share one Event. Open it to choose a
+  tournament type, or dismiss the suggestion.") — until the type is applied
+  or turned down. Its name keeps the table icon. Shipped collections never
+  are; an upload stored before `sharedEvent` is not until a write of its
+  games.
 - **Built-in** (`library-folder-builtin`) is always the first row and open at
   the start; it holds the shipped collections, and is read-only (§4.4): its
   one action is the download, and its collections' only action is theirs.
@@ -525,7 +534,8 @@ words box, **the table the one region that scrolls**, its header sticky.
     (`-move-`, the shared `FolderMoveDialog`, which leaves out the folder's own
     subtree) and *Delete* (`-delete-`: an empty folder goes at once; otherwise
     the shared `FolderDeleteDialog` says the contents move up to its parent);
-  - an upload (`library-collection-actions-<id>`): *Download*
+  - an upload (`library-collection-actions-<id>`): a potential tournament's
+    warning first (above, CTA-142), then *Download*
     (`library-collection-download-<id>`), *Move to…* (`-move-`, the shared
     `FolderPicker` in `library-collection-move-dialog`, the top level its
     "none") and *Delete* (`-delete-`, confirmed in `library-delete-dialog`);

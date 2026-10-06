@@ -65,6 +65,8 @@ const ENTRIES: readonly LibraryEntry[] = [
   // CTA-142: one marked as a tournament whose games share one event, and one whose no longer do.
   { ...upload("ucup", "Club championship 2026", 42, null), tournament: { enabled: true, type: "swiss" }, sharedEvent: true },
   { ...upload("umixed", "Cup and friendlies", 50, null), tournament: { enabled: true, type: "swiss" }, sharedEvent: false },
+  // Never marked, its games one event: a potential tournament.
+  { ...upload("uopen", "Weekend open 2026", 18, null), sharedEvent: true },
 ];
 
 const byName = (a: { name: string }, b: { name: string }) =>

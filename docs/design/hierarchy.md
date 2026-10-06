@@ -109,7 +109,7 @@ CTA-113 moved the rest of the app onto blocks:
 
 | Block | Family | What it is |
 | --- | --- | --- |
-| `CollectionsTreeTable` | tables | The Library home's details view — Built-in, the reader's folders and their collections (`LibraryEntry`, `FolderTreeRow`) as `DataTable` tree rows: Name, Games, Added, the row actions (`FolderActions` for a folder); a collection that reads as a tournament a trophy, its name read with "Tournament" (CTA-142). |
+| `CollectionsTreeTable` | tables | The Library home's details view — Built-in, the reader's folders and their collections (`LibraryEntry`, `FolderTreeRow`) as `DataTable` tree rows: Name, Games, Added, the row actions (`FolderActions` for a folder); a collection that reads as a tournament a trophy, its name read with "Tournament", one that could be (never marked, its games one event) a warning link first among its actions, its tooltip saying why (CTA-142). |
 | `CollectionGamesTable` | tables | A collection's games (`CollectionRow`) as a `DataTable`: the twelve columns sorted by `sortedRows`, picks with select-all over every game the filters leave, the White cell the row's link, an unreadable game marked. |
 | `SavedAnalysesList`, `RepertoiresList` | lists | The saved lists: folders and records as rows or cards, picks, the settings link, a board preview on a card; `savedListView.ts` the view choice. |
 | `FolderActions`, `FolderPicker` | lists | A folder's row actions (new, upload, download, rename, move, delete); the flat folder chooser over `PickerList`. |

@@ -1482,6 +1482,13 @@ const en = {
     tournament: {
       /** The list's word for its icon, read with the collection's name. */
       mark: "Tournament",
+      /**
+       * A collection that could be one (CTA-142: never marked, its games one
+       * event) — the list's warning icon among its actions: its tooltip and
+       * name, a link to the collection, where the type is suggested.
+       */
+      potentialHint_one: "Potential tournament: {{name}}'s game shares one Event. Open it to choose a tournament type, or dismiss the suggestion.",
+      potentialHint_other: "Potential tournament: {{name}}'s {{count}} games share one Event. Open it to choose a tournament type, or dismiss the suggestion.",
       tabs: {
         label: "The tournament",
         info: "Info",

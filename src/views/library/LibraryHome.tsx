@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 
 import { folderTreeRows, type FolderTreeRow } from "../../lib/folderTreeRows";
 import { moveCollection, removeCollection } from "../../lib/libraryCollectionStore";
-import { readsAsTournament, type CollectionSummary } from "../../lib/libraryCollections";
+import { isPotentialTournament, readsAsTournament, type CollectionSummary } from "../../lib/libraryCollections";
 import {
   BUILT_IN_FOLDER_ID,
   createLibraryFolder,
@@ -325,6 +325,7 @@ function LibraryHome() {
           filtered={needle !== ""}
           // CTA-142: from the summaries alone — the list reads no index.
           isTournament={(entry) => readsAsTournament(entry)}
+          isPotentialTournament={(entry) => isPotentialTournament(entry)}
           testId="library-collections"
         />
       </Box>

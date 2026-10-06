@@ -769,6 +769,18 @@ export const isTournamentCollection = (
 ): boolean => summary.tournament?.enabled === true && canBeTournament(rows);
 
 /**
+ * **A potential tournament** (CTA-142) — an upload never marked either way
+ * (no stored mark: neither applied nor turned down) whose games share one
+ * `Event` (the summary's kept `sharedEvent`), and at least two of them (what
+ * the guess needs): what its games table offers a type for, and the list
+ * marks — from the summary alone, no index read. A record from before
+ * `sharedEvent` was kept is not one until a write of its games.
+ */
+export const isPotentialTournament = (
+  summary: Pick<CollectionSummary, "source" | "tournament" | "sharedEvent" | "count">,
+): boolean => summary.source === "uploaded" && summary.tournament === undefined && summary.sharedEvent === true && summary.count >= 2;
+
+/**
  * Whether a collection reads as a tournament **from what is at hand**
  * (CTA-142) — the Library's list, which reads no index: the rows, where they
  * have been read ({@link isTournamentCollection}); else the summary's kept

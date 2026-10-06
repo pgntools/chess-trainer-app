@@ -6,6 +6,7 @@ import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
 import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 import FolderSpecialRoundedIcon from "@mui/icons-material/FolderSpecialRounded";
 import TableChartOutlinedIcon from "@mui/icons-material/TableChartOutlined";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { useTranslation } from "react-i18next";
 
 import { visuallyHidden } from "../../../design-system/components/a11y";
@@ -65,6 +66,13 @@ export type CollectionsTreeTableProps = {
    */
   isTournament?: (collection: LibraryEntry) => boolean;
   /**
+   * Whether a collection could be one, never marked either way (CTA-142,
+   * `isPotentialTournament`): a warning triangle first among its row's
+   * actions — its tooltip saying so, a link to its table, where the type is
+   * suggested — until the type is applied or turned down. Absent, none is.
+   */
+  isPotentialTournament?: (collection: LibraryEntry) => boolean;
+  /**
    * The root, and its sort headers `<testId>-sort-<column>`. A folder's row is
    * `library-folder-<id>` (its chevron `-toggle`, its actions
    * `library-folder-actions-<id>` → `library-folder-<action>-<id>`), a
@@ -90,7 +98,9 @@ const rowKey = (row: Row) =>
  * **Built-in** folder its download alone; an upload download, move, delete; a
  * shipped collection its download alone. Every action is named for its row.
  * A collection that reads as a tournament (CTA-142) shows a trophy where the
- * others show a table, and is named with the word.
+ * others show a table, named with the word; one that could be (never
+ * marked, its games one event) a warning triangle among its actions, a link
+ * to its table whose tooltip says why.
  *
  * Presentational: the walk (`folderTreeRows`), the sort, the open folders and
  * every callback are the screen's. Its words are the Library's (`library.*`).
@@ -106,6 +116,7 @@ function CollectionsTreeTable({
   actions,
   filtered = false,
   isTournament,
+  isPotentialTournament,
   testId,
 }: CollectionsTreeTableProps) {
   const { t, i18n } = useTranslation();
@@ -237,6 +248,16 @@ function CollectionsTreeTable({
         data-testid={`library-collection-actions-${item.id}`}
         sx={{ display: "flex", gap: 0.25 }}
       >
+        {/* CTA-142: could be a tournament, never marked — its table suggests the type. */}
+        {isPotentialTournament?.(item) === true && (
+          <IconAction
+            label={t("library.tournament.potentialHint", { name: item.name, count: item.count })}
+            link={collectionLink(item)}
+            testId={`library-potential-tournament-${item.id}`}
+          >
+            <WarningAmberRoundedIcon fontSize="small" color="warning" />
+          </IconAction>
+        )}
         <IconAction
           label={t("savedList.folder.downloadNamed", { name: item.name })}
           onClick={() => actions.onDownloadCollection(item)}

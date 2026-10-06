@@ -285,6 +285,31 @@ describe("the games table's suggestion", () => {
   });
 });
 
+describe("the list's potential tournaments (CTA-142)", () => {
+  it("marks a never-marked one-event upload with a warning until its type is applied or turned down", async () => {
+    const user = userEvent.setup();
+    const cup = await upload();
+    const plain = await keep("Loose", [...GAMES, '[Event "Other"]\n[White "E"]\n[Black "F"]\n\n1. e4 *']);
+    const declined = await upload();
+    expect(await updateCollectionSettings(declined.id, { tournament: { enabled: false, type: "swiss" } })).toBeUndefined();
+    mount("/library");
+    await screen.findByTestId(`library-row-${cup.id}`);
+    expect(screen.getByTestId(`library-potential-tournament-${cup.id}`)).toBeInTheDocument();
+    expect(screen.queryByTestId(`library-potential-tournament-${plain.id}`)).toBeNull();
+    expect(screen.queryByTestId(`library-potential-tournament-${declined.id}`)).toBeNull();
+    // Shipped collections are never potential: the tournaments among them are marked.
+    expect(screen.queryByTestId("library-potential-tournament-tal")).toBeNull();
+
+    // The warning opens its table, where the type is suggested; applied there, a trophy from then on.
+    await user.click(screen.getByTestId(`library-potential-tournament-${cup.id}`));
+    await user.click(await screen.findByRole("button", { name: "Apply the suggested type, Round robin" }));
+    await screen.findByTestId("library-tournament-screen");
+    cleanupAndMount("/library");
+    await screen.findByTestId(`library-tournament-icon-${cup.id}`);
+    expect(screen.queryByTestId(`library-potential-tournament-${cup.id}`)).toBeNull();
+  });
+});
+
 describe("the settings' suggestion", () => {
   it("suggests the type the games look like, and Apply puts it in the draft for Save", async () => {
     const cup = await upload();
