@@ -15,8 +15,11 @@ import {
   loadUploadedGames,
   resetLibraryCollectionStore,
 } from "../../../lib/libraryCollectionStore";
-import { createAnalysisFolder } from "../../../lib/savedAnalysisFolderStore";
+import { analysisFoldersSnapshot, createAnalysisFolder } from "../../../lib/savedAnalysisFolderStore";
+import { collectionNameOfStem } from "../../../lib/libraryCollections";
+import { indexCollection } from "../../library/indexCollection";
 import {
+  addAnalyses,
   findSavedAnalysis,
   resetSavedAnalysisStore,
   saveAnalysis,
@@ -35,6 +38,20 @@ vi.mock("../../../lib/engine", async () => ({
 vi.mock("../../../lib/libraryCollectionStore", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../../lib/libraryCollectionStore")>();
   return { ...actual, addCollection: vi.fn(actual.addCollection) };
+});
+
+// The index pass and the analyses' writes, spied on so a test can make them fail (CTA-141).
+vi.mock("../../library/indexCollection", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../library/indexCollection")>();
+  return { ...actual, indexCollection: vi.fn(actual.indexCollection) };
+});
+vi.mock("../../../lib/savedAnalysisFolderStore", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../lib/savedAnalysisFolderStore")>();
+  return { ...actual, createAnalysisFolder: vi.fn(actual.createAnalysisFolder) };
+});
+vi.mock("../../../lib/savedAnalysisStore", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../lib/savedAnalysisStore")>();
+  return { ...actual, addAnalyses: vi.fn(actual.addAnalyses) };
 });
 
 vi.mock("react-chessboard", async () => {
@@ -452,6 +469,115 @@ describe("the Load tab", () => {
         "could not be saved",
       );
       expect(screen.getByTestId("analysis-choice")).toBeInTheDocument();
+      expect(where()).toBe("/tools/analysis");
+    });
+
+    it("tells a failed check from a failed write, and logs the cause (CTA-141)", async () => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      const checkFailure = new Error("worker gone");
+      vi.mocked(indexCollection).mockRejectedValueOnce(checkFailure);
+      mount();
+      paste(TWO_LINES);
+      fireEvent.click(screen.getByRole("button", { name: "Save as games collection" }));
+      expect(await screen.findByTestId("analysis-choice-problem")).toHaveTextContent("could not be checked");
+      expect(logged).toHaveBeenCalledWith(expect.stringContaining("check"), checkFailure);
+
+      const writeFailure = new Error("disk gone");
+      vi.mocked(addCollection).mockRejectedValueOnce(writeFailure);
+      fireEvent.click(screen.getByRole("button", { name: "Save as games collection" }));
+      await waitFor(
+        () => expect(screen.getByTestId("analysis-choice-problem")).toHaveTextContent("checked, but could not be written"),
+        { timeout: 10_000 },
+      );
+      expect(logged).toHaveBeenCalledWith(expect.stringContaining("write"), writeFailure);
+      logged.mockRestore();
+    });
+  });
+
+  describe("several games saved to Saved analyses (CTA-141)", () => {
+    const POSITION = "8/8/2k5/3r4/4Q3/5K2/8/8 w - - 1 1";
+    const CHAPTERS = [
+      `[Event "Study: Intro"]\n[ChapterName "Intro"]\n[FEN "${POSITION}"]\n[SetUp "1"]\n\n{ Begin. } 1. Qh4 { [%cal Gh4d8] } *`,
+      `[Event "Study: Position"]\n[ChapterName "Position"]\n[FEN "${POSITION}"]\n[SetUp "1"]\n\n*`,
+      '[Event "Study: Broken"]\n[ChapterName "Broken"]\n\n1. e4 e5 2. Qxx9 *',
+      '[Event "Study: Lines"]\n[ChapterName "Lines"]\n\n1. e4 e5 (1... c5) 2. Nf3 *',
+    ];
+    const STEM = "lichess_study_queen-vs-rook";
+    const pick = async (text: string) => {
+      openTab("load");
+      fireEvent.change(screen.getByTestId("analysis-load-input"), {
+        target: { files: [new File([text], `${STEM}.pgn`, { type: "application/x-chess-pgn" })] },
+      });
+      await screen.findByTestId("analysis-choice");
+    };
+    const chooseAnalyses = () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save to Saved analyses" }));
+      return screen.getByRole("dialog", { name: "Save to Saved analyses" });
+    };
+
+    beforeEach(() => {
+      vi.mocked(addAnalyses).mockClear();
+      vi.mocked(createAnalysisFolder).mockClear();
+    });
+
+    it("offers the choice with its help, and saves every game that reads into a new folder, then goes there", async () => {
+      mount();
+      await pick(CHAPTERS.join("\n\n"));
+      expect(screen.getByRole("button", { name: "Save to Saved analyses" })).toHaveAccessibleDescription(
+        /becomes a saved analysis/,
+      );
+      const dialog = chooseAnalyses();
+      const name = within(dialog).getByRole("textbox", { name: "Folder name" });
+      expect(name).toHaveValue(collectionNameOfStem(STEM));
+      expect(dialog).toHaveTextContent("3 games will be saved as analyses");
+      expect(dialog).toHaveTextContent("1 game could not be read");
+      await expectNoAxeViolations(dialog);
+
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(where()).toMatch(/^\/tools\/analysis\/saved\?folder=/));
+      const [folder] = analysisFoldersSnapshot() ?? [];
+      expect(folder).toMatchObject({ name: collectionNameOfStem(STEM), parentId: null });
+      expect(where()).toBe(`/tools/analysis/saved?folder=${encodeURIComponent(folder.id)}`);
+      expect(listed().map((row) => [row.name, row.folderId])).toEqual([
+        ["Intro", folder.id],
+        ["Position", folder.id],
+        ["Lines", folder.id],
+      ]);
+      expect(listed().map((row) => row.pgn)).toEqual([CHAPTERS[0], CHAPTERS[1], CHAPTERS[3]]);
+    });
+
+    it("names a paste by its shared event, refuses an empty name, and Back writes nothing", () => {
+      mount();
+      paste('[Event "Two lines"]\n\n1. e4 e5 *\n\n[Event "Two lines"]\n\n1. e4 c5 *');
+      const dialog = chooseAnalyses();
+      const name = within(dialog).getByRole("textbox", { name: "Folder name" });
+      expect(name).toHaveValue("Two lines");
+      fireEvent.change(name, { target: { value: "  " } });
+      expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Back" }));
+      expect(screen.getByRole("button", { name: "Save to Saved analyses" })).toBeInTheDocument();
+      expect(createAnalysisFolder).not.toHaveBeenCalled();
+      expect(listed()).toEqual([]);
+    });
+
+    it("keeps nothing, saying why, when the folder or the records cannot be written", async () => {
+      vi.mocked(createAnalysisFolder).mockResolvedValueOnce(undefined);
+      mount();
+      paste('[Event "A"]\n\n1. e4 *\n\n[Event "B"]\n\n1. d4 *');
+      const dialog = chooseAnalyses();
+      expect(within(dialog).getByRole("textbox", { name: "Folder name" })).toHaveValue("Analysed games");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+      expect(await within(dialog).findByTestId("analysis-choice-folder-problem")).toHaveTextContent("at most 100 folders");
+      expect(addAnalyses).not.toHaveBeenCalled();
+
+      vi.mocked(addAnalyses).mockResolvedValueOnce("too-many");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+      await waitFor(() =>
+        expect(screen.getByTestId("analysis-choice-folder-problem")).toHaveTextContent("Nothing was saved"),
+      );
+      expect(screen.getByTestId("analysis-choice-folder-problem")).toHaveTextContent("analyses");
+      await waitFor(() => expect(analysisFoldersSnapshot() ?? []).toEqual([]));
+      expect(listed()).toEqual([]);
       expect(where()).toBe("/tools/analysis");
     });
   });

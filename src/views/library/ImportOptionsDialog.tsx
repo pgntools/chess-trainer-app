@@ -165,6 +165,7 @@ function ImportOptionsDialog({
     });
     if (outcome.status === "cancelled") return;
     if (outcome.status === "failed") {
+      console.error("ImportOptionsDialog: the import failed.", outcome.error);
       setProblem("index");
       return;
     }

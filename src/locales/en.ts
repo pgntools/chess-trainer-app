@@ -941,7 +941,8 @@ const en = {
       popup: {
         title_one: "This PGN holds {{count}} game",
         title_other: "This PGN holds {{count}} games",
-        explain: "Merge them into one tree on the board, or keep them as a collection of games in the Library.",
+        explain:
+          "Merge them into one tree on the board, keep them as a collection of games in the Library, or save each one as an analysis.",
         skipped_one: "{{count}} game has no moves or could not be read, and is left out of a merge.",
         skipped_other: "{{count}} games have no moves or could not be read, and are left out of a merge.",
         merge: "Merge games",
@@ -952,12 +953,31 @@ const en = {
         collection: "Save as games collection",
         collectionHelp:
           "Every game is kept as it is, in a new collection at the top of the Library, named after the games' event or the file; you go to its table.",
+        /** The third choice (CTA-141): each game its own saved analysis, in a new folder. */
+        analyses: "Save to Saved analyses",
+        analysesHelp:
+          "Every game — a position on its own too — becomes a saved analysis, comments, side lines and arrows kept, in a new folder of Saved analyses; you go to the folder.",
+        folderTitle: "Save to Saved analyses",
+        folderName: "Folder name",
+        /** The folder's name when a pasted text's games share no event. */
+        folderDefault: "Analysed games",
+        folderCount_one: "{{count}} game will be saved as an analysis in a new folder.",
+        folderCount_other: "{{count}} games will be saved as analyses in a new folder.",
+        folderSkipped_one: "{{count}} game could not be read, and is left out.",
+        folderSkipped_other: "{{count}} games could not be read, and are left out.",
+        folderSave: "Save",
+        folderBack: "Back",
         indexing: "Checking games… {{done}} of {{total}}",
         cancel: "Cancel",
         problem: {
           unreadable: "No game could be read in that.",
           index: "The games could not be checked. Nothing was saved.",
+          /** The games were checked, then the write itself failed (CTA-141). */
+          write: "The games were checked, but could not be written. Nothing was saved.",
           storage: "It could not be saved — this browser's storage is full or unavailable.",
+          folder: "No new folder could be made — Saved analyses holds at most {{max}} folders. Nothing was saved.",
+          tooMany: "Saved analyses holds at most {{max}} analyses, and these would pass it. Nothing was saved.",
+          analysesStorage: "The browser refused to store the games — its storage may be full. Nothing was saved.",
         },
       },
       problem: {

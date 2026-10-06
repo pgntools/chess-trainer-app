@@ -59,6 +59,12 @@ export type AnalysisLoadConfig = {
    * Openings explorer keeps nothing (CTA-78).
    */
   onCollectionSaved?: (collectionId: string) => void;
+  /**
+   * The popup kept the text's games as analyses in this new Saved analyses
+   * folder (CTA-141) — the host takes the reader there. Given beside
+   * `onCollectionSaved` by the Analysis module's two hosts.
+   */
+  onAnalysesSaved?: (folderId: string) => void;
 };
 
 /** A text of several games, waiting for the reader's choice. */
@@ -75,6 +81,7 @@ export const useAnalysisLoad = ({
   onLoadFen,
   onLoadPosition,
   onCollectionSaved,
+  onAnalysesSaved,
 }: AnalysisLoadConfig) => {
   const { t } = useTranslation();
   const [pasted, setPasted] = useState("");
@@ -160,6 +167,12 @@ export const useAnalysisLoad = ({
     onCollectionSaved?.(collectionId);
   };
 
+  /** The popup kept the choice as analyses in a new folder: the host takes the reader there. */
+  const analysesSaved = (folderId: string) => {
+    setChoice(null);
+    onAnalysesSaved?.(folderId);
+  };
+
   /** Apply the FEN form's text through `onLoadFen`; the error line is `fenProblem`. */
   const applyFen = () => {
     if (onLoadFen === undefined) return;
@@ -196,6 +209,7 @@ export const useAnalysisLoad = ({
     merge,
     dismiss,
     collectionSaved,
+    analysesSaved,
     applyFen,
   };
 };
