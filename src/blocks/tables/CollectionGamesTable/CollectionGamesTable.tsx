@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode } from "react";
+import Box from "@mui/material/Box";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { useTranslation } from "react-i18next";
 
@@ -40,12 +41,30 @@ export type CollectionGamesTableProps = {
 };
 
 /**
+ * An opening on **one line** (CTA-138), truncated with an ellipsis at the
+ * column's width — the whole string on hover, a native `title` as the
+ * tournament tables' `HeadingCell` does. The flex wrapper with a `minWidth: 0`
+ * child is the `CollectionsTreeTable` trick: it is what keeps a long opening
+ * from growing the table sideways rather than truncating.
+ */
+function OpeningCell({ value }: { value: string }) {
+  return (
+    <Box component="span" sx={{ display: "flex", minWidth: 0 }}>
+      <Box component="span" dir="auto" title={value} sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+        {value}
+      </Box>
+    </Box>
+  );
+}
+
+/**
  * **A collection's games** (CTA-113; the table of CTA-75) — one row per game
  * as a `DataTable`: `#`, White, Elo, Black, Elo, Result, Date, Round, Event,
  * ECO, Opening, Moves, every one a sort header; a pick per row with
  * select-all in the header over every game the filters leave, on every page;
  * the White cell the row's link, named by the whole game. A game the index
- * could not read is marked in its `#` cell.
+ * could not read is marked in its `#` cell. The Opening column keeps to one
+ * line, the whole string on hover (CTA-138).
  *
  * Presentational: the filtered rows, the sort, the page, the picks and the
  * link are props; the order is `lib/libraryCollections.ts`'s own
@@ -88,7 +107,7 @@ function CollectionGamesTable({
       firstDirection: collectionFirstDirection(id),
       ...(isNumericColumn(id) && { align: "end" as const }),
       ...(direction[id] !== undefined && { dir: direction[id] }),
-      ...(id === "opening" && { wrap: true, width: 200 }),
+      ...(id === "opening" && { width: 200 }),
       render:
         id === "number"
           ? (row: CollectionRow) => (
@@ -104,7 +123,9 @@ function CollectionGamesTable({
                 )}
               </>
             )
-          : (row: CollectionRow) => text(row[id] as string | number | undefined),
+          : id === "opening"
+            ? (row: CollectionRow) => <OpeningCell value={text(row.opening) as string} />
+            : (row: CollectionRow) => text(row[id] as string | number | undefined),
     }));
   }, [t, testId]);
 
