@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router";
 
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
@@ -28,6 +28,7 @@ import {
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
 import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
+import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../../main/boardLeftPanel";
 import { NEXT_MOVE_ARROW_PALETTES, UNTAGGED_NEXT_MOVE_ARROW_COLOR } from "./nextMoveArrows";
 
 vi.mock("../../../lib/engine", async () => ({
@@ -939,6 +940,243 @@ describe("the Arrows tab (CTA-98)", () => {
       arrowWidthSource: "lines",
       arrowPalette: "colorblind",
     });
+  });
+});
+
+describe("the sibling analyses panel (CTA-145)", () => {
+  const AFTER_D4 = "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1";
+  const AFTER_C4 = "rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq - 0 1";
+
+  /** The board in the shell's own places: the right panel, and the board's left column (or its drawer, `compact`). */
+  const BackButton = () => {
+    const navigate = useNavigate();
+    return <button onClick={() => navigate(-1)}>history back</button>;
+  };
+  const mountIn = (entry: string, compact = false) =>
+    render(
+      <AppThemeWithLang>
+        <MemoryRouter initialEntries={[entry]}>
+          <RightPanelProvider>
+            <BoardLeftPanelProvider>
+              <Routes>
+                <Route path="/tools/analysis" element={<AnalysisBoard />} />
+                <Route path="*" element={<div data-testid="elsewhere" />} />
+              </Routes>
+              <Where />
+              <BackButton />
+              <BoardLeftPanelOutlet compact={compact} />
+              <RightPanelOutlet />
+            </BoardLeftPanelProvider>
+          </RightPanelProvider>
+        </MemoryRouter>
+      </AppThemeWithLang>,
+    );
+
+  /** A folder of three tutorial positions, Lesson 3 the newest — and one analysis Unfiled. */
+  const tutorial = async () => {
+    const folder = (await createAnalysisFolder("Tutorial", null))!;
+    const filed = { folderId: folder.id };
+    await stored("a1", "1. e4 *", ["e4"], { ...filed, name: "Lesson 1", updatedAt: "2026-01-01T00:00:00.000Z" });
+    await stored("a2", "1. d4 *", ["d4"], { ...filed, name: "Lesson 2", updatedAt: "2026-01-02T00:00:00.000Z" });
+    await stored("a3", "1. c4 *", ["c4"], { ...filed, name: "Lesson 3", updatedAt: "2026-01-03T00:00:00.000Z" });
+    await stored("loose", "1. Nf3 *", [], { name: "Loose" });
+    return folder;
+  };
+  const panel = () => screen.getByRole("navigation", { name: "Analyses in Tutorial" });
+  const listedNames = () => within(within(panel()).getByRole("list")).getAllByRole("link").map((link) => link.textContent);
+
+  it("lists the folder's analyses beside the board, the open one current", async () => {
+    const folder = await tutorial();
+    mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}`);
+    expect(within(panel()).getByRole("heading", { name: "Tutorial" })).toBeInTheDocument();
+    // The table's default order: newest updated first.
+    expect(listedNames()).toEqual(["Lesson 3", "Lesson 2", "Lesson 1"]);
+    expect(within(panel()).getByRole("link", { current: true })).toHaveTextContent("Lesson 2");
+    expect(screen.getByTestId("analysis-siblings-position")).toHaveTextContent("2 of 3");
+    // The board is the analysis, as it always was.
+    expect(boardOptions().position).toBe(AFTER_D4);
+    await expectNoAxeViolations(panel());
+  });
+
+  it("shows no panel without a folder context, for an Unfiled analysis, or for another folder's", async () => {
+    const folder = await tutorial();
+    const { unmount } = mountIn("/tools/analysis?analysis=a2");
+    expect(screen.queryByRole("navigation", { name: /Analyses in/ })).toBeNull();
+    expect(screen.queryByTestId("analysis-siblings-toggle")).toBeNull();
+    expect(screen.queryByTestId("analysis-sibling-next")).toBeNull();
+    unmount();
+    mountIn(`/tools/analysis?analysis=loose&folder=${folder.id}`);
+    expect(screen.queryByRole("navigation", { name: /Analyses in/ })).toBeNull();
+  });
+
+  it("follows the sort the reader had in the folder's table", async () => {
+    const folder = await tutorial();
+    mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}&sort=name&dir=desc`);
+    expect(listedNames()).toEqual(["Lesson 3", "Lesson 2", "Lesson 1"]);
+  });
+
+  it("follows the table's own direction for the default column too", async () => {
+    const folder = await tutorial();
+    mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}&dir=asc`);
+    expect(listedNames()).toEqual(["Lesson 1", "Lesson 2", "Lesson 3"]);
+  });
+
+  it("opens a sibling on a click: its board, its name, the context kept in the URL", async () => {
+    const folder = await tutorial();
+    mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}&sort=name`);
+    fireEvent.click(within(panel()).getByRole("link", { name: "Lesson 3" }));
+
+    await waitFor(() => expect(boardOptions().position).toBe(AFTER_C4));
+    expect(screen.getByTestId("analysis-name")).toHaveTextContent("Lesson 3");
+    expect(where()).toContain("analysis=a3");
+    expect(where()).toContain(`folder=${folder.id}`);
+    expect(where()).toContain("sort=name");
+    expect(within(panel()).getByRole("link", { current: true })).toHaveTextContent("Lesson 3");
+    // Nothing was written by looking.
+    expect(listed().find((row) => row.id === "a3")?.name).toBe("Lesson 3");
+  });
+
+  it("goes back to the sibling before on the browser's Back", async () => {
+    const folder = await tutorial();
+    mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}`);
+    fireEvent.click(within(panel()).getByRole("link", { name: "Lesson 3" }));
+    await waitFor(() => expect(boardOptions().position).toBe(AFTER_C4));
+    fireEvent.click(screen.getByRole("button", { name: "history back" }));
+    await waitFor(() => expect(boardOptions().position).toBe(AFTER_D4));
+    expect(screen.getByTestId("analysis-name")).toHaveTextContent("Lesson 2");
+  });
+
+  it("steps through the ordered siblings with previous and next, disabled at the ends", async () => {
+    const folder = await tutorial();
+    mountIn(`/tools/analysis?analysis=a3&folder=${folder.id}`);
+    const previous = () => screen.getByRole("link", { name: i18n.t("analysis.siblings.previous") });
+    const next = () => screen.getByRole("link", { name: i18n.t("analysis.siblings.next") });
+
+    // Newest first: Lesson 3 is the first, so nothing is before it.
+    expect(screen.getByTestId("analysis-sibling-previous")).toBeDisabled();
+    fireEvent.click(next());
+    await waitFor(() => expect(screen.getByTestId("analysis-name")).toHaveTextContent("Lesson 2"));
+    expect(boardOptions().position).toBe(AFTER_D4);
+    fireEvent.click(next());
+    await waitFor(() => expect(screen.getByTestId("analysis-name")).toHaveTextContent("Lesson 1"));
+    // The last: no next.
+    expect(screen.getByTestId("analysis-sibling-next")).toBeDisabled();
+    fireEvent.click(previous());
+    await waitFor(() => expect(screen.getByTestId("analysis-name")).toHaveTextContent("Lesson 2"));
+    expect(where()).toContain("analysis=a2");
+  });
+
+  it("closes only the panel — the board, its analysis and its URL stay — and reopens it from the board", async () => {
+    const folder = await tutorial();
+    mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}`);
+    const before = where();
+    const toggle = screen.getByRole("button", { name: i18n.t("analysis.siblings.toggle") });
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("analysis.siblings.close") }));
+    expect(screen.queryByRole("navigation", { name: "Analyses in Tutorial" })).toBeNull();
+    expect(screen.queryByTestId("layout-board-left-panel")).toBeNull();
+    expect(boardOptions().position).toBe(AFTER_D4);
+    expect(screen.getByTestId("analysis-name")).toHaveTextContent("Lesson 2");
+    expect(where()).toBe(before);
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(toggle);
+    expect(panel()).toBeInTheDocument();
+    expect(within(panel()).getByRole("link", { current: true })).toHaveTextContent("Lesson 2");
+  });
+
+  it("keeps the panel closed as the reader steps to another analysis", async () => {
+    const folder = await tutorial();
+    mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}`);
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("analysis.siblings.close") }));
+    fireEvent.click(screen.getByTestId("analysis-sibling-next"));
+    await waitFor(() => expect(screen.getByTestId("analysis-name")).toHaveTextContent("Lesson 1"));
+    expect(screen.queryByRole("navigation", { name: "Analyses in Tutorial" })).toBeNull();
+    expect(screen.getByRole("button", { name: i18n.t("analysis.siblings.toggle") })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("does not open another analysis over unsaved changes — Save / Update / Discard come first — and writes nothing", async () => {
+    const folder = await tutorial();
+    mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}`);
+    drag("e7", "e5");
+
+    expect(screen.getByTestId("analysis-siblings-locked")).toHaveTextContent(i18n.t("analysis.siblings.locked"));
+    expect(screen.getByTestId("analysis-siblings-item-a3")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByTestId("analysis-sibling-previous")).toBeDisabled();
+    expect(screen.getByTestId("analysis-sibling-next")).toBeDisabled();
+    // Both say why, by name.
+    expect(screen.getAllByRole("button", { name: i18n.t("analysis.siblings.locked") })).toHaveLength(2);
+    expect(findSavedAnalysis("a2")?.pgn).not.toContain("e5");
+
+    // Discard, and the way is open again.
+    fireEvent.click(screen.getByTestId("analysis-save"));
+    fireEvent.click(within(screen.getByTestId("analysis-changes")).getByTestId("analysis-changes-discard"));
+    expect(screen.queryByTestId("analysis-siblings-locked")).toBeNull();
+    expect(screen.getByTestId("analysis-siblings-item-a3")).not.toHaveAttribute("aria-disabled");
+    expect(screen.getByTestId("analysis-sibling-next")).not.toBeDisabled();
+    expect(findSavedAnalysis("a2")?.pgn).not.toContain("e5");
+  });
+
+  it("lists the record updated in place, its name and place kept — Update does not leave the folder", async () => {
+    const folder = await tutorial();
+    mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}&sort=name`);
+    drag("e7", "e5");
+    fireEvent.click(screen.getByTestId("analysis-save"));
+    fireEvent.click(within(screen.getByTestId("analysis-changes")).getByTestId("analysis-changes-update"));
+    await waitFor(() => expect(screen.getByTestId("analysis-save")).toBeDisabled());
+    expect(listedNames()).toEqual(["Lesson 1", "Lesson 2", "Lesson 3"]);
+    expect(within(panel()).getByRole("link", { current: true })).toHaveTextContent("Lesson 2");
+  });
+
+  it("goes on in a saved copy with the folder's panel, the copy listed and current — not as a new arrival", async () => {
+    const folder = await tutorial();
+    mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}&sort=name`);
+    drag("e7", "e5");
+    fireEvent.click(screen.getByTestId("analysis-save"));
+    fireEvent.click(within(screen.getByTestId("analysis-changes")).getByTestId("analysis-changes-copy"));
+
+    await waitFor(() => expect(listed()).toHaveLength(5));
+    const copy = listed().find((row) => row.name === "Lesson 2 (copy)")!;
+    await waitFor(() => expect(where()).toContain(`analysis=${copy.id}`));
+    expect(where()).toContain(`folder=${folder.id}`);
+    expect(where()).toContain("sort=name");
+    await waitFor(() => expect(within(panel()).getByRole("link", { current: true })).toHaveTextContent("Lesson 2 (copy)"));
+    // The session went on: the move played is still on the board.
+    expect(boardOptions().position).toContain("4p3");
+  });
+
+  it("is a drawer under the shell's breakpoint — closed to begin with, opened from the board, closed on Escape", async () => {
+    const wide = window.matchMedia;
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: /max-width/.test(query),
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    try {
+      const user = userEvent.setup();
+      const folder = await tutorial();
+      mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}`, true);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.queryByTestId("layout-board-left-panel")).toBeNull();
+
+      await user.click(screen.getByRole("button", { name: i18n.t("analysis.siblings.toggle") }));
+      const sheet = await screen.findByRole("dialog", { name: i18n.t("analysis.siblings.drawer") });
+      expect(within(sheet).getByRole("navigation", { name: "Analyses in Tutorial" })).toBeInTheDocument();
+      await expectNoAxeViolations(sheet);
+
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(boardOptions().position).toBe(AFTER_D4);
+    } finally {
+      window.matchMedia = wide;
+    }
   });
 });
 

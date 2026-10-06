@@ -26,6 +26,7 @@ import { openingOfLine, type OpeningEntry } from "../../../../lib/openings";
 import { downloadPgn } from "../../../../lib/pgnExport";
 import { slugify } from "../../../../lib/pgnText";
 import { savedAnalysisFen, savedAnalysisToTree, type SavedAnalysis } from "../../../../lib/savedAnalyses";
+import { analysisBoardPath, DEFAULT_SIBLING_SORT, type SiblingSort } from "../../../../lib/siblingAnalyses";
 import {
   analysisTreeRows,
   SAVED_ANALYSES_DEFAULT_SORT,
@@ -185,7 +186,14 @@ const readRowOf = (saved: SavedAnalysis, lookup: AnalysisOpeningLookup | undefin
   return row;
 };
 
-const boardPath = (saved: { id: string }) => `/tools/analysis?analysis=${encodeURIComponent(saved.id)}`;
+/**
+ * The board an analysis opens on (CTA-145): filed in a folder, it carries that
+ * folder and the order its siblings are in — the table's sort, or the cards'
+ * newest first — so the board lists the folder beside it; Unfiled, it is the
+ * plain link and no panel.
+ */
+const boardPath = (saved: { id: string; folderId: string | null }, sort: SiblingSort = DEFAULT_SIBLING_SORT) =>
+  analysisBoardPath(saved.id, saved.folderId === null ? undefined : { folderId: saved.folderId, sort });
 
 /** What the name dialog is open for — a folder made, or renamed. */
 type NameDialogState = { mode: "create"; parentId: string | null } | { mode: "rename"; folder: AnalysisFolder } | null;
@@ -307,6 +315,8 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
     firstDirection: savedAnalysisFirstDirection,
     defaultRowsPerPage: SAVED_ANALYSES_PAGE,
   });
+  // The order the reader has the folders' analyses in — what a board opened from a row lists its siblings by.
+  const tableSort: SiblingSort = { column: table.sort, direction: table.direction };
   const walked = useMemo(
     () =>
       isList
@@ -588,8 +598,8 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
                 }
                 picked={picked}
                 onPickedChange={setPicked}
-                openLink={(row) => ({ component: RouterLink, to: boardPath(row) })}
-                onOpenAnalysis={(row) => navigate(boardPath(row))}
+                openLink={(row) => ({ component: RouterLink, to: boardPath(row, tableSort) })}
+                onOpenAnalysis={(row) => navigate(boardPath(row, tableSort))}
                 settingsLink={(row) => ({
                   component: RouterLink,
                   to: `/tools/analysis/saved/${encodeURIComponent(row.id)}/settings`,

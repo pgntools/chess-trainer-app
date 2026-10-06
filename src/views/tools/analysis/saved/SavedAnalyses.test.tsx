@@ -620,6 +620,35 @@ describe("Saved analyses — the games table (CTA-144)", () => {
     expect(screen.getByTestId("saved-analyses-table-description-own")).toHaveTextContent("Try 1.d4 again");
   });
 
+  it("links a filed analysis to a board that lists its folder — by the table's sort — and an Unfiled one to the plain board (CTA-145)", async () => {
+    const user = userEvent.setup();
+    const folder = (await createAnalysisFolder("Tutorial", null))!;
+    await saveAnalysis({ ...CARLSEN, folderId: folder.id });
+    await saveAnalysis({ ...ANAND, folderId: folder.id });
+    await saveAnalysis(save("loose", [[[], ["d4"]]], [], "white", new Date("2026-09-03T10:00:00.000Z")));
+    await renderScreen(`/tools/analysis/saved?folder=${folder.id}`);
+
+    const NAMES: Record<string, string> = { g1: "Carlsen, Magnus – Giri, Anish", g2: "Anand, Viswanathan – Aronian, Levon" };
+    const link = (id: string) =>
+      within(screen.getByTestId(`saved-analyses-item-${id}`)).getByRole("link", { name: NAMES[id] }).getAttribute("href");
+    // The default order: the folder alone.
+    expect(link("g1")).toBe(`/tools/analysis?analysis=g1&folder=${folder.id}`);
+    // The reader's sort rides along, with its direction when it is not the column's own.
+    await user.click(header("White"));
+    expect(link("g1")).toBe(`/tools/analysis?analysis=g1&folder=${folder.id}&sort=white`);
+    await user.click(header("White"));
+    expect(link("g2")).toBe(`/tools/analysis?analysis=g2&folder=${folder.id}&sort=white&dir=desc`);
+  });
+
+  it("links an Unfiled analysis to the plain board, no folder", async () => {
+    await saveAnalysis(save("loose", [[[], ["d4"]]], [], "white", new Date("2026-09-03T10:00:00.000Z")));
+    await renderScreen();
+    expect(within(screen.getByTestId("saved-analyses-item-loose")).getByRole("link", { name: /^Analysis board/ })).toHaveAttribute(
+      "href",
+      "/tools/analysis?analysis=loose",
+    );
+  });
+
   it("fills the opening from the book where the tags name none, and sorts by it", async () => {
     const user = userEvent.setup();
     await saveAnalysis(CARLSEN);

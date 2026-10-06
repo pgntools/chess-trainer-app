@@ -13,6 +13,10 @@ paths:
   - "src/lib/gameReference*"
   - "src/lib/gameCatalog*"
   - "src/lib/pgnExport*"
+  - "src/lib/siblingAnalyses*"
+  - "src/blocks/lists/SiblingAnalysesList/**"
+  - "src/views/main/boardLeftPanel*"
+  - "src/views/main/shellCompact.ts"
   - "src/blocks/lists/SavedAnalysesList/**"
   - "src/blocks/lists/FolderActions/**"
   - "src/blocks/lists/FolderPicker/**"
@@ -68,8 +72,11 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/lib/arrowSettings.ts` | The Arrows tab's ids (CTA-98): `ArrowWidthSource`, `ArrowPaletteId`, their defaults and readers (`arrowWidthSourceFrom`, `arrowPaletteFrom`). |
 | `src/lib/nextMoveWeights.ts` | Each width source's weights at a branch (`nextMoveWeights`), the `[%eval]` reader (`evalOf`), and which sources a tree offers (`arrowWidthSourcesIn`). Pure. The `games` tag's reader is `lib/gamesTag.ts`. |
 | `src/lib/gameReference.ts` + `gameCatalog.ts` | **The `?game=` carrier** (§3). |
+| `src/lib/siblingAnalyses.ts` | **The sibling panel's pure half** (CTA-145, §1.2): `siblingContextOf` (the URL's `?folder=` / `?sort=` / `?dir=`, checked against the record), `analysisBoardPath` (the link that carries them), `siblingAnalysesOf` (a folder's analyses in the table's order), `siblingPlaceOf` (the open one's neighbours). |
+| `src/blocks/lists/SiblingAnalysesList/` | The panel's list (CTA-145): ordered links, the open one `aria-current`, Close, the others disabled while the board holds unsaved changes. |
+| `src/views/main/boardLeftPanel.tsx`, `boardLeftPanelSlot.ts`, `shellCompact.ts` | The shell's slot the panel is registered in (CTA-145, §1.2): a column of the board's row, the window taken whole while it is open, a drawer under the breakpoint (`useShellCompact`). |
 | `src/lib/pgnExport.ts` | `downloadPgn` — several stored PGN records joined with a blank line (`pgnFileOf`), saved as a file. Also Settings' Export's (`downloadBinaryFile`, [`import-export.md`](./import-export.md)). |
-| Tests | `AnalysisBoard.test.tsx` (every arrival, Save, Load, Export, Play, the hand-off, the Arrows tab, the PGN's shapes drawn and written), `useTreeNavigation.test.ts`, `EngineThinking.test.tsx`, `nextMoveArrows.test.ts`, `src/lib/nextMoveWeights.test.ts`, `saved/SavedAnalyses.test.tsx` (the table, the cards and the panel's new-analysis form), `saved/AnalysisSettingsScreen.test.tsx`, `src/lib/savedAnalyses.test.ts`, `src/lib/savedAnalysisRows.test.ts`, `src/blocks/tables/SavedAnalysesTable/SavedAnalysesTable.test.tsx`, `savedAnalysisStore.test.ts`, `savedAnalysisFolderStore.test.ts`, `savedGameFolders.test.ts`, `gameReference.test.ts`, and the propagation tests in `src/views/board/`. |
+| Tests | `AnalysisBoard.test.tsx` (every arrival, Save, Load, Export, Play, the hand-off, the Arrows tab, the PGN's shapes drawn and written), `useTreeNavigation.test.ts`, `EngineThinking.test.tsx`, `nextMoveArrows.test.ts`, `src/lib/nextMoveWeights.test.ts`, `saved/SavedAnalyses.test.tsx` (the table, the cards and the panel's new-analysis form), `saved/AnalysisSettingsScreen.test.tsx`, `src/lib/savedAnalyses.test.ts`, `src/lib/savedAnalysisRows.test.ts`, `src/blocks/tables/SavedAnalysesTable/SavedAnalysesTable.test.tsx`, `savedAnalysisStore.test.ts`, `savedAnalysisFolderStore.test.ts`, `src/lib/siblingAnalyses.test.ts`, `src/blocks/lists/SiblingAnalysesList/SiblingAnalysesList.test.tsx`, `src/views/main/Layout.test.tsx` (the left panel's slot), `savedGameFolders.test.ts`, `gameReference.test.ts`, and the propagation tests in `src/views/board/`. |
 
 Routes and nav: the **Analysis** folder is `singleEntry` and renders as one
 row to `/tools/analysis/saved`; the board itself has no nav entry and is the
@@ -174,6 +181,63 @@ the record says (a new board: on, None, Classic):
   (Okabe–Ito, `#0072B2` / `#E69F00` / `#CC79A7`) — mainline / side line /
   hovered, each apart from the untagged gray. It colours the library arrows
   and the width-sized ones alike.
+
+### 1.2 The sibling panel (CTA-145)
+
+An analysis **opened from a folder** — a row of the saved list's table, or a
+card, filed in a folder — opens the board with the folder's other analyses
+beside it, to be walked in order (a tutorial's positions). One opened from the
+Unfiled level, or by any other link, is today's board.
+
+- **The context is the URL's**: `?analysis=<id>&folder=<folderId>` and, when it
+  differs from the table's default (Updated, newest first), the table's own
+  `?sort=` / `?dir=` — `lib/siblingAnalyses.ts` writes and reads them
+  (`analysisBoardPath`, `siblingContextOf`), the saved list's rows and cards
+  link through it (`boardPath` in `SavedAnalyses.tsx`: a row carries its
+  **own** folder, which in a tree table is not always the `?folder=` the reader
+  is standing in, and the table's current sort; the cards, which are newest
+  first, the default). The context stands only while the record's own folder
+  is the named one; a Load, a Clear or a hand-over drops the record and with
+  it the panel; Save as copy keeps it (the copy is filed in the same folder).
+- **The order is the table's, live**: `siblingAnalysesOf` — the folder's
+  directly filed analyses, through the table's comparison over each record's
+  **tags** (no parsing: a folder of thousands is ordered whole; the table's ECO
+  and Opening columns may add the book's name where tags name none, which this
+  order does not). It is read from the store as it is now, so an Update under
+  the default sort moves the record to the top — there is no manual order (a
+  follow-up). The list is cut to 100 either side of the open one
+  (`SIBLINGS_SHOWN_EACH_SIDE`), the cut said ("N earlier / later analyses not
+  shown"); previous / next walk the whole order.
+- **A click, previous or next is a link to the other analysis' board.** The
+  route (`AnalysisBoardRoute`) keys the board by a generation it bumps when
+  the URL names an analysis the board did not write itself — the board reads
+  its arrival once — so a sibling gets a new board, the browser's Back
+  between two works, and a save's own URL write (`onPointUrl`) is not taken
+  for an arrival.
+- **Unsaved changes come first**: while the session holds any
+  (`state.unsaved`) the list's other rows and previous / next are disabled —
+  no link at all, the same rule as the settings link — and a note says why;
+  the header's Save opens the changes strip (Update / Save as copy /
+  Discard). Nothing is written by looking.
+- **Where it is**: the shell's **board left panel** (`views/main/boardLeftPanel.tsx`
+  — `BoardLeftPanel`, `BoardLeftPanelOutlet`, `useBoardLeftPanelOccupied`), a
+  slot like the right-hand one. It is **not** the main menu's `LeftPanel` slot,
+  which stays unused: the menu is never replaced. **While the panel is open the
+  screen has the whole window** — the shell hides the header, the rail and the
+  footer — because a rail, the panel, the square and the aside do not fit side
+  by side. The column's width and the gap come out of the square's
+  (`BOARD_LEFT_PANEL_WIDTH_PX`, `Layout.tsx`), so the board stays square; it is
+  logical-sided and outside the board's `ForceLTR`, so it mirrors with the app.
+  Under the shell's breakpoint (`useShellCompact`) there is no column and no
+  hiding of the header: the panel is a `NavDrawer` the shell draws (outside
+  `ForceLTR`, so it comes in from the start edge), opened by the header's
+  toggle, closed on Escape or its Close.
+- **Close** (the panel's own button) closes the panel — and so brings the
+  shell, header and menu back — and nothing else: the board, the analysis and
+  the URL stay. The header's **Analyses in this folder** toggle (`aria-pressed`)
+  reopens it. The column's open state is the route's, so it stays closed as the
+  reader steps to another analysis; the drawer's is the board's, closed to
+  begin with.
 
 ---
 

@@ -1054,6 +1054,28 @@ const en = {
       open: "Analysis settings",
       unsaved: "Save or discard your changes first",
     },
+    /**
+     * The folder's analyses beside the board (CTA-145) — what an analysis
+     * opened from a folder shows in a panel of its own, and the header's
+     * previous / next through them.
+     */
+    siblings: {
+      /** The panel's landmark name. */
+      region: "Analyses in {{folder}}",
+      /** The header button that shows and hides the panel (a toggle) — and opens the drawer under a narrow window. */
+      toggle: "Analyses in this folder",
+      /** The drawer's name under a narrow window. */
+      drawer: "Analyses in this folder",
+      /** Where the open one stands. */
+      position: "{{current}} of {{total}}",
+      close: "Close the folder's analyses",
+      previous: "Previous analysis in the folder",
+      next: "Next analysis in the folder",
+      /** Why the others cannot be opened while the board holds unsaved changes. */
+      locked: "Save or discard your changes to open another analysis.",
+      moreBefore: "Earlier analyses not shown: {{count}}",
+      moreAfter: "Later analyses not shown: {{count}}",
+    },
     /** A saved analysis' settings screen (`/tools/analysis/saved/<id>/settings`). */
     settingsScreen: {
       title: "Analysis settings",
