@@ -10,17 +10,26 @@ const gallery: GalleryModule<BlockFamilyId> = {
   title: "TeamRosters",
   demos: [
     {
-      name: "An Olympiad's teams — flags, every name a link",
+      name: "An Olympiad's teams, a line each, in a side panel's width — flags, every name a link",
       render: () => (
-        <TeamRosters
-          teams={OLYMPIAD}
-          playerLink={(name) => ({ href: `#player-${encodeURIComponent(name)}` })}
-          teamLink={(roster) => ({ href: `#team-${encodeURIComponent(roster.team)}` })}
-          testId="gallery-team-rosters"
-        />
+        <Box sx={{ width: 320 }}>
+          <TeamRosters
+            teams={OLYMPIAD}
+            playerLink={(name) => ({ href: `#player-${encodeURIComponent(name)}` })}
+            teamLink={(roster) => ({ href: `#team-${encodeURIComponent(roster.team)}` })}
+            testId="gallery-team-rosters"
+          />
+        </Box>
       ),
     },
-    { name: "Not linked", render: () => <TeamRosters teams={OLYMPIAD} testId="gallery-team-rosters-plain" /> },
+    {
+      name: "Not linked",
+      render: () => (
+        <Box sx={{ width: 320 }}>
+          <TeamRosters teams={OLYMPIAD} testId="gallery-team-rosters-plain" />
+        </Box>
+      ),
+    },
     {
       name: "Long names, narrow",
       render: () => (

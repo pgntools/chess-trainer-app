@@ -6,15 +6,13 @@
  * fill with its own content — a move list, an evaluation panel — while every
  * route that fills nothing keeps seeing the placeholder.
  *
- * Four components, and nothing else, make up the API (the slot's store is
- * `rightPanelSlot.ts`, whose `useRightPanelHidden` the shell reads):
+ * Three components, and nothing else, make up the API:
  *
  * | Export | Rendered by | Purpose |
  * | --- | --- | --- |
  * | `RightPanelProvider` | the shell, above the router `<Outlet />` | owns the slot |
  * | `RightPanelOutlet`   | the shell, inside its aside | renders whatever a route registered, or `fallback` |
  * | `RightPanel`         | **a route/screen** | registers its children into the aside |
- * | `NoRightPanel`       | **a route/screen** | asks for no aside — the screen takes the whole row (CTA-142) |
  *
  * A screen uses it like this — no props to thread, no shell edit:
  *
@@ -54,6 +52,7 @@
  */
 
 import {
+    createContext,
     useCallback,
     useContext,
     useLayoutEffect,
@@ -63,7 +62,62 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
-import { createPanelSlot, PanelSlotContext, usePanelSlot } from './rightPanelSlot';
+/**
+ * The slot's mutable state, kept outside React: how many panels are currently
+ * registered, and the host element the outlet is rendering (`null` while the
+ * fallback is up). Both are read with `useSyncExternalStore`.
+ */
+type PanelSlot = {
+    subscribe: (onStoreChange: () => void) => () => void;
+    getOccupants: () => number;
+    getHost: () => HTMLElement | null;
+    setHost: (element: HTMLElement | null) => void;
+    acquire: () => void;
+    release: () => void;
+};
+
+const createPanelSlot = (): PanelSlot => {
+    let occupants = 0;
+    let host: HTMLElement | null = null;
+    const listeners = new Set<() => void>();
+    const emit = () => listeners.forEach((listener) => listener());
+
+    return {
+        subscribe: (onStoreChange) => {
+            listeners.add(onStoreChange);
+            return () => {
+                listeners.delete(onStoreChange);
+            };
+        },
+        getOccupants: () => occupants,
+        getHost: () => host,
+        setHost: (element) => {
+            if (host === element) return;
+            host = element;
+            emit();
+        },
+        acquire: () => {
+            occupants += 1;
+            emit();
+        },
+        release: () => {
+            occupants -= 1;
+            emit();
+        },
+    };
+};
+
+const PanelSlotContext = createContext<PanelSlot | null>(null);
+
+const usePanelSlot = (who: string): PanelSlot => {
+    const slot = useContext(PanelSlotContext);
+    if (slot === null) {
+        throw new Error(
+            `<${who}> must be rendered inside <RightPanelProvider> — the app shell provides one.`,
+        );
+    }
+    return slot;
+};
 
 /**
  * Owns one slot for the subtree below it. The shell mounts this above its
@@ -161,24 +215,4 @@ export function RightPanel({ children }: { children: ReactNode }) {
     // `null` on the very first render — `acquire()` above is what makes the
     // outlet render a host at all. The next render, in the same commit, has it.
     return host === null ? null : createPortal(children, host);
-}
-
-/**
- * **A screen with no aside** (CTA-142) — rendered by a screen (or one state
- * of it: the Library's tournament Info tab) that has nothing for the
- * right-hand panel and wants its room: while it is mounted the shell draws
- * no aside and gives the screen's area the whole row, not a square. The
- * screen stays where it is in the tree (inside the square's `ForceLTR`), so
- * showing and hiding the aside never remounts it. Renders nothing; outside
- * a `RightPanelProvider` (a screen's own test) it does nothing.
- */
-export function NoRightPanel() {
-    const slot = useContext(PanelSlotContext);
-    // A layout effect, as `RightPanel`'s: the aside goes before the browser paints.
-    useLayoutEffect(() => {
-        if (slot === null) return;
-        slot.hide();
-        return () => slot.unhide();
-    }, [slot]);
-    return null;
 }

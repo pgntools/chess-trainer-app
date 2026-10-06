@@ -4,6 +4,7 @@ import Typography from "@mui/material/Typography";
 import type { Theme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 
+import { visuallyHidden } from "../../../design-system/components/a11y";
 import { linkProps, type LinkTarget } from "../../../design-system/components/link";
 import { Flag } from "../../../design-system/components/tables";
 import { flagOfFederation, formatPoints } from "../../tables/tournamentTable";
@@ -36,12 +37,14 @@ const linkSx = (theme: Theme) => ({ "&:focus-visible": { ...theme.mixins.focusRi
 
 /**
  * **A team event's teams and their players** (CTA-142) — the Participants
- * tab of a team Swiss or a team knockout: under one heading, each team in
- * the standings' order — its flag where its players share a federation, its
- * name (a link to all its players' games where `teamLink` gives one), its
- * match and board points — and its players, each a link to their games.
- * Presentational: the rosters arrive worked out (`teamTournamentOf`,
- * `teamPlayersOf`).
+ * tab's right-hand panel for a team Swiss or a team knockout: under one
+ * heading, a **line per team** in the standings' order, one on top of the
+ * next — its flag where its players share a federation, its name (a link
+ * to all its players' games where `teamLink` gives one) and, at the line's
+ * end, its match and board points (abbreviated, read in full) — and under
+ * it, small, its players, each a link to their games. Narrow enough for a
+ * side panel. Presentational: the rosters arrive worked out
+ * (`teamTournamentOf`, `teamPlayersOf`).
  */
 function TeamRosters({ teams, playerLink, teamLink, headingLevel = "h2", testId }: TeamRostersProps) {
   const { t, i18n } = useTranslation();
@@ -54,46 +57,51 @@ function TeamRosters({ teams, playerLink, teamLink, headingLevel = "h2", testId 
       </Link>
     );
   return (
-    <Box component="section" aria-labelledby={`${testId}-title`} data-testid={testId} sx={{ display: "grid", gap: 1 }}>
+    <Box component="section" aria-labelledby={`${testId}-title`} data-testid={testId} sx={{ display: "grid", gap: 0.5, minWidth: 0 }}>
       <Typography id={`${testId}-title`} variant="subtitle1" component={headingLevel} sx={{ fontWeight: 700 }}>
         {t("library.tournament.participants.teams")}
       </Typography>
-      <Box
-        component="ul"
-        sx={{ listStyle: "none", m: 0, p: 0, display: "grid", gap: 1, gridTemplateColumns: "repeat(auto-fill, minmax(16rem, 1fr))" }}
-      >
+      <Box component="ul" sx={{ listStyle: "none", m: 0, p: 0 }}>
         {teams.map((roster, index) => {
           const flag = flagOfFederation(roster.federation, i18n.language);
+          const matchPoints = roster.matchPoints.toLocaleString(i18n.language);
+          const boardPoints = formatPoints(roster.boardPoints);
           return (
             <Box
               component="li"
               key={roster.team}
               data-testid={`${testId}-team-${index}`}
-              sx={{ p: 1.5, border: "1px solid", borderColor: "divider", borderRadius: 1, display: "grid", gap: 0.5, minWidth: 0 }}
+              sx={{ py: 0.75, minWidth: 0, borderBottom: "1px solid", borderColor: "divider", "&:last-of-type": { borderBottom: 0 } }}
             >
-              <Typography variant="body2" component="p" sx={{ fontWeight: 700, overflowWrap: "anywhere" }}>
-                {flag !== undefined && (
-                  <>
-                    <Flag code={flag.code} label={flag.label} />{" "}
-                  </>
-                )}
-                {linked(teamLink?.(roster), roster.team)}
-              </Typography>
-              <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid={`${testId}-team-${index}-points`}>
-                {t("library.tournament.participants.teamPoints", {
-                  matchPoints: roster.matchPoints.toLocaleString(i18n.language),
-                  boardPoints: formatPoints(roster.boardPoints),
-                })}
-                {" · "}
-                {t("library.tournament.participants.teamPlayers", { count: roster.players.length })}
-              </Typography>
+              <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, minWidth: 0 }}>
+                <Typography variant="body2" component="p" sx={{ fontWeight: 600, flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
+                  {flag !== undefined && (
+                    <>
+                      <Flag code={flag.code} label={flag.label} />{" "}
+                    </>
+                  )}
+                  {linked(teamLink?.(roster), roster.team)}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  data-testid={`${testId}-team-${index}-points`}
+                  sx={{ flexShrink: 0, color: "text.secondary", whiteSpace: "nowrap", position: "relative" }}
+                >
+                  <span aria-hidden="true" dir="ltr">
+                    {`${matchPoints} ${t("tournament.columns.matchPoints")} · ${boardPoints} ${t("tournament.columns.boardPoints")}`}
+                  </span>
+                  <Box component="span" sx={visuallyHidden}>
+                    {t("library.tournament.participants.teamPoints", { matchPoints, boardPoints })}
+                  </Box>
+                </Typography>
+              </Box>
               <Box
                 component="ul"
-                aria-label={t("library.tournament.participants.players")}
-                sx={{ listStyle: "none", m: 0, p: 0, display: "flex", flexWrap: "wrap", columnGap: 1.5, rowGap: 0.25 }}
+                aria-label={t("library.tournament.participants.playersOf", { team: roster.team })}
+                sx={{ listStyle: "none", m: 0, p: 0, display: "flex", flexWrap: "wrap", columnGap: 1, rowGap: 0 }}
               >
                 {roster.players.map((name) => (
-                  <Typography component="li" variant="body2" key={name}>
+                  <Typography component="li" variant="caption" key={name}>
                     {linked(playerLink?.(name), name)}
                   </Typography>
                 ))}

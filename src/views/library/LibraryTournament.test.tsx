@@ -69,8 +69,8 @@ describe("a tournament collection's view", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Club games");
     expect(tab("info")).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tabpanel", { name: "Info" })).toBe(screen.getByTestId("library-tournament-panel-info"));
-    // Info has no right-hand panel: nothing is registered in it.
-    expect(screen.queryByTestId("layout-right-panel")).toBeNull();
+    // Info keeps the right-hand panel — the same width as the other tabs — with the note in it.
+    expect(screen.getByTestId("layout-right-panel")).toContainElement(screen.getByTestId("library-table-note"));
     expect(tab("participants")).toHaveAttribute("href", `/library/${cup.id}?tab=participants`);
 
     await user.click(tab("participants"));
@@ -176,9 +176,11 @@ describe("a tournament collection's view", () => {
   it("lists a team event's teams and each team's players on Participants", async () => {
     mount("/library/worldblitzteam2026?tab=participants");
     const teams = await screen.findByTestId("library-tournament-teams", {}, { timeout: 15_000 });
+    // The teams are the right-hand panel's, under the statistics.
+    expect(screen.getByTestId("layout-right-panel")).toContainElement(teams);
     expect(within(teams).getAllByRole("listitem").length).toBeGreaterThan(16);
     const first = within(screen.getByTestId("library-tournament-teams-team-0"));
-    const players = within(first.getByRole("list", { name: "Players" })).getAllByRole("link");
+    const players = within(first.getByRole("list", { name: /players$/ })).getAllByRole("link");
     expect(players.length).toBeGreaterThan(3);
     expect(players[0].getAttribute("href")).toMatch(/^\/library\/worldblitzteam2026\?tab=games&player=/);
     expect(screen.getByRole("columnheader", { name: /Team/ })).toBeInTheDocument();

@@ -11,7 +11,7 @@ beforeEach(async () => {
 });
 
 describe("TeamRosters", () => {
-  it("lists each team with its points and its players, every name a link", async () => {
+  it("lists each team as a line, its points at the end and its players under it, every name a link", async () => {
     render(
       <TeamRosters
         teams={OLYMPIAD}
@@ -24,8 +24,10 @@ describe("TeamRosters", () => {
     const first = within(screen.getByTestId("probe-team-0"));
     expect(first.getByRole("link", { name: "Uzbekistan" })).toHaveAttribute("href", "/t/Uzbekistan");
     expect(first.getByRole("img", { name: "Uzbekistan" })).toBeInTheDocument();
-    expect(screen.getByTestId("probe-team-0-points")).toHaveTextContent("19 match points, 32.0 board points · 4 players");
-    expect(within(first.getByRole("list", { name: "Players" })).getAllByRole("link")).toHaveLength(4);
+    // In view abbreviated; read in full.
+    expect(screen.getByTestId("probe-team-0-points")).toHaveTextContent("19 MP · 32.0 BP");
+    expect(screen.getByTestId("probe-team-0-points")).toHaveTextContent("19 match points, 32.0 board points");
+    expect(within(first.getByRole("list", { name: "Uzbekistan's players" })).getAllByRole("link")).toHaveLength(4);
     expect(first.getByRole("link", { name: "Sindarov, Javokhir" })).toHaveAttribute("href", "/p/Sindarov, Javokhir");
     // Players under FIDE's flag: no flag.
     expect(within(screen.getByTestId("probe-team-2")).queryByRole("img")).toBeNull();

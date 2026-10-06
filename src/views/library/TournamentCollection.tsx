@@ -34,7 +34,7 @@ import { participantsOf, topPlayersOf } from "../../lib/tournamentParticipants";
 import { EmbedSource, type SourceRead } from "../home/frontPage/embedSource";
 import { KnockoutView, StandingsView, TeamStandingsView } from "../home/frontPage/tournamentEmbedViews";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
-import { NoRightPanel, RightPanel } from "../main/rightPanel";
+import { RightPanel } from "../main/rightPanel";
 import { tournamentTabOf, TOURNAMENT_TABS, type TournamentTab } from "./tournamentTabs";
 
 /**
@@ -49,13 +49,12 @@ import { tournamentTabOf, TOURNAMENT_TABS, type TournamentTab } from "./tourname
  *   `tournamentEmbedViews.tsx`), a name linking to the Games tab filtered by
  *   that player, a result to the game on the Library's board. Games that do
  *   not read as the type say so, with the type they look like
- *   (`guessTournamentKind`). No right-hand panel: the tab takes its room
- *   (`NoRightPanel`).
- * - **Participants**: a team event's teams and their players
- *   (`TeamRosters`) and every player's record (`ParticipantsTable`,
+ *   (`guessTournamentKind`).
+ * - **Participants**: every player's record (`ParticipantsTable`,
  *   `participantsOf`) — each name a link to the Games tab filtered by that
  *   player — and, in the right-hand panel, the statistics (the standouts,
- *   `TopPlayers`).
+ *   `TopPlayers`) and a team event's teams, a line each with its players
+ *   (`TeamRosters`).
  * - **Games**: the collection's games table, exactly as an unmarked
  *   collection's (`CollectionTable` — its filters' panel, picks, Analyse,
  *   its URL state), the strip under its header.
@@ -264,12 +263,20 @@ function ParticipantsTab({ collection, read }: { collection: CollectionSummary; 
   }, [team, headers]);
   const toPlayer = useCallback((player: TournamentPlayer) => gamesOfPlayers(collection.id, [player.name]), [collection.id]);
 
-  // The right-hand panel: the statistics — the standouts — over the shipped / uploaded note.
+  // The right-hand panel: the statistics (the standouts), a team event's teams, then the shipped / uploaded note.
   const panel = (
     <RightPanel>
       {/* The aside does not scroll; the panel is its own scrolling column. */}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", display: "grid", alignContent: "start", gap: 3 }}>
         {top !== undefined && <TopPlayers top={top} playerLink={toPlayer} testId="library-tournament-top" />}
+        {rosters !== undefined && rosters.length > 0 && (
+          <TeamRosters
+            teams={rosters}
+            playerLink={(name) => gamesOfPlayers(collection.id, [name])}
+            teamLink={(roster) => gamesOfPlayers(collection.id, roster.players)}
+            testId="library-tournament-teams"
+          />
+        )}
         <SourceNote collection={collection} />
       </Box>
     </RightPanel>
@@ -295,14 +302,6 @@ function ParticipantsTab({ collection, read }: { collection: CollectionSummary; 
   return (
     <Box sx={{ display: "grid", gap: 2, alignContent: "start", minWidth: 0 }}>
       {panel}
-      {rosters !== undefined && rosters.length > 0 && (
-        <TeamRosters
-          teams={rosters}
-          playerLink={(name) => gamesOfPlayers(collection.id, [name])}
-          teamLink={(roster) => gamesOfPlayers(collection.id, roster.players)}
-          testId="library-tournament-teams"
-        />
-      )}
       <Box component="section" aria-labelledby="library-tournament-players-title" sx={{ display: "grid", gap: 1, minWidth: 0 }}>
         <Typography id="library-tournament-players-title" variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>
           {t("library.tournament.participants.players")}
@@ -376,8 +375,12 @@ function TournamentOverview({
           </EmbedSource>
         </Box>
       </Box>
-      {/* Info has nothing for the right-hand panel and takes its room; Participants fills it with its statistics. */}
-      {tab === "info" && <NoRightPanel />}
+      {/* Participants fills the right-hand panel itself (its statistics and teams); Info shows the note. */}
+      {tab === "info" && (
+        <RightPanel>
+          <SourceNote collection={collection} />
+        </RightPanel>
+      )}
     </>
   );
 }

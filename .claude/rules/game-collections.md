@@ -825,14 +825,14 @@ the tab's panel (`tabPanelProps`, `library-tournament-panel-<tab>`):
   responsive**: the card and the table side by side where both fit, else
   the table wraps under the card — each centred, the table its own width,
   scrolling sideways in its region past the screen's (no page overflow at
-  320 px). **No right-hand
-  panel**: the tab renders `NoRightPanel` (`views/main/rightPanel.tsx`), so
-  the shell draws no aside and the tab takes the whole row.
+  320 px). The right-hand panel holds the shipped / uploaded note — every
+  tab keeps the panel, so switching tabs never changes the screen's width.
 - **Participants** — in the right-hand panel, the **Statistics** (the
   standouts, `TopPlayers`: best score, best performance, most wins, longest
-  unbeaten run) over the shipped / uploaded note; in the tab, a team event's
-  teams and their players (`TeamRosters`, `teamTournamentOf` + `teamPlayersOf`), and
-  every player's record (`ParticipantsTable` over `participantsOf`:
+  unbeaten run), then a team event's **Teams** — a line each, one on top of
+  the next: flag, name, match and board points at its end, its players
+  small under it (`TeamRosters`, `teamTournamentOf` + `teamPlayersOf`) —
+  then the note; in the tab, every player's record (`ParticipantsTable` over `participantsOf`:
   rank, title and flag, team, rating, points, games, W / D / L,
   performance — the opponents' average plus `400·log10(p / (1 − p))`, held
   to ±800 — sortable, the sort the screen's state). Every name links to the

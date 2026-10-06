@@ -16,7 +16,6 @@ import { default as SideBar } from './Sidebar';
 import { Footer } from './Footer';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
-import { useRightPanelHidden } from './rightPanelSlot';
 import { LeftPanelOutlet, LeftPanelProvider } from './leftPanel';
 import { ARTICLE_MAX_WIDTH_PX, descriptionKeyOf, isArticleRoute, isFullWidthRoute, pageMetaOf, pageTitleOf, screenIdOf, titleKeyOf } from './routeHandle';
 import { createPageTitleStore, PageTitleContext } from './pageTitle';
@@ -314,20 +313,9 @@ const DefaultLayoutViewport = () => {
     }, []);
 
 
-    // A screen that asked for no aside (`NoRightPanel`, CTA-142) — the Library's tournament Info tab.
-    const asideHidden = useRightPanelHidden();
-
     const boardDimentions = useMemo<Rect>(()=>{
         const { width, height } = bodyDimentions
         if (width === 0 || height === 0) return { width: 0, height: 0 };
-        // No aside: the screen's area is the whole row less the inset — a
-        // rectangle, not a square; nothing in it is a board.
-        if (asideHidden) {
-            return {
-                width: Math.max(0, width - BOARD_INSET_PX * 2),
-                height: Math.max(0, height - BOARD_INSET_PX * 2),
-            };
-        }
         // Strip the inset from both edges before squaring, and the panel's
         // minimum and the gap before it from the width: the panel is a sibling
         // inside this row, so the board never had more than
@@ -360,7 +348,7 @@ const DefaultLayoutViewport = () => {
             height: minorSide,
         }
 
-    },[bodyDimentions, compact, asideHidden])
+    },[bodyDimentions, compact])
 
 
 
@@ -717,7 +705,7 @@ const DefaultLayoutViewport = () => {
                             </Box>
                         </Box>
 
-                         {!asideHidden && <Box
+                         <Box
                             component="aside"
                             aria-label={t('shell.sidePanel')}
                             data-testid="layout-board-square-sidebar"
@@ -783,7 +771,7 @@ const DefaultLayoutViewport = () => {
                             */}
                             <RightPanelOutlet fallback={<AnalysisPlaceholder />} />
 
-                        </Box>}
+                        </Box>
                         </>)}
 
 

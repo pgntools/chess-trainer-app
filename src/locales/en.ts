@@ -1546,8 +1546,7 @@ const en = {
         },
         /** A team and its players (the `TeamRosters` block). */
         teamPoints: "{{matchPoints}} match points, {{boardPoints}} board points",
-        teamPlayers_one: "{{count}} player",
-        teamPlayers_other: "{{count}} players",
+        playersOf: "{{team}}'s players",
         sortHint: "Sort by a column's header.",
       },
     },
