@@ -196,7 +196,7 @@ function AnalysisBoard() {
     arrows: { show: showArrows, widthSource: drawnWidthSource, palette: arrowPalette },
     map: { addedIds: state.extensionIds, linked: true },
   });
-  const boardOptions: ChessboardOptions = { arrows: explorer.arrows };
+  const boardOptions: ChessboardOptions = { ...explorer.boardOptions, arrows: explorer.arrows };
   const topLine = engine.analysis.lines.find((line) => line !== undefined);
 
   /*

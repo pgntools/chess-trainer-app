@@ -447,7 +447,7 @@ function RepertoirePlayer({
         }
       : undefined,
   });
-  const boardOptions: ChessboardOptions = { arrows: explorer.arrows };
+  const boardOptions: ChessboardOptions = { ...explorer.boardOptions, arrows: explorer.arrows };
 
   /*
     The session's changes, and what to do with them (the player's; a game

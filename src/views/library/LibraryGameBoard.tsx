@@ -144,7 +144,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
     arrows: { show: showArrows },
     map: { addedIds: session.extensionIds, linked: true },
   });
-  const boardOptions: ChessboardOptions = { arrows: explorer.arrows };
+  const boardOptions: ChessboardOptions = { ...explorer.boardOptions, arrows: explorer.arrows };
   const topLine = engine.analysis.lines.find((line) => line !== undefined);
 
   /* `?at=`, written back with history replace — keeping the route's state (the table's URL). */

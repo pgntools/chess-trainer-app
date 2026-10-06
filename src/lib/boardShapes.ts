@@ -72,3 +72,154 @@ export const shapesOf = (comments: readonly string[] | undefined): BoardShapes =
 
 /** Whether the comments draw anything. */
 export const drawsShapes = (shapes: BoardShapes): boolean => shapes.arrows.length > 0 || shapes.circles.length > 0;
+
+/**
+ * **One shape a reader draws** (CTA-143) — an arrow from `from` to `to`, or,
+ * where the two are the same square, a circle round it.
+ */
+export type DrawnShape = { brush: ShapeBrush; from: Square; to: Square };
+
+const LETTERS: Record<ShapeBrush, string> = { green: "G", red: "R", yellow: "Y", blue: "B" };
+
+/**
+ * **The brush a drawing gesture's modifier keys pick** — lichess's: none is
+ * green, Shift (or Ctrl) red, Alt (or Meta) blue, both yellow.
+ */
+export const brushOfKeys = (keys: {
+  shiftKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  metaKey: boolean;
+}): ShapeBrush => {
+  const first = keys.shiftKey || keys.ctrlKey;
+  const second = keys.altKey || keys.metaKey;
+  return first && second ? "yellow" : first ? "red" : second ? "blue" : "green";
+};
+
+/** A shape command with the horizontal space around it. */
+const SPACED_COMMAND = /([ \t]*)\[%(cal|csl)\s+([^\]]*)\]([ \t]*)/gi;
+
+/** Marks a command taken out, until the space around it is settled. */
+const GONE = "\uE000";
+/** A run of commands taken out, with the space around them. */
+const GONE_RUN = /[ \t]*(?:\uE000[ \t]*)+/g;
+
+/**
+ * Each shape command of `text` rewritten by `rewrite` — its new text, or
+ * `null` to take it out. Commands taken out go with the space around them: a
+ * run of them between two words leaves the one space the words had, and at
+ * either end of the comment nothing — so the prose reads as it did.
+ */
+const rewriteShapeCommands = (
+  text: string,
+  rewrite: (name: string, body: string, whole: string) => string | null,
+): string =>
+  text
+    .replace(SPACED_COMMAND, (whole, before: string, name: string, body: string, after: string) => {
+      const next = rewrite(name, body, whole.slice(before.length, whole.length - after.length));
+      return next === null ? `${before}${GONE}${after}` : `${before}${next}${after}`;
+    })
+    .replace(GONE_RUN, (run: string, offset: number, all: string) =>
+      offset === 0 || offset + run.length === all.length || !/[ \t]/.test(run) ? "" : " ",
+    );
+
+/** The squares an entry of a `kind` command draws on — `e4` for a circle, `e2e4` for an arrow — or `undefined` for a malformed one. */
+const entrySquares = (kind: string, entry: string): { letter: string; squares: string } | undefined => {
+  if (kind.toLowerCase() === "csl") {
+    const match = CIRCLE.exec(entry);
+    return match === null ? undefined : { letter: match[1], squares: match[2].toLowerCase() };
+  }
+  const match = ARROW.exec(entry);
+  if (match === null) return undefined;
+  const [, letter, from, to] = match;
+  // An arrow to its own square is a circle (`shapesOf`).
+  return { letter, squares: from.toLowerCase() === to.toLowerCase() ? from.toLowerCase() : `${from}${to}`.toLowerCase() };
+};
+
+/**
+ * **A drawn shape, written into the comments** (CTA-143) — what a lichess
+ * study does when the reader draws on the board, as a pure edit of the
+ * position's comment list (`setComments` takes the result):
+ *
+ * - a shape **not there** is added — into the first comment already carrying
+ *   a `[%cal]` / `[%csl]` of its kind, else at the end of the first comment
+ *   that carries any shape, else of the first comment, else as a comment of
+ *   its own;
+ * - drawn **again in the same brush**, it is removed (every entry drawing it);
+ * - drawn on the same squares **in another brush**, it is recoloured in place.
+ *
+ * Everything else in the comments — the prose, the other commands
+ * (`[%eval]`, `[%clk]`, `prc:` …), a malformed entry — is left as it was; a
+ * command left with no entry goes, and a comment left empty is dropped by
+ * `setComments`. Pure.
+ */
+export const toggleShape = (comments: readonly string[], shape: DrawnShape): string[] => {
+  const circle = shape.from === shape.to;
+  const kind = circle ? "csl" : "cal";
+  const squares = circle ? shape.from : `${shape.from}${shape.to}`;
+  const letter = LETTERS[shape.brush];
+
+  // Which brushes already draw these squares.
+  const brushes = new Set<ShapeBrush>();
+  for (const text of comments) {
+    for (const [, , commandKind, body] of text.matchAll(SPACED_COMMAND)) {
+      for (const entry of body.split(",")) {
+        const read = entrySquares(commandKind, entry.trim());
+        if (read !== undefined && read.squares === squares) brushes.add(brushOf(read.letter));
+      }
+    }
+  }
+
+  if (brushes.size === 0) {
+    const entry = `${letter}${squares}`;
+    const ofKind = comments.findIndex((text) => new RegExp(String.raw`\[%${kind}\s`, "i").test(text));
+    if (ofKind !== -1) {
+      // Into that comment's first command of the kind (not global: the first only).
+      return comments.map((text, index) =>
+        index !== ofKind
+          ? text
+          : text.replace(new RegExp(String.raw`\[%(${kind})\s+([^\]]*)\]`, "i"), (_, name: string, body: string) =>
+              body.trim() === "" ? `[%${name} ${entry}]` : `[%${name} ${body.trim()},${entry}]`,
+            ),
+      );
+    }
+    const command = `[%${kind} ${entry}]`;
+    if (comments.length === 0) return [command];
+    const withShapes = comments.findIndex((text) => /\[%(cal|csl)\s/i.test(text));
+    const into = withShapes === -1 ? 0 : withShapes;
+    return comments.map((text, index) => (index === into ? `${text.trimEnd()} ${command}` : text));
+  }
+
+  // Already drawn: the same brush takes it off, another recolours the first and drops the rest.
+  const remove = brushes.has(shape.brush);
+  let recoloured = false;
+  return comments.map((text) =>
+    rewriteShapeCommands(text, (name, body, whole) => {
+      const entries = body.split(",").map((entry) => entry.trim()).filter((entry) => entry !== "");
+      const kept: string[] = [];
+      for (const entry of entries) {
+        const read = entrySquares(name, entry);
+        if (read === undefined || read.squares !== squares) {
+          kept.push(entry);
+          continue;
+        }
+        if (remove || recoloured) continue;
+        recoloured = true;
+        kept.push(`${letter}${entry.slice(1)}`);
+      }
+      if (kept.length === entries.length && kept.every((entry, index) => entry === entries[index])) return whole;
+      return kept.length > 0 ? `[%${name} ${kept.join(",")}]` : null;
+    }),
+  );
+};
+
+/** A comment with its `[%cal]` / `[%csl]` commands taken out — what is left to read. */
+export const withoutShapes = (text: string): string => text.replace(SPACED_COMMAND, " ");
+
+/**
+ * **Every shape taken out of the comments** (CTA-143) — the move menu's
+ * *Remove all*: each `[%cal]` / `[%csl]` command goes, the prose and the other
+ * commands stay; a comment left empty is dropped by `setComments`. Pure.
+ */
+export const clearShapes = (comments: readonly string[]): string[] =>
+  comments.map((text) => rewriteShapeCommands(text, () => null));
