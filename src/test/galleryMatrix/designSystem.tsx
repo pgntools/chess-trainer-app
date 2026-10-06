@@ -70,6 +70,7 @@ export function designSystemMatrix(slice: number) {
               <DesignGallery
                 section={pageKey}
                 sectionPath={(id) => `/dev/design/${id}`}
+                startPath="/dev/design"
                 initialThemeId={themeId}
                 initialMode={mode}
                 initialDirection={direction}
