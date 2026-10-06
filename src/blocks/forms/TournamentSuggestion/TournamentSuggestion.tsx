@@ -1,9 +1,11 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import TipsAndUpdatesOutlinedIcon from "@mui/icons-material/TipsAndUpdatesOutlined";
 import { useTranslation } from "react-i18next";
 
+import { IconAction } from "../../../design-system/components/toolbars";
 import { tableFormatOfKind } from "../../../lib/libraryCollections";
 import type { TournamentGuess } from "../../../lib/tournamentKind";
 import { suggestionReasonOf } from "./suggestionReason";
@@ -15,9 +17,14 @@ export type TournamentSuggestionProps = {
   selected: boolean;
   /** Turn the mark on with the suggested type — in the draft; the reader still saves. */
   onApply: () => void;
+  /**
+   * Turn the suggestion down (CTA-142, the games table's: "not a tournament").
+   * Present, a close button at the end; absent (the settings), none.
+   */
+  onDismiss?: () => void;
   /** A save is under way. */
   disabled?: boolean;
-  /** The root; the button is `-apply`, the words `-text`. */
+  /** The root; the button is `-apply`, the close button `-dismiss`, the words `-text`. */
   testId: string;
 };
 
@@ -26,10 +33,12 @@ export type TournamentSuggestionProps = {
  * guess (`lib/tournamentKind.ts`) named with the settings' own word for the
  * format and its reason, in the reader's language, and an **Apply** that
  * puts it in the draft (the mark on, the type chosen). Once the draft holds
- * it, Apply is off and the line says so: Save keeps it. Presentational: the
- * guess arrives, Apply leaves as a callback.
+ * it, Apply is off and the line says so: Save keeps it. The games table
+ * offers it too, where Apply marks the collection at once and a close
+ * button (`onDismiss`) turns it down. Presentational: the guess arrives,
+ * Apply and Dismiss leave as callbacks.
  */
-function TournamentSuggestion({ guess, selected, onApply, disabled = false, testId }: TournamentSuggestionProps) {
+function TournamentSuggestion({ guess, selected, onApply, onDismiss, disabled = false, testId }: TournamentSuggestionProps) {
   const { t } = useTranslation();
   const type = t(`library.settings.formats.${tableFormatOfKind(guess.kind)}`);
   return (
@@ -70,6 +79,11 @@ function TournamentSuggestion({ guess, selected, onApply, disabled = false, test
       >
         {t("library.settings.suggestion.apply")}
       </Button>
+      {onDismiss !== undefined && (
+        <IconAction label={t("library.settings.suggestion.dismiss")} onClick={onDismiss} disabled={disabled} testId={`${testId}-dismiss`}>
+          <CloseRoundedIcon fontSize="small" />
+        </IconAction>
+      )}
     </Box>
   );
 }

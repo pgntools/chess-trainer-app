@@ -3,11 +3,11 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../i18n";
-import { updateCollectionSettings } from "../../lib/libraryCollectionStore";
+import { updateCollectionSettings, uploadedCollectionsSnapshot } from "../../lib/libraryCollectionStore";
 import type { TournamentFormat } from "../../lib/libraryCollections";
 import { expectNoAxeViolations } from "../../test/axe";
 import { readText } from "../../test/readText";
-import { GAMES, keep, mount, mountTable, resetLibrary, upload, where } from "./libraryTestKit";
+import { cleanupAndMount, GAMES, keep, mount, mountTable, resetLibrary, upload, where } from "./libraryTestKit";
 import { tournamentTabOf } from "./tournamentTabs";
 
 vi.mock("../../lib/engine", async () => ({
@@ -239,6 +239,49 @@ describe("the list", () => {
     expect(screen.queryByTestId(`library-tournament-icon-${plain.id}`)).toBeNull();
     expect(screen.queryByTestId("library-tournament-icon-tal")).toBeNull();
     expect(screen.getByRole("link", { name: "FIDE Candidates 2026, Tournament" })).toBeInTheDocument();
+  });
+});
+
+describe("the games table's suggestion", () => {
+  it("offers a never-marked upload the type its games look like; Apply marks it at once and opens its view", async () => {
+    const user = userEvent.setup();
+    const cup = await upload();
+    await mountTable(`/library/${cup.id}?sort=white`);
+    const offer = await screen.findByTestId("library-table-suggestion");
+    expect(within(offer).getByTestId("library-table-suggestion-text")).toHaveTextContent("Round robin: 3 players, every pair met.");
+    await user.click(within(offer).getByRole("button", { name: "Apply the suggested type, Round robin" }));
+    await screen.findByTestId("library-tournament-screen");
+    expect(where()).toBe(`/library/${cup.id}?tab=info`);
+    expect(uploadedCollectionsSnapshot()?.find((c) => c.id === cup.id)?.tournament).toEqual({ enabled: true, type: "roundRobin" });
+    expect(await screen.findByTestId("library-table-suggestion-notice")).toHaveTextContent("Marked as a tournament: Round robin.");
+  });
+
+  it("turns it down for good: the mark stored off, the table kept, not asked again", async () => {
+    const user = userEvent.setup();
+    const cup = await upload();
+    await mountTable(`/library/${cup.id}`);
+    await user.click(await screen.findByRole("button", { name: "Not a tournament — don't suggest again" }));
+    await waitFor(() => expect(screen.queryByTestId("library-table-suggestion")).toBeNull());
+    expect(uploadedCollectionsSnapshot()?.find((c) => c.id === cup.id)?.tournament).toEqual({ enabled: false, type: "roundRobin" });
+    expect(screen.getByTestId("library-table")).toBeInTheDocument();
+    cleanupAndMount(`/library/${cup.id}`);
+    await screen.findByTestId("library-table");
+    expect(screen.queryByTestId("library-table-suggestion")).toBeNull();
+  });
+
+  it("offers nothing to a shipped collection, to games of several events, or on a tournament's Games tab", async () => {
+    await mountTable("/library/capablanca");
+    expect(screen.queryByTestId("library-table-suggestion")).toBeNull();
+
+    const mixed = await keep("Mixed", [...GAMES, '[Event "Other"]\n[White "E"]\n[Black "F"]\n\n1. e4 *']);
+    cleanupAndMount(`/library/${mixed.id}`);
+    await screen.findByTestId("library-table");
+    expect(screen.queryByTestId("library-table-suggestion")).toBeNull();
+
+    const cup = await marked("roundRobin");
+    cleanupAndMount(`/library/${cup.id}?tab=games`);
+    await screen.findByTestId("library-table");
+    expect(screen.queryByTestId("library-table-suggestion")).toBeNull();
   });
 });
 

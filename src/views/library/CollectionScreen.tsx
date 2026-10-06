@@ -12,9 +12,10 @@ import { useTranslation } from "react-i18next";
 
 import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
 import type { IndexedRow } from "../../lib/collectionIndex";
-import { addCollection, removeCollectionGames } from "../../lib/libraryCollectionStore";
+import { addCollection, removeCollectionGames, updateCollectionSettings } from "../../lib/libraryCollectionStore";
 import {
   batchFolderNameOf,
+  canBeTournament,
   COLLECTION_COLUMNS,
   COLLECTION_FILTER_PARAMS,
   collectionFacetsOf,
@@ -22,10 +23,12 @@ import {
   isTournamentCollection,
   MAX_COLLECTION_NAME_CHARS,
   RESULTS,
+  tableFormatOfKind,
   type CollectionColumn,
   type CollectionFilterValues,
   type CollectionRow,
   type CollectionSummary,
+  type CollectionTournament,
   type SortDirection,
 } from "../../lib/libraryCollections";
 import {
@@ -49,7 +52,7 @@ import { addAnalyses, MAX_SAVED_ANALYSES } from "../../lib/savedAnalysisStore";
 import { repertoireGameNamesOf } from "../../lib/savedRepertoires";
 import { RightPanel } from "../main/rightPanel";
 import { SaveAsCollectionDialog } from "../../blocks/dialogs";
-import { CollectionFilters } from "../../blocks/forms";
+import { CollectionFilters, TournamentSuggestion } from "../../blocks/forms";
 import { CollectionGamesTable, COLLECTION_DEFAULT_SORT, collectionFirstDirection } from "../../blocks/tables";
 import { DeleteManyDialog } from "../../design-system/components/dialogs";
 import { useSnackbar } from "../../design-system/components/feedback";
@@ -61,7 +64,7 @@ import { HintButton, IconAction, ListScreenHeader, SelectionBar } from "../../de
 import OpeningFilterBoard from "./OpeningFilterBoard";
 import { TournamentCollection, type TournamentTabs } from "./TournamentCollection";
 import LibraryMiss from "./LibraryMiss";
-import { loadCollectionGames, useCollectionRows } from "./useLibraryCollections";
+import { loadCollectionGames, useCollectionRows, useTournamentGuess } from "./useLibraryCollections";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 
 /**
@@ -235,6 +238,39 @@ function CollectionTable({
   const [saveName, setSaveName] = useState("");
   const [savingCollection, setSavingCollection] = useState(false);
   const [saveProblem, setSaveProblem] = useState<"read" | "storage" | null>(null);
+
+  /*
+    CTA-142: an upload never marked one way or the other, whose games share one
+    `Event`, is offered the kind of tournament they look like — the settings
+    screen's suggestion, one step: Apply marks it at once and opens its
+    tournament view; the close button marks it "not a tournament" (the mark
+    stored off), so it is not asked again. Its games are read for the guess
+    (their own tags) only then — never for the table itself.
+  */
+  const offerMark = tabs === undefined && collection.source === "uploaded" && collection.tournament === undefined && canBeTournament(rows);
+  const suggestion = useTournamentGuess(collection.id, offerMark);
+  const [marking, setMarking] = useState(false);
+  const mark = async (tournament: CollectionTournament): Promise<boolean> => {
+    setMarking(true);
+    const problem = await updateCollectionSettings(collection.id, { tournament });
+    setMarking(false);
+    if (problem !== undefined) {
+      show({ message: t("library.settings.suggestion.problem"), severity: "error", duration: null, testId: "library-table-suggestion-notice" });
+      return false;
+    }
+    return true;
+  };
+  const applySuggestion = async (type: CollectionTournament["type"]) => {
+    if (!(await mark({ enabled: true, type }))) return;
+    show({
+      message: t("library.settings.suggestion.marked", { type: t(`library.settings.formats.${type}`) }),
+      severity: "success",
+      duration: 6_000,
+      testId: "library-table-suggestion-notice",
+    });
+    // The collection now reads as a tournament: its view, on Info.
+    navigate(`/library/${encodeURIComponent(collection.id)}?tab=info`, { replace: true });
+  };
 
   /** The picks into Saved analyses: a new folder, a record per readable game — or nothing. */
   const analysePicked = async () => {
@@ -562,6 +598,20 @@ function CollectionTable({
             >
               {collection.description}
             </Typography>
+          )}
+
+          {/* CTA-142: the kind of tournament the games look like, for a collection never marked. */}
+          {offerMark && suggestion !== undefined && (
+            <Box sx={{ flexShrink: 0, pb: 1 }}>
+              <TournamentSuggestion
+                guess={suggestion}
+                selected={false}
+                onApply={() => void applySuggestion(tableFormatOfKind(suggestion.kind))}
+                onDismiss={() => void mark({ enabled: false, type: tableFormatOfKind(suggestion.kind) })}
+                disabled={marking}
+                testId="library-table-suggestion"
+              />
+            </Box>
           )}
 
           <CollectionGamesTable

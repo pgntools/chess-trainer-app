@@ -40,6 +40,16 @@ describe("TournamentSuggestion", () => {
     expect(screen.getByRole("status")).toHaveTextContent("press Save");
   });
 
+  it("offers a close button to turn it down where asked — and none in the settings", async () => {
+    const onDismiss = vi.fn();
+    const { unmount } = render(<TournamentSuggestion guess={ROUND_ROBIN_GUESS} selected={false} onApply={() => {}} onDismiss={onDismiss} testId="probe" />);
+    await userEvent.click(screen.getByRole("button", { name: "Not a tournament — don't suggest again" }));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    unmount();
+    render(<TournamentSuggestion guess={ROUND_ROBIN_GUESS} selected={false} onApply={() => {}} testId="probe" />);
+    expect(screen.queryByTestId("probe-dismiss")).toBeNull();
+  });
+
   it("speaks Hebrew", async () => {
     await i18n.changeLanguage("he");
     render(<TournamentSuggestion guess={ROUND_ROBIN_GUESS} selected={false} onApply={() => {}} testId="probe" />);

@@ -86,7 +86,7 @@ for the Analysis Board and Saved analyses it hands games to.
 | `src/blocks/dialogs/OpeningTreePgnDialog/` | *Save tree as PGN*'s choice: No, or Add tags — `games`, `prc`, or both (`FormDialog`, CTA-113). |
 | `src/blocks/dialogs/SaveAsCollectionDialog/` | *Save as collection*'s name dialog (CTA-122): the derived name to edit, the count under it, a busy state and a problem slot — presentational, the write the screen's (`CollectionScreen.tsx`). |
 | `src/views/library/LibraryGameScreen.tsx` → `LibraryGameBoard.tsx` | `/library/<collection>/<n>`: resolve and parse the game, then the analysis board. |
-| `src/views/library/useLibraryCollections.ts` | The React bindings: `useUploadedCollections`, `useLibraryFolders`, `useCollectionSummary`, `useCollectionRows`, `useCollectionGames`, `loadCollectionGames`. |
+| `src/views/library/useLibraryCollections.ts` | The React bindings: `useUploadedCollections`, `useLibraryFolders`, `useCollectionSummary`, `useCollectionRows`, `useCollectionGames`, `loadCollectionGames`, `useTournamentGuess` (CTA-142: the kind of tournament the games look like, read off their tags when asked). |
 | `src/views/library/indexCollection.ts` | Runs the worker with progress and cancel, with a jsdom fallback. |
 | `src/views/library/LibraryMiss.tsx` | The "no such collection / game" screen. |
 | `src/views/library/*Main.tsx` | Layout-only wrappers that `routes.tsx` routes to. |
@@ -651,6 +651,19 @@ collection's header also carries the **Settings gear** (`library-table-settings`
 CTA-121), a link to `/library/<collection>/settings` that passes `state.from`
 so the settings screen's Save and Cancel return to the same filtered view.
 
+**The tournament suggestion** (CTA-142, `library-table-suggestion`): an
+upload **never marked either way** (`tournament` absent) whose games share
+one `Event` (`canBeTournament`) shows, over the table, the kind of
+tournament its games look like — the settings' `TournamentSuggestion`
+block, its reason localized. **Apply** marks it at once
+(`updateCollectionSettings`, no Save) and opens its tournament view on Info
+(`?tab=info`), a snackbar naming the type; the **close button** ("Not a
+tournament — don't suggest again") stores the mark **off** (`{ enabled:
+false, type }`), so it is never offered again — the settings can still turn
+it on. A failed write is a snackbar. Shipped collections are never offered
+it (read-only; the shipped tournaments are marked in the manifest), nor a
+tournament's Games tab.
+
 **Columns** (`COLLECTION_COLUMNS`): `#`, White, Elo, Black, Elo, Result, Date,
 Round, Event, ECO, Opening, Moves. The `#` cell carries the unreadable mark
 (`library-table-unreadable-<n>`). The row click and a real link in the White
@@ -978,7 +991,9 @@ the index instead (§10.1).
    Their **Built-in** folder is not a record: it is never renamed, moved or
    deleted, no picker offers it, and nothing is filed in it (§4.4).
 5. **The table never parses or fetches games.** Download, Analyse and a board
-   read the games; the table reads rows.
+   read the games; the table reads rows. One exception (CTA-142): a
+   never-marked one-event upload's tournament suggestion reads its games'
+   tags (`useTournamentGuess`) — beside the table, never to draw it.
 6. **State in the URL, with history replace**, for everything but the picks.
 7. **Stores are non-throwing** and report problems. Screens show them and
    never crash.

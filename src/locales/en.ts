@@ -1446,11 +1446,16 @@ const en = {
        * suggestion over the type's radios, Apply putting it in the draft.
        */
       suggestion: {
-        title: "Suggested type",
+        title: "Suggested tournament type",
         /** The guess and why, in a line. */
         text: "{{type}}: {{reason}}.",
         apply: "Apply",
         applyName: "Apply the suggested type, {{type}}",
+        /** The games table's close button (CTA-142): the collection is not a tournament, and is not asked again. */
+        dismiss: "Not a tournament — don't suggest again",
+        /** The games table's outcomes. */
+        marked: "Marked as a tournament: {{type}}. Change it in the collection's settings.",
+        problem: "The mark could not be saved — this browser's storage may be full or unavailable.",
         /** Once the draft holds it. */
         selected: "Selected — press Save to keep it.",
         /** Why — the numbers the guess was read from. */

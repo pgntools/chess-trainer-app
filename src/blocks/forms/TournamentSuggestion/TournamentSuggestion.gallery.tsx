@@ -25,6 +25,12 @@ const gallery: GalleryModule<BlockFamilyId> = {
       render: () => <TournamentSuggestion guess={ROUND_ROBIN_GUESS} selected onApply={() => {}} testId="gallery-suggestion-selected" />,
     },
     { name: "A save under way", render: () => live(ROUND_ROBIN_GUESS, "gallery-suggestion-busy", true) },
+    {
+      name: "On the games table — Apply marks at once, the close button turns it down",
+      render: () => (
+        <TournamentSuggestion guess={KNOCKOUT_GUESS} selected={false} onApply={() => {}} onDismiss={() => {}} testId="gallery-suggestion-table" />
+      ),
+    },
   ],
 };
 

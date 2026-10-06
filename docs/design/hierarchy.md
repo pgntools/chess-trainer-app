@@ -121,7 +121,7 @@ CTA-113 moved the rest of the app onto blocks:
 | `PgnInput`, `FenInput`, `PositionFields` | forms | A PGN from a file or a paste (over `UploadPanel`), a FEN, the position editor's fields. |
 | `MergeSplitChoice`, `CollectionFilters` | forms | A several-games text's merge or split; a collection's filter panel. |
 | `CollectionSettingsForm` | forms | A collection's settings (CTA-121): the title, the description, and the tournament mark — a `SwitchField` off with its reason while the games do not share one `Event`, the type the games look like (`TournamentSuggestion`, CTA-142), then the formats as radios (every one with a table selectable, Arena "coming later") with each one's description under the group. |
-| `TournamentSuggestion` | forms | The tournament type a collection's games look like (`TournamentGuess`, `lib/tournamentKind.ts`, CTA-142): the format named in the settings' words with its reason, localized from the guess's facts, and an Apply that puts it in the draft — off, with "press Save", once the draft holds it. |
+| `TournamentSuggestion` | forms | The tournament type a collection's games look like (`TournamentGuess`, `lib/tournamentKind.ts`, CTA-142): the format named in the settings' words with its reason, localized from the guess's facts, and an Apply that puts it in the draft — off, with "press Save", once the draft holds it; with `onDismiss`, a close button (the games table's, which marks at once). |
 | `PgnExportPanel`, `GameInfo`, `CurrentOpening`, `ChangesStrip` | panels | Every board's Export and Info tabs, the opening line, the Update / Save as copy / Discard strip. |
 | `PlayToggleButton`, `EngineThinking` | panels | Play's header button and the engine's thinking line. |
 

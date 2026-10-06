@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { useLocation, useNavigate, useParams } from "react-router";
@@ -14,12 +14,10 @@ import {
   type TournamentFormat,
 } from "../../lib/libraryCollections";
 import { updateCollectionSettings } from "../../lib/libraryCollectionStore";
-import { readPgnTags } from "../../lib/pgn";
-import { guessTournamentKind } from "../../lib/tournamentKind";
 import { RightPanel } from "../main/rightPanel";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import LibraryMiss from "./LibraryMiss";
-import { useCollectionGames, useCollectionRows, useCollectionSummary } from "./useLibraryCollections";
+import { useCollectionRows, useCollectionSummary, useTournamentGuess } from "./useLibraryCollections";
 
 /**
  * **A collection's settings** (`/library/<collection>/settings`, CTA-121) —
@@ -78,13 +76,6 @@ function CollectionSettingsScreen() {
   if (summary.summary.source === "shipped") return <LibraryMiss what="collection" />;
   return <SettingsForm key={summary.summary.id} summary={summary.summary} canMark={canBeTournament(rows.value)} />;
 }
-
-/** The type a collection's games look like — once they are read; `undefined` until then, and for no guess. */
-const useTournamentGuess = (id: string, wanted: boolean) => {
-  const games = useCollectionGames(wanted ? id : undefined);
-  const value = games.status === "ready" ? games.value : undefined;
-  return useMemo(() => (value === undefined ? undefined : guessTournamentKind(value.map(readPgnTags))), [value]);
-};
 
 function SettingsForm({ summary, canMark }: { summary: CollectionSummary; canMark: boolean }) {
   // The screen's title is the page's `h1` (CTA-112), the record's name its browser title.
