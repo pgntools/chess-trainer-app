@@ -1,9 +1,5 @@
-import { useTranslation } from "react-i18next";
-
-import { MatchTable } from "../../../blocks/tables";
-import { InlineAlert } from "../../../design-system/components/feedback";
-import { matchOf } from "../../../lib/match";
-import { usePgnEvent, useEmbedPaging, usePgnSource, type PgnSourceProps } from "./pgnTournament";
+import { EmbedSource, type EmbedSourceProps } from "./embedSource";
+import { StandingsView } from "./tournamentEmbedViews";
 
 /**
  * **A match between two players in an article** (CTA-128) —
@@ -15,44 +11,29 @@ import { usePgnEvent, useEmbedPaging, usePgnSource, type PgnSourceProps } from "
  * Named after the `Event` tag ("Clutch Chess: The Legends 2026 — the
  * match"); its ids are `tournament-match-<event, slugified>`. A PGN whose
  * games are not all between the same two players says so.
+ *
+ * **Any source** (CTA-140): `pgn={games}` (or `load`) for a PGN of the
+ * article's own, or `src` — a Library collection's address
+ * (`src="/library/<collection>"`), or any other the app keeps
+ * (`lib/embedSource.ts`) — read by `<EmbedSource>`; a Library source's
+ * names and results link into the Library (`tournamentEmbedViews.tsx`).
  */
 
-type MatchTableEmbedProps = PgnSourceProps & {
+type MatchTableEmbedProps = EmbedSourceProps & {
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
   /** Page the rows, this many a page — 25, 50, 100 or 250 (CTA-128). Absent, every row shows. */
   rowsPerPage?: number | string;
+  /** A Library source: each name a link to the collection's games of that player. Default on. */
+  playerLink?: boolean;
+  /** A Library source: each result a link to its game on the Library's board. Default on. */
+  gameLink?: boolean;
 };
 
-export function MatchTableEmbed({ pgn, load, density, rowsPerPage }: MatchTableEmbedProps) {
-  const { t } = useTranslation();
-  const paging = useEmbedPaging(rowsPerPage);
-  const read = usePgnEvent(usePgnSource({ pgn, load }), matchOf, "not a match between two players");
-  if (read.loading) {
-    // The file is a chunk of its own, on its way: the table's own "reading" state, named until its event is known.
-    return (
-      <MatchTable
-        match={undefined}
-        ariaLabel={t("tournament.embed.match", { event: t("tournament.embed.untitled") })}
-        density={density}
-        testId="tournament-match-loading"
-      />
-    );
-  }
-  if (read.made === undefined) {
-    return (
-      <InlineAlert severity="warning" testId="tournament-match-unreadable" detail={read.error}>
-        {read.error === "not a match between two players" ? t("tournament.embed.notAMatch") : t("tournament.embed.unreadable")}
-      </InlineAlert>
-    );
-  }
+export function MatchTableEmbed({ src, pgn, load, ...table }: MatchTableEmbedProps) {
   return (
-    <MatchTable
-      match={read.made}
-      ariaLabel={t("tournament.embed.match", { event: read.event ?? t("tournament.embed.untitled") })}
-      density={density}
-      paging={paging}
-      testId={`tournament-match-${read.slug}`}
-    />
+    <EmbedSource src={src} pgn={pgn} load={load}>
+      {(read) => <StandingsView read={read} format="match" {...table} />}
+    </EmbedSource>
   );
 }

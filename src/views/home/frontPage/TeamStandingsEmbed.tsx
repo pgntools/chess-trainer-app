@@ -1,9 +1,5 @@
-import { useTranslation } from "react-i18next";
-
-import { TeamStandingsTable } from "../../../blocks/tables";
-import { InlineAlert } from "../../../design-system/components/feedback";
-import { teamTournamentOf } from "../../../lib/teamTournament";
-import { usePgnEvent, useEmbedPaging, usePgnSource, type PgnSourceProps } from "./pgnTournament";
+import { EmbedSource, type EmbedSourceProps } from "./embedSource";
+import { TeamStandingsView } from "./tournamentEmbedViews";
 
 /**
  * **A team tournament's standings in an article** (CTA-128) —
@@ -16,44 +12,29 @@ import { usePgnEvent, useEmbedPaging, usePgnSource, type PgnSourceProps } from "
  * Named after the `Event` tag ("FIDE World Rapid Team — standings"); its
  * ids are `tournament-team-standings-<event, slugified>`. A PGN with no game
  * in it says so.
+ *
+ * **Any source** (CTA-140): `pgn={games}` (or `load`) for a PGN of the
+ * article's own, or `src` — a Library collection's address
+ * (`src="/library/<collection>"`), or any other the app keeps
+ * (`lib/embedSource.ts`) — read by `<EmbedSource>`; a Library source's
+ * names and results link into the Library (`tournamentEmbedViews.tsx`).
  */
 
-type TeamStandingsEmbedProps = PgnSourceProps & {
+type TeamStandingsEmbedProps = EmbedSourceProps & {
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
   /** Page the rows, this many a page — 25, 50, 100 or 250 (CTA-128). Absent, every row shows. */
   rowsPerPage?: number | string;
+  /** A Library source: each team's name a link to the collection's games of its players. Default on. */
+  teamLink?: boolean;
+  /** A Library source: each round's match a link to its first board. Default on. */
+  gameLink?: boolean;
 };
 
-export function TeamStandingsEmbed({ pgn, load, density, rowsPerPage }: TeamStandingsEmbedProps) {
-  const { t } = useTranslation();
-  const paging = useEmbedPaging(rowsPerPage);
-  const read = usePgnEvent(usePgnSource({ pgn, load }), teamTournamentOf);
-  if (read.loading) {
-    // The file is a chunk of its own, on its way: the table's own "reading" state, named until its event is known.
-    return (
-      <TeamStandingsTable
-        tournament={undefined}
-        ariaLabel={t("tournament.embed.standings", { event: t("tournament.embed.untitled") })}
-        density={density}
-        testId="tournament-team-standings-loading"
-      />
-    );
-  }
-  if (read.made === undefined) {
-    return (
-      <InlineAlert severity="warning" testId="tournament-team-standings-unreadable" detail={read.error}>
-        {t("tournament.embed.unreadable")}
-      </InlineAlert>
-    );
-  }
+export function TeamStandingsEmbed({ src, pgn, load, ...table }: TeamStandingsEmbedProps) {
   return (
-    <TeamStandingsTable
-      tournament={read.made}
-      ariaLabel={t("tournament.embed.standings", { event: read.event ?? t("tournament.embed.untitled") })}
-      density={density}
-      paging={paging}
-      testId={`tournament-team-standings-${read.slug}`}
-    />
+    <EmbedSource src={src} pgn={pgn} load={load}>
+      {(read) => <TeamStandingsView read={read} {...table} />}
+    </EmbedSource>
   );
 }

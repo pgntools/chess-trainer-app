@@ -1696,6 +1696,8 @@ const en = {
       collectionMissing: "This collection is not in this browser's Library.",
       /** <CollectionTeamStandingsTable> over a collection whose games name no teams. */
       notATeamEvent: "This collection is not a team event: its games name no teams.",
+      /** A table over an analysis, a played game or a repertoire (CTA-140) that this browser does not hold. */
+      sourceMissing: "This is not in this browser — it is a reader's own, kept where it was made.",
     },
     /** A knockout's bracket (CTA-128): the rounds' names, a match in words. */
     knockout: {

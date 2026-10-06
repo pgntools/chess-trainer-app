@@ -45,6 +45,15 @@ import { TeamStandingsEmbed } from "./TeamStandingsEmbed";
  * | `<NavCards />` | every screen as a card, by section — the landing page before CTA-126 |
  * | `<ArticleImage src={photo} alt="…" width="60%" caption="…" />` | an image beside the article (`import photo from "./photo.png"`) — its width, height, place, fit, corners, border, shadow and a full-size link (CTA-137) |
  *
+ * **One component, any source** (CTA-140): every table and `<InlinePgnGame>`
+ * read their games through `embedSource.tsx` — `pgn={games}` for a PGN of
+ * the article's own, or `src="<app path>"` for anything the app keeps: a
+ * Library collection or one game of it, a saved analysis, a played game, a
+ * repertoire (`lib/embedSource.ts`). `<SwissStandingsTable src="/library/<c>" />`
+ * is what `<CollectionTournamentTable _id="/library/<c>" />` drew; the
+ * `Collection…` names stay, as aliases ({@link MDX_ALIASES}), for the
+ * articles written with them.
+ *
  * A component the document names that is not here fails the page at render
  * (MDX's own check), so a new one is a line in this map — and a row in the
  * table above and in `README.md`.
@@ -79,3 +88,19 @@ export const mdxComponents: MDXComponents = {
   NavCards,
   ArticleImage,
 };
+
+/**
+ * The older names that are another component with a source (CTA-140):
+ * `<CollectionTournamentTable _id>` is `<SwissStandingsTable>`,
+ * `<RoundRobinCrossTable>` or `<MatchTable>` with `src`; the knockout and
+ * team ones `<KnockoutBracket src>` and `<TeamStandingsTable src>`;
+ * `<CollectionGameBoard game>` `<StoredGameEmbed src>`. Still rendered —
+ * articles name them — but the MDX editor writes the new form.
+ */
+export const MDX_ALIASES: ReadonlySet<string> = new Set([
+  "CollectionGameBoard",
+  "CollectionTournamentTable",
+  "CollectionKnockoutBracket",
+  "CollectionDoubleEliminationBracket",
+  "CollectionTeamStandingsTable",
+]);

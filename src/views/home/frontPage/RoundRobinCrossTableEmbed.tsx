@@ -1,9 +1,5 @@
-import { useTranslation } from "react-i18next";
-
-import { RoundRobinCrossTable } from "../../../blocks/tables";
-import { InlineAlert } from "../../../design-system/components/feedback";
-import { ROUND_ROBIN_TIE_BREAKS } from "../../../lib/tournament";
-import { usePgnTournament, useEmbedPaging, usePgnSource, type PgnSourceProps } from "./pgnTournament";
+import { EmbedSource, type EmbedSourceProps } from "./embedSource";
+import { StandingsView } from "./tournamentEmbedViews";
 
 /**
  * **A round robin's crosstable in an article** (CTA-128) —
@@ -19,44 +15,29 @@ import { usePgnTournament, useEmbedPaging, usePgnSource, type PgnSourceProps } f
  * crosstable"), and its ids are `tournament-crosstable-<event, slugified>`,
  * so a page shows each tournament's crosstable once. A PGN with no game in it
  * says so.
+ *
+ * **Any source** (CTA-140): `pgn={games}` (or `load`) for a PGN of the
+ * article's own, or `src` — a Library collection's address
+ * (`src="/library/<collection>"`), or any other the app keeps
+ * (`lib/embedSource.ts`) — read by `<EmbedSource>`; a Library source's
+ * names and results link into the Library (`tournamentEmbedViews.tsx`).
  */
 
-type RoundRobinCrossTableEmbedProps = PgnSourceProps & {
+type RoundRobinCrossTableEmbedProps = EmbedSourceProps & {
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
   /** Page the rows, this many a page — 25, 50, 100 or 250 (CTA-128). Absent, every row shows. */
   rowsPerPage?: number | string;
+  /** A Library source: each name a link to the collection's games of that player. Default on. */
+  playerLink?: boolean;
+  /** A Library source: each result a link to its game on the Library's board. Default on. */
+  gameLink?: boolean;
 };
 
-export function RoundRobinCrossTableEmbed({ pgn, load, density, rowsPerPage }: RoundRobinCrossTableEmbedProps) {
-  const { t } = useTranslation();
-  const paging = useEmbedPaging(rowsPerPage);
-  const read = usePgnTournament(usePgnSource({ pgn, load }), ROUND_ROBIN_TIE_BREAKS);
-  if (read.loading) {
-    // The file is a chunk of its own, on its way: the table's own "reading" state, named until its event is known.
-    return (
-      <RoundRobinCrossTable
-        tournament={undefined}
-        ariaLabel={t("tournament.embed.crosstable", { event: t("tournament.embed.untitled") })}
-        density={density}
-        testId="tournament-crosstable-loading"
-      />
-    );
-  }
-  if (read.made === undefined) {
-    return (
-      <InlineAlert severity="warning" testId="tournament-crosstable-unreadable" detail={read.error}>
-        {t("tournament.embed.unreadable")}
-      </InlineAlert>
-    );
-  }
+export function RoundRobinCrossTableEmbed({ src, pgn, load, ...table }: RoundRobinCrossTableEmbedProps) {
   return (
-    <RoundRobinCrossTable
-      tournament={read.made}
-      ariaLabel={t("tournament.embed.crosstable", { event: read.event ?? t("tournament.embed.untitled") })}
-      density={density}
-      paging={paging}
-      testId={`tournament-crosstable-${read.slug}`}
-    />
+    <EmbedSource src={src} pgn={pgn} load={load}>
+      {(read) => <StandingsView read={read} format="roundRobin" {...table} />}
+    </EmbedSource>
   );
 }

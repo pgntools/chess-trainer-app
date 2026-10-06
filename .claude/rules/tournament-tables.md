@@ -21,6 +21,9 @@ paths:
   - "src/design-system/components/tables/Flag/**"
   - "src/views/home/frontPage/*Embed*"
   - "src/views/home/frontPage/pgnTournament.ts"
+  - "src/views/home/frontPage/embedSource.tsx"
+  - "src/views/home/frontPage/tournamentEmbedViews.tsx"
+  - "src/lib/embedSource*"
   - "src/views/blog/articles/tournaments/**"
   - "src/views/blog/articles/writing-an-article/demo-tables/**"
   - "src/test/fixtures/tournamentGames.ts"
@@ -57,7 +60,7 @@ presentational block, an MDX embed:
 ```
 an article (.mdx)        import games from "./event.pgn?raw"   <KnockoutBracket pgn={games} />
    │
-embed  views/home/frontPage/…Embed.tsx   reads the PGN's tags (pgnTournament.ts), holds the page
+embed  views/home/frontPage/…Embed.tsx   <EmbedSource> reads any source (embedSource.tsx), a view draws it
    │
 block  blocks/tables/<Block>/            the words (tournament.*), chips and flags, a11y labels
    │
@@ -77,10 +80,10 @@ lib    src/lib/                          tournamentOf · knockoutOf · matchOf �
 | Two-player match | `matchOf(headers)` | `StandingsTable` | `MatchTable` | `<MatchTable>` | `match` (Clutch Chess 2026) |
 | Team Swiss / round robin | `teamTournamentOf(headers)` | `StandingsTable` | `TeamStandingsTable` | `<TeamStandingsTable>` | `team` (World Rapid Team 2026); the article `tournaments/olympiad-2026` (both Olympiads, with flags) |
 | Team knockout | `knockoutOf(headers)` — teams detected | `Bracket` | `KnockoutBracket` | `<KnockoutBracket>` | `team` (World Blitz Team final) |
-| **A Library collection** (Swiss, round robin or match) | the collection's games' tags → `tournamentOf` / `matchOf` | as above | `SwissStandingsTable`, `RoundRobinCrossTable`, `MatchTable` with `playerLink` / `gameLink` | `<CollectionTournamentTable _id="/library/<c>">` | `from-a-collection` (the shipped Candidates 2026, `/library/candidates2026`) |
-| **A Library collection**: a knockout (players or teams) | `knockoutOf` | `Bracket` (its `link`s, its `games` row) | `KnockoutBracket` with `playerLink` / `gameLink` | `<CollectionKnockoutBracket _id="/library/<c>">` | `knockout-from-a-collection` (`/library/netherlands2026`, `/library/worldblitzteam2026`) |
-| **A Library collection**: a double elimination | `knockoutOf(headers, { losersFromRound: 51 })` | `Bracket` ×2 | `KnockoutBracket` with `playerLink` / `gameLink` | `<CollectionDoubleEliminationBracket _id="/library/<c>">` | `double-elimination-from-a-collection` (`/library/esportsplayin2026`) |
-| **A Library collection**: a team Swiss / round robin | `teamTournamentOf` + `teamPlayersOf` | `StandingsTable` | `TeamStandingsTable` with `teamLink` / `gameLink` | `<CollectionTeamStandingsTable _id="/library/<c>">` | `team-from-a-collection` (`/library/worldrapidteam2026`) |
+| **A Library collection** (Swiss, round robin or match) — **the same embeds, `src="/library/<c>"`** (CTA-140) | the collection's games' tags → `tournamentOf` / `matchOf` | as above | `SwissStandingsTable`, `RoundRobinCrossTable`, `MatchTable` with `playerLink` / `gameLink` | `<SwissStandingsTable src="/library/<c>">` (…); the older `<CollectionTournamentTable _id>`, an alias | `from-a-collection` (the shipped Candidates 2026, `/library/candidates2026`) |
+| **A Library collection**: a knockout (players or teams) | `knockoutOf` | `Bracket` (its `link`s, its `games` row) | `KnockoutBracket` with `playerLink` / `gameLink` | `<KnockoutBracket src="/library/<c>">`; the older `<CollectionKnockoutBracket _id>`, an alias | `knockout-from-a-collection` (`/library/netherlands2026`, `/library/worldblitzteam2026`) |
+| **A Library collection**: a double elimination | `knockoutOf(headers, { losersFromRound: 51 })` | `Bracket` ×2 | `KnockoutBracket` with `playerLink` / `gameLink` | `<KnockoutBracket src="/library/<c>" losersFromRound="51">`; the older `<CollectionDoubleEliminationBracket _id>`, an alias | `double-elimination-from-a-collection` (`/library/esportsplayin2026`) |
+| **A Library collection**: a team Swiss / round robin | `teamTournamentOf` + `teamPlayersOf` | `StandingsTable` | `TeamStandingsTable` with `teamLink` / `gameLink` | `<TeamStandingsTable src="/library/<c>">`; the older `<CollectionTeamStandingsTable _id>`, an alias | `team-from-a-collection` (`/library/worldrapidteam2026`) |
 
 Every reader takes `GameHeaders[]` — `splitPgnGames(pgn).map(readPgnTags)` —
 and **replays no move**: a 1,650-game team file reads in ~50 ms.
@@ -161,8 +164,23 @@ otherwise, and in a double elimination, "Round n".
 ## 4. The MDX embeds
 
 Registered by name in `views/home/frontPage/index.ts` (`mdxComponents`), with
-no `import`; documented in `views/home/frontPage/README.md`. Each takes the
-event's games as **raw PGN text**, imported beside the article with `?raw`:
+no `import`; documented in `views/home/frontPage/README.md`.
+
+**One component, any source** (CTA-140): each table is **one** embed, and
+only its source changes — `pgn={games}` (or `load`) for a PGN of the
+article's own, or `src="<app path>"` for anything the app keeps
+(`lib/embedSource.ts`: a Library collection `/library/<c>`, or a saved
+analysis, a played game, a repertoire — pasted as the address bar shows
+it). `<EmbedSource>` (`frontPage/embedSource.tsx`) reads it — a reader per
+kind of source, so each calls only its own hooks — and hands one
+`SourceRead` (the games, their tags, the event, and a Library source's
+links) to the table's view (`frontPage/tournamentEmbedViews.tsx`:
+`StandingsView`, `KnockoutView`, `TeamStandingsView`). A Library source's
+names and results link into the Library (`playerLink`, `gameLink`,
+`teamLink`, on by default); a PGN has nowhere to link. The `Collection…`
+embeds of CTA-128 are **aliases** now (`MDX_ALIASES`), kept for the
+articles written with them; the MDX editor writes the new form. A PGN of
+the article's own is imported beside it with `?raw`:
 
 ```mdx
 import games from "./chgbr26.pgn?raw"
@@ -172,11 +190,11 @@ import games from "./chgbr26.pgn?raw"
 
 | Embed | Props | Test ids |
 | --- | --- | --- |
-| `<SwissStandingsTable>` | `pgn` or `load`, `density?: "normal" \| "dense"`, `rowsPerPage?` | `tournament-standings-<event slug>` |
-| `<RoundRobinCrossTable>` | `pgn` or `load`, `density?`, `rowsPerPage?` | `tournament-crosstable-<event slug>` |
-| `<KnockoutBracket>` | `pgn` or `load`, `losersFromRound?` (a double elimination: `"51"`), `density?` | `tournament-bracket-<event slug>` (`-winners`, `-losers`) |
-| `<MatchTable>` | `pgn` or `load`, `density?`, `rowsPerPage?` | `tournament-match-<event slug>` |
-| `<TeamStandingsTable>` | `pgn` or `load`, `density?`, `rowsPerPage?` | `tournament-team-standings-<event slug>` |
+| `<SwissStandingsTable>` | `pgn`, `load` or `src`, `density?: "normal" \| "dense"`, `rowsPerPage?`, `playerLink?` / `gameLink?` (a Library source) | `tournament-standings-<event slug>` |
+| `<RoundRobinCrossTable>` | `pgn`, `load` or `src`, `density?`, `rowsPerPage?`, `playerLink?` / `gameLink?` | `tournament-crosstable-<event slug>` |
+| `<KnockoutBracket>` | `pgn`, `load` or `src`, `losersFromRound?` (a double elimination: `"51"`), `density?`, `playerLink?` / `gameLink?` | `tournament-bracket-<event slug>` (`-winners`, `-losers`) |
+| `<MatchTable>` | `pgn`, `load` or `src`, `density?`, `rowsPerPage?`, `playerLink?` / `gameLink?` | `tournament-match-<event slug>` |
+| `<TeamStandingsTable>` | `pgn`, `load` or `src`, `density?`, `rowsPerPage?`, `teamLink?` / `gameLink?` | `tournament-team-standings-<event slug>` — a Library source's, as each alias's below |
 | `<CollectionTournamentTable>` | `_id="/library/<c>"`, `format?: "swiss" \| "roundRobin" \| "match"`, `playerLink?` (default on), `gameLink?` (default on), `density?`, `rowsPerPage?` | `tournament-collection-<c>-<format>` (`-loading` while read) |
 | `<CollectionKnockoutBracket>` | `_id="/library/<c>"`, `losersFromRound?`, `playerLink?` (default on), `gameLink?` (default on), `density?` | `tournament-collection-<c>-knockout` (`-winners`, `-losers`) |
 | `<CollectionDoubleEliminationBracket>` | as `<CollectionKnockoutBracket>`, `losersFromRound` `51` by default | `tournament-collection-<c>-doubleElimination` |
@@ -200,9 +218,9 @@ own device only: an article naming one says "not in this browser's Library"
 to every other reader — the demo uses the shipped Candidates 2026.
 
 **The knockouts and team events from the Library** (CTA-128) are three
-embeds of their own, each a fixed table (no `format`), over the same
-`useCollectionEvent` hook (`frontPage/collectionEvent.ts` — the collection's
-games' tags, its event's name, the two links):
+aliases of the tables over `src` (CTA-140), each a fixed table (no
+`format`), read by `<EmbedSource>`'s Library reader (the collection's games'
+tags, its event's name, the two links):
 
 - **`<CollectionKnockoutBracket>`** — `KnockoutBracket` over `knockoutOf`; a
   team knockout too, where every game names its teams.
@@ -357,10 +375,13 @@ shows its table and no boards, and its page says so.
 3. **block** — `src/blocks/tables/<Name>/` (component, test, gallery,
    `fixtures.ts`, `index.ts`), chips and flags through `playerMarks`, words in
    `tournament.*` (both catalogs), a row in `hierarchy.md`'s Blocks table.
-4. **embed** — `views/home/frontPage/<Name>Embed.tsx` over `usePgnEvent`
-   (a **stable** `make` — module-level or `useCallback`) and
-   `useEmbedPaging`; a line in `mdxComponents`, its table and `README.md`; a
-   test in `TournamentTableEmbeds.test.tsx`.
+4. **embed** — a view in `views/home/frontPage/tournamentEmbedViews.tsx`
+   over a `SourceRead` (its `make` in a `useMemo`; the ids a Library
+   source's or the event's; `useEmbedPaging`), and
+   `views/home/frontPage/<Name>Embed.tsx` — `<EmbedSource>` and the view,
+   so it reads every source at once; a line in `mdxComponents`, its table
+   and `README.md`; a test in `TournamentTableEmbeds.test.tsx` (and
+   `EmbedSource.test.tsx` for a source of its own).
 5. **a demo page** (§6) and a row in §1's table here.
 
 ---
