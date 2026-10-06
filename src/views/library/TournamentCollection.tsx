@@ -202,10 +202,26 @@ function InfoTab({ collection, rows, read }: { collection: CollectionSummary; ro
   const type = collection.tournament?.type ?? "swiss";
   const headers = read.status === "ready" ? read.headers : undefined;
   const facts = useMemo(() => factsOf(collection, rows, headers), [collection, rows, headers]);
+  /*
+    Centred, and as wide as the room allows: the event card beside the table
+    where both fit, the table under it where they do not — each centred, the
+    table its own width (a crosstable is no wider than its columns) and
+    scrolling sideways past the screen's. Logical throughout, so it mirrors.
+  */
   return (
-    <Box sx={{ display: "grid", gap: 2, alignContent: "start" }}>
-      <TournamentInfo facts={facts} description={collection.description} testId="library-tournament-info" />
-      <Box component="section" aria-labelledby="library-tournament-table-title" sx={{ display: "grid", gap: 1, minWidth: 0 }}>
+    <Box
+      data-testid="library-tournament-info-layout"
+      sx={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "flex-start", gap: 2, pb: 2 }}
+    >
+      <Box sx={{ flex: "0 1 22rem", minWidth: 0, maxWidth: "100%" }}>
+        <TournamentInfo facts={facts} description={collection.description} testId="library-tournament-info" />
+      </Box>
+      <Box
+        component="section"
+        aria-labelledby="library-tournament-table-title"
+        data-testid="library-tournament-table-section"
+        sx={{ flex: "0 1 auto", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 1, minWidth: "min(100%, 20rem)", maxWidth: "100%" }}
+      >
         <Typography id="library-tournament-table-title" variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>
           {t("library.tournament.table.title")}
         </Typography>

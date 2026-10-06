@@ -821,7 +821,11 @@ the tab's panel (`tabPanelProps`, `library-tournament-panel-<tab>`):
   (a team's to all its players), results to the game on the Library's board
   (its back returning here). Games whose guess (`guessTournamentKind`) is
   another type get an `InlineAlert` saying so and naming the type they look
-  like, with *Change the type* (an upload's settings). **No right-hand
+  like, with *Change the type* (an upload's settings). **Centred and
+  responsive**: the card and the table side by side where both fit, else
+  the table wraps under the card — each centred, the table its own width,
+  scrolling sideways in its region past the screen's (no page overflow at
+  320 px). **No right-hand
   panel**: the tab renders `NoRightPanel` (`views/main/rightPanel.tsx`), so
   the shell draws no aside and the tab takes the whole row.
 - **Participants** — in the right-hand panel, the **Statistics** (the
