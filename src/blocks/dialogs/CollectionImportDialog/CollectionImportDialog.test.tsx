@@ -105,4 +105,61 @@ describe("CollectionImportDialog — Split by event (CTA-127)", () => {
     );
     expect(screen.queryByTestId("import-split")).toBeNull();
   });
+
+  describe("the tournament mark (CTA-142)", () => {
+    it("offers a one-event import the settings' tournament fields, the type its games look like with an Apply", async () => {
+      const user = userEvent.setup();
+      const onImport = vi.fn();
+      render(<CollectionImportDialog source={ONE_EVENT} onCancel={() => {}} onImport={onImport} testId="import" />);
+      expect(screen.getByTestId("import-mark-suggestion-text")).toHaveTextContent("Swiss system: 3 players, each meeting a few of the others.");
+      expect(screen.getByTestId("import-mark-tournament-switch")).not.toBeChecked();
+      await expectNoAxeViolations(screen.getByRole("dialog"));
+
+      // Left off: no mark — the collection stays undecided, its table suggests it later.
+      await user.click(screen.getByTestId("import-confirm"));
+      expect(onImport.mock.calls[0][2]).toEqual({ autoAssign: false });
+
+      await user.click(screen.getByRole("button", { name: "Apply the suggested type, Swiss system" }));
+      await user.click(screen.getByTestId("import-mark-type-roundRobin"));
+      await user.click(screen.getByTestId("import-confirm"));
+      expect(onImport.mock.calls[1][2]).toEqual({ mark: { enabled: true, type: "roundRobin" }, autoAssign: false });
+    });
+
+    it("turns the switch on with the guessed type", async () => {
+      const user = userEvent.setup();
+      const onImport = vi.fn();
+      render(<CollectionImportDialog source={ONE_EVENT} onCancel={() => {}} onImport={onImport} testId="import" />);
+      await user.click(screen.getByTestId("import-mark-tournament-switch"));
+      expect(screen.getByTestId("import-mark-type-swiss")).toBeChecked();
+    });
+
+    it("offers no mark for several events, nor on Add games", () => {
+      const { unmount } = render(<CollectionImportDialog source={ONE_FILE} onCancel={() => {}} onImport={() => {}} testId="import" />);
+      expect(screen.queryByTestId("import-mark-tournament-switch")).toBeNull();
+      unmount();
+      render(<CollectionImportDialog source={ONE_EVENT} intoName="Rated" onCancel={() => {}} onImport={() => {}} testId="import" />);
+      expect(screen.queryByTestId("import-mark-tournament-switch")).toBeNull();
+    });
+
+    it("on a split, marks each event with its predicted type — listed, and on by default", async () => {
+      const user = userEvent.setup();
+      const onImport = vi.fn();
+      render(<CollectionImportDialog source={ONE_FILE} onCancel={() => {}} onImport={onImport} testId="import" />);
+      expect(screen.queryByTestId("import-auto-type")).toBeNull();
+      await user.click(screen.getByTestId("import-split"));
+      expect(screen.getByTestId("import-auto-type")).toBeChecked();
+      // Club's two games tell a Swiss; Spring Open's one game tells nothing.
+      expect(screen.getByTestId("import-auto-type-preview")).toHaveTextContent("Club: Swiss system");
+      expect(screen.getByTestId("import-auto-type-preview")).not.toHaveTextContent("Spring Open");
+      await expectNoAxeViolations(screen.getByRole("dialog"));
+      await user.click(screen.getByTestId("import-confirm"));
+      expect(onImport.mock.calls[0][1]).toBe(true);
+      expect(onImport.mock.calls[0][2]).toEqual({ autoAssign: true });
+
+      await user.click(screen.getByTestId("import-auto-type"));
+      expect(screen.queryByTestId("import-auto-type-preview")).toBeNull();
+      await user.click(screen.getByTestId("import-confirm"));
+      expect(onImport.mock.calls[1][2]).toEqual({ autoAssign: false });
+    });
+  });
 });

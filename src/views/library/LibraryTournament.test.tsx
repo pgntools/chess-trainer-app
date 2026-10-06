@@ -254,6 +254,12 @@ describe("the games table's suggestion", () => {
     expect(where()).toBe(`/library/${cup.id}?tab=info`);
     expect(uploadedCollectionsSnapshot()?.find((c) => c.id === cup.id)?.tournament).toEqual({ enabled: true, type: "roundRobin" });
     expect(await screen.findByTestId("library-table-suggestion-notice")).toHaveTextContent("Marked as a tournament: Round robin.");
+
+    // Undo: the mark off again, never decided — back on the table as it was, the suggestion offered again.
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await screen.findByTestId("library-table-suggestion");
+    await waitFor(() => expect(where()).toBe(`/library/${cup.id}?sort=white`));
+    expect(uploadedCollectionsSnapshot()?.find((c) => c.id === cup.id)?.tournament).toBeUndefined();
   });
 
   it("turns it down for good: the mark stored off, the table kept, not asked again", async () => {

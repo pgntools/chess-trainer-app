@@ -1,4 +1,5 @@
 import { gameTag, type GameHeaders } from "./gameModel";
+import { readPgnTags } from "./pgn";
 import { playerOf, roundPartsOf } from "./tournament";
 
 /**
@@ -135,3 +136,7 @@ export const guessTournamentKind = (games: readonly GameHeaders[]): TournamentGu
     ? { kind: "teamSwiss", reason: `${competitors.size} teams${roundsWords}, each meeting a few of the others: a team event`, facts }
     : { kind: "swiss", reason: `${competitors.size} players${roundsWords}, each meeting a few of the others: a Swiss`, facts };
 };
+
+/** The guess for games given as their PGN texts (CTA-142) — read for their tags alone: the import popup's, the MDX editor's lookup. */
+export const guessTournamentKindOfGames = (games: readonly string[]): TournamentGuess | undefined =>
+  guessTournamentKind(games.map(readPgnTags));

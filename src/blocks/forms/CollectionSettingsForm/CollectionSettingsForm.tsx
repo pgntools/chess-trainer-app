@@ -1,18 +1,11 @@
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
-import { RadioGroupField, SettingsSection, SwitchField } from "../../../design-system/components/forms";
-import {
-  isTableFormat,
-  MAX_COLLECTION_DESCRIPTION_CHARS,
-  tableFormatOfKind,
-  TOURNAMENT_FORMATS,
-  type TournamentFormat,
-} from "../../../lib/libraryCollections";
+import { SettingsSection } from "../../../design-system/components/forms";
+import { MAX_COLLECTION_DESCRIPTION_CHARS, type TournamentFormat } from "../../../lib/libraryCollections";
 import type { TournamentGuess } from "../../../lib/tournamentKind";
-import { TournamentSuggestion } from "../TournamentSuggestion";
+import { TournamentMarkFields } from "../TournamentMarkFields";
 
 /** What the form edits (CTA-121): the title, the description, and the tournament mark. */
 export type CollectionSettingsDraft = {
@@ -65,7 +58,6 @@ function CollectionSettingsForm({
   testId,
 }: CollectionSettingsFormProps) {
   const { t } = useTranslation();
-  const marked = canBeTournament && value.tournament.enabled;
   return (
     <Box data-testid={testId} sx={{ display: "grid", gap: 3 }}>
       <SettingsSection title={t("library.settings.general")} testId={`${testId}-general`}>
@@ -102,59 +94,14 @@ function CollectionSettingsForm({
       </SettingsSection>
 
       <SettingsSection title={t("library.settings.tournamentSection")} testId={`${testId}-tournament`}>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <SwitchField
-            label={t("library.settings.tournament")}
-            help={canBeTournament ? t("library.settings.tournamentHelp") : t("library.settings.tournamentBlocked")}
-            checked={marked}
-            onChange={(enabled) => onChange({ tournament: { enabled, type: value.tournament.type } })}
-            disabled={disabled || !canBeTournament}
-            testId={`${testId}-tournament-switch`}
-          />
-          {canBeTournament && suggestion !== undefined && (
-            <TournamentSuggestion
-              guess={suggestion}
-              selected={marked && value.tournament.type === tableFormatOfKind(suggestion.kind)}
-              onApply={() => onChange({ tournament: { enabled: true, type: tableFormatOfKind(suggestion.kind) } })}
-              disabled={disabled}
-              testId={`${testId}-suggestion`}
-            />
-          )}
-          {marked && (
-            <>
-              <RadioGroupField
-                label={t("library.settings.type")}
-                options={TOURNAMENT_FORMATS.map((format) => ({
-                  value: format,
-                  label:
-                    // Arena — no table yet — says so in its own label.
-                    isTableFormat(format)
-                      ? t(`library.settings.formats.${format}`)
-                      : `${t(`library.settings.formats.${format}`)} — ${t("library.settings.comingLater")}`,
-                  disabled: !isTableFormat(format),
-                }))}
-                value={value.tournament.type}
-                onChange={(type) => onChange({ tournament: { enabled: true, type } })}
-                disabled={disabled}
-                testId={`${testId}-type`}
-              />
-              {/* Each format's one-line description, all at once — Arena's too. */}
-              <Box sx={{ display: "grid", gap: 0.5 }}>
-                {TOURNAMENT_FORMATS.map((format) => (
-                  <Typography
-                    key={format}
-                    variant="caption"
-                    color="text.secondary"
-                    data-testid={`${testId}-${format}-description`}
-                    sx={{ paddingInlineStart: 1.5 }}
-                  >
-                    {t(`library.settings.formats.${format}`)} — {t(`library.settings.formatDescriptions.${format}`)}
-                  </Typography>
-                ))}
-              </Box>
-            </>
-          )}
-        </Box>
+        <TournamentMarkFields
+          value={value.tournament}
+          onChange={(tournament) => onChange({ tournament })}
+          canBeTournament={canBeTournament}
+          suggestion={suggestion}
+          disabled={disabled}
+          testId={testId}
+        />
       </SettingsSection>
     </Box>
   );

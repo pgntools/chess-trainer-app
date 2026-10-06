@@ -363,6 +363,49 @@ describe("Split by event (CTA-127)", () => {
     expect(peekUploadedGames(of("Club")[0].id)).toEqual([GAMES[0]]);
   });
 
+  it("marks each event's collection with the type its games look like (CTA-142), the ones it cannot tell left plain", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: SPLIT.join("\n\n") } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    expect(await screen.findByTestId("library-import")).toBeInTheDocument();
+    fireEvent.click(splitSwitch());
+    // On by default, the prediction listed before anything is imported: Club's two games are one pair — a match.
+    expect(screen.getByTestId("library-import-auto-type")).toBeChecked();
+    expect(screen.getByTestId("library-import-auto-type-preview")).toHaveTextContent("Club: Match play");
+    await confirmImport();
+    await waitFor(() => expect(where()).toBe("/library"), { timeout: 4000 });
+    const collections = await loadUploadedCollections();
+    const markOf = (name: string) => collections.find((collection) => collection.name === name)?.tournament;
+    expect(markOf("Club")).toEqual({ enabled: true, type: "match" });
+    expect(markOf("Spring Open")).toBeUndefined();
+    expect(markOf("Unknown")).toBeUndefined();
+  });
+
+  it("marks none with the switch off", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: SPLIT.join("\n\n") } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    expect(await screen.findByTestId("library-import")).toBeInTheDocument();
+    fireEvent.click(splitSwitch());
+    fireEvent.click(screen.getByTestId("library-import-auto-type"));
+    await confirmImport();
+    await waitFor(() => expect(where()).toBe("/library"), { timeout: 4000 });
+    for (const collection of await loadUploadedCollections()) expect(collection.tournament).toBeUndefined();
+  });
+
+  it("marks a one-event import as it comes in, and opens its tournament view (CTA-142)", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: RATED_ONE_EVENT } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    expect(await screen.findByTestId("library-import")).toBeInTheDocument();
+    expect(screen.getByTestId("library-import-mark-suggestion-text")).toHaveTextContent("Swiss system");
+    fireEvent.click(screen.getByRole("button", { name: "Apply the suggested type, Swiss system" }));
+    await confirmImport();
+    await screen.findByTestId("library-tournament-screen", {}, { timeout: 4000 });
+    const [collection] = await loadUploadedCollections();
+    expect(collection.tournament).toEqual({ enabled: true, type: "swiss" });
+  });
+
   it("offers the split off with its reason where every kept game shares one Event, and imports unsplit", async () => {
     mount("/library/new");
     fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: RATED_ONE_EVENT } });

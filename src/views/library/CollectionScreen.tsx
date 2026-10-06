@@ -261,12 +261,25 @@ function CollectionTable({
     return true;
   };
   const applySuggestion = async (type: CollectionTournament["type"]) => {
+    // Where Undo comes back to: this table, its filters and all.
+    const backTo = cameFrom;
     if (!(await mark({ enabled: true, type }))) return;
     show({
       message: t("library.settings.suggestion.marked", { type: t(`library.settings.formats.${type}`) }),
       severity: "success",
-      duration: 6_000,
+      duration: 10_000,
       testId: "library-table-suggestion-notice",
+      // Undo: the mark taken off again — never decided, so the suggestion is offered again.
+      action: {
+        label: t("library.settings.suggestion.undo"),
+        onClick: () => {
+          void updateCollectionSettings(collection.id, { tournament: null }).then((problem) => {
+            if (problem === undefined) navigate(backTo, { replace: true });
+            else show({ message: t("library.settings.suggestion.problem"), severity: "error", duration: null, testId: "library-table-suggestion-notice" });
+          });
+        },
+        testId: "library-table-suggestion-undo",
+      },
     });
     // The collection now reads as a tournament: its view, on Info.
     navigate(`/library/${encodeURIComponent(collection.id)}?tab=info`, { replace: true });

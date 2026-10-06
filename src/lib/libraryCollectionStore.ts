@@ -381,7 +381,8 @@ export type CollectionSettingsPatch = {
   name?: string;
   /** The description; `""` removes it. */
   description?: string;
-  tournament?: CollectionTournament;
+  /** The tournament mark; `null` removes it — never decided again (CTA-142: the games table's Undo). */
+  tournament?: CollectionTournament | null;
 };
 
 const sameTournament = (a: StoredTournament | undefined, b: StoredTournament | undefined): boolean =>
@@ -406,7 +407,7 @@ export const updateCollectionSettings = async (
     const name = patch.name === undefined ? row.name : patch.name.trim();
     const description =
       patch.description === undefined ? row.description : patch.description === "" ? undefined : patch.description;
-    const tournament = patch.tournament ?? row.tournament;
+    const tournament = patch.tournament === null ? undefined : (patch.tournament ?? row.tournament);
     const next: StoredSummary = { ...row, name: name === "" ? row.name : name, description, tournament };
     if (
       next.name === row.name &&

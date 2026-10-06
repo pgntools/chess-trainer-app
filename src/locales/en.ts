@@ -1455,6 +1455,8 @@ const en = {
         dismiss: "Not a tournament — don't suggest again",
         /** The games table's outcomes. */
         marked: "Marked as a tournament: {{type}}. Change it in the collection's settings.",
+        /** The marked snackbar's action: the mark taken off again. */
+        undo: "Undo",
         problem: "The mark could not be saved — this browser's storage may be full or unavailable.",
         /** Once the draft holds it. */
         selected: "Selected — press Save to keep it.",
@@ -1672,6 +1674,12 @@ const en = {
         /** The *Split by event* option of a new-collection import (CTA-127). */
         split: "Split by event",
         splitHelp: "A folder named after the file, holding one collection per event. Games with no Event go into one \"Unknown\" collection.",
+        /** CTA-142: on a split, each event's collection marked with the type its games look like. */
+        autoType: "Mark each event's tournament type",
+        autoTypeHelp: "Each event's games are read for the kind of tournament they look like — before anything is imported. The events it can tell are marked with it; the others stay plain.",
+        autoTypeNone: "No event's games say what kind of tournament it is — none will be marked.",
+        autoTypeMore_one: "and {{count}} more event",
+        autoTypeMore_other: "and {{count}} more events",
         splitOneEvent: "Nothing to split — the games kept of each file share one Event.",
         splitNoEvents: "Nothing to split — no game kept has an Event.",
         splitNothingKept: "Nothing to split — no game will be imported.",

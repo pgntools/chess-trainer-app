@@ -246,6 +246,15 @@ describe("the games' verdict and the new formats (CTA-142)", () => {
     expect((await added("Loose")).sharedEvent).toBe(false);
   });
 
+  it("removes a mark with null — never decided again", async () => {
+    const mine = await added();
+    expect(await updateCollectionSettings(mine.id, { tournament: { enabled: true, type: "swiss" } })).toBeUndefined();
+    expect(await updateCollectionSettings(mine.id, { tournament: null })).toBeUndefined();
+    expect(uploadedCollectionsSnapshot()?.[0].tournament).toBeUndefined();
+    const fresh = await reload();
+    expect((await fresh.loadUploadedCollections()).find((c) => c.id === mine.id)?.tournament).toBeUndefined();
+  });
+
   it("stores every format with a table, and reads an older record's mark unchanged", async () => {
     const mine = await added();
     for (const type of ["knockout", "doubleElimination", "match", "teamSwiss", "teamKnockout"] as const) {

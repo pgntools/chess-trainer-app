@@ -366,7 +366,7 @@ the caches, re-reads the summaries and announces the change to other tabs.
 | `addCollection(name, games, rows, now?, id?, folderId?)` | upload, empty collection | New id (`u` + `newRecordId`, so it can never collide with a shipped slug). Empty `games` is allowed. Filed in `folderId` (default `null`, the top level). |
 | `removeCollection(id)` | `/library` row delete | Deletes all three records. An unknown id is a no-op. |
 | `moveCollection(id, folderId)` | `/library` row's Move to… | Rewrites the summary's `folderId` only. An unknown id answers `"missing"`; the same folder is a no-op. |
-| `updateCollectionSettings(id, patch)` | the settings screen (CTA-121) | Rewrites the summary's `name`, `description` and `tournament` only — `moveCollection`'s shape. A blank title is not written; `description: ""` removes it; a patch that changes nothing is a no-op. An unknown id answers `"missing"`. |
+| `updateCollectionSettings(id, patch)` | the settings screen (CTA-121); the games table's suggestion and its Undo (CTA-142) | Rewrites the summary's `name`, `description` and `tournament` only — `moveCollection`'s shape. A blank title is not written; `description: ""` removes it; `tournament: null` removes the mark (never decided); a patch that changes nothing is a no-op. An unknown id answers `"missing"`. |
 | `refileCollectionsIn(folderId, parentId)` | `removeLibraryFolder` | Every collection filed directly in the folder moves to its parent, in one transaction. |
 | `replaceCollectionGame(id, n, pgn, row)` | game board Update | Rewrites in place. |
 | `insertCollectionGame(id, n, pgn, row)` | game board Save as copy | Inserts at `n`; later games move down. |
@@ -615,6 +615,21 @@ words box, **the table the one region that scrolls**, its header sticky.
     the popup says why (a refused folder write is `library.upload.problem.folder`).
     The reader lands on `/library` when more than one collection was made,
     on the one collection's table when exactly one was — today's rule.
+  - **The tournament mark** (CTA-142), on a new collection only (never *Add
+    games*). Where every kept game shares one `Event` and nothing is split,
+    the popup asks the settings' own fields (`TournamentMarkFields`,
+    `library-import-mark-*`): the switch (off by default — left off, the
+    collection stays undecided and its table suggests the type later), the
+    type the games look like with an Apply, the type — the switch turning on
+    with the guessed type. On a split, ***Mark each event's tournament
+    type*** (`library-import-auto-type`, **on** by default) marks each
+    event's collection with the type its games look like, the predictions
+    listed under the switch before anything is imported (five, then a
+    count); an event of one game, one it cannot tell and "Unknown" stay
+    plain. **No waiting for the import**: the guess reads the games' tags
+    (`guessTournamentKind` — `readPgnTags`, read once when first wanted),
+    which the popup has before the index pass; the marks are written with
+    the collections (`addCollection`'s settings).
   - **Cancel**, Escape, the backdrop or leaving the screen stop the pass and
     write nothing; the popup does not close during the write itself.
 - **Checked before it is kept**: the worker's index pass, in the popup. Nothing
@@ -667,7 +682,10 @@ one `Event` (`canBeTournament`) shows, over the table, the kind of
 tournament its games look like — the settings' `TournamentSuggestion`
 block, its reason localized. **Apply** marks it at once
 (`updateCollectionSettings`, no Save) and opens its tournament view on Info
-(`?tab=info`), a snackbar naming the type; the **close button** ("Not a
+(`?tab=info`), a snackbar naming the type with **Undo** — the mark taken
+off again (`updateCollectionSettings(id, { tournament: null })`: never
+decided, so the suggestion is offered again) and the table as it was,
+filters and all; the **close button** ("Not a
 tournament — don't suggest again") stores the mark **off** (`{ enabled:
 false, type }`), so it is never offered again — the settings can still turn
 it on. A failed write is a snackbar. Shipped collections are never offered
