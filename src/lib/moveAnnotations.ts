@@ -12,8 +12,11 @@ import { formatPercent, playChanceInText, withoutPlayChance } from "./playChance
  * and taken out of the prose so nothing is said twice:
  *
  * - **PGN embedded commands**, `[%key value]` — lichess' and ChessBase's
- *   `[%eval 0.25]`, `[%clk 0:05:00]`, `[%cal Ge2e4]`, and any other: the key
- *   is the command's name, the value its text, unread.
+ *   `[%eval 0.25]`, `[%clk 0:05:00]`, and any other: the key is the
+ *   command's name, the value its text, unread. Lichess's shapes, `[%cal]`
+ *   and `[%csl]`, are taken out of the prose but are no attribute: the board
+ *   draws them (`lib/boardShapes.ts`, CTA-143), so a comment that only draws
+ *   reads as empty.
  * - **An engine's evaluation**, the shape analysis exports end a comment
  *   with — `+/= +1.31 (21 ply)`, `= 0.00 (27 ply)` — as `assessment`,
  *   `eval` and `depth`; and `-+ mate-in-12` as `assessment` and `mate`.
@@ -48,6 +51,9 @@ export type PositionAnnotations = {
 
 const COMMAND = /\[%([A-Za-z][\w-]*)\s*([^\]]*)\]/g;
 
+/** The commands the board draws rather than the block reads (CTA-143). */
+const SHAPE_COMMANDS = new Set(["cal", "csl"]);
+
 /** The assessment glyphs an analysis export writes before its number. */
 const ASSESSMENT = String.raw`(\+-|-\+|\+\/-|-\/\+|\+\/=|=\/\+|=|∞)`;
 
@@ -69,7 +75,7 @@ export const readComment = (raw: string): ReadComment => {
   if (games !== undefined) attributes.push({ key: "games", value: String(games) });
 
   let text = withoutGames(withoutPlayChance(raw)).replace(COMMAND, (_, key: string, value: string) => {
-    attributes.push({ key, value: value.trim() });
+    if (!SHAPE_COMMANDS.has(key.toLowerCase())) attributes.push({ key, value: value.trim() });
     return " ";
   });
 

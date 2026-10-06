@@ -972,3 +972,54 @@ describe("the Analysis Board — accessible (CTA-113)", () => {
     await waitFor(() => expect(listed()).toHaveLength(1));
   });
 });
+
+describe("the PGN's shapes on the board (CTA-143)", () => {
+  /** A right-button gesture, as the board reports it, from one square to another. */
+  const rightDrag = (from: string, to: string, keys: { shiftKey?: boolean; altKey?: boolean } = {}) => {
+    const event = { button: 2, shiftKey: false, altKey: false, ctrlKey: false, metaKey: false, ...keys };
+    act(() => boardOptions().onSquareMouseDown!({ square: from, piece: null }, event));
+    act(() => boardOptions().onSquareMouseUp!({ square: to, piece: null }, event));
+  };
+
+  it("draws the move's [%cal] arrows with the next-move arrows, and its [%csl] circles", async () => {
+    await stored("a1", "1. e4 {Sharp. [%cal Rd7d5][%csl Ye5]} e5 (1... c5) *", ["e4"]);
+    mount("/tools/analysis?analysis=a1");
+    expect(boardOptions().arrows).toEqual([
+      expect.objectContaining({ startSquare: "e7", endSquare: "e5" }),
+      expect.objectContaining({ startSquare: "c7", endSquare: "c5" }),
+      { startSquare: "d7", endSquare: "d5", color: "#882020" },
+    ]);
+    const ring = screen.getByTestId("analysis-shape-circles").querySelector("circle");
+    expect(ring).toHaveAttribute("data-square", "e5");
+    // The library's own right-drag arrows are off: the board's shapes are the comment's.
+    expect(boardOptions().allowDrawingArrows).toBe(false);
+  });
+
+  it("writes a drawn arrow and circle into the move's comment, a change to keep, and out in the PGN", async () => {
+    await stored("a1", "1. e4 {Sharp.} e5 *", ["e4"]);
+    mount("/tools/analysis?analysis=a1");
+    expect(screen.getByTestId("analysis-save")).toBeDisabled();
+
+    rightDrag("g1", "f3", { altKey: true });
+    rightDrag("d4", "d4");
+    expect(boardOptions().arrows).toContainEqual({ startSquare: "g1", endSquare: "f3", color: "#003088" });
+    expect(screen.getByTestId("analysis-shape-circles").querySelector("circle")).toHaveAttribute("data-square", "d4");
+    // The prose is all the comment block reads.
+    expect(screen.getByTestId("analysis-annotations")).toHaveTextContent("Sharp.");
+    expect(screen.getByTestId("analysis-annotations")).not.toHaveTextContent(/cal|csl/);
+
+    openTab("export");
+    expect((screen.getByTestId("analysis-export-pgn") as HTMLTextAreaElement).value).toContain(
+      "1. e4 { Sharp. [%cal Bg1f3] [%csl Gd4] } 1... e5",
+    );
+
+    // Drawn again, the arrow comes off.
+    rightDrag("g1", "f3", { altKey: true });
+    expect(boardOptions().arrows).not.toContainEqual(expect.objectContaining({ startSquare: "g1" }));
+
+    // A change like any other edit: Update keeps it with the record.
+    fireEvent.click(screen.getByTestId("analysis-save"));
+    fireEvent.click(within(screen.getByTestId("analysis-changes")).getByTestId("analysis-changes-update"));
+    await waitFor(() => expect(findSavedAnalysis("a1")?.pgn).toContain("{ Sharp. [%csl Gd4] }"));
+  });
+});

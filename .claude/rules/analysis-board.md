@@ -67,7 +67,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/lib/nextMoveWeights.ts` | Each width source's weights at a branch (`nextMoveWeights`), the `[%eval]` reader (`evalOf`), and which sources a tree offers (`arrowWidthSourcesIn`). Pure. The `games` tag's reader is `lib/gamesTag.ts`. |
 | `src/lib/gameReference.ts` + `gameCatalog.ts` | **The `?game=` carrier** (§3). |
 | `src/lib/pgnExport.ts` | `downloadPgn` — several stored PGN records joined with a blank line (`pgnFileOf`), saved as a file. Also Settings' Export's (`downloadBinaryFile`, [`import-export.md`](./import-export.md)). |
-| Tests | `AnalysisBoard.test.tsx` (every arrival, Save, Load, Export, Play, the hand-off, the Arrows tab), `useTreeNavigation.test.ts`, `EngineThinking.test.tsx`, `nextMoveArrows.test.ts`, `src/lib/nextMoveWeights.test.ts`, `saved/SavedAnalyses.test.tsx` (the list and the panel's new-analysis form), `saved/AnalysisSettingsScreen.test.tsx`, `src/lib/savedAnalyses.test.ts`, `savedAnalysisStore.test.ts`, `savedAnalysisFolderStore.test.ts`, `savedGameFolders.test.ts`, `gameReference.test.ts`, and the propagation tests in `src/views/board/`. |
+| Tests | `AnalysisBoard.test.tsx` (every arrival, Save, Load, Export, Play, the hand-off, the Arrows tab, the PGN's shapes drawn and written), `useTreeNavigation.test.ts`, `EngineThinking.test.tsx`, `nextMoveArrows.test.ts`, `src/lib/nextMoveWeights.test.ts`, `saved/SavedAnalyses.test.tsx` (the list and the panel's new-analysis form), `saved/AnalysisSettingsScreen.test.tsx`, `src/lib/savedAnalyses.test.ts`, `savedAnalysisStore.test.ts`, `savedAnalysisFolderStore.test.ts`, `savedGameFolders.test.ts`, `gameReference.test.ts`, and the propagation tests in `src/views/board/`. |
 
 Routes and nav: the **Analysis** folder is `singleEntry` and renders as one
 row to `/tools/analysis/saved`; the board itself has no nav entry and is the
@@ -91,6 +91,14 @@ screen).
 - **The explorer**: editing on (the move menu and the comment block —
   `core.replaceTree`), *Play chances…* off, the moves added since the baseline
   tinted in the list and ringed on the map, every map dot a link.
+- **The PGN's shapes, drawn and written** (CTA-143): the `[%cal]` arrows and
+  `[%csl]` circles of the position's comment are on the board with the
+  next-move arrows; a right-drag (arrow) or right-click (circle) — plain
+  green, Shift red, Alt blue, both yellow — writes one into the move's comment
+  (the game's opening one at the start), drawn again takes it off. A change
+  like any other edit: Save offers it, and Export writes it with the
+  comments ([`pgn-annotations.md`](./pgn-annotations.md) §2,
+  [`tree-views.md`](./tree-views.md) §2).
 - **Load is a new analysis.** The Load tab reads a PGN the way a repertoire is
   read (`readRepertoireText`): one game goes onto the board unsaved; **several
   open a popup** (`MultiGameDialog`, CTA-101) with the game count, the skipped
