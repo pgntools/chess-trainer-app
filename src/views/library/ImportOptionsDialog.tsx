@@ -12,13 +12,11 @@ import {
   eventGroupsOf,
   MAX_COLLECTION_NAME_CHARS,
   sharedEventOf,
-  tableFormatOfKind,
   type CollectionImportFile,
   type CollectionImportSource,
   type CollectionRow,
   type CollectionSummary,
 } from "../../lib/libraryCollections";
-import { guessTournamentKindOfGames } from "../../lib/tournamentKind";
 import { indexCollection } from "./indexCollection";
 
 /** A file's kept games, ready to write. */
@@ -49,8 +47,9 @@ type Batch = { file: CollectionImportFile; rows: CollectionRow[]; games: string[
  * - **The tournament mark** (CTA-142): a one-event import's mark, where the
  *   reader turned it on, is written with the new collection; on a split with
  *   *Mark each event's tournament type* on, each event's collection is marked
- *   with the type its games look like (`guessTournamentKindOfGames`, two
- *   games or more), the events it cannot tell — and "Unknown" — left plain.
+ *   with the type the popup's table holds for it (`eventType`: the guess,
+ *   unless the reader changed it), "Not a tournament" — and "Unknown" — left
+ *   plain.
  *
  * Cancel, Escape, the backdrop or the popup going away stop the index pass
  * and write nothing. The one moment nothing can be stopped is the write
@@ -144,8 +143,8 @@ function ImportOptionsDialog({
         batch.rows.map((row, index) => ({ event: row.event, row, indexed: rows[index] as IndexedRow })),
       )) {
         const groupGames = group.rows.map(({ row }) => batch.file.games[row.number - 1] as string);
-        // The event's type, read off its games' tags — where they can tell, and the event is named.
-        const guess = tournament.autoAssign && group.event !== undefined ? guessTournamentKindOfGames(groupGames) : undefined;
+        // The event's type as the reader left it in the popup's table (the guess, unless changed).
+        const type = group.event === undefined ? undefined : tournament.eventType?.(source.files.indexOf(batch.file), group.event);
         const result = await addCollection(
           (group.event === undefined ? t("library.upload.unknown") : group.event).slice(0, MAX_COLLECTION_NAME_CHARS),
           groupGames,
@@ -153,7 +152,7 @@ function ImportOptionsDialog({
           undefined,
           undefined,
           folder.id,
-          guess === undefined ? {} : { tournament: { enabled: true, type: tableFormatOfKind(guess.kind) } },
+          type === undefined ? {} : { tournament: { enabled: true, type } },
         );
         if ("problem" in result) {
           await undo();

@@ -117,12 +117,12 @@ describe("CollectionImportDialog — Split by event (CTA-127)", () => {
 
       // Left off: no mark — the collection stays undecided, its table suggests it later.
       await user.click(screen.getByTestId("import-confirm"));
-      expect(onImport.mock.calls[0][2]).toEqual({ autoAssign: false });
+      expect(onImport.mock.calls[0][2]).toEqual({});
 
       await user.click(screen.getByRole("button", { name: "Apply the suggested type, Swiss system" }));
       await user.click(screen.getByTestId("import-mark-type-roundRobin"));
       await user.click(screen.getByTestId("import-confirm"));
-      expect(onImport.mock.calls[1][2]).toEqual({ mark: { enabled: true, type: "roundRobin" }, autoAssign: false });
+      expect(onImport.mock.calls[1][2]).toEqual({ mark: { enabled: true, type: "roundRobin" } });
     });
 
     it("turns the switch on with the guessed type", async () => {
@@ -141,25 +141,39 @@ describe("CollectionImportDialog — Split by event (CTA-127)", () => {
       expect(screen.queryByTestId("import-mark-tournament-switch")).toBeNull();
     });
 
-    it("on a split, marks each event with its predicted type — listed, and on by default", async () => {
+    it("on a split, lists every event in a table, each type set to the guess and changeable before Import", async () => {
       const user = userEvent.setup();
       const onImport = vi.fn();
       render(<CollectionImportDialog source={ONE_FILE} onCancel={() => {}} onImport={onImport} testId="import" />);
       expect(screen.queryByTestId("import-auto-type")).toBeNull();
       await user.click(screen.getByTestId("import-split"));
       expect(screen.getByTestId("import-auto-type")).toBeChecked();
-      // Club's two games tell a Swiss; Spring Open's one game tells nothing.
-      expect(screen.getByTestId("import-auto-type-preview")).toHaveTextContent("Club: Swiss system");
-      expect(screen.getByTestId("import-auto-type-preview")).not.toHaveTextContent("Spring Open");
+      const table = screen.getByRole("table", { name: "Each event's tournament type" });
+      const rows = within(table).getAllByRole("row").slice(1);
+      expect(rows).toHaveLength(2);
+      // Club: two games, three players, its dates — its games tell a Swiss.
+      expect(rows[0]).toHaveTextContent(/Club\s*2\s*3\s*2023\.04\.02 – 2023\.05\.10/);
+      expect(screen.getByTestId("import-event-types-type-0")).toHaveValue("swiss");
+      // Spring Open's one game tells nothing: not a tournament, unless the reader says so.
+      expect(screen.getByTestId("import-event-types-type-1")).toHaveValue("");
       await expectNoAxeViolations(screen.getByRole("dialog"));
+
+      // Change both: Club to a round robin, Spring Open to a match.
+      await user.click(screen.getByRole("combobox", { name: "Type: Club" }));
+      await user.click(screen.getByRole("option", { name: "Round robin" }));
+      await user.click(screen.getByRole("combobox", { name: "Type: Spring Open" }));
+      await user.click(screen.getByRole("option", { name: "Match play" }));
       await user.click(screen.getByTestId("import-confirm"));
       expect(onImport.mock.calls[0][1]).toBe(true);
-      expect(onImport.mock.calls[0][2]).toEqual({ autoAssign: true });
+      const { eventType } = onImport.mock.calls[0][2];
+      expect(eventType(0, "Club")).toBe("roundRobin");
+      expect(eventType(0, "Spring Open")).toBe("match");
 
+      // The switch off: nothing is marked.
       await user.click(screen.getByTestId("import-auto-type"));
-      expect(screen.queryByTestId("import-auto-type-preview")).toBeNull();
+      expect(screen.queryByRole("table", { name: "Each event's tournament type" })).toBeNull();
       await user.click(screen.getByTestId("import-confirm"));
-      expect(onImport.mock.calls[1][2]).toEqual({ autoAssign: false });
+      expect(onImport.mock.calls[1][2]).toEqual({});
     });
   });
 });

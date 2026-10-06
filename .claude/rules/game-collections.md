@@ -622,11 +622,16 @@ words box, **the table the one region that scrolls**, its header sticky.
     collection stays undecided and its table suggests the type later), the
     type the games look like with an Apply, the type — the switch turning on
     with the guessed type. On a split, ***Mark each event's tournament
-    type*** (`library-import-auto-type`, **on** by default) marks each
-    event's collection with the type its games look like, the predictions
-    listed under the switch before anything is imported (five, then a
-    count); an event of one game, one it cannot tell and "Unknown" stay
-    plain. **No waiting for the import**: the guess reads the games' tags
+    type*** (`library-import-auto-type`, **on** by default) lists **every
+    event in a table** under it (`library-import-event-types`, a
+    `DataTable`): its name (and its file, in a zip), games, players and
+    dates, and a **type select** (`-event-types-type-<n>`) set to the type
+    its games look like — "Not a tournament" where they do not tell (an
+    event of one game, say) — every format with a table offered, so the
+    reader changes any before Import. "Unknown" (the games with no `Event`)
+    is listed with no select: it cannot be a tournament. Each event's
+    collection is written with the type the table holds
+    (`ImportTournamentChoice.eventType`). **No waiting for the import**: the guess reads the games' tags
     (`guessTournamentKind` — `readPgnTags`, read once when first wanted),
     which the popup has before the index pass; the marks are written with
     the collections (`addCollection`'s settings).

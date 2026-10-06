@@ -1676,10 +1676,18 @@ const en = {
         splitHelp: "A folder named after the file, holding one collection per event. Games with no Event go into one \"Unknown\" collection.",
         /** CTA-142: on a split, each event's collection marked with the type its games look like. */
         autoType: "Mark each event's tournament type",
-        autoTypeHelp: "Each event's games are read for the kind of tournament they look like — before anything is imported. The events it can tell are marked with it; the others stay plain.",
-        autoTypeNone: "No event's games say what kind of tournament it is — none will be marked.",
-        autoTypeMore_one: "and {{count}} more event",
-        autoTypeMore_other: "and {{count}} more events",
+        autoTypeHelp: "Each event's games are read for the kind of tournament they look like — before anything is imported. Change any event's type below, or set it to \"Not a tournament\", then import.",
+        autoTypeNone: "No events to mark.",
+        /** The events table: its name, its columns, and the select's "none". */
+        eventTypes: "Each event's tournament type",
+        eventColumns: {
+          event: "Event",
+          games: "Games",
+          players: "Players",
+          dates: "Dates",
+          type: "Type",
+        },
+        notTournament: "Not a tournament",
         splitOneEvent: "Nothing to split — the games kept of each file share one Event.",
         splitNoEvents: "Nothing to split — no game kept has an Event.",
         splitNothingKept: "Nothing to split — no game will be imported.",

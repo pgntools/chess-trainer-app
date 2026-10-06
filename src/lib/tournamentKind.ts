@@ -137,6 +137,6 @@ export const guessTournamentKind = (games: readonly GameHeaders[]): TournamentGu
     : { kind: "swiss", reason: `${competitors.size} players${roundsWords}, each meeting a few of the others: a Swiss`, facts };
 };
 
-/** The guess for games given as their PGN texts (CTA-142) — read for their tags alone: the import popup's, the MDX editor's lookup. */
+/** The guess for games given as their PGN texts (CTA-142) — read for their tags alone: the MDX editor's lookup. */
 export const guessTournamentKindOfGames = (games: readonly string[]): TournamentGuess | undefined =>
   guessTournamentKind(games.map(readPgnTags));

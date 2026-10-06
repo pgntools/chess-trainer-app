@@ -9,7 +9,9 @@ import { useTranslation } from "react-i18next";
 import { ChipsAutocomplete } from "../../../design-system/components/autocompletes";
 import { BaseDialog, type ExtraDialogProps } from "../../../design-system/components/dialogs";
 import { InlineAlert } from "../../../design-system/components/feedback";
-import { DateRangeFields, SwitchField } from "../../../design-system/components/forms";
+import { visuallyHidden } from "../../../design-system/components/a11y";
+import { DateRangeFields, SelectField, SwitchField } from "../../../design-system/components/forms";
+import { DataTable, type DataTableColumn } from "../../../design-system/patterns/tables";
 import { formatBytes } from "../../../lib/formatBytes";
 import type { GameHeaders } from "../../../lib/gameModel";
 import { readPgnTags } from "../../../lib/pgn";
@@ -23,10 +25,13 @@ import {
   filteredRows,
   playersOf,
   type CollectionImportSource,
+  isTableFormat,
+  TOURNAMENT_FORMATS,
   tableFormatOfKind,
   type CollectionRow,
   type CollectionTournament,
   type RowFilter,
+  type TournamentTableFormat,
 } from "../../../lib/libraryCollections";
 
 /**
@@ -35,10 +40,35 @@ import {
  * reader turned it on), and — on a split — whether each event's collection
  * is marked with the type its games look like.
  */
-export type ImportTournamentChoice = { mark?: CollectionTournament; autoAssign: boolean };
+export type ImportTournamentChoice = {
+  mark?: CollectionTournament;
+  /**
+   * On a split with *Mark each event's tournament type* on: the type an
+   * event's collection is marked as — the file's index in the source and the
+   * event's name — as the reader left it in the table (the guess, unless
+   * changed); `undefined` for none.
+   */
+  eventType?: (fileIndex: number, event: string) => TournamentTableFormat | undefined;
+};
 
-/** At most this many events' predicted types are listed under the switch; the rest are counted. */
-const PREVIEW_EVENTS = 5;
+/** One event of a split, as the type table lists it. */
+type EventRow = {
+  key: string;
+  fileIndex: number;
+  /** Absent: the games with no `Event` — the "Unknown" collection, which cannot be a tournament. */
+  event?: string;
+  games: number;
+  players: number;
+  dates?: { first: string; last: string };
+  /** The type its games look like, where they tell. */
+  guess?: TournamentTableFormat;
+};
+
+/** An event's key in the type table: its file and its name. */
+const eventKeyOf = (fileIndex: number, event: string | undefined) => `${fileIndex}\u0000${event === undefined ? "\u0001" : event}`;
+
+/** "Not a tournament" in the type select. */
+const NO_TYPE = "";
 
 /** The tags of a file's kept games (`headers` its games' tags, read once). */
 const tagsOf = (headers: readonly GameHeaders[] | undefined, rows: readonly CollectionRow[]): GameHeaders[] =>
@@ -64,8 +94,9 @@ export type CollectionImportDialogProps = {
    * `-elo`, `-dates`, `-events`), `-elo` (`-elo-value`), `-from`, `-to`,
    * `-player`, `-several`, `-split` (`-split-help`), `-mark` (the tournament
    * fields' prefix: `-mark-tournament-switch`, `-mark-suggestion`,
-   * `-mark-type-<format>`), `-auto-type` (`-auto-type-preview`), `-count`,
-   * `-problem`, `-cancel`, `-confirm`.
+   * `-mark-type-<format>`), `-auto-type`, `-event-types` (the table; each
+   * row `-event-types-row-<n>`, its select `-event-types-type-<n>`, in
+   * order), `-count`, `-problem`, `-cancel`, `-confirm`.
    */
   testId: string;
   dialogProps?: ExtraDialogProps;
@@ -100,7 +131,11 @@ export type CollectionImportDialogProps = {
  *   game shares one `Event` (and no split), the settings' own fields
  *   (`TournamentMarkFields`) — the switch, the type the games look like with
  *   an Apply, the type; on a split, ***Mark each event's tournament type***
- *   (on by default), each event's predicted type listed under it. The guess
+ *   (on by default) and, under it, **every event in a table** — its name
+ *   (and file, in a zip), games, players and dates, and a type select set to
+ *   the type its games look like ("Not a tournament" where they do not
+ *   tell), every format with a table offered, for the reader to change any
+ *   before Import. The guess
  *   reads the games' tags — read once, when first needed — so it is known
  *   before anything is indexed.
  *
@@ -122,6 +157,8 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
   const [mark, setMark] = useState<CollectionTournament>({ enabled: false, type: "swiss" });
   /** On a split: each event's collection marked with the type its games look like. */
   const [autoAssign, setAutoAssign] = useState(true);
+  /** The types the reader picked in the event table, by event — the rest follow the guess. */
+  const [eventTypes, setEventTypes] = useState<Readonly<Record<string, string>>>({});
   /** Whether the reader has touched the mark — until then its type follows the guess. */
   const [markTouched, setMarkTouched] = useState(false);
 
@@ -181,24 +218,97 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
     () => (oneEvent && headers !== undefined ? guessTournamentKind(kept.flatMap((rows, index) => tagsOf(headers[index], rows))) : undefined),
     [oneEvent, headers, kept],
   );
-  /** On a split: each event's predicted type, in file and event order (the events it cannot tell left out). */
-  const predicted = useMemo(() => {
+  /** On a split: every event, in file and event order, with what its games say and the type they look like. */
+  const events = useMemo((): EventRow[] => {
     if (!splitting || headers === undefined) return [];
-    return kept.flatMap((rows, index) =>
-      eventGroupsOf(rows).flatMap((group) => {
-        if (group.event === undefined) return [];
-        const guess = guessTournamentKind(tagsOf(headers[index], group.rows));
-        return guess === undefined ? [] : [{ event: group.event, type: tableFormatOfKind(guess.kind) }];
+    return kept.flatMap((rows, fileIndex) =>
+      eventGroupsOf(rows).map((group): EventRow => {
+        const metadata = collectionMetadataOf(group.rows);
+        const guess = group.event === undefined ? undefined : guessTournamentKind(tagsOf(headers[fileIndex], group.rows));
+        return {
+          key: eventKeyOf(fileIndex, group.event),
+          fileIndex,
+          ...(group.event !== undefined && { event: group.event }),
+          games: group.rows.length,
+          players: metadata.players,
+          ...(metadata.dates !== undefined && { dates: metadata.dates }),
+          ...(guess !== undefined && { guess: tableFormatOfKind(guess.kind) }),
+        };
       }),
     );
   }, [splitting, headers, kept]);
+  /** An event's type as the table shows it: the reader's pick, else the guess, else none. */
+  const typeOf = (row: EventRow): string => eventTypes[row.key] ?? row.guess ?? NO_TYPE;
   // Until the reader picks a type, the mark's type is the guess's — so the switch turns it on with it.
   const shownMark: CollectionTournament =
     suggestion !== undefined && !mark.enabled && !markTouched ? { enabled: false, type: tableFormatOfKind(suggestion.kind) } : mark;
   const choice = (): ImportTournamentChoice => ({
     ...(oneEvent && mark.enabled && { mark }),
-    autoAssign: newCollection && splitting && autoAssign,
+    ...(newCollection &&
+      splitting &&
+      autoAssign && {
+        eventType: (fileIndex: number, event: string) => {
+          const row = events.find((candidate) => candidate.key === eventKeyOf(fileIndex, event));
+          const type = row === undefined ? NO_TYPE : typeOf(row);
+          return type !== NO_TYPE && isTableFormat(type as TournamentTableFormat) ? (type as TournamentTableFormat) : undefined;
+        },
+      }),
   });
+
+  const typeOptions = [
+    { value: NO_TYPE, label: t("library.upload.options.notTournament") },
+    ...TOURNAMENT_FORMATS.filter(isTableFormat).map((format) => ({ value: format, label: t(`library.settings.formats.${format}`) })),
+  ];
+  const eventColumns: DataTableColumn<EventRow>[] = [
+    {
+      id: "event",
+      header: t("library.upload.options.eventColumns.event"),
+      wrap: true,
+      render: (row) => (
+        <>
+          <bdi dir="auto">{row.event ?? t("library.upload.unknown")}</bdi>
+          {source.zip && (
+            <Typography variant="caption" component="div" dir="auto" sx={{ color: "text.secondary" }}>
+              {source.files[row.fileIndex]?.name}
+            </Typography>
+          )}
+        </>
+      ),
+    },
+    { id: "games", header: t("library.upload.options.eventColumns.games"), align: "end", render: (row) => row.games },
+    { id: "players", header: t("library.upload.options.eventColumns.players"), align: "end", render: (row) => row.players },
+    {
+      id: "dates",
+      header: t("library.upload.options.eventColumns.dates"),
+      dir: "ltr",
+      render: (row) => (row.dates === undefined ? "—" : row.dates.first === row.dates.last ? row.dates.first : `${row.dates.first} – ${row.dates.last}`),
+    },
+    {
+      id: "type",
+      header: t("library.upload.options.eventColumns.type"),
+      render: (row) => {
+        const index = events.indexOf(row);
+        // The games with no Event make one "Unknown" collection — never a tournament.
+        if (row.event === undefined) return "—";
+        return (
+          <SelectField
+            label={
+              <>
+                {t("library.upload.options.eventColumns.type")}
+                <Box component="span" sx={visuallyHidden}>
+                  {`: ${row.event}`}
+                </Box>
+              </>
+            }
+            value={typeOf(row)}
+            onChange={(type) => setEventTypes((current) => ({ ...current, [row.key]: type }))}
+            options={typeOptions}
+            testId={id(`event-types-type-${index}`)}
+          />
+        );
+      },
+    },
+  ];
 
   return (
     <BaseDialog
@@ -378,25 +488,17 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
               testId={id("auto-type")}
             />
             {autoAssign && (
-              <Box component="ul" data-testid={id("auto-type-preview")} sx={{ m: 0, mt: 0.5, p: 0, paddingInlineStart: 2, color: "text.secondary" }}>
-                {predicted.length === 0 ? (
-                  <Typography component="li" variant="caption" sx={{ display: "list-item" }}>
-                    {t("library.upload.options.autoTypeNone")}
-                  </Typography>
-                ) : (
-                  <>
-                    {predicted.slice(0, PREVIEW_EVENTS).map(({ event, type }, index) => (
-                      <Typography key={`${event}-${index}`} component="li" variant="caption" sx={{ display: "list-item" }}>
-                        <bdi dir="auto">{event}</bdi>: {t(`library.settings.formats.${type}`)}
-                      </Typography>
-                    ))}
-                    {predicted.length > PREVIEW_EVENTS && (
-                      <Typography component="li" variant="caption" sx={{ display: "list-item" }}>
-                        {t("library.upload.options.autoTypeMore", { count: predicted.length - PREVIEW_EVENTS })}
-                      </Typography>
-                    )}
-                  </>
-                )}
+              <Box sx={{ mt: 1, maxHeight: 360, display: "flex", flexDirection: "column", minHeight: 0 }}>
+                <DataTable<EventRow>
+                  columns={eventColumns}
+                  rows={events}
+                  rowId={(row) => row.key}
+                  rowTestId={(row) => id(`event-types-row-${events.indexOf(row)}`)}
+                  emptyLabel={t("library.upload.options.autoTypeNone")}
+                  density="dense"
+                  ariaLabel={t("library.upload.options.eventTypes")}
+                  testId={id("event-types")}
+                />
               </Box>
             )}
           </Box>
