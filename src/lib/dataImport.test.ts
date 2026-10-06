@@ -253,6 +253,15 @@ describe("reading a zip", () => {
     expect(readImport(broken)).toMatchObject({ ok: false, problem: { kind: "unreadable", path: "collections/club/club-games.pgn" } });
   });
 
+  it("accepts the formats CTA-142 added, and an older zip's type unchanged", () => {
+    for (const type of ["knockout", "doubleElimination", "match", "teamSwiss", "teamKnockout", "arena", "swiss"] as const) {
+      const bytes = zipOf({
+        collections: [{ summary: { ...uploaded("u1", "Cup"), tournament: { enabled: true, type } }, games: [pgn("Cup 1")] }],
+      });
+      expect(dumpOf(bytes).collections[0].record).toMatchObject({ tournament: { enabled: true, type } });
+    }
+  });
+
   it("reads a version-1 zip through the table — its collections simply without the settings (CTA-121)", () => {
     const v1 = rezip(
       zipOf({

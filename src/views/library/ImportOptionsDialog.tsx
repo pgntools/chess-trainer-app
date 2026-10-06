@@ -2,7 +2,7 @@ import { useState } from "react";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
-import { CollectionImportDialog } from "../../blocks/dialogs";
+import { CollectionImportDialog, type ImportTournamentChoice } from "../../blocks/dialogs";
 import { ProgressDialog, useCancellableJob } from "../../design-system/components/dialogs";
 import type { IndexedRow } from "../../lib/collectionIndex";
 import { addCollection, appendCollectionGames, removeCollection } from "../../lib/libraryCollectionStore";
@@ -44,6 +44,12 @@ type Batch = { file: CollectionImportFile; rows: CollectionRow[]; games: string[
  *   all. A failed write takes back the collections **and the folders** it had
  *   already added, so it is all or nothing, and the choice comes back saying
  *   why.
+ * - **The tournament mark** (CTA-142): a one-event import's mark, where the
+ *   reader turned it on, is written with the new collection; on a split with
+ *   *Mark each event's tournament type* on, each event's collection is marked
+ *   with the type the popup's table holds for it (`eventType`: the guess,
+ *   unless the reader changed it), "Not a tournament" — and "Unknown" — left
+ *   plain.
  *
  * Cancel, Escape, the backdrop or the popup going away stop the index pass
  * and write nothing. The one moment nothing can be stopped is the write
@@ -83,6 +89,7 @@ function ImportOptionsDialog({
     batches: Batch[],
     indexed: IndexedRow[],
     splitByEvent: boolean,
+    tournament: ImportTournamentChoice,
   ): Promise<{ path: string } | { problem: string }> => {
     if (into !== undefined) {
       const failed = await appendCollectionGames(
@@ -107,7 +114,15 @@ function ImportOptionsDialog({
       const rows = indexed.slice(offset, offset + batch.games.length);
       offset += batch.games.length;
       if (!splitByEvent) {
-        const result = await addCollection(nameOf(batch.file, batch.rows), batch.games, rows, undefined, undefined, folderId);
+        const result = await addCollection(
+          nameOf(batch.file, batch.rows),
+          batch.games,
+          rows,
+          undefined,
+          undefined,
+          folderId,
+          tournament.mark === undefined ? {} : { tournament: tournament.mark },
+        );
         if ("problem" in result) {
           await undo();
           return { problem: result.problem };
@@ -128,6 +143,8 @@ function ImportOptionsDialog({
         batch.rows.map((row, index) => ({ event: row.event, row, indexed: rows[index] as IndexedRow })),
       )) {
         const groupGames = group.rows.map(({ row }) => batch.file.games[row.number - 1] as string);
+        // The event's type as the reader left it in the popup's table (the guess, unless changed).
+        const type = group.event === undefined ? undefined : tournament.eventType?.(source.files.indexOf(batch.file), group.event);
         const result = await addCollection(
           (group.event === undefined ? t("library.upload.unknown") : group.event).slice(0, MAX_COLLECTION_NAME_CHARS),
           groupGames,
@@ -135,6 +152,7 @@ function ImportOptionsDialog({
           undefined,
           undefined,
           folder.id,
+          type === undefined ? {} : { tournament: { enabled: true, type } },
         );
         if ("problem" in result) {
           await undo();
@@ -146,7 +164,7 @@ function ImportOptionsDialog({
     return { path: added.length === 1 ? `/library/${encodeURIComponent(added[0] as string)}` : "/library" };
   };
 
-  const confirm = async (kept: CollectionRow[][], splitByEvent: boolean) => {
+  const confirm = async (kept: CollectionRow[][], splitByEvent: boolean, tournament: ImportTournamentChoice) => {
     // Each file's kept games, in file order; a file that keeps none makes nothing.
     const batches = source.files
       .map((file, index): Batch => {
@@ -161,7 +179,7 @@ function ImportOptionsDialog({
       // The index pass: stoppable, in a worker, reporting as it goes.
       work: (signal, report) => indexCollection(games, (done, total) => report({ done, total }), signal),
       // The write: once begun, never cut short.
-      write: (indexed) => write(batches, indexed, into === undefined && splitByEvent),
+      write: (indexed) => write(batches, indexed, into === undefined && splitByEvent, tournament),
     });
     if (outcome.status === "cancelled") return;
     if (outcome.status === "failed") {
@@ -213,7 +231,7 @@ function ImportOptionsDialog({
       intoName={into?.name}
       problem={problem === null ? undefined : t(`library.upload.problem.${problem}`)}
       onCancel={cancel}
-      onImport={(kept, splitByEvent) => void confirm(kept, splitByEvent)}
+      onImport={(kept, splitByEvent, tournament) => void confirm(kept, splitByEvent, tournament)}
       testId="library-import"
     />
   );

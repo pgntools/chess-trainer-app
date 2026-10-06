@@ -21,8 +21,12 @@ import {
   MAX_COLLECTION_CHARS,
   MAX_COLLECTION_NAME_CHARS,
   readCollectionText,
+  isPotentialTournament,
+  readsAsTournament,
   sharedEventOf,
   sortedRows,
+  formatOfKind,
+  TOURNAMENT_FORMATS,
 } from "./libraryCollections";
 
 const GAME = (tags: Record<string, string>, moves: string) =>
@@ -456,5 +460,44 @@ describe("batchFolderNameOf — where the table's Analyse files a batch (CTA-77)
     expect(long).toHaveLength(MAX_COLLECTION_NAME_CHARS);
     expect(long.startsWith("Capablanca — 12 games (Capablanca, Jose, white, D02, New York 1913")).toBe(true);
     expect(long.endsWith("…)")).toBe(true);
+  });
+});
+
+describe("the tournament mark, read from what is at hand (CTA-142)", () => {
+  const ONE_EVENT = [{ event: "Cup" }, { event: "Cup" }];
+  const TWO_EVENTS = [{ event: "Cup" }, { event: "Open" }];
+  const marked = { tournament: { enabled: true, type: "swiss" as const } };
+
+  it("goes by the rows where they are read, else the kept verdict, else the mark alone", () => {
+    expect(readsAsTournament(marked, ONE_EVENT)).toBe(true);
+    expect(readsAsTournament({ ...marked, sharedEvent: true }, TWO_EVENTS)).toBe(false);
+    expect(readsAsTournament({ ...marked, sharedEvent: false })).toBe(false);
+    expect(readsAsTournament({ ...marked, sharedEvent: true }, null)).toBe(true);
+    // A record from before the verdict was kept: the mark alone.
+    expect(readsAsTournament(marked)).toBe(true);
+    expect(readsAsTournament({ tournament: { enabled: false, type: "swiss" }, sharedEvent: true }, ONE_EVENT)).toBe(false);
+    expect(readsAsTournament({}, ONE_EVENT)).toBe(false);
+  });
+
+  it("keeps CTA-121's five formats and adds the three with tables, arena last", () => {
+    for (const format of ["swiss", "roundRobin", "knockout", "arena", "match"]) expect(TOURNAMENT_FORMATS).toContain(format);
+    expect(TOURNAMENT_FORMATS.at(-1)).toBe("arena");
+    expect(formatOfKind("teamKnockout")).toBe("teamKnockout");
+  });
+});
+
+describe("a potential tournament (CTA-142)", () => {
+  const upload = { source: "uploaded" as const, count: 12, sharedEvent: true };
+
+  it("is an upload never marked, its games sharing one event, two or more", () => {
+    expect(isPotentialTournament(upload)).toBe(true);
+    // Applied, or turned down: decided.
+    expect(isPotentialTournament({ ...upload, tournament: { enabled: true, type: "swiss" } })).toBe(false);
+    expect(isPotentialTournament({ ...upload, tournament: { enabled: false, type: "swiss" } })).toBe(false);
+    expect(isPotentialTournament({ ...upload, sharedEvent: false })).toBe(false);
+    // A record from before the verdict was kept says nothing.
+    expect(isPotentialTournament({ source: "uploaded", count: 12 })).toBe(false);
+    expect(isPotentialTournament({ ...upload, count: 1 })).toBe(false);
+    expect(isPotentialTournament({ ...upload, source: "shipped" })).toBe(false);
   });
 });

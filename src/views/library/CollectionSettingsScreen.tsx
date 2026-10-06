@@ -17,7 +17,7 @@ import { updateCollectionSettings } from "../../lib/libraryCollectionStore";
 import { RightPanel } from "../main/rightPanel";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import LibraryMiss from "./LibraryMiss";
-import { useCollectionRows, useCollectionSummary } from "./useLibraryCollections";
+import { useCollectionRows, useCollectionSummary, useTournamentGuess } from "./useLibraryCollections";
 
 /**
  * **A collection's settings** (`/library/<collection>/settings`, CTA-121) —
@@ -40,6 +40,12 @@ import { useCollectionRows, useCollectionSummary } from "./useLibraryCollections
  * sharing one `Event`, none of them loaded for it). Games that do not allow
  * it leave the switch off with its reason, and the stored mark — kept as it
  * is — reads as off everywhere until they do again.
+ *
+ * **The suggested type** (CTA-142): the games' own tags — the teams, the
+ * FIDE ids, which the index rows do not keep — are read once the games
+ * arrive, and `guessTournamentKind` names the kind of tournament they look
+ * like; the form offers it with an Apply that puts it in the draft. While
+ * the games are read, or where they say nothing, nothing is suggested.
  */
 
 /** The screen's draft: `""` a missing description, Swiss a mark with no type. */
@@ -85,6 +91,8 @@ function SettingsForm({ summary, canMark }: { summary: CollectionSummary; canMar
     typeof from === "string" ? from : `/library/${encodeURIComponent(summary.id)}`;
 
   const [draft, setDraft] = useState<Draft>(() => draftOf(summary));
+  // Only games that can be a tournament are read for a suggestion.
+  const suggestion = useTournamentGuess(summary.id, canMark);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -137,6 +145,7 @@ function SettingsForm({ summary, canMark }: { summary: CollectionSummary; canMar
               value={draft}
               onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
               canBeTournament={canMark}
+              suggestion={suggestion}
               disabled={busy}
               testId="library-settings-form"
             />

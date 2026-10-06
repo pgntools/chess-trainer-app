@@ -10,7 +10,7 @@ import { InlineAlert, StatusText } from "../../design-system/components/feedback
 import { RadioGroupField, TextInputField } from "../../design-system/components/forms";
 import { TreeView, type TreeNode } from "../../design-system/patterns/trees";
 import { splitPgnGames } from "../../lib/pgn";
-import type { TournamentGuess } from "./tournamentKind";
+import type { TournamentGuess } from "../../lib/tournamentKind";
 import { collectionGamesOf, collectionSummaryOf, FORMAT_WORDS, guessOf, libraryPgnOf } from "./libraryLookup";
 import { collectionPathOf, libraryGamePathOf } from "../../views/home/frontPage/paths";
 import { pgnTextOf } from "./articleSources";

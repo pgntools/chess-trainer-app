@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import CollectionSettingsForm, { type CollectionSettingsDraft } from "./CollectionSettingsForm";
-import { PLAIN, SWISS } from "./fixtures";
+import { PLAIN, ROUND_ROBIN_GUESS, SWISS } from "./fixtures";
 
 const TYPE_OF = (format: string) => screen.getByTestId(`probe-type-${format}`);
 
@@ -61,19 +61,51 @@ describe("CollectionSettingsForm", () => {
     expect(onChange).toHaveBeenLastCalledWith({ tournament: { enabled: true, type: "swiss" } });
   });
 
-  it("offers all five formats — only Swiss and Round robin selectable, each with its description", () => {
+  it("offers every format — Arena's label saying it has no standings table yet — each with its description (CTA-142)", () => {
     mount(SWISS, true);
     expect(screen.getByTestId("probe-type-swiss")).toBeChecked();
-    expect(screen.getByTestId("probe-type-roundRobin")).toBeEnabled();
-    for (const format of ["knockout", "arena", "match"]) {
-      const radio = screen.getByTestId(`probe-type-${format}`);
-      // Not selectable, its own label saying so, and its description still there to read.
-      expect(radio).toBeDisabled();
-      expect(radio).toHaveAccessibleName(/coming later/i);
+    for (const format of ["roundRobin", "knockout", "doubleElimination", "match", "teamSwiss", "teamKnockout"]) {
+      expect(screen.getByTestId(`probe-type-${format}`)).toBeEnabled();
       expect(screen.getByTestId(`probe-${format}-description`)).toHaveTextContent(/Best for/);
     }
+    const arena = screen.getByTestId("probe-type-arena");
+    // Selectable since an arena is recognised (CTA-142), its own label saying it has no table yet.
+    expect(arena).toBeEnabled();
+    expect(arena).toHaveAccessibleName(/no standings table yet/i);
+    expect(screen.getByTestId("probe-arena-description")).toHaveTextContent(/Best for/);
     expect(screen.getByTestId("probe-swiss-description")).toHaveTextContent("no one is eliminated");
     expect(screen.getByTestId("probe-roundRobin-description")).toHaveTextContent("plays every other");
+    expect(screen.getByRole("radio", { name: "Team knockout" })).toBeEnabled();
+  });
+
+  it("suggests the games' type, and Apply turns the mark on with it in the draft (CTA-142)", async () => {
+    const Harness = () => {
+      const [held, setHeld] = useState(PLAIN);
+      return (
+        <CollectionSettingsForm
+          value={held}
+          onChange={(patch) => setHeld((current) => ({ ...current, ...patch }))}
+          canBeTournament
+          suggestion={ROUND_ROBIN_GUESS}
+          testId="probe"
+        />
+      );
+    };
+    render(<Harness />);
+    expect(screen.getByTestId("probe-suggestion-text")).toHaveTextContent("Round robin: 8 players, every pair met twice.");
+    await userEvent.click(screen.getByRole("button", { name: "Apply the suggested type, Round robin" }));
+    expect(screen.getByTestId("probe-tournament-switch")).toBeChecked();
+    expect(screen.getByTestId("probe-type-roundRobin")).toBeChecked();
+    expect(screen.getByTestId("probe-suggestion-apply")).toBeDisabled();
+    expect(screen.getByTestId("probe-suggestion-selected")).toHaveTextContent("press Save");
+  });
+
+  it("suggests nothing without a guess, or over games that cannot be a tournament", () => {
+    const { unmount } = render(<CollectionSettingsForm value={PLAIN} onChange={() => {}} canBeTournament testId="probe" />);
+    expect(screen.queryByTestId("probe-suggestion")).not.toBeInTheDocument();
+    unmount();
+    render(<CollectionSettingsForm value={PLAIN} onChange={() => {}} canBeTournament={false} suggestion={ROUND_ROBIN_GUESS} testId="probe" />);
+    expect(screen.queryByTestId("probe-suggestion")).not.toBeInTheDocument();
   });
 
   it("changes the type through the radios", async () => {
@@ -105,7 +137,7 @@ describe("CollectionSettingsForm", () => {
   it("has no accessibility violations", async () => {
     const { container } = render(
       <>
-        <CollectionSettingsForm value={PLAIN} onChange={() => {}} canBeTournament testId="probe" />
+        <CollectionSettingsForm value={PLAIN} onChange={() => {}} canBeTournament suggestion={ROUND_ROBIN_GUESS} testId="probe" />
         <CollectionSettingsForm value={SWISS} onChange={() => {}} canBeTournament={false} testId="probe-blocked" />
       </>,
     );

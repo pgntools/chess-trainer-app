@@ -35,7 +35,7 @@ import { fileNameOf, GALLERY_ID, type Applied } from "./gallerySource";
 import { collectionGamesOf, guessOf } from "./libraryLookup";
 import { SnippetPreview } from "./mdxPreview";
 import SettingsForm from "./SettingsForm";
-import type { TournamentGuess } from "./tournamentKind";
+import type { TournamentGuess } from "../../lib/tournamentKind";
 
 const ID = GALLERY_ID;
 /** Nothing written this session: the gallery reads only what is on disk, and a picked image (`attached` of its own). */

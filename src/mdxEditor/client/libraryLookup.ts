@@ -2,11 +2,10 @@ import { gameReferenceOf, type SourceAddress } from "../../lib/embedSource";
 import { libraryGameReference, loadReferencedGames, resolveGameReference } from "../../lib/gameReference";
 import { loadUploadedCollections, loadUploadedGames } from "../../lib/libraryCollectionStore";
 import type { CollectionSummary, TournamentFormat } from "../../lib/libraryCollections";
-import { readPgnTags } from "../../lib/pgn";
 import { loadSavedAnalyses } from "../../lib/savedAnalysisStore";
 import { loadSavedRepertoires, savedRepertoiresSnapshot } from "../../lib/savedRepertoireStore";
 import { findShippedCollection } from "../../lib/shippedCollections";
-import { guessTournamentKind, type TournamentGuess } from "./tournamentKind";
+import { guessTournamentKindOfGames, type TournamentGuess } from "../../lib/tournamentKind";
 
 /**
  * **The Library, as the MDX editor looks a game up in it** (CTA-137) — a
@@ -16,7 +15,16 @@ import { guessTournamentKind, type TournamentGuess } from "./tournamentKind";
  */
 
 /** A tournament format, for a sentence. */
-export const FORMAT_WORDS: Record<TournamentFormat, string> = { swiss: "a Swiss", roundRobin: "a round robin", knockout: "a knockout", arena: "an arena", match: "a match" };
+export const FORMAT_WORDS: Record<TournamentFormat, string> = {
+  swiss: "a Swiss",
+  roundRobin: "a round robin",
+  knockout: "a knockout",
+  doubleElimination: "a double elimination",
+  match: "a match",
+  teamSwiss: "a team event",
+  teamKnockout: "a team knockout",
+  arena: "an arena",
+};
 
 /** A collection's summary — a shipped one's, or an upload's once the Library's list is read. */
 export const collectionSummaryOf = async (id: string): Promise<CollectionSummary | undefined> =>
@@ -40,7 +48,7 @@ export const collectionGamesOf = async (collection: string): Promise<readonly st
 };
 
 /** The kind of tournament a set of games looks like — from their tags alone. */
-export const guessOf = (games: readonly string[]): TournamentGuess | undefined => guessTournamentKind(games.map(readPgnTags));
+export const guessOf = (games: readonly string[]): TournamentGuess | undefined => guessTournamentKindOfGames(games);
 
 /**
  * **What an app address names, in words** (CTA-140) — the Components

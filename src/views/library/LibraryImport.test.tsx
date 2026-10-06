@@ -363,6 +363,59 @@ describe("Split by event (CTA-127)", () => {
     expect(peekUploadedGames(of("Club")[0].id)).toEqual([GAMES[0]]);
   });
 
+  it("marks each event's collection with the type the table holds — the guess, or the reader's pick (CTA-142)", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: SPLIT.join("\n\n") } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    expect(await screen.findByTestId("library-import")).toBeInTheDocument();
+    fireEvent.click(splitSwitch());
+    // On by default, every event listed before anything is imported, each type set to its guess:
+    // Club's two games are one pair — a match; Spring Open's one game tells nothing; Unknown cannot be one.
+    expect(screen.getByTestId("library-import-auto-type")).toBeChecked();
+    const types = within(screen.getByRole("table", { name: "Each event's tournament type" }));
+    expect(types.getAllByRole("row")).toHaveLength(4);
+    // The rows in first-appearance order — Unknown, Club, Spring Open — and Unknown has no select.
+    expect(screen.queryByTestId("library-import-event-types-type-0")).toBeNull();
+    expect(screen.getByTestId("library-import-event-types-type-1")).toHaveValue("match");
+    expect(screen.getByTestId("library-import-event-types-type-2")).toHaveValue("");
+    expect(types.queryByRole("combobox", { name: /Unknown/ })).toBeNull();
+    // The reader makes Spring Open a knockout.
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Type: Spring Open" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Knockout (elimination)" }));
+    await confirmImport();
+    await waitFor(() => expect(where()).toBe("/library"), { timeout: 4000 });
+    const collections = await loadUploadedCollections();
+    const markOf = (name: string) => collections.find((collection) => collection.name === name)?.tournament;
+    expect(markOf("Club")).toEqual({ enabled: true, type: "match" });
+    expect(markOf("Spring Open")).toEqual({ enabled: true, type: "knockout" });
+    expect(markOf("Unknown")).toBeUndefined();
+  });
+
+  it("marks none with the switch off", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: SPLIT.join("\n\n") } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    expect(await screen.findByTestId("library-import")).toBeInTheDocument();
+    fireEvent.click(splitSwitch());
+    fireEvent.click(screen.getByTestId("library-import-auto-type"));
+    await confirmImport();
+    await waitFor(() => expect(where()).toBe("/library"), { timeout: 4000 });
+    for (const collection of await loadUploadedCollections()) expect(collection.tournament).toBeUndefined();
+  });
+
+  it("marks a one-event import as it comes in, and opens its tournament view (CTA-142)", async () => {
+    mount("/library/new");
+    fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: RATED_ONE_EVENT } });
+    fireEvent.click(screen.getByTestId("library-upload-save"));
+    expect(await screen.findByTestId("library-import")).toBeInTheDocument();
+    expect(screen.getByTestId("library-import-mark-suggestion-text")).toHaveTextContent("Swiss system");
+    fireEvent.click(screen.getByRole("button", { name: "Apply the suggested type, Swiss system" }));
+    await confirmImport();
+    await screen.findByTestId("library-tournament-screen", {}, { timeout: 4000 });
+    const [collection] = await loadUploadedCollections();
+    expect(collection.tournament).toEqual({ enabled: true, type: "swiss" });
+  });
+
   it("offers the split off with its reason where every kept game shares one Event, and imports unsplit", async () => {
     mount("/library/new");
     fireEvent.change(screen.getByTestId("library-upload-paste"), { target: { value: RATED_ONE_EVENT } });

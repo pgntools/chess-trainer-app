@@ -4,6 +4,7 @@ import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
 import type { DataTableSort } from "../../../design-system/patterns/tables";
 import type { BlockFamilyId } from "../../families";
+import { isPotentialTournament, readsAsTournament } from "../../../lib/libraryCollections";
 import CollectionsTreeTable from "./CollectionsTreeTable";
 import { BUILT_IN, rowsOpen } from "./fixtures";
 import {
@@ -68,6 +69,8 @@ const demo = (initialOpen: string[]) => (
             onMoveCollection: noop,
             onDeleteCollection: noop,
           }}
+          isTournament={(collection) => readsAsTournament(collection)}
+          isPotentialTournament={(collection) => isPotentialTournament(collection)}
           testId="gallery-library-tree"
         />
       </Box>

@@ -2,11 +2,14 @@ import Box from "@mui/material/Box";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import DriveFileMoveRoundedIcon from "@mui/icons-material/DriveFileMoveRounded";
+import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
 import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 import FolderSpecialRoundedIcon from "@mui/icons-material/FolderSpecialRounded";
 import TableChartOutlinedIcon from "@mui/icons-material/TableChartOutlined";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { useTranslation } from "react-i18next";
 
+import { visuallyHidden } from "../../../design-system/components/a11y";
 import type { LinkTarget } from "../../../design-system/components/link";
 import { tableDate } from "../../../design-system/components/tables";
 import { IconAction } from "../../../design-system/components/toolbars";
@@ -57,6 +60,19 @@ export type CollectionsTreeTableProps = {
   /** The words box left nothing. */
   filtered?: boolean;
   /**
+   * Whether a collection reads as a tournament (CTA-142,
+   * `readsAsTournament`): its icon is a trophy, not a table, and its name is
+   * read with "Tournament". Absent, none is.
+   */
+  isTournament?: (collection: LibraryEntry) => boolean;
+  /**
+   * Whether a collection could be one, never marked either way (CTA-142,
+   * `isPotentialTournament`): a warning triangle first among its row's
+   * actions — its tooltip saying so, a link to its table, where the type is
+   * suggested — until the type is applied or turned down. Absent, none is.
+   */
+  isPotentialTournament?: (collection: LibraryEntry) => boolean;
+  /**
    * The root, and its sort headers `<testId>-sort-<column>`. A folder's row is
    * `library-folder-<id>` (its chevron `-toggle`, its actions
    * `library-folder-actions-<id>` → `library-folder-<action>-<id>`), a
@@ -81,6 +97,10 @@ const rowKey = (row: Row) =>
  * add a collection here, new sub-folder, download, rename, move, delete; the
  * **Built-in** folder its download alone; an upload download, move, delete; a
  * shipped collection its download alone. Every action is named for its row.
+ * A collection that reads as a tournament (CTA-142) shows a trophy where the
+ * others show a table, named with the word; one that could be (never
+ * marked, its games one event) a warning triangle among its actions, a link
+ * to its table whose tooltip says why.
  *
  * Presentational: the walk (`folderTreeRows`), the sort, the open folders and
  * every callback are the screen's. Its words are the Library's (`library.*`).
@@ -95,6 +115,8 @@ function CollectionsTreeTable({
   builtInFolderId,
   actions,
   filtered = false,
+  isTournament,
+  isPotentialTournament,
   testId,
 }: CollectionsTreeTableProps) {
   const { t, i18n } = useTranslation();
@@ -109,38 +131,50 @@ function CollectionsTreeTable({
       id: "name",
       header: t("library.columns.name"),
       sortable: true,
-      render: (row) => (
-        <Box
-          component="span"
-          sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}
-        >
+      render: (row) => {
+        const tournament = row.kind === "item" && isTournament?.(row.item) === true;
+        return (
           <Box
             component="span"
-            aria-hidden="true"
-            sx={{ display: "flex", flexShrink: 0, color: "text.secondary" }}
+            sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}
           >
-            {row.kind === "item" ? (
-              <TableChartOutlinedIcon fontSize="small" />
-            ) : row.folder.id === builtInFolderId ? (
-              <FolderSpecialRoundedIcon fontSize="small" color="primary" />
-            ) : (
-              <FolderRoundedIcon fontSize="small" />
+            <Box
+              component="span"
+              aria-hidden="true"
+              data-testid={tournament && row.kind === "item" ? `library-tournament-icon-${row.item.id}` : undefined}
+              sx={{ display: "flex", flexShrink: 0, color: "text.secondary" }}
+            >
+              {tournament ? (
+                <EmojiEventsOutlinedIcon fontSize="small" />
+              ) : row.kind === "item" ? (
+                <TableChartOutlinedIcon fontSize="small" />
+              ) : row.folder.id === builtInFolderId ? (
+                <FolderSpecialRoundedIcon fontSize="small" color="primary" />
+              ) : (
+                <FolderRoundedIcon fontSize="small" />
+              )}
+            </Box>
+            <Box
+              component="span"
+              dir="auto"
+              sx={{
+                fontWeight: 500,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {nameOf(row)}
+            </Box>
+            {/* The trophy's word, read with the name (the icon itself is hidden). */}
+            {tournament && (
+              <Box component="span" sx={visuallyHidden}>
+                {`, ${t("library.tournament.mark")}`}
+              </Box>
             )}
           </Box>
-          <Box
-            component="span"
-            dir="auto"
-            sx={{
-              fontWeight: 500,
-              minWidth: 0,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {nameOf(row)}
-          </Box>
-        </Box>
-      ),
+        );
+      },
     },
     {
       id: "games",
@@ -214,6 +248,16 @@ function CollectionsTreeTable({
         data-testid={`library-collection-actions-${item.id}`}
         sx={{ display: "flex", gap: 0.25 }}
       >
+        {/* CTA-142: could be a tournament, never marked — its table suggests the type. */}
+        {isPotentialTournament?.(item) === true && (
+          <IconAction
+            label={t("library.tournament.potentialHint", { name: item.name, count: item.count })}
+            link={collectionLink(item)}
+            testId={`library-potential-tournament-${item.id}`}
+          >
+            <WarningAmberRoundedIcon fontSize="small" color="warning" />
+          </IconAction>
+        )}
         <IconAction
           label={t("savedList.folder.downloadNamed", { name: item.name })}
           onClick={() => actions.onDownloadCollection(item)}

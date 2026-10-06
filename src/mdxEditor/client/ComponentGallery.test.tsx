@@ -144,7 +144,8 @@ describe("the Components gallery (CTA-140)", () => {
     await user.clear(addressField);
     await user.type(addressField, "http://localhost:5214/chess-trainer-app/library/candidates2026");
     await user.click(within(dialog).getByRole("button", { name: "Look it up" }));
-    expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent("Found FIDE Candidates 2026 — 56 games.");
+    // Its manifest marks it a round robin (CTA-142), which the lookup names.
+    expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent("Found FIDE Candidates 2026 — 56 games, a round robin.");
     await user.click(within(dialog).getByRole("button", { name: "Use it" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(code()).toHaveValue('<SwissStandingsTable src="/library/candidates2026" density="dense" rowsPerPage="25" />');

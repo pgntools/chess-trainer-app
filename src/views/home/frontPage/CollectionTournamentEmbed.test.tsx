@@ -79,9 +79,18 @@ describe("<CollectionTournamentTable> (CTA-128)", () => {
     expect(screen.getAllByRole("rowheader")).toHaveLength(8);
   });
 
-  it("is a Swiss's standings unless told — a shipped collection carries no mark", async () => {
+  it("takes a shipped collection's own mark — the manifest marks the Candidates a round robin (CTA-142)", async () => {
     mount({ format: undefined, rowsPerPage: "25" });
-    expect(await screen.findByRole("table", { name: "FIDE Candidates 2026 — standings" })).toBeInTheDocument();
+    expect(await screen.findByRole("table", { name: "FIDE Candidates 2026 — crosstable" })).toBeInTheDocument();
+  });
+
+  it("is a Swiss's standings unless told — an unmarked collection", async () => {
+    const collection = await keep("Club nights", [
+      '[Event "Club"]\n[Round "1"]\n[White "Ann"]\n[Black "Bob"]\n[Result "1-0"]\n\n1. e4 e5 1-0',
+      '[Event "Club"]\n[Round "2"]\n[White "Bob"]\n[Black "Cat"]\n[Result "1/2-1/2"]\n\n1. d4 d5 1/2-1/2',
+    ]);
+    mount({ _id: `/library/${collection.id}`, format: undefined });
+    expect(await screen.findByRole("table", { name: "Club — standings" })).toBeInTheDocument();
   });
 
   it("takes an upload's own tournament mark — a round robin, from its settings", async () => {

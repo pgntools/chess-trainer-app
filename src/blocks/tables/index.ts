@@ -19,3 +19,5 @@ export * from "./RoundRobinCrossTable";
 export * from "./KnockoutBracket";
 export * from "./MatchTable";
 export * from "./TeamStandingsTable";
+// CTA-142: the Library's tournament view — each player's record on its Participants tab.
+export * from "./ParticipantsTable";

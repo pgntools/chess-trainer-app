@@ -24,7 +24,8 @@
       "pgn": "esportswcuppl26.pgn",
       "index": "esportswcuppl26.index.json",
       "games": 30,
-      "hash": "eaa81918"
+      "hash": "eaa81918",
+      "tournament": "doubleElimination"
     },
     {
       "id": "candidates2026",
@@ -32,7 +33,8 @@
       "pgn": "wchcand26.pgn",
       "index": "wchcand26.index.json",
       "games": 56,
-      "hash": "79d21999"
+      "hash": "79d21999",
+      "tournament": "roundRobin"
     },
     {
       "id": "fischer",
@@ -48,7 +50,8 @@
       "pgn": "chned26.pgn",
       "index": "chned26.index.json",
       "games": 46,
-      "hash": "64edc721"
+      "hash": "64edc721",
+      "tournament": "knockout"
     },
     {
       "id": "petrosian",
@@ -72,7 +75,8 @@
       "pgn": "fidewrbtf26.pgn",
       "index": "fidewrbtf26.index.json",
       "games": 216,
-      "hash": "93f3f4f2"
+      "hash": "93f3f4f2",
+      "tournament": "teamKnockout"
     },
     {
       "id": "worldrapidteam2026",
@@ -80,7 +84,8 @@
       "pgn": "fidewrt26.pgn",
       "index": "fidewrt26.index.json",
       "games": 1650,
-      "hash": "466d7108"
+      "hash": "466d7108",
+      "tournament": "teamSwiss"
     }
   ]
 }

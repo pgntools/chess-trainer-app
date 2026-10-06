@@ -12,19 +12,23 @@ import { useTranslation } from "react-i18next";
 
 import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
 import type { IndexedRow } from "../../lib/collectionIndex";
-import { addCollection, removeCollectionGames } from "../../lib/libraryCollectionStore";
+import { addCollection, removeCollectionGames, updateCollectionSettings } from "../../lib/libraryCollectionStore";
 import {
   batchFolderNameOf,
+  canBeTournament,
   COLLECTION_COLUMNS,
   COLLECTION_FILTER_PARAMS,
   collectionFacetsOf,
   filteredRows,
+  isTournamentCollection,
   MAX_COLLECTION_NAME_CHARS,
   RESULTS,
+  formatOfKind,
   type CollectionColumn,
   type CollectionFilterValues,
   type CollectionRow,
   type CollectionSummary,
+  type CollectionTournament,
   type SortDirection,
 } from "../../lib/libraryCollections";
 import {
@@ -48,7 +52,7 @@ import { addAnalyses, MAX_SAVED_ANALYSES } from "../../lib/savedAnalysisStore";
 import { repertoireGameNamesOf } from "../../lib/savedRepertoires";
 import { RightPanel } from "../main/rightPanel";
 import { SaveAsCollectionDialog } from "../../blocks/dialogs";
-import { CollectionFilters } from "../../blocks/forms";
+import { CollectionFilters, TournamentSuggestion } from "../../blocks/forms";
 import { CollectionGamesTable, COLLECTION_DEFAULT_SORT, collectionFirstDirection } from "../../blocks/tables";
 import { DeleteManyDialog } from "../../design-system/components/dialogs";
 import { useSnackbar } from "../../design-system/components/feedback";
@@ -58,8 +62,9 @@ import { LoadingLine } from "../../design-system/components/states";
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZES } from "../../design-system/components/tables";
 import { HintButton, IconAction, ListScreenHeader, SelectionBar } from "../../design-system/components/toolbars";
 import OpeningFilterBoard from "./OpeningFilterBoard";
+import { TournamentCollection, type TournamentTabs } from "./TournamentCollection";
 import LibraryMiss from "./LibraryMiss";
-import { loadCollectionGames, useCollectionRows } from "./useLibraryCollections";
+import { loadCollectionGames, useCollectionRows, useTournamentGuess } from "./useLibraryCollections";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 
 /**
@@ -136,6 +141,11 @@ import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
  * Pages rather than one long table: the Tal file is 2,636 rows — the tables'
  * one set of page sizes (25 / 50 / 100 / 250, 50 unless `?rows=` says).
  *
+ * **A tournament** (CTA-142) — a collection that reads as one
+ * (`isTournamentCollection`) — opens on a view of its own instead
+ * (`TournamentCollection.tsx`: Info, Participants, Games); its Games tab is
+ * this same table, the tab strip under the header.
+ *
  * Built from the design system since CTA-113: a `ListScreenHeader` with a
  * `BackButton`, a `SearchField`, the `CollectionGamesTable` block, a
  * `DeleteManyDialog`.
@@ -147,9 +157,12 @@ const isColumn = (value: string | null): value is CollectionColumn =>
 function CollectionTable({
   collection,
   rows,
+  tabs,
 }: {
   collection: CollectionSummary;
   rows: readonly CollectionRow[];
+  /** A tournament collection's Games tab (CTA-142): the strip under the header, the region under it its panel. Absent, today's screen. */
+  tabs?: TournamentTabs;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -225,6 +238,52 @@ function CollectionTable({
   const [saveName, setSaveName] = useState("");
   const [savingCollection, setSavingCollection] = useState(false);
   const [saveProblem, setSaveProblem] = useState<"read" | "storage" | null>(null);
+
+  /*
+    CTA-142: an upload never marked one way or the other, whose games share one
+    `Event`, is offered the kind of tournament they look like — the settings
+    screen's suggestion, one step: Apply marks it at once and opens its
+    tournament view; the close button marks it "not a tournament" (the mark
+    stored off), so it is not asked again. Its games are read for the guess
+    (their own tags) only then — never for the table itself.
+  */
+  const offerMark = tabs === undefined && collection.source === "uploaded" && collection.tournament === undefined && canBeTournament(rows);
+  const suggestion = useTournamentGuess(collection.id, offerMark);
+  const [marking, setMarking] = useState(false);
+  const mark = async (tournament: CollectionTournament): Promise<boolean> => {
+    setMarking(true);
+    const problem = await updateCollectionSettings(collection.id, { tournament });
+    setMarking(false);
+    if (problem !== undefined) {
+      show({ message: t("library.settings.suggestion.problem"), severity: "error", duration: null, testId: "library-table-suggestion-notice" });
+      return false;
+    }
+    return true;
+  };
+  const applySuggestion = async (type: CollectionTournament["type"]) => {
+    // Where Undo comes back to: this table, its filters and all.
+    const backTo = cameFrom;
+    if (!(await mark({ enabled: true, type }))) return;
+    show({
+      message: t("library.settings.suggestion.marked", { type: t(`library.settings.formats.${type}`) }),
+      severity: "success",
+      duration: 10_000,
+      testId: "library-table-suggestion-notice",
+      // Undo: the mark taken off again — never decided, so the suggestion is offered again.
+      action: {
+        label: t("library.settings.suggestion.undo"),
+        onClick: () => {
+          void updateCollectionSettings(collection.id, { tournament: null }).then((problem) => {
+            if (problem === undefined) navigate(backTo, { replace: true });
+            else show({ message: t("library.settings.suggestion.problem"), severity: "error", duration: null, testId: "library-table-suggestion-notice" });
+          });
+        },
+        testId: "library-table-suggestion-undo",
+      },
+    });
+    // The collection now reads as a tournament: its view, on Info.
+    navigate(`/library/${encodeURIComponent(collection.id)}?tab=info`, { replace: true });
+  };
 
   /** The picks into Saved analyses: a new folder, a record per readable game — or nothing. */
   const analysePicked = async () => {
@@ -537,44 +596,64 @@ function CollectionTable({
           testId="library-table-header"
         />
 
-        {/* The reader's own description (CTA-121), under the header when there is one. */}
-        {collection.description !== undefined && (
-          <Typography
-            variant="body2"
-            dir="auto"
-            data-testid="library-table-description"
-            sx={{ flexShrink: 0, color: "text.secondary", px: 1, pb: 0.5, whiteSpace: "pre-line" }}
-          >
-            {collection.description}
-          </Typography>
-        )}
+        {tabs?.strip}
+        <Box
+          {...tabs?.panel}
+          sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", ...(tabs !== undefined && { pt: 1 }) }}
+        >
+          {/* The reader's own description (CTA-121), under the header when there is one. */}
+          {collection.description !== undefined && (
+            <Typography
+              variant="body2"
+              dir="auto"
+              data-testid="library-table-description"
+              sx={{ flexShrink: 0, color: "text.secondary", px: 1, pb: 0.5, whiteSpace: "pre-line" }}
+            >
+              {collection.description}
+            </Typography>
+          )}
 
-        <CollectionGamesTable
-          rows={shown}
-          sort={{ column: sort, direction }}
-          onSort={sortBy}
-          paging={{
-            page,
-            rowsPerPage,
-            onPageChange: (next) => setState({ page: next === 0 ? null : String(next) }, true),
-            onRowsPerPageChange: (next) => setState({ rows: next === DEFAULT_TABLE_PAGE_SIZE ? null : String(next) }),
-          }}
-          picked={picked}
-          onPickedChange={setPicked}
-          gameLink={(row) => ({ component: RouterLink, to: gamePath(row.number), state: { from: cameFrom } })}
-          collectionEmpty={rows.length === 0}
-          filters={
-            <SearchField
-              label={t("library.table.filter")}
-              value={text}
-              onChange={(value) => setState({ q: value })}
-              clearLabel={t("library.filterClear")}
-              testId="library-table-filter"
-            />
-          }
-          testId="library-table"
-          picksTestId="library-picks"
-        />
+          {/* CTA-142: the kind of tournament the games look like, for a collection never marked. */}
+          {offerMark && suggestion !== undefined && (
+            <Box sx={{ flexShrink: 0, pb: 1 }}>
+              <TournamentSuggestion
+                guess={suggestion}
+                selected={false}
+                onApply={() => void applySuggestion(formatOfKind(suggestion.kind))}
+                onDismiss={() => void mark({ enabled: false, type: formatOfKind(suggestion.kind) })}
+                disabled={marking}
+                testId="library-table-suggestion"
+              />
+            </Box>
+          )}
+
+          <CollectionGamesTable
+            rows={shown}
+            sort={{ column: sort, direction }}
+            onSort={sortBy}
+            paging={{
+              page,
+              rowsPerPage,
+              onPageChange: (next) => setState({ page: next === 0 ? null : String(next) }, true),
+              onRowsPerPageChange: (next) => setState({ rows: next === DEFAULT_TABLE_PAGE_SIZE ? null : String(next) }),
+            }}
+            picked={picked}
+            onPickedChange={setPicked}
+            gameLink={(row) => ({ component: RouterLink, to: gamePath(row.number), state: { from: cameFrom } })}
+            collectionEmpty={rows.length === 0}
+            filters={
+              <SearchField
+                label={t("library.table.filter")}
+                value={text}
+                onChange={(value) => setState({ q: value })}
+                clearLabel={t("library.filterClear")}
+                testId="library-table-filter"
+              />
+            }
+            testId="library-table"
+            picksTestId="library-picks"
+          />
+        </Box>
       </Box>
       <RightPanel>
         {/* The aside does not scroll; the panel is its own scrolling column. */}
@@ -647,6 +726,17 @@ function CollectionScreen() {
     return <LoadingLine testId="library-loading">{t("library.table.loading")}</LoadingLine>;
   }
   if (state.status === "missing") return <LibraryMiss what="collection" />;
+  // A collection that reads as a tournament has a view of its own (CTA-142); its Games tab is this table.
+  if (isTournamentCollection(state.summary, state.value)) {
+    return (
+      <TournamentCollection
+        key={state.summary.id}
+        collection={state.summary}
+        rows={state.value}
+        games={(tabs) => <CollectionTable collection={state.summary} rows={state.value} tabs={tabs} />}
+      />
+    );
+  }
   return <CollectionTable key={state.summary.id} collection={state.summary} rows={state.value} />;
 }
 

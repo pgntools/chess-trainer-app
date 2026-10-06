@@ -5,6 +5,8 @@ paths:
   - "src/lib/match.*"
   - "src/lib/teamTournament*"
   - "src/lib/federations*"
+  - "src/lib/tournamentKind*"
+  - "src/views/library/TournamentCollection.tsx"
   - "src/blocks/tables/tournamentTable.ts"
   - "src/blocks/tables/SwissStandingsTable/**"
   - "src/blocks/tables/RoundRobinCrossTable/**"
@@ -36,11 +38,13 @@ Every competition table the app draws, from a PGN of the event's games:
 a **Swiss's standings**, a **round robin's crosstable** (single or double),
 a **knockout's bracket** (and a double elimination's two, and a team
 knockout's), a **two-player match**, a **team event's standings**. Built
-ahead of their screen (CTA-120, CTA-128); today their one consumer is the
-Blog — the *Tournaments* folder (`/blog/tournaments/…`), and *Writing an
-article → Demo tables*, a page per format
+ahead of their screen (CTA-120, CTA-128); their consumers are the Blog —
+the *Tournaments* folder (`/blog/tournaments/…`), and *Writing an article →
+Demo tables*, a page per format
 (`/blog/writing-an-article/demo-tables/<format>`, its files under
-`articles/writing-an-article/demo-tables/`).
+`articles/writing-an-article/demo-tables/`) — and, since CTA-142, **the
+Library's tournament view** (§4.1): a collection marked as a tournament
+shows its table on its Info tab.
 
 This file is the one reference: the layers, how each format is read from its
 tags, the rules each table ranks by, the MDX embeds with every prop, how a
@@ -87,6 +91,25 @@ lib    src/lib/                          tournamentOf · knockoutOf · matchOf �
 
 Every reader takes `GameHeaders[]` — `splitPgnGames(pgn).map(readPgnTags)` —
 and **replays no move**: a 1,650-game team file reads in ~50 ms.
+
+**What kind of tournament a file is — the guess** (`src/lib/tournamentKind.ts`,
+CTA-137; moved from the MDX editor into `src/lib/` by CTA-142, so a shipped
+screen can use it): `guessTournamentKind(headers)` → `{ kind, reason, facts }`
+— a match (two players), a double elimination (rounds from 51), a knockout
+or team knockout (each round's field among the round before's, fewer at the
+end), a round robin (≥ 90 % of the pairs met; twice for a double), an
+**arena** (no round number in any game and more games than players —
+Lichess writes `Round "-"`; CTA-142), else a Swiss or a team event. `reason` is one English line (the MDX editor's);
+`facts` (competitors, rounds, a knockout's field round by round, twice, teams)
+let a screen say it in the reader's language
+(`library.settings.suggestion.reasons.*`). Its kinds are exactly the
+Library's stored formats (`formatOfKind`, `lib/libraryCollections.ts`) —
+an arena among them, which has no table: the MDX editor offers the Swiss
+standings for one (players ranked by points). Used by the MDX editor (Components' Add a
+component, the Components gallery), the Library's settings (the suggested
+type), its tournament view (the misfit's suggestion) and `wirepgn
+--tournament`. Held to every TWIC file the Blog ships
+(`src/lib/tournamentKind.test.ts`).
 
 ---
 
@@ -207,8 +230,8 @@ by its address. It reads the collection's **games** (their own tags — titles,
 FIDE ids, countries — which the index rows do not keep), exactly as the PGN
 embeds read a file. The format: `format`, else the collection's stored mark
 where its games still share one event (`isTournamentCollection`), else a
-Swiss; a shipped collection has no mark (the manifest carries none), so its
-article names the format. **The links**, both on by default:
+Swiss. A shipped tournament carries the mark its manifest entry names
+(CTA-142, `wirepgn --tournament`) — the demo still names its format. **The links**, both on by default:
 `playerLink` makes each name a link to the collection's table filtered by that
 player (`/library/<c>?player=<name>`), `gameLink` each result a link to its
 game (`/library/<c>/<n>`, `n` the game's place in the collection) with the
@@ -289,6 +312,30 @@ articles' "Selected games" sections. **Chess960 boards are not supported**:
 `chess.js` does not castle in 960, so a 960 event (the Clutch Chess match)
 shows its table and no boards, and its page says so.
 
+### 4.1 The Library's tournament view (CTA-142)
+
+A collection marked as a tournament opens at `/library/<collection>` on
+Info, Participants and Games tabs (`views/library/TournamentCollection.tsx`;
+the whole of it is `game-collections.md` §6.4.3). Its Info tab draws the
+table for the stored format **with the embeds' own views** — `<EmbedSource
+src="/library/<c>">` and `StandingsView` / `KnockoutView` /
+`TeamStandingsView` — so the Library and the Blog draw a collection the
+same way; only the player links differ (the view's open its Games tab,
+`?tab=games&player=…`). The format → table map:
+
+| Stored format | Table |
+| --- | --- |
+| `swiss`, `roundRobin`, `match` | `StandingsView` (`SwissStandingsTable`, `RoundRobinCrossTable`, `MatchTable`), 50 rows a page |
+| `knockout`, `teamKnockout` | `KnockoutView` (teams detected from the tags) |
+| `doubleElimination` | `KnockoutView` with `losersFromRound` 51 |
+| `teamSwiss` | `TeamStandingsView`, 50 rows a page |
+| `arena` | none yet — said so, pointing at the Participants tab (every player's record) |
+
+Its Participants tab reads every player's record with
+`lib/tournamentParticipants.ts` (`participantsOf` over `tournamentOf`, so a
+player is told apart, titled and rated as the tables do it; `topPlayersOf`),
+for a team event beside `teamTournamentOf` and `teamPlayersOf`.
+
 ---
 
 ## 5. What the tables show
@@ -365,6 +412,12 @@ shows its table and no boards, and its page says so.
 
 ## 7. Adding a format or a table
 
+0. **the Library's format** — a value appended to `TOURNAMENT_FORMATS`
+   (`lib/libraryCollections.ts`; never removed or reordered away), its name
+   and one-line description in `library.settings.formats` /
+   `formatDescriptions` (both catalogs), a case in the tournament view's
+   table switch (`TournamentCollection.tsx`), and — where the tags can tell
+   it — a kind in `guessTournamentKind` with its reason's words.
 1. **lib** — a pure reader over `GameHeaders[]` beside `tournament.ts`
    (reuse `outcomesOf`, `playerOf`, `roundPartsOf`, `POINTS`), with a test on
    a real file (`src/test/fixtures/formatGames.ts`) and on hand-made games.
@@ -389,7 +442,8 @@ shows its table and no boards, and its page says so.
 ## 8. Testing
 
 ```sh
-npx vitest run src/lib/tournament.test.ts src/lib/knockout.test.ts src/lib/match.test.ts src/lib/teamTournament.test.ts src/lib/federations.test.ts
+npx vitest run src/lib/tournament.test.ts src/lib/knockout.test.ts src/lib/match.test.ts src/lib/teamTournament.test.ts src/lib/federations.test.ts src/lib/tournamentKind.test.ts src/lib/tournamentParticipants.test.ts
+npx vitest run src/views/library/LibraryTournament.test.tsx   # the Library's tournament view
 npx vitest run src/blocks/tables src/design-system/patterns/tables src/design-system/components/tables
 npx vitest run src/views/home src/views/blog           # every article renders, every PGN reads
 # the gallery's axe matrix for the tournament galleries only (not in the PR gate):

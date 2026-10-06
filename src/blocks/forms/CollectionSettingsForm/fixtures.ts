@@ -1,3 +1,4 @@
+import type { TournamentGuess } from "../../../lib/tournamentKind";
 import type { CollectionSettingsDraft } from "./CollectionSettingsForm";
 
 /*
@@ -31,4 +32,18 @@ export const FULL: CollectionSettingsDraft = {
   name: "A tournament whose title goes on for quite a while indeed",
   description: "A description that fills most of the two thousand characters a collection's description may be. ".repeat(28),
   tournament: { enabled: true, type: "swiss" },
+};
+
+/** Marked as a team knockout (CTA-142). */
+export const TEAM_KNOCKOUT: CollectionSettingsDraft = {
+  name: "World Blitz Team 2026 — final stage",
+  description: "",
+  tournament: { enabled: true, type: "teamKnockout" },
+};
+
+/** What the Candidates' games look like (CTA-142): a double round robin. */
+export const ROUND_ROBIN_GUESS: TournamentGuess = {
+  kind: "roundRobin",
+  reason: "8 players, every pair met twice: a double round robin",
+  facts: { games: 56, competitors: 8, teams: false, rounds: 14, twice: true },
 };
