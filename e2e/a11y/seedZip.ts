@@ -23,6 +23,8 @@ export const SEED = {
   analysisId: "e2e-analysis",
   repertoireId: "e2e-repertoire",
   collectionId: "ue2e-friday",
+  /** A collection marked as a tournament (CTA-142) — its own view, a tab per route. */
+  tournamentId: "ue2e-cup",
 } as const;
 
 /*
@@ -160,6 +162,33 @@ const UPLOADED_GAMES = UPLOADED.map((row, index) =>
   ),
 );
 
+/** A four-player round robin, every pair once over three rounds (CTA-142) — the seeded tournament. */
+const CUP_PAIRINGS: readonly [number, string, string, string][] = [
+  [1, "Rosen, Anna", "Levi, Dan", "1-0"],
+  [1, "Klein, Yosef", "Ben-David, Noa", "1/2-1/2"],
+  [2, "Levi, Dan", "Klein, Yosef", "0-1"],
+  [2, "Ben-David, Noa", "Rosen, Anna", "1/2-1/2"],
+  [3, "Rosen, Anna", "Klein, Yosef", "1-0"],
+  [3, "Levi, Dan", "Ben-David, Noa", "1/2-1/2"],
+];
+const ELO: Readonly<Record<string, string>> = { "Rosen, Anna": "2104", "Ben-David, Noa": "1850", "Levi, Dan": "1720", "Klein, Yosef": "1987" };
+const CUP_GAMES = CUP_PAIRINGS.map(([round, white, black, result], index) =>
+  game(
+    {
+      Event: "Haifa Club Cup 2026",
+      Site: "Haifa",
+      Date: `2026.09.${String(2 + round * 7).padStart(2, "0")}`,
+      Round: `${round}.${(index % 2) + 1}`,
+      White: white,
+      Black: black,
+      Result: result,
+      WhiteElo: ELO[white],
+      BlackElo: ELO[black],
+    },
+    `1. e4 e5 2. Nf3 Nc6 ${result}`,
+  ),
+);
+
 const SOURCE: ExportSource = {
   playedGames: PLAYED_GAMES,
   analyses: [ANALYSIS, ANALYSIS_IN_A_FOLDER],
@@ -174,6 +203,18 @@ const SOURCE: ExportSource = {
     {
       summary: { id: "ue2e-blitz", name: "Blitz nights", source: "uploaded", count: 2, addedAt: LATER, folderId: "e2e-folder-club" },
       games: UPLOADED_GAMES.slice(0, 2),
+    },
+    {
+      summary: {
+        id: SEED.tournamentId,
+        name: "Haifa Club Cup 2026",
+        source: "uploaded",
+        count: CUP_GAMES.length,
+        addedAt: AT,
+        folderId: null,
+        tournament: { enabled: true, type: "roundRobin" },
+      },
+      games: CUP_GAMES,
     },
   ],
   collectionFolders: [{ id: "e2e-folder-club", name: "Club", parentId: null, savedAt: AT, updatedAt: AT }],

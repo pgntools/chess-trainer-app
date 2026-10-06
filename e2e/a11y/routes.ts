@@ -141,6 +141,26 @@ export const ROUTES: readonly PageRoute[] = [
     board: true,
     ready: (page) => page.getByText("Rosen, Anna").first(),
   },
+  // CTA-142: a collection marked as a tournament — its view, a route per tab.
+  {
+    id: "library-tournament-info",
+    pattern: "/library/:collectionId",
+    path: `library/${SEED.tournamentId}`,
+    ready: byTestId(`tournament-collection-${SEED.tournamentId}-roundRobin`),
+  },
+  {
+    id: "library-tournament-participants",
+    pattern: "/library/:collectionId",
+    path: `library/${SEED.tournamentId}?tab=participants`,
+    ready: byTestId("library-tournament-participants"),
+  },
+  {
+    id: "library-tournament-games",
+    pattern: "/library/:collectionId",
+    path: `library/${SEED.tournamentId}?tab=games`,
+    board: true,
+    ready: (page) => page.getByText("Rosen, Anna").first(),
+  },
   {
     id: "library-collection-settings",
     pattern: "/library/:collectionId/settings",

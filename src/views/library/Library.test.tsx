@@ -768,26 +768,26 @@ describe("a collection's settings (CTA-121)", () => {
     expect(screen.getByTestId("library-settings-form-type-swiss")).toBeChecked();
     fireEvent.click(screen.getByTestId("library-settings-save"));
 
-    await screen.findByTestId("library-table");
+    // Marked, it opens on its tournament view (CTA-142).
+    await screen.findByTestId("library-tournament-screen");
     expect(uploadedCollectionsSnapshot()?.[0].tournament).toEqual({ enabled: true, type: "swiss" });
   });
 
-  it("offers Round robin beside Swiss — the other three formats shown, but not selectable", async () => {
+  it("offers every format with a table — Arena alone shown but not selectable (CTA-142)", async () => {
     const mine = await upload();
     await mountSettings(`/library/${mine.id}/settings`);
     fireEvent.click(screen.getByTestId("library-settings-form-tournament-switch"));
-    expect(screen.getByTestId("library-settings-form-type-roundRobin")).toBeEnabled();
-    for (const format of ["knockout", "arena", "match"]) {
-      const radio = screen.getByTestId(`library-settings-form-type-${format}`);
-      expect(radio).toBeDisabled();
-      expect(screen.getByTestId(`library-settings-form-${format}-description`)).toHaveTextContent(/Best for/);
+    for (const format of ["roundRobin", "knockout", "doubleElimination", "match", "teamSwiss", "teamKnockout"]) {
+      expect(screen.getByTestId(`library-settings-form-type-${format}`)).toBeEnabled();
     }
+    expect(screen.getByTestId("library-settings-form-type-arena")).toBeDisabled();
+    expect(screen.getByTestId("library-settings-form-arena-description")).toHaveTextContent(/Best for/);
 
-    fireEvent.click(screen.getByTestId("library-settings-form-type-roundRobin"));
+    fireEvent.click(screen.getByTestId("library-settings-form-type-knockout"));
     fireEvent.click(screen.getByTestId("library-settings-save"));
 
-    await screen.findByTestId("library-table");
-    expect(uploadedCollectionsSnapshot()?.[0].tournament).toEqual({ enabled: true, type: "roundRobin" });
+    await screen.findByTestId("library-tournament-screen");
+    expect(uploadedCollectionsSnapshot()?.[0].tournament).toEqual({ enabled: true, type: "knockout" });
   });
 
   it("keeps the mark off a collection whose games do not share one event, and off an empty one — the reason beside the switch", async () => {

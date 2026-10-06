@@ -19,6 +19,7 @@ import {
   COLLECTION_FILTER_PARAMS,
   collectionFacetsOf,
   filteredRows,
+  isTournamentCollection,
   MAX_COLLECTION_NAME_CHARS,
   RESULTS,
   type CollectionColumn,
@@ -58,6 +59,7 @@ import { LoadingLine } from "../../design-system/components/states";
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZES } from "../../design-system/components/tables";
 import { HintButton, IconAction, ListScreenHeader, SelectionBar } from "../../design-system/components/toolbars";
 import OpeningFilterBoard from "./OpeningFilterBoard";
+import { TournamentCollection, type TournamentTabs } from "./TournamentCollection";
 import LibraryMiss from "./LibraryMiss";
 import { loadCollectionGames, useCollectionRows } from "./useLibraryCollections";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
@@ -136,6 +138,11 @@ import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
  * Pages rather than one long table: the Tal file is 2,636 rows — the tables'
  * one set of page sizes (25 / 50 / 100 / 250, 50 unless `?rows=` says).
  *
+ * **A tournament** (CTA-142) — a collection that reads as one
+ * (`isTournamentCollection`) — opens on a view of its own instead
+ * (`TournamentCollection.tsx`: Info, Participants, Games); its Games tab is
+ * this same table, the tab strip under the header.
+ *
  * Built from the design system since CTA-113: a `ListScreenHeader` with a
  * `BackButton`, a `SearchField`, the `CollectionGamesTable` block, a
  * `DeleteManyDialog`.
@@ -147,9 +154,12 @@ const isColumn = (value: string | null): value is CollectionColumn =>
 function CollectionTable({
   collection,
   rows,
+  tabs,
 }: {
   collection: CollectionSummary;
   rows: readonly CollectionRow[];
+  /** A tournament collection's Games tab (CTA-142): the strip under the header, the region under it its panel. Absent, today's screen. */
+  tabs?: TournamentTabs;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -537,44 +547,50 @@ function CollectionTable({
           testId="library-table-header"
         />
 
-        {/* The reader's own description (CTA-121), under the header when there is one. */}
-        {collection.description !== undefined && (
-          <Typography
-            variant="body2"
-            dir="auto"
-            data-testid="library-table-description"
-            sx={{ flexShrink: 0, color: "text.secondary", px: 1, pb: 0.5, whiteSpace: "pre-line" }}
-          >
-            {collection.description}
-          </Typography>
-        )}
+        {tabs?.strip}
+        <Box
+          {...tabs?.panel}
+          sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", ...(tabs !== undefined && { pt: 1 }) }}
+        >
+          {/* The reader's own description (CTA-121), under the header when there is one. */}
+          {collection.description !== undefined && (
+            <Typography
+              variant="body2"
+              dir="auto"
+              data-testid="library-table-description"
+              sx={{ flexShrink: 0, color: "text.secondary", px: 1, pb: 0.5, whiteSpace: "pre-line" }}
+            >
+              {collection.description}
+            </Typography>
+          )}
 
-        <CollectionGamesTable
-          rows={shown}
-          sort={{ column: sort, direction }}
-          onSort={sortBy}
-          paging={{
-            page,
-            rowsPerPage,
-            onPageChange: (next) => setState({ page: next === 0 ? null : String(next) }, true),
-            onRowsPerPageChange: (next) => setState({ rows: next === DEFAULT_TABLE_PAGE_SIZE ? null : String(next) }),
-          }}
-          picked={picked}
-          onPickedChange={setPicked}
-          gameLink={(row) => ({ component: RouterLink, to: gamePath(row.number), state: { from: cameFrom } })}
-          collectionEmpty={rows.length === 0}
-          filters={
-            <SearchField
-              label={t("library.table.filter")}
-              value={text}
-              onChange={(value) => setState({ q: value })}
-              clearLabel={t("library.filterClear")}
-              testId="library-table-filter"
-            />
-          }
-          testId="library-table"
-          picksTestId="library-picks"
-        />
+          <CollectionGamesTable
+            rows={shown}
+            sort={{ column: sort, direction }}
+            onSort={sortBy}
+            paging={{
+              page,
+              rowsPerPage,
+              onPageChange: (next) => setState({ page: next === 0 ? null : String(next) }, true),
+              onRowsPerPageChange: (next) => setState({ rows: next === DEFAULT_TABLE_PAGE_SIZE ? null : String(next) }),
+            }}
+            picked={picked}
+            onPickedChange={setPicked}
+            gameLink={(row) => ({ component: RouterLink, to: gamePath(row.number), state: { from: cameFrom } })}
+            collectionEmpty={rows.length === 0}
+            filters={
+              <SearchField
+                label={t("library.table.filter")}
+                value={text}
+                onChange={(value) => setState({ q: value })}
+                clearLabel={t("library.filterClear")}
+                testId="library-table-filter"
+              />
+            }
+            testId="library-table"
+            picksTestId="library-picks"
+          />
+        </Box>
       </Box>
       <RightPanel>
         {/* The aside does not scroll; the panel is its own scrolling column. */}
@@ -647,6 +663,17 @@ function CollectionScreen() {
     return <LoadingLine testId="library-loading">{t("library.table.loading")}</LoadingLine>;
   }
   if (state.status === "missing") return <LibraryMiss what="collection" />;
+  // A collection that reads as a tournament has a view of its own (CTA-142); its Games tab is this table.
+  if (isTournamentCollection(state.summary, state.value)) {
+    return (
+      <TournamentCollection
+        key={state.summary.id}
+        collection={state.summary}
+        rows={state.value}
+        games={(tabs) => <CollectionTable collection={state.summary} rows={state.value} tabs={tabs} />}
+      />
+    );
+  }
   return <CollectionTable key={state.summary.id} collection={state.summary} rows={state.value} />;
 }
 
