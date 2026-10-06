@@ -10,13 +10,14 @@ A collection is three things, all written by one command:
 | --- | --- | --- |
 | `<Stem>.pgn` | the games, as PGN (line endings normalised) | when a game is opened, or the collection downloaded |
 | `<Stem>.index.json` | its **index** — a row per game for the table | when its table is opened |
-| `manifest.json` | every collection's id, name, files, game count and PGN hash | never — it is in the bundle, so `/library` fetches nothing |
+| `manifest.json` | every collection's id, name, files, game count and PGN hash — and a tournament's mark, its format (CTA-142) | never — it is in the bundle, so `/library` fetches nothing |
 
 ## Wire a file
 
 ```sh
 node scripts/wirepgn.js path/to/Candidates2024.pgn            # or: yarn wirepgn …
 node scripts/wirepgn.js path/to/games.pgn --name "Tata Steel 2025" --id tatasteel2025
+node scripts/wirepgn.js path/to/wchcand26.pgn --id candidates2026 --name "FIDE Candidates 2026" --tournament   # marked a tournament
 ```
 
 That copies the file here, indexes it and registers it — **no TypeScript, no
@@ -39,6 +40,13 @@ brought up to date.
   and the ECO and opening from the opening book when the tags leave them out.
   The parse is ~10 ms a game, so wiring 10,000 games takes about two minutes;
   it is paid here, once, and never when the table opens.
+- **A tournament** (CTA-142): `--tournament` marks it in the manifest, so it
+  opens in the Library's tournament view (Info, Participants, Games) for every
+  reader and shows a trophy in the list — bare (or `auto`) the format the
+  games' tags look like (`src/lib/tournamentKind.ts`), else the one named
+  (`swiss`, `roundRobin`, `knockout`, `doubleElimination`, `match`,
+  `teamSwiss`, `teamKnockout`); `none` takes a mark off. Its games must share
+  one `Event`. Re-wiring without the option keeps the mark it had.
 - **Shipped games are read-only.** Changes made on one are kept only as a copy
   in Saved analyses.
 
@@ -65,19 +73,19 @@ from.
 | `Fischer.pgn` | 1,063 | Bobby Fischer's games |
 | `Petrosian.pgn` | 2,017 | Tigran Petrosian's games |
 | `Tal.pgn` | 2,636 | Mikhail Tal's games |
-| `wchcand26.pgn` | 56 | **FIDE Candidates 2026** — a double round robin, from The Week in Chess (CTA-128): the tournament the Blog's `<CollectionTournamentTable>` demo reads (`/library/candidates2026`) |
-| `chned26.pgn` | 46 | **Netherlands Championship 2026** — a knockout (CTA-128): `<CollectionKnockoutBracket>`'s demo (`/library/netherlands2026`) |
-| `esportswcuppl26.pgn` | 30 | **Esports World Cup 2026 — play-in** — a double elimination (CTA-128): `<CollectionDoubleEliminationBracket>`'s demo (`/library/esportsplayin2026`) |
-| `fidewrbtf26.pgn` | 216 | **World Blitz Team 2026 — final stage** — a knockout of teams (CTA-128): `<CollectionKnockoutBracket>`'s team demo (`/library/worldblitzteam2026`) |
-| `fidewrt26.pgn` | 1,650 | **World Rapid Team 2026** — a Swiss of teams (CTA-128): `<CollectionTeamStandingsTable>`'s demo (`/library/worldrapidteam2026`) |
+| `wchcand26.pgn` | 56 | **FIDE Candidates 2026** — a double round robin, from The Week in Chess (CTA-128): the tournament the Blog's `<CollectionTournamentTable>` demo reads (`/library/candidates2026`); marked `roundRobin` |
+| `chned26.pgn` | 46 | **Netherlands Championship 2026** — a knockout (CTA-128): `<CollectionKnockoutBracket>`'s demo (`/library/netherlands2026`); marked `knockout` |
+| `esportswcuppl26.pgn` | 30 | **Esports World Cup 2026 — play-in** — a double elimination (CTA-128): `<CollectionDoubleEliminationBracket>`'s demo (`/library/esportsplayin2026`); marked `doubleElimination` |
+| `fidewrbtf26.pgn` | 216 | **World Blitz Team 2026 — final stage** — a knockout of teams (CTA-128): `<CollectionKnockoutBracket>`'s team demo (`/library/worldblitzteam2026`); marked `teamKnockout` |
+| `fidewrt26.pgn` | 1,650 | **World Rapid Team 2026** — a Swiss of teams (CTA-128): `<CollectionTeamStandingsTable>`'s demo (`/library/worldrapidteam2026`); marked `teamSwiss` |
 
 10,754 games in all. The five players' collections are free to use (CTA-104
 replaced the collections shipped before, which were not); the five tournaments are
 TWIC's files, credited where the Blog shows it, as its articles' PGNs are. Their `ECO` tags carry ChessBase-style sub-codes
 (`C44r`) and no `Opening` tag, so every opening is filled in from the book.
 
-`src/lib/shippedCollections.test.ts` asserts the ten names and counts;
-wiring another means adding a row there too.
+`src/lib/shippedCollections.test.ts` asserts the ten names and counts, and
+the five tournaments' marks; wiring another means adding a row there too.
 
 ## How big
 

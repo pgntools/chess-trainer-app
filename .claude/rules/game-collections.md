@@ -13,6 +13,12 @@ paths:
   - "src/blocks/dialogs/CollectionImportDialog/**"
   - "src/blocks/dialogs/OpeningTreePgnDialog/**"
   - "src/blocks/dialogs/SaveAsCollectionDialog/**"
+  - "src/blocks/forms/TournamentSuggestion/**"
+  - "src/blocks/cards/TournamentInfo/**"
+  - "src/blocks/tables/ParticipantsTable/**"
+  - "src/blocks/panels/TopPlayers/**"
+  - "src/blocks/lists/TeamRosters/**"
+  - "src/lib/tournamentParticipants*"
   - "src/lib/libraryGameCatalog*"
   - "src/lib/shippedCollections*"
   - "src/lib/collectionIndex*"
@@ -50,7 +56,7 @@ for the Analysis Board and Saved analyses it hands games to.
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`, `eventGroupsOf` (rows grouped by their `Event` — the import's *Split by event*, CTA-127). **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together). |
+| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`, `eventGroupsOf` (rows grouped by their `Event` — the import's *Split by event*, CTA-127). **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together); since CTA-142 every format with a table (`TournamentTableFormat`, `isTableFormat` — all but `arena`), `tableFormatOfKind` (a guess's kind as a format), the summary's kept verdict `sharedEvent`, and `readsAsTournament` (the verdict from what is at hand — the list's, which reads no index). |
 | `src/lib/collectionZip.ts` | **A picked `.zip`** (CTA-102, CTA-103): `readCollectionZip` (every `.pgn` in it, bounded, non-throwing), `isZipFile`. |
 | `src/lib/collectionIndex.ts` | **The index**: `IndexedRow`, `indexedRowOf` (tags + a `parsePgnTree` pass), `indexGame` (one game, with the app's book), `buildCollectionIndex` / `buildCollectionIndexAsync`, `numberedRows`, `textHash`, `OpeningLookup` / `loadOpeningLookup`, and the file format: `encodeCollectionIndex` / `decodeCollectionIndex`, `COLLECTION_INDEX_FORMAT` / `COLLECTION_INDEX_VERSION`. |
 | `src/lib/collectionIndex.worker.ts` | The index pass for an upload, off the main thread. |
@@ -69,8 +75,11 @@ for the Analysis Board and Saved analyses it hands games to.
 | `src/blocks/tables/CollectionGamesTable/` | A collection's games as a `DataTable` (CTA-113): the columns, `sortedRows`, the picks with select-all in the header, the White cell's link, the unreadable mark. |
 | `src/views/library/LibraryUpload.tsx` | `/library/new`: a new collection (file, paste, or empty), filed in a folder (`?folder=<id>`, the picker), and `?into=<id>` to add games to an existing one. |
 | `src/views/library/ImportOptionsDialog.tsx` | The import-options popup's job (CTA-103): the `CollectionImportDialog` block (what came in, the Elo / date / player filters, the count, the *Split by event* switch — CTA-127), then the index pass over the kept games in a `ProgressDialog` (`useCancellableJob`) and the writes — the split's folders through `createLibraryFolder`, taken back with the collections when a write fails. |
-| `src/views/library/CollectionScreen.tsx` | `/library/<collection>`: the table, the picks, the export bar, Analyse, Add games, and deleting games. |
-| `src/blocks/forms/CollectionSettingsForm/` | A collection's settings form, a block (CTA-121): the title, the description, and the tournament mark with its five formats (three not selectable yet) — presentational, wired by the settings screen. |
+| `src/views/library/CollectionScreen.tsx` | `/library/<collection>`: the table, the picks, the export bar, Analyse, Add games, and deleting games — or, for a collection that reads as a tournament, the tournament view (its Games tab this same table, CTA-142). |
+| `src/views/library/TournamentCollection.tsx`, `tournamentTabs.ts` | **The tournament view** (CTA-142, §6.4.3): Info, Participants and Games tabs, the tab the URL's (`tournamentTabOf`). |
+| `src/lib/tournamentParticipants.ts` | **Each player's record** (CTA-142): `participantsOf` (score, games, W / D / L, performance, longest unbeaten run — over `tournamentOf`, tags only), `topPlayersOf` (the standouts). |
+| `src/blocks/cards/TournamentInfo/`, `tables/ParticipantsTable/`, `panels/TopPlayers/`, `lists/TeamRosters/` | The tournament view's blocks (CTA-142): the event's facts, every player's record (sortable), the standouts, a team event's teams and their players. |
+| `src/blocks/forms/CollectionSettingsForm/` | A collection's settings form, a block (CTA-121): the title, the description, and the tournament mark with its formats (every one with a table selectable since CTA-142; Arena "coming later") and the type the games look like (`TournamentSuggestion`, its Apply) — presentational, wired by the settings screen. |
 | `src/views/library/CollectionSettingsScreen.tsx` | `/library/<collection>/settings` (CTA-121): the `CollectionSettingsForm` block over one draft, saved whole through `updateCollectionSettings` — uploads only; a shipped id is the miss. |
 | `src/blocks/forms/CollectionFilters/` | The table's right-hand panel (a block since CTA-113): players (several names at once, OR'd — CTA-95) and side, the opening board (a slot), then opening, event, dates and result. |
 | `src/views/library/OpeningFilterBoard.tsx` | The opening-moves board (`options.id` `library-filter-board`), and its *Save tree as PGN* link. |
@@ -81,7 +90,7 @@ for the Analysis Board and Saved analyses it hands games to.
 | `src/views/library/indexCollection.ts` | Runs the worker with progress and cancel, with a jsdom fallback. |
 | `src/views/library/LibraryMiss.tsx` | The "no such collection / game" screen. |
 | `src/views/library/*Main.tsx` | Layout-only wrappers that `routes.tsx` routes to. |
-| Tests | `src/lib/libraryCollections.test.ts`, `collectionZip.test.ts`, `collectionIndex.test.ts`, `openingTree.test.ts`, `openingTreePgn.test.ts`, `shippedCollections.test.ts`, `libraryCollectionStore.test.ts`, `libraryFolderStore.test.ts` (folder CRUD, `folderId`, the v1 → v2 upgrade), `folderTreeRows.test.ts`, `wirepgn.test.ts`, `gameReference.test.ts` (the `library` key), `src/views/library/Library.test.tsx` (the list, folders, a table, a game, settings), `LibraryFilters.test.tsx` (the panel's filters, the opening-moves board), `LibraryPicks.test.tsx` (download, Analyse, Save as collection), `LibraryImport.test.tsx` (adding a collection, the import popup) — sharing `libraryTestKit.tsx`, and `views/tools/analysis/AnalysisBoard.test.tsx` (a `?game=library/…` arrival). |
+| Tests | `src/lib/libraryCollections.test.ts`, `collectionZip.test.ts`, `collectionIndex.test.ts`, `openingTree.test.ts`, `openingTreePgn.test.ts`, `shippedCollections.test.ts`, `libraryCollectionStore.test.ts`, `libraryFolderStore.test.ts` (folder CRUD, `folderId`, the v1 → v2 upgrade), `folderTreeRows.test.ts`, `wirepgn.test.ts`, `gameReference.test.ts` (the `library` key), `src/views/library/Library.test.tsx` (the list, folders, a table, a game, settings), `LibraryFilters.test.tsx` (the panel's filters, the opening-moves board), `LibraryPicks.test.tsx` (download, Analyse, Save as collection), `LibraryImport.test.tsx` (adding a collection, the import popup), `LibraryTournament.test.tsx` (the tournament view, the list's trophy, the settings' suggestion — CTA-142) — sharing `libraryTestKit.tsx`, `src/lib/tournamentParticipants.test.ts`, and `views/tools/analysis/AnalysisBoard.test.tsx` (a `?game=library/…` arrival). |
 
 Locale keys all live under `library.*` in `src/locales/en.ts` / `he.ts`
 (`he` is typed `typeof en`, so a missing key is a compile error). The only
@@ -215,7 +224,7 @@ one-off actions (a download: `loadCollectionGames`).
 ### 3.1 Wiring a file — `scripts/wirepgn.js`
 
 ```sh
-node scripts/wirepgn.js path/to/Candidates2024.pgn [--name "…"] [--id slug]   # wire or re-wire
+node scripts/wirepgn.js path/to/Candidates2024.pgn [--name "…"] [--id slug] [--tournament [type]]   # wire or re-wire
 node scripts/wirepgn.js --list | --check | --rebuild | --remove <id>
 ```
 
@@ -228,8 +237,22 @@ node scripts/wirepgn.js --list | --check | --rebuild | --remove <id>
    because `loadOpeningBook`'s dynamic imports come back empty under the
    runner.
 3. Writes `<Stem>.index.json` and registers the collection in
-   `manifest.json`: `{ id, name, pgn, index, games, hash }`, where `hash` is
-   `textHash` (FNV-1a, line endings normalised) of the PGN.
+   `manifest.json`: `{ id, name, pgn, index, games, hash, tournament? }`,
+   where `hash` is `textHash` (FNV-1a, line endings normalised) of the PGN.
+4. **`--tournament`** (CTA-142) marks it a tournament: the entry's
+   `tournament` is a format (`"roundRobin"`), which `shippedCollectionsOf`
+   reads as the summary's mark — on, its `sharedEvent` true — so the
+   collection opens in the tournament view (§6.4.3) and shows a trophy in
+   the list (§6.2) for every reader. `--tournament <type>` names the format
+   (any with a table: `swiss`, `roundRobin`, `knockout`,
+   `doubleElimination`, `match`, `teamSwiss`, `teamKnockout`); bare, or
+   `auto`, takes the guess from the games' tags (`guessTournamentKind`,
+   `src/lib/tournamentKind.ts`) and prints it with its reason; `none` takes
+   a mark off. It refuses games that do not share one `Event`
+   (`canBeTournament`, the settings screen's rule) and `arena` (no table).
+   **Re-wiring without it keeps the mark** the entry had; `--rebuild`
+   never touches it. `--list` shows each mark. An unknown format in the
+   manifest is read as no mark.
 
 The name defaults to `collectionNameOfStem` (`TataSteel2025` → "Tata Steel
 2025"). The id defaults to `collectionIdOfStem` (the slug, `tatasteel2025`),
@@ -254,8 +277,9 @@ A sixth ships since CTA-128: **`candidates2026`, the FIDE Candidates 2026**
 (56 games, `wchcand26.pgn`, from The Week in Chess) — a tournament, so the
 Blog's `<CollectionTournamentTable>` demo
 (`/blog/writing-an-article/demo-tables/from-a-collection`) reads a collection
-every reader has. Shipped summaries carry no tournament mark (the manifest
-has none), so the embed is told its format (`format="roundRobin"`).
+every reader has. It is marked `roundRobin` in the manifest (CTA-142), so it
+opens in the tournament view; the demo still names its format
+(`format="roundRobin"`).
 
 Four more ship with it, each the demo of a Library-backed table: a knockout,
 **`netherlands2026`** (46 games, `chned26.pgn`); a double elimination,
@@ -263,8 +287,11 @@ Four more ship with it, each the demo of a Library-backed table: a knockout,
 **`worldblitzteam2026`** (216, `fidewrbtf26.pgn`); and a Swiss of teams,
 **`worldrapidteam2026`** (1,650, `fidewrt26.pgn`) — read by
 `<CollectionKnockoutBracket>`, `<CollectionDoubleEliminationBracket>` and
-`<CollectionTeamStandingsTable>` (`.claude/rules/tournament-tables.md`). Ten
-shipped collections, 10,754 games, listed by name in Built-in.
+`<CollectionTeamStandingsTable>` (`.claude/rules/tournament-tables.md`) —
+each marked in the manifest (CTA-142) as its guess reads it: `knockout`,
+`doubleElimination`, `teamKnockout`, `teamSwiss`. Ten shipped collections,
+10,754 games, listed by name in Built-in; the five tournaments with a
+trophy.
 
 ### 3.2 Loading — `lib/shippedCollections.ts`
 
@@ -299,7 +326,7 @@ shared `lib/idb.ts`.
 
 | Object store | Record | Read by |
 | --- | --- | --- |
-| `collections` | `{ id, name, addedAt, count, folderId, description?, tournament? }` | the list, which stays small |
+| `collections` | `{ id, name, addedAt, count, folderId, description?, tournament?, sharedEvent? }` | the list, which stays small |
 | `indexes` | `{ id, rows: IndexedRow[] }` | the table |
 | `games` | `{ id, games: string[] }` | a board, a download |
 | `folders` | `{ id, seq, value: GameFolder }` (an `idbRecordStore` row) | the list |
@@ -313,7 +340,16 @@ from before it has none, and an absent `folderId` — or one naming a folder tha
 is not there — reads as the top level. **So did CTA-121's `description` and
 `tournament`** (a stored mark `{ enabled, type }`, `type` one of all five
 formats so the later ones need no schema change): absent reads as no
-description / the mark off, the CTA-88 precedent again. A future schema
+description / the mark off, the CTA-88 precedent again. **CTA-142 added
+three formats** (`doubleElimination`, `teamSwiss`, `teamKnockout`) by
+appending to `TOURNAMENT_FORMATS` — the list the store's and the zip
+import's checks read — so an older record or zip reads with its type
+unchanged; never take a value out of it. **And `sharedEvent`**: the games'
+verdict (`canBeTournament` over the rows), written by `addCollection` and
+every `editGames` write, so the list can tell a tournament without an
+index; absent on an older record, which `readsAsTournament` reads by the
+rows where they are read, else by the mark alone. It is derived, so the
+export does not carry it — the import's `addCollection` works it out. A future schema
 change bumps the version again (§10.4).
 
 ### 4.3 Writes
@@ -438,8 +474,8 @@ or a count mismatch gives `undefined`.
 | `/library/new` | `LibraryUpload` (new collection) | the folders (for the picker) |
 | `/library/new?folder=<id>` | `LibraryUpload`, the picker starting at that folder (a folder row's *Add a collection here*); an unknown or Built-in id is the top level | the folders, waited for |
 | `/library/new?into=<id>` | `LibraryUpload` (add games; uploaded collections only, otherwise the miss) | that summary |
-| `/library/<collection>` | `CollectionScreen` | summary + rows |
-| `/library/<collection>/settings` | `CollectionSettingsScreen` (CTA-121) — uploads only; a shipped or missing id is the miss | summary + rows |
+| `/library/<collection>` | `CollectionScreen` — or, for a collection that reads as a tournament, its view (`TournamentCollection`, CTA-142): `?tab=info` (the default), `participants`, `games` | summary + rows (+ games on Info and Participants) |
+| `/library/<collection>/settings` | `CollectionSettingsScreen` (CTA-121) — uploads only; a shipped or missing id is the miss | summary + rows (+ games, for the suggested type, CTA-142) |
 | `/library/<collection>/<n>` | `LibraryGameScreen` → `LibraryGameBoard` | summary + games |
 
 `new` is a static segment, so it ranks above `:collectionId`. **Never give a
@@ -461,7 +497,11 @@ words box, **the table the one region that scrolls**, its header sticky.
   closes it in place; which folders are open is the screen's state, not the
   URL's. Clicking a collection row (`library-row-<id>`) opens its table, and
   its name is a **real link** (`library-collection-<id>`) for the keyboard and
-  a middle click. Names take `dir="auto"`.
+  a middle click. Names take `dir="auto"`. **A tournament** (CTA-142) — a
+  collection that reads as one from its summary (`readsAsTournament`: the
+  mark, and the kept `sharedEvent`; no index is read) — shows a trophy
+  (`library-tournament-icon-<id>`, `aria-hidden`) where the others show a
+  table, its name read with ", Tournament".
 - **Built-in** (`library-folder-builtin`) is always the first row and open at
   the start; it holds the shipped collections, and is read-only (§4.4): its
   one action is the download, and its collections' only action is theirs.
@@ -730,11 +770,21 @@ the `CollectionSettingsForm` block; the screen owns the draft and the write.
   event, and an empty collection is none). No games are loaded for the verdict.
   Off, the switch is disabled with its reason as its description
   (`library.settings.tournamentBlocked`) and no type is offered.
-- **Five formats, two live.** On, the type is radios: Swiss (the default when
-  first switched on) and Round robin selectable; Knockout, Arena and Match
-  play shown disabled ("coming later") — the type is stored as the five-value
-  union, so wiring them later needs no schema change. Each format's one-line
-  description sits under the group, all five at once.
+- **Every format with a table** (CTA-142; CTA-121 had Swiss and Round robin
+  only). On, the type is radios: Swiss (the default when first switched
+  on), Round robin, Knockout, Double elimination, Match play, Team Swiss /
+  round robin and Team knockout selectable; Arena shown disabled ("coming
+  later" — no table). Each format's one-line description sits under the
+  group, all at once.
+- **The suggested type** (CTA-142, `TournamentSuggestion`): the screen reads
+  the collection's **games** (their own tags — teams, FIDE ids — which the
+  rows do not keep) and `guessTournamentKind` names the kind they look like;
+  the form shows it under the switch, with its reason in the reader's
+  language (from the guess's `facts`), and **Apply** turns the mark on with
+  that type — in the draft: the reader still saves. Once the draft holds it,
+  Apply is off and the line says Save keeps it. Nothing is suggested while
+  the games are read, where the guess says nothing, or where the games
+  cannot be a tournament.
 - **Games added later under another `Event`** leave the stored mark untouched
   but it reads as off everywhere (`isTournamentCollection`) — until the games
   share one event again. The switch shows off with the same reason, and saving
@@ -742,6 +792,53 @@ the `CollectionSettingsForm` block; the screen owns the draft and the write.
 
 Shipped collections have no settings entry: no gear on their table, and the
 URL is the miss.
+
+#### 6.4.3 The tournament view — `TournamentCollection.tsx` (CTA-142)
+
+A collection that **reads as a tournament** (`isTournamentCollection` over
+its summary and rows) opens at `/library/<collection>` on a view of its own;
+any other keeps the table of §6.4, unchanged. One header (`ListScreenHeader`:
+back, the name — the page's one `h1` — the count, an upload's Settings
+gear), a `PanelTabs` strip (`library-tournament-tabs`, its tabs links), and
+the tab's panel (`tabPanelProps`, `library-tournament-panel-<tab>`):
+
+- **The tab is the URL's** — `?tab=info|participants|games`, each tab a link
+  to the same URL with its `tab` (the rest of the query kept), so a tab is
+  shareable and Back from a game returns to it. Absent, **Info** — unless
+  the URL carries the games table's own state (a filter, `q`, a sort, a
+  page: the Blog's Library-backed tables link a name as `?player=`), which
+  opens **Games** (`tournamentTabOf`, `tournamentTabs.ts`).
+- **Info** — the event (`TournamentInfo`: the description, then the type,
+  `Event`, `Site`, dates, rounds, players — or teams — and games, from the
+  rows at once and the games' tags once read) and **the table for the type
+  it is marked as**, drawn by the Blog's own Library-backed views over the
+  same reader (`<EmbedSource src="/library/<c>">`, `StandingsView`,
+  `KnockoutView`, `TeamStandingsView` — no second reader): Swiss →
+  standings, round robin → crosstable, match → the match table, knockout and
+  team knockout → the bracket, double elimination → the two brackets
+  (`losersFromRound` 51), team Swiss → the team standings; Arena has no
+  table and says so. Names link to the **Games tab filtered by that player**
+  (a team's to all its players), results to the game on the Library's board
+  (its back returning here). Games whose guess (`guessTournamentKind`) is
+  another type get an `InlineAlert` saying so and naming the type they look
+  like, with *Change the type* (an upload's settings).
+- **Participants** — the standouts (`TopPlayers`: best score, best
+  performance, most wins, longest unbeaten run), a team event's teams and
+  their players (`TeamRosters`, `teamTournamentOf` + `teamPlayersOf`), and
+  every player's record (`ParticipantsTable` over `participantsOf`:
+  rank, title and flag, team, rating, points, games, W / D / L,
+  performance — the opponents' average plus `400·log10(p / (1 − p))`, held
+  to ±800 — sortable, the sort the screen's state). Every name links to the
+  Games tab filtered by that player.
+- **Games** — `CollectionTable` itself, its behaviour, test ids and URL state
+  (`?player=`, `?sort=` …, written beside `?tab=games`) untouched; the strip
+  sits under its header and the table region is the tab's panel. The
+  filters' right-hand panel is this tab's; Info and Participants put only
+  the shipped / uploaded note there.
+
+Info and Participants read the collection's **games** (a shipped PGN's
+chunk, an upload's record) — their tags only (`readPgnTags` over each
+game), no move replayed; the Games tab, as ever, reads the rows alone.
 
 ### 6.5 Picks, export, delete, Analyse
 
@@ -893,10 +990,10 @@ the index instead (§10.1).
 ## 9. Testing
 
 - **Where**: pure logic in `src/lib/*.test.ts` (listed in §0). Screens in
-  four files under `src/views/library/` — `Library.test.tsx`,
+  five files under `src/views/library/` — `Library.test.tsx`,
   `LibraryFilters.test.tsx`, `LibraryPicks.test.tsx`, `LibraryImport.test.tsx`
   (one file until CTA-124, split so the suite's shards and workers can share
-  what was its longest file) — each mounting every Library route through
+  what was its longest file) and `LibraryTournament.test.tsx` (CTA-142) — each mounting every Library route through
   `libraryTestKit.tsx`'s `mount`: a `MemoryRouter` with `RightPanelProvider`
   and a probe (`where()` returns the current path and search). A new screen
   test goes in the file whose screen it drives; a helper two of them need, in
@@ -927,7 +1024,14 @@ the index instead (§10.1).
 - **Order-sensitive assertions**: the table opens newest first. A fixture
   with dates comes back reversed. Mount with `?sort=number` when a test needs
   collection order (for example, picking game 1 of Capablanca).
-- Commands: `npx vitest run src/views/library/` (the four screen files),
+- **The tournament view** (CTA-142) has its own file, `LibraryTournament.test.tsx`:
+  the tabs and the URL, each format's table on Info (the shipped
+  tournaments, marked in the manifest; uploads marked in their settings),
+  Participants for a player event and a team event, the misfit's
+  suggestion, the list's trophy, the settings' suggestion and Apply, and an
+  unmarked collection unchanged. The shipped team Swiss's 1,650 games make
+  its test the slowest; give such a test a timeout of its own.
+- Commands: `npx vitest run src/views/library/` (the five screen files),
   `npx vitest run src/lib/libraryCollectionStore.test.ts`,
   `npx vitest run src/lib/libraryFolderStore.test.ts`, then `yarn test:run`.
 
