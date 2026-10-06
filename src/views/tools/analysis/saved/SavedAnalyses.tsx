@@ -14,16 +14,29 @@ import { Chessboard } from "react-chessboard";
 
 import { FolderDeleteDialog, FolderMoveDialog, FolderNameDialog } from "../../../../blocks/dialogs";
 import { SAVED_LIST_DEFAULT_VIEW, SavedAnalysesList, type SavedListView } from "../../../../blocks/lists";
+import { SavedAnalysesTable } from "../../../../blocks/tables";
 import { DeleteManyDialog } from "../../../../design-system/components/dialogs";
+import { SearchField } from "../../../../design-system/components/forms";
 import { Breadcrumbs } from "../../../../design-system/components/navigation";
 import { LoadingLine } from "../../../../design-system/components/states";
-import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZES, TablePager } from "../../../../design-system/components/tables";
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZES, TablePager, useTableUrlState } from "../../../../design-system/components/tables";
 import { IconAction, ListScreenHeader, SelectionBar, ViewToggle } from "../../../../design-system/components/toolbars";
 import { mainlineGame, type GameTree } from "../../../../lib/gameTree";
 import { openingOfLine, type OpeningEntry } from "../../../../lib/openings";
 import { downloadPgn } from "../../../../lib/pgnExport";
 import { slugify } from "../../../../lib/pgnText";
 import { savedAnalysisFen, savedAnalysisToTree, type SavedAnalysis } from "../../../../lib/savedAnalyses";
+import {
+  filteredAnalysisRows,
+  SAVED_ANALYSES_DEFAULT_SORT,
+  SAVED_ANALYSIS_COLUMNS,
+  savedAnalysisFirstDirection,
+  savedAnalysisRowOf,
+  savedAnalysisRowWith,
+  sortedAnalysisRows,
+  type AnalysisOpeningLookup,
+  type SavedAnalysisRow,
+} from "../../../../lib/savedAnalysisRows";
 import {
   analysesHere,
   analysesInFolder,
@@ -59,13 +72,33 @@ import { useSavedAnalyses } from "./useSavedAnalyses";
  * Since CTA-113 it is the design system's composition, and holds only the
  * state: a `ListScreenHeader` (the title the page's `h1`, the count, New,
  * New folder, the `SelectionBar` and the `ViewToggle`), the folder trail
- * (`Breadcrumbs`), the **`SavedAnalysesList`** block (the rows or cards — the
- * repertoires' `RepertoiresList` is its sister, one look) and a
- * `TablePager`. The folder dialogs are the `blocks/dialogs` ones; the bulk
- * delete is `DeleteManyDialog`.
+ * (`Breadcrumbs`), the **`SavedAnalysesList`** block (the folders, and the
+ * cards — the repertoires' `RepertoiresList` is its sister, one look) with,
+ * in the list view, the **`SavedAnalysesTable`** block in its `table` slot
+ * (CTA-144), and the cards' `TablePager`. The folder dialogs are the
+ * `blocks/dialogs` ones; the bulk delete is `DeleteManyDialog`.
+ *
+ * - **The list view is a games table** (CTA-144) — most saved analyses are
+ *   imported games, and a folder of them is put in order: Name, White, Elo,
+ *   Black, Elo, Result, Date, Event, Round, ECO, Opening, Moves, Updated, each
+ *   a sort header, read off the record's PGN tags without parsing it
+ *   (`lib/savedAnalysisRows.ts`; a board's own placeholders read as empty);
+ *   newest updated first until a header is clicked; a words box over names,
+ *   players, event, opening and notes. **The sort and the filter cover the
+ *   whole folder**, and the page is cut after them. The sort, the page, its
+ *   size and the words are the URL's (`useTableUrlState`: `?sort=`, `?dir=`,
+ *   `?page=`, `?rows=`, `?q=`, history replace), so coming back from a board
+ *   or a settings screen finds the table as it was; a new sort, filter or
+ *   folder starts at the first page, and a new folder drops the words.
+ * - **The opening the book names** fills ECO and Opening where the tags name
+ *   none — over the whole folder while it holds at most
+ *   `SAVED_ANALYSES_PARSE_ALL` analyses (the largest page: no folder costs
+ *   more to read than one page always did), so those columns sort and filter
+ *   by it; in a larger folder (a Library batch) only for the page on screen,
+ *   and the sort and the filter read the tags alone.
  *
  * - **One destination.** An analysis opens on the Analysis Board
- *   (`?analysis=<id>`) — the Open button on a row, the board itself on a card.
+ *   (`?analysis=<id>`) — a row's name, the board itself on a card.
  * - **Its settings, from a gear** on every row and card
  *   (`AnalysisSettingsScreen.tsx`: title, description, side, next-move arrows
  *   and the folder it is filed under).
@@ -81,17 +114,19 @@ import { useSavedAnalyses } from "./useSavedAnalyses";
  *   anywhere but its own subtree, delete keeping the contents (an empty
  *   folder at once, otherwise after a confirmation), and download a folder's
  *   whole subtree as one `.pgn`. The folder the reader is standing in is
- *   `?folder=<id>`. **The picks persist across folders**: select-all adds
- *   what is here, and the chip counts the whole picked set.
+ *   `?folder=<id>`. **The picks persist across folders and views**:
+ *   select-all adds what is here (in the table, the rows the filter leaves),
+ *   and the chip counts the whole picked set.
  * - **A record the store has and cannot parse is still listed**, says so and
  *   can still be picked — to delete it, or to export its stored PGN intact.
- * - **Paged, and parsed a page at a time** (CTA-77; the design system's page
- *   sizes since CTA-113 — 25 / 50 / 100 / 250, 50 by default). The store holds
- *   thousands of analyses (a Library batch is a folder of them), so only the
- *   page on screen is parsed (each record once, kept while it is the stored
- *   one) — the rows, the counts and the picks read the records without
- *   parsing them. The pager shows once a folder holds more than the smallest
- *   page. Until the store's first read lands the screen says it is reading.
+ * - **Paged, and parsed no more than a page at a time** (CTA-77; the design
+ *   system's page sizes since CTA-113 — 25 / 50 / 100 / 250, 50 by default).
+ *   The store holds thousands of analyses (a Library batch is a folder of
+ *   them), so beyond `SAVED_ANALYSES_PARSE_ALL` only the page on screen is
+ *   parsed (each record once, kept while it is the stored one) — the table's
+ *   tag columns, the counts and the picks read the records without parsing
+ *   them. The pager shows once a folder holds more than the smallest page.
+ *   Until the store's first read lands the screen says it is reading.
  */
 
 /** How many analyses a page shows by default, in every view — the design system's one default. */
@@ -112,7 +147,41 @@ const treeOf = (saved: SavedAnalysis): GameTree | undefined => {
   return tree ?? undefined;
 };
 
-const boardPath = (saved: SavedAnalysis) => `/tools/analysis?analysis=${encodeURIComponent(saved.id)}`;
+/**
+ * How many analyses a folder may hold and still be read whole for the table —
+ * every record parsed, so the book's openings sort and filter with the tags
+ * and every unreadable record is marked: the largest page size, so no folder
+ * costs more to read than one page always could.
+ */
+const SAVED_ANALYSES_PARSE_ALL = TABLE_PAGE_SIZES[TABLE_PAGE_SIZES.length - 1];
+
+/* Each record's row off its tags, read once and kept while it is the stored one. */
+const tagRows = new WeakMap<SavedAnalysis, SavedAnalysisRow>();
+const tagRowOf = (saved: SavedAnalysis): SavedAnalysisRow => {
+  let row = tagRows.get(saved);
+  if (row === undefined) {
+    row = savedAnalysisRowOf(saved);
+    tagRows.set(saved, row);
+  }
+  return row;
+};
+
+/*
+  Each record's row with what its parse adds — unreadable, or the book's
+  opening where the tags name none. Kept once the book has landed (the one
+  loaded book is the only one there is); until then only the tree's verdict
+  is known, and the row is made again when it lands.
+*/
+const readRows = new WeakMap<SavedAnalysis, SavedAnalysisRow>();
+const readRowOf = (saved: SavedAnalysis, lookup: AnalysisOpeningLookup | undefined): SavedAnalysisRow => {
+  const kept = readRows.get(saved);
+  if (kept !== undefined) return kept;
+  const row = savedAnalysisRowWith(tagRowOf(saved), treeOf(saved), lookup);
+  if (lookup !== undefined) readRows.set(saved, row);
+  return row;
+};
+
+const boardPath = (saved: { id: string }) => `/tools/analysis?analysis=${encodeURIComponent(saved.id)}`;
 
 /** What the name dialog is open for — a folder made, or renamed. */
 type NameDialogState = { mode: "create"; parentId: string | null } | { mode: "rename"; folder: AnalysisFolder } | null;
@@ -149,7 +218,16 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
   const currentFolder = requestedFolder === null ? undefined : folders.find((folder) => folder.id === requestedFolder);
   const browseId = currentFolder?.id ?? null;
   usePageTitle(currentFolder === undefined ? undefined : currentFolder.name || t("savedAnalyses.folder.untitled"));
-  const openFolder = (id: string | null) => setSearchParams(id === null ? {} : { folder: id });
+  /* A new folder starts at its first page, without the words typed over the last; the sort and the page size stay. */
+  const openFolder = (id: string | null) =>
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (id === null) next.delete("folder");
+      else next.set("folder", id);
+      next.delete("page");
+      next.delete("q");
+      return next;
+    });
   const foldersHere = analysisFolderChildren(folders, browseId);
   const crumbs = currentFolder === undefined ? [] : analysisFolderPath(folders, currentFolder.id);
   // Keyed on what the URL asks for: the folder it resolves to is read off the same `folders`.
@@ -158,16 +236,53 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
     [analyses, folders, requestedFolder],
   );
 
-  /* The page on screen — back to the first whenever the reader changes folder. */
-  const [paging, setPaging] = useState<{ folder: string | null; page: number; rowsPerPage: number }>({
-    folder: browseId,
-    page: 0,
-    rowsPerPage: SAVED_ANALYSES_PAGE,
+  const isList = view === "list";
+  const book = useOpeningBook();
+  const lookup = useMemo<AnalysisOpeningLookup | undefined>(
+    () => (book === null ? undefined : (fens) => openingOfLine(book.book, book.positions, fens)),
+    [book],
+  );
+
+  /*
+    The table's rows (CTA-144): every analysis here off its tags — read whole,
+    parse and book included, while the folder is small enough — then the
+    words, then the sort, all over the whole folder; the page is cut after.
+  */
+  const text = searchParams.get("q") ?? "";
+  const parseAll = rowsHere.length <= SAVED_ANALYSES_PARSE_ALL;
+  const folderRows = useMemo(
+    () => (isList ? rowsHere.map((saved) => (parseAll ? readRowOf(saved, lookup) : tagRowOf(saved))) : []),
+    [isList, rowsHere, parseAll, lookup],
+  );
+  const filteredRows = useMemo(() => filteredAnalysisRows(folderRows, text), [folderRows, text]);
+  const table = useTableUrlState({
+    columns: SAVED_ANALYSIS_COLUMNS,
+    defaultSort: SAVED_ANALYSES_DEFAULT_SORT,
+    firstDirection: savedAnalysisFirstDirection,
+    defaultRowsPerPage: SAVED_ANALYSES_PAGE,
+    count: isList ? filteredRows.length : rowsHere.length,
   });
-  const { rowsPerPage } = paging;
-  const pageCount = Math.max(1, Math.ceil(rowsHere.length / rowsPerPage));
-  const page = paging.folder === browseId ? Math.min(paging.page, pageCount - 1) : 0;
-  const pageRows = useMemo(() => rowsHere.slice(page * rowsPerPage, (page + 1) * rowsPerPage), [rowsHere, page, rowsPerPage]);
+  const { page, rowsPerPage } = table;
+  const orderedRows = useMemo(
+    () => sortedAnalysisRows(filteredRows, table.sort, table.direction),
+    [filteredRows, table.sort, table.direction],
+  );
+  // A folder too big to read whole is read a page at a time: the page on screen, in the order shown.
+  const tableRows = useMemo(() => {
+    if (parseAll) return orderedRows;
+    const byId = new Map(rowsHere.map((saved) => [saved.id, saved]));
+    const from = page * rowsPerPage;
+    return orderedRows.map((row, index) => {
+      const saved = index >= from && index < from + rowsPerPage ? byId.get(row.id) : undefined;
+      return saved === undefined ? row : readRowOf(saved, lookup);
+    });
+  }, [parseAll, orderedRows, rowsHere, page, rowsPerPage, lookup]);
+
+  /* The cards' page — the folder as it comes, newest first. */
+  const pageRows = useMemo(
+    () => (isList ? [] : rowsHere.slice(page * rowsPerPage, (page + 1) * rowsPerPage)),
+    [isList, rowsHere, page, rowsPerPage],
+  );
 
   const [nameDialog, setNameDialog] = useState<NameDialogState>(null);
   const [moving, setMoving] = useState<AnalysisFolder | null>(null);
@@ -236,8 +351,6 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
     setDeleting(folder);
   };
 
-  const book = useOpeningBook();
-
   /*
     One walk per analysis on the page, memoised on the page and the book. The
     **mainline** is what is named: it is what the analysis is of, where a side
@@ -254,6 +367,38 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
       }),
     [pageTrees, book],
   );
+
+  /* The selection bar's chip and actions — every view's; its select-all is the cards' alone. */
+  const selectionBar = {
+    count: selected.length,
+    countLabel: t("savedAnalyses.selected", { count: selected.length }),
+    onClear: () => setPicked(new Set()),
+    clearLabel: t("savedList.clearSelected"),
+    actions: (
+      <>
+        <IconAction
+          label={t("savedAnalyses.download")}
+          disabled={selected.length === 0}
+          onClick={() => downloadPgn("chess-trainer-analyses", selected.map((saved) => saved.pgn))}
+          testId="saved-analyses-download"
+        >
+          <DownloadRoundedIcon fontSize="small" />
+        </IconAction>
+        <IconAction
+          label={t("savedAnalyses.deleteSelected")}
+          disabled={selected.length === 0}
+          onClick={() => {
+            setAskedCount(selected.length);
+            setDeletingPicked(true);
+          }}
+          testId="saved-analyses-delete"
+        >
+          <DeleteOutlineRoundedIcon fontSize="small" />
+        </IconAction>
+      </>
+    ),
+    testId: "saved-analyses",
+  };
 
   // Save and Cancel on a settings screen come back to this list as it stands.
   const from = `${location.pathname}${location.search}`;
@@ -292,47 +437,30 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
               >
                 {t("savedAnalyses.folder.newFolder")}
               </Button>
-              {/* The selection bar, in every view: the cards carry picks too. */}
-              {analyses.length > 0 && (
-                <SelectionBar
-                  checked={rowsHere.length > 0 && selectedHere.length === rowsHere.length}
-                  indeterminate={selectedHere.length > 0 && selectedHere.length < rowsHere.length}
-                  onToggleAll={toggleAllHere}
-                  selectAllLabel={t("savedAnalyses.selectAll")}
-                  count={selected.length}
-                  countLabel={t("savedAnalyses.selected", { count: selected.length })}
-                  onClear={() => setPicked(new Set())}
-                  clearLabel={t("savedList.clearSelected")}
-                  actions={
-                    <>
-                      <IconAction
-                        label={t("savedAnalyses.download")}
-                        disabled={selected.length === 0}
-                        onClick={() => downloadPgn("chess-trainer-analyses", selected.map((saved) => saved.pgn))}
-                        testId="saved-analyses-download"
-                      >
-                        <DownloadRoundedIcon fontSize="small" />
-                      </IconAction>
-                      <IconAction
-                        label={t("savedAnalyses.deleteSelected")}
-                        disabled={selected.length === 0}
-                        onClick={() => {
-                          setAskedCount(selected.length);
-                          setDeletingPicked(true);
-                        }}
-                        testId="saved-analyses-delete"
-                      >
-                        <DeleteOutlineRoundedIcon fontSize="small" />
-                      </IconAction>
-                    </>
-                  }
-                  testId="saved-analyses"
-                />
-              )}
+              {/*
+                The selection bar, in every view: the cards carry picks too.
+                Beside the table it leaves its select-all out — the table's
+                header has it, over the rows the filter leaves.
+              */}
+              {analyses.length > 0 &&
+                (isList ? (
+                  <SelectionBar {...selectionBar} />
+                ) : (
+                  <SelectionBar
+                    {...selectionBar}
+                    checked={rowsHere.length > 0 && selectedHere.length === rowsHere.length}
+                    indeterminate={selectedHere.length > 0 && selectedHere.length < rowsHere.length}
+                    onToggleAll={toggleAllHere}
+                    selectAllLabel={t("savedAnalyses.selectAll")}
+                  />
+                ))}
               {/* Switching view keeps the picks: every view has them. */}
               <ViewToggle<SavedListView>
                 value={view}
-                onChange={setView}
+                onChange={(next) => {
+                  setView(next);
+                  table.setPage(0);
+                }}
                 options={[
                   { value: "list", label: t("savedAnalyses.view.list"), icon: <ViewListRounded fontSize="small" /> },
                   { value: "compact", label: t("savedAnalyses.view.compact"), icon: <ViewComfyRounded fontSize="small" /> },
@@ -369,6 +497,44 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
           view={view}
           folders={foldersHere.map((folder) => ({ folder, count: analysesUnderFolder(analyses, folders, folder.id) }))}
           entries={entries}
+          table={
+            isList && rowsHere.length > 0 ? (
+              <SavedAnalysesTable
+                rows={tableRows}
+                sort={{ column: table.sort, direction: table.direction }}
+                onSort={table.sortBy}
+                paging={
+                  orderedRows.length > TABLE_PAGE_SIZES[0]
+                    ? { page, rowsPerPage, onPageChange: table.setPage, onRowsPerPageChange: table.setRowsPerPage }
+                    : undefined
+                }
+                picked={picked}
+                onPickedChange={setPicked}
+                openLink={(row) => ({ component: RouterLink, to: boardPath(row) })}
+                settingsLink={(row) => ({
+                  component: RouterLink,
+                  to: `/tools/analysis/saved/${encodeURIComponent(row.id)}/settings`,
+                  state: { from },
+                })}
+                filtered={text.trim() !== ""}
+                onClearFilter={() => table.setParams({ q: null })}
+                filters={
+                  <SearchField
+                    label={t("savedAnalyses.table.filter")}
+                    value={text}
+                    onChange={(value) => table.setParams({ q: value === "" ? null : value })}
+                    clearLabel={t("savedAnalyses.table.filterClear")}
+                    testId="saved-analyses-filter"
+                  />
+                }
+                testId="saved-analyses-table"
+                rowTestId="saved-analyses-item"
+                openTestId="saved-analyses-open"
+                pickTestId="saved-analyses-select"
+                selectAllTestId="saved-analyses-select-all"
+              />
+            ) : undefined
+          }
           picked={picked}
           onTogglePick={togglePicked}
           openLink={(saved) => ({ component: RouterLink, to: boardPath(saved) })}
@@ -408,13 +574,14 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
           testId="saved-analyses"
         />
 
-        {rowsHere.length > TABLE_PAGE_SIZES[0] && (
+        {/* The cards' pager; the table carries its own. */}
+        {!isList && rowsHere.length > TABLE_PAGE_SIZES[0] && (
           <TablePager
             count={rowsHere.length}
             page={page}
             rowsPerPage={rowsPerPage}
-            onPageChange={(next) => setPaging({ folder: browseId, page: next, rowsPerPage })}
-            onRowsPerPageChange={(rows) => setPaging({ folder: browseId, page: 0, rowsPerPage: rows })}
+            onPageChange={table.setPage}
+            onRowsPerPageChange={table.setRowsPerPage}
             labelRowsPerPage={t("savedAnalyses.rowsPerPage")}
             testId="saved-analyses-pagination"
           />
