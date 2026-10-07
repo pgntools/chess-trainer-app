@@ -15,7 +15,7 @@
  * the hook clamps to whatever the running build declared.
  */
 
-import { ENGINE_SETTING_BOUNDS } from "./engineSettings";
+import { DEFAULT_ENGINE_SETTINGS, ENGINE_SETTING_BOUNDS } from "./engineSettings";
 
 /** The knobs the Analysis Board's Engine tab drives. */
 export type AnalysisSettings = {
@@ -33,6 +33,15 @@ export type AnalysisSettings = {
    * search that never ends keeps a core busy for as long as the page is open.
    */
   infinite: boolean;
+  /**
+   * UCI `Threads` and `Hash` (MB) — Play with Engine's own knobs, the same on
+   * every board (CTA-160): a multi-thread engine chosen in Settings → Engine
+   * searches on as many threads here as there. Requests, held to
+   * `ENGINE_SETTING_BOUNDS` by {@link analysisUciOptionsOf} and clamped to what
+   * the running engine declares (the single-thread build pins `Threads` to 1).
+   */
+  threads: number;
+  hashMb: number;
 };
 
 /**
@@ -45,12 +54,16 @@ export const DEFAULT_ANALYSIS_SETTINGS: AnalysisSettings = {
   multiPv: 3,
   moveTimeMs: 0,
   infinite: false,
+  threads: DEFAULT_ENGINE_SETTINGS.threads,
+  hashMb: DEFAULT_ENGINE_SETTINGS.hashMb,
 };
 
-/** The depth and move time an analysis board offers — Play with Engine's own (`ENGINE_SETTING_BOUNDS`). */
+/** What an analysis board offers — Play with Engine's own (`ENGINE_SETTING_BOUNDS`). */
 export const ANALYSIS_SETTING_BOUNDS = {
   depth: ENGINE_SETTING_BOUNDS.depth,
   moveTimeMs: ENGINE_SETTING_BOUNDS.moveTimeMs,
+  threads: ENGINE_SETTING_BOUNDS.threads,
+  hashMb: ENGINE_SETTING_BOUNDS.hashMb,
 } as const;
 
 /**
@@ -63,7 +76,40 @@ export const ANALYSIS_SETTING_BOUNDS = {
  */
 export const ANALYSIS_UCI_OPTION = {
   multiPv: "MultiPV",
+  threads: "Threads",
+  hashMb: "Hash",
 } as const satisfies Partial<Record<keyof AnalysisSettings, string>>;
+
+/**
+ * The option-backed settings as the engine module takes them — UCI name →
+ * requested value — with `Threads` and `Hash` held to the ceilings whatever a
+ * stored or imported analysis says (a hash past them crashes the tab).
+ * Play with Engine's `uciOptionsOf`, without the strength.
+ */
+export const analysisUciOptionsOf = (
+  settings: Pick<AnalysisSettings, keyof typeof ANALYSIS_UCI_OPTION>,
+): Record<string, number> => ({
+  [ANALYSIS_UCI_OPTION.multiPv]: settings.multiPv,
+  [ANALYSIS_UCI_OPTION.threads]: Math.min(settings.threads, ENGINE_SETTING_BOUNDS.threads.max),
+  [ANALYSIS_UCI_OPTION.hashMb]: Math.min(settings.hashMb, ENGINE_SETTING_BOUNDS.hashMb.max),
+});
+
+/**
+ * Settings with the values the running engine clamped them to (the engine
+ * module's `onUciOptionsReady`) — **the same object** when nothing moved, so a
+ * caller's state setter re-runs nothing keyed on it.
+ */
+export const withClampedAnalysisUciOptions = (
+  current: AnalysisSettings,
+  clamped: Readonly<Record<string, number>>,
+): AnalysisSettings => {
+  const multiPv = clamped[ANALYSIS_UCI_OPTION.multiPv] ?? current.multiPv;
+  const threads = clamped[ANALYSIS_UCI_OPTION.threads] ?? current.threads;
+  const hashMb = clamped[ANALYSIS_UCI_OPTION.hashMb] ?? current.hashMb;
+  return multiPv === current.multiPv && threads === current.threads && hashMb === current.hashMb
+    ? current
+    : { ...current, multiPv, threads, hashMb };
+};
 
 const finiteNumber = (value: unknown, fallback: number): number =>
   typeof value === "number" && Number.isFinite(value) && value >= 0
@@ -91,6 +137,9 @@ export const analysisSettingsFrom = (value: unknown): AnalysisSettings => {
     ),
     // A record from before infinite analysis has none: off.
     infinite: row.infinite === true,
+    // …nor threads or a hash (CTA-160): Play with Engine's defaults.
+    threads: finiteNumber(row.threads, DEFAULT_ANALYSIS_SETTINGS.threads),
+    hashMb: finiteNumber(row.hashMb, DEFAULT_ANALYSIS_SETTINGS.hashMb),
   };
 };
 
@@ -102,4 +151,6 @@ export const sameAnalysisSettings = (
   a.depth === b.depth &&
   a.multiPv === b.multiPv &&
   a.moveTimeMs === b.moveTimeMs &&
-  a.infinite === b.infinite;
+  a.infinite === b.infinite &&
+  a.threads === b.threads &&
+  a.hashMb === b.hashMb;

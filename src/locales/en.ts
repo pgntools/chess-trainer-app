@@ -1193,6 +1193,8 @@ const en = {
       moveTimeValue: "{{seconds}}s",
       moveTimeNone: "No limit",
       multiPv: "Variations to show",
+      threads: "Threads",
+      hash: "Hash (MB)",
       evalBar: "Show evaluation bar",
       /** The arrows of the next moves from the position on screen. */
       arrows: "Show next-move arrows",

@@ -769,6 +769,21 @@ describe("Play — the engine plays the opponent's best move until paused", () =
     expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
   });
 
+  it("asks the engine for Threads and Hash as Play with Engine does — a multi-thread engine's threads adjustable here too (CTA-160)", () => {
+    vi.stubGlobal("crossOriginIsolated", true);
+    localStorage.setItem("chessapp.engine", "stockfish-19-lite-multi");
+    mountEngineOn();
+    openTab("engine");
+
+    expect(FakeEngine.latest().descriptor?.id).toBe("stockfish-19-lite-multi");
+    expect(FakeEngine.latest().setOptions).toEqual(
+      expect.arrayContaining([["MultiPV", 3], ["Threads", 1], ["Hash", 16]]),
+    );
+    expect(screen.getByRole("slider", { name: "Threads" })).toBeEnabled();
+    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toBeEnabled();
+    vi.unstubAllGlobals();
+  });
+
   it("pauses when the board is flipped — the engine's side changed under it (CTA-74)", () => {
     mountEngineOn();
     play();

@@ -181,7 +181,12 @@ takes `infinite?: boolean` beside `depth` and `moveTimeMs`.
   or imported game's too. The Engine tab offers less where the device is
   smaller (`deviceEngineLimits`: threads one fewer than the cores, at most 8;
   hash by `navigator.deviceMemory` — 1024 at 8 GB, 512 at 4, 128 below, 256
-  where the browser does not say).
+  where the browser does not say). **Every board alike**: the analysis boards
+  have Play with Engine's Threads and Hash too (`AnalysisSettings.threads` /
+  `hashMb`, the same defaults — 1 thread, 16 MB — the same sliders and ids,
+  `analysisUciOptionsOf` holding them to the same ceilings, saved with an
+  analysis), so a multi-thread engine chosen in Settings → Engine searches on
+  as many threads on the Analysis Board as in a game.
 
 What was measured (CTA-160, headless Chromium on a 20-core desktop, a
 middlegame position; times to *reach* each depth — a laptop or phone is

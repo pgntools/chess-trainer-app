@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 
 import {
-  ANALYSIS_UCI_OPTION,
+  analysisUciOptionsOf,
+  withClampedAnalysisUciOptions,
   DEFAULT_ANALYSIS_SETTINGS,
   type AnalysisSettings,
 } from "../../../lib/analysisSettings";
@@ -72,10 +73,7 @@ export const useAnalysisSession = ({
   const [showEvalBar, setShowEvalBar] = useState(true);
   const onUciOptionsReady = useCallback(
     (clamped: Readonly<Record<string, number>>) =>
-      setSettings((current) => {
-        const multiPv = clamped[ANALYSIS_UCI_OPTION.multiPv] ?? current.multiPv;
-        return multiPv === current.multiPv ? current : { ...current, multiPv };
-      }),
+      setSettings((current) => withClampedAnalysisUciOptions(current, clamped)),
     [],
   );
   /*
@@ -96,8 +94,8 @@ export const useAnalysisSession = ({
     // Play needs a search that ends with a move: while it is on, the depth and time decide.
     infinite: settings.infinite && !playing,
     uciOptions: useMemo(
-      () => ({ [ANALYSIS_UCI_OPTION.multiPv]: settings.multiPv }),
-      [settings.multiPv],
+      () => analysisUciOptionsOf({ multiPv: settings.multiPv, threads: settings.threads, hashMb: settings.hashMb }),
+      [settings.multiPv, settings.threads, settings.hashMb],
     ),
     onUciOptionsReady,
     onBestMove: play.onBestMove,

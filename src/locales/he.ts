@@ -884,6 +884,8 @@ const he: typeof en = {
       moveTimeValue: "{{seconds}} שניות",
       moveTimeNone: "ללא הגבלה",
       multiPv: "מספר הווריאציות להצגה",
+      threads: "תהליכונים",
+      hash: "זיכרון גיבוב (MB)",
       evalBar: "הצגת סרגל ההערכה",
       arrows: "הצגת חיצי המהלכים הבאים",
       clear: "ניקוי הלוח",

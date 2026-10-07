@@ -8,8 +8,15 @@ import type { EngineOption } from "../../../lib/engineTypes";
 
 const spin = (name: string, min: number, max: number): [string, EngineOption] => [name, { name, type: "spin", min, max }];
 
-/** The default build, Stockfish 19 single-thread: MultiPV to 256 (the slider stops at 10). */
-export const SHIPPED: ReadonlyMap<string, EngineOption> = new Map([spin("MultiPV", 1, 256), spin("Threads", 1, 1)]);
+/** The default build, Stockfish 19 single-thread: MultiPV to 256 (the slider stops at 10), Threads pinned, Hash far past a tab. */
+export const SHIPPED: ReadonlyMap<string, EngineOption> = new Map([
+  spin("MultiPV", 1, 256),
+  spin("Threads", 1, 1),
+  spin("Hash", 1, 33554432),
+]);
+
+/** The multi-thread build: Threads 1–32. */
+export const MULTI_THREAD: ReadonlyMap<string, EngineOption> = new Map([...SHIPPED, spin("Threads", 1, 32)]);
 
 /** A build that pins MultiPV at one line. */
 export const PINNED: ReadonlyMap<string, EngineOption> = new Map([spin("MultiPV", 1, 1)]);

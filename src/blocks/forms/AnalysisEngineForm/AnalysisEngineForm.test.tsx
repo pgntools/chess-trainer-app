@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AnalysisEngineForm, { type AnalysisEngineFormProps } from "./AnalysisEngineForm";
-import { ABSENT, BEFORE_HANDSHAKE, PINNED, SETTINGS, SHIPPED } from "./fixtures";
+import { ABSENT, BEFORE_HANDSHAKE, MULTI_THREAD, PINNED, SETTINGS, SHIPPED } from "./fixtures";
 
 const mount = (props: Partial<AnalysisEngineFormProps> = {}) => {
   const onChange = vi.fn();
@@ -49,6 +49,25 @@ describe("AnalysisEngineForm", () => {
     expect(onChange).toHaveBeenCalledWith({ depth: 19 });
     await user.click(screen.getByRole("switch", { name: "Show evaluation bar" }));
     expect(onShowEvalBarChange).toHaveBeenCalledWith(false);
+  });
+
+  it("has Play with Engine's Threads and Hash, by what the engine declared and what the device can give (CTA-160)", async () => {
+    const user = userEvent.setup();
+    mount();
+    // The single-thread build pins Threads.
+    expect(screen.getByRole("slider", { name: "Threads" })).toBeDisabled();
+    expect(screen.getByTestId("engine-setting-threads-fixed")).toHaveTextContent("This engine build fixes Threads at 1.");
+    // Hash is declared to 33,554,432 MB; offered to the 1024 ceiling.
+    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("aria-valuemax", "1024");
+
+    const { onChange } = mount({ engineOptions: MULTI_THREAD, deviceLimits: { threads: 6, hashMb: 512 } });
+    const threads = screen.getAllByRole("slider", { name: "Threads" }).at(-1)!;
+    expect(threads).toBeEnabled();
+    expect(threads).toHaveAttribute("aria-valuemax", "6");
+    expect(screen.getAllByRole("slider", { name: "Hash (MB)" }).at(-1)).toHaveAttribute("aria-valuemax", "512");
+    threads.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(onChange).toHaveBeenLastCalledWith({ threads: SETTINGS.threads + 1 });
   });
 
   it("turns the search's controls off while the engine is", () => {
