@@ -5,3 +5,4 @@
  */
 export * from "./ChipsAutocomplete";
 export * from "./SelectAutocomplete";
+export * from "./SuggestAutocomplete";

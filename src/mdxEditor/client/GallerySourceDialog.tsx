@@ -1,15 +1,21 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 
+import { SuggestAutocomplete } from "../../design-system/components/autocompletes";
 import { FormDialog } from "../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../design-system/components/feedback";
 import { FileInputButton, RadioGroupField, SelectField, TextInputField } from "../../design-system/components/forms";
 import { splitPgnGames } from "../../lib/pgn";
 import { isBrowserOnly, sourceAddressOf, sourcePathOf, type SourceAddress } from "../../lib/embedSource";
-import { findShippedCollection } from "../../lib/shippedCollections";
+import { loadUploadedCollections } from "../../lib/libraryCollectionStore";
+import { loadPlayedGames, playedGamesSnapshot } from "../../lib/playedGameStore";
+import { loadSavedAnalyses, savedAnalysesSnapshot } from "../../lib/savedAnalysisStore";
+import { loadSavedRepertoires, savedRepertoiresSnapshot } from "../../lib/savedRepertoireStore";
+import { findShippedCollection, shippedCollections } from "../../lib/shippedCollections";
+import { addressEntriesOf, addressOptionsOf, type AddressEntry } from "./addressOptions";
 import { HEAVY_GAMES, misfitOf, type BuiltInExample, type GalleryEntry } from "./componentGallery";
 import { GALLERY_ID, gamesWords, type Applied, type Choice } from "./gallerySource";
 import HeavyPgnDialog from "./HeavyPgnDialog";
@@ -70,9 +76,31 @@ function GallerySourceDialog({
   /** The heavy-PGN dialog, open over this one. */
   const [weighing, setWeighing] = useState(false);
 
+  /** The records an address can be found by name among — read when the address is chosen (`undefined` until then). */
+  const [records, setRecords] = useState<readonly AddressEntry[]>();
+  useEffect(() => {
+    if (choice !== "address" || records !== undefined) return;
+    let live = true;
+    void Promise.all([loadUploadedCollections(), loadSavedAnalyses(), loadSavedRepertoires(), loadPlayedGames()]).then(([uploaded]) => {
+      if (!live) return;
+      setRecords(
+        addressEntriesOf({
+          collections: [...shippedCollections, ...uploaded],
+          analyses: savedAnalysesSnapshot() ?? [],
+          repertoires: savedRepertoiresSnapshot() ?? [],
+          playedGames: playedGamesSnapshot() ?? [],
+        }),
+      );
+    });
+    return () => {
+      live = false;
+    };
+  }, [choice, records]);
+  const suggestions = useMemo(() => addressOptionsOf(records ?? [], address), [records, address]);
+
   /** The address looked up — whatever it names in the app, found in its store — or the field says why not. */
-  const lookUp = async () => {
-    const named = sourceAddressOf(address);
+  const lookUp = async (text = address) => {
+    const named = sourceAddressOf(text);
     if (named === undefined) {
       return setLookup({
         looking: false,
@@ -83,7 +111,7 @@ function GallerySourceDialog({
     const described = await describeAddress(named);
     if ("problem" in described) return setLookup({ looking: false, problem: described.problem });
     setLookup(undefined);
-    setFound({ address, named, label: described.label });
+    setFound({ address: text, named, label: described.label });
   };
 
   // An uploaded or pasted PGN: its weight, read once per text.
@@ -206,17 +234,20 @@ function GallerySourceDialog({
             ))}
           {choice === "address" && (
             <>
-              <TextInputField
+              <SuggestAutocomplete
                 label="The address"
                 value={address}
                 onChange={(value) => {
                   setAddress(value);
                   setLookup(undefined);
                 }}
-                placeholder="/library/candidates2026, /tools/analysis?analysis=…"
+                // A record picked by its name is looked up at once: its address is the field's now.
+                onPick={(option) => void lookUp(option.value)}
+                options={suggestions}
+                placeholder="A name to find, or /library/candidates2026, /tools/analysis?analysis=…"
                 dir="ltr"
                 error={lookup?.looking === false}
-                helperText={lookup?.looking === false ? lookup.problem : "Copy it from the address bar on its screen — the host and all."}
+                helperText={lookup?.looking === false ? lookup.problem : "Start typing a collection, analysis, repertoire or played game's name — or copy its address from the address bar, the host and all."}
                 testId={`${ID}-address`}
               />
               <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
