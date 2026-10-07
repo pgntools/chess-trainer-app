@@ -6,6 +6,7 @@ import { parsePgnTree } from "./pgn";
 import { batchAnalysesOf, savedAnalysisOf, type SavedAnalysis } from "./savedAnalyses";
 import type { GameFolder } from "./savedGameFolders";
 import {
+  analysisMatcherOf,
   analysisTreeRows,
   compareAnalysisFolders,
   filteredAnalysisRows,
@@ -227,5 +228,28 @@ describe("analysisTreeRows — folders and analyses as one tree (CTA-144)", () =
     const untitled = folder("fu", "");
     expect([untitled, FOLDERS[0]].sort(compareAnalysisFolders("name", "asc")).map((f) => f.id)).toEqual(["fo", "fu"]);
     expect([untitled, FOLDERS[0]].sort(compareAnalysisFolders("name", "desc")).map((f) => f.id)).toEqual(["fo", "fu"]);
+  });
+});
+
+describe("analysisMatcherOf — what the words keep", () => {
+  const folder = (name: string): GameFolder => ({ id: "f", name, parentId: null, savedAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" });
+
+  it("is nothing for no words", () => {
+    expect(analysisMatcherOf("")).toBeUndefined();
+    expect(analysisMatcherOf("   ")).toBeUndefined();
+  });
+
+  it("keeps the rows holding every word, case aside — as the table's filter does", () => {
+    const match = analysisMatcherOf("MAGNUS tata")!;
+    const carlsen = savedAnalysisRowOf(imported(GAME));
+    expect(match.item(carlsen)).toBe(true);
+    expect(match.item(row({ id: "x", name: "Magnus alone" }))).toBe(false);
+    expect(filteredAnalysisRows([carlsen], "MAGNUS tata")).toEqual([carlsen]);
+  });
+
+  it("keeps a folder whose name holds every word", () => {
+    const match = analysisMatcherOf("tata steel")!;
+    expect(match.folder(folder("Tata Steel 2024"))).toBe(true);
+    expect(match.folder(folder("Tata"))).toBe(false);
   });
 });

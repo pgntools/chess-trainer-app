@@ -36,6 +36,12 @@ export type TreeNode = {
   selectable?: boolean;
   /** `auto` for a reader's words (a folder's name), so a Hebrew or Latin name reads its own way. */
   dir?: "auto" | "ltr";
+  /**
+   * The node cannot be followed or selected now (a record that must not be
+   * left over unsaved work): its row stays in the tree and the tab order,
+   * `aria-disabled`, and does nothing. A branch still opens.
+   */
+  disabled?: boolean;
 };
 
 export type TreeViewProps = {
@@ -63,6 +69,11 @@ export type TreeViewProps = {
    */
   hint: VisibleLabel;
   /**
+   * Let a long label wrap onto more lines instead of ending in an ellipsis —
+   * for names that are the reader's own words and must be read whole.
+   */
+  wrapLabels?: boolean;
+  /**
    * The root list. The parts: `-<id>` (a node's row), `-<id>-toggle` (a
    * selectable branch's chevron), `-<id>-group` (a branch's open children).
    */
@@ -84,7 +95,7 @@ type RowContext = Omit<TreeViewProps, "nodes" | "ariaLabel" | "hint"> & {
 type RowProps = RowContext & { node: TreeNode; depth: number };
 
 function TreeRow({ node, depth, ...context }: RowProps) {
-  const { open, onToggle, activeId, onSelect, toggleLabel, testId, tabStop, onFocusRow, register, groupIdOf } = context;
+  const { open, onToggle, activeId, onSelect, toggleLabel, wrapLabels, testId, tabStop, onFocusRow, register, groupIdOf } = context;
   const branch = node.children !== undefined;
   const isOpen = branch && open.has(node.id);
   const selectable = !branch || node.selectable === true || node.link !== undefined;
@@ -101,7 +112,10 @@ function TreeRow({ node, depth, ...context }: RowProps) {
     opens and closes it, and stays out of the link count. A selectable branch
     is a destination with a chevron of its own.
   */
-  const rowAction = selectable
+  const disabled = node.disabled === true && !branch;
+  const rowAction = disabled
+    ? {}
+    : selectable
     ? node.link !== undefined
       ? linkProps(node.link)
       : { onClick: () => onSelect?.(node) }
@@ -118,11 +132,18 @@ function TreeRow({ node, depth, ...context }: RowProps) {
           aria-expanded={branch ? isOpen : undefined}
           aria-owns={isOpen ? groupId : undefined}
           aria-current={active ? "page" : undefined}
+          aria-disabled={disabled || undefined}
           tabIndex={tabStop === node.id ? 0 : -1}
           onFocus={() => onFocusRow(node.id)}
           selected={active}
           data-testid={`${testId}-${node.id}`}
-          sx={{ gap: 1, paddingInlineStart: indentOf(depth), flex: 1, minWidth: 0 }}
+          sx={{
+            gap: 1,
+            paddingInlineStart: indentOf(depth),
+            flex: 1,
+            minWidth: 0,
+            ...(disabled ? { opacity: 0.6, cursor: "default" } : {}),
+          }}
         >
           {node.icon !== undefined && (
             <ListItemIcon aria-hidden sx={{ minWidth: 0, color: active ? "primary.main" : "text.secondary" }}>
@@ -134,8 +155,9 @@ function TreeRow({ node, depth, ...context }: RowProps) {
             slotProps={{
               primary: {
                 dir: node.dir,
-                noWrap: true,
+                noWrap: wrapLabels !== true,
                 sx: {
+                  ...(wrapLabels === true ? { overflowWrap: "anywhere" } : {}),
                   fontWeight: branch || active ? 700 : 500,
                   color: branch || active ? "text.primary" : "text.secondary",
                 },

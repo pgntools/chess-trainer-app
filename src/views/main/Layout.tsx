@@ -4,8 +4,6 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import useMediaQuery from '@mui/material/useMediaQuery';
-import type { Theme } from '@mui/material/styles';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import { Link as RouterLink, Outlet, useLocation, useMatches, type UIMatch } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +16,9 @@ import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
 import { useRightPanelHidden } from './rightPanelSlot';
 import { LeftPanelOutlet, LeftPanelProvider } from './leftPanel';
+import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from './boardLeftPanel';
+import { useBoardLeftPanelWidth } from './boardLeftPanelSlot';
+import { useShellCompact } from './shellCompact';
 import { ARTICLE_MAX_WIDTH_PX, descriptionKeyOf, isArticleRoute, isFullWidthRoute, pageMetaOf, pageTitleOf, screenIdOf, titleKeyOf } from './routeHandle';
 import { createPageTitleStore, PageTitleContext } from './pageTitle';
 import { visuallyHidden } from '../../design-system/components/a11y';
@@ -77,19 +78,6 @@ const SIDEBAR_WIDTH_PX = 280;
  */
 const PANEL_MIN_WIDTH_PX = 320;
 const PANEL_MAX_WIDTH_PX = 560;
-
-/**
- * **The shell's one breakpoint** (CTA-118, WCAG 1.4.10 Reflow). Below it the
- * window has no room for a 280px rail beside a board beside a 320px panel —
- * at 320 CSS px, which is a 1280px window at 400% zoom, it had none for any
- * of them and `main` came out 0px wide. Under it the rail becomes a drawer
- * off the header and the panel stacks under the square; above it the shell is
- * exactly what it was.
- *
- * One breakpoint rather than two: the rail and the panel are the same 280 +
- * 320 px of fixed chrome, so they stop fitting together.
- */
-const SHELL_COMPACT_BREAKPOINT = 'md';
 
 /**
  * The stacked panel's least height, in pixels. Stacked, the panel has no
@@ -273,7 +261,7 @@ const DefaultLayoutViewport = () => {
       a drawer (a different element, mounted only while it is open) and the
       board square is measured against the width alone.
     */
-    const compact = useMediaQuery((theme: Theme) => theme.breakpoints.down(SHELL_COMPACT_BREAKPOINT));
+    const compact = useShellCompact();
 
     // The board area is sized in pixels because `react-chessboard` fills its
     // container and has no intrinsic size. `ref` sits on the padded board
@@ -281,6 +269,20 @@ const DefaultLayoutViewport = () => {
     // measurement already excludes the header, the footer and the sidebar —
     // whatever is left is what the square has to fit inside.
     const ref = useRef<HTMLDivElement>(null)
+    /*
+      A screen's own left panel (`BoardLeftPanel`, CTA-145 — the Analysis
+      Board's sibling list) is a column of the row, before the square, and its
+      width and gap come out of the square's like the aside's: a function of
+      what is registered alone, so the square stays square. **While it is open
+      the screen takes the whole window** — no header, no main menu rail, no
+      footer (`focused`): the room for a column, a square and the panel beside
+      it is not there with the menu's 280 px taken. Closing the panel brings the
+      shell back. Stacked there is no column (the screen draws a drawer, and the
+      header and its menu button stay).
+    */
+    const leftPanelWidth = useBoardLeftPanelWidth()
+    const leftPanelOpen = leftPanelWidth > 0 && !compact
+    const leftPanelPx = leftPanelOpen ? leftPanelWidth + BOARD_PANEL_GAP_PX : 0
     const [bodyDimentions, setBodyDimentions] = useState<Rect>({ width: 0, height: 0 })
 
     useEffect(() => {
@@ -340,7 +342,7 @@ const DefaultLayoutViewport = () => {
             : Math.max(
                 0,
                 Math.min(
-                    width - PANEL_MIN_WIDTH_PX - BOARD_PANEL_GAP_PX - BOARD_INSET_PX * 2,
+                    width - PANEL_MIN_WIDTH_PX - BOARD_PANEL_GAP_PX - BOARD_INSET_PX * 2 - leftPanelPx,
                     height - BOARD_INSET_PX * 2,
                 ),
             )
@@ -349,7 +351,7 @@ const DefaultLayoutViewport = () => {
             height: minorSide,
         }
 
-    },[bodyDimentions, compact])
+    },[bodyDimentions, compact, leftPanelPx])
 
     /*
       A screen that spans the aside (`HideRightPanel`, CTA-142 — the Library's
@@ -363,13 +365,13 @@ const DefaultLayoutViewport = () => {
     const asideHidden = useRightPanelHidden();
     const areaDimentions = useMemo<Rect>(() => {
         if (!asideHidden || compact || boardDimentions.width === 0) return boardDimentions;
-        const inner = bodyDimentions.width - BOARD_INSET_PX * 2;
+        const inner = bodyDimentions.width - BOARD_INSET_PX * 2 - leftPanelPx;
         const aside = Math.min(
             PANEL_MAX_WIDTH_PX,
             Math.max(PANEL_MIN_WIDTH_PX, inner - boardDimentions.width - BOARD_PANEL_GAP_PX),
         );
         return { width: boardDimentions.width + BOARD_PANEL_GAP_PX + aside, height: boardDimentions.height };
-    }, [asideHidden, compact, boardDimentions, bodyDimentions])
+    }, [asideHidden, compact, boardDimentions, bodyDimentions, leftPanelPx])
 
 
 
@@ -541,7 +543,7 @@ const DefaultLayoutViewport = () => {
             }}
         >
             <SkipLink onSkip={focusMain} />
-            <Header compact={compact} onOpenNav={openNav} />
+            {!leftPanelOpen && <Header compact={compact} onOpenNav={openNav} />}
 
             <Box
                  data-testid="layout-wrapper"
@@ -568,7 +570,7 @@ const DefaultLayoutViewport = () => {
                     renders `<SideBar/>`. The slot swaps *content*, not the
                     row's proportions.
                 */}
-                {compact ? (
+                {leftPanelOpen ? null : compact ? (
                     <NavDrawer
                         open={navOpen}
                         onClose={closeNav}
@@ -634,6 +636,7 @@ const DefaultLayoutViewport = () => {
                             overflowY: compact ? "auto" : "hidden",
                         }}
                    >
+                        {!fullWidth && <BoardLeftPanelOutlet compact={compact} />}
                         {fullWidth ? (
                             <Box
                                 {...mainProps}
@@ -816,7 +819,7 @@ const DefaultLayoutViewport = () => {
 
             </Box>
 
-            <Footer />
+            {!leftPanelOpen && <Footer />}
 
         </Box>
         </PageTitleContext.Provider>
@@ -835,7 +838,9 @@ const DefaultLayout = ()=>
                 */}
                 <RightPanelProvider>
                     <LeftPanelProvider>
-                        <DefaultLayoutViewport />
+                        <BoardLeftPanelProvider>
+                            <DefaultLayoutViewport />
+                        </BoardLeftPanelProvider>
                     </LeftPanelProvider>
                 </RightPanelProvider>
             </BoardWidgetContext.Provider>

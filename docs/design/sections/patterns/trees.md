@@ -29,7 +29,7 @@ Gallery: `/dev/design/patterns/trees/TreeView` and
   Enter follows the link, selects the node or opens a folder.
 - **Nodes** — `TreeNode = { id, label, icon?, secondary? (a count at the
   row's end), link? (a LinkTarget), children? (a branch; `[]` is an empty
-  one), selectable?, dir? }`.
+  one), selectable?, dir?, disabled? (a leaf that does nothing now — focusable, `aria-disabled`) }`.
 - **Two kinds of branch** —
   - a **folder that only opens** (the sidebar's, the gallery's): the row is
     the toggle, and stays out of the link count;
@@ -41,7 +41,7 @@ Gallery: `/dev/design/patterns/trees/TreeView` and
 - **Props** — `nodes`, `open: ReadonlySet<string>` + `onToggle(id)`
   (controlled: the caller opens the chain to what is on screen, and keeps
   the rest as the reader left it), `activeId?`, `onSelect?(node)` (a
-  selectable node with no link), `toggleLabel?(node, open)`, `ariaLabel`
+  selectable node with no link), `toggleLabel?(node, open)`, `wrapLabels?` (a long label wraps instead of ending in an ellipsis — for names that must be read whole), `ariaLabel`
   (required), `hint` (required, CTA-112 — how the tree is worked, "Up and
   down arrows to move, right to open, left to close, Enter to go.": read
   with the tree by a screen reader, its `aria-describedby`, out of sight; the

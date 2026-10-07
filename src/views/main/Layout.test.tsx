@@ -14,6 +14,8 @@ import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { DefaultLayout } from "./Layout";
 import { HideRightPanel, RightPanel } from "./rightPanel";
 import { LeftPanel } from "./leftPanel";
+import { BoardLeftPanel } from "./boardLeftPanel";
+import { BOARD_LEFT_PANEL_COLLAPSED_PX, BOARD_LEFT_PANEL_WIDTH_PX } from "./boardLeftPanelSlot";
 import { ForceLTR } from "../../theme/ForceLTR";
 import { ARTICLE_MAX_WIDTH_PX, ARTICLE_ROUTE, FULL_WIDTH_ROUTE } from "./routeHandle";
 
@@ -605,6 +607,174 @@ describe("fixed-width rails", () => {
   square. jsdom answers every media query `false`, which is the desktop shell
   — what every test above renders; these stub the narrow window instead.
 */
+describe("the board's own left panel (CTA-145)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** A screen with a panel of its own beside the board — shown or not, its drawer opened or not — keeping a count of its own. */
+  const WithPanel = () => {
+    const [shown, setShown] = useState(true);
+    const [open, setOpen] = useState(false);
+    const [collapsed, setCollapsed] = useState(false);
+    const [count, setCount] = useState(0);
+    return (
+      <div data-testid="screen">
+        <button onClick={() => setShown((on) => !on)}>toggle</button>
+        <button onClick={() => setCollapsed((on) => !on)}>fold</button>
+        <button onClick={() => setOpen(true)}>open drawer</button>
+        <button onClick={() => setCount((c) => c + 1)}>bump {count}</button>
+        {shown && (
+          <BoardLeftPanel collapsed={collapsed} open={open} onClose={() => setOpen(false)} drawerLabel="Folder analyses">
+            <p data-testid="panel-content">The folder</p>
+          </BoardLeftPanel>
+        )}
+      </div>
+    );
+  };
+
+  it("draws no column while no screen registers one", () => {
+    renderShell();
+    expect(screen.queryByTestId("layout-board-left-panel")).toBeNull();
+  });
+
+  it("puts a registered panel in its own column before the square, in the board's row", async () => {
+    renderShell([{ index: true, element: <WithPanel /> }]);
+    const column = await screen.findByTestId("layout-board-left-panel");
+    expect(within(column).getByTestId("panel-content")).toBeInTheDocument();
+    expect(column).toHaveStyle({ width: `${BOARD_LEFT_PANEL_WIDTH_PX}px` });
+    const viewport = screen.getByTestId("layout-board-viewport");
+    const order = [...viewport.children].map((child) => child.getAttribute("data-testid"));
+    expect(order).toEqual(["layout-board-left-panel", "layout-main", "layout-board-square-sidebar"]);
+  });
+
+  it("gives the screen the whole window while open — no header, no main menu, no footer — and the shell back when closed, without a remount", async () => {
+    renderShell([{ index: true, element: <WithPanel /> }]);
+    await screen.findByTestId("layout-board-left-panel");
+    expect(screen.queryByTestId("layout-header")).toBeNull();
+    expect(screen.queryByTestId("layout-sidebar-container")).toBeNull();
+    expect(screen.queryByRole("navigation", { name: i18n.t("nav.ariaLabel") })).toBeNull();
+    expect(screen.queryByTestId("layout-footer")).toBeNull();
+    // The page keeps its landmarks and its skip link.
+    expect(screen.getByRole("main")).toBeInTheDocument();
+    expect(screen.getByTestId("layout-skip-link")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "bump 0" }));
+    fireEvent.click(screen.getByRole("button", { name: "toggle" }));
+    expect(screen.getByTestId("layout-header")).toBeInTheDocument();
+    expect(within(screen.getByTestId("layout-sidebar-container")).getByRole("navigation", { name: i18n.t("nav.ariaLabel") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "bump 1" })).toBeInTheDocument();
+  });
+
+  it("takes its width and the gap out of the square's, and gives them back — without a remount", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(1000, 600));
+    renderShell([{ index: true, element: <WithPanel /> }]);
+    const square = screen.getByTestId("layout-board-square-body");
+
+    // min(1000 - 320 - 16 - 32 - 400 - 16, 600 - 32): the column and the gap before it come off the width too.
+    await waitFor(() => expect(square).toHaveStyle({ width: "216px", height: "216px" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "bump 0" }));
+    fireEvent.click(screen.getByRole("button", { name: "toggle" }));
+    expect(screen.queryByTestId("layout-board-left-panel")).toBeNull();
+    // min(1000 - 320 - 16 - 32, 568) = 568.
+    await waitFor(() => expect(square).toHaveStyle({ width: "568px", height: "568px" }));
+    expect(screen.getByRole("button", { name: "bump 1" })).toBeInTheDocument();
+  });
+
+  it("folds to a rail and opens again — the square takes the width back and gives it up, without a remount", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(1200, 600));
+    renderShell([{ index: true, element: <WithPanel /> }]);
+    const square = screen.getByTestId("layout-board-square-body");
+    const column = await screen.findByTestId("layout-board-left-panel");
+    // min(1200 - 320 - 16 - 32 - 400 - 16, 568) = 416.
+    await waitFor(() => expect(square).toHaveStyle({ width: "416px" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "fold" }));
+    expect(column).toHaveStyle({ width: `${BOARD_LEFT_PANEL_COLLAPSED_PX}px` });
+    // The rail's own 48 and the gap: min(1200 - 320 - 16 - 32 - 48 - 16, 568) = 568.
+    await waitFor(() => expect(square).toHaveStyle({ width: "568px" }));
+    // The shell stays away while the panel is folded: it is the same window.
+    expect(screen.queryByTestId("layout-header")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "fold" }));
+    expect(column).toHaveStyle({ width: `${BOARD_LEFT_PANEL_WIDTH_PX}px` });
+    await waitFor(() => expect(square).toHaveStyle({ width: "416px" }));
+  });
+
+  it("counts the column in the room the area reaches across when the aside is hidden", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(1000, 600));
+    renderShell([
+      {
+        index: true,
+        element: (
+          <>
+            <WithPanel />
+            <HideRightPanel />
+          </>
+        ),
+      },
+    ]);
+    // The square 216, the gap, and the aside's room: 1000 - 32 - 400 - 16 - 216 - 16 = 320 (its minimum).
+    await waitFor(() => expect(screen.getByTestId("layout-board-square-body")).toHaveStyle({ width: "552px", height: "216px" }));
+  });
+
+  it("mirrors with the app: its column's border is the side the square is on, never a physical one", async () => {
+    await i18n.changeLanguage("he");
+    renderShell([{ index: true, element: <WithPanel /> }]);
+    const column = await screen.findByTestId("layout-board-left-panel");
+    expect(column.className).toMatch(/muirtl-/);
+    expect(column.closest("[dir='ltr']")).toBeNull();
+  });
+
+  describe("under the breakpoint", () => {
+    const wideWindow = window.matchMedia;
+    beforeEach(() => {
+      window.matchMedia = ((query: string) =>
+        ({
+          matches: /max-width/.test(query),
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    });
+    afterEach(() => {
+      window.matchMedia = wideWindow;
+    });
+
+    it("has no column — the panel is a drawer the screen opens, named, closed on Escape", async () => {
+      const user = userEvent.setup();
+      renderShell([{ index: true, element: <WithPanel /> }]);
+
+      expect(screen.queryByTestId("layout-board-left-panel")).toBeNull();
+      // The shell is whole: the header and its menu button stay.
+      expect(screen.getByTestId("layout-header")).toBeInTheDocument();
+      // Closed, nothing of it is in the page.
+      expect(screen.queryByTestId("panel-content")).toBeNull();
+
+      await user.click(screen.getByRole("button", { name: "open drawer" }));
+      const sheet = await screen.findByRole("dialog", { name: "Folder analyses" });
+      expect(within(sheet).getByTestId("panel-content")).toBeInTheDocument();
+
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Folder analyses" })).toBeNull());
+    });
+
+    it("reserves none of the square's width for it", async () => {
+      const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+      grbc.mockReturnValue(rect(500, 900));
+      renderShell([{ index: true, element: <WithPanel /> }]);
+      // Stacked: the width less the inset, as without a panel.
+      await waitFor(() => expect(screen.getByTestId("layout-board-square-body")).toHaveStyle({ width: "468px", height: "468px" }));
+    });
+  });
+});
+
 describe("the shell under its breakpoint (CTA-118)", () => {
   /*
     A window under the breakpoint: the `max-width` queries match, nothing else

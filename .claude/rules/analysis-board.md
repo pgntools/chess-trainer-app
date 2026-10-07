@@ -13,6 +13,10 @@ paths:
   - "src/lib/gameReference*"
   - "src/lib/gameCatalog*"
   - "src/lib/pgnExport*"
+  - "src/lib/analysesListContext*"
+  - "src/blocks/trees/AnalysesTree/**"
+  - "src/views/main/boardLeftPanel*"
+  - "src/views/main/shellCompact.ts"
   - "src/blocks/lists/SavedAnalysesList/**"
   - "src/blocks/lists/FolderActions/**"
   - "src/blocks/lists/FolderPicker/**"
@@ -68,8 +72,11 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/lib/arrowSettings.ts` | The Arrows tab's ids (CTA-98): `ArrowWidthSource`, `ArrowPaletteId`, their defaults and readers (`arrowWidthSourceFrom`, `arrowPaletteFrom`). |
 | `src/lib/nextMoveWeights.ts` | Each width source's weights at a branch (`nextMoveWeights`), the `[%eval]` reader (`evalOf`), and which sources a tree offers (`arrowWidthSourcesIn`). Pure. The `games` tag's reader is `lib/gamesTag.ts`. |
 | `src/lib/gameReference.ts` + `gameCatalog.ts` | **The `?game=` carrier** (§3). |
+| `src/lib/analysesListContext.ts` | **Where the board was opened from** (CTA-145, §1.2), pure: `listContextOf` (the URL's `?folder=` / `?sort=` / `?dir=`), `analysisBoardPath` and `analysesListPath` (the links that carry and restore them), `siblingAnalysesOf` / `siblingPlaceOf` (previous / next). |
+| `src/blocks/trees/AnalysesTree/` | The workspace's tree (CTA-145): the list's folders and analyses nested and collapsible over `TreeView`, rooted at one folder, names wrapped, a Close link, a fold to a rail, a lock while the board holds unsaved changes; `analysesTreeNodes` the pure nodes. `views/tools/analysis/AnalysesFolderView.tsx` reads the stores and hosts it, `folderViewState.ts` what the reader did to it. |
+| `src/views/main/boardLeftPanel.tsx`, `boardLeftPanelSlot.ts`, `shellCompact.ts` | The shell's slot the tree is registered in (CTA-145, §1.2): a column of the board's row (`BOARD_LEFT_PANEL_WIDTH_PX`) or a rail (`BOARD_LEFT_PANEL_COLLAPSED_PX`), the window taken whole while it is there, a drawer under the breakpoint (`useShellCompact`). |
 | `src/lib/pgnExport.ts` | `downloadPgn` — several stored PGN records joined with a blank line (`pgnFileOf`), saved as a file. Also Settings' Export's (`downloadBinaryFile`, [`import-export.md`](./import-export.md)). |
-| Tests | `AnalysisBoard.test.tsx` (every arrival, Save, Load, Export, Play, the hand-off, the Arrows tab, the PGN's shapes drawn and written), `useTreeNavigation.test.ts`, `EngineThinking.test.tsx`, `nextMoveArrows.test.ts`, `src/lib/nextMoveWeights.test.ts`, `saved/SavedAnalyses.test.tsx` (the table, the cards and the panel's new-analysis form), `saved/AnalysisSettingsScreen.test.tsx`, `src/lib/savedAnalyses.test.ts`, `src/lib/savedAnalysisRows.test.ts`, `src/blocks/tables/SavedAnalysesTable/SavedAnalysesTable.test.tsx`, `savedAnalysisStore.test.ts`, `savedAnalysisFolderStore.test.ts`, `savedGameFolders.test.ts`, `gameReference.test.ts`, and the propagation tests in `src/views/board/`. |
+| Tests | `AnalysisBoard.test.tsx` (every arrival, Save, Load, Export, Play, the hand-off, the Arrows tab, the PGN's shapes drawn and written), `useTreeNavigation.test.ts`, `EngineThinking.test.tsx`, `nextMoveArrows.test.ts`, `src/lib/nextMoveWeights.test.ts`, `saved/SavedAnalyses.test.tsx` (the table, the cards and the panel's new-analysis form), `saved/AnalysisSettingsScreen.test.tsx`, `src/lib/savedAnalyses.test.ts`, `src/lib/savedAnalysisRows.test.ts`, `src/blocks/tables/SavedAnalysesTable/SavedAnalysesTable.test.tsx`, `savedAnalysisStore.test.ts`, `savedAnalysisFolderStore.test.ts`, `src/lib/analysesListContext.test.ts`, `src/blocks/trees/AnalysesTree/` (`AnalysesTree.test.tsx`, `analysesTreeNodes.test.tsx` — the filter included), `src/views/main/Layout.test.tsx` (the left panel's slot), the `TreeView` pattern's tests (`wrapLabels`, `disabled`), `savedGameFolders.test.ts`, `gameReference.test.ts`, and the propagation tests in `src/views/board/`. |
 
 Routes and nav: the **Analysis** folder is `singleEntry` and renders as one
 row to `/tools/analysis/saved`; the board itself has no nav entry and is the
@@ -174,6 +181,84 @@ the record says (a new board: on, None, Classic):
   (Okabe–Ito, `#0072B2` / `#E69F00` / `#CC79A7`) — mainline / side line /
   hovered, each apart from the untagged gray. It colours the library arrows
   and the width-sized ones alike.
+
+### 1.2 The workspace — the list's tree beside the board (CTA-145)
+
+An analysis **opened from the saved list** (a row of the table or a card)
+opens the board as a **workspace**: the shell gives it the whole window — no
+header, no main menu, no footer — and the list's own tree in a column on its
+left. A link from anywhere else (an embed, the Library, a hand-off, a pasted
+address) is the plain board.
+
+- **The context is the URL's**: `?analysis=<id>&folder=<id>` — the folder the
+  analysis was opened from, **empty for the top level** — and the table's own
+  `?sort=` / `?dir=` when they differ from the default (Updated, newest
+  first). `lib/analysesListContext.ts` writes and reads them
+  (`analysisBoardPath`, `listContextOf`). The list's rows and cards link
+  through it (`boardPath` in `SavedAnalyses.tsx`: a row carries **its own**
+  folder, which in a tree table is not always the `?folder=` the reader is
+  standing in, and the table's sort; the cards, newest first). The board keeps
+  it while it is a record — Save as copy points the URL at the copy and keeps
+  it — and a Load, a Clear or a hand-over drops it, which ends the workspace.
+- **The tree** (`AnalysesTree`, hosted by `AnalysesFolderView`): the list's
+  folders nested and collapsible in the main menu's look (`TreeView`), the
+  analyses in them in the table's order, every name wrapped whole, the open one
+  current. **It is rooted at the folder the board was opened from**: that
+  folder's contents are the top rows, nothing outside it is listed, and the
+  root stays where it was opened from as the reader clicks through (every link
+  in the tree carries the same context). The chain to the open analysis starts
+  open; the folders the reader opens or closes, the pages and the fold are kept
+  by the **route** (`AnalysisBoardRoute`, `FolderViewState`), so they survive
+  stepping to another analysis. A branch carries the count under it; a folder
+  lists a page of 100 analyses (always up to the open one) and a "Show N more"
+  row — a folder of thousands is never mounted whole. The order is the
+  table's, over each record's **tags** (no parsing; the table's ECO and Opening
+  columns may add the book's name where tags name none, which this order does
+  not), read live from the store — an Update under the default sort moves the
+  record to the top (there is no manual order; a follow-up).
+- **The filter box** above the tree narrows it by words, as the list's own
+  words box does (`analysisMatcherOf`, `lib/savedAnalysisRows.ts`, shared with
+  the table): an analysis stays when it holds every word (name, notes, players,
+  Elos, event, round, date, ECO, opening — tags only), a folder whose name does
+  stays with all that is in it, a folder with neither is left out, and the
+  counts are the matches. **Every branch left is open while the words stand**
+  (so a folder cannot be collapsed until they are cleared), the page and "show
+  more" still apply, and "No analysis matches the filter." says an empty
+  result (the list's strings). The words are `FolderViewState.text`, kept by
+  the route like the fold, so they survive stepping to another analysis; Escape
+  or the clear button empties it; the folded rail has no box.
+- **Close goes back to the list**, on the folder and in the order the board
+  was opened from (`analysesListPath`); in-app navigation is not guarded
+  (the board's list link behaves the same), a reload still asks (`beforeunload`).
+- **Fold**: a button in the panel's header folds the column to a rail at the
+  start edge — two buttons, open it again and Close — and gives the board the
+  room (the rail is 48 px, the column 400; arrows point at the start edge under
+  Hebrew). The window stays the board's while folded.
+- **Previous / next** in the board's header walk the open analysis' own folder
+  in the same order (`siblingAnalysesOf`), disabled at the ends.
+- **Unsaved changes come first**: while the session holds any (`state.unsaved`)
+  the tree's analyses (disabled, `aria-disabled`, no link — folders still open)
+  and previous / next are off, and a note says why; the header's Save opens the
+  changes strip (Update / Save as copy / Discard). Nothing is written by
+  looking.
+- **A click, previous or next is a link to the other analysis' board.** The
+  route keys the board by a generation it bumps when the URL names an analysis
+  the board did not write itself — the board reads its arrival once — so another
+  analysis is a new board, the browser's Back between two works, and a save's
+  own URL write (`onPointUrl`) is not taken for an arrival.
+- **Where it lives**: the shell's **board left panel**
+  (`views/main/boardLeftPanel.tsx` — `BoardLeftPanel`, `BoardLeftPanelOutlet`,
+  `useBoardLeftPanelWidth`), a slot like the right-hand one — **not** the main
+  menu's `LeftPanel` slot, which stays unused. While a panel is registered the
+  shell hides its header, rail and footer (a rail, a column, a square and the
+  aside do not fit together) and takes the column's width, and the gap, out of
+  the square's, so the board stays square. The shell puts its own theme back
+  around the panel (`ShellThemeContext`), which sits inside the board's
+  `ForceLTR`, so the column mirrors and the tree's arrow keys follow the
+  direction. **Under the shell's breakpoint** (`useShellCompact`) there is no
+  column and the header stays: the tree is a `NavDrawer` the shell draws,
+  opened from a header button, closed on Escape — no fold there, Close still
+  leaves for the list.
 
 ---
 
