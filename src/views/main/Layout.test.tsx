@@ -125,6 +125,20 @@ describe("app shell footer", () => {
     );
   });
 
+  it("links to the Privacy Policy and the Cookies Notice, in both languages (CTA-159)", async () => {
+    const first = renderShell();
+    const footer = within(screen.getByTestId("layout-footer"));
+    expect(footer.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/privacy");
+    expect(footer.getByRole("link", { name: "Cookies Notice" })).toHaveAttribute("href", "/cookies");
+    first.unmount();
+
+    await i18n.changeLanguage("he");
+    renderShell();
+    const hebrew = within(screen.getByTestId("layout-footer"));
+    expect(hebrew.getByRole("link", { name: "מדיניות פרטיות" })).toHaveAttribute("href", "/privacy");
+    expect(hebrew.getByRole("link", { name: "הודעת עוגיות" })).toHaveAttribute("href", "/cookies");
+  });
+
   it("leaves the footer on the shell's direction — only the board is pinned LTR", async () => {
     await i18n.changeLanguage("he");
     renderShell();

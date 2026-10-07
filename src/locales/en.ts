@@ -218,6 +218,9 @@ const en = {
     mdxEditor: "MDX editor",
     mdxArticles: "MDX editor — articles",
     mdxComponents: "MDX editor — components gallery",
+    /** The legal pages (CTA-159), reached from the footer. */
+    privacy: "Privacy Policy",
+    cookies: "Cookies Notice",
   },
   /**
    * **Each screen's description** (CTA-136) — its page's `<meta name="description">`
@@ -242,6 +245,8 @@ const en = {
     /** A shipped collection's own page (`/library/<collection>`) — its name and its count. */
     collectionNamed: "{{name}}: {{games}} chess games to search, filter by player, opening, event and date, and replay on a board.",
     settings: "Export your data as one zip and bring it back, see how much space it takes, and choose how the app looks.",
+    privacy: "What chessapp.dev keeps on your device, what it never collects, and your rights under the GDPR and Israel's Protection of Privacy Law.",
+    cookies: "chessapp.dev sets no cookies. Every item it stores in your browser — preferences and your own chess data — and why.",
   },
   /**
    * **A shared link's image** (CTA-136, `lib/shareImage.ts`): the words read
@@ -2483,6 +2488,9 @@ const en = {
   footer: {
     /** Label on the link out to the project's source repository. */
     source: "Source",
+    /** The legal pages' links (CTA-159). */
+    privacy: "Privacy Policy",
+    cookies: "Cookies Notice",
   },
 };
 
