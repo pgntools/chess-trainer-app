@@ -57,6 +57,7 @@ describe("the migrated screens' outlines (CTA-112)", () => {
     ["/settings/storage", "Settings"],
     ["/settings/appearance", "Settings"],
     ["/settings/engine", "Settings"],
+    ["/settings/support", "Settings"],
     // CTA-113: the rest of the app.
     ["/", "Get started"],
     ["/tools/analysis", "Analysis Board"],

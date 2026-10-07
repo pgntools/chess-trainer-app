@@ -64,6 +64,8 @@ const en = {
     settingsAppearance: "Appearance",
     /** Settings' Engine tab (CTA-153), in the Settings folder. */
     settingsEngine: "Engine",
+    /** Settings' Support tab (CTA-155), in the Settings folder. */
+    settingsSupport: "Support",
     /** The dev-only design gallery (CTA-107), in the Development folder. */
     designSystem: "Design system",
     /** The dev-only theme editor (CTA-115), in the Development folder. */
@@ -2294,6 +2296,7 @@ const en = {
       storage: "Storage",
       appearance: "Appearance",
       engine: "Engine",
+      support: "Support",
     },
     /** The Export tab: the reader's data as PGN files and a manifest, in one zip. */
     export: {
@@ -2439,6 +2442,16 @@ const en = {
       intro:
         "Choose the engine the boards use. It applies to every board from its next search and is remembered on this device. A game against the engine is played by the engine it began with, and a saved game goes on with its own.",
       note: "An engine that cannot run on this host is listed anyway, with what it needs.",
+    },
+    /** The Support tab (CTA-155): how to reach us — a numbered list, the preferred way first. */
+    support: {
+      title: "Need help with {{name}}?",
+      intro: "Found a bug, have an idea or a question? We would like to hear from you.",
+      heading: "How to reach us",
+      items: {
+        issue: { title: "Raise a GitHub issue (preferred)", text: "Bugs, ideas and questions, in the open — others can follow along and add to them." },
+        email: { title: "Send an email", text: "If GitHub is not for you, write to us at:" },
+      },
     },
   },
   /** The engine picker (`src/blocks/forms/EnginePicker`, CTA-153): the engines to choose between. */

@@ -177,6 +177,8 @@ export const ROUTES: readonly PageRoute[] = [
   { id: "settings-appearance", pattern: "/settings/:tab", path: "settings/appearance" },
   // The Engine tab (CTA-153): the registry's engines, the multi-thread one disabled where the host does not isolate the page.
   { id: "settings-engine", pattern: "/settings/:tab", path: "settings/engine" },
+  // The Support tab (CTA-155): a line and the button that opens the support dialog.
+  { id: "settings-support", pattern: "/settings/:tab", path: "settings/support" },
   ...blogArticleRoutes().map(
     ({ path, board }): PageRoute => ({
       id: `blog-${path.replaceAll("/", "-")}`,

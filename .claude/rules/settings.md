@@ -6,12 +6,12 @@ paths:
 # Settings — `/settings/<tab>`
 
 The app's own settings (CTA-86): one screen, **one tab per concern**, each tab
-a route segment. Five tabs today — **Export** and **Import** (the reader's
+a route segment. Six tabs today — **Export** and **Import** (the reader's
 data out as one zip and back in — everything about them, the zip, the
 manifest, the layers, conflicts, caps, migrations, is
 [`import-export.md`](./import-export.md)), **Storage** (how much space the
 app's data takes, CTA-94), **Appearance** (the theme, CTA-107) and **Engine**
-(which engine every board runs, CTA-153). This file is the section.
+(which engine every board runs, CTA-153) and **Support** (how to reach us, CTA-155). This file is the section.
 
 ## 1. The section
 
@@ -19,8 +19,8 @@ app's data takes, CTA-94), **Appearance** (the theme, CTA-107) and **Engine**
 | --- | --- | --- |
 | Route | `routes.tsx` — `/settings` and `/settings/:tab` | Both render `SettingsMain.tsx`; `/settings` and an unknown tab redirect to the first tab (Export). |
 | Screen | `views/settings/SettingsScreen.tsx` | The title, a tab strip (each `Tab` a `RouterLink` to `/settings/<id>`), the active tab's content scrolling under it. |
-| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (the `EnginePicker` block). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
-| Nav | `navFolders()` — `settings` (`nav.folders.settings`, `pinToBottom`); `navItems()` — one entry per tab (`nav.settingsExport`, `nav.settingsImport`, `nav.settingsStorage`, `nav.settingsAppearance`, `nav.settingsEngine`) | A folder, **not** `singleEntry`, so a tab is one more entry in it. Pinned to the sidebar's foot, under a divider, apart from the screens (`Sidebar.tsx`). |
+| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (the `EnginePicker` block), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
+| Nav | `navFolders()` — `settings` (`nav.folders.settings`, `pinToBottom`); `navItems()` — one entry per tab (`nav.settingsExport`, `nav.settingsImport`, `nav.settingsStorage`, `nav.settingsAppearance`, `nav.settingsEngine`, `nav.settingsSupport`) | A folder, **not** `singleEntry`, so a tab is one more entry in it. Pinned to the sidebar's foot, under a divider, apart from the screens (`Sidebar.tsx`). |
 | Locale | `settings.*` in `en.ts` / `he.ts` | `settings.title`, `settings.tabs.<id>`, then each tab's own block (`settings.export.*`, `settings.import.*`, `settings.storage.*`, `settings.appearance.*`, `settings.engine.*`). The themes' own names are `appearance.themes.<id>`; the picker's words are `enginePicker.*`. |
 
 **Adding a tab**: an entry in `SETTINGS_TABS` (`SettingsScreen.tsx`), a

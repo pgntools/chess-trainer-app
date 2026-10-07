@@ -44,6 +44,7 @@ const he: typeof en = {
     settingsStorage: "אחסון",
     settingsAppearance: "מראה",
     settingsEngine: "מנוע",
+    settingsSupport: "תמיכה",
     designSystem: "מערכת עיצוב",
     themeEditor: "עורך ערכות נושא",
     mdxArticles: "מאמרים",
@@ -1781,6 +1782,7 @@ const he: typeof en = {
       storage: "אחסון",
       appearance: "מראה",
       engine: "מנוע",
+      support: "תמיכה",
     },
     export: {
       intro:
@@ -1915,6 +1917,15 @@ const he: typeof en = {
       intro:
         "בחרו באיזה מנוע הלוחות משתמשים. הבחירה חלה על כל לוח מהחיפוש הבא שלו ונשמרת במכשיר זה. משחק מול המנוע משוחק במנוע שבו התחיל, ומשחק שמור ממשיך עם המנוע שלו.",
       note: "מנוע שאינו יכול לפעול באתר זה מופיע ברשימה בכל זאת, עם מה שהוא דורש.",
+    },
+    support: {
+      title: "צריכים עזרה עם {{name}}?",
+      intro: "מצאתם באג, יש לכם רעיון או שאלה? נשמח לשמוע מכם.",
+      heading: "איך אפשר ליצור קשר",
+      items: {
+        issue: { title: "פתחו issue ב-GitHub (מועדף)", text: "באגים, רעיונות ושאלות — בגלוי, כך שאחרים יכולים לעקוב ולהוסיף." },
+        email: { title: "שלחו מייל", text: "אם GitHub לא מתאים לכם, כתבו לנו אל:" },
+      },
     },
   },
   enginePicker: {
