@@ -27,6 +27,9 @@ const STORED = [
   LIBRARY_DB_NAME,
 ];
 
+/** The pages that disclose what the app stores — another in-app page (a Terms page, an About) need not. */
+const DISCLOSURE_PAGES = ["privacy", "cookies"] as const;
+
 describe("the legal pages' documents (CTA-159)", () => {
   it("are in the Blog's articles folder for the MDX editor, and not the Blog's", () => {
     for (const page of LEGAL_PAGES) {
@@ -56,7 +59,7 @@ describe("the legal pages' documents (CTA-159)", () => {
   });
 
   it("names every key and database the app keeps, in both pages and both languages", () => {
-    for (const page of LEGAL_PAGES) {
+    for (const page of DISCLOSURE_PAGES) {
       for (const language of supportedLanguages) {
         const text = sourceOf(page, language);
         for (const name of STORED) expect(text, `${page} (${language}) names ${name}`).toContain(`\`${name}\``);

@@ -15,6 +15,9 @@ import { appPageDocument, appPageFiles } from "../blog/articles";
  * description in the catalogs (`pages.*`, `pageDescriptions.*` — the footer,
  * the tab title and the share preview read those); `legalDocuments.test.ts`
  * holds the two to each other. A language with no file shows the English one.
+ *
+ * Adding a page — the document, its catalog keys, an id here, its route, its
+ * tests and a footer link — is `docs/in-app-pages.md`.
  */
 
 export type LegalPageId = "privacy" | "cookies";

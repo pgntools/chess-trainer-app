@@ -7,7 +7,7 @@ import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { createPageTitleStore, PageTitleContext } from "../main/pageTitle";
 import LegalPage from "./LegalPage";
-import type { LegalPageId } from "./legalDocuments";
+import { LEGAL_PAGES, type LegalPageId } from "./legalDocuments";
 
 const renderPage = (page: LegalPageId) => {
   const store = createPageTitleStore();
@@ -54,7 +54,7 @@ describe("a legal page (CTA-159)", () => {
     expect(container.querySelector('[lang="en"]')).toBeNull();
   });
 
-  it.each(["privacy", "cookies"] as const)("passes axe — the %s page, in English", async (page) => {
+  it.each(LEGAL_PAGES)("passes axe — the %s page, in English", async (page) => {
     const { container } = renderPage(page);
     await screen.findAllByRole("heading", { level: 2 });
     await expectNoAxeViolations(container);
