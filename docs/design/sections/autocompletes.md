@@ -32,3 +32,20 @@ Gallery: `/dev/design/autocompletes`.
 - **Variations** — grouped with LTR options; flat with a value; not clearable.
 - **Replaces** — the select-style pickers over long lists (every opening,
   every event) that are `TextField select`s today.
+
+## SuggestAutocomplete
+
+- **Purpose** — free text with suggestions (CTA-150): the field *is* its text,
+  typed or pasted whole, and the list only offers to fill it — a record's name
+  found, its address put in. Where a value must be one of the options, use
+  `SelectAutocomplete`.
+- **Props** — `label`, `value: string`, `onChange(string)`, `options:
+  { value, label, group? }[]` (**already narrowed by the screen**, which knows
+  what a name is — the field does not filter again), `onPick?(option)` (after
+  `onChange` has been given the option's `value`), `placeholder?`,
+  `helperText?`, `error?`, `dir?` (the text's: `ltr` for a path),
+  `optionDir?` (`auto` for names), `disabled?`, `testId` (`-input`). Enter with
+  nothing highlighted is the form's, so a dialog still submits on it.
+- **Variations** — grouped suggestions over a path; no suggestions, invalid.
+- **Used by** — the MDX editor's *Add / update PGN* dialog, "An address in the
+  app" (`src/mdxEditor/client/GallerySourceDialog.tsx`).
