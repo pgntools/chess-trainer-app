@@ -76,10 +76,18 @@ describe("the legal pages' documents (CTA-159)", () => {
     expect(sourceOf("cookies", "he")).toContain("(/privacy)");
   });
 
-  it("names the data controller, and leaves the contact email marked until the owner supplies it", () => {
-    expect(sourceOf("privacy", "en")).toContain("Valentin Kantor, P.O.B. 465, Tel Aviv, Israel");
+  it("ends the Privacy Policy with the data controller, and gives the privacy address on both pages", () => {
+    for (const language of supportedLanguages) {
+      const headings = [...sourceOf("privacy", language).matchAll(/^## (.+)$/gm)].map((match) => match[1]);
+      expect(headings.at(-1), `privacy (${language})`).toBe(language === "en" ? "Data controller" : "בעל השליטה במידע");
+      for (const page of DISCLOSURE_PAGES) {
+        const text = sourceOf(page, language);
+        expect(text, `${page} (${language})`).toContain("privacy@chessapp.dev");
+        expect(text, `${page} (${language}) has no placeholder left`).not.toMatch(/TO BE SUPPLIED|ימסור בעל המוצר/);
+      }
+    }
+    expect(sourceOf("privacy", "en")).toContain("P.O.B. 465, Tel Aviv, Israel");
     expect(sourceOf("privacy", "he")).toContain('ת"ד 465');
-    expect(sourceOf("privacy", "en")).toContain("TO BE SUPPLIED BY THE OWNER");
   });
 
   it("cites both regimes: the GDPR and Israel's Protection of Privacy Law, Amendment 13", () => {

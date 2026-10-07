@@ -50,7 +50,7 @@ describe("a legal page (CTA-159)", () => {
     await i18n.changeLanguage("he");
     const { container } = renderPage("privacy");
     expect(screen.getByRole("heading", { level: 1, name: "מדיניות פרטיות" })).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { level: 2, name: "מי אחראי" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 2, name: "בעל השליטה במידע" })).toBeInTheDocument();
     expect(container.querySelector('[lang="en"]')).toBeNull();
   });
 

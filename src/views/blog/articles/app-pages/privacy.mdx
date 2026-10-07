@@ -3,13 +3,9 @@ title: "Privacy Policy"
 summary: "What chessapp.dev keeps on your device, what it never collects, and your rights under the GDPR and Israel's Protection of Privacy Law."
 ---
 
-Last updated: 7 October 2026
+Last updated: 8 October 2026
 
-This Privacy Policy explains what chessapp.dev (the "App") does with information about you. The short version: **the App has no accounts and no server-side database of its own. Your games, analyses, repertoires and settings stay in your browser, on your device, and are never sent to us.**
-
-## Who is responsible
-
-The App is operated by **Valentin Kantor**, P.O.B. 465, Tel Aviv, Israel (the "controller"). For any privacy question or request, write to **[PRIVACY EMAIL — TO BE SUPPLIED BY THE OWNER]**.
+This Privacy Policy explains what chessapp.dev (the "App") does with information about you. The short version: **the App has no accounts and no server-side database. Your games, analyses, repertoires and settings stay in your browser, on your device, and are never sent to us.** The only personal data we may receive is what you send us yourself, by email.
 
 ## What the App stores on your device
 
@@ -20,11 +16,11 @@ Everything below lives in your own browser and is read only by the App running i
 - `chessapp.theme` — the look you chose in Settings → Appearance.
 - `chessapp.engine` — the chess engine you chose in Settings → Engine.
 - `i18nextLng` — the language you chose (English or Hebrew).
-- `mui-mode` (and the `mui-color-scheme-light` / `mui-color-scheme-dark` keys MUI keeps with it) — light, dark or system colour mode.
+- `mui-mode`, with `mui-color-scheme-light` and `mui-color-scheme-dark` — light, dark or system colour mode. The MUI interface library keeps these.
 
 **Session storage (`sessionStorage`) — until you close the tab:**
 
-- `chessapp.developmentNoticeDismissed` — remembers that you closed the in-development notice, so it is not shown again in the same session.
+- `chessapp.developmentNoticeDismissed` — that you closed the in-development notice, so it is not shown again in the same session.
 
 **Local databases (IndexedDB) — your chess data:**
 
@@ -33,47 +29,52 @@ Everything below lives in your own browser and is read only by the App running i
 - `chessapp.repertoires` — your opening repertoires.
 - `chessapp.library` — the game collections you added to the Library.
 
-These records can contain whatever you put into them: PGN files, comments, names of players and events. If you enter personal data in them, it stays on your device.
+These records hold whatever you put into them: PGN files, comments, the names of players and events. If they contain personal data, about you or about others, it stays on your device and is under your control.
 
 The App sets **no cookies**. See the [Cookies Notice](/cookies) for the details.
 
 ## What we do not do
 
 - No accounts, no sign-in, no profile.
-- No analytics, advertising or tracking, and no third-party scripts, fonts or images: everything the App loads comes from its own host.
+- No analytics, advertising or tracking, and no third-party scripts, fonts or images: everything the App loads comes from the site it is served from.
 - The Stockfish chess engine runs inside your browser, in a local Web Worker. Your positions are not sent anywhere to be analysed.
-- We do not sell or share your data, because we do not have it.
+- We do not sell or share your data, because we do not receive it.
 
-## Why we use the storage, and on what basis
+## Why the App stores these items, and on what basis
 
-Storing these items is **strictly necessary** to provide the features you ask for: keeping your games and settings between visits, and showing the App in the language and look you chose. Under the GDPR and the ePrivacy rules, storage that is strictly necessary for a service you requested needs no consent. We therefore show no consent banner. You stay in control: nothing is stored about you beyond what you do in the App.
+Each item is **strictly necessary** for something you ask the App to do: remember your settings, show it in your language and look, and keep the games and analyses you save between visits. The EU ePrivacy Directive (Article 5(3)) and the UK's PECR let a site store such items on your device without asking for consent, and Israeli law sets no consent rule for them. So the App shows no consent banner. Nothing is stored about you beyond what you do in the App, and none of it reaches us, so the GDPR's legal bases for our own processing do not come into play for this storage.
 
 ## Hosting and server logs
 
-The App is a static website served by **GitHub Pages** (GitHub, Inc.) and **Azure Static Web Apps** (Microsoft). Like any web host, they may keep ordinary server logs of each request — typically your IP address, the time, the address requested and your browser's user-agent — for security and operation. We do not receive or analyse these logs for any purpose of our own. Their handling is governed by the hosts' own policies: [GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) and [Microsoft's privacy statement](https://privacy.microsoft.com/privacystatement). The legal basis for this processing by the hosts, and by us where it applies, is legitimate interest in delivering and securing the site (GDPR Art. 6(1)(f)).
+The App is a static website served by **GitHub Pages** (GitHub, Inc.) and **Azure Static Web Apps** (Microsoft). Like any web host, they may keep ordinary server logs of each request — typically your IP address, the time, the address requested and your browser's user-agent — to operate and secure their service. We do not receive or analyse these logs. The hosts may process them outside your country, including in the United States, under the safeguards described in their own policies: [GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) and [Microsoft's privacy statement](https://privacy.microsoft.com/privacystatement). Where we are responsible for this processing, its legal basis is our legitimate interest in delivering and securing the site (GDPR Article 6(1)(f)).
+
+## When you write to us
+
+If you email us, we receive your email address, your name if you include it, and your message. We use them only to answer you and handle your request — the legal basis is our legitimate interest in replying (GDPR Article 6(1)(f)), or the steps you ask us to take — and we keep them only as long as that takes, unless the law requires otherwise. We do not add you to any mailing list.
 
 ## Links to other sites
 
-The footer's *Source* link and the issue links lead to GitHub; some articles link to other chess sites. Once you follow a link, that site's own policy applies.
+The footer's *Source* link and the Support tab's issue link lead to GitHub; some articles link to other chess sites. Once you follow a link, that site's own policy applies. **Anything you write in a GitHub issue is public.**
 
 ## Your control over your data
 
 - **Download it:** Settings → Export gives you all your data as one zip file, and Settings → Import puts such a zip back.
 - **See how much there is:** Settings → Storage.
-- **Delete it:** remove records inside the App, or clear this site's data in your browser's settings (usually under Privacy → Site data, or "Clear cookies and site data" — which also removes local storage and databases). Clearing it cannot be undone, so export first if you want a copy.
+- **Delete it:** remove records inside the App, or clear this site's data in your browser's settings (usually under Privacy → Site data, or "Clear cookies and site data", which removes local storage and the databases too). Clearing it cannot be undone, so export first if you want a copy.
+- Your browser may also clear this data on its own — in a private window when you close it, or when your device runs short of space. Export what you want to keep.
 
 ## Your rights
 
-Because we hold no personal data about you on our side, there is usually nothing for us to give, correct or erase — you hold it, in your browser. Where we do hold personal data (for example, if you write to us), you have, under the **EU/UK GDPR**: the right to access, rectification, erasure, restriction, portability and to object, and to lodge a complaint with your local supervisory authority. Under Israel's **Protection of Privacy Law, 1981, as amended by Amendment 13**, you have the right to review information held about you, to ask for its correction or deletion, and to complain to the Privacy Protection Authority. To use any of these rights, write to the address above.
+Because none of your App data reaches us, there is usually nothing for us to give, correct or erase — you hold it, in your browser. Where we do hold personal data about you (for example, an email you sent us), you have, under the **EU and UK GDPR**, the right of access, rectification, erasure, restriction of processing, data portability and objection, and the right to lodge a complaint with a data protection supervisory authority. Under Israel's **Protection of Privacy Law, 5741-1981, as amended by Amendment 13**, you have the right to review information held about you, to ask for its correction or deletion, and to complain to the Privacy Protection Authority. To use any of these rights, write to us at the address below. We answer within one month.
 
 ## Children
 
-The App is not directed at children under 16 and asks for no personal information from anyone.
+The App collects no personal information from anyone, children included. Children may use it like anyone else; a child who wants to write to us should ask a parent first.
 
 ## Changes to this policy
 
 When the App's use of your data changes, we update this page and its date. The version on this page is the current one.
 
-## Contact
+## Data controller
 
-Valentin Kantor, P.O.B. 465, Tel Aviv, Israel — **[PRIVACY EMAIL — TO BE SUPPLIED BY THE OWNER]**
+The App is operated by **Valentin Kantor**, P.O.B. 465, Tel Aviv, Israel, who is the data controller for the processing this policy describes. For any privacy question or request, write to **privacy@chessapp.dev**.
