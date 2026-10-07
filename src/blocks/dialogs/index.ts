@@ -5,6 +5,7 @@
  * system. They take `dialogProps`, so the gallery opens them in a frame.
  */
 export * from "./CollectionImportDialog";
+export * from "./DevelopmentNoticeDialog";
 export * from "./FolderDeleteDialog";
 export * from "./FolderMoveDialog";
 export * from "./FolderNameDialog";

@@ -42,7 +42,7 @@ addresses keep working through the SPA fallback, as today.
 | What | Where | Consequence |
 | --- | --- | --- |
 | Rendered only in the browser | `src/main.tsx` — `createRoot(...).render(...)` | The HTML a crawler receives is `index.html`: an empty `<div id="root">`. |
-| One `<title>` for every URL | `index.html` — `<title>Chess Trainer App</title>` | Every page, before JavaScript, is "Chess Trainer App". |
+| One `<title>` for every URL | `index.html` — `<title>chessapp.dev</title>` | Every page, before JavaScript, is "chessapp.dev". |
 | Deep links answered with **status 404** | `.github/workflows/deploy-pages.yml` copies `dist/index.html` to `dist/404.html` | `/chess-trainer-app/blog/x` works for a person — the 404 page is the app — but GitHub Pages sends it with HTTP 404, and search engines drop a 404. |
 | The page title set in effects | `usePageTitle` → `useLayoutEffect` (`src/views/main/pageTitle.ts`); `document.title` → `useEffect` (`src/views/main/Layout.tsx`) | Effects never run in a build-time render; the title would never reach static HTML. (Fixed by `handle.meta`, frontmatter proposal §6.2.) |
 | `<html lang dir>` set in an effect | `src/theme/AppThemeWithLang.tsx` | Static HTML would always say `lang="en"`. |
@@ -57,7 +57,7 @@ addresses keep working through the SPA fallback, as today.
 | --- | --- | --- |
 | Googlebot | Yes, deferred to a second rendering pass | A **404 status** — not indexed, whatever it renders. |
 | Bingbot and others | Partly / no | A 404, and an empty page. |
-| Social previews (Facebook, X, LinkedIn, Slack, WhatsApp, Telegram, Discord) | **No** | "Chess Trainer App", no description, no image — and some refuse a 404 outright. |
+| Social previews (Facebook, X, LinkedIn, Slack, WhatsApp, Telegram, Discord) | **No** | "chessapp.dev", no description, no image — and some refuse a 404 outright. |
 
 So **the gap is the HTML the server sends**. It has to carry the content,
 the title, the description and the preview tags, with status 200 — before
@@ -179,7 +179,7 @@ manifest. **The same function** feeds:
 ```html
 <html lang="he" dir="rtl">
 <head>
-  <title>כל המסכים ככרטיסים — בלוג — Chess Trainer App</title>
+  <title>כל המסכים ככרטיסים — בלוג — chessapp.dev</title>
   <meta name="description" content="…summary or description…">
   <link rel="canonical" href="https://<origin>/<base>/he/blog/writing-an-article/components/nav-cards/">
   <link rel="alternate" hreflang="en" href="https://…/blog/writing-an-article/components/nav-cards/">
@@ -187,7 +187,7 @@ manifest. **The same function** feeds:
   <link rel="alternate" hreflang="x-default" href="https://…/blog/writing-an-article/components/nav-cards/">
 
   <meta property="og:type" content="article">
-  <meta property="og:site_name" content="Chess Trainer App">
+  <meta property="og:site_name" content="chessapp.dev">
   <meta property="og:title" content="כל המסכים ככרטיסים">
   <meta property="og:description" content="…">
   <meta property="og:url" content="https://…/he/blog/…/nav-cards/">
@@ -502,12 +502,12 @@ TWIC collection renders its full table too. Not needed to start.
 
 | | **`build-gh`** — GitHub Pages | **`build-swa`** — Azure Static Web Apps |
 | --- | --- | --- |
-| URL | `https://kantorv.github.io/chess-trainer-app/` | `https://chessapp.dev/` |
+| URL | `https://pgntools.github.io/chess-trainer-app/` | `https://chessapp.dev/` |
 | Base path | `/chess-trainer-app/` | `/` |
 | SPA fallback (the app's screens) | `404.html`, the pristine template — **status 404** | `navigationFallback` → `index.html` — **status 200** |
 | An unknown Blog path | `404.html` (the app says "no such article") — status 404, correct | `/blog/*` excluded from the fallback, `responseOverrides.404` → the app's 404 page — status 404, correct |
 | Redirects (`redirectFrom`) | a generated page at the old path: `<meta http-equiv="refresh">` + a canonical to the new one | real **301s**, generated into `staticwebapp.config.json` from the manifest |
-| `robots.txt`, `sitemap.xml` | **not possible** — a project site's `robots.txt` would have to sit at `kantorv.github.io/robots.txt`, the user site's root, which this repository does not own | served at the root |
+| `robots.txt`, `sitemap.xml` | **not possible** — a project site's `robots.txt` would have to sit at `pgntools.github.io/robots.txt`, the user site's root, which this repository does not own | served at the root |
 | Headers (cache, security) | none | `globalHeaders` in `staticwebapp.config.json` |
 | Pull-request previews | none | SWA's staging environments, optional |
 

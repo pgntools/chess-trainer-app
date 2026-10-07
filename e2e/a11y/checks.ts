@@ -22,11 +22,24 @@ import { drawsPieces, type PageRoute } from "./routes";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
 
 /**
+ * **The in-development notice, dismissed ahead** (CTA-155): a modal that opens
+ * on the first load of a session would cover every route the pass audits and
+ * hide the page behind it. `sessionStorage` is not part of the saved browser
+ * state (`storageState` keeps `localStorage` and IndexedDB), so each page sets
+ * the key itself, before its scripts run — the app's own key, the one
+ * `lib/developmentNotice.ts` reads.
+ */
+export const dismissDevelopmentNotice = async (page: Page): Promise<void> => {
+  await page.addInitScript(() => sessionStorage.setItem("chessapp.developmentNoticeDismissed", "1"));
+};
+
+/**
  * The theme and the colour scheme a page is opened under — the app's own
  * preference keys. The language is not one (CTA-136): it is the address's,
  * and `open` visits each page at its language's own (`localizedPath`).
  */
 export const applyPreferences = async (page: Page, { theme, scheme }: Combo): Promise<void> => {
+  await dismissDevelopmentNotice(page);
   await page.addInitScript(
     ([themeId, mode]) => {
       localStorage.setItem("chessapp.theme", themeId);

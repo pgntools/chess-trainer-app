@@ -10,7 +10,7 @@ import type { ShareImageLevel } from "../../lib/shareImage";
  * thing; the shell renders it into the document's `<head>`.
  */
 export type PageMeta = {
-  /** The page's own name, first in its title — "Every screen as cards — Blog — Chess Trainer App". */
+  /** The page's own name, first in its title — "Every screen as cards — Blog — chessapp.dev". */
   title?: string;
   /** The page's `<meta name="description">`. */
   description?: string;
@@ -62,7 +62,7 @@ export type ShellHandle = {
   article?: boolean;
   /**
    * The screen's name — a catalog key (`pages.*`), CTA-112. The shell makes
-   * the page title of it ("Lobby — Chess Trainer App"), names the `main`
+   * the page title of it ("Lobby — chessapp.dev"), names the `main`
    * landmark by it and renders it as the page's `h1`. It is also the screen's
    * identity: a navigation between two routes with the same title (a Settings
    * tab to another, one Library game to the next) stays on the screen and
@@ -140,7 +140,7 @@ export const titleKeyOf = (matches: readonly UIMatch[]): string | undefined =>
 
 /**
  * **The page title** (CTA-112): the most specific first, the app last —
- * "Carlsen games — Library — Chess Trainer App". `heading` is the same without
+ * "Carlsen games — Library — chessapp.dev". `heading` is the same without
  * the app's name: the page's `h1` and its `main` landmark's name.
  */
 export const pageTitleOf = (

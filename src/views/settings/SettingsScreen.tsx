@@ -11,6 +11,7 @@ import EngineTab from "./EngineTab";
 import ExportTab from "./ExportTab";
 import ImportTab from "./ImportTab";
 import StorageTab from "./StorageTab";
+import SupportTab from "./SupportTab";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 
 /**
@@ -27,6 +28,7 @@ const SETTINGS_TABS: readonly { id: string; content: () => ReactNode }[] = [
   { id: "storage", content: () => <StorageTab /> },
   { id: "appearance", content: () => <AppearanceTab /> },
   { id: "engine", content: () => <EngineTab /> },
+  { id: "support", content: () => <SupportTab /> },
 ];
 
 function SettingsScreen() {

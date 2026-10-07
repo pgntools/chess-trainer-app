@@ -6,7 +6,19 @@
 const en = {
   app: {
     brandMark: "CT",
-    brandText: "Chess Trainer App",
+    brandText: "chessapp.dev",
+  },
+  /** The notice every session opens with (CTA-155) — `blocks/dialogs/DevelopmentNoticeDialog`. */
+  developmentNotice: {
+    title: "{{name}} is still in development",
+    badge: "Early beta",
+    intro: "This is an early beta, so please use it with caution. Here is what to know:",
+    items: {
+      local: { title: "Your data stays in this browser", text: "Games, analyses, repertoires and collections are saved on this device only." },
+      export: { title: "Export it now and then", text: "Settings → Export downloads everything as one zip, so nothing is lost." },
+      changes: { title: "Things may change or break", text: "Saved data may have to be imported again after an update." },
+    },
+    dismiss: "Dismiss",
   },
   nav: {
     ariaLabel: "Main navigation",
@@ -52,6 +64,8 @@ const en = {
     settingsAppearance: "Appearance",
     /** Settings' Engine tab (CTA-153), in the Settings folder. */
     settingsEngine: "Engine",
+    /** Settings' Support tab (CTA-155), in the Settings folder. */
+    settingsSupport: "Support",
     /** The dev-only design gallery (CTA-107), in the Development folder. */
     designSystem: "Design system",
     /** The dev-only theme editor (CTA-115), in the Development folder. */
@@ -174,7 +188,7 @@ const en = {
   },
   /**
    * Each screen's name (CTA-112) — its route's `handle.title`: the page title
-   * ("Lobby — Chess Trainer App", the open record's name before it), the
+   * ("Lobby — chessapp.dev", the open record's name before it), the
    * `main` landmark's name and the page's `h1`.
    */
   pages: {
@@ -235,7 +249,7 @@ const en = {
    * the chain, for a page with no image nearer to it.
    */
   share: {
-    defaultImageAlt: "Chess Trainer App — a chessboard beside the app's name",
+    defaultImageAlt: "chessapp.dev — a chessboard beside the app's name",
     sections: {
       engine: "Play with Engine — a chessboard beside the section's name",
       analysis: "Analysis Board — a chessboard beside the section's name",
@@ -2282,6 +2296,7 @@ const en = {
       storage: "Storage",
       appearance: "Appearance",
       engine: "Engine",
+      support: "Support",
     },
     /** The Export tab: the reader's data as PGN files and a manifest, in one zip. */
     export: {
@@ -2427,6 +2442,16 @@ const en = {
       intro:
         "Choose the engine the boards use. It applies to every board from its next search and is remembered on this device. A game against the engine is played by the engine it began with, and a saved game goes on with its own.",
       note: "An engine that cannot run on this host is listed anyway, with what it needs.",
+    },
+    /** The Support tab (CTA-155): how to reach us — a numbered list, the preferred way first. */
+    support: {
+      title: "Need help with {{name}}?",
+      intro: "Found a bug, have an idea or a question? We would like to hear from you.",
+      heading: "How to reach us",
+      items: {
+        issue: { title: "Raise a GitHub issue (preferred)", text: "Bugs, ideas and questions, in the open — others can follow along and add to them." },
+        email: { title: "Send an email", text: "If GitHub is not for you, write to us at:" },
+      },
     },
   },
   /** The engine picker (`src/blocks/forms/EnginePicker`, CTA-153): the engines to choose between. */

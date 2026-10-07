@@ -24,7 +24,7 @@ describe("sourceAddressOf", () => {
   });
 
   it("takes what the address bar shows — the host, the base, the language — and a trailing slash", () => {
-    expect(sourceAddressOf("https://kantorv.github.io/chess-trainer-app/he/library/tal/")).toEqual({ kind: "collection", collection: "tal" });
+    expect(sourceAddressOf("https://pgntools.github.io/chess-trainer-app/he/library/tal/")).toEqual({ kind: "collection", collection: "tal" });
     expect(sourceAddressOf("http://localhost:5214/chess-trainer-app/tools/analysis?analysis=x&move=12")).toEqual({ kind: "analysis", id: "x" });
   });
 

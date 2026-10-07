@@ -104,12 +104,14 @@ describe("the shipped nav tree", () => {
       ["/settings/storage", "nav.settingsStorage"],
       ["/settings/appearance", "nav.settingsAppearance"],
       ["/settings/engine", "nav.settingsEngine"],
+      ["/settings/support", "nav.settingsSupport"],
     ]);
     expect(folderPath("/settings/export")).toEqual(["settings"]);
     expect(folderPath("/settings/import")).toEqual(["settings"]);
     expect(folderPath("/settings/storage")).toEqual(["settings"]);
     expect(folderPath("/settings/appearance")).toEqual(["settings"]);
     expect(folderPath("/settings/engine")).toEqual(["settings"]);
+    expect(folderPath("/settings/support")).toEqual(["settings"]);
   });
 
   it("returns an empty breadcrumb for a path that is not a screen", () => {

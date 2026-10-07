@@ -105,7 +105,7 @@ describe("app shell footer", () => {
     const link = screen.getByTestId("layout-footer-repo-link");
     expect(link).toHaveAttribute(
       "href",
-      "https://github.com/kantorv/chess-trainer-app",
+      "https://github.com/pgntools/chess-trainer-app",
     );
     expect(link).toHaveAttribute("target", "_blank");
     expect(link.getAttribute("rel")).toContain("noopener");

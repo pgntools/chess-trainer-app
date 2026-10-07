@@ -148,6 +148,10 @@ Nothing else in `src/` touches `localStorage`, and nothing reads the old
 `grep -rn localStorage src --include=*.ts --include=*.tsx | grep -v test`
 should show only comments, `theme/themeChoice.ts` and `lib/engineChoice.ts`.
 
+The one `sessionStorage` key is `chessapp.developmentNoticeDismissed`
+(`lib/developmentNotice.ts`, CTA-155): the in-development notice was dismissed in
+this browser session — not a preference, so it is not kept across visits.
+
 ---
 
 ## 3. How a record store behaves — `lib/idbRecordStore.ts`

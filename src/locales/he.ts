@@ -7,7 +7,18 @@ import type en from "./en";
 const he: typeof en = {
   app: {
     brandMark: "CT",
-    brandText: "אפליקציית אימון שחמט",
+    brandText: "chessapp.dev",
+  },
+  developmentNotice: {
+    title: "{{name}} עדיין בפיתוח",
+    badge: "בטא מוקדמת",
+    intro: "מומלץ להשתמש בה בזהירות. הנה מה שכדאי לדעת:",
+    items: {
+      local: { title: "הנתונים שלכם נשארים בדפדפן הזה", text: "משחקים, ניתוחים, רפרטוארים ואוספים נשמרים במכשיר הזה בלבד." },
+      export: { title: "כדאי לייצא מדי פעם", text: "בהגדרות, בלשונית הייצוא, מורידים הכול כקובץ zip אחד, כדי שדבר לא יאבד." },
+      changes: { title: "דברים עשויים להשתנות או להישבר", text: "ייתכן שיהיה צורך לייבא מחדש נתונים שמורים אחרי עדכון." },
+    },
+    dismiss: "סגירה",
   },
   nav: {
     ariaLabel: "ניווט ראשי",
@@ -33,6 +44,7 @@ const he: typeof en = {
     settingsStorage: "אחסון",
     settingsAppearance: "מראה",
     settingsEngine: "מנוע",
+    settingsSupport: "תמיכה",
     designSystem: "מערכת עיצוב",
     themeEditor: "עורך ערכות נושא",
     mdxArticles: "מאמרים",
@@ -178,7 +190,7 @@ const he: typeof en = {
     settings: "ייצוא הנתונים שלכם כקובץ zip אחד והחזרתם, כמה מקום הם תופסים, ואיך האפליקציה נראית.",
   },
   share: {
-    defaultImageAlt: "אפליקציית אימון שחמט — לוח שחמט לצד שם האפליקציה",
+    defaultImageAlt: "chessapp.dev — לוח שחמט לצד שם האפליקציה",
     sections: {
       engine: "משחק מול המנוע — לוח שחמט לצד שם המדור",
       analysis: "לוח ניתוח — לוח שחמט לצד שם המדור",
@@ -1770,6 +1782,7 @@ const he: typeof en = {
       storage: "אחסון",
       appearance: "מראה",
       engine: "מנוע",
+      support: "תמיכה",
     },
     export: {
       intro:
@@ -1904,6 +1917,15 @@ const he: typeof en = {
       intro:
         "בחרו באיזה מנוע הלוחות משתמשים. הבחירה חלה על כל לוח מהחיפוש הבא שלו ונשמרת במכשיר זה. משחק מול המנוע משוחק במנוע שבו התחיל, ומשחק שמור ממשיך עם המנוע שלו.",
       note: "מנוע שאינו יכול לפעול באתר זה מופיע ברשימה בכל זאת, עם מה שהוא דורש.",
+    },
+    support: {
+      title: "צריכים עזרה עם {{name}}?",
+      intro: "מצאתם באג, יש לכם רעיון או שאלה? נשמח לשמוע מכם.",
+      heading: "איך אפשר ליצור קשר",
+      items: {
+        issue: { title: "פתחו issue ב-GitHub (מועדף)", text: "באגים, רעיונות ושאלות — בגלוי, כך שאחרים יכולים לעקוב ולהוסיף." },
+        email: { title: "שלחו מייל", text: "אם GitHub לא מתאים לכם, כתבו לנו אל:" },
+      },
     },
   },
   enginePicker: {
