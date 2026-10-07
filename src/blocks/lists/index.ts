@@ -10,3 +10,4 @@ export * from "./OpeningBookList";
 export * from "./RepertoiresList";
 export * from "./SavedAnalysesList";
 export { SAVED_LIST_DEFAULT_VIEW, SAVED_LIST_VIEWS, type SavedListView } from "./savedListView";
+export * from "./TeamRosters";

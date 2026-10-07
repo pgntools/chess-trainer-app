@@ -1,0 +1,46 @@
+---
+title: From a Library collection
+summary: "<CollectionTournamentTable>: a tournament from the Library — names linked to each player's games, results to each game."
+order: 80
+---
+
+The other tables read a PGN kept beside the article. This one reads a **collection in the Library**: add a tournament's games to the Library once, and any article can show its table. Each name links to that player's games in the collection, and each result to its game on the Library's board. The example is the FIDE Candidates 2026, which ships in the Library's Built-in folder so that every reader has it.
+
+## How to use it
+
+1. Add the tournament's PGN to the [Library](/library). Its address is shown in the address bar: `/library/<collection>`.
+2. In the collection's settings, mark it as a tournament and pick its format: Swiss or round robin. Or name the format in the article.
+3. Embed it by its address:
+
+```mdx
+<CollectionTournamentTable _id="/library/candidates2026" format="roundRobin" />
+```
+
+An uploaded collection is kept in its own browser only. An article that names one shows "not in this browser's Library" to every other reader, so share an article that uses a shipped collection, or the PGN itself with the [other tables](/blog/writing-an-article/demo-tables/swiss).
+
+## The table, linked
+
+Select a name to open the collection filtered to that player's games. Select a result to open its game on the Library's board, whose back button returns here. A screen reader hears each result's round, colour and opponent, as in every table.
+
+<CollectionTournamentTable _id="/library/candidates2026" format="roundRobin" />
+
+## Links off
+
+Both links are on by default. `playerLink={false}` and `gameLink={false}` leave the names and the results as text. Without `format`, a collection that is not marked as a tournament is drawn as a Swiss's standings:
+
+<CollectionTournamentTable _id="/library/candidates2026" playerLink={false} gameLink={false} density="dense" />
+
+```mdx
+<CollectionTournamentTable _id="/library/candidates2026" playerLink={false} gameLink={false} density="dense" />
+```
+
+## Every prop
+
+- `_id` — the collection's address, `/library/<collection>`.
+- `format` — `"swiss"`, `"roundRobin"` or `"match"`. Absent: the collection's own tournament mark, else a Swiss.
+- `playerLink`, `gameLink` — the two links, on by default.
+- `density="dense"`, `rowsPerPage="25"` — as the other tables.
+
+## Source
+
+The games are from [The Week in Chess](https://theweekinchess.com) (TWIC), by Mark Crowther — the event's page, [FIDE Candidates Tournaments 2026](https://theweekinchess.com/chessnews/events/fide-candidates-tournaments-2026), and its PGN, [wchcand26.pgn](https://theweekinchess.com/assets/files/pgn/wchcand26.pgn).

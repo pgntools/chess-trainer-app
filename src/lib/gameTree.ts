@@ -1,4 +1,5 @@
 import { DEFAULT_POSITION, type Square } from "chess.js";
+import { withoutShapes } from "./boardShapes";
 import {
   gameTag,
   initialFenOf,
@@ -108,10 +109,14 @@ export type GameTree = {
 
 /**
  * Whether a move carries a comment — after it or before it. What the
- * variations explorer marks with its comment icon.
+ * variations explorer marks with its comment icon. A comment that only draws
+ * — lichess's `[%cal]` / `[%csl]` shapes, which the board shows — is not one
+ * to read, so it earns no mark (CTA-143).
  */
 export const hasComments = (node: VariationNode): boolean =>
-  (node.comments?.length ?? 0) > 0 || (node.preComments?.length ?? 0) > 0;
+  [...(node.comments ?? []), ...(node.preComments ?? [])].some(
+    (text) => withoutShapes(text).trim() !== "",
+  );
 
 /**
  * What makes two comments **the same comment**: their words, whitespace

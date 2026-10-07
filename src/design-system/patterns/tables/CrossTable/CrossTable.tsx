@@ -5,9 +5,10 @@ import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 
-import { EmptyTableRow, LoadingTableRow, TableFrame, type TableName } from "../../../components/tables";
+import { EmptyTableRow, LoadingTableRow, TableFrame, TablePager, type TableName } from "../../../components/tables";
 import { CompetitorCells, CompetitorHeadingCells, HeadingCell, ResultLegend, ResultsCell, ScoreCells, ScoreHeadingCells } from "../competitorCells";
 import type { Competitor, CompetitorLabels, ResultEntry, TieBreakColumn } from "../competitors";
+import { pageOfRows, type TablePaging } from "../paging";
 
 /** A row of the crosstable: the competitor, and every result against each of the others. */
 export type CrossTableRow = Competitor & {
@@ -37,6 +38,12 @@ export type CrossTableProps = TableName & {
   emptyLabel: ReactNode;
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
+  /**
+   * Cut the rows into pages, the pager under the frame (CTA-128) — for a long
+   * table. Absent, every row shows. The ranks are the rows' own, so page 2
+   * starts at its own rank.
+   */
+  paging?: TablePaging;
   /** The header stays in view while the body scrolls (the default). */
   stickyHeader?: boolean;
   /**
@@ -45,7 +52,7 @@ export type CrossTableProps = TableName & {
    * `-row-<id>-points`, a tie-break `-row-<id>-<column>`), a competitor's
    * column header `-column-<id>`, the cell of a row against a column
    * `-cell-<row id>-<column id>` (the diagonal's too), `-loading`, `-empty`,
-   * `-legend`.
+   * `-legend`, `-pager`.
    */
   testId: string;
 };
@@ -83,6 +90,7 @@ function CrossTable({
   emptyLabel,
   density = "normal",
   stickyHeader = true,
+  paging,
   ariaLabel,
   caption,
   testId,
@@ -92,6 +100,8 @@ function CrossTable({
   // While the rows are read there are no competitors' columns to draw.
   const columns = loading ? [] : rows;
   const colSpan = 2 + (rating ? 1 : 0) + columns.length + 1 + tieBreaks.length;
+  // Only the rows are paged: every competitor keeps its column.
+  const { shown, page } = pageOfRows(rows, paging);
 
   return (
     <Box data-testid={testId} sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 1 }}>
@@ -121,7 +131,7 @@ function CrossTable({
               {emptyLabel}
             </EmptyTableRow>
           ) : (
-            rows.map((row) => {
+            shown.map((row) => {
               const rowTest = `${testId}-row-${row.id}`;
               return (
                 <TableRow key={row.id} hover data-testid={rowTest}>
@@ -141,6 +151,18 @@ function CrossTable({
           )}
         </TableBody>
       </TableFrame>
+      {paging !== undefined && !loading && rows.length > 0 && (
+        <TablePager
+          count={rows.length}
+          page={page}
+          rowsPerPage={paging.rowsPerPage}
+          onPageChange={paging.onPageChange}
+          onRowsPerPageChange={paging.onRowsPerPageChange}
+          labelRowsPerPage={paging.labelRowsPerPage}
+          labelDisplayedRows={paging.labelDisplayedRows}
+          testId={`${testId}-pager`}
+        />
+      )}
       {/* A legend explains the rows' glyphs: with no row to show there is nothing to explain. */}
       {legend !== undefined && legend.length > 0 && !loading && rows.length > 0 && (
         <ResultLegend entries={legend} testId={`${testId}-legend`} />

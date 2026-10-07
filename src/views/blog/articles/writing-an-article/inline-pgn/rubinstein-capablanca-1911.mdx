@@ -1,0 +1,59 @@
+---
+title: Rubinstein – Capablanca, San Sebastian 1911
+summary: "A game review: Capablanca's own notes, with nine boards on the one game."
+order: 50
+---
+
+import game from "./rubinstein-capablanca-1911.pgn?raw"
+
+Akiba Rubinstein – José Raúl Capablanca, San Sebastian 1911: a Tarrasch Defense, and Capablanca's only loss of the tournament. He annotated it himself in *Chess Fundamentals* (1921), as an example of the price of loose opening play — and of the chances a won ending still gives away. The notes quoted below are his; the game's PGN carries them, with his analysis written in as side lines.
+
+## A new path in a known opening
+
+Capablanca met Rubinstein's system — the King's Bishop fianchettoed against Black's d-pawn, which the Tarrasch leaves isolated — with a move off the beaten track, 6... Be6. The bishop comes out before the knights.
+
+<InlinePgnGame pgn={game} to="8" start="6..." comments />
+
+## 8... Rc8, and the attack it allows
+
+8... Rc8 went on with the same idea, "but with very poor success": Black's king's knight is still at home. Capablanca had not yet learned of the attack founded on Ng5 and the exchange of the bishop at e6 — and Rubinstein played it at once. After 11... fxe6 Black's pawns are broken and the e6 and d5 pawns are targets.
+
+<InlinePgnGame pgn={game} from="8..." to="12..." start="8..." />
+
+## 13... O-O?
+
+"This is a mistake. The right move was 13... Rd8, in order to get the rook away from the line of the bishop at h3 and at the same time to support the d-pawn." The side line is on the board in blue.
+
+<InlinePgnGame pgn={game} from="12..." to="13..." start="13" />
+
+## Rubinstein's combination
+
+14. Bxf6! and 15. Nxd5! win a pawn and open the d-file. Capablanca considered 14... gxf6, "which it seemed would give me a playable game", but thought White's combination unsound — "to my lasting regret".
+
+<InlinePgnGame pgn={game} from="13..." to="17" start="13..." />
+
+The move he had not considered was 16. Kg2!. He expected 16. Bg2, against which he had a winning combination ready: 16... Ne5! 17. Nf4 Ng4 18. h3 Nxf2 19. Rxf2 Bxf2+ 20. Kxf2 g5 — and if 17. Rc1, then 17... Qxc1!! 18. Qxc1 Bxf2+. Step through it from here:
+
+<InlinePgnGame pgn={game} from="15..." to="17" start="16. Bg2 Ne5" caption="The combination Capablanca had in mind" />
+
+After 16. Kg2! and 17. Qc1!, "there was nothing for me to do but submit to the inevitable": White comes out a piece for a pawn ahead.
+
+<InlinePgnGame pgn={game} from="16" to="21..." start="18" />
+
+## 22. Bg4, a chance for Black
+
+"This gives Black a chance. He should have played 22. Rfe1" — and Capablanca gives the line to the win: 22... Nc2 23. Rxe8+ Rxe8 24. Rc1 Re2 25. Kf1 Nd4 26. Rc8+ Kf7 27. Rc7+ Re7 28. Rc5.
+
+<InlinePgnGame pgn={game} from="21..." to="25" start="21..." />
+
+## The ending
+
+After 30. Bc4, Black's 30... a6 "gives away any legitimate chance Black had to draw". The proper way was 30... Kd6, keeping the knight dominant on d4.
+
+<InlinePgnGame pgn={game} from="29..." to="34" start="30" />
+
+Rubinstein let him back in twice more. 38. Bd5 was "a downright blunder", and 38... Rxa2 would have made the win "practically impossible" — Capablanca played 38... b3 instead. After 40. Bxc6 Rxb3, 40... a2 is met by 41. Rb5+ Ka6 42. Rb8. With 42. Rh6+, Black resigned.
+
+<InlinePgnGame pgn={game} from="37..." start="38" comments />
+
+"As an end game, this is rather a sad exhibition for two masters. The redeeming feature of the game is Rubinstein's fine combination in the middle game, beginning with 14. Bxf6."

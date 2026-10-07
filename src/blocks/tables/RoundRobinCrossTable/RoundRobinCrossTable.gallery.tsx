@@ -25,6 +25,14 @@ const gallery: GalleryModule<BlockFamilyId> = {
       name: "The FIDE Candidates 2026 — the real file: 8 players, a complete 14-round double round robin, two results a cell",
       render: () => demo(CANDIDATES, "FIDE Candidates 2026 — crosstable", 380),
     },
+    {
+      name: "With links — each name to the player's games, each result to its game (CTA-128: playerLink, gameLink)",
+      render: () =>
+        demo(CANDIDATES, "FIDE Candidates 2026 — crosstable, linked", 380, {
+          playerLink: (player) => ({ href: `#player-${player.id}` }),
+          gameLink: (game) => ({ href: `#game-${game + 1}` }),
+        }),
+    },
     { name: "A single round robin — one result a cell; a player with no title, rating or federation", render: () => demo(SINGLE, "Single round robin — crosstable") },
     {
       name: "An unfinished double round robin — cells with two results, cells with one, a game still going (*)",

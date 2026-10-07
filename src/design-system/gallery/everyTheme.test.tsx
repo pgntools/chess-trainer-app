@@ -1,89 +1,29 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { describe, expect, it } from "vitest";
 
-import { AXE_PAGE_TIMEOUT_MS, expectNoAxeViolations } from "../../test/axe";
-import AppThemeWithLang from "../../theme/AppThemeWithLang";
+import { designSystemCombos, designSystemPages } from "../../test/galleryMatrix/designSystem";
 import { themes } from "../themes";
-import DesignGallery from "./DesignGallery";
-import { discoverTiers, pageKeyOf } from "./discover";
 
 /*
   Every component's page — the Base and Patterns tiers (CTA-108, CTA-110) —
-  under every registered theme, both schemes and both directions: each
-  renders every one of its demos, and nothing on the way — React, MUI, a prop
-  type — complains, and axe finds no WCAG 2.2 A / AA violation in the demos
-  (CTA-111, `src/test/axe.ts`). What it looks like is the gallery's to show
-  in a browser; this is that nothing breaks. The Blocks tier's pages are
-  `views/dev/design/Main.test.tsx`'s, since the design system cannot import
-  a block.
-
-  Each page is rendered once per theme, the scheme and direction turning
-  as the themes go — light LTR, dark RTL, light RTL, dark LTR — so every theme,
-  every scheme, every direction and every scheme × direction pair is met on
-  every page, at a quarter of the full matrix's cost.
+  is rendered under every registered theme, scheme and direction, and audited
+  by axe (CTA-111), by the gallery's axe matrix: `src/test/galleryMatrix/`,
+  the `gallery` test group, run nightly and on demand rather than on every
+  pull request (CTA-123 — it is half an hour of tests). What stays in the
+  gate is that the matrix is the right one: it meets every theme, scheme,
+  direction and scheme × direction pair, over both tiers. The Blocks tier's
+  pages are `views/dev/design/Main.test.tsx`'s, since the design system
+  cannot import a block.
 */
-
-const pages = discoverTiers().flatMap((tier) =>
-  tier.sections.flatMap((section) =>
-    section.modules.map((entry) => ({ key: `${pageKeyOf(tier.id, section.id)}/${entry.id}`, demos: entry.demos.length })),
-  ),
-);
-const SCHEMES = [
-  ["light", "ltr"],
-  ["dark", "rtl"],
-  ["light", "rtl"],
-  ["dark", "ltr"],
-] as const;
-const combos = pages.flatMap((page) =>
-  themes.map((theme, index) => {
-    const [mode, direction] = SCHEMES[index % SCHEMES.length];
-    return [page.key, theme.id, mode, direction, page.demos] as const;
-  }),
-);
-
-let errors: unknown[][];
-beforeEach(() => {
-  errors = [];
-  vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
-    errors.push(args);
-  });
-});
-afterEach(() => {
-  vi.restoreAllMocks();
-});
 
 describe("the gallery under every theme, scheme and direction", () => {
   it("meets every theme, scheme, direction and scheme × direction pair", () => {
-    expect(new Set(combos.map(([, theme]) => theme))).toEqual(new Set(themes.map((theme) => theme.id)));
-    expect(new Set(combos.map(([, , mode, direction]) => `${mode} ${direction}`)).size).toBe(Math.min(4, themes.length));
+    expect(new Set(designSystemCombos.map(([, theme]) => theme))).toEqual(new Set(themes.map((theme) => theme.id)));
+    expect(new Set(designSystemCombos.map(([, , mode, direction]) => `${mode} ${direction}`)).size).toBe(Math.min(4, themes.length));
   });
 
   it("covers both of the design system's tiers, DataTable and TreeView among them", () => {
-    expect(pages.map((page) => page.key)).toEqual(expect.arrayContaining(["tables/TableFrame", "patterns/tables/DataTable", "patterns/trees/TreeView"]));
-  });
-
-  it.each(combos)("%s under %s · %s · %s renders every demo, with no error and no axe violation", async (pageKey, themeId, mode, direction, demos) => {
-    render(
-      <AppThemeWithLang>
-        <MemoryRouter>
-          <DesignGallery
-            section={pageKey}
-            sectionPath={(id) => `/dev/design/${id}`}
-            initialThemeId={themeId}
-            initialMode={mode}
-            initialDirection={direction}
-          />
-        </MemoryRouter>
-      </AppThemeWithLang>,
+    expect(designSystemPages.map((page) => page.key)).toEqual(
+      expect.arrayContaining(["tables/TableFrame", "patterns/tables/DataTable", "patterns/trees/TreeView"]),
     );
-    const preview = screen.getByTestId("design-gallery-preview");
-    expect(preview).toHaveAttribute("data-theme", themeId);
-    expect(preview).toHaveAttribute("data-mode", mode);
-    expect(preview).toHaveAttribute("dir", direction);
-    expect(preview).toHaveAttribute("data-page", pageKey);
-    expect(within(preview).getAllByTestId(/^design-gallery-demo-/)).toHaveLength(demos);
-    await expectNoAxeViolations(preview);
-    expect(errors).toEqual([]);
-  }, AXE_PAGE_TIMEOUT_MS);
+  });
 });

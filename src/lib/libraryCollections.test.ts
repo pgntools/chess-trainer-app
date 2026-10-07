@@ -13,14 +13,20 @@ import {
   collectionRowsOf,
   collectionMetadataOf,
   dateBounds,
+  eventGroupsOf,
   openingLabelOf,
   filteredRows,
   mainlinePlies,
   playersOf,
   MAX_COLLECTION_CHARS,
+  MAX_COLLECTION_NAME_CHARS,
   readCollectionText,
+  isPotentialTournament,
+  readsAsTournament,
   sharedEventOf,
   sortedRows,
+  formatOfKind,
+  TOURNAMENT_FORMATS,
 } from "./libraryCollections";
 
 const GAME = (tags: Record<string, string>, moves: string) =>
@@ -293,6 +299,26 @@ describe("a text's metadata at a glance (CTA-103)", () => {
     expect(sharedEventOf([{ event: "Club" }, {}])).toBeUndefined();
     expect(sharedEventOf([])).toBeUndefined();
   });
+
+  it("groups the rows by Event for a split import, first appearance first and the untagged together", () => {
+    // Generic: what is carried beside the row travels through the grouping.
+    const rows = [
+      { event: "Club", n: 1 },
+      { event: undefined, n: 2 },
+      { event: "Open", n: 3 },
+      { event: "Club", n: 4 },
+      { event: undefined, n: 5 },
+    ];
+    expect(eventGroupsOf(rows)).toEqual([
+      { event: "Club", rows: [{ event: "Club", n: 1 }, { event: "Club", n: 4 }] },
+      { event: undefined, rows: [{ event: undefined, n: 2 }, { event: undefined, n: 5 }] },
+      { event: "Open", rows: [{ event: "Open", n: 3 }] },
+    ]);
+    // One event, or no event at all: one group — nothing to split.
+    expect(eventGroupsOf([{ event: "Club" }, { event: "Club" }])).toHaveLength(1);
+    expect(eventGroupsOf([{ event: undefined }, { event: undefined }])).toHaveLength(1);
+    expect(eventGroupsOf([])).toEqual([]);
+  });
 });
 
 describe("naming a shipped file", () => {
@@ -411,5 +437,67 @@ describe("batchFolderNameOf — where the table's Analyse files a batch (CTA-77)
     const cut = batchFolderNameOf("x".repeat(120), none, labels, 100);
     expect(cut).toHaveLength(100);
     expect(cut.endsWith("… — 12 games")).toBe(true);
+  });
+
+  it("derives a collection's name the same way (CTA-122), within the collection-name cap", () => {
+    const filter = {
+      ...none,
+      player: ["Capablanca, Jose"],
+      color: "white" as const,
+      opening: "D02 Queen's Gambit Declined",
+      line: ["d4", "d5", "c4"],
+    };
+    expect(batchFolderNameOf("Capablanca", filter, labels, MAX_COLLECTION_NAME_CHARS)).toBe(
+      "Capablanca — 12 games (Capablanca, Jose, white, D02, 1.d4 d5 2.c4)",
+    );
+    // However much is on, never past the cap: a summary too long is cut.
+    const long = batchFolderNameOf(
+      "Capablanca",
+      { ...filter, event: "New York 1913 ".repeat(6).trimEnd() },
+      labels,
+      MAX_COLLECTION_NAME_CHARS,
+    );
+    expect(long).toHaveLength(MAX_COLLECTION_NAME_CHARS);
+    expect(long.startsWith("Capablanca — 12 games (Capablanca, Jose, white, D02, New York 1913")).toBe(true);
+    expect(long.endsWith("…)")).toBe(true);
+  });
+});
+
+describe("the tournament mark, read from what is at hand (CTA-142)", () => {
+  const ONE_EVENT = [{ event: "Cup" }, { event: "Cup" }];
+  const TWO_EVENTS = [{ event: "Cup" }, { event: "Open" }];
+  const marked = { tournament: { enabled: true, type: "swiss" as const } };
+
+  it("goes by the rows where they are read, else the kept verdict, else the mark alone", () => {
+    expect(readsAsTournament(marked, ONE_EVENT)).toBe(true);
+    expect(readsAsTournament({ ...marked, sharedEvent: true }, TWO_EVENTS)).toBe(false);
+    expect(readsAsTournament({ ...marked, sharedEvent: false })).toBe(false);
+    expect(readsAsTournament({ ...marked, sharedEvent: true }, null)).toBe(true);
+    // A record from before the verdict was kept: the mark alone.
+    expect(readsAsTournament(marked)).toBe(true);
+    expect(readsAsTournament({ tournament: { enabled: false, type: "swiss" }, sharedEvent: true }, ONE_EVENT)).toBe(false);
+    expect(readsAsTournament({}, ONE_EVENT)).toBe(false);
+  });
+
+  it("keeps CTA-121's five formats and adds the three with tables, arena last", () => {
+    for (const format of ["swiss", "roundRobin", "knockout", "arena", "match"]) expect(TOURNAMENT_FORMATS).toContain(format);
+    expect(TOURNAMENT_FORMATS.at(-1)).toBe("arena");
+    expect(formatOfKind("teamKnockout")).toBe("teamKnockout");
+  });
+});
+
+describe("a potential tournament (CTA-142)", () => {
+  const upload = { source: "uploaded" as const, count: 12, sharedEvent: true };
+
+  it("is an upload never marked, its games sharing one event, two or more", () => {
+    expect(isPotentialTournament(upload)).toBe(true);
+    // Applied, or turned down: decided.
+    expect(isPotentialTournament({ ...upload, tournament: { enabled: true, type: "swiss" } })).toBe(false);
+    expect(isPotentialTournament({ ...upload, tournament: { enabled: false, type: "swiss" } })).toBe(false);
+    expect(isPotentialTournament({ ...upload, sharedEvent: false })).toBe(false);
+    // A record from before the verdict was kept says nothing.
+    expect(isPotentialTournament({ source: "uploaded", count: 12 })).toBe(false);
+    expect(isPotentialTournament({ ...upload, count: 1 })).toBe(false);
+    expect(isPotentialTournament({ ...upload, source: "shipped" })).toBe(false);
   });
 });

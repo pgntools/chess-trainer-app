@@ -1,0 +1,33 @@
+---
+title: Double round robin
+summary: "<RoundRobinCrossTable>: the FIDE Candidates 2026 — eight players, each met twice, two results a cell."
+order: 30
+---
+
+import games from "../../tournaments/wchcand26.pgn?raw"
+
+A **double round robin**: every player meets every other twice, once with each colour. Eight players make fourteen rounds and 56 games. The example is the FIDE Candidates Tournament 2026.
+
+## The format
+
+With everyone playing everyone, there is no pairing to get lucky with, and the score alone says a lot. Ties are broken by Sonneborn-Berger: the points of the opponents a player beat, plus half the points of those they drew with. Buchholz, the sum of all the opponents' points, is left out, because in a round robin everyone's opponents are nearly the same.
+
+## The crosstable
+
+A row and a column per player, in rank order. Where a row meets a column, the cell holds every game between the two players, in round order: two results in a double round robin. The diagonal, a player against themselves, is blank.
+
+<RoundRobinCrossTable pgn={games} />
+
+Each result is `1`, `½` or `0` from the row player's side. A screen reader reads it in full, for example "Round 4, White against Caruana, Fabiano: win".
+
+## The markup
+
+```mdx
+import games from "./wchcand26.pgn?raw"
+
+<RoundRobinCrossTable pgn={games} />
+```
+
+## Source
+
+The games are from [The Week in Chess](https://theweekinchess.com) (TWIC), by Mark Crowther — the event's page, [FIDE Candidates Tournaments 2026](https://theweekinchess.com/chessnews/events/fide-candidates-tournaments-2026), and its PGN, [wchcand26.pgn](https://theweekinchess.com/assets/files/pgn/wchcand26.pgn).

@@ -6,12 +6,35 @@
 const en = {
   app: {
     brandMark: "CT",
-    brandText: "Chess Trainer App",
+    brandText: "chessapp.dev",
+  },
+  /** The notice every session opens with (CTA-155) — `blocks/dialogs/DevelopmentNoticeDialog`. */
+  developmentNotice: {
+    title: "{{name}} is still in development",
+    badge: "Early beta",
+    intro: "This is an early beta, so please use it with caution. Here is what to know:",
+    items: {
+      local: { title: "Your data stays in this browser", text: "Games, analyses, repertoires and collections are saved on this device only." },
+      export: { title: "Export it now and then", text: "Settings → Export downloads everything as one zip, so nothing is lost." },
+      changes: { title: "Things may change or break", text: "Saved data may have to be imported again after an update." },
+    },
+    dismiss: "Dismiss",
   },
   nav: {
     ariaLabel: "Main navigation",
     toggleColorMode: "Toggle light and dark mode",
     switchLanguage: "Switch language",
+    /**
+     * The language switch's question while a screen holds unsaved work
+     * (CTA-136): the language is in the address, so switching makes the
+     * router anew and the screen remounts.
+     */
+    switchLanguageConfirm: {
+      title: "Switch language?",
+      message: "Switching language reloads the screen — unsaved changes will be lost.",
+      confirm: "Switch",
+      cancel: "Stay",
+    },
     /**
      * The engine's lobby at `/engine/games` (CTA-82; "Saved games" until then):
      * the games played against the engine, and the new-game form whose Start
@@ -26,6 +49,8 @@ const en = {
     openings: "Openings explorer",
     /** The reader's own repertoires (CTA-61) — shown under the folder's own name, a single entry (CTA-84). */
     repertoires: "My repertoires",
+    /** The Blog's index (CTA-126), `/blog`. */
+    blogIndex: "All articles",
     /** The Library's two screens (CTA-75): the collections, and adding one. */
     libraryCollections: "Collections",
     addCollection: "Add collection",
@@ -37,16 +62,26 @@ const en = {
     settingsStorage: "Storage",
     /** Settings' Appearance tab (CTA-107), in the Settings folder. */
     settingsAppearance: "Appearance",
+    /** Settings' Engine tab (CTA-153), in the Settings folder. */
+    settingsEngine: "Engine",
+    /** Settings' Support tab (CTA-155), in the Settings folder. */
+    settingsSupport: "Support",
     /** The dev-only design gallery (CTA-107), in the Development folder. */
     designSystem: "Design system",
     /** The dev-only theme editor (CTA-115), in the Development folder. */
     themeEditor: "Theme editor",
+    /** The MDX editor (CTA-137, `yarn mdx-editor:start` only): its article lobby and the editor itself, in its own folder — and its Components gallery (CTA-140). */
+    mdxArticles: "Articles",
+    mdxEditor: "Editor",
+    mdxComponents: "Components gallery",
     /** Sidebar folders — groupings over the routes, never routes themselves. */
     folders: {
       engine: "Engine",
       analysisBoard: "Analysis Board",
       openings: "Openings",
       repertoires: "Repertoires",
+      /** The Blog (CTA-126) — MDX articles in nested folders, named by their data. */
+      blog: "Blog",
       /**
        * The Library (CTA-75). Its collections are not folders here — they are
        * the rows of `/library`, named from their files and uploads.
@@ -56,20 +91,110 @@ const en = {
       settings: "Settings",
       /** The dev-only Development section (`chessboard.md` §9.5). */
       development: "Development",
+      /** The MDX editor's own folder (CTA-137) — only under `yarn mdx-editor:start`. */
+      mdxEditor: "MDX editor",
     },
   },
   /** The index screen — a landing page linking out to the real screens. */
   home: {
-    title: "Get started",
-    subtitle: "Pick a board or tool to open.",
+    /** The front page's embedded stored games (CTA-126) — `<CollectionGameBoard>`, `<StoredGameEmbed>`. */
+    embed: {
+      loading: "Loading the game…",
+      missing: "The game this page embeds is not here.",
+      label: "{{players}} — game board",
+      start: "Play the game's first move",
+      open: "Open on the Analysis Board",
+      white: "White",
+      black: "Black",
+    },
+    /** `<RepertoireBoard>` (CTA-126). */
+    repertoire: {
+      loading: "Loading the repertoire…",
+      missing: "The repertoire this page embeds is not on this device.",
+      untitled: "Untitled repertoire",
+      forWhite: "A repertoire for White",
+      forBlack: "A repertoire for Black",
+      sampleNote: "A sample repertoire that comes with the app",
+      label: "{{name}} — repertoire board",
+      start: "Play a move of the repertoire",
+      open: "Open the repertoire",
+      add: "Add your own repertoire",
+      samples: {
+        "e4-white": "1. e4 for White",
+        "caro-kann-black": "The Caro-Kann for Black",
+      },
+    },
+    /** `<CollectionCard>` (CTA-126). */
+    collection: {
+      loading: "Loading the collection…",
+      missing: "The collection this page embeds is not here.",
+      games_one: "{{formatted}} game",
+      games_other: "{{formatted}} games",
+      open: "Open the collection",
+      table: "Games of {{name}}",
+      empty: "No games",
+      earlier: "Earlier games",
+      later: "Later games",
+      columns: {
+        number: "No.",
+        white: "White",
+        black: "Black",
+        result: "Result",
+        year: "Year",
+      },
+    },
+  },
+  /** The front page's demo mini-boards (CTA-126, `views/shared/DemoBoard.tsx`). */
+  /** The Blog (CTA-126, `views/blog/`). */
+  blog: {
+    title: "Blog",
+    breadcrumbs: "Where this is in the Blog",
+    folders: "Folders",
+    articlesHeading: "Articles",
+    articles_one: "{{count}} article",
+    articles_other: "{{count}} articles",
+    openFolder: "Open {{name}}",
+    noArticles: "No articles here yet",
+    loading: "Loading the article…",
+    missingTitle: "Not found",
+    missingArticle: "There is no article at this address.",
+    missingFolder: "There is no Blog folder at this address.",
+    /** A draft's mark — shown in `yarn dev` only, where drafts are listed (CTA-135). */
+    draft: "Draft",
+    /** The line under an article's title (CTA-135): its frontmatter's `date` and `updated`. */
+    published: "Published {{date}}",
+    updated: "Updated {{date}}",
+  },
+  /** `<InlinePgnGame>` (CTA-126): an excerpt of a game in an article (`views/shared/ExcerptBoard.tsx`). */
+  inlinePgn: {
+    label: "The game, from {{from}} to {{to}}",
+    start: "The start",
+    moves: "The moves",
+    first: "To the first move shown",
+    back: "One move back",
+    next: "One move on",
+    last: "To the last move shown",
+    flip: "Flip the board",
+    unreadable: "This game's PGN does not read.",
+  },
+  demoBoard: {
+    reset: "Back to the start",
+    back: "Take back a move",
+    next: "Next move",
+    flip: "Flip the board",
+    start: "Play a move",
+    end: "The line ends here",
+    moves: "Moves from here",
   },
   /**
    * Each screen's name (CTA-112) — its route's `handle.title`: the page title
-   * ("Lobby — Chess Trainer App", the open record's name before it), the
+   * ("Lobby — chessapp.dev", the open record's name before it), the
    * `main` landmark's name and the page's `h1`.
    */
   pages: {
     home: "Home",
+    /** The Blog (CTA-126) — every page of it, one route (CTA-135): a folder's or an article's name goes first. */
+    blog: "Blog",
     playWithEngine: "Play with Engine",
     lobby: "Lobby",
     maskedPieces: "Masked Pieces",
@@ -85,10 +210,55 @@ const en = {
     library: "Library",
     addCollection: "Add collection",
     collection: "Collection",
+    collectionSettings: "Collection settings",
     libraryGame: "Library game",
     settings: "Settings",
     designSystem: "Design system",
     themeEditor: "Theme editor",
+    mdxEditor: "MDX editor",
+    mdxArticles: "MDX editor — articles",
+    mdxComponents: "MDX editor — components gallery",
+  },
+  /**
+   * **Each screen's description** (CTA-136) — its page's `<meta name="description">`
+   * and the words under its title in a shared link's preview, keyed as
+   * `pages.*`. Every screen the build pre-renders has one
+   * (`views/main/documentHead.ts`).
+   */
+  pageDescriptions: {
+    home: "A chess trainer in the browser: play the engine, analyse games, explore openings, drill your repertoires and replay master games.",
+    blog: "Articles about the app and about chess: tournaments told through their games, and how to write an article with live boards and tables.",
+    playWithEngine: "Play a game against Stockfish in your browser, at the strength you choose, with the evaluation and the moves beside the board.",
+    lobby: "Your games against the engine, newest first — carry one on or review it, or start a new game from any position.",
+    maskedPieces: "Play the engine with the pieces in disguise, and train your board vision by remembering what stands where.",
+    analysisBoard: "Analyse a game or a position with Stockfish: side lines, comments, arrows and the engine's best lines, kept in your browser.",
+    savedAnalyses: "Your analysis boards, kept in your browser and filed in folders.",
+    openings: "Explore the chess openings move by move: every named line, and where each move leads.",
+    repertoires: "Your opening repertoires, and a trainer that plays against you from them.",
+    newRepertoire: "Bring in an opening repertoire from a PGN file or pasted text.",
+    library: "Collections of chess games — Alekhine, Capablanca, Fischer, Petrosian, Tal and this year's tournaments — and your own, to search and replay.",
+    addCollection: "Add a collection of games to the Library from a PGN file, a zip or pasted text.",
+    collection: "A collection of chess games: search it, filter by player, opening, event and date, and replay any game on a board.",
+    /** A shipped collection's own page (`/library/<collection>`) — its name and its count. */
+    collectionNamed: "{{name}}: {{games}} chess games to search, filter by player, opening, event and date, and replay on a board.",
+    settings: "Export your data as one zip and bring it back, see how much space it takes, and choose how the app looks.",
+  },
+  /**
+   * **A shared link's image** (CTA-136, `lib/shareImage.ts`): the words read
+   * out for a screen's section image, and for the site's own — the last of
+   * the chain, for a page with no image nearer to it.
+   */
+  share: {
+    defaultImageAlt: "chessapp.dev — a chessboard beside the app's name",
+    sections: {
+      engine: "Play with Engine — a chessboard beside the section's name",
+      analysis: "Analysis Board — a chessboard beside the section's name",
+      openings: "Openings explorer — a chessboard beside the section's name",
+      repertoires: "Repertoires — a chessboard beside the section's name",
+      library: "Library — a chessboard beside the section's name",
+      blog: "Blog — a chessboard beside the section's name",
+      settings: "Settings — a chessboard beside the section's name",
+    },
   },
   /** The app shell's own words for a screen reader (CTA-112). */
   shell: {
@@ -283,6 +453,7 @@ const en = {
     copyPgn: "Copy variation PGN",
     addComment: "Add comment",
     addAnnotation: "Add annotation…",
+    shapes: "Arrows and circles…",
     playChances: "Play chances…",
     copied: "Variation PGN copied",
     copyFailed: "Could not copy — the clipboard is not available here.",
@@ -321,6 +492,32 @@ const en = {
    * tabs, one per section of `lib/moveAnnotations.ts`'s table. `meaning.*` is
    * keyed by each choice's `id` there.
    */
+  /**
+   * The arrows and circles a move's comment draws (CTA-143) — lichess's
+   * `[%cal]` / `[%csl]`, managed from the move menu.
+   */
+  shapesDialog: {
+    title: "Arrows and circles",
+    help: "Drawn on the board at this move. On the board itself, right-drag to draw an arrow and right-click a square for a circle (Shift red, Alt blue, both yellow). Saved with the changes, in the move's comment as lichess writes them.",
+    list: "Drawn at this move",
+    empty: "Nothing is drawn at this move.",
+    arrow: "Arrow",
+    circle: "Circle",
+    brush: "Colour",
+    brushes: { green: "Green", red: "Red", yellow: "Yellow", blue: "Blue" },
+    /** `shape` is the row's shape, already worded ("Arrow e2 → e4"). */
+    recolour: "{{shape}}: {{brush}}",
+    remove: "Remove {{shape}}",
+    removeAll: "Remove all",
+    add: "Add",
+    kind: "Shape",
+    from: "From",
+    to: "To",
+    at: "Square",
+    square: "A square, a1 to h8",
+    exists: "Already drawn in this colour.",
+    close: "Close",
+  },
   nagDialog: {
     title: "Annotate",
     help: "One move assessment and one evaluation at a time; pick the active one again to remove it. Features are toggled one by one. Saved with the changes, as NAGs in the PGN.",
@@ -448,6 +645,14 @@ const en = {
       /** Play with Engine v2's (CTA-74) — the variations explorer's move list. */
       moves: "Moves",
     },
+    /**
+     * A resumed game whose own engine cannot run on this page (CTA-153): the
+     * default plays on, and the record keeps naming the one that played.
+     */
+    /** The Engine tab's first line (CTA-153): which engine plays this game. */
+    enginePlaying: "Played by",
+    engineFallback:
+      "This game was played with {{wanted}}, which cannot run here, so {{using}} plays on. The game's record still names {{wanted}}.",
     /** Play with Engine v2's header controls (CTA-74). */
     game: {
       /**
@@ -484,6 +689,9 @@ const en = {
       strength: "Strength",
       /** The engine has no ELO setting, so the figure is named as an estimate. */
       strengthValue: "Level {{level}} (≈{{elo}} Elo)",
+      /** An engine that takes its strength as an Elo (CTA-153): the slider is the Elo itself, not an estimate. */
+      strengthElo: "Strength (Elo)",
+      strengthEloValue: "{{elo}} Elo",
       depth: "Search depth",
       moveTime: "Move time",
       moveTimeValue: "{{seconds}}s",
@@ -585,6 +793,9 @@ const en = {
     unreadableTitle: "the unreadable game of {{date}}",
     human: "Human",
     engine: "Stockfish level {{level}}",
+    /** An engine other than the default (CTA-153): its own name, and how its strength was set. */
+    engineNamed: "{{name}} level {{level}}",
+    engineElo: "{{name}} Elo {{elo}}",
     moves_one: "{{count}} move",
     moves_other: "{{count}} moves",
     variations_one: "{{count}} side line",
@@ -681,8 +892,42 @@ const en = {
     select: "Select this analysis",
     selectAll: "Select all analyses",
     selected: "{{count}} selected",
-    /** The pager under the list (CTA-113) — the design system's page sizes. */
+    /** The pager under the list and the table (CTA-113) — the design system's page sizes. */
     rowsPerPage: "Analyses per page",
+    /**
+     * The list view's games table (CTA-144): one row per analysis, its columns
+     * the game's own fields read off its tags, every one a sort header.
+     */
+    table: {
+      label: "Saved analyses in this folder",
+      actions: "Actions",
+      columns: {
+        name: "Name",
+        white: "White",
+        whiteElo: "Elo",
+        black: "Black",
+        blackElo: "Elo",
+        result: "Result",
+        date: "Date",
+        event: "Event",
+        round: "Round",
+        eco: "ECO",
+        opening: "Opening",
+        moves: "Moves",
+        updated: "Updated",
+      },
+      /** The words box over the table — names, players, event, opening and notes. */
+      filter: "Filter analyses",
+      filterClear: "Clear the words",
+      /** The filter leaves no row — told apart from an empty folder. */
+      noMatch: "No analysis matches the filter.",
+      clearFilter: "Clear the filter",
+      /** A folder row's chevron — it opens or closes the folder in place. */
+      expand: "Open {{name}}",
+      collapse: "Close {{name}}",
+      /** Read with the table: how its folders, sort and picks are worked. */
+      hint: "Folders come first: a folder's arrow opens it in place, its name goes into it. Sort by a column from its header button. Tick an analysis' box to pick it.",
+    },
     download: "Download selected as PGN",
     deleteSelected: "Delete selected",
     /** Deleting the picks, asked first — the repertoires' dialog with these words. */
@@ -789,7 +1034,8 @@ const en = {
       popup: {
         title_one: "This PGN holds {{count}} game",
         title_other: "This PGN holds {{count}} games",
-        explain: "Merge them into one tree on the board, or keep them as a collection of games in the Library.",
+        explain:
+          "Merge them into one tree on the board, keep them as a collection of games in the Library, or save each one as an analysis.",
         skipped_one: "{{count}} game has no moves or could not be read, and is left out of a merge.",
         skipped_other: "{{count}} games have no moves or could not be read, and are left out of a merge.",
         merge: "Merge games",
@@ -800,12 +1046,31 @@ const en = {
         collection: "Save as games collection",
         collectionHelp:
           "Every game is kept as it is, in a new collection at the top of the Library, named after the games' event or the file; you go to its table.",
+        /** The third choice (CTA-141): each game its own saved analysis, in a new folder. */
+        analyses: "Save to Saved analyses",
+        analysesHelp:
+          "Every game — a position on its own too — becomes a saved analysis, comments, side lines and arrows kept, in a new folder of Saved analyses; you go to the folder.",
+        folderTitle: "Save to Saved analyses",
+        folderName: "Folder name",
+        /** The folder's name when a pasted text's games share no event. */
+        folderDefault: "Analysed games",
+        folderCount_one: "{{count}} game will be saved as an analysis in a new folder.",
+        folderCount_other: "{{count}} games will be saved as analyses in a new folder.",
+        folderSkipped_one: "{{count}} game could not be read, and is left out.",
+        folderSkipped_other: "{{count}} games could not be read, and are left out.",
+        folderSave: "Save",
+        folderBack: "Back",
         indexing: "Checking games… {{done}} of {{total}}",
         cancel: "Cancel",
         problem: {
           unreadable: "No game could be read in that.",
           index: "The games could not be checked. Nothing was saved.",
+          /** The games were checked, then the write itself failed (CTA-141). */
+          write: "The games were checked, but could not be written. Nothing was saved.",
           storage: "It could not be saved — this browser's storage is full or unavailable.",
+          folder: "No new folder could be made — Saved analyses holds at most {{max}} folders. Nothing was saved.",
+          tooMany: "Saved analyses holds at most {{max}} analyses, and these would pass it. Nothing was saved.",
+          analysesStorage: "The browser refused to store the games — its storage may be full. Nothing was saved.",
         },
       },
       problem: {
@@ -818,6 +1083,28 @@ const en = {
     settingsLink: {
       open: "Analysis settings",
       unsaved: "Save or discard your changes first",
+    },
+    /**
+     * The workspace an analysis opened from the saved list opens in (CTA-145):
+     * the list's tree beside the board, and the header's previous / next.
+     */
+    folderView: {
+      /** The Close button — it goes back to the list. */
+      close: "Close — back to Saved analyses",
+      /** The header button that opens the tree, under a narrow window. */
+      toggle: "Saved analyses",
+      /** The drawer's name under a narrow window. */
+      drawer: "Saved analyses",
+      /** The panel's button that folds it to a rail at the start edge. */
+      collapse: "Fold the panel away",
+      /** The rail's button that opens the panel again. */
+      expand: "Open the folder's analyses",
+      previous: "Previous analysis in the folder",
+      next: "Next analysis in the folder",
+      /** Why the others cannot be opened while the board holds unsaved changes. */
+      locked: "Save or discard your changes to open another analysis.",
+      /** A folder's row that lists more of its analyses. */
+      showMore: "Show {{count}} more",
     },
     /** A saved analysis' settings screen (`/tools/analysis/saved/<id>/settings`). */
     settingsScreen: {
@@ -1027,6 +1314,8 @@ const en = {
       loading: "Loading the opening book…",
       /** The ECO chip's accessible name — it is the link into the explorer. */
       open: "Explore {{eco}} in the Openings explorer",
+      /** The one-line opening's accessible name (the Analysis Board): its name, its code, and that it opens in a new tab. */
+      openInTab: "{{name}} ({{eco}}) — explore in the Openings explorer, in a new tab",
     },
     book: {
       /** The list's accessible name (CTA-113). */
@@ -1171,6 +1460,24 @@ const en = {
           tooMany: "Saved analyses holds at most {{max}} analyses, and these would pass it. Nothing was saved.",
           storage: "The browser refused to store the games — its storage may be full. Nothing was saved.",
         },
+        /**
+         * The Save-as-collection hand-off (CTA-122): the picked games written
+         * as one new uploaded collection, each game exactly as stored, named
+         * by the reader after a name derived like Analyse's folder name.
+         */
+        saveAs: "Save as collection",
+        /** The name dialog (`SaveAsCollectionDialog`). */
+        saveAsTitle: "Save as a collection",
+        saveAsName: "Collection name",
+        saveAsCount_one: "{{count}} game will be saved as a new collection of its own.",
+        saveAsCount_other: "{{count}} games will be saved as a new collection of their own.",
+        saveAsConfirm: "Create collection",
+        saveAsCancel: "Cancel",
+        saveAsReadProblem: "The games could not be read. Nothing was created.",
+        saveAsProblem: "The collection could not be created — this browser's storage may be full or unavailable. Nothing was created.",
+        savedCollection_one: "“{{name}}” created with {{count}} game.",
+        savedCollection_other: "“{{name}}” created with {{count}} games.",
+        openCollection: "Open collection",
       },
       /** The `#` cell's mark on a game the index could not parse. */
       unreadable: "This game could not be read — its moves have an error.",
@@ -1198,6 +1505,182 @@ const en = {
       },
       shippedNote: "This collection ships with the app. Its games are read-only: changes you make on a game are saved as a copy in Saved analyses.",
       uploadedNote: "You added this collection; it is kept in this browser only. Changes to a game can update it in place or be saved as a copy next to it.",
+      /** The header's gear, to the collection's settings (CTA-121). */
+      settings: "Collection settings",
+    },
+    /**
+     * A collection's settings — `/library/<collection>/settings` (CTA-121):
+     * the `CollectionSettingsForm` block's words, and the screen's own.
+     */
+    settings: {
+      /** The screen's `h1`. */
+      title: "Collection settings",
+      general: "General",
+      name: "Title",
+      nameHelp: "What the collection is called in the Library.",
+      description: "Description",
+      descriptionHelp: "Shown under the collection's name, here and on its games screen.",
+      tournamentSection: "Tournament",
+      tournament: "Mark as tournament",
+      tournamentHelp: "A tournament's games can be shown as standings and crosstables.",
+      tournamentBlocked:
+        "A collection can be marked as a tournament only when every game in it shares one Event. First narrow the collection to the games of one tournament event.",
+      /** Arena (CTA-142): markable, its view showing no standings table yet. */
+      comingLater: "no standings table yet",
+      type: "Tournament type",
+      save: "Save",
+      cancel: "Cancel",
+      problem: "The settings could not be saved — this browser's storage may be full or unavailable.",
+      /** The formats (CTA-121; CTA-142 added the double elimination and the two team ones) — every one but Arena selectable. */
+      formats: {
+        swiss: "Swiss system",
+        roundRobin: "Round robin",
+        knockout: "Knockout (elimination)",
+        doubleElimination: "Double elimination",
+        match: "Match play",
+        teamSwiss: "Team Swiss / round robin",
+        teamKnockout: "Team knockout",
+        arena: "Arena",
+      },
+      /** Each format's one-line description, under the type's radios. */
+      formatDescriptions: {
+        swiss:
+          "players are paired each round against opponents with the same or similar score; no one is eliminated. Best for large open weekend tournaments.",
+        roundRobin:
+          "every participant plays every other once (or twice in a double round robin). Best for small, elite fields and championships.",
+        knockout: "a loss eliminates a player from first prize. Best for high-stakes events (like the World Cup).",
+        doubleElimination:
+          "a player is out only after a second lost match: the losers of the winners' bracket play on in a losers' bracket. Best for esports-style events.",
+        match: "a head-to-head series of games between two players. Best for World Championship matches.",
+        teamSwiss:
+          "teams meet on every board at once, a match a round, ranked by match points then board points. Best for Olympiads and team championships.",
+        teamKnockout: "teams meet in matches of several legs, the loser of each out. Best for team cups and the final stages of team events.",
+        arena: "continuous, time-based online pairing focused on volume and win streaks. Best for fast online play.",
+      },
+      /**
+       * The type the games look like (CTA-142, `lib/tournamentKind.ts`): the
+       * suggestion over the type's radios, Apply putting it in the draft.
+       */
+      suggestion: {
+        title: "Suggested tournament type",
+        /** The guess and why, in a line. */
+        text: "{{type}}: {{reason}}.",
+        apply: "Apply",
+        applyName: "Apply the suggested type, {{type}}",
+        /** The games table's close button (CTA-142): the collection is not a tournament, and is not asked again. */
+        dismiss: "Not a tournament — don't suggest again",
+        /** The games table's outcomes. */
+        marked: "Marked as a tournament: {{type}}. Change it in the collection's settings.",
+        /** The marked snackbar's action: the mark taken off again. */
+        undo: "Undo",
+        problem: "The mark could not be saved — this browser's storage may be full or unavailable.",
+        /** Once the draft holds it. */
+        selected: "Selected — press Save to keep it.",
+        /** Why — the numbers the guess was read from. */
+        reasons: {
+          match: "{{games}} games, every one between the same two players",
+          doubleElimination: "its rounds are numbered from 51 on — a losers' bracket, as The Week in Chess numbers it",
+          knockout: "{{competitors}} players, fewer each round ({{sizes}})",
+          teamKnockout: "{{competitors}} teams, fewer each round ({{sizes}})",
+          roundRobin: "{{competitors}} players, every pair met",
+          roundRobinTwice: "{{competitors}} players, every pair met twice",
+          teamRoundRobin: "{{competitors}} teams, every pair met",
+          swiss: "{{competitors}} players over {{rounds}} rounds, each meeting a few of the others",
+          swissNoRounds: "{{competitors}} players, each meeting a few of the others",
+          teamSwiss: "{{competitors}} teams over {{rounds}} rounds, each meeting a few of the others",
+          teamSwissNoRounds: "{{competitors}} teams, each meeting a few of the others",
+          /** CTA-142: no round numbers, more games than players — Lichess's arenas. */
+          arena: "{{competitors}} players, {{games}} games and no rounds",
+        },
+      },
+    },
+    /**
+     * A collection marked as a tournament (CTA-142): the list's mark, and
+     * its own view at `/library/<collection>` — the Info, Participants and
+     * Games tabs.
+     */
+    tournament: {
+      /** The list's word for its icon, read with the collection's name. */
+      mark: "Tournament",
+      /**
+       * A collection that could be one (CTA-142: never marked, its games one
+       * event) — the list's warning icon among its actions: its tooltip and
+       * name, a link to the collection, where the type is suggested.
+       */
+      potentialHint_one: "Potential tournament: {{name}}'s game shares one Event. Open it to choose a tournament type, or dismiss the suggestion.",
+      potentialHint_other: "Potential tournament: {{name}}'s {{count}} games share one Event. Open it to choose a tournament type, or dismiss the suggestion.",
+      tabs: {
+        label: "The tournament",
+        info: "Info",
+        participants: "Participants",
+        games: "Games",
+      },
+      /** The event card (the `TournamentInfo` block). */
+      info: {
+        title: "The event",
+        type: "Type",
+        event: "Event",
+        site: "Site",
+        dates: "Dates",
+        rounds: "Rounds",
+        players: "Players",
+        teams: "Teams",
+        games: "Games",
+        unfinished_one: "{{count}} game unfinished",
+        unfinished_other: "{{count}} games unfinished",
+      },
+      /** The Info tab's table, and what is said when the games do not fit its type. */
+      table: {
+        title: "The table",
+        loading: "Reading the tournament's games…",
+        unreadable: "This collection's games could not be read.",
+        misfit: "The games do not read as {{type}}.",
+        misfitSuggest: "The games do not read as {{type}} — they look like {{guess}}: {{reason}}.",
+        changeType: "Change the type",
+        noTable: "{{type}} has no standings table yet — every player's record is on the Participants tab.",
+      },
+      /** The Participants tab. */
+      participants: {
+        title: "Participants",
+        teams: "Teams",
+        players: "Players",
+        top: "Statistics",
+        empty: "No players in these games.",
+        columns: {
+          player: "Player",
+          team: "Team",
+          rating: "Rtg",
+          ratingName: "Rating",
+          score: "Pts",
+          scoreName: "Points",
+          games: "G",
+          gamesName: "Games",
+          wins: "W",
+          winsName: "Wins",
+          draws: "D",
+          drawsName: "Draws",
+          losses: "L",
+          lossesName: "Losses",
+          performance: "Perf",
+          performanceName: "Performance",
+        },
+        /** The top players' summary (the `TopPlayers` block). */
+        standouts: {
+          score: "Best score",
+          scoreValue: "{{points}} of {{games}}",
+          performance: "Best performance",
+          wins: "Most wins",
+          winsValue_one: "{{count}} win",
+          winsValue_other: "{{count}} wins",
+          unbeaten: "Longest unbeaten run",
+          unbeatenValue_one: "{{count}} game",
+          unbeatenValue_other: "{{count}} games",
+        },
+        /** A team and its players (the `TeamRosters` block). */
+        teamPoints: "{{matchPoints}} match points, {{boardPoints}} board points",
+        playersOf: "{{team}}'s players",
+        sortHint: "Sort by a column's header.",
+      },
     },
     /**
      * The table's filters, in the right-hand panel — each shown only where
@@ -1301,10 +1784,34 @@ const en = {
         playersHelp: "Games of any of them — pick from the list or type part of a name.",
         several: "Each file becomes a collection of its own, named by the Event its games share, else by the file's name.",
         severalInto: "Every file's games are added to this collection.",
+        /** What a split import makes of a zip's several files (CTA-127). */
+        severalSplit: "Each file becomes a folder of its own, holding one collection per event.",
         count_one: "{{kept}} of {{count}} game will be imported",
         count_other: "{{kept}} of {{count}} games will be imported",
         import: "Import",
+        /** The *Split by event* option of a new-collection import (CTA-127). */
+        split: "Split by event",
+        splitHelp: "A folder named after the file, holding one collection per event. Games with no Event go into one \"Unknown\" collection.",
+        /** CTA-142: on a split, each event's collection marked with the type its games look like. */
+        autoType: "Mark each event's tournament type",
+        autoTypeHelp: "Each event's games are read for the kind of tournament they look like — before anything is imported. Change any event's type below, or set it to \"Not a tournament\", then import.",
+        autoTypeNone: "No events to mark.",
+        /** The events table: its name, its columns, and the select's "none". */
+        eventTypes: "Each event's tournament type",
+        eventColumns: {
+          event: "Event",
+          games: "Games",
+          players: "Players",
+          dates: "Dates",
+          type: "Type",
+        },
+        notTournament: "Not a tournament",
+        splitOneEvent: "Nothing to split — the games kept of each file share one Event.",
+        splitNoEvents: "Nothing to split — no game kept has an Event.",
+        splitNothingKept: "Nothing to split — no game will be imported.",
       },
+      /** The collection the games with no Event go into, when an import splits by event (CTA-127). */
+      unknown: "Unknown",
       problem: {
         empty: "There is no PGN in that.",
         unreadable: "No game could be read in that.",
@@ -1315,6 +1822,7 @@ const en = {
         file: "Could not read that file.",
         zip: "That zip could not be read.",
         "zip-empty": "There is no .pgn file in that zip.",
+        folder: "The folder could not be created — this browser's storage is full or unavailable, or there is no room for another folder.",
       },
     },
     /** A path the Library does not have. */
@@ -1389,7 +1897,7 @@ const en = {
   /**
    * The **tournament tables** (CTA-120) — the Swiss standings and the
    * round-robin crosstable (`src/blocks/tables/`). Built ahead of the
-   * tournaments section: only the dev gallery shows them yet.
+   * tournaments section; the Blog's articles embed them (CTA-128, `embed`).
    */
   tournament: {
     /** The headings: an abbreviation in view, its `…Name` read in its place and shown on hover. */
@@ -1405,6 +1913,12 @@ const en = {
       buchholzName: "Buchholz",
       sonnebornBerger: "SB",
       sonnebornBergerName: "Sonneborn-Berger",
+      /** A team event's (CTA-128). */
+      team: "Team",
+      matchPoints: "MP",
+      matchPointsName: "Match points",
+      boardPoints: "BP",
+      boardPointsName: "Board points",
     },
     /** A round column's full name — its header shows the number alone. */
     round: "Round {{round}}",
@@ -1435,6 +1949,83 @@ const en = {
     },
     loading: "Reading the tournament…",
     empty: "No games to show.",
+    /** A paged table's pager (CTA-128). */
+    rowsPerPage: "Rows per page",
+    /** The FIDE titles, read in place of their chips' letters (CTA-128). */
+    titles: {
+      GM: "Grandmaster",
+      IM: "International Master",
+      FM: "FIDE Master",
+      CM: "Candidate Master",
+      WGM: "Woman Grandmaster",
+      WIM: "Woman International Master",
+      WFM: "Woman FIDE Master",
+      WCM: "Woman Candidate Master",
+    },
+    /** The MDX embeds (CTA-128): `<SwissStandingsTable>` and `<RoundRobinCrossTable>` in an article. */
+    embed: {
+      /** The table's accessible name, after the games' Event tag. */
+      standings: "{{event}} — standings",
+      crosstable: "{{event}} — crosstable",
+      /** The event's name where no game carries an Event tag. */
+      untitled: "The tournament",
+      unreadable: "This tournament's PGN holds no game.",
+      /** The other formats' embeds (CTA-128). */
+      bracket: "{{event}} — bracket",
+      match: "{{event}} — the match",
+      notAMatch: "This PGN is not a match: its games are not all between the same two players.",
+      /** <CollectionTournamentTable> naming a collection this browser's Library does not hold. */
+      collectionMissing: "This collection is not in this browser's Library.",
+      /** <CollectionTeamStandingsTable> over a collection whose games name no teams. */
+      notATeamEvent: "This collection is not a team event: its games name no teams.",
+      /** A table over an analysis, a played game or a repertoire (CTA-140) that this browser does not hold. */
+      sourceMissing: "This is not in this browser — it is a reader's own, kept where it was made.",
+    },
+    /** A knockout's bracket (CTA-128): the rounds' names, a match in words. */
+    knockout: {
+      round: "Round {{round}}",
+      final: "Final",
+      semiFinals: "Semi-finals",
+      quarterFinals: "Quarter-finals",
+      winners: "Winners' bracket",
+      losers: "Losers' bracket",
+      /** One side of a match, read: the name and the score — a team's board points after it. */
+      side: "{{name}} {{score}}",
+      teamSide: "{{name}} {{score}} ({{boardPoints}} board points)",
+      through: "{{name}} goes through",
+      /** The caption over a match for third place, and the words it is read with. */
+      thirdPlace: "Match for third place",
+      loading: "Reading the bracket…",
+      empty: "No matches to show.",
+      /** A match's games as links under it (CTA-128): the list's name, and each link's words. */
+      games: "Games",
+      game: "Game {{number}}: {{white}} – {{black}}, {{result}}",
+      /** A team match's legs as links, each opening the leg's first board. */
+      legs: "Legs",
+      leg: "Leg {{leg}}: {{first}} {{own}}, {{second}} {{other}} — opens its first board",
+    },
+    /** A match between two players (CTA-128): a column per game. */
+    match: {
+      game: "Game {{game}}",
+      result: {
+        white: "Game {{game}}, White against {{opponent}}: {{result}}",
+        black: "Game {{game}}, Black against {{opponent}}: {{result}}",
+      },
+    },
+    /** A team tournament's standings (CTA-128): a round's cell is the team's board points in its match. */
+    team: {
+      match: "Round {{round}} against {{opponent}}: {{own}}–{{other}}, {{outcome}}",
+      outcome: {
+        win: "won",
+        draw: "drawn",
+        loss: "lost",
+        unfinished: "unfinished",
+      },
+      noMatch: "Round {{round}}: no match in the file",
+      legend: {
+        unfinished: "a match with a game unfinished",
+      },
+    },
   },
   /**
    * The **Repertoires** section (CTA-61) — the reader's own opening
@@ -1704,6 +2295,8 @@ const en = {
       import: "Import",
       storage: "Storage",
       appearance: "Appearance",
+      engine: "Engine",
+      support: "Support",
     },
     /** The Export tab: the reader's data as PGN files and a manifest, in one zip. */
     export: {
@@ -1843,6 +2436,38 @@ const en = {
       theme: "Theme",
       /** Light and dark are not a theme: they are the header's switch, under every theme. */
       modeNote: "Light and dark are the switch in the header; every theme has both.",
+    },
+    /** The Engine tab (CTA-153): which engine every board runs. */
+    engine: {
+      intro:
+        "Choose the engine the boards use. It applies to every board from its next search and is remembered on this device. A game against the engine is played by the engine it began with, and a saved game goes on with its own.",
+      note: "An engine that cannot run on this host is listed anyway, with what it needs.",
+    },
+    /** The Support tab (CTA-155): how to reach us — a numbered list, the preferred way first. */
+    support: {
+      title: "Need help with {{name}}?",
+      intro: "Found a bug, have an idea or a question? We would like to hear from you.",
+      heading: "How to reach us",
+      items: {
+        issue: { title: "Raise a GitHub issue (preferred)", text: "Bugs, ideas and questions, in the open — others can follow along and add to them." },
+        email: { title: "Send an email", text: "If GitHub is not for you, write to us at:" },
+      },
+    },
+  },
+  /** The engine picker (`src/blocks/forms/EnginePicker`, CTA-153): the engines to choose between. */
+  enginePicker: {
+    legend: "Engine",
+    version: "Version",
+    threading: { single: "Single-thread", multi: "Multi-thread" },
+    /** How the engine's strength can be limited — what its build declares. */
+    strength: {
+      skill: "Strength by Skill Level",
+      elo: "Strength by Elo",
+      both: "Strength by Skill Level or Elo",
+    },
+    /** Why an engine is disabled here, by reason (`EngineUnavailableReason`). */
+    unavailable: {
+      "cross-origin-isolation": "Needs cross-origin isolation — not available on this host",
     },
   },
   /** The registered themes' names (`src/design-system/themes/`, CTA-107). */

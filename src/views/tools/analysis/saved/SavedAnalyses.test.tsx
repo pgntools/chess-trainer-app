@@ -214,7 +214,8 @@ describe("Saved analyses — the list", () => {
     );
   });
 
-  it("says how long the mainline is, how many side lines and where the reader stopped", async () => {
+  // The cards' caption (CTA-144): the list view is a table, its length the Moves column.
+  it("says on a card how long the mainline is, how many side lines and where the reader stopped", async () => {
     await saveAnalysis(
       save(
         "a1",
@@ -227,6 +228,7 @@ describe("Saved analyses — the list", () => {
     );
 
     await renderScreen();
+    await userEvent.click(screen.getByTestId("saved-analyses-view-compact"));
 
     const row = screen.getByTestId("saved-analyses-item-a1");
     expect(row).toHaveTextContent("2 moves");
@@ -234,7 +236,7 @@ describe("Saved analyses — the list", () => {
     expect(row).toHaveTextContent("at ply 2");
   });
 
-  it("counts a side line once no matter how many moves it runs to", async () => {
+  it("counts a side line once on a card, no matter how many moves it runs to", async () => {
     await saveAnalysis(
       save("a1", [
         [[], ["e4", "e5", "Nf3"]],
@@ -243,16 +245,18 @@ describe("Saved analyses — the list", () => {
     );
 
     await renderScreen();
+    await userEvent.click(screen.getByTestId("saved-analyses-view-compact"));
 
     expect(screen.getByTestId("saved-analyses-item-a1")).toHaveTextContent(
       "1 variation",
     );
   });
 
-  it("says nothing about variations for a board with only one line", async () => {
+  it("says nothing on a card about variations for a board with only one line", async () => {
     await saveAnalysis(save("a1", [[[], ["e4", "e5"]]]));
 
     await renderScreen();
+    await userEvent.click(screen.getByTestId("saved-analyses-view-compact"));
 
     const row = screen.getByTestId("saved-analyses-item-a1");
     expect(row).toHaveTextContent("1 move");
@@ -311,9 +315,10 @@ describe("Saved analyses — where a row goes", () => {
   it("opens it on the Analysis Board, by its id — its one destination", async () => {
     await renderScreen();
 
+    // Unfiled: the workspace at the top level, the cards' newest-first order the default.
     expect(screen.getByTestId("saved-analyses-open-a1")).toHaveAttribute(
       "href",
-      "/tools/analysis?analysis=a1",
+      "/tools/analysis?analysis=a1&folder=",
     );
     // No hand-off to Play with Engine, and no delete of its own.
     expect(screen.queryByTestId("saved-analyses-loadpgn-a1")).toBeNull();
@@ -508,7 +513,7 @@ describe("Saved analyses — named, and filed in folders (CTA-73)", () => {
   it("links every analysis to its settings", async () => {
     await saveAnalysis(save("a1", [[[], ["e4"]]]));
     await renderScreen();
-    expect(screen.getByTestId("saved-analyses-settings-a1")).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Settings of Analysis board" })).toHaveAttribute(
       "href",
       "/tools/analysis/saved/a1/settings",
     );
@@ -546,6 +551,251 @@ describe("Saved analyses — named, and filed in folders (CTA-73)", () => {
   });
 });
 
+describe("Saved analyses — the games table (CTA-144)", () => {
+  /** An imported game, as the several-games popup (CTA-141) or the Library's Analyse files one. */
+  const game = (id: string, tags: Record<string, string>, moves: string, updatedAt: string): SavedAnalysis => ({
+    ...save(id, [[[], ["e4"]]]),
+    name: "",
+    pgn: `${Object.entries(tags)
+      .map(([key, value]) => `[${key} "${value}"]`)
+      .join("\n")}\n\n${moves}`,
+    updatedAt,
+  });
+  const CARLSEN = game(
+    "g1",
+    {
+      Event: "Tata Steel",
+      Date: "2024.01.??",
+      Round: "3.1",
+      White: "Carlsen, Magnus",
+      Black: "Giri, Anish",
+      Result: "1-0",
+      WhiteElo: "2830",
+      BlackElo: "2749",
+      ECO: "C65",
+      Opening: "Ruy Lopez",
+    },
+    "1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6 1-0",
+    "2026-09-01T10:00:00.000Z",
+  );
+  const ANAND = game(
+    "g2",
+    { Event: "Candidates", Date: "2014.03.13", Round: "1", White: "Anand, Viswanathan", Black: "Aronian, Levon", Result: "1/2-1/2", ECO: "D37" },
+    "1. d4 d5 2. c4 e6 1/2-1/2",
+    "2026-09-02T10:00:00.000Z",
+  );
+
+  /** A column's sort button — the table's own: the panel's editor has buttons of the same names. */
+  const header = (name: string) =>
+    within(screen.getByTestId("saved-analyses-table-frame-table")).getByRole("button", { name });
+
+  const rowIds = () =>
+    within(screen.getByTestId("saved-analyses-table-frame-table"))
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => row.getAttribute("data-testid")?.replace(/^saved-analyses-item-/, ""));
+
+  it("shows each analysis' game fields off its tags, newest updated first, a board's placeholders as empty cells", async () => {
+    await saveAnalysis(CARLSEN);
+    await saveAnalysis(ANAND);
+    await saveAnalysis({ ...save("own", [[[], ["d4"]]], [], "white", new Date("2026-09-03T10:00:00.000Z")), description: "Try 1.d4 again" });
+    await renderScreen();
+
+    expect(screen.getByRole("table", { name: "Saved analyses in this folder" })).toBeInTheDocument();
+    expect(rowIds()).toEqual(["own", "g2", "g1"]);
+    const carlsen = screen.getByTestId("saved-analyses-item-g1");
+    for (const text of ["Carlsen, Magnus", "2830", "Giri, Anish", "2749", "1-0", "2024.01", "Tata Steel", "C65", "Ruy Lopez", "3.1"]) {
+      expect(within(carlsen).getByText(text)).toBeInTheDocument();
+    }
+    // Named by its players, and its name the link to the board.
+    expect(within(carlsen).getByRole("link", { name: "Carlsen, Magnus – Giri, Anish" })).toHaveAttribute(
+      "href",
+      "/tools/analysis?analysis=g1&folder=",
+    );
+    // A board's own analysis: no "Analysis" player, no "Analysis Board" event, no "*" result; its notes under its name.
+    const own = screen.getByTestId("saved-analyses-item-own");
+    expect(own).not.toHaveTextContent("Analysis Board");
+    expect(own).not.toHaveTextContent("*");
+    expect(within(own).queryByText("Analysis")).toBeNull();
+    expect(within(own).getByRole("link", { name: /^Analysis board/ })).toBeInTheDocument();
+    expect(screen.getByTestId("saved-analyses-table-description-own")).toHaveTextContent("Try 1.d4 again");
+  });
+
+  it("links an analysis to the workspace — its folder and the table's sort — and an Unfiled one to the top level (CTA-145)", async () => {
+    const user = userEvent.setup();
+    const folder = (await createAnalysisFolder("Tutorial", null))!;
+    await saveAnalysis({ ...CARLSEN, folderId: folder.id });
+    await saveAnalysis({ ...ANAND, folderId: folder.id });
+    await saveAnalysis(save("loose", [[[], ["d4"]]], [], "white", new Date("2026-09-03T10:00:00.000Z")));
+    await renderScreen(`/tools/analysis/saved?folder=${folder.id}`);
+
+    const NAMES: Record<string, string> = { g1: "Carlsen, Magnus – Giri, Anish", g2: "Anand, Viswanathan – Aronian, Levon" };
+    const link = (id: string) =>
+      within(screen.getByTestId(`saved-analyses-item-${id}`)).getByRole("link", { name: NAMES[id] }).getAttribute("href");
+    // The default order: the folder alone.
+    expect(link("g1")).toBe(`/tools/analysis?analysis=g1&folder=${folder.id}`);
+    // The reader's sort rides along, with its direction when it is not the column's own.
+    await user.click(header("White"));
+    expect(link("g1")).toBe(`/tools/analysis?analysis=g1&folder=${folder.id}&sort=white`);
+    await user.click(header("White"));
+    expect(link("g2")).toBe(`/tools/analysis?analysis=g2&folder=${folder.id}&sort=white&dir=desc`);
+  });
+
+  it("links an Unfiled analysis to the workspace at the top level — an empty folder", async () => {
+    await saveAnalysis(save("loose", [[[], ["d4"]]], [], "white", new Date("2026-09-03T10:00:00.000Z")));
+    await renderScreen();
+    expect(within(screen.getByTestId("saved-analyses-item-loose")).getByRole("link", { name: /^Analysis board/ })).toHaveAttribute(
+      "href",
+      "/tools/analysis?analysis=loose&folder=",
+    );
+  });
+
+  it("fills the opening from the book where the tags name none, and sorts by it", async () => {
+    const user = userEvent.setup();
+    await saveAnalysis(CARLSEN);
+    await saveAnalysis(save("own", [[[], ["e4", "e5"]]], [], "white", new Date("2026-09-03T10:00:00.000Z")));
+    await renderScreen();
+    await settleBook();
+
+    const own = screen.getByTestId("saved-analyses-item-own");
+    expect(within(own).getByText("King's Pawn Game")).toBeInTheDocument();
+    expect(within(own).getByText("C20")).toBeInTheDocument();
+    await user.click(header("ECO"));
+    expect(rowIds()).toEqual(["own", "g1"]);
+    await user.click(header("ECO"));
+    expect(rowIds()).toEqual(["g1", "own"]);
+  });
+
+  it("sorts by any header both ways, missing values last, the sort kept in the URL", async () => {
+    const user = userEvent.setup();
+    await saveAnalysis(CARLSEN);
+    await saveAnalysis(ANAND);
+    await saveAnalysis(save("own", [[[], ["d4"]]], [], "white", new Date("2026-09-03T10:00:00.000Z")));
+    await renderScreen();
+
+    await user.click(header("White"));
+    expect(rowIds()).toEqual(["g2", "g1", "own"]);
+    expect(where.current?.search).toBe("?sort=white");
+    await user.click(header("White"));
+    expect(rowIds()).toEqual(["g1", "g2", "own"]);
+    expect(where.current?.search).toBe("?sort=white&dir=desc");
+    // A number opens high first.
+    await user.click(header("Moves"));
+    expect(rowIds()).toEqual(["g1", "g2", "own"]);
+  });
+
+  it("opens with the sort and the words a link carries", async () => {
+    await saveAnalysis(CARLSEN);
+    await saveAnalysis(ANAND);
+    await renderScreen("/tools/analysis/saved?sort=white&q=candidates");
+    expect(rowIds()).toEqual(["g2"]);
+    expect(screen.getByRole("searchbox", { name: "Filter analyses" })).toHaveValue("candidates");
+  });
+
+  it("filters the folder by words, says when nothing matches, and clears from there", async () => {
+    const user = userEvent.setup();
+    await saveAnalysis(CARLSEN);
+    await saveAnalysis(ANAND);
+    await renderScreen();
+
+    const words = screen.getByRole("searchbox", { name: "Filter analyses" });
+    await user.type(words, "ruy carlsen");
+    expect(rowIds()).toEqual(["g1"]);
+    await user.clear(words);
+    await user.type(words, "najdorf");
+    expect(screen.getByTestId("saved-analyses-table-no-match")).toHaveTextContent("No analysis matches the filter.");
+    expect(screen.queryByTestId("saved-analyses-table-empty")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Clear the filter" }));
+    expect(rowIds()).toEqual(["g2", "g1"]);
+    expect(words).toHaveValue("");
+  });
+
+  it("select-all takes the rows the filter leaves, and the picks outlast the filter and the view", async () => {
+    const user = userEvent.setup();
+    await saveAnalysis(CARLSEN);
+    await saveAnalysis(ANAND);
+    await renderScreen();
+
+    await user.type(screen.getByRole("searchbox", { name: "Filter analyses" }), "tata");
+    await user.click(screen.getByRole("checkbox", { name: "Select all analyses" }));
+    expect(screen.getByTestId("saved-analyses-selected-count")).toHaveTextContent("1 selected");
+    await user.click(screen.getByRole("button", { name: "Clear the words" }));
+    expect(screen.getByRole("checkbox", { name: "Select Carlsen, Magnus – Giri, Anish" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Select Anand, Viswanathan – Aronian, Levon" })).not.toBeChecked();
+    await user.click(screen.getByTestId("saved-analyses-view-compact"));
+    expect(within(screen.getByTestId("saved-analyses-select-g1")).getByRole("checkbox")).toBeChecked();
+  });
+
+  it("goes back to the first page on a new sort, and sorts and filters the whole folder, not the page", async () => {
+    const user = userEvent.setup();
+    const record = save("x", [[[], ["e4"]]]);
+    const total = SAVED_ANALYSES_PAGE + 12;
+    await addAnalyses(Array.from({ length: total }, (_, index) => ({ ...record, id: `r${index}`, name: `R${index}` })));
+    await renderScreen();
+
+    await user.click(within(screen.getByTestId("saved-analyses-table-pager")).getByRole("button", { name: "Go to next page" }));
+    expect(screen.queryByTestId("saved-analyses-item-r0")).toBeNull();
+    await user.click(header("Name"));
+    await user.click(header("Name"));
+    // Z to A over the whole folder, from its first page: R61 heads it, though it was last.
+    expect(rowIds()[0]).toBe(`r${total - 1}`);
+    expect(where.current?.search).not.toContain("page=");
+    await user.type(screen.getByRole("searchbox", { name: "Filter analyses" }), `R${total - 1}`);
+    expect(rowIds()).toEqual([`r${total - 1}`]);
+  });
+
+  it("puts the folders in the table first, opening one in place, its analyses under it", async () => {
+    const user = userEvent.setup();
+    const folder = (await createAnalysisFolder("Tata Steel 2024", null))!;
+    await saveAnalysis({ ...CARLSEN, folderId: folder.id });
+    await saveAnalysis(ANAND);
+    await renderScreen();
+
+    expect(rowIds()).toEqual([`saved-analyses-folder-${folder.id}`, "g2"]);
+    expect(screen.getByTestId(`saved-analyses-folder-${folder.id}`)).toHaveTextContent("1 analysis");
+    await user.click(within(screen.getByTestId("saved-analyses-table-frame-table")).getByRole("button", { name: "Open Tata Steel 2024" }));
+    expect(rowIds()).toEqual([`saved-analyses-folder-${folder.id}`, "g1", "g2"]);
+    // A folder has no pick; select-all takes the analyses shown.
+    await user.click(screen.getByRole("checkbox", { name: "Select all analyses" }));
+    expect(screen.getByTestId("saved-analyses-selected-count")).toHaveTextContent("2 selected");
+    // Its name goes into it, the sort kept.
+    await user.click(header("White"));
+    await user.click(screen.getByRole("link", { name: "Open folder Tata Steel 2024" }));
+    expect(where.current?.search).toBe(`?sort=white&folder=${folder.id}`);
+    expect(rowIds()).toEqual(["g1"]);
+  });
+
+  it("finds an analysis in a closed folder by its words, opening the way to it", async () => {
+    const user = userEvent.setup();
+    const openings = (await createAnalysisFolder("Openings", null))!;
+    const candidates = (await createAnalysisFolder("Candidates", openings.id))!;
+    await saveAnalysis({ ...ANAND, folderId: candidates.id });
+    await saveAnalysis(CARLSEN);
+    await renderScreen();
+
+    expect(rowIds()).toEqual([`saved-analyses-folder-${openings.id}`, "g1"]);
+    await user.type(screen.getByRole("searchbox", { name: "Filter analyses" }), "aronian");
+    expect(rowIds()).toEqual([`saved-analyses-folder-${openings.id}`, `saved-analyses-folder-${candidates.id}`, "g2"]);
+  });
+
+  it("leaves the card views as they were — no table, no words box", async () => {
+    await saveAnalysis(CARLSEN);
+    await renderScreen();
+    await userEvent.click(screen.getByTestId("saved-analyses-view-compact"));
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByRole("searchbox", { name: "Filter analyses" })).toBeNull();
+    expect(screen.getByTestId("board-saved-analyses-preview-g1")).toBeInTheDocument();
+  });
+
+  it("passes axe with the table filtered to nothing", async () => {
+    const user = userEvent.setup();
+    await saveAnalysis(CARLSEN);
+    await renderScreen();
+    await user.type(screen.getByRole("searchbox", { name: "Filter analyses" }), "najdorf");
+    await expectNoAxeViolations(screen.getByTestId("saved-analyses-screen"));
+  });
+});
+
 describe("Saved analyses — a folder of thousands (CTA-77)", () => {
   it("shows a page at a time, and keeps counting and picking the whole folder", async () => {
     const user = userEvent.setup();
@@ -561,7 +811,7 @@ describe("Saved analyses — a folder of thousands (CTA-77)", () => {
     expect(screen.getByTestId("saved-analyses-item-r0")).toBeInTheDocument();
 
     // The design system's pager (CTA-113): 25 / 50 / 100 / 250 a page, 50 by default.
-    await user.click(within(screen.getByTestId("saved-analyses-pagination")).getByRole("button", { name: "Go to next page" }));
+    await user.click(within(screen.getByTestId("saved-analyses-table-pager")).getByRole("button", { name: "Go to next page" }));
     expect(screen.getAllByTestId(/^saved-analyses-item-/)).toHaveLength(12);
     expect(screen.getByTestId(`saved-analyses-item-r${total - 1}`)).toBeInTheDocument();
 
@@ -577,7 +827,7 @@ describe("Saved analyses — a folder of thousands (CTA-77)", () => {
     await renderScreen();
 
     expect(screen.getAllByTestId(/^saved-analyses-item-/)).toHaveLength(30);
-    await user.click(within(screen.getByTestId("saved-analyses-pagination")).getByRole("combobox"));
+    await user.click(within(screen.getByTestId("saved-analyses-table-pager")).getByRole("combobox"));
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["25", "50", "100", "250"]);
     await user.click(screen.getByRole("option", { name: "25" }));
     expect(screen.getAllByTestId(/^saved-analyses-item-/)).toHaveLength(25);
@@ -586,7 +836,18 @@ describe("Saved analyses — a folder of thousands (CTA-77)", () => {
   it("has no pager for a folder that fits one page", async () => {
     await saveAnalysis(save("a1", [[[], ["e4"]]]));
     await renderScreen();
-    expect(screen.queryByTestId("saved-analyses-pagination")).toBeNull();
+    expect(screen.queryByTestId("saved-analyses-table-pager")).toBeNull();
+  });
+
+  it("pages the cards the same way, under their own pager", async () => {
+    const user = userEvent.setup();
+    const record = save("x", [[[], ["e4"]]]);
+    await addAnalyses(Array.from({ length: SAVED_ANALYSES_PAGE + 3 }, (_, index) => ({ ...record, id: `r${index}`, name: `R${index}` })));
+    await renderScreen();
+    await user.click(screen.getByTestId("saved-analyses-view-compact"));
+    expect(screen.getAllByTestId(/^saved-analyses-item-/)).toHaveLength(SAVED_ANALYSES_PAGE);
+    await user.click(within(screen.getByTestId("saved-analyses-pagination")).getByRole("button", { name: "Go to next page" }));
+    expect(screen.getAllByTestId(/^saved-analyses-item-/)).toHaveLength(3);
   });
 });
 
@@ -852,6 +1113,28 @@ describe("the new-analysis form (CTA-87)", () => {
       expect(collection.name).toBe("Pasted collection");
     });
 
+    it("saves several games to a new Saved analyses folder named after the file, and opens it (CTA-141)", async () => {
+      await renderScreen();
+      await pickAndLoad(TWO_GAMES);
+      fireEvent.click(screen.getByRole("button", { name: "Save to Saved analyses" }));
+      const dialog = screen.getByRole("dialog", { name: "Save to Saved analyses" });
+      expect(within(dialog).getByRole("textbox", { name: "Folder name" })).toHaveValue("Game");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+      await waitFor(() => expect(where.current?.search).toMatch(/^\?folder=/));
+      const [folder] = analysisFoldersSnapshot() ?? [];
+      expect(folder).toMatchObject({ name: "Game", parentId: null });
+      expect(where.current).toMatchObject({
+        pathname: "/tools/analysis/saved",
+        search: `?folder=${encodeURIComponent(folder.id)}`,
+      });
+      expect((savedAnalysesSnapshot() ?? []).map((row) => [row.name, row.folderId])).toEqual([
+        ["One", folder.id],
+        ["Two", folder.id],
+      ]);
+      await waitFor(() => expect(screen.queryByTestId("new-analysis-choice")).toBeNull());
+    });
+
     it("cancelling the popup keeps nothing and stays", async () => {
       await renderScreen();
       await pasteAndLoad(TWO_GAMES);
@@ -895,7 +1178,7 @@ describe("Saved analyses — accessible (CTA-113)", () => {
     unmount();
   });
 
-  it("is worked from the keyboard: the view, a pick, a row's Open named for its analysis", async () => {
+  it("is worked from the keyboard: the view, a pick, a row's name its link to the board", async () => {
     const user = userEvent.setup();
     await saveAnalysis({ ...save("a1", [[[], ["e4"]]]), name: "Najdorf" });
     await renderScreen();
@@ -905,9 +1188,11 @@ describe("Saved analyses — accessible (CTA-113)", () => {
     expect(screen.getByTestId("saved-analyses-grid")).toBeInTheDocument();
     screen.getByTestId("saved-analyses-view-compact").focus();
     await user.keyboard("{ArrowLeft}{Enter}");
-    expect(screen.getByRole("link", { name: "Open Najdorf" })).toHaveAttribute("href", "/tools/analysis?analysis=a1");
-    screen.getByRole("link", { name: "Settings of Najdorf" }).focus();
-    await user.tab();
+    const open = screen.getByRole("link", { name: "Najdorf" });
+    expect(open).toHaveAttribute("href", "/tools/analysis?analysis=a1&folder=");
+    // The row's pick comes just before its name; its gear after the row's cells.
+    open.focus();
+    await user.tab({ shift: true });
     expect(screen.getByRole("checkbox", { name: "Select Najdorf" })).toHaveFocus();
     await user.keyboard(" ");
     expect(screen.getByTestId("saved-analyses-selected-count")).toHaveTextContent("1 selected");

@@ -9,17 +9,69 @@ import { useTranslation } from "react-i18next";
 import { ChipsAutocomplete } from "../../../design-system/components/autocompletes";
 import { BaseDialog, type ExtraDialogProps } from "../../../design-system/components/dialogs";
 import { InlineAlert } from "../../../design-system/components/feedback";
-import { DateRangeFields } from "../../../design-system/components/forms";
+import { visuallyHidden } from "../../../design-system/components/a11y";
+import { DateRangeFields, SelectField, SwitchField } from "../../../design-system/components/forms";
+import { DataTable, type DataTableColumn } from "../../../design-system/patterns/tables";
 import { formatBytes } from "../../../lib/formatBytes";
+import type { GameHeaders } from "../../../lib/gameModel";
+import { readPgnTags } from "../../../lib/pgn";
+import { guessTournamentKind, type TournamentGuess } from "../../../lib/tournamentKind";
+import { TournamentMarkFields } from "../../forms/TournamentMarkFields";
 import {
+  canBeTournament,
   collectionFacetsOf,
   collectionMetadataOf,
+  eventGroupsOf,
   filteredRows,
   playersOf,
   type CollectionImportSource,
+  TOURNAMENT_FORMATS,
+  formatOfKind,
   type CollectionRow,
+  type CollectionTournament,
   type RowFilter,
+  type TournamentFormat,
 } from "../../../lib/libraryCollections";
+
+/**
+ * What the popup says about the tournament mark (CTA-142): the one mark for
+ * a new collection whose kept games share one `Event` (absent unless the
+ * reader turned it on), and — on a split — whether each event's collection
+ * is marked with the type its games look like.
+ */
+export type ImportTournamentChoice = {
+  mark?: CollectionTournament;
+  /**
+   * On a split with *Mark each event's tournament type* on: the type an
+   * event's collection is marked as — the file's index in the source and the
+   * event's name — as the reader left it in the table (the guess, unless
+   * changed); `undefined` for none.
+   */
+  eventType?: (fileIndex: number, event: string) => TournamentFormat | undefined;
+};
+
+/** One event of a split, as the type table lists it. */
+type EventRow = {
+  key: string;
+  fileIndex: number;
+  /** Absent: the games with no `Event` — the "Unknown" collection, which cannot be a tournament. */
+  event?: string;
+  games: number;
+  players: number;
+  dates?: { first: string; last: string };
+  /** The type its games look like, where they tell. */
+  guess?: TournamentFormat;
+};
+
+/** An event's key in the type table: its file and its name. */
+const eventKeyOf = (fileIndex: number, event: string | undefined) => `${fileIndex}\u0000${event === undefined ? "\u0001" : event}`;
+
+/** "Not a tournament" in the type select. */
+const NO_TYPE = "";
+
+/** The tags of a file's kept games (`headers` its games' tags, read once). */
+const tagsOf = (headers: readonly GameHeaders[] | undefined, rows: readonly CollectionRow[]): GameHeaders[] =>
+  rows.map((row) => headers?.[row.number - 1]).filter((tags): tags is GameHeaders => tags !== undefined);
 
 export type CollectionImportDialogProps = {
   /** What was read — the file (or the paste) and the texts in it. */
@@ -30,12 +82,20 @@ export type CollectionImportDialogProps = {
   problem?: ReactNode;
   /** Cancel, Escape or the backdrop. */
   onCancel: () => void;
-  /** Import: each file's rows the filters keep, in file order (a file may keep none). */
-  onImport: (kept: CollectionRow[][]) => void;
+  /**
+   * Import: each file's rows the filters keep, in file order (a file may keep
+   * none), and whether *Split by event* is on — a new-collection import's
+   * choice; `false` where the switch is not offered (*Add games*).
+   */
+  onImport: (kept: CollectionRow[][], splitByEvent: boolean, tournament: ImportTournamentChoice) => void;
   /**
    * The root, and its parts: `-source`, `-file-<n>`, `-summary` (`-players`,
    * `-elo`, `-dates`, `-events`), `-elo` (`-elo-value`), `-from`, `-to`,
-   * `-player`, `-several`, `-count`, `-problem`, `-cancel`, `-confirm`.
+   * `-player`, `-several`, `-split` (`-split-help`), `-mark` (the tournament
+   * fields' prefix: `-mark-tournament-switch`, `-mark-suggestion`,
+   * `-mark-type-<format>`), `-auto-type`, `-event-types` (the table; each
+   * row `-event-types-row-<n>`, its select `-event-types-type-<n>`, in
+   * order), `-count`, `-problem`, `-cancel`, `-confirm`.
    */
   testId: string;
   dialogProps?: ExtraDialogProps;
@@ -61,9 +121,27 @@ export type CollectionImportDialogProps = {
  *   `filteredRows`, so they cannot drift from the table's. A live "N of M"
  *   count; Import is off at none.
  *
+ * - ***Split by event*** (CTA-127), offered on every new-collection import —
+ *   never on *Add games* — and off with its reason where the kept games would
+ *   make exactly one collection per file anyway (every file's kept games
+ *   share one `Event`, or none of them has one). The filters are applied
+ *   first, so the switch and its reason follow them live.
+ * - **The tournament mark** (CTA-142), on a new collection: where every kept
+ *   game shares one `Event` (and no split), the settings' own fields
+ *   (`TournamentMarkFields`) — the switch, the type the games look like with
+ *   an Apply, the type; on a split, ***Mark each event's tournament type***
+ *   (on by default) and, under it, **every event in a table** — its name
+ *   (and file, in a zip), games, players and dates, and a type select set to
+ *   the type its games look like ("Not a tournament" where they do not
+ *   tell), every format offered, for the reader to change any
+ *   before Import. The guess
+ *   reads the games' tags — read once, when first needed — so it is known
+ *   before anything is indexed.
+ *
  * Presentational: the index pass and the writes are the screen's — it hands
- * `onImport` the kept rows and shows its progress in a `ProgressDialog` in
- * this one's place. Its words are the Library's (`library.upload.*`).
+ * `onImport` the kept rows and the split choice, and shows its progress in a
+ * `ProgressDialog` in this one's place. Its words are the Library's
+ * (`library.upload.*`).
  */
 function CollectionImportDialog({ source, intoName, problem, onCancel, onImport, testId, dialogProps }: CollectionImportDialogProps) {
   const { t } = useTranslation();
@@ -72,6 +150,16 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
   const [eloRange, setEloRange] = useState<[number, number] | null>(null);
   const [dates, setDates] = useState({ from: "", to: "" });
   const [players, setPlayers] = useState<string[]>([]);
+  /** *Split by event* (CTA-127): one folder per file, one collection per event. */
+  const [splitByEvent, setSplitByEvent] = useState(false);
+  /** The one-event mark (CTA-142): off until the reader turns it on. */
+  const [mark, setMark] = useState<CollectionTournament>({ enabled: false, type: "swiss" });
+  /** On a split: each event's collection marked with the type its games look like. */
+  const [autoAssign, setAutoAssign] = useState(true);
+  /** The types the reader picked in the event table, by event — the rest follow the guess. */
+  const [eventTypes, setEventTypes] = useState<Readonly<Record<string, string>>>({});
+  /** Whether the reader has touched the mark — until then its type follows the guess. */
+  const [markTouched, setMarkTouched] = useState(false);
 
   const allRows = useMemo(() => source.files.flatMap((file) => file.rows), [source]);
   const metadata = useMemo(() => collectionMetadataOf(allRows), [allRows]);
@@ -102,6 +190,125 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
   const filtering = players.length > 0 || minElo !== undefined || maxElo !== undefined || dates.from !== "" || dates.to !== "";
   const eventsShown = metadata.events.slice(0, 3).join(", ");
 
+  // The split follows the filters: only the kept games are grouped, so a
+  // split that would make exactly one collection per file is not offered.
+  const splittable = kept.some((rows) => eventGroupsOf(rows).length > 1);
+  // A switch the filters turned off reads off, and imports off — until the
+  // filters let it back on, where the reader left it.
+  const splitting = splitByEvent && splittable;
+  const splitHelp = !splittable
+    ? keptCount === 0
+      ? t("library.upload.options.splitNothingKept")
+      : kept.every((rows) => rows.every((row) => row.event === undefined))
+        ? t("library.upload.options.splitNoEvents")
+        : t("library.upload.options.splitOneEvent")
+    : t("library.upload.options.splitHelp");
+
+  // CTA-142: the tournament mark. A new collection only; one event across the kept games, or a split.
+  const newCollection = intoName === undefined;
+  const oneEvent = newCollection && !splitting && keptCount > 0 && canBeTournament(kept.flat());
+  const wantsGuess = oneEvent || (newCollection && splitting);
+  /** Each file's games' tags — read once, and only once a guess is wanted. */
+  const headers = useMemo<GameHeaders[][] | undefined>(
+    () => (wantsGuess ? source.files.map((file) => file.games.map(readPgnTags)) : undefined),
+    [source, wantsGuess],
+  );
+  const suggestion = useMemo<TournamentGuess | undefined>(
+    () => (oneEvent && headers !== undefined ? guessTournamentKind(kept.flatMap((rows, index) => tagsOf(headers[index], rows))) : undefined),
+    [oneEvent, headers, kept],
+  );
+  /** On a split: every event, in file and event order, with what its games say and the type they look like. */
+  const events = useMemo((): EventRow[] => {
+    if (!splitting || headers === undefined) return [];
+    return kept.flatMap((rows, fileIndex) =>
+      eventGroupsOf(rows).map((group): EventRow => {
+        const metadata = collectionMetadataOf(group.rows);
+        const guess = group.event === undefined ? undefined : guessTournamentKind(tagsOf(headers[fileIndex], group.rows));
+        return {
+          key: eventKeyOf(fileIndex, group.event),
+          fileIndex,
+          ...(group.event !== undefined && { event: group.event }),
+          games: group.rows.length,
+          players: metadata.players,
+          ...(metadata.dates !== undefined && { dates: metadata.dates }),
+          ...(guess !== undefined && { guess: formatOfKind(guess.kind) }),
+        };
+      }),
+    );
+  }, [splitting, headers, kept]);
+  /** An event's type as the table shows it: the reader's pick, else the guess, else none. */
+  const typeOf = (row: EventRow): string => eventTypes[row.key] ?? row.guess ?? NO_TYPE;
+  // Until the reader picks a type, the mark's type is the guess's — so the switch turns it on with it.
+  const shownMark: CollectionTournament =
+    suggestion !== undefined && !mark.enabled && !markTouched ? { enabled: false, type: formatOfKind(suggestion.kind) } : mark;
+  const choice = (): ImportTournamentChoice => ({
+    ...(oneEvent && mark.enabled && { mark }),
+    ...(newCollection &&
+      splitting &&
+      autoAssign && {
+        eventType: (fileIndex: number, event: string) => {
+          const row = events.find((candidate) => candidate.key === eventKeyOf(fileIndex, event));
+          const type = row === undefined ? NO_TYPE : typeOf(row);
+          return (TOURNAMENT_FORMATS as readonly string[]).includes(type) ? (type as TournamentFormat) : undefined;
+        },
+      }),
+  });
+
+  const typeOptions = [
+    { value: NO_TYPE, label: t("library.upload.options.notTournament") },
+    ...TOURNAMENT_FORMATS.map((format) => ({ value: format, label: t(`library.settings.formats.${format}`) })),
+  ];
+  const eventColumns: DataTableColumn<EventRow>[] = [
+    {
+      id: "event",
+      header: t("library.upload.options.eventColumns.event"),
+      wrap: true,
+      render: (row) => (
+        <>
+          <bdi dir="auto">{row.event ?? t("library.upload.unknown")}</bdi>
+          {source.zip && (
+            <Typography variant="caption" component="div" dir="auto" sx={{ color: "text.secondary" }}>
+              {source.files[row.fileIndex]?.name}
+            </Typography>
+          )}
+        </>
+      ),
+    },
+    { id: "games", header: t("library.upload.options.eventColumns.games"), align: "end", render: (row) => row.games },
+    { id: "players", header: t("library.upload.options.eventColumns.players"), align: "end", render: (row) => row.players },
+    {
+      id: "dates",
+      header: t("library.upload.options.eventColumns.dates"),
+      dir: "ltr",
+      render: (row) => (row.dates === undefined ? "—" : row.dates.first === row.dates.last ? row.dates.first : `${row.dates.first} – ${row.dates.last}`),
+    },
+    {
+      id: "type",
+      header: t("library.upload.options.eventColumns.type"),
+      render: (row) => {
+        const index = events.indexOf(row);
+        // The games with no Event make one "Unknown" collection — never a tournament.
+        if (row.event === undefined) return "—";
+        return (
+          <SelectField
+            label={
+              <>
+                {t("library.upload.options.eventColumns.type")}
+                <Box component="span" sx={visuallyHidden}>
+                  {`: ${row.event}`}
+                </Box>
+              </>
+            }
+            value={typeOf(row)}
+            onChange={(type) => setEventTypes((current) => ({ ...current, [row.key]: type }))}
+            options={typeOptions}
+            testId={id(`event-types-type-${index}`)}
+          />
+        );
+      },
+    },
+  ];
+
   return (
     <BaseDialog
       open
@@ -115,7 +322,12 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
           <Button onClick={onCancel} data-testid={id("cancel")}>
             {t("library.upload.cancel")}
           </Button>
-          <Button variant="contained" disabled={keptCount === 0} onClick={() => onImport(kept)} data-testid={id("confirm")}>
+          <Button
+            variant="contained"
+            disabled={keptCount === 0}
+            onClick={() => onImport(kept, splitting, choice())}
+            data-testid={id("confirm")}
+          >
             {t(intoName === undefined ? "library.upload.options.import" : "library.upload.intoSave")}
           </Button>
         </>
@@ -249,9 +461,76 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
           </Box>
         )}
 
+        {/* Offered on every new-collection import, never on Add games — and
+            off with its reason where the split would make one collection per
+            file anyway (CTA-127). The reason rides the same description the
+            help does, so it is read with the switch. */}
+        {intoName === undefined && (
+          <SwitchField
+            label={t("library.upload.options.split")}
+            checked={splitting}
+            onChange={setSplitByEvent}
+            disabled={!splittable}
+            help={splitHelp}
+            testId={id("split")}
+          />
+        )}
+
+        {/* CTA-142: the split's events, each marked with the type its games look like. */}
+        {newCollection && splitting && (
+          <Box>
+            <SwitchField
+              label={t("library.upload.options.autoType")}
+              checked={autoAssign}
+              onChange={setAutoAssign}
+              help={t("library.upload.options.autoTypeHelp")}
+              testId={id("auto-type")}
+            />
+            {autoAssign && (
+              <Box sx={{ mt: 1, maxHeight: 360, display: "flex", flexDirection: "column", minHeight: 0 }}>
+                <DataTable<EventRow>
+                  columns={eventColumns}
+                  rows={events}
+                  rowId={(row) => row.key}
+                  rowTestId={(row) => id(`event-types-row-${events.indexOf(row)}`)}
+                  emptyLabel={t("library.upload.options.autoTypeNone")}
+                  density="dense"
+                  ariaLabel={t("library.upload.options.eventTypes")}
+                  testId={id("event-types")}
+                />
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {/* CTA-142: one event across the kept games — mark the new collection as it comes in. */}
+        {oneEvent && (
+          <Box sx={{ display: "grid", gap: 1 }}>
+            <Typography variant="subtitle2" component="h3" sx={{ fontWeight: 700 }}>
+              {t("library.settings.tournamentSection")}
+            </Typography>
+            <TournamentMarkFields
+              value={shownMark}
+              onChange={(next) => {
+                setMarkTouched(true);
+                setMark(next);
+              }}
+              canBeTournament
+              suggestion={suggestion}
+              testId={id("mark")}
+            />
+          </Box>
+        )}
+
         {source.files.length > 1 && (
           <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid={id("several")}>
-            {t(intoName === undefined ? "library.upload.options.several" : "library.upload.options.severalInto")}
+            {t(
+              intoName === undefined
+                ? splitting
+                  ? "library.upload.options.severalSplit"
+                  : "library.upload.options.several"
+                : "library.upload.options.severalInto",
+            )}
           </Typography>
         )}
 

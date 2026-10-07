@@ -85,8 +85,8 @@ keys above, and for each point below write *pass* or what was heard.
 
 1. **The page title.** Arriving says it: the focus lands on the page's
    heading, which the reader reads — "Lobby, heading level 1". The title
-   command gives "Lobby — Chess Trainer App"; with a record open its name
-   comes first ("Export — Settings — Chess Trainer App").
+   command gives "Lobby — chessapp.dev"; with a record open its name
+   comes first ("Export — Settings — chessapp.dev").
 2. **The skip link.** From the top of a freshly loaded page, the first Tab
    lands on "Skip to main content", shown on screen; Enter moves into the
    screen, and the next Tab reaches its first control — not the header.
@@ -143,7 +143,7 @@ Seed: play two moves on Play with Engine, then a masked game on Masked
 Pieces, so the table has two rows.
 
 1. From the sidebar (Engine → Lobby, Enter): **"Lobby, heading level 1"**.
-   Title command: **"Lobby — Chess Trainer App"**.
+   Title command: **"Lobby — chessapp.dev"**.
 2. D / M through the landmarks: banner; navigation "Main navigation"; main
    "Lobby"; complementary "Side panel"; content info.
 3. H through the headings: **"Lobby", level 1**; **"New game", level 2** (in
@@ -180,7 +180,7 @@ Pieces, so the table has two rows.
 From the Lobby's **Start**.
 
 1. **"Play with Engine, heading level 1"**; title **"Play with Engine —
-   Chess Trainer App"**.
+   chessapp.dev"**.
 2. Landmarks: banner; navigation; main "Play with Engine" (the board);
    complementary "Side panel" (the panel); content info.
 3. In main: the evaluation bar — **"Evaluation"** and its value; the
@@ -219,7 +219,7 @@ From the Lobby's **Start**.
 From the sidebar's Settings folder (pinned at its foot).
 
 1. **Export**: **"Settings, heading level 1"**; title **"Export — Settings —
-   Chess Trainer App"**; main named **"Export — Settings"**. The tab list
+   chessapp.dev"**; main named **"Export — Settings"**. The tab list
    **"Settings"**: **"Export, tab, 1 of 4, selected"** — the tabs are links, so
    the reader may say "link" too; note which. Entering the content: **"Export,
    tab panel"**; the intro; the four categories as checkboxes (**"Collections,
@@ -255,7 +255,7 @@ Its patterns and blocks, each on its page, the way a screen would use them:
 
 ### 3.6 Home — `/` (CTA-113)
 
-1. **"Get started, heading level 1"**; title **"Home — Chess Trainer App"**.
+1. **"Get started, heading level 1"**; title **"Home — chessapp.dev"**.
 2. H: a **level 2** heading per section (Engine, Analysis Board, Openings,
    Repertoires, Library, Settings …), in the sidebar's order.
 3. Tab through the cards: each **a link named by its screen** ("Lobby,

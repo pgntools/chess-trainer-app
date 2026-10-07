@@ -44,13 +44,19 @@ describe("the wired folder", () => {
 });
 
 describe("the shipped collections", () => {
-  it("are the five players' games, by name, counted without a fetch", () => {
+  it("are the five players' games and five tournaments, by name, counted without a fetch", () => {
     expect(shippedCollections.map((entry) => [entry.id, entry.name, entry.count])).toEqual([
       ["alekhine", "Alekhine", 2005],
       ["capablanca", "Capablanca", 1035],
+      // CTA-128: tournaments, for the Blog's <Collection…Table> and <Collection…Bracket> to show on every device.
+      ["esportsplayin2026", "Esports World Cup 2026 — play-in", 30],
+      ["candidates2026", "FIDE Candidates 2026", 56],
       ["fischer", "Fischer", 1063],
+      ["netherlands2026", "Netherlands Championship 2026", 46],
       ["petrosian", "Petrosian", 2017],
       ["tal", "Tal", 2636],
+      ["worldblitzteam2026", "World Blitz Team 2026 — final stage", 216],
+      ["worldrapidteam2026", "World Rapid Team 2026", 1650],
     ]);
     expect(peekShippedRows("capablanca")).toBeUndefined();
   });
@@ -61,6 +67,11 @@ describe("the shipped collections", () => {
     ["fischer", 1063],
     ["petrosian", 2017],
     ["tal", 2636],
+    ["candidates2026", 56],
+    ["esportsplayin2026", 30],
+    ["netherlands2026", 46],
+    ["worldblitzteam2026", 216],
+    ["worldrapidteam2026", 1650],
   ])("%s: its index is its table's rows, and its PGN its games", async (id, count) => {
     const entry = findShippedCollection(id)!;
     const rows = await entry.loadRows();
@@ -103,6 +114,26 @@ describe("reading a manifest", () => {
     expect(entries.map((entry) => entry.id)).toEqual(["t-amy", "t-zed"]);
     expect(await entries[0].loadGames()).toHaveLength(2);
     expect((await entries[0].loadRows()).map((row) => row.number)).toEqual([1, 2]);
+  });
+
+  it("marks the shipped tournaments from the manifest, each with the table it is drawn as (CTA-142)", () => {
+    expect(
+      shippedCollections.filter((entry) => entry.tournament !== undefined).map((entry) => [entry.id, entry.tournament?.type, entry.sharedEvent]),
+    ).toEqual([
+      ["esportsplayin2026", "doubleElimination", true],
+      ["candidates2026", "roundRobin", true],
+      ["netherlands2026", "knockout", true],
+      ["worldblitzteam2026", "teamKnockout", true],
+      ["worldrapidteam2026", "teamSwiss", true],
+    ]);
+    expect(findShippedCollection("tal")?.tournament).toBeUndefined();
+    // An unknown format is read as no mark.
+    const [entry] = shippedCollectionsOf(
+      { collections: [{ id: "t-cup", name: "Cup", pgn: "A.pgn", index: "A.index.json", games: 2, tournament: "bughouse" }] },
+      loaders({ "A.pgn": PGN }),
+      loaders({ "A.index.json": INDEX }),
+    );
+    expect(entry.tournament).toBeUndefined();
   });
 
   it("leaves out a malformed entry, one whose files are missing, and a taken id", () => {

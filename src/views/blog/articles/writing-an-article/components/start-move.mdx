@@ -1,0 +1,39 @@
+---
+title: "Where a board opens: startMove"
+summary: The forms startMove takes — White's move, Black's move, a line of moves.
+order: 20
+---
+
+`startMove` is where a board opens. Every board on these pages takes it: `<CollectionGameBoard>`, `<RepertoireBoard>`, `<CollectionCard>` and `<StoredGameEmbed>`.
+
+<BoardRow>
+  <CollectionGameBoard game="/library/capablanca/2" startMove="4" />
+  <CollectionGameBoard game="/library/capablanca/3" startMove="4..." />
+  <CollectionGameBoard game="/library/fischer/891" startMove="1. c4 c5 2. Nc3" />
+</BoardRow>
+
+## The forms it takes
+
+- A move number walks the game's mainline. `"4"` (or `"4."`) is the position after White's 4th move; `"4..."` (or `"...4"`) after Black's 4th; `"0"` the start. Past the end of the game, the board opens at its end.
+- A line of moves follows them — numbered (`"1. c4 c5 2. Nc3"`) or bare (`"c4 c5 Nc3"`) — and may go into a side line of a repertoire. Where the tree stops following the line, the board opens at the last move it does hold.
+- Absent, or words it cannot read: the start.
+
+```mdx
+<CollectionGameBoard game="/library/capablanca/2" startMove="4" />
+<CollectionGameBoard game="/library/capablanca/3" startMove="4..." />
+<CollectionGameBoard game="/library/fischer/891" startMove="1. c4 c5 2. Nc3" />
+```
+
+The board's "Back to the start" goes to the game's own start, wherever it opened.
+
+## Without the arrows
+
+An arrow on the board gives the next move away. For a position the reader should think about first, `showNextMoveArrow={false}` leaves the arrows off; the move is still in the list under the board.
+
+<BoardRow columns={2}>
+  <CollectionGameBoard game="/library/capablanca/4" startMove="5" showNextMoveArrow={false} />
+</BoardRow>
+
+```mdx
+<CollectionGameBoard game="/library/capablanca/4" startMove="5" showNextMoveArrow={false} />
+```

@@ -291,4 +291,29 @@ describe("CrossTable", () => {
       await expectNoAxeViolations();
     });
   });
+
+  describe("paging (CTA-128)", () => {
+    it("pages the rows and keeps every competitor's column", () => {
+      const many: CrossTableRow[] = Array.from({ length: 30 }, (_, index) => ({ id: `p${index + 1}`, rank: index + 1, name: `Player ${index + 1}`, points: 0, results: {} }));
+      mount({ rows: many, paging: { page: 1, rowsPerPage: 25, onPageChange: () => {}, onRowsPerPageChange: () => {}, labelRowsPerPage: "Rows per page" } });
+      expect(screen.getAllByRole("rowheader")).toHaveLength(5);
+      expect(screen.getByTestId("t-column-p1")).toBeInTheDocument();
+      expect(screen.getByTestId("t-column-p30")).toBeInTheDocument();
+      expect(screen.getByTestId("t-pager")).toBeInTheDocument();
+    });
+  });
+
+  describe("links (CTA-128)", () => {
+    it("makes each result of a cell its own link", () => {
+      const [ada] = ROWS;
+      mount({
+        rows: [
+          { ...ada, results: { ...ada.results, alan: ada.results.alan.map((result, index) => ({ ...result, link: { href: `/games/${index + 1}` } })) } },
+          ...ROWS.slice(1),
+        ],
+      });
+      expect(within(cell("ada", "alan")).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(["/games/1", "/games/2"]);
+      expect(within(cell("ada", "alan")).getByRole("link", { name: "Round 4, against Alan Turing: draw" })).toBeInTheDocument();
+    });
+  });
 });

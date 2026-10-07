@@ -12,7 +12,7 @@ import {
   toggleNag,
 } from "./moveAnnotations";
 import { parsePgnTree } from "./pgn";
-import { nodeAtSanPath } from "./gameTree";
+import { hasComments, nodeAtSanPath } from "./gameTree";
 
 /**
  * Reading a stored comment for the comment block (CTA-69): the prose, and the
@@ -29,14 +29,25 @@ describe("readComment", () => {
   });
 
   it("reads [%key value] commands as attributes and takes them out of the prose", () => {
-    expect(readComment("Sharp. [%eval 0.25] [%clk 0:05:00] [%cal Ge2e4,Rd1d8]")).toMatchObject({
+    expect(readComment("Sharp. [%eval 0.25] [%clk 0:05:00] [%foo bar]")).toMatchObject({
       paragraphs: ["Sharp."],
       attributes: [
         { key: "eval", value: "0.25" },
         { key: "clk", value: "0:05:00" },
-        { key: "cal", value: "Ge2e4,Rd1d8" },
+        { key: "foo", value: "bar" },
       ],
     });
+  });
+
+  it("takes lichess's shapes out of the prose without making them attributes — the board draws them (CTA-143)", () => {
+    expect(readComment("Sharp. [%eval 0.25] [%cal Ge2e4,Rd1d8][%csl Gd4]")).toMatchObject({
+      paragraphs: ["Sharp."],
+      attributes: [{ key: "eval", value: "0.25" }],
+    });
+    // A comment that only draws has nothing to read: no block where it is all there is.
+    expect(readComment("[%csl Gd4] [%cal Ge2e4]")).toMatchObject({ paragraphs: [], attributes: [] });
+    const drawing = parsePgnTree("1. e4 {[%cal Ge2e4]} *");
+    expect(annotationsAt(drawing, drawing.moves[0].id)).toBeNull();
   });
 
   it("reads a games count as an attribute, never as prose (CTA-98)", () => {
@@ -214,5 +225,17 @@ describe("toggleNag — the selection rule", () => {
     expect(pick([250, 1], 2)).toEqual([250, 2]);
     expect(pick([12, 14], 15)).toEqual([12, 15]);
     expect(pick([32], 36)).toEqual([32, 36]);
+  });
+});
+
+describe("hasComments — the explorer's comment mark (CTA-143)", () => {
+  const first = (pgn: string) => parsePgnTree(pgn).moves[0];
+
+  it("marks a move with something to read, and not one whose comments only draw", () => {
+    expect(hasComments(first("1. e4 {Best by test.} *"))).toBe(true);
+    expect(hasComments(first("1. e4 {[%eval 0.3]} *"))).toBe(true);
+    expect(hasComments(first("1. e4 {[%cal Ge2e4][%csl Gd4]} {[%csl Re5]} *"))).toBe(false);
+    expect(hasComments(first("1. e4 {[%cal Ge2e4] Best.} *"))).toBe(true);
+    expect(hasComments(first("1. e4 *"))).toBe(false);
   });
 });

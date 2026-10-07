@@ -28,6 +28,8 @@ describe("translation catalogs", () => {
     // names are always written in their own language.
     const identicalOnPurpose = new Set([
       "app.brandMark",
+      // The site's name, a domain — written the same way in both languages (CTA-155).
+      "app.brandText",
       "language.en",
       "language.he",
       "gamePanel.info.eco",
@@ -39,12 +41,21 @@ describe("translation catalogs", () => {
       // The Lobby table's own Elo columns, the same two initialisms (CTA-100).
       "playedGames.table.columns.whiteElo",
       "playedGames.table.columns.blackElo",
+      // The Saved analyses table's, the same initialisms (CTA-144).
+      "savedAnalyses.table.columns.whiteElo",
+      "savedAnalyses.table.columns.blackElo",
+      "savedAnalyses.table.columns.eco",
       "positionEditor.tabs.fen",
       "positionEditor.tabs.pgn",
       // The quick-load row's file pick: the initialism is the whole label.
       "savedAnalyses.newAnalysis.pgnFile",
       // A pairing, "White - Black": only the two names inside it translate.
       "playedGames.players",
+      // A knockout's side read aloud, "name score" (CTA-128): nothing in it but the two values.
+      "tournament.knockout.side",
+      // The tournament-type suggestion's line, "type: reason." (CTA-142): the
+      // two values and their punctuation, nothing to translate around them.
+      "library.settings.suggestion.text",
       // The arrow palette named after the site whose colours it takes — a brand.
       "analysis.arrows.palettes.lichess",
       // The tournament tables' headers (CTA-120): a number sign, and the two

@@ -36,7 +36,7 @@ import { openingArrowsOf } from "./openingArrows";
  *
  * | Capability | Taken |
  * | --- | --- |
- * | Base + engine + Play | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (on), `usePlayToggle` (off at the start) |
+ * | Base + engine + Play | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (off until switched on), `usePlayToggle` (off at the start) |
  * | Book | `useOpeningBookModule` — eco.json's continuations from the position on screen, listed in the Book tab (a click plays one, from any node — an earlier position branches) and drawn as arrows |
  * | Tree view | `useVariationsExplorer` — Moves, Map, the comment block, the next-moves bar, the arrows, the move menu; editing on, *Play chances…* off |
  * | Shell | `BoardShell` / `BoardPanel` — tabs Book · Moves (with the next-move arrows' switch) · Map · Load · Export · Engine |
@@ -113,6 +113,7 @@ function OpeningsBoard() {
     map: { linked: true },
   });
   const boardOptions: ChessboardOptions = {
+    ...explorer.boardOptions,
     arrows: openingArrowsOf(
       explorer.arrows,
       book.nextMoves,

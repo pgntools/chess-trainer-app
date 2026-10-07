@@ -113,23 +113,80 @@ The PGN-spec embedded command form, as lichess, ChessBase and the chess.com
 exports write them. `readComment` takes every one out of the prose and shows
 it as a **chip** in the comment block (`AnnotationsBar`): the key's label,
 then the value, pinned LTR. The value is **shown as written, never
-interpreted** — nothing draws `[%cal]` arrows on the board or feeds `[%eval]`
-into the eval bar today. The one reading beyond the chip is the Analysis
-Board's arrows, which can be sized by `[%eval]` (CTA-98, §3).
+interpreted** — no `[%eval]` feeds the eval bar today. Two readings go
+beyond the chip: the Analysis Board's arrows, which can be sized by
+`[%eval]` (CTA-98, §3), and lichess's shapes, `[%cal]` / `[%csl]`, which
+**every board draws instead of a chip** (CTA-143, below).
 
 | Command | Example | Chip label (`annotations.keys.*`) | Does anything else read it? |
 | --- | --- | --- | --- |
 | `%eval` | `[%eval 6.91]`, `[%eval #-3]` | Eval | **yes** — the Analysis Board's *Evaluation* arrow widths (§3) |
 | `%clk` | `[%clk 0:22:33]` | Clock | no |
 | `%emt` | `[%emt 0:00:12]` | Time spent | no |
-| `%cal` | `[%cal Ge2e4,Rd7d5]` | Arrows | no — not drawn |
-| `%csl` | `[%csl Gd4,Re5]` | Squares | no — not drawn |
+| `%cal` | `[%cal Ge2e4,Rd7d5]` | none — drawn, not chipped (CTA-143) | **yes** — drawn on every explorer board and an article's `<InlinePgnGame>` (below), and written by drawing on an editing board |
+| `%csl` | `[%csl Gd4,Re5]` | none — drawn, not chipped (CTA-143) | **yes** — drawn as circles, as `%cal` |
 | `%prc` | `[%prc 40]` | Play chance | **yes** — the trainer and the arrows (§3) |
 | `%games` | `[%games 12]` | Games | **yes** — the Analysis Board's *Games* arrow widths (§3) |
 | any other `%key` | `[%foo bar]` | the key itself | no — kept and written back |
 
 A key must start with a letter (`[A-Za-z][\w-]*`). Commands are part of the
 comment text, so the comment dialog shows and edits them verbatim.
+
+### `[%cal]` and `[%csl]` drawn — `lib/boardShapes.ts` (CTA-126, CTA-143)
+
+`shapesOf(comments)` reads lichess's study drawings out of a position's
+comments (the move's, or the tree's own at the start): arrows `[%cal Ge2e4]`
+and circles `[%csl Gd4]`, by brush — `G` green, `R` red, `Y` yellow, `B` blue
+— each shape once, in order; an arrow from a square to itself is a circle, an
+entry that is no brush and squares is skipped. They are drawn in the theme's
+`chess.drawing` brushes on the Blog's `<InlinePgnGame>` board
+(`views/shared/ExcerptBoard.tsx`: arrows through react-chessboard's `arrows`,
+circles by the `ShapeCircles` overlay), where a drawn position's drawing
+replaces the next-move arrows. The text is untouched — still the storage.
+
+**On the game boards (CTA-143)** — every board that attaches the variations
+explorer, through `useVariationsExplorer` ([`tree-views.md`](./tree-views.md)
+§2): the shapes at the position on screen are drawn **together with** the
+next-move arrows (unlike `<InlinePgnGame>`), beside the required move's arrow
+and over the play-chance / width overlay, wherever the comment block is
+shown (`annotations` — not in a repertoire game, which a drawing would
+answer). Where the explorer also edits (`onEditTree`), the reader **draws
+them back into the comment**, as in a lichess study:
+
+- a **right-drag** from one square to another is an arrow, a **right-click**
+  on one a circle; the brush is lichess's — plain green, Shift (or Ctrl) red,
+  Alt (or Meta) blue, both yellow (`brushOfKeys`);
+- **`toggleShape(comments, shape)`** is the edit, pure: a shape not there is
+  added — into the comment's command of its kind, else at the end of the
+  first comment carrying a shape, else of the first comment, else as a
+  comment of its own; drawn again in the same brush it comes off (every entry
+  drawing it); on the same squares in another brush it is recoloured in
+  place. The prose, the other commands and a malformed entry are untouched; a
+  command left empty goes, and a comment left empty is dropped by
+  `setComments`;
+- it is a `setComments` edit of the move's comments (the game's opening
+  comment at the start) through `onEditTree` — a session change, saved with
+  the record and written in the exported PGN with comments.
+
+**Managed from the move** too: the move menu's *Arrows and circles…*
+(`ShapesDialog`) lists the move's shapes — each recoloured or removed through
+`toggleShape`, one added by its squares, and *Remove all* (`clearShapes`).
+Taking a command out takes the space around it, so the prose reads as it
+did: a run of removed commands between two words leaves one space, at either
+end of the comment none.
+
+**The start position has a way in too** (CTA-149): a right-click on the move
+list's *Start position* row opens the same menu with *Add comment* and
+*Arrows and circles…* only — the entries that need a move are not offered —
+and both edit the game's opening comment (`tree.comments`, `setComments` with
+a `null` id), written in the PGN before the first move. A board that does not
+edit (`onEditTree` absent) binds nothing there.
+
+**A comment that only draws is not one to read**: `readComment` takes the
+two commands out of the prose and makes no chip of them, so such a comment
+reads empty — the block lists no row for it and is not shown where it is all
+there is — and `hasComments` (the move list's comment mark) does not count
+it. The board says what it says.
 
 ### The engine-evaluation shapes analysis exports write
 
@@ -272,7 +329,9 @@ touched by it:
 | `src/lib/pgn.ts` | The tokenizer and `parsePgnTree(s)`: comments, `;` comments, `$N`, suffixes onto the node. |
 | `src/lib/gameTree.ts` | The node fields; `setComments` / `commentsAt`, `setNags`; `mergeTrees`' joining and its `games` counting; `treeToPgn` and `PgnExportOptions`; `moveTreeToPgn` — the same writer over moves with no board (`PgnMove`: SAN, ply, annotations). |
 | `src/lib/openingTreePgn.ts` | The Library's *Save tree as PGN*: an opening tree's counts written as `[%games N]` / `[%prc P]` (§3). |
-| `src/lib/moveAnnotations.ts` | `readComment` (commands, the eval shapes, `prc` and `games` → chips), `annotationsAt`; the NAG table and its rules. |
+| `src/lib/moveAnnotations.ts` | `readComment` (commands, the eval shapes, `prc` and `games` → chips; `[%cal]` / `[%csl]` out of the prose, no chip), `annotationsAt`; the NAG table and its rules. |
+| `src/lib/boardShapes.ts` | `[%cal]` / `[%csl]`: `shapesOf` (reading), `toggleShape` (a drawn shape written into the comments), `clearShapes` (*Remove all*), `brushOfKeys`, `withoutShapes` (what `hasComments` reads) — CTA-126, CTA-143. |
+| `src/views/explorer/ShapesDialog.tsx` | The move menu's *Arrows and circles…* (CTA-143). |
 | `src/lib/playChance.ts` | `prc`: reading, writing, the chance rules. |
 | `src/lib/gamesTag.ts` | `games`: `gamesInText`, `withoutGames`, `gamesOf`. |
 | `src/lib/nextMoveWeights.ts` | The Analysis Board's arrow widths from `[%eval]`, `games`, `prc` or the lines ahead; which of them a tree carries. |
@@ -286,4 +345,7 @@ Tests: `lib/pgnAnnotations.test.ts` (parse, write, merge, the merge's
 `games` counting, edits), `lib/gameTree.test.ts` (the counting's placement),
 `lib/moveAnnotations.test.ts`, `lib/playChance.test.ts`,
 `lib/nextMoveWeights.test.ts` (the `games` and `[%eval]` readers, the widths),
-`views/explorer/NagDialog.test.tsx`.
+`lib/boardShapes.test.ts` (reading, and `toggleShape`'s add / remove /
+recolour and round trip), `views/explorer/NagDialog.test.tsx`,
+`views/explorer/useVariationsExplorer.test.tsx` (the shapes drawn and written),
+`views/explorer/ShapesDialog.test.tsx` (the menu's dialog).

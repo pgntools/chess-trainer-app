@@ -56,6 +56,26 @@ const gallery: GalleryModule = {
       ),
     },
     {
+      name: "Width full — a workspace, the window's width",
+      render: () => (
+        <DialogFrame height={260}>
+          {(dialogProps) => (
+            <BaseDialog
+              open
+              onClose={noop}
+              width="full"
+              testId="gallery-base-dialog-full"
+              title="PGNs"
+              actions={<Button onClick={noop}>Close</Button>}
+              dialogProps={dialogProps}
+            >
+              <Typography variant="body2">As wide as the window, less a margin — narrower on a phone.</Typography>
+            </BaseDialog>
+          )}
+        </DialogFrame>
+      ),
+    },
+    {
       name: "Sized to the content (fullWidth off), no actions",
       render: () => (
         <DialogFrame height={220}>

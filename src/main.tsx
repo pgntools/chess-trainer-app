@@ -11,6 +11,16 @@ import './index.css'
 import '@fontsource-variable/jetbrains-mono'
 import App from './App.tsx'
 
+/*
+  A page the build rendered ahead of time (CTA-136, `src/entry-server.tsx`)
+  arrives drawn, its title and description in its head. The app **replaces**
+  it: `createRoot` draws the page anew over the markup, and the shell renders
+  the title and description again (`views/main/Layout.tsx`), which React adds
+  rather than adopts — so the static two go first. Its other tags (the
+  canonical, the previews') are for those who read only the HTML, and stay.
+*/
+for (const element of document.head.querySelectorAll('title, meta[name="description"]')) element.remove()
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppThemeWithLang>

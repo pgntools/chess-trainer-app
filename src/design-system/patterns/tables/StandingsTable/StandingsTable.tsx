@@ -4,9 +4,10 @@ import TableBody from "@mui/material/TableBody";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 
-import { EmptyTableRow, LoadingTableRow, TableFrame, type TableName } from "../../../components/tables";
+import { EmptyTableRow, LoadingTableRow, TableFrame, TablePager, type TableName } from "../../../components/tables";
 import { CompetitorCells, CompetitorHeadingCells, HeadingCell, ResultLegend, ResultsCell, ScoreCells, ScoreHeadingCells } from "../competitorCells";
 import type { Competitor, CompetitorLabels, ResultEntry, TieBreakColumn } from "../competitors";
+import { pageOfRows, type TablePaging } from "../paging";
 
 /** A row of the standings: the competitor, and what each round brought. */
 export type StandingsRow = Competitor & {
@@ -43,13 +44,19 @@ export type StandingsTableProps = TableName & {
   emptyLabel: ReactNode;
   /** `dense` tightens the rows. */
   density?: "normal" | "dense";
+  /**
+   * Cut the rows into pages, the pager under the frame (CTA-128) — for a long
+   * table. Absent, every row shows. The ranks are the rows' own, so page 2
+   * starts at its own rank.
+   */
+  paging?: TablePaging;
   /** The header stays in view while the body scrolls (the default). */
   stickyHeader?: boolean;
   /**
    * The root. The parts: `-frame` (the scrolling region; its table
    * `-frame-table`), `-row-<id>` (its name `-row-<id>-name`, its points
    * `-row-<id>-points`, a tie-break `-row-<id>-<column>`), a round's cell
-   * `-round-<id>-<round>`, `-loading`, `-empty`, `-legend`.
+   * `-round-<id>-<round>`, `-loading`, `-empty`, `-legend`, `-pager`.
    */
   testId: string;
 };
@@ -88,6 +95,7 @@ function StandingsTable({
   emptyLabel,
   density = "normal",
   stickyHeader = true,
+  paging,
   ariaLabel,
   caption,
   testId,
@@ -96,6 +104,7 @@ function StandingsTable({
   const roundNumbers = Array.from({ length: rounds }, (_, index) => index + 1);
   const rating = labels.rating !== undefined;
   const colSpan = 2 + (rating ? 1 : 0) + rounds + 1 + tieBreaks.length;
+  const { shown, page } = pageOfRows(rows, paging);
 
   return (
     <Box data-testid={testId} sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 1 }}>
@@ -119,7 +128,7 @@ function StandingsTable({
               {emptyLabel}
             </EmptyTableRow>
           ) : (
-            rows.map((row) => {
+            shown.map((row) => {
               const rowTest = `${testId}-row-${row.id}`;
               return (
                 <TableRow key={row.id} hover data-testid={rowTest}>
@@ -134,6 +143,18 @@ function StandingsTable({
           )}
         </TableBody>
       </TableFrame>
+      {paging !== undefined && !loading && rows.length > 0 && (
+        <TablePager
+          count={rows.length}
+          page={page}
+          rowsPerPage={paging.rowsPerPage}
+          onPageChange={paging.onPageChange}
+          onRowsPerPageChange={paging.onRowsPerPageChange}
+          labelRowsPerPage={paging.labelRowsPerPage}
+          labelDisplayedRows={paging.labelDisplayedRows}
+          testId={`${testId}-pager`}
+        />
+      )}
       {/* A legend explains the rows' glyphs: with no row to show there is nothing to explain. */}
       {legend !== undefined && legend.length > 0 && !loading && rows.length > 0 && (
         <ResultLegend entries={legend} testId={`${testId}-legend`} />

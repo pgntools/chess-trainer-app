@@ -65,13 +65,13 @@ describe("the Repertoires list — accessible", () => {
 });
 
 describe("a repertoire's settings — accessible", () => {
-  it("is its page's h1 over a section heading each, passes axe, and saves from the keyboard", async () => {
+  // As it opens, the screen is the browser pass's to audit (`e2e/a11y/`, every pull request — CTA-124).
+  it("is its page's h1 over a section heading each, and saves from the keyboard", async () => {
     const user = userEvent.setup();
     await storeRepertoire("a", CARO, "Caro-Kann");
     await renderSection("/repertoires/a/settings");
     expect(screen.getByRole("heading", { level: 1, name: i18n.t("repertoires.settings.title") })).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["General", "Board", "Folder"]);
-    await expectNoAxeViolations(screen.getByTestId("repertoire-settings-screen"));
 
     screen.getByTestId("repertoire-settings-color-white").focus();
     await user.keyboard("{ArrowRight}{Enter}");
@@ -86,11 +86,10 @@ describe("a repertoire's settings — accessible", () => {
 });
 
 describe("adding a repertoire — accessible", () => {
-  it("is its page's h1, passes axe, and reads a paste from the keyboard", async () => {
+  it("is its page's h1, and reads a paste from the keyboard", async () => {
     const user = userEvent.setup();
     await renderSection("/repertoires/new");
     expect(screen.getByRole("heading", { level: 1, name: i18n.t("repertoires.upload.title") })).toBeInTheDocument();
-    await expectNoAxeViolations(document.body);
     await user.click(screen.getByRole("textbox", { name: i18n.t("repertoires.upload.paste") }));
     await user.paste("not a game at all");
     await user.keyboard("{Control>}{Enter}{/Control}");
@@ -99,12 +98,15 @@ describe("adding a repertoire — accessible", () => {
 });
 
 describe("the repertoire player — accessible", () => {
-  it.each(["moves", "map", "settings"])("passes axe on its %s tab", async (tab) => {
+  // The Moves tab, the one it opens on, is the browser pass's (`e2e/a11y/`); the others, one mount (CTA-124).
+  it("passes axe on its map and settings tabs", async () => {
     await storeRepertoire("a", CARO, "Caro-Kann");
     await renderSection("/repertoires/a");
     await screen.findByTestId("repertoire-board-panel");
-    await userEvent.click(screen.getByTestId(`repertoire-board-panel-tab-${tab}`));
-    await expectNoAxeViolations(screen.getByTestId("repertoire-board-panel"));
+    for (const tab of ["map", "settings"]) {
+      await userEvent.click(screen.getByTestId(`repertoire-board-panel-tab-${tab}`));
+      await expectNoAxeViolations(screen.getByTestId("repertoire-board-panel"));
+    }
   });
 
   it("works its settings tab from the keyboard: the side, Autoplay", async () => {

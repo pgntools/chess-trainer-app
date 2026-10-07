@@ -5,37 +5,133 @@ name: CI
 # integration branch every feature PR targets, so it is the one push trigger
 # worth having. The browser accessibility pass is its own workflow
 # (a11y.yml, CTA-116): it needs Chromium and a production build of its own.
+#
+# Every check is its own job, and they run side by side (CTA-123): the build,
+# lint, and the test groups of `vite.config.ts`'s `test.projects` — `unit` in
+# one job, `ui` split over three (`vitest --shard`). The third group,
+# `gallery` — the gallery's axe matrix, every page under every theme, half an
+# hour of tests — is not in this gate: nightly.yml runs it.
+#
+# Coverage is measured on a push to `development` (and nightly), not on a pull
+# request: there the tests run once, in one job, with `--coverage`.
+#
+# Skipping the gate (CTA-129), two ways:
+#
+#   paths-ignore  — a change that touches nothing but documentation (docs/,
+#                   any .md, .claude/) skips this gate: the run is skipped only
+#                   when EVERY changed file matches, so a PR that also touches
+#                   code still runs it. Blog articles (.mdx under src/) are
+#                   shipped app content and are NOT in the list.
+#   [skip ci]     — GitHub's native marker: `[skip ci]`, `[ci skip]`, `[no ci]`
+#                   in the head commit message or the PR title skips EVERY
+#                   push/pull_request workflow of the repo — both deploys
+#                   included — so it is for a minor touch only, and never for
+#                   a PR whose merge carries app changes.
 on:
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.claude/**'
   push:
     branches: [development]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.claude/**'
+  workflow_dispatch:
+
+# A new push to a pull request's branch makes its running checks moot.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          # Matches the Node the reference workflows pin. This repo pins nothing
-          # in-tree (no .nvmrc, no engines) — local dev Node comes from fnm.
+          # 24, not the newest: jsdom 30's `engines` field skips odd-numbered
+          # Node entirely (^22.22.2 || ^24.15.0 || >=26), so a 25 here fails
+          # `yarn install` outright. This repo pins nothing in-tree (no .nvmrc,
+          # no engines) — local dev Node comes from fnm.
           node-version: 24
           cache: yarn
-
       - run: yarn install --frozen-lockfile
-
-      # `tsc -b` over the app *and* the tests, then the production build.
+      # `tsc -b` over the app *and* the tests, then the production build and
+      # its pre-render — every page a static index.html (CTA-136).
       - run: yarn build
+      # The Blog as built (CTA-135): nothing of a draft (the fixture draft
+      # keeps that honest), no article body in the entry chunk, each in its own.
+      - run: yarn check:blog-build
+      # The pages as written (CTA-136): every one there in every language,
+      # its head and its content; 404.html the app's template.
+      - run: yarn check:pages
 
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --frozen-lockfile
       # A gate (CTA-116). It carries what nothing else enforces once a change
       # is out of its author's hands: the design system's tier import rules,
       # the MUI lock (no screen or block imports an atom the design system
       # wraps) and `eslint-plugin-jsx-a11y`. It exits 0 on the whole tree.
       - run: yarn lint
+      # No test file under src/ is outside every test group, or in two: a file
+      # no group's glob matches would never run anywhere (CTA-123).
+      - run: yarn test:groups
 
-      # `--coverage` is a readout here, not a gate: vite.config.ts has a
-      # coverage block but no thresholds, so the numbers are reported without
-      # failing CI. Add thresholds there if the team wants it enforced.
+  unit:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn test:unit
+
+  ui:
+    if: github.event_name != 'push'
+    name: ui (${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    strategy:
+      # One shard's failure must not hide the others'.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      # The runner has four cores; `--maxWorkers 3` leaves one to Vitest itself.
+      - run: yarn test:ui --shard=${{ matrix.shard }}/3
+
+  # On a push to `development`: the pull-request gate's tests (`unit` and `ui`)
+  # once more, in one job, with coverage. `--coverage` is a readout, not a
+  # gate: vite.config.ts has a coverage block but no thresholds, so the numbers
+  # are reported without failing CI. Add thresholds there if the team wants it
+  # enforced.
+  coverage:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --frozen-lockfile
       - run: yarn test:run --coverage

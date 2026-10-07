@@ -32,7 +32,8 @@ import { useAnalysisLoad } from "../useAnalysisLoad";
  * `.pgn` pick, side by side (`PositionEditor`'s `controls` slot). Both feed
  * `useAnalysisLoad`, the Load route's one pipeline: a PGN of more than one
  * move (or a merge of several — the popup, `MultiGameDialog`, which can keep
- * them as a Library collection instead, CTA-101) opens the Analysis Board with
+ * them as a Library collection instead, CTA-101, or as analyses in a new
+ * folder here, CTA-141) opens the Analysis Board with
  * the tree handed over as location state — a new unsaved analysis, facing
  * White, because a game does not turn the board; a PGN of a single move or none sets the
  * editor up from it instead, exactly as the FEN field does — a position is
@@ -91,6 +92,8 @@ function NewAnalysisForm() {
     onLoadPosition: (position) => editor.loadPosition(position),
     onCollectionSaved: (collectionId) =>
       navigate(`/library/${encodeURIComponent(collectionId)}`),
+    onAnalysesSaved: (folderId) =>
+      navigate(`/tools/analysis/saved?folder=${encodeURIComponent(folderId)}`),
   });
 
   return (
@@ -208,6 +211,7 @@ function NewAnalysisForm() {
               onMerge={load.merge}
               onClose={load.dismiss}
               onSaved={load.collectionSaved}
+              onAnalysesSaved={load.analysesSaved}
             />
           )}
         </Box>

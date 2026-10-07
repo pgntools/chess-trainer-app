@@ -1,0 +1,58 @@
+name: Nightly tests
+
+# What leaves the pull-request gate (ci.yml) because it takes too long to hold
+# every branch on it (CTA-123):
+#
+#  - the `gallery` test group: the gallery's axe matrix — every base,
+#    pattern and block page rendered under every theme, scheme and direction,
+#    axe over each render (`src/test/galleryMatrix/`). Some 35 minutes of
+#    tests, cut into slice files and split here over four jobs
+#    (`vitest --shard`), so none runs for long;
+#  - coverage of the gate's own groups, `unit` and `ui`, as on a push to
+#    `development`.
+#
+# A schedule fires on the default branch, `main`, so the nightly run checks out
+# `development` — the integration branch, where a change to a gallery page lands
+# first. A manual run (workflow_dispatch) tests the branch it is run on: run it
+# on a feature branch that changes a component's gallery page or a theme.
+on:
+  schedule:
+    # 02:47 UTC every day — half an hour after a11y.yml's nightly pass.
+    - cron: "47 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  gallery:
+    name: gallery (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      # A violation on one shard must not hide the others'.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'development' || '' }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      # The runner has four cores; `--maxWorkers 3` leaves one to Vitest itself.
+      - run: yarn test:gallery --shard=${{ matrix.shard }}/4
+
+  # `--coverage` is a readout, not a gate (vite.config.ts sets no thresholds).
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'development' || '' }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn test:run --coverage

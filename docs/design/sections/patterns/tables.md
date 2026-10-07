@@ -5,9 +5,19 @@
 section's parts](../tables.md). Import from `patterns/tables`. Where a
 pattern belongs in the hierarchy: [`hierarchy.md`](../../hierarchy.md).
 
+**Every table takes paging** (CTA-128): each table pattern — `DataTable`,
+`StandingsTable`, `CrossTable`, and any table pattern to come — takes the
+optional `paging` prop, one shape for all (`TablePaging`,
+`patterns/tables/paging.ts`: `{ page, rowsPerPage, onPageChange,
+onRowsPerPageChange, labelRowsPerPage, labelDisplayedRows? }`, controlled,
+`rowsPerPage` one of `TABLE_PAGE_SIZES`). Absent, every row shows; present,
+the rows are cut into pages and `TablePager` sits under the frame. The
+patterns' conventions test fails a `…Table` pattern that does not declare it.
+
 Gallery: `/dev/design/patterns/tables/DataTable`,
 `/dev/design/patterns/tables/StandingsTable`,
-`/dev/design/patterns/tables/CrossTable`.
+`/dev/design/patterns/tables/CrossTable`,
+`/dev/design/patterns/tables/Bracket`.
 
 ## DataTable
 
@@ -91,6 +101,9 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
 - `rowLinkLabel(row)` — the row link's name, where the cell's words alone do
   not tell one row from another (a collection's White cell).
 - `picks.selectAllTestId`, `picks.pickTestId(row)`.
+- `picks.canPick(row)` (CTA-144) — a row it turns down (a folder among a
+  tree's items) has an empty pick cell and is left out of select-all and its
+  count; absent, every row can be picked.
 - `rowLink` may answer `undefined` for a row with no destination (a folder).
 - **An empty or no-match line is a table row** (`-empty`, `-no-match`): a
   test that counts rows skips it.
@@ -109,12 +122,20 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   game ([`ResultMark`](../tables.md#resultmark)). Who it was against is in
   the mark's `label`, read in the glyph's place.
 - **Rows** — `StandingsRow = Competitor & { rounds }`: `Competitor = { id,
-  rank, name, prefix?, suffix?, rating?, points, tieBreaks? }` (a `prefix` is
-  a few muted words before the name — a title; a `suffix` after it — where
-  from; `tieBreaks` the tie-break columns' values by column id), and `rounds`
+  rank, name, prefix?, suffix?, badge?, flag?, rating?, points, tieBreaks? }`
+  (a `prefix` is a few muted words before the name — a title; a `suffix`
+  after it — where from; CTA-128: a `badge` is a `LabelChip` in the
+  prefix's place, `{ label, tone, name? }` — a title read in full; a `flag`
+  a `Flag` in the suffix's place, `{ code, label, before? }`, the suffix its
+  fallback — `before` sets it at the name's start instead, as a team's
+  country is; a `link`, a `LinkTarget`, makes the name a link — the
+  competitor's games — the chip and the flag outside it; `tieBreaks` the tie-break columns' values by column id), and `rounds`
   one entry per round, each **every result of that round** as `ResultEntry =
   { outcome, label }` (one, as a rule). A round with no game is the caller's
   own `none` entry, so its words say so; an entry left out is an empty cell.
+  An entry's optional `link` (CTA-128) makes its mark a link to its game,
+  read by its `label`, a target of 24 px at least (`MIN_TARGET_PX`), the
+  theme's ring on focus.
   The rows come ranked — the table orders nothing.
 - **The tie-breaks are data** — `tieBreaks?: TieBreakColumn[]`, each `{ id,
   header, name?, format? }`: a caller adds or removes one without changing
@@ -127,8 +148,10 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   alone), `tieBreaks?`, `formatPoints?`, `legend?: ResultEntry[]` (under the
   table, out of its scroll, while it has rows: "* = unfinished game"),
   `loading?` +
-  `loadingLabel?`, `emptyLabel`, `density?`, `stickyHeader?`, a name —
-  `ariaLabel` or `caption` (`TableName`, **required**) — and `testId`.
+  `loadingLabel?`, `emptyLabel`, `density?`, `stickyHeader?`, `paging?`
+  (CTA-128: a page of rows, the pager under the frame; each row keeps its
+  own rank), a name — `ariaLabel` or `caption` (`TableName`, **required**)
+  — and `testId`.
 - **Accessible** — named by an `ariaLabel` or a `caption`; `aria-busy` while
   `loading`; the name is its **row's header** (`th scope="row"`) and every
   column has one; a result is read by its words and never told by its colour
@@ -137,11 +160,11 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   results `dir="ltr"`; the table mirrors under RTL.
 - **Test ids** — `testId` (the root), `-frame` (its table `-frame-table`),
   `-row-<id>` (`-name`, `-points`, `-<tie-break id>`), a round's cell
-  `-round-<id>-<round>`, `-loading`, `-empty`, `-legend`.
+  `-round-<id>-<round>`, `-loading`, `-empty`, `-legend`, `-pager`.
 - **Variations** (one demo each) — every kind of cell with titles, ratings
   and two tie-breaks; the bare table (no rating, no tie-breaks, no legend);
-  loading; empty; one row; ninety-nine rows; thirty rounds (a sideways
-  scroll); long names; Hebrew names under a caption (RTL); the header not
+  loading; empty; one row; ninety-nine rows; ninety-nine rows paged;
+  thirty rounds (a sideways scroll); long names; Hebrew names under a caption (RTL); the header not
   sticky.
 
 ## CrossTable
@@ -166,7 +189,8 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
 - **Props** — `rows`, `labels: { rank, name, rating?, points }`,
   `tieBreaks?`, `formatPoints?`, `legend?`, `loading?` + `loadingLabel?`
   (while loading there are no competitors' columns), `emptyLabel`,
-  `density?`, `stickyHeader?`, a name — `ariaLabel` or `caption`
+  `density?`, `stickyHeader?`, `paging?` (CTA-128: the rows are paged,
+  every competitor keeps its column), a name — `ariaLabel` or `caption`
   (`TableName`, **required**) — and `testId`.
 - **Accessible** — as `StandingsTable`; the rows' and the columns' headers
   are real ones (`th` with `scope="row"` / `scope="col"`), so a screen reader
@@ -175,7 +199,52 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   `-row-<id>` (`-name`, `-points`, `-<tie-break id>`), a competitor's column
   `-column-<id>`, the cell of a row against a column
   `-cell-<row id>-<column id>` (the diagonal's too), `-loading`, `-empty`,
-  `-legend`.
+  `-legend`, `-pager`.
 - **Variations** (one demo each) — a double round robin; a single one; an
   unfinished double one; the bare table; loading; empty; long names; Hebrew
-  names under a caption (RTL); dense with the header not sticky.
+  names under a caption (RTL); thirty members paged; dense with the header
+  not sticky.
+
+## Bracket
+
+- **Purpose** (CTA-128) — a knockout's bracket: a **column per round**, left
+  to right, each a list of its matches; a match a box of two lines — a
+  side's name (a muted `prefix` before it), its score and a muted `detail`
+  after it (a team's board points) — the side that went through **bold and
+  marked** with a bar at its start (`borderInlineStart`, so it mirrors). The
+  columns stretch to one height and space their matches evenly, so a later
+  round's match sits between the two that fed it — the caller sends each
+  round **in bracket order**. Generic — a competitor is anything with a
+  score; it knows no chess. A double elimination is two of them, one per
+  bracket.
+- **Data** — `BracketRound = { id, title, matches }`, `BracketMatch = { id,
+  sides: [BracketSide, BracketSide], label, caption?, games? }` (`caption`: a few
+  muted words over the box — "Match for third place" — said in `label`
+  too; `games`: `BracketGame = { id, label, name, link }`, a row of links
+  under the lines, CTA-128), `BracketSide = { id, name,
+  prefix?, badge?, flag?, score, detail?, winner?, link? }` (`badge` and `flag` as
+  a `Competitor`'s, CTA-128; `link` makes the name a link). The scores are written by the caller
+  ("2½"); `label` is the match in words ("Burg, Twan 1½, Sokolov, Ivan 2½:
+  Sokolov, Ivan goes through").
+- **Props** — `rounds`, `ariaLabel` (**required**), `emptyLabel`,
+  `loading?` + `loadingLabel?`, `density?`, `gamesLabel?` (the name of a
+  match's list of games — "Games"), `testId`.
+- **Accessible** — a named `region` that takes the keyboard focus and
+  scrolls sideways (a bracket is two-dimensional: WCAG 1.4.10 allows it), its
+  ring the theme's; each round a `list` named by its title (`aria-labelledby`
+  — no heading, so an article's outline is its own); each match a list item
+  read by its `label` in place of its two lines, which are `aria-hidden` — so
+  who went through is said in words, never told by the weight or the bar
+  alone. **Links** (CTA-128): a side with a `link` hides all of its line but
+  the name's link, which is read after the label; a match's `games` are a
+  list named `gamesLabel`, each link read by its `name` (its visible `label`
+  is a few characters), at least 24 px, the theme's focus ring. `aria-busy` and a `status` while `loading`. Names `dir="auto"`,
+  scores `dir="ltr"`; the columns run right to left under RTL.
+- **Test ids** — `testId` (the region), `-round-<id>` (`-title`),
+  `-match-<id>`, a side's line `-match-<id>-<side id>` (`data-winner`; its
+  name's link `-link`), the games `-match-<id>-games` (a game's link
+  `-games-<game id>`), `-loading`, `-empty`.
+- **Variations** (one demo each) — a knockout of eight; a team knockout with
+  details; a final round with a captioned match for third place; unfinished
+  (a level final); loading; empty; long names; Hebrew
+  names (RTL); dense; linked (each name, each match's games).

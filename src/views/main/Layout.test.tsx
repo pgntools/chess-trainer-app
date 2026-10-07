@@ -12,9 +12,12 @@ import i18n from "../../i18n";
 import { expectNoAxeViolations, PAGE_STRUCTURE_RULES } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { DefaultLayout } from "./Layout";
-import { RightPanel } from "./rightPanel";
+import { HideRightPanel, RightPanel } from "./rightPanel";
 import { LeftPanel } from "./leftPanel";
-import { FULL_WIDTH_ROUTE } from "./routeHandle";
+import { BoardLeftPanel } from "./boardLeftPanel";
+import { BOARD_LEFT_PANEL_COLLAPSED_PX, BOARD_LEFT_PANEL_WIDTH_PX } from "./boardLeftPanelSlot";
+import { ForceLTR } from "../../theme/ForceLTR";
+import { ARTICLE_MAX_WIDTH_PX, ARTICLE_ROUTE, FULL_WIDTH_ROUTE } from "./routeHandle";
 
 /** The one throwaway screen most of these tests put behind the `<Outlet />`. */
 const blankScreen: RouteObject[] = [
@@ -102,7 +105,7 @@ describe("app shell footer", () => {
     const link = screen.getByTestId("layout-footer-repo-link");
     expect(link).toHaveAttribute(
       "href",
-      "https://github.com/kantorv/chess-trainer-app",
+      "https://github.com/pgntools/chess-trainer-app",
     );
     expect(link).toHaveAttribute("target", "_blank");
     expect(link.getAttribute("rel")).toContain("noopener");
@@ -186,6 +189,59 @@ describe("board square reflow on window resize", () => {
   });
 });
 
+describe("a screen that spans the aside (CTA-142)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** One screen that spans the aside while its switch is on, and keeps its own state either way. */
+  const Toggling = () => {
+    const [hidden, setHidden] = useState(true);
+    const [count, setCount] = useState(0);
+    return (
+      <div data-testid="screen">
+        <button onClick={() => setHidden((on) => !on)}>toggle</button>
+        <button onClick={() => setCount((c) => c + 1)}>bump {count}</button>
+        {hidden && <HideRightPanel />}
+      </div>
+    );
+  };
+
+  it("draws no aside; the area keeps the square's start and height and reaches across the aside's room — without a remount", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(800, 600));
+    renderShell([{ index: true, element: <Toggling /> }]);
+
+    expect(screen.queryByTestId("layout-board-square-sidebar")).toBeNull();
+    const area = screen.getByTestId("layout-board-square-body");
+    // The square (432), the gap (16) and the aside's 320: 768 wide, the square's 432 high.
+    await waitFor(() => expect(area).toHaveStyle({ width: "768px", height: "432px" }));
+    expect(area).toContainElement(screen.getByTestId("screen"));
+
+    fireEvent.click(screen.getByRole("button", { name: "bump 0" }));
+    fireEvent.click(screen.getByRole("button", { name: "toggle" }));
+    // The aside is back, the square too — and the screen kept its state: it was not remounted.
+    expect(screen.getByTestId("layout-board-square-sidebar")).toBeInTheDocument();
+    await waitFor(() => expect(area).toHaveStyle({ width: "432px", height: "432px" }));
+    expect(screen.getByRole("button", { name: "bump 1" })).toBeInTheDocument();
+  });
+
+  it("takes the aside's width within its bounds — on a wide window, its 560 px at most", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(1400, 600));
+    renderShell([{ index: true, element: <HideRightPanel /> }]);
+    // The square min(1400 - 320 - 16 - 32, 600 - 32) = 568, the gap, and the aside's 560 cap.
+    await waitFor(() => expect(screen.getByTestId("layout-board-square-body")).toHaveStyle({ width: "1144px", height: "568px" }));
+  });
+
+  it("does nothing outside the shell", () => {
+    render(<HideRightPanel />);
+  });
+
+  it("grows the aside from nothing, so wide content never sets its width and overflows the row", () => {
+    renderShell();
+    expect(screen.getByTestId("layout-board-square-sidebar")).toHaveStyle({ flexBasis: "0" });
+  });
+});
+
 describe("a full-width route (CTA-107)", () => {
   const routes: RouteObject[] = [
     { index: true, element: <div data-testid="screen" /> },
@@ -210,6 +266,58 @@ describe("a full-width route (CTA-107)", () => {
     expect(screen.queryByTestId("layout-full-body")).toBeNull();
     expect(screen.getByTestId("layout-board-square-body")).toContainElement(screen.getByTestId("screen"));
     expect(screen.getByTestId("layout-board-square-sidebar")).toBeInTheDocument();
+  });
+});
+
+describe("an article route — the front page, the Blog (CTA-130)", () => {
+  /** An article's kind of screen: prose, and a board that pins itself as `DemoBoard` does. */
+  const Article = () => (
+    <div data-testid="article-screen">
+      <p data-testid="article-prose">Prose</p>
+      <ForceLTR>
+        <div data-testid="article-board" />
+      </ForceLTR>
+    </div>
+  );
+  const routes: RouteObject[] = [
+    { index: true, element: <div data-testid="screen" /> },
+    { path: "article", element: <Article />, handle: ARTICLE_ROUTE },
+    { path: "wide", element: <div data-testid="wide-screen" />, handle: FULL_WIDTH_ROUTE },
+  ];
+
+  it("is the whole body, the content in one centred column at a readable width — no square, no aside", () => {
+    renderShell(routes, ["/article"]);
+    const body = screen.getByTestId("layout-full-body");
+    const column = screen.getByTestId("layout-article-column");
+    expect(body).toContainElement(column);
+    expect(column).toContainElement(screen.getByTestId("article-screen"));
+    expect(column).toHaveStyle({ width: "100%", maxWidth: `${ARTICLE_MAX_WIDTH_PX}px` });
+    // The body scrolls the article, so the scrollbar is the page's.
+    expect(body).toHaveStyle({ overflowY: "auto" });
+    expect(screen.queryByTestId("layout-board-square-body")).toBeNull();
+    expect(screen.queryByTestId("layout-board-square-sidebar")).toBeNull();
+    expect(screen.getByRole("main")).toBe(body);
+    // The nav rail stays.
+    expect(screen.getByTestId("layout-sidebar-container")).toBeInTheDocument();
+  });
+
+  it("leaves a full-width route its whole width, and a board route its square and aside", async () => {
+    const { router } = renderShell(routes, ["/wide"]);
+    expect(screen.getByTestId("layout-full-body")).toContainElement(screen.getByTestId("wide-screen"));
+    expect(screen.queryByTestId("layout-article-column")).toBeNull();
+    await act(() => router.navigate("/"));
+    expect(screen.queryByTestId("layout-full-body")).toBeNull();
+    expect(screen.getByTestId("layout-board-square-body")).toContainElement(screen.getByTestId("screen"));
+    expect(screen.getByTestId("layout-board-square-sidebar")).toBeInTheDocument();
+  });
+
+  it("mirrors under Hebrew — no shell ForceLTR — while a board it embeds stays left to right", async () => {
+    await i18n.changeLanguage("he");
+    renderShell(routes, ["/article"]);
+    expect(nearestCache(screen.getByTestId("layout-article-column"))).toBe("muirtl");
+    expect(screen.getByTestId("article-prose").closest("[dir]")).toBe(document.body);
+    expect(screen.getByTestId("article-board").closest("[dir]")).toHaveAttribute("dir", "ltr");
+    expect(nearestCache(screen.getByTestId("article-board"))).toBe("muiltr");
   });
 });
 
@@ -499,6 +607,174 @@ describe("fixed-width rails", () => {
   square. jsdom answers every media query `false`, which is the desktop shell
   — what every test above renders; these stub the narrow window instead.
 */
+describe("the board's own left panel (CTA-145)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** A screen with a panel of its own beside the board — shown or not, its drawer opened or not — keeping a count of its own. */
+  const WithPanel = () => {
+    const [shown, setShown] = useState(true);
+    const [open, setOpen] = useState(false);
+    const [collapsed, setCollapsed] = useState(false);
+    const [count, setCount] = useState(0);
+    return (
+      <div data-testid="screen">
+        <button onClick={() => setShown((on) => !on)}>toggle</button>
+        <button onClick={() => setCollapsed((on) => !on)}>fold</button>
+        <button onClick={() => setOpen(true)}>open drawer</button>
+        <button onClick={() => setCount((c) => c + 1)}>bump {count}</button>
+        {shown && (
+          <BoardLeftPanel collapsed={collapsed} open={open} onClose={() => setOpen(false)} drawerLabel="Folder analyses">
+            <p data-testid="panel-content">The folder</p>
+          </BoardLeftPanel>
+        )}
+      </div>
+    );
+  };
+
+  it("draws no column while no screen registers one", () => {
+    renderShell();
+    expect(screen.queryByTestId("layout-board-left-panel")).toBeNull();
+  });
+
+  it("puts a registered panel in its own column before the square, in the board's row", async () => {
+    renderShell([{ index: true, element: <WithPanel /> }]);
+    const column = await screen.findByTestId("layout-board-left-panel");
+    expect(within(column).getByTestId("panel-content")).toBeInTheDocument();
+    expect(column).toHaveStyle({ width: `${BOARD_LEFT_PANEL_WIDTH_PX}px` });
+    const viewport = screen.getByTestId("layout-board-viewport");
+    const order = [...viewport.children].map((child) => child.getAttribute("data-testid"));
+    expect(order).toEqual(["layout-board-left-panel", "layout-main", "layout-board-square-sidebar"]);
+  });
+
+  it("gives the screen the whole window while open — no header, no main menu, no footer — and the shell back when closed, without a remount", async () => {
+    renderShell([{ index: true, element: <WithPanel /> }]);
+    await screen.findByTestId("layout-board-left-panel");
+    expect(screen.queryByTestId("layout-header")).toBeNull();
+    expect(screen.queryByTestId("layout-sidebar-container")).toBeNull();
+    expect(screen.queryByRole("navigation", { name: i18n.t("nav.ariaLabel") })).toBeNull();
+    expect(screen.queryByTestId("layout-footer")).toBeNull();
+    // The page keeps its landmarks and its skip link.
+    expect(screen.getByRole("main")).toBeInTheDocument();
+    expect(screen.getByTestId("layout-skip-link")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "bump 0" }));
+    fireEvent.click(screen.getByRole("button", { name: "toggle" }));
+    expect(screen.getByTestId("layout-header")).toBeInTheDocument();
+    expect(within(screen.getByTestId("layout-sidebar-container")).getByRole("navigation", { name: i18n.t("nav.ariaLabel") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "bump 1" })).toBeInTheDocument();
+  });
+
+  it("takes its width and the gap out of the square's, and gives them back — without a remount", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(1000, 600));
+    renderShell([{ index: true, element: <WithPanel /> }]);
+    const square = screen.getByTestId("layout-board-square-body");
+
+    // min(1000 - 320 - 16 - 32 - 400 - 16, 600 - 32): the column and the gap before it come off the width too.
+    await waitFor(() => expect(square).toHaveStyle({ width: "216px", height: "216px" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "bump 0" }));
+    fireEvent.click(screen.getByRole("button", { name: "toggle" }));
+    expect(screen.queryByTestId("layout-board-left-panel")).toBeNull();
+    // min(1000 - 320 - 16 - 32, 568) = 568.
+    await waitFor(() => expect(square).toHaveStyle({ width: "568px", height: "568px" }));
+    expect(screen.getByRole("button", { name: "bump 1" })).toBeInTheDocument();
+  });
+
+  it("folds to a rail and opens again — the square takes the width back and gives it up, without a remount", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(1200, 600));
+    renderShell([{ index: true, element: <WithPanel /> }]);
+    const square = screen.getByTestId("layout-board-square-body");
+    const column = await screen.findByTestId("layout-board-left-panel");
+    // min(1200 - 320 - 16 - 32 - 400 - 16, 568) = 416.
+    await waitFor(() => expect(square).toHaveStyle({ width: "416px" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "fold" }));
+    expect(column).toHaveStyle({ width: `${BOARD_LEFT_PANEL_COLLAPSED_PX}px` });
+    // The rail's own 48 and the gap: min(1200 - 320 - 16 - 32 - 48 - 16, 568) = 568.
+    await waitFor(() => expect(square).toHaveStyle({ width: "568px" }));
+    // The shell stays away while the panel is folded: it is the same window.
+    expect(screen.queryByTestId("layout-header")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "fold" }));
+    expect(column).toHaveStyle({ width: `${BOARD_LEFT_PANEL_WIDTH_PX}px` });
+    await waitFor(() => expect(square).toHaveStyle({ width: "416px" }));
+  });
+
+  it("counts the column in the room the area reaches across when the aside is hidden", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(1000, 600));
+    renderShell([
+      {
+        index: true,
+        element: (
+          <>
+            <WithPanel />
+            <HideRightPanel />
+          </>
+        ),
+      },
+    ]);
+    // The square 216, the gap, and the aside's room: 1000 - 32 - 400 - 16 - 216 - 16 = 320 (its minimum).
+    await waitFor(() => expect(screen.getByTestId("layout-board-square-body")).toHaveStyle({ width: "552px", height: "216px" }));
+  });
+
+  it("mirrors with the app: its column's border is the side the square is on, never a physical one", async () => {
+    await i18n.changeLanguage("he");
+    renderShell([{ index: true, element: <WithPanel /> }]);
+    const column = await screen.findByTestId("layout-board-left-panel");
+    expect(column.className).toMatch(/muirtl-/);
+    expect(column.closest("[dir='ltr']")).toBeNull();
+  });
+
+  describe("under the breakpoint", () => {
+    const wideWindow = window.matchMedia;
+    beforeEach(() => {
+      window.matchMedia = ((query: string) =>
+        ({
+          matches: /max-width/.test(query),
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    });
+    afterEach(() => {
+      window.matchMedia = wideWindow;
+    });
+
+    it("has no column — the panel is a drawer the screen opens, named, closed on Escape", async () => {
+      const user = userEvent.setup();
+      renderShell([{ index: true, element: <WithPanel /> }]);
+
+      expect(screen.queryByTestId("layout-board-left-panel")).toBeNull();
+      // The shell is whole: the header and its menu button stay.
+      expect(screen.getByTestId("layout-header")).toBeInTheDocument();
+      // Closed, nothing of it is in the page.
+      expect(screen.queryByTestId("panel-content")).toBeNull();
+
+      await user.click(screen.getByRole("button", { name: "open drawer" }));
+      const sheet = await screen.findByRole("dialog", { name: "Folder analyses" });
+      expect(within(sheet).getByTestId("panel-content")).toBeInTheDocument();
+
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Folder analyses" })).toBeNull());
+    });
+
+    it("reserves none of the square's width for it", async () => {
+      const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+      grbc.mockReturnValue(rect(500, 900));
+      renderShell([{ index: true, element: <WithPanel /> }]);
+      // Stacked: the width less the inset, as without a panel.
+      await waitFor(() => expect(screen.getByTestId("layout-board-square-body")).toHaveStyle({ width: "468px", height: "468px" }));
+    });
+  });
+});
+
 describe("the shell under its breakpoint (CTA-118)", () => {
   /*
     A window under the breakpoint: the `max-width` queries match, nothing else
@@ -643,6 +919,23 @@ describe("the shell under its breakpoint (CTA-118)", () => {
     expect(screen.getByTestId("layout-skip-link")).toBeInTheDocument();
     expect(screen.getAllByRole("main")).toHaveLength(1);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(navButton()).toBeInTheDocument();
+  });
+
+  it("gives an article the body's whole width under the breakpoint, its column still the page", () => {
+    stubCompactWindow();
+    renderShell(
+      [
+        { index: true, element: <div data-testid="screen" /> },
+        { path: "article", element: <p data-testid="article-screen">Prose</p>, handle: ARTICLE_ROUTE },
+      ],
+      ["/article"],
+    );
+
+    // A maximum, not a width: under it the column is the whole body (the reflow gate).
+    expect(screen.getByTestId("layout-article-column")).toHaveStyle({ width: "100%", maxWidth: `${ARTICLE_MAX_WIDTH_PX}px` });
+    expect(screen.getByTestId("layout-article-column")).toContainElement(screen.getByTestId("article-screen"));
+    expect(screen.queryByTestId("layout-board-square-sidebar")).toBeNull();
     expect(navButton()).toBeInTheDocument();
   });
 

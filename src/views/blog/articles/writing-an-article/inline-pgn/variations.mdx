@@ -1,0 +1,49 @@
+---
+title: Side lines
+summary: Side lines nested where they branch, a board opened inside one, and the game's comments.
+order: 30
+---
+
+import game from "./rubinstein-capablanca-1911.pgn?raw"
+
+A game under review has its side lines — what could have been played, and what would have followed. `<InlinePgnGame>` shows the side lines that branch inside its window, each nested under the move it replaces, and the board's arrows show them too: green the game's move, blue a side line's.
+
+## Side lines in the window
+
+Capablanca's notes to moves 14 to 17 hold two side lines: 14... gxf6, which he considered, and 16. Bg2, which he expected — with his own combination against it, and its two branches.
+
+<InlinePgnGame pgn={game} from="13..." to="17" start="15..." />
+
+```mdx
+<InlinePgnGame pgn={game} from="13..." to="17" start="15..." />
+```
+
+## Opening inside a side line
+
+`start` can be a line of moves into a side line. A line that begins at a later move — `16. Bg2 Ne5` — starts from the game's own position before that move, so only the side line needs writing:
+
+<InlinePgnGame pgn={game} from="15..." to="17" start="16. Bg2 Ne5" caption="The combination Capablanca had in mind: 16. Bg2 Ne5!" />
+
+```mdx
+<InlinePgnGame pgn={game} from="15..." to="17" start="16. Bg2 Ne5" caption="…" />
+```
+
+## The mainline alone
+
+`variations={false}` leaves the side lines out — of the list and of the board.
+
+<InlinePgnGame pgn={game} from="13..." to="17" start="15..." variations={false} />
+
+```mdx
+<InlinePgnGame pgn={game} from="13..." to="17" start="15..." variations={false} />
+```
+
+## With the game's comments
+
+`comments` shows the PGN comment of the move on the board, under the moves — here Capablanca's own, on 16. Kg2.
+
+<InlinePgnGame pgn={game} from="15..." to="17" start="16" comments />
+
+```mdx
+<InlinePgnGame pgn={game} from="15..." to="17" start="16" comments />
+```

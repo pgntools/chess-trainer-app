@@ -142,6 +142,13 @@ type MoveListProps = {
    */
   onContextMenuPly?: (ply: number, anchor: MenuAnchor) => void;
   onContextMenuNode?: ContextMenuNodeHandler;
+  /**
+   * A right-click on the *Start position* row (CTA-149): the game's own
+   * comment and shapes are edited from its menu. Opt-in like the others —
+   * absent, the row binds nothing. Part of the memoised structure's callers,
+   * so it should be stable.
+   */
+  onContextMenuStart?: (anchor: MenuAnchor) => void;
 };
 
 /**
@@ -316,9 +323,11 @@ function FilledCell({
 function StartRow({
   startFen,
   onSelectPly,
+  onContextMenu,
 }: {
   startFen: string;
   onSelectPly: (ply: number) => void;
+  onContextMenu?: (anchor: MenuAnchor) => void;
 }) {
   const { t } = useTranslation();
   const isCurrent = useIsCurrentPly(0);
@@ -331,6 +340,14 @@ function StartRow({
       data-testid="move-ply-0"
       aria-current={isCurrent ? "true" : undefined}
       onClick={() => onSelectPly(0)}
+      onContextMenu={
+        onContextMenu === undefined
+          ? undefined
+          : (event) => {
+              event.preventDefault();
+              onContextMenu(menuAnchorOf(event));
+            }
+      }
       sx={{
         ...cellSx,
         my: 0.5,
@@ -376,6 +393,7 @@ function MoveList({
   extensionPlies,
   onContextMenuPly,
   onContextMenuNode,
+  onContextMenuStart,
 }: MoveListProps) {
   const { t } = useTranslation();
   const rows = useMemo(() => moveRowsOf(game), [game]);
@@ -540,7 +558,7 @@ function MoveList({
         <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
           {t("moveList.title")}
         </Typography>
-        <StartRow startFen={startFen} onSelectPly={onSelectPly} />
+        <StartRow startFen={startFen} onSelectPly={onSelectPly} onContextMenu={onContextMenuStart} />
         {body}
       </Box>
     </MoveSelectionContext.Provider>

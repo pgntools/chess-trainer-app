@@ -14,6 +14,7 @@ import {
   type DemoLeagueOptions,
 } from "../../../gallery/demoLeague";
 import type { GalleryModule } from "../../../gallery/types";
+import WithState from "../../../gallery/WithState";
 import type { PatternSectionId } from "../../sections";
 import StandingsTable, { type StandingsTableProps } from "./StandingsTable";
 
@@ -76,6 +77,61 @@ const gallery: GalleryModule<PatternSectionId> = {
     {
       name: "Ninety-nine rows, no paging — the rows scroll under the header",
       render: () => demo({ names: demoNames(99), extras, unfinished: true, absent: (index, round) => (index + round) % 9 === 0 }, 9, { density: "dense" }, 360),
+    },
+    {
+      name: "Ninety-nine rows, paged — 25 a page, the pager under the frame, each row keeping its own rank (CTA-128)",
+      render: () => (
+        <WithState initial={{ page: 0, rowsPerPage: 25 }}>
+          {(state, setState) =>
+            demo({ names: demoNames(99), extras }, 5, {
+              density: "dense",
+              paging: {
+                ...state,
+                onPageChange: (page) => setState((old) => ({ ...old, page })),
+                onRowsPerPageChange: (rowsPerPage) => setState({ page: 0, rowsPerPage }),
+                labelRowsPerPage: "Rows per page",
+              },
+            }, 420)
+          }
+        </WithState>
+      ),
+    },
+    {
+      name: "Titles as chips, federations as flags — a code with no flag falls back to its words (CTA-128)",
+      render: () =>
+        demo({ names: DEMO_NAMES.slice(0, 6), extras }, 4, {
+          rows: standingsRowsOf(demoLeague({ names: DEMO_NAMES.slice(0, 6), rounds: 4, extras }), 4).map((row, index) => ({
+            ...row,
+            badge: ([
+              { label: "GM", tone: "warning", name: "Grandmaster" },
+              { label: "IM", tone: "info", name: "International Master" },
+              { label: "FM", tone: "success", name: "FIDE Master" },
+              { label: "CM", tone: "secondary", name: "Candidate Master" },
+              undefined,
+              { label: "WGM", tone: "warning", name: "Woman Grandmaster" },
+            ] as const)[index],
+            flag: [
+              { code: "gb-eng", label: "England" },
+              { code: "de", label: "Germany" },
+              { code: "us", label: "United States" },
+              undefined,
+              { code: "zz", label: "Nowhere" },
+              { code: "in", label: "India" },
+            ][index],
+            suffix: ["ENG", "GER", "USA", undefined, "ZZZ", "IND"][index],
+          })),
+        }, 300),
+    },
+    {
+      name: "Names and results as links — a name to the player's games, a result to its game, each a 24 px target (CTA-128)",
+      render: () =>
+        demo({ names: DEMO_NAMES.slice(0, 4), extras }, 3, {
+          rows: standingsRowsOf(demoLeague({ names: DEMO_NAMES.slice(0, 4), rounds: 3, extras }), 3).map((row, index) => ({
+            ...row,
+            link: { href: `#player-${index + 1}` },
+            rounds: row.rounds.map((results, round) => results.map((result) => (result.outcome === "none" ? result : { ...result, link: { href: `#game-${index + 1}-${round + 1}` } }))),
+          })),
+        }, 240),
     },
     { name: "Thirty rounds — the frame scrolls sideways", render: () => demo({ names: demoNames(12), extras }, 30) },
     { name: "Long names — one line each, and a sideways scroll", render: () => demo({ names: DEMO_LONG_NAMES, extras }, 3, {}, 240) },

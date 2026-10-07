@@ -1,13 +1,11 @@
 import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
-import List from "@mui/material/List";
 import Typography from "@mui/material/Typography";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { useTranslation } from "react-i18next";
 
 import { CardGrid, FolderCard, RecordCard } from "../../../design-system/components/cards";
 import type { LinkTarget } from "../../../design-system/components/link";
-import { FolderRow, RecordRow } from "../../../design-system/components/lists";
 import { EmptyState } from "../../../design-system/components/states";
 import { IconAction } from "../../../design-system/components/toolbars";
 import type { GameTree } from "../../../lib/gameTree";
@@ -33,7 +31,8 @@ export type SavedAnalysisFolderActions = {
 };
 
 export type SavedAnalysesListProps = {
-  view: SavedListView;
+  /** The card size — the list view is the screen's tree table (`SavedAnalysesTable`, CTA-144). */
+  view: Exclude<SavedListView, "list">;
   /** The folders where the reader stands — drawn first: the reader drills into a folder, not past it. */
   folders: readonly SavedAnalysisFolderEntry[];
   /** The page's analyses. */
@@ -53,9 +52,9 @@ export type SavedAnalysesListProps = {
   /** No folder and no analysis here: what to say, and the note's test id. */
   empty: { label: ReactNode; testId: string };
   /**
-   * The prefix of every id: the body `<testId>-body` (the list) or
-   * `<testId>-grid` (the cards); an analysis `<testId>-item-<id>`, its
-   * `-open-<id>`, `-select-<id>`, `-settings-<id>`, `-description-<id>`,
+   * The prefix of every id: the grid `<testId>-grid` (`<testId>-body` holding
+   * the empty note); a card `<testId>-item-<id>`, its
+   * `-open-<id>`, `-select-<id>`, `-settings-<id>`, `-name-<id>`,
    * `-opening-<id>`; a folder `<testId>-folder-<id>`, `-folder-open-<id>`
    * and its actions `-folder-<action>-<id>`.
    */
@@ -63,22 +62,20 @@ export type SavedAnalysesListProps = {
 };
 
 /**
- * **The saved analyses, as rows or cards** (CTA-113) — the body of
- * `/tools/analysis/saved`: the folders where the reader stands, then the
- * page's analyses, in the list (`FolderRow`, `RecordRow`) or as preview
- * boards at a card size (`FolderCard`, `RecordCard` in a `CardGrid`), the
- * one region that scrolls. The repertoires' list (`RepertoiresList`) is the
- * same shape — the two sister screens finally look the same.
+ * **The saved analyses as cards** (CTA-113) — the card views of
+ * `/tools/analysis/saved`: the folders where the reader stands, then this
+ * folder's analyses, as preview boards at a card size (`FolderCard`,
+ * `RecordCard` in a `CardGrid`). The list view, once this block's rows, is
+ * the screen's tree table since CTA-144 (`SavedAnalysesTable`). The
+ * repertoires' list (`RepertoiresList`) is its sister.
  *
- * - **A row** names the analysis (its name, else "Analysis board"), then its
- *   size, the side lines tried, where the reader stopped and when, and its
- *   description; **Open** (a link to the board), the settings gear and a pick
- *   — each named for the analysis.
  * - **A card** previews the place the reader stood (the screen's `preview`),
  *   and adds the opening the mainline reached as a third line — every card
  *   of the grid carries that line, so they stay one height.
- * - **A record that will not read** is still listed, says so, and can only
- *   be picked (to delete it, or to export its PGN as stored).
+ * - **A card**'s caption is the analysis' size, the side lines tried, where
+ *   the reader stopped and when; **a record that will not read** is still
+ *   listed, says so, and can only be picked (to delete it, or to export its
+ *   PGN as stored).
  *
  * Presentational: the page, the picks, the links and every callback are the
  * screen's; its words are the analyses' catalog (`savedAnalyses.*`, `savedList.*`).
@@ -158,51 +155,6 @@ function SavedAnalysesList({
       />
     );
   };
-
-  if (view === "list") {
-    return (
-      <Box data-testid={`${testId}-body`} sx={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
-        <List disablePadding aria-label={t("savedAnalyses.title")}>
-          {folders.map((entry) => (
-            <FolderRow
-              key={entry.folder.id}
-              name={folderName(entry.folder)}
-              count={t("savedAnalyses.folder.count", { count: entry.count })}
-              onOpen={() => onOpenFolder(entry.folder.id)}
-              actions={actionsOf(entry)}
-              testId={`${testId}-folder-${entry.folder.id}`}
-              openTestId={`${testId}-folder-open-${entry.folder.id}`}
-            />
-          ))}
-          {entries.map((entry) => (
-            <RecordRow
-              key={entry.saved.id}
-              name={nameOf(entry.saved)}
-              caption={captionOf(entry)}
-              description={entry.saved.description === "" ? undefined : entry.saved.description}
-              // A record that will not read has nothing to open — only a pick.
-              primaryAction={
-                entry.tree === undefined
-                  ? undefined
-                  : {
-                      label: t("savedAnalyses.open"),
-                      ariaLabel: t("savedList.openNamed", { name: nameOf(entry.saved) }),
-                      link: openLink(entry.saved),
-                    }
-              }
-              actions={settings(entry.saved)}
-              pick={pick(entry.saved)}
-              testId={`${testId}-item-${entry.saved.id}`}
-              openTestId={`${testId}-open-${entry.saved.id}`}
-              pickTestId={`${testId}-select-${entry.saved.id}`}
-              descriptionTestId={`${testId}-description-${entry.saved.id}`}
-              nameTestId={`${testId}-name-${entry.saved.id}`}
-            />
-          ))}
-        </List>
-      </Box>
-    );
-  }
 
   return (
     <CardGrid scroll size={view} ariaLabel={t("savedAnalyses.title")} testId={`${testId}-grid`}>

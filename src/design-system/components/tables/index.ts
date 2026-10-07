@@ -14,4 +14,7 @@ export * from "./LoadingTableRow";
 export * from "./NumberCell";
 export * from "./DateCell";
 export * from "./ResultMark";
+// CTA-128: the marks beside a competitor's name — a title as a chip, a federation as a flag.
+export * from "./LabelChip";
+export * from "./Flag";
 export * from "./useTableUrlState";

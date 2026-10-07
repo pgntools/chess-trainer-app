@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 
 import {
   loadUploadedGames,
@@ -9,6 +9,8 @@ import {
   uploadedCollectionsSnapshot,
 } from "../../lib/libraryCollectionStore";
 import type { CollectionRow, CollectionSummary } from "../../lib/libraryCollections";
+import { readPgnTags } from "../../lib/pgn";
+import { guessTournamentKind, type TournamentGuess } from "../../lib/tournamentKind";
 import { libraryFoldersSnapshot, subscribeLibraryFolders } from "../../lib/libraryFolderStore";
 import type { GameFolder } from "../../lib/savedGameFolders";
 import {
@@ -95,7 +97,8 @@ const load = (summary: CollectionSummary, part: Part): Promise<unknown> => {
 function useCollectionPart<T>(id: string | undefined, part: Part): CollectionPart<T> {
   const state = useCollectionSummary(id);
   const summary = state.status === "ready" ? state.summary : undefined;
-  const value = useSyncExternalStore(subscribeAll, () => peek(summary, part)) as T | null | undefined;
+  const read = () => peek(summary, part);
+  const value = useSyncExternalStore(subscribeAll, read, read) as T | null | undefined;
 
   useEffect(() => {
     if (summary !== undefined && value === undefined) void load(summary, part);
@@ -118,3 +121,17 @@ export const useCollectionGames = (id: string | undefined) =>
 export const loadCollectionGames = async (
   summary: CollectionSummary,
 ): Promise<readonly string[] | null> => (await load(summary, "games")) as readonly string[] | null;
+
+/**
+ * **The kind of tournament a collection's games look like** (CTA-142,
+ * `guessTournamentKind`) — read off the games' own tags (teams, FIDE ids:
+ * what the index rows do not keep), so it loads the games; ask only where a
+ * suggestion is wanted (`wanted`). `undefined` while they are read, when not
+ * wanted, and for no guess. The settings screen's suggestion, and the games
+ * table's for a collection never marked.
+ */
+export const useTournamentGuess = (id: string, wanted: boolean): TournamentGuess | undefined => {
+  const games = useCollectionGames(wanted ? id : undefined);
+  const value = games.status === "ready" ? games.value : undefined;
+  return useMemo(() => (value === undefined ? undefined : guessTournamentKind(value.map(readPgnTags))), [value]);
+};

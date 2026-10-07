@@ -1,0 +1,33 @@
+---
+title: Single round robin
+summary: "<RoundRobinCrossTable>: the Green Hills Resort Masters 2026 — eight players, each met once."
+order: 20
+---
+
+import games from "../../tournaments/greenhillsrapid26.pgn?raw"
+
+A **single round robin**: every player meets every other once. Eight players make seven rounds and 28 games. The example is the Green Hills Resort Masters 2026, a rapid event.
+
+## The format
+
+As in a double round robin, ties are broken by Sonneborn-Berger: the points of the opponents a player beat, plus half the points of those they drew with. Buchholz is left out, because everyone's opponents are nearly the same.
+
+## The crosstable
+
+The same table as a double round robin's: a row and a column per player, in rank order. Each cell holds one result, since each pair met once.
+
+<RoundRobinCrossTable pgn={games} />
+
+## The markup
+
+```mdx
+import games from "./greenhillsrapid26.pgn?raw"
+
+<RoundRobinCrossTable pgn={games} />
+```
+
+The component does not need to be told whether the event was single or double: it puts every game between two players in their cell.
+
+## Source
+
+The games are from [The Week in Chess](https://theweekinchess.com) (TWIC), by Mark Crowther — the event's page, [Green Hills Resort Masters 2026](https://theweekinchess.com/chessnews/events/green-hills-resort-masters-2026), and its PGN, [greenhillsrapid26.pgn](https://theweekinchess.com/assets/files/pgn/greenhillsrapid26.pgn).

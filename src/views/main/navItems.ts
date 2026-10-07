@@ -1,9 +1,15 @@
 import type { SvgIconComponent } from "@mui/icons-material";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import UploadRoundedIcon from "@mui/icons-material/UploadRounded";
+import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import ConstructionRoundedIcon from "@mui/icons-material/ConstructionRounded";
+import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
+import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
+import WidgetsRoundedIcon from "@mui/icons-material/WidgetsRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
+import MemoryRoundedIcon from "@mui/icons-material/MemoryRounded";
+import SupportAgentRoundedIcon from "@mui/icons-material/SupportAgentRounded";
 import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
 import SportsEsportsRoundedIcon from "@mui/icons-material/SportsEsportsRounded";
 import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
@@ -13,7 +19,9 @@ import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
 import type { LocalizedText } from "../../lib/localizedText";
+import { blogArticlesInTreeOrder, blogNavFolderId, blogParentOf } from "../blog/articles";
 import type { NavFolderId } from "./navFolders";
+import { MDX_EDITOR_ENABLED } from "../../mdxEditor/enabled";
 
 export type NavItem = {
   /** Route path, matched against `useLocation().pathname` for the active state. */
@@ -25,6 +33,8 @@ export type NavItem = {
   icon: SvgIconComponent;
   /** The folder this screen hangs under in the sidebar — an id from `navFolders`. */
   folder: NavFolderId;
+  /** Not yet published — a Blog draft, listed in `yarn dev` only (CTA-135). */
+  draft?: boolean;
 };
 
 /**
@@ -102,7 +112,34 @@ export const navItems = (): readonly NavItem[] => [
     icon: MenuBookRoundedIcon,
     folder: "repertoires",
   },
-  // The Development section — dev-only: the design gallery (CTA-107) and the theme editor (CTA-115).
+  /*
+    The Blog (CTA-126): its index, and every article in its folder — read off
+    `views/blog/articles.ts`, each named by its data label; a draft, which
+    only `yarn dev` lists, is marked (CTA-135).
+  */
+  ...blogArticlesInTreeOrder().map((article) => ({
+    to: `/blog/${article.path}`,
+    label: article.title,
+    icon: ArticleRoundedIcon,
+    folder: blogNavFolderId(blogParentOf(article.path)),
+    ...(article.draft ? { draft: true } : {}),
+  })),
+  // After the articles: a folder's sub-folders render above its own screens.
+  {
+    to: "/blog",
+    labelKey: "nav.blogIndex",
+    icon: DashboardRoundedIcon,
+    folder: "blog",
+  },
+  // The Development section — dev-only: the design gallery (CTA-107), the theme editor (CTA-115) and the MDX editor.
+  // The MDX editor (CTA-137), in its own folder — only under `yarn mdx-editor:start` (src/mdxEditor/enabled.ts).
+  ...(MDX_EDITOR_ENABLED
+    ? [
+        { to: "/dev/mdx-editor", labelKey: "nav.mdxArticles", icon: ArticleRoundedIcon, folder: "mdx-editor" },
+        { to: "/dev/mdx-editor/edit", labelKey: "nav.mdxEditor", icon: EditNoteRoundedIcon, folder: "mdx-editor" },
+        { to: "/dev/mdx-editor/components", labelKey: "nav.mdxComponents", icon: WidgetsRoundedIcon, folder: "mdx-editor" },
+      ]
+    : []),
   ...(import.meta.env.DEV
     ? [
         {
@@ -143,6 +180,20 @@ export const navItems = (): readonly NavItem[] => [
     to: "/settings/appearance",
     labelKey: "nav.settingsAppearance",
     icon: PaletteRoundedIcon,
+    folder: "settings",
+  },
+  // Engine (CTA-153): which engine every board runs.
+  {
+    to: "/settings/engine",
+    labelKey: "nav.settingsEngine",
+    icon: MemoryRoundedIcon,
+    folder: "settings",
+  },
+  // Support (CTA-155): how to reach us.
+  {
+    to: "/settings/support",
+    labelKey: "nav.settingsSupport",
+    icon: SupportAgentRoundedIcon,
     folder: "settings",
   },
 ];

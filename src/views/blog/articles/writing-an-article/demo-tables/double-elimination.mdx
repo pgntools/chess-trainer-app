@@ -1,0 +1,43 @@
+---
+title: Double-elimination knockout
+summary: "<KnockoutBracket losersFromRound>: the Esports World Cup 2026 — the play-in's winners' and losers' brackets, then the final stage."
+order: 50
+---
+
+import games from "../../tournaments/esportswcuppl26.pgn?raw"
+import final from "../../tournaments/esportswcupfin26.pgn?raw"
+
+A **double-elimination knockout**: a player is out only after losing two matches. Every match lost in the **winners' bracket** drops its loser into the **losers' bracket**, where a second loss ends their event. The example is the play-in of the Esports World Cup 2026, eight players in Paris on 11 August.
+
+## The format
+
+The Week in Chess numbers the winners' bracket's rounds from 1 and the losers' bracket's from 51. The embed is told where the second bracket starts: `losersFromRound="51"`. Each bracket's rounds are then numbered from 1.
+
+Wei Yi won the winners' bracket, beating Vladislav Artemiev in its final. Andrey Esipenko lost his first match to Wei, then won four in a row in the losers' bracket, the last against Artemiev, who had dropped down from the winners' final.
+
+## The brackets
+
+The winners' bracket over the losers', each a column per round. A screen reader hears each bracket's name after the event's.
+
+<KnockoutBracket pgn={games} losersFromRound="51" />
+
+## The final stage: a knockout with a match for third place
+
+The event's final stage, eight players from 14 August, was a plain knockout, so its PGN takes no `losersFromRound`. Its last round holds two matches. The final: Magnus Carlsen beat Denis Lazavik 6–2 over two four-game parts, which the bracket counts as one match. And the match for third place, between the two beaten semi-finalists: Hikaru Nakamura beat Alireza Firouzja. The bracket finds that match itself, since both its players lost the round before, and sets it under the final with a caption.
+
+<KnockoutBracket pgn={final} />
+
+## The markup
+
+```mdx
+import games from "./esportswcuppl26.pgn?raw"
+import final from "./esportswcupfin26.pgn?raw"
+
+<KnockoutBracket pgn={games} losersFromRound="51" />
+
+<KnockoutBracket pgn={final} />
+```
+
+## Source
+
+The games are from [The Week in Chess](https://theweekinchess.com) (TWIC), by Mark Crowther — the event's page, [Esports World Cup 2026](https://theweekinchess.com/chessnews/events/esports-world-cup-2026), and its PGNs, [esportswcuppl26.pgn](https://theweekinchess.com/assets/files/pgn/esportswcuppl26.pgn) (the play-in) and [esportswcupfin26.pgn](https://theweekinchess.com/assets/files/pgn/esportswcupfin26.pgn) (the final stage).

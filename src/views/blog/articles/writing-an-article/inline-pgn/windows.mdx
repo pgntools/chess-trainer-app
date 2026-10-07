@@ -1,0 +1,49 @@
+---
+title: "Windows: from, to and start"
+summary: Which moves a board shows, and where it opens — by move number or by ply.
+order: 20
+---
+
+import game from "./rubinstein-capablanca-1911.pgn?raw"
+
+A window is a stretch of the game's mainline: `from` its first position, `to` its last, `start` where the board opens. The reader can go back no further than `from` and on no further than `to`. These boards show Rubinstein – Capablanca, San Sebastian 1911 — the game of the [review](/blog/writing-an-article/inline-pgn/rubinstein-capablanca-1911).
+
+## The whole game
+
+With no window, the board opens at the start and goes to the end.
+
+<InlinePgnGame pgn={game} variations={false} />
+
+```mdx
+<InlinePgnGame pgn={game} variations={false} />
+```
+
+## From move 5 to move 15, opened at move 11
+
+<InlinePgnGame pgn={game} from="5" to="15" start="11" />
+
+```mdx
+<InlinePgnGame pgn={game} from="5" to="15" start="11" />
+```
+
+`"5"` is the position after White's 5th move, `"15"` after White's 15th, `"11"` after White's 11th — so the board opens with Black to answer 11. Nxe6.
+
+## The same, in plies
+
+<InlinePgnGame pgn={game} fromPly={9} toPly={29} startPly={21} />
+
+```mdx
+<InlinePgnGame pgn={game} fromPly={9} toPly={29} startPly={21} />
+```
+
+A ply is one move of one side, counted from the start: ply 9 is after White's 5th move, ply 21 after White's 11th, ply 29 after White's 15th.
+
+## Black's moves
+
+`"13..."` is the position after Black's 13th move. Facing it from Black's side:
+
+<InlinePgnGame pgn={game} from="12..." to="16..." start="13..." orientation="black" />
+
+```mdx
+<InlinePgnGame pgn={game} from="12..." to="16..." start="13..." orientation="black" />
+```

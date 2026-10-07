@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import i18n from "../../i18n";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
@@ -444,5 +444,27 @@ describe("the move list — side lines under the moves they branch from (CTA-53)
       "move-ply-5",
     ]);
     expect(screen.getByTestId("tree-move-v5")).toHaveTextContent("1. d4");
+  });
+});
+
+describe("the move list — the start row's right-click (CTA-149)", () => {
+  const renderStart = (onContextMenuStart?: (anchor: { top: number; left: number }) => void) =>
+    render(
+      <AppThemeWithLang>
+        <MoveList game={game} currentPly={0} onSelectPly={vi.fn()} onContextMenuStart={onContextMenuStart} />
+      </AppThemeWithLang>,
+    );
+
+  it("reports the pointer's position and holds the browser's menu back", () => {
+    const onContextMenuStart = vi.fn();
+    renderStart(onContextMenuStart);
+    const allowed = fireEvent.contextMenu(cell(0), { clientX: 40, clientY: 25 });
+    expect(allowed).toBe(false);
+    expect(onContextMenuStart).toHaveBeenCalledWith({ top: 25, left: 40 });
+  });
+
+  it("binds nothing without the prop: the right-click stays the browser's", () => {
+    renderStart();
+    expect(fireEvent.contextMenu(cell(0))).toBe(true);
   });
 });

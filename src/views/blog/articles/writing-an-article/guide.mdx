@@ -1,0 +1,64 @@
+---
+title: Writing an article
+summary: Where an article's file goes, the frontmatter that describes it, and what it may embed.
+order: 10
+---
+
+An article is an MDX file — Markdown with the app's components in it — compiled when the app is built. It is one file: what it says, and at its top, what it is.
+
+## 1. The file
+
+Write `src/views/blog/articles/<path>.mdx` — for example `tournaments/my-event.mdx`. Its address is then `/blog/tournaments/my-event`: the Blog's one route serves every article, so there is no route to add, and the browser accessibility pass finds it on its own.
+
+Start the document below its title: the page shows the title as its heading, so use `##` and `###` for sections, never `#`.
+
+To see it as you write, run `yarn mdx-editor:start` (in place of `yarn dev`: it starts the app with the MDX editor in it, and the service it saves through) and open the sidebar's MDX editor folder — Articles lists every file, with its Edit and Delete, and Editor is the editor itself: the content goes on the left, and the right shows it as the Blog will, with every component below and the Library's games. Components gallery lists every component an article can embed, each on a sample that fits it: set it up with its form, or switch it to a PGN of your own or a Library address, see it as the Blog will, and copy its code into an article. Its Metadata tab is the frontmatter, as a form or as YAML, checked as the build checks it. It opens any article to start from: the pencil beside an article's title, in `yarn dev`. Save writes an opened article over its own file, and a new one — or Save as — asks for a folder (or a new sub-folder, made with its `index.mdx`) and a file name. What goes into the article has three buttons, PGNs, Components and Images, each a dialog that lists what the article already has — choose one to change its settings, remove it, or show it in the content (the cursor goes to it) — and adds a new one. PGNs takes a PGN — uploaded or pasted — either as a file beside the article, imported (`import club from "./club.pgn?raw"`), or inline, written into the content (``export const club = `…` ``), which needs nothing saved but the article; it renames one too, and every `pgn={…}` that reads it with it. Components then gives each component's markup reading it, `pgn={club}`, to insert where the cursor is, and edits the ones already there as a form. Images puts a picture beside the article, asks for its alt text — what a screen reader says of it — and shows it where the cursor is: `import photo from "./photo.png"`, then `<ArticleImage src={photo} alt="…" />` — its width and height as sliders, its place, fit, corners, border and shadow set there, or later in the same dialog. It asks before writing over another file, moves nothing, and deletes only the article you ask it to — Delete article…, under More, its translations with it and, if you tick them, the PGN files only it imports. Without the service, copy the text or download the `.mdx` file, and put it here.
+
+## 2. The frontmatter
+
+The file starts with its metadata, between two `---` lines:
+
+```mdx
+---
+title: My event
+summary: One line about it, for the folder's page.
+date: 2026-10-05
+---
+
+## The standings
+```
+
+- `title` and `summary` are required. `description` is the page's description for search and sharing (without one, the summary).
+- `date` is the day it is published. In a folder, the articles with an `order` come first, lowest first; the rest follow by `date`, newest first. `updated` is the day it last changed.
+- `draft: true` shows it in `yarn dev`, marked *Draft*, and leaves it out of the built app altogether. `tags` and `redirectFrom` — the old addresses of an article that moved — are there too.
+- `image` is the picture a shared link to the article shows: a PNG or JPEG beside the file, 1200 × 630, named from it — `./cover.png` — with `imageAlt`, the words that say what it shows. Without one, the article shares its folder's (a folder's `index.mdx` takes an `image` too), else the Blog's card. The MDX editor's Metadata tab shows which.
+
+A mistake — no title, a key the Blog does not know, a date that is not one — stops the build, naming the file.
+
+## 3. Translations and folders
+
+A Hebrew version is `<path>.he.mdx` beside it, with its own `title` and `summary`. Its body may wait: with frontmatter alone, the Hebrew title shows over the English text, which is shown left to right. Where there is no `.he.mdx` at all, the English title is shown, marked as English. The keys that place an article — `order`, `date`, `draft` and the rest — are the English file's alone.
+
+A folder is a directory. Its `index.mdx` names it — `title`, `summary` and `order` among its sibling folders — and whatever it says below its frontmatter introduces the folder on its page; `index.he.mdx` translates it. So no article is called `index`.
+
+## 4. What it may embed
+
+The components are used by name, with no `import`:
+
+- `<BoardRow>` — embeds side by side;
+- `<CollectionGameBoard game="/library/<c>/<n>" />` — a Library game;
+- `<RepertoireBoard _id="/repertoires/<id>" fallback="e4-white" />` — a repertoire;
+- `<CollectionCard _id="/library/<c>" showGame="1" />` — a collection;
+- `<StoredGameEmbed reference="…" />` — any stored game;
+- `<InlinePgnGame pgn={game} from="5" to="15" start="11" />` — a window of a PGN of your own, as often as you like — see [Games in an article](/blog/writing-an-article/inline-pgn);
+- `<SwissStandingsTable pgn={games} />`, `<RoundRobinCrossTable pgn={games} />`, `<KnockoutBracket pgn={games} />`, `<MatchTable pgn={games} />`, `<TeamStandingsTable pgn={games} />` — a tournament's table, from a PGN of its games: a Swiss's standings, a round robin's crosstable, a knockout's bracket (a double elimination's with `losersFromRound`), a match, a team event's standings — see [Demo tables](/blog/writing-an-article/demo-tables), a page per format. A large file goes in as `load={() => import("./event.pgn?raw")}` instead of `pgn={…}`, so it loads on its own, as the [Olympiad](/blog/tournaments/olympiad-2026) does;
+- `<CollectionTournamentTable _id="/library/<c>" />` — a tournament already in the Library, its names and results linked to the games — see [From a Library collection](/blog/writing-an-article/demo-tables/from-a-collection);
+- `<NavCards />` — every screen.
+
+Every board among them takes `showNextMoveArrow={false}` to leave the arrows to the next moves off — for a position the reader should find the move in.
+
+This folder shows each of them at work, with its markup: [Components](/blog/writing-an-article/components), [Games in an article](/blog/writing-an-article/inline-pgn) and [Demo tables](/blog/writing-an-article/demo-tables).
+
+## The front page
+
+The front page is one of these articles — today [Get started](/blog/get-started). Which one is a single line, `FRONT_PAGE_ARTICLE` in `src/views/home/frontPageArticle.ts`: point it at any article's path, and `/` shows that article under its title.

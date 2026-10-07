@@ -1,0 +1,25 @@
+---
+title: A collection across the page
+summary: "<CollectionCard>: a board on one game and a short table of the collection's games."
+order: 40
+---
+
+A collection across the whole row: a board on one of its games, and beside it a short table of its games — the page that holds the one shown. Click a row (or press Enter on it) to put that game on the board; earlier and later page through the table.
+
+<BoardRow>
+  <CollectionCard _id="/library/fischer" showGame="52" />
+</BoardRow>
+
+## The markup
+
+```mdx
+<BoardRow>
+  <CollectionCard _id="/library/fischer" showGame="52" />
+</BoardRow>
+```
+
+- `_id` is the collection's address, `/library/<collection>`.
+- `showGame` is the game on the board, by its number in the collection — the first when absent.
+- `rows` is how many games the table shows at a time (8 by default) and `startMove` where the first board opens — see [the second view](/blog/writing-an-article/components/collection-wide-view-2).
+
+The card reads the collection's index for its table and its games for the board, the Library's own files, fetched once.

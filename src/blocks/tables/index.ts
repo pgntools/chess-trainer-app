@@ -9,7 +9,15 @@
 export * from "./CollectionGamesTable";
 export * from "./CollectionsTreeTable";
 export * from "./PlayedGamesTable";
+// CTA-144: the Saved analyses screen's list view — a folder's analyses as a games table.
+export * from "./SavedAnalysesTable";
 export * from "./StorageTable";
-// CTA-120: the tournament tables — a `StandingsTable` and a `CrossTable` over `lib/tournament.ts`, built ahead of their screen.
+// CTA-120: the tournament tables — a `StandingsTable` and a `CrossTable` over `lib/tournament.ts`, built ahead of their screen; the Blog's MDX embeds are their first consumer (CTA-128).
 export * from "./SwissStandingsTable";
 export * from "./RoundRobinCrossTable";
+// CTA-128: the other formats — a knockout's bracket, a two-player match, a team event's standings.
+export * from "./KnockoutBracket";
+export * from "./MatchTable";
+export * from "./TeamStandingsTable";
+// CTA-142: the Library's tournament view — each player's record on its Participants tab.
+export * from "./ParticipantsTable";

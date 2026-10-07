@@ -1,5 +1,12 @@
 import { numberedRows, type IndexedRow } from "./collectionIndex";
-import type { CollectionRow, CollectionSummary } from "./libraryCollections";
+import {
+  canBeTournament,
+  TOURNAMENT_FORMATS,
+  type CollectionRow,
+  type CollectionSummary,
+  type CollectionTournament,
+  type TournamentFormat,
+} from "./libraryCollections";
 import { committed, done } from "./idb";
 import {
   LIBRARY_CHANNEL,
@@ -73,6 +80,8 @@ const GAMES = LIBRARY_GAMES_STORE;
 /** What went wrong with a write. */
 export type LibraryCollectionProblem = "storage" | "missing";
 
+type StoredTournament = { enabled: boolean; type: TournamentFormat };
+
 type StoredSummary = {
   id: string;
   name: string;
@@ -80,6 +89,12 @@ type StoredSummary = {
   count: number;
   /** Absent on a record from before folders — the top level. */
   folderId?: string | null;
+  /** The reader's description (CTA-121) — absent on an older record, and for none. */
+  description?: string;
+  /** The tournament mark (CTA-121) — absent on an older record, and for off. */
+  tournament?: StoredTournament;
+  /** Whether every game shares one `Event` (CTA-142, `canBeTournament`) — kept by every write of the games; absent on an older record. */
+  sharedEvent?: boolean;
 };
 type StoredIndex = { id: string; rows: IndexedRow[] };
 type StoredGames = { id: string; games: string[] };
@@ -100,6 +115,12 @@ const emit = () => {
   for (const listener of listeners) listener();
 };
 
+const isStoredTournament = (value: unknown): value is StoredTournament => {
+  if (typeof value !== "object" || value === null) return false;
+  const mark = value as Record<string, unknown>;
+  return typeof mark.enabled === "boolean" && (TOURNAMENT_FORMATS as readonly string[]).includes(mark.type as string);
+};
+
 const summaryOf = (row: StoredSummary): CollectionSummary => ({
   id: row.id,
   name: row.name,
@@ -107,6 +128,9 @@ const summaryOf = (row: StoredSummary): CollectionSummary => ({
   count: row.count,
   addedAt: row.addedAt,
   folderId: typeof row.folderId === "string" && row.folderId !== "" ? row.folderId : null,
+  description: typeof row.description === "string" && row.description !== "" ? row.description : undefined,
+  tournament: isStoredTournament(row.tournament) ? { ...row.tournament } : undefined,
+  sharedEvent: typeof row.sharedEvent === "boolean" ? row.sharedEvent : undefined,
 });
 
 const isStoredSummary = (value: unknown): value is StoredSummary => {
@@ -251,6 +275,8 @@ export const addCollection = async (
   now: Date = new Date(),
   id: string = newCollectionId(),
   folderId: string | null = null,
+  /** The settings an import restores beside the games (CTA-121): a description, a tournament mark. */
+  settings: { description?: string; tournament?: CollectionTournament } = {},
 ): Promise<{ collection: CollectionSummary } | { problem: LibraryCollectionProblem }> => {
   if (rows.length !== games.length) throw new Error("addCollection: one index row per game");
   const summary: StoredSummary = {
@@ -259,6 +285,9 @@ export const addCollection = async (
     addedAt: now.toISOString(),
     count: games.length,
     folderId,
+    description: settings.description,
+    tournament: settings.tournament,
+    sharedEvent: canBeTournament(rows),
   };
   try {
     const db = await openDb();
@@ -346,6 +375,52 @@ export const refileCollectionsIn = (
     rows.filter((row) => row.folderId === folderId).map((row) => ({ ...row, folderId: parentId })),
   );
 
+/** A patch of a collection's settings (CTA-121): each field written only when the patch names it. */
+export type CollectionSettingsPatch = {
+  /** The title. A blank one is not written — the old name stays. */
+  name?: string;
+  /** The description; `""` removes it. */
+  description?: string;
+  /** The tournament mark; `null` removes it — never decided again (CTA-142: the games table's Undo). */
+  tournament?: CollectionTournament | null;
+};
+
+const sameTournament = (a: StoredTournament | undefined, b: StoredTournament | undefined): boolean =>
+  a?.enabled === b?.enabled && a?.type === b?.type;
+
+/**
+ * **Collection settings** (CTA-121): rewrite a summary's title, description
+ * and tournament mark — the summary alone, like {@link moveCollection}, so
+ * the games and the index are untouched. A collection that is not there
+ * answers `"missing"`; a blank title is not written; a patch that changes
+ * nothing is a no-op.
+ */
+export const updateCollectionSettings = async (
+  id: string,
+  patch: CollectionSettingsPatch,
+): Promise<LibraryCollectionProblem | undefined> => {
+  let found = false;
+  const problem = await editSummaries((rows) => {
+    const row = rows.find((candidate) => candidate.id === id);
+    if (row === undefined) return [];
+    found = true;
+    const name = patch.name === undefined ? row.name : patch.name.trim();
+    const description =
+      patch.description === undefined ? row.description : patch.description === "" ? undefined : patch.description;
+    const tournament = patch.tournament === null ? undefined : (patch.tournament ?? row.tournament);
+    const next: StoredSummary = { ...row, name: name === "" ? row.name : name, description, tournament };
+    if (
+      next.name === row.name &&
+      next.description === row.description &&
+      sameTournament(next.tournament, row.tournament)
+    ) {
+      return [];
+    }
+    return [next];
+  });
+  return problem ?? (found ? undefined : "missing");
+};
+
 /**
  * Rewrite one collection's games and rows together, in one transaction —
  * `change` gets both lists (copies) and edits them in place, or answers
@@ -379,7 +454,8 @@ const editGames = async (
     }
     tx.objectStore(GAMES).put({ id, games } satisfies StoredGames);
     tx.objectStore(INDEXES).put({ id, rows } satisfies StoredIndex);
-    tx.objectStore(COLLECTIONS).put({ ...summary, count: games.length } satisfies StoredSummary);
+    // The games' verdict changes with them (CTA-142): a game added under another `Event`, the last odd one deleted.
+    tx.objectStore(COLLECTIONS).put({ ...summary, count: games.length, sharedEvent: canBeTournament(rows) } satisfies StoredSummary);
     await outcome;
     written = { games, rows };
   } catch {

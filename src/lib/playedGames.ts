@@ -1,7 +1,9 @@
 import { Chess } from "chess.js";
 
 import type { Score } from "./engineAnalysis";
+import type { EngineDescriptor } from "./engineTypes";
 import { approximateElo, engineSettingsFrom, type EngineSettings } from "./engineSettings";
+import { DEFAULT_ENGINE_ID, DEFAULT_ENGINE_VERSION } from "./engines/ids";
 import { gameTag, type Game, type GameHeaders } from "./gameModel";
 import {
   countVariations,
@@ -76,6 +78,79 @@ const playedGameMaskFrom = (value: unknown): PlayedGameMask | undefined => {
   return { pieces, notation: row.notation !== false };
 };
 
+/**
+ * **The engine that played a game** (CTA-153) — which build, written down so a
+ * game can be read, labelled and resumed as what it was. Plain JSON, and a
+ * snapshot: the name is the one the build had when the game was played, so a
+ * game keeps its words if the registry changes or the build goes.
+ *
+ * **Absent means the default engine** ({@link DEFAULT_ENGINE_ID}) — every record
+ * from before the choice of engine was played by it.
+ */
+export type PlayedGameEngine = {
+  /** The registry id (`lib/engines/`) — what resuming looks the engine up by. */
+  id: string;
+  /** The build's display name, "Stockfish 19 Lite". */
+  name: string;
+  /** The engine's own version, "19" — shown beside the name. */
+  version: string;
+  /**
+   * How its strength was set: `"elo"` when it took `UCI_Elo` (the label says
+   * "Elo 1800"), `"skill"` when `Skill Level` was all it had ("level 5").
+   */
+  strength: "skill" | "elo";
+};
+
+/** What a record that names no engine was played by — the 2019 build, strengthened by `Skill Level`. */
+export const DEFAULT_PLAYED_GAME_ENGINE: PlayedGameEngine = {
+  id: DEFAULT_ENGINE_ID,
+  name: "Stockfish 2019",
+  version: DEFAULT_ENGINE_VERSION,
+  strength: "skill",
+};
+
+/** An engine as a record names it — the build's name, version and how its strength is set. */
+export const playedGameEngineFromDescriptor = (
+  descriptor: Pick<EngineDescriptor, "id" | "name" | "version" | "capabilities">,
+): PlayedGameEngine => ({
+  id: descriptor.id,
+  name: descriptor.name,
+  version: descriptor.version,
+  strength: descriptor.capabilities.strength === "skill" ? "skill" : "elo",
+});
+
+/** The engine a record was played by — its own, else the default one. */
+export const playedGameEngineOf = (saved: Pick<PlayedGame, "engine">): PlayedGameEngine =>
+  saved.engine ?? DEFAULT_PLAYED_GAME_ENGINE;
+
+/** Whether two records name the same engine — an absent one is the default. */
+export const samePlayedGameEngine = (
+  a: PlayedGameEngine | undefined,
+  b: PlayedGameEngine | undefined,
+): boolean => {
+  const left = a ?? DEFAULT_PLAYED_GAME_ENGINE;
+  const right = b ?? DEFAULT_PLAYED_GAME_ENGINE;
+  return (
+    left.id === right.id &&
+    left.version === right.version &&
+    left.name === right.name &&
+    left.strength === right.strength
+  );
+};
+
+/** A stored engine read back, or `undefined` — a record without a readable id reads as the default. */
+export const playedGameEngineFrom = (value: unknown): PlayedGameEngine | undefined => {
+  if (typeof value !== "object" || value === null) return undefined;
+  const row = value as Record<string, unknown>;
+  if (typeof row.id !== "string" || row.id === "") return undefined;
+  return {
+    id: row.id,
+    name: typeof row.name === "string" && row.name !== "" ? row.name : row.id,
+    version: typeof row.version === "string" ? row.version : "",
+    strength: row.strength === "elo" ? "elo" : "skill",
+  };
+};
+
 /** One stored eval: the score of one position the tree reaches. Plain JSON. */
 export type PlayedGameEval = {
   fen: string;
@@ -104,6 +179,8 @@ export type PlayedGame = {
   resigned?: "white" | "black";
   /** A Masked Pieces game's costume (CTA-79); absent on an unmasked game. */
   mask?: PlayedGameMask;
+  /** The engine that played it (CTA-153); absent on a game from before — the default engine. */
+  engine?: PlayedGameEngine;
 };
 
 /** The `Event` tag every played game carries — what these games all are. */
@@ -135,9 +212,20 @@ export const resultOfFen = (fen: string): string => {
   return chess.isGameOver() ? "1/2-1/2" : "*";
 };
 
-/** How the engine signs a game: its name and the strength it was set to. */
-const engineName = (settings: EngineSettings): string =>
-  `Stockfish (level ${settings.skillLevel})`;
+/**
+ * How the engine signs a game: its name and the strength it was set to. The
+ * default engine keeps the wording every earlier game has — `Stockfish (level
+ * 5)` — and another is `Stockfish 19 Lite (level 5)` or, where it took an Elo,
+ * `Stockfish 19 Lite (Elo 1800)`.
+ */
+const engineName = (settings: EngineSettings, engine?: PlayedGameEngine): string => {
+  if (engine === undefined || engine.id === DEFAULT_ENGINE_ID) {
+    return `Stockfish (level ${settings.skillLevel})`;
+  }
+  return engine.strength === "elo"
+    ? `${engine.name} (Elo ${settings.elo})`
+    : `${engine.name} (level ${settings.skillLevel})`;
+};
 
 /**
  * The tag pairs a played game is written with — who played, on which side,
@@ -149,13 +237,14 @@ export const playedGameHeaders = (
   settings: EngineSettings,
   result: string,
   now: Date = new Date(),
+  engine?: PlayedGameEngine,
 ): GameHeaders => ({
   Event: PLAYED_GAME_EVENT,
   Site: "Chess Trainer",
   Date: pgnDate(now),
   Round: "-",
-  White: settings.playAs === "white" ? "Player" : engineName(settings),
-  Black: settings.playAs === "white" ? engineName(settings) : "Player",
+  White: settings.playAs === "white" ? "Player" : engineName(settings, engine),
+  Black: settings.playAs === "white" ? engineName(settings, engine) : "Player",
   Result: result,
 });
 
@@ -228,10 +317,11 @@ export const playedGameOf = (
   savedAt: string = now.toISOString(),
   resigned?: "white" | "black",
   mask?: PlayedGameMask,
+  engine?: PlayedGameEngine,
 ): PlayedGame => {
   const result = playedGameResult(tree, resigned);
   const evals = evalsOf(tree, evalsByFen);
-  const headers = { ...tree.headers, ...playedGameHeaders(settings, result, new Date(savedAt)) };
+  const headers = { ...tree.headers, ...playedGameHeaders(settings, result, new Date(savedAt), engine) };
   if (resigned !== undefined) {
     headers.Termination = `${resigned === "white" ? "White" : "Black"} resigns`;
   }
@@ -245,6 +335,7 @@ export const playedGameOf = (
     ...(evals.length > 0 ? { evals } : {}),
     ...(resigned !== undefined ? { resigned } : {}),
     ...(mask !== undefined ? { mask: { pieces: mask.pieces, notation: mask.notation } } : {}),
+    ...(engine !== undefined ? { engine: { ...engine } } : {}),
   };
 };
 
@@ -323,6 +414,7 @@ export const playedGameFrom = (value: unknown): PlayedGame | undefined => {
     ? row.evals.map(playedGameEvalFrom).filter((entry) => entry !== undefined)
     : [];
   const mask = playedGameMaskFrom(row.mask);
+  const engine = playedGameEngineFrom(row.engine);
   return {
     id: row.id,
     pgn: row.pgn,
@@ -335,6 +427,7 @@ export const playedGameFrom = (value: unknown): PlayedGame | undefined => {
     ...(evals.length > 0 ? { evals } : {}),
     ...(row.resigned === "white" || row.resigned === "black" ? { resigned: row.resigned } : {}),
     ...(mask !== undefined ? { mask } : {}),
+    ...(engine !== undefined ? { engine } : {}),
   };
 };
 
@@ -358,6 +451,17 @@ export type PlayedGameSummary = {
   playAs: EngineSettings["playAs"];
   /** `Skill Level` the engine is set to. */
   skillLevel: number;
+  /**
+   * The engine's display name when it is not the default one — "Stockfish 19
+   * Lite" — and `undefined` for the default, whose label keeps its wording
+   * ("Stockfish level 5", CTA-153): the table says which engine only where
+   * there is a choice of them.
+   */
+  engineName: string | undefined;
+  /** How its strength was set: `"elo"` (the label reads `Elo N`) or `"skill"` (`level N`). */
+  strength: PlayedGameEngine["strength"];
+  /** The Elo it was set to when `strength` is `"elo"` — undefined otherwise. */
+  engineElo: number | undefined;
   /** Whether it was played on Masked Pieces — the table's marker, and where Continue goes. */
   masked: boolean;
   /** White as the table names it — the reader when they played White, else the engine. */
@@ -380,13 +484,19 @@ export const playedGameSummary = (
   // The engine takes the side the reader does not play, and its name and its
   // Elo estimate go on that side's cells.
   const engineSide = saved.settings.playAs === "white" ? "black" : "white";
-  const elo = approximateElo(saved.settings.skillLevel);
+  const engine = playedGameEngineOf(saved);
+  const byElo = engine.strength === "elo";
+  // An Elo-driven game shows the Elo it was set to; a skill-driven one the estimate.
+  const elo = byElo ? saved.settings.elo : approximateElo(saved.settings.skillLevel);
   return {
     moves: tree === undefined ? 0 : Math.ceil(mainline(tree).length / 2),
     variations: tree === undefined ? 0 : countVariations(tree),
     result: tree === undefined ? "*" : playedGameResult(tree, saved.resigned),
     playAs: saved.settings.playAs,
     skillLevel: saved.settings.skillLevel,
+    engineName: engine.id === DEFAULT_ENGINE_ID ? undefined : engine.name,
+    strength: engine.strength,
+    engineElo: byElo ? saved.settings.elo : undefined,
     masked: saved.mask !== undefined,
     whiteName: engineSide === "white" ? "engine" : "human",
     blackName: engineSide === "black" ? "engine" : "human",

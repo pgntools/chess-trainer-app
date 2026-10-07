@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { applyPreferences, open, watchErrors, type ReflowRecord } from "./checks";
-import { comboName, reflowCombos } from "./matrix";
+import { comboName, reflowCombos, visits } from "./matrix";
 import { ROUTES } from "./routes";
 
 /*
@@ -39,11 +39,11 @@ for (const combo of reflowCombos()) {
   test.describe(`reflow at 320 px · ${comboName(combo)}`, () => {
     test.use({ viewport: VIEWPORT, locale: combo.language === "he" ? "he-IL" : "en-US" });
 
-    for (const route of ROUTES) {
+    for (const route of ROUTES.filter((candidate) => visits(candidate, combo))) {
       test(route.id, async ({ page }, testInfo) => {
         await applyPreferences(page, combo);
         watchErrors(page);
-        await open(page, route);
+        await open(page, route, { language: combo.language });
 
         const measured = await page.evaluate(() => {
           const width = document.documentElement.clientWidth;

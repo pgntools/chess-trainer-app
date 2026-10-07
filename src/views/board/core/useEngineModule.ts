@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import Engine, { type EngineOption } from "../../../lib/engine";
+import type {
+  EngineDescriptor,
+  EngineHandle,
+  EngineOption,
+} from "../../../lib/engineTypes";
+import { resolveEngine } from "../../../lib/engines";
 import {
   EMPTY_ANALYSIS,
   pvToSan,
@@ -29,6 +34,12 @@ import { isTerminal, turnOf } from "./useBoardCore";
  *   subscribe effect is declared **first**, so on that remount it is the one
  *   that rebuilds the worker before the search effect asks it for anything. And
  *   `terminate()` on unmount.
+ * - **Which engine** (CTA-152). The module is written against `EngineHandle`
+ *   and builds it from the registry (`lib/engines/`) — the choice the screen
+ *   passes as {@link EngineModuleStart.engine}, or the default, which is what
+ *   every board did before there was a choice. **One engine at a time**:
+ *   changing the choice terminates the old handle, builds the new one, and runs
+ *   the handshake and the clamp again against what *it* declares.
  * - **The `uci` handshake.** What the running worker declared is published as
  *   {@link EngineModule.engineOptions}, so a settings tab can say which knobs
  *   this build does not have rather than showing controls that do nothing. And
@@ -66,9 +77,15 @@ import { isTerminal, turnOf } from "./useBoardCore";
 export type EngineModuleStart = {
   /** The engine's switch. Off: nothing is searched and no lines are shown. */
   enabled: boolean;
+  /**
+   * Which engine, by registry id (`lib/engines/`). Absent — or naming an engine
+   * that is not registered or cannot run on this page — is the default engine,
+   * today's behaviour. Changing it replaces the running engine.
+   */
+  engine?: string;
   /** The position **on screen** — not necessarily the live one. */
   fen: string;
-  /** `go depth`. Clamped to 24 by the wrapper. */
+  /** `go depth`. Clamped to the engine's `capabilities.maxDepth` by the wrapper. */
   depth: number;
   /** `go movetime`, in milliseconds. Omitted by the wrapper when 0. */
   moveTimeMs: number;
@@ -97,6 +114,8 @@ export type EngineModuleStart = {
 };
 
 export type EngineModule = {
+  /** The engine actually running — the requested one, or the default it fell back to. */
+  descriptor: EngineDescriptor;
   /** The lines for the position on screen, or an empty set. Never stale. */
   analysis: Analysis;
   /** The scores the engine has finished searching, keyed by the FEN they describe. */
@@ -109,6 +128,7 @@ export type EngineModule = {
 
 export const useEngineModule = ({
   enabled,
+  engine: engineId,
   fen,
   depth,
   moveTimeMs,
@@ -116,9 +136,40 @@ export const useEngineModule = ({
   onUciOptionsReady,
   onBestMove,
 }: EngineModuleStart): EngineModule => {
-  const engineRef = useRef<Engine | null>(null);
-  // Resolved at call time, never during render: see the header note.
-  const getEngine = useCallback(() => (engineRef.current ??= new Engine()), []);
+  /*
+    Which engine, decided at render — a pure read of the registry, no worker is
+    built — so the effects below depend on it and a change of choice re-runs
+    them against the new engine.
+  */
+  const descriptor = resolveEngine(engineId);
+
+  /*
+    The final score of the search in flight, remembered from the last top-line
+    `info` and written down when that search's `bestmove` lands: a position's
+    score is recorded when the search for it *completes*.
+  */
+  const latestScoreRef = useRef<{ fen: string; score: Score } | null>(null);
+
+  const engineRef = useRef<{
+    descriptor: EngineDescriptor;
+    handle: EngineHandle;
+  } | null>(null);
+  /*
+    Resolved at call time, never during render: see the header note. Asked for
+    a different descriptor than the one it holds, it terminates that handle
+    before building the new one — one engine at a time — and forgets the score
+    of a search that will now never finish.
+  */
+  const getEngine = useCallback((): EngineHandle => {
+    const current = engineRef.current;
+    if (current?.descriptor === descriptor) return current.handle;
+
+    current?.handle.terminate();
+    latestScoreRef.current = null;
+    const handle = descriptor.create();
+    engineRef.current = { descriptor, handle };
+    return handle;
+  }, [descriptor]);
 
   const [analysis, setAnalysis] = useState<Analysis>(EMPTY_ANALYSIS);
   const [evals, setEvals] = useState<ReadonlyMap<string, Score>>(
@@ -129,11 +180,19 @@ export const useEngineModule = ({
   >(() => new Map());
 
   /*
-    The final score of the search in flight, remembered from the last top-line
-    `info` and written down when that search's `bestmove` lands: a position's
-    score is recorded when the search for it *completes*.
+    A different engine has its own lines and its own roster of options: drop
+    what the previous one said, adjusted during render against the previous
+    descriptor (an effect would set state in an effect, which
+    `react-hooks/set-state-in-effect` rejects). The per-FEN evals stay — they
+    are the move list's marks, and the new engine overwrites each as it finishes
+    that position.
   */
-  const latestScoreRef = useRef<{ fen: string; score: Score } | null>(null);
+  const [shownDescriptor, setShownDescriptor] = useState(descriptor);
+  if (shownDescriptor !== descriptor) {
+    setShownDescriptor(descriptor);
+    setAnalysis(EMPTY_ANALYSIS);
+    setEngineOptions(new Map());
+  }
 
   /*
     Subscribe once per Engine instance — and re-subscribe when the caller's
@@ -210,7 +269,7 @@ export const useEngineModule = ({
   // Tear the worker down on unmount (and on StrictMode remount).
   useEffect(() => {
     return () => {
-      engineRef.current?.terminate();
+      engineRef.current?.handle.terminate();
       engineRef.current = null;
     };
   }, []);
@@ -271,7 +330,7 @@ export const useEngineModule = ({
   */
   useEffect(() => {
     if (!enabled) {
-      engineRef.current?.stop();
+      engineRef.current?.handle.stop();
       return;
     }
 
@@ -298,6 +357,7 @@ export const useEngineModule = ({
     enabled && analysis.fen === fen ? analysis : { fen, depth: 0, lines: [] };
 
   return {
+    descriptor,
     analysis: currentAnalysis,
     evalsByFen: evals,
     engineOptions,

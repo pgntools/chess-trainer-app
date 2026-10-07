@@ -90,7 +90,7 @@ describe("the shipped nav tree", () => {
     expect(folderPath("/masked/play")).toEqual([]);
   });
 
-  it("files Export, Import, Storage and Appearance in a Settings folder, a folder rather than a single entry (CTA-86, CTA-89, CTA-94, CTA-107)", () => {
+  it("files Export, Import, Storage, Appearance and Engine in a Settings folder, a folder rather than a single entry (CTA-86, CTA-89, CTA-94, CTA-107, CTA-153)", () => {
     const settings = navFolders().find((folder) => folder.id === "settings");
     expect(settings).toMatchObject({ labelKey: "nav.folders.settings" });
     expect(settings?.singleEntry).toBeFalsy();
@@ -103,11 +103,15 @@ describe("the shipped nav tree", () => {
       ["/settings/import", "nav.settingsImport"],
       ["/settings/storage", "nav.settingsStorage"],
       ["/settings/appearance", "nav.settingsAppearance"],
+      ["/settings/engine", "nav.settingsEngine"],
+      ["/settings/support", "nav.settingsSupport"],
     ]);
     expect(folderPath("/settings/export")).toEqual(["settings"]);
     expect(folderPath("/settings/import")).toEqual(["settings"]);
     expect(folderPath("/settings/storage")).toEqual(["settings"]);
     expect(folderPath("/settings/appearance")).toEqual(["settings"]);
+    expect(folderPath("/settings/engine")).toEqual(["settings"]);
+    expect(folderPath("/settings/support")).toEqual(["settings"]);
   });
 
   it("returns an empty breadcrumb for a path that is not a screen", () => {
@@ -140,15 +144,22 @@ describe("the shipped nav tree", () => {
     expect(navLabelKeys().every((key) => typeof key === "string")).toBe(true);
   });
 
-  it("names every shipped node by a catalog key", () => {
-    // Nothing shipped is named by data since the old Library's generated
-    // folders went (CTA-75), so every node is one `locales.test.ts` covers.
-    // `label` stays supported; the fixtures below carry it.
+  it("names every shipped node by a catalog key — but the Blog's, named by its registry in both languages", () => {
+    // The Blog's folders and articles (CTA-126) are named by
+    // `views/blog/articles.ts`, as data — so they must carry every language
+    // themselves; every other node is a catalog key `locales.test.ts` covers.
     const dataNamed = new TreeManager<NavTreeNode>(navTree())
       .toArray()
       .filter((node) => node.labelKey === undefined);
 
-    expect(dataNamed).toEqual([]);
+    expect(dataNamed.length).toBeGreaterThan(0);
+    for (const node of dataNamed) {
+      const inBlog = node.kind === "screen" ? node.to?.startsWith("/blog/") : node.id.startsWith("blog/");
+      expect(inBlog, `${node.id} is named by data`).toBe(true);
+      expect(node.label?.en, `${node.id} in English`).toBeTruthy();
+      // A draft (CTA-135, listed in yarn dev only) may wait for its translation — the fixture one does, on purpose.
+      if (node.draft !== true) expect(node.label?.he, `${node.id} in Hebrew`).toBeTruthy();
+    }
   });
 });
 

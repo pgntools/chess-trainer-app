@@ -1,3 +1,4 @@
+import type { TournamentKind } from "./tournamentKind";
 import { gameTag } from "./gameModel";
 import { readPgnParts, splitPgnGames } from "./pgn";
 import { slugify } from "./pgnText";
@@ -61,7 +62,80 @@ export type CollectionSummary = {
    * Library's fixed Built-in folder.
    */
   folderId?: string | null;
+  /**
+   * The reader's own description of the collection (CTA-121), shown under
+   * its name on its games screen. Absent for none.
+   */
+  description?: string;
+  /**
+   * Marked as a tournament (CTA-121) — a **stored setting**: the games decide
+   * whether it reads as one ({@link canBeTournament}). Absent for off. A
+   * shipped collection's is its manifest entry's (CTA-142, `wirepgn
+   * --tournament`).
+   */
+  tournament?: CollectionTournament;
+  /**
+   * The games' verdict, kept beside the mark (CTA-142): whether every game
+   * shares one `Event` ({@link canBeTournament} over the rows), recomputed by
+   * every write of an upload's games — so the Library's list can tell a
+   * tournament without reading an index ({@link readsAsTournament}). Absent
+   * on a record written before it.
+   */
+  sharedEvent?: boolean;
 };
+
+/**
+ * The formats a collection can be marked as (CTA-121; CTA-142 added
+ * `doubleElimination`, `teamSwiss` and `teamKnockout`) — every one a table
+ * draws, and `arena`, stored but not selectable yet (no table). In the
+ * order the settings offer them. **Only ever added to**: a stored mark and an
+ * export zip are checked against this list, so a value taken out would make
+ * an older record unreadable.
+ */
+export const TOURNAMENT_FORMATS = [
+  "swiss",
+  "roundRobin",
+  "knockout",
+  "doubleElimination",
+  "match",
+  "teamSwiss",
+  "teamKnockout",
+  "arena",
+] as const;
+
+export type TournamentFormat = (typeof TOURNAMENT_FORMATS)[number];
+
+/** The formats with a table (CTA-142) — every one but `arena`: what the settings let a reader pick, and the tournament view draws. */
+export type TournamentTableFormat = Exclude<TournamentFormat, "arena">;
+
+/** Whether a format has a table to draw (CTA-142) — every one but `arena`. */
+export const isTableFormat = (format: TournamentFormat): format is TournamentTableFormat => format !== "arena";
+
+/**
+ * The format a guessed kind of tournament is marked as (CTA-142,
+ * `lib/tournamentKind.ts`) — the same word: every kind the guesser names is
+ * a format a collection can be marked as (an arena among them, which has no
+ * table yet), which this function's type holds it to.
+ */
+export const formatOfKind = (kind: TournamentKind): TournamentFormat => kind;
+
+/** A collection marked as a tournament (CTA-121): every format but `arena` is live (CTA-142). */
+export type CollectionTournament = {
+  enabled: boolean;
+  type: TournamentFormat;
+};
+
+/** The most characters a collection's description may be (CTA-121) — the repertoire's cap, for the same reason. */
+export const MAX_COLLECTION_DESCRIPTION_CHARS = 2000;
+
+/**
+ * The cap on a collection's **name** as this app's own fields write it — a
+ * derived one (`batchFolderNameOf`, CTA-122's *Save as collection*) and the
+ * dialog that edits it: 100, the folder names' cap. The store keeps whatever
+ * it is given, so a longer name arrived at another way (an import, an older
+ * record) is never cut.
+ */
+export const MAX_COLLECTION_NAME_CHARS = 100;
 
 export type LibraryCollection = {
   /** Its route segment: a shipped file's slug, or an upload's minted id. */
@@ -187,7 +261,8 @@ export const mainlinePlies = (movetext: string): number => mainlineTokens(movete
 /** A SAN move, marks and all — what tells a game's movetext from stray prose. */
 const SAN = /^(?:[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=?[QRBN])?|O-O(?:-O)?|0-0(?:-0)?)[+#]?[!?]*$/;
 
-const eloOf = (value: string | undefined): number | undefined => {
+/** An Elo tag as a rating — a positive whole number, else none. */
+export const eloOf = (value: string | undefined): number | undefined => {
   if (value === undefined) return undefined;
   const elo = Number(value);
   return Number.isInteger(elo) && elo > 0 ? elo : undefined;
@@ -241,7 +316,8 @@ export type SortDirection = "asc" | "desc";
 
 const collator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
 
-const compareValues = (a: string | number, b: string | number): number =>
+/** Two present cell values, ascending: numbers numerically, text numeric-aware (`1.10` after `1.9`). */
+export const compareValues = (a: string | number, b: string | number): number =>
   typeof a === "number" && typeof b === "number"
     ? a - b
     : collator.compare(String(a), String(b));
@@ -647,6 +723,80 @@ export const sharedEventOf = (rows: readonly Pick<CollectionRow, "event">[]): st
   const events = new Set(rows.map((row) => row.event));
   const [event] = events;
   return events.size === 1 ? event : undefined;
+};
+
+/**
+ * Whether a collection's games allow marking it a tournament (CTA-121): at
+ * least one game, and every game sharing one `Event` — read off the index
+ * rows alone, so no game is parsed or fetched for it. A game with no `Event`
+ * is a value of its own ({@link sharedEventOf}), so a mix of tagged and
+ * untagged games is more than one event, and an empty collection is none.
+ */
+export const canBeTournament = (rows: readonly Pick<CollectionRow, "event">[]): boolean =>
+  rows.length > 0 && sharedEventOf(rows) !== undefined;
+
+/**
+ * Rows grouped by their `Event` — the import popup's *Split by event*
+ * (CTA-127): one group per event in order of first appearance, the rows
+ * without an `Event` together in one group of their own (`event: undefined`),
+ * each group's rows in the order they came. Generic, so the caller can carry
+ * whatever it needs beside the row (the indexed row of the same game) through
+ * the grouping. Two groups are what makes a split worth offering.
+ */
+export const eventGroupsOf = <T extends { event?: string }>(
+  rows: readonly T[],
+): { event?: string; rows: T[] }[] => {
+  const groups: { event?: string; rows: T[] }[] = [];
+  const byEvent = new Map<string | undefined, { event?: string; rows: T[] }>();
+  for (const row of rows) {
+    let group = byEvent.get(row.event);
+    if (group === undefined) {
+      group = { event: row.event, rows: [] };
+      byEvent.set(row.event, group);
+      groups.push(group);
+    }
+    group.rows.push(row);
+  }
+  return groups;
+};
+
+/**
+ * Whether a collection **reads as** a tournament (CTA-121): its stored mark
+ * is on **and** its games still allow it ({@link canBeTournament}). Games
+ * added later under another `Event` leave the stored setting untouched but
+ * read as off — the mark comes back once the games share one event again.
+ */
+export const isTournamentCollection = (
+  summary: Pick<CollectionSummary, "tournament">,
+  rows: readonly Pick<CollectionRow, "event">[],
+): boolean => summary.tournament?.enabled === true && canBeTournament(rows);
+
+/**
+ * **A potential tournament** (CTA-142) — an upload never marked either way
+ * (no stored mark: neither applied nor turned down) whose games share one
+ * `Event` (the summary's kept `sharedEvent`), and at least two of them (what
+ * the guess needs): what its games table offers a type for, and the list
+ * marks — from the summary alone, no index read. A record from before
+ * `sharedEvent` was kept is not one until a write of its games.
+ */
+export const isPotentialTournament = (
+  summary: Pick<CollectionSummary, "source" | "tournament" | "sharedEvent" | "count">,
+): boolean => summary.source === "uploaded" && summary.tournament === undefined && summary.sharedEvent === true && summary.count >= 2;
+
+/**
+ * Whether a collection reads as a tournament **from what is at hand**
+ * (CTA-142) — the Library's list, which reads no index: the rows, where they
+ * have been read ({@link isTournamentCollection}); else the summary's kept
+ * verdict (`sharedEvent`); else — a record from before it, its rows not read
+ * — the stored mark alone.
+ */
+export const readsAsTournament = (
+  summary: Pick<CollectionSummary, "tournament" | "sharedEvent">,
+  rows?: readonly Pick<CollectionRow, "event">[] | null,
+): boolean => {
+  if (summary.tournament?.enabled !== true) return false;
+  if (rows !== undefined && rows !== null) return canBeTournament(rows);
+  return summary.sharedEvent !== false;
 };
 
 /**

@@ -126,7 +126,7 @@ describe("buildExport", () => {
     const { manifest } = build({}, { games: true, repertoires: true });
     expect(manifest).toMatchObject({
       format: "chessapp-export",
-      formatVersion: 1,
+      formatVersion: 2,
       appVersion: "9.9.9",
       exportedAt: NOW.toISOString(),
       categories: ["games", "repertoires"],
@@ -171,6 +171,18 @@ describe("buildExport", () => {
       ["g2", 1, 1, undefined],
     ]);
     expect(entry.records[0].settings).toEqual(DEFAULT_ENGINE_SETTINGS);
+  });
+
+  it("records the engine that played a game, and leaves a game without one without (CTA-153)", () => {
+    const engine = { id: "stockfish-19-lite-single", name: "Stockfish 19 Lite", version: "19", strength: "elo" as const };
+    const bundle = build({ playedGames: [{ ...played("g1"), engine }, played("g2")] }, { games: true });
+    const entry = bundle.manifest.files[0];
+    if (entry.kind !== "games") throw new Error("expected the games file");
+    expect(entry.records[0].engine).toEqual(engine);
+    // Additive: a game from before has no key at all, so an older reader sees the manifest it knew.
+    expect("engine" in entry.records[1]).toBe(false);
+    // And the format is not bumped for it.
+    expect(bundle.manifest.formatVersion).toBe(2);
   });
 
   it("records each analysis' name, description, orientation, path and folder path", () => {
@@ -346,6 +358,29 @@ describe("buildExport", () => {
     const bundle = build({ collections }, { shippedCollections: true });
     expect(bundle.files).toEqual([]);
     expect(bundle.manifest.includeShippedCollections).toBe(false);
+  });
+
+  it("carries an upload's description and tournament mark beside its games (CTA-121)", () => {
+    const described: CollectionSummary = {
+      ...summary("u1", "Mine", "uploaded", 1),
+      description: "Six rounds.",
+      tournament: { enabled: true, type: "swiss" },
+    };
+    const plain = summary("u2", "Yours", "uploaded", 1);
+    const bundle = build({ collections: [{ summary: described, games: [pgn("U")] }, { summary: plain, games: [pgn("V")] }] });
+    expect(bundle.manifest.files.map((file) => (file.kind === "collection" ? file.collection : null))).toEqual([
+      {
+        id: "u1",
+        name: "Mine",
+        source: "uploaded",
+        games: 1,
+        folderPath: [],
+        description: "Six rounds.",
+        tournament: { enabled: true, type: "swiss" },
+      },
+      // A collection with neither is written without either — an older record, or none made.
+      { id: "u2", name: "Yours", source: "uploaded", games: 1, folderPath: [] },
+    ]);
   });
 });
 

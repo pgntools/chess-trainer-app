@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
+import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import {
@@ -39,19 +39,30 @@ import { parsePgnTree } from "../../../lib/pgn";
 import { slugify } from "../../../lib/pgnText";
 import { atParamOf, REPERTOIRE_AT_PARAM } from "../../../lib/repertoireLink";
 import { savedAnalysisDerivedName } from "../../../lib/savedAnalyses";
+import { analysisFoldersSnapshot, loadAnalysisFolders } from "../../../lib/savedAnalysisFolderStore";
 import {
   findSavedAnalysis,
   loadSavedAnalyses,
   savedAnalysesSnapshot,
 } from "../../../lib/savedAnalysisStore";
+import {
+  LIST_CONTEXT_PARAMS,
+  LIST_FOLDER_PARAM,
+  listContextOf,
+} from "../../../lib/analysesListContext";
 import BoardShell from "../../board/core/BoardShell";
+import { useShellCompact } from "../../main/shellCompact";
 import { useVariationsExplorer } from "../../explorer/useVariationsExplorer";
+import AnalysesFolderView from "./AnalysesFolderView";
+import { INITIAL_FOLDER_VIEW, type FolderViewState } from "./folderViewState";
 import AnalysisArrows from "./AnalysisArrows";
 import AnalysisLoad from "./AnalysisLoad";
 import SaveAnalysisDialog from "./SaveAnalysisDialog";
 import { useAnalysisBoard, type AnalysisBoardStart } from "./useAnalysisBoard";
 import { usePageTitle } from "../../main/pageTitle";
+import { playerPlatesOf } from "../../shared/playerResults";
 import { useCurrentOpening } from "../../shared/useCurrentOpening";
+import { useUnsavedWorkGuard } from "../../main/unsavedWork";
 
 /**
  * **The Analysis Board** (`/tools/analysis`, CTA-73) — the board a game or a
@@ -70,7 +81,7 @@ import { useCurrentOpening } from "../../shared/useCurrentOpening";
  * | Capability | Taken | Because |
  * | --- | --- | --- |
  * | Base | `useBoardCore`, through `useAnalysisBoard` | the tree, the node, the oracle, promotion, orientation |
- * | Engine | switch, **on by default**; its best move played **only while Play is on, for the opponent's side** (`onBestMove`, `useAnalysisBoard`) | the pinned lines, the eval bar and the Engine tab; Play is disabled while the engine is off, and a step back pauses it |
+ * | Engine | switch, **off by default** (CTA-148); its best move played **only while Play is on, for the opponent's side** (`onBestMove`, `useAnalysisBoard`) | the pinned lines, the eval bar and the Engine tab; Play is disabled while the engine is off, and a step back pauses it |
  * | Tree view | `useVariationsExplorer` | Moves (side lines, comment marks, evals, the move menu), Map, the comment block, the next-moves bar and arrows — editing on, *Play chances…* off (nothing here plays by chance) |
  * | Saving | `useAnalysisBoard` — explicit | no autosave: the header's Save lights while the board differs from its record, and opens the changes strip (Update / Save as copy / Discard); a board with no record yet saves through a name-and-folder dialog |
  *
@@ -99,6 +110,12 @@ import { useCurrentOpening } from "../../shared/useCurrentOpening";
  * replace, so the address bar is always a permanent link to the position on
  * screen; it beats `?move=` and the record's own place on the way in. Once a
  * board is saved, its URL becomes `?analysis=<id>`.
+ *
+ * **The workspace** (CTA-145): an analysis opened from the saved list carries
+ * where the list stood (`?folder=`, the table's sort) — `lib/analysesListContext.ts`
+ * — and the board then takes the whole window with the list's tree on its left
+ * (`AnalysesFolderView`), previous / next in a toolbar at its foot and a Close back to the
+ * list (`.claude/rules/analysis-board.md` §1.2).
  */
 
 /**
@@ -142,7 +159,18 @@ const arrivalOf = (params: URLSearchParams, state: unknown): AnalysisBoardStart 
   };
 };
 
-function AnalysisBoard() {
+/** The URL parameters that carry where an analysis was opened from — kept when the board points its URL at a copy. */
+const LIST_URL_KEYS: readonly string[] = LIST_CONTEXT_PARAMS;
+
+type AnalysisBoardProps = {
+  /** What the reader did to the workspace's tree — the route's, so it survives stepping to another analysis. */
+  folderView: FolderViewState;
+  onFolderViewChange: (state: FolderViewState) => void;
+  /** The board pointed its own URL at this analysis (a save) — the route must not take that for a new arrival. */
+  onPointUrl: (analysisId: string) => void;
+};
+
+function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisBoardProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -195,7 +223,9 @@ function AnalysisBoard() {
     arrows: { show: showArrows, widthSource: drawnWidthSource, palette: arrowPalette },
     map: { addedIds: state.extensionIds, linked: true },
   });
-  const boardOptions: ChessboardOptions = { arrows: explorer.arrows };
+  const boardOptions: ChessboardOptions = { ...explorer.boardOptions, arrows: explorer.arrows };
+  // A game's players, plated beside the board (CTA-148, as the Library's — CTA-105); a position, or an analysis no one is named in, has none.
+  const playerPlates = useMemo(() => playerPlatesOf(core.tree.headers), [core.tree.headers]);
   const topLine = engine.analysis.lines.find((line) => line !== undefined);
 
   /*
@@ -242,7 +272,12 @@ function AnalysisBoard() {
 
   /** The URL of a board that is a record now: `?analysis=<id>`. */
   const pointUrlAt = (id: string) => {
-    setUrlBase({ analysis: id });
+    onPointUrl(id);
+    // A copy is filed where the original is: where it was opened from still stands.
+    setUrlBase((base) => ({
+      ...Object.fromEntries(Object.entries(base).filter(([key]) => LIST_URL_KEYS.includes(key))),
+      analysis: id,
+    }));
     setUrlState(null);
   };
 
@@ -253,14 +288,21 @@ function AnalysisBoard() {
   };
 
   // Leaving with changes unsaved — a reload, a closed tab — asks first.
-  useEffect(() => {
-    if (!state.unsaved) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [state.unsaved]);
+  useUnsavedWorkGuard(state.unsaved);
+
+  /*
+    **The workspace** (CTA-145): an analysis opened from the saved list carries
+    where the list stood in the URL (`?folder=`, the table's sort) — read off
+    what the board is *now*, so a Load, which drops the record and the URL's
+    parameters, ends it. While there is one the list's tree is the board's
+    left panel (`AnalysesFolderView`, rooted at that folder; a drawer under the shell's breakpoint,
+    opened from the header) and previous / next walk the open analysis' folder
+    in the table's order.
+  */
+  const compact = useShellCompact();
+  const listContext = useMemo(() => listContextOf(new URLSearchParams(urlBase)), [urlBase]);
+  const inWorkspace = listContext !== null && record !== null;
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const onSaveClick = () => {
     if (record === null) setSaveOpen(true);
@@ -289,6 +331,7 @@ function AnalysisBoard() {
         core={core}
         score={topLine?.score ?? null}
         showEvalBar={state.engineOn && state.showEvalBar}
+        playerPlates={playerPlates}
         boardOptions={boardOptions}
         overlay={explorer.overlay}
         panel={{
@@ -317,8 +360,19 @@ function AnalysisBoard() {
                     {record.description}
                   </Typography>
                 )}
-                <CurrentOpening {...currentOpening} testId="analysis-current-opening" />
+                <CurrentOpening {...currentOpening} oneLine testId="analysis-current-opening" />
               </Box>
+              {inWorkspace && compact && (
+                // Under the breakpoint the tree — and its previous / next toolbar — is a drawer; wide, it is the board's column.
+                <IconAction
+                  label={t("analysis.folderView.toggle")}
+                  onClick={() => setDrawerOpen(true)}
+                  popupOpen={drawerOpen}
+                  testId="analysis-folder-view-toggle"
+                >
+                  <AccountTreeOutlinedIcon fontSize="small" />
+                </IconAction>
+              )}
               <ToggleIconAction
                 label={saveLabel}
                 onClick={onSaveClick}
@@ -337,13 +391,6 @@ function AnalysisBoard() {
                 thinking={state.thinking}
                 onToggle={state.togglePlaying}
               />
-              <IconAction
-                label={t("savedAnalyses.title")}
-                link={{ component: RouterLink, to: "/tools/analysis/saved" }}
-                testId="analysis-saved-list"
-              >
-                <FolderOpenRoundedIcon fontSize="small" />
-              </IconAction>
               {record !== null && (
                 // Its settings — off while there are unsaved changes, which leaving the board would lose.
                 <IconAction
@@ -396,6 +443,9 @@ function AnalysisBoard() {
                   }}
                   onCollectionSaved={(collectionId) =>
                     navigate(`/library/${encodeURIComponent(collectionId)}`)
+                  }
+                  onAnalysesSaved={(folderId) =>
+                    navigate(`/tools/analysis/saved?folder=${encodeURIComponent(folderId)}`)
                   }
                 />
               ),
@@ -485,6 +535,17 @@ function AnalysisBoard() {
           ),
         }}
       />
+      {inWorkspace && (
+        <AnalysesFolderView
+          context={listContext}
+          record={record}
+          locked={state.unsaved}
+          drawerOpen={drawerOpen}
+          onDrawerClose={() => setDrawerOpen(false)}
+          state={folderView}
+          onStateChange={onFolderViewChange}
+        />
+      )}
       <SaveAnalysisDialog
         open={saveOpen}
         initialName={savedAnalysisDerivedName(core.tree.headers)}
@@ -514,15 +575,22 @@ function AnalysisBoardRoute() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const game = searchParams.get("game");
-  const waitsForAnalyses = searchParams.get("analysis") !== null || isAnalysisReference(game);
+  const analysisParam = searchParams.get("analysis");
+  const waitsForAnalyses = analysisParam !== null || isAnalysisReference(game);
+  // The workspace's tree is the folders and the analyses: both are read before the board opens.
+  const waitsForFolders = analysisParam !== null && searchParams.get(LIST_FOLDER_PARAM) !== null;
   const [ready, setReady] = useState(
-    () => (!waitsForAnalyses || savedAnalysesSnapshot() !== undefined) && isReferenceRead(game),
+    () =>
+      (!waitsForAnalyses || savedAnalysesSnapshot() !== undefined) &&
+      (!waitsForFolders || analysisFoldersSnapshot() !== undefined) &&
+      isReferenceRead(game),
   );
   useEffect(() => {
     if (ready) return;
     let live = true;
     void Promise.all([
       waitsForAnalyses ? loadSavedAnalyses() : undefined,
+      waitsForFolders ? loadAnalysisFolders() : undefined,
       loadReferencedGames(game),
     ]).then(() => {
       if (live) setReady(true);
@@ -530,7 +598,26 @@ function AnalysisBoardRoute() {
     return () => {
       live = false;
     };
-  }, [ready, waitsForAnalyses, game]);
+  }, [ready, waitsForAnalyses, waitsForFolders, game]);
+
+  /*
+    **A board is read from its arrival once** — so a URL that names another
+    analysis (a link in the workspace's tree, the browser's Back between two) gets a new
+    board, keyed by `generation`. The board's own URL writes do not: when it
+    saves a copy it points the URL at it and says so (`onPointUrl`), and the
+    arrival that follows is its own. Adjusted during render against the last
+    analysis seen, as `Layout.tsx` follows the location.
+  */
+  const [generation, setGeneration] = useState(0);
+  const [seenAnalysis, setSeenAnalysis] = useState(analysisParam);
+  const [ownedAnalysis, setOwnedAnalysis] = useState<string | null>(null);
+  if (analysisParam !== seenAnalysis) {
+    setSeenAnalysis(analysisParam);
+    if (analysisParam !== null && analysisParam !== ownedAnalysis) setGeneration((n) => n + 1);
+    if (ownedAnalysis !== null) setOwnedAnalysis(null);
+  }
+  // The workspace's tree as the reader left it — opened folders, pages — across the boards he steps through.
+  const [folderView, setFolderView] = useState(INITIAL_FOLDER_VIEW);
 
   if (!ready) {
     return (
@@ -539,7 +626,14 @@ function AnalysisBoardRoute() {
       </Typography>
     );
   }
-  return <AnalysisBoard />;
+  return (
+    <AnalysisBoard
+      key={generation}
+      folderView={folderView}
+      onFolderViewChange={setFolderView}
+      onPointUrl={setOwnedAnalysis}
+    />
+  );
 }
 
 export default AnalysisBoardRoute;

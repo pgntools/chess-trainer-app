@@ -1,0 +1,22 @@
+---
+title: A draft
+summary: What a draft looks like — here in yarn dev, marked; nowhere in the built app.
+order: 20
+date: 2026-10-05
+draft: true
+redirectFrom: [writing-an-article/draft]
+---
+
+This article is a draft: its frontmatter says `draft: true`. In `yarn dev` it is everywhere a published article is — the sidebar, the folder's index, its own address, the MDX editor — with a *Draft* chip beside its title, so it can be read in place before it ships.
+
+## Not in the build
+
+A production build leaves it out altogether: no sidebar row, no card, no route, no chunk. That is checked after every build — `yarn check:blog-build` looks through `dist/` for every draft's path and the first sentence of its body, and fails on a match. This article is the fixture that keeps the check honest: without a draft, it would pass on nothing.
+
+## What else it shows
+
+It has no translation, so under Hebrew its English title is marked as English wherever it is shown — the sidebar, the folder's index, this page's heading and its breadcrumb — and reads left to right. And it lists an old address in `redirectFrom`: `/blog/writing-an-article/draft` brings you here.
+
+## Publishing one
+
+Remove `draft: true` (or set it to `false`) and give the article the day it is published as its `date`.

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMemoryRouter, RouterProvider, type RouteObject } from "react-router";
+import { createMemoryRouter, RouterProvider, type RouteObject, type UIMatch } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import i18n from "../../i18n";
@@ -9,7 +9,7 @@ import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { expectNoAxeViolations, PAGE_STRUCTURE_RULES } from "../../test/axe";
 import { DefaultLayout } from "./Layout";
 import { useOwnPageHeading, usePageTitle } from "./pageTitle";
-import { FULL_WIDTH_ROUTE } from "./routeHandle";
+import { ARTICLE_ROUTE, FULL_WIDTH_ROUTE } from "./routeHandle";
 
 /*
   The page a screen reader walks (CTA-112): the title, the landmarks, the skip
@@ -51,6 +51,22 @@ const Collection = () => {
 /** A full-width screen — the design gallery's kind. */
 const Wide = () => <p>The gallery</p>;
 
+/** An article — the front page's and the Blog's kind (CTA-130): its title is its own `h1`. */
+const Article = () => {
+  useOwnPageHeading();
+  return (
+    <>
+      <h1>Get started</h1>
+      <p>The article.</p>
+      <button type="button">Article action</button>
+    </>
+  );
+};
+
+/** A route whose one pattern serves many pages, as the Blog's does (CTA-135): each page named from the match. */
+const pagesMeta = (match: UIMatch) =>
+  match.pathname.endsWith("/get-started") ? { title: "Get started", description: "Where to begin." } : { title: "Another page" };
+
 const routes: RouteObject[] = [
   { index: true, element: <Plain />, handle: { title: "pages.home" } },
   { path: "/engine/games", element: <OwnHeading />, handle: { title: "pages.lobby" } },
@@ -58,6 +74,7 @@ const routes: RouteObject[] = [
   { path: "/settings/import", element: <WithRecord name="Import" />, handle: { title: "pages.settings" } },
   { path: "/library/c", element: <Late />, handle: { title: "pages.collection" } },
   { path: "/dev/design", element: <Wide />, handle: { ...FULL_WIDTH_ROUTE, title: "pages.designSystem" } },
+  { path: "/blog/*", element: <Article />, handle: { ...ARTICLE_ROUTE, title: "pages.blog", meta: pagesMeta } },
 ];
 
 const renderShell = (initialEntries: string[] = ["/"]) => {
@@ -80,26 +97,49 @@ beforeEach(async () => {
 describe("the page title (CTA-112)", () => {
   it("names the page by its screen, then the app", () => {
     renderShell(["/engine/games"]);
-    expect(document.title).toBe("Lobby — Chess Trainer App");
+    expect(document.title).toBe("Lobby — chessapp.dev");
   });
 
   it("puts the open record's name first", async () => {
     renderShell(["/settings/export"]);
-    await waitFor(() => expect(document.title).toBe("Export — Settings — Chess Trainer App"));
+    await waitFor(() => expect(document.title).toBe("Export — Settings — chessapp.dev"));
   });
 
   it("follows the record and the screen as the reader moves", async () => {
     const router = renderShell(["/settings/export"]);
     await act(() => router.navigate("/settings/import"));
-    expect(document.title).toBe("Import — Settings — Chess Trainer App");
+    expect(document.title).toBe("Import — Settings — chessapp.dev");
     await act(() => router.navigate("/"));
-    expect(document.title).toBe("Home — Chess Trainer App");
+    expect(document.title).toBe("Home — chessapp.dev");
   });
 
   it("is in the reader's language", async () => {
     await i18n.changeLanguage("he");
     renderShell(["/settings/export"]);
-    await waitFor(() => expect(document.title).toBe("Export — הגדרות — אפליקציית אימון שחמט"));
+    await waitFor(() => expect(document.title).toBe("Export — הגדרות — chessapp.dev"));
+  });
+
+  it("puts first the page a route's meta names for the address, with its description (CTA-135)", async () => {
+    const router = renderShell(["/blog/get-started"]);
+    expect(document.title).toBe("Get started — Blog — chessapp.dev");
+    expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute("content", "Where to begin.");
+    await act(() => router.navigate("/blog/elsewhere"));
+    expect(document.title).toBe("Another page — Blog — chessapp.dev");
+    // A page whose meta gives no description has its screen's (CTA-136).
+    expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute("content", i18n.t("pageDescriptions.blog"));
+    // A route without meta is titled as it always was, and described as its screen.
+    await act(() => router.navigate("/engine/games"));
+    expect(document.title).toBe("Lobby — chessapp.dev");
+    expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute("content", i18n.t("pageDescriptions.lobby"));
+  });
+
+  it("is rendered into the head — one title, ahead of the page's static one (CTA-135)", () => {
+    const fallback = document.createElement("title");
+    fallback.textContent = "chessapp.dev";
+    document.head.append(fallback);
+    renderShell(["/engine/games"]);
+    expect(document.title).toBe("Lobby — chessapp.dev");
+    fallback.remove();
   });
 });
 
@@ -120,6 +160,14 @@ describe("landmarks and the skip link (CTA-112)", () => {
     renderShell(["/dev/design"]);
     expect(screen.getAllByRole("main")).toHaveLength(1);
     expect(screen.getByRole("main", { name: "Design system" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary")).toBeNull();
+  });
+
+  it("gives an article the one main, its own h1, and no panel (CTA-130)", () => {
+    renderShell(["/blog/get-started"]);
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    expect(within(screen.getByRole("main")).getByRole("heading", { level: 1, name: "Get started" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.queryByRole("complementary")).toBeNull();
   });
 
@@ -151,6 +199,11 @@ describe("landmarks and the skip link (CTA-112)", () => {
 
   it("passes them on a full-width screen too", async () => {
     renderShell(["/dev/design"]);
+    await expectNoAxeViolations(document.documentElement, { enable: PAGE_STRUCTURE_RULES });
+  });
+
+  it("passes them on an article too", async () => {
+    renderShell(["/blog/get-started"]);
     await expectNoAxeViolations(document.documentElement, { enable: PAGE_STRUCTURE_RULES });
   });
 });
@@ -208,6 +261,14 @@ describe("moving to another screen (CTA-112)", () => {
     await act(() => router.navigate("/settings/import?page=2"));
     await tick();
     expect(screen.getByRole("button", { name: "Record action" })).toHaveFocus();
+  });
+
+  it("takes the focus to the heading on a move between two pages of one route with meta — each address its own page (CTA-135)", async () => {
+    const router = renderShell(["/blog/get-started"]);
+    screen.getByRole("button", { name: "Article action" }).focus();
+    await act(() => router.navigate("/blog/elsewhere"));
+    await tick();
+    expect(screen.getByRole("heading", { level: 1, name: "Get started" })).toHaveFocus();
   });
 
   it("hands the focus on to a heading that arrives with its record", async () => {

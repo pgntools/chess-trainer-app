@@ -31,6 +31,7 @@ const Main = () => {
       <DesignGallery
         section={page === "" ? undefined : page}
         sectionPath={sectionPath}
+        startPath="/dev/design"
         tiers={TIERS}
         initialThemeId={themeId}
         initialMode={resolved === "dark" ? "dark" : "light"}

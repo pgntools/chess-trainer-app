@@ -1,7 +1,10 @@
 import type { TFunction } from "i18next";
 
-import type { Competitor, CompetitorLabels, ResultEntry, TieBreakColumn } from "../../design-system/patterns/tables";
-import type { PlayerGame, TieBreak, Tournament, TournamentStanding } from "../../lib/tournament";
+import type { LinkTarget } from "../../design-system/components/link";
+import type { LabelChipTone } from "../../design-system/components/tables";
+import type { Competitor, CompetitorBadge, CompetitorFlag, CompetitorLabels, ResultEntry, TieBreakColumn } from "../../design-system/patterns/tables";
+import { federationFlagOf } from "../../lib/federations";
+import type { PlayerGame, TieBreak, Tournament, TournamentPlayer, TournamentStanding } from "../../lib/tournament";
 
 /*
   What the two tournament blocks share (CTA-120) — `SwissStandingsTable` and
@@ -35,13 +38,81 @@ export const tieBreakColumns = (t: TFunction, tieBreaks: readonly TieBreak[]): T
     format: FORMATS[id],
   }));
 
-/** A standing as a row's competitor: the title before the name, the federation after it, the rating in its column. */
-export const competitorOf = ({ rank, player, points, tieBreaks }: TournamentStanding): Competitor => ({
+/** The FIDE titles' tones (CTA-128): a grandmaster's gold, then blue, green and purple down the titles — a woman's title in its counterpart's. */
+const TITLE_TONES: Readonly<Record<string, LabelChipTone>> = {
+  GM: "warning",
+  WGM: "warning",
+  IM: "info",
+  WIM: "info",
+  FM: "success",
+  WFM: "success",
+  CM: "secondary",
+  WCM: "secondary",
+};
+
+/**
+ * A player's title as a chip (CTA-128): its tone, and — for a FIDE title —
+ * what it stands for, read in its place ("Grandmaster"). Any other title
+ * (a national one) is a chip in the primary tone, read as written.
+ */
+export const titleBadgeOf = (t: TFunction, title: string | undefined): CompetitorBadge | undefined => {
+  if (title === undefined) return undefined;
+  const known = title.toUpperCase();
+  const tone = TITLE_TONES[known];
+  return tone === undefined ? { label: title, tone: "primary" } : { label: title, tone, name: t(`tournament.titles.${known}`) };
+};
+
+/** A federation tag as a flag, named in `language` (CTA-128) — `undefined` for none, or a code with no flag. */
+export const flagOfFederation = (federation: string | undefined, language: string): CompetitorFlag | undefined => {
+  const flag = federationFlagOf(federation, language);
+  return flag === undefined ? undefined : { code: flag.code, label: flag.name };
+};
+
+/** A team's country as a flag at its name's start, where a player's title stands (CTA-128). */
+export const teamFlag = (federation: string | undefined, language: string): CompetitorFlag | undefined => {
+  const flag = flagOfFederation(federation, language);
+  return flag === undefined ? undefined : { ...flag, before: true };
+};
+
+/** A player's — or a team's — federation as a flag (CTA-128). */
+export const federationFlag = (player: TournamentPlayer, language: string): CompetitorFlag | undefined =>
+  flagOfFederation(player.federation, language);
+
+/**
+ * A player's marks around the name (CTA-128): the title as a chip before it,
+ * the federation as a flag after it — the words they replace kept as their
+ * fallbacks.
+ */
+export const playerMarks = (t: TFunction, language: string, player: TournamentPlayer) => ({
+  prefix: player.title,
+  suffix: player.federation,
+  badge: titleBadgeOf(t, player.title),
+  flag: federationFlag(player, language),
+});
+
+/**
+ * Where a table's names and results lead (CTA-128) — both optional: a
+ * player's name to their games, a result to its game (`game`, its index in
+ * the headers the tournament was read from). Absent, or `undefined` for one
+ * player or game, plain text.
+ */
+export type TournamentLinks = {
+  playerLink?: (player: TournamentPlayer) => LinkTarget | undefined;
+  gameLink?: (game: number) => LinkTarget | undefined;
+};
+
+/** A standing as a row's competitor: the title as a chip before the name, the federation as a flag after it, the rating in its column — the name a link where `playerLink` gives one. */
+export const competitorOf = (
+  t: TFunction,
+  language: string,
+  { rank, player, points, tieBreaks }: TournamentStanding,
+  playerLink?: TournamentLinks["playerLink"],
+): Competitor => ({
   id: player.id,
   rank,
   name: player.name,
-  prefix: player.title,
-  suffix: player.federation,
+  ...playerMarks(t, language, player),
+  link: playerLink?.(player),
   rating: player.rating,
   points,
   tieBreaks,
@@ -56,8 +127,14 @@ export const playerNames = (tournament: Tournament): ReadonlyMap<string, string>
  * place — the round, the colour played, the opponent and the result
  * ("Round 3, White against Giri, Anish: draw").
  */
-export const resultEntryOf = (t: TFunction, game: PlayerGame, names: ReadonlyMap<string, string>): ResultEntry => ({
+export const resultEntryOf = (
+  t: TFunction,
+  game: PlayerGame,
+  names: ReadonlyMap<string, string>,
+  gameLink?: TournamentLinks["gameLink"],
+): ResultEntry => ({
   outcome: game.outcome,
+  link: gameLink?.(game.game),
   label: t(`tournament.game.${game.color}${game.round === undefined ? "NoRound" : ""}`, {
     round: game.round,
     opponent: names.get(game.opponent) ?? game.opponent,
@@ -70,3 +147,14 @@ export const tournamentLegend = (t: TFunction, shows: { unfinished: boolean; non
   ...(shows.unfinished ? [{ outcome: "unfinished" as const, label: t("tournament.legend.unfinished") }] : []),
   ...(shows.none ? [{ outcome: "none" as const, label: t("tournament.legend.none") }] : []),
 ];
+
+/**
+ * A score as a chess table writes it (CTA-128): halves as `½` — `2½`, `½`,
+ * `3`. For a match's score and a team's board points, where `2.5` would read
+ * as a decimal.
+ */
+export const formatScore = (value: number): string => {
+  const whole = Math.floor(value);
+  const half = value - whole >= 0.5;
+  return half ? (whole === 0 ? "½" : `${whole}½`) : String(whole);
+};

@@ -10,3 +10,4 @@ export * from "./GameInfo";
 export * from "./ImportReport";
 export * from "./PgnExportPanel";
 export * from "./PlayToggleButton";
+export * from "./TopPlayers";

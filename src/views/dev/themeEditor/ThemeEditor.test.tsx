@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEventApi, { PointerEventsCheckLevel } from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 
 import { brownTheme, defaultTheme, greenTheme, type ThemeDefinition } from "../../../design-system/themes";
@@ -37,6 +37,15 @@ const mount = (entry = "/dev/theme-editor?theme=brown") =>
     </AppThemeWithLang>,
   );
 
+/*
+  One user for the file, with user-event's pointer-events check off: before
+  each pointer action it asks jsdom for the computed style of the target and
+  every ancestor, and the editor's preview is a page of restyled parts
+  (CTA-124). Nothing here is hidden from the pointer by CSS alone; a disabled
+  control is asserted `toBeDisabled`.
+*/
+const userEvent = userEventApi.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+
 /** A section's tab, by its title — a badged one's name goes on to count its contrast failures. */
 const tab = (title: string) => screen.getByRole("tab", { name: new RegExp(`^${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(,|$)`) });
 const panel = () => screen.getByRole("tabpanel");
@@ -47,9 +56,8 @@ const openSection = async (title: string) => {
 /** Replaces a text field's words — a colour, a length, a name. */
 const retype = async (name: string, text: string) => {
   const input = screen.getByRole("textbox", { name });
-  await userEvent.clear(input);
-  // Pasted, not typed a key at a time: each key re-renders the whole preview.
-  await userEvent.click(input);
+  // Selected and pasted over, not cleared and typed a key at a time: each change re-renders the whole preview.
+  await userEvent.tripleClick(input);
   await userEvent.paste(text);
 };
 const pick = async (label: string, option: string) => {
@@ -331,13 +339,16 @@ describe("the theme editor", { timeout: 60_000 }, () => {
     expect(lastDownload().fileName).toBe("brown.ts");
   });
 
-  it.each([["Theme"], ["Palette — light"], ["Board"], ["Accessibility"]])(
-    "passes axe on the %s section",
-    async (section) => {
+  it(
+    "passes axe on the Theme, Palette — light, Board and Accessibility sections",
+    async () => {
+      // One mount walked through the four, as a reader would — a mount each cost more than the walk (CTA-124).
       mount();
-      await openSection(section);
-      await expectNoAxeViolations(screen.getByTestId("theme-editor"));
+      for (const section of ["Theme", "Palette — light", "Board", "Accessibility"]) {
+        await openSection(section);
+        await expectNoAxeViolations(screen.getByTestId("theme-editor"));
+      }
     },
-    AXE_PAGE_TIMEOUT_MS,
+    AXE_PAGE_TIMEOUT_MS * 2,
   );
 });

@@ -5,6 +5,7 @@ import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
 import CasinoOutlinedIcon from "@mui/icons-material/CasinoOutlined";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import GestureRoundedIcon from "@mui/icons-material/GestureRounded";
 import PriorityHighRoundedIcon from "@mui/icons-material/PriorityHighRounded";
 import VerticalAlignTopRoundedIcon from "@mui/icons-material/VerticalAlignTopRounded";
 import { useTranslation } from "react-i18next";
@@ -30,10 +31,15 @@ import { maskNodeSan, type PieceMask } from "../../lib/pieceMask";
 import CommentDialog, { type CommentDraft } from "./CommentDialog";
 import NagDialog, { type NagTarget } from "./NagDialog";
 import PlayChanceDialog, { type PlayChanceTarget } from "./PlayChanceDialog";
+import ShapesDialog, { type ShapesTarget } from "./ShapesDialog";
 import type { MenuAnchor } from "../shared/moveContextMenu";
 
-/** The move a menu was opened on, and where. */
-export type MoveMenuTarget = { nodeId: string; anchor: MenuAnchor };
+/**
+ * The move a menu was opened on, and where. A `null` id is the **start
+ * position** (CTA-149), whose menu offers only what means something there —
+ * the game's opening comment and the shapes it draws.
+ */
+export type MoveMenuTarget = { nodeId: string | null; anchor: MenuAnchor };
 
 /**
  * **The variations explorer's move menu** (CTA-64) — lichess's right-click on
@@ -43,7 +49,8 @@ export type MoveMenuTarget = { nodeId: string; anchor: MenuAnchor };
  * and, on a move with alternatives, set the **play chances** of the branch
  * it belongs to (`PlayChanceDialog`; lichess-tools' `prc:N`,
  * `lib/playChance.ts`) — and, since CTA-97, annotate it with NAG glyphs
- * (`NagDialog`; `setNags`).
+ * (`NagDialog`; `setNags`) — and, since CTA-143, manage the arrows and circles
+ * its comment draws (`ShapesDialog`; `toggleShape` / `clearShapes`).
  *
  * Opened by `TreeMoveList` when its consumer passes `onEditTree`, at the
  * pointer (`anchorReference="anchorPosition"`). Every edit is a pure tree
@@ -57,6 +64,11 @@ export type MoveMenuTarget = { nodeId: string; anchor: MenuAnchor };
  *
  * Since CTA-113 the design system's: a `ContextMenu` at the pointer, the
  * delete a destructive `ConfirmDialog`, the copy's outcome `useSnackbar`.
+ *
+ * **At the start position** (CTA-149) the same menu opens from the list's
+ * *Start position* row, with *Add comment* and *Arrows and circles…* only —
+ * the game's own comment (`setComments` with a `null` id), the rest needing a
+ * move.
  *
  * Chrome, so it mirrors under Hebrew like the rest of the panel; the move it
  * names is notation and keeps `dir="ltr"`.
@@ -87,12 +99,15 @@ function MoveContextMenu({
   const { t } = useTranslation();
   const { show } = useSnackbar();
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [commenting, setCommenting] = useState<string | null>(null);
+  // `{ nodeId: null }` is the start position; `null`, no dialog.
+  const [commenting, setCommenting] = useState<{ nodeId: string | null } | null>(null);
   const [chancesAt, setChancesAt] = useState<PlayChanceTarget | null>(null);
   const [annotating, setAnnotating] = useState<NagTarget | null>(null);
+  const [drawingAt, setDrawingAt] = useState<ShapesTarget | null>(null);
 
   // A target the tree no longer holds (an edit landed first) opens nothing.
   const node = target === null ? null : findNode(tree, target.nodeId);
+  const atStart = target !== null && target.nodeId === null;
   const sideLine = node !== null && isInSideLine(tree, node.id);
   // The branch the move is one of — its parent's continuations, or the start's.
   const branchParent = node === null ? null : (pathTo(tree, node.id).at(-2) ?? null);
@@ -102,22 +117,23 @@ function MoveContextMenu({
   const counts = deletingNode === null ? null : subtreeCounts(tree, deletingNode.id);
 
   const moveText = (at: typeof node) => {
-    if (at === null) return "";
+    if (at === null) return atStart ? t("moveList.startPosition") : "";
     const { number, isWhiteMove } = plyLabel(tree.startFen, at.ply);
     return `${number}${isWhiteMove ? "." : "…"} ${maskNodeSan(mask, at)}`;
   };
 
   // Built on each render, so the save edits the tree as it is then.
-  const commentingNode = commenting === null ? null : findNode(tree, commenting);
+  const commentingId = commenting === null ? undefined : commenting.nodeId;
+  const commentingNode = commentingId == null ? null : findNode(tree, commentingId);
   const commentDraft: CommentDraft | null =
-    commentingNode === null
+    commenting === null || (commentingId !== null && commentingNode === null)
       ? null
       : {
-          label: moveText(commentingNode),
+          label: commentingId === null ? t("moveList.startPosition") : moveText(commentingNode),
           initial: "",
           onSave: (text) => {
-            const next = setComments(tree, commentingNode.id, "comments", [
-              ...commentsAt(tree, commentingNode.id, "comments"),
+            const next = setComments(tree, commentingId ?? null, "comments", [
+              ...commentsAt(tree, commentingId ?? null, "comments"),
               text,
             ]);
             if (next !== tree) onEditTree(next);
@@ -149,8 +165,25 @@ function MoveContextMenu({
     });
   };
 
+  const commentEntry: MenuEntry = {
+    id: "comment",
+    label: t("moveMenu.addComment"),
+    icon: <AddCommentOutlinedIcon fontSize="small" />,
+    onClick: () => {
+      if (target !== null) setCommenting({ nodeId: target.nodeId });
+    },
+  };
+  const shapesEntry: MenuEntry = {
+    id: "shapes",
+    label: t("moveMenu.shapes"),
+    icon: <GestureRoundedIcon fontSize="small" />,
+    onClick: () => {
+      if (target !== null) setDrawingAt({ nodeId: target.nodeId, label: moveText(node) });
+    },
+  };
+
   /** The entries, in lichess's order; Promote and Make main line only inside a side line. */
-  const entries: MenuEntry[] = [
+  const moveEntries: MenuEntry[] = [
     ...(sideLine
       ? [
           { id: "promote", label: t("moveMenu.promote"), icon: <ArrowUpwardRoundedIcon fontSize="small" />, onClick: () => edit(promoteVariation) },
@@ -165,14 +198,7 @@ function MoveContextMenu({
         if (node !== null) setDeleting(node.id);
       },
     },
-    {
-      id: "comment",
-      label: t("moveMenu.addComment"),
-      icon: <AddCommentOutlinedIcon fontSize="small" />,
-      onClick: () => {
-        if (node !== null) setCommenting(node.id);
-      },
-    },
+    commentEntry,
     {
       id: "annotate",
       label: t("moveMenu.addAnnotation"),
@@ -181,6 +207,7 @@ function MoveContextMenu({
         if (node !== null) setAnnotating({ nodeId: node.id, label: moveText(node) });
       },
     },
+    shapesEntry,
     ...(playChances && branchSize > 1
       ? [
           {
@@ -193,15 +220,17 @@ function MoveContextMenu({
       : []),
     { id: "copy", label: t("moveMenu.copyPgn"), icon: <ContentCopyRoundedIcon fontSize="small" />, onClick: () => void copy() },
   ];
+  // The start position has no move to delete, annotate or copy.
+  const entries = atStart ? [commentEntry, shapesEntry] : moveEntries;
 
   return (
     <>
       <ContextMenu
         position={target?.anchor ?? null}
-        open={open && node !== null}
+        open={open && (node !== null || atStart)}
         onClose={onClose}
         subheader={
-          <span dir="ltr" data-testid="move-menu-move">
+          <span dir={atStart ? "auto" : "ltr"} data-testid="move-menu-move">
             {moveText(node)}
           </span>
         }
@@ -242,6 +271,12 @@ function MoveContextMenu({
         tree={tree}
         target={annotating}
         onClose={() => setAnnotating(null)}
+        onEditTree={onEditTree}
+      />
+      <ShapesDialog
+        tree={tree}
+        target={drawingAt}
+        onClose={() => setDrawingAt(null)}
         onEditTree={onEditTree}
       />
       <PlayChanceDialog

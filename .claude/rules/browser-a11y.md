@@ -45,8 +45,8 @@ use), turned into `no-restricted-imports` `paths` (the barrel) and `patterns`
 - A locked atom that needs wrapping is a **design-system change first**
   (backward compatible, tested, demoed — `migration.md` §2), never an exception
   to save the trouble.
-- `yarn lint` runs in CI (`ci.yml`: build → lint → tests) and exits 0 on the
-  whole tree; keep it there.
+- `yarn lint` runs in CI (`ci.yml`: build, lint and the test groups, side by
+  side — CTA-123) and exits 0 on the whole tree; keep it there.
 
 ## 2. The browser pass
 
@@ -55,11 +55,22 @@ yarn test:a11y          # yarn build, then playwright test — the full matrix
 yarn test:a11y:quick    # the pull-request matrix
 npx playwright install chromium     # once, for a new machine
 A11Y_MATRIX=reduced npx playwright test -g "high-contrast · light · he"     # part of it, built already
+A11Y_CHROMIUM=/opt/pw-browsers/chromium A11Y_MATRIX=reduced npx playwright test -g "blog-tournaments|seed"   # a cloud container: its own Chromium, some routes
 ```
 
+**`A11Y_CHROMIUM`** (CTA-128) runs the pass on a Chromium already on the
+machine — `playwright.config.ts` sets it as `launchOptions.executablePath`.
+A cloud container's pre-installed browser (`/opt/pw-browsers/chromium`) is
+an older build than this Playwright expects, and its network will not fetch
+the new one; `npx playwright install` fails there, so do not run it. Unset,
+nothing changes. `-g` picks tests by name — a route's id; add `seed` (the
+setup project) when picking routes.
+
 Playwright + `@axe-core/playwright` over `vite preview` of the **production
-build** under `/chess-trainer-app/` (`playwright.config.ts`; `A11Y_PORT` moves
-the port). It is kept out of Vitest (`vite.config.ts` excludes `e2e/`).
+build** — pre-rendered since CTA-136, every page a static `index.html` the app
+then replaces — under `/chess-trainer-app/` (`playwright.config.ts`;
+`A11Y_PORT` moves the port; `BASE_PATH`, the build's own variable, moves the
+base — `BASE_PATH=/` passes over the chessapp.dev build). It is kept out of Vitest (`vite.config.ts` excludes `e2e/`).
 `--reporter` on the command line replaces the config's reporters, summary
 included — leave it off.
 
@@ -68,13 +79,15 @@ included — leave it off.
 | `seedZip.ts` | The data: a played game still on, a mated, a resigned, a masked and an unreadable one; two saved analyses, two repertoires and two uploaded collections (each kind once at the top level, once in a folder). Built by the app's own `buildExport` / `zipExport` — no store, no schema of the suite's own. `SEED` names the ids the routes use. |
 | `seed.setup.ts` | The `setup` project: puts the zip in through **Settings → Import** and saves the browser's storage (localStorage **and IndexedDB**) as the state every test starts from. |
 | `routes.ts` | `ROUTES` — every shipped route (21 pages): its path (**no leading slash**, or the base is dropped), the pattern in `src/routes.tsx` it visits an instance of, what shows it has its data, whether it draws a `board` or `pieces`. |
+| `blogRoutes.ts` | **The Blog's articles, read from their files** (CTA-135) with the build's own frontmatter reader — one line each in `ROUTES` (`blog-<path, dashed>`, pattern `/blog/*`), `board` from the embeds it uses, drafts left out. By hand in `routes.ts`: `BLOG_READY` (an article's ready test id) and `BLOG_SAMPLE` — the articles checked under the whole matrix; the rest are `oncePerLanguage` (default theme, light, both languages — `visits()` in `matrix.ts`). |
 | `routes.spec.ts` | Holds `ROUTES` to `src/routes.tsx`: a shipped route with no line fails; so does a line for a route that is gone. |
 | `matrix.ts` | `MATRICES.full` (every registered theme — a new theme joins with no edit — × light, dark × en, he: 20) and `reduced` (default, high-contrast × light × en, he: 4). `A11Y_MATRIX` picks; full is the default. |
-| `checks.ts` | `applyPreferences` (the app's own keys: `chessapp.theme`, `mui-mode`, `i18nextLng`), `open` (heading, data, board, the engine's first line, nothing `aria-busy`), `check`. |
-| `a11y.spec.ts` | Every route × every combination: `check`. |
+| `checks.ts` | `applyPreferences` (the app's own keys: `chessapp.theme`, `mui-mode` — not the language, which is the address's since CTA-136), `open` (at the language's own address — `he/<path>` for Hebrew, `localizedPath` — then heading, data, board, the engine's first line, nothing `aria-busy`), `check`. |
+| `a11y.spec.ts` | Every route × every combination it `visits()`: `check`. |
 | `allowlist.ts` | The known gaps — the only violations let through. |
 | `allowlist.spec.ts` | Each entry's `gap` is a phrase in ACCESSIBILITY.md's Known gaps. |
 | `reflow.spec.ts` | Every route at 320 × 256, under `reflowCombos()` (the matrix's themes × both languages, one scheme): **the reflow gate** (CTA-118) — no sideways scroll, `main` at least the viewport less the shell's inset, nothing past the edge outside a scrolling box of its own. |
+| `static.spec.ts` | **The `static` project** (CTA-136): every `dist/**/index.html` the pre-render wrote, in both languages, **without the app** (every script request refused — not JavaScript off, under which axe's timers never fire) — what a crawler and a link preview read: status 200, one `h1`, an article's text in the HTML, and `check` (default theme, light). No seed: no script reads a store. |
 | `summaryReporter.ts` | `a11y-report/summary.md` and `.json`; **fails the run on a stale allowlist entry**. |
 
 **What `check` asks of a page**, soft-asserted so one page reports all of it:
@@ -128,7 +141,9 @@ query in `Layout.tsx`) the sidebar is a drawer opened from the header
 square.
 
 **Adding a route**: a line in `routes.ts` (`routes.spec.ts` fails without), and
-seed what it lists in `seedZip.ts`. **Adding a theme**: nothing — the full matrix
+seed what it lists in `seedZip.ts`. **Adding a Blog article**: nothing — it
+is read from its file; a `BLOG_READY` entry if it reads data, a `BLOG_SAMPLE`
+one for a new family of embeds. **Adding a theme**: nothing — the full matrix
 reads the registry. **A page that draws pieces** without a board (the position
 editor's palette) is `pieces: true`, so the allowlist's scope reaches it.
 

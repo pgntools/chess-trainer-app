@@ -179,8 +179,36 @@ was begun on.
   `EngineSettings` it is played under (`playAs` the reader's side), where the
   reader stands (SAN from the start), the evals **keyed by FEN** (a ply cannot
   say which line), once resigned `resigned` (the side that did —
-  `playedGameResult` reads it before the board), and a Masked Pieces game its
-  `mask`.
+  `playedGameResult` reads it before the board), a Masked Pieces game its
+  `mask`, and (CTA-153) **the engine that played it** — `engine`: `{ id, name,
+  version, strength }`, `strength` `"elo"` where the build took a `UCI_Elo`
+  and `"skill"` where `Skill Level` was all it had. **Absent means the default
+  engine** (the 2019 build) — every record from before — so an old game reads,
+  resumes and is compared (`samePlayedGameEngine`) as exactly that, and opening
+  it rewrites nothing.
+- **The engine is the reader's choice, read once** (`engineChoiceId()`, Settings
+  → Engine, [`settings.md`](./settings.md) §4) as a game begins, and **a resumed
+  game goes on with its own**. Where its engine cannot run on this page (the
+  multi-thread build without cross-origin isolation, a build the registry no
+  longer has) the default plays on, `usePlayGame` returns `engineNotice`, and
+  the footer shows a warning naming both (`playEngine.engineFallback`) — while
+  **the record keeps naming the engine that really played its moves**, so merely
+  opening a game on another host never rewrites it. Replay begins a new game
+  under the engine chosen now.
+- **The names**: the PGN's engine tag and the Lobby's cell keep their wording for
+  the default engine — `Stockfish (level 5)` / "Stockfish level 5" — and name
+  another by its build: `Stockfish 19 Lite (level 5)`, or, where it took an Elo,
+  `Stockfish 19 Lite (Elo 1800)` / "Stockfish 19 Lite Elo 1800" with that Elo in
+  the Elo column (a skill-driven game keeps `approximateElo`'s estimate).
+- **Strength is Skill Level or an Elo, by what the engine declared**
+  (`usesEloStrength`: both `UCI_Elo` and `UCI_LimitStrength`; the three-state
+  rule of `.claude/rules/chessboard.md` §4.1). `EngineSettings.elo` is a request
+  like the rest (default 2100, clamped to the engine's 1320–3190 and re-clamped
+  on a switch); `uciOptionsOf` asks for both `UCI_Elo` and `UCI_LimitStrength`
+  and the engine keeps the ones it has — `UciEngine` writes a `check` as `true`
+  / `false`. The Engine tab's strength slider is the Elo itself on such an
+  engine, Skill Level (its Elo an estimate) otherwise; the new-game link carries
+  `elo=`.
 - **The write is idempotent**, because the writer is an effect: mounting a
   resumed game, the settings clamp landing and an engine score arriving all
   rebuild the record. `savePlayedGame` does nothing when it is the one stored.

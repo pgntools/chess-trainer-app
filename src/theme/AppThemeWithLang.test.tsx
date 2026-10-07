@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useTheme } from "@mui/material/styles";
-import i18n from "../i18n";
+import i18n, { LANGUAGE_STORAGE_KEY } from "../i18n";
+import { useUnsavedWorkGuard } from "../views/main/unsavedWork";
 import { stubReducedMotion } from "../test/reducedMotion";
 import AppThemeWithLang from "./AppThemeWithLang";
 import LanguageSwitch from "./LanguageSwitch";
@@ -135,7 +136,60 @@ describe("LanguageSwitch", () => {
 
     await waitFor(() => expect(i18n.language).toBe("he"));
   });
+
+  describe("the language in the address (CTA-136)", () => {
+    afterEach(() => {
+      window.history.replaceState(null, "", "/");
+    });
+
+    it("moves to the same page under the language's prefix, query and hash kept, and keeps the choice", async () => {
+      window.history.replaceState(null, "", "/library?sort=games#top");
+      renderThemed(<LanguageSwitch />);
+      await userEvent.click(screen.getByRole("combobox"));
+      await userEvent.click(screen.getByRole("option", { name: "עברית" }));
+
+      await waitFor(() => expect(i18n.language).toBe("he"));
+      expect(`${window.location.pathname}${window.location.search}${window.location.hash}`).toBe("/he/library?sort=games#top");
+      expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe("he");
+
+      // And back: the default language's page is unprefixed.
+      await userEvent.click(screen.getByRole("combobox"));
+      await userEvent.click(screen.getByRole("option", { name: "English" }));
+      await waitFor(() => expect(i18n.language).toBe("en"));
+      expect(window.location.pathname).toBe("/library");
+    });
+
+    it("asks first while a screen holds unsaved work — the screen remounts under the new language", async () => {
+      renderThemed(
+        <>
+          <UnsavedWork />
+          <LanguageSwitch />
+        </>,
+      );
+      await userEvent.click(screen.getByRole("combobox"));
+      await userEvent.click(screen.getByRole("option", { name: "עברית" }));
+      const dialog = await screen.findByRole("dialog", { name: "Switch language?" });
+      expect(dialog).toHaveTextContent("unsaved changes will be lost");
+
+      await userEvent.click(screen.getByRole("button", { name: "Stay" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(i18n.language).toBe("en");
+      expect(window.location.pathname).toBe("/");
+
+      await userEvent.click(screen.getByRole("combobox"));
+      await userEvent.click(screen.getByRole("option", { name: "עברית" }));
+      await userEvent.click(await screen.findByRole("button", { name: "Switch" }));
+      await waitFor(() => expect(i18n.language).toBe("he"));
+      expect(window.location.pathname).toBe("/he/");
+    });
+  });
 });
+
+/** A screen holding unsaved work, as the boards declare it. */
+function UnsavedWork() {
+  useUnsavedWorkGuard(true);
+  return null;
+}
 
 function MotionProbe() {
   return <span data-testid="motion">{useTheme().transitions.create("opacity")}</span>;

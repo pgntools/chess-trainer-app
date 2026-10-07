@@ -11,11 +11,13 @@ import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 import { Link as RouterLink, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
+import { LabelChip } from "../../design-system/components/tables";
 import { asAppLanguage } from "../../i18n";
+import { InLanguage } from "../../theme/InLanguage";
 import {
   folderChain,
   folderPath,
-  navLabel,
+  navLabelOf,
   navTree,
   type NavTreeNode,
 } from "./navTree";
@@ -40,10 +42,12 @@ function TreeRow({ node, depth, expanded, pathname, onToggle }: RowProps) {
   const Icon = node.icon;
   /*
     Chrome comes out of the catalogs; a node named by data carries its own
-    `{ en, he }` instead. `navLabel` is the one place that is decided — see
-    `navTree.ts`.
+    `{ en, he }` instead. `navLabelOf` is the one place that is decided — see
+    `navTree.ts` — and says when a data label fell back to English, which
+    the row then marks as English (`InLanguage`, CTA-135).
   */
-  const label = navLabel(node, (key) => t(key), asAppLanguage(i18n.language));
+  const name = navLabelOf(node, (key) => t(key), asAppLanguage(i18n.language));
+  const label = <InLanguage language={name.language}>{name.text}</InLanguage>;
   /*
     A logical inset, so depth reads as "further from the start of the line" in
     both directions: under RTL the sidebar sits on the right and the tree has to
@@ -84,6 +88,7 @@ function TreeRow({ node, depth, expanded, pathname, onToggle }: RowProps) {
               },
             }}
           />
+          {node.draft === true && <LabelChip label={t("blog.draft")} tone="warning" testId={`nav-draft-${node.id}`} />}
         </ListItemButton>
       </ListItem>
     );

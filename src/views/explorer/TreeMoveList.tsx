@@ -52,7 +52,8 @@ import MoveContextMenu, { type MoveMenuTarget } from "./MoveContextMenu";
  * share of the set is translated to plies here, once per change.
  *
  * **It is also the variations explorer** (CTA-64): given `onEditTree`, a
- * right-click on any move opens `MoveContextMenu` — promote, make main line,
+ * right-click on any move — or on the *Start position* row, whose menu edits
+ * the game's own comment and shapes (CTA-149) — opens `MoveContextMenu` — promote, make main line,
  * delete from here, copy the line's PGN — and an edit comes back out as a new
  * tree for the screen to hand its core (`replaceTree`). The seam again: a
  * numbered cell reports a ply, translated here to its mainline node. The two
@@ -151,6 +152,11 @@ function TreeMoveList({
     setMenuOpen(true);
   }, []);
 
+  const openMenuAtStart = useCallback((anchor: MenuAnchor) => {
+    setMenu({ nodeId: null, anchor });
+    setMenuOpen(true);
+  }, []);
+
   const openMenuAtPly = useCallback(
     (ply: number, anchor: MenuAnchor) => {
       const node = mainlineNodes[ply - 1];
@@ -178,6 +184,7 @@ function TreeMoveList({
       mainlineEvalsOnly
       onContextMenuPly={editable ? openMenuAtPly : undefined}
       onContextMenuNode={editable ? openMenuAtNode : undefined}
+      onContextMenuStart={editable ? openMenuAtStart : undefined}
     />
   );
 

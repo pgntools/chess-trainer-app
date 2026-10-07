@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import { ROUND_ROBIN_TIE_BREAKS, tournamentOf } from "../../../lib/tournament";
 import { expectNoAxeViolations } from "../../../test/axe";
+import { readText } from "../../../test/readText";
 import { SOFIA_GAMES } from "../../../test/fixtures/tournamentGames";
 import { CLUB_OPEN, EMPTY, HEBREW, LONG_NAMES, ONE_GAME, SOFIA } from "./fixtures";
 import SwissStandingsTable, { type SwissStandingsTableProps } from "./SwissStandingsTable";
@@ -15,7 +16,8 @@ const mount = (props: Partial<SwissStandingsTableProps> = {}) =>
 /** The glyphs of a player's round cells, left to right. */
 const glyphs = (player: string, rounds: number) =>
   Array.from({ length: rounds }, (_, index) => screen.getByTestId(`t-round-${player}-${index + 1}`).querySelector("[aria-hidden]")?.textContent);
-const names = () => screen.getAllByRole("rowheader").map((header) => header.textContent);
+// Each row by its accessible name: a title read in full, a federation by its country (CTA-128).
+const names = () => screen.getAllByRole("rowheader").map((header) => readText(header));
 
 const FIROUZJA = "12573981";
 const CHEPARINOV = "2905540";
@@ -50,11 +52,11 @@ describe("SwissStandingsTable", () => {
       mount();
       expect(names()).toEqual([
         // 2 points each: Botvinnik's opponents scored 3, Tal's 1.5 (his unfinished game counts for nothing).
-        "GM Botvinnik, Mikhail RUS",
-        "GM Tal, Mikhail LAT",
-        "IM Petrosian, Tigran ARM",
-        "GM Smyslov, Vasily",
-        "GM Keres, Paul EST",
+        "Grandmaster Botvinnik, Mikhail Russia",
+        "Grandmaster Tal, Mikhail Latvia",
+        "International Master Petrosian, Tigran Armenia",
+        "Grandmaster Smyslov, Vasily",
+        "Grandmaster Keres, Paul Estonia",
         "Newcomer, Nina",
       ]);
       expect(screen.getByTestId("t-row-1002-points")).toHaveTextContent("2.0");
@@ -65,7 +67,7 @@ describe("SwissStandingsTable", () => {
 
     it("shows the title before the name and the federation after it — each only where the tags have one", () => {
       mount();
-      const tal = within(screen.getByTestId("t-row-1001")).getByRole("rowheader", { name: "GM Tal, Mikhail LAT" });
+      const tal = within(screen.getByTestId("t-row-1001")).getByRole("rowheader", { name: "Grandmaster Tal, Mikhail Latvia" });
       expect(within(tal).getByText("Tal, Mikhail")).toHaveAttribute("dir", "auto");
       const newcomer = screen.getByTestId("t-row-Newcomer, Nina");
       expect(within(newcomer).getByRole("rowheader", { name: "Newcomer, Nina" })).toBeInTheDocument();
@@ -118,9 +120,17 @@ describe("SwissStandingsTable", () => {
       expect(within(screen.getByRole("table", { name: "Sofia Cup Rapid 2026 — standings" })).getByRole("columnheader", { name: "Round 9" })).toBeInTheDocument();
     });
 
+    it("shows a title as a chip in its tone and a federation as its flag (CTA-128)", () => {
+      mount({ tournament: SOFIA, ariaLabel: "Sofia Cup Rapid 2026 — standings", density: "dense" });
+      const first = screen.getAllByRole("rowheader")[0];
+      expect(first.querySelector("[data-tone]")).toHaveAttribute("data-tone", "warning");
+      expect(first.querySelector("[data-tone]")).toHaveAttribute("title", "Grandmaster");
+      expect(within(first).getByRole("img", { name: "France" })).toHaveAttribute("data-flag", "fr");
+    });
+
     it("puts Firouzja first on 7.5 — Buchholz 30.5, Sonneborn-Berger 22.25", () => {
       mount({ tournament: SOFIA });
-      expect(names()[0]).toBe("GM Firouzja, Alireza FRA");
+      expect(names()[0]).toBe("Grandmaster Firouzja, Alireza France");
       const row = within(screen.getByTestId(`t-row-${FIROUZJA}`));
       expect(row.getAllByRole("cell").map((cell) => cell.querySelector("[aria-hidden]")?.textContent ?? cell.textContent)).toEqual([
         "1",
@@ -153,7 +163,9 @@ describe("SwissStandingsTable", () => {
     it("keeps an unfinished game in its round", () => {
       mount({ tournament: SOFIA });
       expect(glyphs(CHEPARINOV, 9)[3]).toBe("*");
-      expect(screen.getByRole("cell", { name: "Round 4, White against Ristic, Luka: unfinished" })).toBe(screen.getByTestId(`t-round-${CHEPARINOV}-4`));
+      // Asked within the player's row: a role query over the whole 99 × 9 table names every cell (CTA-124).
+      const row = within(screen.getByTestId(`t-row-${CHEPARINOV}`));
+      expect(row.getByRole("cell", { name: "Round 4, White against Ristic, Luka: unfinished" })).toBe(screen.getByTestId(`t-round-${CHEPARINOV}-4`));
     });
   });
 
@@ -173,7 +185,7 @@ describe("SwissStandingsTable", () => {
 
     it("shows one game as two rows of one round", () => {
       mount({ tournament: ONE_GAME });
-      expect(names()).toEqual(["GM Botvinnik, Mikhail RUS", "GM Tal, Mikhail LAT"]);
+      expect(names()).toEqual(["Grandmaster Botvinnik, Mikhail Russia", "Grandmaster Tal, Mikhail Latvia"]);
       expect(glyphs("1001", 1)).toEqual(["½"]);
     });
 
@@ -205,7 +217,7 @@ describe("SwissStandingsTable", () => {
       expect(table.getByRole("columnheader", { name: "בוכהולץ" })).toBeInTheDocument();
       expect(table.getByRole("cell", { name: "סיבוב 1, בלבן מול לוי, יואב: ניצחון" })).toBeInTheDocument();
       expect(table.getByRole("cell", { name: "סיבוב 1, בשחור מול בוטבינניק, מיכאל: תיקו" })).toBeInTheDocument();
-      expect(within(table.getByRole("rowheader", { name: "GM טל, מיכאל ISR" })).getByText("טל, מיכאל")).toHaveAttribute("dir", "auto");
+      expect(within(table.getByRole("rowheader", { name: "רב-אמן טל, מיכאל ישראל" })).getByText("טל, מיכאל")).toHaveAttribute("dir", "auto");
     });
   });
 

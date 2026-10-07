@@ -1,0 +1,42 @@
+---
+title: A team event from the Library
+summary: "<CollectionTeamStandingsTable>: a team Swiss from the Library — each team linked to its players' games, each match to its first board."
+order: 110
+---
+
+The [team standings](/blog/writing-an-article/demo-tables/team) read a PGN kept beside the article. This one reads a **collection in the Library**. Each team's name links to its players' games in the collection, and each round's match to its first board on the Library's board. The example is the FIDE World Rapid Team Championship 2026, a Swiss of 48 teams over twelve rounds, which ships in the Library's Built-in folder.
+
+## How to use it
+
+1. Add the event's PGN to the [Library](/library). Its games must name their teams, in `WhiteTeam` and `BlackTeam`. Its address is shown in the address bar: `/library/<collection>`.
+2. Embed it by its address:
+
+```mdx
+<CollectionTeamStandingsTable _id="/library/worldrapidteam2026" rowsPerPage="25" />
+```
+
+A collection whose games name no teams shows a note instead of the table. For a knockout of teams, use [`<CollectionKnockoutBracket>`](/blog/writing-an-article/demo-tables/knockout-from-a-collection).
+
+## The standings, linked
+
+Select a team to open the collection filtered to all its players' games, since the Library filters by player, not by team. Select a round's board points to open that match's first board. The board's Next button steps through the match's other boards, which follow it in the file, and its back button returns here. A screen reader hears each match as in every team table, for example "Round 1 against …: 4½–1½, won". Dragon Chilling won on 18 match points, ahead of Hexamind Chess Team and Team MGD1 on board points.
+
+<CollectionTeamStandingsTable _id="/library/worldrapidteam2026" density="dense" rowsPerPage="25" />
+
+## Links off
+
+`teamLink={false}` and `gameLink={false}` leave the names and the cells as text, the table as `<TeamStandingsTable>` draws it:
+
+```mdx
+<CollectionTeamStandingsTable _id="/library/worldrapidteam2026" teamLink={false} gameLink={false} density="dense" rowsPerPage="25" />
+```
+
+## Every prop
+
+- `_id` — the collection's address, `/library/<collection>`.
+- `teamLink`, `gameLink` — the two links, on by default.
+- `density="dense"`, `rowsPerPage="25"` — as the other tables.
+
+## Source
+
+The games are from [The Week in Chess](https://theweekinchess.com) (TWIC), by Mark Crowther — the event's page, [FIDE World Rapid and Blitz Team Championships 2026](https://theweekinchess.com/chessnews/events/fide-world-rapid-and-blitz-team-championships-2026), and its PGN, [fidewrt26.pgn](https://theweekinchess.com/assets/files/pgn/fidewrt26.pgn).

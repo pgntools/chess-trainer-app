@@ -98,6 +98,8 @@ export const brownTheme: ThemeDefinition = {
       chanceBorder: "#d500f9",
     },
     book: { known: "#15781b", hovered: "#882020" },
+    // A PGN's drawn shapes keep lichess's brushes, so a study reads as it was drawn.
+    drawing: defaultChessTokens.drawing,
     // lichess's own glyph colours — the default theme's already.
     nag: defaultChessTokens.nag,
     promotion: { scrim: "rgba(22, 21, 18, 0.5)" },

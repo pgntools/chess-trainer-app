@@ -1,9 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Arrow } from "react-chessboard";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Square } from "chess.js";
+import type { Arrow, ChessboardOptions } from "react-chessboard";
 import { useTranslation } from "react-i18next";
 
 import { useChessTokens } from "../../design-system/theme";
 import type { ArrowPaletteId, ArrowWidthSource } from "../../lib/arrowSettings";
+import { brushOfKeys, shapesOf, toggleShape, type DrawnShape, type ShapeBrush } from "../../lib/boardShapes";
 import type { Score } from "../../lib/engineAnalysis";
 import {
   commentsAt,
@@ -20,6 +22,7 @@ import { maskNodeSan, type PieceMask } from "../../lib/pieceMask";
 import { playChances, playChanceOf } from "../../lib/playChance";
 import type { MapCoverage } from "../../lib/treeMap";
 import NextMovesBar from "../shared/NextMovesBar";
+import ShapeCircles from "../shared/ShapeCircles";
 import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
 import AnnotationsBar, { type CommentEditing } from "./AnnotationsBar";
 import ChanceArrows from "./ChanceArrows";
@@ -87,7 +90,14 @@ export type VariationsExplorerOptions = {
    * with no trainer to play by them (the Analysis Board, CTA-73) turns it off.
    */
   playChances?: boolean;
-  /** Show the comment block. */
+  /**
+   * Show the comment block — and **what the PGN draws** at the position on
+   * screen (CTA-143): lichess's `[%cal]` arrows and `[%csl]` circles, the
+   * other half of what the comments say. With `onEditTree` too, the reader
+   * draws them — a right-drag an arrow, a right-click a circle — into the
+   * comment, as in a lichess study. Off (a repertoire game, a test the
+   * comments would answer), neither is drawn.
+   */
   annotations?: boolean;
   /** The arrows part; absent draws none but a hovered move's. */
   arrows?: ExplorerArrowOptions;
@@ -105,6 +115,14 @@ export type VariationsExplorerOptions = {
 };
 
 const NO_ARROWS: ExplorerArrowOptions = { show: false };
+
+const NO_SHAPES = shapesOf(undefined);
+
+/** A right-drag under way: where it started, in which brush, and the square under the pointer. */
+type ShapeGesture = { from: Square; brush: ShapeBrush; over: Square };
+
+/** react-chessboard's square handlers' mouse event: the right button is 2. */
+const RIGHT_BUTTON = 2;
 
 /**
  * **The rich variations explorer, as a tree-view mode** (CTA-72) — the
@@ -175,11 +193,46 @@ export function useVariationsExplorer({
   const palette = chess.arrowPalettes[arrowOptions.palette ?? "classic"];
   const hoveredId = hovered?.id ?? null;
 
+  /*
+    What the PGN draws at the position on screen (CTA-143) — the move's
+    comments, or the game's opening one at the start (`lib/boardShapes.ts`),
+    in the theme's `chess.drawing` brushes. Drawn with the next-move arrows,
+    not instead of them, and with whatever the overlay draws.
+  */
+  const shapeComments = nodeId === null ? tree.comments : findNode(tree, nodeId)?.comments;
+  const shapes = useMemo(
+    () => (showAnnotations ? shapesOf(shapeComments) : NO_SHAPES),
+    [showAnnotations, shapeComments],
+  );
+
+  /*
+    The reader's drawing, written into the comment (CTA-143): a right-drag
+    from one square to another is an arrow, a right-click on one a circle,
+    the brush picked by the modifier keys as lichess picks it
+    (`brushOfKeys`). Each is a `setComments` edit through `onEditTree`, so a
+    shape drawn again comes off and one in another brush is recoloured
+    (`toggleShape`). The board's own right-drag arrows are switched off —
+    every shape is drawn from the comment, so none lingers in the library's
+    state once written. A board that does not edit keeps the library's
+    temporary drawing.
+  */
+  const drawsIntoComments = onEditTree !== undefined && showAnnotations;
+  const [gesture, setGesture] = useState<ShapeGesture | null>(null);
+  // A release anywhere ends the gesture; one on a square has drawn first
+  // (React's handlers run before the window's).
+  const gesturing = gesture !== null;
+  useEffect(() => {
+    if (!gesturing) return;
+    const end = () => setGesture(null);
+    window.addEventListener("mouseup", end);
+    return () => window.removeEventListener("mouseup", end);
+  }, [gesturing]);
+
   // A required move is an instruction, so it is drawn whatever the switch
   // says. Where the chances or a width source size the arrows, the library
   // arrows stand down entirely — colour is the only thing `options.arrows`
   // can vary per arrow — and the overlay draws them instead.
-  const arrows: Arrow[] =
+  const moveArrows: Arrow[] =
     arrowOptions.required !== undefined
       ? arrowOptions.required.map((node) => ({
           startSquare: node.from,
@@ -193,11 +246,31 @@ export function useVariationsExplorer({
           : hovered !== null
             ? nextMoveArrowsOf([hovered], hovered.id, palette)
             : [];
+  // The PGN's arrows on top, and the one being drawn on top of those; where
+  // two land on the same squares, the later one is drawn.
+  const drawn: Arrow[] = shapes.arrows.map(({ brush, from, to }) => ({
+    startSquare: from,
+    endSquare: to,
+    color: chess.drawing[brush],
+  }));
+  if (gesture !== null && gesture.over !== gesture.from) {
+    drawn.push({ startSquare: gesture.from, endSquare: gesture.over, color: chess.drawing[gesture.brush] });
+  }
+  const arrows: Arrow[] =
+    drawn.length === 0
+      ? moveArrows
+      : [...moveArrows, ...drawn].filter(
+          (arrow, index, all) =>
+            !all.some(
+              (later, at) =>
+                at > index && later.startSquare === arrow.startSquare && later.endSquare === arrow.endSquare,
+            ),
+        );
 
   // The play-chance arrows themselves, over the board: white with a magenta
   // border, the wider the likelier the move (CTA-71). Or the width source's,
   // in the palette's colours, an untagged move gray (CTA-98).
-  const overlay =
+  const chanceOverlay =
     chances !== undefined ? (
       <ChanceArrows
         testId={`${testId}-chance-arrows-overlay`}
@@ -224,6 +297,20 @@ export function useVariationsExplorer({
         orientation={source.orientation}
       />
     ) : null;
+  // The PGN's circles, over the board with the chance arrows (CTA-143).
+  const overlay =
+    shapes.circles.length === 0 ? (
+      chanceOverlay
+    ) : (
+      <>
+        {chanceOverlay}
+        <ShapeCircles
+          circles={shapes.circles}
+          orientation={source.orientation}
+          testId={`${testId}-shape-circles`}
+        />
+      </>
+    );
 
   /*
     What the PGN says at the position on screen (CTA-69), and its editing:
@@ -283,6 +370,27 @@ export function useVariationsExplorer({
             editComments(nodeId, kind, (list) => list.filter((_, at) => at !== index)),
         };
 
+  const drawShape = (shape: DrawnShape) =>
+    editComments(nodeId, "comments", (list) => toggleShape(list, shape));
+  const boardOptions: ChessboardOptions = drawsIntoComments
+    ? {
+        allowDrawingArrows: false,
+        onSquareMouseDown: ({ square }, event) => {
+          if (event.button !== RIGHT_BUTTON) return;
+          setGesture({ from: square as Square, brush: brushOfKeys(event), over: square as Square });
+        },
+        onMouseOverSquare: ({ square }) =>
+          setGesture((current) =>
+            current === null || current.over === square ? current : { ...current, over: square as Square },
+          ),
+        onSquareMouseUp: ({ square }, event) => {
+          if (event.button !== RIGHT_BUTTON || gesture === null) return;
+          setGesture(null);
+          drawShape({ brush: gesture.brush, from: gesture.from, to: square as Square });
+        },
+      }
+    : {};
+
   return {
     moves: (
       <TreeMoveList
@@ -335,5 +443,6 @@ export function useVariationsExplorer({
     ),
     arrows,
     overlay,
+    boardOptions,
   };
 }

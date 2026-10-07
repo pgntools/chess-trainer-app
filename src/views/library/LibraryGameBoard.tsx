@@ -40,6 +40,7 @@ import type { PlayerPlates } from "../shared/PlayerPlate";
 import { playerResultsOf } from "../shared/playerResults";
 import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
 import { usePageTitle } from "../main/pageTitle";
+import { useUnsavedWorkGuard } from "../main/unsavedWork";
 
 /**
  * **A Library game** (`/library/<collection>/<game>`, CTA-75) — a game of a
@@ -49,7 +50,7 @@ import { usePageTitle } from "../main/pageTitle";
  *
  * | Capability | Taken |
  * | --- | --- |
- * | Base + engine + Play + baseline | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (on), `usePlayToggle` (off at the start) |
+ * | Base + engine + Play + baseline | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (off until switched on), `usePlayToggle` (off at the start) |
  * | Tree view | `useVariationsExplorer` — Moves, Map, the comment block, the next-moves bar, the arrows, the move menu; editing on, *Play chances…* off |
  * | Shell | `BoardShell` / `BoardPanel` — tabs Moves (with the next-move arrows' switch) · Map · Info · Export · Engine |
  *
@@ -143,7 +144,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
     arrows: { show: showArrows },
     map: { addedIds: session.extensionIds, linked: true },
   });
-  const boardOptions: ChessboardOptions = { arrows: explorer.arrows };
+  const boardOptions: ChessboardOptions = { ...explorer.boardOptions, arrows: explorer.arrows };
   const topLine = engine.analysis.lines.find((line) => line !== undefined);
 
   /* `?at=`, written back with history replace — keeping the route's state (the table's URL). */
@@ -157,12 +158,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
   }, [linkedAt, searchParams, setSearchParams, location.state]);
 
   // Leaving with changes unsaved — a reload, a closed tab — asks first.
-  useEffect(() => {
-    if (!session.changed) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [session.changed]);
+  useUnsavedWorkGuard(session.changed);
 
   const from = (location.state as { from?: string } | null)?.from;
   const tablePath = from ?? `/library/${encodeURIComponent(collection.id)}`;

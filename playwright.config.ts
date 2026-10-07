@@ -12,7 +12,14 @@ import { BASE_URL, PORT, REPORT_DIR, STATE_PATH } from "./e2e/a11y/env";
   matrix. The reports (the HTML one, the JSON results and this pass's own
   summary, which also fails the run on a stale allowlist entry) land in
   `a11y-report/`.
+
+  `A11Y_CHROMIUM` runs the pass on a Chromium already on the machine instead
+  of Playwright's own download — a cloud container whose pre-installed
+  browser is an older build than this Playwright expects, and whose network
+  will not fetch the new one (`A11Y_CHROMIUM=/opt/pw-browsers/chromium`).
+  Unset, nothing changes.
 */
+const chromium = process.env.A11Y_CHROMIUM;
 export default defineConfig({
   testDir: "./e2e/a11y",
   outputDir: "./a11y-report/traces",
@@ -40,6 +47,7 @@ export default defineConfig({
     trace: "retain-on-failure",
     // A desktop window, wide enough for the shell's sidebar, the board and its panel.
     viewport: { width: 1440, height: 900 },
+    ...(chromium !== undefined && chromium !== "" && { launchOptions: { executablePath: chromium } }),
   },
   projects: [
     // Puts the seed in through the app's own Import and keeps the browser's
@@ -48,8 +56,18 @@ export default defineConfig({
     {
       name: "a11y",
       testMatch: /\.spec\.ts$/,
+      testIgnore: /static\.spec\.ts$/,
       dependencies: ["setup"],
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, storageState: STATE_PATH },
+    },
+    // The pre-rendered pages without the app (CTA-136): what a crawler and a
+    // link preview read. The spec blocks every script the page loads; the
+    // browser's own scripting stays on, because axe runs in it (with it off,
+    // axe's timers never fire). Nothing to seed — no script reads a store.
+    {
+      name: "static",
+      testMatch: /static\.spec\.ts$/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
     },
   ],
   webServer: {

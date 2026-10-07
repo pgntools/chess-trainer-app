@@ -61,6 +61,7 @@ their demos run on made-up data.
 | `DataTable` | a multi-column table: columns as data, controlled sort and paging, picks with select-all, row actions, row click and link, loading / empty / no-match rows, a row's note across the columns, sections closed by a bolder line, filter and toolbar slots, density, a sticky header — good at 10,000 rows | [`sections/patterns/tables.md`](./sections/patterns/tables.md) |
 | `StandingsTable` | a Swiss tournament's standings: a row per competitor in rank order, one cell per round showing the result only (`ResultMark`: `1`, `½`, `0`, `*`, a dash), the points and tie-break columns that are data — every row shown, the frame scrolling both ways (CTA-120) | [`sections/patterns/tables.md`](./sections/patterns/tables.md#standingstable) |
 | `CrossTable` | a round robin's crosstable: a row and a column per competitor, every result between two in the cell where they meet, the diagonal blank, the points and the tie-break columns — real row and column headers (CTA-120) | [`sections/patterns/tables.md`](./sections/patterns/tables.md#crosstable) |
+| `Bracket` | a knockout's bracket: a column per round, a box per match — two sides, each a name, a score and a muted detail, the side that went through bold and marked — each match read by its words; a named region that scrolls sideways (CTA-128) | [`sections/patterns/tables.md`](./sections/patterns/tables.md#bracket) |
 | `TreeView` | a collapsible tree: branches that open in place, leaves that link or select, the node on screen marked, a branch that can also be a destination — the sidebar's look | [`sections/patterns/trees.md`](./sections/patterns/trees.md) |
 | `UploadPanel` | a file button and a paste box over one text, with a line under them for what was read (CTA-113) | [`sections/patterns/forms.md`](./sections/patterns/forms.md) |
 
@@ -96,38 +97,74 @@ in the gallery, whichever module it serves.
 | `PlayedGamesTable` | tables | The Lobby's games (`PlayedGameRow`) as a `DataTable`: sorted by `lib`'s `sortedPlayedGames`, a pick per row with select-all, Analysis / Continue row actions named by the row (`whenPlayed`), an unreadable record's row saying so (CTA-109). |
 | `StorageTable` | tables | Settings → Storage's two read-only `DataTable`s: the browser's estimates, then the reader's records per category with each database's section closed by a bolder line (CTA-109). |
 | `EngineSettingsForm` | forms | The engine's settings — strength, depth, move time, lines, threads, hash, the eval bar — each option-backed slider rendered from what the running engine declared (`engineOptionState`: absent, pinned, adjustable). Play with Engine's and Masked Pieces' Engine tab, the Lobby's new-game form (CTA-109). |
+| `EnginePicker` | forms | Settings → Engine's list: a radio per registered engine (`EngineEntry`: its `EngineDescriptor` and whether this page can run it) with its name, version, threading and how its strength is set; an engine the host cannot run is disabled and **says why** (CTA-153). |
 | `PlayedGamesFilters` | forms | The Lobby's filter row: the side the reader played (`SideToggle` with "all") and the opening each game reached (CTA-109). |
 | `MaskEditor` | forms | Masked Pieces' Masking tab: the presets, the twelve per-type selects (each its own colour's six types), the notation and engine-lines switches (`PieceMask`, CTA-109). |
 | `ExportCategoriesForm` | forms | Settings → Export's categories (`ExportSelection`), each with its count, and the shipped collections' box (CTA-109). |
 | `ImportDialog` | dialogs | Settings → Import's choice dialog over an `ImportDump` and `ImportCurrent`: categories, Merge / Override / Skip per category and per folder (`RadioGroupField`), the preview and the caps, re-planned on every change; writes nothing (CTA-109). |
+| `DevelopmentNoticeDialog` | dialogs | The app is still in development (CTA-155): a modal with the app's words and one Dismiss; whether it is open is a prop, the shell keeps the dismissal for the session. |
 | `IncompatibleImportDialog` | dialogs | A zip that cannot be imported (`ImportProblem`): what is wrong, where each kind of PGN comes in by hand (`LinkTarget`s), the zip's `.pgn` files (CTA-109). |
 | `ImportReport` | panels | What an import did (`ImportResults`): a line per category, an `InlineAlert` that is a success or a warning (CTA-109). |
 | `FolderTree` | trees | The app's one nested-folder model (`GameFolder`, `lib/savedGameFolders.ts`) as a `TreeView`: each folder a destination with a count, its chevron its own button, an optional "everything" row. The second tree view the app has, after the sidebar's. |
+| `AnalysesTree` | trees | The Saved analyses list's tree beside the Analysis Board (CTA-145): the folders (`GameFolder`) nested and collapsible with the analyses (`SavedAnalysisRow`) in them, rooted at the folder the board was opened from, names wrapped whole, the open one current, a filter box that narrows it by words (the list's rule, branches left open), a Close that links back to the list, a fold to a rail, the others disabled while the board holds unsaved changes, a page per folder and "show more". `analysesTreeNodes` builds the `TreeView`'s nodes. The screen puts it in the board's own left panel (`views/main/boardLeftPanel.tsx`), or a drawer under the shell's breakpoint. |
 
 CTA-113 moved the rest of the app onto blocks:
 
 | Block | Family | What it is |
 | --- | --- | --- |
-| `CollectionsTreeTable` | tables | The Library home's details view — Built-in, the reader's folders and their collections (`LibraryEntry`, `FolderTreeRow`) as `DataTable` tree rows: Name, Games, Added, the row actions (`FolderActions` for a folder). |
+| `CollectionsTreeTable` | tables | The Library home's details view — Built-in, the reader's folders and their collections (`LibraryEntry`, `FolderTreeRow`) as `DataTable` tree rows: Name, Games, Added, the row actions (`FolderActions` for a folder); a collection that reads as a tournament a trophy, its name read with "Tournament", one that could be (never marked, its games one event) a warning link first among its actions, its tooltip saying why (CTA-142). |
 | `CollectionGamesTable` | tables | A collection's games (`CollectionRow`) as a `DataTable`: the twelve columns sorted by `sortedRows`, picks with select-all over every game the filters leave, the White cell the row's link, an unreadable game marked. |
-| `SavedAnalysesList`, `RepertoiresList` | lists | The saved lists: folders and records as rows or cards, picks, the settings link, a board preview on a card; `savedListView.ts` the view choice. |
+| `SavedAnalysesTable` | tables | The saved analyses and their folders as one tree table (`AnalysisTreeRow`, `lib/savedAnalysisRows.ts`'s `analysisTreeRows`) on `DataTable`'s tree rows — the list view since CTA-144: folders first at every level, opened in place, their names links into them, their actions, no pick; an analysis' Name (the row's link, its description under it), White, Elo, Black, Elo, Result, Date, Event, Round, ECO, Opening, Moves, Updated, each a sort header over rows the screen orders (`sortedAnalysisRows`); picks with select-all over the rows the filter leaves, the settings gear, an unreadable record's row saying so, and a no-match row with its Clear. |
+| `SavedAnalysesList`, `RepertoiresList` | lists | The saved lists: folders and records as rows or cards (the analyses' list view is the `SavedAnalysesTable` since CTA-144, this block their cards), picks, the settings link, a board preview on a card; `savedListView.ts` the view choice. |
 | `FolderActions`, `FolderPicker` | lists | A folder's row actions (new, upload, download, rename, move, delete); the flat folder chooser over `PickerList`. |
 | `OpeningBookList` | lists | The Openings explorer's Book tab: eco.json's continuations (`KnownMoveOpening`) as a named list of buttons, the pointed or focused one reported. |
 | `FolderNameDialog`, `FolderMoveDialog`, `FolderDeleteDialog` | dialogs | The three folder trees' dialogs, their words as `labels`. |
 | `CollectionImportDialog`, `OpeningTreePgnDialog` | dialogs | The Library's import options (what came in, the Elo / date / player filters, the count) and *Save tree as PGN*'s choice. |
+| `SaveAsCollectionDialog` | dialogs | The collection table's *Save as collection* (CTA-122): the derived name to edit, the count under it, a busy state and a problem slot — the write is the screen's. |
 | `AnalysisEngineForm`, `ArrowSettingsFields` | forms | Every board's Engine tab; the Analysis Board's Arrows tab. |
 | `PgnInput`, `FenInput`, `PositionFields` | forms | A PGN from a file or a paste (over `UploadPanel`), a FEN, the position editor's fields. |
 | `MergeSplitChoice`, `CollectionFilters` | forms | A several-games text's merge or split; a collection's filter panel. |
+| `CollectionSettingsForm` | forms | A collection's settings (CTA-121): the title, the description, and the tournament mark — a `SwitchField` off with its reason while the games do not share one `Event`, the type the games look like (`TournamentSuggestion`, CTA-142), then the formats as radios (every one selectable, Arena's label saying it has no standings table yet) with each one's description under the group. |
+| `TournamentMarkFields` | forms | A collection's tournament mark as fields (`CollectionTournament`, CTA-142 — taken out of `CollectionSettingsForm` so the import popup asks it too): the switch, off with its reason where the games do not share one `Event`; the type the games look like (`TournamentSuggestion`); the formats as radios, Arena's saying it has no standings table yet, each one's description. |
+| `TournamentSuggestion` | forms | The tournament type a collection's games look like (`TournamentGuess`, `lib/tournamentKind.ts`, CTA-142): the format named in the settings' words with its reason, localized from the guess's facts, and an Apply that puts it in the draft — off, with "press Save", once the draft holds it; with `onDismiss`, a close button (the games table's, which marks at once). |
 | `PgnExportPanel`, `GameInfo`, `CurrentOpening`, `ChangesStrip` | panels | Every board's Export and Info tabs, the opening line, the Update / Save as copy / Discard strip. |
 | `PlayToggleButton`, `EngineThinking` | panels | Play's header button and the engine's thinking line. |
 
-CTA-120 built the tournament tables ahead of their screen — only the gallery
-shows them yet:
+CTA-120 built the tournament tables ahead of their screen; their first
+consumer is the Blog (CTA-128), through the MDX embeds `<SwissStandingsTable>`
+and `<RoundRobinCrossTable>` (`views/home/frontPage/`) in its *Tournaments*
+articles. CTA-128 added the other formats' — a knockout's bracket, a match,
+a team event's standings — embedded the same way:
 
 | Block | Family | What it is |
 | --- | --- | --- |
 | `SwissStandingsTable` | tables | A Swiss tournament's standings (`Tournament`, `lib/tournament.ts`) as a `StandingsTable`: the title before the name and the federation after it, the rating, a result per round named by its round, colour and opponent, the points, and the tie-breaks the tournament was ranked by (Buchholz, Sonneborn-Berger). `*` is an unfinished game, a dash a round the file holds no game of. |
 | `RoundRobinCrossTable` | tables | A round robin's crosstable (`Tournament` ranked with `ROUND_ROBIN_TIE_BREAKS`) as a `CrossTable`: every game between two players in round order (`gamesBetween`) — two in a double round robin — then the points and Sonneborn-Berger. |
+| `KnockoutBracket` | tables | A knockout's bracket (`Knockout`, `lib/knockout.ts`, CTA-128) as a `Bracket`: a column per round, a box per match — each side's title, name and score (tiebreak games counted; a team knockout's legs won, its board points muted beside them), the side that went through marked and said in words. A plain knockout's last rounds are named as they halve to the final; a double elimination is two brackets, the winners' over the losers', each named. |
+| `MatchTable` | tables | A match between two players (`Match`, `lib/match.ts`, CTA-128) as a `StandingsTable`: two rows, the leader first, a column per game — the result for its row's player, read with the game, the colour and the opponent — and the score, halves as `½`. |
+| `TeamStandingsTable` | tables | A team tournament's standings (`TeamTournament`, `lib/teamTournament.ts`, CTA-128) as a `StandingsTable`: a row per team, its flag where its players share a federation, a round's cell its board points in that match (`ResultMark`'s own `glyph`), toned as the match went and read with the opponent and the score both ways, then the match points and the board points it is ranked by. |
+| `ParticipantsTable` | tables | A tournament's players (`Participant`, `lib/tournamentParticipants.ts`, CTA-142) as a sortable `DataTable`: the standings' rank, the player (title chip, name — a link to their games — and flag), a team event's team, the rating, the points, the games, W / D / L and the performance (a dash where none). The Library's tournament view's Participants tab. |
+| `TopPlayers` | panels | A tournament's standouts under the heading "Statistics" (`TopPlayers`, `topPlayersOf`, CTA-142): the best score, performance, most wins and longest unbeaten run, a card each naming the player and the figure; one no one reached left out. The tournament view's Participants tab puts it in the right-hand panel. |
+| `TeamRosters` | lists | A team event's teams (`TeamRoster`: `teamTournamentOf`'s standing and `teamPlayersOf`'s names, CTA-142) as lines, one on top of the next — narrow enough for a side panel: each team's flag, name, and its match and board points at the line's end (abbreviated, read in full), its players small under it, every name a link. |
+| `TournamentInfo` | cards | A tournament's event at a glance (`TournamentFacts`, CTA-142): the reader's description, then the type, event, site, dates, rounds and counts its games give, as a `KeyValueList` under its own heading. The Library's tournament view's Info tab. |
+
+Every tournament block shows a player's **title as a chip** — a
+`LabelChip` in its tone (GM and WGM gold, IM and WIM blue, FM and WFM
+green, CM and WCM purple, any other title the primary colour), read in full
+("Grandmaster") — and the **federation as a flag** (`Flag`, from the
+`WhiteCountry` / `BlackCountry` tag through `lib/federations.ts`, named in the
+reader's language), the tag's letters its fallback where there is no flag
+(CTA-128, `blocks/tables/tournamentTable.ts`: `titleBadgeOf`,
+`federationFlag`, `playerMarks`). And every table among them takes the
+optional `paging` its pattern does. The Swiss standings, the crosstable and
+the match table also take optional `playerLink(player)` and `gameLink(game)`
+(`TournamentLinks`): a name, and each result, as a link — the Blog's
+`<CollectionTournamentTable>` sends them into a Library collection. So do
+`KnockoutBracket` (`playerLink`, and `gameLink` — each match's games, a team
+match's legs, as a row of links under it, `Bracket`'s `games`) and
+`TeamStandingsTable` (`teamLink`, and `gameLink` — a round's match to its
+first board), for `<CollectionKnockoutBracket>`,
+`<CollectionDoubleEliminationBracket>` and `<CollectionTeamStandingsTable>`.
 
 How a module migrates — the order of work, what each old pattern became, the
 findings — is [`migration.md`](./migration.md).
@@ -301,7 +338,7 @@ that keeps these rules gives every screen composed from it the same.
 | **Big enough to hit** | Every pointer target at least 24 × 24 CSS px (WCAG 2.5.8): the theme floors every icon button at `MIN_TARGET_PX`; never shrink a control's padding below it. | `theme/accessibility.test.tsx` |
 | **Readable** | Colours only from the theme, whose tokens are measured: text 4.5:1, a control's border and the focus ring 3:1. A colour a component needs that no token has is a new token, not a literal. | `themes/contrast.test.ts`; `tierConventions.ts` (no literal) |
 | **Still** | Motion through the theme — `theme.transitions.create(…)`, never a literal `transition` — so a reader who asks for reduced motion gets none. | `theme/accessibility.test.tsx` |
-| **Clean under axe** | Every gallery demo passes axe's WCAG 2.2 A / AA rules under every theme, scheme and direction — so every state a demo shows is audited. jsdom cannot measure colour or size, so those two rules are off there; the rows above cover them, and the next row measures them. | `gallery/everyTheme.test.tsx`, `views/dev/design/Main.test.tsx` (`expectNoAxeViolations`, `src/test/axe.ts`) |
+| **Clean under axe** | Every gallery demo passes axe's WCAG 2.2 A / AA rules under every theme, scheme and direction — so every state a demo shows is audited. jsdom cannot measure colour or size, so those two rules are off there; the rows above cover them, and the next row measures them. | the gallery's axe matrix, `src/test/galleryMatrix/` (`expectNoAxeViolations`, `src/test/axe.ts`) — `yarn test:gallery`, nightly (CTA-123) |
 | **Checked in a browser** (CTA-116) | Every shipped route, seeded, passes axe's WCAG 2.2 A / AA rules **with colour contrast and target size on**, with no console error, the document reading right to left under Hebrew and every board left to right — under every theme × scheme × language, against the production build. The known gaps are one allowlist that fails when an entry stops occurring. Reflow at 320 px is measured. | `yarn test:a11y` (`e2e/a11y/`, [`browser-a11y.md`](../../.claude/rules/browser-a11y.md)) |
 | **Linted** | `eslint-plugin-jsx-a11y`'s recommended rules. A rule disabled on a line says why, and `ACCESSIBILITY.md` lists it. | `yarn lint` |
 

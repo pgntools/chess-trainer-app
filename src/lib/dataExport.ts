@@ -3,11 +3,11 @@ import { strToU8, zipSync } from "fflate";
 import type { AnalysisSettings } from "./analysisSettings";
 import type { ArrowPaletteId, ArrowWidthSource } from "./arrowSettings";
 import type { EngineSettings } from "./engineSettings";
-import type { CollectionSummary } from "./libraryCollections";
+import type { CollectionSummary, TournamentFormat } from "./libraryCollections";
 import { splitPgnGames } from "./pgn";
 import { isoDate, pgnFileOf } from "./pgnExport";
 import { slugify } from "./pgnText";
-import type { PlayedGame, PlayedGameMask } from "./playedGames";
+import type { PlayedGame, PlayedGameEngine, PlayedGameMask } from "./playedGames";
 import type { RepertoireSettings } from "./repertoireSettings";
 import type { SavedAnalysis } from "./savedAnalyses";
 import { analysisFolderPath, type AnalysisFolder } from "./savedAnalysisFolders";
@@ -61,7 +61,7 @@ import type { RepertoireStats, SavedRepertoire } from "./savedRepertoires";
  * misread — and every bump brings a migration from the version before it
  * (`lib/dataImport.ts`'s `MANIFEST_MIGRATIONS`), so an older zip still imports.
  */
-export const EXPORT_FORMAT_VERSION = 1;
+export const EXPORT_FORMAT_VERSION = 2;
 
 /** What the manifest calls itself — how an import tells it from any other JSON. */
 export const EXPORT_FORMAT = "chessapp-export";
@@ -106,6 +106,8 @@ type PlayedGameEntry = Placed & {
   path: readonly string[];
   resigned?: "white" | "black";
   mask?: PlayedGameMask;
+  /** The engine that played it (CTA-153); absent for a game from before. Additive: an older reader ignores it. */
+  engine?: PlayedGameEngine;
   savedAt: string;
   updatedAt: string;
 };
@@ -153,6 +155,10 @@ type ExportFileEntry =
          * which is always in Built-in.
          */
         folderPath?: readonly string[];
+        /** The reader's own description (CTA-121). Absent for none, and on a v1 manifest. */
+        description?: string;
+        /** The tournament mark (CTA-121). Absent for off, and on a v1 manifest. */
+        tournament?: { enabled: boolean; type: TournamentFormat };
       };
     }
   | {
@@ -247,6 +253,7 @@ const playedGameEntry = (game: PlayedGame, place: Placed): PlayedGameEntry => ({
   path: game.path,
   ...(game.resigned === undefined ? {} : { resigned: game.resigned }),
   ...(game.mask === undefined ? {} : { mask: game.mask }),
+  ...(game.engine === undefined ? {} : { engine: game.engine }),
   savedAt: game.savedAt,
   updatedAt: game.updatedAt,
 });
@@ -385,6 +392,9 @@ export const buildExport = (
           source: summary.source,
           games: kept.length,
           ...(place.names === undefined ? {} : { folderPath: place.names }),
+          // The reader's own words on it (CTA-121): the description and the tournament mark, when there are any.
+          ...(summary.description === undefined ? {} : { description: summary.description }),
+          ...(summary.tournament === undefined ? {} : { tournament: { ...summary.tournament } }),
         },
       });
     }

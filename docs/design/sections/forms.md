@@ -64,7 +64,8 @@ Gallery: `/dev/design/forms`.
 
 - **Purpose** — a labelled slider: the label at the start, the value at the end
   (`dir="ltr"`), the slider under it, dimmed while off — its notice never
-  (CTA-109: a dimmed warning caption fell to 2.5:1).
+  (CTA-109: a dimmed warning caption fell to 2.5:1), nor its header
+  (CTA-142: the dimmed value fell to 4.0:1).
 - **Props** — `label`, `value`, `onChange(number)`, `min`, `max`, `step?`,
   `valueLabel?`, `notice?` (a warning caption), `disabled?`, `testId` (the
   parts `-value`, `-input`, `-notice`).
@@ -169,11 +170,13 @@ Gallery: `/dev/design/forms`.
   it (as `SelectField`'s), a caption that describes it, an invalid state.
 - **Props** — `label`, `value`, `onChange(text)`, `helperText?`, `error?`,
   `placeholder?`, `dir?: "ltr" | "auto"` (machine words, or a reader's own),
-  `disabled?`, `id?`, `testId` (the input).
+  `disabled?`, `id?`, `multiline?` (two to six lines, spell-checked — CTA-135),
+  `type?: "text" | "number" | "date"` (the value still a string, `""` for
+  none — CTA-135), `testId` (the input).
 - **Variations** — a reader's words; machine words with a caption and a
-  placeholder; invalid; disabled.
+  placeholder; invalid; disabled; several lines; a number; a date.
 - **Replaces** — nothing yet: the theme editor's ids, names, font stacks and
-  sizes. A screen's bare `TextField` for one line of words can move onto it.
+  sizes, and the MDX editor's Metadata form (CTA-135). A screen's bare `TextField` for one line of words can move onto it.
 
 ## CTA-113 additions
 

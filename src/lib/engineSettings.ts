@@ -16,11 +16,19 @@
  */
 
 import { MAX_VARIATIONS_OFFERED } from "./engineAnalysis";
+import type { EngineOption } from "./engineTypes";
 
 /** The engine knobs the settings tab drives. */
 export type EngineSettings = {
-  /** UCI `Skill Level`, 0–20. The only strength control this build has. */
+  /** UCI `Skill Level`, 0–20. The strength control of a build that declares no `UCI_Elo` (the 2019 one). */
   skillLevel: number;
+  /**
+   * UCI `UCI_Elo` — the strength control of a build that declares it with
+   * `UCI_LimitStrength` (the Stockfish 19 builds, CTA-153); where it does not,
+   * this is carried and never sent. A request like the rest: the engine module
+   * clamps it to the bounds the running build declared (1320–3190 there).
+   */
+  elo: number;
   /** Plies per search. */
   depth: number;
   /** UCI `MultiPV` — how many lines the Variations tab shows. */
@@ -37,6 +45,8 @@ export type EngineSettings = {
 
 export const DEFAULT_ENGINE_SETTINGS: EngineSettings = {
   skillLevel: 10,
+  // About what Skill Level 10 plays at (`approximateElo`), so the two defaults agree.
+  elo: 2100,
   depth: 14,
   multiPv: 3,
   moveTimeMs: 1000,
@@ -55,6 +65,8 @@ export const DEFAULT_ENGINE_SETTINGS: EngineSettings = {
  */
 export const ENGINE_SETTING_BOUNDS = {
   skillLevel: { min: 0, max: 20 },
+  // What the Stockfish 19 builds declare for `UCI_Elo`; the running build's own range replaces it.
+  elo: { min: 1320, max: 3190 },
   depth: { min: 1, max: 24 },
   moveTimeMs: { min: 0, max: 10000 },
   multiPv: { min: 1, max: MAX_VARIATIONS_OFFERED },
@@ -69,16 +81,40 @@ export const ENGINE_SETTING_BOUNDS = {
  */
 export const SETTING_UCI_OPTION = {
   skillLevel: "Skill Level",
+  elo: "UCI_Elo",
   multiPv: "MultiPV",
   threads: "Threads",
   hashMb: "Hash",
 } as const satisfies Partial<Record<keyof EngineSettings, string>>;
 
-/** The option-backed settings as the engine module takes them — UCI name → requested value. */
+/** The check option that makes `UCI_Elo` the strength — `Skill Level` is ignored while it is on. */
+export const LIMIT_STRENGTH_OPTION = "UCI_LimitStrength";
+
+/**
+ * Whether the running engine takes its strength as an **Elo** (CTA-153): it
+ * declares both `UCI_Elo` and `UCI_LimitStrength`. Read off what it declared,
+ * never off its name — the same three-state rule as every other knob
+ * (`.claude/rules/chessboard.md` §4.1): an engine without them (the 2019
+ * build) is strengthened by `Skill Level` alone.
+ */
+export const usesEloStrength = (engineOptions: ReadonlyMap<string, EngineOption>): boolean =>
+  engineOptions.has(SETTING_UCI_OPTION.elo) && engineOptions.has(LIMIT_STRENGTH_OPTION);
+
+/**
+ * The option-backed settings as the engine module takes them — UCI name → requested value.
+ *
+ * Both strength controls are requested and the engine keeps the one it has:
+ * `UCI_LimitStrength` is asked on, which an engine that has `UCI_Elo` turns
+ * into "play at that Elo" (and ignores `Skill Level`), and an engine without
+ * them drops both names (`UciEngine.setOption`), leaving `Skill Level` to
+ * decide. The check is written as `1`; `UciEngine` puts it on the wire as `true`.
+ */
 export const uciOptionsOf = (
   settings: Pick<EngineSettings, keyof typeof SETTING_UCI_OPTION>,
 ): Record<string, number> => ({
   [SETTING_UCI_OPTION.skillLevel]: settings.skillLevel,
+  [SETTING_UCI_OPTION.elo]: settings.elo,
+  [LIMIT_STRENGTH_OPTION]: 1,
   [SETTING_UCI_OPTION.multiPv]: settings.multiPv,
   [SETTING_UCI_OPTION.threads]: settings.threads,
   [SETTING_UCI_OPTION.hashMb]: settings.hashMb,
@@ -96,11 +132,13 @@ export const withClampedUciOptions = <T extends Pick<EngineSettings, keyof typeo
   const next: T = {
     ...current,
     skillLevel: clamped[SETTING_UCI_OPTION.skillLevel] ?? current.skillLevel,
+    elo: clamped[SETTING_UCI_OPTION.elo] ?? current.elo,
     multiPv: clamped[SETTING_UCI_OPTION.multiPv] ?? current.multiPv,
     threads: clamped[SETTING_UCI_OPTION.threads] ?? current.threads,
     hashMb: clamped[SETTING_UCI_OPTION.hashMb] ?? current.hashMb,
   };
   return next.skillLevel === current.skillLevel &&
+    next.elo === current.elo &&
     next.multiPv === current.multiPv &&
     next.threads === current.threads &&
     next.hashMb === current.hashMb
@@ -142,6 +180,8 @@ export const engineSettingsFrom = (value: unknown): EngineSettings => {
 
   return {
     skillLevel: finiteNumber(row.skillLevel, DEFAULT_ENGINE_SETTINGS.skillLevel),
+    // A record from before the Elo request has none: the default stands.
+    elo: finiteNumber(row.elo, DEFAULT_ENGINE_SETTINGS.elo),
     depth: finiteNumber(row.depth, DEFAULT_ENGINE_SETTINGS.depth),
     multiPv: finiteNumber(row.multiPv, DEFAULT_ENGINE_SETTINGS.multiPv),
     moveTimeMs: finiteNumber(row.moveTimeMs, DEFAULT_ENGINE_SETTINGS.moveTimeMs),
@@ -157,6 +197,7 @@ export const sameEngineSettings = (
   b: EngineSettings,
 ): boolean =>
   a.skillLevel === b.skillLevel &&
+  a.elo === b.elo &&
   a.depth === b.depth &&
   a.multiPv === b.multiPv &&
   a.moveTimeMs === b.moveTimeMs &&

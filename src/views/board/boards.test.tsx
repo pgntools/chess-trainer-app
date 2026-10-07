@@ -39,6 +39,9 @@ vi.mock("../../lib/openings", async (importOriginal) => {
 });
 
 import { boardOptions, FakeEngine } from "./boardTestHarness";
+import { storeEngineId } from "../../lib/engineChoice";
+import type { EngineDescriptor, EngineHandle } from "../../lib/engineTypes";
+import { registerEngine } from "../../lib/engines";
 import { loadPlayedGames, playedGamesSnapshot } from "../../lib/playedGameStore";
 import AnalysisBoard from "../tools/analysis/AnalysisBoard";
 import PlayWithEngine from "../engine/play/PlayWithEngine";
@@ -68,14 +71,16 @@ const BOARDS: readonly {
   Screen: () => ReactNode;
   /** Whether the pinned engine lines show from the start — all but Masked Pieces. */
   linesShown?: false;
+  /** Whether the engine's switch starts off (CTA-148) — every board on `useAnalysisSession`. */
+  engineOff?: true;
 }[] = [
   // Analysis v2 shipped as the Analysis Board (CTA-73); it stays in the set.
-  { name: "Analysis Board", id: "analysis", Screen: AnalysisBoard },
+  { name: "Analysis Board", id: "analysis", Screen: AnalysisBoard, engineOff: true },
   // Play with Engine, a v2 screen since CTA-74.
   { name: "Play with Engine", id: "play-with-engine", Screen: PlayWithEngine },
-  { name: "Library game", id: "library-game", Screen: LibraryGame },
+  { name: "Library game", id: "library-game", Screen: LibraryGame, engineOff: true },
   // The Openings explorer (CTA-78), in Openings v2's place.
-  { name: "Openings explorer", id: "openings", Screen: OpeningsBoard },
+  { name: "Openings explorer", id: "openings", Screen: OpeningsBoard, engineOff: true },
   // Masked Pieces (CTA-79): Play with Engine's screen in a costume — its
   // engine lines wait behind a switch.
   { name: "Masked Pieces", id: "masked-play", Screen: MaskedPlay, linesShown: false },
@@ -104,6 +109,12 @@ const drag = (from: string, to: string) => {
   });
   return accepted;
 };
+
+/** Switch a board's engine — on, for a board that starts with it off (CTA-148). */
+const toggleEngine = (id: string) =>
+  act(() => {
+    screen.getByTestId(`${id}-setting-engine`).click();
+  });
 
 /** Push one `info` line for the position currently being searched. */
 const engineReports = (info: {
@@ -188,7 +199,7 @@ describe("every v2 board, from the same core", () => {
 
   it.each(BOARDS.filter((board) => board.linesShown !== false))(
     "$name pins the engine's lines above its tabs",
-    ({ id, Screen }) => {
+    ({ id, Screen, engineOff }) => {
     /*
       CTA-55 on every board, which is the drift this issue closes: before
       CTA-60 this block existed on the Analysis Board alone. The lines are
@@ -196,6 +207,7 @@ describe("every v2 board, from the same core", () => {
       result reaching a real `BestVariations`.
     */
     const { unmount } = renderBoard(Screen);
+    if (engineOff) toggleEngine(id);
 
     engineReports({ depth: 14, multipv: 1, cp: 42, pv: "e2e4 e7e5" });
 
@@ -209,12 +221,11 @@ describe("every v2 board, from the same core", () => {
     },
   );
 
-  it.each(BOARDS)("$name hides the lines while its engine is off", ({ id, Screen }) => {
+  it.each(BOARDS)("$name hides the lines while its engine is off", ({ id, Screen, engineOff }) => {
     const { unmount } = renderBoard(Screen);
 
-    act(() => {
-      screen.getByTestId(`${id}-setting-engine`).click();
-    });
+    // Some boards start with it off already (CTA-148).
+    if (!engineOff) toggleEngine(id);
 
     expect(
       screen.queryByTestId(`${id}-panel-variations`),
@@ -228,13 +239,30 @@ describe("every v2 board, from the same core", () => {
     unmount();
   });
 
-  it.each(BOARDS)("$name searches the position on screen", ({ Screen }) => {
+  it.each(BOARDS)("$name searches the position on screen", ({ id, Screen, engineOff }) => {
     const { unmount } = renderBoard(Screen);
+    if (engineOff) toggleEngine(id);
 
     expect(FakeEngine.latest().lastSearch).toBe(boardOptions().position);
 
     unmount();
   });
+
+  it.each(BOARDS.filter((board) => board.engineOff === true))(
+    "$name starts with its engine off — no search runs, Play is disabled — until the reader switches it on (CTA-148)",
+    ({ id, Screen }) => {
+      const { unmount } = renderBoard(Screen);
+
+      expect(within(screen.getByTestId(`${id}-setting-engine`)).getByRole("switch")).not.toBeChecked();
+      expect(FakeEngine.instances.flatMap((engine) => engine.searches)).toEqual([]);
+      expect(screen.getByTestId(`${id}-play`)).toBeDisabled();
+      toggleEngine(id);
+      expect(FakeEngine.latest().searches.length).toBeGreaterThan(0);
+      expect(screen.getByTestId(`${id}-play`)).toBeEnabled();
+
+      unmount();
+    },
+  );
 });
 
 describe("reduced motion, on every board (CTA-111)", () => {
@@ -358,5 +386,74 @@ describe("the Openings explorer (CTA-78)", () => {
     // is on screen at all — the slot, not eco.json.
     expect(screen.getByTestId("openings-panel-tab-book")).toBeInTheDocument();
     expect(screen.getByTestId("openings-book")).toBeInTheDocument();
+  });
+});
+
+/*
+  The reader's engine (CTA-153): every board builds the engine chosen in
+  Settings → Engine — one shared place (`useEngineModule`), so one test over
+  the set. (The repertoire player has its own composition and its own row in
+  `RepertoirePlayer.test.tsx`.)
+*/
+describe("the reader's engine reaches every board (CTA-153)", () => {
+  class ChosenEngine extends FakeEngine {}
+  const chosen: EngineDescriptor = {
+    id: "test-chosen-engine",
+    name: "Chosen Engine",
+    version: "1",
+    kind: "local",
+    capabilities: { maxDepth: 24, strength: "skill", multiThread: false },
+    create: () => new ChosenEngine() as unknown as EngineHandle,
+  };
+  const removers: (() => void)[] = [];
+  beforeEach(() => {
+    FakeEngine.reset();
+    removers.push(registerEngine(chosen));
+  });
+  afterEach(() => removers.splice(0).forEach((remove) => remove()));
+
+  it.each(BOARDS.map((board) => [board.name, board] as const))("%s builds the engine the reader chose", (_name, board) => {
+    storeEngineId(chosen.id);
+
+    renderBoard(board.Screen);
+
+    expect(FakeEngine.latest()).toBeInstanceOf(ChosenEngine);
+    expect(FakeEngine.instances.filter((engine) => !engine.terminated)).toHaveLength(1);
+  });
+
+  it.each(BOARDS.map((board) => [board.name, board] as const))("%s builds the default engine when none was chosen", (_name, board) => {
+    renderBoard(board.Screen);
+
+    expect(FakeEngine.latest()).not.toBeInstanceOf(ChosenEngine);
+  });
+
+  // Every board but the games against the engine, which keep theirs (below).
+  const following = BOARDS.filter((board) => board.id !== "play-with-engine" && board.id !== "masked-play");
+
+  it.each(following.map((board) => [board.name, board] as const))(
+    "%s swaps to a new choice — the old engine terminated, one running",
+    (_name, board) => {
+      renderBoard(board.Screen);
+      const first = FakeEngine.latest();
+      expect(first).not.toBeInstanceOf(ChosenEngine);
+
+      act(() => storeEngineId(chosen.id));
+
+      expect(first.terminated).toBe(true);
+      expect(FakeEngine.latest()).toBeInstanceOf(ChosenEngine);
+      expect(FakeEngine.instances.filter((engine) => !engine.terminated)).toHaveLength(1);
+    },
+  );
+
+  it.each(
+    BOARDS.filter((board) => board.id === "play-with-engine" || board.id === "masked-play").map((board) => [board.name, board] as const),
+  )("%s keeps a game's engine when the choice changes under it", (_name, board) => {
+    renderBoard(board.Screen);
+    const first = FakeEngine.latest();
+
+    act(() => storeEngineId(chosen.id));
+
+    expect(first.terminated).toBe(false);
+    expect(FakeEngine.instances).toHaveLength(1);
   });
 });

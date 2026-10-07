@@ -15,6 +15,7 @@ import {
   removeCollectionGames,
   replaceCollectionGame,
   resetLibraryCollectionStore,
+  updateCollectionSettings,
   uploadedCollectionsSnapshot,
 } from "./libraryCollectionStore";
 
@@ -165,6 +166,114 @@ describe("editing a game", () => {
     expect(await insertCollectionGame(mine.id, 0, COPY, indexedRowOf(COPY))).toBe("missing");
     expect(await replaceCollectionGame("nothing", 1, COPY, indexedRowOf(COPY))).toBe("missing");
     expect(await loadUploadedGames(mine.id)).toEqual([ONE, TWO]);
+  });
+});
+
+describe("collection settings (CTA-121)", () => {
+  it("renames a collection and reads the new name back as a new session would", async () => {
+    const mine = await added();
+    expect(await updateCollectionSettings(mine.id, { name: "  Club nights  " })).toBeUndefined();
+    expect(uploadedCollectionsSnapshot()?.[0].name).toBe("Club nights");
+
+    const fresh = await reload();
+    expect((await fresh.loadUploadedCollections()).find((c) => c.id === mine.id)?.name).toBe("Club nights");
+  });
+
+  it("writes and clears a description, absent reading as none", async () => {
+    const mine = await added();
+    expect(await updateCollectionSettings(mine.id, { description: " Six rounds. " })).toBeUndefined();
+    expect(uploadedCollectionsSnapshot()?.[0].description).toBe(" Six rounds. ");
+
+    expect(await updateCollectionSettings(mine.id, { description: "" })).toBeUndefined();
+    expect(uploadedCollectionsSnapshot()?.[0].description).toBeUndefined();
+  });
+
+  it("stores a tournament mark, and reads it back beside the games it leaves alone", async () => {
+    const mine = await added();
+    expect(await updateCollectionSettings(mine.id, { tournament: { enabled: true, type: "roundRobin" } })).toBeUndefined();
+    expect(uploadedCollectionsSnapshot()?.[0].tournament).toEqual({ enabled: true, type: "roundRobin" });
+    // The settings write the summary alone: games and rows are untouched.
+    expect(await loadUploadedGames(mine.id)).toEqual([ONE, TWO]);
+    expect((await loadUploadedRows(mine.id))?.length).toBe(2);
+
+    const fresh = await reload();
+    expect((await fresh.loadUploadedCollections()).find((c) => c.id === mine.id)?.tournament).toEqual({
+      enabled: true,
+      type: "roundRobin",
+    });
+  });
+
+  it("refuses a blank title, answers missing for an unknown id, and no-ops a patch that changes nothing", async () => {
+    const mine = await added();
+    expect(await updateCollectionSettings(mine.id, { name: "   " })).toBeUndefined();
+    expect(uploadedCollectionsSnapshot()?.[0].name).toBe("Mine");
+
+    expect(await updateCollectionSettings("nothing", { name: "X" })).toBe("missing");
+
+    const before = uploadedCollectionsSnapshot();
+    expect(await updateCollectionSettings(mine.id, {})).toBeUndefined();
+    expect(uploadedCollectionsSnapshot()).toBe(before);
+  });
+
+  it("reads a record from before the settings leniently — no description, no mark", async () => {
+    const mine = await added();
+    // A raw summary as a version-before record would hold: the settings fields absent.
+    const db = (await (await import("./libraryDb")).openLibraryDb()) as IDBDatabase;
+    db.transaction(["collections"], "readwrite").objectStore("collections").put({
+      id: mine.id,
+      name: "Old",
+      addedAt: mine.addedAt,
+      count: 2,
+    });
+    const fresh = await reload();
+    const read = (await fresh.loadUploadedCollections()).find((c) => c.id === mine.id);
+    expect(read?.description).toBeUndefined();
+    expect(read?.tournament).toBeUndefined();
+  });
+});
+
+describe("the games' verdict and the new formats (CTA-142)", () => {
+  const cup = (white: string, event = "Cup") => `[Event "${event}"]\n[White "${white}"]\n[Black "Z"]\n\n1. e4 e5 *`;
+
+  it("keeps whether every game shares one Event, through every write of the games", async () => {
+    const mine = await added("Cup", [cup("A"), cup("B")]);
+    expect(mine.sharedEvent).toBe(true);
+    expect(await appendCollectionGames(mine.id, [cup("C", "Open")], [indexedRowOf(cup("C", "Open"))])).toBeUndefined();
+    expect(uploadedCollectionsSnapshot()?.[0].sharedEvent).toBe(false);
+    expect(await removeCollectionGames(mine.id, [3])).toBeUndefined();
+    expect(uploadedCollectionsSnapshot()?.[0].sharedEvent).toBe(true);
+    // Games with no Event share none.
+    expect((await added("Loose")).sharedEvent).toBe(false);
+  });
+
+  it("removes a mark with null — never decided again", async () => {
+    const mine = await added();
+    expect(await updateCollectionSettings(mine.id, { tournament: { enabled: true, type: "swiss" } })).toBeUndefined();
+    expect(await updateCollectionSettings(mine.id, { tournament: null })).toBeUndefined();
+    expect(uploadedCollectionsSnapshot()?.[0].tournament).toBeUndefined();
+    const fresh = await reload();
+    expect((await fresh.loadUploadedCollections()).find((c) => c.id === mine.id)?.tournament).toBeUndefined();
+  });
+
+  it("stores every format with a table, and reads an older record's mark unchanged", async () => {
+    const mine = await added();
+    for (const type of ["knockout", "doubleElimination", "match", "teamSwiss", "teamKnockout"] as const) {
+      expect(await updateCollectionSettings(mine.id, { tournament: { enabled: true, type } })).toBeUndefined();
+      const fresh = await reload();
+      expect((await fresh.loadUploadedCollections()).find((c) => c.id === mine.id)?.tournament).toEqual({ enabled: true, type });
+    }
+    // A record written before CTA-142: its type kept, and no verdict — read as unknown.
+    const db = (await (await import("./libraryDb")).openLibraryDb()) as IDBDatabase;
+    db.transaction(["collections"], "readwrite").objectStore("collections").put({
+      id: mine.id,
+      name: "Old",
+      addedAt: mine.addedAt,
+      count: 2,
+      tournament: { enabled: true, type: "arena" },
+    });
+    const read = (await (await reload()).loadUploadedCollections()).find((c) => c.id === mine.id);
+    expect(read?.tournament).toEqual({ enabled: true, type: "arena" });
+    expect(read?.sharedEvent).toBeUndefined();
   });
 });
 

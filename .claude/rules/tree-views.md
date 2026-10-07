@@ -46,7 +46,7 @@ The seam is [`treeView.ts`](../../src/views/explorer/treeView.ts):
 | Concept | What it is |
 | --- | --- |
 | **`TreeViewSource`** | What every view reads: `tree`, `mainlineNodes`, `nodeId`, `goToNode`, `orientation`. `useBoardCore`'s return has this shape, so a screen passes `core` itself. |
-| **`TreeViewParts`** | What every view returns: `moves` (a Moves tab's content), `map?` (a Map tab's content), `annotations?` and `nextMoves?` (footer pieces), `arrows` (`options.arrows`, the whole external set) and `overlay` (drawn over the board, `null` for none). The screen places each part in its own slot. |
+| **`TreeViewParts`** | What every view returns: `moves` (a Moves tab's content), `map?` (a Map tab's content), `annotations?` and `nextMoves?` (footer pieces), `arrows` (`options.arrows`, the whole external set), `overlay` (drawn over the board, `null` for none) and `boardOptions` (the board's other options — the shape-drawing gestures, CTA-143; `{}` for none, spread under `arrows`). The screen places each part in its own slot. |
 | **A mode** | A hook `(source + the mode's own options) → TreeViewParts`. Only the explorer, `useVariationsExplorer`, is built. |
 
 What the seam decides, and why:
@@ -94,7 +94,7 @@ const parts = useVariationsExplorer({
   extensionIds?: ReadonlySet<string>,
   onEditTree?: (next: GameTree) => void,  // the one switch for every edit — `core.replaceTree`
   playChances?: boolean,                  // the menu's *Play chances…* (default on); off where no trainer plays by them
-  annotations?: boolean,                  // the comment block
+  annotations?: boolean,                  // the comment block — and the PGN's [%cal]/[%csl] shapes (CTA-143)
   arrows?: {
     show: boolean; chances?: boolean; required?: readonly VariationNode[];
     widthSource?: ArrowWidthSource,       // CTA-98: what sizes the arrows — absent/"none", colour only
@@ -103,7 +103,7 @@ const parts = useVariationsExplorer({
   map?: { tree?: GameTree; nodeId?: string | null; coverage?: MapCoverage; addedIds?: ReadonlySet<string>; linked?: boolean },
   mask?: PieceMask,                       // a masked board's notation
 });
-// → { moves, map?, annotations?, nextMoves, arrows, overlay }
+// → { moves, map?, annotations?, nextMoves, arrows, overlay, boardOptions }
 ```
 
 ### The features
@@ -112,14 +112,17 @@ const parts = useVariationsExplorer({
 | --- | --- | --- | --- |
 | **Move list**: numbered mainline pairs, the current move highlighted and scrolled into view, a click to any move | `moves` | always | `TreeMoveList` over the shared `MoveList` |
 | **Side lines hung under their move**, clickable | `moves` | always | `TreeMoveList` → `VariationLine` |
-| **Comment marker** on a commented move | `moves` | always | `hasComments`, `annotatedPlies`, `markCommentedNodes` |
+| **Comment marker** on a commented move — not on one whose comments only draw shapes (CTA-143) | `moves` | always | `hasComments`, `annotatedPlies`, `markCommentedNodes` |
 | **Annotation glyphs** (NAGs, CTA-97) after the SAN — in the mainline's cells, the side lines and the map's labels, on every board, read-only ones included: the move mark first (`!` `!!` green, `?` orange, `??` red, `!?` magenta, `?!` blue, a shade per scheme), then the evaluation and the features, plain; a code outside the table as `$N` | `moves`, `map` | always | `NagGlyphs` + `nagToneSx.ts` (`views/shared/`), the map's `.map-nag` tspans, over `lib/moveAnnotations.ts`'s table (`nagGlyph`, `nagsInPrintOrder`, `nagTone`); a mainline cell reads `GameMove.nags` (`mainlineGame` carries it), a side-line token and a map label their node's |
 | **Evals** on the mainline's cells only | `moves` | `evalsByFen` | `MoveList`'s `mainlineEvalsOnly` |
 | **Masked notation** — every printed move in coordinates when the mask hides its piece | all but `arrows` / `overlay` | `mask` | `maskSanLine` / `maskNodeSan`; [`masked-pieces.md`](./masked-pieces.md) §4 |
 | **Extension tint** on moves added this session | `moves` | `extensionIds` | the selection store |
-| **Right-click move menu**: promote variation, make main line, delete from here (confirmed, with a count), copy variation PGN, add comment, add annotation…, play chances… | `moves`, `map` | `onEditTree` (*Play chances…* also `playChances`) | `MoveContextMenu`, `CommentDialog`, `NagDialog`, `PlayChanceDialog`, over the pure edits in `lib/gameTree.ts` and `lib/playChance.ts` |
+| **Right-click move menu**: promote variation, make main line, delete from here (confirmed, with a count), copy variation PGN, add comment, add annotation…, arrows and circles…, play chances… — **on the list's *Start position* row** (CTA-149) the same menu with *Add comment* and *Arrows and circles…* only, editing the game's opening comment (`MoveMenuTarget` / `ShapesTarget` with a `null` `nodeId`; `MoveList`'s optional `onContextMenuStart`). The map has no hit target on its root dot, so no menu there | `moves`, `map` | `onEditTree` (*Play chances…* also `playChances`) | `MoveContextMenu`, `CommentDialog`, `NagDialog`, `ShapesDialog`, `PlayChanceDialog`, over the pure edits in `lib/gameTree.ts`, `lib/boardShapes.ts` and `lib/playChance.ts` |
+| **Arrows and circles…** (CTA-143): the move's `[%cal]` arrows and `[%csl]` circles listed, each recoloured in one of the four brushes or removed, one added by its squares (a circle takes one; one already drawn in that brush is refused), *Remove all*. **Each change is an edit** (`toggleShape` / `clearShapes` → `setComments`), as in *Add annotation…*, so the board redraws at once and the changes strip offers to keep it | `moves`, `map` | `onEditTree` | `ShapesDialog` |
 | **Add annotation…** (CTA-97): three tabs — Move Assessment, Position Evaluation, Positional Features & Commentary — each glyph a toggle with its meaning, the move's current ones selected. Lichess's rule: one move assessment, one evaluation (picking the active one removes it), any number of features; codes outside the table untouched. **Each toggle is an edit** (`setNags`), so the list shows it at once and the changes strip offers to keep it | `moves`, `map` | `onEditTree` | `NagDialog` over `toggleNag` / `NAG_SECTIONS` (`lib/moveAnnotations.ts`) and `setNags` (`lib/gameTree.ts`) |
-| **Comment block**: the move with its marks, the comment opening its line, the comments after it, their attributes as chips | `annotations` | `annotations` | `AnnotationsBar` over `lib/moveAnnotations.ts` |
+| **Comment block**: the move with its marks, the comment opening its line, the comments after it, their attributes as chips (`[%cal]` / `[%csl]` are drawn, not chipped; a comment of nothing else lists no row) | `annotations` | `annotations` | `AnnotationsBar` over `lib/moveAnnotations.ts` |
+| **The PGN's shapes** (CTA-143): the `[%cal]` arrows and `[%csl]` circles of the comments at the position on screen (the game's opening comment at the start), in the theme's `chess.drawing` brushes — **with** the next-move arrows, the required move's and the chance / width overlay, a later arrow on the same squares drawn over an earlier | `arrows`, `overlay` (`${testId}-shape-circles`) | `annotations` | `shapesOf` (`lib/boardShapes.ts`), `ShapeCircles` (`views/shared/`) |
+| **Drawing shapes into the comment** (CTA-143, a lichess study's): a right-drag an arrow, a right-click a circle, the brush by the modifiers (plain green, Shift red, Alt blue, both yellow); drawn again it comes off, in another brush recoloured; the arrow previewed while drawing. The library's own right-drag arrows are off (`allowDrawingArrows: false`), so nothing lingers in its state — every shape is drawn from the comment. A board that does not edit keeps the library's temporary drawing | `boardOptions` (`onSquareMouseDown`, `onMouseOverSquare`, `onSquareMouseUp`), `arrows` | `onEditTree` and `annotations` | `toggleShape`, `brushOfKeys` + `setComments` ([`pgn-annotations.md`](./pgn-annotations.md) §2) |
 | **Comment editing** in the block (add, edit, delete) | `annotations` | `onEditTree` | `CommentDialog` + `setComments` |
 | **Next-moves bar**: the continuations at a branch; hovering one draws its arrow | `nextMoves` | always (nothing where there is no choice) | `views/tools/analysis/NextMovesBar.tsx` |
 | **Next-move arrows**: mainline green, side lines blue, the hovered move red | `arrows` | `arrows.show` (off: only a hovered move's arrow) | `views/tools/analysis/nextMoveArrows.ts` |
@@ -153,7 +156,9 @@ repertoire games pass nothing; a game never writes.
   menu and the comment block uses `dir="ltr"`, comment prose `dir="auto"`.
   The glyphs sit inside the SAN's own `dir="ltr"` token.
 - **One set of arrows at a time**: required moves beat the chance overlay,
-  which beats the width-sized overlay, which beats the library arrows. The
+  which beats the width-sized overlay, which beats the library arrows. **The
+  PGN's shapes are not in that contest** (CTA-143): they are drawn beside
+  whichever set won, the circles composed into the same `overlay`. The
   screen passes `widthSource: "none"` for a tag its tree does not carry —
   availability is the screen's, not the view's. The chances and the bar's
   percentages come from one array, so the number and the width never
@@ -171,7 +176,8 @@ repertoire games pass nothing; a game never writes.
 | **Masked Pieces** | Play with Engine's, plus `mask` while its notation switch is on | Play with Engine's |
 
 The Openings explorer joins the view's `arrows` with the book's into one set
-(`views/openings/openingArrows.ts`).
+(`views/openings/openingArrows.ts`). Every screen spreads `boardOptions`
+under its `arrows` (CTA-143) — the one line that lets the reader draw.
 
 ---
 
@@ -232,7 +238,7 @@ const parts = usePuzzleView({
 | `src/views/explorer/treeView.ts` | §1: `TreeViewSource`, `TreeViewParts`. |
 | `src/views/explorer/useVariationsExplorer.tsx` (+ `.test.tsx`) | §2: the explorer mode and its contract test. |
 | `src/views/explorer/TreeMoveList.tsx` (+ test) | The variations list over `MoveList` / `VariationLine`: the ply↔node seam, comment markers, the tint, the mask, the opt-in menu. |
-| `src/views/explorer/MoveContextMenu.tsx`, `CommentDialog.tsx`, `NagDialog.tsx`, `PlayChanceDialog.tsx` | The right-click menu and its three dialogs. |
+| `src/views/explorer/MoveContextMenu.tsx`, `CommentDialog.tsx`, `NagDialog.tsx`, `ShapesDialog.tsx`, `PlayChanceDialog.tsx` | The right-click menu and its four dialogs. |
 | `src/views/explorer/TreeMap.tsx` | The map: `MapViewport`, the full-screen dialog, links and the menu. The pure layout and viewport arithmetic are `src/lib/treeMap.ts`, with `MapCoverage`. |
 | `src/views/explorer/AnnotationsBar.tsx` | The comment block, presentational; the reading is `lib/moveAnnotations.ts`. |
 | `src/views/explorer/ChanceArrows.tsx` + `chanceArrows.ts` (+ tests) | The play-chance overlay and its geometry; its optional per-arrow `colors` and `weightedArrowColors` draw the width-sized arrows (CTA-98). |

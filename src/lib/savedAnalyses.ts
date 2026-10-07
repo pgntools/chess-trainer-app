@@ -22,7 +22,8 @@ import {
   type VariationNode,
 } from "./gameTree";
 import type { CatalogGame, GameCatalog } from "./gameCatalog";
-import { parsePgnGame, parsePgnTree, readPgnTags } from "./pgn";
+import { parsePgnGame, parsePgnTree, readPgnTags, splitPgnGames } from "./pgn";
+import { repertoireGameNamesOf } from "./savedRepertoires";
 
 /**
  * **The reader's analysis boards** — what one is when it is written down, and
@@ -129,8 +130,11 @@ export type SavedAnalysis = {
 /** The saved analyses' catalog path — their `?game=analysis/<path>/<id>` segment. */
 export const SAVED_ANALYSES_PATH = "saved";
 
-/** The `Event` tag a saved analysis carries when it is not a game's. */
-const SAVED_ANALYSIS_EVENT = "Analysis Board";
+/**
+ * The `Event` tag a saved analysis carries when it is not a game's — a
+ * placeholder, which the Saved analyses table reads as no event (CTA-144).
+ */
+export const SAVED_ANALYSIS_EVENT = "Analysis Board";
 
 /**
  * The `White` / `Black` tag a saved analysis carries when it is not a game's.
@@ -451,3 +455,29 @@ export const batchAnalysesOf = (
     savedAt: now.toISOString(),
     updatedAt: now.toISOString(),
   }));
+
+/**
+ * **A text of several games as analyses** (CTA-141, the several-games popup's
+ * *Save to Saved analyses*): every game that reads, in file order, its PGN as
+ * the text holds it, named as the Library's Analyse names a pick
+ * (`repertoireGameNamesOf`: a lichess study's `ChapterName`, else the players,
+ * else the `Event`). A game that is only a position — a `FEN` and no moves —
+ * is kept: it is a position to analyse. Only a game `parsePgnTree` refuses is
+ * left out, and counted. `batchAnalysesOf` makes the records.
+ */
+export const analysisGamesOfText = (
+  text: string,
+): { games: { name: string; pgn: string }[]; skipped: number } => {
+  const chunks = splitPgnGames(text);
+  const names = repertoireGameNamesOf(chunks);
+  const games: { name: string; pgn: string }[] = [];
+  chunks.forEach((pgn, index) => {
+    try {
+      parsePgnTree(pgn, index + 1);
+    } catch {
+      return;
+    }
+    games.push({ name: names[index], pgn });
+  });
+  return { games, skipped: chunks.length - games.length };
+};

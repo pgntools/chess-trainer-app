@@ -16,7 +16,7 @@ import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
 import { OpeningTreePgnDialog } from "../../blocks/dialogs";
 import { IconAction } from "../../design-system/components/toolbars";
-import { useChessTokens } from "../../design-system/theme";
+import { MIN_TARGET_PX, useChessTokens } from "../../design-system/theme";
 import type { ResultTone } from "../../design-system/themes";
 import { ForceLTR } from "../../theme/ForceLTR";
 import ChanceArrows from "../explorer/ChanceArrows";
@@ -254,7 +254,8 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
           variant="caption"
           onClick={() => setSaving(true)}
           data-testid="library-filter-moves-save"
-          sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
+          // A target of at least 24 px (WCAG 2.5.8) — in a panel at its true width it sits close to the line beside it.
+          sx={{ flexShrink: 0, whiteSpace: "nowrap", minHeight: MIN_TARGET_PX, display: "inline-flex", alignItems: "center" }}
         >
           {t("library.filters.moves.save")}
         </Link>
@@ -290,7 +291,8 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
                 data-testid={`library-filter-move-${move.san}`}
                 onClick={() => play(move.san)}
                 onMouseEnter={() => setHovered(move.id)}
-                sx={{ ...moveSx, ...sanTokenSx, justifySelf: "start" }}
+                // At least a 24 px target (WCAG 2.5.8): the rows sit close in a narrow panel.
+                sx={{ ...moveSx, ...sanTokenSx, justifySelf: "start", minWidth: MIN_TARGET_PX, minHeight: MIN_TARGET_PX }}
               >
                 {move.san}
               </ButtonBase>

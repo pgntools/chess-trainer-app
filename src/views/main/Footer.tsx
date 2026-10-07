@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
  * Project source repository. A plain constant rather than a catalog string:
  * the URL is the same in every language (only its label is translated).
  */
-const REPO_URL = 'https://github.com/kantorv/chess-trainer-app';
+const REPO_URL = 'https://github.com/pgntools/chess-trainer-app';
 
 /**
  * The app shell's footer: rendered once by `Layout`, below the sidebar + board

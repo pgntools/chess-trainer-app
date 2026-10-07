@@ -3,7 +3,7 @@ import type { GalleryModule } from "../../../design-system/gallery/types";
 import type { CollectionImportSource } from "../../../lib/libraryCollections";
 import type { BlockFamilyId } from "../../families";
 import CollectionImportDialog from "./CollectionImportDialog";
-import { ONE_FILE, PASTE, ZIP } from "./fixtures";
+import { ONE_EVENT, ONE_FILE, PASTE, ZIP } from "./fixtures";
 
 const noop = () => {};
 
@@ -24,6 +24,11 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "A paste with nothing to filter on", render: () => framed(PASTE) },
     { name: "Add games to a collection", render: () => framed(ONE_FILE, { intoName: "Club games" }) },
     { name: "The last try failed", render: () => framed(ONE_FILE, { problem: "The browser refused to store the games — its storage may be full." }) },
+    // Split by event (CTA-127): the zip's first file carries two events, so
+    // its switch can be tried on in the preview; the one-event file's reads
+    // off with its reason.
+    // CTA-142: one event — the tournament fields, the suggested type with an Apply; on One file, Split by event's own switch, "Mark each event's tournament type".
+    { name: "A tournament export — nothing to split; the tournament mark and its suggested type", render: () => framed(ONE_EVENT) },
   ],
 };
 

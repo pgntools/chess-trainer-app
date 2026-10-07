@@ -7,7 +7,8 @@ import {
   MANIFEST_PATH,
   type ExportCategory,
 } from "./dataExport";
-import type { CollectionSummary } from "./libraryCollections";
+import type { CollectionSummary, CollectionTournament } from "./libraryCollections";
+import { TOURNAMENT_FORMATS } from "./libraryCollections";
 import { splitPgnGames } from "./pgn";
 import { playedGameFrom, type PlayedGame } from "./playedGames";
 import { newRecordId } from "./recordId";
@@ -63,7 +64,15 @@ type FolderPath = readonly string[];
 type Filed<R> = { record: R; folder: FolderPath };
 
 /** An uploaded collection of the dump: what `addCollection` takes, but its index rows. */
-type ImportCollection = { id: string; name: string; games: readonly string[] };
+type ImportCollection = {
+  id: string;
+  name: string;
+  games: readonly string[];
+  /** The reader's description of it (CTA-121). Absent for none, and on a v1 zip. */
+  description?: string;
+  /** The tournament mark (CTA-121). Absent for off, and on a v1 zip. */
+  tournament?: CollectionTournament;
+};
 
 /** A zip, read and checked: every record normalised, every folder by its path. */
 export type ImportDump = {
@@ -119,12 +128,15 @@ type RawManifest = Record<string, unknown>;
 type ManifestMigration = (manifest: RawManifest) => RawManifest;
 
 /**
- * **The migrations**, keyed by the version each upgrades *from*. Version 1 is
- * the only one there has been, so the table is empty and a version-1 manifest
- * passes through unchanged. Bumping `EXPORT_FORMAT_VERSION` to `n + 1` adds
- * the entry `n` here — how is `.claude/rules/import-export.md` §6.
+ * **The migrations**, keyed by the version each upgrades *from*. Version 2
+ * added the collections' `description` and `tournament` (CTA-121): a v1
+ * manifest simply lacks them, so its upgrade is the version stamp alone.
+ * Bumping `EXPORT_FORMAT_VERSION` to `n + 1` adds the entry `n` here — how
+ * is `.claude/rules/import-export.md` §6.
  */
-const MANIFEST_MIGRATIONS: Readonly<Record<number, ManifestMigration>> = {};
+const MANIFEST_MIGRATIONS: Readonly<Record<number, ManifestMigration>> = {
+  1: (manifest) => ({ ...manifest, formatVersion: 2 }),
+};
 
 type MigrationOptions = {
   /** The table to run — the tests pass their own. */
@@ -170,6 +182,14 @@ const isFolderPath = (value: unknown): value is string[] =>
 
 const isCount = (value: unknown, least: number): value is number =>
   typeof value === "number" && Number.isInteger(value) && value >= least;
+
+/** A manifest collection entry's tournament mark (CTA-121): absent for off, else `{ enabled, type }`. */
+const isTournamentEntry = (value: unknown): value is CollectionTournament | undefined =>
+  value === undefined ||
+  (typeof value === "object" &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).enabled === "boolean" &&
+    (TOURNAMENT_FORMATS as readonly string[]).includes((value as Record<string, unknown>).type as string));
 
 /** `items` onto the end of `list` — a loop, not a spread: a file can hold tens of thousands of records. */
 const append = <T>(list: T[], items: readonly T[]) => {
@@ -356,7 +376,9 @@ const dumpOf = (manifest: RawManifest, files: Readonly<Record<string, Uint8Array
           collection.id === "" ||
           typeof collection.name !== "string" ||
           (collection.source !== "shipped" && collection.source !== "uploaded") ||
-          !isCount(collection.games, 1)
+          !isCount(collection.games, 1) ||
+          (collection.description !== undefined && typeof collection.description !== "string") ||
+          !isTournamentEntry(collection.tournament)
         ) {
           return refuse({ kind: "unreadable", path });
         }
@@ -367,7 +389,16 @@ const dumpOf = (manifest: RawManifest, files: Readonly<Record<string, Uint8Array
         const folder = collection.folderPath ?? [];
         const games = gamesOf(text, collection.games);
         if (!isFolderPath(folder) || games.length !== collection.games) return refuse({ kind: "unreadable", path });
-        dump.collections.push({ record: { id: collection.id, name: collection.name, games }, folder });
+        dump.collections.push({
+          record: {
+            id: collection.id,
+            name: collection.name,
+            games,
+            description: collection.description,
+            tournament: collection.tournament ?? undefined,
+          },
+          folder,
+        });
         break;
       }
       default:

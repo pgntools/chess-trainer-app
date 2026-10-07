@@ -2,12 +2,15 @@ import { useState } from "react";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
-import { CollectionImportDialog } from "../../blocks/dialogs";
+import { CollectionImportDialog, type ImportTournamentChoice } from "../../blocks/dialogs";
 import { ProgressDialog, useCancellableJob } from "../../design-system/components/dialogs";
 import type { IndexedRow } from "../../lib/collectionIndex";
 import { addCollection, appendCollectionGames, removeCollection } from "../../lib/libraryCollectionStore";
+import { createLibraryFolder, removeLibraryFolder } from "../../lib/libraryFolderStore";
 import {
   collectionNameOfStem,
+  eventGroupsOf,
+  MAX_COLLECTION_NAME_CHARS,
   sharedEventOf,
   type CollectionImportFile,
   type CollectionImportSource,
@@ -23,8 +26,8 @@ type Batch = { file: CollectionImportFile; rows: CollectionRow[]; games: string[
  * **The import-options popup's job** (CTA-103; on the design system since
  * CTA-113) — what `/library/new` opens once a picked `.pgn` or `.zip`, a
  * paste, or *Add games* (`?into=`) has been read. The choice is the
- * `CollectionImportDialog` block (what came in, the filters, the count);
- * this is the rest:
+ * `CollectionImportDialog` block (what came in, the filters, the count,
+ * *Split by event*); this is the rest:
  *
  * - **Import** indexes the kept games only (`indexCollection`, one pass over
  *   every file, in a worker), shown by a `ProgressDialog` in the choice's
@@ -33,9 +36,20 @@ type Batch = { file: CollectionImportFile; rows: CollectionRow[]; games: string[
  *   file's games to that collection in one write; otherwise **one collection
  *   per file** holding any game, filed in `folderId` — a single text named as
  *   typed, else the `Event` its games share, else its file name's words, else
- *   "Pasted collection"; several files by their `Event`, else their names. A
- *   failed write takes back the collections it had already added, so it is
- *   all or nothing, and the choice comes back saying why.
+ *   "Pasted collection"; several files by their `Event`, else their names.
+ *   **Split by event** (CTA-127) puts each file's games in **one folder per
+ *   file** instead, named the same way, holding one collection per event
+ *   (the games with no `Event` in one "Unknown" collection, each name within
+ *   the collection-name cap) — a folder the picker already offered files them
+ *   all. A failed write takes back the collections **and the folders** it had
+ *   already added, so it is all or nothing, and the choice comes back saying
+ *   why.
+ * - **The tournament mark** (CTA-142): a one-event import's mark, where the
+ *   reader turned it on, is written with the new collection; on a split with
+ *   *Mark each event's tournament type* on, each event's collection is marked
+ *   with the type the popup's table holds for it (`eventType`: the guess,
+ *   unless the reader changed it), "Not a tournament" — and "Unknown" — left
+ *   plain.
  *
  * Cancel, Escape, the backdrop or the popup going away stop the index pass
  * and write nothing. The one moment nothing can be stopped is the write
@@ -71,7 +85,12 @@ function ImportOptionsDialog({
     (file.stem === undefined ? t("library.upload.pastedName") : collectionNameOfStem(file.stem));
 
   /** The kept games' write: one append, or a collection per file — all or nothing. */
-  const write = async (batches: Batch[], indexed: IndexedRow[]): Promise<{ path: string } | { problem: string }> => {
+  const write = async (
+    batches: Batch[],
+    indexed: IndexedRow[],
+    splitByEvent: boolean,
+    tournament: ImportTournamentChoice,
+  ): Promise<{ path: string } | { problem: string }> => {
     if (into !== undefined) {
       const failed = await appendCollectionGames(
         into.id,
@@ -81,22 +100,71 @@ function ImportOptionsDialog({
       return failed === undefined ? { path: `/library/${encodeURIComponent(into.id)}` } : { problem: failed };
     }
     const added: string[] = [];
+    /** The folders a split import had already made — a failed write takes these back too. */
+    const addedFolders: string[] = [];
+    const undo = async () => {
+      // All or nothing: what this import had already made goes again —
+      // collections first, then their folders (deleting a folder keeps
+      // its contents, so the order matters).
+      for (const id of added) await removeCollection(id);
+      for (const id of addedFolders) await removeLibraryFolder(id);
+    };
     let offset = 0;
     for (const batch of batches) {
       const rows = indexed.slice(offset, offset + batch.games.length);
       offset += batch.games.length;
-      const result = await addCollection(nameOf(batch.file, batch.rows), batch.games, rows, undefined, undefined, folderId);
-      if ("problem" in result) {
-        // All or nothing: the collections this import had already added go again.
-        for (const id of added) await removeCollection(id);
-        return { problem: result.problem };
+      if (!splitByEvent) {
+        const result = await addCollection(
+          nameOf(batch.file, batch.rows),
+          batch.games,
+          rows,
+          undefined,
+          undefined,
+          folderId,
+          tournament.mark === undefined ? {} : { tournament: tournament.mark },
+        );
+        if ("problem" in result) {
+          await undo();
+          return { problem: result.problem };
+        }
+        added.push(result.collection.id);
+        continue;
       }
-      added.push(result.collection.id);
+      // The split: one folder per file, one collection per event inside it.
+      const folder = await createLibraryFolder(nameOf(batch.file, batch.rows), folderId);
+      if (folder === undefined) {
+        await undo();
+        return { problem: "folder" };
+      }
+      addedFolders.push(folder.id);
+      // The file's kept games by event — each group's games in file order,
+      // its rows the same games' slice of the one index pass.
+      for (const group of eventGroupsOf(
+        batch.rows.map((row, index) => ({ event: row.event, row, indexed: rows[index] as IndexedRow })),
+      )) {
+        const groupGames = group.rows.map(({ row }) => batch.file.games[row.number - 1] as string);
+        // The event's type as the reader left it in the popup's table (the guess, unless changed).
+        const type = group.event === undefined ? undefined : tournament.eventType?.(source.files.indexOf(batch.file), group.event);
+        const result = await addCollection(
+          (group.event === undefined ? t("library.upload.unknown") : group.event).slice(0, MAX_COLLECTION_NAME_CHARS),
+          groupGames,
+          group.rows.map((entry) => entry.indexed),
+          undefined,
+          undefined,
+          folder.id,
+          type === undefined ? {} : { tournament: { enabled: true, type } },
+        );
+        if ("problem" in result) {
+          await undo();
+          return { problem: result.problem };
+        }
+        added.push(result.collection.id);
+      }
     }
     return { path: added.length === 1 ? `/library/${encodeURIComponent(added[0] as string)}` : "/library" };
   };
 
-  const confirm = async (kept: CollectionRow[][]) => {
+  const confirm = async (kept: CollectionRow[][], splitByEvent: boolean, tournament: ImportTournamentChoice) => {
     // Each file's kept games, in file order; a file that keeps none makes nothing.
     const batches = source.files
       .map((file, index): Batch => {
@@ -111,10 +179,11 @@ function ImportOptionsDialog({
       // The index pass: stoppable, in a worker, reporting as it goes.
       work: (signal, report) => indexCollection(games, (done, total) => report({ done, total }), signal),
       // The write: once begun, never cut short.
-      write: (indexed) => write(batches, indexed),
+      write: (indexed) => write(batches, indexed, into === undefined && splitByEvent, tournament),
     });
     if (outcome.status === "cancelled") return;
     if (outcome.status === "failed") {
+      console.error("ImportOptionsDialog: the import failed.", outcome.error);
       setProblem("index");
       return;
     }
@@ -162,7 +231,7 @@ function ImportOptionsDialog({
       intoName={into?.name}
       problem={problem === null ? undefined : t(`library.upload.problem.${problem}`)}
       onCancel={cancel}
-      onImport={(kept) => void confirm(kept)}
+      onImport={(kept, splitByEvent, tournament) => void confirm(kept, splitByEvent, tournament)}
       testId="library-import"
     />
   );

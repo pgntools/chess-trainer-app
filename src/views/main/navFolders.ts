@@ -1,13 +1,18 @@
 import type { SvgIconComponent } from "@mui/icons-material";
 import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
+import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import ConstructionRoundedIcon from "@mui/icons-material/ConstructionRounded";
+import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import MemoryRoundedIcon from "@mui/icons-material/MemoryRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
+import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 import SnippetFolderRoundedIcon from "@mui/icons-material/SnippetFolderRounded";
 import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 
 import type { LocalizedText } from "../../lib/localizedText";
+import { BLOG_FOLDERS, blogNavFolderId, blogParentOf, type BlogFolder } from "../blog/articles";
+import { MDX_EDITOR_ENABLED } from "../../mdxEditor/enabled";
 
 /**
  * Folders are the groupings in the sidebar. Each screen names exactly one of
@@ -69,6 +74,15 @@ export type NavFolder = {
  * a `.pgn` dropped into `src/data/library/` or uploaded by the reader changes
  * that screen, not this tree.
  */
+/** The Blog's folders under `parent` (`""` its root), as sidebar folders, nested. */
+const blogNavFolders = (parent: string): NavFolder[] =>
+  BLOG_FOLDERS.filter((folder: BlogFolder) => blogParentOf(folder.path) === parent).map((folder) => ({
+    id: blogNavFolderId(folder.path),
+    label: folder.title,
+    icon: FolderRoundedIcon,
+    children: blogNavFolders(folder.path),
+  }));
+
 export const navFolders = (): readonly NavFolder[] => [
   {
     id: "engine",
@@ -116,6 +130,17 @@ export const navFolders = (): readonly NavFolder[] => [
     singleEntry: true,
   },
   /*
+    The Blog (CTA-126): MDX articles in nested folders, every folder and
+    article read off `views/blog/articles.ts` — a folder there is a folder
+    here, named by its data label, with no edit in this file.
+  */
+  {
+    id: "blog",
+    labelKey: "nav.folders.blog",
+    icon: ArticleRoundedIcon,
+    children: blogNavFolders(""),
+  },
+  /*
     The app's own settings (CTA-86), one screen per tab of `/settings/<tab>`
     — Export, Import and Storage. A folder rather than a single entry, so a
     tab added later is one more `navItems()` entry here; pinned to the
@@ -126,6 +151,8 @@ export const navFolders = (): readonly NavFolder[] => [
     gallery (CTA-107). A spread gated on `import.meta.env.DEV`, so a
     production build has no such folder.
   */
+  // The MDX editor's own folder (CTA-137) — its article lobby and the editor; only under `yarn mdx-editor:start`.
+  ...(MDX_EDITOR_ENABLED ? [{ id: "mdx-editor", labelKey: "nav.folders.mdxEditor", icon: EditNoteRoundedIcon }] : []),
   ...(import.meta.env.DEV
     ? [
         {

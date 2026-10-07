@@ -81,7 +81,7 @@ both catalogs. Test ids: `settings-export-*`, `settings-import-*`.
 ```jsonc
 {
   "format": "chessapp-export",
-  "formatVersion": 1,            // EXPORT_FORMAT_VERSION — bump on any change an older reader would misread (§6)
+  "formatVersion": 2,            // EXPORT_FORMAT_VERSION — bump on any change an older reader would misread (§6)
   "appVersion": "0.4.0",         // __APP_VERSION__
   "exportedAt": "…ISO 8601…",
   "categories": ["collections", "games", "analyses", "repertoires"],
@@ -95,7 +95,7 @@ both catalogs. Test ids: `settings-export-*`, `settings-import-*`.
     { "path": "games.pgn", "kind": "games", "records": [{ "index": 0, "games": 1, "id": "…", "settings": {…}, "path": [], … }] },
     { "path": "analyses.pgn", "kind": "analyses", "records": [{ "index": 0, "games": 1, "name": "…", "description": "…", "orientation": "white", "path": […], "folderPath": ["Openings"], … }] },
     { "path": "collections/built-in/world-cup.pgn", "kind": "collection", "collection": { "id": "…", "name": "…", "source": "shipped", "games": 674 } },
-    { "path": "collections/club/blitz/friday.pgn", "kind": "collection", "collection": { "id": "u…", "name": "Friday", "source": "uploaded", "games": 12, "folderPath": ["Club", "Blitz"] } },
+    { "path": "collections/club/blitz/friday.pgn", "kind": "collection", "collection": { "id": "u…", "name": "Friday", "source": "uploaded", "games": 12, "folderPath": ["Club", "Blitz"], "description": "…", "tournament": { "enabled": true, "type": "swiss" } } },
     { "path": "repertoires/unfiled.pgn", "kind": "repertoires", "folder": null, "records": [{ "index": 0, "games": 1, "name": "…", "settings": {…}, … }] }
   ]
 }
@@ -106,9 +106,14 @@ both catalogs. Test ids: `settings-export-*`, `settings-import-*`.
   except a legacy multi-game repertoire (`isMultiGameRepertoire`), whose later
   neighbours' indices account for it.
 - Each record carries everything its store keeps beside the PGN (ids, settings,
-  the path the reader stood on, dates; a played game's `resigned` and `mask`;
+  the path the reader stood on, dates; a played game's `resigned`, `mask` and
+  `engine` (CTA-153: the build that played it — id, name, version, how its
+  strength was set; **additive and optional**, so there is no format bump: an
+  older reader ignores it and a game without one was played by the default
+  engine; the `elo` setting is the same kind of addition);
   an analysis' `showArrows`, `arrowWidthSource` and `arrowPalette`; a
-  repertoire's `previewFen` and `stats`) — not a
+  repertoire's `previewFen` and `stats`; an uploaded collection's
+  `description` and `tournament` mark, CTA-121) — not a
   played game's engine evals, and not a collection's `addedAt`, which an
   import sets to the moment it writes. An analysis' folder is `folderPath`
   (names from the top; `[]` is Unfiled, as is a folder that is gone); a
@@ -230,8 +235,9 @@ created.
 `readImport` checks `format === "chessapp-export"`, then brings the manifest
 to `EXPORT_FORMAT_VERSION` through **`MANIFEST_MIGRATIONS`** (`lib/dataImport.ts`),
 a table keyed by the version each entry upgrades *from*: version `n` in, the
-same data as version `n + 1` out. Version 1 is the only one there has been, so
-the table is empty and a version-1 manifest passes through unchanged. A
+same data as version `n + 1` out. Version 2 added the collections'
+`description` and `tournament` mark (CTA-121) — fields a v1 manifest simply
+lacks, so its upgrade is the version stamp alone. A
 version past this build's is **newer** (§7); a version with no way up (not a
 positive integer, a gap in the table, a migration that does not land on the
 next version) is **malformed**.

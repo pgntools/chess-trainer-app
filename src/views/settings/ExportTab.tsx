@@ -58,7 +58,10 @@ type Status =
 const useCount = (
   subscribe: (listener: () => void) => () => void,
   snapshot: () => readonly unknown[] | undefined,
-): number | undefined => useSyncExternalStore(subscribe, () => snapshot()?.length);
+): number | undefined => {
+  const count = () => snapshot()?.length;
+  return useSyncExternalStore(subscribe, count, count);
+};
 
 function ExportTab() {
   const { t } = useTranslation();

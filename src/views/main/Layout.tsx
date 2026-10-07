@@ -4,19 +4,23 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import useMediaQuery from '@mui/material/useMediaQuery';
-import type { Theme } from '@mui/material/styles';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import { Link as RouterLink, Outlet, useLocation, useMatches, type UIMatch } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { asAppLanguage } from '../../i18n';
 import { NavDrawer } from '../../design-system/components/navigation';
 import { IconAction } from '../../design-system/components/toolbars';
 import { default as SideBar } from './Sidebar';
 import { Footer } from './Footer';
+import { DevelopmentNotice } from './DevelopmentNotice';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
+import { useRightPanelHidden } from './rightPanelSlot';
 import { LeftPanelOutlet, LeftPanelProvider } from './leftPanel';
-import { isFullWidthRoute, pageTitleOf, titleKeyOf } from './routeHandle';
+import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from './boardLeftPanel';
+import { useBoardLeftPanelWidth } from './boardLeftPanelSlot';
+import { useShellCompact } from './shellCompact';
+import { ARTICLE_MAX_WIDTH_PX, descriptionKeyOf, isArticleRoute, isFullWidthRoute, pageMetaOf, pageTitleOf, screenIdOf, titleKeyOf } from './routeHandle';
 import { createPageTitleStore, PageTitleContext } from './pageTitle';
 import { visuallyHidden } from '../../design-system/components/a11y';
 import { ForceLTR } from '../../theme/ForceLTR';
@@ -75,19 +79,6 @@ const SIDEBAR_WIDTH_PX = 280;
  */
 const PANEL_MIN_WIDTH_PX = 320;
 const PANEL_MAX_WIDTH_PX = 560;
-
-/**
- * **The shell's one breakpoint** (CTA-118, WCAG 1.4.10 Reflow). Below it the
- * window has no room for a 280px rail beside a board beside a 320px panel —
- * at 320 CSS px, which is a 1280px window at 400% zoom, it had none for any
- * of them and `main` came out 0px wide. Under it the rail becomes a drawer
- * off the header and the panel stacks under the square; above it the shell is
- * exactly what it was.
- *
- * One breakpoint rather than two: the rail and the panel are the same 280 +
- * 320 px of fixed chrome, so they stop fitting together.
- */
-const SHELL_COMPACT_BREAKPOINT = 'md';
 
 /**
  * The stacked panel's least height, in pixels. Stacked, the panel has no
@@ -271,7 +262,7 @@ const DefaultLayoutViewport = () => {
       a drawer (a different element, mounted only while it is open) and the
       board square is measured against the width alone.
     */
-    const compact = useMediaQuery((theme: Theme) => theme.breakpoints.down(SHELL_COMPACT_BREAKPOINT));
+    const compact = useShellCompact();
 
     // The board area is sized in pixels because `react-chessboard` fills its
     // container and has no intrinsic size. `ref` sits on the padded board
@@ -279,6 +270,20 @@ const DefaultLayoutViewport = () => {
     // measurement already excludes the header, the footer and the sidebar —
     // whatever is left is what the square has to fit inside.
     const ref = useRef<HTMLDivElement>(null)
+    /*
+      A screen's own left panel (`BoardLeftPanel`, CTA-145 — the Analysis
+      Board's sibling list) is a column of the row, before the square, and its
+      width and gap come out of the square's like the aside's: a function of
+      what is registered alone, so the square stays square. **While it is open
+      the screen takes the whole window** — no header, no main menu rail, no
+      footer (`focused`): the room for a column, a square and the panel beside
+      it is not there with the menu's 280 px taken. Closing the panel brings the
+      shell back. Stacked there is no column (the screen draws a drawer, and the
+      header and its menu button stay).
+    */
+    const leftPanelWidth = useBoardLeftPanelWidth()
+    const leftPanelOpen = leftPanelWidth > 0 && !compact
+    const leftPanelPx = leftPanelOpen ? leftPanelWidth + BOARD_PANEL_GAP_PX : 0
     const [bodyDimentions, setBodyDimentions] = useState<Rect>({ width: 0, height: 0 })
 
     useEffect(() => {
@@ -338,7 +343,7 @@ const DefaultLayoutViewport = () => {
             : Math.max(
                 0,
                 Math.min(
-                    width - PANEL_MIN_WIDTH_PX - BOARD_PANEL_GAP_PX - BOARD_INSET_PX * 2,
+                    width - PANEL_MIN_WIDTH_PX - BOARD_PANEL_GAP_PX - BOARD_INSET_PX * 2 - leftPanelPx,
                     height - BOARD_INSET_PX * 2,
                 ),
             )
@@ -347,7 +352,27 @@ const DefaultLayoutViewport = () => {
             height: minorSide,
         }
 
-    },[bodyDimentions, compact])
+    },[bodyDimentions, compact, leftPanelPx])
+
+    /*
+      A screen that spans the aside (`HideRightPanel`, CTA-142 — the Library's
+      tournament Info tab): no aside, and the screen's area the square's
+      height, reaching across the gap and the aside's room — the width the
+      aside would have taken (its flex share, within its bounds) — so the
+      row is centred exactly as with the aside and nothing moves as it comes
+      and goes. Stacked, the square is the column's width already: there is
+      only no panel under it.
+    */
+    const asideHidden = useRightPanelHidden();
+    const areaDimentions = useMemo<Rect>(() => {
+        if (!asideHidden || compact || boardDimentions.width === 0) return boardDimentions;
+        const inner = bodyDimentions.width - BOARD_INSET_PX * 2 - leftPanelPx;
+        const aside = Math.min(
+            PANEL_MAX_WIDTH_PX,
+            Math.max(PANEL_MIN_WIDTH_PX, inner - boardDimentions.width - BOARD_PANEL_GAP_PX),
+        );
+        return { width: boardDimentions.width + BOARD_PANEL_GAP_PX + aside, height: boardDimentions.height };
+    }, [asideHidden, compact, boardDimentions, bodyDimentions, leftPanelPx])
 
 
 
@@ -356,6 +381,8 @@ const DefaultLayoutViewport = () => {
     // A route whose `handle` asks for the whole body (`routeHandle.ts`) gets
     // it: no square, no aside. Every other route gets the shell below as is.
     const fullWidth = isFullWidthRoute(matches);
+    // An article (the front page, the Blog — CTA-130) is that, centred.
+    const article = isArticleRoute(matches);
 
     /*
       The navigation drawer (CTA-118), open only under the breakpoint. It
@@ -404,24 +431,30 @@ const DefaultLayoutViewport = () => {
     },[matches, updateLocationFn])
 
     /*
-      The page (CTA-112): its title from the route's handle and the record a
-      screen reports (`pageTitle.ts`), written to `document.title`, the `main`
+      The page (CTA-112): its title from the route's handle — the page the
+      address names first, for a route with `meta` (CTA-135) — and the record
+      a screen reports (`pageTitle.ts`): the document's `<title>`, the `main`
       landmark's name and — unless the screen renders its own — the page's
       one `h1`, visually hidden.
+
+      The `<title>` and the description are **rendered** (below), not written
+      in an effect: React 19 hoists them into `<head>`, so a page rendered to
+      HTML ahead of time carries them as the browser's does (CTA-135).
     */
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [pageStore] = useState(createPageTitleStore);
-    const detail = useSyncExternalStore(pageStore.subscribe, pageStore.getDetail);
-    const ownHeading = useSyncExternalStore(pageStore.subscribe, pageStore.getOwnHeadings) > 0;
+    const detail = useSyncExternalStore(pageStore.subscribe, pageStore.getDetail, pageStore.getDetail);
+    const ownHeading = useSyncExternalStore(pageStore.subscribe, pageStore.getOwnHeadings, pageStore.getOwnHeadings) > 0;
     const titleKey = titleKeyOf(matches);
+    const meta = pageMetaOf(matches, asAppLanguage(i18n.language));
     const { title, heading } = pageTitleOf(
         titleKey === undefined ? undefined : t(titleKey),
-        detail,
+        meta?.title ?? detail,
         t('app.brandText'),
     );
-    useEffect(() => {
-        document.title = title;
-    }, [title]);
+    // The page's description, else its screen's (CTA-136).
+    const descriptionKey = descriptionKeyOf(titleKey);
+    const description = meta?.description ?? (descriptionKey !== undefined && i18n.exists(descriptionKey) ? t(descriptionKey) : undefined);
 
     const mainRef = useRef<HTMLElement>(null);
     /** The shell's hidden `h1` took the focus, and a screen's own may yet replace it. */
@@ -447,11 +480,12 @@ const DefaultLayoutViewport = () => {
       a screen reader then reads — the page it has arrived on. Not on the first
       load (the browser announces the page), and not within a screen: the
       screen is its route's title key, so a query string (`?move=`, `?sort=`),
-      a Settings tab or the next Library game leaves the focus where it was.
+      a Settings tab or the next Library game leaves the focus where it was —
+      but each page of a route with `meta` (a Blog article, CTA-135) is its own.
       After a tick, so the new screen has mounted and said whether it renders
       its own heading.
     */
-    const screenId = titleKey ?? matches[matches.length - 1]?.pathname ?? '';
+    const screenId = screenIdOf(matches);
     const shownScreenRef = useRef<string | null>(null);
     useEffect(() => {
         const previous = shownScreenRef.current;
@@ -493,6 +527,8 @@ const DefaultLayoutViewport = () => {
 
     return (
         <PageTitleContext.Provider value={pageStore}>
+        <title>{title}</title>
+        {description !== undefined && <meta name="description" content={description} />}
         <Box
             data-testid="layout-root"
             component="div"
@@ -508,7 +544,7 @@ const DefaultLayoutViewport = () => {
             }}
         >
             <SkipLink onSkip={focusMain} />
-            <Header compact={compact} onOpenNav={openNav} />
+            {!leftPanelOpen && <Header compact={compact} onOpenNav={openNav} />}
 
             <Box
                  data-testid="layout-wrapper"
@@ -535,7 +571,7 @@ const DefaultLayoutViewport = () => {
                     renders `<SideBar/>`. The slot swaps *content*, not the
                     row's proportions.
                 */}
-                {compact ? (
+                {leftPanelOpen ? null : compact ? (
                     <NavDrawer
                         open={navOpen}
                         onClose={closeNav}
@@ -601,14 +637,46 @@ const DefaultLayoutViewport = () => {
                             overflowY: compact ? "auto" : "hidden",
                         }}
                    >
+                        {!fullWidth && <BoardLeftPanelOutlet compact={compact} />}
                         {fullWidth ? (
                             <Box
                                 {...mainProps}
                                 data-testid="layout-full-body"
-                                sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, outline: 'none' }}
+                                sx={{
+                                    flexGrow: 1,
+                                    minWidth: 0,
+                                    minHeight: 0,
+                                    outline: 'none',
+                                    // An article scrolls here, the body's
+                                    // whole height, so the scrollbar is the
+                                    // page's and not the column's.
+                                    ...(article ? { overflowY: 'auto' } : {}),
+                                }}
                             >
-                                {pageHeading}
-                                <Outlet />
+                                {article ? (
+                                    /*
+                                      The article's column (CTA-130): centred,
+                                      at most a readable width, the whole body
+                                      under it — so it reflows at 320 px. No
+                                      ForceLTR: the boards an article embeds
+                                      pin themselves (`DemoBoard`,
+                                      `ExcerptBoard`), and the prose mirrors.
+                                    */
+                                    <Box
+                                        data-testid="layout-article-column"
+                                        sx={{
+                                            width: '100%',
+                                            maxWidth: `${ARTICLE_MAX_WIDTH_PX}px`,
+                                            marginInline: 'auto',
+                                        }}
+                                    >
+                                        {pageHeading}
+                                        <Outlet />
+                                    </Box>
+                                ) : (<>
+                                    {pageHeading}
+                                    <Outlet />
+                                </>)}
                             </Box>
                         ) : (<>
                         {/*
@@ -641,8 +709,8 @@ const DefaultLayoutViewport = () => {
                                 // it changes on every resize — no reason to mint
                                 // a fresh emotion class each time.
                                 style={{
-                                    width: `${boardDimentions.width}px`,
-                                    height: `${boardDimentions.height}px`,
+                                    width: `${areaDimentions.width}px`,
+                                    height: `${areaDimentions.height}px`,
                                 }}
                             >
                                 {/*
@@ -662,7 +730,7 @@ const DefaultLayoutViewport = () => {
                             </Box>
                         </Box>
 
-                         <Box
+                         {!asideHidden && <Box
                             component="aside"
                             aria-label={t('shell.sidePanel')}
                             data-testid="layout-board-square-sidebar"
@@ -675,6 +743,17 @@ const DefaultLayoutViewport = () => {
                                 */
                                 flexGrow: compact ? 0 : 1,
                                 flexShrink: 0,
+                                /*
+                                  From nothing, not from its content (CTA-142):
+                                  with an `auto` basis a panel whose content is
+                                  wide (a list's long lines, a table) started at
+                                  its 560 px cap whatever the square left, so on
+                                  a 1500 × 900 window the row overflowed and the
+                                  square was clipped under the sidebar. From 0 it
+                                  grows into exactly what the square leaves,
+                                  held between its min and max.
+                                */
+                                ...(compact ? {} : { flexBasis: 0 }),
                                 /*
                                   A column, and it does not scroll itself: a
                                   panel that wants a section pinned to the foot
@@ -728,7 +807,7 @@ const DefaultLayoutViewport = () => {
                             */}
                             <RightPanelOutlet fallback={<AnalysisPlaceholder />} />
 
-                        </Box>
+                        </Box>}
                         </>)}
 
 
@@ -741,7 +820,7 @@ const DefaultLayoutViewport = () => {
 
             </Box>
 
-            <Footer />
+            {!leftPanelOpen && <Footer />}
 
         </Box>
         </PageTitleContext.Provider>
@@ -760,7 +839,11 @@ const DefaultLayout = ()=>
                 */}
                 <RightPanelProvider>
                     <LeftPanelProvider>
-                        <DefaultLayoutViewport />
+                        <BoardLeftPanelProvider>
+                            <DefaultLayoutViewport />
+                            {/* Once per session, on whichever route the reader arrives at (CTA-155). */}
+                            <DevelopmentNotice />
+                        </BoardLeftPanelProvider>
                     </LeftPanelProvider>
                 </RightPanelProvider>
             </BoardWidgetContext.Provider>

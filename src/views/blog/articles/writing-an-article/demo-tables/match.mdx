@@ -1,0 +1,33 @@
+---
+title: Match
+summary: "<MatchTable>: Clutch Chess: The Legends 2026 — Topalov against Kasparov, twelve games."
+order: 60
+---
+
+import games from "../../tournaments/clutchlegends26.pgn?raw"
+
+A **match**: two players, a set number of games. The example is Clutch Chess: The Legends 2026, Veselin Topalov against Garry Kasparov in Saint Louis from 11 to 13 September. They played twelve Chess960 games, rapid and blitz.
+
+**Note: Chess960 boards are not supported yet.** The app's boards follow the rules of standard chess, and Chess960 castles differently, so this page shows no board for its games. The table reads only the games' results, so it works for any variant.
+
+## The format
+
+There is no ranking to break ties in: one player scores more, or the match is level. The table counts each game as one point, as its `Result` tag says. An event that scores its games differently, for example with later games worth more, keeps that score itself: no tag carries it. By game points, Topalov won 8–4.
+
+## The table
+
+Two rows, the leader first, and a column per game. Each cell is the result for its row's player. A screen reader hears the game, the colour and the opponent, for example "Game 1, White against Kasparov, Garry: win".
+
+<MatchTable pgn={games} />
+
+## The markup
+
+```mdx
+import games from "./clutchlegends26.pgn?raw"
+
+<MatchTable pgn={games} />
+```
+
+## Source
+
+The games are from [The Week in Chess](https://theweekinchess.com) (TWIC), by Mark Crowther — the event's page, [Clutch Chess: The Legends 2026](https://theweekinchess.com/chessnews/events/clutch-chess-the-legends-2026), and its PGN, [clutchlegends26.pgn](https://theweekinchess.com/assets/files/pgn/clutchlegends26.pgn).

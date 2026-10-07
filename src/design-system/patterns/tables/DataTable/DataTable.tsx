@@ -4,7 +4,6 @@ import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import type { LabelDisplayedRowsArgs } from "@mui/material/TablePagination";
 
 import { visuallyHidden, type VisibleLabel } from "../../../components/a11y";
 import { linkProps, type LinkTarget } from "../../../components/link";
@@ -22,20 +21,11 @@ import {
   type SortDirection,
   type TableName,
 } from "../../../components/tables";
+import { type TablePaging } from "../paging";
 import { nextSort, type DataTableColumn, type DataTableSort } from "./columns";
 
-/** Controlled paging — `useTableUrlState`'s, or any other source's. */
-export type DataTablePaging = {
-  /** Zero-based. A page past the last shows the last. */
-  page: number;
-  rowsPerPage: number;
-  onPageChange: (page: number) => void;
-  onRowsPerPageChange: (rows: number) => void;
-  /** "Rows per page" in the reader's language. */
-  labelRowsPerPage: VisibleLabel;
-  /** "1–50 of 812" — absent, the theme's locale bundle words it. */
-  labelDisplayedRows?: (args: LabelDisplayedRowsArgs) => ReactNode;
-};
+/** Controlled paging — the table patterns' one shape (`../paging.ts`). */
+export type DataTablePaging = TablePaging;
 
 /** Controlled picks: a checkbox per row, select-all in the header. */
 export type DataTablePicks<R> = {
@@ -55,6 +45,12 @@ export type DataTablePicks<R> = {
    */
   selectAllTestId?: string;
   pickTestId?: (row: R) => string;
+  /**
+   * Whether a row can be picked (CTA-144: a folder row among the analyses
+   * of a tree table). A row it turns down has an empty pick cell and is left
+   * out of select-all and its count. Absent, every row can.
+   */
+  canPick?: (row: R) => boolean;
 };
 
 /**
@@ -291,16 +287,18 @@ function DataTable<R, C extends string = string>({
   const shown = paging === undefined ? ordered : ordered.slice(page * paging.rowsPerPage, (page + 1) * paging.rowsPerPage);
 
   const picked = picks?.picked;
+  const canPick = picks?.canPick;
+  const pickable = useMemo(() => (canPick === undefined ? rows : rows.filter(canPick)), [rows, canPick]);
   const pickedCount = useMemo(
-    () => (picked === undefined ? 0 : rows.reduce((count, row) => (picked.has(rowId(row)) ? count + 1 : count), 0)),
-    [rows, picked, rowId],
+    () => (picked === undefined ? 0 : pickable.reduce((count, row) => (picked.has(rowId(row)) ? count + 1 : count), 0)),
+    [pickable, picked, rowId],
   );
 
   const toggleAll = () => {
     if (picks === undefined) return;
     const next = new Set(picks.picked);
-    const all = rows.length > 0 && pickedCount >= rows.length;
-    for (const row of rows) {
+    const all = pickable.length > 0 && pickedCount >= pickable.length;
+    for (const row of pickable) {
       if (all) next.delete(rowId(row));
       else next.add(rowId(row));
     }
@@ -380,7 +378,7 @@ function DataTable<R, C extends string = string>({
           <TableRow>
             {picks !== undefined && (
               <PickHeaderCell
-                total={rows.length}
+                total={pickable.length}
                 picked={pickedCount}
                 onToggleAll={toggleAll}
                 label={picks.selectAllLabel}
@@ -445,7 +443,8 @@ function DataTable<R, C extends string = string>({
                     }),
                   })}
                 >
-                  {picks !== undefined && (
+                  {picks !== undefined && canPick?.(row) === false && <TableCell padding="checkbox" />}
+                  {picks !== undefined && canPick?.(row) !== false && (
                     <PickCell
                       checked={isPicked}
                       onToggle={() => togglePick(id)}

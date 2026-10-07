@@ -2,7 +2,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import type { RouteObject } from "react-router";
 
 import { DefaultLayout } from './views/main/Layout';
-import { FULL_WIDTH_ROUTE } from './views/main/routeHandle';
+import { ARTICLE_ROUTE, FULL_WIDTH_ROUTE } from './views/main/routeHandle';
 import { default as HomeScreen  } from './views/home/Main'
 import { default as PlayWithEngineScreen  } from './views/engine/play/Main'
 import { default as PlayedGamesScreen  } from './views/engine/games/Main'
@@ -14,6 +14,7 @@ import { default as OpeningsScreen  } from './views/openings/Main'
 import { default as LibraryScreen  } from './views/library/LibraryHomeMain'
 import { default as LibraryUploadScreen  } from './views/library/LibraryUploadMain'
 import { default as LibraryCollectionScreen  } from './views/library/CollectionScreenMain'
+import { default as LibraryCollectionSettingsScreen  } from './views/library/CollectionSettingsScreenMain'
 import { default as LibraryGameScreen  } from './views/library/LibraryGameScreenMain'
 import { default as RepertoiresScreen  } from './views/repertoires/RepertoiresMain'
 import { default as RepertoireUploadScreen  } from './views/repertoires/RepertoireUploadMain'
@@ -21,10 +22,14 @@ import { default as RepertoireBoardScreen  } from './views/repertoires/Repertoir
 import { default as RepertoireSettingsScreen  } from './views/repertoires/RepertoireSettingsScreenMain'
 import { default as RepertoireGameScreen  } from './views/repertoires/RepertoireGameMain'
 import { default as SettingsScreen  } from './views/settings/SettingsMain'
+import { default as BlogScreen  } from './views/blog/BlogMain'
+import { blogPageMeta } from './views/blog/blogPageMeta'
+import { collectionPageMeta } from './views/library/collectionPageMeta'
+import { MDX_EDITOR_ENABLED } from "./mdxEditor/enabled";
 
 /**
  * The **Development** section's routes (`chessboard.md` §9.5) — the design
- * gallery (CTA-107) and the theme editor (CTA-115).
+ * gallery (CTA-107), the theme editor (CTA-115) and the MDX editor.
  *
  * Dev-only, and this array is the whole of the gate. Two things make it
  * provable rather than hopeful:
@@ -69,6 +74,31 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
         element: devScreen(() => import("./views/dev/themeEditor/Main")),
         handle: { ...FULL_WIDTH_ROUTE, title: "pages.themeEditor" },
       },
+      // The MDX editor (src/mdxEditor/): an article's MDX beside its live
+      // rendering, with every component an article embeds. Compiled in the
+      // browser, so the MDX compiler is in this dev chunk alone — and only
+      // under `yarn mdx-editor:start` (MDX_EDITOR_ENABLED), not plain `yarn dev`.
+      ...(MDX_EDITOR_ENABLED
+        ? [
+            {
+              // The articles, as a tree of folders with each one's actions — the editor's lobby.
+              path: "/dev/mdx-editor",
+              element: devScreen(() => import("./mdxEditor/client/LobbyMain")),
+              handle: { ...FULL_WIDTH_ROUTE, title: "pages.mdxArticles" },
+            },
+            {
+              path: "/dev/mdx-editor/edit",
+              element: devScreen(() => import("./mdxEditor/client/Main")),
+              handle: { ...FULL_WIDTH_ROUTE, title: "pages.mdxEditor" },
+            },
+            {
+              // Every component an article embeds, each set up with a form and rendered live — a sandbox (CTA-140).
+              path: "/dev/mdx-editor/components",
+              element: devScreen(() => import("./mdxEditor/client/ComponentGalleryMain")),
+              handle: { ...FULL_WIDTH_ROUTE, title: "pages.mdxComponents" },
+            },
+          ]
+        : []),
     ]
   : [];
 
@@ -90,7 +120,7 @@ export const appRoutes: RouteObject[] = [
       ,
       children: [
         {
-          index: true, element: <HomeScreen />, handle: { title: "pages.home" }
+          index: true, element: <HomeScreen />, handle: { ...ARTICLE_ROUTE, title: "pages.home" }
         },
         {
           path: "/engine/play",
@@ -186,12 +216,33 @@ export const appRoutes: RouteObject[] = [
         {
           path: "/library/:collectionId",
           element: <LibraryCollectionScreen />,
-          handle: { title: "pages.collection" }
+          // A shipped collection's name and count, from the manifest — its
+          // page is rendered ahead of time (CTA-136).
+          handle: { title: "pages.collection", meta: collectionPageMeta }
+        },
+        // A collection's settings (CTA-121) — its title, description and
+        // tournament mark. A static segment, so it ranks above `:game`.
+        {
+          path: "/library/:collectionId/settings",
+          element: <LibraryCollectionSettingsScreen />,
+          handle: { title: "pages.collectionSettings" }
         },
         {
           path: "/library/:collectionId/:game",
           element: <LibraryGameScreen />,
           handle: { title: "pages.libraryGame" }
+        },
+        // The Blog (CTA-126): one route for every page of it (CTA-135) — its
+        // index, a folder at any depth, an article, an old address an
+        // article redirects from. An article is a file,
+        // `views/blog/articles/<path>.mdx`, and nothing else: no line here.
+        // Its handle's `meta` names the page the address shows
+        // (`blogPageMeta.ts`), which the shell puts first in the page title.
+        // An article (`ARTICLE_ROUTE`, CTA-130), as the front page above.
+        {
+          path: "/blog/*",
+          element: <BlogScreen />,
+          handle: { ...ARTICLE_ROUTE, title: "pages.blog", meta: blogPageMeta }
         },
         // Settings (CTA-86): one tab per segment — Export today. `/settings`
         // and an unknown tab land on the first.

@@ -26,7 +26,14 @@ function GalleryRoute(props: Props) {
 
 function Page(props: Props) {
   const page = useLocation().pathname.slice("/dev/design/".length);
-  return <DesignGallery section={page === "" ? undefined : page} sectionPath={(key) => `/dev/design/${key}`} {...props} />;
+  return (
+    <DesignGallery
+      section={page === "" ? undefined : page}
+      sectionPath={(key) => `/dev/design/${key}`}
+      startPath="/dev/design"
+      {...props}
+    />
+  );
 }
 
 const renderGallery = (entry = "/dev/design", props: Props = {}) =>
@@ -82,8 +89,10 @@ describe("the design gallery", () => {
     const frame = tables?.modules.find((entry) => entry.id === "TableFrame");
     renderGallery("/dev/design/tables/TableFrame");
     expect(preview()).toHaveAttribute("data-component", "TableFrame");
-    expect(screen.getByTestId("design-gallery-title")).toHaveTextContent("TableFrame");
-    expect(screen.getByTestId("design-gallery-tier")).toHaveTextContent("Base · Tables");
+    expect(screen.getByTestId("design-gallery-breadcrumbs-base")).toHaveTextContent("Base");
+    expect(screen.getByTestId("design-gallery-breadcrumbs-tables")).toHaveTextContent("Tables");
+    expect(screen.getByTestId("design-gallery-breadcrumbs-current")).toHaveTextContent("TableFrame");
+    expect(screen.getByTestId("design-gallery-breadcrumbs-current")).toHaveAttribute("aria-current", "page");
     expect(within(preview()).getAllByTestId("design-gallery-demo-tables")).toHaveLength(frame?.demos.length ?? -1);
   });
 
@@ -91,8 +100,25 @@ describe("the design gallery", () => {
     renderGallery("/dev/design/patterns/tables/DataTable");
     expect(preview()).toHaveAttribute("data-tier", "patterns");
     expect(preview()).toHaveAttribute("data-section", "patterns/tables");
-    expect(screen.getByTestId("design-gallery-tier")).toHaveTextContent("Patterns · Tables");
+    expect(screen.getByTestId("design-gallery-breadcrumbs-patterns")).toHaveTextContent("Patterns");
+    expect(screen.getByTestId("design-gallery-breadcrumbs-patterns-tables")).toHaveTextContent("Tables");
     expect(within(preview()).getAllByTestId("design-gallery-demo-patterns-tables").length).toBeGreaterThan(0);
+  });
+
+  describe("the breadcrumbs trail — the page's title", () => {
+    it("links the tier crumb to the gallery's start, and the section crumb to the section's landing", () => {
+      renderGallery("/dev/design/tables/TableFrame");
+      expect(screen.getByTestId("design-gallery-breadcrumbs-base")).toHaveAttribute("href", "/dev/design");
+      expect(screen.getByTestId("design-gallery-breadcrumbs-tables")).toHaveAttribute("href", "/dev/design/tables");
+    });
+
+    it("goes where the crumbs point: up to the section's first component, and to the gallery's start", () => {
+      renderGallery("/dev/design/dialogs/ConfirmDialog");
+      fireEvent.click(screen.getByTestId("design-gallery-breadcrumbs-dialogs"));
+      expect(where()).toBe(`/dev/design/dialogs/${firstOf("dialogs")}`);
+      fireEvent.click(screen.getByTestId("design-gallery-breadcrumbs-base"));
+      expect(where()).toBe(`/dev/design/${SECTIONS[0].id}/${firstOf(SECTIONS[0].id)}`);
+    });
   });
 
   it("shows the tiers handed in after its own, and hides a tier with nothing in it", () => {

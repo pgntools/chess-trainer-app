@@ -259,6 +259,48 @@ describe("ancestorsOf", () => {
   });
 });
 
+describe("TreeView — wrapped labels and disabled leaves (CTA-145)", () => {
+  const LONG = "A very long name that is the reader's own words and must be read whole";
+
+  it("ends a long label in an ellipsis by default, and wraps it whole with wrapLabels", () => {
+    const nodes: TreeNode[] = [{ id: "long", label: LONG, link: { href: "#long" } }];
+    const { unmount } = render(<TreeView nodes={nodes} open={new Set()} onToggle={() => {}} ariaLabel="Tree" hint={HINT} testId="t" />);
+    expect(within(screen.getByTestId("t-long")).getByText(LONG)).toHaveStyle({ whiteSpace: "nowrap" });
+    unmount();
+    render(<TreeView nodes={nodes} open={new Set()} onToggle={() => {}} wrapLabels ariaLabel="Tree" hint={HINT} testId="t" />);
+    expect(within(screen.getByTestId("t-long")).getByText(LONG)).not.toHaveStyle({ whiteSpace: "nowrap" });
+  });
+
+  it("keeps a disabled leaf in the tree and the tab order, aria-disabled, doing nothing — no link, no select", () => {
+    const onSelect = vi.fn();
+    const nodes: TreeNode[] = [
+      { id: "live", label: "Live", link: { href: "#live" } },
+      { id: "off", label: "Off", link: { href: "#off" }, disabled: true },
+      { id: "plain", label: "Plain", disabled: true },
+    ];
+    render(<TreeView nodes={nodes} open={new Set()} onToggle={() => {}} onSelect={onSelect} ariaLabel="Tree" hint={HINT} testId="t" />);
+    const off = screen.getByTestId("t-off");
+    expect(off).toHaveAttribute("aria-disabled", "true");
+    expect(off).not.toHaveAttribute("href");
+    expect(screen.getByTestId("t-live")).not.toHaveAttribute("aria-disabled");
+    fireEvent.click(off);
+    fireEvent.click(screen.getByTestId("t-plain"));
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("walks onto a disabled leaf with the arrow keys", async () => {
+    const user = userEvent.setup();
+    const nodes: TreeNode[] = [
+      { id: "live", label: "Live", link: { href: "#live" } },
+      { id: "off", label: "Off", disabled: true },
+    ];
+    render(<TreeView nodes={nodes} open={new Set()} onToggle={() => {}} ariaLabel="Tree" hint={HINT} testId="t" />);
+    screen.getByTestId("t-live").focus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByTestId("t-off")).toHaveFocus();
+  });
+});
+
 describe("visibleNodes", () => {
   it("lists the rows in view, top to bottom, each with its branch", () => {
     expect(visibleNodes(NODES, new Set()).map((entry) => entry.node.id)).toEqual(["home", "docs", "folder"]);

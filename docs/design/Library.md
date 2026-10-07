@@ -158,7 +158,7 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **What it does** — A collection's games from its index, one row per game: `#` (with an unreadable mark), White, Elo, Black, Elo, Result, Date, Round, Event, ECO, Opening, Moves; every column sorts; words, panel filters and the opening line narrow it; paged; the row (and a real link in the White cell) opens the game with `state.from`; a pick checkbox per row. Sort, filters and page are the URL's; picks are not.
 - **API** — `collection: CollectionSummary`, `rows: CollectionRow[]`.
 - **Used by** — `CollectionScreen`.
-- **Tests** — `library/Library.test.tsx` (sort, filters, picks, unreadable mark; `library-table-pagination` is not exercised).
+- **Tests** — `library/Library.test.tsx`, `library/LibraryFilters.test.tsx`, `library/LibraryPicks.test.tsx` (sort, filters, picks, unreadable mark; `library-table-pagination` is not exercised).
 - **Styling** — `TableContainer flex: 1; minHeight: 0`, `size="small" stickyHeader`, header cells `nowrap` 600; rows `hover`, `cursor: pointer`; the pick cell stops the row click; names and event `dir="auto"`, result / date / round `dir="ltr"`, opening `minWidth: 160`; unreadable `WarningAmberRounded` at `fontSize: 16` with `marginInlineStart: 0.5`; `TablePagination` 50 / 100 / 250, 50 by default.
 - **Similar elsewhere** — `PlayedGames` (Engine) was built from this; [the four tables](./Shared.md#the-four-tables).
 - **Verdict** — module-specific but needs design consistency — the reference table; its select-all lives in the export bar, not in its empty header checkbox cell.
@@ -173,7 +173,7 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **What it does** — Back to `/library`; the name and the count ("N games", "N of M"); **Add games** (uploads only — `contained` when the collection is empty); the export bar (select-all over every filtered row, download, delete for uploads); **Analyse** (the picks into a new Saved analyses folder, a spinner while it runs).
 - **API** — inline in `CollectionTable`.
 - **Used by** — `CollectionTable`.
-- **Tests** — `library/Library.test.tsx` (`library-table-name`, `-count`, `-add-games`, `library-picks-*`, `library-picks-analyse`; the back button is not asserted).
+- **Tests** — `library/Library.test.tsx`, `library/LibraryPicks.test.tsx` (`library-table-name`, `-count`, `-add-games`, `library-picks-*`, `library-picks-analyse`; the back button is not asserted).
 - **Styling** — `gap: 1 pb: 1`, bottom divider, **no** `mb` and no wrap (the other list bars have `pb: 1.5 mb: 0.5`); title `subtitle1` 700 `h1` `noWrap dir="auto"`; Analyse `outlined small`, its icon swapped for `CircularProgress size={16}` and `aria-busy` while running, in a span for its disabled tooltip; Add games in a `Tooltip` with a hint.
 - **Similar elsewhere** — [toolbar / action bar](./Shared.md#toolbar--action-bar).
 - **Verdict** — share candidate — `ListScreenHeader`; the busy-button pattern (icon → spinner) is used only here.
@@ -218,7 +218,7 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **What it does** — After Analyse: how many games went into which folder (and how many unreadable ones were left out), with **Open folder**; or the error.
 - **API** — inline in `CollectionTable`.
 - **Used by** — `CollectionTable`.
-- **Tests** — `library/Library.test.tsx` (`library-picks-analyse-notice`, `-open`).
+- **Tests** — `library/LibraryPicks.test.tsx` (`library-picks-analyse-notice`, `-open`).
 - **Styling** — `Snackbar` bottom-centre, 10 s for success, no auto-hide for an error, click-away ignored; `Alert variant="filled"`, `alignItems: center`, an inherit-coloured small action button.
 - **Similar elsewhere** — `MoveContextMenu`'s copy snackbar (Shared) — a plain `message`, 3 s.
 - **Verdict** — module-specific but needs design consistency — the two snackbars should share one style.
@@ -263,7 +263,7 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **What it does** — The table's filters, each shown only where the collection has its field: players (several names as chips, part of a name typed free), the side any of them had (off until a name is chosen), the opening-moves board, opening (ECO or name, typed free), event, a date range, result; **Clear** removes them all.
 - **API** — `facets`, `values`, `onChange(patch)`, `onClear`, `openingTree`, `openingNode`, `line`, `onLine`, `collectionName`.
 - **Used by** — `CollectionTable`.
-- **Tests** — `library/Library.test.tsx` (`library-filter-player`, `-color`, `-opening`, `-event`, `-from` / `-to`, `library-table-result`, `library-filter-clear`).
+- **Tests** — `library/LibraryFilters.test.tsx` (`library-filter-player`, `-color`, `-opening`, `-event`, `-from` / `-to`, `library-table-result`, `library-filter-clear`).
 - **Styling** — `grid gap: 2`; the title `subtitle2` 700 `h2` beside a small text Clear; players `Autocomplete multiple freeSolo limitTags={1} disableCloseOnSelect size="small"`; side `ToggleButtonGroup exclusive fullWidth size="small"`; dates two `type="date"` fields in `1fr 1fr`, labels shrunk, each bounding the other; result a `TextField select`.
 - **Similar elsewhere** — `ImportOptionsDialog` (the same player chips and date range, in a dialog); the Lobby's filter bar (the side toggle and a select, in the top bar).
 - **Verdict** — share candidate — `DateRangeField` and `PlayerChipsField` are each written twice.
@@ -278,7 +278,7 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **What it does** — Around the small board (out of scope): a title with reset, back and flip; under it the moves played (or a start prompt) and **Save tree as PGN**; then the continuations list or an end message (no game, one game goes on, the games end here).
 - **API** — `line`, `node`, `onLine(line)`, `collectionName`. Board `options.id` `library-filter-board`.
 - **Used by** — `CollectionFilters`.
-- **Tests** — `library/Library.test.tsx` (`library-filter-moves-reset`, `-back`, `-line`, `-end`, `-save`, `library-filter-move-*`; flip is not exercised).
+- **Tests** — `library/LibraryFilters.test.tsx` (`library-filter-moves-reset`, `-back`, `-line`, `-end`, `-save`, `library-filter-move-*`; flip is not exercised).
 - **Styling** — `grid gap: 1`; title `body2` 600 growing; icon buttons `small`, disabled ones in bare spans; the line `caption dir="ltr" unicodeBidi: isolate minHeight: 1.5em`; the save link `Link variant="caption"` at the row's inline end (the row mirrors, the line does not).
 - **Similar elsewhere** — `BoardControls` (Shared) — the same back / reset / flip, as a footer strip with other icons; the only `Link component="button"` in the app.
 - **Verdict** — module-specific but needs design consistency — board controls in a second style.
@@ -293,7 +293,7 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **What it does** — The moves the filtered games played from here, lichess-explorer style: the SAN (click plays, hover draws its arrow), the games and share, a White / draw / Black bar.
 - **API** — inline in `OpeningFilterBoard`; `ResultBar({ node })`.
 - **Used by** — `OpeningFilterBoard`.
-- **Tests** — `library/Library.test.tsx` (`library-filter-move-<san>`, `-count-<san>`).
+- **Tests** — `library/LibraryFilters.test.tsx` (`library-filter-move-<san>`, `-count-<san>`).
 - **Styling** — grid `auto auto 1fr`, `columnGap: 1 rowGap: 0.25`; SAN tokens `moveSx` + `sanTokenSx`; the bar `height: 14`, `borderRadius: 0.5`, a `divider` border, segments in **hard-coded greys** `#f5f5f5` / `#9e9e9e` / `#424242` with `#212121` / `#f5f5f5` text at `fontSize: 10`, a percentage shown from 15%.
 - **Similar elsewhere** — the Openings Book tab (`OpeningBookList`) and `NextMovesBar` — three continuation lists ([list](./Shared.md#list)).
 - **Verdict** — module-specific but needs design consistency — the result bar's colours are the only hard-coded palette in a list, and ignore dark mode's tokens.
@@ -308,7 +308,7 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **What it does** — *Save tree as PGN*'s choice: No (moves alone) or Add tags, then which tags (`games`, `prc`); the boxes are off under No, Save is off with no box ticked.
 - **API** — `open`, `onClose`, `onSave(tags)`.
 - **Used by** — `OpeningFilterBoard`.
-- **Tests** — `library/Library.test.tsx` (`library-filter-moves-save-*`).
+- **Tests** — `library/LibraryFilters.test.tsx` (`library-filter-moves-save-*`).
 - **Styling** — `fullWidth maxWidth="xs"`; the checkboxes indented `paddingInlineStart: 4` under the radios, each label a `body2` over a `caption text.secondary` help line; test ids on the inputs through `slotProps` (`as object`).
 - **Similar elsewhere** — `ImportDialog` (Settings) — the only other nested radio-then-options dialog; the label-over-help pattern is `ArrowWidthSourceField`'s (Analyses).
 - **Verdict** — module-specific but needs design consistency — the "option with a help line" label is written here, in the arrow fields and in the export dialog each its own way.
@@ -327,7 +327,7 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **What it does** — A new collection from a `.pgn` or `.zip` picked, a paste, or nothing (empty); filed in a folder. With `into`, adds games to an upload instead (no name, no empty). Everything read opens the import popup; the controls lock while it is open.
 - **API** — `into?: CollectionSummary`, `folder?: string | null`.
 - **Used by** — `LibraryUploadRoute` (`:322`).
-- **Tests** — `library/Library.test.tsx` (`library-upload-*`).
+- **Tests** — `library/LibraryImport.test.tsx` (`library-upload-*`).
 - **Styling** — a scrolling column `gap: 2`; title `subtitle1` 700 `h1 dir="auto"`, intro `body2 text.secondary`; name `TextField size="small" minWidth: 200` beside **Create empty collection** (`outlined`); **Choose file** `contained` over `<input hidden>`; paste `multiline minRows={6} maxRows={14}` with a "N games read" helper, input `dir="ltr"`; **Add** `outlined`; problem `Alert severity="error"`.
 - **Similar elsewhere** — `RepertoireUpload` (Repertoires) is the same screen for repertoires (same paste size, a spinner instead of a popup); the analysis Load tab and the new-analysis form are smaller versions ([upload / import flows](./Shared.md#upload--import-flows)).
 - **Verdict** — share candidate — a shared `PgnInput` (pick + paste + read + problem) under both upload screens.
@@ -357,7 +357,7 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **What it does** — Waits for the folders (`?folder=`) or the target summary (`?into=`); a shipped or missing `into` is the miss.
 - **API** — none (the route).
 - **Used by** — `library/LibraryUploadMain.tsx`.
-- **Tests** — `library/Library.test.tsx` (the miss for a shipped `into`; the reading line is not asserted).
+- **Tests** — `library/LibraryImport.test.tsx` (the miss for a shipped `into`; the reading line is not asserted).
 - **Styling** — `text.secondary p: 2`.
 - **Similar elsewhere** — [empty / loading / error state](./Shared.md#empty--loading--error-state).
 - **Verdict** — share candidate — `LoadingLine`.
@@ -372,7 +372,7 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 - **What it does** — What came in (name, size, games; each `.pgn` of a zip), the games' metadata (players, Elo span, date span, events), filters applied **before** the index pass — an Elo range slider, a date range, player chips (suggested from the games the Elo range leaves, worked out on open) — a live "N of M" count, then **Import**: one index pass with progress, then the writes (one collection per file, or appended with `into`), all or nothing. Cancel, Escape or the backdrop stop the pass; nothing closes during the write.
 - **API** — `source`, `into?`, `typedName`, `folderId`, `onClose`, `onDone(path)`.
 - **Used by** — `LibraryUpload`.
-- **Tests** — `library/Library.test.tsx` (`library-import`, `-elo`, `-from` / `-to`, `-player`, `-count`, `-indexing`, `-cancel`, `-confirm`).
+- **Tests** — `library/LibraryImport.test.tsx` (`library-import`, `-elo`, `-from` / `-to`, `-player`, `-count`, `-indexing`, `-cancel`, `-confirm`).
 - **Styling** — `maxWidth="sm" fullWidth`; content column `gap: 2`; the source line `body2` 600 with the size `dir="ltr"`; zip files a list of `body2 text.secondary` rows; the summary a wrapping row of `caption`s (`columnGap: 2 rowGap: 0.5`); filters under a `subtitle2` 700 `h3`; the slider `size="small"` in a `px: 1.5` box, `disableSwap`, `valueLabelDisplay="auto"`, end marks, `shiftStep={50}`; the count `body2` 600; progress `LinearProgress determinate`.
 - **Similar elsewhere** — `MultiGameDialog` (Analyses) has the same abort-controller, progress bar and "Cancel off while writing" logic; `CollectionFilters` the same date range and player chips (with `limitTags`); `GameInfo` another key/value summary.
 - **Verdict** — share candidate — an `IndexingProgress` block (and a hook for the pass) shared with `MultiGameDialog`, and the two filter fields shared with the table.

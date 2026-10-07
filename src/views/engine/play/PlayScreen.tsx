@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
 import FlagRoundedIcon from "@mui/icons-material/FlagRounded";
 import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
 import { createSearchParams, Link as RouterLink, useSearchParams } from "react-router";
@@ -11,7 +12,7 @@ import type { ChessboardOptions } from "react-chessboard";
 import { DEFAULT_POSITION } from "chess.js";
 
 import { ConfirmDialog } from "../../../design-system/components/dialogs";
-import { StatusText } from "../../../design-system/components/feedback";
+import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
 import { SideToggle, SwitchField } from "../../../design-system/components/forms";
 import { BackButton } from "../../../design-system/components/navigation";
 import { IconAction } from "../../../design-system/components/toolbars";
@@ -148,6 +149,7 @@ function PlayScreen({
     mask: notationMask,
   });
   const boardOptions: ChessboardOptions = {
+    ...explorer.boardOptions,
     arrows: explorer.arrows,
     ...(pieces === undefined ? {} : { pieces }),
   };
@@ -292,6 +294,13 @@ function PlayScreen({
               label: t("playEngine.tabs.engine"),
               content: (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  {/* Which engine plays this game (CTA-153) — the build's own name and version, pinned left to right. */}
+                  <Typography variant="caption" color="text.secondary" data-testid={`${id}-engine-name`}>
+                    {t("playEngine.enginePlaying")}{" "}
+                    <bdi dir="ltr">
+                      {state.engineDescriptor.name} ({state.engineDescriptor.version})
+                    </bdi>
+                  </Typography>
                   <SwitchField
                     size="small"
                     label={t("analysis.settings.arrows")}
@@ -314,6 +323,17 @@ function PlayScreen({
           footer: (
             <>
               {explorer.annotations}
+              {/* A resumed game whose own engine cannot run here (CTA-153): another plays on, and the reader is told. */}
+              {state.engineNotice !== undefined && (
+                <Box sx={{ px: 1 }}>
+                  <InlineAlert severity="warning" testId={`${id}-engine-notice`}>
+                    {t("playEngine.engineFallback", {
+                      wanted: state.engineNotice.wanted.name,
+                      using: state.engineNotice.using.name,
+                    })}
+                  </InlineAlert>
+                </Box>
+              )}
               {state.problem !== null && (
                 <Box sx={{ px: 1 }}>
                   <StatusText tone="error" testId={`${id}-save-problem`}>

@@ -1,0 +1,39 @@
+---
+title: 46th Chess Olympiad 2026
+summary: "Samarkand: the Open and the Women's, two Swisses of national teams — <TeamStandingsTable> with flags, each file loaded on its own."
+date: 2026-09-16
+---
+
+The 46th Chess Olympiad, played in Samarkand, Uzbekistan, from 16 September 2026: two team events side by side, the Open and the Women's, each a Swiss of eleven rounds. Every country sends a team of four boards, and the hosts fielded more than one. The Open had 206 teams and the Women's 189: 8,645 games in all.
+
+{/* Placeholder notes: the words are the article's own and may be rewritten; the tables read the Olympiad's PGNs beside this file. */}
+
+## The format
+
+Two teams meet on four boards at once, and every game two teams play in a round is one match. A match is won on **board points**, the games' points summed, and is worth **match points**: 2 for a win, 1 for a draw. The tables rank by match points, then board points. Where two teams are level on both, they are listed by name; the Olympiad breaks such ties its own way, so its official order may differ.
+
+Every game in these files names the federation of each player. Where all of a team's players share one, as a national team's do, its flag stands after its name. Belarus has none: its players are listed under FIDE's flag (`FID`).
+
+## The Open
+
+Uzbekistan, the hosts, won with 20 match points: ten wins, and one loss, 1½–2½ to Germany in round 8. Germany and India followed on 18, level on board points too.
+
+<TeamStandingsTable load={() => import("./olym26.pgn?raw")} density="dense" rowsPerPage="25" />
+
+## The Women's
+
+China won with 20 match points: nine wins, and draws with Kazakhstan and India. Kazakhstan was second on 18, ahead of five teams on 17.
+
+<TeamStandingsTable load={() => import("./olymw26.pgn?raw")} density="dense" rowsPerPage="25" />
+
+## The markup
+
+Each file is 4–5 MB, too large to be part of the page. So each table loads its own file when the page opens, and shows that it is reading until the file arrives:
+
+```mdx
+<TeamStandingsTable load={() => import("./olym26.pgn?raw")} density="dense" rowsPerPage="25" />
+```
+
+## Source
+
+The games are from [The Week in Chess](https://theweekinchess.com) (TWIC), by Mark Crowther — the event's page, [46th World Chess Olympiad 2026](https://theweekinchess.com/chessnews/events/46th-world-chess-olympiad-2026), and its PGNs, [olym26.pgn](https://theweekinchess.com/assets/files/pgn/olym26.pgn) (the Open) and [olymw26.pgn](https://theweekinchess.com/assets/files/pgn/olymw26.pgn) (the Women's).
