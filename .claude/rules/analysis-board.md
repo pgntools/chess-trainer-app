@@ -76,7 +76,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/blocks/trees/AnalysesTree/` | The workspace's tree (CTA-145): the list's folders and analyses nested and collapsible over `TreeView`, rooted at one folder, names wrapped, a Close link, a fold to a rail, a lock while the board holds unsaved changes; `analysesTreeNodes` the pure nodes. `views/tools/analysis/AnalysesFolderView.tsx` reads the stores and hosts it, `folderViewState.ts` what the reader did to it. |
 | `src/views/main/boardLeftPanel.tsx`, `boardLeftPanelSlot.ts`, `shellCompact.ts` | The shell's slot the tree is registered in (CTA-145, §1.2): a column of the board's row (`BOARD_LEFT_PANEL_WIDTH_PX`) or a rail (`BOARD_LEFT_PANEL_COLLAPSED_PX`), the window taken whole while it is there, a drawer under the breakpoint (`useShellCompact`). |
 | `src/lib/pgnExport.ts` | `downloadPgn` — several stored PGN records joined with a blank line (`pgnFileOf`), saved as a file. Also Settings' Export's (`downloadBinaryFile`, [`import-export.md`](./import-export.md)). |
-| Tests | `AnalysisBoard.test.tsx` (every arrival, Save, Load, Export, Play, the hand-off, the Arrows tab, the PGN's shapes drawn and written), `useTreeNavigation.test.ts`, `EngineThinking.test.tsx`, `nextMoveArrows.test.ts`, `src/lib/nextMoveWeights.test.ts`, `saved/SavedAnalyses.test.tsx` (the table, the cards and the panel's new-analysis form), `saved/AnalysisSettingsScreen.test.tsx`, `src/lib/savedAnalyses.test.ts`, `src/lib/savedAnalysisRows.test.ts`, `src/blocks/tables/SavedAnalysesTable/SavedAnalysesTable.test.tsx`, `savedAnalysisStore.test.ts`, `savedAnalysisFolderStore.test.ts`, `src/lib/analysesListContext.test.ts`, `src/blocks/trees/AnalysesTree/` (`AnalysesTree.test.tsx`, `analysesTreeNodes.test.tsx`), `src/views/main/Layout.test.tsx` (the left panel's slot), the `TreeView` pattern's tests (`wrapLabels`, `disabled`), `savedGameFolders.test.ts`, `gameReference.test.ts`, and the propagation tests in `src/views/board/`. |
+| Tests | `AnalysisBoard.test.tsx` (every arrival, Save, Load, Export, Play, the hand-off, the Arrows tab, the PGN's shapes drawn and written), `useTreeNavigation.test.ts`, `EngineThinking.test.tsx`, `nextMoveArrows.test.ts`, `src/lib/nextMoveWeights.test.ts`, `saved/SavedAnalyses.test.tsx` (the table, the cards and the panel's new-analysis form), `saved/AnalysisSettingsScreen.test.tsx`, `src/lib/savedAnalyses.test.ts`, `src/lib/savedAnalysisRows.test.ts`, `src/blocks/tables/SavedAnalysesTable/SavedAnalysesTable.test.tsx`, `savedAnalysisStore.test.ts`, `savedAnalysisFolderStore.test.ts`, `src/lib/analysesListContext.test.ts`, `src/blocks/trees/AnalysesTree/` (`AnalysesTree.test.tsx`, `analysesTreeNodes.test.tsx` — the filter included), `src/views/main/Layout.test.tsx` (the left panel's slot), the `TreeView` pattern's tests (`wrapLabels`, `disabled`), `savedGameFolders.test.ts`, `gameReference.test.ts`, and the propagation tests in `src/views/board/`. |
 
 Routes and nav: the **Analysis** folder is `singleEntry` and renders as one
 row to `/tools/analysis/saved`; the board itself has no nav entry and is the
@@ -216,6 +216,17 @@ address) is the plain board.
   columns may add the book's name where tags name none, which this order does
   not), read live from the store — an Update under the default sort moves the
   record to the top (there is no manual order; a follow-up).
+- **The filter box** above the tree narrows it by words, as the list's own
+  words box does (`analysisMatcherOf`, `lib/savedAnalysisRows.ts`, shared with
+  the table): an analysis stays when it holds every word (name, notes, players,
+  Elos, event, round, date, ECO, opening — tags only), a folder whose name does
+  stays with all that is in it, a folder with neither is left out, and the
+  counts are the matches. **Every branch left is open while the words stand**
+  (so a folder cannot be collapsed until they are cleared), the page and "show
+  more" still apply, and "No analysis matches the filter." says an empty
+  result (the list's strings). The words are `FolderViewState.text`, kept by
+  the route like the fold, so they survive stepping to another analysis; Escape
+  or the clear button empties it; the folded rail has no box.
 - **Close goes back to the list**, on the folder and in the order the board
   was opened from (`analysesListPath`); in-app navigation is not guarded
   (the board's list link behaves the same), a reload still asks (`beforeunload`).

@@ -201,6 +201,26 @@ export const filteredAnalysisRows = (rows: readonly SavedAnalysisRow[], text: st
   });
 };
 
+/**
+ * What the words keep, as the tree table and the Analysis Board's tree both
+ * read them: the analyses holding every word ({@link filteredAnalysisRows}'
+ * rule) and the folders whose name does (their whole contents with them).
+ * `undefined` for no words — nothing is filtered.
+ */
+export const analysisMatcherOf = (
+  text: string,
+): { folder: (folder: GameFolder) => boolean; item: (row: SavedAnalysisRow) => boolean } | undefined => {
+  const words = wordsOf(text);
+  if (words.length === 0) return undefined;
+  return {
+    folder: (folder) => words.every((word) => folder.name.toLowerCase().includes(word)),
+    item: (row) => {
+      const haystack = searchTextOf(row);
+      return words.every((word) => haystack.includes(word));
+    },
+  };
+};
+
 /** One row of the tree table: a folder, or an analysis. */
 export type AnalysisTreeRow = FolderTreeRow<SavedAnalysisRow>;
 
@@ -234,7 +254,7 @@ export const analysisTreeRows = ({
   direction: SortDirection;
   text: string;
 }): FolderTreeRows<SavedAnalysisRow> => {
-  const words = wordsOf(text);
+  const match = analysisMatcherOf(text);
   return folderTreeRows({
     folders,
     items: rows,
@@ -242,14 +262,6 @@ export const analysisTreeRows = ({
     compareFolders: compareAnalysisFolders(column, direction),
     compareItems: compareAnalysisRows(column, direction),
     sizeOf: () => 1,
-    ...(words.length > 0 && {
-      match: {
-        folder: (folder) => words.every((word) => folder.name.toLowerCase().includes(word)),
-        item: (row) => {
-          const haystack = searchTextOf(row);
-          return words.every((word) => haystack.includes(word));
-        },
-      },
-    }),
+    ...(match !== undefined && { match }),
   });
 };

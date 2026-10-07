@@ -10,6 +10,7 @@ const nodes = (patch: Partial<AnalysesTreeNodesInput> = {}) =>
     folders: FOLDERS,
     rootId: null,
     rows: ROWS,
+    text: "",
     sort: UPDATED_NEWEST_FIRST,
     currentId: "a4",
     locked: false,
@@ -93,6 +94,43 @@ describe("analysesTreeNodes", () => {
     const listed = ids(deep.find((node) => node.id === "gopenings")?.children);
     expect(listed).toContain("m0");
     expect(listed.length).toBeGreaterThan(ANALYSES_TREE_PAGE);
+  });
+
+  describe("narrowed by words", () => {
+    it("keeps the analyses holding every word, and only the folders above them", () => {
+      const tree = nodes({ text: "lucena" });
+      expect(ids(tree)).toEqual(["gtutorial"]);
+      expect(ids(tree[0].children)).toEqual(["gendings"]);
+      expect(ids(tree[0].children?.[0].children)).toEqual(["grook"]);
+      expect(ids(tree[0].children?.[0].children?.[0].children)).toEqual(["a4"]);
+      // Counts are the matches.
+      expect(tree[0].secondary).toBe(1);
+    });
+
+    it("keeps every word of a search together on one analysis — case aside", () => {
+      expect(ids(nodes({ text: "NAJDORF poisoned" }).flatMap((node) => node.children ?? []))).toEqual(["a6"]);
+      expect(nodes({ text: "najdorf lucena" })).toEqual([]);
+    });
+
+    it("keeps a folder whose name matches with everything in it", () => {
+      const tree = nodes({ text: "rook" });
+      expect(ids(tree)).toEqual(["gtutorial"]);
+      const rook = tree[0].children?.[0].children?.[0];
+      expect(rook?.id).toBe("grook");
+      expect(ids(rook?.children)).toEqual(["a5", "a4"]);
+      // …and the analyses whose own name matches stay, in their folder.
+      expect(ids(nodes({ text: "centre" }).flatMap((node) => node.children ?? []))).toEqual(["a2", "a1"]);
+    });
+
+    it("lists the Unfiled analyses that match, and none when rooted at a folder", () => {
+      expect(ids(nodes({ text: "מלכודת" }))).toEqual(["a7"]);
+      expect(nodes({ text: "מלכודת", rootId: "gendings" })).toEqual([]);
+    });
+
+    it("is nothing when nothing matches, and everything for blank words", () => {
+      expect(nodes({ text: "zugzwang" })).toEqual([]);
+      expect(ids(nodes({ text: "   " }))).toEqual(ids(nodes()));
+    });
   });
 
   it("reads a folder naming a missing parent as top level, and does not hang on a cycle", () => {

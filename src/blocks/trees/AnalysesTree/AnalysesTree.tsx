@@ -7,8 +7,10 @@ import KeyboardDoubleArrowLeftRounded from "@mui/icons-material/KeyboardDoubleAr
 import KeyboardDoubleArrowRightRounded from "@mui/icons-material/KeyboardDoubleArrowRightRounded";
 
 import type { LinkTarget } from "../../../design-system/components/link";
+import { StatusText } from "../../../design-system/components/feedback";
+import { SearchField } from "../../../design-system/components/forms";
 import { IconAction } from "../../../design-system/components/toolbars";
-import { TreeView } from "../../../design-system/patterns/trees";
+import { TreeView, type TreeNode } from "../../../design-system/patterns/trees";
 import type { SavedAnalysisRow } from "../../../lib/savedAnalysisRows";
 import type { GameFolder } from "../../../lib/savedGameFolders";
 import {
@@ -32,9 +34,15 @@ export type AnalysesTreeLabels = AnalysesTreeNodeLabels & {
   hint: string;
   /** Why the other analyses cannot be opened now. Shown only while `locked`. */
   locked: string;
+  /** The filter box's name — "Filter analyses". */
+  filter: string;
+  /** The filter box's clear button. */
+  filterClear: string;
+  /** The words keep nothing — told apart from an empty folder. */
+  noMatch: string;
 };
 
-export type AnalysesTreeProps = Pick<AnalysesTreeNodesInput, "rootId" | "sort" | "currentId" | "shown" | "locked"> & {
+export type AnalysesTreeProps = Pick<AnalysesTreeNodesInput, "rootId" | "sort" | "currentId" | "shown" | "locked" | "text"> & {
   folders: readonly GameFolder[];
   rows: readonly SavedAnalysisRow[];
   /** Where an analysis' row goes — its board. */
@@ -46,12 +54,14 @@ export type AnalysesTreeProps = Pick<AnalysesTreeNodesInput, "rootId" | "sort" |
   onToggle: (folderId: string) => void;
   /** A folder's "show more" row was chosen — `""` for the top level. */
   onShowMore: (folderKey: string) => void;
+  /** The words in the filter box — the screen holds them. */
+  onTextChange: (text: string) => void;
   /** Folded to a rail: the two buttons that remain — open it again, close it for the list. */
   collapsed: boolean;
   /** Fold the panel, and open it again. Absent, it cannot be folded (a drawer is closed instead). */
   onCollapsedChange?: (collapsed: boolean) => void;
   labels: AnalysesTreeLabels;
-  /** The root; the parts are `-title`, `-collapse`, `-expand`, `-close`, `-locked`, `-tree` and its rows (`-tree-<id>`). */
+  /** The root; the parts are `-title`, `-collapse`, `-expand`, `-close`, `-locked`, `-filter` (and `-filter-clear`), `-no-match`, `-tree` and its rows (`-tree-<id>`). */
   testId: string;
 };
 
@@ -67,18 +77,28 @@ export type AnalysesTreeProps = Pick<AnalysesTreeNodesInput, "rootId" | "sort" |
  * (`locked`) the other analyses are disabled and a note says why — folders
  * still open and close.
  *
- * Presentational: the folders, the rows, the order, the open branches, the
- * links and the lock arrive as props; the nodes are `analysesTreeNodes`.
+ * A **filter box** narrows it by words as the list's does (names, notes,
+ * players, event, opening; a folder whose name matches keeps all it holds) and
+ * opens every branch that is left. Presentational: the folders, the rows, the
+ * words, the order, the open branches, the links and the lock arrive as props; the nodes are `analysesTreeNodes`.
  */
-function AnalysesTree({ folders, rootId, rows, sort, currentId, shown, locked, linkOf, closeLink, open, onToggle, onShowMore, collapsed, onCollapsedChange, labels, testId }: AnalysesTreeProps) {
+/** Every branch of the nodes — what is open while the words narrow the tree, so each match is in view. */
+const branchIdsOf = (nodes: readonly TreeNode[]): string[] =>
+  nodes.flatMap((node) => (node.children === undefined ? [] : [node.id, ...branchIdsOf(node.children)]));
+
+function AnalysesTree({ folders, rootId, rows, text, onTextChange, sort, currentId, shown, locked, linkOf, closeLink, open, onToggle, onShowMore, collapsed, onCollapsedChange, labels, testId }: AnalysesTreeProps) {
   // The arrows point at the start edge, which is the right one under RTL.
   const rtl = useTheme().direction === "rtl";
   const TowardsStart = rtl ? KeyboardDoubleArrowRightRounded : KeyboardDoubleArrowLeftRounded;
   const AwayFromStart = rtl ? KeyboardDoubleArrowLeftRounded : KeyboardDoubleArrowRightRounded;
   const nodes = useMemo(
-    () => analysesTreeNodes({ folders, rootId, rows, sort, currentId, shown, locked, linkOf, labels }),
-    [folders, rootId, rows, sort, currentId, shown, locked, linkOf, labels],
+    () => analysesTreeNodes({ folders, rootId, rows, text, sort, currentId, shown, locked, linkOf, labels }),
+    [folders, rootId, rows, text, sort, currentId, shown, locked, linkOf, labels],
   );
+
+  // Narrowed by words, every branch left is open: the matches are what the reader is after.
+  const filtering = text.trim() !== "";
+  const shownOpen = useMemo(() => (filtering ? new Set(branchIdsOf(nodes)) : open), [filtering, nodes, open]);
 
   // The open analysis is brought into view: its folder may be long.
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -119,10 +139,18 @@ function AnalysesTree({ folders, rootId, rows, sort, currentId, shown, locked, l
           {labels.locked}
         </Typography>
       )}
+      <Box sx={{ flexShrink: 0, pb: 1 }}>
+        <SearchField label={labels.filter} value={text} onChange={onTextChange} clearLabel={labels.filterClear} testId={`${testId}-filter`} />
+      </Box>
       <Box ref={scrollerRef} sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        {filtering && nodes.length === 0 && (
+          <StatusText tone="neutral" testId={`${testId}-no-match`}>
+            {labels.noMatch}
+          </StatusText>
+        )}
         <TreeView
           nodes={nodes}
-          open={open}
+          open={shownOpen}
           onToggle={onToggle}
           activeId={currentId}
           onSelect={(node) => {

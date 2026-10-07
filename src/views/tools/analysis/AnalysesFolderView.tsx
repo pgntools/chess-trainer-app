@@ -35,8 +35,9 @@ type AnalysesFolderViewProps = {
  * there, or a drawer under its breakpoint). A click on an analysis goes to its
  * board in the same list context; **Close goes back to the list**, on the
  * folder and in the order the board was opened from. The tree is **rooted at
- * that folder** and the panel can be **folded to a rail** at the start edge (the
- * route keeps it so as the reader steps through the folder).
+ * that folder**, can be **narrowed by words** (the filter box) and the panel
+ * **folded to a rail** at the start edge — the route keeps all of it as the
+ * reader steps through the folder.
  */
 function AnalysesFolderView({ context, record, locked, drawerOpen, onDrawerClose, state, onStateChange }: AnalysesFolderViewProps) {
   const { t } = useTranslation();
@@ -77,6 +78,9 @@ function AnalysesFolderView({ context, record, locked, drawerOpen, onDrawerClose
       close: t("analysis.folderView.close"),
       hint: t("hints.tree"),
       locked: t("analysis.folderView.locked"),
+      filter: t("savedAnalyses.table.filter"),
+      filterClear: t("savedAnalyses.table.filterClear"),
+      noMatch: t("savedAnalyses.table.noMatch"),
       untitled: t("savedAnalyses.untitled"),
       untitledFolder: t("savedAnalyses.folder.untitled"),
       showMore: (remaining: number) => t("analysis.folderView.showMore", { count: remaining }),
@@ -92,6 +96,8 @@ function AnalysesFolderView({ context, record, locked, drawerOpen, onDrawerClose
         folders={folders}
         rootId={context.folderId}
         rows={rows}
+        text={state.text}
+        onTextChange={(text) => onStateChange({ ...state, text })}
         sort={context.sort}
         currentId={record.id}
         shown={state.shown}

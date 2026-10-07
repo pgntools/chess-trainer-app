@@ -5,6 +5,7 @@ import type { LinkTarget } from "../../../design-system/components/link";
 import type { TreeNode } from "../../../design-system/patterns/trees";
 import type { SortDirection } from "../../../lib/libraryCollections";
 import {
+  analysisMatcherOf,
   compareAnalysisFolders,
   sortedAnalysisRows,
   type SavedAnalysisColumn,
@@ -35,6 +36,11 @@ export type AnalysesTreeNodesInput = {
   rows: readonly SavedAnalysisRow[];
   /** The order of every level — the saved analyses table's: its column and direction. */
   sort: { column: SavedAnalysisColumn; direction: SortDirection };
+  /**
+   * The words the tree is narrowed by (the list's filter: names, notes, players, event, opening…): the analyses holding every
+   * word and the folders whose name does, with all that is in them. Empty: everything.
+   */
+  text: string;
   /** The analysis on the board: always listed, whatever the page says. */
   currentId: string;
   /** How many analyses each folder lists, by folder id (`""`: the top level); absent, a page. */
@@ -59,10 +65,13 @@ const analysisIcon = <GridViewOutlined fontSize="small" />;
  * branch carries the count of everything under it. A folder lists a page of
  * its analyses and a "show more" row for the rest — or all up to the current
  * one, which is always in the tree, so a folder of thousands is never mounted
- * whole. A folder naming a missing parent reads as top level, and a cycle is
+ * whole. **The words** narrow it as they do the list's table: the analyses
+ * holding every one stay, a folder whose name does stays with all that is in
+ * it, and a folder with neither is left out. A folder naming a missing parent reads as top level, and a cycle is
  * cut where it was entered, as every walk over the folder model does.
  */
-export const analysesTreeNodes = ({ folders, rootId, rows, sort, currentId, shown, locked, linkOf, labels }: AnalysesTreeNodesInput): TreeNode[] => {
+export const analysesTreeNodes = ({ folders, rootId, rows, text, sort, currentId, shown, locked, linkOf, labels }: AnalysesTreeNodesInput): TreeNode[] => {
+  const match = analysisMatcherOf(text);
   const known = new Set(folders.map((folder) => folder.id));
   const byFolder = new Map<string, SavedAnalysisRow[]>();
   for (const row of rows) {
@@ -83,9 +92,14 @@ export const analysesTreeNodes = ({ folders, rootId, rows, sort, currentId, show
     };
   };
 
-  /** The analyses filed directly in a folder (`""`: Unfiled), a page of them, and a row for the rest. */
-  const filesIn = (key: string): TreeNode[] => {
-    const ordered = sortedAnalysisRows(byFolder.get(key) ?? [], sort.column, sort.direction);
+  /**
+   * The analyses filed directly in a folder (`""`: Unfiled) that the words keep — all of them
+   * where the folder's name did — a page of them, and a row for the rest.
+   */
+  const filesIn = (key: string, all: boolean): TreeNode[] => {
+    const here = byFolder.get(key) ?? [];
+    const kept = match === undefined || all ? here : here.filter(match.item);
+    const ordered = sortedAnalysisRows(kept, sort.column, sort.direction);
     const limit = Math.max(shown?.get(key) ?? ANALYSES_TREE_PAGE, ordered.findIndex((row) => row.id === currentId) + 1);
     const nodes = ordered.slice(0, limit).map(leaf);
     if (ordered.length > limit) nodes.push({ id: `${ANALYSES_TREE_MORE}${key}`, label: labels.showMore(ordered.length - limit) });
@@ -93,15 +107,19 @@ export const analysesTreeNodes = ({ folders, rootId, rows, sort, currentId, show
   };
 
   const seen = new Set<string>();
-  /** The folders under `parentId` as branches, and how many analyses they hold between them. */
-  const walk = (parentId: string | null): { nodes: TreeNode[]; count: number } => {
+  /** The folders under `parentId` that the words keep, as branches, and how many analyses they hold between them. `all`: a folder above matched by name. */
+  const walk = (parentId: string | null, all: boolean): { nodes: TreeNode[]; count: number } => {
     const nodes: TreeNode[] = [];
     let count = 0;
     for (const folder of [...gameFolderChildren(folders, parentId)].sort(compareAnalysisFolders(sort.column, sort.direction))) {
       if (seen.has(folder.id)) continue;
       seen.add(folder.id);
-      const inside = walk(folder.id);
-      const own = byFolder.get(folder.id)?.length ?? 0;
+      const everything = all || match === undefined || match.folder(folder);
+      const inside = walk(folder.id, everything);
+      const files = filesIn(folder.id, everything);
+      const own = byFolder.get(folder.id)?.filter((row) => everything || match?.item(row) === true).length ?? 0;
+      // A folder the words do not reach, and nothing inside it they do, is not listed.
+      if (!everything && inside.nodes.length === 0 && own === 0) continue;
       count += inside.count + own;
       nodes.push({
         id: folder.id,
@@ -109,11 +127,11 @@ export const analysesTreeNodes = ({ folders, rootId, rows, sort, currentId, show
         dir: "auto",
         icon: folderIcon,
         secondary: inside.count + own,
-        children: [...inside.nodes, ...filesIn(folder.id)],
+        children: [...inside.nodes, ...files],
       });
     }
     return { nodes, count };
   };
 
-  return [...walk(rootId).nodes, ...filesIn(rootId ?? "")];
+  return [...walk(rootId, false).nodes, ...filesIn(rootId ?? "", false)];
 };

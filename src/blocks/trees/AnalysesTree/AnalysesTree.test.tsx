@@ -7,13 +7,14 @@ import AnalysesTree, { type AnalysesTreeProps } from "./AnalysesTree";
 import { FOLDERS, LABELS, MANY_ROWS, OPEN_TO_A4, ROWS, UPDATED_NEWEST_FIRST } from "./fixtures";
 
 const mount = (props: Partial<AnalysesTreeProps> = {}) => {
-  const handlers = { onToggle: vi.fn(), onShowMore: vi.fn(), onCollapsedChange: vi.fn() };
+  const handlers = { onToggle: vi.fn(), onShowMore: vi.fn(), onCollapsedChange: vi.fn(), onTextChange: vi.fn() };
   render(
     <AnalysesTree
       testId="at"
       folders={FOLDERS}
       rootId={null}
       rows={ROWS}
+      text=""
       sort={UPDATED_NEWEST_FIRST}
       currentId="a4"
       locked={false}
@@ -86,6 +87,46 @@ describe("AnalysesTree", () => {
     screen.getByRole("button", { name: LABELS.collapse }).focus();
     await user.keyboard("{Enter}");
     expect(onCollapsedChange).toHaveBeenLastCalledWith(true);
+  });
+
+  describe("the filter box", () => {
+    it("is a named search field over the tree, and says what is typed", () => {
+      const { onTextChange } = mount();
+      const box = screen.getByRole("searchbox", { name: LABELS.filter });
+      fireEvent.change(box, { target: { value: "luc" } });
+      expect(onTextChange).toHaveBeenCalledWith("luc");
+    });
+
+    it("narrows the tree to the matches and opens every branch above them, whatever was open", async () => {
+      mount({ text: "lucena", open: new Set() });
+      const tree = screen.getByRole("tree");
+      expect(within(tree).getAllByRole("treeitem").map((row) => row.textContent)).toEqual(["Chess basics1", "Endings1", "Rook endings1", "Lucena position"]);
+      expect(screen.queryByTestId("at-no-match")).toBeNull();
+      await expectNoAxeViolations(screen.getByTestId("at"));
+    });
+
+    it("says nothing matches, apart from an empty folder, and clears from its button or Escape", async () => {
+      const user = userEvent.setup();
+      const { onTextChange } = mount({ text: "zugzwang" });
+      expect(screen.getByTestId("at-no-match")).toHaveTextContent(LABELS.noMatch);
+      expect(screen.queryByRole("treeitem")).toBeNull();
+      await user.click(screen.getByRole("button", { name: LABELS.filterClear }));
+      expect(onTextChange).toHaveBeenLastCalledWith("");
+      screen.getByRole("searchbox", { name: LABELS.filter }).focus();
+      await user.keyboard("{Escape}");
+      expect(onTextChange).toHaveBeenCalledTimes(2);
+    });
+
+    it("keeps the folders the reader opened for blank words, and has no box on the rail", () => {
+      mount({ text: "  ", open: new Set(["gtutorial"]) });
+      expect(screen.getByTestId("at-tree-gtutorial")).toHaveAttribute("aria-expanded", "true");
+      expect(screen.queryByTestId("at-tree-gendings-group")).toBeNull();
+    });
+
+    it("is not on the folded rail", () => {
+      mount({ collapsed: true });
+      expect(screen.queryByRole("searchbox")).toBeNull();
+    });
   });
 
   it("is two buttons, open and close, while collapsed", async () => {

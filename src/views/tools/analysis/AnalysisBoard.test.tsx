@@ -1179,6 +1179,38 @@ describe("the workspace an analysis opened from the saved list has (CTA-145)", (
     expect(screen.queryByTestId("analysis-sibling-next")).toBeNull();
   });
 
+  it("narrows the tree by the words typed, opening the folders above the matches — and keeps them as it steps on", async () => {
+    const user = userEvent.setup();
+    const { folder } = await tutorial();
+    mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}`);
+    const box = screen.getByRole("searchbox", { name: i18n.t("savedAnalyses.table.filter") });
+    await user.type(box, "rook");
+
+    // Only what the words keep: the sub-folder, opened, and its analysis.
+    await waitFor(() => expect(rowNames()).toEqual(["Endings1", "Rook ending"]));
+    expect(screen.getByRole("treeitem", { name: /Endings/ })).toHaveAttribute("aria-expanded", "true");
+    expect(findSavedAnalysis("a2")?.pgn).not.toContain("rook");
+
+    // Stepping to another analysis is a new board: the words stay.
+    fireEvent.click(screen.getByTestId("analysis-sibling-next"));
+    await waitFor(() => expect(screen.getByTestId("analysis-name")).toHaveTextContent("Lesson 1"));
+    expect(screen.getByRole("searchbox", { name: i18n.t("savedAnalyses.table.filter") })).toHaveValue("rook");
+    expect(rowNames()).toEqual(["Endings1", "Rook ending"]);
+
+    await user.clear(screen.getByRole("searchbox", { name: i18n.t("savedAnalyses.table.filter") }));
+    await waitFor(() => expect(rowNames()).toContain("Lesson 3"));
+  });
+
+  it("says when the words keep nothing", async () => {
+    const user = userEvent.setup();
+    const { folder } = await tutorial();
+    mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}`);
+    await user.type(screen.getByRole("searchbox", { name: i18n.t("savedAnalyses.table.filter") }), "zugzwang");
+    expect(await screen.findByTestId("analysis-folder-view-no-match")).toHaveTextContent(i18n.t("savedAnalyses.table.noMatch"));
+    // The board is as it was.
+    expect(boardOptions().position).toBe(AFTER_D4);
+  });
+
   it("is a drawer under the shell's breakpoint — closed to begin with, opened from the board, closed on Escape, no fold", async () => {
     const wide = window.matchMedia;
     window.matchMedia = ((query: string) =>
