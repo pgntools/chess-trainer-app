@@ -10,30 +10,52 @@
  * every consumer — `AnalysisSettings.tsx` included — imports them from here.
  *
  * As there, it is **not** a description of the running engine. Which knobs the
- * worker actually has is `Engine.options`' business
+ * worker actually has is the handle's `options`' business
  * (`.claude/rules/chessboard.md` §4.1), so a stored value is a *request* that
  * the hook clamps to whatever the running build declared.
  */
 
+import { ENGINE_SETTING_BOUNDS } from "./engineSettings";
+
 /** The knobs the Analysis Board's Engine tab drives. */
 export type AnalysisSettings = {
-  /** Plies per search. */
+  /** Plies per search — where a search stops while {@link infinite} is off, and always for Play. */
   depth: number;
   /** UCI `MultiPV` — how many lines the Variations tab shows. */
   multiPv: number;
-  /** Milliseconds per search; `0` means "depth alone decides". */
+  /** Milliseconds per search; `0` means "depth alone decides". Off with {@link infinite}, like the depth. */
   moveTimeMs: number;
-};
-
-export const DEFAULT_ANALYSIS_SETTINGS: AnalysisSettings = {
-  depth: 16,
-  multiPv: 3,
-  moveTimeMs: 1000,
+  /**
+   * **Infinite analysis** (CTA-160, lichess's): the engine keeps deepening the
+   * position on screen until it changes or the engine is switched off
+   * (`go infinite`), and the depth and move time are not used — except by
+   * Play, which needs a search that ends with a move. Off by default: a
+   * search that never ends keeps a core busy for as long as the page is open.
+   */
+  infinite: boolean;
 };
 
 /**
+ * Stop at depth 20 — about 3.5 s on a fast desktop with the default engine
+ * (CTA-160) — rather than after a second, which cut a search off at whatever
+ * depth it had reached.
+ */
+export const DEFAULT_ANALYSIS_SETTINGS: AnalysisSettings = {
+  depth: 20,
+  multiPv: 3,
+  moveTimeMs: 0,
+  infinite: false,
+};
+
+/** The depth and move time an analysis board offers — Play with Engine's own (`ENGINE_SETTING_BOUNDS`). */
+export const ANALYSIS_SETTING_BOUNDS = {
+  depth: ENGINE_SETTING_BOUNDS.depth,
+  moveTimeMs: ENGINE_SETTING_BOUNDS.moveTimeMs,
+} as const;
+
+/**
  * Which UCI option each setting drives. The names are the engine's; whether the
- * running build *has* them is answered by `Engine.options`, never by this table.
+ * running build *has* them is answered by the handle's `options`, never by this table.
  *
  * `Skill Level` is deliberately absent. An analysis board wants the engine's
  * best answer, so it never weakens it — and the build's own default is full
@@ -67,6 +89,8 @@ export const analysisSettingsFrom = (value: unknown): AnalysisSettings => {
       row.moveTimeMs,
       DEFAULT_ANALYSIS_SETTINGS.moveTimeMs,
     ),
+    // A record from before infinite analysis has none: off.
+    infinite: row.infinite === true,
   };
 };
 
@@ -77,4 +101,5 @@ export const sameAnalysisSettings = (
 ): boolean =>
   a.depth === b.depth &&
   a.multiPv === b.multiPv &&
-  a.moveTimeMs === b.moveTimeMs;
+  a.moveTimeMs === b.moveTimeMs &&
+  a.infinite === b.infinite;

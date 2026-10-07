@@ -356,6 +356,7 @@ function RepertoirePlayer({
     fen: core.fen,
     depth: settings.depth,
     moveTimeMs: settings.moveTimeMs,
+    infinite: settings.infinite,
     uciOptions: useMemo(
       () => ({ [ANALYSIS_UCI_OPTION.multiPv]: settings.multiPv }),
       [settings.multiPv],

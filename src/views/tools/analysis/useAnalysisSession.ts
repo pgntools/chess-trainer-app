@@ -93,6 +93,8 @@ export const useAnalysisSession = ({
     fen: core.fen,
     depth: settings.depth,
     moveTimeMs: settings.moveTimeMs,
+    // Play needs a search that ends with a move: while it is on, the depth and time decide.
+    infinite: settings.infinite && !playing,
     uciOptions: useMemo(
       () => ({ [ANALYSIS_UCI_OPTION.multiPv]: settings.multiPv }),
       [settings.multiPv],

@@ -249,7 +249,7 @@ What follows is `EngineHandle` — every engine, whatever it runs on.
 | Method | Notes |
 | --- | --- |
 | `descriptor.create()` | Spawns a **dedicated Worker** (a local engine). One per mounted board. |
-| `search(fen, { depth, movetime })` | `depth` is required — the board's own setting, never a wrapper default — and clamped to the engine's `capabilities.maxDepth` (`DEFAULT_MAX_DEPTH`, 24, for every shipped build); `movetime` is milliseconds, omitted when 0. **May not start immediately** — §4.1. |
+| `search(fen, { depth, movetime })` / `search(fen, { infinite: true })` | To a depth — required, the board's own setting, never a wrapper default — clamped to the engine's `capabilities.maxDepth` (`DEFAULT_MAX_DEPTH`, 99, for every shipped build), with `movetime` in milliseconds (omitted when 0), whichever comes first; or **until stopped** (`go infinite` — an analysis board's infinite analysis, CTA-160; it ends only with `stop()`, so never on a board waiting for the engine's move). **May not start immediately** — §4.1. |
 | `onMessage(cb) => unsubscribe` | Parsed UCI messages. **You must call the unsubscribe.** |
 | `setOption(name, value) => boolean` | Buffered, not posted (§4.1). `false` means this build will not take it — no such option, or pinned. |
 | `whenOptionsReady(cb) => unsubscribe` | Runs `cb` once `options` is complete, at once if the handshake already landed. |
@@ -561,6 +561,7 @@ const engine = useEngineModule({
   fen: string,                          // the position ON SCREEN — never the live one
   depth: number,
   moveTimeMs: number,
+  infinite?: boolean,                   // search until stopped (CTA-160) — absent: to depth / move time
   uciOptions: Readonly<Record<string, number>>,   // name → requested value
   onUciOptionsReady?: (clamped: Readonly<Record<string, number>>) => void,
   onBestMove?: (bestMove: string, searchedFen: string) => void,

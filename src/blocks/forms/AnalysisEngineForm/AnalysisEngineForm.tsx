@@ -4,7 +4,7 @@ import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import { useTranslation } from "react-i18next";
 
 import { SliderField, SwitchField } from "../../../design-system/components/forms";
-import { ANALYSIS_UCI_OPTION, type AnalysisSettings } from "../../../lib/analysisSettings";
+import { ANALYSIS_SETTING_BOUNDS, ANALYSIS_UCI_OPTION, type AnalysisSettings } from "../../../lib/analysisSettings";
 import type { EngineOption } from "../../../lib/engineTypes";
 import { MAX_VARIATIONS_OFFERED } from "../../../lib/engineAnalysis";
 import { engineOptionState, optionSlug } from "../EngineSettingsForm";
@@ -34,8 +34,8 @@ const SLIDER = "engine-setting";
 
 /**
  * **The Engine tab of an analysis board** (CTA-113; `AnalysisSettings` since
- * CTA-51) — how hard to search (depth, move time), how many lines, the eval
- * bar, and a Clear back to an empty board: the Analysis Board's, the
+ * CTA-51) — how hard to search (infinite analysis, or a depth and a move
+ * time), how many lines, the eval bar, and a Clear back to an empty board: the Analysis Board's, the
  * Library's game board's, the Openings explorer's and the repertoire
  * player's. Shorter than Play with Engine's `EngineSettingsForm` on purpose:
  * no opponent, so no strength to weaken.
@@ -44,7 +44,8 @@ const SLIDER = "engine-setting";
  * (`engineOptionState`, `EngineSettingsForm`'s rule — this is where
  * `OptionSlider` went): absent, pinned or adjustable, its top capped at
  * `MAX_VARIATIONS_OFFERED`. Depth and move time are `go` arguments, always
- * there, but off while the engine is.
+ * there, but off while the engine is; they stay live under infinite analysis,
+ * because Play still searches to them (CTA-160).
  *
  * Presentational: the settings arrive, a change leaves as a patch. Its words
  * are the analysis panel's (`analysis.settings.*`, `engineOption.*`), which
@@ -73,12 +74,19 @@ function AnalysisEngineForm({
 
   return (
     <Box data-testid={`${testId}-settings`} sx={{ display: "grid", gap: 2 }}>
+      <SwitchField
+        label={t("analysis.settings.infinite")}
+        help={t("analysis.settings.infiniteHelp")}
+        checked={settings.infinite}
+        disabled={!engineOn}
+        onChange={(infinite) => onChange({ infinite })}
+        testId={`${SLIDER}-infinite`}
+      />
       <SliderField
         label={t("analysis.settings.depth")}
         value={settings.depth}
-        min={1}
-        // The wrapper clamps a search to 24 plies; offering more would be a control that silently stops moving.
-        max={24}
+        min={ANALYSIS_SETTING_BOUNDS.depth.min}
+        max={ANALYSIS_SETTING_BOUNDS.depth.max}
         disabled={!engineOn}
         onChange={(depth) => onChange({ depth })}
         testId={`${SLIDER}-depth`}
@@ -86,8 +94,8 @@ function AnalysisEngineForm({
       <SliderField
         label={t("analysis.settings.moveTime")}
         value={settings.moveTimeMs}
-        min={0}
-        max={10000}
+        min={ANALYSIS_SETTING_BOUNDS.moveTimeMs.min}
+        max={ANALYSIS_SETTING_BOUNDS.moveTimeMs.max}
         step={250}
         disabled={!engineOn}
         valueLabel={

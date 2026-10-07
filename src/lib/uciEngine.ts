@@ -12,11 +12,13 @@ import type {
  */
 
 /**
- * The deepest search an engine is asked for unless its descriptor says
- * otherwise — and the top of the depth a settings form offers
- * (`ENGINE_SETTING_BOUNDS.depth`): the worker shares the tab with the UI.
+ * The deepest `go depth` an engine is asked for unless its descriptor says
+ * otherwise — a ceiling no search in a browser reaches (the 19 single-thread
+ * build took 34 s to depth 26 on a fast desktop, CTA-160), so a request is
+ * never silently cut short. What a settings form *offers* is its own bound
+ * (`ENGINE_SETTING_BOUNDS.depth`), and infinite analysis has none.
  */
-export const DEFAULT_MAX_DEPTH = 24;
+export const DEFAULT_MAX_DEPTH = 99;
 
 /**
  * Parse one `option name ... type ...` line from the `uci` handshake.
@@ -100,6 +102,15 @@ const parseEngineLine = (line: string, fen: string | undefined): EngineMessage =
     multipv: multipv === undefined ? undefined : Number(multipv),
     fen,
   };
+};
+
+/** The `go` line for a search: `go infinite`, or a depth clamped to `maxDepth` with an optional `movetime`. */
+const goCommand = (options: SearchOptions, maxDepth: number): string => {
+  if ("infinite" in options) return "go infinite";
+  const depth = Math.min(options.depth, maxDepth);
+  return options.movetime && options.movetime > 0
+    ? `go depth ${depth} movetime ${options.movetime}`
+    : `go depth ${depth}`;
 };
 
 /** What a {@link UciEngine} is told about the engine behind its transport. */
@@ -276,16 +287,9 @@ export class UciEngine implements EngineHandle {
     if (!next) return;
     this.pendingSearch = null;
 
-    const depth = Math.min(next.options.depth, this.maxDepth);
-    const { movetime } = next.options;
-
     this.searching = next.fen;
     this.transport.send(`position fen ${next.fen}`);
-    this.transport.send(
-      movetime && movetime > 0
-        ? `go depth ${depth} movetime ${movetime}`
-        : `go depth ${depth}`,
-    );
+    this.transport.send(goCommand(next.options, this.maxDepth));
   }
 
   /** Ask the running search to end — once; the `bestmove` it answers with resumes the queue. */
@@ -379,7 +383,7 @@ export class UciEngine implements EngineHandle {
   }
 
   /**
-   * Ask for `fen` to be searched.
+   * Ask for `fen` to be searched — to a depth, or until stopped (`infinite`).
    *
    * It may not start immediately: {@link flush} holds it until the handshake is
    * done and any running search has ended, so that pending option changes go out

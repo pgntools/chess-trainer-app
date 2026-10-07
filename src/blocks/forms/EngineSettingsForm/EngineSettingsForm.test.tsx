@@ -89,11 +89,27 @@ describe("EngineSettingsForm", () => {
     expect(screen.getByRole("slider", { name: "Threads" })).toBeEnabled();
   });
 
-  it("offers Threads and Hash only up to the app's own bounds, whatever the engine declares", () => {
-    // The 19 builds declare `Hash` to 33,554,432 MB and the multi-thread one 32 threads.
+  it("offers Threads and Hash only up to the app's ceilings, whatever the engine declares", () => {
+    // The 19 builds declare `Hash` to 33,554,432 MB (2048 crashed the tab) and the multi-thread one 32 threads.
     mount(ADJUSTABLE_OPTIONS);
-    expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "4");
-    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "256");
+    expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "32");
+    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "1024");
+  });
+
+  it("offers Threads and Hash only up to what this device can give", () => {
+    render(
+      <EngineSettingsForm
+        settings={SETTINGS}
+        onChange={vi.fn()}
+        engineOptions={ADJUSTABLE_OPTIONS}
+        showEvalBar
+        onShowEvalBarChange={vi.fn()}
+        deviceLimits={{ threads: 3, hashMb: 128 }}
+        testId="engine"
+      />,
+    );
+    expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "3");
+    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "128");
   });
 
   it("calls nothing unsupported before the handshake", () => {

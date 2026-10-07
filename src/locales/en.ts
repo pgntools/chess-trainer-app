@@ -1185,6 +1185,9 @@ const en = {
       engineOn: "Analyse with the engine",
       /** Said where the lines would be, when the engine is switched off. */
       engineOff: "The engine is off. Switch it on to analyse this position.",
+      /** Infinite analysis (CTA-160): the engine deepens until the position changes. */
+      infinite: "Infinite analysis",
+      infiniteHelp: "Keep searching until the position changes. Off, a search stops at the depth and time below — and Play always does.",
       depth: "Search depth",
       moveTime: "Move time",
       moveTimeValue: "{{seconds}}s",

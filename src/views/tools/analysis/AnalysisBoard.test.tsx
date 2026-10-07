@@ -757,6 +757,18 @@ describe("Play — the engine plays the opponent's best move until paused", () =
     expect(boardOptions().position).toBe(AFTER_E4);
   });
 
+  it("searches until stopped under infinite analysis, and to the depth while Play is on — Play needs a move (CTA-160)", () => {
+    mountEngineOn();
+    openTab("engine");
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
+
+    fireEvent.click(screen.getByRole("switch", { name: "Infinite analysis" }));
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ infinite: true });
+
+    play();
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
+  });
+
   it("pauses when the board is flipped — the engine's side changed under it (CTA-74)", () => {
     mountEngineOn();
     play();

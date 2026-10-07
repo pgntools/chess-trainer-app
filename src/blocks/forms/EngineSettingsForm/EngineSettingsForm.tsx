@@ -6,6 +6,7 @@ import type { EngineOption } from "../../../lib/engineTypes";
 import {
   approximateElo,
   ENGINE_SETTING_BOUNDS,
+  type DeviceEngineLimits,
   SETTING_UCI_OPTION,
   usesEloStrength,
   type EngineSettings,
@@ -19,6 +20,11 @@ export type EngineSettingsFormProps = {
   engineOptions: ReadonlyMap<string, EngineOption>;
   showEvalBar: boolean;
   onShowEvalBarChange: (next: boolean) => void;
+  /**
+   * The most Threads and Hash this device should be offered — the screen's
+   * `deviceEngineLimits()` (CTA-160). Absent: `ENGINE_SETTING_BOUNDS`' ceilings.
+   */
+  deviceLimits?: DeviceEngineLimits;
   /**
    * The prefix of every id it sets: the form is `<testId>-settings`, each
    * control `<testId>-setting-<option>` (`engine-setting-skill-level`,
@@ -56,7 +62,7 @@ type OptionRow = {
  * as props, a change leaves as a patch. Its words are the app's
  * (`playEngine.settings.*`, `engineOption.*`).
  */
-function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, onShowEvalBarChange, testId }: EngineSettingsFormProps) {
+function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, onShowEvalBarChange, deviceLimits, testId }: EngineSettingsFormProps) {
   const { t } = useTranslation();
   // Before the handshake there is nothing to judge a control against, so no
   // control is called unsupported.
@@ -112,8 +118,7 @@ function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, on
         label={t("playEngine.settings.depth")}
         value={settings.depth}
         min={ENGINE_SETTING_BOUNDS.depth.min}
-        // The wrapper clamps a search to 24 plies; offering more would be a
-        // control that silently stops moving.
+        // 40 plies — past any search a reader would wait for (CTA-160); the wrapper's own clamp is higher.
         max={ENGINE_SETTING_BOUNDS.depth.max}
         onChange={(depth) => onChange({ depth })}
         testId={`${testId}-setting-depth`}
@@ -134,12 +139,20 @@ function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, on
       />
       {optionSlider({ setting: "multiPv", labelKey: "playEngine.settings.multiPv", maxOffered: ENGINE_SETTING_BOUNDS.multiPv.max })}
       {/*
-        Capped at the app's own bounds, as the lines are: the Stockfish 19 builds
-        declare `Hash` up to 33,554,432 MB and the multi-thread one 32 threads —
-        far more than a browser tab can hold or use.
+        Capped at what this device can give, as the lines are capped: the
+        Stockfish 19 builds declare `Hash` up to 33,554,432 MB (2048 crashed
+        the tab) and the multi-thread one 32 threads.
       */}
-      {optionSlider({ setting: "threads", labelKey: "playEngine.settings.threads", maxOffered: ENGINE_SETTING_BOUNDS.threads.max })}
-      {optionSlider({ setting: "hashMb", labelKey: "playEngine.settings.hash", maxOffered: ENGINE_SETTING_BOUNDS.hashMb.max })}
+      {optionSlider({
+        setting: "threads",
+        labelKey: "playEngine.settings.threads",
+        maxOffered: deviceLimits?.threads ?? ENGINE_SETTING_BOUNDS.threads.max,
+      })}
+      {optionSlider({
+        setting: "hashMb",
+        labelKey: "playEngine.settings.hash",
+        maxOffered: deviceLimits?.hashMb ?? ENGINE_SETTING_BOUNDS.hashMb.max,
+      })}
       <SwitchField
         label={t("playEngine.settings.evalBar")}
         checked={showEvalBar}

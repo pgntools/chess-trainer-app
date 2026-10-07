@@ -205,13 +205,13 @@ describe("the engine settings tab", () => {
     ).toHaveTextContent(`Level 10 (≈${approximateElo(10)} Elo)`);
   });
 
-  it("caps the depth slider at what the engine wrapper will actually run", () => {
+  it("offers depth up to 40 — past any search a reader would wait for (CTA-160)", () => {
     renderSettings();
 
     const input = screen
       .getByTestId("engine-setting-depth")
       .querySelector("input");
-    expect(input).toHaveAttribute("max", "24");
+    expect(input).toHaveAttribute("max", "40");
   });
 
   it("reports a move time in seconds, and no limit at zero", () => {

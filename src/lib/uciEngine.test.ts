@@ -472,11 +472,25 @@ describe("UciEngine message stamping", () => {
 });
 
 describe("UciEngine's depth limit — the descriptor's maxDepth", () => {
-  it("defaults to 24", () => {
+  it("defaults to 99 — past any search a browser runs, so a request is never cut short", () => {
     const { engine, transport } = ready();
-    engine.search("fen", { depth: 99 });
-    expect(DEFAULT_MAX_DEPTH).toBe(24);
-    expect(transport.sent.at(-1)).toBe("go depth 24");
+    expect(DEFAULT_MAX_DEPTH).toBe(99);
+    engine.search("fen", { depth: 40 });
+    expect(transport.sent.at(-1)).toBe("go depth 40");
+    transport.say("bestmove e2e4");
+    engine.search("fen", { depth: 500 });
+    expect(transport.sent.at(-1)).toBe("go depth 99");
+  });
+
+  it("searches until stopped on an infinite request, unclamped, and ends it with one stop", () => {
+    const { engine, transport } = ready({ maxDepth: 10 });
+    engine.search("fen-a", { infinite: true });
+    expect(transport.sent).toEqual(["position fen fen-a", "go infinite"]);
+
+    engine.search("fen-b", { infinite: true });
+    expect(transport.sent.at(-1)).toBe("stop");
+    transport.say("bestmove e2e4");
+    expect(transport.sent.slice(-2)).toEqual(["position fen fen-b", "go infinite"]);
   });
 
   it("takes the engine's own limit, lower or higher", () => {

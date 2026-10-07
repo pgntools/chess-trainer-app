@@ -52,7 +52,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/views/tools/analysis/MultiGameDialog.tsx` | **The popup a PGN of several games opens** (CTA-101): Merge games, Save as games collection (index pass with progress and Cancel, `addCollection` at the Library's top level, then `/library/<id>`), or Save to Saved analyses (CTA-141: a folder's name, then a new top-level folder with an analysis per game — `analysisGamesOfText`, `batchAnalysesOf` — then `/tools/analysis/saved?folder=<id>`). The Board's Load tab and the Lobby's form both render it. |
 | `src/views/tools/analysis/useAnalysisLoad.ts` | **The Load route's state** (CTA-96): the pipeline behind `AnalysisLoad`, on its own so a host can place its pieces itself — the analyses Lobby's form puts the FEN field and the `.pgn` pick in its editor's row and the paste box below. |
 | `src/blocks/panels/PgnExportPanel/` | The Export tab (every board's): FEN, PGN with or without comments / NAGs / side lines, copy and download. |
-| `src/blocks/forms/AnalysisEngineForm/` | The Engine tab (depth, move time, lines, the eval bar, Clear) — every board's but Play's; each slider rendered from what the engine declared (`engineOptionState`). |
+| `src/blocks/forms/AnalysisEngineForm/` | The Engine tab (**infinite analysis**, depth 1–40, move time 0–60 s, lines, the eval bar, Clear) — every board's but Play's; each option slider rendered from what the engine declared (`engineOptionState`). |
 | `src/views/tools/analysis/AnalysisArrows.tsx`, `src/blocks/forms/ArrowSettingsFields/` | The Arrows tab (CTA-98, §1.1): the next-move arrows switch, the width source and the palette. The fields block is shared with the settings screen. |
 | `src/views/tools/analysis/SaveAnalysisDialog.tsx` | A new board's name and folder. |
 | `src/blocks/panels/PlayToggleButton/`, `EngineThinking/` | Play's header button and status line, shared with every board that has Play. |
@@ -68,7 +68,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/lib/savedAnalyses.ts` | **The record**, pure: `SavedAnalysis`, `savedAnalysisOf`, `savedAnalysisFrom` (the normaliser), `savedAnalysisDerivedName`, `batchAnalysesOf`, `analysisGamesOfText` (a text's games as analyses, CTA-141), `savedAnalysisCatalogOf`. |
 | `src/lib/savedAnalysisStore.ts` | **The store** (`chessapp.analyses`, object store `analyses`): `saveAnalysis`, `addAnalyses`, `fileSavedAnalysis`, `renameSavedAnalysis`, `updateSavedAnalysisSettings`, `removeSavedAnalyses`, `unfileAnalysesIn`, `findSavedAnalysisGame`; cap `MAX_SAVED_ANALYSES` (20,000). |
 | `src/lib/savedAnalysisFolders.ts` + `savedAnalysisFolderStore.ts` | The folders: an `AnalysisFolder` *is* a `GameFolder` (`lib/savedGameFolders.ts`, the nested model: cycles cut, dangling parents read as top level); create / rename / move (never into its own subtree) / delete (sub-folders re-parent, analyses become Unfiled); cap 100. |
-| `src/lib/analysisSettings.ts` | `AnalysisSettings`, the defaults, `ANALYSIS_UCI_OPTION`, `analysisSettingsFrom`. |
+| `src/lib/analysisSettings.ts` | `AnalysisSettings` (depth, move time, lines, `infinite` — CTA-160), the defaults (depth 20, no time limit, infinite off), `ANALYSIS_SETTING_BOUNDS`, `ANALYSIS_UCI_OPTION`, `analysisSettingsFrom` (a record from before reads `infinite` off). |
 | `src/lib/arrowSettings.ts` | The Arrows tab's ids (CTA-98): `ArrowWidthSource`, `ArrowPaletteId`, their defaults and readers (`arrowWidthSourceFrom`, `arrowPaletteFrom`). |
 | `src/lib/nextMoveWeights.ts` | Each width source's weights at a branch (`nextMoveWeights`), the `[%eval]` reader (`evalOf`), and which sources a tree offers (`arrowWidthSourcesIn`). Pure. The `games` tag's reader is `lib/gamesTag.ts`. |
 | `src/lib/gameReference.ts` + `gameCatalog.ts` | **The `?game=` carrier** (§3). |
@@ -112,6 +112,14 @@ screen).
   `?` are no name), `BoardShell`'s `playerPlates` draws the result, Elo and name
   at the left end of the captured-pieces strips, the orientation deciding which
   is at the top. A position, or an analysis with no names, has none.
+- **How long the engine searches** (CTA-160, [`docs/engine.md`](../../docs/engine.md)
+  §5.1): to the Engine tab's depth (default 20) and move time (default none),
+  or — **Infinite analysis**, lichess's switch, off by default — until the
+  position changes or the engine is switched off. **While Play is on the depth
+  and time decide** whatever the switch says (`useAnalysisSession`: `infinite
+  && !playing`): Play needs a search that ends with a move. The same holds on
+  every board over `useAnalysisSession`, and the repertoire player takes the
+  switch too (it has no Play).
 - **Tabs: Moves · Map · Load · Export · Engine · Arrows.** Moves and Map are
   kept mounted. The footer holds the comment block, the changes strip, Play's
   status line and the next-moves bar (on the Moves tab).

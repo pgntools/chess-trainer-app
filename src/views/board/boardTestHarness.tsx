@@ -39,6 +39,7 @@ import type {
   EngineMessage,
   EngineMessageCallback,
   EngineOption,
+  SearchOptions,
 } from "../../lib/engineTypes";
 // Types only: a value import would be the very module this file stands in for.
 import type * as BuiltinEngines from "../../lib/engines/builtin";
@@ -66,6 +67,8 @@ export class FakeEngine implements EngineHandle {
   /** The descriptor it was built for — `undefined` when a test built it by hand. */
   readonly descriptor: EngineDescriptor | undefined;
   readonly searches: string[] = [];
+  /** Each search's options, beside {@link searches} — a depth and time, or `infinite`. */
+  readonly searchOptions: SearchOptions[] = [];
   readonly setOptions: [string, string | number][] = [];
   stops = 0;
   /** What the build it stands in for declares — the default's when built by hand. */
@@ -97,8 +100,9 @@ export class FakeEngine implements EngineHandle {
     return option !== undefined && (option.min === undefined || option.min !== option.max);
   }
 
-  search(fen: string) {
+  search(fen: string, options: SearchOptions) {
     this.searches.push(fen);
+    this.searchOptions.push(options);
   }
 
   stop() {

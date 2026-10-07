@@ -90,6 +90,15 @@ export type EngineModuleStart = {
   /** `go movetime`, in milliseconds. Omitted by the wrapper when 0. */
   moveTimeMs: number;
   /**
+   * Search until stopped — `go infinite`, an analysis board's infinite
+   * analysis (CTA-160) — instead of to {@link depth} and {@link moveTimeMs}.
+   * Absent is off. The search ends only when the position changes or the
+   * engine is switched off, so its `bestmove` (and the score the move list
+   * keeps) lands then; a board waiting for the engine's move must not ask
+   * for it.
+   */
+  infinite?: boolean;
+  /**
    * The UCI options this board wants set, by name. Pushed on change; a name
    * this build does not have is dropped by the handle's `setOption`.
    *
@@ -132,6 +141,7 @@ export const useEngineModule = ({
   fen,
   depth,
   moveTimeMs,
+  infinite = false,
   uciOptions,
   onUciOptionsReady,
   onBestMove,
@@ -338,12 +348,12 @@ export const useEngineModule = ({
     // that: the analysis below is only handed on when its FEN matches.
     if (isTerminal(fen)) return;
 
-    ensureEngine().search(fen, { depth, movetime: moveTimeMs });
+    ensureEngine().search(fen, infinite ? { infinite: true } : { depth, movetime: moveTimeMs });
     // `uciOptions` is a dependency so that changing a setting restarts the
     // search and is reflected in the lines immediately, rather than waiting
     // for the next move — which is what "takes effect on the next search"
     // means in practice.
-  }, [ensureEngine, enabled, fen, depth, moveTimeMs, uciOptions]);
+  }, [ensureEngine, enabled, fen, depth, moveTimeMs, infinite, uciOptions]);
 
   const clearAnalysis = useCallback(() => setAnalysis(EMPTY_ANALYSIS), []);
 

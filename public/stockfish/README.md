@@ -31,8 +31,10 @@ with and without COOP / COEP headers) and as a Node process, and its own `uci`
 reply read — not its wasm string table. Checked on **2026-10-07** (CTA-152):
 
 - **`uci` roster** — as the table above; `Hash` is adjustable (1 to
-  33 554 432 MB declared — far more than a tab can hold; the Engine tab offers
-  up to 256 MB) and `MultiPV` runs to 256.
+  33 554 432 MB declared — far more than a tab can hold) and `MultiPV` runs to
+  256. Measured in CTA-160: **`Hash` 1024 MB works, 2048 MB crashed the tab**
+  (WebAssembly's memory), so the app never asks for more than 1024 and offers
+  less on a smaller device. Depth reached over time: `docs/engine.md` §5.1.
 - **`setoption` during a search.** Both builds **keep searching**: a `stop`
   afterwards still ends in a `bestmove`. The app's rule — buffer, post only when
   idle, `stop` first — stays generic and is applied to every engine: a hosted or

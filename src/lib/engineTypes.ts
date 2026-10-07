@@ -57,18 +57,25 @@ export type EngineOption = {
   vars?: string[];
 };
 
-/** What one `go` search should do. */
-export type SearchOptions = {
-  /**
-   * Plies to search — always the caller's (the board's settings), never a
-   * default of the engine's. Clamped to the engine's own limit
-   * ({@link EngineCapabilities.maxDepth}) — the worker shares the tab with the
-   * UI.
-   */
-  depth: number;
-  /** Milliseconds to spend, on top of the depth limit. 0 or absent means no time limit. */
-  movetime?: number;
-};
+/**
+ * What one `go` search should do: stop at a depth (and, if asked, a time), or
+ * search **until stopped** — `go infinite`, an analysis board's infinite
+ * analysis (CTA-160), which only ever ends with {@link EngineHandle.stop} (a
+ * new position, the engine switched off) and so never suits a board waiting
+ * for the engine's move.
+ */
+export type SearchOptions =
+  | {
+      /**
+       * Plies to search — always the caller's (the board's settings), never a
+       * default of the engine's. Clamped to the engine's own limit
+       * ({@link EngineCapabilities.maxDepth}).
+       */
+      depth: number;
+      /** Milliseconds to spend, beside the depth limit — whichever comes first. 0 or absent means no time limit. */
+      movetime?: number;
+    }
+  | { infinite: true };
 
 export type EngineMessage = {
   /** stockfish engine message in UCI format*/

@@ -255,6 +255,18 @@ describe("useEngineModule — lifecycle", () => {
     expect(FakeEngine.latest().searches).toEqual([]);
   });
 
+  it("searches to the depth and time asked, or until stopped while infinite (CTA-160)", () => {
+    const { rerender } = mount(start({ depth: 20, moveTimeMs: 0 }));
+    const engine = FakeEngine.latest();
+    expect(engine.searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
+
+    rerender(start({ depth: 20, moveTimeMs: 0, infinite: true }));
+    expect(engine.searchOptions.at(-1)).toEqual({ infinite: true });
+
+    rerender(start({ depth: 20, moveTimeMs: 0, infinite: false }));
+    expect(engine.searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
+  });
+
   it("stops the engine when switched off, and searches the position on screen when switched back on", () => {
     const { rerender } = mount(start());
     const engine = FakeEngine.latest();

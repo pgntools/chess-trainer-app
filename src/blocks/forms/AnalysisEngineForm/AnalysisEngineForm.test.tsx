@@ -51,10 +51,24 @@ describe("AnalysisEngineForm", () => {
     expect(onShowEvalBarChange).toHaveBeenCalledWith(false);
   });
 
-  it("turns the search's sliders off while the engine is", () => {
+  it("turns the search's controls off while the engine is", () => {
     mount({ engineOn: false });
+    expect(screen.getByRole("switch", { name: "Infinite analysis" })).toBeDisabled();
     expect(screen.getByRole("slider", { name: "Search depth" })).toBeDisabled();
     expect(screen.getByRole("slider", { name: "Move time" })).toBeDisabled();
+  });
+
+  it("switches infinite analysis, saying what it does, and offers depth to 40 and a minute (CTA-160)", async () => {
+    const user = userEvent.setup();
+    const { onChange } = mount();
+    const infinite = screen.getByRole("switch", { name: "Infinite analysis" });
+    expect(infinite).not.toBeChecked();
+    expect(infinite).toHaveAccessibleDescription(/until the position changes/);
+    await user.click(infinite);
+    expect(onChange).toHaveBeenCalledWith({ infinite: true });
+
+    expect(screen.getByRole("slider", { name: "Search depth" })).toHaveAttribute("aria-valuemax", "40");
+    expect(screen.getByRole("slider", { name: "Move time" })).toHaveAttribute("aria-valuemax", "60000");
   });
 
   it("says when this build pins the lines, or has none", () => {

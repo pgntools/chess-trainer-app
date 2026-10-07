@@ -165,7 +165,7 @@ describe("Play with Engine — a new game's options from the Lobby's link (CTA-8
     expect(screen.getByTestId("eval-bar")).toBeInTheDocument();
     click("play-with-engine-panel-tab-engine");
     expect(screen.getByTestId("engine-setting-elo-value")).toHaveTextContent("2100 Elo");
-    expect(depthValue()).toBe("24");
+    expect(depthValue()).toBe("40");
   });
 
   it("lets a side beat the side to move of a ?fen=, and the FEN decide without one", () => {
