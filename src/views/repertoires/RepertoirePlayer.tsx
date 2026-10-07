@@ -49,6 +49,7 @@ import {
 import BoardShell from "../board/core/BoardShell";
 import { useBoardCore } from "../board/core/useBoardCore";
 import { useEngineModule } from "../board/core/useEngineModule";
+import { useEngineChoice } from "../shared/useEngineChoice";
 import { useTrainerModule, type TrainerStatus } from "../board/core/useTrainerModule";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import RepertoireGamesMenu from "./RepertoireGamesMenu";
@@ -347,8 +348,11 @@ function RepertoirePlayer({
       }),
     [],
   );
+  // The reader's engine (Settings → Engine, CTA-153): every board runs it from its next search.
+  const { engineId } = useEngineChoice();
   const engine = useEngineModule({
     enabled: engineOn,
+    engine: engineId,
     fen: core.fen,
     depth: settings.depth,
     moveTimeMs: settings.moveTimeMs,

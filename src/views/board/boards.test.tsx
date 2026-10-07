@@ -39,6 +39,9 @@ vi.mock("../../lib/openings", async (importOriginal) => {
 });
 
 import { boardOptions, FakeEngine } from "./boardTestHarness";
+import { storeEngineId } from "../../lib/engineChoice";
+import type { EngineDescriptor, EngineHandle } from "../../lib/engineTypes";
+import { registerEngine } from "../../lib/engines";
 import { loadPlayedGames, playedGamesSnapshot } from "../../lib/playedGameStore";
 import AnalysisBoard from "../tools/analysis/AnalysisBoard";
 import PlayWithEngine from "../engine/play/PlayWithEngine";
@@ -383,5 +386,74 @@ describe("the Openings explorer (CTA-78)", () => {
     // is on screen at all — the slot, not eco.json.
     expect(screen.getByTestId("openings-panel-tab-book")).toBeInTheDocument();
     expect(screen.getByTestId("openings-book")).toBeInTheDocument();
+  });
+});
+
+/*
+  The reader's engine (CTA-153): every board builds the engine chosen in
+  Settings → Engine — one shared place (`useEngineModule`), so one test over
+  the set. (The repertoire player has its own composition and its own row in
+  `RepertoirePlayer.test.tsx`.)
+*/
+describe("the reader's engine reaches every board (CTA-153)", () => {
+  class ChosenEngine extends FakeEngine {}
+  const chosen: EngineDescriptor = {
+    id: "test-chosen-engine",
+    name: "Chosen Engine",
+    version: "1",
+    kind: "local",
+    capabilities: { maxDepth: 24, strength: "skill", multiThread: false },
+    create: () => new ChosenEngine() as unknown as EngineHandle,
+  };
+  const removers: (() => void)[] = [];
+  beforeEach(() => {
+    FakeEngine.reset();
+    removers.push(registerEngine(chosen));
+  });
+  afterEach(() => removers.splice(0).forEach((remove) => remove()));
+
+  it.each(BOARDS.map((board) => [board.name, board] as const))("%s builds the engine the reader chose", (_name, board) => {
+    storeEngineId(chosen.id);
+
+    renderBoard(board.Screen);
+
+    expect(FakeEngine.latest()).toBeInstanceOf(ChosenEngine);
+    expect(FakeEngine.instances.filter((engine) => !engine.terminated)).toHaveLength(1);
+  });
+
+  it.each(BOARDS.map((board) => [board.name, board] as const))("%s builds the default engine when none was chosen", (_name, board) => {
+    renderBoard(board.Screen);
+
+    expect(FakeEngine.latest()).not.toBeInstanceOf(ChosenEngine);
+  });
+
+  // Every board but the games against the engine, which keep theirs (below).
+  const following = BOARDS.filter((board) => board.id !== "play-with-engine" && board.id !== "masked-play");
+
+  it.each(following.map((board) => [board.name, board] as const))(
+    "%s swaps to a new choice — the old engine terminated, one running",
+    (_name, board) => {
+      renderBoard(board.Screen);
+      const first = FakeEngine.latest();
+      expect(first).not.toBeInstanceOf(ChosenEngine);
+
+      act(() => storeEngineId(chosen.id));
+
+      expect(first.terminated).toBe(true);
+      expect(FakeEngine.latest()).toBeInstanceOf(ChosenEngine);
+      expect(FakeEngine.instances.filter((engine) => !engine.terminated)).toHaveLength(1);
+    },
+  );
+
+  it.each(
+    BOARDS.filter((board) => board.id === "play-with-engine" || board.id === "masked-play").map((board) => [board.name, board] as const),
+  )("%s keeps a game's engine when the choice changes under it", (_name, board) => {
+    renderBoard(board.Screen);
+    const first = FakeEngine.latest();
+
+    act(() => storeEngineId(chosen.id));
+
+    expect(first.terminated).toBe(false);
+    expect(FakeEngine.instances).toHaveLength(1);
   });
 });

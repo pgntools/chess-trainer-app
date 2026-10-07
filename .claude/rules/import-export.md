@@ -106,7 +106,11 @@ both catalogs. Test ids: `settings-export-*`, `settings-import-*`.
   except a legacy multi-game repertoire (`isMultiGameRepertoire`), whose later
   neighbours' indices account for it.
 - Each record carries everything its store keeps beside the PGN (ids, settings,
-  the path the reader stood on, dates; a played game's `resigned` and `mask`;
+  the path the reader stood on, dates; a played game's `resigned`, `mask` and
+  `engine` (CTA-153: the build that played it — id, name, version, how its
+  strength was set; **additive and optional**, so there is no format bump: an
+  older reader ignores it and a game without one was played by the default
+  engine; the `elo` setting is the same kind of addition);
   an analysis' `showArrows`, `arrowWidthSource` and `arrowPalette`; a
   repertoire's `previewFen` and `stats`; an uploaded collection's
   `description` and `tournament` mark, CTA-121) — not a

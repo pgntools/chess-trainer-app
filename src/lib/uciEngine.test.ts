@@ -123,6 +123,31 @@ describe("UciEngine over a transport", () => {
     expect(transport.sent).toEqual(["setoption name UCI_Elo value 1800"]);
   });
 
+  it("writes a check option as true / false — a number request of 1 or 0 is not UCI", () => {
+    // UCI_LimitStrength is a check; `setoption … value 1` reads as false.
+    const { engine, transport } = ready();
+
+    engine.setOption("UCI_LimitStrength", 1);
+    engine.search("fen-a");
+    expect(transport.sent).toEqual([
+      "setoption name UCI_LimitStrength value true",
+      "position fen fen-a",
+      "go depth 12",
+    ]);
+
+    transport.say("bestmove e2e4");
+    transport.sent.length = 0;
+    engine.setOption("UCI_LimitStrength", 0);
+    engine.search("fen-b");
+    expect(transport.sent[0]).toBe("setoption name UCI_LimitStrength value false");
+  });
+
+  it("leaves a spin's number as it is", () => {
+    const { engine, transport } = ready();
+    engine.setOption("UCI_Elo", 1);
+    expect(transport.sent).toEqual(["setoption name UCI_Elo value 1"]);
+  });
+
   it("holds an option back from a running search and stops it instead", () => {
     const { engine, transport } = ready();
     engine.search("fen-a");

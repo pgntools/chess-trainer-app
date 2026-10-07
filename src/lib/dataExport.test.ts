@@ -173,6 +173,18 @@ describe("buildExport", () => {
     expect(entry.records[0].settings).toEqual(DEFAULT_ENGINE_SETTINGS);
   });
 
+  it("records the engine that played a game, and leaves a game without one without (CTA-153)", () => {
+    const engine = { id: "stockfish-19-lite-single", name: "Stockfish 19 Lite", version: "19", strength: "elo" as const };
+    const bundle = build({ playedGames: [{ ...played("g1"), engine }, played("g2")] }, { games: true });
+    const entry = bundle.manifest.files[0];
+    if (entry.kind !== "games") throw new Error("expected the games file");
+    expect(entry.records[0].engine).toEqual(engine);
+    // Additive: a game from before has no key at all, so an older reader sees the manifest it knew.
+    expect("engine" in entry.records[1]).toBe(false);
+    // And the format is not bumped for it.
+    expect(bundle.manifest.formatVersion).toBe(2);
+  });
+
   it("records each analysis' name, description, orientation, path and folder path", () => {
     const folders = [folder("f1", "Openings"), folder("f2", "Sicilian", "f1")];
     const bundle = build(

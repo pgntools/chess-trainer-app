@@ -276,7 +276,7 @@ mid-search `setoption` and take `Threads`; the 2019 build's `Threads` case
 reproduced, a mid-search `Skill Level` / `MultiPV` did not abandon it that run.
 **The rule below is generic anyway** — a hosted or future engine has not been
 measured — and it is the same rule for every engine; re-test each new binary,
-`docs/engine.md` §5.)
+`docs/engine.md` §6.)
 
 `UciEngine` therefore buffers everything and posts it only when the engine can
 take it: nothing before `uciok`, nothing while a search runs (a `stop` goes

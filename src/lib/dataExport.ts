@@ -7,7 +7,7 @@ import type { CollectionSummary, TournamentFormat } from "./libraryCollections";
 import { splitPgnGames } from "./pgn";
 import { isoDate, pgnFileOf } from "./pgnExport";
 import { slugify } from "./pgnText";
-import type { PlayedGame, PlayedGameMask } from "./playedGames";
+import type { PlayedGame, PlayedGameEngine, PlayedGameMask } from "./playedGames";
 import type { RepertoireSettings } from "./repertoireSettings";
 import type { SavedAnalysis } from "./savedAnalyses";
 import { analysisFolderPath, type AnalysisFolder } from "./savedAnalysisFolders";
@@ -106,6 +106,8 @@ type PlayedGameEntry = Placed & {
   path: readonly string[];
   resigned?: "white" | "black";
   mask?: PlayedGameMask;
+  /** The engine that played it (CTA-153); absent for a game from before. Additive: an older reader ignores it. */
+  engine?: PlayedGameEngine;
   savedAt: string;
   updatedAt: string;
 };
@@ -251,6 +253,7 @@ const playedGameEntry = (game: PlayedGame, place: Placed): PlayedGameEntry => ({
   path: game.path,
   ...(game.resigned === undefined ? {} : { resigned: game.resigned }),
   ...(game.mask === undefined ? {} : { mask: game.mask }),
+  ...(game.engine === undefined ? {} : { engine: game.engine }),
   savedAt: game.savedAt,
   updatedAt: game.updatedAt,
 });

@@ -9,6 +9,7 @@ import { findNode, pathTo, type GameTree } from "../../../lib/gameTree";
 import { extensionIdsOf, nodeIdsOf } from "../../../lib/repertoireTrainer";
 import { useBoardCore } from "../../board/core/useBoardCore";
 import { useEngineModule } from "../../board/core/useEngineModule";
+import { useEngineChoice } from "../../shared/useEngineChoice";
 import { usePlayToggle } from "../../board/core/usePlayToggle";
 
 /**
@@ -84,8 +85,11 @@ export const useAnalysisSession = ({
   const play = usePlayToggle({ core, engineOn });
   const { playing, thinking } = play;
 
+  // The reader's engine (Settings → Engine, CTA-153): every board runs it from its next search.
+  const { engineId } = useEngineChoice();
   const engine = useEngineModule({
     enabled: engineOn,
+    engine: engineId,
     fen: core.fen,
     depth: settings.depth,
     moveTimeMs: settings.moveTimeMs,

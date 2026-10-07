@@ -210,7 +210,7 @@ describe("the Export tab", () => {
 });
 
 describe("the Settings section — accessibility (CTA-109)", () => {
-  it.each(["export", "import", "storage", "appearance"])("passes axe on its %s tab", async (tab) => {
+  it.each(["export", "import", "storage", "appearance", "engine"])("passes axe on its %s tab", async (tab) => {
     renderAt(`/settings/${tab}`);
     expect(await screen.findByTestId(`settings-tab-content-${tab}`)).toBeInTheDocument();
     await expectNoAxeViolations();

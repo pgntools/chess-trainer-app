@@ -8,6 +8,7 @@ import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import WidgetsRoundedIcon from "@mui/icons-material/WidgetsRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
+import MemoryRoundedIcon from "@mui/icons-material/MemoryRounded";
 import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
 import SportsEsportsRoundedIcon from "@mui/icons-material/SportsEsportsRounded";
 import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
@@ -178,6 +179,13 @@ export const navItems = (): readonly NavItem[] => [
     to: "/settings/appearance",
     labelKey: "nav.settingsAppearance",
     icon: PaletteRoundedIcon,
+    folder: "settings",
+  },
+  // Engine (CTA-153): which engine every board runs.
+  {
+    to: "/settings/engine",
+    labelKey: "nav.settingsEngine",
+    icon: MemoryRoundedIcon,
     folder: "settings",
   },
 ];

@@ -7,6 +7,7 @@ import {
   approximateElo,
   ENGINE_SETTING_BOUNDS,
   SETTING_UCI_OPTION,
+  usesEloStrength,
   type EngineSettings,
 } from "../../../lib/engineSettings";
 import { engineOptionState, optionSlug } from "./engineOptionState";
@@ -22,14 +23,17 @@ export type EngineSettingsFormProps = {
    * The prefix of every id it sets: the form is `<testId>-settings`, each
    * control `<testId>-setting-<option>` (`engine-setting-skill-level`,
    * `-depth`, `-movetime`, `-multipv`, `-threads`, `-hash`, `-evalbar`), with
-   * `-value`, `-unsupported` and `-fixed` under a slider.
+   * `-value`, `-unsupported` and `-fixed` under a slider. The strength is
+   * `-setting-skill-level` — or, for an engine that takes an Elo, `-setting-elo`.
    */
   testId: string;
 };
 
 type OptionRow = {
-  setting: "skillLevel" | "multiPv" | "threads" | "hashMb";
+  setting: "skillLevel" | "elo" | "multiPv" | "threads" | "hashMb";
   labelKey: string;
+  /** The test id's part, where the option's own slug is not it (`UCI_Elo` → `elo`). */
+  slug?: string;
   /** Cap the top below what the engine would take (MultiPV's 500). */
   maxOffered?: number;
 };
@@ -60,9 +64,9 @@ function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, on
   const optionFor = (name: string): EngineOption | undefined =>
     handshakeLanded ? engineOptions.get(name) : { name, type: "spin" };
 
-  const optionSlider = ({ setting, labelKey, maxOffered }: OptionRow, valueLabel?: string) => {
+  const optionSlider = ({ setting, labelKey, maxOffered, slug }: OptionRow, valueLabel?: string) => {
     const optionName = SETTING_UCI_OPTION[setting];
-    const id = `${testId}-setting-${optionSlug(optionName)}`;
+    const id = `${testId}-setting-${slug ?? optionSlug(optionName)}`;
     const state = engineOptionState(optionFor(optionName), ENGINE_SETTING_BOUNDS[setting], maxOffered);
     return (
       <SliderField
@@ -88,10 +92,21 @@ function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, on
 
   return (
     <Box data-testid={`${testId}-settings`} sx={{ display: "grid", gap: 2 }}>
-      {optionSlider(
-        { setting: "skillLevel", labelKey: "playEngine.settings.strength" },
-        t("playEngine.settings.strengthValue", { level: settings.skillLevel, elo: approximateElo(settings.skillLevel) }),
-      )}
+      {/*
+        The strength is whichever control the running engine declared: an Elo
+        where it has `UCI_Elo` with `UCI_LimitStrength` (Stockfish 19), else
+        `Skill Level` with its Elo an estimate (the 2019 build). Read off the
+        handshake, so before it lands the Skill Level slider stands in.
+      */}
+      {handshakeLanded && usesEloStrength(engineOptions)
+        ? optionSlider(
+            { setting: "elo", labelKey: "playEngine.settings.strengthElo", slug: "elo" },
+            t("playEngine.settings.strengthEloValue", { elo: settings.elo }),
+          )
+        : optionSlider(
+            { setting: "skillLevel", labelKey: "playEngine.settings.strength" },
+            t("playEngine.settings.strengthValue", { level: settings.skillLevel, elo: approximateElo(settings.skillLevel) }),
+          )}
       {/* Depth and move time are `go` arguments, not options — always available. */}
       <SliderField
         label={t("playEngine.settings.depth")}

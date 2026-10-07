@@ -134,18 +134,19 @@ it is in [`game-collections.md`](./game-collections.md) §4.
 
 ## 2. What stays in `localStorage`
 
-Only preferences — two written by libraries, one by us:
+Only preferences — two written by libraries, two by us:
 
 | Key | Written by | What |
 | --- | --- | --- |
 | `mui-mode` (and MUI's other colour-scheme keys) | MUI's `ThemeProvider` with `colorSchemes` (`theme/AppThemeWithLang.tsx`) | light / dark / system |
 | `i18nextLng` | `i18next-browser-languagedetector` (`i18n.ts`) | the language picked |
 | `chessapp.theme` | `theme/themeChoice.ts` (CTA-107), through `AppThemeWithLang` | the theme picked in Settings → Appearance — a registered theme's id; any other value reads as `"default"` |
+| `chessapp.engine` | `lib/engineChoice.ts` (CTA-153), through `views/shared/useEngineChoice.ts` | the engine picked in Settings → Engine — a registry id, stored raw: an id that names no registered engine, or one this page cannot run, *reads* as the default (`engineChoiceId`) and stays stored |
 
 Nothing else in `src/` touches `localStorage`, and nothing reads the old
 `chessapp.*.v1` keys — do not reuse those names.
 `grep -rn localStorage src --include=*.ts --include=*.tsx | grep -v test`
-should show only comments and `theme/themeChoice.ts`.
+should show only comments, `theme/themeChoice.ts` and `lib/engineChoice.ts`.
 
 ---
 

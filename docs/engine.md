@@ -74,7 +74,29 @@ import {
 - **An id is stored** (a preference, a played game) **and is never renamed.** A
   new build of the same engine is a new id; `version` is what a reader sees.
 
-## 4. How a board picks one
+## 4. The reader's choice (CTA-153)
+
+Settings → Engine (`/settings/engine`, [`settings.md`](../.claude/rules/settings.md)
+§4) lists the registry (`describeEngines()`) with the `EnginePicker` block — an
+engine the page cannot run is listed disabled with its reason — and keeps the
+choice in `localStorage` (`chessapp.engine`, `lib/engineChoice.ts`). The store
+keeps the **raw** id; `engineChoiceId()` is what boards read — the registered,
+runnable engine, else the default — so a stored id that is gone or cannot run
+here falls back *without being discarded* and returns where it can run. Every
+board passes `useEngineChoice().engineId` to `useEngineModule({ engine })`, so
+the choice reaches it from its next search. A **game against the engine** reads
+it once as it begins and **records the engine** on the game
+(`PlayedGame.engine`: id, name, version, how strength was set); absent means the
+default engine, and a resumed game goes on with its own, falling back — with a
+notice — where that one cannot run.
+
+**Strength follows what the engine declares.** An engine with `UCI_Elo` and
+`UCI_LimitStrength` (the 19 builds) is strengthened by an Elo
+(`EngineSettings.elo`, a request clamped to its range); one without (the 2019
+build) by `Skill Level`. Both are requested — `uciOptionsOf` — and the engine
+keeps what it has; `UciEngine` writes a `check` option as `true` / `false`.
+
+## 5. How a board picks one
 
 `useEngineModule({ engine?: string, … })` — `engine` is a descriptor id; absent
 is today's behaviour (the default engine). It returns `descriptor`, the engine
@@ -99,7 +121,7 @@ finishes each position.
 The depth clamp of 24 is each engine's `capabilities.maxDepth`, handed to its
 `UciEngine` by the descriptor's `create()`.
 
-## 5. The protocol discipline
+## 6. The protocol discipline
 
 Unchanged, and **generic** — it lives in `UciEngine`, not in any build's
 quirks (§4.1 of `chessboard.md`): nothing is posted before `uciok`; nothing is
@@ -119,7 +141,7 @@ The 19 builds do not share the 2019 build's quirks, and the rule stays anyway:
 it costs nothing, and a hosted or future engine has not been measured. **Re-test
 every new binary** rather than trusting this table.
 
-## 6. Adding an engine
+## 7. Adding an engine
 
 1. **Local WASM build**: put the worker script and its `.wasm` (same base name —
    the script loads `….wasm` from beside itself) in `public/stockfish/<id>/`,
@@ -135,12 +157,14 @@ every new binary** rather than trusting this table.
    `capabilities` what its `uci` showed. Add it to `BUILTIN_ENGINES`.
 4. **Tests**: `registry.test.ts` already checks every built-in descriptor's
    worker script, `.wasm` and (for the 19 builds) `LICENSE` exist on disk.
-5. Locale keys for its name/threading, if the Engine tab shows it (CTA-153).
+5. Nothing else for the Engine tab: it lists the registry, so the new engine
+   appears (the picker's words are `enginePicker.*`; the engine's name is its
+   own).
 
 An engine that is not a Web Worker needs a transport, not a new engine class:
 implement `UciTransport` and pass it to `UciEngine`.
 
-## 7. The future: a hosted engine (not built)
+## 8. The future: a hosted engine (not built)
 
 A backend evaluation API (hosted Stockfish 18/19 over the network) is planned
 for a later phase, and this layer is shaped so it plugs in **without touching a
@@ -161,11 +185,10 @@ board**:
   message already makes a late result harmless, and `search()`'s "a newer
   position replaces a waiting one" is what keeps the wire from queueing.
 
-**Not in this layer:** the Settings → Engine tab and the stored preference
-(CTA-153), the COOP / COEP headers on the swa host (CTA-154), any remote
+**Not in this layer:** the COOP / COEP headers on the swa host (CTA-154), any remote
 transport, per-board engine choice, cloud eval.
 
-## 8. Testing
+## 9. Testing
 
 - `src/lib/uciEngine.test.ts` — `UciEngine` over a fake transport (no Worker).
   `src/lib/engine.test.ts` — the same class through the default `Engine`, over a
