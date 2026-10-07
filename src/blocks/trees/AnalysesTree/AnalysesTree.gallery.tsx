@@ -31,6 +31,7 @@ const demo = (
           locked={false}
           linkOf={(row) => ({ href: `#${row.id}` })}
           closeLink={{ href: "#list" }}
+          siblings={{ previous: { href: "#a3" }, next: { href: "#a5" }, testId: "gallery-analyses-sibling" }}
           open={state.open}
           shown={state.shown}
           onToggle={(id) =>
@@ -60,6 +61,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "Filtered by a folder's name — all that is in it stays", render: () => demo({ text: "openings" }) },
     { name: "Filtered, nothing matches", render: () => demo({ text: "zugzwang" }) },
     { name: "Nothing open — a Hebrew name among the top level (switch the direction to RTL)", render: () => demo({ currentId: "a7", open: new Set() }) },
+    { name: "The previous / next toolbar at the foot — and none at the end of the folder", render: () => demo({ siblings: { previous: undefined, next: { href: "#a2" }, testId: "gallery-analyses-sibling-end" } }) },
     { name: "Unsaved changes — the other analyses disabled, and why", render: () => demo({ locked: true }) },
     { name: "A folder of 300 — a page and \"show more\"", render: () => demo({ rows: MANY_ROWS, currentId: "m27", open: new Set(["gopenings"]) }) },
     { name: "No folders — Unfiled analyses only", render: () => demo({ folders: [], rows: ROWS.filter((row) => row.folderId === null), currentId: "a7" }) },

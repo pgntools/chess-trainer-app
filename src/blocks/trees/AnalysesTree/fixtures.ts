@@ -37,6 +37,8 @@ export const LABELS: AnalysesTreeLabels = {
   filter: "Filter analyses",
   filterClear: "Clear the words",
   noMatch: "No analysis matches the filter.",
+  previous: "Previous analysis in the folder",
+  next: "Next analysis in the folder",
   untitled: "Analysis board",
   untitledFolder: "Untitled folder",
   showMore: (remaining) => `Show ${remaining} more`,

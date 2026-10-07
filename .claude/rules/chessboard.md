@@ -321,7 +321,7 @@ what shares it.
   The position editor and the preview boards carry none. A strip's left end
   can carry a **player plate** (CTA-105) — the player's result, Elo and name
   — as an optional prop down `BoardShell` → `EngineBoardSquare` → the strips,
-  which only the Library's game board passes; the plate truncates where the
+  which only the Library's game board and the Analysis Board (CTA-148) pass; the plate truncates where the
   row runs short, the pieces keep the right edge, and the height arithmetic
   above is untouched.
 - **A screen that scrolls inside the square divides it itself**: a flex column,
@@ -630,7 +630,8 @@ one move forward, a change of side (the flip — the reader's side *is* the
 orientation), the engine switched off, the game over, or `finished` (a
 resignation). Pressing Play at the engine's turn with a search of that position
 finished plays at once. The Analysis Board, the Library's game board and the
-Openings explorer start it off; Play with Engine starts it on. The header
+Openings explorer start it off — and, since CTA-148, their engine too, so Play
+is disabled until the reader switches it on; Play with Engine starts it on. The header
 button and status line are the `PlayToggleButton` / `EngineThinking` blocks
 (`src/blocks/panels/`).
 
@@ -694,11 +695,11 @@ the detail.
 
 | Board | Session | Engine reply | Book | Saving | Tabs | Tree view |
 | --- | --- | --- | --- | --- | --- | --- |
-| **Analysis Board** `/tools/analysis` | `useAnalysisSession` (+ the saved record: `useAnalysisBoard`) | Play (off at start) | — | explicit: Save → changes strip or name-and-folder dialog | Moves · Map · Load · Export · Engine · Arrows | explorer, editing on, *Play chances…* off, `addedIds` |
+| **Analysis Board** `/tools/analysis` | `useAnalysisSession` (+ the saved record: `useAnalysisBoard`) | Play (off; engine off at start, CTA-148) | — | explicit: Save → changes strip or name-and-folder dialog | Moves · Map · Load · Export · Engine · Arrows | explorer, editing on, *Play chances…* off, `addedIds` |
 | **Play with Engine** `/engine/play` | `usePlayGame` | Play (on from the start) | — | `useAutosave` → played games | Moves · Engine (no Map, CTA-91) | explorer, as the Analysis Board without `addedIds`, and without the `map` option — no Map is drawn |
 | **Masked Pieces** `/engine/masked` | `usePlayGame` (the same `PlayScreen`) | as Play with Engine | — | as Play with Engine, the costume on the record | + Masking | as Play with Engine, plus `mask` |
-| **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off) | — | explicit: Update / Save as copy (shipped: copy to Saved analyses) | Moves · Map · Info · Export · Engine | as the Analysis Board |
-| **Openings explorer** `/openings` | `useAnalysisSession` | Play (off) | `useOpeningBookModule` | nothing is kept; hands the tree to the Analysis Board | Book · Moves · Map · Load · Export · Engine | explorer, as the Analysis Board without `addedIds` |
+| **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off; engine off at start) | — | explicit: Update / Save as copy (shipped: copy to Saved analyses) | Moves · Map · Info · Export · Engine | as the Analysis Board |
+| **Openings explorer** `/openings` | `useAnalysisSession` | Play (off; engine off at start) | `useOpeningBookModule` | nothing is kept; hands the tree to the Analysis Board | Book · Moves · Map · Load · Export · Engine | explorer, as the Analysis Board without `addedIds` |
 | **Repertoire player** `/repertoires/<id>` (+ `/games/<game>`) | the core + `useTrainerModule` | none — the trainer is the opponent | — | explicit: Update / Save as copy (a game never writes) | Moves · (Score) · Map · Settings · Engine | the full explorer; editing and comments in the player only |
 
 Next-move arrows are one helper, `nextMoveArrowsOf` — the mainline's move

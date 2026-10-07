@@ -129,6 +129,47 @@ describe("AnalysesTree", () => {
     });
   });
 
+  describe("the previous / next toolbar", () => {
+    const siblings = { previous: { href: "#a3" }, next: { href: "#a5" }, testId: "sib" };
+
+    it("is a pair of named links at the panel's foot, beneath the scrolling tree", async () => {
+      mount({ siblings });
+      const bar = screen.getByTestId("at-siblings");
+      expect(within(bar).getByRole("link", { name: LABELS.previous })).toHaveAttribute("href", "#a3");
+      expect(within(bar).getByRole("link", { name: LABELS.next })).toHaveAttribute("href", "#a5");
+      expect(screen.getByTestId("sib-previous")).toBe(within(bar).getByRole("link", { name: LABELS.previous }));
+      expect(screen.getByTestId("at-tree").compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      await expectNoAxeViolations(screen.getByTestId("at"));
+    });
+
+    it("disables an end that has no neighbour, and draws nothing without `siblings`", () => {
+      mount({ siblings: { ...siblings, previous: undefined } });
+      expect(screen.getByTestId("sib-previous")).toBeDisabled();
+      expect(screen.getByTestId("sib-next")).toBeEnabled();
+    });
+
+    it("is off while locked, each button named by why", () => {
+      mount({ siblings, locked: true });
+      for (const id of ["sib-previous", "sib-next"]) {
+        expect(screen.getByTestId(id)).toBeDisabled();
+        expect(screen.getByTestId(id)).toHaveAccessibleName(LABELS.locked);
+        expect(screen.getByTestId(id)).not.toHaveAttribute("href");
+      }
+    });
+
+    it("is not drawn when there is none", () => {
+      mount();
+      expect(screen.queryByTestId("at-siblings")).toBeNull();
+    });
+
+    it("stays on the folded rail", () => {
+      mount({ siblings, collapsed: true });
+      expect(screen.getByRole("link", { name: LABELS.previous })).toHaveAttribute("href", "#a3");
+      expect(screen.getByRole("link", { name: LABELS.next })).toHaveAttribute("href", "#a5");
+      expect(screen.queryByTestId("at-siblings")).toBeNull();
+    });
+  });
+
   it("is two buttons, open and close, while collapsed", async () => {
     const { onCollapsedChange } = mount({ collapsed: true });
     expect(screen.queryByRole("tree")).toBeNull();

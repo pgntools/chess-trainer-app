@@ -90,10 +90,28 @@ screen).
 
 - **A `GameTree`, both colours from any node.** A move from an earlier
   position is a side line; replaying one that is there follows it.
-- **The engine and the eval bar are switched independently.** The engine
-  moves a piece only while the header's **Play** is on (`usePlayToggle`, off
-  at the start, disabled while the engine is off, paused by any step that is
-  not one move forward), and then only for the side not at the bottom.
+- **The engine starts off** (CTA-148) — on the Analysis Board, the Library's
+  game board and the Openings explorer alike, all on `useAnalysisSession`: no
+  search runs until the reader switches the header's engine on. The engine and
+  the eval bar are switched independently. The engine moves a piece only while
+  the header's **Play** is on (`usePlayToggle`, off at the start, disabled while
+  the engine is off, paused by any step that is not one move forward), and then
+  only for the side not at the bottom.
+- **The header** holds the name (and the record's notes), the opening, Save,
+  Play, Settings (over a record) and the engine switch — no previous / next and
+  no link to the list (the workspace's tree has both; outside one the sidebar
+  leads there). **The opening is one line of link text** (`CurrentOpening`'s
+  `oneLine`, this board only): the name cut with an ellipsis before the Save
+  button, the full name and its ECO code on hover (`title`), a click opening the
+  Openings explorer at the position in a new tab; **nothing at all** while the
+  position has no known opening or the book is loading. Every other board keeps
+  the name beside the ECO chip and the "No known opening yet" words.
+- **A game's players are plated on the board** (CTA-148, as the Library's —
+  CTA-105): when the tags name someone (`playerPlatesOf`, `views/shared/playerResults.ts`,
+  over the tree's headers; the record's placeholder `Analysis` and the spec's
+  `?` are no name), `BoardShell`'s `playerPlates` draws the result, Elo and name
+  at the left end of the captured-pieces strips, the orientation deciding which
+  is at the top. A position, or an analysis with no names, has none.
 - **Tabs: Moves · Map · Load · Export · Engine · Arrows.** Moves and Map are
   kept mounted. The footer holds the comment block, the changes strip, Play's
   status line and the next-moves bar (on the Moves tab).
@@ -234,11 +252,15 @@ address) is the plain board.
   start edge — two buttons, open it again and Close — and gives the board the
   room (the rail is 48 px, the column 400; arrows point at the start edge under
   Hebrew). The window stays the board's while folded.
-- **Previous / next** in the board's header walk the open analysis' own folder
-  in the same order (`siblingAnalysesOf`), disabled at the ends.
+- **Previous / next** are a toolbar at the **foot of the panel** (CTA-148;
+  `AnalysesTree`'s `siblings`, computed in `AnalysesFolderView`, test ids
+  `analysis-sibling-previous` / `-next`), sticky under the scrolling tree and
+  still on the folded rail and in the compact drawer. They walk the open
+  analysis' own folder in the same order (`siblingAnalysesOf`), disabled at the
+  ends.
 - **Unsaved changes come first**: while the session holds any (`state.unsaved`)
   the tree's analyses (disabled, `aria-disabled`, no link — folders still open)
-  and previous / next are off, and a note says why; the header's Save opens the
+  and previous / next (named by the note) are off, and a note says why; the header's Save opens the
   changes strip (Update / Save as copy / Discard). Nothing is written by
   looking.
 - **A click, previous or next is a link to the other analysis' board.** The

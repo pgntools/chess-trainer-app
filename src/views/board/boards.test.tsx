@@ -68,14 +68,16 @@ const BOARDS: readonly {
   Screen: () => ReactNode;
   /** Whether the pinned engine lines show from the start — all but Masked Pieces. */
   linesShown?: false;
+  /** Whether the engine's switch starts off (CTA-148) — every board on `useAnalysisSession`. */
+  engineOff?: true;
 }[] = [
   // Analysis v2 shipped as the Analysis Board (CTA-73); it stays in the set.
-  { name: "Analysis Board", id: "analysis", Screen: AnalysisBoard },
+  { name: "Analysis Board", id: "analysis", Screen: AnalysisBoard, engineOff: true },
   // Play with Engine, a v2 screen since CTA-74.
   { name: "Play with Engine", id: "play-with-engine", Screen: PlayWithEngine },
-  { name: "Library game", id: "library-game", Screen: LibraryGame },
+  { name: "Library game", id: "library-game", Screen: LibraryGame, engineOff: true },
   // The Openings explorer (CTA-78), in Openings v2's place.
-  { name: "Openings explorer", id: "openings", Screen: OpeningsBoard },
+  { name: "Openings explorer", id: "openings", Screen: OpeningsBoard, engineOff: true },
   // Masked Pieces (CTA-79): Play with Engine's screen in a costume — its
   // engine lines wait behind a switch.
   { name: "Masked Pieces", id: "masked-play", Screen: MaskedPlay, linesShown: false },
@@ -104,6 +106,12 @@ const drag = (from: string, to: string) => {
   });
   return accepted;
 };
+
+/** Switch a board's engine — on, for a board that starts with it off (CTA-148). */
+const toggleEngine = (id: string) =>
+  act(() => {
+    screen.getByTestId(`${id}-setting-engine`).click();
+  });
 
 /** Push one `info` line for the position currently being searched. */
 const engineReports = (info: {
@@ -188,7 +196,7 @@ describe("every v2 board, from the same core", () => {
 
   it.each(BOARDS.filter((board) => board.linesShown !== false))(
     "$name pins the engine's lines above its tabs",
-    ({ id, Screen }) => {
+    ({ id, Screen, engineOff }) => {
     /*
       CTA-55 on every board, which is the drift this issue closes: before
       CTA-60 this block existed on the Analysis Board alone. The lines are
@@ -196,6 +204,7 @@ describe("every v2 board, from the same core", () => {
       result reaching a real `BestVariations`.
     */
     const { unmount } = renderBoard(Screen);
+    if (engineOff) toggleEngine(id);
 
     engineReports({ depth: 14, multipv: 1, cp: 42, pv: "e2e4 e7e5" });
 
@@ -209,12 +218,11 @@ describe("every v2 board, from the same core", () => {
     },
   );
 
-  it.each(BOARDS)("$name hides the lines while its engine is off", ({ id, Screen }) => {
+  it.each(BOARDS)("$name hides the lines while its engine is off", ({ id, Screen, engineOff }) => {
     const { unmount } = renderBoard(Screen);
 
-    act(() => {
-      screen.getByTestId(`${id}-setting-engine`).click();
-    });
+    // Some boards start with it off already (CTA-148).
+    if (!engineOff) toggleEngine(id);
 
     expect(
       screen.queryByTestId(`${id}-panel-variations`),
@@ -228,13 +236,30 @@ describe("every v2 board, from the same core", () => {
     unmount();
   });
 
-  it.each(BOARDS)("$name searches the position on screen", ({ Screen }) => {
+  it.each(BOARDS)("$name searches the position on screen", ({ id, Screen, engineOff }) => {
     const { unmount } = renderBoard(Screen);
+    if (engineOff) toggleEngine(id);
 
     expect(FakeEngine.latest().lastSearch).toBe(boardOptions().position);
 
     unmount();
   });
+
+  it.each(BOARDS.filter((board) => board.engineOff === true))(
+    "$name starts with its engine off — no search runs, Play is disabled — until the reader switches it on (CTA-148)",
+    ({ id, Screen }) => {
+      const { unmount } = renderBoard(Screen);
+
+      expect(within(screen.getByTestId(`${id}-setting-engine`)).getByRole("switch")).not.toBeChecked();
+      expect(FakeEngine.instances.flatMap((engine) => engine.searches)).toEqual([]);
+      expect(screen.getByTestId(`${id}-play`)).toBeDisabled();
+      toggleEngine(id);
+      expect(FakeEngine.latest().searches.length).toBeGreaterThan(0);
+      expect(screen.getByTestId(`${id}-play`)).toBeEnabled();
+
+      unmount();
+    },
+  );
 });
 
 describe("reduced motion, on every board (CTA-111)", () => {

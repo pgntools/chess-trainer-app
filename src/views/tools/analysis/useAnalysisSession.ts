@@ -14,9 +14,10 @@ import { usePlayToggle } from "../../board/core/usePlayToggle";
 /**
  * **An analysis session against a baseline** — the part of the Analysis
  * Board every board that analyses a tree shares (the Analysis Board, CTA-73;
- * a Library game, CTA-75): the v2 core, the engine (on, searching the
- * position on screen), **Play** (`usePlayToggle`, off at the start: the engine
- * plays the side not at the bottom only while it is on), and a **baseline**
+ * a Library game, CTA-75): the v2 core, the engine (**off at the start**
+ * — the reader switches it on, and then it searches the position on screen),
+ * **Play** (`usePlayToggle`, off at the start and disabled while the engine is
+ * off: the engine plays the side not at the bottom only while it is on), and a **baseline**
  * — the tree as it arrived or was last kept — with what follows from it:
  *
  * - `changed` is `core.tree !== baseline`, the repertoire player's rule —
@@ -62,11 +63,11 @@ export const useAnalysisSession = ({
     [core.tree, baselineIds],
   );
 
-  /* The engine — on by default, as the Analysis Board always was. */
+  /* The engine — off until the reader switches it on (CTA-148): nothing searches by itself. */
   const [settings, setSettings] = useState<AnalysisSettings>(
     () => initialSettings ?? DEFAULT_ANALYSIS_SETTINGS,
   );
-  const [engineOn, setEngineOn] = useState(true);
+  const [engineOn, setEngineOn] = useState(false);
   const [showEvalBar, setShowEvalBar] = useState(true);
   const onUciOptionsReady = useCallback(
     (clamped: Readonly<Record<string, number>>) =>

@@ -162,9 +162,11 @@ describe("a Library game — accessible", () => {
     const next = screen.getByRole("link", { name: i18n.t("library.game.next") });
     expect(next).toHaveAttribute("href", `/library/${club.id}/3`);
     const engine = screen.getByRole("switch", { name: i18n.t("library.game.engineSwitch") });
+    // It starts off (CTA-148).
+    expect(engine).not.toBeChecked();
     engine.focus();
     await user.keyboard(" ");
-    expect(engine).not.toBeChecked();
+    expect(engine).toBeChecked();
   });
 
   it("says a game will not read, with the way back, and passes axe", async () => {

@@ -1284,6 +1284,8 @@ const en = {
       loading: "Loading the opening book…",
       /** The ECO chip's accessible name — it is the link into the explorer. */
       open: "Explore {{eco}} in the Openings explorer",
+      /** The one-line opening's accessible name (the Analysis Board): its name, its code, and that it opens in a new tab. */
+      openInTab: "{{name}} ({{eco}}) — explore in the Openings explorer, in a new tab",
     },
     book: {
       /** The list's accessible name (CTA-113). */
