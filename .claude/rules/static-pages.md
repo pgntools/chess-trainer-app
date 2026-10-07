@@ -154,6 +154,7 @@ the language**:
 | URL / base | pgntools.github.io/chess-trainer-app/ — `/chess-trainer-app/` | chessapp.dev — `/` |
 | Unknown path | `404.html` (the template), status 404 | `navigationFallback` → `/app-shell.html`, status 200; `/blog/*` excluded → `404.html`, status 404 |
 | Old Blog address | a refresh page + canonical | a 301 in `staticwebapp.config.json` |
+| Built-in sign-in (`/.auth/…`, sets a cookie) | none | blocked: a 404 route per `scripts/swaBlockedAuth.mjs`, first in `routes`, held by `check:pages` (CTA-159 — the Cookies Notice says no cookies; [`docs/privacy-policy-checks.md`](../../docs/privacy-policy-checks.md) §2) |
 | `sitemap.xml`, `robots.txt` | not possible (a project site) | written |
 
 ### Cross-origin isolation on the swa host (CTA-154)
@@ -212,8 +213,9 @@ the repository secret `AZURE_STATIC_WEB_APPS_API_TOKEN`.
   lang dir>`, content in `#root`; `404.html` the template; on `swa` the
   sitemap exactly the self-canonical pages; and **on `swa`** (CTA-154) COOP and
   COEP in `globalHeaders`, the Stockfish workers and `.wasm` files in `dist/`
-  and outside the fallback, and no pre-rendered page loading a sub-resource
-  from another origin.
+  and outside the fallback, no pre-rendered page loading a sub-resource
+  from another origin, and (CTA-159) a 404 route for each of the host's
+  built-in sign-in routes.
 - The browser pass visits Hebrew at `/he/…` addresses (`open(…, { language })`),
   and its **`static` project** (`e2e/a11y/static.spec.ts`) opens every
   `dist/**/index.html` **without the app** — every script request refused,

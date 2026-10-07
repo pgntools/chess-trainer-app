@@ -3,7 +3,7 @@ import type { MDXContent } from "mdx/types";
 import { articles as manifest } from "virtual:blog-articles";
 
 import type { AppLanguage } from "../../i18n";
-import type { ArticleFrontmatter } from "../../lib/articleFrontmatter";
+import { APP_PAGES_FOLDER, isAppPagePath, type ArticleFrontmatter } from "../../lib/articleFrontmatter";
 import type { LocalizedText } from "../../lib/localizedText";
 import { articleImageFile } from "../../lib/shareImage";
 
@@ -139,7 +139,7 @@ const compareBlogFolders = (a: BlogFolder, b: BlogFolder): number =>
   (a.order ?? Number.POSITIVE_INFINITY) - (b.order ?? Number.POSITIVE_INFINITY) || byEnglishTitle(a, b);
 
 export const BLOG_ARTICLES: readonly BlogArticleEntry[] = [...grouped]
-  .filter(([key]) => key.startsWith("article:"))
+  .filter(([key]) => key.startsWith("article:") && !isAppPagePath(key.slice("article:".length)))
   .map(([, files]): BlogArticleEntry => {
     const english = englishOf(files);
     return {
@@ -167,7 +167,7 @@ export const BLOG_FOLDERS: readonly BlogFolder[] = (() => {
     const parts = parentOf(article.path).split("/").filter(Boolean);
     for (let depth = 1; depth <= parts.length; depth += 1) paths.add(parts.slice(0, depth).join("/"));
   }
-  for (const entry of manifest) if (entry.kind === "folder" && entry.path !== "") paths.add(entry.path);
+  for (const entry of manifest) if (entry.kind === "folder" && entry.path !== "" && !isAppPagePath(entry.path)) paths.add(entry.path);
   return [...paths]
     .map((path): BlogFolder => {
       const files = grouped.get(`folder:${path}`);
@@ -210,9 +210,15 @@ for (const entry of manifest) {
   documents.get(key)!.set(entry.language, lazy(entry.load));
 }
 
-/** The article files' paths and languages, translations with no body included — for the registry's test. */
+/** The Blog's article files' paths and languages, translations with no body included — for the registry's test. The in-app pages (`app-pages/`) are not the Blog's. */
 export const articleFiles = (): { path: string; language: AppLanguage; hasBody: boolean }[] =>
-  manifest.filter((entry) => entry.kind === "article").map(({ path, language, hasBody }) => ({ path, language, hasBody }));
+  manifest.filter((entry) => entry.kind === "article" && !isAppPagePath(entry.path)).map(({ path, language, hasBody }) => ({ path, language, hasBody }));
+
+/** The in-app pages' files (CTA-159) — `app-pages/privacy`, in each language it has — for the legal pages and their test. */
+export const appPageFiles = (): { path: string; language: AppLanguage; hasBody: boolean; title: string; summary?: string }[] =>
+  manifest
+    .filter((entry) => entry.kind === "article" && isAppPagePath(entry.path))
+    .map(({ path, language, hasBody, meta }) => ({ path, language, hasBody, title: meta.title, summary: meta.summary }));
 
 const documentOf = (
   key: string,
@@ -231,6 +237,9 @@ const documentOf = (
  * which it is, so the screen can pin an English fallback left to right.
  */
 export const articleDocument = (path: string, language: AppLanguage) => documentOf(`article:${path}`, language);
+
+/** An in-app page's document (CTA-159) — `app-pages/<page>` — in `language`, or its English one. The Blog does not list these. */
+export const appPageDocument = (page: string, language: AppLanguage) => documentOf(`article:${APP_PAGES_FOLDER}/${page}`, language);
 
 /** A folder's introduction — its `index.mdx`'s body (`""`, the Blog's own index) — or `undefined` for none. */
 export const folderDocument = (path: string, language: AppLanguage) => documentOf(`folder:${path}`, language);

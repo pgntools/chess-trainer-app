@@ -23,11 +23,15 @@
  *    fallback, and no page loads a sub-resource from another origin — which
  *    `Cross-Origin-Embedder-Policy: require-corp` would block. GitHub Pages
  *    cannot set headers, writes no config, and is not held to this.
+ * 6. **On Static Web Apps, the host's built-in sign-in is blocked** (CTA-159):
+ *    every route of `scripts/swaBlockedAuth.mjs` answers 404, so no reader is
+ *    given the auth cookie the Cookies Notice says chessapp.dev never sets.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { CROSS_ORIGIN_ISOLATION_HEADERS } from "./crossOriginIsolation.mjs";
+import { BLOCKED_AUTH_ROUTES } from "./swaBlockedAuth.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DIST = join(ROOT, "dist");
@@ -100,6 +104,12 @@ if (swa) {
   const sent = Object.fromEntries(Object.entries(config.globalHeaders ?? {}).map(([name, value]) => [name.toLowerCase(), value]));
   for (const [name, value] of Object.entries(CROSS_ORIGIN_ISOLATION_HEADERS)) {
     if (sent[name.toLowerCase()] !== value) problems.push(`staticwebapp.config.json: globalHeaders has no ${name}: ${value}`);
+  }
+  // The host's built-in sign-in, which would set a cookie the Cookies Notice says the App never sets (CTA-159).
+  for (const route of BLOCKED_AUTH_ROUTES) {
+    if (!(config.routes ?? []).some((rule) => rule.route === route && rule.statusCode === 404)) {
+      problems.push(`staticwebapp.config.json: routes do not answer ${route} with 404 (scripts/swaBlockedAuth.mjs)`);
+    }
   }
   // The worker and its wasm are same-origin files the fallback must not answer for.
   if (!(config.navigationFallback?.exclude ?? []).includes("/stockfish/*")) problems.push("staticwebapp.config.json: navigationFallback does not exclude /stockfish/*");
