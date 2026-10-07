@@ -3,6 +3,8 @@
 How to add a page like the **Privacy Policy** (`/privacy`) or the **Cookies
 Notice** (`/cookies`): a page of prose at its own address, written in MDX, edited
 in the MDX editor, and **not part of the Blog**. Written for CTA-159.
+Keeping those two documents' claims true as the code and the hosting change
+is [`privacy-policy-checks.md`](privacy-policy-checks.md).
 
 A Blog article needs no code: you drop in a file and it is listed, routed and
 pre-rendered. An in-app page needs a few lines of code, because the app links to
