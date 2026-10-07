@@ -221,19 +221,37 @@ write a colour literal in a board file.**
 
 ## 4. Stockfish engine integration
 
-Wrapper: [`src/lib/engine.ts`](../../src/lib/engine.ts). Worker script + wasm
-live in `public/stockfish/`, served under Vite's `base` — so the worker URL is
-built from `import.meta.env.BASE_URL`, never hardcoded to the site root. The app
-deploys to GitHub Pages at `/chess-trainer-app/`, where a bare
-`/stockfish/stockfish.wasm.js` 404s, and `new Worker()` reports that as an
+**The engine is pluggable** (CTA-152; the whole picture — the builds, the
+registry, how to add one, the planned hosted engine — is
+[`docs/engine.md`](../../docs/engine.md)). A board sees an **`EngineHandle`**
+(`src/lib/engineTypes.ts`); `UciEngine` (`src/lib/uciEngine.ts`) is the UCI
+protocol over a **`UciTransport`**, and `WorkerTransport`
+(`src/lib/workerTransport.ts`) is the local Web Worker — **nothing outside it
+assumes a Worker**. `src/lib/engine.ts`'s default export, `Engine`, is the 2019
+build (a `UciEngine` over a `WorkerTransport`) and stays the default, so
+`import Engine from "…/lib/engine"` and every test's `vi.mock("…/lib/engine")`
+mean what they always did. The choice between builds is the registry,
+`src/lib/engines/` (`EngineDescriptor`: id, name, version, requirements,
+capabilities, `create()`); `useEngineModule` builds the handle from it (§9.2.1).
+
+The worker scripts + wasm live in `public/stockfish/` (the 2019 build in its
+root, each newer build in a folder named by its id — files, versions, licences
+and what was measured on each: its `README.md`), served under Vite's `base` — so
+a worker URL is built from `import.meta.env.BASE_URL`, never hardcoded to the
+site root. The app deploys to GitHub Pages at `/chess-trainer-app/`, where a
+bare `/stockfish/stockfish.wasm.js` 404s, and `new Worker()` reports that as an
 async `error` event rather than throwing — the board simply never evaluates.
+**Nothing in this layer runs at module scope** (the pre-render imports it under
+Node; `engines/noWorkerAtImport.test.ts`).
 
 ### API
 
+What follows is `EngineHandle` — every engine, whatever it runs on.
+
 | Method | Notes |
 | --- | --- |
-| `new Engine()` | Spawns a **dedicated Worker**. One per mounted board. |
-| `search(fen, { depth = 12, movetime })` | Depth is clamped to 24; `movetime` is milliseconds, omitted when 0. **May not start immediately** — §4.1. |
+| `descriptor.create()` / `new Engine()` | Spawns a **dedicated Worker** (a local engine). One per mounted board. |
+| `search(fen, { depth = 12, movetime })` | Depth is clamped to the engine's `capabilities.maxDepth` (24 for every shipped build); `movetime` is milliseconds, omitted when 0. **May not start immediately** — §4.1. |
 | `onMessage(cb) => unsubscribe` | Parsed UCI messages. **You must call the unsubscribe.** |
 | `setOption(name, value) => boolean` | Buffered, not posted (§4.1). `false` means this build will not take it — no such option, or pinned. |
 | `whenOptionsReady(cb) => unsubscribe` | Runs `cb` once `options` is complete, at once if the handshake already landed. |
@@ -249,11 +267,18 @@ screen cannot be told from one still draining out of the search it replaced.
 
 ### 4.1 The protocol discipline — why `search` and `setOption` are deferred
 
-**The build in `public/stockfish/` abandons a running search if it receives a
-`setoption` while searching**: no `bestmove`, no further `info`, and the board
-never evaluates again. It is silent, so it looks like a broken worker.
+**The 2019 build in `public/stockfish/` can abandon a running search when it
+receives a `setoption` while searching** — and `setoption name Threads value 1`,
+its own default, is fatal to it at any time: no `bestmove`, no further `info`,
+and the board never evaluates again. It is silent, so it looks like a broken
+worker. (Re-tested in CTA-152: the Stockfish 19 builds keep searching through a
+mid-search `setoption` and take `Threads`; the 2019 build's `Threads` case
+reproduced, a mid-search `Skill Level` / `MultiPV` did not abandon it that run.
+**The rule below is generic anyway** — a hosted or future engine has not been
+measured — and it is the same rule for every engine; re-test each new binary,
+`docs/engine.md` §6.)
 
-`Engine` therefore buffers everything and posts it only when the engine can
+`UciEngine` therefore buffers everything and posts it only when the engine can
 take it: nothing before `uciok`, nothing while a search runs (a `stop` goes
 instead, and the `bestmove` that ends the search resumes the queue). Options go
 to an idle engine, and a waiting search starts only afterwards.
@@ -261,15 +286,17 @@ to an idle engine, and a waiting search starts only afterwards.
 - **Call `search()` whenever the position changes; do not sequence it
   yourself.** A second call before the first has started replaces it.
 - **A pinned option is never sent.** An option whose `min` equals its `max`
-  can only be a no-op — except that `setoption name Threads value 1`, this
+  can only be a no-op — except that `setoption name Threads value 1`, the 2019
   build's own declared default, is itself fatal to it. `setOption` returns
   `false` for those.
-- **Never hardcode the option roster.** `Threads` and `Hash` are pinned here
-  (`min 1 max 1`, `min 16 max 16`); there is no `UCI_Elo` and no
+- **Never hardcode the option roster.** On the 2019 build `Threads` and `Hash`
+  are pinned (`min 1 max 1`, `min 16 max 16`) and there is no `UCI_Elo` or
   `UCI_LimitStrength`, so strength is `Skill Level` only and any Elo shown is
-  an estimate. Read `engine.options` and render three states: absent, pinned,
-  adjustable (`views/engine/play/EngineSettings.tsx`). Swapping the binary
-  then changes the UI with no code change.
+  an estimate; the Stockfish 19 builds declare `UCI_LimitStrength` and
+  `UCI_Elo` (1320–3190), an adjustable `Hash`, and — the multi-thread one — an
+  adjustable `Threads`. Read `engine.options` and render three states: absent,
+  pinned, adjustable (`views/engine/play/EngineSettings.tsx`). Swapping the
+  binary then changes the UI with no code change.
 
 ### Rules for using it from React
 
@@ -277,8 +304,10 @@ All of these live in `useEngineModule` (§9.2.1); a board never writes them
 again.
 
 1. **Create the engine lazily in a ref, resolved at call time — never during
-   render**, not `useMemo`, not module scope:
-   `const getEngine = useCallback(() => (engineRef.current ??= new Engine()), [])`.
+   render**, not `useMemo`, not module scope: `getEngine()` returns the ref's
+   handle for the descriptor `resolveEngine(choice)` named at render, building
+   it with `descriptor.create()` when there is none (and terminating one built
+   for another descriptor — one engine at a time).
    Reading the ref during render dies under StrictMode: its mount → unmount →
    remount runs the cleanups and then the effects again **with no render in
    between**, so every effect keeps the terminated instance. `getEngine()`
@@ -519,6 +548,7 @@ knows which screen calls it.
 ```ts
 const engine = useEngineModule({
   enabled: boolean,                     // the engine's switch
+  engine?: string,                      // which engine, a registry id — absent: the default (today's behaviour)
   fen: string,                          // the position ON SCREEN — never the live one
   depth: number,
   moveTimeMs: number,
@@ -526,10 +556,18 @@ const engine = useEngineModule({
   onUciOptionsReady?: (clamped: Readonly<Record<string, number>>) => void,
   onBestMove?: (bestMove: string, searchedFen: string) => void,
 });
-// → { analysis, evalsByFen, engineOptions, clearAnalysis }
+// → { descriptor, analysis, evalsByFen, engineOptions, clearAnalysis }
 ```
 
-It owns all of §4: the lazy ref, subscribe-first, terminate on unmount; the
+It owns all of §4: the lazy ref, subscribe-first, terminate on unmount; **the
+choice of engine** (CTA-152) — it depends on `EngineHandle` only and builds it
+from the registry (`lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
+`engine` is a descriptor id, an unknown or unavailable one (a multi-thread
+build on a page that is not cross-origin isolated) falls back to the default,
+`descriptor` is the engine actually running, and **changing it terminates the
+old handle and builds the new one** — one at a time — then runs the handshake,
+the clamp and the search again against the new engine, dropping the old
+engine's lines and keeping the scores already recorded; the
 **`uci` handshake** — what the worker declared is `engineOptions`, and the
 requested values are **clamped into those bounds** and reported through
 `onUciOptionsReady` (the module never learns what a setting *means*);

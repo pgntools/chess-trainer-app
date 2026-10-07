@@ -50,6 +50,8 @@ const en = {
     settingsStorage: "Storage",
     /** Settings' Appearance tab (CTA-107), in the Settings folder. */
     settingsAppearance: "Appearance",
+    /** Settings' Engine tab (CTA-153), in the Settings folder. */
+    settingsEngine: "Engine",
     /** The dev-only design gallery (CTA-107), in the Development folder. */
     designSystem: "Design system",
     /** The dev-only theme editor (CTA-115), in the Development folder. */
@@ -629,6 +631,14 @@ const en = {
       /** Play with Engine v2's (CTA-74) — the variations explorer's move list. */
       moves: "Moves",
     },
+    /**
+     * A resumed game whose own engine cannot run on this page (CTA-153): the
+     * default plays on, and the record keeps naming the one that played.
+     */
+    /** The Engine tab's first line (CTA-153): which engine plays this game. */
+    enginePlaying: "Played by",
+    engineFallback:
+      "This game was played with {{wanted}}, which cannot run here, so {{using}} plays on. The game's record still names {{wanted}}.",
     /** Play with Engine v2's header controls (CTA-74). */
     game: {
       /**
@@ -665,6 +675,9 @@ const en = {
       strength: "Strength",
       /** The engine has no ELO setting, so the figure is named as an estimate. */
       strengthValue: "Level {{level}} (≈{{elo}} Elo)",
+      /** An engine that takes its strength as an Elo (CTA-153): the slider is the Elo itself, not an estimate. */
+      strengthElo: "Strength (Elo)",
+      strengthEloValue: "{{elo}} Elo",
       depth: "Search depth",
       moveTime: "Move time",
       moveTimeValue: "{{seconds}}s",
@@ -766,6 +779,9 @@ const en = {
     unreadableTitle: "the unreadable game of {{date}}",
     human: "Human",
     engine: "Stockfish level {{level}}",
+    /** An engine other than the default (CTA-153): its own name, and how its strength was set. */
+    engineNamed: "{{name}} level {{level}}",
+    engineElo: "{{name}} Elo {{elo}}",
     moves_one: "{{count}} move",
     moves_other: "{{count}} moves",
     variations_one: "{{count}} side line",
@@ -2265,6 +2281,7 @@ const en = {
       import: "Import",
       storage: "Storage",
       appearance: "Appearance",
+      engine: "Engine",
     },
     /** The Export tab: the reader's data as PGN files and a manifest, in one zip. */
     export: {
@@ -2404,6 +2421,28 @@ const en = {
       theme: "Theme",
       /** Light and dark are not a theme: they are the header's switch, under every theme. */
       modeNote: "Light and dark are the switch in the header; every theme has both.",
+    },
+    /** The Engine tab (CTA-153): which engine every board runs. */
+    engine: {
+      intro:
+        "Choose the engine the boards use. It applies to every board from its next search and is remembered on this device. A game against the engine is played by the engine it began with, and a saved game goes on with its own.",
+      note: "An engine that cannot run on this host is listed anyway, with what it needs.",
+    },
+  },
+  /** The engine picker (`src/blocks/forms/EnginePicker`, CTA-153): the engines to choose between. */
+  enginePicker: {
+    legend: "Engine",
+    version: "Version",
+    threading: { single: "Single-thread", multi: "Multi-thread" },
+    /** How the engine's strength can be limited — what its build declares. */
+    strength: {
+      skill: "Strength by Skill Level",
+      elo: "Strength by Elo",
+      both: "Strength by Skill Level or Elo",
+    },
+    /** Why an engine is disabled here, by reason (`EngineUnavailableReason`). */
+    unavailable: {
+      "cross-origin-isolation": "Needs cross-origin isolation — not available on this host",
     },
   },
   /** The registered themes' names (`src/design-system/themes/`, CTA-107). */

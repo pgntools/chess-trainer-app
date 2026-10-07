@@ -32,6 +32,7 @@ const he: typeof en = {
     settingsImport: "ייבוא",
     settingsStorage: "אחסון",
     settingsAppearance: "מראה",
+    settingsEngine: "מנוע",
     designSystem: "מערכת עיצוב",
     themeEditor: "עורך ערכות נושא",
     mdxArticles: "מאמרים",
@@ -471,6 +472,9 @@ const he: typeof en = {
       engine: "מנוע",
       moves: "מהלכים",
     },
+    enginePlaying: "המשחק מול",
+    engineFallback:
+      "המשחק הזה שוחק עם {{wanted}}, שאינו יכול לפעול כאן, ולכן {{using}} ממשיך לשחק. רשומת המשחק ממשיכה לציין את {{wanted}}.",
     game: {
       /** הפקד הראשון בכותרת (CTA-91) — הדרך חזרה ללובי, חץ ששמו יעדו. */
       backToLobby: "חזרה ללובי",
@@ -499,6 +503,8 @@ const he: typeof en = {
       engineOn: "מנוע",
       strength: "עוצמה",
       strengthValue: "רמה {{level}} (בערך {{elo}} אלו)",
+      strengthElo: "עוצמה (אלו)",
+      strengthEloValue: "{{elo}} אלו",
       depth: "עומק חיפוש",
       moveTime: "זמן למהלך",
       moveTimeValue: "{{seconds}} שניות",
@@ -566,6 +572,8 @@ const he: typeof en = {
     unreadableTitle: "המשחק שלא ניתן לקרוא מ־{{date}}",
     human: "אדם",
     engine: "Stockfish רמה {{level}}",
+    engineNamed: "{{name}} רמה {{level}}",
+    engineElo: "{{name}} אלו {{elo}}",
     moves_one: "מהלך אחד",
     moves_other: "{{count}} מהלכים",
     variations_one: "וריאציה אחת",
@@ -1761,6 +1769,7 @@ const he: typeof en = {
       import: "ייבוא",
       storage: "אחסון",
       appearance: "מראה",
+      engine: "מנוע",
     },
     export: {
       intro:
@@ -1890,6 +1899,24 @@ const he: typeof en = {
         "בחרו איך האפליקציה נראית. ערכת נושא מעצבת מחדש כל מסך וכל לוח בבת אחת, ונשמרת במכשיר זה.",
       theme: "ערכת נושא",
       modeNote: "מצב בהיר או כהה נבחר במתג שבכותרת; לכל ערכת נושא יש את שניהם.",
+    },
+    engine: {
+      intro:
+        "בחרו באיזה מנוע הלוחות משתמשים. הבחירה חלה על כל לוח מהחיפוש הבא שלו ונשמרת במכשיר זה. משחק מול המנוע משוחק במנוע שבו התחיל, ומשחק שמור ממשיך עם המנוע שלו.",
+      note: "מנוע שאינו יכול לפעול באתר זה מופיע ברשימה בכל זאת, עם מה שהוא דורש.",
+    },
+  },
+  enginePicker: {
+    legend: "מנוע",
+    version: "גרסה",
+    threading: { single: "תהליכון אחד", multi: "כמה תהליכונים" },
+    strength: {
+      skill: "עוצמה לפי רמה",
+      elo: "עוצמה לפי אלו",
+      both: "עוצמה לפי רמה או אלו",
+    },
+    unavailable: {
+      "cross-origin-isolation": "דורש בידוד בין־מקורות — אינו זמין באתר זה",
     },
   },
   appearance: {

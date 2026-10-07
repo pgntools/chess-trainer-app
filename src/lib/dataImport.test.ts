@@ -215,6 +215,15 @@ describe("reading a zip", () => {
     expect(dump.shippedCollections).toBe(1);
   });
 
+  it("reads the engine that played a game back, a game without one still reading as the default's (CTA-153)", () => {
+    const engine = { id: "stockfish-19-lite-single", name: "Stockfish 19 Lite", version: "19", strength: "elo" as const };
+    const dump = dumpOf(zipOf({ playedGames: [{ ...played("g1"), engine }, played("g2")] }));
+    expect(dump.games[0].engine).toEqual(engine);
+    expect(dump.games[1].engine).toBeUndefined();
+    // The Elo setting rides in `settings`, whole.
+    expect(dump.games[0].settings.elo).toBe(DEFAULT_ENGINE_SETTINGS.elo);
+  });
+
   it("reads a collection's description and tournament mark back (CTA-121)", () => {
     const bytes = zipOf({
       collections: [
