@@ -12,7 +12,7 @@ How the pages are built and added is [`in-app-pages.md`](in-app-pages.md).
 | --- | --- |
 | Every `localStorage` / `sessionStorage` key and IndexedDB database is listed | `src/views/legal/legalDocuments.test.ts`: it fails when a document omits a key or database the code names. A new one is a line in both pages, in both languages. |
 | No third-party scripts, fonts or images | `yarn check:pages` on the `swa` build fails when a pre-rendered page loads a sub-resource from another origin ([`static-pages.md`](../.claude/rules/static-pages.md) §5). |
-| The App sets no cookies, and the sites it is served from set none | The code has no `document.cookie`. The hosts: §2 below. |
+| The App sets no cookies, and the sites it is served from set none | The code has no `document.cookie`. Azure's built-in sign-in, which would set one, answers 404 (`scripts/swaBlockedAuth.mjs`, held by `yarn check:pages`). The hosts: §2 below. |
 | "We do not receive or analyse these logs" (the hosts' server logs) | Azure: §3 below. GitHub Pages gives a site owner no request logs at all. |
 | The contact address, `privacy@chessapp.dev` | The mailbox must exist and reach the controller. The policy promises a reply within one month. |
 
@@ -26,12 +26,32 @@ done
 
 Checked on 8 October 2026: neither sent a `Set-Cookie` header.
 
-Azure Static Web Apps also answers its built-in sign-in routes (`/.auth/login/…`)
-on every plan, and those **do set a cookie** (`StaticWebAppsAuthCookie`). The App
-never links to them, so a reader only gets that cookie by typing such an address
-in by hand. If the App ever uses sign-in, the Cookies Notice must list that
-cookie. To close the routes, add a rule to the `routes` that `scripts/prerender.mjs`
-writes into `staticwebapp.config.json`.
+### Azure's built-in sign-in is blocked
+
+Azure Static Web Apps answers a built-in `/.auth/` folder on every plan
+(sign-in with GitHub or Microsoft Entra ID at `/.auth/login/github` and
+`/.auth/login/aad`, plus `/.auth/me` and `/.auth/logout`), and a sign-in **sets a
+cookie**, `StaticWebAppsAuthCookie`. The App has no sign-in, so the `swa`
+build answers those routes with a 404: `scripts/swaBlockedAuth.mjs` lists
+them, `scripts/prerender.mjs` writes them first into `staticwebapp.config.json`'s
+`routes`, and `yarn check:pages` fails a build without them.
+
+- The two provider rules are Microsoft's documented way to block a provider.
+  `/.auth/*` is a catch-all for the rest of the folder; Microsoft does not
+  document a wildcard over it, so check what the host does after a deploy:
+
+  ```bash
+  for path in /.auth/login/github /.auth/login/aad /.auth/me /.auth/logout; do
+    curl -s -o /dev/null -w "%{http_code} $path\n" "https://chessapp.dev$path"
+  done
+  ```
+
+  Fine when `/.auth/login/github` and `/.auth/login/aad` answer `404`. If
+  `/.auth/me` or `/.auth/logout` still answer, the wildcard is not honoured.
+  That is harmless (neither signs a reader in, so neither sets the cookie),
+  but note it on this page.
+- If the App ever gets sign-in, remove the rules in `swaBlockedAuth.mjs` and
+  list the cookie in the Cookies Notice (§4).
 
 ## 3. Azure Static Web Apps: is anything logging requests?
 
@@ -67,7 +87,7 @@ Run §2 and §3 again **after any of these**, before the change ships:
   or by a workflow.
 - **A new host serves the site**, or a CDN or proxy is put in front of either
   host.
-- **The App gains sign-in** (§2: the auth cookie).
+- **The App gains sign-in** (§2: the auth cookie, and the blocked routes to remove).
 
 If a check is no longer "fine", update **both** documents, in **both**
 languages, before the change ships:
