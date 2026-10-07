@@ -96,7 +96,7 @@ describe("the Blog's tree", () => {
     ]);
     expect(blogArticleCount("writing-an-article/components")).toBe(7);
     expect(blogArticleCount("writing-an-article/demo-tables")).toBe(11);
-    expect(blogArticleCount("writing-an-article")).toBe(25);
+    expect(blogArticleCount("writing-an-article")).toBe(26);
     expect(blogFolderContents("tournaments").folders).toEqual([]);
     expect(blogArticleCount("tournaments")).toBe(4);
   });
@@ -116,6 +116,7 @@ describe("the Blog's tree", () => {
       "writing-an-article/inline-pgn/windows",
       "writing-an-article/inline-pgn/variations",
       "writing-an-article/inline-pgn/arrows-and-circles",
+      "writing-an-article/inline-pgn/columns",
       "writing-an-article/inline-pgn/rubinstein-capablanca-1911",
     ]);
     expect(pathsIn("writing-an-article/demo-tables")).toEqual([
