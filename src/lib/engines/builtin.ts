@@ -2,6 +2,7 @@ import Engine from "../engine";
 import type { EngineDescriptor } from "../engineTypes";
 import { UciEngine, DEFAULT_MAX_DEPTH } from "../uciEngine";
 import { WorkerTransport } from "../workerTransport";
+import { DEFAULT_ENGINE_ID, DEFAULT_ENGINE_VERSION } from "./ids";
 
 /**
  * **The engines that ship with the app** — one descriptor each, and nothing
@@ -17,7 +18,7 @@ import { WorkerTransport } from "../workerTransport";
  */
 
 /** The engine every board used before there was a choice — and the fallback for any id that cannot run. */
-export const DEFAULT_ENGINE_ID = "stockfish-2019-wasm";
+export { DEFAULT_ENGINE_ID } from "./ids";
 
 /** `public/stockfish/<folder>/<file>.js`, served under the deployment's `base`. */
 const stockfishWorkerUrl = (folder: string, file: string): string =>
@@ -26,7 +27,7 @@ const stockfishWorkerUrl = (folder: string, file: string): string =>
 export const STOCKFISH_2019: EngineDescriptor = {
   id: DEFAULT_ENGINE_ID,
   name: "Stockfish 2019",
-  version: "2019-08-15",
+  version: DEFAULT_ENGINE_VERSION,
   kind: "local",
   // Declares `Skill Level` and nothing else of strength; `Threads` pinned to 1.
   capabilities: { maxDepth: DEFAULT_MAX_DEPTH, strength: "skill", multiThread: false },

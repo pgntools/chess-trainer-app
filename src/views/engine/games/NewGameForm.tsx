@@ -21,6 +21,7 @@ import { parseFen } from "../../../lib/fen";
 import { newGameParams, type NewGameSide } from "../../../lib/newGameLink";
 import { START_POSITION } from "../../../lib/positionEditor";
 import { useEngineModule } from "../../board/core/useEngineModule";
+import { useEngineChoice } from "../../shared/useEngineChoice";
 import PositionEditor from "../../shared/positionEditor/PositionEditor";
 import { usePositionEditor } from "../../shared/positionEditor/usePositionEditor";
 import EngineSettings from "../play/EngineSettings";
@@ -101,9 +102,12 @@ function NewGameForm() {
       setSettings((current) => withClampedUciOptions(current, clamped)),
     [],
   );
+  // The form shows the options of the engine the game will be played by: the reader's choice.
+  const { engineId } = useEngineChoice();
   const { engineOptions } = useEngineModule({
     // Handshake only: the lobby has no position to think about.
     enabled: false,
+    engine: engineId,
     fen: DEFAULT_POSITION,
     depth: settings.depth,
     moveTimeMs: settings.moveTimeMs,
@@ -111,11 +115,12 @@ function NewGameForm() {
       () =>
         uciOptionsOf({
           skillLevel: settings.skillLevel,
+          elo: settings.elo,
           multiPv: settings.multiPv,
           threads: settings.threads,
           hashMb: settings.hashMb,
         }),
-      [settings.skillLevel, settings.multiPv, settings.threads, settings.hashMb],
+      [settings.skillLevel, settings.elo, settings.multiPv, settings.threads, settings.hashMb],
     ),
     onUciOptionsReady,
   });

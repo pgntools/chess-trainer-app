@@ -13,6 +13,7 @@ import {
  * | --- | --- | --- |
  * | `side` | the reader's side | `white` / `black` |
  * | `skill` | `skillLevel` | 0–20 |
+ * | `elo` | `elo` | 1320–3190 (CTA-153: where the engine takes its strength as an Elo) |
  * | `depth` | `depth` | 1–24 |
  * | `movetime` | `moveTimeMs` | 0–10000 (ms; 0 is no limit) |
  * | `lines` | `multiPv` | 1–10 |
@@ -57,6 +58,7 @@ export type NewGameRequest = {
 /** Each numeric setting's query parameter. */
 const NEW_GAME_PARAM = {
   skillLevel: "skill",
+  elo: "elo",
   depth: "depth",
   moveTimeMs: "movetime",
   multiPv: "lines",

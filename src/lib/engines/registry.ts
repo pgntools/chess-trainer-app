@@ -1,5 +1,6 @@
 import type { EngineDescriptor } from "../engineTypes";
-import { BUILTIN_ENGINES, DEFAULT_ENGINE_ID, STOCKFISH_2019 } from "./builtin";
+import { BUILTIN_ENGINES, STOCKFISH_2019 } from "./builtin";
+import { DEFAULT_ENGINE_ID } from "./ids";
 
 /**
  * **The engine registry** (CTA-152) — the engines a reader can choose between,
@@ -24,7 +25,7 @@ import { BUILTIN_ENGINES, DEFAULT_ENGINE_ID, STOCKFISH_2019 } from "./builtin";
  * Importing this builds no worker: descriptors are data until `create()`.
  */
 
-export { DEFAULT_ENGINE_ID };
+export { DEFAULT_ENGINE_ID } from "./ids";
 
 /** Why an engine cannot be chosen here. A picker maps it to a localized sentence. */
 export type EngineUnavailableReason = "cross-origin-isolation";

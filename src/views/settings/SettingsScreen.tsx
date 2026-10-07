@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { PanelTabs, tabPanelProps } from "../../design-system/components/tabs";
 
 import AppearanceTab from "./AppearanceTab";
+import EngineTab from "./EngineTab";
 import ExportTab from "./ExportTab";
 import ImportTab from "./ImportTab";
 import StorageTab from "./StorageTab";
@@ -25,6 +26,7 @@ const SETTINGS_TABS: readonly { id: string; content: () => ReactNode }[] = [
   { id: "import", content: () => <ImportTab /> },
   { id: "storage", content: () => <StorageTab /> },
   { id: "appearance", content: () => <AppearanceTab /> },
+  { id: "engine", content: () => <EngineTab /> },
 ];
 
 function SettingsScreen() {

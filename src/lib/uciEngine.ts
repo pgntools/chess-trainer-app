@@ -258,7 +258,7 @@ export class UciEngine implements EngineHandle {
       // An option this build does not have — or has pinned — never reaches the
       // wire. See `isSettable` for why the pinned case is not merely tidiness.
       if (this.isSettable(name)) {
-        this.transport.send(`setoption name ${name} value ${value}`);
+        this.transport.send(`setoption name ${name} value ${this.wireValue(name, value)}`);
       }
     }
     this.pendingOptions.clear();
@@ -338,6 +338,19 @@ export class UciEngine implements EngineHandle {
     const option = this.options.get(name);
     if (option === undefined) return false;
     return option.min === undefined || option.min !== option.max;
+  }
+
+  /**
+   * The value as UCI writes it. A `check` option takes the words `true` and
+   * `false`; a caller that only has numbers (the engine module's requests are
+   * `name → number`) asks for `1` / `0`, which Stockfish would read as false.
+   * Anything that is not a `check`'s own wording goes through unchanged.
+   */
+  private wireValue(name: string, value: string): string {
+    if (this.options.get(name)?.type !== "check") return value;
+    if (value === "1") return "true";
+    if (value === "0") return "false";
+    return value;
   }
 
   /**

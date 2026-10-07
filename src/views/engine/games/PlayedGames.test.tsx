@@ -166,6 +166,37 @@ describe("Lobby — the list", () => {
     expect(b[3]).toHaveTextContent("Unknown");
   });
 
+  it("names an engine other than the default, with the Elo it was set to where it took one (CTA-153)", async () => {
+    const other = (id: string, strength: "skill" | "elo", when: string) =>
+      savePlayedGame(
+        playedGameOf(
+          id,
+          parsePgnTree("1. e4 e5 *"),
+          [],
+          { ...DEFAULT_ENGINE_SETTINGS, skillLevel: 5, elo: 1750 },
+          undefined,
+          new Date(when),
+          undefined,
+          undefined,
+          undefined,
+          { id: "stockfish-19-lite-single", name: "Stockfish 19 Lite", version: "19", strength },
+        ),
+      );
+    await other("elo", "elo", "2026-09-20T10:00:00Z");
+    await other("skill", "skill", "2026-09-10T10:00:00Z");
+    await store("legacy", "1. e4 e5 *", "white", "2026-09-01T10:00:00Z");
+    mount();
+
+    // An Elo-driven game: named by its Elo, and that Elo in the Elo column, not an estimate.
+    expect(cells("elo")[2]).toHaveTextContent("Stockfish 19 Lite Elo 1750");
+    expect(cells("elo")[3]).toHaveTextContent("1750");
+    // A Skill Level engine that is not the default: named, with its level.
+    expect(cells("skill")[2]).toHaveTextContent("Stockfish 19 Lite level 5");
+    expect(cells("skill")[3]).toHaveTextContent(String(approximateElo(5)));
+    // A record from before the choice reads as it always did.
+    expect(cells("legacy")[2]).toHaveTextContent("Stockfish level 5");
+  });
+
   it("gives the moves with the side lines, the result and the date", async () => {
     await store("a", "1. e4 (1. d4) 1... e5 *", "white", "2026-09-01T10:00:00Z");
     await store("m", "1. f3 e5 2. g4 Qh4# 0-1", "white", "2026-09-02T10:00:00Z");
@@ -538,6 +569,7 @@ describe("Lobby — the new-game form (CTA-82)", () => {
     expect(Object.fromEntries(startHref())).toEqual({
       side: "white",
       skill: "10",
+      elo: "2100",
       depth: "14",
       movetime: "1000",
       lines: "3",
