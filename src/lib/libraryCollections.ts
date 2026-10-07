@@ -261,7 +261,8 @@ export const mainlinePlies = (movetext: string): number => mainlineTokens(movete
 /** A SAN move, marks and all — what tells a game's movetext from stray prose. */
 const SAN = /^(?:[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=?[QRBN])?|O-O(?:-O)?|0-0(?:-0)?)[+#]?[!?]*$/;
 
-const eloOf = (value: string | undefined): number | undefined => {
+/** An Elo tag as a rating — a positive whole number, else none. */
+export const eloOf = (value: string | undefined): number | undefined => {
   if (value === undefined) return undefined;
   const elo = Number(value);
   return Number.isInteger(elo) && elo > 0 ? elo : undefined;

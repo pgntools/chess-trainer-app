@@ -74,7 +74,7 @@ type BoardShellProps = {
    * A player plate at the left end of each captured strip (CTA-105) — the
    * players' names, Elo ratings and results of the game, keyed by colour so
    * the orientation decides which plate is at the top. Absent, no board
-   * renders one: only the Library's game board passes it.
+   * renders one: only the Library's game board and the Analysis Board (CTA-148) pass it.
    */
   playerPlates?: PlayerPlates;
   /**

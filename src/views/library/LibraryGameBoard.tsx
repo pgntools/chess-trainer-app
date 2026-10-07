@@ -50,7 +50,7 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  *
  * | Capability | Taken |
  * | --- | --- |
- * | Base + engine + Play + baseline | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (on), `usePlayToggle` (off at the start) |
+ * | Base + engine + Play + baseline | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (off until switched on), `usePlayToggle` (off at the start) |
  * | Tree view | `useVariationsExplorer` — Moves, Map, the comment block, the next-moves bar, the arrows, the move menu; editing on, *Play chances…* off |
  * | Shell | `BoardShell` / `BoardPanel` — tabs Moves (with the next-move arrows' switch) · Map · Info · Export · Engine |
  *
