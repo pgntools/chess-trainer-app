@@ -290,7 +290,7 @@ jobs:
           # the shorthand tries SSH first and only falls back to HTTPS once that
           # fails, and a runner has no SSH key for github.com. Same marketplace
           # name (`jira-sdlc-tools`, from its manifest) either way.
-          claude plugin marketplace add https://github.com/kantorv/jira-sdlc-tools.git
+          claude plugin marketplace add https://github.com/pgntools/jira-sdlc-tools.git
           claude plugin install jira-sdlc@jira-sdlc-tools
 
       - name: Install uv

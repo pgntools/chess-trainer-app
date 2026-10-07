@@ -1,5 +1,5 @@
 # build-gh — builds the site for GitHub Pages and deploys it there:
-# https://kantorv.github.io/chess-trainer-app/ (CTA-136; deploy-pages.yml until
+# https://pgntools.github.io/chess-trainer-app/ (CTA-136; deploy-pages.yml until
 # then). Its twin, build-swa.yml, deploys the same site to chessapp.dev — the
 # canonical host every page names (docs/static-pages-proposal.md §10).
 #

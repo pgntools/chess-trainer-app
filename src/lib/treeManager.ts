@@ -1,6 +1,6 @@
 /**
  * A dependency-free port of the read side of `react-tree-manager`'s
- * `TreeManager` (the 0.13 contract — see github.com/kantorv/react-tree-manager).
+ * `TreeManager` (the 0.13 contract — see github.com/pgntools/react-tree-manager).
  *
  * The published package is a single rolled-up bundle that inlines a whole copy
  * of MUI, emotion and xstate for its `TreeViewer` component, so pulling it in

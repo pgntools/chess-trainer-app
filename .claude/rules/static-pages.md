@@ -151,7 +151,7 @@ the language**:
 
 | | `build-gh.yml` — "Deploy to GitHub Pages" | `build-swa.yml` — "Deploy to Azure Static Web Apps" |
 | --- | --- | --- |
-| URL / base | kantorv.github.io/chess-trainer-app/ — `/chess-trainer-app/` | chessapp.dev — `/` |
+| URL / base | pgntools.github.io/chess-trainer-app/ — `/chess-trainer-app/` | chessapp.dev — `/` |
 | Unknown path | `404.html` (the template), status 404 | `navigationFallback` → `/app-shell.html`, status 200; `/blog/*` excluded → `404.html`, status 404 |
 | Old Blog address | a refresh page + canonical | a 301 in `staticwebapp.config.json` |
 | `sitemap.xml`, `robots.txt` | not possible (a project site) | written |

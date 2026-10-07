@@ -32,7 +32,7 @@ accessibility pass.
 Every page is pre-rendered as static HTML, per language, and served from:
 
 - **[chessapp.dev](https://chessapp.dev)** — Azure Static Web Apps.
-- **[GitHub Pages](https://kantorv.github.io/chess-trainer-app/)** — under the `/chess-trainer-app/` sub-path.
+- **[GitHub Pages](https://pgntools.github.io/chess-trainer-app/)** — under the `/chess-trainer-app/` sub-path.
 
 ## Quick start
 

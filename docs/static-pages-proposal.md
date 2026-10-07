@@ -502,12 +502,12 @@ TWIC collection renders its full table too. Not needed to start.
 
 | | **`build-gh`** — GitHub Pages | **`build-swa`** — Azure Static Web Apps |
 | --- | --- | --- |
-| URL | `https://kantorv.github.io/chess-trainer-app/` | `https://chessapp.dev/` |
+| URL | `https://pgntools.github.io/chess-trainer-app/` | `https://chessapp.dev/` |
 | Base path | `/chess-trainer-app/` | `/` |
 | SPA fallback (the app's screens) | `404.html`, the pristine template — **status 404** | `navigationFallback` → `index.html` — **status 200** |
 | An unknown Blog path | `404.html` (the app says "no such article") — status 404, correct | `/blog/*` excluded from the fallback, `responseOverrides.404` → the app's 404 page — status 404, correct |
 | Redirects (`redirectFrom`) | a generated page at the old path: `<meta http-equiv="refresh">` + a canonical to the new one | real **301s**, generated into `staticwebapp.config.json` from the manifest |
-| `robots.txt`, `sitemap.xml` | **not possible** — a project site's `robots.txt` would have to sit at `kantorv.github.io/robots.txt`, the user site's root, which this repository does not own | served at the root |
+| `robots.txt`, `sitemap.xml` | **not possible** — a project site's `robots.txt` would have to sit at `pgntools.github.io/robots.txt`, the user site's root, which this repository does not own | served at the root |
 | Headers (cache, security) | none | `globalHeaders` in `staticwebapp.config.json` |
 | Pull-request previews | none | SWA's staging environments, optional |
 

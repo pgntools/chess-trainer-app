@@ -43,7 +43,7 @@ export default defineConfig({
   },
   /*
     The sub-path the app is served under (CTA-136): `/chess-trainer-app/` for
-    the GitHub Pages *project* site (https://kantorv.github.io/chess-trainer-app/,
+    the GitHub Pages *project* site (https://pgntools.github.io/chess-trainer-app/,
     the default, so every local command and test is unchanged), `/` for Azure
     Static Web Apps on https://chessapp.dev/ — `BASE_PATH=/`, set by the
     `build-swa` workflow. Every asset URL and the router basename carry it:
