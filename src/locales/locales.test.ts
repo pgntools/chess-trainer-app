@@ -28,6 +28,8 @@ describe("translation catalogs", () => {
     // names are always written in their own language.
     const identicalOnPurpose = new Set([
       "app.brandMark",
+      // The site's name, a domain — written the same way in both languages (CTA-155).
+      "app.brandText",
       "language.en",
       "language.he",
       "gamePanel.info.eco",

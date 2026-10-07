@@ -7,7 +7,7 @@ import type en from "./en";
 const he: typeof en = {
   app: {
     brandMark: "CT",
-    brandText: "אפליקציית אימון שחמט",
+    brandText: "chessapp.dev",
   },
   nav: {
     ariaLabel: "ניווט ראשי",
@@ -178,7 +178,7 @@ const he: typeof en = {
     settings: "ייצוא הנתונים שלכם כקובץ zip אחד והחזרתם, כמה מקום הם תופסים, ואיך האפליקציה נראית.",
   },
   share: {
-    defaultImageAlt: "אפליקציית אימון שחמט — לוח שחמט לצד שם האפליקציה",
+    defaultImageAlt: "chessapp.dev — לוח שחמט לצד שם האפליקציה",
     sections: {
       engine: "משחק מול המנוע — לוח שחמט לצד שם המדור",
       analysis: "לוח ניתוח — לוח שחמט לצד שם המדור",

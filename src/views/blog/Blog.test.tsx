@@ -171,20 +171,20 @@ describe("the Blog's one route (CTA-135)", () => {
   it("titles each page from the address — an article, a folder, the index — and describes an article", async () => {
     const { unmount } = renderInShell("/blog/writing-an-article/components/nav-cards");
     expect(await screen.findByRole("heading", { level: 1, name: "Every screen as cards" })).toBeInTheDocument();
-    expect(document.title).toBe("Every screen as cards — Blog — Chess Trainer App");
+    expect(document.title).toBe("Every screen as cards — Blog — chessapp.dev");
     expect(description()).toBe("<NavCards>: the app's screens, by section — the landing page as it first was.");
     unmount();
 
     const folder = renderInShell("/blog/writing-an-article/components");
     expect(await screen.findByRole("heading", { level: 1, name: "Components" })).toBeInTheDocument();
-    expect(document.title).toBe("Components — Blog — Chess Trainer App");
+    expect(document.title).toBe("Components — Blog — chessapp.dev");
     // A folder is described by its index's summary (CTA-136).
     expect(description()).toMatch(/^The embeds that read the Library/);
     folder.unmount();
 
     renderInShell("/blog");
     expect(await screen.findByRole("heading", { level: 1, name: "Blog" })).toBeInTheDocument();
-    expect(document.title).toBe("Blog — Chess Trainer App");
+    expect(document.title).toBe("Blog — chessapp.dev");
     // The Blog's own index, by the Blog's screen description.
     expect(description()).toBe(i18n.t("pageDescriptions.blog"));
   });
@@ -193,7 +193,7 @@ describe("the Blog's one route (CTA-135)", () => {
     await i18n.changeLanguage("he");
     renderInShell("/blog/tournaments/olympiad-2026");
     expect(await screen.findByRole("heading", { level: 1, name: "האולימפיאדה ה-46 בשחמט 2026" })).toBeInTheDocument();
-    expect(document.title).toBe("האולימפיאדה ה-46 בשחמט 2026 — בלוג — אפליקציית אימון שחמט");
+    expect(document.title).toBe("האולימפיאדה ה-46 בשחמט 2026 — בלוג — chessapp.dev");
   });
 
   it("moves an old address an article lists in redirectFrom on to the article", async () => {
@@ -205,7 +205,7 @@ describe("the Blog's one route (CTA-135)", () => {
   it("says so for an address that names nothing", async () => {
     renderInShell("/blog/writing-an-article/nowhere");
     expect(await screen.findByText("There is no article at this address.")).toBeInTheDocument();
-    expect(document.title).toBe("Blog — Chess Trainer App");
+    expect(document.title).toBe("Blog — chessapp.dev");
   });
 });
 

@@ -352,7 +352,7 @@ key, and today folders say `pages.blog` while articles say
 - **A. One static key, the screen names the page.** The splat's handle is
   `{ ...ARTICLE_ROUTE, title: "pages.blog" }`; the article or folder screen
   reports its own name through `usePageTitle`, as it already does. Titles
-  become "Every screen as cards — Blog — Chess Trainer App" (today "… —
+  become "Every screen as cards — Blog — chessapp.dev" (today "… —
   Article — …") and "Components — Blog — …" (unchanged). `pages.blogArticle`
   leaves both catalogs.
 - **B. A title chosen per match.** `handle.title` becomes a key *or* a
@@ -387,7 +387,7 @@ today, and in the browser it works. But it cannot produce **static pages**
 `useLayoutEffect` (`pageTitle.ts`) and the shell writes `document.title` in
 a `useEffect` (`Layout.tsx`) — effects never run when a page is rendered to
 HTML at build time, and the shell renders before the screen anyway. A
-pre-rendered article would always be titled "Blog — Chess Trainer App",
+pre-rendered article would always be titled "Blog — chessapp.dev",
 with no description or share image. B's metadata is a pure function of the
 URL and the manifest, so the browser render, the build-time render, the
 sitemap and the social-preview tags all read the same thing.

@@ -7,10 +7,10 @@ const ROOT = "https://chessapp.dev/";
 const article: DocumentHeadInput = {
   language: "he",
   path: "/blog/writing-an-article/components/nav-cards/",
-  title: "כל המסכים ככרטיסים — בלוג — אפליקציית אימון שחמט",
+  title: "כל המסכים ככרטיסים — בלוג — chessapp.dev",
   name: "כל המסכים ככרטיסים",
   description: "<NavCards>: מסכי האפליקציה",
-  siteName: "אפליקציית אימון שחמט",
+  siteName: "chessapp.dev",
   kind: "article",
   published: "2026-09-14",
   modified: "2026-10-01",
@@ -31,14 +31,14 @@ describe("a page's head", () => {
 
   it("writes the title, the description, the canonical, the alternates and the previews' tags", () => {
     expect(lines(article)).toEqual([
-      "<title>כל המסכים ככרטיסים — בלוג — אפליקציית אימון שחמט</title>",
+      "<title>כל המסכים ככרטיסים — בלוג — chessapp.dev</title>",
       '<meta name="description" content="&lt;NavCards&gt;: מסכי האפליקציה">',
       '<link rel="canonical" href="https://chessapp.dev/he/blog/writing-an-article/components/nav-cards/">',
       '<link rel="alternate" hreflang="en" href="https://chessapp.dev/blog/writing-an-article/components/nav-cards/">',
       '<link rel="alternate" hreflang="he" href="https://chessapp.dev/he/blog/writing-an-article/components/nav-cards/">',
       '<link rel="alternate" hreflang="x-default" href="https://chessapp.dev/blog/writing-an-article/components/nav-cards/">',
       '<meta property="og:type" content="article">',
-      '<meta property="og:site_name" content="אפליקציית אימון שחמט">',
+      '<meta property="og:site_name" content="chessapp.dev">',
       '<meta property="og:title" content="כל המסכים ככרטיסים">',
       '<meta property="og:description" content="&lt;NavCards&gt;: מסכי האפליקציה">',
       '<meta property="og:url" content="https://chessapp.dev/he/blog/writing-an-article/components/nav-cards/">',

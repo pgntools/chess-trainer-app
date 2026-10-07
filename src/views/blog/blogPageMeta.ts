@@ -46,7 +46,7 @@ export const folderLevels = (path: string, language: AppLanguage, writtenIn: boo
 /**
  * **The page a Blog address names** (CTA-135), for the route's `handle.meta`:
  * an article's title — first in the page title, "Every screen as cards — Blog
- * — Chess Trainer App" — and its description (its `description`, else its
+ * — chessapp.dev" — and its description (its `description`, else its
  * summary); a folder's name; the Blog's own index and an address that names
  * nothing, the route's own title alone. From the address and the registry
  * only, so a page rendered ahead of time has it too.

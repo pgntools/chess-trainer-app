@@ -6,7 +6,7 @@
 const en = {
   app: {
     brandMark: "CT",
-    brandText: "Chess Trainer App",
+    brandText: "chessapp.dev",
   },
   nav: {
     ariaLabel: "Main navigation",
@@ -174,7 +174,7 @@ const en = {
   },
   /**
    * Each screen's name (CTA-112) — its route's `handle.title`: the page title
-   * ("Lobby — Chess Trainer App", the open record's name before it), the
+   * ("Lobby — chessapp.dev", the open record's name before it), the
    * `main` landmark's name and the page's `h1`.
    */
   pages: {
@@ -235,7 +235,7 @@ const en = {
    * the chain, for a page with no image nearer to it.
    */
   share: {
-    defaultImageAlt: "Chess Trainer App — a chessboard beside the app's name",
+    defaultImageAlt: "chessapp.dev — a chessboard beside the app's name",
     sections: {
       engine: "Play with Engine — a chessboard beside the section's name",
       analysis: "Analysis Board — a chessboard beside the section's name",
