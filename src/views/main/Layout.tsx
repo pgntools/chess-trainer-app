@@ -16,8 +16,8 @@ import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
 import { useRightPanelHidden } from './rightPanelSlot';
 import { LeftPanelOutlet, LeftPanelProvider } from './leftPanel';
-import { BOARD_LEFT_PANEL_WIDTH_PX, BoardLeftPanelOutlet, BoardLeftPanelProvider } from './boardLeftPanel';
-import { useBoardLeftPanelOccupied } from './boardLeftPanelSlot';
+import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from './boardLeftPanel';
+import { useBoardLeftPanelWidth } from './boardLeftPanelSlot';
 import { useShellCompact } from './shellCompact';
 import { ARTICLE_MAX_WIDTH_PX, descriptionKeyOf, isArticleRoute, isFullWidthRoute, pageMetaOf, pageTitleOf, screenIdOf, titleKeyOf } from './routeHandle';
 import { createPageTitleStore, PageTitleContext } from './pageTitle';
@@ -280,8 +280,9 @@ const DefaultLayoutViewport = () => {
       shell back. Stacked there is no column (the screen draws a drawer, and the
       header and its menu button stay).
     */
-    const leftPanelOpen = useBoardLeftPanelOccupied() && !compact
-    const leftPanelPx = leftPanelOpen ? BOARD_LEFT_PANEL_WIDTH_PX + BOARD_PANEL_GAP_PX : 0
+    const leftPanelWidth = useBoardLeftPanelWidth()
+    const leftPanelOpen = leftPanelWidth > 0 && !compact
+    const leftPanelPx = leftPanelOpen ? leftPanelWidth + BOARD_PANEL_GAP_PX : 0
     const [bodyDimentions, setBodyDimentions] = useState<Rect>({ width: 0, height: 0 })
 
     useEffect(() => {

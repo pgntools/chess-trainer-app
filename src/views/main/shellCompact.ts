@@ -12,7 +12,7 @@ import type { Theme } from '@mui/material/styles';
  * One breakpoint rather than two: the rail and the panel are the same 280 +
  * 320 px of fixed chrome, so they stop fitting together.
  */
-export const SHELL_COMPACT_BREAKPOINT = 'md';
+const SHELL_COMPACT_BREAKPOINT = 'md';
 
 /**
  * Whether the window is under the shell's breakpoint — what the shell asks,

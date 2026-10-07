@@ -14,7 +14,8 @@ import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { DefaultLayout } from "./Layout";
 import { HideRightPanel, RightPanel } from "./rightPanel";
 import { LeftPanel } from "./leftPanel";
-import { BOARD_LEFT_PANEL_WIDTH_PX, BoardLeftPanel } from "./boardLeftPanel";
+import { BoardLeftPanel } from "./boardLeftPanel";
+import { BOARD_LEFT_PANEL_COLLAPSED_PX, BOARD_LEFT_PANEL_WIDTH_PX } from "./boardLeftPanelSlot";
 import { ForceLTR } from "../../theme/ForceLTR";
 import { ARTICLE_MAX_WIDTH_PX, ARTICLE_ROUTE, FULL_WIDTH_ROUTE } from "./routeHandle";
 
@@ -613,14 +614,16 @@ describe("the board's own left panel (CTA-145)", () => {
   const WithPanel = () => {
     const [shown, setShown] = useState(true);
     const [open, setOpen] = useState(false);
+    const [collapsed, setCollapsed] = useState(false);
     const [count, setCount] = useState(0);
     return (
       <div data-testid="screen">
         <button onClick={() => setShown((on) => !on)}>toggle</button>
+        <button onClick={() => setCollapsed((on) => !on)}>fold</button>
         <button onClick={() => setOpen(true)}>open drawer</button>
         <button onClick={() => setCount((c) => c + 1)}>bump {count}</button>
         {shown && (
-          <BoardLeftPanel open={open} onClose={() => setOpen(false)} drawerLabel="Folder analyses">
+          <BoardLeftPanel collapsed={collapsed} open={open} onClose={() => setOpen(false)} drawerLabel="Folder analyses">
             <p data-testid="panel-content">The folder</p>
           </BoardLeftPanel>
         )}
@@ -667,8 +670,8 @@ describe("the board's own left panel (CTA-145)", () => {
     renderShell([{ index: true, element: <WithPanel /> }]);
     const square = screen.getByTestId("layout-board-square-body");
 
-    // min(1000 - 320 - 16 - 32 - 240 - 16, 600 - 32): the column and the gap before it come off the width too.
-    await waitFor(() => expect(square).toHaveStyle({ width: "376px", height: "376px" }));
+    // min(1000 - 320 - 16 - 32 - 400 - 16, 600 - 32): the column and the gap before it come off the width too.
+    await waitFor(() => expect(square).toHaveStyle({ width: "216px", height: "216px" }));
 
     fireEvent.click(screen.getByRole("button", { name: "bump 0" }));
     fireEvent.click(screen.getByRole("button", { name: "toggle" }));
@@ -676,6 +679,27 @@ describe("the board's own left panel (CTA-145)", () => {
     // min(1000 - 320 - 16 - 32, 568) = 568.
     await waitFor(() => expect(square).toHaveStyle({ width: "568px", height: "568px" }));
     expect(screen.getByRole("button", { name: "bump 1" })).toBeInTheDocument();
+  });
+
+  it("folds to a rail and opens again — the square takes the width back and gives it up, without a remount", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(1200, 600));
+    renderShell([{ index: true, element: <WithPanel /> }]);
+    const square = screen.getByTestId("layout-board-square-body");
+    const column = await screen.findByTestId("layout-board-left-panel");
+    // min(1200 - 320 - 16 - 32 - 400 - 16, 568) = 416.
+    await waitFor(() => expect(square).toHaveStyle({ width: "416px" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "fold" }));
+    expect(column).toHaveStyle({ width: `${BOARD_LEFT_PANEL_COLLAPSED_PX}px` });
+    // The rail's own 48 and the gap: min(1200 - 320 - 16 - 32 - 48 - 16, 568) = 568.
+    await waitFor(() => expect(square).toHaveStyle({ width: "568px" }));
+    // The shell stays away while the panel is folded: it is the same window.
+    expect(screen.queryByTestId("layout-header")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "fold" }));
+    expect(column).toHaveStyle({ width: `${BOARD_LEFT_PANEL_WIDTH_PX}px` });
+    await waitFor(() => expect(square).toHaveStyle({ width: "416px" }));
   });
 
   it("counts the column in the room the area reaches across when the aside is hidden", async () => {
@@ -692,8 +716,8 @@ describe("the board's own left panel (CTA-145)", () => {
         ),
       },
     ]);
-    // The square 376, the gap, and the aside's room: 1000 - 32 - 240 - 16 - 376 - 16 = 320 (its minimum).
-    await waitFor(() => expect(screen.getByTestId("layout-board-square-body")).toHaveStyle({ width: "712px", height: "376px" }));
+    // The square 216, the gap, and the aside's room: 1000 - 32 - 400 - 16 - 216 - 16 = 320 (its minimum).
+    await waitFor(() => expect(screen.getByTestId("layout-board-square-body")).toHaveStyle({ width: "552px", height: "216px" }));
   });
 
   it("mirrors with the app: its column's border is the side the square is on, never a physical one", async () => {

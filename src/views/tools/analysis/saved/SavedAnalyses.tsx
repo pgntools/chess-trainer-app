@@ -26,7 +26,7 @@ import { openingOfLine, type OpeningEntry } from "../../../../lib/openings";
 import { downloadPgn } from "../../../../lib/pgnExport";
 import { slugify } from "../../../../lib/pgnText";
 import { savedAnalysisFen, savedAnalysisToTree, type SavedAnalysis } from "../../../../lib/savedAnalyses";
-import { analysisBoardPath, DEFAULT_SIBLING_SORT, type SiblingSort } from "../../../../lib/siblingAnalyses";
+import { analysisBoardPath, DEFAULT_LIST_SORT, type ListSort } from "../../../../lib/analysesListContext";
 import {
   analysisTreeRows,
   SAVED_ANALYSES_DEFAULT_SORT,
@@ -187,13 +187,13 @@ const readRowOf = (saved: SavedAnalysis, lookup: AnalysisOpeningLookup | undefin
 };
 
 /**
- * The board an analysis opens on (CTA-145): filed in a folder, it carries that
- * folder and the order its siblings are in — the table's sort, or the cards'
- * newest first — so the board lists the folder beside it; Unfiled, it is the
- * plain link and no panel.
+ * The board an analysis opens on (CTA-145): the workspace — the list's tree
+ * beside the board, Close back here — carrying the folder the analysis is
+ * filed in (none: the top level) and the order the reader has them in: the
+ * table's sort, or the cards' newest first.
  */
-const boardPath = (saved: { id: string; folderId: string | null }, sort: SiblingSort = DEFAULT_SIBLING_SORT) =>
-  analysisBoardPath(saved.id, saved.folderId === null ? undefined : { folderId: saved.folderId, sort });
+const boardPath = (saved: { id: string; folderId: string | null }, sort: ListSort = DEFAULT_LIST_SORT) =>
+  analysisBoardPath(saved.id, { folderId: saved.folderId, sort });
 
 /** What the name dialog is open for — a folder made, or renamed. */
 type NameDialogState = { mode: "create"; parentId: string | null } | { mode: "rename"; folder: AnalysisFolder } | null;
@@ -316,7 +316,7 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
     defaultRowsPerPage: SAVED_ANALYSES_PAGE,
   });
   // The order the reader has the folders' analyses in — what a board opened from a row lists its siblings by.
-  const tableSort: SiblingSort = { column: table.sort, direction: table.direction };
+  const tableSort: ListSort = { column: table.sort, direction: table.direction };
   const walked = useMemo(
     () =>
       isList

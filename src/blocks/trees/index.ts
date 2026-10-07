@@ -4,4 +4,5 @@
  * `TreeView` (the Trees pattern) over one of the app's own shapes; the
  * sidebar's navigation tree is the first such tree the app had.
  */
+export * from "./AnalysesTree";
 export * from "./FolderTree";

@@ -315,9 +315,10 @@ describe("Saved analyses — where a row goes", () => {
   it("opens it on the Analysis Board, by its id — its one destination", async () => {
     await renderScreen();
 
+    // Unfiled: the workspace at the top level, the cards' newest-first order the default.
     expect(screen.getByTestId("saved-analyses-open-a1")).toHaveAttribute(
       "href",
-      "/tools/analysis?analysis=a1",
+      "/tools/analysis?analysis=a1&folder=",
     );
     // No hand-off to Play with Engine, and no delete of its own.
     expect(screen.queryByTestId("saved-analyses-loadpgn-a1")).toBeNull();
@@ -609,7 +610,7 @@ describe("Saved analyses — the games table (CTA-144)", () => {
     // Named by its players, and its name the link to the board.
     expect(within(carlsen).getByRole("link", { name: "Carlsen, Magnus – Giri, Anish" })).toHaveAttribute(
       "href",
-      "/tools/analysis?analysis=g1",
+      "/tools/analysis?analysis=g1&folder=",
     );
     // A board's own analysis: no "Analysis" player, no "Analysis Board" event, no "*" result; its notes under its name.
     const own = screen.getByTestId("saved-analyses-item-own");
@@ -620,7 +621,7 @@ describe("Saved analyses — the games table (CTA-144)", () => {
     expect(screen.getByTestId("saved-analyses-table-description-own")).toHaveTextContent("Try 1.d4 again");
   });
 
-  it("links a filed analysis to a board that lists its folder — by the table's sort — and an Unfiled one to the plain board (CTA-145)", async () => {
+  it("links an analysis to the workspace — its folder and the table's sort — and an Unfiled one to the top level (CTA-145)", async () => {
     const user = userEvent.setup();
     const folder = (await createAnalysisFolder("Tutorial", null))!;
     await saveAnalysis({ ...CARLSEN, folderId: folder.id });
@@ -640,12 +641,12 @@ describe("Saved analyses — the games table (CTA-144)", () => {
     expect(link("g2")).toBe(`/tools/analysis?analysis=g2&folder=${folder.id}&sort=white&dir=desc`);
   });
 
-  it("links an Unfiled analysis to the plain board, no folder", async () => {
+  it("links an Unfiled analysis to the workspace at the top level — an empty folder", async () => {
     await saveAnalysis(save("loose", [[[], ["d4"]]], [], "white", new Date("2026-09-03T10:00:00.000Z")));
     await renderScreen();
     expect(within(screen.getByTestId("saved-analyses-item-loose")).getByRole("link", { name: /^Analysis board/ })).toHaveAttribute(
       "href",
-      "/tools/analysis?analysis=loose",
+      "/tools/analysis?analysis=loose&folder=",
     );
   });
 
@@ -1188,7 +1189,7 @@ describe("Saved analyses — accessible (CTA-113)", () => {
     screen.getByTestId("saved-analyses-view-compact").focus();
     await user.keyboard("{ArrowLeft}{Enter}");
     const open = screen.getByRole("link", { name: "Najdorf" });
-    expect(open).toHaveAttribute("href", "/tools/analysis?analysis=a1");
+    expect(open).toHaveAttribute("href", "/tools/analysis?analysis=a1&folder=");
     // The row's pick comes just before its name; its gear after the row's cells.
     open.focus();
     await user.tab({ shift: true });

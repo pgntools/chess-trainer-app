@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
-import FormatListNumberedRoundedIcon from "@mui/icons-material/FormatListNumberedRounded";
+import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import NavigateBeforeRoundedIcon from "@mui/icons-material/NavigateBeforeRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
@@ -19,7 +19,6 @@ import type { ChessboardOptions } from "react-chessboard";
 
 import { ChangesStrip, CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../../blocks/panels";
 import { AnalysisEngineForm } from "../../../blocks/forms";
-import { SiblingAnalysesList } from "../../../blocks/lists";
 import { StatusText } from "../../../design-system/components/feedback";
 import { SwitchField } from "../../../design-system/components/forms";
 import { IconAction, ToggleIconAction } from "../../../design-system/components/toolbars";
@@ -44,7 +43,6 @@ import { slugify } from "../../../lib/pgnText";
 import { atParamOf, REPERTOIRE_AT_PARAM } from "../../../lib/repertoireLink";
 import { savedAnalysisDerivedName } from "../../../lib/savedAnalyses";
 import { analysisFoldersSnapshot, loadAnalysisFolders } from "../../../lib/savedAnalysisFolderStore";
-import { savedAnalysisRowOf } from "../../../lib/savedAnalysisRows";
 import {
   findSavedAnalysis,
   loadSavedAnalyses,
@@ -52,19 +50,20 @@ import {
 } from "../../../lib/savedAnalysisStore";
 import {
   analysisBoardPath,
-  SIBLING_FOLDER_PARAM,
+  LIST_CONTEXT_PARAMS,
+  LIST_FOLDER_PARAM,
+  listContextOf,
   siblingAnalysesOf,
-  siblingContextOf,
   siblingPlaceOf,
-} from "../../../lib/siblingAnalyses";
+} from "../../../lib/analysesListContext";
 import BoardShell from "../../board/core/BoardShell";
-import { BoardLeftPanel } from "../../main/boardLeftPanel";
 import { useShellCompact } from "../../main/shellCompact";
 import { useVariationsExplorer } from "../../explorer/useVariationsExplorer";
+import AnalysesFolderView from "./AnalysesFolderView";
+import { INITIAL_FOLDER_VIEW, type FolderViewState } from "./folderViewState";
 import AnalysisArrows from "./AnalysisArrows";
 import AnalysisLoad from "./AnalysisLoad";
 import SaveAnalysisDialog from "./SaveAnalysisDialog";
-import { useAnalysisFolders } from "./saved/useAnalysisFolders";
 import { useSavedAnalyses } from "./saved/useSavedAnalyses";
 import { useAnalysisBoard, type AnalysisBoardStart } from "./useAnalysisBoard";
 import { usePageTitle } from "../../main/pageTitle";
@@ -117,6 +116,12 @@ import { useUnsavedWorkGuard } from "../../main/unsavedWork";
  * replace, so the address bar is always a permanent link to the position on
  * screen; it beats `?move=` and the record's own place on the way in. Once a
  * board is saved, its URL becomes `?analysis=<id>`.
+ *
+ * **The workspace** (CTA-145): an analysis opened from the saved list carries
+ * where the list stood (`?folder=`, the table's sort) — `lib/analysesListContext.ts`
+ * — and the board then takes the whole window with the list's tree on its left
+ * (`AnalysesFolderView`), previous / next in the header and a Close back to the
+ * list (`.claude/rules/analysis-board.md` §1.2).
  */
 
 /**
@@ -160,21 +165,21 @@ const arrivalOf = (params: URLSearchParams, state: unknown): AnalysisBoardStart 
   };
 };
 
-/** How many of a folder's analyses the sibling panel lists either side of the open one — a folder may hold thousands. */
-const SIBLINGS_SHOWN_EACH_SIDE = 100;
-
 /** The URL parameters that carry where an analysis was opened from — kept when the board points its URL at a copy. */
-const SIBLING_URL_KEYS = [SIBLING_FOLDER_PARAM, "sort", "dir"] as const;
+const LIST_URL_KEYS: readonly string[] = LIST_CONTEXT_PARAMS;
+
+/** Previous and next of an analysis that has no siblings to step through. */
+const NO_SIBLINGS = { previous: undefined, next: undefined } as const;
 
 type AnalysisBoardProps = {
-  /** Whether the sibling panel is open beside a wide board — the route's, so it stays closed as the reader steps to another analysis. */
-  siblingsOpen: boolean;
-  onSiblingsOpenChange: (open: boolean) => void;
+  /** What the reader did to the workspace's tree — the route's, so it survives stepping to another analysis. */
+  folderView: FolderViewState;
+  onFolderViewChange: (state: FolderViewState) => void;
   /** The board pointed its own URL at this analysis (a save) — the route must not take that for a new arrival. */
   onPointUrl: (analysisId: string) => void;
 };
 
-function AnalysisBoard({ siblingsOpen, onSiblingsOpenChange, onPointUrl }: AnalysisBoardProps) {
+function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisBoardProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -277,7 +282,7 @@ function AnalysisBoard({ siblingsOpen, onSiblingsOpenChange, onPointUrl }: Analy
     onPointUrl(id);
     // A copy is filed where the original is: where it was opened from still stands.
     setUrlBase((base) => ({
-      ...Object.fromEntries(SIBLING_URL_KEYS.filter((key) => key in base).map((key) => [key, base[key]])),
+      ...Object.fromEntries(Object.entries(base).filter(([key]) => LIST_URL_KEYS.includes(key))),
       analysis: id,
     }));
     setUrlState(null);
@@ -293,51 +298,31 @@ function AnalysisBoard({ siblingsOpen, onSiblingsOpenChange, onPointUrl }: Analy
   useUnsavedWorkGuard(state.unsaved);
 
   /*
-    **The folder's other analyses** (CTA-145): where this analysis was opened
-    from rides in the URL (`?folder=`, and the table's sort), is read off what
-    the board is *now* (a Load drops it with the record), and is checked
-    against the record's own folder. The order is the table's, computed live
-    from the store; the open one is found in it for previous / next. The
-    panel is the screen's own left column — a drawer under the shell's
-    breakpoint — and never touches the board's URL.
+    **The workspace** (CTA-145): an analysis opened from the saved list carries
+    where the list stood in the URL (`?folder=`, the table's sort) — read off
+    what the board is *now*, so a Load, which drops the record and the URL's
+    parameters, ends it. While there is one the list's tree is the board's
+    left panel (`AnalysesFolderView`, rooted at that folder; a drawer under the shell's breakpoint,
+    opened from the header) and previous / next walk the open analysis' folder
+    in the table's order.
   */
   const compact = useShellCompact();
   const analyses = useSavedAnalyses();
-  const folders = useAnalysisFolders();
-  const siblingContext = useMemo(
-    () => siblingContextOf(new URLSearchParams(urlBase), record),
-    [urlBase, record],
-  );
-  const orderedSiblings = useMemo(
-    () => (analyses === undefined || siblingContext === null ? [] : siblingAnalysesOf(analyses, siblingContext)),
-    [analyses, siblingContext],
-  );
-  const siblingPlace = siblingPlaceOf(orderedSiblings, record?.id ?? "");
-  const siblingFolder =
-    siblingContext === null ? undefined : folders?.find((folder) => folder.id === siblingContext.folderId);
-  const hasSiblings = siblingContext !== null && siblingFolder !== undefined && siblingPlace.index >= 0;
-  const siblingFrom = Math.max(0, siblingPlace.index - SIBLINGS_SHOWN_EACH_SIDE);
-  const siblingTo = Math.min(orderedSiblings.length, siblingPlace.index + SIBLINGS_SHOWN_EACH_SIDE + 1);
-  const siblingItems = useMemo(
+  const listContext = useMemo(() => listContextOf(new URLSearchParams(urlBase)), [urlBase]);
+  const inWorkspace = listContext !== null && record !== null;
+  const siblings = useMemo(
     () =>
-      siblingContext === null
-        ? []
-        : orderedSiblings.slice(siblingFrom, siblingTo).map((saved) => ({
-            id: saved.id,
-            name: savedAnalysisRowOf(saved).name || t("savedAnalyses.untitled"),
-            link: { component: RouterLink, to: analysisBoardPath(saved.id, siblingContext) },
-          })),
-    [orderedSiblings, siblingContext, siblingFrom, siblingTo, t],
+      !inWorkspace || analyses === undefined
+        ? NO_SIBLINGS
+        : siblingPlaceOf(siblingAnalysesOf(analyses, record.folderId, listContext.sort), record.id),
+    [inWorkspace, analyses, record, listContext],
   );
-  // The drawer's own state (it opens closed, and is the board's); the column's is the route's.
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const siblingsShown = compact ? drawerOpen : siblingsOpen;
-  const setSiblingsShown = (open: boolean) => (compact ? setDrawerOpen(open) : onSiblingsOpenChange(open));
   // Another analysis is not opened over unsaved changes: Save / Update / Discard come first, as for the settings.
   const siblingLink = (saved: { id: string } | undefined) =>
-    saved === undefined || siblingContext === null || state.unsaved
+    !inWorkspace || saved === undefined || state.unsaved
       ? undefined
-      : { component: RouterLink, to: analysisBoardPath(saved.id, siblingContext) };
+      : { component: RouterLink, to: analysisBoardPath(saved.id, listContext) };
 
   const onSaveClick = () => {
     if (record === null) setSaveOpen(true);
@@ -396,32 +381,35 @@ function AnalysisBoard({ siblingsOpen, onSiblingsOpenChange, onPointUrl }: Analy
                 )}
                 <CurrentOpening {...currentOpening} testId="analysis-current-opening" />
               </Box>
-              {hasSiblings && (
+              {inWorkspace && (
                 <>
                   <IconAction
-                    label={t(state.unsaved ? "analysis.siblings.locked" : "analysis.siblings.previous")}
-                    link={siblingLink(siblingPlace.previous)}
-                    disabled={siblingPlace.previous === undefined || state.unsaved}
+                    label={t(state.unsaved ? "analysis.folderView.locked" : "analysis.folderView.previous")}
+                    link={siblingLink(siblings.previous)}
+                    disabled={siblings.previous === undefined || state.unsaved}
                     testId="analysis-sibling-previous"
                   >
                     <NavigateBeforeRoundedIcon fontSize="small" />
                   </IconAction>
                   <IconAction
-                    label={t(state.unsaved ? "analysis.siblings.locked" : "analysis.siblings.next")}
-                    link={siblingLink(siblingPlace.next)}
-                    disabled={siblingPlace.next === undefined || state.unsaved}
+                    label={t(state.unsaved ? "analysis.folderView.locked" : "analysis.folderView.next")}
+                    link={siblingLink(siblings.next)}
+                    disabled={siblings.next === undefined || state.unsaved}
                     testId="analysis-sibling-next"
                   >
                     <NavigateNextRoundedIcon fontSize="small" />
                   </IconAction>
-                  <IconAction
-                    label={t("analysis.siblings.toggle")}
-                    onClick={() => setSiblingsShown(!siblingsShown)}
-                    pressed={siblingsShown}
-                    testId="analysis-siblings-toggle"
-                  >
-                    <FormatListNumberedRoundedIcon fontSize="small" />
-                  </IconAction>
+                  {compact && (
+                    // Under the breakpoint the tree is a drawer; wide, it is the board's column.
+                    <IconAction
+                      label={t("analysis.folderView.toggle")}
+                      onClick={() => setDrawerOpen(true)}
+                      popupOpen={drawerOpen}
+                      testId="analysis-folder-view-toggle"
+                    >
+                      <AccountTreeOutlinedIcon fontSize="small" />
+                    </IconAction>
+                  )}
                 </>
               )}
               <ToggleIconAction
@@ -593,27 +581,16 @@ function AnalysisBoard({ siblingsOpen, onSiblingsOpenChange, onPointUrl }: Analy
           ),
         }}
       />
-      {hasSiblings && (compact || siblingsOpen) && (
-        <BoardLeftPanel open={drawerOpen} onClose={() => setDrawerOpen(false)} drawerLabel={t("analysis.siblings.drawer")}>
-          <SiblingAnalysesList
-            testId="analysis-siblings"
-            items={siblingItems}
-            currentId={record?.id ?? ""}
-            locked={state.unsaved}
-            hiddenBefore={siblingFrom}
-            hiddenAfter={orderedSiblings.length - siblingTo}
-            labels={{
-              region: t("analysis.siblings.region", { folder: siblingFolder.name || t("savedAnalyses.folder.untitled") }),
-              title: siblingFolder.name || t("savedAnalyses.folder.untitled"),
-              position: t("analysis.siblings.position", { current: siblingPlace.index + 1, total: orderedSiblings.length }),
-              close: t("analysis.siblings.close"),
-              locked: t("analysis.siblings.locked"),
-              moreBefore: t("analysis.siblings.moreBefore", { count: siblingFrom }),
-              moreAfter: t("analysis.siblings.moreAfter", { count: orderedSiblings.length - siblingTo }),
-            }}
-            onClose={() => setSiblingsShown(false)}
-          />
-        </BoardLeftPanel>
+      {inWorkspace && (
+        <AnalysesFolderView
+          context={listContext}
+          record={record}
+          locked={state.unsaved}
+          drawerOpen={drawerOpen}
+          onDrawerClose={() => setDrawerOpen(false)}
+          state={folderView}
+          onStateChange={onFolderViewChange}
+        />
       )}
       <SaveAnalysisDialog
         open={saveOpen}
@@ -646,8 +623,8 @@ function AnalysisBoardRoute() {
   const game = searchParams.get("game");
   const analysisParam = searchParams.get("analysis");
   const waitsForAnalyses = analysisParam !== null || isAnalysisReference(game);
-  // The folder an analysis was opened from is named on the sibling panel.
-  const waitsForFolders = analysisParam !== null && searchParams.get(SIBLING_FOLDER_PARAM) !== null;
+  // The workspace's tree is the folders and the analyses: both are read before the board opens.
+  const waitsForFolders = analysisParam !== null && searchParams.get(LIST_FOLDER_PARAM) !== null;
   const [ready, setReady] = useState(
     () =>
       (!waitsForAnalyses || savedAnalysesSnapshot() !== undefined) &&
@@ -671,7 +648,7 @@ function AnalysisBoardRoute() {
 
   /*
     **A board is read from its arrival once** — so a URL that names another
-    analysis (a sibling's link, the browser's Back between two) gets a new
+    analysis (a link in the workspace's tree, the browser's Back between two) gets a new
     board, keyed by `generation`. The board's own URL writes do not: when it
     saves a copy it points the URL at it and says so (`onPointUrl`), and the
     arrival that follows is its own. Adjusted during render against the last
@@ -685,8 +662,8 @@ function AnalysisBoardRoute() {
     if (analysisParam !== null && analysisParam !== ownedAnalysis) setGeneration((n) => n + 1);
     if (ownedAnalysis !== null) setOwnedAnalysis(null);
   }
-  // The sibling panel's column stays closed while the reader steps through the folder.
-  const [siblingsOpen, setSiblingsOpen] = useState(true);
+  // The workspace's tree as the reader left it — opened folders, pages — across the boards he steps through.
+  const [folderView, setFolderView] = useState(INITIAL_FOLDER_VIEW);
 
   if (!ready) {
     return (
@@ -698,8 +675,8 @@ function AnalysisBoardRoute() {
   return (
     <AnalysisBoard
       key={generation}
-      siblingsOpen={siblingsOpen}
-      onSiblingsOpenChange={setSiblingsOpen}
+      folderView={folderView}
+      onFolderViewChange={setFolderView}
       onPointUrl={setOwnedAnalysis}
     />
   );
