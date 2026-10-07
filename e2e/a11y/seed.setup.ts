@@ -1,5 +1,6 @@
 import { expect, test as setup } from "@playwright/test";
 
+import { dismissDevelopmentNotice } from "./checks";
 import { STATE_PATH } from "./env";
 import { seedZip } from "./seedZip";
 
@@ -10,6 +11,7 @@ import { seedZip } from "./seedZip";
   a file, and every test of the pass starts from it.
 */
 setup("seed the app through its own Import", async ({ page }) => {
+  await dismissDevelopmentNotice(page);
   await page.goto("settings/import");
   await page.getByTestId("settings-import-input").setInputFiles({
     name: "seed.zip",

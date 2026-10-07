@@ -268,6 +268,11 @@ through `lib/idb.ts`, most over the record-store factory
 first read lands — a screen arriving by a URL naming a record waits for it.
 Writes are promises and never throw. Only the colour mode, the theme choice
 and the language live in `localStorage` ([`database.md`](.claude/rules/database.md) §2).
+The one thing in `sessionStorage` is the in-development notice's dismissal
+(CTA-155: `lib/developmentNotice.ts`, the shell's `views/main/DevelopmentNotice.tsx`
+over the `DevelopmentNoticeDialog` block) — a modal on the first load of a
+session, absent from the pre-render; a test starts with it dismissed
+(`src/test/setup.ts`), and so does the browser pass (`e2e/a11y/checks.ts`).
 
 ### Accessibility: WCAG 2.2 AA, carried by the design system
 

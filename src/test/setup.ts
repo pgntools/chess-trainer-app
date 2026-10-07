@@ -3,8 +3,10 @@ import "@testing-library/jest-dom/vitest";
 // (`.claude/rules/database.md`). An in-memory implementation of the real
 // API, so the store's own code is what the tests run.
 import "fake-indexeddb/auto";
-import { afterEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 import { cleanup, configure } from "@testing-library/react";
+
+import { DEVELOPMENT_NOTICE_KEY, resetDevelopmentNotice } from "../lib/developmentNotice";
 
 /*
   How long a `findBy…` / `waitFor` waits: 5 s, not testing-library's 1 s —
@@ -83,6 +85,17 @@ const recordStores = async () => {
     remove: [analysisDb.deleteAnalysisDb, played.deleteEngineDb, repertoireDb.deleteRepertoireDb],
   };
 };
+
+/*
+  The in-development notice (CTA-155) is a modal that opens on the first load
+  of a session, and a modal hides the rest of the page from a screen reader's
+  queries. So a test starts in a session where it was already dismissed; the
+  notice's own tests remove the key to meet it.
+*/
+beforeEach(() => {
+  resetDevelopmentNotice();
+  sessionStorage.setItem(DEVELOPMENT_NOTICE_KEY, "1");
+});
 
 afterEach(async () => {
   cleanup();

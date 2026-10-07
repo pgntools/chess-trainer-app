@@ -8,6 +8,14 @@ const en = {
     brandMark: "CT",
     brandText: "chessapp.dev",
   },
+  /** The notice every session opens with (CTA-155) — `blocks/dialogs/DevelopmentNoticeDialog`. */
+  developmentNotice: {
+    title: "{{name}} is still in development",
+    intro: "This is an early beta. Please use it with caution.",
+    local: "Everything you save — games, analyses, repertoires, collections — lives in this browser on this device only. Export it from Settings now and then, so it is not lost.",
+    changes: "Things may change or break from one visit to the next, and saved data may have to be imported again.",
+    dismiss: "Dismiss",
+  },
   nav: {
     ariaLabel: "Main navigation",
     toggleColorMode: "Toggle light and dark mode",

@@ -102,6 +102,7 @@ in the gallery, whichever module it serves.
 | `MaskEditor` | forms | Masked Pieces' Masking tab: the presets, the twelve per-type selects (each its own colour's six types), the notation and engine-lines switches (`PieceMask`, CTA-109). |
 | `ExportCategoriesForm` | forms | Settings → Export's categories (`ExportSelection`), each with its count, and the shipped collections' box (CTA-109). |
 | `ImportDialog` | dialogs | Settings → Import's choice dialog over an `ImportDump` and `ImportCurrent`: categories, Merge / Override / Skip per category and per folder (`RadioGroupField`), the preview and the caps, re-planned on every change; writes nothing (CTA-109). |
+| `DevelopmentNoticeDialog` | dialogs | The app is still in development (CTA-155): a modal with the app's words and one Dismiss; whether it is open is a prop, the shell keeps the dismissal for the session. |
 | `IncompatibleImportDialog` | dialogs | A zip that cannot be imported (`ImportProblem`): what is wrong, where each kind of PGN comes in by hand (`LinkTarget`s), the zip's `.pgn` files (CTA-109). |
 | `ImportReport` | panels | What an import did (`ImportResults`): a line per category, an `InlineAlert` that is a success or a warning (CTA-109). |
 | `FolderTree` | trees | The app's one nested-folder model (`GameFolder`, `lib/savedGameFolders.ts`) as a `TreeView`: each folder a destination with a count, its chevron its own button, an optional "everything" row. The second tree view the app has, after the sidebar's. |
