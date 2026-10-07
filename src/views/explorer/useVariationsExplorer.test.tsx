@@ -4,7 +4,7 @@ import type React from "react";
 import { defaultChessTokens } from "../../design-system/themes/defaultChess";
 import i18n from "../../i18n";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
-import { findNode, mainline, nodeAtSanPath, type GameTree } from "../../lib/gameTree";
+import { findNode, mainline, nodeAtSanPath, treeToPgn, type GameTree } from "../../lib/gameTree";
 import { parsePgnTree } from "../../lib/pgn";
 import { MASK_PRESETS } from "../../lib/pieceMask";
 import {
@@ -266,6 +266,53 @@ describe("useVariationsExplorer — annotation glyphs (CTA-97)", () => {
     mountAnnotated({ map: {} });
     fireEvent.contextMenu(screen.getByTestId("move-ply-1"));
     expect(screen.queryByTestId("move-menu-annotate")).toBeNull();
+  });
+});
+
+describe("useVariationsExplorer — the start position's menu (CTA-149)", () => {
+  const onStart = () => {
+    const onEditTree = vi.fn();
+    mount({ onEditTree, annotations: true });
+    fireEvent.contextMenu(screen.getByTestId("move-ply-0"));
+    return onEditTree;
+  };
+
+  it("offers Add comment and Arrows and circles… only, named for the start position", () => {
+    onStart();
+    expect(screen.getByTestId("move-menu-move")).toHaveTextContent("Start position");
+    expect(screen.getByTestId("move-menu-comment")).toBeInTheDocument();
+    expect(screen.getByTestId("move-menu-shapes")).toBeInTheDocument();
+    for (const id of ["promote", "mainline", "delete", "annotate", "chances", "copy"]) {
+      expect(screen.queryByTestId(`move-menu-${id}`)).toBeNull();
+    }
+  });
+
+  it("opens no menu on a board that does not edit", () => {
+    mount();
+    fireEvent.contextMenu(screen.getByTestId("move-ply-0"));
+    expect(screen.queryByTestId("move-menu")).toBeNull();
+  });
+
+  it("writes Add comment into the game's own comment, through onEditTree", () => {
+    const onEditTree = onStart();
+    fireEvent.click(screen.getByTestId("move-menu-comment"));
+    expect(screen.getByTestId("comment-dialog")).toHaveTextContent("Start position");
+    fireEvent.change(screen.getByTestId("comment-dialog-text"), { target: { value: "A study." } });
+    fireEvent.click(screen.getByTestId("comment-dialog-save"));
+    const [next] = onEditTree.mock.calls[0] as [GameTree];
+    expect(next.comments).toEqual(["A study."]);
+    expect(treeToPgn(next)).toMatch(/\{ ?A study\. ?\} 1\. e4/);
+  });
+
+  it("opens the shapes dialog on the start, whose changes land in the game's comment", () => {
+    const onEditTree = onStart();
+    fireEvent.click(screen.getByTestId("move-menu-shapes"));
+    expect(screen.getByTestId("shapes-dialog-move")).toHaveTextContent("Start position");
+    fireEvent.change(screen.getByTestId("shapes-dialog-from"), { target: { value: "e2" } });
+    fireEvent.change(screen.getByTestId("shapes-dialog-to"), { target: { value: "e4" } });
+    fireEvent.click(screen.getByTestId("shapes-dialog-add"));
+    const [next] = onEditTree.mock.calls[0] as [GameTree];
+    expect(next.comments).toEqual(["[%cal Ge2e4]"]);
   });
 });
 
