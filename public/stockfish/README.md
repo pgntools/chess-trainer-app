@@ -53,7 +53,8 @@ reply read — not its wasm string table. Checked on **2026-10-07** (CTA-152):
   not, the worker dies at load with `Uncaught ReferenceError: SharedArrayBuffer
   is not defined` — no `uciok`. That is why the registry reads
   `crossOriginIsolated` at runtime and lists the build disabled where it is
-  false (GitHub Pages cannot set the headers).
+  false (GitHub Pages cannot set the headers; chessapp.dev sets them on every
+  response, `docs/engine.md` §3.1).
 
 The worker script finds its `.wasm` by its own URL (`….js` → `….wasm`), so a
 `.js` and its `.wasm` always stay together, and the multi-thread build starts
