@@ -31,9 +31,9 @@ import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
 import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../../main/boardLeftPanel";
 import { NEXT_MOVE_ARROW_PALETTES, UNTAGGED_NEXT_MOVE_ARROW_COLOR } from "./nextMoveArrows";
 
-vi.mock("../../../lib/engine", async () => ({
-  default: (await import("../../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 // The Library's write, spied on so a test can make it fail (CTA-101).
 vi.mock("../../../lib/libraryCollectionStore", async (importOriginal) => {

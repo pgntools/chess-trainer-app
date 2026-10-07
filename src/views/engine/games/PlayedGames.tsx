@@ -34,17 +34,15 @@ import { usePlayedGames } from "./usePlayedGames";
 import { useOwnPageHeading } from "../../main/pageTitle";
 
 /**
- * How the engine's side is named in the table (CTA-153): the default engine
- * keeps its wording, "Stockfish level N"; another is named — "Stockfish 19
- * Lite level N", or, where its strength was an Elo, "Stockfish 19 Lite Elo
- * 1800". The words are the app's, the engine's name the build's own.
+ * How the engine's side is named in the table (CTA-153): by its build and how
+ * its strength was set — "Stockfish 19 Lite Elo 1800", or "… level 5" for an
+ * engine strengthened by Skill Level. The words are the app's, the engine's
+ * name the build's own.
  */
 const engineLabelOf = (t: TFunction, summary: PlayedGameSummary): string =>
-  summary.engineName === undefined
-    ? t("playedGames.engine", { level: summary.skillLevel })
-    : summary.strength === "elo"
-      ? t("playedGames.engineElo", { name: summary.engineName, elo: summary.engineElo })
-      : t("playedGames.engineNamed", { name: summary.engineName, level: summary.skillLevel });
+  summary.strength === "elo"
+    ? t("playedGames.engineElo", { name: summary.engineName, elo: summary.engineElo })
+    : t("playedGames.engineNamed", { name: summary.engineName, level: summary.skillLevel });
 
 /**
  * **The Lobby** (`/engine/games`; the Saved games list of CTA-74, a lobby

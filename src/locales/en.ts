@@ -797,8 +797,7 @@ const en = {
     /** A row whose PGN will not parse has no pairing to name it by. */
     unreadableTitle: "the unreadable game of {{date}}",
     human: "Human",
-    engine: "Stockfish level {{level}}",
-    /** An engine other than the default (CTA-153): its own name, and how its strength was set. */
+    /** The engine (CTA-153): its own name, and how its strength was set — a Skill Level, or an Elo. */
     engineNamed: "{{name}} level {{level}}",
     engineElo: "{{name}} Elo {{elo}}",
     moves_one: "{{count}} move",

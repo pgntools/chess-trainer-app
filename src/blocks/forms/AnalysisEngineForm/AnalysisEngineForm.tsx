@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { SliderField, SwitchField } from "../../../design-system/components/forms";
 import { ANALYSIS_UCI_OPTION, type AnalysisSettings } from "../../../lib/analysisSettings";
-import type { EngineOption } from "../../../lib/engine";
+import type { EngineOption } from "../../../lib/engineTypes";
 import { MAX_VARIATIONS_OFFERED } from "../../../lib/engineAnalysis";
 import { engineOptionState, optionSlug } from "../EngineSettingsForm";
 

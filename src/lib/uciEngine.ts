@@ -11,7 +11,11 @@ import type {
  * Description of the universal chess interface (UCI)  https://gist.github.com/aliostad/f4470274f39d29b788c1b09519e67372/
  */
 
-/** The deepest search an engine is asked for unless its descriptor says otherwise. */
+/**
+ * The deepest search an engine is asked for unless its descriptor says
+ * otherwise — and the top of the depth a settings form offers
+ * (`ENGINE_SETTING_BOUNDS.depth`): the worker shares the tab with the UI.
+ */
 export const DEFAULT_MAX_DEPTH = 24;
 
 /**
@@ -69,6 +73,35 @@ export const parseEngineOption = (line: string): EngineOption | null => {
   };
 };
 
+/**
+ * One line of engine output as an {@link EngineMessage}, stamped with the
+ * position of the search that produced it (`fen`, which UCI does not carry).
+ */
+const parseEngineLine = (line: string, fen: string | undefined): EngineMessage => {
+  /*
+    `score cp N` and `score mate N` are alternatives on one `info` line, and a
+    line only ever carries one of them. Matching them together rather than with
+    two independent searches is what lets a consumer clear a stale mate when
+    the engine goes back to reporting centipawns — two loose regexes would
+    leave the previous mate standing.
+  */
+  const score = line.match(/\bscore\s+(cp|mate)\s+(-?\d+)/);
+  const multipv = line.match(/\bmultipv\s+(\d+)/)?.[1];
+
+  return {
+    uciMessage: line,
+    bestMove: line.match(/bestmove\s+(\S+)/)?.[1],
+    ponder: line.match(/ponder\s+(\S+)/)?.[1],
+    positionEvaluation: score?.[1] === "cp" ? score[2] : undefined,
+    possibleMate: score?.[1] === "mate" ? score[2] : undefined,
+    pv: line.match(/ pv\s+(.*)/)?.[1],
+    // The leading space keeps this off `seldepth`.
+    depth: Number(line.match(/ depth\s+(\S+)/)?.[1] ?? 0),
+    multipv: multipv === undefined ? undefined : Number(multipv),
+    fen,
+  };
+};
+
 /** What a {@link UciEngine} is told about the engine behind its transport. */
 export type UciEngineConfig = {
   /** The deepest `go depth` it posts — the descriptor's `capabilities.maxDepth`. */
@@ -78,19 +111,16 @@ export type UciEngineConfig = {
 /**
  * **The UCI protocol over a {@link UciTransport}** — option discovery, the
  * `setoption` / `stop` deferral, the pinned-option rule and FEN stamping, for
- * any engine that speaks UCI, wherever it runs.
+ * any engine that speaks UCI, wherever it runs (CTA-152).
  *
- * It was one class with a `Worker` inside (`Engine`, still in `lib/engine.ts`
- * as the 2019 build's constructor); the `Worker` call is now a transport, and
- * nothing else changed. In particular the discipline below holds for every
- * engine, **including ones that would survive without it**: the 2019 build
- * abandons a search on a `setoption`, the Stockfish 19 builds were measured not
- * to (CTA-152) — but a hosted engine, or the next build, has not been, and
- * deferring costs nothing.
+ * The discipline ({@link flush}) holds for every engine, **including ones that
+ * would survive without it**: the shipped Stockfish 19 builds were measured to
+ * keep searching through a mid-search `setoption` (`public/stockfish/README.md`),
+ * but UCI only permits one while the engine is idle, a hosted engine or the
+ * next build has not been measured, and an engine that loses a search to it
+ * fails silently. Deferring costs nothing.
  */
 export class UciEngine implements EngineHandle {
-  isReady: boolean;
-
   /**
    * What the running engine said it supports, filled in during the handshake
    * and complete at `uciok`. Empty until then — read it through
@@ -102,17 +132,25 @@ export class UciEngine implements EngineHandle {
   private readonly maxDepth: number;
 
   /** Every live subscriber. One transport listener fans out to all of them. */
-  private callbacks = new Set<EngineMessageCallback>();
+  private readonly callbacks = new Set<EngineMessageCallback>();
 
   /** True once `uciok` has arrived and {@link options} is complete. */
   private optionsReady = false;
-  private optionsReadyCallbacks = new Set<() => void>();
+  private readonly optionsReadyCallbacks = new Set<() => void>();
 
   /**
-   * Option values waiting to go out. Never posted the moment they are set — see
-   * {@link flush} for the two reasons, both of which are ways to lose a search.
+   * Option values waiting to go out, as the caller wrote them. Never posted the
+   * moment they are set — see {@link flush}.
    */
-  private pendingOptions = new Map<string, string>();
+  private readonly pendingOptions = new Map<string, string>();
+
+  /**
+   * The value each option was last posted with. Asking again for the value the
+   * engine already has is not a change: nothing is posted and no search is
+   * stopped for it — a board re-requests every option whenever any setting
+   * moves, and `setoption name Hash` clears the engine's hash table.
+   */
+  private readonly applied = new Map<string, string>();
 
   /**
    * The search the caller wants running, if it is not running yet. Only ever one:
@@ -129,7 +167,10 @@ export class UciEngine implements EngineHandle {
    */
   private searching: string | undefined;
 
-  private unsubscribeLines: () => void;
+  /** Whether the running search has been told to `stop` — one `stop` per search is enough. */
+  private stopSent = false;
+
+  private readonly unsubscribeLines: () => void;
 
   constructor(
     transport: UciTransport,
@@ -137,27 +178,28 @@ export class UciEngine implements EngineHandle {
   ) {
     this.transport = transport;
     this.maxDepth = maxDepth;
-    this.isReady = false;
 
     /*
       A single listener on the transport, fanning out to the subscribers: the UCI
       line is parsed once per message rather than once per subscriber, and — the
       reason it has to be this way — the search bookkeeping below runs exactly
-      once per message however many components are listening.
+      once per message however many components are listening. Subscribed before
+      anything is said, since a transport delivers lines as soon as it exists.
     */
     this.unsubscribeLines = transport.onLine((line) => {
-      const message = this.transformSFMessageData(line);
+      const message = parseEngineLine(line, this.searching);
       if (message.bestMove) {
         // The search is over and the engine is idle again, which is the moment
         // anything that has been waiting for it can go out.
         this.searching = undefined;
+        this.stopSent = false;
       }
-      this.handshake(message);
+      this.handshake(line);
       this.callbacks.forEach((callback) => callback(message));
       if (message.bestMove) this.flush();
     });
 
-    this.init();
+    this.transport.send("uci");
   }
 
   /**
@@ -172,47 +214,15 @@ export class UciEngine implements EngineHandle {
     };
   };
 
-  private transformSFMessageData(line: string): EngineMessage {
-    const uciMessage = line;
-
-    /*
-      `score cp N` and `score mate N` are alternatives on one `info` line, and a
-      line only ever carries one of them. Matching them together rather than with
-      two independent searches is what lets a consumer clear a stale mate when
-      the engine goes back to reporting centipawns — two loose regexes would
-      leave the previous mate standing.
-    */
-    const score = uciMessage.match(/\bscore\s+(cp|mate)\s+(-?\d+)/);
-    const multipv = uciMessage.match(/\bmultipv\s+(\d+)/)?.[1];
-
-    return {
-      uciMessage,
-      bestMove: uciMessage.match(/bestmove\s+(\S+)/)?.[1],
-      ponder: uciMessage.match(/ponder\s+(\S+)/)?.[1],
-      positionEvaluation: score?.[1] === "cp" ? score[2] : undefined,
-      possibleMate: score?.[1] === "mate" ? score[2] : undefined,
-      pv: uciMessage.match(/ pv\s+(.*)/)?.[1],
-      // The leading space keeps this off `seldepth`.
-      depth: Number(uciMessage.match(/ depth\s+(\S+)/)?.[1] ?? 0),
-      multipv: multipv === undefined ? undefined : Number(multipv),
-      fen: this.searching,
-    };
-  }
-
-  /** The handshake half of the message handling: readiness and option discovery. */
-  private handshake({ uciMessage }: EngineMessage) {
-    if (uciMessage === "readyok") {
-      this.isReady = true;
-      return;
-    }
-
-    const option = parseEngineOption(uciMessage);
+  /** The handshake half of the message handling: option discovery, complete at `uciok`. */
+  private handshake(line: string) {
+    const option = parseEngineOption(line);
     if (option) {
       this.options.set(option.name, option);
       return;
     }
 
-    if (uciMessage === "uciok") {
+    if (line === "uciok") {
       this.optionsReady = true;
 
       const waiting = [...this.optionsReadyCallbacks];
@@ -227,19 +237,17 @@ export class UciEngine implements EngineHandle {
   /**
    * Send whatever is waiting, if the engine is in a state to receive it.
    *
-   * **This is the whole of the wrapper's protocol discipline, and it exists
-   * because getting it wrong fails silently.** UCI only permits `setoption`
-   * while the engine is idle, and the 2019 build in `public/stockfish/` does not
-   * merely ignore one sent mid-search: it abandons the search. No error, no
-   * `bestmove`, no further `info` — the board simply never evaluates again.
-   *
+   * **This is the whole of the wrapper's protocol discipline.** UCI only
+   * permits `setoption` while the engine is idle, and an engine that takes one
+   * mid-search badly does not say so: it abandons the search — no error, no
+   * `bestmove`, no further `info`, and the board simply never evaluates again.
    * Two conditions therefore gate everything:
    *
    * - **before `uciok`** nothing goes out at all, because until the engine has
    *   listed its options there is no way to tell a real option from a name this
    *   build has never heard of;
-   * - **while a search is running** nothing goes out either. A `stop` is posted
-   *   instead, and the `bestmove` that ends the search calls back in here.
+   * - **while a search is running** nothing goes out either. One `stop` is
+   *   posted instead, and the `bestmove` that ends the search calls back in here.
    *
    * Only with the engine idle and the handshake done are the options posted, and
    * only then does a waiting search start — so a search always runs under the
@@ -250,7 +258,7 @@ export class UciEngine implements EngineHandle {
 
     if (this.searching !== undefined) {
       // Come back when the engine says it has finished.
-      if (this.pendingOptions.size > 0 || this.pendingSearch) this.stop();
+      if (this.pendingOptions.size > 0 || this.pendingSearch) this.sendStop();
       return;
     }
 
@@ -259,6 +267,7 @@ export class UciEngine implements EngineHandle {
       // wire. See `isSettable` for why the pinned case is not merely tidiness.
       if (this.isSettable(name)) {
         this.transport.send(`setoption name ${name} value ${this.wireValue(name, value)}`);
+        this.applied.set(name, value);
       }
     }
     this.pendingOptions.clear();
@@ -267,7 +276,7 @@ export class UciEngine implements EngineHandle {
     if (!next) return;
     this.pendingSearch = null;
 
-    const depth = Math.min(next.options.depth ?? 12, this.maxDepth);
+    const depth = Math.min(next.options.depth, this.maxDepth);
     const { movetime } = next.options;
 
     this.searching = next.fen;
@@ -279,17 +288,11 @@ export class UciEngine implements EngineHandle {
     );
   }
 
-  init() {
-    this.transport.send("uci");
-    this.transport.send("isready");
-  }
-
-  onReady(callback: () => void) {
-    return this.onMessage(({ uciMessage }) => {
-      if (uciMessage === "readyok") {
-        callback();
-      }
-    });
+  /** Ask the running search to end — once; the `bestmove` it answers with resumes the queue. */
+  private sendStop() {
+    if (this.searching === undefined || this.stopSent) return;
+    this.stopSent = true;
+    this.transport.send("stop");
   }
 
   /**
@@ -311,25 +314,18 @@ export class UciEngine implements EngineHandle {
     };
   }
 
-  /** Whether the running engine declared this option. False until the handshake lands. */
-  supportsOption(name: string): boolean {
-    return this.options.has(name);
-  }
-
   /**
    * Whether an option can actually be *set* — declared, and with more than one
    * legal value.
    *
    * An option whose `min` equals its `max` is pinned by the build, so posting it
-   * could at best be a no-op. It is not always a no-op: the 2019 WASM worker in
-   * `public/stockfish/` declares `Threads type spin default 1 min 1 max 1`, and
-   * `setoption name Threads value 1` — its own default — makes it stop answering
-   * altogether. No error, no `bestmove`, no further `info`; the board simply
-   * never evaluates again. `Hash`, pinned the same way, is harmless; `Threads` is
-   * not, and there is nothing on the wire to tell the two apart beforehand. (The
-   * Stockfish 19 single-thread build pins `Threads` too and takes the value
-   * without harm — measured in CTA-152 — but the rule is about what an engine
-   * *might* do, so it stays generic.)
+   * could at best be a no-op — and it has not always been one: an earlier
+   * Stockfish build declared `Threads type spin default 1 min 1 max 1` and
+   * stopped answering for good after `setoption name Threads value 1`, its own
+   * default, with nothing on the wire to tell that option from a harmless pinned
+   * one beforehand. (The 19 single-thread build pins `Threads` too and takes the
+   * value without harm — measured in CTA-152 — but the rule is about what an
+   * engine *might* do, so it stays generic.)
    *
    * So a pinned option is never sent. That costs nothing — there was only ever
    * one value it could take — and the settings tab already renders it as fixed.
@@ -354,7 +350,7 @@ export class UciEngine implements EngineHandle {
   }
 
   /**
-   * Send `setoption name <name> value <value>`, if this engine has that option.
+   * Request `setoption name <name> value <value>`, if this engine has that option.
    *
    * Returns whether this engine will take the value — `false` when it has no
    * such option, or has pinned it to a single value ({@link isSettable}). In
@@ -364,11 +360,22 @@ export class UciEngine implements EngineHandle {
    * answer does not exist yet.
    */
   setOption(name: string, value: string | number): boolean {
-    // Buffered rather than posted: {@link flush} decides when it is safe to
-    // send, and drops the names this build cannot take.
-    this.pendingOptions.set(name, String(value));
-    this.flush();
-    return this.optionsReady ? this.isSettable(name) : true;
+    // Once the roster is known, a name this engine cannot take is refused here,
+    // rather than queued only to be dropped — queued, it would stop a search.
+    if (this.optionsReady && !this.isSettable(name)) return false;
+
+    const requested = String(value);
+    if (this.applied.get(name) === requested) {
+      // Already the engine's value: a request for another one that is still
+      // waiting is withdrawn, and nothing is stopped for it.
+      this.pendingOptions.delete(name);
+    } else {
+      // Buffered rather than posted: {@link flush} decides when it is safe to
+      // send, and drops the names this build cannot take.
+      this.pendingOptions.set(name, requested);
+      this.flush();
+    }
+    return true;
   }
 
   /**
@@ -379,19 +386,22 @@ export class UciEngine implements EngineHandle {
    * first. A second call before the first has started replaces it — the newer
    * position is the one anybody is looking at.
    */
-  search(fen: string, options: SearchOptions = {}) {
+  search(fen: string, options: SearchOptions) {
     this.pendingSearch = { fen, options };
     this.flush();
   }
 
+  /**
+   * Drop the search that was asked for: a waiting one never starts, and a
+   * running one is told to `stop` — it answers with the `bestmove` of the
+   * depth it reached. What a board does when its engine is switched off.
+   */
   stop() {
-    // Run when searching takes too long and the engine will return the bestmove
-    // of the depth it has reached.
-    this.transport.send("stop");
+    this.pendingSearch = null;
+    this.sendStop();
   }
 
   terminate() {
-    this.isReady = false;
     this.unsubscribeLines();
     this.callbacks.clear();
     this.optionsReadyCallbacks.clear();

@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
-import type { EngineOption } from "../../../lib/engine";
+import type { EngineOption } from "../../../lib/engineTypes";
 import { MAX_VARIATIONS_OFFERED } from "../../../lib/engineAnalysis";
 import EngineSettings from "./EngineSettings";
 import {
@@ -25,11 +25,12 @@ const spin = (
 ): [string, EngineOption] => [name, { name, type: "spin", min, max }];
 
 /**
- * Exactly what the build in `public/stockfish/` answers `uci` with — read off
- * the running worker, not guessed. Threads and Hash are *declared but pinned*:
- * a single-threaded WASM worker with a fixed table.
+ * An engine strengthened by `Skill Level` alone — no `UCI_Elo` — with Threads
+ * and Hash *declared but pinned*: a single-threaded WASM worker with a fixed
+ * table. (The shipped Stockfish 19 builds take an Elo; the Elo form is
+ * `EngineSettingsForm.test.tsx`'s.)
  */
-const SHIPPED_OPTIONS = new Map<string, EngineOption>([
+const SKILL_ONLY_OPTIONS = new Map<string, EngineOption>([
   spin("Threads", 1, 1),
   spin("Hash", 16, 16),
   spin("MultiPV", 1, 500),
@@ -51,7 +52,7 @@ const renderSettings = (
       <EngineSettings
         settings={{ ...DEFAULT_ENGINE_SETTINGS, ...overrides.settings }}
         onChange={onChange}
-        engineOptions={overrides.engineOptions ?? SHIPPED_OPTIONS}
+        engineOptions={overrides.engineOptions ?? SKILL_ONLY_OPTIONS}
         showEvalBar={overrides.showEvalBar ?? true}
         onShowEvalBarChange={onShowEvalBarChange}
       />
@@ -87,9 +88,10 @@ describe("the engine settings tab", () => {
   });
 
   /*
-    The honesty requirement, and the case that actually occurs: this build
-    declares Threads and Hash but pins each to a single value, so a slider that
-    slid would move and change nothing — and the reader would believe it.
+    The honesty requirement, and a case that occurs (the default build pins
+    Threads): an engine that declares Threads and Hash but pins each to a single
+    value, so a slider that slid would move and change nothing — and the reader
+    would believe it.
   */
   it("disables an option the engine pins to one value, and says what it is", () => {
     renderSettings();
@@ -194,7 +196,7 @@ describe("the engine settings tab", () => {
   });
 
   it("labels strength as a level with an estimated Elo, not as an Elo setting", () => {
-    // This build has no UCI_Elo, so the figure is an estimate of what the skill
+    // This engine has no UCI_Elo, so the figure is an estimate of what the skill
     // level plays like and is worded that way.
     renderSettings({ settings: { skillLevel: 10 } });
 

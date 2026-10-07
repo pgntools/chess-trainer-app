@@ -22,9 +22,9 @@ import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
   nothing else, and that each board keeps the one thing that is its own.
 */
 
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("./boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("./boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("./boardTestHarness");
@@ -40,8 +40,6 @@ vi.mock("../../lib/openings", async (importOriginal) => {
 
 import { boardOptions, FakeEngine } from "./boardTestHarness";
 import { storeEngineId } from "../../lib/engineChoice";
-import type { EngineDescriptor, EngineHandle } from "../../lib/engineTypes";
-import { registerEngine } from "../../lib/engines";
 import { loadPlayedGames, playedGamesSnapshot } from "../../lib/playedGameStore";
 import AnalysisBoard from "../tools/analysis/AnalysisBoard";
 import PlayWithEngine from "../engine/play/PlayWithEngine";
@@ -396,35 +394,28 @@ describe("the Openings explorer (CTA-78)", () => {
   `RepertoirePlayer.test.tsx`.)
 */
 describe("the reader's engine reaches every board (CTA-153)", () => {
-  class ChosenEngine extends FakeEngine {}
-  const chosen: EngineDescriptor = {
-    id: "test-chosen-engine",
-    name: "Chosen Engine",
-    version: "1",
-    kind: "local",
-    capabilities: { maxDepth: 24, strength: "skill", multiThread: false },
-    create: () => new ChosenEngine() as unknown as EngineHandle,
-  };
-  const removers: (() => void)[] = [];
+  /** The multi-thread build — the other engine a reader can choose, on an isolated page. */
+  const chosen = { id: "stockfish-19-lite-multi" };
+  const isChosen = (engine: FakeEngine) => engine.descriptor?.id === chosen.id;
   beforeEach(() => {
     FakeEngine.reset();
-    removers.push(registerEngine(chosen));
+    vi.stubGlobal("crossOriginIsolated", true);
   });
-  afterEach(() => removers.splice(0).forEach((remove) => remove()));
+  afterEach(() => vi.unstubAllGlobals());
 
   it.each(BOARDS.map((board) => [board.name, board] as const))("%s builds the engine the reader chose", (_name, board) => {
     storeEngineId(chosen.id);
 
     renderBoard(board.Screen);
 
-    expect(FakeEngine.latest()).toBeInstanceOf(ChosenEngine);
+    expect(isChosen(FakeEngine.latest())).toBe(true);
     expect(FakeEngine.instances.filter((engine) => !engine.terminated)).toHaveLength(1);
   });
 
   it.each(BOARDS.map((board) => [board.name, board] as const))("%s builds the default engine when none was chosen", (_name, board) => {
     renderBoard(board.Screen);
 
-    expect(FakeEngine.latest()).not.toBeInstanceOf(ChosenEngine);
+    expect(isChosen(FakeEngine.latest())).toBe(false);
   });
 
   // Every board but the games against the engine, which keep theirs (below).
@@ -435,12 +426,12 @@ describe("the reader's engine reaches every board (CTA-153)", () => {
     (_name, board) => {
       renderBoard(board.Screen);
       const first = FakeEngine.latest();
-      expect(first).not.toBeInstanceOf(ChosenEngine);
+      expect(isChosen(first)).toBe(false);
 
       act(() => storeEngineId(chosen.id));
 
       expect(first.terminated).toBe(true);
-      expect(FakeEngine.latest()).toBeInstanceOf(ChosenEngine);
+      expect(isChosen(FakeEngine.latest())).toBe(true);
       expect(FakeEngine.instances.filter((engine) => !engine.terminated)).toHaveLength(1);
     },
   );

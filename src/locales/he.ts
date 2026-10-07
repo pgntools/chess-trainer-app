@@ -587,7 +587,6 @@ const he: typeof en = {
     rowTitle: "המשחק {{white}} – {{black}} מ־{{date}}",
     unreadableTitle: "המשחק שלא ניתן לקרוא מ־{{date}}",
     human: "אדם",
-    engine: "Stockfish רמה {{level}}",
     engineNamed: "{{name}} רמה {{level}}",
     engineElo: "{{name}} אלו {{elo}}",
     moves_one: "מהלך אחד",

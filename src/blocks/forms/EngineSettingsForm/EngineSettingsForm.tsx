@@ -2,7 +2,7 @@ import Box from "@mui/material/Box";
 import { useTranslation } from "react-i18next";
 
 import { SliderField, SwitchField } from "../../../design-system/components/forms";
-import type { EngineOption } from "../../../lib/engine";
+import type { EngineOption } from "../../../lib/engineTypes";
 import {
   approximateElo,
   ENGINE_SETTING_BOUNDS,
@@ -34,23 +34,23 @@ type OptionRow = {
   labelKey: string;
   /** The test id's part, where the option's own slug is not it (`UCI_Elo` → `elo`). */
   slug?: string;
-  /** Cap the top below what the engine would take (MultiPV's 500). */
+  /** Cap the top below what the engine would take (MultiPV's 256, Hash's 33,554,432 MB). */
   maxOffered?: number;
 };
 
 /**
  * **The engine's settings** (CTA-109; the Engine tab of CTA-74) — strength
- * (Skill Level, its Elo an estimate), search depth, move time, the lines to
- * show, threads, hash and the eval bar. The form of Play with Engine's and
+ * (an Elo, or Skill Level with its Elo an estimate), search depth, move time,
+ * the lines to show, threads, hash and the eval bar. The form of Play with Engine's and
  * Masked Pieces' Engine tab, and of the Lobby's new-game form.
  *
  * **Every option-backed slider is rendered from what the running engine
  * declared** (`engineOptionState`): absent, pinned or adjustable — never a
  * roster written here, so a build that takes more threads turns the slider
  * on with no code change (`.claude/rules/chessboard.md` §4.1). Depth and move
- * time are arguments to `go`, not options, so they are always live. This
- * build has no `UCI_Elo`, so the Elo beside the strength is worded as an
- * estimate.
+ * time are arguments to `go`, not options, so they are always live. An engine
+ * with no `UCI_Elo` is strengthened by Skill Level, and the Elo beside it is
+ * worded as an estimate.
  *
  * Presentational: the settings, the declared options and the eval bar arrive
  * as props, a change leaves as a patch. Its words are the app's
@@ -94,11 +94,11 @@ function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, on
     <Box data-testid={`${testId}-settings`} sx={{ display: "grid", gap: 2 }}>
       {/*
         The strength is whichever control the running engine declared: an Elo
-        where it has `UCI_Elo` with `UCI_LimitStrength` (Stockfish 19), else
-        `Skill Level` with its Elo an estimate (the 2019 build). Read off the
-        handshake, so before it lands the Skill Level slider stands in.
+        where it has `UCI_Elo` with `UCI_LimitStrength` (every shipped engine),
+        else `Skill Level` with its Elo an estimate. Read off the handshake, so
+        before it lands the Elo slider — the shipped engines' — stands in.
       */}
-      {handshakeLanded && usesEloStrength(engineOptions)
+      {!handshakeLanded || usesEloStrength(engineOptions)
         ? optionSlider(
             { setting: "elo", labelKey: "playEngine.settings.strengthElo", slug: "elo" },
             t("playEngine.settings.strengthEloValue", { elo: settings.elo }),
@@ -133,8 +133,13 @@ function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, on
         testId={`${testId}-setting-movetime`}
       />
       {optionSlider({ setting: "multiPv", labelKey: "playEngine.settings.multiPv", maxOffered: ENGINE_SETTING_BOUNDS.multiPv.max })}
-      {optionSlider({ setting: "threads", labelKey: "playEngine.settings.threads" })}
-      {optionSlider({ setting: "hashMb", labelKey: "playEngine.settings.hash" })}
+      {/*
+        Capped at the app's own bounds, as the lines are: the Stockfish 19 builds
+        declare `Hash` up to 33,554,432 MB and the multi-thread one 32 threads —
+        far more than a browser tab can hold or use.
+      */}
+      {optionSlider({ setting: "threads", labelKey: "playEngine.settings.threads", maxOffered: ENGINE_SETTING_BOUNDS.threads.max })}
+      {optionSlider({ setting: "hashMb", labelKey: "playEngine.settings.hash", maxOffered: ENGINE_SETTING_BOUNDS.hashMb.max })}
       <SwitchField
         label={t("playEngine.settings.evalBar")}
         checked={showEvalBar}

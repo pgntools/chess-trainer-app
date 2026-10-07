@@ -67,7 +67,7 @@ describe("usesEloStrength — read off what the engine declared, never its name"
     expect(usesEloStrength(options("Skill Level", "UCI_Elo", LIMIT_STRENGTH_OPTION))).toBe(true);
   });
 
-  it("is false for the 2019 build, which has neither", () => {
+  it("is false for an engine that has neither — Skill Level alone", () => {
     expect(usesEloStrength(options("Threads", "Hash", "MultiPV", "Skill Level"))).toBe(false);
   });
 

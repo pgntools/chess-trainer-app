@@ -1,10 +1,9 @@
-import { useSyncExternalStore } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
 import { EnginePicker } from "../../blocks/forms";
-import { describeEngines, listEngines, subscribeEngines } from "../../lib/engines";
+import { describeEngines } from "../../lib/engines";
 import { useEngineChoice } from "../shared/useEngineChoice";
 
 /**
@@ -15,15 +14,10 @@ import { useEngineChoice } from "../shared/useEngineChoice";
  * it, read now (`crossOriginIsolated`), so an engine the host cannot run is
  * listed disabled with its reason. A choice applies at once and is a
  * preference (`localStorage`, `lib/engineChoice.ts`), not part of the export.
- *
- * The list follows the registry as it grows (`subscribeEngines`): an engine
- * registered at runtime — a hosted one, later — appears without a reload.
  */
 function EngineTab() {
   const { t } = useTranslation();
   const { engineId, setEngineId } = useEngineChoice();
-  // Subscribing is what re-renders the tab when an engine is registered; the list itself is read fresh (it is short).
-  useSyncExternalStore(subscribeEngines, listEngines, listEngines);
   const entries = describeEngines();
 
   return (

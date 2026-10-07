@@ -1,5 +1,5 @@
 import { EngineSettingsForm } from "../../../blocks/forms";
-import type { EngineOption } from "../../../lib/engine";
+import type { EngineOption } from "../../../lib/engineTypes";
 import type { EngineSettings as EngineSettingsValues } from "../../../lib/engineSettings";
 
 /**

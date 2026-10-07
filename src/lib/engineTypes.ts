@@ -24,25 +24,25 @@
  * One option the running engine declared during the `uci` handshake.
  *
  * Read, never assumed. Which options exist — and which of them will take a
- * value — is a property of the *binary*, not of the UCI spec. The 2019 build
- * shipped in `public/stockfish/` answers `uci` with, among others:
+ * value — is a property of the *binary*, not of the UCI spec. The Stockfish 19
+ * single-thread build in `public/stockfish/` answers `uci` with, among others:
  *
  * ```
  * option name Threads type spin default 1 min 1 max 1
- * option name Hash type spin default 16 min 16 max 16
- * option name MultiPV type spin default 1 min 1 max 500
+ * option name Hash type spin default 16 min 1 max 33554432
+ * option name MultiPV type spin default 1 min 1 max 256
  * option name Skill Level type spin default 20 min 0 max 20
+ * option name UCI_LimitStrength type check default false
+ * option name UCI_Elo type spin default 1320 min 1320 max 3190
  * ```
  *
- * So `Threads` and `Hash` are declared but **pinned** — `min` equals `max`, one
- * legal value each — while `MultiPV` and `Skill Level` are genuinely
- * adjustable, and there is no `UCI_Elo` or `UCI_LimitStrength` at all. Three
- * states, not two. The Stockfish 19 builds declare `UCI_Elo` and
- * `UCI_LimitStrength`, and the multi-thread one an adjustable `Threads`. A
- * settings UI that hardcoded the usual list would show knobs that silently do
- * nothing, so it reads {@link EngineHandle.options} instead and can say
- * honestly which ones this engine does not have and which ones it has already
- * made up its mind about.
+ * So `Threads` is declared but **pinned** — `min` equals `max`, one legal
+ * value — while the multi-thread build declares it adjustable, and an engine
+ * may declare no `UCI_Elo` at all. Three states, not two: absent, pinned,
+ * adjustable. A settings UI that hardcoded the usual list would show knobs
+ * that silently do nothing, so it reads {@link EngineHandle.options} instead
+ * and can say honestly which ones this engine does not have and which ones it
+ * has already made up its mind about.
  */
 export type EngineOption = {
   name: string;
@@ -60,11 +60,12 @@ export type EngineOption = {
 /** What one `go` search should do. */
 export type SearchOptions = {
   /**
-   * Plies to search. Clamped to the engine's own limit
+   * Plies to search — always the caller's (the board's settings), never a
+   * default of the engine's. Clamped to the engine's own limit
    * ({@link EngineCapabilities.maxDepth}) — the worker shares the tab with the
    * UI.
    */
-  depth?: number;
+  depth: number;
   /** Milliseconds to spend, on top of the depth limit. 0 or absent means no time limit. */
   movetime?: number;
 };
@@ -124,8 +125,12 @@ export interface EngineHandle {
    * Ask for `fen` to be searched. May not start immediately; a second call
    * before the first has started replaces it.
    */
-  search(fen: string, options?: SearchOptions): void;
-  /** End the running search early; the engine still answers with a `bestmove`. */
+  search(fen: string, options: SearchOptions): void;
+  /**
+   * Drop the search that was asked for: a waiting one never starts, and a
+   * running one is ended early — it still answers with a `bestmove`, so its
+   * score is still reported.
+   */
   stop(): void;
   /**
    * Request an option. Returns whether this engine will take the value —
@@ -162,12 +167,6 @@ export interface UciTransport {
   close(): void;
 }
 
-/**
- * Where an engine runs. Only `"local"` exists; `"remote"` will be added with
- * the hosted-engine transport — nothing reads it yet.
- */
-export type EngineKind = "local";
-
 /** What an engine can do — read by the UI before one is even built. */
 export type EngineCapabilities = {
   /** The deepest `go depth` the engine is asked for; deeper requests are clamped to it. */
@@ -199,9 +198,8 @@ export type EngineDescriptor = {
   id: string;
   /** What a reader is shown. */
   name: string;
-  /** The engine's own version, as a reader would say it ("19", "2019-08-15"). */
+  /** The engine's own version, as a reader would say it ("19"). */
   version: string;
-  kind: EngineKind;
   requires?: EngineRequirements;
   capabilities: EngineCapabilities;
   /**
