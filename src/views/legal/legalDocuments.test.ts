@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { supportedLanguages } from "../../i18n";
+import i18n, { supportedLanguages } from "../../i18n";
+import { appPageFiles, findBlogArticle } from "../blog/articles";
 import { DEVELOPMENT_NOTICE_KEY } from "../../lib/developmentNotice";
 import { ENGINE_STORAGE_KEY } from "../../lib/engineChoice";
 import { LIBRARY_DB_NAME } from "../../lib/libraryDb";
@@ -9,8 +10,8 @@ import { LANGUAGE_STORAGE_KEY } from "../../i18n";
 import { legalDocument, legalLanguages, LEGAL_PAGES } from "./legalDocuments";
 
 // The documents' text, to hold what they say to the code (the module name is `?raw`, not compiled).
-const sources = import.meta.glob("./documents/*.mdx", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
-const sourceOf = (page: string, language: string): string => sources[`./documents/${page}${language === "en" ? "" : `.${language}`}.mdx`];
+const sources = import.meta.glob("../blog/articles/app-pages/*.mdx", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const sourceOf = (page: string, language: string): string => sources[`../blog/articles/app-pages/${page}${language === "en" ? "" : `.${language}`}.mdx`];
 
 /** Everything the app keeps in the browser — the legal pages must name each (CTA-159). */
 const STORED = [
@@ -27,6 +28,23 @@ const STORED = [
 ];
 
 describe("the legal pages' documents (CTA-159)", () => {
+  it("are in the Blog's articles folder for the MDX editor, and not the Blog's", () => {
+    for (const page of LEGAL_PAGES) {
+      expect(findBlogArticle(`app-pages/${page}`), page).toBeUndefined();
+      expect(appPageFiles().some((file) => file.path === `app-pages/${page}`), page).toBe(true);
+    }
+  });
+
+  it("name and describe the page as the catalogs do — the frontmatter is what the editor edits", () => {
+    for (const language of supportedLanguages) {
+      for (const page of LEGAL_PAGES) {
+        const file = appPageFiles().find((entry) => entry.path === `app-pages/${page}` && entry.language === language);
+        expect(file?.title, `${page} (${language}) title`).toBe(i18n.getFixedT(language)(`pages.${page}`));
+        expect(file?.summary, `${page} (${language}) summary`).toBe(i18n.getFixedT(language)(`pageDescriptions.${page}`));
+      }
+    }
+  });
+
   it("has a document for every page in every language the app has", () => {
     for (const page of LEGAL_PAGES) {
       expect(legalLanguages(page).sort(), page).toEqual([...supportedLanguages].sort());

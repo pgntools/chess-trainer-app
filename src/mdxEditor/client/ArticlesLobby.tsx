@@ -20,6 +20,7 @@ import { SearchField } from "../../design-system/components/forms";
 import { LabelChip } from "../../design-system/components/tables";
 import { IconAction, ListScreenHeader, SelectionBar } from "../../design-system/components/toolbars";
 import { DataTable, type DataTableColumn } from "../../design-system/patterns/tables";
+import { APP_PAGES_FOLDER, isAppPagePath } from "../../lib/articleFrontmatter";
 import { loadArticleSource } from "./articleSources";
 import DeleteArticleDialog from "./DeleteArticleDialog";
 import DeletePicksDialog from "./DeletePicksDialog";
@@ -55,6 +56,9 @@ const parentOf = (path: string) => path.split("/").slice(0, -1).join("/");
 const join = (folder: string, name: string) => (folder === "" ? name : `${folder}/${name}`);
 /** `tournaments/olympiad-2026.he` → `tournaments/olympiad-2026`; `tournaments/index` → `tournaments`. */
 const blogPathOf = (file: string) => file.replace(/\.[a-z]{2}$/, "").replace(/(^|\/)index$/, "");
+/** Where a row opens in the app: an in-app page (CTA-159) at its own address — `app-pages/privacy` → `/privacy` — the rest on the Blog. */
+const appAddressOf = (path: string): string =>
+  path === APP_PAGES_FOLDER ? "/blog" : path.startsWith(`${APP_PAGES_FOLDER}/`) ? `/${path.slice(APP_PAGES_FOLDER.length + 1)}` : path === "" ? "/blog" : `/blog/${path}`;
 
 /**
  * The folders and files as rows — a folder's sub-folders, then its index,
@@ -262,7 +266,7 @@ function ArticlesLobby() {
   const rowActions = (row: LobbyRow) => {
     if (row.kind === "folder") {
       return (
-        <IconAction label={`Open ${row.title} on the Blog`} link={{ component: RouterLink, to: `/blog/${row.path}` }} testId={`${ID}-blog-${row.path}`}>
+        <IconAction label={`Open ${row.title} ${isAppPagePath(row.path) ? "in the app" : "on the Blog"}`} link={{ component: RouterLink, to: appAddressOf(row.path) }} testId={`${ID}-blog-${row.path}`}>
           <OpenInNewRoundedIcon fontSize="small" />
         </IconAction>
       );
@@ -280,7 +284,7 @@ function ArticlesLobby() {
         <IconAction label={`Edit ${row.path}`} link={{ component: RouterLink, to: `/dev/mdx-editor/edit?article=${encodeURIComponent(row.file)}` }} testId={`${ID}-edit-${row.path}`}>
           <EditNoteRoundedIcon fontSize="small" />
         </IconAction>
-        <IconAction label={`Open ${row.path} on the Blog`} link={{ component: RouterLink, to: blogPath === "" ? "/blog" : `/blog/${blogPath}` }} testId={`${ID}-blog-${row.path}`}>
+        <IconAction label={`Open ${row.path} ${isAppPagePath(row.path) ? "in the app" : "on the Blog"}`} link={{ component: RouterLink, to: appAddressOf(blogPath) }} testId={`${ID}-blog-${row.path}`}>
           <OpenInNewRoundedIcon fontSize="small" />
         </IconAction>
         <IconAction label={`Delete ${row.path}`} onClick={() => void askDeleteArticle(row.file)} disabled={busy} testId={`${ID}-delete-${row.path}`}>

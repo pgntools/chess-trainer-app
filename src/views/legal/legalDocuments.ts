@@ -1,43 +1,35 @@
-import { lazy, type LazyExoticComponent } from "react";
-import type { MDXContent } from "mdx/types";
-
 import type { AppLanguage } from "../../i18n";
+import { APP_PAGES_FOLDER } from "../../lib/articleFrontmatter";
+import { appPageDocument, appPageFiles } from "../blog/articles";
 
 /**
  * **The legal pages' documents** (CTA-159) — the Privacy Policy and the
- * Cookies Notice, MDX in `documents/<page>.mdx` with `<page>.he.mdx` beside
- * it. Unlike a Blog article they carry no frontmatter and are in no registry:
- * not listed in the Blog or the sidebar, reached from the footer. Each is its
- * own lazy chunk, loaded when its page renders (the pre-render waits for it).
+ * Cookies Notice are MDX files in the Blog's articles folder, under
+ * `articles/app-pages/<page>.mdx` with `<page>.he.mdx` beside it, so the MDX
+ * editor opens and saves them like any article. They are **not the Blog's**
+ * (`isAppPagePath`): not listed, not at `/blog/…`; `/privacy` and `/cookies`
+ * show them (`LegalPage`). Each is its own lazy chunk, loaded when its page
+ * renders (the pre-render waits for it).
  *
- * Both languages are written — a language with no file would show the English
- * one (`legalDocument`), but `legalDocuments.test.ts` holds every page to a
- * document in every language the app has.
+ * Their frontmatter's `title` and `summary` are the page's name and
+ * description in the catalogs (`pages.*`, `pageDescriptions.*` — the footer,
+ * the tab title and the share preview read those); `legalDocuments.test.ts`
+ * holds the two to each other. A language with no file shows the English one.
  */
 
 export type LegalPageId = "privacy" | "cookies";
 
 export const LEGAL_PAGES: readonly LegalPageId[] = ["privacy", "cookies"];
 
-type LazyDocument = LazyExoticComponent<MDXContent>;
-
-const documents: Record<LegalPageId, Partial<Record<AppLanguage, LazyDocument>> & { en: LazyDocument }> = {
-  privacy: {
-    en: lazy(() => import("./documents/privacy.mdx")),
-    he: lazy(() => import("./documents/privacy.he.mdx")),
-  },
-  cookies: {
-    en: lazy(() => import("./documents/cookies.mdx")),
-    he: lazy(() => import("./documents/cookies.he.mdx")),
-  },
-};
-
 /** The page's document in `language` — or its English one, with `language` saying which it is. */
-export const legalDocument = (page: LegalPageId, language: AppLanguage): { Content: LazyDocument; language: AppLanguage } => {
-  const own = documents[page][language];
-  return own === undefined ? { Content: documents[page].en, language: "en" } : { Content: own, language };
+export const legalDocument = (page: LegalPageId, language: AppLanguage) => {
+  const document = appPageDocument(page, language);
+  if (document === undefined) throw new Error(`${APP_PAGES_FOLDER}/${page}.mdx is missing`);
+  return document;
 };
 
-/** The languages a page has a document in. */
+/** The languages a page has a body in. */
 export const legalLanguages = (page: LegalPageId): AppLanguage[] =>
-  (Object.keys(documents[page]) as AppLanguage[]).filter((language) => documents[page][language] !== undefined);
+  appPageFiles()
+    .filter((file) => file.path === `${APP_PAGES_FOLDER}/${page}` && file.hasBody)
+    .map((file) => file.language);

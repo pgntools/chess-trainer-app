@@ -1,7 +1,7 @@
 import { join } from "node:path";
 
 import { readArticlesDir } from "../../plugins/blogArticles.ts";
-import { readArticleFiles, splitFrontmatter } from "../../src/lib/articleFrontmatter.ts";
+import { isAppPagePath, readArticleFiles, splitFrontmatter } from "../../src/lib/articleFrontmatter.ts";
 
 /*
   **The Blog's articles, as the browser pass visits them** (CTA-135) — read
@@ -30,7 +30,7 @@ export const blogArticleRoutes = (): BlogArticleRoute[] => {
   const files = readArticlesDir(join(process.cwd(), "src/views/blog/articles"));
   const textOf = new Map(files.map((file) => [file.name.replace(/\.mdx$/, ""), file.text]));
   return readArticleFiles(files)
-    .entries.filter((entry) => entry.kind === "article" && entry.language === "en" && !entry.draft)
+    .entries.filter((entry) => entry.kind === "article" && entry.language === "en" && !entry.draft && !isAppPagePath(entry.path))
     .map((entry) => ({ path: entry.path, board: BOARD_EMBEDS.test(drawnPart(splitFrontmatter(textOf.get(entry.file) ?? "").body)) }))
     .sort((a, b) => a.path.localeCompare(b.path));
 };
