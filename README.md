@@ -1,73 +1,56 @@
-# React + TypeScript + Vite
+> [!WARNING]
+> **This project is still in development — use it with caution.** It is an early
+> beta: things may change or break from one release to the next. What you save
+> (games, analyses, repertoires, collections) lives **in your browser only**, on
+> your device — export it from *Settings → Export* now and then, so it is not lost.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# chessapp.dev
 
-Currently, two official plugins are available:
+A chess trainer that runs entirely in the browser — no account, no server of its
+own. Live at **[chessapp.dev](https://chessapp.dev)**.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Play with Engine** — a game against Stockfish, with a strength setting, and **Masked Pieces**, the same game with the pieces disguised.
+- **Analysis Board** — a game tree with side lines, comments and engine lines; saved analyses.
+- **Openings explorer** — the opening book, move by move.
+- **Repertoires** — build your lines, then drill them against a trainer.
+- **Library** — collections of master games and tournaments, from your own PGN files.
+- **Blog** — articles with live boards, games and tournament tables embedded in them.
+- **Your data is yours** — export everything as one zip, import it back, see how much space it takes.
+- **Themes**, light and dark, and **English and Hebrew** (Hebrew reads right to left; the board never mirrors).
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+[Vite](https://vite.dev), [React](https://react.dev) 19, TypeScript,
+[react-chessboard](https://github.com/Clariity/react-chessboard) v5,
+[chess.js](https://github.com/jhlywa/chess.js) and a Stockfish WebAssembly engine
+in a Web Worker, over [MUI](https://mui.com). The reader's data is kept in the
+browser's IndexedDB. Tests are Vitest and Testing Library, with a Playwright and axe
+accessibility pass.
 
-## Expanding the ESLint configuration
+## Hosts
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Every page is pre-rendered as static HTML, per language, and served from:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **[chessapp.dev](https://chessapp.dev)** — Azure Static Web Apps.
+- **[GitHub Pages](https://kantorv.github.io/chess-trainer-app/)** — under the `/chess-trainer-app/` sub-path.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Quick start
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+You need **Node 24** (the maintainers use [fnm](https://github.com/Schniz/fnm)) and **Yarn 1**.
+
+```sh
+yarn install
+yarn dev            # the dev server
+yarn build          # type-check, production build and the pre-render
+yarn test:run       # the unit and component tests
+yarn lint           # the import rules, the accessibility rules, React's rules
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The dev server serves the app under `/chess-trainer-app/` (the GitHub Pages sub-path);
+`yarn dev` prints the address.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## More
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- [CONTRIBUTING.md](CONTRIBUTING.md) — running it, how the code is organised, what a change has to pass, adding a theme.
+- [ACCESSIBILITY.md](ACCESSIBILITY.md) — the accessibility target (WCAG 2.2 AA), how it is checked and the known gaps.
+- [GitHub issues](https://github.com/pgntools/chess-trainer-app/issues) — bugs, ideas and questions.
