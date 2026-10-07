@@ -285,7 +285,7 @@ session-only. A game never writes, shows no comment block and no move menu.
   reading line), `storeMultiGameRepertoire` seeds a pre-rule record, and
   **`FAKE_TIMERS`** fakes `setTimeout`, `setInterval` and `Date` only —
   fake-indexeddb needs a real `setImmediate` ([`database.md`](./database.md) §7).
-- The player's tests use `lib/engine` → `FakeEngine` and `react-chessboard` →
+- The player's tests use `lib/engines/builtin` → `builtinEnginesMock` (each shipped engine a `FakeEngine`) and `react-chessboard` →
   `reactChessboardMock()` (`views/board/boardTestHarness.tsx`), and drive the
   trainer's timer with fake timers; the `random` option makes a policy's pick
   deterministic.

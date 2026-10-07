@@ -86,7 +86,8 @@ choice (preferences are not data).
 registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
 
 - **The list is the `EnginePicker` block** (`blocks/forms/`) over
-  `describeEngines()` — a radio per registered engine with its name, version,
+  `describeEngines()` — a radio per shipped engine (Stockfish 19 Lite,
+  single-thread — the default — and multi-thread) with its name, version,
   single- or multi-thread and how its strength is set (Skill Level, Elo, or
   either), each the descriptor's own declaration. An engine **this page
   cannot run** — the multi-thread build where the host does not set COOP /
@@ -102,11 +103,11 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   Pieces (`usePlayGame`) and the Lobby's new-game form — and so uses it from its
   next search; the old engine is terminated.
 - **The store keeps the raw id; the tab and the boards read the resolved one**
-  (`engineChoiceId()`): a stored id that names no registered engine, or one this
-  page cannot run, reads as the default — and **stays stored**, so the choice
-  returns where the engine can run (another host, a later registration). A write
-  of an unregistered id is ignored, as an unknown theme is. The list follows
-  the registry as it grows (`subscribeEngines`).
+  (`engineChoiceId()`): a stored id that names no shipped engine (the retired
+  2019 build's `stockfish-2019-wasm` among them, CTA-160), or one this page
+  cannot run, reads as the default — and **stays stored**, so the choice
+  returns where the engine can run (another host). A write of an id the app
+  does not ship is ignored, as an unknown theme is.
 - **A game against the engine keeps its engine**: read once as the game begins,
   recorded on it, and a resumed game goes on with its own
   ([`play-with-engine.md`](./play-with-engine.md) §4) — changing the choice
@@ -125,8 +126,8 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   the list and each engine's facts, the multi-thread build disabled with its
   reason (and selectable under a stubbed `crossOriginIsolated`), a choice
   applying at once and surviving a remount, a stored id that is gone or cannot
-  run falling back without being discarded, an engine registered while it is
-  open, the keyboard, Hebrew, axe. `src/lib/engineChoice.test.ts` — the store.
+  run falling back without being discarded (the 2019 id too), the keyboard,
+  Hebrew, axe. `src/lib/engineChoice.test.ts` — the store.
   `blocks/forms/EnginePicker/EnginePicker.test.tsx` — the block.
 - `views/settings/AppearanceTab.test.tsx` — the Appearance tab, with a second
   theme registered by a mock of the registry: the list and previews, a choice

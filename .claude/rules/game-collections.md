@@ -1058,8 +1058,8 @@ the index instead (§10.1).
   and a probe (`where()` returns the current path and search). A new screen
   test goes in the file whose screen it drives; a helper two of them need, in
   the kit.
-- **Stubs**: `react-chessboard` → `reactChessboardMock()`, `lib/engine` →
-  `FakeEngine`, `lib/openings` → `openingsMock` (all from
+- **Stubs**: `react-chessboard` → `reactChessboardMock()`, `lib/engines/builtin` →
+  `builtinEnginesMock`, `lib/openings` → `openingsMock` (all from
   `views/board/boardTestHarness.tsx`). `downloadPgn` is mocked to capture what it
   was given. Each file declares the four `vi.mock`s itself — a mock is hoisted
   only in the file that writes it, so the kit cannot carry them. `boardOptions()` reads the last board's options, which is how the
