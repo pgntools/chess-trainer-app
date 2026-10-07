@@ -21,9 +21,25 @@ describe("DevelopmentNoticeDialog", () => {
   it("is a dialog named for the app's state, saying what to expect", () => {
     mount();
     expect(screen.getByRole("dialog", { name: NOTICE_WORDS.title })).toBeInTheDocument();
-    expect(screen.getByTestId(`${NOTICE_TEST_ID}-intro`)).toHaveTextContent("Please use it with caution");
-    expect(screen.getByTestId(`${NOTICE_TEST_ID}-local`)).toHaveTextContent("this browser on this device only");
-    expect(screen.getByTestId(`${NOTICE_TEST_ID}-changes`)).toHaveTextContent("may change or break");
+    expect(screen.getByTestId(`${NOTICE_TEST_ID}-badge`)).toHaveTextContent("Early beta");
+    expect(screen.getByTestId(`${NOTICE_TEST_ID}-intro`)).toHaveTextContent("use it with caution");
+  });
+
+  it("lists what to expect, each line led by an emoji the reader's screen reader skips", () => {
+    mount();
+    const items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(3);
+    expect(screen.getByTestId(`${NOTICE_TEST_ID}-item-local`)).toHaveTextContent("Your data stays in this browser");
+    expect(screen.getByTestId(`${NOTICE_TEST_ID}-item-export`)).toHaveTextContent("Export it now and then");
+    expect(screen.getByTestId(`${NOTICE_TEST_ID}-item-changes`)).toHaveTextContent("Things may change or break");
+    for (const item of items) expect(item.querySelector('[aria-hidden="true"]')).toHaveTextContent(/^\p{Extended_Pictographic}/u);
+  });
+
+  it("shows the logo in its header, as decoration — the title alone names the dialog", () => {
+    mount();
+    const logo = screen.getByTestId(`${NOTICE_TEST_ID}-logo`);
+    expect(logo).toHaveAttribute("alt", "");
+    expect(logo).toHaveAttribute("src", expect.stringContaining("chessapp-logo"));
   });
 
   it("renders nothing while closed", () => {

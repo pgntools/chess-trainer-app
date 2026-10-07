@@ -11,9 +11,13 @@ const en = {
   /** The notice every session opens with (CTA-155) — `blocks/dialogs/DevelopmentNoticeDialog`. */
   developmentNotice: {
     title: "{{name}} is still in development",
-    intro: "This is an early beta. Please use it with caution.",
-    local: "Everything you save — games, analyses, repertoires, collections — lives in this browser on this device only. Export it from Settings now and then, so it is not lost.",
-    changes: "Things may change or break from one visit to the next, and saved data may have to be imported again.",
+    badge: "Early beta",
+    intro: "This is an early beta, so please use it with caution. Here is what to know:",
+    items: {
+      local: { title: "Your data stays in this browser", text: "Games, analyses, repertoires and collections are saved on this device only." },
+      export: { title: "Export it now and then", text: "Settings → Export downloads everything as one zip, so nothing is lost." },
+      changes: { title: "Things may change or break", text: "Saved data may have to be imported again after an update." },
+    },
     dismiss: "Dismiss",
   },
   nav: {

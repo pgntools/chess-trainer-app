@@ -13,7 +13,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
     {
       name: "Open — the app's one notice, with its Dismiss",
       render: () => (
-        <DialogFrame height={400}>
+        <DialogFrame height={520}>
           {(dialogProps) => <DevelopmentNoticeDialog open onDismiss={noop} testId={`gallery-${NOTICE_TEST_ID}`} dialogProps={dialogProps} />}
         </DialogFrame>
       ),
