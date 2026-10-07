@@ -82,7 +82,7 @@ describe("the Blog's index (CTA-126)", () => {
     const writing = screen.getByRole("link", { name: "Open Writing an article" });
     expect(writing).toHaveAttribute("href", "/blog/writing-an-article");
     // Every article under it, its sub-folders' too: the guide, the fixture draft (listed as in yarn dev), and the components', games' and tables' demos.
-    expect(screen.getByText("25 articles")).toBeInTheDocument();
+    expect(screen.getByText("26 articles")).toBeInTheDocument();
     // A folder's summary, from its index.mdx (CTA-135).
     expect(screen.getByText("How an article is written, and every component it may embed shown at work.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Tournaments" })).toBeInTheDocument();

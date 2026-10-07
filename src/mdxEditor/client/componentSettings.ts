@@ -88,20 +88,24 @@ export const IMAGE_APPEARANCE: readonly SettingField[] = [
   { prop: "link", kind: "switch", on: false, label: "Opens full size on a click", help: "In a new tab." },
 ];
 
+/** `<InlinePgnGame>`'s settings — `<InlinePgnGameColumns>` takes the same props (CTA-146). */
+const INLINE_PGN_GAME: readonly SettingField[] = [
+  { prop: "game", kind: "number", label: "Which game", placeholder: "1", help: "For a PGN holding several games, 1 the first." },
+  { prop: "from", kind: "text", label: "From move", placeholder: "5", help: "The first move the reader can step back to — 5 after White's 5th, 5... after Black's. Empty: the start." },
+  { prop: "to", kind: "text", label: "To move", placeholder: "15...", help: "The last move the reader can step to. Empty: the end." },
+  { prop: "start", kind: "text", label: "Opens at", placeholder: "11 or 1. e4 c5", help: "Where the board opens: a move number, or a line of moves into a side line. Empty: the window's start." },
+  { prop: "caption", kind: "text", label: "Caption", help: "A line above the board." },
+  { prop: "orientation", kind: "choice", label: "Board faces", none: "White", options: [{ value: "black", label: "Black" }] },
+  { prop: "variations", kind: "switch", on: true, label: "Side lines", help: "Off: the mainline alone." },
+  { prop: "comments", kind: "switch", on: false, label: "The move's comment", help: "The PGN's comment on the move on screen, under the board." },
+  { prop: "shapes", kind: "switch", on: true, label: "Arrows and circles from the comments", help: "Lichess's [%cal] and [%csl], drawn on the board." },
+  nextMoveArrows,
+];
+
 /** Every component's settings, by its name — the ones the Components and Images sections edit. */
 export const SETTINGS: Readonly<Record<string, readonly SettingField[]>> = {
-  InlinePgnGame: [
-    { prop: "game", kind: "number", label: "Which game", placeholder: "1", help: "For a PGN holding several games, 1 the first." },
-    { prop: "from", kind: "text", label: "From move", placeholder: "5", help: "The first move the reader can step back to — 5 after White's 5th, 5... after Black's. Empty: the start." },
-    { prop: "to", kind: "text", label: "To move", placeholder: "15...", help: "The last move the reader can step to. Empty: the end." },
-    { prop: "start", kind: "text", label: "Opens at", placeholder: "11 or 1. e4 c5", help: "Where the board opens: a move number, or a line of moves into a side line. Empty: the window's start." },
-    { prop: "caption", kind: "text", label: "Caption", help: "A line above the board." },
-    { prop: "orientation", kind: "choice", label: "Board faces", none: "White", options: [{ value: "black", label: "Black" }] },
-    { prop: "variations", kind: "switch", on: true, label: "Side lines", help: "Off: the mainline alone." },
-    { prop: "comments", kind: "switch", on: false, label: "The move's comment", help: "The PGN's comment on the move on screen, under the board." },
-    { prop: "shapes", kind: "switch", on: true, label: "Arrows and circles from the comments", help: "Lichess's [%cal] and [%csl], drawn on the board." },
-    nextMoveArrows,
-  ],
+  InlinePgnGame: INLINE_PGN_GAME,
+  InlinePgnGameColumns: INLINE_PGN_GAME,
   CollectionGameBoard: [startMove, nextMoveArrows],
   StoredGameEmbed: [startMove, nextMoveArrows],
   CollectionCard: [

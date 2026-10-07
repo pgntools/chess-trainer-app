@@ -174,3 +174,45 @@ export const moveName = (startFen: string, node: VariationNode): string => {
   const { number, isWhiteMove } = plyLabel(startFen, node.ply);
   return `${number}${isWhiteMove ? "." : "..."} ${node.san}`;
 };
+
+/* --- the move list in two columns --------------------------------- */
+
+type ExcerptMoveToken = Extract<ExcerptToken, { kind: "move" }>;
+type ExcerptVariationToken = Extract<ExcerptToken, { kind: "variation" }>;
+
+/** One numbered pair of the window's mainline, with the side lines that answer it. */
+export type ExcerptRow = {
+  number: number;
+  /** `null` where the window opens on Black's move: the pair's White cell is empty. */
+  white: ExcerptMoveToken | null;
+  black: ExcerptMoveToken | null;
+  /** The side lines branching from this pair's moves — White's first, Black's after — spanning the row's width. */
+  variations: ExcerptVariationToken[];
+};
+
+/**
+ * **The window's mainline as numbered pairs** — the Analysis Board's move
+ * list's rows (`moveRowsOf`), over the tokens `excerptTokens` writes: a pair
+ * per move number, a window that opens on Black's move starting with an empty
+ * White cell, each side line (with its own, nested ones — they stay a run)
+ * hung on the pair holding the move it answers. Pure.
+ */
+export const excerptRows = (startFen: string, tokens: readonly ExcerptToken[]): ExcerptRow[] => {
+  const rows: ExcerptRow[] = [];
+  for (const token of tokens) {
+    if (token.kind === "variation") {
+      // A side line always follows a move, so a row exists; a stray one is dropped.
+      rows.at(-1)?.variations.push(token);
+      continue;
+    }
+    const { number, isWhiteMove } = plyLabel(startFen, token.node.ply);
+    let row = rows.at(-1);
+    if (row === undefined || row.number !== number) {
+      row = { number, white: null, black: null, variations: [] };
+      rows.push(row);
+    }
+    if (isWhiteMove) row.white = token;
+    else row.black = token;
+  }
+  return rows;
+};
