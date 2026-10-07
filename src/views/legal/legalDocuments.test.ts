@@ -86,8 +86,8 @@ describe("the legal pages' documents (CTA-159)", () => {
         expect(text, `${page} (${language}) has no placeholder left`).not.toMatch(/TO BE SUPPLIED|ימסור בעל המוצר/);
       }
     }
-    expect(sourceOf("privacy", "en")).toContain("P.O.B. 465, Tel Aviv, Israel");
-    expect(sourceOf("privacy", "he")).toContain('ת"ד 465');
+    expect(sourceOf("privacy", "en")).toContain("P.O.B. 465, Tel Aviv, 6100302, Israel");
+    expect(sourceOf("privacy", "he")).toContain('ת"ד 465, תל אביב, 6100302, ישראל');
   });
 
   it("cites both regimes: the GDPR and Israel's Protection of Privacy Law, Amendment 13", () => {
