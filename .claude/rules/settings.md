@@ -90,7 +90,7 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   single- or multi-thread and how its strength is set (Skill Level, Elo, or
   either), each the descriptor's own declaration. An engine **this page
   cannot run** — the multi-thread build where the host does not set COOP /
-  COEP (`crossOriginIsolated`, read when the page loads, CTA-154 sets them on the swa host) — is **listed
+  COEP (`crossOriginIsolated`, read when the page loads, chessapp.dev sets them on every response, CTA-154; GitHub Pages cannot) — is **listed
   disabled and says why** ("Needs cross-origin isolation — not available on
   this host"); it is not hidden.
 - **A choice applies at once** and is a preference: `lib/engineChoice.ts`,

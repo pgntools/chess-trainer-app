@@ -74,6 +74,38 @@ import {
 - **An id is stored** (a preference, a played game) **and is never renamed.** A
   new build of the same engine is a new id; `version` is what a reader sees.
 
+### 3.1 Cross-origin isolation on chessapp.dev (CTA-154)
+
+The multi-thread build runs only on a **cross-origin-isolated** page. The swa
+build (`DEPLOY_TARGET=swa`, chessapp.dev) writes, into
+`staticwebapp.config.json`'s `globalHeaders`, **every response**:
+
+```
+Cross-Origin-Opener-Policy:   same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+
+(`scripts/crossOriginIsolation.mjs`; reasoning, what could break it and how
+`yarn check:pages` guards it: [`static-pages.md`](../.claude/rules/static-pages.md)
+§5.) Every response matters: a dedicated worker is isolated by its **own
+script's** COEP, so the worker `.js` carries the headers too, and the `.wasm`
+and the helper threads it starts are same-origin. Checked 2026-10-07 in
+Chromium against the production swa build served with those headers:
+`self.crossOriginIsolated === true` on every page tried (front page, `/he/`,
+the Blog, Library, Openings, Settings), all three engines give lines on the
+Analysis Board (the multi-thread one starts its helper workers), and nothing is
+logged or blocked.
+
+- **GitHub Pages is unchanged**: no headers, `crossOriginIsolated` false, the
+  multi-thread build listed disabled with its reason. Nothing else about the
+  app depends on isolation.
+- The headers are the host's. Only a deploy proves Azure sends them; afterwards
+  `curl -sI https://chessapp.dev/` shows both and the console says
+  `crossOriginIsolated` → `true`.
+- **A new cross-origin sub-resource** (a font, image, embed, script from
+  another site) is blocked by `require-corp` unless that host sends
+  `Cross-Origin-Resource-Policy: cross-origin` — see `static-pages.md`.
+
 ## 4. The reader's choice (CTA-153)
 
 Settings → Engine (`/settings/engine`, [`settings.md`](../.claude/rules/settings.md)
@@ -185,7 +217,7 @@ board**:
   message already makes a late result harmless, and `search()`'s "a newer
   position replaces a waiting one" is what keeps the wire from queueing.
 
-**Not in this layer:** the COOP / COEP headers on the swa host (CTA-154), any remote
+**Not in this layer:** any remote
 transport, per-board engine choice, cloud eval.
 
 ## 9. Testing

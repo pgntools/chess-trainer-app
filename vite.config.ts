@@ -3,6 +3,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import mdx from '@mdx-js/rollup'
 import remarkFrontmatter from 'remark-frontmatter'
+import { existsSync, readFileSync } from 'node:fs'
 import pkg from './package.json' with { type: 'json' }
 import { blogArticles } from './plugins/blogArticles.ts'
 
@@ -11,6 +12,19 @@ const basePathOf = (value: string | undefined): string => {
   const trimmed = (value ?? '').trim().replace(/^\/+|\/+$/g, '')
   if (value === undefined || value.trim() === '') return '/chess-trainer-app/'
   return trimmed === '' ? '/' : `/${trimmed}/`
+}
+
+/**
+ * The headers the Static Web Apps host sends with every response (CTA-154) —
+ * read from the build's own `dist/staticwebapp.config.json`, so `vite preview`
+ * of a `DEPLOY_TARGET=swa` build serves the page as chessapp.dev does: COOP /
+ * COEP, so it is cross-origin isolated and the browser pass (`yarn test:a11y`)
+ * runs it so. A GitHub Pages build writes no such file and gets none, like its host.
+ */
+const hostHeadersOf = (): Record<string, string> => {
+  const file = 'dist/staticwebapp.config.json'
+  if (!existsSync(file)) return {}
+  return (JSON.parse(readFileSync(file, 'utf8')) as { globalHeaders?: Record<string, string> }).globalHeaders ?? {}
 }
 
 const mdxPlugin = mdx({ mdExtensions: [], include: /\.mdx$/, remarkPlugins: [remarkFrontmatter] })
@@ -81,6 +95,7 @@ export default defineConfig({
     `{ type: "module" }` worker is anyway.
   */
   worker: { format: 'es' },
+  preview: { headers: hostHeadersOf() },
   test: {
     // `e2e/` is Playwright's (CTA-116): a real browser over the production
     // build, run by `yarn test:a11y` — not Vitest's.

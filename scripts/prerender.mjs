@@ -29,7 +29,8 @@
     The pages that fall through to the site's own image are listed.
   - **Per host**: `gh` writes a refresh page at each of the Blog's old
     addresses (`redirectFrom`); `swa` writes `staticwebapp.config.json` (the
-    fallback, real 301s for those addresses, headers), `sitemap.xml` and
+    fallback, real 301s for those addresses, headers — COOP / COEP among them,
+    `scripts/crossOriginIsolation.mjs`), `sitemap.xml` and
     `robots.txt` — which a GitHub Pages project site cannot serve at its
     host's root.
 
@@ -40,6 +41,7 @@ import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { CROSS_ORIGIN_ISOLATION_HEADERS } from "./crossOriginIsolation.mjs";
 
 const DIST = resolve("dist");
 const SERVER_ENTRY = resolve("dist-ssr/entry-server.js");
@@ -182,9 +184,11 @@ if (TARGET === "gh") {
       ),
       { route: "/assets/*", headers: { "Cache-Control": "public, max-age=31536000, immutable" } },
     ],
+    // Every response — the page, the Stockfish worker and its .wasm — carries COOP / COEP, so the page is cross-origin isolated (CTA-154).
     globalHeaders: {
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "strict-origin-when-cross-origin",
+      ...CROSS_ORIGIN_ISOLATION_HEADERS,
     },
     mimeTypes: { ".wasm": "application/wasm" },
   };
