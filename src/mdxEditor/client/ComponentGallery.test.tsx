@@ -71,12 +71,19 @@ describe("the Components gallery (CTA-140)", () => {
     expect(screen.getByRole("switch", { name: "Side lines" })).toBeChecked();
   });
 
+  it("opens the two-column game on the same sample, its settings those of <InlinePgnGame>", async () => {
+    const user = userEvent.setup();
+    mount();
+    await pick(user, "A game, its moves in two columns");
+    expect(code()).toHaveValue('import game from "./writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn?raw"\n\n<InlinePgnGameColumns pgn={game} />');
+  });
+
   it("picks an entry from the tree by the keyboard, and opens it on its own sample", async () => {
     const user = userEvent.setup();
     mount();
     within(tree()).getByRole("treeitem", { name: "A game, its moves beside it" }).focus();
-    // Down through the Boards to the stored game.
-    await user.keyboard("{ArrowDown}{Enter}");
+    // Down through the Boards — past the two-column variant — to the stored game.
+    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
     expect(within(tree()).getByRole("treeitem", { name: "A stored game" })).toHaveAttribute("aria-current", "page");
     expect(code()).toHaveValue('<StoredGameEmbed src="/library/capablanca/2" />');
     expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Built-in example — Capablanca, game 2 — /library/capablanca/2 (the default)");

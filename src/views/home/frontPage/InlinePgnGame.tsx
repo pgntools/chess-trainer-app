@@ -40,6 +40,12 @@ import { EmbedSource } from "./embedSource";
  * saved analysis, a played game, a repertoire (its whole tree) — read by
  * `<EmbedSource>`, then shown as a PGN of the article's own is. `src` may
  * also be the PGN's text.
+ *
+ * **`<InlinePgnGameColumns>`** (CTA-146) is the same component with its moves
+ * laid out as the Analysis Board's move list is: numbered pairs in two
+ * columns, a side line a row under the pair it answers, in a box no taller
+ * than the board that scrolls when the tree is longer. Same props, same
+ * sources; `<InlinePgnGame>` is untouched.
  */
 
 type InlinePgnGameProps = {
@@ -73,7 +79,18 @@ const plyOf = (value: number | string | undefined): number | undefined => {
   return typeof number === "number" && Number.isFinite(number) ? number : undefined;
 };
 
-export function InlinePgnGame({ src, pgn, game, ...shown }: InlinePgnGameProps) {
+type MovesLayout = "run" | "columns";
+
+export function InlinePgnGame(props: InlinePgnGameProps) {
+  return <InlinePgnSource {...props} movesLayout="run" />;
+}
+
+/** `<InlinePgnGame>` with its moves in numbered pairs, in a box capped at the board's height (CTA-146). */
+export function InlinePgnGameColumns(props: InlinePgnGameProps) {
+  return <InlinePgnSource {...props} movesLayout="columns" />;
+}
+
+function InlinePgnSource({ src, pgn, game, ...shown }: InlinePgnGameProps & { movesLayout: MovesLayout }) {
   const { t } = useTranslation();
   const instance = useId().replace(/[^a-zA-Z0-9]/g, "");
   if (src === undefined) return <InlinePgnBoard pgn={pgn ?? ""} game={game} {...shown} />;
@@ -118,7 +135,8 @@ function InlinePgnBoard({
   comments,
   orientation,
   caption,
-}: Omit<InlinePgnGameProps, "src" | "pgn"> & { pgn: string }) {
+  movesLayout,
+}: Omit<InlinePgnGameProps, "src" | "pgn"> & { pgn: string; movesLayout: MovesLayout }) {
   const { t } = useTranslation();
   const instance = useId().replace(/[^a-zA-Z0-9]/g, "");
 
@@ -179,6 +197,7 @@ function InlinePgnBoard({
       showComments={comments}
       shapes={shapes}
       nextMoveArrows={showNextMoveArrow}
+      movesLayout={movesLayout}
       caption={caption}
     />
   );

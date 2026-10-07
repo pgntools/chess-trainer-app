@@ -77,6 +77,17 @@ export const CATALOG: readonly CatalogFolder[] = [
         },
       },
       {
+        id: "single-inline-columns",
+        label: "The game, its moves in two columns",
+        summary: "The same, the moves as the Analysis Board lists them — numbered pairs, side lines under their pair — in a box no taller than the board",
+        code: (source) => {
+          const name = pgnOf(source);
+          if (name !== undefined) return `<InlinePgnGameColumns pgn={${name}} game="1" caption="…" />`;
+          const game = oneGameOf(source);
+          return game === undefined ? undefined : `<InlinePgnGameColumns src="${gamePath(game.collection, game.number)}" caption="…" />`;
+        },
+      },
+      {
         id: "single-board",
         label: "The game on a board",
         summary: "The Library game on a board, its players over it, with a link to open it",

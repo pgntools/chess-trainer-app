@@ -7,7 +7,7 @@ import { CollectionGameBoard } from "./CollectionGameBoard";
 import { CollectionDoubleEliminationEmbed, CollectionKnockoutEmbed } from "./CollectionKnockoutEmbed";
 import { CollectionTeamStandingsEmbed } from "./CollectionTeamStandingsEmbed";
 import { CollectionTournamentEmbed } from "./CollectionTournamentEmbed";
-import { InlinePgnGame } from "./InlinePgnGame";
+import { InlinePgnGame, InlinePgnGameColumns } from "./InlinePgnGame";
 import { KnockoutBracketEmbed } from "./KnockoutBracketEmbed";
 import { MatchTableEmbed } from "./MatchTableEmbed";
 import { NavCards } from "./NavCards";
@@ -32,6 +32,7 @@ import { TeamStandingsEmbed } from "./TeamStandingsEmbed";
  * | `<RepertoireBoard _id="/repertoires/<id>" startMove="1" fallback="e4-white" />` | a repertoire on a board, or a shipped sample where the reader has none |
  * | `<CollectionCard _id="/library/<c>" showGame="52" />` | a collection: a board on one game, a short table of its games |
  * | `<InlinePgnGame pgn={game} from="5" to="15..." start="11" />` | an excerpt of a PGN: a window of its moves, side lines nested, on a board — one game as often as an article likes |
+ * | `<InlinePgnGameColumns pgn={game} from="5" to="15..." />` | the same, its moves in numbered pairs — two columns, a side line a row under its pair — in a box no taller than the board, scrolling (CTA-146) |
  * | `<StoredGameEmbed reference="…" />` | any stored game by its `?game=` reference (`analysis/saved/<id>`, `play/games/<id>`, …) |
  * | `<SwissStandingsTable pgn={games} />` | a Swiss's standings from its games' PGN — a row per player, a cell per round (CTA-128) |
  * | `<RoundRobinCrossTable pgn={games} />` | a round robin's crosstable from its games' PGN — single or double (CTA-128) |
@@ -45,7 +46,7 @@ import { TeamStandingsEmbed } from "./TeamStandingsEmbed";
  * | `<NavCards />` | every screen as a card, by section — the landing page before CTA-126 |
  * | `<ArticleImage src={photo} alt="…" width="60%" caption="…" />` | an image beside the article (`import photo from "./photo.png"`) — its width, height, place, fit, corners, border, shadow and a full-size link (CTA-137) |
  *
- * **One component, any source** (CTA-140): every table and `<InlinePgnGame>`
+ * **One component, any source** (CTA-140): every table, `<InlinePgnGame>` and `<InlinePgnGameColumns>`
  * read their games through `embedSource.tsx` — `pgn={games}` for a PGN of
  * the article's own, or `src="<app path>"` for anything the app keeps: a
  * Library collection or one game of it, a saved analysis, a played game, a
@@ -76,6 +77,7 @@ export const mdxComponents: MDXComponents = {
   CollectionCard,
   StoredGameEmbed,
   InlinePgnGame,
+  InlinePgnGameColumns,
   SwissStandingsTable: SwissStandingsEmbed,
   RoundRobinCrossTable: RoundRobinCrossTableEmbed,
   KnockoutBracket: KnockoutBracketEmbed,

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { mainline, pathTo, type GameTree } from "./gameTree";
 import { parsePgnTree } from "./pgn";
-import { excerptTokens, isInExcerpt, moveName, resolveExcerpt, sanPathOfLine, type ExcerptToken } from "./pgnExcerpt";
+import { excerptRows, excerptTokens, isInExcerpt, moveName, resolveExcerpt, sanPathOfLine, type ExcerptToken } from "./pgnExcerpt";
 
 // 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 — with 2... d6 (2... Nf6 3. Nxe5) and 3. Bc4 (3. Bc4 Bc5).
 const PGN = "1. e4 e5 2. Nf3 Nc6 (2... d6 3. d4) (2... Nf6 3. Nxe5) 3. Bb5 (3. Bc4 Bc5 4. c3) 3... a6 4. Ba4 Nf6 *";
@@ -93,5 +93,32 @@ describe("excerptTokens — the move list", () => {
 
   it("names a move on its own", () => {
     expect(moveName(tree.startFen, line[3])).toBe("2... Nc6");
+  });
+});
+
+describe("excerptRows — the move list in numbered pairs", () => {
+  const rowsOf = (options: Parameters<typeof resolveExcerpt>[1]) => excerptRows(tree.startFen, excerptTokens(tree, resolveExcerpt(tree, options)));
+  const summary = (rows: ReturnType<typeof rowsOf>) =>
+    rows.map((row) => `${row.number}. ${row.white?.node.san ?? "…"} ${row.black?.node.san ?? "…"}${row.variations.length > 0 ? ` [${row.variations.length}]` : ""}`);
+
+  it("pairs the moves by number, a side line on the pair holding the move it answers", () => {
+    const rows = rowsOf({});
+    expect(summary(rows)).toEqual(["1. e4 e5", "2. Nf3 Nc6 [2]", "3. Bb5 a6 [1]", "4. Ba4 Nf6"]);
+    // Nested lines stay inside their run.
+    expect(text(rows[1].variations[0].tokens)).toBe("2... d6 3. d4");
+  });
+
+  it("opens a window on Black's move with an empty White cell, and ends on White's with an empty Black one", () => {
+    expect(summary(rowsOf({ from: "2", to: "3" }))).toEqual(["2. … Nc6 [2]", "3. Bb5 … [1]"]);
+  });
+
+  it("is empty for an empty window, and has no side lines when they are left out", () => {
+    expect(rowsOf({ from: "2", to: "2" })).toEqual([]);
+    expect(summary(rowsOf({ variations: false }))).toEqual(["1. e4 e5", "2. Nf3 Nc6", "3. Bb5 a6", "4. Ba4 Nf6"]);
+  });
+
+  it("numbers from a position that is not the start", () => {
+    const fen = parsePgnTree('[FEN "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 24"]\n[SetUp "1"]\n\n24... Kd7 25. Kd2 *');
+    expect(summary(excerptRows(fen.startFen, excerptTokens(fen, resolveExcerpt(fen))))).toEqual(["24. … Kd7", "25. Kd2 …"]);
   });
 });

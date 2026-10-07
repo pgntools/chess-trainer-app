@@ -120,6 +120,20 @@ export const GALLERY: readonly GalleryFolder[] = [
           target?.kind === "address" && target.address.kind === "collection" ? `<InlinePgnGame ${sourceProp(target)} game="1" />` : `<InlinePgnGame ${sourceProp(target, "game")} />`,
       },
       {
+        id: "inline-pgn-game-columns",
+        component: "InlinePgnGameColumns",
+        label: "A game, its moves in two columns",
+        summary:
+          "<InlinePgnGame> with its moves as the Analysis Board lists them — numbered pairs, side lines a row under their pair — in a box no taller than the board, scrolling",
+        reads: ["pgn", "libraryGame", "collection", "analysis", "playedGame", "repertoire"],
+        sample: { file: "writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn" },
+        pgnName: "game",
+        markup: (target) =>
+          target?.kind === "address" && target.address.kind === "collection"
+            ? `<InlinePgnGameColumns ${sourceProp(target)} game="1" />`
+            : `<InlinePgnGameColumns ${sourceProp(target, "game")} />`,
+      },
+      {
         id: "stored-game-embed",
         component: "StoredGameEmbed",
         label: "A stored game",

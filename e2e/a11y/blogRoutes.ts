@@ -11,8 +11,8 @@ import { readArticleFiles, splitFrontmatter } from "../../src/lib/articleFrontma
   build the pass runs against, so it is not here either.
 */
 
-/** The embeds that draw a chessboard (`views/home/frontPage/`): `DemoBoard`'s four and `ExcerptBoard`'s one. */
-const BOARD_EMBEDS = /<(CollectionGameBoard|RepertoireBoard|CollectionCard|StoredGameEmbed|InlinePgnGame)\b/;
+/** The embeds that draw a chessboard (`views/home/frontPage/`): `DemoBoard`'s four and `ExcerptBoard`'s two. */
+const BOARD_EMBEDS = /<(CollectionGameBoard|RepertoireBoard|CollectionCard|StoredGameEmbed|InlinePgnGame|InlinePgnGameColumns)\b/;
 
 /** A body with its fenced blocks and inline code taken out — where an article shows markup rather than using it. */
 const drawnPart = (body: string): string =>
