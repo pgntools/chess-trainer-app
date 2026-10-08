@@ -25,6 +25,11 @@ export type AnalysisEngineFormProps = {
    * `ANALYSIS_SETTING_BOUNDS`' ceilings.
    */
   deviceLimits?: DeviceEngineLimits;
+  /**
+   * Offer **Write evaluations into the game** (CTA-167) — `settings.writeEvals`'
+   * switch, the Analysis Board's. Absent or false: no switch, today's form.
+   */
+  offerWriteEvals?: boolean;
   /** The Clear button — absent, no button (a Library game is not cleared). */
   onClear?: () => void;
   /**
@@ -50,7 +55,9 @@ type OptionRow = {
 /**
  * **The Engine tab of an analysis board** (CTA-113; `AnalysisSettings` since
  * CTA-51) — how hard to search (infinite analysis, or a depth and a move
- * time), how many lines, the threads and the hash, the eval bar, and a Clear
+ * time), how many lines, the threads and the hash, the eval bar, on the
+ * Analysis Board whether its evaluations are written into the game (CTA-167,
+ * `offerWriteEvals`), and a Clear
  * back to an empty board: the Analysis Board's, the Library's game board's, the Openings explorer's and the repertoire
  * player's. Shorter than Play with Engine's `EngineSettingsForm` on purpose:
  * no opponent, so no strength to weaken.
@@ -75,6 +82,7 @@ function AnalysisEngineForm({
   showEvalBar,
   onShowEvalBarChange,
   deviceLimits,
+  offerWriteEvals = false,
   onClear,
   testId,
 }: AnalysisEngineFormProps) {
@@ -163,6 +171,15 @@ function AnalysisEngineForm({
         testIdOn="control"
         testId={`${testId}-setting-evalbar`}
       />
+      {offerWriteEvals && (
+        <SwitchField
+          label={t("analysis.settings.writeEvals")}
+          help={t("analysis.settings.writeEvalsHelp")}
+          checked={settings.writeEvals}
+          onChange={(writeEvals) => onChange({ writeEvals })}
+          testId={`${testId}-setting-write-evals`}
+        />
+      )}
       {onClear !== undefined && (
         <Box>
           <Button variant="outlined" startIcon={<RestartAltRoundedIcon />} data-testid={`${testId}-clear`} onClick={onClear}>

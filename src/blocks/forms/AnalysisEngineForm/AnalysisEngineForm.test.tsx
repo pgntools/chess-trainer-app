@@ -70,6 +70,21 @@ describe("AnalysisEngineForm", () => {
     expect(onChange).toHaveBeenLastCalledWith({ threads: SETTINGS.threads + 1 });
   });
 
+  it("offers Write evaluations into the game only when asked, and switches it (CTA-167)", async () => {
+    const user = userEvent.setup();
+    mount();
+    expect(screen.queryByRole("switch", { name: "Write evaluations into the game" })).toBeNull();
+
+    const { onChange } = mount({ offerWriteEvals: true, engineOn: false });
+    const write = screen.getByRole("switch", { name: "Write evaluations into the game" });
+    // A recording preference, not a search control: live with the engine off.
+    expect(write).toBeEnabled();
+    expect(write).not.toBeChecked();
+    await user.click(write);
+    expect(onChange).toHaveBeenCalledWith({ writeEvals: true });
+    await expectNoAxeViolations(screen.getAllByTestId("probe-settings").at(-1)!);
+  });
+
   it("turns the search's controls off while the engine is", () => {
     mount({ engineOn: false });
     expect(screen.getByRole("switch", { name: "Infinite analysis" })).toBeDisabled();

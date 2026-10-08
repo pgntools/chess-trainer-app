@@ -1461,3 +1461,98 @@ describe("the PGN's shapes on the board (CTA-143)", () => {
     await waitFor(() => expect(findSavedAnalysis("a1")?.pgn).toContain("{ Sharp. [%csl Gd4] }"));
   });
 });
+
+describe("writing the engine's evaluations into the game (CTA-167)", () => {
+  const writeSwitch = () => screen.getByRole("switch", { name: "Write evaluations into the game" });
+
+  /** One search of the position on screen, finished at `depth` with `cp` from the side to move's view. */
+  const finish = (depth: number, cp: string) => {
+    const engine = FakeEngine.latest();
+    const fen = engine.lastSearch;
+    act(() => {
+      engine.say({ fen, uciMessage: "info", depth, multipv: 1, positionEvaluation: cp, pv: "e7e5" });
+    });
+    act(() => {
+      engine.say({ fen, uciMessage: "bestmove", bestMove: "e7e5" });
+    });
+  };
+
+  it("is an Engine-tab switch, off by default: a finished search writes nothing", async () => {
+    await stored("a1", "1. e4 *", ["e4"], { name: "Mine" });
+    mount("/tools/analysis?analysis=a1");
+    fireEvent.click(screen.getByTestId("analysis-setting-engine"));
+    openTab("engine");
+    expect(writeSwitch()).not.toBeChecked();
+
+    finish(18, "35");
+    expect(screen.getByTestId("analysis-save")).toBeDisabled();
+  });
+
+  it("writes a finished search as [%eval] on its move, Save offers it, and a shallower search leaves it", async () => {
+    const user = userEvent.setup();
+    await stored("a1", "1. e4 *", ["e4"], { name: "Mine" });
+    mount("/tools/analysis?analysis=a1");
+    fireEvent.click(screen.getByTestId("analysis-setting-engine"));
+    openTab("engine");
+    await user.click(writeSwitch());
+    expect(writeSwitch()).toBeChecked();
+    expect(FakeEngine.latest().lastSearch).toBe(AFTER_E4);
+
+    // Black to move, +35 for Black: White's view is -0.35.
+    finish(18, "35");
+    expect(screen.getByTestId("analysis-save")).toBeEnabled();
+    fireEvent.click(screen.getByTestId("analysis-save"));
+    fireEvent.click(within(screen.getByTestId("analysis-changes")).getByTestId("analysis-changes-update"));
+    await waitFor(() => expect(screen.getByTestId("analysis-save")).toBeDisabled());
+    const pgn = findSavedAnalysis("a1")?.pgn ?? "";
+    expect(pgn).toContain("1. e4 { [%eval -0.35,18] }");
+    expect(pgn).toContain('[Annotator "Stockfish 19 Lite"]');
+    // The switch is kept with the record's settings.
+    expect(findSavedAnalysis("a1")?.settings.writeEvals).toBe(true);
+
+    // Shallower: nothing changes, so there is nothing to save.
+    finish(12, "-200");
+    expect(screen.getByTestId("analysis-save")).toBeDisabled();
+
+    // As deep or deeper replaces it.
+    finish(18, "50");
+    expect(screen.getByTestId("analysis-save")).toBeEnabled();
+  });
+
+  it("writes a search ended by a change of position on the move it searched, at the depth it reached", async () => {
+    const user = userEvent.setup();
+    await stored("a1", "1. e4 *", ["e4"], { name: "Mine" });
+    mount("/tools/analysis?analysis=a1");
+    fireEvent.click(screen.getByTestId("analysis-setting-engine"));
+    openTab("engine");
+    await user.click(writeSwitch());
+
+    const engine = FakeEngine.latest();
+    act(() => {
+      engine.say({ fen: AFTER_E4, uciMessage: "info", depth: 9, multipv: 1, positionEvaluation: "10", pv: "e7e5" });
+    });
+    // The reader steps back to the start; the search of e4 ends now, stamped with its own position.
+    fireEvent.click(screen.getByTestId("board-control-first"));
+    expect(boardOptions().position).toBe(START);
+    act(() => {
+      engine.say({ fen: AFTER_E4, uciMessage: "bestmove", bestMove: "e7e5" });
+    });
+
+    fireEvent.click(screen.getByTestId("analysis-save"));
+    fireEvent.click(within(screen.getByTestId("analysis-changes")).getByTestId("analysis-changes-update"));
+    await waitFor(() => expect(findSavedAnalysis("a1")?.pgn).toContain("1. e4 { [%eval -0.10,9] }"));
+    // Standing at the start the whole time: the step back was not undone by the write.
+    expect(boardOptions().position).toBe(START);
+  });
+
+  it("writes the start position's evaluation into the game's opening comment", async () => {
+    const user = userEvent.setup();
+    mount();
+    fireEvent.click(screen.getByTestId("analysis-setting-engine"));
+    openTab("engine");
+    await user.click(writeSwitch());
+    finish(20, "25");
+    openTab("export");
+    expect((screen.getByTestId("analysis-export-pgn") as HTMLTextAreaElement).value).toMatch(/\{ \[%eval 0\.25,20\] \} 1\.|^\{ \[%eval 0\.25,20\] \}|\n\{ \[%eval 0\.25,20\] \}/);
+  });
+});

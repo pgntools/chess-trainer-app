@@ -476,6 +476,7 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
                   showEvalBar={state.showEvalBar}
                   onShowEvalBarChange={state.setShowEvalBar}
                   deviceLimits={deviceEngineLimits()}
+                  offerWriteEvals
                   onClear={() => {
                     state.clearBoard();
                     clearArrivalUrl();

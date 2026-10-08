@@ -54,6 +54,9 @@ const COMMAND = /\[%([A-Za-z][\w-]*)\s*([^\]]*)\]/g;
 /** The commands the board draws rather than the block reads (CTA-143). */
 const SHAPE_COMMANDS = new Set(["cal", "csl"]);
 
+/** An `[%eval]` value with a depth after it — `0.17,20`, `#-3,18`. */
+const EVAL_WITH_DEPTH = /^\s*([^,\s]+)\s*,\s*(\d+)\s*$/;
+
 /** The assessment glyphs an analysis export writes before its number. */
 const ASSESSMENT = String.raw`(\+-|-\+|\+\/-|-\/\+|\+\/=|=\/\+|=|∞)`;
 
@@ -75,7 +78,11 @@ export const readComment = (raw: string): ReadComment => {
   if (games !== undefined) attributes.push({ key: "games", value: String(games) });
 
   let text = withoutGames(withoutPlayChance(raw)).replace(COMMAND, (_, key: string, value: string) => {
-    if (!SHAPE_COMMANDS.has(key.toLowerCase())) attributes.push({ key, value: value.trim() });
+    if (SHAPE_COMMANDS.has(key.toLowerCase())) return " ";
+    // `[%eval 0.17,20]` — chessops' and python-chess's depth after the comma (CTA-167): two chips.
+    const evalDepth = key.toLowerCase() === "eval" ? EVAL_WITH_DEPTH.exec(value) : null;
+    if (evalDepth !== null) attributes.push({ key, value: evalDepth[1] }, { key: "depth", value: evalDepth[2] });
+    else attributes.push({ key, value: value.trim() });
     return " ";
   });
 

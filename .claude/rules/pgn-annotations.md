@@ -113,14 +113,18 @@ The PGN-spec embedded command form, as lichess, ChessBase and the chess.com
 exports write them. `readComment` takes every one out of the prose and shows
 it as a **chip** in the comment block (`AnnotationsBar`): the key's label,
 then the value, pinned LTR. The value is **shown as written, never
-interpreted** — no `[%eval]` feeds the eval bar today. Two readings go
+interpreted** — no `[%eval]` feeds the eval bar today — save that an
+`[%eval]` value with a depth after a comma (`0.17,20`) is two chips, Eval
+and Depth (CTA-167). Two readings go
 beyond the chip: the Analysis Board's arrows, which can be sized by
 `[%eval]` (CTA-98, §3), and lichess's shapes, `[%cal]` / `[%csl]`, which
-**every board draws instead of a chip** (CTA-143, below).
+**every board draws instead of a chip** (CTA-143, below). One command is
+also **written** by the app: `[%eval]`, the Analysis Board's engine
+evaluations (CTA-167, below).
 
 | Command | Example | Chip label (`annotations.keys.*`) | Does anything else read it? |
 | --- | --- | --- | --- |
-| `%eval` | `[%eval 6.91]`, `[%eval #-3]` | Eval | **yes** — the Analysis Board's *Evaluation* arrow widths (§3) |
+| `%eval` | `[%eval 6.91]`, `[%eval #-3]`, `[%eval 0.17,20]` (a depth: Eval and Depth chips) | Eval | **yes** — the Analysis Board's *Evaluation* arrow widths (§3); **written** by its engine (CTA-167, below) |
 | `%clk` | `[%clk 0:22:33]` | Clock | no |
 | `%emt` | `[%emt 0:00:12]` | Time spent | no |
 | `%cal` | `[%cal Ge2e4,Rd7d5]` | none — drawn, not chipped (CTA-143) | **yes** — drawn on every explorer board and an article's `<InlinePgnGame>` (below), and written by drawing on an editing board |
@@ -187,6 +191,23 @@ two commands out of the prose and makes no chip of them, so such a comment
 reads empty — the block lists no row for it and is not shown where it is all
 there is — and `hasComments` (the move list's comment mark) does not count
 it. The board says what it says.
+
+### `[%eval]` written — the Analysis Board's engine (CTA-167), `lib/engineEvals.ts`
+
+The Analysis Board's Engine tab has **Write evaluations into the game**
+(off by default — [`analysis-board.md`](./analysis-board.md) §1). While it is
+on, each search that **finishes** — at the moment `useEngineModule` records
+the score in `evalsByFen` (`onSearchFinished`) — is written into the tree:
+
+| | |
+| --- | --- |
+| **Format** | `[%eval <pawns>,<depth>]`: White's view (the engine's `Score`, already normalised), two decimals (`0.17`, `-1.50`), a mate as `#N` signed by who mates (`#3`, `#-2`), then the depth that search's last scored line reached. The depth after the comma is chessops' and python-chess's form; lichess exports write `[%eval 0.17]` with none. `formatEval`. |
+| **On which move** | The move that leads to the searched position — the node the position was **last on screen at** (the search may end after the reader moved on). The start position, which no move leads to, writes into the game's opening comment (`tree.comments`), as its shapes do (CTA-149). A node that no longer leads to the searched position (another game loaded) is not written to. |
+| **Placement** | Into the move's existing `[%eval]` (the first one, in whichever comment), else **first** in its first comment, else a comment of its own. The prose and every other command (`[%cal]`, `[%clk]`, `prc:`, `[%games]` …) are untouched. `withEval`. |
+| **Override** | A new evaluation replaces the stored one only when its depth is **greater than or equal to** the stored depth; a stored `[%eval]` with **no** depth (a lichess import) is always replaced; a shallower search never overwrites a deeper one. A write that would change nothing is the same tree back — no spurious change. |
+| **The engine** | The game's `[Annotator "…"]` tag, set or updated when an evaluation is written (`annotatorOf`): the running engine's descriptor name, with its version after it unless the name already says it — `Stockfish 19 Lite`, `Stockfish 19 Lite (multi-thread)`. PGN has no per-move engine command. |
+| **What counts as finished** | A search that ends with a `bestmove` after at least one scored top line: to its depth or time, or **ended early** — by a change of position (the wrapper stamps its `bestmove` with the FEN it was searching) or by the engine switched off — at the depth it reached. Infinite analysis and Play alike. A search stopped before its first scored line is not written. |
+| **An edit like any other** | `recordEvaluation` → `setComments` (and the tag), applied to the latest tree by the core's `annotateTree` (a writer that is not a click — its callback may be renders old). Pure and id-preserving, so the board's "changed", Save, Discard and Export-with-comments behave as for a typed comment. |
 
 ### The engine-evaluation shapes analysis exports write
 
@@ -335,6 +356,7 @@ touched by it:
 | `src/lib/playChance.ts` | `prc`: reading, writing, the chance rules. |
 | `src/lib/gamesTag.ts` | `games`: `gamesInText`, `withoutGames`, `gamesOf`. |
 | `src/lib/nextMoveWeights.ts` | The Analysis Board's arrow widths from `[%eval]`, `games`, `prc` or the lines ahead; which of them a tree carries. |
+| `src/lib/engineEvals.ts` | `[%eval]` **written** (CTA-167): `formatEval`, `withEval` (placement and the override by depth), `annotatorOf` / `withAnnotator`, `recordEvaluation` (§2). |
 | `src/lib/pgnComments.ts` | `reflowComment` — hard-wrapped comment text back into paragraphs. |
 | `src/views/explorer/AnnotationsBar.tsx` | The comment block: prose, chips, glyphs. |
 | `src/views/explorer/CommentDialog.tsx`, `NagDialog.tsx`, `PlayChanceDialog.tsx` | The three editors, opened from the move menu. |
@@ -345,6 +367,8 @@ Tests: `lib/pgnAnnotations.test.ts` (parse, write, merge, the merge's
 `games` counting, edits), `lib/gameTree.test.ts` (the counting's placement),
 `lib/moveAnnotations.test.ts`, `lib/playChance.test.ts`,
 `lib/nextMoveWeights.test.ts` (the `games` and `[%eval]` readers, the widths),
+`lib/engineEvals.test.ts` (the `[%eval]` writer: format, placement, override,
+the Annotator, round trip),
 `lib/boardShapes.test.ts` (reading, and `toggleShape`'s add / remove /
 recolour and round trip), `views/explorer/NagDialog.test.tsx`,
 `views/explorer/useVariationsExplorer.test.tsx` (the shapes drawn and written),

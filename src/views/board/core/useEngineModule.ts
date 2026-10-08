@@ -59,7 +59,9 @@ import { isTerminal, turnOf } from "./useBoardCore";
  * - **Per-FEN evals** (CTA-50/51): the score a search *finished* with, recorded
  *   when its `bestmove` lands — not per streamed line, each of which is
  *   shallower than the last. Keyed by FEN, so a position reached twice reads
- *   the same score twice, and never cleared by a load.
+ *   the same score twice, and never cleared by a load. A caller that wants
+ *   each finished search as it lands — with its depth and engine — passes
+ *   `onSearchFinished` (CTA-167, the Analysis Board's `[%eval]` writer).
  * - **Normalising the score** through `lib/engineAnalysis.ts` against the turn
  *   of the **searched** FEN. On a board that can show an earlier ply that is a
  *   different side from the live one, and mixing them inverts every evaluation.
@@ -120,6 +122,29 @@ export type EngineModuleStart = {
    * board where the engine plays — see the note above.
    */
   onBestMove?: (bestMove: string, searchedFen: string) => void;
+  /**
+   * **A search finished** (CTA-167) — called at the moment its score is
+   * recorded in {@link EngineModule.evalsByFen}, with the depth it reached and
+   * the engine that ran it: what the Analysis Board writes into the game as
+   * `[%eval]`. A search ended early — by a change of position, or by the
+   * switch going off — still finished, at the depth it reached; one stopped
+   * before its first scored line has nothing to say and is not reported.
+   * Absent: nothing is called, today's behaviour. Memoise it, as
+   * {@link onBestMove}: it is a dependency of the subscription.
+   */
+  onSearchFinished?: (finished: FinishedSearch) => void;
+};
+
+/** One finished search, as {@link EngineModuleStart.onSearchFinished} reports it. */
+export type FinishedSearch = {
+  /** The position searched. */
+  fen: string;
+  /** Its final score, White's view — the one `evalsByFen` keeps. */
+  score: Score;
+  /** The depth of the line that score came from. */
+  depth: number;
+  /** The engine that searched it. */
+  engine: EngineDescriptor;
 };
 
 export type EngineModule = {
@@ -145,6 +170,7 @@ export const useEngineModule = ({
   uciOptions,
   onUciOptionsReady,
   onBestMove,
+  onSearchFinished,
 }: EngineModuleStart): EngineModule => {
   /*
     Which engine, decided at render — a pure read of the registry, no worker is
@@ -158,7 +184,7 @@ export const useEngineModule = ({
     `info` and written down when that search's `bestmove` lands: a position's
     score is recorded when the search for it *completes*.
   */
-  const latestScoreRef = useRef<{ fen: string; score: Score } | null>(null);
+  const latestScoreRef = useRef<{ fen: string; score: Score; depth: number } | null>(null);
 
   const engineRef = useRef<{
     descriptor: EngineDescriptor;
@@ -230,7 +256,7 @@ export const useEngineModule = ({
         const rank = multipv ?? 1;
 
         if (rank === 1 && score !== null) {
-          latestScoreRef.current = { fen: searchedFen, score };
+          latestScoreRef.current = { fen: searchedFen, score, depth: reached };
         }
 
         setAnalysis((previous) =>
@@ -248,22 +274,25 @@ export const useEngineModule = ({
       /*
         The search for this position is over: its final score is what the move
         list keeps, keyed by FEN. A search the switch interrupted still
-        finished, so its score is recorded even with the engine off.
+        finished, so its score is recorded even with the engine off — and so
+        is one a change of position interrupted: the wrapper stamps its
+        `bestmove` with the FEN it was searching, not the one asked for next.
       */
       const final = latestScoreRef.current;
       latestScoreRef.current = null;
-      if (final !== null && final.fen === searchedFen) {
+      const finished = final !== null && final.fen === searchedFen ? final : null;
+      if (finished !== null) {
         setEvals((previous) => {
           const existing = previous.get(searchedFen);
           if (
             existing !== undefined &&
-            existing.kind === final.score.kind &&
-            existing.value === final.score.value
+            existing.kind === finished.score.kind &&
+            existing.value === finished.score.value
           ) {
             return previous;
           }
           const next = new Map(previous);
-          next.set(searchedFen, final.score);
+          next.set(searchedFen, finished.score);
           return next;
         });
       }
@@ -271,10 +300,19 @@ export const useEngineModule = ({
       // The reply. Absent on every board but the one that plays — and that
       // board owns the guard, because only it knows whose turn it is.
       onBestMove?.(bestMove, searchedFen);
+
+      /*
+        Reported after the reply: a reply sets the tree it played into, and
+        an evaluation written into the tree (CTA-167) must land on that tree,
+        not be overwritten by it.
+      */
+      if (finished !== null) {
+        onSearchFinished?.({ fen: searchedFen, score: finished.score, depth: finished.depth, engine: descriptor });
+      }
     });
 
     return unsubscribe;
-  }, [ensureEngine, onBestMove]);
+  }, [ensureEngine, descriptor, onBestMove, onSearchFinished]);
 
   // Tear the worker down on unmount (and on StrictMode remount).
   useEffect(() => {

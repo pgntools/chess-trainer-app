@@ -278,3 +278,50 @@ describe("useEngineModule — lifecycle", () => {
     expect(engine.searches).toEqual([START, START]);
   });
 });
+
+describe("useEngineModule — a finished search reported (CTA-167)", () => {
+  const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+
+  it("reports each finished search with its score, depth and engine, after the reply", () => {
+    const calls: string[] = [];
+    const onSearchFinished = vi.fn(() => calls.push("finished"));
+    const onBestMove = vi.fn(() => calls.push("reply"));
+    mount(start({ onSearchFinished, onBestMove }));
+    const engine = FakeEngine.latest();
+
+    act(() => engine.say({ fen: START, depth: 18, multipv: 1, positionEvaluation: "25", pv: "e2e4" }));
+    expect(onSearchFinished).not.toHaveBeenCalled();
+    act(() => engine.say({ fen: START, bestMove: "e2e4" }));
+
+    expect(onSearchFinished).toHaveBeenCalledWith({
+      fen: START,
+      score: { kind: "cp", value: 25 },
+      depth: 18,
+      engine: expect.objectContaining({ id: DEFAULT_ENGINE_ID }),
+    });
+    // The reply first: its tree is the one an evaluation is written onto.
+    expect(calls).toEqual(["reply", "finished"]);
+  });
+
+  it("reports a search ended by a change of position, at the depth it reached and with its own position", () => {
+    const onSearchFinished = vi.fn();
+    const { rerender } = mount(start({ onSearchFinished, fen: AFTER_E4 }));
+    const engine = FakeEngine.latest();
+    act(() => engine.say({ fen: AFTER_E4, depth: 7, multipv: 1, positionEvaluation: "30", pv: "e7e5" }));
+
+    rerender(start({ onSearchFinished, fen: START }));
+    act(() => engine.say({ fen: AFTER_E4, bestMove: "e7e5" }));
+
+    // Black to move: +30 for Black is -30 from White's view.
+    expect(onSearchFinished).toHaveBeenCalledWith(
+      expect.objectContaining({ fen: AFTER_E4, score: { kind: "cp", value: -30 }, depth: 7 }),
+    );
+  });
+
+  it("reports nothing for a search stopped before its first scored line", () => {
+    const onSearchFinished = vi.fn();
+    mount(start({ onSearchFinished }));
+    act(() => FakeEngine.latest().say({ fen: START, bestMove: "e2e4" }));
+    expect(onSearchFinished).not.toHaveBeenCalled();
+  });
+});
