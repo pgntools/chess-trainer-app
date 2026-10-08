@@ -383,7 +383,7 @@ the old one: a reload may still be holding it.
   `RightPanelProvider`, a catch-all route, and a `Where` probe that records
   the path and (in an effect) the location state, which is how the hand-off
   is asserted.
-- **Stubs**: `lib/engine` → `FakeEngine`, `react-chessboard` →
+- **Stubs**: `lib/engines/builtin` → `builtinEnginesMock` (each shipped engine a `FakeEngine`), `react-chessboard` →
   `reactChessboardMock()` (both from `views/board/boardTestHarness.tsx`;
   `boardOptions()` reads what the board was last given, which is how drops,
   positions, orientation and arrows are asserted). `lib/openings` is mocked

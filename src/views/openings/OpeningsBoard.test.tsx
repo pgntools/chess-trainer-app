@@ -14,9 +14,9 @@ import { boardOptions, FakeEngine } from "../board/boardTestHarness";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 import { NEXT_MOVE_ARROW_COLOR } from "../tools/analysis/nextMoveArrows";
 
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");

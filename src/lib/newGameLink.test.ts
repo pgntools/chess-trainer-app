@@ -68,8 +68,8 @@ describe("newGameRequestOf — reading a link", () => {
 
   it("clamps a number out of range and rounds a fraction", () => {
     expect(
-      newGameRequestOf(params("skill=99&depth=0&movetime=-5&lines=50&threads=9&hash=1e6")).settings,
-    ).toEqual({ skillLevel: 20, depth: 1, moveTimeMs: 0, multiPv: 10, threads: 4, hashMb: 256 });
+      newGameRequestOf(params("skill=99&depth=0&movetime=-5&lines=50&threads=99&hash=1e6")).settings,
+    ).toEqual({ skillLevel: 20, depth: 1, moveTimeMs: 0, multiPv: 10, threads: 32, hashMb: 1024 });
     expect(newGameRequestOf(params("skill=7.6")).settings).toEqual({ skillLevel: 8 });
   });
 

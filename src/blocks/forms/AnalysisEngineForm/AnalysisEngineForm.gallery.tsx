@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
 import type { AnalysisSettings } from "../../../lib/analysisSettings";
-import type { EngineOption } from "../../../lib/engine";
+import type { EngineOption } from "../../../lib/engineTypes";
 import type { BlockFamilyId } from "../../families";
 import AnalysisEngineForm from "./AnalysisEngineForm";
 import { ABSENT, BEFORE_HANDSHAKE, PINNED, SETTINGS, SHIPPED } from "./fixtures";

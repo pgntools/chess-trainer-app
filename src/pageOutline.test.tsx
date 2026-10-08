@@ -12,9 +12,9 @@ import AppThemeWithLang from "./theme/AppThemeWithLang";
   page-structure rules. Each module's migration adds its screens here.
 */
 
-vi.mock("./lib/engine", async () => ({
-  default: (await import("./views/board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("./lib/engines/builtin", async (importOriginal) =>
+  (await import("./views/board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("./views/board/boardTestHarness");
   return reactChessboardMock();

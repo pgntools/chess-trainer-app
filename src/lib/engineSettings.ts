@@ -9,7 +9,7 @@
  * screen in CTA-79; `EngineSettings.tsx` imports it from here.)
  *
  * It is **not** a description of the running engine. Which of these knobs the
- * worker actually has is `Engine.options`' business (`.claude/rules/chessboard.md`
+ * worker actually has is the handle's `options`' business (`.claude/rules/chessboard.md`
  * §4.1): the roster is never hardcoded, a pinned option is never posted, and the
  * hook clamps these numbers to whatever the build declared. So a stored value is
  * a *request*, and swapping the binary re-clamps it rather than breaking it.
@@ -20,13 +20,17 @@ import type { EngineOption } from "./engineTypes";
 
 /** The engine knobs the settings tab drives. */
 export type EngineSettings = {
-  /** UCI `Skill Level`, 0–20. The strength control of a build that declares no `UCI_Elo` (the 2019 one). */
+  /**
+   * UCI `Skill Level`, 0–20 — the strength control of an engine that declares
+   * no `UCI_Elo` (`usesEloStrength`). No shipped engine is one; the knob stays
+   * because the rule is read off what an engine declares, never off its name.
+   */
   skillLevel: number;
   /**
-   * UCI `UCI_Elo` — the strength control of a build that declares it with
-   * `UCI_LimitStrength` (the Stockfish 19 builds, CTA-153); where it does not,
-   * this is carried and never sent. A request like the rest: the engine module
-   * clamps it to the bounds the running build declared (1320–3190 there).
+   * UCI `UCI_Elo` — the strength control of an engine that declares it with
+   * `UCI_LimitStrength`, as every shipped one does (CTA-153). A request like the
+   * rest: the engine module clamps it to the bounds the running build declared
+   * (1320–3190 on the Stockfish 19 builds).
    */
   elo: number;
   /** Plies per search. */
@@ -44,8 +48,9 @@ export type EngineSettings = {
 };
 
 export const DEFAULT_ENGINE_SETTINGS: EngineSettings = {
+  // `approximateElo(10)` is 2100, so an engine strengthened either way starts alike.
   skillLevel: 10,
-  // About what Skill Level 10 plays at (`approximateElo`), so the two defaults agree.
+  // A strong club player: a game a reader can win, against an engine that still punishes a blunder.
   elo: 2100,
   depth: 14,
   multiPv: 3,
@@ -57,27 +62,70 @@ export const DEFAULT_ENGINE_SETTINGS: EngineSettings = {
 
 /**
  * The range each numeric setting is offered in **before** a running worker has
- * said otherwise — the Engine tab's fallback bounds, and the bounds a new-game
- * link (`lib/newGameLink.ts`) clamps its numbers into. Depth stops at 24
- * because the wrapper clamps a search there; move time is 0 (no limit) to
- * 10 s. An option the build declares is re-clamped to *its* bounds by the
- * engine module, so these are never the last word on a UCI option.
+ * said otherwise — the Engine tab's fallback bounds, the analysis boards'
+ * depth and move time too (`lib/analysisSettings.ts`), and the bounds a
+ * new-game link (`lib/newGameLink.ts`) clamps its numbers into. An option the
+ * build declares is re-clamped to *its* bounds by the engine module, so these
+ * are never the last word on a UCI option — but they are a ceiling on one.
+ *
+ * Measured on the Stockfish 19 builds in headless Chromium (CTA-160): the
+ * single-thread build reaches depth 20 in about 3.5 s, 24 in 14 s and 26 in
+ * 34 s on a fast desktop, so **depth stops at 40** (well past any search a
+ * reader would wait for) and **move time at 60 s**. `Hash` took 1024 MB and
+ * **2048 MB crashed the tab** — WebAssembly's memory, not the engine's
+ * declared 33,554,432 — so 1024 is a hard ceiling; and **Threads stops at
+ * 32**, the multi-thread build's own top. What a form offers is lower where
+ * the device is smaller: {@link deviceEngineLimits}.
  */
 export const ENGINE_SETTING_BOUNDS = {
   skillLevel: { min: 0, max: 20 },
   // What the Stockfish 19 builds declare for `UCI_Elo`; the running build's own range replaces it.
   elo: { min: 1320, max: 3190 },
-  depth: { min: 1, max: 24 },
-  moveTimeMs: { min: 0, max: 10000 },
+  depth: { min: 1, max: 40 },
+  moveTimeMs: { min: 0, max: 60000 },
   multiPv: { min: 1, max: MAX_VARIATIONS_OFFERED },
-  threads: { min: 1, max: 4 },
-  hashMb: { min: 1, max: 256 },
+  threads: { min: 1, max: 32 },
+  hashMb: { min: 1, max: 1024 },
 } as const satisfies Record<Exclude<keyof EngineSettings, "playAs">, { min: number; max: number }>;
+
+/** The most of each heavy knob this device should be offered. */
+export type DeviceEngineLimits = { threads: number; hashMb: number };
+
+/**
+ * **What this device can give the engine** — the top of the Threads and Hash
+ * sliders, read off the browser rather than fixed (CTA-160):
+ *
+ * - **Threads**: one fewer than the logical cores (`hardwareConcurrency`), so
+ *   the page keeps one, and **at most 8** — past that the multi-thread build
+ *   searched no deeper in the time measured; 4 where the browser does not say.
+ * - **Hash**: by the device's memory (`deviceMemory`, in GB — Chromium only,
+ *   and never more than 8): 1024 MB at 8 GB, 512 at 4, 128 below; 256 where
+ *   the browser does not say.
+ *
+ * Each within {@link ENGINE_SETTING_BOUNDS}. Pure over the `navigator` it is
+ * handed, so the pre-render (no `navigator`) and a test can call it.
+ */
+export const deviceEngineLimits = (
+  device: { hardwareConcurrency?: number; deviceMemory?: number } | undefined = globalThis.navigator as
+    | { hardwareConcurrency?: number; deviceMemory?: number }
+    | undefined,
+): DeviceEngineLimits => {
+  const cores = device?.hardwareConcurrency;
+  const threads =
+    typeof cores === "number" && Number.isFinite(cores) && cores > 0 ? Math.min(Math.max(cores - 1, 1), 8) : 4;
+  const memory = device?.deviceMemory;
+  const hashMb =
+    typeof memory !== "number" || !Number.isFinite(memory) ? 256 : memory >= 8 ? 1024 : memory >= 4 ? 512 : 128;
+  return {
+    threads: Math.min(threads, ENGINE_SETTING_BOUNDS.threads.max),
+    hashMb: Math.min(hashMb, ENGINE_SETTING_BOUNDS.hashMb.max),
+  };
+};
 
 /**
  * Which UCI option each numeric setting drives. The names are the engine's, and
- * whether the running build *has* them is answered by `Engine.options` rather
- * than by this table.
+ * whether the running build *has* them is answered by the handle's `options`
+ * rather than by this table.
  */
 export const SETTING_UCI_OPTION = {
   skillLevel: "Skill Level",
@@ -94,8 +142,8 @@ export const LIMIT_STRENGTH_OPTION = "UCI_LimitStrength";
  * Whether the running engine takes its strength as an **Elo** (CTA-153): it
  * declares both `UCI_Elo` and `UCI_LimitStrength`. Read off what it declared,
  * never off its name — the same three-state rule as every other knob
- * (`.claude/rules/chessboard.md` §4.1): an engine without them (the 2019
- * build) is strengthened by `Skill Level` alone.
+ * (`.claude/rules/chessboard.md` §4.1): an engine without them is
+ * strengthened by `Skill Level` alone.
  */
 export const usesEloStrength = (engineOptions: ReadonlyMap<string, EngineOption>): boolean =>
   engineOptions.has(SETTING_UCI_OPTION.elo) && engineOptions.has(LIMIT_STRENGTH_OPTION);
@@ -108,6 +156,10 @@ export const usesEloStrength = (engineOptions: ReadonlyMap<string, EngineOption>
  * into "play at that Elo" (and ignores `Skill Level`), and an engine without
  * them drops both names (`UciEngine.setOption`), leaving `Skill Level` to
  * decide. The check is written as `1`; `UciEngine` puts it on the wire as `true`.
+ *
+ * `Hash` and `Threads` are held to {@link ENGINE_SETTING_BOUNDS} here, whatever
+ * a stored record or an imported one says: the engine declares far more than a
+ * tab can hold, and a hash past the ceiling crashes the tab.
  */
 export const uciOptionsOf = (
   settings: Pick<EngineSettings, keyof typeof SETTING_UCI_OPTION>,
@@ -116,8 +168,8 @@ export const uciOptionsOf = (
   [SETTING_UCI_OPTION.elo]: settings.elo,
   [LIMIT_STRENGTH_OPTION]: 1,
   [SETTING_UCI_OPTION.multiPv]: settings.multiPv,
-  [SETTING_UCI_OPTION.threads]: settings.threads,
-  [SETTING_UCI_OPTION.hashMb]: settings.hashMb,
+  [SETTING_UCI_OPTION.threads]: Math.min(settings.threads, ENGINE_SETTING_BOUNDS.threads.max),
+  [SETTING_UCI_OPTION.hashMb]: Math.min(settings.hashMb, ENGINE_SETTING_BOUNDS.hashMb.max),
 });
 
 /**
@@ -147,12 +199,13 @@ export const withClampedUciOptions = <T extends Pick<EngineSettings, keyof typeo
 };
 
 /**
- * A rough Elo for a `Skill Level`, for the label beside the strength slider.
+ * A rough Elo for a `Skill Level` — the label beside the strength slider, and
+ * the Elo column of a game, where the engine is strengthened by `Skill Level`
+ * (one that declares no `UCI_Elo`; no shipped engine since CTA-160).
  *
- * Stockfish's skill-level scale runs from about 1350 at 0 to full strength at 20;
- * this is the linear reading of that range. An **estimate**: this build declares
- * no `UCI_Elo`, so no Elo is ever sent to the engine and the figure must never be
- * presented as a setting.
+ * The linear reading of a range from about 1350 at level 0 to full strength at
+ * 20. An **estimate**: such an engine is never sent an Elo, so the figure must
+ * never be presented as a setting.
  */
 export const approximateElo = (skillLevel: number): number =>
   Math.round(1350 + (skillLevel / 20) * (2850 - 1350));

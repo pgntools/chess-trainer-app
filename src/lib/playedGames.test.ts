@@ -60,7 +60,7 @@ describe("a played game, written down and read back", () => {
       { ...DEFAULT_ENGINE_SETTINGS, playAs: "black", skillLevel: 4 },
     );
     expect(game.pgn).toContain("(1. d4 d5)");
-    expect(game.pgn).toContain('[White "Stockfish (level 4)"]');
+    expect(game.pgn).toContain('[White "Stockfish 19 Lite (Elo 2100)"]');
     expect(game.pgn).toContain('[Black "Player"]');
     const tree = playedGameToTree(game)!;
     expect(playedGameFen(game, tree)).toBe(AFTER_E4);
@@ -125,25 +125,25 @@ describe("a played game, written down and read back", () => {
     expect(playedGameSummary(game, playedGameToTree(game)).result).toBe("*");
   });
 
-  it("names each side for the table, with the engine's Elo estimate on its own side (CTA-100)", () => {
-    const settings = { ...DEFAULT_ENGINE_SETTINGS, playAs: "white" as const, skillLevel: 5 };
+  it("names each side for the table, with the engine's Elo on its own side (CTA-100)", () => {
+    const settings = { ...DEFAULT_ENGINE_SETTINGS, playAs: "white" as const, elo: 1750 };
     const asWhite = playedGameOf("w", parsePgnTree("1. e4 *"), [], settings);
     const white = playedGameSummary(asWhite, playedGameToTree(asWhite));
     expect(white.whiteName).toBe("human");
     expect(white.blackName).toBe("engine");
     expect(white.whiteElo).toBeUndefined();
-    expect(white.blackElo).toBe(approximateElo(5));
+    expect(white.blackElo).toBe(1750);
 
     const asBlack = playedGameOf("b", parsePgnTree("1. e4 *"), [], { ...settings, playAs: "black" });
     const black = playedGameSummary(asBlack, playedGameToTree(asBlack));
     expect(black.whiteName).toBe("engine");
     expect(black.blackName).toBe("human");
-    expect(black.whiteElo).toBe(approximateElo(5));
+    expect(black.whiteElo).toBe(1750);
     expect(black.blackElo).toBeUndefined();
 
     // The sides and the settings are the record's, so an unreadable game keeps them.
     expect(playedGameSummary(asWhite, undefined).whiteName).toBe("human");
-    expect(playedGameSummary(asWhite, undefined).blackElo).toBe(approximateElo(5));
+    expect(playedGameSummary(asWhite, undefined).blackElo).toBe(1750);
   });
 });
 
@@ -357,11 +357,11 @@ describe("resultOfFen", () => {
 describe("playedGameHeaders", () => {
   it("names the reader and the engine by side, and dates the game", () => {
     const headers = playedGameHeaders(
-      { ...DEFAULT_ENGINE_SETTINGS, playAs: "black", skillLevel: 7 },
+      { ...DEFAULT_ENGINE_SETTINGS, playAs: "black", elo: 1700 },
       "*",
       new Date(2026, 8, 7),
     );
-    expect(headers.White).toBe("Stockfish (level 7)");
+    expect(headers.White).toBe("Stockfish 19 Lite (Elo 1700)");
     expect(headers.Black).toBe("Player");
     expect(headers.Date).toBe("2026.09.07");
     expect(headers.Event).toBe("Play with Engine");
@@ -425,6 +425,7 @@ describe("a masked game's costume (CTA-79)", () => {
 
 describe("the engine that played a game (CTA-153)", () => {
   const SINGLE: PlayedGameEngine = { id: "stockfish-19-lite-single", name: "Stockfish 19 Lite", version: "19", strength: "elo" };
+  const MULTI: PlayedGameEngine = { id: "stockfish-19-lite-multi", name: "Stockfish 19 Lite (multi-thread)", version: "19", strength: "elo" };
   const SKILL_ONLY: PlayedGameEngine = { id: "my-engine", name: "My Engine", version: "3", strength: "skill" };
 
   const played = (engine?: PlayedGameEngine, settings = DEFAULT_ENGINE_SETTINGS) =>
@@ -445,20 +446,31 @@ describe("the engine that played a game (CTA-153)", () => {
     expect(played(SINGLE).engine).toEqual(SINGLE);
   });
 
-  it("is absent from a game that names none — which was played by the default engine", () => {
+  it("is absent from a game that names none — which reads as the default engine's", () => {
     const game = played();
     expect(game.engine).toBeUndefined();
     expect(playedGameEngineOf(game)).toEqual(DEFAULT_PLAYED_GAME_ENGINE);
-    expect(DEFAULT_PLAYED_GAME_ENGINE.id).toBe("stockfish-2019-wasm");
+    // The default engine as the registry builds it — `registry.test.ts` holds the descriptor to the same ids.
+    expect(DEFAULT_PLAYED_GAME_ENGINE).toEqual(SINGLE);
   });
 
-  it("signs the default engine as every earlier game was signed — Stockfish (level N)", () => {
-    const settings = { ...DEFAULT_ENGINE_SETTINGS, skillLevel: 7 };
-    expect(played(undefined, settings).pgn).toContain('[Black "Stockfish (level 7)"]');
-    expect(played(DEFAULT_PLAYED_GAME_ENGINE, settings).pgn).toContain('[Black "Stockfish (level 7)"]');
+  it("signs a game that names no engine as the default's, by its Elo", () => {
+    const settings = { ...DEFAULT_ENGINE_SETTINGS, elo: 1900, skillLevel: 7 };
+    expect(played(undefined, settings).pgn).toContain('[Black "Stockfish 19 Lite (Elo 1900)"]');
+    expect(played(DEFAULT_PLAYED_GAME_ENGINE, settings).pgn).toContain('[Black "Stockfish 19 Lite (Elo 1900)"]');
   });
 
-  it("signs another engine by its name, with the Elo it was set to where it took one", () => {
+  it("reads a game the retired 2019 build played as the default's (CTA-160)", () => {
+    const stored = JSON.parse(JSON.stringify(played(undefined)));
+    stored.engine = { id: "stockfish-2019-wasm", name: "Stockfish 2019", version: "2019-08-15", strength: "skill" };
+
+    const game = playedGameFrom(stored)!;
+    expect(game.engine).toBeUndefined();
+    expect(playedGameEngineOf(game)).toEqual(DEFAULT_PLAYED_GAME_ENGINE);
+    expect(playedGameSummary(game, undefined)).toMatchObject({ engineName: "Stockfish 19 Lite", strength: "elo" });
+  });
+
+  it("signs an engine by its name, with the Elo it was set to where it took one", () => {
     const settings = { ...DEFAULT_ENGINE_SETTINGS, elo: 1800, skillLevel: 7 };
     expect(played(SINGLE, settings).pgn).toContain('[Black "Stockfish 19 Lite (Elo 1800)"]');
     expect(played(SKILL_ONLY, settings).pgn).toContain('[Black "My Engine (level 7)"]');
@@ -512,7 +524,8 @@ describe("the engine that played a game (CTA-153)", () => {
   it("compares an absent engine as the default one, so opening an old game rewrites nothing", () => {
     expect(samePlayedGameEngine(undefined, DEFAULT_PLAYED_GAME_ENGINE)).toBe(true);
     expect(samePlayedGameEngine(undefined, undefined)).toBe(true);
-    expect(samePlayedGameEngine(undefined, SINGLE)).toBe(false);
+    expect(samePlayedGameEngine(undefined, SINGLE)).toBe(true);
+    expect(samePlayedGameEngine(undefined, MULTI)).toBe(false);
     expect(samePlayedGameEngine(SINGLE, { ...SINGLE })).toBe(true);
     expect(samePlayedGameEngine(SINGLE, { ...SINGLE, version: "20" })).toBe(false);
   });
@@ -523,15 +536,14 @@ describe("the engine that played a game (CTA-153)", () => {
     await savePlayedGame(played(DEFAULT_PLAYED_GAME_ENGINE));
     expect(findPlayedGame("e1")?.engine).toBeUndefined();
 
-    await savePlayedGame(played(SINGLE));
-    expect(findPlayedGame("e1")?.engine).toEqual(SINGLE);
+    await savePlayedGame(played(MULTI));
+    expect(findPlayedGame("e1")?.engine).toEqual(MULTI);
   });
 
-  it("shows in the Lobby's summary: the default keeps its wording, another is named, an Elo game shows its Elo", () => {
+  it("shows in the Lobby's summary: every engine named, an Elo game with its Elo, a Skill Level one with the estimate", () => {
     const base = DEFAULT_ENGINE_SETTINGS;
-    const legacy = playedGameSummary(played(undefined, { ...base, skillLevel: 4 }), undefined);
-    expect(legacy).toMatchObject({ engineName: undefined, strength: "skill", engineElo: undefined, skillLevel: 4 });
-    expect(legacy.blackElo).toBe(approximateElo(4));
+    const legacy = playedGameSummary(played(undefined, { ...base, elo: 1500 }), undefined);
+    expect(legacy).toMatchObject({ engineName: "Stockfish 19 Lite", strength: "elo", engineElo: 1500, blackElo: 1500 });
 
     const elo = playedGameSummary(played(SINGLE, { ...base, elo: 1650 }), undefined);
     expect(elo).toMatchObject({ engineName: "Stockfish 19 Lite", strength: "elo", engineElo: 1650, blackElo: 1650 });

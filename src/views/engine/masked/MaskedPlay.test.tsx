@@ -15,9 +15,9 @@ import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
 import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
 
-vi.mock("../../../lib/engine", async () => ({
-  default: (await import("../../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../../board/boardTestHarness");

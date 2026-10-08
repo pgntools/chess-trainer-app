@@ -152,10 +152,10 @@ so an export it uses can look unused — check `scripts/` before removing one.
 The shared core of `src/lib/`: `gameModel.ts` (`Game`, one line), `gameTree.ts`
 (`GameTree`, and every pure edit of one), `pgn.ts` (`parsePgnGames`,
 `parsePgnTree(s)`), `fen.ts` (`parseFen`), `gameNavigation.ts` (`?move=`,
-`StartPly`, the last-move highlight, the move rows), `engine.ts` (the
-2019 build's engine, the default) + `uciEngine.ts` / `workerTransport.ts` /
-`engineTypes.ts` / `engines/` (the UCI protocol, the Worker, `EngineHandle` and
-the registry of builds — CTA-152, [`docs/engine.md`](docs/engine.md)) +
+`StartPly`, the last-move highlight, the move rows), `uciEngine.ts` /
+`workerTransport.ts` / `engineTypes.ts` / `engines/` (the UCI protocol, the
+Worker, `EngineHandle` and the registry of the Stockfish 19 builds — the
+single-thread one the default; CTA-152, CTA-160, [`docs/engine.md`](docs/engine.md)) +
 `engineAnalysis.ts` (the numbers), `capturedPieces.ts`,
 `moveAnnotations.ts` / `pgnComments.ts`, `pgnText.ts`, `pgnExport.ts`,
 `recordId.ts` (`newRecordId`, the one id minter), `treeManager.ts` (read-only

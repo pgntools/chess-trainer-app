@@ -797,8 +797,7 @@ const en = {
     /** A row whose PGN will not parse has no pairing to name it by. */
     unreadableTitle: "the unreadable game of {{date}}",
     human: "Human",
-    engine: "Stockfish level {{level}}",
-    /** An engine other than the default (CTA-153): its own name, and how its strength was set. */
+    /** The engine (CTA-153): its own name, and how its strength was set — a Skill Level, or an Elo. */
     engineNamed: "{{name}} level {{level}}",
     engineElo: "{{name}} Elo {{elo}}",
     moves_one: "{{count}} move",
@@ -1186,11 +1185,16 @@ const en = {
       engineOn: "Analyse with the engine",
       /** Said where the lines would be, when the engine is switched off. */
       engineOff: "The engine is off. Switch it on to analyse this position.",
+      /** Infinite analysis (CTA-160): the engine deepens until the position changes. */
+      infinite: "Infinite analysis",
+      infiniteHelp: "Keep searching until the position changes. Off, a search stops at the depth and time below — and Play always does.",
       depth: "Search depth",
       moveTime: "Move time",
       moveTimeValue: "{{seconds}}s",
       moveTimeNone: "No limit",
       multiPv: "Variations to show",
+      threads: "Threads",
+      hash: "Hash (MB)",
       evalBar: "Show evaluation bar",
       /** The arrows of the next moves from the position on screen. */
       arrows: "Show next-move arrows",

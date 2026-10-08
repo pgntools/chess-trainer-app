@@ -25,19 +25,18 @@ describe("EnginePicker", () => {
     const group = screen.getByRole("radiogroup", { name: "Engine" });
     const radios = within(group).getAllByRole("radio");
     expect(radios.map((radio) => (radio as HTMLInputElement).value)).toEqual([
-      "stockfish-2019-wasm",
       "stockfish-19-lite-single",
       "stockfish-19-lite-multi",
     ]);
     expect(screen.getByRole("radio", { name: "Stockfish 19 Lite" })).toBeChecked();
-    expect(screen.getByRole("radio", { name: "Stockfish 2019" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: /multi-thread/ })).not.toBeChecked();
   });
 
   it("says each engine's version, threading and how its strength is set", () => {
-    mount(ISOLATED_HOST, "stockfish-2019-wasm");
+    mount(WITH_ADDED, "stockfish-19-lite-single");
 
-    expect(screen.getByTestId("picker-facts-stockfish-2019-wasm")).toHaveTextContent(
-      "Version 2019-08-15 · Single-thread · Strength by Skill Level",
+    expect(screen.getByTestId("picker-facts-my-engine")).toHaveTextContent(
+      "Version 2 · Single-thread · Strength by Skill Level",
     );
     expect(screen.getByTestId("picker-facts-stockfish-19-lite-single")).toHaveTextContent(
       "Version 19 · Single-thread · Strength by Skill Level or Elo",
@@ -48,7 +47,7 @@ describe("EnginePicker", () => {
   });
 
   it("reads an engine's facts with its name — they describe the radio", () => {
-    mount(ISOLATED_HOST, "stockfish-2019-wasm");
+    mount(ISOLATED_HOST, "stockfish-19-lite-single");
 
     expect(screen.getByRole("radio", { name: /Stockfish 19 Lite \(multi-thread\)/ })).toHaveAccessibleDescription(
       /Version 19 · Multi-thread/,
@@ -56,7 +55,7 @@ describe("EnginePicker", () => {
   });
 
   it("lists an engine the host cannot run disabled, saying why", () => {
-    mount(PLAIN_HOST, "stockfish-2019-wasm");
+    mount(PLAIN_HOST, "stockfish-19-lite-single");
 
     const multi = screen.getByRole("radio", { name: /multi-thread/i });
     expect(multi).toBeDisabled();
@@ -70,7 +69,7 @@ describe("EnginePicker", () => {
   });
 
   it("leaves a disabled engine unchosen however it is clicked", async () => {
-    const { onChange } = mount(PLAIN_HOST, "stockfish-2019-wasm");
+    const { onChange } = mount(PLAIN_HOST, "stockfish-19-lite-single");
 
     // The disabled radio takes no pointer events — which is the point; the check is switched off to try anyway.
     await userEvent.setup({ pointerEventsCheck: 0 }).click(screen.getByRole("radio", { name: /multi-thread/i }));
@@ -79,34 +78,34 @@ describe("EnginePicker", () => {
   });
 
   it("hands the chosen engine's id to onChange, by click", async () => {
-    const { onChange } = mount(ISOLATED_HOST, "stockfish-2019-wasm");
+    const { onChange } = mount(ISOLATED_HOST, "stockfish-19-lite-single");
 
-    await userEvent.click(screen.getByRole("radio", { name: "Stockfish 19 Lite" }));
+    await userEvent.click(screen.getByRole("radio", { name: /multi-thread/ }));
 
-    expect(onChange).toHaveBeenCalledWith("stockfish-19-lite-single");
+    expect(onChange).toHaveBeenCalledWith("stockfish-19-lite-multi");
   });
 
   it("is operated from the keyboard: Tab into the group, an arrow moves the choice", async () => {
-    const { onChange } = mount(ISOLATED_HOST, "stockfish-2019-wasm");
+    const { onChange } = mount(ISOLATED_HOST, "stockfish-19-lite-single");
 
     await userEvent.tab();
-    expect(screen.getByRole("radio", { name: "Stockfish 2019" })).toHaveFocus();
+    expect(screen.getByRole("radio", { name: "Stockfish 19 Lite" })).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");
 
-    expect(onChange).toHaveBeenLastCalledWith("stockfish-19-lite-single");
+    expect(onChange).toHaveBeenLastCalledWith("stockfish-19-lite-multi");
   });
 
   it("skips a disabled engine when an arrow moves the choice", async () => {
-    const { onChange } = mount(PLAIN_HOST, "stockfish-19-lite-single");
+    const { onChange } = mount(WITH_ADDED, "stockfish-19-lite-single");
 
     screen.getByRole("radio", { name: "Stockfish 19 Lite" }).focus();
     await userEvent.keyboard("{ArrowDown}");
 
-    // The multi-thread build is next in the list but cannot be chosen: the arrow wraps past it.
-    expect(onChange).toHaveBeenLastCalledWith("stockfish-2019-wasm");
+    // The multi-thread build is next in the list but cannot be chosen: the arrow moves past it.
+    expect(onChange).toHaveBeenLastCalledWith("hosted-stockfish-19-full-strength-nnue-big-net");
   });
 
-  it("shows engines added at runtime, a long name and a name in Hebrew among them", () => {
+  it("shows engines beyond the shipped ones, a long name and a name in Hebrew among them", () => {
     mount(WITH_ADDED, "my-engine");
 
     expect(screen.getByRole("radio", { name: /מנוע אישי/ })).toBeChecked();
@@ -115,21 +114,21 @@ describe("EnginePicker", () => {
 
   it("reads in Hebrew, its names pinned left to right", async () => {
     await i18n.changeLanguage("he");
-    mount(PLAIN_HOST, "stockfish-2019-wasm");
+    mount(PLAIN_HOST, "stockfish-19-lite-single");
 
     expect(screen.getByRole("radiogroup", { name: "מנוע" })).toBeInTheDocument();
     expect(screen.getByTestId("picker-reason-stockfish-19-lite-multi")).toHaveTextContent("דורש בידוד בין־מקורות");
-    expect(screen.getByText("Stockfish 2019")).toHaveAttribute("dir", "ltr");
+    expect(screen.getByText("Stockfish 19 Lite")).toHaveAttribute("dir", "ltr");
   });
 
   it("passes axe, with and without a disabled engine", async () => {
     const { unmount } = render(
-      <EnginePicker entries={ISOLATED_HOST} value="stockfish-2019-wasm" onChange={() => {}} testId="picker-a" />,
+      <EnginePicker entries={ISOLATED_HOST} value="stockfish-19-lite-single" onChange={() => {}} testId="picker-a" />,
     );
     await expectNoAxeViolations();
     unmount();
 
-    render(<EnginePicker entries={PLAIN_HOST} value="stockfish-2019-wasm" onChange={() => {}} testId="picker-b" />);
+    render(<EnginePicker entries={PLAIN_HOST} value="stockfish-19-lite-single" onChange={() => {}} testId="picker-b" />);
     await expectNoAxeViolations();
   });
 });

@@ -3,7 +3,7 @@ import { Chess } from "chess.js";
 import type { Score } from "./engineAnalysis";
 import type { EngineDescriptor } from "./engineTypes";
 import { approximateElo, engineSettingsFrom, type EngineSettings } from "./engineSettings";
-import { DEFAULT_ENGINE_ID, DEFAULT_ENGINE_VERSION } from "./engines/ids";
+import { DEFAULT_ENGINE_ID, DEFAULT_ENGINE_NAME, DEFAULT_ENGINE_VERSION } from "./engines/ids";
 import { gameTag, type Game, type GameHeaders } from "./gameModel";
 import {
   countVariations,
@@ -84,8 +84,10 @@ const playedGameMaskFrom = (value: unknown): PlayedGameMask | undefined => {
  * snapshot: the name is the one the build had when the game was played, so a
  * game keeps its words if the registry changes or the build goes.
  *
- * **Absent means the default engine** ({@link DEFAULT_ENGINE_ID}) — every record
- * from before the choice of engine was played by it.
+ * **Absent means the default engine** ({@link DEFAULT_ENGINE_ID}). The games
+ * from before the choice of engine — and those that named the retired 2019
+ * build — are read as the default's since CTA-160: they label, resume and
+ * compare as games of the engine that plays them now.
  */
 export type PlayedGameEngine = {
   /** The registry id (`lib/engines/`) — what resuming looks the engine up by. */
@@ -101,13 +103,20 @@ export type PlayedGameEngine = {
   strength: "skill" | "elo";
 };
 
-/** What a record that names no engine was played by — the 2019 build, strengthened by `Skill Level`. */
+/** What a record that names no engine is read as — the default engine, strengthened by an Elo. */
 export const DEFAULT_PLAYED_GAME_ENGINE: PlayedGameEngine = {
   id: DEFAULT_ENGINE_ID,
-  name: "Stockfish 2019",
+  name: DEFAULT_ENGINE_NAME,
   version: DEFAULT_ENGINE_VERSION,
-  strength: "skill",
+  strength: "elo",
 };
+
+/**
+ * Engines the app no longer ships whose games read as the default's (CTA-160)
+ * rather than as an engine that cannot run here — no fallback notice, no
+ * label of their own. The 2019 build was the default until then.
+ */
+const RETIRED_ENGINE_IDS: ReadonlySet<string> = new Set(["stockfish-2019-wasm"]);
 
 /** An engine as a record names it — the build's name, version and how its strength is set. */
 export const playedGameEngineFromDescriptor = (
@@ -138,11 +147,14 @@ export const samePlayedGameEngine = (
   );
 };
 
-/** A stored engine read back, or `undefined` — a record without a readable id reads as the default. */
+/**
+ * A stored engine read back, or `undefined` — the default: a record without a
+ * readable id, or one naming a retired engine, reads as the default's.
+ */
 export const playedGameEngineFrom = (value: unknown): PlayedGameEngine | undefined => {
   if (typeof value !== "object" || value === null) return undefined;
   const row = value as Record<string, unknown>;
-  if (typeof row.id !== "string" || row.id === "") return undefined;
+  if (typeof row.id !== "string" || row.id === "" || RETIRED_ENGINE_IDS.has(row.id)) return undefined;
   return {
     id: row.id,
     name: typeof row.name === "string" && row.name !== "" ? row.name : row.id,
@@ -213,19 +225,14 @@ export const resultOfFen = (fen: string): string => {
 };
 
 /**
- * How the engine signs a game: its name and the strength it was set to. The
- * default engine keeps the wording every earlier game has — `Stockfish (level
- * 5)` — and another is `Stockfish 19 Lite (level 5)` or, where it took an Elo,
- * `Stockfish 19 Lite (Elo 1800)`.
+ * How the engine signs a game: its name and the strength it was set to —
+ * `Stockfish 19 Lite (Elo 1800)`, or `… (level 5)` for an engine strengthened
+ * by `Skill Level`. A record that names none is the default's.
  */
-const engineName = (settings: EngineSettings, engine?: PlayedGameEngine): string => {
-  if (engine === undefined || engine.id === DEFAULT_ENGINE_ID) {
-    return `Stockfish (level ${settings.skillLevel})`;
-  }
-  return engine.strength === "elo"
+const engineName = (settings: EngineSettings, engine: PlayedGameEngine = DEFAULT_PLAYED_GAME_ENGINE): string =>
+  engine.strength === "elo"
     ? `${engine.name} (Elo ${settings.elo})`
     : `${engine.name} (level ${settings.skillLevel})`;
-};
 
 /**
  * The tag pairs a played game is written with — who played, on which side,
@@ -433,7 +440,7 @@ export const playedGameFrom = (value: unknown): PlayedGame | undefined => {
 
 /**
  * How a side is named in the Lobby's table (CTA-100): the reader — the
- * localized "Human" — or the engine, "Stockfish level N". Which of the two
+ * localized "Human" — or the engine, "Stockfish 19 Lite Elo N". Which of the two
  * each column shows is the summary's derivation; the words themselves are the
  * table's, because they are localized.
  */
@@ -451,13 +458,8 @@ export type PlayedGameSummary = {
   playAs: EngineSettings["playAs"];
   /** `Skill Level` the engine is set to. */
   skillLevel: number;
-  /**
-   * The engine's display name when it is not the default one — "Stockfish 19
-   * Lite" — and `undefined` for the default, whose label keeps its wording
-   * ("Stockfish level 5", CTA-153): the table says which engine only where
-   * there is a choice of them.
-   */
-  engineName: string | undefined;
+  /** The engine's display name — "Stockfish 19 Lite" (CTA-153). */
+  engineName: string;
   /** How its strength was set: `"elo"` (the label reads `Elo N`) or `"skill"` (`level N`). */
   strength: PlayedGameEngine["strength"];
   /** The Elo it was set to when `strength` is `"elo"` — undefined otherwise. */
@@ -494,7 +496,7 @@ export const playedGameSummary = (
     result: tree === undefined ? "*" : playedGameResult(tree, saved.resigned),
     playAs: saved.settings.playAs,
     skillLevel: saved.settings.skillLevel,
-    engineName: engine.id === DEFAULT_ENGINE_ID ? undefined : engine.name,
+    engineName: engine.name,
     strength: engine.strength,
     engineElo: byElo ? saved.settings.elo : undefined,
     masked: saved.mask !== undefined,
@@ -532,7 +534,7 @@ export type SortDirection = "asc" | "desc";
  */
 export type PlayedGameRow = {
   id: string;
-  /** White's name — the summary's `whiteName` with its words on ("Human" / "Stockfish level N"). */
+  /** White's name — the summary's `whiteName` with its words on ("Human" / "Stockfish 19 Lite Elo N"). */
   white: string;
   whiteElo: number | undefined;
   black: string;

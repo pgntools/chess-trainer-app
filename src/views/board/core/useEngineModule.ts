@@ -44,15 +44,15 @@ import { isTerminal, turnOf } from "./useBoardCore";
  *   {@link EngineModule.engineOptions}, so a settings tab can say which knobs
  *   this build does not have rather than showing controls that do nothing. And
  *   the caller's requested values are **clamped into the bounds it declared**
- *   and reported back through {@link EngineModuleStart.onUciOptionsReady} — the
- *   generalization of the two shipped clamps, so this module never learns what
- *   a setting *means*. Without it the panel would show a number the engine
- *   never accepts (this build pins `Hash` to 16 and `Threads` to 1).
+ *   and reported back through {@link EngineModuleStart.onUciOptionsReady}, so
+ *   this module never learns what a setting *means*. Without it the panel
+ *   would show a number the engine never accepts (the single-thread build pins
+ *   `Threads` to 1).
  * - **Option pushes before the search.** The `setOption` effect is declared
  *   ahead of the search effect, so on any render where both run the options go
- *   out before the `go` that should honour them. `Engine.setOption` itself
- *   buffers, drops a name this build does not have, and never posts during a
- *   search — §4.1.
+ *   out before the `go` that should honour them. The handle's `setOption`
+ *   itself buffers, drops a name this build does not have, and never posts
+ *   during a search — §4.1.
  * - **Searching the position on screen**, not the live one. Switching off stops
  *   the running search rather than letting it finish quietly in the background:
  *   the worker shares the tab with the UI. A terminal position is not searched.
@@ -90,8 +90,17 @@ export type EngineModuleStart = {
   /** `go movetime`, in milliseconds. Omitted by the wrapper when 0. */
   moveTimeMs: number;
   /**
+   * Search until stopped — `go infinite`, an analysis board's infinite
+   * analysis (CTA-160) — instead of to {@link depth} and {@link moveTimeMs}.
+   * Absent is off. The search ends only when the position changes or the
+   * engine is switched off, so its `bestmove` (and the score the move list
+   * keeps) lands then; a board waiting for the engine's move must not ask
+   * for it.
+   */
+  infinite?: boolean;
+  /**
    * The UCI options this board wants set, by name. Pushed on change; a name
-   * this build does not have is dropped by `Engine.setOption`.
+   * this build does not have is dropped by the handle's `setOption`.
    *
    * **Memoise it.** Three effects here take it as a dependency (rather than
    * reading it out of a ref, which `react-hooks/refs` rejects — the shipped
@@ -132,6 +141,7 @@ export const useEngineModule = ({
   fen,
   depth,
   moveTimeMs,
+  infinite = false,
   uciOptions,
   onUciOptionsReady,
   onBestMove,
@@ -160,7 +170,7 @@ export const useEngineModule = ({
     before building the new one — one engine at a time — and forgets the score
     of a search that will now never finish.
   */
-  const getEngine = useCallback((): EngineHandle => {
+  const ensureEngine = useCallback((): EngineHandle => {
     const current = engineRef.current;
     if (current?.descriptor === descriptor) return current.handle;
 
@@ -195,7 +205,7 @@ export const useEngineModule = ({
   }
 
   /*
-    Subscribe once per Engine instance — and re-subscribe when the caller's
+    Subscribe once per engine handle — and re-subscribe when the caller's
     reply handler changes, because it closes over the position the reply has to
     be judged against. That is a dependency rather than a ref read because
     re-subscribing costs
@@ -206,7 +216,7 @@ export const useEngineModule = ({
     worker, before the search effect below asks it for anything.
   */
   useEffect(() => {
-    const unsubscribe = getEngine().onMessage((message) => {
+    const unsubscribe = ensureEngine().onMessage((message) => {
       const { fen: searchedFen, pv, depth: reached, multipv, bestMove } = message;
       /*
         `fen` has no UCI equivalent — the wrapper stamps it on. Without it there
@@ -264,7 +274,7 @@ export const useEngineModule = ({
     });
 
     return unsubscribe;
-  }, [getEngine, onBestMove]);
+  }, [ensureEngine, onBestMove]);
 
   // Tear the worker down on unmount (and on StrictMode remount).
   useEffect(() => {
@@ -280,7 +290,7 @@ export const useEngineModule = ({
     The names are the caller's — this module never learns what one means.
   */
   useEffect(() => {
-    const engine = getEngine();
+    const engine = ensureEngine();
     return engine.whenOptionsReady(() => {
       const options = new Map(engine.options);
       setEngineOptions(options);
@@ -306,7 +316,7 @@ export const useEngineModule = ({
       */
       if (changed) onUciOptionsReady?.(clamped);
     });
-  }, [getEngine, uciOptions, onUciOptionsReady]);
+  }, [ensureEngine, uciOptions, onUciOptionsReady]);
 
   /*
     Push the option-backed settings. Declared *before* the search effect so
@@ -314,11 +324,11 @@ export const useEngineModule = ({
     that should honour them.
   */
   useEffect(() => {
-    const engine = getEngine();
+    const engine = ensureEngine();
     for (const [name, value] of Object.entries(uciOptions)) {
       engine.setOption(name, value);
     }
-  }, [getEngine, uciOptions]);
+  }, [ensureEngine, uciOptions]);
 
   /*
     Search the position on screen — and only while the engine is switched on.
@@ -338,12 +348,12 @@ export const useEngineModule = ({
     // that: the analysis below is only handed on when its FEN matches.
     if (isTerminal(fen)) return;
 
-    getEngine().search(fen, { depth, movetime: moveTimeMs });
+    ensureEngine().search(fen, infinite ? { infinite: true } : { depth, movetime: moveTimeMs });
     // `uciOptions` is a dependency so that changing a setting restarts the
     // search and is reflected in the lines immediately, rather than waiting
     // for the next move — which is what "takes effect on the next search"
     // means in practice.
-  }, [getEngine, enabled, fen, depth, moveTimeMs, uciOptions]);
+  }, [ensureEngine, enabled, fen, depth, moveTimeMs, infinite, uciOptions]);
 
   const clearAnalysis = useCallback(() => setAnalysis(EMPTY_ANALYSIS), []);
 

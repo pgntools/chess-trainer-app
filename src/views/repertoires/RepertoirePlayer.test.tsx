@@ -5,8 +5,6 @@ import { useLocation } from "react-router";
 
 import i18n from "../../i18n";
 import { storeEngineId } from "../../lib/engineChoice";
-import type { EngineDescriptor, EngineHandle } from "../../lib/engineTypes";
-import { registerEngine } from "../../lib/engines";
 import { downloadPgn } from "../../lib/pgnExport";
 import {
   findSavedRepertoire,
@@ -41,9 +39,9 @@ vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
   return reactChessboardMock();
 });
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 vi.mock("../../lib/openings", async (importOriginal) => {
   const { openingsMock } = await import("../board/boardTestHarness");
   return openingsMock(
@@ -1120,33 +1118,26 @@ describe("the header's Play button (CTA-65)", () => {
 });
 
 describe("the repertoire player runs the reader's engine (CTA-153)", () => {
-  class ChosenEngine extends FakeEngine {}
-  const chosen: EngineDescriptor = {
-    id: "test-chosen-engine",
-    name: "Chosen Engine",
-    version: "1",
-    kind: "local",
-    capabilities: { maxDepth: 24, strength: "skill", multiThread: false },
-    create: () => new ChosenEngine() as unknown as EngineHandle,
-  };
-  let unregister: () => void;
+  /** The multi-thread build — the other engine a reader can choose, on an isolated page. */
+  const chosen = { id: "stockfish-19-lite-multi" };
+  const isChosen = (engine: FakeEngine) => engine.descriptor?.id === chosen.id;
   beforeEach(() => {
-    unregister = registerEngine(chosen);
+    vi.stubGlobal("crossOriginIsolated", true);
   });
-  afterEach(() => unregister());
+  afterEach(() => vi.unstubAllGlobals());
 
   it("builds the engine chosen in Settings → Engine", async () => {
     storeEngineId(chosen.id);
 
     await mountIdle(`/repertoires/${await storeRepertoire("r", CARO, "Caro")}`);
 
-    expect(FakeEngine.latest()).toBeInstanceOf(ChosenEngine);
+    expect(isChosen(FakeEngine.latest())).toBe(true);
   });
 
   it("builds the default engine when none was chosen", async () => {
     await mountIdle(`/repertoires/${await storeRepertoire("r", CARO, "Caro")}`);
 
-    expect(FakeEngine.latest()).not.toBeInstanceOf(ChosenEngine);
+    expect(isChosen(FakeEngine.latest())).toBe(false);
   });
 
   it("swaps to a new choice from its next search — one engine running", async () => {
@@ -1156,7 +1147,7 @@ describe("the repertoire player runs the reader's engine (CTA-153)", () => {
     act(() => storeEngineId(chosen.id));
 
     expect(first.terminated).toBe(true);
-    expect(FakeEngine.latest()).toBeInstanceOf(ChosenEngine);
+    expect(isChosen(FakeEngine.latest())).toBe(true);
     expect(FakeEngine.instances.filter((engine) => !engine.terminated)).toHaveLength(1);
   });
 });

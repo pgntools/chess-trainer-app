@@ -1,8 +1,7 @@
-import Engine from "../engine";
 import type { EngineDescriptor } from "../engineTypes";
 import { UciEngine, DEFAULT_MAX_DEPTH } from "../uciEngine";
 import { WorkerTransport } from "../workerTransport";
-import { DEFAULT_ENGINE_ID, DEFAULT_ENGINE_VERSION } from "./ids";
+import { DEFAULT_ENGINE_ID, DEFAULT_ENGINE_NAME, DEFAULT_ENGINE_VERSION } from "./ids";
 
 /**
  * **The engines that ship with the app** — one descriptor each, and nothing
@@ -11,64 +10,45 @@ import { DEFAULT_ENGINE_ID, DEFAULT_ENGINE_VERSION } from "./ids";
  * and licences are in `public/stockfish/README.md`; how to add one is in
  * [`docs/engine.md`](../../../docs/engine.md).
  *
- * `import Engine from "../engine"` is the **default export only**, on purpose:
- * a test's `vi.mock("../lib/engine", () => ({ default: FakeEngine }))` has
- * nothing else, and it is what makes the shared `FakeEngine` harness stand in
- * for the default engine on every board.
+ * **This module is the tests' engine seam**: a test replaces it with
+ * `builtinEnginesMock` (`views/board/boardTestHarness.tsx`), which keeps every
+ * descriptor's identity and capabilities and swaps its `create()` for a
+ * `FakeEngine` that declares what that build declares. So keep every engine a
+ * board can run in {@link BUILTIN_ENGINES}, and build one nowhere else.
  */
-
-/** The engine every board used before there was a choice — and the fallback for any id that cannot run. */
-export { DEFAULT_ENGINE_ID } from "./ids";
 
 /** `public/stockfish/<folder>/<file>.js`, served under the deployment's `base`. */
 const stockfishWorkerUrl = (folder: string, file: string): string =>
   `${import.meta.env.BASE_URL}stockfish/${folder}/${file}.js`;
 
-export const STOCKFISH_2019: EngineDescriptor = {
-  id: DEFAULT_ENGINE_ID,
-  name: "Stockfish 2019",
-  version: DEFAULT_ENGINE_VERSION,
-  kind: "local",
-  // Declares `Skill Level` and nothing else of strength; `Threads` pinned to 1.
-  capabilities: { maxDepth: DEFAULT_MAX_DEPTH, strength: "skill", multiThread: false },
-  create: () => new Engine(),
-};
+/** A Stockfish WASM worker from `public/stockfish/`, spoken to over UCI. */
+const localStockfish = (folder: string, file: string) => (): UciEngine =>
+  new UciEngine(new WorkerTransport(stockfishWorkerUrl(folder, file)), {
+    maxDepth: DEFAULT_MAX_DEPTH,
+  });
 
+/** The default engine — every host can run it. */
 export const STOCKFISH_19_LITE_SINGLE: EngineDescriptor = {
-  id: "stockfish-19-lite-single",
-  name: "Stockfish 19 Lite",
-  version: "19",
-  kind: "local",
+  id: DEFAULT_ENGINE_ID,
+  name: DEFAULT_ENGINE_NAME,
+  version: DEFAULT_ENGINE_VERSION,
+  // `Threads` pinned to 1; `Skill Level`, `UCI_LimitStrength` and `UCI_Elo` declared.
   capabilities: { maxDepth: DEFAULT_MAX_DEPTH, strength: "both", multiThread: false },
-  create: () =>
-    new UciEngine(
-      new WorkerTransport(
-        stockfishWorkerUrl("stockfish-19-lite-single", "stockfish-19-lite-single"),
-      ),
-      { maxDepth: DEFAULT_MAX_DEPTH },
-    ),
+  create: localStockfish("stockfish-19-lite-single", "stockfish-19-lite-single"),
 };
 
 export const STOCKFISH_19_LITE_MULTI: EngineDescriptor = {
   id: "stockfish-19-lite-multi",
   name: "Stockfish 19 Lite (multi-thread)",
   version: "19",
-  kind: "local",
   // `SharedArrayBuffer` — the page must be cross-origin isolated (COOP / COEP).
   requires: { crossOriginIsolated: true },
   capabilities: { maxDepth: DEFAULT_MAX_DEPTH, strength: "both", multiThread: true },
-  create: () =>
-    new UciEngine(
-      new WorkerTransport(
-        stockfishWorkerUrl("stockfish-19-lite-multi", "stockfish-19-lite"),
-      ),
-      { maxDepth: DEFAULT_MAX_DEPTH },
-    ),
+  create: localStockfish("stockfish-19-lite-multi", "stockfish-19-lite"),
 };
 
 /** In the order a picker lists them: the default first. */
 export const BUILTIN_ENGINES: readonly EngineDescriptor[] = [
-  STOCKFISH_2019,
   STOCKFISH_19_LITE_SINGLE,
   STOCKFISH_19_LITE_MULTI,
 ];

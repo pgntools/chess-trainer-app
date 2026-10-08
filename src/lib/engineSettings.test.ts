@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_ENGINE_SETTINGS,
+  deviceEngineLimits,
   ENGINE_SETTING_BOUNDS,
   LIMIT_STRENGTH_OPTION,
   engineSettingsFrom,
@@ -67,7 +68,7 @@ describe("usesEloStrength — read off what the engine declared, never its name"
     expect(usesEloStrength(options("Skill Level", "UCI_Elo", LIMIT_STRENGTH_OPTION))).toBe(true);
   });
 
-  it("is false for the 2019 build, which has neither", () => {
+  it("is false for an engine that has neither — Skill Level alone", () => {
     expect(usesEloStrength(options("Threads", "Hash", "MultiPV", "Skill Level"))).toBe(false);
   });
 
@@ -78,5 +79,30 @@ describe("usesEloStrength — read off what the engine declared, never its name"
 
   it("is false before the handshake, when nothing is declared", () => {
     expect(usesEloStrength(new Map())).toBe(false);
+  });
+});
+
+describe("deviceEngineLimits — what this device can give the engine (CTA-160)", () => {
+  it("offers one thread fewer than the cores, at most 8, and 4 where the browser does not say", () => {
+    expect(deviceEngineLimits({ hardwareConcurrency: 4 }).threads).toBe(3);
+    expect(deviceEngineLimits({ hardwareConcurrency: 1 }).threads).toBe(1);
+    expect(deviceEngineLimits({ hardwareConcurrency: 20 }).threads).toBe(8);
+    expect(deviceEngineLimits({}).threads).toBe(4);
+  });
+
+  it("offers Hash by the device's memory, never past the 1024 MB that held", () => {
+    expect(deviceEngineLimits({ deviceMemory: 8 }).hashMb).toBe(1024);
+    expect(deviceEngineLimits({ deviceMemory: 4 }).hashMb).toBe(512);
+    expect(deviceEngineLimits({ deviceMemory: 2 }).hashMb).toBe(128);
+    expect(deviceEngineLimits({}).hashMb).toBe(256);
+    expect(ENGINE_SETTING_BOUNDS.hashMb.max).toBe(1024);
+  });
+});
+
+describe("uciOptionsOf — the ceilings hold whatever a record says", () => {
+  it("never asks for more Hash or Threads than the bounds, which a stored or imported game could carry", () => {
+    const options = uciOptionsOf({ ...DEFAULT_ENGINE_SETTINGS, hashMb: 4096, threads: 128 });
+    expect(options.Hash).toBe(1024);
+    expect(options.Threads).toBe(32);
   });
 });

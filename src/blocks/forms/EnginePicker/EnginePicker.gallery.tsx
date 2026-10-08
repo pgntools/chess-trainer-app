@@ -17,9 +17,9 @@ const gallery: GalleryModule<BlockFamilyId> = {
   demos: [
     { name: "A host that isolates the page — every build can be chosen", render: () => demo(ISOLATED_HOST, "stockfish-19-lite-single") },
     { name: "The multi-thread build chosen", render: () => demo(ISOLATED_HOST, "stockfish-19-lite-multi") },
-    { name: "A host without COOP / COEP — the multi-thread build disabled, with its reason", render: () => demo(PLAIN_HOST, "stockfish-2019-wasm") },
-    { name: "The default engine alone", render: () => demo(DEFAULT_ONLY, "stockfish-2019-wasm") },
-    { name: "Engines added at runtime — a long name, a name in Hebrew", render: () => demo(WITH_ADDED, "my-engine") },
+    { name: "A host without COOP / COEP — the multi-thread build disabled, with its reason", render: () => demo(PLAIN_HOST, "stockfish-19-lite-single") },
+    { name: "The default engine alone", render: () => demo(DEFAULT_ONLY, "stockfish-19-lite-single") },
+    { name: "Engines beyond the shipped ones (a hosted engine, one day) — a long name, a name in Hebrew", render: () => demo(WITH_ADDED, "my-engine") },
   ],
 };
 

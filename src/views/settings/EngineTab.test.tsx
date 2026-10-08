@@ -1,12 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 
 import i18n from "../../i18n";
 import { ENGINE_STORAGE_KEY, engineChoiceId } from "../../lib/engineChoice";
-import type { EngineDescriptor, EngineHandle } from "../../lib/engineTypes";
-import { DEFAULT_ENGINE_ID, registerEngine } from "../../lib/engines";
+import { DEFAULT_ENGINE_ID } from "../../lib/engines";
 import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { useEngineChoice } from "../shared/useEngineChoice";
@@ -37,14 +36,14 @@ function ChoiceProbe() {
   return <span data-testid="engine-in-use">{useEngineChoice().engineId}</span>;
 }
 
-const removers: (() => void)[] = [];
+const SINGLE = "Stockfish 19 Lite";
+const MULTI = "Stockfish 19 Lite (multi-thread)";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
 });
 
 afterEach(() => {
-  removers.splice(0).forEach((remove) => remove());
   vi.unstubAllGlobals();
 });
 
@@ -57,16 +56,13 @@ describe("Settings → Engine", () => {
     expect(screen.getByTestId("engine-tab")).toBeInTheDocument();
   });
 
-  it("lists every registered engine with its name, version, threading and strength", () => {
+  it("lists every shipped engine with its name, version, threading and strength", () => {
     renderEngine();
 
     const group = screen.getByRole("radiogroup", { name: "Engine" });
-    expect(within(group).getAllByRole("radio")).toHaveLength(3);
-    expect(screen.getByTestId("engine-picker-facts-stockfish-2019-wasm")).toHaveTextContent(
-      "Version 2019-08-15 · Single-thread · Strength by Skill Level",
-    );
+    expect(within(group).getAllByRole("radio")).toHaveLength(2);
     expect(screen.getByTestId("engine-picker-facts-stockfish-19-lite-single")).toHaveTextContent(
-      "Single-thread · Strength by Skill Level or Elo",
+      "Version 19 · Single-thread · Strength by Skill Level or Elo",
     );
     expect(screen.getByTestId("engine-picker-facts-stockfish-19-lite-multi")).toHaveTextContent("Multi-thread");
   });
@@ -74,14 +70,14 @@ describe("Settings → Engine", () => {
   it("starts on the default engine", () => {
     renderEngine();
 
-    expect(screen.getByRole("radio", { name: "Stockfish 2019" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: SINGLE })).toBeChecked();
     expect(screen.getByTestId("engine-in-use")).toHaveTextContent(DEFAULT_ENGINE_ID);
   });
 
   it("lists the multi-thread build disabled, with why, where the host does not isolate the page", () => {
     renderEngine();
 
-    expect(screen.getByRole("radio", { name: "Stockfish 19 Lite (multi-thread)" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: MULTI })).toBeDisabled();
     expect(screen.getByTestId("engine-picker-reason-stockfish-19-lite-multi")).toHaveTextContent(
       "Needs cross-origin isolation — not available on this host",
     );
@@ -91,7 +87,7 @@ describe("Settings → Engine", () => {
     vi.stubGlobal("crossOriginIsolated", true);
     renderEngine();
 
-    const multi = screen.getByRole("radio", { name: "Stockfish 19 Lite (multi-thread)" });
+    const multi = screen.getByRole("radio", { name: MULTI });
     expect(multi).toBeEnabled();
     expect(screen.queryByTestId("engine-picker-reason-stockfish-19-lite-multi")).toBeNull();
 
@@ -101,31 +97,36 @@ describe("Settings → Engine", () => {
   });
 
   it("applies a choice at once — to what every board reads — and keeps it for the next visit", async () => {
+    vi.stubGlobal("crossOriginIsolated", true);
     renderEngine();
 
-    await userEvent.click(screen.getByRole("radio", { name: "Stockfish 19 Lite" }));
+    await userEvent.click(screen.getByRole("radio", { name: MULTI }));
 
-    expect(screen.getByRole("radio", { name: "Stockfish 19 Lite" })).toBeChecked();
-    expect(screen.getByTestId("engine-in-use")).toHaveTextContent("stockfish-19-lite-single");
-    expect(localStorage.getItem(ENGINE_STORAGE_KEY)).toBe("stockfish-19-lite-single");
-    expect(engineChoiceId()).toBe("stockfish-19-lite-single");
+    expect(screen.getByRole("radio", { name: MULTI })).toBeChecked();
+    expect(screen.getByTestId("engine-in-use")).toHaveTextContent("stockfish-19-lite-multi");
+    expect(localStorage.getItem(ENGINE_STORAGE_KEY)).toBe("stockfish-19-lite-multi");
+    expect(engineChoiceId()).toBe("stockfish-19-lite-multi");
   });
 
   it("opens on the engine stored by an earlier visit", () => {
-    localStorage.setItem(ENGINE_STORAGE_KEY, "stockfish-19-lite-single");
+    vi.stubGlobal("crossOriginIsolated", true);
+    localStorage.setItem(ENGINE_STORAGE_KEY, "stockfish-19-lite-multi");
 
     renderEngine();
 
-    expect(screen.getByRole("radio", { name: "Stockfish 19 Lite" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: MULTI })).toBeChecked();
   });
 
   it("falls back to the default for a stored engine that no longer exists, without discarding it", () => {
-    localStorage.setItem(ENGINE_STORAGE_KEY, "stockfish-9000");
+    for (const gone of ["stockfish-9000", "stockfish-2019-wasm"]) {
+      localStorage.setItem(ENGINE_STORAGE_KEY, gone);
 
-    renderEngine();
+      const { unmount } = renderEngine();
 
-    expect(screen.getByRole("radio", { name: "Stockfish 2019" })).toBeChecked();
-    expect(localStorage.getItem(ENGINE_STORAGE_KEY)).toBe("stockfish-9000");
+      expect(screen.getByRole("radio", { name: SINGLE })).toBeChecked();
+      expect(localStorage.getItem(ENGINE_STORAGE_KEY)).toBe(gone);
+      unmount();
+    }
   });
 
   it("shows the stored engine as the default while this host cannot run it", () => {
@@ -133,38 +134,19 @@ describe("Settings → Engine", () => {
 
     renderEngine();
 
-    expect(screen.getByRole("radio", { name: "Stockfish 2019" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: SINGLE })).toBeChecked();
     expect(screen.getByTestId("engine-in-use")).toHaveTextContent(DEFAULT_ENGINE_ID);
   });
 
-  it("lists an engine registered while it is open", () => {
-    renderEngine();
-    expect(screen.queryByRole("radio", { name: "Hosted Stockfish" })).toBeNull();
-
-    const hosted: EngineDescriptor = {
-      id: "hosted-stockfish",
-      name: "Hosted Stockfish",
-      version: "18",
-      kind: "local",
-      capabilities: { maxDepth: 24, strength: "elo", multiThread: true },
-      create: () => ({}) as EngineHandle,
-    };
-    act(() => {
-      removers.push(registerEngine(hosted));
-    });
-
-    expect(screen.getByRole("radio", { name: "Hosted Stockfish" })).toBeEnabled();
-    expect(screen.getByTestId("engine-picker-facts-hosted-stockfish")).toHaveTextContent("Strength by Elo");
-  });
-
   it("is operated from the keyboard: an arrow moves the choice", async () => {
+    vi.stubGlobal("crossOriginIsolated", true);
     renderEngine();
 
-    screen.getByRole("radio", { name: "Stockfish 2019" }).focus();
+    screen.getByRole("radio", { name: SINGLE }).focus();
     await userEvent.keyboard("{ArrowDown}");
 
-    expect(screen.getByRole("radio", { name: "Stockfish 19 Lite" })).toBeChecked();
-    expect(screen.getByTestId("engine-in-use")).toHaveTextContent("stockfish-19-lite-single");
+    expect(screen.getByRole("radio", { name: MULTI })).toBeChecked();
+    expect(screen.getByTestId("engine-in-use")).toHaveTextContent("stockfish-19-lite-multi");
   });
 
   it("reads in Hebrew", async () => {

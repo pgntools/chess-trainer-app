@@ -114,8 +114,6 @@ if (swa) {
   // The worker and its wasm are same-origin files the fallback must not answer for.
   if (!(config.navigationFallback?.exclude ?? []).includes("/stockfish/*")) problems.push("staticwebapp.config.json: navigationFallback does not exclude /stockfish/*");
   for (const file of [
-    "stockfish/stockfish.wasm.js",
-    "stockfish/stockfish.wasm",
     "stockfish/stockfish-19-lite-single/stockfish-19-lite-single.js",
     "stockfish/stockfish-19-lite-single/stockfish-19-lite-single.wasm",
     "stockfish/stockfish-19-lite-multi/stockfish-19-lite.js",

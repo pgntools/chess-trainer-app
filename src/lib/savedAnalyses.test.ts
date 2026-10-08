@@ -176,12 +176,20 @@ describe("savedAnalysisFrom — a row out of storage", () => {
     const row = savedAnalysisFrom({
       ...save(grow([[[], ["e4"]]]), ["e4"]),
       orientation: "black",
-      settings: { depth: 22, multiPv: 5, moveTimeMs: 0 },
+      settings: { depth: 22, multiPv: 5, moveTimeMs: 0, infinite: true, threads: 4, hashMb: 256 },
     })!;
 
     expect(row.path).toEqual(["e4"]);
     expect(row.orientation).toBe("black");
-    expect(row.settings).toEqual({ depth: 22, multiPv: 5, moveTimeMs: 0 });
+    expect(row.settings).toEqual({ depth: 22, multiPv: 5, moveTimeMs: 0, infinite: true, threads: 4, hashMb: 256 });
+  });
+
+  it("reads a record from before infinite analysis, threads and hash (CTA-160) with Play with Engine's defaults", () => {
+    const row = savedAnalysisFrom({
+      ...save(grow([[[], ["e4"]]])),
+      settings: { depth: 16, multiPv: 3, moveTimeMs: 1000 },
+    })!;
+    expect(row.settings).toEqual({ depth: 16, multiPv: 3, moveTimeMs: 1000, infinite: false, threads: 1, hashMb: 16 });
   });
 
   it("drops a path that is not a list of strings", () => {

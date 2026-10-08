@@ -1,56 +1,25 @@
 import { StrictMode, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import type { EngineDescriptor, EngineHandle } from "../../../lib/engineTypes";
-import { registerEngine } from "../../../lib/engines";
+import { DEFAULT_ENGINE_ID, STOCKFISH_19_LITE_MULTI } from "../../../lib/engines";
 import { FakeEngine } from "../boardTestHarness";
 import { useEngineModule, type EngineModuleStart } from "./useEngineModule";
 
 /*
   The engine capability's own behaviour (CTA-152): which engine it builds, and
   that changing the choice replaces it. The boards' tests cover everything else
-  through the same `FakeEngine`, standing in for the default engine as it always
-  has — which is why the default must still be `lib/engine`'s default export.
+  through the same seam — the shipped descriptors, each building a `FakeEngine`
+  that declares what its build declares (`builtinEnginesMock`).
 */
 
-vi.mock("../../../lib/engine", async () => ({
-  default: (await import("../boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
-/** An engine that declares what the multi-thread build does: `Threads` adjustable. */
-class WideEngine extends FakeEngine {
-  override readonly options = new Map([
-    ["Threads", { name: "Threads", type: "spin", min: 1, max: 32 }],
-    ["UCI_Elo", { name: "UCI_Elo", type: "spin", min: 1320, max: 3190 }],
-  ]);
-}
+/** The multi-thread build: `Threads` adjustable (1–32), and runnable only on an isolated page. */
+const MULTI = STOCKFISH_19_LITE_MULTI.id;
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-/*
-  The harness's `FakeEngine` is looser than `EngineHandle` (its messages are
-  plain records), by design — every board's tests build it through
-  `vi.mock("lib/engine")`. A descriptor hands it out as the handle it stands in for.
-*/
-const descriptor = (
-  id: string,
-  create: () => FakeEngine,
-  overrides: Partial<EngineDescriptor> = {},
-): EngineDescriptor => ({
-  id,
-  name: id,
-  version: "1",
-  kind: "local",
-  capabilities: { maxDepth: 24, strength: "both", multiThread: true },
-  create: () => create() as unknown as EngineHandle,
-  ...overrides,
-});
-
-const removers: (() => void)[] = [];
-const register = (d: EngineDescriptor) => {
-  removers.push(registerEngine(d));
-  return d;
-};
 
 const live = () => FakeEngine.instances.filter((engine) => !engine.terminated);
 
@@ -79,83 +48,76 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  removers.splice(0).forEach((remove) => remove());
   vi.unstubAllGlobals();
 });
 
+/** The engine a `FakeEngine` was built for. */
+const builtFor = (engine: FakeEngine) => engine.descriptor?.id;
+
 describe("useEngineModule — which engine", () => {
-  it("builds the default engine when no choice is made — today's behaviour", () => {
+  it("builds the default engine when no choice is made", () => {
     const { result } = mount(start());
 
     expect(FakeEngine.instances).toHaveLength(1);
     expect(FakeEngine.latest().lastSearch).toBe(START);
-    expect(result.current.descriptor.id).toBe("stockfish-2019-wasm");
+    expect(result.current.descriptor.id).toBe(DEFAULT_ENGINE_ID);
+    expect(builtFor(FakeEngine.latest())).toBe(DEFAULT_ENGINE_ID);
   });
 
-  it("builds the engine the choice names", () => {
-    const wide = register(descriptor("wide", () => new WideEngine()));
-    const { result } = mount(start({ engine: "wide" }));
+  it("falls back to the default for an id the app does not ship — the retired 2019 build's too", () => {
+    for (const engine of ["no-such-engine", "stockfish-2019-wasm"]) {
+      FakeEngine.reset();
+      const { result, unmount } = mount(start({ engine }));
 
-    expect(FakeEngine.instances).toHaveLength(1);
-    expect(FakeEngine.latest()).toBeInstanceOf(WideEngine);
-    expect(FakeEngine.latest().lastSearch).toBe(START);
-    expect(result.current.descriptor).toBe(wide);
-  });
-
-  it("falls back to the default for an id nobody registered", () => {
-    const { result } = mount(start({ engine: "no-such-engine" }));
-
-    expect(FakeEngine.latest()).not.toBeInstanceOf(WideEngine);
-    expect(result.current.descriptor.id).toBe("stockfish-2019-wasm");
+      expect(result.current.descriptor.id).toBe(DEFAULT_ENGINE_ID);
+      expect(FakeEngine.instances.map(builtFor)).toEqual([DEFAULT_ENGINE_ID]);
+      unmount();
+    }
   });
 
   it("falls back for an engine this page cannot run — and builds nothing for it", () => {
-    const create = vi.fn(() => new WideEngine());
-    register(descriptor("needs-isolation", create, { requires: { crossOriginIsolated: true } }));
-
     // jsdom is not cross-origin isolated.
-    const { result } = mount(start({ engine: "needs-isolation" }));
+    const { result } = mount(start({ engine: MULTI }));
 
-    expect(create).not.toHaveBeenCalled();
-    expect(result.current.descriptor.id).toBe("stockfish-2019-wasm");
+    expect(result.current.descriptor.id).toBe(DEFAULT_ENGINE_ID);
+    expect(FakeEngine.instances.map(builtFor)).toEqual([DEFAULT_ENGINE_ID]);
   });
 
-  it("uses an engine that needs isolation once the page has it", () => {
+  it("builds the engine the choice names, where the page can run it", () => {
     vi.stubGlobal("crossOriginIsolated", true);
-    const wide = register(
-      descriptor("needs-isolation", () => new WideEngine(), { requires: { crossOriginIsolated: true } }),
-    );
+    const { result } = mount(start({ engine: MULTI }));
 
-    const { result } = mount(start({ engine: "needs-isolation" }));
-
-    expect(result.current.descriptor).toBe(wide);
-    expect(FakeEngine.latest()).toBeInstanceOf(WideEngine);
+    expect(result.current.descriptor.id).toBe(MULTI);
+    expect(FakeEngine.instances.map(builtFor)).toEqual([MULTI]);
+    expect(FakeEngine.latest().lastSearch).toBe(START);
   });
 });
 
 describe("useEngineModule — changing the engine", () => {
-  const switching = () => {
-    register(descriptor("wide", () => new WideEngine()));
-    return mount(start());
-  };
+  // The multi-thread build is the other engine to switch to, so the page is isolated.
+  beforeEach(() => {
+    vi.stubGlobal("crossOriginIsolated", true);
+  });
+
+  const switching = () => mount(start());
 
   it("terminates the old handle and builds the new one — one engine at a time", () => {
     const { rerender } = switching();
     const first = FakeEngine.latest();
     expect(live()).toEqual([first]);
 
-    rerender(start({ engine: "wide" }));
+    rerender(start({ engine: MULTI }));
 
     expect(first.terminated).toBe(true);
     expect(FakeEngine.instances).toHaveLength(2);
     expect(live()).toHaveLength(1);
-    expect(live()[0]).toBeInstanceOf(WideEngine);
+    expect(builtFor(live()[0])).toBe(MULTI);
   });
 
   it("never has two engines alive, however often the choice changes", () => {
     const { rerender } = switching();
 
-    for (const engine of ["wide", undefined, "wide", "no-such-engine", "wide"]) {
+    for (const engine of [MULTI, undefined, MULTI, "no-such-engine", MULTI]) {
       rerender(start({ engine }));
       expect(live().length).toBeLessThanOrEqual(1);
     }
@@ -167,7 +129,7 @@ describe("useEngineModule — changing the engine", () => {
 
     // An unknown id resolves to the default, which is already running.
     rerender(start({ engine: "no-such-engine" }));
-    rerender(start({ engine: "stockfish-2019-wasm" }));
+    rerender(start({ engine: DEFAULT_ENGINE_ID }));
 
     expect(FakeEngine.instances).toHaveLength(1);
   });
@@ -176,42 +138,39 @@ describe("useEngineModule — changing the engine", () => {
     const { rerender } = switching();
     const afterMove = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
 
-    rerender(start({ engine: "wide", fen: afterMove }));
+    rerender(start({ engine: MULTI, fen: afterMove }));
 
     expect(FakeEngine.latest().searches).toEqual([afterMove]);
   });
 
   it("runs the handshake again: publishes the new engine's options and pushes the settings to it", () => {
     const uciOptions = { Threads: 4 };
-    register(descriptor("wide", () => new WideEngine()));
     const { result, rerender } = mount(start({ uciOptions }));
     // The default build pins Threads to 1.
     expect(result.current.engineOptions.get("Threads")).toMatchObject({ min: 1, max: 1 });
 
-    rerender(start({ uciOptions, engine: "wide" }));
+    rerender(start({ uciOptions, engine: MULTI }));
 
     expect(result.current.engineOptions.get("Threads")).toMatchObject({ min: 1, max: 32 });
-    expect(result.current.engineOptions.has("UCI_Elo")).toBe(true);
     expect(FakeEngine.latest().setOptions).toContainEqual(["Threads", 4]);
   });
 
   it("clamps the requested settings to what the new engine declares", () => {
     const uciOptions = { Threads: 4 };
     const onUciOptionsReady = vi.fn();
-    register(descriptor("wide", () => new WideEngine()));
     const { rerender } = mount(start({ uciOptions, onUciOptionsReady }));
     // Pinned to 1 on the default build: the request is pulled down.
     expect(onUciOptionsReady).toHaveBeenLastCalledWith({ Threads: 1 });
     onUciOptionsReady.mockClear();
 
-    // A screen that took the clamp asks for 1; the wide engine keeps it as is.
+    // A screen that took the clamp asks for 1; the multi-thread engine keeps it as is.
     const taken = { Threads: 1 };
-    rerender(start({ uciOptions: taken, onUciOptionsReady, engine: "wide" }));
+    rerender(start({ uciOptions: taken, onUciOptionsReady, engine: MULTI }));
     expect(onUciOptionsReady).not.toHaveBeenCalled();
 
-    // And a request beyond the wide engine's own bound is pulled to it.
+    // And a request beyond its own bound is pulled to it.
     const tooMany = { Threads: 64 };
-    rerender(start({ uciOptions: tooMany, onUciOptionsReady, engine: "wide" }));
+    rerender(start({ uciOptions: tooMany, onUciOptionsReady, engine: MULTI }));
     expect(onUciOptionsReady).toHaveBeenLastCalledWith({ Threads: 32 });
   });
 
@@ -229,7 +188,7 @@ describe("useEngineModule — changing the engine", () => {
     });
     expect(result.current.analysis.lines).toHaveLength(1);
 
-    rerender(start({ engine: "wide" }));
+    rerender(start({ engine: MULTI }));
     expect(result.current.analysis.lines).toHaveLength(0);
 
     act(() => {
@@ -252,17 +211,16 @@ describe("useEngineModule — changing the engine", () => {
     });
     expect(result.current.evalsByFen.has(START)).toBe(true);
 
-    rerender(start({ engine: "wide" }));
+    rerender(start({ engine: MULTI }));
 
     expect(result.current.evalsByFen.has(START)).toBe(true);
   });
 
   it("delivers the new engine's best move to the board that plays", () => {
     const onBestMove = vi.fn();
-    register(descriptor("wide", () => new WideEngine()));
     const { rerender } = mount(start({ onBestMove }));
 
-    rerender(start({ onBestMove, engine: "wide" }));
+    rerender(start({ onBestMove, engine: MULTI }));
     act(() => {
       FakeEngine.latest().say({ uciMessage: "bestmove e2e4", fen: START, bestMove: "e2e4" });
     });
@@ -273,8 +231,7 @@ describe("useEngineModule — changing the engine", () => {
 
 describe("useEngineModule — lifecycle", () => {
   it("terminates the running engine on unmount", () => {
-    register(descriptor("wide", () => new WideEngine()));
-    const { unmount } = mount(start({ engine: "wide" }));
+    const { unmount } = mount(start());
 
     unmount();
 
@@ -282,13 +239,13 @@ describe("useEngineModule — lifecycle", () => {
   });
 
   it("leaves one live engine under StrictMode's mount, unmount, mount", () => {
-    register(descriptor("wide", () => new WideEngine()));
+    vi.stubGlobal("crossOriginIsolated", true);
     const wrapper = ({ children }: { children: ReactNode }) => <StrictMode>{children}</StrictMode>;
 
-    mount(start({ engine: "wide" }), { wrapper });
+    mount(start({ engine: MULTI }), { wrapper });
 
     expect(live()).toHaveLength(1);
-    expect(live()[0]).toBeInstanceOf(WideEngine);
+    expect(builtFor(live()[0])).toBe(MULTI);
     expect(live()[0].lastSearch).toBe(START);
   });
 
@@ -296,5 +253,28 @@ describe("useEngineModule — lifecycle", () => {
     // The options handshake still builds an engine — the Engine tab reads what it declares.
     mount(start({ enabled: false }));
     expect(FakeEngine.latest().searches).toEqual([]);
+  });
+
+  it("searches to the depth and time asked, or until stopped while infinite (CTA-160)", () => {
+    const { rerender } = mount(start({ depth: 20, moveTimeMs: 0 }));
+    const engine = FakeEngine.latest();
+    expect(engine.searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
+
+    rerender(start({ depth: 20, moveTimeMs: 0, infinite: true }));
+    expect(engine.searchOptions.at(-1)).toEqual({ infinite: true });
+
+    rerender(start({ depth: 20, moveTimeMs: 0, infinite: false }));
+    expect(engine.searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
+  });
+
+  it("stops the engine when switched off, and searches the position on screen when switched back on", () => {
+    const { rerender } = mount(start());
+    const engine = FakeEngine.latest();
+
+    rerender(start({ enabled: false }));
+    expect(engine.stops).toBe(1);
+
+    rerender(start());
+    expect(engine.searches).toEqual([START, START]);
   });
 });

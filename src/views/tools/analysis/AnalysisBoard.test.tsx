@@ -31,9 +31,9 @@ import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
 import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../../main/boardLeftPanel";
 import { NEXT_MOVE_ARROW_PALETTES, UNTAGGED_NEXT_MOVE_ARROW_COLOR } from "./nextMoveArrows";
 
-vi.mock("../../../lib/engine", async () => ({
-  default: (await import("../../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 // The Library's write, spied on so a test can make it fail (CTA-101).
 vi.mock("../../../lib/libraryCollectionStore", async (importOriginal) => {
@@ -755,6 +755,33 @@ describe("Play — the engine plays the opponent's best move until paused", () =
     play();
     engineSearches("e2e4 e7e5");
     expect(boardOptions().position).toBe(AFTER_E4);
+  });
+
+  it("searches until stopped under infinite analysis, and to the depth while Play is on — Play needs a move (CTA-160)", () => {
+    mountEngineOn();
+    openTab("engine");
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
+
+    fireEvent.click(screen.getByRole("switch", { name: "Infinite analysis" }));
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ infinite: true });
+
+    play();
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
+  });
+
+  it("asks the engine for Threads and Hash as Play with Engine does — a multi-thread engine's threads adjustable here too (CTA-160)", () => {
+    vi.stubGlobal("crossOriginIsolated", true);
+    localStorage.setItem("chessapp.engine", "stockfish-19-lite-multi");
+    mountEngineOn();
+    openTab("engine");
+
+    expect(FakeEngine.latest().descriptor?.id).toBe("stockfish-19-lite-multi");
+    expect(FakeEngine.latest().setOptions).toEqual(
+      expect.arrayContaining([["MultiPV", 3], ["Threads", 1], ["Hash", 16]]),
+    );
+    expect(screen.getByRole("slider", { name: "Threads" })).toBeEnabled();
+    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toBeEnabled();
+    vi.unstubAllGlobals();
   });
 
   it("pauses when the board is flipped — the engine's side changed under it (CTA-74)", () => {

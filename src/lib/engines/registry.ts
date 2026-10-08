@@ -1,17 +1,15 @@
 import type { EngineDescriptor } from "../engineTypes";
-import { BUILTIN_ENGINES, STOCKFISH_2019 } from "./builtin";
+import { BUILTIN_ENGINES } from "./builtin";
 import { DEFAULT_ENGINE_ID } from "./ids";
 
 /**
  * **The engine registry** (CTA-152) — the engines a reader can choose between,
  * [`docs/engine.md`](../../../docs/engine.md).
  *
- * - **A list that can grow at runtime.** {@link registerEngine} adds (or
- *   replaces, by id) a descriptor and tells {@link subscribeEngines}'s
- *   listeners, so a hosted engine's list — fetched from a backend later — joins
- *   the built-in ones without a build change. {@link listEngines} returns the
- *   same array until the list changes, so it is a valid
- *   `useSyncExternalStore` snapshot.
+ * - **A fixed list, the shipped builds** ({@link BUILTIN_ENGINES}). It grew at
+ *   runtime once, for a hosted engine not yet built; nothing but tests used
+ *   that, so it went (CTA-160) — `docs/engine.md` §8 says how a hosted engine
+ *   would bring it back.
  * - **Availability is read at runtime, never baked in.** An engine that
  *   `requires` cross-origin isolation is *listed* everywhere and *available*
  *   only where the page really is isolated (`crossOriginIsolated`) — the same
@@ -19,8 +17,9 @@ import { DEFAULT_ENGINE_ID } from "./ids";
  *   chessapp.dev host (which does). An unavailable engine carries its reason
  *   so a picker can show it disabled and say why.
  * - **An id that cannot run falls back to the default**, {@link resolveEngine}:
- *   a stored preference naming an engine that no longer exists, or one this
- *   page cannot run, must never leave a board without an engine.
+ *   a stored preference naming an engine that no longer exists (the retired
+ *   2019 build's `stockfish-2019-wasm`), or one this page cannot run, must
+ *   never leave a board without an engine.
  *
  * Importing this builds no worker: descriptors are data until `create()`.
  */
@@ -40,48 +39,19 @@ export type EngineEntry = {
   availability: EngineAvailability;
 };
 
-let engines: readonly EngineDescriptor[] = BUILTIN_ENGINES;
-const listeners = new Set<() => void>();
-
-const notify = () => listeners.forEach((listener) => listener());
-
 /** Whether this page is cross-origin isolated — false under Node and jsdom, which have no such global. */
 export const isCrossOriginIsolated = (): boolean =>
   (globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated === true;
 
-/** Every registered engine, the default first. The same array until the list changes. */
-export const listEngines = (): readonly EngineDescriptor[] => engines;
-
-/** Call `listener` whenever the list changes. Returns an unsubscribe fn. */
-export const subscribeEngines = (listener: () => void): (() => void) => {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-};
-
-/** The descriptor with this id, if one is registered. */
+/** The descriptor with this id, if the app ships one. */
 export const getEngine = (id: string): EngineDescriptor | undefined =>
-  engines.find((descriptor) => descriptor.id === id);
+  BUILTIN_ENGINES.find((descriptor) => descriptor.id === id);
 
-/**
- * Add an engine — or replace the one with the same id — and return a function
- * that removes it again. The default engine cannot be removed: it is the
- * fallback every unresolvable id lands on.
- */
-export const registerEngine = (descriptor: EngineDescriptor): (() => void) => {
-  const replaced = engines.some((existing) => existing.id === descriptor.id);
-  engines = replaced
-    ? engines.map((existing) => (existing.id === descriptor.id ? descriptor : existing))
-    : [...engines, descriptor];
-  notify();
-
-  return () => {
-    if (descriptor.id === DEFAULT_ENGINE_ID) return;
-    if (getEngine(descriptor.id) !== descriptor) return; // replaced since — not ours to remove
-    engines = engines.filter((existing) => existing !== descriptor);
-    notify();
-  };
+/** The default engine's descriptor — every fallback lands here. */
+const defaultEngine = (): EngineDescriptor => {
+  const descriptor = getEngine(DEFAULT_ENGINE_ID);
+  if (descriptor === undefined) throw new Error(`the default engine ${DEFAULT_ENGINE_ID} is not shipped`);
+  return descriptor;
 };
 
 /** Whether `descriptor` can run on this page — read now, not at build time. */
@@ -93,19 +63,19 @@ export const engineAvailability = (
     ? { available: false, reason: "cross-origin-isolation" }
     : { available: true };
 
-/** Every engine with its availability — what a picker lists. */
+/** Every engine with its availability — what a picker lists, the default first. */
 export const describeEngines = (
   isolated: boolean = isCrossOriginIsolated(),
 ): EngineEntry[] =>
-  engines.map((descriptor) => ({
+  BUILTIN_ENGINES.map((descriptor) => ({
     descriptor,
     availability: engineAvailability(descriptor, isolated),
   }));
 
 /**
  * The engine to run for a stored or requested `id`: that engine when it is
- * registered and available on this page, otherwise the default. `undefined`
- * (no preference) is the default too — which is today's behaviour.
+ * shipped and available on this page, otherwise the default. `undefined`
+ * (no preference) is the default too.
  */
 export const resolveEngine = (
   id?: string | null,
@@ -113,5 +83,5 @@ export const resolveEngine = (
 ): EngineDescriptor => {
   const wanted = id ? getEngine(id) : undefined;
   if (wanted && engineAvailability(wanted, isolated).available) return wanted;
-  return getEngine(DEFAULT_ENGINE_ID) ?? STOCKFISH_2019;
+  return defaultEngine();
 };

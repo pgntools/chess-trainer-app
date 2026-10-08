@@ -6,18 +6,15 @@ chosen** — a board that never picks it never downloads it. How the app uses
 them, how to add one and the protocol rules are in
 [`docs/engine.md`](../../docs/engine.md).
 
-All three are **GNU GPL v3** (Stockfish is GPLv3; each build's licence text sits
-beside it as `LICENSE`, the 2019 build's notice is in the header of
-`stockfish.wasm.js`). Distributing the binaries means offering their source:
+Both are **GNU GPL v3** (Stockfish is GPLv3; each build's licence text sits
+beside it as `LICENSE`). Distributing the binaries means offering their source:
 [official-stockfish/Stockfish](https://github.com/official-stockfish/Stockfish)
 and [nmrugg/stockfish.js](https://github.com/nmrugg/stockfish.js) (the WASM
-port, "Stockfish.js", © Chess.com, LLC) for the 19 builds, and
-[ddugovic/Stockfish](https://github.com/ddugovic/Stockfish) for the 2019 one.
+port, "Stockfish.js", © Chess.com, LLC).
 
 | Registry id | Files | What `uci` answers (`id name`) | Threads | Strength | Size |
 | --- | --- | --- | --- | --- | --- |
-| `stockfish-2019-wasm` (default) | `stockfish.wasm.js`, `stockfish.wasm` | `Stockfish 2019-08-15 64 POPCNT Multi-Variant` — classical evaluation | pinned to 1 | `Skill Level` only | 0.6 MB |
-| `stockfish-19-lite-single` | `stockfish-19-lite-single/stockfish-19-lite-single.{js,wasm}` | `Stockfish 19 Lite WASM` — NNUE, the small net `nn-61e7af4bb97d` embedded | pinned to 1 | `Skill Level`, `UCI_LimitStrength` + `UCI_Elo` 1320–3190 | 1.8 MB |
+| `stockfish-19-lite-single` (default) | `stockfish-19-lite-single/stockfish-19-lite-single.{js,wasm}` | `Stockfish 19 Lite WASM` — NNUE, the small net `nn-61e7af4bb97d` embedded | pinned to 1 | `Skill Level`, `UCI_LimitStrength` + `UCI_Elo` 1320–3190 | 1.8 MB |
 | `stockfish-19-lite-multi` | `stockfish-19-lite-multi/stockfish-19-lite.{js,wasm}` | `Stockfish 19 Lite WASM Multithreaded` — the same net | adjustable, 1–32 | as the single-thread build | 1.7 MB |
 
 The 19 builds are the **`lite`** flavours of the npm package
@@ -33,20 +30,19 @@ Each build was run as a worker in headless Chromium (served from this folder,
 with and without COOP / COEP headers) and as a Node process, and its own `uci`
 reply read — not its wasm string table. Checked on **2026-10-07** (CTA-152):
 
-- **`uci` roster** — as the table above; `Hash` is adjustable on the 19 builds
-  (1 to 33 554 432 MB declared — far more than a tab can hold; a settings UI
-  clamps what it asks for), pinned to 16 on the 2019 one.
-- **`setoption` during a search.** The 19 builds **keep searching**: a `stop`
-  afterwards still ends in a `bestmove`. (The 2019 build did not lose the search
-  to a mid-search `Skill Level` or `MultiPV` in this run either; its fatal case
-  below is `Threads`.) The app's rule — buffer, post only when idle, `stop` first —
-  stays generic and is applied to every engine: a hosted or future engine has not
-  been measured.
-- **`setoption name Threads value 1`.** Fatal on the **2019** build, idle or
-  mid-search: it then never answers another search — no `bestmove`, no `info`.
-  Harmless on the **19 single-thread** build, which also declares `Threads`
-  pinned (`min 1 max 1`) and takes the value. The app never posts a pinned option
-  regardless.
+- **`uci` roster** — as the table above; `Hash` is adjustable (1 to
+  33 554 432 MB declared — far more than a tab can hold) and `MultiPV` runs to
+  256. Measured in CTA-160: **`Hash` 1024 MB works, 2048 MB crashed the tab**
+  (WebAssembly's memory), so the app never asks for more than 1024 and offers
+  less on a smaller device. Depth reached over time: `docs/engine.md` §5.1.
+- **`setoption` during a search.** Both builds **keep searching**: a `stop`
+  afterwards still ends in a `bestmove`. The app's rule — buffer, post only when
+  idle, `stop` first — stays generic and is applied to every engine: a hosted or
+  future engine has not been measured.
+- **`setoption name Threads value 1`.** Harmless on the **single-thread** build,
+  which declares `Threads` pinned (`min 1 max 1`) and takes the value. The app
+  never posts a pinned option regardless — an earlier build (Stockfish
+  2019-08-15, removed in CTA-160) stopped answering for good after exactly this.
 - **Multi-thread.** `setoption name Threads value 2` then a depth-12 search
   works — **only on a cross-origin-isolated page** (`Cross-Origin-Opener-Policy:
   same-origin`, `Cross-Origin-Embedder-Policy: require-corp`). On a page that is
@@ -67,8 +63,6 @@ its helper threads from that same script URL.
 18727c9ade11a8ca04391ab5a298232bc6fffebe2002e7cfffac82e7ad453447  stockfish-19-lite-multi/stockfish-19-lite.wasm
 d3344124ab067fb0b90ee77873bb8e9fbf5fc01bc525fe714b0f942581e889e6  stockfish-19-lite-single/stockfish-19-lite-single.js
 57ac2d72312aba346760e3f173f687a8c211208e97a87268436f7f0e10bb5387  stockfish-19-lite-single/stockfish-19-lite-single.wasm
-632e59bfd48adb2b1cba8757f9195e582aa9684425f3ec5b9d4c1bd05ff0afdb  stockfish.wasm.js
-45816b436eb8c180acb2c5b9fda0148101f411edbfa6bf919918e0a362eafca8  stockfish.wasm
 ```
 
 ## Updating a build

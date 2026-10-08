@@ -14,21 +14,20 @@ afterEach(() => {
 });
 
 describe("importing the engine layer", () => {
-  it("builds no Worker — registry, descriptors, the default engine, the transport, the hook", async () => {
+  it("builds no Worker — registry, descriptors, the protocol, the transport, the hook", async () => {
     const Worker = vi.fn(function () {
       throw new Error("a Worker was constructed at import time");
     });
     vi.stubGlobal("Worker", Worker);
     vi.resetModules();
 
-    await import("../engine");
     await import("../uciEngine");
     await import("../workerTransport");
     const registry = await import(".");
     await import("../../views/board/core/useEngineModule");
 
     // Listing, describing and resolving are reads of data.
-    expect(registry.listEngines().length).toBeGreaterThan(1);
+    expect(registry.BUILTIN_ENGINES.length).toBeGreaterThan(1);
     registry.describeEngines();
     registry.resolveEngine("stockfish-19-lite-multi");
 

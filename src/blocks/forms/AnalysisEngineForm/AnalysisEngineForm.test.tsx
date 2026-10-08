@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AnalysisEngineForm, { type AnalysisEngineFormProps } from "./AnalysisEngineForm";
-import { ABSENT, BEFORE_HANDSHAKE, PINNED, SETTINGS, SHIPPED } from "./fixtures";
+import { ABSENT, BEFORE_HANDSHAKE, MULTI_THREAD, PINNED, SETTINGS, SHIPPED } from "./fixtures";
 
 const mount = (props: Partial<AnalysisEngineFormProps> = {}) => {
   const onChange = vi.fn();
@@ -51,10 +51,43 @@ describe("AnalysisEngineForm", () => {
     expect(onShowEvalBarChange).toHaveBeenCalledWith(false);
   });
 
-  it("turns the search's sliders off while the engine is", () => {
+  it("has Play with Engine's Threads and Hash, by what the engine declared and what the device can give (CTA-160)", async () => {
+    const user = userEvent.setup();
+    mount();
+    // The single-thread build pins Threads.
+    expect(screen.getByRole("slider", { name: "Threads" })).toBeDisabled();
+    expect(screen.getByTestId("engine-setting-threads-fixed")).toHaveTextContent("This engine build fixes Threads at 1.");
+    // Hash is declared to 33,554,432 MB; offered to the 1024 ceiling.
+    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("aria-valuemax", "1024");
+
+    const { onChange } = mount({ engineOptions: MULTI_THREAD, deviceLimits: { threads: 6, hashMb: 512 } });
+    const threads = screen.getAllByRole("slider", { name: "Threads" }).at(-1)!;
+    expect(threads).toBeEnabled();
+    expect(threads).toHaveAttribute("aria-valuemax", "6");
+    expect(screen.getAllByRole("slider", { name: "Hash (MB)" }).at(-1)).toHaveAttribute("aria-valuemax", "512");
+    threads.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(onChange).toHaveBeenLastCalledWith({ threads: SETTINGS.threads + 1 });
+  });
+
+  it("turns the search's controls off while the engine is", () => {
     mount({ engineOn: false });
+    expect(screen.getByRole("switch", { name: "Infinite analysis" })).toBeDisabled();
     expect(screen.getByRole("slider", { name: "Search depth" })).toBeDisabled();
     expect(screen.getByRole("slider", { name: "Move time" })).toBeDisabled();
+  });
+
+  it("switches infinite analysis, saying what it does, and offers depth to 40 and a minute (CTA-160)", async () => {
+    const user = userEvent.setup();
+    const { onChange } = mount();
+    const infinite = screen.getByRole("switch", { name: "Infinite analysis" });
+    expect(infinite).not.toBeChecked();
+    expect(infinite).toHaveAccessibleDescription(/until the position changes/);
+    await user.click(infinite);
+    expect(onChange).toHaveBeenCalledWith({ infinite: true });
+
+    expect(screen.getByRole("slider", { name: "Search depth" })).toHaveAttribute("aria-valuemax", "40");
+    expect(screen.getByRole("slider", { name: "Move time" })).toHaveAttribute("aria-valuemax", "60000");
   });
 
   it("says when this build pins the lines, or has none", () => {
