@@ -37,7 +37,11 @@ export type EngineSettings = {
   depth: number;
   /** UCI `MultiPV` — how many lines the Variations tab shows. */
   multiPv: number;
-  /** Milliseconds per search; `0` means "depth alone decides". */
+  /**
+   * Milliseconds per search; `0` means "depth alone decides", and `1` — the
+   * slider's 0-seconds mark — is the instant reply (CTA-163): 0 was already
+   * taken by "no limit", so the mark needed its own encoding.
+   */
   moveTimeMs: number;
   /** UCI `Threads`. */
   threads: number;
@@ -71,7 +75,9 @@ export const DEFAULT_ENGINE_SETTINGS: EngineSettings = {
  * Measured on the Stockfish 19 builds in headless Chromium (CTA-160): the
  * single-thread build reaches depth 20 in about 3.5 s, 24 in 14 s and 26 in
  * 34 s on a fast desktop, so **depth stops at 40** (well past any search a
- * reader would wait for) and **move time at 60 s**. `Hash` took 1024 MB and
+ * reader would wait for) and **move time at 300 s** (CTA-163: the snap-to-mark
+ * slider's last time mark — the analysis boards keep their own 60 s ceiling,
+ * `ANALYSIS_SETTING_BOUNDS`). `Hash` took 1024 MB and
  * **2048 MB crashed the tab** — WebAssembly's memory, not the engine's
  * declared 33,554,432 — so 1024 is a hard ceiling; and **Threads stops at
  * 32**, the multi-thread build's own top. What a form offers is lower where
@@ -82,11 +88,67 @@ export const ENGINE_SETTING_BOUNDS = {
   // What the Stockfish 19 builds declare for `UCI_Elo`; the running build's own range replaces it.
   elo: { min: 1320, max: 3190 },
   depth: { min: 1, max: 40 },
-  moveTimeMs: { min: 0, max: 60000 },
+  moveTimeMs: { min: 0, max: 300000 },
   multiPv: { min: 1, max: MAX_VARIATIONS_OFFERED },
   threads: { min: 1, max: 32 },
   hashMb: { min: 1, max: 1024 },
 } as const satisfies Record<Exclude<keyof EngineSettings, "playAs">, { min: number; max: number }>;
+
+/**
+ * The move-time marks the engine form offers (CTA-163) — lichess's snap
+ * points, in **seconds**. The slider's own value is the mark's **slot** (its
+ * index), so the marks space evenly however the seconds grow; 0 is the
+ * instant reply ({@link MOVE_TIME_INSTANT_MS}) and the slot past the last
+ * mark is unlimited (`moveTimeMs` 0).
+ */
+export const MOVE_TIME_MARKS_S = [0, 5, 10, 20, 30, 60, 120, 300] as const;
+
+/**
+ * The instant reply as stored: `moveTimeMs` 0 is reserved for "no limit", so
+ * the slider's 0-seconds mark carries its own encoding (CTA-163).
+ */
+export const MOVE_TIME_INSTANT_MS = 1;
+
+/** The move-time slider's unlimited slot — past the last mark, the `∞` mark. */
+export const MOVE_TIME_UNLIMITED_SLOT = MOVE_TIME_MARKS_S.length;
+
+/** The move-time slider's marks — a slot per mark, labelled in seconds, `∞` for unlimited. */
+export const moveTimeSliderMarks = (): ReadonlyArray<{ value: number; label: string }> => [
+  ...MOVE_TIME_MARKS_S.map((seconds, slot) => ({ value: slot, label: String(seconds) })),
+  { value: MOVE_TIME_UNLIMITED_SLOT, label: "∞" },
+];
+
+/**
+ * A `moveTimeMs` on the move-time slider: unlimited is the `∞` slot, the
+ * instant reply the 0-seconds mark, and anything else **where it falls
+ * between the marks** (CTA-163) — the default's 1000 ms sits at slot 0.2,
+ * between "0" and "5", and the next drag snaps it onto a mark.
+ */
+export const moveTimeSliderValueOf = (moveTimeMs: number): number => {
+  if (moveTimeMs <= 0) return MOVE_TIME_UNLIMITED_SLOT;
+  if (moveTimeMs <= MOVE_TIME_INSTANT_MS) return 0;
+  const seconds = moveTimeMs / 1000;
+  const last = MOVE_TIME_MARKS_S.length - 1;
+  for (let slot = 0; slot < last; slot += 1) {
+    if (seconds <= MOVE_TIME_MARKS_S[slot + 1]) {
+      const from = MOVE_TIME_MARKS_S[slot];
+      return slot + (seconds - from) / (MOVE_TIME_MARKS_S[slot + 1] - from);
+    }
+  }
+  return last;
+};
+
+/**
+ * The `moveTimeMs` a slot of the move-time slider means (CTA-163): the `∞`
+ * slot is 0, the 0-seconds mark the instant reply, and any other slot its
+ * mark's seconds. A slot arrives on a mark — the slider's step is the slot
+ * itself — but a rounding keeps a stray fraction honest.
+ */
+export const moveTimeOfSliderValue = (slot: number): number => {
+  if (slot >= MOVE_TIME_UNLIMITED_SLOT) return 0;
+  const mark = Math.max(0, Math.round(slot));
+  return mark === 0 ? MOVE_TIME_INSTANT_MS : MOVE_TIME_MARKS_S[mark] * 1000;
+};
 
 /** The most of each heavy knob this device should be offered. */
 export type DeviceEngineLimits = { threads: number; hashMb: number };

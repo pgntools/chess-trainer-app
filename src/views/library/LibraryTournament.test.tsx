@@ -183,8 +183,21 @@ describe("a tournament collection's view", () => {
     const players = within(first.getByRole("list", { name: /players$/ })).getAllByRole("link");
     expect(players.length).toBeGreaterThan(3);
     expect(players[0].getAttribute("href")).toMatch(/^\/library\/worldblitzteam2026\?tab=games&player=/);
+    // A titled player carries the same chip the Participants table shows (CTA-164) —
+    // before their name, outside the link, so the link's name stays the player's.
+    const chips = within(teams).getAllByText("GM");
+    expect(chips.length).toBeGreaterThan(0);
+    expect(within(teams).queryByRole("link", { name: /Grandmaster/ })).toBeNull();
     expect(screen.getByRole("columnheader", { name: /Team/ })).toBeInTheDocument();
   }, 30_000);
+
+  it("shows a team Swiss's titled players their chips in the sidebar too", async () => {
+    mount("/library/worldrapidteam2026?tab=participants");
+    const teams = await screen.findByTestId("library-tournament-teams", {}, { timeout: 20_000 });
+    expect(screen.getByTestId("layout-right-panel")).toContainElement(teams);
+    expect(within(teams).getAllByText("GM").length).toBeGreaterThan(0);
+    expect(within(teams).queryByRole("link", { name: /Grandmaster/ })).toBeNull();
+  }, 40_000);
 
   it("follows a player's link from Participants to the Games tab, filtered", async () => {
     const user = userEvent.setup();

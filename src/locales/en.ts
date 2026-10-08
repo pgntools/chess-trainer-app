@@ -705,7 +705,11 @@ const en = {
       moveTimeNone: "No limit",
       multiPv: "Variations to show",
       threads: "Threads",
+      /** A neutral caption under the Threads slider (CTA-163). */
+      threadsHelp: "Engine CPU cores",
       hash: "Hash (MB)",
+      /** A neutral caption under the Hash slider (CTA-163). */
+      hashHelp: "Engine memory (RAM)",
       playAs: "Play as",
       white: "White",
       black: "Black",

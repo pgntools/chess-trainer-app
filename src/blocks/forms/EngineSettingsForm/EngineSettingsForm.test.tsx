@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
@@ -126,6 +126,116 @@ describe("EngineSettingsForm", () => {
     screen.getByRole("switch", { name: "Show evaluation bar" }).focus();
     await userEvent.keyboard(" ");
     expect(onShowEvalBarChange).toHaveBeenCalledWith(false);
+  });
+
+  describe("the Hash slider's RAM marks and the help captions (CTA-163)", () => {
+    it("marks the round RAM points within the offered range", () => {
+      mount(ADJUSTABLE_OPTIONS);
+      for (const label of ["128", "256", "512", "1024"]) {
+        expect(screen.getByText(label)).toHaveClass("MuiSlider-markLabel");
+      }
+    });
+
+    it("adapts the marks to what this device can give", () => {
+      render(
+        <EngineSettingsForm
+          settings={SETTINGS}
+          onChange={vi.fn()}
+          engineOptions={ADJUSTABLE_OPTIONS}
+          showEvalBar
+          onShowEvalBarChange={vi.fn()}
+          deviceLimits={{ threads: 3, hashMb: 512 }}
+          testId="engine"
+        />,
+      );
+      for (const label of ["128", "256", "512"]) {
+        expect(screen.getByText(label)).toHaveClass("MuiSlider-markLabel");
+      }
+      expect(screen.queryByText("1024")).toBeNull();
+    });
+
+    it("explains Hash in terms of RAM and Threads in terms of CPU cores", () => {
+      mount(ADJUSTABLE_OPTIONS);
+      expect(screen.getByTestId("engine-setting-hash-help")).toHaveTextContent("Engine memory (RAM)");
+      expect(screen.getByTestId("engine-setting-threads-help")).toHaveTextContent("Engine CPU cores");
+    });
+  });
+
+  describe("the move-time slider — lichess's snap marks (CTA-163)", () => {
+    it("offers the marks 0 … 300 seconds and ∞, and tells a screen reader the value as words", () => {
+      mount();
+      const slider = screen.getByRole("slider", { name: "Move time" });
+      expect(slider).toHaveAttribute("aria-valuemin", "0");
+      expect(slider).toHaveAttribute("aria-valuemax", "8");
+      expect(slider).toHaveAttribute("aria-valuenow", "0.2");
+      expect(slider).toHaveAttribute("aria-valuetext", "1.0s");
+      for (const label of ["0", "5", "10", "20", "30", "60", "120", "300", "∞"]) {
+        expect(screen.getByText(label)).toHaveClass("MuiSlider-markLabel");
+      }
+      // The default's 1000 ms is shown where it falls, between "0" and "5".
+      expect(screen.getByTestId("engine-setting-movetime-value")).toHaveTextContent("1.0s");
+    });
+
+    it("keeps the ∞ mark the reader's stored unlimited: moveTimeMs 0, said as No limit", () => {
+      render(
+        <EngineSettingsForm
+          settings={{ ...SETTINGS, moveTimeMs: 0 }}
+          onChange={vi.fn()}
+          engineOptions={SHIPPED_OPTIONS}
+          showEvalBar
+          onShowEvalBarChange={vi.fn()}
+          testId="engine"
+        />,
+      );
+      const slider = screen.getByRole("slider", { name: "Move time" });
+      expect(slider).toHaveAttribute("aria-valuenow", "8");
+      expect(slider).toHaveAttribute("aria-valuetext", "No limit");
+      expect(screen.getByTestId("engine-setting-movetime-value")).toHaveTextContent("No limit");
+    });
+
+    it("says the instant reply as 0s, not 0.0s", () => {
+      render(
+        <EngineSettingsForm
+          settings={{ ...SETTINGS, moveTimeMs: 1 }}
+          onChange={vi.fn()}
+          engineOptions={SHIPPED_OPTIONS}
+          showEvalBar
+          onShowEvalBarChange={vi.fn()}
+          testId="engine"
+        />,
+      );
+      expect(screen.getByTestId("engine-setting-movetime-value")).toHaveTextContent("0s");
+      expect(screen.getByRole("slider", { name: "Move time" })).toHaveAttribute("aria-valuenow", "0");
+    });
+
+    it("snaps a drag to a mark: a slot arrives, its seconds leave as a patch", () => {
+      const { onChange } = mount();
+      // Slot 4 is the 30-seconds mark.
+      fireEvent.change(screen.getByTestId("engine-setting-movetime-input"), { target: { value: "4" } });
+      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 30000 });
+      fireEvent.change(screen.getByTestId("engine-setting-movetime-input"), { target: { value: "8" } });
+      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 0 });
+      fireEvent.change(screen.getByTestId("engine-setting-movetime-input"), { target: { value: "0" } });
+      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 1 });
+    });
+
+    it("steps a mark at a time from the keyboard", async () => {
+      const onChange = vi.fn();
+      render(
+        <EngineSettingsForm
+          settings={{ ...SETTINGS, moveTimeMs: 0 }}
+          onChange={onChange}
+          engineOptions={SHIPPED_OPTIONS}
+          showEvalBar
+          onShowEvalBarChange={vi.fn()}
+          testId="engine"
+        />,
+      );
+      // Unlimited is the ∞ mark; an arrow steps onto the 300 s mark.
+      screen.getByRole("slider", { name: "Move time" }).focus();
+      await userEvent.keyboard("{ArrowLeft}");
+      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 300000 });
+    });
   });
 
   describe("the strength control — Skill Level or Elo, by what the running engine declared (CTA-153)", () => {

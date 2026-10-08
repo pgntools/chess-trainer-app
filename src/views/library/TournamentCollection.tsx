@@ -252,16 +252,22 @@ function ParticipantsTab({ collection, read }: { collection: CollectionSummary; 
   const participants = useMemo(() => (headers === undefined ? undefined : participantsOf(headers)), [headers]);
   const top = useMemo(() => (participants === undefined ? undefined : topPlayersOf(participants)), [participants]);
   const rosters = useMemo((): TeamRoster[] | undefined => {
-    if (!team || headers === undefined) return undefined;
+    if (!team || headers === undefined || participants === undefined) return undefined;
     const players = teamPlayersOf(headers);
+    // Each player's title as the participants read it (CTA-164): a tag one game of
+    // theirs omits, another gives — the tables' own merging, `tournamentOf`'s.
+    const titles = new Map(participants.flatMap(({ player }) => (player.title === undefined ? [] : [[player.name, player.title] as const])));
     return teamTournamentOf(headers).standings.map(({ team: name, federation, matchPoints, boardPoints }) => ({
       team: name,
       ...(federation !== undefined && { federation }),
       matchPoints,
       boardPoints,
-      players: players.get(name) ?? [],
+      players: (players.get(name) ?? []).map((player) => {
+        const title = titles.get(player);
+        return { name: player, ...(title !== undefined && { title }) };
+      }),
     }));
-  }, [team, headers]);
+  }, [team, headers, participants]);
   const toPlayer = useCallback((player: TournamentPlayer) => gamesOfPlayers(collection.id, [player.name]), [collection.id]);
 
   // The right-hand panel: the statistics (the standouts), a team event's teams, then the shipped / uploaded note.
@@ -274,7 +280,7 @@ function ParticipantsTab({ collection, read }: { collection: CollectionSummary; 
           <TeamRosters
             teams={rosters}
             playerLink={(name) => gamesOfPlayers(collection.id, [name])}
-            teamLink={(roster) => gamesOfPlayers(collection.id, roster.players)}
+            teamLink={(roster) => gamesOfPlayers(collection.id, roster.players.map(({ name }) => name))}
             testId="library-tournament-teams"
           />
         )}

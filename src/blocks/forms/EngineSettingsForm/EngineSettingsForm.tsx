@@ -7,6 +7,11 @@ import {
   approximateElo,
   ENGINE_SETTING_BOUNDS,
   type DeviceEngineLimits,
+  MOVE_TIME_INSTANT_MS,
+  moveTimeOfSliderValue,
+  MOVE_TIME_UNLIMITED_SLOT,
+  moveTimeSliderMarks,
+  moveTimeSliderValueOf,
   SETTING_UCI_OPTION,
   usesEloStrength,
   type EngineSettings,
@@ -42,7 +47,17 @@ type OptionRow = {
   slug?: string;
   /** Cap the top below what the engine would take (MultiPV's 256, Hash's 33,554,432 MB). */
   maxOffered?: number;
+  /** Labelled marks within the offered range (the Hash slider's RAM points, CTA-163). */
+  marks?: (state: { min: number; max: number }) => ReadonlyArray<{ value: number; label: string }>;
+  /** A neutral helper caption under the slider (Hash and Threads, CTA-163). */
+  helpKey?: string;
 };
+
+/** The Hash slider's round RAM points (CTA-163) — labelled marks, shown where they fall within the offered range. */
+const HASH_MARKS_MB = [128, 256, 512, 1024] as const;
+
+const hashMarks = ({ min, max }: { min: number; max: number }): ReadonlyArray<{ value: number; label: string }> =>
+  HASH_MARKS_MB.filter((mb) => mb >= min && mb <= max).map((mb) => ({ value: mb, label: String(mb) }));
 
 /**
  * **The engine's settings** (CTA-109; the Engine tab of CTA-74) — strength
@@ -70,7 +85,16 @@ function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, on
   const optionFor = (name: string): EngineOption | undefined =>
     handshakeLanded ? engineOptions.get(name) : { name, type: "spin" };
 
-  const optionSlider = ({ setting, labelKey, maxOffered, slug }: OptionRow, valueLabel?: string) => {
+  /** The move-time slider's value as words — the header's and the screen reader's (CTA-163). */
+  const moveTimeWords = (moveTimeMs: number): string =>
+    moveTimeMs === 0
+      ? t("playEngine.settings.moveTimeNone")
+      : t("playEngine.settings.moveTimeValue", {
+          // The instant reply is "0s", not "0.0s" — the 0-seconds mark, not a rounding.
+          seconds: moveTimeMs <= MOVE_TIME_INSTANT_MS ? "0" : (moveTimeMs / 1000).toFixed(1),
+        });
+
+  const optionSlider = ({ setting, labelKey, maxOffered, slug, marks, helpKey }: OptionRow, valueLabel?: string) => {
     const optionName = SETTING_UCI_OPTION[setting];
     const id = `${testId}-setting-${slug ?? optionSlug(optionName)}`;
     const state = engineOptionState(optionFor(optionName), ENGINE_SETTING_BOUNDS[setting], maxOffered);
@@ -83,6 +107,8 @@ function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, on
         max={state.max}
         onChange={(value) => onChange({ [setting]: value })}
         valueLabel={valueLabel}
+        marks={marks?.(state)}
+        help={helpKey === undefined ? undefined : t(helpKey)}
         disabled={state.kind !== "adjustable"}
         notice={
           state.kind === "absent" ? (
@@ -123,18 +149,24 @@ function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, on
         onChange={(depth) => onChange({ depth })}
         testId={`${testId}-setting-depth`}
       />
+      {/*
+        Move time is lichess's snap-to-mark slider (CTA-163): marks at 0, 5,
+        10 … 300 seconds and an ∞ mark for "no limit". The slider's value is
+        the mark's slot, so the marks space evenly; its step is the slot, so a
+        drag or a key lands on a mark. A stored value off the marks (the
+        1000 ms default, an older record's 250 ms step) is shown where it
+        falls between them — never rewritten on open — and the next drag
+        snaps it onto a mark.
+      */}
       <SliderField
         label={t("playEngine.settings.moveTime")}
-        value={settings.moveTimeMs}
-        min={ENGINE_SETTING_BOUNDS.moveTimeMs.min}
-        max={ENGINE_SETTING_BOUNDS.moveTimeMs.max}
-        step={250}
-        valueLabel={
-          settings.moveTimeMs === 0
-            ? t("playEngine.settings.moveTimeNone")
-            : t("playEngine.settings.moveTimeValue", { seconds: (settings.moveTimeMs / 1000).toFixed(1) })
-        }
-        onChange={(moveTimeMs) => onChange({ moveTimeMs })}
+        value={moveTimeSliderValueOf(settings.moveTimeMs)}
+        min={0}
+        max={MOVE_TIME_UNLIMITED_SLOT}
+        marks={moveTimeSliderMarks()}
+        valueLabel={moveTimeWords(settings.moveTimeMs)}
+        valueText={moveTimeWords(settings.moveTimeMs)}
+        onChange={(slot) => onChange({ moveTimeMs: moveTimeOfSliderValue(slot) })}
         testId={`${testId}-setting-movetime`}
       />
       {optionSlider({ setting: "multiPv", labelKey: "playEngine.settings.multiPv", maxOffered: ENGINE_SETTING_BOUNDS.multiPv.max })}
@@ -147,11 +179,14 @@ function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, on
         setting: "threads",
         labelKey: "playEngine.settings.threads",
         maxOffered: deviceLimits?.threads ?? ENGINE_SETTING_BOUNDS.threads.max,
+        helpKey: "playEngine.settings.threadsHelp",
       })}
       {optionSlider({
         setting: "hashMb",
         labelKey: "playEngine.settings.hash",
         maxOffered: deviceLimits?.hashMb ?? ENGINE_SETTING_BOUNDS.hashMb.max,
+        marks: hashMarks,
+        helpKey: "playEngine.settings.hashHelp",
       })}
       <SwitchField
         label={t("playEngine.settings.evalBar")}
