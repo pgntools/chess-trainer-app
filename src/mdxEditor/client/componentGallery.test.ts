@@ -40,11 +40,11 @@ describe("the gallery's index", () => {
   });
 
   it("files them in its folders, each entry's id its own", () => {
-    expect(GALLERY.map((folder) => folder.title)).toEqual(["Boards", "Tournament tables", "Images", "Other", "Future components"]);
+    expect(GALLERY.map((folder) => folder.title)).toEqual(["Boards", "Collections", "Repertoires", "Tournament tables", "Images", "Other", "Future components"]);
     const ids = [...GALLERY.map((folder) => folder.id), ...entries.map((entry) => entry.id)];
     expect(new Set(ids).size).toBe(ids.length);
     const boards = GALLERY.find((folder) => folder.id === "boards")?.entries.map((entry) => entry.component);
-    expect(boards).toEqual(["InlinePgnGame", "InlinePgnGame2colH", "InlinePgnGame2colV", "StoredGameEmbed", "CollectionCard", "RepertoireBoard"]);
+    expect(boards).toEqual(["InlinePgnGame", "InlinePgnGame2colH", "InlinePgnGame2colV", "StoredGameEmbed"]);
   });
 
   it("opens every entry that reads a game on a shipped sample that fits it", () => {
@@ -58,6 +58,8 @@ describe("the gallery's index", () => {
       if (source === undefined) continue;
       expect(misfitOf(entry, source), entry.id).toBeUndefined();
       if (source.kind === "file") expect(existsSync(`${ARTICLES}/${source.file}`), source.file).toBe(true);
+      // A file's PGN written in is that file's text.
+      else if (source.kind === "pasted" && entry.sample !== undefined && "file" in entry.sample) expect(source.text, entry.id).toBe(readFileSync(`${ARTICLES}/${entry.sample.file}`, "utf8"));
       else if (source.kind === "address" && "collection" in source.address) expect(manifest.collections.map((collection) => collection.id), entry.id).toContain(source.address.collection);
     }
   });
@@ -137,6 +139,11 @@ describe("the gallery's index", () => {
       return builtInsOf(entry, files, collections);
     };
     expect(byId("swiss-standings")[0].label).toBe("tournaments/20th-werner-obermeyer-swiss-5r.pgn (the default)");
+    // A one-game board: the Blog's game written in, by an id of its own — the same file imported one of the others.
+    expect(byId("inline-pgn-game").slice(0, 2).map((example) => [example.id, example.source.kind])).toEqual([
+      ["inline:writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn", "pasted"],
+      ["tournaments/chned26.pgn", "file"],
+    ]);
     expect(byId("stored-game-embed").map((example) => example.id)).toEqual(["/library/capablanca/2", "/library/tal/1", "/library/capablanca/1"]);
     // A table: the Blog's PGNs and the shipped collections both.
     expect(byId("swiss-standings").map((example) => example.id)).toEqual(["tournaments/20th-werner-obermeyer-swiss-5r.pgn", "tournaments/chned26.pgn", "/library/tal", "/library/capablanca"]);

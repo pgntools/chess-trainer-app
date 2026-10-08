@@ -9,7 +9,9 @@ import { batchAnalysesOf } from "../../lib/savedAnalyses";
 import { addAnalyses } from "../../lib/savedAnalysisStore";
 import { readRepertoireText, savedRepertoireOf } from "../../lib/savedRepertoires";
 import { saveRepertoire } from "../../lib/savedRepertoireStore";
+import rubinsteinCapablanca from "../../views/blog/articles/writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn?raw";
 import ComponentGalleryMain from "./ComponentGalleryMain";
+import { withInlinePgn } from "./pgnImports";
 
 /*
   The MDX editor's Components gallery (`/dev/mdx-editor/components`,
@@ -44,20 +46,25 @@ const mount = () =>
 const code = () => screen.getByRole("textbox", { name: "The code" });
 const tree = () => screen.getByRole("tree", { name: "Components" });
 const preview = () => screen.getByRole("region", { name: /^Preview/ });
+/** A one-game board's code on its sample: the Blog's game written in, then the markup. */
+const inlineGame = (markup: string) => withInlinePgn(markup, "game", rubinsteinCapablanca);
 const pick = async (user: ReturnType<typeof userEvent.setup>, name: string) => user.click(within(tree()).getByRole("treeitem", { name }));
 
 describe("the Components gallery (CTA-140)", () => {
-  it("opens on the first board, its sample read from the Blog's file — the code, the form and the preview", async () => {
+  it("opens on the first board, its sample the Blog's game written in — the code, the form and the preview", async () => {
     mount();
     expect(screen.getByRole("heading", { level: 1, name: "Components gallery" })).toBeInTheDocument();
     // Its folders, open: each a branch of the tree.
     const folders = within(tree()).getAllByRole("treeitem", { expanded: true });
-    expect(folders).toHaveLength(5);
-    ["Boards", "Tournament tables", "Images", "Other", "Future components"].forEach((title, index) => expect(folders[index]).toHaveTextContent(new RegExp(`^${title}\\d`)));
-    expect(within(tree()).getByRole("treeitem", { name: "A game, its moves beside it" })).toHaveAttribute("aria-current", "page");
-    expect(code()).toHaveValue('import game from "./writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn?raw"\n\n<InlinePgnGame pgn={game} />');
-    expect(screen.getByTestId("mdx-component-gallery-note")).toHaveTextContent("from the Blog's root, src/views/blog/articles/");
-    // The sample, compiled with its import, rendered as an article renders it.
+    expect(folders).toHaveLength(7);
+    ["Boards", "Collections", "Repertoires", "Tournament tables", "Images", "Other", "Future components"].forEach((title, index) => expect(folders[index]).toHaveTextContent(new RegExp(`^${title}\\d`)));
+    expect(within(tree()).getByRole("treeitem", { name: "Flat PGN game" })).toHaveAttribute("aria-current", "page");
+    expect(code()).toHaveValue(inlineGame('<InlinePgnGame pgn={game} />'));
+    expect((code() as HTMLTextAreaElement).value).toMatch(/^export const game = `\[Event "San Sebastian"\]/);
+    // Nothing imported, so no word on where an import reads from.
+    expect(screen.queryByTestId("mdx-component-gallery-note")).not.toBeInTheDocument();
+    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Built-in example — writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn, written in (the default)");
+    // The sample, compiled with its PGN, rendered as an article renders it.
     await waitFor(() => expect(within(preview()).getByTestId("mdx-component-gallery-preview")).not.toHaveAttribute("aria-busy"), { timeout: 10_000 });
     expect(within(preview()).queryByTestId("mdx-component-gallery-preview-error")).not.toBeInTheDocument();
     expect(await within(preview()).findByRole("group", { name: /^The game, from The start to 42\. Rh6\+/ })).toBeInTheDocument();
@@ -68,8 +75,8 @@ describe("the Components gallery (CTA-140)", () => {
     const user = userEvent.setup();
     mount();
     await user.click(screen.getByRole("switch", { name: "Side lines" }));
-    expect(code()).toHaveValue('import game from "./writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn?raw"\n\n<InlinePgnGame pgn={game} variations={false} />');
-    fireEvent.change(code(), { target: { value: 'import game from "./writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn?raw"\n\n<InlinePgnGame pgn={game} caption="Hello" />' } });
+    expect(code()).toHaveValue(inlineGame('<InlinePgnGame pgn={game} variations={false} />'));
+    fireEvent.change(code(), { target: { value: inlineGame('<InlinePgnGame pgn={game} caption="Hello" />') } });
     expect(screen.getByRole("textbox", { name: "Caption" })).toHaveValue("Hello");
     expect(screen.getByRole("switch", { name: "Side lines" })).toBeChecked();
   });
@@ -77,18 +84,18 @@ describe("the Components gallery (CTA-140)", () => {
   it("opens the two-column games — beside the board and under it — on the same sample, their settings those of <InlinePgnGame>", async () => {
     const user = userEvent.setup();
     mount();
-    await pick(user, "A game, its moves in two columns beside it");
-    expect(code()).toHaveValue('import game from "./writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn?raw"\n\n<InlinePgnGame2colH pgn={game} />');
+    await pick(user, "2 columns horizontal");
+    expect(code()).toHaveValue(inlineGame('<InlinePgnGame2colH pgn={game} />'));
     expect(screen.getByRole("switch", { name: "Side lines" })).toBeChecked();
-    await pick(user, "A game, its moves in two columns under it");
-    expect(code()).toHaveValue('import game from "./writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn?raw"\n\n<InlinePgnGame2colV pgn={game} />');
+    await pick(user, "2 columns vertical");
+    expect(code()).toHaveValue(inlineGame('<InlinePgnGame2colV pgn={game} />'));
     expect(screen.getByRole("switch", { name: "Side lines" })).toBeChecked();
   });
 
   it("picks an entry from the tree by the keyboard, and opens it on its own sample", async () => {
     const user = userEvent.setup();
     mount();
-    within(tree()).getByRole("treeitem", { name: "A game, its moves beside it" }).focus();
+    within(tree()).getByRole("treeitem", { name: "Flat PGN game" }).focus();
     // Down through the Boards — past the two two-column variants — to the stored game.
     await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{Enter}");
     expect(within(tree()).getByRole("treeitem", { name: "A stored game" })).toHaveAttribute("aria-current", "page");

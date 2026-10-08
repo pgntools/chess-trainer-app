@@ -1,13 +1,14 @@
 import { sourceAddressOf, sourcePathOf, type SourceAddress, type SourceKind as AddressKind } from "../../lib/embedSource";
 import { withInlinePgn, withPgnImports } from "./pgnImports";
 import type { TournamentGuess, TournamentKind } from "../../lib/tournamentKind";
+import rubinsteinCapablanca from "../../views/blog/articles/writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn?raw";
 
 /**
  * **The Components gallery's index** (CTA-140) — every component an article
  * can embed (`views/home/frontPage/index.ts`'s `mdxComponents`, but the
  * older names that are another with a source, `MDX_ALIASES`), one entry
- * each, in folders by what it is (boards, tournament tables, images, the
- * rest, and the components not built yet), each opening on a **shipped
+ * each, in folders by what it is (boards, collections, repertoires,
+ * tournament tables, images, the rest, and the components not built yet), each opening on a **shipped
  * sample** that fits it: a PGN beside the Blog's articles, or a Library
  * collection or game. Unlike Components' catalog (`componentCatalog.ts`,
  * by what the game is, for a game already chosen), this one is by
@@ -21,7 +22,8 @@ import type { TournamentGuess, TournamentKind } from "../../lib/tournamentKind";
  *
  * A snippet is whole: the PGN's definition first where the component reads
  * one — an `import` of the Blog's file, from the Blog's root, or the PGN
- * written in (`export const`) — then the component's markup.
+ * written in (`export const`) — then the component's markup. A one-game
+ * board's sample is its file's PGN written in, as an article holds one.
  */
 
 /** What a component reads its games from: a PGN, or what an app address names. */
@@ -44,8 +46,8 @@ export type GalleryEntry = {
   summary: string;
   /** What it reads its games from — none for a component that reads no game (`<NavCards>`, a repertoire's board, an image). */
   reads: readonly SourceKind[];
-  /** The shipped sample it opens on: a PGN beside the Blog's articles, or an app address. */
-  sample?: { file: string } | { address: string };
+  /** The shipped sample it opens on: a PGN beside the Blog's articles — its text written in where `inline` is (the file's, imported with `?raw`) — or an app address. */
+  sample?: { file: string; inline?: string } | { address: string };
   /** A tournament table's kinds of tournament — a source whose games look like another is told so. */
   tournament?: readonly TournamentKind[];
   /** The PGN's name in the snippet — `games`, else. */
@@ -85,6 +87,9 @@ export const SOURCE_WORDS: Readonly<Record<SourceKind, string>> = {
   repertoire: "a repertoire, /repertoires/<id>",
 };
 
+/** The one-game boards' sample: the Blog's game, written in. */
+const INLINE_GAME = { file: "writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn", inline: rubinsteinCapablanca } as const;
+
 /** What every board that shows one stored game reads. */
 const ONE_GAME: readonly SourceKind[] = ["libraryGame", "analysis", "playedGame"];
 /** What every tournament table reads. */
@@ -111,10 +116,10 @@ export const GALLERY: readonly GalleryFolder[] = [
       {
         id: "inline-pgn-game",
         component: "InlinePgnGame",
-        label: "A game, its moves beside it",
+        label: "Flat PGN game",
         summary: "A window of a game on a board, its moves beside it, side lines nested — from a PGN, the Library, an analysis, a played game or a repertoire's tree",
         reads: ["pgn", "libraryGame", "collection", "analysis", "playedGame", "repertoire"],
-        sample: { file: "writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn" },
+        sample: INLINE_GAME,
         pgnName: "game",
         markup: (target) =>
           target?.kind === "address" && target.address.kind === "collection" ? `<InlinePgnGame ${sourceProp(target)} game="1" />` : `<InlinePgnGame ${sourceProp(target, "game")} />`,
@@ -122,11 +127,11 @@ export const GALLERY: readonly GalleryFolder[] = [
       {
         id: "inline-pgn-game-2col-h",
         component: "InlinePgnGame2colH",
-        label: "A game, its moves in two columns beside it",
+        label: "2 columns horizontal",
         summary:
           "<InlinePgnGame> with its moves as the Analysis Board lists them — numbered pairs, side lines a row under their pair — beside the board in a box no taller than it, scrolling",
         reads: ["pgn", "libraryGame", "collection", "analysis", "playedGame", "repertoire"],
-        sample: { file: "writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn" },
+        sample: INLINE_GAME,
         pgnName: "game",
         markup: (target) =>
           target?.kind === "address" && target.address.kind === "collection"
@@ -136,11 +141,11 @@ export const GALLERY: readonly GalleryFolder[] = [
       {
         id: "inline-pgn-game-2col-v",
         component: "InlinePgnGame2colV",
-        label: "A game, its moves in two columns under it",
+        label: "2 columns vertical",
         summary:
           "The same numbered pairs under the board, in a box half its height, scrolling — for boards side by side in a <BoardRow>",
         reads: ["pgn", "libraryGame", "collection", "analysis", "playedGame", "repertoire"],
-        sample: { file: "writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn" },
+        sample: INLINE_GAME,
         pgnName: "game",
         markup: (target) =>
           target?.kind === "address" && target.address.kind === "collection"
@@ -156,6 +161,12 @@ export const GALLERY: readonly GalleryFolder[] = [
         sample: { address: "/library/capablanca/2" },
         markup: (target) => `<StoredGameEmbed ${sourceProp(target)} />`,
       },
+    ],
+  },
+  {
+    id: "collections",
+    title: "Collections",
+    entries: [
       {
         id: "collection-card",
         component: "CollectionCard",
@@ -168,6 +179,12 @@ export const GALLERY: readonly GalleryFolder[] = [
           return `<CollectionCard _id="/library/${collection}"${number === undefined ? "" : ` showGame="${number}"`} />`;
         },
       },
+    ],
+  },
+  {
+    id: "repertoires",
+    title: "Repertoires",
+    entries: [
       {
         id: "repertoire-board",
         component: "RepertoireBoard",
@@ -336,7 +353,7 @@ export const sourceKindOf = (source: GallerySource): SourceKind => (source.kind 
 /** An entry's shipped sample, as a source — `undefined` for one that reads no game. */
 export const sampleOf = (entry: GalleryEntry): GallerySource | undefined => {
   if (entry.sample === undefined) return undefined;
-  if ("file" in entry.sample) return { kind: "file", file: entry.sample.file };
+  if ("file" in entry.sample) return entry.sample.inline === undefined ? { kind: "file", file: entry.sample.file } : { kind: "pasted", text: entry.sample.inline };
   const address = sourceAddressOf(entry.sample.address);
   return address === undefined ? undefined : { kind: "address", address };
 };
@@ -398,6 +415,8 @@ export const builtInsOf = (entry: GalleryEntry, pgnFiles: readonly string[], col
     return { id: path, label, source: { kind: "address", address } };
   };
   if (sample?.kind === "file") add({ id: sample.file, label: `${sample.file} (the default)`, source: sample });
+  // A file's PGN written in: an id of its own, so the same file imported stays one of the others.
+  if (sample?.kind === "pasted" && entry.sample !== undefined && "file" in entry.sample) add({ id: `inline:${entry.sample.file}`, label: `${entry.sample.file}, written in (the default)`, source: sample });
   if (sample?.kind === "address") {
     const example = addressExample(sample.address);
     add({ ...example, label: `${example.label} (the default)` });
