@@ -16,8 +16,7 @@ import { MIN_TARGET_PX, MONOSPACE_FONT_FAMILY, useChessTokens } from "../../desi
 import { drawsShapes, shapesOf } from "../../lib/boardShapes";
 import { branchStartOf, findNode, pathTo, type GameTree, type VariationNode } from "../../lib/gameTree";
 import { lastMoveSquareStyles } from "../../lib/gameNavigation";
-import { excerptRows, excerptTokens, isInExcerpt, moveName, type ExcerptToken, type ExcerptWindow } from "../../lib/pgnExcerpt";
-import { readComment } from "../../lib/moveAnnotations";
+import { commentWords, excerptRows, excerptTokens, isInExcerpt, moveName, type ExcerptToken, type ExcerptWindow } from "../../lib/pgnExcerpt";
 import { ForceLTR } from "../../theme/ForceLTR";
 import NagGlyphs from "./NagGlyphs";
 import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
@@ -91,6 +90,12 @@ type ExcerptBoardProps = {
   orientation?: "white" | "black";
   /** Show the PGN comment of the move on screen. */
   showComments?: boolean;
+  /**
+   * Every PGN comment in the move list, where it is written — under the pair it follows
+   * (after White's move splitting it, as lichess's list does), inside a side line's run —
+   * rather than the one on screen under the moves, which `showComments` then leaves out.
+   */
+  inlineComments?: boolean;
   /** A line above the board — what this excerpt is for. */
   caption?: ReactNode;
   /** Draw the PGN's `[%cal]` / `[%csl]` shapes. Default on. */
@@ -140,6 +145,9 @@ const MOVES_FIT_MAX_PX = 240;
 const COLUMNS_BELOW_MAX_HEIGHT = `min(${BOARD_COLUMN_PX / 2}px, 50cqw)`;
 /** Under the board, each `movesHeight`'s cap — `"full"` none, the whole game shown. */
 const BELOW_MAX_HEIGHTS = { half: COLUMNS_BELOW_MAX_HEIGHT, board: `min(${BOARD_COLUMN_PX}px, 100cqw)`, full: "none" } as const;
+
+/** A comment in place, in the columns — a row of its own, the pair's width. */
+const commentRowSx = { gridColumn: "1 / -1", whiteSpace: "pre-line", paddingInline: 1, paddingBlock: 0.5 } as const;
 
 /** A side line's run — nested, dimmed, set off by a rule. */
 const variationRunSx = {
@@ -199,6 +207,7 @@ function ExcerptBoard({
   window,
   orientation: initialOrientation,
   showComments,
+  inlineComments = false,
   caption,
   shapes: drawShapes = true,
   nextMoveArrows = true,
@@ -225,7 +234,7 @@ function ExcerptBoard({
     const path = pathTo(tree, nodeId);
     return path.length === 0 ? undefined : (path.at(-2)?.id ?? null);
   }, [tree, nodeId]);
-  const list = useMemo(() => excerptTokens(tree, window), [tree, window]);
+  const list = useMemo(() => excerptTokens(tree, window, { comments: inlineComments }), [tree, window, inlineComments]);
   const columns = movesLayout === "columns";
   const below = columns && movesPlacement === "below";
   const controlsByMoves = controlsPlacement === "moves";
@@ -269,10 +278,7 @@ function ExcerptBoard({
   // The position's own comments — the move's, or the game's opening one at its start.
   const comments: readonly string[] = node === undefined ? (tree.comments ?? []) : (node.comments ?? []);
   // What they say, the commands (`[%cal]`, `[%eval]`, `prc:` …) taken out.
-  const comment = comments
-    .flatMap((raw) => readComment(raw).paragraphs)
-    .filter((text) => text.trim() !== "")
-    .join("\n\n");
+  const comment = commentWords(comments);
   const drawing = shapesOf(drawShapes ? comments : []);
   const drawn = drawsShapes(drawing);
 
@@ -363,10 +369,22 @@ function ExcerptBoard({
     </Box>
   );
 
+  const commentKey = (item: Extract<ExcerptToken, { kind: "comment" }>) => `c-${item.node?.id ?? "start"}${item.before ? "-before" : ""}`;
+
   const renderTokens = (items: readonly ExcerptToken[]): ReactNode[] =>
     items.map((item) =>
       item.kind === "variation" ? (
         variationRun(item.tokens, false)
+      ) : item.kind === "comment" ? (
+        <Typography
+          key={commentKey(item)}
+          component="span"
+          variant="body2"
+          data-testid={`${testId}-inline-comment`}
+          sx={{ whiteSpace: "pre-line", marginInline: 0.5 }}
+        >
+          {item.text}
+        </Typography>
       ) : (
         <Box key={item.node.id} component="span" sx={{ display: "inline-flex", alignItems: "center" }}>
           {item.label !== "" && <MoveNumber aria-hidden>{item.label}</MoveNumber>}
@@ -376,8 +394,15 @@ function ExcerptBoard({
     );
 
   /** One half of a pair — its move's button, or nothing where the pair has no such move. */
-  const pairCell = (token: (typeof rows)[number]["white"]) =>
-    token === null ? <Box aria-hidden /> : moveButton(token.node, { justifyContent: "flex-start", width: "100%" });
+  const pairCell = (token: (typeof rows)[number]["white"], split = false) =>
+    token === null ? (
+      // A pair a comment split: "…" where its other half stands, on the other row.
+      <Box aria-hidden sx={{ color: "text.secondary", paddingInlineStart: 1 }}>
+        {split ? "…" : null}
+      </Box>
+    ) : (
+      moveButton(token.node, { justifyContent: "flex-start", width: "100%" })
+    );
 
   const onScreen = node === undefined ? t("inlinePgn.start") : moveName(tree.startFen, node);
 
@@ -529,14 +554,26 @@ function ExcerptBoard({
                 ...(fitted ? { flex: "0 1 auto", minHeight: 0 } : {}),
               }}
             >
-              {rows.map((row) => (
-                <Fragment key={row.number}>
-                  <MoveNumber aria-hidden dir="ltr" sx={{ textAlign: "end", paddingInlineEnd: 0.5 }}>
-                    {row.number}.
-                  </MoveNumber>
-                  {pairCell(row.white)}
-                  {pairCell(row.black)}
-                  {row.variations.map((variation) => variationRun(variation.tokens, true))}
+              {rows.map((row, index) => (
+                <Fragment key={`${row.number}-${index}`}>
+                  {(row.white !== null || row.black !== null) && (
+                    <>
+                      <MoveNumber aria-hidden dir="ltr" sx={{ textAlign: "end", paddingInlineEnd: 0.5 }}>
+                        {row.number}.
+                      </MoveNumber>
+                      {pairCell(row.white, rows[index - 1]?.number === row.number)}
+                      {pairCell(row.black, rows[index + 1]?.number === row.number)}
+                    </>
+                  )}
+                  {row.notes.map((note) =>
+                    note.kind === "variation" ? (
+                      variationRun(note.tokens, true)
+                    ) : (
+                      <Typography key={commentKey(note)} variant="body2" data-testid={`${testId}-inline-comment`} sx={commentRowSx}>
+                        {note.text}
+                      </Typography>
+                    ),
+                  )}
                 </Fragment>
               ))}
             </Box>
@@ -551,7 +588,7 @@ function ExcerptBoard({
             </Box>
           )}
           {controlsByMoves && !below && controls}
-          {showComments && comment !== "" && (
+          {showComments && !inlineComments && comment !== "" && (
             <Typography
               variant="body2"
               data-testid={`${testId}-comment`}

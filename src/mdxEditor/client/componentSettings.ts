@@ -28,7 +28,8 @@ export type SettingField =
   /** `on` is the component's own default — the prop is written only when it differs. */
   | (FieldBase & { kind: "switch"; on: boolean })
   /** `""` (none chosen) leaves the prop out — the component's default. */
-  | (FieldBase & { kind: "choice"; options: readonly { value: string; label: string }[]; none: string });
+  /** `switched`: the values a bare prop / `{true}` and `{false}` read as — a choice that was once a switch. */
+  | (FieldBase & { kind: "choice"; options: readonly { value: string; label: string }[]; none: string; switched?: { on: string; off: string } });
 
 /** What the form holds: each prop's value — a string, or a switch's state; absent, the component's default. */
 export type SettingValues = Readonly<Record<string, string | boolean | undefined>>;
@@ -102,9 +103,26 @@ const INLINE_PGN_GAME: readonly SettingField[] = [
   nextMoveArrows,
 ];
 
-/** `<InlinePgnGame2colH>`'s — `<InlinePgnGame>`'s, and the moves' column's width. */
+/** The two-column games' comments — in place (their default), under the moves, or none. */
+const twoColumnComments: SettingField = {
+  prop: "comments",
+  kind: "choice",
+  label: "Comments",
+  none: "Inline — each where it is written",
+  options: [
+    { value: "bottom", label: "Bottom — the move's own, under the moves" },
+    { value: "hidden", label: "Hidden" },
+  ],
+  switched: { on: "bottom", off: "hidden" },
+  help: "Inline, a comment after White's move splits the pair. Arrows and circles are drawn on the board either way.",
+};
+
+/** `<InlinePgnGame>`'s fields, its comments switch given way to the two-column games' choice. */
+const TWO_COLUMN_BASE: readonly SettingField[] = INLINE_PGN_GAME.map((field) => (field.prop === "comments" ? twoColumnComments : field));
+
+/** `<InlinePgnGame2colH>`'s — `<InlinePgnGame>`'s, inline comments, and the moves' column's width. */
 const INLINE_PGN_GAME_2COL_H: readonly SettingField[] = [
-  ...INLINE_PGN_GAME,
+  ...TWO_COLUMN_BASE,
   {
     prop: "movesWidth",
     kind: "choice",
@@ -117,9 +135,9 @@ const INLINE_PGN_GAME_2COL_H: readonly SettingField[] = [
   },
 ];
 
-/** `<InlinePgnGame2colV>`'s — `<InlinePgnGame>`'s, and the moves' box's height. */
+/** `<InlinePgnGame2colV>`'s — `<InlinePgnGame>`'s, inline comments, and the moves' box's height. */
 const INLINE_PGN_GAME_2COL_V: readonly SettingField[] = [
-  ...INLINE_PGN_GAME,
+  ...TWO_COLUMN_BASE,
   {
     prop: "movesHeight",
     kind: "choice",
@@ -223,7 +241,9 @@ export const valuesOf = (attributes: readonly Attribute[], fields: readonly Sett
     const attribute = attributes.find((candidate) => candidate.prop === field.prop);
     if (attribute === undefined) continue;
     const { value } = attribute;
-    if ("bare" in value) values[field.prop] = true;
+    if (field.kind === "choice" && field.switched !== undefined && ("bare" in value || ("expression" in value && (value.expression === "true" || value.expression === "false")))) {
+      values[field.prop] = "bare" in value || value.expression === "true" ? field.switched.on : field.switched.off;
+    } else if ("bare" in value) values[field.prop] = true;
     else if ("string" in value) values[field.prop] = field.kind === "switch" ? value.string !== "false" : value.string;
     else if (value.expression === "true" || value.expression === "false") values[field.prop] = value.expression === "true";
     else if (/^-?\d+$/.test(value.expression)) values[field.prop] = value.expression;

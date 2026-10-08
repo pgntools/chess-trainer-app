@@ -14,7 +14,7 @@ const sans = (id: string | null) => pathTo(tree, id).map((node) => node.san);
 const text = (tokens: readonly ExcerptToken[]): string =>
   tokens
     .map((token) =>
-      token.kind === "variation" ? `( ${text(token.tokens)} )` : `${token.label}${token.label === "" ? "" : " "}${token.node.san}`,
+      token.kind === "variation" ? `( ${text(token.tokens)} )` : token.kind === "comment" ? `{ ${token.text} }` : `${token.label}${token.label === "" ? "" : " "}${token.node.san}`,
     )
     .join(" ");
 
@@ -99,13 +99,13 @@ describe("excerptTokens — the move list", () => {
 describe("excerptRows — the move list in numbered pairs", () => {
   const rowsOf = (options: Parameters<typeof resolveExcerpt>[1]) => excerptRows(tree.startFen, excerptTokens(tree, resolveExcerpt(tree, options)));
   const summary = (rows: ReturnType<typeof rowsOf>) =>
-    rows.map((row) => `${row.number}. ${row.white?.node.san ?? "…"} ${row.black?.node.san ?? "…"}${row.variations.length > 0 ? ` [${row.variations.length}]` : ""}`);
+    rows.map((row) => `${row.number}. ${row.white?.node.san ?? "…"} ${row.black?.node.san ?? "…"}${row.notes.length > 0 ? ` [${row.notes.length}]` : ""}`);
 
   it("pairs the moves by number, a side line on the pair holding the move it answers", () => {
     const rows = rowsOf({});
     expect(summary(rows)).toEqual(["1. e4 e5", "2. Nf3 Nc6 [2]", "3. Bb5 a6 [1]", "4. Ba4 Nf6"]);
     // Nested lines stay inside their run.
-    expect(text(rows[1].variations[0].tokens)).toBe("2... d6 3. d4");
+    expect(text((rows[1].notes[0] as Extract<ExcerptToken, { kind: "variation" }>).tokens)).toBe("2... d6 3. d4");
   });
 
   it("opens a window on Black's move with an empty White cell, and ends on White's with an empty Black one", () => {
