@@ -883,7 +883,10 @@ the tab's panel (`tabPanelProps`, `library-tournament-panel-<tab>`):
   standouts, `TopPlayers`: best score, best performance, most wins, longest
   unbeaten run), then a team event's **Teams** — a line each, one on top of
   the next: flag, name, match and board points at its end, its players
-  small under it (`TeamRosters`, `teamTournamentOf` + `teamPlayersOf`) —
+  small under it, a titled one's title the same chip before their name as
+  the Participants table shows (CTA-164, `titleBadgeOf`; the titles derived
+  from `participantsOf`, so a tag one game omits another gives)
+  (`TeamRosters`, `teamTournamentOf` + `teamPlayersOf`) —
   then the note; in the tab, every player's record (`ParticipantsTable` over `participantsOf`:
   rank, title and flag, team, rating, points, games, W / D / L,
   performance — the opponents' average plus `400·log10(p / (1 − p))`, held
