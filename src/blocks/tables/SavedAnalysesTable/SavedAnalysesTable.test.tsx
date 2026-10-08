@@ -8,7 +8,10 @@ import { expectNoAxeViolations } from "../../../test/axe";
 import type { DataTableSort } from "../../../design-system/patterns/tables";
 import { analysisTreeRows, type SavedAnalysisColumn, type SavedAnalysisRow } from "../../../lib/savedAnalysisRows";
 import type { GameFolder } from "../../../lib/savedGameFolders";
-import SavedAnalysesTable, { type SavedAnalysesTableFolderActions } from "./SavedAnalysesTable";
+import SavedAnalysesTable, {
+  type SavedAnalysesTableFolderActions,
+  type SavedAnalysesTableFolderPick,
+} from "./SavedAnalysesTable";
 import { ANALYSIS_FOLDERS, ANALYSIS_ROWS, FILED_ROWS, manyRows } from "./fixtures";
 
 /** The table as the Saved analyses screen holds it: sort, open folders, page and picks in state, the rows walked by them. */
@@ -20,6 +23,8 @@ function Harness({
   folderActions = { onDownload: vi.fn(), onRename: vi.fn(), onMove: vi.fn(), onDelete: vi.fn() },
   text = "",
   onClearFilter = () => {},
+  folderPick,
+  selectAll,
 }: {
   rows?: readonly SavedAnalysisRow[];
   folders?: readonly GameFolder[];
@@ -28,6 +33,8 @@ function Harness({
   folderActions?: SavedAnalysesTableFolderActions;
   text?: string;
   onClearFilter?: () => void;
+  folderPick?: (folder: GameFolder) => SavedAnalysesTableFolderPick;
+  selectAll?: { checked: boolean; indeterminate: boolean; onToggleAll: () => void };
 }) {
   const [sort, setSort] = useState<DataTableSort<SavedAnalysisColumn>>({ column: "updated", direction: "desc" });
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -61,6 +68,8 @@ function Harness({
         setPicked(next);
         onPicked(next);
       }}
+      {...(folderPick !== undefined && { folderPick })}
+      {...(selectAll !== undefined && { selectAll })}
       openLink={(row) => ({ href: `/tools/analysis?analysis=${row.id}` })}
       onOpenAnalysis={onOpenAnalysis}
       settingsLink={(row) => ({ href: `/tools/analysis/saved/${row.id}/settings` })}
@@ -229,6 +238,56 @@ describe("SavedAnalysesTable (CTA-144)", () => {
       render(<Harness folders={ANALYSIS_FOLDERS} rows={WITH_FOLDERS} onPicked={onPicked} />);
       await user.click(screen.getByRole("checkbox", { name: "Select all analyses" }));
       expect([...onPicked.mock.lastCall![0]].sort()).toEqual(["board", "broken", "prep", "tal"]);
+    });
+
+    it("gives a folder row its checkbox when the screen asks for one — folders and records picked alike (CTA-147)", async () => {
+      const user = userEvent.setup();
+      const onToggleFolder = vi.fn();
+      const onPicked = vi.fn();
+      const folderPick = (folder: GameFolder): SavedAnalysesTableFolderPick =>
+        folder.id === "fopen"
+          ? { checked: true, indeterminate: false, onToggle: onToggleFolder }
+          : folder.id === "ftata"
+            ? { checked: false, indeterminate: true, onToggle: onToggleFolder }
+            : { checked: false, indeterminate: false, onToggle: onToggleFolder };
+      render(<Harness folders={ANALYSIS_FOLDERS} rows={WITH_FOLDERS} folderPick={folderPick} onPicked={onPicked} />);
+      const openings = screen.getByTestId("analyses-folder-fopen");
+      const checked = within(openings).getByRole("checkbox", { name: "Select Openings" });
+      expect(checked).toBeChecked();
+      expect(screen.getByTestId("analyses-folder-select-fopen")).toContainElement(checked);
+      expect(openings).toHaveClass("Mui-selected");
+      expect(within(screen.getByTestId("analyses-folder-ftata")).getByRole("checkbox", { name: "Select Tata Steel 2024" })).toHaveAttribute(
+        "data-indeterminate",
+        "true",
+      );
+      // The folder's box is the screen's: it never reaches the table's own pick change.
+      await user.click(checked);
+      expect(onToggleFolder).toHaveBeenCalledTimes(1);
+      expect(onPicked).not.toHaveBeenCalled();
+      // A click on the box never opens or closes the folder.
+      expect(ids().slice(0, 2)).toEqual(["folder:fopen", "folder:ftata"]);
+    });
+
+    it("takes select-all from the screen — a folder's pick covers what its closed rows hide (CTA-147)", async () => {
+      const user = userEvent.setup();
+      const onToggleAll = vi.fn();
+      const onPicked = vi.fn();
+      render(
+        <Harness
+          folders={ANALYSIS_FOLDERS}
+          rows={WITH_FOLDERS}
+          onPicked={onPicked}
+          folderPick={vi.fn(
+            () => ({ checked: false, indeterminate: false, onToggle: vi.fn() }) satisfies SavedAnalysesTableFolderPick,
+          )}
+          selectAll={{ checked: true, indeterminate: false, onToggleAll }}
+        />,
+      );
+      const all = screen.getByRole("checkbox", { name: "Select all analyses" });
+      expect(all).toBeChecked();
+      await user.click(all);
+      expect(onToggleAll).toHaveBeenCalledTimes(1);
+      expect(onPicked).not.toHaveBeenCalled();
     });
   });
 });

@@ -11,11 +11,12 @@ import SavedAnalysesList, { type SavedAnalysisEntry, type SavedAnalysisFolderEnt
 const noop = () => {};
 const PAGE = manyEntries(50);
 
-/** The block on fixtures, its picks held by the demo as the screen holds them. */
+/** The block on fixtures, its picks held by the demo as the screen holds them — a folder's checkbox included when asked for (CTA-147). */
 const demo = (
   view: Exclude<SavedListView, "list">,
   folders: readonly SavedAnalysisFolderEntry[],
   entries: readonly SavedAnalysisEntry[],
+  { folderPicks = false }: { folderPicks?: boolean } = {},
 ) => (
   <WithState<Set<string>> initial={new Set(["a1"])}>
     {(picked, setPicked) => (
@@ -32,10 +33,17 @@ const demo = (
               return next;
             })
           }
+          {...(folderPicks && {
+            // The gallery's stand-in for the screen's derived state: a picked folder checks, a partly picked one is indeterminate (a1 is picked).
+            folderPick: (folder) =>
+              folder.id === "gopenings"
+                ? { checked: true, indeterminate: false, onToggle: noop }
+                : { checked: false, indeterminate: folder.id === "gpartly", onToggle: noop },
+          })}
           openLink={(saved) => ({ href: `#open-${saved.id}` })}
           settingsLink={(saved) => ({ href: `#settings-${saved.id}` })}
           onOpenFolder={noop}
-          folderActions={{ onDownload: noop, onRename: noop, onMove: noop, onDelete: noop }}
+          folderActions={{ onDownload: noop, onRename: noop, onMove: noop }}
           preview={() => demoPreview}
           empty={{ label: "No saved analyses yet.", testId: "gallery-saved-analyses-empty" }}
           testId="gallery-saved-analyses"
@@ -51,6 +59,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
   demos: [
     { name: "Small boards — folders first (one empty), the opening line under a known one, the others as tall", render: () => demo("compact", FOLDERS, ENTRIES) },
     { name: "Big boards", render: () => demo("comfortable", FOLDERS, ENTRIES) },
+    { name: "Folder checkboxes (CTA-147) — one picked, one partly picked, one empty", render: () => demo("compact", FOLDERS, ENTRIES, { folderPicks: true }) },
     { name: "Empty", render: () => demo("compact", [], []) },
     { name: "Long names and a long description", render: () => demo("compact", [], LONG_ENTRIES) },
     { name: "Hebrew names (switch to RTL)", render: () => demo("compact", HEBREW_FOLDERS, HEBREW_ENTRIES) },

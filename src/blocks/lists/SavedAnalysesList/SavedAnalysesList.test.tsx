@@ -69,6 +69,37 @@ describe("SavedAnalysesList — the cards", () => {
     expect(screen.getByTestId("probe-folder-download-gempty")).toBeDisabled();
   });
 
+  it("has no folder checkbox, and no delete action, unless the screen asks for them (CTA-147)", () => {
+    // The lobby deletes through the picks: it passes no delete.
+    mount("compact", { folderActions: { onDownload: vi.fn(), onRename: vi.fn(), onMove: vi.fn() } });
+    expect(screen.queryByTestId("probe-folder-select-gopenings")).toBeNull();
+    // The delete the caller never passed is not offered.
+    expect(screen.queryByTestId("probe-folder-delete-gopenings")).toBeNull();
+    expect(screen.getByTestId("probe-folder-download-gopenings")).toBeInTheDocument();
+  });
+
+  it("gives a folder card its checkbox — checked, indeterminate, and ticking it is the screen's (CTA-147)", async () => {
+    const user = userEvent.setup();
+    const onToggle = vi.fn();
+    mount("compact", {
+      folderActions: { onDownload: vi.fn(), onRename: vi.fn(), onMove: vi.fn() },
+      folderPick: (folder) =>
+        folder.id === "gopenings"
+          ? { checked: true, indeterminate: false, onToggle }
+          : folder.id === "gpartly"
+            ? { checked: false, indeterminate: true, onToggle }
+            : { checked: false, indeterminate: false, onToggle },
+    });
+    const picked = screen.getByRole("checkbox", { name: "Select Openings" });
+    expect(picked).toBeChecked();
+    expect(screen.getByTestId("probe-folder-select-gopenings")).toContainElement(picked);
+    expect(screen.getByRole("checkbox", { name: "Select Partly picked" })).toHaveAttribute("data-indeterminate", "true");
+    // An empty folder carries its box too — only its own box can ever pick it.
+    expect(screen.getByRole("checkbox", { name: "Select Nothing yet" })).not.toBeChecked();
+    await user.click(picked);
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
   it("says when there is nothing here", () => {
     mount("compact", { folders: [], entries: [] });
     expect(screen.getByTestId("probe-empty")).toHaveTextContent("Nothing here.");

@@ -41,6 +41,7 @@ const NAJDORF: OpeningEntry = { eco: "B90", name: "Sicilian Defense: Najdorf Var
 
 export const FOLDERS: readonly SavedAnalysisFolderEntry[] = [
   { folder: folder("gopenings", "Openings"), count: 12 },
+  { folder: folder("gpartly", "Partly picked"), count: 5 },
   { folder: folder("gempty", "Nothing yet"), count: 0 },
 ];
 
