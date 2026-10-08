@@ -1,3 +1,31 @@
+---
+paths:
+  - "src/views/board/**"
+  - "src/views/shared/**"
+  - "src/views/explorer/**"
+  - "src/views/engine/**"
+  - "src/views/tools/analysis/**"
+  - "src/views/openings/**"
+  - "src/views/repertoires/**"
+  - "src/views/library/**"
+  - "src/views/home/frontPage/**"
+  - "src/views/dev/themeEditor/PreviewBoard.tsx"
+  - "src/lib/uciEngine*"
+  - "src/lib/workerTransport*"
+  - "src/lib/engineTypes*"
+  - "src/lib/engineAnalysis*"
+  - "src/lib/engines/**"
+  - "src/lib/gameTree*"
+  - "src/lib/gameNavigation*"
+  - "src/lib/capturedPieces*"
+  - "src/lib/pieceMask*"
+  - "src/lib/boardShapes*"
+  - "src/lib/demoTree*"
+  - "public/stockfish/**"
+  - "docs/engine.md"
+  - "docs/vendor/react-chessboard/**"
+---
+
 # Chessboard rules & patterns
 
 How **this project** builds and operates chess boards: the library
@@ -18,15 +46,16 @@ Everything about the library is already on disk. **Do not read `node_modules`
 source and do not web-search for react-chessboard questions** — answer from
 these instead.
 
-**Loaded every session:**
+**The board's own three** — path-scoped too (CTA-162), so Read one by hand
+when the work is board-shaped but sits outside its paths:
 
-| File | Covers |
-| --- | --- |
-| **this file** | project conventions, the engine wrapper and its protocol, the layout rules, testing a board, the board core |
-| [`react-chessboard-options-api.md`](./react-chessboard-options-api.md) | **every `options.*` key** — type, default, purpose |
-| [`react-chessboard-types-and-helpers.md`](./react-chessboard-types-and-helpers.md) | exported helpers (`generateBoard`, `fenStringToPositionObject`, `chessColumnToColumnIndex`, …) and every handler-arg / data type |
+| File | Loads | Covers |
+| --- | --- | --- |
+| **this file** | the board screens, the core, `views/shared/`, the explorer, the front page's embeds, the engine layer, `public/stockfish/`, `docs/engine.md` | project conventions, the engine wrapper and its protocol, the layout rules, testing a board, the board core |
+| [`react-chessboard-options-api.md`](./react-chessboard-options-api.md) | where `react-chessboard` itself is imported (`PATHS` in `docs/vendor/react-chessboard/mdx2rules.py`) | **every `options.*` key** — type, default, purpose |
+| [`react-chessboard-types-and-helpers.md`](./react-chessboard-types-and-helpers.md) | the same | exported helpers (`generateBoard`, `fenStringToPositionObject`, `chessColumnToColumnIndex`, …) and every handler-arg / data type |
 
-**Loaded when you work on their paths** (each file's `paths:` frontmatter):
+**Each module's reference, on its paths** (each file's `paths:` frontmatter):
 
 | File | Module |
 | --- | --- |

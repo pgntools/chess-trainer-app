@@ -76,7 +76,34 @@ def convert(src_path, out_path, header):
     print(f"{out_path}: {len(text)} B (~{len(text)//4} tok)")
 
 
-HDR = """<!-- VENDORED UPSTREAM REFERENCE — do not hand-edit.
+# Where react-chessboard itself is used — the one glob list both generated files
+# take as their `paths:` frontmatter, so Claude Code loads them only there.
+# Keep it to the files that import react-chessboard (`grep -rl react-chessboard src`);
+# the wider board set is chessboard.md's own frontmatter.
+PATHS = [
+    "src/views/board/**",
+    "src/views/shared/**",
+    "src/views/explorer/**",
+    "src/views/engine/play/PlayScreen.tsx",
+    "src/views/engine/masked/**",
+    "src/views/tools/analysis/AnalysisBoard.tsx",
+    "src/views/tools/analysis/nextMoveArrows.ts",
+    "src/views/tools/analysis/saved/SavedAnalyses.tsx",
+    "src/views/openings/OpeningsBoard.tsx",
+    "src/views/openings/openingArrows.ts",
+    "src/views/repertoires/RepertoirePlayer.tsx",
+    "src/views/repertoires/Repertoires.tsx",
+    "src/views/library/LibraryGameBoard.tsx",
+    "src/views/library/OpeningFilterBoard.tsx",
+    "src/views/dev/themeEditor/PreviewBoard.tsx",
+    "src/lib/pieceMask*",
+    "docs/vendor/react-chessboard/**",
+]
+
+# Frontmatter must be the first thing in the file, before the comment.
+FRONTMATTER = "---\npaths:\n" + "".join(f'  - "{p}"\n' for p in PATHS) + "---\n\n"
+
+HDR = FRONTMATTER.replace("{", "{{").replace("}", "}}") + """<!-- VENDORED UPSTREAM REFERENCE — do not hand-edit.
      Source: react-chessboard@5.12.1 docs/{src}
      Regenerate per docs/vendor/react-chessboard/README.md.
      Project conventions live in .claude/rules/chessboard.md and win on conflict. -->

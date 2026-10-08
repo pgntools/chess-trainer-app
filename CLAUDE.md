@@ -12,12 +12,14 @@ every one is composed from one **board core** (`src/views/board/core/`).
 
 ## Where the detail is
 
-This file is what every session needs. The rest is in `.claude/rules/`:
+This file is what every session needs. The rest is in `.claude/rules/`, each
+file loaded only when the work touches its `paths:` — so **Read one by hand**
+when the question is its subject but the files you are on are not:
 
 | File | Loads | Covers |
 | --- | --- | --- |
-| [`chessboard.md`](.claude/rules/chessboard.md) | always | the board: library conventions, the engine protocol, layout rules, testing, **the board core** (base hook, modules, shell and panel, adding a board) |
-| [`react-chessboard-options-api.md`](.claude/rules/react-chessboard-options-api.md), [`react-chessboard-types-and-helpers.md`](.claude/rules/react-chessboard-types-and-helpers.md) | always | the vendored `react-chessboard` reference |
+| [`chessboard.md`](.claude/rules/chessboard.md) | when you work on a board screen, the board core, `views/shared/`, the explorer, the front page's embeds, the engine layer, `public/stockfish/` or `docs/engine.md` (CTA-162) | the board: library conventions, the engine protocol, layout rules, testing, **the board core** (base hook, modules, shell and panel, adding a board) — read it before touching any board |
+| [`react-chessboard-options-api.md`](.claude/rules/react-chessboard-options-api.md), [`react-chessboard-types-and-helpers.md`](.claude/rules/react-chessboard-types-and-helpers.md) | when you work on a file that imports `react-chessboard` (or `docs/vendor/react-chessboard/`) — generated, the glob list `PATHS` in `mdx2rules.py` | the vendored `react-chessboard` reference: every `options.*` key (type, default, purpose); the exported helpers and every handler-arg / data type |
 | the module files (table below), [`tree-views.md`](.claude/rules/tree-views.md), [`pgn-annotations.md`](.claude/rules/pgn-annotations.md), [`database.md`](.claude/rules/database.md) | when you work on their `paths:` | each module's whole reference |
 | [`browser-a11y.md`](.claude/rules/browser-a11y.md) | when you work on `e2e/`, `playwright.config.ts`, `eslint.config.js` or `ACCESSIBILITY.md` | the MUI lock and the browser accessibility pass (`yarn test:a11y`) |
 | [`static-pages.md`](.claude/rules/static-pages.md) | when you work on the boot, the server entry, the pre-render, the head, the share images, the language in the URL or the deploy workflows | every page pre-rendered as a static `index.html` per language, its head and share image, `/he/` in the URL, the two hosts (CTA-136) |
@@ -25,7 +27,8 @@ This file is what every session needs. The rest is in `.claude/rules/`:
 The full upstream `react-chessboard` docs and all 53 Storybook examples are
 vendored under [`docs/vendor/react-chessboard/`](docs/vendor/react-chessboard/).
 **Never read `node_modules` source or web-search for a react-chessboard
-question** — it is already on disk.
+question** — it is already on disk: the two `react-chessboard-*.md` rules
+files first, then the vendored folder's [`INDEX.md`](docs/vendor/react-chessboard/INDEX.md).
 
 ## Commands
 
