@@ -7,7 +7,7 @@ import { CollectionGameBoard } from "./CollectionGameBoard";
 import { CollectionDoubleEliminationEmbed, CollectionKnockoutEmbed } from "./CollectionKnockoutEmbed";
 import { CollectionTeamStandingsEmbed } from "./CollectionTeamStandingsEmbed";
 import { CollectionTournamentEmbed } from "./CollectionTournamentEmbed";
-import { InlinePgnGame, InlinePgnGameColumns } from "./InlinePgnGame";
+import { InlinePgnGame, InlinePgnGame2colH, InlinePgnGame2colV } from "./InlinePgnGame";
 import { KnockoutBracketEmbed } from "./KnockoutBracketEmbed";
 import { MatchTableEmbed } from "./MatchTableEmbed";
 import { NavCards } from "./NavCards";
@@ -32,7 +32,8 @@ import { TeamStandingsEmbed } from "./TeamStandingsEmbed";
  * | `<RepertoireBoard _id="/repertoires/<id>" startMove="1" fallback="e4-white" />` | a repertoire on a board, or a shipped sample where the reader has none |
  * | `<CollectionCard _id="/library/<c>" showGame="52" />` | a collection: a board on one game, a short table of its games |
  * | `<InlinePgnGame pgn={game} from="5" to="15..." start="11" />` | an excerpt of a PGN: a window of its moves, side lines nested, on a board — one game as often as an article likes |
- * | `<InlinePgnGameColumns pgn={game} from="5" to="15..." />` | the same, its moves in numbered pairs — two columns, a side line a row under its pair — in a box no taller than the board, scrolling (CTA-146) |
+ * | `<InlinePgnGame2colH pgn={game} from="5" to="15..." />` | the same, its moves in numbered pairs — two columns, a side line a row under its pair — beside the board in a box no taller than it, scrolling (CTA-146) |
+ * | `<InlinePgnGame2colV pgn={game} from="5" to="15..." />` | the same pairs under the board, in a box half its height — for boards side by side in a `<BoardRow>` |
  * | `<StoredGameEmbed reference="…" />` | any stored game by its `?game=` reference (`analysis/saved/<id>`, `play/games/<id>`, …) |
  * | `<SwissStandingsTable pgn={games} />` | a Swiss's standings from its games' PGN — a row per player, a cell per round (CTA-128) |
  * | `<RoundRobinCrossTable pgn={games} />` | a round robin's crosstable from its games' PGN — single or double (CTA-128) |
@@ -46,7 +47,7 @@ import { TeamStandingsEmbed } from "./TeamStandingsEmbed";
  * | `<NavCards />` | every screen as a card, by section — the landing page before CTA-126 |
  * | `<ArticleImage src={photo} alt="…" width="60%" caption="…" />` | an image beside the article (`import photo from "./photo.png"`) — its width, height, place, fit, corners, border, shadow and a full-size link (CTA-137) |
  *
- * **One component, any source** (CTA-140): every table, `<InlinePgnGame>` and `<InlinePgnGameColumns>`
+ * **One component, any source** (CTA-140): every table and every `<InlinePgnGame…>`
  * read their games through `embedSource.tsx` — `pgn={games}` for a PGN of
  * the article's own, or `src="<app path>"` for anything the app keeps: a
  * Library collection or one game of it, a saved analysis, a played game, a
@@ -77,7 +78,9 @@ export const mdxComponents: MDXComponents = {
   CollectionCard,
   StoredGameEmbed,
   InlinePgnGame,
-  InlinePgnGameColumns,
+  InlinePgnGame2colH,
+  InlinePgnGame2colV,
+  InlinePgnGameColumns: InlinePgnGame2colH,
   SwissStandingsTable: SwissStandingsEmbed,
   RoundRobinCrossTable: RoundRobinCrossTableEmbed,
   KnockoutBracket: KnockoutBracketEmbed,
@@ -92,11 +95,12 @@ export const mdxComponents: MDXComponents = {
 };
 
 /**
- * The older names that are another component with a source (CTA-140):
+ * The older names of another component — most of them one with a source (CTA-140):
  * `<CollectionTournamentTable _id>` is `<SwissStandingsTable>`,
  * `<RoundRobinCrossTable>` or `<MatchTable>` with `src`; the knockout and
  * team ones `<KnockoutBracket src>` and `<TeamStandingsTable src>`;
- * `<CollectionGameBoard game>` `<StoredGameEmbed src>`. Still rendered —
+ * `<CollectionGameBoard game>` `<StoredGameEmbed src>`; and
+ * `<InlinePgnGameColumns>` is `<InlinePgnGame2colH>`'s first name. Still rendered —
  * articles name them — but the MDX editor writes the new form.
  */
 export const MDX_ALIASES: ReadonlySet<string> = new Set([
@@ -105,4 +109,5 @@ export const MDX_ALIASES: ReadonlySet<string> = new Set([
   "CollectionKnockoutBracket",
   "CollectionDoubleEliminationBracket",
   "CollectionTeamStandingsTable",
+  "InlinePgnGameColumns",
 ]);

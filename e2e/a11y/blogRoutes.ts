@@ -12,7 +12,7 @@ import { isAppPagePath, readArticleFiles, splitFrontmatter } from "../../src/lib
 */
 
 /** The embeds that draw a chessboard (`views/home/frontPage/`): `DemoBoard`'s four and `ExcerptBoard`'s two. */
-const BOARD_EMBEDS = /<(CollectionGameBoard|RepertoireBoard|CollectionCard|StoredGameEmbed|InlinePgnGame|InlinePgnGameColumns)\b/;
+const BOARD_EMBEDS = /<(CollectionGameBoard|RepertoireBoard|CollectionCard|StoredGameEmbed|InlinePgnGame|InlinePgnGame2colH|InlinePgnGame2colV|InlinePgnGameColumns)\b/;
 
 /** A body with its fenced blocks and inline code taken out — where an article shows markup rather than using it. */
 const drawnPart = (body: string): string =>

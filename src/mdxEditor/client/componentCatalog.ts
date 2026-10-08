@@ -77,14 +77,25 @@ export const CATALOG: readonly CatalogFolder[] = [
         },
       },
       {
-        id: "single-inline-columns",
-        label: "The game, its moves in two columns",
-        summary: "The same, the moves as the Analysis Board lists them — numbered pairs, side lines under their pair — in a box no taller than the board",
+        id: "single-inline-2col-h",
+        label: "The game, its moves in two columns beside it",
+        summary: "The same, the moves as the Analysis Board lists them — numbered pairs, side lines under their pair — beside the board in a box no taller than it",
         code: (source) => {
           const name = pgnOf(source);
-          if (name !== undefined) return `<InlinePgnGameColumns pgn={${name}} game="1" caption="…" />`;
+          if (name !== undefined) return `<InlinePgnGame2colH pgn={${name}} game="1" caption="…" />`;
           const game = oneGameOf(source);
-          return game === undefined ? undefined : `<InlinePgnGameColumns src="${gamePath(game.collection, game.number)}" caption="…" />`;
+          return game === undefined ? undefined : `<InlinePgnGame2colH src="${gamePath(game.collection, game.number)}" caption="…" />`;
+        },
+      },
+      {
+        id: "single-inline-2col-v",
+        label: "The game, its moves in two columns under it",
+        summary: "The same pairs under the board, in a box half its height — for boards side by side in a <BoardRow>",
+        code: (source) => {
+          const name = pgnOf(source);
+          if (name !== undefined) return `<InlinePgnGame2colV pgn={${name}} game="1" caption="…" />`;
+          const game = oneGameOf(source);
+          return game === undefined ? undefined : `<InlinePgnGame2colV src="${gamePath(game.collection, game.number)}" caption="…" />`;
         },
       },
       {

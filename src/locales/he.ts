@@ -135,6 +135,8 @@ const he: typeof en = {
     last: "למהלך האחרון המוצג",
     flip: "היפוך הלוח",
     unreadable: "ה-PGN של המשחק הזה אינו קריא.",
+    white: "לבן",
+    black: "שחור",
   },
   demoBoard: {
     reset: "חזרה להתחלה",

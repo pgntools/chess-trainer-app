@@ -6,7 +6,8 @@ import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import { boardOptions } from "../../board/boardTestHarness";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
-import { InlinePgnGame, InlinePgnGameColumns } from "./InlinePgnGame";
+import { InlinePgnGame, InlinePgnGame2colH, InlinePgnGame2colV } from "./InlinePgnGame";
+import { mdxComponents } from ".";
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../../board/boardTestHarness");
@@ -193,7 +194,7 @@ describe("<InlinePgnGame> (CTA-126)", () => {
   });
 });
 
-describe("<InlinePgnGameColumns> (CTA-146)", () => {
+describe("<InlinePgnGame2colH> (CTA-146)", () => {
   const movesOf = () => screen.getByRole("group", { name: "The moves" });
   /** The grid's cells in reading order: a pair's number, White, Black — `·` where a cell is empty — and a side line's run as `(…)`. */
   const cellsOf = (region: HTMLElement) =>
@@ -203,7 +204,7 @@ describe("<InlinePgnGameColumns> (CTA-146)", () => {
     });
 
   it("lays the window's moves out as numbered pairs — number, White, Black — each side line a run under its pair", () => {
-    render(<InlinePgnGameColumns pgn={PGN} from="1..." to="3" />);
+    render(<InlinePgnGame2colH pgn={PGN} from="1..." to="3" />);
     expect(movesOf()).toHaveAttribute("data-layout", "columns");
     expect(movesOf()).toHaveStyle({ display: "grid" });
     // 2. Nf3 Nc6 (2... d6 3. d4) 3. Bb5 — the window's, with the Black cell of 3 empty.
@@ -214,13 +215,13 @@ describe("<InlinePgnGameColumns> (CTA-146)", () => {
   });
 
   it("opens a window on Black's move with an empty White cell", () => {
-    render(<InlinePgnGameColumns pgn={PGN} from="2" to="3..." />);
+    render(<InlinePgnGame2colH pgn={PGN} from="2" to="3..." />);
     expect(cellsOf(movesOf()).slice(0, 4)).toEqual(["2.", "·", "2... Nc6", "(2...d63.d4)"]);
   });
 
   it("steps, drops and shows comments as <InlinePgnGame> does, the current move marked", async () => {
     const user = userEvent.setup();
-    render(<InlinePgnGameColumns pgn={PGN} comments />);
+    render(<InlinePgnGame2colH pgn={PGN} comments />);
     await user.click(screen.getByRole("button", { name: "1. e4" }));
     expect(screen.getByRole("button", { name: "1. e4" })).toHaveAttribute("aria-current", "true");
     expect(screen.getByTestId(/-comment$/)).toHaveTextContent("The king's pawn.");
@@ -232,13 +233,13 @@ describe("<InlinePgnGameColumns> (CTA-146)", () => {
   });
 
   it("leaves the side lines out with variations={false}", () => {
-    render(<InlinePgnGameColumns pgn={PGN} variations={false} />);
+    render(<InlinePgnGame2colH pgn={PGN} variations={false} />);
     expect(screen.queryByTestId(/-variation$/)).not.toBeInTheDocument();
     expect(cellsOf(movesOf()).slice(-3)).toEqual(["4.", "4. Ba4", "4... Nf6"]);
   });
 
   it("caps the list at the board's height — the board's column, or the container where narrower — and scrolls it", () => {
-    render(<InlinePgnGameColumns pgn={PGN} />);
+    render(<InlinePgnGame2colH pgn={PGN} />);
     expect(movesOf().getAttribute("class")).toBeTruthy();
     const style = getComputedStyle(movesOf());
     expect(style.overflowY).toBe("auto");
@@ -250,9 +251,19 @@ describe("<InlinePgnGameColumns> (CTA-146)", () => {
     expect(rules).toContain("container-type:inline-size");
   });
 
+  it("stands its list beside the board from `sm` up", () => {
+    render(<InlinePgnGame2colH pgn={PGN} />);
+    expect(movesOf()).toHaveAttribute("data-placement", "beside");
+    expect(document.head.textContent).toContain("grid-template-columns:minmax(0, 320px) minmax(0, 1fr)");
+  });
+
+  it("is what an article's older <InlinePgnGameColumns> renders", () => {
+    expect(mdxComponents.InlinePgnGameColumns).toBe(InlinePgnGame2colH);
+  });
+
   it("keeps the move on screen in view inside the list's own box", async () => {
     const user = userEvent.setup();
-    render(<InlinePgnGameColumns pgn={PGN} />);
+    render(<InlinePgnGame2colH pgn={PGN} />);
     const region = movesOf();
     // jsdom has no layout: the box is 100 px, the move below it.
     region.getBoundingClientRect = () => ({ top: 0, bottom: 100 }) as DOMRect;
@@ -277,7 +288,7 @@ describe("<InlinePgnGameColumns> (CTA-146)", () => {
     try {
       render(
         <AppThemeWithLang>
-          <InlinePgnGameColumns pgn={PGN} from="1..." to="3" />
+          <InlinePgnGame2colH pgn={PGN} from="1..." to="3" />
         </AppThemeWithLang>,
       );
       const region = screen.getByRole("group", { name: "המהלכים" });
@@ -291,7 +302,44 @@ describe("<InlinePgnGameColumns> (CTA-146)", () => {
   });
 
   it("passes axe", async () => {
-    render(<InlinePgnGameColumns pgn={PGN} start="2" comments />);
+    render(<InlinePgnGame2colH pgn={PGN} start="2" comments />);
+    await expectNoAxeViolations();
+  });
+});
+
+describe("<InlinePgnGame2colV>", () => {
+  const movesOf = () => screen.getByRole("group", { name: "The moves" });
+
+  it("lays the moves out in the same numbered pairs, under the board", () => {
+    render(<InlinePgnGame2colV pgn={PGN} from="1..." to="3" />);
+    expect(movesOf()).toHaveAttribute("data-layout", "columns");
+    expect(movesOf()).toHaveAttribute("data-placement", "below");
+    expect(within(movesOf()).getByRole("button", { name: "2. Nf3" })).toBeInTheDocument();
+    // The board first, the moves after it — one column at every width, as wide as the board's
+    // (the stylesheet keeps every test's rules, so the one column is read by its own declaration).
+    const board = screen.getByTestId("board");
+    expect(board.compareDocumentPosition(movesOf()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const rules = document.head.textContent ?? "";
+    expect(rules).toContain("grid-template-columns:minmax(0, 320px);");
+  });
+
+  it("caps the list at half the board's side, and scrolls it", () => {
+    render(<InlinePgnGame2colV pgn={PGN} />);
+    expect(getComputedStyle(movesOf()).overflowY).toBe("auto");
+    const rules = document.head.textContent ?? "";
+    expect(rules).toContain("max-height:min(160px, 50cqw)");
+    expect(rules).toContain("container-type:inline-size");
+  });
+
+  it("steps as the others do, the current move marked", async () => {
+    const user = userEvent.setup();
+    render(<InlinePgnGame2colV pgn={PGN} />);
+    await user.click(screen.getByRole("button", { name: "One move on" }));
+    expect(screen.getByRole("button", { name: "1. e4" })).toHaveAttribute("aria-current", "true");
+  });
+
+  it("passes axe", async () => {
+    render(<InlinePgnGame2colV pgn={PGN} start="2" comments />);
     await expectNoAxeViolations();
   });
 });

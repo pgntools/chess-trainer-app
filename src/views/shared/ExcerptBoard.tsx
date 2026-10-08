@@ -22,6 +22,7 @@ import NagGlyphs from "./NagGlyphs";
 import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
 import { useBoardSquareOptions } from "./boardColors";
 import PromotionPicker, { type PromotionChoice } from "./PromotionPicker";
+import ExcerptGameInfo from "./ExcerptGameInfo";
 import ShapeCircles from "./ShapeCircles";
 import { useBoardKeys } from "./useBoardKeys";
 
@@ -57,6 +58,17 @@ import { useBoardKeys } from "./useBoardKeys";
  *   the pair it answers — in a box no taller than the board, which scrolls
  *   when the tree is longer and keeps the move on screen in view. Absent
  *   (`"run"`), the moves are the wrapping run above, as ever.
+ * - **The moves under the board**: `movesPlacement="below"` stacks the
+ *   columns under the board at every width — for boards side by side in a
+ *   `<BoardRow>` — the board as wide as its container up to its column's
+ *   `BOARD_COLUMN_PX`, the list as wide as the board and no taller than half
+ *   of it. Absent (`"beside"`), the list stands beside the board from `sm` up.
+ * - **The game's plate, the controls by the moves** (`<InlinePgnGame2colH>`):
+ *   `gameInfo` puts a small line of the players, result and event over the board
+ *   (`ExcerptGameInfo`); `controlsPlacement="moves"` moves the step and flip
+ *   buttons from over the board to under the moves, and — beside the board —
+ *   the moves' column stands exactly as tall as the board's, the list
+ *   scrolling inside what the buttons leave it.
  *
  * Presentational: the tree and the window arrive as props, the position on
  * screen and the orientation are its own. Pinned LTR (`ForceLTR`), the theme's
@@ -85,6 +97,15 @@ type ExcerptBoardProps = {
    * `"columns"` numbered pairs in a box capped at the board's height, scrolling (CTA-146).
    */
   movesLayout?: "run" | "columns";
+  /**
+   * Where the columns stand: `"beside"` (the default) the board, from `sm` up;
+   * `"below"` it, at every width, in a box half the board's height. Only the columns read it.
+   */
+  movesPlacement?: "beside" | "below";
+  /** A plate of the game's players, result and event over the board (`ExcerptGameInfo`). */
+  gameInfo?: boolean;
+  /** Where the step and flip buttons stand: over the board (the default), or under the moves. */
+  controlsPlacement?: "board" | "moves";
 };
 
 /** The board column's width, and so the board's side, from `sm` up. */
@@ -97,6 +118,8 @@ const BOARD_COLUMN_PX = 320;
  * grid, `cqw`).
  */
 const COLUMNS_MAX_HEIGHT = { xs: "100cqw", sm: `min(${BOARD_COLUMN_PX}px, 100cqw)` };
+/** Under the board (`movesPlacement="below"`), the list stands half the board's side — `min(BOARD_COLUMN_PX, 100cqw)`. */
+const COLUMNS_BELOW_MAX_HEIGHT = `min(${BOARD_COLUMN_PX / 2}px, 50cqw)`;
 
 /** A side line's run — nested, dimmed, set off by a rule. */
 const variationRunSx = {
@@ -160,6 +183,9 @@ function ExcerptBoard({
   shapes: drawShapes = true,
   nextMoveArrows = true,
   movesLayout = "run",
+  movesPlacement = "beside",
+  gameInfo = false,
+  controlsPlacement = "board",
 }: ExcerptBoardProps) {
   const { t } = useTranslation();
   const squareOptions = useBoardSquareOptions();
@@ -179,6 +205,10 @@ function ExcerptBoard({
   }, [tree, nodeId]);
   const list = useMemo(() => excerptTokens(tree, window), [tree, window]);
   const columns = movesLayout === "columns";
+  const below = columns && movesPlacement === "below";
+  const controlsByMoves = controlsPlacement === "moves";
+  // Beside the board, with the buttons under the moves: the moves' column is the board column's height, the list scrolling in it.
+  const fitted = columns && !below && controlsByMoves;
   const rows = useMemo(() => (columns ? excerptRows(tree.startFen, list) : []), [columns, tree, list]);
   const movesRef = useRef<HTMLDivElement>(null);
 
@@ -308,6 +338,54 @@ function ExcerptBoard({
 
   const onScreen = node === undefined ? t("inlinePgn.start") : moveName(tree.startFen, node);
 
+  /** The position on screen, then to the first, back, on, to the last, and flip. */
+  const controls = (
+    <Box
+      data-testid={`${testId}-controls`}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 0.5,
+        // Under the moves, a plate of its own, as the game's is over the board.
+        ...(controlsByMoves ? { flexShrink: 0, paddingInlineStart: 1, border: 1, borderColor: "divider", borderRadius: 1, bgcolor: "background.paper" } : {}),
+      }}
+    >
+      <Typography
+        variant="caption"
+        dir="ltr"
+        aria-live="polite"
+        data-testid={`${testId}-on-screen`}
+        sx={{ flexGrow: 1, color: "text.secondary", unicodeBidi: "isolate", fontFamily: MONOSPACE_FONT_FAMILY }}
+      >
+        {onScreen}
+      </Typography>
+      <IconAction label={t("inlinePgn.first")} disabled={nodeId === window.fromId} onClick={() => goTo(window.fromId)} testId={`${testId}-first`}>
+        <FirstPageRoundedIcon fontSize="small" />
+      </IconAction>
+      <IconAction
+        label={t("inlinePgn.back")}
+        disabled={parentId === undefined || !reachable(parentId)}
+        onClick={() => parentId !== undefined && goTo(parentId)}
+        testId={`${testId}-back`}
+      >
+        <NavigateBeforeRoundedIcon fontSize="small" />
+      </IconAction>
+      <IconAction label={t("inlinePgn.next")} disabled={onward.length === 0} onClick={() => goTo(onward[0].id)} testId={`${testId}-next`}>
+        <NavigateNextRoundedIcon fontSize="small" />
+      </IconAction>
+      <IconAction label={t("inlinePgn.last")} disabled={nodeId === window.toId} onClick={() => goTo(window.toId)} testId={`${testId}-last`}>
+        <LastPageRoundedIcon fontSize="small" />
+      </IconAction>
+      <IconAction
+        label={t("inlinePgn.flip")}
+        onClick={() => setOrientation((side) => (side === "white" ? "black" : "white"))}
+        testId={`${testId}-flip`}
+      >
+        <SwapVertRoundedIcon fontSize="small" />
+      </IconAction>
+    </Box>
+  );
+
   return (
     <Box
       role="group"
@@ -336,49 +414,19 @@ function ExcerptBoard({
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: `minmax(0, ${BOARD_COLUMN_PX}px) minmax(0, 1fr)` },
-          gap: 2,
+          // Below: one column, the board's own width; beside: the board's column, then the moves', from `sm` up.
+          gridTemplateColumns: below
+            ? `minmax(0, ${BOARD_COLUMN_PX}px)`
+            : { xs: "minmax(0, 1fr)", sm: `minmax(0, ${BOARD_COLUMN_PX}px) minmax(0, 1fr)` },
+          gap: below ? 1 : 2,
           alignItems: "start",
           // The columns layout's cap reads this grid's width (`COLUMNS_MAX_HEIGHT`).
           ...(columns ? { containerType: "inline-size" } : {}),
         }}
       >
         <Box sx={{ display: "grid", gap: 0.5, minWidth: 0 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Typography
-              variant="caption"
-              dir="ltr"
-              aria-live="polite"
-              data-testid={`${testId}-on-screen`}
-              sx={{ flexGrow: 1, color: "text.secondary", unicodeBidi: "isolate", fontFamily: MONOSPACE_FONT_FAMILY }}
-            >
-              {onScreen}
-            </Typography>
-            <IconAction label={t("inlinePgn.first")} disabled={nodeId === window.fromId} onClick={() => goTo(window.fromId)} testId={`${testId}-first`}>
-              <FirstPageRoundedIcon fontSize="small" />
-            </IconAction>
-            <IconAction
-              label={t("inlinePgn.back")}
-              disabled={parentId === undefined || !reachable(parentId)}
-              onClick={() => parentId !== undefined && goTo(parentId)}
-              testId={`${testId}-back`}
-            >
-              <NavigateBeforeRoundedIcon fontSize="small" />
-            </IconAction>
-            <IconAction label={t("inlinePgn.next")} disabled={onward.length === 0} onClick={() => goTo(onward[0].id)} testId={`${testId}-next`}>
-              <NavigateNextRoundedIcon fontSize="small" />
-            </IconAction>
-            <IconAction label={t("inlinePgn.last")} disabled={nodeId === window.toId} onClick={() => goTo(window.toId)} testId={`${testId}-last`}>
-              <LastPageRoundedIcon fontSize="small" />
-            </IconAction>
-            <IconAction
-              label={t("inlinePgn.flip")}
-              onClick={() => setOrientation((side) => (side === "white" ? "black" : "white"))}
-              testId={`${testId}-flip`}
-            >
-              <SwapVertRoundedIcon fontSize="small" />
-            </IconAction>
-          </Box>
+          {gameInfo && <ExcerptGameInfo headers={tree.headers} testId={`${testId}-info`} />}
+          {!controlsByMoves && controls}
           <ForceLTR sx={{ position: "relative", width: "100%", aspectRatio: "1 / 1" }}>
             <Chessboard options={options} />
             {drawn && <ShapeCircles circles={drawing.circles} orientation={orientation} testId={`${testId}-circles`} />}
@@ -388,7 +436,14 @@ function ExcerptBoard({
           </ForceLTR>
         </Box>
 
-        <Box sx={{ display: "grid", gap: 1, minWidth: 0 }}>
+        <Box
+          sx={
+            fitted
+              ? // Adds no height of its own from `sm` up (`height: 0`), and takes the row's — the board column's (`minHeight: 100%`).
+                { display: "flex", flexDirection: "column", gap: 1, minWidth: 0, height: { sm: 0 }, minHeight: { sm: "100%" } }
+              : { display: "grid", gap: 1, minWidth: 0 }
+          }
+        >
           {columns ? (
             <Box
               ref={movesRef}
@@ -396,6 +451,7 @@ function ExcerptBoard({
               aria-label={t("inlinePgn.moves")}
               data-testid={`${testId}-moves`}
               data-layout="columns"
+              data-placement={movesPlacement}
               sx={{
                 display: "grid",
                 // Number, White, Black — a side line's run spans all three, under the pair it answers.
@@ -403,8 +459,10 @@ function ExcerptBoard({
                 alignItems: "center",
                 alignContent: "start",
                 columnGap: 0.5,
-                maxHeight: COLUMNS_MAX_HEIGHT,
+                maxHeight: below ? COLUMNS_BELOW_MAX_HEIGHT : fitted ? { xs: COLUMNS_MAX_HEIGHT.xs, sm: "none" } : COLUMNS_MAX_HEIGHT,
                 overflowY: "auto",
+                // Fitted, the list gives way to the buttons and the comment, never the other way.
+                ...(fitted ? { flex: "0 1 auto", minHeight: 0 } : {}),
               }}
             >
               {rows.map((row) => (
@@ -428,11 +486,18 @@ function ExcerptBoard({
               {renderTokens(list)}
             </Box>
           )}
+          {controlsByMoves && controls}
           {showComments && comment !== "" && (
             <Typography
               variant="body2"
               data-testid={`${testId}-comment`}
-              sx={{ borderInlineStart: 3, borderColor: "divider", paddingInlineStart: 1.5, whiteSpace: "pre-line" }}
+              sx={{
+                borderInlineStart: 3,
+                borderColor: "divider",
+                paddingInlineStart: 1.5,
+                whiteSpace: "pre-line",
+                ...(fitted ? { flexShrink: 0, maxHeight: "40%", overflowY: "auto" } : {}),
+              }}
             >
               {comment}
             </Typography>

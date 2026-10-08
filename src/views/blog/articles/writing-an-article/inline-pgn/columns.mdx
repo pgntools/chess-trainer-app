@@ -1,31 +1,47 @@
 ---
 title: Moves in two columns
-summary: "<InlinePgnGameColumns>: the same board, its moves as the Analysis Board lists them — numbered pairs in a box no taller than the board."
+summary: "<InlinePgnGame2colH> and <InlinePgnGame2colV>: the same board, its moves as the Analysis Board lists them — numbered pairs, beside the board or under it."
 order: 45
 ---
 
 import game from "./rubinstein-capablanca-1911.pgn?raw"
 
-`<InlinePgnGameColumns>` is `<InlinePgnGame>` with its moves laid out the way the Analysis Board's move list lays them out: a row per move number — the number, White's move, Black's move — instead of one wrapping run. It takes the same props and reads the same sources, so any `<InlinePgnGame>` can become one by changing its name.
+`<InlinePgnGame2colH>` is `<InlinePgnGame>` with its moves laid out the way the Analysis Board's move list lays them out: a row per move number — the number, White's move, Black's move — instead of one wrapping run, beside the board. `<InlinePgnGame2colV>` puts the same list under the board. Both take the same props and read the same sources, so any `<InlinePgnGame>` can become either by changing its name. (`<InlinePgnGameColumns>`, `<InlinePgnGame2colH>`'s first name, still works.)
 
 ## The list
 
 Each side line is a row of its own under the pair it answers, spanning the width; a side line's own side lines stay inside its run. A window that opens on Black's move starts with an empty White cell.
 
-<InlinePgnGameColumns pgn={game} from="13..." to="17" start="15..." />
+<InlinePgnGame2colH pgn={game} from="13..." to="17" start="15..." />
 
 ```mdx
-<InlinePgnGameColumns pgn={game} from="13..." to="17" start="15..." />
+<InlinePgnGame2colH pgn={game} from="13..." to="17" start="15..." />
 ```
 
 ## A long game
 
 The list is never taller than the board. A window with more moves than fit scrolls inside its own box — the board and the buttons stay put — and stepping to a move brings it into view; a short window takes only the height it needs.
 
-<InlinePgnGameColumns pgn={game} caption="The whole game, its moves scrolling beside the board" />
+<InlinePgnGame2colH pgn={game} caption="The whole game, its moves scrolling beside the board" />
 
 ```mdx
-<InlinePgnGameColumns pgn={game} caption="…" />
+<InlinePgnGame2colH pgn={game} caption="…" />
 ```
 
 Under a narrow window the board and its list stack, and the list is capped at the board's width — still a square's height. The moves stay left to right in every language, as the board does.
+
+## The moves under the board
+
+`<InlinePgnGame2colV>` stacks the list under the board at every width, as wide as the board and no taller than half of it, scrolling the same way. It is the one for boards side by side: two positions of a game, compared in a `<BoardRow>`.
+
+<BoardRow>
+  <InlinePgnGame2colV pgn={game} from="13..." to="17" caption="Moves 14 to 17" />
+  <InlinePgnGame2colV pgn={game} from="30" to="42" caption="The ending" />
+</BoardRow>
+
+```mdx
+<BoardRow>
+  <InlinePgnGame2colV pgn={game} from="13..." to="17" caption="…" />
+  <InlinePgnGame2colV pgn={game} from="30" to="42" caption="…" />
+</BoardRow>
+```

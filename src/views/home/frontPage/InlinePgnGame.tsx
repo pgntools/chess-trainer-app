@@ -41,11 +41,16 @@ import { EmbedSource } from "./embedSource";
  * `<EmbedSource>`, then shown as a PGN of the article's own is. `src` may
  * also be the PGN's text.
  *
- * **`<InlinePgnGameColumns>`** (CTA-146) is the same component with its moves
+ * **`<InlinePgnGame2colH>`** (CTA-146) is the same component with its moves
  * laid out as the Analysis Board's move list is: numbered pairs in two
- * columns, a side line a row under the pair it answers, in a box no taller
- * than the board that scrolls when the tree is longer. Same props, same
- * sources; `<InlinePgnGame>` is untouched.
+ * columns, a side line a row under the pair it answers, beside the board in a
+ * column as tall as it that scrolls when the tree is longer — the game's
+ * players, result and event on a plate over the board, the step and flip
+ * buttons under the moves.
+ * **`<InlinePgnGame2colV>`** puts those columns under the board, at every
+ * width, in a box half its height — the one for boards side by side in a
+ * `<BoardRow>`. Same props, same sources; `<InlinePgnGame>` is untouched.
+ * `<InlinePgnGameColumns>`, `<InlinePgnGame2colH>`'s first name, is its alias.
  */
 
 type InlinePgnGameProps = {
@@ -79,18 +84,31 @@ const plyOf = (value: number | string | undefined): number | undefined => {
   return typeof number === "number" && Number.isFinite(number) ? number : undefined;
 };
 
-type MovesLayout = "run" | "columns";
+type MovesLayout = {
+  movesLayout: "run" | "columns";
+  movesPlacement?: "beside" | "below";
+  /** The game's plate over the board, the step buttons under the moves — `<InlinePgnGame2colH>`'s. */
+  framed?: boolean;
+};
 
 export function InlinePgnGame(props: InlinePgnGameProps) {
   return <InlinePgnSource {...props} movesLayout="run" />;
 }
 
-/** `<InlinePgnGame>` with its moves in numbered pairs, in a box capped at the board's height (CTA-146). */
-export function InlinePgnGameColumns(props: InlinePgnGameProps) {
-  return <InlinePgnSource {...props} movesLayout="columns" />;
+/**
+ * `<InlinePgnGame>` with its moves in numbered pairs beside the board, in a column as tall as it (CTA-146) —
+ * the game's players, result and event over the board, the step buttons under the moves.
+ */
+export function InlinePgnGame2colH(props: InlinePgnGameProps) {
+  return <InlinePgnSource {...props} movesLayout="columns" movesPlacement="beside" framed />;
 }
 
-function InlinePgnSource({ src, pgn, game, ...shown }: InlinePgnGameProps & { movesLayout: MovesLayout }) {
+/** The same pairs under the board, in a box half its height — for boards side by side. */
+export function InlinePgnGame2colV(props: InlinePgnGameProps) {
+  return <InlinePgnSource {...props} movesLayout="columns" movesPlacement="below" />;
+}
+
+function InlinePgnSource({ src, pgn, game, ...shown }: InlinePgnGameProps & MovesLayout) {
   const { t } = useTranslation();
   const instance = useId().replace(/[^a-zA-Z0-9]/g, "");
   if (src === undefined) return <InlinePgnBoard pgn={pgn ?? ""} game={game} {...shown} />;
@@ -136,7 +154,9 @@ function InlinePgnBoard({
   orientation,
   caption,
   movesLayout,
-}: Omit<InlinePgnGameProps, "src" | "pgn"> & { pgn: string; movesLayout: MovesLayout }) {
+  movesPlacement,
+  framed = false,
+}: Omit<InlinePgnGameProps, "src" | "pgn"> & MovesLayout & { pgn: string }) {
   const { t } = useTranslation();
   const instance = useId().replace(/[^a-zA-Z0-9]/g, "");
 
@@ -198,6 +218,9 @@ function InlinePgnBoard({
       shapes={shapes}
       nextMoveArrows={showNextMoveArrow}
       movesLayout={movesLayout}
+      movesPlacement={movesPlacement}
+      gameInfo={framed}
+      controlsPlacement={framed ? "moves" : "board"}
       caption={caption}
     />
   );

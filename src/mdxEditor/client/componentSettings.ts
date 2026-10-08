@@ -88,7 +88,7 @@ export const IMAGE_APPEARANCE: readonly SettingField[] = [
   { prop: "link", kind: "switch", on: false, label: "Opens full size on a click", help: "In a new tab." },
 ];
 
-/** `<InlinePgnGame>`'s settings — `<InlinePgnGameColumns>` takes the same props (CTA-146). */
+/** `<InlinePgnGame>`'s settings — `<InlinePgnGame2colH>` / `<InlinePgnGame2colV>` (and the alias `<InlinePgnGameColumns>`) take the same props (CTA-146). */
 const INLINE_PGN_GAME: readonly SettingField[] = [
   { prop: "game", kind: "number", label: "Which game", placeholder: "1", help: "For a PGN holding several games, 1 the first." },
   { prop: "from", kind: "text", label: "From move", placeholder: "5", help: "The first move the reader can step back to — 5 after White's 5th, 5... after Black's. Empty: the start." },
@@ -105,6 +105,8 @@ const INLINE_PGN_GAME: readonly SettingField[] = [
 /** Every component's settings, by its name — the ones the Components and Images sections edit. */
 export const SETTINGS: Readonly<Record<string, readonly SettingField[]>> = {
   InlinePgnGame: INLINE_PGN_GAME,
+  InlinePgnGame2colH: INLINE_PGN_GAME,
+  InlinePgnGame2colV: INLINE_PGN_GAME,
   InlinePgnGameColumns: INLINE_PGN_GAME,
   CollectionGameBoard: [startMove, nextMoveArrows],
   StoredGameEmbed: [startMove, nextMoveArrows],

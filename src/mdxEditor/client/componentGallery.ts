@@ -120,18 +120,32 @@ export const GALLERY: readonly GalleryFolder[] = [
           target?.kind === "address" && target.address.kind === "collection" ? `<InlinePgnGame ${sourceProp(target)} game="1" />` : `<InlinePgnGame ${sourceProp(target, "game")} />`,
       },
       {
-        id: "inline-pgn-game-columns",
-        component: "InlinePgnGameColumns",
-        label: "A game, its moves in two columns",
+        id: "inline-pgn-game-2col-h",
+        component: "InlinePgnGame2colH",
+        label: "A game, its moves in two columns beside it",
         summary:
-          "<InlinePgnGame> with its moves as the Analysis Board lists them — numbered pairs, side lines a row under their pair — in a box no taller than the board, scrolling",
+          "<InlinePgnGame> with its moves as the Analysis Board lists them — numbered pairs, side lines a row under their pair — beside the board in a box no taller than it, scrolling",
         reads: ["pgn", "libraryGame", "collection", "analysis", "playedGame", "repertoire"],
         sample: { file: "writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn" },
         pgnName: "game",
         markup: (target) =>
           target?.kind === "address" && target.address.kind === "collection"
-            ? `<InlinePgnGameColumns ${sourceProp(target)} game="1" />`
-            : `<InlinePgnGameColumns ${sourceProp(target, "game")} />`,
+            ? `<InlinePgnGame2colH ${sourceProp(target)} game="1" />`
+            : `<InlinePgnGame2colH ${sourceProp(target, "game")} />`,
+      },
+      {
+        id: "inline-pgn-game-2col-v",
+        component: "InlinePgnGame2colV",
+        label: "A game, its moves in two columns under it",
+        summary:
+          "The same numbered pairs under the board, in a box half its height, scrolling — for boards side by side in a <BoardRow>",
+        reads: ["pgn", "libraryGame", "collection", "analysis", "playedGame", "repertoire"],
+        sample: { file: "writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn" },
+        pgnName: "game",
+        markup: (target) =>
+          target?.kind === "address" && target.address.kind === "collection"
+            ? `<InlinePgnGame2colV ${sourceProp(target)} game="1" />`
+            : `<InlinePgnGame2colV ${sourceProp(target, "game")} />`,
       },
       {
         id: "stored-game-embed",
