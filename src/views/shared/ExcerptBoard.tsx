@@ -13,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import { IconAction } from "../../design-system/components/toolbars";
 import { MIN_TARGET_PX, MONOSPACE_FONT_FAMILY, useChessTokens } from "../../design-system/theme";
 import { drawsShapes, shapesOf } from "../../lib/boardShapes";
-import { findNode, pathTo, type GameTree, type VariationNode } from "../../lib/gameTree";
+import { branchStartOf, findNode, pathTo, type GameTree, type VariationNode } from "../../lib/gameTree";
 import { lastMoveSquareStyles } from "../../lib/gameNavigation";
 import { excerptRows, excerptTokens, isInExcerpt, moveName, type ExcerptToken, type ExcerptWindow } from "../../lib/pgnExcerpt";
 import { readComment } from "../../lib/moveAnnotations";
@@ -40,9 +40,12 @@ import { useBoardKeys } from "./useBoardKeys";
  *   that the window holds (a promotion made more than one way asks, through
  *   the shared picker), anything else snaps back.
  * - Above the board: to the window's first position, back, forward (along
- *   the line on screen), to its last, and flip — and the same from the
- *   keyboard, ← / → / Home / End, on whichever board of the page the reader
- *   last touched (`useBoardKeys`), which is ringed.
+ *   the line on screen), to its last, and flip — and from the keyboard, on
+ *   whichever board of the page the reader last touched (`useBoardKeys`),
+ *   which is ringed: ← / →, Home / End to the start and end of the branch on
+ *   screen (Home on a side line's first move climbs a level; on the mainline
+ *   it is the window's first position), PgUp / PgDown to the window's first
+ *   and last positions (CTA-165).
  * - **The shapes the PGN draws** at the position on screen — lichess's
  *   `[%cal]` arrows and `[%csl]` circles in the move's comment (the game's
  *   opening comment at its start; `lib/boardShapes.ts`), in the theme's
@@ -235,7 +238,7 @@ function ExcerptBoard({
     if (piece !== null && move !== undefined) goTo(move.id);
   };
 
-  // ← / → / Home / End, when this is the board the reader last touched (`useBoardKeys`).
+  // ← / → / Home / End / PgUp / PgDown, when this is the board the reader last touched (`useBoardKeys`).
   const keys = useBoardKeys({
     back: () => {
       if (parentId !== undefined && reachable(parentId)) goTo(parentId);
@@ -243,8 +246,19 @@ function ExcerptBoard({
     next: () => {
       if (onward.length > 0) goTo(onward[0].id);
     },
-    first: () => goTo(window.fromId),
-    last: () => goTo(window.toId),
+    // The branch's first move; on the mainline, the window's first position.
+    first: () => {
+      const start = branchStartOf(tree, nodeId);
+      goTo(reachable(start) ? start : window.fromId);
+    },
+    // On along the line on screen, as far as the window reaches.
+    last: () => {
+      let end = node;
+      for (let next: VariationNode | undefined = onward[0]; next !== undefined; next = next.children.find((child) => reachable(child.id))) end = next;
+      goTo(end?.id ?? null);
+    },
+    gameStart: () => goTo(window.fromId),
+    gameEnd: () => goTo(window.toId),
   });
 
   const options: ChessboardOptions = {
