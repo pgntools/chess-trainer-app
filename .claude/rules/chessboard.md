@@ -246,6 +246,27 @@ write a colour literal in a board file.**
   `chess` group): react-chessboard's options and SVG attributes take no
   `var()`.
 
+### 3.7 Overlays — what is drawn over the board
+
+react-chessboard draws arrows and square styles; anything else on the board
+is an **overlay**: an absolutely positioned, `aria-hidden`,
+`pointer-events: none` SVG in the board's relative box, a `0 0 8 8` viewBox
+(one unit a square, so it scales and measures nothing), turned with the
+board's orientation. A game board passes it as `BoardShell`'s /
+`EngineBoardSquare`'s `overlay` slot — the tree view's `overlay` part,
+drawn before the promotion picker; `ExcerptBoard` (the Blog's embeds)
+renders its own inside its `ForceLTR` box. Bottom to top:
+
+| Layer | Component | Since |
+| --- | --- | --- |
+| The play-chance / width-sized arrows | `views/explorer/ChanceArrows.tsx` | CTA-71, CTA-98 |
+| The PGN's `[%csl]` circles | `views/shared/ShapeCircles.tsx` | CTA-126, CTA-143 |
+| The move mark's badge on the moved-to square | `views/shared/MoveGlyphBadge.tsx` | CTA-168 |
+| The promotion picker (not an overlay — it takes clicks) | `views/shared/PromotionPicker.tsx` | |
+
+Text in an overlay is pinned LTR with the SVG `direction` attribute, which
+the RTL stylis plugin never sees.
+
 ---
 
 ## 4. Stockfish engine integration

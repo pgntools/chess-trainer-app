@@ -320,6 +320,26 @@ touched by it:
 - **Set by** the move menu's *Add annotation…* (`NagDialog`); every toggle is
   one `setNags` edit.
 
+### On the board — the move-mark badge (CTA-168)
+
+The move on screen's **move mark** is also drawn on the board, lichess's way:
+a round badge with the glyph in the top-right corner of the square the move
+landed on (the moved piece). `moveMarkBadge(nags)` picks it — the first move
+mark in print order, its glyph and tone; `□` takes the good tone and `⊗` the
+blunder one, the two marks with no family of their own. **Position and
+feature glyphs stay off the board.** `views/shared/MoveGlyphBadge.tsx` draws
+it — an SVG over the board's relative box like `ShapeCircles` (a `0 0 8 8`
+viewBox, turned with the orientation, `pointer-events: none`,
+`aria-hidden`: the move list reads the glyph out), the disc the theme's
+`chess.nag` token for its tone in the scheme on screen, the glyph white or
+black by `getContrastText`, pinned LTR with the SVG `direction` attribute.
+It is drawn on **every explorer board** (`useVariationsExplorer`'s `overlay`,
+`${testId}-move-glyph`, above the PGN's circles, whether or not the comment
+block is shown — the list shows the glyph either way) and on the Blog's
+`<InlinePgnGame>` boards (`ExcerptBoard`); below the promotion picker. A
+move with no move mark draws nothing, and an `$N` edit through *Add
+annotation…* redraws it at once.
+
 ---
 
 ## 5. Where the code is
@@ -340,10 +360,12 @@ touched by it:
 | `src/views/explorer/CommentDialog.tsx`, `NagDialog.tsx`, `PlayChanceDialog.tsx` | The three editors, opened from the move menu. |
 | `src/views/explorer/ChanceArrows.tsx` + `chanceArrows.ts` | The weight-per-move arrow overlay. |
 | `src/views/shared/NagGlyphs.tsx`, `nagToneSx.ts` | Glyphs after a SAN, and the move marks' colours. |
+| `src/views/shared/MoveGlyphBadge.tsx` | The move mark drawn on the board's moved-to square (CTA-168), over `moveMarkBadge`. |
 
 Tests: `lib/pgnAnnotations.test.ts` (parse, write, merge, the merge's
 `games` counting, edits), `lib/gameTree.test.ts` (the counting's placement),
-`lib/moveAnnotations.test.ts`, `lib/playChance.test.ts`,
+`lib/moveAnnotations.test.ts` (`moveMarkBadge` too), `views/shared/MoveGlyphBadge.test.tsx`
+(the badge's placement, tone and absence), `lib/playChance.test.ts`,
 `lib/nextMoveWeights.test.ts` (the `games` and `[%eval]` readers, the widths),
 `lib/boardShapes.test.ts` (reading, and `toggleShape`'s add / remove /
 recolour and round trip), `views/explorer/NagDialog.test.tsx`,
