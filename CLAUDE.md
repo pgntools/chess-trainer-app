@@ -188,8 +188,10 @@ GameTree ──mainlineGame()──▶ Game ──▶ MoveList (the mainline's n
   re-renders and "changed" stays `tree !== baseline`.
 - **A node id is the navigation state, not a ply** — clicking inside a side
   line changes *which line is current*. `useTreeNavigation` holds the id and
-  derives the ply; ← / → walk the line, Home / End its ends, ↑ / ↓ cycle the
-  sibling moves.
+  derives the ply; ← / → walk the line, Home / End travel the branch (Home
+  to the innermost side line's first move, again to climb a level —
+  `branchStartOf`), PgUp / PgDown the whole game (the start, the mainline's
+  end — CTA-165), ↑ / ↓ cycle the sibling moves.
 - **Every edit is pure and id-preserving** (promote, delete from here, a
   comment, a play chance): a new tree, the path to the edit copied, a no-op
   the same tree back.

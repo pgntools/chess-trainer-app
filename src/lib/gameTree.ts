@@ -439,6 +439,22 @@ export const isInSideLine = (tree: GameTree, id: string | null): boolean => {
 };
 
 /**
+ * **Where Home goes** (CTA-165): the first move of the innermost side line
+ * holding `id`. Standing on that first move already, the enclosing line's
+ * first move — so Home pressed again climbs a level, out to the start. On the
+ * mainline (and for `null`, or an id the tree does not hold) it is `null`, the
+ * start position.
+ */
+export const branchStartOf = (tree: GameTree, id: string | null): string | null => {
+  const path = pathTo(tree, id);
+  // The node on screen is left out: as a side line's first move it climbs.
+  for (let depth = path.length - 2; depth >= 0; depth -= 1) {
+    if (!isFirstAt(tree, path, depth)) return path[depth].id;
+  }
+  return null;
+};
+
+/**
  * **Promote variation** (lichess's): the line holding `id` moves one level up
  * — at the closest branch above it (itself included) where it is not the
  * first continuation, it becomes `children[0]`, and the line that was first

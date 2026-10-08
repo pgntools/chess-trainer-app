@@ -76,7 +76,7 @@ of one of those shows "not here" to everyone else — except a
 instead, marked as a sample. **The front page's two repertoire addresses are
 placeholders** (`REPLACE-WITH-A-REPERTOIRE-ID`, in `get-started.mdx`).
 
-**The keyboard.** Every board on the page steps with ← / → (and Home / End from inside it): the keys drive the board the reader last clicked or tabbed into — ringed — or, before any is touched, the first in view (`views/shared/useBoardKeys.ts`). Nothing to write: every board does it.
+**The keyboard.** Every board on the page steps with ← / → (and, from inside it, Home / End to the start and end of the branch on screen — Home again on a side line's first move climbs a level — and PgUp / PgDown to the whole game's, or window's, first and last position, CTA-165): the keys drive the board the reader last clicked or tabbed into — ringed — or, before any is touched, the first in view (`views/shared/useBoardKeys.ts`). Nothing to write: every board does it.
 
 **What it costs.** A Library embed reads its collection's PGN (and a card its
 index too) — the Library's own lazy chunks, fetched once: the front page

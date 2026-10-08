@@ -4,6 +4,7 @@ import { parsePgnGames, parsePgnTree } from "./pgn";
 import { moveRowsOf } from "./gameNavigation";
 import {
   addMove,
+  branchStartOf,
   countVariations,
   emptyTree,
   fenAtNode,
@@ -188,6 +189,40 @@ describe("lineOf", () => {
       "Nf3",
       "Nc6",
     ]);
+  });
+});
+
+describe("branchStartOf — where Home goes (CTA-165)", () => {
+  // 1. e4 e5 (1... c5 2. Nf3 (2. c3 d5 3. exd5) d6) 2. Nf3 (2. Bc4 Nf6) Nc6
+  const tree = parsePgnTree(
+    "1. e4 e5 (1... c5 2. Nf3 (2. c3 d5 3. exd5) d6) 2. Nf3 (2. Bc4 Nf6) Nc6 *",
+  );
+  const id = (...sans: string[]) => nodeAtSanPath(tree, sans);
+
+  it("is the start position from the mainline, and from the start", () => {
+    expect(branchStartOf(tree, id("e4", "e5", "Nf3", "Nc6"))).toBeNull();
+    expect(branchStartOf(tree, id("e4"))).toBeNull();
+    expect(branchStartOf(tree, null)).toBeNull();
+    expect(branchStartOf(tree, "no-such-node")).toBeNull();
+  });
+
+  it("is the first move of the innermost side line holding the selection", () => {
+    expect(branchStartOf(tree, id("e4", "c5", "Nf3", "d6"))).toBe(id("e4", "c5"));
+    expect(branchStartOf(tree, id("e4", "c5", "c3", "d5", "exd5"))).toBe(id("e4", "c5", "c3"));
+    expect(branchStartOf(tree, id("e4", "e5", "Bc4", "Nf6"))).toBe(id("e4", "e5", "Bc4"));
+  });
+
+  it("climbs a level from a side line's first move, out to the start", () => {
+    expect(branchStartOf(tree, id("e4", "c5", "c3"))).toBe(id("e4", "c5"));
+    expect(branchStartOf(tree, id("e4", "c5"))).toBeNull();
+    expect(branchStartOf(tree, id("e4", "e5", "Bc4"))).toBeNull();
+  });
+
+  it("takes an alternative first move as a side line of its own", () => {
+    const openings = parsePgnTree("1. e4 (1. d4 d5 2. c4) e5 *");
+    const d4 = nodeAtSanPath(openings, ["d4"]);
+    expect(branchStartOf(openings, nodeAtSanPath(openings, ["d4", "d5", "c4"]))).toBe(d4);
+    expect(branchStartOf(openings, d4)).toBeNull();
   });
 });
 

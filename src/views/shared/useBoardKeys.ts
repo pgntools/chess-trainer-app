@@ -12,8 +12,12 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalSto
  *   keys (a tree, a menu, tabs, a listbox, a slider, a grid), which keep them.
  *   With no board touched yet, the first board in view takes them, so a
  *   reader scrolling an article can step the board in front of them at once.
- * - **Home / End** go to the board's first and last position — only while the
- *   focus is inside the board, since anywhere else they scroll the page.
+ * - **Home / End** travel the branch on screen (CTA-165): Home to its first
+ *   move (pressed there, the enclosing line's, out to the start), End to its
+ *   last; **PgUp / PgDown** go to the whole game's first and last position.
+ *   All four only while the focus is inside the board, since anywhere else
+ *   they scroll the page. A board that passes no `gameStart` / `gameEnd`
+ *   leaves PgUp / PgDown to the page.
  * - A modifier (Ctrl, Alt, Shift, ⌘) leaves every key to the browser.
  *
  * The active board is marked (`data-keys-active`, which its component draws as
@@ -27,8 +31,14 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalSto
 type BoardKeyHandlers = {
   back?: () => void;
   next?: () => void;
+  /** Home — the start of the branch on screen. */
   first?: () => void;
+  /** End — the end of the branch on screen. */
   last?: () => void;
+  /** PgUp — the whole game's first position. */
+  gameStart?: () => void;
+  /** PgDown — the whole game's last position. */
+  gameEnd?: () => void;
 };
 
 type Entry = { root: HTMLElement; handlers: () => BoardKeyHandlers };
@@ -68,7 +78,12 @@ const ACTIONS: Record<string, keyof BoardKeyHandlers> = {
   ArrowRight: "next",
   Home: "first",
   End: "last",
+  PageUp: "gameStart",
+  PageDown: "gameEnd",
 };
+
+/** The keys that scroll the page unless the reader is in a board. */
+const PAGE_KEYS = new Set<keyof BoardKeyHandlers>(["first", "last", "gameStart", "gameEnd"]);
 
 /** The board holding the focus, if any. */
 const focusedBoard = (): string | null => {
@@ -94,8 +109,8 @@ const onKeyDown = (event: KeyboardEvent) => {
   if (action === undefined || isTextEntry(event.target) || ownsArrowKeys(event.target)) return;
 
   const inside = focusedBoard();
-  // Home and End scroll the page unless the reader is in a board.
-  if ((action === "first" || action === "last") && inside === null) return;
+  // Home, End, PgUp and PgDown scroll the page unless the reader is in a board.
+  if (PAGE_KEYS.has(action) && inside === null) return;
   const id = inside ?? (active !== null && entries.has(active) ? active : firstInView());
   if (id === null) return;
   const handler = entries.get(id)?.handlers()[action];
@@ -150,7 +165,7 @@ export const useBoardKeys = (handlers: BoardKeyHandlers) => {
   return {
     ref: setRoot,
     tabIndex: -1,
-    "aria-keyshortcuts": "ArrowLeft ArrowRight Home End",
+    "aria-keyshortcuts": "ArrowLeft ArrowRight Home End PageUp PageDown",
     "data-keys-active": isActive ? "true" : undefined,
   } as const;
 };

@@ -66,8 +66,12 @@ What the seam decides, and why:
   part (the map's zoom, the list's menu); state that means something to the
   screen stays in the screen (the open tab, the arrows switch).
 - **Keyboard navigation is the source's**: `useTreeNavigation`, under
-  `useBoardCore`, binds ← → Home End (the line) and ↑ ↓ (the sibling moves,
-  wrapping) for every board. A view never binds keys.
+  `useBoardCore`, binds ← → (the line), Home End (the branch: Home to the
+  innermost side line's first move, climbing a level when pressed there —
+  `branchStartOf` in `lib/gameTree.ts`; End to the line's end), PgUp PgDown
+  (the game's start and the mainline's end, CTA-165) and ↑ ↓ (the sibling
+  moves, wrapping) for every board; a key with nowhere to go is still taken,
+  so the panel does not scroll. A view never binds keys.
 
 ### Adding a mode
 

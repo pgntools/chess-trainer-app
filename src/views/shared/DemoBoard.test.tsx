@@ -158,6 +158,30 @@ describe("the demo board (CTA-126)", () => {
     expect(boardOptions().position).toBe(START);
   });
 
+  it("travels the branch with Home / End and the whole tree with PgUp / PgDown (CTA-165)", async () => {
+    const user = userEvent.setup();
+    render(
+      <DemoBoard
+        boardId="demo-test-board"
+        testId="demo"
+        label="Sample board"
+        root={repertoire()}
+        initialLine={["e4", "c5", "Nf3"]}
+      />,
+    );
+    await user.click(screen.getByRole("group", { name: "Sample board" }));
+    await user.keyboard("{Home}");
+    expect(screen.getByTestId("demo-line")).toHaveTextContent("1. e4 c5");
+    await user.keyboard("{End}");
+    expect(screen.getByTestId("demo-line")).toHaveTextContent("1. e4 c5 2. Nf3");
+    await user.keyboard("{PageDown}");
+    expect(screen.getByTestId("demo-line")).toHaveTextContent("1. e4 e5 2. Nf3");
+    await user.keyboard("{Home}");
+    expect(boardOptions().position).toBe(START);
+    await user.keyboard("{ArrowRight}{PageUp}");
+    expect(boardOptions().position).toBe(START);
+  });
+
   it("draws no next-move arrows with nextMoveArrows={false} — the list still offers the moves", () => {
     render(
       <DemoBoard boardId="demo-test-board" testId="demo" label="Sample board" root={repertoire()} nextMoveArrows={false} />,

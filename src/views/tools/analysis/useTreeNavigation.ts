@@ -8,6 +8,7 @@ import {
 import { useChessTokens } from "../../../design-system/theme";
 import { lastMoveSquareStyles } from "../../../lib/gameNavigation";
 import {
+  branchStartOf,
   fenAtNode,
   findNode,
   lineOf,
@@ -44,11 +45,18 @@ const isTextEntry = (target: EventTarget | null): boolean => {
  *
  * ## The keys
  *
- * ← / → step along the line; **Home / End** jump to its start and end; and
+ * ← / → step along the line; **Home / End** travel the branch (CTA-165) —
+ * Home to the first move of the innermost side line holding the selection
+ * (`branchStartOf`; pressed there, it climbs to the enclosing line's, out to
+ * the start position, which is where it goes from the mainline), End to the
+ * end of the line on screen; **PgUp / PgDown** go to the whole game's start
+ * and the mainline's last move, from wherever the selection is; and
  * **↑ / ↓ cycle through the sibling moves** of the move on screen — the other
  * continuations from the same position, in `children` order, wrapping around
  * (CTA-69). Nothing happens at the start
- * position or on a move with no alternatives. What it is for: with the
+ * position or on a move with no alternatives — and a key with nowhere to go
+ * is still taken (`preventDefault`), so the panel does not scroll under the
+ * reader. What ↑ / ↓ are for: with the
  * repertoire player's Autoplay on, the reader swaps the trainer's reply for
  * another of the file's, and moving from there sets the trainer going again
  * — navigation drops nothing it owes, since a reply is owed only after the
@@ -159,10 +167,16 @@ export const useTreeNavigation = (
           goToPly(ply + 1);
           break;
         case "Home":
-          goToPly(0);
+          setNodeId(branchStartOf(tree, selected));
           break;
         case "End":
           goToPly(lastPly);
+          break;
+        case "PageUp":
+          setNodeId(null);
+          break;
+        case "PageDown":
+          setNodeId(mainline(tree).at(-1)?.id ?? null);
           break;
         case "ArrowUp":
         case "ArrowDown": {

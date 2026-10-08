@@ -81,6 +81,38 @@ describe("useBoardKeys — the keyboard on a page of boards (CTA-126)", () => {
     expect(onScreen("Board A")).toBe("1. e4");
   });
 
+  it("travels the branch with Home / End and the window with PgUp / PgDown — the last two too only from inside (CTA-165)", async () => {
+    const user = userEvent.setup();
+    render(
+      <InlinePgnGame
+        pgn="1. e4 e5 (1... c5 2. Nf3 d6) 2. Nf3 Nc6 3. Bb5 a6 *"
+        start="1. e4 c5 2. Nf3"
+        caption="Board C"
+      />,
+    );
+    await user.click(board("Board C"));
+    expect(board("Board C")).toHaveAttribute("aria-keyshortcuts", "ArrowLeft ArrowRight Home End PageUp PageDown");
+    expect(onScreen("Board C")).toBe("2. Nf3");
+
+    // Home: the side line's first move, then out to the mainline's start — here the window's.
+    await user.keyboard("{Home}");
+    expect(onScreen("Board C")).toBe("1... c5");
+    await user.keyboard("{End}");
+    expect(onScreen("Board C")).toBe("2... d6");
+    await user.keyboard("{Home}{Home}");
+    expect(onScreen("Board C")).toBe("The start");
+
+    await user.keyboard("{PageDown}");
+    expect(onScreen("Board C")).toBe("3... a6");
+    await user.keyboard("{PageUp}");
+    expect(onScreen("Board C")).toBe("The start");
+
+    // From the page's body, PgUp / PgDown are the page's.
+    (document.activeElement as HTMLElement).blur();
+    await user.keyboard("{PageDown}");
+    expect(onScreen("Board C")).toBe("The start");
+  });
+
   it("leaves the keys alone in a field, and with a modifier held", async () => {
     const user = userEvent.setup();
     renderPage();
