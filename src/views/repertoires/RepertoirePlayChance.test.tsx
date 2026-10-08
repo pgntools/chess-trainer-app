@@ -161,11 +161,23 @@ describe("↑ / ↓ in the player — switching the trainer's reply", () => {
     wait();
     expect(boardOptions().position).toBe(fenAfter("e4", "e5", "Nf3", "Nc6"));
 
-    // Home and End are the line's start and end now. From the start the line
-    // is the mainline again, so End is its end, not the branch just played.
+    // Home travels the branch (CTA-165): to the side line's first move, then
+    // out to the start. From there the line is the mainline again, so End is
+    // its end, not the branch just played.
+    key("Home");
+    expect(boardOptions().position).toBe(fenAfter("e4", "e5"));
+    key("End");
+    expect(boardOptions().position).toBe(fenAfter("e4", "e5", "Nf3", "Nc6"));
+    key("Home");
     key("Home");
     expect(boardOptions().position).toBe(new Chess().fen());
     key("End");
+    expect(boardOptions().position).toBe(fenAfter("e4", "c6", "d4"));
+    // PgUp / PgDown are the whole game's ends, wherever the reader stands.
+    key("ArrowLeft");
+    key("PageUp");
+    expect(boardOptions().position).toBe(new Chess().fen());
+    key("PageDown");
     expect(boardOptions().position).toBe(fenAfter("e4", "c6", "d4"));
   });
 
