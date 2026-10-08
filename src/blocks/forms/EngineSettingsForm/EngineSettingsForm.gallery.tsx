@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
 import type { EngineOption } from "../../../lib/engineTypes";
-import type { EngineSettings } from "../../../lib/engineSettings";
+import type { DeviceEngineLimits, EngineSettings } from "../../../lib/engineSettings";
 import type { BlockFamilyId } from "../../families";
 import EngineSettingsForm from "./EngineSettingsForm";
 import { ADJUSTABLE_OPTIONS, NO_OPTIONS, SETTINGS, SHIPPED_OPTIONS, SKILL_ONLY_OPTIONS, SPARSE_OPTIONS } from "./fixtures";
@@ -11,7 +11,7 @@ import { ADJUSTABLE_OPTIONS, NO_OPTIONS, SETTINGS, SHIPPED_OPTIONS, SKILL_ONLY_O
 type State = { settings: EngineSettings; showEvalBar: boolean };
 
 /** The form over an engine's declared options, its settings held by the demo as a screen holds them. */
-const demo = (engineOptions: ReadonlyMap<string, EngineOption>, testId: string) => (
+const demo = (engineOptions: ReadonlyMap<string, EngineOption>, testId: string, deviceLimits?: DeviceEngineLimits) => (
   <WithState<State> initial={{ settings: SETTINGS, showEvalBar: true }}>
     {(state, set) => (
       <Box sx={{ maxWidth: 360 }}>
@@ -21,6 +21,7 @@ const demo = (engineOptions: ReadonlyMap<string, EngineOption>, testId: string) 
           engineOptions={engineOptions}
           showEvalBar={state.showEvalBar}
           onShowEvalBarChange={(showEvalBar) => set((before) => ({ ...before, showEvalBar }))}
+          deviceLimits={deviceLimits}
           testId={testId}
         />
       </Box>
@@ -37,6 +38,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "A build that takes every knob — all live", render: () => demo(ADJUSTABLE_OPTIONS, "gallery-engine-adjustable") },
     { name: "A build without Threads and Hash — absent, not pinned; a smaller MultiPV and strength", render: () => demo(SPARSE_OPTIONS, "gallery-engine-sparse") },
     { name: "Before the handshake — nothing called unsupported", render: () => demo(NO_OPTIONS, "gallery-engine-loading") },
+    {
+      name: "A smaller device — Threads to 3, Hash to 512 MB, the Hash marks with it (CTA-163); the move-time marks snap",
+      render: () => demo(ADJUSTABLE_OPTIONS, "gallery-engine-device", { threads: 3, hashMb: 512 }),
+    },
   ],
 };
 

@@ -14,10 +14,20 @@ export type SliderFieldProps = {
   step?: number;
   /** What the header shows beside the label — absent, the number itself. */
   valueLabel?: ReactNode;
+  /**
+   * Labelled marks on the slider (CTA-163), positioned by their value. The
+   * slider still steps by `step`; a caller whose marks are the only legal
+   * values makes them the step's grid.
+   */
+  marks?: ReadonlyArray<{ value: number; label?: ReactNode }>;
+  /** The slider's value as words for a screen reader (`aria-valuetext`, CTA-163). */
+  valueText?: string;
+  /** A neutral helper caption under the slider ("Engine memory (RAM)"). */
+  help?: ReactNode;
   /** A caption under the slider (a notice: "fixed at 1 in this build"). */
   notice?: ReactNode;
   disabled?: boolean;
-  /** The root's test id; `<testId>-value` is the header's value, `<testId>-input` the slider's input, `<testId>-notice` the caption. */
+  /** The root's test id; `<testId>-value` is the header's value, `<testId>-input` the slider's input, `<testId>-help` its helper, `<testId>-notice` the caption. */
   testId: string;
 };
 
@@ -31,9 +41,10 @@ export type SliderFieldProps = {
  * 60 % a warning caption fell to 2.5:1 — a browser audit of the Engine tab
  * found it. Nor is the header (CTA-142): its value in the secondary text
  * colour fell to 4.0:1 at 60 % — the browser audit again, once the Lobby's
- * panel was shown whole. Only the slider fades.
+ * panel was shown whole. Nor is the help (CTA-163) — same reason. Only the
+ * slider fades.
  */
-function SliderField({ label, value, onChange, min, max, step = 1, valueLabel, notice, disabled = false, testId }: SliderFieldProps) {
+function SliderField({ label, value, onChange, min, max, step = 1, valueLabel, marks, valueText, help, notice, disabled = false, testId }: SliderFieldProps) {
   const labelId = useId();
   return (
     <Box data-testid={testId}>
@@ -51,11 +62,18 @@ function SliderField({ label, value, onChange, min, max, step = 1, valueLabel, n
         min={min}
         max={max}
         step={step}
+        marks={marks === undefined ? undefined : [...marks]}
+        aria-valuetext={valueText}
         disabled={disabled}
         onChange={(_event, next) => onChange(Array.isArray(next) ? next[0] : next)}
         sx={{ opacity: disabled ? 0.6 : 1 }}
         slotProps={{ input: { "aria-labelledby": labelId, "data-testid": `${testId}-input` } as object }}
       />
+      {help !== undefined && (
+        <Typography variant="caption" sx={{ display: "block", color: "text.secondary" }} data-testid={`${testId}-help`}>
+          {help}
+        </Typography>
+      )}
       {notice !== undefined && (
         <Typography variant="caption" sx={{ display: "block", color: "warning.main" }} data-testid={`${testId}-notice`}>
           {notice}

@@ -160,8 +160,14 @@ takes `infinite?: boolean` beside `depth` and `moveTimeMs`.
   one thread. They are now: the wrapper's clamp `DEFAULT_MAX_DEPTH` = **99**
   (each descriptor's `capabilities.maxDepth`; past any search a browser runs,
   so a request is never cut short), and what the forms **offer**,
-  `ENGINE_SETTING_BOUNDS`: depth **1–40**, move time **0–60 s** — Play with
-  Engine's and the analysis boards' alike (`ANALYSIS_SETTING_BOUNDS`).
+  `ENGINE_SETTING_BOUNDS`: depth **1–40**, move time **0–300 s** — Play with
+  Engine's (the snap-to-mark slider's last time mark, CTA-163); the analysis
+  boards keep their own **0–60 s** (`ANALYSIS_SETTING_BOUNDS`). Play with
+  Engine's move time is lichess's marked slider: marks 0, 5, 10, 20, 30, 60,
+  120, 300 seconds and an **∞ mark** for "no limit" (`moveTimeMs` 0); the
+  0-seconds mark is the instant reply, stored as 1 ms — 0 was already
+  "no limit". A stored value off the marks is shown where it falls between
+  them and snaps onto a mark on the next drag.
 - **Infinite analysis** — the analysis boards' Engine tab (the Analysis Board,
   the Library's game, the Openings explorer, the repertoire player), lichess's
   switch, **off by default** (`AnalysisSettings.infinite`, saved with an
@@ -330,7 +336,7 @@ board**:
 | `UciEngine`'s dead surface — public `isReady`, `onReady()`, `init()`, `supportsOption()` | **Cut.** The handshake is `uci` alone (`isready` / `readyok` were read by nothing). |
 | Runtime registration (`registerEngine`, `subscribeEngines`, `listEngines`) and `EngineKind` | **Cut** — only tests used them; §8 says what the hosted engine brings back. |
 | `useEngineModule`'s local `getEngine` shadowing the registry's export | **Renamed** `ensureEngine`. |
-| Search depth: `go depth 12` defaulted in `UciEngine`, 24 the clamp, 14 / 16 the boards' settings; move time at most 10 s | **Single-sourced and raised** (§5.1): depth is a required argument (or the search is `infinite`); `DEFAULT_MAX_DEPTH` (99) is the clamp, `ENGINE_SETTING_BOUNDS` (depth 1–40, move time 0–60 s) what both Engine tabs offer; the analysis boards gained **infinite analysis** and stop at depth 20 rather than after a second. |
+| Search depth: `go depth 12` defaulted in `UciEngine`, 24 the clamp, 14 / 16 the boards' settings; move time at most 10 s | **Single-sourced and raised** (§5.1): depth is a required argument (or the search is `infinite`); `DEFAULT_MAX_DEPTH` (99) is the clamp, `ENGINE_SETTING_BOUNDS` (depth 1–40, move time 0–300 s, CTA-163) what the engine form offers — the analysis boards keep their own 0–60 s; the analysis boards gained **infinite analysis** and stop at depth 20 rather than after a second. |
 | The protocol bookkeeping | **Fixed**: `stop()` dropped no waiting search, so switching the engine off right after a move searched that move anyway; a `stop` went out on every request during a search; an option the engine cannot take was still queued (and stopped the search); an unchanged option was re-posted (`Hash` clearing the table). §6. |
 | The Engine tab's Threads and Hash sliders took the engine's own maximum (32 threads, 33,554,432 MB) | **Capped by the device** (`deviceEngineLimits`) under hard ceilings — 32 threads, 1024 MB, where 2048 crashed the tab (§5.1). |
 | Skill Level vs Elo | **Kept generic** — read off what the engine declares. The Elo slider now stands in before the handshake (every shipped engine's). Defaults kept: Elo 2100, Skill Level 10 (`approximateElo(10)` = 2100, so a Skill-Level-only engine starts alike). |

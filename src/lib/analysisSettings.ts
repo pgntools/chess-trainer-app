@@ -58,10 +58,14 @@ export const DEFAULT_ANALYSIS_SETTINGS: AnalysisSettings = {
   hashMb: DEFAULT_ENGINE_SETTINGS.hashMb,
 };
 
-/** What an analysis board offers — Play with Engine's own (`ENGINE_SETTING_BOUNDS`). */
+/**
+ * What an analysis board offers — Play with Engine's own (`ENGINE_SETTING_BOUNDS`),
+ * save that its move time keeps the 60 s ceiling it always had (CTA-163 raised
+ * the engine form's marks to 300 s; this board's linear slider stays as it was).
+ */
 export const ANALYSIS_SETTING_BOUNDS = {
   depth: ENGINE_SETTING_BOUNDS.depth,
-  moveTimeMs: ENGINE_SETTING_BOUNDS.moveTimeMs,
+  moveTimeMs: { min: 0, max: 60000 },
   threads: ENGINE_SETTING_BOUNDS.threads,
   hashMb: ENGINE_SETTING_BOUNDS.hashMb,
 } as const;

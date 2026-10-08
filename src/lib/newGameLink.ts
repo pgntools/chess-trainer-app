@@ -15,7 +15,7 @@ import {
  * | `skill` | `skillLevel` | 0–20 |
  * | `elo` | `elo` | 1320–3190 (CTA-153: where the engine takes its strength as an Elo) |
  * | `depth` | `depth` | 1–40 |
- * | `movetime` | `moveTimeMs` | 0–60000 (ms; 0 is no limit) |
+ * | `movetime` | `moveTimeMs` | 0–300000 (ms; 0 is no limit, 1 the instant reply — CTA-163) |
  * | `lines` | `multiPv` | 1–10 |
  * | `threads` | `threads` | 1–32 (the form offers what the device has) |
  * | `hash` | `hashMb` | 1–1024 (the form offers what the device has; more crashed the tab, CTA-160) |

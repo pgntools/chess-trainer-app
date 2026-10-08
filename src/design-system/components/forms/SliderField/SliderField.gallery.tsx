@@ -47,6 +47,33 @@ const gallery: GalleryModule = {
         </Box>
       ),
     },
+    {
+      name: "Marked, with a help caption — the marks are the slider's own values, so a drag or a key lands on one (CTA-163)",
+      render: () => (
+        <Box sx={{ maxWidth: 360 }}>
+          <WithState initial={8}>
+            {(slot, setSlot) => (
+              <SliderField
+                label="Hash (MB)"
+                value={slot}
+                onChange={setSlot}
+                min={0}
+                max={8}
+                marks={[
+                  { value: 0, label: "128" },
+                  { value: 2, label: "256" },
+                  { value: 4, label: "512" },
+                  { value: 6, label: "1024" },
+                  { value: 8, label: "2048" },
+                ]}
+                help="Engine memory (RAM)"
+                testId="gallery-slider-marks"
+              />
+            )}
+          </WithState>
+        </Box>
+      ),
+    },
   ],
 };
 

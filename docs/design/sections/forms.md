@@ -65,11 +65,17 @@ Gallery: `/dev/design/forms`.
 - **Purpose** — a labelled slider: the label at the start, the value at the end
   (`dir="ltr"`), the slider under it, dimmed while off — its notice never
   (CTA-109: a dimmed warning caption fell to 2.5:1), nor its header
-  (CTA-142: the dimmed value fell to 4.0:1).
+  (CTA-142: the dimmed value fell to 4.0:1), nor its help (CTA-163).
 - **Props** — `label`, `value`, `onChange(number)`, `min`, `max`, `step?`,
-  `valueLabel?`, `notice?` (a warning caption), `disabled?`, `testId` (the
-  parts `-value`, `-input`, `-notice`).
-- **Variations** — the number; the caller's value words; disabled with a notice.
+  `valueLabel?`, `marks?` (labelled marks, positioned by their value; the
+  slider still steps by `step` — a caller whose marks are the only legal
+  values makes them the step's grid, as the engine form's move-time slider
+  does, CTA-163), `valueText?` (the value as words for a screen reader,
+  `aria-valuetext`), `help?` (a neutral helper caption), `notice?` (a
+  warning caption), `disabled?`, `testId` (the parts `-value`, `-input`,
+  `-help`, `-notice`).
+- **Variations** — the number; the caller's value words; disabled with a
+  notice; marked with a help caption.
 - **Replaces** — `OptionSlider`'s header and its four hand-written copies
   (depth and move time in `EngineSettings` and `AnalysisSettings`) —
   [Shared.md → OptionSlider](../Shared.md#optionslider). `OptionSlider`'s
