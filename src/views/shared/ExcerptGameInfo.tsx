@@ -73,7 +73,9 @@ function ExcerptGameInfo({ headers, testId }: ExcerptGameInfoProps) {
     );
   };
   return (
-    <Box data-testid={testId} sx={{ display: "grid", minWidth: 0, fontSize: "0.8125rem", lineHeight: 1.4 }}>
+    // `position: relative` holds the labels read, not seen (`visuallyHidden` is `position: absolute`) inside the plate —
+    // anchored to the page instead, they would stretch it past an article's own scrolling column.
+    <Box data-testid={testId} sx={{ position: "relative", display: "grid", minWidth: 0, fontSize: "0.8125rem", lineHeight: 1.4 }}>
       {(white !== undefined || black !== undefined) && (
         // Pinned left to right, as the board is: Black stays at the left under Hebrew too.
         <Typography component="p" dir="ltr" sx={{ display: "flex", gap: 1, fontSize: "inherit", lineHeight: "inherit", fontWeight: 500, minWidth: 0 }}>

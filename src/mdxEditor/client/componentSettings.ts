@@ -102,12 +102,27 @@ const INLINE_PGN_GAME: readonly SettingField[] = [
   nextMoveArrows,
 ];
 
+/** `<InlinePgnGame2colH>`'s — `<InlinePgnGame>`'s, and the moves' column's width. */
+const INLINE_PGN_GAME_2COL_H: readonly SettingField[] = [
+  ...INLINE_PGN_GAME,
+  {
+    prop: "movesWidth",
+    kind: "choice",
+    label: "The moves' width",
+    none: "Full — the rest of the row",
+    options: [
+      { value: "board", label: "The board's" },
+      { value: "dense", label: "Dense — only what the moves need" },
+    ],
+  },
+];
+
 /** Every component's settings, by its name — the ones the Components and Images sections edit. */
 export const SETTINGS: Readonly<Record<string, readonly SettingField[]>> = {
   InlinePgnGame: INLINE_PGN_GAME,
-  InlinePgnGame2colH: INLINE_PGN_GAME,
+  InlinePgnGame2colH: INLINE_PGN_GAME_2COL_H,
   InlinePgnGame2colV: INLINE_PGN_GAME,
-  InlinePgnGameColumns: INLINE_PGN_GAME,
+  InlinePgnGameColumns: INLINE_PGN_GAME_2COL_H,
   CollectionGameBoard: [startMove, nextMoveArrows],
   StoredGameEmbed: [startMove, nextMoveArrows],
   CollectionCard: [

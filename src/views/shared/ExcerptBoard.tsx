@@ -108,6 +108,12 @@ type ExcerptBoardProps = {
   gameInfo?: boolean;
   /** Where the step and flip buttons stand: over the board (the default), or under the moves. */
   controlsPlacement?: "board" | "moves";
+  /**
+   * The moves' column beside the board, with the buttons by the moves: `"fill"` (the default)
+   * the rest of the row; `"board"` as wide as the board; `"fit"` as wide as its moves, up to
+   * `MOVES_FIT_MAX_PX`. Either of the last two, the whole is only as wide as it needs.
+   */
+  movesWidth?: "fill" | "board" | "fit";
 };
 
 /** The board column's width, and so the board's side, from `sm` up. */
@@ -120,6 +126,8 @@ const BOARD_COLUMN_PX = 320;
  * grid, `cqw`).
  */
 const COLUMNS_MAX_HEIGHT = { xs: "100cqw", sm: `min(${BOARD_COLUMN_PX}px, 100cqw)` };
+/** The widest a `movesWidth="fit"` column grows — a long side line wraps inside it. */
+const MOVES_FIT_MAX_PX = 240;
 /** Under the board (`movesPlacement="below"`), the list stands half the board's side — `min(BOARD_COLUMN_PX, 100cqw)`. */
 const COLUMNS_BELOW_MAX_HEIGHT = `min(${BOARD_COLUMN_PX / 2}px, 50cqw)`;
 
@@ -188,6 +196,7 @@ function ExcerptBoard({
   movesPlacement = "beside",
   gameInfo = false,
   controlsPlacement = "board",
+  movesWidth = "fill",
 }: ExcerptBoardProps) {
   const { t } = useTranslation();
   const squareOptions = useBoardSquareOptions();
@@ -211,6 +220,9 @@ function ExcerptBoard({
   const controlsByMoves = controlsPlacement === "moves";
   // Beside the board, with the buttons under the moves: the moves' column is the board column's height, the list scrolling in it.
   const fitted = columns && !below && controlsByMoves;
+  // Fitted, the moves' column may also be the board's width, or only what its moves need — the whole then as wide as it needs.
+  const narrow = fitted && movesWidth !== "fill";
+  const movesTrack = !fitted || movesWidth === "fill" ? "minmax(0, 1fr)" : movesWidth === "board" ? `minmax(0, ${BOARD_COLUMN_PX}px)` : `fit-content(${MOVES_FIT_MAX_PX}px)`;
   const rows = useMemo(() => (columns ? excerptRows(tree.startFen, list) : []), [columns, tree, list]);
   const movesRef = useRef<HTMLDivElement>(null);
 
@@ -374,8 +386,8 @@ function ExcerptBoard({
         display: "flex",
         alignItems: "center",
         gap: 0.5,
-        // By the moves, set off by a thin border.
-        ...(controlsByMoves ? { flexShrink: 0, border: 1, borderColor: "divider", borderRadius: 1 } : {}),
+        // By the moves, set off by a thin border — and wrapping, the flip onto a line of its own, where the column is narrower than the five buttons.
+        ...(controlsByMoves ? { flexShrink: 0, flexWrap: "wrap", border: 1, borderColor: "divider", borderRadius: 1 } : {}),
       }}
     >
       <Typography
@@ -405,10 +417,14 @@ function ExcerptBoard({
       data-testid={testId}
       {...keys}
       sx={{
+        // Holds what is read, not seen (`visuallyHidden`, absolutely placed) inside the board — never the page.
+        position: "relative",
         display: "grid",
         gap: 1,
         minWidth: 0,
         mb: 3,
+        // Narrow: from `sm` up, no wider than the board and its moves need — the ring the keys draw round it too.
+        ...(narrow ? { width: { sm: "fit-content" }, maxWidth: "100%" } : {}),
         // The board the keys drive (`useBoardKeys`) is ringed.
         '&:focus': { outline: "none" },
         '&[data-keys-active="true"]': {
@@ -429,11 +445,15 @@ function ExcerptBoard({
           // Below: one column, the board's own width; beside: the board's column, then the moves', from `sm` up.
           gridTemplateColumns: below
             ? `minmax(0, ${BOARD_COLUMN_PX}px)`
-            : { xs: "minmax(0, 1fr)", sm: `minmax(0, ${BOARD_COLUMN_PX}px) minmax(0, 1fr)` },
+            : {
+                xs: "minmax(0, 1fr)",
+                sm: `minmax(0, ${BOARD_COLUMN_PX}px) ${movesTrack}`,
+              },
           gap: below ? 1 : 2,
           alignItems: "start",
-          // The columns layout's cap reads this grid's width (`COLUMNS_MAX_HEIGHT`).
-          ...(columns ? { containerType: "inline-size" } : {}),
+          // The columns layout's cap reads this grid's width (`COLUMNS_MAX_HEIGHT`). Narrow, only stacked does: from `sm` up
+          // the column is the board's height, and a size container could not be as wide as its content.
+          ...(columns ? { containerType: narrow ? { xs: "inline-size", sm: "normal" } : "inline-size" } : {}),
         }}
       >
         <Box sx={{ display: "grid", gap: 0.5, minWidth: 0 }}>

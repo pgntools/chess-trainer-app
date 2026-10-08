@@ -46,7 +46,9 @@ import { EmbedSource } from "./embedSource";
  * columns, a side line a row under the pair it answers, beside the board in a
  * column as tall as it that scrolls when the tree is longer — the game's
  * players, result and event on a plate over the board, the step and flip
- * buttons under the moves.
+ * buttons under the moves; `movesWidth` sets the moves' column's width — the
+ * rest of the row (`"full"`, the default), the board's (`"board"`), or only
+ * what its moves need (`"dense"`).
  * **`<InlinePgnGame2colV>`** puts those columns under the board, at every
  * width, in a box half its height — the one for boards side by side in a
  * `<BoardRow>` — with the same game plate over the board, its step buttons
@@ -78,6 +80,8 @@ type InlinePgnGameProps = {
   orientation?: "white" | "black";
   /** A line above the board. */
   caption?: string;
+  /** `<InlinePgnGame2colH>`: the moves' column — the rest of the row (the default), the board's width, or only what its moves need. */
+  movesWidth?: "full" | "board" | "dense";
 };
 
 const plyOf = (value: number | string | undefined): number | undefined => {
@@ -160,6 +164,7 @@ function InlinePgnBoard({
   movesLayout,
   movesPlacement,
   framed = false,
+  movesWidth = "full",
 }: Omit<InlinePgnGameProps, "src" | "pgn"> & MovesLayout & { pgn: string }) {
   const { t } = useTranslation();
   const instance = useId().replace(/[^a-zA-Z0-9]/g, "");
@@ -225,6 +230,7 @@ function InlinePgnBoard({
       movesPlacement={movesPlacement}
       gameInfo={framed}
       controlsPlacement={framed ? "moves" : "board"}
+      movesWidth={movesWidth === "board" ? "board" : movesWidth === "dense" ? "fit" : "fill"}
       caption={caption}
     />
   );
