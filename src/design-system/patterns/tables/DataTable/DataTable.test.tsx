@@ -269,6 +269,49 @@ describe("DataTable", () => {
       fireEvent.click(screen.getByRole("checkbox", { name: "Pick Tal" }));
       expect(onRowClick).not.toHaveBeenCalled();
     });
+
+    it("takes a row's state and toggle from the caller when its pick is not its own id's (CTA-147)", () => {
+      const onToggle = vi.fn();
+      const onChange = vi.fn();
+      mount({
+        picks: {
+          ...picks(["a"], onChange),
+          // `a` is the caller's — a folder row, say — whose pick covers more than itself; `b` keeps the ordinary pick.
+          pickOverride: (row) => (row.id === "a" ? { checked: true, indeterminate: false, onToggle } : undefined),
+        },
+      });
+      const overridden = screen.getByRole("checkbox", { name: "Pick Tal" });
+      expect(overridden).toBeChecked();
+      expect(screen.getByTestId("t-row-a")).toHaveClass("Mui-selected");
+      fireEvent.click(overridden);
+      expect(onToggle).toHaveBeenCalledTimes(1);
+      expect(onChange).not.toHaveBeenCalled();
+      // A row the caller does not name keeps the ordinary pick.
+      fireEvent.click(screen.getByRole("checkbox", { name: "Pick Capablanca" }));
+      expect(onChange).toHaveBeenCalled();
+    });
+
+    it("shows an indeterminate row pick — some of what the row stands for is picked (CTA-147)", () => {
+      mount({
+        picks: {
+          ...picks([]),
+          pickOverride: (row) => (row.id === "a" ? { checked: false, indeterminate: true, onToggle: vi.fn() } : undefined),
+        },
+      });
+      expect(screen.getByRole("checkbox", { name: "Pick Tal" })).toHaveAttribute("data-indeterminate", "true");
+      expect(screen.getByTestId("t-row-a")).toHaveClass("Mui-selected");
+    });
+
+    it("takes the header's tri-state and toggle from the caller when select-all covers more than the rows (CTA-147)", () => {
+      const onToggleAll = vi.fn();
+      const onChange = vi.fn();
+      mount({ picks: { ...picks(["a"], onChange), selectAll: { checked: true, indeterminate: false, onToggleAll } } });
+      const all = screen.getByRole("checkbox", { name: "Select all" });
+      expect(all).toBeChecked();
+      fireEvent.click(all);
+      expect(onToggleAll).toHaveBeenCalledTimes(1);
+      expect(onChange).not.toHaveBeenCalled();
+    });
   });
 
   describe("row actions", () => {

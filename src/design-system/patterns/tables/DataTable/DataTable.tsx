@@ -51,6 +51,21 @@ export type DataTablePicks<R> = {
    * out of select-all and its count. Absent, every row can.
    */
   canPick?: (row: R) => boolean;
+  /**
+   * A row whose pick is not just its own id's membership (CTA-147: a folder
+   * row, whose pick covers its whole subtree). The caller hands back the
+   * row's own checked state — `indeterminate` while some of what it stands
+   * for is picked — and its toggle; `undefined` for a row that keeps the
+   * ordinary pick. `picked` still holds such a row's id when it is picked.
+   */
+  pickOverride?: (row: R) => { checked: boolean; indeterminate?: boolean; onToggle: () => void } | undefined;
+  /**
+   * The caller's own select-all (CTA-147) — its tri-state and its toggle, for
+   * a table where a pick covers more than the pickable rows (a closed
+   * folder's whole subtree is picked with it, unshown rows and all). Absent,
+   * the header works from the pickable rows' ids alone.
+   */
+  selectAll?: { checked: boolean; indeterminate: boolean; onToggleAll: () => void };
 };
 
 /**
@@ -380,7 +395,17 @@ function DataTable<R, C extends string = string>({
               <PickHeaderCell
                 total={pickable.length}
                 picked={pickedCount}
-                onToggleAll={toggleAll}
+                state={
+                  picks.selectAll === undefined
+                    ? undefined
+                    : {
+                        checked: picks.selectAll.checked,
+                        indeterminate: picks.selectAll.indeterminate,
+                        // The caller owns the coverage — it decides when there is nothing to pick.
+                        disabled: false,
+                      }
+                }
+                onToggleAll={picks.selectAll?.onToggleAll ?? toggleAll}
                 label={picks.selectAllLabel}
                 testId={picks.selectAllTestId ?? `${testId}-select-all`}
               />
@@ -423,6 +448,9 @@ function DataTable<R, C extends string = string>({
             shown.map((row, index) => {
               const id = rowId(row);
               const isPicked = picked?.has(id) ?? false;
+              // A row whose pick is the caller's (a folder's covers its whole subtree) — its state and toggle are not the set's.
+              const pickOverride = picks?.pickOverride?.(row);
+              const rowChecked = pickOverride?.checked ?? isPicked;
               const note = rowNote?.(row);
               const closesGroup = groupEnd?.(row, shown[index + 1]) ?? false;
               const rowTest = rowTestId?.(row) ?? `${testId}-row-${id}`;
@@ -430,7 +458,7 @@ function DataTable<R, C extends string = string>({
                 <TableRow
                   key={id}
                   hover
-                  selected={isPicked}
+                  selected={pickOverride === undefined ? isPicked : pickOverride.checked || (pickOverride.indeterminate ?? false)}
                   onClick={clickable ? (event) => onRow(row, event) : undefined}
                   tabIndex={keyed ? 0 : undefined}
                   onKeyDown={keyed ? (event) => onRowKey(row, event) : undefined}
@@ -446,8 +474,9 @@ function DataTable<R, C extends string = string>({
                   {picks !== undefined && canPick?.(row) === false && <TableCell padding="checkbox" />}
                   {picks !== undefined && canPick?.(row) !== false && (
                     <PickCell
-                      checked={isPicked}
-                      onToggle={() => togglePick(id)}
+                      checked={rowChecked}
+                      indeterminate={pickOverride?.indeterminate}
+                      onToggle={pickOverride?.onToggle ?? (() => togglePick(id))}
                       label={picks.pickLabel(row)}
                       testId={picks.pickTestId?.(row) ?? `${testId}-pick-${id}`}
                     />
