@@ -222,7 +222,14 @@ function ExcerptBoard({
   const fitted = columns && !below && controlsByMoves;
   // Fitted, the moves' column may also be the board's width, or only what its moves need — the whole then as wide as it needs.
   const narrow = fitted && movesWidth !== "fill";
-  const movesTrack = !fitted || movesWidth === "fill" ? "minmax(0, 1fr)" : movesWidth === "board" ? `minmax(0, ${BOARD_COLUMN_PX}px)` : `fit-content(${MOVES_FIT_MAX_PX}px)`;
+  // Fitted, the column is never narrower than its content — the buttons' one line — so a narrow row shrinks the board instead.
+  const movesTrack = !fitted
+    ? "minmax(0, 1fr)"
+    : movesWidth === "fill"
+      ? "minmax(min-content, 1fr)"
+      : movesWidth === "board"
+        ? `minmax(min-content, ${BOARD_COLUMN_PX}px)`
+        : `fit-content(${MOVES_FIT_MAX_PX}px)`;
   const rows = useMemo(() => (columns ? excerptRows(tree.startFen, list) : []), [columns, tree, list]);
   const movesRef = useRef<HTMLDivElement>(null);
 
@@ -386,8 +393,8 @@ function ExcerptBoard({
         display: "flex",
         alignItems: "center",
         gap: 0.5,
-        // By the moves, set off by a thin border — and wrapping, the flip onto a line of its own, where the column is narrower than the five buttons.
-        ...(controlsByMoves ? { flexShrink: 0, flexWrap: "wrap", border: 1, borderColor: "divider", borderRadius: 1 } : {}),
+        // By the moves, set off by a thin border; one line always — the moves' column is never narrower than it (`movesTrack`).
+        ...(controlsByMoves ? { flexShrink: 0, border: 1, borderColor: "divider", borderRadius: 1 } : {}),
       }}
     >
       <Typography
@@ -472,7 +479,8 @@ function ExcerptBoard({
           sx={
             fitted
               ? // Adds no height of its own from `sm` up (`height: 0`), and takes the row's — the board column's (`minHeight: 100%`).
-                { display: "flex", flexDirection: "column", gap: 1, minWidth: 0, height: { sm: 0 }, minHeight: { sm: "100%" } }
+                // No `minWidth: 0`: the grid may not squeeze it below its buttons' one line.
+                { display: "flex", flexDirection: "column", gap: 1, height: { sm: 0 }, minHeight: { sm: "100%" } }
               : { display: "grid", gap: 1, minWidth: 0 }
           }
         >
