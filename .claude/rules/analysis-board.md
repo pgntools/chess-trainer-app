@@ -67,7 +67,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/blocks/lists/SavedAnalysesList/`, `FolderActions/`, `FolderPicker/`; `src/blocks/dialogs/Folder*Dialog/` | The card views (folders and records as cards) and the nested-folder pieces — a folder's actions, the picker, the name / move / delete dialogs — each taking its words as `labels` and a test-id prefix (CTA-113). |
 | `src/lib/savedAnalyses.ts` | **The record**, pure: `SavedAnalysis`, `savedAnalysisOf`, `savedAnalysisFrom` (the normaliser), `savedAnalysisDerivedName`, `batchAnalysesOf`, `analysisGamesOfText` (a text's games as analyses, CTA-141), `savedAnalysisCatalogOf`. |
 | `src/lib/savedAnalysisStore.ts` | **The store** (`chessapp.analyses`, object store `analyses`): `saveAnalysis`, `addAnalyses`, `fileSavedAnalysis`, `renameSavedAnalysis`, `updateSavedAnalysisSettings`, `removeSavedAnalyses`, `unfileAnalysesIn`, `findSavedAnalysisGame`; cap `MAX_SAVED_ANALYSES` (20,000). |
-| `src/lib/savedAnalysisFolders.ts` + `savedAnalysisFolderStore.ts` | The folders: an `AnalysisFolder` *is* a `GameFolder` (`lib/savedGameFolders.ts`, the nested model: cycles cut, dangling parents read as top level); create / rename / move (never into its own subtree) / delete (sub-folders re-parent, analyses become Unfiled); cap 100. |
+| `src/lib/savedAnalysisFolders.ts` + `savedAnalysisFolderStore.ts` | The folders: an `AnalysisFolder` *is* a `GameFolder` (`lib/savedGameFolders.ts`, the nested model: cycles cut, dangling parents read as top level); create / rename / move (never into its own subtree) / delete (sub-folders re-parent, analyses become Unfiled) or delete deep (`removeAnalysisFoldersDeep`, CTA-147 — the bulk delete's, the whole subtree gone); the picks model (`analysisPicksOf` — a folder's pick is its whole subtree; the toggles keep no folder checked with its contents partly picked); cap 100. |
 | `src/lib/analysisSettings.ts` | `AnalysisSettings`, the defaults, `ANALYSIS_UCI_OPTION`, `analysisSettingsFrom`. |
 | `src/lib/arrowSettings.ts` | The Arrows tab's ids (CTA-98): `ArrowWidthSource`, `ArrowPaletteId`, their defaults and readers (`arrowWidthSourceFrom`, `arrowPaletteFrom`). |
 | `src/lib/nextMoveWeights.ts` | Each width source's weights at a branch (`nextMoveWeights`), the `[%eval]` reader (`evalOf`), and which sources a tree offers (`arrowWidthSourcesIn`). Pure. The `games` tag's reader is `lib/gamesTag.ts`. |
@@ -389,8 +389,12 @@ validated, ignored when it does not resolve, taken as *initial* state.
   first at every level, each with its subtree's count, opened in place by
   its chevron or a click on its row (its analyses indented under it — the open
   folders are the screen's state, not the URL's), its name a link into it
-  (`?folder=`), its actions download / rename / move / delete; a folder has
-  no pick. An analysis row: **Name** (the reader's name, else the players, else
+  (`?folder=`), its actions download / rename / move (no delete icon —
+  CTA-147). Folders and records are picked alike: a folder's checkbox (its
+  pick covers its whole subtree, checked or indeterminate by what under it is
+  picked — `analysisPicksOf` in `lib/savedAnalysisFolders.ts`) joins the
+  header's select-all, which the screen owns (`picks.selectAll`), since a
+  closed folder's pick covers rows the table never shows. An analysis row: **Name** (the reader's name, else the players, else
   "Analysis board"; the row's link to the board, the description under it),
   White, Elo, Black, Elo, Result, Date, Event, Round, ECO, Opening, Moves,
   Updated — read off the PGN tags without parsing the tree
@@ -416,13 +420,20 @@ validated, ignored when it does not resolve, taken as *initial* state.
     unreadable record is marked); past that for the page on screen only, the
     sort and the filter reading the tags alone.
 - **Every row and card** has its link to the board (a row's name, a card's
-  board), the settings gear and a checkbox; the export bar downloads the picks
-  and deletes them in bulk, asking first. Select-all — the table's, in its
-  header, over the analyses shown (the filter's, the open folders'); the
-  cards', in the bar, over the folder's. The picks persist across folders and views.
-- **Folders** are created, renamed, moved (never into their own subtree),
-  deleted keeping their contents (sub-folders re-parent, analyses Unfiled) and
-  downloaded as one `.pgn`.
+  board), the settings gear and a checkbox — a folder's box picks its whole
+  subtree with it (CTA-147); the export bar downloads the picks and deletes
+  them in bulk, asking first — a delete that includes folders says the
+  folders go **with everything under them**, and takes the folders' whole
+  subtrees (`removeAnalysisFoldersDeep`; standing inside what goes, the
+  reader steps out to the nearest folder that survives). Unticking an
+  analysis under a picked folder demotes the folder, so none stays checked
+  with its contents partly picked (`toggleAnalysisPick` / `unpickAnalysis` /
+  `toggleAnalysisFolderPick`). Select-all — the table's, in its
+  header, over the rows shown (the filter's, the open folders' — a folder's
+  whole subtree with it); the cards', in the bar, over the folder's. The
+  picks persist across folders and views.
+- **Folders** are created, renamed, moved (never into their own subtree) and
+  downloaded as one `.pgn`; deleted through the picks (CTA-147).
 - **Paged, and parsed no more than a page at a time**: the design system's
   page sizes, 25 / 50 / 100 / 250, 50 by default (`SAVED_ANALYSES_PAGE` =
   `DEFAULT_TABLE_PAGE_SIZE`) in every view; each record's tree parsed once
