@@ -34,6 +34,12 @@ beforeEach(async () => {
   await i18n.changeLanguage("en");
 });
 
+/** The stylesheet's rules for an element's own classes — jsdom drops what it cannot parse (`min()`, `cqw`), and the head keeps every test's rules. */
+const rulesOf = (element: Element): string => {
+  const css = document.head.textContent ?? "";
+  return [...element.classList].flatMap((name) => css.match(new RegExp(`\\.${name}(?![\\w-])[^{]*\\{[^}]*\\}`, "g")) ?? []).join("");
+};
+
 describe("<InlinePgnGame> (CTA-126)", () => {
   it("shows its window — opened at start — named by it, its side lines nested and its marks kept", () => {
     render(<InlinePgnGame pgn={PGN} from="1..." to="3" start="2" />);
@@ -196,15 +202,16 @@ describe("<InlinePgnGame> (CTA-126)", () => {
 
 describe("<InlinePgnGame2colH> (CTA-146)", () => {
   const movesOf = () => screen.getByRole("group", { name: "The moves" });
-  /** The grid's cells in reading order: a pair's number, White, Black — `·` where a cell is empty — and a side line's run as `(…)`. */
+  /** The grid's cells in reading order: a pair's number, White, Black — `·` where a cell is empty — a side line's run as `(…)`, a comment as `{…}`. */
   const cellsOf = (region: HTMLElement) =>
     [...region.children].map((child) => {
       if (child.getAttribute("data-testid")?.endsWith("-variation")) return `(${child.textContent})`;
+      if (child.getAttribute("data-testid")?.endsWith("-inline-comment")) return `{${child.textContent}}`;
       return child.tagName === "BUTTON" ? (child.getAttribute("aria-label") ?? "") : child.textContent || "·";
     });
 
   it("lays the window's moves out as numbered pairs — number, White, Black — each side line a run under its pair", () => {
-    render(<InlinePgnGame2colH pgn={PGN} from="1..." to="3" />);
+    render(<InlinePgnGame2colH pgn={PGN} from="1..." to="3" comments="hidden" />);
     expect(movesOf()).toHaveAttribute("data-layout", "columns");
     expect(movesOf()).toHaveStyle({ display: "grid" });
     // 2. Nf3 Nc6 (2... d6 3. d4) 3. Bb5 — the window's, with the Black cell of 3 empty.
@@ -215,7 +222,7 @@ describe("<InlinePgnGame2colH> (CTA-146)", () => {
   });
 
   it("opens a window on Black's move with an empty White cell", () => {
-    render(<InlinePgnGame2colH pgn={PGN} from="2" to="3..." />);
+    render(<InlinePgnGame2colH pgn={PGN} from="2" to="3..." comments="hidden" />);
     expect(cellsOf(movesOf()).slice(0, 4)).toEqual(["2.", "·", "2... Nc6", "(2...d63.d4)"]);
   });
 
@@ -238,23 +245,87 @@ describe("<InlinePgnGame2colH> (CTA-146)", () => {
     expect(cellsOf(movesOf()).slice(-3)).toEqual(["4.", "4. Ba4", "4... Nf6"]);
   });
 
-  it("caps the list at the board's height — the board's column, or the container where narrower — and scrolls it", () => {
+  it("takes the board's height from `sm` up — stacked, the container's width — and scrolls the list in it", () => {
     render(<InlinePgnGame2colH pgn={PGN} />);
-    expect(movesOf().getAttribute("class")).toBeTruthy();
-    const style = getComputedStyle(movesOf());
-    expect(style.overflowY).toBe("auto");
-    // jsdom drops a `min()` it cannot parse, so the cap is read off the stylesheet the list's class carries.
-    const rules = document.head.textContent ?? "";
-    // Stacked, the board is the container's width; from `sm` up, its 320 px column at most.
-    expect(rules).toContain("max-height:100cqw");
-    expect(rules).toContain("max-height:min(320px, 100cqw)");
-    expect(rules).toContain("container-type:inline-size");
+    expect(getComputedStyle(movesOf()).overflowY).toBe("auto");
+    // Stacked, capped at the board's side (the container's width); from `sm` up, uncapped inside a column as tall as the board's.
+    expect(rulesOf(movesOf())).toContain("max-height:100cqw");
+    expect(rulesOf(movesOf())).toMatch(/max-height:none/);
+    expect(rulesOf(movesOf().parentElement!)).toMatch(/height:0;min-height:100%/);
+    expect(rulesOf(movesOf().parentElement!.parentElement!)).toContain("container-type:inline-size");
   });
 
-  it("stands its list beside the board from `sm` up", () => {
+  it("stands its list beside the board from `sm` up, the rest of the row by default", () => {
     render(<InlinePgnGame2colH pgn={PGN} />);
     expect(movesOf()).toHaveAttribute("data-placement", "beside");
-    expect(document.head.textContent).toContain("grid-template-columns:minmax(0, 320px) minmax(0, 1fr)");
+    expect(rulesOf(movesOf().parentElement!.parentElement!)).toContain("grid-template-columns:minmax(0, 320px) minmax(min-content, 1fr)");
+  });
+
+  it("makes the moves' column the board's width, or only what its moves need, with movesWidth — the whole then as wide as it needs", () => {
+    const { unmount } = render(<InlinePgnGame2colH pgn={PGN} movesWidth="board" />);
+    expect(rulesOf(movesOf().parentElement!.parentElement!)).toContain("grid-template-columns:minmax(0, 320px) minmax(min-content, 320px)");
+    expect(rulesOf(screen.getByRole("group", { name: /^The game/ }))).toContain("width:fit-content");
+    unmount();
+    render(<InlinePgnGame2colH pgn={PGN} movesWidth="dense" />);
+    expect(rulesOf(movesOf().parentElement!.parentElement!)).toContain("grid-template-columns:minmax(0, 320px) fit-content(240px)");
+  });
+
+  describe("comments — inline (the default), bottom or hidden", () => {
+    it("shows every comment where it is written: a row of its own, after White's move splitting the pair, inside a side line", () => {
+      render(<InlinePgnGame2colH pgn={PGN} to="3" />);
+      expect(cellsOf(movesOf())).toEqual([
+        "1.",
+        "1. e4",
+        "…",
+        "{The king's pawn.}",
+        "1.",
+        "…",
+        "1... e5",
+        "2.",
+        "2. Nf3",
+        "2... Nc6",
+        "(2...d6Philidor.3.d4)",
+        "3.",
+        "3. Bb5",
+        "·",
+      ]);
+      // The move on screen's is not repeated under the moves.
+      expect(screen.queryByTestId(/(?<!-inline)-comment$/)).not.toBeInTheDocument();
+    });
+
+    it("shows the move on screen's alone under the moves with comments=\"bottom\" — and with a bare comments, as articles wrote it", async () => {
+      const user = userEvent.setup();
+      const { unmount } = render(<InlinePgnGame2colH pgn={PGN} comments="bottom" />);
+      expect(screen.queryByTestId(/-inline-comment$/)).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "1. e4" }));
+      expect(screen.getByTestId(/-comment$/)).toHaveTextContent("The king's pawn.");
+      unmount();
+      render(<InlinePgnGame2colH pgn={PGN} comments />);
+      expect(screen.queryByTestId(/-inline-comment$/)).not.toBeInTheDocument();
+    });
+
+    it("shows none with comments=\"hidden\" or comments={false}", async () => {
+      const user = userEvent.setup();
+      const { unmount } = render(<InlinePgnGame2colV pgn={PGN} comments="hidden" />);
+      await user.click(screen.getByRole("button", { name: "1. e4" }));
+      expect(screen.queryByTestId(/comment$/)).not.toBeInTheDocument();
+      unmount();
+      render(<InlinePgnGame2colV pgn={PGN} comments={false} />);
+      expect(screen.queryByTestId(/comment$/)).not.toBeInTheDocument();
+    });
+
+    it("leaves <InlinePgnGame>'s default as ever — none — and takes inline there too when asked", () => {
+      const { unmount } = render(<InlinePgnGame pgn={PGN} />);
+      expect(screen.queryByTestId(/comment$/)).not.toBeInTheDocument();
+      unmount();
+      render(<InlinePgnGame pgn={PGN} comments="inline" />);
+      expect(screen.getAllByTestId(/-inline-comment$/).map((comment) => comment.textContent)).toEqual(["The king's pawn.", "Philidor."]);
+    });
+
+    it("passes axe, inline", async () => {
+      render(<InlinePgnGame2colH pgn={PGN} start="2" />);
+      await expectNoAxeViolations();
+    });
   });
 
   it("is what an article's older <InlinePgnGameColumns> renders", () => {
@@ -326,9 +397,17 @@ describe("<InlinePgnGame2colV>", () => {
   it("caps the list at half the board's side, and scrolls it", () => {
     render(<InlinePgnGame2colV pgn={PGN} />);
     expect(getComputedStyle(movesOf()).overflowY).toBe("auto");
-    const rules = document.head.textContent ?? "";
-    expect(rules).toContain("max-height:min(160px, 50cqw)");
-    expect(rules).toContain("container-type:inline-size");
+    expect(rulesOf(movesOf())).toContain("max-height:min(160px, 50cqw)");
+    expect(document.head.textContent).toContain("container-type:inline-size");
+  });
+
+  it("stands the list the board's height with movesHeight=\"board\", and the whole game, uncapped, with \"full\"", () => {
+    const { unmount } = render(<InlinePgnGame2colV pgn={PGN} movesHeight="board" />);
+    expect(rulesOf(movesOf())).toContain("max-height:min(320px, 100cqw)");
+    unmount();
+    render(<InlinePgnGame2colV pgn={PGN} movesHeight="full" />);
+    expect(rulesOf(movesOf())).toContain("max-height:none");
+    expect(rulesOf(movesOf())).not.toContain("cqw");
   });
 
   it("steps as the others do, the current move marked", async () => {

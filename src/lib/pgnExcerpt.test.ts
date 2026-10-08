@@ -122,3 +122,41 @@ describe("excerptRows — the move list in numbered pairs", () => {
     expect(summary(excerptRows(fen.startFen, excerptTokens(fen, resolveExcerpt(fen))))).toEqual(["24. … Kd7", "25. Kd2 …"]);
   });
 });
+
+describe("the comments in place — excerptTokens' comments, excerptRows' split", () => {
+  // A lichess study's shape: comments two in a row, the text then the shapes; a side line opened by one.
+  const STUDY = parsePgnTree(
+    "{ Intro. } { [%csl Gd4] } 1. e4 { Best by test. } { [%cal Ge2e4] } (1. d4 { Also good. } d5) 1... e5 2. Nf3 ({ Or } 2. Bc4 Nf6) 2... Nc6 { Develops. } 3. Bb5 *",
+  );
+  const tokensOf = (window = resolveExcerpt(STUDY)) => excerptTokens(STUDY, window, { comments: true });
+  const notesOf = (row: ReturnType<typeof excerptRows>[number]) =>
+    row.notes.map((note) => (note.kind === "comment" ? `{ ${note.text} }` : `( ${text(note.tokens)} )`)).join(" ");
+  const rowsSummary = (rows: ReturnType<typeof excerptRows>) =>
+    rows.map((row) => [`${row.number}. ${row.white?.node.san ?? "…"} ${row.black?.node.san ?? "…"}`, notesOf(row)].filter(Boolean).join(" "));
+
+  it("are left out unless asked for — the tokens and rows as ever", () => {
+    expect(text(excerptTokens(STUDY, resolveExcerpt(STUDY)))).toBe("1. e4 ( 1. d4 d5 ) 1... e5 2. Nf3 ( 2. Bc4 Nf6 ) 2... Nc6 3. Bb5");
+  });
+
+  it("follow their move — a shapes-only one none — the move after numbered again, a side line's opening one before its move", () => {
+    expect(text(tokensOf())).toBe(
+      "{ Intro. } 1. e4 { Best by test. } ( 1. d4 { Also good. } 1... d5 ) 1... e5 2. Nf3 ( { Or } 2. Bc4 Nf6 ) 2... Nc6 { Develops. } 3. Bb5",
+    );
+  });
+
+  it("leave the game's opening one out where the window does not open at the start", () => {
+    expect(text(tokensOf(resolveExcerpt(STUDY, { from: "1" })))).toMatch(/^1\.\.\. e5/);
+  });
+
+  it("split the pair after White's move, hang under it after Black's, and give the opening one a row of its own", () => {
+    const rows = excerptRows(STUDY.startFen, tokensOf());
+    expect(rowsSummary(rows)).toEqual([
+      "0. … … { Intro. }",
+      "1. e4 … { Best by test. } ( 1. d4 { Also good. } 1... d5 )",
+      "1. … e5",
+      "2. Nf3 Nc6 ( { Or } 2. Bc4 Nf6 ) { Develops. }",
+      "3. Bb5 …",
+    ]);
+    expect([rows[0].white, rows[0].black]).toEqual([null, null]);
+  });
+});

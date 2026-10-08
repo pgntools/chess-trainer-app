@@ -18,6 +18,27 @@ Each side line is a row of its own under the pair it answers, spanning the width
 <InlinePgnGame2colH pgn={game} from="13..." to="17" start="15..." />
 ```
 
+## Comments
+
+The game's comments stand in the list, each where it is written: under the pair it follows, a row of its own. A comment after White's move splits the pair — White's move, then the comment, then Black's move on a row of its own, as lichess lists it — and a side line's comments stay inside its run. That is the default; `comments="bottom"` shows instead only the comment of the move on screen, under the moves, and `comments="hidden"` none. (A bare `comments`, as `<InlinePgnGame>` takes it, is `"bottom"`.) Arrows and circles drawn in a comment are on the board whichever is chosen.
+
+<InlinePgnGame2colH pgn={game} from="15" to="17" start="16" />
+
+```mdx
+<InlinePgnGame2colH pgn={game} from="15" to="17" start="16" />
+<InlinePgnGame2colH pgn={game} from="15" to="17" start="16" comments="bottom" />
+```
+
+## The moves' width
+
+Beside the board the list takes the rest of the row. `movesWidth="board"` makes it the board's width, and `movesWidth="dense"` only as wide as its moves need — in either, the whole is only as wide as it needs, the article's text going on beside it no more than before.
+
+<InlinePgnGame2colH pgn={game} from="13..." to="17" movesWidth="dense" comments="hidden" />
+
+```mdx
+<InlinePgnGame2colH pgn={game} from="13..." to="17" movesWidth="dense" comments="hidden" />
+```
+
 ## A long game
 
 The list is never taller than the board. A window with more moves than fit scrolls inside its own box — the board and the buttons stay put — and stepping to a move brings it into view; a short window takes only the height it needs.
@@ -44,4 +65,11 @@ Under a narrow window the board and its list stack, and the list is capped at th
   <InlinePgnGame2colV pgn={game} from="13..." to="17" caption="…" />
   <InlinePgnGame2colV pgn={game} from="30" to="42" caption="…" />
 </BoardRow>
+```
+
+The list under the board stands half the board's height by default. `movesHeight="board"` makes it as tall as the board, and `movesHeight="full"` shows the whole window, unscrolled, however long.
+
+```mdx
+<InlinePgnGame2colV pgn={game} from="13..." to="17" movesHeight="board" />
+<InlinePgnGame2colV pgn={game} from="13..." to="17" movesHeight="full" />
 ```
