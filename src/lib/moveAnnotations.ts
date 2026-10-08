@@ -283,3 +283,23 @@ const NAG_TONES: Readonly<Record<number, NagTone>> = {
 };
 
 export const nagTone = (nag: number): NagTone | undefined => NAG_TONES[nag];
+
+/**
+ * The two move marks with no colour family of their own take the nearest
+ * one on the board's badge: `□` (only move) good, `⊗` (worst move) blunder.
+ */
+const BADGE_TONES: Readonly<Record<number, NagTone>> = { 7: "good", 8: "good", 9: "blunder" };
+
+/**
+ * **The move mark the board draws** (CTA-168) — lichess's badge on the
+ * square a move landed on: the move's first move mark in print order, its
+ * glyph and its colour family. `undefined` for a move with none — position
+ * and feature glyphs stay off the board, as on lichess.
+ */
+export const moveMarkBadge = (
+  nags: readonly number[] | undefined,
+): { nag: number; glyph: string; tone: NagTone } | undefined => {
+  const nag = nagsInPrintOrder(nags ?? []).find(isMoveMark);
+  if (nag === undefined) return undefined;
+  return { nag, glyph: nagGlyph(nag), tone: nagTone(nag) ?? BADGE_TONES[nag] };
+};

@@ -657,6 +657,40 @@ describe("the variations explorer on the Analysis Board", () => {
   });
 });
 
+describe("the move mark on the board (CTA-168)", () => {
+  const badge = () => screen.queryByTestId("analysis-move-glyph");
+
+  it("draws a loaded PGN's mark on the square the move landed on, and follows the move on screen", async () => {
+    await stored("a1", "1. e4 $1 e5 2. Nf3?? *", ["e4"]);
+    mount("/tools/analysis?analysis=a1");
+    expect(badge()).toHaveAttribute("data-square", "e4");
+    expect(badge()).toHaveAttribute("data-tone", "good");
+    expect(badge()).toHaveTextContent("!");
+
+    fireEvent.click(screen.getByTestId("move-ply-2"));
+    expect(badge()).toBeNull();
+    fireEvent.click(screen.getByTestId("move-ply-3"));
+    expect(badge()).toHaveAttribute("data-square", "f3");
+    expect(badge()).toHaveTextContent("??");
+  });
+
+  it("follows Add annotation… at once, set and cleared", async () => {
+    await stored("a1", "1. e4 e5 *", ["e4", "e5"]);
+    mount("/tools/analysis?analysis=a1");
+    expect(badge()).toBeNull();
+
+    fireEvent.contextMenu(screen.getByTestId("move-ply-2"), { clientX: 40, clientY: 60 });
+    fireEvent.click(screen.getByTestId("move-menu-annotate"));
+    fireEvent.click(screen.getByTestId("nag-dialog-choice-5"));
+    expect(badge()).toHaveAttribute("data-square", "e5");
+    expect(badge()).toHaveAttribute("data-tone", "interesting");
+    expect(badge()).toHaveTextContent("!?");
+
+    fireEvent.click(screen.getByTestId("nag-dialog-choice-5"));
+    expect(badge()).toBeNull();
+  });
+});
+
 describe("a saved analysis' settings on the board", () => {
   it("opens facing its side, with its description, and its arrows as set", async () => {
     await stored("a1", "1. e4 e5 (1... c5) *", ["e4"], {

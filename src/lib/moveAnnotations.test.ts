@@ -4,6 +4,7 @@ import {
   annotationsAt,
   isMoveMark,
   isNagChoiceActive,
+  moveMarkBadge,
   nagGlyph,
   nagSection,
   nagsInPrintOrder,
@@ -237,5 +238,25 @@ describe("hasComments — the explorer's comment mark (CTA-143)", () => {
     expect(hasComments(first("1. e4 {[%cal Ge2e4][%csl Gd4]} {[%csl Re5]} *"))).toBe(false);
     expect(hasComments(first("1. e4 {[%cal Ge2e4] Best.} *"))).toBe(true);
     expect(hasComments(first("1. e4 *"))).toBe(false);
+  });
+});
+
+describe("moveMarkBadge (CTA-168)", () => {
+  it("is the move's first move mark, with its glyph and tone", () => {
+    expect(moveMarkBadge([3])).toEqual({ nag: 3, glyph: "!!", tone: "brilliant" });
+    expect(moveMarkBadge([16, 6])).toEqual({ nag: 6, glyph: "?!", tone: "dubious" });
+    expect(moveMarkBadge([4, 2])).toEqual({ nag: 4, glyph: "??", tone: "blunder" });
+  });
+
+  it("gives the marks with no family of their own the nearest one", () => {
+    expect(moveMarkBadge([7])).toMatchObject({ glyph: "□", tone: "good" });
+    expect(moveMarkBadge([8])).toMatchObject({ glyph: "□", tone: "good" });
+    expect(moveMarkBadge([9])).toMatchObject({ glyph: "⊗", tone: "blunder" });
+  });
+
+  it("is undefined without a move mark — position and feature glyphs stay off the board", () => {
+    expect(moveMarkBadge(undefined)).toBeUndefined();
+    expect(moveMarkBadge([])).toBeUndefined();
+    expect(moveMarkBadge([14, 146, 32])).toBeUndefined();
   });
 });

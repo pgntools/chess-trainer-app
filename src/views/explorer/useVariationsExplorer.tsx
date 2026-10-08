@@ -16,12 +16,13 @@ import {
   type GameTree,
   type VariationNode,
 } from "../../lib/gameTree";
-import { annotationsAt } from "../../lib/moveAnnotations";
+import { annotationsAt, moveMarkBadge } from "../../lib/moveAnnotations";
 import { nextMoveWeights } from "../../lib/nextMoveWeights";
 import { maskNodeSan, type PieceMask } from "../../lib/pieceMask";
 import { playChances, playChanceOf } from "../../lib/playChance";
 import type { MapCoverage } from "../../lib/treeMap";
 import NextMovesBar from "../shared/NextMovesBar";
+import MoveGlyphBadge from "../shared/MoveGlyphBadge";
 import ShapeCircles from "../shared/ShapeCircles";
 import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
 import AnnotationsBar, { type CommentEditing } from "./AnnotationsBar";
@@ -297,18 +298,32 @@ export function useVariationsExplorer({
         orientation={source.orientation}
       />
     ) : null;
-  // The PGN's circles, over the board with the chance arrows (CTA-143).
+  // The PGN's circles, over the board with the chance arrows (CTA-143), and
+  // the move mark of the move on screen above them (CTA-168).
+  const onScreen = nodeId === null ? null : findNode(tree, nodeId);
+  const badge =
+    onScreen !== null && moveMarkBadge(onScreen.nags) !== undefined ? (
+      <MoveGlyphBadge
+        nags={onScreen.nags}
+        square={onScreen.to}
+        orientation={source.orientation}
+        testId={`${testId}-move-glyph`}
+      />
+    ) : null;
   const overlay =
-    shapes.circles.length === 0 ? (
+    shapes.circles.length === 0 && badge === null ? (
       chanceOverlay
     ) : (
       <>
         {chanceOverlay}
-        <ShapeCircles
-          circles={shapes.circles}
-          orientation={source.orientation}
-          testId={`${testId}-shape-circles`}
-        />
+        {shapes.circles.length > 0 && (
+          <ShapeCircles
+            circles={shapes.circles}
+            orientation={source.orientation}
+            testId={`${testId}-shape-circles`}
+          />
+        )}
+        {badge}
       </>
     );
 
