@@ -1200,6 +1200,9 @@ const en = {
       /** Infinite analysis (CTA-160): the engine deepens until the position changes. */
       infinite: "Infinite analysis",
       infiniteHelp: "Keep searching until the position changes. Off, a search stops at the depth and time below — and Play always does.",
+      /** CTA-167: the Analysis Board's switch that writes each finished search into the PGN as [%eval]. */
+      writeEvals: "Write evaluations into the game",
+      writeEvalsHelp: "Each finished search is written on its move as [%eval score,depth] — a deeper search replaces a shallower one — and the engine is named in the Annotator tag.",
       depth: "Search depth",
       moveTime: "Move time",
       moveTimeValue: "{{seconds}}s",

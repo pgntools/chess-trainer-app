@@ -330,6 +330,16 @@ export const useBoardCore = ({
   );
 
   /**
+   * Apply an edit that **keeps every node** — a comment, a tag — to the tree
+   * as it stands when the edit lands, with no step (CTA-167). For a writer
+   * that is not a click: the engine's evaluations arrive from a worker, in a
+   * callback that may be renders old, where `replaceTree`'s tree and node would
+   * be stale. Not the reader's own doing, so it does not mark the board dirty;
+   * an edit returning the same tree changes nothing.
+   */
+  const annotateTree = useCallback((edit: (current: GameTree) => GameTree) => setTree(edit), []);
+
+  /**
    * Set a position up from a pasted FEN. Throws `FenParseError` on bad input.
    *
    * It also turns the board to the side to move: a position arriving as a FEN
@@ -386,6 +396,7 @@ export const useBoardCore = ({
     playVariation,
     loadTree,
     replaceTree,
+    annotateTree,
     loadFen,
     reset,
     dirty,

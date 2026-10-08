@@ -10,7 +10,10 @@ import { ABSENT, BEFORE_HANDSHAKE, PINNED, SETTINGS, SHIPPED } from "./fixtures"
 
 type State = { settings: AnalysisSettings; evalBar: boolean };
 
-const demo = (options: ReadonlyMap<string, EngineOption>, { engineOn = true, clear = true } = {}) => (
+const demo = (
+  options: ReadonlyMap<string, EngineOption>,
+  { engineOn = true, clear = true, writeEvals = false } = {},
+) => (
   <WithState<State> initial={{ settings: SETTINGS, evalBar: true }}>
     {(state, set) => (
       <Box sx={{ width: 320 }}>
@@ -21,6 +24,7 @@ const demo = (options: ReadonlyMap<string, EngineOption>, { engineOn = true, cle
           engineOn={engineOn}
           showEvalBar={state.evalBar}
           onShowEvalBarChange={(evalBar) => set((before) => ({ ...before, evalBar }))}
+          offerWriteEvals={writeEvals}
           onClear={clear ? () => {} : undefined}
           testId="gallery-analysis"
         />
@@ -35,6 +39,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
   demos: [
     { name: "The shipped engine — lines up to 10, with Clear", render: () => demo(SHIPPED) },
     { name: "The engine off — the search's sliders off", render: () => demo(SHIPPED, { engineOn: false }) },
+    {
+      name: "The Analysis Board's — Write evaluations into the game (CTA-167)",
+      render: () => demo(SHIPPED, { writeEvals: true }),
+    },
     { name: "Lines pinned at one", render: () => demo(PINNED) },
     { name: "No MultiPV at all, no Clear (a Library game)", render: () => demo(ABSENT, { clear: false }) },
     { name: "Before the handshake", render: () => demo(BEFORE_HANDSHAKE) },

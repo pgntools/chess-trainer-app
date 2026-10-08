@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   analysisUciOptionsOf,
@@ -6,10 +6,11 @@ import {
   DEFAULT_ANALYSIS_SETTINGS,
   type AnalysisSettings,
 } from "../../../lib/analysisSettings";
+import { annotatorOf, recordEvaluation } from "../../../lib/engineEvals";
 import { findNode, pathTo, type GameTree } from "../../../lib/gameTree";
 import { extensionIdsOf, nodeIdsOf } from "../../../lib/repertoireTrainer";
 import { useBoardCore } from "../../board/core/useBoardCore";
-import { useEngineModule } from "../../board/core/useEngineModule";
+import { useEngineModule, type FinishedSearch } from "../../board/core/useEngineModule";
 import { useEngineChoice } from "../../shared/useEngineChoice";
 import { usePlayToggle } from "../../board/core/usePlayToggle";
 
@@ -27,7 +28,12 @@ import { usePlayToggle } from "../../board/core/usePlayToggle";
  * - `extensionIds` are the moves added since, tinted in the list and ringed
  *   on the map (recomputed, never tracked);
  * - `discard` goes back to the baseline, on the last of its positions on the
- *   way to where the reader stands; `rebase` makes a kept tree the baseline.
+ *   way to where the reader stands; `rebase` makes a kept tree the baseline;
+ * - with `settings.writeEvals` on (CTA-167, the Analysis Board's Engine tab),
+ *   each finished search's score is written into the tree as `[%eval]` on the
+ *   move whose position was searched, and the engine named in `Annotator`
+ *   (`lib/engineEvals.ts`) — an edit like any other, so it is a change Save
+ *   offers and Discard drops.
  *
  * What is **kept**, and where, is the screen's: a saved analysis
  * (`useAnalysisBoard`), or a Library collection's game. Composed from the
@@ -83,6 +89,32 @@ export const useAnalysisSession = ({
   const play = usePlayToggle({ core, engineOn });
   const { playing, thinking } = play;
 
+  /*
+    Which node each position was last on screen at — what a finished search
+    is written to. A search ends after the reader has moved on (a change of
+    position stops it, and its `bestmove` lands then), so the node on screen
+    at the end is not the one searched. Kept in an effect: the engine's
+    messages arrive after the commit that changed the position.
+  */
+  const shownAtRef = useRef(new Map<string, string | null>());
+  useEffect(() => {
+    shownAtRef.current.set(core.fen, core.nodeId);
+  }, [core.fen, core.nodeId]);
+
+  const { annotateTree } = core;
+  /** A finished search, written into the tree — at the latest tree, through `annotateTree`. */
+  const writeEvaluation = useCallback(
+    ({ fen, score, depth, engine: searchedBy }: FinishedSearch) => {
+      const shown = shownAtRef.current;
+      if (!shown.has(fen)) return;
+      const nodeId = shown.get(fen) ?? null;
+      annotateTree((current) =>
+        recordEvaluation(current, { nodeId, fen, score, depth, annotator: annotatorOf(searchedBy) }),
+      );
+    },
+    [annotateTree],
+  );
+
   // The reader's engine (Settings → Engine, CTA-153): every board runs it from its next search.
   const { engineId } = useEngineChoice();
   const engine = useEngineModule({
@@ -99,6 +131,7 @@ export const useAnalysisSession = ({
     ),
     onUciOptionsReady,
     onBestMove: play.onBestMove,
+    onSearchFinished: settings.writeEvals ? writeEvaluation : undefined,
   });
 
   /** Play on or off — see `usePlayToggle`. */

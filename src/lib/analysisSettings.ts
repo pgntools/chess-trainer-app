@@ -42,6 +42,13 @@ export type AnalysisSettings = {
    */
   threads: number;
   hashMb: number;
+  /**
+   * **Write evaluations into the game** (CTA-167): each finished search's
+   * score written as `[%eval]` on the move it evaluates (`lib/engineEvals.ts`).
+   * Off by default; offered on the Analysis Board's Engine tab only. Not an
+   * engine knob — kept here because the record keeps the Engine tab with it.
+   */
+  writeEvals: boolean;
 };
 
 /**
@@ -56,6 +63,7 @@ export const DEFAULT_ANALYSIS_SETTINGS: AnalysisSettings = {
   infinite: false,
   threads: DEFAULT_ENGINE_SETTINGS.threads,
   hashMb: DEFAULT_ENGINE_SETTINGS.hashMb,
+  writeEvals: false,
 };
 
 /**
@@ -144,10 +152,12 @@ export const analysisSettingsFrom = (value: unknown): AnalysisSettings => {
     // …nor threads or a hash (CTA-160): Play with Engine's defaults.
     threads: finiteNumber(row.threads, DEFAULT_ANALYSIS_SETTINGS.threads),
     hashMb: finiteNumber(row.hashMb, DEFAULT_ANALYSIS_SETTINGS.hashMb),
+    // …nor the evaluations switch (CTA-167): off.
+    writeEvals: row.writeEvals === true,
   };
 };
 
-/** Whether two settings would drive the engine identically. */
+/** Whether two settings would drive the engine identically — and write the same into the game. */
 export const sameAnalysisSettings = (
   a: AnalysisSettings,
   b: AnalysisSettings,
@@ -157,4 +167,5 @@ export const sameAnalysisSettings = (
   a.moveTimeMs === b.moveTimeMs &&
   a.infinite === b.infinite &&
   a.threads === b.threads &&
-  a.hashMb === b.hashMb;
+  a.hashMb === b.hashMb &&
+  a.writeEvals === b.writeEvals;
