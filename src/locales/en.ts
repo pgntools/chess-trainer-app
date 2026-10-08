@@ -1140,6 +1140,7 @@ const en = {
       black: "Black",
       colorHelp: "The side the board opens facing. Flipping the board while you work does not change it.",
       arrowsHelp: "Whether the board opens drawing the next moves' arrows. The board's own switch changes them for a session.",
+      moveMarksHelp: "Whether the board opens drawing a move's mark (!!, !, !?, ?!, ?, ??) on its square. The board's own switch changes it for a session.",
       save: "Save",
       cancel: "Cancel",
     },
@@ -1158,6 +1159,8 @@ const en = {
     arrows: {
       showHelp:
         "Show or hide the arrows of the moves that follow the position on screen. Off, only the move you point at in the next-moves bar gets one.",
+      moveMarksHelp:
+        "Draw the mark of the move on screen (!!, !, !?, ?!, ?, ??) on the square it landed on. The move list shows the marks either way.",
       widthSource: "Next move arrows width source",
       sources: {
         none: "None",
@@ -1213,6 +1216,8 @@ const en = {
       evalBar: "Show evaluation bar",
       /** The arrows of the next moves from the position on screen. */
       arrows: "Show next-move arrows",
+      /** The move on screen's mark (`!`, `??`, …) drawn on its square (CTA-168). */
+      moveMarks: "Show move marks on the board",
       clear: "Clear the board",
     },
     /** The Load and Export tabs' shared words. */
@@ -1870,6 +1875,7 @@ const en = {
       next: "Next game",
       engineSwitch: "Engine",
       arrows: "Next-move arrows",
+      moveMarks: "Move marks on the board",
       unreadable: "This game could not be read.",
       /** The Export tab's hand-off to the Analysis Board. */
       openAnalysis: "Open in Analysis Board",

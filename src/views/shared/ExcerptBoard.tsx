@@ -23,6 +23,7 @@ import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
 import { useBoardSquareOptions } from "./boardColors";
 import PromotionPicker, { type PromotionChoice } from "./PromotionPicker";
 import ExcerptGameInfo from "./ExcerptGameInfo";
+import MoveGlyphBadge from "./MoveGlyphBadge";
 import ShapeCircles from "./ShapeCircles";
 import { useBoardKeys } from "./useBoardKeys";
 
@@ -516,6 +517,9 @@ function ExcerptBoard({
           <ForceLTR sx={{ position: "relative", width: "100%", aspectRatio: "1 / 1" }}>
             <Chessboard options={options} />
             {drawn && <ShapeCircles circles={drawing.circles} orientation={orientation} testId={`${testId}-circles`} />}
+            {node !== undefined && (
+              <MoveGlyphBadge nags={node.nags} square={node.to} orientation={orientation} testId={`${testId}-move-glyph`} />
+            )}
             {promotion && (
               <PromotionPicker targetSquare={promotion.to} orientation={orientation} color={turn} onSelect={resolvePromotion} />
             )}

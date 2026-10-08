@@ -960,7 +960,10 @@ Board), `useVariationsExplorer` (editing on, *Play chances…* off), and
 `BoardShell` / `BoardPanel` with `options.id` `library-game`.
 
 - **Tabs**: Moves (the **next-move arrows switch** `library-game-arrows` at
-  its top) · Map · Info (the tags, `GameInfo`) · Export · Engine.
+  its top, and under it the **move marks switch** `library-game-move-marks` —
+  the move on screen's `!` / `??` badge on the board, CTA-168; both on at the
+  start, the session's, and a shipped game's Save as copy keeps both in the
+  saved analysis) · Map · Info (the tags, `GameInfo`) · Export · Engine.
 - **Header**: back (to `state.from`, else the table), "Game n of m" and
   event/round/date/result, the current opening, previous / next, Save, Play
   and the engine switch. The players are not in it (CTA-105): they are

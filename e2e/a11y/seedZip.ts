@@ -84,6 +84,7 @@ const ANALYSIS: SavedAnalysis = {
   showArrows: true,
   arrowWidthSource: "none",
   arrowPalette: "classic",
+  showMoveMarks: true,
   name: "King's Gambit, Bishop's line",
   folderId: null,
   savedAt: AT,

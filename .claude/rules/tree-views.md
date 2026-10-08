@@ -99,6 +99,7 @@ const parts = useVariationsExplorer({
   onEditTree?: (next: GameTree) => void,  // the one switch for every edit — `core.replaceTree`
   playChances?: boolean,                  // the menu's *Play chances…* (default on); off where no trainer plays by them
   annotations?: boolean,                  // the comment block — and the PGN's [%cal]/[%csl] shapes (CTA-143)
+  moveMarks?: boolean,                    // the move on screen's mark on the board (CTA-168) — default on
   arrows?: {
     show: boolean; chances?: boolean; required?: readonly VariationNode[];
     widthSource?: ArrowWidthSource,       // CTA-98: what sizes the arrows — absent/"none", colour only
@@ -118,6 +119,7 @@ const parts = useVariationsExplorer({
 | **Side lines hung under their move**, clickable | `moves` | always | `TreeMoveList` → `VariationLine` |
 | **Comment marker** on a commented move — not on one whose comments only draw shapes (CTA-143) | `moves` | always | `hasComments`, `annotatedPlies`, `markCommentedNodes` |
 | **Annotation glyphs** (NAGs, CTA-97) after the SAN — in the mainline's cells, the side lines and the map's labels, on every board, read-only ones included: the move mark first (`!` `!!` green, `?` orange, `??` red, `!?` magenta, `?!` blue, a shade per scheme), then the evaluation and the features, plain; a code outside the table as `$N` | `moves`, `map` | always | `NagGlyphs` + `nagToneSx.ts` (`views/shared/`), the map's `.map-nag` tspans, over `lib/moveAnnotations.ts`'s table (`nagGlyph`, `nagsInPrintOrder`, `nagTone`); a mainline cell reads `GameMove.nags` (`mainlineGame` carries it), a side-line token and a map label their node's |
+| **The move mark on the board** (CTA-168): the move on screen's first move mark (`!!` `!` `!?` `?!` `?` `??`, `□` / `⊗` too) as lichess's round badge in the top corner of the square it landed on, in the theme's `chess.nag` tone, above the PGN's circles; nothing for a move without one | `overlay` (`${testId}-move-glyph`) | `moveMarks` (on by default; the Analysis Board's and the Library game's switch) | `MoveGlyphBadge` (`views/shared/`) over `moveMarkBadge` ([`pgn-annotations.md`](./pgn-annotations.md) §4) |
 | **Evals** on the mainline's cells only | `moves` | `evalsByFen` | `MoveList`'s `mainlineEvalsOnly` |
 | **Masked notation** — every printed move in coordinates when the mask hides its piece | all but `arrows` / `overlay` | `mask` | `maskSanLine` / `maskNodeSan`; [`masked-pieces.md`](./masked-pieces.md) §4 |
 | **Extension tint** on moves added this session | `moves` | `extensionIds` | the selection store |
@@ -173,8 +175,8 @@ repertoire games pass nothing; a game never writes.
 | Board | Options | Placement |
 | --- | --- | --- |
 | **Repertoire player** | `onEditTree` (player only), `annotations` (player, once read), `arrows: { show, chances, required }`, `map: { tree, nodeId, coverage, addedIds, linked }` (none in Get to the end), `extensionIds` | `moves` behind "reading…", `map` once read, `nextMoves` on the Moves tab with Autoplay off |
-| **Analysis Board** | `onEditTree: core.replaceTree`, `playChances: false`, `annotations: true`, `arrows: { show, widthSource, palette }` (its Arrows tab, CTA-98), `map: { addedIds, linked: true }`, `extensionIds` (the same set) | Moves and Map tabs (kept mounted); footer: `annotations`, the changes strip, Play's status line, `nextMoves` (Moves tab) |
-| **Library game** | as the Analysis Board, with `arrows: { show }` — classic, colour only | as the Analysis Board |
+| **Analysis Board** | `onEditTree: core.replaceTree`, `playChances: false`, `annotations: true`, `moveMarks` (its Arrows tab's switch, CTA-168), `arrows: { show, widthSource, palette }` (its Arrows tab, CTA-98), `map: { addedIds, linked: true }`, `extensionIds` (the same set) | Moves and Map tabs (kept mounted); footer: `annotations`, the changes strip, Play's status line, `nextMoves` (Moves tab) |
+| **Library game** | as the Analysis Board, with `arrows: { show }` — classic, colour only — and `moveMarks` from its Moves tab's switch | as the Analysis Board |
 | **Openings explorer** | the same without `addedIds` / `extensionIds` — nothing is added against a record | as above, without the strip |
 | **Play with Engine** | the same without `addedIds` / `extensionIds`, and without `map` — nothing is added against a record, and (CTA-91) no Map is drawn or offered | Moves tab only (kept mounted); footer: `annotations`, Play's status line, the game-over result and its *Open in analysis* button (CTA-91), `nextMoves` (Moves tab) |
 | **Masked Pieces** | Play with Engine's, plus `mask` while its notation switch is on | Play with Engine's |

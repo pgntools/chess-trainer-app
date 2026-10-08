@@ -269,6 +269,67 @@ describe("useVariationsExplorer — annotation glyphs (CTA-97)", () => {
   });
 });
 
+describe("useVariationsExplorer — the move mark on the board (CTA-168)", () => {
+  const marked = parsePgnTree("1. e4 $1 e5 $14 2. Nf3 $16 $4 {[%csl Gd4]} *");
+
+  function Marked({ nodeId, ...rest }: Omit<VariationsExplorerOptions, "testId" | "source"> & { nodeId: string | null }) {
+    const view = useVariationsExplorer({
+      testId: "x",
+      source: {
+        tree: marked,
+        mainlineNodes: mainline(marked),
+        nodeId,
+        goToNode: vi.fn(),
+        orientation: "white",
+      },
+      ...rest,
+    });
+    report(view);
+    return <div data-testid="overlay">{view.overlay}</div>;
+  }
+
+  const mountMarked = (props: Parameters<typeof Marked>[0]) =>
+    render(
+      <AppThemeWithLang>
+        <Marked {...props} />
+      </AppThemeWithLang>,
+    );
+
+  it("draws the move on screen's mark on the square it landed on — comment block or not", () => {
+    mountMarked({ nodeId: at(marked, "e4") });
+    const badge = screen.getByTestId("x-move-glyph");
+    expect(badge).toHaveAttribute("data-square", "e4");
+    expect(badge).toHaveAttribute("data-tone", "good");
+    expect(badge).toHaveTextContent("!");
+  });
+
+  it("draws nothing for a move without a mark, nor at the start", () => {
+    const { unmount } = mountMarked({ nodeId: at(marked, "e4", "e5") });
+    expect(screen.queryByTestId("x-move-glyph")).toBeNull();
+    expect(parts.overlay).toBeNull();
+    unmount();
+
+    mountMarked({ nodeId: null });
+    expect(parts.overlay).toBeNull();
+  });
+
+  it("draws none on a board whose reader switched them off", () => {
+    mountMarked({ nodeId: at(marked, "e4"), moveMarks: false });
+    expect(screen.queryByTestId("x-move-glyph")).toBeNull();
+    expect(parts.overlay).toBeNull();
+  });
+
+  it("draws it over the PGN's circles, the mark first in print order", () => {
+    mountMarked({ nodeId: at(marked, "e4", "e5", "Nf3"), annotations: true });
+    const overlay = screen.getByTestId("overlay");
+    const circles = screen.getByTestId("x-shape-circles");
+    const badge = screen.getByTestId("x-move-glyph");
+    expect(badge).toHaveTextContent("??");
+    expect(badge).toHaveAttribute("data-tone", "blunder");
+    expect([...overlay.children]).toEqual([circles, badge]);
+  });
+});
+
 describe("useVariationsExplorer — the start position's menu (CTA-149)", () => {
   const onStart = () => {
     const onEditTree = vi.fn();

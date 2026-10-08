@@ -47,6 +47,7 @@ const analysis = (id: string, folderId: string | null, extra: Partial<SavedAnaly
   showArrows: true,
   arrowWidthSource: "games",
   arrowPalette: "lichess",
+  showMoveMarks: true,
   name: `Analysis ${id}`,
   folderId,
   savedAt: AT,
@@ -204,6 +205,7 @@ describe("buildExport", () => {
       orientation: "black",
       arrowWidthSource: "games",
       arrowPalette: "lichess",
+      showMoveMarks: true,
       path: ["d4", "d5"],
       folderPath: ["Openings", "Sicilian"],
     });

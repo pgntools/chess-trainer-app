@@ -657,6 +657,73 @@ describe("the variations explorer on the Analysis Board", () => {
   });
 });
 
+describe("the move mark on the board (CTA-168)", () => {
+  const badge = () => screen.queryByTestId("analysis-move-glyph");
+
+  it("draws a loaded PGN's mark on the square the move landed on, and follows the move on screen", async () => {
+    await stored("a1", "1. e4 $1 e5 2. Nf3?? *", ["e4"]);
+    mount("/tools/analysis?analysis=a1");
+    expect(badge()).toHaveAttribute("data-square", "e4");
+    expect(badge()).toHaveAttribute("data-tone", "good");
+    expect(badge()).toHaveTextContent("!");
+
+    fireEvent.click(screen.getByTestId("move-ply-2"));
+    expect(badge()).toBeNull();
+    fireEvent.click(screen.getByTestId("move-ply-3"));
+    expect(badge()).toHaveAttribute("data-square", "f3");
+    expect(badge()).toHaveTextContent("??");
+  });
+
+  it("follows Add annotation… at once, set and cleared", async () => {
+    await stored("a1", "1. e4 e5 *", ["e4", "e5"]);
+    mount("/tools/analysis?analysis=a1");
+    expect(badge()).toBeNull();
+
+    fireEvent.contextMenu(screen.getByTestId("move-ply-2"), { clientX: 40, clientY: 60 });
+    fireEvent.click(screen.getByTestId("move-menu-annotate"));
+    fireEvent.click(screen.getByTestId("nag-dialog-choice-5"));
+    expect(badge()).toHaveAttribute("data-square", "e5");
+    expect(badge()).toHaveAttribute("data-tone", "interesting");
+    expect(badge()).toHaveTextContent("!?");
+
+    fireEvent.click(screen.getByTestId("nag-dialog-choice-5"));
+    expect(badge()).toBeNull();
+  });
+
+  it("is switched off and on again from the Arrows tab", async () => {
+    await stored("a1", "1. e4 $1 *", ["e4"]);
+    mount("/tools/analysis?analysis=a1");
+    openTab("arrows");
+    const marks = screen.getByRole("switch", { name: "Show move marks on the board" });
+    expect(marks).toBeChecked();
+    fireEvent.click(marks);
+    expect(badge()).toBeNull();
+    // The move list still shows the mark.
+    expect(screen.getByTestId("move-ply-1")).toHaveTextContent("e4!");
+    fireEvent.click(marks);
+    expect(badge()).toHaveTextContent("!");
+  });
+
+  it("opens off for a record that says so, and keeps a new board's choice on its first save", async () => {
+    await stored("a1", "1. e4 $1 *", ["e4"], { showMoveMarks: false });
+    const { unmount } = mount("/tools/analysis?analysis=a1");
+    expect(badge()).toBeNull();
+    openTab("arrows");
+    expect(screen.getByRole("switch", { name: "Show move marks on the board" })).not.toBeChecked();
+    unmount();
+
+    mount();
+    drag("e2", "e4");
+    openTab("arrows");
+    fireEvent.click(screen.getByRole("switch", { name: "Show move marks on the board" }));
+    fireEvent.click(screen.getByTestId("analysis-save"));
+    fireEvent.change(screen.getByTestId("analysis-save-name"), { target: { value: "Mine" } });
+    fireEvent.click(screen.getByTestId("analysis-save-confirm"));
+    await waitFor(() => expect(listed().some((row) => row.name === "Mine")).toBe(true));
+    expect(listed().find((row) => row.name === "Mine")).toMatchObject({ showMoveMarks: false });
+  });
+});
+
 describe("a saved analysis' settings on the board", () => {
   it("opens facing its side, with its description, and its arrows as set", async () => {
     await stored("a1", "1. e4 e5 (1... c5) *", ["e4"], {

@@ -341,6 +341,18 @@ describe("a saved analysis' name and folder (CTA-73)", () => {
     ).toMatchObject({ arrowWidthSource: "games", arrowPalette: "lichess" });
   });
 
+  it("draws the move marks on the board unless it says otherwise (CTA-168)", () => {
+    const written = savedAnalysisOf("a", tree, [], DEFAULT_ANALYSIS_SETTINGS, "white");
+    expect(written.showMoveMarks).toBe(true);
+
+    // A record from before the field, and one whose value is not a boolean.
+    const legacy: Record<string, unknown> = { ...written };
+    delete legacy.showMoveMarks;
+    expect(savedAnalysisFrom(legacy)?.showMoveMarks).toBe(true);
+    expect(savedAnalysisFrom({ ...legacy, showMoveMarks: "no" })?.showMoveMarks).toBe(true);
+    expect(savedAnalysisFrom({ ...legacy, showMoveMarks: false })?.showMoveMarks).toBe(false);
+  });
+
   it("names a catalog entry by the record's name", () => {
     const saved = {
       ...savedAnalysisOf("a", tree, [], DEFAULT_ANALYSIS_SETTINGS, "white"),

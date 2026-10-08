@@ -22,6 +22,7 @@ const analysis = (id: string, name: string, pgn: string, extra: Partial<SavedAna
   showArrows: true,
   arrowWidthSource: "none",
   arrowPalette: "classic",
+  showMoveMarks: true,
   name,
   folderId: null,
   savedAt: AT,

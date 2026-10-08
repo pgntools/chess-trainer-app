@@ -11,7 +11,8 @@ import type { ArrowPaletteId, ArrowWidthSource } from "../../../lib/arrowSetting
  * the session's, opened as the record's settings say. `available` is what the
  * tree on screen carries (`arrowWidthSourcesIn`), recomputed by the screen as
  * the tree changes. A `SwitchField` over the `ArrowSettingsFields` block
- * since CTA-113.
+ * since CTA-113 — and, under them, whether the board draws the move marks
+ * (CTA-168), the other thing the board draws over the position.
  */
 function AnalysisArrows({
   showArrows,
@@ -21,6 +22,8 @@ function AnalysisArrows({
   available,
   palette,
   onPaletteChange,
+  showMoveMarks,
+  onShowMoveMarksChange,
 }: {
   showArrows: boolean;
   onShowArrowsChange: (next: boolean) => void;
@@ -29,6 +32,8 @@ function AnalysisArrows({
   available: ReadonlySet<ArrowWidthSource>;
   palette: ArrowPaletteId;
   onPaletteChange: (next: ArrowPaletteId) => void;
+  showMoveMarks: boolean;
+  onShowMoveMarksChange: (next: boolean) => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -50,6 +55,15 @@ function AnalysisArrows({
         palette={palette}
         onPaletteChange={onPaletteChange}
         testId="analysis-arrows"
+      />
+      <SwitchField
+        size="small"
+        label={t("analysis.settings.moveMarks")}
+        help={t("analysis.arrows.moveMarksHelp")}
+        checked={showMoveMarks}
+        onChange={onShowMoveMarksChange}
+        testIdOn="control"
+        testId="analysis-move-marks"
       />
     </Box>
   );

@@ -16,12 +16,13 @@ import {
   type GameTree,
   type VariationNode,
 } from "../../lib/gameTree";
-import { annotationsAt } from "../../lib/moveAnnotations";
+import { annotationsAt, moveMarkBadge } from "../../lib/moveAnnotations";
 import { nextMoveWeights } from "../../lib/nextMoveWeights";
 import { maskNodeSan, type PieceMask } from "../../lib/pieceMask";
 import { playChances, playChanceOf } from "../../lib/playChance";
 import type { MapCoverage } from "../../lib/treeMap";
 import NextMovesBar from "../shared/NextMovesBar";
+import MoveGlyphBadge from "../shared/MoveGlyphBadge";
 import ShapeCircles from "../shared/ShapeCircles";
 import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
 import AnnotationsBar, { type CommentEditing } from "./AnnotationsBar";
@@ -99,6 +100,12 @@ export type VariationsExplorerOptions = {
    * comments would answer), neither is drawn.
    */
   annotations?: boolean;
+  /**
+   * Draw the move on screen's mark (`!`, `??`, …) on its square (CTA-168) —
+   * on by default, every board's; a board whose reader can switch it off
+   * (the Analysis Board, the Library's game board) passes its switch.
+   */
+  moveMarks?: boolean;
   /** The arrows part; absent draws none but a hovered move's. */
   arrows?: ExplorerArrowOptions;
   /** The map part; absent, `parts.map` is `undefined`. */
@@ -152,6 +159,7 @@ export function useVariationsExplorer({
   onEditTree,
   playChances: offerPlayChances,
   annotations: showAnnotations = false,
+  moveMarks = true,
   arrows: arrowOptions = NO_ARROWS,
   map,
   mask,
@@ -297,18 +305,32 @@ export function useVariationsExplorer({
         orientation={source.orientation}
       />
     ) : null;
-  // The PGN's circles, over the board with the chance arrows (CTA-143).
+  // The PGN's circles, over the board with the chance arrows (CTA-143), and
+  // the move mark of the move on screen above them (CTA-168).
+  const onScreen = nodeId === null ? null : findNode(tree, nodeId);
+  const badge =
+    moveMarks && onScreen !== null && moveMarkBadge(onScreen.nags) !== undefined ? (
+      <MoveGlyphBadge
+        nags={onScreen.nags}
+        square={onScreen.to}
+        orientation={source.orientation}
+        testId={`${testId}-move-glyph`}
+      />
+    ) : null;
   const overlay =
-    shapes.circles.length === 0 ? (
+    shapes.circles.length === 0 && badge === null ? (
       chanceOverlay
     ) : (
       <>
         {chanceOverlay}
-        <ShapeCircles
-          circles={shapes.circles}
-          orientation={source.orientation}
-          testId={`${testId}-shape-circles`}
-        />
+        {shapes.circles.length > 0 && (
+          <ShapeCircles
+            circles={shapes.circles}
+            orientation={source.orientation}
+            testId={`${testId}-shape-circles`}
+          />
+        )}
+        {badge}
       </>
     );
 

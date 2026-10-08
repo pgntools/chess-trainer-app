@@ -191,6 +191,8 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
     record?.arrowWidthSource ?? DEFAULT_ARROW_WIDTH_SOURCE,
   );
   const [arrowPalette, setArrowPalette] = useState(record?.arrowPalette ?? DEFAULT_ARROW_PALETTE);
+  // The move marks on the board (CTA-168): on, unless the record says otherwise.
+  const [showMoveMarks, setShowMoveMarks] = useState(record?.showMoveMarks ?? true);
   // A tag no move in the tree carries is offered greyed out, and a choice of
   // one is kept but drawn as None — until a load or an edit brings it back.
   const availableWidthSources = useMemo(() => arrowWidthSourcesIn(core.tree), [core.tree]);
@@ -221,6 +223,7 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
     onEditTree: core.replaceTree,
     playChances: false,
     annotations: true,
+    moveMarks: showMoveMarks,
     arrows: { show: showArrows, widthSource: drawnWidthSource, palette: arrowPalette },
     map: { addedIds: state.extensionIds, linked: true },
   });
@@ -496,6 +499,8 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
                   available={availableWidthSources}
                   palette={arrowPalette}
                   onPaletteChange={setArrowPalette}
+                  showMoveMarks={showMoveMarks}
+                  onShowMoveMarksChange={setShowMoveMarks}
                 />
               ),
             },
@@ -557,6 +562,7 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
             showArrows,
             arrowWidthSource,
             arrowPalette,
+            showMoveMarks,
           });
           if (saved !== undefined) pointUrlAt(saved.id);
         }}

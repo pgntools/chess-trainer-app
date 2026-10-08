@@ -194,6 +194,19 @@ describe("<InlinePgnGame> (CTA-126)", () => {
     expect(boardOptions().arrows?.map((arrow) => arrow.endSquare)).toEqual(["e5"]);
   });
 
+  it("draws the move on screen's mark on the square it landed on (CTA-168)", async () => {
+    const user = userEvent.setup();
+    render(<InlinePgnGame pgn={PGN} orientation="black" />);
+    expect(screen.queryByTestId(/-move-glyph$/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^3\. Bb5/ }));
+    const badge = screen.getByTestId(/-move-glyph$/);
+    expect(badge).toHaveAttribute("data-square", "b5");
+    expect(badge).toHaveAttribute("data-tone", "good");
+    expect(badge).toHaveAttribute("aria-hidden", "true");
+    await user.click(screen.getByRole("button", { name: "3... a6" }));
+    expect(screen.queryByTestId(/-move-glyph$/)).not.toBeInTheDocument();
+  });
+
   it("passes axe", async () => {
     render(<InlinePgnGame pgn={PGN} start="2" comments />);
     await expectNoAxeViolations();

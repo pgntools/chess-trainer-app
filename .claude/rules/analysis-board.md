@@ -54,7 +54,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/blocks/panels/PgnExportPanel/` | The Export tab (every board's): FEN, PGN with or without comments / NAGs / side lines, copy and download. |
 | `src/lib/engineEvals.ts` | **The engine's evaluations written into the game** (CTA-167, §1): `[%eval pawns,depth]` on the move searched, the override by depth, the `Annotator` tag — [`pgn-annotations.md`](./pgn-annotations.md) §2. |
 | `src/blocks/forms/AnalysisEngineForm/` | The Engine tab (**infinite analysis**, depth 1–40, move time 0–60 s — its own ceiling since CTA-163, the engine form's marks reach 300 s — lines, **threads, hash** — Play with Engine's, up to what the device can give, `deviceLimits`, CTA-160 — the eval bar, Clear) — every board's but Play's; each option slider rendered from what the engine declared (`engineOptionState`). |
-| `src/views/tools/analysis/AnalysisArrows.tsx`, `src/blocks/forms/ArrowSettingsFields/` | The Arrows tab (CTA-98, §1.1): the next-move arrows switch, the width source and the palette. The fields block is shared with the settings screen. |
+| `src/views/tools/analysis/AnalysisArrows.tsx`, `src/blocks/forms/ArrowSettingsFields/` | The Arrows tab (CTA-98, §1.1): the next-move arrows switch, the width source and the palette — and the move marks switch (CTA-168). The fields block is shared with the settings screen. |
 | `src/views/tools/analysis/SaveAnalysisDialog.tsx` | A new board's name and folder. |
 | `src/blocks/panels/PlayToggleButton/`, `EngineThinking/` | Play's header button and status line, shared with every board that has Play. |
 | `src/views/tools/analysis/useTreeNavigation.ts` | The core's navigation (node id as state, the keys). |
@@ -191,7 +191,8 @@ screen).
 
 The next-move arrows, and only this board's — every other board keeps the
 classic, colour-only arrows. Three settings, all the **session's**, opened as
-the record says (a new board: on, None, Classic):
+the record says (a new board: on, None, Classic) — and a fourth under them,
+the move marks (below):
 
 - **Next move arrows** — the switch (moved here from the Engine tab, test id
   `analysis-arrows`). Off: only a hovered move's arrow, as before.
@@ -222,6 +223,12 @@ the record says (a new board: on, None, Classic):
   (Okabe–Ito, `#0072B2` / `#E69F00` / `#CC79A7`) — mainline / side line /
   hovered, each apart from the untagged gray. It colours the library arrows
   and the width-sized ones alike.
+- **Show move marks on the board** (CTA-168, `analysis-move-marks`) — the
+  move on screen's mark (`!!` … `??`) drawn as a badge on its square
+  ([`pgn-annotations.md`](./pgn-annotations.md) §4); off, none is drawn (the
+  move list still shows the glyphs). The session's like the rest, opened as
+  the record's `showMoveMarks` says (on for a new board and a record from
+  before it), passed to the explorer as `moveMarks`.
 
 ### 1.2 The workspace — the list's tree beside the board (CTA-145)
 
@@ -332,7 +339,7 @@ there does not).
   `nodeAtSanPath` — node ids do not survive a PGN round trip; the path stops
   at the last move it recognises), the name, the folder, and the settings of
   §2.1. A record lacking a newer field reads as its default (named by its
-  tags, Unfiled, arrows on) — no version bump.
+  tags, Unfiled, arrows and move marks on) — no version bump.
 
 ### 2.1 A record's settings — `/tools/analysis/saved/<id>/settings`
 
@@ -340,6 +347,7 @@ The title (`name`), a `description` (shown under the title on the board), the
 side the board opens facing (`orientation`), whether it opens drawing the
 next-move arrows (`showArrows`), what sizes them (`arrowWidthSource`,
 `"none"`) and their colours (`arrowPalette`, `"classic"`) — §1.1, CTA-98 —
+whether it draws the move marks on the board (`showMoveMarks`, on — CTA-168)
 and the folder (`folderId`, `null` Unfiled) — one draft, written on Save in
 place (`updateSavedAnalysisSettings`). Every width source is offered on the
 screen; whether the tree carries its tag is the board's to say. A missing or

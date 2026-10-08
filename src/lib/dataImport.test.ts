@@ -58,6 +58,7 @@ const analysis = (id: string, folderId: string | null, extra: Partial<SavedAnaly
   showArrows: false,
   arrowWidthSource: "eval",
   arrowPalette: "colorblind",
+  showMoveMarks: false,
   name: `Analysis ${id}`,
   folderId,
   savedAt: AT,

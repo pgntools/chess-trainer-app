@@ -94,10 +94,10 @@ export type AnalysisBoardStart = {
   at?: string | null;
 };
 
-/** How the board draws its next-move arrows — what a new board's first save keeps (CTA-98). */
+/** How the board draws its next-move arrows (CTA-98) and its move marks (CTA-168) — what a new board's first save keeps. */
 export type AnalysisArrowChoices = Pick<
   SavedAnalysis,
-  "showArrows" | "arrowWidthSource" | "arrowPalette"
+  "showArrows" | "arrowWidthSource" | "arrowPalette" | "showMoveMarks"
 >;
 
 /** A tree that is nothing yet — the standard start, no moves. */
@@ -204,6 +204,7 @@ export const useAnalysisBoard = ({
           showArrows: stored.showArrows,
           arrowWidthSource: stored.arrowWidthSource,
           arrowPalette: stored.arrowPalette,
+          showMoveMarks: stored.showMoveMarks,
         };
   };
 

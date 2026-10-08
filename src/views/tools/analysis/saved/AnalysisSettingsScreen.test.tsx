@@ -77,7 +77,7 @@ describe("a saved analysis' settings screen", () => {
     expect(screen.getByTestId("analysis-settings-arrows-palette-classic")).toBeChecked();
   });
 
-  it("writes title, description, side, arrows and folder on Save, and goes to the board", async () => {
+  it("writes title, description, side, arrows, move marks and folder on Save, and goes to the board", async () => {
     await store("a1");
     await store("a2");
     const folder = (await createAnalysisFolder("Openings", null))!;
@@ -93,6 +93,7 @@ describe("a saved analysis' settings screen", () => {
     fireEvent.click(screen.getByTestId("analysis-settings-show-arrows"));
     fireEvent.click(screen.getByTestId("analysis-settings-arrows-width-eval"));
     fireEvent.click(screen.getByTestId("analysis-settings-arrows-palette-lichess"));
+    fireEvent.click(screen.getByRole("switch", { name: "Show move marks on the board" }));
     fireEvent.click(screen.getByTestId(`analysis-settings-folder-picker-${folder.id}`));
     fireEvent.click(screen.getByTestId("analysis-settings-save"));
 
@@ -106,6 +107,7 @@ describe("a saved analysis' settings screen", () => {
       showArrows: false,
       arrowWidthSource: "eval",
       arrowPalette: "lichess",
+      showMoveMarks: false,
       folderId: folder.id,
     });
     // In place: the list's order is kept.
