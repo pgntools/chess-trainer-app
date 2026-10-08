@@ -16,6 +16,7 @@ import {
   MAX_ANALYSIS_FOLDERS,
   moveAnalysisFolder,
   removeAnalysisFolder,
+  removeAnalysisFoldersDeep,
   renameAnalysisFolder,
   resetAnalysisFolderStore,
 } from "./savedAnalysisFolderStore";
@@ -112,6 +113,32 @@ describe("the saved-analysis folders", () => {
     expect(folders().find((folder) => folder.id === c.id)?.parentId).toBe(a.id);
     expect(findSavedAnalysis("in-b")?.folderId).toBeNull();
     expect(findSavedAnalysis("in-c")?.folderId).toBe(c.id);
+  });
+
+  it("deletes picked folders deep, with their whole subtree (CTA-147) — nothing re-parents", async () => {
+    const a = (await createAnalysisFolder("A", null))!;
+    const b = (await createAnalysisFolder("B", a.id))!;
+    const kept = (await createAnalysisFolder("Kept", null))!;
+    await addAnalyses([analysis("in-b", b.id), analysis("top", null)]);
+
+    await removeAnalysisFoldersDeep([a.id]);
+
+    // The folder and its sub-folder are gone — no re-parenting, no unfiling.
+    expect(folders().map((folder) => folder.id)).toEqual([kept.id]);
+    // The analyses under them are the caller's to remove; one left behind reads as Unfiled.
+    expect(findSavedAnalysis("in-b")?.id).toBe("in-b");
+    expect(analysesHere(savedAnalysesSnapshot() ?? [], folders(), null).map((row) => row.id)).toEqual(["in-b", "top"]);
+    expect(findSavedAnalysis("top")?.folderId).toBeNull();
+  });
+
+  it("deletes overlapping picked subtrees once, and shrugs at unknown ids", async () => {
+    const a = (await createAnalysisFolder("A", null))!;
+    const b = (await createAnalysisFolder("B", a.id))!;
+
+    // Both picked (a checked folder's sub-folder is checked with it): the union of their subtrees goes.
+    await removeAnalysisFoldersDeep([a.id, b.id, "not-there"]);
+
+    expect(folders().map((folder) => folder.id)).toEqual([]);
   });
 
   it("lists an analysis naming a folder that is gone at the top level", async () => {

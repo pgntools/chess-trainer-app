@@ -26,7 +26,8 @@ squares.
 - **Purpose** — a saved record as a card: the preview in a square that opens
   it, the name and its line, the actions and the pick.
 - **Props** — `preview`, `name`, `caption?`, `onOpen?` / `link?`,
-  `openLabel` (the square's accessible name), `actions?`, `pick?`, `testId`
+  `openLabel` (the square's accessible name), `actions?`, `pick?`
+  (`indeterminate?` — CTA-147), `testId`
   (`-open`, `-name`, `-pick`).
 - **Variations** — full; name only, opened by a link.
 - **Replaces** — `SavedAnalysisCard` and `RepertoireCard`, the same card twice.
@@ -36,8 +37,10 @@ squares.
 - **Purpose** — a folder as a card: a large icon on a tinted square where a
   record card has its preview, then the same caption row.
 - **Props** — `name`, `count?`, `onOpen?` / `link?`, `openLabel`, `icon?`,
-  `actions?`, `testId`.
-- **Variations** — with a count and an action; its own icon, no count.
+  `actions?`, `pick?` (CTA-147: a lobby picks folders and records alike, a
+  folder's covering its whole subtree), `testId`.
+- **Variations** — with a count and an action; its own icon, no count; picked
+  and partly picked.
 - **Replaces** — `SavedFolderCard` (`minHeight: 140`, shorter than its
   neighbours) and `RepertoireFolderCard` (square, `action.hover`) — two
   differing folder cards.

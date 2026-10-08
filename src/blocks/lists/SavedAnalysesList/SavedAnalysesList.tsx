@@ -22,13 +22,16 @@ export type SavedAnalysisEntry = { saved: SavedAnalysis; tree: GameTree | undefi
 /** A folder where the reader stands, with how many analyses are under it (its whole subtree). */
 export type SavedAnalysisFolderEntry = { folder: AnalysisFolder; count: number };
 
-/** What each folder's actions do. */
+/** What each folder's actions do. `onDelete` optional: the analyses lobby deletes through the picks (CTA-147). */
 export type SavedAnalysisFolderActions = {
   onDownload: (folder: AnalysisFolder) => void;
   onRename: (folder: AnalysisFolder) => void;
   onMove: (folder: AnalysisFolder) => void;
-  onDelete: (folder: AnalysisFolder) => void;
+  onDelete?: (folder: AnalysisFolder) => void;
 };
+
+/** A folder card's pick (CTA-147) — the screen's, derived over the folder's whole subtree. */
+export type SavedAnalysisFolderPick = { checked: boolean; indeterminate: boolean; onToggle: () => void };
 
 export type SavedAnalysesListProps = {
   /** The card size — the list view is the screen's tree table (`SavedAnalysesTable`, CTA-144). */
@@ -40,6 +43,13 @@ export type SavedAnalysesListProps = {
   /** The picked ids — over every folder; the list reads its own rows through them. */
   picked: ReadonlySet<string>;
   onTogglePick: (id: string) => void;
+  /**
+   * A folder's checkbox (CTA-147): its state and toggle, derived by the
+   * screen over the folder's whole subtree — checked or indeterminate while
+   * any of it is picked, ticking it picks the subtree. Absent, a folder card
+   * has no checkbox.
+   */
+  folderPick?: (folder: AnalysisFolder) => SavedAnalysisFolderPick;
   /** Where an analysis opens — the Analysis Board. */
   openLink: (saved: SavedAnalysis) => LinkTarget;
   /** Its settings screen. */
@@ -55,8 +65,8 @@ export type SavedAnalysesListProps = {
    * The prefix of every id: the grid `<testId>-grid` (`<testId>-body` holding
    * the empty note); a card `<testId>-item-<id>`, its
    * `-open-<id>`, `-select-<id>`, `-settings-<id>`, `-name-<id>`,
-   * `-opening-<id>`; a folder `<testId>-folder-<id>`, `-folder-open-<id>`
-   * and its actions `-folder-<action>-<id>`.
+   * `-opening-<id>`; a folder `<testId>-folder-<id>`, `-folder-open-<id>`,
+   * its pick `-folder-select-<id>` and its actions `-folder-<action>-<id>`.
    */
   testId: string;
 };
@@ -76,6 +86,9 @@ export type SavedAnalysesListProps = {
  *   the reader stopped and when; **a record that will not read** is still
  *   listed, says so, and can only be picked (to delete it, or to export its
  *   PGN as stored).
+ * - **A folder card carries a checkbox** (CTA-147) when the screen passes
+ *   `folderPick` — folders and records are picked alike, a folder's pick
+ *   covering its whole subtree.
  *
  * Presentational: the page, the picks, the links and every callback are the
  * screen's; its words are the analyses' catalog (`savedAnalyses.*`, `savedList.*`).
@@ -86,6 +99,7 @@ function SavedAnalysesList({
   entries,
   picked,
   onTogglePick,
+  folderPick,
   openLink,
   settingsLink,
   onOpenFolder,
@@ -141,7 +155,8 @@ function SavedAnalysesList({
           download: () => folderActions.onDownload(folder),
           rename: () => folderActions.onRename(folder),
           move: () => folderActions.onMove(folder),
-          delete: () => folderActions.onDelete(folder),
+          // A lobby that deletes through the picks passes no delete (CTA-147) — the icon is gone, the action is not forced on it.
+          ...(folderActions.onDelete !== undefined && { delete: () => folderActions.onDelete?.(folder) }),
         }}
         labels={{
           download: t("savedList.folder.downloadNamed", { name }),
@@ -158,20 +173,34 @@ function SavedAnalysesList({
 
   return (
     <CardGrid scroll size={view} ariaLabel={t("savedAnalyses.title")} testId={`${testId}-grid`}>
-      {folders.map((entry) => (
-        <FolderCard
-          key={entry.folder.id}
-          name={folderName(entry.folder)}
-          count={t("savedAnalyses.folder.count", { count: entry.count })}
-          detail=" "
-          onOpen={() => onOpenFolder(entry.folder.id)}
-          openLabel={t("savedList.folder.openNamed", { name: folderName(entry.folder) })}
-          actions={actionsOf(entry)}
-          testId={`${testId}-folder-${entry.folder.id}`}
-          openTestId={`${testId}-folder-open-${entry.folder.id}`}
-          nameTestId={`${testId}-folder-name-${entry.folder.id}`}
-        />
-      ))}
+      {folders.map((entry) => {
+        const pick = folderPick?.(entry.folder);
+        return (
+          <FolderCard
+            key={entry.folder.id}
+            name={folderName(entry.folder)}
+            count={t("savedAnalyses.folder.count", { count: entry.count })}
+            detail=" "
+            onOpen={() => onOpenFolder(entry.folder.id)}
+            openLabel={t("savedList.folder.openNamed", { name: folderName(entry.folder) })}
+            actions={actionsOf(entry)}
+            pick={
+              pick === undefined
+                ? undefined
+                : {
+                    checked: pick.checked,
+                    indeterminate: pick.indeterminate,
+                    onToggle: pick.onToggle,
+                    label: t("savedList.selectNamed", { name: folderName(entry.folder) }),
+                  }
+            }
+            pickTestId={`${testId}-folder-select-${entry.folder.id}`}
+            testId={`${testId}-folder-${entry.folder.id}`}
+            openTestId={`${testId}-folder-open-${entry.folder.id}`}
+            nameTestId={`${testId}-folder-name-${entry.folder.id}`}
+          />
+        );
+      })}
       {entries.map((entry) => {
         const { saved, tree, opening } = entry;
         return (

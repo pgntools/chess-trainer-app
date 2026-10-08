@@ -519,21 +519,136 @@ describe("Saved analyses — named, and filed in folders (CTA-73)", () => {
     );
   });
 
-  it("deletes a folder keeping its analyses, after asking", async () => {
+  it("has no per-folder delete icon — a folder goes through pick and bulk delete, with everything under it (CTA-147)", async () => {
+    const user = userEvent.setup();
+    const folder = (await createAnalysisFolder("Old", null))!;
+    const sub = (await createAnalysisFolder("Deep", folder.id))!;
+    await saveAnalysis({ ...save("a1", [[[], ["e4"]]]), folderId: folder.id });
+    await saveAnalysis({ ...save("a2", [[[], ["d4"]]]), folderId: sub.id });
+    await renderScreen();
+
+    // The folder rows' actions are download / rename / move — no delete.
+    expect(screen.queryByTestId(`saved-analyses-folder-delete-${folder.id}`)).toBeNull();
+    expect(screen.getByTestId(`saved-analyses-folder-download-${folder.id}`)).toBeInTheDocument();
+
+    // The folders open in place, their analyses beside them.
+    await user.click(screen.getByTestId(`saved-analyses-folder-${folder.id}`));
+    await user.click(screen.getByTestId(`saved-analyses-folder-${sub.id}`));
+    // The folder's box picks its whole subtree: the chip counts the two analyses under it.
+    await user.click(within(screen.getByTestId(`saved-analyses-folder-select-${folder.id}`)).getByRole("checkbox"));
+    expect(screen.getByTestId("saved-analyses-selected-count")).toHaveTextContent("2 selected");
+    // Both analysis rows under it show picked.
+    expect(within(screen.getByTestId("saved-analyses-select-a1")).getByRole("checkbox")).toBeChecked();
+    expect(within(screen.getByTestId("saved-analyses-select-a2")).getByRole("checkbox")).toBeChecked();
+
+    // The bulk delete's confirm says the folder goes with all that is in it.
+    await user.click(screen.getByTestId("saved-analyses-delete"));
+    expect(screen.getByTestId("saved-analyses-delete-title")).toHaveTextContent("Delete 2 analyses?");
+    // Both folders are picked: the parent by its box, the sub-folder because everything under it is picked with it.
+    expect(screen.getByTestId("saved-analyses-delete-dialog-message")).toHaveTextContent(
+      "The 2 picked folders go too, with every analysis and sub-folder in them.",
+    );
+    await user.click(screen.getByTestId("saved-analyses-delete-confirm"));
+    await waitFor(() => expect(analysisFoldersSnapshot()).toEqual([]));
+    expect(findSavedAnalysis("a1")).toBeUndefined();
+    expect(findSavedAnalysis("a2")).toBeUndefined();
+    expect(screen.getByTestId("saved-analyses-empty")).toBeInTheDocument();
+  });
+
+  it("picks a folder from its card too, in the card views (CTA-147)", async () => {
     const user = userEvent.setup();
     const folder = (await createAnalysisFolder("Old", null))!;
     await saveAnalysis({ ...save("a1", [[[], ["e4"]]]), folderId: folder.id });
     await renderScreen();
 
-    await user.click(screen.getByTestId(`saved-analyses-folder-delete-${folder.id}`));
-    expect(screen.getByTestId("analysis-folder-delete-counts")).toHaveTextContent(
-      "1 analyses",
-    );
-    await user.click(screen.getByTestId("analysis-folder-delete-confirm"));
-    await waitFor(() => expect(findSavedAnalysis("a1")?.folderId).toBeNull());
-    expect(analysisFoldersSnapshot()).toEqual([]);
-    expect(findSavedAnalysis("a1")?.folderId).toBeNull();
-    expect(screen.getByTestId("saved-analyses-item-a1")).toBeInTheDocument();
+    await user.click(screen.getByTestId("saved-analyses-view-compact"));
+    const box = within(screen.getByTestId(`saved-analyses-folder-select-${folder.id}`)).getByRole("checkbox");
+    expect(box).not.toBeChecked();
+    await user.click(box);
+    expect(screen.getByTestId("saved-analyses-selected-count")).toHaveTextContent("1 selected");
+    // Drilling in, the analysis inside shows picked — the folder's pick covers it.
+    await user.click(screen.getByTestId(`saved-analyses-folder-open-${folder.id}`));
+    expect(within(screen.getByTestId("saved-analyses-select-a1")).getByRole("checkbox")).toBeChecked();
+    // Unticking the folder's box (back out, then its box again) takes the whole subtree back out.
+    await user.click(screen.getByRole("button", { name: "All analyses" }));
+    await user.click(within(screen.getByTestId(`saved-analyses-folder-select-${folder.id}`)).getByRole("checkbox"));
+    expect(screen.queryByTestId("saved-analyses-selected-count")).toBeNull();
+  });
+
+  it("shows a folder indeterminate while some of what is under it is picked (CTA-147)", async () => {
+    const user = userEvent.setup();
+    const folder = (await createAnalysisFolder("Open", null))!;
+    await saveAnalysis({ ...save("a1", [[[], ["e4"]]]), folderId: folder.id });
+    await saveAnalysis({ ...save("a2", [[[], ["d4"]]]), folderId: folder.id });
+    await renderScreen();
+
+    // The folder open in place (a click on its row): its analyses beside it.
+    await user.click(screen.getByTestId(`saved-analyses-folder-${folder.id}`));
+    await user.click(within(screen.getByTestId("saved-analyses-select-a1")).getByRole("checkbox"));
+    const box = within(screen.getByTestId(`saved-analyses-folder-select-${folder.id}`)).getByRole("checkbox");
+    expect(box).toHaveAttribute("data-indeterminate", "true");
+    // Ticking it now picks the rest of the subtree.
+    await user.click(box);
+    expect(within(screen.getByTestId("saved-analyses-select-a2")).getByRole("checkbox")).toBeChecked();
+    expect(screen.getByTestId("saved-analyses-selected-count")).toHaveTextContent("2 selected");
+  });
+
+  it("unticking an analysis inside a picked folder demotes the folder, which stays out of the delete (CTA-147)", async () => {
+    const user = userEvent.setup();
+    const folder = (await createAnalysisFolder("Old", null))!;
+    await saveAnalysis({ ...save("a1", [[[], ["e4"]]]), folderId: folder.id });
+    await saveAnalysis({ ...save("a2", [[[], ["d4"]]]), folderId: folder.id });
+    await renderScreen();
+
+    await user.click(screen.getByTestId(`saved-analyses-folder-${folder.id}`));
+    await user.click(within(screen.getByTestId(`saved-analyses-folder-select-${folder.id}`)).getByRole("checkbox"));
+    // Untick one: the folder is no longer picked — only a1 goes, and the folder stays.
+    await user.click(within(screen.getByTestId("saved-analyses-select-a1")).getByRole("checkbox"));
+    const box = within(screen.getByTestId(`saved-analyses-folder-select-${folder.id}`)).getByRole("checkbox");
+    expect(box).toHaveAttribute("data-indeterminate", "true");
+    await user.click(screen.getByTestId("saved-analyses-delete"));
+    await user.click(screen.getByTestId("saved-analyses-delete-confirm"));
+    await waitFor(() => expect(findSavedAnalysis("a2")).toBeUndefined());
+    expect(findSavedAnalysis("a1")?.folderId).toBe(folder.id);
+    expect(analysisFoldersSnapshot()).toHaveLength(1);
+  });
+
+  it("deleting picked folders, while standing inside one, steps out to the surviving parent (CTA-147)", async () => {
+    const user = userEvent.setup();
+    const folder = (await createAnalysisFolder("Old", null))!;
+    const sub = (await createAnalysisFolder("Deep", folder.id))!;
+    await saveAnalysis({ ...save("a1", [[[], ["e4"]]]), folderId: sub.id });
+    await renderScreen();
+
+    // Pick the parent from the top level, then walk into the sub-folder — the picks persist across folders.
+    await user.click(within(screen.getByTestId(`saved-analyses-folder-select-${folder.id}`)).getByRole("checkbox"));
+    await user.click(screen.getByTestId(`saved-analyses-folder-open-${folder.id}`));
+    expect(where.current?.search).toBe(`?folder=${folder.id}`);
+    await user.click(screen.getByTestId(`saved-analyses-folder-open-${sub.id}`));
+    expect(where.current?.search).toBe(`?folder=${sub.id}`);
+
+    // It and everything under it go; the reader steps out to the top level.
+    await user.click(screen.getByTestId("saved-analyses-delete"));
+    await user.click(screen.getByTestId("saved-analyses-delete-confirm"));
+    await waitFor(() => expect(analysisFoldersSnapshot()).toEqual([]));
+    expect(where.current?.search).toBe("");
+  });
+
+  it("select-all covers the folders shown as well as the records (CTA-147)", async () => {
+    const user = userEvent.setup();
+    const folder = (await createAnalysisFolder("F", null))!;
+    await saveAnalysis({ ...save("in", [[[], ["e4"]]]), folderId: folder.id });
+    await saveAnalysis(save("out", [[[], ["d4"]]]));
+    await renderScreen();
+
+    // The folder is closed — its analysis is unshown, yet select-all takes the whole subtree with the folder.
+    await user.click(within(screen.getByTestId("saved-analyses-select-all")).getByRole("checkbox"));
+    expect(screen.getByTestId("saved-analyses-selected-count")).toHaveTextContent("2 selected");
+    expect(within(screen.getByTestId(`saved-analyses-folder-select-${folder.id}`)).getByRole("checkbox")).toBeChecked();
+    // Unticking it removes just what it covered.
+    await user.click(within(screen.getByTestId("saved-analyses-select-all")).getByRole("checkbox"));
+    expect(screen.queryByTestId("saved-analyses-selected-count")).toBeNull();
+    expect(within(screen.getByTestId(`saved-analyses-folder-select-${folder.id}`)).getByRole("checkbox")).not.toBeChecked();
   });
 
   it("keeps picks across folders, select-all adding the rows on screen", async () => {

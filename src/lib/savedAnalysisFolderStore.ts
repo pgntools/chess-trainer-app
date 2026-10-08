@@ -19,7 +19,9 @@ import { unfileAnalysesIn } from "./savedAnalysisStore";
  * Library's Analyse, file their records under it), {@link moveAnalysisFolder}
  * refuses the folder's own subtree, and {@link removeAnalysisFolder} keeps the
  * contents — sub-folders re-parent up a level and the analyses become
- * Unfiled. Every write is a promise; nothing throws.
+ * Unfiled — while {@link removeAnalysisFoldersDeep} (CTA-147, the bulk
+ * delete's path) takes the folders and their whole subtrees. Every write is a
+ * promise; nothing throws.
  */
 
 /** How many folders are kept — generous, but a bound. */
@@ -178,4 +180,27 @@ export const removeAnalysisFolder = async (
   });
   if (found) await unfileAnalysesIn(id);
   return problem;
+};
+
+/**
+ * Delete folders **together with everything under them** (CTA-147) — the bulk
+ * delete's picked folders: each one's whole subtree of folders goes in the
+ * one write, overlapping subtrees once. The analyses under them are the
+ * caller's to remove ({@link removeSavedAnalyses} — a picked folder's
+ * analyses are picked with it). Unknown ids are a no-op; nothing re-parents.
+ */
+export const removeAnalysisFoldersDeep = (
+  ids: readonly string[],
+): Promise<AnalysisFolderProblem | undefined> => {
+  if (ids.length === 0) return Promise.resolve(undefined);
+  return write((current) => {
+    const asked = new Set(ids);
+    const gone = new Set<string>();
+    for (const id of asked) {
+      if (!current.some((folder) => folder.id === id)) continue;
+      for (const folderId of analysisFolderSubtree(current, id)) gone.add(folderId);
+    }
+    if (gone.size === 0) return current;
+    return current.filter((folder) => !gone.has(folder.id));
+  });
 };

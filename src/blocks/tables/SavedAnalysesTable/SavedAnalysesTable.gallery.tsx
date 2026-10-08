@@ -29,11 +29,17 @@ type DemoState = {
 const noop = () => {};
 const TEN_THOUSAND = manyRows(10_000);
 
-/** The block on fixtures, walked as the screen walks them — its sort, words, open folders, page and picks held by the demo. */
+/**
+ * The block on fixtures, walked as the screen walks them — its sort, words,
+ * open folders, page and picks held by the demo. With `folderPicks`, the
+ * folders carry checkboxes and select-all covers them (CTA-147): the demo
+ * holds the picks as the screen does, a folder's id standing for its whole
+ * subtree.
+ */
 const demo = (
   folders: readonly GameFolder[],
   rows: readonly SavedAnalysisRow[],
-  { text = "", open = [] }: { text?: string; open?: string[] } = {},
+  { text = "", open = [], folderPicks = false }: { text?: string; open?: string[]; folderPicks?: boolean } = {},
 ) => (
   <WithState<DemoState>
     initial={{
@@ -68,7 +74,7 @@ const demo = (
             })
           }
           folderLink={(folder) => ({ href: `#folder-${folder.id}` })}
-          folderActions={{ onDownload: noop, onRename: noop, onMove: noop, onDelete: noop }}
+          folderActions={{ onDownload: noop, onRename: noop, onMove: noop }}
           paging={{
             page: state.page,
             rowsPerPage: state.rowsPerPage,
@@ -77,6 +83,52 @@ const demo = (
           }}
           picked={state.picked}
           onPickedChange={(picked) => set((before) => ({ ...before, picked }))}
+          {...(folderPicks && {
+            // The gallery's stand-in for the screen's derived state: a picked folder (its rows with it) checks, a partly picked one is indeterminate.
+            folderPick: (folder) => {
+              const subtree = new Set([folder.id, ...folders.filter((other) => other.parentId === folder.id).map((other) => other.id)]);
+              const rowsUnder = rows.filter((row) => row.folderId !== null && subtree.has(row.folderId));
+              const pickedRows = rowsUnder.filter((row) => state.picked.has(row.id));
+              return {
+                checked: state.picked.has(folder.id) || (rowsUnder.length > 0 && pickedRows.length === rowsUnder.length),
+                indeterminate: pickedRows.length > 0 && pickedRows.length < rowsUnder.length,
+                onToggle: () =>
+                  set((before) => {
+                    const next = new Set(before.picked);
+                    const all = rowsUnder.length > 0 && pickedRows.length === rowsUnder.length;
+                    if (all) {
+                      next.delete(folder.id);
+                      for (const row of rowsUnder) next.delete(row.id);
+                    } else {
+                      next.add(folder.id);
+                      for (const row of rowsUnder) next.add(row.id);
+                    }
+                    return { ...before, picked: next };
+                  }),
+              };
+            },
+            selectAll: {
+              checked: false,
+              indeterminate: state.picked.size > 0,
+              onToggleAll: () =>
+                set((before) => {
+                  const next = new Set(before.picked);
+                  const walk = analysisTreeRows({
+                    folders,
+                    rows,
+                    isOpen: (id, auto) => auto || before.open.has(id),
+                    column: before.sort.column,
+                    direction: before.sort.direction,
+                    text: before.text,
+                  }).rows;
+                  for (const row of walk) {
+                    if (row.kind === "folder") next.add(row.folder.id);
+                    else next.add(row.item.id);
+                  }
+                  return { ...before, picked: next };
+                }),
+            },
+          })}
           openLink={(row) => ({ href: `#analysis-${row.id}` })}
           onOpenAnalysis={noop}
           settingsLink={(row) => ({ href: `#settings-${row.id}` })}
@@ -116,6 +168,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
     {
       name: "Folders open — a sub-folder and a folder of games indented under them",
       render: () => demo(ANALYSIS_FOLDERS, WITH_FOLDERS, { open: ["fopen", "fsic", "ftata"] }),
+    },
+    {
+      name: "Folder checkboxes (CTA-147) — open, so a folder's pick takes its rows with it",
+      render: () => demo(ANALYSIS_FOLDERS, WITH_FOLDERS, { open: ["fopen", "ftata"], folderPicks: true }),
     },
     { name: "Words that open the folders above a match", render: () => demo(ANALYSIS_FOLDERS, WITH_FOLDERS, { text: "najdorf" }) },
     { name: "The filter leaves nothing", render: () => demo(ANALYSIS_FOLDERS, WITH_FOLDERS, { text: "dragon" }) },

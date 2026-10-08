@@ -930,15 +930,26 @@ const en = {
       expand: "Open {{name}}",
       collapse: "Close {{name}}",
       /** Read with the table: how its folders, sort and picks are worked. */
-      hint: "Folders come first: a folder's arrow opens it in place, its name goes into it. Sort by a column from its header button. Tick an analysis' box to pick it.",
+      hint: "Folders come first: a folder's arrow opens it in place, its name goes into it. Sort by a column from its header button. Tick an analysis' box to pick it; a folder's box picks its whole subtree with it.",
     },
     download: "Download selected as PGN",
     deleteSelected: "Delete selected",
-    /** Deleting the picks, asked first — the repertoires' dialog with these words. */
+    /**
+     * Deleting the picks, asked first (CTA-147: a picked folder goes with
+     * everything under it — its analyses, its sub-folders).
+     */
     bulkDelete: {
       title_one: "Delete {{count}} analysis?",
       title_other: "Delete {{count}} analyses?",
+      /** Only folders picked — empty ones or a whole folder tree with nothing readable in it. */
+      titleFolders_one: "Delete {{count}} picked folder?",
+      titleFolders_other: "Delete {{count}} picked folders?",
       text: "They are removed from this browser. This can't be undone.",
+      /** Beside the analyses: what the picked folders take with them. */
+      textWithFolders_one: "The picked folder goes too, with every analysis and sub-folder in it. This can't be undone.",
+      textWithFolders_other: "The {{count}} picked folders go too, with every analysis and sub-folder in them. This can't be undone.",
+      /** Only folders picked. */
+      textFoldersOnly: "They go with every analysis and sub-folder in them. This can't be undone.",
       confirm: "Delete",
     },
     /**
@@ -955,17 +966,12 @@ const en = {
       moveGame: "Move analysis",
       /** The folder list's name in the move dialog (CTA-113). */
       picker: "Folders",
-      deleteFolder: "Delete folder",
       download: "Download this folder as PGN",
       unfiled: "Unfiled",
       topLevel: "Top level",
       name: "Name",
       save: "Save",
       cancel: "Cancel",
-      deleteConfirm:
-        "Deleting this folder keeps its contents: analyses filed in it become Unfiled, and its sub-folders move up one level.",
-      deleteCounts:
-        "This folder holds {{games}} analyses and {{subFolders}} sub-folders.",
       count_one: "{{count}} analysis",
       count_other: "{{count}} analyses",
       empty: "This folder is empty.",

@@ -20,13 +20,16 @@ import {
 import type { GameFolder } from "../../../lib/savedGameFolders";
 import { FolderActions } from "../../lists/FolderActions";
 
-/** What a folder row's actions do. */
+/** What a folder row's actions do. `onDelete` optional: the analyses lobby deletes through the picks (CTA-147). */
 export type SavedAnalysesTableFolderActions = {
   onDownload: (folder: GameFolder) => void;
   onRename: (folder: GameFolder) => void;
   onMove: (folder: GameFolder) => void;
-  onDelete: (folder: GameFolder) => void;
+  onDelete?: (folder: GameFolder) => void;
 };
+
+/** A folder row's pick (CTA-147) — the screen's, derived over the folder's whole subtree. */
+export type SavedAnalysesTableFolderPick = { checked: boolean; indeterminate: boolean; onToggle: () => void };
 
 export type SavedAnalysesTableProps = {
   /**
@@ -48,9 +51,24 @@ export type SavedAnalysesTableProps = {
   folderActions: SavedAnalysesTableFolderActions;
   /** The page and its size; absent, every row shows and there is no pager. */
   paging?: Omit<DataTablePaging, "labelRowsPerPage" | "labelDisplayedRows">;
-  /** The picked analyses' ids — over every folder; a folder has no pick. */
+  /**
+   * The picked analyses' ids — over every folder — and the folders' own picks
+   * with them: the set may hold a folder's id, which stands for its whole
+   * subtree (CTA-147).
+   */
   picked: ReadonlySet<string>;
   onPickedChange: (picked: Set<string>) => void;
+  /**
+   * A folder row's checkbox (CTA-147): its state and toggle, derived by the
+   * screen over the folder's whole subtree. Absent, a folder row has no pick.
+   */
+  folderPick?: (folder: GameFolder) => SavedAnalysesTableFolderPick;
+  /**
+   * The header's select-all (CTA-147) — the screen's when folders are
+   * pickable: a folder's pick covers its unshown subtree, so the screen owns
+   * what select-all covers. Absent, the table's own — the pickable rows' ids.
+   */
+  selectAll?: { checked: boolean; indeterminate: boolean; onToggleAll: () => void };
   /** Where an analysis opens — the Analysis Board: the Name cell's link. */
   openLink: (row: SavedAnalysisRow) => LinkTarget;
   /** A click on an analysis' row, beside its link — the screen goes to the board. */
@@ -70,7 +88,8 @@ export type SavedAnalysesTableProps = {
    * the ids the screen's list had — `rowTestId`, `openTestId`, `pickTestId`,
    * `selectAllTestId`; a folder's row `<folderTestId>-<id>`, its name's link
    * `<folderTestId>-open-<id>`, its chevron `<folderTestId>-<id>-toggle`, its
-   * actions `<folderTestId>-<action>-<id>`.
+   * pick `<folderTestId>-select-<id>` and its actions
+   * `<folderTestId>-<action>-<id>`.
    */
   testId: string;
   /** An analysis' row id (`<prefix>-<id>`), its Name link's, its pick's, and the header's select-all. */
@@ -125,8 +144,10 @@ const WIDTHS: Partial<Record<SavedAnalysisColumn, number>> = { name: 220, event:
  * - **A folder row** has a chevron that opens it in place (a click on the row
  *   does too), its analyses indented under it; its name — with how many
  *   analyses its whole subtree holds — is a link into it; its Updated is when
- *   it last changed; its actions download, rename, move and delete it. It has
- *   no pick.
+ *   it last changed; its actions download, rename and move it. It carries a
+ *   checkbox when the screen passes `folderPick` (CTA-147): folders and
+ *   records are picked alike, a folder's pick covering its whole subtree,
+ *   checked or indeterminate by what under it is picked.
  * - **An analysis' Name cell is its link** to the Analysis Board — the
  *   reader's name, else the players, else "Analysis board" — with the
  *   description under it on one line, the whole of it on hover; a pick, and
@@ -155,6 +176,8 @@ function SavedAnalysesTable({
   paging,
   picked,
   onPickedChange,
+  folderPick,
+  selectAll,
   openLink,
   onOpenAnalysis,
   settingsLink,
@@ -254,7 +277,8 @@ function SavedAnalysesTable({
             download: () => folderActions.onDownload(folder),
             rename: () => folderActions.onRename(folder),
             move: () => folderActions.onMove(folder),
-            delete: () => folderActions.onDelete(folder),
+            // A lobby that deletes through the picks passes no delete (CTA-147).
+            ...(folderActions.onDelete !== undefined && { delete: () => folderActions.onDelete?.(folder) }),
           }}
           labels={{
             download: t("savedList.folder.downloadNamed", { name: named }),
@@ -292,11 +316,18 @@ function SavedAnalysesTable({
       picks={{
         picked,
         onChange: onPickedChange,
-        canPick: (row) => row.kind === "item",
+        // A folder row can be picked only when the screen gives it a pick — CTA-147.
+        canPick: (row) => row.kind === "item" || folderPick !== undefined,
         selectAllLabel: t("savedAnalyses.selectAll"),
         pickLabel: (row) => t("savedList.selectNamed", { name: nameOf(row) }),
         selectAllTestId,
-        pickTestId: (row) => `${pickTestId}-${rowKey(row)}`,
+        pickTestId: (row) =>
+          row.kind === "folder" ? `${folderTestId}-select-${row.folder.id}` : `${pickTestId}-${row.item.id}`,
+        // A folder's checkbox is its subtree's state, and its toggle picks or unpicks the whole subtree — never its own id alone.
+        ...(folderPick !== undefined && {
+          pickOverride: (row) => (row.kind === "folder" ? folderPick(row.folder) : undefined),
+        }),
+        ...(selectAll !== undefined && { selectAll }),
       }}
       tree={{
         depth: (row) => row.depth,

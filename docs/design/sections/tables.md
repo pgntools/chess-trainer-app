@@ -54,9 +54,12 @@ The comparison ended on five open questions; each has one answer here.
   off with nothing to pick), a checkbox per row whose click never reaches the
   row.
 - **Props** — `PickHeaderCell`: `total`, `picked`, `onToggleAll`, `label`,
-  `testId`. `PickCell`: `checked`, `onToggle`, `label` (the row's own name),
-  `testId`.
-- **Variations** — none / some (indeterminate) / all / nothing to pick.
+  `testId`, `state?` (CTA-147: the caller's own tri-state, for a select-all
+  whose coverage is not the pickable rows). `PickCell`: `checked`,
+  `indeterminate?` (CTA-147: some, not all, of what the row stands for), `onToggle`,
+  `label` (the row's own name), `testId`.
+- **Variations** — none / some (indeterminate) / all / nothing to pick; a
+  row standing for more than itself, partly picked.
 - **Replaces** — the Lobby's header select-all and every table's pick column;
   the collection table's empty header cell (its select-all lived in
   `SavedListExportBar`).

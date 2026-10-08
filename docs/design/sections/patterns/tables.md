@@ -104,6 +104,16 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
 - `picks.canPick(row)` (CTA-144) — a row it turns down (a folder among a
   tree's items) has an empty pick cell and is left out of select-all and its
   count; absent, every row can be picked.
+- `picks.pickOverride(row)` (CTA-147) — a row whose pick is not just its own
+  id's membership: the caller hands back the row's checked state
+  (`indeterminate` while some of what it stands for is picked) and its
+  toggle, and the table draws it instead of the set's — a folder row, whose
+  pick covers its whole subtree. `undefined` for a row that keeps the
+  ordinary pick.
+- `picks.selectAll` (CTA-147) — the caller's own select-all, its tri-state
+  and its toggle, for a table where a pick covers more than the pickable rows
+  (a closed folder's whole subtree is picked with it, unshown rows and all);
+  absent, the header works from the pickable rows' ids alone.
 - `rowLink` may answer `undefined` for a row with no destination (a folder).
 - **An empty or no-match line is a table row** (`-empty`, `-no-match`): a
   test that counts rows skips it.
