@@ -49,7 +49,8 @@ import { EmbedSource } from "./embedSource";
  * buttons under the moves.
  * **`<InlinePgnGame2colV>`** puts those columns under the board, at every
  * width, in a box half its height — the one for boards side by side in a
- * `<BoardRow>`. Same props, same sources; `<InlinePgnGame>` is untouched.
+ * `<BoardRow>` — with the same game plate over the board, its step buttons
+ * between the board and the moves. Same props, same sources; `<InlinePgnGame>` is untouched.
  * `<InlinePgnGameColumns>`, `<InlinePgnGame2colH>`'s first name, is its alias.
  */
 
@@ -87,7 +88,7 @@ const plyOf = (value: number | string | undefined): number | undefined => {
 type MovesLayout = {
   movesLayout: "run" | "columns";
   movesPlacement?: "beside" | "below";
-  /** The game's plate over the board, the step buttons under the moves — `<InlinePgnGame2colH>`'s. */
+  /** The game's plate over the board, the step buttons by the moves — the two-column games'. */
   framed?: boolean;
 };
 
@@ -103,9 +104,12 @@ export function InlinePgnGame2colH(props: InlinePgnGameProps) {
   return <InlinePgnSource {...props} movesLayout="columns" movesPlacement="beside" framed />;
 }
 
-/** The same pairs under the board, in a box half its height — for boards side by side. */
+/**
+ * The same pairs under the board, in a box half its height — for boards side by side —
+ * the game's plate over the board, the step buttons between it and the moves.
+ */
 export function InlinePgnGame2colV(props: InlinePgnGameProps) {
-  return <InlinePgnSource {...props} movesLayout="columns" movesPlacement="below" />;
+  return <InlinePgnSource {...props} movesLayout="columns" movesPlacement="below" framed />;
 }
 
 function InlinePgnSource({ src, pgn, game, ...shown }: InlinePgnGameProps & MovesLayout) {

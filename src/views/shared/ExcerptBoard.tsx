@@ -10,6 +10,7 @@ import SwapVertRoundedIcon from "@mui/icons-material/SwapVertRounded";
 import { Chessboard, type ChessboardOptions, type PieceDropHandlerArgs } from "react-chessboard";
 import { useTranslation } from "react-i18next";
 
+import { visuallyHidden } from "../../design-system/components/a11y";
 import { IconAction } from "../../design-system/components/toolbars";
 import { MIN_TARGET_PX, MONOSPACE_FONT_FAMILY, useChessTokens } from "../../design-system/theme";
 import { drawsShapes, shapesOf } from "../../lib/boardShapes";
@@ -66,7 +67,8 @@ import { useBoardKeys } from "./useBoardKeys";
  * - **The game's plate, the controls by the moves** (`<InlinePgnGame2colH>`):
  *   `gameInfo` puts a small line of the players, result and event over the board
  *   (`ExcerptGameInfo`); `controlsPlacement="moves"` moves the step and flip
- *   buttons from over the board to under the moves, and — beside the board —
+ *   buttons from over the board to the moves — under them beside the board,
+ *   over them under it (`<InlinePgnGame2colV>`) — and, beside the board,
  *   the moves' column stands exactly as tall as the board's, the list
  *   scrolling inside what the buttons leave it.
  *
@@ -339,26 +341,13 @@ function ExcerptBoard({
   const onScreen = node === undefined ? t("inlinePgn.start") : moveName(tree.startFen, node);
 
   /** The position on screen, then to the first, back, on, to the last, and flip. */
-  const controls = (
-    <Box
-      data-testid={`${testId}-controls`}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0.5,
-        // Under the moves, a plate of its own, as the game's is over the board.
-        ...(controlsByMoves ? { flexShrink: 0, paddingInlineStart: 1, border: 1, borderColor: "divider", borderRadius: 1, bgcolor: "background.paper" } : {}),
-      }}
-    >
-      <Typography
-        variant="caption"
-        dir="ltr"
-        aria-live="polite"
-        data-testid={`${testId}-on-screen`}
-        sx={{ flexGrow: 1, color: "text.secondary", unicodeBidi: "isolate", fontFamily: MONOSPACE_FONT_FAMILY }}
-      >
-        {onScreen}
-      </Typography>
+  const flip = (
+    <IconAction label={t("inlinePgn.flip")} onClick={() => setOrientation((side) => (side === "white" ? "black" : "white"))} testId={`${testId}-flip`}>
+      <SwapVertRoundedIcon fontSize="small" />
+    </IconAction>
+  );
+  const steps = (
+    <>
       <IconAction label={t("inlinePgn.first")} disabled={nodeId === window.fromId} onClick={() => goTo(window.fromId)} testId={`${testId}-first`}>
         <FirstPageRoundedIcon fontSize="small" />
       </IconAction>
@@ -376,13 +365,36 @@ function ExcerptBoard({
       <IconAction label={t("inlinePgn.last")} disabled={nodeId === window.toId} onClick={() => goTo(window.toId)} testId={`${testId}-last`}>
         <LastPageRoundedIcon fontSize="small" />
       </IconAction>
-      <IconAction
-        label={t("inlinePgn.flip")}
-        onClick={() => setOrientation((side) => (side === "white" ? "black" : "white"))}
-        testId={`${testId}-flip`}
+    </>
+  );
+  const controls = (
+    <Box
+      data-testid={`${testId}-controls`}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 0.5,
+        // By the moves, set off by a thin border.
+        ...(controlsByMoves ? { flexShrink: 0, border: 1, borderColor: "divider", borderRadius: 1 } : {}),
+      }}
+    >
+      <Typography
+        variant="caption"
+        dir="ltr"
+        aria-live="polite"
+        data-testid={`${testId}-on-screen`}
+        // By the moves, the list marks the move on screen: the words are left to a screen reader.
+        sx={
+          controlsByMoves
+            ? visuallyHidden
+            : { flexGrow: 1, color: "text.secondary", unicodeBidi: "isolate", fontFamily: MONOSPACE_FONT_FAMILY }
+        }
       >
-        <SwapVertRoundedIcon fontSize="small" />
-      </IconAction>
+        {onScreen}
+      </Typography>
+      {steps}
+      {/* By the moves, the four steps at the start, the flip at the far end. */}
+      {controlsByMoves ? <Box sx={{ marginInlineStart: "auto" }}>{flip}</Box> : flip}
     </Box>
   );
 
@@ -444,6 +456,8 @@ function ExcerptBoard({
               : { display: "grid", gap: 1, minWidth: 0 }
           }
         >
+          {/* Under the board, the buttons stand between it and the moves; beside it, under the moves. */}
+          {controlsByMoves && below && controls}
           {columns ? (
             <Box
               ref={movesRef}
@@ -486,7 +500,7 @@ function ExcerptBoard({
               {renderTokens(list)}
             </Box>
           )}
-          {controlsByMoves && controls}
+          {controlsByMoves && !below && controls}
           {showComments && comment !== "" && (
             <Typography
               variant="body2"
