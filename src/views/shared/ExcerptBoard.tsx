@@ -117,6 +117,11 @@ type ExcerptBoardProps = {
    * `MOVES_FIT_MAX_PX`. Either of the last two, the whole is only as wide as it needs.
    */
   movesWidth?: "fill" | "board" | "fit";
+  /**
+   * The moves' box under the board (`movesPlacement="below"`): `"half"` (the default) half the
+   * board's height, scrolling; `"board"` the board's height, scrolling; `"full"` as tall as its moves.
+   */
+  movesHeight?: "half" | "board" | "full";
 };
 
 /** The board column's width, and so the board's side, from `sm` up. */
@@ -133,6 +138,8 @@ const COLUMNS_MAX_HEIGHT = { xs: "100cqw", sm: `min(${BOARD_COLUMN_PX}px, 100cqw
 const MOVES_FIT_MAX_PX = 240;
 /** Under the board (`movesPlacement="below"`), the list stands half the board's side — `min(BOARD_COLUMN_PX, 100cqw)`. */
 const COLUMNS_BELOW_MAX_HEIGHT = `min(${BOARD_COLUMN_PX / 2}px, 50cqw)`;
+/** Under the board, each `movesHeight`'s cap — `"full"` none, the whole game shown. */
+const BELOW_MAX_HEIGHTS = { half: COLUMNS_BELOW_MAX_HEIGHT, board: `min(${BOARD_COLUMN_PX}px, 100cqw)`, full: "none" } as const;
 
 /** A side line's run — nested, dimmed, set off by a rule. */
 const variationRunSx = {
@@ -200,6 +207,7 @@ function ExcerptBoard({
   gameInfo = false,
   controlsPlacement = "board",
   movesWidth = "fill",
+  movesHeight = "half",
 }: ExcerptBoardProps) {
   const { t } = useTranslation();
   const squareOptions = useBoardSquareOptions();
@@ -515,7 +523,7 @@ function ExcerptBoard({
                 alignItems: "center",
                 alignContent: "start",
                 columnGap: 0.5,
-                maxHeight: below ? COLUMNS_BELOW_MAX_HEIGHT : fitted ? { xs: COLUMNS_MAX_HEIGHT.xs, sm: "none" } : COLUMNS_MAX_HEIGHT,
+                maxHeight: below ? BELOW_MAX_HEIGHTS[movesHeight] : fitted ? { xs: COLUMNS_MAX_HEIGHT.xs, sm: "none" } : COLUMNS_MAX_HEIGHT,
                 overflowY: "auto",
                 // Fitted, the list gives way to the buttons and the comment, never the other way.
                 ...(fitted ? { flex: "0 1 auto", minHeight: 0 } : {}),

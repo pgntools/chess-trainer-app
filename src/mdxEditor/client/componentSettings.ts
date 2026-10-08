@@ -117,11 +117,26 @@ const INLINE_PGN_GAME_2COL_H: readonly SettingField[] = [
   },
 ];
 
+/** `<InlinePgnGame2colV>`'s — `<InlinePgnGame>`'s, and the moves' box's height. */
+const INLINE_PGN_GAME_2COL_V: readonly SettingField[] = [
+  ...INLINE_PGN_GAME,
+  {
+    prop: "movesHeight",
+    kind: "choice",
+    label: "The moves' height",
+    none: "Dense — half the board's height",
+    options: [
+      { value: "board", label: "The board's" },
+      { value: "full", label: "Full — the whole game" },
+    ],
+  },
+];
+
 /** Every component's settings, by its name — the ones the Components and Images sections edit. */
 export const SETTINGS: Readonly<Record<string, readonly SettingField[]>> = {
   InlinePgnGame: INLINE_PGN_GAME,
   InlinePgnGame2colH: INLINE_PGN_GAME_2COL_H,
-  InlinePgnGame2colV: INLINE_PGN_GAME,
+  InlinePgnGame2colV: INLINE_PGN_GAME_2COL_V,
   InlinePgnGameColumns: INLINE_PGN_GAME_2COL_H,
   CollectionGameBoard: [startMove, nextMoveArrows],
   StoredGameEmbed: [startMove, nextMoveArrows],

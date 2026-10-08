@@ -52,7 +52,9 @@ import { EmbedSource } from "./embedSource";
  * **`<InlinePgnGame2colV>`** puts those columns under the board, at every
  * width, in a box half its height — the one for boards side by side in a
  * `<BoardRow>` — with the same game plate over the board, its step buttons
- * between the board and the moves. Same props, same sources; `<InlinePgnGame>` is untouched.
+ * between the board and the moves; `movesHeight` sets that box's height — half
+ * the board's (`"dense"`, the default), the board's (`"board"`), or the whole
+ * game, unscrolled (`"full"`). Same props, same sources; `<InlinePgnGame>` is untouched.
  * `<InlinePgnGameColumns>`, `<InlinePgnGame2colH>`'s first name, is its alias.
  */
 
@@ -82,6 +84,8 @@ type InlinePgnGameProps = {
   caption?: string;
   /** `<InlinePgnGame2colH>`: the moves' column — the rest of the row (the default), the board's width, or only what its moves need. */
   movesWidth?: "full" | "board" | "dense";
+  /** `<InlinePgnGame2colV>`: the moves' box under the board — half the board's height (the default), the board's, or the whole game. */
+  movesHeight?: "full" | "board" | "dense";
 };
 
 const plyOf = (value: number | string | undefined): number | undefined => {
@@ -165,6 +169,7 @@ function InlinePgnBoard({
   movesPlacement,
   framed = false,
   movesWidth = "full",
+  movesHeight = "dense",
 }: Omit<InlinePgnGameProps, "src" | "pgn"> & MovesLayout & { pgn: string }) {
   const { t } = useTranslation();
   const instance = useId().replace(/[^a-zA-Z0-9]/g, "");
@@ -231,6 +236,7 @@ function InlinePgnBoard({
       gameInfo={framed}
       controlsPlacement={framed ? "moves" : "board"}
       movesWidth={movesWidth === "board" ? "board" : movesWidth === "dense" ? "fit" : "fill"}
+      movesHeight={movesHeight === "board" ? "board" : movesHeight === "full" ? "full" : "half"}
       caption={caption}
     />
   );
