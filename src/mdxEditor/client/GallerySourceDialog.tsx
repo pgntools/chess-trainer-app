@@ -7,7 +7,7 @@ import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import { SuggestAutocomplete } from "../../design-system/components/autocompletes";
 import { FormDialog } from "../../design-system/components/dialogs";
 import { InlineAlert, StatusText } from "../../design-system/components/feedback";
-import { FileInputButton, RadioGroupField, SelectField, TextInputField } from "../../design-system/components/forms";
+import { CheckboxField, FileInputButton, RadioGroupField, SelectField, TextInputField } from "../../design-system/components/forms";
 import { splitPgnGames } from "../../lib/pgn";
 import { isBrowserOnly, sourceAddressOf, sourcePathOf, type SourceAddress } from "../../lib/embedSource";
 import { loadUploadedCollections } from "../../lib/libraryCollectionStore";
@@ -19,7 +19,7 @@ import { addressEntriesOf, addressOptionsOf, type AddressEntry } from "./address
 import { HEAVY_GAMES, misfitOf, type BuiltInExample, type GalleryEntry } from "./componentGallery";
 import { GALLERY_ID, gamesWords, type Applied, type Choice } from "./gallerySource";
 import HeavyPgnDialog from "./HeavyPgnDialog";
-import { describeAddress } from "./libraryLookup";
+import { describeAddress, pgnTextOf } from "./libraryLookup";
 import { pgnBytesOf, sizeOf } from "./pgnPages";
 import { isHeavyPgn } from "./pgnStats";
 
@@ -44,7 +44,9 @@ const KIND_NAMES: Readonly<Record<SourceAddress["kind"], string>> = {
  * `HeavyPgnDialog` first, which shows what it holds and asks where it goes
  * (saved to disk, saved as a Library collection, or pasted anyway); a light
  * one can be taken there too. A source that does not fit the component
- * says so, and cannot be used.
+ * says so, and cannot be used. An address can be **pasted inline**
+ * instead: what it names is read as PGN text — tags, comments, annotations
+ * and side lines as kept — and written into the code as a paste is.
  */
 function GallerySourceDialog({
   entry,
@@ -73,6 +75,10 @@ function GallerySourceDialog({
       ? { address: origin.address, named: current.source.address, label: current.words.replace(/^[^—]*— /, "") }
       : undefined,
   );
+  /** Paste inline: the address's PGN written into the code, not its `src`. */
+  const [inline, setInline] = useState(false);
+  /** Its PGN being read. */
+  const [fetching, setFetching] = useState(false);
   /** The heavy-PGN dialog, open over this one. */
   const [weighing, setWeighing] = useState(false);
 
@@ -114,6 +120,21 @@ function GallerySourceDialog({
     setFound({ address: text, named, label: described.label });
   };
 
+  /** The found address's PGN, read and used as a paste — a heavy one taken to the paste's heavy-PGN dialog. */
+  const pasteInline = async (named: SourceAddress, label: string) => {
+    setFetching(true);
+    const read = await pgnTextOf(named);
+    setFetching(false);
+    if (read === undefined) return setLookup({ looking: false, problem: `Its PGN could not be read — ${label} has no games here.` });
+    const count = splitPgnGames(read).length;
+    if (isHeavyPgn(count, pgnBytesOf(read), HEAVY_GAMES)) {
+      setPasted(read);
+      setChoice("paste");
+      return setWeighing(true);
+    }
+    onApply({ source: { kind: "pasted", text: read }, words: `Pasted from ${KIND_NAMES[named.kind].toLowerCase()} — ${label}, ${gamesWords(count)}`, origin: { kind: "paste", text: read } }, entry.id);
+  };
+
   // An uploaded or pasted PGN: its weight, read once per text.
   const text = choice === "upload" ? (uploaded?.text ?? "") : choice === "paste" ? pasted : "";
   const bytes = useMemo(() => pgnBytesOf(text), [text]);
@@ -148,7 +169,10 @@ function GallerySourceDialog({
         : found === undefined || found.address !== address
           ? undefined
           : { source: { kind: "address", address: found.named }, words: `${KIND_NAMES[found.named.kind]} — ${found.label}`, origin: { kind: "address", address: sourcePathOf(found.named) } };
-  const misfit = draft === undefined ? undefined : misfitOf(entry, draft.source);
+  const inlineOffered = entry.reads.includes("pgn");
+  const inlining = choice === "address" && inline && inlineOffered;
+  // Pasted inline, it is a PGN the component reads, whatever the address named.
+  const misfit = draft === undefined ? undefined : misfitOf(entry, inlining ? { kind: "pasted", text: "" } : draft.source);
   const reads = entry.reads.includes("pgn") ? "PGN" : "game";
   const pgnChosen = (choice === "upload" || choice === "paste") && text.trim() !== "";
 
@@ -162,12 +186,13 @@ function GallerySourceDialog({
           if (choice === "address" && draft === undefined) return void lookUp();
           // A heavy PGN: asked about first. The file it already went to is offered again there.
           if (pgnChosen && heavy) return setWeighing(true);
+          if (inlining && found !== undefined && draft !== undefined && misfit === undefined) return void pasteInline(found.named, found.label);
           if (draft !== undefined && misfit === undefined) onApply(draft, entry.id);
         }}
         title={`Add / update ${reads} — <${entry.component}>`}
         submitLabel={pgnChosen && heavy ? "Choose how to use it…" : "Use it"}
         cancelLabel="Cancel"
-        submitDisabled={misfit !== undefined || (draft === undefined && !(choice === "address" && address.trim() !== "") && !(pgnChosen && heavy))}
+        submitDisabled={fetching || misfit !== undefined || (draft === undefined && !(choice === "address" && address.trim() !== "") && !(pgnChosen && heavy))}
         width="sm"
         testId={`${ID}-source-dialog`}
       >
@@ -267,7 +292,21 @@ function GallerySourceDialog({
                   </StatusText>
                 )}
               </Box>
-              {found !== undefined && found.address === address && isBrowserOnly(found.named, (id) => findShippedCollection(id) !== undefined) && (
+              {inlineOffered && (
+                <CheckboxField
+                  label="Paste inline — its PGN written into the code (tags, comments, annotations, side lines), not its address"
+                  checked={inline}
+                  onChange={setInline}
+                  size="small"
+                  testId={`${ID}-inline`}
+                />
+              )}
+              {fetching && (
+                <Typography role="status" variant="body2" color="text.secondary">
+                  Reading its PGN…
+                </Typography>
+              )}
+              {!inlining && found !== undefined && found.address === address && isBrowserOnly(found.named, (id) => findShippedCollection(id) !== undefined) && (
                 <InlineAlert severity="info" title="In this browser only" testId={`${ID}-browser-only`}>
                   It is yours, kept where you made it: an article naming it shows "not in this browser" to every other reader, and on the published site.
                 </InlineAlert>

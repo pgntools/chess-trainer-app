@@ -4,6 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 
 import { expectNoAxeViolations } from "../../test/axe";
+import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
+import { batchAnalysesOf } from "../../lib/savedAnalyses";
+import { addAnalyses } from "../../lib/savedAnalysisStore";
 import { readRepertoireText, savedRepertoireOf } from "../../lib/savedRepertoires";
 import { saveRepertoire } from "../../lib/savedRepertoireStore";
 import ComponentGalleryMain from "./ComponentGalleryMain";
@@ -71,19 +74,23 @@ describe("the Components gallery (CTA-140)", () => {
     expect(screen.getByRole("switch", { name: "Side lines" })).toBeChecked();
   });
 
-  it("opens the two-column game on the same sample, its settings those of <InlinePgnGame>", async () => {
+  it("opens the two-column games — beside the board and under it — on the same sample, their settings those of <InlinePgnGame>", async () => {
     const user = userEvent.setup();
     mount();
-    await pick(user, "A game, its moves in two columns");
-    expect(code()).toHaveValue('import game from "./writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn?raw"\n\n<InlinePgnGameColumns pgn={game} />');
+    await pick(user, "A game, its moves in two columns beside it");
+    expect(code()).toHaveValue('import game from "./writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn?raw"\n\n<InlinePgnGame2colH pgn={game} />');
+    expect(screen.getByRole("switch", { name: "Side lines" })).toBeChecked();
+    await pick(user, "A game, its moves in two columns under it");
+    expect(code()).toHaveValue('import game from "./writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn?raw"\n\n<InlinePgnGame2colV pgn={game} />');
+    expect(screen.getByRole("switch", { name: "Side lines" })).toBeChecked();
   });
 
   it("picks an entry from the tree by the keyboard, and opens it on its own sample", async () => {
     const user = userEvent.setup();
     mount();
     within(tree()).getByRole("treeitem", { name: "A game, its moves beside it" }).focus();
-    // Down through the Boards — past the two-column variant — to the stored game.
-    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+    // Down through the Boards — past the two two-column variants — to the stored game.
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{Enter}");
     expect(within(tree()).getByRole("treeitem", { name: "A stored game" })).toHaveAttribute("aria-current", "page");
     expect(code()).toHaveValue('<StoredGameEmbed src="/library/capablanca/2" />');
     expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Built-in example — Capablanca, game 2 — /library/capablanca/2 (the default)");
@@ -183,6 +190,35 @@ describe("the Components gallery (CTA-140)", () => {
     expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("A repertoire — My Caro");
     expect(screen.getByTestId("mdx-component-gallery-browser-only")).toBeInTheDocument();
     expect(await within(preview()).findByRole("group", { name: "The game, from The start to 2... d5" }, { timeout: 10_000 })).toBeInTheDocument();
+  });
+
+  it("pastes an address's PGN inline — tags, comments and shapes as kept — in place of its address", async () => {
+    const user = userEvent.setup();
+    // A lichess study's chapter: its comments two in a row, the text then the shapes.
+    const pgn = '[Event "Queen vs Rook"]\n[FEN "8/8/8/4k3/3r4/3K4/6Q1/8 w - - 1 1"]\n[SetUp "1"]\n\n{ A rule of thumb. } { [%csl Gd4] }\n1. Ke3 { From the tablebase. } { [%cal Bg2e4] } 1... Rd5 2. Qg6 *';
+    await addAnalyses(batchAnalysesOf(() => "study", [{ name: "Rules of thumb", pgn }], null, DEFAULT_ANALYSIS_SETTINGS));
+    mount();
+    await user.click(screen.getByRole("button", { name: "Add / update PGN…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add / update PGN — <InlinePgnGame>" });
+    await user.click(within(dialog).getByRole("radio", { name: /^An address in the app/ }));
+    await user.type(within(dialog).getByRole("combobox", { name: "The address" }), "/tools/analysis?analysis=study&folder=f1{Enter}");
+    expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent("Found Rules of thumb.");
+    expect(within(dialog).getByTestId("mdx-component-gallery-browser-only")).toBeInTheDocument();
+    // Pasted inline, the article carries the PGN: not in this browser only.
+    await user.click(within(dialog).getByRole("checkbox", { name: /^Paste inline/ }));
+    expect(within(dialog).queryByTestId("mdx-component-gallery-browser-only")).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Use it" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    const written = (code() as HTMLTextAreaElement).value;
+    expect(written).toMatch(/^export const game = `\[Event "Queen vs Rook"\][\s\S]*`\n\n<InlinePgnGame pgn=\{game\} \/>$/);
+    expect(written).toContain("{ A rule of thumb. } { [%csl Gd4] }");
+    expect(written).toContain("{ From the tablebase. } { [%cal Bg2e4] }");
+    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Pasted from a saved analysis — Rules of thumb, 1 game");
+    expect(screen.queryByTestId("mdx-component-gallery-browser-only")).not.toBeInTheDocument();
+    expect(await within(preview()).findByRole("group", { name: /^The game, from The start to 2\. Qg6/ }, { timeout: 10_000 })).toBeInTheDocument();
+    // It opens again as the paste it is.
+    await user.click(screen.getByRole("button", { name: "Add / update PGN…" }));
+    expect(within(await screen.findByRole("dialog")).getByRole("radio", { name: "Paste a PGN" })).toBeChecked();
   });
 
   it("finds a record by the first letters of its name — grouped by kind, Hebrew names too — and a pick is found without a look-up (CTA-150)", async () => {

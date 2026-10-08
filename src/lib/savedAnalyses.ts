@@ -22,7 +22,7 @@ import {
   type VariationNode,
 } from "./gameTree";
 import type { CatalogGame, GameCatalog } from "./gameCatalog";
-import { parsePgnGame, parsePgnTree, readPgnTags, splitPgnGames } from "./pgn";
+import { parsePgnTree, readPgnTags, splitPgnGames } from "./pgn";
 import { repertoireGameNamesOf } from "./savedRepertoires";
 
 /**
@@ -396,7 +396,10 @@ export const savedAnalysisCatalogOf = (
   for (const saved of analyses) {
     let game: Game;
     try {
-      game = parsePgnGame(saved.pgn);
+      // Read as the Analysis Board opens it — `parsePgnTree`, not `chess.js`,
+      // whose `loadPgn` refuses PGNs the board reads fine (two comments in a
+      // row, as every lichess study writes them), so the record was missing here.
+      game = mainlineGame(parsePgnTree(saved.pgn));
     } catch {
       continue;
     }

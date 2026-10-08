@@ -10,18 +10,19 @@ import SwapVertRoundedIcon from "@mui/icons-material/SwapVertRounded";
 import { Chessboard, type ChessboardOptions, type PieceDropHandlerArgs } from "react-chessboard";
 import { useTranslation } from "react-i18next";
 
+import { visuallyHidden } from "../../design-system/components/a11y";
 import { IconAction } from "../../design-system/components/toolbars";
 import { MIN_TARGET_PX, MONOSPACE_FONT_FAMILY, useChessTokens } from "../../design-system/theme";
 import { drawsShapes, shapesOf } from "../../lib/boardShapes";
 import { branchStartOf, findNode, pathTo, type GameTree, type VariationNode } from "../../lib/gameTree";
 import { lastMoveSquareStyles } from "../../lib/gameNavigation";
-import { excerptRows, excerptTokens, isInExcerpt, moveName, type ExcerptToken, type ExcerptWindow } from "../../lib/pgnExcerpt";
-import { readComment } from "../../lib/moveAnnotations";
+import { commentWords, excerptRows, excerptTokens, isInExcerpt, moveName, type ExcerptToken, type ExcerptWindow } from "../../lib/pgnExcerpt";
 import { ForceLTR } from "../../theme/ForceLTR";
 import NagGlyphs from "./NagGlyphs";
 import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
 import { useBoardSquareOptions } from "./boardColors";
 import PromotionPicker, { type PromotionChoice } from "./PromotionPicker";
+import ExcerptGameInfo from "./ExcerptGameInfo";
 import ShapeCircles from "./ShapeCircles";
 import { useBoardKeys } from "./useBoardKeys";
 
@@ -60,6 +61,18 @@ import { useBoardKeys } from "./useBoardKeys";
  *   the pair it answers — in a box no taller than the board, which scrolls
  *   when the tree is longer and keeps the move on screen in view. Absent
  *   (`"run"`), the moves are the wrapping run above, as ever.
+ * - **The moves under the board**: `movesPlacement="below"` stacks the
+ *   columns under the board at every width — for boards side by side in a
+ *   `<BoardRow>` — the board as wide as its container up to its column's
+ *   `BOARD_COLUMN_PX`, the list as wide as the board and no taller than half
+ *   of it. Absent (`"beside"`), the list stands beside the board from `sm` up.
+ * - **The game's plate, the controls by the moves** (`<InlinePgnGame2colH>`):
+ *   `gameInfo` puts a small line of the players, result and event over the board
+ *   (`ExcerptGameInfo`); `controlsPlacement="moves"` moves the step and flip
+ *   buttons from over the board to the moves — under them beside the board,
+ *   over them under it (`<InlinePgnGame2colV>`) — and, beside the board,
+ *   the moves' column stands exactly as tall as the board's, the list
+ *   scrolling inside what the buttons leave it.
  *
  * Presentational: the tree and the window arrive as props, the position on
  * screen and the orientation are its own. Pinned LTR (`ForceLTR`), the theme's
@@ -77,6 +90,12 @@ type ExcerptBoardProps = {
   orientation?: "white" | "black";
   /** Show the PGN comment of the move on screen. */
   showComments?: boolean;
+  /**
+   * Every PGN comment in the move list, where it is written — under the pair it follows
+   * (after White's move splitting it, as lichess's list does), inside a side line's run —
+   * rather than the one on screen under the moves, which `showComments` then leaves out.
+   */
+  inlineComments?: boolean;
   /** A line above the board — what this excerpt is for. */
   caption?: ReactNode;
   /** Draw the PGN's `[%cal]` / `[%csl]` shapes. Default on. */
@@ -88,6 +107,26 @@ type ExcerptBoardProps = {
    * `"columns"` numbered pairs in a box capped at the board's height, scrolling (CTA-146).
    */
   movesLayout?: "run" | "columns";
+  /**
+   * Where the columns stand: `"beside"` (the default) the board, from `sm` up;
+   * `"below"` it, at every width, in a box half the board's height. Only the columns read it.
+   */
+  movesPlacement?: "beside" | "below";
+  /** A plate of the game's players, result and event over the board (`ExcerptGameInfo`). */
+  gameInfo?: boolean;
+  /** Where the step and flip buttons stand: over the board (the default), or under the moves. */
+  controlsPlacement?: "board" | "moves";
+  /**
+   * The moves' column beside the board, with the buttons by the moves: `"fill"` (the default)
+   * the rest of the row; `"board"` as wide as the board; `"fit"` as wide as its moves, up to
+   * `MOVES_FIT_MAX_PX`. Either of the last two, the whole is only as wide as it needs.
+   */
+  movesWidth?: "fill" | "board" | "fit";
+  /**
+   * The moves' box under the board (`movesPlacement="below"`): `"half"` (the default) half the
+   * board's height, scrolling; `"board"` the board's height, scrolling; `"full"` as tall as its moves.
+   */
+  movesHeight?: "half" | "board" | "full";
 };
 
 /** The board column's width, and so the board's side, from `sm` up. */
@@ -100,6 +139,15 @@ const BOARD_COLUMN_PX = 320;
  * grid, `cqw`).
  */
 const COLUMNS_MAX_HEIGHT = { xs: "100cqw", sm: `min(${BOARD_COLUMN_PX}px, 100cqw)` };
+/** The widest a `movesWidth="fit"` column grows — a long side line wraps inside it. */
+const MOVES_FIT_MAX_PX = 240;
+/** Under the board (`movesPlacement="below"`), the list stands half the board's side — `min(BOARD_COLUMN_PX, 100cqw)`. */
+const COLUMNS_BELOW_MAX_HEIGHT = `min(${BOARD_COLUMN_PX / 2}px, 50cqw)`;
+/** Under the board, each `movesHeight`'s cap — `"full"` none, the whole game shown. */
+const BELOW_MAX_HEIGHTS = { half: COLUMNS_BELOW_MAX_HEIGHT, board: `min(${BOARD_COLUMN_PX}px, 100cqw)`, full: "none" } as const;
+
+/** A comment in place, in the columns — a row of its own, the pair's width. */
+const commentRowSx = { gridColumn: "1 / -1", whiteSpace: "pre-line", paddingInline: 1, paddingBlock: 0.5 } as const;
 
 /** A side line's run — nested, dimmed, set off by a rule. */
 const variationRunSx = {
@@ -159,10 +207,16 @@ function ExcerptBoard({
   window,
   orientation: initialOrientation,
   showComments,
+  inlineComments = false,
   caption,
   shapes: drawShapes = true,
   nextMoveArrows = true,
   movesLayout = "run",
+  movesPlacement = "beside",
+  gameInfo = false,
+  controlsPlacement = "board",
+  movesWidth = "fill",
+  movesHeight = "half",
 }: ExcerptBoardProps) {
   const { t } = useTranslation();
   const squareOptions = useBoardSquareOptions();
@@ -180,8 +234,22 @@ function ExcerptBoard({
     const path = pathTo(tree, nodeId);
     return path.length === 0 ? undefined : (path.at(-2)?.id ?? null);
   }, [tree, nodeId]);
-  const list = useMemo(() => excerptTokens(tree, window), [tree, window]);
+  const list = useMemo(() => excerptTokens(tree, window, { comments: inlineComments }), [tree, window, inlineComments]);
   const columns = movesLayout === "columns";
+  const below = columns && movesPlacement === "below";
+  const controlsByMoves = controlsPlacement === "moves";
+  // Beside the board, with the buttons under the moves: the moves' column is the board column's height, the list scrolling in it.
+  const fitted = columns && !below && controlsByMoves;
+  // Fitted, the moves' column may also be the board's width, or only what its moves need — the whole then as wide as it needs.
+  const narrow = fitted && movesWidth !== "fill";
+  // Fitted, the column is never narrower than its content — the buttons' one line — so a narrow row shrinks the board instead.
+  const movesTrack = !fitted
+    ? "minmax(0, 1fr)"
+    : movesWidth === "fill"
+      ? "minmax(min-content, 1fr)"
+      : movesWidth === "board"
+        ? `minmax(min-content, ${BOARD_COLUMN_PX}px)`
+        : `fit-content(${MOVES_FIT_MAX_PX}px)`;
   const rows = useMemo(() => (columns ? excerptRows(tree.startFen, list) : []), [columns, tree, list]);
   const movesRef = useRef<HTMLDivElement>(null);
 
@@ -210,10 +278,7 @@ function ExcerptBoard({
   // The position's own comments — the move's, or the game's opening one at its start.
   const comments: readonly string[] = node === undefined ? (tree.comments ?? []) : (node.comments ?? []);
   // What they say, the commands (`[%cal]`, `[%eval]`, `prc:` …) taken out.
-  const comment = comments
-    .flatMap((raw) => readComment(raw).paragraphs)
-    .filter((text) => text.trim() !== "")
-    .join("\n\n");
+  const comment = commentWords(comments);
   const drawing = shapesOf(drawShapes ? comments : []);
   const drawn = drawsShapes(drawing);
 
@@ -304,10 +369,22 @@ function ExcerptBoard({
     </Box>
   );
 
+  const commentKey = (item: Extract<ExcerptToken, { kind: "comment" }>) => `c-${item.node?.id ?? "start"}${item.before ? "-before" : ""}`;
+
   const renderTokens = (items: readonly ExcerptToken[]): ReactNode[] =>
     items.map((item) =>
       item.kind === "variation" ? (
         variationRun(item.tokens, false)
+      ) : item.kind === "comment" ? (
+        <Typography
+          key={commentKey(item)}
+          component="span"
+          variant="body2"
+          data-testid={`${testId}-inline-comment`}
+          sx={{ whiteSpace: "pre-line", marginInline: 0.5 }}
+        >
+          {item.text}
+        </Typography>
       ) : (
         <Box key={item.node.id} component="span" sx={{ display: "inline-flex", alignItems: "center" }}>
           {item.label !== "" && <MoveNumber aria-hidden>{item.label}</MoveNumber>}
@@ -317,10 +394,75 @@ function ExcerptBoard({
     );
 
   /** One half of a pair — its move's button, or nothing where the pair has no such move. */
-  const pairCell = (token: (typeof rows)[number]["white"]) =>
-    token === null ? <Box aria-hidden /> : moveButton(token.node, { justifyContent: "flex-start", width: "100%" });
+  const pairCell = (token: (typeof rows)[number]["white"], split = false) =>
+    token === null ? (
+      // A pair a comment split: "…" where its other half stands, on the other row.
+      <Box aria-hidden sx={{ color: "text.secondary", paddingInlineStart: 1 }}>
+        {split ? "…" : null}
+      </Box>
+    ) : (
+      moveButton(token.node, { justifyContent: "flex-start", width: "100%" })
+    );
 
   const onScreen = node === undefined ? t("inlinePgn.start") : moveName(tree.startFen, node);
+
+  /** The position on screen, then to the first, back, on, to the last, and flip. */
+  const flip = (
+    <IconAction label={t("inlinePgn.flip")} onClick={() => setOrientation((side) => (side === "white" ? "black" : "white"))} testId={`${testId}-flip`}>
+      <SwapVertRoundedIcon fontSize="small" />
+    </IconAction>
+  );
+  const steps = (
+    <>
+      <IconAction label={t("inlinePgn.first")} disabled={nodeId === window.fromId} onClick={() => goTo(window.fromId)} testId={`${testId}-first`}>
+        <FirstPageRoundedIcon fontSize="small" />
+      </IconAction>
+      <IconAction
+        label={t("inlinePgn.back")}
+        disabled={parentId === undefined || !reachable(parentId)}
+        onClick={() => parentId !== undefined && goTo(parentId)}
+        testId={`${testId}-back`}
+      >
+        <NavigateBeforeRoundedIcon fontSize="small" />
+      </IconAction>
+      <IconAction label={t("inlinePgn.next")} disabled={onward.length === 0} onClick={() => goTo(onward[0].id)} testId={`${testId}-next`}>
+        <NavigateNextRoundedIcon fontSize="small" />
+      </IconAction>
+      <IconAction label={t("inlinePgn.last")} disabled={nodeId === window.toId} onClick={() => goTo(window.toId)} testId={`${testId}-last`}>
+        <LastPageRoundedIcon fontSize="small" />
+      </IconAction>
+    </>
+  );
+  const controls = (
+    <Box
+      data-testid={`${testId}-controls`}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 0.5,
+        // By the moves, set off by a thin border; one line always — the moves' column is never narrower than it (`movesTrack`).
+        ...(controlsByMoves ? { flexShrink: 0, border: 1, borderColor: "divider", borderRadius: 1 } : {}),
+      }}
+    >
+      <Typography
+        variant="caption"
+        dir="ltr"
+        aria-live="polite"
+        data-testid={`${testId}-on-screen`}
+        // By the moves, the list marks the move on screen: the words are left to a screen reader.
+        sx={
+          controlsByMoves
+            ? visuallyHidden
+            : { flexGrow: 1, color: "text.secondary", unicodeBidi: "isolate", fontFamily: MONOSPACE_FONT_FAMILY }
+        }
+      >
+        {onScreen}
+      </Typography>
+      {steps}
+      {/* By the moves, the four steps at the start, the flip at the far end. */}
+      {controlsByMoves ? <Box sx={{ marginInlineStart: "auto" }}>{flip}</Box> : flip}
+    </Box>
+  );
 
   return (
     <Box
@@ -329,10 +471,14 @@ function ExcerptBoard({
       data-testid={testId}
       {...keys}
       sx={{
+        // Holds what is read, not seen (`visuallyHidden`, absolutely placed) inside the board — never the page.
+        position: "relative",
         display: "grid",
         gap: 1,
         minWidth: 0,
         mb: 3,
+        // Narrow: from `sm` up, no wider than the board and its moves need — the ring the keys draw round it too.
+        ...(narrow ? { width: { sm: "fit-content" }, maxWidth: "100%" } : {}),
         // The board the keys drive (`useBoardKeys`) is ringed.
         '&:focus': { outline: "none" },
         '&[data-keys-active="true"]': {
@@ -350,49 +496,23 @@ function ExcerptBoard({
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: `minmax(0, ${BOARD_COLUMN_PX}px) minmax(0, 1fr)` },
-          gap: 2,
+          // Below: one column, the board's own width; beside: the board's column, then the moves', from `sm` up.
+          gridTemplateColumns: below
+            ? `minmax(0, ${BOARD_COLUMN_PX}px)`
+            : {
+                xs: "minmax(0, 1fr)",
+                sm: `minmax(0, ${BOARD_COLUMN_PX}px) ${movesTrack}`,
+              },
+          gap: below ? 1 : 2,
           alignItems: "start",
-          // The columns layout's cap reads this grid's width (`COLUMNS_MAX_HEIGHT`).
-          ...(columns ? { containerType: "inline-size" } : {}),
+          // The columns layout's cap reads this grid's width (`COLUMNS_MAX_HEIGHT`). Narrow, only stacked does: from `sm` up
+          // the column is the board's height, and a size container could not be as wide as its content.
+          ...(columns ? { containerType: narrow ? { xs: "inline-size", sm: "normal" } : "inline-size" } : {}),
         }}
       >
         <Box sx={{ display: "grid", gap: 0.5, minWidth: 0 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Typography
-              variant="caption"
-              dir="ltr"
-              aria-live="polite"
-              data-testid={`${testId}-on-screen`}
-              sx={{ flexGrow: 1, color: "text.secondary", unicodeBidi: "isolate", fontFamily: MONOSPACE_FONT_FAMILY }}
-            >
-              {onScreen}
-            </Typography>
-            <IconAction label={t("inlinePgn.first")} disabled={nodeId === window.fromId} onClick={() => goTo(window.fromId)} testId={`${testId}-first`}>
-              <FirstPageRoundedIcon fontSize="small" />
-            </IconAction>
-            <IconAction
-              label={t("inlinePgn.back")}
-              disabled={parentId === undefined || !reachable(parentId)}
-              onClick={() => parentId !== undefined && goTo(parentId)}
-              testId={`${testId}-back`}
-            >
-              <NavigateBeforeRoundedIcon fontSize="small" />
-            </IconAction>
-            <IconAction label={t("inlinePgn.next")} disabled={onward.length === 0} onClick={() => goTo(onward[0].id)} testId={`${testId}-next`}>
-              <NavigateNextRoundedIcon fontSize="small" />
-            </IconAction>
-            <IconAction label={t("inlinePgn.last")} disabled={nodeId === window.toId} onClick={() => goTo(window.toId)} testId={`${testId}-last`}>
-              <LastPageRoundedIcon fontSize="small" />
-            </IconAction>
-            <IconAction
-              label={t("inlinePgn.flip")}
-              onClick={() => setOrientation((side) => (side === "white" ? "black" : "white"))}
-              testId={`${testId}-flip`}
-            >
-              <SwapVertRoundedIcon fontSize="small" />
-            </IconAction>
-          </Box>
+          {gameInfo && <ExcerptGameInfo headers={tree.headers} testId={`${testId}-info`} />}
+          {!controlsByMoves && controls}
           <ForceLTR sx={{ position: "relative", width: "100%", aspectRatio: "1 / 1" }}>
             <Chessboard options={options} />
             {drawn && <ShapeCircles circles={drawing.circles} orientation={orientation} testId={`${testId}-circles`} />}
@@ -402,7 +522,17 @@ function ExcerptBoard({
           </ForceLTR>
         </Box>
 
-        <Box sx={{ display: "grid", gap: 1, minWidth: 0 }}>
+        <Box
+          sx={
+            fitted
+              ? // Adds no height of its own from `sm` up (`height: 0`), and takes the row's — the board column's (`minHeight: 100%`).
+                // No `minWidth: 0`: the grid may not squeeze it below its buttons' one line.
+                { display: "flex", flexDirection: "column", gap: 1, height: { sm: 0 }, minHeight: { sm: "100%" } }
+              : { display: "grid", gap: 1, minWidth: 0 }
+          }
+        >
+          {/* Under the board, the buttons stand between it and the moves; beside it, under the moves. */}
+          {controlsByMoves && below && controls}
           {columns ? (
             <Box
               ref={movesRef}
@@ -410,6 +540,7 @@ function ExcerptBoard({
               aria-label={t("inlinePgn.moves")}
               data-testid={`${testId}-moves`}
               data-layout="columns"
+              data-placement={movesPlacement}
               sx={{
                 display: "grid",
                 // Number, White, Black — a side line's run spans all three, under the pair it answers.
@@ -417,18 +548,32 @@ function ExcerptBoard({
                 alignItems: "center",
                 alignContent: "start",
                 columnGap: 0.5,
-                maxHeight: COLUMNS_MAX_HEIGHT,
+                maxHeight: below ? BELOW_MAX_HEIGHTS[movesHeight] : fitted ? { xs: COLUMNS_MAX_HEIGHT.xs, sm: "none" } : COLUMNS_MAX_HEIGHT,
                 overflowY: "auto",
+                // Fitted, the list gives way to the buttons and the comment, never the other way.
+                ...(fitted ? { flex: "0 1 auto", minHeight: 0 } : {}),
               }}
             >
-              {rows.map((row) => (
-                <Fragment key={row.number}>
-                  <MoveNumber aria-hidden dir="ltr" sx={{ textAlign: "end", paddingInlineEnd: 0.5 }}>
-                    {row.number}.
-                  </MoveNumber>
-                  {pairCell(row.white)}
-                  {pairCell(row.black)}
-                  {row.variations.map((variation) => variationRun(variation.tokens, true))}
+              {rows.map((row, index) => (
+                <Fragment key={`${row.number}-${index}`}>
+                  {(row.white !== null || row.black !== null) && (
+                    <>
+                      <MoveNumber aria-hidden dir="ltr" sx={{ textAlign: "end", paddingInlineEnd: 0.5 }}>
+                        {row.number}.
+                      </MoveNumber>
+                      {pairCell(row.white, rows[index - 1]?.number === row.number)}
+                      {pairCell(row.black, rows[index + 1]?.number === row.number)}
+                    </>
+                  )}
+                  {row.notes.map((note) =>
+                    note.kind === "variation" ? (
+                      variationRun(note.tokens, true)
+                    ) : (
+                      <Typography key={commentKey(note)} variant="body2" data-testid={`${testId}-inline-comment`} sx={commentRowSx}>
+                        {note.text}
+                      </Typography>
+                    ),
+                  )}
                 </Fragment>
               ))}
             </Box>
@@ -442,11 +587,18 @@ function ExcerptBoard({
               {renderTokens(list)}
             </Box>
           )}
-          {showComments && comment !== "" && (
+          {controlsByMoves && !below && controls}
+          {showComments && !inlineComments && comment !== "" && (
             <Typography
               variant="body2"
               data-testid={`${testId}-comment`}
-              sx={{ borderInlineStart: 3, borderColor: "divider", paddingInlineStart: 1.5, whiteSpace: "pre-line" }}
+              sx={{
+                borderInlineStart: 3,
+                borderColor: "divider",
+                paddingInlineStart: 1.5,
+                whiteSpace: "pre-line",
+                ...(fitted ? { flexShrink: 0, maxHeight: "40%", overflowY: "auto" } : {}),
+              }}
             >
               {comment}
             </Typography>

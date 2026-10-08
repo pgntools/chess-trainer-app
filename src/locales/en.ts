@@ -176,6 +176,8 @@ const en = {
     last: "To the last move shown",
     flip: "Flip the board",
     unreadable: "This game's PGN does not read.",
+    white: "White",
+    black: "Black",
   },
   demoBoard: {
     reset: "Back to the start",

@@ -279,6 +279,17 @@ describe("savedAnalysisCatalogOf — so ?game= already worked", () => {
 
     expect(catalog.games.map((entry) => entry.id)).toEqual(["a2"]);
   });
+
+  it("reads a record as the board does — two comments in a row, as a lichess study writes them", () => {
+    const pgn =
+      '[FEN "8/8/8/4k3/3r4/3K4/6Q1/8 w - - 1 1"]\n[SetUp "1"]\n\n' +
+      "{ A rule of thumb. } { [%csl Gd4] }\n1. Ke3 { From the tablebase. } { [%cal Bg2e4] } 1... Rd5 (1... Ke6 2. Qg6+) 2. Qg6 *";
+    const catalog = savedAnalysisCatalogOf([save(grow([[[], ["e4"]]]), [], { id: "study", pgn })]);
+
+    expect(catalog.games.map((entry) => entry.id)).toEqual(["study"]);
+    expect(catalog.games[0].game.moves.map((move) => move.san)).toEqual(["Ke3", "Rd5", "Qg6"]);
+    expect(catalog.games[0].game.headers.FEN).toBe("8/8/8/4k3/3r4/3K4/6Q1/8 w - - 1 1");
+  });
 });
 
 describe("a saved analysis' name and folder (CTA-73)", () => {
