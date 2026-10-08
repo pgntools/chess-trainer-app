@@ -90,8 +90,6 @@ export const SOURCE_WORDS: Readonly<Record<SourceKind, string>> = {
 /** The one-game boards' sample: the Blog's game, written in. */
 const INLINE_GAME = { file: "writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn", inline: rubinsteinCapablanca } as const;
 
-/** What every board that shows one stored game reads. */
-const ONE_GAME: readonly SourceKind[] = ["libraryGame", "analysis", "playedGame"];
 /** What every tournament table reads. */
 const TABLE: readonly SourceKind[] = ["pgn", "collection"];
 
@@ -151,15 +149,6 @@ export const GALLERY: readonly GalleryFolder[] = [
           target?.kind === "address" && target.address.kind === "collection"
             ? `<InlinePgnGame2colV ${sourceProp(target)} game="1" />`
             : `<InlinePgnGame2colV ${sourceProp(target, "game")} />`,
-      },
-      {
-        id: "stored-game-embed",
-        component: "StoredGameEmbed",
-        label: "A stored game",
-        summary: "One stored game on a board, its players over it, with a link to open it — a Library game, a saved analysis, a played game",
-        reads: ONE_GAME,
-        sample: { address: "/library/capablanca/2" },
-        markup: (target) => `<StoredGameEmbed ${sourceProp(target)} />`,
       },
     ],
   },
@@ -310,7 +299,7 @@ export const GALLERY: readonly GalleryFolder[] = [
         markup: (target) => {
           if (target?.kind !== "address") return `<BoardRow>\n${[1, 2].map((game) => `  <InlinePgnGame pgn={${pgnOf(target)}} game="${game}" />`).join("\n")}\n</BoardRow>`;
           const { collection, number = 1 } = libraryOf(target);
-          return `<BoardRow>\n${[0, 1].map((step) => `  <StoredGameEmbed src="/library/${collection}/${number + step}" />`).join("\n")}\n</BoardRow>`;
+          return `<BoardRow>\n${[0, 1].map((step) => `  <InlinePgnGame2colV src="/library/${collection}/${number + step}" />`).join("\n")}\n</BoardRow>`;
         },
       },
     ],

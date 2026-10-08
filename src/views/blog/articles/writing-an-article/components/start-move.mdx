@@ -4,12 +4,12 @@ summary: The forms startMove takes — White's move, Black's move, a line of mov
 order: 20
 ---
 
-`startMove` is where a board opens. Every board on these pages takes it: `<CollectionGameBoard>`, `<RepertoireBoard>`, `<CollectionCard>` and `<StoredGameEmbed>`.
+`startMove` is where a board opens. `<RepertoireBoard>` and `<CollectionCard>` take it; a game's board — `<InlinePgnGame>`, `<InlinePgnGame2colH>`, `<InlinePgnGame2colV>` — calls it `start`, and reads it the same way.
 
 <BoardRow>
-  <CollectionGameBoard game="/library/capablanca/2" startMove="4" />
-  <CollectionGameBoard game="/library/capablanca/3" startMove="4..." />
-  <CollectionGameBoard game="/library/fischer/891" startMove="1. c4 c5 2. Nc3" />
+  <InlinePgnGame2colV src="/library/capablanca/2" start="4" />
+  <InlinePgnGame2colV src="/library/capablanca/3" start="4..." />
+  <InlinePgnGame2colV src="/library/fischer/891" start="1. c4 c5 2. Nc3" />
 </BoardRow>
 
 ## The forms it takes
@@ -19,9 +19,9 @@ order: 20
 - Absent, or words it cannot read: the start.
 
 ```mdx
-<CollectionGameBoard game="/library/capablanca/2" startMove="4" />
-<CollectionGameBoard game="/library/capablanca/3" startMove="4..." />
-<CollectionGameBoard game="/library/fischer/891" startMove="1. c4 c5 2. Nc3" />
+<InlinePgnGame2colV src="/library/capablanca/2" start="4" />
+<InlinePgnGame2colV src="/library/capablanca/3" start="4..." />
+<InlinePgnGame2colV src="/library/fischer/891" start="1. c4 c5 2. Nc3" />
 ```
 
 The board's "Back to the start" goes to the game's own start, wherever it opened.
@@ -31,9 +31,9 @@ The board's "Back to the start" goes to the game's own start, wherever it opened
 An arrow on the board gives the next move away. For a position the reader should think about first, `showNextMoveArrow={false}` leaves the arrows off; the move is still in the list under the board.
 
 <BoardRow columns={2}>
-  <CollectionGameBoard game="/library/capablanca/4" startMove="5" showNextMoveArrow={false} />
+  <InlinePgnGame2colV src="/library/capablanca/4" start="5" showNextMoveArrow={false} />
 </BoardRow>
 
 ```mdx
-<CollectionGameBoard game="/library/capablanca/4" startMove="5" showNextMoveArrow={false} />
+<InlinePgnGame2colV src="/library/capablanca/4" start="5" showNextMoveArrow={false} />
 ```

@@ -94,9 +94,9 @@ describe("the Blog's tree", () => {
       "writing-an-article/inline-pgn",
       "writing-an-article/demo-tables",
     ]);
-    expect(blogArticleCount("writing-an-article/components")).toBe(7);
+    expect(blogArticleCount("writing-an-article/components")).toBe(6);
     expect(blogArticleCount("writing-an-article/demo-tables")).toBe(11);
-    expect(blogArticleCount("writing-an-article")).toBe(26);
+    expect(blogArticleCount("writing-an-article")).toBe(25);
     expect(blogFolderContents("tournaments").folders).toEqual([]);
     expect(blogArticleCount("tournaments")).toBe(4);
   });
@@ -108,7 +108,6 @@ describe("the Blog's tree", () => {
       "writing-an-article/components/repertoires-2col",
       "writing-an-article/components/collection-wide-view-1",
       "writing-an-article/components/collection-wide-view-2",
-      "writing-an-article/components/stored-game-embed",
       "writing-an-article/components/nav-cards",
     ]);
     expect(pathsIn("writing-an-article/inline-pgn")).toEqual([

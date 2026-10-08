@@ -56,7 +56,6 @@ const byTestId = (id: string) => (page: Page) => page.getByTestId(id);
 export const BLOG_SAMPLE: readonly string[] = [
   "get-started", // the front page: Library games, repertoires, a collection's card, the screens' cards
   "writing-an-article/guide", // prose and markup
-  "writing-an-article/components/stored-game-embed",
   "writing-an-article/inline-pgn/the-component",
   "writing-an-article/inline-pgn/arrows-and-circles", // the theme's drawing brushes
   "tournaments/olympiad-2026", // a team event's standings, flags
@@ -71,12 +70,9 @@ export const BLOG_SAMPLE: readonly string[] = [
 /** What shows an article has its data — the test id of an embed it draws once it has read it. */
 export const BLOG_READY: Readonly<Record<string, string>> = {
   "get-started": "home-game-library-fischer-52",
-  "writing-an-article/components/game-boards-3col": "home-game-library-capablanca-442",
-  "writing-an-article/components/start-move": "home-game-library-fischer-891",
   "writing-an-article/components/repertoires-2col": "home-repertoire-sample-caro-kann-black",
   "writing-an-article/components/collection-wide-view-1": "home-game-library-fischer-52",
   "writing-an-article/components/collection-wide-view-2": "home-game-library-capablanca-442",
-  "writing-an-article/components/stored-game-embed": "home-game-library-capablanca-1",
   "tournaments/olympiad-2026": "tournament-team-standings-46th-olympiad-women-2026",
   "tournaments/fide-candidates-2026": "tournament-crosstable-fide-candidates-2026",
   "tournaments/werner-obermeyer-swiss-2026": "tournament-standings-20th-werner-obermeyer",

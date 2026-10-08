@@ -97,7 +97,7 @@ const en = {
   },
   /** The index screen — a landing page linking out to the real screens. */
   home: {
-    /** The front page's embedded stored games (CTA-126) — `<CollectionGameBoard>`, `<StoredGameEmbed>`. */
+    /** An embedded game's board (CTA-126) — `<CollectionCard>`'s, and `<InlinePgnGame src>` reading one. */
     embed: {
       loading: "Loading the game…",
       missing: "The game this page embeds is not here.",

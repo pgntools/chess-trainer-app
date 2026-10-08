@@ -5,17 +5,17 @@ import { MemoryRouter } from "react-router";
 
 import i18n from "../../../i18n";
 import { boardOptions } from "../../board/boardTestHarness";
-import { StoredGameEmbed } from "./StoredGameEmbed";
+import { CollectionCardBoard } from "./CollectionCardBoard";
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../../board/boardTestHarness");
   return reactChessboardMock();
 });
 
-const renderEmbed = (reference: string, startMove?: string) =>
+const renderEmbed = (collection: string, game: number, startMove?: string) =>
   render(
     <MemoryRouter>
-      <StoredGameEmbed reference={reference} startMove={startMove} />
+      <CollectionCardBoard collection={collection} game={game} startMove={startMove} />
     </MemoryRouter>,
   );
 
@@ -23,10 +23,10 @@ beforeEach(async () => {
   await i18n.changeLanguage("en");
 });
 
-describe("the front page's stored-game embed (CTA-126)", () => {
+describe("<CollectionCard>'s board (CTA-126)", () => {
   it("reads a Library game as the Analysis Board does, and shows it to step through", async () => {
     const user = userEvent.setup();
-    renderEmbed("library/capablanca/1");
+    renderEmbed("capablanca", 1);
 
     expect(await screen.findByTestId("home-game-library-capablanca-1-players")).toHaveTextContent(
       "Capablanca, Jose – Eschevarria, C. 1-0",
@@ -41,27 +41,24 @@ describe("the front page's stored-game embed (CTA-126)", () => {
   });
 
   it("opens at its startMove", async () => {
-    renderEmbed("library/capablanca/1", "2...");
+    renderEmbed("capablanca", 1, "2...");
     expect(await screen.findByTestId("home-game-library-capablanca-1-board-line")).toHaveTextContent(
       "1. e4 e5 2. Nf3 Nc6",
     );
   });
 
   it("opens the same reference on the Analysis Board", async () => {
-    renderEmbed("library/capablanca/1");
+    renderEmbed("capablanca", 1);
     expect(await screen.findByRole("link", { name: "Open on the Analysis Board" })).toHaveAttribute(
       "href",
       "/tools/analysis?game=library%2Fcapablanca%2F1",
     );
   });
 
-  it.each([
-    ["a Library game that is not there", "library/capablanca/99999"],
-    ["a saved analysis the reader does not have", "analysis/saved/nope"],
-    ["an unknown store", "nowhere/at/all"],
-  ])("says so, in place of a board, for %s", async (_, reference) => {
-    renderEmbed(reference);
+  it("says so, in place of a board, for a Library game that is not there", async () => {
+    renderEmbed("capablanca", 99999);
     expect(await screen.findByText("The game this page embeds is not here.")).toBeInTheDocument();
+    expect(screen.getByText("/library/capablanca/99999")).toBeInTheDocument();
     expect(screen.queryByTestId("board")).not.toBeInTheDocument();
   });
 });

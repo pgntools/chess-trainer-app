@@ -98,15 +98,6 @@ export const CATALOG: readonly CatalogFolder[] = [
           return game === undefined ? undefined : `<InlinePgnGame2colV src="${gamePath(game.collection, game.number)}" caption="…" />`;
         },
       },
-      {
-        id: "single-board",
-        label: "The game on a board",
-        summary: "The Library game on a board, its players over it, with a link to open it",
-        code: (source) => {
-          const game = oneGameOf(source);
-          return game === undefined ? undefined : `<StoredGameEmbed src="${gamePath(game.collection, game.number)}" startMove="1" />`;
-        },
-      },
     ],
   },
   {
@@ -143,7 +134,7 @@ export const CATALOG: readonly CatalogFolder[] = [
           const name = pgnOf(source);
           if (name !== undefined) return `<BoardRow>\n${[1, 2, 3].map((game) => `  <InlinePgnGame pgn={${name}} game="${game}" />`).join("\n")}\n</BoardRow>`;
           const { collection, number = 1 } = libraryOf(source) ?? { collection: "" };
-          return `<BoardRow>\n${[0, 1, 2].map((step) => `  <StoredGameEmbed src="${gamePath(collection, number + step)}" />`).join("\n")}\n</BoardRow>`;
+          return `<BoardRow>\n${[0, 1, 2].map((step) => `  <InlinePgnGame2colV src="${gamePath(collection, number + step)}" />`).join("\n")}\n</BoardRow>`;
         },
       },
       {

@@ -82,7 +82,7 @@ describe("the Blog's index (CTA-126)", () => {
     const writing = screen.getByRole("link", { name: "Open Writing an article" });
     expect(writing).toHaveAttribute("href", "/blog/writing-an-article");
     // Every article under it, its sub-folders' too: the guide, the fixture draft (listed as in yarn dev), and the components', games' and tables' demos.
-    expect(screen.getByText("26 articles")).toBeInTheDocument();
+    expect(screen.getByText("25 articles")).toBeInTheDocument();
     // A folder's summary, from its index.mdx (CTA-135).
     expect(screen.getByText("How an article is written, and every component it may embed shown at work.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Tournaments" })).toBeInTheDocument();
@@ -267,9 +267,9 @@ describe("an article's boards under Hebrew, with no shell ForceLTR (CTA-130)", (
   /*
     An article is the shell's full body, which mirrors with the app: nothing
     above a board pins it left to right any more. Every board an article
-    embeds is one of two — `DemoBoard` (`<CollectionGameBoard>`,
-    `<RepertoireBoard>`, `<CollectionCard>`, `<StoredGameEmbed>`) or
-    `ExcerptBoard` (`<InlinePgnGame>`) — and each pins itself. Rendered here
+    embeds is one of two — `DemoBoard` (`<RepertoireBoard>`,
+    `<CollectionCard>`) or `ExcerptBoard` (`<InlinePgnGame>` and its
+    two-column forms) — and each pins itself. Rendered here
     straight into the article column, as a translated article's document
     would be (an untranslated one sits in `ArticleBody`'s own `ForceLTR`).
   */

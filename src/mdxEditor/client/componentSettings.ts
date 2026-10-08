@@ -156,8 +156,6 @@ export const SETTINGS: Readonly<Record<string, readonly SettingField[]>> = {
   InlinePgnGame2colH: INLINE_PGN_GAME_2COL_H,
   InlinePgnGame2colV: INLINE_PGN_GAME_2COL_V,
   InlinePgnGameColumns: INLINE_PGN_GAME_2COL_H,
-  CollectionGameBoard: [startMove, nextMoveArrows],
-  StoredGameEmbed: [startMove, nextMoveArrows],
   CollectionCard: [
     { prop: "showGame", kind: "number", label: "The game on the board", placeholder: "1", help: "Its number in the collection." },
     { prop: "rows", kind: "number", label: "Rows in its table", placeholder: "8" },

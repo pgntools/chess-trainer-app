@@ -21,8 +21,8 @@ Type on the left: **Markdown**, and the article components by name — no \`impo
 <CollectionTournamentTable _id="/library/candidates2026" format="roundRobin" />
 
 <BoardRow>
-  <CollectionGameBoard game="/library/fischer/50" startMove="17" />
-  <CollectionGameBoard game="/library/capablanca/442" startMove="8" />
+  <InlinePgnGame2colV src="/library/fischer/50" start="17" />
+  <InlinePgnGame2colV src="/library/capablanca/442" start="8" />
 </BoardRow>
 
 ## A game of the article's own

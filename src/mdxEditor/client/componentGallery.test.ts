@@ -44,7 +44,7 @@ describe("the gallery's index", () => {
     const ids = [...GALLERY.map((folder) => folder.id), ...entries.map((entry) => entry.id)];
     expect(new Set(ids).size).toBe(ids.length);
     const boards = GALLERY.find((folder) => folder.id === "boards")?.entries.map((entry) => entry.component);
-    expect(boards).toEqual(["InlinePgnGame", "InlinePgnGame2colH", "InlinePgnGame2colV", "StoredGameEmbed"]);
+    expect(boards).toEqual(["InlinePgnGame", "InlinePgnGame2colH", "InlinePgnGame2colV"]);
   });
 
   it("opens every entry that reads a game on a shipped sample that fits it", () => {
@@ -93,15 +93,15 @@ describe("the gallery's index", () => {
   });
 
   it("says when a source does not fit — the wrong kind of source, or games of another kind of tournament", () => {
-    const stored = entries.find((entry) => entry.id === "stored-game-embed");
+    const card = entries.find((entry) => entry.id === "collection-card");
     const swiss = entries.find((entry) => entry.id === "swiss-standings");
-    if (stored === undefined || swiss === undefined) throw new Error("missing entries");
+    if (card === undefined || swiss === undefined) throw new Error("missing entries");
     const tal = { kind: "address", address: { kind: "collection", collection: "tal" } } as const;
     expect(sourceKindOf(tal)).toBe("collection");
-    expect(misfitOf(stored, tal)).toBe(
-      "<StoredGameEmbed> does not read a whole Library collection: it reads one Library game, /library/<collection>/<n> or a saved analysis, /tools/analysis?analysis=<id> or a game played against the engine, /engine/play?saved=<id>.",
+    expect(misfitOf(card, { kind: "address", address: { kind: "analysis", id: "a1" } })).toBe(
+      "<CollectionCard> does not read a saved analysis: it reads a whole Library collection, /library/<collection> or one Library game, /library/<collection>/<n>.",
     );
-    expect(misfitOf(stored, { kind: "pasted", text: "1. e4 *" })).toMatch(/^<StoredGameEmbed> does not read a PGN/);
+    expect(misfitOf(card, { kind: "pasted", text: "1. e4 *" })).toMatch(/^<CollectionCard> does not read a PGN/);
     // A table reads a PGN or a collection alike — one component, any source.
     expect(misfitOf(swiss, tal)).toBeUndefined();
     expect(misfitOf(swiss, { kind: "address", address: { kind: "repertoire", id: "r" } })).toBe(
@@ -127,7 +127,7 @@ describe("the gallery's index", () => {
     expect(snippetOf(byId("double-elimination-bracket"), address("/library/esportsplayin2026"))).toBe('<KnockoutBracket src="/library/esportsplayin2026" losersFromRound="51" />');
     expect(snippetOf(byId("inline-pgn-game"), address("/repertoires/r7"))).toBe('<InlinePgnGame src="/repertoires/r7" />');
     expect(snippetOf(byId("inline-pgn-game"), address("/library/tal"))).toBe('<InlinePgnGame src="/library/tal" game="1" />');
-    expect(snippetOf(byId("stored-game-embed"), address("/tools/analysis?analysis=a1"))).toBe('<StoredGameEmbed src="/tools/analysis?analysis=a1" />');
+    expect(snippetOf(byId("inline-pgn-game-2col-v"), address("/tools/analysis?analysis=a1"))).toBe('<InlinePgnGame2colV src="/tools/analysis?analysis=a1" />');
   });
 
   it("offers as built-in examples only what fits: the entry's own first, then the Blog's PGNs or the shipped collections", () => {
@@ -144,7 +144,6 @@ describe("the gallery's index", () => {
       ["inline:writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn", "pasted"],
       ["tournaments/chned26.pgn", "file"],
     ]);
-    expect(byId("stored-game-embed").map((example) => example.id)).toEqual(["/library/capablanca/2", "/library/tal/1", "/library/capablanca/1"]);
     // A table: the Blog's PGNs and the shipped collections both.
     expect(byId("swiss-standings").map((example) => example.id)).toEqual(["tournaments/20th-werner-obermeyer-swiss-5r.pgn", "tournaments/chned26.pgn", "/library/tal", "/library/capablanca"]);
     expect(byId("collection-card").map((example) => example.label)).toEqual(["Capablanca — /library/capablanca (the default)", "Tal — /library/tal"]);
@@ -160,9 +159,9 @@ describe("the gallery's index", () => {
       if (entry === undefined) throw new Error(`no ${id}`);
       return entry;
     };
-    for (const id of ["swiss-standings", "team-standings", "inline-pgn-game", "collection-card", "stored-game-embed"]) expect(libraryEntryFor(byId(id))?.id).toBe(id);
+    for (const id of ["swiss-standings", "team-standings", "inline-pgn-game", "collection-card"]) expect(libraryEntryFor(byId(id))?.id).toBe(id);
     expect(libraryEntryFor(byId("puzzle-board"))).toBeUndefined();
-    expect(collectionSourceFor(byId("stored-game-embed"), "u1")).toEqual({ kind: "address", address: { kind: "libraryGame", collection: "u1", number: 1 } });
+    expect(collectionSourceFor({ ...byId("collection-card"), reads: ["libraryGame"] }, "u1")).toEqual({ kind: "address", address: { kind: "libraryGame", collection: "u1", number: 1 } });
     expect(collectionSourceFor(byId("swiss-standings"), "u1")).toEqual({ kind: "address", address: { kind: "collection", collection: "u1" } });
   });
 });

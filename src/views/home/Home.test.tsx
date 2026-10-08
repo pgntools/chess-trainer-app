@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 
@@ -37,10 +37,9 @@ beforeEach(async () => {
 
 /** Every embed on the English page has read what it shows. */
 const settled = async () => {
+  // The three games: each a board once its game is read.
+  await waitFor(() => expect(within(screen.getAllByTestId("home-board-row")[0]).getAllByTestId("board")).toHaveLength(3));
   for (const id of [
-    "home-game-library-fischer-50",
-    "home-game-library-fischer-908",
-    "home-game-library-capablanca-442",
     "home-repertoire-sample-e4-white",
     "home-repertoire-sample-caro-kann-black",
     "home-game-library-fischer-52",
@@ -90,17 +89,15 @@ describe("the front page — one MDX article (CTA-126)", () => {
     expect(rows.map((row) => within(row).getAllByTestId("board").length)).toEqual([3, 2, 1]);
 
     const ids = screen.getAllByTestId("board").map((board) => board.getAttribute("data-board-id"));
-    expect(ids).toEqual([
-      "front-page-game-library-fischer-50",
-      "front-page-game-library-fischer-908",
-      "front-page-game-library-capablanca-442",
-      "front-page-repertoire-sample-e4-white",
-      "front-page-repertoire-sample-caro-kann-black",
-      "front-page-game-library-fischer-52",
-    ]);
+    // The games' boards each an id of their own instance's; the rest by what they show.
+    expect(new Set(ids.slice(0, 3)).size).toBe(3);
+    for (const id of ids.slice(0, 3)) expect(id).toMatch(/^inline-pgn-board-/);
+    expect(ids.slice(3)).toEqual(["front-page-repertoire-sample-e4-white", "front-page-repertoire-sample-caro-kann-black", "front-page-game-library-fischer-52"]);
     // The Game of the Century, just before 17... Be6.
-    expect(screen.getByTestId("home-game-library-fischer-50-players")).toHaveTextContent("Fischer, R.");
-    expect(within(screen.getByTestId("home-game-library-fischer-50")).getByRole("button", { name: "Be6" })).toBeInTheDocument();
+    const [century] = screen.getAllByRole("group", { name: /^The game, from / });
+    expect(century).toHaveTextContent("Fischer, R.");
+    expect(within(century).getByRole("button", { name: "17. Kf1" })).toHaveAttribute("aria-current", "true");
+    expect(within(century).getByRole("button", { name: "17... Be6" })).toBeInTheDocument();
     // The placeholder repertoires are on no device: their samples stand in.
     expect(screen.getAllByText("A sample repertoire that comes with the app")).toHaveLength(2);
     expect(screen.getByRole("region", { name: "Fischer" })).toBeInTheDocument();

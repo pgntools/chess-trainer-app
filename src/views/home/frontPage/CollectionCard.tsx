@@ -11,11 +11,10 @@ import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { IconAction } from "../../../design-system/components/toolbars";
 import { DataTable, type DataTableColumn } from "../../../design-system/patterns/tables";
-import { libraryGameReference } from "../../../lib/gameReference";
 import type { CollectionRow } from "../../../lib/libraryCollections";
 import { useCollectionRows } from "../../library/useLibraryCollections";
+import { CollectionCardBoard } from "./CollectionCardBoard";
 import { collectionPathOf } from "./paths";
-import { StoredGameEmbed } from "./StoredGameEmbed";
 
 /**
  * **A Library collection on the front page** (CTA-126) —
@@ -143,9 +142,10 @@ export function CollectionCard({ _id, showGame, startMove, rows: rowsPerPage, sh
           alignItems: "start",
         }}
       >
-        <StoredGameEmbed
+        <CollectionCardBoard
           key={game}
-          reference={libraryGameReference(summary.id, game)}
+          collection={summary.id}
+          game={game}
           startMove={picked ? undefined : startMove}
           showNextMoveArrow={showNextMoveArrow}
         />

@@ -7,80 +7,52 @@ import Typography from "@mui/material/Typography";
 
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { demoTreeOfGameTree, startLineOf } from "../../../lib/demoTree";
-import {
-  isAnalysisReference,
-  isReferenceRead,
-  loadReferencedGames,
-  resolveGameReference,
-} from "../../../lib/gameReference";
+import { isReferenceRead, libraryGameReference, loadReferencedGames, resolveGameReference } from "../../../lib/gameReference";
 import { gameTag } from "../../../lib/gameModel";
 import { parsePgnTree } from "../../../lib/pgn";
-import { gameReferenceOf, sourceAddressOf } from "../../../lib/embedSource";
 import { slugify } from "../../../lib/pgnText";
-import { loadSavedAnalyses, savedAnalysesSnapshot } from "../../../lib/savedAnalysisStore";
 import DemoBoard from "../../shared/DemoBoard";
 
 /**
- * **A real stored game, embedded in the front page** (CTA-126) —
- * `<StoredGameEmbed reference="…" />`, where `reference` is a `?game=`
- * reference (`lib/gameReference.ts`): `library/<collection>/<n>` for a Library
- * game, `analysis/saved/<id>` for a saved analysis, `play/games/<id>` for a
- * game against the engine. The embed resolves it **exactly as the Analysis
- * Board does** — it waits for the store's read, then looks the game up — and
- * shows it on a `DemoBoard` the reader steps through, under its players and
- * event, with a link that opens the same reference on the Analysis Board.
+ * **`<CollectionCard>`'s board** (CTA-126) — one Library game, read by its
+ * `?game=` reference (`library/<collection>/<n>`, `lib/gameReference.ts`)
+ * **exactly as the Analysis Board reads it** — it waits for the
+ * collection's read, then looks the game up — and shown on a `DemoBoard`
+ * the reader steps through, under its players and event, with a link that
+ * opens the same reference on the Analysis Board. Not an embed of its own:
+ * an article shows one game with `<InlinePgnGame src="/library/<c>/<n>">`.
  *
- * A reference that names nothing (a reader without that record, a mistyped
- * one) says so in place of the board; nothing else on the page waits for it.
- * A Library game reads its collection's PGN chunk on the first visit — the
- * Library's own lazy load (`lib/shippedCollections.ts`), fetched once.
+ * A game that is not there (an uploaded collection on another device) says
+ * so in place of the board. A shipped collection's game reads its PGN chunk
+ * on the first visit — the Library's own lazy load
+ * (`lib/shippedCollections.ts`), fetched once.
  *
  * `startMove` is where the board opens (`startLineOf`: `"17"` after White's
  * 17th move, `"17..."` after Black's, or a line of SAN). The board's id and
- * test ids come from the reference, so a page embeds each game once.
- * `<CollectionGameBoard>` is this, addressed by a Library game's path.
+ * test ids come from the reference.
  */
 
-type StoredGameEmbedProps = {
-  /** A `?game=` reference — `library/capablanca/1`. */
-  reference?: string;
-  /**
-   * Or the game's app path (CTA-140, `lib/embedSource.ts`) — a Library game
-   * (`/library/<c>/<n>`), a saved analysis (`/tools/analysis?analysis=<id>`),
-   * a played game (`/engine/play?saved=<id>`). `reference` wins.
-   */
-  src?: string;
+type CollectionCardBoardProps = {
+  /** The collection's id. */
+  collection: string;
+  /** The game's place in it, 1-based. */
+  game: number;
   /** Where the board opens — a move number (`"17"`, `"17..."`) or a line of SAN. The start when absent. */
   startMove?: string;
-  /** What the "not here" notice names — the reference when absent (`<CollectionGameBoard>` passes its path). */
-  shownAs?: string;
   /** Draw the arrows to the next moves. Default on. */
   showNextMoveArrow?: boolean;
 };
 
-const isRead = (reference: string) =>
-  (!isAnalysisReference(reference) || savedAnalysesSnapshot() !== undefined) && isReferenceRead(reference);
-
-export function StoredGameEmbed({ reference: given, src, startMove, shownAs, showNextMoveArrow }: StoredGameEmbedProps) {
-  const address = given === undefined && src !== undefined ? sourceAddressOf(src) : undefined;
-  // A path that names no stored game resolves to nothing, and says so — by the path it was given.
-  const reference = given ?? (address === undefined ? undefined : gameReferenceOf(address)) ?? `unknown/${src ?? ""}`;
-  return <StoredGame reference={reference} startMove={startMove} shownAs={shownAs ?? src} showNextMoveArrow={showNextMoveArrow} />;
-}
-
-/** The board over a resolved reference. */
-function StoredGame({ reference, startMove, shownAs, showNextMoveArrow }: Omit<StoredGameEmbedProps, "src" | "reference"> & { reference: string }) {
+export function CollectionCardBoard({ collection, game, startMove, showNextMoveArrow }: CollectionCardBoardProps) {
+  const reference = libraryGameReference(collection, game);
   const { t } = useTranslation();
-  const [readReference, setReadReference] = useState<string | null>(() => (isRead(reference) ? reference : null));
+  const [readReference, setReadReference] = useState<string | null>(() => (isReferenceRead(reference) ? reference : null));
   const ready = readReference === reference;
 
   useEffect(() => {
     if (ready) return;
     let live = true;
-    void Promise.all([
-      isAnalysisReference(reference) ? loadSavedAnalyses() : undefined,
-      loadReferencedGames(reference),
-    ]).then(() => {
+    void loadReferencedGames(reference).then(() => {
       if (live) setReadReference(reference);
     });
     return () => {
@@ -112,7 +84,7 @@ function StoredGame({ reference, startMove, shownAs, showNextMoveArrow }: Omit<S
   if (tree === null || root === undefined) {
     return (
       <Box>
-        <InlineAlert severity="info" testId={`${testId}-missing`} detail={shownAs ?? reference}>
+        <InlineAlert severity="info" testId={`${testId}-missing`} detail={`/library/${collection}/${game}`}>
           {t("home.embed.missing")}
         </InlineAlert>
       </Box>

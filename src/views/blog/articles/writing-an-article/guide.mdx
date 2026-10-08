@@ -46,11 +46,9 @@ A folder is a directory. Its `index.mdx` names it — `title`, `summary` and `or
 The components are used by name, with no `import`:
 
 - `<BoardRow>` — embeds side by side;
-- `<CollectionGameBoard game="/library/<c>/<n>" />` — a Library game;
 - `<RepertoireBoard _id="/repertoires/<id>" fallback="e4-white" />` — a repertoire;
 - `<CollectionCard _id="/library/<c>" showGame="1" />` — a collection;
-- `<StoredGameEmbed reference="…" />` — any stored game;
-- `<InlinePgnGame pgn={game} from="5" to="15" start="11" />` — a window of a PGN of your own, as often as you like — see [Games in an article](/blog/writing-an-article/inline-pgn);
+- `<InlinePgnGame pgn={game} from="5" to="15" start="11" />` — a window of a PGN of your own, as often as you like — see [Games in an article](/blog/writing-an-article/inline-pgn); with `src="/library/<c>/<n>"` in place of `pgn`, a Library game (a saved analysis, a played game, a repertoire by its address too);
 - `<SwissStandingsTable pgn={games} />`, `<RoundRobinCrossTable pgn={games} />`, `<KnockoutBracket pgn={games} />`, `<MatchTable pgn={games} />`, `<TeamStandingsTable pgn={games} />` — a tournament's table, from a PGN of its games: a Swiss's standings, a round robin's crosstable, a knockout's bracket (a double elimination's with `losersFromRound`), a match, a team event's standings — see [Demo tables](/blog/writing-an-article/demo-tables), a page per format. A large file goes in as `load={() => import("./event.pgn?raw")}` instead of `pgn={…}`, so it loads on its own, as the [Olympiad](/blog/tournaments/olympiad-2026) does;
 - `<CollectionTournamentTable _id="/library/<c>" />` — a tournament already in the Library, its names and results linked to the games — see [From a Library collection](/blog/writing-an-article/demo-tables/from-a-collection);
 - `<NavCards />` — every screen.

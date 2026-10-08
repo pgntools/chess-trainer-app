@@ -23,7 +23,7 @@ vi.mock("react-chessboard", async () => {
   return reactChessboardMock();
 });
 
-const { RoundRobinCrossTable, KnockoutBracket, SwissStandingsTable, InlinePgnGame, StoredGameEmbed } = mdxComponents as Record<string, (props: Record<string, unknown>) => React.ReactNode>;
+const { RoundRobinCrossTable, KnockoutBracket, SwissStandingsTable, InlinePgnGame } = mdxComponents as Record<string, (props: Record<string, unknown>) => React.ReactNode>;
 
 /** A shipped collection's PGN is read whole: longer than a store's read on a loaded machine. */
 const READ = { timeout: 15_000 };
@@ -103,11 +103,8 @@ describe("a game board, from any source (CTA-140)", () => {
     expect(screen.getByRole("button", { name: "2. Nc3" })).toBeInTheDocument();
   });
 
-  it("says when the game is not here, and a stored game's board reads a path too", async () => {
-    const { unmount } = mount(<InlinePgnGame src="/engine/play?saved=nope" />);
+  it("says when the game is not here", async () => {
+    mount(<InlinePgnGame src="/engine/play?saved=nope" />);
     expect(await screen.findByText("The game this page embeds is not here.")).toBeInTheDocument();
-    unmount();
-    mount(<StoredGameEmbed src="/library/capablanca/1" />);
-    expect(await screen.findByTestId("home-game-library-capablanca-1-players", {}, READ)).toHaveTextContent("Capablanca, Jose – Eschevarria, C. 1-0");
   });
 });

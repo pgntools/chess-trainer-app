@@ -31,8 +31,7 @@ describe("the component examples", () => {
     const codeOf = (source: ExampleSource, id: string) => catalogFor(source).flatMap((folder) => folder.entries).find((entry) => entry.id === id)?.code(source);
     expect(codeOf(pgn, "tournament-swiss")).toContain("pgn={club}");
     expect(codeOf(library, "tournament-swiss")).toBe('<SwissStandingsTable src="/library/cup" density="dense" rowsPerPage="25" />');
-    expect(codeOf(library, "single-board")).toContain('src="/library/cup/7"');
-    expect(codeOf(pgn, "single-board")).toBeUndefined();
+    expect(codeOf(library, "set-row")).toBe('<BoardRow>\n  <InlinePgnGame2colV src="/library/cup/7" />\n  <InlinePgnGame2colV src="/library/cup/8" />\n  <InlinePgnGame2colV src="/library/cup/9" />\n</BoardRow>');
     expect(codeOf(pgn, "single-inline-2col-h")).toContain("<InlinePgnGame2colH pgn={");
     expect(codeOf(library, "single-inline-2col-h")).toBe('<InlinePgnGame2colH src="/library/cup/7" caption="…" />');
     expect(codeOf(pgn, "single-inline-2col-v")).toContain("<InlinePgnGame2colV pgn={");

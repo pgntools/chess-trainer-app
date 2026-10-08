@@ -96,12 +96,11 @@ describe("the Components gallery (CTA-140)", () => {
     const user = userEvent.setup();
     mount();
     within(tree()).getByRole("treeitem", { name: "Flat PGN game" }).focus();
-    // Down through the Boards — past the two two-column variants — to the stored game.
-    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{Enter}");
-    expect(within(tree()).getByRole("treeitem", { name: "A stored game" })).toHaveAttribute("aria-current", "page");
-    expect(code()).toHaveValue('<StoredGameEmbed src="/library/capablanca/2" />');
-    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Built-in example — Capablanca, game 2 — /library/capablanca/2 (the default)");
-    expect(screen.getByRole("button", { name: "Add / update game…" })).toBeInTheDocument();
+    // Down through the Boards, past them and the Collections folder, to the Library collection.
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{Enter}");
+    expect(within(tree()).getByRole("treeitem", { name: "A Library collection" })).toHaveAttribute("aria-current", "page");
+    expect(code()).toHaveValue('<CollectionCard _id="/library/capablanca" />');
+    expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Built-in example — Capablanca — /library/capablanca (the default)");
     await pick(user, "Match");
     expect(code()).toHaveValue('import games from "./tournaments/clutchlegends26.pgn?raw"\n\n<MatchTable pgn={games} />');
   });
