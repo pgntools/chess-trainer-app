@@ -2,6 +2,7 @@ import { gameReferenceOf, type SourceAddress } from "../../lib/embedSource";
 import { libraryGameReference, loadReferencedGames, resolveGameReference } from "../../lib/gameReference";
 import { loadUploadedCollections, loadUploadedGames } from "../../lib/libraryCollectionStore";
 import type { CollectionSummary, TournamentFormat } from "../../lib/libraryCollections";
+import { pgnFileOf } from "../../lib/pgnExport";
 import { loadSavedAnalyses } from "../../lib/savedAnalysisStore";
 import { loadSavedRepertoires, savedRepertoiresSnapshot } from "../../lib/savedRepertoireStore";
 import { findShippedCollection } from "../../lib/shippedCollections";
@@ -78,4 +79,32 @@ export const describeAddress = async (address: SourceAddress): Promise<{ label: 
   const game = resolveGameReference(reference);
   if (game !== undefined) return { label: game.name };
   return { problem: `This browser has no ${address.kind === "analysis" ? "saved analysis" : "played game"} ${address.id}.` };
+};
+
+/**
+ * **What an app address names, as PGN text** — the record as it is kept,
+ * tags, comments, annotations and side lines and all: a collection's games
+ * one after another, one game's, an analysis', a played game's or a
+ * repertoire's. What the gallery's "paste inline" writes into the code in
+ * place of the address. `undefined` where it is not here.
+ */
+export const pgnTextOf = async (address: SourceAddress): Promise<string | undefined> => {
+  if (address.kind === "collection") {
+    const games = await collectionGamesOf(address.collection);
+    return games === undefined || games.length === 0 ? undefined : pgnFileOf(games);
+  }
+  if (address.kind === "libraryGame") {
+    const game = await libraryPgnOf(address.collection, address.number);
+    return game === undefined ? undefined : pgnFileOf([game.pgn]);
+  }
+  if (address.kind === "repertoire") {
+    await loadSavedRepertoires();
+    const saved = savedRepertoiresSnapshot()?.find((candidate) => candidate.id === address.id);
+    return saved === undefined ? undefined : pgnFileOf([saved.pgn]);
+  }
+  const reference = gameReferenceOf(address) ?? "";
+  if (address.kind === "analysis") await loadSavedAnalyses();
+  await loadReferencedGames(reference);
+  const game = resolveGameReference(reference);
+  return game === undefined ? undefined : pgnFileOf([game.pgn]);
 };
