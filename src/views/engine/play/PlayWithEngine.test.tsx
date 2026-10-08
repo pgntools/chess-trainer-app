@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import i18n from "../../../i18n";
+import { storeEngineId } from "../../../lib/engineChoice";
 import { DEFAULT_ENGINE_SETTINGS } from "../../../lib/engineSettings";
 import { parsePgnTree } from "../../../lib/pgn";
 import {
@@ -12,15 +13,15 @@ import {
   resetPlayedGameStore,
   savePlayedGame,
 } from "../../../lib/playedGameStore";
-import { playedGameOf } from "../../../lib/playedGames";
+import { playedGameOf, type PlayedGameEngine } from "../../../lib/playedGames";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import { boardOptions, FakeEngine } from "../../board/boardTestHarness";
 import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
 
-vi.mock("../../../lib/engine", async () => ({
-  default: (await import("../../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../../board/boardTestHarness");
@@ -143,35 +144,36 @@ describe("Play with Engine — a new game's options from the Lobby's link (CTA-8
   const depthValue = () => screen.getByTestId("engine-setting-depth-value").textContent;
 
   it("takes the side, the settings and the eval bar from the query", () => {
-    mount("/engine/play?side=black&skill=5&depth=8&movetime=2500&lines=2&evalbar=0");
+    mount("/engine/play?side=black&skill=5&elo=1800&depth=8&movetime=2500&lines=2&evalbar=0");
     expect(boardOptions().position).toBe(START);
     expect(boardOptions().boardOrientation).toBe("black");
     // The engine is White and answers at once, at the strength asked for.
+    expect(FakeEngine.latest().setOptions).toContainEqual(["UCI_Elo", 1800]);
     expect(FakeEngine.latest().setOptions).toContainEqual(["Skill Level", 5]);
     expect(FakeEngine.latest().setOptions).toContainEqual(["MultiPV", 2]);
     expect(screen.queryByTestId("eval-bar")).not.toBeInTheDocument();
     click("play-with-engine-panel-tab-engine");
-    expect(screen.getByText(/Level 5/)).toBeInTheDocument();
+    expect(screen.getByTestId("engine-setting-elo-value")).toHaveTextContent("1800 Elo");
     expect(depthValue()).toBe("8");
     expect(screen.getByTestId("engine-setting-movetime-value")).toHaveTextContent("2.5s");
     expect(screen.getByTestId("engine-setting-evalbar").querySelector("input")).not.toBeChecked();
   });
 
   it("reads each field on its own: an unreadable one is the default, one out of range is clamped", () => {
-    mount("/engine/play?side=purple&skill=abc&depth=99&evalbar=maybe");
+    mount("/engine/play?side=purple&elo=abc&depth=99&evalbar=maybe");
     expect(boardOptions().boardOrientation).toBe("white");
     expect(screen.getByTestId("eval-bar")).toBeInTheDocument();
     click("play-with-engine-panel-tab-engine");
-    expect(screen.getByText(/Level 10/)).toBeInTheDocument();
-    expect(depthValue()).toBe("24");
+    expect(screen.getByTestId("engine-setting-elo-value")).toHaveTextContent("2100 Elo");
+    expect(depthValue()).toBe("40");
   });
 
   it("lets a side beat the side to move of a ?fen=, and the FEN decide without one", () => {
-    mount(`/engine/play?fen=${encodeURIComponent(AFTER_E4)}&side=white&skill=3`);
+    mount(`/engine/play?fen=${encodeURIComponent(AFTER_E4)}&side=white&elo=1600`);
     expect(boardOptions().position).toBe(AFTER_E4);
     expect(boardOptions().boardOrientation).toBe("white");
     click("play-with-engine-panel-tab-engine");
-    expect(screen.getByText(/Level 3/)).toBeInTheDocument();
+    expect(screen.getByTestId("engine-setting-elo-value")).toHaveTextContent("1600 Elo");
   });
 
   it("is beaten by ?saved=", async () => {
@@ -179,13 +181,13 @@ describe("Play with Engine — a new game's options from the Lobby's link (CTA-8
       playedGameOf("s1", parsePgnTree("1. e4 *"), ["e4"], {
         ...DEFAULT_ENGINE_SETTINGS,
         playAs: "white",
-        skillLevel: 7,
+        elo: 1700,
       }),
     );
-    mount("/engine/play?saved=s1&side=black&skill=2");
+    mount("/engine/play?saved=s1&side=black&elo=2000");
     expect(boardOptions().boardOrientation).toBe("white");
     click("play-with-engine-panel-tab-engine");
-    expect(screen.getByText(/Level 7/)).toBeInTheDocument();
+    expect(screen.getByTestId("engine-setting-elo-value")).toHaveTextContent("1700 Elo");
   });
 
   it("reads ?side=random as no side at all (CTA-90)", () => {
@@ -361,7 +363,7 @@ describe("Play with Engine — resuming", () => {
       "p1",
       parsePgnTree(pgn),
       path,
-      { ...DEFAULT_ENGINE_SETTINGS, playAs, skillLevel: 7 },
+      { ...DEFAULT_ENGINE_SETTINGS, playAs, elo: 1700 },
       undefined,
       new Date("2026-01-01T00:00:00Z"),
     );
@@ -375,7 +377,7 @@ describe("Play with Engine — resuming", () => {
     expect(boardOptions().position).toBe(AFTER_E4);
     expect(boardOptions().boardOrientation).toBe("black");
     click("play-with-engine-panel-tab-engine");
-    expect(screen.getByText(/Level 7/)).toBeInTheDocument();
+    expect(screen.getByTestId("engine-setting-elo-value")).toHaveTextContent("1700 Elo");
   });
 
   it("waits for the store's first read on a reload, rather than starting a new game", async () => {
@@ -611,5 +613,197 @@ describe("Play with Engine — accessibility (CTA-109)", () => {
     depth.focus();
     await userEvent.keyboard("{ArrowRight}");
     expect(screen.getByTestId("engine-setting-depth-value")).toHaveTextContent(String(DEFAULT_ENGINE_SETTINGS.depth + 1));
+  });
+});
+
+/*
+  The engine that plays (CTA-153): the reader's choice from Settings → Engine,
+  read once as a game begins and written on the record; a resumed game goes on
+  with its own, and with a notice where that one cannot run here.
+*/
+describe("Play with Engine — the engine that plays (CTA-153)", () => {
+  /** The multi-thread build — the other engine a reader can choose, on an isolated page. */
+  const MULTI: PlayedGameEngine = {
+    id: "stockfish-19-lite-multi",
+    name: "Stockfish 19 Lite (multi-thread)",
+    version: "19",
+    strength: "elo",
+  };
+  /** What a record that names no engine is read as. */
+  const DEFAULT: PlayedGameEngine = { id: "stockfish-19-lite-single", name: "Stockfish 19 Lite", version: "19", strength: "elo" };
+  const isolated = () => vi.stubGlobal("crossOriginIsolated", true);
+  const builtFor = (engine: FakeEngine) => engine.descriptor?.id;
+  afterEach(() => vi.unstubAllGlobals());
+
+  const resumable = (engine: PlayedGameEngine | undefined, id = "g1") =>
+    savePlayedGame(
+      playedGameOf(
+        id,
+        parsePgnTree("1. e4 e5 *"),
+        ["e4", "e5"],
+        { ...DEFAULT_ENGINE_SETTINGS, elo: 1800, skillLevel: 7 },
+        undefined,
+        new Date("2026-01-01T00:00:00Z"),
+        undefined,
+        undefined,
+        undefined,
+        engine,
+      ),
+    );
+
+  it("plays a new game with the default engine, and writes it on the record", async () => {
+    mount();
+    expect(builtFor(FakeEngine.latest())).toBe(DEFAULT.id);
+
+    drag("e2", "e4");
+    await waitFor(() => expect(games()).toHaveLength(1));
+
+    expect(games()[0].engine).toEqual(DEFAULT);
+    expect(games()[0].pgn).toContain('[Black "Stockfish 19 Lite (Elo 2100)"]');
+    expect(screen.queryByTestId("play-with-engine-engine-notice")).toBeNull();
+  });
+
+  it("plays a new game with the engine the reader chose, naming it with its Elo on the record", async () => {
+    isolated();
+    storeEngineId(MULTI.id);
+
+    mount();
+    expect(builtFor(FakeEngine.latest())).toBe(MULTI.id);
+
+    drag("e2", "e4");
+    await waitFor(() => expect(games()).toHaveLength(1));
+
+    expect(games()[0].engine).toEqual(MULTI);
+    expect(games()[0].pgn).toContain('[Black "Stockfish 19 Lite (multi-thread) (Elo 2100)"]');
+  });
+
+  it("asks the engine for an Elo, with the limit on — and shows the strength as an Elo", () => {
+    mount();
+
+    const engine = FakeEngine.latest();
+    expect(engine.setOptions).toContainEqual(["UCI_Elo", 2100]);
+    expect(engine.setOptions).toContainEqual(["UCI_LimitStrength", 1]);
+    click("play-with-engine-panel-tab-engine");
+    expect(screen.getByRole("slider", { name: "Strength (Elo)" })).toBeInTheDocument();
+    expect(screen.queryByRole("slider", { name: "Strength" })).toBeNull();
+  });
+
+  it("names the engine that plays, on the Engine tab", async () => {
+    isolated();
+    await resumable(MULTI);
+    mount("/engine/play?saved=g1");
+
+    click("play-with-engine-panel-tab-engine");
+
+    expect(screen.getByTestId("play-with-engine-engine-name")).toHaveTextContent("Played by Stockfish 19 Lite (multi-thread) (19)");
+  });
+
+  it("keeps its engine when the choice changes under it — a game is played by one engine", () => {
+    isolated();
+    mount();
+    const first = FakeEngine.latest();
+
+    act(() => storeEngineId(MULTI.id));
+
+    expect(FakeEngine.instances).toHaveLength(1);
+    expect(first.terminated).toBe(false);
+  });
+
+  it("begins the next game under the engine chosen now: Replay", async () => {
+    isolated();
+    mount();
+    drag("e2", "e4");
+    await waitFor(() => expect(games()[0]?.engine?.id).toBe(DEFAULT.id));
+    const first = FakeEngine.latest();
+
+    act(() => storeEngineId(MULTI.id));
+    click("play-with-engine-replay");
+    click("play-with-engine-confirm-ok");
+
+    expect(first.terminated).toBe(true);
+    expect(builtFor(FakeEngine.latest())).toBe(MULTI.id);
+    drag("e2", "e4");
+    await waitFor(() => expect(games().some((game) => game.engine?.id === MULTI.id)).toBe(true));
+  });
+
+  it("resumes a game with the engine its record names, whatever is chosen now", async () => {
+    isolated();
+    await resumable(MULTI);
+
+    // The reader's choice is the default; the game's own engine plays.
+    mount("/engine/play?saved=g1");
+
+    expect(builtFor(FakeEngine.latest())).toBe(MULTI.id);
+    expect(screen.queryByTestId("play-with-engine-engine-notice")).toBeNull();
+  });
+
+  it("resumes a game from before the choice with the default engine, and says nothing", async () => {
+    isolated();
+    storeEngineId(MULTI.id);
+    await resumable(undefined);
+
+    mount("/engine/play?saved=g1");
+
+    // Absent means the default engine — not the one chosen now.
+    expect(builtFor(FakeEngine.latest())).toBe(DEFAULT.id);
+    expect(screen.queryByTestId("play-with-engine-engine-notice")).toBeNull();
+    expect(findPlayedGame("g1")?.engine).toBeUndefined();
+  });
+
+  it("resumes a game the retired 2019 build played as the default's — no notice, no label of its own (CTA-160)", async () => {
+    await resumable({ id: "stockfish-2019-wasm", name: "Stockfish 2019", version: "2019-08-15", strength: "skill" });
+    // A reload: the record comes back from IndexedDB through the normaliser, as such a game always does.
+    resetPlayedGameStore();
+
+    mount("/engine/play?saved=g1");
+
+    // The route waits for the store's first read.
+    await waitFor(() => expect(FakeEngine.instances).not.toHaveLength(0));
+    expect(builtFor(FakeEngine.latest())).toBe(DEFAULT.id);
+    expect(screen.queryByTestId("play-with-engine-engine-notice")).toBeNull();
+    click("play-with-engine-panel-tab-engine");
+    expect(screen.getByTestId("play-with-engine-engine-name")).toHaveTextContent("Played by Stockfish 19 Lite (19)");
+  });
+
+  it("falls back to the default, with a notice, where the game's own engine cannot run here", async () => {
+    // Shipped nowhere: a build the app no longer has.
+    await resumable({ id: "gone-engine", name: "Gone Engine", version: "3", strength: "elo" });
+
+    mount("/engine/play?saved=g1");
+
+    expect(builtFor(FakeEngine.latest())).toBe(DEFAULT.id);
+    const notice = screen.getByTestId("play-with-engine-engine-notice");
+    expect(notice).toHaveTextContent("This game was played with Gone Engine, which cannot run here");
+    expect(notice).toHaveTextContent("so Stockfish 19 Lite plays on");
+  });
+
+  it("says so for an engine this page cannot run — the multi-thread build without isolation", async () => {
+    await resumable(MULTI);
+
+    mount("/engine/play?saved=g1");
+
+    expect(screen.getByTestId("play-with-engine-engine-notice")).toHaveTextContent("Stockfish 19 Lite (multi-thread)");
+  });
+
+  it("keeps naming the game's own engine on its record while another plays it on", async () => {
+    const gone: PlayedGameEngine = { id: "gone-engine", name: "Gone Engine", version: "3", strength: "elo" };
+    await resumable(gone);
+    mount("/engine/play?saved=g1");
+
+    drag("g1", "f3");
+    await waitFor(() => expect(findPlayedGame("g1")?.path).toEqual(["e4", "e5", "Nf3"]));
+
+    // Opening a game elsewhere must never rewrite who played it.
+    expect(findPlayedGame("g1")?.engine).toEqual(gone);
+  });
+
+  it("reads in Hebrew", async () => {
+    await i18n.changeLanguage("he");
+    await resumable({ id: "gone-engine", name: "Gone Engine", version: "3", strength: "elo" });
+
+    mount("/engine/play?saved=g1");
+
+    expect(screen.getByTestId("play-with-engine-engine-notice")).toHaveTextContent("Gone Engine");
+    expect(screen.getByTestId("play-with-engine-engine-notice")).toHaveTextContent("המשחק הזה שוחק עם");
   });
 });

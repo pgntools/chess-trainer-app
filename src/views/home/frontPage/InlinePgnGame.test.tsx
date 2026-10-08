@@ -5,7 +5,8 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import { boardOptions } from "../../board/boardTestHarness";
-import { InlinePgnGame } from "./InlinePgnGame";
+import AppThemeWithLang from "../../../theme/AppThemeWithLang";
+import { InlinePgnGame, InlinePgnGameColumns } from "./InlinePgnGame";
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../../board/boardTestHarness");
@@ -188,6 +189,109 @@ describe("<InlinePgnGame> (CTA-126)", () => {
 
   it("passes axe", async () => {
     render(<InlinePgnGame pgn={PGN} start="2" comments />);
+    await expectNoAxeViolations();
+  });
+});
+
+describe("<InlinePgnGameColumns> (CTA-146)", () => {
+  const movesOf = () => screen.getByRole("group", { name: "The moves" });
+  /** The grid's cells in reading order: a pair's number, White, Black — `·` where a cell is empty — and a side line's run as `(…)`. */
+  const cellsOf = (region: HTMLElement) =>
+    [...region.children].map((child) => {
+      if (child.getAttribute("data-testid")?.endsWith("-variation")) return `(${child.textContent})`;
+      return child.tagName === "BUTTON" ? (child.getAttribute("aria-label") ?? "") : child.textContent || "·";
+    });
+
+  it("lays the window's moves out as numbered pairs — number, White, Black — each side line a run under its pair", () => {
+    render(<InlinePgnGameColumns pgn={PGN} from="1..." to="3" />);
+    expect(movesOf()).toHaveAttribute("data-layout", "columns");
+    expect(movesOf()).toHaveStyle({ display: "grid" });
+    // 2. Nf3 Nc6 (2... d6 3. d4) 3. Bb5 — the window's, with the Black cell of 3 empty.
+    expect(cellsOf(movesOf())).toEqual(["2.", "2. Nf3", "2... Nc6", "(2...d63.d4)", "3.", "3. Bb5", "·"]);
+    // jsdom does not read `grid-column`: it is in the stylesheet the run's class carries.
+    expect(within(movesOf()).getByTestId(/-variation$/).getAttribute("class")).toBeTruthy();
+    expect(document.head.textContent).toContain("grid-column:1/-1");
+  });
+
+  it("opens a window on Black's move with an empty White cell", () => {
+    render(<InlinePgnGameColumns pgn={PGN} from="2" to="3..." />);
+    expect(cellsOf(movesOf()).slice(0, 4)).toEqual(["2.", "·", "2... Nc6", "(2...d63.d4)"]);
+  });
+
+  it("steps, drops and shows comments as <InlinePgnGame> does, the current move marked", async () => {
+    const user = userEvent.setup();
+    render(<InlinePgnGameColumns pgn={PGN} comments />);
+    await user.click(screen.getByRole("button", { name: "1. e4" }));
+    expect(screen.getByRole("button", { name: "1. e4" })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByTestId(/-comment$/)).toHaveTextContent("The king's pawn.");
+    await user.click(screen.getByRole("button", { name: "2... d6" }));
+    expect(screen.getByTestId(/-comment$/)).toHaveTextContent("Philidor.");
+    expect(drop("d4", "d5")).toBe(false);
+    await user.click(screen.getByRole("button", { name: "One move on" }));
+    expect(screen.getByRole("button", { name: "3. d4" })).toHaveAttribute("aria-current", "true");
+  });
+
+  it("leaves the side lines out with variations={false}", () => {
+    render(<InlinePgnGameColumns pgn={PGN} variations={false} />);
+    expect(screen.queryByTestId(/-variation$/)).not.toBeInTheDocument();
+    expect(cellsOf(movesOf()).slice(-3)).toEqual(["4.", "4. Ba4", "4... Nf6"]);
+  });
+
+  it("caps the list at the board's height — the board's column, or the container where narrower — and scrolls it", () => {
+    render(<InlinePgnGameColumns pgn={PGN} />);
+    expect(movesOf().getAttribute("class")).toBeTruthy();
+    const style = getComputedStyle(movesOf());
+    expect(style.overflowY).toBe("auto");
+    // jsdom drops a `min()` it cannot parse, so the cap is read off the stylesheet the list's class carries.
+    const rules = document.head.textContent ?? "";
+    // Stacked, the board is the container's width; from `sm` up, its 320 px column at most.
+    expect(rules).toContain("max-height:100cqw");
+    expect(rules).toContain("max-height:min(320px, 100cqw)");
+    expect(rules).toContain("container-type:inline-size");
+  });
+
+  it("keeps the move on screen in view inside the list's own box", async () => {
+    const user = userEvent.setup();
+    render(<InlinePgnGameColumns pgn={PGN} />);
+    const region = movesOf();
+    // jsdom has no layout: the box is 100 px, the move below it.
+    region.getBoundingClientRect = () => ({ top: 0, bottom: 100 }) as DOMRect;
+    const target = screen.getByRole("button", { name: "4... Nf6" });
+    target.getBoundingClientRect = () => ({ top: 160, bottom: 184 }) as DOMRect;
+    await user.click(target);
+    expect(region.scrollTop).toBe(84);
+    // Back at the game's start, no move is current: the list is back at its top.
+    await user.click(screen.getByRole("button", { name: "To the first move shown" }));
+    expect(region.scrollTop).toBe(0);
+  });
+
+  it("leaves <InlinePgnGame>'s moves as ever — a wrapping run, no scroll box", () => {
+    render(<InlinePgnGame pgn={PGN} />);
+    expect(movesOf()).not.toHaveAttribute("data-layout");
+    expect(movesOf()).toHaveStyle({ display: "flex" });
+    expect(getComputedStyle(movesOf()).overflowY).not.toBe("auto");
+  });
+
+  it("pins every SAN cell to LTR under Hebrew, as the board stays", async () => {
+    await act(() => i18n.changeLanguage("he"));
+    try {
+      render(
+        <AppThemeWithLang>
+          <InlinePgnGameColumns pgn={PGN} from="1..." to="3" />
+        </AppThemeWithLang>,
+      );
+      const region = screen.getByRole("group", { name: "המהלכים" });
+      const cells = within(region).getAllByRole("button");
+      expect(cells.length).toBeGreaterThan(0);
+      for (const cell of cells) expect(cell).toHaveAttribute("dir", "ltr");
+      expect(screen.getByTestId("board").closest('[dir="ltr"]')).not.toBeNull();
+    } finally {
+      await act(() => i18n.changeLanguage("en"));
+    }
+  });
+
+  it("passes axe", async () => {
+    render(<InlinePgnGameColumns pgn={PGN} start="2" comments />);
     await expectNoAxeViolations();
   });
 });

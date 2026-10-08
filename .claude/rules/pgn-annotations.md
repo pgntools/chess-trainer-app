@@ -175,6 +175,13 @@ Taking a command out takes the space around it, so the prose reads as it
 did: a run of removed commands between two words leaves one space, at either
 end of the comment none.
 
+**The start position has a way in too** (CTA-149): a right-click on the move
+list's *Start position* row opens the same menu with *Add comment* and
+*Arrows and circles…* only — the entries that need a move are not offered —
+and both edit the game's opening comment (`tree.comments`, `setComments` with
+a `null` id), written in the PGN before the first move. A board that does not
+edit (`onEditTree` absent) binds nothing there.
+
 **A comment that only draws is not one to read**: `readComment` takes the
 two commands out of the prose and makes no chip of them, so such a comment
 reads empty — the block lists no row for it and is not shown where it is all

@@ -15,11 +15,13 @@ import { ChangesStrip, CurrentOpening } from "../../blocks/panels";
 import type { ChessboardOptions } from "react-chessboard";
 
 import {
-  ANALYSIS_UCI_OPTION,
+  analysisUciOptionsOf,
+  withClampedAnalysisUciOptions,
   DEFAULT_ANALYSIS_SETTINGS,
   type AnalysisSettings,
 } from "../../lib/analysisSettings";
 import { AnalysisEngineForm } from "../../blocks/forms";
+import { deviceEngineLimits } from "../../lib/engineSettings";
 import { FieldLabel, SideToggle, SwitchField } from "../../design-system/components/forms";
 import { BackButton } from "../../design-system/components/navigation";
 import { IconAction, ToggleIconAction } from "../../design-system/components/toolbars";
@@ -49,6 +51,7 @@ import {
 import BoardShell from "../board/core/BoardShell";
 import { useBoardCore } from "../board/core/useBoardCore";
 import { useEngineModule } from "../board/core/useEngineModule";
+import { useEngineChoice } from "../shared/useEngineChoice";
 import { useTrainerModule, type TrainerStatus } from "../board/core/useTrainerModule";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import RepertoireGamesMenu from "./RepertoireGamesMenu";
@@ -341,20 +344,21 @@ function RepertoirePlayer({
   const [showEvalBar, setShowEvalBar] = useState(true);
   const onUciOptionsReady = useCallback(
     (clamped: Readonly<Record<string, number>>) =>
-      setSettings((current) => {
-        const multiPv = clamped[ANALYSIS_UCI_OPTION.multiPv] ?? current.multiPv;
-        return multiPv === current.multiPv ? current : { ...current, multiPv };
-      }),
+      setSettings((current) => withClampedAnalysisUciOptions(current, clamped)),
     [],
   );
+  // The reader's engine (Settings → Engine, CTA-153): every board runs it from its next search.
+  const { engineId } = useEngineChoice();
   const engine = useEngineModule({
     enabled: engineOn,
+    engine: engineId,
     fen: core.fen,
     depth: settings.depth,
     moveTimeMs: settings.moveTimeMs,
+    infinite: settings.infinite,
     uciOptions: useMemo(
-      () => ({ [ANALYSIS_UCI_OPTION.multiPv]: settings.multiPv }),
-      [settings.multiPv],
+      () => analysisUciOptionsOf({ multiPv: settings.multiPv, threads: settings.threads, hashMb: settings.hashMb }),
+      [settings.multiPv, settings.threads, settings.hashMb],
     ),
     onUciOptionsReady,
   });
@@ -773,6 +777,7 @@ function RepertoirePlayer({
                 engineOn={engineOn}
                 showEvalBar={showEvalBar}
                 onShowEvalBarChange={setShowEvalBar}
+                deviceLimits={deviceEngineLimits()}
                 onClear={clear}
               />
             ),

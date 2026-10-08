@@ -1,4 +1,4 @@
-import type { EngineOption } from "../../../lib/engine";
+import type { EngineOption } from "../../../lib/engineTypes";
 
 /**
  * **What the running engine lets a slider do** (CTA-109) — the three states

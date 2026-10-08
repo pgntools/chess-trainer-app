@@ -13,11 +13,12 @@ import {
  * | --- | --- | --- |
  * | `side` | the reader's side | `white` / `black` |
  * | `skill` | `skillLevel` | 0–20 |
- * | `depth` | `depth` | 1–24 |
- * | `movetime` | `moveTimeMs` | 0–10000 (ms; 0 is no limit) |
+ * | `elo` | `elo` | 1320–3190 (CTA-153: where the engine takes its strength as an Elo) |
+ * | `depth` | `depth` | 1–40 |
+ * | `movetime` | `moveTimeMs` | 0–60000 (ms; 0 is no limit) |
  * | `lines` | `multiPv` | 1–10 |
- * | `threads` | `threads` | 1–4 |
- * | `hash` | `hashMb` | 1–256 |
+ * | `threads` | `threads` | 1–32 (the form offers what the device has) |
+ * | `hash` | `hashMb` | 1–1024 (the form offers what the device has; more crashed the tab, CTA-160) |
  * | `evalbar` | the eval bar | `1` / `0` |
  * | `variations` | the pinned engine lines at the start (CTA-90) | `1` / `0` |
  * | `fen` | the starting position | a FEN — written only for a position other than the standard start (CTA-83: the Lobby's Board editor tab) |
@@ -57,6 +58,7 @@ export type NewGameRequest = {
 /** Each numeric setting's query parameter. */
 const NEW_GAME_PARAM = {
   skillLevel: "skill",
+  elo: "elo",
   depth: "depth",
   moveTimeMs: "movetime",
   multiPv: "lines",

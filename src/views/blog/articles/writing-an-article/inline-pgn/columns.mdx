@@ -1,0 +1,31 @@
+---
+title: Moves in two columns
+summary: "<InlinePgnGameColumns>: the same board, its moves as the Analysis Board lists them — numbered pairs in a box no taller than the board."
+order: 45
+---
+
+import game from "./rubinstein-capablanca-1911.pgn?raw"
+
+`<InlinePgnGameColumns>` is `<InlinePgnGame>` with its moves laid out the way the Analysis Board's move list lays them out: a row per move number — the number, White's move, Black's move — instead of one wrapping run. It takes the same props and reads the same sources, so any `<InlinePgnGame>` can become one by changing its name.
+
+## The list
+
+Each side line is a row of its own under the pair it answers, spanning the width; a side line's own side lines stay inside its run. A window that opens on Black's move starts with an empty White cell.
+
+<InlinePgnGameColumns pgn={game} from="13..." to="17" start="15..." />
+
+```mdx
+<InlinePgnGameColumns pgn={game} from="13..." to="17" start="15..." />
+```
+
+## A long game
+
+The list is never taller than the board. A window with more moves than fit scrolls inside its own box — the board and the buttons stay put — and stepping to a move brings it into view; a short window takes only the height it needs.
+
+<InlinePgnGameColumns pgn={game} caption="The whole game, its moves scrolling beside the board" />
+
+```mdx
+<InlinePgnGameColumns pgn={game} caption="…" />
+```
+
+Under a narrow window the board and its list stack, and the list is capped at the board's width — still a square's height. The moves stay left to right in every language, as the board does.

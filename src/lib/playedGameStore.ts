@@ -3,6 +3,7 @@ import type { GameCatalog } from "./gameCatalog";
 import {
   playedGameCatalogOf,
   playedGameFrom,
+  samePlayedGameEngine,
   samePlayedGameEvals,
   samePlayedGameMask,
   type PlayedGame,
@@ -106,6 +107,7 @@ export const savePlayedGame = (game: PlayedGame): Promise<PlayedGameProblem | un
       sameEngineSettings(existing.settings, game.settings) &&
       existing.resigned === game.resigned &&
       samePlayedGameMask(existing.mask, game.mask) &&
+      samePlayedGameEngine(existing.engine, game.engine) &&
       samePlayedGameEvals(existing.evals, game.evals)
     ) {
       return current;

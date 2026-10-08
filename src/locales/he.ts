@@ -7,7 +7,18 @@ import type en from "./en";
 const he: typeof en = {
   app: {
     brandMark: "CT",
-    brandText: "אפליקציית אימון שחמט",
+    brandText: "chessapp.dev",
+  },
+  developmentNotice: {
+    title: "{{name}} עדיין בפיתוח",
+    badge: "בטא מוקדמת",
+    intro: "מומלץ להשתמש בה בזהירות. הנה מה שכדאי לדעת:",
+    items: {
+      local: { title: "הנתונים שלכם נשארים בדפדפן הזה", text: "משחקים, ניתוחים, רפרטוארים ואוספים נשמרים במכשיר הזה בלבד." },
+      export: { title: "כדאי לייצא מדי פעם", text: "בהגדרות, בלשונית הייצוא, מורידים הכול כקובץ zip אחד, כדי שדבר לא יאבד." },
+      changes: { title: "דברים עשויים להשתנות או להישבר", text: "ייתכן שיהיה צורך לייבא מחדש נתונים שמורים אחרי עדכון." },
+    },
+    dismiss: "סגירה",
   },
   nav: {
     ariaLabel: "ניווט ראשי",
@@ -32,6 +43,8 @@ const he: typeof en = {
     settingsImport: "ייבוא",
     settingsStorage: "אחסון",
     settingsAppearance: "מראה",
+    settingsEngine: "מנוע",
+    settingsSupport: "תמיכה",
     designSystem: "מערכת עיצוב",
     themeEditor: "עורך ערכות נושא",
     mdxArticles: "מאמרים",
@@ -158,6 +171,8 @@ const he: typeof en = {
     mdxEditor: "עורך MDX",
     mdxArticles: "עורך MDX — מאמרים",
     mdxComponents: "עורך MDX — גלריית רכיבים",
+    privacy: "מדיניות פרטיות",
+    cookies: "הודעת עוגיות",
   },
   pageDescriptions: {
     home: "מאמן שחמט בדפדפן: משחק מול המנוע, ניתוח משחקים, סיור בפתיחות, אימון הרפרטואר וצפייה במשחקי אמנים.",
@@ -175,9 +190,11 @@ const he: typeof en = {
     collection: "אוסף משחקי שחמט: חיפוש, סינון לפי שחקן, פתיחה, אירוע ותאריך, וצפייה בכל משחק על לוח.",
     collectionNamed: "{{name}}: {{games}} משחקי שחמט לחיפוש, לסינון לפי שחקן, פתיחה, אירוע ותאריך, ולצפייה על לוח.",
     settings: "ייצוא הנתונים שלכם כקובץ zip אחד והחזרתם, כמה מקום הם תופסים, ואיך האפליקציה נראית.",
+    privacy: "מה chessapp.dev שומרת במכשיר שלכם, מה היא לא אוספת לעולם, והזכויות שלכם לפי ה-GDPR וחוק הגנת הפרטיות הישראלי.",
+    cookies: "chessapp.dev אינה מציבה עוגיות. כל פריט שהיא שומרת בדפדפן שלכם — העדפות ונתוני השחמט שלכם — ולמה."
   },
   share: {
-    defaultImageAlt: "אפליקציית אימון שחמט — לוח שחמט לצד שם האפליקציה",
+    defaultImageAlt: "chessapp.dev — לוח שחמט לצד שם האפליקציה",
     sections: {
       engine: "משחק מול המנוע — לוח שחמט לצד שם המדור",
       analysis: "לוח ניתוח — לוח שחמט לצד שם המדור",
@@ -471,6 +488,9 @@ const he: typeof en = {
       engine: "מנוע",
       moves: "מהלכים",
     },
+    enginePlaying: "המשחק מול",
+    engineFallback:
+      "המשחק הזה שוחק עם {{wanted}}, שאינו יכול לפעול כאן, ולכן {{using}} ממשיך לשחק. רשומת המשחק ממשיכה לציין את {{wanted}}.",
     game: {
       /** הפקד הראשון בכותרת (CTA-91) — הדרך חזרה ללובי, חץ ששמו יעדו. */
       backToLobby: "חזרה ללובי",
@@ -499,6 +519,8 @@ const he: typeof en = {
       engineOn: "מנוע",
       strength: "עוצמה",
       strengthValue: "רמה {{level}} (בערך {{elo}} אלו)",
+      strengthElo: "עוצמה (אלו)",
+      strengthEloValue: "{{elo}} אלו",
       depth: "עומק חיפוש",
       moveTime: "זמן למהלך",
       moveTimeValue: "{{seconds}} שניות",
@@ -565,7 +587,8 @@ const he: typeof en = {
     rowTitle: "המשחק {{white}} – {{black}} מ־{{date}}",
     unreadableTitle: "המשחק שלא ניתן לקרוא מ־{{date}}",
     human: "אדם",
-    engine: "Stockfish רמה {{level}}",
+    engineNamed: "{{name}} רמה {{level}}",
+    engineElo: "{{name}} אלו {{elo}}",
     moves_one: "מהלך אחד",
     moves_other: "{{count}} מהלכים",
     variations_one: "וריאציה אחת",
@@ -854,11 +877,15 @@ const he: typeof en = {
       title: "ניתוח",
       engineOn: "ניתוח בעזרת המנוע",
       engineOff: "המנוע כבוי. הפעילו אותו כדי לנתח את העמדה הזו.",
+      infinite: "ניתוח ללא הגבלה",
+      infiniteHelp: "המנוע ממשיך לחפש עד שהעמדה משתנה. כשהאפשרות כבויה, החיפוש נעצר בעומק ובזמן שלמטה — וכך תמיד כשהמנוע משחק.",
       depth: "עומק חיפוש",
       moveTime: "זמן למהלך",
       moveTimeValue: "{{seconds}} שניות",
       moveTimeNone: "ללא הגבלה",
       multiPv: "מספר הווריאציות להצגה",
+      threads: "תהליכונים",
+      hash: "זיכרון גיבוב (MB)",
       evalBar: "הצגת סרגל ההערכה",
       arrows: "הצגת חיצי המהלכים הבאים",
       clear: "ניקוי הלוח",
@@ -960,6 +987,7 @@ const he: typeof en = {
       unknown: "אין פתיחה מוכרת עדיין.",
       loading: "טוען את ספר הפתיחות…",
       open: "לפתוח את {{eco}} במסך הפתיחות",
+      openInTab: "{{name}} ({{eco}}) — לחקור במסך הפתיחות, בלשונית חדשה",
     },
     book: {
       label: "מסעי הספר",
@@ -1760,6 +1788,8 @@ const he: typeof en = {
       import: "ייבוא",
       storage: "אחסון",
       appearance: "מראה",
+      engine: "מנוע",
+      support: "תמיכה",
     },
     export: {
       intro:
@@ -1890,6 +1920,33 @@ const he: typeof en = {
       theme: "ערכת נושא",
       modeNote: "מצב בהיר או כהה נבחר במתג שבכותרת; לכל ערכת נושא יש את שניהם.",
     },
+    engine: {
+      intro:
+        "בחרו באיזה מנוע הלוחות משתמשים. הבחירה חלה על כל לוח מהחיפוש הבא שלו ונשמרת במכשיר זה. משחק מול המנוע משוחק במנוע שבו התחיל, ומשחק שמור ממשיך עם המנוע שלו.",
+      note: "מנוע שאינו יכול לפעול באתר זה מופיע ברשימה בכל זאת, עם מה שהוא דורש.",
+    },
+    support: {
+      title: "צריכים עזרה עם {{name}}?",
+      intro: "מצאתם באג, יש לכם רעיון או שאלה? נשמח לשמוע מכם.",
+      heading: "איך אפשר ליצור קשר",
+      items: {
+        issue: { title: "פתחו issue ב-GitHub (מועדף)", text: "באגים, רעיונות ושאלות — בגלוי, כך שאחרים יכולים לעקוב ולהוסיף." },
+        email: { title: "שלחו מייל", text: "אם GitHub לא מתאים לכם, כתבו לנו אל:" },
+      },
+    },
+  },
+  enginePicker: {
+    legend: "מנוע",
+    version: "גרסה",
+    threading: { single: "תהליכון אחד", multi: "כמה תהליכונים" },
+    strength: {
+      skill: "עוצמה לפי רמה",
+      elo: "עוצמה לפי אלו",
+      both: "עוצמה לפי רמה או אלו",
+    },
+    unavailable: {
+      "cross-origin-isolation": "דורש בידוד בין־מקורות — אינו זמין באתר זה",
+    },
   },
   appearance: {
     themes: {
@@ -1902,6 +1959,8 @@ const he: typeof en = {
   },
   footer: {
     source: "מקור",
+    privacy: "מדיניות פרטיות",
+    cookies: "הודעת עוגיות",
   },
 };
 

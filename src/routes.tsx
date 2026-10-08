@@ -23,6 +23,7 @@ import { default as RepertoireSettingsScreen  } from './views/repertoires/Repert
 import { default as RepertoireGameScreen  } from './views/repertoires/RepertoireGameMain'
 import { default as SettingsScreen  } from './views/settings/SettingsMain'
 import { default as BlogScreen  } from './views/blog/BlogMain'
+import { CookiesMain as CookiesScreen, PrivacyMain as PrivacyScreen } from './views/legal/LegalMain'
 import { blogPageMeta } from './views/blog/blogPageMeta'
 import { collectionPageMeta } from './views/library/collectionPageMeta'
 import { MDX_EDITOR_ENABLED } from "./mdxEditor/enabled";
@@ -243,6 +244,20 @@ export const appRoutes: RouteObject[] = [
           path: "/blog/*",
           element: <BlogScreen />,
           handle: { ...ARTICLE_ROUTE, title: "pages.blog", meta: blogPageMeta }
+        },
+        // The legal pages (CTA-159), linked from the footer: MDX documents
+        // in `views/legal/documents/`, in no Blog folder and not in the
+        // sidebar. Articles to the shell (`ARTICLE_ROUTE`), pre-rendered in
+        // both languages like every static route.
+        {
+          path: "/privacy",
+          element: <PrivacyScreen />,
+          handle: { ...ARTICLE_ROUTE, title: "pages.privacy" }
+        },
+        {
+          path: "/cookies",
+          element: <CookiesScreen />,
+          handle: { ...ARTICLE_ROUTE, title: "pages.cookies" }
         },
         // Settings (CTA-86): one tab per segment — Export today. `/settings`
         // and an unknown tab land on the first.

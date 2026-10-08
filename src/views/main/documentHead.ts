@@ -27,7 +27,7 @@ export type DocumentHeadInput = {
   language: AppLanguage;
   /** The unprefixed app path, ending in a slash — `/blog/x/`, `/`. */
   path: string;
-  /** The document's `<title>` — "Fischer — Collection — Chess Trainer App". */
+  /** The document's `<title>` — "Fischer — Collection — chessapp.dev". */
   title: string;
   /** The page's own name, for a preview's headline — "Fischer". */
   name: string;

@@ -2,11 +2,11 @@ import Box from "@mui/material/Box";
 
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
-import type { EngineOption } from "../../../lib/engine";
+import type { EngineOption } from "../../../lib/engineTypes";
 import type { EngineSettings } from "../../../lib/engineSettings";
 import type { BlockFamilyId } from "../../families";
 import EngineSettingsForm from "./EngineSettingsForm";
-import { ADJUSTABLE_OPTIONS, NO_OPTIONS, SETTINGS, SHIPPED_OPTIONS, SPARSE_OPTIONS } from "./fixtures";
+import { ADJUSTABLE_OPTIONS, NO_OPTIONS, SETTINGS, SHIPPED_OPTIONS, SKILL_ONLY_OPTIONS, SPARSE_OPTIONS } from "./fixtures";
 
 type State = { settings: EngineSettings; showEvalBar: boolean };
 
@@ -32,7 +32,8 @@ const gallery: GalleryModule<BlockFamilyId> = {
   section: "forms",
   title: "EngineSettingsForm",
   demos: [
-    { name: "The shipped build — Threads and Hash pinned, each saying what it is fixed at", render: () => demo(SHIPPED_OPTIONS, "gallery-engine-shipped") },
+    { name: "The default build, Stockfish 19 — the strength an Elo (UCI_Elo with UCI_LimitStrength), Threads pinned", render: () => demo(SHIPPED_OPTIONS, "gallery-engine-shipped") },
+    { name: "An engine strengthened by Skill Level alone — its Elo an estimate; Threads and Hash pinned, each saying what it is fixed at", render: () => demo(SKILL_ONLY_OPTIONS, "gallery-engine-skill") },
     { name: "A build that takes every knob — all live", render: () => demo(ADJUSTABLE_OPTIONS, "gallery-engine-adjustable") },
     { name: "A build without Threads and Hash — absent, not pinned; a smaller MultiPV and strength", render: () => demo(SPARSE_OPTIONS, "gallery-engine-sparse") },
     { name: "Before the handshake — nothing called unsupported", render: () => demo(NO_OPTIONS, "gallery-engine-loading") },

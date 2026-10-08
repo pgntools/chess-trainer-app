@@ -161,3 +161,48 @@ describe("the move menu's Arrows and circles… (CTA-143)", () => {
     expect(screen.getByTestId("move-menu-shapes")).toBeInTheDocument();
   });
 });
+
+describe("ShapesDialog — at the start position (CTA-149)", () => {
+  const STARTING = parsePgnTree("{Opening. [%cal Rd7d5][%csl Ye5]} 1. e4 e5 *");
+  let startLatest: GameTree = STARTING;
+
+  function StartHarness() {
+    const [tree, setTree] = useState(STARTING);
+    return (
+      <ShapesDialog
+        tree={tree}
+        target={{ nodeId: null, label: "Start position" }}
+        onClose={vi.fn()}
+        onEditTree={(next) => {
+          startLatest = next;
+          setTree(next);
+        }}
+      />
+    );
+  }
+
+  const mountStart = () =>
+    render(
+      <AppThemeWithLang>
+        <StartHarness />
+      </AppThemeWithLang>,
+    );
+
+  it("lists the game's own shapes, named for the start position", () => {
+    mountStart();
+    expect(screen.getByTestId("shapes-dialog-move")).toHaveTextContent("Start position");
+    expect(screen.getByTestId("shapes-dialog-row-d7d5")).toHaveTextContent("Arrow d7 → d5");
+    expect(screen.getByTestId("shapes-dialog-row-e5")).toHaveTextContent("Circle e5");
+  });
+
+  it("recolours, removes and clears them in tree.comments", async () => {
+    mountStart();
+    await userEvent.click(screen.getByRole("button", { name: "Arrow d7 → d5: Blue" }));
+    expect(startLatest.comments).toEqual(["Opening. [%cal Bd7d5][%csl Ye5]"]);
+    await userEvent.click(screen.getByRole("button", { name: /^Remove circle e5/i }));
+    expect(startLatest.comments).toEqual(["Opening. [%cal Bd7d5]"]);
+    await userEvent.click(screen.getByTestId("shapes-dialog-remove-all"));
+    expect(startLatest.comments).toEqual(["Opening."]);
+    expect(startLatest.moves).toBe(STARTING.moves);
+  });
+});

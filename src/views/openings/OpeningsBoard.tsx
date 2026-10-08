@@ -10,6 +10,7 @@ import type { ChessboardOptions } from "react-chessboard";
 
 import { CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
 import { AnalysisEngineForm } from "../../blocks/forms";
+import { deviceEngineLimits } from "../../lib/engineSettings";
 import { OpeningBookList } from "../../blocks/lists";
 import { SwitchField } from "../../design-system/components/forms";
 import { IconAction } from "../../design-system/components/toolbars";
@@ -36,7 +37,7 @@ import { openingArrowsOf } from "./openingArrows";
  *
  * | Capability | Taken |
  * | --- | --- |
- * | Base + engine + Play | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (on), `usePlayToggle` (off at the start) |
+ * | Base + engine + Play | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (off until switched on), `usePlayToggle` (off at the start) |
  * | Book | `useOpeningBookModule` — eco.json's continuations from the position on screen, listed in the Book tab (a click plays one, from any node — an earlier position branches) and drawn as arrows |
  * | Tree view | `useVariationsExplorer` — Moves, Map, the comment block, the next-moves bar, the arrows, the move menu; editing on, *Play chances…* off |
  * | Shell | `BoardShell` / `BoardPanel` — tabs Book · Moves (with the next-move arrows' switch) · Map · Load · Export · Engine |
@@ -280,6 +281,7 @@ function OpeningsBoard() {
                 engineOn={session.engineOn}
                 showEvalBar={session.showEvalBar}
                 onShowEvalBarChange={session.setShowEvalBar}
+                deviceLimits={deviceEngineLimits()}
                 onClear={() => {
                   core.reset();
                   engine.clearAnalysis();

@@ -21,10 +21,13 @@ import {
   type DrawnShape,
   type ShapeBrush,
 } from "../../lib/boardShapes";
-import { findNode, setComments, type GameTree } from "../../lib/gameTree";
+import { commentsAt, findNode, setComments, type GameTree } from "../../lib/gameTree";
 
-/** The move the dialog is open on, and how the menu prints it. */
-export type ShapesTarget = { nodeId: string; label: string };
+/**
+ * The move the dialog is open on, and how the menu prints it. A `null` id is
+ * the **start position** (CTA-149): the game's own opening comment.
+ */
+export type ShapesTarget = { nodeId: string | null; label: string };
 
 const BRUSHES: readonly ShapeBrush[] = ["green", "red", "yellow", "blue"];
 const SQUARE = /^[a-h][1-8]$/;
@@ -73,9 +76,10 @@ function OpenShapesDialog({
 }) {
   const { t } = useTranslation();
   const { drawing } = useChessTokens();
-  // A move the tree no longer holds (an edit landed elsewhere) offers nothing to change.
-  const node = findNode(tree, target.nodeId);
-  const comments = node?.comments ?? [];
+  // A move the tree no longer holds (an edit landed elsewhere) offers nothing to
+  // change; the start position is always there.
+  const present = target.nodeId === null || findNode(tree, target.nodeId) !== null;
+  const comments = commentsAt(tree, target.nodeId, "comments");
   const shapes = shapesOf(comments);
   const rows: DrawnShape[] = [
     ...shapes.arrows,
@@ -83,8 +87,8 @@ function OpenShapesDialog({
   ];
 
   const write = (next: (list: readonly string[]) => string[]) => {
-    if (node === null) return;
-    const edited = setComments(tree, node.id, "comments", next(comments));
+    if (!present) return;
+    const edited = setComments(tree, target.nodeId, "comments", next(comments));
     if (edited !== tree) onEditTree(edited);
   };
 
@@ -104,7 +108,7 @@ function OpenShapesDialog({
   const exists = rows.some(
     (row) => row.brush === brush && row.from === fromSquare && row.to === toSquare,
   );
-  const canAdd = node !== null && fromValid && toValid && !exists;
+  const canAdd = present && fromValid && toValid && !exists;
 
   const brushes = (current: ShapeBrush, onPick: (next: ShapeBrush) => void, label: (next: ShapeBrush) => string, testId: string) => (
     <Box role="group" aria-label={t("shapesDialog.brush")} sx={{ display: "inline-flex" }}>
@@ -113,7 +117,7 @@ function OpenShapesDialog({
           key={option}
           label={label(option)}
           pressed={option === current}
-          disabled={node === null}
+          disabled={!present}
           onClick={() => onPick(option)}
           testId={`${testId}-${option}`}
         >
@@ -139,7 +143,7 @@ function OpenShapesDialog({
       title={
         <>
           {t("shapesDialog.title")}{" "}
-          <span dir="ltr" data-testid="shapes-dialog-move" style={{ unicodeBidi: "isolate" }}>
+          <span dir={target.nodeId === null ? "auto" : "ltr"} data-testid="shapes-dialog-move" style={{ unicodeBidi: "isolate" }}>
             {target.label}
           </span>
         </>
@@ -205,7 +209,7 @@ function OpenShapesDialog({
                 )}
                 <IconAction
                   label={t("shapesDialog.remove", { shape: name })}
-                  disabled={node === null}
+                  disabled={!present}
                   onClick={() => write((list) => toggleShape(list, shape))}
                   testId={`shapes-dialog-row-${shape.from}${shape.from === shape.to ? "" : shape.to}-remove`}
                 >

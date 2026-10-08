@@ -171,10 +171,17 @@ export const ROUTES: readonly PageRoute[] = [
   // The Blog (CTA-126): its index and a folder; its articles follow, read from their files (CTA-135).
   { id: "blog", pattern: "/blog/*", path: "blog" },
   { id: "blog-folder", pattern: "/blog/*", path: "blog/writing-an-article/components" },
+  // The legal pages (CTA-159): the Privacy Policy and the Cookies Notice, MDX documents reached from the footer.
+  { id: "privacy", pattern: "/privacy", path: "privacy" },
+  { id: "cookies", pattern: "/cookies", path: "cookies" },
   { id: "settings-export", pattern: "/settings/:tab", path: "settings/export" },
   { id: "settings-import", pattern: "/settings/:tab", path: "settings/import" },
   { id: "settings-storage", pattern: "/settings/:tab", path: "settings/storage" },
   { id: "settings-appearance", pattern: "/settings/:tab", path: "settings/appearance" },
+  // The Engine tab (CTA-153): the registry's engines, the multi-thread one disabled where the host does not isolate the page.
+  { id: "settings-engine", pattern: "/settings/:tab", path: "settings/engine" },
+  // The Support tab (CTA-155): a line and the button that opens the support dialog.
+  { id: "settings-support", pattern: "/settings/:tab", path: "settings/support" },
   ...blogArticleRoutes().map(
     ({ path, board }): PageRoute => ({
       id: `blog-${path.replaceAll("/", "-")}`,

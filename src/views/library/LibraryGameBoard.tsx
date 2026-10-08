@@ -13,6 +13,7 @@ import type { ChessboardOptions } from "react-chessboard";
 
 import { ChangesStrip, CurrentOpening, EngineThinking, GameInfo, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
 import { AnalysisEngineForm } from "../../blocks/forms";
+import { deviceEngineLimits } from "../../lib/engineSettings";
 import { SwitchField } from "../../design-system/components/forms";
 import { BackButton } from "../../design-system/components/navigation";
 import { IconAction, ToggleIconAction } from "../../design-system/components/toolbars";
@@ -50,7 +51,7 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  *
  * | Capability | Taken |
  * | --- | --- |
- * | Base + engine + Play + baseline | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (on), `usePlayToggle` (off at the start) |
+ * | Base + engine + Play + baseline | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (off until switched on), `usePlayToggle` (off at the start) |
  * | Tree view | `useVariationsExplorer` — Moves, Map, the comment block, the next-moves bar, the arrows, the move menu; editing on, *Play chances…* off |
  * | Shell | `BoardShell` / `BoardPanel` — tabs Moves (with the next-move arrows' switch) · Map · Info · Export · Engine |
  *
@@ -372,6 +373,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
                 engineOn={session.engineOn}
                 showEvalBar={session.showEvalBar}
                 onShowEvalBarChange={session.setShowEvalBar}
+                deviceLimits={deviceEngineLimits()}
               />
             ),
           },

@@ -11,7 +11,7 @@
  *
  * | Hook | Called by | What it tells the shell |
  * | --- | --- | --- |
- * | `usePageTitle(detail)` | a screen with a record open | the record's name — "Carlsen games — Library — Chess Trainer App" |
+ * | `usePageTitle(detail)` | a screen with a record open | the record's name — "Carlsen games — Library — chessapp.dev" |
  * | `useOwnPageHeading()` | a screen whose design has a visible title | it renders the page's `h1` itself, so the shell's hidden one steps aside |
  *
  * Both are no-ops outside the shell, so a screen test that mounts the screen

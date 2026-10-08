@@ -7,7 +7,7 @@ board screen or changing one.
 
 - **UI library:** [`react-chessboard`](https://react-chessboard.vercel.app/?path=/docs/get-started--docs) **v5** (`^5.12.1`)
 - **Rules engine:** [`chess.js`](https://www.npmjs.com/package/chess.js) **v1** (`^1.4.0`)
-- **Analysis engine:** Stockfish WASM worker, wrapped by [`src/lib/engine.ts`](../../src/lib/engine.ts)
+- **Analysis engine:** Stockfish 19 WASM workers, behind the engine registry [`src/lib/engines/`](../../src/lib/engines/) ([`docs/engine.md`](../../docs/engine.md))
 - **React 19** is required by react-chessboard v5.
 
 ---
@@ -221,24 +221,40 @@ write a colour literal in a board file.**
 
 ## 4. Stockfish engine integration
 
-Wrapper: [`src/lib/engine.ts`](../../src/lib/engine.ts). Worker script + wasm
-live in `public/stockfish/`, served under Vite's `base` — so the worker URL is
-built from `import.meta.env.BASE_URL`, never hardcoded to the site root. The app
-deploys to GitHub Pages at `/chess-trainer-app/`, where a bare
-`/stockfish/stockfish.wasm.js` 404s, and `new Worker()` reports that as an
-async `error` event rather than throwing — the board simply never evaluates.
+**The engine is pluggable** (CTA-152; the whole picture — the builds, the
+registry, how to add one, the planned hosted engine — is
+[`docs/engine.md`](../../docs/engine.md)). A board sees an **`EngineHandle`**
+(`src/lib/engineTypes.ts`); `UciEngine` (`src/lib/uciEngine.ts`) is the UCI
+protocol over a **`UciTransport`**, and `WorkerTransport`
+(`src/lib/workerTransport.ts`) is the local Web Worker — **nothing outside it
+assumes a Worker**. The engines are the registry, `src/lib/engines/`
+(`EngineDescriptor`: id, name, version, requirements, capabilities, `create()`)
+— Stockfish 19 Lite, single-thread (the default) and multi-thread (on a
+cross-origin-isolated page); `useEngineModule` builds the handle from it
+(§9.2.1).
+
+The worker scripts + wasm live in `public/stockfish/`, each build in a folder
+named by its id (files, versions, licences and what was measured on each: its
+`README.md`), served under Vite's `base` — so a worker URL is built from
+`import.meta.env.BASE_URL`, never hardcoded to the site root. The app deploys to
+GitHub Pages at `/chess-trainer-app/`, where a bare `/stockfish/…` 404s, and
+`new Worker()` reports that as an async `error` event rather than throwing — the board simply never evaluates.
+**Nothing in this layer runs at module scope** (the pre-render imports it under
+Node; `engines/noWorkerAtImport.test.ts`).
 
 ### API
 
+What follows is `EngineHandle` — every engine, whatever it runs on.
+
 | Method | Notes |
 | --- | --- |
-| `new Engine()` | Spawns a **dedicated Worker**. One per mounted board. |
-| `search(fen, { depth = 12, movetime })` | Depth is clamped to 24; `movetime` is milliseconds, omitted when 0. **May not start immediately** — §4.1. |
+| `descriptor.create()` | Spawns a **dedicated Worker** (a local engine). One per mounted board. |
+| `search(fen, { depth, movetime })` / `search(fen, { infinite: true })` | To a depth — required, the board's own setting, never a wrapper default — clamped to the engine's `capabilities.maxDepth` (`DEFAULT_MAX_DEPTH`, 99, for every shipped build), with `movetime` in milliseconds (omitted when 0), whichever comes first; or **until stopped** (`go infinite` — an analysis board's infinite analysis, CTA-160; it ends only with `stop()`, so never on a board waiting for the engine's move). **May not start immediately** — §4.1. |
 | `onMessage(cb) => unsubscribe` | Parsed UCI messages. **You must call the unsubscribe.** |
 | `setOption(name, value) => boolean` | Buffered, not posted (§4.1). `false` means this build will not take it — no such option, or pinned. |
 | `whenOptionsReady(cb) => unsubscribe` | Runs `cb` once `options` is complete, at once if the handshake already landed. |
-| `options` / `supportsOption(name)` | What the **running worker** declared in its own `uci` reply. |
-| `stop()` | The engine returns the bestmove for the depth reached. |
+| `options` | What the **running worker** declared in its own `uci` reply. |
+| `stop()` | Drops a waiting search and ends the running one — which still answers with the bestmove for the depth reached. |
 | `terminate()` | `quit` + `worker.terminate()`. Call on unmount. |
 
 A parsed message (`EngineMessage`) has `bestMove` (`"e2e4"`, `"e7e8q"`),
@@ -249,27 +265,37 @@ screen cannot be told from one still draining out of the search it replaced.
 
 ### 4.1 The protocol discipline — why `search` and `setOption` are deferred
 
-**The build in `public/stockfish/` abandons a running search if it receives a
-`setoption` while searching**: no `bestmove`, no further `info`, and the board
-never evaluates again. It is silent, so it looks like a broken worker.
+**UCI permits `setoption` only while the engine is idle, and an engine that
+takes one mid-search badly abandons the search** — no `bestmove`, no further
+`info`, and the board never evaluates again. It is silent, so it looks like a
+broken worker. The app's first engine (Stockfish 2019, removed in CTA-160) did
+exactly that, and stopped answering for good after `setoption name Threads
+value 1`, its own pinned default. The shipped Stockfish 19 builds were measured
+to survive both (CTA-152) — **the rule below is generic anyway**: a hosted or
+future engine has not been measured, so it is the same rule for every engine;
+re-test each new binary, `docs/engine.md` §6.
 
-`Engine` therefore buffers everything and posts it only when the engine can
-take it: nothing before `uciok`, nothing while a search runs (a `stop` goes
-instead, and the `bestmove` that ends the search resumes the queue). Options go
-to an idle engine, and a waiting search starts only afterwards.
+`UciEngine` therefore buffers everything and posts it only when the engine can
+take it: nothing before `uciok`, nothing while a search runs (**one** `stop`
+goes instead, and the `bestmove` that ends the search resumes the queue).
+Options go to an idle engine, and a waiting search starts only afterwards.
 
 - **Call `search()` whenever the position changes; do not sequence it
   yourself.** A second call before the first has started replaces it.
-- **A pinned option is never sent.** An option whose `min` equals its `max`
-  can only be a no-op — except that `setoption name Threads value 1`, this
-  build's own declared default, is itself fatal to it. `setOption` returns
-  `false` for those.
-- **Never hardcode the option roster.** `Threads` and `Hash` are pinned here
-  (`min 1 max 1`, `min 16 max 16`); there is no `UCI_Elo` and no
-  `UCI_LimitStrength`, so strength is `Skill Level` only and any Elo shown is
-  an estimate. Read `engine.options` and render three states: absent, pinned,
-  adjustable (`views/engine/play/EngineSettings.tsx`). Swapping the binary
-  then changes the UI with no code change.
+- **A pinned option is never sent**, nor one the engine did not declare. An
+  option whose `min` equals its `max` can at best be a no-op — and was fatal
+  once (above). `setOption` returns `false` for those, and queues nothing, so
+  it stops no search.
+- **An unchanged option is not posted again.** A board re-requests every
+  option whenever a setting moves; `setoption name Hash` clears the hash table.
+- **Never hardcode the option roster.** The Stockfish 19 builds declare
+  `Skill Level`, `UCI_LimitStrength` and `UCI_Elo` (1320–3190), an adjustable
+  `Hash`, and `Threads` pinned to 1 (single-thread) or 1–32 (multi-thread);
+  another engine may have no `UCI_Elo` at all, and then strength is
+  `Skill Level` and any Elo shown is an estimate. Read `engine.options` and
+  render three states: absent, pinned, adjustable
+  (`views/engine/play/EngineSettings.tsx`). Swapping the binary then changes
+  the UI with no code change.
 
 ### Rules for using it from React
 
@@ -277,11 +303,13 @@ All of these live in `useEngineModule` (§9.2.1); a board never writes them
 again.
 
 1. **Create the engine lazily in a ref, resolved at call time — never during
-   render**, not `useMemo`, not module scope:
-   `const getEngine = useCallback(() => (engineRef.current ??= new Engine()), [])`.
+   render**, not `useMemo`, not module scope: `ensureEngine()` returns the ref's
+   handle for the descriptor `resolveEngine(choice)` named at render, building
+   it with `descriptor.create()` when there is none (and terminating one built
+   for another descriptor — one engine at a time).
    Reading the ref during render dies under StrictMode: its mount → unmount →
    remount runs the cleanups and then the effects again **with no render in
-   between**, so every effect keeps the terminated instance. `getEngine()`
+   between**, so every effect keeps the terminated instance. `ensureEngine()`
    rebuilds it.
 2. **Subscribe in an effect, unsubscribe on cleanup**, and declare that effect
    **first**, so on a StrictMode remount it rebuilds the worker before the
@@ -321,7 +349,7 @@ what shares it.
   The position editor and the preview boards carry none. A strip's left end
   can carry a **player plate** (CTA-105) — the player's result, Elo and name
   — as an optional prop down `BoardShell` → `EngineBoardSquare` → the strips,
-  which only the Library's game board passes; the plate truncates where the
+  which only the Library's game board and the Analysis Board (CTA-148) pass; the plate truncates where the
   row runs short, the pieces keep the right edge, and the height arithmetic
   above is untouched.
 - **A screen that scrolls inside the square divides it itself**: a flex column,
@@ -393,8 +421,18 @@ around the board, so mock the component and assert what it was handed. The
 game boards share one stub, `reactChessboardMock()` in
 [`views/board/boardTestHarness.tsx`](../../src/views/board/boardTestHarness.tsx)
 (`boardOptions()` reads the last options — how drops, positions, orientation
-and arrows are asserted), beside `FakeEngine` (the `lib/engine` stand-in) and
-`openingsMock`.
+and arrows are asserted), beside `openingsMock` and **the engine seam**:
+`builtinEnginesMock` replaces `lib/engines/builtin`, so every shipped
+descriptor's `create()` returns a `FakeEngine` declaring what that build
+declares (`engine.descriptor?.id` says which) — the default engine, a reader's
+choice (`crossOriginIsolated` stubbed for the multi-thread build) and a switch
+between them, all faked the one way:
+
+```ts
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
+```
 
 - **Stub what the screen actually imports.** A spare-piece screen needs
   `ChessboardProvider` (keeping the options), `Chessboard` and `SparePiece`
@@ -519,17 +557,27 @@ knows which screen calls it.
 ```ts
 const engine = useEngineModule({
   enabled: boolean,                     // the engine's switch
+  engine?: string,                      // which engine, a registry id — absent: the default (today's behaviour)
   fen: string,                          // the position ON SCREEN — never the live one
   depth: number,
   moveTimeMs: number,
+  infinite?: boolean,                   // search until stopped (CTA-160) — absent: to depth / move time
   uciOptions: Readonly<Record<string, number>>,   // name → requested value
   onUciOptionsReady?: (clamped: Readonly<Record<string, number>>) => void,
   onBestMove?: (bestMove: string, searchedFen: string) => void,
 });
-// → { analysis, evalsByFen, engineOptions, clearAnalysis }
+// → { descriptor, analysis, evalsByFen, engineOptions, clearAnalysis }
 ```
 
-It owns all of §4: the lazy ref, subscribe-first, terminate on unmount; the
+It owns all of §4: the lazy ref, subscribe-first, terminate on unmount; **the
+choice of engine** (CTA-152) — it depends on `EngineHandle` only and builds it
+from the registry (`lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
+`engine` is a descriptor id, an unknown or unavailable one (a multi-thread
+build on a page that is not cross-origin isolated) falls back to the default,
+`descriptor` is the engine actually running, and **changing it terminates the
+old handle and builds the new one** — one at a time — then runs the handshake,
+the clamp and the search again against the new engine, dropping the old
+engine's lines and keeping the scores already recorded; the
 **`uci` handshake** — what the worker declared is `engineOptions`, and the
 requested values are **clamped into those bounds** and reported through
 `onUciOptionsReady` (the module never learns what a setting *means*);
@@ -630,7 +678,8 @@ one move forward, a change of side (the flip — the reader's side *is* the
 orientation), the engine switched off, the game over, or `finished` (a
 resignation). Pressing Play at the engine's turn with a search of that position
 finished plays at once. The Analysis Board, the Library's game board and the
-Openings explorer start it off; Play with Engine starts it on. The header
+Openings explorer start it off — and, since CTA-148, their engine too, so Play
+is disabled until the reader switches it on; Play with Engine starts it on. The header
 button and status line are the `PlayToggleButton` / `EngineThinking` blocks
 (`src/blocks/panels/`).
 
@@ -694,11 +743,11 @@ the detail.
 
 | Board | Session | Engine reply | Book | Saving | Tabs | Tree view |
 | --- | --- | --- | --- | --- | --- | --- |
-| **Analysis Board** `/tools/analysis` | `useAnalysisSession` (+ the saved record: `useAnalysisBoard`) | Play (off at start) | — | explicit: Save → changes strip or name-and-folder dialog | Moves · Map · Load · Export · Engine · Arrows | explorer, editing on, *Play chances…* off, `addedIds` |
+| **Analysis Board** `/tools/analysis` | `useAnalysisSession` (+ the saved record: `useAnalysisBoard`) | Play (off; engine off at start, CTA-148) | — | explicit: Save → changes strip or name-and-folder dialog | Moves · Map · Load · Export · Engine · Arrows | explorer, editing on, *Play chances…* off, `addedIds` |
 | **Play with Engine** `/engine/play` | `usePlayGame` | Play (on from the start) | — | `useAutosave` → played games | Moves · Engine (no Map, CTA-91) | explorer, as the Analysis Board without `addedIds`, and without the `map` option — no Map is drawn |
 | **Masked Pieces** `/engine/masked` | `usePlayGame` (the same `PlayScreen`) | as Play with Engine | — | as Play with Engine, the costume on the record | + Masking | as Play with Engine, plus `mask` |
-| **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off) | — | explicit: Update / Save as copy (shipped: copy to Saved analyses) | Moves · Map · Info · Export · Engine | as the Analysis Board |
-| **Openings explorer** `/openings` | `useAnalysisSession` | Play (off) | `useOpeningBookModule` | nothing is kept; hands the tree to the Analysis Board | Book · Moves · Map · Load · Export · Engine | explorer, as the Analysis Board without `addedIds` |
+| **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off; engine off at start) | — | explicit: Update / Save as copy (shipped: copy to Saved analyses) | Moves · Map · Info · Export · Engine | as the Analysis Board |
+| **Openings explorer** `/openings` | `useAnalysisSession` | Play (off; engine off at start) | `useOpeningBookModule` | nothing is kept; hands the tree to the Analysis Board | Book · Moves · Map · Load · Export · Engine | explorer, as the Analysis Board without `addedIds` |
 | **Repertoire player** `/repertoires/<id>` (+ `/games/<game>`) | the core + `useTrainerModule` | none — the trainer is the opponent | — | explicit: Update / Save as copy (a game never writes) | Moves · (Score) · Map · Settings · Engine | the full explorer; editing and comments in the player only |
 
 Next-move arrows are one helper, `nextMoveArrowsOf` — the mainline's move

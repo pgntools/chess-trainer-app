@@ -3,7 +3,7 @@ import { Link as RouterLink } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { AnalysesTree, ANALYSES_TREE_PAGE } from "../../../blocks/trees";
-import { analysesListPath, analysisBoardPath, type ListContext } from "../../../lib/analysesListContext";
+import { analysesListPath, analysisBoardPath, siblingAnalysesOf, siblingPlaceOf, type ListContext } from "../../../lib/analysesListContext";
 import type { SavedAnalysis } from "../../../lib/savedAnalyses";
 import { analysisFolderPath } from "../../../lib/savedAnalysisFolders";
 import { savedAnalysisRowOf, type SavedAnalysisRow } from "../../../lib/savedAnalysisRows";
@@ -70,6 +70,12 @@ function AnalysesFolderView({ context, record, locked, drawerOpen, onDrawerClose
     [context],
   );
   const closeLink = useMemo(() => ({ component: RouterLink, to: analysesListPath(context) }), [context]);
+  // Previous / next walk the open analysis' own folder in the table's order — the toolbar at the panel's foot.
+  const siblings = useMemo(() => {
+    const place = analyses === undefined ? { previous: undefined, next: undefined } : siblingPlaceOf(siblingAnalysesOf(analyses, record.folderId, context.sort), record.id);
+    const linkTo = (saved: { id: string } | undefined) => (saved === undefined ? undefined : { component: RouterLink, to: analysisBoardPath(saved.id, context) });
+    return { previous: linkTo(place.previous), next: linkTo(place.next), testId: "analysis-sibling" };
+  }, [analyses, record.folderId, record.id, context]);
   const labels = useMemo(
     () => ({
       title: context.folderId === null ? t("savedAnalyses.title") : root?.name || t("savedAnalyses.folder.untitled"),
@@ -78,6 +84,8 @@ function AnalysesFolderView({ context, record, locked, drawerOpen, onDrawerClose
       close: t("analysis.folderView.close"),
       hint: t("hints.tree"),
       locked: t("analysis.folderView.locked"),
+      previous: t("analysis.folderView.previous"),
+      next: t("analysis.folderView.next"),
       filter: t("savedAnalyses.table.filter"),
       filterClear: t("savedAnalyses.table.filterClear"),
       noMatch: t("savedAnalyses.table.noMatch"),
@@ -104,6 +112,7 @@ function AnalysesFolderView({ context, record, locked, drawerOpen, onDrawerClose
         locked={locked}
         linkOf={linkOf}
         closeLink={closeLink}
+        siblings={siblings}
         collapsed={!compact && state.collapsed}
         // Wide, the panel folds to a rail; the drawer is closed instead.
         onCollapsedChange={compact ? undefined : (collapsed) => onStateChange({ ...state, collapsed })}

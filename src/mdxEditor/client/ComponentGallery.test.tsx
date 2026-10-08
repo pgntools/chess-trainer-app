@@ -71,12 +71,19 @@ describe("the Components gallery (CTA-140)", () => {
     expect(screen.getByRole("switch", { name: "Side lines" })).toBeChecked();
   });
 
+  it("opens the two-column game on the same sample, its settings those of <InlinePgnGame>", async () => {
+    const user = userEvent.setup();
+    mount();
+    await pick(user, "A game, its moves in two columns");
+    expect(code()).toHaveValue('import game from "./writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn?raw"\n\n<InlinePgnGameColumns pgn={game} />');
+  });
+
   it("picks an entry from the tree by the keyboard, and opens it on its own sample", async () => {
     const user = userEvent.setup();
     mount();
     within(tree()).getByRole("treeitem", { name: "A game, its moves beside it" }).focus();
-    // Down through the Boards to the stored game.
-    await user.keyboard("{ArrowDown}{Enter}");
+    // Down through the Boards — past the two-column variant — to the stored game.
+    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
     expect(within(tree()).getByRole("treeitem", { name: "A stored game" })).toHaveAttribute("aria-current", "page");
     expect(code()).toHaveValue('<StoredGameEmbed src="/library/capablanca/2" />');
     expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("Built-in example — Capablanca, game 2 — /library/capablanca/2 (the default)");
@@ -132,7 +139,7 @@ describe("the Components gallery (CTA-140)", () => {
     // A table reads one game of the Library no more than a PGN's one game: it does not fit, and cannot be used.
     dialog = await open();
     await user.click(within(dialog).getByRole("radio", { name: /^An address in the app/ }));
-    const addressField = within(dialog).getByRole("textbox", { name: "The address" });
+    const addressField = within(dialog).getByRole("combobox", { name: "The address" });
     await user.type(addressField, "/library/capablanca/3");
     await user.click(within(dialog).getByRole("button", { name: "Look it up" }));
     expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent(/^Found Capablanca, Jose – /);
@@ -164,10 +171,10 @@ describe("the Components gallery (CTA-140)", () => {
     await user.click(screen.getByRole("button", { name: "Add / update PGN…" }));
     const dialog = await screen.findByRole("dialog", { name: "Add / update PGN — <InlinePgnGame>" });
     await user.click(within(dialog).getByRole("radio", { name: /^An address in the app/ }));
-    await user.type(within(dialog).getByRole("textbox", { name: "The address" }), "/repertoires/nope{Enter}");
+    await user.type(within(dialog).getByRole("combobox", { name: "The address" }), "/repertoires/nope{Enter}");
     expect(await within(dialog).findByText("This browser has no repertoire nope.")).toBeInTheDocument();
-    await user.clear(within(dialog).getByRole("textbox", { name: "The address" }));
-    await user.type(within(dialog).getByRole("textbox", { name: "The address" }), "/repertoires/caro{Enter}");
+    await user.clear(within(dialog).getByRole("combobox", { name: "The address" }));
+    await user.type(within(dialog).getByRole("combobox", { name: "The address" }), "/repertoires/caro{Enter}");
     expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent("Found My Caro.");
     expect(within(dialog).getByTestId("mdx-component-gallery-browser-only")).toHaveTextContent("not in this browser");
     await user.keyboard("{Enter}");
@@ -176,6 +183,35 @@ describe("the Components gallery (CTA-140)", () => {
     expect(screen.getByTestId("mdx-component-gallery-reads")).toHaveTextContent("A repertoire — My Caro");
     expect(screen.getByTestId("mdx-component-gallery-browser-only")).toBeInTheDocument();
     expect(await within(preview()).findByRole("group", { name: "The game, from The start to 2... d5" }, { timeout: 10_000 })).toBeInTheDocument();
+  });
+
+  it("finds a record by the first letters of its name — grouped by kind, Hebrew names too — and a pick is found without a look-up (CTA-150)", async () => {
+    const user = userEvent.setup();
+    const caro = readRepertoireText(['[Event "My Caro"]', "", "1. e4 c6 2. d4 d5 *"].join("\n"));
+    const hebrew = readRepertoireText(['[Event "ספרדית"]', "", "1. e4 e5 2. Nf3 Nc6 *"].join("\n"));
+    if (!caro.ok || !hebrew.ok) throw new Error("fixture does not read");
+    await saveRepertoire(savedRepertoireOf("caro", caro.games[0], "", caro.name));
+    await saveRepertoire(savedRepertoireOf("ruy", hebrew.games[0], "", hebrew.name));
+    mount();
+    await user.click(screen.getByRole("button", { name: "Add / update PGN…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add / update PGN — <InlinePgnGame>" });
+    await user.click(within(dialog).getByRole("radio", { name: /^An address in the app/ }));
+    const field = within(dialog).getByRole("combobox", { name: "The address" });
+    // The records are read when the address is chosen; a name's letters narrow them, in any case.
+    await user.type(field, "caro");
+    const listbox = await screen.findByRole("listbox");
+    await within(listbox).findByRole("option", { name: "My Caro" });
+    expect(within(listbox).getAllByRole("option").map((option) => option.textContent)).toEqual(["My Caro"]);
+    expect(listbox.querySelector(".MuiAutocomplete-groupLabel")).toHaveTextContent("Repertoires");
+    await user.clear(field);
+    await user.type(field, "ספר");
+    await user.click(await screen.findByRole("option", { name: "ספרדית" }));
+    // Picking fills the canonical path and looks it up — "Use it" needs no further step.
+    expect(field).toHaveValue("/repertoires/ruy");
+    expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent("Found ספרדית.");
+    await user.click(within(dialog).getByRole("button", { name: "Use it" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(code()).toHaveValue('<InlinePgnGame src="/repertoires/ruy" />');
   });
 
   describe("a heavy PGN — over 100 games", () => {
@@ -329,10 +365,10 @@ describe("the Components gallery (CTA-140)", () => {
     // No PGN for a component that reads the Library alone.
     expect(within(dialog).queryByRole("radio", { name: "Paste a PGN" })).not.toBeInTheDocument();
     await user.click(within(dialog).getByRole("radio", { name: /^An address in the app/ }));
-    await user.type(within(dialog).getByRole("textbox", { name: "The address" }), "/somewhere{Enter}");
-    expect(within(dialog).getByRole("textbox", { name: "The address" })).toHaveAccessibleDescription(/^An address is a screen's/);
-    await user.clear(within(dialog).getByRole("textbox", { name: "The address" }));
-    await user.type(within(dialog).getByRole("textbox", { name: "The address" }), "/library/tal{Enter}");
+    await user.type(within(dialog).getByRole("combobox", { name: "The address" }), "/somewhere{Enter}");
+    expect(within(dialog).getByRole("combobox", { name: "The address" })).toHaveAccessibleDescription(/^An address is a screen's/);
+    await user.clear(within(dialog).getByRole("combobox", { name: "The address" }));
+    await user.type(within(dialog).getByRole("combobox", { name: "The address" }), "/library/tal{Enter}");
     expect(await within(dialog).findByTestId("mdx-component-gallery-found")).toHaveTextContent(/^Found Tal — /);
     await user.keyboard("{Enter}");
     await waitFor(() => expect(code()).toHaveValue('<CollectionCard _id="/library/tal" />'));

@@ -1,7 +1,7 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import { styled, type Theme } from "@mui/material/styles";
+import { styled, type SxProps, type Theme } from "@mui/material/styles";
 import FirstPageRoundedIcon from "@mui/icons-material/FirstPageRounded";
 import LastPageRoundedIcon from "@mui/icons-material/LastPageRounded";
 import NavigateBeforeRoundedIcon from "@mui/icons-material/NavigateBeforeRounded";
@@ -13,9 +13,9 @@ import { useTranslation } from "react-i18next";
 import { IconAction } from "../../design-system/components/toolbars";
 import { MIN_TARGET_PX, MONOSPACE_FONT_FAMILY, useChessTokens } from "../../design-system/theme";
 import { drawsShapes, shapesOf } from "../../lib/boardShapes";
-import { findNode, pathTo, type GameTree } from "../../lib/gameTree";
+import { findNode, pathTo, type GameTree, type VariationNode } from "../../lib/gameTree";
 import { lastMoveSquareStyles } from "../../lib/gameNavigation";
-import { excerptTokens, isInExcerpt, moveName, type ExcerptToken, type ExcerptWindow } from "../../lib/pgnExcerpt";
+import { excerptRows, excerptTokens, isInExcerpt, moveName, type ExcerptToken, type ExcerptWindow } from "../../lib/pgnExcerpt";
 import { readComment } from "../../lib/moveAnnotations";
 import { ForceLTR } from "../../theme/ForceLTR";
 import NagGlyphs from "./NagGlyphs";
@@ -51,6 +51,13 @@ import { useBoardKeys } from "./useBoardKeys";
  *   moves); `shapes={false}` turns drawings off. With `showComments`, the
  *   move on screen's PGN comment sits under the moves.
  *
+ * - **The moves in columns** (CTA-146): `movesLayout="columns"` lays the
+ *   window's mainline out as the Analysis Board's move list does — numbered
+ *   pairs, number | White | Black, each side line a run spanning the row under
+ *   the pair it answers — in a box no taller than the board, which scrolls
+ *   when the tree is longer and keeps the move on screen in view. Absent
+ *   (`"run"`), the moves are the wrapping run above, as ever.
+ *
  * Presentational: the tree and the window arrive as props, the position on
  * screen and the orientation are its own. Pinned LTR (`ForceLTR`), the theme's
  * squares and reduced motion (`useBoardSquareOptions`), the theme's colours.
@@ -73,7 +80,35 @@ type ExcerptBoardProps = {
   shapes?: boolean;
   /** Draw the arrows to the next moves over the board. Default on; off, the move list still offers them. */
   nextMoveArrows?: boolean;
+  /**
+   * How the moves are laid out: `"run"` (the default) PGN's moves as a wrapping run;
+   * `"columns"` numbered pairs in a box capped at the board's height, scrolling (CTA-146).
+   */
+  movesLayout?: "run" | "columns";
 };
+
+/** The board column's width, and so the board's side, from `sm` up. */
+const BOARD_COLUMN_PX = 320;
+/**
+ * The most the columns layout's move list may stand: the board's side. The
+ * board is as wide as its column — `BOARD_COLUMN_PX` from `sm` up, or the
+ * whole width where the container is narrower, and when stacked under `sm` —
+ * so the cap reads the container's width (`container-type` on the layout's
+ * grid, `cqw`).
+ */
+const COLUMNS_MAX_HEIGHT = { xs: "100cqw", sm: `min(${BOARD_COLUMN_PX}px, 100cqw)` };
+
+/** A side line's run — nested, dimmed, set off by a rule. */
+const variationRunSx = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  paddingInlineStart: 1,
+  marginInlineStart: 1,
+  borderInlineStart: 2,
+  borderColor: "divider",
+  color: "text.secondary",
+} as const;
 
 /** A move of the list — `VariationLine`'s token: monospace, 24 px, current by `aria-current`. */
 const MoveToken = styled("button")(({ theme }) => ({
@@ -124,6 +159,7 @@ function ExcerptBoard({
   caption,
   shapes: drawShapes = true,
   nextMoveArrows = true,
+  movesLayout = "run",
 }: ExcerptBoardProps) {
   const { t } = useTranslation();
   const squareOptions = useBoardSquareOptions();
@@ -142,6 +178,26 @@ function ExcerptBoard({
     return path.length === 0 ? undefined : (path.at(-2)?.id ?? null);
   }, [tree, nodeId]);
   const list = useMemo(() => excerptTokens(tree, window), [tree, window]);
+  const columns = movesLayout === "columns";
+  const rows = useMemo(() => (columns ? excerptRows(tree.startFen, list) : []), [columns, tree, list]);
+  const movesRef = useRef<HTMLDivElement>(null);
+
+  // Stepping keeps the move on screen in view — inside the move list's own box, never the page.
+  useLayoutEffect(() => {
+    if (!columns) return;
+    const region = movesRef.current;
+    const current = region?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!region) return;
+    // The start position (or a move outside the list) is no row: back to the top.
+    if (!current) {
+      region.scrollTop = 0;
+      return;
+    }
+    const box = region.getBoundingClientRect();
+    const move = current.getBoundingClientRect();
+    if (move.top < box.top) region.scrollTop -= box.top - move.top;
+    else if (move.bottom > box.bottom) region.scrollTop += move.bottom - box.bottom;
+  }, [columns, nodeId]);
 
   const goTo = (id: string | null) => {
     setPromotion(null);
@@ -207,43 +263,48 @@ function ExcerptBoard({
     onPieceDrop,
   };
 
+  /** A move's button — it goes there. */
+  const moveButton = (node: VariationNode, sx?: SxProps<Theme>) => (
+    <MoveToken
+      type="button"
+      dir="ltr"
+      aria-label={moveName(tree.startFen, node)}
+      aria-current={node.id === nodeId ? "true" : undefined}
+      data-testid={`${testId}-move-${node.id}`}
+      onClick={() => goTo(node.id)}
+      sx={sx}
+    >
+      {node.san}
+      <NagGlyphs nags={node.nags} testId={`${testId}-nags-${node.id}`} />
+    </MoveToken>
+  );
+
+  /** A side line's run, nested where it branches; in the columns, a row of its own. */
+  const variationRun = (tokens: readonly ExcerptToken[], inGrid: boolean) => (
+    <Box
+      key={`v-${tokens[0].kind === "move" ? tokens[0].node.id : "x"}`}
+      data-testid={`${testId}-variation`}
+      sx={inGrid ? { ...variationRunSx, gridColumn: "1 / -1" } : { ...variationRunSx, flexBasis: "100%" }}
+    >
+      {renderTokens(tokens)}
+    </Box>
+  );
+
   const renderTokens = (items: readonly ExcerptToken[]): ReactNode[] =>
     items.map((item) =>
       item.kind === "variation" ? (
-        <Box
-          key={`v-${item.tokens[0].kind === "move" ? item.tokens[0].node.id : "x"}`}
-          data-testid={`${testId}-variation`}
-          sx={{
-            flexBasis: "100%",
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            paddingInlineStart: 1,
-            marginInlineStart: 1,
-            borderInlineStart: 2,
-            borderColor: "divider",
-            color: "text.secondary",
-          }}
-        >
-          {renderTokens(item.tokens)}
-        </Box>
+        variationRun(item.tokens, false)
       ) : (
         <Box key={item.node.id} component="span" sx={{ display: "inline-flex", alignItems: "center" }}>
           {item.label !== "" && <MoveNumber aria-hidden>{item.label}</MoveNumber>}
-          <MoveToken
-            type="button"
-            dir="ltr"
-            aria-label={moveName(tree.startFen, item.node)}
-            aria-current={item.node.id === nodeId ? "true" : undefined}
-            data-testid={`${testId}-move-${item.node.id}`}
-            onClick={() => goTo(item.node.id)}
-          >
-            {item.node.san}
-            <NagGlyphs nags={item.node.nags} testId={`${testId}-nags-${item.node.id}`} />
-          </MoveToken>
+          {moveButton(item.node)}
         </Box>
       ),
     );
+
+  /** One half of a pair — its move's button, or nothing where the pair has no such move. */
+  const pairCell = (token: (typeof rows)[number]["white"]) =>
+    token === null ? <Box aria-hidden /> : moveButton(token.node, { justifyContent: "flex-start", width: "100%" });
 
   const onScreen = node === undefined ? t("inlinePgn.start") : moveName(tree.startFen, node);
 
@@ -275,9 +336,11 @@ function ExcerptBoard({
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "minmax(0, 320px) minmax(0, 1fr)" },
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: `minmax(0, ${BOARD_COLUMN_PX}px) minmax(0, 1fr)` },
           gap: 2,
           alignItems: "start",
+          // The columns layout's cap reads this grid's width (`COLUMNS_MAX_HEIGHT`).
+          ...(columns ? { containerType: "inline-size" } : {}),
         }}
       >
         <Box sx={{ display: "grid", gap: 0.5, minWidth: 0 }}>
@@ -326,14 +389,45 @@ function ExcerptBoard({
         </Box>
 
         <Box sx={{ display: "grid", gap: 1, minWidth: 0 }}>
-          <Box
-            role="group"
-            aria-label={t("inlinePgn.moves")}
-            data-testid={`${testId}-moves`}
-            sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", rowGap: 0.25 }}
-          >
-            {renderTokens(list)}
-          </Box>
+          {columns ? (
+            <Box
+              ref={movesRef}
+              role="group"
+              aria-label={t("inlinePgn.moves")}
+              data-testid={`${testId}-moves`}
+              data-layout="columns"
+              sx={{
+                display: "grid",
+                // Number, White, Black — a side line's run spans all three, under the pair it answers.
+                gridTemplateColumns: "auto 1fr 1fr",
+                alignItems: "center",
+                alignContent: "start",
+                columnGap: 0.5,
+                maxHeight: COLUMNS_MAX_HEIGHT,
+                overflowY: "auto",
+              }}
+            >
+              {rows.map((row) => (
+                <Fragment key={row.number}>
+                  <MoveNumber aria-hidden dir="ltr" sx={{ textAlign: "end", paddingInlineEnd: 0.5 }}>
+                    {row.number}.
+                  </MoveNumber>
+                  {pairCell(row.white)}
+                  {pairCell(row.black)}
+                  {row.variations.map((variation) => variationRun(variation.tokens, true))}
+                </Fragment>
+              ))}
+            </Box>
+          ) : (
+            <Box
+              role="group"
+              aria-label={t("inlinePgn.moves")}
+              data-testid={`${testId}-moves`}
+              sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", rowGap: 0.25 }}
+            >
+              {renderTokens(list)}
+            </Box>
+          )}
           {showComments && comment !== "" && (
             <Typography
               variant="body2"

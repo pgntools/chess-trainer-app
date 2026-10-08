@@ -46,7 +46,7 @@ const game = (fields: Record<string, string>, movetext: string) => `${tags(field
 const played = (id: string, movetext: string, result: string, extra: Partial<PlayedGame> = {}): PlayedGame => ({
   id,
   pgn: game(
-    { Event: "Play with Engine", Site: "Chess Trainer App", Date: "2026.09.20", Round: "-", White: "You", Black: "Stockfish", Result: result },
+    { Event: "Play with Engine", Site: "chessapp.dev", Date: "2026.09.20", Round: "-", White: "You", Black: "Stockfish", Result: result },
     movetext,
   ),
   settings: DEFAULT_ENGINE_SETTINGS,

@@ -44,7 +44,7 @@ describe("the gallery's index", () => {
     const ids = [...GALLERY.map((folder) => folder.id), ...entries.map((entry) => entry.id)];
     expect(new Set(ids).size).toBe(ids.length);
     const boards = GALLERY.find((folder) => folder.id === "boards")?.entries.map((entry) => entry.component);
-    expect(boards).toEqual(["InlinePgnGame", "StoredGameEmbed", "CollectionCard", "RepertoireBoard"]);
+    expect(boards).toEqual(["InlinePgnGame", "InlinePgnGameColumns", "StoredGameEmbed", "CollectionCard", "RepertoireBoard"]);
   });
 
   it("opens every entry that reads a game on a shipped sample that fits it", () => {

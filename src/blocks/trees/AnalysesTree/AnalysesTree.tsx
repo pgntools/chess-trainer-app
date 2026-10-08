@@ -5,6 +5,8 @@ import { useTheme } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import KeyboardDoubleArrowLeftRounded from "@mui/icons-material/KeyboardDoubleArrowLeftRounded";
 import KeyboardDoubleArrowRightRounded from "@mui/icons-material/KeyboardDoubleArrowRightRounded";
+import NavigateBeforeRoundedIcon from "@mui/icons-material/NavigateBeforeRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 
 import type { LinkTarget } from "../../../design-system/components/link";
 import { StatusText } from "../../../design-system/components/feedback";
@@ -40,6 +42,21 @@ export type AnalysesTreeLabels = AnalysesTreeNodeLabels & {
   filterClear: string;
   /** The words keep nothing — told apart from an empty folder. */
   noMatch: string;
+  /** The toolbar's previous / next buttons' names — read only with `siblings`. */
+  previous: string;
+  next: string;
+};
+
+/**
+ * Where the toolbar's previous / next go — the open analysis' neighbours in its
+ * folder. A side with no neighbour is `undefined` and its button is disabled;
+ * while `locked` both are, whatever they hold (the note says why).
+ */
+export type AnalysesTreeSiblings = {
+  previous: LinkTarget | undefined;
+  next: LinkTarget | undefined;
+  /** The buttons' test ids are `<testId>-previous` and `<testId>-next`. */
+  testId: string;
 };
 
 export type AnalysesTreeProps = Pick<AnalysesTreeNodesInput, "rootId" | "sort" | "currentId" | "shown" | "locked" | "text"> & {
@@ -49,6 +66,8 @@ export type AnalysesTreeProps = Pick<AnalysesTreeNodesInput, "rootId" | "sort" |
   linkOf: (row: SavedAnalysisRow) => LinkTarget;
   /** Where Close goes — the saved analyses list. */
   closeLink: LinkTarget;
+  /** The previous / next toolbar, sticky at the panel's foot (and in the rail). Absent, none is drawn. */
+  siblings?: AnalysesTreeSiblings;
   /** The open folders' ids. Controlled: the screen opens the chain to the current analysis and keeps the rest as the reader left it. */
   open: ReadonlySet<string>;
   onToggle: (folderId: string) => void;
@@ -70,7 +89,8 @@ export type AnalysesTreeProps = Pick<AnalysesTreeNodesInput, "rootId" | "sort" |
  * Analysis Board shows on its left when an analysis was opened from the list:
  * the list's own folders, nested and collapsible in the sidebar's look
  * (`TreeView`), with the analyses in them, every name wrapped and read whole,
- * the open one marked, a **Close** that goes back to the list and a button that
+ * the open one marked, a **Close** that goes back to the list, a **previous / next toolbar**
+ * (`siblings`) at its foot, still there in the rail, and a button that
  * **folds the panel to a rail** (`collapsed`, at the start edge, two buttons) and
  * opens it again. Rooted at the folder the reader is inside. A click on
  * an analysis is a link to its board; while the board holds unsaved work
@@ -86,11 +106,34 @@ export type AnalysesTreeProps = Pick<AnalysesTreeNodesInput, "rootId" | "sort" |
 const branchIdsOf = (nodes: readonly TreeNode[]): string[] =>
   nodes.flatMap((node) => (node.children === undefined ? [] : [node.id, ...branchIdsOf(node.children)]));
 
-function AnalysesTree({ folders, rootId, rows, text, onTextChange, sort, currentId, shown, locked, linkOf, closeLink, open, onToggle, onShowMore, collapsed, onCollapsedChange, labels, testId }: AnalysesTreeProps) {
+function AnalysesTree({ folders, rootId, rows, text, onTextChange, sort, currentId, shown, locked, linkOf, closeLink, siblings, open, onToggle, onShowMore, collapsed, onCollapsedChange, labels, testId }: AnalysesTreeProps) {
   // The arrows point at the start edge, which is the right one under RTL.
   const rtl = useTheme().direction === "rtl";
   const TowardsStart = rtl ? KeyboardDoubleArrowRightRounded : KeyboardDoubleArrowLeftRounded;
   const AwayFromStart = rtl ? KeyboardDoubleArrowLeftRounded : KeyboardDoubleArrowRightRounded;
+  const Previous = rtl ? NavigateNextRoundedIcon : NavigateBeforeRoundedIcon;
+  const Next = rtl ? NavigateBeforeRoundedIcon : NavigateNextRoundedIcon;
+  // Another analysis is not opened over unsaved changes: no link then, and the note's words as the name.
+  const siblingButtons = siblings === undefined ? null : (
+    <>
+      <IconAction
+        label={locked ? labels.locked : labels.previous}
+        link={locked ? undefined : siblings.previous}
+        disabled={locked || siblings.previous === undefined}
+        testId={`${siblings.testId}-previous`}
+      >
+        <Previous fontSize="small" />
+      </IconAction>
+      <IconAction
+        label={locked ? labels.locked : labels.next}
+        link={locked ? undefined : siblings.next}
+        disabled={locked || siblings.next === undefined}
+        testId={`${siblings.testId}-next`}
+      >
+        <Next fontSize="small" />
+      </IconAction>
+    </>
+  );
   const nodes = useMemo(
     () => analysesTreeNodes({ folders, rootId, rows, text, sort, currentId, shown, locked, linkOf, labels }),
     [folders, rootId, rows, text, sort, currentId, shown, locked, linkOf, labels],
@@ -115,6 +158,7 @@ function AnalysesTree({ folders, rootId, rows, text, onTextChange, sort, current
         <IconAction label={labels.close} link={closeLink} testId={`${testId}-close`}>
           <CloseRoundedIcon fontSize="small" />
         </IconAction>
+        {siblingButtons}
       </Box>
     );
   }
@@ -162,6 +206,15 @@ function AnalysesTree({ folders, rootId, rows, text, onTextChange, sort, current
           testId={`${testId}-tree`}
         />
       </Box>
+      {siblingButtons !== null && (
+        // Sticky at the foot, like the board panel's controls: the tree scrolls above it.
+        <Box
+          data-testid={`${testId}-siblings`}
+          sx={{ flexShrink: 0, display: "flex", justifyContent: "center", gap: 1, pt: 1, mt: 1, borderTop: "1px solid", borderColor: "divider" }}
+        >
+          {siblingButtons}
+        </Box>
+      )}
     </Box>
   );
 }

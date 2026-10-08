@@ -3,11 +3,19 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
-import type { EngineOption } from "../../../lib/engine";
+import type { EngineOption } from "../../../lib/engineTypes";
 import { expectNoAxeViolations } from "../../../test/axe";
 import { engineOptionState, optionSlug } from "./engineOptionState";
 import EngineSettingsForm from "./EngineSettingsForm";
-import { ADJUSTABLE_OPTIONS, NO_OPTIONS, SETTINGS, SHIPPED_OPTIONS, SPARSE_OPTIONS } from "./fixtures";
+import {
+  ADJUSTABLE_OPTIONS,
+  ELO_WITHOUT_LIMIT_OPTIONS,
+  NO_OPTIONS,
+  SETTINGS,
+  SHIPPED_OPTIONS,
+  SKILL_ONLY_OPTIONS,
+  SPARSE_OPTIONS,
+} from "./fixtures";
 
 const mount = (engineOptions: ReadonlyMap<string, EngineOption> = SHIPPED_OPTIONS) => {
   const onChange = vi.fn();
@@ -55,7 +63,7 @@ describe("engineOptionState", () => {
 describe("EngineSettingsForm", () => {
   it("renders every setting, each a named slider, and the eval bar switch", () => {
     mount();
-    for (const name of ["Strength", "Search depth", "Move time", "Variations to show", "Threads", "Hash (MB)"]) {
+    for (const name of ["Strength (Elo)", "Search depth", "Move time", "Variations to show", "Threads", "Hash (MB)"]) {
       expect(screen.getByRole("slider", { name })).toBeInTheDocument();
     }
     expect(screen.getByRole("switch", { name: "Show evaluation bar" })).toBeChecked();
@@ -76,10 +84,32 @@ describe("EngineSettingsForm", () => {
     expect(screen.getByRole("slider", { name: "Strength" })).toHaveAttribute("max", "8");
   });
 
-  it("leaves every knob live on a build that takes them, and before the handshake", () => {
+  it("leaves every knob live on a build that takes them", () => {
     mount(ADJUSTABLE_OPTIONS);
     expect(screen.getByRole("slider", { name: "Threads" })).toBeEnabled();
-    expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "8");
+  });
+
+  it("offers Threads and Hash only up to the app's ceilings, whatever the engine declares", () => {
+    // The 19 builds declare `Hash` to 33,554,432 MB (2048 crashed the tab) and the multi-thread one 32 threads.
+    mount(ADJUSTABLE_OPTIONS);
+    expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "32");
+    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "1024");
+  });
+
+  it("offers Threads and Hash only up to what this device can give", () => {
+    render(
+      <EngineSettingsForm
+        settings={SETTINGS}
+        onChange={vi.fn()}
+        engineOptions={ADJUSTABLE_OPTIONS}
+        showEvalBar
+        onShowEvalBarChange={vi.fn()}
+        deviceLimits={{ threads: 3, hashMb: 128 }}
+        testId="engine"
+      />,
+    );
+    expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "3");
+    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "128");
   });
 
   it("calls nothing unsupported before the handshake", () => {
@@ -96,6 +126,51 @@ describe("EngineSettingsForm", () => {
     screen.getByRole("switch", { name: "Show evaluation bar" }).focus();
     await userEvent.keyboard(" ");
     expect(onShowEvalBarChange).toHaveBeenCalledWith(false);
+  });
+
+  describe("the strength control — Skill Level or Elo, by what the running engine declared (CTA-153)", () => {
+    it("is Skill Level, with its Elo an estimate, on an engine without UCI_Elo", () => {
+      mount(SKILL_ONLY_OPTIONS);
+      const strength = screen.getByRole("slider", { name: "Strength" });
+      expect(strength).toHaveAttribute("max", "20");
+      expect(screen.queryByRole("slider", { name: "Strength (Elo)" })).toBeNull();
+      expect(screen.getByTestId("engine-setting-skill-level-value")).toHaveTextContent("≈");
+    });
+
+    it("is an Elo, in the engine's own range, on an engine that has UCI_Elo and UCI_LimitStrength", () => {
+      mount(SHIPPED_OPTIONS);
+      const strength = screen.getByRole("slider", { name: "Strength (Elo)" });
+      expect(strength).toHaveAttribute("min", "1320");
+      expect(strength).toHaveAttribute("max", "3190");
+      expect(strength).toBeEnabled();
+      // The Skill Level slider is not offered beside it: the engine ignores it while limited.
+      expect(screen.queryByRole("slider", { name: "Strength" })).toBeNull();
+      expect(screen.getByTestId("engine-setting-elo-value")).toHaveTextContent(`${SETTINGS.elo} Elo`);
+    });
+
+    it("sends the Elo the reader moves to, as a patch", async () => {
+      const { onChange } = mount(SHIPPED_OPTIONS);
+      screen.getByRole("slider", { name: "Strength (Elo)" }).focus();
+      await userEvent.keyboard("{ArrowRight}");
+      expect(onChange).toHaveBeenLastCalledWith({ elo: SETTINGS.elo + 1 });
+    });
+
+    it("stays Skill Level where UCI_Elo has no UCI_LimitStrength to go with it", () => {
+      mount(ELO_WITHOUT_LIMIT_OPTIONS);
+      expect(screen.getByRole("slider", { name: "Strength" })).toBeInTheDocument();
+      expect(screen.queryByRole("slider", { name: "Strength (Elo)" })).toBeNull();
+    });
+
+    it("is the Elo — every shipped engine's — until the handshake lands, nothing called unsupported meanwhile", () => {
+      mount(NO_OPTIONS);
+      expect(screen.getByRole("slider", { name: "Strength (Elo)" })).toBeEnabled();
+      expect(screen.queryByRole("slider", { name: "Strength" })).toBeNull();
+    });
+
+    it("passes axe in Elo mode", async () => {
+      mount(SHIPPED_OPTIONS);
+      await expectNoAxeViolations();
+    });
   });
 
   it("passes axe", async () => {

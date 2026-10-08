@@ -47,7 +47,7 @@ the receiving end of the hand-off is [`analysis-board.md`](./analysis-board.md).
 | `src/lib/analysisHandOff.ts` | **The hand-off to the Analysis Board** (§5): `analysisHandOffState` / `analysisHandOffOf`, and `lineTreeOf` (one SAN line played from a start, used by this screen's `?at=` arrival). Pure, non-throwing. |
 | `src/lib/openings.ts` | **The opening book**, pure (§2): `loadOpeningBook`, `getPositionBook`, `findOpening`, `nextMoveOpenings` / `knownMoveOpenings`, `openingOfLine`, `stickyOpening`, and the two arrow colours. |
 | `src/views/board/core/useOpeningBookModule.ts` | **The book as a capability module** (`chessboard.md` §9.2.2): the loaded book, the continuations from a FEN, their arrows, the hovered move. This screen is its one consumer. |
-| `src/views/shared/useCurrentOpening.ts` + `src/blocks/panels/CurrentOpening/` | The live "current opening" line every game screen's panel carries (sticky) — the hook reads the book, the block draws it — whose ECO chip links **into** this screen (`/openings?fen=`). |
+| `src/views/shared/useCurrentOpening.ts` + `src/blocks/panels/CurrentOpening/` | The live "current opening" line every game screen's panel carries (sticky) — the hook reads the book, the block draws it — whose ECO chip links **into** this screen (`/openings?fen=`) — on the Analysis Board as one line of link text that opens a new tab (`oneLine`, CTA-148, [`analysis-board.md`](./analysis-board.md) §1). |
 | `src/views/shared/useOpeningBook.ts` | The book for the saved lists' cards (`openingOfLine` under each card). Not used here. |
 | `src/data/openings/eco{A..E}.json` | The vendored book, ~3.2 MB, five lazy chunks. |
 | `scripts/vendorOpenings.mjs` | Re-vendors the book from an eco.json checkout (§2.1). Manual, not part of the build. |
@@ -383,7 +383,7 @@ the old one: a reload may still be holding it.
   `RightPanelProvider`, a catch-all route, and a `Where` probe that records
   the path and (in an effect) the location state, which is how the hand-off
   is asserted.
-- **Stubs**: `lib/engine` → `FakeEngine`, `react-chessboard` →
+- **Stubs**: `lib/engines/builtin` → `builtinEnginesMock` (each shipped engine a `FakeEngine`), `react-chessboard` →
   `reactChessboardMock()` (both from `views/board/boardTestHarness.tsx`;
   `boardOptions()` reads what the board was last given, which is how drops,
   positions, orientation and arrows are asserted). `lib/openings` is mocked

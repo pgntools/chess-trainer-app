@@ -15,6 +15,7 @@ paths:
   - "scripts/check-dist-pages.js"
   - "scripts/share-images.mjs"
   - ".github/workflows/build*.yml"
+  - "scripts/crossOriginIsolation.mjs"
   - "e2e/a11y/static.spec.ts"
 ---
 
@@ -42,7 +43,7 @@ yarn check:pages                                         holds dist/ to it (CI, 
 | Env | Read by | Default | What |
 | --- | --- | --- | --- |
 | `BASE_PATH` | `vite.config.ts`, `e2e/a11y/env.ts` | `/chess-trainer-app/` | The sub-path the host serves under — `/` for chessapp.dev. Baked into every asset URL, so **each host is a build of its own**. |
-| `DEPLOY_TARGET` | `scripts/prerender.mjs` | `gh` | `gh` — `404.html` + a refresh page per old Blog address; `swa` — `staticwebapp.config.json`, `sitemap.xml`, `robots.txt` (+ `404.html`). |
+| `DEPLOY_TARGET` | `scripts/prerender.mjs`, `vite.config.ts` (`preview`) | `gh` | `gh` — `404.html` + a refresh page per old Blog address; `swa` — `staticwebapp.config.json` (the fallback, the 301s, headers incl. COOP / COEP), `sitemap.xml`, `robots.txt` (+ `404.html`). |
 | `CANONICAL_URL` | `scripts/prerender.mjs` | `https://chessapp.dev/` | The canonical host: every canonical, `og:url`, `hreflang` and image URL, **on both hosts**. |
 
 - **Which pages**: `prerenderedPages()` in `src/entry-server.tsx` — the routes
@@ -150,10 +151,52 @@ the language**:
 
 | | `build-gh.yml` — "Deploy to GitHub Pages" | `build-swa.yml` — "Deploy to Azure Static Web Apps" |
 | --- | --- | --- |
-| URL / base | kantorv.github.io/chess-trainer-app/ — `/chess-trainer-app/` | chessapp.dev — `/` |
+| URL / base | pgntools.github.io/chess-trainer-app/ — `/chess-trainer-app/` | chessapp.dev — `/` |
 | Unknown path | `404.html` (the template), status 404 | `navigationFallback` → `/app-shell.html`, status 200; `/blog/*` excluded → `404.html`, status 404 |
 | Old Blog address | a refresh page + canonical | a 301 in `staticwebapp.config.json` |
+| Built-in sign-in (`/.auth/…`, sets a cookie) | none | blocked: a 404 route per `scripts/swaBlockedAuth.mjs`, first in `routes`, held by `check:pages` (CTA-159 — the Cookies Notice says no cookies; [`docs/privacy-policy-checks.md`](../../docs/privacy-policy-checks.md) §2) |
 | `sitemap.xml`, `robots.txt` | not possible (a project site) | written |
+
+### Cross-origin isolation on the swa host (CTA-154)
+
+The multi-thread engine (`stockfish-19-lite-multi`) needs `SharedArrayBuffer`,
+which a browser gives only to a **cross-origin-isolated** page. The `swa` build
+writes `staticwebapp.config.json`'s **`globalHeaders`** with
+`Cross-Origin-Opener-Policy: same-origin` and
+`Cross-Origin-Embedder-Policy: require-corp` — **every** response, so the page,
+the Stockfish worker script and its `.wasm` all carry them (a dedicated worker
+is isolated only by its own script's COEP). One definition,
+`scripts/crossOriginIsolation.mjs`, read by the pre-render and by
+`check:pages`. GitHub Pages cannot set headers: its build writes none, its page
+is not isolated, and the registry lists the multi-thread build **disabled**
+(`describeEngines()`, from `crossOriginIsolated` at runtime) — nothing breaks
+there; the same bundle runs on both.
+
+- **`require-corp`, not `credentialless`** (decided by testing, 2026-10-07):
+  both isolate the page in Chromium, but Safari has no `credentialless`.
+  `require-corp` costs nothing here — an audit of the app and the Blog found no
+  cross-origin **sub-resource**: fonts (`@fontsource-variable/jetbrains-mono`),
+  piece SVGs, flags (`flag-icons`), an article's images (`<ArticleImage>`
+  imports are bundled into `/assets/`), the share images, the Stockfish worker
+  and its `.wasm` are all same-origin. A link to another site (The Week in Chess
+  `href`s) is a navigation, which COEP does not touch.
+- **What would break it**: an `<img>`, `<script>`, `<iframe>`, font or `fetch()`
+  from another origin that does not send `Cross-Origin-Resource-Policy:
+  cross-origin` (or CORS). `check:pages` fails the swa build when a pre-rendered
+  page carries one in its HTML (`script`, `img`, `iframe`, `source`, a
+  stylesheet / icon / preload `link`) — a runtime `fetch()` it cannot see, so
+  **a new third-party resource is a decision**: self-host it, or its host must
+  send CORP, or COEP moves to `credentialless` and Safari loses the multi-thread
+  build. `COOP: same-origin` severs `window.opener`, so a future sign-in popup
+  needs `same-origin-allow-popups` (and then the page is not isolated).
+- **`yarn preview` serves the same headers** for a `DEPLOY_TARGET=swa` build
+  (`vite.config.ts` reads `dist/staticwebapp.config.json`'s `globalHeaders`), so
+  the browser pass runs the page isolated, as chessapp.dev serves it. A GitHub
+  Pages build has no such file, and gets none. Run it with the build's own
+  `BASE_PATH=/`.
+- The headers are a **host** behaviour: only a real deploy proves Azure sends
+  them. After one, `curl -sI https://chessapp.dev/` shows both, and
+  `self.crossOriginIsolated` is `true` in the console.
 
 Both call **`build.yml`** (install → `yarn build` → `check:blog-build`,
 `check:pages` → upload); `release.yml`'s `publish-pages` dispatches both **by
@@ -168,7 +211,11 @@ the repository secret `AZURE_STATIC_WEB_APPS_API_TOKEN`.
 - `yarn check:pages` after a build: every page in every language, one title,
   a description, a canonical, the Open Graph set, its image in `dist/`, `<html
   lang dir>`, content in `#root`; `404.html` the template; on `swa` the
-  sitemap exactly the self-canonical pages.
+  sitemap exactly the self-canonical pages; and **on `swa`** (CTA-154) COOP and
+  COEP in `globalHeaders`, the Stockfish workers and `.wasm` files in `dist/`
+  and outside the fallback, no pre-rendered page loading a sub-resource
+  from another origin, and (CTA-159) a 404 route for each of the host's
+  built-in sign-in routes.
 - The browser pass visits Hebrew at `/he/…` addresses (`open(…, { language })`),
   and its **`static` project** (`e2e/a11y/static.spec.ts`) opens every
   `dist/**/index.html` **without the app** — every script request refused,

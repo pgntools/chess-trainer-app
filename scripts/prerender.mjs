@@ -29,7 +29,9 @@
     The pages that fall through to the site's own image are listed.
   - **Per host**: `gh` writes a refresh page at each of the Blog's old
     addresses (`redirectFrom`); `swa` writes `staticwebapp.config.json` (the
-    fallback, real 301s for those addresses, headers), `sitemap.xml` and
+    fallback, real 301s for those addresses, headers — COOP / COEP among them,
+    `scripts/crossOriginIsolation.mjs` — and a 404 for the host's built-in
+    sign-in, `scripts/swaBlockedAuth.mjs`), `sitemap.xml` and
     `robots.txt` — which a GitHub Pages project site cannot serve at its
     host's root.
 
@@ -40,6 +42,8 @@ import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { CROSS_ORIGIN_ISOLATION_HEADERS } from "./crossOriginIsolation.mjs";
+import { BLOCKED_AUTH_ROUTES } from "./swaBlockedAuth.mjs";
 
 const DIST = resolve("dist");
 const SERVER_ENTRY = resolve("dist-ssr/entry-server.js");
@@ -173,6 +177,8 @@ if (TARGET === "gh") {
     // An unknown Blog address: the app's own "no such article", with a real 404.
     responseOverrides: { 404: { rewrite: "/404.html" } },
     routes: [
+      // The host's built-in sign-in, which sets a cookie: the App has none, so it answers 404 (CTA-159, swaBlockedAuth.mjs).
+      ...BLOCKED_AUTH_ROUTES.map((route) => ({ route, statusCode: 404 })),
       ...redirects.flatMap(({ from, to }) =>
         supportedLanguages.flatMap((language) => {
           const old = localizedAppPath(from, language);
@@ -182,9 +188,11 @@ if (TARGET === "gh") {
       ),
       { route: "/assets/*", headers: { "Cache-Control": "public, max-age=31536000, immutable" } },
     ],
+    // Every response — the page, the Stockfish worker and its .wasm — carries COOP / COEP, so the page is cross-origin isolated (CTA-154).
     globalHeaders: {
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "strict-origin-when-cross-origin",
+      ...CROSS_ORIGIN_ISOLATION_HEADERS,
     },
     mimeTypes: { ".wasm": "application/wasm" },
   };

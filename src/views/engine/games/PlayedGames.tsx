@@ -4,6 +4,7 @@ import Button from "@mui/material/Button";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { Link as RouterLink, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import { PlayedGamesFilters, playedGameSideFilterOf } from "../../../blocks/forms";
 import {
@@ -22,6 +23,7 @@ import { removePlayedGame } from "../../../lib/playedGameStore";
 import {
   PLAYED_GAMES_PATH,
   playedGameSummary,
+  type PlayedGameSummary,
   playedGameToTree,
   type PlayedGameRow,
 } from "../../../lib/playedGames";
@@ -30,6 +32,17 @@ import { useOpeningBook } from "../../shared/useOpeningBook";
 import NewGameForm from "./NewGameForm";
 import { usePlayedGames } from "./usePlayedGames";
 import { useOwnPageHeading } from "../../main/pageTitle";
+
+/**
+ * How the engine's side is named in the table (CTA-153): by its build and how
+ * its strength was set — "Stockfish 19 Lite Elo 1800", or "… level 5" for an
+ * engine strengthened by Skill Level. The words are the app's, the engine's
+ * name the build's own.
+ */
+const engineLabelOf = (t: TFunction, summary: PlayedGameSummary): string =>
+  summary.strength === "elo"
+    ? t("playedGames.engineElo", { name: summary.engineName, elo: summary.engineElo })
+    : t("playedGames.engineNamed", { name: summary.engineName, level: summary.skillLevel });
 
 /**
  * **The Lobby** (`/engine/games`; the Saved games list of CTA-74, a lobby
@@ -62,7 +75,8 @@ import { useOwnPageHeading } from "../../main/pageTitle";
  *   Opening cells empty. A new filter or sort starts at the first page.
  *
  * The rows are built here from each record's summary — the reader's side
- * the localized "Human", the engine's "Stockfish level N", its Elo the
+ * the localized "Human", the engine's "Stockfish level N" (an engine other
+ * than the default is named, CTA-153), its Elo the
  * strength slider's estimate — and the table sorts them by `lib`'s own rule.
  */
 function PlayedGames() {
@@ -118,15 +132,9 @@ function PlayedGames() {
         .filter(({ saved }) => opening === null || openings.get(saved.id) === opening)
         .map(({ saved, readable, summary }) => ({
           id: saved.id,
-          white:
-            summary.whiteName === "human"
-              ? t("playedGames.human")
-              : t("playedGames.engine", { level: summary.skillLevel }),
+          white: summary.whiteName === "human" ? t("playedGames.human") : engineLabelOf(t, summary),
           whiteElo: summary.whiteElo,
-          black:
-            summary.blackName === "human"
-              ? t("playedGames.human")
-              : t("playedGames.engine", { level: summary.skillLevel }),
+          black: summary.blackName === "human" ? t("playedGames.human") : engineLabelOf(t, summary),
           blackElo: summary.blackElo,
           result: summary.result,
           opening: openings.get(saved.id),

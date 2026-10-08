@@ -6,7 +6,19 @@
 const en = {
   app: {
     brandMark: "CT",
-    brandText: "Chess Trainer App",
+    brandText: "chessapp.dev",
+  },
+  /** The notice every session opens with (CTA-155) — `blocks/dialogs/DevelopmentNoticeDialog`. */
+  developmentNotice: {
+    title: "{{name}} is still in development",
+    badge: "Early beta",
+    intro: "This is an early beta, so please use it with caution. Here is what to know:",
+    items: {
+      local: { title: "Your data stays in this browser", text: "Games, analyses, repertoires and collections are saved on this device only." },
+      export: { title: "Export it now and then", text: "Settings → Export downloads everything as one zip, so nothing is lost." },
+      changes: { title: "Things may change or break", text: "Saved data may have to be imported again after an update." },
+    },
+    dismiss: "Dismiss",
   },
   nav: {
     ariaLabel: "Main navigation",
@@ -50,6 +62,10 @@ const en = {
     settingsStorage: "Storage",
     /** Settings' Appearance tab (CTA-107), in the Settings folder. */
     settingsAppearance: "Appearance",
+    /** Settings' Engine tab (CTA-153), in the Settings folder. */
+    settingsEngine: "Engine",
+    /** Settings' Support tab (CTA-155), in the Settings folder. */
+    settingsSupport: "Support",
     /** The dev-only design gallery (CTA-107), in the Development folder. */
     designSystem: "Design system",
     /** The dev-only theme editor (CTA-115), in the Development folder. */
@@ -172,7 +188,7 @@ const en = {
   },
   /**
    * Each screen's name (CTA-112) — its route's `handle.title`: the page title
-   * ("Lobby — Chess Trainer App", the open record's name before it), the
+   * ("Lobby — chessapp.dev", the open record's name before it), the
    * `main` landmark's name and the page's `h1`.
    */
   pages: {
@@ -202,6 +218,9 @@ const en = {
     mdxEditor: "MDX editor",
     mdxArticles: "MDX editor — articles",
     mdxComponents: "MDX editor — components gallery",
+    /** The legal pages (CTA-159), reached from the footer. */
+    privacy: "Privacy Policy",
+    cookies: "Cookies Notice",
   },
   /**
    * **Each screen's description** (CTA-136) — its page's `<meta name="description">`
@@ -226,6 +245,8 @@ const en = {
     /** A shipped collection's own page (`/library/<collection>`) — its name and its count. */
     collectionNamed: "{{name}}: {{games}} chess games to search, filter by player, opening, event and date, and replay on a board.",
     settings: "Export your data as one zip and bring it back, see how much space it takes, and choose how the app looks.",
+    privacy: "What chessapp.dev keeps on your device, what it never collects, and your rights under the GDPR and Israel's Protection of Privacy Law.",
+    cookies: "chessapp.dev sets no cookies. Every item it stores in your browser — preferences and your own chess data — and why.",
   },
   /**
    * **A shared link's image** (CTA-136, `lib/shareImage.ts`): the words read
@@ -233,7 +254,7 @@ const en = {
    * the chain, for a page with no image nearer to it.
    */
   share: {
-    defaultImageAlt: "Chess Trainer App — a chessboard beside the app's name",
+    defaultImageAlt: "chessapp.dev — a chessboard beside the app's name",
     sections: {
       engine: "Play with Engine — a chessboard beside the section's name",
       analysis: "Analysis Board — a chessboard beside the section's name",
@@ -629,6 +650,14 @@ const en = {
       /** Play with Engine v2's (CTA-74) — the variations explorer's move list. */
       moves: "Moves",
     },
+    /**
+     * A resumed game whose own engine cannot run on this page (CTA-153): the
+     * default plays on, and the record keeps naming the one that played.
+     */
+    /** The Engine tab's first line (CTA-153): which engine plays this game. */
+    enginePlaying: "Played by",
+    engineFallback:
+      "This game was played with {{wanted}}, which cannot run here, so {{using}} plays on. The game's record still names {{wanted}}.",
     /** Play with Engine v2's header controls (CTA-74). */
     game: {
       /**
@@ -665,6 +694,9 @@ const en = {
       strength: "Strength",
       /** The engine has no ELO setting, so the figure is named as an estimate. */
       strengthValue: "Level {{level}} (≈{{elo}} Elo)",
+      /** An engine that takes its strength as an Elo (CTA-153): the slider is the Elo itself, not an estimate. */
+      strengthElo: "Strength (Elo)",
+      strengthEloValue: "{{elo}} Elo",
       depth: "Search depth",
       moveTime: "Move time",
       moveTimeValue: "{{seconds}}s",
@@ -765,7 +797,9 @@ const en = {
     /** A row whose PGN will not parse has no pairing to name it by. */
     unreadableTitle: "the unreadable game of {{date}}",
     human: "Human",
-    engine: "Stockfish level {{level}}",
+    /** The engine (CTA-153): its own name, and how its strength was set — a Skill Level, or an Elo. */
+    engineNamed: "{{name}} level {{level}}",
+    engineElo: "{{name}} Elo {{elo}}",
     moves_one: "{{count}} move",
     moves_other: "{{count}} moves",
     variations_one: "{{count}} side line",
@@ -1157,11 +1191,16 @@ const en = {
       engineOn: "Analyse with the engine",
       /** Said where the lines would be, when the engine is switched off. */
       engineOff: "The engine is off. Switch it on to analyse this position.",
+      /** Infinite analysis (CTA-160): the engine deepens until the position changes. */
+      infinite: "Infinite analysis",
+      infiniteHelp: "Keep searching until the position changes. Off, a search stops at the depth and time below — and Play always does.",
       depth: "Search depth",
       moveTime: "Move time",
       moveTimeValue: "{{seconds}}s",
       moveTimeNone: "No limit",
       multiPv: "Variations to show",
+      threads: "Threads",
+      hash: "Hash (MB)",
       evalBar: "Show evaluation bar",
       /** The arrows of the next moves from the position on screen. */
       arrows: "Show next-move arrows",
@@ -1290,6 +1329,8 @@ const en = {
       loading: "Loading the opening book…",
       /** The ECO chip's accessible name — it is the link into the explorer. */
       open: "Explore {{eco}} in the Openings explorer",
+      /** The one-line opening's accessible name (the Analysis Board): its name, its code, and that it opens in a new tab. */
+      openInTab: "{{name}} ({{eco}}) — explore in the Openings explorer, in a new tab",
     },
     book: {
       /** The list's accessible name (CTA-113). */
@@ -2269,6 +2310,8 @@ const en = {
       import: "Import",
       storage: "Storage",
       appearance: "Appearance",
+      engine: "Engine",
+      support: "Support",
     },
     /** The Export tab: the reader's data as PGN files and a manifest, in one zip. */
     export: {
@@ -2409,6 +2452,38 @@ const en = {
       /** Light and dark are not a theme: they are the header's switch, under every theme. */
       modeNote: "Light and dark are the switch in the header; every theme has both.",
     },
+    /** The Engine tab (CTA-153): which engine every board runs. */
+    engine: {
+      intro:
+        "Choose the engine the boards use. It applies to every board from its next search and is remembered on this device. A game against the engine is played by the engine it began with, and a saved game goes on with its own.",
+      note: "An engine that cannot run on this host is listed anyway, with what it needs.",
+    },
+    /** The Support tab (CTA-155): how to reach us — a numbered list, the preferred way first. */
+    support: {
+      title: "Need help with {{name}}?",
+      intro: "Found a bug, have an idea or a question? We would like to hear from you.",
+      heading: "How to reach us",
+      items: {
+        issue: { title: "Raise a GitHub issue (preferred)", text: "Bugs, ideas and questions, in the open — others can follow along and add to them." },
+        email: { title: "Send an email", text: "If GitHub is not for you, write to us at:" },
+      },
+    },
+  },
+  /** The engine picker (`src/blocks/forms/EnginePicker`, CTA-153): the engines to choose between. */
+  enginePicker: {
+    legend: "Engine",
+    version: "Version",
+    threading: { single: "Single-thread", multi: "Multi-thread" },
+    /** How the engine's strength can be limited — what its build declares. */
+    strength: {
+      skill: "Strength by Skill Level",
+      elo: "Strength by Elo",
+      both: "Strength by Skill Level or Elo",
+    },
+    /** Why an engine is disabled here, by reason (`EngineUnavailableReason`). */
+    unavailable: {
+      "cross-origin-isolation": "Needs cross-origin isolation — not available on this host",
+    },
   },
   /** The registered themes' names (`src/design-system/themes/`, CTA-107). */
   appearance: {
@@ -2423,6 +2498,9 @@ const en = {
   footer: {
     /** Label on the link out to the project's source repository. */
     source: "Source",
+    /** The legal pages' links (CTA-159). */
+    privacy: "Privacy Policy",
+    cookies: "Cookies Notice",
   },
 };
 

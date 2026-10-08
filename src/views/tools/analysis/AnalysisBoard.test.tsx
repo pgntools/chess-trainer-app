@@ -31,9 +31,9 @@ import { RightPanelOutlet, RightPanelProvider } from "../../main/rightPanel";
 import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../../main/boardLeftPanel";
 import { NEXT_MOVE_ARROW_PALETTES, UNTAGGED_NEXT_MOVE_ARROW_COLOR } from "./nextMoveArrows";
 
-vi.mock("../../../lib/engine", async () => ({
-  default: (await import("../../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 // The Library's write, spied on so a test can make it fail (CTA-101).
 vi.mock("../../../lib/libraryCollectionStore", async (importOriginal) => {
@@ -60,11 +60,21 @@ vi.mock("react-chessboard", async () => {
   return reactChessboardMock();
 });
 
+/*
+  The opening book is an empty one — a screen test must not pull the real ~3MB
+  of eco.json in — unless a test fills `book.entries` (the header's ECO chip).
+  Only the *load* is stubbed: `findOpening` and `getPositionBook` run for real.
+*/
+const book = vi.hoisted(() => ({ entries: {} as Record<string, { eco: string; name: string; moves: string }> }));
 vi.mock("../../../lib/openings", async (importOriginal) => {
   const { openingsMock } = await import("../../board/boardTestHarness");
-  return openingsMock(
-    importOriginal as () => Promise<typeof import("../../../lib/openings")>,
-  );
+  const actual = await importOriginal<typeof import("../../../lib/openings")>();
+  return {
+    ...(await openingsMock(importOriginal as () => Promise<typeof import("../../../lib/openings")>)),
+    loadOpeningBook: () => Promise.resolve(book.entries),
+    getPositionBook: actual.getPositionBook,
+    findOpening: actual.findOpening,
+  };
 });
 
 import AnalysisBoard from "./AnalysisBoard";
@@ -130,6 +140,12 @@ const engineSearches = (pv: string) => {
   });
 };
 
+/** The board with its engine switched on — it starts off (CTA-148). */
+const mountEngineOn = () => {
+  mount();
+  fireEvent.click(screen.getByTestId("analysis-setting-engine"));
+};
+
 const openTab = (id: string) => fireEvent.click(screen.getByTestId(`analysis-panel-tab-${id}`));
 
 /** A saved analysis of `pgn`, standing at `path`, written to the store. */
@@ -152,6 +168,7 @@ const listed = () => savedAnalysesSnapshot() ?? [];
 
 beforeEach(async () => {
   localStorage.clear();
+  book.entries = {};
   FakeEngine.reset();
   await i18n.changeLanguage("en");
 });
@@ -694,20 +711,23 @@ describe("Play — the engine plays the opponent's best move until paused", () =
   const pressed = () => screen.getByTestId("analysis-play").getAttribute("aria-pressed");
 
   it("never moves a piece while Play is off", () => {
-    mount();
+    mountEngineOn();
     engineSearches("e2e4 e7e5");
     expect(boardOptions().position).toBe(START);
     expect(pressed()).toBe("false");
   });
 
-  it("is disabled while the engine is off", () => {
+  it("is disabled while the engine is off — as it starts — and enabled once it is on", () => {
     mount();
+    expect(screen.getByTestId("analysis-play")).toBeDisabled();
+    fireEvent.click(screen.getByTestId("analysis-setting-engine"));
+    expect(screen.getByTestId("analysis-play")).toBeEnabled();
     fireEvent.click(screen.getByTestId("analysis-setting-engine"));
     expect(screen.getByTestId("analysis-play")).toBeDisabled();
   });
 
   it("plays only the side not at the bottom of the board, turn after turn", () => {
-    mount();
+    mountEngineOn();
     play();
     expect(pressed()).toBe("true");
 
@@ -728,7 +748,7 @@ describe("Play — the engine plays the opponent's best move until paused", () =
   });
 
   it("plays White when the board faces Black", () => {
-    mount();
+    mountEngineOn();
     act(() => {
       screen.getByTestId("board-control-flip").click();
     });
@@ -737,8 +757,35 @@ describe("Play — the engine plays the opponent's best move until paused", () =
     expect(boardOptions().position).toBe(AFTER_E4);
   });
 
+  it("searches until stopped under infinite analysis, and to the depth while Play is on — Play needs a move (CTA-160)", () => {
+    mountEngineOn();
+    openTab("engine");
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
+
+    fireEvent.click(screen.getByRole("switch", { name: "Infinite analysis" }));
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ infinite: true });
+
+    play();
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
+  });
+
+  it("asks the engine for Threads and Hash as Play with Engine does — a multi-thread engine's threads adjustable here too (CTA-160)", () => {
+    vi.stubGlobal("crossOriginIsolated", true);
+    localStorage.setItem("chessapp.engine", "stockfish-19-lite-multi");
+    mountEngineOn();
+    openTab("engine");
+
+    expect(FakeEngine.latest().descriptor?.id).toBe("stockfish-19-lite-multi");
+    expect(FakeEngine.latest().setOptions).toEqual(
+      expect.arrayContaining([["MultiPV", 3], ["Threads", 1], ["Hash", 16]]),
+    );
+    expect(screen.getByRole("slider", { name: "Threads" })).toBeEnabled();
+    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toBeEnabled();
+    vi.unstubAllGlobals();
+  });
+
   it("pauses when the board is flipped — the engine's side changed under it (CTA-74)", () => {
-    mount();
+    mountEngineOn();
     play();
     act(() => {
       screen.getByTestId("board-control-flip").click();
@@ -748,7 +795,7 @@ describe("Play — the engine plays the opponent's best move until paused", () =
   });
 
   it("pauses when the reader steps back, and they go on by hand until Play again", () => {
-    mount();
+    mountEngineOn();
     play();
     drag("e2", "e4");
     engineSearches("e7e5 g1f3");
@@ -775,7 +822,7 @@ describe("Play — the engine plays the opponent's best move until paused", () =
   });
 
   it("plays at once at the engine's turn from a search already finished", () => {
-    mount();
+    mountEngineOn();
     drag("e2", "e4");
     engineSearches("e7e5 g1f3");
     expect(boardOptions().position).toBe(AFTER_E4);
@@ -784,9 +831,9 @@ describe("Play — the engine plays the opponent's best move until paused", () =
   });
 
   it("stops when the engine is switched off", () => {
-    mount();
+    mountEngineOn();
     play();
-    fireEvent.click(screen.getByTestId("analysis-setting-engine"));
+    expect(pressed()).toBe("true");
     fireEvent.click(screen.getByTestId("analysis-setting-engine"));
     expect(pressed()).toBe("false");
   });
@@ -794,7 +841,7 @@ describe("Play — the engine plays the opponent's best move until paused", () =
 
 describe("Play — the engine's thinking, shown", () => {
   it("says the engine is thinking, with the depth, until its move lands; then it is the reader's", () => {
-    mount();
+    mountEngineOn();
     expect(screen.queryByTestId("analysis-play-status")).toBeNull();
     act(() => {
       screen.getByTestId("board-control-flip").click();
@@ -829,11 +876,98 @@ describe("Play — the engine's thinking, shown", () => {
   });
 
   it("shows nothing once paused", () => {
-    mount();
+    mountEngineOn();
     fireEvent.click(screen.getByTestId("analysis-play"));
     expect(screen.getByTestId("analysis-play-status")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("analysis-play"));
     expect(screen.queryByTestId("analysis-play-status")).toBeNull();
+  });
+});
+
+describe("a fresh board starts with the engine off (CTA-148)", () => {
+  it("has the switch off, no search running, and Play disabled until the reader switches it on", () => {
+    mount();
+    const engineSwitch = () => within(screen.getByTestId("analysis-setting-engine")).getByRole("switch", { name: i18n.t("analysis.engineSwitch") });
+    expect(engineSwitch()).not.toBeChecked();
+    expect(FakeEngine.instances.flatMap((engine) => engine.searches)).toEqual([]);
+    expect(screen.getByTestId("analysis-play")).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId("analysis-setting-engine"));
+    expect(engineSwitch()).toBeChecked();
+    expect(FakeEngine.latest().searches).toEqual([START]);
+  });
+});
+
+describe("the header (CTA-148)", () => {
+  it("has Save, Play and the engine switch — and no previous / next, no link to the list", async () => {
+    await stored("a1", "1. e4 *", ["e4"], { name: "One" });
+    mount("/tools/analysis?analysis=a1");
+    expect(screen.getByTestId("analysis-save")).toBeInTheDocument();
+    expect(screen.getByTestId("analysis-play")).toBeInTheDocument();
+    expect(screen.getByTestId("analysis-settings")).toBeInTheDocument();
+    expect(screen.getByTestId("analysis-setting-engine")).toBeInTheDocument();
+    expect(screen.queryByTestId("analysis-saved-list")).toBeNull();
+    expect(screen.queryByTestId("analysis-sibling-previous")).toBeNull();
+    expect(screen.queryByTestId("analysis-sibling-next")).toBeNull();
+  });
+
+  it("shows the opening as one line of link text — full name and ECO on hover, a click opens the explorer in a new tab", async () => {
+    book.entries = { [AFTER_E4]: { eco: "B00", name: "King's Pawn Game", moves: "1. e4" } };
+    mount(`/tools/analysis?fen=${encodeURIComponent(AFTER_E4)}`);
+    const link = await screen.findByTestId("analysis-current-opening-eco");
+    expect(link).toHaveTextContent("King's Pawn Game");
+    expect(link).toHaveAttribute("title", "B00 · King's Pawn Game");
+    expect(link).toHaveAttribute("href", expect.stringContaining("/openings?fen="));
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+    expect(link).toHaveAccessibleName(/King's Pawn Game.*B00.*new tab/);
+  });
+
+  it("shows no opening at all where the position has none", async () => {
+    mount();
+    // The book is read, and the start position is no opening.
+    await waitFor(() => expect(screen.queryByText(i18n.t("openings.current.loading"))).toBeNull());
+    expect(screen.queryByTestId("analysis-current-opening")).toBeNull();
+    expect(screen.queryByText(i18n.t("openings.current.unknown"))).toBeNull();
+  });
+});
+
+describe("the players plated on the board (CTA-148)", () => {
+  const GAME = '[White "Amy"]\n[Black "Bob"]\n[WhiteElo "1900"]\n[Result "1-0"]\n\n1. e4 e5 1-0';
+
+  it("plates a saved game's players with their result and Elo, as the Library's board does", async () => {
+    await stored("g1", GAME);
+    mount("/tools/analysis?analysis=g1");
+    expect(screen.getByTestId("analysis-captured-white-plate-name")).toHaveTextContent("Amy");
+    expect(screen.getByTestId("analysis-captured-white-plate-elo")).toHaveTextContent("1900");
+    expect(screen.getByTestId("analysis-captured-white-plate-result")).toHaveTextContent("1");
+    expect(screen.getByTestId("analysis-captured-black-plate-name")).toHaveTextContent("Bob");
+    expect(screen.getByTestId("analysis-captured-black-plate-result")).toHaveTextContent("0");
+    expect(screen.queryByTestId("analysis-captured-black-plate-elo")).toBeNull();
+  });
+
+  it("follows the orientation — the player at the top changes with the flip", async () => {
+    await stored("g1", GAME);
+    mount("/tools/analysis?analysis=g1");
+    const top = () => screen.getAllByTestId(/analysis-captured-(white|black)-plate$/).map((plate) => plate.getAttribute("data-testid"));
+    const before = top();
+    act(() => {
+      screen.getByTestId("board-control-flip").click();
+    });
+    expect(top()).toEqual([...before].reverse());
+  });
+
+  it("plates no one for a position", () => {
+    mount();
+    expect(screen.queryByTestId("analysis-captured-white-plate-name")).toBeNull();
+    expect(screen.queryByTestId("analysis-captured-black-plate-name")).toBeNull();
+  });
+
+  it("plates no one for an analysis of its own with no names", async () => {
+    await stored("plain", "1. e4 *", ["e4"]);
+    mount("/tools/analysis?analysis=plain");
+    expect(screen.queryByTestId("analysis-captured-white-plate-name")).toBeNull();
+    expect(screen.queryByTestId("analysis-captured-black-plate-name")).toBeNull();
   });
 });
 

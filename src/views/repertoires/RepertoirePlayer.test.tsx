@@ -4,6 +4,7 @@ import { Chess } from "chess.js";
 import { useLocation } from "react-router";
 
 import i18n from "../../i18n";
+import { storeEngineId } from "../../lib/engineChoice";
 import { downloadPgn } from "../../lib/pgnExport";
 import {
   findSavedRepertoire,
@@ -38,9 +39,9 @@ vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
   return reactChessboardMock();
 });
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 vi.mock("../../lib/openings", async (importOriginal) => {
   const { openingsMock } = await import("../board/boardTestHarness");
   return openingsMock(
@@ -1113,5 +1114,40 @@ describe("the header's Play button (CTA-65)", () => {
     await mountIdle(`/repertoires/${await storeRepertoire("r", CARO)}/games/end`);
     expect(screen.queryByTestId("repertoire-game-play")).not.toBeInTheDocument();
     expect(screen.getByTestId("repertoire-game-restart")).toBeInTheDocument();
+  });
+});
+
+describe("the repertoire player runs the reader's engine (CTA-153)", () => {
+  /** The multi-thread build — the other engine a reader can choose, on an isolated page. */
+  const chosen = { id: "stockfish-19-lite-multi" };
+  const isChosen = (engine: FakeEngine) => engine.descriptor?.id === chosen.id;
+  beforeEach(() => {
+    vi.stubGlobal("crossOriginIsolated", true);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("builds the engine chosen in Settings → Engine", async () => {
+    storeEngineId(chosen.id);
+
+    await mountIdle(`/repertoires/${await storeRepertoire("r", CARO, "Caro")}`);
+
+    expect(isChosen(FakeEngine.latest())).toBe(true);
+  });
+
+  it("builds the default engine when none was chosen", async () => {
+    await mountIdle(`/repertoires/${await storeRepertoire("r", CARO, "Caro")}`);
+
+    expect(isChosen(FakeEngine.latest())).toBe(false);
+  });
+
+  it("swaps to a new choice from its next search — one engine running", async () => {
+    await mountIdle(`/repertoires/${await storeRepertoire("r", CARO, "Caro")}`);
+    const first = FakeEngine.latest();
+
+    act(() => storeEngineId(chosen.id));
+
+    expect(first.terminated).toBe(true);
+    expect(isChosen(FakeEngine.latest())).toBe(true);
+    expect(FakeEngine.instances.filter((engine) => !engine.terminated)).toHaveLength(1);
   });
 });

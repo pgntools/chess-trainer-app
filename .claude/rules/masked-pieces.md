@@ -31,7 +31,7 @@ its core in [`chessboard.md`](./chessboard.md), the variations explorer in
 [`tree-views.md`](./tree-views.md).
 
 > **A mask is a costume, never a rule.** Nothing in `chess.js`,
-> `lib/engine.ts`, `lib/gameTree.ts`, the PGN path, the engine module or the
+> `lib/uciEngine.ts`, `lib/gameTree.ts`, the PGN path, the engine module or the
 > core knows the mask exists. It lives between the state and the pixels, on
 > the surfaces listed in §4, and **nowhere else**. A change that needs the
 > mask below that line is the wrong change.

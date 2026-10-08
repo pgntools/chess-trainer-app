@@ -42,35 +42,42 @@ describe("every route's page title (CTA-112)", () => {
   });
 
   it.each([
-    ["/", "Home — Chess Trainer App"],
-    ["/engine/play", "Play with Engine — Chess Trainer App"],
-    ["/engine/games", "Lobby — Chess Trainer App"],
-    ["/engine/masked", "Masked Pieces — Chess Trainer App"],
-    ["/tools/analysis", "Analysis Board — Chess Trainer App"],
-    ["/tools/analysis/saved", "Saved analyses — Chess Trainer App"],
-    ["/tools/analysis/saved/a1/settings", "Analysis settings — Chess Trainer App"],
-    ["/openings", "Openings explorer — Chess Trainer App"],
-    ["/repertoires", "My repertoires — Chess Trainer App"],
-    ["/repertoires/new", "New repertoire — Chess Trainer App"],
-    ["/repertoires/r1", "Repertoire — Chess Trainer App"],
-    ["/repertoires/r1/settings", "Repertoire settings — Chess Trainer App"],
-    ["/repertoires/r1/games/end", "Repertoire game — Chess Trainer App"],
-    ["/library", "Library — Chess Trainer App"],
-    ["/library/new", "Add collection — Chess Trainer App"],
-    ["/library/tal", "Collection — Chess Trainer App"],
-    ["/library/tal/12", "Library game — Chess Trainer App"],
-    ["/settings", "Settings — Chess Trainer App"],
-    ["/settings/export", "Settings — Chess Trainer App"],
-    ["/dev/design/tables", "Design system — Chess Trainer App"],
+    ["/", "Home — chessapp.dev"],
+    ["/engine/play", "Play with Engine — chessapp.dev"],
+    ["/engine/games", "Lobby — chessapp.dev"],
+    ["/engine/masked", "Masked Pieces — chessapp.dev"],
+    ["/tools/analysis", "Analysis Board — chessapp.dev"],
+    ["/tools/analysis/saved", "Saved analyses — chessapp.dev"],
+    ["/tools/analysis/saved/a1/settings", "Analysis settings — chessapp.dev"],
+    ["/openings", "Openings explorer — chessapp.dev"],
+    ["/repertoires", "My repertoires — chessapp.dev"],
+    ["/repertoires/new", "New repertoire — chessapp.dev"],
+    ["/repertoires/r1", "Repertoire — chessapp.dev"],
+    ["/repertoires/r1/settings", "Repertoire settings — chessapp.dev"],
+    ["/repertoires/r1/games/end", "Repertoire game — chessapp.dev"],
+    ["/library", "Library — chessapp.dev"],
+    ["/library/new", "Add collection — chessapp.dev"],
+    ["/library/tal", "Collection — chessapp.dev"],
+    ["/library/tal/12", "Library game — chessapp.dev"],
+    ["/settings", "Settings — chessapp.dev"],
+    ["/settings/export", "Settings — chessapp.dev"],
+    ["/privacy", "Privacy Policy — chessapp.dev"],
+    ["/cookies", "Cookies Notice — chessapp.dev"],
+    ["/dev/design/tables", "Design system — chessapp.dev"],
   ])("%s is “%s”", async (path, title) => {
     await i18n.changeLanguage("en");
     expect(titleAt(path)).toBe(title);
   });
 
-  it("makes the front page and every Blog route an article, and no other (CTA-130)", () => {
+  it("makes the front page, every Blog route and the legal pages an article, and no other (CTA-130, CTA-159)", () => {
     for (const route of leaves(appRoutes)) {
       const handle = route.handle as ShellHandle | undefined;
-      const article = route.index === true || route.path === "/blog" || (route.path ?? "").startsWith("/blog/");
+      const article =
+        route.index === true ||
+        route.path === "/blog" ||
+        (route.path ?? "").startsWith("/blog/") ||
+        route.path === "/privacy" ||
+        route.path === "/cookies";
       expect(handle?.article === true, `route ${route.path ?? "(index)"}`).toBe(article);
       // An article is the full body: no board square, no aside.
       if (article) expect(handle?.fullWidth, `route ${route.path ?? "(index)"}`).toBe(true);
@@ -79,9 +86,9 @@ describe("every route's page title (CTA-112)", () => {
 
   it("puts an open record's name first, in either language", async () => {
     await i18n.changeLanguage("en");
-    expect(titleAt("/library/tal", "Tal")).toBe("Tal — Collection — Chess Trainer App");
+    expect(titleAt("/library/tal", "Tal")).toBe("Tal — Collection — chessapp.dev");
     await i18n.changeLanguage("he");
-    expect(titleAt("/library/tal", "Tal")).toBe("Tal — אוסף — אפליקציית אימון שחמט");
+    expect(titleAt("/library/tal", "Tal")).toBe("Tal — אוסף — chessapp.dev");
     await i18n.changeLanguage("en");
   });
 });

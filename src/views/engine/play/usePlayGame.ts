@@ -6,6 +6,8 @@ import {
   withClampedUciOptions,
   type EngineSettings,
 } from "../../../lib/engineSettings";
+import { engineChoiceId } from "../../../lib/engineChoice";
+import type { EngineDescriptor } from "../../../lib/engineTypes";
 import { parseFen } from "../../../lib/fen";
 import { emptyTree, sanPathTo } from "../../../lib/gameTree";
 import { newGameRequestOf, type NewGameRequest } from "../../../lib/newGameLink";
@@ -17,11 +19,14 @@ import {
 } from "../../../lib/playedGameStore";
 import {
   newPlayedGameId,
+  playedGameEngineFromDescriptor,
+  playedGameEngineOf,
   playedGameEvalsMap,
   playedGameNode,
   playedGameOf,
   playedGameToTree,
   type PlayedGame,
+  type PlayedGameEngine,
   type PlayedGameMask,
 } from "../../../lib/playedGames";
 import { useAutosave } from "../../board/core/useAutosave";
@@ -70,6 +75,15 @@ import { usePlayToggle } from "../../board/core/usePlayToggle";
  * **Resigning** ends the game: the reader's side loses (`resigned` on the
  * record, its PGN `Result` and `Termination`), Play stays off and the board
  * takes no more moves — it can still be stepped through and analysed.
+ *
+ * **The engine** (CTA-153) is the reader's choice in Settings → Engine, read
+ * once as a game begins — a game is played by one engine, which its record
+ * names. A resumed game goes on with **its own** engine; where that one cannot
+ * run here (the multi-thread build on a host without cross-origin isolation, a
+ * build the registry no longer has) the default plays on and
+ * {@link usePlayGame}'s `engineNotice` says so — the record keeps naming the
+ * engine that really played its moves, so merely opening it elsewhere never
+ * rewrites it. Replay begins a new game, under the engine chosen now.
  *
  * **A costume** (`mask`, Masked Pieces — CTA-79) is written on the record and
  * nothing else: this hook never reads it, so the game, the engine and Play
@@ -140,6 +154,9 @@ export const usePlayGame = (
         id: resume.id,
         startedAt: resume.savedAt,
         resigned: resume.resigned,
+        engineId: playedGameEngineOf(resume).id,
+        // What the record named, when it named one: kept as the game's engine while it cannot run.
+        recordedEngine: resume.engine,
         stored: true,
         showEvalBar: true,
         showLines: true,
@@ -160,6 +177,8 @@ export const usePlayGame = (
       id: newPlayedGameId(),
       startedAt: new Date().toISOString(),
       resigned: undefined,
+      engineId: engineChoiceId(),
+      recordedEngine: undefined,
       stored: false,
       showEvalBar: request?.evalBar ?? true,
       showLines: request?.variations ?? true,
@@ -199,8 +218,13 @@ export const usePlayGame = (
     finished: resigned !== undefined,
   });
 
+  // Which engine plays this game: its record's, or the reader's choice at its start (Replay chooses again).
+  const [engineId, setEngineId] = useState(start.engineId);
+  const [recordedEngine, setRecordedEngine] = useState<PlayedGameEngine | undefined>(start.recordedEngine);
+
   const engine = useEngineModule({
     enabled: engineOn,
+    engine: engineId,
     // The position ON SCREEN: everything the panel shows describes it.
     fen: core.fen,
     depth: settings.depth,
@@ -209,15 +233,32 @@ export const usePlayGame = (
       () =>
         uciOptionsOf({
           skillLevel: settings.skillLevel,
+          elo: settings.elo,
           multiPv: settings.multiPv,
           threads: settings.threads,
           hashMb: settings.hashMb,
         }),
-      [settings.skillLevel, settings.multiPv, settings.threads, settings.hashMb],
+      [settings.skillLevel, settings.elo, settings.multiPv, settings.threads, settings.hashMb],
     ),
     onUciOptionsReady,
     onBestMove: play.onBestMove,
   });
+
+  /*
+    The engine the record names: the one that is running — or, for a resumed
+    game whose own engine cannot run here, the one it was played by, unchanged.
+    Stable between renders, so it never makes a record look changed.
+  */
+  const running = engine.descriptor;
+  const playedBy = useMemo<PlayedGameEngine>(
+    () => recordedEngine ?? playedGameEngineFromDescriptor(running),
+    [recordedEngine, running],
+  );
+  /** A resumed game whose engine is not the one playing it — what the screen tells the reader. */
+  const engineNotice: { wanted: PlayedGameEngine; using: EngineDescriptor } | undefined =
+    recordedEngine !== undefined && recordedEngine.id !== running.id
+      ? { wanted: recordedEngine, using: running }
+      : undefined;
 
   /*
     A resumed game's evals come out of its record; everything learned from here
@@ -257,9 +298,11 @@ export const usePlayGame = (
       startedAt,
       resigned,
       mask,
+      playedBy,
     );
   }, [
     mask,
+    playedBy,
     core.tree,
     core.nodeId,
     core.dirty,
@@ -309,6 +352,9 @@ export const usePlayGame = (
     setStored(false);
     setResigned(undefined);
     setProblem(null);
+    // A new game: the engine chosen now, not the one the old record named.
+    setRecordedEngine(undefined);
+    setEngineId(engineChoiceId());
     play.restart();
   };
 
@@ -350,6 +396,10 @@ export const usePlayGame = (
     resigned,
     canResign,
     resign,
+    /** The engine playing — a name, a version, what a panel may say about it. */
+    engineDescriptor: running,
+    /** Set when a resumed game's own engine cannot run here and another plays on. */
+    engineNotice,
     /** The id the game is written under, once it has been — what `?saved=` names. */
     savedId: stored ? gameId : null,
     problem,

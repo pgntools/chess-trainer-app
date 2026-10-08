@@ -24,9 +24,9 @@ import PlayedGames from "./PlayedGames";
 */
 
 // The form handshakes an engine (never searching) for the options it declares.
-vi.mock("../../../lib/engine", async () => ({
-  default: (await import("../../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 /*
   The Board editor tab's board (CTA-83): the spare-piece trio, with the
@@ -129,7 +129,7 @@ const store = (
   when = "2026-09-20T10:00:00Z",
 ) =>
   savePlayedGame(
-    playedGameOf(id, parsePgnTree(pgn), [], { ...DEFAULT_ENGINE_SETTINGS, playAs, skillLevel: 5 }, undefined, new Date(when)),
+    playedGameOf(id, parsePgnTree(pgn), [], { ...DEFAULT_ENGINE_SETTINGS, playAs, elo: 1500 }, undefined, new Date(when)),
   );
 
 beforeEach(async () => {
@@ -157,13 +157,44 @@ describe("Lobby — the list", () => {
     const a = cells("a");
     expect(a[0]).toHaveTextContent("Human");
     expect(a[1]).toHaveTextContent("Unknown");
-    expect(a[2]).toHaveTextContent("Stockfish level 5");
-    expect(a[3]).toHaveTextContent(String(approximateElo(5)));
+    expect(a[2]).toHaveTextContent("Stockfish 19 Lite Elo 1500");
+    expect(a[3]).toHaveTextContent("1500");
     const b = cells("b");
-    expect(b[0]).toHaveTextContent("Stockfish level 5");
-    expect(b[1]).toHaveTextContent(String(approximateElo(5)));
+    expect(b[0]).toHaveTextContent("Stockfish 19 Lite Elo 1500");
+    expect(b[1]).toHaveTextContent("1500");
     expect(b[2]).toHaveTextContent("Human");
     expect(b[3]).toHaveTextContent("Unknown");
+  });
+
+  it("names each engine by its build, with the Elo it was set to where it took one (CTA-153)", async () => {
+    const other = (id: string, strength: "skill" | "elo", when: string) =>
+      savePlayedGame(
+        playedGameOf(
+          id,
+          parsePgnTree("1. e4 e5 *"),
+          [],
+          { ...DEFAULT_ENGINE_SETTINGS, skillLevel: 5, elo: 1750 },
+          undefined,
+          new Date(when),
+          undefined,
+          undefined,
+          undefined,
+          { id: "my-engine", name: "My Engine", version: "3", strength },
+        ),
+      );
+    await other("elo", "elo", "2026-09-20T10:00:00Z");
+    await other("skill", "skill", "2026-09-10T10:00:00Z");
+    await store("legacy", "1. e4 e5 *", "white", "2026-09-01T10:00:00Z");
+    mount();
+
+    // An Elo-driven game: named by its Elo, and that Elo in the Elo column, not an estimate.
+    expect(cells("elo")[2]).toHaveTextContent("My Engine Elo 1750");
+    expect(cells("elo")[3]).toHaveTextContent("1750");
+    // A Skill Level engine: named, with its level and the estimate.
+    expect(cells("skill")[2]).toHaveTextContent("My Engine level 5");
+    expect(cells("skill")[3]).toHaveTextContent(String(approximateElo(5)));
+    // A record that names no engine is the default's.
+    expect(cells("legacy")[2]).toHaveTextContent("Stockfish 19 Lite Elo 1500");
   });
 
   it("gives the moves with the side lines, the result and the date", async () => {
@@ -189,14 +220,14 @@ describe("Lobby — the list", () => {
     mount();
     // Icon-only links: the link is the icon, its name the label — naming its row (CTA-109).
     expect(screen.getByTestId("played-games-continue-a")).toHaveAccessibleName(
-      `Continue the game Human – Stockfish level 5 of ${whenPlayed("2026-09-20T10:00:00Z")}`,
+      `Continue the game Human – Stockfish 19 Lite Elo 1500 of ${whenPlayed("2026-09-20T10:00:00Z")}`,
     );
     expect(screen.getByTestId("played-games-continue-a")).toHaveAttribute(
       "href",
       "/engine/play?saved=a",
     );
     expect(screen.getByTestId("played-games-analysis-a")).toHaveAccessibleName(
-      `Analyse the game Human – Stockfish level 5 of ${whenPlayed("2026-09-20T10:00:00Z")}`,
+      `Analyse the game Human – Stockfish 19 Lite Elo 1500 of ${whenPlayed("2026-09-20T10:00:00Z")}`,
     );
     expect(screen.getByTestId("played-games-analysis-a")).toHaveAttribute(
       "href",
@@ -527,7 +558,7 @@ describe("Lobby — the new-game form (CTA-82)", () => {
     mount();
     expect(screen.getByTestId("new-game-form")).toBeInTheDocument();
     expect(screen.getByTestId("engine-settings")).toBeInTheDocument();
-    expect(screen.getByText(/Level 10/)).toBeInTheDocument();
+    expect(screen.getByTestId("engine-setting-elo-value")).toHaveTextContent("2100 Elo");
     expect(screen.getByTestId("new-game-side-white")).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("played-games-storage-note")).toBeInTheDocument();
     // An engine was handshaken for its options, and never asked to search.
@@ -538,6 +569,7 @@ describe("Lobby — the new-game form (CTA-82)", () => {
     expect(Object.fromEntries(startHref())).toEqual({
       side: "white",
       skill: "10",
+      elo: "2100",
       depth: "14",
       movetime: "1000",
       lines: "3",
@@ -695,7 +727,7 @@ describe("Lobby — accessibility (CTA-109)", () => {
     // A pick is a checkbox named by its row: Space ticks it. (The newest game,
     // g25, is on the first page of the moves, high first.)
     const newest = whenPlayed("2026-09-01T10:25:00Z");
-    table.getByRole("checkbox", { name: `Pick the game Human – Stockfish level 5 of ${newest}` }).focus();
+    table.getByRole("checkbox", { name: `Pick the game Human – Stockfish 19 Lite Elo 1500 of ${newest}` }).focus();
     await userEvent.keyboard(" ");
     expect(screen.getByRole("button", { name: "Delete picked (1)" })).toBeInTheDocument();
 
@@ -707,7 +739,7 @@ describe("Lobby — accessibility (CTA-109)", () => {
     expect(screen.queryByTestId("played-games-delete-picked")).not.toBeInTheDocument();
 
     // A row's action is a real link, reached by Tab.
-    const continued = table.getByRole("link", { name: `Continue the game Human – Stockfish level 5 of ${newest}` });
+    const continued = table.getByRole("link", { name: `Continue the game Human – Stockfish 19 Lite Elo 1500 of ${newest}` });
     continued.focus();
     expect(continued).toHaveFocus();
     expect(continued).toHaveAttribute("href", "/engine/play?saved=g25");

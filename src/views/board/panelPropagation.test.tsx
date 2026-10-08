@@ -45,9 +45,9 @@ vi.mock("./core/BoardPanel", () => ({
   ),
 }));
 
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("./boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("./boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("./boardTestHarness");

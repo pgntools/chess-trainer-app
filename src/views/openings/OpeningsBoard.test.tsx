@@ -14,9 +14,9 @@ import { boardOptions, FakeEngine } from "../board/boardTestHarness";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 import { NEXT_MOVE_ARROW_COLOR } from "../tools/analysis/nextMoveArrows";
 
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
@@ -277,14 +277,16 @@ describe("the Openings explorer — accessible (CTA-113)", () => {
     expect(boardOptions().position).toBe(AFTER_D4);
   });
 
-  it("names its header's controls, and turns the engine off from the keyboard", async () => {
+  it("names its header's controls, and switches the engine on from the keyboard", async () => {
     const user = userEvent.setup();
     mount();
     expect(screen.getByRole("button", { name: i18n.t("openings.controls.analysis") })).toBeInTheDocument();
     const engine = screen.getByRole("switch", { name: i18n.t("openings.engineSwitch") });
+    // It starts off (CTA-148).
+    expect(engine).not.toBeChecked();
     engine.focus();
     await user.keyboard(" ");
-    expect(engine).not.toBeChecked();
+    expect(engine).toBeChecked();
     await expectNoAxeViolations(document.body);
   });
 });

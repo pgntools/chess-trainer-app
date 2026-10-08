@@ -17,10 +17,21 @@
  * 4. **On Static Web Apps** (`staticwebapp.config.json` written): the
  *    sitemap lists exactly the pages that are their own canonical, and
  *    `robots.txt` names it.
+ * 5. **On Static Web Apps, the page can be cross-origin isolated** (CTA-154):
+ *    `globalHeaders` carries COOP and COEP (`scripts/crossOriginIsolation.mjs`),
+ *    the Stockfish workers and their `.wasm` are in `dist/` and not left to the
+ *    fallback, and no page loads a sub-resource from another origin — which
+ *    `Cross-Origin-Embedder-Policy: require-corp` would block. GitHub Pages
+ *    cannot set headers, writes no config, and is not held to this.
+ * 6. **On Static Web Apps, the host's built-in sign-in is blocked** (CTA-159):
+ *    every route of `scripts/swaBlockedAuth.mjs` answers 404, so no reader is
+ *    given the auth cookie the Cookies Notice says chessapp.dev never sets.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { CROSS_ORIGIN_ISOLATION_HEADERS } from "./crossOriginIsolation.mjs";
+import { BLOCKED_AUTH_ROUTES } from "./swaBlockedAuth.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DIST = join(ROOT, "dist");
@@ -87,7 +98,47 @@ if (swa) {
   if (!/^Sitemap: https?:\/\/\S+\/sitemap\.xml$/m.test(robots)) problems.push("robots.txt names no sitemap");
 }
 
+// 5. Static Web Apps: the headers that isolate the page, and nothing they would block.
+if (swa) {
+  const config = JSON.parse(readFileSync(join(DIST, "staticwebapp.config.json"), "utf8"));
+  const sent = Object.fromEntries(Object.entries(config.globalHeaders ?? {}).map(([name, value]) => [name.toLowerCase(), value]));
+  for (const [name, value] of Object.entries(CROSS_ORIGIN_ISOLATION_HEADERS)) {
+    if (sent[name.toLowerCase()] !== value) problems.push(`staticwebapp.config.json: globalHeaders has no ${name}: ${value}`);
+  }
+  // The host's built-in sign-in, which would set a cookie the Cookies Notice says the App never sets (CTA-159).
+  for (const route of BLOCKED_AUTH_ROUTES) {
+    if (!(config.routes ?? []).some((rule) => rule.route === route && rule.statusCode === 404)) {
+      problems.push(`staticwebapp.config.json: routes do not answer ${route} with 404 (scripts/swaBlockedAuth.mjs)`);
+    }
+  }
+  // The worker and its wasm are same-origin files the fallback must not answer for.
+  if (!(config.navigationFallback?.exclude ?? []).includes("/stockfish/*")) problems.push("staticwebapp.config.json: navigationFallback does not exclude /stockfish/*");
+  for (const file of [
+    "stockfish/stockfish-19-lite-single/stockfish-19-lite-single.js",
+    "stockfish/stockfish-19-lite-single/stockfish-19-lite-single.wasm",
+    "stockfish/stockfish-19-lite-multi/stockfish-19-lite.js",
+    "stockfish/stockfish-19-lite-multi/stockfish-19-lite.wasm",
+  ]) {
+    if (!existsSync(join(DIST, file))) problems.push(`dist/${file}: missing — the engine's worker must be served from this origin`);
+  }
+  // A sub-resource from another origin is blocked under `require-corp` (a link to another site is a navigation, and is not).
+  const foreign = /<(?:script|img|iframe|source|video|audio|embed)\b[^>]*\s(?:src|srcset)="(?:https?:)?\/\/[^"]+"|<link\b[^>]*\brel="(?:stylesheet|modulepreload|preload|icon|prefetch)"[^>]*\shref="(?:https?:)?\/\/[^"]+"/gi;
+  for (const file of [...new Set(["index.html", "404.html", "app-shell.html"])]) {
+    const found = (readFileSync(join(DIST, file), "utf8").match(foreign) ?? []).slice(0, 3);
+    for (const tag of found) problems.push(`${file}: a cross-origin sub-resource, blocked by COEP — ${tag}`);
+  }
+  for (const page of prerenderedPages()) {
+    for (const language of supportedLanguages) {
+      const file = join(DIST, `.${localizedAppPath(page.path, language)}`, "index.html");
+      if (!existsSync(file)) continue;
+      for (const tag of (readFileSync(file, "utf8").match(foreign) ?? []).slice(0, 3)) {
+        problems.push(`${localizedAppPath(page.path, language)}: a cross-origin sub-resource, blocked by COEP — ${tag}`);
+      }
+    }
+  }
+}
+
 if (problems.length > 0) fail(`\n${problems.join("\n")}`);
 console.log(
-  `check-dist-pages: ${pages} pages, each with its head, its language and its content; 404.html the template${swa ? `; the sitemap's ${ownCanonicals.size} pages and robots.txt` : ""}.`,
+  `check-dist-pages: ${pages} pages, each with its head, its language and its content; 404.html the template${swa ? `; the sitemap's ${ownCanonicals.size} pages and robots.txt; COOP / COEP set, the engine's workers served here, no cross-origin sub-resource` : ""}.`,
 );

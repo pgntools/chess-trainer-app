@@ -27,9 +27,9 @@ vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
   return reactChessboardMock();
 });
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("../board/boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 vi.mock("../../lib/openings", async (importOriginal) => {
   const { openingsMock } = await import("../board/boardTestHarness");
   return openingsMock(importOriginal as () => Promise<typeof import("../../lib/openings")>);
@@ -162,9 +162,11 @@ describe("a Library game — accessible", () => {
     const next = screen.getByRole("link", { name: i18n.t("library.game.next") });
     expect(next).toHaveAttribute("href", `/library/${club.id}/3`);
     const engine = screen.getByRole("switch", { name: i18n.t("library.game.engineSwitch") });
+    // It starts off (CTA-148).
+    expect(engine).not.toBeChecked();
     engine.focus();
     await user.keyboard(" ");
-    expect(engine).not.toBeChecked();
+    expect(engine).toBeChecked();
   });
 
   it("says a game will not read, with the way back, and passes axe", async () => {

@@ -19,9 +19,9 @@ import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
   the reader's choice is set to it.
 */
 
-vi.mock("../../lib/engine", async () => ({
-  default: (await import("./boardTestHarness")).FakeEngine,
-}));
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("./boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("./boardTestHarness");

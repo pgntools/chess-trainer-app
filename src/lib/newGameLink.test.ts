@@ -16,6 +16,7 @@ describe("newGameParams — the Lobby's Start link (CTA-82)", () => {
     expect(Object.fromEntries(written)).toEqual({
       side: "black",
       skill: "5",
+      elo: "2100",
       depth: "8",
       movetime: "2500",
       lines: "3",
@@ -29,7 +30,7 @@ describe("newGameParams — the Lobby's Start link (CTA-82)", () => {
   it("reads back what it wrote", () => {
     const settings = { ...DEFAULT_ENGINE_SETTINGS, skillLevel: 3, multiPv: 5, threads: 2, hashMb: 64 };
     expect(newGameRequestOf(newGameParams(settings, "white", true, false))).toEqual({
-      settings: { skillLevel: 3, depth: 14, moveTimeMs: 1000, multiPv: 5, threads: 2, hashMb: 64 },
+      settings: { skillLevel: 3, elo: 2100, depth: 14, moveTimeMs: 1000, multiPv: 5, threads: 2, hashMb: 64 },
       side: "white",
       evalBar: true,
       variations: false,
@@ -67,9 +68,17 @@ describe("newGameRequestOf — reading a link", () => {
 
   it("clamps a number out of range and rounds a fraction", () => {
     expect(
-      newGameRequestOf(params("skill=99&depth=0&movetime=-5&lines=50&threads=9&hash=1e6")).settings,
-    ).toEqual({ skillLevel: 20, depth: 1, moveTimeMs: 0, multiPv: 10, threads: 4, hashMb: 256 });
+      newGameRequestOf(params("skill=99&depth=0&movetime=-5&lines=50&threads=99&hash=1e6")).settings,
+    ).toEqual({ skillLevel: 20, depth: 1, moveTimeMs: 0, multiPv: 10, threads: 32, hashMb: 1024 });
     expect(newGameRequestOf(params("skill=7.6")).settings).toEqual({ skillLevel: 8 });
+  });
+
+  it("carries the Elo an Elo-driven engine is asked for (CTA-153), clamped into its range", () => {
+    expect(newGameRequestOf(params("elo=1800")).settings).toEqual({ elo: 1800 });
+    expect(newGameRequestOf(params("elo=100")).settings).toEqual({ elo: 1320 });
+    expect(newGameRequestOf(params("elo=9999")).settings).toEqual({ elo: 3190 });
+    expect(newGameRequestOf(params("elo=strong")).settings).toEqual({});
+    expect(newGameParams({ ...DEFAULT_ENGINE_SETTINGS, elo: 2500 }, "white", true, true).get("elo")).toBe("2500");
   });
 
   it("reads ?side=random as no side at all (CTA-90)", () => {

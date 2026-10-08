@@ -97,48 +97,48 @@ beforeEach(async () => {
 describe("the page title (CTA-112)", () => {
   it("names the page by its screen, then the app", () => {
     renderShell(["/engine/games"]);
-    expect(document.title).toBe("Lobby — Chess Trainer App");
+    expect(document.title).toBe("Lobby — chessapp.dev");
   });
 
   it("puts the open record's name first", async () => {
     renderShell(["/settings/export"]);
-    await waitFor(() => expect(document.title).toBe("Export — Settings — Chess Trainer App"));
+    await waitFor(() => expect(document.title).toBe("Export — Settings — chessapp.dev"));
   });
 
   it("follows the record and the screen as the reader moves", async () => {
     const router = renderShell(["/settings/export"]);
     await act(() => router.navigate("/settings/import"));
-    expect(document.title).toBe("Import — Settings — Chess Trainer App");
+    expect(document.title).toBe("Import — Settings — chessapp.dev");
     await act(() => router.navigate("/"));
-    expect(document.title).toBe("Home — Chess Trainer App");
+    expect(document.title).toBe("Home — chessapp.dev");
   });
 
   it("is in the reader's language", async () => {
     await i18n.changeLanguage("he");
     renderShell(["/settings/export"]);
-    await waitFor(() => expect(document.title).toBe("Export — הגדרות — אפליקציית אימון שחמט"));
+    await waitFor(() => expect(document.title).toBe("Export — הגדרות — chessapp.dev"));
   });
 
   it("puts first the page a route's meta names for the address, with its description (CTA-135)", async () => {
     const router = renderShell(["/blog/get-started"]);
-    expect(document.title).toBe("Get started — Blog — Chess Trainer App");
+    expect(document.title).toBe("Get started — Blog — chessapp.dev");
     expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute("content", "Where to begin.");
     await act(() => router.navigate("/blog/elsewhere"));
-    expect(document.title).toBe("Another page — Blog — Chess Trainer App");
+    expect(document.title).toBe("Another page — Blog — chessapp.dev");
     // A page whose meta gives no description has its screen's (CTA-136).
     expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute("content", i18n.t("pageDescriptions.blog"));
     // A route without meta is titled as it always was, and described as its screen.
     await act(() => router.navigate("/engine/games"));
-    expect(document.title).toBe("Lobby — Chess Trainer App");
+    expect(document.title).toBe("Lobby — chessapp.dev");
     expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute("content", i18n.t("pageDescriptions.lobby"));
   });
 
   it("is rendered into the head — one title, ahead of the page's static one (CTA-135)", () => {
     const fallback = document.createElement("title");
-    fallback.textContent = "Chess Trainer App";
+    fallback.textContent = "chessapp.dev";
     document.head.append(fallback);
     renderShell(["/engine/games"]);
-    expect(document.title).toBe("Lobby — Chess Trainer App");
+    expect(document.title).toBe("Lobby — chessapp.dev");
     fallback.remove();
   });
 });

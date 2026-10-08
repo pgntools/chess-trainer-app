@@ -12,6 +12,7 @@ import { NavDrawer } from '../../design-system/components/navigation';
 import { IconAction } from '../../design-system/components/toolbars';
 import { default as SideBar } from './Sidebar';
 import { Footer } from './Footer';
+import { DevelopmentNotice } from './DevelopmentNotice';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
 import { useRightPanelHidden } from './rightPanelSlot';
@@ -840,6 +841,8 @@ const DefaultLayout = ()=>
                     <LeftPanelProvider>
                         <BoardLeftPanelProvider>
                             <DefaultLayoutViewport />
+                            {/* Once per session, on whichever route the reader arrives at (CTA-155). */}
+                            <DevelopmentNotice />
                         </BoardLeftPanelProvider>
                     </LeftPanelProvider>
                 </RightPanelProvider>

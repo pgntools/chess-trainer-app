@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
  * props and knows nothing about which screen renders it. `CapturedPieces`
  * renders it, reached through one optional prop on the `BoardShell` →
  * `EngineBoardSquare` → strips chain, so a board that passes nothing gets
- * exactly today's behaviour — only the Library's game board passes one.
+ * exactly today's behaviour — only the Library's game board and the Analysis Board (CTA-148) pass one.
  *
  * The row reads: the player's result of the game — `1`, `0` or the half
  * sign — then a thin vertical separator, then the Elo rating, then the name
