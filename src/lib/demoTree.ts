@@ -53,6 +53,32 @@ export const demoNodeAt = (root: DemoNode, line: readonly string[]): { line: str
 };
 
 /**
+ * **Where Home goes** on a demo board (CTA-165) — `gameTree.ts`'s
+ * `branchStartOf` over a line of SAN: the line up to the first move of the
+ * innermost side line it is in, leaving out its last move (so on a side
+ * line's first move, it climbs to the enclosing one). `[]`, the start, from
+ * the mainline. `line` is one `demoNodeAt` has matched.
+ */
+export const demoBranchStart = (root: DemoNode, line: readonly string[]): string[] => {
+  let start: string[] = [];
+  let node = root;
+  for (const [index, san] of line.slice(0, -1).entries()) {
+    const at = node.children.findIndex((child) => child.san === san);
+    if (at === -1) break;
+    if (at > 0) start = line.slice(0, index + 1);
+    node = node.children[at];
+  }
+  return start;
+};
+
+/** The tree's mainline as SAN — `children[0]` at every step, from the root. */
+export const demoMainline = (root: DemoNode): string[] => {
+  const line: string[] = [];
+  for (let node = root.children[0]; node !== undefined; node = node.children[0]) line.push(node.san);
+  return line;
+};
+
+/**
  * `line` as it is printed — `1. e4 e5 2. Nf3`, or `12... Kg8 13. Qh5` from a
  * position with Black to move — numbered from the start position's own move
  * number and side to move.

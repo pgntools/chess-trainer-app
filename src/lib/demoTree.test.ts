@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { demoNodeAt, demoTreeOfGameTree, numberedLine, startLineOf } from "./demoTree";
+import { demoBranchStart, demoMainline, demoNodeAt, demoTreeOfGameTree, numberedLine, startLineOf } from "./demoTree";
 import { parsePgnTree } from "./pgn";
 
 describe("demoTreeOfGameTree", () => {
@@ -25,6 +25,24 @@ describe("demoNodeAt", () => {
     const { line, node } = demoNodeAt(root, ["e4", "c5", "Nf3"]);
     expect(line).toEqual(["e4"]);
     expect(node.san).toBe("e4");
+  });
+});
+
+describe("demoBranchStart / demoMainline — Home and PgDown (CTA-165)", () => {
+  const root = demoTreeOfGameTree(parsePgnTree("1. e4 e5 (1... c5 2. Nf3 (2. c3 d5) d6) 2. Nf3 Nc6 *"));
+
+  it("goes to the first move of the innermost side line, climbing a level from there, out to the start", () => {
+    expect(demoBranchStart(root, ["e4", "c5", "c3", "d5"])).toEqual(["e4", "c5", "c3"]);
+    expect(demoBranchStart(root, ["e4", "c5", "c3"])).toEqual(["e4", "c5"]);
+    expect(demoBranchStart(root, ["e4", "c5", "Nf3", "d6"])).toEqual(["e4", "c5"]);
+    expect(demoBranchStart(root, ["e4", "c5"])).toEqual([]);
+    expect(demoBranchStart(root, ["e4", "e5", "Nf3"])).toEqual([]);
+    expect(demoBranchStart(root, [])).toEqual([]);
+  });
+
+  it("reads the mainline as children[0] at every step", () => {
+    expect(demoMainline(root)).toEqual(["e4", "e5", "Nf3", "Nc6"]);
+    expect(demoMainline(demoTreeOfGameTree(parsePgnTree("*")))).toEqual([]);
   });
 });
 
