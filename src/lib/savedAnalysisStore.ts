@@ -86,6 +86,7 @@ const unchanged = (a: SavedAnalysis, b: SavedAnalysis): boolean =>
   a.showArrows === b.showArrows &&
   a.arrowWidthSource === b.arrowWidthSource &&
   a.arrowPalette === b.arrowPalette &&
+  a.showMoveMarks === b.showMoveMarks &&
   a.orientation === b.orientation &&
   a.path.length === b.path.length &&
   a.path.every((san, index) => san === b.path[index]) &&
@@ -194,7 +195,7 @@ export const renameSavedAnalysis = (
 
 /**
  * **The settings screen's Save** (CTA-73): the name, description, side,
- * arrows (CTA-98: how they are sized and coloured too) and folder, written at once and in place — editing settings is not
+ * arrows (CTA-98: how they are sized and coloured too), move marks (CTA-168) and folder, written at once and in place — editing settings is not
  * working on the analysis, so it keeps its place in the list. The texts are
  * trimmed and the description bounded; nothing changed is a no-op.
  */
@@ -211,6 +212,7 @@ export const updateSavedAnalysisSettings = (
       showArrows: edit.showArrows,
       arrowWidthSource: edit.arrowWidthSource,
       arrowPalette: edit.arrowPalette,
+      showMoveMarks: edit.showMoveMarks,
       folderId: edit.folderId,
     };
     return unchanged(row, next) ? row : next;

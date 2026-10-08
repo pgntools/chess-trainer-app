@@ -313,6 +313,12 @@ describe("useVariationsExplorer — the move mark on the board (CTA-168)", () =>
     expect(parts.overlay).toBeNull();
   });
 
+  it("draws none on a board whose reader switched them off", () => {
+    mountMarked({ nodeId: at(marked, "e4"), moveMarks: false });
+    expect(screen.queryByTestId("x-move-glyph")).toBeNull();
+    expect(parts.overlay).toBeNull();
+  });
+
   it("draws it over the PGN's circles, the mark first in print order", () => {
     mountMarked({ nodeId: at(marked, "e4", "e5", "Nf3"), annotations: true });
     const overlay = screen.getByTestId("overlay");

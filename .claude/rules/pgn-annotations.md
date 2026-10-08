@@ -335,7 +335,10 @@ viewBox, turned with the orientation, `pointer-events: none`,
 black by `getContrastText`, pinned LTR with the SVG `direction` attribute.
 It is drawn on **every explorer board** (`useVariationsExplorer`'s `overlay`,
 `${testId}-move-glyph`, above the PGN's circles, whether or not the comment
-block is shown — the list shows the glyph either way) and on the Blog's
+block is shown — the list shows the glyph either way; the explorer's
+`moveMarks: false` leaves it off, which the Analysis Board's *Show move marks
+on the board* switch in its Arrows tab — kept per saved analysis as
+`showMoveMarks` — and the Library game board's switch on its Moves tab pass) and on the Blog's
 `<InlinePgnGame>` boards (`ExcerptBoard`); below the promotion picker. A
 move with no move mark draws nothing, and an `$N` edit through *Add
 annotation…* redraws it at once.

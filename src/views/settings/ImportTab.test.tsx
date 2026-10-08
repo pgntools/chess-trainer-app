@@ -111,6 +111,7 @@ const analysis = (id: string, folderId: string | null): SavedAnalysis => ({
   showArrows: false,
   arrowWidthSource: "none",
   arrowPalette: "classic",
+  showMoveMarks: true,
   name: `Analysis ${id}`,
   folderId,
   savedAt: AT,

@@ -689,6 +689,39 @@ describe("the move mark on the board (CTA-168)", () => {
     fireEvent.click(screen.getByTestId("nag-dialog-choice-5"));
     expect(badge()).toBeNull();
   });
+
+  it("is switched off and on again from the Arrows tab", async () => {
+    await stored("a1", "1. e4 $1 *", ["e4"]);
+    mount("/tools/analysis?analysis=a1");
+    openTab("arrows");
+    const marks = screen.getByRole("switch", { name: "Show move marks on the board" });
+    expect(marks).toBeChecked();
+    fireEvent.click(marks);
+    expect(badge()).toBeNull();
+    // The move list still shows the mark.
+    expect(screen.getByTestId("move-ply-1")).toHaveTextContent("e4!");
+    fireEvent.click(marks);
+    expect(badge()).toHaveTextContent("!");
+  });
+
+  it("opens off for a record that says so, and keeps a new board's choice on its first save", async () => {
+    await stored("a1", "1. e4 $1 *", ["e4"], { showMoveMarks: false });
+    const { unmount } = mount("/tools/analysis?analysis=a1");
+    expect(badge()).toBeNull();
+    openTab("arrows");
+    expect(screen.getByRole("switch", { name: "Show move marks on the board" })).not.toBeChecked();
+    unmount();
+
+    mount();
+    drag("e2", "e4");
+    openTab("arrows");
+    fireEvent.click(screen.getByRole("switch", { name: "Show move marks on the board" }));
+    fireEvent.click(screen.getByTestId("analysis-save"));
+    fireEvent.change(screen.getByTestId("analysis-save-name"), { target: { value: "Mine" } });
+    fireEvent.click(screen.getByTestId("analysis-save-confirm"));
+    await waitFor(() => expect(listed().some((row) => row.name === "Mine")).toBe(true));
+    expect(listed().find((row) => row.name === "Mine")).toMatchObject({ showMoveMarks: false });
+  });
 });
 
 describe("a saved analysis' settings on the board", () => {

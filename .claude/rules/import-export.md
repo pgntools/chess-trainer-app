@@ -111,7 +111,8 @@ both catalogs. Test ids: `settings-export-*`, `settings-import-*`.
   strength was set; **additive and optional**, so there is no format bump: an
   older reader ignores it and a game without one was played by the default
   engine; the `elo` setting is the same kind of addition);
-  an analysis' `showArrows`, `arrowWidthSource` and `arrowPalette`; a
+  an analysis' `showArrows`, `arrowWidthSource`, `arrowPalette` and
+  `showMoveMarks` (CTA-168 — optional, absent reads as on, no bump); a
   repertoire's `previewFen` and `stats`; an uploaded collection's
   `description` and `tournament` mark, CTA-121) — not a
   played game's engine evals, and not a collection's `addedAt`, which an

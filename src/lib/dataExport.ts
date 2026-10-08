@@ -120,6 +120,7 @@ type AnalysisEntry = Placed & {
   showArrows: boolean;
   arrowWidthSource: ArrowWidthSource;
   arrowPalette: ArrowPaletteId;
+  showMoveMarks: boolean;
   settings: AnalysisSettings;
   path: readonly string[];
   /** Folder names from the top down; `[]` is Unfiled. */
@@ -348,6 +349,7 @@ export const buildExport = (
       showArrows: analysis.showArrows,
       arrowWidthSource: analysis.arrowWidthSource,
       arrowPalette: analysis.arrowPalette,
+      showMoveMarks: analysis.showMoveMarks,
       settings: analysis.settings,
       path: analysis.path,
       folderPath:

@@ -113,6 +113,8 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
 
   const [tab, setTab] = useState("moves");
   const [showArrows, setShowArrows] = useState(true);
+  // The move marks on the board (CTA-168), the session's like the arrows; a copy keeps both.
+  const [showMoveMarks, setShowMoveMarks] = useState(true);
   const [changesOpen, setChangesOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   // The strip closes itself once the changes are kept or dropped.
@@ -142,6 +144,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
     onEditTree: core.replaceTree,
     playChances: false,
     annotations: true,
+    moveMarks: showMoveMarks,
     arrows: { show: showArrows },
     map: { addedIds: session.extensionIds, linked: true },
   });
@@ -191,6 +194,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
         ),
         name: t("library.shippedChanges.copyName", { name: title }),
         showArrows,
+        showMoveMarks,
       };
       const failed = await saveAnalysis(record);
       if (failed !== undefined) {
@@ -317,6 +321,14 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
                     onChange={setShowArrows}
                     testIdOn="control"
                     testId="library-game-arrows"
+                  />
+                  <SwitchField
+                    size="small"
+                    label={t("library.game.moveMarks")}
+                    checked={showMoveMarks}
+                    onChange={setShowMoveMarks}
+                    testIdOn="control"
+                    testId="library-game-move-marks"
                   />
                 </Box>
                 {explorer.moves}

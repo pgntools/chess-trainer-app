@@ -100,6 +100,12 @@ export type VariationsExplorerOptions = {
    * comments would answer), neither is drawn.
    */
   annotations?: boolean;
+  /**
+   * Draw the move on screen's mark (`!`, `??`, …) on its square (CTA-168) —
+   * on by default, every board's; a board whose reader can switch it off
+   * (the Analysis Board, the Library's game board) passes its switch.
+   */
+  moveMarks?: boolean;
   /** The arrows part; absent draws none but a hovered move's. */
   arrows?: ExplorerArrowOptions;
   /** The map part; absent, `parts.map` is `undefined`. */
@@ -153,6 +159,7 @@ export function useVariationsExplorer({
   onEditTree,
   playChances: offerPlayChances,
   annotations: showAnnotations = false,
+  moveMarks = true,
   arrows: arrowOptions = NO_ARROWS,
   map,
   mask,
@@ -302,7 +309,7 @@ export function useVariationsExplorer({
   // the move mark of the move on screen above them (CTA-168).
   const onScreen = nodeId === null ? null : findNode(tree, nodeId);
   const badge =
-    onScreen !== null && moveMarkBadge(onScreen.nags) !== undefined ? (
+    moveMarks && onScreen !== null && moveMarkBadge(onScreen.nags) !== undefined ? (
       <MoveGlyphBadge
         nags={onScreen.nags}
         square={onScreen.to}

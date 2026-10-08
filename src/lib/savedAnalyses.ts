@@ -80,7 +80,9 @@ import { repertoireGameNamesOf } from "./savedRepertoires";
  * Update does not write it), and whether the board opens **showing the
  * next-move arrows** (`showArrows`, on by default) — and how it draws them
  * (CTA-98): what sizes each arrow (`arrowWidthSource`, `"none"` by default)
- * and in which colours (`arrowPalette`, `"classic"`). Each reads as its
+ * and in which colours (`arrowPalette`, `"classic"`) — and whether it draws
+ * the move on screen's mark on the board (`showMoveMarks`, on by default,
+ * CTA-168). Each reads as its
  * default on a record from before it, or on one naming a value this build
  * does not know.
  */
@@ -114,6 +116,8 @@ export type SavedAnalysis = {
   arrowWidthSource: ArrowWidthSource;
   /** The next-move arrows' colours (CTA-98). */
   arrowPalette: ArrowPaletteId;
+  /** Whether the board draws the move on screen's mark (`!`, `??`, …) on its square (CTA-168). */
+  showMoveMarks: boolean;
   /**
    * The reader's name for it. May be empty — a row then names it by its
    * players, or by the generic "Analysis board".
@@ -240,6 +244,7 @@ export const savedAnalysisOf = (
   showArrows: true,
   arrowWidthSource: DEFAULT_ARROW_WIDTH_SOURCE,
   arrowPalette: DEFAULT_ARROW_PALETTE,
+  showMoveMarks: true,
   savedAt,
   updatedAt: now.toISOString(),
 });
@@ -316,6 +321,8 @@ export const savedAnalysisFrom = (value: unknown): SavedAnalysis | undefined => 
     showArrows: typeof row.showArrows === "boolean" ? row.showArrows : true,
     arrowWidthSource: arrowWidthSourceFrom(row.arrowWidthSource),
     arrowPalette: arrowPaletteFrom(row.arrowPalette),
+    // A record from before the board drew them (CTA-168): on.
+    showMoveMarks: typeof row.showMoveMarks === "boolean" ? row.showMoveMarks : true,
   };
 };
 
@@ -328,6 +335,7 @@ export type SavedAnalysisSettingsEdit = Pick<
   | "showArrows"
   | "arrowWidthSource"
   | "arrowPalette"
+  | "showMoveMarks"
   | "folderId"
 >;
 
@@ -453,6 +461,7 @@ export const batchAnalysesOf = (
     showArrows: true,
     arrowWidthSource: DEFAULT_ARROW_WIDTH_SOURCE,
     arrowPalette: DEFAULT_ARROW_PALETTE,
+    showMoveMarks: true,
     name: game.name,
     folderId,
     savedAt: now.toISOString(),

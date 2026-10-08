@@ -349,6 +349,7 @@ describe("a saved analysis' settings (CTA-73)", () => {
       showArrows: true,
       arrowWidthSource: "none",
       arrowPalette: "classic",
+      showMoveMarks: true,
     });
   });
 
@@ -362,6 +363,7 @@ describe("a saved analysis' settings (CTA-73)", () => {
       showArrows: false,
       arrowWidthSource: "games",
       arrowPalette: "lichess",
+      showMoveMarks: false,
       folderId: "f1",
     });
     expect(await ids()).toEqual(["new", "old"]);
@@ -372,6 +374,7 @@ describe("a saved analysis' settings (CTA-73)", () => {
       showArrows: false,
       arrowWidthSource: "games",
       arrowPalette: "lichess",
+      showMoveMarks: false,
       folderId: "f1",
     });
   });
@@ -387,6 +390,7 @@ describe("a saved analysis' settings (CTA-73)", () => {
       showArrows: true,
       arrowWidthSource: "none",
       arrowPalette: "classic",
+      showMoveMarks: true,
       folderId: null,
     });
     expect(savedAnalysesSnapshot()).toBe(before);

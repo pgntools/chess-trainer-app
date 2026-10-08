@@ -30,7 +30,8 @@ import { useSavedAnalyses } from "./useSavedAnalyses";
  * - **General** — the title (the record's `name`) and a description.
  * - **Board** — the side the board opens facing (`orientation`), whether
  *   it opens drawing the next-move arrows (`showArrows`), what sizes them
- *   (`arrowWidthSource`) and their colours (`arrowPalette`, CTA-98). A flip
+ *   (`arrowWidthSource`) and their colours (`arrowPalette`, CTA-98), and
+ *   whether it draws the move marks on the board (`showMoveMarks`, CTA-168). A flip
  *   or the board's Arrows tab is the session's; these are what it opens on.
  *   Every width source is offered here: whether the tree carries its tag is
  *   the board's to say.
@@ -92,6 +93,7 @@ function SettingsForm({ saved, folders }: { saved: SavedAnalysis; folders: reado
     showArrows: saved.showArrows,
     arrowWidthSource: saved.arrowWidthSource,
     arrowPalette: saved.arrowPalette,
+    showMoveMarks: saved.showMoveMarks,
     folderId: saved.folderId !== null && folders.some((folder) => folder.id === saved.folderId) ? saved.folderId : null,
   }));
   const [failed, setFailed] = useState(false);
@@ -187,6 +189,13 @@ function SettingsForm({ saved, folders }: { saved: SavedAnalysis; folders: reado
                 palette={draft.arrowPalette}
                 onPaletteChange={(arrowPalette) => change({ arrowPalette })}
                 testId="analysis-settings-arrows"
+              />
+              <SwitchField
+                label={t("analysis.settings.moveMarks")}
+                help={t("analysis.settingsScreen.moveMarksHelp")}
+                checked={draft.showMoveMarks}
+                onChange={(showMoveMarks) => change({ showMoveMarks })}
+                testId="analysis-settings-move-marks"
               />
             </SettingsSection>
 

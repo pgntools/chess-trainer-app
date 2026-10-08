@@ -584,6 +584,27 @@ describe("a game on its analysis board", () => {
     expect(screen.getByTestId("library-game-arrows")).not.toBeVisible();
   });
 
+  it("switches the move marks on the board from its Moves tab (CTA-168)", async () => {
+    const marked = await keep("Marked", ['[Event "Club"]\n[White "Amy"]\n[Black "Bob"]\n[Result "*"]\n\n1. e4! e5 *']);
+    await mountGame(`/library/${marked.id}/1?at=e4`);
+    expect(screen.getByTestId("library-game-move-glyph")).toHaveAttribute("data-square", "e4");
+    fireEvent.click(screen.getByRole("switch", { name: "Move marks on the board" }));
+    expect(screen.queryByTestId("library-game-move-glyph")).toBeNull();
+  });
+
+  it("keeps the move marks switch in a shipped game's copy", async () => {
+    await mountGame("/library/capablanca/1");
+    fireEvent.click(screen.getByRole("switch", { name: "Move marks on the board" }));
+    // 1. e4 is the game's own; 1... c5 is the change.
+    drag("e2", "e4");
+    drag("c7", "c5");
+    fireEvent.click(screen.getByTestId("library-game-save"));
+    fireEvent.click(screen.getByTestId("library-game-changes-copy"));
+    await waitFor(() => expect(where()).toContain("/tools/analysis?analysis="));
+    const [copy] = savedAnalysesSnapshot() ?? [];
+    expect(findSavedAnalysis(copy.id)?.showMoveMarks).toBe(false);
+  });
+
   it("is the v2 board, with the explorer's tabs and the engine", async () => {
     const mine = await upload();
     await mountGame(`/library/${mine.id}/1`);

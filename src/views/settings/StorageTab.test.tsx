@@ -72,6 +72,7 @@ const seed = async () => {
       showArrows: true,
       arrowWidthSource: "none",
       arrowPalette: "classic",
+      showMoveMarks: true,
       name: id,
       folderId,
       savedAt: AT,
