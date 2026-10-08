@@ -12,7 +12,7 @@ import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "r
 import { useTranslation } from "react-i18next";
 import { Chessboard } from "react-chessboard";
 
-import { FolderDeleteDialog, FolderMoveDialog, FolderNameDialog } from "../../../../blocks/dialogs";
+import { FolderMoveDialog, FolderNameDialog } from "../../../../blocks/dialogs";
 import { SAVED_LIST_DEFAULT_VIEW, SavedAnalysesList, type SavedListView } from "../../../../blocks/lists";
 import { SavedAnalysesTable } from "../../../../blocks/tables";
 import { DeleteManyDialog } from "../../../../design-system/components/dialogs";
@@ -44,12 +44,16 @@ import {
   analysisFolderChildren,
   analysisFolderPath,
   analysisFolderSubtree,
+  analysisPicksOf,
+  toggleAnalysisFolderPick,
+  toggleAnalysisPick,
+  unpickAnalysis,
   type AnalysisFolder,
 } from "../../../../lib/savedAnalysisFolders";
 import {
   createAnalysisFolder,
   moveAnalysisFolder,
-  removeAnalysisFolder,
+  removeAnalysisFoldersDeep,
   renameAnalysisFolder,
 } from "../../../../lib/savedAnalysisFolderStore";
 import { removeSavedAnalyses } from "../../../../lib/savedAnalysisStore";
@@ -108,20 +112,26 @@ import { useSavedAnalyses } from "./useSavedAnalyses";
  *   (`AnalysisSettingsScreen.tsx`: title, description, side, next-move arrows
  *   and the folder it is filed under).
  * - **Deleting is in bulk, and in every view.** No row or card deletes itself:
- *   each carries a pick — the cards too — so the selection bar shows in all
- *   three views, and switching view keeps the picks.
+ *   each carries a pick — the cards too, and a folder's pick covers its
+ *   whole subtree (CTA-147: folders and records are picked alike) — so the
+ *   selection bar shows in all three views, and switching view keeps the
+ *   picks. A picked folder goes in the bulk delete **together with everything
+ *   under it**; there is no per-folder delete icon any more, and a bulk
+ *   delete's confirm says the folders and their contents go.
  * - **A card previews where the reader was standing** — a tree has no final
  *   position, so the record carries that place as SAN from the root
  *   (`lib/savedAnalyses.ts`) — facing the analysis' own side, with the opening
  *   the mainline reached beneath it.
  * - **Folders nest** (`lib/savedAnalysisFolders.ts`): folders first, then this
  *   folder's analyses; create under the folder the reader is in, rename, move
- *   anywhere but its own subtree, delete keeping the contents (an empty
- *   folder at once, otherwise after a confirmation), and download a folder's
- *   whole subtree as one `.pgn`. The folder the reader is standing in is
+ *   anywhere but its own subtree, and download a folder's whole subtree as
+ *   one `.pgn`. Deleting a folder is through the picks (CTA-147): tick its
+ *   box — its whole subtree is picked with it — and the bulk delete takes it
+ *   and everything under it. The folder the reader is standing in is
  *   `?folder=<id>`. **The picks persist across folders and views**:
  *   select-all adds what is here (in the table, the rows the filter leaves),
- *   and the chip counts the whole picked set.
+ *   and the chip counts the whole picked set — the analyses under the picked
+ *   folders included.
  * - **A record the store has and cannot parse is still listed**, says so and
  *   can still be picked — to delete it, or to export its stored PGN intact.
  * - **Paged, and parsed no more than a page at a time** (CTA-77; the design
@@ -357,12 +367,11 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
 
   const [nameDialog, setNameDialog] = useState<NameDialogState>(null);
   const [moving, setMoving] = useState<AnalysisFolder | null>(null);
-  const [deleting, setDeleting] = useState<AnalysisFolder | null>(null);
   const [deletingPicked, setDeletingPicked] = useState(false);
-  // The count and the folder asked about, held past the confirm so the
-  // dialogs' closing transitions do not read "Delete 0" or lose the name.
+  // The counts asked about, held past the confirm so the dialog's closing
+  // transition does not read "Delete 0".
   const [askedCount, setAskedCount] = useState(0);
-  const [askedFolder, setAskedFolder] = useState<AnalysisFolder | null>(null);
+  const [askedFolders, setAskedFolders] = useState(0);
 
   /*
     The page's trees: the side lines are counted and the node the reader was
@@ -371,56 +380,126 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
   const pageTrees = useMemo(() => pageRows.map((saved) => ({ saved, tree: treeOf(saved) })), [pageRows]);
 
   /*
-    Which analyses are picked. Held as a set of ids rather than a flag per
-    row, so one deleted — here or in another tab — simply falls out of the
-    count: everything below reads the selection *through* `analyses`. The
-    picks persist across folders; select-all **adds** the rows here, and
-    unchecking it removes just those.
+    What is picked (CTA-147): **one set of ids over folders and records
+    alike** — an analysis' own, a folder's standing for its whole subtree.
+    Everything below reads the selection *through* `analyses` and `folders`
+    (`analysisPicksOf`), so one deleted — here or in another tab — simply
+    falls out of the count. The picks persist across folders and views;
+    select-all **adds** what is here (in the table, the rows the filter
+    leaves), and unchecking it removes just those.
   */
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
-  const selected = analyses.filter((saved) => picked.has(saved.id));
-  const selectedHere = rowsHere.filter((saved) => picked.has(saved.id));
+  const picks = useMemo(() => analysisPicksOf(analyses, folders, picked), [analyses, folders, picked]);
+  // What a bulk delete takes: the analyses the picks cover, and every checked folder — a checked folder goes with all that is under it.
+  const selected = analyses.filter((saved) => picks.analyses.has(saved.id));
+  const selectedFolders = folders.filter((folder) => picks.folders.get(folder.id)?.checked === true);
+  const selectedHere = rowsHere.filter((saved) => picks.analyses.has(saved.id));
 
   const togglePicked = (id: string) =>
     setPicked((current) => {
-      const next = new Set(current);
-      if (!next.delete(id)) next.add(id);
-      return next;
+      const saved = analyses.find((analysis) => analysis.id === id);
+      // A card's or a row's box: demote the folders above an unticked analysis, so none stays checked with its contents partly picked.
+      return saved === undefined ? current : toggleAnalysisPick(current, saved, folders);
     });
 
+  /*
+    The table's row boxes go through `onPickedChange`: the same demotion,
+    worked out from what the change removed (a row's untick is one id).
+  */
+  const onPickedChange = (next: Set<string>) => {
+    let settled: ReadonlySet<string> = next;
+    for (const id of picked) {
+      if (settled.has(id)) continue;
+      const saved = analyses.find((analysis) => analysis.id === id);
+      if (saved !== undefined) settled = unpickAnalysis(settled, saved, folders);
+    }
+    setPicked(new Set(settled));
+  };
+
+  /** A folder's box — the cards' and the table's alike: its whole subtree joins or leaves the picks. */
+  const folderPick = (folder: AnalysisFolder) => {
+    const state = picks.folders.get(folder.id);
+    const checked = state?.checked ?? false;
+    return {
+      checked,
+      indeterminate: state?.indeterminate ?? false,
+      onToggle: () =>
+        setPicked((current) => toggleAnalysisFolderPick(current, folder, analyses, folders, checked)),
+    };
+  };
+
+  /*
+    The cards' select-all: the folders here and the analyses here. Ticked, it
+    adds every folder's whole subtree; unticked, it removes what it covers.
+  */
+  const allHere = foldersHere.length + rowsHere.length > 0 &&
+    foldersHere.every((folder) => picks.folders.get(folder.id)?.checked === true) &&
+    selectedHere.length === rowsHere.length;
+  const someHere = selectedHere.length > 0 || foldersHere.some((folder) => {
+    const state = picks.folders.get(folder.id);
+    return (state?.checked ?? false) || (state?.indeterminate ?? false);
+  });
   const toggleAllHere = () =>
     setPicked((current) => {
-      const next = new Set(current);
-      const allPicked = rowsHere.length > 0 && selectedHere.length === rowsHere.length;
-      for (const saved of rowsHere) {
-        if (allPicked) next.delete(saved.id);
-        else next.add(saved.id);
+      let next: ReadonlySet<string> = current;
+      for (const folder of foldersHere) {
+        next = toggleAnalysisFolderPick(next, folder, analyses, folders, allHere);
       }
-      return next;
+      const grown = new Set(next);
+      for (const saved of rowsHere) {
+        if (allHere) grown.delete(saved.id);
+        else grown.add(saved.id);
+      }
+      return grown;
     });
+
+  /*
+    The table's select-all (CTA-147) — the screen owns it, because a folder's
+    pick covers its closed folders' unshown subtrees. It covers the rows the
+    filter leaves: every folder row's whole subtree, and every analysis row.
+  */
+  const coverage = useMemo(() => {
+    const coveredFolders: AnalysisFolder[] = [];
+    const coveredAnalyses: SavedAnalysis[] = [];
+    const byId = new Map(scopeAnalyses.map((saved) => [saved.id, saved]));
+    for (const row of walked) {
+      if (row.kind === "folder") coveredFolders.push(row.folder);
+      else {
+        const saved = byId.get(row.item.id);
+        if (saved !== undefined) coveredAnalyses.push(saved);
+      }
+    }
+    return { coveredFolders, coveredAnalyses };
+  }, [walked, scopeAnalyses]);
+  const allCovered = (coverage.coveredFolders.length + coverage.coveredAnalyses.length > 0) &&
+    coverage.coveredFolders.every((folder) => picks.folders.get(folder.id)?.checked === true) &&
+    coverage.coveredAnalyses.every((saved) => picks.analyses.has(saved.id));
+  const someCovered = coverage.coveredAnalyses.some((saved) => picks.analyses.has(saved.id)) ||
+    coverage.coveredFolders.some((folder) => {
+      const state = picks.folders.get(folder.id);
+      return (state?.checked ?? false) || (state?.indeterminate ?? false);
+    });
+  const tableSelectAll = {
+    checked: allCovered,
+    indeterminate: someCovered && !allCovered,
+    onToggleAll: () =>
+      setPicked((current) => {
+        let next: ReadonlySet<string> = current;
+        for (const folder of coverage.coveredFolders) {
+          next = toggleAnalysisFolderPick(next, folder, analyses, folders, allCovered);
+        }
+        const grown = new Set(next);
+        for (const saved of coverage.coveredAnalyses) {
+          if (allCovered) grown.delete(saved.id);
+          else grown.add(saved.id);
+        }
+        return grown;
+      }),
+  };
 
   /** One `.pgn` of everything under the folder — the set its count stands for. */
   const downloadFolder = (folder: AnalysisFolder) =>
     downloadPgn(folderStem(folder), analysesInFolder(analyses, folders, folder.id).map((row) => row.pgn));
-
-  /*
-    Delete keeps the contents (`removeAnalysisFolder`). Standing inside what is
-    deleted, the reader moves to its parent — where its sub-folders went.
-  */
-  const confirmDelete = (folder: AnalysisFolder) => {
-    if (browseId !== null && analysisFolderSubtree(folders, folder.id).has(browseId)) openFolder(folder.parentId);
-    void removeAnalysisFolder(folder.id);
-  };
-
-  const startDelete = (folder: AnalysisFolder) => {
-    const isEmpty = analysesUnderFolder(analyses, folders, folder.id) === 0 && analysisFolderChildren(folders, folder.id).length === 0;
-    if (isEmpty) {
-      confirmDelete(folder);
-      return;
-    }
-    setAskedFolder(folder);
-    setDeleting(folder);
-  };
 
   /*
     One walk per analysis on the page, memoised on the page and the book. The
@@ -457,9 +536,11 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
         </IconAction>
         <IconAction
           label={t("savedAnalyses.deleteSelected")}
-          disabled={selected.length === 0}
+          // An empty folder picked is deletable with nothing to download.
+          disabled={selected.length === 0 && selectedFolders.length === 0}
           onClick={() => {
             setAskedCount(selected.length);
+            setAskedFolders(selectedFolders.length);
             setDeletingPicked(true);
           }}
           testId="saved-analyses-delete"
@@ -471,12 +552,11 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
     testId: "saved-analyses",
   };
 
-  /* What a folder's actions do — a tree table's folder row, or a card. */
+  /* What a folder's actions do — a tree table's folder row, or a card. No delete: a folder goes through the picks (CTA-147). */
   const folderActions = {
     onDownload: downloadFolder,
     onRename: (folder: AnalysisFolder) => setNameDialog({ mode: "rename", folder }),
     onMove: setMoving,
-    onDelete: startDelete,
   };
 
   // Save and Cancel on a settings screen come back to this list as it stands.
@@ -521,14 +601,14 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
                 Beside the table it leaves its select-all out — the table's
                 header has it, over the rows the filter leaves.
               */}
-              {analyses.length > 0 &&
+              {(analyses.length > 0 || folders.length > 0) &&
                 (isList ? (
                   <SelectionBar {...selectionBar} />
                 ) : (
                   <SelectionBar
                     {...selectionBar}
-                    checked={rowsHere.length > 0 && selectedHere.length === rowsHere.length}
-                    indeterminate={selectedHere.length > 0 && selectedHere.length < rowsHere.length}
+                    checked={allHere}
+                    indeterminate={someHere && !allHere}
                     onToggleAll={toggleAllHere}
                     selectAllLabel={t("savedAnalyses.selectAll")}
                   />
@@ -597,7 +677,9 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
                     : undefined
                 }
                 picked={picked}
-                onPickedChange={setPicked}
+                onPickedChange={onPickedChange}
+                folderPick={folderPick}
+                selectAll={tableSelectAll}
                 openLink={(row) => ({ component: RouterLink, to: boardPath(row, tableSort) })}
                 onOpenAnalysis={(row) => navigate(boardPath(row, tableSort))}
                 settingsLink={(row) => ({
@@ -632,6 +714,7 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
             entries={entries}
             picked={picked}
             onTogglePick={togglePicked}
+            folderPick={folderPick}
             openLink={(saved) => ({ component: RouterLink, to: boardPath(saved) })}
             settingsLink={(saved) => ({
               component: RouterLink,
@@ -729,35 +812,45 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
         open={deletingPicked}
         onClose={() => setDeletingPicked(false)}
         onConfirm={() => {
-          // One write for the lot; the picks go with them.
-          void removeSavedAnalyses(selected.map((saved) => saved.id));
+          /*
+            One delete for the lot (CTA-147): the analyses the picks cover,
+            then every checked folder with its whole subtree. Standing inside
+            what goes, the reader steps to the nearest folder that survives.
+          */
+          const gone = new Set<string>();
+          for (const folder of selectedFolders) {
+            for (const id of analysisFolderSubtree(folders, folder.id)) gone.add(id);
+          }
+          if (browseId !== null && gone.has(browseId)) {
+            const byId = new Map(folders.map((folder) => [folder.id, folder]));
+            let parentId = byId.get(browseId)?.parentId ?? null;
+            while (parentId !== null && gone.has(parentId)) parentId = byId.get(parentId)?.parentId ?? null;
+            openFolder(parentId);
+          }
+          void removeSavedAnalyses(selected.map((saved) => saved.id)).then(() =>
+            removeAnalysisFoldersDeep(selectedFolders.map((folder) => folder.id)),
+          );
           setPicked(new Set());
           setDeletingPicked(false);
         }}
-        title={t("savedAnalyses.bulkDelete.title", { count: askedCount })}
-        message={t("savedAnalyses.bulkDelete.text")}
+        title={
+          askedCount > 0
+            ? t("savedAnalyses.bulkDelete.title", { count: askedCount })
+            : t("savedAnalyses.bulkDelete.titleFolders", { count: askedFolders })
+        }
+        message={
+          askedFolders > 0
+            ? askedCount > 0
+              ? t("savedAnalyses.bulkDelete.textWithFolders", { count: askedFolders })
+              : t("savedAnalyses.bulkDelete.textFoldersOnly")
+            : t("savedAnalyses.bulkDelete.text")
+        }
         confirmLabel={t("savedAnalyses.bulkDelete.confirm")}
         cancelLabel={t("savedAnalyses.folder.cancel")}
         testId="saved-analyses-delete-dialog"
         titleTestId="saved-analyses-delete-title"
         cancelTestId="saved-analyses-delete-cancel"
         confirmTestId="saved-analyses-delete-confirm"
-      />
-      <FolderDeleteDialog
-        open={deleting !== null}
-        title={`${t("savedAnalyses.folder.deleteFolder")}: ${askedFolder === null ? "" : folderName(askedFolder)}`}
-        message={t("savedAnalyses.folder.deleteConfirm")}
-        counts={t("savedAnalyses.folder.deleteCounts", {
-          games: askedFolder === null ? 0 : analysesUnderFolder(analyses, folders, askedFolder.id),
-          subFolders: askedFolder === null ? 0 : analysisFolderChildren(folders, askedFolder.id).length,
-        })}
-        confirmLabel={t("savedAnalyses.folder.deleteFolder")}
-        cancelLabel={t("savedAnalyses.folder.cancel")}
-        onConfirm={() => {
-          if (deleting !== null) confirmDelete(deleting);
-        }}
-        onClose={() => setDeleting(null)}
-        testId="analysis-folder"
       />
     </>
   );
