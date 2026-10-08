@@ -552,6 +552,7 @@ Everything every board has, and nothing any single board has:
 | `playVariation` | `(sans) => void` | Replay a SAN prefix under the node on screen (clicking an engine line, the trainer's reply, a book move). |
 | `loadTree` / `loadFen` / `reset` | | Replace the whole game; only `loadFen` turns the board. |
 | `replaceTree` | `(tree) => void` | Replace the tree with **an edit of itself** (promote, delete from here, a comment) without stepping to the start: the node on screen stays when it survived, else its nearest surviving ancestor. |
+| `annotateTree` | `(edit: (tree) => tree) => void` | An edit that **keeps every node** (a comment, a tag) applied to the tree as it stands when it lands, with no step and without marking the board dirty — for a writer that is not a click, whose callback may be renders old (the engine's `[%eval]`, CTA-167). |
 | `dirty` / `markDirty` | | Whether this board is the reader's own work. |
 | `pgn` | `string` | `treeToPgn(tree)`, memoised on the tree. |
 
@@ -594,6 +595,7 @@ const engine = useEngineModule({
   uciOptions: Readonly<Record<string, number>>,   // name → requested value
   onUciOptionsReady?: (clamped: Readonly<Record<string, number>>) => void,
   onBestMove?: (bestMove: string, searchedFen: string) => void,
+  onSearchFinished?: (finished: { fen, score, depth, engine }) => void,  // CTA-167 — absent: nothing called
 });
 // → { descriptor, analysis, evalsByFen, engineOptions, clearAnalysis }
 ```
@@ -612,7 +614,14 @@ requested values are **clamped into those bounds** and reported through
 `onUciOptionsReady` (the module never learns what a setting *means*);
 `setOption` pushed before the search effect; searching the position on screen,
 stopping when switched off, never searching a terminal position; **per-FEN
-evals** (the score a search *finished* with, recorded at its `bestmove`); and
+evals** (the score a search *finished* with, recorded at its `bestmove`) —
+and, for a caller that passes `onSearchFinished` (CTA-167, the Analysis
+Board's `[%eval]` writer), each finished search reported with its score, the
+depth of its last scored line and the engine, **after** `onBestMove` (a reply
+sets the tree it played into, and what is written must land on that tree). A
+search ended by a change of position or the switch going off still finished,
+at the depth it reached (the wrapper stamps its `bestmove` with its own FEN);
+one stopped before its first scored line reports nothing. And
 scores normalised against the searched FEN's turn.
 
 **The engine's reply is `onBestMove`, and that is the whole Play/Analysis
