@@ -1,4 +1,5 @@
 import Box from "@mui/material/Box";
+import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,7 +11,6 @@ import {
   type EngineServerConnectFeedback,
   type EngineServerFormStatus,
 } from "../../blocks/forms";
-import { EngineServerSetup } from "../../blocks/panels";
 import { EngineOptionsTable } from "../../blocks/tables";
 import { PanelTabs, tabPanelProps } from "../../design-system/components/tabs";
 import {
@@ -74,8 +74,8 @@ const formStatusOf = (status: EngineServerStatus): EngineServerFormStatus | unde
  *
  * The right-hand panel shows **what the chosen server engine declared** — its
  * UCI options and defaults as the server sent them (`EngineOptionsTable`) —
- * or, on the API tab with none chosen, **how to add one** (`EngineServerSetup`),
- * and on the Browser tab where to look.
+ * or, on the API tab with none chosen, a pointer to **the Blog's guide** to
+ * adding one, and on the Browser tab where to look.
  */
 function EngineTab() {
   const { t } = useTranslation();
@@ -179,11 +179,17 @@ function EngineTab() {
 
       <RightPanel>
         {chosenOnServer === undefined && kind === "api" && (
-          <EngineServerSetup
-            example={DEFAULT_ENGINE_SERVER_URL}
-            guide={{ component: RouterLink, to: LOCAL_ENGINE_GUIDE_PATH }}
-            testId="engine-setup"
-          />
+          <Box sx={{ display: "grid", gap: 1 }} data-testid="engine-setup">
+            <Typography variant="subtitle2" component="h2">
+              {t("settings.engine.setup.title")}
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              {t("settings.engine.setup.intro")}{" "}
+              <Link component={RouterLink} to={LOCAL_ENGINE_GUIDE_PATH} underline="hover" data-testid="engine-setup-guide">
+                {t("settings.engine.setup.guide")}
+              </Link>
+            </Typography>
+          </Box>
         )}
         {chosenOnServer === undefined && kind === "browser" && (
           <Typography variant="body2" sx={{ color: "text.secondary" }} data-testid="engine-uci-none">

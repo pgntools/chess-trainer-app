@@ -19,7 +19,7 @@ app's data takes, CTA-94), **Appearance** (the theme, CTA-107) and **Engine**
 | --- | --- | --- |
 | Route | `routes.tsx` — `/settings` and `/settings/:tab` | Both render `SettingsMain.tsx`; `/settings` and an unknown tab redirect to the first tab (Export). |
 | Screen | `views/settings/SettingsScreen.tsx` | The title, a tab strip (each `Tab` a `RouterLink` to `/settings/<id>`), the active tab's content scrolling under it. |
-| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (Browser / API inner tabs: the `EnginePicker` and `EngineServerForm` blocks; the `EngineOptionsTable` and `EngineServerSetup` blocks in its panel), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
+| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (Browser / API inner tabs: the `EnginePicker` and `EngineServerForm` blocks; the `EngineOptionsTable` block in its panel), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
 | Nav | `navFolders()` — `settings` (`nav.folders.settings`, `pinToBottom`); `navItems()` — one entry per tab (`nav.settingsExport`, `nav.settingsImport`, `nav.settingsStorage`, `nav.settingsAppearance`, `nav.settingsEngine`, `nav.settingsSupport`) | A folder, **not** `singleEntry`, so a tab is one more entry in it. Pinned to the sidebar's foot, under a divider, apart from the screens (`Sidebar.tsx`). |
 | Locale | `settings.*` in `en.ts` / `he.ts` | `settings.title`, `settings.tabs.<id>`, then each tab's own block (`settings.export.*`, `settings.import.*`, `settings.storage.*`, `settings.appearance.*`, `settings.engine.*`). The themes' own names are `appearance.themes.<id>`; the picker's words are `enginePicker.*`. |
 
@@ -137,11 +137,9 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
 - **The right-hand panel shows what the chosen server engine declared** —
   its UCI options, types, defaults and ranges as `GET /v1/engines` sent them
   (the `EngineOptionsTable` block; `Threads` and `Hash` under the server's
-  ceilings), with the depth it allows. With none chosen it says, **on the API
-  tab, how to add one** (the `EngineServerSetup` block: get a UCI engine,
-  `engines.local.json` from its example, `yarn api:start`, turn it on and
-  Connect, choose — the commands and a sample config ready to copy, and a note
-  on `allowedOrigins` for the deployed site); on the Browser tab, a line
+  ceilings), with the depth it allows. With none chosen it points, **on the API
+  tab, to the Blog's guide** (`/blog/guides/local-engine`, *Run a chess engine
+  on your own computer* — the whole setup); on the Browser tab, a line
   pointing to the API tab. Offline, they
   are gone, and a choice of one reads as the default — still stored, back when
   the server is.
