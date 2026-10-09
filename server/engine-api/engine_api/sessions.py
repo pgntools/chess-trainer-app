@@ -147,6 +147,7 @@ class Session:
         self.current: Search | None = None
         self._lock = asyncio.Lock()
         self._latest = 0
+        self._client_seq = 0  # the newest `seq` a client sent — requests can overtake each other
         self._stop_sent = False
         self._go_sent = False
         self._tasks: set[asyncio.Task[None]] = set()
@@ -164,9 +165,30 @@ class Session:
 
     # --- what a request asks for -------------------------------------------
 
-    def analyse(self, fen: str, engine_fen: str, limit: Limit, options: dict[str, Any]) -> Search:
-        """Start a search; the running one is stopped and a waiting one superseded."""
+    def _stale(self, seq: int | None) -> bool:
+        """Whether a request numbered `seq` was overtaken by a newer one; records it if not."""
+        if seq is None:
+            return False
+        if seq <= self._client_seq:
+            return True
+        self._client_seq = seq
+        return False
+
+    def analyse(
+        self, fen: str, engine_fen: str, limit: Limit, options: dict[str, Any], seq: int | None = None
+    ) -> Search:
+        """Start a search; the running one is stopped and a waiting one superseded.
+
+        `seq`, when the client numbers its requests, orders them: one that arrives
+        after a newer one (two requests in flight can overtake each other) is
+        superseded at once and stops nothing.
+        """
         self.touch()
+        if self._stale(seq):
+            stale = Search(-1, fen, engine_fen, limit, options)
+            stale.emit({"type": "superseded", "fen": fen})
+            stale.finish()
+            return stale
         self._latest += 1
         search = Search(self._latest, fen, engine_fen, limit, options)
         self._request_stop()
@@ -175,9 +197,11 @@ class Session:
         task.add_done_callback(self._tasks.discard)
         return search
 
-    def stop(self) -> None:
-        """End the running search early and drop any that is waiting."""
+    def stop(self, seq: int | None = None) -> None:
+        """End the running search early and drop any that is waiting — unless a newer search overtook this stop."""
         self.touch()
+        if self._stale(seq):
+            return
         self._latest += 1
         self._request_stop()
 

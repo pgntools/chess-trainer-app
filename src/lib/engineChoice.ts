@@ -1,3 +1,4 @@
+import { subscribeEngineServer } from "./engineServer";
 import { getEngine, resolveEngine } from "./engines";
 
 /**
@@ -58,8 +59,10 @@ export const storeEngineId = (id: string): void => {
 };
 
 /**
- * Call `listener` when the choice may have changed: this tab's write, or
- * another tab's (`storage`). Returns an unsubscribe fn.
+ * Call `listener` when the choice may have changed: this tab's write, another
+ * tab's (`storage`), or the engine server's engines coming or going — a
+ * stored `hosted:…` choice resolves to that engine only while the server has
+ * it (`lib/engineServer.ts`). Returns an unsubscribe fn.
  */
 export const subscribeEngineChoice = (listener: () => void): (() => void) => {
   listeners.add(listener);
@@ -67,8 +70,10 @@ export const subscribeEngineChoice = (listener: () => void): (() => void) => {
     if (event.key === null || event.key === ENGINE_STORAGE_KEY) listener();
   };
   window.addEventListener("storage", onStorage);
+  const unsubscribeServer = subscribeEngineServer(listener);
   return () => {
     listeners.delete(listener);
     window.removeEventListener("storage", onStorage);
+    unsubscribeServer();
   };
 };

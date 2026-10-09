@@ -2472,6 +2472,34 @@ const en = {
       intro:
         "Choose the engine the boards use. It applies to every board from its next search and is remembered on this device. A game against the engine is played by the engine it began with, and a saved game goes on with its own.",
       note: "An engine that cannot run on this host is listed anyway, with what it needs.",
+      /** The engine server on the reader's own computer (`lib/engineServer.ts`, `yarn api:start`) — off unless turned on. */
+      server: {
+        title: "Engine server on this computer",
+        description:
+          "Stockfish running natively on your own computer, with all its threads — faster than in the browser. Start it from the app's source with yarn api:start; its engines are then listed here.",
+        enable: "Use an engine server",
+        enableHelp: "While this is off, the app never contacts it.",
+        address: "Server address",
+        addressHelp: "Where the server listens — {{example}} unless you moved it.",
+        addressInvalid: "Enter an address like {{example}}.",
+        connect: "Connect",
+        /** The legend of the server's engines, listed in the panel. */
+        engines: "Engines on this server",
+        /** The chip beside the switch — the connection at a glance. */
+        indicator: {
+          connecting: "Connecting…",
+          online: "Connected · {{ms}} ms",
+          offline: "Not connected",
+        },
+        retry: "Try again",
+        status: {
+          connecting: "Connecting to {{url}}…",
+          unreachable:
+            "Can't reach {{url}}. Is the server running? Your browser may also ask whether this site may reach your computer — allow it.",
+          "not-an-engine-server": "{{url}} answered, but not as an engine server.",
+          checkedAt: "Checked at {{time}}.",
+        },
+      },
     },
     /** The Support tab (CTA-155): how to reach us — a numbered list, the preferred way first. */
     support: {
@@ -2499,6 +2527,8 @@ const en = {
     unavailable: {
       "cross-origin-isolation": "Needs cross-origin isolation — not available on this host",
     },
+    /** An engine on the engine server, before its address (`EngineDescriptor.server`). */
+    server: "On the engine server",
   },
   /** The registered themes' names (`src/design-system/themes/`, CTA-107). */
   appearance: {

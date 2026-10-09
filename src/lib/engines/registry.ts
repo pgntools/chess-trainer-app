@@ -1,15 +1,16 @@
 import type { EngineDescriptor } from "../engineTypes";
 import { BUILTIN_ENGINES } from "./builtin";
+import { hostedEngineDescriptors } from "./hosted";
 import { DEFAULT_ENGINE_ID } from "./ids";
 
 /**
  * **The engine registry** (CTA-152) — the engines a reader can choose between,
  * [`docs/engine.md`](../../../docs/engine.md).
  *
- * - **A fixed list, the shipped builds** ({@link BUILTIN_ENGINES}). It grew at
- *   runtime once, for a hosted engine not yet built; nothing but tests used
- *   that, so it went (CTA-160) — `docs/engine.md` §8 says how a hosted engine
- *   would bring it back.
+ * - **The shipped builds** ({@link BUILTIN_ENGINES}), **then the engine
+ *   server's** while the reader has it on and it answers
+ *   (`hosted.ts`, `lib/engineServer.ts` — `docs/engine.md` §8). The list
+ *   changes with the server's status; `subscribeEngineServer` says when.
  * - **Availability is read at runtime, never baked in.** An engine that
  *   `requires` cross-origin isolation is *listed* everywhere and *available*
  *   only where the page really is isolated (`crossOriginIsolated`) — the same
@@ -43,9 +44,15 @@ export type EngineEntry = {
 export const isCrossOriginIsolated = (): boolean =>
   (globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated === true;
 
-/** The descriptor with this id, if the app ships one. */
+/** Every engine a reader can choose between now: the shipped ones, then the engine server's. */
+const allEngines = (): readonly EngineDescriptor[] => {
+  const hosted = hostedEngineDescriptors();
+  return hosted.length === 0 ? BUILTIN_ENGINES : [...BUILTIN_ENGINES, ...hosted];
+};
+
+/** The descriptor with this id, if the app ships one or the engine server has it now. */
 export const getEngine = (id: string): EngineDescriptor | undefined =>
-  BUILTIN_ENGINES.find((descriptor) => descriptor.id === id);
+  allEngines().find((descriptor) => descriptor.id === id);
 
 /** The default engine's descriptor — every fallback lands here. */
 const defaultEngine = (): EngineDescriptor => {
@@ -67,14 +74,15 @@ export const engineAvailability = (
 export const describeEngines = (
   isolated: boolean = isCrossOriginIsolated(),
 ): EngineEntry[] =>
-  BUILTIN_ENGINES.map((descriptor) => ({
+  allEngines().map((descriptor) => ({
     descriptor,
     availability: engineAvailability(descriptor, isolated),
   }));
 
 /**
  * The engine to run for a stored or requested `id`: that engine when it is
- * shipped and available on this page, otherwise the default. `undefined`
+ * shipped (or the engine server has it now) and available on this page,
+ * otherwise the default. `undefined`
  * (no preference) is the default too.
  */
 export const resolveEngine = (

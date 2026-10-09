@@ -272,7 +272,7 @@ the RTL stylis plugin never sees.
 ## 4. Stockfish engine integration
 
 **The engine is pluggable** (CTA-152; the whole picture — the builds, the
-registry, how to add one, the planned hosted engine — is
+registry, how to add one, the engine server's native engines (§8) — is
 [`docs/engine.md`](../../docs/engine.md)). A board sees an **`EngineHandle`**
 (`src/lib/engineTypes.ts`); `UciEngine` (`src/lib/uciEngine.ts`) is the UCI
 protocol over a **`UciTransport`**, and `WorkerTransport`

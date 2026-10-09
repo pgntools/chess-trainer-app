@@ -32,7 +32,7 @@ engine's path. `ENGINE_API_CONFIG` names another file.
 | `maxHashMb` | 4096 | The most `Hash` one session may set (MB). |
 | `maxDepth` | 99 | The deepest `go depth`. |
 | `maxMovetimeMs` | 600000 | The longest `go movetime`. |
-| `allowedOrigins` | `[]` | Origins allowed besides this machine's (`localhost`, `127.0.0.1`, any port — always allowed). `https://chessapp.dev` lets the deployed site use it. |
+| `allowedOrigins` | `[]` | Origins allowed besides this machine's (`localhost`, `127.0.0.1`, any port — always allowed). `https://chessapp.dev` and `https://pgntools.github.io` let the deployed sites use it (the second trusts every site under `pgntools.github.io`). |
 | `legacyEngine` | the first | The engine behind the legacy `/eval`. |
 
 ## `/v1`
@@ -64,7 +64,7 @@ engine's path. `ENGINE_API_CONFIG` names another file.
 | POST | `/v1/sessions` | `{engine}` | `201 {session, engine, idleTimeoutS}`; `404` unknown engine; `503` full or failed to start |
 | DELETE | `/v1/sessions/{id}` | | `204` |
 | POST | `/v1/sessions/{id}/analyse` | a search | `200`, `application/x-ndjson`: the events below |
-| POST | `/v1/sessions/{id}/stop` | | `204` — the running search ends (its stream with `bestmove`), a waiting one never starts |
+| POST | `/v1/sessions/{id}/stop` | `{seq?}` | `204` — the running search ends (its stream with `bestmove`), a waiting one never starts |
 | POST | `/v1/sessions/{id}/eval` | a search (not infinite), `pruneWithinCp?` | the final result, one JSON |
 
 A session that does not exist (never did, expired, its engine died, the server
@@ -81,7 +81,13 @@ restarted) is `404` — open a new one; only the engine's memory is lost.
 ```
 
 `limit` is `{depth}`, `{movetimeMs}`, both (whichever comes first), or
-`{"infinite": true}` (until stopped — `/analyse` only). The FEN is checked by
+`{"infinite": true}` (until stopped — `/analyse` only).
+
+`seq` (optional, ≥ 1) is the client's own count of its requests to the
+session, rising. Two requests in flight can overtake each other, so one that
+arrives after a newer one is answered `superseded` at once and stops nothing;
+`/stop` takes `{"seq": n}` too, so a late stop never ends a newer search. The
+app numbers every request; `curl` can leave it out. The FEN is checked by
 python-chess (`422` for one that does not parse or is not a legal position) and
 echoed verbatim on every event.
 

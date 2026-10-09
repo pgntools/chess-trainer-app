@@ -59,6 +59,8 @@ class SearchRequest(BaseModel):
     limit: LimitModel
     # UCI option name → value, applied (if changed) before the search. Undeclared or pinned ones are refused.
     options: dict[str, bool | int | float | str] = Field(default_factory=dict, max_length=32)
+    # The client's own count of its requests to this session, rising: one overtaken by a newer one is superseded.
+    seq: int | None = Field(default=None, ge=1)
 
 
 class EvalRequest(SearchRequest):
@@ -74,6 +76,10 @@ class EvalRequest(SearchRequest):
 
 class CreateSession(BaseModel):
     engine: str
+
+
+class StopRequest(BaseModel):
+    seq: int | None = Field(default=None, ge=1)
 
 
 def _manager(request: Request) -> SessionManager:
@@ -136,14 +142,14 @@ async def delete_session(session_id: str, request: Request) -> Response:
 
 
 @router.post("/sessions/{session_id}/stop", status_code=204)
-async def stop(session_id: str, request: Request) -> Response:
-    _session(request, session_id).stop()
+async def stop(session_id: str, request: Request, body: StopRequest | None = None) -> Response:
+    _session(request, session_id).stop(body.seq if body else None)
     return Response(status_code=204)
 
 
 def _start(session: Session, body: SearchRequest) -> Search:
     board = _board(body.fen)
-    return session.analyse(body.fen, board.fen(), body.limit.limit(), body.options)
+    return session.analyse(body.fen, board.fen(), body.limit.limit(), body.options, body.seq)
 
 
 async def _events(session: Session, search: Search) -> AsyncIterator[dict[str, Any]]:

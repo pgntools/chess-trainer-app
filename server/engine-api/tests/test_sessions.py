@@ -194,3 +194,20 @@ async def test_an_idle_session_past_the_timeout_is_reaped(settings: Settings):
         assert len(manager) == 0
     finally:
         await manager.close_all()
+
+
+async def test_a_search_overtaken_by_a_newer_one_is_superseded_and_stops_nothing(session: Session):
+    newer = session.analyse(AFTER_E4, AFTER_E4, Limit(infinite=True), {}, seq=2)
+    await first_info(newer)
+    late = session.analyse(START, START, Limit(depth=6), {}, seq=1)  # sent first, arrived second
+    assert await drain(late) == [{"type": "superseded", "fen": START}]
+    assert session.current is newer  # still searching
+    session.stop(seq=3)
+    assert (await drain(newer))[-1]["stopped"] is True
+
+
+async def test_a_stop_overtaken_by_a_newer_search_does_not_stop_it(session: Session):
+    newer = session.analyse(AFTER_E4, AFTER_E4, Limit(depth=8), {}, seq=5)
+    session.stop(seq=4)  # the stop for the previous search, arriving late
+    events = await drain(newer)
+    assert events[-1]["type"] == "bestmove" and events[-1]["stopped"] is False

@@ -47,6 +47,12 @@ export const LONG_NAMED = descriptor(
   { maxDepth: 40, strength: "elo", multiThread: true },
 );
 
+/** An engine on the engine server (`lib/engines/hosted.ts`) — the server's address beside its facts. */
+export const ON_ENGINE_SERVER: EngineDescriptor = {
+  ...descriptor("hosted:stockfish-18", "Stockfish 18", "18", { maxDepth: 99, strength: "both", multiThread: true }),
+  server: "http://127.0.0.1:8800",
+};
+
 /** A name in Hebrew, as a reader's own engine might be called. */
 export const HEBREW_NAMED = descriptor("my-engine", "מנוע אישי", "2", {
   maxDepth: 24,
@@ -80,3 +86,6 @@ export const WITH_ADDED: readonly EngineEntry[] = [
   available(LONG_NAMED),
   available(HEBREW_NAMED),
 ];
+
+/** The shipped builds and the engine server's — what a reader who turned the server on sees. */
+export const WITH_ENGINE_SERVER: readonly EngineEntry[] = [...PLAIN_HOST, available(ON_ENGINE_SERVER)];

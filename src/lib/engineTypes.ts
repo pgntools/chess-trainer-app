@@ -10,9 +10,9 @@
  * ```
  *
  * - {@link EngineHandle} is the whole of what a board may ask of an engine.
- *   Nothing outside the transport knows whether it is a Web Worker, so a
- *   WebSocket to a hosted engine (planned, not built) is one more
- *   {@link UciTransport} — no board changes.
+ *   Nothing outside the transport knows whether it is a Web Worker — and an
+ *   engine on the engine server (`lib/hostedEngine.ts`, docs/engine.md §8) is
+ *   another `EngineHandle` altogether, over HTTP: no board changes.
  * - {@link EngineDescriptor} is a registry entry: what an engine is called,
  *   what it needs, what it can do, and how to build a handle.
  *
@@ -159,8 +159,7 @@ export interface EngineHandle {
 /**
  * **The wire to an engine** — lines of UCI in, lines of UCI out, and nothing
  * about how they travel. {@link UciEngine} is written against this; a Web
- * Worker is one implementation (`WorkerTransport`), a WebSocket to a hosted
- * engine would be another.
+ * Worker is its one implementation (`WorkerTransport`).
  *
  * A transport starts delivering lines as soon as it exists, so the engine
  * subscribes first and only then sends `uci`.
@@ -208,6 +207,11 @@ export type EngineDescriptor = {
   /** The engine's own version, as a reader would say it ("19"). */
   version: string;
   requires?: EngineRequirements;
+  /**
+   * The engine server it runs on (`lib/engines/hosted.ts`) — absent for an
+   * engine that ships with the app and runs in the page.
+   */
+  server?: string;
   capabilities: EngineCapabilities;
   /**
    * Build a handle — the only place an engine, a Worker, a socket is made, and

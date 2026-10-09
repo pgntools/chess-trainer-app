@@ -158,3 +158,12 @@ def test_cors_lets_in_this_machine_and_the_configured_origins(client: httpx.Clie
 def test_the_legacy_routes_are_still_there(client: httpx.Client):
     assert client.get("/health").json() == {"status": "ok"}
     assert client.get("/config").json()["multipv"] == 1
+
+
+def test_seq_orders_requests_that_overtake_each_other(client: httpx.Client, session: str):
+    late = client.post(f"/v1/sessions/{session}/analyse", json={"fen": START, "limit": {"depth": 4}, "seq": 2})
+    assert [json.loads(l)["type"] for l in late.text.splitlines()][-1] == "bestmove"
+    stale = client.post(f"/v1/sessions/{session}/analyse", json={"fen": START, "limit": {"depth": 4}, "seq": 1})
+    assert [json.loads(l) for l in stale.text.splitlines()] == [{"type": "superseded", "fen": START}]
+    assert client.post(f"/v1/sessions/{session}/stop", json={"seq": 3}).status_code == 204
+    assert client.post(f"/v1/sessions/{session}/stop").status_code == 204  # no body: no seq

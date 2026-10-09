@@ -142,6 +142,7 @@ Only preferences — two written by libraries, two by us:
 | `i18nextLng` | `i18next-browser-languagedetector` (`i18n.ts`) | the language picked |
 | `chessapp.theme` | `theme/themeChoice.ts` (CTA-107), through `AppThemeWithLang` | the theme picked in Settings → Appearance — a registered theme's id; any other value reads as `"default"` |
 | `chessapp.engine` | `lib/engineChoice.ts` (CTA-153), through `views/shared/useEngineChoice.ts` | the engine picked in Settings → Engine — a registry id, stored raw: an id that names no registered engine, or one this page cannot run, *reads* as the default (`engineChoiceId`) and stays stored |
+| `chessapp.engineServer` | `lib/engineServer.ts`, through `views/shared/useEngineServer.ts` and `useEngineModule` | the engine server's address (`http://127.0.0.1:8800` unless moved) — **absent unless the reader turned it on** in Settings → Engine, and while absent nothing contacts any server; its status (online, its engines) is read, never stored |
 
 Nothing else in `src/` touches `localStorage`, and nothing reads the old
 `chessapp.*.v1` keys — do not reuse those names.

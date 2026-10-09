@@ -17,6 +17,8 @@ export type EnginePickerProps = {
   value: string;
   /** The reader chose an engine that can run here. */
   onChange: (id: string) => void;
+  /** The fieldset's legend — "Engine" unless a page lists engines in two places (the engine server's, in Settings → Engine's panel). */
+  legend?: string;
   /** On the group (`role="radiogroup"`); each engine is `<testId>-option-<id>`, its radio `<testId>-radio-<id>`. */
   testId: string;
 };
@@ -28,12 +30,22 @@ const STRENGTH_KEY: Record<EngineCapabilities["strength"], string> = {
   both: "enginePicker.strength.both",
 };
 
+/** An engine server's address as a reader knows it — `127.0.0.1:8800`, the scheme and path left out. */
+const hostOf = (url: string): string => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+};
+
 /**
  * **The engines to choose between** (CTA-153) — a radio per registered engine
  * (`lib/engines/`): its name, its version, whether it searches on one thread
  * or several, how its strength is set, and — for one this page cannot run — a
  * disabled radio that **says why** ("Needs cross-origin isolation — not
- * available on this host"). Settings → Engine's list.
+ * available on this host"); an engine on the engine server says so, with the
+ * server's address (`EngineDescriptor.server`). Settings → Engine's list.
  *
  * Presentational: the entries (descriptor + availability, computed by the
  * screen at runtime) and the choice arrive as props, a choice leaves through
@@ -49,14 +61,14 @@ const STRENGTH_KEY: Record<EngineCapabilities["strength"], string> = {
  * builds' own (Latin, pinned left to right); the rest is the app's words
  * (`enginePicker.*`).
  */
-function EnginePicker({ entries, value, onChange, testId }: EnginePickerProps) {
+function EnginePicker({ entries, value, onChange, legend, testId }: EnginePickerProps) {
   const { t } = useTranslation();
   const legendId = useId();
 
   return (
     <Box component="fieldset" sx={{ border: 0, p: 0, m: 0, minWidth: 0, display: "grid", gap: 1 }}>
       <FieldLabel component="legend" id={legendId}>
-        {t("enginePicker.legend")}
+        {legend ?? t("enginePicker.legend")}
       </FieldLabel>
       <RadioGroup
         value={value}
@@ -112,6 +124,12 @@ function EnginePicker({ entries, value, onChange, testId }: EnginePickerProps) {
                     {t(capabilities.multiThread ? "enginePicker.threading.multi" : "enginePicker.threading.single")}
                     {" · "}
                     {t(STRENGTH_KEY[capabilities.strength])}
+                    {descriptor.server !== undefined && (
+                      <>
+                        {" · "}
+                        {t("enginePicker.server")} <bdi dir="ltr">{hostOf(descriptor.server)}</bdi>
+                      </>
+                    )}
                   </Typography>
                   {!availability.available && (
                     <Typography id={reasonId} variant="caption" color="text.secondary" component="span" data-testid={reasonId}>
