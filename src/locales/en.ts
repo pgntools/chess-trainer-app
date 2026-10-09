@@ -74,8 +74,12 @@ const en = {
     mdxArticles: "Articles",
     mdxEditor: "Editor",
     mdxComponents: "Components gallery",
+    /** The Jobs screen (CTA-173) — shown under the folder's own name, a single entry. */
+    jobs: "Jobs",
     /** Sidebar folders — groupings over the routes, never routes themselves. */
     folders: {
+      /** The background jobs (CTA-173): a single entry, the Jobs screen. */
+      jobs: "Jobs",
       engine: "Engine",
       analysisBoard: "Analysis Board",
       openings: "Openings",
@@ -220,6 +224,8 @@ const en = {
     mdxEditor: "MDX editor",
     mdxArticles: "MDX editor — articles",
     mdxComponents: "MDX editor — components gallery",
+    /** The background jobs (CTA-173). */
+    jobs: "Jobs",
     /** The legal pages (CTA-159), reached from the footer. */
     privacy: "Privacy Policy",
     cookies: "Cookies Notice",
@@ -247,6 +253,7 @@ const en = {
     /** A shipped collection's own page (`/library/<collection>`) — its name and its count. */
     collectionNamed: "{{name}}: {{games}} chess games to search, filter by player, opening, event and date, and replay on a board.",
     settings: "Export your data as one zip and bring it back, see how much space it takes, and choose how the app looks.",
+    jobs: "Your background jobs — a game's computer analysis — with their progress, results and reports.",
     privacy: "What chessapp.dev keeps on your device, what it never collects, and your rights under the GDPR and Israel's Protection of Privacy Law.",
     cookies: "chessapp.dev sets no cookies. Every item it stores in your browser — preferences and your own chess data — and why.",
   },
@@ -2452,6 +2459,7 @@ const en = {
           analyses: "Analyses",
           repertoires: "Repertoires",
           collectionGames: "Library games",
+          jobs: "Background jobs",
         },
       },
       note:
@@ -2558,6 +2566,143 @@ const en = {
       green: "Green",
       "high-contrast": "High contrast",
       console: "Console",
+    },
+  },
+  /**
+   * **A game's computer analysis** (CTA-171): the words of its report and eval
+   * graph (`blocks/panels/ComputerAnalysisReport`, `EvalGraph` — CTA-173),
+   * shared by the Jobs screen and the Analysis Board.
+   */
+  computerAnalysis: {
+    variants: {
+      light: "Light",
+      medium: "Medium",
+      full: "Full",
+    },
+    verdicts: {
+      inaccuracy: "Inaccuracy",
+      mistake: "Mistake",
+      blunder: "Blunder",
+      missedMate: "Missed mate",
+    },
+    report: {
+      title: "Computer analysis report",
+      measure: "Per player",
+      white: "White",
+      black: "Black",
+      notAnalysed: "Not analysed",
+      measures: {
+        inaccuracies: "Inaccuracies",
+        mistakes: "Mistakes",
+        blunders: "Blunders",
+        missedMates: "Missed mates",
+        acpl: "Average centipawn loss",
+        accuracy: "Accuracy",
+      },
+    },
+    graph: {
+      title: "Evaluation graph",
+      start: "Start position",
+      empty: "No move has an evaluation to draw.",
+      hint: "Left and right arrows to move through the moves, Home and End to either end, Enter to go to the move.",
+      hintRead: "Left and right arrows to move through the moves, Home and End to either end.",
+    },
+  },
+  /**
+   * **The Jobs screen** (`/jobs`, CTA-173): the background jobs — a game's
+   * computer analysis — their progress, and the shell's indicator of the one
+   * running.
+   */
+  jobs: {
+    title: "Jobs",
+    count: "Jobs: {{count}}",
+    intro: "A computer analysis runs here in the background, one at a time, while you go on with anything else. Each finished position is kept, so a job a reload cut short resumes where it stopped.",
+    loading: "Reading your jobs…",
+    empty: "No jobs yet. Send a game to computer analysis from the Analysis Board.",
+    untitled: "Untitled game",
+    progress: "{{done}} of {{total}} positions",
+    noneSelected: "Pick a job to see its details, its report and its evaluation graph.",
+    missing: "There is no such job — it may have been deleted.",
+    links: "Links",
+    openSource: "Open the analysed game",
+    openOutput: "Open the {{variant}} analysis",
+    resume: "Resume",
+    cancel: "Cancel",
+    delete: "Delete",
+    resumeNamed: "Resume {{name}}",
+    cancelNamed: "Cancel {{name}}",
+    deleteNamed: "Delete {{name}}",
+    confirmDelete: {
+      title: "Delete this job?",
+      body: "The job “{{name}}” and its progress go. The analyses it saved stay in Saved analyses.",
+      confirm: "Delete",
+      cancel: "Keep it",
+    },
+    reportTitle: "Report",
+    reportReading: "Reading the report…",
+    reportMissing: "The saved analyses this job made are gone, so its report cannot be shown.",
+    kinds: {
+      "computer-analysis": "Computer analysis",
+    },
+    status: {
+      queued: "Queued",
+      running: "Running",
+      interrupted: "Interrupted",
+      done: "Done",
+      failed: "Failed",
+      cancelled: "Cancelled",
+    },
+    errors: {
+      source: "The game sent for analysis could not be read again.",
+      engine: "The engine stopped answering. Resume to try again from the last finished position.",
+      storage: "The analyses could not be saved — the browser refused the write. Free some space, then resume.",
+      "too-many": "Saved analyses is full, so the results could not be saved. Delete some, then resume.",
+    },
+    sides: {
+      both: "Both sides",
+      w: "White only",
+      b: "Black only",
+    },
+    table: {
+      source: "Game",
+      status: "Status",
+      progress: "Progress",
+      started: "Started",
+      finished: "Finished",
+      actions: "Actions",
+      open: "Show the job {{name}}",
+      progressOf: "Progress of {{name}}",
+    },
+    facts: {
+      title: "The job's options",
+      kind: "Kind",
+      engine: "Engine",
+      depth: "Depth",
+      time: "Time per move",
+      seconds: "{{count}} s",
+      noTimeLimit: "No limit",
+      lines: "Lines",
+      threads: "Threads",
+      hash: "Hash",
+      side: "Analysed",
+      moves: "Moves",
+      fromMove: "From move {{move}} to the end",
+      moveRange: "Moves {{from}} to {{to}}",
+      variants: "Outputs",
+      created: "Asked for",
+      started: "Started",
+      finished: "Finished",
+    },
+    /** The shell's indicator (the header): the job running, linking to the screen. */
+    indicator: {
+      running: "Analysing {{done}}/{{total}}",
+      queued: "{{count}} queued",
+      label: "Jobs: {{name}}, {{done}} of {{total}} positions",
+      labelQueued: "Jobs: {{count}} queued",
+      started: "Computer analysis started: {{name}}.",
+      done: "Computer analysis finished: {{name}}.",
+      failed: "Computer analysis failed: {{name}}.",
+      cancelled: "Computer analysis cancelled: {{name}}.",
     },
   },
   footer: {

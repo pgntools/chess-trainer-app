@@ -226,6 +226,18 @@ export const jobProgress = (job: Pick<Job, "positions" | "checkpoint">): JobProg
   };
 };
 
+/**
+ * The move a position's search is about, as a reader numbers it — "7. Nf3",
+ * "7... Nc6", from the FEN's own move number; the position itself ("after
+ * 40... Kg7") has no move, so `undefined`.
+ */
+export const jobMoveLabel = (position: Pick<JobPosition, "fen" | "san">): string | undefined => {
+  if (position.san === undefined) return undefined;
+  const [, turn, , , , fullmove] = position.fen.split(" ");
+  const number = Number(fullmove) || 1;
+  return `${number}${turn === "b" ? "..." : "."} ${position.san}`;
+};
+
 /* ─── Reading a stored record back ────────────────────────────────────── */
 
 type Row = Record<string, unknown>;

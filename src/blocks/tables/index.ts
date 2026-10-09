@@ -9,6 +9,8 @@
 export * from "./CollectionGamesTable";
 export * from "./CollectionsTreeTable";
 export * from "./EngineOptionsTable";
+// CTA-173: the Jobs screen's list — the background jobs, their status, progress and actions.
+export * from "./JobsTable";
 export * from "./PlayedGamesTable";
 // CTA-144: the Saved analyses screen's list view — a folder's analyses as a games table.
 export * from "./SavedAnalysesTable";

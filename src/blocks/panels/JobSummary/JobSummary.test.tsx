@@ -1,0 +1,89 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+import i18n from "../../../i18n";
+import type { Job } from "../../../lib/jobs";
+import { expectNoAxeViolations } from "../../../test/axe";
+import { DONE, FAILED, RUNNING, UNSAVED } from "./fixtures";
+import JobSummary from "./JobSummary";
+
+const mount = (job: Job) => {
+  const handlers = { onCancel: vi.fn(), onResume: vi.fn(), onDelete: vi.fn() };
+  render(
+    <JobSummary
+      job={job}
+      sourceLink={job.source.analysisId === null ? undefined : { href: `/tools/analysis?analysis=${job.source.analysisId}` }}
+      outputLink={(output) => ({ href: `/tools/analysis?analysis=${output.analysisId}` })}
+      {...handlers}
+      testId="job"
+    >
+      <p>the report</p>
+    </JobSummary>,
+  );
+  return handlers;
+};
+
+beforeEach(async () => {
+  await i18n.changeLanguage("en");
+});
+
+describe("JobSummary (CTA-173)", () => {
+  it("names the game, its status and its progress with the move searched", () => {
+    mount(RUNNING);
+    expect(screen.getByRole("heading", { level: 2, name: "Carlsen – Nepomniachtchi" })).toBeInTheDocument();
+    expect(screen.getByTestId("job-status")).toHaveTextContent("Running");
+    expect(screen.getByTestId("job-progress")).toHaveTextContent("2 of 7 positions · 2. Nf3");
+  });
+
+  it("lists the engine and every option it was given", () => {
+    mount(DONE);
+    expect(screen.getByTestId("job-facts-engine")).toHaveTextContent("Stockfish 19 Lite (multi-thread)");
+    expect(screen.getByTestId("job-facts-depth")).toHaveTextContent("22");
+    expect(screen.getByTestId("job-facts-time")).toHaveTextContent("15 s");
+    expect(screen.getByTestId("job-facts-lines")).toHaveTextContent("3");
+    expect(screen.getByTestId("job-facts-threads")).toHaveTextContent("4");
+    expect(screen.getByTestId("job-facts-hash")).toHaveTextContent("256 MB");
+    expect(screen.getByTestId("job-facts-side")).toHaveTextContent("Both sides");
+    expect(screen.getByTestId("job-facts-moves")).toHaveTextContent("From move 1 to the end");
+    expect(screen.getByTestId("job-facts-variants")).toHaveTextContent("Light, Medium");
+  });
+
+  it("links to the source and to each output, and shows what goes under it", () => {
+    mount(DONE);
+    expect(screen.getByRole("link", { name: "Open the analysed game" })).toHaveAttribute("href", "/tools/analysis?analysis=analysis-1");
+    expect(screen.getByRole("link", { name: "Open the Light analysis" })).toHaveAttribute("href", "/tools/analysis?analysis=out-light");
+    expect(screen.getByRole("link", { name: "Open the Medium analysis" })).toHaveAttribute("href", "/tools/analysis?analysis=out-medium");
+    expect(screen.getByText("the report")).toBeInTheDocument();
+  });
+
+  it("has no source link for a board never saved, and calls the game untitled", () => {
+    mount(UNSAVED);
+    expect(screen.queryByRole("link", { name: "Open the analysed game" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Untitled game" })).toBeInTheDocument();
+  });
+
+  it("says why a job failed, and offers Resume and Delete but no Cancel", async () => {
+    const user = userEvent.setup();
+    const handlers = mount(FAILED);
+    expect(screen.getByRole("alert")).toHaveTextContent("The engine stopped answering");
+    expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Resume" }));
+    expect(handlers.onResume).toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(handlers.onDelete).toHaveBeenCalled();
+  });
+
+  it("offers Cancel on a running job", async () => {
+    const user = userEvent.setup();
+    const handlers = mount(RUNNING);
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(handlers.onCancel).toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Resume" })).not.toBeInTheDocument();
+  });
+
+  it("passes axe", async () => {
+    mount(DONE);
+    await expectNoAxeViolations();
+  });
+});
