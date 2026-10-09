@@ -116,7 +116,7 @@ jobs:
           node-version: 24
           cache: yarn
       - run: yarn install --frozen-lockfile
-      # The runner has four cores; `--maxWorkers 3` leaves one to Vitest itself.
+      # The runner has four cores; Vitest's default (a worker per core but one) leaves one to Vitest itself.
       - run: yarn test:ui --shard=${{ matrix.shard }}/3
 
   # On a push to `development`: the pull-request gate's tests (`unit` and `ui`)

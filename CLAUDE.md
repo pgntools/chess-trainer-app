@@ -40,7 +40,7 @@ Node comes from `fnm`, so run these from a shell where it is on `PATH`.
 | Type-check + production build — **and the pre-render**: every page a static `index.html` per language (CTA-136, [`static-pages.md`](.claude/rules/static-pages.md)) | `yarn build` (`BASE_PATH=/ DEPLOY_TARGET=swa yarn build` — the chessapp.dev build) |
 | Type-check only | `npx tsc -b` (add `--force` to bypass the incremental cache) |
 | Lint — **a CI gate** (the tier import rules, the MUI lock, `jsx-a11y`) | `yarn lint` |
-| **Run the test suite** — the pull-request gate, the `unit` and `ui` groups (below) | `yarn test:run` (at most 3 files at once — see below) |
+| **Run the test suite** — the pull-request gate, the `unit` and `ui` groups (below) | `yarn test:run` |
 | Run one test group | `yarn test:unit` (every `*.test.ts`), `yarn test:ui` (every `*.test.tsx`), `yarn test:gallery` (the gallery's axe matrix, `*.matrix.test.tsx` — ~35 min of tests, not in the gate) |
 | **Run a single test file** | `npx vitest run <path>` — e.g. `npx vitest run src/theme/AppThemeWithLang.test.tsx` (any group's file) |
 | Run tests matching a name | `npx vitest run -t "<substring of the test name>"` (every group — add `--project unit --project ui` to leave the gallery out) |
@@ -58,14 +58,14 @@ Node comes from `fnm`, so run these from a shell where it is on `PATH`.
 | **Browser pass in a cloud container** — its pre-installed Chromium (`/opt/pw-browsers/chromium`) is an older build than this Playwright wants, and the network will not fetch the new one ("Executable doesn't exist at …chromium_headless_shell-…"). Don't run `npx playwright install`; point the pass at the installed browser | `yarn build`, then `A11Y_CHROMIUM=/opt/pw-browsers/chromium A11Y_MATRIX=reduced npx playwright test` — `-g "<route id>\|seed"` for some routes (the seed is their setup); `A11Y_CHROMIUM` is read by `playwright.config.ts`, unset nothing changes |
 | **Audit a render for accessibility** | `await expectNoAxeViolations(element?)` in a test (`src/test/axe.ts`) — axe's WCAG 2.2 A / AA rules, a violation fails it; `stubReducedMotion()` (`src/test/reducedMotion.ts`) renders for a reader who asks for reduced motion |
 
-**Limit the workers to the machine.** At full parallelism the heavier screen
-suites (the boards, the Library, the repertoires) starve each other of CPU:
-the suite seems stuck, and tests fail on timeouts — a different set on every
-run, each passing when re-run alone. That is scheduling, not a broken test. So
-`test:run` and each group's script carry `--maxWorkers 3` — what CI's
-four-core runners take; on another system, inspect a full run and set the cap
-to suit it (`npx vitest run --maxWorkers <n>`; `--fileParallelism=false` runs
-one file at a time). Re-run a failure on its own before treating it as real.
+**Workers.** The scripts run at Vitest's own parallelism — a worker per core
+but one (three on CI's four-core runners). On a machine too small for that,
+the heavier screen suites (the boards, the Library, the repertoires) starve
+each other of CPU: the suite seems stuck, and tests fail on timeouts — a
+different set on every run, each passing when re-run alone. That is
+scheduling, not a broken test: cap it (`npx vitest run --maxWorkers <n>`;
+`--fileParallelism=false` runs one file at a time), and re-run a failure on
+its own before treating it as real.
 
 **The suite is three groups** (CTA-123) — Vitest projects in `vite.config.ts`,
 set by file name, so a test joins one by what it is called:
