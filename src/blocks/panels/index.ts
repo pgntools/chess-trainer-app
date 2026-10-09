@@ -5,6 +5,7 @@
  */
 export * from "./ChangesStrip";
 export * from "./CurrentOpening";
+export * from "./EngineServerSetup";
 export * from "./EngineThinking";
 export * from "./GameInfo";
 export * from "./ImportReport";

@@ -366,6 +366,37 @@ describe("collapseLeafCategories folds a redundant category folder", () => {
       id: "top",
     });
   });
+
+  it("never folds a folder marked keepFolder — one screen in it or not", () => {
+    const top: NavTreeNode = {
+      kind: "folder",
+      id: "top",
+      labelKey: "top",
+      icon,
+      children: [
+        {
+          kind: "folder",
+          id: "top/kept",
+          label: { en: "Kept" },
+          icon,
+          keepFolder: true,
+          children: [{ kind: "screen", id: "/kept/only", label: { en: "Only" }, icon, to: "/kept/only" }],
+        },
+      ],
+    };
+    expect(collapseLeafCategories([top])[0].children?.[0]).toMatchObject({
+      kind: "folder",
+      id: "top/kept",
+      children: [{ kind: "screen", to: "/kept/only" }],
+    });
+  });
+
+  it("keeps every Blog folder a folder — Guides with its one guide among them", () => {
+    const blog = navTree().find((node) => node.id === "blog");
+    const guides = blog?.children?.find((node) => node.id === "blog/guides");
+    expect(guides).toMatchObject({ kind: "folder", keepFolder: true });
+    expect(guides?.children?.map((node) => node.to)).toEqual(["/blog/guides/local-engine"]);
+  });
 });
 
 describe("foldSingleEntryFolders folds a folder marked as one destination", () => {

@@ -244,12 +244,22 @@ describe("HostedEngine", () => {
     await vi.waitFor(() => expect(analyseCalls()).toHaveLength(1));
     engine.terminate();
     release();
-    expect(calls.at(-1)).toEqual({ method: "DELETE", path: "/v1/sessions/s1", body: undefined, keepalive: true });
+    expect(calls.at(-1)).toEqual({ method: "DELETE", path: "/v1/sessions/s1", body: undefined, keepalive: false });
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(messages).toEqual([]);
     expect(onFailure).not.toHaveBeenCalled();
     engine.search(AFTER_E4, { depth: 5 });
     expect(analyseCalls()).toHaveLength(1);
+  });
+
+  it("asks for its delete to outlive the page only while the page is leaving", async () => {
+    const { engine, messages } = engineWith();
+    engine.search(START, { depth: 5 });
+    await vi.waitFor(() => expect(messages.at(-1)?.bestMove).toBeTruthy());
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    engine.terminate();
+    vi.restoreAllMocks();
+    expect(calls.at(-1)).toMatchObject({ method: "DELETE", path: "/v1/sessions/s1", keepalive: true });
   });
 
   it("deletes a session that opens after it was terminated", async () => {

@@ -359,12 +359,15 @@ The sidebar is a folder tree over the routes; a folder never appears in a URL.
 | Layer | File | What it owns |
 | --- | --- | --- |
 | Walks | `src/lib/treeManager.ts` | Depth-first reads over any tree. |
-| Data | `navFolders()` + `navItems()` | The folders (`{ id, labelKey?, label?, icon, children?, singleEntry?, pinToBottom? }`) and the screens, each naming its `folder`. **Functions**, so a dev-only entry can be a spread gated on `import.meta.env.DEV`. |
+| Data | `navFolders()` + `navItems()` | The folders (`{ id, labelKey?, label?, icon, children?, singleEntry?, pinToBottom?, keepFolder? }`) and the screens, each naming its `folder`. **Functions**, so a dev-only entry can be a spread gated on `import.meta.env.DEV`. |
 | Builder | `navTree.ts` | `buildNavTree`, `folderPath`, `folderChain`, `navLabel` (a catalog key *or* a data label, `lib/localizedText.ts`), `navLabelKeys`. |
 | Renderer | `Sidebar.tsx` | A recursive `TreeRow`: folders are `aria-expanded` toggles, screens are links. |
 
 - **Nesting a folder is a data edit** — an entry in `navFolders` with a
   `labelKey` in both catalogs; the renderer already recurses.
+- **A sub-folder holding one screen is drawn as that screen** (`collapseLeafCategory`) —
+  unless it is `keepFolder`: every Blog folder is, so *Guides* with its first
+  guide is still a collapsible folder.
 - **A `singleEntry` folder** renders as one row, under its own name, straight
   to its one screen (Analysis → Saved analyses, Openings, Repertoires). Board
   screens those hide are reached from the screens' own controls.

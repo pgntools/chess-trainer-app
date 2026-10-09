@@ -85,7 +85,7 @@ describe("the Blog's registry (CTA-126, CTA-135)", () => {
 
 describe("the Blog's tree", () => {
   it("lists a folder's own folders and articles, one level down", () => {
-    expect(blogFolderContents("").folders.map((folder) => folder.path)).toEqual(["tournaments", "writing-an-article"]);
+    expect(blogFolderContents("").folders.map((folder) => folder.path)).toEqual(["tournaments", "writing-an-article", "guides"]);
     expect(pathsIn("")).toEqual(["get-started"]);
     // The guide, the fixture draft (listed here, as in yarn dev), and the demos of everything an article may embed (CTA-128).
     expect(pathsIn("writing-an-article")).toEqual(["writing-an-article/guide", "writing-an-article/a-draft"]);

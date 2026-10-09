@@ -2472,6 +2472,31 @@ const en = {
       intro:
         "Choose the engine the boards use. It applies to every board from its next search and is remembered on this device. A game against the engine is played by the engine it began with, and a saved game goes on with its own.",
       note: "An engine that cannot run on this host is listed anyway, with what it needs.",
+      /** Where the engines run — the tab's two inner tabs. */
+      tabs: { label: "Where the engine runs", browser: "Browser", api: "API" },
+      /** The right-hand panel: what the chosen engine-server engine declared. */
+      uci: {
+        title: "UCI defaults — {{name}}",
+        note: "What the engine declared in its uci reply, as the server sent it. Threads and Hash are capped by the server; a search goes no deeper than {{maxDepth}}.",
+        none: "Choose an engine on the API tab to see the UCI options it declares.",
+      },
+      /** The panel on the API tab while no server engine is chosen: how to add one (`EngineServerSetup`). */
+      setup: {
+        title: "Add an engine on this computer",
+        intro: "Any UCI engine — Stockfish 18 or 19, native — can run on your own machine and serve every board here.",
+        guide: "Read the whole guide.",
+        steps: {
+          engine: "Download a UCI engine — Stockfish from stockfishchess.org — and unpack it.",
+          config: "In the app's source, make the engine server's config from its example:",
+          configEdit: "Then give each engine an id (the app remembers it) and the path to its binary:",
+          start: "Start the server in a console of its own, beside the app — Python 3.11 or newer; the first start installs what it needs:",
+          connect: "On this tab, turn on Use an engine server and press Connect — the address is {{url}} unless you moved it.",
+          choose: "Choose one of its engines: this panel then shows the UCI options it declares.",
+        },
+        commandLabel: "Command",
+        deployed:
+          "Using it from chessapp.dev? Add the site to allowedOrigins in engines.local.json, and allow the site to reach your computer if your browser asks.",
+      },
       /** The engine server on the reader's own computer (`lib/engineServer.ts`, `yarn api:start`) — off unless turned on. */
       server: {
         title: "Engine server on this computer",
@@ -2529,6 +2554,12 @@ const en = {
     },
     /** An engine on the engine server, before its address (`EngineDescriptor.server`). */
     server: "On the engine server",
+  },
+  /** The `EngineOptionsTable` block: an engine's `uci` options. */
+  engineOptionsTable: {
+    columns: { name: "Option", type: "Type", default: "Default", range: "Range" },
+    none: "—",
+    empty: "The engine declared no options.",
   },
   /** The registered themes' names (`src/design-system/themes/`, CTA-107). */
   appearance: {

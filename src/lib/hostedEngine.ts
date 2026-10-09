@@ -11,7 +11,9 @@ import { DEFAULT_MAX_DEPTH, isSettableOption, parseEngineLine } from "./uciEngin
  *
  * - **One session per handle** — one engine process on the server, opened at
  *   the first search and deleted at {@link terminate}, so the engine's memory
- *   carries over from position to position as a board steps through a game.
+ *   carries over from position to position as a board steps through a game,
+ *   and the process quits as soon as the board switches to another engine or
+ *   goes away.
  * - **Every search is a request**, its answer a stream of NDJSON events, each
  *   carrying the engine's raw line — read by `parseEngineLine`, the parser the
  *   worker's lines go through, and stamped with the event's FEN.
@@ -79,6 +81,9 @@ export const hostedEnginesFrom = (raw: unknown): HostedEngineInfo[] | null => {
   if (!Array.isArray(raw)) return null;
   return raw.map(hostedEngineInfoFrom).filter((info): info is HostedEngineInfo => info !== null);
 };
+
+/** Whether the page is being hidden or unloaded — a request then must be `keepalive` to go out at all. */
+const pageLeaving = (): boolean => typeof document !== "undefined" && document.visibilityState === "hidden";
 
 /** A `check` option's value as a boolean — the engine module asks with `1` / `0`. */
 const checkValue = (value: string | number): boolean => value === 1 || value === "1" || value === "true";
@@ -180,8 +185,16 @@ export class HostedEngine implements EngineHandle {
   }
 
   private deleteSession(id: string): void {
-    // `keepalive`, so a board unmounted by a closing tab still frees its engine; the server's idle timeout is the backstop.
-    void fetch(`${this.serverUrl}/v1/sessions/${id}`, { method: "DELETE", keepalive: true }).catch(() => {});
+    /*
+      The engine process on the server quits with its session — what frees the
+      reader's machine when a board switches to a browser build or goes away.
+      A plain request while the page lives: a cross-origin DELETE needs a
+      preflight, which `keepalive` has not always been allowed to make, and a
+      failed delete would leave the engine idle until the server's timeout.
+      `keepalive` only while the page is being hidden or unloaded, when a plain
+      request would be cancelled; the server's idle timeout is the backstop.
+    */
+    void fetch(`${this.serverUrl}/v1/sessions/${id}`, { method: "DELETE", keepalive: pageLeaving() }).catch(() => {});
   }
 
   private ensureSession(): Promise<string> {
