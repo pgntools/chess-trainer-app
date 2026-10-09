@@ -12,6 +12,8 @@
     "wirepgn": "node scripts/wirepgn.js",
     "theme:bootstrap": "node scripts/theme-bootstrap.js",
     "mdx-editor:start": "node src/mdxEditor/server/start.ts",
+    "api:start": "bash server/engine-api/start.sh start",
+    "api:test": "bash server/engine-api/start.sh test",
     "test": "vitest --project unit --project ui",
     "test:run": "vitest run --project unit --project ui --maxWorkers 3",
     "test:unit": "vitest run --project unit --maxWorkers 3",

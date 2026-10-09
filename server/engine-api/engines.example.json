@@ -1,0 +1,10 @@
+{
+  "engines": [
+    { "id": "stockfish-18", "path": "/path/to/stockfish-18" },
+    { "id": "stockfish-19", "path": "/path/to/stockfish-19" }
+  ],
+  "maxSessions": 8,
+  "idleTimeoutS": 300,
+  "maxHashMb": 4096,
+  "allowedOrigins": ["https://chessapp.dev"]
+}
