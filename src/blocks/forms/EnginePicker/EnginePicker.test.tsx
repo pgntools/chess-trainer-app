@@ -6,7 +6,7 @@ import i18n from "../../../i18n";
 import type { EngineEntry } from "../../../lib/engines";
 import { expectNoAxeViolations } from "../../../test/axe";
 import EnginePicker from "./EnginePicker";
-import { ISOLATED_HOST, PLAIN_HOST, WITH_ADDED } from "./fixtures";
+import { ISOLATED_HOST, PLAIN_HOST, WITH_ADDED, WITH_ENGINE_SERVER } from "./fixtures";
 
 const mount = (entries: readonly EngineEntry[], value: string) => {
   const onChange = vi.fn();
@@ -130,5 +130,21 @@ describe("EnginePicker", () => {
 
     render(<EnginePicker entries={PLAIN_HOST} value="stockfish-19-lite-single" onChange={() => {}} testId="picker-b" />);
     await expectNoAxeViolations();
+  });
+
+  it("names the engine server an engine runs on, with its address — and only for such an engine", () => {
+    mount(WITH_ENGINE_SERVER, "stockfish-19-lite-single");
+
+    expect(screen.getByTestId("picker-facts-hosted:stockfish-18")).toHaveTextContent(
+      "Version 18 · Multi-thread · Strength by Skill Level or Elo · On the engine server 127.0.0.1:8800",
+    );
+    expect(screen.getByTestId("picker-facts-stockfish-19-lite-single")).not.toHaveTextContent("engine server");
+  });
+
+  it("takes a legend of its own, for a second list on one page", () => {
+    render(
+      <EnginePicker entries={WITH_ENGINE_SERVER} value="" onChange={() => {}} legend="Engines on this server" testId="picker" />,
+    );
+    expect(screen.getByRole("radiogroup", { name: "Engines on this server" })).toBeInTheDocument();
   });
 });

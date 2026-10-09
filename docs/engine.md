@@ -272,32 +272,53 @@ this table.
 An engine that is not a Web Worker needs a transport, not a new engine class:
 implement `UciTransport` and pass it to `UciEngine`.
 
-## 8. The future: a hosted engine (not built)
+## 8. The engine server — native engines on the reader's computer
 
-A backend evaluation API (hosted Stockfish 18/19 over the network) is planned
-for a later phase, and this layer is shaped so it plugs in **without touching a
-board**:
+Native Stockfish binaries on the reader's own machine, searched over HTTP
+instead of in a Worker — Stockfish 18 and 19 with every thread, ~2× the
+WASM build's speed and more. **The server** is a Python service in this
+repository, run beside the dev server with `yarn api:start` (`127.0.0.1:8800`;
+[`server/engine-api/README.md`](../server/engine-api/README.md) is its whole
+reference: configuration, endpoints, the stream). **This side** is three
+modules and no board change:
 
-- `WebSocketTransport` implements `UciTransport` — `send` writes a frame,
-  `onLine` delivers one, `close` closes the socket — and `UciEngine` runs over it
-  unchanged. The deferral rules are the same; a hosted engine's own protocol
-  quirks are the transport's to hide.
-- **Its engines join the list at runtime.** The registry is a fixed list today
-  (CTA-160 cut the runtime registration CTA-152 had built ahead of this, which
-  only tests used): the hosted engine brings back a `registerEngine(descriptor)`
-  over the shipped list, a subscription the Engine tab and `engineChoice.ts`
-  listen to (so a stored id that becomes resolvable is picked up), and — if a
-  screen needs to tell them apart — a `kind: "local" | "remote"` on the
-  descriptor. A descriptor's `create()` opens the socket, so a remote engine
-  costs nothing until chosen, like a worker.
-- Availability gains a reason (offline, not signed in) next to
-  `"cross-origin-isolation"`; `resolveEngine` already falls back to the default
-  for anything unavailable.
-- A remote search has a latency a worker does not: the FEN stamp on every
-  message already makes a late result harmless, and `search()`'s "a newer
-  position replaces a waiting one" is what keeps the wire from queueing.
+| Module | What it is |
+| --- | --- |
+| `lib/engineServer.ts` | The preference (`chessapp.engineServer`, the address — **absent unless the reader turns it on** in Settings → Engine) and the status, read and never stored: `off`, `connecting`, `online` with the engines `GET /v1/engines` lists, `offline` with a reason. |
+| `lib/engines/hosted.ts` | The status's engines as registry entries, `hosted:<server id>` (`hosted:stockfish-19`) — after the shipped ones in `describeEngines()`, found by `getEngine` / `resolveEngine`. `descriptor.server` is the address. |
+| `lib/hostedEngine.ts` | `HostedEngine`, the `EngineHandle` over the server's `/v1` API. |
 
-**Not in this layer:** any remote transport, per-board engine choice, cloud eval.
+- **Off unless turned on, and asked nothing until a board or the tab
+  mounts.** A deployed site that probed `127.0.0.1` would probe every
+  visitor's machine (and Chrome would ask each of them for local-network
+  access); the pre-render reads the status as off. The first check is made by
+  `useEngineModule` and the Engine tab (`useEngineServer`), from an effect;
+  another on a new address, on Try again, and when a request fails —
+  **keeping the engines listed while it re-checks**.
+- **One session per handle** — one engine process on the server, opened at the
+  first search, deleted at `terminate()` (a `keepalive` DELETE; the server's
+  idle timeout is the backstop). The engine's memory therefore carries over
+  from position to position, measured ~1.5–1.7× faster through a game
+  ([`docs/eval-examples/`](eval-examples/README.md)).
+- **A search is a request**, its answer NDJSON, each event with the engine's
+  raw line — read by `parseEngineLine`, the worker's own parser, and stamped
+  with the event's FEN. **The server keeps §6's discipline** (a new search
+  stops the running one, which still ends with its `bestmove`; options applied
+  only between searches and only when changed), and every request carries a
+  rising `seq`, so one overtaken in flight by a newer one is ignored there.
+- **Options travel with every search**; whether one is taken is judged
+  against what the binary declared, by `UciEngine`'s rule (`isSettableOption`).
+  They are there at once (`whenOptionsReady` fires immediately) — the server's
+  list carries them, `Threads` and `Hash` under its ceilings.
+- **When it goes away**: a session the server no longer has is replaced once,
+  silently; anything else re-checks the server, and an unreachable one takes
+  its engines out of the registry — `resolveEngine` then falls back to the
+  default and every board switches (`useEngineModule` renders on the status).
+  A stored `hosted:…` choice, or a played game's engine, comes back with the
+  server, as the multi-thread build does on an isolated host.
+- **Not yet**: the board's Engine tab still caps Threads and Hash by this
+  browser's device (`deviceEngineLimits`, at most 8 threads and 1024 MB) — for
+  an engine on the server the server's own ceilings would be the right ones.
 
 ## 9. Testing
 
@@ -306,7 +327,16 @@ board**:
   the depth limit. `src/lib/workerTransport.test.ts` — the Worker.
 - `src/lib/engines/registry.test.ts` — the shipped list, availability,
   fallback (the 2019 id included), and the built-in files on disk.
-  `src/lib/engines/noWorkerAtImport.test.ts` — no Worker at import.
+  `src/lib/engines/noWorkerAtImport.test.ts` — no Worker, and no request to
+  the engine server, at import.
+- The engine server's side (§8): `src/lib/hostedEngine.test.ts` —
+  `HostedEngine` over a fake `fetch` (the session, the stream, `seq`, a
+  dropped session replaced, failures, teardown); `src/lib/engineServer.test.ts`
+  — the address, the status, the engines in the registry and a choice of one
+  coming and going; **`src/lib/hostedEngine.live.test.ts`** — against a real
+  server, skipped unless `ENGINE_API_URL` names one
+  (`ENGINE_API_URL=http://127.0.0.1:8800 npx vitest run src/lib/hostedEngine.live.test.ts`
+  with `yarn api:start` running). The server's own: `yarn api:test`.
 - `src/views/board/core/useEngineModule.test.tsx` — which engine, switching
   (terminate / build / handshake / clamp), switching off, StrictMode.
 - **The seam every board's test stubs is the registry's** — `lib/engines/builtin`,
@@ -334,7 +364,7 @@ board**:
 | --- | --- |
 | The test seam was the 2019 build's default export (`lib/engine.ts`, mocked in 28 files) | **Moved** to the registry's descriptors (§9); `lib/engine.ts` and `engine.test.ts` deleted (its cases are `uciEngine.test.ts`'s, over a transport). |
 | `UciEngine`'s dead surface — public `isReady`, `onReady()`, `init()`, `supportsOption()` | **Cut.** The handshake is `uci` alone (`isready` / `readyok` were read by nothing). |
-| Runtime registration (`registerEngine`, `subscribeEngines`, `listEngines`) and `EngineKind` | **Cut** — only tests used them; §8 says what the hosted engine brings back. |
+| Runtime registration (`registerEngine`, `subscribeEngines`, `listEngines`) and `EngineKind` | **Cut** — only tests used them. The engine server (§8) lists its engines through `lib/engines/hosted.ts` instead. |
 | `useEngineModule`'s local `getEngine` shadowing the registry's export | **Renamed** `ensureEngine`. |
 | Search depth: `go depth 12` defaulted in `UciEngine`, 24 the clamp, 14 / 16 the boards' settings; move time at most 10 s | **Single-sourced and raised** (§5.1): depth is a required argument (or the search is `infinite`); `DEFAULT_MAX_DEPTH` (99) is the clamp, `ENGINE_SETTING_BOUNDS` (depth 1–40, move time 0–300 s, CTA-163) what the engine form offers — the analysis boards keep their own 0–60 s; the analysis boards gained **infinite analysis** and stop at depth 20 rather than after a second. |
 | The protocol bookkeeping | **Fixed**: `stop()` dropped no waiting search, so switching the engine off right after a move searched that move anyway; a `stop` went out on every request during a search; an option the engine cannot take was still queued (and stopped the search); an unchanged option was re-posted (`Hash` clearing the table). §6. |

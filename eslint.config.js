@@ -104,7 +104,8 @@ export default defineConfig([
   // act on. tsc already skips it: every tsconfig project includes only `src`.
   // `coverage` is what `npx vitest run --coverage` writes — generated output,
   // like `dist`, never hand-edited.
-  globalIgnores(['dist', 'docs/vendor', 'coverage']),
+  // `server/engine-api/.venv`: the engine API's Python packages, some of which ship JS.
+  globalIgnores(['dist', 'docs/vendor', 'coverage', 'server/engine-api/.venv']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

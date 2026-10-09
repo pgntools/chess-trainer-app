@@ -40,7 +40,7 @@ jobs:
           node-version: 24
           cache: yarn
       - run: yarn install --frozen-lockfile
-      # The runner has four cores; `--maxWorkers 3` leaves one to Vitest itself.
+      # The runner has four cores; Vitest's default (a worker per core but one) leaves one to Vitest itself.
       - run: yarn test:gallery --shard=${{ matrix.shard }}/4
 
   # `--coverage` is a readout, not a gate (vite.config.ts sets no thresholds).

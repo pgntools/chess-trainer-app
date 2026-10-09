@@ -79,7 +79,7 @@ export const parseEngineOption = (line: string): EngineOption | null => {
  * One line of engine output as an {@link EngineMessage}, stamped with the
  * position of the search that produced it (`fen`, which UCI does not carry).
  */
-const parseEngineLine = (line: string, fen: string | undefined): EngineMessage => {
+export const parseEngineLine = (line: string, fen: string | undefined): EngineMessage => {
   /*
     `score cp N` and `score mate N` are alternatives on one `info` line, and a
     line only ever carries one of them. Matching them together rather than with
@@ -103,6 +103,14 @@ const parseEngineLine = (line: string, fen: string | undefined): EngineMessage =
     fen,
   };
 };
+
+/**
+ * Whether an option the engine declared can be **set** — declared, and not
+ * pinned to one value (`min` equal to `max`). {@link UciEngine.isSettable}'s
+ * rule, shared with the hosted engine (`lib/hostedEngine.ts`).
+ */
+export const isSettableOption = (option: EngineOption | undefined): boolean =>
+  option !== undefined && (option.min === undefined || option.min !== option.max);
 
 /** The `go` line for a search: `go infinite`, or a depth clamped to `maxDepth` with an optional `movetime`. */
 const goCommand = (options: SearchOptions, maxDepth: number): string => {
@@ -335,9 +343,7 @@ export class UciEngine implements EngineHandle {
    * one value it could take — and the settings tab already renders it as fixed.
    */
   private isSettable(name: string): boolean {
-    const option = this.options.get(name);
-    if (option === undefined) return false;
-    return option.min === undefined || option.min !== option.max;
+    return isSettableOption(this.options.get(name));
   }
 
   /**

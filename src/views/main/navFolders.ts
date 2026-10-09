@@ -62,6 +62,13 @@ export type NavFolder = {
    * and closes like any folder, and is still a card on the landing page.
    */
   pinToBottom?: boolean;
+  /**
+   * The folder stays a folder whatever it holds: a sub-folder with a single
+   * screen is otherwise drawn as that screen (`navTree.ts`,
+   * `collapseLeafCategory`). The Blog's folders are the reader's structure — a
+   * Guides folder with its first guide is still the Guides folder.
+   */
+  keepFolder?: boolean;
 };
 
 /**
@@ -80,6 +87,8 @@ const blogNavFolders = (parent: string): NavFolder[] =>
     id: blogNavFolderId(folder.path),
     label: folder.title,
     icon: FolderRoundedIcon,
+    // A Blog folder with one article is still that folder, collapsible like the others.
+    keepFolder: true,
     children: blogNavFolders(folder.path),
   }));
 

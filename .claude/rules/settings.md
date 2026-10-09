@@ -19,7 +19,7 @@ app's data takes, CTA-94), **Appearance** (the theme, CTA-107) and **Engine**
 | --- | --- | --- |
 | Route | `routes.tsx` — `/settings` and `/settings/:tab` | Both render `SettingsMain.tsx`; `/settings` and an unknown tab redirect to the first tab (Export). |
 | Screen | `views/settings/SettingsScreen.tsx` | The title, a tab strip (each `Tab` a `RouterLink` to `/settings/<id>`), the active tab's content scrolling under it. |
-| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (the `EnginePicker` block), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
+| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (Browser / API inner tabs: the `EnginePicker` and `EngineServerForm` blocks; the `EngineOptionsTable` block in its panel), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
 | Nav | `navFolders()` — `settings` (`nav.folders.settings`, `pinToBottom`); `navItems()` — one entry per tab (`nav.settingsExport`, `nav.settingsImport`, `nav.settingsStorage`, `nav.settingsAppearance`, `nav.settingsEngine`, `nav.settingsSupport`) | A folder, **not** `singleEntry`, so a tab is one more entry in it. Pinned to the sidebar's foot, under a divider, apart from the screens (`Sidebar.tsx`). |
 | Locale | `settings.*` in `en.ts` / `he.ts` | `settings.title`, `settings.tabs.<id>`, then each tab's own block (`settings.export.*`, `settings.import.*`, `settings.storage.*`, `settings.appearance.*`, `settings.engine.*`). The themes' own names are `appearance.themes.<id>`; the picker's words are `enginePicker.*`. |
 
@@ -115,6 +115,34 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
 - **The Export zip does not carry it** — a preference is not data
   ([`import-export.md`](./import-export.md)); what a played game carries is the
   engine that played it.
+- **Two inner tabs say where the engine runs** (`PanelTabs`, the tab's own
+  state — it opens on API when the stored choice is a server engine):
+  **Browser**, the page's own builds above; **API**, the engine server below.
+- **The engine server on this computer** — the `EngineServerForm` block on
+  the API tab ([`docs/engine.md`](../../docs/engine.md) §8): native Stockfish
+  binaries served by `yarn api:start` (`server/engine-api/`). **Off by
+  default, and while off nothing contacts any server** — a deployed site that
+  probed `127.0.0.1` would probe every visitor's machine. On, its address
+  (`chessapp.engineServer`, `lib/engineServer.ts`) is kept and checked
+  (`GET /v1/engines`), the field's text the screen's own until Connect (or
+  Enter) keeps and checks it — **each press answered on the button**: a
+  spinner (at least 0.4 s, `CONNECT_MIN_CHECKING_MS`), then a check mark or a
+  warning for 2 s. A chip beside the
+  switch is the connection at a glance — *Connecting…*, *Connected · N ms*
+  (the last check's round trip), *Not connected* — and the live region; under
+  the field, when it last answered, or what to check with Try again. While it
+  answers, its engines (`hosted:<id>`, `lib/engines/hosted.ts`) are **listed
+  under it** — a second `EnginePicker` ("Engines on this server") on the same
+  choice; the Browser tab's list keeps the page's builds.
+- **The right-hand panel shows what the chosen server engine declared** —
+  its UCI options, types, defaults and ranges as `GET /v1/engines` sent them
+  (the `EngineOptionsTable` block; `Threads` and `Hash` under the server's
+  ceilings), with the depth it allows. With none chosen it points, **on the API
+  tab, to the Blog's guide** (`/blog/guides/local-engine`, *Run a chess engine
+  on your own computer* — the whole setup); on the Browser tab, a line
+  pointing to the API tab. Offline, they
+  are gone, and a choice of one reads as the default — still stored, back when
+  the server is.
 
 ## 5. Testing
 
@@ -127,8 +155,17 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   reason (and selectable under a stubbed `crossOriginIsolated`), a choice
   applying at once and surviving a remount, a stored id that is gone or cannot
   run falling back without being discarded (the 2019 id too), the keyboard,
-  Hebrew, axe. `src/lib/engineChoice.test.ts` — the store.
-  `blocks/forms/EnginePicker/EnginePicker.test.tsx` — the block.
+  Hebrew, axe — and the engine server (over a fake `GET /v1/engines`): the
+  Browser / API tabs, off by default with no request made, turned on (the
+  address kept, the chip, the server's engines listed and chosen), the panel
+  (the chosen engine's UCI options; the guide's link; the line on Browser),
+  Connect answered on the button, a bad address refused and a new one kept
+  with Enter, a stored server engine opening the API tab and falling back
+  when the server is turned off, Hebrew, axe. `src/lib/engineChoice.test.ts`
+  — the store; `src/lib/engineServer.test.ts` — the address and the status.
+  `blocks/forms/EnginePicker/EnginePicker.test.tsx`,
+  `blocks/forms/EngineServerForm/EngineServerForm.test.tsx`,
+  `blocks/tables/EngineOptionsTable/EngineOptionsTable.test.tsx` — the blocks.
 - `views/settings/AppearanceTab.test.tsx` — the Appearance tab, with a second
   theme registered by a mock of the registry: the list and previews, a choice
   applying at once (a board colour probe), surviving a remount, and a bad

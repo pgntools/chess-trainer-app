@@ -1,0 +1,107 @@
+---
+title: Run a chess engine on your own computer
+summary: "Stockfish 18 or 19, native and with every thread, serving every board of the app — the engine server, from download to the first search."
+date: 2026-10-09
+tags: [engine, setup]
+---
+
+Every board in the app can search with Stockfish running **natively on your own computer** instead of in the browser: the full engine, every thread your machine has, a bigger hash — several times the speed of the browser build. The app talks to it through a small **engine server** that comes with the app's source and listens on your machine only.
+
+You choose between the two in [Settings → Engine](/settings/engine): **Browser** for the builds that run in the page, **API** for the engines on your server.
+
+## What you need
+
+- **The app's source**, with its dependencies installed — [github.com/pgntools/chess-trainer-app](https://github.com/pgntools/chess-trainer-app) (Node and Yarn).
+- **Python 3.11 or newer** — the server is a Python service. Its first start installs what it needs into a folder of its own.
+- **A UCI engine** for your system — any engine that speaks UCI will do; Stockfish is the usual one.
+
+## 1. Get an engine
+
+Download Stockfish from [stockfishchess.org](https://stockfishchess.org/download/) for your system and unpack it. Note the path to the binary — on Linux, for example, `/home/you/stockfish/stockfish-ubuntu-x86-64-avxvnni`. Two versions side by side (Stockfish 18 and 19) are fine: the server serves every engine you list.
+
+## 2. Tell the server where your engines are
+
+In the app's source, make the server's configuration from its example:
+
+```sh
+cp server/engine-api/engines.example.json server/engine-api/engines.local.json
+```
+
+Then open `engines.local.json` and give each engine an **id** and the **path** to its binary:
+
+```json
+{
+  "engines": [
+    { "id": "stockfish-18", "path": "/path/to/stockfish-18" },
+    { "id": "stockfish-19", "path": "/path/to/stockfish-19" }
+  ]
+}
+```
+
+The **id is remembered** — by your choice of engine, and by every game you play against it — so pick one and keep it. The name the app shows is the engine's own (`Stockfish 19`) unless you add a `"name"`.
+
+The file stays on your machine: it is not part of the source.
+
+### Optional settings
+
+| Key | Default | What it does |
+| --- | --- | --- |
+| `maxSessions` | 8 | Engines running at once — one per open board. |
+| `idleTimeoutS` | 300 | An engine no board has used for this long is shut down. |
+| `maxThreads` | your cores − 1 | The most threads one engine may take. |
+| `maxHashMb` | 4096 | The most hash one engine may take, in MB. |
+| `allowedOrigins` | — | Sites besides your own machine that may use the server — see *Use it from chessapp.dev* below. |
+
+## 3. Start the server
+
+In a console of its own, beside the app:
+
+```sh
+yarn api:start
+```
+
+It listens on `http://127.0.0.1:8800` — your machine only (`ENGINE_API_PORT` moves the port). The first start creates the server's Python environment and installs what it needs; later starts take a second. Leave it running while you use the app, and stop it with Ctrl+C.
+
+## 4. Connect the app to it
+
+Open [Settings → Engine](/settings/engine), and on the **API** tab:
+
+1. Turn on **Use an engine server**. While it is off, the app never contacts the server.
+2. Leave the address as it is (`http://127.0.0.1:8800`) unless you moved the port, and press **Connect**.
+3. The chip beside the switch says **Connected** with how long the server took to answer; the button shows a check mark each time you press it.
+
+The server's engines are then listed under it.
+
+## 5. Choose an engine
+
+Pick one of the server's engines. The panel on the right shows **what it declared** — its UCI options with their defaults and ranges, as the server sent them. From the next search on, every board uses it: the Analysis Board, the Openings explorer, the Library's games, the repertoires and Play with Engine.
+
+A game you start against the engine is played by that engine to the end, and the game remembers which one it was.
+
+## How it behaves
+
+- **One engine per board.** Each board gets an engine of its own on the server, which keeps what it has already searched while you step through a game — so the next position is reached sooner.
+- **Nothing runs that you are not using.** Close a board, or choose a browser build, and its engine on the server shuts down. An engine left behind by a closed tab is shut down after five idle minutes (`idleTimeoutS`).
+- **If the server stops**, the boards go back to the browser engine by themselves, and your choice comes back when the server does — press **Connect** to check.
+
+## Use it from chessapp.dev
+
+The server can serve the published site too, still from your own machine:
+
+1. Add the site to `engines.local.json` and restart the server:
+
+   ```json
+   "allowedOrigins": ["https://chessapp.dev"]
+   ```
+
+2. Turn the server on in [Settings → Engine](/settings/engine) on chessapp.dev, as above.
+3. Your browser may ask whether the site may reach other apps and services on your device — allow it. Chrome, Edge and Firefox let a secure site reach your own machine; Safari may not.
+
+## Troubleshooting
+
+| What you see | What to check |
+| --- | --- |
+| **Not connected** — *Can't reach …* | Is `yarn api:start` running, on the address in the field? Using the published site: is it in `allowedOrigins`, and did you allow the browser's prompt? |
+| *… answered, but not as an engine server* | The address points at something else — another program on that port, or the app itself. |
+| An engine you listed is missing | Its `path` is wrong or not executable: the server's console says which engine it could not start. |
+| Every engine is busy | `maxSessions` engines are searching at once — close a board, or raise it. |

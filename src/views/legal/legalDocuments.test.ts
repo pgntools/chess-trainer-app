@@ -4,6 +4,7 @@ import i18n, { supportedLanguages } from "../../i18n";
 import { appPageFiles, findBlogArticle } from "../blog/articles";
 import { DEVELOPMENT_NOTICE_KEY } from "../../lib/developmentNotice";
 import { ENGINE_STORAGE_KEY } from "../../lib/engineChoice";
+import { ENGINE_SERVER_STORAGE_KEY } from "../../lib/engineServer";
 import { LIBRARY_DB_NAME } from "../../lib/libraryDb";
 import { THEME_STORAGE_KEY } from "../../theme/themeChoice";
 import { LANGUAGE_STORAGE_KEY } from "../../i18n";
@@ -17,6 +18,7 @@ const sourceOf = (page: string, language: string): string => sources[`../blog/ar
 const STORED = [
   THEME_STORAGE_KEY,
   ENGINE_STORAGE_KEY,
+  ENGINE_SERVER_STORAGE_KEY,
   LANGUAGE_STORAGE_KEY,
   "mui-mode",
   DEVELOPMENT_NOTICE_KEY,

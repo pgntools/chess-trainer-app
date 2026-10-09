@@ -40,7 +40,7 @@ Node comes from `fnm`, so run these from a shell where it is on `PATH`.
 | Type-check + production build — **and the pre-render**: every page a static `index.html` per language (CTA-136, [`static-pages.md`](.claude/rules/static-pages.md)) | `yarn build` (`BASE_PATH=/ DEPLOY_TARGET=swa yarn build` — the chessapp.dev build) |
 | Type-check only | `npx tsc -b` (add `--force` to bypass the incremental cache) |
 | Lint — **a CI gate** (the tier import rules, the MUI lock, `jsx-a11y`) | `yarn lint` |
-| **Run the test suite** — the pull-request gate, the `unit` and `ui` groups (below) | `yarn test:run` (at most 3 files at once — see below) |
+| **Run the test suite** — the pull-request gate, the `unit` and `ui` groups (below) | `yarn test:run` |
 | Run one test group | `yarn test:unit` (every `*.test.ts`), `yarn test:ui` (every `*.test.tsx`), `yarn test:gallery` (the gallery's axe matrix, `*.matrix.test.tsx` — ~35 min of tests, not in the gate) |
 | **Run a single test file** | `npx vitest run <path>` — e.g. `npx vitest run src/theme/AppThemeWithLang.test.tsx` (any group's file) |
 | Run tests matching a name | `npx vitest run -t "<substring of the test name>"` (every group — add `--project unit --project ui` to leave the gallery out) |
@@ -52,19 +52,20 @@ Node comes from `fnm`, so run these from a shell where it is on `PATH`.
 | **Wire a PGN collection into the Library** | `node scripts/wirepgn.js path/to/file.pgn` (or `yarn wirepgn …`; `--list`, `--check`, `--rebuild`, `--remove <id>` — [`game-collections.md`](.claude/rules/game-collections.md) §3) |
 | **Scaffold a new theme** | `yarn theme:bootstrap --id <kebab-id> --name "<Name>"` (`--name-he`, `--from <theme>`, `--dry-run`, `--help`) — writes and registers it; then tune it in the dev-only theme editor, `/dev/theme-editor?theme=<id>` ([`CONTRIBUTING.md`](CONTRIBUTING.md#create-a-theme)) |
 | **The MDX editor** (CTA-137) — Vite's dev server with the editor compiled in, and its storage service, which writes `.mdx`, `.pgn` and images (`.png`, `.jpg`, `.webp`, `.gif`) only under `src/views/blog/articles/` (on `127.0.0.1:5172`; `VITE_MDX_EDITOR_PORT`, read from `.env.local` too, moves it). Plain `yarn dev` has no editor: no route, no sidebar folder | `yarn mdx-editor:start` (instead of `yarn dev`; on `.env.local`'s `VITE_DEV_PORT`, Vite's flags passed on — `--port 5300`; Ctrl+C stops both) |
+| **The engine API** — native Stockfish binaries on this machine over HTTP, localhost only, in a console of its own beside `yarn dev` (Python, `server/engine-api/`; the engines' paths in its `engines.local.json`, from `engines.example.json`; [`README.md`](server/engine-api/README.md)) | `yarn api:start` (`127.0.0.1:8800`, `ENGINE_API_PORT` moves it); its tests `yarn api:test` (pytest, a real engine) |
 | Coverage (CI measures it on a push to `development` and nightly, not on a pull request) | `yarn test:run --coverage` |
 | **Browser accessibility pass** — every shipped route, seeded, under every theme × light / dark × English / Hebrew, against the production build (Playwright + axe, colour contrast and target size on; ~25 min; `npx playwright install chromium` once) | `yarn test:a11y` (`yarn test:a11y:quick` — the pull-request matrix, ~6 min; details in [`browser-a11y.md`](.claude/rules/browser-a11y.md)) |
 | **Browser pass in a cloud container** — its pre-installed Chromium (`/opt/pw-browsers/chromium`) is an older build than this Playwright wants, and the network will not fetch the new one ("Executable doesn't exist at …chromium_headless_shell-…"). Don't run `npx playwright install`; point the pass at the installed browser | `yarn build`, then `A11Y_CHROMIUM=/opt/pw-browsers/chromium A11Y_MATRIX=reduced npx playwright test` — `-g "<route id>\|seed"` for some routes (the seed is their setup); `A11Y_CHROMIUM` is read by `playwright.config.ts`, unset nothing changes |
 | **Audit a render for accessibility** | `await expectNoAxeViolations(element?)` in a test (`src/test/axe.ts`) — axe's WCAG 2.2 A / AA rules, a violation fails it; `stubReducedMotion()` (`src/test/reducedMotion.ts`) renders for a reader who asks for reduced motion |
 
-**Limit the workers to the machine.** At full parallelism the heavier screen
-suites (the boards, the Library, the repertoires) starve each other of CPU:
-the suite seems stuck, and tests fail on timeouts — a different set on every
-run, each passing when re-run alone. That is scheduling, not a broken test. So
-`test:run` and each group's script carry `--maxWorkers 3` — what CI's
-four-core runners take; on another system, inspect a full run and set the cap
-to suit it (`npx vitest run --maxWorkers <n>`; `--fileParallelism=false` runs
-one file at a time). Re-run a failure on its own before treating it as real.
+**Workers.** The scripts run at Vitest's own parallelism — a worker per core
+but one (three on CI's four-core runners). On a machine too small for that,
+the heavier screen suites (the boards, the Library, the repertoires) starve
+each other of CPU: the suite seems stuck, and tests fail on timeouts — a
+different set on every run, each passing when re-run alone. That is
+scheduling, not a broken test: cap it (`npx vitest run --maxWorkers <n>`;
+`--fileParallelism=false` runs one file at a time), and re-run a failure on
+its own before treating it as real.
 
 **The suite is three groups** (CTA-123) — Vitest projects in `vite.config.ts`,
 set by file name, so a test joins one by what it is called:
@@ -119,7 +120,7 @@ so an export it uses can look unused — check `scripts/` before removing one.
 | **Repertoires** | `/repertoires`, `/repertoires/<id>`, `/…/games/<game>` | `views/repertoires/`, `lib/savedRepertoire*`, `lib/repertoire*`, `lib/playChance.ts` | [`repertoires.md`](.claude/rules/repertoires.md) |
 | **Library** (game collections; a collection marked as a tournament opens on Info, Participants and Games tabs, CTA-142) | `/library`, `/library/<c>` (`?tab=info\|participants\|games` for a tournament), `/library/<c>/settings`, `/library/<c>/<n>` | `views/library/` (`TournamentCollection.tsx` the tournament view), `lib/library*`, `lib/collectionIndex.ts`, `lib/tournamentParticipants.ts`, `src/data/library/` (`manifest.json` marks the shipped tournaments, `wirepgn --tournament`) | [`game-collections.md`](.claude/rules/game-collections.md) |
 | **Blog** (MDX articles in nested folders — the *Writing an article* folder holds the how-to and a page per embeddable component, game window and tournament table, CTA-128) | `/blog`, `/blog/<folder…>`, `/blog/<folder>/<article>` — one route, `/blog/*` (CTA-135) | `views/blog/` (`articles.ts` the one registry, built from each file's **frontmatter** by the build's `plugins/blogArticles.ts` — `virtual:blog-articles`, `src/lib/articleFrontmatter.ts` the schema, CTA-135; `articles/<path>.mdx`, `<path>.he.mdx` optional, a folder's `index.mdx`); drafted live in the MDX editor, `/dev/mdx-editor/edit` — its lobby of the articles `/dev/mdx-editor` (`src/mdxEditor/`, under `yarn mdx-editor:start` only), whose lobby opens each article (`?article=<file>`), and its Components gallery `/dev/mdx-editor/components` (every embeddable component on a sample, to try and copy, CTA-140) | [`writing-an-article/guide.mdx`](src/views/blog/articles/writing-an-article/guide.mdx) |
-| **Settings** (Export, Import, Storage, Appearance, Engine — which engine every board runs, CTA-153 — and Support, CTA-155) | `/settings/<tab>` (`/settings/export`, `/settings/import`, `/settings/storage`, `/settings/appearance`, `/settings/engine`, `/settings/support`) | `views/settings/`, `lib/engineChoice.ts` (the preference, `localStorage`), `views/shared/useEngineChoice.ts`, `blocks/forms/EnginePicker` | [`settings.md`](.claude/rules/settings.md) |
+| **Settings** (Export, Import, Storage, Appearance, Engine — which engine every board runs, CTA-153 — and Support, CTA-155) | `/settings/<tab>` (`/settings/export`, `/settings/import`, `/settings/storage`, `/settings/appearance`, `/settings/engine`, `/settings/support`) | `views/settings/`, `lib/engineChoice.ts` (the preference, `localStorage`), `views/shared/useEngineChoice.ts`, `blocks/forms/EnginePicker`; the Engine tab's API side — the engine server on the reader's computer (`yarn api:start`, `server/engine-api/`): `lib/engineServer.ts` (its address and status), `lib/hostedEngine.ts`, `lib/engines/hosted.ts`, `blocks/forms/EngineServerForm`, `blocks/tables/EngineOptionsTable` ([`docs/engine.md`](docs/engine.md) §8) | [`settings.md`](.claude/rules/settings.md) |
 | **Import / Export** (the reader's data as one zip) | `/settings/export`, `/settings/import` | `lib/dataExport*.ts`, `lib/dataImport*.ts`, `lib/pgnExport.ts`, `views/settings/ExportTab.tsx`, `ImportTab.tsx`, `blocks/dialogs/ImportDialog`, `IncompatibleImportDialog`, `blocks/panels/ImportReport`, `blocks/forms/ExportCategoriesForm` | [`import-export.md`](.claude/rules/import-export.md) |
 | **Position editor** (a component, hosted by the Lobby) | — | `views/shared/positionEditor/`, `lib/positionEditor.ts` | [`position-editor.md`](.claude/rules/position-editor.md) |
 | **Tournament tables** (a Swiss's standings, a round robin's crosstable — built ahead of their screen, CTA-120, and drawn on the Library's tournament view's Info tab since CTA-142; a knockout's bracket — double elimination and teams too — a match, a team event's standings, CTA-128; embedded in the Blog's *Tournaments* articles, a page per format under *Writing an article → Demo tables*, and one per Library-backed table, over shipped TWIC collections — since CTA-140 the same components with `src="/library/<c>"`, the older `Collection…` names their aliases) | `/blog/tournaments/…`, `/blog/writing-an-article/demo-tables/<format>` | `lib/tournament.ts` (`tournamentOf`: players, rounds, standings and tie-breaks from the games' tags alone), `lib/knockout.ts`, `lib/match.ts`, `lib/teamTournament.ts` (the same, read as The Week in Chess writes each format), `lib/tournamentKind.ts` (`guessTournamentKind`: which kind a file looks like — the MDX editor's, the Library's settings', CTA-142), `lib/federations.ts` (a FIDE code as a flag), `design-system/components/tables/LabelChip`, `Flag` (a title's chip, a federation's flag), `design-system/patterns/tables/StandingsTable`, `CrossTable`, `Bracket` (every table pattern takes optional `paging`), `blocks/tables/SwissStandingsTable`, `RoundRobinCrossTable`, `KnockoutBracket`, `MatchTable`, `TeamStandingsTable`, and their MDX embeds in `views/home/frontPage/` (`…Embed.tsx`: `<EmbedSource>` over any source, `embedSource.tsx`, and the table's view, `tournamentEmbedViews.tsx`) | [`tournament-tables.md`](.claude/rules/tournament-tables.md) — the one reference: formats, TWIC's tags, ranking rules, embeds and props, adding a page or a format, testing |
@@ -158,7 +159,8 @@ The shared core of `src/lib/`: `gameModel.ts` (`Game`, one line), `gameTree.ts`
 `StartPly`, the last-move highlight, the move rows), `uciEngine.ts` /
 `workerTransport.ts` / `engineTypes.ts` / `engines/` (the UCI protocol, the
 Worker, `EngineHandle` and the registry of the Stockfish 19 builds — the
-single-thread one the default; CTA-152, CTA-160, [`docs/engine.md`](docs/engine.md)) +
+single-thread one the default — and, turned on, the engine server's native
+engines, `hostedEngine.ts`; CTA-152, CTA-160, [`docs/engine.md`](docs/engine.md)) +
 `engineAnalysis.ts` (the numbers), `capturedPieces.ts`,
 `moveAnnotations.ts` / `pgnComments.ts`, `pgnText.ts`, `pgnExport.ts`,
 `recordId.ts` (`newRecordId`, the one id minter), `treeManager.ts` (read-only
@@ -358,12 +360,15 @@ The sidebar is a folder tree over the routes; a folder never appears in a URL.
 | Layer | File | What it owns |
 | --- | --- | --- |
 | Walks | `src/lib/treeManager.ts` | Depth-first reads over any tree. |
-| Data | `navFolders()` + `navItems()` | The folders (`{ id, labelKey?, label?, icon, children?, singleEntry?, pinToBottom? }`) and the screens, each naming its `folder`. **Functions**, so a dev-only entry can be a spread gated on `import.meta.env.DEV`. |
+| Data | `navFolders()` + `navItems()` | The folders (`{ id, labelKey?, label?, icon, children?, singleEntry?, pinToBottom?, keepFolder? }`) and the screens, each naming its `folder`. **Functions**, so a dev-only entry can be a spread gated on `import.meta.env.DEV`. |
 | Builder | `navTree.ts` | `buildNavTree`, `folderPath`, `folderChain`, `navLabel` (a catalog key *or* a data label, `lib/localizedText.ts`), `navLabelKeys`. |
 | Renderer | `Sidebar.tsx` | A recursive `TreeRow`: folders are `aria-expanded` toggles, screens are links. |
 
 - **Nesting a folder is a data edit** — an entry in `navFolders` with a
   `labelKey` in both catalogs; the renderer already recurses.
+- **A sub-folder holding one screen is drawn as that screen** (`collapseLeafCategory`) —
+  unless it is `keepFolder`: every Blog folder is, so *Guides* with its first
+  guide is still a collapsible folder.
 - **A `singleEntry` folder** renders as one row, under its own name, straight
   to its one screen (Analysis → Saved analyses, Openings, Repertoires). Board
   screens those hide are reached from the screens' own controls.

@@ -3,7 +3,7 @@ title: "Privacy Policy"
 summary: "What chessapp.dev keeps on your device, what it never collects, and your rights under the GDPR and Israel's Protection of Privacy Law."
 ---
 
-Last updated: 8 October 2026
+Last updated: 9 October 2026
 
 This Privacy Policy explains what chessapp.dev (the "App") does with information about you. The short version: **the App has no accounts and no server-side database. Your games, analyses, repertoires and settings stay in your browser, on your device, and are never sent to us.** The only personal data we may receive is what you send us yourself, by email.
 
@@ -15,6 +15,7 @@ Everything below lives in your own browser and is read only by the App running i
 
 - `chessapp.theme` — the look you chose in Settings → Appearance.
 - `chessapp.engine` — the chess engine you chose in Settings → Engine.
+- `chessapp.engineServer` — the address of an engine server on your own computer, if you turned one on in Settings → Engine.
 - `i18nextLng` — the language you chose (English or Hebrew).
 - `mui-mode`, with `mui-color-scheme-light` and `mui-color-scheme-dark` — light, dark or system colour mode. The MUI interface library keeps these.
 
@@ -37,7 +38,7 @@ The App sets **no cookies**. See the [Cookies Notice](/cookies) for the details.
 
 - No accounts, no sign-in, no profile.
 - No analytics, advertising or tracking, and no third-party scripts, fonts or images: everything the App loads comes from the site it is served from.
-- The Stockfish chess engine runs inside your browser, in a local Web Worker. Your positions are not sent anywhere to be analysed.
+- The Stockfish chess engine runs inside your browser, in a local Web Worker. Your positions are not sent anywhere to be analysed — unless you turn on an **engine server** in Settings → Engine: then the positions you analyse, and your engine settings, go to the address you gave, a server you run yourself (usually on your own computer). It is off by default, and while it is off the App never contacts it. We receive nothing either way.
 - We do not sell or share your data, because we do not receive it.
 
 ## Why the App stores these items, and on what basis

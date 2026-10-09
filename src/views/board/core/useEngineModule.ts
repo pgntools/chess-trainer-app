@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type {
   EngineDescriptor,
   EngineHandle,
   EngineOption,
 } from "../../../lib/engineTypes";
+import { ensureEngineServerChecked, engineServerStatus, subscribeEngineServer } from "../../../lib/engineServer";
 import { resolveEngine } from "../../../lib/engines";
 import {
   EMPTY_ANALYSIS,
@@ -172,6 +173,17 @@ export const useEngineModule = ({
   onBestMove,
   onSearchFinished,
 }: EngineModuleStart): EngineModule => {
+  /*
+    The engine server's engines come and go with its status (docs/engine.md §8):
+    render again when it changes, so `resolveEngine` below sees them — a
+    `hosted:…` engine asked for before the server answered is picked up when it
+    does, and one whose server went away falls back to the default. While the
+    reader has no server the status never changes. The first check is made
+    here, where the reader turned the server on.
+  */
+  useSyncExternalStore(subscribeEngineServer, engineServerStatus, engineServerStatus);
+  useEffect(ensureEngineServerChecked, []);
+
   /*
     Which engine, decided at render — a pure read of the registry, no worker is
     built — so the effects below depend on it and a change of choice re-runs

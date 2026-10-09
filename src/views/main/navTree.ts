@@ -36,6 +36,8 @@ export type NavTreeNode = {
   singleEntry?: boolean;
   /** Carried from a folder pinned to the sidebar's foot (`NavFolder.pinToBottom`). */
   pinToBottom?: boolean;
+  /** Carried from a folder never folded into its one screen (`NavFolder.keepFolder`). */
+  keepFolder?: boolean;
   /** A screen not yet published — a Blog draft in `yarn dev` (CTA-135); the row is marked. */
   draft?: boolean;
 };
@@ -53,6 +55,7 @@ type FolderLike<Id extends string> = {
   children?: readonly FolderLike<Id>[];
   singleEntry?: boolean;
   pinToBottom?: boolean;
+  keepFolder?: boolean;
 };
 
 type ScreenLike = {
@@ -85,6 +88,7 @@ export const buildNavTree = <Id extends string>(
     icon: folder.icon,
     ...(folder.singleEntry ? { singleEntry: true } : {}),
     ...(folder.pinToBottom ? { pinToBottom: true } : {}),
+    ...(folder.keepFolder ? { keepFolder: true } : {}),
     children: [
       ...buildNavTree(folder.children ?? [], screensOf),
       ...screensOf(folder.id).map((item) => ({
@@ -115,6 +119,9 @@ export const buildNavTree = <Id extends string>(
  *   leaf children have folded down to screens it holds several of them,
  *   which is again two-or-more children.
  *
+ * A folder marked `keepFolder` is never folded — the Blog's folders, which
+ * are the reader's structure however few articles they hold yet.
+ *
  * Applied **below the top level only**: the top-level rows are app-area
  * groupings (Engine, Library, Repertoires…), not categories. A top-level folder is
  * folded only by the other rule — `foldSingleEntryFolders`, for a folder
@@ -124,7 +131,7 @@ export const buildNavTree = <Id extends string>(
 const collapseLeafCategory = (node: NavTreeNode): NavTreeNode => {
   if (node.kind !== "folder") return node;
   const children = (node.children ?? []).map(collapseLeafCategory);
-  return children.length === 1 && children[0].kind === "screen"
+  return children.length === 1 && children[0].kind === "screen" && !node.keepFolder
     ? children[0]
     : { ...node, children };
 };
