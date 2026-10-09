@@ -172,6 +172,8 @@ export const ROUTES: readonly PageRoute[] = [
   { id: "blog", pattern: "/blog/*", path: "blog" },
   { id: "blog-folder", pattern: "/blog/*", path: "blog/writing-an-article/components" },
   // The legal pages (CTA-159): the Privacy Policy and the Cookies Notice, MDX documents reached from the footer.
+  // The Jobs screen (CTA-173): no job in the seed (a job is not in the export zip), so its empty list.
+  { id: "jobs", pattern: "/jobs", path: "jobs" },
   { id: "privacy", pattern: "/privacy", path: "privacy" },
   { id: "cookies", pattern: "/cookies", path: "cookies" },
   { id: "settings-export", pattern: "/settings/:tab", path: "settings/export" },

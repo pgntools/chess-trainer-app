@@ -14,6 +14,7 @@ import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
 import SportsEsportsRoundedIcon from "@mui/icons-material/SportsEsportsRounded";
 import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
+import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import ViewListRoundedIcon from "@mui/icons-material/ViewListRounded";
 import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
@@ -111,6 +112,13 @@ export const navItems = (): readonly NavItem[] => [
     labelKey: "nav.repertoires",
     icon: MenuBookRoundedIcon,
     folder: "repertoires",
+  },
+  // The Jobs screen (CTA-173) — shown under the folder's own name, a single entry.
+  {
+    to: "/jobs",
+    labelKey: "nav.jobs",
+    icon: WorkHistoryRoundedIcon,
+    folder: "jobs",
   },
   /*
     The Blog (CTA-126): its index, and every article in its folder — read off

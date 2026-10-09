@@ -9,6 +9,7 @@ import {
   subscribeUploadedCollections,
   uploadedCollectionsSnapshot,
 } from "../../lib/libraryCollectionStore";
+import { jobsSnapshot, subscribeJobs } from "../../lib/jobStore";
 import { playedGamesSnapshot, subscribePlayedGames } from "../../lib/playedGameStore";
 import { savedAnalysesSnapshot, subscribeSavedAnalyses } from "../../lib/savedAnalysisStore";
 import { savedRepertoiresSnapshot, subscribeSavedRepertoires } from "../../lib/savedRepertoireStore";
@@ -69,6 +70,7 @@ function StorageTab() {
   const playedGames = useRows(subscribePlayedGames, playedGamesSnapshot);
   const analyses = useRows(subscribeSavedAnalyses, savedAnalysesSnapshot);
   const repertoires = useRows(subscribeSavedRepertoires, savedRepertoiresSnapshot);
+  const jobs = useRows(subscribeJobs, jobsSnapshot);
   // The summaries are not shown — they are tiny beside their games — but the
   // games row counts and sizes are derived from them.
   const collections = useRows(subscribeUploadedCollections, uploadedCollectionsSnapshot);
@@ -76,6 +78,7 @@ function StorageTab() {
   const playedPayload = usePayload(playedGames);
   const analysesPayload = usePayload(analyses);
   const repertoiresPayload = usePayload(repertoires);
+  const jobsPayload = usePayload(jobs);
 
   const [browser, setBrowser] = useState<BrowserStorageEstimate | undefined>();
   // The Library's games, estimated from the indexes — kept beside the
@@ -110,10 +113,11 @@ function StorageTab() {
   const gamesPayload = games !== undefined && games.collections === collections ? games.payload : undefined;
 
   /*
-    The reader's data, four sections — one per database's heavy store: the
+    The reader's data, five sections — one per database's heavy store: the
     engine's played games (chessapp.engine), the analyses
-    (chessapp.analyses), the repertoires (chessapp.repertoires) and the
-    Library's games (chessapp.library). The folders and the collections'
+    (chessapp.analyses), the repertoires (chessapp.repertoires), the
+    Library's games (chessapp.library) and the background jobs
+    (chessapp.jobs, CTA-173 — a computer analysis's checkpoint is its bulk). The folders and the collections'
     summaries are tiny beside what they file, and are not listed.
   */
   const categories: StorageCategory[] = [
@@ -121,6 +125,7 @@ function StorageTab() {
     { id: "analyses", section: "analyses", records: analyses?.length, payload: analysesPayload },
     { id: "repertoires", section: "repertoires", records: repertoires?.length, payload: repertoiresPayload },
     { id: "collectionGames", section: "library", records: gamesCount, payload: gamesPayload },
+    { id: "jobs", section: "jobs", records: jobs?.length, payload: jobsPayload },
   ];
 
   return (

@@ -18,6 +18,7 @@ export const CATEGORIES: readonly StorageCategory[] = [
   { id: "analyses", section: "analyses", records: 42, payload: 96_004 },
   { id: "repertoires", section: "repertoires", records: 7, payload: 1_203_455 },
   { id: "collectionGames", section: "library", records: 12_904, payload: 23_551_873 },
+  { id: "jobs", section: "jobs", records: 3, payload: 184_220 },
 ];
 
 /** Every store still being read. */

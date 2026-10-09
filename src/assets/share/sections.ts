@@ -25,7 +25,8 @@ export type ShareSection = {
 
 export const SHARE_SECTIONS: readonly ShareSection[] = [
   { id: "engine", paths: ["/engine"] },
-  { id: "analysis", paths: ["/tools/analysis"] },
+  // The Jobs screen (CTA-173) is the Analysis Board's computer analysis, run in the background.
+  { id: "analysis", paths: ["/tools/analysis", "/jobs"] },
   { id: "openings", paths: ["/openings"] },
   { id: "repertoires", paths: ["/repertoires"] },
   { id: "library", paths: ["/library"] },
