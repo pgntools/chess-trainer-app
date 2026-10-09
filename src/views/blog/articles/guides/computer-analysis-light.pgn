@@ -1,0 +1,5 @@
+[Event "Computer analysis example"]
+[AnalysedPlies "1-11"]
+[Annotator "Stockfish 19 Lite [light]"]
+
+{ [%eval 0.30,20] } { Computer analysis (light), Stockfish 19 Lite, depth 20. White: 1 inaccuracy, 0 mistakes, 0 blunders, 1 missed mate, ACPL 12, accuracy 95%. Black: 0 inaccuracies, 1 mistake, 1 blunder, 0 missed mates, ACPL 239, accuracy 33%. } 1. e4 { [%eval 0.30,20] } 1... e5 { [%eval 0.35,20] } 2. Bc4 { [%eval 0.20,20] } 2... Nc6 { [%eval 0.30,20] } 3. Qh5 $6 { [%eval -0.25,20] } { Inaccuracy. Nf3 was best. } (3. Nf3 { [%eval 0.30,20] } 3... Nf6) 3... Nf6 $4 { [%eval #1,20] } { Blunder. g6 was best. } (3... g6 { [%eval -0.25,20] } 4. Qf3) 4. Qf3 $4 { [%eval 0.40,20] } { Missed mate in 1! Qxf7# was best. } (4. Qxf7# { [%eval #1,20] }) 4... Nd4 { [%eval 0.40,20] } 5. Qd3 { [%eval 0.45,20] } 5... d5 $2 { [%eval 2.00,20] } { Mistake. d6 was best. } (5... d6 { [%eval 0.45,20] } 6. c3) 6. exd5 { [%eval 2.10,20] } *
