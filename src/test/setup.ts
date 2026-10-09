@@ -54,7 +54,7 @@ if (!globalThis.ResizeObserver) {
   cache hits.
 */
 const recordStores = async () => {
-  const [played, analyses, analysisFolders, analysisDb, repertoires, repertoireFolders, repertoireDb, libraryFolders] =
+  const [played, analyses, analysisFolders, analysisDb, repertoires, repertoireFolders, repertoireDb, libraryFolders, jobs, jobRunner] =
     await Promise.all([
       import("../lib/playedGameStore"),
       import("../lib/savedAnalysisStore"),
@@ -64,8 +64,12 @@ const recordStores = async () => {
       import("../lib/savedRepertoireFolderStore"),
       import("../lib/savedRepertoireDb"),
       import("../lib/libraryFolderStore"),
+      import("../lib/jobStore"),
+      import("../lib/jobRunner"),
     ]);
   return {
+    // The page's job runner (CTA-173), stopped before the stores settle: it writes to them.
+    stop: [jobRunner.stopJobRunner],
     settled: [
       analyses.settledSavedAnalyses,
       analysisFolders.settledAnalysisFolders,
@@ -73,6 +77,7 @@ const recordStores = async () => {
       repertoires.settledSavedRepertoires,
       repertoireFolders.settledRepertoireFolders,
       libraryFolders.settledLibraryFolders,
+      jobs.settledJobs,
     ],
     reset: [
       analyses.resetSavedAnalysisStore,
@@ -81,8 +86,9 @@ const recordStores = async () => {
       repertoires.resetSavedRepertoireStore,
       repertoireFolders.resetRepertoireFolderStore,
       libraryFolders.resetLibraryFolderStore,
+      jobs.resetJobStore,
     ],
-    remove: [analysisDb.deleteAnalysisDb, played.deleteEngineDb, repertoireDb.deleteRepertoireDb],
+    remove: [analysisDb.deleteAnalysisDb, played.deleteEngineDb, repertoireDb.deleteRepertoireDb, jobs.deleteJobsDb],
   };
 };
 
@@ -107,6 +113,7 @@ afterEach(async () => {
   // the writes a screen left in flight land, twice over — a folder's delete
   // queues its records' unfiling behind it — so none reaches the next test.
   const stores = await recordStores();
+  for (const stop of stores.stop) stop();
   for (let round = 0; round < 2; round += 1) {
     await Promise.all(stores.settled.map((settled) => settled()));
   }
