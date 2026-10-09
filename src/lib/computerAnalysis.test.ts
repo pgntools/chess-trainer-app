@@ -432,7 +432,7 @@ describe("computerAnalysisTree", () => {
   };
 
   const REPORT =
-    "[%analysed 1-11] Computer analysis (VARIANT), Stockfish 19 Lite, depth 20. " +
+    "Computer analysis (VARIANT), Stockfish 19 Lite, depth 20. " +
     "White (Alice): 1 inaccuracy, 0 mistakes, 0 blunders, 1 missed mate, ACPL 12, accuracy 95%. " +
     "Black (Bob): 0 inaccuracies, 1 mistake, 1 blunder, 0 missed mates, ACPL 239, accuracy 33%.";
 
@@ -440,6 +440,7 @@ describe("computerAnalysisTree", () => {
     expect(treeToPgn(variantTree("light"))).toBe(
       `[White "Alice"]
 [Black "Bob"]
+[AnalysedPlies "1-11"]
 [Annotator "Stockfish 19 Lite [light]"]
 
 { [%eval 0.30,20] } { ${REPORT.replace("VARIANT", "light")} } 1. e4 { [%eval 0.30,20] } 1... e5 { [%eval 0.35,20] } 2. Bc4 { [%eval 0.20,20] } 2... Nc6 { [%eval 0.30,20] } 3. Qh5 $6 { [%eval -0.25,20] } { Inaccuracy. Nf3 was best. } (3. Nf3 { [%eval 0.30,20] } 3... Nf6) 3... Nf6 $4 { [%eval #1,20] } { Blunder. g6 was best. } (3... g6 { [%eval -0.25,20] } 4. Qf3) 4. Qf3 $4 { [%eval 0.40,20] } { Missed mate in 1! Qxf7# was best. } (4. Qxf7# { [%eval #1,20] }) 4... Nd4 { [%eval 0.40,20] } 5. Qd3 { [%eval 0.45,20] } 5... d5 $2 { [%eval 2.00,20] } { Mistake. d6 was best. } (5... d6 { [%eval 0.45,20] } 6. c3) 6. exd5 { [%eval 2.10,20] } *`,
@@ -514,7 +515,8 @@ describe("computerAnalysisTree", () => {
     const tree = variantTree("light", { side: "b" });
     const pgn = treeToPgn(tree);
     expect(analysisScopeOf(tree)).toEqual({ fromPly: 2, toPly: 10, side: "b" });
-    expect(pgn).toContain("{ [%analysed 2-10 b] Computer analysis (light)");
+    expect(pgn).toContain('[AnalysedPlies "2-10"]\n[AnalysedSide "Black"]');
+    expect(pgn).toContain("{ Computer analysis (light)");
     expect(pgn).toContain("White (Alice): not analysed.");
     // 4. Qf3 still carries its eval (3... Nf6 is measured from it) but is not called a missed mate.
     expect(pgn).toContain("4. Qf3 { [%eval 0.40,20] } 4... Nd4");
@@ -538,6 +540,25 @@ describe("computerAnalysisTree", () => {
     expect(treeToPgn(twice)).toBe(treeToPgn(once));
   });
 
+  it("replaces the scope tags on a new run, an eval-only side's going with both sides", () => {
+    const restricted = variantTree("light", { side: "w" });
+    const opts = options({ multiPv: 3 });
+    const positions = analysisPositionsOf(restricted, opts);
+    const results = positions.map((position) => ({ fen: position.fen, lines: [...RESULTS[position.ply]] }));
+    const again = computerAnalysisTree({
+      source: restricted,
+      positions,
+      results,
+      verdicts: moveVerdicts(positions, results, opts),
+      variant: "light",
+      engine: "Stockfish 19 Lite",
+      options: opts,
+    });
+    expect(again.headers).toMatchObject({ AnalysedPlies: "1-11" });
+    expect(again.headers.AnalysedSide).toBeUndefined();
+    expect(again.comments?.filter((text) => text.startsWith("Computer analysis"))).toHaveLength(1);
+  });
+
   it("keeps a deeper eval the source already had", () => {
     const source = treeOf(GAME.replace("1. e4", "1. e4 { [%eval 0.41,30] }"));
     const opts = options({ multiPv: 3 });
@@ -554,6 +575,22 @@ describe("computerAnalysisTree", () => {
     });
     expect(treeToPgn(tree)).toContain("1. e4 { [%eval 0.41,30] }");
     expect(findNode(tree, mainline(tree)[0].id)?.comments).toEqual(["[%eval 0.41,30]"]);
+  });
+});
+
+describe("analysisScopeOf", () => {
+  it("reads the plies and an eval-only side from the header tags", () => {
+    expect(analysisScopeOf(treeOf('[AnalysedPlies "19-80"]\n[AnalysedSide "White"]\n\n1. e4 *'))).toEqual({
+      fromPly: 19,
+      toPly: 80,
+      side: "w",
+    });
+    expect(analysisScopeOf(treeOf('[AnalysedPlies "3-9"]\n\n1. e4 *'))).toEqual({ fromPly: 3, toPly: 9 });
+  });
+
+  it("names nothing without the plies, or when they do not read", () => {
+    expect(analysisScopeOf(treeOf("1. e4 *"))).toBeUndefined();
+    expect(analysisScopeOf(treeOf('[AnalysedPlies "from 3"]\n[AnalysedSide "White"]\n\n1. e4 *'))).toBeUndefined();
   });
 });
 

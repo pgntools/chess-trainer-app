@@ -133,7 +133,6 @@ evaluations (CTA-167, below).
 | `%csl` | `[%csl Gd4,Re5]` | none — drawn, not chipped (CTA-143) | **yes** — drawn as circles, as `%cal` |
 | `%prc` | `[%prc 40]` | Play chance | **yes** — the trainer and the arrows (§3) |
 | `%games` | `[%games 12]` | Games | **yes** — the Analysis Board's *Games* arrow widths (§3) |
-| `%analysed` | `[%analysed 19-80 w]` | the key itself | **yes** — written in the opening comment by a computer analysis, the moves it covered; read by `reportFromTree` (§6, CTA-172) |
 | any other `%key` | `[%foo bar]` | the key itself | no — kept and written back |
 
 A key must start with a letter (`[A-Za-z][\w-]*`). Commands are part of the
@@ -384,7 +383,7 @@ annotation…* redraws it at once.
 | `src/lib/nextMoveWeights.ts` | The Analysis Board's arrow widths from `[%eval]`, `games`, `prc` or the lines ahead; which of them a tree carries. |
 | `src/lib/engineEvals.ts` | `[%eval]` **written** (CTA-167): `formatEval`, `withEval` (placement and the override by depth), `annotatorOf` / `withAnnotator`, `recordEvaluation` (§2). |
 | `src/lib/computerAnalysis.ts` | **Computer analysis**, the pure core (CTA-172, §6): the options and their normaliser, `analysisPositionsOf`, the search rules `shouldStopEarly` / `prunedLines` / `withSearchInfo`, `moveVerdicts`, `playerReports`, the lichess accuracy. |
-| `src/lib/computerAnalysisTree.ts` | The light / medium / full trees (`computerAnalysisTree`), the opening-comment report and its `[%analysed]` scope, and the read-back: `reportFromTree`, `evalSeriesOf` (§6). |
+| `src/lib/computerAnalysisTree.ts` | The light / medium / full trees (`computerAnalysisTree`), the opening-comment report, the `AnalysedPlies` / `AnalysedSide` scope tags, and the read-back: `reportFromTree`, `evalSeriesOf` (§6). |
 | `src/lib/pgnComments.ts` | `reflowComment` — hard-wrapped comment text back into paragraphs. |
 | `src/views/explorer/AnnotationsBar.tsx` | The comment block: prose, chips, glyphs. |
 | `src/views/explorer/CommentDialog.tsx`, `NagDialog.tsx`, `PlayChanceDialog.tsx` | The three editors, opened from the move menu. |
@@ -450,6 +449,7 @@ comments, NAGs), plus:
 | Engine lines, as side lines | the best line that is not the move played | every pruned line that is not the move played | the same as medium |
 | …on | classified moves | classified moves | every analysed move |
 | `Annotator` | `<engine> [light]` | `<engine> [medium]` | `<engine> [full]` |
+| Scope tags | `AnalysedPlies`, `AnalysedSide` | the same | the same |
 
 - **`[%eval]`** through `withEval` (§2's format, placement and override by
   depth, so a deeper eval the source had stays): line 1 of each searched
@@ -468,14 +468,19 @@ comments, NAGs), plus:
   first move that does not play**. A move already in the tree is followed,
   not added twice. A line's first move carries the line's `[%eval]`.
 - **The opening comment**: the start position's `[%eval]` when it was
-  searched, then the report as a comment of its own, its scope command first:
+  searched, then the report as a comment of its own:
 
   ```
-  { [%analysed 1-80] Computer analysis (light), Stockfish 19 Lite, depth 20. White (Alice): 1 inaccuracy, 0 mistakes, 0 blunders, 1 missed mate, ACPL 12, accuracy 95%. Black (Bob): not analysed. }
+  { Computer analysis (light), Stockfish 19 Lite, depth 20. White (Alice): 1 inaccuracy, 0 mistakes, 0 blunders, 1 missed mate, ACPL 12, accuracy 95%. Black (Bob): not analysed. }
   ```
 
-  `[%analysed <fromPly>-<toPly> [w|b]]` names the mainline plies analysed
-  (inclusive) and an eval-only side.
+- **The scope**, as two header tags: `[AnalysedPlies "19-80"]`, the mainline
+  plies analysed (inclusive), and under an eval-only side `[AnalysedSide
+  "White"]` (or `"Black"`), removed again by a run over both sides. They
+  are tags and not a `[%cmd]` in the comment because the PGN standard lets
+  a reader ignore a tag it does not know, out of sight, whereas some readers
+  print an unknown comment command as text. They keep the moves outside the
+  analysis, which carry an `[%eval]` (above), out of the read-back report.
 - **Analysing an output again** replaces this writer's verdict comments and
   report rather than adding a second set.
 
@@ -483,11 +488,11 @@ comments, NAGs), plus:
 
 A saved analysis shows its report and graph **from the tree alone**, with
 no job record, and so does **a lichess export** (`[%eval]` on every move
-with no depth, its own NAGs and comments, no `[%analysed]`):
+with no depth, its own NAGs and comments, no scope tags):
 
 - **The moves in the report**: the mainline moves with an `[%eval]`, inside
-  the opening comment's `[%analysed]` scope when there is one, and every
-  such move when there is none.
+  the scope tags' plies and side when the tree has `AnalysedPlies`, and
+  every such move when it has none.
 - **The kind** comes from the NAGs (`??` over `?` over `?!`). A `??` whose
   evals show a mate given up is a missed mate.
 - **The loss** comes from the evals: the previous move's `[%eval]` (the

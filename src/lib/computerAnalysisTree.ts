@@ -23,7 +23,7 @@ import {
 } from "./computerAnalysis";
 import type { Score, Turn } from "./engineAnalysis";
 import { withAnnotator, withEval } from "./engineEvals";
-import { gameTag } from "./gameModel";
+import { gameTag, type GameHeaders } from "./gameModel";
 import {
   addLine,
   commentsAt,
@@ -60,10 +60,13 @@ import { isMoveMark } from "./moveAnnotations";
  * not: a move's loss is the eval before it less the eval after it, and the
  * eval before it is on the previous move. So the read-back needs it there,
  * whatever that move's own scope (an eval-only side, a start move). An
- * unanalysed move carries nothing else. The opening comment then says which
- * moves were analysed (`[%analysed 19-80 w]`), so the read-back leaves the
- * others out of the report. A tree without that command (a lichess export)
- * counts every mainline move with an `[%eval]`.
+ * unanalysed move carries nothing else. Two header tags then say which
+ * moves were analysed (`[AnalysedPlies "19-80"]`, and `[AnalysedSide "White"]`
+ * under an eval-only side), so the read-back leaves the others out of the
+ * report. Tags rather than a comment command, because a PGN reader that does
+ * not know a tag keeps it out of sight, where an unknown `[%cmd]` may be
+ * shown in the move's comment. A tree without them (a lichess export) counts
+ * every mainline move with an `[%eval]`.
  */
 
 /** The NAG each verdict writes: `?!`, `?`, `??`, and `??` for a missed mate. */
@@ -94,25 +97,38 @@ const verdictComment = (verdict: Pick<MoveVerdict, "kind" | "missedMateIn" | "be
 /** A comment this writer wrote as a verdict — taken out before a new run writes its own. */
 const VERDICT_COMMENT = /^(?:(?:Inaccuracy|Mistake|Blunder)\.|Missed mate in \d+!)(?: \S+ was best\.)?$/;
 
-/** The scope command: `[%analysed 19-80]`, `[%analysed 19-80 w]`. */
-const SCOPE_COMMAND = /\[%analysed\s+(\d+)-(\d+)(?:\s+([wb]))?\s*\]/;
+/** The opening comment's report this writer wrote — taken out before a new run writes its own. */
+const REPORT_COMMENT = /^Computer analysis \((?:light|medium|full)\),/;
+
+/** The header tags naming the analysed plies (`"19-80"`) and an eval-only side (`"White"`, `"Black"`). */
+export const ANALYSED_PLIES_TAG = "AnalysedPlies";
+export const ANALYSED_SIDE_TAG = "AnalysedSide";
+
+const SIDE_NAMES: Readonly<Record<Turn, string>> = { w: "White", b: "Black" };
 
 /** Which mainline moves an analysis covered: plies (inclusive), and an eval-only side. */
 export type AnalysisScope = { fromPly: number; toPly: number; side?: Turn };
 
-/** The scope a tree's opening comment names, or `undefined` for none (a lichess export). */
+/**
+ * The scope a tree's header tags name, or `undefined` for none (a lichess
+ * export) — or for an `AnalysedPlies` that does not read, which then names
+ * nothing. An `AnalysedSide` other than White or Black is both sides.
+ */
 export const analysisScopeOf = (tree: GameTree): AnalysisScope | undefined => {
-  for (const text of tree.comments ?? []) {
-    const match = SCOPE_COMMAND.exec(text);
-    if (match === null) continue;
-    const side = match[3] as Turn | undefined;
-    return { fromPly: Number(match[1]), toPly: Number(match[2]), ...(side === undefined ? {} : { side }) };
-  }
-  return undefined;
+  const match = /^\s*(\d+)\s*-\s*(\d+)\s*$/.exec(tree.headers[ANALYSED_PLIES_TAG] ?? "");
+  if (match === null) return undefined;
+  const sideTag = tree.headers[ANALYSED_SIDE_TAG]?.trim().toLowerCase();
+  const side: Turn | undefined = sideTag === "white" ? "w" : sideTag === "black" ? "b" : undefined;
+  return { fromPly: Number(match[1]), toPly: Number(match[2]), ...(side === undefined ? {} : { side }) };
 };
 
-const scopeCommand = (scope: AnalysisScope): string =>
-  `[%analysed ${scope.fromPly}-${scope.toPly}${scope.side === undefined ? "" : ` ${scope.side}`}]`;
+/** The tree with its scope tags set to `scope` — `AnalysedSide` removed for both sides. */
+const withScope = (tree: GameTree, scope: AnalysisScope): GameTree => {
+  const headers: GameHeaders = { ...tree.headers, [ANALYSED_PLIES_TAG]: `${scope.fromPly}-${scope.toPly}` };
+  if (scope.side === undefined) delete headers[ANALYSED_SIDE_TAG];
+  else headers[ANALYSED_SIDE_TAG] = SIDE_NAMES[scope.side];
+  return { ...tree, headers };
+};
 
 const inScope = (scope: AnalysisScope | undefined, ply: number, side: Turn): boolean =>
   scope === undefined ||
@@ -133,11 +149,10 @@ const reportLine = (label: string, report: PlayerReport | null): string => {
   return `${label}: ${parts.join(", ")}.`;
 };
 
-/** The opening comment's report, its scope command first. */
+/** The opening comment's report. */
 const reportComment = (
   tree: GameTree,
   report: ComputerAnalysisReport,
-  scope: AnalysisScope,
   { variant, engine, depth }: { variant: ComputerAnalysisVariant; engine: string; depth: number },
 ): string => {
   const player = (key: "White" | "Black") => {
@@ -145,7 +160,7 @@ const reportComment = (
     return name === undefined ? key : `${key} (${name})`;
   };
   return [
-    `${scopeCommand(scope)} Computer analysis (${variant}), ${engine}, depth ${depth}.`,
+    `Computer analysis (${variant}), ${engine}, depth ${depth}.`,
     reportLine(player("White"), report.w),
     reportLine(player("Black"), report.b),
   ].join(" ");
@@ -223,7 +238,8 @@ export type ComputerAnalysisTreeInput = {
  * - each verdict's NAG, which replaces the move's move-quality NAG (other
  *   NAGs stay), and its comment, after the move's own;
  * - the variant's engine lines as side lines;
- * - `Annotator` "<engine> [<variant>]", and the report in the opening comment.
+ * - `Annotator` "<engine> [<variant>]", the scope tags, and the report in the
+ *   opening comment.
  *
  * Re-analysing an output replaces this writer's verdict comments and report
  * rather than adding a second.
@@ -237,7 +253,7 @@ export const computerAnalysisTree = ({
   engine,
   options,
 }: ComputerAnalysisTreeInput): GameTree => {
-  let tree = editComments(source, null, (comments) => comments.filter((text) => !SCOPE_COMMAND.test(text)));
+  let tree = editComments(source, null, (comments) => comments.filter((text) => !REPORT_COMMENT.test(text)));
 
   positions.forEach((position, index) => {
     const best = resultAt(positions, results, index)?.lines[0];
@@ -287,8 +303,8 @@ export const computerAnalysisTree = ({
       toPly: last.ply + 1,
       ...(options.side === "both" ? {} : { side: options.side }),
     };
-    const report = reportComment(tree, reportOf(verdicts), scope, { variant, engine, depth: options.depth });
-    tree = editComments(tree, null, (comments) => [...comments, report]);
+    const report = reportComment(tree, reportOf(verdicts), { variant, engine, depth: options.depth });
+    tree = withScope(editComments(tree, null, (comments) => [...comments, report]), scope);
   }
 
   return withAnnotator(tree, `${engine} [${variant}]`);
@@ -350,8 +366,8 @@ const readBack = (tree: GameTree): ReadBackMove[] => {
 
 /**
  * **The report read back from a tree**: the counts from the mainline's NAGs
- * and the losses from its `[%eval]`s, over the moves in the opening
- * comment's scope (every evaluated move when it names none). A move with no
+ * and the losses from its `[%eval]`s, over the moves in the header
+ * tags' scope (every evaluated move when they name none). A move with no
  * eval before it counts, but not in the ACPL. For this writer's trees it is
  * `playerReports` of the run. It reads a lichess export too.
  */
