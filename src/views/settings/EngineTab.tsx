@@ -28,9 +28,9 @@ import { RightPanel } from "../main/rightPanel";
 import { useEngineServer } from "../shared/useEngineServer";
 
 /** How long Connect's spinner shows at least — a local server answers in milliseconds, too fast to see. */
-export const CONNECT_MIN_CHECKING_MS = 400;
+const CONNECT_MIN_CHECKING_MS = 400;
 /** How long Connect shows its answer (a check mark, a warning) before it is plain again. */
-export const CONNECT_FEEDBACK_MS = 2000;
+const CONNECT_FEEDBACK_MS = 2000;
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 

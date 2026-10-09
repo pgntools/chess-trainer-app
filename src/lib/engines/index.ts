@@ -1,5 +1,5 @@
 export { BUILTIN_ENGINES, STOCKFISH_19_LITE_MULTI, STOCKFISH_19_LITE_SINGLE } from "./builtin";
-export { HOSTED_ENGINE_PREFIX, hostedEngineDescriptors } from "./hosted";
+export { HOSTED_ENGINE_PREFIX } from "./hosted";
 export {
   DEFAULT_ENGINE_ID,
   describeEngines,

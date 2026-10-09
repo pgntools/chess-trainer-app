@@ -155,8 +155,17 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   reason (and selectable under a stubbed `crossOriginIsolated`), a choice
   applying at once and surviving a remount, a stored id that is gone or cannot
   run falling back without being discarded (the 2019 id too), the keyboard,
-  Hebrew, axe. `src/lib/engineChoice.test.ts` — the store.
-  `blocks/forms/EnginePicker/EnginePicker.test.tsx` — the block.
+  Hebrew, axe — and the engine server (over a fake `GET /v1/engines`): the
+  Browser / API tabs, off by default with no request made, turned on (the
+  address kept, the chip, the server's engines listed and chosen), the panel
+  (the chosen engine's UCI options; the guide's link; the line on Browser),
+  Connect answered on the button, a bad address refused and a new one kept
+  with Enter, a stored server engine opening the API tab and falling back
+  when the server is turned off, Hebrew, axe. `src/lib/engineChoice.test.ts`
+  — the store; `src/lib/engineServer.test.ts` — the address and the status.
+  `blocks/forms/EnginePicker/EnginePicker.test.tsx`,
+  `blocks/forms/EngineServerForm/EngineServerForm.test.tsx`,
+  `blocks/tables/EngineOptionsTable/EngineOptionsTable.test.tsx` — the blocks.
 - `views/settings/AppearanceTab.test.tsx` — the Appearance tab, with a second
   theme registered by a mock of the registry: the list and previews, a choice
   applying at once (a board colour probe), surviving a remount, and a bad

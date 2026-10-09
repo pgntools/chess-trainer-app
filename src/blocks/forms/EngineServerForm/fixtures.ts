@@ -9,7 +9,7 @@ import type { EngineServerFormStatus } from "./EngineServerForm";
 export const EXAMPLE_URL = "http://127.0.0.1:8800";
 
 /** A fixed moment, so the gallery and the test read the same time. */
-export const CHECKED_AT = new Date(2026, 9, 9, 21, 15, 3).getTime();
+const CHECKED_AT = new Date(2026, 9, 9, 21, 15, 3).getTime();
 
 export const CONNECTING: EngineServerFormStatus = { state: "connecting", url: EXAMPLE_URL };
 
