@@ -391,11 +391,12 @@ describe("collapseLeafCategories folds a redundant category folder", () => {
     });
   });
 
-  it("keeps every Blog folder a folder — Guides with its one guide among them", () => {
+  it("keeps every Blog folder a folder — Guides among them", () => {
+    // A folder of one stays one too (the test above); Guides is not always that small, drafts counted.
     const blog = navTree().find((node) => node.id === "blog");
     const guides = blog?.children?.find((node) => node.id === "blog/guides");
     expect(guides).toMatchObject({ kind: "folder", keepFolder: true });
-    expect(guides?.children?.map((node) => node.to)).toEqual(["/blog/guides/local-engine"]);
+    expect(guides?.children?.map((node) => node.to)).toContain("/blog/guides/local-engine");
   });
 });
 

@@ -1,0 +1,212 @@
+---
+title: Computer analysis of a game
+summary: "Stockfish over a whole game in the background: every move judged, the mistakes marked, the better moves shown, and each player's accuracy — what the job does, its options, and the three annotated PGNs it writes."
+date: 2026-10-10
+tags: [analysis, engine]
+draft: true
+---
+
+import formShot from "./computer-analysis-form.png"
+import progressShot from "./computer-analysis-progress.png"
+import jobsShot from "./computer-analysis-jobs.png"
+import reportShot from "./computer-analysis-report.png"
+import movesShot from "./computer-analysis-moves.png"
+import light from "./computer-analysis-light.pgn?raw"
+import full from "./computer-analysis-full.pgn?raw"
+
+**Computer analysis** runs the engine over every move of a game and writes down what it finds, the way lichess's *Request a computer analysis* does: an evaluation after each move, the inaccuracies, mistakes and blunders marked, the move that was better beside each one, and a summary per player with their **accuracy**.
+
+It runs as a **background job**. You start it from the Analysis Board, then keep using the app — another game, another screen — while it works. When it is done, the result is one or more new **saved analyses**: ordinary PGNs you open, study, edit and export like any other.
+
+## In short
+
+1. Open a game on the [Analysis Board](/tools/analysis).
+2. On its **Computer analysis** tab, check the options and tick the outputs you want: **light**, **medium** and/or **full**.
+3. Press **Start**. Watch the progress in the header, or on the **Jobs** screen.
+4. When it finishes, open the new saved analysis. The report and the evaluation graph are on the board.
+
+## Starting an analysis
+
+Any game the Analysis Board holds can be analysed: one you saved, one from the Library, a game you played against the engine, or a PGN you just pasted. The job analyses the game's **main line**. Its side lines and comments are kept, but not judged.
+
+<ArticleImage src={formShot} alt="The Analysis Board's Computer analysis tab: the engine, depth, time per move, lines, the moves to analyse, the thresholds, the three outputs and the Start button" caption="The Computer analysis tab on the Analysis Board." width="90%" />
+
+**Start** stays disabled until at least one output is ticked, and on a board with no moves.
+
+## The job
+
+| | |
+| --- | --- |
+| **It runs in the background** | The job belongs to the app, not to the board. Leave the Analysis Board, open the Library, play a game — it keeps going. |
+| **Progress** | The app's header shows the running job: position *N* of *M* and the move being searched. The **Jobs** screen lists every job. |
+| **One at a time** | An engine search takes all the CPU it is given, so jobs run one after another. A job you start while another is running waits in the queue. |
+| **Cancel** | A running or queued job can be cancelled from the Jobs screen. |
+| **Saved as it goes** | After every position, the job saves what it has found. |
+| **After a reload** | A job that was running when the page closed shows as **Interrupted**, with a **Resume** button. Resume continues from the next position it had not searched — the finished ones are not searched again. It never resumes by itself: an engine run is heavy, so it waits for you. |
+
+<ArticleImage src={progressShot} alt="The app's header showing a computer analysis in progress: position 34 of 81, searching 17... Nd4" caption="A running job, seen from another screen." width="90%" />
+
+<ArticleImage src={jobsShot} alt="The Jobs screen listing three jobs: one running with its progress, one queued, and one interrupted with a Resume button" caption="The Jobs screen." width="90%" />
+
+### Which engine
+
+The job uses the engine chosen in [Settings → Engine](/settings/engine): one of the builds that run in the browser, or — much faster — a native Stockfish on your own computer through the engine server (see [Run a chess engine on your own computer](/blog/guides/local-engine)). It starts its own copy of the engine, separate from any board's.
+
+**Threads** and **hash** are held to what that engine accepts. The browser's single-thread build always runs on one thread, and the form says so.
+
+### How long it takes
+
+Roughly the number of positions times the time each one takes. In the browser's single-thread build on a fast desktop, depth 20 takes a few seconds a position, so a 40-move game — about 80 positions — takes several minutes. More lines, more depth or a slower machine take longer; the engine server with several threads is many times faster.
+
+## The options
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| **Engine** | your choice in Settings | Which engine searches. |
+| **Threads** | 1 | CPU threads for the engine, up to what it accepts. |
+| **Hash** | 64 MB | The engine's memory for positions it has seen. |
+| **Depth** | 20 | How many plies deep each position is searched. Deeper is more reliable and slower. |
+| **Time per move** | 30 s | The most time one position may take. The search stops at the depth or the time, whichever comes first. 0 means no time limit. |
+| **Lines** | 1 | How many candidate moves the engine works out in each position (MultiPV), 1–10. More lines mean more alternatives in the medium and full outputs, and a slower search. |
+| **Early stop from depth** | the depth | Once the search reaches this depth, it may stop as soon as one of the lines is clearly worse than the best (below). At most the depth; at the depth itself, it never stops early. |
+| **Variation range** | 100 cp | How far below the best line another line may be and still count as a real alternative, in centipawns (100 cp = one pawn). |
+| **Analyse** | both sides | Only White's moves, only Black's, or both. |
+| **From move** | 1, White | The first move analysed: its number and colour. |
+| **To move** | the end | The last move number analysed, both colours. |
+| **Inaccuracy / Mistake / Blunder** | 50 / 100 / 300 cp | How much a move must give up to be marked as each. |
+| **Outputs** | light | Which annotated PGNs to write: light, medium and/or full. One engine run makes all of them. |
+
+The moves outside *Analyse*, *From move* and *To move* stay in the game, unmarked, and are left out of the report.
+
+## How a move is judged
+
+### What is searched
+
+For each move, the engine looks at two positions: the one **before** the move, to find the best move there, and the one **after** it, to see what the move played actually left. The position after one move is the position before the next, so each position is searched once — the whole range of the game, from the position before the first analysed move to the position after the last.
+
+A position whose own move is not analysed (Black's, when you analyse White only) is searched for one line only: only its evaluation is needed, as the result of the move before it. A checkmate or stalemate on the board is not searched at all.
+
+Evaluations the game **already has** — from an earlier analysis, or a lichess export — are used rather than recalculated when they are at least as deep as the depth you asked for.
+
+### The search, and the lines kept
+
+All scores are in **centipawns**: hundredths of a pawn, from White's point of view (+1.50 is White a pawn and a half better). A forced mate counts as 10,000 less the number of moves to it, so a mate in 2 beats a mate in 5, and both beat any material advantage.
+
+With more than one line, two rules keep the job fast and the output useful:
+
+- **The early stop.** Once the search reaches the *early stop* depth, it stops as soon as any line falls more than the *variation range* below the best line — from the point of view of the side to move. The best move is then clear enough.
+- **The cut.** The lines kept are the best one and every line after it **up to the first** that is more than the *variation range* below it. Weaker lines are dropped.
+
+### The loss
+
+A move's **loss** is how much worse the position got for the player who moved:
+
+> loss = the best line's evaluation before the move − the evaluation after the move
+
+measured for the player who moved, with each evaluation held between −10 and +10 pawns first (a mate counts as ±10). A move that keeps the position as good as the best line, or better, loses nothing. Even the engine's own choice can show a small loss: the position after it is searched afresh, and a search that sees one move further sometimes sees a little less.
+
+| Loss | The move is |
+| --- | --- |
+| more than 300 cp | a **blunder** (??) |
+| more than 100 cp | a **mistake** (?) |
+| more than 50 cp | an **inaccuracy** (?!) |
+| 50 cp or less | fine — no mark |
+
+Those are the default thresholds; the form changes them.
+
+### A missed mate
+
+When the player had a **forced mate** and the move gave it up — the evaluation after it is no longer a mate for them, it is a mate for the opponent, or it is a **longer** mate — the move is a **missed mate**. It is marked ?? and says how short the mate was: *Missed mate in 2! Qxf7# was best.* A missed mate has no loss in centipawns, so it does not change the average below. A move that **delivers** mate is never a missed mate.
+
+### The better move
+
+Beside each marked move, the analysis names **the best move that was not played**: the first kept line whose first move differs from the move on the board — *Mistake. Nf3 was best.*
+
+## The report
+
+For each player, over the moves analysed for them:
+
+| | |
+| --- | --- |
+| **Inaccuracies, mistakes, blunders, missed mates** | How many of each. |
+| **ACPL** | Average centipawn loss: the losses added up and divided by the number of moves, rounded. Lower is better; strong players' games often come in under 20. |
+| **Accuracy** | Lichess's formula: 103.1668 × e^(−0.004354 × ACPL) − 3.1669, held between 0 and 100%. |
+
+How ACPL turns into accuracy:
+
+| ACPL | 0 | 10 | 25 | 50 | 100 | 200 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Accuracy | 100% | 96% | 89% | 80% | 64% | 40% |
+
+A player with no analysed move — Black, when you analyse White only — has no report.
+
+<ArticleImage src={reportShot} alt="A finished analysis on the Analysis Board: each player's inaccuracies, mistakes, blunders, ACPL and accuracy, and a graph of the evaluation move by move with the mistakes marked" caption="The report and the evaluation graph, on the board." width="90%" />
+
+### The evaluation graph
+
+One point per evaluated move: White's advantage above the middle, Black's below, held at ±10 pawns, the marked moves picked out. **Click a point** to take the board to that move. The same report and graph are on the job's entry on the Jobs screen.
+
+## The three outputs
+
+All three come from the **same engine run**, so ticking all of them costs no more time than one. Each is saved as its own analysis, in the same folder as the game it came from (*Unfiled* if it had none), named *&lt;the game's name&gt; — computer analysis (light)* and so on.
+
+| | light | medium | full |
+| --- | --- | --- | --- |
+| Evaluation on every move | yes | yes | yes |
+| Marks and comments on the mistakes | yes | yes | yes |
+| Engine lines added as side lines | the best other move | every kept line | every kept line |
+| …on which moves | the marked ones | the marked ones | **every** analysed move |
+| Size | small | medium | large |
+
+- **Light** is for reading: the game, its mistakes, and for each one the move that was better.
+- **Medium** shows every good alternative at the moments that mattered.
+- **Full** is for study: the engine's lines at every move. With several lines it grows quickly.
+
+Every output keeps everything the game already had — your own side lines, comments and annotations. The engine's lines are added beside them, and a line the game already had is followed rather than added twice.
+
+### The light output of a short game
+
+Below is the light output of a short, bad game. The evaluations are made up for the example, not an actual Stockfish run, but everything else is exactly what the job writes. Step through it: 3. Qh5 is an inaccuracy, 3... Nf6 a blunder, 4. Qf3 misses a mate in one, and 5... d5 is a mistake. Each has the better move as a side line.
+
+<InlinePgnGame2colH pgn={light} start="3" />
+
+The full output of the same run has the engine's other moves at every move:
+
+<InlinePgnGame2colH pgn={full} start="1" />
+
+<ArticleImage src={movesShot} alt="The Analysis Board's move list for an analysed game: ?! ? and ?? glyphs after the marked moves, their comments, and the engine's lines as side lines" caption="An analysed game in the Analysis Board's move list." width="90%" />
+
+## What is written into the PGN
+
+An analysis is a PGN like any other — it opens in lichess, ChessBase or any other chess program — and everything the job found is in standard places.
+
+| What | Where | Example |
+| --- | --- | --- |
+| **Evaluation** | `[%eval]` in the move's comment: pawns from White's side, two decimals, then the depth. A mate is `#N`, negative when Black mates. | `{ [%eval 0.35,20] }`, `{ [%eval #-2,20] }` |
+| **The mark** | A NAG: `$6` ?!, `$2` ?, `$4` ?? (a missed mate too). It replaces any ! or ? the move already had; other annotations stay. | `5... d5 $2` |
+| **The comment** | A comment of its own after the move's evaluation. | `{ Mistake. d6 was best. }` |
+| **Engine lines** | Side lines, their first move with the line's evaluation. A line the engine sent that stops making sense is cut where it does. | `(5... d6 { [%eval 0.45,20] } 6. c3)` |
+| **The engine** | The `Annotator` tag, with the output's kind. | `[Annotator "Stockfish 19 Lite [light]"]` |
+| **The report** | The comment before the first move, after the start position's evaluation. | `{ Computer analysis (light), Stockfish 19 Lite, depth 20. White: 1 inaccuracy, … }` |
+| **Which moves were analysed** | Two tags: the plies (half-moves, counted from the start) analysed, and the side when you analysed only one. | `[AnalysedPlies "1-80"]`, `[AnalysedSide "White"]` |
+
+A move outside the analysis — Black's, when you analysed only White — still carries its **evaluation**, because the next move is measured from it. It gets nothing else: no mark, comment or line. The two tags tell the app which moves count in the report.
+
+Analysing an analysis again replaces the marks, comments, report and tags the previous run wrote, rather than adding a second set. An evaluation the game already had at a greater depth is kept.
+
+## Reports from any analysed game
+
+The report and the graph are read **from the PGN itself**, not from the job — so they show for any analysed game the app holds, long after the job is gone, and for games analysed elsewhere:
+
+- **A lichess export** with evaluations (lichess's *Download annotated PGN*): its `[%eval]`s and its ?! ? ?? marks give the same report and graph. Without the two tags, every move with an evaluation counts. The first move has no evaluation before it in a lichess export, so it counts as a move but not in the ACPL.
+- **An analysis you edited**: the report follows what is in the game — remove a mark and that move is no longer counted as a mistake.
+
+The marks come from the NAGs and the losses from the evaluations; a ?? whose evaluations show a mate given up is counted as a missed mate.
+
+## Good to know
+
+- **Depth matters more than lines** for the marks: every mark compares two evaluations, and a shallow search can call a sound move a mistake. Keep depth 18 or more for a game you care about.
+- **More lines are for the medium and full outputs.** With one line, medium is the same as light.
+- **The early stop** only helps with several lines. Set it a few plies below the depth to save time on positions where the best move is obvious.
+- **Analyse one side** to study your own moves only. The other side's positions are searched for one line, which saves time with several lines.
+- **Big games, big output**: full with five lines on an 80-move game adds hundreds of side-line moves. Light is the one to share.
