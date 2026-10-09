@@ -53,7 +53,11 @@ yarn check:pages                                         holds dist/ to it (CI, 
   `shippedCollections`. Not a reader's record, not a single Library game
   (decided): those, and any unknown path, reach the app through the host's
   fallback. A new static route is pre-rendered with no edit; a new param route
-  is not, unless listed there.
+  is not, unless listed there. **`/jobs`** (CTA-173) is such a static route:
+  pre-rendered as its reading state (the jobs are the reader's, read in an
+  effect), `?job=` and all left to the app; its share image is the Analysis
+  section's (`src/assets/share/sections.ts`). Nothing of the job runner runs
+  under Node — the shell starts it from an effect.
 - **How**: react-router's static handler under the base + language prefix,
   the same tree as `main.tsx`'s, and React 19's `prerender` with an unbounded
   `progressiveChunkSize` — it waits for every lazy article chunk and writes

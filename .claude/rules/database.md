@@ -20,12 +20,14 @@ paths:
   - "src/views/repertoires/repertoireTestKit.tsx"
   - "src/views/tools/analysis/saved/useSavedAnalyses.ts"
   - "src/views/tools/analysis/saved/useAnalysisFolders.ts"
+  - "src/views/jobs/useJobs.ts"
 ---
 
 # The database — where the reader's data lives
 
 Everything the reader makes in this app — games against the engine,
-analyses, repertoires, their folders, uploaded Library collections — is kept
+analyses, repertoires, their folders, uploaded Library collections, the
+background jobs it runs — is kept
 in the browser's **IndexedDB**, written through a small layer of our own. This
 file is the whole reference for that layer: every database and who uses it,
 how a store behaves, how screens wait for it, the rules that keep it
@@ -56,10 +58,11 @@ wrapper's main features would go unused. §10 says when that changes.
 | `src/lib/savedRepertoireDb.ts` | The `chessapp.repertoires` database (object stores `repertoires`, `folders`). |
 | `src/lib/playedGameStore.ts` | The `chessapp.engine` database (object store `games`) and its store, in one file (one store, one database). |
 | `src/lib/libraryDb.ts` | The `chessapp.library` database (object stores `collections`, `indexes`, `games`, `folders`), version 2. |
+| `src/lib/jobStore.ts` | The `chessapp.jobs` database (object store `jobs`) and its store, in one file (CTA-173) — the background jobs, their checkpoints ([`jobs.md`](./jobs.md)). |
 | `src/lib/libraryCollectionStore.ts` | The Library's hand-written collection store (§1.4) — not an `idbRecordStore`, because it reads a collection's rows and games lazily. |
 | `src/lib/savedAnalysisStore.ts`, `savedAnalysisFolderStore.ts`, `savedRepertoireStore.ts`, `savedRepertoireFolderStore.ts`, `libraryFolderStore.ts` | The other record stores: each one's caps, idempotency comparison and operations, over the factory. |
-| `src/lib/playedGames.ts`, `savedAnalyses.ts`, `savedAnalysisFolders.ts`, `savedRepertoires.ts`, `savedRepertoireFolders.ts`, `libraryCollections.ts` | **The records** — what each row is, and its **normaliser** (`playedGameFrom`, `savedAnalysisFrom`, `savedRepertoireFrom`, `analysisFolderFrom`, `repertoireFolderFrom`): the schema, read back leniently. Pure. |
-| `src/views/engine/games/usePlayedGames.ts`, `views/repertoires/useSavedRepertoires.ts` / `useRepertoireFolders.ts`, `views/tools/analysis/saved/useSavedAnalyses.ts` / `useAnalysisFolders.ts` | The `useSyncExternalStore` bindings — `undefined` until the store's first read lands. |
+| `src/lib/playedGames.ts`, `savedAnalyses.ts`, `savedAnalysisFolders.ts`, `savedRepertoires.ts`, `savedRepertoireFolders.ts`, `libraryCollections.ts`, `jobs.ts` | **The records** — what each row is, and its **normaliser** (`playedGameFrom`, `savedAnalysisFrom`, `savedRepertoireFrom`, `analysisFolderFrom`, `repertoireFolderFrom`, `jobFrom`): the schema, read back leniently. Pure. |
+| `src/views/engine/games/usePlayedGames.ts`, `views/repertoires/useSavedRepertoires.ts` / `useRepertoireFolders.ts`, `views/tools/analysis/saved/useSavedAnalyses.ts` / `useAnalysisFolders.ts`, `views/jobs/useJobs.ts` | The `useSyncExternalStore` bindings — `undefined` until the store's first read lands. |
 | `src/views/shared/useStoreRead.ts` | "Can this route mount yet?" — a URL naming a record waits for its store's first read. |
 | `src/views/engine/play/PlayedGameRead.tsx` | The play routes' wait (`?saved=`), over `useStoreRead`. |
 | `src/lib/gameReference.ts` | `isReferenceRead` / `loadReferencedGames` — the Analysis Board's wait for a `?game=` whose store has not been read. |
@@ -67,7 +70,7 @@ wrapper's main features would go unused. §10 says when that changes.
 
 ---
 
-## 1. The map — four modules, four databases
+## 1. The map — five modules, five databases
 
 | Module | Database | Object store | Store module | Row | Order | Cap |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -78,6 +81,7 @@ wrapper's main features would go unused. §10 says when that changes.
 | | | `folders` | `savedRepertoireFolderStore.ts` | `RepertoireFolder` | oldest first | 100 |
 | **Library** | `chessapp.library` | `collections`, `indexes`, `games` | `libraryCollectionStore.ts` | a summary / index rows / PGN chunks per collection | newest first | 30M characters a collection |
 | | | `folders` | `libraryFolderStore.ts` | `GameFolder` | oldest first | 100 |
+| **Jobs** (CTA-173) | `chessapp.jobs` | `jobs` | `jobStore.ts` | `Job` | newest first | 100 (the oldest finished dropped; refused when every one is unfinished) |
 
 Every database is at **version 1** but the Library's, at **version 2** (CTA-88
 added its `folders` store; the upgrade only created it). Every object store is
@@ -280,8 +284,10 @@ course can be most of a megabyte each) are far below that.
 - **Teardown** (`setup.ts`, after every test): unmount, clear
   `localStorage`, then — for every record store — wait for its writes to land
   (`settled…`, twice: a folder delete queues its records' unfiling behind
-  it), `reset…`, and delete the three databases (`deleteAnalysisDb`,
-  `deleteEngineDb`, `deleteRepertoireDb`). The Library's folder store is
+  it), `reset…`, and delete the four databases (`deleteAnalysisDb`,
+  `deleteEngineDb`, `deleteRepertoireDb`, `deleteJobsDb`) — the page's job
+  runner (`stopJobRunner`, CTA-173) stopped first, since it writes the jobs
+  and the analyses. The Library's folder store is
   settled and reset there with the others; its database is deleted by the
   Library's own tests (`resetLibraryCollectionStore`, in their `beforeEach`).
   Without the wait, a write a screen left in flight lands in the next test's
