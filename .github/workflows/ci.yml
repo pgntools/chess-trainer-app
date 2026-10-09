@@ -15,30 +15,59 @@ name: CI
 # Coverage is measured on a push to `development` (and nightly), not on a pull
 # request: there the tests run once, in one job, with `--coverage`.
 #
-# Skipping the gate (CTA-129), two ways:
+# Skipping the gate (CTA-129), three ways:
 #
 #   paths-ignore  — a change that touches nothing but documentation (docs/,
-#                   any .md, .claude/) skips this gate: the run is skipped only
+#                   any .md, .claude/) or a Blog article's images
+#                   (src/views/blog/articles/**/*.png, *.jpg, *.jpeg,
+#                   *.webp, *.gif — CTA-169: an image cannot fail the build,
+#                   lint or tests) skips this gate: the run is skipped only
 #                   when EVERY changed file matches, so a PR that also touches
-#                   code still runs it. Blog articles (.mdx under src/) are
-#                   shipped app content and are NOT in the list.
+#                   code still runs it. Blog articles (.mdx under src/) and
+#                   their tournament sources (.pgn) are shipped app content —
+#                   a bad frontmatter or a malformed PGN fails yarn build /
+#                   check:blog-build / check:pages — and are NOT in the list.
 #   [skip ci]     — GitHub's native marker: `[skip ci]`, `[ci skip]`, `[no ci]`
 #                   in the head commit message or the PR title skips EVERY
 #                   push/pull_request workflow of the repo — both deploys
 #                   included — so it is for a minor touch only, and never for
 #                   a PR whose merge carries app changes.
+#   skip-ci label — the `skip-ci` pull request label skips THIS workflow only,
+#                   without touching the deploys (unlike the native marker
+#                   above): every job below carries the check in its `if:`, so
+#                   a labelled PR skips build, lint, the tests and coverage.
+#                   The label applies to runs triggered after it is added —
+#                   a new push / synchronize event — and does not cancel a
+#                   run already in progress. The merge push to `development`
+#                   is a push event, which carries no labels: the gate still
+#                   runs on it.
+#                   Create it once per repo (or restore it) with:
+#                     gh label create skip-ci --color '#5319e7' \
+#                       --description "Skips the CI gate (build, lint, tests) for this PR only; the deploys still run."
 on:
   pull_request:
     paths-ignore:
       - 'docs/**'
       - '**.md'
       - '.claude/**'
+      # An article image cannot fail the gate (CTA-169); .mdx and .pgn stay
+      # in it — see the header's paths-ignore paragraph.
+      - 'src/views/blog/articles/**/*.png'
+      - 'src/views/blog/articles/**/*.jpg'
+      - 'src/views/blog/articles/**/*.jpeg'
+      - 'src/views/blog/articles/**/*.webp'
+      - 'src/views/blog/articles/**/*.gif'
   push:
     branches: [development]
     paths-ignore:
       - 'docs/**'
       - '**.md'
       - '.claude/**'
+      - 'src/views/blog/articles/**/*.png'
+      - 'src/views/blog/articles/**/*.jpg'
+      - 'src/views/blog/articles/**/*.jpeg'
+      - 'src/views/blog/articles/**/*.webp'
+      - 'src/views/blog/articles/**/*.gif'
   workflow_dispatch:
 
 # A new push to a pull request's branch makes its running checks moot.
@@ -46,8 +75,15 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Every job below also carries the `skip-ci` label check (CTA-169), combined
+# with whatever event condition the job already had: on a push or
+# workflow_dispatch there is no pull request, `github.event.pull_request` is
+# null, and `contains(null, 'skip-ci')` is false — the check passes and the
+# event condition alone decides, so only a pull request carrying the label
+# skips.
 jobs:
   build:
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-ci') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -71,6 +107,7 @@ jobs:
       - run: yarn check:pages
 
   lint:
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-ci') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -89,7 +126,7 @@ jobs:
       - run: yarn test:groups
 
   unit:
-    if: github.event_name != 'push'
+    if: ${{ github.event_name != 'push' && !contains(github.event.pull_request.labels.*.name, 'skip-ci') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -101,7 +138,7 @@ jobs:
       - run: yarn test:unit
 
   ui:
-    if: github.event_name != 'push'
+    if: ${{ github.event_name != 'push' && !contains(github.event.pull_request.labels.*.name, 'skip-ci') }}
     name: ui (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     strategy:
@@ -125,7 +162,7 @@ jobs:
   # are reported without failing CI. Add thresholds there if the team wants it
   # enforced.
   coverage:
-    if: github.event_name == 'push'
+    if: ${{ github.event_name == 'push' && !contains(github.event.pull_request.labels.*.name, 'skip-ci') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
