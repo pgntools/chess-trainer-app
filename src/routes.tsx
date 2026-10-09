@@ -22,6 +22,7 @@ import { default as RepertoireBoardScreen  } from './views/repertoires/Repertoir
 import { default as RepertoireSettingsScreen  } from './views/repertoires/RepertoireSettingsScreenMain'
 import { default as RepertoireGameScreen  } from './views/repertoires/RepertoireGameMain'
 import { default as SettingsScreen  } from './views/settings/SettingsMain'
+import { default as JobsScreen  } from './views/jobs/JobsMain'
 import { default as BlogScreen  } from './views/blog/BlogMain'
 import { CookiesMain as CookiesScreen, PrivacyMain as PrivacyScreen } from './views/legal/LegalMain'
 import { blogPageMeta } from './views/blog/blogPageMeta'
@@ -258,6 +259,14 @@ export const appRoutes: RouteObject[] = [
           path: "/cookies",
           element: <CookiesScreen />,
           handle: { ...ARTICLE_ROUTE, title: "pages.cookies" }
+        },
+        // The background jobs (CTA-173): a game's computer analysis, run
+        // app-wide by `lib/jobRunner.ts` (mounted by the shell, not here), with
+        // its progress, report and outputs. `?job=<id>` opens one.
+        {
+          path: "/jobs",
+          element: <JobsScreen />,
+          handle: { title: "pages.jobs" }
         },
         // Settings (CTA-86): one tab per segment — Export today. `/settings`
         // and an unknown tab land on the first.

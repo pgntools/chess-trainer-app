@@ -43,10 +43,10 @@ describe("StorageTable", () => {
 
   it("closes each database's section with a bolder line, never the last", () => {
     mount();
-    for (const id of ["playedGames", "analyses", "repertoires"]) {
+    for (const id of ["playedGames", "analyses", "repertoires", "collectionGames"]) {
       expect(screen.getByTestId(`storage-${id}-records`)).toHaveStyle({ borderBottomWidth: "2px" });
     }
-    expect(screen.getByTestId("storage-collectionGames-records")).not.toHaveStyle({ borderBottomWidth: "2px" });
+    expect(screen.getByTestId("storage-jobs-records")).not.toHaveStyle({ borderBottomWidth: "2px" });
   });
 
   it("says … for every count still being read", () => {
