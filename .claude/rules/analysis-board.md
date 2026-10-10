@@ -243,12 +243,19 @@ analysis ([`pgn-annotations.md`](./pgn-annotations.md) §6).
 `ComputerAnalysisTab.tsx`, three parts, top to bottom:
 
 - **This game's job**, while there is one: the job this board sent (its id
-  kept by the board, so it outlives the tab), else the newest **unfinished**
-  job sent from the same saved analysis (`source.analysisId`) — a board
-  reopened after Start still shows it. Its status in words, its progress as a
-  **status** (`ProgressLine`'s `announce`: "12 of 80 positions · 7. Nf3"), why
-  it failed, a link to each Saved analysis it made once done, and **Open in
-  Jobs** (`/jobs?job=<id>`). Read through `useJobs()`.
+  kept by the board, so it outlives the tab), else of the jobs sent from the
+  same saved analysis (`source.analysisId`) the newest **unfinished** one,
+  else the newest **done** one — a board reopened later still leads to its
+  results. Its status in words, its progress as a **status** (`ProgressLine`'s
+  `announce`: "12 of 80 positions · 7. Nf3"), a line saying what is going on,
+  why it failed, once done a contained **Open the <variant> analysis** button
+  per output, and **Open in Jobs** (`/jobs?job=<id>`). Read through
+  `useJobs()`. **While it is queued or running it takes the form's place**
+  (lichess's request button turning into its progress), so the same game is
+  not sent twice; **Start moves the focus** onto its heading (`tabIndex -1`),
+  which scrolls it into view — the signal is set before the write, because a
+  saved game's job reaches the store, and mounts its section, before
+  `enqueueComputerAnalysis` settles.
 - **The report and the eval graph**, whenever the tree on screen carries
   `[%eval]`s — an output of a computer analysis, a lichess export, the
   evaluations the Engine tab wrote (CTA-167): `evalSeriesOf` / `reportFromTree`
@@ -274,7 +281,8 @@ analysis ([`pgn-annotations.md`](./pgn-annotations.md) §6).
   PGN as the board holds it, unsaved changes and side lines too (every output
   keeps them). It is off with no variant ticked, on a board with no moves, or
   with no move in the chosen range (`analysisPositionsOf` empty), each said
-  under it; a refusal (`storage`, `too-many`) is said there too.
+  under it; a refusal (`storage`, `too-many`) is said there too. Not shown
+  while this game's job is queued or running.
 
 ### 1.2 The workspace — the list's tree beside the board (CTA-145)
 

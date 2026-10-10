@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import { Link as RouterLink } from "react-router";
@@ -22,7 +23,7 @@ import { deviceEngineLimits } from "../../../lib/engineSettings";
 import type { EngineOption } from "../../../lib/engineTypes";
 import { gameTag } from "../../../lib/gameModel";
 import { plyLabel, type GameTree } from "../../../lib/gameTree";
-import { isFinishedJob, jobMoveLabel, jobProgress, type Job, type JobSource } from "../../../lib/jobs";
+import { isActiveJob, isFinishedJob, jobMoveLabel, jobProgress, type Job, type JobSource } from "../../../lib/jobs";
 import { enqueueComputerAnalysis } from "../../../lib/jobStore";
 import { SAVED_ANALYSIS_PLAYER } from "../../../lib/savedAnalyses";
 import { useJobs } from "../../jobs/useJobs";
@@ -48,12 +49,18 @@ type ComputerAnalysisTabProps = {
   onSent: (jobId: string) => void;
 };
 
-/** The job this game's tab follows: the one it sent, else the newest unfinished one sent from the same saved analysis. */
+/**
+ * The job this game's tab follows: the one it sent; else, of the jobs sent
+ * from the same saved analysis, the newest unfinished one, else the newest
+ * done one — so a board reopened later still leads to its results.
+ */
 const jobOfGame = (jobs: readonly Job[] | undefined, sentJobId: string | null, recordId: string | null): Job | undefined => {
   if (jobs === undefined) return undefined;
   const sent = sentJobId === null ? undefined : jobs.find((job) => job.id === sentJobId);
-  if (sent !== undefined) return sent;
-  return recordId === null ? undefined : jobs.find((job) => job.source.analysisId === recordId && !isFinishedJob(job));
+  if (sent !== undefined || recordId === null) return sent;
+  // The store keeps the newest first.
+  const ofRecord = jobs.filter((job) => job.source.analysisId === recordId);
+  return ofRecord.find((job) => !isFinishedJob(job)) ?? ofRecord.find((job) => job.status === "done");
 };
 
 /** A player's name from the tags — none for the placeholders a board's own analysis is written with (`Analysis`, `?`). */
@@ -72,18 +79,23 @@ const nextOfKind = (points: readonly EvalPoint[], side: Turn, kind: MoveVerdictK
  * **The Analysis Board's Computer analysis tab** (CTA-174, CTA-171) — three
  * parts, top to bottom:
  *
- * 1. **This game's job**, while there is one — the one this board sent, or an
- *    unfinished one sent from the same saved analysis: its status, its
- *    progress as a status ("12 of 80 positions · 7. Nf3"), why it failed, the
- *    Saved analyses it made, and a link to it on the Jobs screen. The job
- *    itself is the shell's runner's (`.claude/rules/jobs.md`).
+ * 1. **This game's job**, while there is one — the one this board sent, else
+ *    the newest unfinished, else the newest done one sent from the same saved
+ *    analysis: its status, its
+ *    progress as a status ("12 of 80 positions · 7. Nf3"), why it failed, a
+ *    button to each Saved analysis it made once done, and a link to it on the
+ *    Jobs screen. The job itself is the shell's runner's
+ *    (`.claude/rules/jobs.md`). **While it is queued or running it takes the
+ *    form's place** (lichess's request button turning into its progress), so
+ *    the same game is not sent twice; Start moves the focus onto it.
  * 2. **The report and the eval graph**, when the tree carries `[%eval]`s — an
  *    output of a computer analysis, a lichess export, the engine's own written
  *    evaluations (`reportFromTree`, `evalSeriesOf`). The graph and the
  *    report's counts move the board (`onGoToNode`).
  * 3. **The form** (`ComputerAnalysisForm`), seeded from the Engine tab and the
  *    reader's engine; Start queues the mainline (`enqueueComputerAnalysis`) —
- *    off with no variant ticked, no moves, or none in the chosen range.
+ *    off with no variant ticked, no moves, or none in the chosen range. Not
+ *    shown while this game's job is queued or running.
  */
 function ComputerAnalysisTab({
   tree,
@@ -102,6 +114,9 @@ function ComputerAnalysisTab({
   const { t } = useTranslation();
   const jobs = useJobs();
   const job = jobOfGame(jobs, sentJobId, recordId);
+  const active = job !== undefined && isActiveJob(job);
+  // Set by a Start that queued a job: the job's section takes the focus when it mounts (the form, and Start with it, goes).
+  const focusJobRef = useRef(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<ComputerAnalysisStartProblem | undefined>();
 
@@ -116,10 +131,14 @@ function ComputerAnalysisTab({
   const start = async () => {
     setBusy(true);
     setProblem(undefined);
+    // Before the write: a saved game's job reaches the store, and mounts its section, before the write's promise settles.
+    focusJobRef.current = true;
     const result = await enqueueComputerAnalysis({ source: source(), options: { ...options, engine: engine.id } });
     setBusy(false);
-    if (result === "invalid" || result === "storage" || result === "too-many") setProblem(result);
-    else onSent(result);
+    if (result === "invalid" || result === "storage" || result === "too-many") {
+      focusJobRef.current = false;
+      setProblem(result);
+    } else onSent(result);
   };
 
   const moveLabel = (point: EvalPoint) => {
@@ -129,7 +148,7 @@ function ComputerAnalysisTab({
 
   return (
     <Box data-testid="analysis-computer" sx={{ display: "grid", gap: 2.5 }}>
-      {job !== undefined && <GameJob job={job} />}
+      {job !== undefined && <GameJob key={job.id} job={job} takeFocusRef={focusJobRef} />}
 
       {read !== undefined && (
         <Box component="section" aria-labelledby="analysis-computer-report-title" sx={{ display: "grid", gap: 1.5 }}>
@@ -156,46 +175,65 @@ function ComputerAnalysisTab({
         </Box>
       )}
 
-      <Box component="section" aria-labelledby="analysis-computer-form-title" sx={{ display: "grid", gap: 1.5 }}>
-        <Box>
-          <Typography id="analysis-computer-form-title" component="h3" variant="subtitle2" sx={{ fontWeight: 700 }}>
-            {t("computerAnalysis.board.formTitle")}
-          </Typography>
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            {t("computerAnalysis.board.formIntro")}
-          </Typography>
+      {!active && (
+        <Box component="section" aria-labelledby="analysis-computer-form-title" sx={{ display: "grid", gap: 1.5 }}>
+          <Box>
+            <Typography id="analysis-computer-form-title" component="h3" variant="subtitle2" sx={{ fontWeight: 700 }}>
+              {t("computerAnalysis.board.formTitle")}
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              {t("computerAnalysis.board.formIntro")}
+            </Typography>
+          </Box>
+          <ComputerAnalysisForm
+            options={options}
+            onChange={(patch) => {
+              setProblem(undefined);
+              onOptionsChange(computerAnalysisOptionsFrom({ ...options, ...patch }));
+            }}
+            engineOptions={engine.options}
+            multiThread={engine.multiThread}
+            engineName={engine.name}
+            deviceLimits={deviceEngineLimits()}
+            lastMove={lastMove}
+            blocked={blocked}
+            onStart={() => void start()}
+            busy={busy}
+            problem={problem}
+            testId="analysis-computer-form"
+          />
         </Box>
-        <ComputerAnalysisForm
-          options={options}
-          onChange={(patch) => {
-            setProblem(undefined);
-            onOptionsChange(computerAnalysisOptionsFrom({ ...options, ...patch }));
-          }}
-          engineOptions={engine.options}
-          multiThread={engine.multiThread}
-          engineName={engine.name}
-          deviceLimits={deviceEngineLimits()}
-          lastMove={lastMove}
-          blocked={blocked}
-          onStart={() => void start()}
-          busy={busy}
-          problem={problem}
-          testId="analysis-computer-form"
-        />
-      </Box>
+      )}
     </Box>
   );
 }
 
-/** The job this game was sent in: its status and progress, its outputs once done, the way to it on the Jobs screen. */
-function GameJob({ job }: { job: Job }) {
+/**
+ * The job this game was sent in: its status and progress, its outputs once
+ * done, the way to it on the Jobs screen. Mounted afresh per job (`key`); it
+ * takes the focus on mounting when `takeFocusRef` says a Start just sent it.
+ */
+function GameJob({ job, takeFocusRef }: { job: Job; takeFocusRef: RefObject<boolean> }) {
   const { t } = useTranslation();
+  const heading = useRef<HTMLHeadingElement>(null);
   const progress = jobProgress(job);
   const move = isFinishedJob(job) || progress.current === undefined ? undefined : jobMoveLabel(progress.current);
+  useEffect(() => {
+    if (!takeFocusRef.current) return;
+    takeFocusRef.current = false;
+    heading.current?.focus();
+  }, [takeFocusRef]);
   return (
     <Box component="section" aria-labelledby="analysis-computer-job-title" data-testid="analysis-computer-job" sx={{ display: "grid", gap: 1 }}>
       <Box>
-        <Typography id="analysis-computer-job-title" component="h3" variant="subtitle2" sx={{ fontWeight: 700 }}>
+        <Typography
+          id="analysis-computer-job-title"
+          ref={heading}
+          tabIndex={-1}
+          component="h3"
+          variant="subtitle2"
+          sx={{ fontWeight: 700 }}
+        >
           {t("computerAnalysis.board.jobTitle")}
         </Typography>
         <Typography
@@ -225,22 +263,32 @@ function GameJob({ job }: { job: Job }) {
           testId="analysis-computer-job-progress"
         />
       )}
+      {isActiveJob(job) && (
+        <Typography variant="body2" data-testid="analysis-computer-job-note" sx={{ color: "text.secondary" }}>
+          {t("computerAnalysis.board.running")}
+        </Typography>
+      )}
+      {job.status === "done" && (
+        <Typography variant="body2" data-testid="analysis-computer-job-note" sx={{ color: "text.secondary" }}>
+          {t("computerAnalysis.board.done")}
+        </Typography>
+      )}
       {job.status === "failed" && job.error !== null && (
         <InlineAlert severity="error" dense testId="analysis-computer-job-error">
           {t(`jobs.errors.${job.error}`)}
         </InlineAlert>
       )}
-      <Box sx={{ display: "grid", gap: 0.5, justifyItems: "start" }}>
+      <Box sx={{ display: "grid", gap: 1, justifyItems: "start" }}>
         {job.outputs.map((output) => (
-          <Link
+          <Button
             key={output.analysisId}
+            variant="contained"
             component={RouterLink}
             to={`/tools/analysis?analysis=${encodeURIComponent(output.analysisId)}`}
-            underline="hover"
             data-testid={`analysis-computer-job-output-${output.variant}`}
           >
             {t("jobs.openOutput", { variant: t(`computerAnalysis.variants.${output.variant}`) })}
-          </Link>
+          </Button>
         ))}
         <Link
           component={RouterLink}

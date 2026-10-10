@@ -2666,6 +2666,8 @@ const en = {
     /** The Analysis Board's Computer analysis tab (CTA-174). */
     board: {
       jobTitle: "This game's analysis",
+      running: "The engine is analysing this game in the background — you can go on with anything else. You can start another analysis of it once this one ends.",
+      done: "Finished. Each variant is a new saved analysis: open one to see its report and evaluation graph.",
       progressLabel: "Computer analysis progress",
       openJobs: "Open in Jobs",
       reportTitle: "Report",
