@@ -2033,13 +2033,20 @@ const he: typeof en = {
     intro: "האפשרויות שההגדרה קובעת נשלחות אל {{engine}}; השאר נשארות בברירות המחדל של המנוע. שינוי חל מהחיפוש הבא.",
     reading: "קוראים על מה {{engine}} מצהיר…",
     empty: "{{engine}} אינו מצהיר על אפשרויות.",
-    list: "האפשרויות של {{engine}} — {{preset}}",
+    list: "האפשרויות של {{engine}} — {{preset}}, {{tab}}",
+    tabs: { label: "סוגי אפשרויות", basic: "בסיסי", advanced: "מתקדם", system: "מערכת" },
     default: "ברירת מחדל {{value}}",
     range: "{{min}}–{{max}}",
     absentSummary: "נקבע ל-{{value}}",
     spinInvalid: "מספר שלם מ-{{min}} עד {{max}}.",
     reset: "החזרת {{name}} לברירת המחדל של המנוע",
     remove: "הסרת {{name}} מההגדרה",
+    groups: {
+      syzygy: {
+        label: "טבלאות סיומים Syzygy",
+        help: "טבלאות סיומים מקבצים במחשב הזה. כשהאפשרות כבויה, אף אחת מאפשרויות ה-Syzygy לא נשלחת.",
+      },
+    },
     notes: {
       "board-owned": "נקבע בכל לוח — Threads, Hash ומספר הקווים שלו.",
       "play-owned": "„משחק מול המנוע” ו„כלים מוסווים” קובעים זאת לפי העוצמה שלהם; כל לוח אחר לוקח זאת מכאן.",
@@ -2050,6 +2057,8 @@ const he: typeof en = {
       "browser-hash": "עד ‎1024 MB בדפדפן — יותר מזה מקריס את הלשונית.",
       clamped: "מוגבלת ל-{{min}}–{{max}} במנוע הזה.",
       invalid: "זה אינו ערך שהאפשרות מקבלת, ולכן הוא לא נשלח.",
+      "needs-limit-strength": "פעילה רק כש-UCI_LimitStrength מופעלת — כשהיא כבויה, המנוע משחק בעוצמה מלאה.",
+      "needs-syzygy-path": "פעילה רק עם טבלאות סיומים — קבעו קודם את SyzygyPath.",
     },
   },
   engineOptionsTable: {

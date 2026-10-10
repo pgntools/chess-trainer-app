@@ -114,12 +114,33 @@ export const setEnginePresetValue = (
   });
 
 /**
+ * **Turn a group of options on or off** in a preset (`OPTION_GROUPS`) —
+ * off, none of its options is sent; their values stay. The same state is a
+ * no-op; Default's first change stores it.
+ */
+export const setEnginePresetGroup = (
+  presetId: string,
+  group: string,
+  on: boolean,
+): Promise<EnginePresetProblem | undefined> =>
+  presets.write((rows) => {
+    const preset = presetIn(rows, presetId);
+    if (preset === undefined || (preset.groups[group] === true) === on) return rows;
+    const groups = { ...preset.groups };
+    if (on) groups[group] = true;
+    else delete groups[group];
+    const at = iso();
+    return withPreset(rows, { ...preset, groups, savedAt: preset.savedAt || at, updatedAt: at });
+  });
+
+/**
  * **A new preset** — named, holding `values` (a duplicate's) or none, at the
  * end of the list. Its id, or `"too-many"` past {@link MAX_ENGINE_PRESETS}.
  */
 export const createEnginePreset = async (
   name: string,
   values: Readonly<Record<string, UciOptionValue>> = {},
+  groups: Readonly<Record<string, boolean>> = {},
 ): Promise<{ id: string } | { problem: EnginePresetProblem }> => {
   const at = iso();
   const id = newRecordId(new Date(at));
@@ -131,19 +152,19 @@ export const createEnginePreset = async (
       full = true;
       return rows;
     }
-    return [...rows, { id, name: presetNameOf(name) || id, values: { ...values }, savedAt: at, updatedAt: at }];
+    return [...rows, { id, name: presetNameOf(name) || id, values: { ...values }, groups: { ...groups }, savedAt: at, updatedAt: at }];
   });
   if (problem !== undefined) return { problem };
   return full ? { problem: "too-many" } : { id };
 };
 
-/** **A copy of a preset**, under a new name, with every value it sets. */
+/** **A copy of a preset**, under a new name, with every value it sets and every group it has on. */
 export const duplicateEnginePreset = async (
   presetId: string,
   name: string,
 ): Promise<{ id: string } | { problem: EnginePresetProblem }> => {
   const source = presetIn((await presets.load()) ?? [], presetId);
-  return createEnginePreset(name, source?.values ?? {});
+  return createEnginePreset(name, source?.values ?? {}, source?.groups ?? {});
 };
 
 /** **Rename a preset** — Default too. A blank name, or the same one, is a no-op. */

@@ -47,6 +47,7 @@ const preset = (id: string, values: EnginePreset["values"] = {}): EnginePreset =
   id,
   name: id,
   values,
+  groups: {},
   savedAt: AT,
   updatedAt: AT,
 });

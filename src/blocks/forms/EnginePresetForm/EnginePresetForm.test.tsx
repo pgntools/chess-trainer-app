@@ -8,7 +8,9 @@ import { expectNoAxeViolations } from "../../../test/axe";
 import EnginePresetForm from "./EnginePresetForm";
 import { BROWSER_DEEP_ROWS, BROWSER_DEFAULT_ROWS, PRESETS, SERVER_DEEP_ROWS } from "./fixtures";
 
-const mount = (options: { rows?: readonly EnginePresetRow[] | undefined; selectedId?: string } = {}) => {
+const mount = (
+  options: { rows?: readonly EnginePresetRow[] | undefined; selectedId?: string; groups?: Record<string, boolean> } = {},
+) => {
   // `rows: undefined` is the reading state, not "the default rows".
   const rows = "rows" in options ? options.rows : BROWSER_DEFAULT_ROWS;
   const selectedId = options.selectedId ?? "default";
@@ -19,6 +21,7 @@ const mount = (options: { rows?: readonly EnginePresetRow[] | undefined; selecte
     onDuplicate: vi.fn(),
     onDelete: vi.fn(),
     onChange: vi.fn(),
+    onGroupChange: vi.fn(),
   };
   render(
     <EnginePresetForm
@@ -27,6 +30,7 @@ const mount = (options: { rows?: readonly EnginePresetRow[] | undefined; selecte
       selectedId={selectedId}
       rows={rows}
       testId="presets"
+      groups={options.groups ?? {}}
       {...props}
     />,
   );

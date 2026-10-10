@@ -624,6 +624,7 @@ describe("the engine presets (CTA-179)", () => {
     id,
     name,
     values,
+    groups: {},
     savedAt: AT,
     updatedAt: AT,
   });

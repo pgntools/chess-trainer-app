@@ -11,9 +11,12 @@ import { useTranslation } from "react-i18next";
 import { ConfirmDialog, FormDialog } from "../../../design-system/components/dialogs";
 import { StatusText } from "../../../design-system/components/feedback";
 import { SelectField, SwitchField, TextInputField } from "../../../design-system/components/forms";
+import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 import { IconAction } from "../../../design-system/components/toolbars";
 import {
   MAX_PRESET_NAME_LENGTH,
+  OPTION_TABS,
+  type OptionTab,
   presetNameOf,
   type EnginePresetRow,
   type PresetRowNote,
@@ -51,10 +54,18 @@ export type EnginePresetFormProps = {
   /** Set one option of the selected preset — `undefined` puts it back to the engine's default. */
   onChange: (name: string, value: UciOptionValue | undefined) => void;
   /**
+   * The selected preset's option groups that are on (`OPTION_GROUPS` —
+   * Syzygy): each a switch, off by default, its options shown only while on.
+   */
+  groups: Readonly<Record<string, boolean>>;
+  /** Turn a group on or off in the selected preset. */
+  onGroupChange: (group: string, on: boolean) => void;
+  /**
    * The prefix of its ids: the picker `<testId>-preset`, its actions
    * `-new`, `-rename`, `-duplicate`, `-delete`; the list `<testId>-options`,
    * each option `<testId>-option-<slug>` (its control `-input`, its note
-   * `-note`, its reset `-reset`); the name dialog `<testId>-name`, the delete
+   * `-note`, its reset `-reset`), a group `<testId>-group-<id>` (its switch
+   * `-switch`, its options `-options`); the name dialog `<testId>-name`, the delete
    * confirmation `<testId>-confirm-delete`.
    */
   testId: string;
@@ -65,6 +76,29 @@ const slugOf = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]+/
 
 /** A value as the form writes it — a check's words, a number, words. */
 const textOf = (value: UciOptionValue | undefined): string => (value === undefined ? "" : String(value));
+
+/** The list's items: an option, or a group's switch over its options — placed where its first option is. */
+type ListItem = { kind: "row"; row: EnginePresetRow } | { kind: "group"; id: string; rows: EnginePresetRow[] };
+
+const itemsOf = (rows: readonly EnginePresetRow[]): ListItem[] => {
+  const items: ListItem[] = [];
+  const groups = new Map<string, EnginePresetRow[]>();
+  for (const row of rows) {
+    if (row.group === undefined) {
+      items.push({ kind: "row", row });
+      continue;
+    }
+    const members = groups.get(row.group);
+    if (members !== undefined) {
+      members.push(row);
+      continue;
+    }
+    const fresh = [row];
+    groups.set(row.group, fresh);
+    items.push({ kind: "group", id: row.group, rows: fresh });
+  }
+  return items;
+};
 
 /** The name dialog's purpose: a new preset, a new name, a copy. */
 type NameDialog = { purpose: "create" | "rename" | "duplicate"; name: string } | null;
@@ -103,6 +137,7 @@ function SpinInput({
   value,
   range,
   help,
+  disabled,
   onCommit,
   testId,
 }: {
@@ -110,6 +145,7 @@ function SpinInput({
   value: number | undefined;
   range: { min: number; max: number } | undefined;
   help: string;
+  disabled: boolean;
   onCommit: (value: number) => void;
   testId: string;
 }) {
@@ -128,6 +164,7 @@ function SpinInput({
       value={draft}
       type="number"
       dir="ltr"
+      disabled={disabled}
       onChange={(text) => {
         setDraft(text);
         const number = parse(text);
@@ -150,12 +187,14 @@ function WordsInput({
   label,
   value,
   help,
+  disabled,
   onCommit,
   testId,
 }: {
   label: string;
   value: string;
   help: string;
+  disabled: boolean;
   onCommit: (value: string) => void;
   testId: string;
 }) {
@@ -165,6 +204,7 @@ function WordsInput({
       label={label}
       value={draft}
       dir="ltr"
+      disabled={disabled}
       onChange={(text) => {
         setDraft(text);
         commit(text);
@@ -202,11 +242,17 @@ function EnginePresetForm({
   onDelete,
   rows,
   onChange,
+  groups,
+  onGroupChange,
   testId,
 }: EnginePresetFormProps) {
   const { t } = useTranslation();
   const [nameDialog, setNameDialog] = useState<NameDialog>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // The options' tab — the form's own: basic first, and only the tabs this engine has options on.
+  const [tab, setTab] = useState<OptionTab>("basic");
+  const tabs = OPTION_TABS.filter((each) => rows?.some((row) => row.tab === each));
+  const shownTab = tabs.includes(tab) ? tab : (tabs[0] ?? "basic");
   const selected = presets.find((preset) => preset.id === selectedId) ?? presets[0];
   const name = presetNameOf(nameDialog?.name ?? "");
 
@@ -239,6 +285,8 @@ function EnginePresetForm({
   const control = (row: EnginePresetRow, id: string) => {
     const option = row.option;
     const help = summaryOf(row);
+    // On, but off until the option it needs is on (UCI_Elo, the Syzygy settings).
+    const disabled = row.disabled === true;
     if (!row.editable || option === undefined) {
       return (
         <Box>
@@ -265,6 +313,7 @@ function EnginePresetForm({
             checked={row.value === true}
             onChange={(checked) => onChange(row.name, checked)}
             help={<span dir="ltr">{help}</span>}
+            disabled={disabled}
             testId={`${id}-input`}
           />
         );
@@ -277,6 +326,7 @@ function EnginePresetForm({
             options={(option.vars ?? []).map((choice) => ({ value: choice, label: choice }))}
             optionDir="ltr"
             helperText={<span dir="ltr">{help}</span>}
+            disabled={disabled}
             fullWidth
             testId={`${id}-input`}
           />
@@ -288,6 +338,7 @@ function EnginePresetForm({
             value={typeof row.value === "number" ? row.value : undefined}
             range={row.range}
             help={help}
+            disabled={disabled}
             onCommit={(value) => onChange(row.name, value)}
             testId={`${id}-input`}
           />
@@ -298,11 +349,43 @@ function EnginePresetForm({
             label={row.name}
             value={textOf(row.value)}
             help={help}
+            disabled={disabled}
             onCommit={(value) => onChange(row.name, value)}
             testId={`${id}-input`}
           />
         );
     }
+  };
+
+  /** One option: its control, its note, and a reset where the preset sets it. */
+  const renderRow = (row: EnginePresetRow) => {
+    const id = `${testId}-option-${slugOf(row.name)}`;
+    return (
+      <Box
+        component="li"
+        key={`${selected.id}:${row.name}`}
+        data-testid={id}
+        sx={{ display: "flex", alignItems: "flex-start", gap: 1, minWidth: 0 }}
+      >
+        <Box sx={{ flex: 1, minWidth: 0, display: "grid", gap: 0.5 }}>
+          {control(row, id)}
+          {row.note !== undefined && (
+            <Typography variant="caption" color="text.secondary" data-testid={`${id}-note`}>
+              {noteText(row.note, row)}
+            </Typography>
+          )}
+        </Box>
+        {row.set && ((row.editable && row.disabled !== true) || row.note === "absent") && (
+          <IconAction
+            label={row.note === "absent" ? t("enginePresets.remove", { name: row.name }) : t("enginePresets.reset", { name: row.name })}
+            onClick={() => onChange(row.name, undefined)}
+            testId={`${id}-reset`}
+          >
+            {row.note === "absent" ? <DeleteOutlineRoundedIcon fontSize="small" /> : <RestartAltRoundedIcon fontSize="small" />}
+          </IconAction>
+        )}
+      </Box>
+    );
   };
 
   return (
@@ -362,49 +445,52 @@ function EnginePresetForm({
           {t("enginePresets.empty", { engine: engineName })}
         </Typography>
       ) : (
-        <Box
-          component="ul"
-          aria-label={t("enginePresets.list", { engine: engineName, preset: selected.name })}
-          data-testid={`${testId}-options`}
-          sx={{ listStyle: "none", m: 0, p: 0, display: "grid", gap: 1.5 }}
-        >
-          {rows.map((row) => {
-            const id = `${testId}-option-${slugOf(row.name)}`;
-            return (
-              <Box
-                component="li"
-                key={`${selected.id}:${row.name}`}
-                data-testid={id}
-                sx={{ display: "flex", alignItems: "flex-start", gap: 1, minWidth: 0 }}
-              >
-                <Box sx={{ flex: 1, minWidth: 0, display: "grid", gap: 0.5 }}>
-                  {control(row, id)}
-                  {row.note !== undefined && (
-                    <Typography variant="caption" color="text.secondary" data-testid={`${id}-note`}>
-                      {noteText(row.note, row)}
-                    </Typography>
-                  )}
-                </Box>
-                {row.set && (row.editable || row.note === "absent") && (
-                  <IconAction
-                    label={
-                      row.note === "absent"
-                        ? t("enginePresets.remove", { name: row.name })
-                        : t("enginePresets.reset", { name: row.name })
-                    }
-                    onClick={() => onChange(row.name, undefined)}
-                    testId={`${id}-reset`}
-                  >
-                    {row.note === "absent" ? (
-                      <DeleteOutlineRoundedIcon fontSize="small" />
-                    ) : (
-                      <RestartAltRoundedIcon fontSize="small" />
+        <Box sx={{ display: "grid", gap: 1.5, minWidth: 0 }}>
+          <PanelTabs
+            tabs={tabs.map((tab) => ({ id: tab, label: t(`enginePresets.tabs.${tab}`) }))}
+            value={shownTab}
+            onChange={(id) => setTab(id as OptionTab)}
+            fullWidth
+            ariaLabel={t("enginePresets.tabs.label")}
+            idPrefix={`${testId}-tab`}
+            testId={`${testId}-tabs`}
+          />
+          <Box {...tabPanelProps(`${testId}-tab`, shownTab)}>
+            <Box
+              component="ul"
+              aria-label={t("enginePresets.list", { engine: engineName, preset: selected.name, tab: t(`enginePresets.tabs.${shownTab}`) })}
+              data-testid={`${testId}-options`}
+              sx={{ listStyle: "none", m: 0, p: 0, display: "grid", gap: 1.5 }}
+            >
+              {itemsOf(rows.filter((row) => row.tab === shownTab)).map((item) => {
+                if (item.kind === "row") return renderRow(item.row);
+                const on = groups[item.id] === true;
+                const groupId = `${testId}-group-${item.id}`;
+                return (
+                  <Box component="li" key={`${selected.id}:group:${item.id}`} data-testid={groupId} sx={{ display: "grid", gap: 1.5 }}>
+                    <SwitchField
+                      label={t(`enginePresets.groups.${item.id}.label`)}
+                      checked={on}
+                      onChange={(checked) => onGroupChange(item.id, checked)}
+                      help={t(`enginePresets.groups.${item.id}.help`)}
+                      testId={`${groupId}-switch`}
+                    />
+                    {/* Its options only while it is on — off, none of them is sent. */}
+                    {on && (
+                      <Box
+                        component="ul"
+                        aria-label={t(`enginePresets.groups.${item.id}.label`)}
+                        data-testid={`${groupId}-options`}
+                        sx={{ listStyle: "none", m: 0, p: 0, paddingInlineStart: 2, display: "grid", gap: 1.5 }}
+                      >
+                        {item.rows.map(renderRow)}
+                      </Box>
                     )}
-                  </IconAction>
-                )}
-              </Box>
-            );
-          })}
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
         </Box>
       )}
 

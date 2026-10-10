@@ -167,8 +167,8 @@ describe("buildExport", () => {
 
   it("writes the engine presets and each engine's selection as one JSON file (CTA-179)", () => {
     const presets: EnginePreset[] = [
-      { id: "default", name: "Default", values: { UCI_ShowWDL: true }, savedAt: AT, updatedAt: AT },
-      { id: "deep", name: "deep-analysis", values: { "Move Overhead": 100, SyzygyPath: "/tb" }, savedAt: AT, updatedAt: AT },
+      { id: "default", name: "Default", values: { UCI_ShowWDL: true }, groups: {}, savedAt: AT, updatedAt: AT },
+      { id: "deep", name: "deep-analysis", values: { "Move Overhead": 100, SyzygyPath: "/tb" }, groups: { syzygy: true }, savedAt: AT, updatedAt: AT },
     ];
     const selections = [{ id: "stockfish-19-lite-single", presetId: "deep", updatedAt: AT }];
     const bundle = build({ enginePresets: presets, enginePresetSelections: selections }, { enginePresets: true });

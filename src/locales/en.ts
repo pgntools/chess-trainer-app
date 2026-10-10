@@ -2584,13 +2584,22 @@ const en = {
       "Options the preset sets are sent to {{engine}}; the rest stay at the engine's defaults. A change applies from the next search.",
     reading: "Reading what {{engine}} declares…",
     empty: "{{engine}} declares no options.",
-    list: "Options of {{engine}} — {{preset}}",
+    list: "Options of {{engine}} — {{preset}}, {{tab}}",
+    /** The options' three tabs (`OPTION_TABS`). */
+    tabs: { label: "Kinds of option", basic: "Basic", advanced: "Advanced", system: "System" },
     default: "default {{value}}",
     range: "{{min}}–{{max}}",
     absentSummary: "set to {{value}}",
     spinInvalid: "A whole number from {{min}} to {{max}}.",
     reset: "Put {{name}} back to the engine's default",
     remove: "Remove {{name}} from the preset",
+    /** A group of options behind one switch (`OPTION_GROUPS`) — off by default. */
+    groups: {
+      syzygy: {
+        label: "Syzygy tablebases",
+        help: "Endgame tablebases from files on this computer. Off, none of the Syzygy options is sent.",
+      },
+    },
     /** Why an option is read-only or held, beside it (`PresetRowNote`). */
     notes: {
       "board-owned": "Set on each board — its own Threads, Hash and Lines.",
@@ -2602,6 +2611,8 @@ const en = {
       "browser-hash": "At most 1024 MB in the browser — more crashes the tab.",
       clamped: "Held to {{min}}–{{max}} on this engine.",
       invalid: "Not a value this option takes, so it is not sent.",
+      "needs-limit-strength": "Used only while UCI_LimitStrength is on — off, the engine plays at full strength.",
+      "needs-syzygy-path": "Used only with endgame tablebases — set SyzygyPath first.",
     },
   },
   /** The `EngineOptionsTable` block: an engine's `uci` options. */

@@ -22,6 +22,7 @@ import {
   enginePresetsSnapshot,
   renameEnginePreset,
   selectEnginePreset,
+  setEnginePresetGroup,
   setEnginePresetValue,
   subscribeEnginePresetSelections,
   subscribeEnginePresets,
@@ -114,6 +115,8 @@ function EnginePresetsSection({ engineId }: { engineId: string }) {
         onDelete={(presetId) => void deleteEnginePreset(presetId).then(answer)}
         rows={rows}
         onChange={(name, value) => void setEnginePresetValue(selected.id, name, value).then(answer)}
+        groups={selected.groups}
+        onGroupChange={(group, on) => void setEnginePresetGroup(selected.id, group, on).then(answer)}
         testId="engine-presets"
       />
     </SettingsSection>

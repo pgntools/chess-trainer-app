@@ -37,6 +37,9 @@ export const STOCKFISH_19_NATIVE: readonly EngineOption[] = [
   { name: "UCI_ShowWDL", type: "check", defaultValue: "false" },
   { name: "SyzygyPath", type: "string", defaultValue: "<empty>" },
   { name: "SyzygyProbeDepth", type: "spin", defaultValue: "1", min: 1, max: 100 },
+  { name: "Syzygy50MoveRule", type: "check", defaultValue: "true" },
+  { name: "UCI_LimitStrength", type: "check", defaultValue: "false" },
+  { name: "UCI_Elo", type: "spin", defaultValue: "1320", min: 1320, max: 3190 },
   { name: "Style", type: "combo", defaultValue: "Normal", vars: ["Solid", "Normal", "Risky"] },
 ];
 
@@ -62,3 +65,6 @@ export const BROWSER_DEEP_ROWS: readonly EnginePresetRow[] = enginePresetRows(DE
 
 /** deep-analysis on the engine server's native build: the file path editable there. */
 export const SERVER_DEEP_ROWS: readonly EnginePresetRow[] = enginePresetRows(DEEP_ANALYSIS, STOCKFISH_19_NATIVE, { inBrowser: false });
+
+/** Default on the engine server's native build: no SyzygyPath, so its settings are off; no limit, so the Elo is too. */
+export const SERVER_DEFAULT_ROWS: readonly EnginePresetRow[] = enginePresetRows({}, STOCKFISH_19_NATIVE, { inBrowser: false });

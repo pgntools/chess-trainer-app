@@ -51,6 +51,12 @@ export type EnginePreset = {
   name: string;
   /** Option name → the value the reader set. Only what they set. */
   values: Readonly<Record<string, UciOptionValue>>;
+  /**
+   * The option groups turned on ({@link OPTION_GROUPS}) — absent or false is
+   * off: none of the group's options is sent, whatever the preset keeps for
+   * them (CTA-179 — Syzygy tablebases, off by default).
+   */
+  groups: Readonly<Record<string, boolean>>;
   /** ISO 8601. `""` for the Default that was never stored. */
   savedAt: string;
   updatedAt: string;
@@ -86,6 +92,56 @@ export const PLAY_OWNED_OPTIONS: readonly string[] = ["Skill Level", "UCI_Elo", 
 export const isFilePathOption = (option: EngineOption): boolean =>
   option.type === "string" && /file|path/i.test(option.name);
 
+/** No groups on — one object, as {@link NO_VALUES}. */
+const NO_GROUPS: Readonly<Record<string, boolean>> = Object.freeze({});
+
+/**
+ * **Groups of options behind one switch** — off by default, and while off
+ * none of the group's options is sent (its values stay in the preset, back
+ * when it is turned on). The form shows a switch, its options only while on.
+ * Syzygy: the endgame tablebases a native engine reads from `SyzygyPath`,
+ * and the settings that tune them.
+ */
+export const OPTION_GROUPS: readonly { id: string; applies: (name: string) => boolean }[] = [
+  { id: "syzygy", applies: (name) => name.startsWith("Syzygy") },
+];
+
+/**
+ * **The form's three tabs** — where an option is shown, by what it is for:
+ *
+ * - **basic**: how much of the machine and how strong — Threads, Hash (and
+ *   Clear Hash), MultiPV, Skill Level, UCI_LimitStrength, UCI_Elo;
+ * - **system**: files and the machine's layout — `EvalFile`, `EvalFileSmall`,
+ *   `Debug Log File` (a file path outside a group), `NumaPolicy`;
+ * - **advanced**: everything else — Move Overhead, nodestime, Ponder,
+ *   UCI_Chess960, UCI_ShowWDL, the Syzygy tablebases, and any option an
+ *   engine declares that is named in neither list.
+ */
+export const OPTION_TABS = ["basic", "advanced", "system"] as const;
+export type OptionTab = (typeof OPTION_TABS)[number];
+
+const BASIC_OPTIONS: readonly string[] = [
+  "Threads",
+  "Hash",
+  "Clear Hash",
+  "MultiPV",
+  "Skill Level",
+  "UCI_LimitStrength",
+  "UCI_Elo",
+];
+const SYSTEM_OPTIONS: readonly string[] = ["NumaPolicy"];
+
+/** The tab `name` is shown on — `option`, where declared, tells a file path. */
+export const optionTabOf = (name: string, option?: EngineOption): OptionTab => {
+  if (BASIC_OPTIONS.includes(name)) return "basic";
+  if (optionGroupOf(name) !== undefined) return "advanced";
+  if (SYSTEM_OPTIONS.includes(name) || (option !== undefined && isFilePathOption(option))) return "system";
+  return "advanced";
+};
+
+/** The group `name` belongs to, if any. */
+export const optionGroupOf = (name: string): string | undefined => OPTION_GROUPS.find((group) => group.applies(name))?.id;
+
 /** No values — one object, so a reader keyed on a preset's values sees no change between reads. */
 const NO_VALUES: Readonly<Record<string, UciOptionValue>> = Object.freeze({});
 
@@ -94,6 +150,7 @@ export const defaultEnginePreset = (): EnginePreset => ({
   id: DEFAULT_PRESET_ID,
   name: DEFAULT_PRESET_NAME,
   values: NO_VALUES,
+  groups: NO_GROUPS,
   savedAt: "",
   updatedAt: "",
 });
@@ -128,7 +185,27 @@ export const selectedPresetValues = (
   selections: readonly EnginePresetSelection[] | undefined,
   engineId: string,
 ): Readonly<Record<string, UciOptionValue>> =>
-  presets === undefined || selections === undefined ? NO_VALUES : selectedPresetOf(presets, selections, engineId).values;
+  presets === undefined || selections === undefined ? NO_VALUES : presetSentValues(selectedPresetOf(presets, selections, engineId));
+
+/** Each preset's values without its off groups', made once per preset — so the object stays the same between reads. */
+const sentValuesCache = new WeakMap<EnginePreset, Readonly<Record<string, UciOptionValue>>>();
+
+/**
+ * **The values a preset sends** — its own, less every option of a group it
+ * has off ({@link OPTION_GROUPS}). The same object for the same preset.
+ */
+export const presetSentValues = (preset: EnginePreset): Readonly<Record<string, UciOptionValue>> => {
+  const cached = sentValuesCache.get(preset);
+  if (cached !== undefined) return cached;
+  const names = Object.keys(preset.values);
+  const off = names.filter((name) => {
+    const group = optionGroupOf(name);
+    return group !== undefined && preset.groups[group] !== true;
+  });
+  const sent = off.length === 0 ? preset.values : Object.fromEntries(Object.entries(preset.values).filter(([name]) => !off.includes(name)));
+  sentValuesCache.set(preset, sent);
+  return sent;
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -154,6 +231,12 @@ const presetValuesFrom = (value: unknown): Record<string, UciOptionValue> => {
   return values;
 };
 
+/** The groups a stored record turns on — a known group's `true`; anything else is off. */
+const presetGroupsFrom = (value: unknown): Record<string, boolean> => {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(OPTION_GROUPS.filter((group) => value[group.id] === true).map((group) => [group.id, true]));
+};
+
 /**
  * **A preset read back** — the store's normaliser and the import's: a row
  * with no id is dropped; a name that is missing reads as Default's (the
@@ -168,6 +251,7 @@ export const enginePresetFrom = (value: unknown): EnginePreset | undefined => {
     id,
     name,
     values: presetValuesFrom(value.values),
+    groups: presetGroupsFrom(value.groups),
     savedAt: text(value.savedAt) ?? "",
     updatedAt: text(value.updatedAt) ?? text(value.savedAt) ?? "",
   };
@@ -219,7 +303,51 @@ export type PresetOptionLimit =
   /** Held to the engine's range — `browser` when the in-browser ceiling is what held it. */
   | { kind: "clamped"; to: number; max: number; min: number; browser: boolean }
   /** Not a value of the option's type (a combo's word it does not list, words for a spin). */
-  | { kind: "invalid" };
+  | { kind: "invalid" }
+  /** It acts only while another option is on, and that one is off — kept, not sent ({@link OPTION_DEPENDENCIES}). */
+  | { kind: "inactive"; on: string };
+
+/**
+ * **Options that act only while another is on** — Stockfish's own rules,
+ * so a value that would do nothing is neither sent nor offered:
+ *
+ * - `UCI_Elo` limits the engine only with `UCI_LimitStrength` on; off, the
+ *   engine plays at full strength, which the form shows as the Elo's top.
+ * - `SyzygyProbeDepth`, `Syzygy50MoveRule`, `SyzygyProbeLimit` tune the
+ *   endgame tablebases, which load only from a `SyzygyPath`; with none they
+ *   do nothing.
+ *
+ * Keyed on the names Stockfish declares; one applies only where the engine
+ * declares both options, and never where the caller sets the controlling one
+ * itself (Play's boards set `UCI_LimitStrength` and their own Elo).
+ */
+export const OPTION_DEPENDENCIES: readonly {
+  /** Whether `name` is one of the dependent options. */
+  applies: (name: string) => boolean;
+  /** The option it needs. */
+  on: string;
+  /** Whether that option's value turns it on. */
+  active: (value: UciOptionValue | undefined) => boolean;
+  /** What the form shows while it is off: the range's top (full strength), or the value as it is. */
+  whileOff: "max" | "value";
+  /** The form's words for it. */
+  note: "needs-limit-strength" | "needs-syzygy-path";
+}[] = [
+  {
+    applies: (name) => name === "UCI_Elo",
+    on: "UCI_LimitStrength",
+    active: (value) => value === true,
+    whileOff: "max",
+    note: "needs-limit-strength",
+  },
+  {
+    applies: (name) => name.startsWith("Syzygy") && name !== "SyzygyPath",
+    on: "SyzygyPath",
+    active: (value) => typeof value === "string" && value.trim() !== "",
+    whileOff: "value",
+    note: "needs-syzygy-path",
+  },
+];
 
 /**
  * The range a `spin` is offered in on this engine — what it declares, and in
@@ -323,6 +451,26 @@ const verdictOf = (
   return { send: typed.value };
 };
 
+/**
+ * The dependency that keeps `name` off under these values, or `undefined`
+ * when it is on (or depends on nothing here). The controlling option's value
+ * is the preset's, as it would be sent — or its default, where the preset
+ * does not set it or it cannot be sent (a file path in a browser).
+ */
+const offDependencyOf = (
+  name: string,
+  options: ReadonlyMap<string, EngineOption>,
+  values: Readonly<Record<string, UciOptionValue>>,
+  context: PresetEngineContext,
+): (typeof OPTION_DEPENDENCIES)[number] | undefined => {
+  const dependency = OPTION_DEPENDENCIES.find((each) => each.applies(name));
+  if (dependency === undefined) return undefined;
+  const controller = options.get(dependency.on);
+  if (controller === undefined || (context.owned ?? BOARD_OWNED_OPTIONS).includes(dependency.on)) return undefined;
+  const sent = Object.hasOwn(values, dependency.on) ? verdictOf(controller, values[dependency.on], context).send : undefined;
+  return dependency.active(sent ?? optionDefaultValue(controller)) ? undefined : dependency;
+};
+
 const declaredMap = (declared: ReadonlyMap<string, EngineOption> | readonly EngineOption[]): ReadonlyMap<string, EngineOption> =>
   declared instanceof Map ? declared : new Map((declared as readonly EngineOption[]).map((option) => [option.name, option]));
 
@@ -343,6 +491,11 @@ export const resolveEnginePreset = (
   const limits: Record<string, PresetOptionLimit> = {};
   for (const [name, value] of Object.entries(values)) {
     const verdict = verdictOf(options.get(name), value, context);
+    const off = verdict.send === undefined ? undefined : offDependencyOf(name, options, values, context);
+    if (off !== undefined) {
+      limits[name] = { kind: "inactive", on: off.on };
+      continue;
+    }
     if (verdict.send !== undefined) send[name] = verdict.send;
     if (verdict.limit !== undefined) limits[name] = verdict.limit;
   }
@@ -372,7 +525,11 @@ export const presetResetValue = (
  * Why a row of the form cannot be edited, or what it says beside it — the
  * limits above, and the Play boards' own strength (editable, with a note).
  */
-export type PresetRowNote = PresetOptionLimit["kind"] | "play-owned" | "browser-hash";
+export type PresetRowNote =
+  | Exclude<PresetOptionLimit["kind"], "inactive">
+  | (typeof OPTION_DEPENDENCIES)[number]["note"]
+  | "play-owned"
+  | "browser-hash";
 
 /** One option of the form (`EnginePresetForm`): the engine's declaration and the preset's value. */
 export type EnginePresetRow = {
@@ -385,10 +542,20 @@ export type EnginePresetRow = {
   set: boolean;
   /** Whether the reader can change it here. */
   editable: boolean;
+  /**
+   * Shown as a control, but off until the option it needs is on — `UCI_Elo`
+   * without `UCI_LimitStrength`, a Syzygy setting without a `SyzygyPath`
+   * ({@link OPTION_DEPENDENCIES}). Its value is kept, and not sent.
+   */
+  disabled?: boolean;
   /** The range offered for a spin — the declared one, Hash under the browser's ceiling. */
   range?: { min: number; max: number };
   /** What the form says beside it. */
   note?: PresetRowNote;
+  /** The group it is shown under, behind its switch ({@link OPTION_GROUPS}). */
+  group?: string;
+  /** The form's tab it is shown on ({@link OPTION_TABS}). */
+  tab: OptionTab;
 };
 
 /**
@@ -405,22 +572,42 @@ export const enginePresetRows = (
   context: PresetEngineContext,
 ): EnginePresetRow[] => {
   const { limits, send } = resolveEnginePreset(values, declared, context);
+  const options = declaredMap(declared);
   const rows: EnginePresetRow[] = declared.map((option) => {
     const set = Object.hasOwn(values, option.name);
     const range = presetSpinRange(option, context.inBrowser);
     const fixed = verdictOf(option, optionDefaultValue(option) ?? "", context).limit;
-    const blocking = fixed !== undefined && fixed.kind !== "invalid" && fixed.kind !== "clamped" ? fixed.kind : undefined;
+    // What keeps it read-only whatever the preset says (a board's own, a button, a pinned one, a browser's file path).
+    const blocking =
+      fixed !== undefined && fixed.kind !== "invalid" && fixed.kind !== "clamped" && fixed.kind !== "inactive"
+        ? fixed.kind
+        : undefined;
+    const off = blocking === undefined ? offDependencyOf(option.name, options, values, context) : undefined;
     const limit = set ? limits[option.name] : undefined;
     const note: PresetRowNote | undefined =
       blocking ??
-      limit?.kind ??
+      off?.note ??
+      (limit?.kind === "inactive" ? undefined : limit?.kind) ??
       (PLAY_OWNED_OPTIONS.includes(option.name) ? "play-owned" : range?.browserCapped ? "browser-hash" : undefined);
+    // Off: the value the preset keeps (as the option takes it), or — for the Elo — full strength, the range's top.
+    const kept = set ? verdictOf(option, values[option.name], context).send : undefined;
+    const value =
+      off !== undefined
+        ? off.whileOff === "max" && range !== undefined
+          ? range.max
+          : (kept ?? optionDefaultValue(option))
+        : set && blocking === undefined && send[option.name] !== undefined
+          ? send[option.name]
+          : optionDefaultValue(option);
     return {
       name: option.name,
       option,
-      value: set && blocking === undefined && send[option.name] !== undefined ? send[option.name] : optionDefaultValue(option),
+      value,
       set,
       editable: blocking === undefined,
+      ...(off === undefined ? {} : { disabled: true }),
+      ...(optionGroupOf(option.name) === undefined ? {} : { group: optionGroupOf(option.name) }),
+      tab: optionTabOf(option.name, option),
       ...(range === undefined ? {} : { range: { min: range.min, max: range.max } }),
       ...(note === undefined ? {} : { note }),
     };
@@ -428,7 +615,7 @@ export const enginePresetRows = (
   const known = new Set(declared.map((option) => option.name));
   for (const [name, value] of Object.entries(values)) {
     if (known.has(name)) continue;
-    rows.push({ name, value, set: true, editable: false, note: "absent" });
+    rows.push({ name, value, set: true, editable: false, note: "absent", tab: optionTabOf(name) });
   }
   return rows;
 };
