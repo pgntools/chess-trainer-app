@@ -5,6 +5,7 @@ import { appPageFiles, findBlogArticle } from "../blog/articles";
 import { DEVELOPMENT_NOTICE_KEY } from "../../lib/developmentNotice";
 import { ENGINE_STORAGE_KEY } from "../../lib/engineChoice";
 import { ENGINE_SERVER_STORAGE_KEY } from "../../lib/engineServer";
+import { ENGINE_PRESETS_DB_NAME } from "../../lib/enginePresetStore";
 import { JOBS_DB_NAME } from "../../lib/jobStore";
 import { LIBRARY_DB_NAME } from "../../lib/libraryDb";
 import { THEME_STORAGE_KEY } from "../../theme/themeChoice";
@@ -30,6 +31,8 @@ const STORED = [
   LIBRARY_DB_NAME,
   // The background jobs (CTA-173).
   JOBS_DB_NAME,
+  // The engine option presets (CTA-179).
+  ENGINE_PRESETS_DB_NAME,
 ];
 
 /** The pages that disclose what the app stores — another in-app page (a Terms page, an About) need not. */
