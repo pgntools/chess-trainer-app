@@ -131,13 +131,14 @@ The settings are the board's, so a board's Threads and Hash stay as you set them
 
 ## Option presets
 
-Every option an engine declares can be set, beyond the ones the boards set themselves. In [Settings › Engine](/settings/engine), under the list of engines, **Engine options** shows the chosen engine's options, each with its type, its default and its range:
+Every option an engine declares can be set, beyond the ones the boards set themselves. In [Settings › Engine](/settings/engine), the panel on the right, **Engine options**, shows the chosen engine's options in three tabs — **Basic**, **Advanced** and **System** — each with its type, its default and its range. Every option is explained in [Understanding Stockfish UCI options](/blog/guides/understanding-stockfish-uci-options).
 
 - **Presets are named sets of options**, shared by every engine: Default, and as many more as you like, such as *deep-analysis* or *lite-play*. Create, rename, duplicate and delete them beside the preset's name. Default cannot be deleted.
 - **Each engine runs its own preset.** Choosing a preset for the browser build does not change the native engine's, so the same preset can set tablebases on one and leave the other as it was.
 - **A preset keeps only what you change.** Everything else stays at the engine's default, and a reset beside an option puts it back.
 - **Threads, Hash and Lines stay on the boards**, and Play with Engine keeps its own strength: they are shown, read-only.
-- **The browser builds have limits, and the form says which**: they have no file system, so the file paths — `EvalFile`, `SyzygyPath`, `Debug Log File` — cannot be set there (and are never sent to them), and Hash goes no higher than 1024 MB. A value an engine cannot take is held to its range, or skipped, with the reason beside it.
+- **An option that needs another is off until that one is on**: `UCI_Elo` until `UCI_LimitStrength` is on, the tablebase settings until `SyzygyPath` is set. The **Syzygy tablebases** have a switch of their own, on the Advanced tab, off by default.
+- **The browser builds have limits, and the form says which**: they have no file system, so the file paths — `EvalFile`, and the tablebases — cannot be set there (and are never sent to them), and Hash goes no higher than 1024 MB. A value an engine cannot take is held to its range, or skipped, with the reason beside it.
 
 A change applies from each board's next search, and to the next computer analysis job. Your presets, and which one each engine runs, are part of Settings › Export, and come back with Settings › Import.
 
@@ -170,6 +171,6 @@ If the engine server stops, the boards go back to the browser build by themselve
 
 **The same position gets different evaluations after I switched engines.** That is the network: the Lite and full nets judge positions a little differently. See *The networks* above.
 
-**Can I use endgame tablebases?** On your computer, yes: choose the server's engine in [Settings › Engine](/settings/engine) and set `SyzygyPath` in its preset to the folder that holds the tablebase files. The browser builds cannot read files, so they do not support tablebases.
+**Can I use endgame tablebases?** On your computer, yes: choose the server's engine in [Settings › Engine](/settings/engine), turn on **Syzygy tablebases** on the Advanced tab of its options, and set `SyzygyPath` to the folder that holds the tablebase files. The browser builds cannot read files, so they do not support tablebases.
 
-**Where can I see an engine's options myself?** In [Settings › Engine](/settings/engine), under **Engine options**: the chosen engine's every option, with its type, default and range. For the server's engines, the panel on the right also lists what it declared.
+**Where can I see an engine's options myself?** In [Settings › Engine](/settings/engine), in the panel on the right, **Engine options**: the chosen engine's every option, with its type, default and range.

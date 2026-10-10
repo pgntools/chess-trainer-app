@@ -342,8 +342,10 @@ and on Play with Engine and Masked Pieces Skill Level, UCI_Elo and
 UCI_LimitStrength. **Every other option an engine declares** — Move Overhead,
 nodestime, UCI_ShowWDL, Ponder, UCI_Chess960, Skill Level on an analysis
 board, the native build's Syzygy options, NumaPolicy, … — is set through
-**named presets**, in Settings → Engine (the `EnginePresetForm` block,
-`views/settings/EnginePresetsSection.tsx`):
+**named presets**, in Settings → Engine's right-hand panel (the
+`EnginePresetForm` block, `views/settings/EnginePresetsSection.tsx`). Every
+option is explained for readers in the Blog's *Understanding Stockfish UCI
+options* (`guides/understanding-stockfish-uci-options.mdx`).
 
 - **One library, a selection per engine.** The presets are shared
   (`lib/enginePresets.ts`, the store `lib/enginePresetStore.ts`, IndexedDB
@@ -362,13 +364,32 @@ board, the native build's Syzygy options, NumaPolicy, … — is set through
   server's engine from the server's list — in its UCI type: a spin a number in
   its range, a check a switch, a combo a select, a string words. A button
   (Clear Hash) is an action, not a value: listed, never kept.
+- **Three tabs, by name** (`OPTION_TABS`, `optionTabOf`): **Basic** (Threads,
+  Hash, MultiPV, Skill Level, UCI_LimitStrength, UCI_Elo), **System**
+  (`NumaPolicy`, `Clear Hash`, and a file path outside a group — `EvalFile`,
+  `EvalFileSmall`, `Debug Log File`) and **Advanced** — everything else, so an
+  option an engine declares that no list names still has a place.
+- **Options that act only while another is on** (`OPTION_DEPENDENCIES`,
+  Stockfish's own rules, keyed on its names): `UCI_Elo` limits the engine only
+  with `UCI_LimitStrength` on — off, the form shows it disabled at its top,
+  full strength; `SyzygyProbeDepth`, `Syzygy50MoveRule` and `SyzygyProbeLimit`
+  do nothing without a `SyzygyPath`. Such a value is kept and **not sent**
+  (`resolveEnginePreset` gives it the `inactive` limit), and the rule is off
+  where the caller sets the controlling option itself (Play's boards set the
+  limit and their own Elo).
+- **Option groups behind one switch** (`OPTION_GROUPS`, a preset's `groups`,
+  absent is off): **Syzygy** — every `Syzygy…` option — off by default, its
+  options shown only while on and none of them sent while off
+  (`presetSentValues`, which `selectedPresetValues` hands the engine module and
+  the job runner — the same object per preset, so their effects stay keyed);
+  the values stay in the preset for when it is turned back on.
 - **The limits, said where they apply** (`resolveEnginePreset`,
   `enginePresetRows`): a value held to the engine's range (a spin clamped);
   **Hash at most 1024 MB in the browser** (`BROWSER_HASH_CEILING_MB`); **no
   file path in a browser build** — the WebAssembly builds have no file system,
   and `setoption name EvalFile` kills the worker — so `EvalFile`,
-  `EvalFileSmall`, `SyzygyPath` and `Debug Log File` (`isFilePathOption`) are
-  read-only there, and the builds' `UciEngine` refuses them whatever asks
+  `EvalFileSmall` and `Debug Log File` (`isFilePathOption`; the builds declare
+  no Syzygy options) are read-only there, and the builds' `UciEngine` refuses them whatever asks
   (`UciEngineConfig.refuses`, `lib/engines/builtin.ts`); a pinned option; an
   option the engine does not declare (absent — removable from the preset).
 - **The boards' own options win.** Threads, Hash and MultiPV
@@ -415,7 +436,8 @@ board, the native build's Syzygy options, NumaPolicy, … — is set through
   file path to a browser build; a change from the next search, a dropped
   option back to its default).
 - The presets (§9): `src/lib/enginePresets.test.ts` (the records, the
-  selection, `resolveEnginePreset`, the form's rows), `enginePresetStore.test.ts`
+  selection, `resolveEnginePreset`, the form's rows, the dependencies, the
+  groups, the tabs), `enginePresetStore.test.ts`
   (create, rename, duplicate, delete, select, the cap, the import's write),
   `blocks/forms/EnginePresetForm/EnginePresetForm.test.tsx`, and Settings →
   Engine's `EngineTab.test.tsx`; the job runner's in `jobRunner.test.ts`.

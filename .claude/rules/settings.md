@@ -19,7 +19,7 @@ app's data takes, CTA-94), **Appearance** (the theme, CTA-107) and **Engine**
 | --- | --- | --- |
 | Route | `routes.tsx` — `/settings` and `/settings/:tab` | Both render `SettingsMain.tsx`; `/settings` and an unknown tab redirect to the first tab (Export). |
 | Screen | `views/settings/SettingsScreen.tsx` | The title, a tab strip (each `Tab` a `RouterLink` to `/settings/<id>`), the active tab's content scrolling under it. |
-| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (Browser / API inner tabs: the `EnginePicker` and `EngineServerForm` blocks; under them `EnginePresetsSection.tsx`, the `EnginePresetForm` block — CTA-179; the `EngineOptionsTable` block in its panel), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
+| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (Browser / API inner tabs: the `EnginePicker` and `EngineServerForm` blocks; in its right-hand panel `EnginePresetsSection.tsx`, the `EnginePresetForm` block — CTA-179), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
 | Nav | `navFolders()` — `settings` (`nav.folders.settings`, `pinToBottom`); `navItems()` — one entry per tab (`nav.settingsExport`, `nav.settingsImport`, `nav.settingsStorage`, `nav.settingsAppearance`, `nav.settingsEngine`, `nav.settingsSupport`) | A folder, **not** `singleEntry`, so a tab is one more entry in it. Pinned to the sidebar's foot, under a divider, apart from the screens (`Sidebar.tsx`). |
 | Locale | `settings.*` in `en.ts` / `he.ts` | `settings.title`, `settings.tabs.<id>`, then each tab's own block (`settings.export.*`, `settings.import.*`, `settings.storage.*`, `settings.appearance.*`, `settings.engine.*` — the presets' section `settings.engine.presets.*`). The themes' own names are `appearance.themes.<id>`; the picker's words are `enginePicker.*`, the presets form's `enginePresets.*`. |
 
@@ -135,21 +135,24 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   answers, its engines (`hosted:<id>`, `lib/engines/hosted.ts`) are **listed
   under it** — a second `EnginePicker` ("Engines on this server") on the same
   choice; the Browser tab's list keeps the page's builds.
-- **The right-hand panel shows what the chosen server engine declared** —
-  its UCI options, types, defaults and ranges as `GET /v1/engines` sent them
-  (the `EngineOptionsTable` block; `Threads` and `Hash` under the server's
-  ceilings), with the depth it allows. With none chosen it points, **on the API
-  tab, to the Blog's guide** (`/blog/guides/local-engine`, *Run a chess engine
-  on your own computer* — the whole setup); on the Browser tab, a line
-  pointing to the API tab. Offline, they
-  are gone, and a choice of one reads as the default — still stored, back when
-  the server is.
+- **The right-hand panel is the chosen engine's options** (§4.1) — for a
+  page's build or a server's engine alike, in a column that **scrolls on its
+  own** (`engine-panel`: the shell's aside does not scroll). For a server
+  engine, under the form, the depth it allows and that `Threads` and `Hash`
+  are under the server's ceilings. On the API tab with no server engine
+  chosen, the form has **the Blog's guide** above it
+  (`/blog/guides/local-engine`, *Run a chess engine on your own computer* —
+  the whole setup). Offline, the server's engines are gone, and a choice of
+  one reads as the default — still stored, back when the server is. (The
+  `EngineOptionsTable` block that listed a server engine's declaration here
+  until the form took its place stays in `blocks/tables/`, unused.)
 
 ### 4.1 The engine's options, in presets (CTA-179)
 
-Under the inner tabs, whichever the engine was chosen on, **the chosen engine's
-options** (`EnginePresetsSection.tsx` over the `EnginePresetForm` block;
-[`docs/engine.md`](../../docs/engine.md) §9 is the whole design):
+In the right-hand panel, whichever inner tab the engine was chosen on, **the
+chosen engine's options** (`EnginePresetsSection.tsx` over the
+`EnginePresetForm` block; [`docs/engine.md`](../../docs/engine.md) §9 is the
+whole design):
 
 - **A shared library of named presets, one selected per engine.** The picker
   shows the preset this engine runs; New, Rename, Duplicate (named
@@ -166,9 +169,25 @@ options** (`EnginePresetsSection.tsx` over the `EnginePresetForm` block;
   default and range, and a reset (back to the engine's default) where the
   preset sets it; a value the preset sets that this engine does not declare is
   listed as absent, with Remove.
+- **In three tabs** (`OPTION_TABS`, `optionTabOf` — by name, the form's own
+  state, opening on Basic; a tab with nothing on it is not shown): **Basic**
+  (Threads, Hash, MultiPV, Skill Level, UCI_LimitStrength, UCI_Elo),
+  **Advanced** (Move Overhead, nodestime, Ponder, UCI_Chess960, UCI_ShowWDL,
+  the Syzygy tablebases — and any option not named in the lists) and
+  **System** (EvalFile, EvalFileSmall, Debug Log File — a file path outside a
+  group — NumaPolicy, Clear Hash).
+- **An option that acts only while another is on is disabled until it is**
+  (`OPTION_DEPENDENCIES`) — kept in the preset, not sent: `UCI_Elo` while
+  `UCI_LimitStrength` is off, shown at its top (full strength); the Syzygy
+  settings until `SyzygyPath` is set.
+- **A group of options behind one switch** (`OPTION_GROUPS`, a preset's
+  `groups`): **Syzygy tablebases**, off by default, its options shown only
+  while on, none of them sent while off (`presetSentValues`) — their values
+  stay for when it is turned on. Only an engine that declares them (a native
+  one) shows the switch.
 - **Read-only, each with why**: Threads, Hash and MultiPV — set on each board;
-  a button (Clear Hash) — an action, not a setting; a pinned option; a file
-  path (`EvalFile`, `SyzygyPath`, `Debug Log File`) on a browser build — no
+  a button (Clear Hash) — an action, not a setting, listed on System; a pinned
+  option; a file path (`EvalFile`, `Debug Log File`) on a browser build — no
   file system there. Hash is offered up to 1024 MB on a browser build. Skill
   Level, UCI_Elo and UCI_LimitStrength are editable, noted as the Play boards'
   own there.
@@ -191,16 +210,19 @@ options** (`EnginePresetsSection.tsx` over the `EnginePresetForm` block;
   Hebrew, axe — and the engine server (over a fake `GET /v1/engines`): the
   Browser / API tabs, off by default with no request made, turned on (the
   address kept, the chip, the server's engines listed and chosen), the panel
-  (the chosen engine's UCI options; the guide's link; the line on Browser),
+  (the chosen engine's options form, scrolling on its own; the guide's link
+  on API),
   Connect answered on the button, a bad address refused and a new one kept
   with Enter, a stored server engine opening the API tab and falling back
   when the server is turned off, Hebrew, axe. `src/lib/engineChoice.test.ts`
   — the store; `src/lib/engineServer.test.ts` — the address and the status.
   The presets (CTA-179, the same file over the real stores and a `FakeEngine`
   per build — `builtinEnginesMock`, which `Settings.test.tsx` mocks too): the
-  chosen build's options, the boards' own read-only, a change kept (Default
-  stored at its first edit, numbers typed through the store), a new preset for
-  the chosen engine alone, an engine server's file path, Hebrew and axe.
+  chosen build's options in the panel, in their tabs, the boards' own
+  read-only and the Elo disabled, a change kept (Default stored at its first
+  edit, numbers typed through the store), a new preset for the chosen engine
+  alone, an engine server's tablebases turned on and a path kept, Hebrew and
+  axe.
   `src/lib/enginePresets.test.ts`, `enginePresetStore.test.ts` — the records
   and the store.
   `blocks/forms/EnginePicker/EnginePicker.test.tsx`, `blocks/forms/EnginePresetForm/EnginePresetForm.test.tsx`,
