@@ -2481,13 +2481,11 @@ const en = {
       note: "An engine that cannot run on this host is listed anyway, with what it needs.",
       /** Where the engines run — the tab's two inner tabs. */
       tabs: { label: "Where the engine runs", browser: "Browser", api: "API" },
-      /** The right-hand panel: what the chosen engine-server engine declared. */
+      /** The right-hand panel: the chosen engine-server engine's limits, under its options form. */
       uci: {
-        title: "UCI defaults — {{name}}",
-        note: "What the engine declared in its uci reply, as the server sent it. Threads and Hash are capped by the server; a search goes no deeper than {{maxDepth}}.",
-        none: "Choose an engine on the API tab to see the UCI options it declares.",
+        note: "The options above are what the engine declared in its uci reply, as the server sent it. Threads and Hash are capped by the server; a search goes no deeper than {{maxDepth}}.",
       },
-      /** The engine's options, kept in presets (CTA-179) — the section under the lists. */
+      /** The engine's options, kept in presets (CTA-179) — the right-hand panel. */
       presets: {
         title: "Engine options — {{engine}}",
         description:

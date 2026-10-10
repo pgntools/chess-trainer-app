@@ -277,32 +277,31 @@ describe("Settings → Engine — where the engine runs", () => {
     expect(localStorage.getItem(ENGINE_STORAGE_KEY)).toBe("hosted:stockfish-19");
   });
 
-  it("shows in the panel what the chosen server engine declared", async () => {
+  it("shows in the panel what the chosen server engine declared — in its options form", async () => {
     stubServer();
     renderEngine();
     await openApiTab();
     await turnServerOn();
     await userEvent.click(within(main()).getByRole("radio", { name: "Stockfish 19" }));
 
-    const table = within(aside()).getByRole("table", { name: "UCI defaults — Stockfish 19" });
-    const rows = within(table)
-      .getAllByRole("row")
-      .slice(1)
-      .map((row) => within(row).getAllByRole("cell").map((cell) => cell.textContent));
-    expect(rows).toEqual([
-      ["Threads", "spin", "1", "1 – 19"],
-      ["Clear Hash", "button", "—", "—"],
-      ["UCI_LimitStrength", "check", "false", "true / false"],
-      ["SyzygyPath", "string", "<empty>", "—"],
-    ]);
+    const section = await within(aside()).findByRole("region", { name: "Engine options — Stockfish 19" });
+    expect(within(section).queryByRole("table")).toBeNull();
+    // Basic: Threads read-only, in the server's range; the limit a switch.
+    expect(optionRow("Threads")).toHaveTextContent("spin · default 1 · 1–19");
+    expect(within(section).getByRole("switch", { name: "UCI_LimitStrength" })).not.toBeChecked();
+    await userEvent.click(within(section).getByRole("tab", { name: "Advanced" }));
+    expect(within(section).getByRole("switch", { name: "Syzygy tablebases" })).not.toBeChecked();
+    await userEvent.click(within(section).getByRole("tab", { name: "System" }));
+    expect(optionRow("Clear Hash")).toHaveTextContent("An action, not a setting");
     expect(aside()).toHaveTextContent("a search goes no deeper than 99");
   });
 
-  it("points the panel to the guide on API with none chosen, and to the API tab on Browser", async () => {
+  it("points the panel to the guide on API with none chosen, above the options form", async () => {
     stubServer();
     renderEngine();
 
-    expect(aside()).toHaveTextContent("Choose an engine on the API tab to see the UCI options it declares.");
+    // On Browser, the panel is the chosen build's options form.
+    expect(within(aside()).getByRole("region", { name: `Engine options — ${SINGLE}` })).toBeInTheDocument();
 
     await openApiTab();
 
@@ -402,21 +401,33 @@ const reloaded = async () => {
 };
 
 describe("Settings → Engine — the engine's options, in presets (CTA-179)", () => {
-  it("shows every option the chosen browser build declares, in its preset — the boards' own read-only", async () => {
+  it("shows every option the chosen browser build declares in the panel, in three tabs — the boards' own read-only", async () => {
     renderEngine();
 
-    const section = screen.getByRole("region", { name: `Engine options — ${SINGLE}` });
+    const section = within(aside()).getByRole("region", { name: `Engine options — ${SINGLE}` });
+    expect(within(main()).queryByRole("region", { name: `Engine options — ${SINGLE}` })).toBeNull();
+    // The panel scrolls on its own: the shell's aside does not.
+    expect(screen.getByTestId("engine-panel")).toHaveStyle({ overflowY: "auto" });
     expect(within(section).getByRole("combobox", { name: `Preset for ${SINGLE}` })).toHaveTextContent("Default");
-    expect(await within(section).findByRole("spinbutton", { name: "Move Overhead" })).toHaveValue(10);
-    expect(within(section).getByRole("switch", { name: "UCI_ShowWDL" })).not.toBeChecked();
+    expect(await within(section).findByRole("tab", { name: "Basic" })).toHaveAttribute("aria-selected", "true");
     expect(within(section).queryByRole("spinbutton", { name: "Hash" })).toBeNull();
     expect(optionRow("Hash")).toHaveTextContent("Set on each board");
+    expect(within(section).getByRole("spinbutton", { name: "UCI_Elo" })).toBeDisabled();
+
+    await userEvent.click(within(section).getByRole("tab", { name: "Advanced" }));
+    expect(within(section).getByRole("spinbutton", { name: "Move Overhead" })).toHaveValue(10);
+    expect(within(section).getByRole("switch", { name: "UCI_ShowWDL" })).not.toBeChecked();
+    // The browser build has no tablebases: no switch.
+    expect(within(section).queryByRole("switch", { name: "Syzygy tablebases" })).toBeNull();
+
+    await userEvent.click(within(section).getByRole("tab", { name: "System" }));
     expect(optionRow("EvalFile")).toHaveTextContent("Not available in the browser");
   });
 
   it("keeps a change in the engine's preset, Default stored at its first edit", async () => {
     renderEngine();
-    await userEvent.click(await screen.findByRole("switch", { name: "UCI_ShowWDL" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Advanced" }));
+    await userEvent.click(screen.getByRole("switch", { name: "UCI_ShowWDL" }));
     await waitFor(() => expect(screen.getByRole("switch", { name: "UCI_ShowWDL" })).toBeChecked());
     // Typed through the store, each keystroke written and read back while the next one is typed.
     const overhead = screen.getByRole("spinbutton", { name: "Move Overhead" });
@@ -459,18 +470,25 @@ describe("Settings → Engine — the engine's options, in presets (CTA-179)", (
     await userEvent.click(within(main()).getByRole("radio", { name: "Stockfish 19" }));
 
     const section = await screen.findByRole("region", { name: "Engine options — Stockfish 19" });
-    const path = within(section).getByRole("textbox", { name: "SyzygyPath" });
+    await userEvent.click(within(section).getByRole("tab", { name: "Advanced" }));
+    expect(within(section).queryByRole("textbox", { name: "SyzygyPath" })).toBeNull();
+    await userEvent.click(within(section).getByRole("switch", { name: "Syzygy tablebases" }));
+    const path = await within(section).findByRole("textbox", { name: "SyzygyPath" });
     await userEvent.type(path, "/tb");
     await waitFor(async () => {
       const { presets, selections } = await reloaded();
-      expect(selectedPresetOf(presets, selections, "hosted:stockfish-19").values).toEqual({ SyzygyPath: "/tb" });
+      expect(selectedPresetOf(presets, selections, "hosted:stockfish-19")).toMatchObject({
+        values: { SyzygyPath: "/tb" },
+        groups: { syzygy: true },
+      });
     });
   });
 
   it("reads in Hebrew, and passes axe", async () => {
     await i18n.changeLanguage("he");
     renderEngine();
-    expect(await screen.findByRole("spinbutton", { name: "Move Overhead" })).toHaveAttribute("dir", "ltr");
+    await userEvent.click(await screen.findByRole("tab", { name: "מתקדם" }));
+    expect(screen.getByRole("spinbutton", { name: "Move Overhead" })).toHaveAttribute("dir", "ltr");
     expect(screen.getByRole("button", { name: "הגדרה חדשה" })).toBeInTheDocument();
     await expectNoAxeViolations();
   });

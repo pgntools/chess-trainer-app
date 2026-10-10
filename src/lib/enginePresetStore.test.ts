@@ -14,6 +14,7 @@ import {
   resetEnginePresetSelectionStore,
   resetEnginePresetStore,
   selectEnginePreset,
+  setEnginePresetGroup,
   setEnginePresetValue,
 } from "./enginePresetStore";
 
@@ -70,6 +71,31 @@ describe("the engine preset store (CTA-179)", () => {
     const kept = enginePresetsSnapshot();
     await renameEnginePreset(id, "   ");
     expect(enginePresetsSnapshot()).toBe(kept);
+  });
+
+  it("turns a group on and off, keeping its values — a copy keeps the groups too", async () => {
+    const id = await created("tablebases");
+    await setEnginePresetValue(id, "SyzygyPath", "/tb");
+    expect(await setEnginePresetGroup(id, "syzygy", true)).toBeUndefined();
+    const before = enginePresetsSnapshot();
+    await setEnginePresetGroup(id, "syzygy", true);
+    expect(enginePresetsSnapshot()).toBe(before);
+
+    const copy = await duplicateEnginePreset(id, "tablebases (copy)");
+    if (!("id" in copy)) throw new Error("no copy");
+    await setEnginePresetGroup(id, "syzygy", false);
+
+    const { presets } = await reload();
+    expect(presets.map((preset) => [preset.name, preset.values, preset.groups])).toEqual([
+      ["tablebases", { SyzygyPath: "/tb" }, {}],
+      ["tablebases (copy)", { SyzygyPath: "/tb" }, { syzygy: true }],
+    ]);
+  });
+
+  it("stores Default at its first group change", async () => {
+    await setEnginePresetGroup(DEFAULT_PRESET_ID, "syzygy", true);
+    const { presets } = await reload();
+    expect(presets).toEqual([expect.objectContaining({ id: DEFAULT_PRESET_ID, groups: { syzygy: true } })]);
   });
 
   it("selects per engine — one engine's choice leaves another's as it was", async () => {

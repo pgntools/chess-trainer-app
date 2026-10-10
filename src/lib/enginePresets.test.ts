@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   BROWSER_HASH_CEILING_MB,
+  OPTION_TABS,
+  optionTabOf,
+  presetSentValues,
   DEFAULT_PRESET_ID,
   defaultEnginePreset,
   enginePresetFrom,
@@ -29,8 +32,9 @@ const LITE: EngineOption[] = [
   { name: "Skill Level", type: "spin", defaultValue: "20", min: 0, max: 20 },
   { name: "Move Overhead", type: "spin", defaultValue: "10", min: 0, max: 5000 },
   { name: "UCI_LimitStrength", type: "check", defaultValue: "false" },
+  { name: "UCI_Elo", type: "spin", defaultValue: "1320", min: 1320, max: 3190 },
   { name: "UCI_ShowWDL", type: "check", defaultValue: "false" },
-  { name: "EvalFile", type: "string", defaultValue: "nn-37f18f62d772.nnue" },
+  { name: "EvalFile", type: "string", defaultValue: "nn-61e7af4bb97d.nnue" },
 ];
 
 /** The native build adds file paths a browser cannot take, and a combo. */
@@ -38,16 +42,18 @@ const NATIVE: EngineOption[] = [
   ...LITE.filter((option) => option.name !== "Threads"),
   { name: "Threads", type: "spin", defaultValue: "1", min: 1, max: 16 },
   { name: "SyzygyPath", type: "string", defaultValue: "<empty>" },
+  { name: "SyzygyProbeDepth", type: "spin", defaultValue: "1", min: 1, max: 100 },
+  { name: "Syzygy50MoveRule", type: "check", defaultValue: "true" },
   { name: "Debug Log File", type: "string", defaultValue: "<empty>" },
   { name: "NumaPolicy", type: "string", defaultValue: "auto" },
   { name: "Style", type: "combo", defaultValue: "Normal", vars: ["Solid", "Normal", "Risky"] },
 ];
 
-const preset = (id: string, values: EnginePreset["values"] = {}): EnginePreset => ({
+const preset = (id: string, values: EnginePreset["values"] = {}, groups: EnginePreset["groups"] = {}): EnginePreset => ({
   id,
   name: id,
   values,
-  groups: {},
+  groups,
   savedAt: AT,
   updatedAt: AT,
 });
@@ -86,12 +92,15 @@ describe("the presets and each engine's selection", () => {
         id: "deep",
         name: "  deep-analysis  ",
         values: { Hash: 64, UCI_ShowWDL: true, SyzygyPath: "/tb", Bad: { nested: 1 }, Nan: Number.NaN, Line: "a\nb" },
+        groups: { syzygy: true, unknown: true, other: "yes" },
         savedAt: AT,
       }),
     ).toEqual({
       id: "deep",
       name: "deep-analysis",
       values: { Hash: 64, UCI_ShowWDL: true, SyzygyPath: "/tb" },
+      // A known group's `true` only; a record from before groups reads every one off.
+      groups: { syzygy: true },
       savedAt: AT,
       updatedAt: AT,
     });
@@ -201,5 +210,97 @@ describe("the form's rows (enginePresetRows)", () => {
     expect(byName.get("SyzygyPath")).toMatchObject({ editable: true, value: "/tb", set: true });
     expect(byName.get("Move Overhead")).toMatchObject({ value: 5000, note: "clamped" });
     expect(byName.get("Style")).toMatchObject({ editable: true, value: "Normal" });
+  });
+});
+
+describe("options that act only while another is on (OPTION_DEPENDENCIES)", () => {
+  it("keeps UCI_Elo, unsent, while UCI_LimitStrength is off — and sends it once it is on", () => {
+    const off = resolveEnginePreset({ UCI_Elo: 1800 }, LITE, { inBrowser: true });
+    expect(off.send).toEqual({});
+    expect(off.limits.UCI_Elo).toEqual({ kind: "inactive", on: "UCI_LimitStrength" });
+
+    expect(resolveEnginePreset({ UCI_Elo: 1800, UCI_LimitStrength: true }, LITE, { inBrowser: true }).send).toEqual({
+      UCI_Elo: 1800,
+      UCI_LimitStrength: true,
+    });
+  });
+
+  it("leaves the Elo to a board that sets the limit itself — Play's", () => {
+    const owned = ["UCI_LimitStrength", "UCI_Elo", "Skill Level", "Threads", "Hash", "MultiPV"];
+    expect(resolveEnginePreset({ UCI_Elo: 1800 }, LITE, { inBrowser: true, owned }).limits.UCI_Elo).toEqual({
+      kind: "board-owned",
+    });
+  });
+
+  it("keeps the Syzygy settings, unsent, until SyzygyPath is set", () => {
+    const values = { SyzygyProbeDepth: 4, Syzygy50MoveRule: false };
+    expect(resolveEnginePreset(values, NATIVE, { inBrowser: false }).send).toEqual({});
+    expect(resolveEnginePreset({ ...values, SyzygyPath: "  " }, NATIVE, { inBrowser: false }).send).toEqual({ SyzygyPath: "  " });
+    expect(resolveEnginePreset({ ...values, SyzygyPath: "/tb" }, NATIVE, { inBrowser: false }).send).toEqual({
+      ...values,
+      SyzygyPath: "/tb",
+    });
+  });
+
+  it("shows UCI_Elo disabled at its top while the limit is off, and the preset's Elo once it is on", () => {
+    const elo = (values: EnginePreset["values"]) =>
+      enginePresetRows(values, LITE, { inBrowser: true }).find((row) => row.name === "UCI_Elo");
+    expect(elo({ UCI_Elo: 1800 })).toMatchObject({ value: 3190, disabled: true, note: "needs-limit-strength", set: true });
+    expect(elo({ UCI_Elo: 1800, UCI_LimitStrength: true })).toMatchObject({ value: 1800, note: "play-owned" });
+    expect(elo({ UCI_Elo: 1800, UCI_LimitStrength: true })?.disabled).toBeUndefined();
+  });
+
+  it("shows a Syzygy setting disabled, at the preset's value, until a path is set", () => {
+    const depth = (values: EnginePreset["values"]) =>
+      enginePresetRows(values, NATIVE, { inBrowser: false }).find((row) => row.name === "SyzygyProbeDepth");
+    expect(depth({ SyzygyProbeDepth: 4 })).toMatchObject({ value: 4, disabled: true, note: "needs-syzygy-path" });
+    expect(depth({ SyzygyProbeDepth: 4, SyzygyPath: "/tb" })).toMatchObject({ value: 4 });
+    expect(depth({ SyzygyProbeDepth: 4, SyzygyPath: "/tb" })?.disabled).toBeUndefined();
+  });
+});
+
+describe("option groups (OPTION_GROUPS)", () => {
+  it("sends none of a group's options while it is off — the same object from read to read", () => {
+    const off = preset("deep", { "Move Overhead": 50, SyzygyPath: "/tb", SyzygyProbeDepth: 4 });
+    expect(presetSentValues(off)).toEqual({ "Move Overhead": 50 });
+    expect(presetSentValues(off)).toBe(presetSentValues(off));
+
+    const on = preset("deep", off.values, { syzygy: true });
+    expect(presetSentValues(on)).toBe(on.values);
+  });
+
+  it("is what an engine runs: its selected preset, less its off groups", () => {
+    const deep = preset("deep", { SyzygyPath: "/tb", UCI_ShowWDL: true });
+    const selections = [{ id: "hosted:sf19", presetId: "deep", updatedAt: AT }];
+    expect(selectedPresetValues([deep], selections, "hosted:sf19")).toEqual({ UCI_ShowWDL: true });
+  });
+
+  it("marks the group's rows, so the form shows them behind its switch", () => {
+    const rows = enginePresetRows({}, NATIVE, { inBrowser: false });
+    expect(rows.filter((row) => row.group === "syzygy").map((row) => row.name)).toEqual([
+      "SyzygyPath",
+      "SyzygyProbeDepth",
+      "Syzygy50MoveRule",
+    ]);
+  });
+});
+
+describe("the form's tabs (optionTabOf)", () => {
+  it("puts each option on Basic, Advanced or System", () => {
+    const tabOf = (name: string) => optionTabOf(name, NATIVE.find((option) => option.name === name));
+    expect(["Threads", "Hash", "MultiPV", "Skill Level", "UCI_LimitStrength", "UCI_Elo"].map(tabOf)).toEqual(
+      Array(6).fill("basic"),
+    );
+    expect(["Move Overhead", "UCI_ShowWDL", "SyzygyPath", "SyzygyProbeDepth", "Style"].map(tabOf)).toEqual(
+      Array(5).fill("advanced"),
+    );
+    expect(["EvalFile", "Debug Log File", "NumaPolicy", "Clear Hash"].map(tabOf)).toEqual(Array(4).fill("system"));
+    expect(OPTION_TABS).toEqual(["basic", "advanced", "system"]);
+  });
+
+  it("puts an option it does not know by name on Advanced — a file path on System", () => {
+    expect(optionTabOf("Contempt")).toBe("advanced");
+    expect(optionTabOf("BookFile", { name: "BookFile", type: "string" })).toBe("system");
+    expect(enginePresetRows({ Contempt: 24 }, LITE, { inBrowser: true }).at(-1)).toMatchObject({ name: "Contempt", tab: "advanced" });
   });
 });

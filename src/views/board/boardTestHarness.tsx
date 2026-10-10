@@ -72,7 +72,7 @@ const stockfish19Options = (multiThread: boolean): Map<string, EngineOption> =>
     check("UCI_LimitStrength"),
     spin("UCI_Elo", 1320, 3190),
     check("UCI_ShowWDL"),
-    ["EvalFile", { name: "EvalFile", type: "string", defaultValue: "nn-37f18f62d772.nnue" }],
+    ["EvalFile", { name: "EvalFile", type: "string", defaultValue: "nn-61e7af4bb97d.nnue" }],
   ]);
 
 /** An engine stand-in: no worker, and every message pushed by hand. */

@@ -22,7 +22,7 @@ export const STOCKFISH_19_LITE: readonly EngineOption[] = [
   { name: "UCI_LimitStrength", type: "check", defaultValue: "false" },
   { name: "UCI_Elo", type: "spin", defaultValue: "1320", min: 1320, max: 3190 },
   { name: "UCI_ShowWDL", type: "check", defaultValue: "false" },
-  { name: "EvalFile", type: "string", defaultValue: "nn-37f18f62d772.nnue" },
+  { name: "EvalFile", type: "string", defaultValue: "nn-61e7af4bb97d.nnue" },
 ];
 
 /** Stockfish 19 native on the engine server — Debug Log File, NumaPolicy and the Syzygy options too. */

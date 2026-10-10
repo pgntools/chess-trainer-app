@@ -271,7 +271,7 @@ describe("UciEngine option discovery", () => {
   it("never sends a button, nor an option its descriptor refuses — a browser build's file path", () => {
     const { engine, transport } = build({ refuses: (option) => option.name === "EvalFile" });
     transport.say("option name Clear Hash type button");
-    transport.say("option name EvalFile type string default nn-37f18f62d772.nnue");
+    transport.say("option name EvalFile type string default nn-61e7af4bb97d.nnue");
     transport.say("option name Hash type spin default 16 min 1 max 33554432");
     transport.say("uciok");
     transport.sent.length = 0;

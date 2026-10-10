@@ -629,7 +629,7 @@ describe("the engine presets (CTA-179)", () => {
     updatedAt: AT,
   });
   const select = (engine: string, presetId: string) => ({ id: engine, presetId, updatedAt: AT });
-  const PRESETS = [preset("default", { UCI_ShowWDL: true }, "Default"), preset("deep", { "Move Overhead": 100, SyzygyPath: "/tb" })];
+  const PRESETS = [preset("default", { UCI_ShowWDL: true }, "Default"), { ...preset("deep", { "Move Overhead": 100, SyzygyPath: "/tb" }), groups: { syzygy: true } }];
   const SELECTIONS = [select("stockfish-19-lite-single", "deep"), select("hosted:sf19", "default")];
   const presetsZip = () => zipOf({ enginePresets: PRESETS, enginePresetSelections: SELECTIONS }, { ...ALL, collections: false });
 
