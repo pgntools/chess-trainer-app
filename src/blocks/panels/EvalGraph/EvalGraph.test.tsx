@@ -80,4 +80,21 @@ describe("EvalGraph (CTA-173)", () => {
     render(<EvalGraph points={GAME} currentNodeId="n4" onSelect={() => {}} label="Evaluation graph" testId="graph" />);
     await expectNoAxeViolations();
   });
+
+  it("draws a run still being made from the left, over the span it will hold (CTA-174)", () => {
+    const { unmount } = render(<EvalGraph points={GAME.slice(0, 11)} span={GAME.length} label="Evaluation graph so far" testId="graph" />);
+    const line = screen.getByTestId("graph-plot").querySelector("path.eval-line")?.getAttribute("d") ?? "";
+    const xs = [...line.matchAll(/[ML]([\d.]+) /g)].map((match) => Number(match[1]));
+    expect(xs[0]).toBe(0);
+    // Eleven of twenty-one points: half the width.
+    expect(xs.at(-1)).toBeCloseTo(50);
+    // The slider still runs over the points it has.
+    expect(screen.getByRole("slider", { name: "Evaluation graph so far" })).toHaveAttribute("aria-valuemax", "10");
+    unmount();
+
+    // Without a span the points span the width, as before.
+    render(<EvalGraph points={GAME.slice(0, 11)} label="Evaluation graph" testId="graph" />);
+    const whole = screen.getByTestId("graph-plot").querySelector("path.eval-line")?.getAttribute("d") ?? "";
+    expect([...whole.matchAll(/[ML]([\d.]+) /g)].map((match) => Number(match[1])).at(-1)).toBe(100);
+  });
 });

@@ -9,7 +9,7 @@ import { analysisHandOffState } from "../../../lib/analysisHandOff";
 import { DEFAULT_ANALYSIS_SETTINGS } from "../../../lib/analysisSettings";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../../lib/computerAnalysis";
 import { DEFAULT_ENGINE_ID } from "../../../lib/engines/ids";
-import { withCheckpoint } from "../../../lib/jobs";
+import { withCheckpoint, type Job } from "../../../lib/jobs";
 import { enqueueComputerAnalysis, findJob, jobsSnapshot, updateJob } from "../../../lib/jobStore";
 import { parsePgnTree } from "../../../lib/pgn";
 import { savedAnalysisOf, type SavedAnalysis } from "../../../lib/savedAnalyses";
@@ -1676,6 +1676,62 @@ describe("the Computer analysis tab (CTA-174)", () => {
     expect(within(section).getByRole("progressbar", { name: "Computer analysis progress" })).toBeInTheDocument();
     expect(within(section).getByRole("status")).toHaveTextContent(`0 of ${job.positions.length} positions`);
     expect(within(section).getByRole("link", { name: "Open in Jobs" })).toHaveAttribute("href", `/jobs?job=${job.id}`);
+    // The progress takes the form's place, so the game is not sent twice, and the focus goes to it.
+    expect(screen.queryByRole("button", { name: "Start computer analysis" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "This game's analysis" })).toHaveFocus();
+    expect(within(section).getByText(/in the background/)).toBeInTheDocument();
+  });
+
+  /** A job of saved analysis `a1`'s game, queued, then edited as the runner would. */
+  const jobOfA1 = async (pgn: string, edit?: (job: Job) => Job) => {
+    const id = await enqueueComputerAnalysis({
+      source: { analysisId: "a1", name: "Mine", folderId: null, pgn },
+      options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, outputs: ["light"] },
+    });
+    if (id === "invalid" || id === "storage" || id === "too-many") throw new Error(id);
+    if (edit !== undefined) await updateJob(id, edit);
+    return id;
+  };
+
+  it("offers each saved analysis a finished job made — on a board reopened later too — and the form again", async () => {
+    await stored("a1", "1. e4 e5 2. Nf3 Nc6 *", ["e4"], { name: "Mine" });
+    await jobOfA1("1. e4 e5 2. Nf3 Nc6 *", (job) => ({
+      ...job,
+      status: "done",
+      checkpoint: job.positions.map((position) => ({ fen: position.fen, lines: [{ score: { kind: "cp", value: 20 }, depth: 20, pv: [] }] })),
+      outputs: [{ variant: "light", analysisId: "out1" }],
+    }));
+    mount("/tools/analysis?analysis=a1");
+    openTab("computer");
+    expect(await screen.findByTestId("analysis-computer-job-status")).toHaveTextContent("Done");
+    expect(screen.getByRole("link", { name: "Open the Light analysis" })).toHaveAttribute("href", "/tools/analysis?analysis=out1");
+    expect(screen.getByRole("button", { name: "Start computer analysis" })).toBeEnabled();
+  });
+
+  it("fills in a running job's results as they land: the graph, the latest position, the report so far", async () => {
+    const user = userEvent.setup();
+    const pgn = "1. e4 e5 2. Nf3 Nc6 *";
+    await stored("a1", pgn, [], { name: "Mine" });
+    const lineOf = (cp: number, pv: string[]) => [{ score: { kind: "cp" as const, value: cp }, depth: 18, pv }];
+    await jobOfA1(pgn, (job) =>
+      [lineOf(20, ["e2e4"]), lineOf(25, ["e7e5"]), lineOf(30, ["g1f3", "b8c6"])].reduce<Job>(
+        (current, lines, index) => withCheckpoint(current, index, { fen: current.positions[index].fen, lines }),
+        { ...job, status: "running" },
+      ),
+    );
+    mount("/tools/analysis?analysis=a1");
+    openTab("computer");
+
+    const graph = await screen.findByRole("slider", { name: "Evaluation graph so far" });
+    expect(graph).toHaveAttribute("aria-valuemax", "2");
+    expect(screen.getByTestId("analysis-computer-live-latest")).toHaveTextContent("Latest: after 1... e5: +0.30 · depth 18 · 2. Nf3 Nc6");
+    expect(within(screen.getByTestId("analysis-computer-live")).getByRole("table", { name: "Computer analysis report" })).toBeInTheDocument();
+
+    // The graph moves the board: its last point is 1... e5.
+    graph.focus();
+    await user.keyboard("{End}{Enter}");
+    expect(where()).toContain("at=e4%2Ce5");
+    expect(where()).not.toContain("Nf3");
   });
 
   it("follows the job as the runner checkpoints it", async () => {

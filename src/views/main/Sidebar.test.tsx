@@ -82,7 +82,9 @@ describe("sidebar navigation", () => {
       }
       await user.click(screen.getByRole("button", { name: nameOf(folder) }));
       for (const item of navItemsInFolder(folder.id)) {
-        expect(screen.getByRole("link", { name: nameOf(item) })).toBeVisible();
+        // By name and address: two folders may share a label (the Engine's and the Analyses' Lobby).
+        const link = screen.getAllByRole("link", { name: nameOf(item) }).find((each) => each.getAttribute("href") === item.to);
+        expect(link).toBeVisible();
       }
     }
   });
@@ -136,11 +138,11 @@ describe("sidebar navigation", () => {
   it("marks only the current route as the current page", () => {
     renderAt("/tools/analysis/saved");
 
-    // A single-entry folder's screen (CTA-58) — the row is named for the
-    // folder, not the screen's own label.
-    const active = screen.getByRole("link", {
-      name: i18n.t("nav.folders.analysisBoard"),
-    });
+    // The Analyses folder's Lobby (CTA-174) — a screen inside an open folder.
+    const active = screen
+      .getAllByRole("link", { name: i18n.t("nav.lobby") })
+      .find((link) => link.getAttribute("href") === "/tools/analysis/saved");
+    if (active === undefined) throw new Error("no Lobby link to the saved list");
     expect(active).toHaveAttribute("aria-current", "page");
 
     const others = screen.getAllByRole("link").filter((link) => link !== active);

@@ -90,6 +90,19 @@ describe("the shipped nav tree", () => {
     expect(folderPath("/masked/play")).toEqual([]);
   });
 
+  it("files the Lobby and Jobs in the Analyses folder, a folder rather than a single entry (CTA-174)", () => {
+    const analysis = navFolders().find((folder) => folder.id === "analysis");
+    expect(analysis?.singleEntry).toBeFalsy();
+    expect(analysis?.labelKey).toBe("nav.folders.analysisBoard");
+    expect(navItemsInFolder("analysis").map((item) => [item.to, item.labelKey])).toEqual([
+      ["/tools/analysis/saved", "nav.lobby"],
+      ["/jobs", "nav.jobs"],
+    ]);
+    // Jobs has no top-level folder of its own any more, and opens the Analyses chain.
+    expect(navFolders().map((folder) => folder.id)).not.toContain("jobs");
+    expect(folderPath("/jobs")).toEqual(["analysis"]);
+  });
+
   it("files Export, Import, Storage, Appearance and Engine in a Settings folder, a folder rather than a single entry (CTA-86, CTA-89, CTA-94, CTA-107, CTA-153)", () => {
     const settings = navFolders().find((folder) => folder.id === "settings");
     expect(settings).toMatchObject({ labelKey: "nav.folders.settings" });

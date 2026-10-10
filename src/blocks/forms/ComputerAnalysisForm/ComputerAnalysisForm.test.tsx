@@ -8,7 +8,7 @@ import { computerAnalysisOptionsFrom, type ComputerAnalysisOptions } from "../..
 import type { EngineOption } from "../../../lib/engineTypes";
 import { expectNoAxeViolations } from "../../../test/axe";
 import ComputerAnalysisForm, { type ComputerAnalysisFormProps } from "./ComputerAnalysisForm";
-import { BEFORE_HANDSHAKE, MULTI_THREAD, NO_HASH, NONE_TICKED, OPTIONS, SINGLE_THREAD } from "./fixtures";
+import { BEFORE_HANDSHAKE, MULTI_THREAD, NO_HASH, NO_TIME_LIMIT, NONE_TICKED, OPTIONS, SINGLE_THREAD } from "./fixtures";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
@@ -88,6 +88,33 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
       render(<Harness engineOptions={BEFORE_HANDSHAKE} />);
       expect(screen.getByRole("slider", { name: "Threads" })).toBeEnabled();
     });
+  });
+
+  it("switches the time limit off and back, the last time set coming back", async () => {
+    const user = userEvent.setup();
+    const onOptions = vi.fn();
+    render(<Harness onOptions={onOptions} />);
+    const noLimit = screen.getByRole("switch", { name: "No time limit" });
+    const time = screen.getByRole("slider", { name: "Time per move" });
+    expect(noLimit).not.toBeChecked();
+    expect(time).toBeEnabled();
+    expect(time).toHaveAttribute("aria-valuemin", "1000");
+
+    await user.click(noLimit);
+    expect(onOptions).toHaveBeenLastCalledWith(expect.objectContaining({ moveTimeMs: 0 }));
+    expect(noLimit).toBeChecked();
+    expect(time).toBeDisabled();
+    expect(screen.getByTestId("ca-movetime-value")).toHaveTextContent("No limit");
+
+    await user.click(noLimit);
+    expect(onOptions).toHaveBeenLastCalledWith(expect.objectContaining({ moveTimeMs: OPTIONS.moveTimeMs }));
+    expect(time).toBeEnabled();
+  });
+
+  it("opens with no time limit when the options have none", () => {
+    render(<Harness initial={NO_TIME_LIMIT} />);
+    expect(screen.getByRole("switch", { name: "No time limit" })).toBeChecked();
+    expect(screen.getByRole("slider", { name: "Time per move" })).toBeDisabled();
   });
 
   it("caps the early stop's depth at the depth", () => {
