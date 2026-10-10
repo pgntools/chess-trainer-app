@@ -7,6 +7,7 @@ import {
   type ExportSelection,
   type ExportSource,
 } from "./dataExport";
+import { loadEnginePresetSelections, loadEnginePresets } from "./enginePresetStore";
 import { loadUploadedCollections, loadUploadedGames } from "./libraryCollectionStore";
 import { loadLibraryFolders } from "./libraryFolderStore";
 import type { CollectionSummary } from "./libraryCollections";
@@ -63,16 +64,27 @@ const loadCollectionSummaries = async (): Promise<readonly CollectionSummary[]> 
  * look complete and not be.
  */
 const loadExportSource = async (selection: ExportSelection): Promise<ExportSource> => {
-  const [playedGames, analyses, analysisFolders, repertoires, repertoireFolders, summaries, collectionFolders] =
-    await Promise.all([
-      selection.games ? loadPlayedGames() : NOTHING,
-      selection.analyses ? loadSavedAnalyses() : NOTHING,
-      selection.analyses ? loadAnalysisFolders() : NOTHING,
-      selection.repertoires ? loadSavedRepertoires() : NOTHING,
-      selection.repertoires ? loadRepertoireFolders() : NOTHING,
-      selection.collections ? loadCollectionSummaries() : NOTHING,
-      selection.collections ? loadLibraryFolders() : NOTHING,
-    ]);
+  const [
+    playedGames,
+    analyses,
+    analysisFolders,
+    repertoires,
+    repertoireFolders,
+    summaries,
+    collectionFolders,
+    enginePresets,
+    enginePresetSelections,
+  ] = await Promise.all([
+    selection.games ? loadPlayedGames() : NOTHING,
+    selection.analyses ? loadSavedAnalyses() : NOTHING,
+    selection.analyses ? loadAnalysisFolders() : NOTHING,
+    selection.repertoires ? loadSavedRepertoires() : NOTHING,
+    selection.repertoires ? loadRepertoireFolders() : NOTHING,
+    selection.collections ? loadCollectionSummaries() : NOTHING,
+    selection.collections ? loadLibraryFolders() : NOTHING,
+    selection.enginePresets ? loadEnginePresets() : NOTHING,
+    selection.enginePresets ? loadEnginePresetSelections() : NOTHING,
+  ]);
 
   const collections: ExportCollection[] = [];
   for (const summary of exportedCollections(summaries, selection)) {
@@ -81,7 +93,17 @@ const loadExportSource = async (selection: ExportSelection): Promise<ExportSourc
     collections.push({ summary, games });
   }
 
-  return { playedGames, analyses, analysisFolders, repertoires, repertoireFolders, collections, collectionFolders };
+  return {
+    playedGames,
+    analyses,
+    analysisFolders,
+    repertoires,
+    repertoireFolders,
+    collections,
+    collectionFolders,
+    enginePresets,
+    enginePresetSelections,
+  };
 };
 
 /** The zip for a selection: its bytes and what the download is called. */

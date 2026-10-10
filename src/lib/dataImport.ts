@@ -7,6 +7,13 @@ import {
   MANIFEST_PATH,
   type ExportCategory,
 } from "./dataExport";
+import {
+  DEFAULT_PRESET_ID,
+  enginePresetFrom,
+  enginePresetSelectionFrom,
+  type EnginePreset,
+  type EnginePresetSelection,
+} from "./enginePresets";
 import type { CollectionSummary, CollectionTournament } from "./libraryCollections";
 import { TOURNAMENT_FORMATS } from "./libraryCollections";
 import { splitPgnGames } from "./pgn";
@@ -50,7 +57,9 @@ import { savedRepertoireFrom, type SavedRepertoire } from "./savedRepertoires";
  * folder that always exists; the played games, which have no folders, clash
  * as a whole. A folder of the dump's that the app does not have is created,
  * empty or not, and its records go in — a record whose id is already
- * elsewhere in the app is kept as the app has it, as under Merge.
+ * elsewhere in the app is kept as the app has it, as under Merge. The engine
+ * presets (CTA-179) have no folders either, and clash as a whole too; each
+ * engine's selection comes with them.
  */
 
 /* ------------------------------------------------------------------ *
@@ -94,6 +103,10 @@ export type ImportDump = {
   collectionFolders: readonly FolderPath[];
   /** How many shipped collections the zip holds: never imported, they ship with the app. */
   shippedCollections: number;
+  /** The engine presets (CTA-179), each through its normaliser. */
+  enginePresets: readonly EnginePreset[];
+  /** Which preset each engine runs, as the zip says. */
+  enginePresetSelections: readonly EnginePresetSelection[];
 };
 
 /** Why a zip cannot be imported. */
@@ -131,11 +144,14 @@ type ManifestMigration = (manifest: RawManifest) => RawManifest;
  * **The migrations**, keyed by the version each upgrades *from*. Version 2
  * added the collections' `description` and `tournament` (CTA-121): a v1
  * manifest simply lacks them, so its upgrade is the version stamp alone.
+ * Version 3 added the engine presets' file (CTA-179): a v2 zip has none, so
+ * its upgrade is the stamp alone too.
  * Bumping `EXPORT_FORMAT_VERSION` to `n + 1` adds the entry `n` here — how
  * is `.claude/rules/import-export.md` §6.
  */
 const MANIFEST_MIGRATIONS: Readonly<Record<number, ManifestMigration>> = {
   1: (manifest) => ({ ...manifest, formatVersion: 2 }),
+  2: (manifest) => ({ ...manifest, formatVersion: 3 }),
 };
 
 type MigrationOptions = {
@@ -305,6 +321,29 @@ const folderPathsOf = (folders: Record<string, unknown>, key: string): FolderPat
   return value;
 };
 
+/**
+ * `engine-presets.json` read back (CTA-179): JSON holding `presets` and
+ * `selections`, every one through its normaliser — `undefined` when it is
+ * not that, or holds one its normaliser refuses.
+ */
+const enginePresetsFileOf = (
+  text: string,
+): { presets: EnginePreset[]; selections: EnginePresetSelection[] } | undefined => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (!isObject(parsed) || !Array.isArray(parsed.presets) || !Array.isArray(parsed.selections)) return undefined;
+  const presets = parsed.presets.map(enginePresetFrom);
+  const selections = parsed.selections.map(enginePresetSelectionFrom);
+  if (presets.some((preset) => preset === undefined) || selections.some((selection) => selection === undefined)) {
+    return undefined;
+  }
+  return { presets: presets as EnginePreset[], selections: selections as EnginePresetSelection[] };
+};
+
 /** The dump, read out of an unzipped manifest and its files. Throws {@link Refused}. */
 const dumpOf = (manifest: RawManifest, files: Readonly<Record<string, Uint8Array>>): ImportDump => {
   if (!Array.isArray(manifest.categories) || !Array.isArray(manifest.files)) return refuse({ kind: "malformed" });
@@ -327,6 +366,8 @@ const dumpOf = (manifest: RawManifest, files: Readonly<Record<string, Uint8Array
     collections: [] as Filed<ImportCollection>[],
     collectionFolders: folderPathsOf(folders, "collections"),
     shippedCollections: 0,
+    enginePresets: [] as EnginePreset[],
+    enginePresetSelections: [] as EnginePresetSelection[],
   };
 
   for (const file of manifest.files as unknown[]) {
@@ -401,6 +442,13 @@ const dumpOf = (manifest: RawManifest, files: Readonly<Record<string, Uint8Array
         });
         break;
       }
+      case "engine-presets": {
+        const read = enginePresetsFileOf(text);
+        if (read === undefined || read.presets.length !== file.presets) return refuse({ kind: "unreadable", path });
+        append(dump.enginePresets, read.presets);
+        append(dump.enginePresetSelections, read.selections);
+        break;
+      }
       default:
         return refuse({ kind: "malformed" });
     }
@@ -463,6 +511,9 @@ export type ImportCurrent = {
   /** The uploaded collections — the shipped ones are never written. */
   collections: readonly CollectionSummary[];
   collectionFolders: readonly GameFolder[];
+  /** The engine presets as stored — Default only once it was edited (CTA-179). */
+  enginePresets: readonly EnginePreset[];
+  enginePresetSelections: readonly EnginePresetSelection[];
 };
 
 /** The stores' caps (`lib/dataImportTarget.ts`'s `IMPORT_CAPS`), passed in so this file reads no store. */
@@ -472,6 +523,8 @@ export type ImportCaps = {
   repertoires: number;
   /** Per store: the analyses', the repertoires' and the Library's folders each. */
   folders: number;
+  /** The engine presets' library. */
+  enginePresets: number;
 };
 
 /** A folder path as a map key. `[]` — the top level — is `"[]"`. */
@@ -567,6 +620,13 @@ const categoriesOf = (dump: ImportDump, current: ImportCurrent) => {
       appFolders: collectionIds,
       existingFolderOf: filedIn(collectionIds),
     } satisfies Category<ImportCollection, CollectionSummary>,
+    enginePresets: {
+      incoming: dump.enginePresets.map((record) => ({ record, folder: [] })),
+      dumpFolders: [],
+      existing: current.enginePresets,
+      appFolders: new Map(),
+      existingFolderOf: () => TOP,
+    } satisfies Category<EnginePreset>,
   };
 };
 
@@ -701,6 +761,8 @@ export type ImportWrites = {
   analyses?: CategoryImport<RecordWrites<SavedAnalysis, GameFolder>>;
   repertoires?: CategoryImport<RecordWrites<SavedRepertoire, RepertoireFolder>>;
   collections?: CategoryImport<RecordWrites<ImportCollectionWrite, GameFolder>>;
+  /** The presets to add and remove, then each engine's selection (CTA-179). */
+  enginePresets?: CategoryImport<{ add: EnginePreset[]; remove: string[]; select: EnginePresetSelection[] }>;
 };
 
 type Resolved<R> = {
@@ -783,6 +845,34 @@ const folderCapOf = (existing: number, created: number, max: number): CapProblem
   existing + created > max ? { kind: "folders", max, total: existing + created } : undefined;
 
 /**
+ * The engine selections an import of the presets brings (CTA-179): under
+ * **Override** the zip's, each engine's replacing the app's; under **Merge**
+ * the zip's for an engine the app has none for; under **Skip** none. A
+ * selection naming a preset the app will not hold after the import is
+ * dropped (Default always is held).
+ */
+const enginePresetSelectionsOf = (
+  dump: ImportDump,
+  current: ImportCurrent,
+  choice: ConflictChoice,
+  added: readonly EnginePreset[],
+  removed: readonly string[],
+  at: string,
+): EnginePresetSelection[] => {
+  if (choice === "skip") return [];
+  const gone = new Set(removed);
+  const held = new Set([
+    DEFAULT_PRESET_ID,
+    ...current.enginePresets.filter((preset) => !gone.has(preset.id)).map((preset) => preset.id),
+    ...added.map((preset) => preset.id),
+  ]);
+  const chosen = new Set(current.enginePresetSelections.map((selection) => selection.id));
+  return dump.enginePresetSelections
+    .filter((selection) => held.has(selection.presetId) && (choice === "override" || !chosen.has(selection.id)))
+    .map((selection) => ({ ...selection, updatedAt: at }));
+};
+
+/**
  * **The writes the reader's choices make** — for every ticked category the
  * dump holds: the folders to create (ids minted by `newId`), the records to
  * remove and to add (each filed in its folder), the report, and a cap it
@@ -856,6 +946,20 @@ export const importWritesOf = (
       },
       report,
       ...(refused === undefined ? {} : { refused }),
+    };
+  }
+
+  if (wanted("enginePresets")) {
+    const { add, remove, report, total } = resolve(categories.enginePresets, choices.enginePresets, newId);
+    const choice = choices.enginePresets.folders[TOP] ?? choices.enginePresets.choice;
+    writes.enginePresets = {
+      writes: {
+        add: add.map(({ record }) => record),
+        remove,
+        select: enginePresetSelectionsOf(dump, current, choice, add.map(({ record }) => record), remove, at),
+      },
+      report,
+      ...(total > caps.enginePresets ? { refused: { kind: "records" as const, max: caps.enginePresets, total } } : {}),
     };
   }
 

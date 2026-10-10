@@ -11,6 +11,7 @@ import {
   type ExportSelection,
   type ExportSource,
 } from "./dataExport";
+import type { EnginePreset } from "./enginePresets";
 import { DEFAULT_ENGINE_SETTINGS } from "./engineSettings";
 import type { CollectionSummary } from "./libraryCollections";
 import { splitPgnGames } from "./pgn";
@@ -99,6 +100,8 @@ const EMPTY: ExportSource = {
   repertoireFolders: [],
   collections: [],
   collectionFolders: [],
+  enginePresets: [],
+  enginePresetSelections: [],
 };
 
 const ALL: ExportSelection = {
@@ -106,6 +109,7 @@ const ALL: ExportSelection = {
   games: true,
   analyses: true,
   repertoires: true,
+  enginePresets: true,
   shippedCollections: true,
 };
 const NONE: ExportSelection = {
@@ -113,6 +117,7 @@ const NONE: ExportSelection = {
   games: false,
   analyses: false,
   repertoires: false,
+  enginePresets: false,
   shippedCollections: false,
 };
 
@@ -127,7 +132,7 @@ describe("buildExport", () => {
     const { manifest } = build({}, { games: true, repertoires: true });
     expect(manifest).toMatchObject({
       format: "chessapp-export",
-      formatVersion: 2,
+      formatVersion: 3,
       appVersion: "9.9.9",
       exportedAt: NOW.toISOString(),
       categories: ["games", "repertoires"],
@@ -154,10 +159,25 @@ describe("buildExport", () => {
 
   it("lists an empty ticked category but writes no file for it", () => {
     const bundle = build({}, ALL);
-    expect(bundle.manifest.categories).toEqual(["collections", "games", "analyses", "repertoires"]);
+    expect(bundle.manifest.categories).toEqual(["collections", "games", "analyses", "repertoires", "enginePresets"]);
     expect(bundle.files).toEqual([]);
     expect(bundle.manifest.files).toEqual([]);
     expect(bundle.manifest.folders).toEqual({ analyses: [], repertoires: [], collections: [] });
+  });
+
+  it("writes the engine presets and each engine's selection as one JSON file (CTA-179)", () => {
+    const presets: EnginePreset[] = [
+      { id: "default", name: "Default", values: { UCI_ShowWDL: true }, savedAt: AT, updatedAt: AT },
+      { id: "deep", name: "deep-analysis", values: { "Move Overhead": 100, SyzygyPath: "/tb" }, savedAt: AT, updatedAt: AT },
+    ];
+    const selections = [{ id: "stockfish-19-lite-single", presetId: "deep", updatedAt: AT }];
+    const bundle = build({ enginePresets: presets, enginePresetSelections: selections }, { enginePresets: true });
+
+    expect(bundle.manifest.files).toEqual([{ path: "engine-presets.json", kind: "engine-presets", presets: 2 }]);
+    expect(JSON.parse(fileText(bundle, "engine-presets.json") ?? "")).toEqual({ presets, selections });
+    // Not ticked, or nothing kept: no file.
+    expect(build({ enginePresets: presets }, { games: true }).files).toEqual([]);
+    expect(build({}, { enginePresets: true }).files).toEqual([]);
   });
 
   it("joins the played games byte for byte, in store order, with their records", () => {
@@ -182,8 +202,8 @@ describe("buildExport", () => {
     expect(entry.records[0].engine).toEqual(engine);
     // Additive: a game from before has no key at all, so an older reader sees the manifest it knew.
     expect("engine" in entry.records[1]).toBe(false);
-    // And the format is not bumped for it.
-    expect(bundle.manifest.formatVersion).toBe(2);
+    // And the format is not bumped for it: 3 is the engine presets' file's (CTA-179), 2 was before.
+    expect(bundle.manifest.formatVersion).toBe(3);
   });
 
   it("records each analysis' name, description, orientation, path and folder path", () => {

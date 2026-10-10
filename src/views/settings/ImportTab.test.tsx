@@ -9,6 +9,19 @@ import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
 import { indexedRowOf } from "../../lib/collectionIndex";
 import { buildExport, zipExport, type ExportSource } from "../../lib/dataExport";
 import { exportZip } from "../../lib/dataExportSource";
+import {
+  createEnginePreset,
+  deleteEnginePresetsDb,
+  enginePresetSelectionsSnapshot,
+  enginePresetsSnapshot,
+  loadEnginePresetSelections,
+  loadEnginePresets,
+  resetEnginePresetSelectionStore,
+  resetEnginePresetStore,
+  selectEnginePreset,
+  settledEnginePresetSelections,
+  settledEnginePresets,
+} from "../../lib/enginePresetStore";
 import { DEFAULT_ENGINE_SETTINGS } from "../../lib/engineSettings";
 import {
   addCollection,
@@ -149,6 +162,9 @@ const seed = async () => {
   await createLibraryFolder("Nothing yet", null);
   const games = [pgn("Friday 1"), pgn("Friday 2")];
   await addCollection("Friday", games, games.map((game) => indexedRowOf(game)), undefined, undefined, blitz?.id ?? null);
+  // An engine preset, and the engine that runs it (CTA-179).
+  const deep = await createEnginePreset("deep-analysis", { "Move Overhead": 100, UCI_ShowWDL: true, SyzygyPath: "/tb" });
+  if ("id" in deep) await selectEnginePreset("stockfish-19-lite-single", deep.id);
 };
 
 /** A whole app's data gone — the other browser the zip is carried to. */
@@ -160,6 +176,8 @@ const wipe = async () => {
     settledSavedRepertoires(),
     settledRepertoireFolders(),
     settledLibraryFolders(),
+    settledEnginePresets(),
+    settledEnginePresetSelections(),
   ]);
   for (const reset of [
     resetPlayedGameStore,
@@ -168,15 +186,23 @@ const wipe = async () => {
     resetSavedRepertoireStore,
     resetRepertoireFolderStore,
     resetLibraryFolderStore,
+    resetEnginePresetStore,
+    resetEnginePresetSelectionStore,
   ]) {
     reset();
   }
-  await Promise.all([deleteEngineDb(), deleteAnalysisDb(), deleteRepertoireDb(), resetLibraryCollectionStore()]);
+  await Promise.all([
+    deleteEngineDb(),
+    deleteAnalysisDb(),
+    deleteRepertoireDb(),
+    deleteEnginePresetsDb(),
+    resetLibraryCollectionStore(),
+  ]);
 };
 
 /** Everything the app holds, each folder by its path — what a round trip must give back. */
 const everything = async () => {
-  const [games, analyses, analysisFolders, repertoires, repertoireFolders, collections, libraryFolders] =
+  const [games, analyses, analysisFolders, repertoires, repertoireFolders, collections, libraryFolders, presets, selections] =
     await Promise.all([
       loadPlayedGames(),
       loadSavedAnalyses(),
@@ -185,6 +211,8 @@ const everything = async () => {
       loadRepertoireFolders(),
       loadUploadedCollections(),
       loadLibraryFolders(),
+      loadEnginePresets(),
+      loadEnginePresetSelections(),
     ]);
   const pathOf = (folders: readonly { id: string; name: string; parentId: string | null }[], id: string | null | undefined): string[] => {
     const found = folders.find((folder) => folder.id === id);
@@ -209,10 +237,13 @@ const everything = async () => {
       })),
     ),
     libraryFolders: libraryFolders.map((folder) => pathOf(libraryFolders, folder.id)).sort(),
+    enginePresets: presets,
+    // Each engine's preset — when it was chosen is the import's moment.
+    enginePresetSelections: selections.map(({ id, presetId }) => ({ id, presetId })),
   };
 };
 
-const ALL = { collections: true, games: true, analyses: true, repertoires: true, shippedCollections: false };
+const ALL = { collections: true, games: true, analyses: true, repertoires: true, enginePresets: true, shippedCollections: false };
 
 const exported = async () => (await exportZip(ALL, { appVersion: "1.2.3" })).bytes;
 
@@ -228,6 +259,8 @@ const built = (source: Partial<ExportSource>) =>
         repertoireFolders: [],
         collections: [],
         collectionFolders: [],
+        enginePresets: [],
+        enginePresetSelections: [],
         ...source,
       },
       { ...ALL, shippedCollections: true },
@@ -292,6 +325,7 @@ describe("the Import tab", () => {
     expect(screen.getByTestId("settings-import-analyses-count")).toHaveTextContent("(2)");
     expect(screen.getByTestId("settings-import-repertoires-count")).toHaveTextContent("(2)");
     expect(screen.getByTestId("settings-import-collections-count")).toHaveTextContent("(1)");
+    expect(screen.getByTestId("settings-import-enginePresets-count")).toHaveTextContent("(1)");
 
     const done = await importAndWait();
     expect(within(done).getByTestId("settings-import-result-analyses")).toHaveTextContent(
@@ -307,13 +341,25 @@ describe("the Import tab", () => {
     expect(after.repertoireFolders).toEqual(["Unused", "White"]);
     expect(after.collections).toEqual(before.collections);
     expect(after.libraryFolders).toEqual([["Club"], ["Club", "Blitz"], ["Nothing yet"]]);
+    expect(within(done).getByTestId("settings-import-result-enginePresets")).toHaveTextContent(
+      "Engine presets: 1 added, 0 replaced, 0 skipped, 0 folders created.",
+    );
+    expect(after.enginePresets).toEqual(before.enginePresets);
+    expect(after.enginePresetSelections).toEqual(before.enginePresetSelections);
   });
 
   it("changes nothing when the same zip is imported again with Merge", async () => {
     await seed();
     const bytes = await exported();
     const before = await everything();
-    const snapshots = [playedGamesSnapshot(), savedAnalysesSnapshot(), savedRepertoiresSnapshot(), repertoireFoldersSnapshot()];
+    const snapshots = [
+      playedGamesSnapshot(),
+      savedAnalysesSnapshot(),
+      savedRepertoiresSnapshot(),
+      repertoireFoldersSnapshot(),
+      enginePresetsSnapshot(),
+      enginePresetSelectionsSnapshot(),
+    ];
 
     renderImport();
     await pick(bytes);
@@ -327,7 +373,14 @@ describe("the Import tab", () => {
 
     expect(await everything()).toEqual(before);
     // Not a write that happened to change nothing: no write at all, the same arrays.
-    const now = [playedGamesSnapshot(), savedAnalysesSnapshot(), savedRepertoiresSnapshot(), repertoireFoldersSnapshot()];
+    const now = [
+      playedGamesSnapshot(),
+      savedAnalysesSnapshot(),
+      savedRepertoiresSnapshot(),
+      repertoireFoldersSnapshot(),
+      enginePresetsSnapshot(),
+      enginePresetSelectionsSnapshot(),
+    ];
     now.forEach((snapshot, at) => expect(snapshot).toBe(snapshots[at]));
   });
 

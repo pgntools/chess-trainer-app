@@ -2,6 +2,7 @@ import { strToU8, zipSync } from "fflate";
 
 import type { AnalysisSettings } from "./analysisSettings";
 import type { ArrowPaletteId, ArrowWidthSource } from "./arrowSettings";
+import type { EnginePreset, EnginePresetSelection } from "./enginePresets";
 import type { EngineSettings } from "./engineSettings";
 import type { CollectionSummary, TournamentFormat } from "./libraryCollections";
 import { splitPgnGames } from "./pgn";
@@ -36,6 +37,7 @@ import type { RepertoireStats, SavedRepertoire } from "./savedRepertoires";
  * | Analyses | `analyses.pgn` | saved analysis |
  * | Collections | `collections/<folder>/…/<name>.pgn`, one per collection, in directories mirroring the Library's folders; shipped ones in `collections/built-in/` | game of the collection |
  * | Repertoires | `repertoires/<folder>.pgn` per folder, and `repertoires/unfiled.pgn` | repertoire |
+ * | Engine presets | `engine-presets.json` — every preset and the one each engine runs (CTA-179) | — |
  *
  * Every PGN is the stored text joined as it stands (`pgnFileOf`) — nothing is
  * re-serialised, so a record this build cannot read still exports byte for
@@ -60,16 +62,18 @@ import type { RepertoireStats, SavedRepertoire } from "./savedRepertoires";
  * The manifest's shape. Bumped on any change a reader of an older one would
  * misread — and every bump brings a migration from the version before it
  * (`lib/dataImport.ts`'s `MANIFEST_MIGRATIONS`), so an older zip still imports.
+ * Version 3 added the engine presets (CTA-179): a file of a kind an older
+ * reader refuses, so it says "newer" rather than "malformed".
  */
-export const EXPORT_FORMAT_VERSION = 2;
+export const EXPORT_FORMAT_VERSION = 3;
 
 /** What the manifest calls itself — how an import tells it from any other JSON. */
 export const EXPORT_FORMAT = "chessapp-export";
 
 type CollectionSource = CollectionSummary["source"];
 
-/** The four things the reader ticks. */
-export const EXPORT_CATEGORIES = ["collections", "games", "analyses", "repertoires"] as const;
+/** The things the reader ticks — the engine presets since CTA-179. */
+export const EXPORT_CATEGORIES = ["collections", "games", "analyses", "repertoires", "enginePresets"] as const;
 export type ExportCategory = (typeof EXPORT_CATEGORIES)[number];
 
 /** What the reader ticked. */
@@ -95,7 +99,20 @@ export type ExportSource = {
   collections: readonly ExportCollection[];
   /** The Library's folders (CTA-88) — the ones the uploaded collections are filed in. */
   collectionFolders: readonly GameFolder[];
+  /** The engine presets as stored (CTA-179) — Default only once it was edited. */
+  enginePresets: readonly EnginePreset[];
+  /** Which preset each engine runs. */
+  enginePresetSelections: readonly EnginePresetSelection[];
 };
+
+/** `engine-presets.json`: the presets as stored and each engine's selection. */
+export type EnginePresetsFile = {
+  presets: readonly EnginePreset[];
+  selections: readonly EnginePresetSelection[];
+};
+
+/** Where the engine presets sit in the zip. */
+export const ENGINE_PRESETS_PATH = "engine-presets.json";
 
 /** Where a record sits in its file. */
 type Placed = { index: number; games: number };
@@ -168,6 +185,12 @@ type ExportFileEntry =
       /** The folder the file stands for; `null` is Unfiled. */
       folder: { name: string } | null;
       records: RepertoireEntry[];
+    }
+  | {
+      path: string;
+      kind: "engine-presets";
+      /** How many presets the file holds — what the import counts. */
+      presets: number;
     };
 
 export type ExportManifest = {
@@ -428,6 +451,15 @@ export const buildExport = (
     folders.repertoires = sorted.map((folder) => folder.name);
   }
 
+  if (selection.enginePresets && (source.enginePresets.length > 0 || source.enginePresetSelections.length > 0)) {
+    const file: EnginePresetsFile = { presets: source.enginePresets, selections: source.enginePresetSelections };
+    add(`${JSON.stringify(file, null, 2)}\n`, {
+      path: ENGINE_PRESETS_PATH,
+      kind: "engine-presets",
+      presets: source.enginePresets.length,
+    });
+  }
+
   return {
     manifest: {
       format: EXPORT_FORMAT,
@@ -443,7 +475,7 @@ export const buildExport = (
   };
 };
 
-/** The bundle as one zip: `manifest.json` first, then the PGN files in manifest order. */
+/** The bundle as one zip: `manifest.json` first, then the files in manifest order. */
 export const zipExport = ({ manifest, files }: ExportBundle): Uint8Array<ArrayBuffer> =>
   zipSync(
     Object.fromEntries([
