@@ -25,6 +25,7 @@ function Harness({
   onClearFilter = () => {},
   folderPick,
   selectAll,
+  onAnalyse,
 }: {
   rows?: readonly SavedAnalysisRow[];
   folders?: readonly GameFolder[];
@@ -35,6 +36,7 @@ function Harness({
   onClearFilter?: () => void;
   folderPick?: (folder: GameFolder) => SavedAnalysesTableFolderPick;
   selectAll?: { checked: boolean; indeterminate: boolean; onToggleAll: () => void };
+  onAnalyse?: (row: SavedAnalysisRow) => void;
 }) {
   const [sort, setSort] = useState<DataTableSort<SavedAnalysisColumn>>({ column: "updated", direction: "desc" });
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -73,6 +75,7 @@ function Harness({
       openLink={(row) => ({ href: `/tools/analysis?analysis=${row.id}` })}
       onOpenAnalysis={onOpenAnalysis}
       settingsLink={(row) => ({ href: `/tools/analysis/saved/${row.id}/settings` })}
+      {...(onAnalyse !== undefined && { onAnalyse })}
       filtered={text !== ""}
       onClearFilter={onClearFilter}
       testId="analyses"
@@ -145,6 +148,21 @@ describe("SavedAnalysesTable (CTA-144)", () => {
     expect(screen.queryByTestId("analyses-open-broken")).toBeNull();
     expect(screen.getByRole("checkbox", { name: "Select Broken record" })).toBeInTheDocument();
     expect(screen.getByTestId("analyses-settings-broken")).toBeInTheDocument();
+  });
+
+  it("gives each analysis an Analyse when the screen asks for one (CTA-177) — off for a record that will not read", async () => {
+    const user = userEvent.setup();
+    const onAnalyse = vi.fn();
+    const { unmount } = render(<Harness />);
+    expect(screen.queryByRole("button", { name: /with the computer$/ })).toBeNull();
+    unmount();
+
+    render(<Harness onAnalyse={onAnalyse} />);
+    const prep = ANALYSIS_ROWS.find((row) => row.name === "My Berlin prep")!;
+    await user.click(screen.getByRole("button", { name: "Analyse My Berlin prep with the computer" }));
+    expect(onAnalyse).toHaveBeenCalledWith(expect.objectContaining({ id: prep.id }));
+    expect(screen.getByRole("button", { name: "Analyse Broken record with the computer" })).toBeDisabled();
+    await expectNoAxeViolations(screen.getByTestId("analyses"));
   });
 
   it("picks from the keyboard — a row, then every row", async () => {

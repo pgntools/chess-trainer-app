@@ -106,7 +106,7 @@ export const addJob = async (job: Job): Promise<JobProblem | undefined> => {
 };
 
 /**
- * **Queue a game's computer analysis** — the board's one call (CTA-174): the
+ * **Queue a game's computer analysis** — the New Job dialog's one call (CTA-174, CTA-177): the
  * job's id once it is kept, or why not. The runner picks it up by itself.
  */
 export const enqueueComputerAnalysis = async (

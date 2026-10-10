@@ -9,8 +9,8 @@ import { jobsSnapshot, subscribeJobs } from "../../lib/jobStore";
  * like every store's binding. The server snapshot is the same function, so
  * the pre-render reads `undefined` (`static-pages.md`).
  *
- * With {@link useJob}, the board's read (CTA-174): it shows the job it sent
- * from the id `enqueueComputerAnalysis` answered.
+ * The New Job dialog's read too (CTA-177): a game's job makes Analyse ask
+ * first, and Check existing opens it on the Jobs screen.
  */
 export const useJobs = (): readonly Job[] | undefined => useSyncExternalStore(subscribeJobs, jobsSnapshot, jobsSnapshot);
 

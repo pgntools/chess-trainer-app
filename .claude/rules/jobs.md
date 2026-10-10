@@ -18,8 +18,9 @@ goes on with anything else. One kind so far: a game's **computer analysis**
 position checkpointed, and each ticked variant (light, medium, full) saved as
 a new Saved analysis. The analysis rules themselves (positions, early stop,
 verdicts, the annotated trees, the report read back) are
-[`pgn-annotations.md`](./pgn-annotations.md) §6; the board's tab that sends a
-game is CTA-174's ([`analysis-board.md`](./analysis-board.md)). This file is
+[`pgn-annotations.md`](./pgn-annotations.md) §6; a game is sent from the
+**New Job** dialog the Analysis Board's and the saved list's Analyse icons open
+(CTA-177, [`analysis-board.md`](./analysis-board.md) §1.3). This file is
 everything about the job: the record, the store, the runner, the screen, the
 shell's indicator, and how to test and extend them.
 
@@ -29,17 +30,17 @@ shell's indicator, and how to test and extend them.
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/jobLiveAnalysis.ts` | **A job's results so far**, pure (CTA-174): the source re-parsed, the checkpoint read into the eval graph's points, the verdicts and report over the moves judged so far, the latest finished position — the Analysis Board's tab draws them while a job runs. |
+| `src/lib/jobLiveAnalysis.ts` | **A job's results so far**, pure (CTA-174): the source re-parsed, the checkpoint read into the eval graph's points, the verdicts and report over the moves judged so far, the latest finished position — drawn while a job runs (the Analysis Board's tab's until CTA-177; the Jobs screen's, CTA-178). |
 | `src/lib/jobs.ts` | **The record**, pure: `Job` (`ComputerAnalysisJob`), its statuses and errors, `ComputerAnalysisRequest`, `computerAnalysisJobOf` (a request → a queued job, or `undefined` when there is nothing to run), `jobSearchOf` (the source's tree and positions), `withCheckpoint`, `jobProgress`, `jobMoveLabel`, `canCancelJob` / `canResumeJob`, `jobOutputName`, `MAX_JOBS`, and the normaliser `jobFrom`. |
-| `src/lib/jobStore.ts` | **The store**: `chessapp.jobs`, object store `jobs`, over `idbRecordStore` (newest first). `enqueueComputerAnalysis` (the board's one call), `addJob` (the cap), `updateJob`, `cancelJob`, `resumeJob`, `removeJob`, `interruptRunningJobs`, `findJob`; `jobsSnapshot` / `subscribeJobs` / `loadJobs` / `settledJobs` / `resetJobStore` / `deleteJobsDb`. |
+| `src/lib/jobStore.ts` | **The store**: `chessapp.jobs`, object store `jobs`, over `idbRecordStore` (newest first). `enqueueComputerAnalysis` (the New Job dialog's one call), `addJob` (the cap), `updateJob`, `cancelJob`, `resumeJob`, `removeJob`, `interruptRunningJobs`, `findJob`; `jobsSnapshot` / `subscribeJobs` / `loadJobs` / `settledJobs` / `resetJobStore` / `deleteJobsDb`. |
 | `src/lib/jobRunner.ts` | **The runner** (§3): `createJobRunner(deps)`, and the page's one, `startJobRunner()` / `stopJobRunner()` (tests). |
 | `src/views/jobs/JobRunner.tsx` | Mounts the runner: the shell (`views/main/Layout.tsx`'s `DefaultLayout`) renders it beside its outlets. |
 | `src/views/jobs/JobsIndicator.tsx` | The header's indicator (§5). |
-| `src/views/jobs/useJobs.ts` | `useJobs()` / `useJob(id)` — the board's read too (CTA-174: the Computer analysis tab follows the job it sent, or an unfinished one of the same saved analysis, through `useJobs()` — [`analysis-board.md`](./analysis-board.md) §1.3). |
+| `src/views/jobs/useJobs.ts` | `useJobs()` / `useJob(id)` — the New Job dialog's read too (CTA-177: a game's job — the one the board sent, else the newest unfinished, else done, of the same saved analysis — makes Analyse ask first, and Check existing opens it here; `jobOfGame`, [`analysis-board.md`](./analysis-board.md) §1.3). |
 | `src/views/jobs/JobsScreen.tsx`, `JobsMain.tsx`, `JobReport.tsx` | **The Jobs screen** (§4) and a finished job's report and graph. |
 | `src/blocks/tables/JobsTable/` | The list (a `DataTable`): game, status, progress, times, Resume / Cancel / Delete. |
 | `src/blocks/panels/JobSummary/` | One job whole: status, progress, error, actions, links, facts; a finished job's report under it. |
-| `src/blocks/panels/ComputerAnalysisReport/`, `EvalGraph/` | The per-player report and the eval graph — built here (CTA-173, decided with the reader) and reused by the Analysis Board's tab (CTA-174). |
+| `src/blocks/panels/ComputerAnalysisReport/`, `EvalGraph/` | The per-player report and the eval graph — built here (CTA-173, decided with the reader) and reused by the Analysis Board — at the top of its Moves tab (CTA-174, CTA-177). |
 | Tests | `src/lib/jobs.test.ts`, `jobStore.test.ts`, `jobRunner.test.ts`; `src/views/jobs/JobsScreen.test.tsx`, `JobsIndicator.test.tsx`; each block's own; `src/lib/engines/noWorkerAtImport.test.ts` (the runner builds nothing at import). |
 
 Route `/jobs` (`handle.title` `pages.jobs`, its description
@@ -93,7 +94,8 @@ queued ──▶ running ──▶ done
   **finished** jobs (done, failed, cancelled — their outputs are Saved
   analyses of their own); when every job kept is unfinished it refuses,
   `"too-many"`. A refused write is `"storage"`, nothing thrown.
-- **`enqueueComputerAnalysis(request)`** → the job's id, or `"invalid"` (no
+- **`enqueueComputerAnalysis(request)`** — the New Job dialog's one call
+  (`views/tools/analysis/NewJob.tsx`, CTA-177) → the job's id, or `"invalid"` (no
   variant ticked, a PGN that does not read, no analysed move), `"storage"`,
   `"too-many"`. The runner picks the job up by itself.
 - **Cancel, Resume, Delete are store writes**, never calls into the runner:

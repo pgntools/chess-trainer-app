@@ -6,11 +6,11 @@ import {
 } from "../../../lib/computerAnalysis";
 
 /**
- * **The Computer analysis tab's first options** (CTA-174): the board's Engine
- * tab's depth, time, lines, threads and hash, on the engine the reader chose,
- * with the early stop at the depth (where it does nothing, `main.py`'s
- * behaviour) and the rest the defaults. The tab follows the Engine tab until
- * the reader changes one of its own options.
+ * **The board's New Job dialog's first options** (CTA-174, CTA-177): the
+ * board's Engine tab's depth, time, lines, threads and hash, on the engine the
+ * reader chose, with the early stop at the depth (where it does nothing,
+ * `main.py`'s behaviour) and the rest the defaults. The dialog follows the
+ * Engine tab until the reader changes one of its own options.
  */
 export const computerAnalysisSeed = (settings: AnalysisSettings, engineId: string): ComputerAnalysisOptions =>
   computerAnalysisOptionsFrom({

@@ -25,7 +25,20 @@ import { mainlineGame, type GameTree } from "../../../../lib/gameTree";
 import { openingOfLine, type OpeningEntry } from "../../../../lib/openings";
 import { downloadPgn } from "../../../../lib/pgnExport";
 import { slugify } from "../../../../lib/pgnText";
-import { savedAnalysisFen, savedAnalysisToTree, type SavedAnalysis } from "../../../../lib/savedAnalyses";
+import {
+  computerAnalysisOptionsFrom,
+  DEFAULT_COMPUTER_ANALYSIS_OPTIONS,
+  type ComputerAnalysisOptions,
+} from "../../../../lib/computerAnalysis";
+import { engineLimitsOf } from "../../../../lib/engineSettings";
+import type { EngineOption } from "../../../../lib/engineTypes";
+import { resolveEngine } from "../../../../lib/engines";
+import {
+  savedAnalysisDerivedName,
+  savedAnalysisFen,
+  savedAnalysisToTree,
+  type SavedAnalysis,
+} from "../../../../lib/savedAnalyses";
 import { analysisBoardPath, DEFAULT_LIST_SORT, type ListSort } from "../../../../lib/analysesListContext";
 import {
   analysisTreeRows,
@@ -60,7 +73,9 @@ import { removeSavedAnalyses } from "../../../../lib/savedAnalysisStore";
 import { useOwnPageHeading, usePageTitle } from "../../../main/pageTitle";
 import { RightPanel } from "../../../main/rightPanel";
 import { useBoardSquareOptions } from "../../../shared/boardColors";
+import { useEngineChoice } from "../../../shared/useEngineChoice";
 import { useOpeningBook } from "../../../shared/useOpeningBook";
+import NewJob, { type NewJobGame } from "../NewJob";
 import NewAnalysisForm from "./NewAnalysisForm";
 import { useAnalysisFolders } from "./useAnalysisFolders";
 import { useSavedAnalyses } from "./useSavedAnalyses";
@@ -152,6 +167,9 @@ export const SAVED_ANALYSES_PAGE = DEFAULT_TABLE_PAGE_SIZE;
   (a write replaces a record, never mutates it) — `null` for one that will not
   parse.
 */
+/** No engine runs on the list: what one declares is unknown until a job starts it. */
+const NO_ENGINE_OPTIONS: ReadonlyMap<string, EngineOption> = new Map();
+
 const parsedTrees = new WeakMap<SavedAnalysis, GameTree | null>();
 const treeOf = (saved: SavedAnalysis): GameTree | undefined => {
   let tree = parsedTrees.get(saved);
@@ -561,6 +579,29 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
 
   // Save and Cancel on a settings screen come back to this list as it stands.
   const from = `${location.pathname}${location.search}`;
+
+  /*
+    **Analyse** on a row or a card (CTA-177): the New Job dialog for that
+    record — its PGN, name and folder — with the defaults on the reader's
+    engine, afresh each time it opens. No engine runs here, so the form reads
+    what the engine's descriptor says (`engineLimitsOf`) until a job starts it.
+  */
+  const { engineId } = useEngineChoice();
+  const jobEngine = useMemo(() => resolveEngine(engineId), [engineId]);
+  const [jobGame, setJobGame] = useState<NewJobGame | null>(null);
+  const [jobOptions, setJobOptions] = useState<ComputerAnalysisOptions>(DEFAULT_COMPUTER_ANALYSIS_OPTIONS);
+  const analyse = (saved: SavedAnalysis | undefined) => {
+    const tree = saved === undefined ? undefined : treeOf(saved);
+    if (saved === undefined || tree === undefined) return;
+    setJobOptions(computerAnalysisOptionsFrom({ ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, engine: jobEngine.id }));
+    setJobGame({
+      name: saved.name || savedAnalysisDerivedName(tree.headers) || t("savedAnalyses.untitled"),
+      analysisId: saved.id,
+      folderId: saved.folderId,
+      tree,
+      pgn: () => saved.pgn,
+    });
+  };
   const folderName = (folder: AnalysisFolder) => folder.name || t("savedAnalyses.folder.untitled");
 
   return (
@@ -687,6 +728,7 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
                   to: `/tools/analysis/saved/${encodeURIComponent(row.id)}/settings`,
                   state: { from },
                 })}
+                onAnalyse={(row) => analyse(analyses.find((saved) => saved.id === row.id))}
                 filtered={text.trim() !== ""}
                 onClearFilter={() => table.setParams({ q: null })}
                 filters={
@@ -721,6 +763,7 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
               to: `/tools/analysis/saved/${encodeURIComponent(saved.id)}/settings`,
               state: { from },
             })}
+            onAnalyse={analyse}
             onOpenFolder={openFolder}
             folderActions={folderActions}
             preview={({ saved, tree }) => (
@@ -766,6 +809,20 @@ function SavedAnalysesScreen({ analyses, folders }: { analyses: readonly SavedAn
         <NewAnalysisForm />
       </RightPanel>
 
+      <NewJob
+        game={jobGame}
+        onClose={() => setJobGame(null)}
+        options={jobOptions}
+        onOptionsChange={setJobOptions}
+        engine={{
+          id: jobEngine.id,
+          name: jobEngine.name,
+          multiThread: jobEngine.capabilities.multiThread,
+          options: NO_ENGINE_OPTIONS,
+          limits: engineLimitsOf(jobEngine),
+        }}
+        testId="saved-analyses-new-job"
+      />
       <FolderNameDialog
         open={nameDialog !== null}
         title={

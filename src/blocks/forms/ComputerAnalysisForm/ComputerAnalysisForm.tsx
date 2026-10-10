@@ -28,6 +28,7 @@ import { MAX_VARIATIONS_OFFERED } from "../../../lib/engineAnalysis";
 import type { DeviceEngineLimits } from "../../../lib/engineSettings";
 import type { EngineOption } from "../../../lib/engineTypes";
 import { engineOptionState, optionSlug } from "../EngineSettingsForm";
+import { computerAnalysisStartNote } from "./startNote";
 
 /** Why Start could not queue the job — `enqueueComputerAnalysis`'s answers (`lib/jobStore.ts`). */
 export type ComputerAnalysisStartProblem = "invalid" | "storage" | "too-many";
@@ -62,8 +63,12 @@ export type ComputerAnalysisFormProps = {
    * and the words say why.
    */
   blocked?: "noMoves" | "noRange";
-  /** Queue the job. Off with no variant ticked, while `blocked` or `busy`. */
-  onStart: () => void;
+  /**
+   * Queue the job. Off with no variant ticked, while `blocked` or `busy`.
+   * Absent, the form draws no Start, note or refusal — its host does (the
+   * New Job dialog's actions row, CTA-177, over `computerAnalysisStartNote`).
+   */
+  onStart?: () => void;
   /** The job is being queued. */
   busy?: boolean;
   /** The last Start's refusal, said under it. */
@@ -232,8 +237,8 @@ function ComputerAnalysisForm({
     />
   );
 
-  const noVariant = options.outputs.length === 0;
-  const note = blocked !== undefined ? t(`computerAnalysis.form.${blocked}`) : noVariant ? t("computerAnalysis.form.noVariant") : undefined;
+  const noteKey = computerAnalysisStartNote(options, blocked);
+  const note = noteKey === undefined ? undefined : t(noteKey);
   const toggleVariant = (variant: ComputerAnalysisVariant, ticked: boolean) =>
     onChange({
       outputs: COMPUTER_ANALYSIS_VARIANTS.filter((each) => (each === variant ? ticked : options.outputs.includes(each))),
@@ -393,27 +398,29 @@ function ComputerAnalysisForm({
         ))}
       </SettingsSection>
 
-      <Box sx={{ display: "grid", gap: 1, justifyItems: "start" }}>
-        <Button
-          variant="contained"
-          onClick={onStart}
-          disabled={note !== undefined || busy}
-          aria-describedby={note === undefined ? undefined : `${testId}-start-note`}
-          data-testid={`${testId}-start`}
-        >
-          {t("computerAnalysis.form.start")}
-        </Button>
-        {note !== undefined && (
-          <Typography id={`${testId}-start-note`} variant="body2" data-testid={`${testId}-start-note`} sx={{ color: "text.secondary" }}>
-            {note}
-          </Typography>
-        )}
-        {problem !== undefined && (
-          <StatusText tone="error" testId={`${testId}-problem`}>
-            {t(`computerAnalysis.form.problem.${problem}`)}
-          </StatusText>
-        )}
-      </Box>
+      {onStart !== undefined && (
+        <Box sx={{ display: "grid", gap: 1, justifyItems: "start" }}>
+          <Button
+            variant="contained"
+            onClick={onStart}
+            disabled={note !== undefined || busy}
+            aria-describedby={note === undefined ? undefined : `${testId}-start-note`}
+            data-testid={`${testId}-start`}
+          >
+            {t("computerAnalysis.form.start")}
+          </Button>
+          {note !== undefined && (
+            <Typography id={`${testId}-start-note`} variant="body2" data-testid={`${testId}-start-note`} sx={{ color: "text.secondary" }}>
+              {note}
+            </Typography>
+          )}
+          {problem !== undefined && (
+            <StatusText tone="error" testId={`${testId}-problem`}>
+              {t(`computerAnalysis.form.problem.${problem}`)}
+            </StatusText>
+          )}
+        </Box>
+      )}
     </Box>
   );
 }

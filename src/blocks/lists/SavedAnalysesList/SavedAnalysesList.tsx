@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import QueryStatsRoundedIcon from "@mui/icons-material/QueryStatsRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { useTranslation } from "react-i18next";
 
@@ -54,6 +55,11 @@ export type SavedAnalysesListProps = {
   openLink: (saved: SavedAnalysis) => LinkTarget;
   /** Its settings screen. */
   settingsLink: (saved: SavedAnalysis) => LinkTarget;
+  /**
+   * A card's **Analyse** (CTA-177) — the screen opens the New Job dialog for
+   * it. Off for a record that will not read; absent, no Analyse.
+   */
+  onAnalyse?: (saved: SavedAnalysis) => void;
   /** Drill into a folder. */
   onOpenFolder: (folderId: string) => void;
   folderActions: SavedAnalysisFolderActions;
@@ -64,7 +70,7 @@ export type SavedAnalysesListProps = {
   /**
    * The prefix of every id: the grid `<testId>-grid` (`<testId>-body` holding
    * the empty note); a card `<testId>-item-<id>`, its
-   * `-open-<id>`, `-select-<id>`, `-settings-<id>`, `-name-<id>`,
+   * `-open-<id>`, `-select-<id>`, `-analyse-<id>`, `-settings-<id>`, `-name-<id>`,
    * `-opening-<id>`; a folder `<testId>-folder-<id>`, `-folder-open-<id>`,
    * its pick `-folder-select-<id>` and its actions `-folder-<action>-<id>`.
    */
@@ -102,6 +108,7 @@ function SavedAnalysesList({
   folderPick,
   openLink,
   settingsLink,
+  onAnalyse,
   onOpenFolder,
   folderActions,
   preview,
@@ -132,14 +139,27 @@ function SavedAnalysesList({
   };
   const folderName = (folder: AnalysisFolder) => folder.name || t("savedAnalyses.folder.untitled");
 
-  const settings = (saved: SavedAnalysis) => (
-    <IconAction
-      label={t("savedList.settingsNamed", { name: nameOf(saved) })}
-      link={settingsLink(saved)}
-      testId={`${testId}-settings-${saved.id}`}
-    >
-      <SettingsRoundedIcon fontSize="small" />
-    </IconAction>
+  const actions = ({ saved, tree }: SavedAnalysisEntry) => (
+    <>
+      {onAnalyse !== undefined && (
+        <IconAction
+          label={t("computerAnalysis.newJob.analyseNamed", { name: nameOf(saved) })}
+          onClick={() => onAnalyse(saved)}
+          // A record that will not read has no game to send.
+          disabled={tree === undefined}
+          testId={`${testId}-analyse-${saved.id}`}
+        >
+          <QueryStatsRoundedIcon fontSize="small" />
+        </IconAction>
+      )}
+      <IconAction
+        label={t("savedList.settingsNamed", { name: nameOf(saved) })}
+        link={settingsLink(saved)}
+        testId={`${testId}-settings-${saved.id}`}
+      >
+        <SettingsRoundedIcon fontSize="small" />
+      </IconAction>
+    </>
   );
   const pick = (saved: SavedAnalysis) => ({
     checked: picked.has(saved.id),
@@ -230,7 +250,7 @@ function SavedAnalysesList({
             }
             link={tree === undefined ? undefined : openLink(saved)}
             openLabel={t("savedList.openNamed", { name: nameOf(saved) })}
-            actions={settings(saved)}
+            actions={actions(entry)}
             pick={pick(saved)}
             testId={`${testId}-item-${saved.id}`}
             openTestId={`${testId}-open-${saved.id}`}
