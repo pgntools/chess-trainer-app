@@ -34,7 +34,7 @@ shell's indicator, and how to test and extend them.
 | `src/lib/jobRunner.ts` | **The runner** (§3): `createJobRunner(deps)`, and the page's one, `startJobRunner()` / `stopJobRunner()` (tests). |
 | `src/views/jobs/JobRunner.tsx` | Mounts the runner: the shell (`views/main/Layout.tsx`'s `DefaultLayout`) renders it beside its outlets. |
 | `src/views/jobs/JobsIndicator.tsx` | The header's indicator (§5). |
-| `src/views/jobs/useJobs.ts` | `useJobs()` / `useJob(id)` — the board's read too (CTA-174). |
+| `src/views/jobs/useJobs.ts` | `useJobs()` / `useJob(id)` — the board's read too (CTA-174: the Computer analysis tab follows the job it sent, or an unfinished one of the same saved analysis, through `useJobs()` — [`analysis-board.md`](./analysis-board.md) §1.3). |
 | `src/views/jobs/JobsScreen.tsx`, `JobsMain.tsx`, `JobReport.tsx` | **The Jobs screen** (§4) and a finished job's report and graph. |
 | `src/blocks/tables/JobsTable/` | The list (a `DataTable`): game, status, progress, times, Resume / Cancel / Delete. |
 | `src/blocks/panels/JobSummary/` | One job whole: status, progress, error, actions, links, facts; a finished job's report under it. |
