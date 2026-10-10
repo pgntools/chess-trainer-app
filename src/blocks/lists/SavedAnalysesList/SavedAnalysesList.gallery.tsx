@@ -42,6 +42,7 @@ const demo = (
           })}
           openLink={(saved) => ({ href: `#open-${saved.id}` })}
           settingsLink={(saved) => ({ href: `#settings-${saved.id}` })}
+          onAnalyse={noop}
           onOpenFolder={noop}
           folderActions={{ onDownload: noop, onRename: noop, onMove: noop }}
           preview={() => demoPreview}

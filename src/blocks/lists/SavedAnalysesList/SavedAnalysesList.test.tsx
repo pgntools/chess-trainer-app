@@ -50,6 +50,21 @@ describe("SavedAnalysesList — the cards", () => {
     await expectNoAxeViolations(grid);
   });
 
+  it("gives each card an Analyse when the screen asks for one (CTA-177) — off for a record that will not read", async () => {
+    const user = userEvent.setup();
+    const onAnalyse = vi.fn();
+    mount("compact", { onAnalyse });
+    await user.click(screen.getByRole("button", { name: "Analyse Najdorf, the poisoned pawn with the computer" }));
+    expect(onAnalyse).toHaveBeenCalledWith(expect.objectContaining({ id: "a1" }));
+    expect(screen.getByRole("button", { name: "Analyse A record that will not read with the computer" })).toBeDisabled();
+    await expectNoAxeViolations(screen.getByTestId("probe-grid"));
+  });
+
+  it("has no Analyse unless the screen asks for one", () => {
+    mount("compact");
+    expect(screen.queryByRole("button", { name: /with the computer$/ })).toBeNull();
+  });
+
   it("picks from the keyboard", async () => {
     const user = userEvent.setup();
     const { onTogglePick } = mount("compact");

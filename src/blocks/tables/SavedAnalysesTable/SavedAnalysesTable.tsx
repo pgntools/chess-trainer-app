@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
+import QueryStatsRoundedIcon from "@mui/icons-material/QueryStatsRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { useTranslation } from "react-i18next";
 
@@ -75,6 +76,11 @@ export type SavedAnalysesTableProps = {
   onOpenAnalysis: (row: SavedAnalysisRow) => void;
   /** Its settings screen — the row's gear. */
   settingsLink: (row: SavedAnalysisRow) => LinkTarget;
+  /**
+   * The row's **Analyse** (CTA-177) — the screen opens the New Job dialog for
+   * it. Off for a record that will not read; absent, no Analyse.
+   */
+  onAnalyse?: (row: SavedAnalysisRow) => void;
   /** The words box is on: no rows is "no analysis matches", with a way to clear it. */
   filtered?: boolean;
   /** Clears the filter — the no-match row's button. */
@@ -84,7 +90,7 @@ export type SavedAnalysesTableProps = {
   /**
    * The table's root, and every id under it: `-sort-<column>`, `-frame-table`,
    * `-pager`, `-empty`, `-no-match`, `-no-match-clear`, `-note-<id>`,
-   * `-settings-<id>`, `-description-<id>`; a row, its link and its pick take
+   * `-analyse-<id>`, `-settings-<id>`, `-description-<id>`; a row, its link and its pick take
    * the ids the screen's list had — `rowTestId`, `openTestId`, `pickTestId`,
    * `selectAllTestId`; a folder's row `<folderTestId>-<id>`, its name's link
    * `<folderTestId>-open-<id>`, its chevron `<folderTestId>-<id>-toggle`, its
@@ -151,7 +157,8 @@ const WIDTHS: Partial<Record<SavedAnalysisColumn, number>> = { name: 220, event:
  * - **An analysis' Name cell is its link** to the Analysis Board — the
  *   reader's name, else the players, else "Analysis board" — with the
  *   description under it on one line, the whole of it on hover; a pick, and
- *   the settings gear at the row's end. Select-all takes the analyses shown.
+ *   its Analyse (`onAnalyse`, CTA-177) and settings gear at the row's end.
+ *   Select-all takes the analyses shown.
  * - **A missing field is an empty cell**; the placeholders a board's own
  *   analysis is written with already read as missing (`lib/savedAnalysisRows.ts`).
  * - **A record that will not read** keeps its row, which says so across the
@@ -181,6 +188,7 @@ function SavedAnalysesTable({
   openLink,
   onOpenAnalysis,
   settingsLink,
+  onAnalyse,
   filtered = false,
   onClearFilter,
   filters,
@@ -292,14 +300,28 @@ function SavedAnalysesTable({
         />
       );
     }
+    const { item } = row;
     return (
-      <IconAction
-        label={t("savedList.settingsNamed", { name: analysisName(row.item) })}
-        link={settingsLink(row.item)}
-        testId={`${testId}-settings-${row.item.id}`}
-      >
-        <SettingsRoundedIcon fontSize="small" />
-      </IconAction>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
+        {onAnalyse !== undefined && (
+          <IconAction
+            label={t("computerAnalysis.newJob.analyseNamed", { name: analysisName(item) })}
+            onClick={() => onAnalyse(item)}
+            // A record that will not read has no game to send.
+            disabled={item.unreadable === true}
+            testId={`${testId}-analyse-${item.id}`}
+          >
+            <QueryStatsRoundedIcon fontSize="small" />
+          </IconAction>
+        )}
+        <IconAction
+          label={t("savedList.settingsNamed", { name: analysisName(item) })}
+          link={settingsLink(item)}
+          testId={`${testId}-settings-${item.id}`}
+        >
+          <SettingsRoundedIcon fontSize="small" />
+        </IconAction>
+      </Box>
     );
   };
 
