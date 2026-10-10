@@ -1,6 +1,6 @@
 ---
 title: "Stockfish 19: in the browser or on your computer"
-summary: "The same engine two ways — the Lite builds that run in the page, and the native binary behind the engine server: their networks, the options each declares, the ones the app sets, threads, hash and strength, and which to choose."
+summary: "The same engine two ways — the Lite builds that run in the page, and the native binary behind the engine server: their networks, the options each declares, the ones the app sets, your option presets, threads, hash and strength, and which to choose."
 date: 2026-10-10
 tags: [engine, setup]
 draft: true
@@ -28,6 +28,7 @@ Both run the same Stockfish 19 code. They differ in the **neural network** each 
 | **Threads** | 1 (single-thread build), or up to 8 (multi-thread build) | Your cores minus one, by default |
 | **Hash** | Up to 1024 MB, by your device's memory | Up to the server's ceiling, 4096 MB by default |
 | **Strength (Elo)** | 1320 to 3190 | 1320 to 3190 |
+| **Options you can set** (in a preset) | Every one but the file paths (`EvalFile`) | Every one, tablebases included |
 | **Needs** | Nothing; the multi-thread build needs a cross-origin-isolated page | The engine server running (`yarn api:start`) |
 
 ## Choosing an engine
@@ -70,21 +71,21 @@ An engine announces its options when it starts (the UCI `uci` reply). The app re
 | `Threads` | 1 (single-thread), 1–32 (multi-thread) | 1 to the server's ceiling | Yes |
 | `Hash` | 1–33,554,432 MB declared, 1024 MB in practice | 1 to the server's ceiling | Yes |
 | `MultiPV` | 1–256 | 1–256 | Yes |
-| `Skill Level` | 0–20 | 0–20 | In Play with Engine |
-| `UCI_LimitStrength` | check, off | check, off | In Play with Engine: on |
-| `UCI_Elo` | 1320–3190 | 1320–3190 | In Play with Engine |
-| `Clear Hash` | button | button | No |
-| `Ponder` | check, off | check, off | No |
-| `Move Overhead` | 0–5000, 10 | 0–5000, 10 | No |
-| `nodestime` | 0–10000, 0 | 0–10000, 0 | No |
-| `UCI_Chess960` | check, off | check, off | No |
-| `UCI_ShowWDL` | check, off | check, off | No |
-| `EvalFile` | `nn-61e7af4bb97d.nnue` | `nn-1a298aa575a0.nnue` | No |
-| `Debug Log File` | — | text | No |
-| `NumaPolicy` | — | `auto` | No |
-| `SyzygyPath`, `SyzygyProbeDepth`, `Syzygy50MoveRule`, `SyzygyProbeLimit` | — | endgame tablebases | No |
+| `Skill Level` | 0–20 | 0–20 | In Play with Engine; elsewhere, your preset |
+| `UCI_LimitStrength` | check, off | check, off | In Play with Engine: on; elsewhere, your preset |
+| `UCI_Elo` | 1320–3190 | 1320–3190 | In Play with Engine; elsewhere, your preset |
+| `Clear Hash` | button | button | No: an action, not a setting |
+| `Ponder` | check, off | check, off | Your preset |
+| `Move Overhead` | 0–5000, 10 | 0–5000, 10 | Your preset |
+| `nodestime` | 0–10000, 0 | 0–10000, 0 | Your preset |
+| `UCI_Chess960` | check, off | check, off | Your preset |
+| `UCI_ShowWDL` | check, off | check, off | Your preset |
+| `EvalFile` | `nn-61e7af4bb97d.nnue` | `nn-1a298aa575a0.nnue` | Your preset, on your computer only |
+| `Debug Log File` | — | text | Your preset |
+| `NumaPolicy` | — | `auto` | Your preset |
+| `SyzygyPath`, `SyzygyProbeDepth`, `Syzygy50MoveRule`, `SyzygyProbeLimit` | — | endgame tablebases | Your preset |
 
-Everything the app sets is declared by both engines, under the same names and with the same meanings. That is why one set of settings works with either engine. Only the **ranges** of `Threads` and `Hash` differ (see *Threads and hash* below). The options the app does not set keep the engine's defaults: no pondering, no Chess960, no tablebases.
+Everything the boards set is declared by both engines, under the same names and with the same meanings. That is why one set of settings works with either engine. Only the **ranges** of `Threads` and `Hash` differ (see *Threads and hash* below). Every other option keeps the engine's default — no pondering, no Chess960, no tablebases — until you set it in a **preset** (see *Option presets* below).
 
 ## What each board sets
 
@@ -93,8 +94,10 @@ The engine's settings are part of each board, not of the engine. They go to whic
 | Where | What it sets | Strength |
 | --- | --- | --- |
 | **Play with Engine** (and a new game in the Lobby) | `UCI_Elo` from the **Strength (Elo)** slider, with `UCI_LimitStrength` on; `MultiPV` (*Variations to show*), `Threads`, `Hash` | Limited to the Elo you chose |
-| **The Analysis Board, the Openings explorer, the Library's games, the repertoires** (their Engine tab) | `MultiPV` (*Lines*), `Threads`, `Hash` | Full strength: never limited |
-| **Computer analysis** (a job) | `Threads`, `Hash`, `MultiPV` for each position | Full strength |
+| **The Analysis Board, the Openings explorer, the Library's games, the repertoires** (their Engine tab) | `MultiPV` (*Lines*), `Threads`, `Hash` | Full strength, unless your preset limits it |
+| **Computer analysis** (a job) | `Threads`, `Hash`, `MultiPV` for each position | Full strength, unless your preset limits it |
+
+Beside these, every board and every job sends the options of the engine's **preset**. The board's own always win.
 
 How long a search runs, by depth, by time or with no limit, is part of the search request, not an option. It works the same with both engines.
 
@@ -106,7 +109,7 @@ How long a search runs, by depth, by time or with no limit, is part of the searc
 
 Both engines declare `UCI_Elo` from **1320 to 3190**, so Play with Engine shows the same **Strength (Elo)** slider with either one. When you start a game, the app turns `UCI_LimitStrength` on and sends your Elo. While it is on, Stockfish ignores `Skill Level`, so the Elo is the only strength setting. The game records the engine and the Elo it played at.
 
-The analysis boards never send `UCI_LimitStrength`. It stays off, as the engine starts, so an analysis is always at full strength.
+The analysis boards never send `UCI_LimitStrength` themselves. It stays off, as the engine starts, so an analysis is at full strength — unless you turn it on in the engine's preset, with an Elo or a Skill Level to analyse at.
 
 The same Elo is the same handicap in both engines: the same Stockfish code picks weaker moves the same way. At the top of the range, though, the native engine, with its full net and more threads, plays nearer to its real strength than the browser build does.
 
@@ -125,6 +128,18 @@ These two options decide how much of your computer the engine may use, and they 
 - To allow more, raise them in `engines.local.json` and restart the server ([its optional settings](/blog/guides/local-engine)).
 
 The settings are the board's, so a board's Threads and Hash stay as you set them when you change engines. Each request is held to the running engine's own range. If you set 8 threads and 4096 MB for the native engine and then switch to the single-thread browser build, it runs with 1 thread and at most 1024 MB.
+
+## Option presets
+
+Every option an engine declares can be set, beyond the ones the boards set themselves. In [Settings › Engine](/settings/engine), under the list of engines, **Engine options** shows the chosen engine's options, each with its type, its default and its range:
+
+- **Presets are named sets of options**, shared by every engine: Default, and as many more as you like, such as *deep-analysis* or *lite-play*. Create, rename, duplicate and delete them beside the preset's name. Default cannot be deleted.
+- **Each engine runs its own preset.** Choosing a preset for the browser build does not change the native engine's, so the same preset can set tablebases on one and leave the other as it was.
+- **A preset keeps only what you change.** Everything else stays at the engine's default, and a reset beside an option puts it back.
+- **Threads, Hash and Lines stay on the boards**, and Play with Engine keeps its own strength: they are shown, read-only.
+- **The browser builds have limits, and the form says which**: they have no file system, so the file paths — `EvalFile`, `SyzygyPath`, `Debug Log File` — cannot be set there (and are never sent to them), and Hash goes no higher than 1024 MB. A value an engine cannot take is held to its range, or skipped, with the reason beside it.
+
+A change applies from each board's next search, and to the next computer analysis job. Your presets, and which one each engine runs, are part of Settings › Export, and come back with Settings › Import.
 
 ## Speed
 
@@ -155,6 +170,6 @@ If the engine server stops, the boards go back to the browser build by themselve
 
 **The same position gets different evaluations after I switched engines.** That is the network: the Lite and full nets judge positions a little differently. See *The networks* above.
 
-**Can I use endgame tablebases?** The native engine supports them (`SyzygyPath`), but the app does not set that option today. The browser builds do not support tablebases.
+**Can I use endgame tablebases?** On your computer, yes: choose the server's engine in [Settings › Engine](/settings/engine) and set `SyzygyPath` in its preset to the folder that holds the tablebase files. The browser builds cannot read files, so they do not support tablebases.
 
-**Where can I see an engine's options myself?** For the server's engines, choose one on the API tab of [Settings › Engine](/settings/engine): the panel lists everything it declared.
+**Where can I see an engine's options myself?** In [Settings › Engine](/settings/engine), under **Engine options**: the chosen engine's every option, with its type, default and range. For the server's engines, the panel on the right also lists what it declared.

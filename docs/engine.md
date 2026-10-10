@@ -3,7 +3,7 @@
 How the app talks to a chess engine, which engines ship, and how to add one.
 Written for CTA-151 (pluggable engines) / CTA-152 (this layer: the abstraction,
 the registry and the newer builds), reviewed and trimmed in CTA-160 (the 2019
-build removed, the test seam moved onto the registry — §10). The boards' side
+build removed, the test seam moved onto the registry — §11). The boards' side
 of it — the lifecycle rules `useEngineModule` keeps — is §4 and §9.2.1 of
 [`.claude/rules/chessboard.md`](../.claude/rules/chessboard.md).
 
@@ -24,7 +24,7 @@ of it — the lifecycle rules `useEngineModule` keeps — is §4 and §9.2.1 of
 | `UciEngine` | `src/lib/uciEngine.ts` | The UCI protocol over a transport: option discovery, the `setoption` / `stop` deferral, the pinned-option rule, FEN stamping, the depth clamp (`maxDepth`, default `DEFAULT_MAX_DEPTH` = 99), `go infinite`. Also `parseEngineOption`, pure. |
 | `WorkerTransport` | `src/lib/workerTransport.ts` | `new Worker(url)` as a transport. **Nothing outside it may assume a Worker.** |
 | `EngineDescriptor` | `src/lib/engineTypes.ts` | `{ id, name, version, requires?, capabilities: { maxDepth, strength, multiThread }, create() }`. |
-| the registry | `src/lib/engines/` | `ids.ts` (the default's id, name and version — what a record and a preference name it by), `builtin.ts` (the shipped descriptors — and the tests' seam, §9), `registry.ts` (get, availability, describe, resolve), `index.ts`. |
+| the registry | `src/lib/engines/` | `ids.ts` (the default's id, name and version — what a record and a preference name it by), `builtin.ts` (the shipped descriptors — and the tests' seam, §10), `registry.ts` (get, availability, describe, resolve), `index.ts`. |
 
 **Nothing runs at module scope.** A descriptor is data until `create()`; a
 transport makes its Worker in its constructor. The pre-render
@@ -335,7 +335,64 @@ modules and no board change:
   pass the engine that runs, and the runner holds a job to the running
   engine's bounds before its declaration.
 
-## 9. Testing
+## 9. Option presets (CTA-179)
+
+Every board sets six options from its own settings — Threads, Hash, MultiPV,
+and on Play with Engine and Masked Pieces Skill Level, UCI_Elo and
+UCI_LimitStrength. **Every other option an engine declares** — Move Overhead,
+nodestime, UCI_ShowWDL, Ponder, UCI_Chess960, Skill Level on an analysis
+board, the native build's Syzygy options, NumaPolicy, … — is set through
+**named presets**, in Settings → Engine (the `EnginePresetForm` block,
+`views/settings/EnginePresetsSection.tsx`):
+
+- **One library, a selection per engine.** The presets are shared
+  (`lib/enginePresets.ts`, the store `lib/enginePresetStore.ts`, IndexedDB
+  `chessapp.enginePresets`: `presets` and `selections`); each engine — by
+  registry id, `hosted:<id>` too — runs its own selected one, Default where it
+  has none. Default always exists, cannot be deleted, and is stored only once
+  edited; a deleted preset's engines go back to it. At most
+  `MAX_ENGINE_PRESETS` (50). They are the reader's data, so the Export zip
+  carries them (`engine-presets.json`, [`import-export.md`](../.claude/rules/import-export.md)).
+- **A preset keeps only what the reader set**; the rest stays at the engine's
+  own default. One preset therefore serves every engine: each takes what it
+  declares.
+- **Data-driven, never a roster.** The form lists what the chosen engine
+  declares — a page's build from its own `uci` reply (the form builds it,
+  switched off, through `useEngineModule`, as the Lobby's form does), an engine
+  server's engine from the server's list — in its UCI type: a spin a number in
+  its range, a check a switch, a combo a select, a string words. A button
+  (Clear Hash) is an action, not a value: listed, never kept.
+- **The limits, said where they apply** (`resolveEnginePreset`,
+  `enginePresetRows`): a value held to the engine's range (a spin clamped);
+  **Hash at most 1024 MB in the browser** (`BROWSER_HASH_CEILING_MB`); **no
+  file path in a browser build** — the WebAssembly builds have no file system,
+  and `setoption name EvalFile` kills the worker — so `EvalFile`,
+  `EvalFileSmall`, `SyzygyPath` and `Debug Log File` (`isFilePathOption`) are
+  read-only there, and the builds' `UciEngine` refuses them whatever asks
+  (`UciEngineConfig.refuses`, `lib/engines/builtin.ts`); a pinned option; an
+  option the engine does not declare (absent — removable from the preset).
+- **The boards' own options win.** Threads, Hash and MultiPV
+  (`BOARD_OWNED_OPTIONS`) are read-only in the form and never sent from a
+  preset; every name in a board's `uciOptions` is left out of it too, so on the
+  Play boards their strength wins (`PLAY_OWNED_OPTIONS`, editable with a note).
+- **Where it is applied.** `useEngineModule` reads the running engine's
+  selected preset and, once the handshake lands (`whenOptionsReady`), sends
+  what `resolveEnginePreset` gives beside the board's options — every board,
+  with no line of its own. A value the preset stops setting goes back to the
+  engine's declared default. A change applies from the next search: the search
+  effect keys on it, and the handle's discipline (§6) holds it until the
+  engine is idle. `UciEngine` holds what the `uciok` callbacks ask for until
+  they are all in, so the first search already runs under the preset. The
+  **job runner** sends the job's engine's preset after its handshake, its own
+  Threads, Hash and lines winning.
+- **Values are typed end to end** (`UciOptionValue`: a number, a boolean,
+  words): `useEngineModule`'s `uciOptions`, `EngineHandle.setOption`,
+  `UciEngine` (a check as `true` / `false`; words refused when a line break
+  would split the command), `HostedEngine` (a check a boolean in the request's
+  `options`, a spin its number, words as they are; a button refused, as the
+  server refuses one).
+
+## 10. Testing
 
 - `src/lib/uciEngine.test.ts` — `UciEngine` over a fake transport (no Worker):
   the option parser, discovery, the discipline, searching, stamping, teardown,
@@ -353,7 +410,15 @@ modules and no board change:
   (`ENGINE_API_URL=http://127.0.0.1:8800 npx vitest run src/lib/hostedEngine.live.test.ts`
   with `yarn api:start` running). The server's own: `yarn api:test`.
 - `src/views/board/core/useEngineModule.test.tsx` — which engine, switching
-  (terminate / build / handshake / clamp), switching off, StrictMode.
+  (terminate / build / handshake / clamp), switching off, StrictMode, and the
+  engine's preset (CTA-179: sent beside the board's options, which win; no
+  file path to a browser build; a change from the next search, a dropped
+  option back to its default).
+- The presets (§9): `src/lib/enginePresets.test.ts` (the records, the
+  selection, `resolveEnginePreset`, the form's rows), `enginePresetStore.test.ts`
+  (create, rename, duplicate, delete, select, the cap, the import's write),
+  `blocks/forms/EnginePresetForm/EnginePresetForm.test.tsx`, and Settings →
+  Engine's `EngineTab.test.tsx`; the job runner's in `jobRunner.test.ts`.
 - **The seam every board's test stubs is the registry's** — `lib/engines/builtin`,
   replaced with the shared harness's `builtinEnginesMock` (`boardTestHarness.tsx`,
   `chessboard.md` §8):
@@ -373,11 +438,11 @@ modules and no board change:
 - jsdom has no `Worker` and no cross-origin isolation; for the real thing, drive
   the worker in a browser (see `public/stockfish/README.md`).
 
-## 10. The review of CTA-160 — what was decided
+## 11. The review of CTA-160 — what was decided
 
 | Finding | Decision |
 | --- | --- |
-| The test seam was the 2019 build's default export (`lib/engine.ts`, mocked in 28 files) | **Moved** to the registry's descriptors (§9); `lib/engine.ts` and `engine.test.ts` deleted (its cases are `uciEngine.test.ts`'s, over a transport). |
+| The test seam was the 2019 build's default export (`lib/engine.ts`, mocked in 28 files) | **Moved** to the registry's descriptors (§10); `lib/engine.ts` and `engine.test.ts` deleted (its cases are `uciEngine.test.ts`'s, over a transport). |
 | `UciEngine`'s dead surface — public `isReady`, `onReady()`, `init()`, `supportsOption()` | **Cut.** The handshake is `uci` alone (`isready` / `readyok` were read by nothing). |
 | Runtime registration (`registerEngine`, `subscribeEngines`, `listEngines`) and `EngineKind` | **Cut** — only tests used them. The engine server (§8) lists its engines through `lib/engines/hosted.ts` instead. |
 | `useEngineModule`'s local `getEngine` shadowing the registry's export | **Renamed** `ensureEngine`. |

@@ -29,7 +29,7 @@ testing. The Settings section itself (its routes, tabs and nav) is
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/dataExport.ts` | **The export's builder**, pure: `buildExport` (records in, files + manifest out), `zipExport` (`fflate`'s `zipSync`), `exportFileName`, `hasExportSelection`, `exportedCollections`, and the format's constants — `EXPORT_FORMAT`, `EXPORT_FORMAT_VERSION`, `MANIFEST_PATH`, `EXPORT_CATEGORIES`. |
+| `src/lib/dataExport.ts` | **The export's builder**, pure: `buildExport` (records in, files + manifest out — the engine presets' JSON file too, CTA-179), `zipExport` (`fflate`'s `zipSync`), `exportFileName`, `hasExportSelection`, `exportedCollections`, and the format's constants — `EXPORT_FORMAT`, `EXPORT_FORMAT_VERSION`, `MANIFEST_PATH`, `EXPORT_CATEGORIES`. |
 | `src/lib/dataExportSource.ts` | **The export's reads**: `exportZip` — each ticked store `load()`ed, the collections' games (a shipped PGN a lazy chunk, fetched only when asked), `ExportReadError` when one cannot be read. Writes nothing. |
 | `src/lib/pgnExport.ts` | `pgnFileOf` (records joined as they stand) and `downloadBinaryFile` (the blob and the `<a download>`; `false` when the browser refuses). |
 | `src/lib/dataImport.ts` | **The import's planner**, pure: `readImport` (zip → a checked, migrated `ImportDump`, or an `ImportProblem` and the zip's `.pgn` files), `migrateManifest` and `MANIFEST_MIGRATIONS`, `importPlanOf` (counts and clashing folders), `defaultImportChoices`, `importWritesOf` (choices → per-store writes, a report, cap problems). No React, no store, no DOM. |
@@ -56,6 +56,7 @@ both catalogs. Test ids: `settings-export-*`, `settings-import-*`.
 | Analyses | `analyses.pgn` | saved analysis (`lib/savedAnalysisStore.ts`) |
 | Collections | `collections/<folder>/…/<name>.pgn`, one per collection, in directories mirroring the Library's folders; shipped ones in `collections/built-in/` | game of the collection |
 | Repertoires | `repertoires/<folder>.pgn` per folder (name order), then `repertoires/unfiled.pgn` | repertoire |
+| Engine presets (CTA-179) | `engine-presets.json` — `{ presets, selections }`: every stored preset (`lib/enginePresets.ts`) and the preset each engine runs | — (JSON, not PGN) |
 
 - **The stored PGN is joined as it stands** (`pgnFileOf`) — never re-parsed or
   re-serialised, so a record this build cannot read still exports byte for
@@ -74,6 +75,10 @@ both catalogs. Test ids: `settings-export-*`, `settings-import-*`.
   Built-in folder; `built-in` is reserved at the top, so a reader's folder
   called "Built-in" becomes `built-in-2/`. A folder with nothing exported in it
   has no directory (a zip holds files), but it is in the manifest.
+- **The engine presets are JSON**, as stored — a preset's `id`, `name`,
+  `values` (option name → a number, a boolean or words) and dates; a
+  selection's engine id and preset id. Default is in it only once the reader
+  edited it (it is never stored before). Not written when there are neither.
 - **The download** is one file, `chessapp-export-YYYY-MM-DD.zip`.
 
 ### 1.1 What is not in the zip — the background jobs
@@ -88,7 +93,8 @@ and eval graph from its PGN alone (`reportFromTree`). Carried to another
 browser, a job would name analyses by ids the import may have replaced
 (Override), queue engine work the reader did not start there, and hold an
 interrupted run no one asked to resume. The engine choice, likewise, is a
-preference and stays out ([`settings.md`](./settings.md) §4). Settings →
+preference and stays out ([`settings.md`](./settings.md) §4) — its presets,
+and the preset each engine runs, are data and go (CTA-179). Settings →
 Storage still counts the jobs.
 
 ## 2. `manifest.json`
@@ -96,10 +102,10 @@ Storage still counts the jobs.
 ```jsonc
 {
   "format": "chessapp-export",
-  "formatVersion": 2,            // EXPORT_FORMAT_VERSION — bump on any change an older reader would misread (§6)
+  "formatVersion": 3,            // EXPORT_FORMAT_VERSION — bump on any change an older reader would misread (§6)
   "appVersion": "0.4.0",         // __APP_VERSION__
   "exportedAt": "…ISO 8601…",
-  "categories": ["collections", "games", "analyses", "repertoires"],
+  "categories": ["collections", "games", "analyses", "repertoires", "enginePresets"],
   "includeShippedCollections": false,
   "folders": {                   // whole trees, so an empty folder survives
     "analyses": [["Openings"], ["Openings", "Sicilian"]],
@@ -111,7 +117,8 @@ Storage still counts the jobs.
     { "path": "analyses.pgn", "kind": "analyses", "records": [{ "index": 0, "games": 1, "name": "…", "description": "…", "orientation": "white", "path": […], "folderPath": ["Openings"], … }] },
     { "path": "collections/built-in/world-cup.pgn", "kind": "collection", "collection": { "id": "…", "name": "…", "source": "shipped", "games": 674 } },
     { "path": "collections/club/blitz/friday.pgn", "kind": "collection", "collection": { "id": "u…", "name": "Friday", "source": "uploaded", "games": 12, "folderPath": ["Club", "Blitz"], "description": "…", "tournament": { "enabled": true, "type": "swiss" } } },
-    { "path": "repertoires/unfiled.pgn", "kind": "repertoires", "folder": null, "records": [{ "index": 0, "games": 1, "name": "…", "settings": {…}, … }] }
+    { "path": "repertoires/unfiled.pgn", "kind": "repertoires", "folder": null, "records": [{ "index": 0, "games": 1, "name": "…", "settings": {…}, … }] },
+    { "path": "engine-presets.json", "kind": "engine-presets", "presets": 2 }   // CTA-179: the file's presets, counted
   ]
 }
 ```
@@ -150,7 +157,7 @@ Storage still counts the jobs.
 | Reads | `lib/dataExportSource.ts` — `exportZip` | each ticked store `load()`ed (a snapshot is `undefined` until its first read lands, so the export never trusts one) — Collections reads the Library's folders too — and the collections' games. Rejects with `ExportReadError` when a collection's games cannot be read. |
 | Platform | `lib/pgnExport.ts` — `downloadBinaryFile` | the blob URL and the `<a download>` click. |
 
-`ExportTab.tsx`: four checkboxes, each **all or nothing**, each with its count
+`ExportTab.tsx`: five checkboxes (the engine presets since CTA-179, counted by the stored presets), each **all or nothing**, each with its count
 (the stores' snapshots through `useSyncExternalStore`, which starts each read).
 Collections has a second box, **include shipped collections** — the uploads
 always go with Collections, the shipped ones only with this box too (disabled
@@ -216,7 +223,11 @@ Records are never compared one by one. A **clash is a folder**, known by its
 
 - **The top level (Unfiled) always exists**, so it clashes whenever the dump
   puts a record there. **The played games** have no folders: the category
-  clashes as a whole (its "folder" is the top level).
+  clashes as a whole (its "folder" is the top level). **So do the engine
+  presets** (CTA-179), and each engine's selection follows the choice: Merge
+  adds the dump's for an engine the app has none for, Override puts the dump's
+  in place of the app's, Skip brings none — and a selection naming a preset
+  the app will not hold is dropped.
 - **A folder of the dump's clashes even when it holds nothing** — Override
   would empty the app's.
 - **In the app, a folder is its path of names** (`gameFolderPath` for the
@@ -253,7 +264,10 @@ to `EXPORT_FORMAT_VERSION` through **`MANIFEST_MIGRATIONS`** (`lib/dataImport.ts
 a table keyed by the version each entry upgrades *from*: version `n` in, the
 same data as version `n + 1` out. Version 2 added the collections'
 `description` and `tournament` mark (CTA-121) — fields a v1 manifest simply
-lacks, so its upgrade is the version stamp alone. A
+lacks, so its upgrade is the version stamp alone. **Version 3 added the engine
+presets' file** (CTA-179): a file kind an older reader refuses (its `default:`
+is "malformed"), so the bump makes such a reader say **newer** instead; a v2
+zip has no presets, and its upgrade is the stamp alone too. A
 version past this build's is **newer** (§7); a version with no way up (not a
 positive integer, a gap in the table, a migration that does not land on the
 next version) is **malformed**.
@@ -313,6 +327,7 @@ that the import prefers when present — an added field, so no bump (§6).
 | Analyses | 20,000 | The category is **refused**. |
 | Repertoires | 500 | The category is **refused**. |
 | Folders (analyses', repertoires', the Library's) | 100 each | The category is **refused**. |
+| Engine presets | 50 (`MAX_ENGINE_PRESETS`, CTA-179) | The category is **refused**. |
 
 The totals are counted after the choices (an Override's removals, the skipped
 records), shown in the dialog before anything is written, and a refused
@@ -344,7 +359,7 @@ in the meantime still never takes a partial category.
 
 ## 10. Testing
 
-- `lib/dataExport.test.ts` — the builder: every category, empty categories,
+- `lib/dataExport.test.ts` — the builder: every category (the engine presets' JSON file, CTA-179), empty categories,
   folder mapping (nested analyses, one-level repertoires, a dangling folder,
   the Library's folders as directories with `built-in` reserved), name
   collisions, the shipped toggle, a legacy multi-game repertoire, and a zip
@@ -354,14 +369,18 @@ in the meantime still never takes a partial category.
   the migration seam (identity at the current version, a chain, a gap, newer,
   an older zip read through a test table), the round trip into an empty app,
   the clashes, each choice and a folder's own, the played games as a whole,
-  a re-import that plans no write, and each cap.
+  a re-import that plans no write, and each cap; the engine presets (CTA-179):
+  read back in their types, into an empty app with their selections, Merge /
+  Override / Skip, a re-import, the cap, a v2 zip through the table, a file
+  that does not match.
 - `views/settings/Settings.test.tsx` — the section and the Export tab over the
   real stores: counts, the checkboxes and button, a download unzipped and read,
   a refused download. `downloadBinaryFile` is the only stub.
 - `views/settings/ImportTab.test.tsx` — the Import tab over the real stores
   (fake-indexeddb): a seeded app exported (`exportZip`), wiped (the stores
   settled, reset and their databases deleted) and imported back — every record,
-  folder (empty ones too) and filing; the same zip again changing nothing (the
+  folder (empty ones too) and filing — the engine presets and each engine's
+  selection too; the same zip again changing nothing (the
   snapshots the same arrays); an unticked category; the clash list and a
   folder's own choice; the shipped note; a refused category and the played
   games' warning; the incompatible dialog. A file is picked with

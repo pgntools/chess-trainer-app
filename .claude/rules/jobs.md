@@ -137,7 +137,10 @@ queued ──▶ running ──▶ done
   from any board's. After the `uci` answer (`whenOptionsReady`, 30 s) it sets
   `Threads` and `Hash`, and before each search `MultiPV` (the position's own
   — the options' lines where its move is analysed, else 1), **each clamped
-  to what the engine declared**. The protocol discipline is the handle's
+  to what the engine declared** — and beside them **the engine's preset**
+  (CTA-179, [`docs/engine.md`](../../docs/engine.md) §9), read as the run
+  builds its engine: what its selected preset sets, met against what the
+  engine declared, those three never taken from it. The protocol discipline is the handle's
   ([`chessboard.md`](./chessboard.md) §4.1): the runner calls `setOption` and
   `search` and never sequences them.
 - **Each position**: `search(fen, { depth, movetime })`; every `info` for that

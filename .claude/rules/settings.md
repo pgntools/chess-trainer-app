@@ -19,9 +19,9 @@ app's data takes, CTA-94), **Appearance** (the theme, CTA-107) and **Engine**
 | --- | --- | --- |
 | Route | `routes.tsx` — `/settings` and `/settings/:tab` | Both render `SettingsMain.tsx`; `/settings` and an unknown tab redirect to the first tab (Export). |
 | Screen | `views/settings/SettingsScreen.tsx` | The title, a tab strip (each `Tab` a `RouterLink` to `/settings/<id>`), the active tab's content scrolling under it. |
-| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (Browser / API inner tabs: the `EnginePicker` and `EngineServerForm` blocks; the `EngineOptionsTable` block in its panel), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
+| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (Browser / API inner tabs: the `EnginePicker` and `EngineServerForm` blocks; under them `EnginePresetsSection.tsx`, the `EnginePresetForm` block — CTA-179; the `EngineOptionsTable` block in its panel), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
 | Nav | `navFolders()` — `settings` (`nav.folders.settings`, `pinToBottom`); `navItems()` — one entry per tab (`nav.settingsExport`, `nav.settingsImport`, `nav.settingsStorage`, `nav.settingsAppearance`, `nav.settingsEngine`, `nav.settingsSupport`) | A folder, **not** `singleEntry`, so a tab is one more entry in it. Pinned to the sidebar's foot, under a divider, apart from the screens (`Sidebar.tsx`). |
-| Locale | `settings.*` in `en.ts` / `he.ts` | `settings.title`, `settings.tabs.<id>`, then each tab's own block (`settings.export.*`, `settings.import.*`, `settings.storage.*`, `settings.appearance.*`, `settings.engine.*`). The themes' own names are `appearance.themes.<id>`; the picker's words are `enginePicker.*`. |
+| Locale | `settings.*` in `en.ts` / `he.ts` | `settings.title`, `settings.tabs.<id>`, then each tab's own block (`settings.export.*`, `settings.import.*`, `settings.storage.*`, `settings.appearance.*`, `settings.engine.*` — the presets' section `settings.engine.presets.*`). The themes' own names are `appearance.themes.<id>`; the picker's words are `enginePicker.*`, the presets form's `enginePresets.*`. |
 
 **Adding a tab**: an entry in `SETTINGS_TABS` (`SettingsScreen.tsx`), a
 `navItems()` entry in the `settings` folder at `/settings/<id>`, and
@@ -115,7 +115,7 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   mid-way never swaps the engine under a game.
 - **The Export zip does not carry it** — a preference is not data
   ([`import-export.md`](./import-export.md)); what a played game carries is the
-  engine that played it.
+  engine that played it. Its **presets** are data, and do travel (§4.1).
 - **Two inner tabs say where the engine runs** (`PanelTabs`, the tab's own
   state — it opens on API when the stored choice is a server engine):
   **Browser**, the page's own builds above; **API**, the engine server below.
@@ -145,6 +145,38 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   are gone, and a choice of one reads as the default — still stored, back when
   the server is.
 
+### 4.1 The engine's options, in presets (CTA-179)
+
+Under the inner tabs, whichever the engine was chosen on, **the chosen engine's
+options** (`EnginePresetsSection.tsx` over the `EnginePresetForm` block;
+[`docs/engine.md`](../../docs/engine.md) §9 is the whole design):
+
+- **A shared library of named presets, one selected per engine.** The picker
+  shows the preset this engine runs; New, Rename, Duplicate (named
+  "… (copy)") and Delete — asked first; **Default always exists and cannot be
+  deleted**, and a deleted preset's engines go back to it. A new or
+  duplicated preset is selected for the chosen engine at once; selecting one
+  for an engine never changes another's. Stored in IndexedDB
+  (`chessapp.enginePresets`, `lib/enginePresetStore.ts`) — the reader's data,
+  so **the Export zip carries them** ([`import-export.md`](./import-export.md)).
+- **Every option the engine declares, data-driven**: a page's build from its own
+  `uci` reply (the section builds it through `useEngineModule`, switched off —
+  it never searches; "Reading what … declares…" until it answers), an engine
+  server's engine from the server's list. Each in its UCI type with its type,
+  default and range, and a reset (back to the engine's default) where the
+  preset sets it; a value the preset sets that this engine does not declare is
+  listed as absent, with Remove.
+- **Read-only, each with why**: Threads, Hash and MultiPV — set on each board;
+  a button (Clear Hash) — an action, not a setting; a pinned option; a file
+  path (`EvalFile`, `SyzygyPath`, `Debug Log File`) on a browser build — no
+  file system there. Hash is offered up to 1024 MB on a browser build. Skill
+  Level, UCI_Elo and UCI_LimitStrength are editable, noted as the Play boards'
+  own there.
+- **A change is a store write, at once** (each keystroke of a field — the
+  field keeps its own text as the write comes back); every board and job
+  running the engine takes it from its next search. A refused write is an
+  `InlineAlert` above the form.
+
 ## 5. Testing
 
 - `views/settings/Settings.test.tsx` — the section (the landing redirect, the
@@ -164,7 +196,14 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   with Enter, a stored server engine opening the API tab and falling back
   when the server is turned off, Hebrew, axe. `src/lib/engineChoice.test.ts`
   — the store; `src/lib/engineServer.test.ts` — the address and the status.
-  `blocks/forms/EnginePicker/EnginePicker.test.tsx`,
+  The presets (CTA-179, the same file over the real stores and a `FakeEngine`
+  per build — `builtinEnginesMock`, which `Settings.test.tsx` mocks too): the
+  chosen build's options, the boards' own read-only, a change kept (Default
+  stored at its first edit, numbers typed through the store), a new preset for
+  the chosen engine alone, an engine server's file path, Hebrew and axe.
+  `src/lib/enginePresets.test.ts`, `enginePresetStore.test.ts` — the records
+  and the store.
+  `blocks/forms/EnginePicker/EnginePicker.test.tsx`, `blocks/forms/EnginePresetForm/EnginePresetForm.test.tsx`,
   `blocks/forms/EngineServerForm/EngineServerForm.test.tsx`,
   `blocks/tables/EngineOptionsTable/EngineOptionsTable.test.tsx` — the blocks.
 - `views/settings/AppearanceTab.test.tsx` — the Appearance tab, with a second

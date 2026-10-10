@@ -301,7 +301,7 @@ What follows is `EngineHandle` — every engine, whatever it runs on.
 | `descriptor.create()` | Spawns a **dedicated Worker** (a local engine). One per mounted board. |
 | `search(fen, { depth, movetime })` / `search(fen, { infinite: true })` | To a depth — required, the board's own setting, never a wrapper default — clamped to the engine's `capabilities.maxDepth` (`DEFAULT_MAX_DEPTH`, 99, for every shipped build), with `movetime` in milliseconds (omitted when 0), whichever comes first; or **until stopped** (`go infinite` — an analysis board's infinite analysis, CTA-160; it ends only with `stop()`, so never on a board waiting for the engine's move). **May not start immediately** — §4.1. |
 | `onMessage(cb) => unsubscribe` | Parsed UCI messages. **You must call the unsubscribe.** |
-| `setOption(name, value) => boolean` | Buffered, not posted (§4.1). `false` means this build will not take it — no such option, or pinned. |
+| `setOption(name, value) => boolean` | Buffered, not posted (§4.1). `value` a number, a boolean or words (`UciOptionValue`, CTA-179). `false` means this build will not take it — no such option, pinned, a button, a file path in a browser build (`UciEngineConfig.refuses`), or words with a line break. |
 | `whenOptionsReady(cb) => unsubscribe` | Runs `cb` once `options` is complete, at once if the handshake already landed. |
 | `options` | What the **running worker** declared in its own `uci` reply. |
 | `stop()` | Drops a waiting search and ends the running one — which still answers with the bestmove for the depth reached. |
@@ -613,8 +613,8 @@ const engine = useEngineModule({
   depth: number,
   moveTimeMs: number,
   infinite?: boolean,                   // search until stopped (CTA-160) — absent: to depth / move time
-  uciOptions: Readonly<Record<string, number>>,   // name → requested value
-  onUciOptionsReady?: (clamped: Readonly<Record<string, number>>) => void,
+  uciOptions: Readonly<Record<string, UciOptionValue>>,   // name → requested value: a number, a boolean, words (CTA-179)
+  onUciOptionsReady?: (clamped: Readonly<Record<string, number>>) => void,   // the numbers, held to the declared bounds
   onBestMove?: (bestMove: string, searchedFen: string) => void,
   onSearchFinished?: (finished: { fen, score, depth, engine }) => void,  // CTA-167 — absent: nothing called
 });
@@ -633,6 +633,13 @@ engine's lines and keeping the scores already recorded; the
 **`uci` handshake** — what the worker declared is `engineOptions`, and the
 requested values are **clamped into those bounds** and reported through
 `onUciOptionsReady` (the module never learns what a setting *means*);
+**the engine's preset** (CTA-179, [`docs/engine.md`](../../docs/engine.md) §9) —
+the running engine's selected preset, read from its store, met against what
+the engine declared once the handshake lands and sent beside the board's
+options, which always win (a name in `uciOptions`, and Threads, Hash, MultiPV,
+is never sent from it); a change applies from the next search, an option it
+stops setting goes back to its default, and no file path ever reaches a
+browser build — so a board needs no line of its own for it;
 `setOption` pushed before the search effect; searching the position on screen,
 stopping when switched off, never searching a terminal position; **per-FEN
 evals** (the score a search *finished* with, recorded at its `bestmove`) —
