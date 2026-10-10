@@ -219,6 +219,8 @@ const SOURCE: ExportSource = {
     },
   ],
   collectionFolders: [{ id: "e2e-folder-club", name: "Club", parentId: null, savedAt: AT, updatedAt: AT }],
+  enginePresets: [],
+  enginePresetSelections: [],
 };
 
 /** The seed as one export zip: every category, the shipped collections left out. */
@@ -226,7 +228,7 @@ export const seedZip = (): Uint8Array =>
   zipExport(
     buildExport(
       SOURCE,
-      { collections: true, games: true, analyses: true, repertoires: true, shippedCollections: false },
+      { collections: true, games: true, analyses: true, repertoires: true, enginePresets: true, shippedCollections: false },
       { appVersion: "0.0.0-e2e", now: new Date(AT) },
     ),
   );

@@ -11,7 +11,6 @@ import {
   type EngineServerConnectFeedback,
   type EngineServerFormStatus,
 } from "../../blocks/forms";
-import { EngineOptionsTable } from "../../blocks/tables";
 import { PanelTabs, tabPanelProps } from "../../design-system/components/tabs";
 import {
   DEFAULT_ENGINE_SERVER_URL,
@@ -26,6 +25,7 @@ import { HOSTED_ENGINE_PREFIX, describeEngines } from "../../lib/engines";
 import { useEngineChoice } from "../shared/useEngineChoice";
 import { RightPanel } from "../main/rightPanel";
 import { useEngineServer } from "../shared/useEngineServer";
+import EnginePresetsSection from "./EnginePresetsSection";
 
 /** How long Connect's spinner shows at least — a local server answers in milliseconds, too fast to see. */
 const CONNECT_MIN_CHECKING_MS = 400;
@@ -71,6 +71,10 @@ const formStatusOf = (status: EngineServerStatus): EngineServerFormStatus | unde
  * checks it — and **every press is answered on the button**: a spinner for at
  * least {@link CONNECT_MIN_CHECKING_MS}, then a check mark or a warning for
  * {@link CONNECT_FEEDBACK_MS}.
+ *
+ * Under both, **the chosen engine's options, kept in presets**
+ * (`EnginePresetsSection`, CTA-179): every option it declares, editable in
+ * the preset it runs, the boards' own read-only.
  *
  * The right-hand panel shows **what the chosen server engine declared** — its
  * UCI options and defaults as the server sent them (`EngineOptionsTable`) —
@@ -178,39 +182,32 @@ function EngineTab() {
       </Box>
 
       <RightPanel>
-        {chosenOnServer === undefined && kind === "api" && (
-          <Box sx={{ display: "grid", gap: 1 }} data-testid="engine-setup">
-            <Typography variant="subtitle2" component="h2">
-              {t("settings.engine.setup.title")}
-            </Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              {t("settings.engine.setup.intro")}{" "}
-              <Link component={RouterLink} to={LOCAL_ENGINE_GUIDE_PATH} underline="hover" data-testid="engine-setup-guide">
-                {t("settings.engine.setup.guide")}
-              </Link>
-            </Typography>
-          </Box>
-        )}
-        {chosenOnServer === undefined && kind === "browser" && (
-          <Typography variant="body2" sx={{ color: "text.secondary" }} data-testid="engine-uci-none">
-            {t("settings.engine.uci.none")}
-          </Typography>
-        )}
-        {chosenOnServer !== undefined && (
-          <Box sx={{ display: "grid", gap: 1, minWidth: 0 }} data-testid="engine-uci">
-            <Typography variant="subtitle2" component="h2">
-              {t("settings.engine.uci.title", { name: chosenOnServer.name })}
-            </Typography>
-            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+        {/* The shell's aside does not scroll: this column is the panel's one scrolling region. */}
+        <Box
+          data-testid="engine-panel"
+          sx={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}
+        >
+          {chosenOnServer === undefined && kind === "api" && (
+            <Box sx={{ display: "grid", gap: 1 }} data-testid="engine-setup">
+              <Typography variant="subtitle2" component="h2">
+                {t("settings.engine.setup.title")}
+              </Typography>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                {t("settings.engine.setup.intro")}{" "}
+                <Link component={RouterLink} to={LOCAL_ENGINE_GUIDE_PATH} underline="hover" data-testid="engine-setup-guide">
+                  {t("settings.engine.setup.guide")}
+                </Link>
+              </Typography>
+            </Box>
+          )}
+          {/* The chosen engine's options in its preset (CTA-179) — whichever inner tab it was chosen on. */}
+          <EnginePresetsSection engineId={engineId} />
+          {chosenOnServer !== undefined && (
+            <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid="engine-uci-note">
               {t("settings.engine.uci.note", { maxDepth: chosenOnServer.maxDepth })}
             </Typography>
-            <EngineOptionsTable
-              options={chosenOnServer.options}
-              ariaLabel={t("settings.engine.uci.title", { name: chosenOnServer.name })}
-              testId="engine-uci-options"
-            />
-          </Box>
-        )}
+          )}
+        </Box>
       </RightPanel>
     </>
   );

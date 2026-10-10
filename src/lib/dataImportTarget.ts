@@ -7,6 +7,8 @@ import type {
   ImportWrites,
 } from "./dataImport";
 import type { ExportCategory } from "./dataExport";
+import { MAX_ENGINE_PRESETS } from "./enginePresets";
+import { importEnginePresets, loadEnginePresetSelections, loadEnginePresets } from "./enginePresetStore";
 import {
   addCollection,
   loadUploadedCollections,
@@ -37,17 +39,38 @@ import { importRepertoires, loadSavedRepertoires, MAX_SAVED_REPERTOIRES } from "
 
 /** Every store the import writes, read now if it has not been. */
 export const loadImportCurrent = async (): Promise<ImportCurrent> => {
-  const [playedGames, analyses, analysisFolders, repertoires, repertoireFolders, collections, collectionFolders] =
-    await Promise.all([
-      loadPlayedGames(),
-      loadSavedAnalyses(),
-      loadAnalysisFolders(),
-      loadSavedRepertoires(),
-      loadRepertoireFolders(),
-      loadUploadedCollections(),
-      loadLibraryFolders(),
-    ]);
-  return { playedGames, analyses, analysisFolders, repertoires, repertoireFolders, collections, collectionFolders };
+  const [
+    playedGames,
+    analyses,
+    analysisFolders,
+    repertoires,
+    repertoireFolders,
+    collections,
+    collectionFolders,
+    enginePresets,
+    enginePresetSelections,
+  ] = await Promise.all([
+    loadPlayedGames(),
+    loadSavedAnalyses(),
+    loadAnalysisFolders(),
+    loadSavedRepertoires(),
+    loadRepertoireFolders(),
+    loadUploadedCollections(),
+    loadLibraryFolders(),
+    loadEnginePresets(),
+    loadEnginePresetSelections(),
+  ]);
+  return {
+    playedGames,
+    analyses,
+    analysisFolders,
+    repertoires,
+    repertoireFolders,
+    collections,
+    collectionFolders,
+    enginePresets,
+    enginePresetSelections,
+  };
 };
 
 /** The stores' caps. The three folder stores share one, which `folders` is. */
@@ -56,6 +79,7 @@ export const IMPORT_CAPS: ImportCaps = {
   analyses: MAX_SAVED_ANALYSES,
   repertoires: MAX_SAVED_REPERTOIRES,
   folders: Math.min(MAX_ANALYSIS_FOLDERS, MAX_REPERTOIRE_FOLDERS, MAX_LIBRARY_FOLDERS),
+  enginePresets: MAX_ENGINE_PRESETS,
 };
 
 /** Why a category was not (wholly) written. */
@@ -139,5 +163,9 @@ export const applyImport = async (writes: ImportWrites, options: ApplyOptions): 
     writes.repertoires,
     async ({ folders, add, remove }) => (await addRepertoireFolders(folders)) ?? (await importRepertoires(add, remove)),
   );
+  await run("enginePresets", writes.enginePresets, async (planned) => {
+    const problem = await importEnginePresets(planned);
+    return problem === "default" ? "storage" : problem;
+  });
   return results;
 };

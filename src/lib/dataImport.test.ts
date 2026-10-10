@@ -15,6 +15,7 @@ import {
   type ImportCurrent,
   type ImportDump,
 } from "./dataImport";
+import type { EnginePreset } from "./enginePresets";
 import { DEFAULT_ENGINE_SETTINGS } from "./engineSettings";
 import type { CollectionSummary } from "./libraryCollections";
 import type { PlayedGame } from "./playedGames";
@@ -111,6 +112,8 @@ const SOURCE: ExportSource = {
     { summary: { id: "worldcup", name: "World Cup", source: "shipped", count: 1 }, games: [pgn("WC")] },
   ],
   collectionFolders: [folder("lc", "Club"), folder("lb", "Blitz", "lc")],
+  enginePresets: [],
+  enginePresetSelections: [],
 };
 
 const ALL: ExportSelection = {
@@ -118,6 +121,7 @@ const ALL: ExportSelection = {
   games: true,
   analyses: true,
   repertoires: true,
+  enginePresets: true,
   shippedCollections: true,
 };
 
@@ -132,6 +136,8 @@ const zipOf = (source: Partial<ExportSource> = SOURCE, selection: ExportSelectio
         repertoireFolders: [],
         collections: [],
         collectionFolders: [],
+        enginePresets: [],
+        enginePresetSelections: [],
         ...source,
       },
       selection,
@@ -147,6 +153,8 @@ const EMPTY: ImportCurrent = {
   repertoireFolders: [],
   collections: [],
   collectionFolders: [],
+  enginePresets: [],
+  enginePresetSelections: [],
 };
 
 /** The exporting app as the import sees it — what a second import of the same zip meets. */
@@ -158,9 +166,11 @@ const SAME: ImportCurrent = {
   repertoireFolders: SOURCE.repertoireFolders,
   collections: SOURCE.collections.filter((c) => c.summary.source === "uploaded").map((c) => c.summary),
   collectionFolders: SOURCE.collectionFolders,
+  enginePresets: SOURCE.enginePresets,
+  enginePresetSelections: SOURCE.enginePresetSelections,
 };
 
-const CAPS: ImportCaps = { playedGames: 100, analyses: 20_000, repertoires: 500, folders: 100 };
+const CAPS: ImportCaps = { playedGames: 100, analyses: 20_000, repertoires: 500, folders: 100, enginePresets: 50 };
 
 const dumpOf = (bytes: Uint8Array = zipOf()): ImportDump => {
   const reading = readImport(bytes);
@@ -193,7 +203,7 @@ describe("reading a zip", () => {
   it("reads back every category, every folder by its path, and counts the shipped collections", () => {
     const dump = dumpOf();
     expect(dump.appVersion).toBe("9.9.9");
-    expect(dump.categories).toEqual(["collections", "games", "analyses", "repertoires"]);
+    expect(dump.categories).toEqual(["collections", "games", "analyses", "repertoires", "enginePresets"]);
     expect(dump.games).toEqual(SOURCE.playedGames);
     expect(dump.analyses.map(({ record, folder }) => [record.id, folder])).toEqual([
       ["a1", []],
@@ -299,9 +309,9 @@ describe("reading a zip", () => {
       { record: { id: "u1", name: "Club games", games: [pgn("Club 1"), pgn("Club 2")] }, folder: [] },
     ]);
     // The same zip stamped past this build's version is refused as newer.
-    expect(readImport(rezip(v1, (m) => ({ ...m, formatVersion: 3 })))).toMatchObject({
+    expect(readImport(rezip(v1, (m) => ({ ...m, formatVersion: 4 })))).toMatchObject({
       ok: false,
-      problem: { kind: "newer", version: 3 },
+      problem: { kind: "newer", version: 4 },
     });
   });
 
@@ -339,7 +349,7 @@ describe("reading a zip", () => {
   });
 
   it("holds only the categories the manifest lists", () => {
-    const dump = dumpOf(zipOf(SOURCE, { ...ALL, collections: false, repertoires: false }));
+    const dump = dumpOf(zipOf(SOURCE, { ...ALL, collections: false, repertoires: false, enginePresets: false }));
     expect(dump.categories).toEqual(["games", "analyses"]);
     expect(importPlanOf(dump, EMPTY).categories).toEqual({
       games: expect.anything(),
@@ -352,7 +362,7 @@ describe("reading a zip", () => {
     ["no manifest", zipSync({ "games.pgn": strToU8(pgn("x")) }), { kind: "no-manifest" }],
     ["a manifest that is not JSON", zipSync({ "manifest.json": strToU8("{") }), { kind: "malformed" }],
     ["someone else's format", rezip(zipOf(), (m) => ({ ...m, format: "other" })), { kind: "foreign" }],
-    ["a newer version", rezip(zipOf(), (m) => ({ ...m, formatVersion: 3 })), { kind: "newer", version: 3 }],
+    ["a newer version", rezip(zipOf(), (m) => ({ ...m, formatVersion: 4 })), { kind: "newer", version: 4 }],
     ["no version", rezip(zipOf(), (m) => ({ ...m, formatVersion: undefined })), { kind: "malformed" }],
     ["no files list", rezip(zipOf(), (m) => ({ ...m, files: undefined })), { kind: "malformed" }],
     ["a missing file", rezip(zipOf(), (m) => m, ["analyses.pgn"]), { kind: "missing-file", path: "analyses.pgn" }],
@@ -398,7 +408,7 @@ describe("reading a zip", () => {
 
 describe("migrations", () => {
   it("passes the current version through unchanged", () => {
-    const manifest = { format: "chessapp-export", formatVersion: 2 };
+    const manifest = { format: "chessapp-export", formatVersion: 3 };
     expect(migrateManifest(manifest)).toBe(manifest);
   });
 
@@ -606,5 +616,97 @@ describe("caps", () => {
     const writes = writesOf(dumpOf(), { ...EMPTY, playedGames: [played("x1"), played("x2")] }, {}, { ...CAPS, playedGames: 3 });
     expect(writes.games?.refused).toBeUndefined();
     expect(writes.games?.dropsOldest).toBe(1);
+  });
+});
+
+describe("the engine presets (CTA-179)", () => {
+  const preset = (id: string, values: EnginePreset["values"] = {}, name = id): EnginePreset => ({
+    id,
+    name,
+    values,
+    groups: {},
+    savedAt: AT,
+    updatedAt: AT,
+  });
+  const select = (engine: string, presetId: string) => ({ id: engine, presetId, updatedAt: AT });
+  const PRESETS = [preset("default", { UCI_ShowWDL: true }, "Default"), { ...preset("deep", { "Move Overhead": 100, SyzygyPath: "/tb" }), groups: { syzygy: true } }];
+  const SELECTIONS = [select("stockfish-19-lite-single", "deep"), select("hosted:sf19", "default")];
+  const presetsZip = () => zipOf({ enginePresets: PRESETS, enginePresetSelections: SELECTIONS }, { ...ALL, collections: false });
+
+  it("travel as one JSON file and come back as they were — every value in its type", () => {
+    const dump = dumpOf(presetsZip());
+    expect(dump.categories).toContain("enginePresets");
+    expect(dump.enginePresets).toEqual(PRESETS);
+    expect(dump.enginePresetSelections).toEqual(SELECTIONS);
+    expect(importPlanOf(dump, EMPTY).categories.enginePresets).toEqual({
+      count: 2,
+      conflicts: [{ key: folderKey([]), path: [], incoming: 2, existing: 0 }],
+    });
+  });
+
+  it("come into an empty app whole, with each engine's selection", () => {
+    const planned = writesOf(dumpOf(presetsZip()), EMPTY).enginePresets;
+    expect(planned?.writes).toEqual({
+      add: PRESETS,
+      remove: [],
+      select: SELECTIONS.map((selection) => ({ ...selection, updatedAt: NOW.toISOString() })),
+    });
+    expect(planned?.report).toEqual({ added: 2, replaced: 0, skipped: 0, folders: 0 });
+  });
+
+  it("Merge keeps a preset and a selection the app has; Override replaces them; Skip writes nothing", () => {
+    const app: ImportCurrent = {
+      ...EMPTY,
+      enginePresets: [preset("deep", { Hash: 64 }, "mine")],
+      enginePresetSelections: [select("stockfish-19-lite-single", "default")],
+    };
+    const dump = dumpOf(presetsZip());
+    const choose = (choice: "merge" | "override" | "skip") =>
+      writesOf(dump, app, { enginePresets: { ticked: true, choice, folders: {} } }).enginePresets?.writes;
+
+    expect(choose("merge")).toEqual({
+      add: [PRESETS[0]],
+      remove: [],
+      select: [{ ...SELECTIONS[1], updatedAt: NOW.toISOString() }],
+    });
+    expect(choose("override")).toEqual({
+      add: PRESETS,
+      remove: ["deep"],
+      select: SELECTIONS.map((selection) => ({ ...selection, updatedAt: NOW.toISOString() })),
+    });
+    expect(choose("skip")).toEqual({ add: [], remove: [], select: [] });
+  });
+
+  it("re-importing the same zip with Merge changes nothing", () => {
+    const writes = writesOf(dumpOf(presetsZip()), { ...EMPTY, enginePresets: PRESETS, enginePresetSelections: SELECTIONS });
+    expect(writes.enginePresets?.writes).toEqual({ add: [], remove: [], select: [] });
+  });
+
+  it("refuses the category past the library's cap", () => {
+    const planned = writesOf(dumpOf(presetsZip()), EMPTY, undefined, { ...CAPS, enginePresets: 1 }).enginePresets;
+    expect(planned?.refused).toEqual({ kind: "records", max: 1, total: 2 });
+  });
+
+  it("read a version-2 zip — from before them — through the table", () => {
+    const v2 = rezip(zipOf({ playedGames: [played("g1")] }, { ...ALL, collections: false, enginePresets: false }), (m) => ({
+      ...m,
+      formatVersion: 2,
+    }));
+    const dump = dumpOf(v2);
+    expect(dump.games.map((game) => game.id)).toEqual(["g1"]);
+    expect(dump.enginePresets).toEqual([]);
+    expect(dump.categories).not.toContain("enginePresets");
+  });
+
+  it("refuse a file that does not hold what the manifest counts, or a preset that will not read", () => {
+    const miscounted = rezip(presetsZip(), (m) => ({
+      ...m,
+      files: (m.files as Record<string, unknown>[]).map((file) => (file.kind === "engine-presets" ? { ...file, presets: 5 } : file)),
+    }));
+    expect(readImport(miscounted)).toMatchObject({ ok: false, problem: { kind: "unreadable", path: "engine-presets.json" } });
+
+    const files = unzipSync(presetsZip());
+    files["engine-presets.json"] = strToU8(JSON.stringify({ presets: [{ name: "no id" }], selections: [] }));
+    expect(readImport(zipSync(files))).toMatchObject({ ok: false, problem: { kind: "unreadable" } });
   });
 });

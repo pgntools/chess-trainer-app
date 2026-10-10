@@ -12,6 +12,8 @@ import {
 import { computerAnalysisTree } from "./computerAnalysisTree";
 import { DEFAULT_ANALYSIS_SETTINGS } from "./analysisSettings";
 import { connectEngineServer, readEngineServerUrl } from "./engineServer";
+import { BOARD_OWNED_OPTIONS, resolveEnginePreset, selectedPresetValues } from "./enginePresets";
+import { loadEnginePresetSelections, loadEnginePresets } from "./enginePresetStore";
 import type { EngineDescriptor, EngineHandle, EngineOption } from "./engineTypes";
 import { engineSettingBoundsOf } from "./engineSettings";
 import type { GameTree } from "./gameTree";
@@ -43,7 +45,10 @@ import { addAnalyses } from "./savedAnalysisStore";
  *   the options' engine, falling back to the default as `useEngineModule`
  *   does (`resolveEngine`) — separate from any board's, and sets `Threads`,
  *   `Hash` and each position's `MultiPV`, each clamped to what the engine
- *   declared. The protocol discipline (`chessboard.md` §4.1) is the handle's.
+ *   declared, and beside them **the engine's preset** (CTA-179,
+ *   `lib/enginePresets.ts`) — the values its selected preset sets, met
+ *   against what it declared, the job's own three never taken from it. The
+ *   protocol discipline (`chessboard.md` §4.1) is the handle's.
  * - **Each position** is searched to the options' depth and time; its lines
  *   are folded in as they arrive (`withSearchInfo`) and the search is stopped
  *   early when `shouldStopEarly` says so. A mate or stalemate on the board is
@@ -335,6 +340,14 @@ export const createJobRunner = ({
               clampToOption(engine.options.get("Threads"), Math.min(job.options.threads, bounds.threads.max)),
             );
             engine.setOption("Hash", clampToOption(engine.options.get("Hash"), Math.min(job.options.hashMb, bounds.hashMb.max)));
+            // The engine's preset, as a board sends it — read now, so a change made since the job was queued applies.
+            const [presets, selections] = await Promise.all([loadEnginePresets(), loadEnginePresetSelections()]);
+            if (!stillRunning(id, signal)) return;
+            const { send } = resolveEnginePreset(selectedPresetValues(presets, selections, descriptor.id), engine.options, {
+              inBrowser: descriptor.server === undefined,
+              owned: BOARD_OWNED_OPTIONS,
+            });
+            for (const [name, value] of Object.entries(send)) engine.setOption(name, value);
           }
           const lines = await searchPosition(handle, position, job.options, signal);
           if (lines === undefined || !stillRunning(id, signal)) return;

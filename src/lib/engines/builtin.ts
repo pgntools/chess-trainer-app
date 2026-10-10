@@ -1,3 +1,4 @@
+import { isFilePathOption } from "../enginePresets";
 import type { EngineDescriptor } from "../engineTypes";
 import { UciEngine, DEFAULT_MAX_DEPTH } from "../uciEngine";
 import { WorkerTransport } from "../workerTransport";
@@ -21,10 +22,16 @@ import { DEFAULT_ENGINE_ID, DEFAULT_ENGINE_NAME, DEFAULT_ENGINE_VERSION } from "
 const stockfishWorkerUrl = (folder: string, file: string): string =>
   `${import.meta.env.BASE_URL}stockfish/${folder}/${file}.js`;
 
-/** A Stockfish WASM worker from `public/stockfish/`, spoken to over UCI. */
+/**
+ * A Stockfish WASM worker from `public/stockfish/`, spoken to over UCI. It has
+ * no file system — `setoption name EvalFile` kills the worker — so no
+ * file-path option (`EvalFile`, `SyzygyPath`, `Debug Log File`) is ever sent
+ * to it, whatever a preset says (CTA-179).
+ */
 const localStockfish = (folder: string, file: string) => (): UciEngine =>
   new UciEngine(new WorkerTransport(stockfishWorkerUrl(folder, file)), {
     maxDepth: DEFAULT_MAX_DEPTH,
+    refuses: isFilePathOption,
   });
 
 /** The default engine — every host can run it. */

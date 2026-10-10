@@ -59,9 +59,10 @@ wrapper's main features would go unused. §10 says when that changes.
 | `src/lib/playedGameStore.ts` | The `chessapp.engine` database (object store `games`) and its store, in one file (one store, one database). |
 | `src/lib/libraryDb.ts` | The `chessapp.library` database (object stores `collections`, `indexes`, `games`, `folders`), version 2. |
 | `src/lib/jobStore.ts` | The `chessapp.jobs` database (object store `jobs`) and its store, in one file (CTA-173) — the background jobs, their checkpoints ([`jobs.md`](./jobs.md)). |
+| `src/lib/enginePresetStore.ts` | The `chessapp.enginePresets` database (object stores `presets`, `selections`) and its two stores, in one file (CTA-179) — the engine option presets and the one each engine runs ([`docs/engine.md`](../../docs/engine.md) §9). |
 | `src/lib/libraryCollectionStore.ts` | The Library's hand-written collection store (§1.4) — not an `idbRecordStore`, because it reads a collection's rows and games lazily. |
 | `src/lib/savedAnalysisStore.ts`, `savedAnalysisFolderStore.ts`, `savedRepertoireStore.ts`, `savedRepertoireFolderStore.ts`, `libraryFolderStore.ts` | The other record stores: each one's caps, idempotency comparison and operations, over the factory. |
-| `src/lib/playedGames.ts`, `savedAnalyses.ts`, `savedAnalysisFolders.ts`, `savedRepertoires.ts`, `savedRepertoireFolders.ts`, `libraryCollections.ts`, `jobs.ts` | **The records** — what each row is, and its **normaliser** (`playedGameFrom`, `savedAnalysisFrom`, `savedRepertoireFrom`, `analysisFolderFrom`, `repertoireFolderFrom`, `jobFrom`): the schema, read back leniently. Pure. |
+| `src/lib/playedGames.ts`, `savedAnalyses.ts`, `savedAnalysisFolders.ts`, `savedRepertoires.ts`, `savedRepertoireFolders.ts`, `libraryCollections.ts`, `jobs.ts`, `enginePresets.ts` | **The records** — what each row is, and its **normaliser** (`playedGameFrom`, `savedAnalysisFrom`, `savedRepertoireFrom`, `analysisFolderFrom`, `repertoireFolderFrom`, `jobFrom`, `enginePresetFrom`, `enginePresetSelectionFrom`): the schema, read back leniently. Pure. |
 | `src/views/engine/games/usePlayedGames.ts`, `views/repertoires/useSavedRepertoires.ts` / `useRepertoireFolders.ts`, `views/tools/analysis/saved/useSavedAnalyses.ts` / `useAnalysisFolders.ts`, `views/jobs/useJobs.ts` | The `useSyncExternalStore` bindings — `undefined` until the store's first read lands. |
 | `src/views/shared/useStoreRead.ts` | "Can this route mount yet?" — a URL naming a record waits for its store's first read. |
 | `src/views/engine/play/PlayedGameRead.tsx` | The play routes' wait (`?saved=`), over `useStoreRead`. |
@@ -70,7 +71,7 @@ wrapper's main features would go unused. §10 says when that changes.
 
 ---
 
-## 1. The map — five modules, five databases
+## 1. The map — six modules, six databases
 
 | Module | Database | Object store | Store module | Row | Order | Cap |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -82,12 +83,14 @@ wrapper's main features would go unused. §10 says when that changes.
 | **Library** | `chessapp.library` | `collections`, `indexes`, `games` | `libraryCollectionStore.ts` | a summary / index rows / PGN chunks per collection | newest first | 30M characters a collection |
 | | | `folders` | `libraryFolderStore.ts` | `GameFolder` | oldest first | 100 |
 | **Jobs** (CTA-173) | `chessapp.jobs` | `jobs` | `jobStore.ts` | `Job` | newest first | 100 (the oldest finished dropped; refused when every one is unfinished) |
+| **Engine presets** (CTA-179) | `chessapp.enginePresets` | `presets` | `enginePresetStore.ts` | `EnginePreset` (Default stored only once edited) | oldest first | 50 (a new one refused) |
+| | | `selections` | `enginePresetStore.ts` | `EnginePresetSelection` (one per engine id) | oldest first | — |
 
 Every database is at **version 1** but the Library's, at **version 2** (CTA-88
 added its `folders` store; the upgrade only created it). Every object store is
 keyed by `keyPath: "id"`, and **none has an index**. Each database is also the
 name of its `BroadcastChannel` (the analyses' two stores share one channel, and
-so do the repertoires' and the Library's — the Library's collection listener
+so do the repertoires', the engine presets' and the Library's — the Library's collection listener
 ignores the folder store's `{ store }` messages).
 
 ### 1.1 Why one database per module
@@ -284,8 +287,9 @@ course can be most of a megabyte each) are far below that.
 - **Teardown** (`setup.ts`, after every test): unmount, clear
   `localStorage`, then — for every record store — wait for its writes to land
   (`settled…`, twice: a folder delete queues its records' unfiling behind
-  it), `reset…`, and delete the four databases (`deleteAnalysisDb`,
-  `deleteEngineDb`, `deleteRepertoireDb`, `deleteJobsDb`) — the page's job
+  it), `reset…`, and delete the five databases (`deleteAnalysisDb`,
+  `deleteEngineDb`, `deleteRepertoireDb`, `deleteJobsDb`,
+  `deleteEnginePresetsDb`) — the page's job
   runner (`stopJobRunner`, CTA-173) stopped first, since it writes the jobs
   and the analyses. The Library's folder store is
   settled and reset there with the others; its database is deleted by the

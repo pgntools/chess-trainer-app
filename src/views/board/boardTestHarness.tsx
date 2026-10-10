@@ -40,24 +40,39 @@ import type {
   EngineMessageCallback,
   EngineOption,
   SearchOptions,
+  UciOptionValue,
 } from "../../lib/engineTypes";
+import { isFilePathOption } from "../../lib/enginePresets";
 // Types only: a value import would be the very module this file stands in for.
 import type * as BuiltinEngines from "../../lib/engines/builtin";
 
-const spin = (name: string, min: number, max: number): [string, EngineOption] => [name, { name, type: "spin", min, max }];
+const spin = (name: string, min: number, max: number, defaultValue = String(min)): [string, EngineOption] => [
+  name,
+  { name, type: "spin", defaultValue, min, max },
+];
+const check = (name: string, defaultValue = "false"): [string, EngineOption] => [name, { name, type: "check", defaultValue }];
 
 /**
  * What the Stockfish 19 builds answer `uci` with (`public/stockfish/README.md`):
- * `Threads` pinned on the single-thread build and 1–32 on the multi-thread one.
+ * `Threads` pinned on the single-thread build and 1–32 on the multi-thread one,
+ * and the rest of the roster a preset can set (CTA-179) — `EvalFile` among
+ * them, which a page's build declares and must never be sent.
  */
 const stockfish19Options = (multiThread: boolean): Map<string, EngineOption> =>
   new Map([
     spin("Threads", 1, multiThread ? 32 : 1),
-    spin("Hash", 1, 33554432),
+    spin("Hash", 1, 33554432, "16"),
+    ["Clear Hash", { name: "Clear Hash", type: "button" }],
+    check("Ponder"),
     spin("MultiPV", 1, 256),
-    spin("Skill Level", 0, 20),
-    ["UCI_LimitStrength", { name: "UCI_LimitStrength", type: "check", defaultValue: "false" }],
+    spin("Skill Level", 0, 20, "20"),
+    spin("Move Overhead", 0, 5000, "10"),
+    spin("nodestime", 0, 10000, "0"),
+    check("UCI_Chess960"),
+    check("UCI_LimitStrength"),
     spin("UCI_Elo", 1320, 3190),
+    check("UCI_ShowWDL"),
+    ["EvalFile", { name: "EvalFile", type: "string", defaultValue: "nn-61e7af4bb97d.nnue" }],
   ]);
 
 /** An engine stand-in: no worker, and every message pushed by hand. */
@@ -69,7 +84,7 @@ export class FakeEngine implements EngineHandle {
   readonly searches: string[] = [];
   /** Each search's options, beside {@link searches} — a depth and time, or `infinite`. */
   readonly searchOptions: SearchOptions[] = [];
-  readonly setOptions: [string, string | number][] = [];
+  readonly setOptions: [string, UciOptionValue][] = [];
   stops = 0;
   /** What the build it stands in for declares — the default's when built by hand. */
   readonly options: ReadonlyMap<string, EngineOption>;
@@ -94,10 +109,12 @@ export class FakeEngine implements EngineHandle {
     return () => {};
   }
 
-  setOption(name: string, value: string | number) {
-    this.setOptions.push([name, value]);
+  setOption(name: string, value: UciOptionValue) {
     const option = this.options.get(name);
-    return option !== undefined && (option.min === undefined || option.min !== option.max);
+    // A page's build never takes a file path (`UciEngine`'s `refuses`, `lib/engines/builtin.ts`).
+    if (option !== undefined && this.descriptor?.server === undefined && isFilePathOption(option)) return false;
+    this.setOptions.push([name, value]);
+    return option !== undefined && option.type !== "button" && (option.min === undefined || option.min !== option.max);
   }
 
   search(fen: string, options: SearchOptions) {

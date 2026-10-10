@@ -2,6 +2,12 @@ import { StrictMode, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { DEFAULT_ENGINE_ID, STOCKFISH_19_LITE_MULTI } from "../../../lib/engines";
+import {
+  createEnginePreset,
+  loadEnginePresetSelections,
+  selectEnginePreset,
+  setEnginePresetValue,
+} from "../../../lib/enginePresetStore";
 import { FakeEngine } from "../boardTestHarness";
 import { useEngineModule, type EngineModuleStart } from "./useEngineModule";
 
@@ -323,5 +329,67 @@ describe("useEngineModule — a finished search reported (CTA-167)", () => {
     mount(start({ onSearchFinished }));
     act(() => FakeEngine.latest().say({ fen: START, bestMove: "e2e4" }));
     expect(onSearchFinished).not.toHaveBeenCalled();
+  });
+});
+
+describe("useEngineModule — the engine's preset (CTA-179)", () => {
+  const sent = (engine: FakeEngine) => engine.setOptions.map(([name, value]) => `${name}=${String(value)}`);
+  const choose = async (values: Record<string, number | string | boolean>, engineId = DEFAULT_ENGINE_ID) => {
+    const made = await createEnginePreset("deep-analysis");
+    if (!("id" in made)) throw new Error("no preset");
+    for (const [name, value] of Object.entries(values)) await setEnginePresetValue(made.id, name, value);
+    await selectEnginePreset(engineId, made.id);
+    return made.id;
+  };
+
+  it("sends the engine's selected preset beside the board's own options, which win", async () => {
+    await choose({ "Move Overhead": 100, UCI_ShowWDL: true, MultiPV: 7, "Skill Level": 3, Threads: 4 });
+    const board: Readonly<Record<string, number>> = { MultiPV: 2, "Skill Level": 12 };
+    mount(start({ uciOptions: board }));
+
+    await vi.waitFor(() => expect(sent(FakeEngine.latest())).toContain("UCI_ShowWDL=true"));
+    const options = sent(FakeEngine.latest());
+    expect(options).toContain("Move Overhead=100");
+    expect(options).toContain("MultiPV=2");
+    expect(options).toContain("Skill Level=12");
+    expect(options).not.toContain("MultiPV=7");
+    expect(options).not.toContain("Skill Level=3");
+    expect(options.some((option) => option.startsWith("Threads="))).toBe(false);
+  });
+
+  it("never sends a file path to a page's own build", async () => {
+    await choose({ EvalFile: "custom.nnue", UCI_ShowWDL: true });
+    mount(start());
+
+    await vi.waitFor(() => expect(sent(FakeEngine.latest())).toContain("UCI_ShowWDL=true"));
+    expect(sent(FakeEngine.latest()).some((option) => option.startsWith("EvalFile"))).toBe(false);
+  });
+
+  it("applies a change from the next search, and puts an option the preset dropped back to the engine's default", async () => {
+    const id = await choose({ "Move Overhead": 100 });
+    mount(start());
+    const engine = FakeEngine.latest();
+    await vi.waitFor(() => expect(sent(engine)).toContain("Move Overhead=100"));
+    const searches = engine.searches.length;
+
+    await act(async () => {
+      await setEnginePresetValue(id, "Move Overhead", undefined);
+      await setEnginePresetValue(id, "UCI_ShowWDL", true);
+    });
+
+    await vi.waitFor(() => expect(sent(engine)).toContain("UCI_ShowWDL=true"));
+    expect(sent(engine)).toContain("Move Overhead=10");
+    expect(engine.searches.length).toBeGreaterThan(searches);
+    expect(FakeEngine.instances).toHaveLength(1);
+  });
+
+  it("follows the selection of the engine running — not another engine's", async () => {
+    await choose({ UCI_ShowWDL: true }, MULTI);
+    mount(start());
+    await vi.waitFor(() => expect(FakeEngine.latest().searches.length).toBeGreaterThan(0));
+    await act(async () => {
+      await loadEnginePresetSelections();
+    });
+    expect(sent(FakeEngine.latest())).not.toContain("UCI_ShowWDL=true");
   });
 });

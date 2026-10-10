@@ -33,12 +33,15 @@ const OwnHeading = () => {
   return <h1>The lobby's own title</h1>;
 };
 
-/** A screen that reads its record first: no heading of its own until it lands. */
+/**
+ * A screen that reads its record first: no heading of its own until it lands.
+ * The test lands it (`landRecord`), so a loaded machine cannot land it early.
+ */
+let landRecord = () => {};
 const Late = () => {
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    const timer = setTimeout(() => setReady(true), 30);
-    return () => clearTimeout(timer);
+    landRecord = () => setReady(true);
   }, []);
   return ready ? <Collection /> : <p>Reading…</p>;
 };
@@ -276,6 +279,7 @@ describe("moving to another screen (CTA-112)", () => {
     await act(() => router.navigate("/library/c"));
     await tick();
     expect(screen.getByRole("heading", { level: 1, name: "Collection" })).toHaveFocus();
+    act(() => landRecord());
     await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "Carlsen games" })).toHaveFocus());
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });

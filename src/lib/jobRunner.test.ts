@@ -5,6 +5,7 @@ import { FakeEngine } from "../views/board/boardTestHarness";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS, type ComputerAnalysisOptions } from "./computerAnalysis";
 import type { EngineDescriptor } from "./engineTypes";
 import { resolveEngine } from "./engines";
+import { createEnginePreset, selectEnginePreset, setEnginePresetValue } from "./enginePresetStore";
 import { createJobRunner, type JobRunner, type JobRunnerDeps } from "./jobRunner";
 import { computerAnalysisJobOf, withCheckpoint, type Job } from "./jobs";
 import { addJob, cancelJob, findJob, pauseJob, removeJob, resumeJob } from "./jobStore";
@@ -99,6 +100,25 @@ describe("the job runner (CTA-173)", () => {
     // The single-thread build pins Threads to 1.
     expect(engine().setOptions).toContainEqual(["Threads", 1]);
     expect(engine().setOptions).toContainEqual(["Hash", 128]);
+    expect(engine().setOptions.at(-1)).toEqual(["MultiPV", 3]);
+  });
+
+  it("sends the engine's preset too, its own Threads, Hash and lines winning (CTA-179)", async () => {
+    const made = await createEnginePreset("deep-analysis");
+    if (!("id" in made)) throw new Error("no preset");
+    for (const [name, value] of Object.entries({ "Move Overhead": 250, UCI_ShowWDL: true, Hash: 512, MultiPV: 9, EvalFile: "x.nnue" })) {
+      await setEnginePresetValue(made.id, name, value);
+    }
+    await selectEnginePreset(resolveEngine().id, made.id);
+    await addJob(jobOf({ hashMb: 128, multiPv: 3 }));
+    start();
+    await searched(1);
+
+    expect(engine().setOptions).toContainEqual(["Move Overhead", 250]);
+    expect(engine().setOptions).toContainEqual(["UCI_ShowWDL", true]);
+    expect(engine().setOptions).not.toContainEqual(["Hash", 512]);
+    expect(engine().setOptions).not.toContainEqual(["MultiPV", 9]);
+    expect(engine().setOptions.some(([name]) => name === "EvalFile")).toBe(false);
     expect(engine().setOptions.at(-1)).toEqual(["MultiPV", 3]);
   });
 

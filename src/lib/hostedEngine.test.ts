@@ -22,6 +22,8 @@ const INFO: HostedEngineInfo = {
     { name: "MultiPV", type: "spin", defaultValue: "1", min: 1, max: 256 },
     { name: "UCI_LimitStrength", type: "check", defaultValue: "false" },
     { name: "Pinned", type: "spin", min: 1, max: 1 },
+    { name: "SyzygyPath", type: "string", defaultValue: "<empty>" },
+    { name: "Clear Hash", type: "button" },
   ],
 };
 
@@ -143,6 +145,18 @@ describe("HostedEngine", () => {
     expect(messages.map((m) => m.uciMessage)).toEqual(["info depth 1 multipv 1 score cp 20 pv e2e4", "bestmove e2e4"]);
     expect(messages[0]).toMatchObject({ fen: START, depth: 1, multipv: 1, positionEvaluation: "20", pv: "e2e4" });
     expect(messages.every((m) => m.fen === START)).toBe(true);
+  });
+
+  it("sends a preset's typed values with the search — a boolean, a file path; never a button or a broken line (CTA-179)", async () => {
+    const { engine, messages } = engineWith();
+    expect(engine.setOption("UCI_LimitStrength", false)).toBe(true);
+    expect(engine.setOption("SyzygyPath", "/tb/syzygy")).toBe(true);
+    expect(engine.setOption("Clear Hash", true)).toBe(false);
+    expect(engine.setOption("SyzygyPath", "/tb\nquit")).toBe(false);
+    engine.search(START, { depth: 8 });
+    await vi.waitFor(() => expect(messages.at(-1)?.bestMove).toBe("e2e4"));
+
+    expect(analyseCalls()[0].body?.options).toEqual({ UCI_LimitStrength: false, SyzygyPath: "/tb/syzygy" });
   });
 
   it("reads lines however the stream is cut", async () => {

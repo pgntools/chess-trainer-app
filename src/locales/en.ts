@@ -2341,6 +2341,7 @@ const en = {
         games: "Games",
         analyses: "Analyses",
         repertoires: "Repertoires",
+        enginePresets: "Engine presets",
       },
       includeShipped_one: "Include the {{count}} shipped collection",
       includeShipped_other: "Include the {{count}} shipped collections",
@@ -2350,7 +2351,7 @@ const en = {
       failed: "The export could not be saved. Nothing was downloaded.",
       unreadable: "The games of “{{name}}” could not be read. Nothing was downloaded.",
       panel:
-        "Games and Analyses are one PGN file each; every collection is a file of its own; repertoires are one file per folder, plus one for the unfiled ones. Your uploaded collections always go with Collections — the ones the app ships only when you ask. Nothing is changed or removed.",
+        "Games and Analyses are one PGN file each; every collection is a file of its own; repertoires are one file per folder, plus one for the unfiled ones. Engine presets are one JSON file, with the preset each engine runs. Your uploaded collections always go with Collections — the ones the app ships only when you ask. Nothing is changed or removed.",
     },
     /** The Import tab (CTA-89): an Export's zip read back into the app. */
     import: {
@@ -2399,6 +2400,7 @@ const en = {
         games: "Your played games",
         analyses: "Unfiled",
         repertoires: "Unfiled",
+        enginePresets: "Your engine presets",
       },
       /** The report, one line per category. */
       result: {
@@ -2479,11 +2481,18 @@ const en = {
       note: "An engine that cannot run on this host is listed anyway, with what it needs.",
       /** Where the engines run — the tab's two inner tabs. */
       tabs: { label: "Where the engine runs", browser: "Browser", api: "API" },
-      /** The right-hand panel: what the chosen engine-server engine declared. */
+      /** The right-hand panel: the chosen engine-server engine's limits, under its options form. */
       uci: {
-        title: "UCI defaults — {{name}}",
-        note: "What the engine declared in its uci reply, as the server sent it. Threads and Hash are capped by the server; a search goes no deeper than {{maxDepth}}.",
-        none: "Choose an engine on the API tab to see the UCI options it declares.",
+        note: "The options above are what the engine declared in its uci reply, as the server sent it. Threads and Hash are capped by the server; a search goes no deeper than {{maxDepth}}.",
+      },
+      /** The engine's options, kept in presets (CTA-179) — the right-hand panel. */
+      presets: {
+        title: "Engine options — {{engine}}",
+        description:
+          "Every option the engine declares, kept in named presets. Each engine runs its own preset — from every board's next search and in background jobs — beside the board's own Threads, Hash and Lines, which always win.",
+        defaultName: "Default",
+        failed: "The change could not be saved.",
+        full: "There are {{max}} presets already — delete one first.",
       },
       /** The panel on the API tab while no server engine is chosen: a pointer to the Blog's guide. */
       setup: {
@@ -2548,6 +2557,61 @@ const en = {
     },
     /** An engine on the engine server, before its address (`EngineDescriptor.server`). */
     server: "On the engine server",
+  },
+  /** The `EnginePresetForm` block (CTA-179): an engine's options, kept in named presets. */
+  enginePresets: {
+    preset: "Preset for {{engine}}",
+    actions: "Preset actions",
+    new: "New preset",
+    rename: "Rename {{name}}",
+    duplicate: "Duplicate {{name}}",
+    delete: "Delete {{name}}",
+    deleteDefault: "Default cannot be deleted",
+    copyName: "{{name}} (copy)",
+    newTitle: "New preset",
+    renameTitle: "Rename the preset",
+    duplicateTitle: "Duplicate the preset",
+    name: "Name",
+    create: "Create",
+    save: "Save",
+    cancel: "Cancel",
+    deleteTitle: "Delete {{name}}?",
+    deleteMessage: "Engines that run it go back to Default. This cannot be undone.",
+    deleteConfirm: "Delete",
+    intro:
+      "Options the preset sets are sent to {{engine}}; the rest stay at the engine's defaults. A change applies from the next search.",
+    reading: "Reading what {{engine}} declares…",
+    empty: "{{engine}} declares no options.",
+    list: "Options of {{engine}} — {{preset}}, {{tab}}",
+    /** The options' three tabs (`OPTION_TABS`). */
+    tabs: { label: "Kinds of option", basic: "Basic", advanced: "Advanced", system: "System" },
+    default: "default {{value}}",
+    range: "{{min}}–{{max}}",
+    absentSummary: "set to {{value}}",
+    spinInvalid: "A whole number from {{min}} to {{max}}.",
+    reset: "Put {{name}} back to the engine's default",
+    remove: "Remove {{name}} from the preset",
+    /** A group of options behind one switch (`OPTION_GROUPS`) — off by default. */
+    groups: {
+      syzygy: {
+        label: "Syzygy tablebases",
+        help: "Endgame tablebases from files on this computer. Off, none of the Syzygy options is sent.",
+      },
+    },
+    /** Why an option is read-only or held, beside it (`PresetRowNote`). */
+    notes: {
+      "board-owned": "Set on each board — its own Threads, Hash and Lines.",
+      "play-owned": "Play with Engine and Masked Pieces set this from their own strength; every other board takes it from here.",
+      absent: "{{engine}} does not declare it, so it is not sent.",
+      pinned: "Fixed by this build — it has one value.",
+      button: "An action, not a setting — a preset cannot keep it.",
+      "browser-file": "Not available in the browser: its builds have no file system, so a file path is never sent.",
+      "browser-hash": "At most 1024 MB in the browser — more crashes the tab.",
+      clamped: "Held to {{min}}–{{max}} on this engine.",
+      invalid: "Not a value this option takes, so it is not sent.",
+      "needs-limit-strength": "Used only while UCI_LimitStrength is on — off, the engine plays at full strength.",
+      "needs-syzygy-path": "Used only with endgame tablebases — set SyzygyPath first.",
+    },
   },
   /** The `EngineOptionsTable` block: an engine's `uci` options. */
   engineOptionsTable: {

@@ -54,7 +54,7 @@ if (!globalThis.ResizeObserver) {
   cache hits.
 */
 const recordStores = async () => {
-  const [played, analyses, analysisFolders, analysisDb, repertoires, repertoireFolders, repertoireDb, libraryFolders, jobs, jobRunner] =
+  const [played, analyses, analysisFolders, analysisDb, repertoires, repertoireFolders, repertoireDb, libraryFolders, jobs, jobRunner, presets] =
     await Promise.all([
       import("../lib/playedGameStore"),
       import("../lib/savedAnalysisStore"),
@@ -66,6 +66,7 @@ const recordStores = async () => {
       import("../lib/libraryFolderStore"),
       import("../lib/jobStore"),
       import("../lib/jobRunner"),
+      import("../lib/enginePresetStore"),
     ]);
   return {
     // The page's job runner (CTA-173), stopped before the stores settle: it writes to them.
@@ -78,6 +79,8 @@ const recordStores = async () => {
       repertoireFolders.settledRepertoireFolders,
       libraryFolders.settledLibraryFolders,
       jobs.settledJobs,
+      presets.settledEnginePresets,
+      presets.settledEnginePresetSelections,
     ],
     reset: [
       analyses.resetSavedAnalysisStore,
@@ -87,8 +90,10 @@ const recordStores = async () => {
       repertoireFolders.resetRepertoireFolderStore,
       libraryFolders.resetLibraryFolderStore,
       jobs.resetJobStore,
+      presets.resetEnginePresetStore,
+      presets.resetEnginePresetSelectionStore,
     ],
-    remove: [analysisDb.deleteAnalysisDb, played.deleteEngineDb, repertoireDb.deleteRepertoireDb, jobs.deleteJobsDb],
+    remove: [analysisDb.deleteAnalysisDb, played.deleteEngineDb, repertoireDb.deleteRepertoireDb, jobs.deleteJobsDb, presets.deleteEnginePresetsDb],
   };
 };
 
