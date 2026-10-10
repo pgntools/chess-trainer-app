@@ -39,3 +39,6 @@ export const RANGED: ComputerAnalysisOptions = {
 
 /** No variant ticked — Start is off. */
 export const NONE_TICKED: ComputerAnalysisOptions = { ...OPTIONS, outputs: [] };
+
+/** Depth 35 with no time limit — each position searched to the depth alone. */
+export const NO_TIME_LIMIT: ComputerAnalysisOptions = { ...OPTIONS, depth: 35, minDepth: 35, moveTimeMs: 0 };

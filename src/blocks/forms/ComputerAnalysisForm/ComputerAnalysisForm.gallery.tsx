@@ -6,7 +6,7 @@ import { computerAnalysisOptionsFrom, type ComputerAnalysisOptions } from "../..
 import type { EngineOption } from "../../../lib/engineTypes";
 import type { BlockFamilyId } from "../../families";
 import ComputerAnalysisForm, { type ComputerAnalysisFormProps } from "./ComputerAnalysisForm";
-import { BEFORE_HANDSHAKE, MULTI_THREAD, NO_HASH, NONE_TICKED, OPTIONS, RANGED, SINGLE_THREAD } from "./fixtures";
+import { BEFORE_HANDSHAKE, MULTI_THREAD, NO_HASH, NO_TIME_LIMIT, NONE_TICKED, OPTIONS, RANGED, SINGLE_THREAD } from "./fixtures";
 
 const demo = (
   initial: ComputerAnalysisOptions,
@@ -41,6 +41,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
       name: "Before the engine's handshake — a single-thread engine still says Threads is 1",
       render: () => demo(OPTIONS, BEFORE_HANDSHAKE, { multiThread: false }),
     },
+    { name: "No time limit — depth 35 alone decides, the time slider off", render: () => demo(NO_TIME_LIMIT, SINGLE_THREAD) },
     { name: "An engine with no Hash and no MultiPV", render: () => demo(OPTIONS, NO_HASH) },
     { name: "Black's moves, 12... to 30, every variant", render: () => demo(RANGED, MULTI_THREAD) },
     { name: "No variant ticked — Start off, saying why", render: () => demo(NONE_TICKED, SINGLE_THREAD) },

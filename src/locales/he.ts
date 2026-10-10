@@ -2058,6 +2058,8 @@ const he: typeof en = {
       hash: "זיכרון Hash (MB)",
       depth: "עומק",
       moveTime: "זמן לכל מסע",
+      noTimeLimit: "ללא הגבלת זמן",
+      noTimeLimitHelp: "כל עמדה נחקרת עד העומק המלא, כמה זמן שזה ייקח — חיפוש עמוק עלול להימשך דקות למסע.",
       moveTimeNone: "ללא הגבלה",
       seconds: "{{seconds}} שנ׳",
       lines: "קווים",

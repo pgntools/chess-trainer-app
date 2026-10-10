@@ -267,7 +267,11 @@ analysis ([`pgn-annotations.md`](./pgn-annotations.md) §6).
   `Analysis` is no name) makes each count above 0 a button to **that side's
   next move of that kind** after the mainline move on the board, round again
   from the first (`onStep`, lichess's).
-- **The form** (`ComputerAnalysisForm`): its first options are the Engine
+- **The form** (`ComputerAnalysisForm`): **No time limit** is a switch over
+  the time slider (as the Engine tab's infinite analysis is — a job's search
+  must end, so "infinite" here is the depth alone deciding, `moveTimeMs` 0;
+  the slider then starts at 1 s and switching it off brings back the last time
+  set). Its first options are the Engine
   tab's depth, move time, lines, threads and hash, the early stop at the
   depth, the rest the defaults (`computerAnalysisSeed`), and it follows the
   Engine tab until the reader changes one of its own — then they are the

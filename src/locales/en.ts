@@ -2614,6 +2614,8 @@ const en = {
       hash: "Hash (MB)",
       depth: "Depth",
       moveTime: "Time per move",
+      noTimeLimit: "No time limit",
+      noTimeLimitHelp: "Each position is searched to the full depth, however long that takes — a deep search can take minutes a move.",
       moveTimeNone: "No limit",
       seconds: "{{seconds}} s",
       lines: "Lines",

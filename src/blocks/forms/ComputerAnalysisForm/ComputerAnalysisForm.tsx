@@ -12,12 +12,14 @@ import {
   SettingsSection,
   SideToggle,
   SliderField,
+  SwitchField,
   TextInputField,
 } from "../../../design-system/components/forms";
 import { ExpandToggle } from "../../../design-system/components/navigation";
 import {
   COMPUTER_ANALYSIS_BOUNDS,
   COMPUTER_ANALYSIS_VARIANTS,
+  DEFAULT_COMPUTER_ANALYSIS_OPTIONS,
   type AnalysisSide,
   type ComputerAnalysisOptions,
   type ComputerAnalysisVariant,
@@ -143,6 +145,10 @@ function MoveNumberField({
  * variants to save (light, medium, full, each with a line saying what it
  * holds) and **Start**, off with no variant ticked or nothing to analyse.
  *
+ * **No time limit** is a switch over the time slider (as the Engine tab's
+ * infinite analysis is): on, each position is searched to the depth alone
+ * (`moveTimeMs` 0); off, the last time set comes back.
+ *
  * Threads, Hash and MultiPV follow what the engine declared — absent, pinned
  * or adjustable (`engineOptionState`, as `AnalysisEngineForm`) — and before
  * its handshake a single-thread engine (`multiThread` false) shows Threads
@@ -168,6 +174,9 @@ function ComputerAnalysisForm({
 }: ComputerAnalysisFormProps) {
   const { t } = useTranslation();
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // The time a "No time limit" switched off again brings back: the last one set, else the default.
+  const [lastMoveTimeMs, setLastMoveTimeMs] = useState(options.moveTimeMs || DEFAULT_COMPUTER_ANALYSIS_OPTIONS.moveTimeMs);
+  const noTimeLimit = options.moveTimeMs === 0;
   const advancedId = useId();
   const bounds = COMPUTER_ANALYSIS_BOUNDS;
   const handshakeLanded = engineOptions.size > 0;
@@ -248,18 +257,30 @@ function ComputerAnalysisForm({
           onChange={(depth) => onChange({ depth })}
           testId={`${testId}-depth`}
         />
+        <SwitchField
+          label={t("computerAnalysis.form.noTimeLimit")}
+          help={t("computerAnalysis.form.noTimeLimitHelp")}
+          checked={noTimeLimit}
+          onChange={(on) => onChange({ moveTimeMs: on ? 0 : lastMoveTimeMs })}
+          testId={`${testId}-no-time-limit`}
+        />
         <SliderField
           label={t("computerAnalysis.form.moveTime")}
-          value={options.moveTimeMs}
-          min={bounds.moveTimeMs.min}
+          value={noTimeLimit ? lastMoveTimeMs : options.moveTimeMs}
+          // No time limit is the switch above, not the slider's far end.
+          min={Math.max(1000, bounds.moveTimeMs.min)}
           max={bounds.moveTimeMs.max}
           step={1000}
+          disabled={noTimeLimit}
           valueLabel={
-            options.moveTimeMs === 0
+            noTimeLimit
               ? t("computerAnalysis.form.moveTimeNone")
               : t("computerAnalysis.form.seconds", { seconds: Math.round(options.moveTimeMs / 100) / 10 })
           }
-          onChange={(moveTimeMs) => onChange({ moveTimeMs })}
+          onChange={(moveTimeMs) => {
+            setLastMoveTimeMs(moveTimeMs);
+            onChange({ moveTimeMs });
+          }}
           testId={`${testId}-movetime`}
         />
         {optionSlider("multiPv", "MultiPV", t("computerAnalysis.form.lines"), {
