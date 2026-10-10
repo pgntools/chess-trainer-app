@@ -121,15 +121,16 @@ describe("the front page's nav cards — the landing page as it was", () => {
     expect(cardLinks().map((link) => link.getAttribute("href"))).not.toContain("/openings/saved");
   });
 
-  it("shows one Analysis Board card linking to the saved list, and none to the board", async () => {
+  it("shows an Analyses section — a Lobby card to the saved list and a Jobs card — and none to the board", async () => {
     renderHome();
     await screen.findByTestId("home-nav-cards");
 
-    // The single entry — the same one the sidebar shows, under the same name
-    // (CTA-58, mirroring CTA-42's Openings folder).
-    const analysis = within(screen.getByTestId("home-nav-cards")).getAllByRole("link", { name: "Analysis Board" });
-    expect(analysis).toHaveLength(1);
-    expect(analysis[0]).toHaveAttribute("href", "/tools/analysis/saved");
+    // The sidebar's Analyses folder (CTA-174): its Lobby and Jobs, under the folder's own heading.
+    expect(within(screen.getByTestId("home-nav-cards")).getByRole("heading", { level: 3, name: "Analyses" })).toBeInTheDocument();
+    const analysis = within(screen.getByTestId("home-section-analysis")).getAllByRole("link");
+    expect(analysis.map((link) => link.getAttribute("href"))).toEqual(["/tools/analysis/saved", "/jobs"]);
+    expect(analysis[0]).toHaveTextContent("Lobby");
+    expect(analysis[1]).toHaveTextContent("Jobs");
 
     // The board view has no card: it is the saved list's New button.
     expect(cardLinks().map((link) => link.getAttribute("href"))).not.toContain("/tools/analysis");

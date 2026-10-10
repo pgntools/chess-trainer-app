@@ -37,7 +37,7 @@ function SnackbarProvider({ children, testId = "app-snackbar" }: SnackbarProvide
   const show = useCallback((message: SnackbarMessage) => {
     dispatch({ type: "show", message: { ...message, key: nextKey.current++ } });
   }, []);
-  const close = useCallback((_event?: SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
+  const close = useCallback((_event?: SyntheticEvent | Event | null, reason?: SnackbarCloseReason) => {
     if (reason !== "clickaway") dispatch({ type: "close" });
   }, []);
   const entered = useCallback(() => dispatch({ type: "entered" }), []);

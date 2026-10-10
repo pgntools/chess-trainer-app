@@ -13,6 +13,8 @@ import { IconAction } from '../../design-system/components/toolbars';
 import { default as SideBar } from './Sidebar';
 import { Footer } from './Footer';
 import { DevelopmentNotice } from './DevelopmentNotice';
+import { JobRunner } from '../jobs/JobRunner';
+import { JobsIndicator } from '../jobs/JobsIndicator';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
 import { useRightPanelHidden } from './rightPanelSlot';
@@ -178,6 +180,8 @@ const Header = ({ compact, onOpenNav }: { compact: boolean; onOpenNav: () => voi
                 </Box>
 
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    {/* The background job running, if any (CTA-173) — a link to the Jobs screen. */}
+                    <JobsIndicator compact={compact} />
                     <LanguageSwitch />
                     <ColorModeIconDropdown />
                 </Stack>
@@ -843,6 +847,8 @@ const DefaultLayout = ()=>
                             <DefaultLayoutViewport />
                             {/* Once per session, on whichever route the reader arrives at (CTA-155). */}
                             <DevelopmentNotice />
+                            {/* The background jobs' runner (CTA-173): one per page, outliving every route. */}
+                            <JobRunner />
                         </BoardLeftPanelProvider>
                     </LeftPanelProvider>
                 </RightPanelProvider>

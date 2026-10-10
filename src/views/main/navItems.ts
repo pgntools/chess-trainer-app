@@ -14,6 +14,7 @@ import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
 import SportsEsportsRoundedIcon from "@mui/icons-material/SportsEsportsRounded";
 import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
+import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import ViewListRoundedIcon from "@mui/icons-material/ViewListRounded";
 import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
@@ -84,15 +85,22 @@ export const navItems = (): readonly NavItem[] => [
     folder: "library",
   },
   /*
-    The Analysis Board has no nav entry: the top-level Analysis folder is a
-    single entry (`navFolders.ts`) that renders as the screen below, and the
-    board is reached from the saved list's New button. Every `?fen=`,
-    `?game=` and `?analysis=` hand-off lands on its route, `/tools/analysis`.
+    The Analyses folder: its Lobby — the saved list — and the Jobs screen
+    (CTA-173) that runs a game's computer analysis in the background. The
+    Analysis Board has no nav entry: it is reached from the Lobby's New
+    button, and every `?fen=`, `?game=` and `?analysis=` hand-off lands on
+    its route, `/tools/analysis`.
   */
   {
     to: "/tools/analysis/saved",
-    labelKey: "nav.savedAnalyses",
+    labelKey: "nav.lobby",
     icon: HistoryRoundedIcon,
+    folder: "analysis",
+  },
+  {
+    to: "/jobs",
+    labelKey: "nav.jobs",
+    icon: WorkHistoryRoundedIcon,
     folder: "analysis",
   },
   /*

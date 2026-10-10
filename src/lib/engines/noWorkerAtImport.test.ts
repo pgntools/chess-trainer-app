@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 describe("importing the engine layer", () => {
-  it("builds no Worker and asks no server — registry, descriptors, the protocol, the transport, the hook", async () => {
+  it("builds no Worker and asks no server — registry, descriptors, the protocol, the transport, the hook, the job runner", async () => {
     const Worker = vi.fn(function () {
       throw new Error("a Worker was constructed at import time");
     });
@@ -32,6 +32,8 @@ describe("importing the engine layer", () => {
     await import("../engineServer");
     const registry = await import(".");
     await import("../../views/board/core/useEngineModule");
+    // The background job runner (CTA-173): started by the shell's effect, never at import.
+    await import("../jobRunner");
 
     // Listing, describing and resolving are reads of data.
     expect(registry.BUILTIN_ENGINES.length).toBeGreaterThan(1);

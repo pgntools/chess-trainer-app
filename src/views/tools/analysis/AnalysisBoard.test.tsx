@@ -7,6 +7,10 @@ import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import { analysisHandOffState } from "../../../lib/analysisHandOff";
 import { DEFAULT_ANALYSIS_SETTINGS } from "../../../lib/analysisSettings";
+import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../../lib/computerAnalysis";
+import { DEFAULT_ENGINE_ID } from "../../../lib/engines/ids";
+import { withCheckpoint, type Job } from "../../../lib/jobs";
+import { enqueueComputerAnalysis, findJob, jobsSnapshot, updateJob } from "../../../lib/jobStore";
 import { parsePgnTree } from "../../../lib/pgn";
 import { savedAnalysisOf, type SavedAnalysis } from "../../../lib/savedAnalyses";
 import {
@@ -1621,5 +1625,186 @@ describe("writing the engine's evaluations into the game (CTA-167)", () => {
     finish(20, "25");
     openTab("export");
     expect((screen.getByTestId("analysis-export-pgn") as HTMLTextAreaElement).value).toMatch(/\{ \[%eval 0\.25,20\] \} 1\.|^\{ \[%eval 0\.25,20\] \}|\n\{ \[%eval 0\.25,20\] \}/);
+  });
+});
+
+describe("the Computer analysis tab (CTA-174)", () => {
+  const start = () => screen.getByRole("button", { name: "Start computer analysis" });
+  /** The jobs as read — `[]` before the first read. */
+  const jobs = () => jobsSnapshot() ?? [];
+
+  /** A game every move of which carries an `[%eval]`: White's 2. Qh5 an inaccuracy, Black's 3... Nf6 a blunder into mate. */
+  const EVALUATED =
+    "1. e4 {[%eval 0.3]} e5 {[%eval 0.25]} 2. Qh5 $6 {[%eval -0.4]} Nc6 {[%eval -0.3]} 3. Bc4 {[%eval -0.2]} Nf6 $4 {[%eval #1]} *";
+
+  it("holds the form, seeded from the Engine tab and the reader's engine", async () => {
+    await stored("a1", "1. e4 e5 2. Nf3 *", ["e4"], { settings: { ...DEFAULT_ANALYSIS_SETTINGS, depth: 16, multiPv: 2 } });
+    mount("/tools/analysis?analysis=a1");
+    openTab("computer");
+    expect(screen.getByRole("tab", { name: "Computer analysis", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Depth" })).toHaveAttribute("aria-valuenow", "16");
+    expect(screen.getByRole("slider", { name: "Lines" })).toHaveAttribute("aria-valuenow", "2");
+    // The default engine is the single-thread build: Threads is 1, before it has even started.
+    expect(screen.getByRole("slider", { name: "Threads" })).toBeDisabled();
+    expect(screen.getByText("This engine build fixes Threads at 1.")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Light" })).toBeChecked();
+    expect(start()).toBeEnabled();
+    // No evaluations in the game: no report, no graph.
+    expect(screen.queryByRole("table", { name: "Computer analysis report" })).toBeNull();
+  });
+
+  it("queues the mainline with the chosen options and variants, then shows its progress as a status", async () => {
+    const user = userEvent.setup();
+    await stored("a1", "1. e4 e5 2. Nf3 Nc6 *", ["e4"], { name: "Mine", folderId: null });
+    mount("/tools/analysis?analysis=a1");
+    openTab("computer");
+    await user.click(screen.getByRole("checkbox", { name: "Full" }));
+    await user.click(screen.getByRole("radio", { name: "White" }));
+    await user.click(start());
+
+    await waitFor(() => expect(jobs()).toHaveLength(1));
+    const [job] = jobs();
+    expect(job.status).toBe("queued");
+    expect(job.source).toEqual(expect.objectContaining({ analysisId: "a1", name: "Mine", folderId: null }));
+    expect(parsePgnTree(job.source.pgn).moves.length).toBeGreaterThan(0);
+    expect(job.options).toEqual(
+      expect.objectContaining({ outputs: ["light", "full"], side: "w", depth: DEFAULT_ANALYSIS_SETTINGS.depth, engine: DEFAULT_ENGINE_ID }),
+    );
+
+    const section = await screen.findByTestId("analysis-computer-job");
+    expect(within(section).getByTestId("analysis-computer-job-status")).toHaveTextContent("Queued");
+    expect(within(section).getByRole("progressbar", { name: "Computer analysis progress" })).toBeInTheDocument();
+    expect(within(section).getByRole("status")).toHaveTextContent(`0 of ${job.positions.length} positions`);
+    expect(within(section).getByRole("link", { name: "Open in Jobs" })).toHaveAttribute("href", `/jobs?job=${job.id}`);
+    // The progress takes the form's place, so the game is not sent twice, and the focus goes to it.
+    expect(screen.queryByRole("button", { name: "Start computer analysis" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "This game's analysis" })).toHaveFocus();
+    expect(within(section).getByText(/in the background/)).toBeInTheDocument();
+  });
+
+  /** A job of saved analysis `a1`'s game, queued, then edited as the runner would. */
+  const jobOfA1 = async (pgn: string, edit?: (job: Job) => Job) => {
+    const id = await enqueueComputerAnalysis({
+      source: { analysisId: "a1", name: "Mine", folderId: null, pgn },
+      options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, outputs: ["light"] },
+    });
+    if (id === "invalid" || id === "storage" || id === "too-many") throw new Error(id);
+    if (edit !== undefined) await updateJob(id, edit);
+    return id;
+  };
+
+  it("offers each saved analysis a finished job made — on a board reopened later too — and the form again", async () => {
+    await stored("a1", "1. e4 e5 2. Nf3 Nc6 *", ["e4"], { name: "Mine" });
+    await jobOfA1("1. e4 e5 2. Nf3 Nc6 *", (job) => ({
+      ...job,
+      status: "done",
+      checkpoint: job.positions.map((position) => ({ fen: position.fen, lines: [{ score: { kind: "cp", value: 20 }, depth: 20, pv: [] }] })),
+      outputs: [{ variant: "light", analysisId: "out1" }],
+    }));
+    mount("/tools/analysis?analysis=a1");
+    openTab("computer");
+    expect(await screen.findByTestId("analysis-computer-job-status")).toHaveTextContent("Done");
+    expect(screen.getByRole("link", { name: "Open the Light analysis" })).toHaveAttribute("href", "/tools/analysis?analysis=out1");
+    expect(screen.getByRole("button", { name: "Start computer analysis" })).toBeEnabled();
+  });
+
+  it("fills in a running job's results as they land: the graph, the latest position, the report so far", async () => {
+    const user = userEvent.setup();
+    const pgn = "1. e4 e5 2. Nf3 Nc6 *";
+    await stored("a1", pgn, [], { name: "Mine" });
+    const lineOf = (cp: number, pv: string[]) => [{ score: { kind: "cp" as const, value: cp }, depth: 18, pv }];
+    await jobOfA1(pgn, (job) =>
+      [lineOf(20, ["e2e4"]), lineOf(25, ["e7e5"]), lineOf(30, ["g1f3", "b8c6"])].reduce<Job>(
+        (current, lines, index) => withCheckpoint(current, index, { fen: current.positions[index].fen, lines }),
+        { ...job, status: "running" },
+      ),
+    );
+    mount("/tools/analysis?analysis=a1");
+    openTab("computer");
+
+    const graph = await screen.findByRole("slider", { name: "Evaluation graph so far" });
+    expect(graph).toHaveAttribute("aria-valuemax", "2");
+    expect(screen.getByTestId("analysis-computer-live-latest")).toHaveTextContent("Latest: after 1... e5: +0.30 · depth 18 · 2. Nf3 Nc6");
+    expect(within(screen.getByTestId("analysis-computer-live")).getByRole("table", { name: "Computer analysis report" })).toBeInTheDocument();
+
+    // The graph moves the board: its last point is 1... e5.
+    graph.focus();
+    await user.keyboard("{End}{Enter}");
+    expect(where()).toContain("at=e4%2Ce5");
+    expect(where()).not.toContain("Nf3");
+  });
+
+  it("follows the job as the runner checkpoints it", async () => {
+    await stored("a1", "1. e4 e5 2. Nf3 Nc6 *", ["e4"], { name: "Mine" });
+    const id = await enqueueComputerAnalysis({
+      source: { analysisId: "a1", name: "Mine", folderId: null, pgn: "1. e4 e5 2. Nf3 Nc6 *" },
+      options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, outputs: ["light"] },
+    });
+    if (id === "invalid" || id === "storage" || id === "too-many") throw new Error(id);
+    const total = findJob(id)?.positions.length ?? 0;
+    // A job of the same saved analysis, sent before this board opened: still this game's.
+    mount("/tools/analysis?analysis=a1");
+    openTab("computer");
+    expect(await screen.findByTestId("analysis-computer-job-status")).toHaveTextContent("Queued");
+
+    await act(async () => {
+      await updateJob(id, (job) =>
+        withCheckpoint({ ...job, status: "running" }, 0, { fen: job.positions[0].fen, lines: [{ score: { kind: "cp", value: 20 }, depth: 20, pv: ["e2e4"] }] }),
+      );
+    });
+    expect(screen.getByTestId("analysis-computer-job-status")).toHaveTextContent("Running");
+    expect(screen.getByRole("status")).toHaveTextContent(`1 of ${total} positions · 1... e5`);
+  });
+
+  it("is off with no variant ticked, and on a board with no moves", async () => {
+    const user = userEvent.setup();
+    mount();
+    openTab("computer");
+    expect(start()).toBeDisabled();
+    expect(start()).toHaveAccessibleDescription("The board has no moves to analyse.");
+
+    drag("e2", "e4");
+    expect(start()).toBeEnabled();
+    await user.click(screen.getByRole("checkbox", { name: "Light" }));
+    expect(start()).toBeDisabled();
+    expect(start()).toHaveAccessibleDescription("Tick at least one variant to start.");
+    expect(jobs()).toEqual([]);
+  });
+
+  it("shows a tree's evaluations as the report and the graph, and the graph moves the board", async () => {
+    const user = userEvent.setup();
+    await stored("a1", EVALUATED, [], { name: "Mine" });
+    mount("/tools/analysis?analysis=a1");
+    openTab("computer");
+
+    const report = within(screen.getByRole("table", { name: "Computer analysis report" }));
+    expect(report.getByTestId("analysis-computer-report-inaccuracies-w")).toHaveTextContent("1");
+    expect(report.getByTestId("analysis-computer-report-blunders-b")).toHaveTextContent("1");
+
+    // A click on the graph: the move under the pointer.
+    const plot = screen.getByRole("slider", { name: "Evaluation graph" });
+    vi.spyOn(plot, "getBoundingClientRect").mockReturnValue({ left: 0, width: 100, top: 0, height: 120, right: 100, bottom: 120, x: 0, y: 0, toJSON: () => ({}) });
+    fireEvent.click(plot, { clientX: 100 });
+    expect(where()).toContain("at=e4%2Ce5%2CQh5%2CNc6%2CBc4%2CNf6");
+    fireEvent.click(plot, { clientX: 0 });
+    expect(where()).toContain("at=e4");
+    expect(where()).not.toContain("e5");
+
+    // By keyboard: the graph is a slider over the moves, Enter goes there.
+    plot.focus();
+    await user.keyboard("{Home}{ArrowRight}{ArrowRight}{Enter}");
+    expect(where()).toContain("at=e4%2Ce5%2CQh5");
+    expect(plot).toHaveAttribute("aria-valuetext", "2. Qh5, -0.40, Inaccuracy");
+
+    // A count steps to that side's next move of its kind.
+    await user.click(screen.getByRole("button", { name: "Blunders by Black: 1. Go to the next one" }));
+    expect(where()).toContain("at=e4%2Ce5%2CQh5%2CNc6%2CBc4%2CNf6");
+  });
+
+  it("passes axe with the report, the graph and the form", async () => {
+    await stored("a1", EVALUATED, [], { name: "Mine" });
+    mount("/tools/analysis?analysis=a1");
+    openTab("computer");
+    await expectNoAxeViolations(screen.getByTestId("analysis-computer"));
   });
 });

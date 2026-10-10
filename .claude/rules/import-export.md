@@ -76,6 +76,21 @@ both catalogs. Test ids: `settings-export-*`, `settings-import-*`.
   has no directory (a zip holds files), but it is in the manifest.
 - **The download** is one file, `chessapp-export-YYYY-MM-DD.zip`.
 
+### 1.1 What is not in the zip — the background jobs
+
+The `chessapp.jobs` database ([`jobs.md`](./jobs.md), CTA-173) is **not
+exported, and an import writes none**. A job is the state of work under way —
+a queue entry, the engine's per-position checkpoint, the ids of the Saved
+analyses it made — not the reader's chess. What it produced **is** exported:
+each finished job's variants are Saved analyses, in `analyses.pgn` with
+every `[%eval]`, verdict and report, and a saved analysis shows its report
+and eval graph from its PGN alone (`reportFromTree`). Carried to another
+browser, a job would name analyses by ids the import may have replaced
+(Override), queue engine work the reader did not start there, and hold an
+interrupted run no one asked to resume. The engine choice, likewise, is a
+preference and stays out ([`settings.md`](./settings.md) §4). Settings →
+Storage still counts the jobs.
+
 ## 2. `manifest.json`
 
 ```jsonc

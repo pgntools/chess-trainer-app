@@ -107,14 +107,14 @@ export const navFolders = (): readonly NavFolder[] => [
     labelKey: "nav.folders.library",
     icon: SnippetFolderRoundedIcon,
   },
+  /*
+    Analyses: the saved list — the Lobby, whose New button opens the board —
+    and the background jobs that analyse its games (CTA-173, CTA-174).
+  */
   {
     id: "analysis",
     labelKey: "nav.folders.analysisBoard",
     icon: AccountTreeRoundedIcon,
-    // One destination: the saved list is the screen worth reaching for, so
-    // the folder renders as one clickable row to it; the board is the saved
-    // list's New button.
-    singleEntry: true,
   },
   {
     id: "openings",
