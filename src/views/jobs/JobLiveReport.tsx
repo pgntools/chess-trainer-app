@@ -32,14 +32,21 @@ const playerOf = (tree: GameTree, key: "White" | "Black"): string | undefined =>
  * - **the report** over the moves judged so far.
  *
  * Nothing here is a live region: the summary's status line is what says the
- * job moved on. Nothing at all before the first position is finished, or
- * when the source no longer reads.
+ * job moved on. Before the first position is finished, or when the source no
+ * longer reads, a line saying there are no results yet — it fills the panel's
+ * Results tab.
  */
 function JobLiveReport({ job, testId }: { job: Job; testId: string }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const live = useMemo(() => jobLiveAnalysis(job), [job]);
-  if (live === undefined || live.points.length === 0) return null;
+  if (live === undefined || live.points.length === 0) {
+    return (
+      <Typography variant="body2" data-testid={`${testId}-empty`} sx={{ color: "text.secondary" }}>
+        {t("jobs.liveEmpty")}
+      </Typography>
+    );
+  }
   const { tree, points, latest } = live;
   const { analysisId } = job.source;
 

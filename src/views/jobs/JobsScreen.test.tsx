@@ -296,12 +296,31 @@ describe("a job's results so far (CTA-178)", () => {
     expect(screen.getByTestId("jobs-live-latest")).toHaveTextContent(/^Latest: after 1\. e4: \+0\.20 · depth 20/);
   });
 
-  it("shows nothing before the first position is finished", async () => {
+  it("says there are no results before the first position is finished", async () => {
     await addJob(jobOf("waiting", "queued"));
     renderAt("/jobs?job=waiting");
     expect(await screen.findByTestId("jobs-summary-status")).toHaveTextContent("Queued");
+    expect(screen.getByRole("tabpanel", { name: "Results" })).toHaveTextContent("No results yet");
     expect(screen.queryByRole("region", { name: "Results so far" })).not.toBeInTheDocument();
     expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+  });
+
+  it("keeps the execution parameters on their own tab, the tab picked kept for the next job opened", async () => {
+    const user = userEvent.setup();
+    await addJob(checkpointed(jobOf("first", "running", "Carlsen – Caruana"), 3));
+    await addJob(jobOf("second", "queued"));
+    renderAt("/jobs?job=first");
+    await screen.findByRole("region", { name: "Results so far" });
+    expect(screen.queryByTestId("jobs-summary-facts")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Parameters" }));
+    const params = screen.getByRole("tabpanel", { name: "Parameters" });
+    expect(within(params).getByTestId("jobs-summary-facts-engine")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Results so far" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("link", { name: "Show the job Alice – Bob" }));
+    expect(await screen.findByRole("heading", { level: 2, name: "Alice – Bob" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Parameters", selected: true })).toBeInTheDocument();
   });
 
   it("passes axe, a running job open", async () => {

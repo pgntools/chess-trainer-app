@@ -2728,6 +2728,13 @@ const en = {
     reportMissing: "The saved analyses this job made are gone, so its report cannot be shown.",
     /** A job not done: its results so far (CTA-178, `JobLiveReport`). */
     liveTitle: "Results so far",
+    liveEmpty: "No results yet — no position has been analysed.",
+    /** The job panel's tabs (CTA-178, `JobSummary`). */
+    tabs: {
+      label: "Job details",
+      results: "Results",
+      params: "Parameters",
+    },
     kinds: {
       "computer-analysis": "Computer analysis",
     },

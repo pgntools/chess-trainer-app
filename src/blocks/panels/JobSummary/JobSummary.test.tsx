@@ -36,8 +36,17 @@ describe("JobSummary (CTA-173)", () => {
     expect(screen.getByTestId("job-progress")).toHaveTextContent("2 of 7 positions · 2. Nf3");
   });
 
-  it("lists the engine and every option it was given", () => {
+  it("opens on Results, what goes under it; Parameters lists the engine and every option it was given (CTA-178)", async () => {
+    const user = userEvent.setup();
     mount(DONE);
+    const tabs = screen.getByRole("tablist", { name: "Job details" });
+    expect(screen.getByRole("tab", { name: "Results", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("tabpanel", { name: "Results" })).toHaveTextContent("the report");
+    expect(screen.queryByTestId("job-facts")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Parameters" }));
+    expect(tabs).toBeInTheDocument();
+    expect(screen.getByRole("tabpanel", { name: "Parameters" })).not.toHaveTextContent("the report");
     expect(screen.getByTestId("job-facts-engine")).toHaveTextContent("Stockfish 19 Lite (multi-thread)");
     expect(screen.getByTestId("job-facts-depth")).toHaveTextContent("22");
     expect(screen.getByTestId("job-facts-time")).toHaveTextContent("15 s");

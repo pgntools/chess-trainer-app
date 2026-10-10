@@ -2160,6 +2160,12 @@ const he: typeof en = {
     reportReading: "קוראים את הדוח…",
     reportMissing: "הניתוחים השמורים שהמשימה יצרה כבר אינם, ולכן אי אפשר להציג את הדוח שלה.",
     liveTitle: "התוצאות עד כה",
+    liveEmpty: "אין תוצאות עדיין — אף עמדה לא נותחה.",
+    tabs: {
+      label: "פרטי המשימה",
+      results: "תוצאות",
+      params: "פרמטרים",
+    },
     kinds: {
       "computer-analysis": "ניתוח מחשב",
     },

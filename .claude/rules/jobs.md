@@ -39,7 +39,7 @@ shell's indicator, and how to test and extend them.
 | `src/views/jobs/useJobs.ts` | `useJobs()` / `useJob(id)` — the New Job dialog's read too (CTA-177: a game's job — the one the board sent, else the newest unfinished, else done, of the same saved analysis — makes Analyse ask first, and Check existing opens it here; `jobOfGame`, [`analysis-board.md`](./analysis-board.md) §1.3). |
 | `src/views/jobs/JobsScreen.tsx`, `JobsMain.tsx`, `JobReport.tsx`, `JobLiveReport.tsx` | **The Jobs screen** (§4), a finished job's report and graph, and another job's results so far (CTA-178). |
 | `src/blocks/tables/JobsTable/` | The list (a `DataTable`): game, status, progress, times, Resume / Cancel / Delete. |
-| `src/blocks/panels/JobSummary/` | One job whole: status, progress, error, actions, links, facts; a finished job's report — or another's results so far — under it. |
+| `src/blocks/panels/JobSummary/` | One job whole: status, progress, error, actions, links; under them two tabs (CTA-178) — Results (a finished job's report, or another's results so far) and Parameters (the facts). |
 | `src/blocks/panels/ComputerAnalysisReport/`, `EvalGraph/` | The per-player report and the eval graph — built here (CTA-173, decided with the reader) and reused by the Analysis Board — at the top of its Moves tab (CTA-174, CTA-177). |
 | Tests | `src/lib/jobs.test.ts`, `jobStore.test.ts`, `jobRunner.test.ts`; `src/views/jobs/JobsScreen.test.tsx`, `JobsIndicator.test.tsx`; each block's own; `src/lib/engines/noWorkerAtImport.test.ts` (the runner builds nothing at import). |
 
@@ -169,19 +169,23 @@ queued ──▶ running ──▶ done
   started and finished; Resume (paused, interrupted, failed), Pause (queued,
   running — CTA-178), Cancel (not ended) and Delete, each named for its job. Delete asks first and keeps the job's
   outputs.
-- **The panel: `JobSummary`** — the job whole: status, progress, why it
+- **The panel: `JobSummary`**, its own scrolling column (the shell's aside
+  does not scroll) — the job whole: status, progress, why it
   failed, the same four actions, a link to the analysed game
   (`/tools/analysis?analysis=<source>`, where it was a saved analysis) and to
-  each output, then for a done job **its report and eval graph**
+  each output; then **two tabs** (CTA-178, `PanelTabs`, "Job details"):
+  **Results**, open first, and **Parameters** — the tab picked is the
+  block's own and stays as another job is opened. Results holds, for a done
+  job, **its report and eval graph**
   (`JobReport`): read back from its first output through `reportFromTree` /
   `evalSeriesOf` — nothing about the run is kept twice — a point of the graph
   opening that output on the Analysis Board at its move (`?at=`). An output
-  deleted since says so. Then every option the job was given, the engine that
-  ran it, and its times. No job open: a line asking for one; `?job=` naming
+  deleted since says so. Parameters holds every option the job was given,
+  the engine that ran it, and its times. No job open: a line asking for one; `?job=` naming
   none: "There is no such job".
 - **A job not done: its results so far** (`JobLiveReport`, CTA-178 — the
-  Analysis Board's Computer analysis tab's until CTA-177), in the report's
-  place: `jobLiveAnalysis` over the job as the store holds it (`useJobs`), so
+  Analysis Board's Computer analysis tab's until CTA-177), on the Results
+  tab in the report's place: `jobLiveAnalysis` over the job as the store holds it (`useJobs`), so
   it fills in with every checkpoint the runner writes — lichess's server
   analysis filling in. Under "Results so far": **the eval graph** spanning the
   whole run (`EvalGraph`'s `span`, the line growing from the left), **the
@@ -195,8 +199,8 @@ queued ──▶ running ──▶ done
   analysis; a board never saved has a graph only read (no `onSelect`, the read
   hint). **Nothing in it is a live region** — the summary's status line and the
   shell's indicator (§5) say what changed; the graph and the line only redraw.
-  Nothing at all before the first position is finished, or when the source no
-  longer reads.
+  Before the first position is finished, or when the source no longer reads,
+  "No results yet".
 - **Not seeded in the browser pass** (`e2e/a11y/routes.ts`, `jobs`): a job is
   not in the export zip (`import-export.md` §1.1), so the pass sees the empty
   list.
