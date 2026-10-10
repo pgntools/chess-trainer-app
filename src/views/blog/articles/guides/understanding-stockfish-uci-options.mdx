@@ -1,0 +1,156 @@
+---
+title: "Understanding Stockfish UCI options"
+summary: "Every option Stockfish declares — Threads and Hash, strength and Elo, Move Overhead, WDL, the Syzygy tablebases, the network files — what each one does, what the app sets for you, and what changed between Stockfish 18 and 19."
+date: 2026-10-10
+tags: [engine, setup]
+draft: true
+---
+
+Stockfish talks to the app over **UCI**, the Universal Chess Interface. When it starts, it lists its **options**: each one has a name, a type and a default, and a number has a range. The app reads that list and shows it in [Settings › Engine](/settings/engine), under **Engine options**, where you keep your own values in **presets**.
+
+This guide goes through every option, in the same three tabs as the form: **Basic**, **Advanced** and **System**. The last section compares Stockfish 18 and Stockfish 19.
+
+## How to read an option
+
+Every option has one of five **types**:
+
+| Type | What it is | In the form | Example |
+| --- | --- | --- | --- |
+| `spin` | A whole number between a minimum and a maximum | A number field | `MultiPV` — 1 to 256 |
+| `check` | On or off | A switch | `UCI_LimitStrength` — off |
+| `combo` | One word from a fixed list | A list to pick from | None in Stockfish 18 or 19 |
+| `string` | Free text, usually a file or a folder | A text field | `SyzygyPath` — a folder |
+| `button` | An action, with no value at all | Listed only | `Clear Hash` |
+
+A few rules hold for every option in the app:
+
+- **A preset keeps only what you change.** Everything else stays at the engine's default.
+- **The boards set Threads, Hash and MultiPV themselves**, from their own Engine tab. The form shows those three read-only, and a board's own value always wins.
+- **A change applies from the next search.** It is never sent into a search that is already running.
+
+## Basic
+
+How much of your computer the engine uses, how many lines it shows, and how strong it plays.
+
+### Threads
+
+**`spin`, default 1, range 1 to 1024.** How many threads the search uses at the same time. More threads reach a given depth sooner, up to the number of cores your machine has.
+
+- **In the browser** the single-thread build has exactly 1 thread; the multi-thread build offers up to 32, and the app offers at most 8 — more did not help in a browser tab.
+- **On your computer** the engine server caps it, by default at your cores minus one, so the rest of the machine stays responsive.
+
+Set on each board's Engine tab.
+
+### Hash
+
+**`spin`, in megabytes, default 16.** The **transposition table**: the engine's memory of positions it has already searched. When the same position comes up again, through another move order or on the next move, the engine reuses what it found instead of searching it again. A bigger table helps long searches the most.
+
+- **In the browser** the engine declares a huge maximum, but a page cannot hold much: **1024 MB is the ceiling**, and the app offers less on a device with little memory.
+- **On your computer** the engine server's ceiling applies (4096 MB by default).
+
+Changing Hash empties the table. Set on each board's Engine tab.
+
+### Clear Hash
+
+**`button`.** Empties the transposition table, so the next search starts with no memory of earlier ones. It is an action, not a setting, so a preset cannot keep it, and the form lists it on the **System** tab. A new engine always starts with an empty table, and changing Hash clears it too.
+
+### MultiPV
+
+**`spin`, default 1, range 1 to 256.** How many **lines** the engine reports: 1 is the best move only, 3 is the three best moves, each with its own evaluation and continuation. Every extra line shares the search time, so each line is a little shallower than a single one would be.
+
+Set on each board's Engine tab, as **Lines**. Computer analysis jobs set it position by position.
+
+### UCI_LimitStrength and UCI_Elo
+
+**`UCI_LimitStrength`: `check`, default off. `UCI_Elo`: `spin`, default 1320, range 1320 to 3190.**
+
+Off, Stockfish plays at full strength. On, it plays at the **Elo** you give it, choosing weaker moves on purpose. The Elo is calibrated against engine rating lists at a fast time control, so it is a rough guide to a human rating, not an exact match.
+
+- **Play with Engine** and **Masked Pieces** turn the limit on and send the Elo from their own **Strength** slider. There, your preset's values give way to the board's.
+- **Every other board**, and computer analysis, takes these two from your preset. They are off by default, so analysis runs at full strength unless you turn the limit on in the preset.
+
+While `UCI_LimitStrength` is off, the form shows `UCI_Elo` disabled at **3190**, because the engine is at full strength and the Elo does nothing. Turn the limit on, and the Elo can be changed.
+
+### Skill Level
+
+**`spin`, default 20, range 0 to 20.** An older way to weaken the engine: 20 is full strength, 0 is the weakest. When `UCI_LimitStrength` is on, Stockfish works out its strength from `UCI_Elo` and ignores Skill Level, so use one or the other. The Elo is the easier one to reason about.
+
+## Advanced
+
+How the engine reports and manages its search, and the endgame tablebases. Any option an engine declares that the app does not know by name also appears here.
+
+### Move Overhead
+
+**`spin`, in milliseconds, default 10, range 0 to 5000.** Time the engine keeps in reserve on every move when it plays **on a clock**, for the delay between the engine and the board, such as a slow network. The app's searches run to a depth or for a fixed time per move, not on a clock, so this option makes little difference here.
+
+### nodestime
+
+**`spin`, default 0, range 0 to 10000.** A testing option: it makes the engine count time in **nodes searched** instead of milliseconds, so engine matches give the same result on fast and slow machines. Like Move Overhead it matters on a clock, not for a search by depth or by fixed time. Leave it at 0.
+
+### Ponder
+
+**`check`, default off.** Pondering is thinking on the opponent's time: after its move, the engine keeps searching the move it expects in reply. The option only tells the engine that the program *may* ask it to ponder; the app never does, so it changes nothing here.
+
+### UCI_Chess960
+
+**`check`, default off.** Chess960 (Fischer Random), where castling is written differently. The app plays standard chess: leave it off.
+
+### UCI_ShowWDL
+
+**`check`, default off.** On, every line the engine reports also carries **win, draw and loss** chances, out of 1000, besides the usual evaluation in pawns. The engine sends them; the app does not show them yet.
+
+### The Syzygy tablebases
+
+Endgame **tablebases** are files that hold the perfect result of every position with few pieces left, typically up to 5, 6 or 7. With them, the engine plays those endings perfectly and knows the true result as soon as a search reaches one.
+
+They live in files on the computer that runs the engine, so **only the engine on your computer can use them**; the browser builds do not have these options at all. In the form they are behind the **Syzygy tablebases** switch, off by default. Off, none of these options is sent, and your values stay in the preset for when you turn it back on.
+
+- **`SyzygyPath`** (`string`, default empty) — the folder that holds the tablebase files (`.rtbw` and `.rtbz`). Several folders are separated by `:` on Linux and macOS, `;` on Windows. Empty means no tablebases.
+- **`SyzygyProbeDepth`** (`spin`, default 1, range 1 to 100) — how much depth must be left before the search looks a position up in the tablebases. Raise it if the files are on a slow disk, so the engine looks things up less often.
+- **`Syzygy50MoveRule`** (`check`, default on) — whether the fifty-move rule counts. On, a win that takes longer than the rule allows counts as a draw, as it would on the board.
+- **`SyzygyProbeLimit`** (`spin`, default 7, range 0 to 7) — the most pieces a position may have to be looked up. Set it to the size of the tablebases you have, for example 5 if you only have the 3-, 4- and 5-piece files.
+
+The last three do nothing without a path, so the form keeps them disabled until `SyzygyPath` is set.
+
+## System
+
+The engine's files and how it uses the machine. You rarely need to change these.
+
+### EvalFile (and EvalFileSmall)
+
+**`string`, a network file.** Stockfish judges positions with a **neural network** (NNUE), and the default network is built into the program. `EvalFile` loads another network from a file on disk instead.
+
+- **In the browser** this is not possible: the page has no file system, and setting `EvalFile` crashes the engine, so the app never sends it.
+- **On your computer** it is possible, but the file must be on that machine and made for that version of Stockfish. As far as we know, a network that does not load makes the engine stop, and the board then falls back to the browser build. The built-in network is the one the Stockfish team tested with that version, so there is rarely a reason to change it.
+
+`EvalFileSmall` is the same for the small network that Stockfish 18 uses (see *Stockfish 18 and 19* below).
+
+### Debug Log File
+
+**`string`, default empty.** A file to write the whole conversation between the program and the engine to, every command and every answer. Useful when something goes wrong; it grows quickly. Only the engine on your computer has it.
+
+### NumaPolicy
+
+**`string`, default `auto`.** How the search threads are spread over the parts of a large processor or a multi-processor machine (its NUMA nodes), so each thread works mostly with nearby memory. On an ordinary desktop or laptop it makes no difference; leave it at `auto`. Only the engine on your computer has it.
+
+## Stockfish 18 and 19
+
+Both versions declare the same options, with the same types, defaults and ranges, with **one exception**: the network files.
+
+| | Stockfish 18 | Stockfish 19 |
+| --- | --- | --- |
+| **Networks** | Two: a **big** one (`EvalFile`, `nn-c288c895ea92`) and a **small** one (`EvalFileSmall`, `nn-37f18f62d772`) | **One** (`EvalFile`, `nn-1a298aa575a0`) |
+| **Every other option** | The same 19 options | The same 19 options |
+| **Strength (Elo) range** | 1320 to 3190 | 1320 to 3190 |
+
+**Why two networks in Stockfish 18?** Since Stockfish 16.1 the engine has used a big network for most positions and a small, faster one for positions that are already clearly decided, such as a large material difference, where a quick evaluation is enough. The time saved goes into searching the rest more deeply. Each network has its own option, so Stockfish 18 lists both.
+
+**Stockfish 19 is back to a single network**, so it lists only `EvalFile`. In the app, Stockfish 18 on your computer shows both network options on the System tab, and Stockfish 19 shows one.
+
+What changes for you:
+
+- **Your presets work with both.** A preset keeps options by name; an option one version does not declare is shown as not declared, and not sent.
+- **Evaluations differ between versions.** The same position at the same depth can get a slightly different score, and now and then a different best move. Compare evaluations made with the same engine; a saved game records which engine played it.
+- **The newer version is the stronger one**, by the Stockfish team's own testing. Use Stockfish 19 unless you need to repeat an older analysis exactly.
+
+The browser builds are **Stockfish 19 Lite**: the same Stockfish 19 search with a much smaller network (`nn-61e7af4bb97d`), small enough to download into a page. How they compare with the engine on your computer is in [Stockfish 19: in the browser or on your computer](/blog/guides/stockfish-19-browser-vs-native), and setting that engine up in [Run a chess engine on your own computer](/blog/guides/local-engine).

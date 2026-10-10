@@ -191,11 +191,12 @@ describe("the Blog's tree", () => {
   it("lists a draft, marked, under Vitest as in yarn dev", () => {
     expect(BLOG_ARTICLES.find((article) => article.path === "writing-an-article/a-draft")?.draft).toBe(true);
     // The computer analysis guide (CTA-172) waits, a draft, for its screens (CTA-173, CTA-174);
-    // the Stockfish 19 guide for its screenshots.
+    // the Stockfish 19 guide for its screenshots, and the UCI options guide (CTA-179) with it, which it links to.
     expect(BLOG_ARTICLES.filter((article) => article.draft).map((article) => article.path)).toEqual([
       "writing-an-article/a-draft",
       "guides/computer-analysis",
       "guides/stockfish-19-browser-vs-native",
+      "guides/understanding-stockfish-uci-options",
     ]);
   });
 });
