@@ -109,10 +109,11 @@ export const OPTION_GROUPS: readonly { id: string; applies: (name: string) => bo
 /**
  * **The form's three tabs** — where an option is shown, by what it is for:
  *
- * - **basic**: how much of the machine and how strong — Threads, Hash (and
- *   Clear Hash), MultiPV, Skill Level, UCI_LimitStrength, UCI_Elo;
- * - **system**: files and the machine's layout — `EvalFile`, `EvalFileSmall`,
- *   `Debug Log File` (a file path outside a group), `NumaPolicy`;
+ * - **basic**: how much of the machine and how strong — Threads, Hash,
+ *   MultiPV, Skill Level, UCI_LimitStrength, UCI_Elo;
+ * - **system**: files, the machine's layout and the engine's housekeeping —
+ *   `EvalFile`, `EvalFileSmall`, `Debug Log File` (a file path outside a
+ *   group), `NumaPolicy`, `Clear Hash` (a button: listed, never kept);
  * - **advanced**: everything else — Move Overhead, nodestime, Ponder,
  *   UCI_Chess960, UCI_ShowWDL, the Syzygy tablebases, and any option an
  *   engine declares that is named in neither list.
@@ -123,13 +124,12 @@ export type OptionTab = (typeof OPTION_TABS)[number];
 const BASIC_OPTIONS: readonly string[] = [
   "Threads",
   "Hash",
-  "Clear Hash",
   "MultiPV",
   "Skill Level",
   "UCI_LimitStrength",
   "UCI_Elo",
 ];
-const SYSTEM_OPTIONS: readonly string[] = ["NumaPolicy"];
+const SYSTEM_OPTIONS: readonly string[] = ["NumaPolicy", "Clear Hash"];
 
 /** The tab `name` is shown on — `option`, where declared, tells a file path. */
 export const optionTabOf = (name: string, option?: EngineOption): OptionTab => {
