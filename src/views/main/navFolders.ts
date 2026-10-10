@@ -6,7 +6,6 @@ import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import MemoryRoundedIcon from "@mui/icons-material/MemoryRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
-import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 import SnippetFolderRoundedIcon from "@mui/icons-material/SnippetFolderRounded";
 import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
@@ -108,14 +107,14 @@ export const navFolders = (): readonly NavFolder[] => [
     labelKey: "nav.folders.library",
     icon: SnippetFolderRoundedIcon,
   },
+  /*
+    Analyses: the saved list — the Lobby, whose New button opens the board —
+    and the background jobs that analyse its games (CTA-173, CTA-174).
+  */
   {
     id: "analysis",
     labelKey: "nav.folders.analysisBoard",
     icon: AccountTreeRoundedIcon,
-    // One destination: the saved list is the screen worth reaching for, so
-    // the folder renders as one clickable row to it; the board is the saved
-    // list's New button.
-    singleEntry: true,
   },
   {
     id: "openings",
@@ -137,16 +136,6 @@ export const navFolders = (): readonly NavFolder[] => [
     // One destination: the folder renders as one clickable row to the
     // Repertoires list, whose own "Add repertoire" link reaches
     // `/repertoires/new`.
-    singleEntry: true,
-  },
-  /*
-    The background jobs (CTA-173): a game's computer analysis, run while the
-    reader goes on with anything else — one destination, the Jobs screen.
-  */
-  {
-    id: "jobs",
-    labelKey: "nav.folders.jobs",
-    icon: WorkHistoryRoundedIcon,
     singleEntry: true,
   },
   /*

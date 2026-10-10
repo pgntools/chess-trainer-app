@@ -372,7 +372,7 @@ The sidebar is a folder tree over the routes; a folder never appears in a URL.
   unless it is `keepFolder`: every Blog folder is, so *Guides* with its first
   guide is still a collapsible folder.
 - **A `singleEntry` folder** renders as one row, under its own name, straight
-  to its one screen (Analysis → Saved analyses, Openings, Repertoires). Board
+  to its one screen (Openings, Repertoires). Board
   screens those hide are reached from the screens' own controls.
 - **A `pinToBottom` folder** (Settings) renders at the sidebar's foot, under
   a divider, apart from the screens: the rows above scroll, the foot never

@@ -44,7 +44,6 @@ const en = {
     /** Play with Engine with the pieces in disguise (`/engine/masked`, CTA-79), beside the Lobby in the Engine folder. */
     maskedPlay: "Masked Pieces",
     analysisBoard: "Analysis Board",
-    savedAnalyses: "Saved analyses",
     /** The Openings explorer (CTA-78) — shown under the folder's own name, a single entry. */
     openings: "Openings explorer",
     /** The reader's own repertoires (CTA-61) — shown under the folder's own name, a single entry (CTA-84). */
@@ -74,14 +73,12 @@ const en = {
     mdxArticles: "Articles",
     mdxEditor: "Editor",
     mdxComponents: "Components gallery",
-    /** The Jobs screen (CTA-173) — shown under the folder's own name, a single entry. */
+    /** The Jobs screen (CTA-173), in the Analyses folder beside its Lobby. */
     jobs: "Jobs",
     /** Sidebar folders — groupings over the routes, never routes themselves. */
     folders: {
-      /** The background jobs (CTA-173): a single entry, the Jobs screen. */
-      jobs: "Jobs",
       engine: "Engine",
-      analysisBoard: "Analysis Board",
+      analysisBoard: "Analyses",
       openings: "Openings",
       repertoires: "Repertoires",
       /** The Blog (CTA-126) — MDX articles in nested folders, named by their data. */

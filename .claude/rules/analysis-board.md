@@ -82,9 +82,10 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/lib/pgnExport.ts` | `downloadPgn` — several stored PGN records joined with a blank line (`pgnFileOf`), saved as a file. Also Settings' Export's (`downloadBinaryFile`, [`import-export.md`](./import-export.md)). |
 | Tests | `AnalysisBoard.test.tsx` (every arrival, Save, Load, Export, Play, the hand-off, the Arrows tab, the PGN's shapes drawn and written, the Computer analysis tab — CTA-174), `src/blocks/forms/ComputerAnalysisForm/ComputerAnalysisForm.test.tsx`, `useTreeNavigation.test.ts`, `EngineThinking.test.tsx`, `nextMoveArrows.test.ts`, `src/lib/nextMoveWeights.test.ts`, `saved/SavedAnalyses.test.tsx` (the table, the cards and the panel's new-analysis form), `saved/AnalysisSettingsScreen.test.tsx`, `src/lib/savedAnalyses.test.ts`, `src/lib/savedAnalysisRows.test.ts`, `src/blocks/tables/SavedAnalysesTable/SavedAnalysesTable.test.tsx`, `savedAnalysisStore.test.ts`, `savedAnalysisFolderStore.test.ts`, `src/lib/analysesListContext.test.ts`, `src/blocks/trees/AnalysesTree/` (`AnalysesTree.test.tsx`, `analysesTreeNodes.test.tsx` — the filter included), `src/views/main/Layout.test.tsx` (the left panel's slot), the `TreeView` pattern's tests (`wrapLabels`, `disabled`), `savedGameFolders.test.ts`, `gameReference.test.ts`, and the propagation tests in `src/views/board/`. |
 
-Routes and nav: the **Analysis** folder is `singleEntry` and renders as one
-row to `/tools/analysis/saved`; the board itself has no nav entry and is the
-list's **New** button. `options.id` is `analysis`. Locale keys: `analysis.*`
+Routes and nav: the **Analyses** folder (`nav.folders.analysisBoard`) holds
+the **Lobby** (`nav.lobby`, `/tools/analysis/saved`) and **Jobs** (`nav.jobs`,
+`/jobs` — [`jobs.md`](./jobs.md)); the board itself has no nav entry and is
+the list's **New** button. `options.id` is `analysis`. Locale keys: `analysis.*`
 (the board) and `savedAnalyses.*` (the list, its folders, the settings
 screen); the Computer analysis tab's are `computerAnalysis.form.*` and
 `computerAnalysis.board.*`, beside the report's and graph's (CTA-174).

@@ -42,8 +42,9 @@ shell's indicator, and how to test and extend them.
 | Tests | `src/lib/jobs.test.ts`, `jobStore.test.ts`, `jobRunner.test.ts`; `src/views/jobs/JobsScreen.test.tsx`, `JobsIndicator.test.tsx`; each block's own; `src/lib/engines/noWorkerAtImport.test.ts` (the runner builds nothing at import). |
 
 Route `/jobs` (`handle.title` `pages.jobs`, its description
-`pageDescriptions.jobs`), `?job=<id>` the job open in the panel. Nav: a
-top-level `singleEntry` folder **Jobs** (`nav.folders.jobs`, `nav.jobs`).
+`pageDescriptions.jobs`), `?job=<id>` the job open in the panel. Nav:
+**Jobs** (`nav.jobs`) in the **Analyses** folder, under its Lobby (CTA-174 —
+a top-level folder of its own before).
 Locale keys: `jobs.*` (the screen, the blocks' words, the indicator) and
 `computerAnalysis.*` (the report's, the graph's, the variants' and verdicts'
 words — shared with the board). Test ids: `jobs-*`.
