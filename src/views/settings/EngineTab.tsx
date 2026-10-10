@@ -26,6 +26,7 @@ import { HOSTED_ENGINE_PREFIX, describeEngines } from "../../lib/engines";
 import { useEngineChoice } from "../shared/useEngineChoice";
 import { RightPanel } from "../main/rightPanel";
 import { useEngineServer } from "../shared/useEngineServer";
+import EnginePresetsSection from "./EnginePresetsSection";
 
 /** How long Connect's spinner shows at least — a local server answers in milliseconds, too fast to see. */
 const CONNECT_MIN_CHECKING_MS = 400;
@@ -71,6 +72,10 @@ const formStatusOf = (status: EngineServerStatus): EngineServerFormStatus | unde
  * checks it — and **every press is answered on the button**: a spinner for at
  * least {@link CONNECT_MIN_CHECKING_MS}, then a check mark or a warning for
  * {@link CONNECT_FEEDBACK_MS}.
+ *
+ * Under both, **the chosen engine's options, kept in presets**
+ * (`EnginePresetsSection`, CTA-179): every option it declares, editable in
+ * the preset it runs, the boards' own read-only.
  *
  * The right-hand panel shows **what the chosen server engine declared** — its
  * UCI options and defaults as the server sent them (`EngineOptionsTable`) —
@@ -175,6 +180,8 @@ function EngineTab() {
             </EngineServerForm>
           </Box>
         )}
+        {/* The chosen engine's options in its preset (CTA-179) — whichever inner tab it was chosen on. */}
+        <EnginePresetsSection engineId={engineId} />
       </Box>
 
       <RightPanel>

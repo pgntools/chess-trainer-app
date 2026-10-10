@@ -7,6 +7,13 @@ import i18n from "../../i18n";
 import { ENGINE_STORAGE_KEY, engineChoiceId } from "../../lib/engineChoice";
 import { ENGINE_SERVER_STORAGE_KEY, connectEngineServer, storeEngineServerUrl } from "../../lib/engineServer";
 import { DEFAULT_ENGINE_ID } from "../../lib/engines";
+import { DEFAULT_PRESET_ID, selectedPresetOf } from "../../lib/enginePresets";
+import {
+  loadEnginePresetSelections,
+  loadEnginePresets,
+  resetEnginePresetSelectionStore,
+  resetEnginePresetStore,
+} from "../../lib/enginePresetStore";
 import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
@@ -19,8 +26,14 @@ import SettingsScreen from "./SettingsScreen";
   builds, the multi-thread one unavailable here (jsdom is not cross-origin
   isolated) — so what the tab lists is what the app offers. A second page's
   worth of behaviour — a host that does isolate the page — is `crossOriginIsolated`
-  stubbed. No engine is built: nothing here searches.
+  stubbed. Nothing here searches; the options form (CTA-179) builds the chosen
+  engine only for its handshake — a `FakeEngine` declaring what its build
+  declares (`builtinEnginesMock`).
 */
+
+vi.mock("../../lib/engines/builtin", async (importOriginal) =>
+  (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
+);
 
 const renderEngine = () =>
   render(
@@ -370,6 +383,95 @@ describe("Settings → Engine — where the engine runs", () => {
     await openApiTab();
     await turnServerOn();
     await userEvent.click(within(main()).getByRole("radio", { name: "Stockfish 19" }));
+    await expectNoAxeViolations();
+  });
+});
+
+/** The options form's list for the chosen engine. */
+const presetOptions = () => screen.getByTestId("engine-presets-options");
+const optionRow = (name: string) =>
+  within(presetOptions())
+    .getAllByRole("listitem")
+    .find((item) => item.getAttribute("data-testid")?.endsWith(`-option-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`))!;
+
+/** The stores read again, as a reload would. */
+const reloaded = async () => {
+  resetEnginePresetStore();
+  resetEnginePresetSelectionStore();
+  return { presets: await loadEnginePresets(), selections: await loadEnginePresetSelections() };
+};
+
+describe("Settings → Engine — the engine's options, in presets (CTA-179)", () => {
+  it("shows every option the chosen browser build declares, in its preset — the boards' own read-only", async () => {
+    renderEngine();
+
+    const section = screen.getByRole("region", { name: `Engine options — ${SINGLE}` });
+    expect(within(section).getByRole("combobox", { name: `Preset for ${SINGLE}` })).toHaveTextContent("Default");
+    expect(await within(section).findByRole("spinbutton", { name: "Move Overhead" })).toHaveValue(10);
+    expect(within(section).getByRole("switch", { name: "UCI_ShowWDL" })).not.toBeChecked();
+    expect(within(section).queryByRole("spinbutton", { name: "Hash" })).toBeNull();
+    expect(optionRow("Hash")).toHaveTextContent("Set on each board");
+    expect(optionRow("EvalFile")).toHaveTextContent("Not available in the browser");
+  });
+
+  it("keeps a change in the engine's preset, Default stored at its first edit", async () => {
+    renderEngine();
+    await userEvent.click(await screen.findByRole("switch", { name: "UCI_ShowWDL" }));
+    await waitFor(() => expect(screen.getByRole("switch", { name: "UCI_ShowWDL" })).toBeChecked());
+    // Typed through the store, each keystroke written and read back while the next one is typed.
+    const overhead = screen.getByRole("spinbutton", { name: "Move Overhead" });
+    await userEvent.clear(overhead);
+    await userEvent.type(overhead, "2500");
+    expect(overhead).toHaveValue(2500);
+
+    await waitFor(async () => {
+      const { presets, selections } = await reloaded();
+      expect(selectedPresetOf(presets, selections, DEFAULT_ENGINE_ID)).toMatchObject({
+        id: DEFAULT_PRESET_ID,
+        values: { UCI_ShowWDL: true, "Move Overhead": 2500 },
+      });
+    });
+  });
+
+  it("creates a preset for the chosen engine alone — another engine keeps Default", async () => {
+    vi.stubGlobal("crossOriginIsolated", true);
+    renderEngine();
+    await userEvent.click(await screen.findByRole("button", { name: "New preset" }));
+    const dialog = screen.getByRole("dialog", { name: "New preset" });
+    await userEvent.type(within(dialog).getByRole("textbox", { name: "Name" }), "deep-analysis{Enter}");
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: `Preset for ${SINGLE}` })).toHaveTextContent("deep-analysis"),
+    );
+
+    await userEvent.click(within(main()).getByRole("radio", { name: MULTI }));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: `Preset for ${MULTI}` })).toHaveTextContent("Default"));
+
+    const { presets, selections } = await reloaded();
+    expect(selectedPresetOf(presets, selections, DEFAULT_ENGINE_ID).name).toBe("deep-analysis");
+    expect(selectedPresetOf(presets, selections, "stockfish-19-lite-multi").id).toBe(DEFAULT_PRESET_ID);
+  });
+
+  it("offers an engine server's engine what it declares — a file path among them", async () => {
+    stubServer();
+    renderEngine();
+    await openApiTab();
+    await turnServerOn();
+    await userEvent.click(within(main()).getByRole("radio", { name: "Stockfish 19" }));
+
+    const section = await screen.findByRole("region", { name: "Engine options — Stockfish 19" });
+    const path = within(section).getByRole("textbox", { name: "SyzygyPath" });
+    await userEvent.type(path, "/tb");
+    await waitFor(async () => {
+      const { presets, selections } = await reloaded();
+      expect(selectedPresetOf(presets, selections, "hosted:stockfish-19").values).toEqual({ SyzygyPath: "/tb" });
+    });
+  });
+
+  it("reads in Hebrew, and passes axe", async () => {
+    await i18n.changeLanguage("he");
+    renderEngine();
+    expect(await screen.findByRole("spinbutton", { name: "Move Overhead" })).toHaveAttribute("dir", "ltr");
+    expect(screen.getByRole("button", { name: "הגדרה חדשה" })).toBeInTheDocument();
     await expectNoAxeViolations();
   });
 });
