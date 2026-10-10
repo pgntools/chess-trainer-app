@@ -49,7 +49,7 @@ const stamp = (value: string | null): ReactNode => {
 
 /**
  * **One job, whole** (CTA-173) — the Jobs screen's right-hand panel: what it
- * analyses and a link back to it, its status and progress ("12 of 80
+ * analyses and a button back to it (at the header's other end, CTA-178), its status and progress ("12 of 80
  * positions · 7. Nf3"), why it failed, the engine that ran it and every option
  * it was given, when it was asked for, started and ended, a link to each Saved
  * analysis it made, and Resume / Pause / Cancel / Delete. Under them **two
@@ -95,13 +95,21 @@ function JobSummary({ job, sourceLink, outputLink, onCancel, onPause, onResume, 
 
   return (
     <Box data-testid={testId} sx={{ display: "grid", gap: 1.5 }}>
-      <Box>
-        <Typography component="h2" variant="subtitle1" dir="auto" sx={{ fontWeight: 700, overflowWrap: "anywhere" }}>
-          {name}
-        </Typography>
-        <Typography variant="body2" data-testid={`${testId}-status`} sx={{ color: JOB_STATUS_TONES[job.status], fontWeight: 600 }}>
-          {t(`jobs.status.${job.status}`)}
-        </Typography>
+      {/* The game and its status at the start; the way back to it at the other end, dropping under them where the panel is narrow. */}
+      <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
+        <Box sx={{ flex: "1 1 12rem", minWidth: 0 }}>
+          <Typography component="h2" variant="subtitle1" dir="auto" sx={{ fontWeight: 700, overflowWrap: "anywhere" }}>
+            {name}
+          </Typography>
+          <Typography variant="body2" data-testid={`${testId}-status`} sx={{ color: JOB_STATUS_TONES[job.status], fontWeight: 600 }}>
+            {t(`jobs.status.${job.status}`)}
+          </Typography>
+        </Box>
+        {sourceLink !== undefined && (
+          <Button size="small" variant="outlined" data-testid={`${testId}-source`} sx={{ flexShrink: 0, whiteSpace: "nowrap" }} {...linkProps(sourceLink)}>
+            {t("jobs.openSource")}
+          </Button>
+        )}
       </Box>
 
       <ProgressLine
@@ -148,23 +156,20 @@ function JobSummary({ job, sourceLink, outputLink, onCancel, onPause, onResume, 
         </Button>
       </Stack>
 
-      <Box component="section" aria-label={t("jobs.links")} sx={{ display: "grid", gap: 0.5 }}>
-        {sourceLink !== undefined && (
-          <Link {...(linkProps(sourceLink) as Record<string, unknown>)} underline="hover" data-testid={`${testId}-source`}>
-            {t("jobs.openSource")}
-          </Link>
-        )}
-        {job.outputs.map((output) => (
-          <Link
-            key={output.analysisId}
-            {...(linkProps(outputLink(output)) as Record<string, unknown>)}
-            underline="hover"
-            data-testid={`${testId}-output-${output.variant}`}
-          >
-            {t("jobs.openOutput", { variant: t(`computerAnalysis.variants.${output.variant}`) })}
-          </Link>
-        ))}
-      </Box>
+      {job.outputs.length > 0 && (
+        <Box component="section" aria-label={t("jobs.links")} sx={{ display: "grid", gap: 0.5 }}>
+          {job.outputs.map((output) => (
+            <Link
+              key={output.analysisId}
+              {...(linkProps(outputLink(output)) as Record<string, unknown>)}
+              underline="hover"
+              data-testid={`${testId}-output-${output.variant}`}
+            >
+              {t("jobs.openOutput", { variant: t(`computerAnalysis.variants.${output.variant}`) })}
+            </Link>
+          ))}
+        </Box>
+      )}
 
       <Box>
         <PanelTabs
