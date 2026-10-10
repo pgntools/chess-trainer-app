@@ -4,6 +4,7 @@ import type {
   EngineMessageCallback,
   EngineOption,
   SearchOptions,
+  UciOptionValue,
   UciTransport,
 } from "./engineTypes";
 
@@ -105,12 +106,24 @@ export const parseEngineLine = (line: string, fen: string | undefined): EngineMe
 };
 
 /**
- * Whether an option the engine declared can be **set** — declared, and not
- * pinned to one value (`min` equal to `max`). {@link UciEngine.isSettable}'s
- * rule, shared with the hosted engine (`lib/hostedEngine.ts`).
+ * Whether an option the engine declared can be **set** — declared, not
+ * pinned to one value (`min` equal to `max`), and not a `button`, which is an
+ * action rather than a value (the engine server refuses one too).
+ * {@link UciEngine.isSettable}'s rule, shared with the hosted engine
+ * (`lib/hostedEngine.ts`).
  */
 export const isSettableOption = (option: EngineOption | undefined): boolean =>
-  option !== undefined && (option.min === undefined || option.min !== option.max);
+  option !== undefined && option.type !== "button" && (option.min === undefined || option.min !== option.max);
+
+/**
+ * A value as a `setoption` line can carry it — its words, or `undefined` for
+ * one that would break the line: a line break in it would end the command
+ * and start another (CTA-179 — a preset's words reach the wire).
+ */
+export const uciValueText = (value: UciOptionValue): string | undefined => {
+  const text = String(value);
+  return /[\r\n]/.test(text) ? undefined : text;
+};
 
 /** The `go` line for a search: `go infinite`, or a depth clamped to `maxDepth` with an optional `movetime`. */
 const goCommand = (options: SearchOptions, maxDepth: number): string => {
@@ -125,6 +138,15 @@ const goCommand = (options: SearchOptions, maxDepth: number): string => {
 export type UciEngineConfig = {
   /** The deepest `go depth` it posts — the descriptor's `capabilities.maxDepth`. */
   maxDepth?: number;
+  /**
+   * Options this engine declares but must **never** be sent, whatever the
+   * caller asks — refused like an undeclared one (CTA-179). The page's own
+   * WebAssembly builds have no file system, and `setoption name EvalFile`
+   * kills the worker: their descriptors refuse every file-path option
+   * (`isFilePathOption`, `lib/enginePresets.ts`). Absent, every declared,
+   * unpinned option can be set.
+   */
+  refuses?: (option: EngineOption) => boolean;
 };
 
 /**
@@ -149,12 +171,20 @@ export class UciEngine implements EngineHandle {
 
   private readonly transport: UciTransport;
   private readonly maxDepth: number;
+  private readonly refuses: ((option: EngineOption) => boolean) | undefined;
 
   /** Every live subscriber. One transport listener fans out to all of them. */
   private readonly callbacks = new Set<EngineMessageCallback>();
 
   /** True once `uciok` has arrived and {@link options} is complete. */
   private optionsReady = false;
+  /**
+   * True while the `uciok` callbacks run: what they ask for is held, and goes
+   * out with everything else the handshake held back — so a caller pushing
+   * several options there (the engine module's preset, CTA-179) never has
+   * the first one start the waiting search under the rest.
+   */
+  private announcing = false;
   private readonly optionsReadyCallbacks = new Set<() => void>();
 
   /**
@@ -193,10 +223,11 @@ export class UciEngine implements EngineHandle {
 
   constructor(
     transport: UciTransport,
-    { maxDepth = DEFAULT_MAX_DEPTH }: UciEngineConfig = {},
+    { maxDepth = DEFAULT_MAX_DEPTH, refuses }: UciEngineConfig = {},
   ) {
     this.transport = transport;
     this.maxDepth = maxDepth;
+    this.refuses = refuses;
 
     /*
       A single listener on the transport, fanning out to the subscribers: the UCI
@@ -246,7 +277,12 @@ export class UciEngine implements EngineHandle {
 
       const waiting = [...this.optionsReadyCallbacks];
       this.optionsReadyCallbacks.clear();
-      waiting.forEach((callback) => callback());
+      this.announcing = true;
+      try {
+        waiting.forEach((callback) => callback());
+      } finally {
+        this.announcing = false;
+      }
 
       // Everything held back during the handshake can now go out.
       this.flush();
@@ -273,7 +309,7 @@ export class UciEngine implements EngineHandle {
    * settings the caller asked for.
    */
   private flush() {
-    if (!this.optionsReady) return;
+    if (!this.optionsReady || this.announcing) return;
 
     if (this.searching !== undefined) {
       // Come back when the engine says it has finished.
@@ -343,14 +379,16 @@ export class UciEngine implements EngineHandle {
    * one value it could take — and the settings tab already renders it as fixed.
    */
   private isSettable(name: string): boolean {
-    return isSettableOption(this.options.get(name));
+    const option = this.options.get(name);
+    return isSettableOption(option) && !(option !== undefined && this.refuses?.(option));
   }
 
   /**
    * The value as UCI writes it. A `check` option takes the words `true` and
-   * `false`; a caller that only has numbers (the engine module's requests are
-   * `name → number`) asks for `1` / `0`, which Stockfish would read as false.
-   * Anything that is not a `check`'s own wording goes through unchanged.
+   * `false`; a caller with numbers (a board's requests are `name → number`)
+   * asks for `1` / `0`, which Stockfish would read as false, and a preset's
+   * boolean arrives as `true` / `false` already. Anything that is not a
+   * `check`'s own wording goes through unchanged.
    */
   private wireValue(name: string, value: string): string {
     if (this.options.get(name)?.type !== "check") return value;
@@ -363,18 +401,20 @@ export class UciEngine implements EngineHandle {
    * Request `setoption name <name> value <value>`, if this engine has that option.
    *
    * Returns whether this engine will take the value — `false` when it has no
-   * such option, or has pinned it to a single value ({@link isSettable}). In
-   * both cases nothing is posted, which is what keeps the settings tab from
+   * such option, has pinned it to a single value, or must never be sent it
+   * ({@link isSettable}), and for words a line break would cut in two. In
+   * every case nothing is posted, which is what keeps the settings tab from
    * showing a knob that does nothing. Calls made before the handshake are held
    * and re-checked at `uciok`, and report `true` optimistically because the
    * answer does not exist yet.
    */
-  setOption(name: string, value: string | number): boolean {
+  setOption(name: string, value: UciOptionValue): boolean {
     // Once the roster is known, a name this engine cannot take is refused here,
     // rather than queued only to be dropped — queued, it would stop a search.
     if (this.optionsReady && !this.isSettable(name)) return false;
 
-    const requested = String(value);
+    const requested = uciValueText(value);
+    if (requested === undefined) return false;
     if (this.applied.get(name) === requested) {
       // Already the engine's value: a request for another one that is still
       // waiting is withdrawn, and nothing is stopped for it.

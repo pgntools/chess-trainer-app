@@ -240,6 +240,79 @@ describe("UciEngine option discovery", () => {
     expect(transport.sent).toEqual(["setoption name UCI_Elo value 1"]);
   });
 
+  it("takes a preset's typed values: a boolean, and words (CTA-179)", () => {
+    const { engine, transport } = build();
+    transport.say("option name UCI_ShowWDL type check default false");
+    transport.say("option name NumaPolicy type string default auto");
+    transport.say("option name Style type combo default Normal var Solid var Normal var Risky");
+    transport.say("uciok");
+    transport.sent.length = 0;
+
+    expect(engine.setOption("UCI_ShowWDL", true)).toBe(true);
+    expect(engine.setOption("NumaPolicy", "none")).toBe(true);
+    expect(engine.setOption("Style", "Risky")).toBe(true);
+    expect(transport.sent).toEqual([
+      "setoption name UCI_ShowWDL value true",
+      "setoption name NumaPolicy value none",
+      "setoption name Style value Risky",
+    ]);
+  });
+
+  it("refuses words a line break would cut into a second command", () => {
+    const { engine, transport } = build();
+    transport.say("option name NumaPolicy type string default auto");
+    transport.say("uciok");
+    transport.sent.length = 0;
+
+    expect(engine.setOption("NumaPolicy", "none\nquit")).toBe(false);
+    expect(transport.sent).toEqual([]);
+  });
+
+  it("never sends a button, nor an option its descriptor refuses — a browser build's file path", () => {
+    const { engine, transport } = build({ refuses: (option) => option.name === "EvalFile" });
+    transport.say("option name Clear Hash type button");
+    transport.say("option name EvalFile type string default nn-37f18f62d772.nnue");
+    transport.say("option name Hash type spin default 16 min 1 max 33554432");
+    transport.say("uciok");
+    transport.sent.length = 0;
+
+    expect(engine.setOption("Clear Hash", true)).toBe(false);
+    expect(engine.setOption("EvalFile", "custom.nnue")).toBe(false);
+    expect(engine.setOption("Hash", 32)).toBe(true);
+    expect(transport.sent).toEqual(["setoption name Hash value 32"]);
+  });
+
+  it("drops a refused option asked for before the handshake, at uciok", () => {
+    const { engine, transport } = build({ refuses: (option) => option.name === "EvalFile" });
+    engine.setOption("EvalFile", "custom.nnue");
+    engine.search("fen-a", { depth: 10 });
+    transport.say("option name EvalFile type string default nn.nnue");
+    transport.say("uciok");
+    expect(transport.sent.filter((line) => line.startsWith("setoption"))).toEqual([]);
+    expect(transport.sent.at(-1)).toBe("go depth 10");
+  });
+
+  it("sends what uciok's callbacks ask for with the rest the handshake held, before the waiting search", () => {
+    // The engine module pushes a preset there, one option at a time: the first must not start the search.
+    const { engine, transport } = build();
+    engine.setOption("Hash", 64);
+    engine.search("fen-a", { depth: 10 });
+    engine.whenOptionsReady(() => {
+      engine.setOption("Skill Level", 5);
+      engine.setOption("UCI_LimitStrength", true);
+    });
+    transport.sent.length = 0;
+    transport.completeHandshake();
+
+    expect(transport.sent).toEqual([
+      "setoption name Hash value 64",
+      "setoption name Skill Level value 5",
+      "setoption name UCI_LimitStrength value true",
+      "position fen fen-a",
+      "go depth 10",
+    ]);
+  });
+
   it("posts a value the engine already has only once", () => {
     // A board re-requests every option when any setting moves; `Hash` again
     // would clear the engine's table.

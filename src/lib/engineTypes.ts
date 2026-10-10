@@ -58,6 +58,15 @@ export type EngineOption = {
 };
 
 /**
+ * **A UCI option's value as the app asks for it** (CTA-179) — a `spin`'s
+ * number, a `check`'s boolean (or `1` / `0`, the engine module's older
+ * spelling), a `combo`'s or a `string`'s words. Each handle puts it on the wire
+ * in the option's own type: `true` / `false` for a check, the words as they
+ * are for the rest.
+ */
+export type UciOptionValue = number | string | boolean;
+
+/**
  * What one `go` search should do: stop at a depth (and, if asked, a time), or
  * search **until stopped** — `go infinite`, an analysis board's infinite
  * analysis (CTA-160), which only ever ends with {@link EngineHandle.stop} (a
@@ -141,10 +150,11 @@ export interface EngineHandle {
   stop(): void;
   /**
    * Request an option. Returns whether this engine will take the value —
-   * `false` when it has no such option or has pinned it to one value. Calls
-   * before the handshake report `true` optimistically.
+   * `false` when it has no such option, has pinned it to one value, or (a
+   * page's own build) cannot take it at all — a file path in a WebAssembly
+   * build (CTA-179). Calls before the handshake report `true` optimistically.
    */
-  setOption(name: string, value: string | number): boolean;
+  setOption(name: string, value: UciOptionValue): boolean;
   /**
    * Run `callback` once {@link options} is complete — at once if the handshake
    * already finished. Returns an unsubscribe fn.

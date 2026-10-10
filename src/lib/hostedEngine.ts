@@ -1,5 +1,5 @@
-import type { EngineHandle, EngineMessageCallback, EngineOption, SearchOptions } from "./engineTypes";
-import { DEFAULT_MAX_DEPTH, isSettableOption, parseEngineLine } from "./uciEngine";
+import type { EngineHandle, EngineMessageCallback, EngineOption, SearchOptions, UciOptionValue } from "./engineTypes";
+import { DEFAULT_MAX_DEPTH, isSettableOption, parseEngineLine, uciValueText } from "./uciEngine";
 
 /**
  * **An engine on the engine server** — a native Stockfish on the reader's own
@@ -85,8 +85,8 @@ export const hostedEnginesFrom = (raw: unknown): HostedEngineInfo[] | null => {
 /** Whether the page is being hidden or unloaded — a request then must be `keepalive` to go out at all. */
 const pageLeaving = (): boolean => typeof document !== "undefined" && document.visibilityState === "hidden";
 
-/** A `check` option's value as a boolean — the engine module asks with `1` / `0`. */
-const checkValue = (value: string | number): boolean => value === 1 || value === "1" || value === "true";
+/** A `check` option's value as a boolean — a board asks with `1` / `0`, a preset with a boolean. */
+const checkValue = (value: UciOptionValue): boolean => value === true || value === 1 || value === "1" || value === "true";
 
 /** The server's `limit` for a search, the depth clamped to what it allows. */
 const limitOf = (options: SearchOptions, maxDepth: number) =>
@@ -142,10 +142,14 @@ export class HostedEngine implements EngineHandle {
     };
   }
 
-  setOption(name: string, value: string | number): boolean {
+  setOption(name: string, value: UciOptionValue): boolean {
     const option = this.options.get(name);
-    if (!isSettableOption(option)) return false;
-    this.requested.set(name, option?.type === "check" ? checkValue(value) : value);
+    if (!isSettableOption(option) || uciValueText(value) === undefined) return false;
+    // A check travels as a boolean; a spin as its number; a combo's or a string's words as they are.
+    this.requested.set(
+      name,
+      option?.type === "check" ? checkValue(value) : typeof value === "boolean" ? String(value) : value,
+    );
     return true;
   }
 

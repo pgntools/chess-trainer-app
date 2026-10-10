@@ -3,7 +3,20 @@ import type {
   EngineDescriptor,
   EngineHandle,
   EngineOption,
+  UciOptionValue,
 } from "../../../lib/engineTypes";
+import {
+  BOARD_OWNED_OPTIONS,
+  presetResetValue,
+  resolveEnginePreset,
+  selectedPresetValues,
+} from "../../../lib/enginePresets";
+import {
+  enginePresetSelectionsSnapshot,
+  enginePresetsSnapshot,
+  subscribeEnginePresetSelections,
+  subscribeEnginePresets,
+} from "../../../lib/enginePresetStore";
 import { ensureEngineServerChecked, engineServerStatus, subscribeEngineServer } from "../../../lib/engineServer";
 import { resolveEngine } from "../../../lib/engines";
 import {
@@ -49,6 +62,15 @@ import { isTerminal, turnOf } from "./useBoardCore";
  *   this module never learns what a setting *means*. Without it the panel
  *   would show a number the engine never accepts (the single-thread build pins
  *   `Threads` to 1).
+ * - **The engine's preset** (CTA-179): the options the reader set for this
+ *   engine in Settings → Engine (`lib/enginePresets.ts`) — its selected
+ *   preset's values, met against what the running engine declared once the
+ *   handshake lands, held to its bounds, sent **beside** the caller's own
+ *   options. The caller's always win: a name in
+ *   {@link EngineModuleStart.uciOptions} is never sent from the preset, and
+ *   Threads, Hash and MultiPV never are. A value the preset stops setting
+ *   goes back to the engine's default. A change applies from the next
+ *   search, never into a running one (the handle's discipline, §4.1).
  * - **Option pushes before the search.** The `setOption` effect is declared
  *   ahead of the search effect, so on any render where both run the options go
  *   out before the `go` that should honour them. The handle's `setOption`
@@ -102,17 +124,19 @@ export type EngineModuleStart = {
    */
   infinite?: boolean;
   /**
-   * The UCI options this board wants set, by name. Pushed on change; a name
-   * this build does not have is dropped by the handle's `setOption`.
+   * The UCI options this board wants set, by name — a spin's number, a
+   * check's boolean (or `1` / `0`), words for a combo or a string (CTA-179).
+   * Pushed on change; a name this build does not have is dropped by the
+   * handle's `setOption`. They win over the engine's preset.
    *
    * **Memoise it.** Three effects here take it as a dependency (rather than
    * reading it out of a ref, which `react-hooks/refs` rejects — the shipped
    * hooks make the same trade), so a fresh object literal every render would
    * restart the search on every render.
    */
-  uciOptions: Readonly<Record<string, number>>;
+  uciOptions: Readonly<Record<string, UciOptionValue>>;
   /**
-   * The same names, with each value pulled into the bounds the running worker
+   * The same names — the numbers among them — with each value pulled into the bounds the running worker
    * declared — called once the handshake lands, and only when something
    * actually changed. The screen writes the clamped numbers back into its own
    * settings, which is what makes the panel and the engine agree.
@@ -190,6 +214,20 @@ export const useEngineModule = ({
     them against the new engine.
   */
   const descriptor = resolveEngine(engineId);
+
+  /*
+    The engine's preset (CTA-179) — the values its selected preset sets, the
+    same object until that preset or the selection changes, and none until
+    both stores have been read. Read here, where the engine is known, so every
+    board sends it without a line of its own.
+  */
+  const presetValues = selectedPresetValues(
+    useSyncExternalStore(subscribeEnginePresets, enginePresetsSnapshot, enginePresetsSnapshot),
+    useSyncExternalStore(subscribeEnginePresetSelections, enginePresetSelectionsSnapshot, enginePresetSelectionsSnapshot),
+    descriptor.id,
+  );
+  /** The preset's names last sent to which handle — a name dropped since goes back to the engine's default. */
+  const presetSentRef = useRef<{ handle: EngineHandle; names: readonly string[] } | null>(null);
 
   /*
     The final score of the search in flight, remembered from the last top-line
@@ -348,6 +386,8 @@ export const useEngineModule = ({
       const clamped: Record<string, number> = {};
       let changed = false;
       for (const [name, value] of Object.entries(uciOptions)) {
+        // Only a number has bounds to be held to: a check or words go as they are.
+        if (typeof value !== "number") continue;
         const option = options.get(name);
         const next =
           option?.min === undefined || option.max === undefined
@@ -372,13 +412,35 @@ export const useEngineModule = ({
     Push the option-backed settings. Declared *before* the search effect so
     that on any render where both run, the options go out ahead of the `go`
     that should honour them.
+
+    The caller's go at once; the preset's once the engine has said what it
+    declares — they are met against it (bounds, a file path a browser build
+    cannot take, the board's own names left out). Asked for inside the
+    handshake's callbacks, they go out with everything the handshake held, so
+    the first search already runs under them (`UciEngine`).
   */
   useEffect(() => {
     const engine = ensureEngine();
     for (const [name, value] of Object.entries(uciOptions)) {
       engine.setOption(name, value);
     }
-  }, [ensureEngine, uciOptions]);
+    return engine.whenOptionsReady(() => {
+      const context = {
+        inBrowser: descriptor.server === undefined,
+        owned: [...BOARD_OWNED_OPTIONS, ...Object.keys(uciOptions)],
+      };
+      const { send } = resolveEnginePreset(presetValues, engine.options, context);
+      // A name the preset set on this engine and no longer does: back to the engine's default.
+      const previous = presetSentRef.current?.handle === engine ? presetSentRef.current.names : [];
+      for (const name of previous) {
+        if (Object.hasOwn(send, name)) continue;
+        const reset = presetResetValue(engine.options.get(name), context);
+        if (reset !== undefined) engine.setOption(name, reset);
+      }
+      for (const [name, value] of Object.entries(send)) engine.setOption(name, value);
+      presetSentRef.current = { handle: engine, names: Object.keys(send) };
+    });
+  }, [ensureEngine, descriptor, uciOptions, presetValues]);
 
   /*
     Search the position on screen — and only while the engine is switched on.
@@ -399,11 +461,11 @@ export const useEngineModule = ({
     if (isTerminal(fen)) return;
 
     ensureEngine().search(fen, infinite ? { infinite: true } : { depth, movetime: moveTimeMs });
-    // `uciOptions` is a dependency so that changing a setting restarts the
-    // search and is reflected in the lines immediately, rather than waiting
-    // for the next move — which is what "takes effect on the next search"
-    // means in practice.
-  }, [ensureEngine, enabled, fen, depth, moveTimeMs, infinite, uciOptions]);
+    // `uciOptions` and the preset are dependencies so that changing a setting
+    // restarts the search and is reflected in the lines immediately, rather
+    // than waiting for the next move — which is what "takes effect on the
+    // next search" means in practice.
+  }, [ensureEngine, enabled, fen, depth, moveTimeMs, infinite, uciOptions, presetValues]);
 
   const clearAnalysis = useCallback(() => setAnalysis(EMPTY_ANALYSIS), []);
 
