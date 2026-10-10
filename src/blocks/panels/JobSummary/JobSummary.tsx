@@ -11,7 +11,7 @@ import { linkProps, type LinkTarget } from "../../../design-system/components/li
 import { KeyValueList } from "../../../design-system/components/lists";
 import { ProgressLine } from "../../../design-system/components/states";
 import { tableDate } from "../../../design-system/components/tables";
-import { canCancelJob, canResumeJob, jobMoveLabel, jobProgress, type Job, type JobOutput } from "../../../lib/jobs";
+import { canCancelJob, canPauseJob, canResumeJob, jobMoveLabel, jobProgress, type Job, type JobOutput } from "../../../lib/jobs";
 import { JOB_STATUS_TONES } from "../../tables";
 
 export type JobSummaryProps = {
@@ -21,11 +21,13 @@ export type JobSummaryProps = {
   /** A saved output, on the Analysis Board. */
   outputLink: (output: JobOutput) => LinkTarget;
   onCancel: () => void;
+  /** Pause a job waiting or being run — Resume takes it up again (CTA-178). */
+  onPause: () => void;
   onResume: () => void;
   onDelete: () => void;
   /** Under it: a finished job's report and eval graph, read from an output by the screen — or another job's results so far (CTA-178). */
   children?: ReactNode;
-  /** The root; the parts are `-status`, `-progress`, `-error`, `-facts` (each fact `-facts-<id>`), `-source`, `-output-<variant>`, `-cancel`, `-resume`, `-delete`. */
+  /** The root; the parts are `-status`, `-progress`, `-error`, `-facts` (each fact `-facts-<id>`), `-source`, `-output-<variant>`, `-pause`, `-cancel`, `-resume`, `-delete`. */
   testId: string;
 };
 
@@ -45,14 +47,14 @@ const stamp = (value: string | null): ReactNode => {
  * analyses and a link back to it, its status and progress ("12 of 80
  * positions · 7. Nf3"), why it failed, the engine that ran it and every option
  * it was given, when it was asked for, started and ended, a link to each Saved
- * analysis it made, and Resume / Cancel / Delete. A finished job's report and
+ * analysis it made, and Resume / Pause / Cancel / Delete. A finished job's report and
  * eval graph go under it, or another job's results so far (`children` —
  * `ComputerAnalysisReport`, `EvalGraph`).
  *
  * Presentational: the job, its links and its actions are props; its words are
  * the app's (`jobs.*`).
  */
-function JobSummary({ job, sourceLink, outputLink, onCancel, onResume, onDelete, children, testId }: JobSummaryProps) {
+function JobSummary({ job, sourceLink, outputLink, onCancel, onPause, onResume, onDelete, children, testId }: JobSummaryProps) {
   const { t } = useTranslation();
   const name = job.source.name || t("jobs.untitled");
   const progress = jobProgress(job);
@@ -121,6 +123,11 @@ function JobSummary({ job, sourceLink, outputLink, onCancel, onResume, onDelete,
         {canResumeJob(job) && (
           <Button size="small" variant="contained" onClick={onResume} data-testid={`${testId}-resume`}>
             {t("jobs.resume")}
+          </Button>
+        )}
+        {canPauseJob(job) && (
+          <Button size="small" variant="outlined" onClick={onPause} data-testid={`${testId}-pause`}>
+            {t("jobs.pause")}
           </Button>
         )}
         {canCancelJob(job) && (

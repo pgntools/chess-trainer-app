@@ -11,8 +11,9 @@ import { jobProgress, type Job, type JobStatus } from "../../lib/jobs";
 import { useJobs } from "./useJobs";
 
 /** The statuses a reader is told a job reached — not every position, only these. */
-const ANNOUNCED: Partial<Record<JobStatus, "started" | "done" | "failed" | "cancelled">> = {
+const ANNOUNCED: Partial<Record<JobStatus, "started" | "paused" | "done" | "failed" | "cancelled">> = {
   running: "started",
+  paused: "paused",
   done: "done",
   failed: "failed",
   cancelled: "cancelled",

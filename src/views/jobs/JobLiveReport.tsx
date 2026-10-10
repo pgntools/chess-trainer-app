@@ -21,7 +21,7 @@ const playerOf = (tree: GameTree, key: "White" | "Black"): string | undefined =>
 /**
  * **A job's results so far** (CTA-178, `jobLiveAnalysis`) — what the Jobs
  * screen's panel shows of a job not done: queued or running, filling in as
- * the store changes, and interrupted, failed or cancelled, what its
+ * the store changes, and paused, interrupted, failed or cancelled, what its
  * checkpoint holds. Lichess's server analysis, filling in:
  *
  * - **the eval graph** spanning the whole run (`span`), the line growing from

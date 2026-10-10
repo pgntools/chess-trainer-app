@@ -140,6 +140,22 @@ describe("the Jobs screen (CTA-173)", () => {
     expect(screen.queryByRole("button", { name: "Cancel Alice – Bob" })).not.toBeInTheDocument();
   });
 
+  it("pauses a running job from its panel, and resumes it: its checkpoint kept (CTA-178)", async () => {
+    const user = userEvent.setup();
+    await addJob(withCheckpoint(jobOf("live", "running"), 0, finishedResults(jobOf("live", "running"))[0], AT));
+    renderAt("/jobs?job=live");
+    const panel = await screen.findByTestId("jobs-summary");
+    await user.click(within(panel).getByRole("button", { name: "Pause" }));
+    await waitFor(() => expect(findJob("live")?.status).toBe("paused"));
+    expect(within(panel).getByTestId("jobs-summary-status")).toHaveTextContent("Paused");
+    expect(screen.getByTestId("jobs-table-status-live")).toHaveTextContent("Paused");
+    expect(within(panel).queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+
+    await user.click(within(panel).getByRole("button", { name: "Resume" }));
+    await waitFor(() => expect(findJob("live")?.status).toBe("queued"));
+    expect(findJob("live")?.checkpoint[0]).not.toBeNull();
+  });
+
   it("resumes an interrupted job: queued again, its checkpoint kept", async () => {
     const user = userEvent.setup();
     const cut = withCheckpoint(jobOf("cut", "interrupted"), 0, finishedResults(jobOf("cut", "interrupted"))[0], AT);
@@ -272,7 +288,7 @@ describe("a job's results so far (CTA-178)", () => {
     expect(screen.getByTestId("where")).toHaveTextContent("/jobs?job=board");
   });
 
-  it.each(["interrupted", "failed", "cancelled"] as const)("shows what an %s job's checkpoint holds", async (status) => {
+  it.each(["paused", "interrupted", "failed", "cancelled"] as const)("shows what an %s job's checkpoint holds", async (status) => {
     await addJob(checkpointed({ ...jobOf("cut", status), ...(status === "failed" ? { error: "engine" as const } : {}) }, 2));
     renderAt("/jobs?job=cut");
     const live = await screen.findByRole("region", { name: "Results so far" });

@@ -2710,9 +2710,11 @@ const en = {
     openSource: "Open the analysed game",
     openOutput: "Open the {{variant}} analysis",
     resume: "Resume",
+    pause: "Pause",
     cancel: "Cancel",
     delete: "Delete",
     resumeNamed: "Resume {{name}}",
+    pauseNamed: "Pause {{name}}",
     cancelNamed: "Cancel {{name}}",
     deleteNamed: "Delete {{name}}",
     confirmDelete: {
@@ -2732,6 +2734,7 @@ const en = {
     status: {
       queued: "Queued",
       running: "Running",
+      paused: "Paused",
       interrupted: "Interrupted",
       done: "Done",
       failed: "Failed",
@@ -2785,6 +2788,7 @@ const en = {
       label: "Jobs: {{name}}, {{done}} of {{total}} positions",
       labelQueued: "Jobs: {{count}} queued",
       started: "Computer analysis started: {{name}}.",
+      paused: "Computer analysis paused: {{name}}.",
       done: "Computer analysis finished: {{name}}.",
       failed: "Computer analysis failed: {{name}}.",
       cancelled: "Computer analysis cancelled: {{name}}.",

@@ -14,6 +14,7 @@ const demo = (job: Job, withReport = false) => (
       sourceLink={job.source.analysisId === null ? undefined : { href: `?analysis=${job.source.analysisId}` }}
       outputLink={(output) => ({ href: `?analysis=${output.analysisId}` })}
       onCancel={() => {}}
+      onPause={() => {}}
       onResume={() => {}}
       onDelete={() => {}}
       testId="gallery-job"

@@ -4,11 +4,11 @@ import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
-import { DONE, INTERRUPTED, JOBS, RUNNING } from "./fixtures";
+import { DONE, INTERRUPTED, JOBS, PAUSED, QUEUED, RUNNING } from "./fixtures";
 import JobsTable, { type JobsTableProps } from "./JobsTable";
 
 const mount = (props: Partial<JobsTableProps> = {}) => {
-  const handlers = { onCancel: vi.fn(), onResume: vi.fn(), onDelete: vi.fn() };
+  const handlers = { onCancel: vi.fn(), onPause: vi.fn(), onResume: vi.fn(), onDelete: vi.fn() };
   render(<JobsTable rows={JOBS} rowLink={(job) => ({ href: `/jobs?job=${job.id}` })} {...handlers} testId="jobs" {...props} />);
   return handlers;
 };
@@ -42,29 +42,35 @@ describe("JobsTable (CTA-173)", () => {
     expect(screen.getByRole("link", { name: "Show the job Ding – Gukesh" })).toHaveAttribute("href", "/jobs?job=queued");
   });
 
-  it("offers Cancel on the unfinished jobs, Resume on the stopped ones, Delete on all — each named for its job", async () => {
+  it("offers Cancel on the unfinished jobs, Pause on the active ones, Resume on the stopped ones, Delete on all — each named for its job", async () => {
     const user = userEvent.setup();
     const handlers = mount();
     const name = RUNNING.source.name;
-    expect(screen.getAllByRole("button", { name: `Cancel ${name}` })).toHaveLength(2); // running, interrupted
-    expect(screen.getAllByRole("button", { name: `Resume ${name}` })).toHaveLength(2); // interrupted, failed
-    expect(screen.getAllByRole("button", { name: `Delete ${name}` })).toHaveLength(5);
+    expect(screen.getAllByRole("button", { name: `Cancel ${name}` })).toHaveLength(3); // running, paused, interrupted
+    expect(screen.getAllByRole("button", { name: `Pause ${name}` })).toHaveLength(1); // running
+    expect(screen.getByRole("button", { name: `Pause ${QUEUED.source.name}` })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: `Resume ${name}` })).toHaveLength(3); // paused, interrupted, failed
+    expect(screen.getAllByRole("button", { name: `Delete ${name}` })).toHaveLength(6);
     expect(screen.queryByTestId("jobs-cancel-done")).not.toBeInTheDocument();
 
     await user.click(screen.getByTestId("jobs-cancel-running"));
     expect(handlers.onCancel).toHaveBeenCalledWith(RUNNING);
+    await user.click(screen.getByTestId("jobs-pause-running"));
+    expect(handlers.onPause).toHaveBeenCalledWith(RUNNING);
     await user.click(screen.getByTestId("jobs-resume-interrupted"));
     expect(handlers.onResume).toHaveBeenCalledWith(INTERRUPTED);
+    await user.click(screen.getByTestId("jobs-resume-paused"));
+    expect(handlers.onResume).toHaveBeenCalledWith(PAUSED);
     await user.click(screen.getByTestId("jobs-delete-done"));
     expect(handlers.onDelete).toHaveBeenCalledWith(DONE);
   });
 
   it("says when there are no jobs, and while they are read", () => {
     const { rerender } = render(
-      <JobsTable rows={[]} rowLink={() => ({ href: "/" })} onCancel={() => {}} onResume={() => {}} onDelete={() => {}} testId="jobs" />,
+      <JobsTable rows={[]} rowLink={() => ({ href: "/" })} onCancel={() => {}} onPause={() => {}} onResume={() => {}} onDelete={() => {}} testId="jobs" />,
     );
     expect(screen.getByTestId("jobs-empty")).toHaveTextContent("No jobs yet");
-    rerender(<JobsTable rows={[]} rowLink={() => ({ href: "/" })} onCancel={() => {}} onResume={() => {}} onDelete={() => {}} loading testId="jobs" />);
+    rerender(<JobsTable rows={[]} rowLink={() => ({ href: "/" })} onCancel={() => {}} onPause={() => {}} onResume={() => {}} onDelete={() => {}} loading testId="jobs" />);
     expect(screen.getByTestId("jobs-loading")).toBeInTheDocument();
   });
 

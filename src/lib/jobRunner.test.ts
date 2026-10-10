@@ -7,7 +7,7 @@ import type { EngineDescriptor } from "./engineTypes";
 import { resolveEngine } from "./engines";
 import { createJobRunner, type JobRunner, type JobRunnerDeps } from "./jobRunner";
 import { computerAnalysisJobOf, withCheckpoint, type Job } from "./jobs";
-import { addJob, cancelJob, findJob, removeJob, resumeJob } from "./jobStore";
+import { addJob, cancelJob, findJob, pauseJob, removeJob, resumeJob } from "./jobStore";
 import { createAnalysisFolder } from "./savedAnalysisFolderStore";
 import { loadSavedAnalyses } from "./savedAnalysisStore";
 
@@ -185,6 +185,30 @@ describe("the job runner (CTA-173)", () => {
     expect(findJob("job")).toMatchObject({ status: "cancelled" });
     expect(findJob("job")?.checkpoint.filter((entry) => entry !== null)).toHaveLength(1);
     expect(engine().searches).toHaveLength(2);
+  });
+
+  it("pauses: the search stopped, the engine terminated, the checkpoint kept — and Resume goes on from it (CTA-178)", async () => {
+    const job = jobOf();
+    await addJob(job);
+    start();
+    await searched(1);
+    answer(job.positions[0].fen);
+    await searched(2);
+
+    await pauseJob("job");
+    await vi.waitFor(() => expect(engine().terminated).toBe(true));
+    // A result arriving after the pause is not written.
+    answer(job.positions[1].fen);
+    await runner!.idle();
+    expect(findJob("job")).toMatchObject({ status: "paused" });
+    expect(findJob("job")?.checkpoint.filter((entry) => entry !== null)).toHaveLength(1);
+
+    await resumeJob("job");
+    await vi.waitFor(() => expect(FakeEngine.instances).toHaveLength(2));
+    await searched(1);
+    expect(engine().searches).toEqual([job.positions[1].fen]);
+    await answerAll(job, 1);
+    await vi.waitFor(() => expect(findJob("job")?.status).toBe("done"));
   });
 
   it("stops a job that is deleted while it runs", async () => {

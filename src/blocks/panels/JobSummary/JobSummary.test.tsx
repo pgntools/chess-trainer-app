@@ -9,7 +9,7 @@ import { DONE, FAILED, RUNNING, UNSAVED } from "./fixtures";
 import JobSummary from "./JobSummary";
 
 const mount = (job: Job) => {
-  const handlers = { onCancel: vi.fn(), onResume: vi.fn(), onDelete: vi.fn() };
+  const handlers = { onCancel: vi.fn(), onPause: vi.fn(), onResume: vi.fn(), onDelete: vi.fn() };
   render(
     <JobSummary
       job={job}
@@ -74,12 +74,24 @@ describe("JobSummary (CTA-173)", () => {
     expect(handlers.onDelete).toHaveBeenCalled();
   });
 
-  it("offers Cancel on a running job", async () => {
+  it("offers Pause and Cancel on a running job", async () => {
     const user = userEvent.setup();
     const handlers = mount(RUNNING);
+    await user.click(screen.getByRole("button", { name: "Pause" }));
+    expect(handlers.onPause).toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(handlers.onCancel).toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Resume" })).not.toBeInTheDocument();
+  });
+
+  it("offers Resume and Cancel on a paused job, but no Pause (CTA-178)", async () => {
+    const user = userEvent.setup();
+    const handlers = mount({ ...RUNNING, status: "paused" });
+    expect(screen.getByText("Paused")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Resume" }));
+    expect(handlers.onResume).toHaveBeenCalled();
   });
 
   it("passes axe", async () => {

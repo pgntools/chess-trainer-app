@@ -2143,9 +2143,11 @@ const he: typeof en = {
     openSource: "פתיחת המשחק שנותח",
     openOutput: "פתיחת הניתוח ה{{variant}}",
     resume: "המשך",
+    pause: "השהיה",
     cancel: "ביטול",
     delete: "מחיקה",
     resumeNamed: "המשך את {{name}}",
+    pauseNamed: "השהיית {{name}}",
     cancelNamed: "ביטול {{name}}",
     deleteNamed: "מחיקת {{name}}",
     confirmDelete: {
@@ -2164,6 +2166,7 @@ const he: typeof en = {
     status: {
       queued: "בתור",
       running: "רצה",
+      paused: "מושהית",
       interrupted: "נקטעה",
       done: "הסתיימה",
       failed: "נכשלה",
@@ -2216,6 +2219,7 @@ const he: typeof en = {
       label: "משימות: {{name}}, {{done}} מתוך {{total}} עמדות",
       labelQueued: "משימות: {{count}} בתור",
       started: "ניתוח המחשב התחיל: {{name}}.",
+      paused: "ניתוח המחשב הושהה: {{name}}.",
       done: "ניתוח המחשב הסתיים: {{name}}.",
       failed: "ניתוח המחשב נכשל: {{name}}.",
       cancelled: "ניתוח המחשב בוטל: {{name}}.",

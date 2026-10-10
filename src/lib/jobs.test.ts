@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "./computerAnalysis";
 import {
   canCancelJob,
+  canPauseJob,
   canResumeJob,
   computerAnalysisJobOf,
   jobFrom,
@@ -66,10 +67,13 @@ describe("a computer analysis job (CTA-173)", () => {
   });
 
   it("is cancelled while it has not ended, and resumed when a reload or a failure stopped it", () => {
-    expect(["queued", "running", "interrupted"].every((status) => canCancelJob({ status } as never))).toBe(true);
+    expect(["queued", "running", "paused", "interrupted"].every((status) => canCancelJob({ status } as never))).toBe(true);
     expect(["done", "failed", "cancelled"].some((status) => canCancelJob({ status } as never))).toBe(false);
-    expect(["interrupted", "failed"].every((status) => canResumeJob({ status } as never))).toBe(true);
+    expect(["paused", "interrupted", "failed"].every((status) => canResumeJob({ status } as never))).toBe(true);
     expect(["queued", "running", "done", "cancelled"].some((status) => canResumeJob({ status } as never))).toBe(false);
+    // Pause (CTA-178): a job waiting or being run, nothing else.
+    expect(["queued", "running"].every((status) => canPauseJob({ status } as never))).toBe(true);
+    expect(["paused", "interrupted", "done", "failed", "cancelled"].some((status) => canPauseJob({ status } as never))).toBe(false);
   });
 });
 
@@ -89,7 +93,7 @@ describe("jobFrom — a stored job read back", () => {
   });
 
   it("reads an unknown status as interrupted, never as something to run", () => {
-    expect(jobFrom({ ...job, status: "paused" })?.status).toBe("interrupted");
+    expect(jobFrom({ ...job, status: "sleeping" })?.status).toBe("interrupted");
   });
 
   it("keeps a checkpoint entry only for its own position, and pads the checkpoint to the positions", () => {

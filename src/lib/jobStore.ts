@@ -2,6 +2,7 @@ import { idbDatabase } from "./idb";
 import { idbRecordStore } from "./idbRecordStore";
 import {
   canCancelJob,
+  canPauseJob,
   canResumeJob,
   computerAnalysisJobOf,
   isFinishedJob,
@@ -142,7 +143,15 @@ export const cancelJob = (id: string, now: Date = new Date()): Promise<JobProble
   );
 
 /**
- * **Resume** an interrupted or failed job: queued again, its checkpoint kept,
+ * **Pause** a job waiting or being run (CTA-178): `paused`, its checkpoint
+ * kept. A running one is stopped by the runner, which reads the status and
+ * stops its search — the same as a cancel, but Resume takes it up again.
+ */
+export const pauseJob = (id: string, now: Date = new Date()): Promise<JobProblem | undefined> =>
+  updateJob(id, (job) => (canPauseJob(job) ? { ...job, status: "paused", updatedAt: now.toISOString() } : job));
+
+/**
+ * **Resume** a paused, interrupted or failed job: queued again, its checkpoint kept,
  * so the runner goes on from the first position with no result.
  */
 export const resumeJob = (id: string, now: Date = new Date()): Promise<JobProblem | undefined> =>
