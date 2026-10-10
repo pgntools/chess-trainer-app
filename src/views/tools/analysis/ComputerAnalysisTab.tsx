@@ -7,13 +7,14 @@ import { Link as RouterLink } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { ComputerAnalysisForm, type ComputerAnalysisStartProblem } from "../../../blocks/forms";
-import { ComputerAnalysisReport, EvalGraph } from "../../../blocks/panels";
+import { ComputerAnalysisReport, EvalGraph, evalText } from "../../../blocks/panels";
 import { JOB_STATUS_TONES } from "../../../blocks/tables";
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { ProgressLine } from "../../../design-system/components/states";
 import {
   analysisPositionsOf,
   computerAnalysisOptionsFrom,
+  turnOf,
   type ComputerAnalysisOptions,
   type MoveVerdictKind,
 } from "../../../lib/computerAnalysis";
@@ -22,7 +23,8 @@ import type { Turn } from "../../../lib/engineAnalysis";
 import { deviceEngineLimits } from "../../../lib/engineSettings";
 import type { EngineOption } from "../../../lib/engineTypes";
 import { gameTag } from "../../../lib/gameModel";
-import { plyLabel, type GameTree } from "../../../lib/gameTree";
+import { mainline, plyLabel, type GameTree } from "../../../lib/gameTree";
+import { jobLiveAnalysis } from "../../../lib/jobLiveAnalysis";
 import { isActiveJob, isFinishedJob, jobMoveLabel, jobProgress, type Job, type JobSource } from "../../../lib/jobs";
 import { enqueueComputerAnalysis } from "../../../lib/jobStore";
 import { SAVED_ANALYSIS_PLAYER } from "../../../lib/savedAnalyses";
@@ -148,7 +150,14 @@ function ComputerAnalysisTab({
 
   return (
     <Box data-testid="analysis-computer" sx={{ display: "grid", gap: 2.5 }}>
-      {job !== undefined && <GameJob key={job.id} job={job} takeFocusRef={focusJobRef} />}
+      {job !== undefined && (
+        <GameJob
+          key={job.id}
+          job={job}
+          takeFocusRef={focusJobRef}
+          board={{ tree, mainlinePly, currentNodeId, onGoToNode, labelOf: moveLabel }}
+        />
+      )}
 
       {read !== undefined && (
         <Box component="section" aria-labelledby="analysis-computer-report-title" sx={{ display: "grid", gap: 1.5 }}>
@@ -213,7 +222,16 @@ function ComputerAnalysisTab({
  * done, the way to it on the Jobs screen. Mounted afresh per job (`key`); it
  * takes the focus on mounting when `takeFocusRef` says a Start just sent it.
  */
-function GameJob({ job, takeFocusRef }: { job: Job; takeFocusRef: RefObject<boolean> }) {
+/** What the job's live results need of the board: its game, where it stands, and the way to move it. */
+type BoardLink = {
+  tree: GameTree;
+  mainlinePly: number;
+  currentNodeId: string | null;
+  onGoToNode: (nodeId: string | null) => void;
+  labelOf: (point: EvalPoint) => string;
+};
+
+function GameJob({ job, takeFocusRef, board }: { job: Job; takeFocusRef: RefObject<boolean>; board: BoardLink }) {
   const { t } = useTranslation();
   const heading = useRef<HTMLHeadingElement>(null);
   const progress = jobProgress(job);
@@ -278,6 +296,7 @@ function GameJob({ job, takeFocusRef }: { job: Job; takeFocusRef: RefObject<bool
           {t(`jobs.errors.${job.error}`)}
         </InlineAlert>
       )}
+      <LiveResults job={job} board={board} />
       <Box sx={{ display: "grid", gap: 1, justifyItems: "start" }}>
         {job.outputs.map((output) => (
           <Button
@@ -299,6 +318,77 @@ function GameJob({ job, takeFocusRef }: { job: Job; takeFocusRef: RefObject<bool
           {t("computerAnalysis.board.openJobs")}
         </Link>
       </Box>
+    </Box>
+  );
+}
+
+/**
+ * **The job's results so far** (`jobLiveAnalysis`), drawn as they land — the
+ * eval graph filling in move by move, the latest finished position's eval and
+ * best line, and the report over the moves judged so far — lichess's server
+ * analysis, filling in. The job's own tree is a re-parse of its source, whose
+ * node ids are not the board's: each point is the board's mainline node at its
+ * ply, kept only while that node holds the same position, so a click moves the
+ * board and a board edited since sending simply loses the points it changed.
+ */
+function LiveResults({ job, board }: { job: Job; board: BoardLink }) {
+  const { t } = useTranslation();
+  const live = useMemo(() => jobLiveAnalysis(job), [job]);
+  const { tree, mainlinePly, currentNodeId, onGoToNode, labelOf } = board;
+  const points = useMemo((): EvalPoint[] => {
+    if (live === undefined) return [];
+    const nodes = mainline(tree);
+    return live.points.flatMap((point): EvalPoint[] => {
+      if (point.ply === 0) return tree.startFen === point.fen ? [{ ...point, nodeId: null }] : [];
+      const node = nodes[point.ply - 1];
+      if (node?.fen !== point.fen) return [];
+      // The move was played by the side not to move after it.
+      return [{ ...point, nodeId: node.id, san: node.san, side: turnOf(point.fen) === "w" ? "b" : "w" }];
+    });
+  }, [live, tree]);
+  if (live === undefined || points.length === 0) return null;
+  const { latest } = live;
+
+  return (
+    <Box data-testid="analysis-computer-live" sx={{ display: "grid", gap: 1.5, pt: 0.5 }}>
+      <EvalGraph
+        points={points}
+        currentNodeId={currentNodeId}
+        onSelect={(point) => onGoToNode(point.nodeId)}
+        labelOf={labelOf}
+        label={t("computerAnalysis.board.liveGraph")}
+        span={job.positions.length}
+        testId="analysis-computer-live-graph"
+      />
+      {latest !== undefined && (
+        <Typography variant="body2" data-testid="analysis-computer-live-latest">
+          {latest.move === undefined
+            ? t("computerAnalysis.board.latestStart")
+            : t("computerAnalysis.board.latest")}{" "}
+          {latest.move !== undefined && <bdi dir="ltr">{latest.move}</bdi>}
+          {": "}
+          <bdi dir="ltr">{evalText(latest.line.score)}</bdi>
+          {" · "}
+          {t("computerAnalysis.board.depth", { depth: latest.line.depth })}
+          {latest.moves !== "" && (
+            <>
+              {" · "}
+              <bdi dir="ltr">{latest.moves}</bdi>
+            </>
+          )}
+        </Typography>
+      )}
+      {live.verdicts.length > 0 && (
+        <ComputerAnalysisReport
+          report={live.report}
+          players={{ w: playerOf(tree, "White"), b: playerOf(tree, "Black") }}
+          onStep={(side, kind) => {
+            const next = nextOfKind(points, side, kind, mainlinePly);
+            if (next !== undefined) onGoToNode(next.nodeId);
+          }}
+          testId="analysis-computer-live-report"
+        />
+      )}
     </Box>
   );
 }

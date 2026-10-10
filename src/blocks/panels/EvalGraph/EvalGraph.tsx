@@ -21,6 +21,13 @@ export type EvalGraphProps = {
   labelOf?: (point: EvalPoint) => string;
   /** The graph's accessible name ("Evaluation graph") — required, so it is never nameless. */
   label: string;
+  /**
+   * How many points the whole graph will hold (CTA-174): a run still being
+   * made draws what it has from the left, the line growing rightwards as
+   * lichess's does. Absent (or fewer than the points), the points span the
+   * width.
+   */
+  span?: number;
   /** Its height in pixels; the width is its parent's. */
   height?: number;
   /** The root; the parts are `-plot`, `-point-<ply>` (a verdict's dot), `-current`, `-tooltip`. */
@@ -73,7 +80,7 @@ const graphSx = (theme: Theme) => {
  * Presentational: the points are a prop (`lib/computerAnalysisTree.ts`), the
  * words the app's (`computerAnalysis.graph.*`).
  */
-function EvalGraph({ points, currentNodeId, onSelect, labelOf, label, height = 120, testId }: EvalGraphProps) {
+function EvalGraph({ points, currentNodeId, onSelect, labelOf, label, span, height = 120, testId }: EvalGraphProps) {
   const { t } = useTranslation();
   const hintId = useId();
   const currentIndex = currentNodeId === undefined ? -1 : points.findIndex((point) => point.nodeId === currentNodeId);
@@ -97,7 +104,8 @@ function EvalGraph({ points, currentNodeId, onSelect, labelOf, label, height = 1
   const describe = (point: EvalPoint) =>
     [nameOf(point), evalText(point.score), kindOf(point.kind)].filter((part) => part !== "").join(", ");
 
-  const xs = points.map((_, index) => evalX(index, points.length));
+  const slots = Math.max(points.length, span ?? 0);
+  const xs = points.map((_, index) => evalX(index, slots));
   const ys = points.map((point) => evalY(point.cp));
   const line = xs.map((x, index) => `${index === 0 ? "M" : "L"}${x} ${ys[index]}`).join(" ");
   const area = `M${xs[0]} 50 ${xs.map((x, index) => `L${x} ${ys[index]}`).join(" ")} L${xs[last]} 50 Z`;
@@ -105,7 +113,7 @@ function EvalGraph({ points, currentNodeId, onSelect, labelOf, label, height = 1
   const indexAt = (event: MouseEvent<HTMLElement>): number => {
     const box = event.currentTarget.getBoundingClientRect();
     const fraction = box.width === 0 ? 0 : (event.clientX - box.left) / box.width;
-    return Math.min(last, Math.max(0, Math.round(fraction * last)));
+    return Math.min(last, Math.max(0, Math.round(fraction * (slots - 1))));
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {

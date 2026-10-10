@@ -29,6 +29,7 @@ shell's indicator, and how to test and extend them.
 
 | Path | What lives there |
 | --- | --- |
+| `src/lib/jobLiveAnalysis.ts` | **A job's results so far**, pure (CTA-174): the source re-parsed, the checkpoint read into the eval graph's points, the verdicts and report over the moves judged so far, the latest finished position — the Analysis Board's tab draws them while a job runs. |
 | `src/lib/jobs.ts` | **The record**, pure: `Job` (`ComputerAnalysisJob`), its statuses and errors, `ComputerAnalysisRequest`, `computerAnalysisJobOf` (a request → a queued job, or `undefined` when there is nothing to run), `jobSearchOf` (the source's tree and positions), `withCheckpoint`, `jobProgress`, `jobMoveLabel`, `canCancelJob` / `canResumeJob`, `jobOutputName`, `MAX_JOBS`, and the normaliser `jobFrom`. |
 | `src/lib/jobStore.ts` | **The store**: `chessapp.jobs`, object store `jobs`, over `idbRecordStore` (newest first). `enqueueComputerAnalysis` (the board's one call), `addJob` (the cap), `updateJob`, `cancelJob`, `resumeJob`, `removeJob`, `interruptRunningJobs`, `findJob`; `jobsSnapshot` / `subscribeJobs` / `loadJobs` / `settledJobs` / `resetJobStore` / `deleteJobsDb`. |
 | `src/lib/jobRunner.ts` | **The runner** (§3): `createJobRunner(deps)`, and the page's one, `startJobRunner()` / `stopJobRunner()` (tests). |

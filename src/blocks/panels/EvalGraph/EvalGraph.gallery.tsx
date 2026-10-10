@@ -23,6 +23,14 @@ const gallery: GalleryModule<BlockFamilyId> = {
       ),
     },
     {
+      name: "A run still being made — 12 of 21 points, drawn from the left (span, CTA-174)",
+      render: () => (
+        <Box sx={{ maxWidth: 480, pt: 4 }}>
+          <EvalGraph points={GAME.slice(0, 12)} span={GAME.length} label="Evaluation graph so far" testId="gallery-eval-graph-live" />
+        </Box>
+      ),
+    },
+    {
       name: "Read only — no move to go to",
       render: () => (
         <Box sx={{ maxWidth: 480, pt: 4 }}>

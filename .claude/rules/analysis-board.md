@@ -55,7 +55,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/blocks/panels/PgnExportPanel/` | The Export tab (every board's): FEN, PGN with or without comments / NAGs / side lines, copy and download. |
 | `src/lib/engineEvals.ts` | **The engine's evaluations written into the game** (CTA-167, §1): `[%eval pawns,depth]` on the move searched, the override by depth, the `Annotator` tag — [`pgn-annotations.md`](./pgn-annotations.md) §2. |
 | `src/blocks/forms/AnalysisEngineForm/` | The Engine tab (**infinite analysis**, depth 1–40, move time 0–60 s — its own ceiling since CTA-163, the engine form's marks reach 300 s — lines, **threads, hash** — Play with Engine's, up to what the device can give, `deviceLimits`, CTA-160 — the eval bar, Clear) — every board's but Play's; each option slider rendered from what the engine declared (`engineOptionState`). |
-| `src/views/tools/analysis/ComputerAnalysisTab.tsx`, `computerAnalysisSeed.ts` | **The Computer analysis tab** (CTA-174, §1.3): this game's job, the report and eval graph of a tree's `[%eval]`s, the form and Start (`enqueueComputerAnalysis`); the form's first options from the Engine tab (`computerAnalysisSeed`). |
+| `src/views/tools/analysis/ComputerAnalysisTab.tsx`, `computerAnalysisSeed.ts`, `src/lib/jobLiveAnalysis.ts` | **The Computer analysis tab** (CTA-174, §1.3): this game's job and its results so far (`jobLiveAnalysis`), the report and eval graph of a tree's `[%eval]`s, the form and Start (`enqueueComputerAnalysis`); the form's first options from the Engine tab (`computerAnalysisSeed`). |
 | `src/blocks/forms/ComputerAnalysisForm/` | The tab's form (CTA-174): threads, hash, lines (by what the engine declared, `engineOptionState`), depth, time per move, the early stop's depth; side, first move and colour, last move; under a collapsed Advanced the thresholds and the variation range; the light / medium / full boxes; Start, off saying why. The report and graph are the Jobs screen's blocks, `ComputerAnalysisReport` (with `onStep`) and `EvalGraph` ([`jobs.md`](./jobs.md)). |
 | `src/views/tools/analysis/AnalysisArrows.tsx`, `src/blocks/forms/ArrowSettingsFields/` | The Arrows tab (CTA-98, §1.1): the next-move arrows switch, the width source and the palette — and the move marks switch (CTA-168). The fields block is shared with the settings screen. |
 | `src/views/tools/analysis/SaveAnalysisDialog.tsx` | A new board's name and folder. |
@@ -251,7 +251,16 @@ analysis ([`pgn-annotations.md`](./pgn-annotations.md) §6).
   `announce`: "12 of 80 positions · 7. Nf3"), a line saying what is going on,
   why it failed, once done a contained **Open the <variant> analysis** button
   per output, and **Open in Jobs** (`/jobs?job=<id>`). Read through
-  `useJobs()`. **While it is queued or running it takes the form's place**
+  `useJobs()`. **Its results so far fill in as it runs** (lichess's server
+  analysis): `lib/jobLiveAnalysis.ts` re-parses the job's source and reads its
+  checkpoint — every finished position a point of an eval graph that spans
+  the whole run (`EvalGraph`'s `span`: the line grows from the left), the
+  latest finished position's eval, depth and numbered best line, and the
+  report over the moves judged so far (a move needs both its positions done;
+  `moveVerdicts` skips the rest). The job's node ids are its own re-parse's,
+  so each point is the board's mainline node at its ply, kept only while it
+  holds the same FEN: a click moves the board, a board edited since sending
+  loses the points it changed. **While it is queued or running it takes the form's place**
   (lichess's request button turning into its progress), so the same game is
   not sent twice; **Start moves the focus** onto its heading (`tabIndex -1`),
   which scrolls it into view — the signal is set before the write, because a
