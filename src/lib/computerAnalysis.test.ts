@@ -77,6 +77,21 @@ describe("computerAnalysisOptionsFrom", () => {
     expect(read.moveTimeMs).toBe(0);
   });
 
+  it("keeps an engine server's engine's Hash and Threads past the in-browser ceilings (CTA-175)", () => {
+    const hosted = computerAnalysisOptionsFrom({ engine: "hosted:stockfish-19", threads: 12, hashMb: 4096 });
+    expect(hosted).toMatchObject({ engine: "hosted:stockfish-19", threads: 12, hashMb: 4096 });
+    // Read back as a stored job is: the same.
+    expect(computerAnalysisOptionsFrom(JSON.parse(JSON.stringify(hosted)))).toEqual(hosted);
+  });
+
+  it("still holds an in-browser build, or a record naming no engine, to 1024 MB and 32 threads (CTA-175)", () => {
+    for (const engine of [undefined, "stockfish-19-lite-single", "stockfish-19-lite-multi"]) {
+      const read = computerAnalysisOptionsFrom({ engine, threads: 48, hashMb: 4096 });
+      expect(read.hashMb).toBe(1024);
+      expect(read.threads).toBe(32);
+    }
+  });
+
   it("clamps minDepth to at most the depth", () => {
     expect(computerAnalysisOptionsFrom({ depth: 18, minDepth: 24 }).minDepth).toBe(18);
     expect(computerAnalysisOptionsFrom({ depth: 18, minDepth: 12 }).minDepth).toBe(12);

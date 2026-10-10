@@ -111,4 +111,11 @@ describe("jobFrom — a stored job read back", () => {
     expect(read.options.depth).toBe(40);
     expect(read.options.outputs).toEqual(["full"]);
   });
+
+  it("keeps an engine server's engine's Hash and Threads, sent and read back, an in-browser build's still cut to 1024 (CTA-175)", () => {
+    const hosted = computerAnalysisJobOf("j2", request({ engine: "hosted:stockfish-19", threads: 12, hashMb: 4096 }), NOW)!;
+    expect(hosted.options).toMatchObject({ threads: 12, hashMb: 4096 });
+    expect(jobFrom(JSON.parse(JSON.stringify(hosted)))?.options).toMatchObject({ threads: 12, hashMb: 4096 });
+    expect(computerAnalysisJobOf("j3", request({ hashMb: 4096 }), NOW)!.options.hashMb).toBe(1024);
+  });
 });

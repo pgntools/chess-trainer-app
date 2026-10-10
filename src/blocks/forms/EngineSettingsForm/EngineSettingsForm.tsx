@@ -26,8 +26,11 @@ export type EngineSettingsFormProps = {
   showEvalBar: boolean;
   onShowEvalBarChange: (next: boolean) => void;
   /**
-   * The most Threads and Hash this device should be offered — the screen's
-   * `deviceEngineLimits()` (CTA-160). Absent: `ENGINE_SETTING_BOUNDS`' ceilings.
+   * The most Threads and Hash to offer — the screen's `engineLimitsOf(descriptor)`:
+   * what this device can give an in-browser build (`deviceEngineLimits()`,
+   * CTA-160), or what an engine server's engine declares (CTA-175), which may
+   * be past `ENGINE_SETTING_BOUNDS`' WebAssembly ceilings — it is also the
+   * range before the handshake. Absent: `ENGINE_SETTING_BOUNDS`' ceilings.
    */
   deviceLimits?: DeviceEngineLimits;
   /**
@@ -53,8 +56,12 @@ type OptionRow = {
   helpKey?: string;
 };
 
-/** The Hash slider's round RAM points (CTA-163) — labelled marks, shown where they fall within the offered range. */
-const HASH_MARKS_MB = [128, 256, 512, 1024] as const;
+/**
+ * The Hash slider's round RAM points (CTA-163) — labelled marks, shown where
+ * they fall within the offered range: 2048 and 4096 only for an engine
+ * server's engine (CTA-175), the in-browser builds stopping at 1024.
+ */
+const HASH_MARKS_MB = [128, 256, 512, 1024, 2048, 4096] as const;
 
 const hashMarks = ({ min, max }: { min: number; max: number }): ReadonlyArray<{ value: number; label: string }> =>
   HASH_MARKS_MB.filter((mb) => mb >= min && mb <= max).map((mb) => ({ value: mb, label: String(mb) }));
@@ -97,7 +104,9 @@ function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, on
   const optionSlider = ({ setting, labelKey, maxOffered, slug, marks, helpKey }: OptionRow, valueLabel?: string) => {
     const optionName = SETTING_UCI_OPTION[setting];
     const id = `${testId}-setting-${slug ?? optionSlug(optionName)}`;
-    const state = engineOptionState(optionFor(optionName), ENGINE_SETTING_BOUNDS[setting], maxOffered);
+    // Before the handshake the top is what is offered: an engine server's engine's may be past the in-browser bounds (CTA-175).
+    const bounds = ENGINE_SETTING_BOUNDS[setting];
+    const state = engineOptionState(optionFor(optionName), { min: bounds.min, max: maxOffered ?? bounds.max }, maxOffered);
     return (
       <SliderField
         key={setting}
@@ -173,7 +182,8 @@ function EngineSettingsForm({ settings, onChange, engineOptions, showEvalBar, on
       {/*
         Capped at what this device can give, as the lines are capped: the
         Stockfish 19 builds declare `Hash` up to 33,554,432 MB (2048 crashed
-        the tab) and the multi-thread one 32 threads.
+        the tab) and the multi-thread one 32 threads. An engine server's engine
+        is capped at what it declares instead (`deviceLimits`, CTA-175).
       */}
       {optionSlider({
         setting: "threads",

@@ -10,6 +10,8 @@ import EngineSettingsForm from "./EngineSettingsForm";
 import {
   ADJUSTABLE_OPTIONS,
   ELO_WITHOUT_LIMIT_OPTIONS,
+  HOSTED_LIMITS,
+  HOSTED_OPTIONS,
   NO_OPTIONS,
   SETTINGS,
   SHIPPED_OPTIONS,
@@ -110,6 +112,42 @@ describe("EngineSettingsForm", () => {
     );
     expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "3");
     expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "128");
+  });
+
+  describe("an engine server's engine — its own range, not the browser's (CTA-175)", () => {
+    const mountHosted = (engineOptions: ReadonlyMap<string, EngineOption>) =>
+      render(
+        <EngineSettingsForm
+          settings={{ ...SETTINGS, hashMb: 2048, threads: 8 }}
+          onChange={vi.fn()}
+          engineOptions={engineOptions}
+          showEvalBar
+          onShowEvalBarChange={vi.fn()}
+          deviceLimits={HOSTED_LIMITS}
+          testId="engine"
+        />,
+      );
+
+    it("offers Threads and Hash up to what the engine declares, past the in-browser 1024 MB, the larger marks with them", () => {
+      mountHosted(HOSTED_OPTIONS);
+      expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "15");
+      expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "4096");
+      expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveValue("2048");
+      for (const label of ["1024", "2048", "4096"]) {
+        expect(screen.getByText(label, { selector: ".MuiSlider-markLabel" })).toBeInTheDocument();
+      }
+    });
+
+    it("offers the same range before the handshake, never the device's", () => {
+      mountHosted(NO_OPTIONS);
+      expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "15");
+      expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "4096");
+    });
+
+    it("leaves an in-browser build's marks at 1024", () => {
+      mount(ADJUSTABLE_OPTIONS);
+      expect(screen.queryByText("2048")).toBeNull();
+    });
   });
 
   it("calls nothing unsupported before the handshake", () => {

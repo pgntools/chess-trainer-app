@@ -104,7 +104,7 @@ function NewGameForm() {
   );
   // The form shows the options of the engine the game will be played by: the reader's choice.
   const { engineId } = useEngineChoice();
-  const { engineOptions } = useEngineModule({
+  const { engineOptions, descriptor } = useEngineModule({
     // Handshake only: the lobby has no position to think about.
     enabled: false,
     engine: engineId,
@@ -119,8 +119,8 @@ function NewGameForm() {
           multiPv: settings.multiPv,
           threads: settings.threads,
           hashMb: settings.hashMb,
-        }),
-      [settings.skillLevel, settings.elo, settings.multiPv, settings.threads, settings.hashMb],
+        }, engineId),
+      [settings.skillLevel, settings.elo, settings.multiPv, settings.threads, settings.hashMb, engineId],
     ),
     onUciOptionsReady,
   });
@@ -200,6 +200,7 @@ function NewGameForm() {
               settings={settings}
               onChange={(patch) => setSettings((current) => ({ ...current, ...patch }))}
               engineOptions={engineOptions}
+              engine={descriptor}
               showEvalBar={evalBar}
               onShowEvalBarChange={setEvalBar}
             />

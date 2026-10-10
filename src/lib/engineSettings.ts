@@ -16,7 +16,8 @@
  */
 
 import { MAX_VARIATIONS_OFFERED } from "./engineAnalysis";
-import type { EngineOption } from "./engineTypes";
+import type { EngineDescriptor, EngineOption } from "./engineTypes";
+import { isHostedEngineId } from "./engines/ids";
 
 /** The engine knobs the settings tab drives. */
 export type EngineSettings = {
@@ -82,6 +83,10 @@ export const DEFAULT_ENGINE_SETTINGS: EngineSettings = {
  * declared 33,554,432 — so 1024 is a hard ceiling; and **Threads stops at
  * 32**, the multi-thread build's own top. What a form offers is lower where
  * the device is smaller: {@link deviceEngineLimits}.
+ *
+ * Those two ceilings are the **in-browser builds'**. An engine server's
+ * engine (`hosted:…`, a native binary — CTA-175) is held to
+ * {@link HOSTED_ENGINE_SETTING_BOUNDS} instead: {@link engineSettingBoundsOf}.
  */
 export const ENGINE_SETTING_BOUNDS = {
   skillLevel: { min: 0, max: 20 },
@@ -93,6 +98,40 @@ export const ENGINE_SETTING_BOUNDS = {
   threads: { min: 1, max: 32 },
   hashMb: { min: 1, max: 1024 },
 } as const satisfies Record<Exclude<keyof EngineSettings, "playAs">, { min: number; max: number }>;
+
+/**
+ * **`Threads` and `Hash` for an engine server's engine** (CTA-175) — a native
+ * binary on the reader's computer, which no WebAssembly memory limits:
+ * Stockfish's own declared ranges (1–1024 threads, 1–33,554,432 MB). They
+ * only keep a number sane; what the server lets one session set (its
+ * `maxThreads` / `maxHashMb`, `server/engine-api/README.md`) is what the
+ * engine declares, and that declaration is the last word — the engine module
+ * and the job runner clamp to it.
+ */
+export const HOSTED_ENGINE_SETTING_BOUNDS = {
+  threads: { min: 1, max: 1024 },
+  hashMb: { min: 1, max: 33554432 },
+} as const;
+
+/** The range `Threads` and `Hash` are each held to — an engine's resource knobs. */
+export type EngineResourceBounds = {
+  threads: { min: number; max: number };
+  hashMb: { min: number; max: number };
+};
+
+/**
+ * The bounds `Threads` and `Hash` are held to **for the engine `engineId`
+ * names** (CTA-175): an engine server's engine
+ * {@link HOSTED_ENGINE_SETTING_BOUNDS}; anything else — an in-browser build,
+ * or no engine named — {@link ENGINE_SETTING_BOUNDS}' own, the WebAssembly
+ * ceiling. Pass the engine that will **run** (`resolveEngine(choice).id`): a
+ * hosted choice whose server is gone runs the default build, which a hosted
+ * hash would crash.
+ */
+export const engineSettingBoundsOf = (engineId?: string | null): EngineResourceBounds =>
+  isHostedEngineId(engineId)
+    ? HOSTED_ENGINE_SETTING_BOUNDS
+    : { threads: ENGINE_SETTING_BOUNDS.threads, hashMb: ENGINE_SETTING_BOUNDS.hashMb };
 
 /**
  * The move-time marks the engine form offers (CTA-163) — lichess's snap
@@ -150,7 +189,11 @@ export const moveTimeOfSliderValue = (slot: number): number => {
   return mark === 0 ? MOVE_TIME_INSTANT_MS : MOVE_TIME_MARKS_S[mark] * 1000;
 };
 
-/** The most of each heavy knob this device should be offered. */
+/**
+ * The most of each heavy knob a form should offer — what the device can give
+ * an in-browser build ({@link deviceEngineLimits}), or what an engine server's
+ * engine declares ({@link engineLimitsOf}).
+ */
 export type DeviceEngineLimits = { threads: number; hashMb: number };
 
 /**
@@ -181,6 +224,37 @@ export const deviceEngineLimits = (
   return {
     threads: Math.min(threads, ENGINE_SETTING_BOUNDS.threads.max),
     hashMb: Math.min(hashMb, ENGINE_SETTING_BOUNDS.hashMb.max),
+  };
+};
+
+/**
+ * **The most `Threads` and `Hash` a form offers for an engine** (CTA-175) —
+ * what the screens hand the engine forms as their `deviceLimits`:
+ *
+ * - **An in-browser build**: what this device can give it,
+ *   {@link deviceEngineLimits} — unchanged.
+ * - **An engine server's engine** (`hosted:…`): the device is the reader's
+ *   computer and the server already measured it, so the top of each is what
+ *   the engine **declares** — the server's `maxThreads` / `maxHashMb` — read
+ *   off the descriptor's `options`, which the server's list carries, so the
+ *   form shows the engine's range **before** its first handshake, never the
+ *   browser's. An option it does not declare falls back to
+ *   {@link HOSTED_ENGINE_SETTING_BOUNDS}' top (the form then calls it absent
+ *   once the handshake lands).
+ */
+export const engineLimitsOf = (
+  descriptor: Pick<EngineDescriptor, "id" | "options">,
+  device?: { hardwareConcurrency?: number; deviceMemory?: number },
+): DeviceEngineLimits => {
+  if (!isHostedEngineId(descriptor.id)) return deviceEngineLimits(device);
+  const bounds = HOSTED_ENGINE_SETTING_BOUNDS;
+  const declaredMax = (name: string, { min, max }: { min: number; max: number }): number => {
+    const declared = descriptor.options?.find((option) => option.name === name)?.max;
+    return declared === undefined ? max : Math.min(Math.max(declared, min), max);
+  };
+  return {
+    threads: declaredMax(SETTING_UCI_OPTION.threads, bounds.threads),
+    hashMb: declaredMax(SETTING_UCI_OPTION.hashMb, bounds.hashMb),
   };
 };
 
@@ -221,18 +295,25 @@ export const usesEloStrength = (engineOptions: ReadonlyMap<string, EngineOption>
  *
  * `Hash` and `Threads` are held to {@link ENGINE_SETTING_BOUNDS} here, whatever
  * a stored record or an imported one says: the engine declares far more than a
- * tab can hold, and a hash past the ceiling crashes the tab.
+ * tab can hold, and a hash past the ceiling crashes the tab. `engineId`, the
+ * engine that will run, moves those ceilings to its own
+ * ({@link engineSettingBoundsOf}: an engine server's engine is not held to
+ * the tab's — CTA-175); absent, the in-browser ceilings.
  */
 export const uciOptionsOf = (
   settings: Pick<EngineSettings, keyof typeof SETTING_UCI_OPTION>,
-): Record<string, number> => ({
-  [SETTING_UCI_OPTION.skillLevel]: settings.skillLevel,
-  [SETTING_UCI_OPTION.elo]: settings.elo,
-  [LIMIT_STRENGTH_OPTION]: 1,
-  [SETTING_UCI_OPTION.multiPv]: settings.multiPv,
-  [SETTING_UCI_OPTION.threads]: Math.min(settings.threads, ENGINE_SETTING_BOUNDS.threads.max),
-  [SETTING_UCI_OPTION.hashMb]: Math.min(settings.hashMb, ENGINE_SETTING_BOUNDS.hashMb.max),
-});
+  engineId?: string,
+): Record<string, number> => {
+  const bounds = engineSettingBoundsOf(engineId);
+  return {
+    [SETTING_UCI_OPTION.skillLevel]: settings.skillLevel,
+    [SETTING_UCI_OPTION.elo]: settings.elo,
+    [LIMIT_STRENGTH_OPTION]: 1,
+    [SETTING_UCI_OPTION.multiPv]: settings.multiPv,
+    [SETTING_UCI_OPTION.threads]: Math.min(settings.threads, bounds.threads.max),
+    [SETTING_UCI_OPTION.hashMb]: Math.min(settings.hashMb, bounds.hashMb.max),
+  };
+};
 
 /**
  * Settings with the values the running build clamped them to (the engine

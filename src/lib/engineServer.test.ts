@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ENGINE_STORAGE_KEY, engineChoiceId, readStoredEngineId, storeEngineId } from "./engineChoice";
+import { engineLimitsOf } from "./engineSettings";
 import {
   DEFAULT_ENGINE_SERVER_URL,
   ENGINE_SERVER_STORAGE_KEY,
@@ -122,6 +123,15 @@ describe("on", () => {
       capabilities: { maxDepth: 30, strength: "skill", multiThread: false },
     });
     expect(BUILTIN_ENGINES.every((d) => d.server === undefined)).toBe(true);
+  });
+
+  it("carries what each engine declared on its descriptor, so a form offers its range before the handshake (CTA-175)", async () => {
+    await turnOn();
+    const descriptor = getEngine("hosted:stockfish-18")!;
+    expect(descriptor.options?.find((option) => option.name === "Threads")).toMatchObject({ min: 1, max: 19 });
+    expect(engineLimitsOf(descriptor).threads).toBe(19);
+    // The shipped builds declare theirs at the handshake alone.
+    expect(BUILTIN_ENGINES.every((d) => d.options === undefined)).toBe(true);
   });
 
   it("builds a HostedEngine only when one is created — and on the server's address", async () => {

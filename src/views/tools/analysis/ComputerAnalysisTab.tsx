@@ -20,7 +20,7 @@ import {
 } from "../../../lib/computerAnalysis";
 import { evalSeriesOf, reportFromTree, type EvalPoint } from "../../../lib/computerAnalysisTree";
 import type { Turn } from "../../../lib/engineAnalysis";
-import { deviceEngineLimits } from "../../../lib/engineSettings";
+import { deviceEngineLimits, type DeviceEngineLimits } from "../../../lib/engineSettings";
 import type { EngineOption } from "../../../lib/engineTypes";
 import { gameTag } from "../../../lib/gameModel";
 import { mainline, plyLabel, type GameTree } from "../../../lib/gameTree";
@@ -40,8 +40,19 @@ type ComputerAnalysisTabProps = {
   /** The form's options — the board's, so they outlive the tab. */
   options: ComputerAnalysisOptions;
   onOptionsChange: (options: ComputerAnalysisOptions) => void;
-  /** The engine a job will run (the reader's choice) and what it declared. */
-  engine: { id: string; name: string; multiThread: boolean; options: ReadonlyMap<string, EngineOption> };
+  /**
+   * The engine a job will run (the reader's choice) and what it declared —
+   * and the most Threads and Hash to offer it (`engineLimitsOf`: this device's
+   * for an in-browser build, the engine's own for an engine server's, CTA-175).
+   * Absent `limits`, this device's.
+   */
+  engine: {
+    id: string;
+    name: string;
+    multiThread: boolean;
+    options: ReadonlyMap<string, EngineOption>;
+    limits?: DeviceEngineLimits;
+  };
   /** What a job is sent with, but for the PGN, read when Start is pressed. */
   source: () => JobSource;
   /** The saved analysis on the board — a running job sent from it shows here. */
@@ -198,12 +209,13 @@ function ComputerAnalysisTab({
             options={options}
             onChange={(patch) => {
               setProblem(undefined);
-              onOptionsChange(computerAnalysisOptionsFrom({ ...options, ...patch }));
+              // Held to the bounds of the engine the job will run: an engine server's keeps its own Hash (CTA-175).
+              onOptionsChange(computerAnalysisOptionsFrom({ ...options, ...patch, engine: engine.id }));
             }}
             engineOptions={engine.options}
             multiThread={engine.multiThread}
             engineName={engine.name}
-            deviceLimits={deviceEngineLimits()}
+            deviceLimits={engine.limits ?? deviceEngineLimits()}
             lastMove={lastMove}
             blocked={blocked}
             onStart={() => void start()}

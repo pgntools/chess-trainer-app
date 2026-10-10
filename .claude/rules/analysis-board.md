@@ -54,7 +54,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/views/tools/analysis/useAnalysisLoad.ts` | **The Load route's state** (CTA-96): the pipeline behind `AnalysisLoad`, on its own so a host can place its pieces itself — the analyses Lobby's form puts the FEN field and the `.pgn` pick in its editor's row and the paste box below. |
 | `src/blocks/panels/PgnExportPanel/` | The Export tab (every board's): FEN, PGN with or without comments / NAGs / side lines, copy and download. |
 | `src/lib/engineEvals.ts` | **The engine's evaluations written into the game** (CTA-167, §1): `[%eval pawns,depth]` on the move searched, the override by depth, the `Annotator` tag — [`pgn-annotations.md`](./pgn-annotations.md) §2. |
-| `src/blocks/forms/AnalysisEngineForm/` | The Engine tab (**infinite analysis**, depth 1–40, move time 0–60 s — its own ceiling since CTA-163, the engine form's marks reach 300 s — lines, **threads, hash** — Play with Engine's, up to what the device can give, `deviceLimits`, CTA-160 — the eval bar, Clear) — every board's but Play's; each option slider rendered from what the engine declared (`engineOptionState`). |
+| `src/blocks/forms/AnalysisEngineForm/` | The Engine tab (**infinite analysis**, depth 1–40, move time 0–60 s — its own ceiling since CTA-163, the engine form's marks reach 300 s — lines, **threads, hash** — Play with Engine's, up to what the device can give, `deviceLimits`, CTA-160, or for an engine server's engine what it declares, `engineLimitsOf`, CTA-175 — the eval bar, Clear) — every board's but Play's; each option slider rendered from what the engine declared (`engineOptionState`). |
 | `src/views/tools/analysis/ComputerAnalysisTab.tsx`, `computerAnalysisSeed.ts`, `src/lib/jobLiveAnalysis.ts` | **The Computer analysis tab** (CTA-174, §1.3): this game's job and its results so far (`jobLiveAnalysis`), the report and eval graph of a tree's `[%eval]`s, the form and Start (`enqueueComputerAnalysis`); the form's first options from the Engine tab (`computerAnalysisSeed`). |
 | `src/blocks/forms/ComputerAnalysisForm/` | The tab's form (CTA-174): threads, hash, lines (by what the engine declared, `engineOptionState`), depth, time per move, the early stop's depth; side, first move and colour, last move; under a collapsed Advanced the thresholds and the variation range; the light / medium / full boxes; Start, off saying why. The report and graph are the Jobs screen's blocks, `ComputerAnalysisReport` (with `onStep`) and `EvalGraph` ([`jobs.md`](./jobs.md)). |
 | `src/views/tools/analysis/AnalysisArrows.tsx`, `src/blocks/forms/ArrowSettingsFields/` | The Arrows tab (CTA-98, §1.1): the next-move arrows switch, the width source and the palette — and the move marks switch (CTA-168). The fields block is shared with the settings screen. |
@@ -285,7 +285,10 @@ analysis ([`pgn-annotations.md`](./pgn-annotations.md) §6).
   depth, the rest the defaults (`computerAnalysisSeed`), and it follows the
   Engine tab until the reader changes one of its own — then they are the
   board's, kept across tabs. Threads, Hash and Lines follow what the engine
-  declared; before the engine has started (it starts off, §1) a
+  declared — an engine server's engine offered its own range, before its
+  handshake too, and its options held to its bounds rather than the tab's
+  1024 MB (the tab passes the engine's id to `computerAnalysisOptionsFrom`,
+  CTA-175); before the engine has started (it starts off, §1) a
   single-thread build's Threads already reads pinned at 1
   (`descriptor.capabilities.multiThread`). Every change is held to its bounds
   (`computerAnalysisOptionsFrom`: the early stop at most the depth, the

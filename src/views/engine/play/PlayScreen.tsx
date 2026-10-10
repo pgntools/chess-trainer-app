@@ -312,6 +312,7 @@ function PlayScreen({
                     settings={state.settings}
                     onChange={state.updateSettings}
                     engineOptions={engine.engineOptions}
+                    engine={engine.descriptor}
                     showEvalBar={state.showEvalBar}
                     onShowEvalBarChange={state.setShowEvalBar}
                   />

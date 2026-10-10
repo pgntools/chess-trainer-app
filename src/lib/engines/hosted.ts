@@ -1,23 +1,24 @@
-import type { EngineCapabilities, EngineDescriptor, EngineOption } from "../engineTypes";
-import { engineServerStatus, reportEngineServerFailure } from "../engineServer";
-import { HostedEngine, type HostedEngineInfo } from "../hostedEngine";
-import { DEFAULT_MAX_DEPTH, isSettableOption } from "../uciEngine";
-
 /**
  * **The engine server's engines, as registry entries** ([`docs/engine.md`](../../../docs/engine.md) §8)
  * — one descriptor per engine the server lists while it is online
  * (`lib/engineServer.ts`), none otherwise.
  *
  * - The id is `hosted:<the server's id>` — `hosted:stockfish-19` — stable, so
- *   a preference and a played game can name it.
+ *   a preference and a played game can name it (the prefix is `ids.ts`'s).
  * - **A descriptor is the same object for as long as the engine is the same**
  *   (its address and the server's description of it): a board rebuilds its
  *   engine when its descriptor changes (`useEngineModule`), so a re-check that
  *   finds the same engines must hand back the same descriptors.
  * - The capabilities are read off what the binary declared — a server engine
- *   is not a build this app ships, so nothing is assumed.
+ *   is not a build this app ships, so nothing is assumed — and the options it
+ *   declared ride on the descriptor (`options`), so a form can offer their
+ *   ranges before the engine is first started (CTA-175).
  */
-export const HOSTED_ENGINE_PREFIX = "hosted:";
+import type { EngineCapabilities, EngineDescriptor, EngineOption } from "../engineTypes";
+import { engineServerStatus, reportEngineServerFailure } from "../engineServer";
+import { HostedEngine, type HostedEngineInfo } from "../hostedEngine";
+import { DEFAULT_MAX_DEPTH, isSettableOption } from "../uciEngine";
+import { HOSTED_ENGINE_PREFIX } from "./ids";
 
 const has = (options: readonly EngineOption[], name: string) => options.some((option) => option.name === name);
 
@@ -39,6 +40,7 @@ const descriptorOf = (url: string, info: HostedEngineInfo): EngineDescriptor => 
       name: info.name,
       version: info.version ?? "",
       server: url,
+      options: info.options,
       capabilities: {
         maxDepth: Math.min(info.maxDepth, DEFAULT_MAX_DEPTH),
         strength: strengthOf(info.options),

@@ -13,7 +13,7 @@ import type { ChessboardOptions } from "react-chessboard";
 
 import { ChangesStrip, CurrentOpening, EngineThinking, GameInfo, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
 import { AnalysisEngineForm } from "../../blocks/forms";
-import { deviceEngineLimits } from "../../lib/engineSettings";
+import { engineLimitsOf } from "../../lib/engineSettings";
 import { SwitchField } from "../../design-system/components/forms";
 import { BackButton } from "../../design-system/components/navigation";
 import { IconAction, ToggleIconAction } from "../../design-system/components/toolbars";
@@ -385,7 +385,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
                 engineOn={session.engineOn}
                 showEvalBar={session.showEvalBar}
                 onShowEvalBarChange={session.setShowEvalBar}
-                deviceLimits={deviceEngineLimits()}
+                deviceLimits={engineLimitsOf(engine.descriptor)}
               />
             ),
           },

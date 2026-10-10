@@ -1,6 +1,6 @@
 import { EngineSettingsForm } from "../../../blocks/forms";
-import type { EngineOption } from "../../../lib/engineTypes";
-import { deviceEngineLimits, type EngineSettings as EngineSettingsValues } from "../../../lib/engineSettings";
+import type { EngineDescriptor, EngineOption } from "../../../lib/engineTypes";
+import { deviceEngineLimits, engineLimitsOf, type EngineSettings as EngineSettingsValues } from "../../../lib/engineSettings";
 
 /**
  * **The Engine tab** — strength, search limits, the lines to report, the two
@@ -12,9 +12,10 @@ import { deviceEngineLimits, type EngineSettings as EngineSettingsValues } from 
  * the module's ids (`engine-settings`, `engine-setting-<option>`): the block
  * renders every option-backed control from what the running worker declared
  * — absent, pinned or adjustable (`.claude/rules/chessboard.md` §4.1) — the
- * strength as an Elo where the engine takes one. The screen reads what this
- * device can give the engine (`deviceEngineLimits`, CTA-160) and the block
- * offers Threads and Hash up to it. Which colour the reader plays, and a new
+ * strength as an Elo where the engine takes one. The screen reads what the
+ * engine can be given (`engineLimitsOf`: this device's limits for an
+ * in-browser build, CTA-160; what an engine server's engine declares, CTA-175)
+ * and the block offers Threads and Hash up to it. Which colour the reader plays, and a new
  * game, are the header's.
  */
 type EngineSettingsProps = {
@@ -24,10 +25,18 @@ type EngineSettingsProps = {
   engineOptions: ReadonlyMap<string, EngineOption>;
   showEvalBar: boolean;
   onShowEvalBarChange: (next: boolean) => void;
+  /** The engine running (`useEngineModule`'s `descriptor`) — absent, this device's limits. */
+  engine?: Pick<EngineDescriptor, "id" | "options">;
 };
 
-function EngineSettings(props: EngineSettingsProps) {
-  return <EngineSettingsForm {...props} deviceLimits={deviceEngineLimits()} testId="engine" />;
+function EngineSettings({ engine, ...props }: EngineSettingsProps) {
+  return (
+    <EngineSettingsForm
+      {...props}
+      deviceLimits={engine === undefined ? deviceEngineLimits() : engineLimitsOf(engine)}
+      testId="engine"
+    />
+  );
 }
 
 export default EngineSettings;

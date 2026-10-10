@@ -6,7 +6,8 @@ import {
   withClampedUciOptions,
   type EngineSettings,
 } from "../../../lib/engineSettings";
-import { engineChoiceId } from "../../../lib/engineChoice";
+import { engineChoiceId, readStoredEngineId } from "../../../lib/engineChoice";
+import { resolveEngine } from "../../../lib/engines";
 import type { EngineDescriptor } from "../../../lib/engineTypes";
 import { parseFen } from "../../../lib/fen";
 import { emptyTree, sanPathTo } from "../../../lib/gameTree";
@@ -126,7 +127,8 @@ export const arrivalOf = (params: URLSearchParams): PlayGameStart => {
   return {
     fen,
     resume: findPlayedGame(params.get("saved")),
-    request: newGameRequestOf(params),
+    // The reader's own choice, not yet resolved: a hosted engine's hash survives a link read before its server answered (CTA-175).
+    request: newGameRequestOf(params, readStoredEngineId()),
   };
 };
 
@@ -222,6 +224,8 @@ export const usePlayGame = (
   const [engineId, setEngineId] = useState(start.engineId);
   const [recordedEngine, setRecordedEngine] = useState<PlayedGameEngine | undefined>(start.recordedEngine);
 
+  // The engine that will run (the module resolves the same): its own ceilings for Threads and Hash (CTA-175).
+  const runningId = resolveEngine(engineId).id;
   const engine = useEngineModule({
     enabled: engineOn,
     engine: engineId,
@@ -237,8 +241,8 @@ export const usePlayGame = (
           multiPv: settings.multiPv,
           threads: settings.threads,
           hashMb: settings.hashMb,
-        }),
-      [settings.skillLevel, settings.elo, settings.multiPv, settings.threads, settings.hashMb],
+        }, runningId),
+      [settings.skillLevel, settings.elo, settings.multiPv, settings.threads, settings.hashMb, runningId],
     ),
     onUciOptionsReady,
     onBestMove: play.onBestMove,

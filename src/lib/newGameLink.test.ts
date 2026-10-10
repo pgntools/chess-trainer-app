@@ -73,6 +73,17 @@ describe("newGameRequestOf — reading a link", () => {
     expect(newGameRequestOf(params("skill=7.6")).settings).toEqual({ skillLevel: 8 });
   });
 
+  it("keeps a hash and threads past the in-browser ceilings for an engine server's engine (CTA-175)", () => {
+    expect(newGameRequestOf(params("threads=12&hash=4096"), "hosted:stockfish-19").settings).toEqual({
+      threads: 12,
+      hashMb: 4096,
+    });
+    expect(newGameRequestOf(params("threads=12&hash=4096"), "stockfish-19-lite-single").settings).toEqual({
+      threads: 12,
+      hashMb: 1024,
+    });
+  });
+
   it("carries the Elo an Elo-driven engine is asked for (CTA-153), clamped into its range", () => {
     expect(newGameRequestOf(params("elo=1800")).settings).toEqual({ elo: 1800 });
     expect(newGameRequestOf(params("elo=100")).settings).toEqual({ elo: 1320 });

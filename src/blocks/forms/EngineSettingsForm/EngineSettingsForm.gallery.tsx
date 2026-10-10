@@ -6,7 +6,16 @@ import type { EngineOption } from "../../../lib/engineTypes";
 import type { DeviceEngineLimits, EngineSettings } from "../../../lib/engineSettings";
 import type { BlockFamilyId } from "../../families";
 import EngineSettingsForm from "./EngineSettingsForm";
-import { ADJUSTABLE_OPTIONS, NO_OPTIONS, SETTINGS, SHIPPED_OPTIONS, SKILL_ONLY_OPTIONS, SPARSE_OPTIONS } from "./fixtures";
+import {
+  ADJUSTABLE_OPTIONS,
+  HOSTED_LIMITS,
+  HOSTED_OPTIONS,
+  NO_OPTIONS,
+  SETTINGS,
+  SHIPPED_OPTIONS,
+  SKILL_ONLY_OPTIONS,
+  SPARSE_OPTIONS,
+} from "./fixtures";
 
 type State = { settings: EngineSettings; showEvalBar: boolean };
 
@@ -41,6 +50,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
     {
       name: "A smaller device — Threads to 3, Hash to 512 MB, the Hash marks with it (CTA-163); the move-time marks snap",
       render: () => demo(ADJUSTABLE_OPTIONS, "gallery-engine-device", { threads: 3, hashMb: 512 }),
+    },
+    {
+      name: "An engine server's engine — Threads to 15 and Hash to 4096 MB, as the server allows, the 2048 and 4096 marks with it (CTA-175)",
+      render: () => demo(HOSTED_OPTIONS, "gallery-engine-hosted", HOSTED_LIMITS),
     },
   ],
 };
