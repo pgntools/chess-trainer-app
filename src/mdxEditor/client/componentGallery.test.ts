@@ -17,7 +17,7 @@ import { guessOf } from "./libraryLookup";
 const ARTICLES = "src/views/blog/articles";
 const manifest = JSON.parse(readFileSync("src/data/library/manifest.json", "utf8")) as { collections: { id: string; pgn: string }[] };
 /** Markdown's own elements, which the map renders prose with — not components an article names. */
-const PROSE = new Set(["h1", "h2", "h3", "p", "ul", "ol", "li", "a", "hr", "pre", "code"]);
+const PROSE = new Set(["h1", "h2", "h3", "p", "ul", "ol", "li", "a", "hr", "pre", "code", "table", "th", "td"]);
 /** The components an article embeds — but the older names that are another with a source. */
 const embeds = Object.keys(mdxComponents).filter((name) => !PROSE.has(name) && !MDX_ALIASES.has(name));
 const entries = galleryEntries();

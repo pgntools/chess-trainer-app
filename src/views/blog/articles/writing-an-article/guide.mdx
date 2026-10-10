@@ -6,6 +6,8 @@ order: 10
 
 An article is an MDX file — Markdown with the app's components in it — compiled when the app is built. It is one file: what it says, and at its top, what it is.
 
+The Markdown is GitHub's: besides headings, lists, links and code, a **table** is written as on GitHub — a header row, a `| --- |` line, then a row per line — and drawn in the theme. Give every table a header row: its cells are what a screen reader names each column by.
+
 ## 1. The file
 
 Write `src/views/blog/articles/<path>.mdx` — for example `tournaments/my-event.mdx`. Its address is then `/blog/tournaments/my-event`: the Blog's one route serves every article, so there is no route to add, and the browser accessibility pass finds it on its own.

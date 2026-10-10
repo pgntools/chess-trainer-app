@@ -11,7 +11,7 @@ import { InlinePgnGame, InlinePgnGame2colH, InlinePgnGame2colV } from "./InlineP
 import { KnockoutBracketEmbed } from "./KnockoutBracketEmbed";
 import { MatchTableEmbed } from "./MatchTableEmbed";
 import { NavCards } from "./NavCards";
-import { Anchor, CodeBlock, H1, H2, H3, InlineCode, List, ListItem, OrderedList, Paragraph, Rule } from "./Prose";
+import { Anchor, CodeBlock, H1, H2, H3, InlineCode, List, ListItem, OrderedList, Paragraph, Rule, Table, TableCell, TableHeaderCell } from "./Prose";
 import { RepertoireBoardEmbed } from "./RepertoireBoardEmbed";
 import { RoundRobinCrossTableEmbed } from "./RoundRobinCrossTableEmbed";
 import { StoredGameEmbed } from "./StoredGameEmbed";
@@ -72,6 +72,9 @@ export const mdxComponents: MDXComponents = {
   hr: Rule,
   pre: CodeBlock,
   code: InlineCode,
+  table: Table,
+  th: TableHeaderCell,
+  td: TableCell,
   BoardRow,
   CollectionGameBoard,
   RepertoireBoard: RepertoireBoardEmbed,
