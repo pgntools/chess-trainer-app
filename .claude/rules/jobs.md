@@ -37,9 +37,9 @@ shell's indicator, and how to test and extend them.
 | `src/views/jobs/JobRunner.tsx` | Mounts the runner: the shell (`views/main/Layout.tsx`'s `DefaultLayout`) renders it beside its outlets. |
 | `src/views/jobs/JobsIndicator.tsx` | The header's indicator (§5). |
 | `src/views/jobs/useJobs.ts` | `useJobs()` / `useJob(id)` — the New Job dialog's read too (CTA-177: a game's job — the one the board sent, else the newest unfinished, else done, of the same saved analysis — makes Analyse ask first, and Check existing opens it here; `jobOfGame`, [`analysis-board.md`](./analysis-board.md) §1.3). |
-| `src/views/jobs/JobsScreen.tsx`, `JobsMain.tsx`, `JobReport.tsx` | **The Jobs screen** (§4) and a finished job's report and graph. |
+| `src/views/jobs/JobsScreen.tsx`, `JobsMain.tsx`, `JobReport.tsx`, `JobLiveReport.tsx` | **The Jobs screen** (§4), a finished job's report and graph, and another job's results so far (CTA-178). |
 | `src/blocks/tables/JobsTable/` | The list (a `DataTable`): game, status, progress, times, Resume / Cancel / Delete. |
-| `src/blocks/panels/JobSummary/` | One job whole: status, progress, error, actions, links, facts; a finished job's report under it. |
+| `src/blocks/panels/JobSummary/` | One job whole: status, progress, error, actions, links, facts; a finished job's report — or another's results so far — under it. |
 | `src/blocks/panels/ComputerAnalysisReport/`, `EvalGraph/` | The per-player report and the eval graph — built here (CTA-173, decided with the reader) and reused by the Analysis Board — at the top of its Moves tab (CTA-174, CTA-177). |
 | Tests | `src/lib/jobs.test.ts`, `jobStore.test.ts`, `jobRunner.test.ts`; `src/views/jobs/JobsScreen.test.tsx`, `JobsIndicator.test.tsx`; each block's own; `src/lib/engines/noWorkerAtImport.test.ts` (the runner builds nothing at import). |
 
@@ -174,6 +174,24 @@ queued ──▶ running ──▶ done
   deleted since says so. Then every option the job was given, the engine that
   ran it, and its times. No job open: a line asking for one; `?job=` naming
   none: "There is no such job".
+- **A job not done: its results so far** (`JobLiveReport`, CTA-178 — the
+  Analysis Board's Computer analysis tab's until CTA-177), in the report's
+  place: `jobLiveAnalysis` over the job as the store holds it (`useJobs`), so
+  it fills in with every checkpoint the runner writes — lichess's server
+  analysis filling in. Under "Results so far": **the eval graph** spanning the
+  whole run (`EvalGraph`'s `span`, the line growing from the left), **the
+  latest finished position** — its eval, depth and numbered best line ("Latest:
+  after 1... e5: +0.20 · depth 20 · 2. Nf3 Nc6") — and **the report** over the
+  moves judged so far (a move whose two positions are both finished). Queued
+  or running it grows; interrupted, failed or cancelled it shows what the
+  checkpoint holds. A point of the graph opens **the source** on the Analysis
+  Board at its move (`/tools/analysis?analysis=<source>&at=…`, the `?at=` read
+  off the re-parsed source, `JobLiveAnalysis.tree`) where the source is a saved
+  analysis; a board never saved has a graph only read (no `onSelect`, the read
+  hint). **Nothing in it is a live region** — the summary's status line and the
+  shell's indicator (§5) say what changed; the graph and the line only redraw.
+  Nothing at all before the first position is finished, or when the source no
+  longer reads.
 - **Not seeded in the browser pass** (`e2e/a11y/routes.ts`, `jobs`): a job is
   not in the export zip (`import-export.md` §1.1), so the pass sees the empty
   list.
@@ -220,7 +238,9 @@ indicator; the job runs on.
 - **The screen** (`JobsScreen.test.tsx`) seeds the store (`addJob`) and, for a
   finished job, its output (`saveAnalysis` of a real `computerAnalysisTree`),
   mounts `/jobs` with the right panel's outlet, and asserts by role and name;
-  no runner runs there.
+  no runner runs there. A job's results so far (CTA-178) are seeded as a
+  partial checkpoint (`withCheckpoint` over its first positions) and grown
+  with `updateJob`, as the runner would.
 
 ## 8. Recipes
 

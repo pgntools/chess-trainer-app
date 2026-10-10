@@ -2724,6 +2724,8 @@ const en = {
     reportTitle: "Report",
     reportReading: "Reading the report…",
     reportMissing: "The saved analyses this job made are gone, so its report cannot be shown.",
+    /** A job not done: its results so far (CTA-178, `JobLiveReport`). */
+    liveTitle: "Results so far",
     kinds: {
       "computer-analysis": "Computer analysis",
     },

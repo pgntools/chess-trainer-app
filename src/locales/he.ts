@@ -2157,6 +2157,7 @@ const he: typeof en = {
     reportTitle: "דוח",
     reportReading: "קוראים את הדוח…",
     reportMissing: "הניתוחים השמורים שהמשימה יצרה כבר אינם, ולכן אי אפשר להציג את הדוח שלה.",
+    liveTitle: "התוצאות עד כה",
     kinds: {
       "computer-analysis": "ניתוח מחשב",
     },

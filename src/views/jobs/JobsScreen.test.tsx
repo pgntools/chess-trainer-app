@@ -13,7 +13,7 @@ import {
 } from "../../lib/computerAnalysis";
 import { computerAnalysisTree } from "../../lib/computerAnalysisTree";
 import { computerAnalysisJobOf, jobSearchOf, withCheckpoint, type Job, type JobStatus } from "../../lib/jobs";
-import { addJob, findJob, loadJobs } from "../../lib/jobStore";
+import { addJob, findJob, loadJobs, updateJob } from "../../lib/jobStore";
 import { savedAnalysisOf } from "../../lib/savedAnalyses";
 import { saveAnalysis } from "../../lib/savedAnalysisStore";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
@@ -73,6 +73,12 @@ const seedDone = async (): Promise<Job> => {
   await addJob(done);
   return done;
 };
+
+/** `job` with its first `count` positions finished, as a run that got that far leaves it. */
+const checkpointed = (job: Job, count: number): Job =>
+  finishedResults(job)
+    .slice(0, count)
+    .reduce((current, result, index) => withCheckpoint(current, index, result, AT), job);
 
 /** Where the router is — what a link or a click on the graph led to. */
 const Where = () => {
@@ -210,6 +216,82 @@ describe("the Jobs screen (CTA-173)", () => {
     renderAt("/jobs?job=done");
     await screen.findByRole("slider", { name: "Evaluation graph" });
     fireEvent.blur(screen.getByRole("slider"));
+    await expectNoAxeViolations();
+  });
+});
+
+describe("a job's results so far (CTA-178)", () => {
+  it("draws a running job's graph, latest position and report over the moves judged so far", async () => {
+    await addJob(checkpointed(jobOf("live", "running"), 3));
+    renderAt("/jobs?job=live");
+
+    const live = await screen.findByRole("region", { name: "Results so far" });
+    expect(within(live).getByRole("slider", { name: "Evaluation graph so far" })).toHaveAttribute("aria-valuemax", "2");
+    expect(screen.getByTestId("jobs-live-latest")).toHaveTextContent(/^Latest: after 1\.\.\. e5: \+0\.20 · depth 20 · 2\. /);
+    // 1. e4 and 1... e5 are judged (both their positions finished): the report has both sides.
+    const report = within(live).getByRole("table", { name: "Computer analysis report" });
+    expect(within(report).getByRole("columnheader", { name: "Alice" })).toBeInTheDocument();
+    expect(within(report).getByRole("columnheader", { name: "Bob" })).toBeInTheDocument();
+    // The summary's status line says the job moved on; nothing here is announced.
+    expect(within(live).queryByRole("status")).not.toBeInTheDocument();
+    expect(within(live).queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("fills in as the store changes", async () => {
+    const job = checkpointed(jobOf("live", "running"), 3);
+    await addJob(job);
+    renderAt("/jobs?job=live");
+    const graph = await screen.findByRole("slider", { name: "Evaluation graph so far" });
+    expect(graph).toHaveAttribute("aria-valuemax", "2");
+
+    await updateJob("live", (current) => withCheckpoint(current, 3, finishedResults(job)[3], AT));
+    await waitFor(() => expect(graph).toHaveAttribute("aria-valuemax", "3"));
+    expect(screen.getByTestId("jobs-live-latest")).toHaveTextContent(/^Latest: after 2\. Nf3: \+0\.20/);
+    expect(screen.getByTestId("jobs-summary-progress")).toHaveTextContent("4 of 5 positions");
+  });
+
+  it("opens the source on the Analysis Board at the move chosen on the graph", async () => {
+    const user = userEvent.setup();
+    await addJob(checkpointed(jobOf("live", "running"), 3));
+    renderAt("/jobs?job=live");
+    const graph = await screen.findByRole("slider", { name: "Evaluation graph so far" });
+    graph.focus();
+    await user.keyboard("{Home}{ArrowRight}{Enter}");
+    expect(screen.getByTestId("where")).toHaveTextContent("/tools/analysis?analysis=source-live&at=e4");
+  });
+
+  it("only reads the graph of a board never saved: no point leads anywhere", async () => {
+    const user = userEvent.setup();
+    const job = jobOf("board", "running");
+    await addJob(checkpointed({ ...job, source: { ...job.source, analysisId: null } }, 3));
+    renderAt("/jobs?job=board");
+    const graph = await screen.findByRole("slider", { name: "Evaluation graph so far" });
+    expect(graph).toHaveAccessibleDescription("Left and right arrows to move through the moves, Home and End to either end.");
+    graph.focus();
+    await user.keyboard("{Home}{ArrowRight}{Enter}");
+    expect(screen.getByTestId("where")).toHaveTextContent("/jobs?job=board");
+  });
+
+  it.each(["interrupted", "failed", "cancelled"] as const)("shows what an %s job's checkpoint holds", async (status) => {
+    await addJob(checkpointed({ ...jobOf("cut", status), ...(status === "failed" ? { error: "engine" as const } : {}) }, 2));
+    renderAt("/jobs?job=cut");
+    const live = await screen.findByRole("region", { name: "Results so far" });
+    expect(within(live).getByRole("slider", { name: "Evaluation graph so far" })).toHaveAttribute("aria-valuemax", "1");
+    expect(screen.getByTestId("jobs-live-latest")).toHaveTextContent(/^Latest: after 1\. e4: \+0\.20 · depth 20/);
+  });
+
+  it("shows nothing before the first position is finished", async () => {
+    await addJob(jobOf("waiting", "queued"));
+    renderAt("/jobs?job=waiting");
+    expect(await screen.findByTestId("jobs-summary-status")).toHaveTextContent("Queued");
+    expect(screen.queryByRole("region", { name: "Results so far" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+  });
+
+  it("passes axe, a running job open", async () => {
+    await addJob(checkpointed(jobOf("live", "running"), 3));
+    renderAt("/jobs?job=live");
+    await screen.findByRole("slider", { name: "Evaluation graph so far" });
     await expectNoAxeViolations();
   });
 });

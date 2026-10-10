@@ -23,7 +23,7 @@ export type JobSummaryProps = {
   onCancel: () => void;
   onResume: () => void;
   onDelete: () => void;
-  /** Under it: a finished job's report and eval graph, read from an output by the screen. */
+  /** Under it: a finished job's report and eval graph, read from an output by the screen — or another job's results so far (CTA-178). */
   children?: ReactNode;
   /** The root; the parts are `-status`, `-progress`, `-error`, `-facts` (each fact `-facts-<id>`), `-source`, `-output-<variant>`, `-cancel`, `-resume`, `-delete`. */
   testId: string;
@@ -46,7 +46,8 @@ const stamp = (value: string | null): ReactNode => {
  * positions · 7. Nf3"), why it failed, the engine that ran it and every option
  * it was given, when it was asked for, started and ended, a link to each Saved
  * analysis it made, and Resume / Cancel / Delete. A finished job's report and
- * eval graph go under it (`children` — `ComputerAnalysisReport`, `EvalGraph`).
+ * eval graph go under it, or another job's results so far (`children` —
+ * `ComputerAnalysisReport`, `EvalGraph`).
  *
  * Presentational: the job, its links and its actions are props; its words are
  * the app's (`jobs.*`).

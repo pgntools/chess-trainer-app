@@ -14,6 +14,7 @@ import type { Job } from "../../lib/jobs";
 import { cancelJob, removeJob, resumeJob } from "../../lib/jobStore";
 import { useOwnPageHeading } from "../main/pageTitle";
 import { RightPanel } from "../main/rightPanel";
+import JobLiveReport from "./JobLiveReport";
 import JobReport from "./JobReport";
 import { useJobs } from "./useJobs";
 
@@ -31,7 +32,9 @@ const JOB_PARAM = "job";
  * - **The panel: one job** (`JobSummary`) — every option it was given, the
  *   engine that ran it, a link to the game it came from and to each Saved
  *   analysis it made, why it failed, and a finished job's **report and eval
- *   graph** (`JobReport`, read back from its first output).
+ *   graph** (`JobReport`, read back from its first output) — or, for a job not
+ *   done, **its results so far** (`JobLiveReport`, CTA-178: the graph filling
+ *   in, the latest position's eval and line, the report over the moves judged).
  *
  * Cancel, Resume and Delete are store writes (`lib/jobStore.ts`); the runner,
  * in whichever tab holds it, acts on them. Delete asks first, and keeps the
@@ -89,7 +92,11 @@ function JobsScreen() {
             onDelete={() => setDeleting(selected)}
             testId="jobs-summary"
           >
-            {selected.status === "done" && <JobReport job={selected} testId="jobs-report" />}
+            {selected.status === "done" ? (
+              <JobReport job={selected} testId="jobs-report" />
+            ) : (
+              <JobLiveReport job={selected} testId="jobs-live" />
+            )}
           </JobSummary>
         ) : (
           <EmptyState testId="jobs-none-selected">
