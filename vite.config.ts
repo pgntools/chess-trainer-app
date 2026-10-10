@@ -3,6 +3,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import mdx from '@mdx-js/rollup'
 import remarkFrontmatter from 'remark-frontmatter'
+import remarkGfm from 'remark-gfm'
 import { existsSync, readFileSync } from 'node:fs'
 import pkg from './package.json' with { type: 'json' }
 import { blogArticles } from './plugins/blogArticles.ts'
@@ -27,7 +28,7 @@ const hostHeadersOf = (): Record<string, string> => {
   return (JSON.parse(readFileSync(file, 'utf8')) as { globalHeaders?: Record<string, string> }).globalHeaders ?? {}
 }
 
-const mdxPlugin = mdx({ mdExtensions: [], include: /\.mdx$/, remarkPlugins: [remarkFrontmatter] })
+const mdxPlugin = mdx({ mdExtensions: [], include: /\.mdx$/, remarkPlugins: [remarkFrontmatter, remarkGfm] })
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -77,6 +78,11 @@ export default defineConfig({
     heading). The metadata itself reaches the app through `blogArticles`
     (`plugins/blogArticles.ts`): the Blog's manifest, `virtual:blog-articles`
     — every file's metadata checked, eager, and each body a lazy chunk.
+
+    **GitHub's Markdown** (`remark-gfm`, CTA-174): tables, ~~strikethrough~~,
+    task lists and bare-URL links, as an author writes them on GitHub. A
+    table is drawn by the article components' `Table` (`views/home/frontPage/Prose.tsx`).
+    The MDX editor compiles with the same two plugins (`compileMdx.ts`).
   */
   plugins: [
     blogArticles({ dir: 'src/views/blog/articles' }),

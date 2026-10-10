@@ -44,7 +44,6 @@ const en = {
     /** Play with Engine with the pieces in disguise (`/engine/masked`, CTA-79), beside the Lobby in the Engine folder. */
     maskedPlay: "Masked Pieces",
     analysisBoard: "Analysis Board",
-    savedAnalyses: "Saved analyses",
     /** The Openings explorer (CTA-78) — shown under the folder's own name, a single entry. */
     openings: "Openings explorer",
     /** The reader's own repertoires (CTA-61) — shown under the folder's own name, a single entry (CTA-84). */
@@ -74,14 +73,12 @@ const en = {
     mdxArticles: "Articles",
     mdxEditor: "Editor",
     mdxComponents: "Components gallery",
-    /** The Jobs screen (CTA-173) — shown under the folder's own name, a single entry. */
+    /** The Jobs screen (CTA-173), in the Analyses folder beside its Lobby. */
     jobs: "Jobs",
     /** Sidebar folders — groupings over the routes, never routes themselves. */
     folders: {
-      /** The background jobs (CTA-173): a single entry, the Jobs screen. */
-      jobs: "Jobs",
       engine: "Engine",
-      analysisBoard: "Analysis Board",
+      analysisBoard: "Analyses",
       openings: "Openings",
       repertoires: "Repertoires",
       /** The Blog (CTA-126) — MDX articles in nested folders, named by their data. */
@@ -999,6 +996,7 @@ const en = {
       export: "Export",
       engine: "Engine",
       arrows: "Arrows",
+      computer: "Computer analysis",
     },
     /**
      * The header's Play toggle (CTA-73): the engine plays the side not at
@@ -2591,6 +2589,7 @@ const en = {
       white: "White",
       black: "Black",
       notAnalysed: "Not analysed",
+      step: "{{measure}} by {{player}}: {{count}}. Go to the next one",
       measures: {
         inaccuracies: "Inaccuracies",
         mistakes: "Mistakes",
@@ -2606,6 +2605,77 @@ const en = {
       empty: "No move has an evaluation to draw.",
       hint: "Left and right arrows to move through the moves, Home and End to either end, Enter to go to the move.",
       hintRead: "Left and right arrows to move through the moves, Home and End to either end.",
+    },
+    /** The Analysis Board's Computer analysis tab's form (CTA-174, `ComputerAnalysisForm`). */
+    form: {
+      engine: "Engine",
+      engineName: "The job runs {{name}} — the engine chosen in Settings.",
+      threads: "Threads",
+      hash: "Hash (MB)",
+      depth: "Depth",
+      moveTime: "Time per move",
+      noTimeLimit: "No time limit",
+      noTimeLimitHelp: "Each position is searched to the full depth, however long that takes — a deep search can take minutes a move.",
+      moveTimeNone: "No limit",
+      seconds: "{{seconds}} s",
+      lines: "Lines",
+      minDepth: "Early stop from depth",
+      minDepthHelp: "From this depth a search stops as soon as another line falls more than the variation range below the best. At the full depth it never stops early.",
+      moves: "Moves",
+      side: "Analyse the moves of",
+      sides: {
+        both: "Both sides",
+        w: "White",
+        b: "Black",
+      },
+      fromMove: "From move",
+      fromMoveHelp: "The first move analysed.",
+      toMove: "To move",
+      toMoveHelp: "Empty: to the end of the game.",
+      moveRange: "A move number from 1 to {{max}}.",
+      fromColour: "The first move analysed is",
+      fromWhite: "White's",
+      fromBlack: "Black's",
+      advanced: "Advanced",
+      advancedToggle: "Advanced options",
+      thresholdsHelp: "A move is marked when it loses more than these, in centipawns.",
+      inaccuracy: "Inaccuracy above",
+      mistake: "Mistake above",
+      blunder: "Blunder above",
+      cp: "{{cp}} cp",
+      range: "Variation range",
+      rangeHelp: "How far below the best line another line may score and still be kept.",
+      variants: "Variants to save",
+      variantsHelp: "Each one ticked is saved as a new saved analysis, all from one run of the engine.",
+      variantHelp: {
+        light: "The best alternative on each inaccuracy, mistake and blunder.",
+        medium: "Every alternative within the variation range, on each inaccuracy, mistake and blunder.",
+        full: "Every alternative within the variation range, on every analysed move.",
+      },
+      start: "Start computer analysis",
+      noVariant: "Tick at least one variant to start.",
+      noMoves: "The board has no moves to analyse.",
+      noRange: "No move of the game is in the chosen range.",
+      problem: {
+        invalid: "There is nothing to analyse in the chosen moves.",
+        storage: "The job could not be kept — the browser refused the write.",
+        "too-many": "Too many jobs are waiting. Let some finish, or cancel them on the Jobs screen.",
+      },
+    },
+    /** The Analysis Board's Computer analysis tab (CTA-174). */
+    board: {
+      jobTitle: "This game's analysis",
+      running: "The engine is analysing this game in the background — you can go on with anything else. You can start another analysis of it once this one ends.",
+      done: "Finished. Each variant is a new saved analysis: open one to see its report and evaluation graph.",
+      liveGraph: "Evaluation graph so far",
+      latest: "Latest: after",
+      latestStart: "Latest: the start position",
+      depth: "depth {{depth}}",
+      progressLabel: "Computer analysis progress",
+      openJobs: "Open in Jobs",
+      reportTitle: "Report",
+      formTitle: "Run a computer analysis",
+      formIntro: "The engine goes over the game's main line in the background, while you go on with anything else.",
     },
   },
   /**

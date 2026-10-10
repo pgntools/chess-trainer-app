@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
@@ -42,5 +43,33 @@ describe("ComputerAnalysisReport (CTA-173)", () => {
   it("passes axe", async () => {
     render(<ComputerAnalysisReport report={BOTH} testId="report" />);
     await expectNoAxeViolations();
+  });
+
+  describe("with onStep (CTA-174)", () => {
+    it("makes each count above 0 a button, named for the side and the kind, that steps to the next one", async () => {
+      const user = userEvent.setup();
+      const onStep = vi.fn();
+      render(<ComputerAnalysisReport report={BOTH} players={{ w: "Alice", b: "Bob" }} onStep={onStep} testId="report" />);
+      const blunders = screen.getByRole("button", { name: "Blunders by Bob: 2. Go to the next one" });
+      expect(blunders).toHaveTextContent("2");
+      await user.click(blunders);
+      expect(onStep).toHaveBeenLastCalledWith("b", "blunder");
+      screen.getByRole("button", { name: "Missed mates by Alice: 1. Go to the next one" }).focus();
+      await user.keyboard("{Enter}");
+      expect(onStep).toHaveBeenLastCalledWith("w", "missedMate");
+    });
+
+    it("leaves a 0, the averages and an unanalysed side as text", () => {
+      render(<ComputerAnalysisReport report={WHITE_ONLY} onStep={() => {}} testId="report" />);
+      expect(screen.queryByTestId("report-blunders-w-step")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("report-acpl-w-step")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("report-mistakes-b-step")).not.toBeInTheDocument();
+      expect(screen.getByTestId("report-inaccuracies-w-step")).toBeInTheDocument();
+    });
+
+    it("passes axe", async () => {
+      render(<ComputerAnalysisReport report={BOTH} onStep={() => {}} testId="report" />);
+      await expectNoAxeViolations();
+    });
   });
 });

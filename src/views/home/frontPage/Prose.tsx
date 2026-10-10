@@ -9,8 +9,8 @@ import Typography from "@mui/material/Typography";
  * **The front page's prose, in the theme** (CTA-126) — what the MDX
  * document's Markdown becomes: `#` the page's one `h1` (the screen declares it
  * its own heading, `useOwnPageHeading`), `##` and `###` its sections, a
- * paragraph, a list, a link, code — each the design's typography rather than
- * the browser's. The Blog's articles are rendered with the same map. A link to a path of the app (`[the Library](/library)`) is a
+ * paragraph, a list, a link, code, a table (GitHub's Markdown, `remark-gfm` —
+ * CTA-174) — each the design's typography rather than the browser's. The Blog's articles are rendered with the same map. A link to a path of the app (`[the Library](/library)`) is a
  * router link, so it carries the app's base path; any other is a plain one.
  *
  * Mirroring needs nothing here: every spacing is logical (`paddingInlineStart`),
@@ -135,4 +135,70 @@ export function InlineCode({ children }: ComponentPropsWithoutRef<"code">) {
 
 export function Rule() {
   return <Divider sx={{ my: 3 }} />;
+}
+
+/**
+ * A table (`remark-gfm`, CTA-174) — an article's comparison or reference. Its
+ * cells **wrap** rather than the table scrolling sideways, as a code block
+ * does, so no region needs a keyboard stop; borders and words from the theme.
+ * A column's Markdown alignment (`| ---: |`) arrives as the cell's own `style`
+ * and wins over the start alignment here.
+ */
+export function Table({ children }: ComponentPropsWithoutRef<"table">) {
+  return (
+    <Box
+      component="table"
+      sx={{
+        width: "100%",
+        borderCollapse: "collapse",
+        mt: 0.5,
+        mb: 2,
+        typography: "body2",
+        color: "text.secondary",
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
+export function TableHeaderCell({ children, style }: ComponentPropsWithoutRef<"th">) {
+  return (
+    <Box
+      component="th"
+      style={style}
+      sx={{
+        textAlign: "start",
+        verticalAlign: "bottom",
+        fontWeight: 600,
+        color: "text.primary",
+        borderBottom: 2,
+        borderColor: "divider",
+        px: 1,
+        py: 0.75,
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
+export function TableCell({ children, style }: ComponentPropsWithoutRef<"td">) {
+  return (
+    <Box
+      component="td"
+      style={style}
+      sx={{
+        textAlign: "start",
+        verticalAlign: "top",
+        borderBottom: 1,
+        borderColor: "divider",
+        px: 1,
+        py: 0.75,
+        overflowWrap: "anywhere",
+      }}
+    >
+      {children}
+    </Box>
+  );
 }

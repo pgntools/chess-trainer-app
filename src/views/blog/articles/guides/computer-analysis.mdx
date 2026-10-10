@@ -1,12 +1,16 @@
 ---
 title: Computer analysis of a game
-summary: "Stockfish over a whole game in the background: every move judged, the mistakes marked, the better moves shown, and each player's accuracy — what the job does, its options, and the three annotated PGNs it writes."
+summary: "Stockfish over a whole game in the background: every move judged, the mistakes marked, the better moves shown, and each player's accuracy — starting one, watching it fill in, its options, how a move is judged, and the three annotated PGNs it writes."
 date: 2026-10-10
 tags: [analysis, engine]
 draft: true
 ---
 
+import sidebarShot from "./computer-analysis-sidebar.png"
 import formShot from "./computer-analysis-form.png"
+import advancedShot from "./computer-analysis-advanced.png"
+import liveShot from "./computer-analysis-live.png"
+import doneShot from "./computer-analysis-done.png"
 import progressShot from "./computer-analysis-progress.png"
 import jobsShot from "./computer-analysis-jobs.png"
 import reportShot from "./computer-analysis-report.png"
@@ -16,67 +20,148 @@ import full from "./computer-analysis-full.pgn?raw"
 
 **Computer analysis** runs the engine over every move of a game and writes down what it finds, the way lichess's *Request a computer analysis* does: an evaluation after each move, the inaccuracies, mistakes and blunders marked, the move that was better beside each one, and a summary per player with their **accuracy**.
 
-It runs as a **background job**. You start it from the Analysis Board, then keep using the app — another game, another screen — while it works. When it is done, the result is one or more new **saved analyses**: ordinary PGNs you open, study, edit and export like any other.
+It runs as a **background job**. You start it from the Analysis Board, then keep using the app — another game, another screen — while it works. You can watch it fill in as it goes. When it is done, the result is one or more new **saved analyses**: ordinary PGNs you open, study, edit and export like any other.
 
 ## In short
 
-1. Open a game on the [Analysis Board](/tools/analysis).
-2. On its **Computer analysis** tab, check the options and tick the outputs you want: **light**, **medium** and/or **full**.
-3. Press **Start**. Watch the progress in the header, or on the **Jobs** screen.
-4. When it finishes, open the new saved analysis. The report and the evaluation graph are on the board.
+1. In the sidebar, open **Analyses → Lobby** and open a game — or open any game on the [Analysis Board](/tools/analysis).
+2. Switch to its **Computer analysis** tab, check the options, and tick the outputs you want: **light**, **medium** and/or **full**.
+3. Press **Start**. The form gives way to the job's progress, and the evaluation graph and the report fill in move by move as the engine works.
+4. When it says **Done**, press **Open the Light analysis** (or medium, or full). The finished report and graph are on that analysis' Computer analysis tab.
+
+## Where to find it
+
+| Where | What is there |
+| --- | --- |
+| **Analyses → Lobby** | Your saved analyses ([/tools/analysis/saved](/tools/analysis/saved)). Open one, or press **New** for an empty board. |
+| **The Computer analysis tab** | On the Analysis Board, between *Engine* and *Arrows*. Everything about this game's analysis is here: the options, the progress, the results. |
+| **Analyses → Jobs** | Every computer analysis, running, queued or finished ([/jobs](/jobs)): its progress, Cancel, Resume, Delete, and a finished job's report. |
+| **The header** | While a job runs, the app's header shows it on every screen — *Analysing 34/81* — and links to the Jobs screen. |
+
+<ArticleImage src={sidebarShot} alt="The sidebar with the Analyses folder open: Lobby and Jobs under it" caption="The Analyses folder: its Lobby and the Jobs screen." width="60%" />
 
 ## Starting an analysis
 
-Any game the Analysis Board holds can be analysed: one you saved, one from the Library, a game you played against the engine, or a PGN you just pasted. The job analyses the game's **main line**. Its side lines and comments are kept, but not judged.
+Any game the Analysis Board holds can be analysed: one you saved, one from the Library, a game you played against the engine, or a PGN you just pasted into the Load tab. The job analyses the game's **main line**. Its side lines and comments are kept in every output, but not judged.
 
-<ArticleImage src={formShot} alt="The Analysis Board's Computer analysis tab: the engine, depth, time per move, lines, the moves to analyse, the thresholds, the three outputs and the Start button" caption="The Computer analysis tab on the Analysis Board." width="90%" />
+The job takes the game **as it is on the board when you press Start** — including changes you have not saved. Editing the board afterwards does not change the job.
 
-**Start** stays disabled until at least one output is ticked, and on a board with no moves.
+<ArticleImage src={formShot} alt="The Analysis Board's Computer analysis tab: the engine, threads, hash, depth, No time limit, time per move, lines, the early stop, the moves to analyse, Advanced, the three outputs and the Start button" caption="The Computer analysis tab, before Start." width="90%" />
+
+The form starts from your **Engine tab**'s settings — its depth, time, lines, threads and hash — and from the engine chosen in Settings, and follows them until you change something on this tab. On a new board that means depth 20, three lines, no time limit, one thread and 16 MB of hash.
+
+**Start** is off, with a note under it saying why, when:
+
+- no output is ticked — *Tick at least one variant to start*;
+- the board has no moves — *The board has no moves to analyse*;
+- the moves you chose are not in the game — *No move of the game is in the chosen range* (a *From move* past the end, for example).
+
+## While it runs
+
+Once you press **Start**, the tab's form gives way to **This game's analysis** — the focus moves there, so a screen reader reads it out. It shows:
+
+- **The status and the progress**: *Running — 34 of 81 positions · 17... Nd4*, the move the engine is on. The progress is announced as it changes.
+- **The evaluation graph so far.** It is drawn across the width the whole game will take, so the line grows from the left as positions are finished, and every inaccuracy, mistake and blunder appears as a coloured dot as soon as it is found. Click a point to take the board there.
+- **The latest position**: the move it follows, its evaluation, the depth, and the engine's best line from there — *Latest: after 17... Nd4: +0.42 · depth 20 · 18. Nxd4 exd4 19. Qd2 …*
+- **The report so far**: each player's inaccuracies, mistakes, blunders, missed mates, ACPL and accuracy over the moves judged so far. A move is judged once the positions before and after it are both done. Each count is a button that takes the board to that player's next move of that kind.
+- **Open in Jobs**, the job on the Jobs screen — where it can be cancelled.
+
+<ArticleImage src={liveShot} alt="The Computer analysis tab during a job: Running, 34 of 81 positions, the evaluation graph drawn for the first part of the game, the latest position's evaluation and best line, and the report so far" caption="A job filling in, on the board it was started from." width="90%" />
+
+While the job is queued or running, the form is not shown, so the same game cannot be sent twice by accident. You can leave the tab, the board or the screen: the job goes on, and coming back to the same saved analysis shows it again.
+
+The header shows a running job on every other screen too, and leads to the Jobs screen:
+
+<ArticleImage src={progressShot} alt="The app's header with a running job's indicator: a spinner and Analysing 34/81" caption="A running job, seen from another screen." width="60%" />
+
+A board opened from the Lobby's list takes the whole window — no header — so there the tab itself is where to watch it.
+
+## When it is done
+
+The status turns to **Done**, and the tab offers each saved output: **Open the Light analysis**, **Open the Medium analysis**, **Open the Full analysis** — the ones you ticked. The form is back under it, if you want to run another analysis with different options.
+
+<ArticleImage src={doneShot} alt="The Computer analysis tab after a job: Done, a note that each variant is a new saved analysis, and the Open the Light analysis button" caption="A finished job, and the way to its results." width="90%" />
+
+Each output is a new saved analysis in the **same folder** as the game it came from (*Unfiled* if the board was never saved), named *&lt;the game's name&gt; — computer analysis (light)* and so on. Open it, and its Computer analysis tab shows the finished report and graph (below).
+
+Coming back to the original game later — if it is a saved analysis — still shows its newest finished job and its Open buttons.
 
 ## The job
 
-| | |
+| What | How it works |
 | --- | --- |
 | **It runs in the background** | The job belongs to the app, not to the board. Leave the Analysis Board, open the Library, play a game — it keeps going. |
-| **Progress** | The app's header shows the running job: position *N* of *M* and the move being searched. The **Jobs** screen lists every job. |
-| **One at a time** | An engine search takes all the CPU it is given, so jobs run one after another. A job you start while another is running waits in the queue. |
-| **Cancel** | A running or queued job can be cancelled from the Jobs screen. |
+| **One at a time** | An engine search takes all the CPU it is given, so jobs run one after another. A job you start while another is running waits in the queue (*Queued*). |
 | **Saved as it goes** | After every position, the job saves what it has found. |
+| **Cancel** | A queued, running or interrupted job can be cancelled on the Jobs screen. What it found is dropped; no analysis is saved. |
 | **After a reload** | A job that was running when the page closed shows as **Interrupted**, with a **Resume** button. Resume continues from the next position it had not searched — the finished ones are not searched again. It never resumes by itself: an engine run is heavy, so it waits for you. |
+| **One tab runs it** | With the app open in several tabs, one of them runs the jobs; close it and another takes over. Cancel in any tab stops it. |
+| **If it fails** | It says why, and **Resume** retries from where it stopped (below). |
+| **How many are kept** | The last 100 jobs. Past that, the oldest finished ones go — their analyses stay, they are saved analyses of their own. |
 
-<ArticleImage src={progressShot} alt="The app's header showing a computer analysis in progress: position 34 of 81, searching 17... Nd4" caption="A running job, seen from another screen." width="90%" />
+### The Jobs screen
+
+**Analyses → Jobs** lists every job, newest first: the game, its status, its progress, when it started and finished, and **Resume**, **Cancel** and **Delete** where they apply. Pick one for its details: every option it was given, the engine that actually ran it, links to the analysed game and to each output, and — once it is done — its report and evaluation graph, a point of which opens the output at that move. **Delete** asks first, and removes only the job: the analyses it made stay.
 
 <ArticleImage src={jobsShot} alt="The Jobs screen listing three jobs: one running with its progress, one queued, and one interrupted with a Resume button" caption="The Jobs screen." width="90%" />
 
 ### Which engine
 
-The job uses the engine chosen in [Settings → Engine](/settings/engine): one of the builds that run in the browser, or — much faster — a native Stockfish on your own computer through the engine server (see [Run a chess engine on your own computer](/blog/guides/local-engine)). It starts its own copy of the engine, separate from any board's.
+The job uses the engine chosen in [Settings → Engine](/settings/engine) **when you press Start**: one of the builds that run in the browser, or — much faster — a native Stockfish on your own computer through the engine server (see [Run a chess engine on your own computer](/blog/guides/local-engine)). It starts its own copy of the engine, separate from any board's, and stops it when it is done.
 
-**Threads** and **hash** are held to what that engine accepts. The browser's single-thread build always runs on one thread, and the form says so.
+**Threads**, **hash** and **lines** are held to what that engine accepts, and to what your device can give. The browser's single-thread build always runs on one thread, and the form says so even before the engine has started.
 
 ### How long it takes
 
-Roughly the number of positions times the time each one takes. In the browser's single-thread build on a fast desktop, depth 20 takes a few seconds a position, so a 40-move game — about 80 positions — takes several minutes. More lines, more depth or a slower machine take longer; the engine server with several threads is many times faster.
+Roughly the number of positions times the time each one takes. An analysed game of *n* moves is about 2 × *n* positions.
+
+| Depth, one line, single-thread browser build, fast desktop | About, per position | A 40-move game (~80 positions) |
+| --- | --- | --- |
+| 16 | about a second | a minute or two |
+| 20 | 3–4 s | 5 minutes |
+| 24 | about 15 s | 20 minutes |
+| 26 | about 35 s | 45 minutes |
+| 30 and more | a minute or more | hours |
+
+More lines, a slower machine or a sharp position take longer; a time limit cuts each position short. The engine server with several threads is many times faster. Positions the game already has a deep enough evaluation for are not searched again (below).
 
 ## The options
 
-| Option | Default | What it does |
+| Option | Starts at | What it does |
 | --- | --- | --- |
-| **Engine** | your choice in Settings | Which engine searches. |
-| **Threads** | 1 | CPU threads for the engine, up to what it accepts. |
-| **Hash** | 64 MB | The engine's memory for positions it has seen. |
-| **Depth** | 20 | How many plies deep each position is searched. Deeper is more reliable and slower. |
-| **Time per move** | 30 s | The most time one position may take. The search stops at the depth or the time, whichever comes first. 0 means no time limit. |
-| **Lines** | 1 | How many candidate moves the engine works out in each position (MultiPV), 1–10. More lines mean more alternatives in the medium and full outputs, and a slower search. |
+| **Threads** | the Engine tab's (1) | CPU threads for the engine, up to what it and your device accept. |
+| **Hash (MB)** | the Engine tab's (16) | The engine's memory for positions it has seen. More helps deep searches. |
+| **Depth** | the Engine tab's (20) | How many plies deep each position is searched. Deeper is more reliable and slower. 1–40. |
+| **No time limit** | on when the Engine tab has none | Each position is searched to the full depth, however long that takes. A job's search must end, so this is as close to "infinite" as an analysis gets: the depth decides. |
+| **Time per move** | the Engine tab's | With a time limit, the most time one position may take, 1–300 s. The search stops at the depth or the time, whichever comes first. Off while *No time limit* is on; switching that off brings back the last time you set. |
+| **Lines** | the Engine tab's (3) | How many candidate moves the engine works out in each position (MultiPV), 1–10. More lines mean more alternatives in the medium and full outputs, and a slower search. |
 | **Early stop from depth** | the depth | Once the search reaches this depth, it may stop as soon as one of the lines is clearly worse than the best (below). At most the depth; at the depth itself, it never stops early. |
-| **Variation range** | 100 cp | How far below the best line another line may be and still count as a real alternative, in centipawns (100 cp = one pawn). |
-| **Analyse** | both sides | Only White's moves, only Black's, or both. |
-| **From move** | 1, White | The first move analysed: its number and colour. |
-| **To move** | the end | The last move number analysed, both colours. |
-| **Inaccuracy / Mistake / Blunder** | 50 / 100 / 300 cp | How much a move must give up to be marked as each. |
+| **Analyse the moves of** | both sides | Only White's moves, only Black's, or both. |
+| **From move**, **The first move analysed is** | 1, White's | The first move analysed: its number and colour. |
+| **To move** | empty — the end | The last move number analysed, both colours. |
 | **Outputs** | light | Which annotated PGNs to write: light, medium and/or full. One engine run makes all of them. |
 
-The moves outside *Analyse*, *From move* and *To move* stay in the game, unmarked, and are left out of the report.
+Under **Advanced** (closed until you open it):
+
+| Option | Starts at | What it does |
+| --- | --- | --- |
+| **Inaccuracy / Mistake / Blunder above** | 50 / 100 / 300 cp | How much a move must give up to be marked as each. They stay in order: raising the inaccuracy above the mistake raises the mistake with it. |
+| **Variation range** | 100 cp | How far below the best line another line may be and still count as a real alternative, in centipawns (100 cp = one pawn). |
+
+<ArticleImage src={advancedShot} alt="The Computer analysis tab's Advanced section open: the inaccuracy, mistake and blunder thresholds and the variation range" caption="Advanced: the thresholds and the variation range." width="70%" />
+
+The moves outside *Analyse the moves of*, *From move* and *To move* stay in the game, unmarked, and are left out of the report.
+
+### Settings for common cases
+
+| You want | Try |
+| --- | --- |
+| **A quick look** at a whole game | Depth 16, one line, light. A minute or two. |
+| **A serious review** of a game you played | Depth 20–22, three lines, light and medium, *Analyse the moves of* your colour. |
+| **The opening only** | *To move* 15. |
+| **One phase** — the endgame, the time scramble | *From move* and *To move* around it. |
+| **Study material** with every alternative | Depth 22+, five lines, full, early stop a few plies below the depth. |
+| **The deepest look** you can get | No time limit, depth 30+, on the engine server with several threads — and leave it overnight. |
 
 ## How a move is judged
 
@@ -86,7 +171,7 @@ For each move, the engine looks at two positions: the one **before** the move, t
 
 A position whose own move is not analysed (Black's, when you analyse White only) is searched for one line only: only its evaluation is needed, as the result of the move before it. A checkmate or stalemate on the board is not searched at all.
 
-Evaluations the game **already has** — from an earlier analysis, or a lichess export — are used rather than recalculated when they are at least as deep as the depth you asked for.
+Evaluations the game **already has** — from an earlier analysis, the Engine tab's *Write evaluations into the game*, or a lichess export — are used rather than recalculated when they are at least as deep as the depth you asked for.
 
 ### The search, and the lines kept
 
@@ -112,7 +197,7 @@ measured for the player who moved, with each evaluation held between −10 and +
 | more than 50 cp | an **inaccuracy** (?!) |
 | 50 cp or less | fine — no mark |
 
-Those are the default thresholds; the form changes them.
+Those are the default thresholds; *Advanced* changes them.
 
 ### A missed mate
 
@@ -126,10 +211,10 @@ Beside each marked move, the analysis names **the best move that was not played*
 
 For each player, over the moves analysed for them:
 
-| | |
+| Figure | What it is |
 | --- | --- |
-| **Inaccuracies, mistakes, blunders, missed mates** | How many of each. |
-| **ACPL** | Average centipawn loss: the losses added up and divided by the number of moves, rounded. Lower is better; strong players' games often come in under 20. |
+| **Inaccuracies, mistakes, blunders, missed mates** | How many of each. Each count above zero is a button: it takes the board to that player's next move of that kind, and round again from the first. |
+| **Average centipawn loss** (ACPL) | The losses added up and divided by the number of moves, rounded. Lower is better; strong players' games often come in under 20. |
 | **Accuracy** | Lichess's formula: 103.1668 × e^(−0.004354 × ACPL) − 3.1669, held between 0 and 100%. |
 
 How ACPL turns into accuracy:
@@ -138,19 +223,25 @@ How ACPL turns into accuracy:
 | --- | --- | --- | --- | --- | --- | --- |
 | Accuracy | 100% | 96% | 89% | 80% | 64% | 40% |
 
-A player with no analysed move — Black, when you analyse White only — has no report.
+A player with no analysed move — Black, when you analyse White only — shows *Not analysed*.
 
-<ArticleImage src={reportShot} alt="A finished analysis on the Analysis Board: each player's inaccuracies, mistakes, blunders, ACPL and accuracy, and a graph of the evaluation move by move with the mistakes marked" caption="The report and the evaluation graph, on the board." width="90%" />
+<ArticleImage src={reportShot} alt="An analysed game's Computer analysis tab: the evaluation graph with the mistakes marked, and each player's inaccuracies, mistakes, blunders, missed mates, ACPL and accuracy" caption="The report and the evaluation graph of a finished analysis." width="90%" />
 
 ### The evaluation graph
 
-One point per evaluated move: White's advantage above the middle, Black's below, held at ±10 pawns, the marked moves picked out. **Click a point** to take the board to that move. The same report and graph are on the job's entry on the Jobs screen.
+One point per evaluated move: White's advantage above the middle, Black's below. It is drawn on the **winning chance** rather than the raw evaluation, as lichess's is — a pawn matters a lot near equality and hardly at all at +8 — and mates sit at the edges. Each inaccuracy, mistake and blunder is a dot in its mark's colour (?! ? ??; a missed mate a blunder's), and the move on the board is a thin line.
+
+- **Point at it** for a crosshair and the move, its evaluation and its mark.
+- **Click** to take the board to that move.
+- **By keyboard** it is a slider over the moves: Tab to it, ← and → step through the moves (each read out with its evaluation and mark), Home and End go to either end, and Enter takes the board there.
+
+The same report and graph are on a finished job's entry on the Jobs screen.
 
 ## The three outputs
 
-All three come from the **same engine run**, so ticking all of them costs no more time than one. Each is saved as its own analysis, in the same folder as the game it came from (*Unfiled* if it had none), named *&lt;the game's name&gt; — computer analysis (light)* and so on.
+All three come from the **same engine run**, so ticking all of them costs no more time than one. Each is saved as its own analysis.
 
-| | light | medium | full |
+| What it holds | light | medium | full |
 | --- | --- | --- | --- |
 | Evaluation on every move | yes | yes | yes |
 | Marks and comments on the mistakes | yes | yes | yes |
@@ -174,7 +265,11 @@ The full output of the same run has the engine's other moves at every move:
 
 <InlinePgnGame2colH pgn={full} start="1" />
 
+On the Analysis Board, an analysed game reads like this — the marks after the moves, their comments, and the engine's lines as side lines:
+
 <ArticleImage src={movesShot} alt="The Analysis Board's move list for an analysed game: ?! ? and ?? glyphs after the marked moves, their comments, and the engine's lines as side lines" caption="An analysed game in the Analysis Board's move list." width="90%" />
+
+The mark of the move on screen is also drawn on the board, on the square the piece landed on — the Arrows tab's *Show move marks on the board* turns that off.
 
 ## What is written into the PGN
 
@@ -196,12 +291,28 @@ Analysing an analysis again replaces the marks, comments, report and tags the pr
 
 ## Reports from any analysed game
 
-The report and the graph are read **from the PGN itself**, not from the job — so they show for any analysed game the app holds, long after the job is gone, and for games analysed elsewhere:
+The report and the graph are read **from the PGN itself**, not from the job — so the Computer analysis tab shows them for any game on the board that carries evaluations, long after the job is gone, and for games analysed elsewhere:
 
-- **A lichess export** with evaluations (lichess's *Download annotated PGN*): its `[%eval]`s and its ?! ? ?? marks give the same report and graph. Without the two tags, every move with an evaluation counts. The first move has no evaluation before it in a lichess export, so it counts as a move but not in the ACPL.
+- **A lichess export** with evaluations (lichess's *Download annotated PGN*): paste it into the Load tab, and its `[%eval]`s and its ?! ? ?? marks give the same report and graph. Without the two tags, every move with an evaluation counts. The first move has no evaluation before it in a lichess export, so it counts as a move but not in the ACPL.
+- **Your own evaluations**: with the Engine tab's *Write evaluations into the game* on, every position you look at with the engine adds an evaluation — and the graph grows with them.
 - **An analysis you edited**: the report follows what is in the game — remove a mark and that move is no longer counted as a mistake.
 
 The marks come from the NAGs and the losses from the evaluations; a ?? whose evaluations show a mate given up is counted as a missed mate.
+
+## When something goes wrong
+
+| You see | What it means, and what to do |
+| --- | --- |
+| **Start is off** | The note under it says why: no output ticked, no moves on the board, or no move in the chosen range. |
+| **Queued**, and nothing moves | Another job is running; this one starts when it ends. The Jobs screen shows which. |
+| **It is very slow** | Each position takes up to the time limit — or, with no time limit, as long as the depth needs. Lower the depth, set a time limit, use fewer lines, set the early stop a few plies below the depth, or run the engine server. |
+| **Interrupted** | The page was reloaded or closed while it ran. Press **Resume** on the Jobs screen; it goes on from where it stopped. |
+| **Failed** — *The engine stopped answering* | The engine did not start, or went silent for two minutes in one position. **Resume** retries from the last finished position. If it keeps happening, try another engine in Settings. |
+| **Failed** — *The analyses could not be saved* | The browser refused to store them — usually a full disk. Free some space (Settings → Storage shows what takes room), then **Resume**. |
+| **Failed** — *Saved analyses is full* | Saved analyses holds up to 20,000. Delete some, then **Resume**. |
+| **Failed** — *The game sent for analysis could not be read again* | The job's copy of the game no longer matches the positions it started on. Start a new one. |
+| **The graph has gaps** while a job runs | You changed the board's main line after starting; the points of the moves you changed are left out. The job itself is unaffected. |
+| *Too many jobs are waiting* under Start | Up to 100 jobs are kept; with that many unfinished, no new one can be added. Let some finish, or cancel them. |
 
 ## Good to know
 
@@ -210,3 +321,4 @@ The marks come from the NAGs and the losses from the evaluations; a ?? whose eva
 - **The early stop** only helps with several lines. Set it a few plies below the depth to save time on positions where the best move is obvious.
 - **Analyse one side** to study your own moves only. The other side's positions are searched for one line, which saves time with several lines.
 - **Big games, big output**: full with five lines on an 80-move game adds hundreds of side-line moves. Light is the one to share.
+- **Close the board, not the tab**: the job runs as long as the app is open in some tab. Closing every tab interrupts it — Resume continues later.

@@ -29,12 +29,13 @@ shell's indicator, and how to test and extend them.
 
 | Path | What lives there |
 | --- | --- |
+| `src/lib/jobLiveAnalysis.ts` | **A job's results so far**, pure (CTA-174): the source re-parsed, the checkpoint read into the eval graph's points, the verdicts and report over the moves judged so far, the latest finished position — the Analysis Board's tab draws them while a job runs. |
 | `src/lib/jobs.ts` | **The record**, pure: `Job` (`ComputerAnalysisJob`), its statuses and errors, `ComputerAnalysisRequest`, `computerAnalysisJobOf` (a request → a queued job, or `undefined` when there is nothing to run), `jobSearchOf` (the source's tree and positions), `withCheckpoint`, `jobProgress`, `jobMoveLabel`, `canCancelJob` / `canResumeJob`, `jobOutputName`, `MAX_JOBS`, and the normaliser `jobFrom`. |
 | `src/lib/jobStore.ts` | **The store**: `chessapp.jobs`, object store `jobs`, over `idbRecordStore` (newest first). `enqueueComputerAnalysis` (the board's one call), `addJob` (the cap), `updateJob`, `cancelJob`, `resumeJob`, `removeJob`, `interruptRunningJobs`, `findJob`; `jobsSnapshot` / `subscribeJobs` / `loadJobs` / `settledJobs` / `resetJobStore` / `deleteJobsDb`. |
 | `src/lib/jobRunner.ts` | **The runner** (§3): `createJobRunner(deps)`, and the page's one, `startJobRunner()` / `stopJobRunner()` (tests). |
 | `src/views/jobs/JobRunner.tsx` | Mounts the runner: the shell (`views/main/Layout.tsx`'s `DefaultLayout`) renders it beside its outlets. |
 | `src/views/jobs/JobsIndicator.tsx` | The header's indicator (§5). |
-| `src/views/jobs/useJobs.ts` | `useJobs()` / `useJob(id)` — the board's read too (CTA-174). |
+| `src/views/jobs/useJobs.ts` | `useJobs()` / `useJob(id)` — the board's read too (CTA-174: the Computer analysis tab follows the job it sent, or an unfinished one of the same saved analysis, through `useJobs()` — [`analysis-board.md`](./analysis-board.md) §1.3). |
 | `src/views/jobs/JobsScreen.tsx`, `JobsMain.tsx`, `JobReport.tsx` | **The Jobs screen** (§4) and a finished job's report and graph. |
 | `src/blocks/tables/JobsTable/` | The list (a `DataTable`): game, status, progress, times, Resume / Cancel / Delete. |
 | `src/blocks/panels/JobSummary/` | One job whole: status, progress, error, actions, links, facts; a finished job's report under it. |
@@ -42,8 +43,9 @@ shell's indicator, and how to test and extend them.
 | Tests | `src/lib/jobs.test.ts`, `jobStore.test.ts`, `jobRunner.test.ts`; `src/views/jobs/JobsScreen.test.tsx`, `JobsIndicator.test.tsx`; each block's own; `src/lib/engines/noWorkerAtImport.test.ts` (the runner builds nothing at import). |
 
 Route `/jobs` (`handle.title` `pages.jobs`, its description
-`pageDescriptions.jobs`), `?job=<id>` the job open in the panel. Nav: a
-top-level `singleEntry` folder **Jobs** (`nav.folders.jobs`, `nav.jobs`).
+`pageDescriptions.jobs`), `?job=<id>` the job open in the panel. Nav:
+**Jobs** (`nav.jobs`) in the **Analyses** folder, under its Lobby (CTA-174 —
+a top-level folder of its own before).
 Locale keys: `jobs.*` (the screen, the blocks' words, the indicator) and
 `computerAnalysis.*` (the report's, the graph's, the variants' and verdicts'
 words — shared with the board). Test ids: `jobs-*`.
