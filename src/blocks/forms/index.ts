@@ -8,6 +8,7 @@ export * from "./AnalysisEngineForm";
 export * from "./ArrowSettingsFields";
 export * from "./CollectionFilters";
 export * from "./CollectionSettingsForm";
+export * from "./ComputerAnalysisForm";
 export * from "./EnginePicker";
 export * from "./EngineServerForm";
 export * from "./EngineSettingsForm";
