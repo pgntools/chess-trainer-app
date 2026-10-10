@@ -23,6 +23,10 @@ import {
   loadUploadedCollections,
   resetLibraryCollectionStore,
 } from "../../../../lib/libraryCollectionStore";
+import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../../../lib/computerAnalysis";
+import { DEFAULT_ENGINE_ID } from "../../../../lib/engines/ids";
+import { MAX_JOBS } from "../../../../lib/jobs";
+import { enqueueComputerAnalysis, jobsSnapshot } from "../../../../lib/jobStore";
 import { savedAnalysisOf, type SavedAnalysis } from "../../../../lib/savedAnalyses";
 import {
   createAnalysisFolder,
@@ -1311,5 +1315,84 @@ describe("Saved analyses — accessible (CTA-113)", () => {
     expect(screen.getByRole("checkbox", { name: "Select Najdorf" })).toHaveFocus();
     await user.keyboard(" ");
     expect(screen.getByTestId("saved-analyses-selected-count")).toHaveTextContent("1 selected");
+  });
+});
+
+describe("Saved analyses — Analyse (CTA-177)", () => {
+  const dialog = () => screen.getByRole("dialog", { name: "New job" });
+  const start = () => within(dialog()).getByRole("button", { name: "Start computer analysis" });
+  /** The jobs as read — `[]` before the first read. */
+  const jobs = () => jobsSnapshot() ?? [];
+  const mine = (folderId: string | null = null): SavedAnalysis => ({ ...save("a1", [[[], ["e4", "e5", "Nf3"]]]), name: "Mine", folderId });
+
+  it("a row's Analyse opens New Job on the record, with the defaults on the reader's engine; Start queues its PGN, name and folder", async () => {
+    const user = userEvent.setup();
+    const folder = (await createAnalysisFolder("Openings", null))!;
+    await saveAnalysis(mine(folder.id));
+    await renderScreen(`/tools/analysis/saved?folder=${folder.id}`);
+
+    await user.click(screen.getByRole("button", { name: "Analyse Mine with the computer" }));
+    expect(within(dialog()).getByTestId("saved-analyses-new-job-game")).toHaveTextContent("Game: Mine");
+    expect(within(dialog()).getByRole("slider", { name: "Depth" })).toHaveAttribute(
+      "aria-valuenow",
+      String(DEFAULT_COMPUTER_ANALYSIS_OPTIONS.depth),
+    );
+    // No engine runs on the list: the default build's Threads reads pinned from its descriptor.
+    expect(within(dialog()).getByRole("slider", { name: "Threads" })).toBeDisabled();
+    await user.click(start());
+
+    await waitFor(() => expect(jobs()).toHaveLength(1));
+    const [job] = jobs();
+    expect(job.source).toEqual({ analysisId: "a1", name: "Mine", folderId: folder.id, pgn: findSavedAnalysis("a1")?.pgn });
+    expect(job.options).toEqual(expect.objectContaining({ engine: DEFAULT_ENGINE_ID, outputs: ["light"], depth: DEFAULT_COMPUTER_ANALYSIS_OPTIONS.depth }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await screen.findByTestId("saved-analyses-new-job-notice-message")).toHaveTextContent("Computer analysis of Mine queued.");
+    expect(screen.getByRole("link", { name: "Open in Jobs" })).toHaveAttribute("href", `/jobs?job=${job.id}`);
+  });
+
+  it("a card's Analyse opens it too", async () => {
+    const user = userEvent.setup();
+    await saveAnalysis(mine());
+    await renderScreen();
+    await user.click(screen.getByTestId("saved-analyses-view-compact"));
+    await user.click(within(screen.getByTestId("saved-analyses-item-a1")).getByRole("button", { name: "Analyse Mine with the computer" }));
+    expect(within(dialog()).getByTestId("saved-analyses-new-job-game")).toHaveTextContent("Game: Mine");
+    await expectNoAxeViolations(dialog());
+  });
+
+  it("a record with a job asks first, and Check existing opens the job on the Jobs screen", async () => {
+    const user = userEvent.setup();
+    const saved = mine();
+    await saveAnalysis(saved);
+    const id = await enqueueComputerAnalysis({
+      source: { analysisId: "a1", name: "Mine", folderId: null, pgn: saved.pgn },
+      options: DEFAULT_COMPUTER_ANALYSIS_OPTIONS,
+    });
+    await renderScreen();
+    await user.click(screen.getByRole("button", { name: "Analyse Mine with the computer" }));
+    expect(within(dialog()).getByTestId("saved-analyses-new-job-existing")).toHaveTextContent("Mine already has a computer analysis — the job: Queued.");
+    await user.click(within(dialog()).getByRole("button", { name: "Check existing" }));
+    expect(where.current).toEqual(expect.objectContaining({ pathname: "/jobs", search: `?job=${id}` }));
+  });
+
+  it("says a refusal inside the dialog, which stays open", async () => {
+    const user = userEvent.setup();
+    const saved = mine();
+    await saveAnalysis(saved);
+    // The store full of jobs that have not ended.
+    for (let index = 0; index < MAX_JOBS; index += 1) {
+      await enqueueComputerAnalysis({ source: { analysisId: null, name: "Other", folderId: null, pgn: saved.pgn }, options: DEFAULT_COMPUTER_ANALYSIS_OPTIONS });
+    }
+    await renderScreen();
+    await user.click(screen.getByRole("button", { name: "Analyse Mine with the computer" }));
+    await user.click(start());
+    expect(await within(dialog()).findByTestId("saved-analyses-new-job-problem")).toHaveTextContent("Too many jobs are waiting.");
+    expect(jobs()).toHaveLength(MAX_JOBS);
+  });
+
+  it("a record that will not read cannot be analysed", async () => {
+    await saveAnalysis({ ...mine(), pgn: "1. e4 e5 2. Qxx9 *" });
+    await renderScreen();
+    expect(screen.getByRole("button", { name: "Analyse Mine with the computer" })).toBeDisabled();
   });
 });

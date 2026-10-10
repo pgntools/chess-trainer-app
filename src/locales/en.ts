@@ -996,7 +996,6 @@ const en = {
       export: "Export",
       engine: "Engine",
       arrows: "Arrows",
-      computer: "Computer analysis",
     },
     /**
      * The header's Play toggle (CTA-73): the engine plays the side not at
@@ -2662,20 +2661,34 @@ const en = {
         "too-many": "Too many jobs are waiting. Let some finish, or cancel them on the Jobs screen.",
       },
     },
-    /** The Analysis Board's Computer analysis tab (CTA-174). */
+    /**
+     * The report and graph at the top of the Analysis Board's Moves tab
+     * (CTA-177, the Computer analysis tab's before), and a job's results so
+     * far (`jobLiveAnalysis`, CTA-174 — the Jobs screen's since CTA-178).
+     */
     board: {
-      jobTitle: "This game's analysis",
-      running: "The engine is analysing this game in the background — you can go on with anything else. You can start another analysis of it once this one ends.",
-      done: "Finished. Each variant is a new saved analysis: open one to see its report and evaluation graph.",
       liveGraph: "Evaluation graph so far",
       latest: "Latest: after",
       latestStart: "Latest: the start position",
       depth: "depth {{depth}}",
-      progressLabel: "Computer analysis progress",
-      openJobs: "Open in Jobs",
       reportTitle: "Report",
-      formTitle: "Run a computer analysis",
-      formIntro: "The engine goes over the game's main line in the background, while you go on with anything else.",
+      reportToggle: "Show or hide the report",
+    },
+    /** The New Job dialog and the Analyse icons that open it (CTA-177, `NewJobDialog`). */
+    newJob: {
+      analyse: "Analyse with the computer",
+      analyseNamed: "Analyse {{name}} with the computer",
+      title: "New job",
+      game: "Game:",
+      intro: "The engine goes over the game's main line in the background, while you go on with anything else.",
+      cancel: "Cancel",
+      queued: "Computer analysis of {{name}} queued.",
+      openJob: "Open in Jobs",
+      existing: {
+        text: "{{name}} already has a computer analysis — the job: {{status}}. Start a new one, or check the existing one on the Jobs screen?",
+        startNew: "Start a new analysis",
+        check: "Check existing",
+      },
     },
   },
   /**
@@ -2697,9 +2710,11 @@ const en = {
     openSource: "Open the analysed game",
     openOutput: "Open the {{variant}} analysis",
     resume: "Resume",
+    pause: "Pause",
     cancel: "Cancel",
     delete: "Delete",
     resumeNamed: "Resume {{name}}",
+    pauseNamed: "Pause {{name}}",
     cancelNamed: "Cancel {{name}}",
     deleteNamed: "Delete {{name}}",
     confirmDelete: {
@@ -2711,12 +2726,22 @@ const en = {
     reportTitle: "Report",
     reportReading: "Reading the report…",
     reportMissing: "The saved analyses this job made are gone, so its report cannot be shown.",
+    /** A job not done: its results so far (CTA-178, `JobLiveReport`). */
+    liveTitle: "Results so far",
+    liveEmpty: "No results yet — no position has been analysed.",
+    /** The job panel's tabs (CTA-178, `JobSummary`). */
+    tabs: {
+      label: "Job details",
+      results: "Results",
+      params: "Parameters",
+    },
     kinds: {
       "computer-analysis": "Computer analysis",
     },
     status: {
       queued: "Queued",
       running: "Running",
+      paused: "Paused",
       interrupted: "Interrupted",
       done: "Done",
       failed: "Failed",
@@ -2770,6 +2795,7 @@ const en = {
       label: "Jobs: {{name}}, {{done}} of {{total}} positions",
       labelQueued: "Jobs: {{count}} queued",
       started: "Computer analysis started: {{name}}.",
+      paused: "Computer analysis paused: {{name}}.",
       done: "Computer analysis finished: {{name}}.",
       failed: "Computer analysis failed: {{name}}.",
       cancelled: "Computer analysis cancelled: {{name}}.",

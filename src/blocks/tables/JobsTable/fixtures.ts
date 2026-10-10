@@ -39,6 +39,7 @@ export const jobFixture = (id: string, status: JobStatus, done: number, name = "
 };
 
 export const RUNNING = jobFixture("running", "running", 3);
+export const PAUSED = jobFixture("paused", "paused", 4);
 export const QUEUED = jobFixture("queued", "queued", 0, "Ding – Gukesh");
 export const INTERRUPTED = jobFixture("interrupted", "interrupted", 5);
 export const DONE = jobFixture("done", "done", 9);
@@ -46,7 +47,7 @@ export const FAILED = jobFixture("failed", "failed", 2);
 export const CANCELLED = jobFixture("cancelled", "cancelled", 1);
 
 /** One of each state, newest first. */
-export const JOBS: readonly Job[] = [RUNNING, QUEUED, INTERRUPTED, DONE, FAILED, CANCELLED];
+export const JOBS: readonly Job[] = [RUNNING, QUEUED, PAUSED, INTERRUPTED, DONE, FAILED, CANCELLED];
 
 /** A Hebrew name. */
 export const HEBREW: readonly Job[] = [jobFixture("hebrew", "running", 4, "גלפנד – סמירין")];

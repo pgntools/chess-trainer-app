@@ -4,6 +4,7 @@ import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS, type PositionResult } from "./comput
 import type { Score } from "./engineAnalysis";
 import { computerAnalysisJobOf, withCheckpoint, type Job } from "./jobs";
 import { jobLiveAnalysis } from "./jobLiveAnalysis";
+import { atParamOf } from "./repertoireLink";
 
 /** Black's 3... Nf6 lets 4. Qxf7# in: a blunder. */
 const PGN = "1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7# *";
@@ -55,6 +56,12 @@ describe("jobLiveAnalysis (CTA-174)", () => {
       line: { score: { kind: "cp", value: 30 }, depth: 16, pv: ["g1f3"] },
       moves: "2. Nf3",
     });
+  });
+
+  it("hands back the source's tree, whose node ids the points carry (CTA-178: the graph's `?at=`)", () => {
+    const live = jobLiveAnalysis(checkpointed(jobOf(), [0, 1, 2]));
+    if (live === undefined) throw new Error("no live analysis");
+    expect(live.points.map((point) => atParamOf(live.tree, point.nodeId))).toEqual(["", "e4", "e4,e5"]);
   });
 
   it("judges only the moves whose positions before and after are both finished", () => {

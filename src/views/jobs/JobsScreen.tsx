@@ -11,9 +11,10 @@ import { EmptyState } from "../../design-system/components/states";
 import { ListScreenHeader } from "../../design-system/components/toolbars";
 import { analysisBoardPath } from "../../lib/analysesListContext";
 import type { Job } from "../../lib/jobs";
-import { cancelJob, removeJob, resumeJob } from "../../lib/jobStore";
+import { cancelJob, pauseJob, removeJob, resumeJob } from "../../lib/jobStore";
 import { useOwnPageHeading } from "../main/pageTitle";
 import { RightPanel } from "../main/rightPanel";
+import JobLiveReport from "./JobLiveReport";
 import JobReport from "./JobReport";
 import { useJobs } from "./useJobs";
 
@@ -26,16 +27,18 @@ const JOB_PARAM = "job";
  *
  * - **The square: the list** (`JobsTable`), newest first — each job's game,
  *   status, progress (the move being searched), its times, and Resume /
- *   Cancel / Delete. A row's game opens its details: `?job=<id>`, written
+ *   Pause / Cancel / Delete. A row's game opens its details: `?job=<id>`, written
  *   with history replace, so a link names the job.
  * - **The panel: one job** (`JobSummary`) — every option it was given, the
  *   engine that ran it, a link to the game it came from and to each Saved
  *   analysis it made, why it failed, and a finished job's **report and eval
- *   graph** (`JobReport`, read back from its first output).
+ *   graph** (`JobReport`, read back from its first output) — or, for a job not
+ *   done, **its results so far** (`JobLiveReport`, CTA-178: the graph filling
+ *   in, the latest position's eval and line, the report over the moves judged).
  *
- * Cancel, Resume and Delete are store writes (`lib/jobStore.ts`); the runner,
- * in whichever tab holds it, acts on them. Delete asks first, and keeps the
- * analyses the job saved. The rules are `.claude/rules/jobs.md`.
+ * Pause, Cancel, Resume and Delete are store writes (`lib/jobStore.ts`);
+ * the runner, in whichever tab holds it, acts on them. Delete asks first, and
+ * keeps the analyses the job saved. The rules are `.claude/rules/jobs.md`.
  */
 function JobsScreen() {
   // The list header's title is the page's `h1` (CTA-112).
@@ -68,6 +71,7 @@ function JobsScreen() {
           rowLink={linkTo}
           selectedId={selectedId}
           onCancel={(job) => void cancelJob(job.id)}
+          onPause={(job) => void pauseJob(job.id)}
           onResume={(job) => void resumeJob(job.id)}
           onDelete={setDeleting}
           testId="jobs-table"
@@ -75,27 +79,35 @@ function JobsScreen() {
       </Box>
 
       <RightPanel>
-        {selected !== undefined ? (
-          <JobSummary
-            job={selected}
-            sourceLink={
-              selected.source.analysisId === null
-                ? undefined
-                : { component: RouterLink, to: analysisBoardPath(selected.source.analysisId) }
-            }
-            outputLink={(output) => ({ component: RouterLink, to: analysisBoardPath(output.analysisId) })}
-            onCancel={() => void cancelJob(selected.id)}
-            onResume={() => void resumeJob(selected.id)}
-            onDelete={() => setDeleting(selected)}
-            testId="jobs-summary"
-          >
-            {selected.status === "done" && <JobReport job={selected} testId="jobs-report" />}
-          </JobSummary>
-        ) : (
-          <EmptyState testId="jobs-none-selected">
-            {selectedId !== null && jobs !== undefined ? t("jobs.missing") : t("jobs.noneSelected")}
-          </EmptyState>
-        )}
+        {/* The aside does not scroll; the panel is its own scrolling column. */}
+        <Box data-testid="jobs-panel" sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          {selected !== undefined ? (
+            <JobSummary
+              job={selected}
+              sourceLink={
+                selected.source.analysisId === null
+                  ? undefined
+                  : { component: RouterLink, to: analysisBoardPath(selected.source.analysisId) }
+              }
+              outputLink={(output) => ({ component: RouterLink, to: analysisBoardPath(output.analysisId) })}
+              onCancel={() => void cancelJob(selected.id)}
+              onPause={() => void pauseJob(selected.id)}
+              onResume={() => void resumeJob(selected.id)}
+              onDelete={() => setDeleting(selected)}
+              testId="jobs-summary"
+            >
+              {selected.status === "done" ? (
+                <JobReport job={selected} testId="jobs-report" />
+              ) : (
+                <JobLiveReport job={selected} testId="jobs-live" />
+              )}
+            </JobSummary>
+          ) : (
+            <EmptyState testId="jobs-none-selected">
+              {selectedId !== null && jobs !== undefined ? t("jobs.missing") : t("jobs.noneSelected")}
+            </EmptyState>
+          )}
+        </Box>
       </RightPanel>
 
       <ConfirmDialog

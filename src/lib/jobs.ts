@@ -31,14 +31,16 @@ import { parsePgnTree } from "./pgn";
  *    ▲          │ ├────▶ failed ──────┐
  *    │          │ └────▶ cancelled    │
  *    │          ▼ (a reload)          │
- *    └──── interrupted ◀──────────────┘ Resume (interrupted, failed → queued)
+ *    ├──── interrupted ◀──────────────┘ Resume (interrupted, paused, failed → queued)
+ *    │
+ *    └──── paused ◀── Pause (queued, running)
  * ```
  */
 
 export const JOB_KINDS = ["computer-analysis"] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 
-export const JOB_STATUSES = ["queued", "running", "interrupted", "done", "failed", "cancelled"] as const;
+export const JOB_STATUSES = ["queued", "running", "paused", "interrupted", "done", "failed", "cancelled"] as const;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
 /** What went wrong with a failed job — a catalog key's last part (`jobs.errors.<code>`). */
@@ -126,11 +128,14 @@ export const isActiveJob = (job: Pick<Job, "status">): boolean => job.status ===
 
 /** Cancel stops a job that has not ended. */
 export const canCancelJob = (job: Pick<Job, "status">): boolean =>
-  job.status === "queued" || job.status === "running" || job.status === "interrupted";
+  job.status === "queued" || job.status === "running" || job.status === "paused" || job.status === "interrupted";
 
-/** Resume queues a job a reload or a failure stopped — it goes on from its checkpoint. */
+/** Pause stops a job waiting or being run, its checkpoint kept, until the reader resumes it (CTA-178). */
+export const canPauseJob = (job: Pick<Job, "status">): boolean => isActiveJob(job);
+
+/** Resume queues a job the reader paused, or a reload or a failure stopped — it goes on from its checkpoint. */
 export const canResumeJob = (job: Pick<Job, "status">): boolean =>
-  job.status === "interrupted" || job.status === "failed";
+  job.status === "paused" || job.status === "interrupted" || job.status === "failed";
 
 /** What a saved variant is called: "<source> — computer analysis (light)" (CTA-171's decision). */
 export const jobOutputName = (sourceName: string, variant: ComputerAnalysisVariant): string =>

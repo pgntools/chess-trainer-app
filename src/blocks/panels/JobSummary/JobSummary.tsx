@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Link from "@mui/material/Link";
@@ -11,7 +11,8 @@ import { linkProps, type LinkTarget } from "../../../design-system/components/li
 import { KeyValueList } from "../../../design-system/components/lists";
 import { ProgressLine } from "../../../design-system/components/states";
 import { tableDate } from "../../../design-system/components/tables";
-import { canCancelJob, canResumeJob, jobMoveLabel, jobProgress, type Job, type JobOutput } from "../../../lib/jobs";
+import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
+import { canCancelJob, canPauseJob, canResumeJob, jobMoveLabel, jobProgress, type Job, type JobOutput } from "../../../lib/jobs";
 import { JOB_STATUS_TONES } from "../../tables";
 
 export type JobSummaryProps = {
@@ -21,13 +22,19 @@ export type JobSummaryProps = {
   /** A saved output, on the Analysis Board. */
   outputLink: (output: JobOutput) => LinkTarget;
   onCancel: () => void;
+  /** Pause a job waiting or being run — Resume takes it up again (CTA-178). */
+  onPause: () => void;
   onResume: () => void;
   onDelete: () => void;
-  /** Under it: a finished job's report and eval graph, read from an output by the screen. */
+  /** The Results tab: a finished job's report and eval graph, read from an output by the screen — or another job's results so far (CTA-178). */
   children?: ReactNode;
-  /** The root; the parts are `-status`, `-progress`, `-error`, `-facts` (each fact `-facts-<id>`), `-source`, `-output-<variant>`, `-cancel`, `-resume`, `-delete`. */
+  /** The root; the parts are `-status`, `-progress`, `-error`, `-facts` (each fact `-facts-<id>`), `-source`, `-output-<variant>`, `-pause`, `-cancel`, `-resume`, `-delete`, the tab strip `-tabs` (each tab `-tabs-tab-<results|params>`) and its panel `-panel`. */
   testId: string;
 };
+
+/** The panel's two tabs (CTA-178): what the run found, and what it was run with. */
+const JOB_SUMMARY_TABS = ["results", "params"] as const;
+type JobSummaryTab = (typeof JOB_SUMMARY_TABS)[number];
 
 /** A date and time, as the Jobs table writes one. */
 const stamp = (value: string | null): ReactNode => {
@@ -42,17 +49,21 @@ const stamp = (value: string | null): ReactNode => {
 
 /**
  * **One job, whole** (CTA-173) — the Jobs screen's right-hand panel: what it
- * analyses and a link back to it, its status and progress ("12 of 80
+ * analyses and a button back to it (at the header's other end, CTA-178), its status and progress ("12 of 80
  * positions · 7. Nf3"), why it failed, the engine that ran it and every option
  * it was given, when it was asked for, started and ended, a link to each Saved
- * analysis it made, and Resume / Cancel / Delete. A finished job's report and
- * eval graph go under it (`children` — `ComputerAnalysisReport`, `EvalGraph`).
+ * analysis it made, and Resume / Pause / Cancel / Delete. Under them **two
+ * tabs** (CTA-178): **Results** — a finished job's report and eval graph, or
+ * another job's results so far (`children` — `ComputerAnalysisReport`,
+ * `EvalGraph`) — and **Parameters**, the engine, every option and the times.
+ * The tab picked is the panel's own, kept while another job is opened.
  *
  * Presentational: the job, its links and its actions are props; its words are
  * the app's (`jobs.*`).
  */
-function JobSummary({ job, sourceLink, outputLink, onCancel, onResume, onDelete, children, testId }: JobSummaryProps) {
+function JobSummary({ job, sourceLink, outputLink, onCancel, onPause, onResume, onDelete, children, testId }: JobSummaryProps) {
   const { t } = useTranslation();
+  const [tab, setTab] = useState<JobSummaryTab>("results");
   const name = job.source.name || t("jobs.untitled");
   const progress = jobProgress(job);
   const move = job.status === "done" || progress.current === undefined ? undefined : jobMoveLabel(progress.current);
@@ -84,13 +95,21 @@ function JobSummary({ job, sourceLink, outputLink, onCancel, onResume, onDelete,
 
   return (
     <Box data-testid={testId} sx={{ display: "grid", gap: 1.5 }}>
-      <Box>
-        <Typography component="h2" variant="subtitle1" dir="auto" sx={{ fontWeight: 700, overflowWrap: "anywhere" }}>
-          {name}
-        </Typography>
-        <Typography variant="body2" data-testid={`${testId}-status`} sx={{ color: JOB_STATUS_TONES[job.status], fontWeight: 600 }}>
-          {t(`jobs.status.${job.status}`)}
-        </Typography>
+      {/* The game and its status at the start; the way back to it at the other end, dropping under them where the panel is narrow. */}
+      <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
+        <Box sx={{ flex: "1 1 12rem", minWidth: 0 }}>
+          <Typography component="h2" variant="subtitle1" dir="auto" sx={{ fontWeight: 700, overflowWrap: "anywhere" }}>
+            {name}
+          </Typography>
+          <Typography variant="body2" data-testid={`${testId}-status`} sx={{ color: JOB_STATUS_TONES[job.status], fontWeight: 600 }}>
+            {t(`jobs.status.${job.status}`)}
+          </Typography>
+        </Box>
+        {sourceLink !== undefined && (
+          <Button size="small" variant="outlined" data-testid={`${testId}-source`} sx={{ flexShrink: 0, whiteSpace: "nowrap" }} {...linkProps(sourceLink)}>
+            {t("jobs.openSource")}
+          </Button>
+        )}
       </Box>
 
       <ProgressLine
@@ -122,6 +141,11 @@ function JobSummary({ job, sourceLink, outputLink, onCancel, onResume, onDelete,
             {t("jobs.resume")}
           </Button>
         )}
+        {canPauseJob(job) && (
+          <Button size="small" variant="outlined" onClick={onPause} data-testid={`${testId}-pause`}>
+            {t("jobs.pause")}
+          </Button>
+        )}
         {canCancelJob(job) && (
           <Button size="small" variant="outlined" onClick={onCancel} data-testid={`${testId}-cancel`}>
             {t("jobs.cancel")}
@@ -132,27 +156,38 @@ function JobSummary({ job, sourceLink, outputLink, onCancel, onResume, onDelete,
         </Button>
       </Stack>
 
-      <Box component="section" aria-label={t("jobs.links")} sx={{ display: "grid", gap: 0.5 }}>
-        {sourceLink !== undefined && (
-          <Link {...(linkProps(sourceLink) as Record<string, unknown>)} underline="hover" data-testid={`${testId}-source`}>
-            {t("jobs.openSource")}
-          </Link>
-        )}
-        {job.outputs.map((output) => (
-          <Link
-            key={output.analysisId}
-            {...(linkProps(outputLink(output)) as Record<string, unknown>)}
-            underline="hover"
-            data-testid={`${testId}-output-${output.variant}`}
-          >
-            {t("jobs.openOutput", { variant: t(`computerAnalysis.variants.${output.variant}`) })}
-          </Link>
-        ))}
+      {job.outputs.length > 0 && (
+        <Box component="section" aria-label={t("jobs.links")} sx={{ display: "grid", gap: 0.5 }}>
+          {job.outputs.map((output) => (
+            <Link
+              key={output.analysisId}
+              {...(linkProps(outputLink(output)) as Record<string, unknown>)}
+              underline="hover"
+              data-testid={`${testId}-output-${output.variant}`}
+            >
+              {t("jobs.openOutput", { variant: t(`computerAnalysis.variants.${output.variant}`) })}
+            </Link>
+          ))}
+        </Box>
+      )}
+
+      <Box>
+        <PanelTabs
+          tabs={JOB_SUMMARY_TABS.map((id) => ({ id, label: t(`jobs.tabs.${id}`) }))}
+          value={tab}
+          onChange={(id) => setTab(id as JobSummaryTab)}
+          ariaLabel={t("jobs.tabs.label")}
+          idPrefix={`${testId}-tabs`}
+          testId={`${testId}-tabs`}
+        />
+        <Box {...tabPanelProps(`${testId}-tabs`, tab)} data-testid={`${testId}-panel`} sx={{ pt: 1.5 }}>
+          {tab === "results" ? (
+            children
+          ) : (
+            <KeyValueList rows={facts} ariaLabel={t("jobs.facts.title")} testId={`${testId}-facts`} />
+          )}
+        </Box>
       </Box>
-
-      {children}
-
-      <KeyValueList rows={facts} ariaLabel={t("jobs.facts.title")} testId={`${testId}-facts`} />
     </Box>
   );
 }

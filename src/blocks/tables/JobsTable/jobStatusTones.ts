@@ -8,6 +8,7 @@ import type { JobStatus } from "../../../lib/jobs";
 export const JOB_STATUS_TONES: Readonly<Record<JobStatus, string>> = {
   queued: "text.secondary",
   running: "info.main",
+  paused: "warning.main",
   interrupted: "warning.main",
   done: "success.main",
   failed: "error.main",

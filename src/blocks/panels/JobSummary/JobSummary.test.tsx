@@ -9,7 +9,7 @@ import { DONE, FAILED, RUNNING, UNSAVED } from "./fixtures";
 import JobSummary from "./JobSummary";
 
 const mount = (job: Job) => {
-  const handlers = { onCancel: vi.fn(), onResume: vi.fn(), onDelete: vi.fn() };
+  const handlers = { onCancel: vi.fn(), onPause: vi.fn(), onResume: vi.fn(), onDelete: vi.fn() };
   render(
     <JobSummary
       job={job}
@@ -36,8 +36,17 @@ describe("JobSummary (CTA-173)", () => {
     expect(screen.getByTestId("job-progress")).toHaveTextContent("2 of 7 positions · 2. Nf3");
   });
 
-  it("lists the engine and every option it was given", () => {
+  it("opens on Results, what goes under it; Parameters lists the engine and every option it was given (CTA-178)", async () => {
+    const user = userEvent.setup();
     mount(DONE);
+    const tabs = screen.getByRole("tablist", { name: "Job details" });
+    expect(screen.getByRole("tab", { name: "Results", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("tabpanel", { name: "Results" })).toHaveTextContent("the report");
+    expect(screen.queryByTestId("job-facts")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Parameters" }));
+    expect(tabs).toBeInTheDocument();
+    expect(screen.getByRole("tabpanel", { name: "Parameters" })).not.toHaveTextContent("the report");
     expect(screen.getByTestId("job-facts-engine")).toHaveTextContent("Stockfish 19 Lite (multi-thread)");
     expect(screen.getByTestId("job-facts-depth")).toHaveTextContent("22");
     expect(screen.getByTestId("job-facts-time")).toHaveTextContent("15 s");
@@ -74,12 +83,24 @@ describe("JobSummary (CTA-173)", () => {
     expect(handlers.onDelete).toHaveBeenCalled();
   });
 
-  it("offers Cancel on a running job", async () => {
+  it("offers Pause and Cancel on a running job", async () => {
     const user = userEvent.setup();
     const handlers = mount(RUNNING);
+    await user.click(screen.getByRole("button", { name: "Pause" }));
+    expect(handlers.onPause).toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(handlers.onCancel).toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Resume" })).not.toBeInTheDocument();
+  });
+
+  it("offers Resume and Cancel on a paused job, but no Pause (CTA-178)", async () => {
+    const user = userEvent.setup();
+    const handlers = mount({ ...RUNNING, status: "paused" });
+    expect(screen.getByText("Paused")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Resume" }));
+    expect(handlers.onResume).toHaveBeenCalled();
   });
 
   it("passes axe", async () => {

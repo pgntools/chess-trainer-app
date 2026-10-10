@@ -132,6 +132,7 @@ const demo = (
           openLink={(row) => ({ href: `#analysis-${row.id}` })}
           onOpenAnalysis={noop}
           settingsLink={(row) => ({ href: `#settings-${row.id}` })}
+          onAnalyse={noop}
           filtered={state.text.trim() !== ""}
           onClearFilter={() => set((before) => ({ ...before, page: 0, text: "" }))}
           filters={

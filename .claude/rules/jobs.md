@@ -18,8 +18,9 @@ goes on with anything else. One kind so far: a game's **computer analysis**
 position checkpointed, and each ticked variant (light, medium, full) saved as
 a new Saved analysis. The analysis rules themselves (positions, early stop,
 verdicts, the annotated trees, the report read back) are
-[`pgn-annotations.md`](./pgn-annotations.md) §6; the board's tab that sends a
-game is CTA-174's ([`analysis-board.md`](./analysis-board.md)). This file is
+[`pgn-annotations.md`](./pgn-annotations.md) §6; a game is sent from the
+**New Job** dialog the Analysis Board's and the saved list's Analyse icons open
+(CTA-177, [`analysis-board.md`](./analysis-board.md) §1.3). This file is
 everything about the job: the record, the store, the runner, the screen, the
 shell's indicator, and how to test and extend them.
 
@@ -29,17 +30,17 @@ shell's indicator, and how to test and extend them.
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/jobLiveAnalysis.ts` | **A job's results so far**, pure (CTA-174): the source re-parsed, the checkpoint read into the eval graph's points, the verdicts and report over the moves judged so far, the latest finished position — the Analysis Board's tab draws them while a job runs. |
-| `src/lib/jobs.ts` | **The record**, pure: `Job` (`ComputerAnalysisJob`), its statuses and errors, `ComputerAnalysisRequest`, `computerAnalysisJobOf` (a request → a queued job, or `undefined` when there is nothing to run), `jobSearchOf` (the source's tree and positions), `withCheckpoint`, `jobProgress`, `jobMoveLabel`, `canCancelJob` / `canResumeJob`, `jobOutputName`, `MAX_JOBS`, and the normaliser `jobFrom`. |
-| `src/lib/jobStore.ts` | **The store**: `chessapp.jobs`, object store `jobs`, over `idbRecordStore` (newest first). `enqueueComputerAnalysis` (the board's one call), `addJob` (the cap), `updateJob`, `cancelJob`, `resumeJob`, `removeJob`, `interruptRunningJobs`, `findJob`; `jobsSnapshot` / `subscribeJobs` / `loadJobs` / `settledJobs` / `resetJobStore` / `deleteJobsDb`. |
+| `src/lib/jobLiveAnalysis.ts` | **A job's results so far**, pure (CTA-174): the source re-parsed, the checkpoint read into the eval graph's points, the verdicts and report over the moves judged so far, the latest finished position — drawn while a job runs (the Analysis Board's tab's until CTA-177; the Jobs screen's, CTA-178). |
+| `src/lib/jobs.ts` | **The record**, pure: `Job` (`ComputerAnalysisJob`), its statuses and errors, `ComputerAnalysisRequest`, `computerAnalysisJobOf` (a request → a queued job, or `undefined` when there is nothing to run), `jobSearchOf` (the source's tree and positions), `withCheckpoint`, `jobProgress`, `jobMoveLabel`, `canCancelJob` / `canResumeJob`, `jobOutputName`, `MAX_JOBS`, and the normaliser `jobFrom`; `canPauseJob` (CTA-178). |
+| `src/lib/jobStore.ts` | **The store**: `chessapp.jobs`, object store `jobs`, over `idbRecordStore` (newest first). `enqueueComputerAnalysis` (the New Job dialog's one call), `addJob` (the cap), `updateJob`, `pauseJob` (CTA-178), `cancelJob`, `resumeJob`, `removeJob`, `interruptRunningJobs`, `findJob`; `jobsSnapshot` / `subscribeJobs` / `loadJobs` / `settledJobs` / `resetJobStore` / `deleteJobsDb`. |
 | `src/lib/jobRunner.ts` | **The runner** (§3): `createJobRunner(deps)`, and the page's one, `startJobRunner()` / `stopJobRunner()` (tests). |
 | `src/views/jobs/JobRunner.tsx` | Mounts the runner: the shell (`views/main/Layout.tsx`'s `DefaultLayout`) renders it beside its outlets. |
 | `src/views/jobs/JobsIndicator.tsx` | The header's indicator (§5). |
-| `src/views/jobs/useJobs.ts` | `useJobs()` / `useJob(id)` — the board's read too (CTA-174: the Computer analysis tab follows the job it sent, or an unfinished one of the same saved analysis, through `useJobs()` — [`analysis-board.md`](./analysis-board.md) §1.3). |
-| `src/views/jobs/JobsScreen.tsx`, `JobsMain.tsx`, `JobReport.tsx` | **The Jobs screen** (§4) and a finished job's report and graph. |
+| `src/views/jobs/useJobs.ts` | `useJobs()` / `useJob(id)` — the New Job dialog's read too (CTA-177: a game's job — the one the board sent, else the newest unfinished, else done, of the same saved analysis — makes Analyse ask first, and Check existing opens it here; `jobOfGame`, [`analysis-board.md`](./analysis-board.md) §1.3). |
+| `src/views/jobs/JobsScreen.tsx`, `JobsMain.tsx`, `JobReport.tsx`, `JobLiveReport.tsx` | **The Jobs screen** (§4), a finished job's report and graph, and another job's results so far (CTA-178). |
 | `src/blocks/tables/JobsTable/` | The list (a `DataTable`): game, status, progress, times, Resume / Cancel / Delete. |
-| `src/blocks/panels/JobSummary/` | One job whole: status, progress, error, actions, links, facts; a finished job's report under it. |
-| `src/blocks/panels/ComputerAnalysisReport/`, `EvalGraph/` | The per-player report and the eval graph — built here (CTA-173, decided with the reader) and reused by the Analysis Board's tab (CTA-174). |
+| `src/blocks/panels/JobSummary/` | One job whole: status, progress, error, actions, links; under them two tabs (CTA-178) — Results (a finished job's report, or another's results so far) and Parameters (the facts). |
+| `src/blocks/panels/ComputerAnalysisReport/`, `EvalGraph/` | The per-player report and the eval graph — built here (CTA-173, decided with the reader) and reused by the Analysis Board — at the top of its Moves tab (CTA-174, CTA-177). |
 | Tests | `src/lib/jobs.test.ts`, `jobStore.test.ts`, `jobRunner.test.ts`; `src/views/jobs/JobsScreen.test.tsx`, `JobsIndicator.test.tsx`; each block's own; `src/lib/engines/noWorkerAtImport.test.ts` (the runner builds nothing at import). |
 
 Route `/jobs` (`handle.title` `pages.jobs`, its description
@@ -59,7 +60,9 @@ queued ──▶ running ──▶ done
    ▲          │ ├────▶ failed ──────┐
    │          │ └────▶ cancelled    │
    │          ▼ (a reload)          │
-   └──── interrupted ◀──────────────┘   Resume: interrupted, failed → queued
+   ├──── interrupted ◀──────────────┘   Resume: paused, interrupted, failed → queued
+   │
+   └──── paused ◀── Pause: queued, running (CTA-178)
 ```
 
 | Field | What |
@@ -93,11 +96,15 @@ queued ──▶ running ──▶ done
   **finished** jobs (done, failed, cancelled — their outputs are Saved
   analyses of their own); when every job kept is unfinished it refuses,
   `"too-many"`. A refused write is `"storage"`, nothing thrown.
-- **`enqueueComputerAnalysis(request)`** → the job's id, or `"invalid"` (no
+- **`enqueueComputerAnalysis(request)`** — the New Job dialog's one call
+  (`views/tools/analysis/NewJob.tsx`, CTA-177) → the job's id, or `"invalid"` (no
   variant ticked, a PGN that does not read, no analysed move), `"storage"`,
   `"too-many"`. The runner picks the job up by itself.
-- **Cancel, Resume, Delete are store writes**, never calls into the runner:
-  `cancelJob` (a job not ended → `cancelled`), `resumeJob` (interrupted or
+- **Pause, Cancel, Resume, Delete are store writes**, never calls into the runner:
+  `pauseJob` (queued or running → `paused`, the checkpoint kept — CTA-178;
+  the runner stops it as it stops a cancel, since it is no longer `running`
+  or `queued`, and a paused job is unfinished for the cap), `cancelJob` (a
+  job not ended → `cancelled`), `resumeJob` (paused, interrupted or
   failed → `queued`, the checkpoint and `startedAt` kept, the error cleared),
   `removeJob`. The runner, in whichever tab holds it, reads the change and
   acts — so one tab's screen cancels another tab's run.
@@ -159,19 +166,41 @@ queued ──▶ running ──▶ done
 - **The square: `JobsTable`** — newest first; each job's game (the link to
   its details, `?job=<id>`, history replace), status in words (its colour only
   repeats them), progress (`ProgressLine`, "12 of 80 positions · 7. Nf3"),
-  started and finished; Resume (interrupted, failed), Cancel (not ended) and
-  Delete, each named for its job. Delete asks first and keeps the job's
+  started and finished; Resume (paused, interrupted, failed), Pause (queued,
+  running — CTA-178), Cancel (not ended) and Delete, each named for its job. Delete asks first and keeps the job's
   outputs.
-- **The panel: `JobSummary`** — the job whole: status, progress, why it
-  failed, the same three actions, a link to the analysed game
+- **The panel: `JobSummary`**, its own scrolling column (the shell's aside
+  does not scroll) — the job whole: status, progress, why it
+  failed, the same four actions, a link to the analysed game
   (`/tools/analysis?analysis=<source>`, where it was a saved analysis) and to
-  each output, then for a done job **its report and eval graph**
+  each output; then **two tabs** (CTA-178, `PanelTabs`, "Job details"):
+  **Results**, open first, and **Parameters** — the tab picked is the
+  block's own and stays as another job is opened. Results holds, for a done
+  job, **its report and eval graph**
   (`JobReport`): read back from its first output through `reportFromTree` /
   `evalSeriesOf` — nothing about the run is kept twice — a point of the graph
   opening that output on the Analysis Board at its move (`?at=`). An output
-  deleted since says so. Then every option the job was given, the engine that
-  ran it, and its times. No job open: a line asking for one; `?job=` naming
+  deleted since says so. Parameters holds every option the job was given,
+  the engine that ran it, and its times. No job open: a line asking for one; `?job=` naming
   none: "There is no such job".
+- **A job not done: its results so far** (`JobLiveReport`, CTA-178 — the
+  Analysis Board's Computer analysis tab's until CTA-177), on the Results
+  tab in the report's place: `jobLiveAnalysis` over the job as the store holds it (`useJobs`), so
+  it fills in with every checkpoint the runner writes — lichess's server
+  analysis filling in. Under "Results so far": **the eval graph** spanning the
+  whole run (`EvalGraph`'s `span`, the line growing from the left), **the
+  latest finished position** — its eval, depth and numbered best line ("Latest:
+  after 1... e5: +0.20 · depth 20 · 2. Nf3 Nc6") — and **the report** over the
+  moves judged so far (a move whose two positions are both finished). Queued
+  or running it grows; paused, interrupted, failed or cancelled it shows what the
+  checkpoint holds. A point of the graph opens **the source** on the Analysis
+  Board at its move (`/tools/analysis?analysis=<source>&at=…`, the `?at=` read
+  off the re-parsed source, `JobLiveAnalysis.tree`) where the source is a saved
+  analysis; a board never saved has a graph only read (no `onSelect`, the read
+  hint). **Nothing in it is a live region** — the summary's status line and the
+  shell's indicator (§5) say what changed; the graph and the line only redraw.
+  Before the first position is finished, or when the source no longer reads,
+  "No results yet".
 - **Not seeded in the browser pass** (`e2e/a11y/routes.ts`, `jobs`): a job is
   not in the export zip (`import-export.md` §1.1), so the pass sees the empty
   list.
@@ -184,7 +213,7 @@ its name out of sight (the accessible name starts with the visible words,
 WCAG 2.5.3); with none running but some queued, "N queued"; nothing
 otherwise. Under the shell's breakpoint an `IconAction` alone, named in full.
 **Announced politely and only on a change of status** — a `status` region of
-its own saying a job started, finished, failed or was cancelled; never the
+its own saying a job started, was paused, finished, failed or was cancelled; never the
 progress, and nothing for what the first read of the store finds. The
 workspace board (`analysis-board.md` §1.2) hides the header and with it the
 indicator; the job runs on.
@@ -218,7 +247,9 @@ indicator; the job runs on.
 - **The screen** (`JobsScreen.test.tsx`) seeds the store (`addJob`) and, for a
   finished job, its output (`saveAnalysis` of a real `computerAnalysisTree`),
   mounts `/jobs` with the right panel's outlet, and asserts by role and name;
-  no runner runs there.
+  no runner runs there. A job's results so far (CTA-178) are seeded as a
+  partial checkpoint (`withCheckpoint` over its first positions) and grown
+  with `updateJob`, as the runner would.
 
 ## 8. Recipes
 

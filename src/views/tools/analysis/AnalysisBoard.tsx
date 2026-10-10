@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
+import QueryStatsRoundedIcon from "@mui/icons-material/QueryStatsRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import {
@@ -59,8 +60,9 @@ import AnalysesFolderView from "./AnalysesFolderView";
 import { INITIAL_FOLDER_VIEW, type FolderViewState } from "./folderViewState";
 import AnalysisArrows from "./AnalysisArrows";
 import AnalysisLoad from "./AnalysisLoad";
-import ComputerAnalysisTab from "./ComputerAnalysisTab";
+import AnalysisEvalReport from "./AnalysisEvalReport";
 import { computerAnalysisSeed } from "./computerAnalysisSeed";
+import NewJob, { type NewJobGame } from "./NewJob";
 import SaveAnalysisDialog from "./SaveAnalysisDialog";
 import { useAnalysisBoard, type AnalysisBoardStart } from "./useAnalysisBoard";
 import { usePageTitle } from "../../main/pageTitle";
@@ -89,16 +91,17 @@ import { useUnsavedWorkGuard } from "../../main/unsavedWork";
  * | Tree view | `useVariationsExplorer` | Moves (side lines, comment marks, evals, the move menu), Map, the comment block, the next-moves bar and arrows — editing on, *Play chances…* off (nothing here plays by chance) |
  * | Saving | `useAnalysisBoard` — explicit | no autosave: the header's Save lights while the board differs from its record, and opens the changes strip (Update / Save as copy / Discard); a board with no record yet saves through a name-and-folder dialog |
  *
- * **Tabs: Moves · Map · Load · Export · Engine · Computer analysis · Arrows.** Load brings a PGN (a file
+ * **Tabs: Moves · Map · Load · Export · Engine · Arrows.** Load brings a PGN (a file
  * or a paste — several games are merged onto the board or split into a
  * folder of saved analyses) or a FEN; Export copies the FEN, and copies or
  * downloads the PGN with or without comments, NAGs and side lines; Arrows
  * (CTA-98) switches the next-move arrows, picks what sizes them — a tag in
  * each move's comment (`[%eval]`, `[%games]`, `prc`), offered only while the
- * tree carries it, or the lines ahead — and their colours; Computer analysis
- * (CTA-174, `ComputerAnalysisTab`) sends the game to a background job and
- * shows a tree's `[%eval]`s as a report and an eval graph that move the
- * board. The saved list's panel hosts the position editor that starts a new analysis
+ * tree carries it, or the lines ahead — and their colours. A tree's
+ * `[%eval]`s show at the top of Moves as an eval graph and a report that move
+ * the board (`AnalysisEvalReport`, CTA-174 / CTA-177), and the header's
+ * **Analyse** opens the New Job dialog that sends the game to a background
+ * job (`NewJob`, CTA-177). The saved list's panel hosts the position editor that starts a new analysis
  * from a custom position
  * ([`position-editor.md`](../../../../.claude/rules/position-editor.md) §4).
  *
@@ -205,10 +208,12 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
   const [changesOpen, setChangesOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   /*
-    The Computer analysis tab's options and the job it sent (CTA-174) — the
-    board's, so they outlive the tab. Until the reader changes an option the
-    form follows the Engine tab and the reader's engine.
+    The New Job dialog (CTA-177): whether it is open, its options and the job
+    it sent — the board's, so they outlive the dialog (CTA-174's tab's before).
+    Until the reader changes an option the form follows the Engine tab and the
+    reader's engine.
   */
+  const [newJobOpen, setNewJobOpen] = useState(false);
   const [computerOptions, setComputerOptions] = useState<ComputerAnalysisOptions | null>(null);
   const [sentJobId, setSentJobId] = useState<string | null>(null);
   // The strip closes itself once the changes are kept or dropped — adjusted
@@ -243,6 +248,14 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
   // A game's players, plated beside the board (CTA-148, as the Library's — CTA-105); a position, or an analysis no one is named in, has none.
   const playerPlates = useMemo(() => playerPlatesOf(core.tree.headers), [core.tree.headers]);
   const topLine = engine.analysis.lines.find((line) => line !== undefined);
+  // The game a New Job is sent with: the PGN as the board holds it — unsaved changes and side lines too.
+  const newJobGame = useMemo(
+    (): NewJobGame | null =>
+      newJobOpen
+        ? { name, analysisId: record?.id ?? null, folderId: record?.folderId ?? null, tree: core.tree, pgn: () => core.pgn }
+        : null,
+    [newJobOpen, name, record, core.tree, core.pgn],
+  );
 
   /*
     The URL, derived and written back with history replace: what the board
@@ -389,6 +402,14 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
                   <AccountTreeOutlinedIcon fontSize="small" />
                 </IconAction>
               )}
+              <IconAction
+                label={t("computerAnalysis.newJob.analyse")}
+                onClick={() => setNewJobOpen(true)}
+                popupOpen={newJobOpen}
+                testId="analysis-analyse"
+              >
+                <QueryStatsRoundedIcon fontSize="small" />
+              </IconAction>
               <ToggleIconAction
                 label={saveLabel}
                 onClick={onSaveClick}
@@ -442,7 +463,22 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
           onTabChange: setTab,
           keepMounted: KEEP_MOUNTED,
           tabs: [
-            { id: "moves", label: t("analysis.tabs.moves"), content: explorer.moves },
+            {
+              id: "moves",
+              label: t("analysis.tabs.moves"),
+              content: (
+                <>
+                  {/* A tree's `[%eval]`s as a graph and a report, above the moves (CTA-177). */}
+                  <AnalysisEvalReport
+                    tree={core.tree}
+                    mainlinePly={core.mainlineNodes.findIndex((node) => node.id === core.nodeId) + 1}
+                    currentNodeId={core.nodeId}
+                    onGoToNode={core.goToNode}
+                  />
+                  {explorer.moves}
+                </>
+              ),
+            },
             { id: "map", label: t("analysis.tabs.map"), content: explorer.map },
             {
               id: "load",
@@ -496,37 +532,6 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
                     state.clearBoard();
                     clearArrivalUrl();
                   }}
-                />
-              ),
-            },
-            {
-              id: "computer",
-              label: t("analysis.tabs.computer"),
-              content: (
-                <ComputerAnalysisTab
-                  tree={core.tree}
-                  mainlineLength={core.mainlineNodes.length}
-                  mainlinePly={core.mainlineNodes.findIndex((node) => node.id === core.nodeId) + 1}
-                  currentNodeId={core.nodeId}
-                  onGoToNode={core.goToNode}
-                  options={computerOptions ?? computerAnalysisSeed(state.settings, engine.descriptor.id)}
-                  onOptionsChange={setComputerOptions}
-                  engine={{
-                    id: engine.descriptor.id,
-                    name: engine.descriptor.name,
-                    multiThread: engine.descriptor.capabilities.multiThread,
-                    options: engine.engineOptions,
-                    limits: engineLimitsOf(engine.descriptor),
-                  }}
-                  source={() => ({
-                    analysisId: record?.id ?? null,
-                    name,
-                    folderId: record?.folderId ?? null,
-                    pgn: core.pgn,
-                  })}
-                  recordId={record?.id ?? null}
-                  sentJobId={sentJobId}
-                  onSent={setSentJobId}
                 />
               ),
             },
@@ -597,6 +602,22 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
           onStateChange={onFolderViewChange}
         />
       )}
+      <NewJob
+        game={newJobGame}
+        onClose={() => setNewJobOpen(false)}
+        options={computerOptions ?? computerAnalysisSeed(state.settings, engine.descriptor.id)}
+        onOptionsChange={setComputerOptions}
+        engine={{
+          id: engine.descriptor.id,
+          name: engine.descriptor.name,
+          multiThread: engine.descriptor.capabilities.multiThread,
+          options: engine.engineOptions,
+          limits: engineLimitsOf(engine.descriptor),
+        }}
+        sentJobId={sentJobId}
+        onSent={setSentJobId}
+        testId="analysis-new-job"
+      />
       <SaveAnalysisDialog
         open={saveOpen}
         initialName={savedAnalysisDerivedName(core.tree.headers)}

@@ -7,7 +7,8 @@ draft: true
 ---
 
 import sidebarShot from "./computer-analysis-sidebar.png"
-import formShot from "./computer-analysis-form.png"
+import newJobShot from "./computer-analysis-new-job.png"
+import existingShot from "./computer-analysis-existing.png"
 import advancedShot from "./computer-analysis-advanced.png"
 import liveShot from "./computer-analysis-live.png"
 import doneShot from "./computer-analysis-done.png"
@@ -20,71 +21,98 @@ import full from "./computer-analysis-full.pgn?raw"
 
 **Computer analysis** runs the engine over every move of a game and writes down what it finds, the way lichess's *Request a computer analysis* does: an evaluation after each move, the inaccuracies, mistakes and blunders marked, the move that was better beside each one, and a summary per player with their **accuracy**.
 
-It runs as a **background job**. You start it from the Analysis Board, then keep using the app — another game, another screen — while it works. You can watch it fill in as it goes. When it is done, the result is one or more new **saved analyses**: ordinary PGNs you open, study, edit and export like any other.
+It runs as a **background job**. You start it from the Analysis Board or from your list of saved analyses, then keep using the app — another game, another screen — while it works. You can watch it fill in on the Jobs screen. When it is done, the result is one or more new **saved analyses**: ordinary PGNs you open, study, edit and export like any other.
 
 ## In short
 
-1. In the sidebar, open **Analyses → Lobby** and open a game — or open any game on the [Analysis Board](/tools/analysis).
-2. Switch to its **Computer analysis** tab, check the options, and tick the outputs you want: **light**, **medium** and/or **full**.
-3. Press **Start**. The form gives way to the job's progress, and the evaluation graph and the report fill in move by move as the engine works.
-4. When it says **Done**, press **Open the Light analysis** (or medium, or full). The finished report and graph are on that analysis' Computer analysis tab.
+1. In the sidebar, open **Analyses → Lobby** and press **Analyse** on a game's row — or open any game on the [Analysis Board](/tools/analysis) and press **Analyse** in its header.
+2. The **New job** dialog opens. Check the options, and tick the outputs you want: **light**, **medium** and/or **full**.
+3. Press **Start**. The dialog closes and a message says the analysis is queued. Its **Open in Jobs** shows the job on the Jobs screen, where the evaluation graph and the report fill in move by move as the engine works.
+4. When it says **Done**, press **Open the Light analysis** (or medium, or full). The finished report and graph are at the top of that analysis' **Moves** tab.
 
 ## Where to find it
 
 | Where | What is there |
 | --- | --- |
-| **Analyses → Lobby** | Your saved analyses ([/tools/analysis/saved](/tools/analysis/saved)). Open one, or press **New** for an empty board. |
-| **The Computer analysis tab** | On the Analysis Board, between *Engine* and *Arrows*. Everything about this game's analysis is here: the options, the progress, the results. |
-| **Analyses → Jobs** | Every computer analysis, running, queued or finished ([/jobs](/jobs)): its progress, Cancel, Resume, Delete, and a finished job's report. |
+| **Analyses → Lobby** | Your saved analyses ([/tools/analysis/saved](/tools/analysis/saved)). Every row and card has an **Analyse** button that sends that game to computer analysis. Open one, or press **New** for an empty board. |
+| **Analyse on the Analysis Board** | A button in the board's header, beside **Save**. It opens the **New job** dialog for the game on the board. |
+| **Analyses → Jobs** | Every computer analysis, running, queued or finished ([/jobs](/jobs)): its progress, Resume, Pause, Cancel and Delete, its results so far while it runs, and a finished job's report. |
 | **The header** | While a job runs, the app's header shows it on every screen — *Analysing 34/81* — and links to the Jobs screen. |
+| **The Moves tab** | On the Analysis Board, a game that carries evaluations — an analysis' output, for one — shows its evaluation graph and report at the top of the Moves tab. |
 
 <ArticleImage src={sidebarShot} alt="The sidebar with the Analyses folder open: Lobby and Jobs under it" caption="The Analyses folder: its Lobby and the Jobs screen." width="60%" />
 
 ## Starting an analysis
 
-Any game the Analysis Board holds can be analysed: one you saved, one from the Library, a game you played against the engine, or a PGN you just pasted into the Load tab. The job analyses the game's **main line**. Its side lines and comments are kept in every output, but not judged.
+Every analysis starts from an **Analyse** button (its tooltip: *Analyse with the computer*). There are two:
 
-The job takes the game **as it is on the board when you press Start** — including changes you have not saved. Editing the board afterwards does not change the job.
+- **On the Analysis Board**, in the header beside **Save**. Any game the board holds can be analysed: one you saved, one from the Library, a game you played against the engine, or a PGN you just pasted into the Load tab. The job takes the game **as it is on the board when you press Start** — including changes you have not saved. Editing the board afterwards does not change the job.
+- **On the Lobby's list** of saved analyses, on every row of the table and every card. The job takes the game as it was saved. A saved analysis that cannot be read has the button switched off.
 
-<ArticleImage src={formShot} alt="The Analysis Board's Computer analysis tab: the engine, threads, hash, depth, No time limit, time per move, lines, the early stop, the moves to analyse, Advanced, the three outputs and the Start button" caption="The Computer analysis tab, before Start." width="90%" />
+Either one opens the **New job** dialog. The job analyses the game's **main line**. Its side lines and comments are kept in every output, but not judged.
 
-The form starts from your **Engine tab**'s settings — its depth, time, lines, threads and hash — and from the engine chosen in Settings, and follows them until you change something on this tab. On a new board that means depth 20, three lines, no time limit, one thread and 16 MB of hash.
+<ArticleImage src={newJobShot} alt="The New job dialog: the game's name, then threads, hash, depth, No time limit, time per move, lines, the early stop, the moves to analyse, Advanced and the three outputs, with Cancel and Start at the bottom" caption="The New job dialog." width="90%" />
 
-**Start** is off, with a note under it saying why, when:
+The form's first settings depend on where you opened it:
+
+- **On the Analysis Board** it starts from your **Engine tab**'s settings — its depth, time, lines, threads and hash — and from the engine chosen in Settings, and follows them until you change something in the dialog. After that, the board keeps your changes for the next time you open the dialog. On a new board that means depth 20, three lines, no time limit, one thread and 16 MB of hash.
+- **On the Lobby's list** it starts afresh each time: depth 20, 30 seconds a move, one line, one thread and 64 MB of hash, with the engine chosen in Settings.
+
+**Start** is off, with a note beside it saying why, when:
 
 - no output is ticked — *Tick at least one variant to start*;
-- the board has no moves — *The board has no moves to analyse*;
+- the game has no moves — *The board has no moves to analyse*;
 - the moves you chose are not in the game — *No move of the game is in the chosen range* (a *From move* past the end, for example).
+
+**Cancel**, or Escape, closes the dialog without starting anything.
+
+### A game analysed before
+
+If the game is a saved analysis that already has a job — running, queued or finished — or you started one from this board a moment ago, **Analyse** asks first. The dialog says the existing job's status and offers:
+
+- **Check existing** — opens that job on the Jobs screen. With several, it opens the one you just started, else the newest that is not finished, else the newest done one.
+- **Start a new analysis** — goes on to the form, as above.
+
+<ArticleImage src={existingShot} alt="The New job dialog for a game analysed before: the existing job's status, and Cancel, Check existing and Start a new analysis" caption="Analyse, on a game that already has a job." width="70%" />
+
+A game that was never saved has no earlier jobs to find, so the dialog goes straight to the form.
 
 ## While it runs
 
-Once you press **Start**, the tab's form gives way to **This game's analysis** — the focus moves there, so a screen reader reads it out. It shows:
+When you press **Start**, the dialog closes, the focus goes back to the **Analyse** button, and a message says *Computer analysis of &lt;the game&gt; queued.* Its **Open in Jobs** opens the job on the Jobs screen. Any time later, **Analyses → Jobs** — or **Analyse** again, then **Check existing** — leads there too.
 
-- **The status and the progress**: *Running — 34 of 81 positions · 17... Nd4*, the move the engine is on. The progress is announced as it changes.
-- **The evaluation graph so far.** It is drawn across the width the whole game will take, so the line grows from the left as positions are finished, and every inaccuracy, mistake and blunder appears as a coloured dot as soon as it is found. Click a point to take the board there.
+You follow the job on the **Jobs screen**. Pick it in the list, and its details open beside the list:
+
+- **The name and the status** — *Running* — and **Open the analysed game**, which takes you back to the game on the Analysis Board (when it is a saved analysis).
+- **The progress**: *34 of 81 positions · 17... Nd4*, the move the engine is on.
+- **Resume**, **Pause**, **Cancel** and **Delete**, as they apply (below).
+- Two tabs: **Results**, open first, and **Parameters** — every option the job was given, the engine that runs it, and when it was asked for, started and finished.
+
+While the job is not done, **Results** shows its **Results so far**, filling in as the engine works:
+
+- **The evaluation graph so far.** It is drawn across the width the whole game will take, so the line grows from the left as positions are finished, and every inaccuracy, mistake and blunder appears as a coloured dot as soon as it is found. Click a point to open the game on the Analysis Board at that move (for a saved analysis; a game never saved has a graph you can only read).
 - **The latest position**: the move it follows, its evaluation, the depth, and the engine's best line from there — *Latest: after 17... Nd4: +0.42 · depth 20 · 18. Nxd4 exd4 19. Qd2 …*
-- **The report so far**: each player's inaccuracies, mistakes, blunders, missed mates, ACPL and accuracy over the moves judged so far. A move is judged once the positions before and after it are both done. Each count is a button that takes the board to that player's next move of that kind.
-- **Open in Jobs**, the job on the Jobs screen — where it can be cancelled.
+- **The report so far**: each player's inaccuracies, mistakes, blunders, missed mates, ACPL and accuracy over the moves judged so far. A move is judged once the positions before and after it are both done.
 
-<ArticleImage src={liveShot} alt="The Computer analysis tab during a job: Running, 34 of 81 positions, the evaluation graph drawn for the first part of the game, the latest position's evaluation and best line, and the report so far" caption="A job filling in, on the board it was started from." width="90%" />
+Until the first position is finished, it says *No results yet*.
 
-While the job is queued or running, the form is not shown, so the same game cannot be sent twice by accident. You can leave the tab, the board or the screen: the job goes on, and coming back to the same saved analysis shows it again.
+<ArticleImage src={liveShot} alt="The Jobs screen with a running job's details: Running, 34 of 81 positions, and its Results tab with the evaluation graph drawn for the first part of the game, the latest position's evaluation and best line, and the report so far" caption="A job filling in, on the Jobs screen." width="90%" />
 
-The header shows a running job on every other screen too, and leads to the Jobs screen:
+You can leave the Jobs screen, the board, or anything else: the job goes on. The header shows a running job on every screen, and leads to the Jobs screen. It also tells a screen reader when a job starts, is paused, finishes, fails or is cancelled.
 
 <ArticleImage src={progressShot} alt="The app's header with a running job's indicator: a spinner and Analysing 34/81" caption="A running job, seen from another screen." width="60%" />
 
-A board opened from the Lobby's list takes the whole window — no header — so there the tab itself is where to watch it.
+A board opened from the Lobby's list takes the whole window — no header — so close it, or use the sidebar's **Analyses → Jobs** from another screen, to look in on the job.
 
 ## When it is done
 
-The status turns to **Done**, and the tab offers each saved output: **Open the Light analysis**, **Open the Medium analysis**, **Open the Full analysis** — the ones you ticked. The form is back under it, if you want to run another analysis with different options.
+The status turns to **Done**. Under the job's actions are a link to each saved output: **Open the Light analysis**, **Open the Medium analysis**, **Open the Full analysis** — the ones you ticked. Its **Results** tab now shows the finished report and evaluation graph, read from its first output. A point of that graph opens the output at that move.
 
-<ArticleImage src={doneShot} alt="The Computer analysis tab after a job: Done, a note that each variant is a new saved analysis, and the Open the Light analysis button" caption="A finished job, and the way to its results." width="90%" />
+<ArticleImage src={doneShot} alt="A finished job's details on the Jobs screen: Done, Open the analysed game, the Open the Light analysis link, and the Results tab with the report and the evaluation graph" caption="A finished job, and the way to its results." width="90%" />
 
-Each output is a new saved analysis in the **same folder** as the game it came from (*Unfiled* if the board was never saved), named *&lt;the game's name&gt; — computer analysis (light)* and so on. Open it, and its Computer analysis tab shows the finished report and graph (below).
+Each output is a new saved analysis in the **same folder** as the game it came from (*Unfiled* if the board was never saved), named *&lt;the game's name&gt; — computer analysis (light)* and so on. Open it, and the top of its **Moves** tab shows the finished report and graph (below).
 
-Coming back to the original game later — if it is a saved analysis — still shows its newest finished job and its Open buttons.
+To analyse the game again with different options, press **Analyse** on it again and choose **Start a new analysis**.
 
 ## The job
 
@@ -93,15 +121,16 @@ Coming back to the original game later — if it is a saved analysis — still s
 | **It runs in the background** | The job belongs to the app, not to the board. Leave the Analysis Board, open the Library, play a game — it keeps going. |
 | **One at a time** | An engine search takes all the CPU it is given, so jobs run one after another. A job you start while another is running waits in the queue (*Queued*). |
 | **Saved as it goes** | After every position, the job saves what it has found. |
-| **Cancel** | A queued, running or interrupted job can be cancelled on the Jobs screen. What it found is dropped; no analysis is saved. |
+| **Pause** | A queued or running job can be paused on the Jobs screen: the engine stops, and what it found so far is kept. **Resume** carries on from the next position it had not searched. A paused job waits for you and lets the next one in the queue run. |
+| **Cancel** | A queued, running, paused or interrupted job can be cancelled on the Jobs screen. What it found is dropped; no analysis is saved. |
 | **After a reload** | A job that was running when the page closed shows as **Interrupted**, with a **Resume** button. Resume continues from the next position it had not searched — the finished ones are not searched again. It never resumes by itself: an engine run is heavy, so it waits for you. |
-| **One tab runs it** | With the app open in several tabs, one of them runs the jobs; close it and another takes over. Cancel in any tab stops it. |
+| **One tab runs it** | With the app open in several tabs, one of them runs the jobs; close it and another takes over. Pause or Cancel in any tab stops it. |
 | **If it fails** | It says why, and **Resume** retries from where it stopped (below). |
 | **How many are kept** | The last 100 jobs. Past that, the oldest finished ones go — their analyses stay, they are saved analyses of their own. |
 
 ### The Jobs screen
 
-**Analyses → Jobs** lists every job, newest first: the game, its status, its progress, when it started and finished, and **Resume**, **Cancel** and **Delete** where they apply. Pick one for its details: every option it was given, the engine that actually ran it, links to the analysed game and to each output, and — once it is done — its report and evaluation graph, a point of which opens the output at that move. **Delete** asks first, and removes only the job: the analyses it made stay.
+**Analyses → Jobs** lists every job, newest first: the game, its status, its progress, when it started and finished, and **Resume**, **Pause**, **Cancel** and **Delete** where they apply. Pick one for its details (above): **Open the analysed game**, a link to each output, and two tabs — **Results**, its results so far or, once it is done, its report and evaluation graph; and **Parameters**, every option it was given, the engine that actually ran it, and its times. The tab you pick stays picked as you go from job to job. **Delete** asks first, and removes only the job: the analyses it made stay.
 
 <ArticleImage src={jobsShot} alt="The Jobs screen listing three jobs: one running with its progress, one queued, and one interrupted with a Resume button" caption="The Jobs screen." width="90%" />
 
@@ -127,6 +156,8 @@ More lines, a slower machine or a sharp position take longer; a time limit cuts 
 
 ## The options
 
+*Starts at* is the board's: there the dialog starts from the Engine tab. From the Lobby's list it starts at depth 20, 30 seconds a move, one line, one thread and 64 MB, with *No time limit* off — and everything below *Lines* as here.
+
 | Option | Starts at | What it does |
 | --- | --- | --- |
 | **Threads** | the Engine tab's (1) | CPU threads for the engine, up to what it and your device accept. |
@@ -148,7 +179,7 @@ Under **Advanced** (closed until you open it):
 | **Inaccuracy / Mistake / Blunder above** | 50 / 100 / 300 cp | How much a move must give up to be marked as each. They stay in order: raising the inaccuracy above the mistake raises the mistake with it. |
 | **Variation range** | 100 cp | How far below the best line another line may be and still count as a real alternative, in centipawns (100 cp = one pawn). |
 
-<ArticleImage src={advancedShot} alt="The Computer analysis tab's Advanced section open: the inaccuracy, mistake and blunder thresholds and the variation range" caption="Advanced: the thresholds and the variation range." width="70%" />
+<ArticleImage src={advancedShot} alt="The New job dialog's Advanced section open: the inaccuracy, mistake and blunder thresholds and the variation range" caption="Advanced: the thresholds and the variation range." width="70%" />
 
 The moves outside *Analyse the moves of*, *From move* and *To move* stay in the game, unmarked, and are left out of the report.
 
@@ -225,7 +256,7 @@ How ACPL turns into accuracy:
 
 A player with no analysed move — Black, when you analyse White only — shows *Not analysed*.
 
-<ArticleImage src={reportShot} alt="An analysed game's Computer analysis tab: the evaluation graph with the mistakes marked, and each player's inaccuracies, mistakes, blunders, missed mates, ACPL and accuracy" caption="The report and the evaluation graph of a finished analysis." width="90%" />
+<ArticleImage src={reportShot} alt="An analysed game on the Analysis Board: at the top of the Moves tab, the evaluation graph with the mistakes marked, and each player's inaccuracies, mistakes, blunders, missed mates, ACPL and accuracy, above the move list" caption="The report and the evaluation graph of a finished analysis, at the top of its Moves tab." width="90%" />
 
 ### The evaluation graph
 
@@ -235,7 +266,7 @@ One point per evaluated move: White's advantage above the middle, Black's below.
 - **Click** to take the board to that move.
 - **By keyboard** it is a slider over the moves: Tab to it, ← and → step through the moves (each read out with its evaluation and mark), Home and End go to either end, and Enter takes the board there.
 
-The same report and graph are on a finished job's entry on the Jobs screen.
+The same report and graph are on a finished job's **Results** tab on the Jobs screen, where a point opens the output at that move.
 
 ## The three outputs
 
@@ -291,7 +322,7 @@ Analysing an analysis again replaces the marks, comments, report and tags the pr
 
 ## Reports from any analysed game
 
-The report and the graph are read **from the PGN itself**, not from the job — so the Computer analysis tab shows them for any game on the board that carries evaluations, long after the job is gone, and for games analysed elsewhere:
+The report and the graph are read **from the PGN itself**, not from the job — so the top of the Analysis Board's **Moves** tab shows them for any game on the board that carries evaluations, long after the job is gone, and for games analysed elsewhere:
 
 - **A lichess export** with evaluations (lichess's *Download annotated PGN*): paste it into the Load tab, and its `[%eval]`s and its ?! ? ?? marks give the same report and graph. Without the two tags, every move with an evaluation counts. The first move has no evaluation before it in a lichess export, so it counts as a move but not in the ACPL.
 - **Your own evaluations**: with the Engine tab's *Write evaluations into the game* on, every position you look at with the engine adds an evaluation — and the graph grows with them.
@@ -303,16 +334,18 @@ The marks come from the NAGs and the losses from the evaluations; a ?? whose eva
 
 | You see | What it means, and what to do |
 | --- | --- |
-| **Start is off** | The note under it says why: no output ticked, no moves on the board, or no move in the chosen range. |
+| **Start is off** | The note beside it says why: no output ticked, no moves in the game, or no move in the chosen range. |
+| **Analyse asks** *Check existing* or *Start a new analysis* | The game already has a job. **Check existing** shows it on the Jobs screen; **Start a new analysis** opens the form for another run. |
 | **Queued**, and nothing moves | Another job is running; this one starts when it ends. The Jobs screen shows which. |
 | **It is very slow** | Each position takes up to the time limit — or, with no time limit, as long as the depth needs. Lower the depth, set a time limit, use fewer lines, set the early stop a few plies below the depth, or run the engine server. |
+| **Paused** | You (or another tab) paused it. Press **Resume** on the Jobs screen; it goes on from where it stopped. |
 | **Interrupted** | The page was reloaded or closed while it ran. Press **Resume** on the Jobs screen; it goes on from where it stopped. |
 | **Failed** — *The engine stopped answering* | The engine did not start, or went silent for two minutes in one position. **Resume** retries from the last finished position. If it keeps happening, try another engine in Settings. |
 | **Failed** — *The analyses could not be saved* | The browser refused to store them — usually a full disk. Free some space (Settings → Storage shows what takes room), then **Resume**. |
 | **Failed** — *Saved analyses is full* | Saved analyses holds up to 20,000. Delete some, then **Resume**. |
 | **Failed** — *The game sent for analysis could not be read again* | The job's copy of the game no longer matches the positions it started on. Start a new one. |
-| **The graph has gaps** while a job runs | You changed the board's main line after starting; the points of the moves you changed are left out. The job itself is unaffected. |
-| *Too many jobs are waiting* under Start | Up to 100 jobs are kept; with that many unfinished, no new one can be added. Let some finish, or cancel them. |
+| *No results yet* on a running job | The engine has not finished the first position yet — with a deep search or no time limit, that can take a while. |
+| *Too many jobs are waiting* in the New job dialog | Up to 100 jobs are kept; with that many unfinished, no new one can be added. Let some finish, or cancel them. |
 
 ## Good to know
 
