@@ -14,6 +14,7 @@ import {
   loadJobs,
   removeJob,
   resetJobStore,
+  pauseJob,
   resumeJob,
   updateJob,
 } from "./jobStore";
@@ -101,6 +102,25 @@ describe("the jobs store (CTA-173)", () => {
 
     await resumeJob("cut");
     expect(findJob("cut")?.status).toBe("queued");
+  });
+
+  it("pauses a job waiting or being run, its checkpoint kept, and resumes it (CTA-178)", async () => {
+    await addJob(jobOf("live", "running"));
+    await addJob(jobOf("waiting", "queued"));
+    await addJob(jobOf("over", "done"));
+    await pauseJob("live", new Date("2026-10-10T13:00:00Z"));
+    await pauseJob("waiting");
+    expect(findJob("live")).toMatchObject({ status: "paused", updatedAt: "2026-10-10T13:00:00.000Z", finishedAt: null });
+    expect(findJob("waiting")?.status).toBe("paused");
+
+    const before = jobsSnapshot();
+    await pauseJob("over");
+    await pauseJob("live");
+    expect(jobsSnapshot()).toBe(before);
+
+    await resumeJob("live");
+    expect(findJob("live")?.status).toBe("queued");
+    expect((await reload()).find((job) => job.id === "waiting")?.status).toBe("paused");
   });
 
   it("turns every running job into an interrupted one — a reload's recovery", async () => {

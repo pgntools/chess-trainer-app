@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import { useTranslation } from "react-i18next";
 
@@ -11,7 +12,7 @@ import { ProgressLine } from "../../../design-system/components/states";
 import { tableDate } from "../../../design-system/components/tables";
 import { IconAction } from "../../../design-system/components/toolbars";
 import { DataTable, type DataTableColumn } from "../../../design-system/patterns/tables";
-import { canCancelJob, canResumeJob, jobMoveLabel, jobProgress, type Job } from "../../../lib/jobs";
+import { canCancelJob, canPauseJob, canResumeJob, jobMoveLabel, jobProgress, type Job } from "../../../lib/jobs";
 import { JOB_STATUS_TONES } from "./jobStatusTones";
 
 export type JobsTableProps = {
@@ -22,6 +23,8 @@ export type JobsTableProps = {
   /** The job whose details are open — its row is marked as the current one. */
   selectedId?: string | null;
   onCancel: (job: Job) => void;
+  /** Pause a job waiting or being run — Resume takes it up again (CTA-178). */
+  onPause: (job: Job) => void;
   onResume: (job: Job) => void;
   onDelete: (job: Job) => void;
   /** The store is still being read. */
@@ -49,14 +52,15 @@ const Stamp = ({ value }: { value: string | null }) => {
  * **The Jobs screen's list** (CTA-173): a row per background job — what it
  * analyses (a link to its details), its status in words, how far it has got
  * (a bar named for the job, "12 of 80 positions · 7. Nf3"), when it started
- * and ended — and, always visible at the row's end, **Cancel** (a job not
- * ended), **Resume** (one a reload or a failure stopped) and **Delete**, each
- * named for its job.
+ * and ended — and, always visible at the row's end, **Resume** (one the
+ * reader paused, or a reload or a failure stopped), **Pause** (one waiting or
+ * being run, CTA-178), **Cancel** (a job not ended) and **Delete**, each named
+ * for its job.
  *
- * Presentational: the jobs, the link and the three actions are props; the
+ * Presentational: the jobs, the link and the four actions are props; the
  * screen reads the store and writes it. Its words are the app's (`jobs.*`).
  */
-function JobsTable({ rows, rowLink, selectedId, onCancel, onResume, onDelete, loading = false, testId }: JobsTableProps) {
+function JobsTable({ rows, rowLink, selectedId, onCancel, onPause, onResume, onDelete, loading = false, testId }: JobsTableProps) {
   const { t } = useTranslation();
   const nameOf = (job: Job) => job.source.name || t("jobs.untitled");
 
@@ -130,6 +134,11 @@ function JobsTable({ rows, rowLink, selectedId, onCancel, onResume, onDelete, lo
           {canResumeJob(job) && (
             <IconAction label={t("jobs.resumeNamed", { name: nameOf(job) })} onClick={() => onResume(job)} testId={`${testId}-resume-${job.id}`}>
               <PlayArrowRoundedIcon fontSize="small" />
+            </IconAction>
+          )}
+          {canPauseJob(job) && (
+            <IconAction label={t("jobs.pauseNamed", { name: nameOf(job) })} onClick={() => onPause(job)} testId={`${testId}-pause-${job.id}`}>
+              <PauseRoundedIcon fontSize="small" />
             </IconAction>
           )}
           {canCancelJob(job) && (

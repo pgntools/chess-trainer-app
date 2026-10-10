@@ -11,11 +11,13 @@ import {
 } from "./computerAnalysis";
 import type { EvalPoint } from "./computerAnalysisTree";
 import { pvToSan } from "./engineAnalysis";
+import type { GameTree } from "./gameTree";
 import { jobSearchOf, type Job } from "./jobs";
 
 /*
-  **A job's results so far, read live** (CTA-174) — what the Analysis Board's
-  Computer analysis tab shows while a job runs, the way lichess's eval graph
+  **A job's results so far, read live** (CTA-174) — what the Jobs screen's
+  panel shows of a job not done (CTA-178; the Analysis Board's Computer
+  analysis tab's until CTA-177), the way lichess's eval graph
   fills in as its server analysis goes. Pure: the job's source re-parsed
   (`jobSearchOf`, as the runner does) and its checkpoint read — every finished
   position a point of the graph, every move whose both positions are finished
@@ -35,6 +37,8 @@ export type LiveLatest = {
 };
 
 export type JobLiveAnalysis = {
+  /** The source re-parsed — the tree the points' node ids are in (a `?at=` is read off it). */
+  tree: GameTree;
   /** In ply order: the finished positions' evals, each move's verdict where it has one. */
   points: LiveEvalPoint[];
   /** The verdicts so far, over the moves whose two positions are both finished. */
@@ -75,7 +79,7 @@ const numberedLine = (fen: string, sans: readonly string[]): string => {
 export const jobLiveAnalysis = (job: Job): JobLiveAnalysis | undefined => {
   const search = jobSearchOf(job.source, job.options);
   if (search === undefined) return undefined;
-  const { positions } = search;
+  const { tree, positions } = search;
   if (positions.length !== job.checkpoint.length || positions.some((position, index) => position.fen !== job.positions[index]?.fen)) {
     return undefined;
   }
@@ -103,5 +107,5 @@ export const jobLiveAnalysis = (job: Job): JobLiveAnalysis | undefined => {
     latest = { ...(move === undefined ? {} : { move }), line, moves: numberedLine(position.fen, pvToSan(position.fen, line.pv.join(" ")).slice(0, 8)) };
   });
 
-  return { points, verdicts, report: playerReports(verdicts), ...(latest === undefined ? {} : { latest }) };
+  return { tree, points, verdicts, report: playerReports(verdicts), ...(latest === undefined ? {} : { latest }) };
 };

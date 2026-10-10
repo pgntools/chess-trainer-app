@@ -81,6 +81,9 @@ describe("the shell's jobs indicator (CTA-173)", () => {
     await addJob(jobOf("next", "queued"));
     await updateJob("next", (job) => ({ ...job, status: "running" }));
     await waitFor(() => expect(status).toHaveTextContent("Computer analysis started: Alice – Bob."));
+
+    await updateJob("next", (job) => ({ ...job, status: "paused" }));
+    await waitFor(() => expect(status).toHaveTextContent("Computer analysis paused: Alice – Bob."));
   });
 
   it("passes axe", async () => {
