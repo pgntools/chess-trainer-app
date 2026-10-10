@@ -1,0 +1,160 @@
+---
+title: "Stockfish 19: in the browser or on your computer"
+summary: "The same engine two ways — the Lite builds that run in the page, and the native binary behind the engine server: their networks, the options each declares, the ones the app sets, threads, hash and strength, and which to choose."
+date: 2026-10-10
+tags: [engine, setup]
+draft: true
+---
+
+import browserShot from "./stockfish-19-engines-browser.png"
+import apiShot from "./stockfish-19-engines-api.png"
+import playShot from "./stockfish-19-play-strength.png"
+import analysisShot from "./stockfish-19-analysis-engine.png"
+
+Every board in the app searches with **Stockfish 19**, and it can run in one of two places:
+
+- **In the browser**: a WebAssembly build of Stockfish that the page downloads and runs itself. Nothing to install, and it works on any device, phones included.
+- **On your own computer**: the native Stockfish binary, served to the app by a small **engine server** on your machine ([Run a chess engine on your own computer](/blog/guides/local-engine) sets it up).
+
+Both run the same Stockfish 19 code. They differ in the **neural network** each one evaluates positions with, in how many **threads** and how much **memory** each can use, and in a few options. This article shows what is the same, what is not, and what the app actually sets on each.
+
+## In short
+
+| | In the browser | On your computer |
+| --- | --- | --- |
+| **Name in the app** | Stockfish 19 Lite, single- or multi-thread | Stockfish 19, from the engine server |
+| **Network** | `nn-61e7af4bb97d`, the small **Lite** net, built into the engine | `nn-1a298aa575a0`, the **full** net, built into the binary |
+| **Download** | About 1.8 MB, once | None: it is already on your machine |
+| **Threads** | 1 (single-thread build), or up to 8 (multi-thread build) | Your cores minus one, by default |
+| **Hash** | Up to 1024 MB, by your device's memory | Up to the server's ceiling, 4096 MB by default |
+| **Strength (Elo)** | 1320 to 3190 | 1320 to 3190 |
+| **Needs** | Nothing; the multi-thread build needs a cross-origin-isolated page | The engine server running (`yarn api:start`) |
+
+## Choosing an engine
+
+Open [Settings › Engine](/settings/engine). It has two tabs:
+
+- **Browser** lists the builds that run in the page. **Stockfish 19 Lite** (single-thread) is the default, and it works everywhere. The multi-thread build needs a page the host has made *cross-origin isolated*: chessapp.dev is, so it can be chosen there. Where the page is not isolated, the build is listed but disabled, with the reason beside it.
+- **API** lists the engines of your engine server while it is connected. The panel on the right shows what the chosen engine **declared**: each UCI option, its type, its default and its range.
+
+<ArticleImage src={browserShot} alt="Settings, Engine tab, Browser: Stockfish 19 Lite single-thread chosen, the multi-thread build below it" caption="The Browser tab: the builds that run in the page." width="90%" />
+
+<ArticleImage src={apiShot} alt="Settings, Engine tab, API: the engine server connected, Stockfish 19 chosen, and its UCI options in the panel on the right" caption="The API tab: the server's engines, and the options the chosen one declared." width="90%" />
+
+The choice applies to every board from its next search: the Analysis Board, the Openings explorer, the Library's games, the repertoires, Play with Engine and computer analysis jobs. A game against the engine is played to the end by the engine it started with.
+
+## The networks: Lite and full
+
+Stockfish judges a position with a **neural network** (NNUE) and searches millions of positions with it. The network is the biggest difference between the two engines:
+
+- **The browser builds use the Lite net**, `nn-61e7af4bb97d` (by Chris Bao). It is small enough that the whole engine, network included, is a 1.8 MB download. It is still far stronger than any human.
+- **The native binary uses the full net**, `nn-1a298aa575a0`: about **98 MB**, built into the binary. It sees more in each position. At the same depth, it plays better moves and gives more accurate evaluations.
+
+What this means in practice:
+
+- **The two engines' evaluations differ.** The same position at the same depth can get +0.6 from one and +0.8 from the other, and once in a while they prefer different moves. Compare evaluations from the same engine. A saved game records which engine played it.
+- **For training and everyday analysis, the Lite net is plenty.** The full net is worth it for deep work: checking an opening line, or a computer analysis of a game you care about.
+
+### Can the browser use the full net?
+
+No. The browser builds list an `EvalFile` option, because every Stockfish has one, but they have **no file system**: the network is part of the program, and there is nowhere to load another from. Setting `EvalFile` crashes the engine, so the app never sends it.
+
+Stockfish.js does publish **full** browser builds, but each is a download of about 94 MB, too much for a page to fetch for every reader. If you want the full net, use the engine server: it is the same network, running at native speed.
+
+## The options each declares
+
+An engine announces its options when it starts (the UCI `uci` reply). The app reads that list, and offers only what is there. These are the two engines' lists:
+
+| Option | In the browser | On your computer | The app sets it? |
+| --- | --- | --- | --- |
+| `Threads` | 1 (single-thread), 1–32 (multi-thread) | 1 to the server's ceiling | Yes |
+| `Hash` | 1–33,554,432 MB declared, 1024 MB in practice | 1 to the server's ceiling | Yes |
+| `MultiPV` | 1–256 | 1–256 | Yes |
+| `Skill Level` | 0–20 | 0–20 | In Play with Engine |
+| `UCI_LimitStrength` | check, off | check, off | In Play with Engine: on |
+| `UCI_Elo` | 1320–3190 | 1320–3190 | In Play with Engine |
+| `Clear Hash` | button | button | No |
+| `Ponder` | check, off | check, off | No |
+| `Move Overhead` | 0–5000, 10 | 0–5000, 10 | No |
+| `nodestime` | 0–10000, 0 | 0–10000, 0 | No |
+| `UCI_Chess960` | check, off | check, off | No |
+| `UCI_ShowWDL` | check, off | check, off | No |
+| `EvalFile` | `nn-61e7af4bb97d.nnue` | `nn-1a298aa575a0.nnue` | No |
+| `Debug Log File` | — | text | No |
+| `NumaPolicy` | — | `auto` | No |
+| `SyzygyPath`, `SyzygyProbeDepth`, `Syzygy50MoveRule`, `SyzygyProbeLimit` | — | endgame tablebases | No |
+
+Everything the app sets is declared by both engines, under the same names and with the same meanings. That is why one set of settings works with either engine. Only the **ranges** of `Threads` and `Hash` differ (see *Threads and hash* below). The options the app does not set keep the engine's defaults: no pondering, no Chess960, no tablebases.
+
+## What each board sets
+
+The engine's settings are part of each board, not of the engine. They go to whichever engine you chose:
+
+| Where | What it sets | Strength |
+| --- | --- | --- |
+| **Play with Engine** (and a new game in the Lobby) | `UCI_Elo` from the **Strength (Elo)** slider, with `UCI_LimitStrength` on; `MultiPV` (*Variations to show*), `Threads`, `Hash` | Limited to the Elo you chose |
+| **The Analysis Board, the Openings explorer, the Library's games, the repertoires** (their Engine tab) | `MultiPV` (*Lines*), `Threads`, `Hash` | Full strength: never limited |
+| **Computer analysis** (a job) | `Threads`, `Hash`, `MultiPV` for each position | Full strength |
+
+How long a search runs, by depth, by time or with no limit, is part of the search request, not an option. It works the same with both engines.
+
+<ArticleImage src={playShot} alt="Play with Engine's Engine tab: the Strength (Elo) slider, variations to show, threads and hash" caption="Play with Engine: the Elo slider sets UCI_Elo, and turns UCI_LimitStrength on." width="70%" />
+
+<ArticleImage src={analysisShot} alt="The Analysis Board's Engine tab: infinite analysis, depth, move time, lines, threads, hash and the eval bar" caption="An analysis board's Engine tab: no strength setting, always full strength." width="70%" />
+
+## Strength and Elo
+
+Both engines declare `UCI_Elo` from **1320 to 3190**, so Play with Engine shows the same **Strength (Elo)** slider with either one. When you start a game, the app turns `UCI_LimitStrength` on and sends your Elo. While it is on, Stockfish ignores `Skill Level`, so the Elo is the only strength setting. The game records the engine and the Elo it played at.
+
+The analysis boards never send `UCI_LimitStrength`. It stays off, as the engine starts, so an analysis is always at full strength.
+
+The same Elo is the same handicap in both engines: the same Stockfish code picks weaker moves the same way. At the top of the range, though, the native engine, with its full net and more threads, plays nearer to its real strength than the browser build does.
+
+## Threads and hash
+
+These two options decide how much of your computer the engine may use, and they are where the two engines differ most:
+
+**In the browser**
+
+- **Threads**: the single-thread build has exactly 1. The multi-thread build is offered your cores minus one, **at most 8**. In our measurements more threads did not reach a given depth sooner in the browser, and 8 did worse than 4.
+- **Hash**: offered by your device's memory, as the browser reports it: 1024 MB with 8 GB or more, 512 MB with 4 GB, 128 MB below that, 256 MB where the browser does not say. The engine declares a far larger maximum, but **1024 MB is a hard ceiling**: a page cannot hold much more, and 2048 MB crashed the tab.
+
+**On your computer**
+
+- **The engine server sets the ceilings**: `maxThreads` (your cores minus one, by default) and `maxHashMb` (4096 MB by default). It reports those as the engine's ranges, so on a 20-core machine with `maxHashMb` at 16384 the app offers `Threads` 1–19 and `Hash` 1–16384.
+- To allow more, raise them in `engines.local.json` and restart the server ([its optional settings](/blog/guides/local-engine)).
+
+The settings are the board's, so a board's Threads and Hash stay as you set them when you change engines. Each request is held to the running engine's own range. If you set 8 threads and 4096 MB for the native engine and then switch to the single-thread browser build, it runs with 1 thread and at most 1024 MB.
+
+## Speed
+
+The browser build runs in one tab, in WebAssembly, on the threads the page can get. These are times to **reach** each depth in one middlegame position, on a fast 20-core desktop. A laptop or phone is slower:
+
+| Browser build | depth 18 | 20 | 22 | 24 | 26 |
+| --- | --- | --- | --- | --- | --- |
+| Single-thread, 16 MB hash | 0.6 s | 3.4 s | 5.7 s | 14 s | 34 s |
+| Multi-thread, 4 threads, 64 MB | 1.1 s | 6.9 s | 22 s | — | — |
+
+The native engine has every thread your server allows and runs at full CPU speed, several times faster than the browser build. It also keeps what it has already searched while you step through a game, so the next position is reached sooner.
+
+## Which one to use
+
+| You want to | Use |
+| --- | --- |
+| Play against the engine, or train | **In the browser.** Any device, nothing to set up, and it plays at any Elo you choose. |
+| Analyse on a phone or a tablet | **In the browser.** |
+| Deep analysis: an opening line, a critical position | **On your computer**: the full net, every thread, a big hash. |
+| A computer analysis of a whole game | **On your computer** if it is running. It is much faster, and its evaluations are more accurate. |
+| The same evaluations as before | **The engine you used then.** The two engines' numbers differ. |
+
+If the engine server stops, the boards go back to the browser build by themselves, and your choice comes back when the server does.
+
+## Questions
+
+**The multi-thread build is greyed out.** It needs a cross-origin-isolated page, which only the host can set up. On chessapp.dev it is available. On a copy of the app hosted without the headers it is not, so use the single-thread build or the engine server.
+
+**The same position gets different evaluations after I switched engines.** That is the network: the Lite and full nets judge positions a little differently. See *The networks* above.
+
+**Can I use endgame tablebases?** The native engine supports them (`SyzygyPath`), but the app does not set that option today. The browser builds do not support tablebases.
+
+**Where can I see an engine's options myself?** For the server's engines, choose one on the API tab of [Settings › Engine](/settings/engine): the panel lists everything it declared.
