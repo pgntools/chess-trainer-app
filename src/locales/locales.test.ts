@@ -67,6 +67,8 @@ describe("translation catalogs", () => {
       "settings.engine.tabs.api",
       // An engine's option with no default or range: a dash, in any language.
       "engineOptionsTable.none",
+      // A preset's option's range, "min–max" (CTA-179): the two values and a dash.
+      "enginePresets.range",
     ]);
 
     const untranslated = leafKeys(en).filter(
