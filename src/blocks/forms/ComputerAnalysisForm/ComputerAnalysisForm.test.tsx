@@ -8,7 +8,18 @@ import { computerAnalysisOptionsFrom, type ComputerAnalysisOptions } from "../..
 import type { EngineOption } from "../../../lib/engineTypes";
 import { expectNoAxeViolations } from "../../../test/axe";
 import ComputerAnalysisForm, { type ComputerAnalysisFormProps } from "./ComputerAnalysisForm";
-import { BEFORE_HANDSHAKE, MULTI_THREAD, NO_HASH, NO_TIME_LIMIT, NONE_TICKED, OPTIONS, SINGLE_THREAD } from "./fixtures";
+import {
+  BEFORE_HANDSHAKE,
+  HOSTED_ENGINE,
+  HOSTED_LIMITS,
+  HOSTED_OPTIONS,
+  MULTI_THREAD,
+  NO_HASH,
+  NO_TIME_LIMIT,
+  NONE_TICKED,
+  OPTIONS,
+  SINGLE_THREAD,
+} from "./fixtures";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
@@ -87,6 +98,42 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
       unmount();
       render(<Harness engineOptions={BEFORE_HANDSHAKE} />);
       expect(screen.getByRole("slider", { name: "Threads" })).toBeEnabled();
+    });
+  });
+
+  describe("an engine server's engine — its own range, not the browser's (CTA-175)", () => {
+    const top = (name: string) => screen.getByRole("slider", { name }).getAttribute("aria-valuemax");
+
+    it("offers Threads and Hash up to what the engine declares", () => {
+      render(<Harness initial={HOSTED_OPTIONS} engineOptions={HOSTED_ENGINE} deviceLimits={HOSTED_LIMITS} />);
+      expect(top("Threads")).toBe("15");
+      expect(top("Hash (MB)")).toBe("4096");
+      expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveValue("2048");
+    });
+
+    it("offers the same range before the handshake, never the device's", () => {
+      render(<Harness initial={HOSTED_OPTIONS} engineOptions={BEFORE_HANDSHAKE} deviceLimits={HOSTED_LIMITS} />);
+      expect(top("Threads")).toBe("15");
+      expect(top("Hash (MB)")).toBe("4096");
+    });
+
+    it("keeps a Hash past 1024 MB once set", async () => {
+      const onOptions = vi.fn();
+      render(
+        <Harness initial={HOSTED_OPTIONS} engineOptions={HOSTED_ENGINE} deviceLimits={HOSTED_LIMITS} onOptions={onOptions} />,
+      );
+      screen.getByRole("slider", { name: "Hash (MB)" }).focus();
+      await userEvent.keyboard("{End}");
+      expect(onOptions).toHaveBeenLastCalledWith(expect.objectContaining({ hashMb: 4096 }));
+      expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveValue("4096");
+    });
+
+    it("still holds an in-browser build to this device's limits, and to 1024 MB without them", () => {
+      const { unmount } = render(<Harness engineOptions={SINGLE_THREAD} deviceLimits={{ threads: 3, hashMb: 512 }} />);
+      expect(top("Hash (MB)")).toBe("512");
+      unmount();
+      render(<Harness engineOptions={SINGLE_THREAD} />);
+      expect(top("Hash (MB)")).toBe("1024");
     });
   });
 

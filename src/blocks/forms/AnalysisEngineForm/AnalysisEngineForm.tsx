@@ -20,9 +20,11 @@ export type AnalysisEngineFormProps = {
   showEvalBar: boolean;
   onShowEvalBarChange: (next: boolean) => void;
   /**
-   * The most Threads and Hash this device should be offered — the screen's
-   * `deviceEngineLimits()`, as on Play with Engine's form (CTA-160). Absent:
-   * `ANALYSIS_SETTING_BOUNDS`' ceilings.
+   * The most Threads and Hash to offer — the screen's `engineLimitsOf(descriptor)`,
+   * as on Play with Engine's form: this device's for an in-browser build
+   * (CTA-160), what an engine server's engine declares (CTA-175) — past
+   * `ANALYSIS_SETTING_BOUNDS`' WebAssembly ceilings where it says so, before
+   * the handshake too. Absent: `ANALYSIS_SETTING_BOUNDS`' ceilings.
    */
   deviceLimits?: DeviceEngineLimits;
   /**

@@ -192,7 +192,9 @@ takes `infinite?: boolean` beside `depth` and `moveTimeMs`.
   `hashMb`, the same defaults — 1 thread, 16 MB — the same sliders and ids,
   `analysisUciOptionsOf` holding them to the same ceilings, saved with an
   analysis), so a multi-thread engine chosen in Settings → Engine searches on
-  as many threads on the Analysis Board as in a game.
+  as many threads on the Analysis Board as in a game. Those ceilings and the
+  device's limits are the **in-browser builds'**; an engine server's engine is
+  offered what it declares (§8, CTA-175).
 
 What was measured (CTA-160, headless Chromium on a 20-core desktop, a
 middlegame position; times to *reach* each depth — a laptop or phone is
@@ -316,9 +318,22 @@ modules and no board change:
   default and every board switches (`useEngineModule` renders on the status).
   A stored `hosted:…` choice, or a played game's engine, comes back with the
   server, as the multi-thread build does on an isolated host.
-- **Not yet**: the board's Engine tab still caps Threads and Hash by this
-  browser's device (`deviceEngineLimits`, at most 8 threads and 1024 MB) — for
-  an engine on the server the server's own ceilings would be the right ones.
+- **Its Threads and Hash are its own** (CTA-175): every engine form — Play
+  with Engine's and the Lobby's, the boards' Engine tab, the Computer
+  analysis tab — offers them up to what the engine **declares**, which is the
+  server's `maxThreads` / `maxHashMb` (`engineLimitsOf(descriptor)`, the
+  forms' `deviceLimits`), never this browser's device nor the WebAssembly
+  1024 MB. The server's list rides on the descriptor (`options`), so the
+  range is right **before** the board's first handshake too. Nothing cuts a
+  value set back to 1024: `uciOptionsOf`, `analysisUciOptionsOf`, a
+  new-game link (`newGameRequestOf`) and a computer analysis' options
+  (`computerAnalysisOptionsFrom`, so a job's record too) hold a `hosted:…`
+  engine to `HOSTED_ENGINE_SETTING_BOUNDS` (Stockfish's own 1–1024 threads,
+  1–33,554,432 MB — `engineSettingBoundsOf`), and the engine module and the
+  job runner clamp to what it declared. Where such a choice falls back to an
+  in-browser build (the server gone), the bounds are the build's: the screens
+  pass the engine that runs, and the runner holds a job to the running
+  engine's bounds before its declaration.
 
 ## 9. Testing
 
@@ -368,6 +383,6 @@ modules and no board change:
 | `useEngineModule`'s local `getEngine` shadowing the registry's export | **Renamed** `ensureEngine`. |
 | Search depth: `go depth 12` defaulted in `UciEngine`, 24 the clamp, 14 / 16 the boards' settings; move time at most 10 s | **Single-sourced and raised** (§5.1): depth is a required argument (or the search is `infinite`); `DEFAULT_MAX_DEPTH` (99) is the clamp, `ENGINE_SETTING_BOUNDS` (depth 1–40, move time 0–300 s, CTA-163) what the engine form offers — the analysis boards keep their own 0–60 s; the analysis boards gained **infinite analysis** and stop at depth 20 rather than after a second. |
 | The protocol bookkeeping | **Fixed**: `stop()` dropped no waiting search, so switching the engine off right after a move searched that move anyway; a `stop` went out on every request during a search; an option the engine cannot take was still queued (and stopped the search); an unchanged option was re-posted (`Hash` clearing the table). §6. |
-| The Engine tab's Threads and Hash sliders took the engine's own maximum (32 threads, 33,554,432 MB) | **Capped by the device** (`deviceEngineLimits`) under hard ceilings — 32 threads, 1024 MB, where 2048 crashed the tab (§5.1). |
+| The Engine tab's Threads and Hash sliders took the engine's own maximum (32 threads, 33,554,432 MB) | **Capped by the device** (`deviceEngineLimits`) under hard ceilings — 32 threads, 1024 MB, where 2048 crashed the tab (§5.1); an engine server's engine by what it declares (§8, CTA-175). |
 | Skill Level vs Elo | **Kept generic** — read off what the engine declares. The Elo slider now stands in before the handshake (every shipped engine's). Defaults kept: Elo 2100, Skill Level 10 (`approximateElo(10)` = 2100, so a Skill-Level-only engine starts alike). |
 | The default engine's special label ("Stockfish (level N)") | **Gone**: every engine is named by its build ("Stockfish 19 Lite (Elo 2100)"); `playedGames.engine` left the catalogs. |

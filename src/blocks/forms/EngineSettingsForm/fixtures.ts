@@ -44,6 +44,19 @@ export const ELO_WITHOUT_LIMIT_OPTIONS: ReadonlyMap<string, EngineOption> = new 
 /** A build with no Threads and no Hash at all — absent, not pinned. */
 export const SPARSE_OPTIONS: ReadonlyMap<string, EngineOption> = new Map([spin("MultiPV", 1, 3), spin("Skill Level", 0, 8)]);
 
+/**
+ * An engine server's engine (CTA-175) — a native Stockfish, its `Threads` and
+ * `Hash` under the server's `maxThreads` (15) and `maxHashMb` (4096).
+ */
+export const HOSTED_OPTIONS: ReadonlyMap<string, EngineOption> = new Map([
+  ...SHIPPED_OPTIONS,
+  spin("Threads", 1, 15),
+  spin("Hash", 1, 4096),
+]);
+
+/** What `engineLimitsOf` makes of {@link HOSTED_OPTIONS}: the form's `deviceLimits`. */
+export const HOSTED_LIMITS = { threads: 15, hashMb: 4096 } as const;
+
 /** Before the handshake: nothing declared yet. */
 export const NO_OPTIONS: ReadonlyMap<string, EngineOption> = new Map();
 

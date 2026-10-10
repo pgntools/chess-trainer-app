@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import AnalysisEngineForm, { type AnalysisEngineFormProps } from "./AnalysisEngineForm";
-import { ABSENT, BEFORE_HANDSHAKE, MULTI_THREAD, PINNED, SETTINGS, SHIPPED } from "./fixtures";
+import { ABSENT, BEFORE_HANDSHAKE, HOSTED, HOSTED_LIMITS, MULTI_THREAD, PINNED, SETTINGS, SHIPPED } from "./fixtures";
 
 const mount = (props: Partial<AnalysisEngineFormProps> = {}) => {
   const onChange = vi.fn();
@@ -68,6 +68,21 @@ describe("AnalysisEngineForm", () => {
     threads.focus();
     await user.keyboard("{ArrowRight}");
     expect(onChange).toHaveBeenLastCalledWith({ threads: SETTINGS.threads + 1 });
+  });
+
+  it("offers an engine server's engine its own Threads and Hash, before the handshake too, past the in-browser 1024 MB (CTA-175)", async () => {
+    const user = userEvent.setup();
+    const { onChange } = mount({ engineOptions: HOSTED, deviceLimits: HOSTED_LIMITS });
+    expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("aria-valuemax", "15");
+    const hash = screen.getByRole("slider", { name: "Hash (MB)" });
+    expect(hash).toHaveAttribute("aria-valuemax", "4096");
+    hash.focus();
+    await user.keyboard("{End}");
+    expect(onChange).toHaveBeenLastCalledWith({ hashMb: 4096 });
+
+    mount({ engineOptions: BEFORE_HANDSHAKE, deviceLimits: HOSTED_LIMITS });
+    expect(screen.getAllByRole("slider", { name: "Hash (MB)" }).at(-1)).toHaveAttribute("aria-valuemax", "4096");
+    expect(screen.getAllByRole("slider", { name: "Threads" }).at(-1)).toHaveAttribute("aria-valuemax", "15");
   });
 
   it("offers Write evaluations into the game only when asked, and switches it (CTA-167)", async () => {

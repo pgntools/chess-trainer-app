@@ -212,6 +212,14 @@ export type EngineDescriptor = {
    * engine that ships with the app and runs in the page.
    */
   server?: string;
+  /**
+   * What the engine declares, **known before it runs** — an engine server's
+   * engine, from the server's list (CTA-175), so a form offers its `Hash` and
+   * `Threads` ranges before the first handshake. Absent for the shipped
+   * builds, whose own `uci` reply ({@link EngineHandle.options}) is the only
+   * word on theirs.
+   */
+  options?: readonly EngineOption[];
   capabilities: EngineCapabilities;
   /**
    * Build a handle — the only place an engine, a Worker, a socket is made, and

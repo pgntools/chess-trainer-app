@@ -13,8 +13,9 @@ import { computerAnalysisTree } from "./computerAnalysisTree";
 import { DEFAULT_ANALYSIS_SETTINGS } from "./analysisSettings";
 import { connectEngineServer, readEngineServerUrl } from "./engineServer";
 import type { EngineDescriptor, EngineHandle, EngineOption } from "./engineTypes";
+import { engineSettingBoundsOf } from "./engineSettings";
 import type { GameTree } from "./gameTree";
-import { getEngine, HOSTED_ENGINE_PREFIX, resolveEngine } from "./engines";
+import { getEngine, isHostedEngineId, resolveEngine } from "./engines";
 import { jobOutputName, jobSearchOf, withCheckpoint, type Job, type JobError, type JobOutput } from "./jobs";
 import { interruptRunningJobs, jobsSnapshot, loadJobs, subscribeJobs, updateJob } from "./jobStore";
 import { newRecordId } from "./recordId";
@@ -89,7 +90,7 @@ const SILENCE_TIMEOUT_MS = 120_000;
 
 /** The registry's engine for `id`, after the engine server's list has been read for one of its engines. */
 const registryEngineFor = async (id: string): Promise<EngineDescriptor> => {
-  if (id.startsWith(HOSTED_ENGINE_PREFIX) && getEngine(id) === undefined && readEngineServerUrl() !== undefined) {
+  if (isHostedEngineId(id) && getEngine(id) === undefined && readEngineServerUrl() !== undefined) {
     await connectEngineServer();
   }
   return resolveEngine(id);
@@ -322,8 +323,18 @@ export const createJobRunner = ({
             signal.onAbort.add(() => engine.stop());
             await handshake(engine, signal);
             if (!stillRunning(id, signal)) return;
-            engine.setOption("Threads", clampToOption(engine.options.get("Threads"), job.options.threads));
-            engine.setOption("Hash", clampToOption(engine.options.get("Hash"), job.options.hashMb));
+            /*
+              Held first to the running engine's own bounds — a job queued for
+              an engine server's engine that fell back to an in-browser build
+              must not ask it for a hash the tab cannot hold (CTA-175) — then
+              to what the engine declared, the last word.
+            */
+            const bounds = engineSettingBoundsOf(descriptor.id);
+            engine.setOption(
+              "Threads",
+              clampToOption(engine.options.get("Threads"), Math.min(job.options.threads, bounds.threads.max)),
+            );
+            engine.setOption("Hash", clampToOption(engine.options.get("Hash"), Math.min(job.options.hashMb, bounds.hashMb.max)));
           }
           const lines = await searchPosition(handle, position, job.options, signal);
           if (lines === undefined || !stillRunning(id, signal)) return;

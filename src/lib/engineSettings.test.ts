@@ -4,6 +4,9 @@ import {
   DEFAULT_ENGINE_SETTINGS,
   deviceEngineLimits,
   ENGINE_SETTING_BOUNDS,
+  engineLimitsOf,
+  engineSettingBoundsOf,
+  HOSTED_ENGINE_SETTING_BOUNDS,
   LIMIT_STRENGTH_OPTION,
   MOVE_TIME_INSTANT_MS,
   MOVE_TIME_MARKS_S,
@@ -166,5 +169,65 @@ describe("the move-time slider — lichess's snap marks (CTA-163)", () => {
 
   it("raises the bounds' top to the 300 s mark — what a new-game link clamps to", () => {
     expect(ENGINE_SETTING_BOUNDS.moveTimeMs).toEqual({ min: 0, max: 300000 });
+  });
+});
+
+/*
+  An engine server's engine (CTA-175) — a native binary, which no WebAssembly
+  memory limits: its Threads and Hash are held to its own range, never the
+  in-browser builds' 1024 MB or this device's limits.
+*/
+const HOSTED = "hosted:stockfish-19";
+const spinOption = (name: string, min: number, max: number): EngineOption => ({ name, type: "spin", min, max });
+
+describe("engineSettingBoundsOf — the bounds of the engine that runs (CTA-175)", () => {
+  it("holds an in-browser build, or no engine named, to the WebAssembly ceilings", () => {
+    for (const id of [undefined, null, "stockfish-19-lite-single", "stockfish-19-lite-multi"]) {
+      expect(engineSettingBoundsOf(id)).toEqual({ threads: ENGINE_SETTING_BOUNDS.threads, hashMb: ENGINE_SETTING_BOUNDS.hashMb });
+    }
+  });
+
+  it("gives an engine server's engine the native range", () => {
+    expect(engineSettingBoundsOf(HOSTED)).toBe(HOSTED_ENGINE_SETTING_BOUNDS);
+    expect(HOSTED_ENGINE_SETTING_BOUNDS.hashMb.max).toBeGreaterThan(4096);
+  });
+});
+
+describe("engineLimitsOf — the most a form offers for an engine (CTA-175)", () => {
+  const server = [spinOption("Threads", 1, 15), spinOption("Hash", 1, 4096)];
+
+  it("is this device's for an in-browser build, unchanged", () => {
+    const device = { hardwareConcurrency: 4, deviceMemory: 4 };
+    expect(engineLimitsOf({ id: "stockfish-19-lite-single" }, device)).toEqual(deviceEngineLimits(device));
+    // Even a declaration on the descriptor does not lift an in-browser build past the tab's ceiling.
+    expect(engineLimitsOf({ id: "stockfish-19-lite-multi", options: server }, device)).toEqual({ threads: 3, hashMb: 512 });
+  });
+
+  it("is what an engine server's engine declares — the server's maxThreads and maxHashMb — whatever the device", () => {
+    expect(engineLimitsOf({ id: HOSTED, options: server }, { hardwareConcurrency: 2, deviceMemory: 2 })).toEqual({
+      threads: 15,
+      hashMb: 4096,
+    });
+  });
+
+  it("falls back to the native range, never the device's, for an option the server's list does not bound", () => {
+    expect(engineLimitsOf({ id: HOSTED }, { deviceMemory: 2 })).toEqual({
+      threads: HOSTED_ENGINE_SETTING_BOUNDS.threads.max,
+      hashMb: HOSTED_ENGINE_SETTING_BOUNDS.hashMb.max,
+    });
+  });
+});
+
+describe("uciOptionsOf — an engine server's engine keeps its own range (CTA-175)", () => {
+  it("asks an engine server's engine for the Hash and Threads set, past the in-browser ceilings", () => {
+    const options = uciOptionsOf({ ...DEFAULT_ENGINE_SETTINGS, hashMb: 4096, threads: 48 }, HOSTED);
+    expect(options.Hash).toBe(4096);
+    expect(options.Threads).toBe(48);
+  });
+
+  it("still holds an in-browser build to 1024 MB and 32 threads", () => {
+    const options = uciOptionsOf({ ...DEFAULT_ENGINE_SETTINGS, hashMb: 4096, threads: 48 }, "stockfish-19-lite-single");
+    expect(options.Hash).toBe(1024);
+    expect(options.Threads).toBe(32);
   });
 });

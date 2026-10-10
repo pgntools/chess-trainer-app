@@ -23,6 +23,19 @@ export const NO_HASH: ReadonlyMap<string, EngineOption> = new Map([spin("Threads
 
 export const BEFORE_HANDSHAKE: ReadonlyMap<string, EngineOption> = new Map();
 
+/**
+ * An engine server's engine (CTA-175) — a native Stockfish whose Threads and
+ * Hash the server caps at its `maxThreads` (15) and `maxHashMb` (4096).
+ */
+export const HOSTED_ENGINE: ReadonlyMap<string, EngineOption> = new Map([
+  spin("MultiPV", 1, 500),
+  spin("Threads", 1, 15),
+  spin("Hash", 1, 4096),
+]);
+
+/** What `engineLimitsOf` makes of {@link HOSTED_ENGINE}: the form's `deviceLimits`, before the handshake too. */
+export const HOSTED_LIMITS = { threads: 15, hashMb: 4096 } as const;
+
 /** The defaults, as a board seeds them: the light variant ticked. */
 export const OPTIONS: ComputerAnalysisOptions = { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, depth: 18, minDepth: 18, moveTimeMs: 5000 };
 
@@ -36,6 +49,9 @@ export const RANGED: ComputerAnalysisOptions = {
   multiPv: 3,
   outputs: ["light", "medium", "full"],
 };
+
+/** Options for an engine server's engine — 8 threads and a 2048 MB hash, past what a tab may hold. */
+export const HOSTED_OPTIONS: ComputerAnalysisOptions = { ...OPTIONS, engine: "hosted:stockfish-19", threads: 8, hashMb: 2048 };
 
 /** No variant ticked — Start is off. */
 export const NONE_TICKED: ComputerAnalysisOptions = { ...OPTIONS, outputs: [] };

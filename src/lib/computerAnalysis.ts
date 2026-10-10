@@ -1,7 +1,7 @@
 import { Chess } from "chess.js";
 
 import { scoreFromUci, type Score, type Turn } from "./engineAnalysis";
-import { ENGINE_SETTING_BOUNDS } from "./engineSettings";
+import { ENGINE_SETTING_BOUNDS, engineSettingBoundsOf } from "./engineSettings";
 import { DEFAULT_ENGINE_ID } from "./engines/ids";
 import { commentsAt, mainline, plyLabel, type GameTree, type VariationNode } from "./gameTree";
 import { readComment } from "./moveAnnotations";
@@ -54,7 +54,11 @@ export type VerdictThresholds = { inaccuracy: number; mistake: number; blunder: 
 export type ComputerAnalysisOptions = {
   /** The engine, a registry id (`lib/engines/`). */
   engine: string;
-  /** UCI `Threads` and `Hash`. The job clamps them to what the engine declares. */
+  /**
+   * UCI `Threads` and `Hash`. Held to the bounds of the engine named
+   * ({@link computerAnalysisOptionsFrom}); the job clamps them to what the
+   * engine declares.
+   */
   threads: number;
   hashMb: number;
   /** Plies per position. */
@@ -89,7 +93,9 @@ const MAX_MOVE_NUMBER = 999;
 
 /**
  * The range each number is taken in. The engine knobs come from
- * `ENGINE_SETTING_BOUNDS`, the board's own. `minDepth` is also clamped to the
+ * `ENGINE_SETTING_BOUNDS`, the board's own — `threads` and `hashMb` the
+ * in-browser builds', which an engine server's engine replaces with its own
+ * (`engineSettingBoundsOf`, CTA-175). `minDepth` is also clamped to the
  * depth, and the thresholds are kept in order (a mistake at least an
  * inaccuracy, a blunder at least a mistake).
  */
@@ -139,12 +145,16 @@ const wholeIn = (value: unknown, bounds: { min: number; max: number }, fallback:
  * **Options from a stored record, or a form**: every field read on its own.
  * A missing or mistyped field takes its default, a number is clamped into its
  * bounds, and the outputs keep the known variants once each, in their order.
+ * `threads` and `hashMb` are held to **the named engine's** bounds
+ * (`engineSettingBoundsOf`): an engine server's engine keeps the 4096 MB its
+ * server allows, an in-browser build stays under the tab's 1024 (CTA-175).
  * Never throws.
  */
 export const computerAnalysisOptionsFrom = (value: unknown): ComputerAnalysisOptions => {
   const defaults = DEFAULT_COMPUTER_ANALYSIS_OPTIONS;
   const row = typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
-  const bounds = COMPUTER_ANALYSIS_BOUNDS;
+  const engine = typeof row.engine === "string" && row.engine !== "" ? row.engine : defaults.engine;
+  const bounds = { ...COMPUTER_ANALYSIS_BOUNDS, ...engineSettingBoundsOf(engine) };
 
   const depth = wholeIn(row.depth, bounds.depth, defaults.depth);
   const fromMove = wholeIn(row.fromMove, bounds.move, defaults.fromMove);
@@ -156,7 +166,7 @@ export const computerAnalysisOptionsFrom = (value: unknown): ComputerAnalysisOpt
   const blunder = Math.max(mistake, wholeIn(stored.blunder, bounds.threshold, defaults.thresholds.blunder));
 
   return {
-    engine: typeof row.engine === "string" && row.engine !== "" ? row.engine : defaults.engine,
+    engine,
     threads: wholeIn(row.threads, bounds.threads, defaults.threads),
     hashMb: wholeIn(row.hashMb, bounds.hashMb, defaults.hashMb),
     depth,

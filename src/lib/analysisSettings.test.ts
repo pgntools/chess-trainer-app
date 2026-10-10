@@ -24,6 +24,19 @@ describe("the analysis boards' Threads and Hash", () => {
     expect(analysisUciOptionsOf({ multiPv: 3, threads: 128, hashMb: 4096 })).toEqual({ MultiPV: 3, Threads: 32, Hash: 1024 });
   });
 
+  it("hold an engine server's engine to its own range, an in-browser build still to the tab's (CTA-175)", () => {
+    expect(analysisUciOptionsOf({ multiPv: 3, threads: 12, hashMb: 4096 }, "hosted:stockfish-19")).toEqual({
+      MultiPV: 3,
+      Threads: 12,
+      Hash: 4096,
+    });
+    expect(analysisUciOptionsOf({ multiPv: 3, threads: 128, hashMb: 4096 }, "stockfish-19-lite-multi")).toEqual({
+      MultiPV: 3,
+      Threads: 32,
+      Hash: 1024,
+    });
+  });
+
   it("take what the running engine clamped them to — the same object when nothing moved", () => {
     const settings = { ...DEFAULT_ANALYSIS_SETTINGS, threads: 4 };
     expect(withClampedAnalysisUciOptions(settings, { MultiPV: 3, Threads: 4, Hash: 16 })).toBe(settings);

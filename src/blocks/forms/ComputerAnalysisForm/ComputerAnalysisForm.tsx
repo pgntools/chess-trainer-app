@@ -47,7 +47,12 @@ export type ComputerAnalysisFormProps = {
   multiThread?: boolean;
   /** The engine the job will run, by name ("Stockfish 19 Lite") — absent, no line. */
   engineName?: string;
-  /** The most Threads and Hash this device should be offered (`deviceEngineLimits()`); absent, the bounds' ceilings. */
+  /**
+   * The most Threads and Hash to offer — `engineLimitsOf(descriptor)`: this
+   * device's for an in-browser build (`deviceEngineLimits()`), what an engine
+   * server's engine declares (CTA-175), which may be past the bounds' 1024 MB —
+   * the range before the handshake too. Absent, the bounds' ceilings.
+   */
   deviceLimits?: DeviceEngineLimits;
   /** The game's last move number — the move fields' ceiling. Absent, the bounds'. */
   lastMove?: number;

@@ -21,7 +21,7 @@ import {
   type AnalysisSettings,
 } from "../../lib/analysisSettings";
 import { AnalysisEngineForm } from "../../blocks/forms";
-import { deviceEngineLimits } from "../../lib/engineSettings";
+import { engineLimitsOf } from "../../lib/engineSettings";
 import { FieldLabel, SideToggle, SwitchField } from "../../design-system/components/forms";
 import { BackButton } from "../../design-system/components/navigation";
 import { IconAction, ToggleIconAction } from "../../design-system/components/toolbars";
@@ -357,8 +357,8 @@ function RepertoirePlayer({
     moveTimeMs: settings.moveTimeMs,
     infinite: settings.infinite,
     uciOptions: useMemo(
-      () => analysisUciOptionsOf({ multiPv: settings.multiPv, threads: settings.threads, hashMb: settings.hashMb }),
-      [settings.multiPv, settings.threads, settings.hashMb],
+      () => analysisUciOptionsOf({ multiPv: settings.multiPv, threads: settings.threads, hashMb: settings.hashMb }, engineId),
+      [settings.multiPv, settings.threads, settings.hashMb, engineId],
     ),
     onUciOptionsReady,
   });
@@ -777,7 +777,7 @@ function RepertoirePlayer({
                 engineOn={engineOn}
                 showEvalBar={showEvalBar}
                 onShowEvalBarChange={setShowEvalBar}
-                deviceLimits={deviceEngineLimits()}
+                deviceLimits={engineLimitsOf(engine.descriptor)}
                 onClear={clear}
               />
             ),

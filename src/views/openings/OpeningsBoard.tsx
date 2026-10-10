@@ -10,7 +10,7 @@ import type { ChessboardOptions } from "react-chessboard";
 
 import { CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
 import { AnalysisEngineForm } from "../../blocks/forms";
-import { deviceEngineLimits } from "../../lib/engineSettings";
+import { engineLimitsOf } from "../../lib/engineSettings";
 import { OpeningBookList } from "../../blocks/lists";
 import { SwitchField } from "../../design-system/components/forms";
 import { IconAction } from "../../design-system/components/toolbars";
@@ -281,7 +281,7 @@ function OpeningsBoard() {
                 engineOn={session.engineOn}
                 showEvalBar={session.showEvalBar}
                 onShowEvalBarChange={session.setShowEvalBar}
-                deviceLimits={deviceEngineLimits()}
+                deviceLimits={engineLimitsOf(engine.descriptor)}
                 onClear={() => {
                   core.reset();
                   engine.clearAnalysis();

@@ -102,6 +102,16 @@ describe("the job runner (CTA-173)", () => {
     expect(engine().setOptions.at(-1)).toEqual(["MultiPV", 3]);
   });
 
+  it("holds a job sent to an engine server's engine to the tab's ceiling when an in-browser build runs it instead (CTA-175)", async () => {
+    // The server is gone (none configured): the default build runs the job, and a 4096 MB hash would crash its tab.
+    await addJob(jobOf({ engine: "hosted:stockfish-19", threads: 12, hashMb: 4096 }));
+    start();
+    await searched(1);
+    expect(findJob("job")?.options.hashMb).toBe(4096);
+    expect(engine().setOptions).toContainEqual(["Hash", 1024]);
+    expect(engine().setOptions).not.toContainEqual(["Hash", 4096]);
+  });
+
   it("stops a search early once another line falls too far below line 1", async () => {
     const job = jobOf({ multiPv: 2, minDepth: 8, depth: 20 });
     await addJob(job);

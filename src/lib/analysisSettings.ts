@@ -15,7 +15,7 @@
  * the hook clamps to whatever the running build declared.
  */
 
-import { DEFAULT_ENGINE_SETTINGS, ENGINE_SETTING_BOUNDS } from "./engineSettings";
+import { DEFAULT_ENGINE_SETTINGS, ENGINE_SETTING_BOUNDS, engineSettingBoundsOf } from "./engineSettings";
 
 /** The knobs the Analysis Board's Engine tab drives. */
 export type AnalysisSettings = {
@@ -37,8 +37,10 @@ export type AnalysisSettings = {
    * UCI `Threads` and `Hash` (MB) — Play with Engine's own knobs, the same on
    * every board (CTA-160): a multi-thread engine chosen in Settings → Engine
    * searches on as many threads here as there. Requests, held to
-   * `ENGINE_SETTING_BOUNDS` by {@link analysisUciOptionsOf} and clamped to what
+   * `ENGINE_SETTING_BOUNDS` by {@link analysisUciOptionsOf} — an engine
+   * server's engine to its own, wider bounds (CTA-175) — and clamped to what
    * the running engine declares (the single-thread build pins `Threads` to 1).
+   * Stored as asked, never cut back to the in-browser ceiling.
    */
   threads: number;
   hashMb: number;
@@ -70,6 +72,9 @@ export const DEFAULT_ANALYSIS_SETTINGS: AnalysisSettings = {
  * What an analysis board offers — Play with Engine's own (`ENGINE_SETTING_BOUNDS`),
  * save that its move time keeps the 60 s ceiling it always had (CTA-163 raised
  * the engine form's marks to 300 s; this board's linear slider stays as it was).
+ * `threads` and `hashMb` are the in-browser builds'; an engine server's engine
+ * is offered what it declares (the form's `deviceLimits`, `engineLimitsOf` —
+ * CTA-175).
  */
 export const ANALYSIS_SETTING_BOUNDS = {
   depth: ENGINE_SETTING_BOUNDS.depth,
@@ -96,15 +101,22 @@ export const ANALYSIS_UCI_OPTION = {
  * The option-backed settings as the engine module takes them — UCI name →
  * requested value — with `Threads` and `Hash` held to the ceilings whatever a
  * stored or imported analysis says (a hash past them crashes the tab).
- * Play with Engine's `uciOptionsOf`, without the strength.
+ * Play with Engine's `uciOptionsOf`, without the strength — and, like it,
+ * `engineId` (the engine that will run) moves the ceilings to an engine
+ * server's engine's own (`engineSettingBoundsOf`, CTA-175); absent, the
+ * in-browser ones.
  */
 export const analysisUciOptionsOf = (
   settings: Pick<AnalysisSettings, keyof typeof ANALYSIS_UCI_OPTION>,
-): Record<string, number> => ({
-  [ANALYSIS_UCI_OPTION.multiPv]: settings.multiPv,
-  [ANALYSIS_UCI_OPTION.threads]: Math.min(settings.threads, ENGINE_SETTING_BOUNDS.threads.max),
-  [ANALYSIS_UCI_OPTION.hashMb]: Math.min(settings.hashMb, ENGINE_SETTING_BOUNDS.hashMb.max),
-});
+  engineId?: string,
+): Record<string, number> => {
+  const bounds = engineSettingBoundsOf(engineId);
+  return {
+    [ANALYSIS_UCI_OPTION.multiPv]: settings.multiPv,
+    [ANALYSIS_UCI_OPTION.threads]: Math.min(settings.threads, bounds.threads.max),
+    [ANALYSIS_UCI_OPTION.hashMb]: Math.min(settings.hashMb, bounds.hashMb.max),
+  };
+};
 
 /**
  * Settings with the values the running engine clamped them to (the engine

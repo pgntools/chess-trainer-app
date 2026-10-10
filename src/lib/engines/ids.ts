@@ -15,3 +15,15 @@ export const DEFAULT_ENGINE_NAME = "Stockfish 19 Lite";
 
 /** The default engine's own version. */
 export const DEFAULT_ENGINE_VERSION = "19";
+
+/**
+ * The prefix of an engine server's engine id — `hosted:<the server's id>`
+ * (`hosted.ts`). Here, beside the default's id, so plain data (the engine
+ * settings' bounds, a job's options) can tell such an engine by its id
+ * without importing the server's client.
+ */
+export const HOSTED_ENGINE_PREFIX = "hosted:";
+
+/** Whether `id` names one of the engine server's engines — a native binary, not a build running in the page. */
+export const isHostedEngineId = (id: string | null | undefined): boolean =>
+  typeof id === "string" && id.startsWith(HOSTED_ENGINE_PREFIX);

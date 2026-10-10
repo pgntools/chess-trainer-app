@@ -16,7 +16,7 @@ import type { ChessboardOptions } from "react-chessboard";
 
 import { ChangesStrip, CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../../blocks/panels";
 import { AnalysisEngineForm } from "../../../blocks/forms";
-import { deviceEngineLimits } from "../../../lib/engineSettings";
+import { engineLimitsOf } from "../../../lib/engineSettings";
 import { StatusText } from "../../../design-system/components/feedback";
 import { SwitchField } from "../../../design-system/components/forms";
 import { IconAction, ToggleIconAction } from "../../../design-system/components/toolbars";
@@ -490,7 +490,7 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
                   engineOn={state.engineOn}
                   showEvalBar={state.showEvalBar}
                   onShowEvalBarChange={state.setShowEvalBar}
-                  deviceLimits={deviceEngineLimits()}
+                  deviceLimits={engineLimitsOf(engine.descriptor)}
                   offerWriteEvals
                   onClear={() => {
                     state.clearBoard();
@@ -516,6 +516,7 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
                     name: engine.descriptor.name,
                     multiThread: engine.descriptor.capabilities.multiThread,
                     options: engine.engineOptions,
+                    limits: engineLimitsOf(engine.descriptor),
                   }}
                   source={() => ({
                     analysisId: record?.id ?? null,

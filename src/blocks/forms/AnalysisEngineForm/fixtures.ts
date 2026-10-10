@@ -26,4 +26,14 @@ export const ABSENT: ReadonlyMap<string, EngineOption> = new Map([spin("Threads"
 
 export const BEFORE_HANDSHAKE: ReadonlyMap<string, EngineOption> = new Map();
 
+/** An engine server's engine (CTA-175): Threads and Hash under the server's `maxThreads` (15) and `maxHashMb` (4096). */
+export const HOSTED: ReadonlyMap<string, EngineOption> = new Map([
+  spin("MultiPV", 1, 500),
+  spin("Threads", 1, 15),
+  spin("Hash", 1, 4096),
+]);
+
+/** What `engineLimitsOf` makes of {@link HOSTED}: the form's `deviceLimits`. */
+export const HOSTED_LIMITS = { threads: 15, hashMb: 4096 } as const;
+
 export const SETTINGS: AnalysisSettings = { ...DEFAULT_ANALYSIS_SETTINGS, depth: 18, moveTimeMs: 1500, multiPv: 3 };
