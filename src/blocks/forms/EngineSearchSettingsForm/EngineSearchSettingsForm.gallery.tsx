@@ -59,7 +59,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
       render: () => demo(SETTINGS, SINGLE_THREAD_LIMITS),
     },
     {
-      name: "A reader's own — infinite analysis, 1 s a move, five lines, four threads on the multi-thread build, their own preset",
+      name: "A reader's own — depth 24, 1 s a move, five lines, four threads on the multi-thread build, their own preset",
       render: () => demo(TUNED, MULTI_THREAD_LIMITS, SERVER_ENGINES, LITE_MULTI.id, "p-deep"),
     },
     {

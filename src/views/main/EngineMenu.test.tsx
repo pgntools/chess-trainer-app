@@ -109,8 +109,8 @@ describe("the top bar's Engine menu (CTA-181)", () => {
     within(dialog).getByRole("slider", { name: "Search depth" }).focus();
     await user.keyboard("{ArrowRight}");
     expect(readEngineSearchSettings().depth).toBe(21);
-    await user.click(within(dialog).getByRole("switch", { name: "Infinite analysis" }));
-    expect(readEngineSearchSettings().infinite).toBe(true);
+    // No infinite analysis: every search stops at its depth or move time (CTA-185).
+    expect(within(dialog).queryByRole("switch")).toBeNull();
     await expectNoAxeViolations(dialog);
 
     await user.keyboard("{Escape}");
@@ -206,20 +206,18 @@ describe("the top bar's Engine menu (CTA-181)", () => {
       const box = within(dialog).getByRole("spinbutton", { name: "Move time in seconds, typed" });
       // The default is no limit — the ∞ mark.
       expect(box).toBeDisabled();
-      // Infinite analysis disables neither box.
-      await user.click(within(dialog).getByRole("switch", { name: "Infinite analysis" }));
       expect(within(dialog).getByRole("spinbutton", { name: "Search depth, typed" })).toBeEnabled();
 
       within(dialog).getByRole("slider", { name: "Move time" }).focus();
       await user.keyboard("{ArrowLeft}");
-      expect(readEngineSearchSettings().moveTimeMs).toBe(300000);
+      expect(readEngineSearchSettings().moveTimeMs).toBe(600000);
       expect(box).toBeEnabled();
-      expect(box).toHaveValue(300);
+      expect(box).toHaveValue(600);
       await user.clear(box);
       await user.type(box, "12.5");
       expect(readEngineSearchSettings().moveTimeMs).toBe(12500);
-      // 12.5 s falls between the 10 and 20 marks.
-      expect(within(dialog).getByRole("slider", { name: "Move time" })).toHaveAttribute("aria-valuenow", "2.25");
+      // 12.5 s falls between the 10 and 30 marks, an eighth of the way.
+      expect(within(dialog).getByRole("slider", { name: "Move time" })).toHaveAttribute("aria-valuenow", "2.125");
     });
 
     it("shows a move time stored elsewhere in its box", async () => {

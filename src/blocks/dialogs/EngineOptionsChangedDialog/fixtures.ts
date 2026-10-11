@@ -5,12 +5,11 @@ import type { EngineSearchChange } from "../../../lib/engineSearchSettings";
   `src/lib/`'s own. Imported only by the block's gallery and its test.
 */
 
-/** A saved analysis searched deeper, on more lines, with a time limit and infinite analysis. */
+/** A saved analysis searched deeper, on more lines, with a time limit. */
 export const ANALYSIS_CHANGES: readonly EngineSearchChange[] = [
   { field: "multiPv", recorded: 5, current: 3 },
   { field: "depth", recorded: 26, current: 20 },
   { field: "moveTimeMs", recorded: 5000, current: 0 },
-  { field: "infinite", recorded: true, current: false },
 ];
 
 /** A game played on an engine server's engine: four threads and 1024 MB. */

@@ -418,8 +418,6 @@ const en = {
     },
     /** One row: the setting, the record's value, the current one. */
     change: "{{setting}}: {{recorded}} → {{current}}",
-    on: "on",
-    off: "off",
     use: "Use these settings",
     dismiss: "Dismiss",
     /** What "Use these settings" holds to the engine running. */
@@ -1245,8 +1243,6 @@ const en = {
       /** Said where the lines would be, when the engine is switched off. */
       engineOff: "The engine is off. Switch it on to analyse this position.",
       /** Infinite analysis (CTA-160): the engine deepens until the position changes. */
-      infinite: "Infinite analysis",
-      infiniteHelp: "Keep searching until the position changes. Off, a search stops at the depth and time below — and Play always does.",
       /** CTA-167: the Analysis Board's switch that writes each finished search into the PGN as [%eval]. */
       writeEvals: "Write evaluations into the game",
       writeEvalsHelp: "Each finished search is written on its move as [%eval score,depth] — a deeper search replaces a shallower one — and the engine is named in the Annotator tag.",

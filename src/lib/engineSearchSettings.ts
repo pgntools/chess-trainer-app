@@ -5,8 +5,10 @@ import { missingFieldsOf } from "./recordedFields";
 
 /**
  * **The engine's search settings, one set for every board** (CTA-181) — how
- * many lines, how deep, how long, infinite analysis, and the two resource
- * knobs, `Threads` and `Hash`. Set from the top bar's Engine menu
+ * many lines, how deep, how long, and the two resource knobs, `Threads` and
+ * `Hash`. **Every search stops** — at its depth or its move time, whichever
+ * comes first: there is no infinite analysis (CTA-185 took its switch away —
+ * a reader wants a hard stop; a stored `infinite` is read as nothing). Set from the top bar's Engine menu
  * (`views/main/EngineMenu.tsx`) and read by every board: the Analysis Board,
  * the Library's game, the Openings explorer, the repertoire player, Play with
  * Engine and Masked Pieces. A change applies from the next search. (Until
@@ -33,20 +35,13 @@ import { missingFieldsOf } from "./recordedFields";
 export type EngineSearchSettings = {
   /** UCI `MultiPV` — how many lines the boards show. */
   multiPv: number;
-  /** Plies per search — where a search stops while {@link infinite} is off, and always for Play. */
+  /** Plies per search — where every search stops, if its move time has not stopped it first. */
   depth: number;
   /**
-   * Milliseconds per search; `0` means "depth alone decides", and `1` — the
-   * slider's 0-seconds mark — is the instant reply (CTA-163).
+   * Milliseconds per search; `0` means "depth alone decides", and `1` — 0
+   * seconds — is the instant reply (CTA-163).
    */
   moveTimeMs: number;
-  /**
-   * **Infinite analysis** (CTA-160): the engine keeps deepening the position
-   * on screen until it changes or the engine is switched off. Not for Play,
-   * which needs a search that ends with a move: while Play is on, the depth
-   * and move time decide (`infinite && !playing`).
-   */
-  infinite: boolean;
   /** UCI `Threads` — a request, held to the running engine's top when used. */
   threads: number;
   /** UCI `Hash`, in MB — a request, held to the running engine's top when used. */
@@ -54,27 +49,26 @@ export type EngineSearchSettings = {
 };
 
 /** The settings, in the order the menu and the "changed" dialog list them. */
-const ENGINE_SEARCH_FIELDS = ["multiPv", "depth", "moveTimeMs", "infinite", "threads", "hashMb"] as const;
+const ENGINE_SEARCH_FIELDS = ["multiPv", "depth", "moveTimeMs", "threads", "hashMb"] as const;
 
 export type EngineSearchField = (typeof ENGINE_SEARCH_FIELDS)[number];
 
 /**
  * **The Analysis Board's own defaults** — depth 20, three lines, no time
- * limit, infinite off, one thread and 16 MB — so a saved analysis kept
+ * limit, one thread and 16 MB — so a saved analysis kept
  * under the old defaults opens without a "changed" dialog.
  */
 export const DEFAULT_ENGINE_SEARCH_SETTINGS: EngineSearchSettings = {
   multiPv: 3,
   depth: 20,
   moveTimeMs: 0,
-  infinite: false,
   threads: 1,
   hashMb: 16,
 };
 
 /**
  * The bounds a stored value is held to — the menu's offer for depth, move
- * time and lines (Play with Engine's marked move-time slider, 0–300 s and ∞,
+ * time and lines (Play with Engine's marked move-time slider, 1–600 s and ∞ — CTA-185,
  * for every board: CTA-163's, which replaced the analysis boards' 0–60 s),
  * and the widest any engine takes for Threads and Hash.
  */
@@ -101,7 +95,6 @@ export const engineSearchSettingsFrom = (value: unknown): EngineSearchSettings =
     multiPv: heldNumber(row.multiPv, defaults.multiPv, bounds.multiPv),
     depth: heldNumber(row.depth, defaults.depth, bounds.depth),
     moveTimeMs: heldNumber(row.moveTimeMs, defaults.moveTimeMs, bounds.moveTimeMs),
-    infinite: row.infinite === true,
     threads: heldNumber(row.threads, defaults.threads, bounds.threads),
     hashMb: heldNumber(row.hashMb, defaults.hashMb, bounds.hashMb),
   };
@@ -163,13 +156,13 @@ export type EngineSearchChange<F extends EngineSearchField = EngineSearchField> 
  * **What a record's engine settings say that the ones in effect do not** —
  * the "Engine options changed" dialog's rows, in {@link ENGINE_SEARCH_FIELDS}'
  * order. Only the settings the menu owns are compared; a field the record has
- * no such setting for (a played game has no infinite analysis) is skipped, and
- * so is one its stored row **did not carry** — read as its default by its
+ * no such setting for is skipped (an older record's `infinite` too, CTA-185),
+ * and so is one its stored row **did not carry** — read as its default by its
  * normaliser (`missingFieldsOf`, `lib/recordedFields.ts`): the record never
  * chose it.
  */
 export const searchSettingsChanges = (
-  recorded: Partial<Record<EngineSearchField, number | boolean>>,
+  recorded: Partial<Record<EngineSearchField, number>>,
   current: EngineSearchSettings,
 ): EngineSearchChange[] => {
   const missing = missingFieldsOf(recorded);
@@ -187,7 +180,7 @@ export const withRecordedSettings = (
   current: EngineSearchSettings,
   changes: readonly EngineSearchChange[],
 ): EngineSearchSettings => {
-  const next: Record<string, number | boolean> = { ...current };
+  const next: Record<string, number> = { ...current };
   for (const change of changes) next[change.field] = change.recorded;
   return engineSearchSettingsFrom(next);
 };

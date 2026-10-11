@@ -55,7 +55,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/views/tools/analysis/useAnalysisLoad.ts` | **The Load route's state** (CTA-96): the pipeline behind `AnalysisLoad`, on its own so a host can place its pieces itself — the analyses Lobby's form puts the FEN field and the `.pgn` pick in its editor's row and the paste box below. |
 | `src/blocks/panels/PgnExportPanel/` | The Export tab (every board's): FEN, PGN with or without comments / NAGs / side lines, copy and download. |
 | `src/lib/engineEvals.ts` | **The engine's evaluations written into the game** (CTA-167, §1): `[%eval pawns,depth]` on the move searched, the override by depth, the `Annotator` tag — [`pgn-annotations.md`](./pgn-annotations.md) §2. |
-| `src/blocks/panels/BoardEngineControls/`, `src/views/main/EngineMenu.tsx`, `src/lib/engineSearchSettings.ts` | **The engine, since CTA-181** — the header's play / pause and its menu (the eval bar, *Write evaluations into the game*: `BoardEngineControls`), and the search settings every board uses, from the top bar's Engine menu (**infinite analysis**, depth 1–40, move time 0–300 s on lichess's marks, lines, **threads, hash** up to what the engine running takes: the `EngineSearchSettingsForm` block) — one global set ([`docs/engine.md`](../../docs/engine.md) §5.2). The Engine tab (`AnalysisEngineForm`) went with it. |
+| `src/blocks/panels/BoardEngineControls/`, `src/views/main/EngineMenu.tsx`, `src/lib/engineSearchSettings.ts` | **The engine, since CTA-181** — the header's play / pause and its menu (the eval bar, *Write evaluations into the game*: `BoardEngineControls`), and the search settings every board uses, from the top bar's Engine menu (depth 1–40, move time 0–600 s on lichess's marks (1, 5, 10, 30, 60, 300, 600 s and ∞ — CTA-185), lines, **threads, hash** up to what the engine running takes: the `EngineSearchSettingsForm` block) — one global set ([`docs/engine.md`](../../docs/engine.md) §5.2). The Engine tab (`AnalysisEngineForm`) went with it. |
 | `src/views/shared/EngineOptionsChangedPrompt.tsx`, `src/blocks/dialogs/EngineOptionsChangedDialog/` | **"Engine options changed"** (CTA-181, §2): a saved analysis opened whose settings differ from the ones in effect — asked once, Dismiss or Use these settings. |
 | `src/views/tools/analysis/NewJob.tsx`, `gameJob.ts`, `computerAnalysisSeed.ts` | **New Job** (CTA-177, §1.3): the screen side of `NewJobDialog`, shared by the board's header and the saved list — the game's job found (`jobOfGame`), the choice first when there is one, Start (`enqueueComputerAnalysis`), the snackbar to `/jobs?job=<id>` (`jobPath`); the board's first options from the global search settings (`computerAnalysisSeed`, CTA-181). |
 | `src/views/tools/analysis/AnalysisEvalReport.tsx` | **The report and eval graph on the Evaluations tab** (CTA-183 — CTA-174's, at the top of Moves by CTA-177, §1.3) of a tree carrying `[%eval]`s. |
@@ -75,7 +75,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/lib/savedAnalyses.ts` | **The record**, pure: `SavedAnalysis`, `savedAnalysisOf`, `savedAnalysisFrom` (the normaliser), `savedAnalysisDerivedName`, `batchAnalysesOf`, `analysisGamesOfText` (a text's games as analyses, CTA-141), `savedAnalysisCatalogOf`. |
 | `src/lib/savedAnalysisStore.ts` | **The store** (`chessapp.analyses`, object store `analyses`): `saveAnalysis`, `addAnalyses`, `fileSavedAnalysis`, `renameSavedAnalysis`, `updateSavedAnalysisSettings`, `removeSavedAnalyses`, `unfileAnalysesIn`, `findSavedAnalysisGame`; cap `MAX_SAVED_ANALYSES` (20,000). |
 | `src/lib/savedAnalysisFolders.ts` + `savedAnalysisFolderStore.ts` | The folders: an `AnalysisFolder` *is* a `GameFolder` (`lib/savedGameFolders.ts`, the nested model: cycles cut, dangling parents read as top level); create / rename / move (never into its own subtree) / delete (sub-folders re-parent, analyses become Unfiled) or delete deep (`removeAnalysisFoldersDeep`, CTA-147 — the bulk delete's, the whole subtree gone); the picks model (`analysisPicksOf` — a folder's pick is its whole subtree; the toggles keep no folder checked with its contents partly picked); cap 100. |
-| `src/lib/analysisSettings.ts` | `AnalysisSettings` — what a record keeps: the global search settings in effect (depth, move time, lines, `infinite`, `threads`, `hashMb`) and the session's `writeEvals` (CTA-167); `analysisSettingsOf` (the two together, CTA-181), the defaults (the search settings' — depth 20, no time limit, infinite off, 1 thread and 16 MB — evaluations not written), `analysisUciOptionsOf` (`MultiPV`, `Threads`, `Hash`, the ceilings held), `analysisSettingsFrom` (a record from before reads `infinite` off, the default threads and hash, and `writeEvals` off — and marks each field it lacked, `missingFieldsOf`, so it is never a difference). |
+| `src/lib/analysisSettings.ts` | `AnalysisSettings` — what a record keeps: the global search settings in effect (depth, move time, lines, `threads`, `hashMb`; an older record's `infinite` read as nothing, CTA-185) and the session's `writeEvals` (CTA-167); `analysisSettingsOf` (the two together, CTA-181), the defaults (the search settings' — depth 20, no time limit, 1 thread and 16 MB — evaluations not written), `analysisUciOptionsOf` (`MultiPV`, `Threads`, `Hash`, the ceilings held), `analysisSettingsFrom` (a record from before reads the default threads and hash, and `writeEvals` off — and marks each field it lacked, `missingFieldsOf`, so it is never a difference). |
 | `src/lib/arrowSettings.ts` | The Arrows tab's ids (CTA-98): `ArrowWidthSource`, `ArrowPaletteId`, their defaults and readers (`arrowWidthSourceFrom`, `arrowPaletteFrom`). |
 | `src/lib/nextMoveWeights.ts` | Each width source's weights at a branch (`nextMoveWeights`), the `[%eval]` reader (`evalOf`), and which sources a tree offers (`arrowWidthSourcesIn`). Pure. The `games` tag's reader is `lib/gamesTag.ts`. |
 | `src/lib/gameReference.ts` + `gameCatalog.ts` | **The `?game=` carrier** (§3). |
@@ -127,19 +127,15 @@ beside the report's and graph's (CTA-174, CTA-177).
   is at the top. A position, or an analysis with no names, has none.
 - **How long the engine searches** (CTA-160, [`docs/engine.md`](../../docs/engine.md)
   §5.1, §5.2): to the global depth (default 20) and move time (default none) —
-  the top bar's Engine menu, every board's since CTA-181 —
-  or — **Infinite analysis**, lichess's switch there, off by default — until the
-  position changes or the engine is switched off. **While Play is on the depth
-  and time decide** whatever the switch says (`useAnalysisSession`: `infinite
-  && !playing`): Play needs a search that ends with a move. The same holds on
-  every board over `useAnalysisSession`, and the repertoire player takes the
-  switch too (it has no Play).
+  the top bar's Engine menu, every board's since CTA-181 — whichever comes
+  first. **Every search stops**: there is no infinite analysis (CTA-185 took
+  its switch away — a hard stop at the depth or the time).
 - **Write evaluations into the game** (CTA-167) — a switch in the header's
   engine menu (CTA-181; the Engine tab's before), off by default, on this
   board only (`BoardEngineControls`' `writeEvals`; the other boards over
   `useAnalysisSession` do not offer it, and their settings read it off). While it is on, every search that finishes — to its
   depth, or ended early by a step or the engine switched off, at the depth it
-  reached; under infinite analysis and Play too — is written on the move whose
+  reached; under Play too — is written on the move whose
   position was searched as `[%eval pawns,depth]` (the start position into the
   game's opening comment), a deeper or equal search replacing a shallower, and
   the engine named in the `Annotator` tag. A change like any other edit: Save
@@ -273,9 +269,9 @@ evaluations are read on the Evaluations tab (CTA-183).
   else the newest **unfinished**, else the newest **done**, else the newest.
   With none, the dialog opens on the form.
 - **The form** (`ComputerAnalysisForm` in the dialog, Start and Cancel in its
-  actions row): **No time limit** is a switch over the time slider (as the
-  Engine menu's infinite analysis is — a job's search must end, so "infinite"
-  here is the depth alone deciding, `moveTimeMs` 0; the slider then starts at
+  actions row): **No time limit** is a switch over the time slider (a
+  job's search must end, so "no limit" here is the depth alone deciding,
+  `moveTimeMs` 0, as the Engine menu's ∞ mark is; the slider then starts at
   1 s and switching it off brings back the last time set). **On the board** its
   first options are the global search settings' depth, move time, lines,
   threads and hash (the top bar's Engine menu, CTA-181), the early stop at the
@@ -424,7 +420,7 @@ there does not).
 - **"Engine options changed"** (CTA-181): the search settings are the
   reader's global ones, so a record opened (`?analysis=`, a workspace step)
   whose `AnalysisSettings` differ from them — lines, depth, move time,
-  infinite, Threads, Hash; `writeEvals` is the session's — asks **once**, as it
+  Threads, Hash; `writeEvals` is the session's — asks **once**, as it
   opens (`useAnalysisBoard`'s `optionChanges`, `searchSettingsChanges`): a line
   per difference, the record's value then the current one; **Dismiss** keeps
   the reader's, **Use these settings** puts the record's back into the global

@@ -81,9 +81,10 @@ export const DEFAULT_ENGINE_SETTINGS: EngineSettings = {
  * Measured on the Stockfish 19 builds in headless Chromium (CTA-160): the
  * single-thread build reaches depth 20 in about 3.5 s, 24 in 14 s and 26 in
  * 34 s on a fast desktop, so **depth stops at 40** (well past any search a
- * reader would wait for) and **move time at 300 s** (CTA-163: the snap-to-mark
- * slider's last time mark, every board's since CTA-181 — the analysis
- * boards' own 60 s ceiling went with their Engine tab). `Hash` took 1024 MB and
+ * reader would wait for) and **move time at 600 s** (the snap-to-mark
+ * slider's last time mark — 300 s from CTA-163, 600 s since CTA-185 — every
+ * board's since CTA-181, the analysis boards' own 60 s ceiling gone with
+ * their Engine tab). `Hash` took 1024 MB and
  * **2048 MB crashed the tab** — WebAssembly's memory, not the engine's
  * declared 33,554,432 — so 1024 is a hard ceiling; and **Threads stops at
  * 32**, the multi-thread build's own top. What a form offers is lower where
@@ -98,7 +99,7 @@ export const ENGINE_SETTING_BOUNDS = {
   // What the Stockfish 19 builds declare for `UCI_Elo`; the running build's own range replaces it.
   elo: { min: 1320, max: 3190 },
   depth: { min: 1, max: 40 },
-  moveTimeMs: { min: 0, max: 300000 },
+  moveTimeMs: { min: 0, max: 600000 },
   multiPv: { min: 1, max: MAX_VARIATIONS_OFFERED },
   threads: { min: 1, max: 32 },
   hashMb: { min: 1, max: 1024 },
@@ -139,17 +140,18 @@ export const engineSettingBoundsOf = (engineId?: string | null): EngineResourceB
     : { threads: ENGINE_SETTING_BOUNDS.threads, hashMb: ENGINE_SETTING_BOUNDS.hashMb };
 
 /**
- * The move-time marks the engine form offers (CTA-163) — lichess's snap
- * points, in **seconds**. The slider's own value is the mark's **slot** (its
- * index), so the marks space evenly however the seconds grow; 0 is the
- * instant reply ({@link MOVE_TIME_INSTANT_MS}) and the slot past the last
- * mark is unlimited (`moveTimeMs` 0).
+ * The move-time marks the engine form offers (CTA-163; 1, 5, 10, 30, 60, 300
+ * and 600 since CTA-185) — lichess's snap points, in **seconds**. The
+ * slider's own value is the mark's **slot** (its index), so the marks space
+ * evenly however the seconds grow; the slot past the last mark is unlimited
+ * (`moveTimeMs` 0).
  */
-export const MOVE_TIME_MARKS_S = [0, 5, 10, 20, 30, 60, 120, 300] as const;
+export const MOVE_TIME_MARKS_S = [1, 5, 10, 30, 60, 300, 600] as const;
 
 /**
  * The instant reply as stored: `moveTimeMs` 0 is reserved for "no limit", so
- * the slider's 0-seconds mark carries its own encoding (CTA-163).
+ * 0 seconds carries its own encoding (CTA-163) — typed in the move-time box
+ * since CTA-185 (no mark is 0 any more); the slider shows it on its first mark.
  */
 export const MOVE_TIME_INSTANT_MS = 1;
 
@@ -163,15 +165,15 @@ export const moveTimeSliderMarks = (): ReadonlyArray<{ value: number; label: str
 ];
 
 /**
- * A `moveTimeMs` on the move-time slider: unlimited is the `∞` slot, the
- * instant reply the 0-seconds mark, and anything else **where it falls
- * between the marks** (CTA-163) — the default's 1000 ms sits at slot 0.2,
- * between "0" and "5", and the next drag snaps it onto a mark.
+ * A `moveTimeMs` on the move-time slider: unlimited is the `∞` slot, anything
+ * up to the first mark (the instant reply too) that mark, and anything else
+ * **where it falls between the marks** (CTA-163) — 7.5 s sits at slot 1.5,
+ * between "5" and "10", and the next drag snaps it onto a mark.
  */
 export const moveTimeSliderValueOf = (moveTimeMs: number): number => {
   if (moveTimeMs <= 0) return MOVE_TIME_UNLIMITED_SLOT;
-  if (moveTimeMs <= MOVE_TIME_INSTANT_MS) return 0;
   const seconds = moveTimeMs / 1000;
+  if (seconds <= MOVE_TIME_MARKS_S[0]) return 0;
   const last = MOVE_TIME_MARKS_S.length - 1;
   for (let slot = 0; slot < last; slot += 1) {
     if (seconds <= MOVE_TIME_MARKS_S[slot + 1]) {
@@ -184,14 +186,14 @@ export const moveTimeSliderValueOf = (moveTimeMs: number): number => {
 
 /**
  * The `moveTimeMs` a slot of the move-time slider means (CTA-163): the `∞`
- * slot is 0, the 0-seconds mark the instant reply, and any other slot its
- * mark's seconds. A slot arrives on a mark — the slider's step is the slot
- * itself — but a rounding keeps a stray fraction honest.
+ * slot is 0, any other slot its mark's seconds. A slot arrives on a mark —
+ * the slider's step is the slot itself — but a rounding keeps a stray
+ * fraction honest.
  */
 export const moveTimeOfSliderValue = (slot: number): number => {
   if (slot >= MOVE_TIME_UNLIMITED_SLOT) return 0;
   const mark = Math.max(0, Math.round(slot));
-  return mark === 0 ? MOVE_TIME_INSTANT_MS : MOVE_TIME_MARKS_S[mark] * 1000;
+  return MOVE_TIME_MARKS_S[mark] * 1000;
 };
 
 /**

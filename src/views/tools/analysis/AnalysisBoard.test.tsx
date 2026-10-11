@@ -829,16 +829,15 @@ describe("Play — the engine plays the opponent's best move until paused", () =
     expect(boardOptions().position).toBe(AFTER_E4);
   });
 
-  it("searches until stopped under infinite analysis, and to the depth while Play is on — Play needs a move (CTA-160)", () => {
+  it("always searches to a depth and move time — never until stopped, whatever an older preference says (CTA-185)", () => {
+    localStorage.setItem("chessapp.engineSettings", JSON.stringify({ infinite: true }));
     mountEngineOn();
     expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
 
-    // The top bar's Engine menu's switch (CTA-181): a change reaches the board from its next search.
-    act(() => storeEngineSearchSettings({ infinite: true }));
-    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ infinite: true });
-
-    play();
-    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
+    // The top bar's Engine menu (CTA-181): a change reaches the board from its next search.
+    act(() => storeEngineSearchSettings({ depth: 12, moveTimeMs: 5000 }));
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 12, movetime: 5000 });
+    expect(FakeEngine.latest().searchOptions).not.toContainEqual({ infinite: true });
   });
 
   it("asks the engine for the global Threads and Hash — a multi-thread engine's threads as the top bar sets them (CTA-160, CTA-181)", () => {
@@ -1872,20 +1871,20 @@ describe("a saved analysis' engine settings (CTA-181)", () => {
     const user = userEvent.setup();
     await stored("a1", "1. e4 *", ["e4"], {
       name: "Mine",
-      settings: { ...DEFAULT_ANALYSIS_SETTINGS, depth: 24, infinite: true, threads: 4 },
+      settings: { ...DEFAULT_ANALYSIS_SETTINGS, depth: 24, moveTimeMs: 5000, threads: 4 },
     });
     mount("/tools/analysis?analysis=a1");
     const dialog = await screen.findByRole("dialog", { name: "Engine options changed" });
     expect(dialog).toHaveTextContent("This analysis was saved with other engine settings");
     expect(screen.getByTestId("analysis-engine-changed-change-depth")).toHaveTextContent("Search depth: 24 → 20");
-    expect(screen.getByTestId("analysis-engine-changed-change-infinite")).toHaveTextContent("Infinite analysis: on → off");
+    expect(screen.getByTestId("analysis-engine-changed-change-moveTimeMs")).toHaveTextContent("Move time: 5.0s → No limit");
     // The default engine runs on one thread: said before the choice.
     expect(screen.getByTestId("analysis-engine-changed-held")).toHaveTextContent("Threads would be 1");
     await expectNoAxeViolations(dialog);
 
     await user.click(screen.getByRole("button", { name: "Use these settings" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(readEngineSearchSettings()).toMatchObject({ depth: 24, infinite: true, threads: 1 });
+    expect(readEngineSearchSettings()).toMatchObject({ depth: 24, moveTimeMs: 5000, threads: 1 });
   });
 
   it("Dismiss keeps the reader's settings, and Update writes those in effect", async () => {
@@ -1904,8 +1903,8 @@ describe("a saved analysis' engine settings (CTA-181)", () => {
   });
 
   it("asks nothing of a record from before a setting existed — read as its default, never chosen", async () => {
-    storeEngineSearchSettings({ threads: 4, hashMb: 64, infinite: true });
-    // Saved before infinite analysis, Threads and Hash (CTA-160): the row has none of them.
+    storeEngineSearchSettings({ threads: 4, hashMb: 64 });
+    // Saved before Threads and Hash (CTA-160): the row has none of them.
     await saveAnalysis({
       ...savedAnalysisOf("old", parsePgnTree("1. e4 *"), ["e4"], DEFAULT_ANALYSIS_SETTINGS, "white"),
       settings: analysisSettingsFrom({ depth: 20, multiPv: 3, moveTimeMs: 0 }),

@@ -36,7 +36,6 @@ describe("EngineOptionsChangedDialog (CTA-181)", () => {
     expect(screen.getByTestId("changed-change-multiPv")).toHaveTextContent("Variations to show: 5 → 3");
     expect(screen.getByTestId("changed-change-depth")).toHaveTextContent("Search depth: 26 → 20");
     expect(screen.getByTestId("changed-change-moveTimeMs")).toHaveTextContent("Move time: 5.0s → No limit");
-    expect(screen.getByTestId("changed-change-infinite")).toHaveTextContent("Infinite analysis: on → off");
     expect(screen.queryByTestId("changed-held")).toBeNull();
   });
 

@@ -165,27 +165,28 @@ takes `infinite?: boolean` beside `depth` and `moveTimeMs`.
   one thread. They are now: the wrapper's clamp `DEFAULT_MAX_DEPTH` = **99**
   (each descriptor's `capabilities.maxDepth`; past any search a browser runs,
   so a request is never cut short), and what the forms **offer**,
-  `ENGINE_SETTING_BOUNDS`: depth **1–40**, move time **0–300 s** (the
-  snap-to-mark slider's last time mark, CTA-163) — **every board's** since
-  CTA-181, one global set in the top bar's Engine menu (the analysis boards'
-  own 0–60 s went with their Engine tab). The move time is lichess's marked
-  slider: marks 0, 5, 10, 20, 30, 60, 120, 300 seconds and an **∞ mark** for
-  "no limit" (`moveTimeMs` 0); the 0-seconds mark is the instant reply,
-  stored as 1 ms — 0 was already "no limit". A stored value off the marks is
-  shown where it falls between them and snaps onto a mark on the next drag.
-- **Infinite analysis** — lichess's switch, in the top bar's Engine menu
-  (CTA-181; each analysis board's Engine tab before), **off by default**
-  (`EngineSearchSettings.infinite`; a saved analysis records it, an older
-  record reads it off). On, the engine deepens the position on screen until it
-  changes or the engine is switched off. Off, a search stops at the depth and
-  move time — **depth 20 and no time limit** by default, where it was depth
-  16 cut off after one second. **Play needs a search that ends with a move**,
-  so while Play is on a board searches to the depth and time whatever the
-  switch says (`infinite && !playing` — `useAnalysisSession`, and `usePlayGame`
-  for Play with Engine and Masked Pieces, whose Play is on from the start).
+  `ENGINE_SETTING_BOUNDS`: depth **1–40**, move time **0–600 s** (the
+  snap-to-mark slider's last time mark — 300 s from CTA-163, 600 s since
+  CTA-185) — **every board's** since CTA-181, one global set in the top bar's
+  Engine menu (the analysis boards' own 0–60 s went with their Engine tab).
+  The move time is lichess's marked slider: marks 1, 5, 10, 30, 60, 300, 600
+  seconds (CTA-185; 0, 5, 10, 20, 30, 60, 120, 300 before) and an **∞ mark**
+  for "no limit" (`moveTimeMs` 0). 0 seconds — typed in the move-time box —
+  is the instant reply, stored as 1 ms, since 0 was already "no limit"; the
+  slider shows it, and anything under a second, on its first mark. A stored
+  value off the marks is shown where it falls between them and snaps onto a
+  mark on the next drag.
+- **Every search stops** — at the depth or the move time, whichever comes
+  first: **depth 20 and no time limit** by default, where it was depth 16 cut
+  off after one second. **There is no infinite analysis** (CTA-185): its
+  switch (CTA-160, lichess's; the top bar's Engine menu since CTA-181) is
+  gone — the reader wants a hard stop — and a stored `infinite` (the
+  preference, an older saved analysis) is read as nothing. The engine layer
+  still speaks `go infinite` (`{ infinite: true }`, `useEngineModule`'s
+  optional `infinite`), but no board asks for it.
 - **The move list's scores** are recorded when a search ends (§4.1 of
-  `chessboard.md`): an infinite search ends when the reader leaves the
-  position, so its score is kept then — the deepest it reached.
+  `chessboard.md`) — at its depth or time, or early, when the reader leaves
+  the position: the deepest it reached.
 - **Hash and Threads follow the device.** `ENGINE_SETTING_BOUNDS` holds the
   ceilings — Threads 32 (the multi-thread build's own top), **Hash 1024 MB**:
   1024 held and **2048 crashed the tab** (WebAssembly's memory, whatever the
@@ -220,10 +221,10 @@ real browser before tuning further.
 ### 5.2 The search settings — one set, the top bar's (CTA-181)
 
 The settings a search runs under — **lines (MultiPV), depth, move time,
-infinite analysis, Threads and Hash** — are the reader's **one global set**,
-not a board's: `lib/engineSearchSettings.ts` (`EngineSearchSettings`, the
-defaults the Analysis Board's own — depth 20, three lines, no time limit,
-infinite off, one thread, 16 MB), a preference in `localStorage`
+Threads and Hash** (infinite analysis too until CTA-185) — are the reader's
+**one global set**, not a board's: `lib/engineSearchSettings.ts`
+(`EngineSearchSettings`, the defaults the Analysis Board's own — depth 20,
+three lines, no time limit, one thread, 16 MB), a preference in `localStorage`
 (`chessapp.engineSettings`, beside the engine choice; not in the export zip),
 read through `useEngineSearchSettings` (`useSyncExternalStore`, the engine
 choice's pattern), so every mounted board and the top bar follow a change, from
@@ -244,10 +245,11 @@ the next search.
   for a multi-thread one, an engine server's declaration) — a stored value
   past it shown held, never cut back. **Depth and move time can be typed**
   (CTA-185): a number box at each slider's end (`SliderField`'s `input`),
-  depth a whole number held to 1–40, move time seconds held to 0–300 — a value
+  depth a whole number held to 1–40, move time seconds held to 0–600 — a value
   off the slider's marks kept, the slider showing where it falls
   (`moveTimeSliderValueOf`), 0 the instant reply; on the slider's ∞ mark (no
-  limit) the move-time box is off. Infinite analysis turns neither off.
+  limit) the move-time box is off; depth's never is — every search stops at
+  one or the other.
 - **Every board reads it**: the Analysis Board, the Library's game and the
   Openings explorer (`useAnalysisSession`), the repertoire player, Play with
   Engine and Masked Pieces (`usePlayGame`), and the Lobby's new-game form's

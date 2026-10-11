@@ -259,8 +259,6 @@ export const usePlayGame = (
     fen: core.fen,
     depth: search.depth,
     moveTimeMs: search.moveTimeMs,
-    // Play needs a search that ends with a move: while it is on, the depth and time decide.
-    infinite: search.infinite && !play.playing,
     uciOptions: useMemo(
       () =>
         uciOptionsOf(

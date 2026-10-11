@@ -32,14 +32,12 @@ const LABEL_KEY: Record<EngineSearchField, string> = {
   multiPv: "analysis.settings.multiPv",
   depth: "analysis.settings.depth",
   moveTimeMs: "analysis.settings.moveTime",
-  infinite: "analysis.settings.infinite",
   threads: "analysis.settings.threads",
   hashMb: "analysis.settings.hash",
 };
 
-/** A setting's value as the reader reads it: a move time in seconds or "No limit", infinite on or off. */
-const valueWords = (t: TFunction, field: EngineSearchField, value: number | boolean): string => {
-  if (typeof value === "boolean") return t(value ? "engineChanged.on" : "engineChanged.off");
+/** A setting's value as the reader reads it: a move time in seconds or "No limit", anything else its number. */
+const valueWords = (t: TFunction, field: EngineSearchField, value: number): string => {
   if (field !== "moveTimeMs") return String(value);
   if (value === 0) return t("analysis.settings.moveTimeNone");
   return t("analysis.settings.moveTimeValue", { seconds: value <= MOVE_TIME_INSTANT_MS ? "0" : (value / 1000).toFixed(1) });

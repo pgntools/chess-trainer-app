@@ -10,8 +10,8 @@ import type { EngineEntry } from "../../../lib/engines";
 /** The defaults — depth 20, three lines, no time limit. */
 export const SETTINGS: EngineSearchSettings = DEFAULT_ENGINE_SEARCH_SETTINGS;
 
-/** A reader's own: infinite analysis, 1 s a move, five lines, four threads, 256 MB. */
-export const TUNED: EngineSearchSettings = { multiPv: 5, depth: 24, moveTimeMs: 1000, infinite: true, threads: 4, hashMb: 256 };
+/** A reader's own: depth 24, 1 s a move, five lines, four threads, 256 MB. */
+export const TUNED: EngineSearchSettings = { multiPv: 5, depth: 24, moveTimeMs: 1000, threads: 4, hashMb: 256 };
 
 /** Settings asked for an engine server's engine — past what an in-browser build takes. */
 export const HOSTED_ASKED: EngineSearchSettings = { ...DEFAULT_ENGINE_SEARCH_SETTINGS, threads: 12, hashMb: 4096 };

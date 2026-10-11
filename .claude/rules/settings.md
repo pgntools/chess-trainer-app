@@ -119,7 +119,8 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   ([`import-export.md`](./import-export.md)); what a played game carries is the
   engine that played it. Its **presets** are data, and do travel (§4.1).
 - **The search settings are not here** (CTA-181): lines, depth, move time,
-  infinite analysis, Threads and Hash are the reader's one global set, set
+  Threads and Hash (no infinite analysis since CTA-185 — every search stops)
+  are the reader's one global set, set
   from **the top bar's Engine menu** (`views/main/EngineMenu.tsx`, beside the
   language button — a robot and "Engine", styled as the language switch;
   under the engine and its preset, **each a select there too** (CTA-185: the

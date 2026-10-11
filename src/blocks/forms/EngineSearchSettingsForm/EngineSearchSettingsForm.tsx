@@ -6,7 +6,7 @@ import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { SelectField, SliderField, SwitchField } from "../../../design-system/components/forms";
+import { SelectField, SliderField } from "../../../design-system/components/forms";
 import { ENGINE_SEARCH_SETTING_BOUNDS, type EngineSearchSettings } from "../../../lib/engineSearchSettings";
 import {
   MOVE_TIME_INSTANT_MS,
@@ -45,7 +45,7 @@ export type EngineSearchSettingsFormProps = {
   presetId: string;
   /** The reader chose another preset for the running engine. */
   onPresetChange: (presetId: string) => void;
-  /** The form's root; each control `<testId>-<setting>` (`-infinite`, `-depth`, `-movetime`, `-multipv`, `-threads`, `-hash`; the depth's and move time's number boxes `-depth-number`, `-movetime-number`), the engine select `<testId>-engine`, the preset select `<testId>-preset`. */
+  /** The form's root; each control `<testId>-<setting>` (`-depth`, `-movetime`, `-multipv`, `-threads`, `-hash`; the depth's and move time's number boxes `-depth-number`, `-movetime-number`), the engine select `<testId>-engine`, the preset select `<testId>-preset`. */
   testId: string;
 };
 
@@ -73,8 +73,8 @@ const HASH_MARKS_MB = [128, 256, 512, 1024, 2048, 4096] as const;
 
 /**
  * **The top bar's Engine menu** (CTA-181) — the search settings every board
- * uses: infinite analysis, depth, move time (lichess's marked slider,
- * 0–300 s and ∞ — Play with Engine's, CTA-163), the lines, Threads and Hash,
+ * uses: depth, move time (lichess's marked slider, 1–600 s and ∞ — Play
+ * with Engine's, CTA-163, its marks CTA-185's), the lines, Threads and Hash,
  * under the engine running and the preset it runs — each a select, chosen
  * right here (CTA-185); the way to Settings → Engine is the screen's, beside
  * its title. One global set: what was each board's Engine tab until CTA-181.
@@ -82,8 +82,10 @@ const HASH_MARKS_MB = [128, 256, 512, 1024, 2048, 4096] as const;
  * `Threads` and `Hash` stop at what the engine takes (`limits`) and a value
  * past it is shown held to it — a request, never cut back in the store
  * (`docs/engine.md` §5); a single-thread engine's Threads is fixed at one and
- * says so. Depth and move time stay live under infinite analysis: Play still
- * searches to them. Each has a number box at its slider's end (CTA-185):
+ * says so. **Every search stops** at the depth or the move time, whichever
+ * comes first — no infinite analysis (CTA-185 took its switch away; the ∞
+ * mark is "no time limit", the depth still deciding). Each of the two has a
+ * number box at its slider's end (CTA-185):
  * depth a whole number, move time seconds — a value off the slider's marks
  * kept, the slider showing where it falls — and the move time's box off while
  * the slider is on ∞ (no limit has no number).
@@ -160,13 +162,6 @@ function EngineSearchSettingsForm({
         </WithIcon>
       </Box>
       <Divider />
-      <SwitchField
-        label={t("analysis.settings.infinite")}
-        help={t("analysis.settings.infiniteHelp")}
-        checked={settings.infinite}
-        onChange={(infinite) => onChange({ infinite })}
-        testId={`${testId}-infinite`}
-      />
       <SliderField
         label={t("analysis.settings.depth")}
         value={settings.depth}
@@ -183,8 +178,8 @@ function EngineSearchSettingsForm({
         testId={`${testId}-depth`}
       />
       {/*
-        Lichess's snap-to-mark slider (CTA-163): marks at 0, 5, 10 … 300
-        seconds and ∞ for "no limit"; its value is the mark's slot. A stored
+        Lichess's snap-to-mark slider (CTA-163): marks at 1, 5, 10, 30, 60,
+        300 and 600 seconds (CTA-185) and ∞ for "no limit"; its value is the mark's slot. A stored
         value off the marks — one typed in its box (CTA-185) — is shown where
         it falls between them. On ∞ the box is off: no limit has no number.
       */}

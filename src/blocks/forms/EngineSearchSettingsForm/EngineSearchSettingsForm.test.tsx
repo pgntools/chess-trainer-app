@@ -51,7 +51,8 @@ beforeEach(async () => {
 describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () => {
   it("offers every search setting, each named, under the engine and its preset", () => {
     mount();
-    expect(screen.getByRole("switch", { name: "Infinite analysis" })).not.toBeChecked();
+    // Every search stops at its depth or move time: no infinite analysis (CTA-185).
+    expect(screen.queryByRole("switch")).toBeNull();
     for (const name of ["Search depth", "Move time", "Variations to show", "Threads", "Hash (MB)"]) {
       expect(screen.getByRole("slider", { name })).toBeInTheDocument();
     }
@@ -106,28 +107,27 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
     screen.getByRole("slider", { name: "Variations to show" }).focus();
     await userEvent.keyboard("{ArrowLeft}");
     expect(onChange).toHaveBeenLastCalledWith({ multiPv: SETTINGS.multiPv - 1 });
-    screen.getByRole("switch", { name: "Infinite analysis" }).focus();
-    await userEvent.keyboard(" ");
-    expect(onChange).toHaveBeenLastCalledWith({ infinite: true });
   });
 
   describe("the move time — Play with Engine's marked slider for every board (CTA-163)", () => {
-    it("offers the marks 0 … 300 seconds and ∞, and says the value as words", () => {
+    it("offers the marks 1 … 600 seconds and ∞ (CTA-185), and says the value as words", () => {
       mount();
       const slider = screen.getByRole("slider", { name: "Move time" });
-      expect(slider).toHaveAttribute("aria-valuemax", "8");
+      expect(slider).toHaveAttribute("aria-valuemax", "7");
       // The default, no limit, is the ∞ mark.
-      expect(slider).toHaveAttribute("aria-valuenow", "8");
+      expect(slider).toHaveAttribute("aria-valuenow", "7");
       expect(slider).toHaveAttribute("aria-valuetext", "No limit");
-      for (const label of ["0", "5", "300", "∞"]) expect(screen.getByText(label)).toHaveClass("MuiSlider-markLabel");
+      for (const label of ["1", "5", "10", "30", "60", "300", "600", "∞"]) {
+        expect(screen.getAllByText(label).some((each) => each.classList.contains("MuiSlider-markLabel"))).toBe(true);
+      }
     });
 
     it("snaps to a mark and leaves its seconds as a patch", () => {
       const { onChange } = mount();
-      fireEvent.change(screen.getByTestId("engine-menu-movetime-input"), { target: { value: "4" } });
+      fireEvent.change(screen.getByTestId("engine-menu-movetime-input"), { target: { value: "3" } });
       expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 30000 });
       fireEvent.change(screen.getByTestId("engine-menu-movetime-input"), { target: { value: "0" } });
-      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 1 });
+      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 1000 });
     });
 
     it("says the instant reply as 0s, and shows it as 0 in its box", () => {
@@ -179,7 +179,7 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
       expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 7500 });
       await user.clear(box);
       await user.type(box, "900");
-      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 300000 });
+      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 600000 });
       // 0 seconds is the instant reply, never "no limit" — the ∞ mark alone is.
       await user.clear(box);
       await user.type(box, "0");
@@ -192,17 +192,11 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
       expect(screen.getByRole("spinbutton", { name: "Move time in seconds, typed" })).toHaveValue(7.5);
     });
 
-    it("turns the move-time box off on the ∞ mark — not the depth's, nor under infinite analysis", () => {
-      mount({ ...SETTINGS, moveTimeMs: 0, infinite: true });
+    it("turns the move-time box off on the ∞ mark — never the depth's", () => {
+      mount({ ...SETTINGS, moveTimeMs: 0 });
       const box = screen.getByRole("spinbutton", { name: "Move time in seconds, typed" });
       expect(box).toBeDisabled();
       expect(box).toHaveAttribute("placeholder", "∞");
-      expect(screen.getByRole("spinbutton", { name: "Search depth, typed" })).toBeEnabled();
-    });
-
-    it("keeps both boxes on under infinite analysis with a move time", () => {
-      mount({ ...SETTINGS, moveTimeMs: 1000, infinite: true });
-      expect(screen.getByRole("spinbutton", { name: "Move time in seconds, typed" })).toBeEnabled();
       expect(screen.getByRole("spinbutton", { name: "Search depth, typed" })).toBeEnabled();
     });
   });

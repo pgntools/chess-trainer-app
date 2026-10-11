@@ -612,7 +612,7 @@ const engine = useEngineModule({
   fen: string,                          // the position ON SCREEN — never the live one
   depth: number,
   moveTimeMs: number,
-  infinite?: boolean,                   // search until stopped (CTA-160) — absent: to depth / move time
+  infinite?: boolean,                   // search until stopped (CTA-160) — absent: to depth / move time; no board asks for it since CTA-185
   uciOptions: Readonly<Record<string, UciOptionValue>>,   // name → requested value: a number, a boolean, words (CTA-179)
   onUciOptionsReady?: (clamped: Readonly<Record<string, number>>) => void,   // the numbers, held to the declared bounds
   onBestMove?: (bestMove: string, searchedFen: string) => void,
@@ -658,7 +658,8 @@ on, not terminal, and the search last asked for not yet answered with its
 publishes it with the switch to the shell (`usePublishBoardEngineState`,
 `views/main/boardEngineState.ts`) and the top bar's Engine icon shows off / on /
 searching. **What a board searches with is the reader's global search settings**
-(depth, move time, infinite, lines, Threads, Hash — `useEngineSearchSettings`,
+(depth, move time, lines, Threads, Hash — `useEngineSearchSettings`, every
+search stopping at its depth or move time since CTA-185,
 the top bar's Engine menu, [`docs/engine.md`](../../docs/engine.md) §5.2): a
 board passes them in and keeps no copy; nothing it reads back through
 `onUciOptionsReady` is written into them (only Play's strength takes the

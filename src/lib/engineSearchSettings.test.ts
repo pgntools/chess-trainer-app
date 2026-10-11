@@ -29,16 +29,16 @@ afterEach(() => {
 
 describe("the preference", () => {
   it("is the defaults until the reader sets one — the Analysis Board's own", () => {
-    expect(readEngineSearchSettings()).toEqual({ multiPv: 3, depth: 20, moveTimeMs: 0, infinite: false, threads: 1, hashMb: 16 });
+    expect(readEngineSearchSettings()).toEqual({ multiPv: 3, depth: 20, moveTimeMs: 0, threads: 1, hashMb: 16 });
     expect(readEngineSearchSettings()).toBe(readEngineSearchSettings());
   });
 
   it("keeps a change in localStorage, beside the engine choice, and tells its subscribers", () => {
     const listener = vi.fn();
     const unsubscribe = subscribeEngineSearchSettings(listener);
-    storeEngineSearchSettings({ depth: 24, infinite: true });
+    storeEngineSearchSettings({ depth: 24, moveTimeMs: 5000 });
     expect(listener).toHaveBeenCalledTimes(1);
-    expect(readEngineSearchSettings()).toMatchObject({ depth: 24, infinite: true, multiPv: 3 });
+    expect(readEngineSearchSettings()).toMatchObject({ depth: 24, moveTimeMs: 5000, multiPv: 3 });
     expect(JSON.parse(localStorage.getItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY) ?? "{}")).toMatchObject({ depth: 24 });
     // The same object until it changes again: what useSyncExternalStore needs.
     expect(readEngineSearchSettings()).toBe(readEngineSearchSettings());
@@ -65,11 +65,11 @@ describe("the preference", () => {
 
 describe("engineSearchSettingsFrom — the normaliser", () => {
   it("fills what is missing or mistyped with the default and holds a number to its bounds", () => {
-    expect(engineSearchSettingsFrom({ depth: 99, multiPv: 0, moveTimeMs: 400000, infinite: "yes", threads: 2.6 })).toEqual({
+    expect(engineSearchSettingsFrom({ depth: 99, multiPv: 0, moveTimeMs: 900000, infinite: "yes", threads: 2.6 })).toEqual({
       ...DEFAULT_ENGINE_SEARCH_SETTINGS,
       depth: 40,
       multiPv: 1,
-      moveTimeMs: 300000,
+      moveTimeMs: 600000,
       threads: 3,
     });
     expect(engineSearchSettingsFrom(null)).toEqual(DEFAULT_ENGINE_SEARCH_SETTINGS);
@@ -126,14 +126,14 @@ describe("searchSettingsChanges — a record's settings against the ones in effe
   });
 
   it("skips a field the stored record did not carry — read as its default, never chosen", () => {
-    // A record from before infinite analysis, Threads and Hash (CTA-160).
+    // A record from before Threads and Hash (CTA-160).
     const older = analysisSettingsFrom({ depth: 24, multiPv: 3, moveTimeMs: 0 });
-    expect(searchSettingsChanges(older, { ...current, infinite: true, threads: 4, hashMb: 256 })).toEqual([]);
+    expect(searchSettingsChanges(older, { ...current, threads: 4, hashMb: 256 })).toEqual([]);
   });
 
-  it("compares a played game's settings, which have no infinite analysis", () => {
+  it("compares a played game's settings", () => {
     const game = engineSettingsFrom({ skillLevel: 10, elo: 1800, depth: 14, multiPv: 3, moveTimeMs: 1000, threads: 1, hashMb: 16, playAs: "white" });
-    expect(searchSettingsChanges(game, { ...DEFAULT_ENGINE_SEARCH_SETTINGS, infinite: true })).toEqual([
+    expect(searchSettingsChanges(game, DEFAULT_ENGINE_SEARCH_SETTINGS)).toEqual([
       { field: "depth", recorded: 14, current: 20 },
       { field: "moveTimeMs", recorded: 1000, current: 0 },
     ]);
@@ -142,8 +142,19 @@ describe("searchSettingsChanges — a record's settings against the ones in effe
   it("puts the record's values back into the settings in effect", () => {
     const changes = [
       { field: "depth", recorded: 18, current: 24 },
-      { field: "infinite", recorded: true, current: false },
+      { field: "moveTimeMs", recorded: 5000, current: 0 },
     ] as const;
-    expect(withRecordedSettings(current, changes)).toEqual({ ...current, depth: 18, infinite: true });
+    expect(withRecordedSettings(current, changes)).toEqual({ ...current, depth: 18, moveTimeMs: 5000 });
+  });
+});
+
+describe("infinite analysis, gone (CTA-185)", () => {
+  it("reads a stored infinite as nothing — every search stops at its depth or move time", () => {
+    localStorage.setItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY, JSON.stringify({ depth: 24, infinite: true }));
+    expect(readEngineSearchSettings()).toEqual({ ...DEFAULT_ENGINE_SEARCH_SETTINGS, depth: 24 });
+  });
+
+  it("never names an older record's infinite as a change", () => {
+    expect(searchSettingsChanges(analysisSettingsFrom({ ...DEFAULT_ENGINE_SEARCH_SETTINGS, infinite: true }), DEFAULT_ENGINE_SEARCH_SETTINGS)).toEqual([]);
   });
 });

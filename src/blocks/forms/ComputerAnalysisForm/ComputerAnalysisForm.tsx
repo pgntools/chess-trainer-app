@@ -155,8 +155,8 @@ function MoveNumberField({
  * variants to save (light, medium, full, each with a line saying what it
  * holds) and **Start**, off with no variant ticked or nothing to analyse.
  *
- * **No time limit** is a switch over the time slider (as the Engine tab's
- * infinite analysis is): on, each position is searched to the depth alone
+ * **No time limit** is a switch over the time slider (the Engine menu's ∞
+ * mark): on, each position is searched to the depth alone
  * (`moveTimeMs` 0); off, the last time set comes back.
  *
  * Threads, Hash and MultiPV follow what the engine declared — absent, pinned
