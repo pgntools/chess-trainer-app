@@ -1,0 +1,160 @@
+---
+title: יצירת דפי מדיניות פרטיות והודעת עוגיות
+summary: איך דפי החוק של האפליקציה עובדים — תיקיית app-pages, החלפת פרטי המפעיל בזמן הבנייה, ומה מקבל פורק (fork).
+---
+
+באפליקציה יש שני דפי חוק: **מדיניות פרטיות** (`/privacy`) ו**הודעת עוגיות** (`/cookies`). הם כתובים ב-MDX, נערכים בעורך ה-MDX, ומקושרים מהתחתית (footer) — אבל הם **אינם מאמרים בבלוג**. הם נמצאים ב-`src/views/blog/articles/app-pages/` והבנייה מתייחסת אליהם באופן מיוחד.
+
+## למה לא מאמרים בבלוג?
+
+מאמר בבלוג נרשם, מנותב ונגזר מראש (pre-rendered) אוטומטית — שמים קובץ וזה עובד. דפי החוק צריכים כמה שורות קוד כי האפליקציה מקשרת אליהם **לפי שם** (נתיב, קישור בתחתית, כותרת בקטלוגי ה-i18n). הם גם לא חייבים להופיע באינדקס של הבלוג, בסרגל הצד שלו, במפת האתר שלו או במעבר הנגישות של הדפדפן על נתיבי הבלוג.
+
+התיקייה `app-pages/` נמצאת **בתוך תיקיית המאמרים של הבלוג** כדי שעורך ה-MDX יוכל לרשום, לערוך ולשמור את הקבצים שלה — אבל `APP_PAGES_FOLDER` / `isAppPagePath` (ב-`src/lib/articleFrontmatter.ts`) שומרים אותה מחוץ לבלוג לחלוטין: אין כרטיס אינדקס, אין כניסה בסרגל הצד, אין `/blog/app-pages/…`, אין שורה של הבלוג במפת האתר.
+
+## מצייני מקום (placeholders) למפעיל — מוחלפים בזמן הבנייה (CTA-182)
+
+המאגר פומבי. פורק (fork) לא צריך לפרסם את פרטי המפעיל של chessapp.dev כשלו. לכן המסמכים מכילים `%OPERATOR_NAME%`, `%OPERATOR_ADDRESS%` ו-`%PRIVACY_EMAIL%` במקומות שבהם הפרטים הולכים, והבנייה מכניסה אותם ממשתני סביבה.
+
+| מציין מקום | משתנה | חובה | תלוי שפה |
+|-------------|--------|-------|-----------|
+| `%OPERATOR_NAME%` | `SITE_OPERATOR_NAME` | כן | `SITE_OPERATOR_NAME_HE` |
+| `%OPERATOR_ADDRESS%` | `SITE_OPERATOR_ADDRESS` | כן | `SITE_OPERATOR_ADDRESS_HE` |
+| `%PRIVACY_EMAIL%` | `SITE_PRIVACY_EMAIL` | כן | — (ערך אחד לכל השפות) |
+
+המשתנה של שפה הוא `<VARIABLE>_<LANG>` (`_HE` לעברית). אם לא מוגדר, משתמשים בערך האנגלי. הערך מוכנס כטקסט — התווים `{` ו-`<` של MDX מבורחים (escaped) — כך שסימון Markdown בתוכו (`*`, `_`) נשאר Markdown.
+
+### כשהבנייה כוללת את הדפים
+
+**שלושת המשתנים הנדרשים מוגדרים** → הבנייה כוללת את דפי החוק. `plugins/siteOperator.ts` (תוסף Vite עם `enforce: "pre"`) ממלא את מצייני המקום בכל `.mdx` שמתחת ל-`app-pages/` **לפני שהמהדר של MDX קורא אותו**, כך ששרת הפיתוח, הבאנדל לדפדפן, הבאנדל לשרת והגזירה המוקדמת (pre-render) כולם מקמפלים את אותו טקסט.
+
+מציין מקום לא ידוע (למשל `%OPERATOR_PHONE%`) מכשיל את הבנייה, ומציין את הקובץ.
+
+### כשהבנייה **אינה** כוללת דפי חוק
+
+**אף אחד לא מוגדר** (פורק, הרצה מקומית פשוטה, הבנייה של `ci.yml` ל-PR) → הבנייה **משאירה את הדפים בחוץ לגמרי**: `__LEGAL_PAGES__` הוא `false` (נקרא כ-`LEGAL_PAGES_SHOWN` ב-`src/views/legal/legalPagesShown.ts`), ולכן:
+
+- `src/routes.tsx` לא מכיל נתיב `/privacy` או `/cookies` — אז אין עמוד נגזר, אין שורה במפת האתר
+- התחתית (footer) לא מקשרת אליהם
+- המניפסט של הבלוג לא רושם שום קובץ של `app-pages/`, אז אף אחד מהטקסטים שלהם לא ב-`dist/`
+- הבנייה רושמת אזהרה; פריסה (deploy) מראה אותה באזהרה בהרצה
+
+### הגדרה חלקית היא שגיאה
+
+**חלק מוגדרים וחלק לא** → הבנייה נכשלת, ומציינת את המשתנים החסרים. פריסה ששכחה אחד לא צריכה לאבד בשקט את מדיניות הפרטיות שלה.
+
+## איך הקבצים נראים
+
+`src/views/blog/articles/app-pages/privacy.mdx`:
+
+```mdx
+---
+title: "Privacy Policy"
+summary: "What chessapp.dev stores on your device, what it does not, and how it handles your data."
+---
+
+Last updated: 1 November 2026
+
+## Data controller
+
+The App is operated by **%OPERATOR_NAME%**, %OPERATOR_ADDRESS%, who is the data controller for the processing this policy describes. For any privacy question or request, write to **%PRIVACY_EMAIL%**.
+
+## What the App stores
+
+…
+```
+
+`src/views/blog/articles/app-pages/privacy.he.mdx`:
+
+```mdx
+---
+title: "מדיניות פרטיות"
+summary: "מה chessapp.dev שומרת במכשיר שלכם, מה היא לא שומרת, ואיך היא מטפלת במידע שלכם."
+---
+
+עודכן לאחרונה: 1 בנובמבר 2026
+
+## בעל השליטה במידע
+
+האפליקציה מופעלת על ידי **%OPERATOR_NAME%**, %OPERATOR_ADDRESS%, שהוא בעל השליטה במידע (data controller) לגבי העיבוד המתואר במדיניות זו. לכל שאלה או בקשה בנושא פרטיות כתבו אל **%PRIVACY_EMAIL%**.
+
+## מה האפליקציה שומרת
+
+…
+```
+
+הודעת העוגיות (`cookies.mdx`, `cookies.he.mdx`) עוקבת אחרי אותה תבנית.
+
+## עריכת הדפים
+
+פתחו את עורך ה-MDX (`yarn mdx-editor:start`, ואז `/dev/mdx-editor`). הלשונית **מאמרים** (Articles) מציגה את תיקיית `app-pages` — פתחו את מדיניות הפרטיות או הודעת העוגיות, ערכו, ו**שמרו** (Save). העורך קורא `?raw`, שהתוסף משאיר כפי שהוא, אז הוא מראה את מצייני המקום (וגם התצוגה המקדימה שלו) — **שמרו עליהם** כשאתם עורכים את פסקת המפעיל.
+
+רק הגוף נתון לשינוי חופשי. שינוי שם הדף (`title` / `summary`) פירושו שינוי `pages.<id>` / `pageDescriptions.<id>` בשני הקטלוגים (`src/locales/en.ts`, `src/locales/he.ts`) לאותן מילים (וכן `footer.<id>` אם קישור התחתית צריך לעקוב). הבדיקה נכשלת עד שהם תואמים. כשהדף משתנה, עדכנו את שורת "עודכן לאחרונה".
+
+## פיתוח מקומי — לראות את הדפים עם הפרטים
+
+העתיקו את השורות מ-`.env.example` ל-`.env.local` (מוגדר ב-gitignore) ומלאו אותן:
+
+```bash
+SITE_OPERATOR_NAME="Your Name"
+SITE_OPERATOR_NAME_HE="שמך בעברית"
+SITE_OPERATOR_ADDRESS="Your Street, Your Town"
+SITE_OPERATOR_ADDRESS_HE="רחובך, עירך"
+SITE_PRIVACY_EMAIL="privacy@example.org"
+```
+
+אחר כך `yarn dev` / `yarn build`. בתיקיית עבודה (worktree), `.jst/bootstrap.sh` שומר כל שורה של `.env.local` חוץ משורת הפורט שלו, אז ערכי המפעיל שלכם נשמרים בין הרצות bootstrap.
+
+## ב-CI ובפריסות (deploys)
+
+הערכים הם **משתני מאגר (repository variables)** — לא סודות (secrets): הדפים מפרסמים אותם בכל מקרה, וערך של משתנה קריא בלוג של ההרצה, שזה בסדר כאן. `build.yml` (שתי הפריסות: `build-gh.yml`, `build-swa.yml`) ו-`a11y.yml` מעבירים אותם ל-`yarn build`; `ci.yml` בונה **בלעדיהם בכוונה**, כבנייה של פורק.
+
+הגדירו אותם פעם אחת למאגר:
+
+```bash
+gh variable set SITE_OPERATOR_NAME --body "Your Name"
+gh variable set SITE_OPERATOR_NAME_HE --body "שמך בעברית"
+gh variable set SITE_OPERATOR_ADDRESS --body "Your Street, Your Town"
+gh variable set SITE_OPERATOR_ADDRESS_HE --body "רחובך, עירך"
+gh variable set SITE_PRIVACY_EMAIL --body "privacy@example.org"
+gh variable list                      # בדיקה
+```
+
+**הגדירו אותם לפני ששינוי שצריך אותם מגיע ל-`main`**: פריסה בלעדיהם מפרסמת אתר בלי מדיניות פרטיות, ואומרת את זה רק באזהרה. אחרי פריסה, בדקו שהדף החי מציין את המפעיל:
+
+```bash
+curl -s https://chessapp.dev/privacy/ | grep -c "%OPERATOR_"   # 0
+```
+
+## בדיקות ואימות
+
+בדיקות הבנייה מחזיקות את `dist/` להחלטה של הבנייה עצמה (`legalPagesShown`, מיוצא על ידי הכניסה לשרת):
+
+- `yarn check:pages` — הדפים שם ואין שום מציין מקום בשום מקום, או שאין דף, אין קישור אליו ואין טקסט שלו
+- `yarn check:blog-build` — המניפסט של הבלוג לא רושם שום קובץ של `app-pages/`
+- מעבר הנגישות של הדפדפן (`yarn test:a11y`) מבקר בשני הדפים רק כשהבנייה כתבה אותם (`LEGAL_PAGES_BUILT`, `e2e/a11y/routes.ts`)
+
+תחת Vitest הבנייה מוגדרת עם ערכים קבועים (`src/test/siteOperator.ts`), מה שיש במכונה; `src/views/legal/legalPagesHidden.test.tsx` מדמה (mocks) את `legalPagesShown.ts` לבנייה בלעדיהם.
+
+## הוספת דף in-app נוסף
+
+השלבים מתועדים ב-[`docs/in-app-pages.md`](../in-app-pages.md) — אותם חלקים, עם דף תנאי שימוש (`/terms`) כדוגמה:
+
+1. כתבו את המסמך ב-`app-pages/terms.mdx` (ו-`.he.mdx`)
+2. הוסיפו מפתחות קטלוג בשתי השפות
+3. רשמו את מזהה הדף ב-`legalDocuments.ts`
+4. הוסיפו עטיפה (wrapper) ב-`LegalMain.tsx` ואת הנתיב ב-`routes.tsx` (בתוך ה-spread של `LEGAL_PAGES_SHOWN`)
+5. עדכנו בדיקות ואת נתיבי המעבר של הדפדפן
+6. אופציונלית: הוסיפו קישור בתחתית ב-`Footer.tsx` (בתוך הפרגמנט `LEGAL_PAGES_SHOWN`)
+7. הריצו את פקודות הבדיקה משלב 8 באותו מסמך
+
+## מה לא צריך לעשות
+
+- **אין רשימת pre-render**: `prerenderedPages()` לוקח כל נתיב סטטי מטבלת הנתיבים
+- **אין כניסה במפת האתר**: ה-pre-render כותב אחת לכל עמוד שהוא מגזיר
+- **אין כניסה בסרגל הצד**: הדפים האלה לא בסרגל הצד
+- **אין החרגה מהבלוג**: כל מה שמתחת ל-`app-pages/` מוחרג מהבלוג לפי הנתיב שלו
+- **אין תמונת שיתוף (share image)**: הדף נופל חזרה לתמונת ברירת המחדל של האתר (`src/assets/share/default.png`)
+
+## שמירה על אמיתות הטקסטים
+
+מדיניות הפרטיות והודעת העוגיות טוענות טענות על המארחים, העוגיות, יומני השרת והמפעיל. מה ששומר על הטענות האלה נכונות כשהקוד והאירוח משתנים מתועד ב-[`docs/privacy-policy-checks.md`](privacy-policy-checks.md) — העוגיות של המארחים, בדיקות הלוגים של Azure, ומה להריץ מחדש אחרי שדרוג תוכנית, API או מארח חדש.
