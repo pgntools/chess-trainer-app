@@ -18,13 +18,24 @@ The folder `app-pages/` is **inside the Blog's articles folder** so the MDX edit
 
 The repository is public. A fork must not publish chessapp.dev's operator as its own. So the documents say `%OPERATOR_NAME%`, `%OPERATOR_ADDRESS%` and `%PRIVACY_EMAIL%` where the details go, and the build puts them in from environment variables.
 
-| Placeholder | Variable | Required | Hebrew value |
-|-------------|----------|----------|--------------|
-| `%OPERATOR_NAME%` | `SITE_OPERATOR_NAME` | yes | `SITE_OPERATOR_NAME_HE` |
-| `%OPERATOR_ADDRESS%` | `SITE_OPERATOR_ADDRESS` | yes | `SITE_OPERATOR_ADDRESS_HE` |
-| `%PRIVACY_EMAIL%` | `SITE_PRIVACY_EMAIL` | yes | — (one value for every language) |
+| Placeholder | Variable | Required | A language's own value |
+|-------------|----------|----------|------------------------|
+| `%OPERATOR_NAME%` | `SITE_OPERATOR_NAME` | yes | `SITE_OPERATOR_NAME_<LANG>` |
+| `%OPERATOR_ADDRESS%` | `SITE_OPERATOR_ADDRESS` | yes | `SITE_OPERATOR_ADDRESS_<LANG>` |
+| `%PRIVACY_EMAIL%` | `SITE_PRIVACY_EMAIL` | yes | `SITE_PRIVACY_EMAIL_<LANG>` |
 
-A language's own value is `<VARIABLE>_<LANG>` (`_HE` for the `.he.mdx` files); unset, that language shows the English one, and a new language reads `_<ITS CODE>` the same way. The value is inserted as text — MDX's `{` and `<` are escaped — so Markdown in it (`*`, `_`) stays Markdown. An empty value, or one of only spaces, counts as unset.
+The value is inserted as text — MDX's `{` and `<` are escaped — so Markdown in it (`*`, `_`) stays Markdown. An empty value, or one of only spaces, counts as unset.
+
+### Every language, one rule
+
+A language's own value is `<VARIABLE>_<LANG>`: the Hebrew files (`privacy.he.mdx`, `cookies.he.mdx`) read `SITE_OPERATOR_NAME_HE` first, then `SITE_OPERATOR_NAME`. Any variable can have one, and none needs one — a language without its own shows the plain value. English always reads the plain one.
+
+**No language is named in the code or the workflows.** The build takes a file's language from its name and looks up that language's variables, and the deploys pass on every `SITE_*` repository variable. So when the app gets a new language — French, say — the legal pages need only:
+
+1. Their documents in it — `privacy.fr.mdx` and `cookies.fr.mdx`, with the same placeholders (a test fails until every language has both)
+2. If the operator's name or address is written differently in French, its own variables — `SITE_OPERATOR_NAME_FR`, `SITE_OPERATOR_ADDRESS_FR` — in `.env.local` and as repository variables
+
+A variable the build reads none of is ignored, and the build warns of it: a typo (`SITE_OPERATOR_NAME_HEB`), a language the app has not got yet, or `_EN`.
 
 The build reads them from the environment and from `.env` / `.env.local` — a variable set in the shell wins — and asks **one predicate**, `legalPagesConfigured` (`src/lib/siteOperator.ts`), which has three answers:
 
@@ -55,7 +66,7 @@ What that looks like on a machine: in `yarn dev`, `/privacy` and `/cookies` lead
 
 **Half-configured is an error**: the build stops with `The site's operator is half configured: SITE_PRIVACY_EMAIL is unset…`, naming every missing variable. A deploy that forgot one should not quietly lose its Privacy Policy. Set the missing ones, or clear all three to build without the pages.
 
-The `_HE` variables are never required: setting one without the English three is still "none set".
+A language's own variables are never required: setting `SITE_OPERATOR_NAME_HE` without the three plain ones is still "none set".
 
 ## What the files look like
 
@@ -104,7 +115,7 @@ SITE_OPERATOR_ADDRESS_HE="Your address in Hebrew"
 SITE_PRIVACY_EMAIL="privacy@example.org"
 ```
 
-Fill the three required ones or none — copying `.env.example`'s empty lines as they are is "none set", and builds without the pages. Then restart `yarn dev` (the variables are read when it starts) or run `yarn build`. In a worktree, `.jst/bootstrap.sh` keeps every line of `.env.local` but its own port line, so your operator values persist across bootstrap runs.
+The `_HE` lines are Hebrew's own values; another language adds its lines the same way (`SITE_OPERATOR_NAME_FR=`). Fill the three required ones or none — copying `.env.example`'s empty lines as they are is "none set", and builds without the pages. Then restart `yarn dev` (the variables are read when it starts) or run `yarn build`. In a worktree, `.jst/bootstrap.sh` keeps every line of `.env.local` but its own port line, so your operator values persist across bootstrap runs.
 
 ## In CI and the deploys
 
@@ -116,7 +127,9 @@ The values are **repository variables** — not secrets: the pages publish them 
 | `a11y.yml` | with the variables — so the browser pass visits the pages |
 | `ci.yml` (every pull request) | **without them, on purpose** — a fork's build, and its checks hold `dist/` to "no legal pages" |
 
-Set them once per repository:
+`build.yml` and `a11y.yml` pass on **every** `SITE_*` repository variable — a step reads them all (`toJSON(vars)`) and logs their names — so a new language's variables need no workflow edit.
+
+Set them once per repository (the `_HE` ones, and any other language's, only where its value differs):
 
 ```bash
 gh variable set SITE_OPERATOR_NAME --body "Your Name"

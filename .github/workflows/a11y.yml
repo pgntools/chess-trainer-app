@@ -112,13 +112,15 @@ jobs:
       # With the site's operator, as the deploys build it, so the legal pages
       # are in it and visited (CTA-182); where the variables are not set — a
       # fork — they are not, and the pass leaves them out (`e2e/a11y/routes.ts`).
-      - run: yarn build
+      # Every SITE_* repository variable, each language's own too, as
+      # build.yml passes them.
+      - name: The site's operator's variables
         env:
-          SITE_OPERATOR_NAME: ${{ vars.SITE_OPERATOR_NAME }}
-          SITE_OPERATOR_NAME_HE: ${{ vars.SITE_OPERATOR_NAME_HE }}
-          SITE_OPERATOR_ADDRESS: ${{ vars.SITE_OPERATOR_ADDRESS }}
-          SITE_OPERATOR_ADDRESS_HE: ${{ vars.SITE_OPERATOR_ADDRESS_HE }}
-          SITE_PRIVACY_EMAIL: ${{ vars.SITE_PRIVACY_EMAIL }}
+          REPOSITORY_VARIABLES: ${{ toJSON(vars) }}
+        run: |
+          jq -r 'keys[] | select(startswith("SITE_"))' <<< "$REPOSITORY_VARIABLES"
+          jq -r 'to_entries[] | select(.key | startswith("SITE_")) | "\(.key)<<SITE_VALUE_EOF\n\(.value)\nSITE_VALUE_EOF"' <<< "$REPOSITORY_VARIABLES" >> "$GITHUB_ENV"
+      - run: yarn build
 
       # Every shard seeds the app itself (the `setup` project runs in each).
       - name: Run the accessibility pass (${{ env.A11Y_MATRIX }} matrix, shard ${{ matrix.shard }}/${{ needs.plan.outputs.total }})

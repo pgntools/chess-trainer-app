@@ -347,7 +347,10 @@ mismatch this exists to prevent.
   values, kept for callers and tests.
 - **Adding a language** is a catalog in `src/locales/`, an entry in
   `supportedLanguages`, and — if it mirrors — one in `rtlLanguages`; and its
-  Open Graph locale in `OG_LOCALES` (`views/main/documentHead.ts`). Its URL
+  Open Graph locale in `OG_LOCALES` (`views/main/documentHead.ts`); and the
+  legal pages in it (`app-pages/<page>.<lang>.mdx` — a test requires them;
+  its operator's own name or address, if any, are `SITE_*_<LANG>` variables,
+  no code or workflow edit — CTA-182). Its URL
   prefix (`/<lang>/…`) and its pre-rendered pages follow (CTA-136).
 - **The chessboard must never mirror.** Files run a–h left to right in every
   language; a mirrored board would put a1 bottom-right while `chess.js` and the

@@ -6,9 +6,12 @@
  * puts in the values of its environment (`plugins/siteOperator.ts`) — `.env.local`
  * on a machine, the repository's variables in a deploy (`docs/in-app-pages.md` §5).
  *
- * A value can differ by language: `SITE_OPERATOR_NAME_HE` is the name in a
- * `.he.mdx` file, `SITE_OPERATOR_NAME` everywhere else and where a language
- * has none of its own.
+ * A value can differ by language, any language the app has: `<VARIABLE>_<LANG>`
+ * — `SITE_OPERATOR_NAME_HE` is the name in a `.he.mdx` file, a French build's
+ * would be `SITE_OPERATOR_NAME_FR` — and `SITE_OPERATOR_NAME` everywhere else
+ * and where a language has none of its own. Nothing here lists the languages:
+ * a new one needs no edit, and `unknownSiteVariables` warns of a variable
+ * naming one the app has not got (a typo, `_HEB`).
  *
  * **One predicate decides whether the site has legal pages**,
  * `legalPagesConfigured`: the three values, or none. Without them (a fork, a
@@ -66,6 +69,21 @@ export const legalPagesConfigured = (env: SiteEnv): boolean => {
 export const operatorValue = (env: SiteEnv, placeholder: OperatorPlaceholder, language: string): string | undefined => {
   const name = OPERATOR_PLACEHOLDERS[placeholder];
   return (language === "en" ? undefined : valueOf(env, `${name}_${language.toUpperCase()}`)) ?? valueOf(env, name);
+};
+
+/**
+ * The `SITE_*` variables of `env` the build reads none of — neither one of
+ * the three nor `<one>_<LANG>` for a language of `languages` but the default,
+ * whose value is the plain one's. A typo, or a language the app has not got
+ * (yet): its value would be silently ignored, so the build warns of it.
+ * `languages` is passed in, so this module stays import-free.
+ */
+export const unknownSiteVariables = (env: SiteEnv, languages: readonly string[], defaultLanguage: string): string[] => {
+  const known = new Set<string>(Object.values(OPERATOR_PLACEHOLDERS));
+  for (const name of Object.values(OPERATOR_PLACEHOLDERS)) {
+    for (const language of languages) if (language !== defaultLanguage) known.add(`${name}_${language.toUpperCase()}`);
+  }
+  return Object.keys(env).filter((name) => name.startsWith(SITE_ENV_PREFIX) && !known.has(name) && valueOf(env, name) !== undefined).sort();
 };
 
 /**

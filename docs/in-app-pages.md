@@ -228,14 +228,21 @@ its own. The documents say `%OPERATOR_NAME%`, `%OPERATOR_ADDRESS%` and
 | Variable | Fills | Required |
 | --- | --- | --- |
 | `SITE_OPERATOR_NAME` | `%OPERATOR_NAME%` | yes |
-| `SITE_OPERATOR_NAME_HE` | `%OPERATOR_NAME%` in a `.he.mdx` file | no — the English one |
 | `SITE_OPERATOR_ADDRESS` | `%OPERATOR_ADDRESS%` | yes |
-| `SITE_OPERATOR_ADDRESS_HE` | `%OPERATOR_ADDRESS%` in a `.he.mdx` file | no — the English one |
-| `SITE_PRIVACY_EMAIL` | `%PRIVACY_EMAIL%`, in every language | yes |
+| `SITE_PRIVACY_EMAIL` | `%PRIVACY_EMAIL%` | yes |
+| `<any of them>_<LANG>` — `SITE_OPERATOR_NAME_HE`, `SITE_OPERATOR_ADDRESS_HE` | the same, in that language's files (`.he.mdx`) | no — the plain one |
 
-A language's own value is `<VARIABLE>_<LANG>` (`_HE`); a new language reads
-`_<ITS CODE>` the same way. A value is put in as text — MDX's `{` and `<`
-escaped — so Markdown in it (`*`, `_`) stays Markdown.
+**Every language the app has works the same way, and none is named in the
+code**: a file's language is its name's (`privacy.he.mdx`), and
+`operatorValue` reads `<VARIABLE>_<LANG>` for it, then the plain variable.
+So adding a language (`supportedLanguages`) needs no edit here or in the
+workflows — its legal documents (`privacy.<lang>.mdx`, `cookies.<lang>.mdx`,
+which `legalDocuments.test.ts` requires) and, where its name or address is
+written differently, its own variables (`SITE_OPERATOR_NAME_FR`). A `SITE_*`
+variable the build reads none of — a typo (`_HEB`), a language the app has
+not got, `_EN` (English reads the plain one) — is ignored, and the build
+warns of it (`unknownSiteVariables`). A value is put in as text — MDX's `{`
+and `<` escaped — so Markdown in it (`*`, `_`) stays Markdown.
 
 **How the build reads them.** `vite.config.ts` loads the `SITE_*` variables
 of the environment and of `.env` / `.env.local` (`loadSiteEnv`), and asks
@@ -280,8 +287,11 @@ Copy the lines from [`.env.example`](../.env.example) into `.env.local`
 The values are **repository variables** — not secrets: the pages publish
 them anyway, and a variable's value is readable in the run's log, which is
 fine here. `build.yml` (both deploys: `build-gh.yml`, `build-swa.yml`) and
-`a11y.yml` pass them to `yarn build`; `ci.yml` builds without them on
-purpose, a fork's build. Set them once per repository:
+`a11y.yml` pass **every `SITE_*` repository variable** to `yarn build` — a
+step reads `toJSON(vars)` and writes each into `$GITHUB_ENV`, logging their
+names — so a new language's variables need no workflow edit; `ci.yml` builds
+without them on purpose, a fork's build. Set them once per repository (the
+`_HE` ones, and any other language's, where its value differs):
 
 ```bash
 gh variable set SITE_OPERATOR_NAME --body "…"
