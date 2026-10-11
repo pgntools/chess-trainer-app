@@ -2588,6 +2588,11 @@ const en = {
   /** The `EnginePresetForm` block (CTA-179): an engine's options, kept in named presets. */
   enginePresets: {
     preset: "Preset for {{engine}}",
+    /** Where the preset's searches stop (CTA-185) — its depth and move time. */
+    search: {
+      title: "Search limits",
+      help: "Every board searches with {{preset}} to this depth or move time, whichever comes first. The top bar's Engine menu sets them too.",
+    },
     actions: "Preset actions",
     new: "New preset",
     rename: "Rename {{name}}",

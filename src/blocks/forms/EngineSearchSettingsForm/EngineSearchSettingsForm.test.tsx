@@ -138,7 +138,7 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
   });
 
   describe("the number boxes at the depth and move-time sliders' ends (CTA-185)", () => {
-    it("takes a depth typed, held to 1 … 40 and to whole numbers", async () => {
+    it("takes a depth typed, held to 1 … 99 and to whole numbers — past the slider's 50 (CTA-185)", async () => {
       const user = userEvent.setup();
       const { onChange } = mount();
       const depth = screen.getByRole("spinbutton", { name: "Search depth, typed" });
@@ -147,8 +147,11 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
       await user.type(depth, "25");
       expect(onChange).toHaveBeenLastCalledWith({ depth: 25 });
       await user.clear(depth);
-      await user.type(depth, "99");
-      expect(onChange).toHaveBeenLastCalledWith({ depth: 40 });
+      await user.type(depth, "75");
+      expect(onChange).toHaveBeenLastCalledWith({ depth: 75 });
+      await user.clear(depth);
+      await user.type(depth, "150");
+      expect(onChange).toHaveBeenLastCalledWith({ depth: 99 });
       await user.clear(depth);
       await user.type(depth, "0");
       expect(onChange).toHaveBeenLastCalledWith({ depth: 1 });
@@ -162,8 +165,8 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
       mount();
       const depth = screen.getByRole("spinbutton", { name: "Search depth, typed" });
       await user.clear(depth);
-      await user.type(depth, "99");
-      expect(depth).toHaveValue(99);
+      await user.type(depth, "150");
+      expect(depth).toHaveValue(150);
       await user.tab();
       // The form's settings did not change (the test holds them): the box shows them again.
       expect(depth).toHaveValue(SETTINGS.depth);

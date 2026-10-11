@@ -12,8 +12,9 @@ import {
   enginePresetsSnapshot,
   loadEnginePresets,
   loadEnginePresetSelections,
+  settledEnginePresets,
 } from "../../lib/enginePresetStore";
-import { readEngineSearchSettings, storeEngineSearchSettings } from "../../lib/engineSearchSettings";
+import { readEngineSearchSettings, storeEngineSearchSettings } from "../../lib/engineSearchInEffect";
 import { DEFAULT_ENGINE_ID } from "../../lib/engines";
 import { expectNoAxeViolations } from "../../test/axe";
 import { stubReducedMotion } from "../../test/reducedMotion";
@@ -184,8 +185,45 @@ describe("the top bar's Engine menu (CTA-181)", () => {
     });
   });
 
+  describe("depth and move time — the preset's (CTA-185)", () => {
+    it("shows the chosen preset's depth and move time, and switches them with the preset", async () => {
+      const made = await createEnginePreset("deep-search", {}, {}, { depth: 34, moveTimeMs: 300000 });
+      if (!("id" in made)) throw new Error("the preset was not made");
+      await Promise.all([loadEnginePresets(), loadEnginePresetSelections()]);
+      const user = userEvent.setup();
+      mount();
+      const dialog = await openMenu(user);
+      const depth = () => within(dialog).getByRole("spinbutton", { name: "Search depth, typed" });
+      const moveTime = () => within(dialog).getByRole("spinbutton", { name: "Move time in seconds, typed" });
+      // Default's: depth 20, no time limit.
+      expect(depth()).toHaveValue(20);
+      expect(moveTime()).toBeDisabled();
+      await user.click(within(dialog).getByRole("combobox", { name: "Preset" }));
+      await user.click(await screen.findByRole("option", { name: "deep-search" }));
+      await waitFor(() => expect(depth()).toHaveValue(34));
+      expect(moveTime()).toHaveValue(300);
+      expect(readEngineSearchSettings()).toMatchObject({ depth: 34, moveTimeMs: 300000 });
+    });
+
+    it("writes a depth set in the menu into the preset — never into the preference", async () => {
+      await Promise.all([loadEnginePresets(), loadEnginePresetSelections()]);
+      const user = userEvent.setup();
+      mount();
+      const dialog = await openMenu(user);
+      within(dialog).getByRole("slider", { name: "Search depth" }).focus();
+      await user.keyboard("{ArrowLeft}");
+      expect(readEngineSearchSettings().depth).toBe(19);
+      await settledEnginePresets();
+      expect(selectedPresetOf(enginePresetsSnapshot() ?? [], enginePresetSelectionsSnapshot() ?? [], DEFAULT_ENGINE_ID).search).toEqual({
+        depth: 19,
+        moveTimeMs: 0,
+      });
+      expect(localStorage.getItem("chessapp.engineSettings")).toBeNull();
+    });
+  });
+
   describe("depth and move time typed (CTA-185)", () => {
-    it("takes a depth typed, held to 40, in step with its slider", async () => {
+    it("takes a depth typed — past the slider's 50, held to 99 — in step with its slider", async () => {
       const user = userEvent.setup();
       mount();
       const dialog = await openMenu(user);
@@ -194,9 +232,15 @@ describe("the top bar's Engine menu (CTA-181)", () => {
       await user.type(box, "33");
       expect(readEngineSearchSettings().depth).toBe(33);
       expect(within(dialog).getByRole("slider", { name: "Search depth" })).toHaveAttribute("aria-valuenow", "33");
+      expect(within(dialog).getByRole("slider", { name: "Search depth" })).toHaveAttribute("aria-valuemax", "50");
       await user.clear(box);
       await user.type(box, "77");
-      expect(readEngineSearchSettings().depth).toBe(40);
+      expect(readEngineSearchSettings().depth).toBe(77);
+      // The slider shows it at its end; the box keeps the number.
+      expect(within(dialog).getByRole("slider", { name: "Search depth" })).toHaveAttribute("aria-valuenow", "50");
+      await user.clear(box);
+      await user.type(box, "150");
+      expect(readEngineSearchSettings().depth).toBe(99);
     });
 
     it("keeps the move-time box off on ∞, and takes seconds typed once the slider leaves it", async () => {

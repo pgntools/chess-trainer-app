@@ -23,6 +23,7 @@ import {
   PgnExportPanel,
   PlayToggleButton,
 } from "../../../blocks/panels";
+import { engineSearchSettingsRead, loadEngineSearchSettings } from "../../../lib/engineSearchInEffect";
 import { engineLimitsOf } from "../../../lib/engineSettings";
 import { StatusText } from "../../../design-system/components/feedback";
 import { IconAction, ToggleIconAction } from "../../../design-system/components/toolbars";
@@ -673,10 +674,13 @@ function AnalysisBoardRoute() {
   const waitsForAnalyses = analysisParam !== null || isAnalysisReference(game);
   // The workspace's tree is the folders and the analyses: both are read before the board opens.
   const waitsForFolders = analysisParam !== null && searchParams.get(LIST_FOLDER_PARAM) !== null;
+  // A saved analysis' settings are compared with those in effect as it opens — the depth and move time a preset's (CTA-185): read first.
+  const waitsForPresets = analysisParam !== null;
   const [ready, setReady] = useState(
     () =>
       (!waitsForAnalyses || savedAnalysesSnapshot() !== undefined) &&
       (!waitsForFolders || analysisFoldersSnapshot() !== undefined) &&
+      (!waitsForPresets || engineSearchSettingsRead()) &&
       isReferenceRead(game),
   );
   useEffect(() => {
@@ -685,6 +689,7 @@ function AnalysisBoardRoute() {
     void Promise.all([
       waitsForAnalyses ? loadSavedAnalyses() : undefined,
       waitsForFolders ? loadAnalysisFolders() : undefined,
+      waitsForPresets ? loadEngineSearchSettings() : undefined,
       loadReferencedGames(game),
     ]).then(() => {
       if (live) setReady(true);
@@ -692,7 +697,7 @@ function AnalysisBoardRoute() {
     return () => {
       live = false;
     };
-  }, [ready, waitsForAnalyses, waitsForFolders, game]);
+  }, [ready, waitsForAnalyses, waitsForFolders, waitsForPresets, game]);
 
   /*
     **A board is read from its arrival once** — so a URL that names another

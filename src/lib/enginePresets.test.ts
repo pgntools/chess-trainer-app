@@ -20,6 +20,8 @@ import {
   selectedPresetValues,
   withDefaultPreset,
   type EnginePreset,
+  PRESET_SEARCH_DEFAULTS,
+  presetSearchOf,
 } from "./enginePresets";
 import type { EngineOption } from "./engineTypes";
 
@@ -56,6 +58,7 @@ const preset = (id: string, values: EnginePreset["values"] = {}, groups: EngineP
   name: id,
   values,
   groups,
+  search: {},
   savedAt: AT,
   updatedAt: AT,
 });
@@ -103,6 +106,8 @@ describe("the presets and each engine's selection", () => {
       values: { Hash: 64, UCI_ShowWDL: true, SyzygyPath: "/tb" },
       // A known group's `true` only; a record from before groups reads every one off.
       groups: { syzygy: true },
+      // A record from before search limits (CTA-185) has none: the defaults.
+      search: {},
       savedAt: AT,
       updatedAt: AT,
     });
@@ -326,5 +331,19 @@ describe("Play's strength and the preset (CTA-181)", () => {
     // Before the handshake: the preset's value as written.
     expect(presetLimitsStrength({ UCI_LimitStrength: true }, [], { inBrowser: true })).toBe(true);
     expect(presetLimitsStrength({}, [], { inBrowser: true })).toBe(false);
+  });
+});
+
+describe("a preset's search limits (CTA-185)", () => {
+  it("reads its depth and move time held to their bounds, and anything else as not set", () => {
+    expect(enginePresetFrom({ id: "p", search: { depth: 120, moveTimeMs: 7500.4 } })?.search).toEqual({ depth: 99, moveTimeMs: 7500 });
+    expect(enginePresetFrom({ id: "p", search: { depth: "deep", moveTimeMs: -5 } })?.search).toEqual({ moveTimeMs: 0 });
+    expect(enginePresetFrom({ id: "p", search: "fast" })?.search).toEqual({});
+  });
+
+  it("are the defaults where a preset sets none — depth 20, no time limit", () => {
+    expect(presetSearchOf(preset("p"))).toEqual({ depth: 20, moveTimeMs: 0 });
+    expect(presetSearchOf({ search: { moveTimeMs: 5000 } })).toEqual({ depth: 20, moveTimeMs: 5000 });
+    expect(PRESET_SEARCH_DEFAULTS).toEqual({ depth: 20, moveTimeMs: 0 });
   });
 });

@@ -7,7 +7,8 @@ import {
   type EngineSettings,
 } from "../../../lib/engineSettings";
 import { presetLimitsStrength } from "../../../lib/enginePresets";
-import { readEngineSearchSettings, searchSettingsChanges } from "../../../lib/engineSearchSettings";
+import { readEngineSearchSettings } from "../../../lib/engineSearchInEffect";
+import { searchSettingsChanges } from "../../../lib/engineSearchSettings";
 import { engineChoiceId } from "../../../lib/engineChoice";
 import { resolveEngine } from "../../../lib/engines";
 import type { EngineDescriptor } from "../../../lib/engineTypes";

@@ -133,7 +133,7 @@ describe("the engine preset store (CTA-179)", () => {
     const deep = await created("deep");
     expect(
       await importEnginePresets({
-        add: [{ id: deep, name: "deep (imported)", values: { Hash: 64 }, groups: {}, savedAt: "", updatedAt: "" }],
+        add: [{ id: deep, name: "deep (imported)", values: { Hash: 64 }, groups: {}, search: {}, savedAt: "", updatedAt: "" }],
         remove: [],
         select: [{ id: SINGLE, presetId: deep, updatedAt: "" }],
       }),

@@ -1,3 +1,4 @@
+import { DEFAULT_ENGINE_SEARCH_SETTINGS } from "./engineSearchSettings";
 import { ENGINE_SETTING_BOUNDS } from "./engineSettings";
 import type { EngineOption, UciOptionValue } from "./engineTypes";
 import { isSettableOption } from "./uciEngine";
@@ -49,6 +50,20 @@ const MAX_PRESET_VALUES = 200;
 /** The longest words a `string` option's value keeps. */
 const MAX_STRING_VALUE_LENGTH = 1000;
 
+/**
+ * **Where a preset's searches stop** (CTA-185) — the depth and the move time
+ * (ms, `0` no limit), each absent while the preset never set it: then
+ * {@link PRESET_SEARCH_DEFAULTS}'. Every board searches to the running
+ * engine's selected preset's; the top bar's Engine menu sets them in it.
+ */
+export type PresetSearch = { depth?: number; moveTimeMs?: number };
+
+/** A preset's search limits where it sets none — depth 20, no time limit (the boards' defaults since CTA-160). */
+export const PRESET_SEARCH_DEFAULTS = {
+  depth: DEFAULT_ENGINE_SEARCH_SETTINGS.depth,
+  moveTimeMs: DEFAULT_ENGINE_SEARCH_SETTINGS.moveTimeMs,
+} as const;
+
 /** One named set of option values. */
 export type EnginePreset = {
   id: string;
@@ -61,6 +76,8 @@ export type EnginePreset = {
    * them (CTA-179 — Syzygy tablebases, off by default).
    */
   groups: Readonly<Record<string, boolean>>;
+  /** Where its searches stop (CTA-185) — what it never set is the default. */
+  search: Readonly<PresetSearch>;
   /** ISO 8601. `""` for the Default that was never stored. */
   savedAt: string;
   updatedAt: string;
@@ -183,12 +200,16 @@ export const optionGroupOf = (name: string): string | undefined => OPTION_GROUPS
 /** No values — one object, so a reader keyed on a preset's values sees no change between reads. */
 const NO_VALUES: Readonly<Record<string, UciOptionValue>> = Object.freeze({});
 
+/** No search limits of its own — one object, as {@link NO_VALUES}. */
+const NO_SEARCH: Readonly<PresetSearch> = Object.freeze({});
+
 /** The Default preset as it is before the reader edits it: no values, never stored. */
 export const defaultEnginePreset = (): EnginePreset => ({
   id: DEFAULT_PRESET_ID,
   name: DEFAULT_PRESET_NAME,
   values: NO_VALUES,
   groups: NO_GROUPS,
+  search: NO_SEARCH,
   savedAt: "",
   updatedAt: "",
 });
@@ -245,6 +266,30 @@ export const presetSentValues = (preset: EnginePreset): Readonly<Record<string, 
   return sent;
 };
 
+/** **Where a preset's searches stop** — its own depth and move time, or the defaults'. */
+export const presetSearchOf = (preset: Pick<EnginePreset, "search">): { depth: number; moveTimeMs: number } => ({
+  depth: preset.search.depth ?? PRESET_SEARCH_DEFAULTS.depth,
+  moveTimeMs: preset.search.moveTimeMs ?? PRESET_SEARCH_DEFAULTS.moveTimeMs,
+});
+
+/** A whole number held to `bounds`, or `undefined` for anything that is not a finite number. */
+const heldWhole = (value: unknown, { min, max }: { min: number; max: number }): number | undefined =>
+  typeof value === "number" && Number.isFinite(value) ? Math.min(Math.max(Math.round(value), min), max) : undefined;
+
+/**
+ * **A preset's search limits read back** — the depth and move time it names,
+ * each a whole number held to `ENGINE_SETTING_BOUNDS`; anything else is not
+ * set (and reads as the default). Never throws.
+ */
+export const presetSearchFrom = (value: unknown): PresetSearch => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return NO_SEARCH;
+  const row = value as Record<string, unknown>;
+  const depth = heldWhole(row.depth, ENGINE_SETTING_BOUNDS.depth);
+  const moveTimeMs = heldWhole(row.moveTimeMs, ENGINE_SETTING_BOUNDS.moveTimeMs);
+  if (depth === undefined && moveTimeMs === undefined) return NO_SEARCH;
+  return { ...(depth === undefined ? {} : { depth }), ...(moveTimeMs === undefined ? {} : { moveTimeMs }) };
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -278,7 +323,8 @@ const presetGroupsFrom = (value: unknown): Record<string, boolean> => {
 /**
  * **A preset read back** — the store's normaliser and the import's: a row
  * with no id is dropped; a name that is missing reads as Default's (the
- * Default) or the id; values that cannot be sent are dropped. Never throws.
+ * Default) or the id; values that cannot be sent are dropped; search limits
+ * held to their bounds (CTA-185 — a record from before has none). Never throws.
  */
 export const enginePresetFrom = (value: unknown): EnginePreset | undefined => {
   if (!isRecord(value)) return undefined;
@@ -290,6 +336,7 @@ export const enginePresetFrom = (value: unknown): EnginePreset | undefined => {
     name,
     values: presetValuesFrom(value.values),
     groups: presetGroupsFrom(value.groups),
+    search: presetSearchFrom(value.search),
     savedAt: text(value.savedAt) ?? "",
     updatedAt: text(value.updatedAt) ?? text(value.savedAt) ?? "",
   };

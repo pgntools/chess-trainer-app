@@ -120,7 +120,8 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   engine that played it. Its **presets** are data, and do travel (§4.1).
 - **The search settings are not here** (CTA-181): lines, depth, move time,
   Threads and Hash (no infinite analysis since CTA-185 — every search stops)
-  are the reader's one global set, set
+  are one set for every board — the depth and move time the chosen engine's
+  preset's (CTA-185, §4.1), the rest a preference — set
   from **the top bar's Engine menu** (`views/main/EngineMenu.tsx`, beside the
   language button — a robot and "Engine", styled as the language switch;
   under the engine and its preset, **each a select there too** (CTA-185: the
@@ -168,6 +169,15 @@ chosen engine's options** (`EnginePresetsSection.tsx` over the
 `EnginePresetForm` block; [`docs/engine.md`](../../docs/engine.md) §9 is the
 whole design):
 
+- **The preset's search limits** (CTA-185): above the options, a *Search
+  limits* section — the depth and the move time every board searches to with
+  this preset (`SearchLimitsFields`, the same two the top bar's Engine menu
+  shows under the preset select); each preset keeps its own
+  (`EnginePreset.search`, `setEnginePresetSearch`), a preset that never set
+  them reads depth 20 and no time limit, switching the preset or the engine
+  switches them ([`docs/engine.md`](../../docs/engine.md) §5.2, §9). For the
+  chosen engine the section writes through the settings in effect
+  (`lib/engineSearchInEffect.ts`), shown at once.
 - **A shared library of named presets, one selected per engine.** The picker
   shows the preset this engine runs; New, Rename, Duplicate (named
   "… (copy)") and Delete — asked first; **Default always exists and cannot be

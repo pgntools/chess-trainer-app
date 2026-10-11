@@ -99,13 +99,16 @@ const MAX_MOVE_NUMBER = 999;
  * depth, and the thresholds are kept in order (a mistake at least an
  * inaccuracy, a blunder at least a mistake).
  */
+/** A job's depth: 1–40, as before CTA-185 raised the boards' typed depth to 99 — its form has a slider alone. */
+const JOB_DEPTH_BOUNDS = { min: 1, max: 40 } as const;
+
 export const COMPUTER_ANALYSIS_BOUNDS = {
   threads: ENGINE_SETTING_BOUNDS.threads,
   hashMb: ENGINE_SETTING_BOUNDS.hashMb,
-  depth: ENGINE_SETTING_BOUNDS.depth,
+  depth: JOB_DEPTH_BOUNDS,
   moveTimeMs: ENGINE_SETTING_BOUNDS.moveTimeMs,
   multiPv: ENGINE_SETTING_BOUNDS.multiPv,
-  minDepth: ENGINE_SETTING_BOUNDS.depth,
+  minDepth: JOB_DEPTH_BOUNDS,
   variationRangeCp: { min: 0, max: LOSS_CLAMP_CP },
   threshold: { min: 1, max: LOSS_CLAMP_CP },
   move: { min: 1, max: MAX_MOVE_NUMBER },

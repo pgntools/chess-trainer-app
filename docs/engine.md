@@ -165,7 +165,8 @@ takes `infinite?: boolean` beside `depth` and `moveTimeMs`.
   one thread. They are now: the wrapper's clamp `DEFAULT_MAX_DEPTH` = **99**
   (each descriptor's `capabilities.maxDepth`; past any search a browser runs,
   so a request is never cut short), and what the forms **offer**,
-  `ENGINE_SETTING_BOUNDS`: depth **1–40**, move time **0–600 s** (the
+  `ENGINE_SETTING_BOUNDS`: depth **1–99** (typed — the slider stops at 50,
+  `DEPTH_SLIDER_MAX`; 1–40 until CTA-185, which a job keeps), move time **0–600 s** (the
   snap-to-mark slider's last time mark — 300 s from CTA-163, 600 s since
   CTA-185) — **every board's** since CTA-181, one global set in the top bar's
   Engine menu (the analysis boards' own 0–60 s went with their Engine tab).
@@ -221,14 +222,32 @@ real browser before tuning further.
 ### 5.2 The search settings — one set, the top bar's (CTA-181)
 
 The settings a search runs under — **lines (MultiPV), depth, move time,
-Threads and Hash** (infinite analysis too until CTA-185) — are the reader's
-**one global set**, not a board's: `lib/engineSearchSettings.ts`
-(`EngineSearchSettings`, the defaults the Analysis Board's own — depth 20,
-three lines, no time limit, one thread, 16 MB), a preference in `localStorage`
-(`chessapp.engineSettings`, beside the engine choice; not in the export zip),
-read through `useEngineSearchSettings` (`useSyncExternalStore`, the engine
-choice's pattern), so every mounted board and the top bar follow a change, from
-the next search.
+Threads and Hash** (infinite analysis too until CTA-185) — are **one set for
+every board**, not a board's (`EngineSearchSettings`, the defaults the
+Analysis Board's own — depth 20, three lines, no time limit, one thread,
+16 MB), kept in **two homes since CTA-185**:
+
+- **the lines, Threads and Hash** — a preference in `localStorage`
+  (`chessapp.engineSettings`, beside the engine choice; not in the export
+  zip), `lib/engineSearchSettings.ts` (`readSearchPreferences` /
+  `storeSearchPreferences`);
+- **the depth and the move time** — **the selected preset of the engine the
+  reader chose** (`EnginePreset.search`, §9; Settings → Engine), so switching
+  the preset, or the engine, switches them, and they travel in the Export zip
+  with the presets. A preset that never set them reads the defaults
+  (`PRESET_SEARCH_DEFAULTS`, depth 20, no time limit); a depth or move time an
+  older build stored in the preference is read as nothing.
+
+`lib/engineSearchInEffect.ts` puts the two together — `readEngineSearchSettings`
+/ `storeEngineSearchSettings` / `subscribeEngineSearchSettings` (the
+preference, the presets, the selections and the engine choice) — read through
+`useEngineSearchSettings` (`useSyncExternalStore`), so every mounted board and
+the top bar follow a change, from the next search. A depth or move time written
+**shows at once**: kept there until the preset store has committed
+(`setEnginePresetSearch`). A route that opens a record and compares its
+settings ("Engine options changed", below) waits for the presets first
+(`engineSearchSettingsRead` / `loadEngineSearchSettings` — `AnalysisBoardRoute`,
+`PlayedGameRead`).
 
 - **Set in the top bar's Engine menu** (`views/main/EngineMenu.tsx`, beside the
   language button — a robot and "Engine", drawn as the language switch is, the
@@ -239,13 +258,17 @@ the next search.
   disabled with its reason), stored through `useEngineChoice().setEngineId` as
   Settings → Engine stores it; the preset one of that engine's, selected with
   `selectEnginePreset` as Settings → Engine's presets section does — and a
-  "Settings" link to Settings → Engine.
+  "Settings" link to Settings → Engine. **The depth and move time sit under the
+  preset**, theirs (`SearchLimitsFields`, the block Settings → Engine's preset
+  form shows too); a change in the menu goes into that preset.
   Threads and Hash are offered up to what the engine running takes
   (`searchSettingLimitsOf`: one thread for a single-thread build, the device's
   for a multi-thread one, an engine server's declaration) — a stored value
   past it shown held, never cut back. **Depth and move time can be typed**
-  (CTA-185): a number box at each slider's end (`SliderField`'s `input`),
-  depth a whole number held to 1–40, move time seconds held to 0–600 — a value
+  (CTA-185): a number box at each slider's end (`SliderField`'s `input`, in
+  `SearchLimitsFields`),
+  depth a whole number held to 1–99 (the slider stops at 50 and shows a deeper
+  one at its end), move time seconds held to 0–600 — a value
   off the slider's marks kept, the slider showing where it falls
   (`moveTimeSliderValueOf`), 0 the instant reply; on the slider's ∞ mark (no
   limit) the move-time box is off; depth's never is — every search stops at
@@ -424,6 +447,14 @@ options* (`guides/understanding-stockfish-uci-options.mdx`).
 - **A preset keeps only what the reader set**; the rest stays at the engine's
   own default. One preset therefore serves every engine: each takes what it
   declares.
+- **And where its searches stop** (CTA-185): `search` — a depth and a move
+  time, each absent until set (then depth 20, no time limit), each a whole
+  number held to `ENGINE_SETTING_BOUNDS` (`presetSearchFrom`). Every board
+  searches to the running engine's selected preset's (§5.2). Edited in the top
+  bar's Engine menu and above the options in Settings → Engine's form (a
+  "Search limits" section, `SearchLimitsFields`), stored with
+  `setEnginePresetSearch`; a duplicate copies them; the export carries them in
+  `engine-presets.json` (an optional field: no format bump).
 - **Data-driven, never a roster.** The form lists what the chosen engine
   declares — a page's build from its own `uci` reply (the form builds it,
   switched off, through `useEngineModule`, as the Lobby's form does), an engine

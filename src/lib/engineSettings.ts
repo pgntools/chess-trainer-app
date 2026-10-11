@@ -80,8 +80,10 @@ export const DEFAULT_ENGINE_SETTINGS: EngineSettings = {
  *
  * Measured on the Stockfish 19 builds in headless Chromium (CTA-160): the
  * single-thread build reaches depth 20 in about 3.5 s, 24 in 14 s and 26 in
- * 34 s on a fast desktop, so **depth stops at 40** (well past any search a
- * reader would wait for) and **move time at 600 s** (the snap-to-mark
+ * 34 s on a fast desktop, so **depth stopped at 40** (well past any search a
+ * reader would wait for) — since CTA-185 the slider stops at 50
+ * ({@link DEPTH_SLIDER_MAX}) and a depth typed goes up to 99, every shipped
+ * build's own clamp (`DEFAULT_MAX_DEPTH`) and **move time at 600 s** (the snap-to-mark
  * slider's last time mark — 300 s from CTA-163, 600 s since CTA-185 — every
  * board's since CTA-181, the analysis boards' own 60 s ceiling gone with
  * their Engine tab). `Hash` took 1024 MB and
@@ -98,12 +100,19 @@ export const ENGINE_SETTING_BOUNDS = {
   skillLevel: { min: 0, max: 20 },
   // What the Stockfish 19 builds declare for `UCI_Elo`; the running build's own range replaces it.
   elo: { min: 1320, max: 3190 },
-  depth: { min: 1, max: 40 },
+  // Up to the engines' own clamp (`DEFAULT_MAX_DEPTH`, 99) since CTA-185 — typed; the slider stops at `DEPTH_SLIDER_MAX`.
+  depth: { min: 1, max: 99 },
   moveTimeMs: { min: 0, max: 600000 },
   multiPv: { min: 1, max: MAX_VARIATIONS_OFFERED },
   threads: { min: 1, max: 32 },
   hashMb: { min: 1, max: 1024 },
 } as const satisfies Record<Exclude<keyof EngineSettings, "playAs">, { min: number; max: number }>;
+
+/**
+ * **Where the depth slider stops** (CTA-185) — 50; past it a depth is typed,
+ * up to {@link ENGINE_SETTING_BOUNDS}' 99, and the slider shows it at its end.
+ */
+export const DEPTH_SLIDER_MAX = 50;
 
 /**
  * **`Threads` and `Hash` for an engine server's engine** (CTA-175) — a native

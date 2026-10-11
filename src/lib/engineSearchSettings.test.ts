@@ -6,51 +6,58 @@ import {
   ENGINE_SEARCH_SETTINGS_STORAGE_KEY,
   engineSearchSettingsFrom,
   heldToEngine,
-  readEngineSearchSettings,
-  resetEngineSearchSettings,
+  readSearchPreferences,
+  resetSearchPreferences,
   searchSettingLimitsOf,
   searchSettingsChanges,
-  storeEngineSearchSettings,
-  subscribeEngineSearchSettings,
+  storeSearchPreferences,
+  subscribeSearchPreferences,
   withRecordedSettings,
 } from "./engineSearchSettings";
 import { engineSettingsFrom } from "./engineSettings";
 
 /*
   The engine's search settings, one set for every board (CTA-181): the
-  preference, its normaliser, what the engine running takes, and a record's
-  settings against the ones in effect.
+  preference (the lines, Threads and Hash — the depth and move time are the
+  preset's since CTA-185, `engineSearchInEffect.test.ts`), the normaliser,
+  what the engine running takes, and a record's settings against the ones in
+  effect.
 */
 
 afterEach(() => {
   localStorage.clear();
-  resetEngineSearchSettings();
+  resetSearchPreferences();
 });
 
-describe("the preference", () => {
+describe("the preference — lines, Threads and Hash", () => {
   it("is the defaults until the reader sets one — the Analysis Board's own", () => {
-    expect(readEngineSearchSettings()).toEqual({ multiPv: 3, depth: 20, moveTimeMs: 0, threads: 1, hashMb: 16 });
-    expect(readEngineSearchSettings()).toBe(readEngineSearchSettings());
+    expect(readSearchPreferences()).toEqual({ multiPv: 3, threads: 1, hashMb: 16 });
+    expect(readSearchPreferences()).toBe(readSearchPreferences());
   });
 
   it("keeps a change in localStorage, beside the engine choice, and tells its subscribers", () => {
     const listener = vi.fn();
-    const unsubscribe = subscribeEngineSearchSettings(listener);
-    storeEngineSearchSettings({ depth: 24, moveTimeMs: 5000 });
+    const unsubscribe = subscribeSearchPreferences(listener);
+    storeSearchPreferences({ multiPv: 5, hashMb: 64 });
     expect(listener).toHaveBeenCalledTimes(1);
-    expect(readEngineSearchSettings()).toMatchObject({ depth: 24, moveTimeMs: 5000, multiPv: 3 });
-    expect(JSON.parse(localStorage.getItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY) ?? "{}")).toMatchObject({ depth: 24 });
+    expect(readSearchPreferences()).toEqual({ multiPv: 5, threads: 1, hashMb: 64 });
+    expect(JSON.parse(localStorage.getItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY) ?? "{}")).toEqual({ multiPv: 5, threads: 1, hashMb: 64 });
     // The same object until it changes again: what useSyncExternalStore needs.
-    expect(readEngineSearchSettings()).toBe(readEngineSearchSettings());
+    expect(readSearchPreferences()).toBe(readSearchPreferences());
     // A patch that changes nothing writes nothing.
-    storeEngineSearchSettings({ depth: 24 });
+    storeSearchPreferences({ multiPv: 5 });
     expect(listener).toHaveBeenCalledTimes(1);
     unsubscribe();
   });
 
+  it("reads a depth or move time an older build stored as nothing — the preset's now (CTA-185)", () => {
+    localStorage.setItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY, JSON.stringify({ depth: 24, moveTimeMs: 5000, multiPv: 4 }));
+    expect(readSearchPreferences()).toEqual({ multiPv: 4, threads: 1, hashMb: 16 });
+  });
+
   it("hears another tab's write", () => {
     const listener = vi.fn();
-    const unsubscribe = subscribeEngineSearchSettings(listener);
+    const unsubscribe = subscribeSearchPreferences(listener);
     window.dispatchEvent(new StorageEvent("storage", { key: ENGINE_SEARCH_SETTINGS_STORAGE_KEY }));
     window.dispatchEvent(new StorageEvent("storage", { key: "chessapp.theme" }));
     expect(listener).toHaveBeenCalledTimes(1);
@@ -59,15 +66,15 @@ describe("the preference", () => {
 
   it("reads unreadable text as the defaults", () => {
     localStorage.setItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY, "{not json");
-    expect(readEngineSearchSettings()).toEqual(DEFAULT_ENGINE_SEARCH_SETTINGS);
+    expect(readSearchPreferences()).toEqual({ multiPv: 3, threads: 1, hashMb: 16 });
   });
 });
 
 describe("engineSearchSettingsFrom — the normaliser", () => {
   it("fills what is missing or mistyped with the default and holds a number to its bounds", () => {
-    expect(engineSearchSettingsFrom({ depth: 99, multiPv: 0, moveTimeMs: 900000, infinite: "yes", threads: 2.6 })).toEqual({
+    expect(engineSearchSettingsFrom({ depth: 120, multiPv: 0, moveTimeMs: 900000, infinite: "yes", threads: 2.6 })).toEqual({
       ...DEFAULT_ENGINE_SEARCH_SETTINGS,
-      depth: 40,
+      depth: 99,
       multiPv: 1,
       moveTimeMs: 600000,
       threads: 3,
@@ -150,8 +157,9 @@ describe("searchSettingsChanges — a record's settings against the ones in effe
 
 describe("infinite analysis, gone (CTA-185)", () => {
   it("reads a stored infinite as nothing — every search stops at its depth or move time", () => {
-    localStorage.setItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY, JSON.stringify({ depth: 24, infinite: true }));
-    expect(readEngineSearchSettings()).toEqual({ ...DEFAULT_ENGINE_SEARCH_SETTINGS, depth: 24 });
+    localStorage.setItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY, JSON.stringify({ multiPv: 4, infinite: true }));
+    expect(readSearchPreferences()).toEqual({ multiPv: 4, threads: 1, hashMb: 16 });
+    expect(engineSearchSettingsFrom({ infinite: true })).toEqual(DEFAULT_ENGINE_SEARCH_SETTINGS);
   });
 
   it("never names an older record's infinite as a change", () => {

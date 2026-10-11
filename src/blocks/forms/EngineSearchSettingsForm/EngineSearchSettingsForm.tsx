@@ -8,14 +8,8 @@ import { useTranslation } from "react-i18next";
 
 import { SelectField, SliderField } from "../../../design-system/components/forms";
 import { ENGINE_SEARCH_SETTING_BOUNDS, type EngineSearchSettings } from "../../../lib/engineSearchSettings";
-import {
-  MOVE_TIME_INSTANT_MS,
-  moveTimeOfSliderValue,
-  MOVE_TIME_UNLIMITED_SLOT,
-  moveTimeSliderMarks,
-  moveTimeSliderValueOf,
-} from "../../../lib/engineSettings";
 import type { EngineEntry } from "../../../lib/engines";
+import { SearchLimitsFields } from "../SearchLimitsFields";
 
 export type EngineSearchSettingsFormProps = {
   settings: EngineSearchSettings;
@@ -49,13 +43,6 @@ export type EngineSearchSettingsFormProps = {
   testId: string;
 };
 
-/** The move time as the number box shows it — seconds; the instant reply 0, no limit empty. */
-const moveTimeSecondsOf = (moveTimeMs: number): number | undefined =>
-  moveTimeMs <= 0 ? undefined : moveTimeMs <= MOVE_TIME_INSTANT_MS ? 0 : moveTimeMs / 1000;
-
-/** Seconds typed as a `moveTimeMs` — 0 the instant reply, never "no limit" (the slider's ∞ alone is). */
-const moveTimeMsOfSeconds = (seconds: number): number => Math.max(Math.round(seconds * 1000), MOVE_TIME_INSTANT_MS);
-
 /** A select with its icon before it — the engine, the preset. */
 function WithIcon({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
@@ -76,8 +63,9 @@ const HASH_MARKS_MB = [128, 256, 512, 1024, 2048, 4096] as const;
  * uses: depth, move time (lichess's marked slider, 1–600 s and ∞ — Play
  * with Engine's, CTA-163, its marks CTA-185's), the lines, Threads and Hash,
  * under the engine running and the preset it runs — each a select, chosen
- * right here (CTA-185); the way to Settings → Engine is the screen's, beside
- * its title. One global set: what was each board's Engine tab until CTA-181.
+ * right here (CTA-185), the depth and move time under the preset, theirs
+ * (`SearchLimitsFields`); the way to Settings → Engine is the screen's,
+ * beside its title. One global set: what was each board's Engine tab until CTA-181.
  *
  * `Threads` and `Hash` stop at what the engine takes (`limits`) and a value
  * past it is shown held to it — a request, never cut back in the store
@@ -107,15 +95,6 @@ function EngineSearchSettingsForm({
   testId,
 }: EngineSearchSettingsFormProps) {
   const { t } = useTranslation();
-
-  /** The move-time slider's value as words — the screen reader's (CTA-163; the number box shows the number, CTA-185). */
-  const moveTimeWords = (moveTimeMs: number): string =>
-    moveTimeMs === 0
-      ? t("playEngine.settings.moveTimeNone")
-      : t("playEngine.settings.moveTimeValue", {
-          // The instant reply is "0s", not "0.0s" — the 0-seconds mark, not a rounding.
-          seconds: moveTimeMs <= MOVE_TIME_INSTANT_MS ? "0" : (moveTimeMs / 1000).toFixed(1),
-        });
 
   const threadsMax = Math.max(limits.threads, ENGINE_SEARCH_SETTING_BOUNDS.threads.min);
   const hashMax = Math.max(limits.hashMb, ENGINE_SEARCH_SETTING_BOUNDS.hashMb.min);
@@ -160,50 +139,10 @@ function EngineSearchSettingsForm({
             testId={`${testId}-preset`}
           />
         </WithIcon>
+        {/* Where its searches stop — the preset's own (CTA-185): another preset, or engine, brings its own. */}
+        <SearchLimitsFields depth={settings.depth} moveTimeMs={settings.moveTimeMs} onChange={onChange} testId={testId} />
       </Box>
       <Divider />
-      <SliderField
-        label={t("analysis.settings.depth")}
-        value={settings.depth}
-        min={ENGINE_SEARCH_SETTING_BOUNDS.depth.min}
-        max={ENGINE_SEARCH_SETTING_BOUNDS.depth.max}
-        onChange={(depth) => onChange({ depth })}
-        input={{
-          label: t("engineMenu.depthTyped"),
-          value: settings.depth,
-          onChange: (depth) => onChange({ depth }),
-          min: ENGINE_SEARCH_SETTING_BOUNDS.depth.min,
-          max: ENGINE_SEARCH_SETTING_BOUNDS.depth.max,
-        }}
-        testId={`${testId}-depth`}
-      />
-      {/*
-        Lichess's snap-to-mark slider (CTA-163): marks at 1, 5, 10, 30, 60,
-        300 and 600 seconds (CTA-185) and ∞ for "no limit"; its value is the mark's slot. A stored
-        value off the marks — one typed in its box (CTA-185) — is shown where
-        it falls between them. On ∞ the box is off: no limit has no number.
-      */}
-      <SliderField
-        label={t("analysis.settings.moveTime")}
-        value={moveTimeSliderValueOf(settings.moveTimeMs)}
-        min={0}
-        max={MOVE_TIME_UNLIMITED_SLOT}
-        marks={moveTimeSliderMarks()}
-        valueText={moveTimeWords(settings.moveTimeMs)}
-        onChange={(slot) => onChange({ moveTimeMs: moveTimeOfSliderValue(slot) })}
-        input={{
-          label: t("engineMenu.moveTimeTyped"),
-          value: moveTimeSecondsOf(settings.moveTimeMs),
-          onChange: (seconds) => onChange({ moveTimeMs: moveTimeMsOfSeconds(seconds) }),
-          min: ENGINE_SEARCH_SETTING_BOUNDS.moveTimeMs.min / 1000,
-          max: ENGINE_SEARCH_SETTING_BOUNDS.moveTimeMs.max / 1000,
-          step: 0.1,
-          unit: t("engineMenu.seconds"),
-          emptyText: "∞",
-          disabled: settings.moveTimeMs <= 0,
-        }}
-        testId={`${testId}-movetime`}
-      />
       <SliderField
         label={t("analysis.settings.multiPv")}
         value={settings.multiPv}

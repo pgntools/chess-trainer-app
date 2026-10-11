@@ -57,6 +57,9 @@ export const PRESETS: readonly EnginePresetChoice[] = [
   { id: "lite", name: "lite-play", deletable: true },
 ];
 
+/** The deep preset's search limits (CTA-185): depth 30, a minute a move. */
+export const DEEP_SEARCH = { depth: 30, moveTimeMs: 60000 } as const;
+
 /** The Default preset on the browser build — every option at its default. */
 export const BROWSER_DEFAULT_ROWS: readonly EnginePresetRow[] = enginePresetRows({}, STOCKFISH_19_LITE, { inBrowser: true });
 

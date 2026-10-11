@@ -9,7 +9,12 @@ import EnginePresetForm from "./EnginePresetForm";
 import { BROWSER_DEEP_ROWS, BROWSER_DEFAULT_ROWS, PRESETS, SERVER_DEEP_ROWS, SERVER_DEFAULT_ROWS } from "./fixtures";
 
 const mount = (
-  options: { rows?: readonly EnginePresetRow[] | undefined; selectedId?: string; groups?: Record<string, boolean> } = {},
+  options: {
+    rows?: readonly EnginePresetRow[] | undefined;
+    selectedId?: string;
+    groups?: Record<string, boolean>;
+    search?: { depth: number; moveTimeMs: number };
+  } = {},
 ) => {
   // `rows: undefined` is the reading state, not "the default rows".
   const rows = "rows" in options ? options.rows : BROWSER_DEFAULT_ROWS;
@@ -22,6 +27,7 @@ const mount = (
     onDelete: vi.fn(),
     onChange: vi.fn(),
     onGroupChange: vi.fn(),
+    onSearchChange: vi.fn(),
   };
   render(
     <EnginePresetForm
@@ -31,6 +37,7 @@ const mount = (
       rows={rows}
       testId="presets"
       groups={options.groups ?? {}}
+      search={options.search === undefined ? undefined : { ...options.search, onChange: props.onSearchChange }}
       {...props}
     />,
   );
@@ -195,6 +202,33 @@ describe("EnginePresetForm", () => {
     expect(dialog).toHaveTextContent("Engines that run it go back to Default.");
     await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
     expect(onDelete).toHaveBeenCalledWith("deep");
+  });
+
+  describe("where the preset's searches stop (CTA-185)", () => {
+    it("shows the selected preset's depth and move time above the options, and reports a change", async () => {
+      const user = userEvent.setup();
+      const { onSearchChange } = mount({ selectedId: "deep", search: { depth: 30, moveTimeMs: 60000 } });
+      const section = screen.getByRole("region", { name: "Search limits" });
+      expect(section).toHaveTextContent("Every board searches with deep-analysis to this depth or move time");
+      expect(within(section).getByRole("spinbutton", { name: "Search depth, typed" })).toHaveValue(30);
+      expect(within(section).getByRole("spinbutton", { name: "Move time in seconds, typed" })).toHaveValue(60);
+      within(section).getByRole("slider", { name: "Search depth" }).focus();
+      await user.keyboard("{ArrowRight}");
+      expect(onSearchChange).toHaveBeenLastCalledWith({ depth: 31 });
+      // Above the options, which stay as they were.
+      expect(screen.getByRole("tablist", { name: "Kinds of option" })).toBeInTheDocument();
+    });
+
+    it("is shown even while the engine has not said what it declares", () => {
+      mount({ rows: undefined, search: { depth: 20, moveTimeMs: 0 } });
+      expect(screen.getByRole("region", { name: "Search limits" })).toBeInTheDocument();
+      expect(screen.getByRole("spinbutton", { name: "Move time in seconds, typed" })).toBeDisabled();
+    });
+
+    it("is not there without `search` — the form as it was", () => {
+      mount();
+      expect(screen.queryByRole("region", { name: "Search limits" })).toBeNull();
+    });
   });
 
   it("says it is reading while the engine has not answered", () => {

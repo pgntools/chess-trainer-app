@@ -444,6 +444,25 @@ describe("Settings → Engine — the engine's options, in presets (CTA-179)", (
     });
   });
 
+  it("keeps the preset's search limits — the depth and move time every board searches to (CTA-185)", async () => {
+    const user = userEvent.setup();
+    renderEngine();
+    const limits = within(aside()).getByRole("region", { name: "Search limits" });
+    const depth = within(limits).getByRole("spinbutton", { name: "Search depth, typed" });
+    expect(depth).toHaveValue(20);
+    expect(within(limits).getByRole("spinbutton", { name: "Move time in seconds, typed" })).toBeDisabled();
+    await user.clear(depth);
+    await user.type(depth, "28");
+    within(limits).getByRole("slider", { name: "Move time" }).focus();
+    await user.keyboard("{ArrowLeft}");
+    expect(within(limits).getByRole("spinbutton", { name: "Move time in seconds, typed" })).toHaveValue(600);
+
+    await waitFor(async () => {
+      const { presets, selections } = await reloaded();
+      expect(selectedPresetOf(presets, selections, DEFAULT_ENGINE_ID).search).toEqual({ depth: 28, moveTimeMs: 600000 });
+    });
+  });
+
   it("creates a preset for the chosen engine alone — another engine keeps Default", async () => {
     vi.stubGlobal("crossOriginIsolated", true);
     renderEngine();

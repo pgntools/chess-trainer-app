@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -22,6 +22,7 @@ import {
   type PresetRowNote,
 } from "../../../lib/enginePresets";
 import type { UciOptionValue } from "../../../lib/engineTypes";
+import { SearchLimitsFields } from "../SearchLimitsFields";
 
 /** One preset of the library, as the picker lists it. */
 export type EnginePresetChoice = {
@@ -61,11 +62,18 @@ export type EnginePresetFormProps = {
   /** Turn a group on or off in the selected preset. */
   onGroupChange: (group: string, on: boolean) => void;
   /**
+   * **Where the selected preset's searches stop** (CTA-185) — its depth and
+   * move time, edited here as in the top bar's Engine menu
+   * (`SearchLimitsFields`), above the options. Absent, no such section.
+   */
+  search?: { depth: number; moveTimeMs: number; onChange: (patch: { depth?: number; moveTimeMs?: number }) => void };
+  /**
    * The prefix of its ids: the picker `<testId>-preset`, its actions
    * `-new`, `-rename`, `-duplicate`, `-delete`; the list `<testId>-options`,
    * each option `<testId>-option-<slug>` (its control `-input`, its note
    * `-note`, its reset `-reset`), a group `<testId>-group-<id>` (its switch
-   * `-switch`, its options `-options`); the name dialog `<testId>-name`, the delete
+   * `-switch`, its options `-options`); the search limits `<testId>-search`
+   * (`-search-depth`, `-search-movetime`); the name dialog `<testId>-name`, the delete
    * confirmation `<testId>-confirm-delete`.
    */
   testId: string;
@@ -220,7 +228,8 @@ function WordsInput({
  * **An engine's options, kept in named presets** (CTA-179) — Settings →
  * Engine's form. Above, the library: the preset this engine runs, picked
  * from every preset (each engine has its own), and New, Rename, Duplicate
- * and Delete (Default cannot be deleted). Below, **every option the engine
+ * and Delete (Default cannot be deleted). Then, given `search`, **where its
+ * searches stop** — the depth and move time (CTA-185). Below, **every option the engine
  * declares** in its UCI type — a spin a number in its range, a check a
  * switch, a combo a select, a string words — with its type, default and
  * range, and a reset where the preset sets it. The boards' own options
@@ -244,9 +253,11 @@ function EnginePresetForm({
   onChange,
   groups,
   onGroupChange,
+  search,
   testId,
 }: EnginePresetFormProps) {
   const { t } = useTranslation();
+  const searchTitleId = useId();
   const [nameDialog, setNameDialog] = useState<NameDialog>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   // The options' tab — the form's own: basic first, and only the tabs this engine has options on.
@@ -435,6 +446,24 @@ function EnginePresetForm({
       <Typography variant="body2" color="text.secondary">
         {t("enginePresets.intro", { engine: engineName })}
       </Typography>
+
+      {search !== undefined && (
+        <Box component="section" aria-labelledby={searchTitleId} data-testid={`${testId}-search`} sx={{ display: "grid", gap: 1 }}>
+          <Typography id={searchTitleId} variant="subtitle2" component="h3">
+            {t("enginePresets.search.title")}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t("enginePresets.search.help", { preset: selected.name })}
+          </Typography>
+          <SearchLimitsFields
+            key={selected.id}
+            depth={search.depth}
+            moveTimeMs={search.moveTimeMs}
+            onChange={search.onChange}
+            testId={`${testId}-search`}
+          />
+        </Box>
+      )}
 
       {rows === undefined ? (
         <StatusText tone="neutral" testId={`${testId}-reading`}>

@@ -77,7 +77,8 @@ both catalogs. Test ids: `settings-export-*`, `settings-import-*`.
   has no directory (a zip holds files), but it is in the manifest.
 - **The engine presets are JSON**, as stored — a preset's `id`, `name`,
   `values` (option name → a number, a boolean or words), `groups` (the option
-  groups it has on, `{ "syzygy": true }` — absent is off) and dates; a
+  groups it has on, `{ "syzygy": true }` — absent is off), `search` (its depth
+  and move time, CTA-185 — optional, absent the defaults: no format bump) and dates; a
   selection's engine id and preset id. Default is in it only once the reader
   edited it (it is never stored before). Not written when there are neither.
 - **The download** is one file, `chessapp-export-YYYY-MM-DD.zip`.

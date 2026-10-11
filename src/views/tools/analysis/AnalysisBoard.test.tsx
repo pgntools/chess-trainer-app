@@ -7,7 +7,7 @@ import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import { analysisHandOffState } from "../../../lib/analysisHandOff";
 import { analysisSettingsFrom, DEFAULT_ANALYSIS_SETTINGS } from "../../../lib/analysisSettings";
-import { readEngineSearchSettings, storeEngineSearchSettings } from "../../../lib/engineSearchSettings";
+import { loadEngineSearchSettings, readEngineSearchSettings, storeEngineSearchSettings } from "../../../lib/engineSearchInEffect";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../../lib/computerAnalysis";
 import { DEFAULT_ENGINE_ID } from "../../../lib/engines/ids";
 import type { Job } from "../../../lib/jobs";
@@ -175,6 +175,8 @@ beforeEach(async () => {
   localStorage.clear();
   book.entries = {};
   FakeEngine.reset();
+  // A record opened is compared with the settings in effect — its route reads the presets first (CTA-185), as the shell has by then.
+  await loadEngineSearchSettings();
   await i18n.changeLanguage("en");
 });
 

@@ -1,12 +1,7 @@
 import { useSyncExternalStore } from "react";
 
-import {
-  DEFAULT_ENGINE_SEARCH_SETTINGS,
-  readEngineSearchSettings,
-  storeEngineSearchSettings,
-  subscribeEngineSearchSettings,
-  type EngineSearchSettings,
-} from "../../lib/engineSearchSettings";
+import { readEngineSearchSettings, storeEngineSearchSettings, subscribeEngineSearchSettings } from "../../lib/engineSearchInEffect";
+import { DEFAULT_ENGINE_SEARCH_SETTINGS, type EngineSearchSettings } from "../../lib/engineSearchSettings";
 
 export type EngineSearchSettingsChoice = {
   /** The settings every board searches with — the reader's, or the defaults. */
@@ -17,10 +12,11 @@ export type EngineSearchSettingsChoice = {
 
 /**
  * **The engine's search settings, live** (CTA-181) — lines, depth, move time,
- * infinite analysis, Threads and Hash: one global set, which every board
- * reads and the top bar's Engine menu sets (`lib/engineSearchSettings.ts`,
- * the engine choice's pattern, `useEngineChoice`). The server snapshot (the
- * pre-render) is the defaults — nothing there has a preference.
+ * Threads and Hash, which every board reads and the top bar's Engine menu
+ * sets: the lines, Threads and Hash a preference, the depth and move time the
+ * chosen engine's selected preset's (CTA-185, `lib/engineSearchInEffect.ts`).
+ * The server snapshot (the pre-render) is the defaults — nothing there has a
+ * preference or a preset.
  */
 export const useEngineSearchSettings = (): EngineSearchSettingsChoice => {
   const settings = useSyncExternalStore(
