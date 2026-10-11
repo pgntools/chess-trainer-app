@@ -44,11 +44,19 @@ const { entries } = readArticleFiles(files);
  * a heading, an import or export, a component, a fence or a list), cut
  * before its first inline markup, quote or non-ASCII letter — compiled MDX
  * splits a line at its markup, and a minifier escapes the rest.
+ *
+ * A fenced block's lines are quoted, not the article's own words — a guide
+ * quoting another page (the legal pages' "Last updated" line) would find
+ * that page — so they count only with `quoted`: fine for finding the body's
+ * own chunk (a Hebrew body's only ASCII may be a command), wrong for asking
+ * that nothing of a draft ships anywhere.
  */
-const phraseOf = (file) => {
+const phraseOf = (file, { quoted = false } = {}) => {
   const { body } = splitFrontmatter(textOf.get(file) ?? "");
+  let fenced = false;
   for (const line of body.split("\n").map((text) => text.trim())) {
-    if (line === "" || /^(#|import |export |<|\{|```|~~~|[-*>|]|\d+\.)/.test(line)) continue;
+    if (/^(```|~~~)/.test(line)) fenced = !fenced;
+    if ((fenced && !quoted) || line === "" || /^(#|import |export |<|\{|```|~~~|[-*>|]|\d+\.)/.test(line)) continue;
     const phrase = line.split(/[`*_[\]<>{}"\\]|[^\x20-\x7e]/)[0].trim();
     if (phrase.length >= 16) return phrase.slice(0, 48);
   }
@@ -101,7 +109,7 @@ if (LEGAL_PAGES_SHOWN) {
 const published = entries.filter((entry) => !entry.draft && entry.hasBody && entry.kind === "article" && !unshipped.includes(entry));
 let measured = 0;
 for (const article of published) {
-  const phrase = phraseOf(article.file);
+  const phrase = phraseOf(article.file, { quoted: true });
   if (phrase === undefined) continue;
   measured += 1;
   const found = where(phrase);
