@@ -1,6 +1,5 @@
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
-import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import MemoryRoundedIcon from "@mui/icons-material/MemoryRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
@@ -8,7 +7,6 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SelectField, SliderField, SwitchField } from "../../../design-system/components/forms";
-import { linkProps, type LinkTarget } from "../../../design-system/components/link";
 import { ENGINE_SEARCH_SETTING_BOUNDS, type EngineSearchSettings } from "../../../lib/engineSearchSettings";
 import {
   MOVE_TIME_INSTANT_MS,
@@ -47,9 +45,7 @@ export type EngineSearchSettingsFormProps = {
   presetId: string;
   /** The reader chose another preset for the running engine. */
   onPresetChange: (presetId: string) => void;
-  /** Settings → Engine, where the engines and their presets are set up. */
-  settingsLink: LinkTarget;
-  /** The form's root; each control `<testId>-<setting>` (`-infinite`, `-depth`, `-movetime`, `-multipv`, `-threads`, `-hash`; the depth's and move time's number boxes `-depth-number`, `-movetime-number`), the engine select `<testId>-engine`, the preset select `<testId>-preset`, the link `<testId>-settings-link`. */
+  /** The form's root; each control `<testId>-<setting>` (`-infinite`, `-depth`, `-movetime`, `-multipv`, `-threads`, `-hash`; the depth's and move time's number boxes `-depth-number`, `-movetime-number`), the engine select `<testId>-engine`, the preset select `<testId>-preset`. */
   testId: string;
 };
 
@@ -80,8 +76,8 @@ const HASH_MARKS_MB = [128, 256, 512, 1024, 2048, 4096] as const;
  * uses: infinite analysis, depth, move time (lichess's marked slider,
  * 0–300 s and ∞ — Play with Engine's, CTA-163), the lines, Threads and Hash,
  * under the engine running and the preset it runs — each a select, chosen
- * right here (CTA-185) — with a link to Settings → Engine. One global set:
- * what was each board's Engine tab until CTA-181.
+ * right here (CTA-185); the way to Settings → Engine is the screen's, beside
+ * its title. One global set: what was each board's Engine tab until CTA-181.
  *
  * `Threads` and `Hash` stop at what the engine takes (`limits`) and a value
  * past it is shown held to it — a request, never cut back in the store
@@ -106,7 +102,6 @@ function EngineSearchSettingsForm({
   presets,
   presetId,
   onPresetChange,
-  settingsLink,
   testId,
 }: EngineSearchSettingsFormProps) {
   const { t } = useTranslation();
@@ -163,9 +158,6 @@ function EngineSearchSettingsForm({
             testId={`${testId}-preset`}
           />
         </WithIcon>
-        <Link variant="body2" sx={{ justifySelf: "start" }} data-testid={`${testId}-settings-link`} {...linkProps(settingsLink)}>
-          {t("engineMenu.settingsLink")}
-        </Link>
       </Box>
       <Divider />
       <SwitchField

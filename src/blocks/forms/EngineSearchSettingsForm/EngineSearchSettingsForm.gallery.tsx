@@ -17,7 +17,6 @@ import {
   PRESETS,
   SERVER_ENGINES,
   SETTINGS,
-  SETTINGS_LINK,
   SINGLE_THREAD_LIMITS,
   TUNED,
 } from "./fixtures";
@@ -44,7 +43,6 @@ const demo = (
           presets={PRESETS}
           presetId={state.presetId}
           onPresetChange={(id) => set((before) => ({ ...before, presetId: id }))}
-          settingsLink={SETTINGS_LINK}
           testId="gallery-engine-menu"
         />
       </Box>

@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Link from "@mui/material/Link";
 import Popover from "@mui/material/Popover";
 import Typography from "@mui/material/Typography";
 import { keyframes, useTheme } from "@mui/material/styles";
@@ -37,7 +38,7 @@ const breathe = keyframes`
  * (`useEngineChoice`, over `describeEngines()` — the page's builds and, while
  * it answers, the engine server's), the preset selected for that engine as
  * Settings → Engine's presets section selects it (`selectEnginePreset`) —
- * and a link to Settings → Engine. Until CTA-181 each board had the search
+ * and a "Settings" link to Settings → Engine at the title row's other end. Until CTA-181 each board had the search
  * settings on its own Engine tab.
  *
  * **The button is the board on screen's engine** (`useBoardEngineState`,
@@ -131,10 +132,16 @@ export function EngineMenu({ compact = false }: { compact?: boolean }) {
         dir={theme.direction}
         slotProps={{ paper: { role: "dialog", "aria-labelledby": titleId, "data-testid": "header-engine-menu" } as object }}
       >
-        <Box sx={{ p: 2, width: 320, maxWidth: "calc(100vw - 32px)", display: "grid", gap: 1.5 }}>
-          <Typography id={titleId} variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>
-            {t("engineMenu.title")}
-          </Typography>
+        <Box sx={{ p: 2, width: 640, maxWidth: "calc(100vw - 32px)", display: "grid", gap: 1.5 }}>
+          {/* The title, and at the row's other end the way to Settings → Engine (CTA-185). */}
+          <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 2 }}>
+            <Typography id={titleId} variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>
+              {t("engineMenu.title")}
+            </Typography>
+            <Link component={RouterLink} to="/settings/engine" variant="body2" data-testid="engine-menu-settings-link">
+              {t("engineMenu.settingsLink")}
+            </Link>
+          </Box>
           <EngineSearchSettingsForm
             settings={settings}
             onChange={setSettings}
@@ -145,7 +152,6 @@ export function EngineMenu({ compact = false }: { compact?: boolean }) {
             presets={preset.presets}
             presetId={preset.id}
             onPresetChange={(presetId) => void selectEnginePreset(descriptor.id, presetId)}
-            settingsLink={{ component: RouterLink, to: "/settings/engine" }}
             testId="engine-menu"
           />
         </Box>

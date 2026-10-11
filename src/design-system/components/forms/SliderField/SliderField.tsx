@@ -133,6 +133,12 @@ function SliderField({ label, value, onChange, min, max, step = 1, valueLabel, m
   );
 }
 
+/**
+ * The number box's one width, unit or none (CTA-185): five digits ("120.5"),
+ * a unit and the browser's spin buttons — so boxes in a column line up.
+ */
+const NUMBER_BOX_WIDTH_PX = 112;
+
 /** A typed number held to the box's bounds — whole where it steps by 1 — or `undefined` where it is no number. */
 const heldTyped = (text: string, { min, max, step = 1 }: SliderFieldInput): number | undefined => {
   if (text.trim() === "") return undefined;
@@ -163,7 +169,7 @@ function SliderNumberBox({ input, disabled, testId }: { input: SliderFieldInput;
       onKeyDown={(event) => {
         if (event.key === "Enter") settle();
       }}
-      sx={{ width: input.unit === undefined ? 72 : 88, flexShrink: 0 }}
+      sx={{ width: NUMBER_BOX_WIDTH_PX, flexShrink: 0 }}
       slotProps={{
         input: {
           endAdornment:

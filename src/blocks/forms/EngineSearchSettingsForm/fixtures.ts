@@ -71,6 +71,3 @@ export const PRESETS: readonly { id: string; name: string }[] = [
   { id: "p-deep", name: "deep-search" },
   { id: "p-he", name: "חיפוש מהיר" },
 ];
-
-/** Settings → Engine, as a plain link. */
-export const SETTINGS_LINK = { href: "/settings/engine" } as const;

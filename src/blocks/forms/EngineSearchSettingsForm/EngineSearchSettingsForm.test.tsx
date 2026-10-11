@@ -16,7 +16,6 @@ import {
   PRESETS,
   SERVER_ENGINES,
   SETTINGS,
-  SETTINGS_LINK,
   SINGLE_THREAD_LIMITS,
 } from "./fixtures";
 
@@ -39,7 +38,6 @@ const mount = (
       presets={PRESETS}
       presetId={presetId}
       onPresetChange={onPresetChange}
-      settingsLink={SETTINGS_LINK}
       testId="engine-menu"
     />,
   );
@@ -51,7 +49,7 @@ beforeEach(async () => {
 });
 
 describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () => {
-  it("offers every search setting, each named, under the engine, its preset and the way to Settings", () => {
+  it("offers every search setting, each named, under the engine and its preset", () => {
     mount();
     expect(screen.getByRole("switch", { name: "Infinite analysis" })).not.toBeChecked();
     for (const name of ["Search depth", "Move time", "Variations to show", "Threads", "Hash (MB)"]) {
@@ -59,7 +57,6 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
     }
     expect(screen.getByRole("combobox", { name: "Engine" })).toHaveTextContent("Stockfish 19 Lite (19)");
     expect(screen.getByRole("combobox", { name: "Preset" })).toHaveTextContent("Default");
-    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings/engine");
   });
 
   describe("the engine and its preset — chosen right here (CTA-185)", () => {
@@ -242,7 +239,6 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
   it("passes axe in Hebrew, its move-time box off", async () => {
     await i18n.changeLanguage("he");
     mount();
-    expect(screen.getByRole("link", { name: "הגדרות" })).toBeInTheDocument();
     await expectNoAxeViolations();
   });
 });
