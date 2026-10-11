@@ -151,7 +151,7 @@ curl -s https://chessapp.dev/privacy/ | grep -c "%OPERATOR_"   # 0
 The build checks hold `dist/` to the build's own decision (`legalPagesShown`, exported by the server entry):
 
 - `yarn check:pages` — the pages are there, or no page and no link to one
-- `yarn check:blog-build` — with the pages, no placeholder left anywhere; without them, the Blog's manifest lists no file of `app-pages/` and none of their text ships
+- `yarn check:blog-build` — with the pages, no placeholder left in theirs — each page's chunk and its pre-rendered page in every language (an article quoting a placeholder, as this one does, is fine); without them, the Blog's manifest lists no file of `app-pages/` and none of their text ships
 - The browser accessibility pass (`yarn test:a11y`) visits the two pages only when the build wrote them (`LEGAL_PAGES_BUILT`, `e2e/a11y/routes.ts`)
 
 Under Vitest the build is configured with fixed values (`src/test/siteOperator.ts`), whatever the machine has — so the tests are the same everywhere, with or without your `.env.local`; `src/views/legal/legalPagesHidden.test.tsx` mocks `legalPagesShown.ts` for a build without them.

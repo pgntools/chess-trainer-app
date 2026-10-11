@@ -265,8 +265,10 @@ of the environment and of `.env` / `.env.local` (`loadSiteEnv`), and asks
 
 `yarn check:pages` and `yarn check:blog-build` hold `dist/` to what the
 build decided (`legalPagesShown`, exported by the server entry): the pages
-there and no placeholder left anywhere, or no page, no link to one and no
-text of theirs. The browser pass visits the two pages only when the build
+there and no placeholder left in theirs — each page's chunk and its
+pre-rendered page in every language; an article quoting a placeholder, as
+the guide to these pages does, is no failure — or no page, no link to one
+and no text of theirs. The browser pass visits the two pages only when the build
 wrote them (`LEGAL_PAGES_BUILT`, `e2e/a11y/routes.ts`). Under Vitest the
 build is configured with fixed values (`src/test/siteOperator.ts`), whatever
 the machine has; `src/views/legal/legalPagesHidden.test.tsx` mocks

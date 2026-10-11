@@ -16,8 +16,9 @@
  * The in-app pages (`app-pages/` — the Privacy Policy, the Cookies Notice)
  * are published only in a build that has them (CTA-182 — `legalPagesShown`,
  * read from the build's own server entry): then each is in its chunk with
- * its placeholders filled; without them none of their text ships, as a
- * draft's does not.
+ * its placeholders filled — in that chunk and its pre-rendered pages; an
+ * article quoting a placeholder is no failure —; without them none of their
+ * text ships, as a draft's does not.
  *
  * A phrase is the first line of a body's prose, cut where the compiled
  * output would split or escape it. Node runs the shared frontmatter reader
@@ -29,6 +30,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { readArticlesDir } from "../plugins/blogArticles.ts";
 import { isAppPagePath, readArticleFiles, splitFrontmatter } from "../src/lib/articleFrontmatter.ts";
+import { supportedLanguages } from "../src/languages.ts";
 import { OPERATOR_PLACEHOLDERS } from "../src/lib/siteOperator.ts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -98,10 +100,24 @@ for (const page of unshipped) {
   if (phrase === undefined) continue;
   for (const name of where(phrase)) problems.push(`an in-app page is in a build without its site operator — ${name}: "${phrase}" (articles/${page.file}.mdx)`);
 }
-// …and in a build with them, no placeholder is left anywhere.
+// …and in a build with them, none of their placeholders is left: in each
+// page's chunk, nor in its pre-rendered page in any language. Theirs only — an
+// article may quote a placeholder, as the guide to the legal pages does.
 if (LEGAL_PAGES_SHOWN) {
-  for (const placeholder of Object.keys(OPERATOR_PLACEHOLDERS)) {
-    for (const name of where(`%${placeholder}%`)) problems.push(`${name}: %${placeholder}% is left unfilled`);
+  const appPages = entries.filter((entry) => isAppPagePath(entry.path) && entry.hasBody && entry.kind === "article");
+  const languagePrefix = `(?:(?:${supportedLanguages.join("|")})/)?`;
+  const isAppPageFile = (name) =>
+    appPages.some(
+      (page) =>
+        (name.startsWith(`assets/${page.file.split("/").at(-1)}-`) && name.endsWith(".js")) ||
+        new RegExp(`^${languagePrefix}${page.path.split("/").at(-1)}/index\\.html$`).test(name),
+    );
+  const appPageFiles = built.filter((file) => isAppPageFile(file.name));
+  if (appPageFiles.length === 0) problems.push("a build with the legal pages has no file of theirs — no chunk, no pre-rendered page");
+  for (const file of appPageFiles) {
+    for (const placeholder of Object.keys(OPERATOR_PLACEHOLDERS)) {
+      if (file.text.includes(`%${placeholder}%`)) problems.push(`${file.name}: %${placeholder}% is left unfilled`);
+    }
   }
 }
 

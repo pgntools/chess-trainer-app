@@ -165,7 +165,7 @@ curl -s https://chessapp.dev/privacy/ | grep -c "%OPERATOR_"   # 0
 בדיקות הבנייה מחזיקות את `dist/` להחלטה של הבנייה עצמה (`legalPagesShown`, מיוצא על ידי הכניסה לשרת):
 
 - `yarn check:pages` — הדפים שם, או שאין דף ואין קישור אליו
-- `yarn check:blog-build` — עם הדפים, אין שום מציין מקום שנשאר בשום מקום; בלעדיהם, המניפסט של הבלוג לא רושם שום קובץ של `app-pages/` ואף טקסט שלהם לא נשלח
+- `yarn check:blog-build` — עם הדפים, אין מציין מקום שנשאר בשלהם — ב-chunk של כל דף ובעמוד הנגזר שלו בכל שפה (מאמר שמצטט מציין מקום, כמו זה, הוא בסדר); בלעדיהם, המניפסט של הבלוג לא רושם שום קובץ של `app-pages/` ואף טקסט שלהם לא נשלח
 - מעבר הנגישות של הדפדפן (`yarn test:a11y`) מבקר בשני הדפים רק כשהבנייה כתבה אותם (`LEGAL_PAGES_BUILT`, `e2e/a11y/routes.ts`)
 
 תחת Vitest הבנייה מוגדרת עם ערכים קבועים (`src/test/siteOperator.ts`), לא משנה מה יש במכונה — כך שהבדיקות זהות בכל מקום, עם או בלי ה-`.env.local` שלכם; `src/views/legal/legalPagesHidden.test.tsx` מדמה (mocks) את `legalPagesShown.ts` לבנייה בלעדיהם.
