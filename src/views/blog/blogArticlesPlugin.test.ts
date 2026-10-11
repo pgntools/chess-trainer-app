@@ -24,8 +24,12 @@ const write = (files: Record<string, string>) => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 /** The plugin's answer for the manifest, under `command`. */
-const manifestCode = (command: "build" | "serve", context = { warn: vi.fn(), error: vi.fn((message: string) => { throw new Error(message); }) }) => {
-  const plugin = blogArticles({ dir: join(dir, "articles") });
+const manifestCode = (
+  command: "build" | "serve",
+  context = { warn: vi.fn(), error: vi.fn((message: string) => { throw new Error(message); }) },
+  appPages?: boolean,
+) => {
+  const plugin = blogArticles({ dir: join(dir, "articles"), appPages });
   (plugin.configResolved as (config: unknown) => void)({ root: dir, command });
   const id = (plugin.resolveId as (id: string) => string | undefined)("virtual:blog-articles");
   expect(id).toBe("\0virtual:blog-articles");
@@ -59,6 +63,21 @@ describe("the Blog's manifest plugin", () => {
     expect(code).not.toContain("soon");
     expect(code).not.toContain("Coming soon");
     expect(code).not.toContain("בקרוב");
+  });
+
+  it("lists the in-app pages only in a build that has them — its site operator configured (CTA-182)", () => {
+    write({
+      ...ARTICLES,
+      "articles/app-pages/index.mdx": "---\ntitle: In-app pages\n---\n",
+      "articles/app-pages/privacy.mdx": "---\ntitle: Privacy Policy\nsummary: S\n---\n\n## Data controller\n\n%OPERATOR_NAME%\n",
+    });
+    expect(manifestCode("build")).toContain('import("/articles/app-pages/privacy.mdx")');
+    for (const command of ["build", "serve"] as const) {
+      const code = manifestCode(command, undefined, false);
+      expect(code, command).not.toContain("app-pages");
+      expect(code, command).not.toContain("Privacy Policy");
+      expect(code, command).toContain("Out now");
+    }
   });
 
   it("fails the build naming the file, and warns of a folder with no index", () => {

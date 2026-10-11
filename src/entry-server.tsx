@@ -48,6 +48,8 @@ export { documentHeadHtml, pageUrlOf } from "./views/main/documentHead";
 export { imageInfoOf, shareImageOf, shareImageProblems } from "./lib/shareImage";
 export { localizedAppPath } from "./lib/languagePath";
 export { supportedLanguages, defaultLanguage } from "./languages";
+/** Whether this build has the legal pages (CTA-182) — what `yarn check:pages` and `check:blog-build` hold `dist/` to. */
+export { LEGAL_PAGES_SHOWN as legalPagesShown } from "./views/legal/legalPagesShown";
 
 /* --- which pages ------------------------------------------------------ */
 

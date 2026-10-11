@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import type { Locator, Page } from "@playwright/test";
 
 import { blogArticleRoutes } from "./blogRoutes";
@@ -94,6 +96,17 @@ export const BLOG_READY: Readonly<Record<string, string>> = {
   "writing-an-article/demo-tables/team-from-a-collection": "tournament-collection-worldrapidteam2026-team",
 };
 
+/** The legal pages' routes — in `src/routes.tsx` behind its site operator (CTA-182). */
+export const LEGAL_PATTERNS: readonly string[] = ["/privacy", "/cookies"];
+
+/**
+ * **Whether the build under test has the legal pages** (CTA-182): only a
+ * build whose site operator is configured does (`SITE_*`, `src/lib/siteOperator.ts`)
+ * — read from what it wrote, which `yarn check:pages` holds to the build's
+ * own decision. Without them the pass neither visits nor misses them.
+ */
+export const LEGAL_PAGES_BUILT = existsSync(resolve("dist/privacy/index.html"));
+
 export const ROUTES: readonly PageRoute[] = [
   // The front page (CTA-126) draws boards: Library games, repertoires, a collection's card.
   { id: "home", pattern: "/", path: "", board: true, ready: byTestId("home-game-library-fischer-52") },
@@ -171,11 +184,16 @@ export const ROUTES: readonly PageRoute[] = [
   // The Blog (CTA-126): its index and a folder; its articles follow, read from their files (CTA-135).
   { id: "blog", pattern: "/blog/*", path: "blog" },
   { id: "blog-folder", pattern: "/blog/*", path: "blog/writing-an-article/components" },
-  // The legal pages (CTA-159): the Privacy Policy and the Cookies Notice, MDX documents reached from the footer.
   // The Jobs screen (CTA-173): no job in the seed (a job is not in the export zip), so its empty list.
   { id: "jobs", pattern: "/jobs", path: "jobs" },
-  { id: "privacy", pattern: "/privacy", path: "privacy" },
-  { id: "cookies", pattern: "/cookies", path: "cookies" },
+  // The legal pages (CTA-159): the Privacy Policy and the Cookies Notice, MDX documents reached from the footer —
+  // in a build that has them (CTA-182).
+  ...(LEGAL_PAGES_BUILT
+    ? [
+        { id: "privacy", pattern: "/privacy", path: "privacy" },
+        { id: "cookies", pattern: "/cookies", path: "cookies" },
+      ]
+    : []),
   { id: "settings-export", pattern: "/settings/:tab", path: "settings/export" },
   { id: "settings-import", pattern: "/settings/:tab", path: "settings/import" },
   { id: "settings-storage", pattern: "/settings/:tab", path: "settings/storage" },

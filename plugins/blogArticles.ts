@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import type { Plugin } from "vite";
 
-import { readArticleFiles, type ArticleSourceFile } from "../src/lib/articleFrontmatter.ts";
+import { isAppPagePath, readArticleFiles, type ArticleSourceFile } from "../src/lib/articleFrontmatter.ts";
 
 /**
  * **The Blog's manifest** (CTA-135) — a Vite plugin that reads every file
@@ -37,6 +37,10 @@ import { readArticleFiles, type ArticleSourceFile } from "../src/lib/articleFron
  *   it is the error overlay; a folder without an `index.mdx` is a warning.
  * - **In `yarn dev`** adding, removing or editing an article reloads the
  *   manifest.
+ * - **The in-app pages** (`app-pages/` — the Privacy Policy, the Cookies
+ *   Notice) are listed only with `appPages` (CTA-182): a build whose site
+ *   operator is not configured has no legal pages, so no entry and no chunk
+ *   (`src/lib/siteOperator.ts`).
  */
 
 const MODULE_ID = "virtual:blog-articles";
@@ -48,7 +52,7 @@ export const readArticlesDir = (dir: string): ArticleSourceFile[] =>
     .filter((name) => name.endsWith(".mdx"))
     .map((name) => ({ name: name.split(sep).join("/"), text: readFileSync(join(dir, name), "utf8") }));
 
-export function blogArticles({ dir }: { dir: string }): Plugin {
+export function blogArticles({ dir, appPages = true }: { dir: string; appPages?: boolean }): Plugin {
   const articlesDir = resolve(dir);
   let root = process.cwd();
   let includeDrafts = true;
@@ -69,7 +73,7 @@ export function blogArticles({ dir }: { dir: string }): Plugin {
       if (errors.length > 0) this.error(`The Blog's articles do not pass (src/views/blog/articles/):\n${errors.join("\n")}`);
 
       const lines = entries
-        .filter((entry) => includeDrafts || !entry.draft)
+        .filter((entry) => (includeDrafts || !entry.draft) && (appPages || !isAppPagePath(entry.path)))
         .map(({ file, path, language, kind, meta, hasBody, draft }) => {
           const source = `/${relative(root, join(articlesDir, `${file}.mdx`)).split(sep).join("/")}`;
           const load = hasBody ? `() => import(${JSON.stringify(source)})` : "undefined";

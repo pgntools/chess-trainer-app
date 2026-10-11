@@ -109,7 +109,16 @@ jobs:
 
       # The production build the pass runs against; `vite preview` serves it
       # under the deployed base path (`playwright.config.ts`'s webServer).
+      # With the site's operator, as the deploys build it, so the legal pages
+      # are in it and visited (CTA-182); where the variables are not set — a
+      # fork — they are not, and the pass leaves them out (`e2e/a11y/routes.ts`).
       - run: yarn build
+        env:
+          SITE_OPERATOR_NAME: ${{ vars.SITE_OPERATOR_NAME }}
+          SITE_OPERATOR_NAME_HE: ${{ vars.SITE_OPERATOR_NAME_HE }}
+          SITE_OPERATOR_ADDRESS: ${{ vars.SITE_OPERATOR_ADDRESS }}
+          SITE_OPERATOR_ADDRESS_HE: ${{ vars.SITE_OPERATOR_ADDRESS_HE }}
+          SITE_PRIVACY_EMAIL: ${{ vars.SITE_PRIVACY_EMAIL }}
 
       # Every shard seeds the app itself (the `setup` project runs in each).
       - name: Run the accessibility pass (${{ env.A11Y_MATRIX }} matrix, shard ${{ matrix.shard }}/${{ needs.plan.outputs.total }})

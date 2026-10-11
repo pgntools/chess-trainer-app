@@ -97,7 +97,9 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       # `tsc -b` over the app *and* the tests, then the production build and
-      # its pre-render — every page a static index.html (CTA-136).
+      # its pre-render — every page a static index.html (CTA-136). With no
+      # SITE_* variables, so no legal pages: a fork's build, which the checks
+      # below hold to that (CTA-182); a11y.yml and the deploys build with them.
       - run: yarn build
       # The Blog as built (CTA-135): nothing of a draft (the fixture draft
       # keeps that honest), no article body in the entry chunk, each in its own.

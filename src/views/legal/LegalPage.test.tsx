@@ -39,6 +39,15 @@ describe("a legal page (CTA-159)", () => {
     expect(screen.getByText(/chessapp\.theme/)).toBeInTheDocument();
   });
 
+  it("names the site's operator as the build has them — the Vitest build's (CTA-182)", async () => {
+    renderPage("privacy");
+    const controller = (await screen.findByRole("heading", { level: 2, name: "Data controller" })).nextElementSibling;
+    expect(controller).toHaveTextContent(
+      "The App is operated by Ada Example, 1 Example Street, Exampletown, who is the data controller for the processing this policy describes. For any privacy question or request, write to privacy@example.org.",
+    );
+    expect(document.body).not.toHaveTextContent(/%[A-Z_]+%/);
+  });
+
   it("is the Cookies Notice, saying it sets none", async () => {
     renderPage("cookies");
     expect(screen.getByRole("heading", { level: 1, name: "Cookies Notice" })).toBeInTheDocument();
@@ -50,8 +59,11 @@ describe("a legal page (CTA-159)", () => {
     await i18n.changeLanguage("he");
     const { container } = renderPage("privacy");
     expect(screen.getByRole("heading", { level: 1, name: "מדיניות פרטיות" })).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { level: 2, name: "בעל השליטה במידע" })).toBeInTheDocument();
+    const controller = await screen.findByRole("heading", { level: 2, name: "בעל השליטה במידע" });
     expect(container.querySelector('[lang="en"]')).toBeNull();
+    // The operator's Hebrew name and address, the one email address (CTA-182).
+    expect(controller.nextElementSibling).toHaveTextContent("עדה דוגמה, רחוב הדוגמה 1, עיר הדוגמה,");
+    expect(controller.nextElementSibling).toHaveTextContent("privacy@example.org");
   });
 
   it.each(LEGAL_PAGES)("passes axe — the %s page, in English", async (page) => {

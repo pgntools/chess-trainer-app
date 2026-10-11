@@ -13,19 +13,27 @@
  * 3. **One chunk per article** — every published article's phrase is in
  *    the chunk named after its file (`assets/<name>-<hash>.js`).
  *
+ * The in-app pages (`app-pages/` — the Privacy Policy, the Cookies Notice)
+ * are published only in a build that has them (CTA-182 — `legalPagesShown`,
+ * read from the build's own server entry): then each is in its chunk with
+ * its placeholders filled; without them none of their text ships, as a
+ * draft's does not.
+ *
  * A phrase is the first line of a body's prose, cut where the compiled
  * output would split or escape it. Node runs the shared frontmatter reader
  * as it is (type stripping), so this reads the files exactly as the build does.
  */
-import { globSync, readFileSync } from "node:fs";
+import { existsSync, globSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { readArticlesDir } from "../plugins/blogArticles.ts";
-import { readArticleFiles, splitFrontmatter } from "../src/lib/articleFrontmatter.ts";
+import { isAppPagePath, readArticleFiles, splitFrontmatter } from "../src/lib/articleFrontmatter.ts";
+import { OPERATOR_PLACEHOLDERS } from "../src/lib/siteOperator.ts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DIST = join(ROOT, "dist");
+const SERVER_ENTRY = join(ROOT, "dist-ssr/entry-server.js");
 
 const files = readArticlesDir(join(ROOT, "src/views/blog/articles"));
 const textOf = new Map(files.map((file) => [file.name.replace(/\.mdx$/, ""), file.text]));
@@ -58,7 +66,8 @@ const built = globSync("**/*", { cwd: DIST, withFileTypes: true })
     const path = join(entry.parentPath, entry.name);
     return { name: path.slice(DIST.length + 1), text: readFileSync(path, "utf8") };
   });
-if (built.length === 0) fail("dist/ is empty — run yarn build first");
+if (built.length === 0 || !existsSync(SERVER_ENTRY)) fail("dist/ or dist-ssr/ is empty — run yarn build first");
+const { legalPagesShown: LEGAL_PAGES_SHOWN } = await import(pathToFileURL(SERVER_ENTRY).href);
 const entryName = /<script type="module"[^>]*src="[^"]*?\/(assets\/[^"]+\.js)"/.exec(built.find((file) => file.name === "index.html")?.text ?? "")?.[1];
 if (entryName === undefined) fail("dist/index.html names no entry script");
 const where = (needle) => built.filter((file) => file.text.includes(needle)).map((file) => file.name);
@@ -74,8 +83,22 @@ for (const draft of drafts) {
   }
 }
 
+// The in-app pages, in a build without them: nothing of theirs ships either.
+const unshipped = LEGAL_PAGES_SHOWN ? [] : entries.filter((entry) => isAppPagePath(entry.path) && entry.hasBody && entry.kind === "article");
+for (const page of unshipped) {
+  const phrase = phraseOf(page.file);
+  if (phrase === undefined) continue;
+  for (const name of where(phrase)) problems.push(`an in-app page is in a build without its site operator — ${name}: "${phrase}" (articles/${page.file}.mdx)`);
+}
+// …and in a build with them, no placeholder is left anywhere.
+if (LEGAL_PAGES_SHOWN) {
+  for (const placeholder of Object.keys(OPERATOR_PLACEHOLDERS)) {
+    for (const name of where(`%${placeholder}%`)) problems.push(`${name}: %${placeholder}% is left unfilled`);
+  }
+}
+
 // 2 and 3. Each published body in a chunk of its own — the one named after its file — and none in the entry.
-const published = entries.filter((entry) => !entry.draft && entry.hasBody && entry.kind === "article");
+const published = entries.filter((entry) => !entry.draft && entry.hasBody && entry.kind === "article" && !unshipped.includes(entry));
 let measured = 0;
 for (const article of published) {
   const phrase = phraseOf(article.file);

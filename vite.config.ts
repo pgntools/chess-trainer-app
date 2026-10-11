@@ -7,6 +7,9 @@ import remarkGfm from 'remark-gfm'
 import { existsSync, readFileSync } from 'node:fs'
 import pkg from './package.json' with { type: 'json' }
 import { blogArticles } from './plugins/blogArticles.ts'
+import { loadSiteEnv, siteOperator } from './plugins/siteOperator.ts'
+import { legalPagesConfigured } from './src/lib/siteOperator.ts'
+import { TEST_SITE_ENV } from './src/test/siteOperator.ts'
 
 /** `BASE_PATH` as Vite's `base` — a leading and a trailing slash; unset or empty, the GitHub Pages project site's. */
 const basePathOf = (value: string | undefined): string => {
@@ -28,6 +31,20 @@ const hostHeadersOf = (): Record<string, string> => {
   return (JSON.parse(readFileSync(file, 'utf8')) as { globalHeaders?: Record<string, string> }).globalHeaders ?? {}
 }
 
+/*
+  The site's operator (CTA-182): the name, address and privacy address the
+  legal pages give, filled in from `SITE_*` variables — the environment, or
+  `.env` / `.env.local` — never written in the repository. Without them the
+  build has no legal pages (`legalPagesConfigured`, `src/lib/siteOperator.ts`);
+  some but not all fails here. Vitest reads fixed values, whatever the machine
+  has, so the tests are the same everywhere.
+*/
+const siteEnv = process.env.VITEST ? TEST_SITE_ENV : loadSiteEnv(process.cwd())
+const legalPages = legalPagesConfigured(siteEnv)
+if (!legalPages && !process.env.VITEST) {
+  console.warn('No site operator configured (SITE_OPERATOR_NAME, SITE_OPERATOR_ADDRESS, SITE_PRIVACY_EMAIL): no legal pages in this build — docs/in-app-pages.md §5.')
+}
+
 const mdxPlugin = mdx({ mdExtensions: [], include: /\.mdx$/, remarkPlugins: [remarkFrontmatter, remarkGfm] })
 
 // https://vite.dev/config/
@@ -41,6 +58,8 @@ export default defineConfig({
   */
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    // Whether the build has the legal pages (CTA-182) — `views/legal/legalPagesShown.ts`.
+    __LEGAL_PAGES__: JSON.stringify(legalPages),
   },
   /*
     The sub-path the app is served under (CTA-136): `/chess-trainer-app/` for
@@ -85,7 +104,9 @@ export default defineConfig({
     The MDX editor compiles with the same two plugins (`compileMdx.ts`).
   */
   plugins: [
-    blogArticles({ dir: 'src/views/blog/articles' }),
+    blogArticles({ dir: 'src/views/blog/articles', appPages: legalPages }),
+    // Ahead of the MDX compiler: it fills the legal pages' placeholders in their source.
+    siteOperator({ dir: 'src/views/blog/articles', env: siteEnv, enabled: legalPages }),
     {
       enforce: 'pre',
       ...mdxPlugin,
