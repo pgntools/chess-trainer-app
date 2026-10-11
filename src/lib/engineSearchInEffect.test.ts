@@ -67,9 +67,9 @@ describe("the search settings in effect (CTA-185)", () => {
 
   it("hold a depth and move time to their bounds, and write nothing for a change that changes nothing", async () => {
     await loadEngineSearchSettings();
-    storeEngineSearchSettings({ depth: 150, moveTimeMs: 9_000_000 });
+    storeEngineSearchSettings({ depth: 150, moveTimeMs: 999_999_999 });
     await settledEnginePresets();
-    expect(readEngineSearchSettings()).toMatchObject({ depth: 99, moveTimeMs: 600000 });
+    expect(readEngineSearchSettings()).toMatchObject({ depth: 99, moveTimeMs: 86_400_000 });
     const before = enginePresetsSnapshot();
     storeEngineSearchSettings({ depth: 99 });
     await settledEnginePresets();

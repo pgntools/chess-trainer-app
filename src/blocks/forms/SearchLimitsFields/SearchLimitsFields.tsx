@@ -35,8 +35,8 @@ const moveTimeMsOfSeconds = (seconds: number): number => Math.max(Math.round(sec
  * slider with a number box at its end: depth a whole number — the slider 1–50,
  * typed up to 99 (CTA-185), shown at the slider's end past 50; move time
  * lichess's marked slider (1, 5, 10, 30, 60, 300, 600 seconds and ∞ — CTA-163,
- * CTA-185) and seconds typed, a value off the marks kept and shown where it
- * falls, the box off while the slider is on ∞ (no limit has no number).
+ * CTA-185) and seconds typed, up to 86,400 (24 hours) — a value off the marks kept and
+ * shown where it falls, one past 600 at the slider's last time mark, the box off while the slider is on ∞ (no limit has no number).
  * Every search stops at one or the other, whichever comes first.
  *
  * The top bar's Engine menu (`EngineSearchSettingsForm`) and Settings →

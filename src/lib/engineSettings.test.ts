@@ -178,8 +178,8 @@ describe("the move-time slider — lichess's snap marks (CTA-163, CTA-185)", () 
     expect(moveTimeOfSliderValue(1.2)).toBe(5000);
   });
 
-  it("raises the bounds' top to the 600 s mark — what a new-game link clamps to", () => {
-    expect(ENGINE_SETTING_BOUNDS.moveTimeMs).toEqual({ min: 0, max: 600000 });
+  it("raises the bounds' top past the 600 s mark to 24 hours — a time typed (CTA-185), what a new-game link clamps to", () => {
+    expect(ENGINE_SETTING_BOUNDS.moveTimeMs).toEqual({ min: 0, max: 86_400_000 });
   });
 });
 

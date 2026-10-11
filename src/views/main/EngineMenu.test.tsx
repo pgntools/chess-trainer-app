@@ -262,6 +262,14 @@ describe("the top bar's Engine menu (CTA-181)", () => {
       expect(readEngineSearchSettings().moveTimeMs).toBe(12500);
       // 12.5 s falls between the 10 and 30 marks, an eighth of the way.
       expect(within(dialog).getByRole("slider", { name: "Move time" })).toHaveAttribute("aria-valuenow", "2.125");
+
+      // Past the slider's 600 s: kept, in the box and the store, after the box is left (CTA-185).
+      await user.clear(box);
+      await user.type(box, "900");
+      await user.tab();
+      expect(readEngineSearchSettings().moveTimeMs).toBe(900000);
+      expect(box).toHaveValue(900);
+      expect(within(dialog).getByRole("slider", { name: "Move time" })).toHaveAttribute("aria-valuenow", "6");
     });
 
     it("shows a move time stored elsewhere in its box", async () => {

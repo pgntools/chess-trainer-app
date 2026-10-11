@@ -102,11 +102,14 @@ const MAX_MOVE_NUMBER = 999;
 /** A job's depth: 1–40, as before CTA-185 raised the boards' typed depth to 99 — its form has a slider alone. */
 const JOB_DEPTH_BOUNDS = { min: 1, max: 40 } as const;
 
+/** A job's time per move: up to 600 s, the boards' slider's top — CTA-185 lets the boards type up to 24 hours; the job's form has a slider alone. */
+const JOB_MOVE_TIME_BOUNDS = { min: 0, max: 600_000 } as const;
+
 export const COMPUTER_ANALYSIS_BOUNDS = {
   threads: ENGINE_SETTING_BOUNDS.threads,
   hashMb: ENGINE_SETTING_BOUNDS.hashMb,
   depth: JOB_DEPTH_BOUNDS,
-  moveTimeMs: ENGINE_SETTING_BOUNDS.moveTimeMs,
+  moveTimeMs: JOB_MOVE_TIME_BOUNDS,
   multiPv: ENGINE_SETTING_BOUNDS.multiPv,
   minDepth: JOB_DEPTH_BOUNDS,
   variationRangeCp: { min: 0, max: LOSS_CLAMP_CP },

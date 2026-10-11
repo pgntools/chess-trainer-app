@@ -72,11 +72,11 @@ describe("the preference — lines, Threads and Hash", () => {
 
 describe("engineSearchSettingsFrom — the normaliser", () => {
   it("fills what is missing or mistyped with the default and holds a number to its bounds", () => {
-    expect(engineSearchSettingsFrom({ depth: 120, multiPv: 0, moveTimeMs: 900000, infinite: "yes", threads: 2.6 })).toEqual({
+    expect(engineSearchSettingsFrom({ depth: 120, multiPv: 0, moveTimeMs: 999_999_999, infinite: "yes", threads: 2.6 })).toEqual({
       ...DEFAULT_ENGINE_SEARCH_SETTINGS,
       depth: 99,
       multiPv: 1,
-      moveTimeMs: 600000,
+      moveTimeMs: 86_400_000,
       threads: 3,
     });
     expect(engineSearchSettingsFrom(null)).toEqual(DEFAULT_ENGINE_SEARCH_SETTINGS);

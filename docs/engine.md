@@ -166,9 +166,9 @@ takes `infinite?: boolean` beside `depth` and `moveTimeMs`.
   (each descriptor's `capabilities.maxDepth`; past any search a browser runs,
   so a request is never cut short), and what the forms **offer**,
   `ENGINE_SETTING_BOUNDS`: depth **1–99** (typed — the slider stops at 50,
-  `DEPTH_SLIDER_MAX`; 1–40 until CTA-185, which a job keeps), move time **0–600 s** (the
-  snap-to-mark slider's last time mark — 300 s from CTA-163, 600 s since
-  CTA-185) — **every board's** since CTA-181, one global set in the top bar's
+  `DEPTH_SLIDER_MAX`; 1–40 until CTA-185, which a job keeps), move time **0 s – 24 h** (typed, up to 86,400 s;
+  the snap-to-mark slider's last time mark is 600 s — 300 s from CTA-163 —
+  and a longer time sits there; a job keeps 0–600 s) — **every board's** since CTA-181, one global set in the top bar's
   Engine menu (the analysis boards' own 0–60 s went with their Engine tab).
   The move time is lichess's marked slider: marks 1, 5, 10, 30, 60, 300, 600
   seconds (CTA-185; 0, 5, 10, 20, 30, 60, 120, 300 before) and an **∞ mark**
@@ -268,7 +268,8 @@ settings ("Engine options changed", below) waits for the presets first
   (CTA-185): a number box at each slider's end (`SliderField`'s `input`, in
   `SearchLimitsFields`),
   depth a whole number held to 1–99 (the slider stops at 50 and shows a deeper
-  one at its end), move time seconds held to 0–600 — a value
+  one at its end), move time seconds held to 0–86,400 — 24 hours (the slider's last time
+  mark is 600 s; a longer time is shown there; a job keeps 0–600) — a value
   off the slider's marks kept, the slider showing where it falls
   (`moveTimeSliderValueOf`), 0 the instant reply; on the slider's ∞ mark (no
   limit) the move-time box is off; depth's never is — every search stops at

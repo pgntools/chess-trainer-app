@@ -83,10 +83,11 @@ export const DEFAULT_ENGINE_SETTINGS: EngineSettings = {
  * 34 s on a fast desktop, so **depth stopped at 40** (well past any search a
  * reader would wait for) — since CTA-185 the slider stops at 50
  * ({@link DEPTH_SLIDER_MAX}) and a depth typed goes up to 99, every shipped
- * build's own clamp (`DEFAULT_MAX_DEPTH`) and **move time at 600 s** (the snap-to-mark
- * slider's last time mark — 300 s from CTA-163, 600 s since CTA-185 — every
+ * build's own clamp (`DEFAULT_MAX_DEPTH`); and **move time at 24 hours** —
+ * typed; the snap-to-mark slider's last time mark is 600 s (300 s from
+ * CTA-163, 600 s since CTA-185) and a longer one is shown there — every
  * board's since CTA-181, the analysis boards' own 60 s ceiling gone with
- * their Engine tab). `Hash` took 1024 MB and
+ * their Engine tab. `Hash` took 1024 MB and
  * **2048 MB crashed the tab** — WebAssembly's memory, not the engine's
  * declared 33,554,432 — so 1024 is a hard ceiling; and **Threads stops at
  * 32**, the multi-thread build's own top. What a form offers is lower where
@@ -102,7 +103,8 @@ export const ENGINE_SETTING_BOUNDS = {
   elo: { min: 1320, max: 3190 },
   // Up to the engines' own clamp (`DEFAULT_MAX_DEPTH`, 99) since CTA-185 — typed; the slider stops at `DEPTH_SLIDER_MAX`.
   depth: { min: 1, max: 99 },
-  moveTimeMs: { min: 0, max: 600000 },
+  // Typed up to 24 hours a move since CTA-185; the slider's last time mark is 600 s, a longer one shown there.
+  moveTimeMs: { min: 0, max: 86_400_000 },
   multiPv: { min: 1, max: MAX_VARIATIONS_OFFERED },
   threads: { min: 1, max: 32 },
   hashMb: { min: 1, max: 1024 },

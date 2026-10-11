@@ -181,12 +181,30 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
       await user.type(box, "7.5");
       expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 7500 });
       await user.clear(box);
+      // Past the slider's 600 s, kept (CTA-185) — held to 24 hours.
       await user.type(box, "900");
-      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 600000 });
+      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 900000 });
+      await user.clear(box);
+      await user.type(box, "5000");
+      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 5_000_000 });
+      await user.clear(box);
+      await user.type(box, "100000");
+      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 86_400_000 });
       // 0 seconds is the instant reply, never "no limit" — the ∞ mark alone is.
       await user.clear(box);
       await user.type(box, "0");
       expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 1 });
+    });
+
+    it("shows a time past 600 s in its box, the slider at its last time mark — and keeps it when the box is left", async () => {
+      const user = userEvent.setup();
+      mount({ ...SETTINGS, moveTimeMs: 900000 });
+      const box = screen.getByRole("spinbutton", { name: "Move time in seconds, typed" });
+      expect(box).toHaveValue(900);
+      expect(screen.getByRole("slider", { name: "Move time" })).toHaveAttribute("aria-valuenow", "6");
+      box.focus();
+      await user.tab();
+      expect(box).toHaveValue(900);
     });
 
     it("follows the slider: 7.5 s sits halfway between the 5 and 10 marks", () => {
