@@ -1658,8 +1658,8 @@ describe("the New Job dialog (CTA-177)", () => {
     await stored("a1", "1. e4 e5 2. Nf3 *", ["e4"], { name: "Mine", settings: { ...DEFAULT_ANALYSIS_SETTINGS, depth: 16, multiPv: 2 } });
     mount("/tools/analysis?analysis=a1");
     expect(screen.queryByRole("tab", { name: "Computer analysis" })).toBeNull();
-    // No Engine tab either (CTA-181).
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Moves", "Map", "Load", "Export", "Arrows"]);
+    // No Engine tab either (CTA-181); the Evaluations tab is disabled here — this game carries no `[%eval]`s.
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Moves", "Evaluations", "Map", "Load", "Export", "Arrows"]);
 
     await user.click(analyse());
     const form = within(dialog());
@@ -1787,30 +1787,44 @@ describe("the New Job dialog (CTA-177)", () => {
   });
 });
 
-describe("the report and the eval graph at the top of Moves (CTA-177)", () => {
+describe("the Evaluations tab: the report and the eval graph (CTA-183)", () => {
   /** A game every move of which carries an `[%eval]`: White's 2. Qh5 an inaccuracy, Black's 3... Nf6 a blunder into mate. */
   const EVALUATED =
     "1. e4 {[%eval 0.3]} e5 {[%eval 0.25]} 2. Qh5 $6 {[%eval -0.4]} Nc6 {[%eval -0.3]} 3. Bc4 {[%eval -0.2]} Nf6 $4 {[%eval #1]} *";
 
-  it("shows nothing for a tree with no evaluations", async () => {
+  it("is disabled without evaluations, and nothing shows on the Moves tab", async () => {
     await stored("a1", "1. e4 e5 *", [], { name: "Mine" });
     mount("/tools/analysis?analysis=a1");
-    expect(screen.queryByRole("table", { name: "Computer analysis report" })).toBeNull();
-    expect(screen.queryByRole("slider", { name: "Evaluation graph" })).toBeNull();
+    const evaluations = screen.getByTestId("analysis-panel-tab-evaluations");
+    expect(evaluations).toBeDisabled();
+    expect(evaluations).toHaveTextContent("Evaluations");
+    fireEvent.click(evaluations);
+    expect(screen.queryByTestId("analysis-panel-content-evaluations")).not.toBeInTheDocument();
+
+    const moves = within(screen.getByTestId("analysis-panel-content-moves"));
+    expect(moves.queryByRole("table", { name: "Computer analysis report" })).toBeNull();
+    expect(moves.queryByRole("slider", { name: "Evaluation graph" })).toBeNull();
   });
 
-  it("shows a tree's evaluations as the report and the graph above the moves, and both move the board", async () => {
+  it("shows a tree's evaluations as the report and the graph on their own tab, not on Moves, and both move the board", async () => {
     const user = userEvent.setup();
     await stored("a1", EVALUATED, [], { name: "Mine" });
     mount("/tools/analysis?analysis=a1");
+    expect(screen.getByTestId("analysis-panel-tab-evaluations")).toBeEnabled();
+    // Not on Moves any more (CTA-183): the tab is where the section went.
     const moves = within(screen.getByTestId("analysis-panel-content-moves"));
+    expect(moves.queryByRole("table", { name: "Computer analysis report" })).toBeNull();
+    expect(moves.queryByRole("slider", { name: "Evaluation graph" })).toBeNull();
 
-    const report = within(moves.getByRole("table", { name: "Computer analysis report" }));
+    openTab("evaluations");
+    const evaluations = within(screen.getByTestId("analysis-panel-content-evaluations"));
+
+    const report = within(evaluations.getByRole("table", { name: "Computer analysis report" }));
     expect(report.getByTestId("analysis-computer-report-inaccuracies-w")).toHaveTextContent("1");
     expect(report.getByTestId("analysis-computer-report-blunders-b")).toHaveTextContent("1");
 
     // A click on the graph: the move under the pointer.
-    const plot = moves.getByRole("slider", { name: "Evaluation graph" });
+    const plot = evaluations.getByRole("slider", { name: "Evaluation graph" });
     vi.spyOn(plot, "getBoundingClientRect").mockReturnValue({ left: 0, width: 100, top: 0, height: 96, right: 100, bottom: 96, x: 0, y: 0, toJSON: () => ({}) });
     fireEvent.click(plot, { clientX: 100 });
     expect(where()).toContain("at=e4%2Ce5%2CQh5%2CNc6%2CBc4%2CNf6");
@@ -1833,6 +1847,7 @@ describe("the report and the eval graph at the top of Moves (CTA-177)", () => {
     const user = userEvent.setup();
     await stored("a1", EVALUATED, [], { name: "Mine" });
     mount("/tools/analysis?analysis=a1");
+    openTab("evaluations");
     const toggle = screen.getByRole("button", { name: "Show or hide the report" });
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     await user.click(toggle);
@@ -1843,6 +1858,7 @@ describe("the report and the eval graph at the top of Moves (CTA-177)", () => {
   it("passes axe with the report and the graph", async () => {
     await stored("a1", EVALUATED, [], { name: "Mine" });
     mount("/tools/analysis?analysis=a1");
+    openTab("evaluations");
     await expectNoAxeViolations(screen.getByTestId("analysis-computer"));
   });
 });

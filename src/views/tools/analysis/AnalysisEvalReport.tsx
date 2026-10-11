@@ -34,12 +34,13 @@ const nextOfKind = (points: readonly EvalPoint[], side: Turn, kind: MoveVerdictK
 };
 
 /**
- * **The report and the eval graph at the top of the Moves tab** (CTA-177 —
- * the Computer analysis tab's, CTA-174, before), whenever the tree on screen
- * carries `[%eval]`s: an output of a computer analysis, a lichess export, the
- * evaluations the Engine tab wrote (CTA-167) — `evalSeriesOf` /
- * `reportFromTree` over the tree as it stands, so an edit shows at once.
- * Nothing at all for a tree with none.
+ * **The report and the eval graph on the Evaluations tab** (CTA-183 — at the
+ * top of Moves by CTA-177, the Computer analysis tab's, CTA-174, before),
+ * whenever the tree on screen carries `[%eval]`s: an output of a computer
+ * analysis, a lichess export, the evaluations the Engine tab wrote (CTA-167) —
+ * `evalSeriesOf` / `reportFromTree` over the tree as it stands, so an edit
+ * shows at once. Nothing at all for a tree with none — the tab itself is
+ * disabled there, so this is the screen's check come again as a guard.
  *
  * The graph (`EvalGraph`) marks the move on the board and moves it on a click
  * or Enter — the start position's point to the start; under it the report

@@ -742,6 +742,7 @@ const he: typeof en = {
   analysis: {
     tabs: {
       moves: "מהלכים",
+      evaluations: "הערכות",
       map: "מפה",
       load: "טעינה",
       export: "ייצוא",

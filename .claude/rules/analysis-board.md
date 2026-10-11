@@ -58,7 +58,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/blocks/panels/BoardEngineControls/`, `src/views/main/EngineMenu.tsx`, `src/lib/engineSearchSettings.ts` | **The engine, since CTA-181** — the header's play / pause and its menu (the eval bar, *Write evaluations into the game*: `BoardEngineControls`), and the search settings every board uses, from the top bar's Engine menu (**infinite analysis**, depth 1–40, move time 0–300 s on lichess's marks, lines, **threads, hash** up to what the engine running takes: the `EngineSearchSettingsForm` block) — one global set ([`docs/engine.md`](../../docs/engine.md) §5.2). The Engine tab (`AnalysisEngineForm`) went with it. |
 | `src/views/shared/EngineOptionsChangedPrompt.tsx`, `src/blocks/dialogs/EngineOptionsChangedDialog/` | **"Engine options changed"** (CTA-181, §2): a saved analysis opened whose settings differ from the ones in effect — asked once, Dismiss or Use these settings. |
 | `src/views/tools/analysis/NewJob.tsx`, `gameJob.ts`, `computerAnalysisSeed.ts` | **New Job** (CTA-177, §1.3): the screen side of `NewJobDialog`, shared by the board's header and the saved list — the game's job found (`jobOfGame`), the choice first when there is one, Start (`enqueueComputerAnalysis`), the snackbar to `/jobs?job=<id>` (`jobPath`); the board's first options from the global search settings (`computerAnalysisSeed`, CTA-181). |
-| `src/views/tools/analysis/AnalysisEvalReport.tsx` | **The report and eval graph at the top of the Moves tab** (CTA-174's, moved there by CTA-177, §1.3) of a tree carrying `[%eval]`s. |
+| `src/views/tools/analysis/AnalysisEvalReport.tsx` | **The report and eval graph on the Evaluations tab** (CTA-183 — CTA-174's, at the top of Moves by CTA-177, §1.3) of a tree carrying `[%eval]`s. |
 | `src/blocks/dialogs/NewJobDialog/`, `src/blocks/forms/ComputerAnalysisForm/` | The dialog (CTA-177): the choice when the game has a job, then the form with Start and Cancel in its actions row. The form (CTA-174): threads, hash, lines (by what the engine declared, `engineOptionState`), depth, time per move, the early stop's depth; side, first move and colour, last move; under a collapsed Advanced the thresholds and the variation range; the light / medium / full boxes; why Start is off (`computerAnalysisStartNote`). The report and graph are the Jobs screen's blocks, `ComputerAnalysisReport` (with `onStep`) and `EvalGraph` ([`jobs.md`](./jobs.md)). |
 | `src/views/tools/analysis/AnalysisArrows.tsx`, `src/blocks/forms/ArrowSettingsFields/` | The Arrows tab (CTA-98, §1.1): the next-move arrows switch, the width source and the palette — and the move marks switch (CTA-168). The fields block is shared with the settings screen. |
 | `src/views/tools/analysis/SaveAnalysisDialog.tsx` | A new board's name and folder. |
@@ -83,7 +83,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/blocks/trees/AnalysesTree/` | The workspace's tree (CTA-145): the list's folders and analyses nested and collapsible over `TreeView`, rooted at one folder, names wrapped, a Close link, a fold to a rail, a lock while the board holds unsaved changes; `analysesTreeNodes` the pure nodes. `views/tools/analysis/AnalysesFolderView.tsx` reads the stores and hosts it, `folderViewState.ts` what the reader did to it. |
 | `src/views/main/boardLeftPanel.tsx`, `boardLeftPanelSlot.ts`, `shellCompact.ts` | The shell's slot the tree is registered in (CTA-145, §1.2): a column of the board's row (`BOARD_LEFT_PANEL_WIDTH_PX`) or a rail (`BOARD_LEFT_PANEL_COLLAPSED_PX`), the window taken whole while it is there, a drawer under the breakpoint (`useShellCompact`). |
 | `src/lib/pgnExport.ts` | `downloadPgn` — several stored PGN records joined with a blank line (`pgnFileOf`), saved as a file. Also Settings' Export's (`downloadBinaryFile`, [`import-export.md`](./import-export.md)). |
-| Tests | `AnalysisBoard.test.tsx` (every arrival, Save, Load, Export, Play, the hand-off, the Arrows tab, the PGN's shapes drawn and written, the New Job dialog and the report at the top of Moves — CTA-177), `src/blocks/dialogs/NewJobDialog/NewJobDialog.test.tsx`, `src/blocks/forms/ComputerAnalysisForm/ComputerAnalysisForm.test.tsx`, `useTreeNavigation.test.ts`, `EngineThinking.test.tsx`, `nextMoveArrows.test.ts`, `src/lib/nextMoveWeights.test.ts`, `saved/SavedAnalyses.test.tsx` (the table, the cards and the panel's new-analysis form), `saved/AnalysisSettingsScreen.test.tsx`, `src/lib/savedAnalyses.test.ts`, `src/lib/savedAnalysisRows.test.ts`, `src/blocks/tables/SavedAnalysesTable/SavedAnalysesTable.test.tsx`, `savedAnalysisStore.test.ts`, `savedAnalysisFolderStore.test.ts`, `src/lib/analysesListContext.test.ts`, `src/blocks/trees/AnalysesTree/` (`AnalysesTree.test.tsx`, `analysesTreeNodes.test.tsx` — the filter included), `src/views/main/Layout.test.tsx` (the left panel's slot), the `TreeView` pattern's tests (`wrapLabels`, `disabled`), `savedGameFolders.test.ts`, `gameReference.test.ts`, and the propagation tests in `src/views/board/`. |
+| Tests | `AnalysisBoard.test.tsx` (every arrival, Save, Load, Export, Play, the hand-off, the Arrows tab, the PGN's shapes drawn and written, the New Job dialog and the Evaluations tab — CTA-177, CTA-183), `src/blocks/dialogs/NewJobDialog/NewJobDialog.test.tsx`, `src/blocks/forms/ComputerAnalysisForm/ComputerAnalysisForm.test.tsx`, `useTreeNavigation.test.ts`, `EngineThinking.test.tsx`, `nextMoveArrows.test.ts`, `src/lib/nextMoveWeights.test.ts`, `saved/SavedAnalyses.test.tsx` (the table, the cards and the panel's new-analysis form), `saved/AnalysisSettingsScreen.test.tsx`, `src/lib/savedAnalyses.test.ts`, `src/lib/savedAnalysisRows.test.ts`, `src/blocks/tables/SavedAnalysesTable/SavedAnalysesTable.test.tsx`, `savedAnalysisStore.test.ts`, `savedAnalysisFolderStore.test.ts`, `src/lib/analysesListContext.test.ts`, `src/blocks/trees/AnalysesTree/` (`AnalysesTree.test.tsx`, `analysesTreeNodes.test.tsx` — the filter included), `src/views/main/Layout.test.tsx` (the left panel's slot), the `TreeView` pattern's tests (`wrapLabels`, `disabled`), `savedGameFolders.test.ts`, `gameReference.test.ts`, and the propagation tests in `src/views/board/`. |
 
 Routes and nav: the **Analyses** folder (`nav.folders.analysisBoard`) holds
 the **Lobby** (`nav.lobby`, `/tools/analysis/saved`) and **Jobs** (`nav.jobs`,
@@ -148,10 +148,13 @@ beside the report's and graph's (CTA-174, CTA-177).
   (`useAnalysisSession`: the engine module's `onSearchFinished` →
   `recordEvaluation` through the core's `annotateTree`). Kept with the
   record's `AnalysisSettings` (`writeEvals`, §2.1).
-- **Tabs: Moves · Map · Load · Export · Arrows** — no Engine tab since
-  CTA-181; **Clear** (back to an empty board, a new analysis) is under Load.
-  Moves and Map are kept mounted; Moves opens with a tree's report and eval
-  graph (§1.3) above the move list. The footer holds the comment block, the changes strip, Play's
+- **Tabs: Moves · Evaluations · Map · Load · Export · Arrows** — no Engine
+  tab since CTA-181; **Clear** (back to an empty board, a new analysis) is
+  under Load. Moves and Map are kept mounted. The **Evaluations tab**
+  (CTA-183) holds a tree's report and eval graph (§1.3) — always in the
+  strip, **disabled while the tree carries no `[%eval]`s** (a fresh board, a
+  PGN never analysed), the screen keeping `activeTab` off it and moving it
+  away when a tree that had them loses them (a Clear). The footer holds the comment block, the changes strip, Play's
   status line and the next-moves bar (on the Moves tab).
 - **The explorer**: editing on (the move menu and the comment block —
   `core.replaceTree`), *Play chances…* off, the moves added since the baseline
@@ -255,7 +258,7 @@ board's ([`jobs.md`](./jobs.md)) — each ticked variant saved as a new Saved
 analysis ([`pgn-annotations.md`](./pgn-annotations.md) §6). There is **no
 Computer analysis tab** (CTA-177 took CTA-174's away): a job is started from a
 dialog, followed on the Jobs screen (`/jobs?job=<id>`), and a tree's
-evaluations are read at the top of Moves.
+evaluations are read on the Evaluations tab (CTA-183).
 
 - **Analyse** — an `IconAction` in the board's header (`analysis-analyse`),
   and one per saved analysis in the list (§4: the table's row actions, a card's
@@ -301,8 +304,11 @@ evaluations are read at the top of Moves.
   `storage`, `too-many`) is said inside the dialog, which stays open.
 - **The board does not follow the job.** Its status, progress and results so
   far are the Jobs screen's (`jobLiveAnalysis`, CTA-178).
-- **The report and the eval graph** sit at the top of the **Moves** tab, above
-  the move list, whenever the tree on screen carries `[%eval]`s — an output of
+- **The report and the eval graph** sit on the **Evaluations tab** (CTA-183 —
+  at the top of Moves by CTA-177) — always in the strip, **disabled while the
+  tree on screen carries no `[%eval]`s** (a fresh board, a PGN never
+  analysed), the screen keeping `activeTab` off it, and enabled as soon as
+  they appear — whenever the tree carries them: an output of
   a computer analysis, a lichess export, the evaluations the board wrote
   (CTA-167): `evalSeriesOf` / `reportFromTree` over the tree as it stands, so
   an edit shows at once (`AnalysisEvalReport.tsx`, decided with the reader).
@@ -312,7 +318,7 @@ evaluations are read at the top of Moves.
   board's placeholder `Analysis` is no name), behind a toggle open by default,
   makes each count above 0 a button to **that side's next move of that kind**
   after the mainline move on the board, round again from the first (`onStep`,
-  lichess's). A tree with none shows nothing there.
+  lichess's). A tree with none disables the tab (§1).
 
 ### 1.2 The workspace — the list's tree beside the board (CTA-145)
 
