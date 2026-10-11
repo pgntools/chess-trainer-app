@@ -30,7 +30,7 @@ chess-aware composition into `src/blocks/` ([`migration.md`](./migration.md)).
 
 ### OptionSlider
 
-> **Migrated (CTA-113)** — the `AnalysisEngineForm` block over `SliderField` and `engineOptionState`; deleted.
+> **Migrated (CTA-113)** — the `AnalysisEngineForm` block over `SliderField` and `engineOptionState`; deleted. That block went in its turn with CTA-181 — the top bar's `EngineSearchSettingsForm` and each header's `BoardEngineControls`.
 
 - **Name and location** — `OptionSlider`, `src/views/shared/OptionSlider.tsx`
 - **Family** — form / settings group

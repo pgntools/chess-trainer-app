@@ -148,14 +148,17 @@ RepertoireGame.tsx ──┴─▶ RepertoirePlayer.tsx ── download: treeToP
   node on screen and tinted (`success.main`) in the list and ringed on the
   map: `extensionIdsOf(sessionTree, nodeIdsOf(original))` is the whole of the
   tracking. Past a line's end the reader moves both colours.
-- **Tabs: Moves · (Score) · Map · Settings · Engine** (a game adds Score; Get
-  to the end has no Map). Settings holds the side (default the main colour; a
+- **Tabs: Moves · (Score) · Map · Settings** (a game adds Score; Get to the
+  end has no Map; no Engine tab since CTA-181 — the search settings are the
+  top bar's Engine menu). Settings holds the side (default the main colour; a
   change restarts), Autoplay, the next-move arrows, the play-chance arrows and
-  the engine's switch. The Engine tab is **disabled while the engine is off**.
+  **Clear** (the Engine tab's until CTA-181).
   Moves stays mounted (`keepMounted`), so a 9,000-move list never re-mounts.
 - **The header**: the opening line, the description, the Games menu, Play,
-  Restart (back to the start, extensions kept), the download (the session tree
-  as PGN) and the settings link.
+  the engine's play / pause with its menu (the eval bar — `BoardEngineControls`,
+  CTA-181; a switch in Settings before), Restart (back to the start,
+  extensions kept), the download (the session tree as PGN) and the settings
+  link.
 - **Arrows are the reader's call**: the player opens as `showArrows` says (on
   by default), a game without them; Settings switches them for the session.
   With `chanceArrows` on (off by default, never in a game) and a branch that
@@ -164,8 +167,10 @@ RepertoireGame.tsx ──┴─▶ RepertoirePlayer.tsx ── download: treeToP
   is the next-moves bar; on, the trainer's status line.
 - **The engine is off by default and never an opponent**: on, the pinned best
   lines and the eval bar, no `onBestMove`. A line clicked there is
-  exploration; the trainer does not answer it. The Engine tab's Clear drops
-  the session's additions.
+  exploration; the trainer does not answer it. It searches with the reader's
+  global search settings (the top bar's Engine menu, infinite analysis
+  included — it has no Play). The Settings tab's Clear drops the session's
+  additions.
 - **The comment block** (the explorer's `AnnotationsBar`) shows what is
   written at the position on screen — the move with its marks, the comment
   opening its line, the comments after it, and their attributes as chips

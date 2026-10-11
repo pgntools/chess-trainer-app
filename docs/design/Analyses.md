@@ -328,7 +328,7 @@ the explorer's chrome. **In [`Repertoires.md`](./Repertoires.md)**:
 
 ### AnalysisSettings
 
-> **Migrated (CTA-113)** — the `AnalysisEngineForm` block (`blocks/forms/`) over `SliderField` and `engineOptionState`; `OptionSlider` is deleted.
+> **Migrated (CTA-113)** — the `AnalysisEngineForm` block (`blocks/forms/`) over `SliderField` and `engineOptionState`; `OptionSlider` is deleted. **Gone with CTA-181**: the search settings are the top bar's Engine menu (the `EngineSearchSettingsForm` block), the engine's on / off and the eval bar the header's (`BoardEngineControls`).
 
 - **Name and location** — `AnalysisSettings` (imported as `AnalysisSettingsPanel`), `src/views/tools/analysis/AnalysisSettings.tsx`
 - **Family** — form / settings group

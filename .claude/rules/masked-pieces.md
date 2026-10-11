@@ -74,7 +74,8 @@ is Play with Engine's `playEngine.*` / `playedGames.*`. `he` is typed
 - **Play with Engine, every feature of it** (`/engine/play`): a new
   board with **Play on**, the engine playing the side not at the bottom;
   the header's back button to the Lobby (CTA-91), side toggle, Play,
-  Replay, Resign and the engine switch; the tabs **Moves · Engine** (no
+  Replay, Resign and the engine's play / pause with its menu (CTA-181); the
+  tabs **Moves · Engine** (the Engine tab the opponent's strength alone; no
   Map, CTA-91); side lines from an
   earlier position; the variations explorer (move menu, comments, next-moves
   bar, arrows); the autosave to the played-games store; `?fen=` and

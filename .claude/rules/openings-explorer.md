@@ -53,7 +53,7 @@ the receiving end of the hand-off is [`analysis-board.md`](./analysis-board.md).
 | `scripts/vendorOpenings.mjs` | Re-vendors the book from an eco.json checkout (§2.1). Manual, not part of the build. |
 | `src/views/tools/analysis/AnalysisBoard.tsx`, `useAnalysisBoard.ts` | The **receiving** end of the hand-off: `arrivalOf(params, location.state)` and the `handOff` start option (§5.3). |
 | `src/views/tools/analysis/useAnalysisSession.ts` | The session this screen composes (core + engine + Play + a baseline), shared with the Analysis Board and the Library's game board. |
-| `src/views/tools/analysis/AnalysisLoad.tsx`; the blocks `PgnExportPanel`, `AnalysisEngineForm`, `PlayToggleButton`, `EngineThinking` | The Analysis Board's tabs and header pieces, reused as they are. `AnalysisLoad` takes an optional `onCollectionSaved` (the Analysis module's popup, CTA-101) and a `choiceLabelKey` for this screen's inline choice (§3.4). |
+| `src/views/tools/analysis/AnalysisLoad.tsx`, `src/views/shared/ClearBoardButton.tsx`; the blocks `PgnExportPanel`, `BoardEngineControls`, `PlayToggleButton`, `EngineThinking` | The Analysis Board's tabs and header pieces, reused as they are (the engine's play / pause and its menu since CTA-181; Clear under Load). `AnalysisLoad` takes an optional `onCollectionSaved` (the Analysis module's popup, CTA-101) and a `choiceLabelKey` for this screen's inline choice (§3.4). |
 | Tests | `src/views/openings/OpeningsBoard.test.tsx` (the screen), `openingArrows.test.ts`, `src/lib/analysisHandOff.test.ts`, `src/lib/openings.test.ts`, `src/views/shared/useCurrentOpening.test.tsx`, `src/blocks/lists/OpeningBookList/OpeningBookList.test.tsx`, the hand-off arrivals in `src/views/tools/analysis/AnalysisBoard.test.tsx`, and the two propagation tests (`src/views/board/boards.test.tsx`, `panelPropagation.test.tsx`). |
 
 Routes and nav: `routes.tsx` routes `/openings` to `views/openings/Main`. The
@@ -62,8 +62,8 @@ over one screen, `/openings` (`navItems.ts`, `nav.openings`), so it renders
 as one row under the folder's name.
 
 Locale keys: `openings.*` in `src/locales/en.ts` / `he.ts` (`tabs`, `current`
-— read by `CurrentOpening`, `book`, `engineSwitch`, `controls`,
-`load.choice`). Anything the screen shares with the Analysis Board is read
+— read by `CurrentOpening`, `book`, `controls`, `load.choice`; the engine's
+play / pause and menu are `boardEngine.*`, CTA-181). Anything the screen shares with the Analysis Board is read
 from `analysis.*` (the Load tab's errors, the engine settings, the arrows
 switch's label, the export). `he` is typed `typeof en`, so a missing key is a
 compile error.
@@ -185,11 +185,11 @@ Three React entry points share that one promise. Pick by what you need:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ CurrentOpening (name + ECO chip)  [Analysis] [Play from here] [▶ Play] Engine ◉ │ header
+│ CurrentOpening (name + ECO chip)  [Analysis] [Play from here] [▶ Play] [⏯ Engine] [⚙] │ header
 ├─────────────────────────────────────────────────────────────┤
 │ ▸ pinned best variations (click a line to play it)          │ BoardPanel
 │ status: score of the position                               │
-│ Book · Moves · Map · Load · Export · Engine                 │ tabs (Book first, open on arrival)
+│ Book · Moves · Map · Load · Export                          │ tabs (Book first, open on arrival)
 │ the active tab (scrolls)                                    │
 │ footer: comment block · Play's status line · next-moves bar (Moves tab only) │
 │ |◀ ◀ ▶ ▶|                                            flip  │ BoardControls
@@ -201,9 +201,8 @@ Three React entry points share that one promise. Pick by what you need:
 | **Book** (`book`) | `OpeningBookList` over `book.nextMoves` | A click is `core.playVariation([san])` under the node on screen. A known move is followed, and a new one from an earlier node branches. Hover sets `book.setHoveredMove`. |
 | **Moves** (`moves`) | the next-move arrows switch (`openings-arrows`), then `explorer.moves` | Kept mounted. The move menu edits (`onEditTree: core.replaceTree`); *Play chances…* is off. |
 | **Map** (`map`) | `explorer.map` (`linked: true`) | Kept mounted. |
-| **Load** (`load`) | `AnalysisLoad` **without `onCollectionSaved`**, `choiceLabelKey="openings.load.choice"` | One game or a merge replaces the tree (`core.loadTree` + `engine.clearAnalysis`); a FEN is `core.loadFen` (it turns the board). Several games get the inline, merge-only choice — **no popup and no collection**, because this screen keeps nothing — and the merge writes **no `[%games]` tags** (CTA-101). |
+| **Load** (`load`) | `AnalysisLoad` **without `onCollectionSaved`**, `choiceLabelKey="openings.load.choice"`, then **Clear** (`openings-clear`, the Engine tab's until CTA-181) | One game or a merge replaces the tree (`core.loadTree` + `engine.clearAnalysis`); a FEN is `core.loadFen` (it turns the board). **Clear** is `core.reset()` + `engine.clearAnalysis()`: back to the tree's **own start** (`startFenRef`): the `?fen=` position, or a loaded game's start — not the standard position. Several games get the inline, merge-only choice — **no popup and no collection**, because this screen keeps nothing — and the merge writes **no `[%games]` tags** (CTA-101). |
 | **Export** (`export`) | the `PgnExportPanel` block | FEN, and the PGN with or without comments, NAGs and side lines. |
-| **Engine** (`engine`) | `AnalysisSettings` with `onClear` | **Clear** is `core.reset()` + `engine.clearAnalysis()`: back to the tree's **own start** (`startFenRef`): the `?fen=` position, or a loaded game's start. It is not the standard position. |
 
 ### 3.2 The arrows — `openingArrowsOf`
 
@@ -237,8 +236,10 @@ still drawn: the book is the screen's point, and the switch is the tree's.
   `navigate("/engine/play?fen=<core.fen>")`. Play with Engine takes the
   position as its start, and a position with Black to move sets the reader to
   Black.
-- **Play** (`openings-play`) and the **engine switch**
-  (`openings-setting-engine`): the Analysis Board's. Play is disabled while
+- **Play** (`openings-play`) and the **engine's play / pause**
+  (`openings-setting-engine`, with its menu `openings-engine-menu` — the eval
+  bar; `BoardEngineControls`, CTA-181): the Analysis Board's. The search
+  settings are the top bar's Engine menu — no Engine tab here. Play is disabled while
   the engine is off, and a step back pauses it.
 
 ### 3.4 What is deliberately not here
@@ -402,7 +403,8 @@ the old one: a reload may still be holding it.
   by the Openings explorer* (mount with `{ pathname, search, state }`).
 - **Shared skeleton**: the Openings explorer is a row of both propagation
   tests (`id: "openings"`), which assert the square, the panel, the pinned
-  lines, the engine switch and the search of the position on screen.
+  lines, the engine's play / pause and the search of the position on screen,
+  the global search settings reaching it (CTA-181).
 - Commands:
   `npx vitest run src/views/openings src/lib/analysisHandOff.test.ts src/lib/openings.test.ts`,
   `npx vitest run src/views/tools/analysis/AnalysisBoard.test.tsx src/views/board`,
@@ -437,8 +439,8 @@ the old one: a reload may still be holding it.
 Add `{ id, label: t("openings.tabs.<id>"), content }` to `tabs` in
 `OpeningsBoard.tsx` and the key to both catalogs. Add it to `KEEP_MOUNTED`
 only if its mount is costly (`chessboard.md` §9.3.2). Assert it in
-`OpeningsBoard.test.tsx`. Keep the Moves and Engine ids: both propagation
-tests expect them.
+`OpeningsBoard.test.tsx`. Keep the Moves and Map ids: both propagation
+tests expect them (and no Engine tab, CTA-181).
 
 ### 9.2 Richer book rows (statistics, a second source)
 

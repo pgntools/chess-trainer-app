@@ -141,7 +141,7 @@ it is in [`game-collections.md`](./game-collections.md) §4.
 
 ## 2. What stays in `localStorage`
 
-Only preferences — two written by libraries, two by us:
+Only preferences — two written by libraries, the rest by us:
 
 | Key | Written by | What |
 | --- | --- | --- |
@@ -150,11 +150,13 @@ Only preferences — two written by libraries, two by us:
 | `chessapp.theme` | `theme/themeChoice.ts` (CTA-107), through `AppThemeWithLang` | the theme picked in Settings → Appearance — a registered theme's id; any other value reads as `"default"` |
 | `chessapp.engine` | `lib/engineChoice.ts` (CTA-153), through `views/shared/useEngineChoice.ts` | the engine picked in Settings → Engine — a registry id, stored raw: an id that names no registered engine, or one this page cannot run, *reads* as the default (`engineChoiceId`) and stays stored |
 | `chessapp.engineServer` | `lib/engineServer.ts`, through `views/shared/useEngineServer.ts` and `useEngineModule` | the engine server's address (`http://127.0.0.1:8800` unless moved) — **absent unless the reader turned it on** in Settings → Engine, and while absent nothing contacts any server; its status (online, its engines) is read, never stored |
+| `chessapp.engineSettings` | `lib/engineSearchSettings.ts` (CTA-181), through `views/shared/useEngineSearchSettings.ts` | the engine's search settings every board uses, set in the top bar's Engine menu — JSON `{ multiPv, depth, moveTimeMs, infinite, threads, hashMb }`, read back field by field (a missing or unreadable one its default, a number held to `ENGINE_SEARCH_SETTING_BOUNDS`); Threads and Hash kept as asked, never cut back to the engine running. Not in the export zip — a preference. Absent until the reader changes one |
 
 Nothing else in `src/` touches `localStorage`, and nothing reads the old
 `chessapp.*.v1` keys — do not reuse those names.
 `grep -rn localStorage src --include=*.ts --include=*.tsx | grep -v test`
-should show only comments, `theme/themeChoice.ts` and `lib/engineChoice.ts`.
+should show only comments, `theme/themeChoice.ts`, `lib/engineChoice.ts`,
+`lib/engineServer.ts` and `lib/engineSearchSettings.ts`.
 
 The one `sessionStorage` key is `chessapp.developmentNoticeDismissed`
 (`lib/developmentNotice.ts`, CTA-155): the in-development notice was dismissed in

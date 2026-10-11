@@ -963,10 +963,13 @@ Board), `useVariationsExplorer` (editing on, *Play chances…* off), and
   its top, and under it the **move marks switch** `library-game-move-marks` —
   the move on screen's `!` / `??` badge on the board, CTA-168; both on at the
   start, the session's, and a shipped game's Save as copy keeps both in the
-  saved analysis) · Map · Info (the tags, `GameInfo`) · Export · Engine.
+  saved analysis) · Map · Info (the tags, `GameInfo`) · Export — no Engine
+  tab since CTA-181: the search settings are the top bar's Engine menu, one
+  set for every board.
 - **Header**: back (to `state.from`, else the table), "Game n of m" and
   event/round/date/result, the current opening, previous / next, Save, Play
-  and the engine switch. The players are not in it (CTA-105): they are
+  and the engine's play / pause with its menu (the eval bar —
+  `BoardEngineControls`, CTA-181). The players are not in it (CTA-105): they are
   **plated beside the board**, at the left end of the captured-pieces strips
   — each one's result of the game, a thin separator, their Elo and their
   name (`1 | 2850 Carlsen, Magnus`; the half sign for a draw, nothing for

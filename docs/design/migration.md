@@ -166,7 +166,7 @@ The four test-id props (`confirmTestId`, `testIdOn`, `inputTestId`,
 | `CollectionsTreeTable`, `CollectionGamesTable` | tables | the Library's home, a collection |
 | `SavedAnalysesList`, `RepertoiresList`, `FolderActions`, `FolderPicker`, `OpeningBookList` | lists | Saved analyses, Repertoires, the Library, the Openings explorer's Book tab |
 | `FolderNameDialog`, `FolderMoveDialog`, `FolderDeleteDialog`, `CollectionImportDialog`, `OpeningTreePgnDialog` | dialogs | the three folder trees; the Library's import and tree export |
-| `AnalysisEngineForm`, `ArrowSettingsFields`, `FenInput`, `PgnInput`, `PositionFields`, `MergeSplitChoice`, `CollectionFilters` | forms | every board's Engine tab; the Analysis Board's Arrows; the loads and uploads; the position editor; the repertoires' choice; a collection's panel |
+| `AnalysisEngineForm`, `ArrowSettingsFields`, `FenInput`, `PgnInput`, `PositionFields`, `MergeSplitChoice`, `CollectionFilters` | forms | every board's Engine tab; the Analysis Board's Arrows; the loads and uploads; the position editor; the repertoires' choice; a collection's panel (`AnalysisEngineForm` removed by CTA-181: the top bar's `EngineSearchSettingsForm`) |
 | `PgnExportPanel`, `GameInfo`, `CurrentOpening`, `ChangesStrip`, `PlayToggleButton`, `EngineThinking` | panels | every board's Export and Info tabs, header and changes strip |
 
 `ExampleGamesTable`, the placeholder that proved the layer, was deleted with
