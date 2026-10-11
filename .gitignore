@@ -26,3 +26,6 @@ test-results
 *.njsproj
 *.sln
 *.sw?
+
+# scripts/ecoEvalsPgn.mjs: its evaluation API answers (CTA-184).
+/.cache/
