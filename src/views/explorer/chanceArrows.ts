@@ -184,7 +184,10 @@ export const UNTAGGED_ARROW_CHANCE = 0.3;
  * border, the sharper the wider (the spec's opacity); a move with no tag
  * (`weight` `null`) gray and half-transparent; the hovered one the palette's
  * hover colour, fully opaque, whichever it is. `untagged` is the theme's
- * gray (CTA-107; absent, the default theme's).
+ * gray (CTA-107; absent, the default theme's). `byQuality` (CTA-180, the
+ * `eval` source) colours by the weight instead of the index: a weight of 1 —
+ * the best group, `lib/nextMoveWeights.ts` — the mainline colour, every
+ * other the side-line colour; absent, the index decides, as before.
  */
 export const weightedArrowColors = (
   weight: number | null,
@@ -192,10 +195,12 @@ export const weightedArrowColors = (
   hovered: boolean,
   palette: NextMoveArrowColors,
   untagged: string = UNTAGGED_NEXT_MOVE_ARROW_COLOR,
+  byQuality = false,
 ): ChanceArrowColors => {
   if (hovered) return { fill: palette.hovered, border: palette.hovered, opacity: 1 };
   if (weight === null) return { fill: untagged, border: "none", opacity: 1 };
-  const color = index === 0 ? palette.mainline : palette.sideline;
+  const best = byQuality ? weight === 1 : index === 0;
+  const color = best ? palette.mainline : palette.sideline;
   return { fill: color, border: color };
 };
 

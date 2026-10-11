@@ -10,7 +10,9 @@ import { gamesInText, gamesOf, withoutGames } from "./gamesTag";
 import { nodeAtSanPath, findNode, setComments, type GameTree } from "./gameTree";
 import {
   arrowWidthSourcesIn,
+  EVAL_BEST_CP,
   EVAL_HAIRLINE_CP,
+  EVAL_WORSE_MAX_WEIGHT,
   evalOf,
   nextMoveWeights,
   parseEval,
@@ -73,16 +75,46 @@ describe("the eval a move carries", () => {
   });
 });
 
+/** A worse move's weight by its loss — the rule the module note states (CTA-180). */
+const worse = (loss: number) =>
+  EVAL_WORSE_MAX_WEIGHT * (1 - Math.sqrt(Math.min(1, loss / EVAL_HAIRLINE_CP)));
+
 describe("nextMoveWeights — eval: loss against the best tagged move", () => {
-  it("makes the best the widest and narrows the rest linearly, an untagged move null", () => {
+  it("makes the best the widest and the rest worse moves by their loss, an untagged move null", () => {
     const tree = parsePgnTree(
       "1. e4 e5 2. Nf3 {[%eval 0.3]} (2. Bc4 {[%eval 0.1]}) (2. f4 {[%eval -1.5]}) (2. Qh5) *",
     );
     const weights = nextMoveWeights(branchAt(tree, "e4", "e5"), "eval")!;
     expect(weights[0]).toBe(1);
-    expect(weights[1]).toBeCloseTo(1 - 20 / EVAL_HAIRLINE_CP);
-    expect(weights[2]).toBeCloseTo(1 - 180 / EVAL_HAIRLINE_CP);
+    expect(weights[1]).toBeCloseTo(worse(20));
+    expect(weights[2]).toBeCloseTo(worse(180));
     expect(weights[3]).toBeNull();
+  });
+
+  it("puts every move within 1 cp of the best in the best group (CTA-180)", () => {
+    const tree = parsePgnTree(
+      "1. e4 {[%eval 0.30]} (1. d4 {[%eval 0.29]}) (1. Nf3 {[%eval 0.30]}) (1. c4 {[%eval 0.28]}) *",
+    );
+    const [e4, d4, nf3, c4] = nextMoveWeights(tree.moves, "eval")!;
+    expect(EVAL_BEST_CP).toBe(1);
+    expect([e4, d4, nf3]).toEqual([1, 1, 1]);
+    expect(c4).toBeCloseTo(worse(2));
+    expect(c4).toBeLessThanOrEqual(EVAL_WORSE_MAX_WEIGHT);
+  });
+
+  it("draws a small loss clearly thinner than the best and narrows visibly with the loss", () => {
+    const tree = parsePgnTree(
+      "1. e4 {[%eval 0.50]} (1. d4 {[%eval 0.40]}) (1. c4 {[%eval 0.00]}) (1. b4 {[%eval -1.00]}) (1. g4 {[%eval -2.30]}) *",
+    );
+    const [best, ten, fifty, oneFifty, twoEighty] = nextMoveWeights(tree.moves, "eval") as number[];
+    expect(best).toBe(1);
+    expect(ten).toBeLessThan(EVAL_WORSE_MAX_WEIGHT);
+    expect(ten).toBeGreaterThan(fifty);
+    expect(fifty).toBeGreaterThan(oneFifty);
+    expect(oneFifty).toBeGreaterThan(twoEighty);
+    // 10 and 50 cp apart already differ by a good part of the range.
+    expect(ten - fifty).toBeGreaterThan(0.1);
+    expect(twoEighty).toBeLessThan(0.05);
   });
 
   it("reads the score from the side to move's view at the branch", () => {
@@ -92,8 +124,8 @@ describe("nextMoveWeights — eval: loss against the best tagged move", () => {
     );
     const [c5, e5, g5] = nextMoveWeights(branchAt(tree, "e4"), "eval")!;
     expect(e5).toBe(1);
-    expect(c5).toBeCloseTo(1 - 15 / EVAL_HAIRLINE_CP);
-    expect(g5).toBeCloseTo(1 - 175 / EVAL_HAIRLINE_CP);
+    expect(c5).toBeCloseTo(worse(15));
+    expect(g5).toBeCloseTo(worse(175));
   });
 
   it("is a hairline at the loss limit or worse", () => {
@@ -107,7 +139,8 @@ describe("nextMoveWeights — eval: loss against the best tagged move", () => {
     );
     const [qh5, bc4, nf3, ke2] = nextMoveWeights(branchAt(tree, "e4", "e5"), "eval")!;
     expect(qh5).toBe(1);
-    expect(bc4).toBeGreaterThan(0.9);
+    // A longer mate is a mate for the mover too — among the best.
+    expect(bc4).toBe(1);
     expect(nf3).toBe(0);
     expect(ke2).toBe(0);
   });
@@ -115,8 +148,7 @@ describe("nextMoveWeights — eval: loss against the best tagged move", () => {
   it("flips a mate's sign for Black", () => {
     const tree = parsePgnTree("1. f3 e5 2. g4 Qh4# {[%eval #0]} (2... d6 {[%eval #-9]}) *");
     const weights = nextMoveWeights(branchAt(tree, "f3", "e5", "g4"), "eval")!;
-    expect(weights[0]).toBe(1);
-    expect(weights[1]).toBeGreaterThan(0.9);
+    expect(weights).toEqual([1, 1]);
   });
 });
 
