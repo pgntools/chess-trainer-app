@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
@@ -12,6 +12,9 @@ import {
   HOSTED_LIMITS,
   LITE,
   MULTI_THREAD_LIMITS,
+  PLAIN_HOST_ENGINES,
+  PRESETS,
+  SERVER_ENGINES,
   SETTINGS,
   SETTINGS_LINK,
   SINGLE_THREAD_LIMITS,
@@ -20,21 +23,27 @@ import {
 const mount = (
   settings: EngineSearchSettings = SETTINGS,
   limits: { threads: number; hashMb: number } = MULTI_THREAD_LIMITS,
-  engine: { name: string; version: string } = LITE,
+  { engines = PLAIN_HOST_ENGINES, engineId = LITE.id, presetId = "default" } = {},
 ) => {
   const onChange = vi.fn();
+  const onEngineChange = vi.fn();
+  const onPresetChange = vi.fn();
   render(
     <EngineSearchSettingsForm
       settings={settings}
       onChange={onChange}
       limits={limits}
-      engine={engine}
-      presetName="Default"
+      engines={engines}
+      engineId={engineId}
+      onEngineChange={onEngineChange}
+      presets={PRESETS}
+      presetId={presetId}
+      onPresetChange={onPresetChange}
       settingsLink={SETTINGS_LINK}
       testId="engine-menu"
     />,
   );
-  return { onChange };
+  return { onChange, onEngineChange, onPresetChange };
 };
 
 beforeEach(async () => {
@@ -48,12 +57,48 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
     for (const name of ["Search depth", "Move time", "Variations to show", "Threads", "Hash (MB)"]) {
       expect(screen.getByRole("slider", { name })).toBeInTheDocument();
     }
-    expect(screen.getByTestId("engine-menu-engine")).toHaveTextContent("Stockfish 19 Lite (19)");
-    expect(screen.getByTestId("engine-menu-preset")).toHaveTextContent("Default");
-    expect(screen.getByRole("link", { name: "Change the engine or its preset in Settings → Engine" })).toHaveAttribute(
-      "href",
-      "/settings/engine",
-    );
+    expect(screen.getByRole("combobox", { name: "Engine" })).toHaveTextContent("Stockfish 19 Lite (19)");
+    expect(screen.getByRole("combobox", { name: "Preset" })).toHaveTextContent("Default");
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings/engine");
+  });
+
+  describe("the engine and its preset — chosen right here (CTA-185)", () => {
+    it("offers Settings → Engine's engines, one this page cannot run disabled with its reason, names pinned LTR", async () => {
+      const user = userEvent.setup();
+      const { onEngineChange } = mount();
+      await user.click(screen.getByRole("combobox", { name: "Engine" }));
+      const listbox = screen.getByRole("listbox", { name: "Engine" });
+      const options = within(listbox).getAllByRole("option");
+      expect(options.map((option) => option.textContent)).toEqual([
+        "Stockfish 19 Lite (19)",
+        "Stockfish 19 Lite (multi-thread) (19)Needs cross-origin isolation — not available on this host",
+      ]);
+      expect(options[1]).toHaveAttribute("aria-disabled", "true");
+      expect(options[0].querySelector("bdi")).toHaveAttribute("dir", "ltr");
+      // Disabled is out of the pointer's reach too (MUI's `pointer-events: none`); nothing is chosen.
+      expect(onEngineChange).not.toHaveBeenCalled();
+    });
+
+    it("reports an engine chosen — the engine server's too, while it answers", async () => {
+      const user = userEvent.setup();
+      const { onEngineChange } = mount(SETTINGS, MULTI_THREAD_LIMITS, { engines: SERVER_ENGINES });
+      await user.click(screen.getByRole("combobox", { name: "Engine" }));
+      await user.click(screen.getByRole("option", { name: "Stockfish 19 (this computer) (19)" }));
+      expect(onEngineChange).toHaveBeenCalledWith(HOSTED_ENGINE.id);
+    });
+
+    it("offers the engine's presets, and reports one chosen", async () => {
+      const user = userEvent.setup();
+      const { onPresetChange } = mount(SETTINGS, MULTI_THREAD_LIMITS, { presetId: "p-deep" });
+      const preset = screen.getByRole("combobox", { name: "Preset" });
+      expect(preset).toHaveTextContent("deep-search");
+      await user.click(preset);
+      expect(within(screen.getByRole("listbox", { name: "Preset" })).getAllByRole("option").map((option) => option.textContent)).toEqual(
+        PRESETS.map((each) => each.name),
+      );
+      await user.click(screen.getByRole("option", { name: "Default" }));
+      expect(onPresetChange).toHaveBeenCalledWith("default");
+    });
   });
 
   it("is operated from the keyboard, each change a patch", async () => {
@@ -88,9 +133,80 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
       expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 1 });
     });
 
-    it("says the instant reply as 0s", () => {
+    it("says the instant reply as 0s, and shows it as 0 in its box", () => {
       mount({ ...SETTINGS, moveTimeMs: 1 });
-      expect(screen.getByTestId("engine-menu-movetime-value")).toHaveTextContent("0s");
+      expect(screen.getByRole("slider", { name: "Move time" })).toHaveAttribute("aria-valuetext", "0s");
+      expect(screen.getByRole("spinbutton", { name: "Move time in seconds, typed" })).toHaveValue(0);
+    });
+  });
+
+  describe("the number boxes at the depth and move-time sliders' ends (CTA-185)", () => {
+    it("takes a depth typed, held to 1 … 40 and to whole numbers", async () => {
+      const user = userEvent.setup();
+      const { onChange } = mount();
+      const depth = screen.getByRole("spinbutton", { name: "Search depth, typed" });
+      expect(depth).toHaveValue(SETTINGS.depth);
+      await user.clear(depth);
+      await user.type(depth, "25");
+      expect(onChange).toHaveBeenLastCalledWith({ depth: 25 });
+      await user.clear(depth);
+      await user.type(depth, "99");
+      expect(onChange).toHaveBeenLastCalledWith({ depth: 40 });
+      await user.clear(depth);
+      await user.type(depth, "0");
+      expect(onChange).toHaveBeenLastCalledWith({ depth: 1 });
+      await user.clear(depth);
+      await user.type(depth, "12.6");
+      expect(onChange).toHaveBeenLastCalledWith({ depth: 13 });
+    });
+
+    it("shows the reader's text while they type, and the value once they leave it", async () => {
+      const user = userEvent.setup();
+      mount();
+      const depth = screen.getByRole("spinbutton", { name: "Search depth, typed" });
+      await user.clear(depth);
+      await user.type(depth, "99");
+      expect(depth).toHaveValue(99);
+      await user.tab();
+      // The form's settings did not change (the test holds them): the box shows them again.
+      expect(depth).toHaveValue(SETTINGS.depth);
+    });
+
+    it("takes a move time typed in seconds — off the marks too, the slider showing where it falls", async () => {
+      const user = userEvent.setup();
+      const { onChange } = mount({ ...SETTINGS, moveTimeMs: 5000 });
+      const box = screen.getByRole("spinbutton", { name: "Move time in seconds, typed" });
+      expect(box).toHaveValue(5);
+      await user.clear(box);
+      await user.type(box, "7.5");
+      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 7500 });
+      await user.clear(box);
+      await user.type(box, "900");
+      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 300000 });
+      // 0 seconds is the instant reply, never "no limit" — the ∞ mark alone is.
+      await user.clear(box);
+      await user.type(box, "0");
+      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 1 });
+    });
+
+    it("follows the slider: 7.5 s sits halfway between the 5 and 10 marks", () => {
+      mount({ ...SETTINGS, moveTimeMs: 7500 });
+      expect(screen.getByRole("slider", { name: "Move time" })).toHaveAttribute("aria-valuenow", "1.5");
+      expect(screen.getByRole("spinbutton", { name: "Move time in seconds, typed" })).toHaveValue(7.5);
+    });
+
+    it("turns the move-time box off on the ∞ mark — not the depth's, nor under infinite analysis", () => {
+      mount({ ...SETTINGS, moveTimeMs: 0, infinite: true });
+      const box = screen.getByRole("spinbutton", { name: "Move time in seconds, typed" });
+      expect(box).toBeDisabled();
+      expect(box).toHaveAttribute("placeholder", "∞");
+      expect(screen.getByRole("spinbutton", { name: "Search depth, typed" })).toBeEnabled();
+    });
+
+    it("keeps both boxes on under infinite analysis with a move time", () => {
+      mount({ ...SETTINGS, moveTimeMs: 1000, infinite: true });
+      expect(screen.getByRole("spinbutton", { name: "Move time in seconds, typed" })).toBeEnabled();
+      expect(screen.getByRole("spinbutton", { name: "Search depth, typed" })).toBeEnabled();
     });
   });
 
@@ -103,7 +219,7 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
     });
 
     it("offers an engine server's engine its own range, past the in-browser 1024 MB", () => {
-      mount(HOSTED_ASKED, HOSTED_LIMITS, HOSTED_ENGINE);
+      mount(HOSTED_ASKED, HOSTED_LIMITS, { engines: SERVER_ENGINES, engineId: HOSTED_ENGINE.id });
       expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "15");
       expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "4096");
       expect(screen.getAllByText("4096").some((label) => label.classList.contains("MuiSlider-markLabel"))).toBe(true);
@@ -120,6 +236,13 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
 
   it("passes axe", async () => {
     mount();
+    await expectNoAxeViolations();
+  });
+
+  it("passes axe in Hebrew, its move-time box off", async () => {
+    await i18n.changeLanguage("he");
+    mount();
+    expect(screen.getByRole("link", { name: "הגדרות" })).toBeInTheDocument();
     await expectNoAxeViolations();
   });
 });

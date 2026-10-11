@@ -393,9 +393,16 @@ const en = {
       on: "Engine settings — engine on",
       searching: "Engine settings — engine searching",
     },
-    engine: "Engine:",
-    preset: "Preset:",
-    settingsLink: "Change the engine or its preset in Settings → Engine",
+    /** The header's button's words (CTA-185) — its name is `label.*`, which says the engine's state too. */
+    button: "Engine",
+    engine: "Engine",
+    preset: "Preset",
+    settingsLink: "Settings",
+    /** The number boxes at the depth and move-time sliders' ends (CTA-185). */
+    depthTyped: "Search depth, typed",
+    moveTimeTyped: "Move time in seconds, typed",
+    /** The move-time box's unit. */
+    seconds: "s",
   },
   /** A board's engine controls (CTA-181, the `BoardEngineControls` block): the play / pause and its menu. */
   boardEngine: {

@@ -795,6 +795,8 @@ describe("the header's Engine menu (CTA-181)", () => {
     const header = screen.getByTestId("layout-header");
     const controls = within(header).getAllByRole("button").map((button) => button.getAttribute("data-testid"));
     expect(controls).toContain("header-engine");
+    // A robot and its words, as the language switch has its name (CTA-185).
+    expect(within(header).getByTestId("header-engine")).toHaveTextContent(i18n.t("engineMenu.button"));
     expect(within(header).getByRole("combobox", { name: i18n.t("nav.switchLanguage") })).toHaveTextContent("English");
   });
 });
@@ -835,7 +837,8 @@ describe("the shell under its breakpoint (CTA-118)", () => {
     renderShell();
     const header = screen.getByTestId("layout-header");
     const engine = within(header).getByRole("button", { name: i18n.t("engineMenu.label.off") });
-    // The language select shows its code under the breakpoint, the bar's 288 px at 320 shared with the engine.
+    // Its robot alone (CTA-185), as the language select shows its code — the bar's 288 px at 320 shared with the engine.
+    expect(engine).toHaveTextContent("");
     expect(within(header).getByRole("combobox", { name: i18n.t("nav.switchLanguage") })).toHaveTextContent("EN");
     await user.click(engine);
     expect(await screen.findByRole("dialog", { name: i18n.t("engineMenu.title") })).toBeInTheDocument();

@@ -4,7 +4,17 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import i18n from "../../i18n";
-import { readEngineSearchSettings } from "../../lib/engineSearchSettings";
+import { readStoredEngineId } from "../../lib/engineChoice";
+import { selectedPresetOf } from "../../lib/enginePresets";
+import {
+  createEnginePreset,
+  enginePresetSelectionsSnapshot,
+  enginePresetsSnapshot,
+  loadEnginePresets,
+  loadEnginePresetSelections,
+} from "../../lib/enginePresetStore";
+import { readEngineSearchSettings, storeEngineSearchSettings } from "../../lib/engineSearchSettings";
+import { DEFAULT_ENGINE_ID } from "../../lib/engines";
 import { expectNoAxeViolations } from "../../test/axe";
 import { stubReducedMotion } from "../../test/reducedMotion";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
@@ -27,11 +37,11 @@ function Where() {
   return <div data-testid="where">{useLocation().pathname}</div>;
 }
 
-const mount = (board?: BoardEngineState) =>
+const mount = (board?: BoardEngineState, compact = false) =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={["/tools/analysis"]}>
-        <EngineMenu />
+        <EngineMenu compact={compact} />
         <Routes>
           <Route path="/tools/analysis" element={board === undefined ? null : <Board state={board} />} />
           <Route path="*" element={null} />
@@ -50,7 +60,13 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
+
+const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(button());
+  return screen.findByRole("dialog", { name: "Engine" });
+};
 
 describe("the top bar's Engine menu (CTA-181)", () => {
   it("is a named button that opens a dialog, neutral on a screen with no board", () => {
@@ -59,7 +75,23 @@ describe("the top bar's Engine menu (CTA-181)", () => {
     expect(button()).toHaveAttribute("aria-haspopup", "dialog");
     expect(button()).toHaveAttribute("aria-expanded", "false");
     expect(icon()).toHaveAttribute("data-state", "none");
-    expect(button()).not.toHaveClass("MuiIconButton-colorPrimary");
+    expect(button()).not.toHaveClass("MuiButton-colorPrimary");
+  });
+
+  it("is a robot and \"Engine\", drawn as the language switch is — the robot alone under the breakpoint (CTA-185)", () => {
+    const { unmount } = mount();
+    expect(button()).toHaveTextContent("Engine");
+    expect(button()).toHaveClass("MuiButton-outlined");
+    expect(within(icon()).getByTestId("SmartToyRoundedIcon")).toBeInTheDocument();
+    // Neutral, the robot at the language switch's 0.56.
+    expect(icon()).toHaveStyle({ opacity: "0.56" });
+    unmount();
+
+    mount(undefined, true);
+    expect(button()).toHaveTextContent("");
+    // The words stay in its name; alone, the robot is drawn in full.
+    expect(screen.getByRole("button", { name: "Engine settings — engine off" })).toBe(button());
+    expect(icon()).toHaveStyle({ opacity: "1" });
   });
 
   it("opens by keyboard on the search settings, the engine and its preset — and a change is everyone's", async () => {
@@ -69,8 +101,8 @@ describe("the top bar's Engine menu (CTA-181)", () => {
     await user.keyboard("{Enter}");
     const dialog = await screen.findByRole("dialog", { name: "Engine" });
     expect(button()).toHaveAttribute("aria-expanded", "true");
-    expect(within(dialog).getByTestId("engine-menu-engine")).toHaveTextContent("Stockfish 19 Lite");
-    expect(within(dialog).getByTestId("engine-menu-preset")).toHaveTextContent("Default");
+    expect(within(dialog).getByRole("combobox", { name: "Engine" })).toHaveTextContent("Stockfish 19 Lite");
+    expect(within(dialog).getByRole("combobox", { name: "Preset" })).toHaveTextContent("Default");
     // The default engine runs on one thread: fixed, and said.
     expect(within(dialog).getByRole("slider", { name: "Threads" })).toBeDisabled();
 
@@ -90,7 +122,7 @@ describe("the top bar's Engine menu (CTA-181)", () => {
     const user = userEvent.setup();
     mount();
     await user.click(button());
-    await user.click(await screen.findByRole("link", { name: "Change the engine or its preset in Settings → Engine" }));
+    await user.click(await screen.findByRole("link", { name: "Settings" }));
     expect(screen.getByTestId("where")).toHaveTextContent("/settings/engine");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
@@ -98,17 +130,105 @@ describe("the top bar's Engine menu (CTA-181)", () => {
   it("shows the board on screen's engine: off neutral, on in the theme's colour, searching breathing", () => {
     const { unmount } = mount("off");
     expect(icon()).toHaveAttribute("data-state", "off");
-    expect(button()).not.toHaveClass("MuiIconButton-colorPrimary");
+    expect(button()).not.toHaveClass("MuiButton-colorPrimary");
     unmount();
 
     const on = mount("on");
-    expect(screen.getByRole("button", { name: "Engine settings — engine on" })).toHaveClass("MuiIconButton-colorPrimary");
+    expect(screen.getByRole("button", { name: "Engine settings — engine on" })).toHaveClass("MuiButton-colorPrimary");
     expect(icon()).toHaveAttribute("data-breathing", "false");
     on.unmount();
 
     mount("searching");
-    expect(screen.getByRole("button", { name: "Engine settings — engine searching" })).toHaveClass("MuiIconButton-colorPrimary");
+    expect(screen.getByRole("button", { name: "Engine settings — engine searching" })).toHaveClass("MuiButton-colorPrimary");
     expect(icon()).toHaveAttribute("data-breathing", "true");
+  });
+
+  describe("the engine and its preset, chosen in the menu (CTA-185)", () => {
+    it("changes the engine every board uses — as Settings → Engine does — one this page cannot run disabled", async () => {
+      const user = userEvent.setup();
+      mount();
+      const dialog = await openMenu(user);
+      await user.click(within(dialog).getByRole("combobox", { name: "Engine" }));
+      // Not cross-origin isolated (jsdom): the multi-thread build is listed, and cannot be chosen.
+      expect(screen.getByRole("option", { name: /Stockfish 19 Lite \(multi-thread\)/ })).toHaveAttribute("aria-disabled", "true");
+      await user.keyboard("{Escape}");
+      expect(readStoredEngineId()).toBeUndefined();
+    });
+
+    it("stores the engine chosen where the page can run it", async () => {
+      vi.stubGlobal("crossOriginIsolated", true);
+      const user = userEvent.setup();
+      mount();
+      const dialog = await openMenu(user);
+      await user.click(within(dialog).getByRole("combobox", { name: "Engine" }));
+      await user.click(screen.getByRole("option", { name: "Stockfish 19 Lite (multi-thread) (19)" }));
+      expect(readStoredEngineId()).toBe("stockfish-19-lite-multi");
+      expect(within(dialog).getByRole("combobox", { name: "Engine" })).toHaveTextContent("Stockfish 19 Lite (multi-thread) (19)");
+    });
+
+    it("selects a preset for the engine running, as Settings → Engine's presets section does", async () => {
+      const made = await createEnginePreset("deep-search");
+      if (!("id" in made)) throw new Error("the preset was not made");
+      await Promise.all([loadEnginePresets(), loadEnginePresetSelections()]);
+      const user = userEvent.setup();
+      mount();
+      const dialog = await openMenu(user);
+      const preset = within(dialog).getByRole("combobox", { name: "Preset" });
+      expect(preset).toHaveTextContent("Default");
+      await user.click(preset);
+      await user.click(await screen.findByRole("option", { name: "deep-search" }));
+      await waitFor(() =>
+        expect(selectedPresetOf(enginePresetsSnapshot() ?? [], enginePresetSelectionsSnapshot() ?? [], DEFAULT_ENGINE_ID).id).toBe(made.id),
+      );
+      expect(within(dialog).getByRole("combobox", { name: "Preset" })).toHaveTextContent("deep-search");
+    });
+  });
+
+  describe("depth and move time typed (CTA-185)", () => {
+    it("takes a depth typed, held to 40, in step with its slider", async () => {
+      const user = userEvent.setup();
+      mount();
+      const dialog = await openMenu(user);
+      const box = within(dialog).getByRole("spinbutton", { name: "Search depth, typed" });
+      await user.clear(box);
+      await user.type(box, "33");
+      expect(readEngineSearchSettings().depth).toBe(33);
+      expect(within(dialog).getByRole("slider", { name: "Search depth" })).toHaveAttribute("aria-valuenow", "33");
+      await user.clear(box);
+      await user.type(box, "77");
+      expect(readEngineSearchSettings().depth).toBe(40);
+    });
+
+    it("keeps the move-time box off on ∞, and takes seconds typed once the slider leaves it", async () => {
+      const user = userEvent.setup();
+      mount();
+      const dialog = await openMenu(user);
+      const box = within(dialog).getByRole("spinbutton", { name: "Move time in seconds, typed" });
+      // The default is no limit — the ∞ mark.
+      expect(box).toBeDisabled();
+      // Infinite analysis disables neither box.
+      await user.click(within(dialog).getByRole("switch", { name: "Infinite analysis" }));
+      expect(within(dialog).getByRole("spinbutton", { name: "Search depth, typed" })).toBeEnabled();
+
+      within(dialog).getByRole("slider", { name: "Move time" }).focus();
+      await user.keyboard("{ArrowLeft}");
+      expect(readEngineSearchSettings().moveTimeMs).toBe(300000);
+      expect(box).toBeEnabled();
+      expect(box).toHaveValue(300);
+      await user.clear(box);
+      await user.type(box, "12.5");
+      expect(readEngineSearchSettings().moveTimeMs).toBe(12500);
+      // 12.5 s falls between the 10 and 20 marks.
+      expect(within(dialog).getByRole("slider", { name: "Move time" })).toHaveAttribute("aria-valuenow", "2.25");
+    });
+
+    it("shows a move time stored elsewhere in its box", async () => {
+      storeEngineSearchSettings({ moveTimeMs: 5000 });
+      const user = userEvent.setup();
+      mount();
+      const dialog = await openMenu(user);
+      expect(within(dialog).getByRole("spinbutton", { name: "Move time in seconds, typed" })).toHaveValue(5);
+    });
   });
 
   it("stays still while searching when the reader asks for reduced motion", () => {

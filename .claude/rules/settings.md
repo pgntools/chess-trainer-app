@@ -121,7 +121,11 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
 - **The search settings are not here** (CTA-181): lines, depth, move time,
   infinite analysis, Threads and Hash are the reader's one global set, set
   from **the top bar's Engine menu** (`views/main/EngineMenu.tsx`, beside the
-  language button — under the engine and its preset, with a link back here),
+  language button — a robot and "Engine", styled as the language switch;
+  under the engine and its preset, **each a select there too** (CTA-185: the
+  same `describeEngines()` list and `setEngineId` as this tab, the engine's
+  presets and `selectEnginePreset` as §4.1's section), with a "Settings" link
+  back here; depth and move time typed as well as slid),
   `localStorage` `chessapp.engineSettings` (`lib/engineSearchSettings.ts`), a
   preference like the choice and likewise not in the zip
   ([`docs/engine.md`](../../docs/engine.md) §5.2).
@@ -232,7 +236,9 @@ whole design):
   on API),
   Connect answered on the button, a bad address refused and a new one kept
   with Enter, a stored server engine opening the API tab and falling back
-  when the server is turned off, Hebrew, axe. `src/lib/engineChoice.test.ts`
+  when the server is turned off, Hebrew, axe. The top bar's Engine menu
+  choosing the engine and a preset (CTA-185) is
+  `views/main/EngineMenu.test.tsx`. `src/lib/engineChoice.test.ts`
   — the store; `src/lib/engineServer.test.ts` — the address and the status.
   The presets (CTA-179, the same file over the real stores and a `FakeEngine`
   per build — `builtinEnginesMock`, which `Settings.test.tsx` mocks too): the

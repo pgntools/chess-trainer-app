@@ -230,12 +230,24 @@ choice's pattern), so every mounted board and the top bar follow a change, from
 the next search.
 
 - **Set in the top bar's Engine menu** (`views/main/EngineMenu.tsx`, beside the
-  language button): the `EngineSearchSettingsForm` block, under the engine
-  running (name, version), the preset it runs, and a link to Settings → Engine.
+  language button — a robot and "Engine", drawn as the language switch is, the
+  robot alone under the shell's breakpoint, CTA-185): the
+  `EngineSearchSettingsForm` block, under **the engine and its preset, each a
+  select** (CTA-185) — the engine from `describeEngines()` (the page's builds
+  and, while it answers, the engine server's; one this page cannot run listed
+  disabled with its reason), stored through `useEngineChoice().setEngineId` as
+  Settings → Engine stores it; the preset one of that engine's, selected with
+  `selectEnginePreset` as Settings → Engine's presets section does — and a
+  "Settings" link to Settings → Engine.
   Threads and Hash are offered up to what the engine running takes
   (`searchSettingLimitsOf`: one thread for a single-thread build, the device's
   for a multi-thread one, an engine server's declaration) — a stored value
-  past it shown held, never cut back.
+  past it shown held, never cut back. **Depth and move time can be typed**
+  (CTA-185): a number box at each slider's end (`SliderField`'s `input`),
+  depth a whole number held to 1–40, move time seconds held to 0–300 — a value
+  off the slider's marks kept, the slider showing where it falls
+  (`moveTimeSliderValueOf`), 0 the instant reply; on the slider's ∞ mark (no
+  limit) the move-time box is off. Infinite analysis turns neither off.
 - **Every board reads it**: the Analysis Board, the Library's game and the
   Openings explorer (`useAnalysisSession`), the repertoire player, Play with
   Engine and Masked Pieces (`usePlayGame`), and the Lobby's new-game form's
@@ -245,7 +257,7 @@ the next search.
   (`BoardEngineControls`, with a menu for the eval bar and, on the Analysis
   Board, Write evaluations). Each board publishes its engine's state —
   off, on, searching (`useEngineModule`'s `searching`) — to the shell
-  (`views/main/boardEngineState.ts`), and the top bar's icon shows it: neutral
+  (`views/main/boardEngineState.ts`), and the top bar's button shows it: neutral
   while off (or with no board), the theme's primary while on, breathing while a
   search runs — still under `prefers-reduced-motion` (the theme's durations).
 - **Records keep what they ran with.** A saved analysis writes its
@@ -496,7 +508,8 @@ options* (`guides/understanding-stockfish-uci-options.mdx`).
 - The search settings (§5.2, CTA-181): `src/lib/engineSearchSettings.test.ts`
   (the preference, the normaliser, the engine's limits, a record's settings
   against the ones in effect, a field it did not carry skipped),
-  `src/views/main/EngineMenu.test.tsx` (the top bar's menu and its icon), the
+  `src/views/main/EngineMenu.test.tsx` (the top bar's menu, its button, the
+  engine and preset chosen in it, depth and move time typed — CTA-185), the
   blocks' own tests (`EngineSearchSettingsForm`, `BoardEngineControls`,
   `EngineOptionsChangedDialog`), and every board's in
   `src/views/board/boards.test.tsx` (the settings reach it, its state reaches

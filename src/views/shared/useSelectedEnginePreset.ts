@@ -1,7 +1,14 @@
 import { useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 
-import { DEFAULT_PRESET_ID, DEFAULT_PRESET_NAME, selectedPresetOf, selectedPresetValues } from "../../lib/enginePresets";
+import {
+  DEFAULT_PRESET_ID,
+  DEFAULT_PRESET_NAME,
+  selectedPresetOf,
+  selectedPresetValues,
+  withDefaultPreset,
+  type EnginePreset,
+} from "../../lib/enginePresets";
 import {
   enginePresetSelectionsSnapshot,
   enginePresetsSnapshot,
@@ -16,15 +23,28 @@ import type { UciOptionValue } from "../../lib/engineTypes";
  * is renamed) and the values it sends, the same object while the preset is
  * unchanged. What the top bar's Engine menu names and what Play's strength
  * reads its `UCI_LimitStrength` from. The stores are read on first use.
+ * With it, its `id` and **every preset** to choose from, each named the same
+ * way (CTA-185 — the Engine menu's preset select).
  */
-export const useSelectedEnginePreset = (engineId: string): { name: string; values: Readonly<Record<string, UciOptionValue>> } => {
+export const useSelectedEnginePreset = (
+  engineId: string,
+): {
+  id: string;
+  name: string;
+  values: Readonly<Record<string, UciOptionValue>>;
+  presets: readonly { id: string; name: string }[];
+} => {
   const { t } = useTranslation();
   const presets = useSyncExternalStore(subscribeEnginePresets, enginePresetsSnapshot, enginePresetsSnapshot);
   const selections = useSyncExternalStore(subscribeEnginePresetSelections, enginePresetSelectionsSnapshot, enginePresetSelectionsSnapshot);
+  /** Default under its name in the reader's language, until the reader renames it. */
+  const nameOf = (preset: EnginePreset): string =>
+    preset.id === DEFAULT_PRESET_ID && preset.name === DEFAULT_PRESET_NAME ? t("settings.engine.presets.defaultName") : preset.name;
   const preset = selectedPresetOf(presets ?? [], selections ?? [], engineId);
   return {
-    name:
-      preset.id === DEFAULT_PRESET_ID && preset.name === DEFAULT_PRESET_NAME ? t("settings.engine.presets.defaultName") : preset.name,
+    id: preset.id,
+    name: nameOf(preset),
     values: selectedPresetValues(presets, selections, engineId),
+    presets: withDefaultPreset(presets ?? []).map((each) => ({ id: each.id, name: nameOf(each) })),
   };
 };

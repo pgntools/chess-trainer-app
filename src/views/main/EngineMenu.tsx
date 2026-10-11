@@ -1,18 +1,20 @@
 import { useId, useState } from "react";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Popover from "@mui/material/Popover";
 import Typography from "@mui/material/Typography";
 import { keyframes, useTheme } from "@mui/material/styles";
-import MemoryRoundedIcon from "@mui/icons-material/MemoryRounded";
+import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
 import { Link as RouterLink, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { EngineSearchSettingsForm } from "../../blocks/forms";
-import { IconAction } from "../../design-system/components/toolbars";
+import { selectEnginePreset } from "../../lib/enginePresetStore";
 import { searchSettingLimitsOf } from "../../lib/engineSearchSettings";
-import { resolveEngine } from "../../lib/engines";
+import { describeEngines, resolveEngine } from "../../lib/engines";
 import { useEngineChoice } from "../shared/useEngineChoice";
 import { useEngineSearchSettings } from "../shared/useEngineSearchSettings";
+import { useEngineServer } from "../shared/useEngineServer";
 import { useSelectedEnginePreset } from "../shared/useSelectedEnginePreset";
 import { useBoardEngineState } from "./boardEngineState";
 
@@ -23,17 +25,25 @@ const breathe = keyframes`
 `;
 
 /**
- * **The top bar's Engine menu** (CTA-181) — beside the language button: an
- * icon that opens the search settings every board uses (lines, depth, move
- * time, infinite analysis, Threads and Hash — the `EngineSearchSettingsForm`
- * block over `lib/engineSearchSettings.ts`), under the engine running and the
- * preset it runs, with a link to Settings → Engine to change either. Until
- * CTA-181 each board had these on its own Engine tab.
+ * **The top bar's Engine menu** (CTA-181) — beside the language button: a
+ * robot and "Engine" (CTA-185, drawn as the language switch is: a small
+ * outlined control, a divider-coloured border, the icon at 0.56 before the
+ * words; under the shell's breakpoint the robot alone, as the switch drops to
+ * the language's code, so the header fits 320 px) that opens the search
+ * settings every board uses (lines, depth, move time, infinite analysis,
+ * Threads and Hash — the `EngineSearchSettingsForm` block over
+ * `lib/engineSearchSettings.ts`), under **the engine and its preset, each a
+ * select** (CTA-185): the engine stored as Settings → Engine stores it
+ * (`useEngineChoice`, over `describeEngines()` — the page's builds and, while
+ * it answers, the engine server's), the preset selected for that engine as
+ * Settings → Engine's presets section selects it (`selectEnginePreset`) —
+ * and a link to Settings → Engine. Until CTA-181 each board had the search
+ * settings on its own Engine tab.
  *
- * **The icon is the board on screen's engine** (`useBoardEngineState`, which
- * the boards' sessions publish): neutral while it is off — and on a screen
- * with no board — the theme's primary while on, and **breathing** while a
- * search runs: an opacity cycle timed by the theme's
+ * **The button is the board on screen's engine** (`useBoardEngineState`,
+ * which the boards' sessions publish): neutral while it is off — and on a
+ * screen with no board — the theme's primary while on, and its robot
+ * **breathing** while a search runs: an opacity cycle timed by the theme's
  * `transitions.duration.complex`, which the theme makes 0 under
  * `prefers-reduced-motion` — then it stays still. Its name says the same
  * ("Engine settings — engine searching").
@@ -42,11 +52,13 @@ const breathe = keyframes`
  * popover a `dialog` named by its heading; it closes on Escape, a click
  * outside, or leaving the page (the link to Settings).
  */
-export function EngineMenu() {
+export function EngineMenu({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
   const theme = useTheme();
   const state = useBoardEngineState();
-  const { engineId } = useEngineChoice();
+  const { engineId, setEngineId } = useEngineChoice();
+  // The engine server's status, so the engine list follows it (its engines listed while it answers).
+  useEngineServer();
   const descriptor = resolveEngine(engineId);
   const preset = useSelectedEnginePreset(descriptor.id);
   const { settings, setSettings } = useEngineSearchSettings();
@@ -70,13 +82,27 @@ export function EngineMenu() {
 
   return (
     <>
-      <IconAction
-        label={t(`engineMenu.label.${state ?? "off"}`)}
+      <Button
+        variant="outlined"
+        color={lit ? "primary" : "inherit"}
+        aria-label={t(`engineMenu.label.${state ?? "off"}`)}
+        aria-haspopup="dialog"
+        aria-expanded={anchor !== null}
         onClick={(event) => setAnchor(event.currentTarget)}
-        popupOpen={anchor !== null}
-        popupKind="dialog"
-        color={lit ? "primary" : undefined}
-        testId="header-engine"
+        data-testid="header-engine"
+        sx={{
+          // The language switch's look: as tall as its small select, its border the divider's, its words the bar's.
+          minHeight: 40,
+          minWidth: 0,
+          // Under the breakpoint as narrow as the icon button it replaced (30 px): the bar has 288 px at 320.
+          px: compact ? 0.5 : 1.5,
+          gap: 1,
+          flexShrink: 0,
+          textTransform: "none",
+          fontWeight: 400,
+          borderColor: "divider",
+          "&:hover": { borderColor: "text.secondary" },
+        }}
       >
         <Box
           component="span"
@@ -85,13 +111,17 @@ export function EngineMenu() {
           data-breathing={breathing}
           sx={{
             display: "inline-flex",
+            // Lit — or alone, under the breakpoint, where it is all there is to see — the robot in full; neutral beside its words, at the language switch's 0.56.
+            opacity: lit || compact ? 1 : 0.56,
             // Under reduced motion the theme's durations are 0: no animation, the icon stays lit.
             animation: breathing ? `${breathe} ${breath}ms ease-in-out infinite` : "none",
           }}
         >
-          <MemoryRoundedIcon fontSize="small" />
+          <SmartToyRoundedIcon fontSize="small" />
         </Box>
-      </IconAction>
+        {/* Under the shell's breakpoint the robot alone — the words stay in its name. */}
+        {!compact && <span>{t("engineMenu.button")}</span>}
+      </Button>
       <Popover
         open={anchor !== null}
         anchorEl={anchor}
@@ -109,8 +139,12 @@ export function EngineMenu() {
             settings={settings}
             onChange={setSettings}
             limits={searchSettingLimitsOf(descriptor)}
-            engine={{ name: descriptor.name, version: descriptor.version }}
-            presetName={preset.name}
+            engines={describeEngines()}
+            engineId={descriptor.id}
+            onEngineChange={setEngineId}
+            presets={preset.presets}
+            presetId={preset.id}
+            onPresetChange={(presetId) => void selectEnginePreset(descriptor.id, presetId)}
             settingsLink={{ component: RouterLink, to: "/settings/engine" }}
             testId="engine-menu"
           />
