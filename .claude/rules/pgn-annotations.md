@@ -267,7 +267,7 @@ knows nothing of where it came from:
 | --- | --- | --- |
 | Repertoire player | the move's play chance | `prc` marks → `playChances` (`useVariationsExplorer`, `arrows.chances`) |
 | Library collection lobby's opening board | the share of the position's games that played the move | `child.count / node.count`, counted from the collection's rows (`lib/openingTree.ts`, `OpeningFilterBoard.tsx`, CTA-92) — **not** from any PGN annotation |
-| Analysis Board (CTA-98) | the chosen width source's weight | `nextMoveWeights` (`lib/nextMoveWeights.ts`, `arrows.widthSource`): `[%eval]` as loss vs the best tagged move, `games` as a share, `prc` scaled among the tagged moves, or the lines within 8 plies; the arrows in the Arrows tab's palette, an untagged move gray ([`analysis-board.md`](./analysis-board.md) §1.1) |
+| Analysis Board (CTA-98) | the chosen width source's weight | `nextMoveWeights` (`lib/nextMoveWeights.ts`, `arrows.widthSource`): `[%eval]` as loss vs the best tagged move (within 1 cp the best group, widest and in the mainline colour; the rest thinner by loss in the side-line colour — CTA-180), `games` as a share, `prc` scaled among the tagged moves, or the lines within 8 plies; the arrows in the Arrows tab's palette, an untagged move gray ([`analysis-board.md`](./analysis-board.md) §1.1) |
 
 ### Written today: the Library's `[%games N]` (CTA-99)
 

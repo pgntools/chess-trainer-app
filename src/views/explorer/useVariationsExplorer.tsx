@@ -277,7 +277,8 @@ export function useVariationsExplorer({
 
   // The play-chance arrows themselves, over the board: white with a magenta
   // border, the wider the likelier the move (CTA-71). Or the width source's,
-  // in the palette's colours, an untagged move gray (CTA-98).
+  // in the palette's colours, an untagged move gray (CTA-98) — by index, or
+  // under `eval` by quality: the best group the mainline colour (CTA-180).
   const chanceOverlay =
     chances !== undefined ? (
       <ChanceArrows
@@ -299,6 +300,7 @@ export function useVariationsExplorer({
             continuations[index].id === hoveredId,
             palette,
             chess.arrows.untagged,
+            widthSource === "eval",
           ),
         )}
         hoveredId={hoveredId}

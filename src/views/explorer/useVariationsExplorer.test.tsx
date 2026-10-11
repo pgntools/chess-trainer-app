@@ -384,13 +384,15 @@ describe("useVariationsExplorer — the width source and palette (CTA-98)", () =
     "1. e4 e5 2. Nf3 {games:30} (2. f4 {[%games 10]}) (2. Nc3) 2... Nc6 3. Bb5 (3. Bc4) *",
   );
 
-  function Weighted(props: Omit<VariationsExplorerOptions, "testId" | "source"> & { nodeId: string }) {
-    const { nodeId, ...rest } = props;
+  function Weighted(
+    props: Omit<VariationsExplorerOptions, "testId" | "source"> & { nodeId: string; tree?: GameTree },
+  ) {
+    const { nodeId, tree = tagged, ...rest } = props;
     const view = useVariationsExplorer({
       testId: "x",
       source: {
-        tree: tagged,
-        mainlineNodes: mainline(tagged),
+        tree,
+        mainlineNodes: mainline(tree),
         nodeId,
         goToNode: vi.fn(),
         orientation: "white",
@@ -466,6 +468,31 @@ describe("useVariationsExplorer — the width source and palette (CTA-98)", () =
     expect(parts.arrows).toEqual([]);
     fireEvent.mouseEnter(screen.getByTestId(`next-move-${at(tagged, "e4", "e5", "f4")}`));
     expect(parts.arrows).toEqual([{ startSquare: "f2", endSquare: "f4", color: lichess.hovered }]);
+  });
+
+  it("colours eval arrows by quality: the best group mainline and widest, the worse thinner by loss (CTA-180)", () => {
+    // 2. Nf3 and 2. Bc4 tie; 2. f4 gives up 80 cp, 2. Qh5 280; 2. Nc3 is untagged.
+    const evals = parsePgnTree(
+      "1. e4 e5 2. Nf3 {[%eval 0.3]} (2. Bc4 {[%eval 0.3]}) (2. f4 {[%eval -0.5]}) (2. Qh5 {[%eval -2.5]}) (2. Nc3) *",
+    );
+    for (const palette of ["classic", "lichess", "colorblind"] as const) {
+      const colors = NEXT_MOVE_ARROW_PALETTES[palette];
+      const { unmount } = mountWeighted({
+        tree: evals,
+        nodeId: at(evals, "e4", "e5"),
+        arrows: { show: true, widthSource: "eval", palette },
+      });
+      expect(pathTo("f3")).toHaveAttribute("fill", colors.mainline);
+      // A side line in the best group takes the mainline colour, at full width.
+      expect(pathTo("c4")).toHaveAttribute("fill", colors.mainline);
+      expect(widthOf("c4")).toBe(widthOf("f3"));
+      expect(pathTo("f4")).toHaveAttribute("fill", colors.sideline);
+      expect(pathTo("h5")).toHaveAttribute("fill", colors.sideline);
+      expect(widthOf("f3")).toBeGreaterThan(widthOf("f4"));
+      expect(widthOf("f4")).toBeGreaterThan(widthOf("h5"));
+      expect(pathTo("c3")).toHaveAttribute("fill", UNTAGGED_NEXT_MOVE_ARROW_COLOR);
+      unmount();
+    }
   });
 
   it("sizes by the lines ahead with no tag at all", () => {

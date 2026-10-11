@@ -213,7 +213,7 @@ the move marks (below):
   | Source | Read from | Width |
   | --- | --- | --- |
   | **None** | — | the library arrows, colour only |
-  | **Evaluation** | `[%eval X]` in the move's own comment, or the trailing `+1.31 (21 ply)` shape — White's view, turned to the mover's | loss vs the best tagged move: the best widest, a hairline at 300 cp (`EVAL_HAIRLINE_CP`) or worse; a mate for the mover best, against it a hairline |
+  | **Evaluation** | `[%eval X]` in the move's own comment, or the trailing `+1.31 (21 ply)` shape — White's view, turned to the mover's | loss vs the best tagged move, **in two groups** (CTA-180): every move within 1 cp of the best (`EVAL_BEST_CP`) is the *best* group — widest, in the palette's mainline colour, whatever its place in the tree; every other is *worse* — the side-line colour, at most `EVAL_WORSE_MAX_WEIGHT` (0.6) wide and thinner with the square root of its loss, a hairline at 300 cp (`EVAL_HAIRLINE_CP`) or worse; a mate for the mover best (a longer one too), against it a hairline |
   | **Games** | `games:N` / `[%games N]` (`lib/gamesTag.ts`) | `N / Σ N` over the tagged moves |
   | **Play chance** | `prc:N` / `[%prc N]` | the marks scaled to 100% over the tagged moves |
   | **Lines ahead** | nothing (`linesWithin`, 8 plies) | each move's share — always offered |
@@ -231,7 +231,9 @@ the move marks (below):
   (its brushes, `#15781B` / `#003088` / `#882020`) and **Colour-blind safe**
   (Okabe–Ito, `#0072B2` / `#E69F00` / `#CC79A7`) — mainline / side line /
   hovered, each apart from the untagged gray. It colours the library arrows
-  and the width-sized ones alike.
+  and the width-sized ones alike — by the move's place (the mainline's
+  first), except under **Evaluation**, where the best group takes the
+  mainline colour and every worse move the side-line one (CTA-180).
 - **Show move marks on the board** (CTA-168, `analysis-move-marks`) — the
   move on screen's mark (`!!` … `??`) drawn as a badge on its square
   ([`pgn-annotations.md`](./pgn-annotations.md) §4); off, none is drawn (the
