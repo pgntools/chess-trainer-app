@@ -10,6 +10,8 @@ paths:
   - "src/views/shared/useOpeningBook.ts"
   - "src/data/openings/**"
   - "scripts/vendorOpenings.mjs"
+  - "scripts/ecoEvalsPgn.mjs"
+  - "src/lib/openingEvalTree*"
 ---
 
 # The Openings explorer — `/openings`
@@ -51,10 +53,12 @@ the receiving end of the hand-off is [`analysis-board.md`](./analysis-board.md).
 | `src/views/shared/useOpeningBook.ts` | The book for the saved lists' cards (`openingOfLine` under each card). Not used here. |
 | `src/data/openings/eco{A..E}.json` | The vendored book, ~3.2 MB, five lazy chunks. |
 | `scripts/vendorOpenings.mjs` | Re-vendors the book from an eco.json checkout (§2.1). Manual, not part of the build. |
+| `src/data/openings/eco-evals.pgn` | **The book as one evaluated PGN** (CTA-184, §9.4.1): every eco.json line in one tree, every move's `[%eval]` from the lichess evaluation database, the best move first at every branch. Committed; **no screen imports it yet** — data for a future Openings update. |
+| `scripts/ecoEvalsPgn.mjs` + `src/lib/openingEvalTree.ts` | Writes it (§9.4.1): the script reads the shards, asks the evaluation API and caches the answers; the module is the pure part — the tree merge, the order, the comments, the PGN. Manual, not part of the build. |
 | `src/views/tools/analysis/AnalysisBoard.tsx`, `useAnalysisBoard.ts` | The **receiving** end of the hand-off: `arrivalOf(params, location.state)` and the `handOff` start option (§5.3). |
 | `src/views/tools/analysis/useAnalysisSession.ts` | The session this screen composes (core + engine + Play + a baseline), shared with the Analysis Board and the Library's game board. |
 | `src/views/tools/analysis/AnalysisLoad.tsx`, `src/views/shared/ClearBoardButton.tsx`; the blocks `PgnExportPanel`, `BoardEngineControls`, `PlayToggleButton`, `EngineThinking` | The Analysis Board's tabs and header pieces, reused as they are (the engine's play / pause and its menu since CTA-181; Clear under Load). `AnalysisLoad` takes an optional `onCollectionSaved` (the Analysis module's popup, CTA-101) and a `choiceLabelKey` for this screen's inline choice (§3.4). |
-| Tests | `src/views/openings/OpeningsBoard.test.tsx` (the screen), `openingArrows.test.ts`, `src/lib/analysisHandOff.test.ts`, `src/lib/openings.test.ts`, `src/views/shared/useCurrentOpening.test.tsx`, `src/blocks/lists/OpeningBookList/OpeningBookList.test.tsx`, the hand-off arrivals in `src/views/tools/analysis/AnalysisBoard.test.tsx`, and the two propagation tests (`src/views/board/boards.test.tsx`, `panelPropagation.test.tsx`). |
+| Tests | `src/views/openings/OpeningsBoard.test.tsx` (the screen), `openingArrows.test.ts`, `src/lib/analysisHandOff.test.ts`, `src/lib/openings.test.ts`, `src/lib/openingEvalTree.test.ts` (the evaluated PGN's rules, and the committed file against the shards), `src/views/shared/useCurrentOpening.test.tsx`, `src/blocks/lists/OpeningBookList/OpeningBookList.test.tsx`, the hand-off arrivals in `src/views/tools/analysis/AnalysisBoard.test.tsx`, and the two propagation tests (`src/views/board/boards.test.tsx`, `panelPropagation.test.tsx`). |
 
 Routes and nav: `routes.tsx` routes `/openings` to `views/openings/Main`. The
 sidebar's **Openings** folder is `singleEntry` (`navFolders.ts`)
@@ -467,7 +471,64 @@ wins, what hover does) live only in `openingArrowsOf`. Update
 
 `node scripts/vendorOpenings.mjs /path/to/eco.json` → commit
 `src/data/openings/*.json` → `npx vitest run src/lib/openings.test.ts` →
-`yarn build` (check the five shards are still separate chunks).
+`yarn build` (check the five shards are still separate chunks) → **regenerate
+`eco-evals.pgn`** (§9.4.1) and commit it too: `openingEvalTree.test.ts` fails
+while a vendored line is missing from it.
+
+#### 9.4.1 The evaluated tree — `src/data/openings/eco-evals.pgn` (CTA-184)
+
+The whole book as **one PGN game**, every move carrying its evaluation —
+prepared for a future Openings update; nothing imports it yet, so it is not
+bundled. **No engine runs**: the evaluations are the lichess evaluation
+database's (<https://database.lichess.org/#evals>, ~416M positions), asked
+through our API, [`pgntools/lichess-eval-db-api`](https://github.com/pgntools/lichess-eval-db-api)
+(`GET /fen?fen=<FEN>&best=true`; a miss is HTTP 404).
+
+```
+node scripts/ecoEvalsPgn.mjs --api http://<host>:8000     # or ECO_EVALS_API=…; default http://localhost:8000
+```
+
+- **What it does** (`scripts/ecoEvalsPgn.mjs`, the rules in
+  `src/lib/openingEvalTree.ts`, loaded through Vite's module runner as
+  `wirepgn.js` loads `src/lib/`): reads `eco{A..E}.json`, replays each
+  entry's `moves` with `chess.js` and merges them by SAN into one tree from
+  the standard start (`openingTreeOf` — every eco.json line a path in it),
+  looks up the start and the position after every move, and writes the PGN.
+- **The lookup**: the FEN's first four fields (`lookupFenOf`) — the database
+  matches the exact string, counters ignored. `chess.js` writes an en passant
+  square only when a capture is legal, as lichess does, so its FEN is the one
+  sent (`d6` and `-` are different positions there: no fallback). A move that
+  mates is not looked up. The answer read is the deepest evaluation's first
+  line, `cp` / `mate`, White's view (`evalFromApi`).
+- **The cache**: every answer, a miss too, in `.cache/eco-evals.json`
+  (gitignored; `--cache` moves it), saved every 500 answers, on Ctrl+C and
+  on an error — so a re-run or an interrupted one asks only for what it
+  lacks. A re-run with everything cached touches no network and writes **the
+  same bytes**. Requests run `--concurrency` at a time (16). An API that
+  cannot be reached stops the run, saying where it looked; a 404 is a miss.
+- **The order** (`orderedTree`): at every branch the moves sorted by the
+  position after them, **best for the side that played it** first, so
+  `children[0]` is the best move and the mainline the best line. A mate beats
+  any score (a shorter one for the mover first, a longer one against him
+  before a shorter), a move that mates on the board first of all; no
+  evaluation last; ties by ECO (the move's entry's, else the smallest line
+  through it), then SAN.
+- **The comments** (`moveComment`): `{ B20 Sicilian Defense [%eval 0.32,60] }`
+  — the entry's ECO and name where the position is an entry (its full FEN a
+  key of the book), left off when the nearest named move above has the same
+  ECO and name (eco.json's interpolated positions repeat their line's name),
+  then `[%eval pawns,depth]` in the app's own format (`formatEval`,
+  [`pgn-annotations.md`](./pgn-annotations.md) §2), so the Analysis Board's
+  arrows (width source *Evaluation*) and its Evaluations tab read it.
+- **The game**: the Seven Tag Roster with neutral values, `Event "eco.json
+  opening tree"`, `Annotator "lichess evaluation database"`; the opening
+  comment holds the start position's `[%eval]`, the sources and the date the
+  cache last learnt something (not the day of the run — the file stays
+  deterministic). Written by `moveTreeToPgn`, so `parsePgnTree` reads it and
+  `treeToPgn` writes it back byte for byte.
+- **The summary** it prints: the moves in the tree, the positions looked up,
+  evaluated and missing, the mates, and the depth's min / median / max.
+  Missing positions stay unevaluated (no engine fallback) and sort last.
 
 ### 9.5 "Can we save openings again?"
 
