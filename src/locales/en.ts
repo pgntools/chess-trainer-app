@@ -1025,6 +1025,8 @@ const en = {
     /** The Analysis Board's tabs (CTA-73; the Position tab CTA-87). */
     tabs: {
       moves: "Moves",
+      /** A tree's written `[%eval]`s — the eval graph and the computer analysis report (CTA-183). */
+      evaluations: "Evaluations",
       map: "Map",
       load: "Load",
       export: "Export",

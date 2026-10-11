@@ -41,6 +41,7 @@ import {
   resolveGameReference,
 } from "../../../lib/gameReference";
 import type { ComputerAnalysisOptions } from "../../../lib/computerAnalysis";
+import { evalSeriesOf } from "../../../lib/computerAnalysisTree";
 import type { GameTree } from "../../../lib/gameTree";
 import { arrowWidthSourcesIn } from "../../../lib/nextMoveWeights";
 import { parsePgnTree } from "../../../lib/pgn";
@@ -98,16 +99,17 @@ import { useUnsavedWorkGuard } from "../../main/unsavedWork";
  * | Tree view | `useVariationsExplorer` | Moves (side lines, comment marks, evals, the move menu), Map, the comment block, the next-moves bar and arrows — editing on, *Play chances…* off (nothing here plays by chance) |
  * | Saving | `useAnalysisBoard` — explicit | no autosave: the header's Save lights while the board differs from its record, and opens the changes strip (Update / Save as copy / Discard); a board with no record yet saves through a name-and-folder dialog |
  *
- * **Tabs: Moves · Map · Load · Export · Arrows** (the Engine tab went with
- * CTA-181). Load brings a PGN (a file
+ * **Tabs: Moves · Evaluations · Map · Load · Export · Arrows** (the Engine
+ * tab went with CTA-181). Load brings a PGN (a file
  * or a paste — several games are merged onto the board or split into a
  * folder of saved analyses) or a FEN, and Clear empties the board; Export copies the FEN, and copies or
  * downloads the PGN with or without comments, NAGs and side lines; Arrows
  * (CTA-98) switches the next-move arrows, picks what sizes them — a tag in
  * each move's comment (`[%eval]`, `[%games]`, `prc`), offered only while the
  * tree carries it, or the lines ahead — and their colours. A tree's
- * `[%eval]`s show at the top of Moves as an eval graph and a report that move
- * the board (`AnalysisEvalReport`, CTA-174 / CTA-177), and the header's
+ * `[%eval]`s show on their own Evaluations tab (CTA-183) as an eval graph
+ * and a report that move the board (`AnalysisEvalReport`, CTA-174 /
+ * CTA-177), the tab disabled while the tree carries none, and the header's
  * **Analyse** opens the New Job dialog that sends the game to a background
  * job (`NewJob`, CTA-177). A saved analysis worked under other search
  * settings than the ones in effect asks once, as it opens, whether to use
@@ -217,6 +219,14 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
   const drawnWidthSource = availableWidthSources.has(arrowWidthSource) ? arrowWidthSource : "none";
   const [changesOpen, setChangesOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
+  /*
+    Whether the tree carries `[%eval]`s — the Evaluations tab's subject
+    (CTA-183): disabled without them, and the active tab moved off it the
+    moment they are gone (a Clear), adjusted during render as the strip's
+    closing is (`react-hooks/set-state-in-effect`).
+  */
+  const hasEvaluations = useMemo(() => evalSeriesOf(core.tree).length > 0, [core.tree]);
+  if (tab === "evaluations" && !hasEvaluations) setTab("moves");
   /*
     The New Job dialog (CTA-177): whether it is open, its options and the job
     it sent — the board's, so they outlive the dialog (CTA-174's tab's before).
@@ -476,17 +486,22 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
             {
               id: "moves",
               label: t("analysis.tabs.moves"),
+              content: explorer.moves,
+            },
+            {
+              // A tree's `[%eval]`s as a graph and a report, on their own tab
+              // (CTA-183; the top of Moves by CTA-177) — disabled while the
+              // tree carries none.
+              id: "evaluations",
+              label: t("analysis.tabs.evaluations"),
+              disabled: !hasEvaluations,
               content: (
-                <>
-                  {/* A tree's `[%eval]`s as a graph and a report, above the moves (CTA-177). */}
-                  <AnalysisEvalReport
-                    tree={core.tree}
-                    mainlinePly={core.mainlineNodes.findIndex((node) => node.id === core.nodeId) + 1}
-                    currentNodeId={core.nodeId}
-                    onGoToNode={core.goToNode}
-                  />
-                  {explorer.moves}
-                </>
+                <AnalysisEvalReport
+                  tree={core.tree}
+                  mainlinePly={core.mainlineNodes.findIndex((node) => node.id === core.nodeId) + 1}
+                  currentNodeId={core.nodeId}
+                  onGoToNode={core.goToNode}
+                />
               ),
             },
             { id: "map", label: t("analysis.tabs.map"), content: explorer.map },
