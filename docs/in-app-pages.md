@@ -34,6 +34,7 @@ src/routes.tsx                      { path: "/terms", handle: { ...ARTICLE_ROUTE
 | The loader | `src/views/legal/legalDocuments.ts` | The page ids, and each page's document per language (`appPageDocument`, a lazy chunk). |
 | The page | `src/views/legal/LegalPage.tsx` | The page's name as its one `h1`, then the document. A language with no file shows the English one, pinned left to right. |
 | The route | `src/routes.tsx` | An `ARTICLE_ROUTE` (the centred reading column), its title a `pages.*` key. Pre-rendered per language with no extra step, because its path is static. |
+| The operator | `src/lib/siteOperator.ts`, `plugins/siteOperator.ts`, `src/views/legal/legalPagesShown.ts` | Who runs the site — `%OPERATOR_NAME%`, `%OPERATOR_ADDRESS%`, `%PRIVACY_EMAIL%` in the text, filled in by the build from `SITE_*` variables; without them the build has none of these pages (§5, CTA-182). |
 
 **The page's name and description come from the catalogs**, not the
 frontmatter: `pages.<id>` is the `h1`, the tab title and the `main` landmark's
@@ -128,7 +129,9 @@ export const TermsMain = () => (
 ```
 
 `src/routes.tsx`: add it to the `LegalMain` import, and a route beside
-`/privacy` and `/cookies`, before the Settings routes:
+`/privacy` and `/cookies` — **inside their `LEGAL_PAGES_SHOWN` spread**: a
+build without its site operator lists no file of `app-pages/` (§5), so a
+route outside it would render a page with no document:
 
 ```tsx
 {
@@ -147,8 +150,9 @@ source to check every route has a line (step 6).
   `["/terms", "Terms of Use — chessapp.dev"]`, and `route.path === "/terms"`
   in the "is an article" list of the article-route test (it fails otherwise:
   only the listed routes may be articles).
-- `e2e/a11y/routes.ts`: a line beside `privacy` and `cookies`,
-  `{ id: "terms", pattern: "/terms", path: "terms" }` (no leading slash).
+- `e2e/a11y/routes.ts`: a line beside `privacy` and `cookies`, inside their
+  `LEGAL_PAGES_BUILT` spread, `{ id: "terms", pattern: "/terms", path: "terms" }`
+  (no leading slash), and `"/terms"` in `LEGAL_PATTERNS`.
   `e2e/a11y/routes.spec.ts` fails without it.
 - `src/views/legal/legalDocuments.test.ts` and `LegalPage.test.tsx` loop over
   `LEGAL_PAGES`, so with no new test the page is checked for: a document in
@@ -162,7 +166,8 @@ source to check every route has a line (step 6).
 
 ### Step 7 (optional): a footer link
 
-`src/views/main/Footer.tsx`: another router link in the links group,
+`src/views/main/Footer.tsx`: another router link in the links group, inside
+the `LEGAL_PAGES_SHOWN` fragment,
 
 ```tsx
 <Link component={RouterLink} to="/terms" variant="caption" data-testid="layout-footer-terms-link" sx={{ color: 'text.secondary' }}>
@@ -176,6 +181,8 @@ reflows at 320 px. A page linked from elsewhere (Settings, another page's text)
 needs no footer link.
 
 ### Step 8: check it
+
+With the site's operator set (§5 — in `.env.local`, or the shell):
 
 ```bash
 npx tsc -b
@@ -209,3 +216,86 @@ changing `pages.<id>` / `pageDescriptions.<id>` in both catalogs to the same
 words (and `footer.<id>`, if the footer's link should follow). The test fails
 until they match. When the Privacy Policy or the Cookies Notice changes, update
 its "Last updated" line.
+
+## 5. The site's operator: filled in at build time (CTA-182)
+
+The Privacy Policy and the Cookies Notice must name who runs the site: its
+name, postal address and a privacy contact. **The repository is public and
+carries none of them** — a fork must not publish chessapp.dev's operator as
+its own. The documents say `%OPERATOR_NAME%`, `%OPERATOR_ADDRESS%` and
+`%PRIVACY_EMAIL%` where the details go, and the build puts them in.
+
+| Variable | Fills | Required |
+| --- | --- | --- |
+| `SITE_OPERATOR_NAME` | `%OPERATOR_NAME%` | yes |
+| `SITE_OPERATOR_NAME_HE` | `%OPERATOR_NAME%` in a `.he.mdx` file | no — the English one |
+| `SITE_OPERATOR_ADDRESS` | `%OPERATOR_ADDRESS%` | yes |
+| `SITE_OPERATOR_ADDRESS_HE` | `%OPERATOR_ADDRESS%` in a `.he.mdx` file | no — the English one |
+| `SITE_PRIVACY_EMAIL` | `%PRIVACY_EMAIL%`, in every language | yes |
+
+A language's own value is `<VARIABLE>_<LANG>` (`_HE`); a new language reads
+`_<ITS CODE>` the same way. A value is put in as text — MDX's `{` and `<`
+escaped — so Markdown in it (`*`, `_`) stays Markdown.
+
+**How the build reads them.** `vite.config.ts` loads the `SITE_*` variables
+of the environment and of `.env` / `.env.local` (`loadSiteEnv`), and asks
+**one predicate**, `legalPagesConfigured` (`src/lib/siteOperator.ts`):
+
+- **All three required ones set** → the build has the legal pages.
+  `plugins/siteOperator.ts` fills the placeholders in every `.mdx` under
+  `app-pages/` before the MDX compiler reads it, so the dev server, the
+  browser bundle, the server bundle and the pre-render all show the same
+  text. An unknown placeholder (`%OPERATOR_PHONE%`) fails the build, naming
+  the file.
+- **None set** (a fork, a plain local run, `ci.yml`'s build) → no legal
+  pages: `__LEGAL_PAGES__` is `false` (read as `LEGAL_PAGES_SHOWN`,
+  `src/views/legal/legalPagesShown.ts`), so `src/routes.tsx` has no `/privacy`
+  or `/cookies` route — hence no pre-rendered page and no sitemap line, both
+  read from the route table — the footer has no links to them, and the Blog's
+  manifest lists no file of `app-pages/`, so none of their text is in
+  `dist/`. The build says so in its log; a deploy, in a warning on the run.
+- **Some but not all** → the build fails, naming the missing ones.
+
+`yarn check:pages` and `yarn check:blog-build` hold `dist/` to what the
+build decided (`legalPagesShown`, exported by the server entry): the pages
+there and no placeholder left anywhere, or no page, no link to one and no
+text of theirs. The browser pass visits the two pages only when the build
+wrote them (`LEGAL_PAGES_BUILT`, `e2e/a11y/routes.ts`). Under Vitest the
+build is configured with fixed values (`src/test/siteOperator.ts`), whatever
+the machine has; `src/views/legal/legalPagesHidden.test.tsx` mocks
+`legalPagesShown.ts` for a build without them.
+
+**The MDX editor** opens and saves the files as written: it reads `?raw`,
+which the plugin leaves alone, so it shows the placeholders (and its preview
+too) — keep them when editing the operator's paragraph.
+
+### On a machine
+
+Copy the lines from [`.env.example`](../.env.example) into `.env.local`
+(gitignored) and fill them in, then `yarn dev` / `yarn build`. In a worktree,
+`.jst/bootstrap.sh` keeps every line of `.env.local` but its own port line.
+
+### In CI and the deploys
+
+The values are **repository variables** — not secrets: the pages publish
+them anyway, and a variable's value is readable in the run's log, which is
+fine here. `build.yml` (both deploys: `build-gh.yml`, `build-swa.yml`) and
+`a11y.yml` pass them to `yarn build`; `ci.yml` builds without them on
+purpose, a fork's build. Set them once per repository:
+
+```bash
+gh variable set SITE_OPERATOR_NAME --body "…"
+gh variable set SITE_OPERATOR_NAME_HE --body "…"
+gh variable set SITE_OPERATOR_ADDRESS --body "…"
+gh variable set SITE_OPERATOR_ADDRESS_HE --body "…"
+gh variable set SITE_PRIVACY_EMAIL --body "…"
+gh variable list                      # check
+```
+
+**Set them before a change that needs them reaches `main`**: a deploy
+without them publishes the site with no Privacy Policy, and says so only in
+a warning. After a deploy, check the live page names the operator:
+
+```bash
+curl -s https://chessapp.dev/privacy/ | grep -c "%OPERATOR_"   # 0
+```
