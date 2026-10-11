@@ -6,7 +6,8 @@ import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-rou
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import { analysisHandOffState } from "../../../lib/analysisHandOff";
-import { DEFAULT_ANALYSIS_SETTINGS } from "../../../lib/analysisSettings";
+import { analysisSettingsFrom, DEFAULT_ANALYSIS_SETTINGS } from "../../../lib/analysisSettings";
+import { readEngineSearchSettings, storeEngineSearchSettings } from "../../../lib/engineSearchSettings";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../../lib/computerAnalysis";
 import { DEFAULT_ENGINE_ID } from "../../../lib/engines/ids";
 import type { Job } from "../../../lib/jobs";
@@ -830,28 +831,26 @@ describe("Play — the engine plays the opponent's best move until paused", () =
 
   it("searches until stopped under infinite analysis, and to the depth while Play is on — Play needs a move (CTA-160)", () => {
     mountEngineOn();
-    openTab("engine");
     expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
 
-    fireEvent.click(screen.getByRole("switch", { name: "Infinite analysis" }));
+    // The top bar's Engine menu's switch (CTA-181): a change reaches the board from its next search.
+    act(() => storeEngineSearchSettings({ infinite: true }));
     expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ infinite: true });
 
     play();
     expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
   });
 
-  it("asks the engine for Threads and Hash as Play with Engine does — a multi-thread engine's threads adjustable here too (CTA-160)", () => {
+  it("asks the engine for the global Threads and Hash — a multi-thread engine's threads as the top bar sets them (CTA-160, CTA-181)", () => {
     vi.stubGlobal("crossOriginIsolated", true);
     localStorage.setItem("chessapp.engine", "stockfish-19-lite-multi");
+    storeEngineSearchSettings({ threads: 4, hashMb: 64 });
     mountEngineOn();
-    openTab("engine");
 
     expect(FakeEngine.latest().descriptor?.id).toBe("stockfish-19-lite-multi");
     expect(FakeEngine.latest().setOptions).toEqual(
-      expect.arrayContaining([["MultiPV", 3], ["Threads", 1], ["Hash", 16]]),
+      expect.arrayContaining([["MultiPV", 3], ["Threads", 4], ["Hash", 64]]),
     );
-    expect(screen.getByRole("slider", { name: "Threads" })).toBeEnabled();
-    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toBeEnabled();
     vi.unstubAllGlobals();
   });
 
@@ -958,13 +957,14 @@ describe("Play — the engine's thinking, shown", () => {
 describe("a fresh board starts with the engine off (CTA-148)", () => {
   it("has the switch off, no search running, and Play disabled until the reader switches it on", () => {
     mount();
-    const engineSwitch = () => within(screen.getByTestId("analysis-setting-engine")).getByRole("switch", { name: i18n.t("analysis.engineSwitch") });
-    expect(engineSwitch()).not.toBeChecked();
+    // A play / pause in the header since CTA-181, pressed while on.
+    const engineButton = () => screen.getByRole("button", { name: i18n.t("boardEngine.toggle") });
+    expect(engineButton()).toHaveAttribute("aria-pressed", "false");
     expect(FakeEngine.instances.flatMap((engine) => engine.searches)).toEqual([]);
     expect(screen.getByTestId("analysis-play")).toBeDisabled();
 
     fireEvent.click(screen.getByTestId("analysis-setting-engine"));
-    expect(engineSwitch()).toBeChecked();
+    expect(engineButton()).toHaveAttribute("aria-pressed", "true");
     expect(FakeEngine.latest().searches).toEqual([START]);
   });
 });
@@ -1046,10 +1046,9 @@ describe("the Arrows tab (CTA-98)", () => {
   const radio = (kind: "width" | "palette", id: string) =>
     screen.getByTestId(`analysis-arrows-${kind}-${id}`);
 
-  it("holds the next-move arrows switch, which the Engine tab no longer does", async () => {
+  it("holds the next-move arrows switch", async () => {
     await stored("a1", "1. e4 e5 (1... c5) *", ["e4"]);
     mount("/tools/analysis?analysis=a1");
-    openTab("engine");
     expect(screen.queryByTestId("analysis-arrows")).toBeNull();
 
     openTab("arrows");
@@ -1378,7 +1377,8 @@ describe("the workspace an analysis opened from the saved list has (CTA-145)", (
   it("ends when a new board is loaded: no tree, no previous / next", async () => {
     const { folder } = await tutorial();
     mountIn(`/tools/analysis?analysis=a2&folder=${folder.id}`);
-    openTab("engine");
+    // Clear is the Load tab's since CTA-181.
+    openTab("load");
     fireEvent.click(screen.getByTestId("analysis-clear"));
     await waitFor(() => expect(screen.queryByRole("tree")).toBeNull());
     expect(screen.queryByTestId("analysis-sibling-next")).toBeNull();
@@ -1452,7 +1452,7 @@ describe("the workspace an analysis opened from the saved list has (CTA-145)", (
 });
 
 describe("the Analysis Board — accessible (CTA-113)", () => {
-  it.each(["moves", "map", "load", "export", "engine", "arrows"])("passes axe on its %s tab", async (tab) => {
+  it.each(["moves", "map", "load", "export", "arrows"])("passes axe on its %s tab", async (tab) => {
     mount();
     drag("e2", "e4");
     fireEvent.click(screen.getByTestId(`analysis-panel-tab-${tab}`));
@@ -1535,6 +1535,14 @@ describe("the PGN's shapes on the board (CTA-143)", () => {
 
 describe("writing the engine's evaluations into the game (CTA-167)", () => {
   const writeSwitch = () => screen.getByRole("switch", { name: "Write evaluations into the game" });
+  /** The header's engine menu (CTA-181), where the switch is: opened, the switch flipped, closed. */
+  const toggleWriteEvals = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole("button", { name: "Board engine options" }));
+    await user.click(writeSwitch());
+    expect(writeSwitch()).toBeChecked();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("switch", { name: "Write evaluations into the game" })).toBeNull());
+  };
 
   /** One search of the position on screen, finished at `depth` with `cp` from the side to move's view. */
   const finish = (depth: number, cp: string) => {
@@ -1548,12 +1556,13 @@ describe("writing the engine's evaluations into the game (CTA-167)", () => {
     });
   };
 
-  it("is an Engine-tab switch, off by default: a finished search writes nothing", async () => {
+  it("is a switch in the header's engine menu, off by default: a finished search writes nothing", async () => {
     await stored("a1", "1. e4 *", ["e4"], { name: "Mine" });
     mount("/tools/analysis?analysis=a1");
     fireEvent.click(screen.getByTestId("analysis-setting-engine"));
-    openTab("engine");
+    fireEvent.click(screen.getByRole("button", { name: "Board engine options" }));
     expect(writeSwitch()).not.toBeChecked();
+    fireEvent.keyDown(screen.getByRole("dialog", { name: "Board engine options" }), { key: "Escape" });
 
     finish(18, "35");
     expect(screen.getByTestId("analysis-save")).toBeDisabled();
@@ -1564,9 +1573,7 @@ describe("writing the engine's evaluations into the game (CTA-167)", () => {
     await stored("a1", "1. e4 *", ["e4"], { name: "Mine" });
     mount("/tools/analysis?analysis=a1");
     fireEvent.click(screen.getByTestId("analysis-setting-engine"));
-    openTab("engine");
-    await user.click(writeSwitch());
-    expect(writeSwitch()).toBeChecked();
+    await toggleWriteEvals(user);
     expect(FakeEngine.latest().lastSearch).toBe(AFTER_E4);
 
     // Black to move, +35 for Black: White's view is -0.35.
@@ -1595,8 +1602,7 @@ describe("writing the engine's evaluations into the game (CTA-167)", () => {
     await stored("a1", "1. e4 *", ["e4"], { name: "Mine" });
     mount("/tools/analysis?analysis=a1");
     fireEvent.click(screen.getByTestId("analysis-setting-engine"));
-    openTab("engine");
-    await user.click(writeSwitch());
+    await toggleWriteEvals(user);
 
     const engine = FakeEngine.latest();
     act(() => {
@@ -1620,8 +1626,7 @@ describe("writing the engine's evaluations into the game (CTA-167)", () => {
     const user = userEvent.setup();
     mount();
     fireEvent.click(screen.getByTestId("analysis-setting-engine"));
-    openTab("engine");
-    await user.click(writeSwitch());
+    await toggleWriteEvals(user);
     finish(20, "25");
     openTab("export");
     expect((screen.getByTestId("analysis-export-pgn") as HTMLTextAreaElement).value).toMatch(/\{ \[%eval 0\.25,20\] \} 1\.|^\{ \[%eval 0\.25,20\] \}|\n\{ \[%eval 0\.25,20\] \}/);
@@ -1646,12 +1651,15 @@ describe("the New Job dialog (CTA-177)", () => {
     return id;
   };
 
-  it("has no Computer analysis tab: the header's Analyse opens New Job, seeded from the Engine tab and the reader's engine", async () => {
+  it("has no Computer analysis tab: the header's Analyse opens New Job, seeded from the global search settings and the reader's engine", async () => {
     const user = userEvent.setup();
+    // The top bar's settings (CTA-181), and a record worked under the same: no "changed" dialog.
+    storeEngineSearchSettings({ depth: 16, multiPv: 2 });
     await stored("a1", "1. e4 e5 2. Nf3 *", ["e4"], { name: "Mine", settings: { ...DEFAULT_ANALYSIS_SETTINGS, depth: 16, multiPv: 2 } });
     mount("/tools/analysis?analysis=a1");
     expect(screen.queryByRole("tab", { name: "Computer analysis" })).toBeNull();
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Moves", "Map", "Load", "Export", "Engine", "Arrows"]);
+    // No Engine tab either (CTA-181).
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Moves", "Map", "Load", "Export", "Arrows"]);
 
     await user.click(analyse());
     const form = within(dialog());
@@ -1836,5 +1844,58 @@ describe("the report and the eval graph at the top of Moves (CTA-177)", () => {
     await stored("a1", EVALUATED, [], { name: "Mine" });
     mount("/tools/analysis?analysis=a1");
     await expectNoAxeViolations(screen.getByTestId("analysis-computer"));
+  });
+});
+
+/*
+  "Engine options changed" (CTA-181): the search settings are the reader's
+  global ones; a saved analysis whose own differ asks once, as it opens.
+*/
+describe("a saved analysis' engine settings (CTA-181)", () => {
+  it("shows what differs as it opens, and Use these settings puts them back — held to the engine running", async () => {
+    const user = userEvent.setup();
+    await stored("a1", "1. e4 *", ["e4"], {
+      name: "Mine",
+      settings: { ...DEFAULT_ANALYSIS_SETTINGS, depth: 24, infinite: true, threads: 4 },
+    });
+    mount("/tools/analysis?analysis=a1");
+    const dialog = await screen.findByRole("dialog", { name: "Engine options changed" });
+    expect(dialog).toHaveTextContent("This analysis was saved with other engine settings");
+    expect(screen.getByTestId("analysis-engine-changed-change-depth")).toHaveTextContent("Search depth: 24 → 20");
+    expect(screen.getByTestId("analysis-engine-changed-change-infinite")).toHaveTextContent("Infinite analysis: on → off");
+    // The default engine runs on one thread: said before the choice.
+    expect(screen.getByTestId("analysis-engine-changed-held")).toHaveTextContent("Threads would be 1");
+    await expectNoAxeViolations(dialog);
+
+    await user.click(screen.getByRole("button", { name: "Use these settings" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(readEngineSearchSettings()).toMatchObject({ depth: 24, infinite: true, threads: 1 });
+  });
+
+  it("Dismiss keeps the reader's settings, and Update writes those in effect", async () => {
+    const user = userEvent.setup();
+    await stored("a1", "1. e4 *", ["e4"], { name: "Mine", settings: { ...DEFAULT_ANALYSIS_SETTINGS, depth: 24 } });
+    mount("/tools/analysis?analysis=a1");
+    await user.click(await screen.findByRole("button", { name: "Dismiss" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(readEngineSearchSettings().depth).toBe(20);
+
+    drag("e7", "e5");
+    fireEvent.click(screen.getByTestId("analysis-save"));
+    fireEvent.click(within(screen.getByTestId("analysis-changes")).getByTestId("analysis-changes-update"));
+    await waitFor(() => expect(findSavedAnalysis("a1")?.pgn).toContain("e5"));
+    expect(findSavedAnalysis("a1")?.settings.depth).toBe(20);
+  });
+
+  it("asks nothing of a record from before a setting existed — read as its default, never chosen", async () => {
+    storeEngineSearchSettings({ threads: 4, hashMb: 64, infinite: true });
+    // Saved before infinite analysis, Threads and Hash (CTA-160): the row has none of them.
+    await saveAnalysis({
+      ...savedAnalysisOf("old", parsePgnTree("1. e4 *"), ["e4"], DEFAULT_ANALYSIS_SETTINGS, "white"),
+      settings: analysisSettingsFrom({ depth: 20, multiPv: 3, moveTimeMs: 0 }),
+    });
+    mount("/tools/analysis?analysis=old");
+    await waitFor(() => expect(boardOptions().position).toBe(AFTER_E4));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

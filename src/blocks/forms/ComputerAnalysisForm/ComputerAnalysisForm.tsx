@@ -160,7 +160,7 @@ function MoveNumberField({
  * (`moveTimeMs` 0); off, the last time set comes back.
  *
  * Threads, Hash and MultiPV follow what the engine declared — absent, pinned
- * or adjustable (`engineOptionState`, as `AnalysisEngineForm`) — and before
+ * or adjustable (`engineOptionState`, as the engine forms do) — and before
  * its handshake a single-thread engine (`multiThread` false) shows Threads
  * pinned at 1, which is what the job will find.
  *

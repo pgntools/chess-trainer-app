@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { DEFAULT_POSITION } from "chess.js";
 
 import type { AnalysisHandOff } from "../../../lib/analysisHandOff";
+import { readEngineSearchSettings, searchSettingsChanges } from "../../../lib/engineSearchSettings";
 import { emptyTree, sanPathTo, type GameTree } from "../../../lib/gameTree";
 import { parseFen } from "../../../lib/fen";
 import { nodeAtParam } from "../../../lib/repertoireLink";
@@ -164,6 +165,15 @@ export const useAnalysisBoard = ({
     settings: start.record?.settings,
   });
   const { core, engine, settings, changed, rebase } = session;
+  /*
+    A reopened record worked under other search settings than the reader's
+    in effect: worked out once, as it opens — the "Engine options changed"
+    dialog's rows (CTA-181). Only the opening asks; a later save writes the
+    settings in effect.
+  */
+  const [optionChanges] = useState(() =>
+    start.record === null ? [] : searchSettingsChanges(start.record.settings, readEngineSearchSettings()),
+  );
   const { loadTree, setOrientation } = core;
   const { clearAnalysis } = engine;
 
@@ -303,7 +313,9 @@ export const useAnalysisBoard = ({
     core,
     engine,
     settings,
-    updateSettings: session.updateSettings,
+    setWriteEvals: session.setWriteEvals,
+    /** A reopened record's search settings that differ from the ones in effect — "Engine options changed" (CTA-181). */
+    optionChanges,
     engineOn: session.engineOn,
     setEngineOn: session.setEngineOn,
     playing: session.playing,

@@ -3,10 +3,12 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_ENGINE_SETTINGS,
   uciOptionsOf,
-  withClampedUciOptions,
+  withClampedStrength,
   type EngineSettings,
 } from "../../../lib/engineSettings";
-import { engineChoiceId, readStoredEngineId } from "../../../lib/engineChoice";
+import { presetLimitsStrength } from "../../../lib/enginePresets";
+import { readEngineSearchSettings, searchSettingsChanges } from "../../../lib/engineSearchSettings";
+import { engineChoiceId } from "../../../lib/engineChoice";
 import { resolveEngine } from "../../../lib/engines";
 import type { EngineDescriptor } from "../../../lib/engineTypes";
 import { parseFen } from "../../../lib/fen";
@@ -34,6 +36,9 @@ import { useAutosave } from "../../board/core/useAutosave";
 import { turnOf, useBoardCore } from "../../board/core/useBoardCore";
 import { useEngineModule } from "../../board/core/useEngineModule";
 import { usePlayToggle } from "../../board/core/usePlayToggle";
+import { boardEngineStateOf, usePublishBoardEngineState } from "../../main/boardEngineState";
+import { useEngineSearchSettings } from "../../shared/useEngineSearchSettings";
+import { useSelectedEnginePreset } from "../../shared/useSelectedEnginePreset";
 
 /**
  * **Play with Engine's session** (CTA-74) — the v2 core
@@ -86,6 +91,15 @@ import { usePlayToggle } from "../../board/core/usePlayToggle";
  * engine that really played its moves, so merely opening it elsewhere never
  * rewrites it. Replay begins a new game, under the engine chosen now.
  *
+ * **The search settings are the reader's global ones** (CTA-181 — the top
+ * bar's Engine menu): depth, move time, lines, Threads and Hash, read live,
+ * infinite analysis too while Play is paused (Play needs a search that ends
+ * with a move). The game keeps only its **strength** (an Elo, or a Skill Level
+ * for an engine without one) — and whether the Elo applies is the engine's
+ * preset's `UCI_LimitStrength` (`limitStrength`). The record still writes
+ * the search settings in effect, and a resumed game whose own differ is
+ * offered them back once (`optionChanges`, "Engine options changed").
+ *
  * **A costume** (`mask`, Masked Pieces — CTA-79) is written on the record and
  * nothing else: this hook never reads it, so the game, the engine and Play
  * are the true position's. It is the screen's state (the Masking tab), passed
@@ -109,9 +123,8 @@ export type PlayGameStart = {
 /**
  * Everything the URL hands a play screen, read once by its route — `?fen=`
  * (validated; an unreadable one starts an ordinary game), `?saved=`, and a
- * new game's options (`side`, `skill`, `depth`, `movetime`, `lines`,
- * `threads`, `hash`, `evalbar`, `variations` — `newGameRequestOf`, each field
- * validated on its own).
+ * new game's options (`side`, `skill`, `elo`, `evalbar`, `variations` —
+ * `newGameRequestOf`, each field validated on its own).
  */
 export const arrivalOf = (params: URLSearchParams): PlayGameStart => {
   let fen: string | undefined;
@@ -127,8 +140,7 @@ export const arrivalOf = (params: URLSearchParams): PlayGameStart => {
   return {
     fen,
     resume: findPlayedGame(params.get("saved")),
-    // The reader's own choice, not yet resolved: a hosted engine's hash survives a link read before its server answered (CTA-175).
-    request: newGameRequestOf(params, readStoredEngineId()),
+    request: newGameRequestOf(params),
   };
 };
 
@@ -193,7 +205,19 @@ export const usePlayGame = (
     orientation: start.orientation,
   });
 
-  const [settings, setSettings] = useState<EngineSettings>(start.settings);
+  /* The game's own: the strength. The rest of the search is the reader's global settings (CTA-181). */
+  const [strength, setStrength] = useState<Pick<EngineSettings, "skillLevel" | "elo">>(() => ({
+    skillLevel: start.settings.skillLevel,
+    elo: start.settings.elo,
+  }));
+  const { settings: search } = useEngineSearchSettings();
+  /*
+    A resumed game whose search settings differ from the ones in effect —
+    worked out once, as it opens: the "Engine options changed" dialog's rows.
+  */
+  const [optionChanges] = useState(() =>
+    resume === undefined ? [] : searchSettingsChanges(resume.settings, readEngineSearchSettings()),
+  );
   const [engineOn, setEngineOn] = useState(true);
   const [showEvalBar, setShowEvalBar] = useState(start.showEvalBar);
   /*
@@ -206,8 +230,7 @@ export const usePlayGame = (
 
   const onUciOptionsReady = useCallback(
     // The same object when nothing moved: a new one would re-run the search effect for nothing.
-    (clamped: Readonly<Record<string, number>>) =>
-      setSettings((current) => withClampedUciOptions(current, clamped)),
+    (clamped: Readonly<Record<string, number>>) => setStrength((current) => withClampedStrength(current, clamped)),
     [],
   );
 
@@ -225,27 +248,47 @@ export const usePlayGame = (
   const [recordedEngine, setRecordedEngine] = useState<PlayedGameEngine | undefined>(start.recordedEngine);
 
   // The engine that will run (the module resolves the same): its own ceilings for Threads and Hash (CTA-175).
-  const runningId = resolveEngine(engineId).id;
+  const willRun = resolveEngine(engineId);
+  const runningId = willRun.id;
+  // A Skill Level only for an engine strengthened by it alone: on an Elo engine it is the preset's (CTA-181).
+  const bySkill = willRun.capabilities.strength === "skill";
   const engine = useEngineModule({
     enabled: engineOn,
     engine: engineId,
     // The position ON SCREEN: everything the panel shows describes it.
     fen: core.fen,
-    depth: settings.depth,
-    moveTimeMs: settings.moveTimeMs,
+    depth: search.depth,
+    moveTimeMs: search.moveTimeMs,
+    // Play needs a search that ends with a move: while it is on, the depth and time decide.
+    infinite: search.infinite && !play.playing,
     uciOptions: useMemo(
       () =>
-        uciOptionsOf({
-          skillLevel: settings.skillLevel,
-          elo: settings.elo,
-          multiPv: settings.multiPv,
-          threads: settings.threads,
-          hashMb: settings.hashMb,
-        }, runningId),
-      [settings.skillLevel, settings.elo, settings.multiPv, settings.threads, settings.hashMb, runningId],
+        uciOptionsOf(
+          {
+            skillLevel: strength.skillLevel,
+            elo: strength.elo,
+            multiPv: search.multiPv,
+            threads: search.threads,
+            hashMb: search.hashMb,
+          },
+          runningId,
+          { bySkill },
+        ),
+      [strength.skillLevel, strength.elo, search.multiPv, search.threads, search.hashMb, runningId, bySkill],
     ),
     onUciOptionsReady,
     onBestMove: play.onBestMove,
+  });
+  usePublishBoardEngineState(boardEngineStateOf(engineOn, engine.searching));
+
+  /*
+    Whether the Elo limits the engine — its selected preset's
+    `UCI_LimitStrength` (Settings → Engine, CTA-181): Play's Elo slider is
+    live only while it is on.
+  */
+  const preset = useSelectedEnginePreset(engine.descriptor.id);
+  const limitStrength = presetLimitsStrength(preset.values, engine.engineOptions, {
+    inBrowser: engine.descriptor.server === undefined,
   });
 
   /*
@@ -279,6 +322,21 @@ export const usePlayGame = (
   /** The reader's side — the side at the bottom of the board. */
   const playAs = core.orientation;
 
+  /** The game's settings as the record keeps them: its strength, the search settings in effect, its side. */
+  const settings = useMemo<EngineSettings>(
+    () => ({
+      skillLevel: strength.skillLevel,
+      elo: strength.elo,
+      depth: search.depth,
+      multiPv: search.multiPv,
+      moveTimeMs: search.moveTimeMs,
+      threads: search.threads,
+      hashMb: search.hashMb,
+      playAs,
+    }),
+    [strength, search, playAs],
+  );
+
   const [gameId, setGameId] = useState(start.id);
   /** When the game began — its `savedAt`, and so its PGN `Date`. */
   const [startedAt, setStartedAt] = useState(start.startedAt);
@@ -296,7 +354,7 @@ export const usePlayGame = (
       gameId,
       core.tree,
       sanPathTo(core.tree, core.nodeId),
-      { ...settings, playAs },
+      settings,
       evalsByFen,
       new Date(),
       startedAt,
@@ -315,7 +373,6 @@ export const usePlayGame = (
     startedAt,
     resigned,
     settings,
-    playAs,
     evalsByFen,
   ]);
 
@@ -372,12 +429,18 @@ export const usePlayGame = (
     setResigned(playAs);
   };
 
-  /** The settings' changes — the Engine tab's, and the header's side (`playAs`, which is the orientation). */
+  /**
+   * The game's own changes — the Engine tab's strength, and the header's side
+   * (`playAs`, which is the orientation). The search settings are the top
+   * bar's (CTA-181): a patch of them is not the game's to take.
+   */
   const updateSettings = useCallback(
-    (patch: Partial<EngineSettings>) => {
-      const { playAs: side, ...rest } = patch;
+    (patch: Partial<Pick<EngineSettings, "skillLevel" | "elo" | "playAs">>) => {
+      const { playAs: side, skillLevel, elo } = patch;
       if (side !== undefined) setOrientation(side);
-      if (Object.keys(rest).length > 0) setSettings((current) => ({ ...current, ...rest }));
+      if (skillLevel !== undefined || elo !== undefined) {
+        setStrength((current) => ({ skillLevel: skillLevel ?? current.skillLevel, elo: elo ?? current.elo }));
+      }
     },
     [setOrientation],
   );
@@ -386,8 +449,12 @@ export const usePlayGame = (
     core,
     engine,
     evalsByFen,
-    settings: { ...settings, playAs },
+    settings,
     updateSettings,
+    /** Whether the engine's preset has `UCI_LimitStrength` on — Play's Elo slider is live only then (CTA-181). */
+    limitStrength,
+    /** A resumed game's search settings that differ from the ones in effect — "Engine options changed" (CTA-181). */
+    optionChanges,
     engineOn,
     setEngineOn,
     showEvalBar,

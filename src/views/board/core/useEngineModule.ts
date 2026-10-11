@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type {
   EngineDescriptor,
   EngineHandle,
@@ -183,6 +183,14 @@ export type EngineModule = {
   engineOptions: ReadonlyMap<string, EngineOption>;
   /** Clear the lines — what loading a different game does. */
   clearAnalysis: () => void;
+  /**
+   * **A search is running** for the position on screen (CTA-181) — on, not a
+   * terminal position, and the search last asked for has not yet answered
+   * with its `bestmove` (an infinite one never does until stopped). What the
+   * top bar's Engine icon pulses on. Absent from a caller's reading: today's
+   * behaviour.
+   */
+  searching: boolean;
 };
 
 export const useEngineModule = ({
@@ -257,6 +265,19 @@ export const useEngineModule = ({
     return handle;
   }, [descriptor]);
 
+  /*
+    The search asked for now — one object per distinct request, so whether
+    it has answered is "the request its `bestmove` finished is this one"
+    (CTA-181, `searching`). Kept in a ref by the search effect for the
+    message handler, which reads it when a `bestmove` lands.
+  */
+  const searchRequest = useMemo(
+    () => ({ fen, depth, moveTimeMs, infinite, uciOptions, presetValues, descriptor }),
+    [fen, depth, moveTimeMs, infinite, uciOptions, presetValues, descriptor],
+  );
+  const requestRef = useRef<typeof searchRequest | null>(null);
+  const [finishedRequest, setFinishedRequest] = useState<typeof searchRequest | null>(null);
+
   const [analysis, setAnalysis] = useState<Analysis>(EMPTY_ANALYSIS);
   const [evals, setEvals] = useState<ReadonlyMap<string, Score>>(
     () => new Map(),
@@ -330,6 +351,9 @@ export const useEngineModule = ({
       */
       const final = latestScoreRef.current;
       latestScoreRef.current = null;
+      // The search asked for, answered — when it was for this position (one a change of position stopped was not).
+      const request = requestRef.current;
+      if (request !== null && request.fen === searchedFen) setFinishedRequest(request);
       const finished = final !== null && final.fen === searchedFen ? final : null;
       if (finished !== null) {
         setEvals((previous) => {
@@ -460,12 +484,13 @@ export const useEngineModule = ({
     // that: the analysis below is only handed on when its FEN matches.
     if (isTerminal(fen)) return;
 
+    requestRef.current = searchRequest;
     ensureEngine().search(fen, infinite ? { infinite: true } : { depth, movetime: moveTimeMs });
     // `uciOptions` and the preset are dependencies so that changing a setting
     // restarts the search and is reflected in the lines immediately, rather
     // than waiting for the next move — which is what "takes effect on the
     // next search" means in practice.
-  }, [ensureEngine, enabled, fen, depth, moveTimeMs, infinite, uciOptions, presetValues]);
+  }, [ensureEngine, enabled, fen, depth, moveTimeMs, infinite, uciOptions, presetValues, searchRequest]);
 
   const clearAnalysis = useCallback(() => setAnalysis(EMPTY_ANALYSIS), []);
 
@@ -484,5 +509,6 @@ export const useEngineModule = ({
     evalsByFen: evals,
     engineOptions,
     clearAnalysis,
+    searching: enabled && !isTerminal(fen) && finishedRequest !== searchRequest,
   };
 };

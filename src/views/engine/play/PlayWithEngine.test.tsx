@@ -5,6 +5,9 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import i18n from "../../../i18n";
 import { storeEngineId } from "../../../lib/engineChoice";
+import { DEFAULT_PRESET_ID } from "../../../lib/enginePresets";
+import { setEnginePresetValue } from "../../../lib/enginePresetStore";
+import { readEngineSearchSettings, storeEngineSearchSettings } from "../../../lib/engineSearchSettings";
 import { DEFAULT_ENGINE_SETTINGS } from "../../../lib/engineSettings";
 import { parsePgnTree } from "../../../lib/pgn";
 import {
@@ -113,9 +116,8 @@ describe("Play with Engine — a new game", () => {
     expect(boardOptions().id).toBe("play-with-engine");
     expect(boardOptions().position).toBe(START);
     expect(boardOptions().boardOrientation).toBe("white");
-    expect(
-      screen.getByTestId("play-with-engine-setting-engine").querySelector("input"),
-    ).toBeChecked();
+    // The engine's play / pause, pressed (CTA-181).
+    expect(screen.getByTestId("play-with-engine-setting-engine")).toHaveAttribute("aria-pressed", "true");
     expect(isPlaying()).toBe(true);
     expect(screen.getByTestId("play-with-engine-play-status")).toHaveAttribute(
       "data-status",
@@ -141,31 +143,32 @@ describe("Play with Engine — a new game", () => {
 });
 
 describe("Play with Engine — a new game's options from the Lobby's link (CTA-82)", () => {
-  const depthValue = () => screen.getByTestId("engine-setting-depth-value").textContent;
-
-  it("takes the side, the settings and the eval bar from the query", () => {
+  it("takes the side, the strength and the eval bar from the query — the search from the top bar's settings (CTA-181)", async () => {
     mount("/engine/play?side=black&skill=5&elo=1800&depth=8&movetime=2500&lines=2&evalbar=0");
     expect(boardOptions().position).toBe(START);
     expect(boardOptions().boardOrientation).toBe("black");
     // The engine is White and answers at once, at the strength asked for.
     expect(FakeEngine.latest().setOptions).toContainEqual(["UCI_Elo", 1800]);
-    expect(FakeEngine.latest().setOptions).toContainEqual(["Skill Level", 5]);
-    expect(FakeEngine.latest().setOptions).toContainEqual(["MultiPV", 2]);
+    // An Elo engine's Skill Level is its preset's, not the game's (CTA-181).
+    expect(FakeEngine.latest().setOptions).not.toContainEqual(["Skill Level", 5]);
+    // The link's depth, move time and lines are an older link's: the global settings decide.
+    expect(FakeEngine.latest().setOptions).toContainEqual(["MultiPV", 3]);
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 20, movetime: 0 });
     expect(screen.queryByTestId("eval-bar")).not.toBeInTheDocument();
     click("play-with-engine-panel-tab-engine");
     expect(screen.getByTestId("engine-setting-elo-value")).toHaveTextContent("1800 Elo");
-    expect(depthValue()).toBe("8");
-    expect(screen.getByTestId("engine-setting-movetime-value")).toHaveTextContent("2.5s");
-    expect(screen.getByTestId("engine-setting-evalbar").querySelector("input")).not.toBeChecked();
+    expect(screen.queryByTestId("engine-setting-depth")).not.toBeInTheDocument();
+    // The eval bar is the board's engine menu's.
+    await userEvent.click(screen.getByRole("button", { name: "Board engine options" }));
+    expect(await screen.findByRole("switch", { name: "Show evaluation bar" })).not.toBeChecked();
   });
 
-  it("reads each field on its own: an unreadable one is the default, one out of range is clamped", () => {
-    mount("/engine/play?side=purple&elo=abc&depth=99&evalbar=maybe");
+  it("reads each field on its own: an unreadable one is the default", () => {
+    mount("/engine/play?side=purple&elo=abc&evalbar=maybe");
     expect(boardOptions().boardOrientation).toBe("white");
     expect(screen.getByTestId("eval-bar")).toBeInTheDocument();
     click("play-with-engine-panel-tab-engine");
     expect(screen.getByTestId("engine-setting-elo-value")).toHaveTextContent("2100 Elo");
-    expect(depthValue()).toBe("40");
   });
 
   it("lets a side beat the side to move of a ?fen=, and the FEN decide without one", () => {
@@ -602,17 +605,30 @@ describe("Play with Engine — accessibility (CTA-109)", () => {
     expect(replay).toHaveFocus();
   });
 
-  it("works the Engine tab without a pointer: the arrows switch and a slider", async () => {
+  it("works the Engine tab without a pointer: the arrows switch and the strength", async () => {
+    // The preset limits the strength, so the Elo is live (CTA-181).
+    await setEnginePresetValue(DEFAULT_PRESET_ID, "UCI_LimitStrength", true);
     mount();
     fireEvent.click(screen.getByTestId("play-with-engine-panel-tab-engine"));
     const arrows = screen.getByRole("switch", { name: "Show next-move arrows" });
     arrows.focus();
     await userEvent.keyboard(" ");
     expect(arrows).not.toBeChecked();
-    const depth = screen.getByRole("slider", { name: "Search depth" });
-    depth.focus();
+    const elo = await screen.findByRole("slider", { name: "Strength (Elo)" });
+    await waitFor(() => expect(elo).toBeEnabled());
+    elo.focus();
     await userEvent.keyboard("{ArrowRight}");
-    expect(screen.getByTestId("engine-setting-depth-value")).toHaveTextContent(String(DEFAULT_ENGINE_SETTINGS.depth + 1));
+    expect(screen.getByTestId("engine-setting-elo-value")).toHaveTextContent(`${DEFAULT_ENGINE_SETTINGS.elo + 1} Elo`);
+  });
+
+  it("switches the engine from its header's play / pause, by keyboard", async () => {
+    mount();
+    const toggle = screen.getByRole("button", { name: "Engine analysis" });
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    toggle.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(isPlaying()).toBe(false);
   });
 });
 
@@ -677,15 +693,27 @@ describe("Play with Engine — the engine that plays (CTA-153)", () => {
     expect(games()[0].pgn).toContain('[Black "Stockfish 19 Lite (multi-thread) (Elo 2100)"]');
   });
 
-  it("asks the engine for an Elo, with the limit on — and shows the strength as an Elo", () => {
+  it("asks the engine for an Elo and leaves the limit to its preset — off, the Elo slider is off and says where to turn it on (CTA-181)", () => {
     mount();
 
     const engine = FakeEngine.latest();
     expect(engine.setOptions).toContainEqual(["UCI_Elo", 2100]);
-    expect(engine.setOptions).toContainEqual(["UCI_LimitStrength", 1]);
+    // Play no longer forces UCI_LimitStrength on: the preset's (Default: the engine's own, off) stands.
+    expect(engine.setOptions.filter(([name]) => name === "UCI_LimitStrength")).toEqual([]);
     click("play-with-engine-panel-tab-engine");
-    expect(screen.getByRole("slider", { name: "Strength (Elo)" })).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Strength (Elo)" })).toBeDisabled();
     expect(screen.queryByRole("slider", { name: "Strength" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Turn it on in Settings → Engine" })).toHaveAttribute("href", "/settings/engine");
+  });
+
+  it("sends the preset's UCI_LimitStrength and makes the Elo live while it is on (CTA-181)", async () => {
+    await setEnginePresetValue(DEFAULT_PRESET_ID, "UCI_LimitStrength", true);
+    mount();
+    await waitFor(() => expect(FakeEngine.latest().setOptions).toContainEqual(["UCI_LimitStrength", true]));
+    expect(FakeEngine.latest().setOptions).toContainEqual(["UCI_Elo", 2100]);
+    click("play-with-engine-panel-tab-engine");
+    await waitFor(() => expect(screen.getByRole("slider", { name: "Strength (Elo)" })).toBeEnabled());
+    expect(screen.queryByTestId("engine-strength-off")).toBeNull();
   });
 
   it("names the engine that plays, on the Engine tab", async () => {
@@ -805,5 +833,48 @@ describe("Play with Engine — the engine that plays (CTA-153)", () => {
 
     expect(screen.getByTestId("play-with-engine-engine-notice")).toHaveTextContent("Gone Engine");
     expect(screen.getByTestId("play-with-engine-engine-notice")).toHaveTextContent("המשחק הזה שוחק עם");
+  });
+});
+
+/*
+  "Engine options changed" (CTA-181): the search settings are the reader's
+  global ones; a game resumed whose own differ asks once whether to use them.
+*/
+describe("Play with Engine — a resumed game's engine settings (CTA-181)", () => {
+  const resume = (settings: Partial<typeof DEFAULT_ENGINE_SETTINGS>) =>
+    savePlayedGame(
+      playedGameOf("r1", parsePgnTree("1. e4 *"), ["e4"], { ...DEFAULT_ENGINE_SETTINGS, depth: 20, moveTimeMs: 0, ...settings }),
+    );
+
+  it("shows what differs, and Use these settings puts the game's back", async () => {
+    await resume({ depth: 12, moveTimeMs: 5000 });
+    mount("/engine/play?saved=r1");
+    const dialog = await screen.findByRole("dialog", { name: "Engine options changed" });
+    expect(dialog).toHaveTextContent("This game was played with other engine settings");
+    expect(screen.getByTestId("play-with-engine-engine-changed-change-depth")).toHaveTextContent("Search depth: 12 → 20");
+    expect(screen.getByTestId("play-with-engine-engine-changed-change-moveTimeMs")).toHaveTextContent("Move time: 5.0s → No limit");
+    await userEvent.click(screen.getByRole("button", { name: "Use these settings" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(readEngineSearchSettings()).toMatchObject({ depth: 12, moveTimeMs: 5000 });
+    // The next search is under them.
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 12, movetime: 5000 });
+  });
+
+  it("Dismiss keeps the settings in effect — and the game is written with them", async () => {
+    await resume({ depth: 12 });
+    mount("/engine/play?saved=r1");
+    await userEvent.click(await screen.findByRole("button", { name: "Dismiss" }));
+    expect(readEngineSearchSettings().depth).toBe(20);
+    drag("e7", "e5");
+    await waitFor(() => expect(games()[0]?.pgn).toContain("e5"));
+    expect(games()[0].settings.depth).toBe(20);
+  });
+
+  it("asks nothing where they agree", async () => {
+    storeEngineSearchSettings({ depth: 12 });
+    await resume({ depth: 12 });
+    mount("/engine/play?saved=r1");
+    await waitFor(() => expect(boardOptions().position).not.toBe(START));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

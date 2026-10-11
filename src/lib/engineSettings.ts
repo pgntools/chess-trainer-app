@@ -1,7 +1,10 @@
 /**
- * **The engine knobs a game against Stockfish is played under** — the value the
- * Engine tab drives, and the value a saved game carries so resuming it puts the
- * engine back the way it was.
+ * **The engine knobs a game against Stockfish is played under** — the value a
+ * saved game carries: the strength Play's Engine tab sets (an Elo, or Skill
+ * Level), the reader's side, and — since CTA-181 not the board's own — the
+ * global search settings in effect while it was played
+ * (`lib/engineSearchSettings.ts`), kept so a later look can tell how it was
+ * searched, and offered back by "Engine options changed" on a resume.
  *
  * It lives in `src/lib/` because a played game records it
  * (`lib/playedGames.ts`), and plain data cannot import a hook. (It moved here
@@ -18,6 +21,7 @@
 import { MAX_VARIATIONS_OFFERED } from "./engineAnalysis";
 import type { EngineDescriptor, EngineOption } from "./engineTypes";
 import { isHostedEngineId } from "./engines/ids";
+import { withMissingFields } from "./recordedFields";
 
 /** The engine knobs the settings tab drives. */
 export type EngineSettings = {
@@ -67,9 +71,10 @@ export const DEFAULT_ENGINE_SETTINGS: EngineSettings = {
 
 /**
  * The range each numeric setting is offered in **before** a running worker has
- * said otherwise — the Engine tab's fallback bounds, the analysis boards'
- * depth and move time too (`lib/analysisSettings.ts`), and the bounds a
- * new-game link (`lib/newGameLink.ts`) clamps its numbers into. An option the
+ * said otherwise — the strength slider's fallback bounds, the top bar's
+ * Engine menu's depth and move time (`lib/engineSearchSettings.ts`, every
+ * board's since CTA-181), and the bounds a new-game link
+ * (`lib/newGameLink.ts`) clamps its strength into. An option the
  * build declares is re-clamped to *its* bounds by the engine module, so these
  * are never the last word on a UCI option — but they are a ceiling on one.
  *
@@ -77,8 +82,8 @@ export const DEFAULT_ENGINE_SETTINGS: EngineSettings = {
  * single-thread build reaches depth 20 in about 3.5 s, 24 in 14 s and 26 in
  * 34 s on a fast desktop, so **depth stops at 40** (well past any search a
  * reader would wait for) and **move time at 300 s** (CTA-163: the snap-to-mark
- * slider's last time mark — the analysis boards keep their own 60 s ceiling,
- * `ANALYSIS_SETTING_BOUNDS`). `Hash` took 1024 MB and
+ * slider's last time mark, every board's since CTA-181 — the analysis
+ * boards' own 60 s ceiling went with their Engine tab). `Hash` took 1024 MB and
  * **2048 MB crashed the tab** — WebAssembly's memory, not the engine's
  * declared 33,554,432 — so 1024 is a hard ceiling; and **Threads stops at
  * 32**, the multi-thread build's own top. What a form offers is lower where
@@ -271,7 +276,11 @@ export const SETTING_UCI_OPTION = {
   hashMb: "Hash",
 } as const satisfies Partial<Record<keyof EngineSettings, string>>;
 
-/** The check option that makes `UCI_Elo` the strength — `Skill Level` is ignored while it is on. */
+/**
+ * The check option that makes `UCI_Elo` the strength — `Skill Level` is
+ * ignored while it is on. Since CTA-181 the engine's selected preset sets it
+ * (Settings → Engine); Play's Elo slider is live only while it is on.
+ */
 export const LIMIT_STRENGTH_OPTION = "UCI_LimitStrength";
 
 /**
@@ -287,11 +296,16 @@ export const usesEloStrength = (engineOptions: ReadonlyMap<string, EngineOption>
 /**
  * The option-backed settings as the engine module takes them — UCI name → requested value.
  *
- * Both strength controls are requested and the engine keeps the one it has:
- * `UCI_LimitStrength` is asked on, which an engine that has `UCI_Elo` turns
- * into "play at that Elo" (and ignores `Skill Level`), and an engine without
- * them drops both names (`UciEngine.setOption`), leaving `Skill Level` to
- * decide. The check is written as `1`; `UciEngine` puts it on the wire as `true`.
+ * **The strength is Play's own, whether it applies is the preset's**
+ * (CTA-181): `UCI_Elo` is always asked for — an engine that has it plays at
+ * that Elo **while its `UCI_LimitStrength` is on**, which the engine's
+ * selected preset decides (Settings → Engine); off, the engine plays at the
+ * preset's strength and the Elo slider says so. Nothing here asks
+ * `UCI_LimitStrength` on any more (until CTA-181 it was forced on). `Skill
+ * Level` is asked for only `bySkill` — an engine strengthened by Skill Level
+ * alone, which declares no `UCI_Elo` (`capabilities.strength === "skill"`,
+ * `usesEloStrength`): on an Elo engine it would weaken the engine while the
+ * preset has the limit off, so there it is the preset's too.
  *
  * `Hash` and `Threads` are held to {@link ENGINE_SETTING_BOUNDS} here, whatever
  * a stored record or an imported one says: the engine declares far more than a
@@ -303,12 +317,12 @@ export const usesEloStrength = (engineOptions: ReadonlyMap<string, EngineOption>
 export const uciOptionsOf = (
   settings: Pick<EngineSettings, keyof typeof SETTING_UCI_OPTION>,
   engineId?: string,
+  { bySkill = false }: { bySkill?: boolean } = {},
 ): Record<string, number> => {
   const bounds = engineSettingBoundsOf(engineId);
   return {
-    [SETTING_UCI_OPTION.skillLevel]: settings.skillLevel,
+    ...(bySkill ? { [SETTING_UCI_OPTION.skillLevel]: settings.skillLevel } : {}),
     [SETTING_UCI_OPTION.elo]: settings.elo,
-    [LIMIT_STRENGTH_OPTION]: 1,
     [SETTING_UCI_OPTION.multiPv]: settings.multiPv,
     [SETTING_UCI_OPTION.threads]: Math.min(settings.threads, bounds.threads.max),
     [SETTING_UCI_OPTION.hashMb]: Math.min(settings.hashMb, bounds.hashMb.max),
@@ -316,29 +330,18 @@ export const uciOptionsOf = (
 };
 
 /**
- * Settings with the values the running build clamped them to (the engine
+ * The strength with the values the running build clamped it to (the engine
  * module's `onUciOptionsReady`) — **the same object** when nothing moved, so
- * a caller's state setter re-runs nothing keyed on it.
+ * a caller's state setter re-runs nothing keyed on it. Only the strength: the
+ * search settings are the reader's global ones, never cut back (CTA-181).
  */
-export const withClampedUciOptions = <T extends Pick<EngineSettings, keyof typeof SETTING_UCI_OPTION>>(
+export const withClampedStrength = <T extends Pick<EngineSettings, "skillLevel" | "elo">>(
   current: T,
   clamped: Readonly<Record<string, number>>,
 ): T => {
-  const next: T = {
-    ...current,
-    skillLevel: clamped[SETTING_UCI_OPTION.skillLevel] ?? current.skillLevel,
-    elo: clamped[SETTING_UCI_OPTION.elo] ?? current.elo,
-    multiPv: clamped[SETTING_UCI_OPTION.multiPv] ?? current.multiPv,
-    threads: clamped[SETTING_UCI_OPTION.threads] ?? current.threads,
-    hashMb: clamped[SETTING_UCI_OPTION.hashMb] ?? current.hashMb,
-  };
-  return next.skillLevel === current.skillLevel &&
-    next.elo === current.elo &&
-    next.multiPv === current.multiPv &&
-    next.threads === current.threads &&
-    next.hashMb === current.hashMb
-    ? current
-    : next;
+  const skillLevel = clamped[SETTING_UCI_OPTION.skillLevel] ?? current.skillLevel;
+  const elo = clamped[SETTING_UCI_OPTION.elo] ?? current.elo;
+  return skillLevel === current.skillLevel && elo === current.elo ? current : { ...current, skillLevel, elo };
 };
 
 /**
@@ -366,15 +369,17 @@ const finiteNumber = (value: unknown, fallback: number): number =>
  * exactly as a catalog entry is: what cannot be read is replaced rather than
  * allowed to reach the engine. The bounds are not checked here — the hook clamps
  * every number to what the *running* build declares, which is the only authority
- * on what a legal value is.
+ * on what a legal value is. A field the row lacks is marked as such
+ * (`missingFieldsOf`, `lib/recordedFields.ts`).
  */
 export const engineSettingsFrom = (value: unknown): EngineSettings => {
   if (typeof value !== "object" || value === null) {
-    return { ...DEFAULT_ENGINE_SETTINGS };
+    return withMissingFields({ ...DEFAULT_ENGINE_SETTINGS }, Object.keys(DEFAULT_ENGINE_SETTINGS));
   }
   const row = value as Record<string, unknown>;
 
-  return {
+  // A field the stored row lacks is its default — and marked, so it never reads as a choice (CTA-181).
+  return withMissingFields({
     skillLevel: finiteNumber(row.skillLevel, DEFAULT_ENGINE_SETTINGS.skillLevel),
     // A record from before the Elo request has none: the default stands.
     elo: finiteNumber(row.elo, DEFAULT_ENGINE_SETTINGS.elo),
@@ -384,7 +389,7 @@ export const engineSettingsFrom = (value: unknown): EngineSettings => {
     threads: finiteNumber(row.threads, DEFAULT_ENGINE_SETTINGS.threads),
     hashMb: finiteNumber(row.hashMb, DEFAULT_ENGINE_SETTINGS.hashMb),
     playAs: row.playAs === "black" ? "black" : "white",
-  };
+  }, Object.keys(DEFAULT_ENGINE_SETTINGS).filter((field) => row[field] === undefined));
 };
 
 /** Whether two settings would drive the engine identically. */

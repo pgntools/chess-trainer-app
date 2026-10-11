@@ -381,6 +381,44 @@ const en = {
     },
   },
   /** What the engine forms (`blocks/forms`) say about an option they cannot drive. */
+  /**
+   * The top bar's Engine menu (CTA-181, `views/main/EngineMenu.tsx`): the
+   * search settings every board uses, the engine running and its preset.
+   */
+  engineMenu: {
+    title: "Engine",
+    /** The header's icon — its name says the board on screen's engine. */
+    label: {
+      off: "Engine settings — engine off",
+      on: "Engine settings — engine on",
+      searching: "Engine settings — engine searching",
+    },
+    engine: "Engine:",
+    preset: "Preset:",
+    settingsLink: "Change the engine or its preset in Settings → Engine",
+  },
+  /** A board's engine controls (CTA-181, the `BoardEngineControls` block): the play / pause and its menu. */
+  boardEngine: {
+    toggle: "Engine analysis",
+    menu: "Board engine options",
+  },
+  /** "Engine options changed" (CTA-181): a record opened whose search settings differ from the ones in effect. */
+  engineChanged: {
+    title: "Engine options changed",
+    message: {
+      analysis: "This analysis was saved with other engine settings than the ones in effect now:",
+      game: "This game was played with other engine settings than the ones in effect now:",
+    },
+    /** One row: the setting, the record's value, the current one. */
+    change: "{{setting}}: {{recorded}} → {{current}}",
+    on: "on",
+    off: "off",
+    use: "Use these settings",
+    dismiss: "Dismiss",
+    /** What "Use these settings" holds to the engine running. */
+    held: "This engine takes less: {{settings}}.",
+    heldTo: "{{setting}} would be {{value}}",
+  },
   engineOption: {
     /** Shown under a control the running engine build does not have. */
     unsupported: "This engine build has no \"{{option}}\" option.",
@@ -695,23 +733,19 @@ const en = {
       openAnalysis: "Open in analysis",
     },
     settings: {
-      /** The engine's on/off switch above the tab strip — the tab's own name. */
-      engineOn: "Engine",
       strength: "Strength",
       /** The engine has no ELO setting, so the figure is named as an estimate. */
       strengthValue: "Level {{level}} (≈{{elo}} Elo)",
       /** An engine that takes its strength as an Elo (CTA-153): the slider is the Elo itself, not an estimate. */
       strengthElo: "Strength (Elo)",
       strengthEloValue: "{{elo}} Elo",
-      depth: "Search depth",
-      moveTime: "Move time",
+      /** CTA-181: the engine's preset has UCI_LimitStrength off, so an Elo would do nothing. */
+      strengthOff: "The engine's preset has UCI_LimitStrength off, so the engine plays at the preset's strength and the Elo does nothing.",
+      strengthOffLink: "Turn it on in Settings → Engine",
       moveTimeValue: "{{seconds}}s",
       moveTimeNone: "No limit",
-      multiPv: "Variations to show",
-      threads: "Threads",
       /** A neutral caption under the Threads slider (CTA-163). */
       threadsHelp: "Engine CPU cores",
-      hash: "Hash (MB)",
       /** A neutral caption under the Hash slider (CTA-163). */
       hashHelp: "Engine memory (RAM)",
       playAs: "Play as",
@@ -994,7 +1028,6 @@ const en = {
       map: "Map",
       load: "Load",
       export: "Export",
-      engine: "Engine",
       arrows: "Arrows",
     },
     /**
@@ -1013,8 +1046,6 @@ const en = {
       /** …or the reader's turn. */
       yourMove: "Your move",
     },
-    /** The header's engine switch — short, it sits beside three buttons. */
-    engineSwitch: "Engine",
     /** Saving a board that is not a saved analysis yet: a name and a folder. */
     save: {
       open: "Save this analysis",
@@ -1338,7 +1369,6 @@ const en = {
       map: "Map",
       load: "Load",
       export: "Export",
-      engine: "Engine",
     },
     current: {
       /** The book has loaded, but this position is not in it. */
@@ -1358,7 +1388,6 @@ const en = {
       /** Above the list — what a click on a row does. */
       help: "Click a move to play it here. A move from an earlier position starts a side line.",
     },
-    engineSwitch: "Engine",
     controls: {
       /** Hand this position off to Play with Engine as `?fen=`. */
       playFromHere: "Play from here",
@@ -1871,13 +1900,11 @@ const en = {
         map: "Map",
         info: "Info",
         export: "Export",
-        engine: "Engine",
       },
       of: "Game {{number}} of {{count}}",
       back: "Back to {{name}}",
       previous: "Previous game",
       next: "Next game",
-      engineSwitch: "Engine",
       arrows: "Next-move arrows",
       moveMarks: "Move marks on the board",
       unreadable: "This game could not be read.",
@@ -2233,10 +2260,6 @@ const en = {
       autoplayOff: "Pause — you move both sides",
       download: "Download with your additions as PGN",
       back: "Back to the board",
-      /** The engine's switch — off by default: a drill does not show the answer. */
-      engine: "Engine",
-      engineHelp:
-        "Shows the engine's best lines above the tabs and the evaluation bar. It never plays a move; its settings are in the Engine tab.",
       sideHelp:
         "The trainer plays the other side. Changing it starts again from the first move; what you added is kept.",
       /** The switch that draws the next-move arrows — off by default. */
@@ -2317,7 +2340,6 @@ const en = {
       tabs: {
         moves: "Moves",
         tree: "Tree",
-        engine: "Engine",
       },
     },
   },
@@ -2600,8 +2622,9 @@ const en = {
     },
     /** Why an option is read-only or held, beside it (`PresetRowNote`). */
     notes: {
-      "board-owned": "Set on each board — its own Threads, Hash and Lines.",
+      "board-owned": "Set for every board in the top bar's Engine menu — Threads, Hash and Lines.",
       "play-owned": "Play with Engine and Masked Pieces set this from their own strength; every other board takes it from here.",
+      "play-strength": "Also turns Play with Engine's and Masked Pieces' Elo on: off, they play at this preset's strength.",
       absent: "{{engine}} does not declare it, so it is not sent.",
       pinned: "Fixed by this build — it has one value.",
       button: "An action, not a setting — a preset cannot keep it.",

@@ -161,12 +161,12 @@ describe("a Library game — accessible", () => {
     await screen.findByTestId("library-game-board");
     const next = screen.getByRole("link", { name: i18n.t("library.game.next") });
     expect(next).toHaveAttribute("href", `/library/${club.id}/3`);
-    const engine = screen.getByRole("switch", { name: i18n.t("library.game.engineSwitch") });
-    // It starts off (CTA-148).
-    expect(engine).not.toBeChecked();
+    // The engine's play / pause (CTA-181) — it starts off (CTA-148).
+    const engine = screen.getByRole("button", { name: i18n.t("boardEngine.toggle") });
+    expect(engine).toHaveAttribute("aria-pressed", "false");
     engine.focus();
-    await user.keyboard(" ");
-    expect(engine).toBeChecked();
+    await user.keyboard("{Enter}");
+    expect(engine).toHaveAttribute("aria-pressed", "true");
   });
 
   it("says a game will not read, with the way back, and passes axe", async () => {

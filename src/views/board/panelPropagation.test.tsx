@@ -159,13 +159,20 @@ describe("the one panel skeleton", () => {
     expect(seen).toEqual(BOARDS.map((board) => board.panelId));
   });
 
-  it("gives every board the Moves and Engine tabs, through the same slot", () => {
-    // The tab strip is the skeleton's; what goes in it is the screen's. Two
-    // tabs are common to all of them because all are boards with an engine.
-    for (const { Screen } of BOARDS) {
+  it("gives every board the Moves tab through the same slot — and an Engine tab only to the Play boards (CTA-181)", () => {
+    /*
+      The tab strip is the skeleton's; what goes in it is the screen's. Moves
+      is common to all of them. Since CTA-181 the search settings are the top
+      bar's Engine menu and no analysis board has an Engine tab: only Play
+      with Engine and Masked Pieces keep one, for the opponent's strength.
+    */
+    const PLAY_BOARDS = ["play-with-engine-panel", "masked-play-panel"];
+    for (const { Screen, panelId } of BOARDS) {
       const { unmount } = renderBoard(Screen);
-      const ids = screen.getByTestId("panel-tab-ids").textContent ?? "";
-      expect(ids.split(",")).toEqual(expect.arrayContaining(["moves", "engine"]));
+      const ids = (screen.getByTestId("panel-tab-ids").textContent ?? "").split(",");
+      expect(ids).toContain("moves");
+      if (PLAY_BOARDS.includes(panelId)) expect(ids, panelId).toContain("engine");
+      else expect(ids, panelId).not.toContain("engine");
       unmount();
     }
   });

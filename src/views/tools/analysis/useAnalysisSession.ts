@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  analysisUciOptionsOf,
-  withClampedAnalysisUciOptions,
-  DEFAULT_ANALYSIS_SETTINGS,
-  type AnalysisSettings,
-} from "../../../lib/analysisSettings";
+import { analysisSettingsOf, analysisUciOptionsOf, type AnalysisSettings } from "../../../lib/analysisSettings";
 import { annotatorOf, recordEvaluation } from "../../../lib/engineEvals";
 import { findNode, pathTo, type GameTree } from "../../../lib/gameTree";
 import { extensionIdsOf, nodeIdsOf } from "../../../lib/repertoireTrainer";
@@ -13,6 +8,8 @@ import { useBoardCore } from "../../board/core/useBoardCore";
 import { useEngineModule, type FinishedSearch } from "../../board/core/useEngineModule";
 import { useEngineChoice } from "../../shared/useEngineChoice";
 import { usePlayToggle } from "../../board/core/usePlayToggle";
+import { boardEngineStateOf, usePublishBoardEngineState } from "../../main/boardEngineState";
+import { useEngineSearchSettings } from "../../shared/useEngineSearchSettings";
 
 /**
  * **An analysis session against a baseline** — the part of the Analysis
@@ -29,7 +26,10 @@ import { usePlayToggle } from "../../board/core/usePlayToggle";
  *   on the map (recomputed, never tracked);
  * - `discard` goes back to the baseline, on the last of its positions on the
  *   way to where the reader stands; `rebase` makes a kept tree the baseline;
- * - with `settings.writeEvals` on (CTA-167, the Analysis Board's Engine tab),
+ * - the engine searches with **the reader's global search settings** (the
+ *   top bar's Engine menu, CTA-181) — `settings` is those, read live, with
+ *   the session's own `writeEvals` beside them, what a record keeps;
+ * - with `settings.writeEvals` on (CTA-167, the Analysis Board's engine menu),
  *   each finished search's score is written into the tree as `[%eval]` on the
  *   move whose position was searched, and the engine named in `Annotator`
  *   (`lib/engineEvals.ts`) — an edit like any other, so it is a change Save
@@ -49,7 +49,12 @@ export type AnalysisSessionStart = {
   /** A node to open on — a record's place, a permanent link. Beats `ply`. */
   nodeId?: string;
   orientation?: "white" | "black";
-  /** The engine settings a record was worked under. */
+  /**
+   * The engine settings a record was worked under — its `writeEvals` is the
+   * session's start; the search settings are the reader's global ones
+   * (CTA-181), the record's offered back by the screen ("Engine options
+   * changed").
+   */
   settings?: AnalysisSettings;
 };
 
@@ -71,17 +76,16 @@ export const useAnalysisSession = ({
     [core.tree, baselineIds],
   );
 
-  /* The engine — off until the reader switches it on (CTA-148): nothing searches by itself. */
-  const [settings, setSettings] = useState<AnalysisSettings>(
-    () => initialSettings ?? DEFAULT_ANALYSIS_SETTINGS,
-  );
+  /*
+    The engine — off until the reader switches it on (CTA-148): nothing
+    searches by itself. Its search settings are the reader's global ones
+    (CTA-181); only whether evaluations are written is the session's.
+  */
+  const { settings: search } = useEngineSearchSettings();
+  const [writeEvals, setWriteEvals] = useState(initialSettings?.writeEvals ?? false);
+  const settings = useMemo(() => analysisSettingsOf(search, writeEvals), [search, writeEvals]);
   const [engineOn, setEngineOn] = useState(false);
   const [showEvalBar, setShowEvalBar] = useState(true);
-  const onUciOptionsReady = useCallback(
-    (clamped: Readonly<Record<string, number>>) =>
-      setSettings((current) => withClampedAnalysisUciOptions(current, clamped)),
-    [],
-  );
   /*
     Play (CTA-73): the engine plays its best move for the opponent's side,
     search after search, until paused — the shared toggle, off at the start.
@@ -129,19 +133,13 @@ export const useAnalysisSession = ({
       () => analysisUciOptionsOf({ multiPv: settings.multiPv, threads: settings.threads, hashMb: settings.hashMb }, engineId),
       [settings.multiPv, settings.threads, settings.hashMb, engineId],
     ),
-    onUciOptionsReady,
     onBestMove: play.onBestMove,
     onSearchFinished: settings.writeEvals ? writeEvaluation : undefined,
   });
+  usePublishBoardEngineState(boardEngineStateOf(engineOn, engine.searching));
 
   /** Play on or off — see `usePlayToggle`. */
   const togglePlaying = () => play.toggle(engine.analysis, engine.evalsByFen);
-
-  const updateSettings = useCallback(
-    (patch: Partial<AnalysisSettings>) =>
-      setSettings((current) => ({ ...current, ...patch })),
-    [],
-  );
 
   /** The tree kept: it is the baseline now, and the additions stop being additions. */
   const rebase = useCallback((kept: GameTree) => setBaseline(kept), []);
@@ -164,7 +162,8 @@ export const useAnalysisSession = ({
     core,
     engine,
     settings,
-    updateSettings,
+    /** Write evaluations into the game, or stop (CTA-167) — the session's own switch. */
+    setWriteEvals,
     engineOn,
     setEngineOn,
     playing,

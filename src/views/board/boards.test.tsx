@@ -40,6 +40,8 @@ vi.mock("../../lib/openings", async (importOriginal) => {
 
 import { boardOptions, FakeEngine } from "./boardTestHarness";
 import { storeEngineId } from "../../lib/engineChoice";
+import { storeEngineSearchSettings } from "../../lib/engineSearchSettings";
+import { EngineMenu } from "../main/EngineMenu";
 import { loadPlayedGames, playedGamesSnapshot } from "../../lib/playedGameStore";
 import AnalysisBoard from "../tools/analysis/AnalysisBoard";
 import PlayWithEngine from "../engine/play/PlayWithEngine";
@@ -71,17 +73,25 @@ const BOARDS: readonly {
   linesShown?: false;
   /** Whether the engine's switch starts off (CTA-148) — every board on `useAnalysisSession`. */
   engineOff?: true;
+  /**
+   * The board's own Engine tab — the Play boards' strength. Since CTA-181 the
+   * analysis boards have none: the search settings are the top bar's Engine
+   * menu, the eval bar the header's engine menu.
+   */
+  engineTab?: true;
+  /** A tab beside Moves, to open in the tab-panel test. */
+  otherTab: string;
 }[] = [
   // Analysis v2 shipped as the Analysis Board (CTA-73); it stays in the set.
-  { name: "Analysis Board", id: "analysis", Screen: AnalysisBoard, engineOff: true },
+  { name: "Analysis Board", id: "analysis", Screen: AnalysisBoard, engineOff: true, otherTab: "map" },
   // Play with Engine, a v2 screen since CTA-74.
-  { name: "Play with Engine", id: "play-with-engine", Screen: PlayWithEngine },
-  { name: "Library game", id: "library-game", Screen: LibraryGame, engineOff: true },
+  { name: "Play with Engine", id: "play-with-engine", Screen: PlayWithEngine, engineTab: true, otherTab: "engine" },
+  { name: "Library game", id: "library-game", Screen: LibraryGame, engineOff: true, otherTab: "map" },
   // The Openings explorer (CTA-78), in Openings v2's place.
-  { name: "Openings explorer", id: "openings", Screen: OpeningsBoard, engineOff: true },
+  { name: "Openings explorer", id: "openings", Screen: OpeningsBoard, engineOff: true, otherTab: "map" },
   // Masked Pieces (CTA-79): Play with Engine's screen in a costume — its
   // engine lines wait behind a switch.
-  { name: "Masked Pieces", id: "masked-play", Screen: MaskedPlay, linesShown: false },
+  { name: "Masked Pieces", id: "masked-play", Screen: MaskedPlay, linesShown: false, engineTab: true, otherTab: "engine" },
 ];
 
 const renderBoard = (Screen: () => ReactNode, entry = "/dev") =>
@@ -164,21 +174,26 @@ describe("every v2 board, from the same core", () => {
     unmount();
   });
 
-  it.each(BOARDS)("$name renders the shared panel skeleton", ({ id, Screen }) => {
+  it.each(BOARDS)("$name renders the shared panel skeleton", ({ id, Screen, engineTab }) => {
     const { unmount } = renderBoard(Screen);
 
     // Criterion 4, rendered for real: the pinned variations block, the status
-    // row, the Moves and Engine tabs and the shared board controls.
+    // row, the Moves tab and the shared board controls.
     expect(screen.getByTestId(`${id}-panel`)).toBeInTheDocument();
     expect(screen.getByTestId(`${id}-panel-status`)).toBeInTheDocument();
     expect(screen.getByTestId(`${id}-panel-tab-moves`)).toBeInTheDocument();
-    expect(screen.getByTestId(`${id}-panel-tab-engine`)).toBeInTheDocument();
     expect(screen.getByTestId("board-controls")).toBeInTheDocument();
+    // The Engine tab only where the board has its own (the Play boards' strength) — CTA-181.
+    if (engineTab) expect(screen.getByTestId(`${id}-panel-tab-engine`)).toBeInTheDocument();
+    else expect(screen.queryByTestId(`${id}-panel-tab-engine`)).not.toBeInTheDocument();
+    // Every board's engine: a play / pause in its header, and its menu (CTA-181).
+    expect(screen.getByRole("button", { name: i18n.t("boardEngine.toggle") })).toHaveAttribute("data-testid", `${id}-setting-engine`);
+    expect(screen.getByRole("button", { name: i18n.t("boardEngine.menu") })).toHaveAttribute("data-testid", `${id}-engine-menu`);
 
     unmount();
   });
 
-  it.each(BOARDS)("$name names its tab panel by its tab, whichever is open (CTA-112)", ({ id, Screen }) => {
+  it.each(BOARDS)("$name names its tab panel by its tab, whichever is open (CTA-112)", ({ id, Screen, otherTab }) => {
     const { unmount } = renderBoard(Screen);
     const panel = screen.getByTestId(`${id}-panel`);
     const linked = () => {
@@ -189,8 +204,8 @@ describe("every v2 board, from the same core", () => {
       expect(region).toHaveAccessibleName(tab.textContent ?? "");
     };
     linked();
-    act(() => screen.getByTestId(`${id}-panel-tab-engine`).click());
-    expect(within(panel).getByRole("tab", { selected: true })).toBe(screen.getByTestId(`${id}-panel-tab-engine`));
+    act(() => screen.getByTestId(`${id}-panel-tab-${otherTab}`).click());
+    expect(within(panel).getByRole("tab", { selected: true })).toBe(screen.getByTestId(`${id}-panel-tab-${otherTab}`));
     linked();
     unmount();
   });
@@ -251,16 +266,76 @@ describe("every v2 board, from the same core", () => {
     ({ id, Screen }) => {
       const { unmount } = renderBoard(Screen);
 
-      expect(within(screen.getByTestId(`${id}-setting-engine`)).getByRole("switch")).not.toBeChecked();
+      expect(screen.getByTestId(`${id}-setting-engine`)).toHaveAttribute("aria-pressed", "false");
       expect(FakeEngine.instances.flatMap((engine) => engine.searches)).toEqual([]);
       expect(screen.getByTestId(`${id}-play`)).toBeDisabled();
       toggleEngine(id);
+      expect(screen.getByTestId(`${id}-setting-engine`)).toHaveAttribute("aria-pressed", "true");
       expect(FakeEngine.latest().searches.length).toBeGreaterThan(0);
       expect(screen.getByTestId(`${id}-play`)).toBeEnabled();
 
       unmount();
     },
   );
+});
+
+/*
+  The search settings are one global set (CTA-181): set in the top bar's
+  Engine menu, read by every board from its next search — depth and move
+  time on `go`, lines, Threads and Hash as options.
+*/
+describe("the global search settings reach every board (CTA-181)", () => {
+  it.each(BOARDS)("$name searches to the top bar's depth and move time, with its lines", ({ id, Screen, engineOff }) => {
+    storeEngineSearchSettings({ depth: 9, moveTimeMs: 5000, multiPv: 4 });
+    const { unmount } = renderBoard(Screen);
+    if (engineOff) toggleEngine(id);
+    const engine = FakeEngine.latest();
+    expect(engine.searchOptions.at(-1)).toEqual({ depth: 9, movetime: 5000 });
+    expect(engine.setOptions).toContainEqual(["MultiPV", 4]);
+
+    // A change applies from the next search, on the board already open.
+    act(() => storeEngineSearchSettings({ depth: 11 }));
+    expect(FakeEngine.latest().searchOptions.at(-1)).toEqual({ depth: 11, movetime: 5000 });
+    unmount();
+  });
+
+  it.each(BOARDS)("$name tells the top bar what its engine is doing", ({ id, Screen, engineOff }) => {
+    const { unmount } = render(
+      <AppThemeWithLang>
+        <MemoryRouter initialEntries={["/dev"]}>
+          <RightPanelProvider>
+            <EngineMenu />
+            <Screen />
+            <RightPanelOutlet />
+          </RightPanelProvider>
+        </MemoryRouter>
+      </AppThemeWithLang>,
+    );
+    const icon = () => screen.getByTestId("header-engine-icon");
+    if (engineOff) {
+      expect(icon()).toHaveAttribute("data-state", "off");
+      toggleEngine(id);
+    }
+    // On, a search running: the icon breathes.
+    expect(icon()).toHaveAttribute("data-state", "searching");
+    engineReports({ depth: 9, multipv: 1, cp: 10, pv: "e2e4" });
+    act(() => {
+      const engine = FakeEngine.latest();
+      engine.say({ fen: engine.lastSearch, uciMessage: "bestmove", bestMove: "e2e4" });
+    });
+    // The search answered: on, still.
+    expect(icon()).toHaveAttribute("data-state", "on");
+    unmount();
+    // Gone with the board: a screen with no board leaves the icon neutral.
+    render(
+      <AppThemeWithLang>
+        <MemoryRouter>
+          <EngineMenu />
+        </MemoryRouter>
+      </AppThemeWithLang>,
+    );
+    expect(icon()).toHaveAttribute("data-state", "none");
+  });
 });
 
 describe("reduced motion, on every board (CTA-111)", () => {

@@ -28,6 +28,12 @@ export type IconActionProps = {
    * saying whether that menu is open now. Absent, it opens nothing.
    */
   popupOpen?: boolean;
+  /**
+   * What `popupOpen` opens (CTA-181): a `"menu"` (the default) or a
+   * `"dialog"` — a popover of controls, the top bar's Engine menu —
+   * `aria-haspopup` saying which. Absent, a menu: today's behaviour.
+   */
+  popupKind?: "menu" | "dialog";
   testId: string;
 };
 
@@ -48,6 +54,7 @@ function IconAction({
   color,
   edge = false,
   popupOpen,
+  popupKind = "menu",
   testId,
 }: IconActionProps) {
   return (
@@ -58,7 +65,7 @@ function IconAction({
           edge={edge}
           aria-label={label}
           aria-pressed={pressed}
-          aria-haspopup={popupOpen === undefined ? undefined : "menu"}
+          aria-haspopup={popupOpen === undefined ? undefined : popupKind}
           aria-expanded={popupOpen}
           color={pressed === true ? "primary" : (color ?? "default")}
           disabled={disabled}

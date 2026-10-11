@@ -1,8 +1,4 @@
-import {
-  ENGINE_SETTING_BOUNDS,
-  engineSettingBoundsOf,
-  type EngineSettings,
-} from "./engineSettings";
+import { ENGINE_SETTING_BOUNDS, type EngineSettings } from "./engineSettings";
 
 /**
  * **A new game against the engine, as a link** (CTA-82) — the Lobby's Start
@@ -15,20 +11,18 @@ import {
  * | `side` | the reader's side | `white` / `black` |
  * | `skill` | `skillLevel` | 0–20 |
  * | `elo` | `elo` | 1320–3190 (CTA-153: where the engine takes its strength as an Elo) |
- * | `depth` | `depth` | 1–40 |
- * | `movetime` | `moveTimeMs` | 0–300000 (ms; 0 is no limit, 1 the instant reply — CTA-163) |
- * | `lines` | `multiPv` | 1–10 |
- * | `threads` | `threads` | 1–32 for an in-browser build (the form offers what the device has); an engine server's engine, 1–1024 (it offers what the engine declares — CTA-175) |
- * | `hash` | `hashMb` | 1–1024 for an in-browser build (the form offers what the device has; more crashed the tab, CTA-160); an engine server's engine, up to Stockfish's own 33,554,432 (it offers what the server allows — CTA-175) |
  * | `evalbar` | the eval bar | `1` / `0` |
  * | `variations` | the pinned engine lines at the start (CTA-90) | `1` / `0` |
  * | `fen` | the starting position | a FEN — written only for a position other than the standard start (CTA-83: the Lobby's Board editor tab) |
  *
+ * **The strength only** (CTA-181): depth, move time, lines, Threads and Hash
+ * are the reader's global search settings (the top bar's Engine menu), so a
+ * link no longer carries them — an older link's `depth`, `movetime`, `lines`,
+ * `threads` and `hash` are read as nothing.
+ *
  * **Each field on its own**, as `engineSettingsFrom` reads a stored record: an
  * absent or unreadable one is left out (the game takes its default), a number
- * out of range is clamped into `ENGINE_SETTING_BOUNDS` — `threads` and `hash`
- * into the bounds of the engine the game will run (`engineSettingBoundsOf`) —
- * and a fraction rounded.
+ * out of range is clamped into `ENGINE_SETTING_BOUNDS` and a fraction rounded.
  * The engine module then re-clamps the UCI options to whatever the running
  * build declared — these bounds are the offer, not the authority.
  *
@@ -43,8 +37,8 @@ import {
 /** The reader's side as the Lobby offers it. */
 export type NewGameSide = "white" | "black";
 
-/** The numeric settings a link carries — everything but the side. */
-export type NewGameSettings = Omit<EngineSettings, "playAs">;
+/** The numeric settings a link carries — the strength. */
+export type NewGameSettings = Pick<EngineSettings, "skillLevel" | "elo">;
 
 /** What a link asked for; a field it did not carry (or carried unreadably) is absent. */
 export type NewGameRequest = {
@@ -62,11 +56,6 @@ export type NewGameRequest = {
 const NEW_GAME_PARAM = {
   skillLevel: "skill",
   elo: "elo",
-  depth: "depth",
-  moveTimeMs: "movetime",
-  multiPv: "lines",
-  threads: "threads",
-  hashMb: "hash",
 } as const satisfies Record<keyof NewGameSettings, string>;
 
 const SETTING_KEYS = Object.keys(NEW_GAME_PARAM) as (keyof NewGameSettings)[];
@@ -109,15 +98,12 @@ const flagParam = (text: string | null): boolean | undefined =>
 /**
  * What a link asks of a new game. Never throws. A `side` the form no longer
  * writes — `random`, removed with CTA-90 — reads as no side at all, like any
- * other value the reader cannot have meant. `engineId` is the engine the game
- * will run: an engine server's keeps a `threads` / `hash` past the in-browser
- * ceilings (CTA-175); absent, those ceilings, as before.
+ * other value the reader cannot have meant.
  */
-export const newGameRequestOf = (params: URLSearchParams, engineId?: string): NewGameRequest => {
+export const newGameRequestOf = (params: URLSearchParams): NewGameRequest => {
   const settings: Partial<NewGameSettings> = {};
-  const bounds = { ...ENGINE_SETTING_BOUNDS, ...engineSettingBoundsOf(engineId) };
   for (const key of SETTING_KEYS) {
-    const value = numberParam(params.get(NEW_GAME_PARAM[key]), bounds[key]);
+    const value = numberParam(params.get(NEW_GAME_PARAM[key]), ENGINE_SETTING_BOUNDS[key]);
     if (value !== undefined) settings[key] = value;
   }
 

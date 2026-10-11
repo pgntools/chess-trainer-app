@@ -15,11 +15,16 @@ import {
 import { useTranslation } from "react-i18next";
 import type { ChessboardOptions } from "react-chessboard";
 
-import { ChangesStrip, CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../../blocks/panels";
-import { AnalysisEngineForm } from "../../../blocks/forms";
+import {
+  BoardEngineControls,
+  ChangesStrip,
+  CurrentOpening,
+  EngineThinking,
+  PgnExportPanel,
+  PlayToggleButton,
+} from "../../../blocks/panels";
 import { engineLimitsOf } from "../../../lib/engineSettings";
 import { StatusText } from "../../../design-system/components/feedback";
-import { SwitchField } from "../../../design-system/components/forms";
 import { IconAction, ToggleIconAction } from "../../../design-system/components/toolbars";
 import { downloadPgn } from "../../../lib/pgnExport";
 import { analysisHandOffOf } from "../../../lib/analysisHandOff";
@@ -68,6 +73,8 @@ import { useAnalysisBoard, type AnalysisBoardStart } from "./useAnalysisBoard";
 import { usePageTitle } from "../../main/pageTitle";
 import { playerPlatesOf } from "../../shared/playerResults";
 import { useCurrentOpening } from "../../shared/useCurrentOpening";
+import { ClearBoardButton } from "../../shared/ClearBoardButton";
+import { EngineOptionsChangedPrompt } from "../../shared/EngineOptionsChangedPrompt";
 import { useUnsavedWorkGuard } from "../../main/unsavedWork";
 
 /**
@@ -87,13 +94,14 @@ import { useUnsavedWorkGuard } from "../../main/unsavedWork";
  * | Capability | Taken | Because |
  * | --- | --- | --- |
  * | Base | `useBoardCore`, through `useAnalysisBoard` | the tree, the node, the oracle, promotion, orientation |
- * | Engine | switch, **off by default** (CTA-148); its best move played **only while Play is on, for the opponent's side** (`onBestMove`, `useAnalysisBoard`) | the pinned lines, the eval bar and the Engine tab; Play is disabled while the engine is off, and a step back pauses it |
+ * | Engine | a play / pause button, **off by default** (CTA-148), with its menu — the eval bar, Write evaluations (`BoardEngineControls`, CTA-181); its best move played **only while Play is on, for the opponent's side** (`onBestMove`, `useAnalysisBoard`); the search settings the reader's global ones, the top bar's Engine menu (CTA-181) | the pinned lines and the eval bar; Play is disabled while the engine is off, and a step back pauses it |
  * | Tree view | `useVariationsExplorer` | Moves (side lines, comment marks, evals, the move menu), Map, the comment block, the next-moves bar and arrows — editing on, *Play chances…* off (nothing here plays by chance) |
  * | Saving | `useAnalysisBoard` — explicit | no autosave: the header's Save lights while the board differs from its record, and opens the changes strip (Update / Save as copy / Discard); a board with no record yet saves through a name-and-folder dialog |
  *
- * **Tabs: Moves · Map · Load · Export · Engine · Arrows.** Load brings a PGN (a file
+ * **Tabs: Moves · Map · Load · Export · Arrows** (the Engine tab went with
+ * CTA-181). Load brings a PGN (a file
  * or a paste — several games are merged onto the board or split into a
- * folder of saved analyses) or a FEN; Export copies the FEN, and copies or
+ * folder of saved analyses) or a FEN, and Clear empties the board; Export copies the FEN, and copies or
  * downloads the PGN with or without comments, NAGs and side lines; Arrows
  * (CTA-98) switches the next-move arrows, picks what sizes them — a tag in
  * each move's comment (`[%eval]`, `[%games]`, `prc`), offered only while the
@@ -101,7 +109,9 @@ import { useUnsavedWorkGuard } from "../../main/unsavedWork";
  * `[%eval]`s show at the top of Moves as an eval graph and a report that move
  * the board (`AnalysisEvalReport`, CTA-174 / CTA-177), and the header's
  * **Analyse** opens the New Job dialog that sends the game to a background
- * job (`NewJob`, CTA-177). The saved list's panel hosts the position editor that starts a new analysis
+ * job (`NewJob`, CTA-177). A saved analysis worked under other search
+ * settings than the ones in effect asks once, as it opens, whether to use
+ * them ("Engine options changed", CTA-181). The saved list's panel hosts the position editor that starts a new analysis
  * from a custom position
  * ([`position-editor.md`](../../../../.claude/rules/position-editor.md) §4).
  *
@@ -210,7 +220,7 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
   /*
     The New Job dialog (CTA-177): whether it is open, its options and the job
     it sent — the board's, so they outlive the dialog (CTA-174's tab's before).
-    Until the reader changes an option the form follows the Engine tab and the
+    Until the reader changes an option the form follows the search settings (the top bar's, CTA-181) and the
     reader's engine.
   */
   const [newJobOpen, setNewJobOpen] = useState(false);
@@ -443,14 +453,14 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
                   <SettingsRoundedIcon fontSize="small" />
                 </IconAction>
               )}
-              <SwitchField
-                size="small"
-                label={t("analysis.engineSwitch")}
-                checked={state.engineOn}
-                onChange={state.setEngineOn}
-                // The board's tests reach the input inside the switch.
-                testIdOn="control"
-                testId="analysis-setting-engine"
+              {/* The engine's play / pause and its menu — the eval bar, Write evaluations (CTA-181). */}
+              <BoardEngineControls
+                engineOn={state.engineOn}
+                onEngineOnChange={state.setEngineOn}
+                showEvalBar={state.showEvalBar}
+                onShowEvalBarChange={state.setShowEvalBar}
+                writeEvals={{ checked: state.settings.writeEvals, onChange: state.setWriteEvals }}
+                testId="analysis"
               />
             </>
           ),
@@ -484,22 +494,32 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
               id: "load",
               label: t("analysis.tabs.load"),
               content: (
-                <AnalysisLoad
-                  onLoadTree={(tree) => {
-                    state.loadNew(tree);
-                    clearArrivalUrl();
-                  }}
-                  onLoadFen={(fen) => {
-                    state.loadFen(fen);
-                    clearArrivalUrl();
-                  }}
-                  onCollectionSaved={(collectionId) =>
-                    navigate(`/library/${encodeURIComponent(collectionId)}`)
-                  }
-                  onAnalysesSaved={(folderId) =>
-                    navigate(`/tools/analysis/saved?folder=${encodeURIComponent(folderId)}`)
-                  }
-                />
+                <>
+                  <AnalysisLoad
+                    onLoadTree={(tree) => {
+                      state.loadNew(tree);
+                      clearArrivalUrl();
+                    }}
+                    onLoadFen={(fen) => {
+                      state.loadFen(fen);
+                      clearArrivalUrl();
+                    }}
+                    onCollectionSaved={(collectionId) =>
+                      navigate(`/library/${encodeURIComponent(collectionId)}`)
+                    }
+                    onAnalysesSaved={(folderId) =>
+                      navigate(`/tools/analysis/saved?folder=${encodeURIComponent(folderId)}`)
+                    }
+                  />
+                  {/* Back to an empty board — a new analysis, the record left as it was (the Engine tab's, until CTA-181). */}
+                  <ClearBoardButton
+                    testId="analysis-clear"
+                    onClear={() => {
+                      state.clearBoard();
+                      clearArrivalUrl();
+                    }}
+                  />
+                </>
               ),
             },
             {
@@ -511,27 +531,6 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
                   tree={core.tree}
                   onDownload={(pgn) => downloadPgn(slugify(name) || "analysis", [pgn])}
                   testId="analysis"
-                />
-              ),
-            },
-            {
-              id: "engine",
-              label: t("analysis.tabs.engine"),
-              content: (
-                <AnalysisEngineForm
-                  testId="analysis"
-                  settings={state.settings}
-                  onChange={state.updateSettings}
-                  engineOptions={engine.engineOptions}
-                  engineOn={state.engineOn}
-                  showEvalBar={state.showEvalBar}
-                  onShowEvalBarChange={state.setShowEvalBar}
-                  deviceLimits={engineLimitsOf(engine.descriptor)}
-                  offerWriteEvals
-                  onClear={() => {
-                    state.clearBoard();
-                    clearArrivalUrl();
-                  }}
                 />
               ),
             },
@@ -602,6 +601,13 @@ function AnalysisBoard({ folderView, onFolderViewChange, onPointUrl }: AnalysisB
           onStateChange={onFolderViewChange}
         />
       )}
+      {/* A saved analysis worked under other search settings than the ones in effect, asked once as it opens (CTA-181). */}
+      <EngineOptionsChangedPrompt
+        changes={state.optionChanges}
+        record="analysis"
+        engine={engine.descriptor}
+        testId="analysis-engine-changed"
+      />
       <NewJob
         game={newJobGame}
         onClose={() => setNewJobOpen(false)}

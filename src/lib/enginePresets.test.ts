@@ -12,6 +12,8 @@ import {
   enginePresetSelectionFrom,
   isFilePathOption,
   optionDefaultValue,
+  playOwnedOptionsOf,
+  presetLimitsStrength,
   presetResetValue,
   resolveEnginePreset,
   selectedPresetOf,
@@ -200,7 +202,11 @@ describe("the form's rows (enginePresetRows)", () => {
     expect(byName.get("Hash")).toMatchObject({ editable: false, note: "board-owned", range: { min: 1, max: 1024 } });
     expect(byName.get("Clear Hash")).toMatchObject({ editable: false, note: "button" });
     expect(byName.get("EvalFile")).toMatchObject({ editable: false, note: "browser-file" });
-    expect(byName.get("Skill Level")).toMatchObject({ editable: true, note: "play-owned", value: 20 });
+    // An Elo engine: its Skill Level is the preset's on every board, Play's included (CTA-181) — no note.
+    expect(byName.get("Skill Level")).toMatchObject({ editable: true, value: 20 });
+    expect(byName.get("Skill Level")?.note).toBeUndefined();
+    // Its UCI_LimitStrength turns Play's Elo on.
+    expect(byName.get("UCI_LimitStrength")).toMatchObject({ editable: true, note: "play-strength" });
     expect(byName.get("Contempt")).toMatchObject({ value: 24, set: true, editable: false, note: "absent" });
   });
 
@@ -302,5 +308,23 @@ describe("the form's tabs (optionTabOf)", () => {
     expect(optionTabOf("Contempt")).toBe("advanced");
     expect(optionTabOf("BookFile", { name: "BookFile", type: "string" })).toBe("system");
     expect(enginePresetRows({ Contempt: 24 }, LITE, { inBrowser: true }).at(-1)).toMatchObject({ name: "Contempt", tab: "advanced" });
+  });
+});
+
+describe("Play's strength and the preset (CTA-181)", () => {
+  it("leaves Play only the Elo on an Elo engine, and the Skill Level too where that is all it has", () => {
+    expect(playOwnedOptionsOf(LITE)).toEqual(["UCI_Elo"]);
+    const skillOnly = LITE.filter((option) => option.name !== "UCI_Elo" && option.name !== "UCI_LimitStrength");
+    expect(playOwnedOptionsOf(skillOnly)).toEqual(["UCI_Elo", "Skill Level"]);
+    expect(enginePresetRows({}, skillOnly, { inBrowser: true }).find((row) => row.name === "Skill Level")?.note).toBe("play-owned");
+  });
+
+  it("limits the strength only while the preset has UCI_LimitStrength on — the engine's default (off) otherwise", () => {
+    expect(presetLimitsStrength({}, LITE, { inBrowser: true })).toBe(false);
+    expect(presetLimitsStrength({ UCI_LimitStrength: true }, LITE, { inBrowser: true })).toBe(true);
+    expect(presetLimitsStrength({ UCI_LimitStrength: false }, LITE, { inBrowser: true })).toBe(false);
+    // Before the handshake: the preset's value as written.
+    expect(presetLimitsStrength({ UCI_LimitStrength: true }, [], { inBrowser: true })).toBe(true);
+    expect(presetLimitsStrength({}, [], { inBrowser: true })).toBe(false);
   });
 });

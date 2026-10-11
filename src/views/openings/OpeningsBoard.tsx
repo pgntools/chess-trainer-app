@@ -8,9 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
 import type { ChessboardOptions } from "react-chessboard";
 
-import { CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
-import { AnalysisEngineForm } from "../../blocks/forms";
-import { engineLimitsOf } from "../../lib/engineSettings";
+import { BoardEngineControls, CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
 import { OpeningBookList } from "../../blocks/lists";
 import { SwitchField } from "../../design-system/components/forms";
 import { IconAction } from "../../design-system/components/toolbars";
@@ -24,6 +22,7 @@ import BoardShell from "../board/core/BoardShell";
 import { turnOf } from "../board/core/useBoardCore";
 import { useOpeningBookModule } from "../board/core/useOpeningBookModule";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
+import { ClearBoardButton } from "../shared/ClearBoardButton";
 import AnalysisLoad from "../tools/analysis/AnalysisLoad";
 import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
 import { openingArrowsOf } from "./openingArrows";
@@ -40,7 +39,7 @@ import { openingArrowsOf } from "./openingArrows";
  * | Base + engine + Play | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (off until switched on), `usePlayToggle` (off at the start) |
  * | Book | `useOpeningBookModule` — eco.json's continuations from the position on screen, listed in the Book tab (a click plays one, from any node — an earlier position branches) and drawn as arrows |
  * | Tree view | `useVariationsExplorer` — Moves, Map, the comment block, the next-moves bar, the arrows, the move menu; editing on, *Play chances…* off |
- * | Shell | `BoardShell` / `BoardPanel` — tabs Book · Moves (with the next-move arrows' switch) · Map · Load · Export · Engine |
+ * | Shell | `BoardShell` / `BoardPanel` — tabs Book · Moves (with the next-move arrows' switch) · Map · Load (and Clear) · Export (no Engine tab since CTA-181: the search settings are the top bar's Engine menu, the eval bar the header's engine menu) |
  *
  * **Nothing is kept.** An opening is explored, not filed: there is no Save,
  * no changes strip and no folders, and the Load tab merges a text of several
@@ -198,14 +197,13 @@ function OpeningsBoard() {
               thinking={session.thinking}
               onToggle={session.togglePlaying}
             />
-            <SwitchField
-              size="small"
-              label={t("openings.engineSwitch")}
-              checked={session.engineOn}
-              onChange={session.setEngineOn}
-              // The board's tests reach the input inside the switch.
-              testIdOn="control"
-              testId="openings-setting-engine"
+            {/* The engine's play / pause and its menu — the eval bar (CTA-181). */}
+            <BoardEngineControls
+              engineOn={session.engineOn}
+              onEngineOnChange={session.setEngineOn}
+              showEvalBar={session.showEvalBar}
+              onShowEvalBarChange={session.setShowEvalBar}
+              testId="openings"
             />
           </>
         ),
@@ -254,40 +252,30 @@ function OpeningsBoard() {
             id: "load",
             label: t("openings.tabs.load"),
             content: (
-              <AnalysisLoad
-                onLoadTree={loadTree}
-                onLoadFen={(fen) => {
-                  core.loadFen(fen);
-                  engine.clearAnalysis();
-                }}
-                choiceLabelKey="openings.load.choice"
-              />
+              <>
+                <AnalysisLoad
+                  onLoadTree={loadTree}
+                  onLoadFen={(fen) => {
+                    core.loadFen(fen);
+                    engine.clearAnalysis();
+                  }}
+                  choiceLabelKey="openings.load.choice"
+                />
+                {/* Back to the tree's own start — the Engine tab's, until CTA-181. */}
+                <ClearBoardButton
+                  testId="openings-clear"
+                  onClear={() => {
+                    core.reset();
+                    engine.clearAnalysis();
+                  }}
+                />
+              </>
             ),
           },
           {
             id: "export",
             label: t("openings.tabs.export"),
             content: <PgnExportPanel fen={core.fen} tree={core.tree} onDownload={(pgn) => downloadPgn("opening", [pgn])} testId="analysis" />,
-          },
-          {
-            id: "engine",
-            label: t("openings.tabs.engine"),
-            content: (
-              <AnalysisEngineForm
-                testId="analysis"
-                settings={session.settings}
-                onChange={session.updateSettings}
-                engineOptions={engine.engineOptions}
-                engineOn={session.engineOn}
-                showEvalBar={session.showEvalBar}
-                onShowEvalBarChange={session.setShowEvalBar}
-                deviceLimits={engineLimitsOf(engine.descriptor)}
-                onClear={() => {
-                  core.reset();
-                  engine.clearAnalysis();
-                }}
-              />
-            ),
           },
         ],
         footer: (

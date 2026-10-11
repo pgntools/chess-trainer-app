@@ -5,6 +5,7 @@ import { appPageFiles, findBlogArticle } from "../blog/articles";
 import { DEVELOPMENT_NOTICE_KEY } from "../../lib/developmentNotice";
 import { ENGINE_STORAGE_KEY } from "../../lib/engineChoice";
 import { ENGINE_SERVER_STORAGE_KEY } from "../../lib/engineServer";
+import { ENGINE_SEARCH_SETTINGS_STORAGE_KEY } from "../../lib/engineSearchSettings";
 import { ENGINE_PRESETS_DB_NAME } from "../../lib/enginePresetStore";
 import { JOBS_DB_NAME } from "../../lib/jobStore";
 import { LIBRARY_DB_NAME } from "../../lib/libraryDb";
@@ -21,6 +22,8 @@ const STORED = [
   THEME_STORAGE_KEY,
   ENGINE_STORAGE_KEY,
   ENGINE_SERVER_STORAGE_KEY,
+  // The engine's search settings, every board's (CTA-181).
+  ENGINE_SEARCH_SETTINGS_STORAGE_KEY,
   LANGUAGE_STORAGE_KEY,
   "mui-mode",
   DEVELOPMENT_NOTICE_KEY,

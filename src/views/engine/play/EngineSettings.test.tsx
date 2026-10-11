@@ -1,239 +1,100 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import i18n from "../../../i18n";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import type { EngineOption } from "../../../lib/engineTypes";
-import { MAX_VARIATIONS_OFFERED } from "../../../lib/engineAnalysis";
 import EngineSettings from "./EngineSettings";
-import {
-  approximateElo,
-  DEFAULT_ENGINE_SETTINGS,
-  type EngineSettings as EngineSettingsValues,
-} from "../../../lib/engineSettings";
+import { approximateElo, DEFAULT_ENGINE_SETTINGS } from "../../../lib/engineSettings";
 
 /*
   The tab is presentational, so nothing here builds an `Engine` — the map of
-  declared options is exactly what the real one hands over, and passing it
-  directly is what lets the "unsupported knob" behaviour be tested at all.
+  declared options is exactly what the real one hands over. Since CTA-181 it
+  is the strength alone: the search settings are the top bar's Engine menu.
 */
 
-const spin = (
-  name: string,
-  min: number,
-  max: number,
-): [string, EngineOption] => [name, { name, type: "spin", min, max }];
+const spin = (name: string, min: number, max: number): [string, EngineOption] => [name, { name, type: "spin", min, max }];
 
-/**
- * An engine strengthened by `Skill Level` alone — no `UCI_Elo` — with Threads
- * and Hash *declared but pinned*: a single-threaded WASM worker with a fixed
- * table. (The shipped Stockfish 19 builds take an Elo; the Elo form is
- * `EngineSettingsForm.test.tsx`'s.)
- */
-const SKILL_ONLY_OPTIONS = new Map<string, EngineOption>([
-  spin("Threads", 1, 1),
-  spin("Hash", 16, 16),
-  spin("MultiPV", 1, 500),
+/** An engine strengthened by `Skill Level` alone — no `UCI_Elo`. */
+const SKILL_ONLY_OPTIONS = new Map<string, EngineOption>([spin("MultiPV", 1, 500), spin("Skill Level", 0, 20)]);
+
+/** The shipped builds: an Elo, with UCI_LimitStrength. */
+const ELO_OPTIONS = new Map<string, EngineOption>([
   spin("Skill Level", 0, 20),
+  spin("UCI_Elo", 1320, 3190),
+  ["UCI_LimitStrength", { name: "UCI_LimitStrength", type: "check", defaultValue: "false" }],
 ]);
 
 const renderSettings = (
   overrides: Partial<{
-    settings: Partial<EngineSettingsValues>;
+    settings: { skillLevel?: number; elo?: number };
     engineOptions: ReadonlyMap<string, EngineOption>;
-    showEvalBar: boolean;
+    limitStrength: boolean;
+    evalBar: boolean;
   }> = {},
 ) => {
   const onChange = vi.fn();
-  const onShowEvalBarChange = vi.fn();
-
+  const onEvalBar = vi.fn();
   render(
-    <AppThemeWithLang>
-      <EngineSettings
-        settings={{ ...DEFAULT_ENGINE_SETTINGS, ...overrides.settings }}
-        onChange={onChange}
-        engineOptions={overrides.engineOptions ?? SKILL_ONLY_OPTIONS}
-        showEvalBar={overrides.showEvalBar ?? true}
-        onShowEvalBarChange={onShowEvalBarChange}
-      />
-    </AppThemeWithLang>,
+    <MemoryRouter>
+      <AppThemeWithLang>
+        <EngineSettings
+          settings={{ skillLevel: DEFAULT_ENGINE_SETTINGS.skillLevel, elo: DEFAULT_ENGINE_SETTINGS.elo, ...overrides.settings }}
+          onChange={onChange}
+          engineOptions={overrides.engineOptions ?? SKILL_ONLY_OPTIONS}
+          limitStrength={overrides.limitStrength ?? true}
+          evalBar={overrides.evalBar === undefined ? undefined : { checked: overrides.evalBar, onChange: onEvalBar }}
+        />
+      </AppThemeWithLang>
+    </MemoryRouter>,
   );
-
-  return { onChange, onShowEvalBarChange };
+  return { onChange, onEvalBar };
 };
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
 });
 
-describe("the engine settings tab", () => {
-  it("offers every knob the issue asked for", () => {
+describe("the Engine tab — the opponent's strength (CTA-181)", () => {
+  it("is the strength alone: depth, move time, lines, Threads and Hash are the top bar's", () => {
     renderSettings();
-
-    for (const testId of [
-      "engine-setting-skill-level",
-      "engine-setting-depth",
-      "engine-setting-multipv",
-      "engine-setting-movetime",
-      "engine-setting-threads",
-      "engine-setting-hash",
-      "engine-setting-evalbar",
-    ]) {
-      expect(screen.getByTestId(testId)).toBeInTheDocument();
+    expect(screen.getByTestId("engine-setting-skill-level")).toBeInTheDocument();
+    for (const testId of ["engine-setting-depth", "engine-setting-multipv", "engine-setting-movetime", "engine-setting-threads", "engine-setting-hash"]) {
+      expect(screen.queryByTestId(testId)).not.toBeInTheDocument();
     }
-    // The side and a new game are the screens' headers' (the side toggle,
-    // Replay) — not this tab's.
-    expect(screen.queryByTestId("engine-setting-playas")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("engine-new-game")).not.toBeInTheDocument();
-  });
-
-  /*
-    The honesty requirement, and a case that occurs (the default build pins
-    Threads): an engine that declares Threads and Hash but pins each to a single
-    value, so a slider that slid would move and change nothing — and the reader
-    would believe it.
-  */
-  it("disables an option the engine pins to one value, and says what it is", () => {
-    renderSettings();
-
-    for (const [testId, message] of [
-      ["engine-setting-threads", "This engine build fixes Threads at 1."],
-      ["engine-setting-hash", "This engine build fixes Hash at 16."],
-    ]) {
-      expect(
-        screen.getByTestId(testId).querySelector("input"),
-      ).toBeDisabled();
-      expect(screen.getByTestId(`${testId}-fixed`)).toHaveTextContent(message);
-    }
-
-    // A pinned option is not a missing one, and must not be described as one.
-    expect(
-      screen.queryByTestId("engine-setting-threads-unsupported"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("leaves an option with a real range alone", () => {
-    renderSettings();
-
-    const multipv = screen.getByTestId("engine-setting-multipv");
-    expect(multipv.querySelector("input")).toBeEnabled();
-    expect(
-      screen.queryByTestId("engine-setting-multipv-fixed"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId("engine-setting-multipv-unsupported"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("caps the variations slider below the 500 this build would accept", () => {
-    renderSettings();
-
-    const slider = screen
-      .getByTestId("engine-setting-multipv")
-      .querySelector("input")!;
-
-    // The engine declares min 1 max 500; a slider with 500 stops would put the
-    // useful range in a few pixels, so the UI narrows it.
-    expect(slider).toHaveAttribute("min", "1");
-    expect(slider).toHaveAttribute("max", String(MAX_VARIATIONS_OFFERED));
-    expect(MAX_VARIATIONS_OFFERED).toBe(10);
-  });
-
-  it("still defers to a build that declares fewer lines than the cap", () => {
-    // The cap only ever narrows: an engine offering 3 is the one that decides.
-    renderSettings({
-      engineOptions: new Map([spin("MultiPV", 1, 3), spin("Skill Level", 0, 20)]),
-    });
-
-    expect(
-      screen.getByTestId("engine-setting-multipv").querySelector("input"),
-    ).toHaveAttribute("max", "3");
-  });
-
-  it("disables an option this engine build does not have, and says why", () => {
-    // A hypothetical build with no Hash at all — a different state from a
-    // pinned one, and it has to read differently.
-    renderSettings({
-      engineOptions: new Map([spin("MultiPV", 1, 500), spin("Skill Level", 0, 20)]),
-    });
-
-    expect(
-      screen.getByTestId("engine-setting-hash").querySelector("input"),
-    ).toBeDisabled();
-    expect(
-      screen.getByTestId("engine-setting-hash-unsupported"),
-    ).toHaveTextContent('This engine build has no "Hash" option.');
-    expect(
-      screen.queryByTestId("engine-setting-hash-fixed"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("calls nothing unsupported before the handshake has landed", () => {
-    // An empty map means "not asked yet", not "this engine has nothing".
-    renderSettings({ engineOptions: new Map() });
-
-    expect(
-      screen.queryByTestId("engine-setting-hash-unsupported"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId("engine-setting-hash-fixed"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByTestId("engine-setting-hash").querySelector("input"),
-    ).toBeEnabled();
+    // The eval bar is the board's engine menu's; only the Lobby's form hands it one.
+    expect(screen.queryByTestId("engine-setting-evalbar")).not.toBeInTheDocument();
   });
 
   it("takes a slider's range from the engine rather than from a guess", () => {
-    renderSettings({
-      engineOptions: new Map([spin("Skill Level", 0, 8)]),
-    });
-
-    const input = screen
-      .getByTestId("engine-setting-skill-level")
-      .querySelector("input");
+    renderSettings({ engineOptions: new Map([spin("Skill Level", 0, 8)]) });
+    const input = screen.getByTestId("engine-setting-skill-level").querySelector("input");
     expect(input).toHaveAttribute("min", "0");
     expect(input).toHaveAttribute("max", "8");
   });
 
   it("labels strength as a level with an estimated Elo, not as an Elo setting", () => {
-    // This engine has no UCI_Elo, so the figure is an estimate of what the skill
-    // level plays like and is worded that way.
     renderSettings({ settings: { skillLevel: 10 } });
-
-    expect(
-      screen.getByTestId("engine-setting-skill-level-value"),
-    ).toHaveTextContent(`Level 10 (≈${approximateElo(10)} Elo)`);
+    expect(screen.getByTestId("engine-setting-skill-level-value")).toHaveTextContent(`Level 10 (≈${approximateElo(10)} Elo)`);
   });
 
-  it("offers depth up to 40 — past any search a reader would wait for (CTA-160)", () => {
-    renderSettings();
-
-    const input = screen
-      .getByTestId("engine-setting-depth")
-      .querySelector("input");
-    expect(input).toHaveAttribute("max", "40");
+  it("turns the Elo off while the engine's preset has UCI_LimitStrength off, with a link to Settings → Engine", () => {
+    renderSettings({ engineOptions: ELO_OPTIONS, limitStrength: false });
+    expect(screen.getByRole("slider", { name: "Strength (Elo)" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Turn it on in Settings → Engine" })).toHaveAttribute("href", "/settings/engine");
   });
 
-  it("reports a move time in seconds, and no limit at zero", () => {
-    renderSettings({ settings: { moveTimeMs: 2500 } });
-    expect(screen.getByTestId("engine-setting-movetime-value")).toHaveTextContent(
-      "2.5s",
-    );
-
-    renderSettings({ settings: { moveTimeMs: 0 } });
-    expect(
-      screen.getAllByTestId("engine-setting-movetime-value").at(-1),
-    ).toHaveTextContent("No limit");
+  it("leaves the Elo live while the preset limits the strength", () => {
+    renderSettings({ engineOptions: ELO_OPTIONS, limitStrength: true });
+    expect(screen.getByRole("slider", { name: "Strength (Elo)" })).toBeEnabled();
+    expect(screen.queryByTestId("engine-strength-off")).not.toBeInTheDocument();
   });
 
-  it("toggles the evaluation bar", async () => {
-    const { onShowEvalBarChange } = renderSettings({ showEvalBar: true });
-
-    await userEvent.click(
-      screen.getByTestId("engine-setting-evalbar").querySelector("input")!,
-    );
-
-    expect(onShowEvalBarChange).toHaveBeenCalledWith(false);
+  it("toggles the evaluation bar where it is offered — the Lobby's form", async () => {
+    const { onEvalBar } = renderSettings({ evalBar: true });
+    await userEvent.click(screen.getByTestId("engine-setting-evalbar").querySelector("input")!);
+    expect(onEvalBar).toHaveBeenCalledWith(false);
   });
 });
 

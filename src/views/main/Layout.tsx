@@ -15,6 +15,7 @@ import { Footer } from './Footer';
 import { DevelopmentNotice } from './DevelopmentNotice';
 import { JobRunner } from '../jobs/JobRunner';
 import { JobsIndicator } from '../jobs/JobsIndicator';
+import { EngineMenu } from './EngineMenu';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
 import { useRightPanelHidden } from './rightPanelSlot';
@@ -115,7 +116,7 @@ const Header = ({ compact, onOpenNav }: { compact: boolean; onOpenNav: () => voi
                 borderColor: 'divider',
             }}
         >
-            <Toolbar variant="dense" sx={{ gap: 2, minHeight: 56 }}>
+            <Toolbar variant="dense" sx={{ gap: compact ? 1 : 2, minHeight: 56 }}>
                 {/*
                     Under the breakpoint the sidebar is a drawer, and this is
                     what opens it (CTA-118) — a real button with a required
@@ -179,10 +180,13 @@ const Header = ({ compact, onOpenNav }: { compact: boolean; onOpenNav: () => voi
                     </Typography>
                 </Box>
 
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <Stack direction="row" spacing={compact ? 0.5 : 1} sx={{ alignItems: 'center' }}>
                     {/* The background job running, if any (CTA-173) — a link to the Jobs screen. */}
                     <JobsIndicator compact={compact} />
-                    <LanguageSwitch />
+                    {/* The engine's search settings, every board's, and the board on screen's engine (CTA-181). */}
+                    <EngineMenu />
+                    {/* Under the breakpoint, the language's short code: the bar has 288px at 320 (CTA-181). */}
+                    <LanguageSwitch compact={compact} />
                     <ColorModeIconDropdown />
                 </Stack>
             </Toolbar>
