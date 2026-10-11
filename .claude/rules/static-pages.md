@@ -45,6 +45,7 @@ yarn check:pages                                         holds dist/ to it (CI, 
 | `BASE_PATH` | `vite.config.ts`, `e2e/a11y/env.ts` | `/chess-trainer-app/` | The sub-path the host serves under — `/` for chessapp.dev. Baked into every asset URL, so **each host is a build of its own**. |
 | `DEPLOY_TARGET` | `scripts/prerender.mjs`, `vite.config.ts` (`preview`) | `gh` | `gh` — `404.html` + a refresh page per old Blog address; `swa` — `staticwebapp.config.json` (the fallback, the 301s, headers incl. COOP / COEP), `sitemap.xml`, `robots.txt` (+ `404.html`). |
 | `CANONICAL_URL` | `scripts/prerender.mjs` | `https://chessapp.dev/` | The canonical host: every canonical, `og:url`, `hreflang` and image URL, **on both hosts**. |
+| `SITE_OPERATOR_NAME`, `SITE_OPERATOR_ADDRESS`, `SITE_PRIVACY_EMAIL` (+ `_<LANG>`, e.g. `_HE`) | `vite.config.ts` (also from `.env.local`) | unset | The site's operator, filled into the legal pages (CTA-182), a language's own value first. Unset, the build has no `/privacy` or `/cookies` — not pre-rendered, not in the sitemap, no footer link; `check:pages` holds it. The deploys pass every `SITE_*` repository variable, any language's ([`docs/in-app-pages.md`](../../docs/in-app-pages.md) §5). |
 
 - **Which pages**: `prerenderedPages()` in `src/entry-server.tsx` — the routes
   table's static paths (not `/settings`, which shows its first tab), the
@@ -148,8 +149,10 @@ the language**:
   never its own `beforeunload` effect.
 - **Adding a language**: the catalog and `supportedLanguages` as ever; its
   `OG_LOCALES` entry (`documentHead.ts`, a compile error without it); its
-  prefix is then live, pre-rendered, and in Static Web Apps' fallback
-  exclusions.
+  legal documents (`app-pages/<page>.<lang>.mdx`, a test fails without) and,
+  if its operator's name or address differ, its `SITE_*_<LANG>` variables —
+  no code or workflow edit (CTA-182); its prefix is then live, pre-rendered,
+  and in Static Web Apps' fallback exclusions.
 
 ## 5. The two hosts
 

@@ -109,6 +109,17 @@ jobs:
 
       # The production build the pass runs against; `vite preview` serves it
       # under the deployed base path (`playwright.config.ts`'s webServer).
+      # With the site's operator, as the deploys build it, so the legal pages
+      # are in it and visited (CTA-182); where the variables are not set — a
+      # fork — they are not, and the pass leaves them out (`e2e/a11y/routes.ts`).
+      # Every SITE_* repository variable, each language's own too, as
+      # build.yml passes them.
+      - name: The site's operator's variables
+        env:
+          REPOSITORY_VARIABLES: ${{ toJSON(vars) }}
+        run: |
+          jq -r 'keys[] | select(startswith("SITE_"))' <<< "$REPOSITORY_VARIABLES"
+          jq -r 'to_entries[] | select(.key | startswith("SITE_")) | "\(.key)<<SITE_VALUE_EOF\n\(.value)\nSITE_VALUE_EOF"' <<< "$REPOSITORY_VARIABLES" >> "$GITHUB_ENV"
       - run: yarn build
 
       # Every shard seeds the app itself (the `setup` project runs in each).

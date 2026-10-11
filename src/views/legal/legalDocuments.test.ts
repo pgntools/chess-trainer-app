@@ -93,12 +93,14 @@ describe("the legal pages' documents (CTA-159)", () => {
       expect(headings.at(-1), `privacy (${language})`).toBe(language === "en" ? "Data controller" : "בעל השליטה במידע");
       for (const page of DISCLOSURE_PAGES) {
         const text = sourceOf(page, language);
-        expect(text, `${page} (${language})`).toContain("privacy@chessapp.dev");
-        expect(text, `${page} (${language}) has no placeholder left`).not.toMatch(/TO BE SUPPLIED|ימסור בעל המוצר/);
+        // The operator is the build's (CTA-182): the source names them by placeholder alone.
+        for (const placeholder of ["%OPERATOR_NAME%", "%OPERATOR_ADDRESS%", "%PRIVACY_EMAIL%"]) {
+          expect(text, `${page} (${language}) has ${placeholder}`).toContain(placeholder);
+        }
+        expect(text, `${page} (${language}) writes no email address of its own`).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
+        expect(text, `${page} (${language}) has no draft's gap left`).not.toMatch(/TO BE SUPPLIED|ימסור בעל המוצר/);
       }
     }
-    expect(sourceOf("privacy", "en")).toContain("P.O.B. 465, Tel Aviv, 6100302, Israel");
-    expect(sourceOf("privacy", "he")).toContain('ת"ד 465, תל אביב, 6100302, ישראל');
   });
 
   it("cites both regimes: the GDPR and Israel's Protection of Privacy Law, Amendment 13", () => {

@@ -4,6 +4,8 @@ import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router';
 
+import { LEGAL_PAGES_SHOWN } from '../legal/legalPagesShown';
+
 /**
  * Project source repository. A plain constant rather than a catalog string:
  * the URL is the same in every language (only its label is translated).
@@ -20,8 +22,9 @@ const REPO_URL = 'https://github.com/pgntools/chess-trainer-app';
  *
  * Its links, at the inline end: the legal pages (CTA-159 — the Privacy Policy and
  * the Cookies Notice, router links, so they carry the base path and the
- * language's prefix) and the project's source. Row-wrapping, so the strip
- * grows a line rather than overflow at 320 px (WCAG 1.4.10).
+ * language's prefix; only in a build that has them, CTA-182) and the
+ * project's source. Row-wrapping, so the strip grows a line rather than
+ * overflow at 320 px (WCAG 1.4.10).
  */
 const Footer = () => {
     const { t } = useTranslation();
@@ -66,24 +69,28 @@ const Footer = () => {
                     rowGap: 0.5,
                 }}
             >
-                <Link
-                    component={RouterLink}
-                    to="/privacy"
-                    variant="caption"
-                    data-testid="layout-footer-privacy-link"
-                    sx={{ color: 'text.secondary' }}
-                >
-                    {t('footer.privacy')}
-                </Link>
-                <Link
-                    component={RouterLink}
-                    to="/cookies"
-                    variant="caption"
-                    data-testid="layout-footer-cookies-link"
-                    sx={{ color: 'text.secondary' }}
-                >
-                    {t('footer.cookies')}
-                </Link>
+                {LEGAL_PAGES_SHOWN && (
+                    <>
+                        <Link
+                            component={RouterLink}
+                            to="/privacy"
+                            variant="caption"
+                            data-testid="layout-footer-privacy-link"
+                            sx={{ color: 'text.secondary' }}
+                        >
+                            {t('footer.privacy')}
+                        </Link>
+                        <Link
+                            component={RouterLink}
+                            to="/cookies"
+                            variant="caption"
+                            data-testid="layout-footer-cookies-link"
+                            sx={{ color: 'text.secondary' }}
+                        >
+                            {t('footer.cookies')}
+                        </Link>
+                    </>
+                )}
                 <Link
                     href={REPO_URL}
                     target="_blank"

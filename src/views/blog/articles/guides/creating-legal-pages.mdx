@@ -1,0 +1,181 @@
+---
+title: Creating Privacy Policy and Cookies Notice pages
+summary: How the app's legal pages work — the app-pages folder, build-time operator substitution, and what a fork gets instead.
+date: 2026-10-11
+tags: [legal, setup, in-app-pages]
+draft: true
+---
+
+The app has two legal pages: **Privacy Policy** (`/privacy`) and **Cookies Notice** (`/cookies`). They are written in MDX, in English and Hebrew, edited in the MDX editor, and linked from the footer — but they are **not Blog articles**. They live in `src/views/blog/articles/app-pages/` and the build treats them specially.
+
+## Why not Blog articles?
+
+A Blog article is listed, routed and pre-rendered automatically — you drop in a file and it works. The legal pages need a few lines of code because the app links to them **by name** (a route, a footer link, a title in the i18n catalogs). They also must not appear in the Blog's index, its sidebar, its sitemap or the browser accessibility pass's Blog routes.
+
+The folder `app-pages/` is **inside the Blog's articles folder** so the MDX editor lists, edits and saves its files — but `APP_PAGES_FOLDER` / `isAppPagePath` (in `src/lib/articleFrontmatter.ts`) keep it out of the Blog entirely: no index card, no sidebar entry, no `/blog/app-pages/…`, no Blog sitemap line.
+
+## The operator placeholders — filled in at build time (CTA-182)
+
+The repository is public. A fork must not publish chessapp.dev's operator as its own. So the documents say `%OPERATOR_NAME%`, `%OPERATOR_ADDRESS%` and `%PRIVACY_EMAIL%` where the details go, and the build puts them in from environment variables.
+
+| Placeholder | Variable | Required | A language's own value |
+|-------------|----------|----------|------------------------|
+| `%OPERATOR_NAME%` | `SITE_OPERATOR_NAME` | yes | `SITE_OPERATOR_NAME_<LANG>` |
+| `%OPERATOR_ADDRESS%` | `SITE_OPERATOR_ADDRESS` | yes | `SITE_OPERATOR_ADDRESS_<LANG>` |
+| `%PRIVACY_EMAIL%` | `SITE_PRIVACY_EMAIL` | yes | `SITE_PRIVACY_EMAIL_<LANG>` |
+
+The value is inserted as text — MDX's `{` and `<` are escaped — so Markdown in it (`*`, `_`) stays Markdown. An empty value, or one of only spaces, counts as unset.
+
+### Every language, one rule
+
+A language's own value is `<VARIABLE>_<LANG>`: the Hebrew files (`privacy.he.mdx`, `cookies.he.mdx`) read `SITE_OPERATOR_NAME_HE` first, then `SITE_OPERATOR_NAME`. Any variable can have one, and none needs one — a language without its own shows the plain value. English always reads the plain one.
+
+**No language is named in the code or the workflows.** The build takes a file's language from its name and looks up that language's variables, and the deploys pass on every `SITE_*` repository variable. So when the app gets a new language — French, say — the legal pages need only:
+
+1. Their documents in it — `privacy.fr.mdx` and `cookies.fr.mdx`, with the same placeholders (a test fails until every language has both)
+2. If the operator's name or address is written differently in French, its own variables — `SITE_OPERATOR_NAME_FR`, `SITE_OPERATOR_ADDRESS_FR` — in `.env.local` and as repository variables
+
+A variable the build reads none of is ignored, and the build warns of it: a typo (`SITE_OPERATOR_NAME_HEB`), a language the app has not got yet, or `_EN`.
+
+The build reads them from the environment and from `.env` / `.env.local` — a variable set in the shell wins — and asks **one predicate**, `legalPagesConfigured` (`src/lib/siteOperator.ts`), which has three answers:
+
+| The three required variables | The build |
+|------------------------------|-----------|
+| all set | has the legal pages, the placeholders filled |
+| none set | **passes**, without the legal pages |
+| some but not all | **fails**, naming the missing ones |
+
+### All set — the build has the pages
+
+`plugins/siteOperator.ts` (a Vite plugin with `enforce: "pre"`) fills the placeholders in every `.mdx` under `app-pages/` **before the MDX compiler reads it**, so the dev server, the browser bundle, the server bundle and the pre-render all compile the same text.
+
+An unknown placeholder (e.g. `%OPERATOR_PHONE%`) fails the build, naming the file.
+
+### None set — the build passes, without the pages
+
+**Nothing fails without the variables.** A fork, a plain local run and `ci.yml`'s pull-request build all have none, and `yarn build`, `yarn check:pages`, `yarn check:blog-build` and the tests pass. The build **leaves the pages out entirely**: `__LEGAL_PAGES__` is `false` (read as `LEGAL_PAGES_SHOWN` in `src/views/legal/legalPagesShown.ts`), so:
+
+- `src/routes.tsx` has no `/privacy` or `/cookies` route — hence no pre-rendered page, no sitemap line
+- The footer has no links to them
+- The Blog's manifest lists no file of `app-pages/`, so none of their text is in `dist/`
+- The build logs a warning — `No site operator configured (SITE_OPERATOR_NAME, SITE_OPERATOR_ADDRESS, SITE_PRIVACY_EMAIL): no legal pages in this build`; a deploy shows it as a warning on the run
+
+What that looks like on a machine: in `yarn dev`, `/privacy` and `/cookies` lead to the not-found page, and the footer has no legal links. The MDX editor still lists, opens and saves the two documents, but its lobby's link to each page leads to that same missing route. To see the pages, set the variables (below).
+
+### Some but not all — the build fails
+
+**Half-configured is an error**: the build stops with `The site's operator is half configured: SITE_PRIVACY_EMAIL is unset…`, naming every missing variable. A deploy that forgot one should not quietly lose its Privacy Policy. Set the missing ones, or clear all three to build without the pages.
+
+A language's own variables are never required: setting `SITE_OPERATOR_NAME_HE` without the three plain ones is still "none set".
+
+## What the files look like
+
+`src/views/blog/articles/app-pages/privacy.mdx`:
+
+```mdx
+---
+title: "Privacy Policy"
+summary: "What chessapp.dev keeps on your device, what it never collects, and your rights under the GDPR and Israel's Protection of Privacy Law."
+---
+
+Last updated: 11 October 2026
+
+…
+
+## Data controller
+
+The App is operated by **%OPERATOR_NAME%**, %OPERATOR_ADDRESS%, who is the data controller for the processing this policy describes. For any privacy question or request, write to **%PRIVACY_EMAIL%**.
+
+…
+```
+
+The Cookies Notice (`cookies.mdx`) follows the same pattern, its contact line at the foot:
+
+```mdx
+Questions: **%PRIVACY_EMAIL%** — %OPERATOR_NAME%, %OPERATOR_ADDRESS%.
+```
+
+Each has its Hebrew translation beside it (`privacy.he.mdx`, `cookies.he.mdx`), with the same placeholders.
+
+## Editing the pages
+
+Open the MDX editor (`yarn mdx-editor:start`, then `/dev/mdx-editor`). The lobby lists the `app-pages` folder — open Privacy Policy or Cookies Notice, edit, and **Save**. The editor reads `?raw`, which the plugin leaves alone, so it shows the placeholders (and its preview too) — **keep them** when editing the operator's paragraph.
+
+Only the body is yours to change freely. Renaming a page (its `title` / `summary`) means changing `pages.<id>` / `pageDescriptions.<id>` in both catalogs (`src/locales/en.ts`, `src/locales/he.ts`) to the same words (and `footer.<id>` if the footer link should follow). The test fails until they match. When the page changes, update its "Last updated" line.
+
+## Local development — seeing the filled pages
+
+Copy the lines from `.env.example` into `.env.local` (gitignored) and fill them in:
+
+```bash
+SITE_OPERATOR_NAME="Your Name"
+SITE_OPERATOR_NAME_HE="Your name in Hebrew"
+SITE_OPERATOR_ADDRESS="Your Street, Your Town"
+SITE_OPERATOR_ADDRESS_HE="Your address in Hebrew"
+SITE_PRIVACY_EMAIL="privacy@example.org"
+```
+
+The `_HE` lines are Hebrew's own values; another language adds its lines the same way (`SITE_OPERATOR_NAME_FR=`). Fill the three required ones or none — copying `.env.example`'s empty lines as they are is "none set", and builds without the pages. Then restart `yarn dev` (the variables are read when it starts) or run `yarn build`. In a worktree, `.jst/bootstrap.sh` keeps every line of `.env.local` but its own port line, so your operator values persist across bootstrap runs.
+
+## In CI and the deploys
+
+The values are **repository variables** — not secrets: the pages publish them anyway, and a variable's value is readable in the run's log, which is fine here.
+
+| Workflow | Builds |
+|----------|--------|
+| `build.yml` (both deploys: `build-gh.yml`, `build-swa.yml`) | with the variables — the deployed site has the pages |
+| `a11y.yml` | with the variables — so the browser pass visits the pages |
+| `ci.yml` (every pull request) | **without them, on purpose** — a fork's build, and its checks hold `dist/` to "no legal pages" |
+
+`build.yml` and `a11y.yml` pass on **every** `SITE_*` repository variable — a step reads them all (`toJSON(vars)`) and logs their names — so a new language's variables need no workflow edit.
+
+Set them once per repository (the `_HE` ones, and any other language's, only where its value differs):
+
+```bash
+gh variable set SITE_OPERATOR_NAME --body "Your Name"
+gh variable set SITE_OPERATOR_NAME_HE --body "Your name in Hebrew"
+gh variable set SITE_OPERATOR_ADDRESS --body "Your Street, Your Town"
+gh variable set SITE_OPERATOR_ADDRESS_HE --body "Your address in Hebrew"
+gh variable set SITE_PRIVACY_EMAIL --body "privacy@example.org"
+gh variable list                      # check
+```
+
+**Set them before a change that needs them reaches `main`**: a deploy without them publishes the site with no Privacy Policy, and says so only in a warning. After a deploy, check the live page names the operator:
+
+```bash
+curl -s https://chessapp.dev/privacy/ | grep -c "%OPERATOR_"   # 0
+```
+
+## Tests and verification
+
+The build checks hold `dist/` to the build's own decision (`legalPagesShown`, exported by the server entry):
+
+- `yarn check:pages` — the pages are there, or no page and no link to one
+- `yarn check:blog-build` — with the pages, no placeholder left in theirs — each page's chunk and its pre-rendered page in every language (an article quoting a placeholder, as this one does, is fine); without them, the Blog's manifest lists no file of `app-pages/` and none of their text ships
+- The browser accessibility pass (`yarn test:a11y`) visits the two pages only when the build wrote them (`LEGAL_PAGES_BUILT`, `e2e/a11y/routes.ts`)
+
+Under Vitest the build is configured with fixed values (`src/test/siteOperator.ts`), whatever the machine has — so the tests are the same everywhere, with or without your `.env.local`; `src/views/legal/legalPagesHidden.test.tsx` mocks `legalPagesShown.ts` for a build without them.
+
+## Adding another in-app page
+
+The steps are documented in [`docs/in-app-pages.md`](https://github.com/pgntools/chess-trainer-app/blob/main/docs/in-app-pages.md) — the same pieces, with a Terms of Use page (`/terms`) as the example:
+
+1. Write the document in `app-pages/terms.mdx` (and `terms.he.mdx`)
+2. Add catalog keys in both languages
+3. Register the page id in `legalDocuments.ts`
+4. Add a wrapper in `LegalMain.tsx` and the route in `routes.tsx` (inside the `LEGAL_PAGES_SHOWN` spread)
+5. Update tests and the browser pass routes
+6. Optionally, add a footer link in `Footer.tsx` (inside the `LEGAL_PAGES_SHOWN` fragment)
+7. Run the check commands from Step 8 in that document
+
+## What you do not need to do
+
+- **No pre-render list**: `prerenderedPages()` takes every static route from the route table
+- **No sitemap entry**: the pre-render writes one for every page it renders
+- **No sidebar entry**: these pages are not in the sidebar
+- **No Blog exclusion**: anything under `app-pages/` is left out of the Blog by its path
+- **No share image**: the page falls back to the site's own (`src/assets/share/default.png`)
+
+## Keeping the texts true
+
+The Privacy Policy and the Cookies Notice make claims about the hosts, cookies, server logs, and the operator. What keeps those claims true as the code and the hosting change is documented in [`docs/privacy-policy-checks.md`](https://github.com/pgntools/chess-trainer-app/blob/main/docs/privacy-policy-checks.md) — the hosts' cookies, the Azure logging checks, and what to re-run after a plan upgrade, an API or a new host.

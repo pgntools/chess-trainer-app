@@ -25,6 +25,7 @@ import { default as SettingsScreen  } from './views/settings/SettingsMain'
 import { default as JobsScreen  } from './views/jobs/JobsMain'
 import { default as BlogScreen  } from './views/blog/BlogMain'
 import { CookiesMain as CookiesScreen, PrivacyMain as PrivacyScreen } from './views/legal/LegalMain'
+import { LEGAL_PAGES_SHOWN } from './views/legal/legalPagesShown'
 import { blogPageMeta } from './views/blog/blogPageMeta'
 import { collectionPageMeta } from './views/library/collectionPageMeta'
 import { MDX_EDITOR_ENABLED } from "./mdxEditor/enabled";
@@ -247,19 +248,24 @@ export const appRoutes: RouteObject[] = [
           handle: { ...ARTICLE_ROUTE, title: "pages.blog", meta: blogPageMeta }
         },
         // The legal pages (CTA-159), linked from the footer: MDX documents
-        // in `views/legal/documents/`, in no Blog folder and not in the
-        // sidebar. Articles to the shell (`ARTICLE_ROUTE`), pre-rendered in
-        // both languages like every static route.
-        {
-          path: "/privacy",
-          element: <PrivacyScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.privacy" }
-        },
-        {
-          path: "/cookies",
-          element: <CookiesScreen />,
-          handle: { ...ARTICLE_ROUTE, title: "pages.cookies" }
-        },
+        // in `views/blog/articles/app-pages/`, in no Blog folder and not in
+        // the sidebar. Articles to the shell (`ARTICLE_ROUTE`), pre-rendered
+        // in both languages like every static route — in a build that has
+        // them, whose site operator is configured (CTA-182).
+        ...(LEGAL_PAGES_SHOWN
+          ? [
+              {
+                path: "/privacy",
+                element: <PrivacyScreen />,
+                handle: { ...ARTICLE_ROUTE, title: "pages.privacy" }
+              },
+              {
+                path: "/cookies",
+                element: <CookiesScreen />,
+                handle: { ...ARTICLE_ROUTE, title: "pages.cookies" }
+              },
+            ]
+          : []),
         // The background jobs (CTA-173): a game's computer analysis, run
         // app-wide by `lib/jobRunner.ts` (mounted by the shell, not here), with
         // its progress, report and outputs. `?job=<id>` opens one.

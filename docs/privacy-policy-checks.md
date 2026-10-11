@@ -14,7 +14,7 @@ How the pages are built and added is [`in-app-pages.md`](in-app-pages.md).
 | No third-party scripts, fonts or images | `yarn check:pages` on the `swa` build fails when a pre-rendered page loads a sub-resource from another origin ([`static-pages.md`](../.claude/rules/static-pages.md) §5). |
 | The App sets no cookies, and the sites it is served from set none | The code has no `document.cookie`. Azure's built-in sign-in, which would set one, answers 404 (`scripts/swaBlockedAuth.mjs`, held by `yarn check:pages`). The hosts: §2 below. |
 | "We do not receive or analyse these logs" (the hosts' server logs) | Azure: §3 below. GitHub Pages gives a site owner no request logs at all. |
-| The contact address, `privacy@chessapp.dev` | The mailbox must exist and reach the controller. The policy promises a reply within one month. |
+| The controller's name, postal address and contact address | Not in the repository: the build fills them from the `SITE_*` repository variables ([`in-app-pages.md`](in-app-pages.md) §5, CTA-182). The mailbox (`SITE_PRIVACY_EMAIL`) must exist and reach the controller; the policy promises a reply within one month. A change of address is a change of the variables, then a deploy. |
 
 ## 2. The hosts set no cookies
 
