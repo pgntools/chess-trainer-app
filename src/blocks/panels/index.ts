@@ -3,6 +3,7 @@
  * family's blocks from here and nowhere deeper: the reports and panels that
  * know the app's data (an import's results).
  */
+export * from "./BoardEngineControls";
 export * from "./ChangesStrip";
 // CTA-173: a computer analysis's report and eval graph, and a background job whole — the Jobs screen's, and the Analysis Board's (CTA-174).
 export * from "./ComputerAnalysisReport";

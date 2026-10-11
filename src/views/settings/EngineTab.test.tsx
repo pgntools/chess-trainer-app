@@ -411,7 +411,7 @@ describe("Settings → Engine — the engine's options, in presets (CTA-179)", (
     expect(within(section).getByRole("combobox", { name: `Preset for ${SINGLE}` })).toHaveTextContent("Default");
     expect(await within(section).findByRole("tab", { name: "Basic" })).toHaveAttribute("aria-selected", "true");
     expect(within(section).queryByRole("spinbutton", { name: "Hash" })).toBeNull();
-    expect(optionRow("Hash")).toHaveTextContent("Set on each board");
+    expect(optionRow("Hash")).toHaveTextContent("Set for every board in the top bar's Engine menu");
     expect(within(section).getByRole("spinbutton", { name: "UCI_Elo" })).toBeDisabled();
 
     await userEvent.click(within(section).getByRole("tab", { name: "Advanced" }));

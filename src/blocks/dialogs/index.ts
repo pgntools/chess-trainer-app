@@ -6,6 +6,7 @@
  */
 export * from "./CollectionImportDialog";
 export * from "./DevelopmentNoticeDialog";
+export * from "./EngineOptionsChangedDialog";
 export * from "./FolderDeleteDialog";
 export * from "./FolderMoveDialog";
 export * from "./FolderNameDialog";

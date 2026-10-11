@@ -18,10 +18,14 @@ import { isSettableOption } from "./uciEngine";
  *   stays at the engine's own default, so one preset serves every engine:
  *   each takes the values it declares and skips the rest.
  * - **The boards' own options win.** Threads, Hash and MultiPV are set on
- *   every board (and by a job) from its own settings — {@link BOARD_OWNED_OPTIONS};
- *   a preset never sends them. Play with Engine and Masked Pieces set the
- *   strength too ({@link PLAY_OWNED_OPTIONS}), so there a preset's Skill
- *   Level or Elo gives way; on an analysis board it is what the engine runs.
+ *   every board (and by a job) from the reader's global search settings —
+ *   the top bar's Engine menu, CTA-181 — {@link BOARD_OWNED_OPTIONS}; a
+ *   preset never sends them. Play with Engine and Masked Pieces set the Elo
+ *   too ({@link playOwnedOptionsOf}), so there a preset's Elo gives way; on
+ *   an analysis board it is what the engine runs. **Whether the Elo limits
+ *   the engine is the preset's call** (CTA-181): its `UCI_LimitStrength`
+ *   reaches every board, Play's included, and Play's Elo slider is live only
+ *   while it is on ({@link presetLimitsStrength}).
  * - **Default always exists.** It is the one a new reader and every engine
  *   start on, it cannot be deleted, and until it is edited it is not stored
  *   at all ({@link withDefaultPreset}).
@@ -71,16 +75,50 @@ export type EnginePresetSelection = {
 };
 
 /**
- * **Set on every board, never by a preset** — each board's own Threads, Hash
- * and lines (and a job's), shown read-only in the form.
+ * **Set on every board, never by a preset** — Threads, Hash and lines, from
+ * the reader's global search settings (the top bar's Engine menu, CTA-181),
+ * and a job's from its own record; shown read-only in the form.
  */
 export const BOARD_OWNED_OPTIONS: readonly string[] = ["Threads", "Hash", "MultiPV"];
 
 /**
  * **Set by Play with Engine and Masked Pieces from their own strength** — a
- * preset's value reaches every other board, and gives way there.
+ * preset's value reaches every other board, and gives way there. `UCI_Elo`
+ * always; `Skill Level` only on an engine strengthened by it alone (no
+ * `UCI_Elo` with `UCI_LimitStrength`) — on an Elo engine it would weaken the
+ * engine while the preset has the limit off, so there it is the preset's.
+ * `UCI_LimitStrength` is never Play's since CTA-181: the preset decides it.
  */
-export const PLAY_OWNED_OPTIONS: readonly string[] = ["Skill Level", "UCI_Elo", "UCI_LimitStrength"];
+export const playOwnedOptionsOf = (declared: ReadonlyMap<string, EngineOption> | readonly EngineOption[]): readonly string[] => {
+  const options = declaredMap(declared);
+  const byElo = options.has(ELO_OPTION) && options.has(LIMIT_STRENGTH);
+  return byElo ? [ELO_OPTION] : [ELO_OPTION, SKILL_LEVEL_OPTION];
+};
+
+const ELO_OPTION = "UCI_Elo";
+const SKILL_LEVEL_OPTION = "Skill Level";
+const LIMIT_STRENGTH = "UCI_LimitStrength";
+
+/**
+ * **Whether the engine's preset limits its strength** (CTA-181) — the
+ * `UCI_LimitStrength` it would send to an engine that declares `declared`,
+ * else that engine's own default (off, on Stockfish). Before the handshake
+ * (nothing declared) the preset's value as written, else off. Play's Elo
+ * slider is live only while this is true.
+ */
+export const presetLimitsStrength = (
+  values: Readonly<Record<string, UciOptionValue>>,
+  declared: ReadonlyMap<string, EngineOption> | readonly EngineOption[],
+  context: Pick<PresetEngineContext, "inBrowser">,
+): boolean => {
+  const options = declaredMap(declared);
+  const option = options.get(LIMIT_STRENGTH);
+  if (option === undefined) return values[LIMIT_STRENGTH] === true;
+  const sent = resolveEnginePreset(values, options, { ...context, owned: [...BOARD_OWNED_OPTIONS, ...playOwnedOptionsOf(options)] }).send[
+    LIMIT_STRENGTH
+  ];
+  return (sent ?? optionDefaultValue(option)) === true;
+};
 
 /**
  * **A file-path option** — `EvalFile`, `EvalFileSmall`, `SyzygyPath`,
@@ -319,7 +357,8 @@ export type PresetOptionLimit =
  *
  * Keyed on the names Stockfish declares; one applies only where the engine
  * declares both options, and never where the caller sets the controlling one
- * itself (Play's boards set `UCI_LimitStrength` and their own Elo).
+ * itself. (Until CTA-181 Play's boards set `UCI_LimitStrength`; the preset's
+ * reaches them now.)
  */
 export const OPTION_DEPENDENCIES: readonly {
   /** Whether `name` is one of the dependent options. */
@@ -523,12 +562,14 @@ export const presetResetValue = (
 
 /**
  * Why a row of the form cannot be edited, or what it says beside it — the
- * limits above, and the Play boards' own strength (editable, with a note).
+ * limits above, the Play boards' own strength (editable, with a note), and
+ * `UCI_LimitStrength`, which turns their Elo slider on (CTA-181).
  */
 export type PresetRowNote =
   | Exclude<PresetOptionLimit["kind"], "inactive">
   | (typeof OPTION_DEPENDENCIES)[number]["note"]
   | "play-owned"
+  | "play-strength"
   | "browser-hash";
 
 /** One option of the form (`EnginePresetForm`): the engine's declaration and the preset's value. */
@@ -563,8 +604,9 @@ export type EnginePresetRow = {
  * order, then any value the preset sets that this engine does not declare
  * (`absent`, to be removed). Board-owned options are shown read-only, a
  * button and a pinned option too, a file path read-only in a browser; the
- * Play boards' strength editable with its note; a value held to the bounds
- * says so.
+ * Play boards' strength editable with its note, and `UCI_LimitStrength`
+ * with the note that it turns their Elo on (CTA-181); a value held to the
+ * bounds says so.
  */
 export const enginePresetRows = (
   values: Readonly<Record<string, UciOptionValue>>,
@@ -573,6 +615,7 @@ export const enginePresetRows = (
 ): EnginePresetRow[] => {
   const { limits, send } = resolveEnginePreset(values, declared, context);
   const options = declaredMap(declared);
+  const playOwned = playOwnedOptionsOf(options);
   const rows: EnginePresetRow[] = declared.map((option) => {
     const set = Object.hasOwn(values, option.name);
     const range = presetSpinRange(option, context.inBrowser);
@@ -588,7 +631,13 @@ export const enginePresetRows = (
       blocking ??
       off?.note ??
       (limit?.kind === "inactive" ? undefined : limit?.kind) ??
-      (PLAY_OWNED_OPTIONS.includes(option.name) ? "play-owned" : range?.browserCapped ? "browser-hash" : undefined);
+      (playOwned.includes(option.name)
+        ? "play-owned"
+        : option.name === LIMIT_STRENGTH && options.has(ELO_OPTION)
+          ? "play-strength"
+          : range?.browserCapped
+            ? "browser-hash"
+            : undefined);
     // Off: the value the preset keeps (as the option takes it), or — for the Elo — full strength, the range's top.
     const kept = set ? verdictOf(option, values[option.name], context).send : undefined;
     const value =

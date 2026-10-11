@@ -2,9 +2,9 @@ import type { EngineOption } from "../../../lib/engineTypes";
 import { DEFAULT_ENGINE_SETTINGS, type EngineSettings } from "../../../lib/engineSettings";
 
 /*
-  The engine form's sample engines (CTA-109), typed with `src/lib/`'s own
-  `EngineOption` and `EngineSettings`. Imported only by the block's gallery
-  and its test.
+  The strength form's sample engines (CTA-109; the strength alone since
+  CTA-181), typed with `src/lib/`'s own `EngineOption` and `EngineSettings`.
+  Imported only by the block's gallery and its test.
 */
 
 const spin = (name: string, min: number, max: number): [string, EngineOption] => [name, { name, type: "spin", min, max }];
@@ -23,9 +23,6 @@ export const SHIPPED_OPTIONS: ReadonlyMap<string, EngineOption> = new Map([
   ["UCI_LimitStrength", { name: "UCI_LimitStrength", type: "check", defaultValue: "false" }],
 ]);
 
-/** The multi-thread build: every knob live, `Threads` to 32. */
-export const ADJUSTABLE_OPTIONS: ReadonlyMap<string, EngineOption> = new Map([...SHIPPED_OPTIONS, spin("Threads", 1, 32)]);
-
 /** An engine strengthened by `Skill Level` alone — no `UCI_Elo`; `Threads` and `Hash` pinned. */
 export const SKILL_ONLY_OPTIONS: ReadonlyMap<string, EngineOption> = new Map([
   spin("Threads", 1, 1),
@@ -41,23 +38,17 @@ export const ELO_WITHOUT_LIMIT_OPTIONS: ReadonlyMap<string, EngineOption> = new 
   spin("UCI_Elo", 1320, 3190),
 ]);
 
-/** A build with no Threads and no Hash at all — absent, not pinned. */
-export const SPARSE_OPTIONS: ReadonlyMap<string, EngineOption> = new Map([spin("MultiPV", 1, 3), spin("Skill Level", 0, 8)]);
-
-/**
- * An engine server's engine (CTA-175) — a native Stockfish, its `Threads` and
- * `Hash` under the server's `maxThreads` (15) and `maxHashMb` (4096).
- */
-export const HOSTED_OPTIONS: ReadonlyMap<string, EngineOption> = new Map([
-  ...SHIPPED_OPTIONS,
-  spin("Threads", 1, 15),
-  spin("Hash", 1, 4096),
-]);
-
-/** What `engineLimitsOf` makes of {@link HOSTED_OPTIONS}: the form's `deviceLimits`. */
-export const HOSTED_LIMITS = { threads: 15, hashMb: 4096 } as const;
+/** A build whose Skill Level is pinned — one strength, said so. */
+export const PINNED_SKILL_OPTIONS: ReadonlyMap<string, EngineOption> = new Map([spin("MultiPV", 1, 3), spin("Skill Level", 8, 8)]);
 
 /** Before the handshake: nothing declared yet. */
 export const NO_OPTIONS: ReadonlyMap<string, EngineOption> = new Map();
 
-export const SETTINGS: EngineSettings = DEFAULT_ENGINE_SETTINGS;
+/** The strength the form sets — the defaults'. */
+export const SETTINGS: Pick<EngineSettings, "skillLevel" | "elo"> = {
+  skillLevel: DEFAULT_ENGINE_SETTINGS.skillLevel,
+  elo: DEFAULT_ENGINE_SETTINGS.elo,
+};
+
+/** Settings → Engine, as a plain link — where the preset's UCI_LimitStrength is turned on. */
+export const SETTINGS_LINK = { href: "/settings/engine" } as const;

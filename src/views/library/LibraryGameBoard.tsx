@@ -11,9 +11,15 @@ import { useTranslation } from "react-i18next";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
 import type { ChessboardOptions } from "react-chessboard";
 
-import { ChangesStrip, CurrentOpening, EngineThinking, GameInfo, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
-import { AnalysisEngineForm } from "../../blocks/forms";
-import { engineLimitsOf } from "../../lib/engineSettings";
+import {
+  BoardEngineControls,
+  ChangesStrip,
+  CurrentOpening,
+  EngineThinking,
+  GameInfo,
+  PgnExportPanel,
+  PlayToggleButton,
+} from "../../blocks/panels";
 import { SwitchField } from "../../design-system/components/forms";
 import { BackButton } from "../../design-system/components/navigation";
 import { IconAction, ToggleIconAction } from "../../design-system/components/toolbars";
@@ -53,7 +59,7 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  * | --- | --- |
  * | Base + engine + Play + baseline | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (off until switched on), `usePlayToggle` (off at the start) |
  * | Tree view | `useVariationsExplorer` — Moves, Map, the comment block, the next-moves bar, the arrows, the move menu; editing on, *Play chances…* off |
- * | Shell | `BoardShell` / `BoardPanel` — tabs Moves (with the next-move arrows' switch) · Map · Info · Export · Engine |
+ * | Shell | `BoardShell` / `BoardPanel` — tabs Moves (with the next-move arrows' switch) · Map · Info · Export (no Engine tab since CTA-181: the search settings are the top bar's Engine menu, the eval bar the header's engine menu) |
  *
  * The Export tab also hands the game to the **Analysis Board**
  * (`?game=library/<collection>/<n>`, CTA-77) at the position on screen
@@ -289,14 +295,13 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
               thinking={session.thinking}
               onToggle={session.togglePlaying}
             />
-            <SwitchField
-              size="small"
-              label={t("library.game.engineSwitch")}
-              checked={session.engineOn}
-              onChange={session.setEngineOn}
-              // The board's tests reach the input inside the switch.
-              testIdOn="control"
-              testId="library-game-setting-engine"
+            {/* The engine's play / pause and its menu — the eval bar (CTA-181). */}
+            <BoardEngineControls
+              engineOn={session.engineOn}
+              onEngineOnChange={session.setEngineOn}
+              showEvalBar={session.showEvalBar}
+              onShowEvalBarChange={session.setShowEvalBar}
+              testId="library-game"
             />
           </>
         ),
@@ -371,22 +376,6 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
                   testId="analysis"
                 />
               </Box>
-            ),
-          },
-          {
-            id: "engine",
-            label: t("library.game.tabs.engine"),
-            content: (
-              <AnalysisEngineForm
-                testId="analysis"
-                settings={session.settings}
-                onChange={session.updateSettings}
-                engineOptions={engine.engineOptions}
-                engineOn={session.engineOn}
-                showEvalBar={session.showEvalBar}
-                onShowEvalBarChange={session.setShowEvalBar}
-                deviceLimits={engineLimitsOf(engine.descriptor)}
-              />
             ),
           },
         ],

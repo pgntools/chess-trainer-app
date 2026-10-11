@@ -53,7 +53,8 @@ describe("the repertoire board is composed, not written", () => {
     expect(panels).toHaveLength(1);
     expect(panels[0]).toHaveAttribute("data-panel-id", "repertoire-board-panel");
     // The slots this screen fills.
-    expect(screen.getByTestId("panel-tab-ids")).toHaveTextContent("moves,map,settings,engine");
+    // No Engine tab since CTA-181 — the search settings are the top bar's.
+    expect(screen.getByTestId("panel-tab-ids").textContent).toBe("moves,map,settings");
 
     const squares = screen.getAllByTestId("the-one-board-square");
     expect(squares).toHaveLength(1);
@@ -74,8 +75,8 @@ describe("the repertoire board is composed, not written", () => {
       const panels = screen.getAllByTestId("the-one-board-panel");
       expect(panels).toHaveLength(1);
       expect(panels[0]).toHaveAttribute("data-panel-id", "repertoire-game-panel");
-      expect(screen.getByTestId("panel-tab-ids")).toHaveTextContent(
-        game === "backtrack" ? "moves,score,map,settings,engine" : "moves,score,settings,engine",
+      expect(screen.getByTestId("panel-tab-ids").textContent).toBe(
+        game === "backtrack" ? "moves,score,map,settings" : "moves,score,settings",
       );
 
       const squares = screen.getAllByTestId("the-one-board-square");

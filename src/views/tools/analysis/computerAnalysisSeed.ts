@@ -7,10 +7,11 @@ import {
 
 /**
  * **The board's New Job dialog's first options** (CTA-174, CTA-177): the
- * board's Engine tab's depth, time, lines, threads and hash, on the engine the
- * reader chose, with the early stop at the depth (where it does nothing,
- * `main.py`'s behaviour) and the rest the defaults. The dialog follows the
- * Engine tab until the reader changes one of its own options.
+ * depth, time, lines, threads and hash of the reader's global search settings
+ * (the top bar's Engine menu — CTA-181; the board's Engine tab before), on the
+ * engine the reader chose, with the early stop at the depth (where it does
+ * nothing, `main.py`'s behaviour) and the rest the defaults. The dialog
+ * follows those settings until the reader changes one of its own options.
  */
 export const computerAnalysisSeed = (settings: AnalysisSettings, engineId: string): ComputerAnalysisOptions =>
   computerAnalysisOptionsFrom({

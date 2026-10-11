@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 
 import i18n from "../../../i18n";
+import { DEFAULT_PRESET_ID } from "../../../lib/enginePresets";
+import { setEnginePresetValue } from "../../../lib/enginePresetStore";
 import { approximateElo, DEFAULT_ENGINE_SETTINGS } from "../../../lib/engineSettings";
 import { parsePgnTree } from "../../../lib/pgn";
 import { playedGamesSnapshot, savePlayedGame } from "../../../lib/playedGameStore";
@@ -566,31 +568,32 @@ describe("Lobby — the new-game form (CTA-82)", () => {
 
     const start = screen.getByTestId("new-game-start");
     expect(start.getAttribute("href")!.startsWith("/engine/play?")).toBe(true);
+    // The strength alone: depth, move time, lines, Threads and Hash are the top bar's (CTA-181).
     expect(Object.fromEntries(startHref())).toEqual({
       side: "white",
       skill: "10",
       elo: "2100",
-      depth: "14",
-      movetime: "1000",
-      lines: "3",
-      threads: "1",
-      hash: "16",
       evalbar: "1",
       variations: "1",
     });
+    expect(screen.queryByTestId("engine-setting-depth")).not.toBeInTheDocument();
+    // The Elo is off while the engine's preset leaves UCI_LimitStrength off, and says where to turn it on.
+    expect(screen.getByRole("link", { name: "Turn it on in Settings → Engine" })).toBeInTheDocument();
   });
 
   it("carries the reader's choices on Start's link", async () => {
+    await setEnginePresetValue(DEFAULT_PRESET_ID, "UCI_LimitStrength", true);
     mount();
     fireEvent.click(screen.getByTestId("new-game-side-black"));
     fireEvent.click(screen.getByTestId("engine-setting-evalbar"));
-    const depth = within(screen.getByTestId("engine-setting-depth")).getByRole("slider");
-    fireEvent.change(depth, { target: { value: 9 } });
+    const elo = within(screen.getByTestId("engine-setting-elo")).getByRole("slider");
+    await waitFor(() => expect(elo).toBeEnabled());
+    fireEvent.change(elo, { target: { value: 1800 } });
 
     const params = startHref();
     expect(params.get("side")).toBe("black");
     expect(params.get("evalbar")).toBe("0");
-    expect(params.get("depth")).toBe("9");
+    expect(params.get("elo")).toBe("1800");
   });
 
   it("carries the Variations choice on Start's link, checked by default (CTA-90)", () => {

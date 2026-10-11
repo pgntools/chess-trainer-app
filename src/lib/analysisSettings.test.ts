@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  analysisSettingsFrom,
+  analysisSettingsOf,
   analysisUciOptionsOf,
   DEFAULT_ANALYSIS_SETTINGS,
   sameAnalysisSettings,
-  withClampedAnalysisUciOptions,
 } from "./analysisSettings";
+import { DEFAULT_ENGINE_SEARCH_SETTINGS } from "./engineSearchSettings";
 import { DEFAULT_ENGINE_SETTINGS } from "./engineSettings";
+import { missingFieldsOf } from "./recordedFields";
 
 /*
   The analysis boards' engine knobs (CTA-160): Threads and Hash as Play with
@@ -37,14 +40,25 @@ describe("the analysis boards' Threads and Hash", () => {
     });
   });
 
-  it("take what the running engine clamped them to — the same object when nothing moved", () => {
-    const settings = { ...DEFAULT_ANALYSIS_SETTINGS, threads: 4 };
-    expect(withClampedAnalysisUciOptions(settings, { MultiPV: 3, Threads: 4, Hash: 16 })).toBe(settings);
-    expect(withClampedAnalysisUciOptions(settings, { Threads: 1 })).toEqual({ ...settings, threads: 1 });
-  });
-
   it("count as a change of settings", () => {
     expect(sameAnalysisSettings(DEFAULT_ANALYSIS_SETTINGS, { ...DEFAULT_ANALYSIS_SETTINGS, hashMb: 64 })).toBe(false);
     expect(sameAnalysisSettings(DEFAULT_ANALYSIS_SETTINGS, { ...DEFAULT_ANALYSIS_SETTINGS })).toBe(true);
+  });
+});
+
+describe("a session's settings — the global search settings and its own evaluations switch (CTA-181)", () => {
+  it("are the search settings in effect, with writeEvals beside them", () => {
+    const search = { ...DEFAULT_ENGINE_SEARCH_SETTINGS, depth: 24, infinite: true };
+    expect(analysisSettingsOf(search, true)).toEqual({ ...search, writeEvals: true });
+    expect(DEFAULT_ANALYSIS_SETTINGS).toEqual({ ...DEFAULT_ENGINE_SEARCH_SETTINGS, writeEvals: false });
+  });
+
+  it("read back from a record mark the fields the record did not carry, and only those", () => {
+    const older = analysisSettingsFrom({ depth: 18, multiPv: 2, moveTimeMs: 0 });
+    expect(older.threads).toBe(DEFAULT_ANALYSIS_SETTINGS.threads);
+    expect([...missingFieldsOf(older)].sort()).toEqual(["hashMb", "infinite", "threads", "writeEvals"]);
+    expect(missingFieldsOf(analysisSettingsFrom({ ...DEFAULT_ANALYSIS_SETTINGS })).size).toBe(0);
+    // Built in the app, not read back: nothing is missing.
+    expect(missingFieldsOf(analysisSettingsOf(DEFAULT_ENGINE_SEARCH_SETTINGS, false)).size).toBe(0);
   });
 });

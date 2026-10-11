@@ -393,3 +393,47 @@ describe("useEngineModule — the engine's preset (CTA-179)", () => {
     expect(sent(FakeEngine.latest())).not.toContain("UCI_ShowWDL=true");
   });
 });
+
+/*
+  Whether a search is running (CTA-181) — what the top bar's Engine icon
+  breathes on: on, a search asked for and not yet answered by its bestmove.
+*/
+describe("useEngineModule — searching", () => {
+  const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+  const answer = (fen: string) =>
+    act(() => {
+      FakeEngine.latest().say({ fen, uciMessage: "bestmove", bestMove: "e2e4" });
+    });
+
+  it("is off while the engine is off, and on from the search asked for until its bestmove", () => {
+    const { result, rerender } = mount(start({ enabled: false }));
+    expect(result.current.searching).toBe(false);
+
+    rerender(start({ enabled: true }));
+    expect(result.current.searching).toBe(true);
+    answer(START);
+    expect(result.current.searching).toBe(false);
+
+    // A new position is a new search.
+    rerender(start({ enabled: true, fen: AFTER_E4 }));
+    expect(result.current.searching).toBe(true);
+    // A late bestmove of the position left behind answers nothing.
+    answer(START);
+    expect(result.current.searching).toBe(true);
+    answer(AFTER_E4);
+    expect(result.current.searching).toBe(false);
+  });
+
+  it("stays on under infinite analysis until stopped, and goes off with the switch", () => {
+    const { result, rerender } = mount(start({ enabled: true, infinite: true }));
+    expect(result.current.searching).toBe(true);
+    rerender(start({ enabled: false, infinite: true }));
+    expect(result.current.searching).toBe(false);
+  });
+
+  it("is off in a finished position — nothing is searched there", () => {
+    const MATE = "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3";
+    const { result } = mount(start({ enabled: true, fen: MATE }));
+    expect(result.current.searching).toBe(false);
+  });
+});

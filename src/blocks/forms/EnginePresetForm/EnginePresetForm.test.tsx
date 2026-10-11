@@ -69,8 +69,9 @@ describe("EnginePresetForm", () => {
     mount();
     // Basic: the boards' own, and the strength.
     expect(screen.queryByRole("spinbutton", { name: "Hash" })).toBeNull();
-    expect(optionItem("Hash")).toHaveTextContent("Set on each board");
-    expect(optionItem("Skill Level")).toHaveTextContent("Play with Engine and Masked Pieces set this");
+    expect(optionItem("Hash")).toHaveTextContent("Set for every board in the top bar's Engine menu");
+    // The Elo is Play's; whether it applies is this preset's UCI_LimitStrength (CTA-181).
+    expect(optionItem("UCI_LimitStrength")).toHaveTextContent("Also turns Play with Engine's and Masked Pieces' Elo on");
     // The limit off: the Elo is full strength, and cannot be changed.
     expect(screen.getByRole("spinbutton", { name: "UCI_Elo" })).toBeDisabled();
     expect(screen.getByRole("spinbutton", { name: "UCI_Elo" })).toHaveValue(3190);

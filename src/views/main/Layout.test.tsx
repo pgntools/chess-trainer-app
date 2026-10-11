@@ -789,6 +789,16 @@ describe("the board's own left panel (CTA-145)", () => {
   });
 });
 
+describe("the header's Engine menu (CTA-181)", () => {
+  it("sits beside the language button, with the full language name on a wide window", () => {
+    renderShell();
+    const header = screen.getByTestId("layout-header");
+    const controls = within(header).getAllByRole("button").map((button) => button.getAttribute("data-testid"));
+    expect(controls).toContain("header-engine");
+    expect(within(header).getByRole("combobox", { name: i18n.t("nav.switchLanguage") })).toHaveTextContent("English");
+  });
+});
+
 describe("the shell under its breakpoint (CTA-118)", () => {
   /*
     A window under the breakpoint: the `max-width` queries match, nothing else
@@ -817,6 +827,18 @@ describe("the shell under its breakpoint (CTA-118)", () => {
   afterEach(() => {
     window.matchMedia = wideWindow;
     vi.restoreAllMocks();
+  });
+
+  it("keeps the Engine menu in the header, beside the language's short code (CTA-181)", async () => {
+    stubCompactWindow();
+    const user = userEvent.setup();
+    renderShell();
+    const header = screen.getByTestId("layout-header");
+    const engine = within(header).getByRole("button", { name: i18n.t("engineMenu.label.off") });
+    // The language select shows its code under the breakpoint, the bar's 288 px at 320 shared with the engine.
+    expect(within(header).getByRole("combobox", { name: i18n.t("nav.switchLanguage") })).toHaveTextContent("EN");
+    await user.click(engine);
+    expect(await screen.findByRole("dialog", { name: i18n.t("engineMenu.title") })).toBeInTheDocument();
   });
 
   it("has no rail: the navigation is a drawer the header opens", async () => {

@@ -618,7 +618,7 @@ const engine = useEngineModule({
   onBestMove?: (bestMove: string, searchedFen: string) => void,
   onSearchFinished?: (finished: { fen, score, depth, engine }) => void,  // CTA-167 — absent: nothing called
 });
-// → { descriptor, analysis, evalsByFen, engineOptions, clearAnalysis }
+// → { descriptor, analysis, evalsByFen, engineOptions, clearAnalysis, searching }
 ```
 
 It owns all of §4: the lazy ref, subscribe-first, terminate on unmount; **the
@@ -651,6 +651,20 @@ search ended by a change of position or the switch going off still finished,
 at the depth it reached (the wrapper stamps its `bestmove` with its own FEN);
 one stopped before its first scored line reports nothing. And
 scores normalised against the searched FEN's turn.
+
+**`searching`** (CTA-181) says a search is running for the position on screen —
+on, not terminal, and the search last asked for not yet answered with its
+`bestmove` (an infinite one never is until stopped). The board's session
+publishes it with the switch to the shell (`usePublishBoardEngineState`,
+`views/main/boardEngineState.ts`) and the top bar's Engine icon shows off / on /
+searching. **What a board searches with is the reader's global search settings**
+(depth, move time, infinite, lines, Threads, Hash — `useEngineSearchSettings`,
+the top bar's Engine menu, [`docs/engine.md`](../../docs/engine.md) §5.2): a
+board passes them in and keeps no copy; nothing it reads back through
+`onUciOptionsReady` is written into them (only Play's strength takes the
+clamp). The engine's on / off is the board header's play / pause
+(`BoardEngineControls`, its menu the eval bar and — the Analysis Board's —
+Write evaluations).
 
 **The engine's reply is `onBestMove`, and that is the whole Play/Analysis
 difference.** A board that passes none has no branch that moves a piece. One
@@ -809,12 +823,20 @@ the detail.
 
 | Board | Session | Engine reply | Book | Saving | Tabs | Tree view |
 | --- | --- | --- | --- | --- | --- | --- |
-| **Analysis Board** `/tools/analysis` | `useAnalysisSession` (+ the saved record: `useAnalysisBoard`) | Play (off; engine off at start, CTA-148) | — | explicit: Save → changes strip or name-and-folder dialog | Moves · Map · Load · Export · Engine · Arrows | explorer, editing on, *Play chances…* off, `addedIds` |
-| **Play with Engine** `/engine/play` | `usePlayGame` | Play (on from the start) | — | `useAutosave` → played games | Moves · Engine (no Map, CTA-91) | explorer, as the Analysis Board without `addedIds`, and without the `map` option — no Map is drawn |
+| **Analysis Board** `/tools/analysis` | `useAnalysisSession` (+ the saved record: `useAnalysisBoard`) | Play (off; engine off at start, CTA-148) | — | explicit: Save → changes strip or name-and-folder dialog | Moves · Map · Load · Export · Arrows | explorer, editing on, *Play chances…* off, `addedIds` |
+| **Play with Engine** `/engine/play` | `usePlayGame` | Play (on from the start) | — | `useAutosave` → played games | Moves · Engine (the strength alone, CTA-181; no Map, CTA-91) | explorer, as the Analysis Board without `addedIds`, and without the `map` option — no Map is drawn |
 | **Masked Pieces** `/engine/masked` | `usePlayGame` (the same `PlayScreen`) | as Play with Engine | — | as Play with Engine, the costume on the record | + Masking | as Play with Engine, plus `mask` |
-| **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off; engine off at start) | — | explicit: Update / Save as copy (shipped: copy to Saved analyses) | Moves · Map · Info · Export · Engine | as the Analysis Board |
-| **Openings explorer** `/openings` | `useAnalysisSession` | Play (off; engine off at start) | `useOpeningBookModule` | nothing is kept; hands the tree to the Analysis Board | Book · Moves · Map · Load · Export · Engine | explorer, as the Analysis Board without `addedIds` |
-| **Repertoire player** `/repertoires/<id>` (+ `/games/<game>`) | the core + `useTrainerModule` | none — the trainer is the opponent | — | explicit: Update / Save as copy (a game never writes) | Moves · (Score) · Map · Settings · Engine | the full explorer; editing and comments in the player only |
+| **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off; engine off at start) | — | explicit: Update / Save as copy (shipped: copy to Saved analyses) | Moves · Map · Info · Export | as the Analysis Board |
+| **Openings explorer** `/openings` | `useAnalysisSession` | Play (off; engine off at start) | `useOpeningBookModule` | nothing is kept; hands the tree to the Analysis Board | Book · Moves · Map · Load · Export | explorer, as the Analysis Board without `addedIds` |
+| **Repertoire player** `/repertoires/<id>` (+ `/games/<game>`) | the core + `useTrainerModule` | none — the trainer is the opponent | — | explicit: Update / Save as copy (a game never writes) | Moves · (Score) · Map · Settings | the full explorer; editing and comments in the player only |
+
+**No analysis board has an Engine tab** (CTA-181): the search settings are the
+top bar's Engine menu, one set for every board; each board's header carries
+the engine's play / pause and its menu (`BoardEngineControls` — the eval bar,
+and on the Analysis Board *Write evaluations into the game*). Play with Engine
+and Masked Pieces keep an Engine tab for the opponent's strength alone. Clear
+moved to the Load tab (the Analysis Board, the Openings explorer) and the
+Settings tab (the repertoire player).
 
 Next-move arrows are one helper, `nextMoveArrowsOf` — the mainline's move
 green, side lines blue, the hovered one in the hover colour — so a change of

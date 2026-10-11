@@ -1,6 +1,8 @@
 ---
 paths:
   - "src/views/settings/**"
+  - "src/lib/engineSearchSettings*"
+  - "src/views/main/EngineMenu*"
 ---
 
 # Settings — `/settings/<tab>`
@@ -116,6 +118,13 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
 - **The Export zip does not carry it** — a preference is not data
   ([`import-export.md`](./import-export.md)); what a played game carries is the
   engine that played it. Its **presets** are data, and do travel (§4.1).
+- **The search settings are not here** (CTA-181): lines, depth, move time,
+  infinite analysis, Threads and Hash are the reader's one global set, set
+  from **the top bar's Engine menu** (`views/main/EngineMenu.tsx`, beside the
+  language button — under the engine and its preset, with a link back here),
+  `localStorage` `chessapp.engineSettings` (`lib/engineSearchSettings.ts`), a
+  preference like the choice and likewise not in the zip
+  ([`docs/engine.md`](../../docs/engine.md) §5.2).
 - **Two inner tabs say where the engine runs** (`PanelTabs`, the tab's own
   state — it opens on API when the stored choice is a server engine):
   **Browser**, the page's own builds above; **API**, the engine server below.
@@ -185,12 +194,21 @@ whole design):
   while on, none of them sent while off (`presetSentValues`) — their values
   stay for when it is turned on. Only an engine that declares them (a native
   one) shows the switch.
-- **Read-only, each with why**: Threads, Hash and MultiPV — set on each board;
-  a button (Clear Hash) — an action, not a setting, listed on System; a pinned
-  option; a file path (`EvalFile`, `Debug Log File`) on a browser build — no
-  file system there. Hash is offered up to 1024 MB on a browser build. Skill
-  Level, UCI_Elo and UCI_LimitStrength are editable, noted as the Play boards'
-  own there.
+- **Read-only, each with why**: Threads, Hash and MultiPV — set for every
+  board in the top bar's Engine menu (CTA-181, the reader's one global set,
+  `lib/engineSearchSettings.ts`, [`docs/engine.md`](../../docs/engine.md)
+  §5.2); a button (Clear Hash) — an action, not a setting, listed on System;
+  a pinned option; a file path (`EvalFile`, `Debug Log File`) on a browser
+  build — no file system there. Hash is offered up to 1024 MB on a browser
+  build. UCI_Elo (and Skill Level on an engine without an Elo) is editable,
+  noted as the Play boards' own there (`playOwnedOptionsOf`).
+- **UCI_LimitStrength is the preset's on every board** (CTA-181 — the Play
+  boards no longer force it on): noted as what **turns Play with Engine's and
+  Masked Pieces' Elo on** (`play-strength`). While the engine's selected
+  preset has it off — the engine's default — the Play boards' Elo slider is
+  off, with a note and a link here, and the engine plays at the preset's
+  strength; on, the slider sets `UCI_Elo` for the game
+  (`presetLimitsStrength`).
 - **A change is a store write, at once** (each keystroke of a field — the
   field keeps its own text as the write comes back); every board and job
   running the engine takes it from its next search. A refused write is an
@@ -219,7 +237,7 @@ whole design):
   The presets (CTA-179, the same file over the real stores and a `FakeEngine`
   per build — `builtinEnginesMock`, which `Settings.test.tsx` mocks too): the
   chosen build's options in the panel, in their tabs, the boards' own
-  read-only and the Elo disabled, a change kept (Default stored at its first
+  read-only (their note the top bar's Engine menu, CTA-181) and the Elo disabled, a change kept (Default stored at its first
   edit, numbers typed through the store), a new preset for the chosen engine
   alone, an engine server's tablebases turned on and a path kept, Hebrew and
   axe.

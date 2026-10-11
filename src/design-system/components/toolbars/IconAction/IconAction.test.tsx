@@ -69,4 +69,19 @@ describe("IconAction", () => {
     );
     expect(screen.getByTestId("probe")).toHaveAttribute("aria-expanded", "true");
   });
+  it("says what it opens: a menu by default, a dialog when asked (CTA-181)", () => {
+    const { rerender } = render(
+      <IconAction label="More" popupOpen={false} testId="probe">
+        <svg />
+      </IconAction>,
+    );
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-haspopup", "menu");
+    rerender(
+      <IconAction label="Engine settings" popupOpen popupKind="dialog" testId="probe">
+        <svg />
+      </IconAction>,
+    );
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-haspopup", "dialog");
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-expanded", "true");
+  });
 });

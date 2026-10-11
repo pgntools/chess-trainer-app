@@ -578,8 +578,8 @@ describe("a game on its analysis board", () => {
     expect(boardOptions().arrows).toHaveLength(1);
     fireEvent.click(screen.getByTestId("library-game-arrows"));
     expect(boardOptions().arrows).toEqual([]);
-    fireEvent.click(screen.getByTestId("library-game-panel-tab-engine"));
-    // The Moves tab stays mounted, hidden; the Engine tab has no switch of its own.
+    fireEvent.click(screen.getByTestId("library-game-panel-tab-map"));
+    // The Moves tab stays mounted, hidden; the Map tab has no switch of its own.
     expect(screen.getAllByTestId("library-game-arrows")).toHaveLength(1);
     expect(screen.getByTestId("library-game-arrows")).not.toBeVisible();
   });
@@ -610,9 +610,13 @@ describe("a game on its analysis board", () => {
     await mountGame(`/library/${mine.id}/1`);
     expect(screen.getByTestId("library-game-board")).toBeInTheDocument();
     expect(boardOptions().id).toBe("library-game");
-    for (const tab of ["moves", "map", "info", "export", "engine"]) {
+    for (const tab of ["moves", "map", "info", "export"]) {
       expect(screen.getByTestId(`library-game-panel-tab-${tab}`)).toBeInTheDocument();
     }
+    // The engine is the header's (CTA-181): its play / pause and its menu — the search settings the top bar's.
+    expect(screen.queryByTestId("library-game-panel-tab-engine")).not.toBeInTheDocument();
+    expect(screen.getByTestId("library-game-setting-engine")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByTestId("library-game-engine-menu")).toBeInTheDocument();
     expect(screen.getByTestId("library-game-play")).toBeInTheDocument();
     expect(screen.getByTestId("library-game-caption")).toHaveTextContent("Game 1 of 3");
     expect(screen.getByTestId("library-game-previous")).toHaveAttribute("aria-disabled", "true");

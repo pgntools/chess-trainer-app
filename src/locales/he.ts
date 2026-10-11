@@ -280,6 +280,35 @@ const he: typeof en = {
       b: "רץ",
     },
   },
+  engineMenu: {
+    title: "מנוע",
+    label: {
+      off: "הגדרות המנוע — המנוע כבוי",
+      on: "הגדרות המנוע — המנוע פועל",
+      searching: "הגדרות המנוע — המנוע מחפש",
+    },
+    engine: "מנוע:",
+    preset: "פריסט:",
+    settingsLink: "החלפת המנוע או הפריסט שלו בהגדרות ← מנוע",
+  },
+  boardEngine: {
+    toggle: "ניתוח המנוע",
+    menu: "אפשרויות המנוע של הלוח",
+  },
+  engineChanged: {
+    title: "הגדרות המנוע השתנו",
+    message: {
+      analysis: "הניתוח הזה נשמר עם הגדרות מנוע שונות מאלה שבתוקף עכשיו:",
+      game: "המשחק הזה שוחק עם הגדרות מנוע שונות מאלה שבתוקף עכשיו:",
+    },
+    change: "{{setting}}: {{recorded}} ← {{current}}",
+    on: "פועל",
+    off: "כבוי",
+    use: "שימוש בהגדרות האלה",
+    dismiss: "סגירה",
+    held: "המנוע הזה מקבל פחות: {{settings}}.",
+    heldTo: "{{setting}} יהיה {{value}}",
+  },
   engineOption: {
     unsupported: "לגרסת המנוע הזו אין אפשרות \"{{option}}\".",
     fixed: "גרסת המנוע הזו מקבעת את {{option}} על {{value}}.",
@@ -519,21 +548,16 @@ const he: typeof en = {
       openAnalysis: "פתיחה בלוח הניתוח",
     },
     settings: {
-      /** המתג של המנוע מעל שורת הלשוניות — שם הלשונית עצמה. */
-      engineOn: "מנוע",
       strength: "עוצמה",
       strengthValue: "רמה {{level}} (בערך {{elo}} אלו)",
       strengthElo: "עוצמה (אלו)",
       strengthEloValue: "{{elo}} אלו",
-      depth: "עומק חיפוש",
-      moveTime: "זמן למהלך",
+      strengthOff: "בפריסט של המנוע UCI_LimitStrength כבויה, ולכן המנוע משחק בעוצמת הפריסט והאלו לא משפיע.",
+      strengthOffLink: "הפעלה בהגדרות ← מנוע",
       moveTimeValue: "{{seconds}} שניות",
       moveTimeNone: "ללא הגבלה",
-      multiPv: "מספר הווריאציות להצגה",
-      threads: "תהליכונים",
       /** כיתוב הסבר תחת מחוון התהליכונים (CTA-163). */
       threadsHelp: "ליבות המעבד של המנוע",
-      hash: "זיכרון גיבוב (MB)",
       /** כיתוב הסבר תחת מחוון הזיכרון (CTA-163). */
       hashHelp: "זיכרון המנוע (RAM)",
       playAs: "המשחק בצבע",
@@ -721,7 +745,6 @@ const he: typeof en = {
       map: "מפה",
       load: "טעינה",
       export: "ייצוא",
-      engine: "מנוע",
       arrows: "חצים",
     },
     play: {
@@ -732,7 +755,6 @@ const he: typeof en = {
       depth: "עומק {{depth}}",
       yourMove: "תורכם",
     },
-    engineSwitch: "מנוע",
     save: {
       open: "שמירת הניתוח",
       title: "שמירת ניתוח",
@@ -995,7 +1017,6 @@ const he: typeof en = {
       map: "מפה",
       load: "טעינה",
       export: "ייצוא",
-      engine: "מנוע",
     },
     current: {
       unknown: "אין פתיחה מוכרת עדיין.",
@@ -1008,7 +1029,6 @@ const he: typeof en = {
       empty: "אין המשכים מוכרים מכאן.",
       help: "לחצו על מהלך כדי לשחק אותו כאן. מהלך מעמדה מוקדמת יותר פותח וריאציה.",
     },
-    engineSwitch: "מנוע",
     controls: {
       playFromHere: "שחקו מכאן",
       analysis: "פתיחה בלוח הניתוח — כל מה שנחקר כאן, כלוח חדש שלא נשמר",
@@ -1438,13 +1458,11 @@ const he: typeof en = {
         map: "מפה",
         info: "פרטים",
         export: "ייצוא",
-        engine: "מנוע",
       },
       of: "משחק {{number}} מתוך {{count}}",
       back: "חזרה אל {{name}}",
       previous: "המשחק הקודם",
       next: "המשחק הבא",
-      engineSwitch: "מנוע",
       arrows: "חצי המהלך הבא",
       moveMarks: "סימוני המהלכים על הלוח",
       unreadable: "לא ניתן לקרוא את המשחק הזה.",
@@ -1721,9 +1739,6 @@ const he: typeof en = {
       autoplayOff: "השהיה — אתם מזיזים את שני הצדדים",
       download: "הורדה עם התוספות שלכם כ-PGN",
       back: "חזרה ללוח",
-      engine: "מנוע",
-      engineHelp:
-        "מציג את הקווים הטובים של המנוע מעל הלשוניות ואת פס ההערכה. הוא אף פעם לא משחק מסע; ההגדרות שלו בלשונית המנוע.",
       sideHelp:
         "המאמן משחק בצד השני. שינוי הצד מתחיל מחדש מהמסע הראשון; מה שהוספתם נשמר.",
       arrows: "הצגת חיצי המסע הבא",
@@ -1792,7 +1807,6 @@ const he: typeof en = {
       tabs: {
         moves: "מסעים",
         tree: "עץ",
-        engine: "מנוע",
       },
     },
   },
@@ -2046,7 +2060,8 @@ const he: typeof en = {
       },
     },
     notes: {
-      "board-owned": "נקבע בכל לוח — Threads, Hash ומספר הקווים שלו.",
+      "board-owned": "נקבע לכל הלוחות בתפריט המנוע שבסרגל העליון — Threads, Hash ומספר הקווים.",
+      "play-strength": "מפעילה גם את האלו של „משחק מול המנוע” ו„כלים מוסווים”: כשהיא כבויה, הם משחקים בעוצמת הפריסט הזה.",
       "play-owned": "„משחק מול המנוע” ו„כלים מוסווים” קובעים זאת לפי העוצמה שלהם; כל לוח אחר לוקח זאת מכאן.",
       absent: "{{engine}} אינו מצהיר עליה, ולכן היא לא נשלחת.",
       pinned: "קבועה בגרסה הזו — יש לה ערך אחד.",

@@ -1,23 +1,30 @@
 /**
- * **The engine knobs an analysis is worked under** — the value the Analysis
- * Board's Engine tab drives, and the value a saved analysis carries so reopening
- * one puts the engine back the way it was.
+ * **The engine settings an analysis is worked under** — what a saved
+ * analysis records, so a later look can tell how it was searched; and, since
+ * CTA-181, nothing a board keeps of its own: the search settings are the
+ * reader's one global set (`lib/engineSearchSettings.ts`, the top bar's
+ * Engine menu), and a session's settings are those with the Analysis Board's
+ * **Write evaluations into the game** switch beside them
+ * ({@link analysisSettingsOf}). Opening a record whose settings differ from
+ * the ones in effect asks whether to put them back ("Engine options
+ * changed").
  *
  * It lived in `views/tools/analysis/useAnalysisBoard.ts` until a saved analysis
  * had to record it, and then moved here for the reason
  * [`engineSettings.ts`](./engineSettings.ts) exists: `lib/savedAnalyses.ts` is
- * plain data and cannot import a hook. Since the v2 Analysis Board (CTA-73)
- * every consumer — `AnalysisSettings.tsx` included — imports them from here.
+ * plain data and cannot import a hook.
  *
  * As there, it is **not** a description of the running engine. Which knobs the
  * worker actually has is the handle's `options`' business
  * (`.claude/rules/chessboard.md` §4.1), so a stored value is a *request* that
- * the hook clamps to whatever the running build declared.
+ * the engine module clamps to whatever the running build declared.
  */
 
-import { DEFAULT_ENGINE_SETTINGS, ENGINE_SETTING_BOUNDS, engineSettingBoundsOf } from "./engineSettings";
+import { engineSettingBoundsOf } from "./engineSettings";
+import { DEFAULT_ENGINE_SEARCH_SETTINGS, type EngineSearchSettings } from "./engineSearchSettings";
+import { withMissingFields } from "./recordedFields";
 
-/** The knobs the Analysis Board's Engine tab drives. */
+/** The engine settings an analysis records — the global search settings, and whether evaluations are written. */
 export type AnalysisSettings = {
   /** Plies per search — where a search stops while {@link infinite} is off, and always for Play. */
   depth: number;
@@ -34,54 +41,46 @@ export type AnalysisSettings = {
    */
   infinite: boolean;
   /**
-   * UCI `Threads` and `Hash` (MB) — Play with Engine's own knobs, the same on
-   * every board (CTA-160): a multi-thread engine chosen in Settings → Engine
-   * searches on as many threads here as there. Requests, held to
-   * `ENGINE_SETTING_BOUNDS` by {@link analysisUciOptionsOf} — an engine
-   * server's engine to its own, wider bounds (CTA-175) — and clamped to what
-   * the running engine declares (the single-thread build pins `Threads` to 1).
-   * Stored as asked, never cut back to the in-browser ceiling.
+   * UCI `Threads` and `Hash` (MB) — the same on every board (CTA-160, one
+   * global set since CTA-181). Requests, held to `ENGINE_SETTING_BOUNDS` by
+   * {@link analysisUciOptionsOf} — an engine server's engine to its own,
+   * wider bounds (CTA-175) — and clamped to what the running engine declares
+   * (the single-thread build pins `Threads` to 1). Stored as asked, never cut
+   * back to the in-browser ceiling.
    */
   threads: number;
   hashMb: number;
   /**
    * **Write evaluations into the game** (CTA-167): each finished search's
    * score written as `[%eval]` on the move it evaluates (`lib/engineEvals.ts`).
-   * Off by default; offered on the Analysis Board's Engine tab only. Not an
-   * engine knob — kept here because the record keeps the Engine tab with it.
+   * Off by default; offered on the Analysis Board's engine menu only (beside
+   * its play / pause engine button, CTA-181). Not an engine knob, and not
+   * global — the session's, kept here because the record keeps it.
    */
   writeEvals: boolean;
 };
 
 /**
- * Stop at depth 20 — about 3.5 s on a fast desktop with the default engine
- * (CTA-160) — rather than after a second, which cut a search off at whatever
- * depth it had reached.
+ * The global search settings' defaults (depth 20 — about 3.5 s on a fast
+ * desktop with the default engine, CTA-160 — three lines, no time limit,
+ * infinite off, one thread, 16 MB) and evaluations not written: what a
+ * record from before a field reads it as.
  */
 export const DEFAULT_ANALYSIS_SETTINGS: AnalysisSettings = {
-  depth: 20,
-  multiPv: 3,
-  moveTimeMs: 0,
-  infinite: false,
-  threads: DEFAULT_ENGINE_SETTINGS.threads,
-  hashMb: DEFAULT_ENGINE_SETTINGS.hashMb,
+  ...DEFAULT_ENGINE_SEARCH_SETTINGS,
   writeEvals: false,
 };
 
-/**
- * What an analysis board offers — Play with Engine's own (`ENGINE_SETTING_BOUNDS`),
- * save that its move time keeps the 60 s ceiling it always had (CTA-163 raised
- * the engine form's marks to 300 s; this board's linear slider stays as it was).
- * `threads` and `hashMb` are the in-browser builds'; an engine server's engine
- * is offered what it declares (the form's `deviceLimits`, `engineLimitsOf` —
- * CTA-175).
- */
-export const ANALYSIS_SETTING_BOUNDS = {
-  depth: ENGINE_SETTING_BOUNDS.depth,
-  moveTimeMs: { min: 0, max: 60000 },
-  threads: ENGINE_SETTING_BOUNDS.threads,
-  hashMb: ENGINE_SETTING_BOUNDS.hashMb,
-} as const;
+/** A session's settings: the global search settings in effect, and its own evaluations switch. */
+export const analysisSettingsOf = (search: EngineSearchSettings, writeEvals: boolean): AnalysisSettings => ({
+  multiPv: search.multiPv,
+  depth: search.depth,
+  moveTimeMs: search.moveTimeMs,
+  infinite: search.infinite,
+  threads: search.threads,
+  hashMb: search.hashMb,
+  writeEvals,
+});
 
 /**
  * Which UCI option each setting drives. The names are the engine's; whether the
@@ -91,7 +90,7 @@ export const ANALYSIS_SETTING_BOUNDS = {
  * best answer, so it never weakens it — and the build's own default is full
  * strength, so there is nothing to post.
  */
-export const ANALYSIS_UCI_OPTION = {
+const ANALYSIS_UCI_OPTION = {
   multiPv: "MultiPV",
   threads: "Threads",
   hashMb: "Hash",
@@ -118,23 +117,6 @@ export const analysisUciOptionsOf = (
   };
 };
 
-/**
- * Settings with the values the running engine clamped them to (the engine
- * module's `onUciOptionsReady`) — **the same object** when nothing moved, so a
- * caller's state setter re-runs nothing keyed on it.
- */
-export const withClampedAnalysisUciOptions = (
-  current: AnalysisSettings,
-  clamped: Readonly<Record<string, number>>,
-): AnalysisSettings => {
-  const multiPv = clamped[ANALYSIS_UCI_OPTION.multiPv] ?? current.multiPv;
-  const threads = clamped[ANALYSIS_UCI_OPTION.threads] ?? current.threads;
-  const hashMb = clamped[ANALYSIS_UCI_OPTION.hashMb] ?? current.hashMb;
-  return multiPv === current.multiPv && threads === current.threads && hashMb === current.hashMb
-    ? current
-    : { ...current, multiPv, threads, hashMb };
-};
-
 const finiteNumber = (value: unknown, fallback: number): number =>
   typeof value === "number" && Number.isFinite(value) && value >= 0
     ? value
@@ -144,15 +126,17 @@ const finiteNumber = (value: unknown, fallback: number): number =>
  * Read settings back out of stored JSON, filling in the default for anything
  * missing, mistyped or nonsensical. Never throws — a stored record is text
  * another version of this app wrote, so what cannot be read is replaced rather
- * than allowed to reach the engine.
+ * than allowed to reach the engine. A field the row lacks is marked as such
+ * (`missingFieldsOf`, `lib/recordedFields.ts`).
  */
 export const analysisSettingsFrom = (value: unknown): AnalysisSettings => {
   if (typeof value !== "object" || value === null) {
-    return { ...DEFAULT_ANALYSIS_SETTINGS };
+    return withMissingFields({ ...DEFAULT_ANALYSIS_SETTINGS }, Object.keys(DEFAULT_ANALYSIS_SETTINGS));
   }
   const row = value as Record<string, unknown>;
 
-  return {
+  // A field the stored row lacks is its default — and marked, so it never reads as a choice (CTA-181).
+  return withMissingFields({
     depth: finiteNumber(row.depth, DEFAULT_ANALYSIS_SETTINGS.depth),
     multiPv: finiteNumber(row.multiPv, DEFAULT_ANALYSIS_SETTINGS.multiPv),
     moveTimeMs: finiteNumber(
@@ -166,7 +150,7 @@ export const analysisSettingsFrom = (value: unknown): AnalysisSettings => {
     hashMb: finiteNumber(row.hashMb, DEFAULT_ANALYSIS_SETTINGS.hashMb),
     // …nor the evaluations switch (CTA-167): off.
     writeEvals: row.writeEvals === true,
-  };
+  }, Object.keys(DEFAULT_ANALYSIS_SETTINGS).filter((field) => row[field] === undefined));
 };
 
 /** Whether two settings would drive the engine identically — and write the same into the game. */

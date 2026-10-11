@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
@@ -8,31 +8,27 @@ import { expectNoAxeViolations } from "../../../test/axe";
 import { engineOptionState, optionSlug } from "./engineOptionState";
 import EngineSettingsForm from "./EngineSettingsForm";
 import {
-  ADJUSTABLE_OPTIONS,
   ELO_WITHOUT_LIMIT_OPTIONS,
-  HOSTED_LIMITS,
-  HOSTED_OPTIONS,
   NO_OPTIONS,
+  PINNED_SKILL_OPTIONS,
   SETTINGS,
+  SETTINGS_LINK,
   SHIPPED_OPTIONS,
   SKILL_ONLY_OPTIONS,
-  SPARSE_OPTIONS,
 } from "./fixtures";
 
-const mount = (engineOptions: ReadonlyMap<string, EngineOption> = SHIPPED_OPTIONS) => {
+const mount = (engineOptions: ReadonlyMap<string, EngineOption> = SHIPPED_OPTIONS, strengthOff = false) => {
   const onChange = vi.fn();
-  const onShowEvalBarChange = vi.fn();
   render(
     <EngineSettingsForm
       settings={SETTINGS}
       onChange={onChange}
       engineOptions={engineOptions}
-      showEvalBar
-      onShowEvalBarChange={onShowEvalBarChange}
+      strengthOff={strengthOff ? { settingsLink: SETTINGS_LINK } : undefined}
       testId="engine"
     />,
   );
-  return { onChange, onShowEvalBarChange };
+  return { onChange };
 };
 
 beforeEach(async () => {
@@ -62,221 +58,38 @@ describe("engineOptionState", () => {
   });
 });
 
-describe("EngineSettingsForm", () => {
-  it("renders every setting, each a named slider, and the eval bar switch", () => {
+describe("EngineSettingsForm — the opponent's strength (CTA-181: the strength alone)", () => {
+  it("is the strength alone: no depth, move time, lines, Threads or Hash — the top bar's Engine menu has them", () => {
     mount();
-    for (const name of ["Strength (Elo)", "Search depth", "Move time", "Variations to show", "Threads", "Hash (MB)"]) {
-      expect(screen.getByRole("slider", { name })).toBeInTheDocument();
-    }
-    expect(screen.getByRole("switch", { name: "Show evaluation bar" })).toBeChecked();
+    expect(screen.getAllByRole("slider")).toHaveLength(1);
+    expect(screen.getByRole("slider", { name: "Strength (Elo)" })).toBeInTheDocument();
+    expect(screen.queryByRole("switch")).toBeNull();
     expect(screen.getByTestId("engine-settings")).toBeInTheDocument();
   });
 
-  it("turns a pinned option off and says what it is fixed at", () => {
-    mount();
-    expect(screen.getByRole("slider", { name: "Threads" })).toBeDisabled();
-    expect(screen.getByTestId("engine-setting-threads-fixed")).toHaveTextContent("This engine build fixes Threads at 1.");
-    expect(screen.queryByTestId("engine-setting-threads-unsupported")).toBeNull();
-  });
-
-  it("turns an absent option off and says the build lacks it", () => {
-    mount(SPARSE_OPTIONS);
-    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toBeDisabled();
-    expect(screen.getByTestId("engine-setting-hash-unsupported")).toHaveTextContent('This engine build has no "Hash" option.');
-    expect(screen.getByRole("slider", { name: "Strength" })).toHaveAttribute("max", "8");
-  });
-
-  it("leaves every knob live on a build that takes them", () => {
-    mount(ADJUSTABLE_OPTIONS);
-    expect(screen.getByRole("slider", { name: "Threads" })).toBeEnabled();
-  });
-
-  it("offers Threads and Hash only up to the app's ceilings, whatever the engine declares", () => {
-    // The 19 builds declare `Hash` to 33,554,432 MB (2048 crashed the tab) and the multi-thread one 32 threads.
-    mount(ADJUSTABLE_OPTIONS);
-    expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "32");
-    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "1024");
-  });
-
-  it("offers Threads and Hash only up to what this device can give", () => {
+  it("offers the eval bar's switch where a screen hands it one — the Lobby's form", async () => {
+    const onEvalBar = vi.fn();
     render(
       <EngineSettingsForm
         settings={SETTINGS}
         onChange={vi.fn()}
-        engineOptions={ADJUSTABLE_OPTIONS}
-        showEvalBar
-        onShowEvalBarChange={vi.fn()}
-        deviceLimits={{ threads: 3, hashMb: 128 }}
+        engineOptions={SHIPPED_OPTIONS}
+        evalBar={{ checked: true, onChange: onEvalBar }}
         testId="engine"
       />,
     );
-    expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "3");
-    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "128");
-  });
-
-  describe("an engine server's engine — its own range, not the browser's (CTA-175)", () => {
-    const mountHosted = (engineOptions: ReadonlyMap<string, EngineOption>) =>
-      render(
-        <EngineSettingsForm
-          settings={{ ...SETTINGS, hashMb: 2048, threads: 8 }}
-          onChange={vi.fn()}
-          engineOptions={engineOptions}
-          showEvalBar
-          onShowEvalBarChange={vi.fn()}
-          deviceLimits={HOSTED_LIMITS}
-          testId="engine"
-        />,
-      );
-
-    it("offers Threads and Hash up to what the engine declares, past the in-browser 1024 MB, the larger marks with them", () => {
-      mountHosted(HOSTED_OPTIONS);
-      expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "15");
-      expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "4096");
-      expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveValue("2048");
-      for (const label of ["1024", "2048", "4096"]) {
-        expect(screen.getByText(label, { selector: ".MuiSlider-markLabel" })).toBeInTheDocument();
-      }
-    });
-
-    it("offers the same range before the handshake, never the device's", () => {
-      mountHosted(NO_OPTIONS);
-      expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "15");
-      expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "4096");
-    });
-
-    it("leaves an in-browser build's marks at 1024", () => {
-      mount(ADJUSTABLE_OPTIONS);
-      expect(screen.queryByText("2048")).toBeNull();
-    });
-  });
-
-  it("calls nothing unsupported before the handshake", () => {
-    mount(NO_OPTIONS);
-    expect(screen.queryByTestId(/-unsupported$|-fixed$/)).toBeNull();
-    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toBeEnabled();
-  });
-
-  it("is operated from the keyboard: an arrow moves a slider, Space the switch", async () => {
-    const { onChange, onShowEvalBarChange } = mount();
-    screen.getByRole("slider", { name: "Search depth" }).focus();
-    await userEvent.keyboard("{ArrowRight}");
-    expect(onChange).toHaveBeenLastCalledWith({ depth: SETTINGS.depth + 1 });
     screen.getByRole("switch", { name: "Show evaluation bar" }).focus();
     await userEvent.keyboard(" ");
-    expect(onShowEvalBarChange).toHaveBeenCalledWith(false);
+    expect(onEvalBar).toHaveBeenCalledWith(false);
   });
 
-  describe("the Hash slider's RAM marks and the help captions (CTA-163)", () => {
-    it("marks the round RAM points within the offered range", () => {
-      mount(ADJUSTABLE_OPTIONS);
-      for (const label of ["128", "256", "512", "1024"]) {
-        expect(screen.getByText(label)).toHaveClass("MuiSlider-markLabel");
-      }
-    });
-
-    it("adapts the marks to what this device can give", () => {
-      render(
-        <EngineSettingsForm
-          settings={SETTINGS}
-          onChange={vi.fn()}
-          engineOptions={ADJUSTABLE_OPTIONS}
-          showEvalBar
-          onShowEvalBarChange={vi.fn()}
-          deviceLimits={{ threads: 3, hashMb: 512 }}
-          testId="engine"
-        />,
-      );
-      for (const label of ["128", "256", "512"]) {
-        expect(screen.getByText(label)).toHaveClass("MuiSlider-markLabel");
-      }
-      expect(screen.queryByText("1024")).toBeNull();
-    });
-
-    it("explains Hash in terms of RAM and Threads in terms of CPU cores", () => {
-      mount(ADJUSTABLE_OPTIONS);
-      expect(screen.getByTestId("engine-setting-hash-help")).toHaveTextContent("Engine memory (RAM)");
-      expect(screen.getByTestId("engine-setting-threads-help")).toHaveTextContent("Engine CPU cores");
-    });
+  it("turns a pinned strength off and says what it is fixed at", () => {
+    mount(PINNED_SKILL_OPTIONS);
+    expect(screen.getByRole("slider", { name: "Strength" })).toBeDisabled();
+    expect(screen.getByTestId("engine-setting-skill-level-fixed")).toHaveTextContent("This engine build fixes Skill Level at 8.");
   });
 
-  describe("the move-time slider — lichess's snap marks (CTA-163)", () => {
-    it("offers the marks 0 … 300 seconds and ∞, and tells a screen reader the value as words", () => {
-      mount();
-      const slider = screen.getByRole("slider", { name: "Move time" });
-      expect(slider).toHaveAttribute("aria-valuemin", "0");
-      expect(slider).toHaveAttribute("aria-valuemax", "8");
-      expect(slider).toHaveAttribute("aria-valuenow", "0.2");
-      expect(slider).toHaveAttribute("aria-valuetext", "1.0s");
-      for (const label of ["0", "5", "10", "20", "30", "60", "120", "300", "∞"]) {
-        expect(screen.getByText(label)).toHaveClass("MuiSlider-markLabel");
-      }
-      // The default's 1000 ms is shown where it falls, between "0" and "5".
-      expect(screen.getByTestId("engine-setting-movetime-value")).toHaveTextContent("1.0s");
-    });
-
-    it("keeps the ∞ mark the reader's stored unlimited: moveTimeMs 0, said as No limit", () => {
-      render(
-        <EngineSettingsForm
-          settings={{ ...SETTINGS, moveTimeMs: 0 }}
-          onChange={vi.fn()}
-          engineOptions={SHIPPED_OPTIONS}
-          showEvalBar
-          onShowEvalBarChange={vi.fn()}
-          testId="engine"
-        />,
-      );
-      const slider = screen.getByRole("slider", { name: "Move time" });
-      expect(slider).toHaveAttribute("aria-valuenow", "8");
-      expect(slider).toHaveAttribute("aria-valuetext", "No limit");
-      expect(screen.getByTestId("engine-setting-movetime-value")).toHaveTextContent("No limit");
-    });
-
-    it("says the instant reply as 0s, not 0.0s", () => {
-      render(
-        <EngineSettingsForm
-          settings={{ ...SETTINGS, moveTimeMs: 1 }}
-          onChange={vi.fn()}
-          engineOptions={SHIPPED_OPTIONS}
-          showEvalBar
-          onShowEvalBarChange={vi.fn()}
-          testId="engine"
-        />,
-      );
-      expect(screen.getByTestId("engine-setting-movetime-value")).toHaveTextContent("0s");
-      expect(screen.getByRole("slider", { name: "Move time" })).toHaveAttribute("aria-valuenow", "0");
-    });
-
-    it("snaps a drag to a mark: a slot arrives, its seconds leave as a patch", () => {
-      const { onChange } = mount();
-      // Slot 4 is the 30-seconds mark.
-      fireEvent.change(screen.getByTestId("engine-setting-movetime-input"), { target: { value: "4" } });
-      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 30000 });
-      fireEvent.change(screen.getByTestId("engine-setting-movetime-input"), { target: { value: "8" } });
-      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 0 });
-      fireEvent.change(screen.getByTestId("engine-setting-movetime-input"), { target: { value: "0" } });
-      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 1 });
-    });
-
-    it("steps a mark at a time from the keyboard", async () => {
-      const onChange = vi.fn();
-      render(
-        <EngineSettingsForm
-          settings={{ ...SETTINGS, moveTimeMs: 0 }}
-          onChange={onChange}
-          engineOptions={SHIPPED_OPTIONS}
-          showEvalBar
-          onShowEvalBarChange={vi.fn()}
-          testId="engine"
-        />,
-      );
-      // Unlimited is the ∞ mark; an arrow steps onto the 300 s mark.
-      screen.getByRole("slider", { name: "Move time" }).focus();
-      await userEvent.keyboard("{ArrowLeft}");
-      expect(onChange).toHaveBeenLastCalledWith({ moveTimeMs: 300000 });
-    });
-  });
-
-  describe("the strength control — Skill Level or Elo, by what the running engine declared (CTA-153)", () => {
+  describe("Skill Level or Elo, by what the running engine declared (CTA-153)", () => {
     it("is Skill Level, with its Elo an estimate, on an engine without UCI_Elo", () => {
       mount(SKILL_ONLY_OPTIONS);
       const strength = screen.getByRole("slider", { name: "Strength" });
@@ -291,7 +104,6 @@ describe("EngineSettingsForm", () => {
       expect(strength).toHaveAttribute("min", "1320");
       expect(strength).toHaveAttribute("max", "3190");
       expect(strength).toBeEnabled();
-      // The Skill Level slider is not offered beside it: the engine ignores it while limited.
       expect(screen.queryByRole("slider", { name: "Strength" })).toBeNull();
       expect(screen.getByTestId("engine-setting-elo-value")).toHaveTextContent(`${SETTINGS.elo} Elo`);
     });
@@ -312,11 +124,26 @@ describe("EngineSettingsForm", () => {
     it("is the Elo — every shipped engine's — until the handshake lands, nothing called unsupported meanwhile", () => {
       mount(NO_OPTIONS);
       expect(screen.getByRole("slider", { name: "Strength (Elo)" })).toBeEnabled();
-      expect(screen.queryByRole("slider", { name: "Strength" })).toBeNull();
+      expect(screen.queryByTestId("engine-setting-elo-unsupported")).toBeNull();
+    });
+  });
+
+  describe("the preset's UCI_LimitStrength off (CTA-181)", () => {
+    it("turns the Elo off, says why, and links to Settings → Engine", () => {
+      mount(SHIPPED_OPTIONS, true);
+      expect(screen.getByRole("slider", { name: "Strength (Elo)" })).toBeDisabled();
+      expect(screen.getByTestId("engine-strength-off")).toHaveTextContent("UCI_LimitStrength off");
+      expect(screen.getByRole("link", { name: "Turn it on in Settings → Engine" })).toHaveAttribute("href", "/settings/engine");
     });
 
-    it("passes axe in Elo mode", async () => {
-      mount(SHIPPED_OPTIONS);
+    it("leaves a Skill Level live — it is always Play's", () => {
+      mount(SKILL_ONLY_OPTIONS, true);
+      expect(screen.getByRole("slider", { name: "Strength" })).toBeEnabled();
+      expect(screen.queryByTestId("engine-strength-off")).toBeNull();
+    });
+
+    it("passes axe with the Elo off", async () => {
+      mount(SHIPPED_OPTIONS, true);
       await expectNoAxeViolations();
     });
   });

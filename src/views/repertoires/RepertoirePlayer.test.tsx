@@ -107,10 +107,9 @@ const drop = (from: string, to: string) =>
 const openSettings = () =>
   fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-settings"));
 
-/** Switch the engine on — its switch is in the Settings tab. */
+/** Switch the engine on — the header's play / pause (CTA-181). */
 const engineOn = () => {
-  openSettings();
-  fireEvent.click(screen.getByTestId("repertoire-board-setting-engine").querySelector("input")!);
+  fireEvent.click(screen.getByTestId("repertoire-board-setting-engine"));
 };
 
 /** Let the store's writes land (IndexedDB), and what the screen does with their answers. */
@@ -155,20 +154,16 @@ describe("the repertoire player, Autoplay on", () => {
     expect(screen.getByTestId("repertoire-board-panel-status")).toHaveTextContent(
       i18n.t("analysis.settings.engineOff"),
     );
-    // Moves · Map · Settings · Engine, the Engine tab disabled while its engine is off.
+    // Moves · Map · Settings — no Engine tab since CTA-181: the search settings are the top bar's.
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((tab) => tab.getAttribute("data-testid"))).toEqual([
       "repertoire-board-panel-tab-moves",
       "repertoire-board-panel-tab-map",
       "repertoire-board-panel-tab-settings",
-      "repertoire-board-panel-tab-engine",
     ]);
-    expect(screen.getByTestId("repertoire-board-panel-tab-engine")).toBeDisabled();
-    // Its switch is in Settings, and off.
+    // Its switch is the header's play / pause, and off.
+    expect(screen.getByRole("button", { name: i18n.t("boardEngine.toggle") })).toHaveAttribute("aria-pressed", "false");
     openSettings();
-    expect(
-      screen.getByTestId("repertoire-board-setting-engine").querySelector("input"),
-    ).not.toBeChecked();
     // Autoplay is off by default: the reader moves both sides, and the footer
     // is the next-moves bar rather than the trainer's status.
     expect(
@@ -423,7 +418,7 @@ describe("the repertoire player, Autoplay on", () => {
   it("shows the best variations once the engine is switched on, and never moves for it", async () => {
     await mount(`/repertoires/${await storeRepertoire("r", CARO)}`);
     engineOn();
-    expect(screen.getByTestId("repertoire-board-panel-tab-engine")).toBeEnabled();
+    expect(screen.getByTestId("repertoire-board-setting-engine")).toHaveAttribute("aria-pressed", "true");
 
     const engine = FakeEngine.latest();
     expect(engine.lastSearch).toBe(new Chess().fen());
@@ -448,20 +443,20 @@ describe("the repertoire player, Autoplay on", () => {
     wait();
     expect(position()).toBe(new Chess().fen());
 
-    // The engine's settings are the other boards' own Engine tab.
-    fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-engine"));
-    expect(screen.getByTestId("analysis-settings")).toBeInTheDocument();
+    // Its menu holds the eval bar; the search settings are the top bar's (CTA-181).
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("boardEngine.menu") }));
+    fireEvent.click(within(screen.getByTestId("repertoire-board-setting-evalbar")).getByRole("switch"));
+    expect(screen.queryByTestId("eval-bar")).not.toBeInTheDocument();
   });
 
-  it("clears the session's additions from the Engine tab", async () => {
+  it("clears the session's additions from the Settings tab (the Engine tab's Clear, CTA-181)", async () => {
     await mount(`/repertoires/${await storeRepertoire("r", CARO)}`);
     drop("e2", "e4");
     wait();
     drop("d2", "d3");
     expect(document.querySelector('[data-san="d3"]')).not.toBeNull();
 
-    engineOn();
-    fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-engine"));
+    openSettings();
     fireEvent.click(screen.getByTestId("analysis-clear"));
     fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-moves"));
     expect(position()).toBe(new Chess().fen());

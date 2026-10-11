@@ -21,7 +21,8 @@ paths:
   - "src/blocks/lists/FolderActions/**"
   - "src/blocks/lists/FolderPicker/**"
   - "src/blocks/dialogs/Folder*/**"
-  - "src/blocks/forms/AnalysisEngineForm/**"
+  - "src/blocks/forms/EngineSearchSettingsForm/**"
+  - "src/blocks/dialogs/EngineOptionsChangedDialog/**"
   - "src/blocks/forms/ComputerAnalysisForm/**"
   - "src/blocks/forms/ArrowSettingsFields/**"
   - "src/blocks/forms/PgnInput/**"
@@ -54,8 +55,9 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/views/tools/analysis/useAnalysisLoad.ts` | **The Load route's state** (CTA-96): the pipeline behind `AnalysisLoad`, on its own so a host can place its pieces itself — the analyses Lobby's form puts the FEN field and the `.pgn` pick in its editor's row and the paste box below. |
 | `src/blocks/panels/PgnExportPanel/` | The Export tab (every board's): FEN, PGN with or without comments / NAGs / side lines, copy and download. |
 | `src/lib/engineEvals.ts` | **The engine's evaluations written into the game** (CTA-167, §1): `[%eval pawns,depth]` on the move searched, the override by depth, the `Annotator` tag — [`pgn-annotations.md`](./pgn-annotations.md) §2. |
-| `src/blocks/forms/AnalysisEngineForm/` | The Engine tab (**infinite analysis**, depth 1–40, move time 0–60 s — its own ceiling since CTA-163, the engine form's marks reach 300 s — lines, **threads, hash** — Play with Engine's, up to what the device can give, `deviceLimits`, CTA-160, or for an engine server's engine what it declares, `engineLimitsOf`, CTA-175 — the eval bar, Clear) — every board's but Play's; each option slider rendered from what the engine declared (`engineOptionState`). |
-| `src/views/tools/analysis/NewJob.tsx`, `gameJob.ts`, `computerAnalysisSeed.ts` | **New Job** (CTA-177, §1.3): the screen side of `NewJobDialog`, shared by the board's header and the saved list — the game's job found (`jobOfGame`), the choice first when there is one, Start (`enqueueComputerAnalysis`), the snackbar to `/jobs?job=<id>` (`jobPath`); the board's first options from its Engine tab (`computerAnalysisSeed`). |
+| `src/blocks/panels/BoardEngineControls/`, `src/views/main/EngineMenu.tsx`, `src/lib/engineSearchSettings.ts` | **The engine, since CTA-181** — the header's play / pause and its menu (the eval bar, *Write evaluations into the game*: `BoardEngineControls`), and the search settings every board uses, from the top bar's Engine menu (**infinite analysis**, depth 1–40, move time 0–300 s on lichess's marks, lines, **threads, hash** up to what the engine running takes: the `EngineSearchSettingsForm` block) — one global set ([`docs/engine.md`](../../docs/engine.md) §5.2). The Engine tab (`AnalysisEngineForm`) went with it. |
+| `src/views/shared/EngineOptionsChangedPrompt.tsx`, `src/blocks/dialogs/EngineOptionsChangedDialog/` | **"Engine options changed"** (CTA-181, §2): a saved analysis opened whose settings differ from the ones in effect — asked once, Dismiss or Use these settings. |
+| `src/views/tools/analysis/NewJob.tsx`, `gameJob.ts`, `computerAnalysisSeed.ts` | **New Job** (CTA-177, §1.3): the screen side of `NewJobDialog`, shared by the board's header and the saved list — the game's job found (`jobOfGame`), the choice first when there is one, Start (`enqueueComputerAnalysis`), the snackbar to `/jobs?job=<id>` (`jobPath`); the board's first options from the global search settings (`computerAnalysisSeed`, CTA-181). |
 | `src/views/tools/analysis/AnalysisEvalReport.tsx` | **The report and eval graph at the top of the Moves tab** (CTA-174's, moved there by CTA-177, §1.3) of a tree carrying `[%eval]`s. |
 | `src/blocks/dialogs/NewJobDialog/`, `src/blocks/forms/ComputerAnalysisForm/` | The dialog (CTA-177): the choice when the game has a job, then the form with Start and Cancel in its actions row. The form (CTA-174): threads, hash, lines (by what the engine declared, `engineOptionState`), depth, time per move, the early stop's depth; side, first move and colour, last move; under a collapsed Advanced the thresholds and the variation range; the light / medium / full boxes; why Start is off (`computerAnalysisStartNote`). The report and graph are the Jobs screen's blocks, `ComputerAnalysisReport` (with `onStep`) and `EvalGraph` ([`jobs.md`](./jobs.md)). |
 | `src/views/tools/analysis/AnalysisArrows.tsx`, `src/blocks/forms/ArrowSettingsFields/` | The Arrows tab (CTA-98, §1.1): the next-move arrows switch, the width source and the palette — and the move marks switch (CTA-168). The fields block is shared with the settings screen. |
@@ -73,7 +75,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/lib/savedAnalyses.ts` | **The record**, pure: `SavedAnalysis`, `savedAnalysisOf`, `savedAnalysisFrom` (the normaliser), `savedAnalysisDerivedName`, `batchAnalysesOf`, `analysisGamesOfText` (a text's games as analyses, CTA-141), `savedAnalysisCatalogOf`. |
 | `src/lib/savedAnalysisStore.ts` | **The store** (`chessapp.analyses`, object store `analyses`): `saveAnalysis`, `addAnalyses`, `fileSavedAnalysis`, `renameSavedAnalysis`, `updateSavedAnalysisSettings`, `removeSavedAnalyses`, `unfileAnalysesIn`, `findSavedAnalysisGame`; cap `MAX_SAVED_ANALYSES` (20,000). |
 | `src/lib/savedAnalysisFolders.ts` + `savedAnalysisFolderStore.ts` | The folders: an `AnalysisFolder` *is* a `GameFolder` (`lib/savedGameFolders.ts`, the nested model: cycles cut, dangling parents read as top level); create / rename / move (never into its own subtree) / delete (sub-folders re-parent, analyses become Unfiled) or delete deep (`removeAnalysisFoldersDeep`, CTA-147 — the bulk delete's, the whole subtree gone); the picks model (`analysisPicksOf` — a folder's pick is its whole subtree; the toggles keep no folder checked with its contents partly picked); cap 100. |
-| `src/lib/analysisSettings.ts` | `AnalysisSettings` (depth, move time, lines, `infinite`, `threads`, `hashMb` — CTA-160 — and `writeEvals`, CTA-167), the defaults (depth 20, no time limit, infinite off, Play with Engine's 1 thread and 16 MB, evaluations not written), `ANALYSIS_SETTING_BOUNDS`, `ANALYSIS_UCI_OPTION` (`MultiPV`, `Threads`, `Hash`), `analysisUciOptionsOf` (the ceilings held) / `withClampedAnalysisUciOptions`, `analysisSettingsFrom` (a record from before reads `infinite` off and Play's threads and hash, and `writeEvals` off). |
+| `src/lib/analysisSettings.ts` | `AnalysisSettings` — what a record keeps: the global search settings in effect (depth, move time, lines, `infinite`, `threads`, `hashMb`) and the session's `writeEvals` (CTA-167); `analysisSettingsOf` (the two together, CTA-181), the defaults (the search settings' — depth 20, no time limit, infinite off, 1 thread and 16 MB — evaluations not written), `analysisUciOptionsOf` (`MultiPV`, `Threads`, `Hash`, the ceilings held), `analysisSettingsFrom` (a record from before reads `infinite` off, the default threads and hash, and `writeEvals` off — and marks each field it lacked, `missingFieldsOf`, so it is never a difference). |
 | `src/lib/arrowSettings.ts` | The Arrows tab's ids (CTA-98): `ArrowWidthSource`, `ArrowPaletteId`, their defaults and readers (`arrowWidthSourceFrom`, `arrowPaletteFrom`). |
 | `src/lib/nextMoveWeights.ts` | Each width source's weights at a branch (`nextMoveWeights`), the `[%eval]` reader (`evalOf`), and which sources a tree offers (`arrowWidthSourcesIn`). Pure. The `games` tag's reader is `lib/gamesTag.ts`. |
 | `src/lib/gameReference.ts` + `gameCatalog.ts` | **The `?game=` carrier** (§3). |
@@ -100,14 +102,16 @@ beside the report's and graph's (CTA-174, CTA-177).
   position is a side line; replaying one that is there follows it.
 - **The engine starts off** (CTA-148) — on the Analysis Board, the Library's
   game board and the Openings explorer alike, all on `useAnalysisSession`: no
-  search runs until the reader switches the header's engine on. The engine and
-  the eval bar are switched independently. The engine moves a piece only while
+  search runs until the reader switches the header's engine on — a play /
+  pause button (`BoardEngineControls`, CTA-181; a switch before). The engine
+  and the eval bar (in the button's menu) are switched independently. The engine moves a piece only while
   the header's **Play** is on (`usePlayToggle`, off at the start, disabled while
   the engine is off, paused by any step that is not one move forward), and then
   only for the side not at the bottom.
 - **The header** holds the name (and the record's notes), the opening,
   **Analyse** (the New Job dialog, §1.3), Save, Play, Settings (over a record)
-  and the engine switch — no previous / next and
+  and the engine's play / pause with its menu (the eval bar, *Write
+  evaluations into the game* — CTA-181) — no previous / next and
   no link to the list (the workspace's tree has both; outside one the sidebar
   leads there). **The opening is one line of link text** (`CurrentOpening`'s
   `oneLine`, this board only): the name cut with an ellipsis before the Save
@@ -122,17 +126,18 @@ beside the report's and graph's (CTA-174, CTA-177).
   at the left end of the captured-pieces strips, the orientation deciding which
   is at the top. A position, or an analysis with no names, has none.
 - **How long the engine searches** (CTA-160, [`docs/engine.md`](../../docs/engine.md)
-  §5.1): to the Engine tab's depth (default 20) and move time (default none),
-  or — **Infinite analysis**, lichess's switch, off by default — until the
+  §5.1, §5.2): to the global depth (default 20) and move time (default none) —
+  the top bar's Engine menu, every board's since CTA-181 —
+  or — **Infinite analysis**, lichess's switch there, off by default — until the
   position changes or the engine is switched off. **While Play is on the depth
   and time decide** whatever the switch says (`useAnalysisSession`: `infinite
   && !playing`): Play needs a search that ends with a move. The same holds on
   every board over `useAnalysisSession`, and the repertoire player takes the
   switch too (it has no Play).
-- **Write evaluations into the game** (CTA-167) — an Engine-tab switch, off
-  by default, on this board only (`AnalysisEngineForm`'s `offerWriteEvals`;
-  the other boards over `useAnalysisSession` do not offer it, and their
-  settings read it off). While it is on, every search that finishes — to its
+- **Write evaluations into the game** (CTA-167) — a switch in the header's
+  engine menu (CTA-181; the Engine tab's before), off by default, on this
+  board only (`BoardEngineControls`' `writeEvals`; the other boards over
+  `useAnalysisSession` do not offer it, and their settings read it off). While it is on, every search that finishes — to its
   depth, or ended early by a step or the engine switched off, at the depth it
   reached; under infinite analysis and Play too — is written on the move whose
   position was searched as `[%eval pawns,depth]` (the start position into the
@@ -143,7 +148,8 @@ beside the report's and graph's (CTA-174, CTA-177).
   (`useAnalysisSession`: the engine module's `onSearchFinished` →
   `recordEvaluation` through the core's `annotateTree`). Kept with the
   record's `AnalysisSettings` (`writeEvals`, §2.1).
-- **Tabs: Moves · Map · Load · Export · Engine · Arrows.**
+- **Tabs: Moves · Map · Load · Export · Arrows** — no Engine tab since
+  CTA-181; **Clear** (back to an empty board, a new analysis) is under Load.
   Moves and Map are kept mounted; Moves opens with a tree's report and eval
   graph (§1.3) above the move list. The footer holds the comment block, the changes strip, Play's
   status line and the next-moves bar (on the Moves tab).
@@ -265,12 +271,13 @@ evaluations are read at the top of Moves.
   With none, the dialog opens on the form.
 - **The form** (`ComputerAnalysisForm` in the dialog, Start and Cancel in its
   actions row): **No time limit** is a switch over the time slider (as the
-  Engine tab's infinite analysis is — a job's search must end, so "infinite"
+  Engine menu's infinite analysis is — a job's search must end, so "infinite"
   here is the depth alone deciding, `moveTimeMs` 0; the slider then starts at
   1 s and switching it off brings back the last time set). **On the board** its
-  first options are the Engine tab's depth, move time, lines, threads and hash,
-  the early stop at the depth, the rest the defaults (`computerAnalysisSeed`),
-  and it follows the Engine tab until the reader changes one of its own — then
+  first options are the global search settings' depth, move time, lines,
+  threads and hash (the top bar's Engine menu, CTA-181), the early stop at the
+  depth, the rest the defaults (`computerAnalysisSeed`), and it follows them
+  until the reader changes one of its own — then
   they are the board's, kept while the dialog is closed and opened again. **On
   the list** it opens afresh each time on the defaults
   (`DEFAULT_COMPUTER_ANALYSIS_OPTIONS`) with the reader's engine
@@ -296,7 +303,7 @@ evaluations are read at the top of Moves.
   far are the Jobs screen's (`jobLiveAnalysis`, CTA-178).
 - **The report and the eval graph** sit at the top of the **Moves** tab, above
   the move list, whenever the tree on screen carries `[%eval]`s — an output of
-  a computer analysis, a lichess export, the evaluations the Engine tab wrote
+  a computer analysis, a lichess export, the evaluations the board wrote
   (CTA-167): `evalSeriesOf` / `reportFromTree` over the tree as it stands, so
   an edit shows at once (`AnalysisEvalReport.tsx`, decided with the reader).
   The graph (`EvalGraph`) marks the move on the board and moves it
@@ -408,10 +415,21 @@ there does not).
   just loaded, a tree handed over — saves through `SaveAnalysisDialog`: a name
   (seeded from the tags) and a folder.
 - **A reload or closed tab with changes unsaved asks first** (`beforeunload`).
+- **"Engine options changed"** (CTA-181): the search settings are the
+  reader's global ones, so a record opened (`?analysis=`, a workspace step)
+  whose `AnalysisSettings` differ from them — lines, depth, move time,
+  infinite, Threads, Hash; `writeEvals` is the session's — asks **once**, as it
+  opens (`useAnalysisBoard`'s `optionChanges`, `searchSettingsChanges`): a line
+  per difference, the record's value then the current one; **Dismiss** keeps
+  the reader's, **Use these settings** puts the record's back into the global
+  set, held to the engine running (the dialog says beforehand which would be
+  held, and to what). A field the stored row did not carry (read as its
+  default) is never a difference. Update and Save as copy write the settings
+  in effect.
 - **The record is a tree as PGN** (`treeToPgn` / `parsePgnTree` — side lines,
-  comments and NAGs are the point), the `AnalysisSettings` (the Engine tab's,
-  *Write evaluations into the game* among them — CTA-167; a record without it
-  reads it off), the orientation,
+  comments and NAGs are the point), the `AnalysisSettings` (the search
+  settings in effect when it was saved — CTA-181 — and *Write evaluations into
+  the game*, CTA-167; a record without it reads it off), the orientation,
   **where the reader stands** as SAN from the root (`sanPathTo` /
   `nodeAtSanPath` — node ids do not survive a PGN round trip; the path stops
   at the last move it recognises), the name, the folder, and the settings of

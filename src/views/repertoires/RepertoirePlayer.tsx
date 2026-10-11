@@ -11,17 +11,10 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { ChangesStrip, CurrentOpening } from "../../blocks/panels";
+import { BoardEngineControls, ChangesStrip, CurrentOpening } from "../../blocks/panels";
 import type { ChessboardOptions } from "react-chessboard";
 
-import {
-  analysisUciOptionsOf,
-  withClampedAnalysisUciOptions,
-  DEFAULT_ANALYSIS_SETTINGS,
-  type AnalysisSettings,
-} from "../../lib/analysisSettings";
-import { AnalysisEngineForm } from "../../blocks/forms";
-import { engineLimitsOf } from "../../lib/engineSettings";
+import { analysisUciOptionsOf } from "../../lib/analysisSettings";
 import { FieldLabel, SideToggle, SwitchField } from "../../design-system/components/forms";
 import { BackButton } from "../../design-system/components/navigation";
 import { IconAction, ToggleIconAction } from "../../design-system/components/toolbars";
@@ -52,6 +45,9 @@ import BoardShell from "../board/core/BoardShell";
 import { useBoardCore } from "../board/core/useBoardCore";
 import { useEngineModule } from "../board/core/useEngineModule";
 import { useEngineChoice } from "../shared/useEngineChoice";
+import { useEngineSearchSettings } from "../shared/useEngineSearchSettings";
+import { ClearBoardButton } from "../shared/ClearBoardButton";
+import { boardEngineStateOf, usePublishBoardEngineState } from "../main/boardEngineState";
 import { useTrainerModule, type TrainerStatus } from "../board/core/useTrainerModule";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import RepertoireGamesMenu from "./RepertoireGamesMenu";
@@ -75,7 +71,7 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  * | Base | `useBoardCore({ orientation })` | facing the reader's side; both colours move from any node — a reader tries moves against the file, and past a line's end plays both |
  * | Trainer | `useTrainerModule` | the opponent: in the player behind the **Autoplay** setting (off by default), always on in a game — see that file for the "replies to a move, never to a position" rule |
  * | Game | `useRepertoireGame` | a game's score, finished lines and coverage; inert in the player |
- * | Engine | switch, **off by default**, **no reply** | the pinned best-variations block and the eval bar when asked for; it never moves a piece |
+ * | Engine | the header's play / pause, **off by default**, **no reply** (`BoardEngineControls`, with the eval bar in its menu; the search settings the top bar's Engine menu — CTA-181) | the pinned best-variations block and the eval bar when asked for; it never moves a piece |
  * | Autosave | ❌ | the session is the reader's, the record is the file's |
  * | Tree view | `useVariationsExplorer` (`views/explorer/`, CTA-72) | the Moves and Map tabs, the comment block, the next-moves bar and the arrows — the shared explorer, given what is the player's as options ([`.claude/rules/tree-views.md`](../../../.claude/rules/tree-views.md)) |
  *
@@ -87,7 +83,7 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  * - **Every move the repertoire does not have is an extension** — added under
  *   the node on screen and tinted in the move list; `extensionIdsOf` against
  *   the ids the repertoire arrived with (or last saved), recomputed, never
- *   tracked. The header's download writes them out; the Engine tab's "Clear"
+ *   tracked. The header's download writes them out; the Settings tab's "Clear"
  *   drops them.
  * - **Changes are kept on the reader's say-so** (the player's; a game never
  *   writes). While the session's tree differs from the record, the header's
@@ -110,10 +106,11 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  *   a session change like any other — the Save button, the strip, the Map
  *   and `?at=` all follow the edited tree. The Map's written moves carry the
  *   same menu (CTA-67), in the tab and full screen, and redraw as it edits.
- * - **Tabs: Moves · (Score) · Map · Settings · Engine.** Settings holds the
+ * - **Tabs: Moves · (Score) · Map · Settings.** Settings holds the
  *   side, Autoplay (player only — and the header's **Play** button, a second
- *   control over the same state), the next-move arrows and the engine's
- *   switch; the Engine tab is disabled while the engine is off; Score is a
+ *   control over the same state), the next-move arrows and Clear (the
+ *   engine's switch is the header's play / pause, and the Engine tab went,
+ *   with CTA-181); Score is a
  *   game's; the Map (the explorer's `TreeMap.tsx`) is the player's — its
  *   dots links to their positions — and Backtracking's, with the coverage.
  *   Get to the end has none.
@@ -340,13 +337,9 @@ function RepertoirePlayer({
     The engine, off by default. No `onBestMove`: it never moves a piece.
   */
   const [engineOn, setEngineOn] = useState(false);
-  const [settings, setSettings] = useState<AnalysisSettings>(DEFAULT_ANALYSIS_SETTINGS);
+  // The search settings are the reader's global ones — the top bar's Engine menu (CTA-181).
+  const { settings } = useEngineSearchSettings();
   const [showEvalBar, setShowEvalBar] = useState(true);
-  const onUciOptionsReady = useCallback(
-    (clamped: Readonly<Record<string, number>>) =>
-      setSettings((current) => withClampedAnalysisUciOptions(current, clamped)),
-    [],
-  );
   // The reader's engine (Settings → Engine, CTA-153): every board runs it from its next search.
   const { engineId } = useEngineChoice();
   const engine = useEngineModule({
@@ -360,8 +353,8 @@ function RepertoirePlayer({
       () => analysisUciOptionsOf({ multiPv: settings.multiPv, threads: settings.threads, hashMb: settings.hashMb }, engineId),
       [settings.multiPv, settings.threads, settings.hashMb, engineId],
     ),
-    onUciOptionsReady,
   });
+  usePublishBoardEngineState(boardEngineStateOf(engineOn, engine.searching));
   const topLine = engine.analysis.lines.find((line) => line !== undefined);
 
   // The repertoire's own view opens as its settings say (on unless the reader
@@ -517,7 +510,7 @@ function RepertoirePlayer({
   // Leaving with changes unsaved — a reload, a closed tab — asks first.
   useUnsavedWorkGuard(changed);
 
-  /** The Engine tab's "Clear": the repertoire as the record has it, from the start. */
+  /** "Clear" (the Settings tab's, the Engine tab's until CTA-181): the repertoire as the record has it, from the start. */
   const clear = () => {
     loadTree(repertoire);
     requestReply(null);
@@ -646,6 +639,14 @@ function RepertoirePlayer({
                 {autoplay ? <PauseRoundedIcon fontSize="small" /> : <PlayArrowRoundedIcon fontSize="small" />}
               </IconAction>
             )}
+            {/* The engine's play / pause and its menu — the eval bar (CTA-181). */}
+            <BoardEngineControls
+              engineOn={engineOn}
+              onEngineOnChange={setEngineOn}
+              showEvalBar={showEvalBar}
+              onShowEvalBarChange={setShowEvalBar}
+              testId={id}
+            />
             <IconAction label={t("repertoires.play.restart")} onClick={restart} testId={`${id}-restart`}>
               <RestartAltRoundedIcon fontSize="small" />
             </IconAction>
@@ -680,8 +681,7 @@ function RepertoirePlayer({
         requestedMultiPv: settings.multiPv,
         engineOn,
         onPlayVariation: core.playVariation,
-        // A disabled tab is never the one showing.
-        activeTab: tab === "engine" && !engineOn ? "settings" : tab,
+        activeTab: tab,
         onTabChange: setTab,
         keepMounted: KEEP_MOUNTED,
         tabs: [
@@ -756,28 +756,6 @@ function RepertoirePlayer({
                 onShowArrowsChange={setShowArrows}
                 chanceArrows={game === undefined ? chanceArrows : undefined}
                 onChanceArrowsChange={setChanceArrows}
-                engineOn={engineOn}
-                onEngineOnChange={setEngineOn}
-              />
-            ),
-          },
-          {
-            id: "engine",
-            label: t("repertoires.detail.tabs.engine"),
-            // Its subject is switched off in Settings until the reader asks.
-            disabled: !engineOn,
-            content: (
-              <AnalysisEngineForm
-                testId="analysis"
-                settings={settings}
-                onChange={(patch: Partial<AnalysisSettings>) =>
-                  setSettings((current) => ({ ...current, ...patch }))
-                }
-                engineOptions={engine.engineOptions}
-                engineOn={engineOn}
-                showEvalBar={showEvalBar}
-                onShowEvalBarChange={setShowEvalBar}
-                deviceLimits={engineLimitsOf(engine.descriptor)}
                 onClear={clear}
               />
             ),
@@ -827,8 +805,9 @@ function RepertoirePlayer({
 /** One on/off setting: the switch, and a line on what it does. */
 /**
  * The Settings tab: the session's knobs — side, Autoplay (the player's only),
- * arrows, the play-chance arrows' switch (the player's only too), engine —
- * one labelled row each. Presentational: the screen owns the state, since
+ * arrows, the play-chance arrows' switch (the player's only too) — one
+ * labelled row each, and Clear. (The engine's switch is the header's play /
+ * pause since CTA-181.) Presentational: the screen owns the state, since
  * changing side restarts the session.
  */
 function PlaySettings({
@@ -841,8 +820,7 @@ function PlaySettings({
   onShowArrowsChange,
   chanceArrows,
   onChanceArrowsChange,
-  engineOn,
-  onEngineOnChange,
+  onClear,
 }: {
   id: string;
   side: Side;
@@ -855,8 +833,8 @@ function PlaySettings({
   /** `undefined` where there is no switch — a game must not show the odds. */
   chanceArrows: boolean | undefined;
   onChanceArrowsChange: (next: boolean) => void;
-  engineOn: boolean;
-  onEngineOnChange: (next: boolean) => void;
+  /** Clear — the session's additions dropped (the Engine tab's, until CTA-181). */
+  onClear: () => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -913,16 +891,8 @@ function PlaySettings({
           help={t("repertoires.play.chanceArrowsHelp")}
         />
       )}
-      <SwitchField
-          size="small"
-          // The player's tests reach the input inside the switch.
-          testIdOn="control"
-        testId={`${id}-setting-engine`}
-        checked={engineOn}
-        onChange={onEngineOnChange}
-        label={t("repertoires.play.engine")}
-        help={t("repertoires.play.engineHelp")}
-      />
+      {/* The Clear the Engine tab had (CTA-181 took the tab away). */}
+      <ClearBoardButton testId="analysis-clear" onClear={onClear} />
     </Box>
   );
 }

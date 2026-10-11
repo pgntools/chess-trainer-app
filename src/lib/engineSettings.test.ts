@@ -18,7 +18,7 @@ import {
   sameEngineSettings,
   uciOptionsOf,
   usesEloStrength,
-  withClampedUciOptions,
+  withClampedStrength,
 } from "./engineSettings";
 import type { EngineOption } from "./engineTypes";
 
@@ -36,11 +36,19 @@ describe("the Elo request", () => {
     expect(ENGINE_SETTING_BOUNDS.elo).toEqual({ min: 1320, max: 3190 });
   });
 
-  it("goes to the engine module with UCI_LimitStrength asked on — both strength controls requested", () => {
+  it("goes to the engine module without UCI_LimitStrength — the preset's call since CTA-181 — and no Skill Level on an Elo engine", () => {
     expect(uciOptionsOf({ ...DEFAULT_ENGINE_SETTINGS, elo: 1700 })).toEqual({
-      "Skill Level": 10,
       UCI_Elo: 1700,
-      UCI_LimitStrength: 1,
+      MultiPV: 3,
+      Threads: 1,
+      Hash: 16,
+    });
+  });
+
+  it("asks for the Skill Level too where the engine is strengthened by it alone", () => {
+    expect(uciOptionsOf({ ...DEFAULT_ENGINE_SETTINGS, skillLevel: 5 }, undefined, { bySkill: true })).toEqual({
+      "Skill Level": 5,
+      UCI_Elo: DEFAULT_ENGINE_SETTINGS.elo,
       MultiPV: 3,
       Threads: 1,
       Hash: 16,
@@ -49,14 +57,17 @@ describe("the Elo request", () => {
 
   it("is re-clamped to the bounds the running engine declared, the same object when nothing moved", () => {
     const current = { ...DEFAULT_ENGINE_SETTINGS, elo: 3500 };
-    const clamped = withClampedUciOptions(current, { UCI_Elo: 3190 });
+    const clamped = withClampedStrength(current, { UCI_Elo: 3190, Threads: 1 });
     expect(clamped.elo).toBe(3190);
+    expect(clamped.threads).toBe(current.threads);
     expect(clamped).not.toBe(current);
 
     const same = { ...DEFAULT_ENGINE_SETTINGS, elo: 1800 };
-    expect(withClampedUciOptions(same, { UCI_Elo: 1800 })).toBe(same);
+    expect(withClampedStrength(same, { UCI_Elo: 1800 })).toBe(same);
     // An engine that declares no UCI_Elo reports none: the request stands.
-    expect(withClampedUciOptions(same, {})).toBe(same);
+    expect(withClampedStrength(same, {})).toBe(same);
+    // Only the strength: the search settings are the reader's global ones, never cut back (CTA-181).
+    expect(withClampedStrength(same, { Threads: 1, Hash: 8 })).toBe(same);
   });
 
   it("reads back from stored JSON, the default for a record from before it was asked", () => {

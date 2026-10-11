@@ -72,9 +72,12 @@ describe("a repertoire's own view — the player, on the v2 board", () => {
     expect(screen.getByTestId("repertoire-board-panel")).toBeInTheDocument();
     expect(screen.queryByTestId("repertoire-board-panel-variations")).not.toBeInTheDocument();
     expect(screen.getByTestId("repertoire-board-panel-status")).toBeInTheDocument();
-    for (const tab of ["moves", "settings", "engine"]) {
+    for (const tab of ["moves", "settings"]) {
       expect(screen.getByTestId(`repertoire-board-panel-tab-${tab}`)).toBeInTheDocument();
     }
+    // No Engine tab (CTA-181): the engine is the header's play / pause, its search the top bar's.
+    expect(screen.queryByTestId("repertoire-board-panel-tab-engine")).not.toBeInTheDocument();
+    expect(screen.getByTestId("repertoire-board-setting-engine")).toHaveAttribute("aria-pressed", "false");
     // The player (CTA-63): its games a menu away, no game running.
     expect(screen.getByTestId("repertoire-board-games")).toBeInTheDocument();
     expect(screen.queryByTestId("repertoire-board-panel-tab-score")).not.toBeInTheDocument();

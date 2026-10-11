@@ -196,7 +196,7 @@ it. The board says what it says.
 
 ### `[%eval]` written — the Analysis Board's engine (CTA-167), `lib/engineEvals.ts`
 
-The Analysis Board's Engine tab has **Write evaluations into the game**
+The Analysis Board's engine menu (beside its play / pause, CTA-181 — the Engine tab's before) has **Write evaluations into the game**
 (off by default — [`analysis-board.md`](./analysis-board.md) §1). While it is
 on, each search that **finishes** — at the moment `useEngineModule` records
 the score in `evalsByFen` (`onSearchFinished`) — is written into the tree:

@@ -125,9 +125,11 @@ describe("the Openings explorer — the board", () => {
 
   it("has the Analysis Board's tabs beside the book, and nothing that saves", () => {
     mount();
-    for (const id of ["book", "moves", "map", "load", "export", "engine"]) {
+    for (const id of ["book", "moves", "map", "load", "export"]) {
       expect(screen.getByTestId(`openings-panel-tab-${id}`)).toBeInTheDocument();
     }
+    // No Engine tab: the search settings are the top bar's Engine menu (CTA-181).
+    expect(screen.queryByTestId("openings-panel-tab-engine")).not.toBeInTheDocument();
     expect(screen.getByTestId("openings-play")).toBeInTheDocument();
     expect(screen.queryByTestId("openings-save")).not.toBeInTheDocument();
     expect(screen.queryByTestId("openings-changes")).not.toBeInTheDocument();
@@ -281,12 +283,22 @@ describe("the Openings explorer — accessible (CTA-113)", () => {
     const user = userEvent.setup();
     mount();
     expect(screen.getByRole("button", { name: i18n.t("openings.controls.analysis") })).toBeInTheDocument();
-    const engine = screen.getByRole("switch", { name: i18n.t("openings.engineSwitch") });
-    // It starts off (CTA-148).
-    expect(engine).not.toBeChecked();
+    // The engine's play / pause (CTA-181) — it starts off (CTA-148).
+    const engine = screen.getByRole("button", { name: i18n.t("boardEngine.toggle") });
+    expect(engine).toHaveAttribute("aria-pressed", "false");
     engine.focus();
-    await user.keyboard(" ");
-    expect(engine).toBeChecked();
+    await user.keyboard("{Enter}");
+    expect(engine).toHaveAttribute("aria-pressed", "true");
     await expectNoAxeViolations(document.body);
+  });
+
+  it("clears back to the tree's own start from its Load tab — the Engine tab's Clear, moved (CTA-181)", async () => {
+    const user = userEvent.setup();
+    mount(`/openings?fen=${encodeURIComponent(AFTER_E4)}`);
+    drag("c7", "c5");
+    expect(boardOptions().position).toBe(AFTER_E4_C5);
+    await user.click(screen.getByTestId("openings-panel-tab-load"));
+    await user.click(screen.getByRole("button", { name: i18n.t("analysis.settings.clear") }));
+    expect(boardOptions().position).toBe(AFTER_E4);
   });
 });

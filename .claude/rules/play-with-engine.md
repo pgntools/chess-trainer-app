@@ -29,14 +29,14 @@ covers what it adds. The board core, the engine protocol and testing are
 | `src/views/engine/play/usePlayGame.ts` | **The session**: `useBoardCore` + `useEngineModule` + `usePlayToggle` (on from the start) + `useAutosave` to the played-games store; Replay and Resign. Also `arrivalOf` — the URL read once. |
 | `src/views/engine/play/PlayWithEngine.tsx` | The route: the arrival, and a **masked** `?saved=` sent on to `/engine/masked`. |
 | `src/views/engine/play/PlayedGameRead.tsx` | The play routes' wait for the store's first read before `arrivalOf` (`?saved=`). |
-| `src/views/engine/play/EngineSettings.tsx` | The Engine tab — strength (an Elo, or Skill Level with its Elo an estimate), depth, move time, lines, threads, hash, the eval bar — rendered from what the running engine declared (absent / pinned / adjustable). Also the body of the Lobby's Game tab. Since CTA-109 a one-line adapter over the `EngineSettingsForm` block (`src/blocks/forms/`, the three-state rule its `engineOptionState.ts`). |
+| `src/views/engine/play/EngineSettings.tsx` | The Engine tab — **the opponent's strength alone** since CTA-181 (an Elo, or Skill Level with its Elo an estimate), rendered from what the running engine declared (absent / pinned / adjustable); the Elo off, with a link to Settings → Engine, while the engine's preset has `UCI_LimitStrength` off (`limitStrength`). Also the body of the Lobby's Game tab (with the eval bar there). A one-line adapter over the `EngineSettingsForm` block (`src/blocks/forms/`, the three-state rule its `engineOptionState.ts`). Depth, move time, lines, Threads and Hash are the reader's global search settings — the top bar's Engine menu ([`docs/engine.md`](../../docs/engine.md) §5.2). |
 | `src/views/engine/games/PlayedGames.tsx` | **The Lobby** (board square): `ListScreenHeader`, the `PlayedGamesTable` block over `useTableUrlState`, the `PlayedGamesFilters` block, `DeleteManyDialog` (CTA-109). |
 | `src/blocks/tables/PlayedGamesTable/`, `src/blocks/forms/PlayedGamesFilters/` | The Lobby's table and filters as blocks (CTA-109): the columns, the sort (`lib`'s `sortedPlayedGames`), the row actions named by the row (`whenPlayed`), the unreadable row; the side and opening filters. |
 | `src/views/engine/games/NewGameForm.tsx` | The Lobby's right-hand panel: **Game** and **Board editor** tabs, and **Start**. |
 | `src/views/engine/games/usePlayedGames.ts` | The `useSyncExternalStore` binding (`undefined` until read). |
 | `src/lib/playedGames.ts` | **The record**, pure: `PlayedGame`, `playedGameOf`, `playedGameFrom` (the normaliser), `playedGameSummary` (with the per-side names and Elo the table's columns derive), `playedGameResult`, `resultOfFen`, `playedGameHeaders` (the PGN tags), `playedGameCatalogOf` (`?game=play/games/<id>`), and the table's own sort (CTA-100): `PLAYED_GAME_COLUMNS`, `PlayedGameRow`, `sortedPlayedGames`. |
 | `src/lib/playedGameStore.ts` | **The store** — `chessapp.engine`, object store `games`, over `idbRecordStore`; capped at `MAX_PLAYED_GAMES` (500, CTA-100). |
-| `src/lib/engineSettings.ts` | `EngineSettings`, the defaults, `ENGINE_SETTING_BOUNDS` (the ceilings: depth 40, move time 300 s — the marked slider's last time mark, CTA-163 — Threads 32, Hash 1024 MB — CTA-160, [`docs/engine.md`](../../docs/engine.md) §5.1), the move-time marks and their slot mapping (`MOVE_TIME_MARKS_S`, `moveTimeSliderValueOf` / `moveTimeOfSliderValue` — lichess's snap marks, the ∞ mark unlimited, the 0 mark the instant reply as 1 ms), `deviceEngineLimits` (what the Engine tab offers this device: Threads and Hash), `engineLimitsOf` (the forms' `deviceLimits` for an engine: the device's for an in-browser build, what an engine server's engine declares — CTA-175), `HOSTED_ENGINE_SETTING_BOUNDS` / `engineSettingBoundsOf` (an engine server's engine's wider Threads and Hash bounds), `SETTING_UCI_OPTION` / `uciOptionsOf` (which holds Hash and Threads to the ceilings of the engine that runs) / `withClampedUciOptions`, `approximateElo`, the non-throwing `engineSettingsFrom`. |
+| `src/lib/engineSettings.ts` | `EngineSettings`, the defaults, `ENGINE_SETTING_BOUNDS` (the ceilings: depth 40, move time 300 s — the marked slider's last time mark, CTA-163 — Threads 32, Hash 1024 MB — CTA-160, [`docs/engine.md`](../../docs/engine.md) §5.1), the move-time marks and their slot mapping (`MOVE_TIME_MARKS_S`, `moveTimeSliderValueOf` / `moveTimeOfSliderValue` — lichess's snap marks, the ∞ mark unlimited, the 0 mark the instant reply as 1 ms), `deviceEngineLimits` (what the device can give: Threads and Hash), `engineLimitsOf` (the device's for an in-browser build, what an engine server's engine declares — CTA-175), `HOSTED_ENGINE_SETTING_BOUNDS` / `engineSettingBoundsOf` (an engine server's engine's wider Threads and Hash bounds), `SETTING_UCI_OPTION` / `uciOptionsOf` (`UCI_Elo` always, `Skill Level` only `bySkill` — an engine without an Elo — and no `UCI_LimitStrength`, the preset's since CTA-181; Hash and Threads held to the ceilings of the engine that runs) / `withClampedStrength` (the strength alone takes the clamp back), `approximateElo`, the non-throwing `engineSettingsFrom` (marking the fields a row lacked). The search settings themselves are `lib/engineSearchSettings.ts`'s, the reader's global set. |
 | `src/lib/newGameLink.ts` | The new-game link: `newGameParams` (the form → query) and its reader (query → options, each field validated and clamped on its own). |
 | `src/views/board/core/usePlayToggle.ts` | **Play** (`chessboard.md` §9.2.6), shared with the Analysis Board. |
 | Tests | `PlayWithEngine.test.tsx`, `EngineSettings.test.tsx`, `views/engine/games/PlayedGames.test.tsx` (the Lobby's table, the form, the Board editor tab), `src/lib/playedGames.test.ts` (the record, the store and the table's sort), `newGameLink.test.ts`, and the two propagation tests in `src/views/board/`. |
@@ -71,9 +71,14 @@ prefixed `play-with-engine-`. Locale keys: `playEngine.*` (the screen) and
   anything to lose), **Resign** (asked first; the reader's side loses —
   `resigned` on the record, the PGN's `Result` and `Termination` — Play stays
   off, the board takes no more moves but can still be stepped through), and
-  the engine switch.
+  the engine's **play / pause** with its menu (the eval bar — `BoardEngineControls`,
+  CTA-181).
 - **Tabs: Moves · Engine** (the Map went with CTA-91 — a game is one tree on
-  a board; every other board keeps its Map). The engine's lines are pinned
+  a board; every other board keeps its Map). **The Engine tab is the
+  opponent's strength** (CTA-181) — with the engine that plays and the arrows
+  switch; the search — depth, move time, lines, Threads, Hash, infinite
+  analysis while Play is paused — is the reader's global settings, the top
+  bar's Engine menu, read live (`usePlayGame`). The engine's lines are pinned
   above every tab (`BoardPanel`), so there is no Variations tab.
 - **A game that has ended shows its result and the way to analyse it**
   (CTA-91, lichess's game-over treatment): once `playedGameResult` is
@@ -96,7 +101,7 @@ prefixed `play-with-engine-`. Locale keys: `playEngine.*` (the screen) and
 | `?saved=<id>` | Resume a stored game: the tree, the node the reader was on, the side, the settings, the evals, a resignation. **Beats everything else.** Waits for the store's first read (`PlayedGameRead`). |
 | `?fen=` | A start position (`parseFen`; ignored if it does not pass). With no `side`, Black to move sets the reader to Black and turns the board — otherwise the engine would move the instant the screen opened. It is also what Replay returns to. |
 | `side` | `white` / `black`. **Beats the side to move of a `?fen=`.** |
-| `skill` (0–20), `elo` (1320–3190), `depth` (1–40), `movetime` (ms, 0–300000; 0 is no limit, 1 the instant reply — CTA-163), `lines` (1–10), `threads` (1–32), `hash` (1–1024 — 2048 crashed the tab, CTA-160; for an engine server's engine, the reader's choice in Settings, both to its own wider bounds — CTA-175), `evalbar` (`1`/`0`), `variations` (`1`/`0`) | The Lobby's engine options. **Each field on its own**: absent or unreadable is its default, out of range is clamped (and the engine module re-clamps the UCI options to what the build declares). `variations` is the pinned lines' start (CTA-90): `0`, the game opens with them hidden — the block's own header checkbox is the live control from there. |
+| `skill` (0–20), `elo` (1320–3190), `evalbar` (`1`/`0`), `variations` (`1`/`0`) | The Lobby's options — the strength alone since CTA-181: an older link's `depth`, `movetime`, `lines`, `threads` and `hash` are read as nothing, the search settings being the reader's global ones. **Each field on its own**: absent or unreadable is its default, out of range is clamped (and the engine module re-clamps the UCI options to what the build declares). `variations` is the pinned lines' start (CTA-90): `0`, the game opens with them hidden — the block's own header checkbox is the live control from there. |
 
 No parameters is the plain game with the defaults. A masked `?saved=` here is
 sent to `/engine/masked` (history replace) — a game belongs to the screen it
@@ -157,8 +162,11 @@ was begun on.
 - **The panel: the new-game form** (`NewGameForm.tsx`), from the defaults on
   every visit, in two tabs:
   - **Game** — the side (White / Black, since CTA-90) over `EngineSettings`
-    itself, fed by a `useEngineModule` with `enabled: false`: it handshakes
-    for the options and never searches. Under the eval bar, a **Variations**
+    itself — the strength and the eval bar (CTA-181: the search settings are
+    the top bar's; the Elo off while the engine's preset leaves
+    `UCI_LimitStrength` off, as on the game) — fed by a `useEngineModule`
+    with `enabled: false`: it handshakes for the options and never searches.
+    Under the eval bar, a **Variations**
     checkbox (CTA-90) — the same choice as the pinned block's own header
     checkbox, deciding what the game starts with; the block's checkbox is
     the live control on the game view.
@@ -208,11 +216,23 @@ was begun on.
   (`usesEloStrength`: both `UCI_Elo` and `UCI_LimitStrength`; the three-state
   rule of `.claude/rules/chessboard.md` §4.1). `EngineSettings.elo` is a request
   like the rest (default 2100, clamped to the engine's 1320–3190 and re-clamped
-  on a switch); `uciOptionsOf` asks for both `UCI_Elo` and `UCI_LimitStrength`
-  and the engine keeps the ones it has — `UciEngine` writes a `check` as `true`
-  / `false`. The Engine tab's strength slider is the Elo itself on such an
+  on a switch); `uciOptionsOf` asks for `UCI_Elo` and the engine keeps it if
+  it has it — `UciEngine` writes a `check` as `true` / `false`. The Engine tab's strength slider is the Elo itself on such an
   engine, Skill Level (its Elo an estimate) otherwise; the new-game link carries
-  `elo=`.
+  `elo=`. **Whether the Elo applies is the engine's preset's** (CTA-181):
+  `uciOptionsOf` no longer asks `UCI_LimitStrength` on — the selected preset's
+  value reaches the engine (Stockfish's default, off), and while it is off the
+  Elo slider is disabled with a note and a link to Settings → Engine
+  (`presetLimitsStrength`, `usePlayGame`'s `limitStrength`), the engine playing
+  at the preset's strength. `Skill Level` is sent only to an engine without an
+  Elo (`capabilities.strength === "skill"`): on an Elo engine it is the preset's.
+- **The search settings are the reader's, recorded with the game** (CTA-181):
+  the record's `EngineSettings` carry the depth, move time, lines, Threads and
+  Hash in effect while it was played. **Resuming** a game whose own differ
+  from the ones in effect asks once, **"Engine options changed"**
+  (`usePlayGame`'s `optionChanges`, the `EngineOptionsChangedPrompt`): Dismiss
+  keeps the reader's, Use these settings puts the game's back, held to the
+  engine running. A field an older record lacks is never a difference.
 - **The write is idempotent**, because the writer is an effect: mounting a
   resumed game, the settings clamp landing and an engine score arriving all
   rebuild the record. `savePlayedGame` does nothing when it is the one stored.
@@ -265,12 +285,16 @@ was begun on.
 
 ## 7. Recipes
 
-- **A new engine option**: add it to `EngineSettings`, its default and
-  `ENGINE_SETTING_BOUNDS`, map it in `SETTING_UCI_OPTION` if it is a UCI
-  option, read it back in `engineSettingsFrom`, render it in
-  `EngineSettings.tsx` by the three-state rule (`chessboard.md` §4.1), and add
-  it to `newGameParams` and its reader with a clamp. An older record reads it
-  as its default.
+- **A new engine option**: a search setting every board uses is the global
+  set's (`lib/engineSearchSettings.ts`: the type, its default and bound, the
+  normaliser, the Engine menu's form, `searchSettingsChanges` — and, for the
+  record, `EngineSettings` / `engineSettingsFrom`); an option only a game
+  sets (as the strength) goes in `EngineSettings`, its default and
+  `ENGINE_SETTING_BOUNDS`, `SETTING_UCI_OPTION` if it is a UCI option,
+  `engineSettingsFrom`, `EngineSettings.tsx` by the three-state rule
+  (`chessboard.md` §4.1), and `newGameParams` and its reader with a clamp;
+  anything else is the engine's preset's (Settings → Engine). An older record
+  reads it as its default.
 - **A new header control**: in `PlayScreen`'s header slot; if it changes the
   game's state, the action is `usePlayGame`'s, and if it changes the record,
   add the field to `PlayedGame`, `playedGameFrom` and the store's unchanged

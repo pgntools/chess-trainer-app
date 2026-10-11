@@ -7,6 +7,7 @@ import { afterEach, beforeEach, vi } from "vitest";
 import { cleanup, configure } from "@testing-library/react";
 
 import { DEVELOPMENT_NOTICE_KEY, resetDevelopmentNotice } from "../lib/developmentNotice";
+import { resetEngineSearchSettings } from "../lib/engineSearchSettings";
 
 /*
   How long a `findBy…` / `waitFor` waits: 5 s, not testing-library's 1 s —
@@ -111,6 +112,8 @@ beforeEach(() => {
 afterEach(async () => {
   cleanup();
   localStorage.clear();
+  // The engine's search settings (CTA-181) are a preference: what this visit kept goes with the storage.
+  resetEngineSearchSettings();
   // Every record store is IndexedDB's: what each store kept, and the
   // databases themselves, go as `localStorage` does. (The Library's
   // database is deleted by the tests that use it — `resetLibraryCollectionStore`;
