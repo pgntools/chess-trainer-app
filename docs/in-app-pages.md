@@ -282,7 +282,8 @@ too) — keep them when editing the operator's paragraph.
 
 Copy the lines from [`.env.example`](../.env.example) into `.env.local`
 (gitignored) and fill them in, then `yarn dev` / `yarn build`. In a worktree,
-`.jst/bootstrap.sh` keeps every line of `.env.local` but its own port line.
+`.jst/bootstrap.sh` copies the main checkout's `.env.local` in when the
+worktree lacks one, then keeps every line of it but its own port line.
 
 ### In CI and the deploys
 
