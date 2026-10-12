@@ -598,7 +598,7 @@ describe("a Case's board (CTA-186)", () => {
     expect(screen.getByTestId("analysis-case-details-info-Event")).toHaveTextContent("Club Championship");
     expect(screen.getByTestId("analysis-case-details-info-White")).toHaveTextContent("Carlsen");
     await expectNoAxeViolations(details);
-    expect(within(details).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Info", "Graph", "Display"]);
+    expect(within(details).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Info", "Graph", "Display", "Jobs"]);
     // No evaluations in the game: Graph is off.
     expect(within(details).getByRole("tab", { name: "Graph" })).toBeDisabled();
     await user.click(within(details).getByRole("tab", { name: "Display" }));

@@ -96,6 +96,12 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
         element: devScreen(() => import("./views/analysisV2/CaseWorkspaceMain")),
         handle: { title: "pages.analysisCase" },
       },
+      // Jobs V2 (CTA-188): a Case's computer analysis, Analysis V2's own background jobs — `?job=<id>` the job open.
+      {
+        path: "/analysis/jobs",
+        element: devScreen(() => import("./views/analysisV2/jobs/JobsV2Main")),
+        handle: { title: "pages.analysisJobs" },
+      },
       // The MDX editor (src/mdxEditor/): an article's MDX beside its live
       // rendering, with every component an article embeds. Compiled in the
       // browser, so the MDX compiler is in this dev chunk alone — and only

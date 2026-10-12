@@ -8,6 +8,7 @@ import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "rea
 import { useTranslation } from "react-i18next";
 
 import { NewCaseDialog, ProjectPickerDialog, type NewCaseSpec } from "../../blocks/dialogs";
+import { ProjectLinks } from "../../blocks/lists";
 import { CasesTable, caseDisplayName, type CaseAction } from "../../blocks/tables";
 import { ConfirmDialog, DeleteManyDialog, FormDialog } from "../../design-system/components/dialogs";
 import { InlineAlert } from "../../design-system/components/feedback";
@@ -29,13 +30,15 @@ import {
   gameCaseOf,
   positionCaseOfFen,
   positionCaseOfGame,
+  projectLinksOf,
   type AnalysisCase,
   type AnalysisProject,
 } from "../../lib/analysisProjects";
 import { newRecordId } from "../../lib/recordId";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
-import { browserPath, caseListContextOf, casePath } from "./paths";
-import { useAnalysisCases, useAnalysisProjects } from "./useAnalysisProjects";
+import { unlinkAnalysisProjects } from "../../lib/analysisProjectLinkStore";
+import { browserPath, caseListContextOf, casePath, projectPath } from "./paths";
+import { useAnalysisCases, useAnalysisProjects, useProjectLinks } from "./useAnalysisProjects";
 
 /** The dialog open over the Cases, and the Case it is about. */
 type Dialog = { kind: "new" } | { kind: "rename" | "move" | "duplicate" | "delete"; record: AnalysisCase };
@@ -68,6 +71,7 @@ function ProjectScreen() {
   const { projectId = "" } = useParams();
   const projects = useAnalysisProjects();
   const cases = useAnalysisCases();
+  const links = useProjectLinks();
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [rename, setRename] = useState("");
   const [busy, setBusy] = useState(false);
@@ -149,6 +153,13 @@ function ProjectScreen() {
   };
 
   const named = (record: AnalysisCase) => caseDisplayName(record, t);
+  // The Projects it links to and is linked from (CTA-188) — each a link there, with Unlink.
+  const ends = projectLinksOf(links ?? [], projects, project.id);
+  const linkRow = ({ link, project: other }: (typeof ends.to)[number]) => ({
+    linkId: link.id,
+    name: other.name || t("analysisV2.project.untitled"),
+    link: { component: RouterLink, to: projectPath(other.id) },
+  });
 
   return (
     <>
@@ -213,6 +224,16 @@ function ProjectScreen() {
             {problem}
           </InlineAlert>
         )}
+        <Box sx={{ flexShrink: 0, pb: 1 }}>
+          <ProjectLinks
+            linksTo={ends.to.map(linkRow)}
+            linkedFrom={ends.from.map(linkRow)}
+            onUnlink={(row) => {
+              void unlinkAnalysisProjects(row.linkId).then((failed) => setProblem(failed === undefined ? null : t("analysisV2.links.problem")));
+            }}
+            testId="analysis-v2-project-links"
+          />
+        </Box>
         <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           <CasesTable
             rows={shown}

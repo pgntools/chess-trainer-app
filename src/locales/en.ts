@@ -69,8 +69,9 @@ const en = {
     designSystem: "Design system",
     /** The dev-only theme editor (CTA-115), in the Development folder. */
     themeEditor: "Theme editor",
-    /** Analysis V2 (CTA-186), dev-only: its Projects browser. */
+    /** Analysis V2 (CTA-186), dev-only: its Projects browser — and Jobs V2 beside it (CTA-188). */
     analysisProjects: "Projects",
+    analysisJobs: "Jobs",
     /** The MDX editor (CTA-137, `yarn mdx-editor:start` only): its article lobby and the editor itself, in its own folder — and its Components gallery (CTA-140). */
     mdxArticles: "Articles",
     mdxEditor: "Editor",
@@ -225,6 +226,8 @@ const en = {
     analysisProjects: "Projects",
     analysisProject: "Project",
     analysisCase: "Case",
+    /** Jobs V2 (CTA-188), dev-only. */
+    analysisJobs: "Jobs V2",
     mdxEditor: "MDX editor",
     mdxArticles: "MDX editor — articles",
     mdxComponents: "MDX editor — components gallery",
@@ -2756,6 +2759,12 @@ const en = {
       rangeHelp: "How far below the best line another line may score and still be kept.",
       variants: "Variants to save",
       variantsHelp: "Each one ticked is saved as a new saved analysis, all from one run of the engine.",
+      /** Jobs V2 (CTA-188): the engine and its preset, each a select, and one variant for a merge into the Case. */
+      engineSelect: "Engine",
+      preset: "Preset",
+      presetHelp: "The preset sets the depth and the time per move, your search settings Threads, Hash and lines — each can be changed for this job.",
+      variant: "Variant",
+      variantHelpSingle: "Merged into this Case — one variant.",
       variantHelp: {
         light: "The best alternative on each inaccuracy, mistake and blunder.",
         medium: "Every alternative within the variation range, on each inaccuracy, mistake and blunder.",
@@ -3130,6 +3139,7 @@ const en = {
         info: "Info",
         display: "Display",
         graph: "Graph",
+        jobs: "Jobs",
       },
     },
     siblings: {
@@ -3149,6 +3159,95 @@ const en = {
       },
       engine: "Engine",
       problem: "Not saved — the browser refused it.",
+    },
+    /** Jobs V2 (CTA-188): a Case's computer analysis — the Jobs V2 view, the Case's Jobs tab, the New Job V2 popup, the shell's indicator. */
+    jobs: {
+      title: "Jobs V2",
+      intro: "A Case's computer analysis runs here in the background, one at a time — Analysis V2's own jobs, apart from the Jobs screen's. Each finished position is kept, so a job a reload cut short resumes where it stopped.",
+      loading: "Reading the jobs…",
+      newJob: "New job",
+      newJobTitle: "New job — Jobs V2",
+      newJobIntro: "The Case's mainline is analysed in the background; its results go where you choose below.",
+      caseNone: "No jobs for this Case yet.",
+      caseList: "This Case's jobs",
+      caseJob: "{{date}} · {{target}}",
+      targets: {
+        project: "new Cases in its project",
+        linked: "new Cases in a linked project",
+        case: "into this Case",
+      },
+      target: {
+        title: "Where to save the results",
+        kind: "Results go to",
+        kinds: {
+          project: "New Cases in this project ({{name}})",
+          linked: "A linked project",
+          case: "Into this Case",
+        },
+        help: {
+          project: "Each variant ticked becomes a new Game Case beside this one.",
+          linked: "Each variant ticked becomes a new Game Case in a project this one links to.",
+          case: "One variant: its evaluations, mistakes and comments are merged into this Case. Your own moves, lines and comments stay.",
+        },
+        linked: "Which project",
+        linkedNew: "A new project",
+        linkedExisting: "An existing project",
+        name: "The new project's name",
+        nameRequired: "A new project needs a name.",
+        nameHelp: "Filed beside {{name}}, and linked from it.",
+        project: "Project",
+        projectHelp: "Linked from {{name}} if it is not already.",
+        alreadyLinked: "already linked",
+      },
+      targetProblem: {
+        name: "Name the new project to start.",
+        project: "Pick a project to start.",
+      },
+      defaultLinkedName: "{{name}} — analysis",
+      queued: "Jobs V2: the computer analysis of {{name}} is queued.",
+      openJob: "Open in Jobs V2",
+      openSource: "Open the Case",
+      openCase: "Open the {{variant}} Case",
+      openMerged: "Open the Case, the analysis merged in",
+      openProject: "Open {{name}}",
+      projectGone: "a project deleted since",
+      reportMissing: "The Case holding this job's results is gone, so its report cannot be shown.",
+      confirmDelete: "The job “{{name}}” and its progress go. The Cases it made or merged into stay.",
+      facts: {
+        preset: "Preset",
+        target: "Results go to",
+      },
+      targetFacts: {
+        project: "New Cases in {{name}}",
+        linked: "New Cases in {{name}} (linked)",
+        case: "Merged into the Case",
+      },
+      errors: {
+        source: "The Case sent for analysis could not be read again.",
+        engine: "The engine stopped answering. Resume to try again from the last finished position.",
+        storage: "The results could not be saved — the browser refused the write. Free some space, then resume.",
+        "too-many": "The Cases are at their limit, so the results could not be saved. Delete some, then resume.",
+        target: "Where the results were to go is gone — the project or the Case was deleted.",
+      },
+      indicator: {
+        running: "Jobs V2 {{done}}/{{total}}",
+        queued: "Jobs V2: {{count}} queued",
+        label: "Jobs V2: {{name}}, {{done}} of {{total}} positions",
+        labelQueued: "Jobs V2: {{count}} queued",
+        started: "Jobs V2 started: {{name}}.",
+        paused: "Jobs V2 paused: {{name}}.",
+        done: "Jobs V2 finished: {{name}}.",
+        failed: "Jobs V2 failed: {{name}}.",
+        cancelled: "Jobs V2 cancelled: {{name}}.",
+      },
+    },
+    /** The links between Projects (CTA-188), on a Project's screen. */
+    links: {
+      to: "Links to",
+      from: "Linked from",
+      none: "None",
+      unlink: "Unlink {{name}}",
+      problem: "The link could not be removed — the browser refused the write.",
     },
   },
   footer: {

@@ -34,6 +34,8 @@ describe("importing the engine layer", () => {
     await import("../../views/board/core/useEngineModule");
     // The background job runner (CTA-173): started by the shell's effect, never at import.
     await import("../jobRunner");
+    // Jobs V2's runner (CTA-188), likewise.
+    await import("../jobV2Runner");
 
     // Listing, describing and resolving are reads of data.
     expect(registry.BUILTIN_ENGINES.length).toBeGreaterThan(1);
