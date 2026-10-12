@@ -3139,8 +3139,6 @@ const en = {
         export: "Export",
       },
       engine: "Engine",
-      saving: "Saving…",
-      saved: "Saved",
       problem: "Not saved — the browser refused it.",
     },
   },

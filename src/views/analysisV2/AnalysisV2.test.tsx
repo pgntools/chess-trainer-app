@@ -463,7 +463,8 @@ describe("a Case's board (CTA-186)", () => {
       expect(analysisCasesSnapshot()![0]).toMatchObject({ path: ["d4"], orientation: "black" }),
     );
     expect(analysisCasesSnapshot()![0].pgn).toContain("(1. d4)");
-    expect(await screen.findByTestId("analysis-case-save-status")).toHaveTextContent("Saved");
+    // Nothing says Saved: the header speaks only of a refused write.
+    expect(screen.queryByTestId("analysis-case-save-status")).toBeNull();
 
     view.unmount();
     await reload();

@@ -203,7 +203,7 @@ a placeholder for now — all kept with the Case as its `display`, autosaved;
 **Settings** is `CaseSettingsTab`: the side the board faces, White / Black
 (the Case's orientation), the eval bar (its `display`) and *Write evaluations
 into the game* (the session's, as on the Analysis Board)), and the header:
-the name, the opening, the save status, Play and the engine's on / off as a
+the name, the opening, a refused save (nothing else), Play and the engine's on / off as a
 **small switch** labelled with the top bar's Engine icon (`SmartToyRounded`, read as "Engine") — not the other boards' play / pause and options menu
 (`BoardEngineControls`), whose choices are the Settings tab here.
 `options.id` `analysis-case`.
@@ -217,9 +217,9 @@ the name, the opening, the save status, Play and the engine's on / off as a
   tree as PGN (`core.pgn`, memoised on the tree), the SAN path to the node on
   screen and the orientation — through `saveCaseState` on every change;
   `sameCaseState` makes a state the record holds a no-op (no write, no
-  re-order). The header's status reads the record live: *Saved* while it holds
-  what the board shows, *Saving…* while a write is out, and the browser's
-  refusal in the error colour.
+  re-order). **No saved / saving status**: the header speaks only when the
+  browser refuses a write, in the error colour (a `status` region, mounted
+  throughout, so it is announced).
 - **Reopening — a reload, another visit — restores** the tree, the move and
   the orientation exactly.
 - **The Project's Cases beside the board, in the main menu's place**

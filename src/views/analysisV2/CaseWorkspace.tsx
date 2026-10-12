@@ -29,7 +29,6 @@ import {
   casesOf,
   caseNode,
   caseTree,
-  sameCaseState,
   type AnalysisCase,
   type CaseDisplay,
   type CaseState,
@@ -81,8 +80,8 @@ type CaseBoardProps = {
  * (side lines, comments, NAGs, `[%eval]`s), the move on screen, the
  * orientation and how the board draws, written in place as the reader works — a state the record
  * already holds writes nothing — so reopening the Case finds it where it was
- * left. There is no Save button; the header says Saving… / Saved, or that the
- * browser refused.
+ * left. There is no Save button and no saved / saving status — the header
+ * speaks only when the browser refuses a write.
  */
 export function CaseBoard({ record, onOpenSiblings, siblingsOpen = false }: CaseBoardProps) {
   const { t } = useTranslation();
@@ -129,8 +128,6 @@ export function CaseBoard({ record, onOpenSiblings, siblingsOpen = false }: Case
     [record.id],
   );
   useAutosave({ enabled: true, record: state, save });
-  // The record is the store's, read live: saved is the record holding what the board shows.
-  const saved = sameCaseState(record, state);
 
   const explorer = useVariationsExplorer({
     testId: "analysis-case",
@@ -183,13 +180,13 @@ export function CaseBoard({ record, onOpenSiblings, siblingsOpen = false }: Case
               </Typography>
               <CurrentOpening {...currentOpening} oneLine testId="analysis-case-current-opening" />
             </Box>
+            {/* Silent while the autosave works; mounted throughout, so a refusal is announced. */}
             <Box role="status" sx={{ flexShrink: 0 }}>
-              <StatusText
-                tone={refused ? "error" : saved ? "success" : "neutral"}
-                testId="analysis-case-save-status"
-              >
-                {t(refused ? "analysisV2.workspace.problem" : saved ? "analysisV2.workspace.saved" : "analysisV2.workspace.saving")}
-              </StatusText>
+              {refused && (
+                <StatusText tone="error" testId="analysis-case-save-status">
+                  {t("analysisV2.workspace.problem")}
+                </StatusText>
+              )}
             </Box>
             <PlayToggleButton
               testId="analysis-case-play"

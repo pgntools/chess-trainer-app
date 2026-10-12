@@ -2542,8 +2542,6 @@ const he: typeof en = {
         export: "ייצוא",
       },
       engine: "מנוע",
-      saving: "שומר…",
-      saved: "נשמר",
       problem: "לא נשמר — הדפדפן סירב.",
     },
   },
