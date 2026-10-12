@@ -80,6 +80,13 @@ export type CollectionImportDialogProps = {
   intoName?: string;
   /** What went wrong the last time Import was pressed — in the reader's words. */
   problem?: ReactNode;
+  /**
+   * **A plain choice of games** (CTA-186, Analysis V2's new Project): what
+   * came in, the filters and the count — no *Split by event*, no tournament
+   * mark — under the host's title and button. Absent, the Library's popup as
+   * it was.
+   */
+  choiceOnly?: { title: string; confirmLabel: string };
   /** Cancel, Escape or the backdrop. */
   onCancel: () => void;
   /**
@@ -143,7 +150,16 @@ export type CollectionImportDialogProps = {
  * `ProgressDialog` in this one's place. Its words are the Library's
  * (`library.upload.*`).
  */
-function CollectionImportDialog({ source, intoName, problem, onCancel, onImport, testId, dialogProps }: CollectionImportDialogProps) {
+function CollectionImportDialog({
+  source,
+  intoName,
+  problem,
+  choiceOnly,
+  onCancel,
+  onImport,
+  testId,
+  dialogProps,
+}: CollectionImportDialogProps) {
   const { t } = useTranslation();
   const id = (part: string) => `${testId}-${part}`;
   /** The Elo slider's thumbs; `null` until moved, i.e. the whole span. */
@@ -195,7 +211,7 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
   const splittable = kept.some((rows) => eventGroupsOf(rows).length > 1);
   // A switch the filters turned off reads off, and imports off — until the
   // filters let it back on, where the reader left it.
-  const splitting = splitByEvent && splittable;
+  const splitting = splitByEvent && splittable && choiceOnly === undefined;
   const splitHelp = !splittable
     ? keptCount === 0
       ? t("library.upload.options.splitNothingKept")
@@ -205,7 +221,7 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
     : t("library.upload.options.splitHelp");
 
   // CTA-142: the tournament mark. A new collection only; one event across the kept games, or a split.
-  const newCollection = intoName === undefined;
+  const newCollection = intoName === undefined && choiceOnly === undefined;
   const oneEvent = newCollection && !splitting && keptCount > 0 && canBeTournament(kept.flat());
   const wantsGuess = oneEvent || (newCollection && splitting);
   /** Each file's games' tags — read once, and only once a guess is wanted. */
@@ -313,7 +329,13 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
     <BaseDialog
       open
       onClose={onCancel}
-      title={intoName === undefined ? t("library.upload.options.title") : t("library.upload.options.intoTitle", { name: intoName })}
+      title={
+        choiceOnly !== undefined
+          ? choiceOnly.title
+          : intoName === undefined
+            ? t("library.upload.options.title")
+            : t("library.upload.options.intoTitle", { name: intoName })
+      }
       width="sm"
       testId={testId}
       dialogProps={dialogProps}
@@ -328,7 +350,9 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
             onClick={() => onImport(kept, splitting, choice())}
             data-testid={id("confirm")}
           >
-            {t(intoName === undefined ? "library.upload.options.import" : "library.upload.intoSave")}
+            {choiceOnly !== undefined
+              ? choiceOnly.confirmLabel
+              : t(intoName === undefined ? "library.upload.options.import" : "library.upload.intoSave")}
           </Button>
         </>
       }
@@ -465,7 +489,7 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
             off with its reason where the split would make one collection per
             file anyway (CTA-127). The reason rides the same description the
             help does, so it is read with the switch. */}
-        {intoName === undefined && (
+        {newCollection && (
           <SwitchField
             label={t("library.upload.options.split")}
             checked={splitting}
@@ -522,7 +546,7 @@ function CollectionImportDialog({ source, intoName, problem, onCancel, onImport,
           </Box>
         )}
 
-        {source.files.length > 1 && (
+        {source.files.length > 1 && choiceOnly === undefined && (
           <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid={id("several")}>
             {t(
               intoName === undefined

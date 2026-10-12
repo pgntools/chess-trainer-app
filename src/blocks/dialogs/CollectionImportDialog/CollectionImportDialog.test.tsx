@@ -177,3 +177,24 @@ describe("CollectionImportDialog — Split by event (CTA-127)", () => {
     });
   });
 });
+
+describe("CollectionImportDialog — a plain choice of games (CTA-186)", () => {
+  it("keeps the filters and the count, under the host's title and button, with no split and no mark", async () => {
+    const onImport = vi.fn();
+    render(
+      <CollectionImportDialog
+        source={ONE_EVENT}
+        choiceOnly={{ title: "Choose the games for the project", confirmLabel: "Create project" }}
+        onCancel={() => {}}
+        onImport={onImport}
+        testId="import"
+      />,
+    );
+    expect(screen.getByRole("dialog", { name: "Choose the games for the project" })).toBeInTheDocument();
+    expect(screen.queryByTestId("import-split")).toBeNull();
+    expect(screen.queryByTestId("import-mark-tournament-switch")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Create project" }));
+    expect(onImport).toHaveBeenCalledWith(expect.any(Array), false, {});
+    await expectNoAxeViolations(screen.getByRole("dialog"));
+  });
+});

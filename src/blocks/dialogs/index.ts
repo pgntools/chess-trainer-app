@@ -14,6 +14,7 @@ export * from "./ImportDialog";
 export * from "./IncompatibleImportDialog";
 export * from "./NewCaseDialog";
 export * from "./NewJobDialog";
+export * from "./NewProjectDialog";
 export * from "./OpeningTreePgnDialog";
 export * from "./ProjectPickerDialog";
 export * from "./SaveAsCollectionDialog";

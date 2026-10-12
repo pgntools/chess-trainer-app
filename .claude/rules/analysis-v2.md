@@ -10,6 +10,7 @@ paths:
   - "src/blocks/lists/ProjectsList/**"
   - "src/blocks/lists/CasesList/**"
   - "src/blocks/dialogs/NewCaseDialog/**"
+  - "src/blocks/dialogs/NewProjectDialog/**"
   - "src/blocks/dialogs/ProjectPickerDialog/**"
 ---
 
@@ -40,7 +41,7 @@ folders (nested) ──▶ Projects ──▶ Cases (game | position) ──▶ 
 | `src/lib/analysisProjectsEnabled.ts` | **The flag**: `ANALYSIS_PROJECTS_ENABLED = import.meta.env.DEV` — the module's Export / Import category in Settings — and **`analysisProjectStores()`**, the one way Settings reaches the three stores: dynamic imports under an *inline* `if (import.meta.env.DEV)`, `undefined` in a production build. Inline, because a dynamic import behind an imported constant is still followed by the bundler and its chunks emitted (orphaned) — one in a branch dead as written is not. Shipping the module is these two conditions (and §6). |
 | `src/lib/exportCategories.ts` | `OFFERED_EXPORT_CATEGORIES` — the Export / Import categories this build offers (Analysis V2's only with the flag); apart from `lib/dataExport.ts`, which Node reads too (the browser pass's seed). |
 | `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings), `paths.ts` (the addresses). |
-| `src/blocks/lists/ProjectsList/`, `CasesList/` (`caseDisplayName`), `src/blocks/dialogs/NewCaseDialog/`, `ProjectPickerDialog/` | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused. |
+| `src/blocks/lists/ProjectsList/`, `CasesList/` (`caseDisplayName`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`) | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused. |
 | `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws. The legacy screens import them from here. |
 | Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectStores.test.ts` (the three stores), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the dev-only database). |
 
@@ -117,6 +118,21 @@ One folder at a time: the trail (`Breadcrumbs`, links), its sub-folders (a
 row into each, how many Projects are under it) and its Projects (a row to
 each, how many Cases, when it changed) — `ProjectsList`. **New folder** and
 **New project** in the header; a new Project opens at once.
+
+**New project** is a popup (`NewProjectDialog`): a name (required — picking a
+file with none typed names it after the file) and, optionally, a `.pgn`
+whose games become its Cases (`collectionImportFileOf` reads it):
+
+- **no file** — an empty Project;
+- **one game** — a Project with that game as its one Game Case;
+- **several** — the Library's import popup opens on them
+  (`CollectionImportDialog` with `choiceOnly`: what came in, the Elo / date /
+  player filters and the count, no *Split by event*, no tournament mark),
+  and **Create project** makes a Game Case per game kept, in file order;
+  Cancel goes back to the name.
+
+All or nothing: Cases the store refuses take the Project back, and the
+popup says why; a game that will not parse is left out.
 
 | On | Rename | Move | Duplicate | Delete |
 | --- | --- | --- | --- | --- |

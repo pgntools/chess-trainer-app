@@ -7,7 +7,7 @@ import CreateNewFolderRoundedIcon from "@mui/icons-material/CreateNewFolderRound
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
-import { FolderMoveDialog, FolderNameDialog } from "../../blocks/dialogs";
+import { CollectionImportDialog, FolderMoveDialog, FolderNameDialog, NewProjectDialog } from "../../blocks/dialogs";
 import { ProjectsList, type ProjectAction, type ProjectFolderAction } from "../../blocks/lists";
 import { ConfirmDialog } from "../../design-system/components/dialogs";
 import { InlineAlert } from "../../design-system/components/feedback";
@@ -22,6 +22,7 @@ import {
   removeProjectFolderDeep,
   renameProjectFolder,
 } from "../../lib/analysisProjectFolderStore";
+import { addAnalysisCases } from "../../lib/analysisCaseStore";
 import {
   createAnalysisProject,
   duplicateAnalysisProject,
@@ -31,6 +32,7 @@ import {
 } from "../../lib/analysisProjectStore";
 import {
   caseCountsOf,
+  gameCaseOf,
   projectFolderChildren,
   projectFolderPath,
   projectFolderSubtree,
@@ -39,9 +41,15 @@ import {
   type AnalysisProject,
   type ProjectFolder,
 } from "../../lib/analysisProjects";
+import { collectionImportFileOf, type CollectionImportSource } from "../../lib/libraryCollections";
+import { parsePgnTree } from "../../lib/pgn";
+import { newRecordId } from "../../lib/recordId";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import { browserPath, projectPath } from "./paths";
 import { useAnalysisCases, useAnalysisProjects, useProjectFolders } from "./useAnalysisProjects";
+
+/** Why a picked file brought no game in — an `analysisV2.newProject.problem.*` key's last part. */
+const FILE_PROBLEMS: Readonly<Record<string, string>> = { empty: "empty", "too-large": "tooLarge", unreadable: "unreadable" };
 
 /** The dialog open over the browser, and what it is about. */
 type Dialog =
@@ -77,6 +85,10 @@ function ProjectsBrowser() {
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [deepDelete, setDeepDelete] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  /** The new-Project dialog's own state: writing, what went wrong, and a file of several games being chosen from. */
+  const [creating, setCreating] = useState(false);
+  const [createProblem, setCreateProblem] = useState<string | null>(null);
+  const [choosing, setChoosing] = useState<{ name: string; source: CollectionImportSource } | null>(null);
 
   const currentFolder = folderId === null ? null : folders?.find((folder) => folder.id === folderId);
   usePageTitle(currentFolder ? currentFolder.name || t("analysisV2.folder.untitled") : undefined);
@@ -121,6 +133,66 @@ function ProjectsBrowser() {
 
   const folderProblem = t("analysisV2.folder.problem");
   const projectProblem = t("analysisV2.project.problem");
+
+  /**
+   * **A new Project, with a Game Case per game** — none for a name alone.
+   * All or nothing: Cases the store refuses take the Project back. A game
+   * that will not parse is left out. Then the Project opens.
+   */
+  const makeProject = async (name: string, games: readonly string[]) => {
+    setCreating(true);
+    const now = new Date();
+    const trees = games.flatMap((pgn) => {
+      try {
+        return [parsePgnTree(pgn)];
+      } catch {
+        return [];
+      }
+    });
+    const made = await createAnalysisProject(name, here, now);
+    let failed = made === undefined ? projectProblem : null;
+    if (made !== undefined && trees.length > 0) {
+      const cases = trees.map((tree) => gameCaseOf({ id: newRecordId(now), projectId: made.id, name: "", now }, tree));
+      if ((await addAnalysisCases(cases)) !== undefined) {
+        await removeAnalysisProject(made.id);
+        failed = t("analysisV2.case.problem");
+      }
+    }
+    setCreating(false);
+    if (failed !== null || made === undefined) {
+      setCreateProblem(failed);
+      return;
+    }
+    setChoosing(null);
+    setDialog(null);
+    navigate(projectPath(made.id));
+  };
+
+  /** The dialog's Create: a name alone, one game, or — several — the choice of which. */
+  const createProject = async (name: string, file: File | undefined) => {
+    setCreateProblem(null);
+    if (file === undefined) {
+      await makeProject(name, []);
+      return;
+    }
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      setCreateProblem(t("analysisV2.newProject.problem.file"));
+      return;
+    }
+    const { file: read, reading } = collectionImportFileOf(text, file.size, file.name, file.name.replace(/\.pgn$/i, ""));
+    if (!reading.ok) {
+      setCreateProblem(t(`analysisV2.newProject.problem.${FILE_PROBLEMS[reading.problem] ?? "unreadable"}`));
+      return;
+    }
+    if (read.games.length === 1) {
+      await makeProject(name, read.games);
+      return;
+    }
+    setChoosing({ name, source: { name: file.name, size: file.size, zip: false, files: [read] } });
+  };
 
   return (
     <>
@@ -211,16 +283,41 @@ function ProjectsBrowser() {
         testId="analysis-v2-folder"
       />
 
-      {/* A new Project here, a Project renamed, or duplicated under a name. */}
+      {/* A new Project here: its name, and optionally a .pgn whose games become its Cases. */}
+      <NewProjectDialog
+        open={dialog?.kind === "newProject"}
+        onClose={() => {
+          setCreateProblem(null);
+          setDialog(null);
+        }}
+        onCreate={(name, file) => void createProject(name, file)}
+        busy={creating}
+        problem={choosing === null ? createProblem : null}
+        testId="analysis-v2-new-project-dialog"
+      />
+      {/* A file of several games: the Library's popup — what came in, the filters, the count — picks which. */}
+      {choosing !== null && (
+        <CollectionImportDialog
+          source={choosing.source}
+          choiceOnly={{ title: t("analysisV2.newProject.chooseTitle"), confirmLabel: t("analysisV2.newProject.chooseConfirm") }}
+          problem={createProblem ?? undefined}
+          onCancel={() => {
+            setCreateProblem(null);
+            setChoosing(null);
+          }}
+          onImport={(kept) => {
+            const [file] = choosing.source.files;
+            const games = (kept[0] ?? []).map((row) => file?.games[row.number - 1]).filter((pgn): pgn is string => pgn !== undefined);
+            void makeProject(choosing.name, games);
+          }}
+          testId="analysis-v2-choose-games"
+        />
+      )}
+
+      {/* A Project renamed, or duplicated under a name. */}
       <FolderNameDialog
-        open={dialog?.kind === "newProject" || dialog?.kind === "renameProject" || dialog?.kind === "duplicateProject"}
-        title={t(
-          dialog?.kind === "renameProject"
-            ? "analysisV2.project.renameTitle"
-            : dialog?.kind === "duplicateProject"
-              ? "analysisV2.project.duplicateTitle"
-              : "analysisV2.project.newTitle",
-        )}
+        open={dialog?.kind === "renameProject" || dialog?.kind === "duplicateProject"}
+        title={t(dialog?.kind === "duplicateProject" ? "analysisV2.project.duplicateTitle" : "analysisV2.project.renameTitle")}
         initial={
           dialog?.kind === "renameProject"
             ? dialog.project.name
@@ -233,11 +330,6 @@ function ProjectsBrowser() {
             void renameAnalysisProject(dialog.project.id, name).then((failed) => done(failed !== undefined, projectProblem));
           } else if (dialog?.kind === "duplicateProject") {
             void duplicateAnalysisProject(dialog.project.id, name).then((copy) => done(copy === undefined, projectProblem));
-          } else {
-            void createAnalysisProject(name, here).then((made) => {
-              done(made === undefined, projectProblem);
-              if (made !== undefined) navigate(projectPath(made.id));
-            });
           }
         }}
         onClose={() => setDialog(null)}
