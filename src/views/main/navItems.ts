@@ -5,6 +5,7 @@ import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import ConstructionRoundedIcon from "@mui/icons-material/ConstructionRounded";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
+import FolderSpecialRoundedIcon from "@mui/icons-material/FolderSpecialRounded";
 import WidgetsRoundedIcon from "@mui/icons-material/WidgetsRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
@@ -139,6 +140,10 @@ export const navItems = (): readonly NavItem[] => [
     icon: DashboardRoundedIcon,
     folder: "blog",
   },
+  // Analysis V2 (CTA-186): its Projects browser — dev-only while it is built.
+  ...(import.meta.env.DEV
+    ? [{ to: "/analysis", labelKey: "nav.analysisProjects", icon: FolderSpecialRoundedIcon, folder: "analysis-v2" }]
+    : []),
   // The Development section — dev-only: the design gallery (CTA-107), the theme editor (CTA-115) and the MDX editor.
   // The MDX editor (CTA-137), in its own folder — only under `yarn mdx-editor:start` (src/mdxEditor/enabled.ts).
   ...(MDX_EDITOR_ENABLED

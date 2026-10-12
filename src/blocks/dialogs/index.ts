@@ -12,6 +12,8 @@ export * from "./FolderMoveDialog";
 export * from "./FolderNameDialog";
 export * from "./ImportDialog";
 export * from "./IncompatibleImportDialog";
+export * from "./NewCaseDialog";
 export * from "./NewJobDialog";
 export * from "./OpeningTreePgnDialog";
+export * from "./ProjectPickerDialog";
 export * from "./SaveAsCollectionDialog";

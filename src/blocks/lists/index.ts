@@ -4,9 +4,11 @@
  * records and folders (a folder's actions, the folder picker, the saved
  * analyses and the repertoires as rows or cards).
  */
+export * from "./CasesList";
 export * from "./FolderActions";
 export * from "./FolderPicker";
 export * from "./OpeningBookList";
+export * from "./ProjectsList";
 export * from "./RepertoiresList";
 export * from "./SavedAnalysesList";
 export { SAVED_LIST_DEFAULT_VIEW, SAVED_LIST_VIEWS, type SavedListView } from "./savedListView";

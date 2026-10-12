@@ -32,7 +32,8 @@ import { MDX_EDITOR_ENABLED } from "./mdxEditor/enabled";
 
 /**
  * The **Development** section's routes (`chessboard.md` §9.5) — the design
- * gallery (CTA-107), the theme editor (CTA-115) and the MDX editor.
+ * gallery (CTA-107), the theme editor (CTA-115), the MDX editor and Analysis
+ * V2 while it is built (CTA-186).
  *
  * Dev-only, and this array is the whole of the gate. Two things make it
  * provable rather than hopeful:
@@ -76,6 +77,24 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
         path: "/dev/theme-editor",
         element: devScreen(() => import("./views/dev/themeEditor/Main")),
         handle: { ...FULL_WIDTH_ROUTE, title: "pages.themeEditor" },
+      },
+      // Analysis V2 (CTA-186, `.claude/rules/analysis-v2.md`): Projects in
+      // nested folders, their Cases, a Case's board — dev-only while it is
+      // built (`lib/analysisProjectsEnabled.ts` gates its Export / Import the same way).
+      {
+        path: "/analysis",
+        element: devScreen(() => import("./views/analysisV2/ProjectsBrowserMain")),
+        handle: { ...FULL_WIDTH_ROUTE, title: "pages.analysisProjects" },
+      },
+      {
+        path: "/analysis/projects/:projectId",
+        element: devScreen(() => import("./views/analysisV2/ProjectScreenMain")),
+        handle: { ...FULL_WIDTH_ROUTE, title: "pages.analysisProject" },
+      },
+      {
+        path: "/analysis/projects/:projectId/cases/:caseId",
+        element: devScreen(() => import("./views/analysisV2/CaseWorkspaceMain")),
+        handle: { title: "pages.analysisCase" },
       },
       // The MDX editor (src/mdxEditor/): an article's MDX beside its live
       // rendering, with every component an article embeds. Compiled in the

@@ -1,0 +1,220 @@
+---
+paths:
+  - "src/views/analysisV2/**"
+  - "src/lib/analysisProjects*"
+  - "src/lib/analysisProjectStore*"
+  - "src/lib/analysisProjectFolderStore*"
+  - "src/lib/analysisCaseStore*"
+  - "src/lib/analysisProjectsDb.ts"
+  - "src/lib/exportCategories.ts"
+  - "src/blocks/lists/ProjectsList/**"
+  - "src/blocks/lists/CasesList/**"
+  - "src/blocks/dialogs/NewCaseDialog/**"
+  - "src/blocks/dialogs/ProjectPickerDialog/**"
+---
+
+# Analysis V2 — Projects and Cases (CTA-186)
+
+A new analysis module, part of renewing the codebase: the reader's analysis
+organised into **Projects** filed in nested **folders**, each Project holding
+**Cases** — a **Game** or a **Position** — and each Case its own board,
+**autosaved** as the reader works. lichess's Studies and Chapters are the UX
+reference. The legacy Analysis module (`/tools/analysis`,
+`views/tools/analysis/`, `chessapp.analyses` — [`analysis-board.md`](./analysis-board.md))
+stays untouched and is the code and UI reference; it will be removed in a
+later issue, so **V2 imports nothing from `views/tools/analysis/`**.
+
+```
+folders (nested) ──▶ Projects ──▶ Cases (game | position) ──▶ the Case's board
+```
+
+---
+
+## 0. Where to look
+
+| Path | What lives there |
+| --- | --- |
+| `src/lib/analysisProjects.ts` | **The records**, pure: `ProjectFolder` (a `GameFolder`, `lib/savedGameFolders.ts`'s model and reads), `AnalysisProject`, `AnalysisCase` and its `AnalysisCaseSource`; the normalisers `projectFolderFrom`, `analysisProjectFrom`, `analysisCaseFrom`; the constructors `gameCaseOf`, `positionCaseOfFen`, `positionCaseOfGame`, `copiedCase`; `caseStateOf` / `sameCaseState` (the autosave's state and its idempotency); `caseDerivedName`, `gameCaseDerivedName`; `projectsHere`, `projectsUnder`, `casesOf`, `caseCountsOf`; the caps (`MAX_PROJECT_FOLDERS` 100, `MAX_ANALYSIS_PROJECTS` 1,000, `MAX_ANALYSIS_CASES` 10,000). |
+| `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, version 1: object stores `folders`, `projects`, `cases`, one `BroadcastChannel`. |
+| `src/lib/analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts` | **The stores** over `idbRecordStore` ([`database.md`](./database.md) §3): folders oldest first, Projects and Cases newest first; every operation a promise of `undefined` or `"storage"` / `"too-many"`. |
+| `src/lib/analysisProjectsEnabled.ts` | **The flag**: `ANALYSIS_PROJECTS_ENABLED = import.meta.env.DEV` — the module's Export / Import category in Settings — and **`analysisProjectStores()`**, the one way Settings reaches the three stores: dynamic imports under an *inline* `if (import.meta.env.DEV)`, `undefined` in a production build. Inline, because a dynamic import behind an imported constant is still followed by the bundler and its chunks emitted (orphaned) — one in a branch dead as written is not. Shipping the module is these two conditions (and §6). |
+| `src/lib/exportCategories.ts` | `OFFERED_EXPORT_CATEGORIES` — the Export / Import categories this build offers (Analysis V2's only with the flag); apart from `lib/dataExport.ts`, which Node reads too (the browser pass's seed). |
+| `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings), `paths.ts` (the addresses). |
+| `src/blocks/lists/ProjectsList/`, `CasesList/` (`caseDisplayName`), `src/blocks/dialogs/NewCaseDialog/`, `ProjectPickerDialog/` | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused. |
+| `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws. The legacy screens import them from here. |
+| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectStores.test.ts` (the three stores), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the dev-only database). |
+
+Locale keys: `analysisV2.*` (`browser`, `folder`, `project`, `case`,
+`newCase`, `workspace`), `nav.folders.analysisV2`, `nav.analysisProjects`,
+`pages.analysisProjects` / `analysisProject` / `analysisCase`, and the
+category's `settings.export.categories.analysisProjects` /
+`settings.import.top.analysisProjects` — in both catalogs. `options.id` is
+`analysis-case`; the test ids are `analysis-v2-*` (the lists) and
+`analysis-case-*` (the board).
+
+---
+
+## 1. Dev-only while it is built
+
+- **Routes**: three entries in `routes.tsx`'s `devRoutes`, each a
+  `React.lazy` import behind `import.meta.env.DEV`, so a production build has
+  no route and no chunk of it. The browser and a Project are
+  `FULL_WIDTH_ROUTE`s; the Case's board is a board route.
+- **Sidebar**: its own folder, *Analysis V2* (`analysis-v2`), with one entry,
+  *Projects* (`/analysis`) — spreads in `navFolders()` / `navItems()` gated on
+  `import.meta.env.DEV`.
+- **Export / Import**: the `analysisProjects` category exists in the format,
+  but only a build with the flag offers it (`lib/exportCategories.ts`), reads
+  its stores (`analysisProjectStores()` — `lib/dataExportSource.ts`,
+  `lib/dataImportTarget.ts`, `views/settings/useAnalysisProjectsCount.ts`)
+  or reads its file out of a zip (`readImport`'s `categories`).
+- **Not yet**: a pre-rendered page, an e2e a11y route, the legal pages'
+  mention of `chessapp.analysisProjects` — `legalDocuments.test.ts` fails the
+  day the flag stops being `import.meta.env.DEV`, to say the database must
+  join the pages then.
+- **Verify** after `yarn build`: `grep -rlE "analysisProjectStore|analysisCaseStore|chessapp\.analysisProjects|analysis-case|/analysis/projects|ProjectsBrowser|CaseWorkspace" dist/`
+  finds nothing — no route, chunk, store or database name. The format's own
+  code (`dataExport.ts` / `dataImport.ts`, the file name
+  `analysis-projects.json`) and the catalogs' words are in the main chunk.
+
+---
+
+## 2. The model
+
+- **A folder** holds sub-folders and Projects — never a Case. It is the app's
+  nested-folder model: a dangling parent reads as the top level, a cycle is
+  cut on read, and a move into its own subtree is refused on write.
+- **A Project** is a name (required when it is made — a blank one makes
+  nothing) and the folder it is filed in (`null` the top level).
+- **A Case** is
+  - its **type**, `game` or `position`, fixed when it is made — "Position" is
+    what it is, not what it was read from;
+  - its **source**, fixed too: `{ kind: "pgn", pgn, startPath, fen }` — one
+    game as `treeToPgn(parsePgnTree(…))` writes it (side lines, comments,
+    NAGs, `[%eval]`s kept), `startPath` the SAN line to where the Case begins
+    (`[]` for a Game) — or `{ kind: "fen", fen }`; `fen` is the position it
+    begins on in both;
+  - **the analysis on it**: `pgn` (the whole tree), `path` (where the reader
+    stands, as SAN from the start — `sanPathTo` / `nodeAtSanPath`; node ids do
+    not survive a PGN round trip) and `orientation`;
+  - its **name**, optional: `""` is derived — a Game from its tags (*White –
+    Black, Event, year*, the parts the tags name), a Position from its side to
+    move and move number ("Black to move, move 41"), in the reader's language
+    (`caseDisplayName`).
+- **To change a Case's type or source**, the reader duplicates it or makes a
+  new one; rename, move to another Project, duplicate and delete are the
+  operations.
+- **The engine search settings stay global** (the top bar's Engine menu); a
+  Case keeps none of its own.
+
+---
+
+## 3. The screens
+
+### 3.1 The Projects browser — `/analysis` (`?folder=<id>`)
+
+One folder at a time: the trail (`Breadcrumbs`, links), its sub-folders (a
+row into each, how many Projects are under it) and its Projects (a row to
+each, how many Cases, when it changed) — `ProjectsList`. **New folder** and
+**New project** in the header; a new Project opens at once.
+
+| On | Rename | Move | Duplicate | Delete |
+| --- | --- | --- | --- | --- |
+| a folder | `FolderNameDialog` | `FolderMoveDialog`, its subtree left out | — | a confirmation with a choice: **keep** what it holds (sub-folders and Projects move up a level, `removeProjectFolder`) or **delete it too** (the subtree, its Projects and their Cases, `removeProjectFolderDeep`), naming how many Projects |
+| a Project | `FolderNameDialog` | `FolderMoveDialog` | named "‹name› (copy)", beside it, **with its Cases** (`duplicateAnalysisProject`) | a confirmation that names how many Cases go with it |
+
+A refused write is an `InlineAlert` under the header. A `?folder=` that names
+no folder says so, with a way back.
+
+### 3.2 A Project — `/analysis/projects/<id>`
+
+Its Cases (`CasesList`): each named, its type and when it changed, a row to
+its board. **New case** opens `NewCaseDialog`:
+
+- **Game** — a PGN pasted or picked (`PgnInput`); several games show a list
+  to pick one from, and *One case per game (N)*, which makes them all.
+- **Position** — **from a FEN** (checked as it is typed, `parseFen`) or
+  **from a PGN** at a move picked from its mainline (*Start at*), the moves
+  before it kept.
+- A name, optional (none for one-per-game).
+
+One new Case opens on its board; several stay on the list. A Case is renamed
+(`""` gives it back its derived name), moved to another Project
+(`ProjectPickerDialog`, its own left out; off while there is no other),
+duplicated into this Project or another under a name ("‹name› (copy)"), and
+deleted after a confirmation. The route waits for the stores' first read,
+then says a Project that is not there.
+
+### 3.3 A Case's board — `/analysis/projects/<id>/cases/<caseId>`
+
+**Composed from the board core** ([`chessboard.md`](./chessboard.md) §9), as
+the Analysis Board is: `useAnalysisSession` (the core, the engine — off at the
+start, the reader's global search settings — and Play), `useVariationsExplorer`
+(the move list, map, comment block, next-move arrows, the PGN's shapes;
+editing on, *Play chances…* off), `BoardShell` and its panel — tabs **Moves ·
+Map · Export** (`PgnExportPanel`), the header the way back to the Project, the
+name, the opening, the save status, Play and the engine's play / pause with
+its menu (the eval bar, *Write evaluations into the game*). `options.id`
+`analysis-case`.
+
+- **Read once, as it mounts**, from its record: the tree, the node at
+  `path`, the orientation. A Game opens at its start facing White (a game does
+  not turn the board); a Position faces the side to move (set when it was
+  made) — from a PGN, at the move picked, its moves before it on the board.
+  The route keys the board by the Case, so another Case is a new board.
+- **Autosave, no Save button**: `useAutosave` writes `caseStateOf(…)` — the
+  tree as PGN (`core.pgn`, memoised on the tree), the SAN path to the node on
+  screen and the orientation — through `saveCaseState` on every change;
+  `sameCaseState` makes a state the record holds a no-op (no write, no
+  re-order). The header's status reads the record live: *Saved* while it holds
+  what the board shows, *Saving…* while a write is out, and the browser's
+  refusal in the error colour.
+- **Reopening — a reload, another visit — restores** the tree, the move and
+  the orientation exactly.
+
+---
+
+## 4. The store
+
+`chessapp.analysisProjects`, version 1, a database of its own (apart from
+`chessapp.analyses`, so the legacy module's removal takes nothing of it) —
+[`database.md`](./database.md) §1. Every row is read through its normaliser
+(a field an older row lacks reads as its default; a row without its identity
+is dropped).
+
+| Store | Order | Cap | Operations |
+| --- | --- | --- | --- |
+| `folders` | oldest first | 100 | `createProjectFolder`, `renameProjectFolder`, `moveProjectFolder` (never into its subtree), `removeProjectFolder` (keeps the contents: sub-folders re-parent, Projects re-filed up — `refileProjectsIn`), `removeProjectFolderDeep` (the subtree, `removeProjectsInFolders`), `addProjectFolders` (an import's, all or nothing) |
+| `projects` | newest first | 1,000 | `createAnalysisProject` (a name required), `renameAnalysisProject`, `moveAnalysisProject`, `duplicateAnalysisProject` (its Cases first, all or nothing), `removeAnalysisProject(s)` (their Cases with them — `removeCasesOfProjects`), `importAnalysisProjects` |
+| `cases` | newest first | 10,000 | `addAnalysisCases` (all or nothing), `renameAnalysisCase`, `moveAnalysisCase`, `duplicateAnalysisCase`, `removeAnalysisCases`, `saveCaseState` (the autosave, in place), `importAnalysisCases` |
+
+A delete runs folder → Projects → Cases as writes queued one after another,
+which is why `src/test/setup.ts` lets the writes settle three times over.
+
+---
+
+## 5. Export and Import
+
+The `analysisProjects` category ([`import-export.md`](./import-export.md)):
+one file, `analysis-projects.json` — `{ folders, projects }`: every folder as
+its path of names (parents first, empty ones too) and every Project as stored
+with its `folderPath` and its **Cases** as stored. Manifest version **4**
+(a v3 zip reads through the table, its upgrade the stamp alone). On the way
+in, folders are matched by their path of names and created where missing;
+Projects clash by their folder like the analyses (Merge / Override / Skip, a
+folder's own choice over the category's); each Project brings its Cases, each
+filed in it; an Override's Projects take their Cases with them; the Projects'
+and the Cases' caps both refuse the category. A build without the module
+leaves the file unread.
+
+---
+
+## 6. Shipping it, later
+
+1. `ANALYSIS_PROJECTS_ENABLED` to `true`; the routes out of `devRoutes`, the
+   nav spreads ungated.
+2. The database in both legal pages in both languages, and in
+   `legalDocuments.test.ts`'s `STORED` (that test fails until then).
+3. The routes in `e2e/a11y/routes.ts`, their pre-rendered pages
+   ([`static-pages.md`](./static-pages.md)), `pageDescriptions.*` for them.
+4. The legacy module's removal (its own issue): nothing here imports it.

@@ -9,6 +9,8 @@ import { ENGINE_SEARCH_SETTINGS_STORAGE_KEY } from "../../lib/engineSearchSettin
 import { ENGINE_PRESETS_DB_NAME } from "../../lib/enginePresetStore";
 import { JOBS_DB_NAME } from "../../lib/jobStore";
 import { LIBRARY_DB_NAME } from "../../lib/libraryDb";
+import { ANALYSIS_PROJECTS_DB_NAME } from "../../lib/analysisProjectsDb";
+import enabledSource from "../../lib/analysisProjectsEnabled.ts?raw";
 import { THEME_STORAGE_KEY } from "../../theme/themeChoice";
 import { LANGUAGE_STORAGE_KEY } from "../../i18n";
 import { legalDocument, legalLanguages, LEGAL_PAGES } from "./legalDocuments";
@@ -76,6 +78,13 @@ describe("the legal pages' documents (CTA-159)", () => {
         for (const name of STORED) expect(text, `${page} (${language}) names ${name}`).toContain(`\`${name}\``);
       }
     }
+  });
+
+  it("leave out a dev-only module's database until it ships — and fail the day it does (CTA-186)", () => {
+    // Analysis V2 is dev-only while it is built: no production build opens its database, so the pages do not name it.
+    expect(enabledSource).toMatch(/ANALYSIS_PROJECTS_ENABLED: boolean = import\.meta\.env\.DEV;/);
+    // Shipping it changes that line: then its database joins STORED, a line in both pages in both languages.
+    expect(STORED).not.toContain(ANALYSIS_PROJECTS_DB_NAME);
   });
 
   it("states that no cookies are set, and the Privacy Policy links the Cookies Notice and back", () => {

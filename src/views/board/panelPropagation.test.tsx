@@ -67,6 +67,8 @@ import LibraryGameBoard from "../library/LibraryGameBoard";
 import OpeningsBoard from "../openings/OpeningsBoard";
 import { parsePgnTree } from "../../lib/pgn";
 import MaskedPlay from "../engine/masked/MaskedPlay";
+import { CaseBoard } from "../analysisV2/CaseWorkspace";
+import { gameCaseOf } from "../../lib/analysisProjects";
 
 /** A game of an uploaded collection on the Library's board (CTA-75). */
 const LIBRARY_FIXTURE = {
@@ -83,6 +85,11 @@ const LibraryGame = () => (
   />
 );
 
+
+/** A Case of Analysis V2 (CTA-186), on its board — dev-only while the module is built. */
+const CASE_FIXTURE = gameCaseOf({ id: "fixture-case", projectId: "fixture-project", name: "" }, parsePgnTree('[White "A"]\n[Black "B"]\n\n1. e4 e5 *'));
+const AnalysisCase = () => <CaseBoard record={CASE_FIXTURE} projectName="Fixture" />;
+
 /** Every board composed from the core, by the id its panel carries. */
 const BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode }[] =
   [
@@ -98,6 +105,8 @@ const BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode 
     // Masked Pieces (CTA-79), Play with Engine's screen in a costume — in the
     // dev boards' place.
     { name: "Masked Pieces", panelId: "masked-play-panel", Screen: MaskedPlay },
+    // Analysis V2's Case board (CTA-186), composed as the Analysis Board is.
+    { name: "Analysis V2 case", panelId: "analysis-case-panel", Screen: AnalysisCase },
   ];
 
 const renderBoard = (Screen: () => ReactNode) =>
