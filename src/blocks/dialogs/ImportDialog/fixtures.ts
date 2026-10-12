@@ -50,6 +50,8 @@ export const DUMP: ImportDump = {
   shippedCollections: 2,
   enginePresets: [],
   enginePresetSelections: [],
+  analysisProjects: [],
+  projectFolders: [],
 };
 
 /** An app with nothing in it — only the top levels clash, as they always exist. */
@@ -63,6 +65,9 @@ export const EMPTY_APP: ImportCurrent = {
   collectionFolders: [],
   enginePresets: [],
   enginePresetSelections: [],
+  projectFolders: [],
+  analysisProjects: [],
+  analysisCases: [],
 };
 
 /** An app that already has some of it: a game, the Openings folder, the White folder with a repertoire in it. */
@@ -76,6 +81,9 @@ export const CLASHING_APP: ImportCurrent = {
   collectionFolders: [folder("lf1", "Club")],
   enginePresets: [],
   enginePresetSelections: [],
+  projectFolders: [],
+  analysisProjects: [],
+  analysisCases: [],
 };
 
 /** A zip that holds only games, with a Hebrew folder name among the analyses — for the RTL switch. */
@@ -89,7 +97,7 @@ export const HEBREW_DUMP: ImportDump = {
 export const HEBREW_APP: ImportCurrent = { ...EMPTY_APP, analysisFolders: [folder("hf", "פתיחות")] };
 
 /** The shipped caps. */
-export const CAPS: ImportCaps = { playedGames: 500, analyses: 20_000, repertoires: 500, folders: 100, enginePresets: 50 };
+export const CAPS: ImportCaps = { playedGames: 500, analyses: 20_000, repertoires: 500, folders: 100, enginePresets: 50, analysisProjects: 1_000, analysisCases: 10_000 };
 
 /** Caps a small app would pass: the played games' warning, the repertoires refused. */
-export const TIGHT_CAPS: ImportCaps = { playedGames: 1, analyses: 20_000, repertoires: 1, folders: 100, enginePresets: 50 };
+export const TIGHT_CAPS: ImportCaps = { playedGames: 1, analyses: 20_000, repertoires: 1, folders: 100, enginePresets: 50, analysisProjects: 1_000, analysisCases: 10_000 };

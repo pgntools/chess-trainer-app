@@ -1,3 +1,4 @@
+import { OFFERED_EXPORT_CATEGORIES } from "../../lib/exportCategories";
 import { useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -59,7 +60,7 @@ function ImportTab() {
   // The button empties its input after each pick, so the same file can be picked again.
   const onPicked = async (file: File) => {
     setStatus({ kind: "reading" });
-    const reading = readImport(new Uint8Array(await file.arrayBuffer()));
+    const reading = readImport(new Uint8Array(await file.arrayBuffer()), { categories: OFFERED_EXPORT_CATEGORIES });
     if (!reading.ok) {
       setStatus({ kind: "incompatible", fileName: file.name, problem: reading.problem, pgnFiles: reading.pgnFiles });
       return;

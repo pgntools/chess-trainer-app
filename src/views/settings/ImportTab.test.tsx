@@ -243,7 +243,7 @@ const everything = async () => {
   };
 };
 
-const ALL = { collections: true, games: true, analyses: true, repertoires: true, enginePresets: true, shippedCollections: false };
+const ALL = { collections: true, games: true, analyses: true, repertoires: true, enginePresets: true, analysisProjects: true, shippedCollections: false };
 
 const exported = async () => (await exportZip(ALL, { appVersion: "1.2.3" })).bytes;
 
@@ -261,6 +261,9 @@ const built = (source: Partial<ExportSource>) =>
         collectionFolders: [],
         enginePresets: [],
         enginePresetSelections: [],
+        projectFolders: [],
+        analysisProjects: [],
+        analysisCases: [],
         ...source,
       },
       { ...ALL, shippedCollections: true },
@@ -346,6 +349,49 @@ describe("the Import tab", () => {
     );
     expect(after.enginePresets).toEqual(before.enginePresets);
     expect(after.enginePresetSelections).toEqual(before.enginePresetSelections);
+  });
+
+  it("gives Analysis V2's folders, Projects and Cases back, each Case in its Project (CTA-186)", async () => {
+    const folders = await import("../../lib/analysisProjectFolderStore");
+    const projects = await import("../../lib/analysisProjectStore");
+    const cases = await import("../../lib/analysisCaseStore");
+    const db = await import("../../lib/analysisProjectsDb");
+    const { positionCaseOfFen } = await import("../../lib/analysisProjects");
+
+    const openings = (await folders.createProjectFolder("Openings", null))!;
+    await folders.createProjectFolder("Empty", null);
+    const najdorf = (await projects.createAnalysisProject("Najdorf", openings.id))!;
+    await projects.createAnalysisProject("Loose", null);
+    await cases.addAnalysisCases([
+      positionCaseOfFen({ id: "c1", projectId: najdorf.id, name: "Endgame" }, "8/8/4k3/8/8/4K3/4P3/8 b - - 0 41"),
+    ]);
+    const before = { projects: await projects.loadAnalysisProjects(), cases: await cases.loadAnalysisCases() };
+    const bytes = await exported();
+
+    await Promise.all([folders.settledProjectFolders(), projects.settledAnalysisProjects(), cases.settledAnalysisCases()]);
+    folders.resetProjectFolderStore();
+    projects.resetAnalysisProjectStore();
+    cases.resetAnalysisCaseStore();
+    await db.deleteAnalysisProjectsDb();
+    expect(await projects.loadAnalysisProjects()).toEqual([]);
+
+    renderImport();
+    await pick(bytes);
+    await dialog();
+    expect(screen.getByTestId("settings-import-analysisProjects-count")).toHaveTextContent("(2)");
+    const done = await importAndWait();
+    expect(within(done).getByTestId("settings-import-result-analysisProjects")).toHaveTextContent(
+      "Analysis projects: 2 added, 0 replaced, 0 skipped, 2 folders created.",
+    );
+
+    const afterFolders = await folders.loadProjectFolders();
+    expect(afterFolders.map((folder) => folder.name).sort()).toEqual(["Empty", "Openings"]);
+    const afterProjects = await projects.loadAnalysisProjects();
+    expect(afterProjects.map(({ id, name }) => ({ id, name }))).toEqual(before.projects.map(({ id, name }) => ({ id, name })));
+    expect(afterProjects.find((project) => project.id === najdorf.id)!.folderId).toBe(
+      afterFolders.find((folder) => folder.name === "Openings")!.id,
+    );
+    expect(await cases.loadAnalysisCases()).toEqual(before.cases);
   });
 
   it("changes nothing when the same zip is imported again with Merge", async () => {

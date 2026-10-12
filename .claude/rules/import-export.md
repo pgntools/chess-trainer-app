@@ -57,6 +57,7 @@ both catalogs. Test ids: `settings-export-*`, `settings-import-*`.
 | Collections | `collections/<folder>/…/<name>.pgn`, one per collection, in directories mirroring the Library's folders; shipped ones in `collections/built-in/` | game of the collection |
 | Repertoires | `repertoires/<folder>.pgn` per folder (name order), then `repertoires/unfiled.pgn` | repertoire |
 | Engine presets (CTA-179) | `engine-presets.json` — `{ presets, selections }`: every stored preset (`lib/enginePresets.ts`) and the preset each engine runs | — (JSON, not PGN) |
+| Analysis projects (CTA-186) — **only in a build with Analysis V2** (dev-only while it is built: `lib/exportCategories.ts`'s `OFFERED_EXPORT_CATEGORIES`, `readImport`'s `categories`) | `analysis-projects.json` — `{ folders, projects }`: every folder as its path of names, every Project as stored with its `folderPath` and its Cases as stored ([`analysis-v2.md`](./analysis-v2.md) §5) | — (JSON, not PGN) |
 
 - **The stored PGN is joined as it stands** (`pgnFileOf`) — never re-parsed or
   re-serialised, so a record this build cannot read still exports byte for
@@ -104,7 +105,7 @@ Storage still counts the jobs.
 ```jsonc
 {
   "format": "chessapp-export",
-  "formatVersion": 3,            // EXPORT_FORMAT_VERSION — bump on any change an older reader would misread (§6)
+  "formatVersion": 4,            // EXPORT_FORMAT_VERSION — bump on any change an older reader would misread (§6)
   "appVersion": "0.4.0",         // __APP_VERSION__
   "exportedAt": "…ISO 8601…",
   "categories": ["collections", "games", "analyses", "repertoires", "enginePresets"],
@@ -269,7 +270,9 @@ same data as version `n + 1` out. Version 2 added the collections'
 lacks, so its upgrade is the version stamp alone. **Version 3 added the engine
 presets' file** (CTA-179): a file kind an older reader refuses (its `default:`
 is "malformed"), so the bump makes such a reader say **newer** instead; a v2
-zip has no presets, and its upgrade is the stamp alone too. A
+zip has no presets, and its upgrade is the stamp alone too. **Version 4 added
+Analysis V2's projects' file** (CTA-186), for the same reason; a v3 zip has
+none, its upgrade the stamp alone. A
 version past this build's is **newer** (§7); a version with no way up (not a
 positive integer, a gap in the table, a migration that does not land on the
 next version) is **malformed**.
@@ -330,6 +333,7 @@ that the import prefers when present — an added field, so no bump (§6).
 | Repertoires | 500 | The category is **refused**. |
 | Folders (analyses', repertoires', the Library's) | 100 each | The category is **refused**. |
 | Engine presets | 50 (`MAX_ENGINE_PRESETS`, CTA-179) | The category is **refused**. |
+| Analysis projects (CTA-186) | 1,000 Projects, 10,000 Cases, 100 folders | The category is **refused**. |
 
 The totals are counted after the choices (an Override's removals, the skipped
 records), shown in the dialog before anything is written, and a refused

@@ -1,6 +1,13 @@
 import { strFromU8, unzipSync } from "fflate";
 
 import {
+  analysisCaseFrom,
+  analysisProjectFrom,
+  type AnalysisCase,
+  type AnalysisProject,
+} from "./analysisProjects";
+
+import {
   EXPORT_CATEGORIES,
   EXPORT_FORMAT,
   EXPORT_FORMAT_VERSION,
@@ -59,7 +66,10 @@ import { savedRepertoireFrom, type SavedRepertoire } from "./savedRepertoires";
  * empty or not, and its records go in — a record whose id is already
  * elsewhere in the app is kept as the app has it, as under Merge. The engine
  * presets (CTA-179) have no folders either, and clash as a whole too; each
- * engine's selection comes with them.
+ * engine's selection comes with them. Analysis V2's Projects (CTA-186) are
+ * filed in folders like the analyses, and each brings its Cases with it — in
+ * a build with the module; one without it reads the zip with the categories
+ * it offers (`readImport`'s `categories`), and leaves their file unread.
  */
 
 /* ------------------------------------------------------------------ *
@@ -82,6 +92,9 @@ type ImportCollection = {
   /** The tournament mark (CTA-121). Absent for off, and on a v1 zip. */
   tournament?: CollectionTournament;
 };
+
+/** One Project of the dump with its Cases, each Case filed in it. */
+export type ImportProject = AnalysisProject & { cases: readonly AnalysisCase[] };
 
 /** A zip, read and checked: every record normalised, every folder by its path. */
 export type ImportDump = {
@@ -107,6 +120,10 @@ export type ImportDump = {
   enginePresets: readonly EnginePreset[];
   /** Which preset each engine runs, as the zip says. */
   enginePresetSelections: readonly EnginePresetSelection[];
+  /** Analysis V2's Projects (CTA-186), each with its Cases — none in a build without the module. */
+  analysisProjects: readonly Filed<ImportProject>[];
+  /** Every Analysis V2 folder, parents before children, empty ones included. */
+  projectFolders: readonly FolderPath[];
 };
 
 /** Why a zip cannot be imported. */
@@ -152,6 +169,8 @@ type ManifestMigration = (manifest: RawManifest) => RawManifest;
 const MANIFEST_MIGRATIONS: Readonly<Record<number, ManifestMigration>> = {
   1: (manifest) => ({ ...manifest, formatVersion: 2 }),
   2: (manifest) => ({ ...manifest, formatVersion: 3 }),
+  // Version 4 added Analysis V2's projects (CTA-186): a v3 zip has none.
+  3: (manifest) => ({ ...manifest, formatVersion: 4 }),
 };
 
 type MigrationOptions = {
@@ -344,8 +363,42 @@ const enginePresetsFileOf = (
   return { presets: presets as EnginePreset[], selections: selections as EnginePresetSelection[] };
 };
 
+/**
+ * `analysis-projects.json` read back (CTA-186): every folder as its path of
+ * names, and every Project with its Cases, each through its normaliser and
+ * each Case filed in its entry — `undefined` when it is not that, or holds
+ * one a normaliser refuses.
+ */
+const analysisProjectsFileOf = (
+  text: string,
+): { folders: FolderPath[]; projects: Filed<ImportProject>[] } | undefined => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (!isObject(parsed) || !Array.isArray(parsed.folders) || !Array.isArray(parsed.projects)) return undefined;
+  if (!parsed.folders.every(isFolderPath)) return undefined;
+  const projects: Filed<ImportProject>[] = [];
+  for (const entry of parsed.projects as unknown[]) {
+    if (!isObject(entry) || !Array.isArray(entry.cases)) return undefined;
+    const folder = entry.folderPath ?? [];
+    const project = analysisProjectFrom({ ...entry, folderId: null });
+    if (project === undefined || !isFolderPath(folder)) return undefined;
+    const cases = entry.cases.map((record) => (isObject(record) ? analysisCaseFrom({ ...record, projectId: project.id }) : undefined));
+    if (cases.some((record) => record === undefined)) return undefined;
+    projects.push({ record: { ...project, cases: cases as AnalysisCase[] }, folder });
+  }
+  return { folders: parsed.folders, projects };
+};
+
 /** The dump, read out of an unzipped manifest and its files. Throws {@link Refused}. */
-const dumpOf = (manifest: RawManifest, files: Readonly<Record<string, Uint8Array>>): ImportDump => {
+const dumpOf = (
+  manifest: RawManifest,
+  files: Readonly<Record<string, Uint8Array>>,
+  offered: readonly ExportCategory[],
+): ImportDump => {
   if (!Array.isArray(manifest.categories) || !Array.isArray(manifest.files)) return refuse({ kind: "malformed" });
   const folders = manifest.folders === undefined ? {} : manifest.folders;
   if (!isObject(folders)) return refuse({ kind: "malformed" });
@@ -357,7 +410,7 @@ const dumpOf = (manifest: RawManifest, files: Readonly<Record<string, Uint8Array
   const dump = {
     appVersion: typeof manifest.appVersion === "string" ? manifest.appVersion : "",
     exportedAt: typeof manifest.exportedAt === "string" ? manifest.exportedAt : "",
-    categories: EXPORT_CATEGORIES.filter((category) => (manifest.categories as unknown[]).includes(category)),
+    categories: offered.filter((category) => (manifest.categories as unknown[]).includes(category)),
     games: [] as PlayedGame[],
     analyses: [] as Filed<SavedAnalysis>[],
     analysisFolders: folderPathsOf(folders, "analyses"),
@@ -368,6 +421,8 @@ const dumpOf = (manifest: RawManifest, files: Readonly<Record<string, Uint8Array
     shippedCollections: 0,
     enginePresets: [] as EnginePreset[],
     enginePresetSelections: [] as EnginePresetSelection[],
+    analysisProjects: [] as Filed<ImportProject>[],
+    projectFolders: [] as FolderPath[],
   };
 
   for (const file of manifest.files as unknown[]) {
@@ -449,6 +504,15 @@ const dumpOf = (manifest: RawManifest, files: Readonly<Record<string, Uint8Array
         append(dump.enginePresetSelections, read.selections);
         break;
       }
+      case "analysis-projects": {
+        // A build without Analysis V2 leaves its file where it is.
+        if (!offered.includes("analysisProjects")) break;
+        const read = analysisProjectsFileOf(text);
+        if (read === undefined || read.projects.length !== file.projects) return refuse({ kind: "unreadable", path });
+        append(dump.analysisProjects, read.projects);
+        append(dump.projectFolders, read.folders);
+        break;
+      }
       default:
         return refuse({ kind: "malformed" });
     }
@@ -462,7 +526,13 @@ const dumpOf = (manifest: RawManifest, files: Readonly<Record<string, Uint8Array
  * names, cut into the records it lists, each through its store's normaliser.
  * Nothing about the app is consulted: a dump is what the zip says.
  */
-export const readImport = (bytes: Uint8Array, options: MigrationOptions = {}): ImportReading => {
+export const readImport = (
+  bytes: Uint8Array,
+  options: MigrationOptions & {
+    /** The categories this build offers (`lib/exportCategories.ts`) — every one the format knows by default. */
+    categories?: readonly ExportCategory[];
+  } = {},
+): ImportReading => {
   let files: Record<string, Uint8Array>;
   try {
     files = unzipSync(bytes);
@@ -490,7 +560,7 @@ export const readImport = (bytes: Uint8Array, options: MigrationOptions = {}): I
   if (migrated === undefined) return failed({ kind: "malformed" });
 
   try {
-    return { ok: true, dump: dumpOf(migrated, files) };
+    return { ok: true, dump: dumpOf(migrated, files, options.categories ?? EXPORT_CATEGORIES) };
   } catch (error) {
     if (error instanceof Refused) return failed(error.problem);
     throw error;
@@ -514,6 +584,10 @@ export type ImportCurrent = {
   /** The engine presets as stored — Default only once it was edited (CTA-179). */
   enginePresets: readonly EnginePreset[];
   enginePresetSelections: readonly EnginePresetSelection[];
+  /** Analysis V2 (CTA-186) — empty in a build without the module. */
+  projectFolders: readonly GameFolder[];
+  analysisProjects: readonly AnalysisProject[];
+  analysisCases: readonly AnalysisCase[];
 };
 
 /** The stores' caps (`lib/dataImportTarget.ts`'s `IMPORT_CAPS`), passed in so this file reads no store. */
@@ -525,6 +599,9 @@ export type ImportCaps = {
   folders: number;
   /** The engine presets' library. */
   enginePresets: number;
+  /** Analysis V2's Projects, and their Cases across every Project (CTA-186). */
+  analysisProjects: number;
+  analysisCases: number;
 };
 
 /** A folder path as a map key. `[]` — the top level — is `"[]"`. */
@@ -591,6 +668,7 @@ const categoriesOf = (dump: ImportDump, current: ImportCurrent) => {
   const analysisIds = nestedFolderIds(current.analysisFolders);
   const repertoireIds = flatFolderIds(current.repertoireFolders);
   const collectionIds = nestedFolderIds(current.collectionFolders);
+  const projectFolderIds = nestedFolderIds(current.projectFolders);
   return {
     games: {
       incoming: dump.games.map((record) => ({ record, folder: [] })),
@@ -627,6 +705,13 @@ const categoriesOf = (dump: ImportDump, current: ImportCurrent) => {
       appFolders: new Map(),
       existingFolderOf: () => TOP,
     } satisfies Category<EnginePreset>,
+    analysisProjects: {
+      incoming: dump.analysisProjects,
+      dumpFolders: dumpFoldersOf(dump.projectFolders, dump.analysisProjects),
+      existing: current.analysisProjects,
+      appFolders: projectFolderIds,
+      existingFolderOf: filedIn(projectFolderIds),
+    } satisfies Category<ImportProject, AnalysisProject>,
   };
 };
 
@@ -763,6 +848,10 @@ export type ImportWrites = {
   collections?: CategoryImport<RecordWrites<ImportCollectionWrite, GameFolder>>;
   /** The presets to add and remove, then each engine's selection (CTA-179). */
   enginePresets?: CategoryImport<{ add: EnginePreset[]; remove: string[]; select: EnginePresetSelection[] }>;
+  /** Analysis V2 (CTA-186): the folders, the Projects, then their Cases — a Project removed takes its Cases. */
+  analysisProjects?: CategoryImport<
+    RecordWrites<AnalysisProject, GameFolder> & { cases: { add: AnalysisCase[]; remove: string[] } }
+  >;
 };
 
 type Resolved<R> = {
@@ -960,6 +1049,41 @@ export const importWritesOf = (
       },
       report,
       ...(total > caps.enginePresets ? { refused: { kind: "records" as const, max: caps.enginePresets, total } } : {}),
+    };
+  }
+
+  if (wanted("analysisProjects")) {
+    const { add, remove, created, report, total } = resolve(categories.analysisProjects, choices.analysisProjects, newId);
+    const gone = new Set(remove);
+    const addedCases = add.flatMap(({ record }) => record.cases.map((entry) => ({ ...entry, projectId: record.id })));
+    const arriving = new Set(addedCases.map((entry) => entry.id));
+    const removedCases = current.analysisCases
+      .filter((entry) => gone.has(entry.projectId) || arriving.has(entry.id))
+      .map((entry) => entry.id);
+    const totalCases = current.analysisCases.length - removedCases.length + addedCases.length;
+    const refused =
+      folderCapOf(current.projectFolders.length, created.length, caps.folders) ??
+      (total > caps.analysisProjects
+        ? { kind: "records" as const, max: caps.analysisProjects, total }
+        : totalCases > caps.analysisCases
+          ? { kind: "records" as const, max: caps.analysisCases, total: totalCases }
+          : undefined);
+    writes.analysisProjects = {
+      writes: {
+        folders: created.map((folder) => nestedFolder(folder, at)),
+        // The Project itself, filed — its Cases travel apart.
+        add: add.map(({ record, folderId }) => ({
+          id: record.id,
+          name: record.name,
+          folderId,
+          createdAt: record.createdAt,
+          updatedAt: record.updatedAt,
+        })),
+        remove,
+        cases: { add: addedCases, remove: removedCases },
+      },
+      report,
+      ...(refused === undefined ? {} : { refused }),
     };
   }
 

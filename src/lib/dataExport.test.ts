@@ -1,6 +1,7 @@
 import { strFromU8, unzipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 
+import { positionCaseOfFen } from "./analysisProjects";
 import { DEFAULT_ANALYSIS_SETTINGS } from "./analysisSettings";
 import {
   buildExport,
@@ -8,6 +9,7 @@ import {
   exportedCollections,
   hasExportSelection,
   zipExport,
+  type AnalysisProjectsFile,
   type ExportSelection,
   type ExportSource,
 } from "./dataExport";
@@ -102,6 +104,9 @@ const EMPTY: ExportSource = {
   collectionFolders: [],
   enginePresets: [],
   enginePresetSelections: [],
+  projectFolders: [],
+  analysisProjects: [],
+  analysisCases: [],
 };
 
 const ALL: ExportSelection = {
@@ -110,6 +115,7 @@ const ALL: ExportSelection = {
   analyses: true,
   repertoires: true,
   enginePresets: true,
+  analysisProjects: true,
   shippedCollections: true,
 };
 const NONE: ExportSelection = {
@@ -118,6 +124,7 @@ const NONE: ExportSelection = {
   analyses: false,
   repertoires: false,
   enginePresets: false,
+  analysisProjects: false,
   shippedCollections: false,
 };
 
@@ -132,7 +139,7 @@ describe("buildExport", () => {
     const { manifest } = build({}, { games: true, repertoires: true });
     expect(manifest).toMatchObject({
       format: "chessapp-export",
-      formatVersion: 3,
+      formatVersion: 4,
       appVersion: "9.9.9",
       exportedAt: NOW.toISOString(),
       categories: ["games", "repertoires"],
@@ -159,10 +166,37 @@ describe("buildExport", () => {
 
   it("lists an empty ticked category but writes no file for it", () => {
     const bundle = build({}, ALL);
-    expect(bundle.manifest.categories).toEqual(["collections", "games", "analyses", "repertoires", "enginePresets"]);
+    expect(bundle.manifest.categories).toEqual(["collections", "games", "analyses", "repertoires", "enginePresets", "analysisProjects"]);
     expect(bundle.files).toEqual([]);
     expect(bundle.manifest.files).toEqual([]);
     expect(bundle.manifest.folders).toEqual({ analyses: [], repertoires: [], collections: [] });
+  });
+
+  it("writes Analysis V2's folders and Projects, each with its Cases, as one JSON file (CTA-186)", () => {
+    const at = "2026-10-12T00:00:00.000Z";
+    const folders = [
+      { id: "pf", name: "Openings", parentId: null, savedAt: at, updatedAt: at },
+      { id: "ps", name: "Sicilian", parentId: "pf", savedAt: at, updatedAt: at },
+    ];
+    const projects = [
+      { id: "p1", name: "Najdorf", folderId: "ps", createdAt: at, updatedAt: at },
+      { id: "p2", name: "Loose", folderId: "gone", createdAt: at, updatedAt: at },
+    ];
+    const cases = [positionCaseOfFen({ id: "c1", projectId: "p1", name: "" }, "8/8/4k3/8/8/4K3/4P3/8 w - - 0 1")];
+    const bundle = build(
+      { projectFolders: folders, analysisProjects: projects, analysisCases: cases },
+      { analysisProjects: true },
+    );
+    expect(bundle.manifest.files).toEqual([{ path: "analysis-projects.json", kind: "analysis-projects", projects: 2 }]);
+    const file = JSON.parse(fileText(bundle, "analysis-projects.json") ?? "") as AnalysisProjectsFile;
+    expect(file.folders).toEqual([["Openings"], ["Openings", "Sicilian"]]);
+    expect(file.projects.map(({ id, folderPath, cases: held }) => ({ id, folderPath, cases: held.map((c) => c.id) }))).toEqual([
+      { id: "p1", folderPath: ["Openings", "Sicilian"], cases: ["c1"] },
+      // A folder that is gone is the top level.
+      { id: "p2", folderPath: [], cases: [] },
+    ]);
+    // Not ticked, nothing.
+    expect(build({ analysisProjects: projects }, { games: true }).files).toEqual([]);
   });
 
   it("writes the engine presets and each engine's selection as one JSON file (CTA-179)", () => {
@@ -202,8 +236,8 @@ describe("buildExport", () => {
     expect(entry.records[0].engine).toEqual(engine);
     // Additive: a game from before has no key at all, so an older reader sees the manifest it knew.
     expect("engine" in entry.records[1]).toBe(false);
-    // And the format is not bumped for it: 3 is the engine presets' file's (CTA-179), 2 was before.
-    expect(bundle.manifest.formatVersion).toBe(3);
+    // And the format is not bumped for it: 3 was the engine presets' file's (CTA-179), 4 Analysis V2's (CTA-186).
+    expect(bundle.manifest.formatVersion).toBe(4);
   });
 
   it("records each analysis' name, description, orientation, path and folder path", () => {

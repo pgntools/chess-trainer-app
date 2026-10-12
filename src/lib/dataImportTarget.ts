@@ -1,3 +1,5 @@
+import { MAX_ANALYSIS_CASES, MAX_ANALYSIS_PROJECTS, MAX_PROJECT_FOLDERS } from "./analysisProjects";
+import { analysisProjectStores } from "./analysisProjectsEnabled";
 import type { IndexedRow } from "./collectionIndex";
 import type {
   CapProblem,
@@ -37,6 +39,20 @@ import { importRepertoires, loadSavedRepertoires, MAX_SAVED_REPERTOIRES } from "
  * answers a problem, and so does this.
  */
 
+/** Analysis V2's folders, Projects and Cases — none in a build without the module. */
+const loadAnalysisProjectsCurrent = async (): Promise<
+  Pick<ImportCurrent, "projectFolders" | "analysisProjects" | "analysisCases">
+> => {
+  const stores = await analysisProjectStores();
+  if (stores === undefined) return { projectFolders: [], analysisProjects: [], analysisCases: [] };
+  const [projectFolders, analysisProjects, analysisCases] = await Promise.all([
+    stores.folders.loadProjectFolders(),
+    stores.projects.loadAnalysisProjects(),
+    stores.cases.loadAnalysisCases(),
+  ]);
+  return { projectFolders, analysisProjects, analysisCases };
+};
+
 /** Every store the import writes, read now if it has not been. */
 export const loadImportCurrent = async (): Promise<ImportCurrent> => {
   const [
@@ -49,6 +65,7 @@ export const loadImportCurrent = async (): Promise<ImportCurrent> => {
     collectionFolders,
     enginePresets,
     enginePresetSelections,
+    analysisProjects,
   ] = await Promise.all([
     loadPlayedGames(),
     loadSavedAnalyses(),
@@ -59,6 +76,7 @@ export const loadImportCurrent = async (): Promise<ImportCurrent> => {
     loadLibraryFolders(),
     loadEnginePresets(),
     loadEnginePresetSelections(),
+    loadAnalysisProjectsCurrent(),
   ]);
   return {
     playedGames,
@@ -70,6 +88,7 @@ export const loadImportCurrent = async (): Promise<ImportCurrent> => {
     collectionFolders,
     enginePresets,
     enginePresetSelections,
+    ...analysisProjects,
   };
 };
 
@@ -78,8 +97,10 @@ export const IMPORT_CAPS: ImportCaps = {
   playedGames: MAX_PLAYED_GAMES,
   analyses: MAX_SAVED_ANALYSES,
   repertoires: MAX_SAVED_REPERTOIRES,
-  folders: Math.min(MAX_ANALYSIS_FOLDERS, MAX_REPERTOIRE_FOLDERS, MAX_LIBRARY_FOLDERS),
+  folders: Math.min(MAX_ANALYSIS_FOLDERS, MAX_REPERTOIRE_FOLDERS, MAX_LIBRARY_FOLDERS, MAX_PROJECT_FOLDERS),
   enginePresets: MAX_ENGINE_PRESETS,
+  analysisProjects: MAX_ANALYSIS_PROJECTS,
+  analysisCases: MAX_ANALYSIS_CASES,
 };
 
 /** Why a category was not (wholly) written. */
@@ -166,6 +187,16 @@ export const applyImport = async (writes: ImportWrites, options: ApplyOptions): 
   await run("enginePresets", writes.enginePresets, async (planned) => {
     const problem = await importEnginePresets(planned);
     return problem === "default" ? "storage" : problem;
+  });
+  // Analysis V2 (CTA-186): the folders, then the Projects, then their Cases.
+  await run("analysisProjects", writes.analysisProjects, async ({ folders, add, remove, cases }) => {
+    const stores = await analysisProjectStores();
+    if (stores === undefined) return "storage";
+    return (
+      (await stores.folders.addProjectFolders(folders)) ??
+      (await stores.projects.importAnalysisProjects({ add, remove })) ??
+      (await stores.cases.importAnalysisCases(cases))
+    );
   });
   return results;
 };

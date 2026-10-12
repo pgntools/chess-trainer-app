@@ -11,7 +11,8 @@ import { BaseDialog, type ExtraDialogProps } from "../../../design-system/compon
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { CheckboxField, RadioGroupField } from "../../../design-system/components/forms";
 import { ExpandToggle } from "../../../design-system/components/navigation";
-import { EXPORT_CATEGORIES, type ExportCategory } from "../../../lib/dataExport";
+import type { ExportCategory } from "../../../lib/dataExport";
+import { OFFERED_EXPORT_CATEGORIES } from "../../../lib/exportCategories";
 import {
   CONFLICT_CHOICES,
   defaultImportChoices,
@@ -137,7 +138,7 @@ function ImportDialog({ fileName, dump, current, caps, onCancel, onImport, testI
     setChoices((was) => ({ ...was, [category]: { ...was[category], ...next } }));
 
   const exported = new Date(dump.exportedAt);
-  const writable = EXPORT_CATEGORIES.some((category) => {
+  const writable = OFFERED_EXPORT_CATEGORIES.some((category) => {
     const planned = writes[category];
     return planned !== undefined && planned.refused === undefined;
   });
@@ -169,7 +170,7 @@ function ImportDialog({ fileName, dump, current, caps, onCancel, onImport, testI
           </Typography>
         )}
 
-        {EXPORT_CATEGORIES.map((category, at) => {
+        {OFFERED_EXPORT_CATEGORIES.map((category, at) => {
           const planned = plan.categories[category];
           const chosen = choices[category];
           const ticked = planned !== undefined && chosen.ticked;

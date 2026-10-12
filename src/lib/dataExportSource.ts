@@ -1,3 +1,4 @@
+import { analysisProjectStores } from "./analysisProjectsEnabled";
 import {
   buildExport,
   exportedCollections,
@@ -59,6 +60,24 @@ const loadCollectionSummaries = async (): Promise<readonly CollectionSummary[]> 
 ];
 
 /**
+ * Analysis V2's folders, Projects and Cases (CTA-186) when they are asked
+ * for — read through `analysisProjectStores` (`analysisProjectsEnabled.ts`),
+ * whose dynamic imports a production build drops: the stores are not in it.
+ */
+const loadAnalysisProjectsSource = async (
+  selection: ExportSelection,
+): Promise<Pick<ExportSource, "projectFolders" | "analysisProjects" | "analysisCases">> => {
+  const stores = selection.analysisProjects ? await analysisProjectStores() : undefined;
+  if (stores === undefined) return { projectFolders: [], analysisProjects: [], analysisCases: [] };
+  const [projectFolders, analysisProjects, analysisCases] = await Promise.all([
+    stores.folders.loadProjectFolders(),
+    stores.projects.loadAnalysisProjects(),
+    stores.cases.loadAnalysisCases(),
+  ]);
+  return { projectFolders, analysisProjects, analysisCases };
+};
+
+/**
  * Read what a selection needs. Rejects with an {@link ExportReadError} when a
  * collection's games cannot be read — an export missing a collection would
  * look complete and not be.
@@ -74,6 +93,7 @@ const loadExportSource = async (selection: ExportSelection): Promise<ExportSourc
     collectionFolders,
     enginePresets,
     enginePresetSelections,
+    analysisProjects,
   ] = await Promise.all([
     selection.games ? loadPlayedGames() : NOTHING,
     selection.analyses ? loadSavedAnalyses() : NOTHING,
@@ -84,6 +104,7 @@ const loadExportSource = async (selection: ExportSelection): Promise<ExportSourc
     selection.collections ? loadLibraryFolders() : NOTHING,
     selection.enginePresets ? loadEnginePresets() : NOTHING,
     selection.enginePresets ? loadEnginePresetSelections() : NOTHING,
+    loadAnalysisProjectsSource(selection),
   ]);
 
   const collections: ExportCollection[] = [];
@@ -103,6 +124,7 @@ const loadExportSource = async (selection: ExportSelection): Promise<ExportSourc
     collectionFolders,
     enginePresets,
     enginePresetSelections,
+    ...analysisProjects,
   };
 };
 
