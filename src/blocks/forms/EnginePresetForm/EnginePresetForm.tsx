@@ -71,8 +71,9 @@ export type EnginePresetFormProps = {
   /**
    * **Threads and Hash, editable here** (CTA-185) — the one global request
    * every board sends (not the preset's), each a slider to the device's top
-   * with a number box to the engine's (`EngineResourceSlider`), in their rows
-   * in place of the read-only value. Absent, the rows read-only as before.
+   * with a number box to the engine's (`EngineResourceSlider`), in the search
+   * limits section under the move time, and their rows left out of the
+   * options. Absent, the rows read-only in the options as before.
    */
   resources?: {
     threads: number;
@@ -87,7 +88,7 @@ export type EnginePresetFormProps = {
    * each option `<testId>-option-<slug>` (its control `-input`, its note
    * `-note`, its reset `-reset`), a group `<testId>-group-<id>` (its switch
    * `-switch`, its options `-options`); the search limits `<testId>-search`
-   * (`-search-depth`, `-search-movetime`); the name dialog `<testId>-name`, the delete
+   * (`-search-depth`, `-search-movetime`, `-search-threads`, `-search-hash`); the name dialog `<testId>-name`, the delete
    * confirmation `<testId>-confirm-delete`.
    */
   testId: string;
@@ -280,7 +281,12 @@ function EnginePresetForm({
   const [confirmDelete, setConfirmDelete] = useState(false);
   // The options' tab — the form's own: basic first, and only the tabs this engine has options on.
   const [tab, setTab] = useState<OptionTab>("basic");
-  const tabs = OPTION_TABS.filter((each) => rows?.some((row) => row.tab === each));
+  /** Threads or Hash shown as the global request's slider in the search limits (CTA-185) — the row's own `resources` key, else none. */
+  const resourceOf = (row: EnginePresetRow): "threads" | "hashMb" | undefined =>
+    resources === undefined || row.option === undefined ? undefined : row.name === "Threads" ? "threads" : row.name === "Hash" ? "hashMb" : undefined;
+  // The options list: every row but the Threads and Hash the search limits show.
+  const listed = rows?.filter((row) => resourceOf(row) === undefined);
+  const tabs = OPTION_TABS.filter((each) => listed?.some((row) => row.tab === each));
   const shownTab = tabs.includes(tab) ? tab : (tabs[0] ?? "basic");
   const selected = presets.find((preset) => preset.id === selectedId) ?? presets[0];
   const name = presetNameOf(nameDialog?.name ?? "");
@@ -311,29 +317,11 @@ function EnginePresetForm({
     return parts.join(" · ");
   };
 
-  /** Threads or Hash shown as the global request's slider (CTA-185) — the row's own `resources` key, else none. */
-  const resourceOf = (row: EnginePresetRow): "threads" | "hashMb" | undefined =>
-    resources === undefined || row.option === undefined ? undefined : row.name === "Threads" ? "threads" : row.name === "Hash" ? "hashMb" : undefined;
-
   const control = (row: EnginePresetRow, id: string) => {
     const option = row.option;
     const help = summaryOf(row);
     // On, but off until the option it needs is on (UCI_Elo, the Syzygy settings).
     const disabled = row.disabled === true;
-    const resource = resourceOf(row);
-    if (resources !== undefined && resource !== undefined) {
-      return (
-        <EngineResourceSlider
-          resource={resource}
-          value={resources[resource]}
-          sliderMax={resources.sliderLimits[resource]}
-          typedMax={resources.typedLimits[resource]}
-          onChange={(value) => resources.onChange({ [resource]: value })}
-          help={<span dir="ltr">{help}</span>}
-          testId={`${id}-input`}
-        />
-      );
-    }
     if (!row.editable || option === undefined) {
       return (
         <Box>
@@ -439,9 +427,9 @@ function EnginePresetForm({
       >
         <Box sx={{ flex: 1, minWidth: 0, display: "grid", gap: 0.5 }}>
           {control(row, id)}
-          {row.note !== undefined && !(resourceOf(row) !== undefined && row.note === "pinned") && (
+          {row.note !== undefined && (
             <Typography variant="caption" color="text.secondary" data-testid={`${id}-note`}>
-              {resourceOf(row) !== undefined && row.note === "board-owned" ? t("enginePresets.globalResource") : noteText(row.note, row)}
+              {noteText(row.note, row)}
             </Typography>
           )}
         </Box>
@@ -506,29 +494,57 @@ function EnginePresetForm({
         {t("enginePresets.intro", { engine: engineName })}
       </Typography>
 
-      {search !== undefined && (
+      {(search !== undefined || resources !== undefined) && (
         <Box component="section" aria-labelledby={searchTitleId} data-testid={`${testId}-search`} sx={{ display: "grid", gap: 1 }}>
           <Typography id={searchTitleId} variant="subtitle2" component="h3">
             {t("enginePresets.search.title")}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {t("enginePresets.search.help", { preset: selected.name })}
-          </Typography>
-          <SearchLimitsFields
-            key={selected.id}
-            depth={search.depth}
-            moveTimeMs={search.moveTimeMs}
-            onChange={search.onChange}
-            testId={`${testId}-search`}
-          />
+          {search !== undefined && (
+            <>
+              <Typography variant="body2" color="text.secondary">
+                {t("enginePresets.search.help", { preset: selected.name })}
+              </Typography>
+              <SearchLimitsFields
+                key={selected.id}
+                depth={search.depth}
+                moveTimeMs={search.moveTimeMs}
+                onChange={search.onChange}
+                testId={`${testId}-search`}
+              />
+            </>
+          )}
+          {/* Threads and Hash under the move time (CTA-185): the global request, not the preset's. */}
+          {resources !== undefined && (
+            <Box sx={{ display: "grid", gap: 2, mt: search === undefined ? 0 : 1 }}>
+              <EngineResourceSlider
+                resource="threads"
+                value={resources.threads}
+                sliderMax={resources.sliderLimits.threads}
+                typedMax={resources.typedLimits.threads}
+                onChange={(threads) => resources.onChange({ threads })}
+                testId={`${testId}-search-threads`}
+              />
+              <EngineResourceSlider
+                resource="hashMb"
+                value={resources.hashMb}
+                sliderMax={resources.sliderLimits.hashMb}
+                typedMax={resources.typedLimits.hashMb}
+                onChange={(hashMb) => resources.onChange({ hashMb })}
+                testId={`${testId}-search-hash`}
+              />
+              <Typography variant="caption" color="text.secondary" data-testid={`${testId}-search-resources-note`}>
+                {t("enginePresets.search.resourcesHelp")}
+              </Typography>
+            </Box>
+          )}
         </Box>
       )}
 
-      {rows === undefined ? (
+      {listed === undefined ? (
         <StatusText tone="neutral" testId={`${testId}-reading`}>
           {t("enginePresets.reading", { engine: engineName })}
         </StatusText>
-      ) : rows.length === 0 ? (
+      ) : listed.length === 0 ? (
         <Typography variant="body2" color="text.secondary" data-testid={`${testId}-empty`}>
           {t("enginePresets.empty", { engine: engineName })}
         </Typography>
@@ -550,7 +566,7 @@ function EnginePresetForm({
               data-testid={`${testId}-options`}
               sx={{ listStyle: "none", m: 0, p: 0, display: "grid", gap: 1.5 }}
             >
-              {itemsOf(rows.filter((row) => row.tab === shownTab)).map((item) => {
+              {itemsOf(listed.filter((row) => row.tab === shownTab)).map((item) => {
                 if (item.kind === "row") return renderRow(item.row);
                 const on = groups[item.id] === true;
                 const groupId = `${testId}-group-${item.id}`;

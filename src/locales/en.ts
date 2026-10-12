@@ -2599,12 +2599,12 @@ const en = {
   /** The `EnginePresetForm` block (CTA-179): an engine's options, kept in named presets. */
   enginePresets: {
     preset: "Preset for {{engine}}",
-    /** Under Threads and Hash, edited here (CTA-185): the global request, not the preset's. */
-    globalResource: "For every board and every preset — the top bar's Engine menu sets it too.",
-    /** Where the preset's searches stop (CTA-185) — its depth and move time. */
+    /** Where the preset's searches stop (CTA-185) — its depth and move time; Threads and Hash under them. */
     search: {
       title: "Search limits",
       help: "Every board searches with {{preset}} to this depth or move time, whichever comes first. The top bar's Engine menu sets them too.",
+      /** Under Threads and Hash (CTA-185): the global request, not the preset's. */
+      resourcesHelp: "Threads and Hash are for every board and every preset — the top bar's Engine menu sets them too.",
     },
     actions: "Preset actions",
     new: "New preset",

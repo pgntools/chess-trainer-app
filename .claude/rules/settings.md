@@ -211,7 +211,8 @@ whole design):
   one) shows the switch.
 - **Threads and Hash are sliders here too** (CTA-185, `EngineResourceSlider`):
   the one global request every board sends — not the preset's — edited in
-  their rows as in the top bar's Engine menu, the slider to the device's top
+  the search limits section under the move time (their rows left out of the
+  options) as in the top bar's Engine menu, the slider to the device's top
   and a number box to the engine's (`searchSettingTypedLimitsOf`; in-browser
   Hash at most 1024 MB). **Skill Level is a slider** (0–20, every step marked,
   0, 10 and 20 labelled).

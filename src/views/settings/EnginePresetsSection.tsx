@@ -51,7 +51,7 @@ const NO_OPTIONS: Readonly<Record<string, UciOptionValue>> = {};
  * hardcoded roster. Every change is a store write, and every board running
  * the engine takes it from its next search (`useEngineModule`). Above the
  * options, **where the preset's searches stop** — its depth and move time
- * (CTA-185), the same two the top bar's Engine menu sets; and in their rows
+ * (CTA-185), the same two the top bar's Engine menu sets; and under them
  * Threads and Hash as sliders — the global request, not the preset's.
  */
 function EnginePresetsSection({ engineId }: { engineId: string }) {

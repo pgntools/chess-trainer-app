@@ -287,8 +287,9 @@ describe("Settings → Engine — where the engine runs", () => {
 
     const section = await within(aside()).findByRole("region", { name: "Engine options — Stockfish 19" });
     expect(within(section).queryByRole("table")).toBeNull();
-    // Basic: Threads read-only, in the server's range; the limit a switch.
-    expect(optionRow("Threads")).toHaveTextContent("spin · default 1 · 1–19");
+    // Threads in the search limits, typed up to the server's range; the limit a switch.
+    const limits = within(section).getByRole("region", { name: "Search limits" });
+    expect(within(limits).getByRole("spinbutton", { name: "Threads, typed" })).toHaveAttribute("max", "19");
     expect(within(section).getByRole("switch", { name: "UCI_LimitStrength" })).not.toBeChecked();
     await userEvent.click(within(section).getByRole("tab", { name: "Advanced" }));
     expect(within(section).getByRole("switch", { name: "Syzygy tablebases" })).not.toBeChecked();
@@ -411,9 +412,11 @@ describe("Settings → Engine — the engine's options, in presets (CTA-179)", (
     expect(screen.getByTestId("engine-panel")).toHaveStyle({ overflowY: "auto" });
     expect(within(section).getByRole("combobox", { name: `Preset for ${SINGLE}` })).toHaveTextContent("Default");
     expect(await within(section).findByRole("tab", { name: "Basic" })).toHaveAttribute("aria-selected", "true");
-    // Threads and Hash: the global request, a slider here too (CTA-185).
-    expect(within(section).getByRole("spinbutton", { name: "Hash (MB), typed" })).toHaveValue(16);
-    expect(optionRow("Hash")).toHaveTextContent("For every board and every preset — the top bar's Engine menu sets it too.");
+    // Threads and Hash: the global request, a slider in the search limits (CTA-185) — not an option row.
+    const limits = within(section).getByRole("region", { name: "Search limits" });
+    expect(within(limits).getByRole("spinbutton", { name: "Hash (MB), typed" })).toHaveValue(16);
+    expect(limits).toHaveTextContent("Threads and Hash are for every board and every preset — the top bar's Engine menu sets them too.");
+    expect(within(screen.getByTestId("engine-presets-options")).queryByTestId("engine-presets-option-hash")).toBeNull();
     expect(within(section).getByRole("spinbutton", { name: "UCI_Elo" })).toBeDisabled();
 
     await userEvent.click(within(section).getByRole("tab", { name: "Advanced" }));

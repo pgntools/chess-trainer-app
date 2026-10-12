@@ -270,7 +270,7 @@ settings ("Engine options changed", below) waits for the presets first
   in-browser Hash's 1024 MB — 2048 crashed the tab — an engine server's
   engine its own tops), a value past the slider shown at its end
   (`EngineResourceSlider`, which Settings → Engine's preset form shows in
-  the Threads and Hash rows too — the same global request). **Depth and move time can be typed**
+  its search limits too, under the move time — the same global request). **Depth and move time can be typed**
   (CTA-185): a number box at each slider's end (`SliderField`'s `input`, in
   `SearchLimitsFields`),
   depth a whole number held to 1–99 (the slider stops at 50 and shows a deeper
