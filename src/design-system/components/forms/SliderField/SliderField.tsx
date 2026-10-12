@@ -37,13 +37,14 @@ export type SliderFieldProps = {
   onChange: (value: number) => void;
   min: number;
   max: number;
-  step?: number;
+  /** The slider's step — 1, the default; `null` snaps it to the marks alone (MUI's own). */
+  step?: number | null;
   /** What the header shows beside the label — absent, the number itself. */
   valueLabel?: ReactNode;
   /**
    * Labelled marks on the slider (CTA-163), positioned by their value. The
    * slider still steps by `step`; a caller whose marks are the only legal
-   * values makes them the step's grid.
+   * values makes them the step's grid, or passes `step={null}`.
    */
   marks?: ReadonlyArray<{ value: number; label?: ReactNode }>;
   /** The slider's value as words for a screen reader (`aria-valuetext`, CTA-163). */
@@ -83,8 +84,10 @@ export type SliderFieldProps = {
  */
 function SliderField({ label, value, onChange, min, max, step = 1, valueLabel, marks, valueText, help, notice, disabled = false, input, testId }: SliderFieldProps) {
   const labelId = useId();
+  // Room on both sides for the thumb (and its focus ring) at either end of the rail, where it is half past it.
   const slider = (
-    <Slider
+    <Box sx={{ paddingInline: 1 }}>
+      <Slider
         size="small"
         value={value}
         min={min}
@@ -97,6 +100,7 @@ function SliderField({ label, value, onChange, min, max, step = 1, valueLabel, m
         sx={{ opacity: disabled ? 0.6 : 1 }}
         slotProps={{ input: { "aria-labelledby": labelId, "data-testid": `${testId}-input` } as object }}
       />
+    </Box>
   );
   return (
     <Box data-testid={testId}>

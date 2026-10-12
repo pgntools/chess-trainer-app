@@ -16,3 +16,6 @@ export const SINGLE_THREAD: ResourceLimits = { slider: { threads: 1, hashMb: 512
 
 /** An engine server's engine: its own tops, the slider's and the box's alike. */
 export const HOSTED: ResourceLimits = { slider: { threads: 15, hashMb: 4096 }, typed: { threads: 15, hashMb: 4096 } };
+
+/** An engine server capping Hash at 16 GB (`maxHashMb`): its labels 1, 4, 8 and 16 GB — 2 GB too close to 1. */
+export const HOSTED_16GB: ResourceLimits = { slider: { threads: 15, hashMb: 16384 }, typed: { threads: 15, hashMb: 16384 } };

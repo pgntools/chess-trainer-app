@@ -4,7 +4,7 @@ import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
 import type { BlockFamilyId } from "../../families";
 import EngineResourceSlider, { type EngineResource } from "./EngineResourceSlider";
-import { HOSTED, MULTI_THREAD, SINGLE_THREAD, type ResourceLimits } from "./fixtures";
+import { HOSTED, HOSTED_16GB, MULTI_THREAD, SINGLE_THREAD, type ResourceLimits } from "./fixtures";
 
 const demo = (resource: EngineResource, initial: number, limits: ResourceLimits, testId: string) => (
   <WithState initial={initial}>
@@ -32,6 +32,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "Threads on the single-thread build — fixed at one, and said", render: () => demo("threads", 1, SINGLE_THREAD, "gallery-resource-threads-fixed") },
     { name: "Hash on a 4 GB device — the slider to 512 MB, typed up to 1024", render: () => demo("hashMb", 256, SINGLE_THREAD, "gallery-resource-hash") },
     { name: "Hash on an engine server's engine — its own 4096 MB", render: () => demo("hashMb", 2048, HOSTED, "gallery-resource-hash-hosted") },
+    { name: "Hash on a server capped at 16 GB — marks in proportion, 2 GB unlabelled", render: () => demo("hashMb", 16, HOSTED_16GB, "gallery-resource-hash-16gb") },
   ],
 };
 

@@ -268,7 +268,9 @@ settings ("Engine options changed", below) waits for the presets first
   box going past the slider's device top to what the engine declares
   (`searchSettingTypedLimitsOf`: a multi-thread build's 32 threads, an
   in-browser Hash's 1024 MB — 2048 crashed the tab — an engine server's
-  engine its own tops), a value past the slider shown at its end
+  engine its own tops), a value past the slider shown at its end — Hash
+  snapped to the powers of two from 16 MB, each where its size falls,
+  labelled in GB (`hashSlots.ts`) —
   (`EngineResourceSlider`, which Settings → Engine's preset form shows in
   its search limits too, under the move time — the same global request). **Depth and move time can be typed**
   (CTA-185): a number box at each slider's end (`SliderField`'s `input`, in

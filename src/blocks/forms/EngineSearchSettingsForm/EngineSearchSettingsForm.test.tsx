@@ -240,7 +240,7 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
       mount(HOSTED_ASKED, HOSTED_LIMITS, { engines: SERVER_ENGINES, engineId: HOSTED_ENGINE.id });
       expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "15");
       expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "4096");
-      expect(screen.getAllByText("4096").some((label) => label.classList.contains("MuiSlider-markLabel"))).toBe(true);
+      expect(screen.getAllByText("4GB").some((label) => label.closest(".MuiSlider-markLabel") !== null)).toBe(true);
       expect(screen.getByRole("spinbutton", { name: "Hash (MB), typed" })).toHaveValue(4096);
     });
 

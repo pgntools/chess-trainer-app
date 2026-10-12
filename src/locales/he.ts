@@ -300,6 +300,8 @@ const he: typeof en = {
     moveTimeTyped: "זמן למסע בשניות, בהקלדה",
     threadsTyped: "תהליכונים, בהקלדה",
     hashTyped: "זיכרון גיבוב (MB), בהקלדה",
+    hashGb: "{{gb}}GB",
+    hashMb: "{{mb}}MB",
     seconds: "ש׳",
   },
   boardEngine: {

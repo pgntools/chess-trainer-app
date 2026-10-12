@@ -410,6 +410,9 @@ const en = {
     moveTimeTyped: "Move time in seconds, typed",
     threadsTyped: "Threads, typed",
     hashTyped: "Hash (MB), typed",
+    /** The Hash slider's round sizes (CTA-185) — its marks, and its value read aloud. */
+    hashGb: "{{gb}}GB",
+    hashMb: "{{mb}}MB",
     /** The move-time box's unit. */
     seconds: "s",
   },
