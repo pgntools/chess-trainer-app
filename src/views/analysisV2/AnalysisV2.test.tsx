@@ -582,6 +582,38 @@ describe("a Case's board (CTA-186)", () => {
     expect(await screen.findByRole("searchbox", { name: "Filter cases" })).toHaveValue("endgame");
   });
 
+  it("opens a Case's own view from the list — its tags on Info — and Back returns to the list", async () => {
+    const project = (await createAnalysisProject("Club", null))!;
+    await addAnalysisCases([gameCase(project.id), positionCaseOfFen({ id: "cpos", projectId: project.id, name: "Endgame" }, ENDGAME)]);
+    const user = userEvent.setup();
+    mount(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
+    await screen.findByRole("navigation", { name: "Cases of Club" });
+
+    // A row picked: that Case, the panel on its own view.
+    await user.click(screen.getByTestId("analysis-case-siblings-tree-cgame"));
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cgame?sort=name&dir=asc&view=case`);
+    const details = await screen.findByRole("navigation", { name: /^Details of Carlsen – Caruana/ });
+    expect(within(details).getByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("analysis-case-details-info-Event")).toHaveTextContent("Club Championship");
+    expect(screen.getByTestId("analysis-case-details-info-White")).toHaveTextContent("Carlsen");
+    await expectNoAxeViolations(details);
+    await user.click(within(details).getByRole("tab", { name: "TBD" }));
+    expect(screen.getByTestId("analysis-case-details-tbd")).toBeInTheDocument();
+
+    // Previous / next keep the view, and its open tab; a Position from a FEN has no game tags.
+    await user.click(within(details).getByRole("link", { name: "Next case" }));
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc&view=case`);
+    expect(await screen.findByRole("tab", { name: "TBD" })).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("tab", { name: "Info" }));
+    expect(screen.getByTestId("analysis-case-details-title")).toHaveTextContent("Endgame");
+    expect(screen.queryByTestId("analysis-case-details-info-Event")).toBeNull();
+
+    // Back: the list again, the table's context kept, the view dropped.
+    await user.click(screen.getByRole("link", { name: "Back to the cases" }));
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
+    expect(await screen.findByRole("navigation", { name: "Cases of Club" })).toBeInTheDocument();
+  });
+
   it("says a Case that is not in the Project, and leads back to it", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     const { baseElement } = mount(`/analysis/projects/${project.id}/cases/gone`);

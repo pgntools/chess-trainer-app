@@ -28,6 +28,19 @@ export const caseListContextOf = (params: URLSearchParams): string => {
   return query === "" ? "" : `?${query}`;
 };
 
+/**
+ * **Which screen of the Case board's left panel** — the Project's Cases
+ * (`CaseSiblings`) or the Case's own view (`CaseDetails`, `?view=case`) — added
+ * to the table's context for a Case's address. Never carried back to the table.
+ */
+export const withCaseView = (context: string, details: boolean): string => {
+  const params = new URLSearchParams(context);
+  if (details) params.set("view", "case");
+  else params.delete("view");
+  const query = params.toString();
+  return query === "" ? "" : `?${query}`;
+};
+
 /** A Project's Cases — with the table's context (`caseListContextOf`), when there is one. */
 export const projectPath = (projectId: string, context = ""): string =>
   `${ANALYSIS_V2_PATH}/projects/${encodeURIComponent(projectId)}${context}`;

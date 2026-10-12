@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import type { ChessboardOptions } from "react-chessboard";
 
 import { caseDisplayName } from "../../blocks/tables";
+import { CaseDetails } from "../../blocks/panels";
 import { CaseSiblings } from "../../blocks/trees";
 import { CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
 import { StatusText } from "../../design-system/components/feedback";
@@ -34,7 +35,7 @@ import {
   type CaseState,
 } from "../../lib/analysisProjects";
 import { arrowWidthSourcesIn } from "../../lib/nextMoveWeights";
-import { emptyTree, sanPathTo } from "../../lib/gameTree";
+import { emptyTree, mainlineGame, sanPathTo } from "../../lib/gameTree";
 import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
 import BoardShell from "../board/core/BoardShell";
@@ -48,7 +49,7 @@ import { playerPlatesOf } from "../shared/playerResults";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
 import CaseDisplayTab from "./CaseDisplayTab";
 import CaseSettingsTab from "./CaseSettingsTab";
-import { browserPath, caseListContextOf, casePath, projectPath } from "./paths";
+import { browserPath, caseListContextOf, casePath, projectPath, withCaseView } from "./paths";
 import { useAnalysisCases, useAnalysisProjects } from "./useAnalysisProjects";
 
 /** The tabs that stay mounted once opened — a long move list is costly to mount, and the Map keeps its pan. */
@@ -333,6 +334,19 @@ function CaseWorkspace() {
     [ordered, text, t],
   );
 
+  /*
+    The panel's two screens: the Project's Cases, and — a row of them picked,
+    `?view=case` — the Case's own view, whose Back returns to the list. Its
+    Info tab reads the tags of the Case as saved, parsed only while it shows.
+  */
+  const details = searchParams.get("view") === "case";
+  const openPgn = cases?.find((candidate) => candidate.id === caseId && candidate.projectId === projectId)?.pgn;
+  const infoGame = useMemo(() => {
+    if (!details || openPgn === undefined) return undefined;
+    const tree = caseTree({ pgn: openPgn });
+    return tree === undefined ? undefined : mainlineGame(tree);
+  }, [details, openPgn]);
+
   if (projects === undefined || cases === undefined) {
     return (
       <Typography data-testid="analysis-v2-loading" sx={{ color: "text.secondary", p: 2 }}>
@@ -359,7 +373,12 @@ function CaseWorkspace() {
   }
 
   const projectName = project.name || t("analysisV2.project.untitled");
-  const linkTo = (id: string) => ({ component: RouterLink, to: casePath(project.id, id, context) });
+  // A link keeps the panel's screen unless it says which.
+  const linkTo = (id: string, toDetails = details) => ({
+    component: RouterLink,
+    to: casePath(project.id, id, withCaseView(context, toDetails)),
+  });
+  const row = ordered.find((candidate) => candidate.id === record.id) ?? caseRowOf(record, caseDisplayName(record, t));
   // Previous / next walk the list as shown — or, the words leaving the open Case out, the whole of it.
   const walk = shown.some((row) => row.id === record.id) ? shown : ordered;
   const at = walk.findIndex((row) => row.id === record.id);
@@ -377,31 +396,42 @@ function CaseWorkspace() {
         collapsed={false}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        drawerLabel={t("analysisV2.siblings.title", { name: projectName })}
+        drawerLabel={details ? t("analysisV2.caseDetails.label", { name: row.name }) : t("analysisV2.siblings.title", { name: projectName })}
         keepShell
       >
-        <CaseSiblings
-          projectName={projectName}
-          rows={shown}
-          currentId={record.id}
-          linkOf={(row) => linkTo(row.id)}
-          closeLink={{ component: RouterLink, to: projectPath(project.id, context) }}
-          previous={at > 0 ? linkTo(walk[at - 1].id) : undefined}
-          next={at >= 0 && at < walk.length - 1 ? linkTo(walk[at + 1].id) : undefined}
-          text={text}
-          onTextChange={(next) =>
-            setSearchParams(
-              (params) => {
-                const updated = new URLSearchParams(params);
-                if (next === "") updated.delete("q");
-                else updated.set("q", next);
-                return updated;
-              },
-              { replace: true },
-            )
-          }
-          testId="analysis-case-siblings"
-        />
+        {details ? (
+          <CaseDetails
+            row={row}
+            game={infoGame}
+            backLink={linkTo(record.id, false)}
+            previous={at > 0 ? linkTo(walk[at - 1].id) : undefined}
+            next={at >= 0 && at < walk.length - 1 ? linkTo(walk[at + 1].id) : undefined}
+            testId="analysis-case-details"
+          />
+        ) : (
+          <CaseSiblings
+            projectName={projectName}
+            rows={shown}
+            currentId={record.id}
+            linkOf={(sibling) => linkTo(sibling.id, true)}
+            closeLink={{ component: RouterLink, to: projectPath(project.id, context) }}
+            previous={at > 0 ? linkTo(walk[at - 1].id) : undefined}
+            next={at >= 0 && at < walk.length - 1 ? linkTo(walk[at + 1].id) : undefined}
+            text={text}
+            onTextChange={(next) =>
+              setSearchParams(
+                (params) => {
+                  const updated = new URLSearchParams(params);
+                  if (next === "") updated.delete("q");
+                  else updated.set("q", next);
+                  return updated;
+                },
+                { replace: true },
+              )
+            }
+            testId="analysis-case-siblings"
+          />
+        )}
       </BoardLeftPanel>
     </>
   );

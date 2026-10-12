@@ -2525,6 +2525,16 @@ const he: typeof en = {
       evalBar: "הצגת פס ההערכה",
       evalBarHelp: "הציון של המנוע ליד הלוח כשהמנוע פועל.",
     },
+    caseDetails: {
+      label: "הפרטים של {{name}}",
+      back: "חזרה לרשימת המקרים",
+      tabs: {
+        label: "פרטי המקרה",
+        info: "מידע",
+        tbd: "טרם נקבע",
+      },
+      tbdSoon: "יבוא בהמשך.",
+    },
     siblings: {
       title: "המקרים של {{name}}",
       close: "חזרה אל {{name}}",

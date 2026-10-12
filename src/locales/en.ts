@@ -3122,6 +3122,16 @@ const en = {
       evalBar: "Show evaluation bar",
       evalBarHelp: "The engine's score beside the board while the engine is on.",
     },
+    caseDetails: {
+      label: "Details of {{name}}",
+      back: "Back to the cases",
+      tabs: {
+        label: "Case details",
+        info: "Info",
+        tbd: "TBD",
+      },
+      tbdSoon: "Still to come.",
+    },
     siblings: {
       title: "Cases of {{name}}",
       close: "Back to {{name}}",
