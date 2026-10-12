@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { SelectField, SliderField } from "../../../design-system/components/forms";
 import { ENGINE_SEARCH_SETTING_BOUNDS, type EngineSearchSettings } from "../../../lib/engineSearchSettings";
 import type { EngineEntry } from "../../../lib/engines";
+import { EnginePresetChanges } from "../../panels/EnginePresetChanges";
 import { EngineResourceSlider } from "../EngineResourceSlider";
 import { SearchLimitsFields } from "../SearchLimitsFields";
 
@@ -45,7 +46,13 @@ export type EngineSearchSettingsFormProps = {
   presetId: string;
   /** The reader chose another preset for the running engine. */
   onPresetChange: (presetId: string) => void;
-  /** The form's root; each control `<testId>-<setting>` (`-depth`, `-movetime`, `-multipv`, `-threads`, `-hash`; the depth's and move time's number boxes `-depth-number`, `-movetime-number`), the engine select `<testId>-engine`, the preset select `<testId>-preset`. */
+  /**
+   * **The preset's unsaved changes** (CTA-185) — given while its draft
+   * differs from what is saved: a strip under the preset select with Save and
+   * Save as new preset (`EnginePresetChanges`). Absent, nothing to save.
+   */
+  changes?: { onSave: () => void; onSaveAs: (name: string) => void };
+  /** The form's root; each control `<testId>-<setting>` (`-depth`, `-movetime`, `-multipv`, `-threads`, `-hash`; the depth's and move time's number boxes `-depth-number`, `-movetime-number`), the engine select `<testId>-engine`, the preset select `<testId>-preset`, the unsaved changes' strip `<testId>-changes`. */
   testId: string;
 };
 
@@ -96,10 +103,10 @@ function EngineSearchSettingsForm({
   presets,
   presetId,
   onPresetChange,
+  changes,
   testId,
 }: EngineSearchSettingsFormProps) {
   const { t } = useTranslation();
-
 
   return (
     <Box data-testid={testId} sx={{ display: "grid", gap: 2 }}>
@@ -141,6 +148,14 @@ function EngineSearchSettingsForm({
             testId={`${testId}-preset`}
           />
         </WithIcon>
+        {changes !== undefined && (
+          <EnginePresetChanges
+            presetName={presets.find((preset) => preset.id === presetId)?.name ?? ""}
+            onSave={changes.onSave}
+            onSaveAs={changes.onSaveAs}
+            testId={`${testId}-changes`}
+          />
+        )}
         {/* Where its searches stop — the preset's own (CTA-185): another preset, or engine, brings its own. */}
         <SearchLimitsFields depth={settings.depth} moveTimeMs={settings.moveTimeMs} onChange={onChange} testId={testId} />
       </Box>

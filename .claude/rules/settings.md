@@ -211,7 +211,8 @@ whole design):
   one) shows the switch.
 - **Threads and Hash are sliders here too** (CTA-185, `EngineResourceSlider`):
   the one global request every board sends — not the preset's — edited in
-  their rows as in the top bar's Engine menu, the slider to the device's top
+  the search limits section under the move time (their rows left out of the
+  options) as in the top bar's Engine menu, the slider to the device's top
   and a number box to the engine's (`searchSettingTypedLimitsOf`; in-browser
   Hash at most 1024 MB). **Skill Level is a slider** (0–20, every step marked,
   0, 10 and 20 labelled).
@@ -230,10 +231,20 @@ whole design):
   off, with a note and a link here, and the engine plays at the preset's
   strength; on, the slider sets `UCI_Elo` for the game
   (`presetLimitsStrength`).
-- **A change is a store write, at once** (each keystroke of a field — the
-  field keeps its own text as the write comes back); every board and job
-  running the engine takes it from its next search. A refused write is an
-  `InlineAlert` above the form.
+- **Nothing is written as it changes** (CTA-185, `lib/enginePresetDraft.ts`):
+  every change — an option, a group, the depth, the move time, Threads, Hash,
+  here or in the top bar's Engine menu — edits **one unsaved draft** of the
+  chosen engine's selected preset, kept in memory and **in effect at once**
+  (every board takes it from its next search; a background job runs the
+  saved preset). While it differs from what is saved, an
+  `EnginePresetChanges` strip under the preset picker (and under the menu's
+  preset select) offers **Save** — the draft into the preset, Threads and
+  Hash into the global request — and **Save as new preset** — a new preset
+  named in a dialog ("‹preset› (copy)" to start), selected for the engine,
+  the preset edited left as it was. A reload drops the draft; so, silently,
+  does choosing another preset or engine; a draft brought back to what is
+  saved is none. The lines (the menu's) are still written at once. A
+  refused save is an `InlineAlert` above the form.
 
 ## 5. Testing
 

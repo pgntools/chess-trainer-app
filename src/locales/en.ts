@@ -410,6 +410,9 @@ const en = {
     moveTimeTyped: "Move time in seconds, typed",
     threadsTyped: "Threads, typed",
     hashTyped: "Hash (MB), typed",
+    /** The Hash slider's round sizes (CTA-185) — its marks, and its value read aloud. */
+    hashGb: "{{gb}}GB",
+    hashMb: "{{mb}}MB",
     /** The move-time box's unit. */
     seconds: "s",
   },
@@ -2599,12 +2602,22 @@ const en = {
   /** The `EnginePresetForm` block (CTA-179): an engine's options, kept in named presets. */
   enginePresets: {
     preset: "Preset for {{engine}}",
-    /** Under Threads and Hash, edited here (CTA-185): the global request, not the preset's. */
-    globalResource: "For every board and every preset — the top bar's Engine menu sets it too.",
-    /** Where the preset's searches stop (CTA-185) — its depth and move time. */
+    /** Where the preset's searches stop (CTA-185) — its depth and move time; Threads and Hash under them. */
     search: {
       title: "Search limits",
       help: "Every board searches with {{preset}} to this depth or move time, whichever comes first. The top bar's Engine menu sets them too.",
+      /** Under Threads and Hash (CTA-185): the global request, not the preset's. */
+      resourcesHelp: "Threads and Hash are for every board and every preset — the top bar's Engine menu sets them too.",
+    },
+    /** The unsaved changes' strip (CTA-185, `EnginePresetChanges`): nothing is written until Save or Save as new preset. */
+    changes: {
+      title: "Unsaved changes to {{preset}}",
+      help: "Every board uses them now. A reload, or choosing another preset or engine, drops them.",
+      save: "Save",
+      saveHelp: "Keep these changes in {{preset}}",
+      saveAs: "Save as new preset",
+      saveAsHelp: "Keep {{preset}} as it was, and save these changes as a new preset",
+      saveAsTitle: "Save as new preset",
     },
     actions: "Preset actions",
     new: "New preset",
