@@ -3,6 +3,7 @@ import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
 import { computerAnalysisOptionsFrom, type ComputerAnalysisOptions } from "../../../lib/computerAnalysis";
 import type { BlockFamilyId } from "../../families";
+import { initialJobTarget, JobTargetFields } from "../../forms";
 import NewJobDialog, { type NewJobDialogProps } from "./NewJobDialog";
 import { BEFORE_HANDSHAKE, GAME, HEBREW_GAME, NONE_TICKED, OPTIONS, SINGLE_THREAD } from "./fixtures";
 
@@ -52,6 +53,24 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "The game has a running job — the choice first", render: () => framed(OPTIONS, { existing: { status: "running", onCheck: noop } }) },
     { name: "The game has a finished job — the choice first", render: () => framed(OPTIONS, { existing: { status: "done", onCheck: noop } }) },
     { name: "A Hebrew game name (switch to RTL)", render: () => framed(OPTIONS, { gameName: HEBREW_GAME }) },
+    {
+      name: "Jobs V2 (CTA-188): its title, where the results go before the form, Start off for a project not picked",
+      render: () =>
+        framed(OPTIONS, {
+          title: "New job — Jobs V2",
+          intro: "The Case's mainline is analysed in the background; its results go where you choose below.",
+          targetSection: (
+            <JobTargetFields
+              value={{ ...initialJobTarget(""), kind: "linked", linkedMode: "existing" }}
+              onChange={noop}
+              projectName="Najdorf studies"
+              projects={[{ id: "p", name: "Engine lines", linked: true }]}
+              testId="gallery-new-job-target"
+            />
+          ),
+          startBlockedNote: "Pick a project to start.",
+        }),
+    },
   ],
 };
 

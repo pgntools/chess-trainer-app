@@ -12,15 +12,41 @@ import { KeyValueList } from "../../../design-system/components/lists";
 import { ProgressLine } from "../../../design-system/components/states";
 import { tableDate } from "../../../design-system/components/tables";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
-import { canCancelJob, canPauseJob, canResumeJob, jobMoveLabel, jobProgress, type Job, type JobOutput } from "../../../lib/jobs";
+import type { ComputerAnalysisVariant } from "../../../lib/computerAnalysis";
+import { canCancelJob, canPauseJob, canResumeJob, jobMoveLabel, jobProgress, type Job } from "../../../lib/jobs";
 import { JOB_STATUS_TONES } from "../../tables";
 
-export type JobSummaryProps = {
-  job: Job;
+/**
+ * What the panel reads of a job — a V1 `Job`, or a Jobs V2 one (CTA-188),
+ * which shares these fields: its outputs need only their variant, its error
+ * only a code.
+ */
+export type JobSummaryJob = Pick<
+  Job,
+  "kind" | "status" | "positions" | "checkpoint" | "startedAt" | "finishedAt" | "createdAt" | "options" | "engine"
+> & {
+  source: { name: string };
+  outputs: readonly { variant: ComputerAnalysisVariant }[];
+  error: string | null;
+};
+
+/** One more line of the Parameters tab — Jobs V2's preset and target. */
+export type JobSummaryFact = { id: string; label: string; value: ReactNode };
+
+export type JobSummaryProps<J extends JobSummaryJob = Job> = {
+  job: J;
   /** The saved analysis it was sent from, on the Analysis Board — absent for a board never saved. */
   sourceLink?: LinkTarget;
-  /** A saved output, on the Analysis Board. */
-  outputLink: (output: JobOutput) => LinkTarget;
+  /** The source's button's words — absent, "Open the game" (`jobs.openSource`). */
+  sourceLabel?: string;
+  /** An output, where it is — absent, the outputs are not linked (Jobs V2's links come as `links`). */
+  outputLink?: (output: J["outputs"][number]) => LinkTarget;
+  /** More links after the outputs' — Jobs V2's new Cases, the linked Project or the source Case merged into. */
+  links?: ReactNode;
+  /** More facts, after the engine's — Jobs V2's preset and target. */
+  extraFacts?: readonly JobSummaryFact[];
+  /** Why it failed, in words — absent, `jobs.errors.<code>`. */
+  errorText?: string;
   onCancel: () => void;
   /** Pause a job waiting or being run — Resume takes it up again (CTA-178). */
   onPause: () => void;
@@ -59,9 +85,25 @@ const stamp = (value: string | null): ReactNode => {
  * The tab picked is the panel's own, kept while another job is opened.
  *
  * Presentational: the job, its links and its actions are props; its words are
- * the app's (`jobs.*`).
+ * the app's (`jobs.*`). Any job with a {@link JobSummaryJob}'s fields — Jobs
+ * V2's too (CTA-188), its preset and target as `extraFacts`, its outputs as
+ * `links`.
  */
-function JobSummary({ job, sourceLink, outputLink, onCancel, onPause, onResume, onDelete, children, testId }: JobSummaryProps) {
+function JobSummary<J extends JobSummaryJob = Job>({
+  job,
+  sourceLink,
+  sourceLabel,
+  outputLink,
+  links,
+  extraFacts = [],
+  errorText,
+  onCancel,
+  onPause,
+  onResume,
+  onDelete,
+  children,
+  testId,
+}: JobSummaryProps<J>) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<JobSummaryTab>("results");
   const name = job.source.name || t("jobs.untitled");
@@ -73,6 +115,7 @@ function JobSummary({ job, sourceLink, outputLink, onCancel, onPause, onResume, 
   const facts = [
     { id: "kind", label: t("jobs.facts.kind"), value: t(`jobs.kinds.${job.kind}`) },
     { id: "engine", label: t("jobs.facts.engine"), value: job.engine?.name ?? options.engine },
+    ...extraFacts,
     { id: "depth", label: t("jobs.facts.depth"), value: <bdi dir="ltr">{options.depth}</bdi> },
     { id: "time", label: t("jobs.facts.time"), value: seconds(options.moveTimeMs) },
     { id: "lines", label: t("jobs.facts.lines"), value: <bdi dir="ltr">{options.multiPv}</bdi> },
@@ -107,7 +150,7 @@ function JobSummary({ job, sourceLink, outputLink, onCancel, onPause, onResume, 
         </Box>
         {sourceLink !== undefined && (
           <Button size="small" variant="outlined" data-testid={`${testId}-source`} sx={{ flexShrink: 0, whiteSpace: "nowrap" }} {...linkProps(sourceLink)}>
-            {t("jobs.openSource")}
+            {sourceLabel ?? t("jobs.openSource")}
           </Button>
         )}
       </Box>
@@ -131,7 +174,7 @@ function JobSummary({ job, sourceLink, outputLink, onCancel, onPause, onResume, 
 
       {job.status === "failed" && job.error !== null && (
         <InlineAlert severity="error" dense testId={`${testId}-error`}>
-          {t(`jobs.errors.${job.error}`)}
+          {errorText ?? t(`jobs.errors.${job.error}`)}
         </InlineAlert>
       )}
 
@@ -156,18 +199,20 @@ function JobSummary({ job, sourceLink, outputLink, onCancel, onPause, onResume, 
         </Button>
       </Stack>
 
-      {job.outputs.length > 0 && (
+      {((outputLink !== undefined && job.outputs.length > 0) || links !== undefined) && (
         <Box component="section" aria-label={t("jobs.links")} sx={{ display: "grid", gap: 0.5 }}>
-          {job.outputs.map((output) => (
-            <Link
-              key={output.analysisId}
-              {...(linkProps(outputLink(output)) as Record<string, unknown>)}
-              underline="hover"
-              data-testid={`${testId}-output-${output.variant}`}
-            >
-              {t("jobs.openOutput", { variant: t(`computerAnalysis.variants.${output.variant}`) })}
-            </Link>
-          ))}
+          {outputLink !== undefined &&
+            job.outputs.map((output) => (
+              <Link
+                key={output.variant}
+                {...(linkProps(outputLink(output)) as Record<string, unknown>)}
+                underline="hover"
+                data-testid={`${testId}-output-${output.variant}`}
+              >
+                {t("jobs.openOutput", { variant: t(`computerAnalysis.variants.${output.variant}`) })}
+              </Link>
+            ))}
+          {links}
         </Box>
       )}
 

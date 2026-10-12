@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import { computerAnalysisOptionsFrom, type ComputerAnalysisOptions } from "../../../lib/computerAnalysis";
 import type { EngineOption } from "../../../lib/engineTypes";
+import { describeEngines } from "../../../lib/engines";
 import { expectNoAxeViolations } from "../../../test/axe";
 import ComputerAnalysisForm, { type ComputerAnalysisFormProps } from "./ComputerAnalysisForm";
 import {
@@ -265,5 +266,43 @@ describe("ComputerAnalysisForm (CTA-174)", () => {
     render(<Harness engineName="Stockfish 19 Lite" />);
     await user.click(screen.getByRole("button", { name: "Advanced options" }));
     await expectNoAxeViolations();
+  });
+
+  describe("Jobs V2's additions (CTA-188)", () => {
+    it("offers the engine and its preset, each a select, at the head of the Engine section", async () => {
+      const onEngineChange = vi.fn();
+      const onPresetChange = vi.fn();
+      const engines = describeEngines();
+      render(
+        <Harness
+          engineChoice={{
+            engines,
+            engineId: engines[0].descriptor.id,
+            onEngineChange,
+            presets: [
+              { id: "default", name: "Default" },
+              { id: "deep", name: "Deep" },
+            ],
+            presetId: "default",
+            onPresetChange,
+          }}
+        />,
+      );
+      expect(screen.getByText(/The preset sets the depth and the time per move/)).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("combobox", { name: "Preset" }));
+      await userEvent.click(screen.getByRole("option", { name: "Deep" }));
+      expect(onPresetChange).toHaveBeenCalledWith("deep");
+      expect(screen.getByRole("combobox", { name: "Engine" })).toHaveTextContent(engines[0].descriptor.name);
+      await expectNoAxeViolations();
+    });
+
+    it("offers one variant as radios for a merge into the Case", async () => {
+      const onOptions = vi.fn();
+      render(<Harness singleVariant onOptions={onOptions} />);
+      expect(screen.queryByRole("checkbox", { name: /Light/ })).toBeNull();
+      await userEvent.click(screen.getByRole("radio", { name: "Full" }));
+      expect(onOptions).toHaveBeenLastCalledWith(expect.objectContaining({ outputs: ["full"] }));
+      expect(screen.getByRole("radiogroup", { name: "Variant" })).toBeInTheDocument();
+    });
   });
 });

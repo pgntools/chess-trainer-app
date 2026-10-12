@@ -58,3 +58,10 @@ export const NONE_TICKED: ComputerAnalysisOptions = { ...OPTIONS, outputs: [] };
 
 /** Depth 35 with no time limit — each position searched to the depth alone. */
 export const NO_TIME_LIMIT: ComputerAnalysisOptions = { ...OPTIONS, depth: 35, minDepth: 35, moveTimeMs: 0 };
+
+/** The engine and preset selects (CTA-188, Jobs V2's popup): this page's engines, three presets. */
+export const ENGINE_CHOICE_PRESETS: readonly { id: string; name: string }[] = [
+  { id: "default", name: "Default" },
+  { id: "deep", name: "Deep analysis" },
+  { id: "blitz", name: "Blitz check" },
+];
