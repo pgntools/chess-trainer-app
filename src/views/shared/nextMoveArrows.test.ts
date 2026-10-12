@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parsePgnTree } from "../../../lib/pgn";
+import { parsePgnTree } from "../../lib/pgn";
 import {
   HOVERED_NEXT_MOVE_ARROW_COLOR,
   NEXT_MOVE_ARROW_COLOR,

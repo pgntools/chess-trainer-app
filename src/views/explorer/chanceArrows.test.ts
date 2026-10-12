@@ -14,7 +14,7 @@ import {
   HOVERED_NEXT_MOVE_ARROW_COLOR,
   NEXT_MOVE_ARROW_PALETTES,
   UNTAGGED_NEXT_MOVE_ARROW_COLOR,
-} from "../tools/analysis/nextMoveArrows";
+} from "../shared/nextMoveArrows";
 
 // The width of an arrow's shaft, read straight off its tail's two flank points.
 const tailWidthOf = (points: readonly { x: number; y: number }[]) =>

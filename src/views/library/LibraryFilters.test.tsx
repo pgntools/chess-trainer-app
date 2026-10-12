@@ -7,7 +7,7 @@ import { collectionFacetsOf, filteredRows } from "../../lib/libraryCollections";
 import { downloadPgn } from "../../lib/pgnExport";
 import { boardOptions } from "../board/boardTestHarness";
 import { CHANCE_ARROW_BORDER_COLOR, CHANCE_ARROW_FILL_COLOR } from "../explorer/chanceArrows";
-import { HOVERED_NEXT_MOVE_ARROW_COLOR } from "../tools/analysis/nextMoveArrows";
+import { HOVERED_NEXT_MOVE_ARROW_COLOR } from "../shared/nextMoveArrows";
 import {
   GAMES,
   where,

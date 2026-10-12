@@ -4,10 +4,10 @@ import { analysisSettingsOf, analysisUciOptionsOf, type AnalysisSettings } from 
 import { annotatorOf, recordEvaluation } from "../../../lib/engineEvals";
 import { findNode, pathTo, type GameTree } from "../../../lib/gameTree";
 import { extensionIdsOf, nodeIdsOf } from "../../../lib/repertoireTrainer";
-import { useBoardCore } from "../../board/core/useBoardCore";
-import { useEngineModule, type FinishedSearch } from "../../board/core/useEngineModule";
+import { useBoardCore } from "./useBoardCore";
+import { useEngineModule, type FinishedSearch } from "./useEngineModule";
 import { useEngineChoice } from "../../shared/useEngineChoice";
-import { usePlayToggle } from "../../board/core/usePlayToggle";
+import { usePlayToggle } from "./usePlayToggle";
 import { boardEngineStateOf, usePublishBoardEngineState } from "../../main/boardEngineState";
 import { useEngineSearchSettings } from "../../shared/useEngineSearchSettings";
 

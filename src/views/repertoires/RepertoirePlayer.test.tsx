@@ -19,7 +19,7 @@ import {
 import {
   NEXT_MOVE_ARROW_COLOR,
   SIDELINE_NEXT_MOVE_ARROW_COLOR,
-} from "../tools/analysis/nextMoveArrows";
+} from "../shared/nextMoveArrows";
 import { boardOptions, FakeEngine } from "../board/boardTestHarness";
 import {
   renderSection,

@@ -3,7 +3,7 @@ import {
   HOVERED_NEXT_MOVE_ARROW_COLOR,
   UNTAGGED_NEXT_MOVE_ARROW_COLOR,
   type NextMoveArrowColors,
-} from "../tools/analysis/nextMoveArrows";
+} from "../shared/nextMoveArrows";
 
 /**
  * **The play-chance arrows' geometry** (CTA-71) — pure data in a file of its

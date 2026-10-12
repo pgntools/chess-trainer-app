@@ -19,7 +19,7 @@ import { lastMoveSquareStyles } from "../../lib/gameNavigation";
 import { commentWords, excerptRows, excerptTokens, isInExcerpt, moveName, type ExcerptToken, type ExcerptWindow } from "../../lib/pgnExcerpt";
 import { ForceLTR } from "../../theme/ForceLTR";
 import NagGlyphs from "./NagGlyphs";
-import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
+import { nextMoveArrowsOf } from "./nextMoveArrows";
 import { useBoardSquareOptions } from "./boardColors";
 import PromotionPicker, { type PromotionChoice } from "./PromotionPicker";
 import ExcerptGameInfo from "./ExcerptGameInfo";

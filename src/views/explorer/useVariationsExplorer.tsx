@@ -24,7 +24,7 @@ import type { MapCoverage } from "../../lib/treeMap";
 import NextMovesBar from "../shared/NextMovesBar";
 import MoveGlyphBadge from "../shared/MoveGlyphBadge";
 import ShapeCircles from "../shared/ShapeCircles";
-import { nextMoveArrowsOf } from "../tools/analysis/nextMoveArrows";
+import { nextMoveArrowsOf } from "../shared/nextMoveArrows";
 import AnnotationsBar, { type CommentEditing } from "./AnnotationsBar";
 import ChanceArrows from "./ChanceArrows";
 import { UNTAGGED_ARROW_CHANCE, weightedArrowColors } from "./chanceArrows";

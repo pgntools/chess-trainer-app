@@ -48,7 +48,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | Path | What lives there |
 | --- | --- |
 | `src/views/tools/analysis/AnalysisBoard.tsx` | **The screen**: the arrivals (`arrivalOf`), the slots, the header, the URL write-back. `AnalysisBoardRoute` waits for the stores a URL names. |
-| `src/views/tools/analysis/useAnalysisSession.ts` | **The shareable session**: core + engine + `usePlayToggle` + a **baseline** (the tree as it arrived or was last kept), `changed`, `extensionIds`. The Library's game board and the Openings explorer compose it too. |
+| `src/views/board/core/useAnalysisSession.ts` | **The shareable session**: core + engine + `usePlayToggle` + a **baseline** (the tree as it arrived or was last kept), `changed`, `extensionIds`. The Library's game board and the Openings explorer compose it too. |
 | `src/views/tools/analysis/useAnalysisBoard.ts` | That session plus **the saved record**: Save / Update / Save as copy / Discard, the Load tab's new boards, the arrival precedence. |
 | `src/views/tools/analysis/AnalysisLoad.tsx` | The Load tab: a PGN by file or paste (one game; several open the popup) or a FEN, over `useAnalysisLoad`. `onCollectionSaved`, `onAnalysesSaved` (CTA-141), `choiceLabelKey` and `onLoadPosition` optional — the Openings explorer passes no `onCollectionSaved`, so its choice stays inline and merge-only. |
 | `src/views/tools/analysis/MultiGameDialog.tsx` | **The popup a PGN of several games opens** (CTA-101): Merge games, Save as games collection (index pass with progress and Cancel, `addCollection` at the Library's top level, then `/library/<id>`), or Save to Saved analyses (CTA-141: a folder's name, then a new top-level folder with an analysis per game — `analysisGamesOfText`, `batchAnalysesOf` — then `/tools/analysis/saved?folder=<id>`). The Board's Load tab and the Lobby's form both render it. |
@@ -63,8 +63,8 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/views/tools/analysis/AnalysisArrows.tsx`, `src/blocks/forms/ArrowSettingsFields/` | The Arrows tab (CTA-98, §1.1): the next-move arrows switch, the width source and the palette — and the move marks switch (CTA-168). The fields block is shared with the settings screen. |
 | `src/views/tools/analysis/SaveAnalysisDialog.tsx` | A new board's name and folder. |
 | `src/blocks/panels/PlayToggleButton/`, `EngineThinking/` | Play's header button and status line, shared with every board that has Play. |
-| `src/views/tools/analysis/useTreeNavigation.ts` | The core's navigation (node id as state, the keys). |
-| `src/views/tools/analysis/nextMoveArrows.ts`, `src/views/shared/NextMovesBar.tsx` | The next-move arrows and bar every board draws through ([`tree-views.md`](./tree-views.md)). |
+| `src/views/board/core/useTreeNavigation.ts` | The core's navigation (node id as state, the keys). |
+| `src/views/shared/nextMoveArrows.ts`, `src/views/shared/NextMovesBar.tsx` | The next-move arrows and bar every board draws through ([`tree-views.md`](./tree-views.md)). |
 | `src/views/tools/analysis/saved/SavedAnalyses.tsx` | `/tools/analysis/saved`: the games table (the list view, CTA-144) and preview cards, the folders, the picks and bulk delete. |
 | `src/views/tools/analysis/saved/NewAnalysisForm.tsx` | The saved list's right-hand panel (CTA-87/96): the shared position editor over a **Start** that opens the Analysis Board on the edited position; the form's header carries the editor's resets (New, Clear, Flip), its `controls` row the FEN field and the `.pgn` pick, and under the editor the paste box — `useAnalysisLoad` placed by hand, a whole game handed to the board as `analysisHandOff` location state, a position PGN or FEN setting the editor up ([`position-editor.md`](./position-editor.md) §4). |
 | `src/views/tools/analysis/saved/AnalysisSettingsScreen.tsx` | `/tools/analysis/saved/<id>/settings`. |

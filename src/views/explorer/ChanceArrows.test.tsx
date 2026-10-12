@@ -9,7 +9,7 @@ import {
   CHANCE_ARROW_FILL_COLOR,
   type ChanceArrowColors,
 } from "./chanceArrows";
-import { HOVERED_NEXT_MOVE_ARROW_COLOR } from "../tools/analysis/nextMoveArrows";
+import { HOVERED_NEXT_MOVE_ARROW_COLOR } from "../shared/nextMoveArrows";
 
 /*
   The overlay itself, alone: the player's test asserts the screen wires it in,

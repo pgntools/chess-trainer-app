@@ -24,7 +24,7 @@ import { useOpeningBookModule } from "../board/core/useOpeningBookModule";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import { ClearBoardButton } from "../shared/ClearBoardButton";
 import AnalysisLoad from "../tools/analysis/AnalysisLoad";
-import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
+import { useAnalysisSession } from "../board/core/useAnalysisSession";
 import { openingArrowsOf } from "./openingArrows";
 
 /**

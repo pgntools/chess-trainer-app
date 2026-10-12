@@ -1,7 +1,7 @@
 import type { Arrow } from "react-chessboard";
-import { defaultChessTokens, type ArrowPaletteTokens } from "../../../design-system/themes";
-import type { ArrowPaletteId } from "../../../lib/arrowSettings";
-import type { VariationNode } from "../../../lib/gameTree";
+import { defaultChessTokens, type ArrowPaletteTokens } from "../../design-system/themes";
+import type { ArrowPaletteId } from "../../lib/arrowSettings";
+import type { VariationNode } from "../../lib/gameTree";
 
 /**
  * The colours of the arrows the pinned next-moves bar puts on the board
