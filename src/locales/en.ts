@@ -3186,7 +3186,7 @@ const en = {
       caseJob: "{{date}} · {{target}}",
       targets: {
         project: "new Cases in its project",
-        linked: "new Cases in a linked project",
+        other: "new Cases in another project",
         case: "into this Case",
       },
       target: {
@@ -3194,29 +3194,28 @@ const en = {
         kind: "Results go to",
         kinds: {
           project: "New Cases in this project ({{name}})",
-          linked: "A linked project",
+          other: "Another project",
           case: "Into this Case",
         },
         help: {
-          project: "Each variant ticked becomes a new Game Case beside this one.",
-          linked: "Each variant ticked becomes a new Game Case in a project this one links to.",
+          project: "Each variant ticked becomes a new Game Case beside this one, linked from it.",
+          other: "Each variant ticked becomes a new Game Case in another project, linked from this one.",
           case: "One variant: its evaluations, mistakes and comments are merged into this Case. Your own moves, lines and comments stay.",
         },
-        linked: "Which project",
-        linkedNew: "A new project",
-        linkedExisting: "An existing project",
+        other: "Which project",
+        otherNew: "A new project",
+        otherExisting: "An existing project",
         name: "The new project's name",
         nameRequired: "A new project needs a name.",
-        nameHelp: "Filed beside {{name}}, and linked from it.",
+        nameHelp: "Filed beside {{name}}.",
         project: "Project",
-        projectHelp: "Linked from {{name}} if it is not already.",
-        alreadyLinked: "already linked",
+        projectHelp: "The new Cases are filed there.",
       },
       targetProblem: {
         name: "Name the new project to start.",
         project: "Pick a project to start.",
       },
-      defaultLinkedName: "{{name}} — analysis",
+      defaultProjectName: "{{name}} — analysis",
       queued: "Jobs V2: the computer analysis of {{name}} is queued.",
       openJob: "Open in Jobs V2",
       openSource: "Open the Case",
@@ -3232,7 +3231,7 @@ const en = {
       },
       targetFacts: {
         project: "New Cases in {{name}}",
-        linked: "New Cases in {{name}} (linked)",
+        other: "New Cases in {{name}} (another project)",
         case: "Merged into the Case",
       },
       errors: {
@@ -3254,13 +3253,23 @@ const en = {
         cancelled: "Jobs V2 cancelled: {{name}}.",
       },
     },
-    /** The links between Projects (CTA-188), on a Project's screen. */
+    /** The links between Cases (CTA-188), on a Case's Info tab, and its Link a case picker. */
     links: {
+      title: "Linked cases",
       to: "Links to",
       from: "Linked from",
       none: "None",
+      empty: "No linked cases yet.",
       unlink: "Unlink {{name}}",
-      problem: "The link could not be removed — the browser refused the write.",
+      link: "Link a case",
+      problem: "The link could not be changed — the browser refused the write.",
+      picker: {
+        title: "Link a case",
+        submit: "Link",
+        project: "Project",
+        cases: "Case",
+        none: "There is no other case to link to.",
+      },
     },
   },
   footer: {

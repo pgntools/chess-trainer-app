@@ -11,7 +11,6 @@ import {
   type JobTargetChoice,
 } from "../../../blocks/forms";
 import { useSnackbar } from "../../../design-system/components/feedback";
-import { linkAnalysisProjects } from "../../../lib/analysisProjectLinkStore";
 import { createAnalysisProject, removeAnalysisProject } from "../../../lib/analysisProjectStore";
 import type { AnalysisCase, AnalysisProject } from "../../../lib/analysisProjects";
 import {
@@ -37,7 +36,7 @@ import { useEngineChoice } from "../../shared/useEngineChoice";
 import { useEngineSearchSettings } from "../../shared/useEngineSearchSettings";
 import { useSelectedEnginePreset } from "../../shared/useSelectedEnginePreset";
 import { jobsV2Path } from "../paths";
-import { useAnalysisProjects, useJobsV2, useProjectLinks } from "../useAnalysisProjects";
+import { useAnalysisProjects, useJobsV2 } from "../useAnalysisProjects";
 
 /** The Case a New Job V2 is for — its record, the tree on its board, and its name as shown. */
 export type NewJobV2Case = { record: AnalysisCase; tree: GameTree; name: string };
@@ -68,9 +67,10 @@ const seedOptions = (engineId: string, preset: EnginePreset, settings: EngineSea
  *   Threads, Hash and lines (the global search settings) — all editable for
  *   this one job; changing the engine or the preset prefills them again;
  * - **Where to save the results** (`JobTargetFields`): new Cases in the
- *   Project, a linked Project — a new one, named after the Case, made and
- *   linked on Start, filed in the source Project's folder, or an existing one, linked if it is not —
- *   or **into this Case**, one variant;
+ *   Project, another Project — a new one, named after the Case, made on
+ *   Start in the source Project's folder, or an existing one — or **into
+ *   this Case**, one variant; every new Case linked from the source Case (the
+ *   runner's);
  * - **Start** queues the job (`enqueueJobV2`) with the Case's tree as the
  *   board holds it then, the preset's values as they are then, closes and
  *   says so in a snackbar whose button opens the job. A refusal stays in the
@@ -85,7 +85,6 @@ function NewJobV2({ open, onClose, testId }: { open: NewJobV2Case | null; onClos
   const base = useHref("/");
   const jobs = useJobsV2();
   const projects = useAnalysisProjects();
-  const links = useProjectLinks();
   const { engineId: chosenEngine } = useEngineChoice();
   const { settings } = useEngineSearchSettings();
   const presets = useSyncExternalStore(subscribeEnginePresets, enginePresetsSnapshot, enginePresetsSnapshot);
@@ -117,8 +116,8 @@ function NewJobV2({ open, onClose, testId }: { open: NewJobV2Case | null; onClos
       setEngineId(engine);
       setPresetId(preset.id);
       setOptions(seedOptions(engine, preset, settings));
-      // A new linked Project is named after the Case analysed, not the Project it is in.
-      setTarget(initialJobTarget(t("analysisV2.jobs.defaultLinkedName", { name: open.name })));
+      // A new Project is named after the Case analysed, not the Project it is in.
+      setTarget(initialJobTarget(t("analysisV2.jobs.defaultProjectName", { name: open.name })));
       setProblem(undefined);
     }
   }
@@ -143,12 +142,11 @@ function NewJobV2({ open, onClose, testId }: { open: NewJobV2Case | null; onClos
 
   const candidates = useMemo(() => {
     if (open === null || projects === undefined) return [];
-    const linked = new Set((links ?? []).filter((link) => link.fromId === open.record.projectId).map((link) => link.toId));
     return projects
       .filter((project) => project.id !== open.record.projectId)
-      .map((project) => ({ id: project.id, name: project.name, linked: linked.has(project.id) }))
-      .sort((a, b) => Number(b.linked) - Number(a.linked) || a.name.localeCompare(b.name));
-  }, [open, projects, links]);
+      .map((project) => ({ id: project.id, name: project.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [open, projects]);
 
   const prefill = (engine: string, preset: EnginePreset) => {
     const search = presetSearchOf(preset);
@@ -167,17 +165,16 @@ function NewJobV2({ open, onClose, testId }: { open: NewJobV2Case | null; onClos
     else if (target.kind === "project") jobTarget = { kind: "project", projectId: sourceProject.id };
     else {
       let projectId = target.projectId;
-      if (target.linkedMode === "new") {
+      if (target.otherMode === "new") {
         made = await createAnalysisProject(target.newName, sourceProject.folderId);
         projectId = made?.id ?? null;
       }
-      if (projectId === null || (await linkAnalysisProjects(sourceProject.id, projectId)) !== undefined) {
-        if (made !== undefined) await removeAnalysisProject(made.id);
+      if (projectId === null) {
         setBusy(false);
         setProblem("storage");
         return;
       }
-      jobTarget = { kind: "linked", projectId };
+      jobTarget = { kind: "other", projectId };
     }
     const preset = presetOf(presetId);
     const result = await enqueueJobV2({

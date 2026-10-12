@@ -28,7 +28,7 @@ import { JobV2LiveReport, JobV2Report } from "./JobV2Reports";
  *   Delete; a row opens its details (`?job=<id>`, history replace).
  * - **The panel: one job** (`JobSummary`) — its status and progress, why it
  *   failed, a link to its source Case and to its results (the new Cases, the
- *   linked Project, or the source Case merged into), every option it was given
+ *   other Project, or the source Case merged into), every option it was given
  *   with **the engine and the preset**, where the results go; a finished
  *   job's **report and eval graph** (`JobV2Report`), another's **results so
  *   far** (`JobV2LiveReport`).
@@ -56,7 +56,7 @@ function JobsV2Screen() {
 
   const linkTo = (job: JobV2) => ({ component: RouterLink, to: jobsV2Path(job.id), replace: true });
 
-  /** Where its results are, as links: the new Cases, the linked Project, or the source Case merged into. */
+  /** Where its results are, as links: the new Cases, the other Project, or the source Case merged into. */
   const resultLinks = (job: JobV2) => {
     const items = job.outputs.flatMap((output) =>
       caseThere(output.projectId, output.caseId)
@@ -75,11 +75,11 @@ function JobsV2Screen() {
           ]
         : [],
     );
-    const linked = job.target.kind === "linked" ? projectName(job.target.projectId) : undefined;
-    if (job.target.kind === "linked" && linked !== undefined) {
+    const other = job.target.kind === "other" ? projectName(job.target.projectId) : undefined;
+    if (job.target.kind === "other" && other !== undefined) {
       items.push(
         <Link key="project" component={RouterLink} to={projectPath(job.target.projectId)} underline="hover" data-testid="analysis-v2-jobs-summary-project">
-          {t("analysisV2.jobs.openProject", { name: linked })}
+          {t("analysisV2.jobs.openProject", { name: other })}
         </Link>,
       );
     }

@@ -5,9 +5,11 @@ import { idbDatabase } from "./idb";
  * `chessapp.analysisProjects`, with five object stores: `folders` (the
  * nested folders, `lib/analysisProjectFolderStore.ts`), `projects`
  * (`lib/analysisProjectStore.ts`), `cases` (`lib/analysisCaseStore.ts`) and,
- * since version 2 (CTA-188), `jobs` (Jobs V2, `lib/jobV2Store.ts`) and
- * `projectLinks` (`lib/analysisProjectLinkStore.ts`) — the upgrade only
- * creates the two, every folder, Project and Case kept.
+ * since CTA-188, `jobs` (Jobs V2, `lib/jobV2Store.ts`) and `caseLinks` (the
+ * links between Cases, `lib/analysisCaseLinkStore.ts`) — version 3: an upgrade
+ * only creates what is missing, every folder, Project and Case kept. (Version
+ * 2, on CTA-188's branch only, had a `projectLinks` store instead — left
+ * where it is, unread: a store is never dropped.)
  * One database for them, because a folder, the Projects filed in it, their
  * Cases and their jobs are read by the same screens; a database of its own, apart
  * from the legacy `chessapp.analyses`, so the legacy module's removal takes
@@ -19,14 +21,14 @@ import { idbDatabase } from "./idb";
  */
 
 export const ANALYSIS_PROJECTS_DB_NAME = "chessapp.analysisProjects";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 export const PROJECT_FOLDERS_STORE = "folders";
 export const PROJECTS_STORE = "projects";
 export const CASES_STORE = "cases";
 /** Jobs V2 (CTA-188) — a Case's computer analysis. */
 export const JOBS_V2_STORE = "jobs";
-/** The directed links between Projects (CTA-188). */
-export const PROJECT_LINKS_STORE = "projectLinks";
+/** The directed links between Cases (CTA-188). */
+export const CASE_LINKS_STORE = "caseLinks";
 /** The `BroadcastChannel` the stores announce their writes on. */
 export const ANALYSIS_PROJECTS_CHANNEL = "chessapp.analysisProjects";
 
@@ -35,7 +37,7 @@ const analysisProjectsDb = idbDatabase(ANALYSIS_PROJECTS_DB_NAME, DB_VERSION, [
   PROJECTS_STORE,
   CASES_STORE,
   JOBS_V2_STORE,
-  PROJECT_LINKS_STORE,
+  CASE_LINKS_STORE,
 ]);
 
 /** The connection, opened once (and again after a failure or a newer version elsewhere). */

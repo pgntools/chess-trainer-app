@@ -29,6 +29,6 @@ const halfway = (job: JobV2): JobV2 =>
 
 export const RUNNING: JobV2 = { ...halfway(jobOf("j-running", "2026-10-12T21:40:00Z", { kind: "case" })), status: "running" };
 export const DONE: JobV2 = { ...jobOf("j-done", "2026-10-12T20:05:00Z", { kind: "project", projectId: "p1" }), status: "done" };
-export const FAILED: JobV2 = { ...jobOf("j-failed", "2026-10-11T09:00:00Z", { kind: "linked", projectId: "p2" }), status: "failed", error: "engine" };
+export const FAILED: JobV2 = { ...jobOf("j-failed", "2026-10-11T09:00:00Z", { kind: "other", projectId: "p2" }), status: "failed", error: "engine" };
 
 export const JOBS: readonly JobV2[] = [RUNNING, DONE, FAILED];

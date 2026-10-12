@@ -52,7 +52,7 @@ export const DUMP: ImportDump = {
   enginePresetSelections: [],
   analysisProjects: [],
   projectFolders: [],
-  projectLinks: [],
+  caseLinks: [],
 };
 
 /** An app with nothing in it — only the top levels clash, as they always exist. */

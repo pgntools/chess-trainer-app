@@ -59,7 +59,7 @@ wrapper's main features would go unused. §10 says when that changes.
 | `src/lib/playedGameStore.ts` | The `chessapp.engine` database (object store `games`) and its store, in one file (one store, one database). |
 | `src/lib/libraryDb.ts` | The `chessapp.library` database (object stores `collections`, `indexes`, `games`, `folders`), version 2. |
 | `src/lib/jobStore.ts` | The `chessapp.jobs` database (object store `jobs`) and its store, in one file (CTA-173) — the background jobs, their checkpoints ([`jobs.md`](./jobs.md)). |
-| `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, version 2 (object stores `folders`, `projects`, `cases`, and since CTA-188 `jobs` and `projectLinks`) — Analysis V2's (CTA-186), dev-only while it is built ([`analysis-v2.md`](./analysis-v2.md)). Its stores: `analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts`, `jobV2Store.ts` (Jobs V2), `analysisProjectLinkStore.ts`; its records `analysisProjects.ts` and `jobsV2.ts`. |
+| `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, version 3 (object stores `folders`, `projects`, `cases`, and since CTA-188 `jobs` and `caseLinks`) — Analysis V2's (CTA-186), dev-only while it is built ([`analysis-v2.md`](./analysis-v2.md)). Its stores: `analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts`, `jobV2Store.ts` (Jobs V2), `analysisCaseLinkStore.ts`; its records `analysisProjects.ts` and `jobsV2.ts`. |
 | `src/lib/enginePresetStore.ts` | The `chessapp.enginePresets` database (object stores `presets`, `selections`) and its two stores, in one file (CTA-179) — the engine option presets and the one each engine runs ([`docs/engine.md`](../../docs/engine.md) §9). |
 | `src/lib/libraryCollectionStore.ts` | The Library's hand-written collection store (§1.4) — not an `idbRecordStore`, because it reads a collection's rows and games lazily. |
 | `src/lib/savedAnalysisStore.ts`, `savedAnalysisFolderStore.ts`, `savedRepertoireStore.ts`, `savedRepertoireFolderStore.ts`, `libraryFolderStore.ts` | The other record stores: each one's caps, idempotency comparison and operations, over the factory. |
@@ -90,12 +90,13 @@ wrapper's main features would go unused. §10 says when that changes.
 | | | `projects` | `analysisProjectStore.ts` | `AnalysisProject` | newest first | 1,000 (a new one refused) |
 | | | `cases` | `analysisCaseStore.ts` | `AnalysisCase` (its source, the tree as PGN, the SAN path, the orientation — autosaved; the Jobs V2 merges its tree holds, CTA-188) | newest first | 10,000 (a batch past it refused) |
 | | | `jobs` (CTA-188) | `jobV2Store.ts` | `JobV2` (Jobs V2 — a Case's computer analysis, its checkpoint) | newest first | 100 (the oldest finished dropped; refused when every one is unfinished) |
-| | | `projectLinks` (CTA-188) | `analysisProjectLinkStore.ts` | `ProjectLink` (one Project links to another) | oldest first | 10,000 |
+| | | `caseLinks` (CTA-188) | `analysisCaseLinkStore.ts` | `CaseLink` (one Case links to another, across Projects) | oldest first | 50,000 |
 
 Every database is at **version 1** but the Library's, at **version 2** (CTA-88
 added its `folders` store; the upgrade only created it), and Analysis V2's, at
-**version 2** (CTA-188 added `jobs` and `projectLinks`; the upgrade only
-created them). Every object store is
+**version 3** (CTA-188 added `jobs` and `caseLinks`; the upgrade only
+creates them — a version 2 on CTA-188's branch alone had a `projectLinks`
+store instead, left in place unread, as an upgrade never drops a store). Every object store is
 keyed by `keyPath: "id"`, and **none has an index**. Each database is also the
 name of its `BroadcastChannel` (the analyses' two stores share one channel, and
 so do the repertoires', the engine presets' and the Library's — the Library's collection listener

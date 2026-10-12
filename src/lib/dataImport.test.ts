@@ -819,26 +819,28 @@ describe("Analysis V2's projects (CTA-186)", () => {
     });
   });
 
-  it("carry the links between them (CTA-188): the zip's whose two ends the app holds afterwards, an Override's old ones gone", () => {
+  it("carry the links between their Cases (CTA-188): the zip's whose two ends the app holds afterwards, the replaced Cases' own gone", () => {
     const LINKS = [
-      { id: "l1", fromId: "p1", toId: "p2", createdAt: AT },
-      // A link to a Project not exported is left out of the file.
-      { id: "l2", fromId: "p1", toId: "elsewhere", createdAt: AT },
+      // Across Projects: c1 is the Najdorf's, c3 the loose one's.
+      { id: "l1", fromId: "c1", toId: "c3", createdAt: AT },
+      // A link to a Case not exported is left out of the file.
+      { id: "l2", fromId: "c1", toId: "elsewhere", createdAt: AT },
     ];
     const zip = zipOf(
-      { projectFolders: FOLDERS, analysisProjects: PROJECTS, analysisCases: CASES, projectLinks: LINKS },
+      { projectFolders: FOLDERS, analysisProjects: PROJECTS, analysisCases: CASES, caseLinks: LINKS },
       { ...ALL, collections: false },
     );
     const dump = dumpOf(zip);
-    expect(dump.projectLinks).toEqual([LINKS[0]]);
+    expect(dump.caseLinks).toEqual([LINKS[0]]);
     expect(writesOf(dump, EMPTY).analysisProjects?.writes.links).toEqual({ add: [LINKS[0]], removeOf: [] });
 
-    // Skip leaves p2 out — the app has none — so its link has no end there.
+    // Skip leaves p2 and its c3 out — the app has neither — so the link has no end there.
     const skipped = writesOf(dump, EMPTY, { analysisProjects: { ticked: true, choice: "merge", folders: { "[]": "skip" } } });
     expect(skipped.analysisProjects?.writes.links.add).toEqual([]);
 
-    const app: ImportCurrent = { ...EMPTY, analysisProjects: [project("p2", "Mine", null)] };
-    expect(writesOf(dump, app, choosing("override")).analysisProjects?.writes.links).toEqual({ add: [LINKS[0]], removeOf: ["p2"] });
+    // Override replaces the app's p2 and its Case: that Case's links go.
+    const app: ImportCurrent = { ...EMPTY, analysisProjects: [project("p2", "Mine", null)], analysisCases: [aCase("mine", "p2")] };
+    expect(writesOf(dump, app, choosing("override")).analysisProjects?.writes.links).toEqual({ add: [LINKS[0]], removeOf: ["mine"] });
   });
 
   it("read a version-4 zip — from before the links — with none", () => {
@@ -849,7 +851,7 @@ describe("Analysis V2's projects (CTA-186)", () => {
     const v4 = rezip(zipSync(files), (m) => ({ ...m, formatVersion: 4 }));
     const dump = dumpOf(v4);
     expect(dump.analysisProjects.map(({ record }) => record.id)).toEqual(["p1", "p2"]);
-    expect(dump.projectLinks).toEqual([]);
+    expect(dump.caseLinks).toEqual([]);
   });
 
   it("are left unread by a build that does not offer them", () => {

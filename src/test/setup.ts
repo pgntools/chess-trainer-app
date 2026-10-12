@@ -55,7 +55,7 @@ if (!globalThis.ResizeObserver) {
   cache hits.
 */
 const recordStores = async () => {
-  const [played, analyses, analysisFolders, analysisDb, repertoires, repertoireFolders, repertoireDb, libraryFolders, jobs, jobRunner, presets, projectFolders, projects, cases, projectsDb, jobsV2, jobV2Runner, projectLinks] =
+  const [played, analyses, analysisFolders, analysisDb, repertoires, repertoireFolders, repertoireDb, libraryFolders, jobs, jobRunner, presets, projectFolders, projects, cases, projectsDb, jobsV2, jobV2Runner, caseLinks] =
     await Promise.all([
       import("../lib/playedGameStore"),
       import("../lib/savedAnalysisStore"),
@@ -73,10 +73,10 @@ const recordStores = async () => {
       import("../lib/analysisProjectStore"),
       import("../lib/analysisCaseStore"),
       import("../lib/analysisProjectsDb"),
-      // Jobs V2 and the links between Projects (CTA-188), in the same database.
+      // Jobs V2 and the links between Cases (CTA-188), in the same database.
       import("../lib/jobV2Store"),
       import("../lib/jobV2Runner"),
-      import("../lib/analysisProjectLinkStore"),
+      import("../lib/analysisCaseLinkStore"),
     ]);
   // The search settings in effect (CTA-185) read the presets — imported lazily, as the stores are.
   const { resetEngineSearchSettings } = await import("../lib/engineSearchInEffect");
@@ -97,7 +97,7 @@ const recordStores = async () => {
       projects.settledAnalysisProjects,
       cases.settledAnalysisCases,
       jobsV2.settledJobsV2,
-      projectLinks.settledProjectLinks,
+      caseLinks.settledCaseLinks,
     ],
     reset: [
       analyses.resetSavedAnalysisStore,
@@ -113,7 +113,7 @@ const recordStores = async () => {
       projects.resetAnalysisProjectStore,
       cases.resetAnalysisCaseStore,
       jobsV2.resetJobV2Store,
-      projectLinks.resetProjectLinkStore,
+      caseLinks.resetCaseLinkStore,
       // A depth or move time still landing goes with the presets.
       resetEngineSearchSettings,
     ],

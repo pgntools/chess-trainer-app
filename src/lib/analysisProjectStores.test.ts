@@ -36,20 +36,21 @@ import {
   resetAnalysisProjectStore,
 } from "./analysisProjectStore";
 import {
-  importProjectLinks,
-  linkAnalysisProjects,
-  loadProjectLinks,
-  projectLinksSnapshot,
-  removeLinksOfProjects,
-  resetProjectLinkStore,
-  unlinkAnalysisProjects,
-} from "./analysisProjectLinkStore";
+  addCaseLinks,
+  caseLinksSnapshot,
+  importCaseLinks,
+  linkAnalysisCases,
+  loadCaseLinks,
+  removeLinksOfCases,
+  resetCaseLinkStore,
+  unlinkAnalysisCases,
+} from "./analysisCaseLinkStore";
 import { ANALYSIS_PROJECTS_DB_NAME, deleteAnalysisProjectsDb } from "./analysisProjectsDb";
 import {
   caseStateOf,
   MAX_ANALYSIS_CASES,
   positionCaseOfFen,
-  projectLinksOf,
+  caseLinksOf,
   type AnalysisCase,
 } from "./analysisProjects";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "./computerAnalysis";
@@ -267,94 +268,101 @@ describe("Analysis V2's stores (CTA-186)", () => {
     });
   });
 
-  describe("links between Projects (CTA-188)", () => {
-    it("links one Project to another — directed, never to itself, never the same pair twice — and unlinks", async () => {
-      const a = (await createAnalysisProject("A", null))!;
-      const b = (await createAnalysisProject("B", null))!;
-      const c = (await createAnalysisProject("C", null))!;
-      await linkAnalysisProjects(a.id, b.id);
-      await linkAnalysisProjects(c.id, a.id);
+  describe("links between Cases (CTA-188)", () => {
+    it("links one Case to another — directed, across Projects, never to itself, never the same pair twice — and unlinks", async () => {
+      const p1 = (await createAnalysisProject("One", null))!;
+      const p2 = (await createAnalysisProject("Two", null))!;
+      await addAnalysisCases([aCase("a", p1.id, "A"), aCase("b", p2.id, "B"), aCase("c", p1.id, "C")]);
+      await linkAnalysisCases("a", "b");
+      await linkAnalysisCases("c", "a");
       // A cycle is allowed.
-      await linkAnalysisProjects(b.id, a.id);
-      const before = projectLinksSnapshot();
-      await linkAnalysisProjects(a.id, b.id);
-      await linkAnalysisProjects(a.id, a.id);
-      expect(projectLinksSnapshot()).toBe(before);
+      await linkAnalysisCases("b", "a");
+      const before = caseLinksSnapshot();
+      await linkAnalysisCases("a", "b");
+      await linkAnalysisCases("a", "a");
+      await addCaseLinks([]);
+      expect(caseLinksSnapshot()).toBe(before);
 
-      const ends = projectLinksOf(projectLinksSnapshot()!, analysisProjectsSnapshot()!, a.id);
-      expect(ends.to.map(({ project }) => project.name)).toEqual(["B"]);
-      expect(ends.from.map(({ project }) => project.name)).toEqual(["C", "B"]);
+      const ends = caseLinksOf(caseLinksSnapshot()!, analysisCasesSnapshot()!, "a");
+      expect(ends.to.map(({ record }) => record.name)).toEqual(["B"]);
+      expect(ends.from.map(({ record }) => record.name)).toEqual(["C", "B"]);
 
-      await unlinkAnalysisProjects(ends.to[0].link.id);
-      resetProjectLinkStore();
-      expect((await loadProjectLinks()).map((link) => [link.fromId, link.toId])).toEqual([
-        [c.id, a.id],
-        [b.id, a.id],
+      await unlinkAnalysisCases(ends.to[0].link.id);
+      resetCaseLinkStore();
+      expect((await loadCaseLinks()).map((link) => [link.fromId, link.toId])).toEqual([
+        ["c", "a"],
+        ["b", "a"],
       ]);
     });
 
-    it("goes with either Project, as a deleted Project takes its Cases' jobs", async () => {
-      const a = (await createAnalysisProject("A", null))!;
-      const b = (await createAnalysisProject("B", null))!;
-      await linkAnalysisProjects(a.id, b.id);
-      await addAnalysisCases([aCase("c1", a.id)]);
+    it("go with either Case — a Case deleted, or its Project — as its jobs do", async () => {
+      const p1 = (await createAnalysisProject("One", null))!;
+      const p2 = (await createAnalysisProject("Two", null))!;
+      await addAnalysisCases([aCase("c1", p1.id), aCase("c2", p2.id), aCase("c3", p2.id)]);
+      await addCaseLinks([
+        { fromId: "c1", toId: "c2" },
+        { fromId: "c3", toId: "c1" },
+        { fromId: "c2", toId: "c3" },
+      ]);
       const job = jobV2Of("j1", {
-        source: { projectId: a.id, caseId: "c1", name: "x", pgn: "1. e4 e5 *" },
+        source: { projectId: p1.id, caseId: "c1", name: "x", pgn: "1. e4 e5 *" },
         options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, outputs: ["light"] },
         preset: { id: "default", name: "Default", values: {} },
-        target: { kind: "project", projectId: a.id },
+        target: { kind: "project", projectId: p1.id },
       })!;
       await addJobV2(job);
-      await removeAnalysisProject(b.id);
-      expect(projectLinksSnapshot()).toEqual([]);
-      expect(jobsV2Snapshot()?.map((each) => each.id)).toEqual(["j1"]);
       await removeAnalysisCases(["c1"]);
       expect(jobsV2Snapshot()).toEqual([]);
-      await removeLinksOfProjects([]);
+      expect(caseLinksSnapshot()?.map(({ fromId, toId }) => [fromId, toId])).toEqual([["c2", "c3"]]);
+      await removeAnalysisProject(p2.id);
+      expect(caseLinksSnapshot()).toEqual([]);
+      await removeLinksOfCases([]);
     });
 
-    it("imports links: the old ones of the Projects replaced go, a pair already linked or a self-link is skipped", async () => {
-      await importProjectLinks({
+    it("imports links: the old ones of the Cases replaced go, a pair already linked or a self-link is skipped", async () => {
+      await importCaseLinks({
         add: [
-          { id: "l1", fromId: "p1", toId: "p2", createdAt: "" },
-          { id: "l2", fromId: "p1", toId: "p2", createdAt: "" },
-          { id: "l3", fromId: "p3", toId: "p3", createdAt: "" },
-          { id: "l4", fromId: "p2", toId: "p3", createdAt: "" },
+          { id: "l1", fromId: "c1", toId: "c2", createdAt: "" },
+          { id: "l2", fromId: "c1", toId: "c2", createdAt: "" },
+          { id: "l3", fromId: "c3", toId: "c3", createdAt: "" },
+          { id: "l4", fromId: "c2", toId: "c3", createdAt: "" },
         ],
         removeOf: [],
       });
-      expect(projectLinksSnapshot()?.map((link) => link.id)).toEqual(["l1", "l4"]);
-      await importProjectLinks({ add: [{ id: "l5", fromId: "p3", toId: "p1", createdAt: "" }], removeOf: ["p2"] });
-      expect(projectLinksSnapshot()?.map((link) => link.id)).toEqual(["l5"]);
+      expect(caseLinksSnapshot()?.map((link) => link.id)).toEqual(["l1", "l4"]);
+      await importCaseLinks({ add: [{ id: "l5", fromId: "c3", toId: "c1", createdAt: "" }], removeOf: ["c2"] });
+      expect(caseLinksSnapshot()?.map((link) => link.id)).toEqual(["l5"]);
     });
   });
 
-  describe("the database's version 2 (CTA-188)", () => {
-    it("upgrades a version 1 database, keeping every folder, Project and Case, and adds the jobs and links", async () => {
+  describe("the database's version 3 (CTA-188)", () => {
+    /** Forget every store's read and the database, then open it raw at `version` with `stores`, a row in each of the first three. */
+    const seedRaw = async (version: number, stores: readonly string[]) => {
       await deleteAnalysisProjectsDb();
       resetProjectFolderStore();
       resetAnalysisProjectStore();
       resetAnalysisCaseStore();
       resetJobV2Store();
-      resetProjectLinkStore();
-      // Version 1 as CTA-186 shipped it: three stores, a row in each.
-      const v1 = await new Promise<IDBDatabase>((resolve, reject) => {
-        const open = indexedDB.open(ANALYSIS_PROJECTS_DB_NAME, 1);
+      resetCaseLinkStore();
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const open = indexedDB.open(ANALYSIS_PROJECTS_DB_NAME, version);
         open.onupgradeneeded = () => {
-          for (const store of ["folders", "projects", "cases"]) open.result.createObjectStore(store, { keyPath: "id" });
+          for (const store of stores) open.result.createObjectStore(store, { keyPath: "id" });
         };
         open.onsuccess = () => resolve(open.result);
         open.onerror = () => reject(open.error);
       });
-      const tx = v1.transaction(["folders", "projects", "cases"], "readwrite");
+      const tx = db.transaction(["folders", "projects", "cases"], "readwrite");
       tx.objectStore("folders").put({ id: "f", seq: 1, value: { id: "f", name: "Folder", parentId: null, savedAt: "", updatedAt: "" } });
       tx.objectStore("projects").put({ id: "p", seq: 1, value: { id: "p", name: "Project", folderId: "f", createdAt: "", updatedAt: "" } });
       tx.objectStore("cases").put({ id: "c", seq: 1, value: { ...aCase("c", "p"), merges: undefined } });
       await new Promise<void>((resolve) => {
         tx.oncomplete = () => resolve();
       });
-      v1.close();
+      db.close();
+    };
 
+    const expectKept = async () => {
       expect((await loadProjectFolders()).map((folder) => folder.id)).toEqual(["f"]);
       expect((await loadAnalysisProjects()).map((project) => project.id)).toEqual(["p"]);
       const cases = await loadAnalysisCases();
@@ -362,8 +370,18 @@ describe("Analysis V2's stores (CTA-186)", () => {
       // A Case from before reads as holding no merge.
       expect(cases[0].merges).toEqual([]);
       expect(await loadJobsV2()).toEqual([]);
-      expect(await loadProjectLinks()).toEqual([]);
-      expect(await linkAnalysisProjects("p", "q")).toBeUndefined();
+      expect(await loadCaseLinks()).toEqual([]);
+      expect(await linkAnalysisCases("c", "d")).toBeUndefined();
+    };
+
+    it("upgrades version 1 — as CTA-186 shipped it — keeping every folder, Project and Case, and adds the jobs and the Case links", async () => {
+      await seedRaw(1, ["folders", "projects", "cases"]);
+      await expectKept();
+    });
+
+    it("upgrades version 2 — CTA-188's branch, its Project links' store left unread — the same way", async () => {
+      await seedRaw(2, ["folders", "projects", "cases", "jobs", "projectLinks"]);
+      await expectKept();
     });
   });
 });

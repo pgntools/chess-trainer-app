@@ -67,11 +67,13 @@ describe("Jobs V2, the record (CTA-188)", () => {
     expect(jobV2From({ ...job, source: { ...job.source, caseId: "" } })).toBeUndefined();
     expect(jobV2From({ ...job, kind: "other" })).toBeUndefined();
     // An unknown status reads as interrupted; a target that will not read as new Cases beside the source.
-    expect(jobV2From({ ...job, status: "weird", target: { kind: "linked" } })).toMatchObject({
+    expect(jobV2From({ ...job, status: "weird", target: { kind: "other" } })).toMatchObject({
       status: "interrupted",
       target: { kind: "project", projectId: "p" },
     });
     expect(jobV2From({ ...job, preset: undefined })?.preset).toEqual({ id: "", name: "", values: {} });
+    // A row from before the rename (CTA-188's branch): `linked` is another Project.
+    expect(jobV2From({ ...job, target: { kind: "linked", projectId: "p2" } })?.target).toEqual({ kind: "other", projectId: "p2" });
   });
 
   it("annotates whatever tree it is given, keeping the reader's moves, side lines and comments", () => {

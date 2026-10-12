@@ -11,34 +11,34 @@ export type JobTargetFieldsProps = {
   onChange: (patch: Partial<JobTargetChoice>) => void;
   /** The source Case's Project, by name — where "New Cases in this Project" puts them. */
   projectName: string;
-  /** Every other Project, the ones the source's links to first — an existing one to file the results in. */
+  /** Every other Project — an existing one to file the results in. */
   projects: readonly JobTargetProject[];
   /**
-   * The root; the kind's radios `<testId>-kind-<project|linked|case>`, the
-   * linked Project's `<testId>-linked-<new|existing>`, its name `-name`, the
-   * Project picked `-project`.
+   * The root; the kind's radios `<testId>-kind-<project|other|case>`, another
+   * Project's `<testId>-other-<new|existing>`, its name `-name`, the Project
+   * picked `-project`.
    */
   testId: string;
 };
 
-const KINDS: readonly JobV2TargetKind[] = ["project", "linked", "case"];
+const KINDS: readonly JobV2TargetKind[] = ["project", "other", "case"];
 
 /**
  * **Where to save the results** (CTA-188) — the New Job V2 popup's first
  * section: **new Cases in this Project**, each ticked variant a Game Case
- * beside the source; **a linked project** — a **new** one (its name asked,
- * filed beside the source's Project and linked from it) or an **existing** one
- * (one the source's Project links to, listed first and marked, or any other,
- * which gets linked); or **into this Case** — one variant, its evaluations,
+ * beside the source; **another project** — a **new** one (its name asked —
+ * the screen offers the Case's — filed beside the source's Project) or an
+ * **existing** one; or **into this Case** — one variant, its evaluations,
  * verdicts and comments merged into the Case, the reader's own work kept.
+ * Every new Case is linked from the source Case (the runner's).
  *
  * Presentational: the choice, the Projects and the change are props; the
- * screen makes the Project and the link, and holds the form to one variant for
+ * screen makes the Project, and holds the form to one variant for
  * the Case. Its words are `analysisV2.jobs.target.*`.
  */
 function JobTargetFields({ value, onChange, projectName, projects, testId }: JobTargetFieldsProps) {
   const { t } = useTranslation();
-  const nameMissing = value.kind === "linked" && value.linkedMode === "new" && value.newName.trim() === "";
+  const nameMissing = value.kind === "other" && value.otherMode === "new" && value.newName.trim() === "";
 
   return (
     <SettingsSection title={t("analysisV2.jobs.target.title")} testId={testId}>
@@ -50,20 +50,20 @@ function JobTargetFields({ value, onChange, projectName, projects, testId }: Job
         help={t(`analysisV2.jobs.target.help.${value.kind}`)}
         testId={`${testId}-kind`}
       />
-      {value.kind === "linked" && (
+      {value.kind === "other" && (
         <Box sx={{ display: "grid", gap: 1.5, paddingInlineStart: 2 }}>
           <RadioGroupField<"new" | "existing">
             row
-            label={t("analysisV2.jobs.target.linked")}
+            label={t("analysisV2.jobs.target.other")}
             options={[
-              { value: "new", label: t("analysisV2.jobs.target.linkedNew") },
-              { value: "existing", label: t("analysisV2.jobs.target.linkedExisting"), disabled: projects.length === 0 },
+              { value: "new", label: t("analysisV2.jobs.target.otherNew") },
+              { value: "existing", label: t("analysisV2.jobs.target.otherExisting"), disabled: projects.length === 0 },
             ]}
-            value={value.linkedMode}
-            onChange={(linkedMode) => onChange({ linkedMode })}
-            testId={`${testId}-linked`}
+            value={value.otherMode}
+            onChange={(otherMode) => onChange({ otherMode })}
+            testId={`${testId}-other`}
           />
-          {value.linkedMode === "new" ? (
+          {value.otherMode === "new" ? (
             <TextInputField
               label={t("analysisV2.jobs.target.name")}
               value={value.newName}
@@ -78,16 +78,8 @@ function JobTargetFields({ value, onChange, projectName, projects, testId }: Job
               label={t("analysisV2.jobs.target.project")}
               value={value.projectId ?? ""}
               onChange={(projectId) => onChange({ projectId })}
-              options={projects.map((project) => ({
-                value: project.id,
-                label: (
-                  <span>
-                    <bdi>{project.name || t("analysisV2.project.untitled")}</bdi>
-                    {project.linked && ` · ${t("analysisV2.jobs.target.alreadyLinked")}`}
-                  </span>
-                ),
-              }))}
-              helperText={t("analysisV2.jobs.target.projectHelp", { name: projectName })}
+              options={projects.map((project) => ({ value: project.id, label: <bdi>{project.name || t("analysisV2.project.untitled")}</bdi> }))}
+              helperText={t("analysisV2.jobs.target.projectHelp")}
               fullWidth
               testId={`${testId}-project`}
             />

@@ -32,6 +32,8 @@ export type CaseDetailsProps = {
   graph?: ReactNode;
   /** The Display tab's content — how the board draws, the screen's. Absent, no such tab. */
   display?: ReactNode;
+  /** Under the tags on the Info tab (CTA-188) — the Case's links (`CaseLinks`), the screen's. Absent, none. */
+  links?: ReactNode;
   /** The Jobs tab's content (CTA-188) — the Case's Jobs V2 and New job, the screen's (`CaseJobs`). Absent, no such tab. */
   jobs?: ReactNode;
   /** The open tab — the screen's, so it outlives a step to another Case. The Graph tab, disabled, reads as Info. */
@@ -55,7 +57,8 @@ export type CaseDetailsProps = {
  * the Case board's left panel, opened from a row of the Project's Cases
  * (`CaseSiblings`): Back to that list at the head's start — where the list
  * has Close — the Case's name and type, its details in tabs — **Info**, its
- * PGN tags (`GameInfo`, the Library game board's Info tab), **Graph**, the
+ * PGN tags (`GameInfo`, the Library game board's Info tab) and, under them,
+ * its links (the screen's, CTA-188), **Graph**, the
  * board's eval graph and report (the screen's, disabled while the tree has no
  * evaluations, as the Analysis Board's Evaluations tab), **Display**, how
  * the board draws (the screen's), **Jobs**, the Case's Jobs V2 (CTA-188, the
@@ -63,7 +66,7 @@ export type CaseDetailsProps = {
  * Presentational: the game, the graph, the display, the open tab and the links arrive from
  * the screen; its words are `analysisV2.caseDetails.*`.
  */
-function CaseDetails({ row, game, graph, display, jobs, tab: asked, onTabChange, backLink, previous, next, testId }: CaseDetailsProps) {
+function CaseDetails({ row, game, graph, display, links, jobs, tab: asked, onTabChange, backLink, previous, next, testId }: CaseDetailsProps) {
   const { t } = useTranslation();
   const tab: CaseDetailsTab =
     (asked === "graph" && graph === undefined) || (asked === "display" && display === undefined) || (asked === "jobs" && jobs === undefined)
@@ -110,8 +113,9 @@ function CaseDetails({ row, game, graph, display, jobs, tab: asked, onTabChange,
       {/* The open tab's content scrolls; the head, the tabs and the foot stay. */}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
         {tab === "info" && (
-          <Box {...tabPanelProps(testId, "info")} sx={{ px: 1 }}>
+          <Box {...tabPanelProps(testId, "info")} sx={{ px: 1, display: "grid", gap: 2 }}>
             <GameInfo game={game} testId={`${testId}-info`} />
+            {links}
           </Box>
         )}
         {tab === "graph" && (

@@ -27,10 +27,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
   section: "forms",
   title: "JobTargetFields",
   demos: [
-    { name: "New Cases in this Project (the first choice)", render: () => demo(initialJobTarget("Najdorf studies — analysis")) },
-    { name: "A new linked project, its name asked", render: () => demo({ ...initialJobTarget("Najdorf studies — analysis"), kind: "linked" }) },
-    { name: "An existing project — the linked one listed first", render: () => demo({ kind: "linked", linkedMode: "existing", newName: "", projectId: "p-linked" }) },
-    { name: "No other project: Existing disabled, the name left empty", render: () => demo({ ...initialJobTarget(""), kind: "linked" }, []) },
+    { name: "New Cases in this Project (the first choice)", render: () => demo(initialJobTarget("Carlsen – Caruana — analysis")) },
+    { name: "Another project, a new one named after the Case", render: () => demo({ ...initialJobTarget("Carlsen – Caruana — analysis"), kind: "other" }) },
+    { name: "Another project, an existing one", render: () => demo({ kind: "other", otherMode: "existing", newName: "", projectId: "p-lines" }) },
+    { name: "No other project: Existing disabled, the name left empty", render: () => demo({ ...initialJobTarget(""), kind: "other" }, []) },
     { name: "Into this Case — one variant", render: () => demo({ ...initialJobTarget(""), kind: "case" }) },
   ],
 };

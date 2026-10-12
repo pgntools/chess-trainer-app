@@ -351,11 +351,11 @@ describe("the Import tab", () => {
     expect(after.enginePresetSelections).toEqual(before.enginePresetSelections);
   });
 
-  it("gives Analysis V2's folders, Projects and Cases back, each Case in its Project, and the links between them (CTA-186, CTA-188)", async () => {
+  it("gives Analysis V2's folders, Projects and Cases back, each Case in its Project, and the links between Cases (CTA-186, CTA-188)", async () => {
     const folders = await import("../../lib/analysisProjectFolderStore");
     const projects = await import("../../lib/analysisProjectStore");
     const cases = await import("../../lib/analysisCaseStore");
-    const links = await import("../../lib/analysisProjectLinkStore");
+    const links = await import("../../lib/analysisCaseLinkStore");
     const db = await import("../../lib/analysisProjectsDb");
     const { positionCaseOfFen } = await import("../../lib/analysisProjects");
 
@@ -363,18 +363,19 @@ describe("the Import tab", () => {
     await folders.createProjectFolder("Empty", null);
     const najdorf = (await projects.createAnalysisProject("Najdorf", openings.id))!;
     const loose = (await projects.createAnalysisProject("Loose", null))!;
-    await links.linkAnalysisProjects(najdorf.id, loose.id);
     await cases.addAnalysisCases([
       positionCaseOfFen({ id: "c1", projectId: najdorf.id, name: "Endgame" }, "8/8/4k3/8/8/4K3/4P3/8 b - - 0 41"),
+      positionCaseOfFen({ id: "c2", projectId: loose.id, name: "Rook ending" }, "8/8/4k3/8/8/4K3/4R3/8 b - - 0 41"),
     ]);
+    await links.linkAnalysisCases("c1", "c2");
     const before = { projects: await projects.loadAnalysisProjects(), cases: await cases.loadAnalysisCases() };
     const bytes = await exported();
 
-    await Promise.all([folders.settledProjectFolders(), projects.settledAnalysisProjects(), cases.settledAnalysisCases(), links.settledProjectLinks()]);
+    await Promise.all([folders.settledProjectFolders(), projects.settledAnalysisProjects(), cases.settledAnalysisCases(), links.settledCaseLinks()]);
     folders.resetProjectFolderStore();
     projects.resetAnalysisProjectStore();
     cases.resetAnalysisCaseStore();
-    links.resetProjectLinkStore();
+    links.resetCaseLinkStore();
     await db.deleteAnalysisProjectsDb();
     expect(await projects.loadAnalysisProjects()).toEqual([]);
 
@@ -394,8 +395,10 @@ describe("the Import tab", () => {
     expect(afterProjects.find((project) => project.id === najdorf.id)!.folderId).toBe(
       afterFolders.find((folder) => folder.name === "Openings")!.id,
     );
-    expect(await cases.loadAnalysisCases()).toEqual(before.cases);
-    expect((await links.loadProjectLinks()).map(({ fromId, toId }) => [fromId, toId])).toEqual([[najdorf.id, loose.id]]);
+    // Each Case as it was — in the order the import files them, Project by Project.
+    const byId = (list: readonly { id: string }[]) => [...list].sort((a, b) => a.id.localeCompare(b.id));
+    expect(byId(await cases.loadAnalysisCases())).toEqual(byId(before.cases));
+    expect((await links.loadCaseLinks()).map(({ fromId, toId }) => [fromId, toId])).toEqual([["c1", "c2"]]);
   });
 
   it("changes nothing when the same zip is imported again with Merge", async () => {

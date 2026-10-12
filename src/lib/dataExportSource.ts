@@ -66,16 +66,16 @@ const loadCollectionSummaries = async (): Promise<readonly CollectionSummary[]> 
  */
 const loadAnalysisProjectsSource = async (
   selection: ExportSelection,
-): Promise<Pick<ExportSource, "projectFolders" | "analysisProjects" | "analysisCases" | "projectLinks">> => {
+): Promise<Pick<ExportSource, "projectFolders" | "analysisProjects" | "analysisCases" | "caseLinks">> => {
   const stores = selection.analysisProjects ? await analysisProjectStores() : undefined;
-  if (stores === undefined) return { projectFolders: [], analysisProjects: [], analysisCases: [], projectLinks: [] };
-  const [projectFolders, analysisProjects, analysisCases, projectLinks] = await Promise.all([
+  if (stores === undefined) return { projectFolders: [], analysisProjects: [], analysisCases: [], caseLinks: [] };
+  const [projectFolders, analysisProjects, analysisCases, caseLinks] = await Promise.all([
     stores.folders.loadProjectFolders(),
     stores.projects.loadAnalysisProjects(),
     stores.cases.loadAnalysisCases(),
-    stores.links.loadProjectLinks(),
+    stores.links.loadCaseLinks(),
   ]);
-  return { projectFolders, analysisProjects, analysisCases, projectLinks };
+  return { projectFolders, analysisProjects, analysisCases, caseLinks };
 };
 
 /**

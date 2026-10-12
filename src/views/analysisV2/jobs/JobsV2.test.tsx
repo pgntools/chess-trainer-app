@@ -5,10 +5,10 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import i18n from "../../../i18n";
 import { addAnalysisCases, loadAnalysisCases, mergeIntoAnalysisCase } from "../../../lib/analysisCaseStore";
-import { linkAnalysisProjects, loadProjectLinks } from "../../../lib/analysisProjectLinkStore";
+import { addCaseLinks, loadCaseLinks } from "../../../lib/analysisCaseLinkStore";
 import { createProjectFolder } from "../../../lib/analysisProjectFolderStore";
 import { createAnalysisProject, loadAnalysisProjects } from "../../../lib/analysisProjectStore";
-import { gameCaseOf } from "../../../lib/analysisProjects";
+import { gameCaseOf, positionCaseOfFen } from "../../../lib/analysisProjects";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../../lib/computerAnalysis";
 import { createEnginePreset, selectEnginePreset, setEnginePresetSearch } from "../../../lib/enginePresetStore";
 import { resolveEngine } from "../../../lib/engines";
@@ -159,12 +159,12 @@ describe("a Case's Jobs tab and the New Job V2 popup (CTA-188)", () => {
     expect(where()).toBe("/analysis/jobs?job=job");
   });
 
-  it("files the results in a new linked project — made beside the source's, and linked from it, on Start", async () => {
+  it("files the results in another project — a new one, named after the Case, made beside the source's on Start", async () => {
     const { project, folder } = await seed();
     const user = await openJobsTab(project.id);
     await user.click(screen.getByRole("button", { name: "New job" }));
     const dialog = await screen.findByRole("dialog", { name: "New job — Jobs V2" });
-    await user.click(within(dialog).getByRole("radio", { name: "A linked project" }));
+    await user.click(within(dialog).getByRole("radio", { name: "Another project" }));
     const name = within(dialog).getByRole("textbox", { name: "The new project's name" });
     // Named after the Case, not its Project.
     expect(name).toHaveValue("Carlsen – Caruana, Club Championship — analysis");
@@ -177,8 +177,9 @@ describe("a Case's Jobs tab and the New Job V2 popup (CTA-188)", () => {
 
     const made = (await loadAnalysisProjects()).find((each) => each.name === "Club lines")!;
     expect(made.folderId).toBe(folder.id);
-    expect((await loadProjectLinks()).map(({ fromId, toId }) => [fromId, toId])).toEqual([[project.id, made.id]]);
-    expect(jobsV2Snapshot()![0].target).toEqual({ kind: "linked", projectId: made.id });
+    expect(jobsV2Snapshot()![0].target).toEqual({ kind: "other", projectId: made.id });
+    // No Project is linked: the links are the Cases' — the runner's, as it makes them.
+    expect(await loadCaseLinks()).toEqual([]);
   });
 
   it("merges into the Case itself — one variant", async () => {
@@ -220,25 +221,60 @@ describe("a merge into an open Case (CTA-188)", () => {
   });
 });
 
-describe("a Project's links (CTA-188)", () => {
-  it("lists the Projects it links to and is linked from — each a link there — and unlinks", async () => {
+describe("a Case's links, on its Info tab (CTA-188)", () => {
+  it("lists the Cases it links to and is linked from — across Projects — unlinks, and links another by Project and Case", async () => {
     const { project } = await seed();
-    const lines = (await createAnalysisProject("Lines", null))!;
-    const sicilian = (await createAnalysisProject("Sicilian", null))!;
-    await linkAnalysisProjects(project.id, lines.id);
-    await linkAnalysisProjects(sicilian.id, project.id);
+    const other = (await createAnalysisProject("Endgames", null))!;
+    await addAnalysisCases([
+      gameCaseOf({ id: "cout", projectId: other.id, name: "Carlsen – Caruana - computer analysis (light)" }, parsePgnTree(GAME)),
+      positionCaseOfFen({ id: "cfrom", projectId: other.id, name: "Rook ending" }, "8/8/4k3/8/8/4K3/4R3/8 b - - 0 41"),
+      positionCaseOfFen({ id: "cnew", projectId: project.id, name: "Opening trap" }, "8/8/4k3/8/8/4K3/4P3/8 w - - 0 30"),
+    ]);
+    await addCaseLinks([
+      { fromId: "cgame", toId: "cout" },
+      { fromId: "cfrom", toId: "cgame" },
+    ]);
     const user = userEvent.setup();
-    const { baseElement } = mount(`/analysis/projects/${project.id}`);
+    mount(`/analysis/projects/${project.id}/cases/cgame?view=case`);
+    await screen.findByTestId("board");
 
-    const to = await screen.findByRole("region", { name: "Links to" });
-    expect(within(to).getByRole("link", { name: "Lines" })).toHaveAttribute("href", `/analysis/projects/${lines.id}`);
-    const from = screen.getByRole("region", { name: "Linked from" });
-    expect(within(from).getByRole("link", { name: "Sicilian" })).toBeInTheDocument();
-    await expectNoAxeViolations(baseElement);
+    const info = screen.getByRole("tabpanel", { name: "Info" });
+    const to = within(info).getByRole("region", { name: "Links to" });
+    expect(within(to).getByRole("link", { name: "Carlsen – Caruana - computer analysis (light)" })).toHaveAttribute(
+      "href",
+      `/analysis/projects/${other.id}/cases/cout`,
+    );
+    expect(within(to).getByText("Endgames")).toBeInTheDocument();
+    const from = within(info).getByRole("region", { name: "Linked from" });
+    expect(within(from).getByRole("link", { name: "Rook ending" })).toBeInTheDocument();
+    await expectNoAxeViolations(info);
 
-    await user.click(within(to).getByRole("button", { name: "Unlink Lines" }));
+    await user.click(within(to).getByRole("button", { name: "Unlink Carlsen – Caruana - computer analysis (light)" }));
     await waitFor(() => expect(within(screen.getByRole("region", { name: "Links to" })).getByText("None")).toBeInTheDocument());
-    expect((await loadProjectLinks()).map(({ fromId }) => fromId)).toEqual([sicilian.id]);
+    expect((await loadCaseLinks()).map(({ fromId, toId }) => [fromId, toId])).toEqual([["cfrom", "cgame"]]);
+
+    // Link a case: its own Project first, then another's.
+    await user.click(screen.getByRole("button", { name: "Link a case" }));
+    const picker = await screen.findByRole("dialog", { name: "Link a case" });
+    expect(within(picker).getByRole("combobox", { name: "Project" })).toHaveTextContent("Club");
+    expect(within(within(picker).getByRole("list", { name: "Case" })).getByRole("button", { name: "Opening trap" })).toBeInTheDocument();
+    await user.click(within(picker).getByRole("combobox", { name: "Project" }));
+    await user.click(screen.getByRole("option", { name: "Endgames" }));
+    await user.click(within(within(picker).getByRole("list", { name: "Case" })).getByRole("button", { name: "Rook ending" }));
+    await user.click(within(picker).getByRole("button", { name: "Link" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Link a case" })).toBeNull());
+    expect((await loadCaseLinks()).map(({ fromId, toId }) => [fromId, toId])).toEqual([
+      ["cfrom", "cgame"],
+      ["cgame", "cfrom"],
+    ]);
+    expect(within(screen.getByRole("region", { name: "Links to" })).getByRole("link", { name: "Rook ending" })).toBeInTheDocument();
+  });
+
+  it("is gone with the Project screen: a Project shows no links", async () => {
+    const { project } = await seed();
+    mount(`/analysis/projects/${project.id}`);
+    await screen.findByTestId("analysis-v2-project");
+    expect(screen.queryByRole("region", { name: "Links to" })).toBeNull();
   });
 });
 

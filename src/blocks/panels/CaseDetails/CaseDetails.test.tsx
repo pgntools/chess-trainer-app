@@ -40,6 +40,11 @@ describe("CaseDetails (CTA-186)", () => {
     expect(screen.queryByTestId("probe-info-Event")).toBeNull();
   });
 
+  it("shows the screen's links under the tags on Info (CTA-188)", () => {
+    render(<Held row={GAME_ROW} game={GAME} links={<p data-testid="links-probe">links</p>} backLink={{ href: "/cases" }} previous={undefined} next={undefined} testId="probe" />);
+    expect(screen.getByRole("tabpanel", { name: "Info" })).toContainElement(screen.getByTestId("links-probe"));
+  });
+
   it("adds a Jobs tab, last, when the screen gives one (CTA-188)", async () => {
     render(
       <Held row={GAME_ROW} game={GAME} display={<p>display</p>} jobs={<p data-testid="jobs-probe">jobs</p>} backLink={{ href: "/cases" }} previous={undefined} next={undefined} testId="probe" />,

@@ -137,53 +137,6 @@ export const projectsUnder = (
 };
 
 /* ------------------------------------------------------------------ *
- * Links between Projects (CTA-188)
- * ------------------------------------------------------------------ */
-
-/** How many links are kept, across every Project. */
-export const MAX_PROJECT_LINKS = 10_000;
-
-/**
- * **A link from one Project to another** (CTA-188) — directed (`fromId` links
- * to `toId`), many to many: a Project links to any number and is linked from
- * any number, cycles allowed; never to itself, never twice the same pair
- * (`lib/analysisProjectLinkStore.ts`). Removed with either Project. Jobs V2
- * files a Case's computer analysis in a linked Project.
- */
-export type ProjectLink = {
-  id: string;
-  fromId: string;
-  toId: string;
-  /** ISO 8601. */
-  createdAt: string;
-};
-
-/** A stored link, normalised — `undefined` for one without its id or either end, or one to itself. */
-export const projectLinkFrom = (value: unknown): ProjectLink | undefined => {
-  if (!isObject(value) || typeof value.id !== "string" || value.id === "") return undefined;
-  const fromId = idOrNull(value.fromId);
-  const toId = idOrNull(value.toId);
-  if (fromId === null || toId === null || fromId === toId) return undefined;
-  return { id: value.id, fromId, toId, createdAt: stringOr(value.createdAt, "") };
-};
-
-/** The Projects `projectId` links to, and the ones linking to it — each link with the Project at its other end, in the caller's order; a link whose other end is gone is left out. */
-export const projectLinksOf = (
-  links: readonly ProjectLink[],
-  projects: readonly AnalysisProject[],
-  projectId: string,
-): { to: { link: ProjectLink; project: AnalysisProject }[]; from: { link: ProjectLink; project: AnalysisProject }[] } => {
-  const byId = new Map(projects.map((project) => [project.id, project]));
-  const ends = (side: "to" | "from") =>
-    links.flatMap((link) => {
-      const near = side === "to" ? link.fromId : link.toId;
-      const project = byId.get(side === "to" ? link.toId : link.fromId);
-      return near === projectId && project !== undefined ? [{ link, project }] : [];
-    });
-  return { to: ends("to"), from: ends("from") };
-};
-
-/* ------------------------------------------------------------------ *
  * Cases
  * ------------------------------------------------------------------ */
 
@@ -508,3 +461,57 @@ export const copiedCase = (
   updatedAt: now.toISOString(),
 });
 
+/* ------------------------------------------------------------------ *
+ * Links between Cases (CTA-188)
+ * ------------------------------------------------------------------ */
+
+/** How many links are kept, across every Case. */
+export const MAX_CASE_LINKS = 50_000;
+
+/**
+ * **A link from one Case to another** (CTA-188) — directed (`fromId` links to
+ * `toId`), many to many, across Projects: a Case links to any number and is
+ * linked from any number, cycles allowed; never to itself, never twice the
+ * same pair (`lib/analysisCaseLinkStore.ts`). Removed with either Case. A Jobs
+ * V2 computer analysis links its source Case to every new Case it makes; the
+ * reader links and unlinks on a Case's Info tab.
+ */
+export type CaseLink = {
+  id: string;
+  fromId: string;
+  toId: string;
+  /** ISO 8601. */
+  createdAt: string;
+};
+
+/** A stored link, normalised — `undefined` for one without its id or either end, or one to itself. */
+export const caseLinkFrom = (value: unknown): CaseLink | undefined => {
+  if (!isObject(value) || typeof value.id !== "string" || value.id === "") return undefined;
+  const fromId = idOrNull(value.fromId);
+  const toId = idOrNull(value.toId);
+  if (fromId === null || toId === null || fromId === toId) return undefined;
+  return { id: value.id, fromId, toId, createdAt: stringOr(value.createdAt, "") };
+};
+
+/** One end of a Case's link: the link, and the Case at its other end. */
+export type CaseLinkEnd = { link: CaseLink; record: AnalysisCase };
+
+/**
+ * The Cases `caseId` links to, and the ones linking to it — each link with the
+ * Case at its other end, in the links' order; a link whose other end is gone
+ * is left out.
+ */
+export const caseLinksOf = (
+  links: readonly CaseLink[],
+  cases: readonly AnalysisCase[],
+  caseId: string,
+): { to: CaseLinkEnd[]; from: CaseLinkEnd[] } => {
+  const byId = new Map(cases.map((record) => [record.id, record]));
+  const ends = (side: "to" | "from") =>
+    links.flatMap((link) => {
+      const near = side === "to" ? link.fromId : link.toId;
+      const record = byId.get(side === "to" ? link.toId : link.fromId);
+      return near === caseId && record !== undefined ? [{ link, record }] : [];
+    });
+  return { to: ends("to"), from: ends("from") };
+};

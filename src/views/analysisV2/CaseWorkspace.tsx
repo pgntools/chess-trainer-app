@@ -7,7 +7,8 @@ import { Link as RouterLink, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { ChessboardOptions } from "react-chessboard";
 
-import { CaseJobs } from "../../blocks/lists";
+import { CasePickerDialog } from "../../blocks/dialogs";
+import { CaseJobs, CaseLinks } from "../../blocks/lists";
 import { caseDisplayName } from "../../blocks/tables";
 import { CaseDetails, type CaseDetailsTab } from "../../blocks/panels";
 import { CaseSiblings } from "../../blocks/trees";
@@ -17,6 +18,7 @@ import { SwitchField } from "../../design-system/components/forms";
 import { MissState } from "../../design-system/components/states";
 import { sortRows } from "../../design-system/components/tables";
 import { IconAction } from "../../design-system/components/toolbars";
+import { linkAnalysisCases, unlinkAnalysisCases } from "../../lib/analysisCaseLinkStore";
 import { saveCaseState } from "../../lib/analysisCaseStore";
 import {
   CASE_COLUMNS,
@@ -28,6 +30,7 @@ import {
   type CaseColumn,
 } from "../../lib/analysisCaseRows";
 import {
+  caseLinksOf,
   casesOf,
   caseNode,
   caseTree,
@@ -55,7 +58,7 @@ import CaseDisplayTab from "./CaseDisplayTab";
 import CaseSettingsTab from "./CaseSettingsTab";
 import NewJobV2, { type NewJobV2Case } from "./jobs/NewJobV2";
 import { browserPath, caseListContextOf, casePath, jobsV2Path, projectPath, withCaseView } from "./paths";
-import { useAnalysisCases, useAnalysisProjects, useJobsV2 } from "./useAnalysisProjects";
+import { useAnalysisCases, useAnalysisProjects, useCaseLinks, useJobsV2 } from "./useAnalysisProjects";
 
 /** The tabs that stay mounted once opened — a long move list is costly to mount, and the Map keeps its pan. */
 const KEEP_MOUNTED = ["moves", "map"] as const;
@@ -360,6 +363,12 @@ function CaseWorkspace() {
   // The New Job V2 popup (CTA-188), open for the Case on the board — its tree as the board held it.
   const [newJob, setNewJob] = useState<NewJobV2Case | null>(null);
   const jobs = useJobsV2();
+  // The Case's links (CTA-188) — on its Info tab — the Link a case picker, and a refused link's words.
+  const links = useCaseLinks();
+  const [picking, setPicking] = useState(false);
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkProblem, setLinkProblem] = useState<string | undefined>();
+  const [unlinkProblem, setUnlinkProblem] = useState<string | undefined>();
 
   /*
     The Project's Cases beside the board (`CaseSiblings`), in the order and
@@ -437,6 +446,27 @@ function CaseWorkspace() {
     to: casePath(project.id, id, withCaseView(context, toDetails)),
   });
   const row = ordered.find((candidate) => candidate.id === record.id) ?? caseRowOf(record, caseDisplayName(record, t));
+  /*
+    Its links (CTA-188): the Cases it links to and is linked from, across
+    Projects — each a link to that Case's board with its Project's name — and
+    for Link a case every other Case it does not link to already.
+  */
+  const nameOfProject = (id: string) => {
+    const owner = projects.find((candidate) => candidate.id === id);
+    return owner === undefined ? "" : owner.name || t("analysisV2.project.untitled");
+  };
+  const ends = caseLinksOf(links ?? [], cases, record.id);
+  const linkRow = ({ link, record: other }: (typeof ends.to)[number]) => ({
+    linkId: link.id,
+    name: caseDisplayName(other, t),
+    projectName: nameOfProject(other.projectId),
+    link: { component: RouterLink, to: casePath(other.projectId, other.id) },
+  });
+  const linkedTo = new Set(ends.to.map(({ record: other }) => other.id));
+  const pickable = cases
+    .filter((candidate) => candidate.id !== record.id && !linkedTo.has(candidate.id))
+    .map((candidate) => ({ id: candidate.id, projectId: candidate.projectId, name: caseDisplayName(candidate, t), type: candidate.type }));
+
   // Previous / next walk the list as shown — or, the words leaving the open Case out, the whole of it.
   const walk = shown.some((row) => row.id === record.id) ? shown : ordered;
   const at = walk.findIndex((row) => row.id === record.id);
@@ -477,6 +507,23 @@ function CaseWorkspace() {
                   ) : undefined
                 }
                 display={view.display}
+                links={
+                  <CaseLinks
+                    linksTo={ends.to.map(linkRow)}
+                    linkedFrom={ends.from.map(linkRow)}
+                    onUnlink={(linked) => {
+                      void unlinkAnalysisCases(linked.linkId).then((failed) =>
+                        setUnlinkProblem(failed === undefined ? undefined : t("analysisV2.links.problem")),
+                      );
+                    }}
+                    onLink={() => {
+                      setLinkProblem(undefined);
+                      setPicking(true);
+                    }}
+                    problem={unlinkProblem}
+                    testId="analysis-case-links"
+                  />
+                }
                 jobs={
                   <CaseJobs
                     jobs={jobs?.filter((job) => job.source.caseId === record.id)}
@@ -520,6 +567,24 @@ function CaseWorkspace() {
         )}
       />
       <NewJobV2 open={newJob} onClose={() => setNewJob(null)} testId="analysis-case-new-job" />
+      <CasePickerDialog
+        open={picking}
+        projects={projects}
+        cases={pickable}
+        initialProjectId={project.id}
+        onSubmit={(caseId) => {
+          setLinkBusy(true);
+          void linkAnalysisCases(record.id, caseId).then((failed) => {
+            setLinkBusy(false);
+            if (failed === undefined) setPicking(false);
+            else setLinkProblem(t("analysisV2.links.problem"));
+          });
+        }}
+        onClose={() => setPicking(false)}
+        busy={linkBusy}
+        problem={linkProblem}
+        testId="analysis-case-link-picker"
+      />
     </>
   );
 }

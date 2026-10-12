@@ -41,8 +41,8 @@ import { parsePgnTree } from "./pgn";
  *   was given (`preset`: its id, name and the values it sends), which the
  *   runner sends — never whatever preset is selected when it runs;
  * - **its target** — where the results go: new Game Cases in the source's
- *   Project, new Game Cases in a linked Project, or **merged into the source
- *   Case** (one variant).
+ *   Project, new Game Cases in another Project, or **merged into the source
+ *   Case** (one variant). Every new Case is linked from the source Case.
  *
  * ```
  * queued ──▶ running ──▶ done
@@ -55,7 +55,7 @@ import { parsePgnTree } from "./pgn";
  * ```
  */
 
-/** What went wrong — V1's, and `target`: where the results were to go is gone (a Project, the source Case). `analysisV2.jobs.errors.<code>`. */
+/** What went wrong — V1's, and `target`: where the results were to go is gone (the other Project, the source Case). `analysisV2.jobs.errors.<code>`. */
 export const JOB_V2_ERRORS = ["source", "engine", "storage", "too-many", "target"] as const;
 export type JobV2Error = (typeof JOB_V2_ERRORS)[number];
 
@@ -80,13 +80,15 @@ export type JobV2Preset = {
  *
  * - `project` — each ticked variant a new Game Case in `projectId`, the
  *   source's Project;
- * - `linked` — each ticked variant a new Game Case in `projectId`, a Project
- *   the source's Project links to (made and linked by the popup);
+ * - `other` — each ticked variant a new Game Case in `projectId`, another
+ *   Project (an existing one, or one the popup made, named after the Case);
  * - `case` — the one variant **merged into the source Case**.
+ *
+ * Every new Case is **linked from the source Case** (`lib/analysisCaseLinkStore.ts`).
  */
-export type JobV2Target = { kind: "project"; projectId: string } | { kind: "linked"; projectId: string } | { kind: "case" };
+export type JobV2Target = { kind: "project"; projectId: string } | { kind: "other"; projectId: string } | { kind: "case" };
 
-export const JOB_V2_TARGET_KINDS = ["project", "linked", "case"] as const;
+export const JOB_V2_TARGET_KINDS = ["project", "other", "case"] as const;
 export type JobV2TargetKind = JobV2Target["kind"];
 
 /** One variant's result: the Case it is — a new one, or the source merged into. */
@@ -257,7 +259,9 @@ const targetFrom = (value: unknown, source: JobV2Source): JobV2Target => {
   if (isRow(value)) {
     if (value.kind === "case") return { kind: "case" };
     const projectId = idOf(value.projectId);
-    if ((value.kind === "project" || value.kind === "linked") && projectId !== undefined) return { kind: value.kind, projectId };
+    if (value.kind === "project" && projectId !== undefined) return { kind: "project", projectId };
+    // `linked` is the same place under its first name (CTA-188's branch, before Projects stopped being linked).
+    if ((value.kind === "other" || value.kind === "linked") && projectId !== undefined) return { kind: "other", projectId };
   }
   // A target that will not read: new Cases beside the source.
   return { kind: "project", projectId: source.projectId };

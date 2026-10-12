@@ -3,10 +3,10 @@ import { strFromU8, unzipSync } from "fflate";
 import {
   analysisCaseFrom,
   analysisProjectFrom,
-  projectLinkFrom,
+  caseLinkFrom,
   type AnalysisCase,
   type AnalysisProject,
-  type ProjectLink,
+  type CaseLink,
 } from "./analysisProjects";
 
 import {
@@ -126,8 +126,8 @@ export type ImportDump = {
   analysisProjects: readonly Filed<ImportProject>[];
   /** Every Analysis V2 folder, parents before children, empty ones included. */
   projectFolders: readonly FolderPath[];
-  /** The links between those Projects (CTA-188) — none from a zip before version 5. */
-  projectLinks: readonly ProjectLink[];
+  /** The links between those Projects' Cases (CTA-188) — none from a zip before version 5. */
+  caseLinks: readonly CaseLink[];
 };
 
 /** Why a zip cannot be imported. */
@@ -377,7 +377,7 @@ const enginePresetsFileOf = (
  */
 const analysisProjectsFileOf = (
   text: string,
-): { folders: FolderPath[]; projects: Filed<ImportProject>[]; links: ProjectLink[] } | undefined => {
+): { folders: FolderPath[]; projects: Filed<ImportProject>[]; links: CaseLink[] } | undefined => {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -399,7 +399,7 @@ const analysisProjectsFileOf = (
   // The links (CTA-188): absent before version 5; one that will not read is left out.
   const links = Array.isArray(parsed.links)
     ? parsed.links.flatMap((entry) => {
-        const link = projectLinkFrom(entry);
+        const link = caseLinkFrom(entry);
         return link === undefined ? [] : [link];
       })
     : [];
@@ -436,7 +436,7 @@ const dumpOf = (
     enginePresetSelections: [] as EnginePresetSelection[],
     analysisProjects: [] as Filed<ImportProject>[],
     projectFolders: [] as FolderPath[],
-    projectLinks: [] as ProjectLink[],
+    caseLinks: [] as CaseLink[],
   };
 
   for (const file of manifest.files as unknown[]) {
@@ -525,7 +525,7 @@ const dumpOf = (
         if (read === undefined || read.projects.length !== file.projects) return refuse({ kind: "unreadable", path });
         append(dump.analysisProjects, read.projects);
         append(dump.projectFolders, read.folders);
-        append(dump.projectLinks, read.links);
+        append(dump.caseLinks, read.links);
         break;
       }
       default:
@@ -603,8 +603,8 @@ export type ImportCurrent = {
   projectFolders: readonly GameFolder[];
   analysisProjects: readonly AnalysisProject[];
   analysisCases: readonly AnalysisCase[];
-  /** The links between the Projects (CTA-188) — absent, none. */
-  projectLinks?: readonly ProjectLink[];
+  /** The links between the Cases (CTA-188) — absent, none. */
+  caseLinks?: readonly CaseLink[];
 };
 
 /** The stores' caps (`lib/dataImportTarget.ts`'s `IMPORT_CAPS`), passed in so this file reads no store. */
@@ -867,13 +867,13 @@ export type ImportWrites = {
   enginePresets?: CategoryImport<{ add: EnginePreset[]; remove: string[]; select: EnginePresetSelection[] }>;
   /**
    * Analysis V2 (CTA-186): the folders, the Projects, then their Cases — a
-   * Project removed takes its Cases — then the links between them (CTA-188):
-   * the removed Projects' go, the zip's whose two ends are held afterwards come.
+   * Project removed takes its Cases — then the links between Cases (CTA-188):
+   * the removed Cases' go, the zip's whose two ends are held afterwards come.
    */
   analysisProjects?: CategoryImport<
     RecordWrites<AnalysisProject, GameFolder> & {
       cases: { add: AnalysisCase[]; remove: string[] };
-      links: { add: ProjectLink[]; removeOf: string[] };
+      links: { add: CaseLink[]; removeOf: string[] };
     }
   >;
 };
@@ -1085,10 +1085,11 @@ export const importWritesOf = (
       .filter((entry) => gone.has(entry.projectId) || arriving.has(entry.id))
       .map((entry) => entry.id);
     const totalCases = current.analysisCases.length - removedCases.length + addedCases.length;
-    // The Projects held once it is written — a link of the zip's comes only where both its ends are.
+    // The Cases held once it is written — a link of the zip's comes only where both its ends are.
+    const removedSet = new Set(removedCases);
     const held = new Set([
-      ...current.analysisProjects.filter((project) => !gone.has(project.id)).map((project) => project.id),
-      ...add.map(({ record }) => record.id),
+      ...current.analysisCases.filter((entry) => !removedSet.has(entry.id)).map((entry) => entry.id),
+      ...addedCases.map((entry) => entry.id),
     ]);
     const refused =
       folderCapOf(current.projectFolders.length, created.length, caps.folders) ??
@@ -1110,7 +1111,7 @@ export const importWritesOf = (
         })),
         remove,
         cases: { add: addedCases, remove: removedCases },
-        links: { add: dump.projectLinks.filter((link) => held.has(link.fromId) && held.has(link.toId)), removeOf: remove },
+        links: { add: dump.caseLinks.filter((link) => held.has(link.fromId) && held.has(link.toId)), removeOf: removedCases },
       },
       report,
       ...(refused === undefined ? {} : { refused }),

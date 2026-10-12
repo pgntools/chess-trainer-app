@@ -19,13 +19,14 @@ paths:
   - "src/lib/jobsV2*"
   - "src/lib/jobV2Store*"
   - "src/lib/jobV2Runner*"
-  - "src/lib/analysisProjectLinkStore*"
+  - "src/lib/analysisCaseLinkStore*"
   - "src/blocks/forms/JobTargetFields/**"
   - "src/blocks/lists/CaseJobs/**"
-  - "src/blocks/lists/ProjectLinks/**"
+  - "src/blocks/lists/CaseLinks/**"
+  - "src/blocks/dialogs/CasePickerDialog/**"
 ---
 
-# Analysis V2 — Projects and Cases (CTA-186), Jobs V2 and linked Projects (CTA-188)
+# Analysis V2 — Projects and Cases (CTA-186), Jobs V2 and linked Cases (CTA-188)
 
 A new analysis module, part of renewing the codebase: the reader's analysis
 organised into **Projects** filed in nested **folders**, each Project holding
@@ -38,14 +39,16 @@ later issue, so **V2 imports nothing from `views/tools/analysis/`**.
 
 ```
 folders (nested) ──▶ Projects ──▶ Cases (game | position) ──▶ the Case's board
-                        │  ▲              │
-                        └──┘ links        └──▶ Jobs V2 (a Case's computer analysis) ──▶ new Cases | a linked Project | the Case itself
+                                   │  ▲  │
+                                   └──┘  └──▶ Jobs V2 (a Case's computer analysis) ──▶ new Cases (here | another Project) | the Case itself
+                                   links (Case → Case, across Projects)
 ```
 
 **Jobs V2** (CTA-188, §6) are the module's own background jobs — a Case's
 computer analysis, a clone of the legacy Jobs ([`jobs.md`](./jobs.md)), never
 sharing its store, runner or screen; **links** (§7) are a directed
-many-to-many relation between Projects.
+many-to-many relation between Cases, across Projects. (CTA-188 first linked
+Projects; that was a planning mistake, replaced before it shipped.)
 
 ---
 
@@ -54,16 +57,16 @@ many-to-many relation between Projects.
 | Path | What lives there |
 | --- | --- |
 | `src/lib/analysisProjects.ts` | **The records**, pure: `ProjectFolder` (a `GameFolder`, `lib/savedGameFolders.ts`'s model and reads), `AnalysisProject`, `AnalysisCase` and its `AnalysisCaseSource`; the normalisers `projectFolderFrom`, `analysisProjectFrom`, `analysisCaseFrom`; the constructors `gameCaseOf`, `positionCaseOfFen`, `positionCaseOfGame`, `copiedCase`; `caseStateOf` / `sameCaseState` (the autosave's state and its idempotency); `caseDerivedName`, `gameCaseDerivedName`; `projectsHere`, `projectsUnder`, `casesOf`, `caseCountsOf`; the caps (`MAX_PROJECT_FOLDERS` 100, `MAX_ANALYSIS_PROJECTS` 1,000, `MAX_ANALYSIS_CASES` 10,000). |
-| `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, **version 2** (CTA-188): object stores `folders`, `projects`, `cases`, `jobs` (Jobs V2) and `projectLinks`, one `BroadcastChannel`. |
+| `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, **version 3** (CTA-188): object stores `folders`, `projects`, `cases`, `jobs` (Jobs V2) and `caseLinks`, one `BroadcastChannel`. |
 | `src/lib/jobsV2.ts`, `jobV2Store.ts`, `jobV2Runner.ts` | **Jobs V2** (CTA-188, §6): the record (`JobV2`, `jobV2Of`, `jobV2From`, `jobV2AnalysisOf` / `jobV2MergedPgn` — the merge into a Case, `jobV2OfCase`, `jobV2OutputName`), the store (`enqueueJobV2`, `pauseJobV2`, `cancelJobV2`, `resumeJobV2`, `removeJobV2`, `removeJobsV2Of`, `interruptRunningJobsV2`, `MAX_JOBS_V2` 100) and the runner (`createJobV2Runner`, `startJobV2Runner` / `stopJobV2Runner`, its lock `chessapp.analysisProjects.jobs.runner`). V1's pure parts reused: `lib/jobs.ts`'s statuses, positions, checkpoint reader and progress, `lib/jobLiveAnalysis.ts` (its argument widened to `LiveAnalysisJob`). |
-| `src/lib/analysisProjectLinkStore.ts` | **The links between Projects** (CTA-188, §7): `linkAnalysisProjects`, `unlinkAnalysisProjects`, `removeLinksOfProjects`, `importProjectLinks`; the record `ProjectLink` and `projectLinksOf` in `analysisProjects.ts`. |
+| `src/lib/analysisCaseLinkStore.ts` | **The links between Cases** (CTA-188, §7): `linkAnalysisCases`, `addCaseLinks` (several at once — a job's new Cases), `unlinkAnalysisCases`, `removeLinksOfCases`, `importCaseLinks`; the record `CaseLink` and `caseLinksOf` in `analysisProjects.ts`. |
 | `src/lib/analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts` | **The stores** over `idbRecordStore` ([`database.md`](./database.md) §3): folders oldest first, Projects and Cases newest first; every operation a promise of `undefined` or `"storage"` / `"too-many"`. |
 | `src/lib/analysisProjectsEnabled.ts` | **The flag**: `ANALYSIS_PROJECTS_ENABLED = import.meta.env.DEV` — the module's Export / Import category in Settings — and **`analysisProjectStores()`**, the one way Settings reaches the three stores: dynamic imports under an *inline* `if (import.meta.env.DEV)`, `undefined` in a production build. Inline, because a dynamic import behind an imported constant is still followed by the bundler and its chunks emitted (orphaned) — one in a branch dead as written is not. Shipping the module is these two conditions (and §8). |
 | `src/lib/exportCategories.ts` | `OFFERED_EXPORT_CATEGORIES` — the Export / Import categories this build offers (Analysis V2's only with the flag); apart from `lib/dataExport.ts`, which Node reads too (the browser pass's seed). |
-| `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`; its links, §7), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings — `useJobsV2`, `useProjectLinks` too), `paths.ts` (the addresses — `jobsV2Path`). `jobs/` (CTA-188): `JobsV2Screen.tsx` (`/analysis/jobs`, behind `JobsV2Main.tsx`), `JobV2Reports.tsx` (a done job's report, another's results so far), `NewJobV2.tsx` (the popup's screen side), `JobsV2Shell.tsx` (`JobV2Runner`, `JobsV2Indicator` — the shell's, loaded lazily). |
-| `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/forms/JobTargetFields/`, `src/blocks/lists/CaseJobs/`, `src/blocks/lists/ProjectLinks/` | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and so, for Jobs V2, V1's `JobsTable`, `JobSummary` (generic over a job's fields), `NewJobDialog` and `ComputerAnalysisForm` (optional props: the engine and preset selects, one variant, a section before the form), each unchanged without them. |
+| `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board; the Case view's links and their picker, §7), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings — `useJobsV2`, `useCaseLinks` too), `paths.ts` (the addresses — `jobsV2Path`). `jobs/` (CTA-188): `JobsV2Screen.tsx` (`/analysis/jobs`, behind `JobsV2Main.tsx`), `JobV2Reports.tsx` (a done job's report, another's results so far), `NewJobV2.tsx` (the popup's screen side), `JobsV2Shell.tsx` (`JobV2Runner`, `JobsV2Indicator` — the shell's, loaded lazily). |
+| `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/forms/JobTargetFields/`, `src/blocks/lists/CaseJobs/`, `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/` | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and so, for Jobs V2, V1's `JobsTable`, `JobSummary` (generic over a job's fields), `NewJobDialog` and `ComputerAnalysisForm` (optional props: the engine and preset selects, one variant, a section before the form), each unchanged without them. |
 | `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts`, `src/views/shared/AnalysisEvalReport.tsx` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws, the eval graph and report the Case view's Graph tab shows. The legacy screens import them from here. |
-| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectStores.test.ts` (the stores — the links, a delete's jobs and links, the database's upgrade from version 1, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Project's links, the Jobs V2 view), `JobsV2Shell.test.tsx` (the indicator), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the dev-only database). |
+| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links on its Info tab, the Jobs V2 view), `JobsV2Shell.test.tsx` (the indicator), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the dev-only database). |
 
 Locale keys: `analysisV2.*` (`browser`, `folder`, `project`, `case`,
 `newCase`, `workspace`; `jobs`, `links` — CTA-188), `nav.folders.analysisV2`, `nav.analysisProjects`,
@@ -102,11 +105,11 @@ Jobs tab and popup), `analysis-v2-jobs-*` (the Jobs V2 view and indicator).
   mention of `chessapp.analysisProjects` — `legalDocuments.test.ts` fails the
   day the flag stops being `import.meta.env.DEV`, to say the database must
   join the pages then.
-- **Verify** after `yarn build`: `grep -rlE "analysisProjectStore|analysisCaseStore|chessapp\.analysisProjects|analysis-case|/analysis/projects|ProjectsBrowser|CaseWorkspace|jobV2Store|jobV2Runner|analysisProjectLinkStore|/analysis/jobs|JobsV2|analysis-v2-jobs" dist/`
+- **Verify** after `yarn build`: `grep -rlE "analysisProjectStore|analysisCaseStore|chessapp\.analysisProjects|analysis-case|/analysis/projects|ProjectsBrowser|CaseWorkspace|jobV2Store|jobV2Runner|analysisCaseLinkStore|/analysis/jobs|JobsV2|analysis-v2-jobs" dist/`
   finds nothing — no route, chunk, store, runner, lock or database name. The format's own
   code (`dataExport.ts` / `dataImport.ts`, the file name
-  `analysis-projects.json`, its `projectLinks` field and the stores' method
-  names it calls, `loadProjectLinks` / `importProjectLinks`) and the catalogs' words are in the main chunk.
+  `analysis-projects.json`, its `caseLinks` field and the stores' method
+  names it calls, `loadCaseLinks` / `importCaseLinks`) and the catalogs' words are in the main chunk.
 
 ---
 
@@ -269,7 +272,8 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
   and the panel shows the Case — **Back** to the list where the list has
   Close, its name and type, its details in **tabs** — **Info**, the Case's
   PGN tags as saved (`GameInfo`, the Library game board's Info tab; "no
-  tags" when it has none), **Graph**, the eval graph and report of the tree
+  tags" when it has none) and under them **its links** (CTA-188, §7),
+  **Graph**, the eval graph and report of the tree
   on the board (`views/shared/AnalysisEvalReport.tsx`, the Analysis Board's
   Evaluations tab — live, a click moves the board; disabled while the tree
   carries no `[%eval]`), **Display**, how the board draws (`CaseDisplayTab`,
@@ -283,8 +287,10 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
 
 ## 4. The store
 
-`chessapp.analysisProjects`, **version 2** (CTA-188 — the upgrade from 1 only
-creates `jobs` and `projectLinks`, every folder, Project and Case kept), a database of its own (apart from
+`chessapp.analysisProjects`, **version 3** (CTA-188 — an upgrade from 1 only
+creates `jobs` and `caseLinks`, every folder, Project and Case kept; version 2
+existed on CTA-188's branch alone, its `projectLinks` store left unread by 3),
+a database of its own (apart from
 `chessapp.analyses`, so the legacy module's removal takes nothing of it) —
 [`database.md`](./database.md) §1. Every row is read through its normaliser
 (a field an older row lacks reads as its default; a row without its identity
@@ -296,13 +302,13 @@ is dropped).
 | `projects` | newest first | 1,000 | `createAnalysisProject` (a name required), `renameAnalysisProject`, `moveAnalysisProject`, `duplicateAnalysisProject` (its Cases first, all or nothing), `removeAnalysisProject(s)` (their Cases with them — `removeCasesOfProjects`), `importAnalysisProjects` |
 | `cases` | newest first | 10,000 | `addAnalysisCases` (all or nothing), `renameAnalysisCase`, `moveAnalysisCase`, `duplicateAnalysisCase`, `removeAnalysisCases` (their Jobs V2 with them), `saveCaseState` (the autosave, in place — never the tree of a state behind a merge, §6.6), `mergeIntoAnalysisCase` (a Jobs V2 merge, §6.6), `importAnalysisCases` |
 | `jobs` (CTA-188) | newest first | 100 (the oldest finished dropped; refused when every one is unfinished) | Jobs V2 (§6.2) |
-| `projectLinks` (CTA-188) | oldest first | 10,000 | `linkAnalysisProjects` (no self-link, no pair twice), `unlinkAnalysisProjects`, `removeLinksOfProjects`, `importProjectLinks` (§7) |
+| `caseLinks` (CTA-188) | oldest first | 50,000 | `linkAnalysisCases` / `addCaseLinks` (no self-link, no pair twice), `unlinkAnalysisCases`, `removeLinksOfCases`, `importCaseLinks` (§7) |
 
-A delete runs folder → Projects → Cases → their Jobs V2 → the Projects'
-links as writes queued one after another, which is why `src/test/setup.ts`
+A delete runs folder → Projects → Cases → their Jobs V2 → their links as
+writes queued one after another, which is why `src/test/setup.ts`
 lets the writes settle five times over. A **Case or Project deleted takes
 its Jobs V2** (`removeJobsV2Of`) — a running one is stopped by the runner,
-which reads it gone — and **a Project deleted takes its links**.
+which reads it gone — and **its links** (`removeLinksOfCases`).
 
 ---
 
@@ -312,8 +318,8 @@ The `analysisProjects` category ([`import-export.md`](./import-export.md)):
 one file, `analysis-projects.json` — `{ folders, projects, links }`: every folder as
 its path of names (parents first, empty ones too), every Project as stored
 with its `folderPath` and its **Cases** as stored, and — since manifest
-version **5** (CTA-188) — the **links** between the Projects as stored (a link
-to a Project not exported left out). Version 4 added the file (a v3 zip reads
+version **5** (CTA-188) — the **links between the Cases** as stored (a link
+to a Case not exported left out). Version 4 added the file (a v3 zip reads
 through the table, its upgrade the stamp alone); version 5 its links (a v4
 zip reads with none). Jobs V2 are not exported (as V1's jobs are not —
 [`import-export.md`](./import-export.md) §1.1); their results are Cases, which are. On the way
@@ -322,9 +328,9 @@ Projects clash by their folder like the analyses (Merge / Override / Skip, a
 folder's own choice over the category's); each Project brings its Cases, each
 filed in it; an Override's Projects take their Cases with them; the Projects'
 and the Cases' caps both refuse the category. **The links** come after the
-Cases: the zip's whose two ends the app holds afterwards (Project ids are
-kept by an import), an Override's removed Projects' own links dropped first
-(`importProjectLinks`). A build without the module leaves the file unread.
+Cases: the zip's whose two Cases the app holds afterwards (Case ids are kept
+by an import), the links of the Cases the import replaces or removes dropped
+first (`importCaseLinks`). A build without the module leaves the file unread.
 
 ---
 
@@ -347,9 +353,9 @@ V1's `ComputerAnalysisJob` with these differences:
 | `source` | `{ projectId, caseId, name, pgn }` — the Case, its name as shown, its tree **as the board held it when sent**. |
 | `options` | `ComputerAnalysisOptions` — the engine (`engine`) and the search **as the popup left it**: depth, move time, Threads, Hash, lines. |
 | `preset` | `{ id, name, values }` — the engine's preset the job was given, its values (`presetSentValues`) as they were then. **The runner sends these**, never whatever preset is selected when it runs. |
-| `target` | `{ kind: "project", projectId }` (new Cases beside the source), `{ kind: "linked", projectId }` (new Cases in a linked Project), or `{ kind: "case" }` (merged into the source Case — **one** variant: `jobV2Of` refuses more). |
+| `target` | `{ kind: "project", projectId }` (new Cases beside the source), `{ kind: "other", projectId }` (new Cases in another Project — a row from before the rename, `linked`, reads as it), or `{ kind: "case" }` (merged into the source Case — **one** variant: `jobV2Of` refuses more). Every new Case is linked from the source Case. |
 | `outputs` | `{ variant, projectId, caseId }` — the new Cases, or the source Case merged into. |
-| `error` | V1's codes and **`target`**: where the results were to go is gone (the linked Project, the source Case). |
+| `error` | V1's codes and **`target`**: where the results were to go is gone (the other Project, the source Case). |
 
 `jobV2From` reads a row leniently as `jobFrom` does: dropped without an id,
 the kind, its Case or its positions; a target that will not read is new Cases
@@ -377,10 +383,12 @@ position's MultiPV clamped to what the engine declared, **the job's preset**
 job no longer `running` or gone stopped at once. At the end, **by its
 target**:
 
-- `project` / `linked` — the Project must still be there (else `target`);
+- `project` / `other` — the Project must still be there (else `target`);
   each ticked variant a new **Game Case** (`gameCaseOf` over
   `jobV2AnalysisOf` of the source as sent), named `jobV2OutputName` —
-  "<case> - computer analysis (<variant>)" — in one `addAnalysisCases`.
+  "<case> - computer analysis (<variant>)" — in one `addAnalysisCases`, then
+  **each linked from the source Case** (`addCaseLinks`; a refused link leaves
+  the Case unlinked and the job done — the Cases are made).
 - `case` — `mergeIntoAnalysisCase(caseId, jobId, jobV2MergedPgn)` (§6.6); a
   Case gone fails it `target`.
 
@@ -404,13 +412,13 @@ for the Case **on the board** — its tree as the board holds it:
   the form is V1's: lines, the early stop's depth, the variation range, the
   side, the first and last move, the thresholds, the variants.
 - **Where to save the results** (`JobTargetFields`, a section before the
-  form): **new Cases in this Project**; **a linked project** — a **new** one
-  (its name asked, "<Case> — analysis" offered — named after the Case, not its Project; made on Start in the
-  source Project's folder and linked from it) or an **existing** one (those
-  the source links to listed first and marked; any other is linked on Start);
-  or **into this Case** — the form then offers **one variant** (radios,
-  `singleVariant`). A new Project with no name, or none picked, keeps Start
-  off with the reason (`startBlockedNote`).
+  form): **new Cases in this Project**; **another project** — a **new** one
+  (its name asked, "<Case> — analysis" offered — named after the Case, not
+  its Project; made on Start in the source Project's folder) or an
+  **existing** one; or **into this Case** — the form then offers **one
+  variant** (radios, `singleVariant`). Every new Case, here or there, is
+  linked from the source Case. A new Project with no name, or none picked,
+  keeps Start off with the reason (`startBlockedNote`).
 - **Start** queues it (`enqueueJobV2`), closes, and a snackbar's *Open in
   Jobs V2* goes to the job. A refusal stays in the dialog, a Project made for
   it taken back.
@@ -421,7 +429,7 @@ V1's Jobs screen cloned (`JobsV2Screen`): the list (`JobsTable` over
 `JobV2`) in the square, newest first, Resume / Pause / Cancel / Delete; one
 job (`JobSummary` over `JobV2`) in the aside — its status, progress, why it
 failed, **Open the Case** (its source, while it is there), **links to its
-results** (each new Case; the linked Project; the source Case "the analysis
+results** (each new Case; the other Project; the source Case "the analysis
 merged in"), its parameters with **the preset** and **where the results go**
 (`extraFacts`), and on Results a done job's **report and eval graph** read
 back from its first output Case (`JobV2Report`, the graph read only) or
@@ -453,16 +461,31 @@ searched (a mainline changed since) is left unannotated.
   behind a merge** (`isBehindMerges`) — only its place, side and display — so
   the older tree is never written back.
 
-## 7. Links between Projects (CTA-188)
+## 7. Links between Cases (CTA-188)
 
-A **directed many-to-many self-relation**: a Project **links to** another
-(`ProjectLink { id, fromId, toId, createdAt }`), which is **linked from** it;
-never to itself, never the same pair twice, cycles allowed, removed with
-either Project. Minimal in this issue: a Jobs V2 popup's *linked project*
-makes them, and **a Project's screen lists them** (`ProjectLinks`, under its
-header — nothing while it has none): *Links to* and *Linked from*, each a link
-to that Project with **Unlink** (`unlinkAnalysisProjects`). Export / Import
-carry them (§5). A richer linking screen is a later issue.
+A **directed many-to-many self-relation between Cases**, across Projects: a
+Case **links to** another (`CaseLink { id, fromId, toId, createdAt }`, the
+`caseLinks` store), which is **linked from** it; never to itself, never the
+same pair twice, cycles allowed, removed with either Case (and so with its
+Project).
+
+- **Made** by a Jobs V2 computer analysis — its source Case links to every
+  new Case it makes (§6.3) — and by the reader's **Link a case**.
+- **Shown on the Case view's Info tab**, under the tags (`CaseLinks`):
+  *Links to* and *Linked from*, each Case a link to its board with its
+  Project's name, and **Unlink** (`unlinkAnalysisCases`); none, "No linked
+  cases yet". A refused Unlink is said under them.
+- **Link a case** opens `CasePickerDialog`: a Project (the Case's own first;
+  Projects with nothing to pick left out), then one of its Cases — every Case
+  but this one and those it links to already — and **Link**
+  (`linkAnalysisCases`, this Case → that one). A refusal stays in the dialog.
+- Export / Import carry them (§5).
+
+CTA-188 first linked **Projects** (a `projectLinks` store, the Project
+screen's lists, the popup's "a linked project"); that was a planning mistake,
+replaced by this before it shipped — the database's version 3 leaves a
+version-2 store of them unread, and a job row's `linked` target reads as
+`other`.
 
 ## 8. Shipping it, later
 

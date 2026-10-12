@@ -2,6 +2,7 @@ import { Chess } from "chess.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FakeEngine } from "../views/board/boardTestHarness";
+import { loadCaseLinks } from "./analysisCaseLinkStore";
 import { addAnalysisCases, importAnalysisCases, loadAnalysisCases, removeAnalysisCases, saveCaseState } from "./analysisCaseStore";
 import { createAnalysisProject, removeAnalysisProject } from "./analysisProjectStore";
 import { caseStateOf, gameCaseOf, type AnalysisCase } from "./analysisProjects";
@@ -98,6 +99,8 @@ describe("the Jobs V2 runner (CTA-188)", () => {
     expect(cases.get(outputs[0].caseId)?.pgn).toContain('[Annotator "Stockfish 19 Lite [light]"]');
     expect(cases.get(outputs[0].caseId)?.pgn).toContain("[%eval");
     expect(engine().terminated).toBe(true);
+    // Each new Case linked from its source.
+    expect((await loadCaseLinks()).map(({ fromId, toId }) => [fromId, toId])).toEqual(outputs.map((output) => ["case", output.caseId]));
   });
 
   it("sends the preset the job was given — never the one selected now — Threads, Hash and lines its own", async () => {
@@ -115,16 +118,17 @@ describe("the Jobs V2 runner (CTA-188)", () => {
     expect(engine().setOptions.at(-1)).toEqual(["MultiPV", 2]);
   });
 
-  it("files the new Cases in a linked Project, and fails `target` when that Project has gone", async () => {
+  it("files the new Cases in another Project, linked from the source, and fails `target` when that Project has gone", async () => {
     const { projectId } = await seed();
     const linked = (await createAnalysisProject("Analysed", null))!;
-    const job = jobOf(projectId, { kind: "linked", projectId: linked.id });
+    const job = jobOf(projectId, { kind: "other", projectId: linked.id });
     await addJobV2(job);
     start();
     await answerAll(job);
     await vi.waitFor(() => expect(findJobV2("job")?.status).toBe("done"));
     expect(findJobV2("job")?.outputs[0].projectId).toBe(linked.id);
     expect((await loadAnalysisCases()).find((record) => record.id === findJobV2("job")?.outputs[0].caseId)?.projectId).toBe(linked.id);
+    expect((await loadCaseLinks()).map(({ fromId, toId }) => [fromId, toId])).toEqual([["case", findJobV2("job")?.outputs[0].caseId]]);
 
     FakeEngine.reset();
     await removeAnalysisProject(linked.id);
@@ -150,6 +154,8 @@ describe("the Jobs V2 runner (CTA-188)", () => {
     expect(merged.pgn).toContain("my plan");
     expect(merged.pgn).toContain("[%eval");
     expect(merged.orientation).toBe("black");
+    // A merge into the Case itself makes no link.
+    expect(await loadCaseLinks()).toEqual([]);
 
     // An open board's autosave from before the merge never writes the older tree back — its place and side still land.
     await saveCaseState(record.id, { ...caseStateOf(edited, null, "white"), merges: [] });

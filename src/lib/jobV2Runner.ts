@@ -1,3 +1,4 @@
+import { addCaseLinks } from "./analysisCaseLinkStore";
 import { addAnalysisCases, loadAnalysisCases, mergeIntoAnalysisCase } from "./analysisCaseStore";
 import { loadAnalysisProjects } from "./analysisProjectStore";
 import { gameCaseOf } from "./analysisProjects";
@@ -49,8 +50,10 @@ import type { GameTree } from "./gameTree";
  *   when it runs.
  * - **A checkpoint after every position.**
  * - **At the end, by its target**: each ticked variant a new **Game Case** in
- *   the source's Project or the linked Project (one `addAnalysisCases`), named
- *   `jobV2OutputName`; or the one variant **merged into the source Case** as the
+ *   the source's Project or another (one `addAnalysisCases`), named
+ *   `jobV2OutputName` and **linked from the source Case** (`addCaseLinks` — a
+ *   refused link leaves the Case unlinked, the job done); or the one variant
+ *   **merged into the source Case** as the
  *   store holds it then (`mergeIntoAnalysisCase` over `jobV2MergedPgn` — the
  *   reader's moves, side lines and comments kept). A target gone fails it
  *   `target`.
@@ -227,8 +230,9 @@ export const createJobV2Runner = ({
 
   /**
    * **The results, by the job's target** — each ticked variant a new Game
-   * Case in the source's Project or the linked one, or the one variant merged
-   * into the source Case. A Project or Case gone fails it `target`.
+   * Case in the source's Project or another, linked from the source Case, or
+   * the one variant merged into the source Case. A Project or Case gone fails
+   * it `target`.
    */
   const saveOutputs = async (
     job: JobV2,
@@ -256,6 +260,8 @@ export const createJobV2Runner = ({
     await loadAnalysisCases();
     const problem = await addAnalysisCases(records);
     if (problem !== undefined) throw new JobFailure(problem === "too-many" ? "too-many" : "storage");
+    // Each new Case linked from its source — the Cases are made either way, so a refused link does not fail the job.
+    await addCaseLinks(records.map((record) => ({ fromId: job.source.caseId, toId: record.id })), at);
     return records.map((record, index) => ({ variant: job.options.outputs[index], projectId: target.projectId, caseId: record.id }));
   };
 

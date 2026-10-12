@@ -1,3 +1,4 @@
+import { removeLinksOfCases } from "./analysisCaseLinkStore";
 import { CASES_STORE, ANALYSIS_PROJECTS_CHANNEL, openAnalysisProjectsDb } from "./analysisProjectsDb";
 import {
   analysisCaseFrom,
@@ -23,7 +24,8 @@ import { newRecordId } from "./recordId";
  * and an operation that changes nothing writes nothing (the same array back:
  * no transaction, no emit). Nothing throws. The autosave
  * ({@link saveCaseState}) writes only what changed, in place. A Case deleted
- * takes its Jobs V2 with it (CTA-188, `lib/jobV2Store.ts`), and a Jobs V2
+ * takes its Jobs V2 and its links with it (CTA-188, `lib/jobV2Store.ts`,
+ * `lib/analysisCaseLinkStore.ts`), and a Jobs V2
  * computer analysis is merged into one by {@link mergeIntoAnalysisCase}.
  */
 
@@ -118,7 +120,7 @@ export const duplicateAnalysisCase = async (
   return (await addAnalysisCases([copy])) === undefined ? copy : undefined;
 };
 
-/** Delete Cases by id, and their Jobs V2 (a running one stopped by the runner, which reads it gone). Unknown ids are a no-op. */
+/** Delete Cases by id, their Jobs V2 (a running one stopped by the runner, which reads it gone) and their links. Unknown ids are a no-op. */
 export const removeAnalysisCases = async (ids: readonly string[]): Promise<AnalysisCaseProblem | undefined> => {
   if (ids.length === 0) return undefined;
   const gone = new Set(ids);
@@ -126,10 +128,10 @@ export const removeAnalysisCases = async (ids: readonly string[]): Promise<Analy
     const next = current.filter((record) => !gone.has(record.id));
     return next.length === current.length ? current : next;
   });
-  return problem ?? removeJobsV2Of({ caseIds: ids });
+  return problem ?? (await removeJobsV2Of({ caseIds: ids })) ?? removeLinksOfCases(ids);
 };
 
-/** Delete every Case of these Projects, and their Jobs V2 — a Project deleted takes its Cases with it. */
+/** Delete every Case of these Projects, their Jobs V2 and their links — a Project deleted takes its Cases with it. */
 export const removeCasesOfProjects = async (projectIds: readonly string[]): Promise<AnalysisCaseProblem | undefined> => {
   if (projectIds.length === 0) return undefined;
   const gone = new Set(projectIds);
@@ -139,7 +141,7 @@ export const removeCasesOfProjects = async (projectIds: readonly string[]): Prom
     caseIds.push(...current.filter((record) => gone.has(record.projectId)).map((record) => record.id));
     return next.length === current.length ? current : next;
   });
-  return problem ?? removeJobsV2Of({ projectIds, caseIds });
+  return problem ?? (await removeJobsV2Of({ projectIds, caseIds })) ?? removeLinksOfCases(caseIds);
 };
 
 /**

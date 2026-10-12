@@ -4,7 +4,6 @@ import {
   removeCasesOfProjects,
   type AnalysisCaseProblem,
 } from "./analysisCaseStore";
-import { removeLinksOfProjects } from "./analysisProjectLinkStore";
 import { ANALYSIS_PROJECTS_CHANNEL, openAnalysisProjectsDb, PROJECTS_STORE } from "./analysisProjectsDb";
 import {
   analysisProjectFrom,
@@ -22,7 +21,7 @@ import { newRecordId } from "./recordId";
  * **Analysis V2's Projects** (CTA-186) — the `projects` object store of
  * `chessapp.analysisProjects`, over [`idbRecordStore.ts`](./idbRecordStore.ts),
  * newest first. A Project owns its Cases: deleting one deletes them — and
- * their Jobs V2, and its links to and from other Projects (CTA-188)
+ * their Jobs V2 and their links (CTA-188)
  * ({@link removeAnalysisProject}) — duplicating one copies them
  * ({@link duplicateAnalysisProject}). Every operation is a promise; nothing
  * throws.
@@ -157,11 +156,11 @@ export const duplicateAnalysisProject = async (
   return copy;
 };
 
-/** **Delete a Project and its Cases** (their Jobs V2, its links). An unknown id is a no-op. */
+/** **Delete a Project and its Cases** (their Jobs V2 and links). An unknown id is a no-op. */
 export const removeAnalysisProject = async (id: string): Promise<AnalysisProjectProblem | undefined> =>
   removeAnalysisProjects([id]);
 
-/** Delete Projects and their Cases (and the Cases' Jobs V2), and every link to or from them. */
+/** Delete Projects and their Cases (and the Cases' Jobs V2 and links). */
 const removeAnalysisProjects = async (
   ids: readonly string[],
 ): Promise<AnalysisProjectProblem | undefined> => {
@@ -172,7 +171,7 @@ const removeAnalysisProjects = async (
     return next.length === current.length ? current : next;
   });
   if (problem !== undefined) return problem;
-  return (await removeCasesOfProjects(ids)) ?? (await removeLinksOfProjects(ids));
+  return removeCasesOfProjects(ids);
 };
 
 /** Every Project filed directly in `folderId` re-filed in `parentId` — a folder deleted keeps what it held one level up. */

@@ -61,10 +61,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
           intro: "The Case's mainline is analysed in the background; its results go where you choose below.",
           targetSection: (
             <JobTargetFields
-              value={{ ...initialJobTarget(""), kind: "linked", linkedMode: "existing" }}
+              value={{ ...initialJobTarget(""), kind: "other", otherMode: "existing" }}
               onChange={noop}
               projectName="Najdorf studies"
-              projects={[{ id: "p", name: "Engine lines", linked: true }]}
+              projects={[{ id: "p", name: "Engine lines" }]}
               testId="gallery-new-job-target"
             />
           ),
