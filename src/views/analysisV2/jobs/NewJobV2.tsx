@@ -68,8 +68,8 @@ const seedOptions = (engineId: string, preset: EnginePreset, settings: EngineSea
  *   Threads, Hash and lines (the global search settings) — all editable for
  *   this one job; changing the engine or the preset prefills them again;
  * - **Where to save the results** (`JobTargetFields`): new Cases in the
- *   Project, a linked Project — a new one made and linked on Start, filed in
- *   the source Project's folder, or an existing one, linked if it is not —
+ *   Project, a linked Project — a new one, named after the Case, made and
+ *   linked on Start, filed in the source Project's folder, or an existing one, linked if it is not —
  *   or **into this Case**, one variant;
  * - **Start** queues the job (`enqueueJobV2`) with the Case's tree as the
  *   board holds it then, the preset's values as they are then, closes and
@@ -117,7 +117,8 @@ function NewJobV2({ open, onClose, testId }: { open: NewJobV2Case | null; onClos
       setEngineId(engine);
       setPresetId(preset.id);
       setOptions(seedOptions(engine, preset, settings));
-      setTarget(initialJobTarget(t("analysisV2.jobs.defaultLinkedName", { name: projectName })));
+      // A new linked Project is named after the Case analysed, not the Project it is in.
+      setTarget(initialJobTarget(t("analysisV2.jobs.defaultLinkedName", { name: open.name })));
       setProblem(undefined);
     }
   }

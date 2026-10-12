@@ -17,7 +17,7 @@ export type JobTargetChoice = {
 /** A Project the results may go to: its name, and whether the source's Project links to it already. */
 export type JobTargetProject = { id: string; name: string; linked: boolean };
 
-/** The popup's first choice: new Cases beside the source, a new linked Project named after the source's. */
+/** The popup's first choice: new Cases beside the source, a new linked Project named `newName` (the screen offers the Case's name). */
 export const initialJobTarget = (newName: string): JobTargetChoice => ({
   kind: "project",
   linkedMode: "new",

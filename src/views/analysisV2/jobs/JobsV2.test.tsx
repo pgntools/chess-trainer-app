@@ -166,7 +166,8 @@ describe("a Case's Jobs tab and the New Job V2 popup (CTA-188)", () => {
     const dialog = await screen.findByRole("dialog", { name: "New job — Jobs V2" });
     await user.click(within(dialog).getByRole("radio", { name: "A linked project" }));
     const name = within(dialog).getByRole("textbox", { name: "The new project's name" });
-    expect(name).toHaveValue("Club — analysis");
+    // Named after the Case, not its Project.
+    expect(name).toHaveValue("Carlsen – Caruana, Club Championship — analysis");
     await user.clear(name);
     expect(within(dialog).getByRole("button", { name: "Start computer analysis" })).toBeDisabled();
     expect(within(dialog).getByText("Name the new project to start.")).toBeInTheDocument();

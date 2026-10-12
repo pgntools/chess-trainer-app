@@ -405,7 +405,7 @@ for the Case **on the board** — its tree as the board holds it:
   side, the first and last move, the thresholds, the variants.
 - **Where to save the results** (`JobTargetFields`, a section before the
   form): **new Cases in this Project**; **a linked project** — a **new** one
-  (its name asked, "<Project> — analysis" offered; made on Start in the
+  (its name asked, "<Case> — analysis" offered — named after the Case, not its Project; made on Start in the
   source Project's folder and linked from it) or an **existing** one (those
   the source links to listed first and marked; any other is linked on Start);
   or **into this Case** — the form then offers **one variant** (radios,
