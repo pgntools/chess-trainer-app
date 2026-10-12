@@ -18,7 +18,7 @@ import type { Game } from "../../../lib/gameModel";
 import { GameInfo } from "../GameInfo";
 
 /** The view's tabs, in order. */
-export type CaseDetailsTab = "info" | "graph" | "display";
+export type CaseDetailsTab = "info" | "graph" | "display" | "jobs";
 
 export type CaseDetailsProps = {
   /** The Case on the board. */
@@ -32,6 +32,10 @@ export type CaseDetailsProps = {
   graph?: ReactNode;
   /** The Display tab's content — how the board draws, the screen's. Absent, no such tab. */
   display?: ReactNode;
+  /** Under the tags on the Info tab (CTA-188) — the Case's links (`CaseLinks`), the screen's. Absent, none. */
+  links?: ReactNode;
+  /** The Jobs tab's content (CTA-188) — the Case's Jobs V2 and New job, the screen's (`CaseJobs`). Absent, no such tab. */
+  jobs?: ReactNode;
   /** The open tab — the screen's, so it outlives a step to another Case. The Graph tab, disabled, reads as Info. */
   tab: CaseDetailsTab;
   onTabChange: (tab: CaseDetailsTab) => void;
@@ -42,7 +46,7 @@ export type CaseDetailsProps = {
   next: LinkTarget | undefined;
   /**
    * The root; its parts `-back`, `-title`, `-tabs` (each tab `-tab-<id>`),
-   * `-info` (the tags, each `-info-<Tag>`, none `-info-empty`), `-graph`, `-display`,
+   * `-info` (the tags, each `-info-<Tag>`, none `-info-empty`), `-graph`, `-display`, `-jobs`,
    * `-siblings`, `-previous`, `-next`.
    */
   testId: string;
@@ -53,16 +57,21 @@ export type CaseDetailsProps = {
  * the Case board's left panel, opened from a row of the Project's Cases
  * (`CaseSiblings`): Back to that list at the head's start — where the list
  * has Close — the Case's name and type, its details in tabs — **Info**, its
- * PGN tags (`GameInfo`, the Library game board's Info tab), **Graph**, the
+ * PGN tags (`GameInfo`, the Library game board's Info tab) and, under them,
+ * its links (the screen's, CTA-188), **Graph**, the
  * board's eval graph and report (the screen's, disabled while the tree has no
  * evaluations, as the Analysis Board's Evaluations tab), **Display**, how
- * the board draws (the screen's) — and previous / next at its foot, sticky as the list's.
+ * the board draws (the screen's), **Jobs**, the Case's Jobs V2 (CTA-188, the
+ * screen's) — and previous / next at its foot, sticky as the list's.
  * Presentational: the game, the graph, the display, the open tab and the links arrive from
  * the screen; its words are `analysisV2.caseDetails.*`.
  */
-function CaseDetails({ row, game, graph, display, tab: asked, onTabChange, backLink, previous, next, testId }: CaseDetailsProps) {
+function CaseDetails({ row, game, graph, display, links, jobs, tab: asked, onTabChange, backLink, previous, next, testId }: CaseDetailsProps) {
   const { t } = useTranslation();
-  const tab: CaseDetailsTab = (asked === "graph" && graph === undefined) || (asked === "display" && display === undefined) ? "info" : asked;
+  const tab: CaseDetailsTab =
+    (asked === "graph" && graph === undefined) || (asked === "display" && display === undefined) || (asked === "jobs" && jobs === undefined)
+      ? "info"
+      : asked;
   // The arrows point along the reading direction, which runs right to left under RTL.
   const rtl = useTheme().direction === "rtl";
   const Back = rtl ? ArrowForwardRoundedIcon : ArrowBackRoundedIcon;
@@ -92,6 +101,7 @@ function CaseDetails({ row, game, graph, display, tab: asked, onTabChange, backL
             { id: "info", label: t("analysisV2.caseDetails.tabs.info") },
             { id: "graph", label: t("analysisV2.caseDetails.tabs.graph"), disabled: graph === undefined },
             ...(display === undefined ? [] : [{ id: "display", label: t("analysisV2.caseDetails.tabs.display") }]),
+            ...(jobs === undefined ? [] : [{ id: "jobs", label: t("analysisV2.caseDetails.tabs.jobs") }]),
           ]}
           value={tab}
           onChange={(id) => onTabChange(id as CaseDetailsTab)}
@@ -103,8 +113,9 @@ function CaseDetails({ row, game, graph, display, tab: asked, onTabChange, backL
       {/* The open tab's content scrolls; the head, the tabs and the foot stay. */}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
         {tab === "info" && (
-          <Box {...tabPanelProps(testId, "info")} sx={{ px: 1 }}>
+          <Box {...tabPanelProps(testId, "info")} sx={{ px: 1, display: "grid", gap: 2 }}>
             <GameInfo game={game} testId={`${testId}-info`} />
+            {links}
           </Box>
         )}
         {tab === "graph" && (
@@ -115,6 +126,11 @@ function CaseDetails({ row, game, graph, display, tab: asked, onTabChange, backL
         {tab === "display" && (
           <Box {...tabPanelProps(testId, "display")} data-testid={`${testId}-display`}>
             {display}
+          </Box>
+        )}
+        {tab === "jobs" && (
+          <Box {...tabPanelProps(testId, "jobs")} data-testid={`${testId}-jobs`}>
+            {jobs}
           </Box>
         )}
       </Box>

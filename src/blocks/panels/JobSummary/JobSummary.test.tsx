@@ -107,4 +107,28 @@ describe("JobSummary (CTA-173)", () => {
     mount(DONE);
     await expectNoAxeViolations();
   });
+
+  it("takes Jobs V2's facts, links and error words, its outputs unlinked (CTA-188)", async () => {
+    render(
+      <JobSummary
+        job={{ ...FAILED, error: "target" }}
+        sourceLink={{ href: "/analysis/projects/p/cases/c" }}
+        sourceLabel="Open the Case"
+        links={<a href="/analysis/projects/p2">Open Linked</a>}
+        extraFacts={[{ id: "preset", label: "Preset", value: "Deep" }]}
+        errorText="Where the results were to go is gone."
+        onCancel={() => {}}
+        onPause={() => {}}
+        onResume={() => {}}
+        onDelete={() => {}}
+        testId="job"
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Open the Case" })).toHaveAttribute("href", "/analysis/projects/p/cases/c");
+    expect(screen.getByRole("link", { name: "Open Linked" })).toBeInTheDocument();
+    expect(screen.getByTestId("job-error")).toHaveTextContent("Where the results were to go is gone.");
+    await userEvent.click(screen.getByRole("tab", { name: "Parameters" }));
+    expect(screen.getByTestId("job-facts")).toHaveTextContent("PresetDeep");
+  });
 });
+

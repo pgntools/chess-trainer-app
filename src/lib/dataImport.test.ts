@@ -323,9 +323,9 @@ describe("reading a zip", () => {
       { record: { id: "u1", name: "Club games", games: [pgn("Club 1"), pgn("Club 2")] }, folder: [] },
     ]);
     // The same zip stamped past this build's version is refused as newer.
-    expect(readImport(rezip(v1, (m) => ({ ...m, formatVersion: 5 })))).toMatchObject({
+    expect(readImport(rezip(v1, (m) => ({ ...m, formatVersion: 6 })))).toMatchObject({
       ok: false,
-      problem: { kind: "newer", version: 5 },
+      problem: { kind: "newer", version: 6 },
     });
   });
 
@@ -376,7 +376,7 @@ describe("reading a zip", () => {
     ["no manifest", zipSync({ "games.pgn": strToU8(pgn("x")) }), { kind: "no-manifest" }],
     ["a manifest that is not JSON", zipSync({ "manifest.json": strToU8("{") }), { kind: "malformed" }],
     ["someone else's format", rezip(zipOf(), (m) => ({ ...m, format: "other" })), { kind: "foreign" }],
-    ["a newer version", rezip(zipOf(), (m) => ({ ...m, formatVersion: 5 })), { kind: "newer", version: 5 }],
+    ["a newer version", rezip(zipOf(), (m) => ({ ...m, formatVersion: 6 })), { kind: "newer", version: 6 }],
     ["no version", rezip(zipOf(), (m) => ({ ...m, formatVersion: undefined })), { kind: "malformed" }],
     ["no files list", rezip(zipOf(), (m) => ({ ...m, files: undefined })), { kind: "malformed" }],
     ["a missing file", rezip(zipOf(), (m) => m, ["analyses.pgn"]), { kind: "missing-file", path: "analyses.pgn" }],
@@ -422,7 +422,7 @@ describe("reading a zip", () => {
 
 describe("migrations", () => {
   it("passes the current version through unchanged", () => {
-    const manifest = { format: "chessapp-export", formatVersion: 4 };
+    const manifest = { format: "chessapp-export", formatVersion: 5 };
     expect(migrateManifest(manifest)).toBe(manifest);
   });
 
@@ -802,7 +802,7 @@ describe("Analysis V2's projects (CTA-186)", () => {
       analysisProjects: PROJECTS,
       analysisCases: CASES,
     }).analysisProjects?.writes;
-    expect(writes).toEqual({ folders: [], add: [], remove: [], cases: { add: [], remove: [] } });
+    expect(writes).toEqual({ folders: [], add: [], remove: [], cases: { add: [], remove: [] }, links: { add: [], removeOf: [] } });
   });
 
   it("refuse the category past the Projects' or the Cases' cap", () => {
@@ -817,6 +817,41 @@ describe("Analysis V2's projects (CTA-186)", () => {
       max: 2,
       total: 3,
     });
+  });
+
+  it("carry the links between their Cases (CTA-188): the zip's whose two ends the app holds afterwards, the replaced Cases' own gone", () => {
+    const LINKS = [
+      // Across Projects: c1 is the Najdorf's, c3 the loose one's.
+      { id: "l1", fromId: "c1", toId: "c3", createdAt: AT },
+      // A link to a Case not exported is left out of the file.
+      { id: "l2", fromId: "c1", toId: "elsewhere", createdAt: AT },
+    ];
+    const zip = zipOf(
+      { projectFolders: FOLDERS, analysisProjects: PROJECTS, analysisCases: CASES, caseLinks: LINKS },
+      { ...ALL, collections: false },
+    );
+    const dump = dumpOf(zip);
+    expect(dump.caseLinks).toEqual([LINKS[0]]);
+    expect(writesOf(dump, EMPTY).analysisProjects?.writes.links).toEqual({ add: [LINKS[0]], removeOf: [] });
+
+    // Skip leaves p2 and its c3 out — the app has neither — so the link has no end there.
+    const skipped = writesOf(dump, EMPTY, { analysisProjects: { ticked: true, choice: "merge", folders: { "[]": "skip" } } });
+    expect(skipped.analysisProjects?.writes.links.add).toEqual([]);
+
+    // Override replaces the app's p2 and its Case: that Case's links go.
+    const app: ImportCurrent = { ...EMPTY, analysisProjects: [project("p2", "Mine", null)], analysisCases: [aCase("mine", "p2")] };
+    expect(writesOf(dump, app, choosing("override")).analysisProjects?.writes.links).toEqual({ add: [LINKS[0]], removeOf: ["mine"] });
+  });
+
+  it("read a version-4 zip — from before the links — with none", () => {
+    const files = unzipSync(projectsZip());
+    const file = JSON.parse(strFromU8(files["analysis-projects.json"])) as Record<string, unknown>;
+    delete file.links;
+    files["analysis-projects.json"] = strToU8(JSON.stringify(file));
+    const v4 = rezip(zipSync(files), (m) => ({ ...m, formatVersion: 4 }));
+    const dump = dumpOf(v4);
+    expect(dump.analysisProjects.map(({ record }) => record.id)).toEqual(["p1", "p2"]);
+    expect(dump.caseLinks).toEqual([]);
   });
 
   it("are left unread by a build that does not offer them", () => {

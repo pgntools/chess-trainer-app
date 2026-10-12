@@ -20,8 +20,9 @@ import { newRecordId } from "./recordId";
 /**
  * **Analysis V2's Projects** (CTA-186) — the `projects` object store of
  * `chessapp.analysisProjects`, over [`idbRecordStore.ts`](./idbRecordStore.ts),
- * newest first. A Project owns its Cases: deleting one deletes them
- * ({@link removeAnalysisProject}), duplicating one copies them
+ * newest first. A Project owns its Cases: deleting one deletes them — and
+ * their Jobs V2 and their links (CTA-188)
+ * ({@link removeAnalysisProject}) — duplicating one copies them
  * ({@link duplicateAnalysisProject}). Every operation is a promise; nothing
  * throws.
  */
@@ -155,11 +156,11 @@ export const duplicateAnalysisProject = async (
   return copy;
 };
 
-/** **Delete a Project and its Cases.** An unknown id is a no-op. */
+/** **Delete a Project and its Cases** (their Jobs V2 and links). An unknown id is a no-op. */
 export const removeAnalysisProject = async (id: string): Promise<AnalysisProjectProblem | undefined> =>
   removeAnalysisProjects([id]);
 
-/** Delete Projects and their Cases. */
+/** Delete Projects and their Cases (and the Cases' Jobs V2 and links). */
 const removeAnalysisProjects = async (
   ids: readonly string[],
 ): Promise<AnalysisProjectProblem | undefined> => {

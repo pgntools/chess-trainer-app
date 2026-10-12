@@ -41,16 +41,17 @@ import { importRepertoires, loadSavedRepertoires, MAX_SAVED_REPERTOIRES } from "
 
 /** Analysis V2's folders, Projects and Cases — none in a build without the module. */
 const loadAnalysisProjectsCurrent = async (): Promise<
-  Pick<ImportCurrent, "projectFolders" | "analysisProjects" | "analysisCases">
+  Pick<ImportCurrent, "projectFolders" | "analysisProjects" | "analysisCases" | "caseLinks">
 > => {
   const stores = await analysisProjectStores();
-  if (stores === undefined) return { projectFolders: [], analysisProjects: [], analysisCases: [] };
-  const [projectFolders, analysisProjects, analysisCases] = await Promise.all([
+  if (stores === undefined) return { projectFolders: [], analysisProjects: [], analysisCases: [], caseLinks: [] };
+  const [projectFolders, analysisProjects, analysisCases, caseLinks] = await Promise.all([
     stores.folders.loadProjectFolders(),
     stores.projects.loadAnalysisProjects(),
     stores.cases.loadAnalysisCases(),
+    stores.links.loadCaseLinks(),
   ]);
-  return { projectFolders, analysisProjects, analysisCases };
+  return { projectFolders, analysisProjects, analysisCases, caseLinks };
 };
 
 /** Every store the import writes, read now if it has not been. */
@@ -188,14 +189,15 @@ export const applyImport = async (writes: ImportWrites, options: ApplyOptions): 
     const problem = await importEnginePresets(planned);
     return problem === "default" ? "storage" : problem;
   });
-  // Analysis V2 (CTA-186): the folders, then the Projects, then their Cases.
-  await run("analysisProjects", writes.analysisProjects, async ({ folders, add, remove, cases }) => {
+  // Analysis V2 (CTA-186): the folders, then the Projects, then their Cases, then the links between the Cases (CTA-188).
+  await run("analysisProjects", writes.analysisProjects, async ({ folders, add, remove, cases, links }) => {
     const stores = await analysisProjectStores();
     if (stores === undefined) return "storage";
     return (
       (await stores.folders.addProjectFolders(folders)) ??
       (await stores.projects.importAnalysisProjects({ add, remove })) ??
-      (await stores.cases.importAnalysisCases(cases))
+      (await stores.cases.importAnalysisCases(cases)) ??
+      (await stores.links.importCaseLinks(links))
     );
   });
   return results;

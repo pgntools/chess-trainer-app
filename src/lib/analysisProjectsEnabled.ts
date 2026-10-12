@@ -9,7 +9,8 @@
 export const ANALYSIS_PROJECTS_ENABLED: boolean = import.meta.env.DEV;
 
 /**
- * **Analysis V2's three stores, for Settings' Export and Import** — dynamic
+ * **Analysis V2's stores, for Settings' Export and Import** — the folders,
+ * the Projects, the Cases and the links between Cases (CTA-188) — dynamic
  * imports in a build with the module, `undefined` in one without. The
  * condition is `import.meta.env.DEV` itself, inline, not the flag above: Vite
  * writes the literal `false` here in a production build, and a dynamic import
@@ -18,12 +19,13 @@ export const ANALYSIS_PROJECTS_ENABLED: boolean = import.meta.env.DEV;
  */
 export const analysisProjectStores = async () => {
   if (import.meta.env.DEV) {
-    const [folders, projects, cases] = await Promise.all([
+    const [folders, projects, cases, links] = await Promise.all([
       import("./analysisProjectFolderStore"),
       import("./analysisProjectStore"),
       import("./analysisCaseStore"),
+      import("./analysisCaseLinkStore"),
     ]);
-    return { folders, projects, cases };
+    return { folders, projects, cases, links };
   }
   return undefined;
 };

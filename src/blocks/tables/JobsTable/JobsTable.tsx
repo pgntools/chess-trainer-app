@@ -15,18 +15,26 @@ import { DataTable, type DataTableColumn } from "../../../design-system/patterns
 import { canCancelJob, canPauseJob, canResumeJob, jobMoveLabel, jobProgress, type Job } from "../../../lib/jobs";
 import { JOB_STATUS_TONES } from "./jobStatusTones";
 
-export type JobsTableProps = {
+/**
+ * What the list reads of a job — a V1 `Job`, or a Jobs V2 one (CTA-188), which
+ * shares these fields.
+ */
+export type JobsTableJob = Pick<Job, "id" | "status" | "positions" | "checkpoint" | "startedAt" | "finishedAt"> & {
+  source: { name: string };
+};
+
+export type JobsTableProps<J extends JobsTableJob = Job> = {
   /** The jobs, in the order shown (the store's: newest first). */
-  rows: readonly Job[];
+  rows: readonly J[];
   /** Where a job's row goes — its details (`?job=<id>`). */
-  rowLink: (job: Job) => LinkTarget;
+  rowLink: (job: J) => LinkTarget;
   /** The job whose details are open — its row is marked as the current one. */
   selectedId?: string | null;
-  onCancel: (job: Job) => void;
+  onCancel: (job: J) => void;
   /** Pause a job waiting or being run — Resume takes it up again (CTA-178). */
-  onPause: (job: Job) => void;
-  onResume: (job: Job) => void;
-  onDelete: (job: Job) => void;
+  onPause: (job: J) => void;
+  onResume: (job: J) => void;
+  onDelete: (job: J) => void;
   /** The store is still being read. */
   loading?: boolean;
   /** The root; the parts are `DataTable`'s under it, a job's status `<testId>-status-<id>` and progress `<testId>-progress-<id>`. */
@@ -59,12 +67,23 @@ const Stamp = ({ value }: { value: string | null }) => {
  *
  * Presentational: the jobs, the link and the four actions are props; the
  * screen reads the store and writes it. Its words are the app's (`jobs.*`).
+ * Any job with a {@link JobsTableJob}'s fields — Jobs V2's too (CTA-188).
  */
-function JobsTable({ rows, rowLink, selectedId, onCancel, onPause, onResume, onDelete, loading = false, testId }: JobsTableProps) {
+function JobsTable<J extends JobsTableJob = Job>({
+  rows,
+  rowLink,
+  selectedId,
+  onCancel,
+  onPause,
+  onResume,
+  onDelete,
+  loading = false,
+  testId,
+}: JobsTableProps<J>) {
   const { t } = useTranslation();
-  const nameOf = (job: Job) => job.source.name || t("jobs.untitled");
+  const nameOf = (job: J) => job.source.name || t("jobs.untitled");
 
-  const columns = useMemo<DataTableColumn<Job, Column>[]>(
+  const columns = useMemo<DataTableColumn<J, Column>[]>(
     () => [
       {
         id: "source",
@@ -122,7 +141,7 @@ function JobsTable({ rows, rowLink, selectedId, onCancel, onPause, onResume, onD
   );
 
   return (
-    <DataTable<Job, Column>
+    <DataTable<J, Column>
       columns={columns}
       rows={rows}
       rowId={(job) => job.id}

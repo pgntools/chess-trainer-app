@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -25,6 +25,18 @@ export type NewJobDialogProps = Omit<ComputerAnalysisFormProps, "testId" | "onSt
   existing?: { status: JobStatus; onCheck: () => void };
   /** Queue the job — the actions row's Start, off while the form says why or `busy`. */
   onStart: () => void;
+  /** The dialog's title — absent, "New job" (Jobs V2's popup names itself, CTA-188). */
+  title?: string;
+  /** The line under the game's — absent, V1's (`computerAnalysis.newJob.intro`). */
+  intro?: string;
+  /**
+   * A section before the form — Jobs V2's *Where to save the results*
+   * (CTA-188, `JobTargetFields`), which decides whether the form offers one
+   * variant or several. Absent, none.
+   */
+  targetSection?: ReactNode;
+  /** Start is off for a reason of the screen's own (a target not chosen) — said in the note's place. Absent, none. */
+  startBlockedNote?: string;
   /**
    * The root; the form is `<testId>-form` (its parts as `ComputerAnalysisForm`
    * names them), the game line `-game`, Start `-start`, its note
@@ -59,6 +71,10 @@ function NewJobDialog({
   gameName,
   existing,
   onStart,
+  title,
+  intro,
+  targetSection,
+  startBlockedNote,
   busy = false,
   problem,
   testId,
@@ -82,6 +98,7 @@ function NewJobDialog({
   };
 
   const noteKey = computerAnalysisStartNote(form.options, form.blocked);
+  const note = noteKey === undefined ? startBlockedNote : t(noteKey);
   const showChoice = choosing && existing !== undefined;
 
   return (
@@ -90,7 +107,7 @@ function NewJobDialog({
       onClose={() => {
         if (!busy) onClose();
       }}
-      title={t("computerAnalysis.newJob.title")}
+      title={title ?? t("computerAnalysis.newJob.title")}
       width="sm"
       dividers={!showChoice}
       testId={testId}
@@ -118,9 +135,9 @@ function NewJobDialog({
         ) : (
           <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end", gap: 1, width: "100%" }}>
             <Box sx={{ flex: "1 1 12rem", minWidth: 0 }}>
-              {noteKey !== undefined && (
+              {note !== undefined && (
                 <Typography id={`${testId}-start-note`} variant="body2" data-testid={`${testId}-start-note`} sx={{ color: "text.secondary" }}>
-                  {t(noteKey)}
+                  {note}
                 </Typography>
               )}
               {problem !== undefined && (
@@ -136,9 +153,9 @@ function NewJobDialog({
               <Button
                 variant="contained"
                 onClick={onStart}
-                disabled={noteKey !== undefined || busy}
+                disabled={note !== undefined || busy}
                 aria-busy={busy || undefined}
-                aria-describedby={noteKey === undefined ? undefined : `${testId}-start-note`}
+                aria-describedby={note === undefined ? undefined : `${testId}-start-note`}
                 startIcon={busy ? <CircularProgress aria-hidden size={16} color="inherit" /> : undefined}
                 data-testid={`${testId}-start`}
               >
@@ -166,9 +183,10 @@ function NewJobDialog({
               {t("computerAnalysis.newJob.game")} <bdi dir="auto">{gameName}</bdi>
             </Typography>
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              {t("computerAnalysis.newJob.intro")}
+              {intro ?? t("computerAnalysis.newJob.intro")}
             </Typography>
           </Box>
+          {targetSection}
           <ComputerAnalysisForm {...form} testId={`${testId}-form`} />
         </Box>
       )}

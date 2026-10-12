@@ -142,4 +142,22 @@ describe("NewJobDialog", () => {
     expect(screen.getByRole("dialog", { name: "משימה חדשה" })).toBeInTheDocument();
     expect(screen.getByTestId("probe-existing")).toHaveTextContent("בתור");
   });
+
+  it("takes Jobs V2's title, intro, a section before the form, and a reason of its own for Start being off (CTA-188)", () => {
+    render(
+      <Harness
+        title="New job — Jobs V2"
+        intro="Its results go where you choose."
+        targetSection={<p data-testid="target-probe">where</p>}
+        startBlockedNote="Pick a project to start."
+      />,
+    );
+    const dialog = screen.getByRole("dialog", { name: "New job — Jobs V2" });
+    expect(within(dialog).getByText("Its results go where you choose.")).toBeInTheDocument();
+    const probe = within(dialog).getByTestId("target-probe");
+    expect(probe.compareDocumentPosition(within(dialog).getByTestId("probe-form")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(start()).toBeDisabled();
+    expect(start()).toHaveAccessibleDescription("Pick a project to start.");
+  });
 });
+

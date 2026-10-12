@@ -9,6 +9,7 @@ import { StatusText } from "../../../design-system/components/feedback";
 import {
   CheckboxField,
   RadioGroupField,
+  SelectField,
   SettingsSection,
   SideToggle,
   SliderField,
@@ -27,11 +28,29 @@ import {
 import { MAX_VARIATIONS_OFFERED } from "../../../lib/engineAnalysis";
 import type { DeviceEngineLimits } from "../../../lib/engineSettings";
 import type { EngineOption } from "../../../lib/engineTypes";
+import type { EngineEntry } from "../../../lib/engines";
 import { engineOptionState, optionSlug } from "../EngineSettingsForm";
 import { computerAnalysisStartNote } from "./startNote";
 
 /** Why Start could not queue the job — `enqueueComputerAnalysis`'s answers (`lib/jobStore.ts`). */
 export type ComputerAnalysisStartProblem = "invalid" | "storage" | "too-many";
+
+/**
+ * **The engine and its preset, each a select** (CTA-188, the New Job V2
+ * popup) — as the top bar's Engine menu offers them: the engines
+ * (`describeEngines()`, one this page cannot run disabled with its reason) and
+ * every preset, the one chosen prefilling the depth and time per move — the
+ * screen's to do.
+ */
+export type ComputerAnalysisEngineChoice = {
+  engines: readonly EngineEntry[];
+  engineId: string;
+  onEngineChange: (engineId: string) => void;
+  /** Every preset, Default in the screen's words. */
+  presets: readonly { id: string; name: string }[];
+  presetId: string;
+  onPresetChange: (presetId: string) => void;
+};
 
 export type ComputerAnalysisFormProps = {
   options: ComputerAnalysisOptions;
@@ -74,12 +93,24 @@ export type ComputerAnalysisFormProps = {
   /** The last Start's refusal, said under it. */
   problem?: ComputerAnalysisStartProblem;
   /**
+   * The engine and preset selects at the head of the Engine section (CTA-188,
+   * Jobs V2) — absent, none: the engine is named in words (`engineName`), as
+   * V1's dialog has it.
+   */
+  engineChoice?: ComputerAnalysisEngineChoice;
+  /**
+   * **One variant only** (CTA-188 — a Jobs V2 merge into the source Case):
+   * the variants as radios, the one chosen `outputs[0]`. Absent, checkboxes.
+   */
+  singleVariant?: boolean;
+  /**
    * The root; the sliders are `<testId>-<option>` (`-threads`, `-hash`,
    * `-multipv`, `-depth`, `-movetime`, `-mindepth`, `-inaccuracy`, `-mistake`,
    * `-blunder`, `-range`), the side `-side`, the move fields `-from-move`,
    * `-from-colour`, `-to-move`, the variants `-variant-<light|medium|full>`,
    * the Advanced toggle `-advanced`, Start `-start`, its note `-start-note`,
-   * the refusal `-problem`.
+   * the refusal `-problem`; the engine and preset selects `-engine-select`
+   * and `-preset`, the single variant's radios `-variant-<variant>` too.
    */
   testId: string;
 };
@@ -180,6 +211,8 @@ function ComputerAnalysisForm({
   onStart,
   busy = false,
   problem,
+  engineChoice,
+  singleVariant = false,
   testId,
 }: ComputerAnalysisFormProps) {
   const { t } = useTranslation();
@@ -248,9 +281,50 @@ function ComputerAnalysisForm({
     <Box data-testid={testId} sx={{ display: "grid", gap: 2 }}>
       <SettingsSection
         title={t("computerAnalysis.form.engine")}
-        description={engineName === undefined ? undefined : t("computerAnalysis.form.engineName", { name: engineName })}
+        description={
+          engineChoice !== undefined
+            ? t("computerAnalysis.form.presetHelp")
+            : engineName === undefined
+              ? undefined
+              : t("computerAnalysis.form.engineName", { name: engineName })
+        }
         testId={`${testId}-engine`}
       >
+        {engineChoice !== undefined && (
+          <>
+            <SelectField
+              label={t("computerAnalysis.form.engineSelect")}
+              value={engineChoice.engineId}
+              onChange={engineChoice.onEngineChange}
+              options={engineChoice.engines.map(({ descriptor, availability }) => ({
+                value: descriptor.id,
+                disabled: !availability.available,
+                label: (
+                  <Box component="span" sx={{ display: "grid", minWidth: 0 }}>
+                    <bdi dir="ltr">
+                      {descriptor.name} ({descriptor.version})
+                    </bdi>
+                    {!availability.available && (
+                      <Typography component="span" variant="caption" sx={{ whiteSpace: "normal" }}>
+                        {t(`enginePicker.unavailable.${availability.reason}`)}
+                      </Typography>
+                    )}
+                  </Box>
+                ),
+              }))}
+              fullWidth
+              testId={`${testId}-engine-select`}
+            />
+            <SelectField
+              label={t("computerAnalysis.form.preset")}
+              value={engineChoice.presetId}
+              onChange={engineChoice.onPresetChange}
+              options={engineChoice.presets.map((preset) => ({ value: preset.id, label: <bdi>{preset.name}</bdi> }))}
+              fullWidth
+              testId={`${testId}-preset`}
+            />
+          </>
+        )}
         {optionSlider("threads", "Threads", t("computerAnalysis.form.threads"), {
           min: bounds.threads.min,
           max: deviceLimits?.threads ?? bounds.threads.max,
@@ -383,19 +457,30 @@ function ComputerAnalysisForm({
 
       <SettingsSection
         title={t("computerAnalysis.form.variants")}
-        description={t("computerAnalysis.form.variantsHelp")}
+        description={singleVariant ? t("computerAnalysis.form.variantHelpSingle") : t("computerAnalysis.form.variantsHelp")}
         testId={`${testId}-variants`}
       >
-        {COMPUTER_ANALYSIS_VARIANTS.map((variant) => (
-          <CheckboxField
-            key={variant}
-            label={t(`computerAnalysis.variants.${variant}`)}
-            help={t(`computerAnalysis.form.variantHelp.${variant}`)}
-            checked={options.outputs.includes(variant)}
-            onChange={(ticked) => toggleVariant(variant, ticked)}
-            testId={`${testId}-variant-${variant}`}
+        {singleVariant ? (
+          <RadioGroupField<ComputerAnalysisVariant>
+            label={t("computerAnalysis.form.variant")}
+            options={COMPUTER_ANALYSIS_VARIANTS.map((variant) => ({ value: variant, label: t(`computerAnalysis.variants.${variant}`) }))}
+            value={options.outputs[0] ?? COMPUTER_ANALYSIS_VARIANTS[0]}
+            onChange={(variant) => onChange({ outputs: [variant] })}
+            help={t(`computerAnalysis.form.variantHelp.${options.outputs[0] ?? COMPUTER_ANALYSIS_VARIANTS[0]}`)}
+            testId={`${testId}-variant`}
           />
-        ))}
+        ) : (
+          COMPUTER_ANALYSIS_VARIANTS.map((variant) => (
+            <CheckboxField
+              key={variant}
+              label={t(`computerAnalysis.variants.${variant}`)}
+              help={t(`computerAnalysis.form.variantHelp.${variant}`)}
+              checked={options.outputs.includes(variant)}
+              onChange={(ticked) => toggleVariant(variant, ticked)}
+              testId={`${testId}-variant-${variant}`}
+            />
+          ))
+        )}
       </SettingsSection>
 
       {onStart !== undefined && (

@@ -19,6 +19,8 @@ const demo = (row: CaseRow, game: Game | undefined, { ends = false, graph = fals
           game={game}
           graph={graph ? <EvalGraph points={EVAL_POINTS} currentNodeId={null} onSelect={() => {}} label="Evaluation graph" testId="gallery-case-details-eval-graph" /> : undefined}
           display={<Typography variant="body2" sx={{ p: 1 }}>The screen's display settings go here.</Typography>}
+          links={<Typography variant="body2">The Case's links go here (CaseLinks).</Typography>}
+          jobs={<Typography variant="body2" sx={{ p: 1 }}>The Case's Jobs V2 go here (CaseJobs).</Typography>}
           tab={open}
           onTabChange={setOpen}
           backLink={{ href: "#cases" }}
@@ -37,6 +39,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
   demos: [
     { name: "A Game Case, its PGN tags on Info", render: () => demo(GAME_ROW, GAME, { graph: true }) },
     { name: "Its evaluations on Graph", render: () => demo(GAME_ROW, GAME, { graph: true, tab: "graph" }) },
+    { name: "Its jobs on Jobs (CTA-188)", render: () => demo(GAME_ROW, GAME, { graph: true, tab: "jobs" }) },
     { name: "A Position with a long name, no tags and no evaluations — Graph disabled", render: () => demo(POSITION_ROW, undefined, { ends: true }) },
     { name: "A Hebrew name (switch to RTL — the arrows turn)", render: () => demo(HEBREW_ROW, undefined) },
   ],

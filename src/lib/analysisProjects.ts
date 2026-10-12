@@ -223,6 +223,13 @@ export type AnalysisCase = {
   orientation: "white" | "black";
   /** How its board draws — its Display tab. */
   display: CaseDisplay;
+  /**
+   * The Jobs V2 whose computer analysis was merged into `pgn` (CTA-188), by
+   * job id, oldest first — how an open board learns its tree has grown under
+   * it, and how its autosave never writes the tree from before a merge back
+   * (`saveCaseState`). `[]` for a Case none was merged into.
+   */
+  merges: readonly string[];
   /** ISO 8601. */
   createdAt: string;
   /** ISO 8601 — any change, the autosave's too. */
@@ -276,6 +283,7 @@ export const analysisCaseFrom = (value: unknown): AnalysisCase | undefined => {
     path: sanList(value.path),
     orientation: value.orientation === "black" ? "black" : "white",
     display: caseDisplayFrom(value.display),
+    merges: sanList(value.merges),
     createdAt,
     updatedAt: stringOr(value.updatedAt, createdAt),
   };
@@ -368,6 +376,7 @@ const caseOf = (
   path: [...path],
   orientation,
   display: { ...DEFAULT_CASE_DISPLAY },
+  merges: [],
   createdAt: now.toISOString(),
   updatedAt: now.toISOString(),
 });
@@ -393,8 +402,18 @@ export const positionCaseOfGame = (made: NewCase, tree: GameTree, nodeId: string
   return caseOf(made, "position", { kind: "pgn", pgn: treeToPgn(tree), startPath, fen }, tree, startPath, facing(fen));
 };
 
-/** The analysis on a Case as the board holds it now, and how it draws — what the autosave writes. */
-export type CaseState = { pgn: string; path: readonly string[]; orientation: "white" | "black"; display: CaseDisplay };
+/**
+ * The analysis on a Case as the board holds it now, and how it draws — what
+ * the autosave writes; `merges`, the Jobs V2 merges the board's tree holds
+ * (CTA-188) — absent, none.
+ */
+export type CaseState = {
+  pgn: string;
+  path: readonly string[];
+  orientation: "white" | "black";
+  display: CaseDisplay;
+  merges?: readonly string[];
+};
 
 /** The board's state as a Case keeps it. */
 export const caseStateOf = (
@@ -402,15 +421,28 @@ export const caseStateOf = (
   nodeId: string | null,
   orientation: "white" | "black",
   display: CaseDisplay = DEFAULT_CASE_DISPLAY,
-): CaseState => ({ pgn: treeToPgn(tree), path: sanPathTo(tree, nodeId), orientation, display });
+  merges: readonly string[] = [],
+): CaseState => ({ pgn: treeToPgn(tree), path: sanPathTo(tree, nodeId), orientation, display, merges });
 
-/** Whether a Case already holds this state — the autosave's idempotency. */
+const sameList = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((item, index) => item === b[index]);
+
+/**
+ * Whether a state's tree is **from before a merge** the Case holds (CTA-188):
+ * a Jobs V2 merge the record lists that the state does not. Its tree must not
+ * be written over the merged one.
+ */
+export const isBehindMerges = (record: Pick<AnalysisCase, "merges">, state: Pick<CaseState, "merges">): boolean => {
+  const known = new Set(state.merges ?? []);
+  return record.merges.some((id) => !known.has(id));
+};
+
+/** Whether a Case already holds this state — the autosave's idempotency. A state behind a merge holds its tree as the record's. */
 export const sameCaseState = (record: AnalysisCase, state: CaseState): boolean =>
-  record.pgn === state.pgn &&
+  (isBehindMerges(record, state) || (record.pgn === state.pgn && sameList(record.merges, state.merges ?? []))) &&
   record.orientation === state.orientation &&
   sameDisplay(record.display, state.display) &&
-  record.path.length === state.path.length &&
-  record.path.every((san, index) => san === state.path[index]);
+  sameList(record.path, state.path);
 
 /** A Case copied under a new id into a Project — its source, analysis and place; its name as given. */
 export const copiedCase = (
@@ -429,3 +461,57 @@ export const copiedCase = (
   updatedAt: now.toISOString(),
 });
 
+/* ------------------------------------------------------------------ *
+ * Links between Cases (CTA-188)
+ * ------------------------------------------------------------------ */
+
+/** How many links are kept, across every Case. */
+export const MAX_CASE_LINKS = 50_000;
+
+/**
+ * **A link from one Case to another** (CTA-188) — directed (`fromId` links to
+ * `toId`), many to many, across Projects: a Case links to any number and is
+ * linked from any number, cycles allowed; never to itself, never twice the
+ * same pair (`lib/analysisCaseLinkStore.ts`). Removed with either Case. A Jobs
+ * V2 computer analysis links its source Case to every new Case it makes; the
+ * reader links and unlinks on a Case's Info tab.
+ */
+export type CaseLink = {
+  id: string;
+  fromId: string;
+  toId: string;
+  /** ISO 8601. */
+  createdAt: string;
+};
+
+/** A stored link, normalised — `undefined` for one without its id or either end, or one to itself. */
+export const caseLinkFrom = (value: unknown): CaseLink | undefined => {
+  if (!isObject(value) || typeof value.id !== "string" || value.id === "") return undefined;
+  const fromId = idOrNull(value.fromId);
+  const toId = idOrNull(value.toId);
+  if (fromId === null || toId === null || fromId === toId) return undefined;
+  return { id: value.id, fromId, toId, createdAt: stringOr(value.createdAt, "") };
+};
+
+/** One end of a Case's link: the link, and the Case at its other end. */
+export type CaseLinkEnd = { link: CaseLink; record: AnalysisCase };
+
+/**
+ * The Cases `caseId` links to, and the ones linking to it — each link with the
+ * Case at its other end, in the links' order; a link whose other end is gone
+ * is left out.
+ */
+export const caseLinksOf = (
+  links: readonly CaseLink[],
+  cases: readonly AnalysisCase[],
+  caseId: string,
+): { to: CaseLinkEnd[]; from: CaseLinkEnd[] } => {
+  const byId = new Map(cases.map((record) => [record.id, record]));
+  const ends = (side: "to" | "from") =>
+    links.flatMap((link) => {
+      const near = side === "to" ? link.fromId : link.toId;
+      const record = byId.get(side === "to" ? link.toId : link.fromId);
+      return near === caseId && record !== undefined ? [{ link, record }] : [];
+    });
+  return { to: ends("to"), from: ends("from") };
+};

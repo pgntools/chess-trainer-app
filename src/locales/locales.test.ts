@@ -80,6 +80,8 @@ describe("translation catalogs", () => {
       // The Hash slider's sizes (CTA-185): a number and its unit, "4GB", "512MB" — the units written the same in Hebrew.
       "engineMenu.hashGb",
       "engineMenu.hashMb",
+      // A Case's job on its Jobs tab, "date · where its results go" (CTA-188): the two values and a dot.
+      "analysisV2.jobs.caseJob",
     ]);
 
     const untranslated = leafKeys(en).filter(

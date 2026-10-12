@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback, useSyncExternalStore, type MouseEvent } from 'react';
+import { lazy, Suspense, useState, useRef, useEffect, useMemo, useCallback, useSyncExternalStore, type MouseEvent } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -32,6 +32,20 @@ import LanguageSwitch from '../../theme/LanguageSwitch';
 
 
 import chessFavicon from '../../assets/chess-favicon.svg';
+
+/*
+    Jobs V2 (CTA-188, `.claude/rules/analysis-v2.md` §6) — Analysis V2's own
+    background jobs: its runner beside V1's and its indicator beside V1's,
+    dev-only. The condition is inline, so in a production build — where
+    `import.meta.env.DEV` is the literal `false` — the dynamic imports are dead
+    code and no chunk of them is emitted.
+*/
+const JobsV2Indicator = import.meta.env.DEV
+    ? lazy(() => import('../analysisV2/jobs/JobsV2Shell').then((module) => ({ default: module.JobsV2Indicator })))
+    : undefined;
+const JobV2Runner = import.meta.env.DEV
+    ? lazy(() => import('../analysisV2/jobs/JobsV2Shell').then((module) => ({ default: module.JobV2Runner })))
+    : undefined;
 
 /**
  * Board inset in pixels — the MUI `p: 2` (2 × the 8px spacing unit), applied
@@ -183,6 +197,12 @@ const Header = ({ compact, onOpenNav }: { compact: boolean; onOpenNav: () => voi
                 <Stack direction="row" spacing={compact ? 0.5 : 1} sx={{ alignItems: 'center' }}>
                     {/* The background job running, if any (CTA-173) — a link to the Jobs screen. */}
                     <JobsIndicator compact={compact} />
+                    {/* Jobs V2's (CTA-188), dev-only. */}
+                    {JobsV2Indicator !== undefined && (
+                        <Suspense fallback={null}>
+                            <JobsV2Indicator compact={compact} />
+                        </Suspense>
+                    )}
                     {/* The engine's search settings, every board's, and the board on screen's engine (CTA-181); under the breakpoint its robot alone (CTA-185). */}
                     <EngineMenu compact={compact} />
                     {/* Under the breakpoint, the language's short code: the bar has 288px at 320 (CTA-181). */}
@@ -856,6 +876,12 @@ const DefaultLayout = ()=>
                             <DevelopmentNotice />
                             {/* The background jobs' runner (CTA-173): one per page, outliving every route. */}
                             <JobRunner />
+                            {/* Jobs V2's runner (CTA-188), dev-only — a V1 job and a V2 job may run at once. */}
+                            {JobV2Runner !== undefined && (
+                                <Suspense fallback={null}>
+                                    <JobV2Runner />
+                                </Suspense>
+                            )}
                         </BoardLeftPanelProvider>
                     </LeftPanelProvider>
                 </RightPanelProvider>

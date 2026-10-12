@@ -4,10 +4,12 @@ import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
 import { computerAnalysisOptionsFrom, type ComputerAnalysisOptions } from "../../../lib/computerAnalysis";
 import type { EngineOption } from "../../../lib/engineTypes";
+import { describeEngines } from "../../../lib/engines";
 import type { BlockFamilyId } from "../../families";
 import ComputerAnalysisForm, { type ComputerAnalysisFormProps } from "./ComputerAnalysisForm";
 import {
   BEFORE_HANDSHAKE,
+  ENGINE_CHOICE_PRESETS,
   HOSTED_ENGINE,
   HOSTED_LIMITS,
   HOSTED_OPTIONS,
@@ -65,6 +67,22 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "No move in the chosen range", render: () => demo(RANGED, SINGLE_THREAD, { blocked: "noRange" }) },
     { name: "Queuing", render: () => demo(OPTIONS, SINGLE_THREAD, { busy: true }) },
     { name: "Refused — the jobs list is full", render: () => demo(OPTIONS, SINGLE_THREAD, { problem: "too-many" }) },
+    {
+      name: "Jobs V2 (CTA-188): the engine and its preset as selects",
+      render: () =>
+        demo(OPTIONS, BEFORE_HANDSHAKE, {
+          multiThread: false,
+          engineChoice: {
+            engines: describeEngines(),
+            engineId: describeEngines()[0].descriptor.id,
+            onEngineChange: () => {},
+            presets: ENGINE_CHOICE_PRESETS,
+            presetId: "deep",
+            onPresetChange: () => {},
+          },
+        }),
+    },
+    { name: "Jobs V2 (CTA-188): one variant, for a merge into the Case", render: () => demo(OPTIONS, SINGLE_THREAD, { singleVariant: true }) },
   ],
 };
 

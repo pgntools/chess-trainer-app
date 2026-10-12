@@ -57,7 +57,7 @@ both catalogs. Test ids: `settings-export-*`, `settings-import-*`.
 | Collections | `collections/<folder>/…/<name>.pgn`, one per collection, in directories mirroring the Library's folders; shipped ones in `collections/built-in/` | game of the collection |
 | Repertoires | `repertoires/<folder>.pgn` per folder (name order), then `repertoires/unfiled.pgn` | repertoire |
 | Engine presets (CTA-179) | `engine-presets.json` — `{ presets, selections }`: every stored preset (`lib/enginePresets.ts`) and the preset each engine runs | — (JSON, not PGN) |
-| Analysis projects (CTA-186) — **only in a build with Analysis V2** (dev-only while it is built: `lib/exportCategories.ts`'s `OFFERED_EXPORT_CATEGORIES`, `readImport`'s `categories`) | `analysis-projects.json` — `{ folders, projects }`: every folder as its path of names, every Project as stored with its `folderPath` and its Cases as stored ([`analysis-v2.md`](./analysis-v2.md) §5) | — (JSON, not PGN) |
+| Analysis projects (CTA-186) — **only in a build with Analysis V2** (dev-only while it is built: `lib/exportCategories.ts`'s `OFFERED_EXPORT_CATEGORIES`, `readImport`'s `categories`) | `analysis-projects.json` — `{ folders, projects, links }`: every folder as its path of names, every Project as stored with its `folderPath` and its Cases as stored, and the links between their Cases (CTA-188, version 5 — a link to a Case not exported left out) ([`analysis-v2.md`](./analysis-v2.md) §5). Jobs V2 are not exported, as V1's jobs are not (§1.1) | — (JSON, not PGN) |
 
 - **The stored PGN is joined as it stands** (`pgnFileOf`) — never re-parsed or
   re-serialised, so a record this build cannot read still exports byte for
@@ -105,7 +105,7 @@ Storage still counts the jobs.
 ```jsonc
 {
   "format": "chessapp-export",
-  "formatVersion": 4,            // EXPORT_FORMAT_VERSION — bump on any change an older reader would misread (§6)
+  "formatVersion": 5,            // EXPORT_FORMAT_VERSION — bump on any change an older reader would misread (§6)
   "appVersion": "0.4.0",         // __APP_VERSION__
   "exportedAt": "…ISO 8601…",
   "categories": ["collections", "games", "analyses", "repertoires", "enginePresets"],
@@ -272,7 +272,11 @@ presets' file** (CTA-179): a file kind an older reader refuses (its `default:`
 is "malformed"), so the bump makes such a reader say **newer** instead; a v2
 zip has no presets, and its upgrade is the stamp alone too. **Version 4 added
 Analysis V2's projects' file** (CTA-186), for the same reason; a v3 zip has
-none, its upgrade the stamp alone. A
+none, its upgrade the stamp alone. **Version 5 added the links between those
+Projects' Cases** to that file (CTA-188) — an older reader would drop them; a v4
+zip's file has none and reads with none, its upgrade the stamp alone. An
+import adds the zip's links whose two Cases the app holds afterwards and drops
+the links of the Cases it replaces or removes (`importCaseLinks`, after the Cases). A
 version past this build's is **newer** (§7); a version with no way up (not a
 positive integer, a gap in the table, a migration that does not land on the
 next version) is **malformed**.

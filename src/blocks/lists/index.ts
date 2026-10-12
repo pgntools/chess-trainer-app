@@ -4,6 +4,8 @@
  * records and folders (a folder's actions, the folder picker, the saved
  * analyses and the repertoires as rows or cards).
  */
+export * from "./CaseJobs";
+export * from "./CaseLinks";
 export * from "./FolderActions";
 export * from "./FolderPicker";
 export * from "./OpeningBookList";

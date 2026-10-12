@@ -40,6 +40,20 @@ describe("CaseDetails (CTA-186)", () => {
     expect(screen.queryByTestId("probe-info-Event")).toBeNull();
   });
 
+  it("shows the screen's links under the tags on Info (CTA-188)", () => {
+    render(<Held row={GAME_ROW} game={GAME} links={<p data-testid="links-probe">links</p>} backLink={{ href: "/cases" }} previous={undefined} next={undefined} testId="probe" />);
+    expect(screen.getByRole("tabpanel", { name: "Info" })).toContainElement(screen.getByTestId("links-probe"));
+  });
+
+  it("adds a Jobs tab, last, when the screen gives one (CTA-188)", async () => {
+    render(
+      <Held row={GAME_ROW} game={GAME} display={<p>display</p>} jobs={<p data-testid="jobs-probe">jobs</p>} backLink={{ href: "/cases" }} previous={undefined} next={undefined} testId="probe" />,
+    );
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Info", "Graph", "Display", "Jobs"]);
+    await userEvent.click(screen.getByRole("tab", { name: "Jobs" }));
+    expect(screen.getByRole("tabpanel", { name: "Jobs" })).toContainElement(screen.getByTestId("jobs-probe"));
+  });
+
   it("says a Case with no tags, and disables Graph while there are no evaluations", () => {
     render(<Held row={GAME_ROW} game={undefined} backLink={{ href: "/cases" }} previous={undefined} next={undefined} testId="probe" />);
     expect(screen.getByTestId("probe-info-empty")).toBeInTheDocument();
