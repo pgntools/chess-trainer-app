@@ -2531,9 +2531,9 @@ const he: typeof en = {
       tabs: {
         label: "פרטי המקרה",
         info: "מידע",
-        tbd: "טרם נקבע",
+        display: "תצוגה",
+        graph: "גרף",
       },
-      tbdSoon: "יבוא בהמשך.",
     },
     siblings: {
       title: "המקרים של {{name}}",
@@ -2547,7 +2547,6 @@ const he: typeof en = {
       tabs: {
         moves: "מסעים",
         map: "מפה",
-        display: "תצוגה",
         settings: "הגדרות",
         export: "ייצוא",
       },

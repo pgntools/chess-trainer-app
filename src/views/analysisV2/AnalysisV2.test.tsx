@@ -480,7 +480,8 @@ describe("a Case's board (CTA-186)", () => {
     const project = (await createAnalysisProject("Club", null))!;
     await addAnalysisCases([gameCase(project.id)]);
     const user = userEvent.setup();
-    const view = mount(`/analysis/projects/${project.id}/cases/cgame`);
+    // Display is the left panel's, on the Case's own view.
+    const view = mount(`/analysis/projects/${project.id}/cases/cgame?view=case`);
     await screen.findByTestId("board");
     expect(boardOptions().arrows!.length).toBeGreaterThan(0);
 
@@ -526,7 +527,7 @@ describe("a Case's board (CTA-186)", () => {
     // Reopened, the board draws as it was left.
     view.unmount();
     await reload();
-    mount(`/analysis/projects/${project.id}/cases/cgame`);
+    mount(`/analysis/projects/${project.id}/cases/cgame?view=case`);
     await screen.findByTestId("board");
     expect(boardOptions().arrows).toEqual([]);
     expect(boardOptions().boardOrientation).toBe("black");
@@ -597,13 +598,16 @@ describe("a Case's board (CTA-186)", () => {
     expect(screen.getByTestId("analysis-case-details-info-Event")).toHaveTextContent("Club Championship");
     expect(screen.getByTestId("analysis-case-details-info-White")).toHaveTextContent("Carlsen");
     await expectNoAxeViolations(details);
-    await user.click(within(details).getByRole("tab", { name: "TBD" }));
-    expect(screen.getByTestId("analysis-case-details-tbd")).toBeInTheDocument();
+    expect(within(details).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Info", "Graph", "Display"]);
+    // No evaluations in the game: Graph is off.
+    expect(within(details).getByRole("tab", { name: "Graph" })).toBeDisabled();
+    await user.click(within(details).getByRole("tab", { name: "Display" }));
+    expect(screen.getByTestId("analysis-case-display")).toBeInTheDocument();
 
     // Previous / next keep the view, and its open tab; a Position from a FEN has no game tags.
     await user.click(within(details).getByRole("link", { name: "Next case" }));
     expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc&view=case`);
-    expect(await screen.findByRole("tab", { name: "TBD" })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: "Display" })).toHaveAttribute("aria-selected", "true");
     await user.click(screen.getByRole("tab", { name: "Info" }));
     expect(screen.getByTestId("analysis-case-details-title")).toHaveTextContent("Endgame");
     expect(screen.queryByTestId("analysis-case-details-info-Event")).toBeNull();
@@ -612,6 +616,26 @@ describe("a Case's board (CTA-186)", () => {
     await user.click(screen.getByRole("link", { name: "Back to the cases" }));
     expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
     expect(await screen.findByRole("navigation", { name: "Cases of Club" })).toBeInTheDocument();
+  });
+
+  it("shows a game's evaluations on the Case view's Graph — a point picked moves the board", async () => {
+    const project = (await createAnalysisProject("Club", null))!;
+    const evaluated = parsePgnTree('[White "A"]\n[Black "B"]\n\n1. e4 { [%eval 0.3] } e5 { [%eval 0.25] } 2. Nf3 { [%eval 0.3] } *');
+    await addAnalysisCases([gameCaseOf({ id: "ceval", projectId: project.id, name: "" }, evaluated)]);
+    const user = userEvent.setup();
+    mount(`/analysis/projects/${project.id}/cases/ceval?view=case`);
+    await screen.findByTestId("board");
+
+    const graphTab = screen.getByRole("tab", { name: "Graph" });
+    expect(graphTab).toBeEnabled();
+    await user.click(graphTab);
+    const graph = await screen.findByTestId("analysis-case-details-evaluations-graph");
+    expect(screen.getByTestId("analysis-case-details-evaluations-report")).toBeInTheDocument();
+    await expectNoAxeViolations(screen.getByTestId("analysis-case-details-graph"));
+    // The graph is a slider over the evaluated moves: Home is the first, 1. e4 (no evaluation of the start here), Enter moves the board there.
+    act(() => within(graph).getByRole("slider", { name: "Evaluation graph" }).focus());
+    await user.keyboard("{Home}{Enter}");
+    await waitFor(() => expect(boardOptions().position).toBe(AFTER_E4));
   });
 
   it("says a Case that is not in the Project, and leads back to it", async () => {

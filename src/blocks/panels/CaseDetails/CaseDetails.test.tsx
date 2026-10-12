@@ -1,11 +1,18 @@
+import { useState } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
-import CaseDetails from "./CaseDetails";
+import CaseDetails, { type CaseDetailsProps, type CaseDetailsTab } from "./CaseDetails";
 import { GAME, GAME_ROW } from "./fixtures";
+
+/** The block with its open tab held, as the screen holds it. */
+function Held(props: Omit<CaseDetailsProps, "tab" | "onTabChange">) {
+  const [tab, setTab] = useState<CaseDetailsTab>("info");
+  return <CaseDetails {...props} tab={tab} onTabChange={setTab} />;
+}
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
@@ -14,7 +21,7 @@ beforeEach(async () => {
 describe("CaseDetails (CTA-186)", () => {
   it("names the Case, shows its tags on Info, leads back to the list, and steps to its neighbours", async () => {
     const { container } = render(
-      <CaseDetails row={GAME_ROW} game={GAME} backLink={{ href: "/cases" }} previous={undefined} next={{ href: "/case/next" }} testId="probe" />,
+      <Held row={GAME_ROW} game={GAME} graph={<p data-testid="graph-probe">graph</p>} display={<p data-testid="display-probe">display</p>} backLink={{ href: "/cases" }} previous={undefined} next={{ href: "/case/next" }} testId="probe" />,
     );
     expect(screen.getByRole("navigation", { name: "Details of Carlsen – Caruana" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Carlsen – Caruana" })).toBeInTheDocument();
@@ -25,13 +32,17 @@ describe("CaseDetails (CTA-186)", () => {
     expect(screen.getByTestId("probe-info-Event")).toHaveTextContent("Norway Chess");
     await expectNoAxeViolations(container);
 
-    await userEvent.click(screen.getByRole("tab", { name: "TBD" }));
-    expect(screen.getByTestId("probe-tbd")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Graph" }));
+    expect(screen.getByTestId("graph-probe")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Display" }));
+    expect(screen.getByTestId("display-probe")).toBeInTheDocument();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Info", "Graph", "Display"]);
     expect(screen.queryByTestId("probe-info-Event")).toBeNull();
   });
 
-  it("says a Case with no tags", () => {
-    render(<CaseDetails row={GAME_ROW} game={undefined} backLink={{ href: "/cases" }} previous={undefined} next={undefined} testId="probe" />);
+  it("says a Case with no tags, and disables Graph while there are no evaluations", () => {
+    render(<Held row={GAME_ROW} game={undefined} backLink={{ href: "/cases" }} previous={undefined} next={undefined} testId="probe" />);
     expect(screen.getByTestId("probe-info-empty")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Graph" })).toBeDisabled();
   });
 });

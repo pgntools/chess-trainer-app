@@ -4,14 +4,14 @@ import Collapse from "@mui/material/Collapse";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
-import { ComputerAnalysisReport, EvalGraph } from "../../../blocks/panels";
-import { ExpandToggle } from "../../../design-system/components/navigation";
-import type { MoveVerdictKind } from "../../../lib/computerAnalysis";
-import { evalSeriesOf, reportFromTree, type EvalPoint } from "../../../lib/computerAnalysisTree";
-import type { Turn } from "../../../lib/engineAnalysis";
-import { gameTag } from "../../../lib/gameModel";
-import { plyLabel, type GameTree } from "../../../lib/gameTree";
-import { SAVED_ANALYSIS_PLAYER } from "../../../lib/savedAnalyses";
+import { ComputerAnalysisReport, EvalGraph } from "../../blocks/panels";
+import { ExpandToggle } from "../../design-system/components/navigation";
+import type { MoveVerdictKind } from "../../lib/computerAnalysis";
+import { evalSeriesOf, reportFromTree, type EvalPoint } from "../../lib/computerAnalysisTree";
+import type { Turn } from "../../lib/engineAnalysis";
+import { gameTag } from "../../lib/gameModel";
+import { plyLabel, type GameTree } from "../../lib/gameTree";
+import { SAVED_ANALYSIS_PLAYER } from "../../lib/savedAnalyses";
 
 type AnalysisEvalReportProps = {
   /** The game on the board, and where it stands — the mainline's ply, 0 at the start or off the mainline. */
@@ -19,6 +19,8 @@ type AnalysisEvalReportProps = {
   mainlinePly: number;
   currentNodeId: string | null;
   onGoToNode: (nodeId: string | null) => void;
+  /** The root's test id, and its parts' (`-graph`, `-report-toggle`, `-report`). Absent, the Analysis Board's `analysis-computer`. */
+  testId?: string;
 };
 
 /** A player's name from the tags — none for the placeholders a board's own analysis is written with (`Analysis`, `?`). */
@@ -48,8 +50,11 @@ const nextOfKind = (points: readonly EvalPoint[], side: Turn, kind: MoveVerdictK
  * default, makes each count above 0 a button to **that side's next move of
  * that kind** after the mainline move on the board, round again from the
  * first (`onStep`, lichess's).
+ *
+ * Shared since CTA-186 — Analysis V2's Case board shows it on its Case view's
+ * Graph tab — so the legacy module's removal takes nothing V2 needs.
  */
-function AnalysisEvalReport({ tree, mainlinePly, currentNodeId, onGoToNode }: AnalysisEvalReportProps) {
+function AnalysisEvalReport({ tree, mainlinePly, currentNodeId, onGoToNode, testId = "analysis-computer" }: AnalysisEvalReportProps) {
   const { t } = useTranslation();
   const [reportOpen, setReportOpen] = useState(true);
   const reportId = useId();
@@ -68,7 +73,7 @@ function AnalysisEvalReport({ tree, mainlinePly, currentNodeId, onGoToNode }: An
     <Box
       component="section"
       aria-label={t("computerAnalysis.report.title")}
-      data-testid="analysis-computer"
+      data-testid={testId}
       sx={{ display: "grid", gap: 1, px: 1, pt: 1, pb: 1.5, borderBottom: 1, borderColor: "divider" }}
     >
       <EvalGraph
@@ -78,7 +83,7 @@ function AnalysisEvalReport({ tree, mainlinePly, currentNodeId, onGoToNode }: An
         labelOf={moveLabel}
         label={t("computerAnalysis.graph.title")}
         height={96}
-        testId="analysis-computer-graph"
+        testId={`${testId}-graph`}
       />
       <Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -87,7 +92,7 @@ function AnalysisEvalReport({ tree, mainlinePly, currentNodeId, onGoToNode }: An
             onToggle={() => setReportOpen((open) => !open)}
             label={t("computerAnalysis.board.reportToggle")}
             controls={reportId}
-            testId="analysis-computer-report-toggle"
+            testId={`${testId}-report-toggle`}
           />
           <Typography variant="subtitle2" component="span" aria-hidden="true" sx={{ fontWeight: 700 }}>
             {t("computerAnalysis.board.reportTitle")}
@@ -101,7 +106,7 @@ function AnalysisEvalReport({ tree, mainlinePly, currentNodeId, onGoToNode }: An
               const next = nextOfKind(read.points, side, kind, mainlinePly);
               if (next !== undefined) onGoToNode(next.nodeId);
             }}
-            testId="analysis-computer-report"
+            testId={`${testId}-report`}
           />
         </Collapse>
       </Box>

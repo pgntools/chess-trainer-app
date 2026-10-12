@@ -1,4 +1,4 @@
-import { useState } from "react";
+import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
@@ -11,7 +11,6 @@ import SportsEsportsOutlinedIcon from "@mui/icons-material/SportsEsportsOutlined
 import { useTranslation } from "react-i18next";
 
 import type { LinkTarget } from "../../../design-system/components/link";
-import { EmptyState } from "../../../design-system/components/states";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 import { IconAction } from "../../../design-system/components/toolbars";
 import type { CaseRow } from "../../../lib/analysisCaseRows";
@@ -19,13 +18,23 @@ import type { Game } from "../../../lib/gameModel";
 import { GameInfo } from "../GameInfo";
 
 /** The view's tabs, in order. */
-type DetailsTab = "info" | "tbd";
+export type CaseDetailsTab = "info" | "graph" | "display";
 
 export type CaseDetailsProps = {
   /** The Case on the board. */
   row: CaseRow;
   /** Its game, for the Info tab's PGN tags — none for a Case that carries no tags. */
   game: Game | undefined;
+  /**
+   * The Graph tab's content — the eval graph and report of the tree on the
+   * board. Absent while the tree carries no `[%eval]`: the tab is disabled.
+   */
+  graph?: ReactNode;
+  /** The Display tab's content — how the board draws, the screen's. Absent, no such tab. */
+  display?: ReactNode;
+  /** The open tab — the screen's, so it outlives a step to another Case. The Graph tab, disabled, reads as Info. */
+  tab: CaseDetailsTab;
+  onTabChange: (tab: CaseDetailsTab) => void;
   /** Where Back goes — the Project's Cases, the list beside the board. */
   backLink: LinkTarget;
   /** The previous / next Case in the list's order — `undefined` at an end. */
@@ -33,7 +42,7 @@ export type CaseDetailsProps = {
   next: LinkTarget | undefined;
   /**
    * The root; its parts `-back`, `-title`, `-tabs` (each tab `-tab-<id>`),
-   * `-info` (the tags, each `-info-<Tag>`, none `-info-empty`), `-tbd`,
+   * `-info` (the tags, each `-info-<Tag>`, none `-info-empty`), `-graph`, `-display`,
    * `-siblings`, `-previous`, `-next`.
    */
   testId: string;
@@ -44,14 +53,16 @@ export type CaseDetailsProps = {
  * the Case board's left panel, opened from a row of the Project's Cases
  * (`CaseSiblings`): Back to that list at the head's start — where the list
  * has Close — the Case's name and type, its details in tabs — **Info**, its
- * PGN tags (`GameInfo`, the Library game board's Info tab), and a second
- * still to come — and previous / next at its foot, sticky as the list's.
- * Presentational: the game and the links arrive from the screen, the open tab
- * is its own; its words are `analysisV2.caseDetails.*`.
+ * PGN tags (`GameInfo`, the Library game board's Info tab), **Graph**, the
+ * board's eval graph and report (the screen's, disabled while the tree has no
+ * evaluations, as the Analysis Board's Evaluations tab), **Display**, how
+ * the board draws (the screen's) — and previous / next at its foot, sticky as the list's.
+ * Presentational: the game, the graph, the display, the open tab and the links arrive from
+ * the screen; its words are `analysisV2.caseDetails.*`.
  */
-function CaseDetails({ row, game, backLink, previous, next, testId }: CaseDetailsProps) {
+function CaseDetails({ row, game, graph, display, tab: asked, onTabChange, backLink, previous, next, testId }: CaseDetailsProps) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<DetailsTab>("info");
+  const tab: CaseDetailsTab = (asked === "graph" && graph === undefined) || (asked === "display" && display === undefined) ? "info" : asked;
   // The arrows point along the reading direction, which runs right to left under RTL.
   const rtl = useTheme().direction === "rtl";
   const Back = rtl ? ArrowForwardRoundedIcon : ArrowBackRoundedIcon;
@@ -79,10 +90,11 @@ function CaseDetails({ row, game, backLink, previous, next, testId }: CaseDetail
         <PanelTabs
           tabs={[
             { id: "info", label: t("analysisV2.caseDetails.tabs.info") },
-            { id: "tbd", label: t("analysisV2.caseDetails.tabs.tbd") },
+            { id: "graph", label: t("analysisV2.caseDetails.tabs.graph"), disabled: graph === undefined },
+            ...(display === undefined ? [] : [{ id: "display", label: t("analysisV2.caseDetails.tabs.display") }]),
           ]}
           value={tab}
-          onChange={(id) => setTab(id as DetailsTab)}
+          onChange={(id) => onTabChange(id as CaseDetailsTab)}
           ariaLabel={t("analysisV2.caseDetails.tabs.label")}
           idPrefix={testId}
           testId={`${testId}-tabs`}
@@ -95,9 +107,14 @@ function CaseDetails({ row, game, backLink, previous, next, testId }: CaseDetail
             <GameInfo game={game} testId={`${testId}-info`} />
           </Box>
         )}
-        {tab === "tbd" && (
-          <Box {...tabPanelProps(testId, "tbd")}>
-            <EmptyState testId={`${testId}-tbd`}>{t("analysisV2.caseDetails.tbdSoon")}</EmptyState>
+        {tab === "graph" && (
+          <Box {...tabPanelProps(testId, "graph")} data-testid={`${testId}-graph`}>
+            {graph}
+          </Box>
+        )}
+        {tab === "display" && (
+          <Box {...tabPanelProps(testId, "display")} data-testid={`${testId}-display`}>
+            {display}
           </Box>
         )}
       </Box>

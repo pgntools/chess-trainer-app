@@ -3128,9 +3128,9 @@ const en = {
       tabs: {
         label: "Case details",
         info: "Info",
-        tbd: "TBD",
+        display: "Display",
+        graph: "Graph",
       },
-      tbdSoon: "Still to come.",
     },
     siblings: {
       title: "Cases of {{name}}",
@@ -3144,7 +3144,6 @@ const en = {
       tabs: {
         moves: "Moves",
         map: "Map",
-        display: "Display",
         settings: "Settings",
         export: "Export",
       },

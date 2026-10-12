@@ -1,5 +1,6 @@
 import { caseRowOf, type CaseRow } from "../../../lib/analysisCaseRows";
 import { gameCaseOf, positionCaseOfFen } from "../../../lib/analysisProjects";
+import { evalSeriesOf, type EvalPoint } from "../../../lib/computerAnalysisTree";
 import { mainlineGame } from "../../../lib/gameTree";
 import type { Game } from "../../../lib/gameModel";
 import { parsePgnTree } from "../../../lib/pgn";
@@ -19,6 +20,13 @@ export const GAME_ROW: CaseRow = caseRowOf(gameCaseOf({ id: "cgame", projectId: 
 
 /** The game's tags, for the Info tab. */
 export const GAME: Game = mainlineGame(GAME_TREE);
+
+/** A game's evaluations, for the Graph tab's demo. */
+export const EVAL_POINTS: readonly EvalPoint[] = evalSeriesOf(
+  parsePgnTree(
+    "1. e4 { [%eval 0.3] } e5 { [%eval 0.25] } 2. Nf3 { [%eval 0.3] } Nc6 { [%eval 0.2] } 3. Bb5 { [%eval 0.35] } f6 { [%eval 1.4] } 4. O-O { [%eval 1.2] } Nge7 { [%eval 1.6] } *",
+  ),
+);
 
 export const POSITION_ROW: CaseRow = caseRowOf(
   positionCaseOfFen({ id: "clong", projectId: "p1", name: "", now: NOW }, "1K1k4/1P6/8/8/8/8/r7/2R5 w - - 0 1"),

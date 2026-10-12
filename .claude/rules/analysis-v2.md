@@ -46,7 +46,7 @@ folders (nested) ──▶ Projects ──▶ Cases (game | position) ──▶ 
 | `src/lib/exportCategories.ts` | `OFFERED_EXPORT_CATEGORIES` — the Export / Import categories this build offers (Analysis V2's only with the flag); apart from `lib/dataExport.ts`, which Node reads too (the browser pass's seed). |
 | `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings), `paths.ts` (the addresses). |
 | `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`) | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused. |
-| `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws. The legacy screens import them from here. |
+| `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts`, `src/views/shared/AnalysisEvalReport.tsx` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws, the eval graph and report the Case view's Graph tab shows. The legacy screens import them from here. |
 | Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectStores.test.ts` (the three stores), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the dev-only database). |
 
 Locale keys: `analysisV2.*` (`browser`, `folder`, `project`, `case`,
@@ -195,8 +195,9 @@ the Analysis Board is: `useAnalysisSession` (the core, the engine — off at the
 start, the reader's global search settings — and Play), `useVariationsExplorer`
 (the move list, map, comment block, next-move arrows, the PGN's shapes;
 editing on, *Play chances…* off), `BoardShell` and its panel — tabs **Moves ·
-Map · Display · Settings · Export** (`PgnExportPanel`; **Display** is
-`CaseDisplayTab`: the next-move arrows and the move marks on top, then inner
+Map · Settings · Export** (`PgnExportPanel`; **Display** — `CaseDisplayTab`,
+the board's state, shown on the left panel's Case view (below) since CTA-186's
+last round: the next-move arrows and the move marks on top, then inner
 tabs — **Arrows**, the Analysis Board's width source and palette
 (`ArrowSettingsFields`), **Engine** — the engine's lines (`BoardPanel`'s
 `showVariations`) — and **Accessibility**, the board's accessibility options,
@@ -242,8 +243,14 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
   and the panel shows the Case — **Back** to the list where the list has
   Close, its name and type, its details in **tabs** — **Info**, the Case's
   PGN tags as saved (`GameInfo`, the Library game board's Info tab; "no
-  tags" when it has none), and **TBD**, still to come — and previous / next
-  at its foot, which keep the view. Back drops
+  tags" when it has none), **Graph**, the eval graph and report of the tree
+  on the board (`views/shared/AnalysisEvalReport.tsx`, the Analysis Board's
+  Evaluations tab — live, a click moves the board; disabled while the tree
+  carries no `[%eval]`), **Display**, how the board draws (`CaseDisplayTab`,
+  out of the right-hand panel) — and previous / next at
+  its foot, which keep the view and its open tab (the screen's state). The
+  board draws the left panel (`CaseBoard`'s `leftPanel`, given the tree on
+  screen), so the Graph follows it and Display sets it. Back drops
   `?view=` and keeps the rest of the context. A reload keeps the screen.
 
 ---
