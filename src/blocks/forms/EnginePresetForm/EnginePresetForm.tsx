@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 
 import { ConfirmDialog, FormDialog } from "../../../design-system/components/dialogs";
 import { StatusText } from "../../../design-system/components/feedback";
-import { SelectField, SwitchField, TextInputField } from "../../../design-system/components/forms";
+import { SelectField, SliderField, SwitchField, TextInputField } from "../../../design-system/components/forms";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 import { IconAction } from "../../../design-system/components/toolbars";
 import {
@@ -22,6 +22,7 @@ import {
   type PresetRowNote,
 } from "../../../lib/enginePresets";
 import type { UciOptionValue } from "../../../lib/engineTypes";
+import { EngineResourceSlider } from "../EngineResourceSlider";
 import { SearchLimitsFields } from "../SearchLimitsFields";
 
 /** One preset of the library, as the picker lists it. */
@@ -68,6 +69,19 @@ export type EnginePresetFormProps = {
    */
   search?: { depth: number; moveTimeMs: number; onChange: (patch: { depth?: number; moveTimeMs?: number }) => void };
   /**
+   * **Threads and Hash, editable here** (CTA-185) — the one global request
+   * every board sends (not the preset's), each a slider to the device's top
+   * with a number box to the engine's (`EngineResourceSlider`), in their rows
+   * in place of the read-only value. Absent, the rows read-only as before.
+   */
+  resources?: {
+    threads: number;
+    hashMb: number;
+    sliderLimits: { threads: number; hashMb: number };
+    typedLimits: { threads: number; hashMb: number };
+    onChange: (patch: { threads?: number; hashMb?: number }) => void;
+  };
+  /**
    * The prefix of its ids: the picker `<testId>-preset`, its actions
    * `-new`, `-rename`, `-duplicate`, `-delete`; the list `<testId>-options`,
    * each option `<testId>-option-<slug>` (its control `-input`, its note
@@ -78,6 +92,9 @@ export type EnginePresetFormProps = {
    */
   testId: string;
 };
+
+/** The option drawn as a slider rather than a number (CTA-185). */
+const SKILL_LEVEL = "Skill Level";
 
 /** An option's name as an id: lower case, every run of other characters one dash. */
 const slugOf = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -254,6 +271,7 @@ function EnginePresetForm({
   groups,
   onGroupChange,
   search,
+  resources,
   testId,
 }: EnginePresetFormProps) {
   const { t } = useTranslation();
@@ -293,11 +311,29 @@ function EnginePresetForm({
     return parts.join(" · ");
   };
 
+  /** Threads or Hash shown as the global request's slider (CTA-185) — the row's own `resources` key, else none. */
+  const resourceOf = (row: EnginePresetRow): "threads" | "hashMb" | undefined =>
+    resources === undefined || row.option === undefined ? undefined : row.name === "Threads" ? "threads" : row.name === "Hash" ? "hashMb" : undefined;
+
   const control = (row: EnginePresetRow, id: string) => {
     const option = row.option;
     const help = summaryOf(row);
     // On, but off until the option it needs is on (UCI_Elo, the Syzygy settings).
     const disabled = row.disabled === true;
+    const resource = resourceOf(row);
+    if (resources !== undefined && resource !== undefined) {
+      return (
+        <EngineResourceSlider
+          resource={resource}
+          value={resources[resource]}
+          sliderMax={resources.sliderLimits[resource]}
+          typedMax={resources.typedLimits[resource]}
+          onChange={(value) => resources.onChange({ [resource]: value })}
+          help={<span dir="ltr">{help}</span>}
+          testId={`${id}-input`}
+        />
+      );
+    }
     if (!row.editable || option === undefined) {
       return (
         <Box>
@@ -343,6 +379,29 @@ function EnginePresetForm({
           />
         );
       case "spin":
+        // Skill Level is a slider (CTA-185): every step marked, its ends and middle labelled.
+        if (row.name === SKILL_LEVEL && row.range !== undefined) {
+          const { min, max } = row.range;
+          const fallback = Number(option.defaultValue);
+          const value = typeof row.value === "number" ? row.value : Number.isFinite(fallback) ? fallback : max;
+          const middle = Math.round((min + max) / 2);
+          return (
+            <SliderField
+              label={<span dir="ltr">{row.name}</span>}
+              value={Math.min(Math.max(value, min), max)}
+              min={min}
+              max={max}
+              marks={Array.from({ length: max - min + 1 }, (_, index) => {
+                const step = min + index;
+                return { value: step, label: step === min || step === middle || step === max ? String(step) : undefined };
+              })}
+              help={<span dir="ltr">{help}</span>}
+              disabled={disabled}
+              onChange={(next) => onChange(row.name, next)}
+              testId={`${id}-input`}
+            />
+          );
+        }
         return (
           <SpinInput
             label={row.name}
@@ -380,9 +439,9 @@ function EnginePresetForm({
       >
         <Box sx={{ flex: 1, minWidth: 0, display: "grid", gap: 0.5 }}>
           {control(row, id)}
-          {row.note !== undefined && (
+          {row.note !== undefined && !(resourceOf(row) !== undefined && row.note === "pinned") && (
             <Typography variant="caption" color="text.secondary" data-testid={`${id}-note`}>
-              {noteText(row.note, row)}
+              {resourceOf(row) !== undefined && row.note === "board-owned" ? t("enginePresets.globalResource") : noteText(row.note, row)}
             </Typography>
           )}
         </Box>

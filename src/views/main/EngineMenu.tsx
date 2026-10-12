@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 
 import { EngineSearchSettingsForm } from "../../blocks/forms";
 import { selectEnginePreset } from "../../lib/enginePresetStore";
-import { searchSettingLimitsOf } from "../../lib/engineSearchSettings";
+import { searchSettingLimitsOf, searchSettingTypedLimitsOf } from "../../lib/engineSearchSettings";
 import { describeEngines, resolveEngine } from "../../lib/engines";
 import { useEngineChoice } from "../shared/useEngineChoice";
 import { useEngineSearchSettings } from "../shared/useEngineSearchSettings";
@@ -146,6 +146,7 @@ export function EngineMenu({ compact = false }: { compact?: boolean }) {
             settings={settings}
             onChange={setSettings}
             limits={searchSettingLimitsOf(descriptor)}
+            typedLimits={searchSettingTypedLimitsOf(descriptor)}
             engines={describeEngines()}
             engineId={descriptor.id}
             onEngineChange={setEngineId}

@@ -209,8 +209,14 @@ whole design):
   while on, none of them sent while off (`presetSentValues`) — their values
   stay for when it is turned on. Only an engine that declares them (a native
   one) shows the switch.
-- **Read-only, each with why**: Threads, Hash and MultiPV — set for every
-  board in the top bar's Engine menu (CTA-181, the reader's one global set,
+- **Threads and Hash are sliders here too** (CTA-185, `EngineResourceSlider`):
+  the one global request every board sends — not the preset's — edited in
+  their rows as in the top bar's Engine menu, the slider to the device's top
+  and a number box to the engine's (`searchSettingTypedLimitsOf`; in-browser
+  Hash at most 1024 MB). **Skill Level is a slider** (0–20, every step marked,
+  0, 10 and 20 labelled).
+- **Read-only, each with why**: MultiPV — set for every board in the top
+  bar's Engine menu (CTA-181, the reader's one global set,
   `lib/engineSearchSettings.ts`, [`docs/engine.md`](../../docs/engine.md)
   §5.2); a button (Clear Hash) — an action, not a setting, listed on System;
   a pinned option; a file path (`EvalFile`, `Debug Log File`) on a browser

@@ -9,6 +9,7 @@ import {
   readSearchPreferences,
   resetSearchPreferences,
   searchSettingLimitsOf,
+  searchSettingTypedLimitsOf,
   searchSettingsChanges,
   storeSearchPreferences,
   subscribeSearchPreferences,
@@ -89,6 +90,26 @@ describe("engineSearchSettingsFrom — the normaliser", () => {
 
 describe("what the engine running takes", () => {
   const device = { hardwareConcurrency: 8, deviceMemory: 4 };
+
+  it("typed past the slider's device top (CTA-185): a multi-thread build's 32 threads, an in-browser Hash's 1024 MB, a single-thread build's one", () => {
+    const capabilities = { maxDepth: 99, strength: "both", multiThread: true } as const;
+    expect(searchSettingTypedLimitsOf({ id: "stockfish-19-lite-multi", capabilities }, device)).toEqual({ threads: 32, hashMb: 1024 });
+    expect(searchSettingTypedLimitsOf({ id: "stockfish-19-lite-single", capabilities: { ...capabilities, multiThread: false } }, device)).toEqual({
+      threads: 1,
+      hashMb: 1024,
+    });
+    // An engine server's engine: its declared tops, as its slider's.
+    const hosted = {
+      id: "hosted:sf",
+      capabilities,
+      options: [
+        { name: "Threads", type: "spin", min: 1, max: 15 },
+        { name: "Hash", type: "spin", min: 1, max: 4096 },
+      ],
+    } as const;
+    expect(searchSettingTypedLimitsOf(hosted, device)).toEqual(searchSettingLimitsOf(hosted, device));
+    expect(searchSettingTypedLimitsOf(hosted, device)).toEqual({ threads: 15, hashMb: 4096 });
+  });
 
   it("a single-thread build: one thread, the device's Hash", () => {
     expect(searchSettingLimitsOf({ id: "stockfish-19-lite-single", capabilities: { maxDepth: 245, strength: "both", multiThread: false } }, device)).toEqual({

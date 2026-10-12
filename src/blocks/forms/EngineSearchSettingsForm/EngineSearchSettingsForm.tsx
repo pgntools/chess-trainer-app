@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { SelectField, SliderField } from "../../../design-system/components/forms";
 import { ENGINE_SEARCH_SETTING_BOUNDS, type EngineSearchSettings } from "../../../lib/engineSearchSettings";
 import type { EngineEntry } from "../../../lib/engines";
+import { EngineResourceSlider } from "../EngineResourceSlider";
 import { SearchLimitsFields } from "../SearchLimitsFields";
 
 export type EngineSearchSettingsFormProps = {
@@ -23,6 +24,11 @@ export type EngineSearchSettingsFormProps = {
    * it — the store keeps what was asked.
    */
   limits: { threads: number; hashMb: number };
+  /**
+   * What each number box takes past the slider (`searchSettingTypedLimitsOf`,
+   * CTA-185) — what the engine declares. Absent, the slider's tops.
+   */
+  typedLimits?: { threads: number; hashMb: number };
   /**
    * The engines the reader can choose between (CTA-185) — Settings → Engine's
    * list (`describeEngines()`), one this page cannot run listed disabled with
@@ -55,9 +61,6 @@ function WithIcon({ icon, children }: { icon: ReactNode; children: ReactNode }) 
   );
 }
 
-/** The Hash slider's round RAM points (CTA-163), where they fall within the range offered. */
-const HASH_MARKS_MB = [128, 256, 512, 1024, 2048, 4096] as const;
-
 /**
  * **The top bar's Engine menu** (CTA-181) — the search settings every board
  * uses: depth, move time (lichess's marked slider, 1–600 s and ∞ — Play
@@ -86,6 +89,7 @@ function EngineSearchSettingsForm({
   settings,
   onChange,
   limits,
+  typedLimits,
   engines,
   engineId,
   onEngineChange,
@@ -96,8 +100,6 @@ function EngineSearchSettingsForm({
 }: EngineSearchSettingsFormProps) {
   const { t } = useTranslation();
 
-  const threadsMax = Math.max(limits.threads, ENGINE_SEARCH_SETTING_BOUNDS.threads.min);
-  const hashMax = Math.max(limits.hashMb, ENGINE_SEARCH_SETTING_BOUNDS.hashMb.min);
 
   return (
     <Box data-testid={testId} sx={{ display: "grid", gap: 2 }}>
@@ -151,28 +153,19 @@ function EngineSearchSettingsForm({
         onChange={(multiPv) => onChange({ multiPv })}
         testId={`${testId}-multipv`}
       />
-      <SliderField
-        label={t("analysis.settings.threads")}
-        value={Math.min(settings.threads, threadsMax)}
-        min={ENGINE_SEARCH_SETTING_BOUNDS.threads.min}
-        max={threadsMax}
-        disabled={threadsMax <= ENGINE_SEARCH_SETTING_BOUNDS.threads.min}
-        help={t("playEngine.settings.threadsHelp")}
-        notice={
-          threadsMax <= ENGINE_SEARCH_SETTING_BOUNDS.threads.min ? (
-            <span data-testid={`${testId}-threads-fixed`}>{t("engineOption.fixed", { option: "Threads", value: threadsMax })}</span>
-          ) : undefined
-        }
+      <EngineResourceSlider
+        resource="threads"
+        value={settings.threads}
+        sliderMax={limits.threads}
+        typedMax={typedLimits?.threads ?? limits.threads}
         onChange={(threads) => onChange({ threads })}
         testId={`${testId}-threads`}
       />
-      <SliderField
-        label={t("analysis.settings.hash")}
-        value={Math.min(settings.hashMb, hashMax)}
-        min={ENGINE_SEARCH_SETTING_BOUNDS.hashMb.min}
-        max={hashMax}
-        marks={HASH_MARKS_MB.filter((mb) => mb <= hashMax).map((mb) => ({ value: mb, label: String(mb) }))}
-        help={t("playEngine.settings.hashHelp")}
+      <EngineResourceSlider
+        resource="hashMb"
+        value={settings.hashMb}
+        sliderMax={limits.hashMb}
+        typedMax={typedLimits?.hashMb ?? limits.hashMb}
         onChange={(hashMb) => onChange({ hashMb })}
         testId={`${testId}-hash`}
       />

@@ -293,6 +293,8 @@ const he: typeof en = {
     settingsLink: "הגדרות",
     depthTyped: "עומק החיפוש, בהקלדה",
     moveTimeTyped: "זמן למסע בשניות, בהקלדה",
+    threadsTyped: "תהליכונים, בהקלדה",
+    hashTyped: "זיכרון גיבוב (MB), בהקלדה",
     seconds: "ש׳",
   },
   boardEngine: {
@@ -2026,6 +2028,7 @@ const he: typeof en = {
   },
   enginePresets: {
     preset: "הגדרה עבור {{engine}}",
+    globalResource: "לכל לוח ולכל הגדרה — אפשר לקבוע אותו גם בתפריט המנוע שבסרגל העליון.",
     search: {
       title: "מגבלות החיפוש",
       help: "כל לוח מחפש עם {{preset}} עד לעומק הזה או לזמן הזה, המוקדם מביניהם. אפשר לקבוע אותם גם בתפריט המנוע שבסרגל העליון.",

@@ -30,6 +30,7 @@ import {
   subscribeEnginePresets,
   type EnginePresetProblem,
 } from "../../lib/enginePresetStore";
+import { searchSettingLimitsOf, searchSettingTypedLimitsOf } from "../../lib/engineSearchSettings";
 import type { UciOptionValue } from "../../lib/engineTypes";
 import { useEngineModule } from "../board/core/useEngineModule";
 import { useEngineChoice } from "../shared/useEngineChoice";
@@ -50,7 +51,8 @@ const NO_OPTIONS: Readonly<Record<string, UciOptionValue>> = {};
  * hardcoded roster. Every change is a store write, and every board running
  * the engine takes it from its next search (`useEngineModule`). Above the
  * options, **where the preset's searches stop** — its depth and move time
- * (CTA-185), the same two the top bar's Engine menu sets.
+ * (CTA-185), the same two the top bar's Engine menu sets; and in their rows
+ * Threads and Hash as sliders — the global request, not the preset's.
  */
 function EnginePresetsSection({ engineId }: { engineId: string }) {
   const { t } = useTranslation();
@@ -108,6 +110,15 @@ function EnginePresetsSection({ engineId }: { engineId: string }) {
           onChange: (patch: { depth?: number; moveTimeMs?: number }) => void setEnginePresetSearch(selected.id, patch).then(answer),
         };
 
+  /** Threads and Hash (CTA-185): the one global request, edited here as in the top bar's menu — slider to the device, box to the engine. */
+  const resources = {
+    threads: inEffect.settings.threads,
+    hashMb: inEffect.settings.hashMb,
+    sliderLimits: searchSettingLimitsOf(descriptor),
+    typedLimits: searchSettingTypedLimitsOf(descriptor),
+    onChange: inEffect.setSettings,
+  };
+
   /** A new preset — the engine runs it at once. */
   const created = async (made: Promise<{ id: string } | { problem: EnginePresetProblem }>) => {
     const result = await made;
@@ -140,6 +151,7 @@ function EnginePresetsSection({ engineId }: { engineId: string }) {
         groups={selected.groups}
         onGroupChange={(group, on) => void setEnginePresetGroup(selected.id, group, on).then(answer)}
         search={search}
+        resources={resources}
         testId="engine-presets"
       />
     </SettingsSection>

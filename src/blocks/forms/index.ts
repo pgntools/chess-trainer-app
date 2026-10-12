@@ -10,6 +10,7 @@ export * from "./CollectionSettingsForm";
 export * from "./ComputerAnalysisForm";
 export * from "./EnginePicker";
 export * from "./EnginePresetForm";
+export * from "./EngineResourceSlider";
 export * from "./EngineSearchSettingsForm";
 export * from "./EngineServerForm";
 export * from "./EngineSettingsForm";

@@ -264,7 +264,13 @@ settings ("Engine options changed", below) waits for the presets first
   Threads and Hash are offered up to what the engine running takes
   (`searchSettingLimitsOf`: one thread for a single-thread build, the device's
   for a multi-thread one, an engine server's declaration) — a stored value
-  past it shown held, never cut back. **Depth and move time can be typed**
+  past it shown held, never cut back — and, since CTA-185, each has a number
+  box going past the slider's device top to what the engine declares
+  (`searchSettingTypedLimitsOf`: a multi-thread build's 32 threads, an
+  in-browser Hash's 1024 MB — 2048 crashed the tab — an engine server's
+  engine its own tops), a value past the slider shown at its end
+  (`EngineResourceSlider`, which Settings → Engine's preset form shows in
+  the Threads and Hash rows too — the same global request). **Depth and move time can be typed**
   (CTA-185): a number box at each slider's end (`SliderField`'s `input`, in
   `SearchLimitsFields`),
   depth a whole number held to 1–99 (the slider stops at 50 and shows a deeper
@@ -494,8 +500,11 @@ options* (`guides/understanding-stockfish-uci-options.mdx`).
   (`UciEngineConfig.refuses`, `lib/engines/builtin.ts`); a pinned option; an
   option the engine does not declare (absent — removable from the preset).
 - **The boards' own options win.** Threads, Hash and MultiPV
-  (`BOARD_OWNED_OPTIONS`) are read-only in the form, their note pointing at
-  the top bar's Engine menu (CTA-181), and never sent from a preset; every
+  (`BOARD_OWNED_OPTIONS`) are never a preset's values and never sent from a
+  preset: MultiPV is read-only in the form, its note pointing at the top
+  bar's Engine menu (CTA-181), and Threads and Hash are sliders there that
+  edit the one global request (CTA-185, `EngineResourceSlider`) — Skill Level
+  a 0–20 slider beside them; every
   name in a board's `uciOptions` is left out of it too, so on the Play boards
   their Elo wins (`playOwnedOptionsOf`: `UCI_Elo`, and `Skill Level` only on
   an engine without one — editable with a note); `UCI_LimitStrength` carries

@@ -22,7 +22,12 @@ import {
 const mount = (
   settings: EngineSearchSettings = SETTINGS,
   limits: { threads: number; hashMb: number } = MULTI_THREAD_LIMITS,
-  { engines = PLAIN_HOST_ENGINES, engineId = LITE.id, presetId = "default" } = {},
+  {
+    engines = PLAIN_HOST_ENGINES,
+    engineId = LITE.id,
+    presetId = "default",
+    typedLimits = undefined as { threads: number; hashMb: number } | undefined,
+  } = {},
 ) => {
   const onChange = vi.fn();
   const onEngineChange = vi.fn();
@@ -32,6 +37,7 @@ const mount = (
       settings={settings}
       onChange={onChange}
       limits={limits}
+      typedLimits={typedLimits}
       engines={engines}
       engineId={engineId}
       onEngineChange={onEngineChange}
@@ -235,13 +241,31 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
       expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "15");
       expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("max", "4096");
       expect(screen.getAllByText("4096").some((label) => label.classList.contains("MuiSlider-markLabel"))).toBe(true);
-      expect(screen.getByTestId("engine-menu-hash-value")).toHaveTextContent("4096");
+      expect(screen.getByRole("spinbutton", { name: "Hash (MB), typed" })).toHaveValue(4096);
+    });
+
+    it("lets each box go past the slider's device top, up to what the engine declares (CTA-185)", async () => {
+      const user = userEvent.setup();
+      const { onChange } = mount(SETTINGS, MULTI_THREAD_LIMITS, { typedLimits: { threads: 32, hashMb: 1024 } });
+      expect(screen.getByRole("slider", { name: "Threads" })).toHaveAttribute("max", "7");
+      const threads = screen.getByRole("spinbutton", { name: "Threads, typed" });
+      await user.clear(threads);
+      await user.type(threads, "12");
+      expect(onChange).toHaveBeenLastCalledWith({ threads: 12 });
+      await user.clear(threads);
+      await user.type(threads, "64");
+      expect(onChange).toHaveBeenLastCalledWith({ threads: 32 });
+      const hash = screen.getByRole("spinbutton", { name: "Hash (MB), typed" });
+      await user.clear(hash);
+      await user.type(hash, "4096");
+      // The in-browser build's Hash stops at 1024 MB — 2048 crashed the tab.
+      expect(onChange).toHaveBeenLastCalledWith({ hashMb: 1024 });
     });
 
     it("shows a request past the engine's top held to it — the store keeps what was asked", () => {
       const { onChange } = mount(HOSTED_ASKED, SINGLE_THREAD_LIMITS);
-      expect(screen.getByTestId("engine-menu-threads-value")).toHaveTextContent("1");
-      expect(screen.getByTestId("engine-menu-hash-value")).toHaveTextContent("512");
+      expect(screen.getByRole("spinbutton", { name: "Threads, typed" })).toHaveValue(1);
+      expect(screen.getByRole("spinbutton", { name: "Hash (MB), typed" })).toHaveValue(512);
       expect(onChange).not.toHaveBeenCalled();
     });
   });

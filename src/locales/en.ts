@@ -401,6 +401,8 @@ const en = {
     /** The number boxes at the depth and move-time sliders' ends (CTA-185). */
     depthTyped: "Search depth, typed",
     moveTimeTyped: "Move time in seconds, typed",
+    threadsTyped: "Threads, typed",
+    hashTyped: "Hash (MB), typed",
     /** The move-time box's unit. */
     seconds: "s",
   },
@@ -2588,6 +2590,8 @@ const en = {
   /** The `EnginePresetForm` block (CTA-179): an engine's options, kept in named presets. */
   enginePresets: {
     preset: "Preset for {{engine}}",
+    /** Under Threads and Hash, edited here (CTA-185): the global request, not the preset's. */
+    globalResource: "For every board and every preset — the top bar's Engine menu sets it too.",
     /** Where the preset's searches stop (CTA-185) — its depth and move time. */
     search: {
       title: "Search limits",

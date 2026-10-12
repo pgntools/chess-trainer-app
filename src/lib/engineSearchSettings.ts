@@ -1,5 +1,6 @@
 import { MAX_VARIATIONS_OFFERED } from "./engineAnalysis";
 import { ENGINE_SETTING_BOUNDS, engineLimitsOf, HOSTED_ENGINE_SETTING_BOUNDS } from "./engineSettings";
+import { isHostedEngineId } from "./engines/ids";
 import type { EngineDescriptor } from "./engineTypes";
 import { missingFieldsOf } from "./recordedFields";
 
@@ -123,6 +124,25 @@ export const searchSettingLimitsOf = (
 ): { threads: number; hashMb: number } => {
   const limits = engineLimitsOf(descriptor, device);
   return { threads: descriptor.capabilities.multiThread ? limits.threads : 1, hashMb: limits.hashMb };
+};
+
+/**
+ * **The most `Threads` and `Hash` a number box takes** (CTA-185) — past the
+ * slider's device top ({@link searchSettingLimitsOf}), up to what the engine
+ * declares: a single-thread build one thread, a multi-thread build its 32
+ * (`ENGINE_SETTING_BOUNDS`), an in-browser build's Hash 1024 MB (2048 crashed
+ * the tab); an engine server's engine its declared tops — its slider's too.
+ */
+export const searchSettingTypedLimitsOf = (
+  descriptor: Pick<EngineDescriptor, "id" | "options" | "capabilities">,
+  device?: { hardwareConcurrency?: number; deviceMemory?: number },
+): { threads: number; hashMb: number } => {
+  const slider = searchSettingLimitsOf(descriptor, device);
+  if (isHostedEngineId(descriptor.id)) return slider;
+  return {
+    threads: descriptor.capabilities.multiThread ? ENGINE_SETTING_BOUNDS.threads.max : 1,
+    hashMb: Math.max(ENGINE_SETTING_BOUNDS.hashMb.max, slider.hashMb),
+  };
 };
 
 /**
