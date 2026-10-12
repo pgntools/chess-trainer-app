@@ -2,6 +2,7 @@ import { CASES_STORE, ANALYSIS_PROJECTS_CHANNEL, openAnalysisProjectsDb } from "
 import {
   analysisCaseFrom,
   copiedCase,
+  isBehindMerges,
   MAX_CASE_NAME,
   sameCaseState,
   type AnalysisCase,
@@ -9,6 +10,7 @@ import {
   MAX_ANALYSIS_CASES,
 } from "./analysisProjects";
 import { idbRecordStore } from "./idbRecordStore";
+import { removeJobsV2Of } from "./jobV2Store";
 import { newRecordId } from "./recordId";
 
 /**
@@ -20,7 +22,9 @@ import { newRecordId } from "./recordId";
  * `"storage"` (IndexedDB refused the write), `"too-many"` (past the cap) —
  * and an operation that changes nothing writes nothing (the same array back:
  * no transaction, no emit). Nothing throws. The autosave
- * ({@link saveCaseState}) writes only what changed, in place.
+ * ({@link saveCaseState}) writes only what changed, in place. A Case deleted
+ * takes its Jobs V2 with it (CTA-188, `lib/jobV2Store.ts`), and a Jobs V2
+ * computer analysis is merged into one by {@link mergeIntoAnalysisCase}.
  */
 
 export type AnalysisCaseProblem = "storage" | "too-many";
@@ -114,30 +118,39 @@ export const duplicateAnalysisCase = async (
   return (await addAnalysisCases([copy])) === undefined ? copy : undefined;
 };
 
-/** Delete Cases by id. Unknown ids are a no-op. */
-export const removeAnalysisCases = (ids: readonly string[]): Promise<AnalysisCaseProblem | undefined> => {
-  if (ids.length === 0) return Promise.resolve(undefined);
+/** Delete Cases by id, and their Jobs V2 (a running one stopped by the runner, which reads it gone). Unknown ids are a no-op. */
+export const removeAnalysisCases = async (ids: readonly string[]): Promise<AnalysisCaseProblem | undefined> => {
+  if (ids.length === 0) return undefined;
   const gone = new Set(ids);
-  return write((current) => {
+  const problem = await write((current) => {
     const next = current.filter((record) => !gone.has(record.id));
     return next.length === current.length ? current : next;
   });
+  return problem ?? removeJobsV2Of({ caseIds: ids });
 };
 
-/** Delete every Case of these Projects — a Project deleted takes its Cases with it. */
-export const removeCasesOfProjects = (projectIds: readonly string[]): Promise<AnalysisCaseProblem | undefined> => {
-  if (projectIds.length === 0) return Promise.resolve(undefined);
+/** Delete every Case of these Projects, and their Jobs V2 — a Project deleted takes its Cases with it. */
+export const removeCasesOfProjects = async (projectIds: readonly string[]): Promise<AnalysisCaseProblem | undefined> => {
+  if (projectIds.length === 0) return undefined;
   const gone = new Set(projectIds);
-  return write((current) => {
+  const caseIds: string[] = [];
+  const problem = await write((current) => {
     const next = current.filter((record) => !gone.has(record.projectId));
+    caseIds.push(...current.filter((record) => gone.has(record.projectId)).map((record) => record.id));
     return next.length === current.length ? current : next;
   });
+  return problem ?? removeJobsV2Of({ projectIds, caseIds });
 };
 
 /**
  * **The autosave**: the analysis on a Case — its tree, where the reader
  * stands, the orientation — and how its board draws, written in place. A state the Case already holds
  * writes nothing; an unknown Case (deleted meanwhile) is a no-op.
+ *
+ * **A state from before a merge** (CTA-188 — a Jobs V2 merge the record
+ * lists and the state does not, `isBehindMerges`) never writes its tree: the
+ * record keeps the merged one, and only the place, the orientation and the
+ * display are written. The board takes the merge in and writes again.
  */
 export const saveCaseState = (
   id: string,
@@ -147,11 +160,12 @@ export const saveCaseState = (
   write((current) => {
     const existing = current.find((record) => record.id === id);
     if (existing === undefined || sameCaseState(existing, state)) return current;
+    const behind = isBehindMerges(existing, state);
     return current.map((record) =>
       record.id === id
         ? {
             ...record,
-            pgn: state.pgn,
+            ...(behind ? {} : { pgn: state.pgn, merges: [...(state.merges ?? [])] }),
             path: [...state.path],
             orientation: state.orientation,
             display: { ...state.display },
@@ -160,6 +174,36 @@ export const saveCaseState = (
         : record,
     );
   });
+
+/**
+ * **A Jobs V2 computer analysis merged into a Case** (CTA-188): `edit` takes
+ * the Case's tree as the store holds it **now** (its PGN) and answers the
+ * merged one — the reader's moves, side lines and comments kept — and the
+ * record lists `mergeId` in its `merges`, so an open board takes it in and its
+ * autosave never writes the tree from before back. `"gone"` for a Case not
+ * there; a merge it already holds, or an edit answering `undefined`, writes
+ * nothing.
+ */
+export const mergeIntoAnalysisCase = async (
+  id: string,
+  mergeId: string,
+  edit: (pgn: string) => string | undefined,
+  now: Date = new Date(),
+): Promise<AnalysisCaseProblem | "gone" | undefined> => {
+  let found = false;
+  const problem = await write((current) => {
+    const existing = current.find((record) => record.id === id);
+    if (existing === undefined) return current;
+    found = true;
+    if (existing.merges.includes(mergeId)) return current;
+    const pgn = edit(existing.pgn);
+    if (pgn === undefined) return current;
+    return current.map((record) =>
+      record.id === id ? { ...record, pgn, merges: [...record.merges, mergeId], updatedAt: now.toISOString() } : record,
+    );
+  });
+  return problem ?? (found ? undefined : "gone");
+};
 
 /**
  * **An import's Cases** (Settings → Import): the ids to remove first, then the

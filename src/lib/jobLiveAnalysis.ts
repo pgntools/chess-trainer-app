@@ -12,7 +12,7 @@ import {
 import type { EvalPoint } from "./computerAnalysisTree";
 import { pvToSan } from "./engineAnalysis";
 import type { GameTree } from "./gameTree";
-import { jobSearchOf, type Job } from "./jobs";
+import { jobSearchOf, type Job, type JobSource } from "./jobs";
 
 /*
   **A job's results so far, read live** (CTA-174) — what the Jobs screen's
@@ -72,11 +72,17 @@ const numberedLine = (fen: string, sans: readonly string[]): string => {
 };
 
 /**
+ * What a job's results so far are read from — a V1 job, or a Jobs V2 one
+ * (CTA-188), which shares these fields.
+ */
+export type LiveAnalysisJob = Pick<Job, "options" | "positions" | "checkpoint"> & { source: Pick<JobSource, "pgn"> };
+
+/**
  * **A job's results so far** — `undefined` when its source no longer reads, or
  * its positions are not the record's (the checkpoint would be about another
  * game). Cheap enough per checkpoint; a screen memoises it on the job.
  */
-export const jobLiveAnalysis = (job: Job): JobLiveAnalysis | undefined => {
+export const jobLiveAnalysis = (job: LiveAnalysisJob): JobLiveAnalysis | undefined => {
   const search = jobSearchOf(job.source, job.options);
   if (search === undefined) return undefined;
   const { tree, positions } = search;

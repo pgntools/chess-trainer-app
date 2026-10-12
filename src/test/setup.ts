@@ -55,7 +55,7 @@ if (!globalThis.ResizeObserver) {
   cache hits.
 */
 const recordStores = async () => {
-  const [played, analyses, analysisFolders, analysisDb, repertoires, repertoireFolders, repertoireDb, libraryFolders, jobs, jobRunner, presets, projectFolders, projects, cases, projectsDb] =
+  const [played, analyses, analysisFolders, analysisDb, repertoires, repertoireFolders, repertoireDb, libraryFolders, jobs, jobRunner, presets, projectFolders, projects, cases, projectsDb, jobsV2, jobV2Runner, projectLinks] =
     await Promise.all([
       import("../lib/playedGameStore"),
       import("../lib/savedAnalysisStore"),
@@ -73,12 +73,16 @@ const recordStores = async () => {
       import("../lib/analysisProjectStore"),
       import("../lib/analysisCaseStore"),
       import("../lib/analysisProjectsDb"),
+      // Jobs V2 and the links between Projects (CTA-188), in the same database.
+      import("../lib/jobV2Store"),
+      import("../lib/jobV2Runner"),
+      import("../lib/analysisProjectLinkStore"),
     ]);
   // The search settings in effect (CTA-185) read the presets — imported lazily, as the stores are.
   const { resetEngineSearchSettings } = await import("../lib/engineSearchInEffect");
   return {
     // The page's job runner (CTA-173), stopped before the stores settle: it writes to them.
-    stop: [jobRunner.stopJobRunner],
+    stop: [jobRunner.stopJobRunner, jobV2Runner.stopJobV2Runner],
     settled: [
       analyses.settledSavedAnalyses,
       analysisFolders.settledAnalysisFolders,
@@ -92,6 +96,8 @@ const recordStores = async () => {
       projectFolders.settledProjectFolders,
       projects.settledAnalysisProjects,
       cases.settledAnalysisCases,
+      jobsV2.settledJobsV2,
+      projectLinks.settledProjectLinks,
     ],
     reset: [
       analyses.resetSavedAnalysisStore,
@@ -106,6 +112,8 @@ const recordStores = async () => {
       projectFolders.resetProjectFolderStore,
       projects.resetAnalysisProjectStore,
       cases.resetAnalysisCaseStore,
+      jobsV2.resetJobV2Store,
+      projectLinks.resetProjectLinkStore,
       // A depth or move time still landing goes with the presets.
       resetEngineSearchSettings,
     ],
@@ -133,12 +141,13 @@ afterEach(async () => {
   // databases themselves, go as `localStorage` does. (The Library's
   // database is deleted by the tests that use it — `resetLibraryCollectionStore`;
   // its folder store is forgotten here with the others.) First
-  // the writes a screen left in flight land, three times over — a folder's
+  // the writes a screen left in flight land, five times over — a folder's
   // delete queues its records' unfiling behind it, and Analysis V2's deep
-  // delete its Projects' and their Cases' — so none reaches the next test.
+  // delete its Projects', their Cases', their Jobs V2 and their links
+  // (CTA-188) — so none reaches the next test.
   const stores = await recordStores();
   for (const stop of stores.stop) stop();
-  for (let round = 0; round < 3; round += 1) {
+  for (let round = 0; round < 5; round += 1) {
     await Promise.all(stores.settled.map((settled) => settled()));
   }
   for (const reset of stores.reset) reset();

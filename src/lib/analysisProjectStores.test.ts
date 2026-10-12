@@ -35,8 +35,27 @@ import {
   renameAnalysisProject,
   resetAnalysisProjectStore,
 } from "./analysisProjectStore";
-import { caseStateOf, MAX_ANALYSIS_CASES, positionCaseOfFen, type AnalysisCase } from "./analysisProjects";
+import {
+  importProjectLinks,
+  linkAnalysisProjects,
+  loadProjectLinks,
+  projectLinksSnapshot,
+  removeLinksOfProjects,
+  resetProjectLinkStore,
+  unlinkAnalysisProjects,
+} from "./analysisProjectLinkStore";
+import { ANALYSIS_PROJECTS_DB_NAME, deleteAnalysisProjectsDb } from "./analysisProjectsDb";
+import {
+  caseStateOf,
+  MAX_ANALYSIS_CASES,
+  positionCaseOfFen,
+  projectLinksOf,
+  type AnalysisCase,
+} from "./analysisProjects";
+import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "./computerAnalysis";
 import { emptyTree } from "./gameTree";
+import { jobV2Of } from "./jobsV2";
+import { addJobV2, jobsV2Snapshot, loadJobsV2, resetJobV2Store } from "./jobV2Store";
 
 const FEN = "8/8/4k3/8/8/4K3/4P3/8 w - - 0 1";
 
@@ -245,6 +264,106 @@ describe("Analysis V2's stores (CTA-186)", () => {
         put.mockRestore();
       }
       expect(analysisCasesSnapshot()).toBe(before);
+    });
+  });
+
+  describe("links between Projects (CTA-188)", () => {
+    it("links one Project to another — directed, never to itself, never the same pair twice — and unlinks", async () => {
+      const a = (await createAnalysisProject("A", null))!;
+      const b = (await createAnalysisProject("B", null))!;
+      const c = (await createAnalysisProject("C", null))!;
+      await linkAnalysisProjects(a.id, b.id);
+      await linkAnalysisProjects(c.id, a.id);
+      // A cycle is allowed.
+      await linkAnalysisProjects(b.id, a.id);
+      const before = projectLinksSnapshot();
+      await linkAnalysisProjects(a.id, b.id);
+      await linkAnalysisProjects(a.id, a.id);
+      expect(projectLinksSnapshot()).toBe(before);
+
+      const ends = projectLinksOf(projectLinksSnapshot()!, analysisProjectsSnapshot()!, a.id);
+      expect(ends.to.map(({ project }) => project.name)).toEqual(["B"]);
+      expect(ends.from.map(({ project }) => project.name)).toEqual(["C", "B"]);
+
+      await unlinkAnalysisProjects(ends.to[0].link.id);
+      resetProjectLinkStore();
+      expect((await loadProjectLinks()).map((link) => [link.fromId, link.toId])).toEqual([
+        [c.id, a.id],
+        [b.id, a.id],
+      ]);
+    });
+
+    it("goes with either Project, as a deleted Project takes its Cases' jobs", async () => {
+      const a = (await createAnalysisProject("A", null))!;
+      const b = (await createAnalysisProject("B", null))!;
+      await linkAnalysisProjects(a.id, b.id);
+      await addAnalysisCases([aCase("c1", a.id)]);
+      const job = jobV2Of("j1", {
+        source: { projectId: a.id, caseId: "c1", name: "x", pgn: "1. e4 e5 *" },
+        options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, outputs: ["light"] },
+        preset: { id: "default", name: "Default", values: {} },
+        target: { kind: "project", projectId: a.id },
+      })!;
+      await addJobV2(job);
+      await removeAnalysisProject(b.id);
+      expect(projectLinksSnapshot()).toEqual([]);
+      expect(jobsV2Snapshot()?.map((each) => each.id)).toEqual(["j1"]);
+      await removeAnalysisCases(["c1"]);
+      expect(jobsV2Snapshot()).toEqual([]);
+      await removeLinksOfProjects([]);
+    });
+
+    it("imports links: the old ones of the Projects replaced go, a pair already linked or a self-link is skipped", async () => {
+      await importProjectLinks({
+        add: [
+          { id: "l1", fromId: "p1", toId: "p2", createdAt: "" },
+          { id: "l2", fromId: "p1", toId: "p2", createdAt: "" },
+          { id: "l3", fromId: "p3", toId: "p3", createdAt: "" },
+          { id: "l4", fromId: "p2", toId: "p3", createdAt: "" },
+        ],
+        removeOf: [],
+      });
+      expect(projectLinksSnapshot()?.map((link) => link.id)).toEqual(["l1", "l4"]);
+      await importProjectLinks({ add: [{ id: "l5", fromId: "p3", toId: "p1", createdAt: "" }], removeOf: ["p2"] });
+      expect(projectLinksSnapshot()?.map((link) => link.id)).toEqual(["l5"]);
+    });
+  });
+
+  describe("the database's version 2 (CTA-188)", () => {
+    it("upgrades a version 1 database, keeping every folder, Project and Case, and adds the jobs and links", async () => {
+      await deleteAnalysisProjectsDb();
+      resetProjectFolderStore();
+      resetAnalysisProjectStore();
+      resetAnalysisCaseStore();
+      resetJobV2Store();
+      resetProjectLinkStore();
+      // Version 1 as CTA-186 shipped it: three stores, a row in each.
+      const v1 = await new Promise<IDBDatabase>((resolve, reject) => {
+        const open = indexedDB.open(ANALYSIS_PROJECTS_DB_NAME, 1);
+        open.onupgradeneeded = () => {
+          for (const store of ["folders", "projects", "cases"]) open.result.createObjectStore(store, { keyPath: "id" });
+        };
+        open.onsuccess = () => resolve(open.result);
+        open.onerror = () => reject(open.error);
+      });
+      const tx = v1.transaction(["folders", "projects", "cases"], "readwrite");
+      tx.objectStore("folders").put({ id: "f", seq: 1, value: { id: "f", name: "Folder", parentId: null, savedAt: "", updatedAt: "" } });
+      tx.objectStore("projects").put({ id: "p", seq: 1, value: { id: "p", name: "Project", folderId: "f", createdAt: "", updatedAt: "" } });
+      tx.objectStore("cases").put({ id: "c", seq: 1, value: { ...aCase("c", "p"), merges: undefined } });
+      await new Promise<void>((resolve) => {
+        tx.oncomplete = () => resolve();
+      });
+      v1.close();
+
+      expect((await loadProjectFolders()).map((folder) => folder.id)).toEqual(["f"]);
+      expect((await loadAnalysisProjects()).map((project) => project.id)).toEqual(["p"]);
+      const cases = await loadAnalysisCases();
+      expect(cases.map((record) => record.id)).toEqual(["c"]);
+      // A Case from before reads as holding no merge.
+      expect(cases[0].merges).toEqual([]);
+      expect(await loadJobsV2()).toEqual([]);
+      expect(await loadProjectLinks()).toEqual([]);
+      expect(await linkAnalysisProjects("p", "q")).toBeUndefined();
     });
   });
 });
