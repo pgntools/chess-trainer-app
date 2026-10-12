@@ -351,27 +351,30 @@ describe("the Import tab", () => {
     expect(after.enginePresetSelections).toEqual(before.enginePresetSelections);
   });
 
-  it("gives Analysis V2's folders, Projects and Cases back, each Case in its Project (CTA-186)", async () => {
+  it("gives Analysis V2's folders, Projects and Cases back, each Case in its Project, and the links between them (CTA-186, CTA-188)", async () => {
     const folders = await import("../../lib/analysisProjectFolderStore");
     const projects = await import("../../lib/analysisProjectStore");
     const cases = await import("../../lib/analysisCaseStore");
+    const links = await import("../../lib/analysisProjectLinkStore");
     const db = await import("../../lib/analysisProjectsDb");
     const { positionCaseOfFen } = await import("../../lib/analysisProjects");
 
     const openings = (await folders.createProjectFolder("Openings", null))!;
     await folders.createProjectFolder("Empty", null);
     const najdorf = (await projects.createAnalysisProject("Najdorf", openings.id))!;
-    await projects.createAnalysisProject("Loose", null);
+    const loose = (await projects.createAnalysisProject("Loose", null))!;
+    await links.linkAnalysisProjects(najdorf.id, loose.id);
     await cases.addAnalysisCases([
       positionCaseOfFen({ id: "c1", projectId: najdorf.id, name: "Endgame" }, "8/8/4k3/8/8/4K3/4P3/8 b - - 0 41"),
     ]);
     const before = { projects: await projects.loadAnalysisProjects(), cases: await cases.loadAnalysisCases() };
     const bytes = await exported();
 
-    await Promise.all([folders.settledProjectFolders(), projects.settledAnalysisProjects(), cases.settledAnalysisCases()]);
+    await Promise.all([folders.settledProjectFolders(), projects.settledAnalysisProjects(), cases.settledAnalysisCases(), links.settledProjectLinks()]);
     folders.resetProjectFolderStore();
     projects.resetAnalysisProjectStore();
     cases.resetAnalysisCaseStore();
+    links.resetProjectLinkStore();
     await db.deleteAnalysisProjectsDb();
     expect(await projects.loadAnalysisProjects()).toEqual([]);
 
@@ -392,6 +395,7 @@ describe("the Import tab", () => {
       afterFolders.find((folder) => folder.name === "Openings")!.id,
     );
     expect(await cases.loadAnalysisCases()).toEqual(before.cases);
+    expect((await links.loadProjectLinks()).map(({ fromId, toId }) => [fromId, toId])).toEqual([[najdorf.id, loose.id]]);
   });
 
   it("changes nothing when the same zip is imported again with Merge", async () => {

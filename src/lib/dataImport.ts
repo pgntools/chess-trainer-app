@@ -3,8 +3,10 @@ import { strFromU8, unzipSync } from "fflate";
 import {
   analysisCaseFrom,
   analysisProjectFrom,
+  projectLinkFrom,
   type AnalysisCase,
   type AnalysisProject,
+  type ProjectLink,
 } from "./analysisProjects";
 
 import {
@@ -124,6 +126,8 @@ export type ImportDump = {
   analysisProjects: readonly Filed<ImportProject>[];
   /** Every Analysis V2 folder, parents before children, empty ones included. */
   projectFolders: readonly FolderPath[];
+  /** The links between those Projects (CTA-188) — none from a zip before version 5. */
+  projectLinks: readonly ProjectLink[];
 };
 
 /** Why a zip cannot be imported. */
@@ -171,6 +175,8 @@ const MANIFEST_MIGRATIONS: Readonly<Record<number, ManifestMigration>> = {
   2: (manifest) => ({ ...manifest, formatVersion: 3 }),
   // Version 4 added Analysis V2's projects (CTA-186): a v3 zip has none.
   3: (manifest) => ({ ...manifest, formatVersion: 4 }),
+  // Version 5 added the links between them (CTA-188): a v4 zip's file has none, and reads with none.
+  4: (manifest) => ({ ...manifest, formatVersion: 5 }),
 };
 
 type MigrationOptions = {
@@ -371,7 +377,7 @@ const enginePresetsFileOf = (
  */
 const analysisProjectsFileOf = (
   text: string,
-): { folders: FolderPath[]; projects: Filed<ImportProject>[] } | undefined => {
+): { folders: FolderPath[]; projects: Filed<ImportProject>[]; links: ProjectLink[] } | undefined => {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -390,7 +396,14 @@ const analysisProjectsFileOf = (
     if (cases.some((record) => record === undefined)) return undefined;
     projects.push({ record: { ...project, cases: cases as AnalysisCase[] }, folder });
   }
-  return { folders: parsed.folders, projects };
+  // The links (CTA-188): absent before version 5; one that will not read is left out.
+  const links = Array.isArray(parsed.links)
+    ? parsed.links.flatMap((entry) => {
+        const link = projectLinkFrom(entry);
+        return link === undefined ? [] : [link];
+      })
+    : [];
+  return { folders: parsed.folders, projects, links };
 };
 
 /** The dump, read out of an unzipped manifest and its files. Throws {@link Refused}. */
@@ -423,6 +436,7 @@ const dumpOf = (
     enginePresetSelections: [] as EnginePresetSelection[],
     analysisProjects: [] as Filed<ImportProject>[],
     projectFolders: [] as FolderPath[],
+    projectLinks: [] as ProjectLink[],
   };
 
   for (const file of manifest.files as unknown[]) {
@@ -511,6 +525,7 @@ const dumpOf = (
         if (read === undefined || read.projects.length !== file.projects) return refuse({ kind: "unreadable", path });
         append(dump.analysisProjects, read.projects);
         append(dump.projectFolders, read.folders);
+        append(dump.projectLinks, read.links);
         break;
       }
       default:
@@ -588,6 +603,8 @@ export type ImportCurrent = {
   projectFolders: readonly GameFolder[];
   analysisProjects: readonly AnalysisProject[];
   analysisCases: readonly AnalysisCase[];
+  /** The links between the Projects (CTA-188) — absent, none. */
+  projectLinks?: readonly ProjectLink[];
 };
 
 /** The stores' caps (`lib/dataImportTarget.ts`'s `IMPORT_CAPS`), passed in so this file reads no store. */
@@ -848,9 +865,16 @@ export type ImportWrites = {
   collections?: CategoryImport<RecordWrites<ImportCollectionWrite, GameFolder>>;
   /** The presets to add and remove, then each engine's selection (CTA-179). */
   enginePresets?: CategoryImport<{ add: EnginePreset[]; remove: string[]; select: EnginePresetSelection[] }>;
-  /** Analysis V2 (CTA-186): the folders, the Projects, then their Cases — a Project removed takes its Cases. */
+  /**
+   * Analysis V2 (CTA-186): the folders, the Projects, then their Cases — a
+   * Project removed takes its Cases — then the links between them (CTA-188):
+   * the removed Projects' go, the zip's whose two ends are held afterwards come.
+   */
   analysisProjects?: CategoryImport<
-    RecordWrites<AnalysisProject, GameFolder> & { cases: { add: AnalysisCase[]; remove: string[] } }
+    RecordWrites<AnalysisProject, GameFolder> & {
+      cases: { add: AnalysisCase[]; remove: string[] };
+      links: { add: ProjectLink[]; removeOf: string[] };
+    }
   >;
 };
 
@@ -1061,6 +1085,11 @@ export const importWritesOf = (
       .filter((entry) => gone.has(entry.projectId) || arriving.has(entry.id))
       .map((entry) => entry.id);
     const totalCases = current.analysisCases.length - removedCases.length + addedCases.length;
+    // The Projects held once it is written — a link of the zip's comes only where both its ends are.
+    const held = new Set([
+      ...current.analysisProjects.filter((project) => !gone.has(project.id)).map((project) => project.id),
+      ...add.map(({ record }) => record.id),
+    ]);
     const refused =
       folderCapOf(current.projectFolders.length, created.length, caps.folders) ??
       (total > caps.analysisProjects
@@ -1081,6 +1110,7 @@ export const importWritesOf = (
         })),
         remove,
         cases: { add: addedCases, remove: removedCases },
+        links: { add: dump.projectLinks.filter((link) => held.has(link.fromId) && held.has(link.toId)), removeOf: remove },
       },
       report,
       ...(refused === undefined ? {} : { refused }),

@@ -1,6 +1,6 @@
 import { strToU8, zipSync } from "fflate";
 
-import type { AnalysisCase, AnalysisProject, ProjectFolder } from "./analysisProjects";
+import type { AnalysisCase, AnalysisProject, ProjectFolder, ProjectLink } from "./analysisProjects";
 import type { AnalysisSettings } from "./analysisSettings";
 import type { ArrowPaletteId, ArrowWidthSource } from "./arrowSettings";
 import type { EnginePreset, EnginePresetSelection } from "./enginePresets";
@@ -66,9 +66,10 @@ import type { RepertoireStats, SavedRepertoire } from "./savedRepertoires";
  * (`lib/dataImport.ts`'s `MANIFEST_MIGRATIONS`), so an older zip still imports.
  * Version 3 added the engine presets (CTA-179): a file of a kind an older
  * reader refuses, so it says "newer" rather than "malformed". Version 4 added
- * Analysis V2's projects (CTA-186), for the same reason.
+ * Analysis V2's projects (CTA-186), for the same reason. Version 5 added the
+ * links between them (CTA-188) to that file — an older reader would drop them.
  */
-export const EXPORT_FORMAT_VERSION = 4;
+export const EXPORT_FORMAT_VERSION = 5;
 
 /** What the manifest calls itself — how an import tells it from any other JSON. */
 export const EXPORT_FORMAT = "chessapp-export";
@@ -116,6 +117,8 @@ export type ExportSource = {
   projectFolders: readonly ProjectFolder[];
   analysisProjects: readonly AnalysisProject[];
   analysisCases: readonly AnalysisCase[];
+  /** The links between the Projects (CTA-188) — absent, none. */
+  projectLinks?: readonly ProjectLink[];
 };
 
 /**
@@ -129,10 +132,16 @@ export type AnalysisProjectEntry = AnalysisProject & {
   cases: readonly AnalysisCase[];
 };
 
-/** `analysis-projects.json` (CTA-186): every folder as its path of names, parents first, and the Projects. */
+/**
+ * `analysis-projects.json` (CTA-186): every folder as its path of names,
+ * parents first, the Projects, and — since version 5 (CTA-188) — the links
+ * between the Projects, as stored (by the Projects' ids, which an import
+ * keeps); a link to a Project not in the file is left out.
+ */
 export type AnalysisProjectsFile = {
   folders: readonly (readonly string[])[];
   projects: readonly AnalysisProjectEntry[];
+  links: readonly ProjectLink[];
 };
 
 /** Where Analysis V2's projects sit in the zip. */
@@ -510,8 +519,10 @@ export const buildExport = (
       cases: source.analysisCases.filter((record) => record.projectId === project.id),
     }));
     const projectFolders = folderPaths(source.projectFolders);
+    const exported = new Set(projects.map((project) => project.id));
+    const links = (source.projectLinks ?? []).filter((link) => exported.has(link.fromId) && exported.has(link.toId));
     if (projects.length > 0 || projectFolders.length > 0) {
-      const file: AnalysisProjectsFile = { folders: projectFolders, projects };
+      const file: AnalysisProjectsFile = { folders: projectFolders, projects, links };
       add(`${JSON.stringify(file, null, 2)}\n`, {
         path: ANALYSIS_PROJECTS_PATH,
         kind: "analysis-projects",

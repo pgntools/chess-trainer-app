@@ -139,7 +139,7 @@ describe("buildExport", () => {
     const { manifest } = build({}, { games: true, repertoires: true });
     expect(manifest).toMatchObject({
       format: "chessapp-export",
-      formatVersion: 4,
+      formatVersion: 5,
       appVersion: "9.9.9",
       exportedAt: NOW.toISOString(),
       categories: ["games", "repertoires"],
@@ -236,8 +236,8 @@ describe("buildExport", () => {
     expect(entry.records[0].engine).toEqual(engine);
     // Additive: a game from before has no key at all, so an older reader sees the manifest it knew.
     expect("engine" in entry.records[1]).toBe(false);
-    // And the format is not bumped for it: 3 was the engine presets' file's (CTA-179), 4 Analysis V2's (CTA-186).
-    expect(bundle.manifest.formatVersion).toBe(4);
+    // And the format is not bumped for it: 3 was the engine presets' file's (CTA-179), 4 Analysis V2's (CTA-186), 5 its links' (CTA-188).
+    expect(bundle.manifest.formatVersion).toBe(5);
   });
 
   it("records each analysis' name, description, orientation, path and folder path", () => {
