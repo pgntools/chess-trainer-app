@@ -74,6 +74,49 @@ const gallery: GalleryModule = {
         </Box>
       ),
     },
+    {
+      name: "With a number box at its end — a value typed, held to the bounds, the slider and the box in step (CTA-185)",
+      render: () => (
+        <Box sx={{ maxWidth: 360 }}>
+          <WithState initial={20}>
+            {(depth, setDepth) => (
+              <SliderField
+                label="Depth"
+                value={depth}
+                onChange={setDepth}
+                min={1}
+                max={40}
+                input={{ label: "Depth, typed", value: depth, onChange: setDepth, min: 1, max: 40 }}
+                testId="gallery-slider-number"
+              />
+            )}
+          </WithState>
+        </Box>
+      ),
+    },
+    {
+      name: "A number box in a unit of its own, off on its own — the slider on its last mark, which has no number",
+      render: () => (
+        <Box sx={{ maxWidth: 360 }}>
+          <SliderField
+            label="Move time"
+            value={4}
+            onChange={() => {}}
+            min={0}
+            max={4}
+            marks={[
+              { value: 0, label: "0" },
+              { value: 1, label: "5" },
+              { value: 2, label: "10" },
+              { value: 3, label: "30" },
+              { value: 4, label: "∞" },
+            ]}
+            input={{ label: "Move time in seconds", value: undefined, onChange: () => {}, min: 0, max: 30, step: 0.1, unit: "s", emptyText: "∞", disabled: true }}
+            testId="gallery-slider-number-off"
+          />
+        </Box>
+      ),
+    },
   ],
 };
 

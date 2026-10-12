@@ -2,7 +2,7 @@ import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
 import type { BlockFamilyId } from "../../families";
 import EnginePresetForm from "./EnginePresetForm";
-import { BROWSER_DEEP_ROWS, BROWSER_DEFAULT_ROWS, PRESETS, SERVER_DEEP_ROWS, SERVER_DEFAULT_ROWS } from "./fixtures";
+import { BROWSER_DEEP_ROWS, BROWSER_DEFAULT_ROWS, DEEP_SEARCH, PRESETS, SERVER_DEEP_ROWS, SERVER_DEFAULT_ROWS } from "./fixtures";
 
 const noop = () => {};
 
@@ -29,6 +29,31 @@ const gallery: GalleryModule<BlockFamilyId> = {
               groups={{}}
               onGroupChange={noop}
               testId="gallery-preset-default"
+            />
+          )}
+        </WithState>
+      ),
+    },
+    {
+      name: "A preset with its search limits — depth 30, a minute a move, above the options (CTA-185)",
+      render: () => (
+        <WithState<{ depth: number; moveTimeMs: number }> initial={DEEP_SEARCH}>
+          {(search, setSearch) => (
+            <EnginePresetForm
+              engineName="Stockfish 19 Lite (single-thread)"
+              presets={PRESETS}
+              selectedId="deep"
+              onSelect={noop}
+              onCreate={noop}
+              onRename={noop}
+              onDuplicate={noop}
+              onDelete={noop}
+              rows={BROWSER_DEEP_ROWS}
+              onChange={noop}
+              groups={{}}
+              onGroupChange={noop}
+              search={{ ...search, onChange: (patch) => setSearch((before) => ({ ...before, ...patch })) }}
+              testId="gallery-preset-search"
             />
           )}
         </WithState>

@@ -157,8 +157,8 @@ describe("the saved-analyses store", () => {
     await saveAnalysis(save("a1", ["e4"], [], DEFAULT_ANALYSIS_SETTINGS, "black"));
     expect((await listed())[0].orientation).toBe("black");
 
-    await saveAnalysis(save("a1", ["e4"], [], { ...DEFAULT_ANALYSIS_SETTINGS, depth: 24, multiPv: 5, moveTimeMs: 0, infinite: true }, "black"));
-    expect((await listed())[0].settings).toMatchObject({ depth: 24, infinite: true });
+    await saveAnalysis(save("a1", ["e4"], [], { ...DEFAULT_ANALYSIS_SETTINGS, depth: 24, multiPv: 5, moveTimeMs: 5000 }, "black"));
+    expect((await listed())[0].settings).toMatchObject({ depth: 24, moveTimeMs: 5000 });
   });
 
   it("keeps at most MAX_SAVED_ANALYSES, dropping the oldest", async () => {

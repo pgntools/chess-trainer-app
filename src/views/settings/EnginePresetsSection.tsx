@@ -10,6 +10,7 @@ import {
   DEFAULT_PRESET_NAME,
   MAX_ENGINE_PRESETS,
   enginePresetRows,
+  presetSearchOf,
   selectedPresetOf,
   withDefaultPreset,
   type EnginePreset,
@@ -23,13 +24,17 @@ import {
   renameEnginePreset,
   selectEnginePreset,
   setEnginePresetGroup,
+  setEnginePresetSearch,
   setEnginePresetValue,
   subscribeEnginePresetSelections,
   subscribeEnginePresets,
   type EnginePresetProblem,
 } from "../../lib/enginePresetStore";
+import { searchSettingLimitsOf, searchSettingTypedLimitsOf } from "../../lib/engineSearchSettings";
 import type { UciOptionValue } from "../../lib/engineTypes";
 import { useEngineModule } from "../board/core/useEngineModule";
+import { useEngineChoice } from "../shared/useEngineChoice";
+import { useEngineSearchSettings } from "../shared/useEngineSearchSettings";
 
 /** No board options: the form's engine only says what it declares, and never searches. */
 const NO_OPTIONS: Readonly<Record<string, UciOptionValue>> = {};
@@ -44,7 +49,10 @@ const NO_OPTIONS: Readonly<Record<string, UciOptionValue>> = {};
  * handshake — built here by the engine module as the Lobby's form builds it
  * (switched off: it never searches), so the form is data-driven and never a
  * hardcoded roster. Every change is a store write, and every board running
- * the engine takes it from its next search (`useEngineModule`).
+ * the engine takes it from its next search (`useEngineModule`). Above the
+ * options, **where the preset's searches stop** — its depth and move time
+ * (CTA-185), the same two the top bar's Engine menu sets; and in their rows
+ * Threads and Hash as sliders — the global request, not the preset's.
  */
 function EnginePresetsSection({ engineId }: { engineId: string }) {
   const { t } = useTranslation();
@@ -63,6 +71,8 @@ function EnginePresetsSection({ engineId }: { engineId: string }) {
     uciOptions: NO_OPTIONS,
   });
   const [problem, setProblem] = useState<string | undefined>(undefined);
+  const { engineId: chosenId } = useEngineChoice();
+  const inEffect = useEngineSearchSettings();
 
   const inBrowser = descriptor.server === undefined;
   const declared = engineOptions.size > 0 ? [...engineOptions.values()] : descriptor.options;
@@ -86,6 +96,29 @@ function EnginePresetsSection({ engineId }: { engineId: string }) {
           ? t("settings.engine.presets.full", { max: MAX_ENGINE_PRESETS })
           : t("settings.engine.presets.failed"),
     );
+  /**
+   * Where the selected preset's searches stop (CTA-185). For the engine the
+   * reader chose — the one this tab shows — through the settings in effect,
+   * as the top bar's menu writes them (shown at once, before the store has
+   * committed); for another engine, straight into its preset.
+   */
+  const search =
+    descriptor.id === chosenId
+      ? { depth: inEffect.settings.depth, moveTimeMs: inEffect.settings.moveTimeMs, onChange: inEffect.setSettings }
+      : {
+          ...presetSearchOf(selected),
+          onChange: (patch: { depth?: number; moveTimeMs?: number }) => void setEnginePresetSearch(selected.id, patch).then(answer),
+        };
+
+  /** Threads and Hash (CTA-185): the one global request, edited here as in the top bar's menu — slider to the device, box to the engine. */
+  const resources = {
+    threads: inEffect.settings.threads,
+    hashMb: inEffect.settings.hashMb,
+    sliderLimits: searchSettingLimitsOf(descriptor),
+    typedLimits: searchSettingTypedLimitsOf(descriptor),
+    onChange: inEffect.setSettings,
+  };
+
   /** A new preset — the engine runs it at once. */
   const created = async (made: Promise<{ id: string } | { problem: EnginePresetProblem }>) => {
     const result = await made;
@@ -117,6 +150,8 @@ function EnginePresetsSection({ engineId }: { engineId: string }) {
         onChange={(name, value) => void setEnginePresetValue(selected.id, name, value).then(answer)}
         groups={selected.groups}
         onGroupChange={(group, on) => void setEnginePresetGroup(selected.id, group, on).then(answer)}
+        search={search}
+        resources={resources}
         testId="engine-presets"
       />
     </SettingsSection>

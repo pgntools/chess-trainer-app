@@ -348,7 +348,6 @@ function RepertoirePlayer({
     fen: core.fen,
     depth: settings.depth,
     moveTimeMs: settings.moveTimeMs,
-    infinite: settings.infinite,
     uciOptions: useMemo(
       () => analysisUciOptionsOf({ multiPv: settings.multiPv, threads: settings.threads, hashMb: settings.hashMb }, engineId),
       [settings.multiPv, settings.threads, settings.hashMb, engineId],

@@ -1,10 +1,10 @@
 import { useState } from "react";
 
 import { EngineOptionsChangedDialog } from "../../blocks/dialogs";
+import { storeEngineSearchSettings } from "../../lib/engineSearchInEffect";
 import {
   heldToEngine,
   searchSettingLimitsOf,
-  storeEngineSearchSettings,
   withRecordedSettings,
   type EngineSearchChange,
 } from "../../lib/engineSearchSettings";

@@ -7,7 +7,8 @@ import {
   type EngineSettings,
 } from "../../../lib/engineSettings";
 import { presetLimitsStrength } from "../../../lib/enginePresets";
-import { readEngineSearchSettings, searchSettingsChanges } from "../../../lib/engineSearchSettings";
+import { readEngineSearchSettings } from "../../../lib/engineSearchInEffect";
+import { searchSettingsChanges } from "../../../lib/engineSearchSettings";
 import { engineChoiceId } from "../../../lib/engineChoice";
 import { resolveEngine } from "../../../lib/engines";
 import type { EngineDescriptor } from "../../../lib/engineTypes";
@@ -259,8 +260,6 @@ export const usePlayGame = (
     fen: core.fen,
     depth: search.depth,
     moveTimeMs: search.moveTimeMs,
-    // Play needs a search that ends with a move: while it is on, the depth and time decide.
-    infinite: search.infinite && !play.playing,
     uciOptions: useMemo(
       () =>
         uciOptionsOf(

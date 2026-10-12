@@ -7,7 +7,7 @@ import { afterEach, beforeEach, vi } from "vitest";
 import { cleanup, configure } from "@testing-library/react";
 
 import { DEVELOPMENT_NOTICE_KEY, resetDevelopmentNotice } from "../lib/developmentNotice";
-import { resetEngineSearchSettings } from "../lib/engineSearchSettings";
+import { resetSearchPreferences } from "../lib/engineSearchSettings";
 
 /*
   How long a `findBy…` / `waitFor` waits: 5 s, not testing-library's 1 s —
@@ -69,6 +69,8 @@ const recordStores = async () => {
       import("../lib/jobRunner"),
       import("../lib/enginePresetStore"),
     ]);
+  // The search settings in effect (CTA-185) read the presets — imported lazily, as the stores are.
+  const { resetEngineSearchSettings } = await import("../lib/engineSearchInEffect");
   return {
     // The page's job runner (CTA-173), stopped before the stores settle: it writes to them.
     stop: [jobRunner.stopJobRunner],
@@ -93,6 +95,8 @@ const recordStores = async () => {
       jobs.resetJobStore,
       presets.resetEnginePresetStore,
       presets.resetEnginePresetSelectionStore,
+      // A depth or move time still landing goes with the presets.
+      resetEngineSearchSettings,
     ],
     remove: [analysisDb.deleteAnalysisDb, played.deleteEngineDb, repertoireDb.deleteRepertoireDb, jobs.deleteJobsDb, presets.deleteEnginePresetsDb],
   };
@@ -113,7 +117,7 @@ afterEach(async () => {
   cleanup();
   localStorage.clear();
   // The engine's search settings (CTA-181) are a preference: what this visit kept goes with the storage.
-  resetEngineSearchSettings();
+  resetSearchPreferences();
   // Every record store is IndexedDB's: what each store kept, and the
   // databases themselves, go as `localStorage` does. (The Library's
   // database is deleted by the tests that use it — `resetLibraryCollectionStore`;

@@ -5,8 +5,10 @@ import {
   enginePresetFrom,
   enginePresetSelectionFrom,
   presetNameOf,
+  presetSearchFrom,
   type EnginePreset,
   type EnginePresetSelection,
+  type PresetSearch,
 } from "./enginePresets";
 import type { UciOptionValue } from "./engineTypes";
 import { idbDatabase } from "./idb";
@@ -134,13 +136,31 @@ export const setEnginePresetGroup = (
   });
 
 /**
- * **A new preset** — named, holding `values` (a duplicate's) or none, at the
- * end of the list. Its id, or `"too-many"` past {@link MAX_ENGINE_PRESETS}.
+ * **Set where a preset's searches stop** (CTA-185) — its depth, its move
+ * time, or both (`undefined` leaves one as it is). Each is held to
+ * `ENGINE_SETTING_BOUNDS`; the same limits are a no-op; Default's first
+ * change stores it.
+ */
+export const setEnginePresetSearch = (presetId: string, patch: PresetSearch): Promise<EnginePresetProblem | undefined> =>
+  presets.write((rows) => {
+    const preset = presetIn(rows, presetId);
+    if (preset === undefined) return rows;
+    const search = presetSearchFrom({ ...preset.search, ...patch });
+    if (search.depth === preset.search.depth && search.moveTimeMs === preset.search.moveTimeMs) return rows;
+    const at = iso();
+    return withPreset(rows, { ...preset, search, savedAt: preset.savedAt || at, updatedAt: at });
+  });
+
+/**
+ * **A new preset** — named, holding `values`, `groups` and `search` (a
+ * duplicate's) or none, at the end of the list. Its id, or `"too-many"` past
+ * {@link MAX_ENGINE_PRESETS}.
  */
 export const createEnginePreset = async (
   name: string,
   values: Readonly<Record<string, UciOptionValue>> = {},
   groups: Readonly<Record<string, boolean>> = {},
+  search: Readonly<PresetSearch> = {},
 ): Promise<{ id: string } | { problem: EnginePresetProblem }> => {
   const at = iso();
   const id = newRecordId(new Date(at));
@@ -152,19 +172,22 @@ export const createEnginePreset = async (
       full = true;
       return rows;
     }
-    return [...rows, { id, name: presetNameOf(name) || id, values: { ...values }, groups: { ...groups }, savedAt: at, updatedAt: at }];
+    return [
+      ...rows,
+      { id, name: presetNameOf(name) || id, values: { ...values }, groups: { ...groups }, search: presetSearchFrom(search), savedAt: at, updatedAt: at },
+    ];
   });
   if (problem !== undefined) return { problem };
   return full ? { problem: "too-many" } : { id };
 };
 
-/** **A copy of a preset**, under a new name, with every value it sets and every group it has on. */
+/** **A copy of a preset**, under a new name, with every value it sets, every group it has on and its search limits. */
 export const duplicateEnginePreset = async (
   presetId: string,
   name: string,
 ): Promise<{ id: string } | { problem: EnginePresetProblem }> => {
   const source = presetIn((await presets.load()) ?? [], presetId);
-  return createEnginePreset(name, source?.values ?? {}, source?.groups ?? {});
+  return createEnginePreset(name, source?.values ?? {}, source?.groups ?? {}, source?.search ?? {});
 };
 
 /** **Rename a preset** — Default too. A blank name, or the same one, is a no-op. */

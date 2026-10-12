@@ -168,8 +168,8 @@ RepertoireGame.tsx ──┴─▶ RepertoirePlayer.tsx ── download: treeToP
 - **The engine is off by default and never an opponent**: on, the pinned best
   lines and the eval bar, no `onBestMove`. A line clicked there is
   exploration; the trainer does not answer it. It searches with the reader's
-  global search settings (the top bar's Engine menu, infinite analysis
-  included — it has no Play). The Settings tab's Clear drops the session's
+  global search settings (the top bar's Engine menu), stopping at their depth
+  or move time. The Settings tab's Clear drops the session's
   additions.
 - **The comment block** (the explorer's `AnnotationsBar`) shows what is
   written at the position on screen — the move with its marks, the comment

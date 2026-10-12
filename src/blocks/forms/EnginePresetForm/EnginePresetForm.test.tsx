@@ -9,7 +9,13 @@ import EnginePresetForm from "./EnginePresetForm";
 import { BROWSER_DEEP_ROWS, BROWSER_DEFAULT_ROWS, PRESETS, SERVER_DEEP_ROWS, SERVER_DEFAULT_ROWS } from "./fixtures";
 
 const mount = (
-  options: { rows?: readonly EnginePresetRow[] | undefined; selectedId?: string; groups?: Record<string, boolean> } = {},
+  options: {
+    rows?: readonly EnginePresetRow[] | undefined;
+    selectedId?: string;
+    groups?: Record<string, boolean>;
+    search?: { depth: number; moveTimeMs: number };
+    resources?: boolean;
+  } = {},
 ) => {
   // `rows: undefined` is the reading state, not "the default rows".
   const rows = "rows" in options ? options.rows : BROWSER_DEFAULT_ROWS;
@@ -22,6 +28,8 @@ const mount = (
     onDelete: vi.fn(),
     onChange: vi.fn(),
     onGroupChange: vi.fn(),
+    onSearchChange: vi.fn(),
+    onResourcesChange: vi.fn(),
   };
   render(
     <EnginePresetForm
@@ -31,6 +39,12 @@ const mount = (
       rows={rows}
       testId="presets"
       groups={options.groups ?? {}}
+      search={options.search === undefined ? undefined : { ...options.search, onChange: props.onSearchChange }}
+      resources={
+        options.resources === true
+          ? { threads: 1, hashMb: 64, sliderLimits: { threads: 1, hashMb: 512 }, typedLimits: { threads: 1, hashMb: 1024 }, onChange: props.onResourcesChange }
+          : undefined
+      }
       {...props}
     />,
   );
@@ -107,12 +121,13 @@ describe("EnginePresetForm", () => {
 
   it("keeps back a number outside the range, saying what it takes", async () => {
     const { onChange } = mount();
-    const skill = screen.getByRole("spinbutton", { name: "Skill Level" });
-    await userEvent.clear(skill);
-    await userEvent.type(skill, "99");
-    expect(onChange).not.toHaveBeenCalledWith("Skill Level", 99);
-    expect(skill).toHaveAccessibleDescription("A whole number from 0 to 20.");
-    expect(skill).toBeInvalid();
+    await userEvent.click(screen.getByRole("tab", { name: "Advanced" }));
+    const overhead = screen.getByRole("spinbutton", { name: "Move Overhead" });
+    await userEvent.clear(overhead);
+    await userEvent.type(overhead, "99999");
+    expect(onChange).not.toHaveBeenCalledWith("Move Overhead", 99999);
+    expect(overhead).toHaveAccessibleDescription("A whole number from 0 to 5000.");
+    expect(overhead).toBeInvalid();
   });
 
   it("resets what the preset sets, and removes a value this engine does not declare", async () => {
@@ -195,6 +210,72 @@ describe("EnginePresetForm", () => {
     expect(dialog).toHaveTextContent("Engines that run it go back to Default.");
     await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
     expect(onDelete).toHaveBeenCalledWith("deep");
+  });
+
+  it("draws Skill Level as a slider — every step marked, 0, 10 and 20 labelled (CTA-185)", async () => {
+    const user = userEvent.setup();
+    const { onChange } = mount();
+    const skill = screen.getByRole("slider", { name: "Skill Level" });
+    expect(skill).toHaveAttribute("aria-valuemin", "0");
+    expect(skill).toHaveAttribute("aria-valuemax", "20");
+    const item = optionItem("Skill Level");
+    const labels = [...item.querySelectorAll(".MuiSlider-markLabel")].map((label) => label.textContent);
+    expect(labels).toEqual(["0", "10", "20"]);
+    expect(item.querySelectorAll(".MuiSlider-mark")).toHaveLength(21);
+    skill.focus();
+    await user.keyboard("{ArrowLeft}");
+    expect(onChange).toHaveBeenLastCalledWith("Skill Level", 19);
+  });
+
+  describe("Threads and Hash — the global request, editable here (CTA-185)", () => {
+    it("are sliders with a number box in their rows, saying they are every board's", async () => {
+      const user = userEvent.setup();
+      const { onResourcesChange } = mount({ resources: true });
+      expect(optionItem("Hash")).toHaveTextContent("For every board and every preset — the top bar's Engine menu sets it too.");
+      expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("aria-valuemax", "512");
+      const hash = screen.getByRole("spinbutton", { name: "Hash (MB), typed" });
+      expect(hash).toHaveValue(64);
+      await user.clear(hash);
+      await user.type(hash, "768");
+      expect(onResourcesChange).toHaveBeenLastCalledWith({ hashMb: 768 });
+      // A single-thread build: fixed at one, said once.
+      expect(screen.getByRole("slider", { name: "Threads" })).toBeDisabled();
+      expect(optionItem("Threads")).toHaveTextContent("This engine build fixes Threads at 1.");
+      expect(optionItem("Threads")).not.toHaveTextContent("Fixed by this build");
+    });
+
+    it("stay read-only without `resources` — the form as it was", () => {
+      mount();
+      expect(screen.queryByRole("slider", { name: "Hash (MB)" })).toBeNull();
+      expect(optionItem("Hash")).toHaveTextContent("Set for every board in the top bar's Engine menu");
+    });
+  });
+
+  describe("where the preset's searches stop (CTA-185)", () => {
+    it("shows the selected preset's depth and move time above the options, and reports a change", async () => {
+      const user = userEvent.setup();
+      const { onSearchChange } = mount({ selectedId: "deep", search: { depth: 30, moveTimeMs: 60000 } });
+      const section = screen.getByRole("region", { name: "Search limits" });
+      expect(section).toHaveTextContent("Every board searches with deep-analysis to this depth or move time");
+      expect(within(section).getByRole("spinbutton", { name: "Search depth, typed" })).toHaveValue(30);
+      expect(within(section).getByRole("spinbutton", { name: "Move time in seconds, typed" })).toHaveValue(60);
+      within(section).getByRole("slider", { name: "Search depth" }).focus();
+      await user.keyboard("{ArrowRight}");
+      expect(onSearchChange).toHaveBeenLastCalledWith({ depth: 31 });
+      // Above the options, which stay as they were.
+      expect(screen.getByRole("tablist", { name: "Kinds of option" })).toBeInTheDocument();
+    });
+
+    it("is shown even while the engine has not said what it declares", () => {
+      mount({ rows: undefined, search: { depth: 20, moveTimeMs: 0 } });
+      expect(screen.getByRole("region", { name: "Search limits" })).toBeInTheDocument();
+      expect(screen.getByRole("spinbutton", { name: "Move time in seconds, typed" })).toBeDisabled();
+    });
+
+    it("is not there without `search` — the form as it was", () => {
+      mount();
+      expect(screen.queryByRole("region", { name: "Search limits" })).toBeNull();
+    });
   });
 
   it("says it is reading while the engine has not answered", () => {

@@ -8,6 +8,7 @@ import i18n from "../../../i18n";
 import { DEFAULT_ENGINE_SETTINGS } from "../../../lib/engineSettings";
 import { parsePgnTree } from "../../../lib/pgn";
 import { MASK_PRESETS } from "../../../lib/pieceMask";
+import { loadEngineSearchSettings } from "../../../lib/engineSearchInEffect";
 import { findPlayedGame, playedGamesSnapshot, savePlayedGame } from "../../../lib/playedGameStore";
 import { playedGameOf, type PlayedGameMask } from "../../../lib/playedGames";
 import { expectNoAxeViolations } from "../../../test/axe";
@@ -104,6 +105,8 @@ const storedMasked = (id: string, mask: PlayedGameMask) =>
 
 beforeEach(async () => {
   FakeEngine.reset();
+  // A record opened is compared with the settings in effect — its route reads the presets first (CTA-185), as the shell has by then.
+  await loadEngineSearchSettings();
   await i18n.changeLanguage("en");
 });
 

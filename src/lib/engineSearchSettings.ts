@@ -1,22 +1,32 @@
 import { MAX_VARIATIONS_OFFERED } from "./engineAnalysis";
 import { ENGINE_SETTING_BOUNDS, engineLimitsOf, HOSTED_ENGINE_SETTING_BOUNDS } from "./engineSettings";
+import { isHostedEngineId } from "./engines/ids";
 import type { EngineDescriptor } from "./engineTypes";
 import { missingFieldsOf } from "./recordedFields";
 
 /**
  * **The engine's search settings, one set for every board** (CTA-181) — how
- * many lines, how deep, how long, infinite analysis, and the two resource
- * knobs, `Threads` and `Hash`. Set from the top bar's Engine menu
+ * many lines, how deep, how long, and the two resource knobs, `Threads` and
+ * `Hash`. **Every search stops** — at its depth or its move time, whichever
+ * comes first: there is no infinite analysis (CTA-185 took its switch away —
+ * a reader wants a hard stop; a stored `infinite` is read as nothing).
+ *
+ * **Two homes since CTA-185**: the lines, Threads and Hash are a preference
+ * (below); the depth and the move time are **the running engine's selected
+ * preset's** (`lib/enginePresets.ts`, Settings → Engine) — so switching the
+ * preset, or the engine, switches them. `lib/engineSearchInEffect.ts` puts
+ * the two together as one `EngineSearchSettings`, what every board reads and
+ * the menu writes. This module stays pure but for its `localStorage`. Set from the top bar's Engine menu
  * (`views/main/EngineMenu.tsx`) and read by every board: the Analysis Board,
  * the Library's game, the Openings explorer, the repertoire player, Play with
  * Engine and Masked Pieces. A change applies from the next search. (Until
  * CTA-181 each board kept its own, on its Engine tab.)
  *
- * **A preference, not the reader's data** — `localStorage` beside the engine
- * choice (`lib/engineChoice.ts`), and so **not in the export zip**
- * (`settings.md`, `database.md` §2). Plain functions over a tiny
- * subscription, as the engine choice; `views/shared/useEngineSearchSettings.ts`
- * binds it to React.
+ * **The lines, Threads and Hash are a preference, not the reader's data** —
+ * `localStorage` beside the engine choice (`lib/engineChoice.ts`), and so
+ * **not in the export zip** (`settings.md`, `database.md` §2); the depth and
+ * move time travel with the presets. Plain functions over a tiny
+ * subscription, as the engine choice.
  *
  * **Requests, never cut back in the store** (`docs/engine.md` §5): `Threads`
  * and `Hash` are kept as asked, within the widest bounds any engine takes (an
@@ -33,20 +43,13 @@ import { missingFieldsOf } from "./recordedFields";
 export type EngineSearchSettings = {
   /** UCI `MultiPV` — how many lines the boards show. */
   multiPv: number;
-  /** Plies per search — where a search stops while {@link infinite} is off, and always for Play. */
+  /** Plies per search — where every search stops, if its move time has not stopped it first. */
   depth: number;
   /**
-   * Milliseconds per search; `0` means "depth alone decides", and `1` — the
-   * slider's 0-seconds mark — is the instant reply (CTA-163).
+   * Milliseconds per search; `0` means "depth alone decides", and `1` — 0
+   * seconds — is the instant reply (CTA-163).
    */
   moveTimeMs: number;
-  /**
-   * **Infinite analysis** (CTA-160): the engine keeps deepening the position
-   * on screen until it changes or the engine is switched off. Not for Play,
-   * which needs a search that ends with a move: while Play is on, the depth
-   * and move time decide (`infinite && !playing`).
-   */
-  infinite: boolean;
   /** UCI `Threads` — a request, held to the running engine's top when used. */
   threads: number;
   /** UCI `Hash`, in MB — a request, held to the running engine's top when used. */
@@ -54,27 +57,26 @@ export type EngineSearchSettings = {
 };
 
 /** The settings, in the order the menu and the "changed" dialog list them. */
-const ENGINE_SEARCH_FIELDS = ["multiPv", "depth", "moveTimeMs", "infinite", "threads", "hashMb"] as const;
+const ENGINE_SEARCH_FIELDS = ["multiPv", "depth", "moveTimeMs", "threads", "hashMb"] as const;
 
 export type EngineSearchField = (typeof ENGINE_SEARCH_FIELDS)[number];
 
 /**
  * **The Analysis Board's own defaults** — depth 20, three lines, no time
- * limit, infinite off, one thread and 16 MB — so a saved analysis kept
+ * limit, one thread and 16 MB — so a saved analysis kept
  * under the old defaults opens without a "changed" dialog.
  */
 export const DEFAULT_ENGINE_SEARCH_SETTINGS: EngineSearchSettings = {
   multiPv: 3,
   depth: 20,
   moveTimeMs: 0,
-  infinite: false,
   threads: 1,
   hashMb: 16,
 };
 
 /**
  * The bounds a stored value is held to — the menu's offer for depth, move
- * time and lines (Play with Engine's marked move-time slider, 0–300 s and ∞,
+ * time and lines (Play with Engine's marked move-time slider, 1–600 s and ∞ — CTA-185,
  * for every board: CTA-163's, which replaced the analysis boards' 0–60 s),
  * and the widest any engine takes for Threads and Hash.
  */
@@ -101,15 +103,10 @@ export const engineSearchSettingsFrom = (value: unknown): EngineSearchSettings =
     multiPv: heldNumber(row.multiPv, defaults.multiPv, bounds.multiPv),
     depth: heldNumber(row.depth, defaults.depth, bounds.depth),
     moveTimeMs: heldNumber(row.moveTimeMs, defaults.moveTimeMs, bounds.moveTimeMs),
-    infinite: row.infinite === true,
     threads: heldNumber(row.threads, defaults.threads, bounds.threads),
     hashMb: heldNumber(row.hashMb, defaults.hashMb, bounds.hashMb),
   };
 };
-
-/** Whether two settings would search alike. */
-const sameEngineSearchSettings = (a: EngineSearchSettings, b: EngineSearchSettings): boolean =>
-  ENGINE_SEARCH_FIELDS.every((field) => a[field] === b[field]);
 
 /* ------------------------------------------------------------------ *
  * The engine running
@@ -127,6 +124,25 @@ export const searchSettingLimitsOf = (
 ): { threads: number; hashMb: number } => {
   const limits = engineLimitsOf(descriptor, device);
   return { threads: descriptor.capabilities.multiThread ? limits.threads : 1, hashMb: limits.hashMb };
+};
+
+/**
+ * **The most `Threads` and `Hash` a number box takes** (CTA-185) — past the
+ * slider's device top ({@link searchSettingLimitsOf}), up to what the engine
+ * declares: a single-thread build one thread, a multi-thread build its 32
+ * (`ENGINE_SETTING_BOUNDS`), an in-browser build's Hash 1024 MB (2048 crashed
+ * the tab); an engine server's engine its declared tops — its slider's too.
+ */
+export const searchSettingTypedLimitsOf = (
+  descriptor: Pick<EngineDescriptor, "id" | "options" | "capabilities">,
+  device?: { hardwareConcurrency?: number; deviceMemory?: number },
+): { threads: number; hashMb: number } => {
+  const slider = searchSettingLimitsOf(descriptor, device);
+  if (isHostedEngineId(descriptor.id)) return slider;
+  return {
+    threads: descriptor.capabilities.multiThread ? ENGINE_SETTING_BOUNDS.threads.max : 1,
+    hashMb: Math.max(ENGINE_SETTING_BOUNDS.hashMb.max, slider.hashMb),
+  };
 };
 
 /**
@@ -163,13 +179,13 @@ export type EngineSearchChange<F extends EngineSearchField = EngineSearchField> 
  * **What a record's engine settings say that the ones in effect do not** —
  * the "Engine options changed" dialog's rows, in {@link ENGINE_SEARCH_FIELDS}'
  * order. Only the settings the menu owns are compared; a field the record has
- * no such setting for (a played game has no infinite analysis) is skipped, and
- * so is one its stored row **did not carry** — read as its default by its
+ * no such setting for is skipped (an older record's `infinite` too, CTA-185),
+ * and so is one its stored row **did not carry** — read as its default by its
  * normaliser (`missingFieldsOf`, `lib/recordedFields.ts`): the record never
  * chose it.
  */
 export const searchSettingsChanges = (
-  recorded: Partial<Record<EngineSearchField, number | boolean>>,
+  recorded: Partial<Record<EngineSearchField, number>>,
   current: EngineSearchSettings,
 ): EngineSearchChange[] => {
   const missing = missingFieldsOf(recorded);
@@ -187,24 +203,39 @@ export const withRecordedSettings = (
   current: EngineSearchSettings,
   changes: readonly EngineSearchChange[],
 ): EngineSearchSettings => {
-  const next: Record<string, number | boolean> = { ...current };
+  const next: Record<string, number> = { ...current };
   for (const change of changes) next[change.field] = change.recorded;
   return engineSearchSettingsFrom(next);
 };
 
 /* ------------------------------------------------------------------ *
- * The preference
+ * The preference — lines, Threads and Hash
  * ------------------------------------------------------------------ */
+
+/**
+ * **What the preference keeps** (CTA-185): the lines, Threads and Hash. The
+ * depth and the move time are the running engine's preset's
+ * (`lib/engineSearchInEffect.ts`, which puts the two together for the boards).
+ */
+export type SearchPreferences = Pick<EngineSearchSettings, "multiPv" | "threads" | "hashMb">;
+
+const PREFERENCE_FIELDS = ["multiPv", "threads", "hashMb"] as const;
+
+/** The preference's fields of a settings row, each read back as {@link engineSearchSettingsFrom} reads it. */
+const searchPreferencesFrom = (value: unknown): SearchPreferences => {
+  const { multiPv, threads, hashMb } = engineSearchSettingsFrom(value);
+  return { multiPv, threads, hashMb };
+};
 
 export const ENGINE_SEARCH_SETTINGS_STORAGE_KEY = "chessapp.engineSettings";
 
 const listeners = new Set<() => void>();
 
 /** Held for the visit only when storage refuses the write — a private window still keeps its settings. */
-let remembered: EngineSearchSettings | undefined;
+let remembered: SearchPreferences | undefined;
 
 /** The last text read and what it read as — the same object until the text changes, as `useSyncExternalStore` needs. */
-let cache: { text: string | null; settings: EngineSearchSettings } | undefined;
+let cache: { text: string | null; preferences: SearchPreferences } | undefined;
 
 const readText = (): string | null => {
   try {
@@ -214,30 +245,34 @@ const readText = (): string | null => {
   }
 };
 
-/** **The settings in effect** — the stored ones, else the defaults. The same object until they change. */
-export const readEngineSearchSettings = (): EngineSearchSettings => {
+/**
+ * **The lines, Threads and Hash in effect** — the stored ones, else the
+ * defaults (a depth or move time an older build stored there is read as
+ * nothing: the preset's now). The same object until they change.
+ */
+export const readSearchPreferences = (): SearchPreferences => {
   if (remembered !== undefined) return remembered;
   const text = readText();
-  if (cache !== undefined && cache.text === text) return cache.settings;
+  if (cache !== undefined && cache.text === text) return cache.preferences;
   let parsed: unknown;
   try {
     parsed = text === null ? undefined : JSON.parse(text);
   } catch {
     parsed = undefined;
   }
-  cache = { text, settings: engineSearchSettingsFrom(parsed) };
-  return cache.settings;
+  cache = { text, preferences: searchPreferencesFrom(parsed) };
+  return cache.preferences;
 };
 
 /**
- * **Change some of the settings** and tell every board and the top bar. A
- * patch that changes nothing writes nothing. A storage that refuses it only
- * forgets it after this visit.
+ * **Change some of them** and tell their subscribers. A patch that changes
+ * nothing writes nothing. A storage that refuses it only forgets it after
+ * this visit.
  */
-export const storeEngineSearchSettings = (patch: Partial<EngineSearchSettings>): void => {
-  const current = readEngineSearchSettings();
-  const next = engineSearchSettingsFrom({ ...current, ...patch });
-  if (sameEngineSearchSettings(current, next)) return;
+export const storeSearchPreferences = (patch: Partial<SearchPreferences>): void => {
+  const current = readSearchPreferences();
+  const next = searchPreferencesFrom({ ...current, ...patch });
+  if (PREFERENCE_FIELDS.every((field) => current[field] === next[field])) return;
   try {
     localStorage.setItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY, JSON.stringify(next));
     remembered = undefined;
@@ -249,10 +284,10 @@ export const storeEngineSearchSettings = (patch: Partial<EngineSearchSettings>):
 };
 
 /**
- * Call `listener` when the settings may have changed: this tab's write or
- * another tab's (`storage`). Returns an unsubscribe fn.
+ * Call `listener` when they may have changed: this tab's write or another
+ * tab's (`storage`). Returns an unsubscribe fn.
  */
-export const subscribeEngineSearchSettings = (listener: () => void): (() => void) => {
+export const subscribeSearchPreferences = (listener: () => void): (() => void) => {
   listeners.add(listener);
   const onStorage = (event: StorageEvent) => {
     if (event.key === null || event.key === ENGINE_SEARCH_SETTINGS_STORAGE_KEY) listener();
@@ -265,7 +300,7 @@ export const subscribeEngineSearchSettings = (listener: () => void): (() => void
 };
 
 /** Forget what this visit kept — for the tests, which clear `localStorage` between them. */
-export const resetEngineSearchSettings = (): void => {
+export const resetSearchPreferences = (): void => {
   remembered = undefined;
   cache = undefined;
 };

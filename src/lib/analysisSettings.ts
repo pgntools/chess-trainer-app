@@ -26,20 +26,16 @@ import { withMissingFields } from "./recordedFields";
 
 /** The engine settings an analysis records — the global search settings, and whether evaluations are written. */
 export type AnalysisSettings = {
-  /** Plies per search — where a search stops while {@link infinite} is off, and always for Play. */
+  /** Plies per search — where every search stops, if its move time has not stopped it first. */
   depth: number;
   /** UCI `MultiPV` — how many lines the Variations tab shows. */
   multiPv: number;
-  /** Milliseconds per search; `0` means "depth alone decides". Off with {@link infinite}, like the depth. */
-  moveTimeMs: number;
   /**
-   * **Infinite analysis** (CTA-160, lichess's): the engine keeps deepening the
-   * position on screen until it changes or the engine is switched off
-   * (`go infinite`), and the depth and move time are not used — except by
-   * Play, which needs a search that ends with a move. Off by default: a
-   * search that never ends keeps a core busy for as long as the page is open.
+   * Milliseconds per search; `0` means "depth alone decides". (A record from
+   * before CTA-185 may carry an `infinite` too — infinite analysis, gone: it
+   * is read as nothing.)
    */
-  infinite: boolean;
+  moveTimeMs: number;
   /**
    * UCI `Threads` and `Hash` (MB) — the same on every board (CTA-160, one
    * global set since CTA-181). Requests, held to `ENGINE_SETTING_BOUNDS` by
@@ -63,7 +59,7 @@ export type AnalysisSettings = {
 /**
  * The global search settings' defaults (depth 20 — about 3.5 s on a fast
  * desktop with the default engine, CTA-160 — three lines, no time limit,
- * infinite off, one thread, 16 MB) and evaluations not written: what a
+ * one thread, 16 MB) and evaluations not written: what a
  * record from before a field reads it as.
  */
 export const DEFAULT_ANALYSIS_SETTINGS: AnalysisSettings = {
@@ -76,7 +72,6 @@ export const analysisSettingsOf = (search: EngineSearchSettings, writeEvals: boo
   multiPv: search.multiPv,
   depth: search.depth,
   moveTimeMs: search.moveTimeMs,
-  infinite: search.infinite,
   threads: search.threads,
   hashMb: search.hashMb,
   writeEvals,
@@ -143,12 +138,11 @@ export const analysisSettingsFrom = (value: unknown): AnalysisSettings => {
       row.moveTimeMs,
       DEFAULT_ANALYSIS_SETTINGS.moveTimeMs,
     ),
-    // A record from before infinite analysis has none: off.
-    infinite: row.infinite === true,
-    // …nor threads or a hash (CTA-160): Play with Engine's defaults.
+    // A record from before threads and a hash has none (CTA-160): Play with Engine's defaults.
+    // (An `infinite` it carries — infinite analysis, gone since CTA-185 — is read as nothing.)
     threads: finiteNumber(row.threads, DEFAULT_ANALYSIS_SETTINGS.threads),
     hashMb: finiteNumber(row.hashMb, DEFAULT_ANALYSIS_SETTINGS.hashMb),
-    // …nor the evaluations switch (CTA-167): off.
+    // …nor one from before the evaluations switch (CTA-167): off.
     writeEvals: row.writeEvals === true,
   }, Object.keys(DEFAULT_ANALYSIS_SETTINGS).filter((field) => row[field] === undefined));
 };
@@ -161,7 +155,6 @@ export const sameAnalysisSettings = (
   a.depth === b.depth &&
   a.multiPv === b.multiPv &&
   a.moveTimeMs === b.moveTimeMs &&
-  a.infinite === b.infinite &&
   a.threads === b.threads &&
   a.hashMb === b.hashMb &&
   a.writeEvals === b.writeEvals;

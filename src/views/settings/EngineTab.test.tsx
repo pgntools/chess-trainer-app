@@ -8,6 +8,7 @@ import { ENGINE_STORAGE_KEY, engineChoiceId } from "../../lib/engineChoice";
 import { ENGINE_SERVER_STORAGE_KEY, connectEngineServer, storeEngineServerUrl } from "../../lib/engineServer";
 import { DEFAULT_ENGINE_ID } from "../../lib/engines";
 import { DEFAULT_PRESET_ID, selectedPresetOf } from "../../lib/enginePresets";
+import { readEngineSearchSettings } from "../../lib/engineSearchInEffect";
 import {
   loadEnginePresetSelections,
   loadEnginePresets,
@@ -410,8 +411,9 @@ describe("Settings → Engine — the engine's options, in presets (CTA-179)", (
     expect(screen.getByTestId("engine-panel")).toHaveStyle({ overflowY: "auto" });
     expect(within(section).getByRole("combobox", { name: `Preset for ${SINGLE}` })).toHaveTextContent("Default");
     expect(await within(section).findByRole("tab", { name: "Basic" })).toHaveAttribute("aria-selected", "true");
-    expect(within(section).queryByRole("spinbutton", { name: "Hash" })).toBeNull();
-    expect(optionRow("Hash")).toHaveTextContent("Set for every board in the top bar's Engine menu");
+    // Threads and Hash: the global request, a slider here too (CTA-185).
+    expect(within(section).getByRole("spinbutton", { name: "Hash (MB), typed" })).toHaveValue(16);
+    expect(optionRow("Hash")).toHaveTextContent("For every board and every preset — the top bar's Engine menu sets it too.");
     expect(within(section).getByRole("spinbutton", { name: "UCI_Elo" })).toBeDisabled();
 
     await userEvent.click(within(section).getByRole("tab", { name: "Advanced" }));
@@ -441,6 +443,36 @@ describe("Settings → Engine — the engine's options, in presets (CTA-179)", (
         id: DEFAULT_PRESET_ID,
         values: { UCI_ShowWDL: true, "Move Overhead": 2500 },
       });
+    });
+  });
+
+  it("edits Threads and Hash — the global request every board sends, not the preset's (CTA-185)", async () => {
+    const user = userEvent.setup();
+    renderEngine();
+    const hash = await within(aside()).findByRole("spinbutton", { name: "Hash (MB), typed" });
+    await user.clear(hash);
+    await user.type(hash, "96");
+    expect(readEngineSearchSettings().hashMb).toBe(96);
+    const { presets } = await reloaded();
+    expect(presets.some((preset) => "Hash" in preset.values)).toBe(false);
+  });
+
+  it("keeps the preset's search limits — the depth and move time every board searches to (CTA-185)", async () => {
+    const user = userEvent.setup();
+    renderEngine();
+    const limits = within(aside()).getByRole("region", { name: "Search limits" });
+    const depth = within(limits).getByRole("spinbutton", { name: "Search depth, typed" });
+    expect(depth).toHaveValue(20);
+    expect(within(limits).getByRole("spinbutton", { name: "Move time in seconds, typed" })).toBeDisabled();
+    await user.clear(depth);
+    await user.type(depth, "28");
+    within(limits).getByRole("slider", { name: "Move time" }).focus();
+    await user.keyboard("{ArrowLeft}");
+    expect(within(limits).getByRole("spinbutton", { name: "Move time in seconds, typed" })).toHaveValue(600);
+
+    await waitFor(async () => {
+      const { presets, selections } = await reloaded();
+      expect(selectedPresetOf(presets, selections, DEFAULT_ENGINE_ID).search).toEqual({ depth: 28, moveTimeMs: 600000 });
     });
   });
 

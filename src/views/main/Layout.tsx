@@ -183,8 +183,8 @@ const Header = ({ compact, onOpenNav }: { compact: boolean; onOpenNav: () => voi
                 <Stack direction="row" spacing={compact ? 0.5 : 1} sx={{ alignItems: 'center' }}>
                     {/* The background job running, if any (CTA-173) — a link to the Jobs screen. */}
                     <JobsIndicator compact={compact} />
-                    {/* The engine's search settings, every board's, and the board on screen's engine (CTA-181). */}
-                    <EngineMenu />
+                    {/* The engine's search settings, every board's, and the board on screen's engine (CTA-181); under the breakpoint its robot alone (CTA-185). */}
+                    <EngineMenu compact={compact} />
                     {/* Under the breakpoint, the language's short code: the bar has 288px at 320 (CTA-181). */}
                     <LanguageSwitch compact={compact} />
                     <ColorModeIconDropdown />

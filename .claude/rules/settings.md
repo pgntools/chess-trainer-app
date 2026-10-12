@@ -119,9 +119,15 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   ([`import-export.md`](./import-export.md)); what a played game carries is the
   engine that played it. Its **presets** are data, and do travel (§4.1).
 - **The search settings are not here** (CTA-181): lines, depth, move time,
-  infinite analysis, Threads and Hash are the reader's one global set, set
+  Threads and Hash (no infinite analysis since CTA-185 — every search stops)
+  are one set for every board — the depth and move time the chosen engine's
+  preset's (CTA-185, §4.1), the rest a preference — set
   from **the top bar's Engine menu** (`views/main/EngineMenu.tsx`, beside the
-  language button — under the engine and its preset, with a link back here),
+  language button — a robot and "Engine", styled as the language switch;
+  under the engine and its preset, **each a select there too** (CTA-185: the
+  same `describeEngines()` list and `setEngineId` as this tab, the engine's
+  presets and `selectEnginePreset` as §4.1's section), with a "Settings" link
+  back here; depth and move time typed as well as slid),
   `localStorage` `chessapp.engineSettings` (`lib/engineSearchSettings.ts`), a
   preference like the choice and likewise not in the zip
   ([`docs/engine.md`](../../docs/engine.md) §5.2).
@@ -163,6 +169,15 @@ chosen engine's options** (`EnginePresetsSection.tsx` over the
 `EnginePresetForm` block; [`docs/engine.md`](../../docs/engine.md) §9 is the
 whole design):
 
+- **The preset's search limits** (CTA-185): above the options, a *Search
+  limits* section — the depth and the move time every board searches to with
+  this preset (`SearchLimitsFields`, the same two the top bar's Engine menu
+  shows under the preset select); each preset keeps its own
+  (`EnginePreset.search`, `setEnginePresetSearch`), a preset that never set
+  them reads depth 20 and no time limit, switching the preset or the engine
+  switches them ([`docs/engine.md`](../../docs/engine.md) §5.2, §9). For the
+  chosen engine the section writes through the settings in effect
+  (`lib/engineSearchInEffect.ts`), shown at once.
 - **A shared library of named presets, one selected per engine.** The picker
   shows the preset this engine runs; New, Rename, Duplicate (named
   "… (copy)") and Delete — asked first; **Default always exists and cannot be
@@ -194,8 +209,14 @@ whole design):
   while on, none of them sent while off (`presetSentValues`) — their values
   stay for when it is turned on. Only an engine that declares them (a native
   one) shows the switch.
-- **Read-only, each with why**: Threads, Hash and MultiPV — set for every
-  board in the top bar's Engine menu (CTA-181, the reader's one global set,
+- **Threads and Hash are sliders here too** (CTA-185, `EngineResourceSlider`):
+  the one global request every board sends — not the preset's — edited in
+  their rows as in the top bar's Engine menu, the slider to the device's top
+  and a number box to the engine's (`searchSettingTypedLimitsOf`; in-browser
+  Hash at most 1024 MB). **Skill Level is a slider** (0–20, every step marked,
+  0, 10 and 20 labelled).
+- **Read-only, each with why**: MultiPV — set for every board in the top
+  bar's Engine menu (CTA-181, the reader's one global set,
   `lib/engineSearchSettings.ts`, [`docs/engine.md`](../../docs/engine.md)
   §5.2); a button (Clear Hash) — an action, not a setting, listed on System;
   a pinned option; a file path (`EvalFile`, `Debug Log File`) on a browser
@@ -232,7 +253,9 @@ whole design):
   on API),
   Connect answered on the button, a bad address refused and a new one kept
   with Enter, a stored server engine opening the API tab and falling back
-  when the server is turned off, Hebrew, axe. `src/lib/engineChoice.test.ts`
+  when the server is turned off, Hebrew, axe. The top bar's Engine menu
+  choosing the engine and a preset (CTA-185) is
+  `views/main/EngineMenu.test.tsx`. `src/lib/engineChoice.test.ts`
   — the store; `src/lib/engineServer.test.ts` — the address and the status.
   The presets (CTA-179, the same file over the real stores and a `FakeEngine`
   per build — `builtinEnginesMock`, which `Settings.test.tsx` mocks too): the

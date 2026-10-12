@@ -36,7 +36,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
   section: "dialogs",
   title: "EngineOptionsChangedDialog",
   demos: [
-    { name: "A saved analysis — deeper, more lines, a time limit, infinite analysis", render: () => demo(ANALYSIS_CHANGES, "analysis") },
+    { name: "A saved analysis — deeper, more lines, a time limit", render: () => demo(ANALYSIS_CHANGES, "analysis") },
     { name: "A played game — Threads and Hash, which this engine would hold", render: () => demo(GAME_CHANGES, "game", HELD) },
   ],
 };

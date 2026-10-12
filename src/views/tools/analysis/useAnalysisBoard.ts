@@ -2,7 +2,8 @@ import { useCallback, useState } from "react";
 import { DEFAULT_POSITION } from "chess.js";
 
 import type { AnalysisHandOff } from "../../../lib/analysisHandOff";
-import { readEngineSearchSettings, searchSettingsChanges } from "../../../lib/engineSearchSettings";
+import { readEngineSearchSettings } from "../../../lib/engineSearchInEffect";
+import { searchSettingsChanges } from "../../../lib/engineSearchSettings";
 import { emptyTree, sanPathTo, type GameTree } from "../../../lib/gameTree";
 import { parseFen } from "../../../lib/fen";
 import { nodeAtParam } from "../../../lib/repertoireLink";

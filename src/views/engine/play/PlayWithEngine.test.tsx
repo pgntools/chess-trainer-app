@@ -7,7 +7,7 @@ import i18n from "../../../i18n";
 import { storeEngineId } from "../../../lib/engineChoice";
 import { DEFAULT_PRESET_ID } from "../../../lib/enginePresets";
 import { setEnginePresetValue } from "../../../lib/enginePresetStore";
-import { readEngineSearchSettings, storeEngineSearchSettings } from "../../../lib/engineSearchSettings";
+import { loadEngineSearchSettings, readEngineSearchSettings, storeEngineSearchSettings } from "../../../lib/engineSearchInEffect";
 import { DEFAULT_ENGINE_SETTINGS } from "../../../lib/engineSettings";
 import { parsePgnTree } from "../../../lib/pgn";
 import {
@@ -107,6 +107,8 @@ const click = (testId: string) => fireEvent.click(screen.getByTestId(testId));
 
 beforeEach(async () => {
   FakeEngine.reset();
+  // A record opened is compared with the settings in effect — its route reads the presets first (CTA-185), as the shell has by then.
+  await loadEngineSearchSettings();
   await i18n.changeLanguage("en");
 });
 

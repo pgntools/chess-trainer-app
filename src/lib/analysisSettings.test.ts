@@ -48,7 +48,7 @@ describe("the analysis boards' Threads and Hash", () => {
 
 describe("a session's settings — the global search settings and its own evaluations switch (CTA-181)", () => {
   it("are the search settings in effect, with writeEvals beside them", () => {
-    const search = { ...DEFAULT_ENGINE_SEARCH_SETTINGS, depth: 24, infinite: true };
+    const search = { ...DEFAULT_ENGINE_SEARCH_SETTINGS, depth: 24, moveTimeMs: 5000 };
     expect(analysisSettingsOf(search, true)).toEqual({ ...search, writeEvals: true });
     expect(DEFAULT_ANALYSIS_SETTINGS).toEqual({ ...DEFAULT_ENGINE_SEARCH_SETTINGS, writeEvals: false });
   });
@@ -56,9 +56,17 @@ describe("a session's settings — the global search settings and its own evalua
   it("read back from a record mark the fields the record did not carry, and only those", () => {
     const older = analysisSettingsFrom({ depth: 18, multiPv: 2, moveTimeMs: 0 });
     expect(older.threads).toBe(DEFAULT_ANALYSIS_SETTINGS.threads);
-    expect([...missingFieldsOf(older)].sort()).toEqual(["hashMb", "infinite", "threads", "writeEvals"]);
+    expect([...missingFieldsOf(older)].sort()).toEqual(["hashMb", "threads", "writeEvals"]);
     expect(missingFieldsOf(analysisSettingsFrom({ ...DEFAULT_ANALYSIS_SETTINGS })).size).toBe(0);
     // Built in the app, not read back: nothing is missing.
     expect(missingFieldsOf(analysisSettingsOf(DEFAULT_ENGINE_SEARCH_SETTINGS, false)).size).toBe(0);
+  });
+});
+
+describe("infinite analysis, gone (CTA-185)", () => {
+  it("reads an older record's infinite as nothing — every search stops", () => {
+    const older = analysisSettingsFrom({ ...DEFAULT_ANALYSIS_SETTINGS, infinite: true });
+    expect(older).not.toHaveProperty("infinite");
+    expect(sameAnalysisSettings(older, DEFAULT_ANALYSIS_SETTINGS)).toBe(true);
   });
 });

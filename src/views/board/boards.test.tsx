@@ -40,7 +40,7 @@ vi.mock("../../lib/openings", async (importOriginal) => {
 
 import { boardOptions, FakeEngine } from "./boardTestHarness";
 import { storeEngineId } from "../../lib/engineChoice";
-import { storeEngineSearchSettings } from "../../lib/engineSearchSettings";
+import { storeEngineSearchSettings } from "../../lib/engineSearchInEffect";
 import { EngineMenu } from "../main/EngineMenu";
 import { loadPlayedGames, playedGamesSnapshot } from "../../lib/playedGameStore";
 import AnalysisBoard from "../tools/analysis/AnalysisBoard";

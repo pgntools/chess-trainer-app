@@ -393,9 +393,18 @@ const en = {
       on: "Engine settings — engine on",
       searching: "Engine settings — engine searching",
     },
-    engine: "Engine:",
-    preset: "Preset:",
-    settingsLink: "Change the engine or its preset in Settings → Engine",
+    /** The header's button's words (CTA-185) — its name is `label.*`, which says the engine's state too. */
+    button: "Engine",
+    engine: "Engine",
+    preset: "Preset",
+    settingsLink: "Settings",
+    /** The number boxes at the depth and move-time sliders' ends (CTA-185). */
+    depthTyped: "Search depth, typed",
+    moveTimeTyped: "Move time in seconds, typed",
+    threadsTyped: "Threads, typed",
+    hashTyped: "Hash (MB), typed",
+    /** The move-time box's unit. */
+    seconds: "s",
   },
   /** A board's engine controls (CTA-181, the `BoardEngineControls` block): the play / pause and its menu. */
   boardEngine: {
@@ -411,8 +420,6 @@ const en = {
     },
     /** One row: the setting, the record's value, the current one. */
     change: "{{setting}}: {{recorded}} → {{current}}",
-    on: "on",
-    off: "off",
     use: "Use these settings",
     dismiss: "Dismiss",
     /** What "Use these settings" holds to the engine running. */
@@ -1238,8 +1245,6 @@ const en = {
       /** Said where the lines would be, when the engine is switched off. */
       engineOff: "The engine is off. Switch it on to analyse this position.",
       /** Infinite analysis (CTA-160): the engine deepens until the position changes. */
-      infinite: "Infinite analysis",
-      infiniteHelp: "Keep searching until the position changes. Off, a search stops at the depth and time below — and Play always does.",
       /** CTA-167: the Analysis Board's switch that writes each finished search into the PGN as [%eval]. */
       writeEvals: "Write evaluations into the game",
       writeEvalsHelp: "Each finished search is written on its move as [%eval score,depth] — a deeper search replaces a shallower one — and the engine is named in the Annotator tag.",
@@ -2585,6 +2590,13 @@ const en = {
   /** The `EnginePresetForm` block (CTA-179): an engine's options, kept in named presets. */
   enginePresets: {
     preset: "Preset for {{engine}}",
+    /** Under Threads and Hash, edited here (CTA-185): the global request, not the preset's. */
+    globalResource: "For every board and every preset — the top bar's Engine menu sets it too.",
+    /** Where the preset's searches stop (CTA-185) — its depth and move time. */
+    search: {
+      title: "Search limits",
+      help: "Every board searches with {{preset}} to this depth or move time, whichever comes first. The top bar's Engine menu sets them too.",
+    },
     actions: "Preset actions",
     new: "New preset",
     rename: "Rename {{name}}",
