@@ -45,7 +45,7 @@ import BoardShell from "../board/core/BoardShell";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import type { PlayerPlates } from "../shared/PlayerPlate";
 import { playerResultsOf } from "../shared/playerResults";
-import { useAnalysisSession } from "../tools/analysis/useAnalysisSession";
+import { useAnalysisSession } from "../board/core/useAnalysisSession";
 import { usePageTitle } from "../main/pageTitle";
 import { useUnsavedWorkGuard } from "../main/unsavedWork";
 

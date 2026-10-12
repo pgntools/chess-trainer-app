@@ -6,7 +6,7 @@ paths:
   - "src/views/shared/MoveList.tsx"
   - "src/views/shared/VariationLine.tsx"
   - "src/views/shared/moveSelection.ts"
-  - "src/views/tools/analysis/nextMoveArrows.ts"
+  - "src/views/shared/nextMoveArrows.ts"
   - "src/views/tools/analysis/NextMovesBar.tsx"
 ---
 
@@ -131,7 +131,7 @@ const parts = useVariationsExplorer({
 | **Drawing shapes into the comment** (CTA-143, a lichess study's): a right-drag an arrow, a right-click a circle, the brush by the modifiers (plain green, Shift red, Alt blue, both yellow); drawn again it comes off, in another brush recoloured; the arrow previewed while drawing. The library's own right-drag arrows are off (`allowDrawingArrows: false`), so nothing lingers in its state — every shape is drawn from the comment. A board that does not edit keeps the library's temporary drawing | `boardOptions` (`onSquareMouseDown`, `onMouseOverSquare`, `onSquareMouseUp`), `arrows` | `onEditTree` and `annotations` | `toggleShape`, `brushOfKeys` + `setComments` ([`pgn-annotations.md`](./pgn-annotations.md) §2) |
 | **Comment editing** in the block (add, edit, delete) | `annotations` | `onEditTree` | `CommentDialog` + `setComments` |
 | **Next-moves bar**: the continuations at a branch; hovering one draws its arrow | `nextMoves` | always (nothing where there is no choice) | `views/tools/analysis/NextMovesBar.tsx` |
-| **Next-move arrows**: mainline green, side lines blue, the hovered move red | `arrows` | `arrows.show` (off: only a hovered move's arrow) | `views/tools/analysis/nextMoveArrows.ts` |
+| **Next-move arrows**: mainline green, side lines blue, the hovered move red | `arrows` | `arrows.show` (off: only a hovered move's arrow) | `views/shared/nextMoveArrows.ts` |
 | **Play-chance arrows**: white with a magenta border, width by chance, a percentage per move in the bar | `overlay` (+ `nextMoves`) | `arrows.chances`, and only where the branch carries a `prc` mark | `ChanceArrows` over `chanceArrows.ts` |
 | **Width-sized arrows** (CTA-98): each continuation sized by a tag in its comment (`eval`, `games`, `prc`) or by the lines ahead, filled in the palette's colours; a move without the tag, where others have it, gray and half-transparent; a branch where none has it draws the ordinary arrows | `overlay` | `arrows.widthSource`, only while `arrows.show` | `ChanceArrows` with its `colors` (`weightedArrowColors`), over `lib/nextMoveWeights.ts` |
 | **Arrow palette** (CTA-98): the mainline / side-line / hovered colours of every next-move arrow, library or overlay | `arrows`, `overlay` | `arrows.palette` | `NEXT_MOVE_ARROW_PALETTES` (`nextMoveArrows.ts`) |
@@ -248,7 +248,7 @@ const parts = usePuzzleView({
 | `src/views/explorer/TreeMap.tsx` | The map: `MapViewport`, the full-screen dialog, links and the menu. The pure layout and viewport arithmetic are `src/lib/treeMap.ts`, with `MapCoverage`. |
 | `src/views/explorer/AnnotationsBar.tsx` | The comment block, presentational; the reading is `lib/moveAnnotations.ts`. |
 | `src/views/explorer/ChanceArrows.tsx` + `chanceArrows.ts` (+ tests) | The play-chance overlay and its geometry; its optional per-arrow `colors` and `weightedArrowColors` draw the width-sized arrows (CTA-98). |
-| `src/views/tools/analysis/nextMoveArrows.ts`, `NextMovesBar.tsx` | The next-move arrows and bar, imported by the explorer. |
+| `src/views/shared/nextMoveArrows.ts`, `NextMovesBar.tsx` | The next-move arrows and bar, imported by the explorer. |
 | `src/views/shared/MoveList.tsx`, `VariationLine.tsx`, `moveSelection.ts`, `moveContextMenu.ts`, `moveTokenSx.ts` | The shared tokens under every list. |
 | `src/views/shared/NagGlyphs.tsx`, `nagToneSx.ts` | A move's glyphs after its SAN, and the move marks' colours (the map's labels share them). |
 

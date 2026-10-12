@@ -6,6 +6,8 @@
  * that proved the layer; `CollectionGamesTable` and `CollectionsTreeTable`
  * come with the Library's migration.
  */
+export * from "./CasesTable";
+export * from "./ProjectsTable";
 export * from "./CollectionGamesTable";
 export * from "./CollectionsTreeTable";
 export * from "./EngineOptionsTable";

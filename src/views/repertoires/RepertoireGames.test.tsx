@@ -4,7 +4,7 @@ import { Chess } from "chess.js";
 
 import i18n from "../../i18n";
 import { boardOptions, FakeEngine } from "../board/boardTestHarness";
-import { REQUIRED_MOVE_ARROW_COLOR } from "../tools/analysis/nextMoveArrows";
+import { REQUIRED_MOVE_ARROW_COLOR } from "../shared/nextMoveArrows";
 import { BACKTRACK_DELAY_MS } from "./RepertoirePlayer";
 import {
   CARO_TWO_GAMES,

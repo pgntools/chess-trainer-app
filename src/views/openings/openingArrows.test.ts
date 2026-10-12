@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { HOVERED_MOVE_ARROW_COLOR, KNOWN_MOVE_ARROW_COLOR } from "../../lib/openings";
-import { NEXT_MOVE_ARROW_COLOR } from "../tools/analysis/nextMoveArrows";
+import { NEXT_MOVE_ARROW_COLOR } from "../shared/nextMoveArrows";
 import { openingArrowsOf } from "./openingArrows";
 
 const e4 = { san: "e4", from: "e2", to: "e4" } as const;

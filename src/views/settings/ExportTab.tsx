@@ -23,6 +23,7 @@ import {
 } from "../../lib/savedRepertoireStore";
 import { shippedCollections } from "../../lib/shippedCollections";
 import { RightPanel } from "../main/rightPanel";
+import { useAnalysisProjectsCount } from "./useAnalysisProjectsCount";
 
 /**
  * **Export** (`/settings/export`, CTA-86) — the reader's data out, as one zip
@@ -48,6 +49,7 @@ const INITIAL: ExportSelection = {
   analyses: false,
   repertoires: false,
   enginePresets: false,
+  analysisProjects: false,
   shippedCollections: false,
 };
 
@@ -80,6 +82,8 @@ function ExportTab() {
     analyses: useCount(subscribeSavedAnalyses, savedAnalysesSnapshot),
     repertoires: useCount(subscribeSavedRepertoires, savedRepertoiresSnapshot),
     enginePresets: useCount(subscribeEnginePresets, enginePresetsSnapshot),
+    // Analysis V2's Projects (CTA-186) — offered only in a build with the module.
+    analysisProjects: useAnalysisProjectsCount(),
   };
 
   const tick = (patch: Partial<ExportSelection>) => {

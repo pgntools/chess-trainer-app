@@ -67,7 +67,7 @@ import AnalysesFolderView from "./AnalysesFolderView";
 import { INITIAL_FOLDER_VIEW, type FolderViewState } from "./folderViewState";
 import AnalysisArrows from "./AnalysisArrows";
 import AnalysisLoad from "./AnalysisLoad";
-import AnalysisEvalReport from "./AnalysisEvalReport";
+import AnalysisEvalReport from "../../shared/AnalysisEvalReport";
 import { computerAnalysisSeed } from "./computerAnalysisSeed";
 import NewJob, { type NewJobGame } from "./NewJob";
 import SaveAnalysisDialog from "./SaveAnalysisDialog";

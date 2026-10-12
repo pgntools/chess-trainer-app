@@ -5,4 +5,5 @@
  * sidebar's navigation tree is the first such tree the app had.
  */
 export * from "./AnalysesTree";
+export * from "./CaseSiblings";
 export * from "./FolderTree";

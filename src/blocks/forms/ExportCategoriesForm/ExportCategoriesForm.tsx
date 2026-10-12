@@ -3,7 +3,8 @@ import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
 import { CheckboxField } from "../../../design-system/components/forms";
-import { EXPORT_CATEGORIES, type ExportCategory, type ExportSelection } from "../../../lib/dataExport";
+import type { ExportCategory, ExportSelection } from "../../../lib/dataExport";
+import { OFFERED_EXPORT_CATEGORIES } from "../../../lib/exportCategories";
 
 export type ExportCategoriesFormProps = {
   selection: ExportSelection;
@@ -34,7 +35,7 @@ function ExportCategoriesForm({ selection, onChange, counts, shippedCount, disab
   const { t } = useTranslation();
   return (
     <Box data-testid={`${testId}-categories`} sx={{ display: "grid", gap: 0.5 }}>
-      {EXPORT_CATEGORIES.map((category) => (
+      {OFFERED_EXPORT_CATEGORIES.map((category) => (
         <Box key={category}>
           <CheckboxField
             size="medium"

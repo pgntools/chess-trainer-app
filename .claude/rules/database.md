@@ -59,6 +59,7 @@ wrapper's main features would go unused. §10 says when that changes.
 | `src/lib/playedGameStore.ts` | The `chessapp.engine` database (object store `games`) and its store, in one file (one store, one database). |
 | `src/lib/libraryDb.ts` | The `chessapp.library` database (object stores `collections`, `indexes`, `games`, `folders`), version 2. |
 | `src/lib/jobStore.ts` | The `chessapp.jobs` database (object store `jobs`) and its store, in one file (CTA-173) — the background jobs, their checkpoints ([`jobs.md`](./jobs.md)). |
+| `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database (object stores `folders`, `projects`, `cases`) — Analysis V2's (CTA-186), dev-only while it is built ([`analysis-v2.md`](./analysis-v2.md)). Its stores: `analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts`; its records `analysisProjects.ts`. |
 | `src/lib/enginePresetStore.ts` | The `chessapp.enginePresets` database (object stores `presets`, `selections`) and its two stores, in one file (CTA-179) — the engine option presets and the one each engine runs ([`docs/engine.md`](../../docs/engine.md) §9). |
 | `src/lib/libraryCollectionStore.ts` | The Library's hand-written collection store (§1.4) — not an `idbRecordStore`, because it reads a collection's rows and games lazily. |
 | `src/lib/savedAnalysisStore.ts`, `savedAnalysisFolderStore.ts`, `savedRepertoireStore.ts`, `savedRepertoireFolderStore.ts`, `libraryFolderStore.ts` | The other record stores: each one's caps, idempotency comparison and operations, over the factory. |
@@ -71,7 +72,7 @@ wrapper's main features would go unused. §10 says when that changes.
 
 ---
 
-## 1. The map — six modules, six databases
+## 1. The map — seven modules, seven databases
 
 | Module | Database | Object store | Store module | Row | Order | Cap |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -85,13 +86,17 @@ wrapper's main features would go unused. §10 says when that changes.
 | **Jobs** (CTA-173) | `chessapp.jobs` | `jobs` | `jobStore.ts` | `Job` | newest first | 100 (the oldest finished dropped; refused when every one is unfinished) |
 | **Engine presets** (CTA-179) | `chessapp.enginePresets` | `presets` | `enginePresetStore.ts` | `EnginePreset` (Default stored only once edited) | oldest first | 50 (a new one refused) |
 | | | `selections` | `enginePresetStore.ts` | `EnginePresetSelection` (one per engine id) | oldest first | — |
+| **Analysis V2** (CTA-186, dev-only) | `chessapp.analysisProjects` | `folders` | `analysisProjectFolderStore.ts` | `ProjectFolder` (a `GameFolder`) | oldest first | 100 |
+| | | `projects` | `analysisProjectStore.ts` | `AnalysisProject` | newest first | 1,000 (a new one refused) |
+| | | `cases` | `analysisCaseStore.ts` | `AnalysisCase` (its source, the tree as PGN, the SAN path, the orientation — autosaved) | newest first | 10,000 (a batch past it refused) |
 
 Every database is at **version 1** but the Library's, at **version 2** (CTA-88
 added its `folders` store; the upgrade only created it). Every object store is
 keyed by `keyPath: "id"`, and **none has an index**. Each database is also the
 name of its `BroadcastChannel` (the analyses' two stores share one channel, and
 so do the repertoires', the engine presets' and the Library's — the Library's collection listener
-ignores the folder store's `{ store }` messages).
+ignores the folder store's `{ store }` messages; Analysis V2's three stores
+share theirs too).
 
 ### 1.1 Why one database per module
 
@@ -288,10 +293,10 @@ course can be most of a megabyte each) are far below that.
   IndexedDB in memory, so the stores' own code is what runs.
 - **Teardown** (`setup.ts`, after every test): unmount, clear
   `localStorage`, then — for every record store — wait for its writes to land
-  (`settled…`, twice: a folder delete queues its records' unfiling behind
-  it), `reset…`, and delete the five databases (`deleteAnalysisDb`,
+  (`settled…`, three times: a folder delete queues its records' unfiling behind
+  it), `reset…`, and delete the six databases (`deleteAnalysisDb`,
   `deleteEngineDb`, `deleteRepertoireDb`, `deleteJobsDb`,
-  `deleteEnginePresetsDb`) — the page's job
+  `deleteEnginePresetsDb`, `deleteAnalysisProjectsDb`) — the page's job
   runner (`stopJobRunner`, CTA-173) stopped first, since it writes the jobs
   and the analyses. The Library's folder store is
   settled and reset there with the others; its database is deleted by the

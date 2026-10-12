@@ -20,7 +20,7 @@ import {
   type SavedAnalysisProblem,
 } from "../../../lib/savedAnalysisStore";
 import { turnOf } from "../../board/core/useBoardCore";
-import { useAnalysisSession } from "./useAnalysisSession";
+import { useAnalysisSession } from "../../board/core/useAnalysisSession";
 
 /**
  * **The Analysis Board's session** (CTA-73) — the v2 core

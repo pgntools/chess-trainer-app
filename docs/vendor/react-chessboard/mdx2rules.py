@@ -87,7 +87,7 @@ PATHS = [
     "src/views/engine/play/PlayScreen.tsx",
     "src/views/engine/masked/**",
     "src/views/tools/analysis/AnalysisBoard.tsx",
-    "src/views/tools/analysis/nextMoveArrows.ts",
+    "src/views/shared/nextMoveArrows.ts",
     "src/views/tools/analysis/saved/SavedAnalyses.tsx",
     "src/views/openings/OpeningsBoard.tsx",
     "src/views/openings/openingArrows.ts",

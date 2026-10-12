@@ -11,7 +11,7 @@ import {
   type GameTree,
 } from "../../../lib/gameTree";
 import type { Turn } from "../../../lib/engineAnalysis";
-import { useTreeNavigation } from "../../tools/analysis/useTreeNavigation";
+import { useTreeNavigation } from "./useTreeNavigation";
 
 /**
  * **The base of every v2 board** — §9.1 of

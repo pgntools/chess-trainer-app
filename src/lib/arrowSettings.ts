@@ -2,7 +2,7 @@
  * **How a board draws its next-move arrows** (CTA-98) — the two choices the
  * Analysis Board's Arrows tab offers and a saved analysis keeps, as ids and
  * their readers. Pure data: what a source *weighs* is `nextMoveWeights.ts`,
- * what a palette's colours *are* is `views/tools/analysis/nextMoveArrows.ts`.
+ * what a palette's colours *are* is `views/shared/nextMoveArrows.ts`.
  *
  * - **The width source** — what sizes each continuation's arrow. `none` is
  *   the arrows every board draws (colour only); `eval`, `games` and `prc` are

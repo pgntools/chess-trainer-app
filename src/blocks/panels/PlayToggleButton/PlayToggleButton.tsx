@@ -1,6 +1,5 @@
 import CircularProgress from "@mui/material/CircularProgress";
-import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
-import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
+import SportsEsportsRoundedIcon from "@mui/icons-material/SportsEsportsRounded";
 import { useTranslation } from "react-i18next";
 
 import { IconAction } from "../../../design-system/components/toolbars";
@@ -24,7 +23,9 @@ export type PlayToggleButtonProps = {
  * it while the engine thinks — a progress bar **named** "Engine is thinking"
  * (CTA-113: it was nameless, axe's `aria-progressbar-name`). The Analysis
  * Board, the Library's game, the Openings explorer and Play with Engine each
- * render it under their own test ids. Its words are Play's (`analysis.play.*`).
+ * render it under their own test ids. Its icon is a game controller, on or
+ * off — pressed says which — so it is never taken for the engine's own play /
+ * pause beside it (`BoardEngineControls`). Its words are Play's (`analysis.play.*`).
  */
 function PlayToggleButton({ testId, engineOn, playing, thinking, onToggle, disabled = false }: PlayToggleButtonProps) {
   const { t } = useTranslation();
@@ -40,7 +41,7 @@ function PlayToggleButton({ testId, engineOn, playing, thinking, onToggle, disab
           sx={{ position: "absolute", pointerEvents: "none" }}
         />
       )}
-      {playing ? <PauseRoundedIcon fontSize="small" /> : <PlayArrowRoundedIcon fontSize="small" />}
+      <SportsEsportsRoundedIcon fontSize="small" />
     </IconAction>
   );
 }

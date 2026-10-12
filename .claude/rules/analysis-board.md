@@ -48,7 +48,7 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | Path | What lives there |
 | --- | --- |
 | `src/views/tools/analysis/AnalysisBoard.tsx` | **The screen**: the arrivals (`arrivalOf`), the slots, the header, the URL write-back. `AnalysisBoardRoute` waits for the stores a URL names. |
-| `src/views/tools/analysis/useAnalysisSession.ts` | **The shareable session**: core + engine + `usePlayToggle` + a **baseline** (the tree as it arrived or was last kept), `changed`, `extensionIds`. The Library's game board and the Openings explorer compose it too. |
+| `src/views/board/core/useAnalysisSession.ts` | **The shareable session**: core + engine + `usePlayToggle` + a **baseline** (the tree as it arrived or was last kept), `changed`, `extensionIds`. The Library's game board and the Openings explorer compose it too. |
 | `src/views/tools/analysis/useAnalysisBoard.ts` | That session plus **the saved record**: Save / Update / Save as copy / Discard, the Load tab's new boards, the arrival precedence. |
 | `src/views/tools/analysis/AnalysisLoad.tsx` | The Load tab: a PGN by file or paste (one game; several open the popup) or a FEN, over `useAnalysisLoad`. `onCollectionSaved`, `onAnalysesSaved` (CTA-141), `choiceLabelKey` and `onLoadPosition` optional — the Openings explorer passes no `onCollectionSaved`, so its choice stays inline and merge-only. |
 | `src/views/tools/analysis/MultiGameDialog.tsx` | **The popup a PGN of several games opens** (CTA-101): Merge games, Save as games collection (index pass with progress and Cancel, `addCollection` at the Library's top level, then `/library/<id>`), or Save to Saved analyses (CTA-141: a folder's name, then a new top-level folder with an analysis per game — `analysisGamesOfText`, `batchAnalysesOf` — then `/tools/analysis/saved?folder=<id>`). The Board's Load tab and the Lobby's form both render it. |
@@ -58,13 +58,13 @@ explorer's hand-off). The board core, the engine protocol and testing are
 | `src/blocks/panels/BoardEngineControls/`, `src/views/main/EngineMenu.tsx`, `src/lib/engineSearchSettings.ts` | **The engine, since CTA-181** — the header's play / pause and its menu (the eval bar, *Write evaluations into the game*: `BoardEngineControls`), and the search settings every board uses, from the top bar's Engine menu (depth — the slider 1–50, typed up to 99 (CTA-185) — move time on lichess's marks (1, 5, 10, 30, 60, 300, 600 s and ∞ — CTA-185), typed up to 24 hours, lines, **threads, hash** up to what the engine running takes: the `EngineSearchSettingsForm` block) — one global set ([`docs/engine.md`](../../docs/engine.md) §5.2). The Engine tab (`AnalysisEngineForm`) went with it. |
 | `src/views/shared/EngineOptionsChangedPrompt.tsx`, `src/blocks/dialogs/EngineOptionsChangedDialog/` | **"Engine options changed"** (CTA-181, §2): a saved analysis opened whose settings differ from the ones in effect — asked once, Dismiss or Use these settings. |
 | `src/views/tools/analysis/NewJob.tsx`, `gameJob.ts`, `computerAnalysisSeed.ts` | **New Job** (CTA-177, §1.3): the screen side of `NewJobDialog`, shared by the board's header and the saved list — the game's job found (`jobOfGame`), the choice first when there is one, Start (`enqueueComputerAnalysis`), the snackbar to `/jobs?job=<id>` (`jobPath`); the board's first options from the global search settings (`computerAnalysisSeed`, CTA-181). |
-| `src/views/tools/analysis/AnalysisEvalReport.tsx` | **The report and eval graph on the Evaluations tab** (CTA-183 — CTA-174's, at the top of Moves by CTA-177, §1.3) of a tree carrying `[%eval]`s. |
+| `src/views/shared/AnalysisEvalReport.tsx` | **The report and eval graph on the Evaluations tab** (CTA-183 — CTA-174's, at the top of Moves by CTA-177, §1.3) of a tree carrying `[%eval]`s. Moved out of this module by CTA-186 (Analysis V2's Case view shows it on its Graph tab), its `testId` optional — `analysis-computer` here. |
 | `src/blocks/dialogs/NewJobDialog/`, `src/blocks/forms/ComputerAnalysisForm/` | The dialog (CTA-177): the choice when the game has a job, then the form with Start and Cancel in its actions row. The form (CTA-174): threads, hash, lines (by what the engine declared, `engineOptionState`), depth, time per move, the early stop's depth; side, first move and colour, last move; under a collapsed Advanced the thresholds and the variation range; the light / medium / full boxes; why Start is off (`computerAnalysisStartNote`). The report and graph are the Jobs screen's blocks, `ComputerAnalysisReport` (with `onStep`) and `EvalGraph` ([`jobs.md`](./jobs.md)). |
 | `src/views/tools/analysis/AnalysisArrows.tsx`, `src/blocks/forms/ArrowSettingsFields/` | The Arrows tab (CTA-98, §1.1): the next-move arrows switch, the width source and the palette — and the move marks switch (CTA-168). The fields block is shared with the settings screen. |
 | `src/views/tools/analysis/SaveAnalysisDialog.tsx` | A new board's name and folder. |
 | `src/blocks/panels/PlayToggleButton/`, `EngineThinking/` | Play's header button and status line, shared with every board that has Play. |
-| `src/views/tools/analysis/useTreeNavigation.ts` | The core's navigation (node id as state, the keys). |
-| `src/views/tools/analysis/nextMoveArrows.ts`, `src/views/shared/NextMovesBar.tsx` | The next-move arrows and bar every board draws through ([`tree-views.md`](./tree-views.md)). |
+| `src/views/board/core/useTreeNavigation.ts` | The core's navigation (node id as state, the keys). |
+| `src/views/shared/nextMoveArrows.ts`, `src/views/shared/NextMovesBar.tsx` | The next-move arrows and bar every board draws through ([`tree-views.md`](./tree-views.md)). |
 | `src/views/tools/analysis/saved/SavedAnalyses.tsx` | `/tools/analysis/saved`: the games table (the list view, CTA-144) and preview cards, the folders, the picks and bulk delete. |
 | `src/views/tools/analysis/saved/NewAnalysisForm.tsx` | The saved list's right-hand panel (CTA-87/96): the shared position editor over a **Start** that opens the Analysis Board on the edited position; the form's header carries the editor's resets (New, Clear, Flip), its `controls` row the FEN field and the `.pgn` pick, and under the editor the paste box — `useAnalysisLoad` placed by hand, a whole game handed to the board as `analysisHandOff` location state, a position PGN or FEN setting the editor up ([`position-editor.md`](./position-editor.md) §4). |
 | `src/views/tools/analysis/saved/AnalysisSettingsScreen.tsx` | `/tools/analysis/saved/<id>/settings`. |
@@ -307,7 +307,7 @@ evaluations are read on the Evaluations tab (CTA-183).
   they appear — whenever the tree carries them: an output of
   a computer analysis, a lichess export, the evaluations the board wrote
   (CTA-167): `evalSeriesOf` / `reportFromTree` over the tree as it stands, so
-  an edit shows at once (`AnalysisEvalReport.tsx`, decided with the reader).
+  an edit shows at once (`views/shared/AnalysisEvalReport.tsx`, decided with the reader).
   The graph (`EvalGraph`) marks the move on the board and moves it
   (`core.goToNode`) on a click or Enter — the start position's point to the
   start; the report (`ComputerAnalysisReport`, players from the tags — the
@@ -384,7 +384,9 @@ address) is the plain board.
   the board did not write itself — the board reads its arrival once — so another
   analysis is a new board, the browser's Back between two works, and a save's
   own URL write (`onPointUrl`) is not taken for an arrival.
-- **Where it lives**: the shell's **board left panel**
+- **Where it lives** (Analysis V2's Case board registers the same slot with
+  `keepShell`, CTA-186 — the panel in the main menu's place alone, the header
+  and footer kept; this workspace keeps today's whole window): the shell's **board left panel**
   (`views/main/boardLeftPanel.tsx` — `BoardLeftPanel`, `BoardLeftPanelOutlet`,
   `useBoardLeftPanelWidth`), a slot like the right-hand one — **not** the main
   menu's `LeftPanel` slot, which stays unused. While a panel is registered the

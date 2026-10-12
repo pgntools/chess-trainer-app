@@ -22,6 +22,12 @@ type BoardLeftPanelRequest = {
     /** The drawer's accessible name. */
     drawerLabel: string;
     onDrawerClose: () => void;
+    /**
+     * Wide: keep the shell's header and footer, the panel taking the main
+     * menu's place alone (CTA-186, Analysis V2's Case board — its top bar's
+     * Engine menu stays in reach). Absent, the screen has the whole window.
+     */
+    keepShell?: boolean;
 };
 
 /**
@@ -93,6 +99,13 @@ export const useBoardLeftPanelSlot = (who: string): BoardLeftPanelSlot => {
 };
 
 const noSlot = () => () => {};
+
+/** Whether the registered panel keeps the shell's header and footer — `false` while none is registered. */
+export const useBoardLeftPanelKeepsShell = (): boolean => {
+    const slot = useContext(BoardLeftPanelSlotContext);
+    const keeps = () => slot !== null && slot.getOccupants() > 0 && slot.getRequest()?.keepShell === true;
+    return useSyncExternalStore(slot?.subscribe ?? noSlot, keeps, keeps);
+};
 
 /**
  * The column's width now, in pixels — `0` while no screen has a panel

@@ -55,7 +55,7 @@ if (!globalThis.ResizeObserver) {
   cache hits.
 */
 const recordStores = async () => {
-  const [played, analyses, analysisFolders, analysisDb, repertoires, repertoireFolders, repertoireDb, libraryFolders, jobs, jobRunner, presets] =
+  const [played, analyses, analysisFolders, analysisDb, repertoires, repertoireFolders, repertoireDb, libraryFolders, jobs, jobRunner, presets, projectFolders, projects, cases, projectsDb] =
     await Promise.all([
       import("../lib/playedGameStore"),
       import("../lib/savedAnalysisStore"),
@@ -68,6 +68,11 @@ const recordStores = async () => {
       import("../lib/jobStore"),
       import("../lib/jobRunner"),
       import("../lib/enginePresetStore"),
+      // Analysis V2 (CTA-186): its folders, Projects and Cases.
+      import("../lib/analysisProjectFolderStore"),
+      import("../lib/analysisProjectStore"),
+      import("../lib/analysisCaseStore"),
+      import("../lib/analysisProjectsDb"),
     ]);
   // The search settings in effect (CTA-185) read the presets — imported lazily, as the stores are.
   const { resetEngineSearchSettings } = await import("../lib/engineSearchInEffect");
@@ -84,6 +89,9 @@ const recordStores = async () => {
       jobs.settledJobs,
       presets.settledEnginePresets,
       presets.settledEnginePresetSelections,
+      projectFolders.settledProjectFolders,
+      projects.settledAnalysisProjects,
+      cases.settledAnalysisCases,
     ],
     reset: [
       analyses.resetSavedAnalysisStore,
@@ -95,10 +103,13 @@ const recordStores = async () => {
       jobs.resetJobStore,
       presets.resetEnginePresetStore,
       presets.resetEnginePresetSelectionStore,
+      projectFolders.resetProjectFolderStore,
+      projects.resetAnalysisProjectStore,
+      cases.resetAnalysisCaseStore,
       // A depth or move time still landing goes with the presets.
       resetEngineSearchSettings,
     ],
-    remove: [analysisDb.deleteAnalysisDb, played.deleteEngineDb, repertoireDb.deleteRepertoireDb, jobs.deleteJobsDb, presets.deleteEnginePresetsDb],
+    remove: [analysisDb.deleteAnalysisDb, played.deleteEngineDb, repertoireDb.deleteRepertoireDb, jobs.deleteJobsDb, presets.deleteEnginePresetsDb, projectsDb.deleteAnalysisProjectsDb],
   };
 };
 
@@ -122,11 +133,12 @@ afterEach(async () => {
   // databases themselves, go as `localStorage` does. (The Library's
   // database is deleted by the tests that use it — `resetLibraryCollectionStore`;
   // its folder store is forgotten here with the others.) First
-  // the writes a screen left in flight land, twice over — a folder's delete
-  // queues its records' unfiling behind it — so none reaches the next test.
+  // the writes a screen left in flight land, three times over — a folder's
+  // delete queues its records' unfiling behind it, and Analysis V2's deep
+  // delete its Projects' and their Cases' — so none reaches the next test.
   const stores = await recordStores();
   for (const stop of stores.stop) stop();
-  for (let round = 0; round < 2; round += 1) {
+  for (let round = 0; round < 3; round += 1) {
     await Promise.all(stores.settled.map((settled) => settled()));
   }
   for (const reset of stores.reset) reset();

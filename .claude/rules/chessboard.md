@@ -205,7 +205,7 @@ whose explorer edits the tree, which switches them off
 right-clicks into the move's comment as `[%cal]` / `[%csl]`, every shape then
 drawn from the comment (CTA-143, [`tree-views.md`](./tree-views.md) §2). Every board's next-move
 arrows come from one helper, `nextMoveArrowsOf`
-(`views/tools/analysis/nextMoveArrows.ts`).
+(`views/shared/nextMoveArrows.ts`).
 
 ### 3.5 Promotion
 
@@ -693,7 +693,7 @@ useAutosave({ enabled: boolean, record: T | undefined, save: (record: T) => void
 Write-on-change and nothing else. `record` is `undefined` while there is
 nothing worth writing; **the store's own idempotency** keeps a mount or a
 settings clamp from re-ordering a list. The record is built by the screen.
-Play with Engine and Masked Pieces use it; the Analysis Board, the Library and
+Play with Engine, Masked Pieces and Analysis V2's Case board (CTA-186) use it; the Analysis Board, the Library and
 the repertoires save **explicitly**, and the Openings explorer keeps nothing.
 
 #### 9.2.4 Where a board writes
@@ -829,6 +829,7 @@ the detail.
 | **Masked Pieces** `/engine/masked` | `usePlayGame` (the same `PlayScreen`) | as Play with Engine | — | as Play with Engine, the costume on the record | + Masking | as Play with Engine, plus `mask` |
 | **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off; engine off at start) | — | explicit: Update / Save as copy (shipped: copy to Saved analyses) | Moves · Map · Info · Export | as the Analysis Board |
 | **Openings explorer** `/openings` | `useAnalysisSession` | Play (off; engine off at start) | `useOpeningBookModule` | nothing is kept; hands the tree to the Analysis Board | Book · Moves · Map · Load · Export | explorer, as the Analysis Board without `addedIds` |
+| **Analysis V2 Case** `/analysis/projects/<id>/cases/<caseId>` (dev-only, CTA-186) | `useAnalysisSession` | Play (off; engine off at start) | — | **`useAutosave`** → the Case (`saveCaseState`: tree, SAN path, orientation, display) | Moves · Map · Settings · Export (the engine's on / off a header switch, its eval bar and Write evaluations the Settings tab — no `BoardEngineControls`; how it draws, Display, on its left panel's Case view) | explorer, editing on, *Play chances…* off ([`analysis-v2.md`](./analysis-v2.md)) |
 | **Repertoire player** `/repertoires/<id>` (+ `/games/<game>`) | the core + `useTrainerModule` | none — the trainer is the opponent | — | explicit: Update / Save as copy (a game never writes) | Moves · (Score) · Map · Settings | the full explorer; editing and comments in the player only |
 
 **No analysis board has an Engine tab** (CTA-181): the search settings are the
@@ -885,7 +886,7 @@ a second panel, or a locale block repeating `moveList.*` / `variations.*` /
 - **Repeat the layout arithmetic** of §5 outside `EngineBoardSquare.tsx`.
 - **Mirror under RTL.** A panel token that must stay LTR takes the `dir`
   attribute, not a CSS declaration (the RTL stylis plugin flips it).
-- **Share an `options.id`** — `analysis`, `play-with-engine`, `masked-play`,
+- **Share an `options.id`** — `analysis`, `analysis-case`, `play-with-engine`, `masked-play`,
   `openings`, `library-game`, `repertoire-board`, `repertoire-game`, and the
   front page's `front-page-game-…` / `front-page-repertoire-…` (CTA-126).
 - **Change a shared piece incompatibly.** Under `views/shared/`,

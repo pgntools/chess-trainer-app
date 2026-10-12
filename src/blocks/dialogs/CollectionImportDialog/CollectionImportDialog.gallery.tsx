@@ -7,7 +7,10 @@ import { ONE_EVENT, ONE_FILE, PASTE, ZIP } from "./fixtures";
 
 const noop = () => {};
 
-const framed = (source: CollectionImportSource, extra: { intoName?: string; problem?: string } = {}) => (
+const framed = (
+  source: CollectionImportSource,
+  extra: { intoName?: string; problem?: string; choiceOnly?: { title: string; confirmLabel: string } } = {},
+) => (
   <DialogFrame height={620}>
     {(dialogProps) => (
       <CollectionImportDialog source={source} onCancel={noop} onImport={noop} testId="gallery-import" dialogProps={dialogProps} {...extra} />
@@ -23,6 +26,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "A zip of two files, one with Hebrew names (switch to RTL)", render: () => framed(ZIP) },
     { name: "A paste with nothing to filter on", render: () => framed(PASTE) },
     { name: "Add games to a collection", render: () => framed(ONE_FILE, { intoName: "Club games" }) },
+    {
+      name: "A plain choice of games — Analysis V2's new Project (CTA-186): no split, no mark",
+      render: () => framed(ONE_FILE, { choiceOnly: { title: "Choose the games for the project", confirmLabel: "Create project" } }),
+    },
     { name: "The last try failed", render: () => framed(ONE_FILE, { problem: "The browser refused to store the games — its storage may be full." }) },
     // Split by event (CTA-127): the zip's first file carries two events, so
     // its switch can be tried on in the preview; the one-event file's reads

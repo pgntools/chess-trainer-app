@@ -13,7 +13,7 @@ import {
   REQUIRED_MOVE_ARROW_COLOR,
   SIDELINE_NEXT_MOVE_ARROW_COLOR,
   UNTAGGED_NEXT_MOVE_ARROW_COLOR,
-} from "../tools/analysis/nextMoveArrows";
+} from "../shared/nextMoveArrows";
 import type { TreeViewParts } from "./treeView";
 import { useVariationsExplorer, type VariationsExplorerOptions } from "./useVariationsExplorer";
 

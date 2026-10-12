@@ -2,7 +2,8 @@ import Box from "@mui/material/Box";
 import { useTranslation } from "react-i18next";
 
 import { InlineAlert } from "../../../design-system/components/feedback";
-import { EXPORT_CATEGORIES, type ExportCategory } from "../../../lib/dataExport";
+import type { ExportCategory } from "../../../lib/dataExport";
+import { OFFERED_EXPORT_CATEGORIES } from "../../../lib/exportCategories";
 import type { ImportResult, ImportResults } from "../../../lib/dataImportTarget";
 
 export type ImportReportProps = {
@@ -48,7 +49,7 @@ const resultText = (t: Translate, category: ExportCategory, result: ImportResult
  */
 function ImportReport({ results, testId }: ImportReportProps) {
   const { t } = useTranslation();
-  const reported = EXPORT_CATEGORIES.filter((category) => results[category] !== undefined);
+  const reported = OFFERED_EXPORT_CATEGORIES.filter((category) => results[category] !== undefined);
   const allDone = reported.every((category) => results[category]?.status === "done");
   return (
     <InlineAlert severity={allDone ? "success" : "warning"} testId={`${testId}-done`}>
