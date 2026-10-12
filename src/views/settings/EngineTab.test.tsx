@@ -9,7 +9,9 @@ import { ENGINE_SERVER_STORAGE_KEY, connectEngineServer, storeEngineServerUrl } 
 import { DEFAULT_ENGINE_ID } from "../../lib/engines";
 import { DEFAULT_PRESET_ID, selectedPresetOf } from "../../lib/enginePresets";
 import { readEngineSearchSettings } from "../../lib/engineSearchInEffect";
+import { ENGINE_SEARCH_SETTINGS_STORAGE_KEY } from "../../lib/engineSearchSettings";
 import {
+  createEnginePreset,
   loadEnginePresetSelections,
   loadEnginePresets,
   resetEnginePresetSelectionStore,
@@ -402,6 +404,15 @@ const reloaded = async () => {
   return { presets: await loadEnginePresets(), selections: await loadEnginePresetSelections() };
 };
 
+/** The unsaved changes' strip (CTA-185): its region, named by the preset changed. */
+const changesStrip = (preset = "Default") => screen.getByRole("region", { name: `Unsaved changes to ${preset}` });
+
+/** Save the changes into the preset, and wait for the strip to go. */
+const saveChanges = async (preset = "Default") => {
+  await userEvent.click(within(changesStrip(preset)).getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(screen.queryByRole("region", { name: `Unsaved changes to ${preset}` })).toBeNull());
+};
+
 describe("Settings → Engine — the engine's options, in presets (CTA-179)", () => {
   it("shows every option the chosen browser build declares in the panel, in three tabs — the boards' own read-only", async () => {
     renderEngine();
@@ -429,24 +440,60 @@ describe("Settings → Engine — the engine's options, in presets (CTA-179)", (
     expect(optionRow("EvalFile")).toHaveTextContent("Not available in the browser");
   });
 
-  it("keeps a change in the engine's preset, Default stored at its first edit", async () => {
+  it("keeps a change unsaved until Save — then in the engine's preset, Default stored at its first save (CTA-185)", async () => {
     renderEngine();
+    expect(screen.queryByRole("region", { name: "Unsaved changes to Default" })).toBeNull();
     await userEvent.click(await screen.findByRole("tab", { name: "Advanced" }));
     await userEvent.click(screen.getByRole("switch", { name: "UCI_ShowWDL" }));
     await waitFor(() => expect(screen.getByRole("switch", { name: "UCI_ShowWDL" })).toBeChecked());
-    // Typed through the store, each keystroke written and read back while the next one is typed.
+    // Typed into the draft, each keystroke read back while the next one is typed.
     const overhead = screen.getByRole("spinbutton", { name: "Move Overhead" });
     await userEvent.clear(overhead);
     await userEvent.type(overhead, "2500");
     expect(overhead).toHaveValue(2500);
+    // In effect, not written: a reload would find nothing.
+    expect(changesStrip()).toHaveTextContent("Every board uses them now.");
+    expect((await reloaded()).presets).toEqual([]);
 
-    await waitFor(async () => {
-      const { presets, selections } = await reloaded();
-      expect(selectedPresetOf(presets, selections, DEFAULT_ENGINE_ID)).toMatchObject({
-        id: DEFAULT_PRESET_ID,
-        values: { UCI_ShowWDL: true, "Move Overhead": 2500 },
-      });
+    await saveChanges();
+    const { presets, selections } = await reloaded();
+    expect(selectedPresetOf(presets, selections, DEFAULT_ENGINE_ID)).toMatchObject({
+      id: DEFAULT_PRESET_ID,
+      values: { UCI_ShowWDL: true, "Move Overhead": 2500 },
     });
+  });
+
+  it("saves the changes as a new preset — the engine runs it, the preset edited stays as it was (CTA-185)", async () => {
+    renderEngine();
+    await userEvent.click(await screen.findByRole("tab", { name: "Advanced" }));
+    await userEvent.click(screen.getByRole("switch", { name: "UCI_ShowWDL" }));
+    await userEvent.click(within(changesStrip()).getByRole("button", { name: "Save as new preset" }));
+    const dialog = screen.getByRole("dialog", { name: "Save as new preset" });
+    const name = within(dialog).getByRole("textbox", { name: "Name" });
+    await userEvent.clear(name);
+    await userEvent.type(name, "with WDL{Enter}");
+    await waitFor(() => expect(screen.getByRole("combobox", { name: `Preset for ${SINGLE}` })).toHaveTextContent("with WDL"));
+    expect(screen.queryByRole("region", { name: /^Unsaved changes/ })).toBeNull();
+
+    const { presets, selections } = await reloaded();
+    expect(selectedPresetOf(presets, selections, DEFAULT_ENGINE_ID)).toMatchObject({ name: "with WDL", values: { UCI_ShowWDL: true } });
+    expect(presets.find((preset) => preset.id === DEFAULT_PRESET_ID)).toBeUndefined();
+  });
+
+  it("drops the changes, silently, when another preset is chosen (CTA-185)", async () => {
+    const made = await createEnginePreset("blitz");
+    if (!("id" in made)) throw new Error("the preset was not made");
+    renderEngine();
+    await userEvent.click(await screen.findByRole("tab", { name: "Advanced" }));
+    await userEvent.click(screen.getByRole("switch", { name: "UCI_ShowWDL" }));
+    expect(changesStrip()).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("combobox", { name: `Preset for ${SINGLE}` }));
+    await userEvent.click(screen.getByRole("option", { name: "blitz" }));
+    await waitFor(() => expect(screen.queryByRole("region", { name: /^Unsaved changes/ })).toBeNull());
+    await userEvent.click(screen.getByRole("combobox", { name: `Preset for ${SINGLE}` }));
+    await userEvent.click(screen.getByRole("option", { name: "Default" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Advanced" }));
+    expect(screen.getByRole("switch", { name: "UCI_ShowWDL" })).not.toBeChecked();
   });
 
   it("edits Threads and Hash — the global request every board sends, not the preset's (CTA-185)", async () => {
@@ -455,7 +502,11 @@ describe("Settings → Engine — the engine's options, in presets (CTA-179)", (
     const hash = await within(aside()).findByRole("spinbutton", { name: "Hash (MB), typed" });
     await user.clear(hash);
     await user.type(hash, "96");
+    // In effect at once, held with the draft until Save (CTA-185).
     expect(readEngineSearchSettings().hashMb).toBe(96);
+    expect(localStorage.getItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY)).toBeNull();
+    await saveChanges();
+    expect(JSON.parse(localStorage.getItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY) ?? "{}")).toMatchObject({ hashMb: 96 });
     const { presets } = await reloaded();
     expect(presets.some((preset) => "Hash" in preset.values)).toBe(false);
   });
@@ -472,11 +523,11 @@ describe("Settings → Engine — the engine's options, in presets (CTA-179)", (
     within(limits).getByRole("slider", { name: "Move time" }).focus();
     await user.keyboard("{ArrowLeft}");
     expect(within(limits).getByRole("spinbutton", { name: "Move time in seconds, typed" })).toHaveValue(600);
+    expect(readEngineSearchSettings()).toMatchObject({ depth: 28, moveTimeMs: 600000 });
 
-    await waitFor(async () => {
-      const { presets, selections } = await reloaded();
-      expect(selectedPresetOf(presets, selections, DEFAULT_ENGINE_ID).search).toEqual({ depth: 28, moveTimeMs: 600000 });
-    });
+    await saveChanges();
+    const { presets, selections } = await reloaded();
+    expect(selectedPresetOf(presets, selections, DEFAULT_ENGINE_ID).search).toEqual({ depth: 28, moveTimeMs: 600000 });
   });
 
   it("creates a preset for the chosen engine alone — another engine keeps Default", async () => {
@@ -510,12 +561,11 @@ describe("Settings → Engine — the engine's options, in presets (CTA-179)", (
     await userEvent.click(within(section).getByRole("switch", { name: "Syzygy tablebases" }));
     const path = await within(section).findByRole("textbox", { name: "SyzygyPath" });
     await userEvent.type(path, "/tb");
-    await waitFor(async () => {
-      const { presets, selections } = await reloaded();
-      expect(selectedPresetOf(presets, selections, "hosted:stockfish-19")).toMatchObject({
-        values: { SyzygyPath: "/tb" },
-        groups: { syzygy: true },
-      });
+    await saveChanges();
+    const { presets, selections } = await reloaded();
+    expect(selectedPresetOf(presets, selections, "hosted:stockfish-19")).toMatchObject({
+      values: { SyzygyPath: "/tb" },
+      groups: { syzygy: true },
     });
   });
 

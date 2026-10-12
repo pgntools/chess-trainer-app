@@ -22,6 +22,7 @@ import {
   type PresetRowNote,
 } from "../../../lib/enginePresets";
 import type { UciOptionValue } from "../../../lib/engineTypes";
+import { EnginePresetChanges } from "../../panels/EnginePresetChanges";
 import { EngineResourceSlider } from "../EngineResourceSlider";
 import { SearchLimitsFields } from "../SearchLimitsFields";
 
@@ -83,13 +84,19 @@ export type EnginePresetFormProps = {
     onChange: (patch: { threads?: number; hashMb?: number }) => void;
   };
   /**
+   * **The selected preset's unsaved changes** (CTA-185) — given while its
+   * draft differs from what is saved: a strip under the picker with Save and
+   * Save as new preset (`EnginePresetChanges`). Absent, nothing to save.
+   */
+  changes?: { onSave: () => void; onSaveAs: (name: string) => void };
+  /**
    * The prefix of its ids: the picker `<testId>-preset`, its actions
    * `-new`, `-rename`, `-duplicate`, `-delete`; the list `<testId>-options`,
    * each option `<testId>-option-<slug>` (its control `-input`, its note
    * `-note`, its reset `-reset`), a group `<testId>-group-<id>` (its switch
    * `-switch`, its options `-options`); the search limits `<testId>-search`
    * (`-search-depth`, `-search-movetime`, `-search-threads`, `-search-hash`); the name dialog `<testId>-name`, the delete
-   * confirmation `<testId>-confirm-delete`.
+   * confirmation `<testId>-confirm-delete`; the unsaved changes' strip `<testId>-changes`.
    */
   testId: string;
 };
@@ -273,6 +280,7 @@ function EnginePresetForm({
   onGroupChange,
   search,
   resources,
+  changes,
   testId,
 }: EnginePresetFormProps) {
   const { t } = useTranslation();
@@ -490,6 +498,9 @@ function EnginePresetForm({
           </IconAction>
         </Box>
       </Box>
+      {changes !== undefined && (
+        <EnginePresetChanges presetName={selected.name} onSave={changes.onSave} onSaveAs={changes.onSaveAs} testId={`${testId}-changes`} />
+      )}
       <Typography variant="body2" color="text.secondary">
         {t("enginePresets.intro", { engine: engineName })}
       </Typography>

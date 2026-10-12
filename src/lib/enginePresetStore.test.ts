@@ -13,6 +13,7 @@ import {
   renameEnginePreset,
   resetEnginePresetSelectionStore,
   resetEnginePresetStore,
+  saveEnginePresetEdit,
   selectEnginePreset,
   setEnginePresetGroup,
   setEnginePresetValue,
@@ -96,6 +97,18 @@ describe("the engine preset store (CTA-179)", () => {
     await setEnginePresetGroup(DEFAULT_PRESET_ID, "syzygy", true);
     const { presets } = await reload();
     expect(presets).toEqual([expect.objectContaining({ id: DEFAULT_PRESET_ID, groups: { syzygy: true } })]);
+  });
+
+  it("saves an edit's values, groups and search limits in one write — Default stored at its first (CTA-185)", async () => {
+    const edit = { values: { Contempt: 20, SyzygyPath: "/tb" }, groups: { syzygy: true, other: false }, search: { depth: 30 } };
+    expect(await saveEnginePresetEdit(DEFAULT_PRESET_ID, edit)).toBeUndefined();
+    const { presets } = await reload();
+    expect(presets).toHaveLength(1);
+    // The groups that are off are not kept.
+    expect(presets?.[0]).toMatchObject({ id: DEFAULT_PRESET_ID, values: edit.values, groups: { syzygy: true }, search: { depth: 30 } });
+    const before = enginePresetsSnapshot();
+    expect(await saveEnginePresetEdit(DEFAULT_PRESET_ID, edit)).toBeUndefined();
+    expect(enginePresetsSnapshot()).toBe(before);
   });
 
   it("selects per engine — one engine's choice leaves another's as it was", async () => {

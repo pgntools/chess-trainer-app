@@ -77,6 +77,9 @@ describe("translation catalogs", () => {
       "engineOptionsTable.none",
       // A preset's option's range, "min–max" (CTA-179): the two values and a dash.
       "enginePresets.range",
+      // The Hash slider's sizes (CTA-185): a number and its unit, "4GB", "512MB" — the units written the same in Hebrew.
+      "engineMenu.hashGb",
+      "engineMenu.hashMb",
     ]);
 
     const untranslated = leafKeys(en).filter(

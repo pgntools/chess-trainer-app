@@ -23,17 +23,25 @@ import {
   enginePresetsSnapshot,
   renameEnginePreset,
   selectEnginePreset,
-  setEnginePresetGroup,
-  setEnginePresetSearch,
-  setEnginePresetValue,
   subscribeEnginePresetSelections,
   subscribeEnginePresets,
   type EnginePresetProblem,
 } from "../../lib/enginePresetStore";
-import { searchSettingLimitsOf, searchSettingTypedLimitsOf } from "../../lib/engineSearchSettings";
+import {
+  draftEnginePresetGroup,
+  draftEnginePresetSearch,
+  draftEnginePresetValue,
+  draftEngineResources,
+  enginePresetDraftOf,
+  presetInEffectOf,
+  readEnginePresetDraft,
+  saveEnginePresetDraft,
+  saveEnginePresetDraftAsNew,
+  subscribeEnginePresetDraft,
+} from "../../lib/enginePresetDraft";
+import { readSearchPreferences, searchSettingLimitsOf, searchSettingTypedLimitsOf } from "../../lib/engineSearchSettings";
 import type { UciOptionValue } from "../../lib/engineTypes";
 import { useEngineModule } from "../board/core/useEngineModule";
-import { useEngineChoice } from "../shared/useEngineChoice";
 import { useEngineSearchSettings } from "../shared/useEngineSearchSettings";
 
 /** No board options: the form's engine only says what it declares, and never searches. */
@@ -48,8 +56,10 @@ const NO_OPTIONS: Readonly<Record<string, UciOptionValue>> = {};
  * server's engine from the server's list, a page's own build from its `uci`
  * handshake — built here by the engine module as the Lobby's form builds it
  * (switched off: it never searches), so the form is data-driven and never a
- * hardcoded roster. Every change is a store write, and every board running
- * the engine takes it from its next search (`useEngineModule`). Above the
+ * hardcoded roster. **Nothing is written as it changes** (CTA-185): every
+ * change edits the preset's draft (`lib/enginePresetDraft.ts`), which every
+ * board running the engine takes from its next search (`useEngineModule`),
+ * and the strip it brings writes it — Save, or Save as new preset. Above the
  * options, **where the preset's searches stop** — its depth and move time
  * (CTA-185), the same two the top bar's Engine menu sets; and under them
  * Threads and Hash as sliders — the global request, not the preset's.
@@ -71,17 +81,21 @@ function EnginePresetsSection({ engineId }: { engineId: string }) {
     uciOptions: NO_OPTIONS,
   });
   const [problem, setProblem] = useState<string | undefined>(undefined);
-  const { engineId: chosenId } = useEngineChoice();
-  const inEffect = useEngineSearchSettings();
+  // Read for their re-render: the draft, and the Threads and Hash in effect (the menu edits them too).
+  const draft = useSyncExternalStore(subscribeEnginePresetDraft, readEnginePresetDraft, readEnginePresetDraft);
+  useEngineSearchSettings();
 
   const inBrowser = descriptor.server === undefined;
   const declared = engineOptions.size > 0 ? [...engineOptions.values()] : descriptor.options;
   const library = withDefaultPreset(presets ?? []);
   const selected = selectedPresetOf(presets ?? [], selections ?? [], descriptor.id);
+  // What the form shows: the preset with its unsaved draft over it.
+  const shown = presetInEffectOf(presets ?? [], selections ?? [], descriptor.id);
+  const ownDraft = draft === undefined ? undefined : enginePresetDraftOf(descriptor.id);
   const rows =
     presets === undefined || selections === undefined || declared === undefined
       ? undefined
-      : enginePresetRows(selected.values, declared, { inBrowser });
+      : enginePresetRows(shown.values, declared, { inBrowser });
 
   /** Default under its name in the reader's language, until the reader renames it. */
   const labelOf = (preset: EnginePreset): string =>
@@ -96,27 +110,20 @@ function EnginePresetsSection({ engineId }: { engineId: string }) {
           ? t("settings.engine.presets.full", { max: MAX_ENGINE_PRESETS })
           : t("settings.engine.presets.failed"),
     );
-  /**
-   * Where the selected preset's searches stop (CTA-185). For the engine the
-   * reader chose — the one this tab shows — through the settings in effect,
-   * as the top bar's menu writes them (shown at once, before the store has
-   * committed); for another engine, straight into its preset.
-   */
-  const search =
-    descriptor.id === chosenId
-      ? { depth: inEffect.settings.depth, moveTimeMs: inEffect.settings.moveTimeMs, onChange: inEffect.setSettings }
-      : {
-          ...presetSearchOf(selected),
-          onChange: (patch: { depth?: number; moveTimeMs?: number }) => void setEnginePresetSearch(selected.id, patch).then(answer),
-        };
+  /** Where the selected preset's searches stop (CTA-185) — the draft's, as the top bar's menu edits them too. */
+  const search = {
+    ...presetSearchOf(shown),
+    onChange: (patch: { depth?: number; moveTimeMs?: number }) => draftEnginePresetSearch(descriptor.id, patch),
+  };
 
-  /** Threads and Hash (CTA-185): the one global request, edited here as in the top bar's menu — slider to the device, box to the engine. */
+  /** Threads and Hash (CTA-185): the one global request, held with the draft — slider to the device, box to the engine. */
+  const preferences = readSearchPreferences();
   const resources = {
-    threads: inEffect.settings.threads,
-    hashMb: inEffect.settings.hashMb,
+    threads: ownDraft?.resources.threads ?? preferences.threads,
+    hashMb: ownDraft?.resources.hashMb ?? preferences.hashMb,
     sliderLimits: searchSettingLimitsOf(descriptor),
     typedLimits: searchSettingTypedLimitsOf(descriptor),
-    onChange: inEffect.setSettings,
+    onChange: (patch: { threads?: number; hashMb?: number }) => draftEngineResources(descriptor.id, patch),
   };
 
   /** A new preset — the engine runs it at once. */
@@ -147,11 +154,19 @@ function EnginePresetsSection({ engineId }: { engineId: string }) {
         onDuplicate={(presetId, name) => void created(duplicateEnginePreset(presetId, name))}
         onDelete={(presetId) => void deleteEnginePreset(presetId).then(answer)}
         rows={rows}
-        onChange={(name, value) => void setEnginePresetValue(selected.id, name, value).then(answer)}
-        groups={selected.groups}
-        onGroupChange={(group, on) => void setEnginePresetGroup(selected.id, group, on).then(answer)}
+        onChange={(name, value) => draftEnginePresetValue(descriptor.id, name, value)}
+        groups={shown.groups}
+        onGroupChange={(group, on) => draftEnginePresetGroup(descriptor.id, group, on)}
         search={search}
         resources={resources}
+        changes={
+          ownDraft === undefined
+            ? undefined
+            : {
+                onSave: () => void saveEnginePresetDraft().then(answer),
+                onSaveAs: (name) => void saveEnginePresetDraftAsNew(name).then(answer),
+              }
+        }
         testId="engine-presets"
       />
     </SettingsSection>

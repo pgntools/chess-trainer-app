@@ -205,20 +205,45 @@ describe("the top bar's Engine menu (CTA-181)", () => {
       expect(readEngineSearchSettings()).toMatchObject({ depth: 34, moveTimeMs: 300000 });
     });
 
-    it("writes a depth set in the menu into the preset — never into the preference", async () => {
+    it("holds a depth set in the menu as the preset's unsaved change — Save writes it into the preset, never the preference", async () => {
       await Promise.all([loadEnginePresets(), loadEnginePresetSelections()]);
       const user = userEvent.setup();
       mount();
       const dialog = await openMenu(user);
+      expect(within(dialog).queryByRole("region", { name: "Unsaved changes to Default" })).toBeNull();
       within(dialog).getByRole("slider", { name: "Search depth" }).focus();
       await user.keyboard("{ArrowLeft}");
       expect(readEngineSearchSettings().depth).toBe(19);
       await settledEnginePresets();
+      expect(enginePresetsSnapshot()).toEqual([]);
+      const strip = within(dialog).getByRole("region", { name: "Unsaved changes to Default" });
+      await user.click(within(strip).getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(within(dialog).queryByRole("region", { name: "Unsaved changes to Default" })).toBeNull());
       expect(selectedPresetOf(enginePresetsSnapshot() ?? [], enginePresetSelectionsSnapshot() ?? [], DEFAULT_ENGINE_ID).search).toEqual({
         depth: 19,
         moveTimeMs: 0,
       });
       expect(localStorage.getItem("chessapp.engineSettings")).toBeNull();
+    });
+
+    it("saves the menu's changes as a new preset — the engine runs it (CTA-185)", async () => {
+      await Promise.all([loadEnginePresets(), loadEnginePresetSelections()]);
+      const user = userEvent.setup();
+      mount();
+      const dialog = await openMenu(user);
+      within(dialog).getByRole("slider", { name: "Search depth" }).focus();
+      await user.keyboard("{ArrowRight}");
+      await user.click(within(dialog).getByRole("button", { name: "Save as new preset" }));
+      const naming = screen.getByRole("dialog", { name: "Save as new preset" });
+      const name = within(naming).getByRole("textbox", { name: "Name" });
+      await user.clear(name);
+      await user.type(name, "deeper{Enter}");
+      await waitFor(() => expect(within(dialog).getByRole("combobox", { name: "Preset" })).toHaveTextContent("deeper"));
+      expect(selectedPresetOf(enginePresetsSnapshot() ?? [], enginePresetSelectionsSnapshot() ?? [], DEFAULT_ENGINE_ID)).toMatchObject({
+        name: "deeper",
+        search: { depth: 21, moveTimeMs: 0 },
+      });
+      expect(readEngineSearchSettings().depth).toBe(21);
     });
   });
 

@@ -15,6 +15,7 @@ const mount = (
     groups?: Record<string, boolean>;
     search?: { depth: number; moveTimeMs: number };
     resources?: boolean;
+    changed?: boolean;
   } = {},
 ) => {
   // `rows: undefined` is the reading state, not "the default rows".
@@ -30,6 +31,8 @@ const mount = (
     onGroupChange: vi.fn(),
     onSearchChange: vi.fn(),
     onResourcesChange: vi.fn(),
+    onSave: vi.fn(),
+    onSaveAs: vi.fn(),
   };
   render(
     <EnginePresetForm
@@ -45,6 +48,7 @@ const mount = (
           ? { threads: 1, hashMb: 64, sliderLimits: { threads: 1, hashMb: 512 }, typedLimits: { threads: 1, hashMb: 1024 }, onChange: props.onResourcesChange }
           : undefined
       }
+      changes={options.changed === true ? { onSave: props.onSave, onSaveAs: props.onSaveAs } : undefined}
       {...props}
     />,
   );
@@ -307,6 +311,24 @@ describe("EnginePresetForm", () => {
     expect(screen.getByRole("spinbutton", { name: "Move Overhead" })).toHaveAttribute("dir", "ltr");
     await userEvent.click(screen.getByRole("tab", { name: "מערכת" }));
     expect(optionItem("EvalFile")).toHaveTextContent("לא זמינה בדפדפן");
+  });
+
+  it("shows the selected preset's unsaved changes under the picker — Save and Save as new preset (CTA-185)", async () => {
+    const user = userEvent.setup();
+    const { onSave, onSaveAs } = mount({ selectedId: "deep", changed: true });
+    const strip = screen.getByRole("region", { name: "Unsaved changes to deep-analysis" });
+    await user.click(within(strip).getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    await user.click(within(strip).getByRole("button", { name: "Save as new preset" }));
+    const dialog = screen.getByRole("dialog", { name: "Save as new preset" });
+    expect(within(dialog).getByRole("textbox", { name: "Name" })).toHaveValue("deep-analysis (copy)");
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    expect(onSaveAs).toHaveBeenCalledWith("deep-analysis (copy)");
+  });
+
+  it("shows no changes strip while nothing is changed", () => {
+    mount();
+    expect(screen.queryByRole("region", { name: /^Unsaved changes/ })).toBeNull();
   });
 
   it("passes axe — on Basic, and on Advanced with the tablebases on", async () => {

@@ -2609,6 +2609,16 @@ const en = {
       /** Under Threads and Hash (CTA-185): the global request, not the preset's. */
       resourcesHelp: "Threads and Hash are for every board and every preset — the top bar's Engine menu sets them too.",
     },
+    /** The unsaved changes' strip (CTA-185, `EnginePresetChanges`): nothing is written until Save or Save as new preset. */
+    changes: {
+      title: "Unsaved changes to {{preset}}",
+      help: "Every board uses them now. A reload, or choosing another preset or engine, drops them.",
+      save: "Save",
+      saveHelp: "Keep these changes in {{preset}}",
+      saveAs: "Save as new preset",
+      saveAsHelp: "Keep {{preset}} as it was, and save these changes as a new preset",
+      saveAsTitle: "Save as new preset",
+    },
     actions: "Preset actions",
     new: "New preset",
     rename: "Rename {{name}}",

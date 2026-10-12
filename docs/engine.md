@@ -242,9 +242,13 @@ Analysis Board's own — depth 20, three lines, no time limit, one thread,
 / `storeEngineSearchSettings` / `subscribeEngineSearchSettings` (the
 preference, the presets, the selections and the engine choice) — read through
 `useEngineSearchSettings` (`useSyncExternalStore`), so every mounted board and
-the top bar follow a change, from the next search. A depth or move time written
-**shows at once**: kept there until the preset store has committed
-(`setEnginePresetSearch`). A route that opens a record and compares its
+the top bar follow a change, from the next search. **A change of the depth,
+the move time, Threads or Hash is not written** (CTA-185): it edits the
+preset's unsaved draft (`lib/enginePresetDraft.ts`, §9), read here over what
+is saved and in effect at once, until Save or Save as new preset writes it —
+the preset's two into the preset, Threads and Hash into the preference — or a
+reload, or a switch of preset or engine, drops it. The lines are written at
+once. A route that opens a record and compares its
 settings ("Engine options changed", below) waits for the presets first
 (`engineSearchSettingsRead` / `loadEngineSearchSettings` — `AnalysisBoardRoute`,
 `PlayedGameRead`).
@@ -260,7 +264,9 @@ settings ("Engine options changed", below) waits for the presets first
   `selectEnginePreset` as Settings → Engine's presets section does — and a
   "Settings" link to Settings → Engine. **The depth and move time sit under the
   preset**, theirs (`SearchLimitsFields`, the block Settings → Engine's preset
-  form shows too); a change in the menu goes into that preset.
+  form shows too); a change in the menu edits that preset's unsaved draft,
+  and the `EnginePresetChanges` strip under the preset select saves it (Save,
+  Save as new preset — CTA-185).
   Threads and Hash are offered up to what the engine running takes
   (`searchSettingLimitsOf`: one thread for a single-thread build, the device's
   for a multi-thread one, an engine server's declaration) — a stored value
@@ -461,8 +467,8 @@ options* (`guides/understanding-stockfish-uci-options.mdx`).
   number held to `ENGINE_SETTING_BOUNDS` (`presetSearchFrom`). Every board
   searches to the running engine's selected preset's (§5.2). Edited in the top
   bar's Engine menu and above the options in Settings → Engine's form (a
-  "Search limits" section, `SearchLimitsFields`), stored with
-  `setEnginePresetSearch`; a duplicate copies them; the export carries them in
+  "Search limits" section, `SearchLimitsFields`), into the preset's unsaved
+  draft and stored on Save (`saveEnginePresetEdit`, below); a duplicate copies them; the export carries them in
   `engine-presets.json` (an optional field: no format bump).
 - **Data-driven, never a roster.** The form lists what the chosen engine
   declares — a page's build from its own `uci` reply (the form builds it,
@@ -511,16 +517,27 @@ options* (`guides/understanding-stockfish-uci-options.mdx`).
   their Elo wins (`playOwnedOptionsOf`: `UCI_Elo`, and `Skill Level` only on
   an engine without one — editable with a note); `UCI_LimitStrength` carries
   the note that it turns Play's Elo on (`play-strength`).
+- **Edited as a draft, saved by hand** (CTA-185, `lib/enginePresetDraft.ts`).
+  Settings → Engine's form and the top bar's Engine menu write nothing as it
+  changes: one in-memory draft of the chosen engine's selected preset holds
+  the options, groups and search limits changed (and the global Threads and
+  Hash), in effect at once (`presetInEffectOf`, `presetValuesInEffect`).
+  **Save** writes it into the preset in one write (`saveEnginePresetEdit`) and
+  Threads and Hash into the preference; **Save as new preset** creates one
+  with it and selects it for the engine, leaving the preset edited as it was
+  saved. A reload, or another preset or engine chosen, drops it, silently; an
+  edit back to what is saved leaves no draft.
 - **Where it is applied.** `useEngineModule` reads the running engine's
-  selected preset and, once the handshake lands (`whenOptionsReady`), sends
+  selected preset — its unsaved draft over it — and, once the handshake lands (`whenOptionsReady`), sends
   what `resolveEnginePreset` gives beside the board's options — every board,
   with no line of its own. A value the preset stops setting goes back to the
   engine's declared default. A change applies from the next search: the search
   effect keys on it, and the handle's discipline (§6) holds it until the
   engine is idle. `UciEngine` holds what the `uciok` callbacks ask for until
   they are all in, so the first search already runs under the preset. The
-  **job runner** sends the job's engine's preset after its handshake, its own
-  Threads, Hash and lines winning.
+  **job runner** sends the job's engine's **saved** preset (a job outlives a
+  reload, the draft does not) after its handshake, its own Threads, Hash and
+  lines winning.
 - **Values are typed end to end** (`UciOptionValue`: a number, a boolean,
   words): `useEngineModule`'s `uciOptions`, `EngineHandle.setOption`,
   `UciEngine` (a check as `true` / `false`; words refused when a line break
