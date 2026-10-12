@@ -10,6 +10,7 @@ import { Link as RouterLink, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { EngineSearchSettingsForm } from "../../blocks/forms";
+import { saveEnginePresetDraft, saveEnginePresetDraftAsNew } from "../../lib/enginePresetDraft";
 import { selectEnginePreset } from "../../lib/enginePresetStore";
 import { searchSettingLimitsOf, searchSettingTypedLimitsOf } from "../../lib/engineSearchSettings";
 import { describeEngines, resolveEngine } from "../../lib/engines";
@@ -38,7 +39,9 @@ const breathe = keyframes`
  * (`useEngineChoice`, over `describeEngines()` — the page's builds and, while
  * it answers, the engine server's), the preset selected for that engine as
  * Settings → Engine's presets section selects it (`selectEnginePreset`) —
- * and a "Settings" link to Settings → Engine at the title row's other end. Until CTA-181 each board had the search
+ * an unsaved change of the preset (its depth, move time, Threads, Hash —
+ * `lib/enginePresetDraft.ts`) bringing the Save / Save as new preset strip
+ * under them (CTA-185) — and a "Settings" link to Settings → Engine at the title row's other end. Until CTA-181 each board had the search
  * settings on its own Engine tab.
  *
  * **The button is the board on screen's engine** (`useBoardEngineState`,
@@ -153,6 +156,11 @@ export function EngineMenu({ compact = false }: { compact?: boolean }) {
             presets={preset.presets}
             presetId={preset.id}
             onPresetChange={(presetId) => void selectEnginePreset(descriptor.id, presetId)}
+            changes={
+              preset.changed
+                ? { onSave: () => void saveEnginePresetDraft(), onSaveAs: (name) => void saveEnginePresetDraftAsNew(name) }
+                : undefined
+            }
             testId="engine-menu"
           />
         </Box>

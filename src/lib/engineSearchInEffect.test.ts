@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { storeEngineId } from "./engineChoice";
 import { selectedPresetOf } from "./enginePresets";
+import { enginePresetDraftOf, saveEnginePresetDraft } from "./enginePresetDraft";
 import {
   createEnginePreset,
   enginePresetSelectionsSnapshot,
@@ -21,7 +22,8 @@ import { DEFAULT_ENGINE_ID } from "./engines";
 
 /*
   The search settings in effect (CTA-185): the lines, Threads and Hash a
-  preference, the depth and move time the chosen engine's selected preset's.
+  preference, the depth and move time the chosen engine's selected preset's —
+  and over both, the preset's unsaved draft.
 */
 
 const MULTI = "stockfish-19-lite-multi";
@@ -41,7 +43,7 @@ describe("the search settings in effect (CTA-185)", () => {
     expect(readEngineSearchSettings()).toBe(readEngineSearchSettings());
   });
 
-  it("write the depth and move time into the chosen engine's preset — at once, before the store has committed", async () => {
+  it("put the depth and move time in the chosen engine's preset's draft — in effect at once, written nowhere until Save", async () => {
     await loadEngineSearchSettings();
     const listener = vi.fn();
     const unsubscribe = subscribeEngineSearchSettings(listener);
@@ -50,30 +52,46 @@ describe("the search settings in effect (CTA-185)", () => {
     expect(readEngineSearchSettings()).toMatchObject({ depth: 30, moveTimeMs: 60000 });
     expect(listener).toHaveBeenCalled();
     await settledEnginePresets();
-    // Default's first change stores it, with its limits; the preference keeps no depth.
-    expect(selected().search).toEqual({ depth: 30, moveTimeMs: 60000 });
-    expect(readEngineSearchSettings()).toMatchObject({ depth: 30, moveTimeMs: 60000 });
+    // Nothing stored: Default is not, the preference keeps no depth.
+    expect(enginePresetsSnapshot()).toEqual([]);
     expect(localStorage.getItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY)).toBeNull();
+    // Save: Default's first save stores it, with its limits.
+    await saveEnginePresetDraft();
+    expect(selected().search).toEqual({ depth: 30, moveTimeMs: 60000 });
+    expect(enginePresetDraftOf(DEFAULT_ENGINE_ID)).toBeUndefined();
+    expect(readEngineSearchSettings()).toMatchObject({ depth: 30, moveTimeMs: 60000 });
     unsubscribe();
   });
 
-  it("keep the lines, Threads and Hash in the preference", async () => {
+  it("hold Threads and Hash with the draft — the global request, written on Save", async () => {
+    await loadEngineSearchSettings();
+    storeEngineSearchSettings({ threads: 4, hashMb: 256 });
+    expect(readEngineSearchSettings()).toMatchObject({ threads: 4, hashMb: 256 });
+    expect(localStorage.getItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY)).toBeNull();
+    await saveEnginePresetDraft();
+    expect(JSON.parse(localStorage.getItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY) ?? "{}")).toEqual({ multiPv: 3, threads: 4, hashMb: 256 });
+    // The preset keeps no Threads or Hash.
+    expect(selected().values).toEqual({});
+  });
+
+  it("write the lines into the preference at once — never into the draft", async () => {
     await loadEngineSearchSettings();
     storeEngineSearchSettings({ multiPv: 5, depth: 12 });
     await settledEnginePresets();
     expect(JSON.parse(localStorage.getItem(ENGINE_SEARCH_SETTINGS_STORAGE_KEY) ?? "{}")).toEqual({ multiPv: 5, threads: 1, hashMb: 16 });
     expect(readEngineSearchSettings()).toEqual({ ...DEFAULT_ENGINE_SEARCH_SETTINGS, multiPv: 5, depth: 12 });
+    expect(enginePresetDraftOf(DEFAULT_ENGINE_ID)?.edit.search).toEqual({ depth: 12, moveTimeMs: 0 });
   });
 
-  it("hold a depth and move time to their bounds, and write nothing for a change that changes nothing", async () => {
+  it("hold a depth and move time to their bounds, and keep no draft for a change that changes nothing", async () => {
     await loadEngineSearchSettings();
     storeEngineSearchSettings({ depth: 150, moveTimeMs: 999_999_999 });
-    await settledEnginePresets();
     expect(readEngineSearchSettings()).toMatchObject({ depth: 99, moveTimeMs: 86_400_000 });
-    const before = enginePresetsSnapshot();
-    storeEngineSearchSettings({ depth: 99 });
-    await settledEnginePresets();
-    expect(enginePresetsSnapshot()).toBe(before);
+    // Back to what is saved: no draft at all.
+    storeEngineSearchSettings({ depth: 20, moveTimeMs: 0 });
+    expect(enginePresetDraftOf(DEFAULT_ENGINE_ID)).toBeUndefined();
+    storeEngineSearchSettings({ depth: 20 });
+    expect(enginePresetDraftOf(DEFAULT_ENGINE_ID)).toBeUndefined();
   });
 
   it("follow the preset — choosing another switches the depth and move time", async () => {
@@ -95,11 +113,22 @@ describe("the search settings in effect (CTA-185)", () => {
     expect(readEngineSearchSettings()).toMatchObject({ depth: 20, moveTimeMs: 0 });
     storeEngineId(MULTI);
     expect(readEngineSearchSettings()).toMatchObject({ depth: 10, moveTimeMs: 1000 });
-    // A write goes into the running engine's preset, never the other engine's.
+    // A change edits the running engine's preset, never the other engine's.
     storeEngineSearchSettings({ depth: 14 });
-    await settledEnginePresets();
+    expect(enginePresetDraftOf(MULTI)?.presetId).toBe(made.id);
+    await saveEnginePresetDraft();
     expect(selected(MULTI).search).toEqual({ depth: 14, moveTimeMs: 1000 });
     expect(selected(DEFAULT_ENGINE_ID).search).toEqual({});
+  });
+
+  it("drop the draft when the reader chooses another engine — silently", async () => {
+    vi.stubGlobal("crossOriginIsolated", true);
+    await loadEngineSearchSettings();
+    storeEngineSearchSettings({ depth: 33, threads: 2 });
+    storeEngineId(MULTI);
+    storeEngineId(DEFAULT_ENGINE_ID);
+    expect(enginePresetDraftOf(DEFAULT_ENGINE_ID)).toBeUndefined();
+    expect(readEngineSearchSettings()).toEqual(DEFAULT_ENGINE_SEARCH_SETTINGS);
   });
 
   it("hear the preset changed elsewhere — Settings → Engine", async () => {

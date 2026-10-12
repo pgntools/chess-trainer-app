@@ -61,11 +61,32 @@ describe("EngineResourceSlider — Threads or Hash, a slider and a number box (C
     expect(screen.getByTestId("probe-fixed")).toHaveTextContent("This engine build fixes Threads at 1.");
   });
 
-  it("marks Hash's round sizes within the slider", () => {
+  it("labels Hash's marks in gigabytes, each where its size falls, the box still in MB", () => {
     mount("hashMb", 2048, HOSTED);
-    for (const label of ["128", "1024", "4096"]) {
-      expect(screen.getAllByText(label).some((each) => each.classList.contains("MuiSlider-markLabel"))).toBe(true);
-    }
+    const labels = [...document.querySelectorAll(".MuiSlider-markLabel")].map((label) => label.textContent);
+    expect(labels).toEqual(["1GB", "2GB", "4GB"]);
+    // A linear slider: every power of two from 16 MB a mark, at its own size.
+    expect(document.querySelectorAll(".MuiSlider-mark")).toHaveLength(9);
+    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("aria-valuenow", "2048");
+    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("aria-valuetext", "2048MB");
+    expect(screen.getByRole("spinbutton", { name: "Hash (MB), typed" })).toHaveValue(2048);
+  });
+
+  it("snaps Hash to its marks — the next round size, not the next megabyte", async () => {
+    const user = userEvent.setup();
+    const { onChange } = mount("hashMb", 256, MULTI_THREAD);
+    screen.getByRole("slider", { name: "Hash (MB)" }).focus();
+    await user.keyboard("{ArrowRight}");
+    expect(onChange).toHaveBeenLastCalledWith(512);
+    await user.keyboard("{ArrowLeft}");
+    expect(onChange).toHaveBeenLastCalledWith(128);
+  });
+
+  it("shows a Hash typed between two marks where it falls, and keeps it", () => {
+    const { onChange } = mount("hashMb", 96, MULTI_THREAD);
+    expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("aria-valuenow", "96");
+    expect(screen.getByRole("spinbutton", { name: "Hash (MB), typed" })).toHaveValue(96);
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("passes axe, in English and Hebrew", async () => {

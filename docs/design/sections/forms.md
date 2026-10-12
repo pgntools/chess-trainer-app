@@ -65,8 +65,12 @@ Gallery: `/dev/design/forms`.
 - **Purpose** — a labelled slider: the label at the start, the value at the end
   (`dir="ltr"`), the slider under it, dimmed while off — its notice never
   (CTA-109: a dimmed warning caption fell to 2.5:1), nor its header
-  (CTA-142: the dimmed value fell to 4.0:1), nor its help (CTA-163).
-- **Props** — `label`, `value`, `onChange(number)`, `min`, `max`, `step?`,
+  (CTA-142: the dimmed value fell to 4.0:1), nor its help (CTA-163); the
+  slider inset by its thumb's room at either end, so a thumb at the rail's
+  end is never cut by the box around it (CTA-185).
+- **Props** — `label`, `value`, `onChange(number)`, `min`, `max`, `step?`
+  (`null` snaps the slider to its marks alone — MUI's own; the Hash slider's
+  round sizes, CTA-185),
   `valueLabel?`, `marks?` (labelled marks, positioned by their value; the
   slider still steps by `step` — a caller whose marks are the only legal
   values makes them the step's grid, as the engine form's move-time slider

@@ -15,6 +15,7 @@ const mount = (
     groups?: Record<string, boolean>;
     search?: { depth: number; moveTimeMs: number };
     resources?: boolean;
+    changed?: boolean;
   } = {},
 ) => {
   // `rows: undefined` is the reading state, not "the default rows".
@@ -30,6 +31,8 @@ const mount = (
     onGroupChange: vi.fn(),
     onSearchChange: vi.fn(),
     onResourcesChange: vi.fn(),
+    onSave: vi.fn(),
+    onSaveAs: vi.fn(),
   };
   render(
     <EnginePresetForm
@@ -45,6 +48,7 @@ const mount = (
           ? { threads: 1, hashMb: 64, sliderLimits: { threads: 1, hashMb: 512 }, typedLimits: { threads: 1, hashMb: 1024 }, onChange: props.onResourcesChange }
           : undefined
       }
+      changes={options.changed === true ? { onSave: props.onSave, onSaveAs: props.onSaveAs } : undefined}
       {...props}
     />,
   );
@@ -228,20 +232,35 @@ describe("EnginePresetForm", () => {
   });
 
   describe("Threads and Hash — the global request, editable here (CTA-185)", () => {
-    it("are sliders with a number box in their rows, saying they are every board's", async () => {
+    it("are sliders with a number box in the search limits, under the move time, saying they are every board's", async () => {
       const user = userEvent.setup();
-      const { onResourcesChange } = mount({ resources: true });
-      expect(optionItem("Hash")).toHaveTextContent("For every board and every preset — the top bar's Engine menu sets it too.");
-      expect(screen.getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("aria-valuemax", "512");
-      const hash = screen.getByRole("spinbutton", { name: "Hash (MB), typed" });
+      const { onResourcesChange } = mount({ search: { depth: 20, moveTimeMs: 0 }, resources: true });
+      const section = screen.getByRole("region", { name: "Search limits" });
+      expect(section).toHaveTextContent("Threads and Hash are for every board and every preset — the top bar's Engine menu sets them too.");
+      expect(within(section).getByRole("slider", { name: "Hash (MB)" })).toHaveAttribute("aria-valuemax", "512");
+      const hash = within(section).getByRole("spinbutton", { name: "Hash (MB), typed" });
       expect(hash).toHaveValue(64);
       await user.clear(hash);
       await user.type(hash, "768");
       expect(onResourcesChange).toHaveBeenLastCalledWith({ hashMb: 768 });
-      // A single-thread build: fixed at one, said once.
-      expect(screen.getByRole("slider", { name: "Threads" })).toBeDisabled();
-      expect(optionItem("Threads")).toHaveTextContent("This engine build fixes Threads at 1.");
-      expect(optionItem("Threads")).not.toHaveTextContent("Fixed by this build");
+      // A single-thread build: fixed at one, said.
+      expect(within(section).getByRole("slider", { name: "Threads" })).toBeDisabled();
+      expect(section).toHaveTextContent("This engine build fixes Threads at 1.");
+      // Not in the options list any more.
+      const listed = within(screen.getByTestId("presets-options")).getAllByRole("listitem").map((item) => item.dataset.testid);
+      expect(listed).not.toContain("presets-option-threads");
+      expect(listed).not.toContain("presets-option-hash");
+    });
+
+    it("come after the depth and the move time", () => {
+      mount({ search: { depth: 20, moveTimeMs: 0 }, resources: true });
+      const section = screen.getByRole("region", { name: "Search limits" });
+      const order = ["presets-search-depth", "presets-search-movetime", "presets-search-threads", "presets-search-hash"].map((id) =>
+        within(section).getByTestId(id),
+      );
+      for (let index = 1; index < order.length; index++) {
+        expect(order[index - 1].compareDocumentPosition(order[index]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
     });
 
     it("stay read-only without `resources` — the form as it was", () => {
@@ -292,6 +311,24 @@ describe("EnginePresetForm", () => {
     expect(screen.getByRole("spinbutton", { name: "Move Overhead" })).toHaveAttribute("dir", "ltr");
     await userEvent.click(screen.getByRole("tab", { name: "מערכת" }));
     expect(optionItem("EvalFile")).toHaveTextContent("לא זמינה בדפדפן");
+  });
+
+  it("shows the selected preset's unsaved changes under the picker — Save and Save as new preset (CTA-185)", async () => {
+    const user = userEvent.setup();
+    const { onSave, onSaveAs } = mount({ selectedId: "deep", changed: true });
+    const strip = screen.getByRole("region", { name: "Unsaved changes to deep-analysis" });
+    await user.click(within(strip).getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    await user.click(within(strip).getByRole("button", { name: "Save as new preset" }));
+    const dialog = screen.getByRole("dialog", { name: "Save as new preset" });
+    expect(within(dialog).getByRole("textbox", { name: "Name" })).toHaveValue("deep-analysis (copy)");
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    expect(onSaveAs).toHaveBeenCalledWith("deep-analysis (copy)");
+  });
+
+  it("shows no changes strip while nothing is changed", () => {
+    mount();
+    expect(screen.queryByRole("region", { name: /^Unsaved changes/ })).toBeNull();
   });
 
   it("passes axe — on Basic, and on Advanced with the tablebases on", async () => {

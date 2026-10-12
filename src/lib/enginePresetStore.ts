@@ -152,6 +152,28 @@ export const setEnginePresetSearch = (presetId: string, patch: PresetSearch): Pr
   });
 
 /**
+ * **Save a preset's edit** (CTA-185) — its values, its groups and its search
+ * limits, all three in one write: an unsaved draft kept
+ * (`lib/enginePresetDraft.ts`). The same three are a no-op; Default's first
+ * save stores it.
+ */
+export const saveEnginePresetEdit = (
+  presetId: string,
+  edit: Pick<EnginePreset, "values" | "groups" | "search">,
+): Promise<EnginePresetProblem | undefined> =>
+  presets.write((rows) => {
+    const preset = presetIn(rows, presetId);
+    if (preset === undefined) return rows;
+    const groups = Object.fromEntries(Object.entries(edit.groups).filter(([, on]) => on));
+    const search = presetSearchFrom(edit.search);
+    const sameGroups = sameValues(groups, Object.fromEntries(Object.entries(preset.groups).filter(([, on]) => on)));
+    const sameSearch = search.depth === preset.search.depth && search.moveTimeMs === preset.search.moveTimeMs;
+    if (sameValues(edit.values, preset.values) && sameGroups && sameSearch) return rows;
+    const at = iso();
+    return withPreset(rows, { ...preset, values: { ...edit.values }, groups, search, savedAt: preset.savedAt || at, updatedAt: at });
+  });
+
+/**
  * **A new preset** — named, holding `values`, `groups` and `search` (a
  * duplicate's) or none, at the end of the list. Its id, or `"too-many"` past
  * {@link MAX_ENGINE_PRESETS}.

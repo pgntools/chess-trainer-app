@@ -6,7 +6,8 @@
 #
 # This project is a stateless Vite + React frontend: no database, no
 # containers, nothing external to duplicate per worktree. So the hook only
-# installs dependencies and hands each worktree its own non-colliding dev
+# installs dependencies, copies the gitignored local files a fresh worktree
+# lacks (see step 2), and hands each worktree its own non-colliding dev
 # server port, derived deterministically from the issue key so the port is
 # stable across re-runs and unique per worktree.
 #
@@ -47,7 +48,42 @@ if ! command -v yarn >/dev/null 2>&1; then
 fi
 yarn install --silent
 
-# 2. Record the port. `*.local` is gitignored (root .gitignore), so this file
+# 2. Gitignored local files — a fresh worktree starts clean, and the work
+#    needs two files git never carries over: .env.local (the site operator's
+#    SITE_* values, CTA-182, docs/in-app-pages.md §5 — without them the build
+#    has no legal pages) and server/engine-api/engines.local.json (the local
+#    Stockfish binary paths; engines.example.json is the template — without
+#    them yarn api:start has no engines to serve). Both are copied from the
+#    main checkout — the parent of the common .git directory — and only when
+#    the worktree lacks the file, so a worktree's own values always win.
+#    Both being gitignored, the copies never dirty the worktree. A main
+#    checkout missing a file skips it with a note; run by hand in the main
+#    checkout itself, the worktree *is* the main checkout, so the file is
+#    already there and there is nothing to copy. .env.local is copied before
+#    step 3's port rewrite so the line written afterwards is the worktree's
+#    own, and the existing keep-other-lines logic preserves the copied
+#    SITE_* lines on re-runs.
+MAIN_ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+
+copy_from_main() {
+  local rel="$1" src dst
+  src="$MAIN_ROOT/$rel"
+  dst="$WORKTREE_DIR/$rel"
+  if [ -f "$dst" ]; then
+    echo "bootstrap: $rel already present — kept"
+  elif [ -f "$src" ]; then
+    mkdir -p "$(dirname "$dst")"
+    cp "$src" "$dst"
+    echo "bootstrap: copied $rel from the main checkout"
+  else
+    echo "bootstrap: no $rel in the main checkout — skipped"
+  fi
+}
+
+copy_from_main ".env.local"
+copy_from_main "server/engine-api/engines.local.json"
+
+# 3. Record the port. `*.local` is gitignored (root .gitignore), so this file
 #    never dirties the worktree or reaches a commit. The port line is
 #    rewritten each run so a changed scheme actually takes effect; every other
 #    line is kept — the site operator's SITE_* values live here too (CTA-182,

@@ -55,6 +55,29 @@ describe("SliderField", () => {
     expect(screen.getByText("512")).toHaveClass("MuiSlider-markLabel");
   });
 
+  it("snaps to its marks alone at `step={null}` (CTA-185)", () => {
+    const onChange = vi.fn();
+    render(
+      <SliderField
+        label="Hash (MB)"
+        value={128}
+        onChange={onChange}
+        min={1}
+        max={1024}
+        step={null}
+        marks={[{ value: 128 }, { value: 512 }, { value: 1024 }]}
+        testId="probe"
+      />,
+    );
+    fireEvent.keyDown(screen.getByTestId("probe-input"), { key: "ArrowRight" });
+    expect(onChange).toHaveBeenLastCalledWith(512);
+  });
+
+  it("leaves the thumb room at either end of the rail (CTA-185)", () => {
+    render(<SliderField label="Depth" value={1} onChange={() => {}} min={1} max={24} testId="probe" />);
+    expect(screen.getByTestId("probe-input").closest(".MuiSlider-root")?.parentElement).toHaveStyle({ paddingInline: "8px" });
+  });
+
   it("shows a neutral help caption, dimmed never (CTA-163)", () => {
     render(
       <SliderField label="Hash (MB)" value={16} onChange={() => {}} min={1} max={1024} help="Engine memory (RAM)" notice="Fixed." disabled testId="probe" />,

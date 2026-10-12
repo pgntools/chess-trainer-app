@@ -7,6 +7,7 @@ export * from "./BoardEngineControls";
 // CTA-186: a Case's own view beside its board, the second screen of its left panel.
 export * from "./CaseDetails";
 export * from "./ChangesStrip";
+export * from "./EnginePresetChanges";
 // CTA-173: a computer analysis's report and eval graph, and a background job whole — the Jobs screen's, and the Analysis Board's (CTA-174).
 export * from "./ComputerAnalysisReport";
 export * from "./CurrentOpening";

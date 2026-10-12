@@ -29,7 +29,37 @@ if (-not (Get-Command yarn -ErrorAction SilentlyContinue)) {
 }
 yarn install --silent
 
-# 2. Record the port (`*.local` is gitignored — never committed). The port
+# 2. Gitignored local files — a fresh worktree starts clean, and the work
+#    needs two files git never carries over: .env.local (the site operator's
+#    SITE_* values, CTA-182, docs/in-app-pages.md §5 — without them the build
+#    has no legal pages) and server/engine-api/engines.local.json (the local
+#    Stockfish binary paths; engines.example.json is the template). Both are
+#    copied from the main checkout and only when the worktree lacks the file;
+#    see bootstrap.sh step 2 for the full rationale.
+$GitCommon = (git rev-parse --path-format=absolute --git-common-dir).Trim()
+$MainRoot  = Split-Path -Parent $GitCommon
+
+function Copy-FromMain([string]$Rel) {
+    $Src = Join-Path $MainRoot $Rel
+    $Dst = Join-Path $WorktreeDir $Rel
+    if (Test-Path -LiteralPath $Dst -PathType Leaf) {
+        Write-Host "bootstrap: $Rel already present — kept"
+    } elseif (Test-Path -LiteralPath $Src -PathType Leaf) {
+        $DstDir = Split-Path -Parent $Dst
+        if (-not (Test-Path -LiteralPath $DstDir)) {
+            New-Item -ItemType Directory -Path $DstDir -Force | Out-Null
+        }
+        Copy-Item -LiteralPath $Src -Destination $Dst
+        Write-Host "bootstrap: copied $Rel from the main checkout"
+    } else {
+        Write-Host "bootstrap: no $Rel in the main checkout — skipped"
+    }
+}
+
+Copy-FromMain '.env.local'
+Copy-FromMain 'server/engine-api/engines.local.json'
+
+# 3. Record the port (`*.local` is gitignored — never committed). The port
 #    line is rewritten each run; every other line is kept — the site
 #    operator's SITE_* values live here too (CTA-182, docs/in-app-pages.md §5).
 $EnvFile = Join-Path $WorktreeDir '.env.local'

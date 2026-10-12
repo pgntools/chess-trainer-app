@@ -9,8 +9,8 @@ import {
   BOARD_OWNED_OPTIONS,
   presetResetValue,
   resolveEnginePreset,
-  selectedPresetValues,
 } from "../../../lib/enginePresets";
+import { presetValuesInEffect, readEnginePresetDraft, subscribeEnginePresetDraft } from "../../../lib/enginePresetDraft";
 import {
   enginePresetSelectionsSnapshot,
   enginePresetsSnapshot,
@@ -224,16 +224,17 @@ export const useEngineModule = ({
   const descriptor = resolveEngine(engineId);
 
   /*
-    The engine's preset (CTA-179) — the values its selected preset sets, the
-    same object until that preset or the selection changes, and none until
-    both stores have been read. Read here, where the engine is known, so every
-    board sends it without a line of its own.
+    The engine's preset (CTA-179) — the values its selected preset sets, its
+    unsaved draft over them (CTA-185, `lib/enginePresetDraft.ts`), the same
+    object until that preset, its draft or the selection changes, and none
+    until both stores have been read. Read here, where the engine is known, so
+    every board sends it without a line of its own.
   */
-  const presetValues = selectedPresetValues(
-    useSyncExternalStore(subscribeEnginePresets, enginePresetsSnapshot, enginePresetsSnapshot),
-    useSyncExternalStore(subscribeEnginePresetSelections, enginePresetSelectionsSnapshot, enginePresetSelectionsSnapshot),
-    descriptor.id,
-  );
+  const presets = useSyncExternalStore(subscribeEnginePresets, enginePresetsSnapshot, enginePresetsSnapshot);
+  const selections = useSyncExternalStore(subscribeEnginePresetSelections, enginePresetSelectionsSnapshot, enginePresetSelectionsSnapshot);
+  // Read for its re-render: a draft edited is new values.
+  useSyncExternalStore(subscribeEnginePresetDraft, readEnginePresetDraft, readEnginePresetDraft);
+  const presetValues = presetValuesInEffect(presets, selections, descriptor.id);
   /** The preset's names last sent to which handle — a name dropped since goes back to the engine's default. */
   const presetSentRef = useRef<{ handle: EngineHandle; names: readonly string[] } | null>(null);
 
