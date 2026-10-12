@@ -77,6 +77,8 @@ describe("translation catalogs", () => {
       "engineOptionsTable.none",
       // A preset's option's range, "min–max" (CTA-179): the two values and a dash.
       "enginePresets.range",
+      // A Case's job on its Jobs tab, "date · where its results go" (CTA-188): the two values and a dot.
+      "analysisV2.jobs.caseJob",
     ]);
 
     const untranslated = leafKeys(en).filter(
