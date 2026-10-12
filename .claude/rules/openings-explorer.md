@@ -488,9 +488,15 @@ holds only its output and the test above. Regenerating:
 
 ```
 # in eco-json-lichess-evaluation
-yarn generate --api http://<host>:8000 \
+yarn generate --db-version <date> --api http://<host>:8000 \
   --eco <this repo>/src/data/openings --out <this repo>/src/data/openings/eco-evals.pgn
 ```
+
+`--db-version` is the version of the database the API serves — the date
+database.lichess.org gives its evaluations file ("This file was last updated
+on 2026-10-05"); the tool keeps each version's PGN too
+(`pgn/eco-evals.lichess-<date>.pgn`, tagged `lichess-<date>`), and this file
+is a copy of one of them.
 
 What the file is — so a reader of it here knows without the tool:
 
@@ -510,16 +516,17 @@ What the file is — so a reader of it here knows without the tool:
   Evaluations tab read it. The deepest stored evaluation's first line; a
   position the database lacks stays unevaluated.
 - **The game**: the Seven Tag Roster with neutral values, `Event "eco.json
-  opening tree"`, `Annotator "lichess evaluation database"`; the opening
-  comment holds the start position's `[%eval]`, the sources and the date of
-  the evaluations. Its writer matches `treeToPgn`, so `parsePgnTree` reads it
+  opening tree"`, `Annotator "lichess evaluation database <version>"`; the
+  opening comment holds the start position's `[%eval]`, the sources and the
+  database's version. Its writer matches `treeToPgn`, so `parsePgnTree` reads it
   and `treeToPgn` writes it back byte for byte (the test holds both).
 - **The lookup** is the FEN's first four fields; `chess.js` writes an en
   passant square only when a capture is legal, as lichess does — the
   database treats `d6` and `-` as different positions.
-- **Last generated** 2026-10-11, eco.json of 2026-08: 17,419 moves, 15,714
-  positions, 15,695 evaluated, 19 missing, 5 mates; depth min 15, median 41,
-  max 245.
+- **The version here**: the lichess evaluation database of **2026-10-05**
+  (416,442,401 positions), eco.json `36cfd92` (2026-08-14) — 17,419 moves,
+  15,714 positions, 15,695 evaluated, 19 missing, 5 mates; depth min 15,
+  median 41, max 245.
 
 ### 9.5 "Can we save openings again?"
 
