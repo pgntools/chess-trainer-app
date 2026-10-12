@@ -2490,10 +2490,28 @@ const he: typeof en = {
         unreadable: "אי אפשר לקרוא את ה־PGN הזה.",
       },
     },
+    display: {
+      arrows: "הצגת חצי המסע הבא",
+      arrowsHelp: "כל המשך מהעמדה שעל הלוח, כחץ. כבוי — רק המסע שמצביעים עליו.",
+      moveMarks: "הצגת סימוני המסעים על הלוח",
+      moveMarksHelp: "הסימון של המסע שעל הלוח (!!, !, !?, ?!, ?, ??) כתג על המשבצת שלו.",
+      evalBar: "הצגת פס ההערכה",
+      evalBarHelp: "הציון של המנוע ליד הלוח כשהמנוע פועל.",
+      variations: "הצגת הווריאציות",
+      variationsHelp: "הקווים הטובים של המנוע מעל הלשוניות כשהמנוע פועל.",
+      tabs: {
+        label: "הגדרות תצוגה",
+        arrows: "חצים",
+        engine: "מנוע",
+        accessibility: "נגישות",
+      },
+      accessibilitySoon: "כאן יהיו אפשרויות הנגישות של הלוח.",
+    },
     workspace: {
       tabs: {
         moves: "מסעים",
         map: "מפה",
+        display: "תצוגה",
         export: "ייצוא",
       },
       saving: "שומר…",

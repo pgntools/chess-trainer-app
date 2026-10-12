@@ -98,7 +98,10 @@ category's `settings.export.categories.analysisProjects` /
     begins on in both;
   - **the analysis on it**: `pgn` (the whole tree), `path` (where the reader
     stands, as SAN from the start — `sanPathTo` / `nodeAtSanPath`; node ids do
-    not survive a PGN round trip) and `orientation`;
+    not survive a PGN round trip), `orientation`, and `display` — how its
+    board draws (`CaseDisplay`: the arrows on or off, their width source and
+    palette, the move marks, the eval bar, the engine's lines; a record from
+    before reads the defaults);
   - its **name**, optional: `""` is derived — a Game from its tags (*White –
     Black, Event, year*, the parts the tags name), a Position from its side to
     move and move number ("Black to move, move 41"), in the reader's language
@@ -180,7 +183,13 @@ the Analysis Board is: `useAnalysisSession` (the core, the engine — off at the
 start, the reader's global search settings — and Play), `useVariationsExplorer`
 (the move list, map, comment block, next-move arrows, the PGN's shapes;
 editing on, *Play chances…* off), `BoardShell` and its panel — tabs **Moves ·
-Map · Export** (`PgnExportPanel`), the header the way back to the Project, the
+Map · Display · Export** (`PgnExportPanel`; **Display** is `CaseDisplayTab`:
+the next-move arrows and the move marks on top, then inner tabs — **Arrows**,
+the Analysis Board's width source and palette (`ArrowSettingsFields`),
+**Engine** — the eval bar (the header's engine menu switches the same one)
+and the engine's lines (`BoardPanel`'s `showVariations`) — and
+**Accessibility**, the board's accessibility options, a placeholder for now —
+all kept with the Case as its `display`, autosaved), the header the way back to the Project, the
 name, the opening, the save status, Play and the engine's play / pause with
 its menu (the eval bar, *Write evaluations into the game*). `options.id`
 `analysis-case`.

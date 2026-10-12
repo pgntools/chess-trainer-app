@@ -12,7 +12,15 @@ import { StatusText } from "../../design-system/components/feedback";
 import { MissState } from "../../design-system/components/states";
 import { IconAction } from "../../design-system/components/toolbars";
 import { saveCaseState } from "../../lib/analysisCaseStore";
-import { caseNode, caseTree, sameCaseState, type AnalysisCase, type CaseState } from "../../lib/analysisProjects";
+import {
+  caseNode,
+  caseTree,
+  sameCaseState,
+  type AnalysisCase,
+  type CaseDisplay,
+  type CaseState,
+} from "../../lib/analysisProjects";
+import { arrowWidthSourcesIn } from "../../lib/nextMoveWeights";
 import { emptyTree, sanPathTo } from "../../lib/gameTree";
 import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
@@ -23,6 +31,7 @@ import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import { usePageTitle } from "../main/pageTitle";
 import { playerPlatesOf } from "../shared/playerResults";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
+import CaseDisplayTab from "./CaseDisplayTab";
 import { browserPath, projectPath } from "./paths";
 import { useAnalysisCases, useAnalysisProjects } from "./useAnalysisProjects";
 
@@ -37,14 +46,15 @@ type CaseBoardProps = { record: AnalysisCase; projectName: string };
  * analysis session (`useAnalysisSession`: the core, the engine — off at the
  * start, the reader's global search settings — and Play), the variations
  * explorer (Moves, Map, the comment block, the next-move arrows, editing on),
- * one `BoardShell` and its panel (Moves · Map · Export). Read from its record
+ * one `BoardShell` and its panel (Moves · Map · Display · Export — Display
+ * the arrows and move marks, `CaseDisplayTab`). Read from its record
  * **once**, as it mounts: the tree, the move it was left on and the way it
  * faced — a Game at its start facing White, a Position facing the side to
  * move, where its record put it.
  *
  * **Every change autosaves** (`useAutosave` → `saveCaseState`): the tree
- * (side lines, comments, NAGs, `[%eval]`s), the move on screen and the
- * orientation, written in place as the reader works — a state the record
+ * (side lines, comments, NAGs, `[%eval]`s), the move on screen, the
+ * orientation and how the board draws, written in place as the reader works — a state the record
  * already holds writes nothing — so reopening the Case finds it where it was
  * left. There is no Save button; the header says Saving… / Saved, or that the
  * browser refused.
@@ -63,6 +73,15 @@ export function CaseBoard({ record, projectName }: CaseBoardProps) {
   const { core, engine } = session;
   const currentOpening = useCurrentOpening(core.fen);
   const [tab, setTab] = useState("moves");
+  /*
+    How the board draws (the Display tab) — read from the record once, then
+    the board's, autosaved with the analysis. A width source the tree no
+    longer carries is kept, and drawn as None until it is back.
+  */
+  const [display, setDisplay] = useState<CaseDisplay>(record.display);
+  const changeDisplay = (patch: Partial<CaseDisplay>) => setDisplay((current) => ({ ...current, ...patch }));
+  const availableWidthSources = useMemo(() => arrowWidthSourcesIn(core.tree), [core.tree]);
+  const drawnWidthSource = availableWidthSources.has(display.arrowWidthSource) ? display.arrowWidthSource : "none";
 
   const name = caseDisplayName(record, t);
   usePageTitle(name);
@@ -74,8 +93,8 @@ export function CaseBoard({ record, projectName }: CaseBoardProps) {
     holds, writes nothing.
   */
   const state = useMemo(
-    (): CaseState => ({ pgn: core.pgn, path: sanPathTo(core.tree, core.nodeId), orientation: core.orientation }),
-    [core.pgn, core.tree, core.nodeId, core.orientation],
+    (): CaseState => ({ pgn: core.pgn, path: sanPathTo(core.tree, core.nodeId), orientation: core.orientation, display }),
+    [core.pgn, core.tree, core.nodeId, core.orientation, display],
   );
   const [refused, setRefused] = useState(false);
   const save = useCallback(
@@ -95,8 +114,8 @@ export function CaseBoard({ record, projectName }: CaseBoardProps) {
     onEditTree: core.replaceTree,
     playChances: false,
     annotations: true,
-    moveMarks: true,
-    arrows: { show: true },
+    moveMarks: display.showMoveMarks,
+    arrows: { show: display.showArrows, widthSource: drawnWidthSource, palette: display.arrowPalette },
     map: { linked: true },
   });
   const boardOptions: ChessboardOptions = { ...explorer.boardOptions, arrows: explorer.arrows };
@@ -108,7 +127,7 @@ export function CaseBoard({ record, projectName }: CaseBoardProps) {
       id="analysis-case"
       core={core}
       score={topLine?.score ?? null}
-      showEvalBar={session.engineOn && session.showEvalBar}
+      showEvalBar={session.engineOn && display.showEvalBar}
       playerPlates={playerPlates}
       boardOptions={boardOptions}
       overlay={explorer.overlay}
@@ -152,14 +171,16 @@ export function CaseBoard({ record, projectName }: CaseBoardProps) {
             <BoardEngineControls
               engineOn={session.engineOn}
               onEngineOnChange={session.setEngineOn}
-              showEvalBar={session.showEvalBar}
-              onShowEvalBarChange={session.setShowEvalBar}
+              showEvalBar={display.showEvalBar}
+              onShowEvalBarChange={(showEvalBar) => changeDisplay({ showEvalBar })}
               writeEvals={{ checked: session.settings.writeEvals, onChange: session.setWriteEvals }}
               testId="analysis-case"
             />
           </>
         ),
         analysis: engine.analysis,
+        // The engine's lines, as the Display tab says.
+        showVariations: display.showVariations,
         requestedMultiPv: session.settings.multiPv,
         engineOn: session.engineOn,
         onPlayVariation: core.playVariation,
@@ -169,6 +190,11 @@ export function CaseBoard({ record, projectName }: CaseBoardProps) {
         tabs: [
           { id: "moves", label: t("analysisV2.workspace.tabs.moves"), content: explorer.moves },
           { id: "map", label: t("analysisV2.workspace.tabs.map"), content: explorer.map },
+          {
+            id: "display",
+            label: t("analysisV2.workspace.tabs.display"),
+            content: <CaseDisplayTab display={display} onChange={changeDisplay} available={availableWidthSources} />,
+          },
           {
             id: "export",
             label: t("analysisV2.workspace.tabs.export"),

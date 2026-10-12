@@ -437,6 +437,53 @@ describe("a Case's board (CTA-186)", () => {
     expect(boardOptions().boardOrientation).toBe("black");
   });
 
+  it("draws as its Display tab says — arrows, move marks, eval bar, lines — and keeps it with the Case", async () => {
+    const project = (await createAnalysisProject("Club", null))!;
+    await addAnalysisCases([gameCase(project.id)]);
+    const user = userEvent.setup();
+    const view = mount(`/analysis/projects/${project.id}/cases/cgame`);
+    await screen.findByTestId("board");
+    expect(boardOptions().arrows!.length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole("tab", { name: "Display" }));
+    const display = screen.getByTestId("analysis-case-display");
+    expect(await expectNoAxeViolations(display)).toBeUndefined();
+    // The common options: the next-move arrows off — none drawn — and the move marks off.
+    await user.click(within(display).getByRole("switch", { name: "Show next move arrows" }));
+    expect(boardOptions().arrows).toEqual([]);
+    await user.click(within(display).getByRole("switch", { name: "Show move marks on the board" }));
+
+    // The inner tabs: Arrows (the width source and palette), Engine, Accessibility.
+    const inner = within(display).getByRole("tablist", { name: "Display settings" });
+    expect(within(inner).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Arrows", "Engine", "Accessibility"]);
+    await user.click(within(display).getByRole("radio", { name: "Lichess" }));
+    await user.click(within(inner).getByRole("tab", { name: "Engine" }));
+    await user.click(within(display).getByRole("switch", { name: "Show evaluation bar" }));
+    await user.click(within(display).getByRole("switch", { name: "Show variations" }));
+    await user.click(within(inner).getByRole("tab", { name: "Accessibility" }));
+    expect(screen.getByTestId("analysis-case-display-accessibility")).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(analysisCasesSnapshot()![0].display).toEqual({
+        showArrows: false,
+        arrowWidthSource: "none",
+        arrowPalette: "lichess",
+        showMoveMarks: false,
+        showEvalBar: false,
+        showVariations: false,
+      }),
+    );
+
+    // Reopened, the board draws as it was left.
+    view.unmount();
+    await reload();
+    mount(`/analysis/projects/${project.id}/cases/cgame`);
+    await screen.findByTestId("board");
+    expect(boardOptions().arrows).toEqual([]);
+    await user.click(screen.getByRole("tab", { name: "Display" }));
+    expect(screen.getByRole("switch", { name: "Show next move arrows" })).not.toBeChecked();
+  });
+
   it("opens a Position from a PGN where it starts, its moves before it kept", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     const tree = parsePgnTree(GAME);

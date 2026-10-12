@@ -3087,10 +3087,28 @@ const en = {
         unreadable: "This PGN cannot be read.",
       },
     },
+    display: {
+      arrows: "Show next move arrows",
+      arrowsHelp: "Every continuation from the position on the board, drawn as an arrow. Off, only the move you point at.",
+      moveMarks: "Show move marks on the board",
+      moveMarksHelp: "The mark of the move on the board (!!, !, !?, ?!, ?, ??) as a badge on its square.",
+      evalBar: "Show evaluation bar",
+      evalBarHelp: "The engine's score beside the board while the engine is on.",
+      variations: "Show variations",
+      variationsHelp: "The engine's best lines above the panel's tabs while the engine is on.",
+      tabs: {
+        label: "Display settings",
+        arrows: "Arrows",
+        engine: "Engine",
+        accessibility: "Accessibility",
+      },
+      accessibilitySoon: "The board's accessibility options will be here.",
+    },
     workspace: {
       tabs: {
         moves: "Moves",
         map: "Map",
+        display: "Display",
         export: "Export",
       },
       saving: "Saving…",

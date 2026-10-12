@@ -1,5 +1,13 @@
 import { DEFAULT_POSITION } from "chess.js";
 
+import {
+  arrowPaletteFrom,
+  arrowWidthSourceFrom,
+  DEFAULT_ARROW_PALETTE,
+  DEFAULT_ARROW_WIDTH_SOURCE,
+  type ArrowPaletteId,
+  type ArrowWidthSource,
+} from "./arrowSettings";
 import { gameTag, type GameHeaders } from "./gameModel";
 import {
   emptyTree,
@@ -152,6 +160,55 @@ export type AnalysisCaseSource =
   | { kind: "pgn"; pgn: string; startPath: readonly string[]; fen: string }
   | { kind: "fen"; fen: string };
 
+/**
+ * **How a Case's board draws** (CTA-186, its Display tab): the next-move
+ * arrows on or off, what sizes them and their colours (the Analysis Board's
+ * Arrows settings, `lib/arrowSettings.ts`), the move marks on the board, and
+ * the engine's eval bar and lines. Kept with the Case, autosaved like its
+ * analysis.
+ */
+export type CaseDisplay = {
+  showArrows: boolean;
+  arrowWidthSource: ArrowWidthSource;
+  arrowPalette: ArrowPaletteId;
+  showMoveMarks: boolean;
+  /** The eval bar beside the board while the engine is on — the header's engine menu says the same. */
+  showEvalBar: boolean;
+  /** The engine's lines pinned above the panel's tabs. */
+  showVariations: boolean;
+};
+
+/** A new Case's display — and an older record's, which has none: arrows, marks, eval bar and lines on, sized by nothing, classic colours. */
+export const DEFAULT_CASE_DISPLAY: CaseDisplay = {
+  showArrows: true,
+  arrowWidthSource: DEFAULT_ARROW_WIDTH_SOURCE,
+  arrowPalette: DEFAULT_ARROW_PALETTE,
+  showMoveMarks: true,
+  showEvalBar: true,
+  showVariations: true,
+};
+
+/** A stored display, each field read back leniently — a missing or unknown one its default. */
+const caseDisplayFrom = (value: unknown): CaseDisplay => {
+  const row = isObject(value) ? value : {};
+  return {
+    showArrows: typeof row.showArrows === "boolean" ? row.showArrows : DEFAULT_CASE_DISPLAY.showArrows,
+    arrowWidthSource: arrowWidthSourceFrom(row.arrowWidthSource),
+    arrowPalette: arrowPaletteFrom(row.arrowPalette),
+    showMoveMarks: typeof row.showMoveMarks === "boolean" ? row.showMoveMarks : DEFAULT_CASE_DISPLAY.showMoveMarks,
+    showEvalBar: typeof row.showEvalBar === "boolean" ? row.showEvalBar : DEFAULT_CASE_DISPLAY.showEvalBar,
+    showVariations: typeof row.showVariations === "boolean" ? row.showVariations : DEFAULT_CASE_DISPLAY.showVariations,
+  };
+};
+
+const sameDisplay = (a: CaseDisplay, b: CaseDisplay): boolean =>
+  a.showArrows === b.showArrows &&
+  a.arrowWidthSource === b.arrowWidthSource &&
+  a.arrowPalette === b.arrowPalette &&
+  a.showMoveMarks === b.showMoveMarks &&
+  a.showEvalBar === b.showEvalBar &&
+  a.showVariations === b.showVariations;
+
 export type AnalysisCase = {
   id: string;
   /** The reader's name; `""` is derived ({@link caseDerivedName}). */
@@ -164,6 +221,8 @@ export type AnalysisCase = {
   /** Where the reader stands, as SAN from the start (`sanPathTo` / `nodeAtSanPath`). */
   path: readonly string[];
   orientation: "white" | "black";
+  /** How its board draws — its Display tab. */
+  display: CaseDisplay;
   /** ISO 8601. */
   createdAt: string;
   /** ISO 8601 — any change, the autosave's too. */
@@ -216,6 +275,7 @@ export const analysisCaseFrom = (value: unknown): AnalysisCase | undefined => {
     pgn: value.pgn,
     path: sanList(value.path),
     orientation: value.orientation === "black" ? "black" : "white",
+    display: caseDisplayFrom(value.display),
     createdAt,
     updatedAt: stringOr(value.updatedAt, createdAt),
   };
@@ -307,6 +367,7 @@ const caseOf = (
   pgn: treeToPgn(tree),
   path: [...path],
   orientation,
+  display: { ...DEFAULT_CASE_DISPLAY },
   createdAt: now.toISOString(),
   updatedAt: now.toISOString(),
 });
@@ -332,20 +393,22 @@ export const positionCaseOfGame = (made: NewCase, tree: GameTree, nodeId: string
   return caseOf(made, "position", { kind: "pgn", pgn: treeToPgn(tree), startPath, fen }, tree, startPath, facing(fen));
 };
 
-/** The analysis on a Case as the board holds it now — what the autosave writes. */
-export type CaseState = { pgn: string; path: readonly string[]; orientation: "white" | "black" };
+/** The analysis on a Case as the board holds it now, and how it draws — what the autosave writes. */
+export type CaseState = { pgn: string; path: readonly string[]; orientation: "white" | "black"; display: CaseDisplay };
 
 /** The board's state as a Case keeps it. */
 export const caseStateOf = (
   tree: GameTree,
   nodeId: string | null,
   orientation: "white" | "black",
-): CaseState => ({ pgn: treeToPgn(tree), path: sanPathTo(tree, nodeId), orientation });
+  display: CaseDisplay = DEFAULT_CASE_DISPLAY,
+): CaseState => ({ pgn: treeToPgn(tree), path: sanPathTo(tree, nodeId), orientation, display });
 
 /** Whether a Case already holds this state — the autosave's idempotency. */
 export const sameCaseState = (record: AnalysisCase, state: CaseState): boolean =>
   record.pgn === state.pgn &&
   record.orientation === state.orientation &&
+  sameDisplay(record.display, state.display) &&
   record.path.length === state.path.length &&
   record.path.every((san, index) => san === state.path[index]);
 

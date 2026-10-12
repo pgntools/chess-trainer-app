@@ -10,6 +10,7 @@ import {
   caseTree,
   casesOf,
   copiedCase,
+  DEFAULT_CASE_DISPLAY,
   gameCaseDerivedName,
   gameCaseOf,
   moveNumberOf,
@@ -177,6 +178,40 @@ describe("Analysis V2's records (CTA-186)", () => {
         createdAt: NOW.toISOString(),
         updatedAt: NOW.toISOString(),
       });
+    });
+  });
+
+  describe("how a Case's board draws (its Display tab)", () => {
+    it("starts with every option on, sized by nothing, in classic colours — as an older record reads", () => {
+      const made = positionCaseOfFen({ id: "c1", projectId: "p1", name: "" }, POSITION);
+      expect(made.display).toEqual(DEFAULT_CASE_DISPLAY);
+      expect(DEFAULT_CASE_DISPLAY).toEqual({
+        showArrows: true,
+        arrowWidthSource: "none",
+        arrowPalette: "classic",
+        showMoveMarks: true,
+        showEvalBar: true,
+        showVariations: true,
+      });
+      const older: Record<string, unknown> = { ...made };
+      delete older.display;
+      expect(analysisCaseFrom(older)?.display).toEqual(DEFAULT_CASE_DISPLAY);
+    });
+
+    it("reads each field back, an unknown one as its default", () => {
+      const made = positionCaseOfFen({ id: "c1", projectId: "p1", name: "" }, POSITION);
+      const read = analysisCaseFrom({
+        ...made,
+        display: { showArrows: false, arrowWidthSource: "games", arrowPalette: "nonsense", showEvalBar: "yes", showVariations: false },
+      });
+      expect(read?.display).toEqual({ ...DEFAULT_CASE_DISPLAY, showArrows: false, arrowWidthSource: "games", showVariations: false });
+    });
+
+    it("is part of the autosave's state — a change of it is a change", () => {
+      const tree = parsePgnTree(GAME);
+      const made = gameCaseOf({ id: "c1", projectId: "p1", name: "" }, tree);
+      expect(sameCaseState(made, caseStateOf(tree, null, "white"))).toBe(true);
+      expect(sameCaseState(made, caseStateOf(tree, null, "white", { ...DEFAULT_CASE_DISPLAY, showEvalBar: false }))).toBe(false);
     });
   });
 

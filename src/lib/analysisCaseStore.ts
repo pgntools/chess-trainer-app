@@ -136,7 +136,7 @@ export const removeCasesOfProjects = (projectIds: readonly string[]): Promise<An
 
 /**
  * **The autosave**: the analysis on a Case — its tree, where the reader
- * stands, the orientation — written in place. A state the Case already holds
+ * stands, the orientation — and how its board draws, written in place. A state the Case already holds
  * writes nothing; an unknown Case (deleted meanwhile) is a no-op.
  */
 export const saveCaseState = (
@@ -149,7 +149,14 @@ export const saveCaseState = (
     if (existing === undefined || sameCaseState(existing, state)) return current;
     return current.map((record) =>
       record.id === id
-        ? { ...record, pgn: state.pgn, path: [...state.path], orientation: state.orientation, updatedAt: now.toISOString() }
+        ? {
+            ...record,
+            pgn: state.pgn,
+            path: [...state.path],
+            orientation: state.orientation,
+            display: { ...state.display },
+            updatedAt: now.toISOString(),
+          }
         : record,
     );
   });
