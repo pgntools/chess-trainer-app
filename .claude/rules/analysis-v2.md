@@ -7,7 +7,8 @@ paths:
   - "src/lib/analysisCaseStore*"
   - "src/lib/analysisProjectsDb.ts"
   - "src/lib/exportCategories.ts"
-  - "src/blocks/lists/ProjectsList/**"
+  - "src/blocks/tables/ProjectsTable/**"
+  - "src/lib/analysisProjectRows.ts"
   - "src/blocks/tables/CasesTable/**"
   - "src/lib/analysisCaseRows.ts"
   - "src/blocks/dialogs/NewCaseDialog/**"
@@ -42,7 +43,7 @@ folders (nested) ──▶ Projects ──▶ Cases (game | position) ──▶ 
 | `src/lib/analysisProjectsEnabled.ts` | **The flag**: `ANALYSIS_PROJECTS_ENABLED = import.meta.env.DEV` — the module's Export / Import category in Settings — and **`analysisProjectStores()`**, the one way Settings reaches the three stores: dynamic imports under an *inline* `if (import.meta.env.DEV)`, `undefined` in a production build. Inline, because a dynamic import behind an imported constant is still followed by the bundler and its chunks emitted (orphaned) — one in a branch dead as written is not. Shipping the module is these two conditions (and §6). |
 | `src/lib/exportCategories.ts` | `OFFERED_EXPORT_CATEGORIES` — the Export / Import categories this build offers (Analysis V2's only with the flag); apart from `lib/dataExport.ts`, which Node reads too (the browser pass's seed). |
 | `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings), `paths.ts` (the addresses). |
-| `src/blocks/lists/ProjectsList/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`) | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused. |
+| `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`) | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused. |
 | `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws. The legacy screens import them from here. |
 | Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectStores.test.ts` (the three stores), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the dev-only database). |
 
@@ -118,9 +119,18 @@ category's `settings.export.categories.analysisProjects` /
 
 ### 3.1 The Projects browser — `/analysis` (`?folder=<id>`)
 
-One folder at a time: the trail (`Breadcrumbs`, links), its sub-folders (a
-row into each, how many Projects are under it) and its Projects (a row to
-each, how many Cases, when it changed) — `ProjectsList`. **New folder** and
+The folder on screen (`?folder=`, everything at the top level) as **one tree
+table** (`ProjectsTable`, the legacy saved analyses' — CTA-144): its trail
+(`Breadcrumbs`, links), then its folders first at every level, each **opened
+in place** by its chevron or a click on its row (its name a link into it, how
+many Projects are under it), and its Projects (the name a link to its Cases,
+how many it holds, when it changed). Name, Cases and Updated each sort (`?sort=`
+/ `?dir=`, Name by default; folders by name, or by when they changed under
+Updated); a **words box** (`?q=`) keeps the Projects and folders whose name
+holds every word — everything in a matching folder with it — and opens the
+folders above a match; paged past 25 (`projectTreeRows` over
+`lib/folderTreeRows.ts`). Which folders the reader opened is the screen's
+state. **New folder** and
 **New project** in the header; a new Project opens at once.
 
 **New project** is a popup (`NewProjectDialog`): a name (required — picking a

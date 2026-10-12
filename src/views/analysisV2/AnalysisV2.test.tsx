@@ -108,13 +108,13 @@ describe("the Projects browser (CTA-186)", () => {
 
     await user.click(screen.getByRole("button", { name: "New folder" }));
     await user.type(screen.getByRole("textbox", { name: "Name" }), "Openings{Enter}");
-    const folderRow = await screen.findByTestId(/^analysis-v2-list-folder-g[0-9a-z]+$/);
+    const folderRow = await screen.findByTestId(/^analysis-v2-list-row-folder-g[0-9a-z]+$/);
     expect(folderRow).toHaveTextContent("Openings");
     expect(folderRow).toHaveTextContent("0 projects");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await expectNoAxeViolations(baseElement);
 
-    await user.click(within(folderRow).getByRole("link", { name: /Openings/ }));
+    await user.click(within(folderRow).getByRole("link", { name: "Go into Openings" }));
     expect(await screen.findByRole("navigation", { name: "Folders" })).toHaveTextContent("All projects");
     await user.click(screen.getByRole("button", { name: "New project" }));
     await user.type(screen.getByRole("textbox", { name: "Name" }), "Najdorf{Enter}");
@@ -233,7 +233,7 @@ describe("the Projects browser (CTA-186)", () => {
     await user.click(within(screen.getByRole("list", { name: "Folder" })).getByRole("button", { name: "Endgames" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.queryByRole("link", { name: "Open Sicilian (copy)" })).toBeNull();
-    expect(screen.getByTestId(`analysis-v2-list-folder-${folder.id}`)).toHaveTextContent("1 project");
+    expect(screen.getByTestId(`analysis-v2-list-row-folder-${folder.id}`)).toHaveTextContent("1 project");
 
     await user.click(screen.getByRole("button", { name: "Delete Sicilian" }));
     expect(screen.getByRole("dialog")).toHaveTextContent("Its 2 cases are deleted with it.");
@@ -262,6 +262,40 @@ describe("the Projects browser (CTA-186)", () => {
     await user.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(screen.queryByRole("button", { name: "Delete Again" })).toBeNull());
     expect(analysisProjectsSnapshot()).toHaveLength(1);
+  });
+
+  it("opens a folder in place, and finds a Project by words — the folders above it opened", async () => {
+    const outer = (await createProjectFolder("Openings", null))!;
+    const inner = (await createProjectFolder("Sicilian", outer.id))!;
+    await createAnalysisProject("Najdorf ideas", inner.id);
+    await createAnalysisProject("Club games", null);
+    const user = userEvent.setup();
+    const { baseElement } = mount("/analysis");
+    const table = await screen.findByRole("table", { name: "Folders and projects" });
+    const shown = () =>
+      within(table)
+        .getAllByTestId(/^analysis-v2-list-row-(?!.*-toggle(-icon)?$)/)
+        .map((row) => row.textContent);
+    expect(shown()).toEqual([expect.stringContaining("Openings"), expect.stringContaining("Club games")]);
+    await expectNoAxeViolations(baseElement);
+
+    // A folder's chevron opens it where it stands.
+    await user.click(within(table).getByRole("button", { name: "Open Openings" }));
+    expect(shown()).toHaveLength(3);
+    expect(shown()[1]).toContain("Sicilian");
+    expect(where()).toBe("/analysis");
+
+    // The words: Najdorf, inside two folders — both opened for it, the rest left out.
+    await user.type(screen.getByRole("searchbox", { name: "Filter folders and projects" }), "najdorf");
+    expect(shown()).toEqual([
+      expect.stringContaining("Openings"),
+      expect.stringContaining("Sicilian"),
+      expect.stringContaining("Najdorf ideas"),
+    ]);
+    expect(where()).toBe("/analysis?q=najdorf");
+    await user.clear(screen.getByRole("searchbox", { name: "Filter folders and projects" }));
+    await user.type(screen.getByRole("searchbox", { name: "Filter folders and projects" }), "zzz");
+    expect(screen.getByTestId("analysis-v2-list-no-match")).toHaveTextContent("No folder or project matches the filter.");
   });
 
   it("will not move a folder into its own subtree", async () => {

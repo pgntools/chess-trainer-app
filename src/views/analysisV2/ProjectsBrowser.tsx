@@ -8,10 +8,11 @@ import { Link as RouterLink, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { CollectionImportDialog, FolderMoveDialog, FolderNameDialog, NewProjectDialog } from "../../blocks/dialogs";
-import { ProjectsList, type ProjectAction, type ProjectFolderAction } from "../../blocks/lists";
+import { ProjectsTable, type ProjectAction, type ProjectFolderAction } from "../../blocks/tables";
 import { ConfirmDialog } from "../../design-system/components/dialogs";
 import { InlineAlert } from "../../design-system/components/feedback";
-import { RadioGroupField } from "../../design-system/components/forms";
+import { RadioGroupField, SearchField } from "../../design-system/components/forms";
+import { TABLE_PAGE_SIZES, useTableUrlState } from "../../design-system/components/tables";
 import { Breadcrumbs } from "../../design-system/components/navigation";
 import { MissState } from "../../design-system/components/states";
 import { ListScreenHeader } from "../../design-system/components/toolbars";
@@ -30,13 +31,12 @@ import {
   removeAnalysisProject,
   renameAnalysisProject,
 } from "../../lib/analysisProjectStore";
+import { PROJECT_COLUMNS, projectFirstDirection, projectRowOf, projectTreeRows } from "../../lib/analysisProjectRows";
 import {
   caseCountsOf,
   gameCaseOf,
-  projectFolderChildren,
   projectFolderPath,
   projectFolderSubtree,
-  projectsHere,
   projectsUnder,
   type AnalysisProject,
   type ProjectFolder,
@@ -69,7 +69,9 @@ type Dialog =
  * **Analysis V2's Projects browser** (`/analysis`, CTA-186) — the reader's
  * nested folders of Projects, one folder at a time (`?folder=<id>`, the top
  * level without): its trail, its sub-folders and its Projects
- * (`ProjectsList`), and New folder / New project in the header. A folder is
+ * as one tree table (`ProjectsTable`, the legacy saved analyses' — folders
+ * first, opened in place, each header a sort, a words box that opens the
+ * folders above a match, paged), and New folder / New project in the header. A folder is
  * renamed, moved (never into its own subtree) and deleted — keeping what it
  * holds one level up, or with everything in it, as the reader chooses; a
  * Project renamed, moved, duplicated with its Cases, and deleted with them
@@ -101,6 +103,49 @@ function ProjectsBrowser() {
   usePageTitle(currentFolder ? currentFolder.name || t("analysisV2.folder.untitled") : undefined);
 
   const caseCounts = useMemo(() => caseCountsOf(cases ?? []), [cases]);
+
+  /*
+    The tree table (the legacy saved analyses' — CTA-144): what is under the
+    folder on screen (everything, at the top level), its folders opened in
+    place — each as the reader left it, else as the words open it — sorted by
+    the URL's column, narrowed by its words (`?q=`), and paged.
+  */
+  const text = searchParams.get("q") ?? "";
+  const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(() => new Map());
+  const table = useTableUrlState({
+    columns: PROJECT_COLUMNS,
+    defaultSort: "name",
+    firstDirection: projectFirstDirection,
+  });
+  const walked = useMemo(() => {
+    if (folders === undefined || projects === undefined) return [];
+    // Seen from inside a folder, its contents are the tree's top level.
+    const inside = folderId === null ? undefined : projectFolderSubtree(folders, folderId);
+    const scopedFolders =
+      inside === undefined
+        ? folders
+        : folders
+            .filter((folder) => inside.has(folder.id) && folder.id !== folderId)
+            .map((folder) => (folder.parentId === folderId ? { ...folder, parentId: null } : folder));
+    const rows = projects
+      .filter((project) => inside === undefined || (project.folderId !== null && inside.has(project.folderId)))
+      .map((project) => {
+        const row = projectRowOf(project, caseCounts.get(project.id) ?? 0);
+        return row.folderId === folderId ? { ...row, folderId: null } : row;
+      });
+    return projectTreeRows({
+      folders: scopedFolders,
+      rows,
+      isOpen: (id, auto) => toggled.get(id) ?? auto,
+      column: table.sort,
+      direction: table.direction,
+      text,
+    }).rows;
+  }, [folders, projects, folderId, caseCounts, toggled, table.sort, table.direction, text]);
+  const toggleFolder = (id: string) => {
+    const shown = walked.find((row) => row.kind === "folder" && row.folder.id === id);
+    setToggled((before) => new Map(before).set(id, !(shown?.kind === "folder" && shown.open)));
+  };
 
   if (folders === undefined || projects === undefined || cases === undefined) {
     return (
@@ -271,20 +316,34 @@ function ProjectsBrowser() {
             {problem}
           </InlineAlert>
         )}
-        <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-          <ProjectsList
-            folders={projectFolderChildren(folders, here).map((folder) => ({
-              folder,
-              projects: projectsUnder(projects, folders, folder.id).length,
-            }))}
-            projects={projectsHere(projects, folders, here).map((project) => ({
-              project,
-              cases: caseCounts.get(project.id) ?? 0,
-            }))}
-            folderLink={(id) => ({ component: RouterLink, to: browserPath(id) })}
-            projectLink={(id) => ({ component: RouterLink, to: projectPath(id) })}
+        <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          <ProjectsTable
+            rows={walked}
+            sort={{ column: table.sort, direction: table.direction }}
+            onSort={table.sortBy}
+            onToggle={toggleFolder}
+            folderLink={(folder) => ({ component: RouterLink, to: browserPath(folder.id) })}
+            projectLink={(row) => ({ component: RouterLink, to: projectPath(row.id) })}
             onFolderAction={onFolderAction}
             onProjectAction={onProjectAction}
+            paging={
+              walked.length > TABLE_PAGE_SIZES[0]
+                ? { page: table.page, rowsPerPage: table.rowsPerPage, onPageChange: table.setPage, onRowsPerPageChange: table.setRowsPerPage }
+                : undefined
+            }
+            filters={
+              folders.length > 0 || projects.length > 0 ? (
+                <SearchField
+                  label={t("analysisV2.browser.filter")}
+                  value={text}
+                  onChange={(value) => table.setParams({ q: value === "" ? null : value })}
+                  clearLabel={t("analysisV2.browser.filterClear")}
+                  testId="analysis-v2-filter"
+                />
+              ) : undefined
+            }
+            filtered={text.trim() !== ""}
+            onClearFilter={() => table.setParams({ q: null })}
             testId="analysis-v2-list"
           />
         </Box>
