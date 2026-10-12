@@ -9,12 +9,12 @@ import { FormDialog, type ExtraDialogProps } from "../../../design-system/compon
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { FieldLabel, FileInputButton, TextInputField } from "../../../design-system/components/forms";
 import { IconAction } from "../../../design-system/components/toolbars";
-import { PGN_ACCEPT } from "../../forms/PgnInput";
+import { PGN_OR_ZIP_ACCEPT } from "../../forms/PgnInput";
 
 export type NewProjectDialogProps = {
   open: boolean;
   onClose: () => void;
-  /** Create — the name, and the `.pgn` file picked, if any: its games become the Project's Cases. */
+  /** Create — the name, and the `.pgn` (or a zip of them) picked, if any: its games become the Project's Cases. */
   onCreate: (name: string, file: File | undefined) => void;
   /** The file is being read, or the Project written: the buttons off. */
   busy?: boolean;
@@ -30,12 +30,12 @@ export type NewProjectDialogProps = {
   dialogProps?: ExtraDialogProps;
 };
 
-/** A file's name without its `.pgn` — what a Project is named when the reader typed none. */
-const stemOf = (file: File): string => file.name.replace(/\.pgn$/i, "");
+/** A file's name without its `.pgn` or `.zip` — what a Project is named when the reader typed none. */
+const stemOf = (file: File): string => file.name.replace(/\.(pgn|zip)$/i, "");
 
 /**
- * **A new Project** (CTA-186) — its name, and **optionally a `.pgn` file**
- * whose games come in as its Cases: one game, one Game Case; several, a
+ * **A new Project** (CTA-186) — its name, and **optionally a `.pgn` file, or a
+ * zip of them,** whose games come in as its Cases: one game, one Game Case; several, a
  * choice of which (the screen opens the Library's import popup on them,
  * filters and all), each a Case. Picking a file with no name typed names the
  * Project after the file. Presentational: reading the file and writing are
@@ -89,7 +89,7 @@ function NewProjectDialog({ open, onClose, onCreate, busy = false, problem = nul
             <Box>
               <FileInputButton
                 label={t("analysisV2.newProject.pick")}
-                accept={PGN_ACCEPT}
+                accept={PGN_OR_ZIP_ACCEPT}
                 onFiles={([picked]) => {
                   if (picked === undefined) return;
                   setFile(picked);

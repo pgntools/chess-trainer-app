@@ -8,7 +8,8 @@ paths:
   - "src/lib/analysisProjectsDb.ts"
   - "src/lib/exportCategories.ts"
   - "src/blocks/lists/ProjectsList/**"
-  - "src/blocks/lists/CasesList/**"
+  - "src/blocks/tables/CasesTable/**"
+  - "src/lib/analysisCaseRows.ts"
   - "src/blocks/dialogs/NewCaseDialog/**"
   - "src/blocks/dialogs/NewProjectDialog/**"
   - "src/blocks/dialogs/ProjectPickerDialog/**"
@@ -41,7 +42,7 @@ folders (nested) ──▶ Projects ──▶ Cases (game | position) ──▶ 
 | `src/lib/analysisProjectsEnabled.ts` | **The flag**: `ANALYSIS_PROJECTS_ENABLED = import.meta.env.DEV` — the module's Export / Import category in Settings — and **`analysisProjectStores()`**, the one way Settings reaches the three stores: dynamic imports under an *inline* `if (import.meta.env.DEV)`, `undefined` in a production build. Inline, because a dynamic import behind an imported constant is still followed by the bundler and its chunks emitted (orphaned) — one in a branch dead as written is not. Shipping the module is these two conditions (and §6). |
 | `src/lib/exportCategories.ts` | `OFFERED_EXPORT_CATEGORIES` — the Export / Import categories this build offers (Analysis V2's only with the flag); apart from `lib/dataExport.ts`, which Node reads too (the browser pass's seed). |
 | `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings), `paths.ts` (the addresses). |
-| `src/blocks/lists/ProjectsList/`, `CasesList/` (`caseDisplayName`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`) | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused. |
+| `src/blocks/lists/ProjectsList/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`) | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused. |
 | `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws. The legacy screens import them from here. |
 | Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectStores.test.ts` (the three stores), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the dev-only database). |
 
@@ -50,7 +51,7 @@ Locale keys: `analysisV2.*` (`browser`, `folder`, `project`, `case`,
 `pages.analysisProjects` / `analysisProject` / `analysisCase`, and the
 category's `settings.export.categories.analysisProjects` /
 `settings.import.top.analysisProjects` — in both catalogs. `options.id` is
-`analysis-case`; the test ids are `analysis-v2-*` (the lists) and
+`analysis-case`; the test ids are `analysis-v2-*` (the lists and the Cases table) and
 `analysis-case-*` (the board).
 
 ---
@@ -144,8 +145,19 @@ no folder says so, with a way back.
 
 ### 3.2 A Project — `/analysis/projects/<id>`
 
-Its Cases (`CasesList`): each named, its type and when it changed, a row to
-its board. **New case** opens `NewCaseDialog`:
+Its Cases as a **table** (`CasesTable`, rows from `lib/analysisCaseRows.ts`):
+Name (the link to its board) and Type, then the games table's columns —
+White, Elo, Black, Elo, Result, Date, Event, Round, ECO, Opening, Moves, read
+off a Game's tags (**blank for a Position**) — and Updated. Every header
+sorts (a blank last either way, ties newest first); the sort and the page
+are the URL's (`useTableUrlState`: `?sort=`, `?dir=`, `?page=`, `?rows=`;
+Updated, newest first, by default), paged past 25. A **words box** over it
+(`?q=`, `filteredCaseRows`) keeps the rows holding every word typed — the
+name, the type, a Game's players, Elos, result, date, event, round, ECO and
+opening — with a no-match row and its Clear. **Picks**: a box per row and
+select-all in the header (over the rows the words leave); the header's
+selection bar counts them and deletes them together, asked first
+(`DeleteManyDialog`, a failure said in it with the picks kept). **New case** opens `NewCaseDialog`:
 
 - **Game** — a PGN pasted or picked (`PgnInput`); several games show a list
   to pick one from, and *One case per game (N)*, which makes them all.

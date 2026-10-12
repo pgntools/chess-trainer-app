@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { strToU8, zipSync } from "fflate";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import i18n from "../../i18n";
@@ -144,6 +145,42 @@ describe("the Projects browser (CTA-186)", () => {
     ]);
   });
 
+  it("makes a Project of a zip of .pgn files — every game of every file in the choice", async () => {
+    const SECOND = GAME.replace("Carlsen", "Ding").replace("Caruana", "Nepomniachtchi");
+    const zip = zipSync({ "club/one.pgn": strToU8(GAME), "club/two.pgn": strToU8(SECOND) });
+    const user = userEvent.setup();
+    mount("/analysis");
+    await user.click(await screen.findByRole("button", { name: "New project" }));
+    await user.upload(
+      screen.getByTestId("analysis-v2-new-project-dialog-file-input"),
+      new File([zip], "club.zip", { type: "application/zip" }),
+    );
+    expect(screen.getByRole("textbox", { name: "Name" })).toHaveValue("club");
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    const choice = await screen.findByTestId("analysis-v2-choose-games");
+    expect(screen.getByTestId("analysis-v2-choose-games-file-0")).toHaveTextContent("club/one.pgn");
+    expect(screen.getByTestId("analysis-v2-choose-games-count")).toHaveTextContent("2 of 2");
+    await user.click(within(choice).getByRole("button", { name: "Create project" }));
+    await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/g/));
+    expect(analysisCasesSnapshot()).toHaveLength(2);
+  });
+
+  it("says a zip with no .pgn in it", async () => {
+    const user = userEvent.setup();
+    mount("/analysis");
+    await user.click(await screen.findByRole("button", { name: "New project" }));
+    await user.type(screen.getByRole("textbox", { name: "Name" }), "Club");
+    await user.upload(
+      screen.getByTestId("analysis-v2-new-project-dialog-file-input"),
+      new File([zipSync({ "notes.txt": strToU8("hello") })], "notes.zip", { type: "application/zip" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    expect(await screen.findByTestId("analysis-v2-new-project-dialog-problem")).toHaveTextContent(
+      "There is no .pgn file in that zip.",
+    );
+    expect(analysisProjectsSnapshot()).toEqual([]);
+  });
+
   it("makes a Project of several games — those kept in the Library's popup, each a Case", async () => {
     const SECOND = GAME.replace("Carlsen", "Ding").replace("Caruana", "Nepomniachtchi");
     const THIRD = GAME.replace("Carlsen", "Firouzja").replace("Caruana", "Gukesh");
@@ -251,21 +288,64 @@ describe("a Project's Cases (CTA-186)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Read" }));
   };
 
-  it("lists each Case's name, type and date", async () => {
+  it("tables each Case — a Game's tags in its columns, a Position's blank — sorted and filtered by words", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     await addAnalysisCases([
       gameCase(project.id),
       positionCaseOfFen({ id: "cpos", projectId: project.id, name: "" }, ENDGAME),
     ]);
+    const user = userEvent.setup();
     const { baseElement } = mount(`/analysis/projects/${project.id}`);
-    const list = await screen.findByRole("list", { name: "Cases" });
-    expect(within(list).getByTestId("analysis-v2-cases-case-cgame")).toHaveTextContent(
-      "Carlsen – Caruana, Club Championship, 2024",
-    );
-    expect(within(list).getByTestId("analysis-v2-cases-case-cgame")).toHaveTextContent("Game");
-    expect(within(list).getByTestId("analysis-v2-cases-case-cpos")).toHaveTextContent("Black to move, move 41");
-    expect(within(list).getByTestId("analysis-v2-cases-case-cpos")).toHaveTextContent(/Position · Updated/);
+    const table = await screen.findByRole("table", { name: "Cases" });
+    const game = within(table).getByTestId("analysis-v2-cases-row-cgame");
+    expect(game).toHaveTextContent("Carlsen – Caruana, Club Championship, 2024");
+    expect(game).toHaveTextContent("Caruana");
+    expect(game).toHaveTextContent("1-0");
+    const position = within(table).getByTestId("analysis-v2-cases-row-cpos");
+    expect(position).toHaveTextContent("Black to move, move 41");
+    expect(position).toHaveTextContent("Position");
     await expectNoAxeViolations(baseElement);
+
+    // A sort is the URL's.
+    await user.click(within(table).getByRole("button", { name: "White" }));
+    expect(where()).toContain("sort=white");
+
+    // The words box keeps the rows holding every word.
+    await user.type(screen.getByRole("searchbox", { name: "Filter cases" }), "carlsen 2024");
+    expect(within(table).queryByTestId("analysis-v2-cases-row-cpos")).toBeNull();
+    expect(within(table).getByTestId("analysis-v2-cases-row-cgame")).toBeInTheDocument();
+    expect(where()).toContain("q=carlsen");
+    await user.clear(screen.getByRole("searchbox", { name: "Filter cases" }));
+    await user.type(screen.getByRole("searchbox", { name: "Filter cases" }), "nobody");
+    expect(screen.getByTestId("analysis-v2-cases-no-match")).toHaveTextContent("No case matches the filter.");
+    await user.click(screen.getByTestId("analysis-v2-cases-no-match-clear"));
+    expect(within(table).getAllByTestId(/^analysis-v2-cases-row-/)).toHaveLength(2);
+  });
+
+  it("deletes the picked Cases together — some, or all — after asking", async () => {
+    const project = (await createAnalysisProject("Club", null))!;
+    await addAnalysisCases([gameCase(project.id, "c1"), gameCase(project.id, "c2"), gameCase(project.id, "c3")]);
+    const user = userEvent.setup();
+    mount(`/analysis/projects/${project.id}`);
+    await screen.findByRole("table", { name: "Cases" });
+    const deletePicked = screen.getByRole("button", { name: "Delete the picked cases" });
+    expect(deletePicked).toBeDisabled();
+
+    await user.click(within(screen.getByTestId("analysis-v2-cases-row-c1")).getByRole("checkbox"));
+    expect(screen.getByTestId("analysis-v2-cases-selected-count")).toHaveTextContent("1 selected");
+    await user.click(deletePicked);
+    expect(screen.getByRole("dialog")).toHaveTextContent("Delete 1 case?");
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(analysisCasesSnapshot()!.map((record) => record.id)).toEqual(["c2", "c3"]));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    await user.click(screen.getByRole("checkbox", { name: "Select all cases" }));
+    expect(screen.getByTestId("analysis-v2-cases-selected-count")).toHaveTextContent("2 selected");
+    await user.click(screen.getByRole("button", { name: "Delete the picked cases" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("Delete 2 cases?");
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(await screen.findByTestId("analysis-v2-cases-empty")).toBeInTheDocument();
+    expect(analysisCasesSnapshot()).toEqual([]);
   });
 
   it("makes a Game Case of a pasted PGN and opens it", async () => {

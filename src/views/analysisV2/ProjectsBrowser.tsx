@@ -41,6 +41,7 @@ import {
   type AnalysisProject,
   type ProjectFolder,
 } from "../../lib/analysisProjects";
+import { isZipFile, readCollectionZip } from "../../lib/collectionZip";
 import { collectionImportFileOf, type CollectionImportSource } from "../../lib/libraryCollections";
 import { parsePgnTree } from "../../lib/pgn";
 import { newRecordId } from "../../lib/recordId";
@@ -49,7 +50,13 @@ import { browserPath, projectPath } from "./paths";
 import { useAnalysisCases, useAnalysisProjects, useProjectFolders } from "./useAnalysisProjects";
 
 /** Why a picked file brought no game in — an `analysisV2.newProject.problem.*` key's last part. */
-const FILE_PROBLEMS: Readonly<Record<string, string>> = { empty: "empty", "too-large": "tooLarge", unreadable: "unreadable" };
+const FILE_PROBLEMS: Readonly<Record<string, string>> = {
+  empty: "empty",
+  "too-large": "tooLarge",
+  unreadable: "unreadable",
+  zip: "zip",
+  "zip-empty": "zipEmpty",
+};
 
 /** The dialog open over the browser, and what it is about. */
 type Dialog =
@@ -175,23 +182,40 @@ function ProjectsBrowser() {
       await makeProject(name, []);
       return;
     }
-    let text: string;
+    const said = (problem: string) =>
+      setCreateProblem(t(`analysisV2.newProject.problem.${FILE_PROBLEMS[problem] ?? "unreadable"}`));
+    // The texts it holds: a .pgn's one, or each .pgn in a zip (as the Library reads one).
+    let texts: { text: string; size: number; name: string; stem: string }[];
     try {
-      text = await file.text();
+      if (isZipFile(file)) {
+        const zipped = readCollectionZip(new Uint8Array(await file.arrayBuffer()));
+        if (!zipped.ok) {
+          said(zipped.problem);
+          return;
+        }
+        texts = zipped.entries.map((entry) => ({ text: entry.text, size: entry.size, name: entry.path, stem: entry.stem }));
+      } else {
+        texts = [{ text: await file.text(), size: file.size, name: file.name, stem: file.name.replace(/\.pgn$/i, "") }];
+      }
     } catch {
-      setCreateProblem(t("analysisV2.newProject.problem.file"));
+      said("file");
       return;
     }
-    const { file: read, reading } = collectionImportFileOf(text, file.size, file.name, file.name.replace(/\.pgn$/i, ""));
-    if (!reading.ok) {
-      setCreateProblem(t(`analysisV2.newProject.problem.${FILE_PROBLEMS[reading.problem] ?? "unreadable"}`));
+    const read = texts.map(({ text, size, name: fileName, stem }) => collectionImportFileOf(text, size, fileName, stem));
+    const games = read.flatMap(({ file: entry }) => entry.games);
+    if (games.length === 0) {
+      const [first] = read;
+      said(first !== undefined && !first.reading.ok ? first.reading.problem : "unreadable");
       return;
     }
-    if (read.games.length === 1) {
-      await makeProject(name, read.games);
+    if (games.length === 1) {
+      await makeProject(name, games);
       return;
     }
-    setChoosing({ name, source: { name: file.name, size: file.size, zip: false, files: [read] } });
+    setChoosing({
+      name,
+      source: { name: file.name, size: file.size, zip: isZipFile(file), files: read.map(({ file: entry }) => entry) },
+    });
   };
 
   return (
@@ -306,8 +330,10 @@ function ProjectsBrowser() {
             setChoosing(null);
           }}
           onImport={(kept) => {
-            const [file] = choosing.source.files;
-            const games = (kept[0] ?? []).map((row) => file?.games[row.number - 1]).filter((pgn): pgn is string => pgn !== undefined);
+            // Each file's kept games, file by file, in file order — a Case each.
+            const games = choosing.source.files.flatMap((file, index) =>
+              (kept[index] ?? []).map((row) => file.games[row.number - 1]).filter((pgn): pgn is string => pgn !== undefined),
+            );
             void makeProject(choosing.name, games);
           }}
           testId="analysis-v2-choose-games"

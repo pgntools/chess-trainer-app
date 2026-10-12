@@ -6,7 +6,7 @@ import { Link as RouterLink, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { ChessboardOptions } from "react-chessboard";
 
-import { caseDisplayName } from "../../blocks/lists";
+import { caseDisplayName } from "../../blocks/tables";
 import { BoardEngineControls, CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
 import { StatusText } from "../../design-system/components/feedback";
 import { MissState } from "../../design-system/components/states";
