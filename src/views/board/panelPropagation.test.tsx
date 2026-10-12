@@ -88,7 +88,7 @@ const LibraryGame = () => (
 
 /** A Case of Analysis V2 (CTA-186), on its board — dev-only while the module is built. */
 const CASE_FIXTURE = gameCaseOf({ id: "fixture-case", projectId: "fixture-project", name: "" }, parsePgnTree('[White "A"]\n[Black "B"]\n\n1. e4 e5 *'));
-const AnalysisCase = () => <CaseBoard record={CASE_FIXTURE} projectName="Fixture" />;
+const AnalysisCase = () => <CaseBoard record={CASE_FIXTURE} />;
 
 /** Every board composed from the core, by the id its panel carries. */
 const BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode }[] =

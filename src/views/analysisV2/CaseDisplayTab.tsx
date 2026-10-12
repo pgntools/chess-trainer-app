@@ -20,9 +20,9 @@ type DisplayTab = "arrows" | "engine" | "accessibility";
  *   on the board;
  * - **inner tabs** under them: **Arrows** — what sizes the arrows and their
  *   colours (the Analysis Board's Arrows tab's fields, `ArrowSettingsFields`,
- *   a tag no move carries offered but off), **Engine** — the eval bar and
- *   the engine's lines (the eval bar the header's engine menu switches too),
- *   and **Accessibility** — the board's accessibility options, still to come.
+ *   a tag no move carries offered but off), **Engine** — the engine's lines
+ *   (the eval bar is the Settings tab's, `CaseSettingsTab`), and
+ *   **Accessibility** — the board's accessibility options, still to come.
  */
 function CaseDisplayTab({
   display,
@@ -85,15 +85,6 @@ function CaseDisplayTab({
       )}
       {tab === "engine" && (
         <Box {...tabPanelProps("analysis-case-display", "engine")} sx={{ display: "grid", gap: 1 }}>
-          <SwitchField
-            size="small"
-            label={t("analysisV2.display.evalBar")}
-            help={t("analysisV2.display.evalBarHelp")}
-            checked={display.showEvalBar}
-            onChange={(showEvalBar) => onChange({ showEvalBar })}
-            testIdOn="control"
-            testId="analysis-case-display-eval-bar"
-          />
           <SwitchField
             size="small"
             label={t("analysisV2.display.variations")}

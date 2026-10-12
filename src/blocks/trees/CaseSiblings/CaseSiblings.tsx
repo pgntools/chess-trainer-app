@@ -4,8 +4,6 @@ import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
-import KeyboardDoubleArrowLeftRounded from "@mui/icons-material/KeyboardDoubleArrowLeftRounded";
-import KeyboardDoubleArrowRightRounded from "@mui/icons-material/KeyboardDoubleArrowRightRounded";
 import NavigateBeforeRoundedIcon from "@mui/icons-material/NavigateBeforeRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SportsEsportsOutlinedIcon from "@mui/icons-material/SportsEsportsOutlined";
@@ -37,12 +35,8 @@ export type CaseSiblingsProps = {
   /** The words in the filter box — the screen holds them. */
   text: string;
   onTextChange: (text: string) => void;
-  /** Folded to a rail: open it again, Close, previous and next remain. */
-  collapsed: boolean;
-  /** Fold the panel, and open it again. Absent, it cannot be folded (a drawer is closed instead). */
-  onCollapsedChange?: (collapsed: boolean) => void;
   /**
-   * The root; its parts `-title`, `-collapse`, `-expand`, `-close`,
+   * The root; its parts `-close`, `-title`,
    * `-filter` (and `-filter-clear`), `-no-match`, `-tree` (each row
    * `-tree-<id>`), `-siblings`, `-previous`, `-next`.
    */
@@ -54,8 +48,8 @@ export type CaseSiblingsProps = {
  * analyses' tree (`AnalysesTree`, CTA-145) for Analysis V2, where a Project
  * has no folders: its Cases as one flat `TreeView` (each named, a Game's or a
  * Position's icon, the open one current and brought into view, every row a
- * link to its board), a words box above it, a Close back to the Project, a
- * fold to a rail, and previous / next at its foot, sticky under the list.
+ * link to its board), a words box above it, a Close back to the Project at
+ * the head's start, and previous / next at its foot, sticky under the list.
  * Nothing locks it: a Case autosaves. Presentational: the rows arrive ordered
  * and narrowed by the screen; its words are the app's (`analysisV2.siblings.*`).
  */
@@ -69,15 +63,11 @@ function CaseSiblings({
   next,
   text,
   onTextChange,
-  collapsed,
-  onCollapsedChange,
   testId,
 }: CaseSiblingsProps) {
   const { t } = useTranslation();
-  // The arrows point at the start edge, which is the right one under RTL.
+  // Previous / next point along the reading direction, which runs right to left under RTL.
   const rtl = useTheme().direction === "rtl";
-  const TowardsStart = rtl ? KeyboardDoubleArrowRightRounded : KeyboardDoubleArrowLeftRounded;
-  const AwayFromStart = rtl ? KeyboardDoubleArrowLeftRounded : KeyboardDoubleArrowRightRounded;
   const Previous = rtl ? NavigateNextRoundedIcon : NavigateBeforeRoundedIcon;
   const Next = rtl ? NavigateBeforeRoundedIcon : NavigateNextRoundedIcon;
   const title = t("analysisV2.siblings.title", { name: projectName });
@@ -100,45 +90,15 @@ function CaseSiblings({
     scrollerRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView?.({ block: "nearest" });
   }, [currentId]);
 
-  const siblingButtons = (
-    <>
-      <IconAction label={t("analysisV2.siblings.previous")} link={previous} disabled={previous === undefined} testId={`${testId}-previous`}>
-        <Previous fontSize="small" />
-      </IconAction>
-      <IconAction label={t("analysisV2.siblings.next")} link={next} disabled={next === undefined} testId={`${testId}-next`}>
-        <Next fontSize="small" />
-      </IconAction>
-    </>
-  );
-
-  if (collapsed && onCollapsedChange !== undefined) {
-    return (
-      <Box component="nav" aria-label={title} data-testid={testId} sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
-        <IconAction label={t("analysisV2.siblings.expand")} onClick={() => onCollapsedChange(false)} testId={`${testId}-expand`}>
-          <AwayFromStart fontSize="small" />
-        </IconAction>
-        <IconAction label={t("analysisV2.siblings.close", { name: projectName })} link={closeLink} testId={`${testId}-close`}>
-          <CloseRoundedIcon fontSize="small" />
-        </IconAction>
-        {siblingButtons}
-      </Box>
-    );
-  }
-
   return (
     <Box component="nav" aria-label={title} data-testid={testId} sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, pb: 1 }}>
-        <Typography component="h2" variant="subtitle2" dir="auto" data-testid={`${testId}-title`} sx={{ flexGrow: 1, minWidth: 0, fontWeight: 700 }}>
-          {projectName}
-        </Typography>
-        {onCollapsedChange !== undefined && (
-          <IconAction label={t("analysisV2.siblings.collapse")} onClick={() => onCollapsedChange(true)} testId={`${testId}-collapse`}>
-            <TowardsStart fontSize="small" />
-          </IconAction>
-        )}
         <IconAction label={t("analysisV2.siblings.close", { name: projectName })} link={closeLink} testId={`${testId}-close`}>
           <CloseRoundedIcon fontSize="small" />
         </IconAction>
+        <Typography component="h2" variant="subtitle2" dir="auto" data-testid={`${testId}-title`} sx={{ flexGrow: 1, minWidth: 0, fontWeight: 700 }}>
+          {projectName}
+        </Typography>
       </Box>
       <Box sx={{ flexShrink: 0, pb: 1 }}>
         <SearchField
@@ -171,7 +131,12 @@ function CaseSiblings({
         data-testid={`${testId}-siblings`}
         sx={{ flexShrink: 0, display: "flex", justifyContent: "center", gap: 1, pt: 1, mt: 1, borderTop: "1px solid", borderColor: "divider" }}
       >
-        {siblingButtons}
+        <IconAction label={t("analysisV2.siblings.previous")} link={previous} disabled={previous === undefined} testId={`${testId}-previous`}>
+          <Previous fontSize="small" />
+        </IconAction>
+        <IconAction label={t("analysisV2.siblings.next")} link={next} disabled={next === undefined} testId={`${testId}-next`}>
+          <Next fontSize="small" />
+        </IconAction>
       </Box>
     </Box>
   );

@@ -19,8 +19,6 @@ const mount = (props: Partial<CaseSiblingsProps> = {}) =>
       next={{ href: "/case/clong" }}
       text=""
       onTextChange={() => {}}
-      collapsed={false}
-      onCollapsedChange={() => {}}
       testId="probe"
       {...props}
     />,
@@ -51,17 +49,5 @@ describe("CaseSiblings (CTA-186)", () => {
     mount({ rows: [], text: "zzz", previous: undefined, next: undefined });
     expect(screen.getByTestId("probe-no-match")).toHaveTextContent("No case matches the filter.");
     expect(screen.getByRole("button", { name: "Previous case" })).toBeDisabled();
-  });
-
-  it("folds to a rail and opens again", async () => {
-    const onCollapsedChange = vi.fn();
-    const { unmount } = mount({ onCollapsedChange });
-    await userEvent.click(screen.getByRole("button", { name: "Fold the list" }));
-    expect(onCollapsedChange).toHaveBeenCalledWith(true);
-    unmount();
-    mount({ collapsed: true, onCollapsedChange });
-    expect(screen.queryByRole("searchbox")).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Open the list" }));
-    expect(onCollapsedChange).toHaveBeenLastCalledWith(false);
   });
 });

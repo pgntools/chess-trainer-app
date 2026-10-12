@@ -194,16 +194,19 @@ the Analysis Board is: `useAnalysisSession` (the core, the engine — off at the
 start, the reader's global search settings — and Play), `useVariationsExplorer`
 (the move list, map, comment block, next-move arrows, the PGN's shapes;
 editing on, *Play chances…* off), `BoardShell` and its panel — tabs **Moves ·
-Map · Display · Export** (`PgnExportPanel`; **Display** is `CaseDisplayTab`:
-the next-move arrows and the move marks on top, then inner tabs — **Arrows**,
-the Analysis Board's width source and palette (`ArrowSettingsFields`),
-**Engine** — the eval bar (the header's engine menu switches the same one)
-and the engine's lines (`BoardPanel`'s `showVariations`) — and
-**Accessibility**, the board's accessibility options, a placeholder for now —
-all kept with the Case as its `display`, autosaved), the header the way back to the Project, the
-name, the opening, the save status, Play and the engine's play / pause with
-its menu (the eval bar, *Write evaluations into the game*). `options.id`
-`analysis-case`.
+Map · Display · Settings · Export** (`PgnExportPanel`; **Display** is
+`CaseDisplayTab`: the next-move arrows and the move marks on top, then inner
+tabs — **Arrows**, the Analysis Board's width source and palette
+(`ArrowSettingsFields`), **Engine** — the engine's lines (`BoardPanel`'s
+`showVariations`) — and **Accessibility**, the board's accessibility options,
+a placeholder for now — all kept with the Case as its `display`, autosaved;
+**Settings** is `CaseSettingsTab`: the side the board faces, White / Black
+(the Case's orientation), the eval bar (its `display`) and *Write evaluations
+into the game* (the session's, as on the Analysis Board)), and the header:
+the name, the opening, the save status, Play and the engine's on / off as a
+**small switch** labelled with the top bar's Engine icon (`SmartToyRounded`, read as "Engine") — not the other boards' play / pause and options menu
+(`BoardEngineControls`), whose choices are the Settings tab here.
+`options.id` `analysis-case`.
 
 - **Read once, as it mounts**, from its record: the tree, the node at
   `path`, the orientation. A Game opens at its start facing White (a game does
@@ -225,12 +228,13 @@ its menu (the eval bar, *Write evaluations into the game*). `options.id`
   and with them the top bar's Engine menu): the Cases as a list of links, the
   open one current, in the **Cases table's order and under its words** — the
   table's `?sort=` / `?dir=` / `?q=` carried into the Case's URL
-  (`caseListContextOf`, `paths.ts`) and back by Close and the header's way
-  back; a words box (writing `?q=`), previous / next over the list as shown
-  (the whole of it when the words leave the open Case out), and a fold to a
-  48 px rail. Under the shell's breakpoint it is a drawer, opened from a list
-  button in the board's header. Nothing locks it: a Case autosaves. Its fold
-  and drawer are the route's state, so they outlive a step to another Case.
+  (`caseListContextOf`, `paths.ts`) and back by its **Close**, at the head's
+  start before the Project's name — the one way back, the board's header has
+  none; a words box (writing `?q=`) and previous / next over the list as shown
+  (the whole of it when the words leave the open Case out). It does not fold.
+  Under the shell's breakpoint it is a drawer, opened from a list button in
+  the board's header; the drawer is the route's state, so it outlives a step
+  to another Case. Nothing locks it: a Case autosaves.
 
 ---
 

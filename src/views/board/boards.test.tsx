@@ -70,7 +70,7 @@ const LibraryGame = () => (
 
 /** A Case of Analysis V2 (CTA-186), on its board — dev-only while the module is built. */
 const CASE_FIXTURE = gameCaseOf({ id: "fixture-case", projectId: "fixture-project", name: "" }, parsePgnTree('[White "A"]\n[Black "B"]\n\n1. e4 e5 *'));
-const AnalysisCase = () => <CaseBoard record={CASE_FIXTURE} projectName="Fixture" />;
+const AnalysisCase = () => <CaseBoard record={CASE_FIXTURE} />;
 const BOARDS: readonly {
   name: string;
   id: string;
@@ -85,6 +85,12 @@ const BOARDS: readonly {
    * menu, the eval bar the header's engine menu.
    */
   engineTab?: true;
+  /**
+   * The engine's on / off a small switch in its header, its other choices a
+   * Settings tab — Analysis V2's Case board (CTA-186) — not the play / pause
+   * and its menu every other board has.
+   */
+  engineSwitch?: true;
   /** A tab beside Moves, to open in the tab-panel test. */
   otherTab: string;
 }[] = [
@@ -99,7 +105,7 @@ const BOARDS: readonly {
   // engine lines wait behind a switch.
   { name: "Masked Pieces", id: "masked-play", Screen: MaskedPlay, linesShown: false, engineTab: true, otherTab: "engine" },
   // Analysis V2's Case board (CTA-186), composed as the Analysis Board is.
-  { name: "Analysis V2 case", id: "analysis-case", Screen: AnalysisCase, engineOff: true, otherTab: "map" },
+  { name: "Analysis V2 case", id: "analysis-case", Screen: AnalysisCase, engineOff: true, engineSwitch: true, otherTab: "map" },
 ];
 
 const renderBoard = (Screen: () => ReactNode, entry = "/dev") =>
@@ -182,7 +188,7 @@ describe("every v2 board, from the same core", () => {
     unmount();
   });
 
-  it.each(BOARDS)("$name renders the shared panel skeleton", ({ id, Screen, engineTab }) => {
+  it.each(BOARDS)("$name renders the shared panel skeleton", ({ id, Screen, engineTab, engineSwitch }) => {
     const { unmount } = renderBoard(Screen);
 
     // Criterion 4, rendered for real: the pinned variations block, the status
@@ -194,9 +200,15 @@ describe("every v2 board, from the same core", () => {
     // The Engine tab only where the board has its own (the Play boards' strength) — CTA-181.
     if (engineTab) expect(screen.getByTestId(`${id}-panel-tab-engine`)).toBeInTheDocument();
     else expect(screen.queryByTestId(`${id}-panel-tab-engine`)).not.toBeInTheDocument();
-    // Every board's engine: a play / pause in its header, and its menu (CTA-181).
-    expect(screen.getByRole("button", { name: i18n.t("boardEngine.toggle") })).toHaveAttribute("data-testid", `${id}-setting-engine`);
-    expect(screen.getByRole("button", { name: i18n.t("boardEngine.menu") })).toHaveAttribute("data-testid", `${id}-engine-menu`);
+    if (engineSwitch) {
+      // The Case board's engine: a switch in its header, and no menu (CTA-186).
+      expect(screen.getByRole("switch", { name: i18n.t("analysisV2.workspace.engine") })).toHaveAttribute("data-testid", `${id}-setting-engine`);
+      expect(screen.queryByTestId(`${id}-engine-menu`)).not.toBeInTheDocument();
+    } else {
+      // Every other board's engine: a play / pause in its header, and its menu (CTA-181).
+      expect(screen.getByRole("button", { name: i18n.t("boardEngine.toggle") })).toHaveAttribute("data-testid", `${id}-setting-engine`);
+      expect(screen.getByRole("button", { name: i18n.t("boardEngine.menu") })).toHaveAttribute("data-testid", `${id}-engine-menu`);
+    }
 
     unmount();
   });
@@ -271,14 +283,19 @@ describe("every v2 board, from the same core", () => {
 
   it.each(BOARDS.filter((board) => board.engineOff === true))(
     "$name starts with its engine off — no search runs, Play is disabled — until the reader switches it on (CTA-148)",
-    ({ id, Screen }) => {
+    ({ id, Screen, engineSwitch }) => {
       const { unmount } = renderBoard(Screen);
+      // A play / pause is pressed while on; a switch, checked.
+      const engineOn = () =>
+        engineSwitch
+          ? (screen.getByTestId(`${id}-setting-engine`) as HTMLInputElement).checked
+          : screen.getByTestId(`${id}-setting-engine`).getAttribute("aria-pressed") === "true";
 
-      expect(screen.getByTestId(`${id}-setting-engine`)).toHaveAttribute("aria-pressed", "false");
+      expect(engineOn()).toBe(false);
       expect(FakeEngine.instances.flatMap((engine) => engine.searches)).toEqual([]);
       expect(screen.getByTestId(`${id}-play`)).toBeDisabled();
       toggleEngine(id);
-      expect(screen.getByTestId(`${id}-setting-engine`)).toHaveAttribute("aria-pressed", "true");
+      expect(engineOn()).toBe(true);
       expect(FakeEngine.latest().searches.length).toBeGreaterThan(0);
       expect(screen.getByTestId(`${id}-play`)).toBeEnabled();
 

@@ -475,7 +475,7 @@ describe("a Case's board (CTA-186)", () => {
     expect(boardOptions().boardOrientation).toBe("black");
   });
 
-  it("draws as its Display tab says — arrows, move marks, eval bar, lines — and keeps it with the Case", async () => {
+  it("draws as its Display and Settings tabs say — arrows, move marks, lines, eval bar, side — and keeps it with the Case", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     await addAnalysisCases([gameCase(project.id)]);
     const user = userEvent.setup();
@@ -496,10 +496,19 @@ describe("a Case's board (CTA-186)", () => {
     expect(within(inner).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Arrows", "Engine", "Accessibility"]);
     await user.click(within(display).getByRole("radio", { name: "Lichess" }));
     await user.click(within(inner).getByRole("tab", { name: "Engine" }));
-    await user.click(within(display).getByRole("switch", { name: "Show evaluation bar" }));
     await user.click(within(display).getByRole("switch", { name: "Show variations" }));
     await user.click(within(inner).getByRole("tab", { name: "Accessibility" }));
     expect(screen.getByTestId("analysis-case-display-accessibility")).toBeInTheDocument();
+
+    // The Settings tab: the side the board faces, the eval bar, the evaluations written.
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    const settings = screen.getByTestId("analysis-case-settings");
+    expect(await expectNoAxeViolations(settings)).toBeUndefined();
+    expect(within(settings).getByRole("radio", { name: "White" })).toBeChecked();
+    await user.click(within(settings).getByRole("radio", { name: "Black" }));
+    expect(boardOptions().boardOrientation).toBe("black");
+    await user.click(within(settings).getByRole("switch", { name: "Show evaluation bar" }));
+    expect(within(settings).getByRole("switch", { name: "Write evaluations into the game" })).toBeInTheDocument();
 
     await waitFor(() =>
       expect(analysisCasesSnapshot()![0].display).toEqual({
@@ -511,6 +520,7 @@ describe("a Case's board (CTA-186)", () => {
         showVariations: false,
       }),
     );
+    await waitFor(() => expect(analysisCasesSnapshot()![0].orientation).toBe("black"));
 
     // Reopened, the board draws as it was left.
     view.unmount();
@@ -518,6 +528,7 @@ describe("a Case's board (CTA-186)", () => {
     mount(`/analysis/projects/${project.id}/cases/cgame`);
     await screen.findByTestId("board");
     expect(boardOptions().arrows).toEqual([]);
+    expect(boardOptions().boardOrientation).toBe("black");
     await user.click(screen.getByRole("tab", { name: "Display" }));
     expect(screen.getByRole("switch", { name: "Show next move arrows" })).not.toBeChecked();
   });

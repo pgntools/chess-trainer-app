@@ -1,16 +1,17 @@
 import { useCallback, useMemo, useState } from "react";
 import FormatListBulletedRoundedIcon from "@mui/icons-material/FormatListBulletedRounded";
+import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import { Link as RouterLink, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { ChessboardOptions } from "react-chessboard";
 
 import { caseDisplayName } from "../../blocks/tables";
 import { CaseSiblings } from "../../blocks/trees";
-import { BoardEngineControls, CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
+import { CurrentOpening, EngineThinking, PgnExportPanel, PlayToggleButton } from "../../blocks/panels";
 import { StatusText } from "../../design-system/components/feedback";
+import { SwitchField } from "../../design-system/components/forms";
 import { MissState } from "../../design-system/components/states";
 import { sortRows } from "../../design-system/components/tables";
 import { IconAction } from "../../design-system/components/toolbars";
@@ -47,6 +48,7 @@ import { useShellCompact } from "../main/shellCompact";
 import { playerPlatesOf } from "../shared/playerResults";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
 import CaseDisplayTab from "./CaseDisplayTab";
+import CaseSettingsTab from "./CaseSettingsTab";
 import { browserPath, caseListContextOf, casePath, projectPath } from "./paths";
 import { useAnalysisCases, useAnalysisProjects } from "./useAnalysisProjects";
 
@@ -55,9 +57,6 @@ const KEEP_MOUNTED = ["moves", "map"] as const;
 
 type CaseBoardProps = {
   record: AnalysisCase;
-  projectName: string;
-  /** Where the header's way back goes — the Project's Cases as the table stood. Absent, the Project's Cases. */
-  backPath?: string;
   /** Under the shell's breakpoint: open the Project's Cases in their drawer — a header button. Absent, none. */
   onOpenSiblings?: () => void;
   /** Whether that drawer is open — the button's `aria-expanded`. */
@@ -70,8 +69,10 @@ type CaseBoardProps = {
  * analysis session (`useAnalysisSession`: the core, the engine — off at the
  * start, the reader's global search settings — and Play), the variations
  * explorer (Moves, Map, the comment block, the next-move arrows, editing on),
- * one `BoardShell` and its panel (Moves · Map · Display · Export — Display
- * the arrows and move marks, `CaseDisplayTab`). Read from its record
+ * one `BoardShell` and its panel (Moves · Map · Display · Settings · Export —
+ * Display the arrows and move marks, `CaseDisplayTab`; Settings the side the
+ * board faces, the eval bar and the evaluations written, `CaseSettingsTab`),
+ * the engine's on / off a small switch in its header. Read from its record
  * **once**, as it mounts: the tree, the move it was left on and the way it
  * faced — a Game at its start facing White, a Position facing the side to
  * move, where its record put it.
@@ -83,7 +84,7 @@ type CaseBoardProps = {
  * left. There is no Save button; the header says Saving… / Saved, or that the
  * browser refused.
  */
-export function CaseBoard({ record, projectName, backPath, onOpenSiblings, siblingsOpen = false }: CaseBoardProps) {
+export function CaseBoard({ record, onOpenSiblings, siblingsOpen = false }: CaseBoardProps) {
   const { t } = useTranslation();
   const [start] = useState(() => {
     const tree = caseTree(record) ?? emptyTree();
@@ -158,13 +159,6 @@ export function CaseBoard({ record, projectName, backPath, onOpenSiblings, sibli
       panel={{
         header: (
           <>
-            <IconAction
-              label={t("analysisV2.workspace.back", { name: projectName })}
-              link={{ component: RouterLink, to: backPath ?? projectPath(record.projectId) }}
-              testId="analysis-case-back"
-            >
-              <ArrowBackRoundedIcon fontSize="small" />
-            </IconAction>
             {onOpenSiblings !== undefined && (
               // Under the breakpoint the Project's Cases are a drawer; wide, the board's own column.
               <IconAction
@@ -204,14 +198,25 @@ export function CaseBoard({ record, projectName, backPath, onOpenSiblings, sibli
               thinking={session.thinking}
               onToggle={session.togglePlaying}
             />
-            <BoardEngineControls
-              engineOn={session.engineOn}
-              onEngineOnChange={session.setEngineOn}
-              showEvalBar={display.showEvalBar}
-              onShowEvalBarChange={(showEvalBar) => changeDisplay({ showEvalBar })}
-              writeEvals={{ checked: session.settings.writeEvals, onChange: session.setWriteEvals }}
-              testId="analysis-case"
-            />
+            {/* The engine's on / off — a small switch; its other choices are the Settings tab's. */}
+            <Box sx={{ flexShrink: 0 }}>
+              <SwitchField
+                size="small"
+                // The top bar's Engine icon for the word — still read, and shown on a hover, as "Engine" —
+                // and its look: neutral at its 0.56 while off, the primary colour while on (no breath — the top bar's says it searches).
+                label={
+                  <SmartToyRoundedIcon
+                    fontSize="small"
+                    color={session.engineOn ? "primary" : "inherit"}
+                    titleAccess={t("analysisV2.workspace.engine")}
+                    sx={{ display: "block", opacity: session.engineOn ? 1 : 0.56 }}
+                  />
+                }
+                checked={session.engineOn}
+                onChange={session.setEngineOn}
+                testId="analysis-case-setting-engine"
+              />
+            </Box>
           </>
         ),
         analysis: engine.analysis,
@@ -230,6 +235,22 @@ export function CaseBoard({ record, projectName, backPath, onOpenSiblings, sibli
             id: "display",
             label: t("analysisV2.workspace.tabs.display"),
             content: <CaseDisplayTab display={display} onChange={changeDisplay} available={availableWidthSources} />,
+          },
+          {
+            id: "settings",
+            label: t("analysisV2.workspace.tabs.settings"),
+            content: (
+              <CaseSettingsTab
+                orientation={core.orientation}
+                onOrientationChange={(side) => {
+                  if (side !== core.orientation) core.flipBoard();
+                }}
+                showEvalBar={display.showEvalBar}
+                onShowEvalBarChange={(showEvalBar) => changeDisplay({ showEvalBar })}
+                writeEvals={session.settings.writeEvals}
+                onWriteEvalsChange={session.setWriteEvals}
+              />
+            ),
           },
           {
             id: "export",
@@ -270,9 +291,9 @@ export function CaseBoard({ record, projectName, backPath, onOpenSiblings, sibli
  * new board read from its own record — and, in the main menu's place, **the
  * Project's Cases** (`CaseSiblings` in the shell's board left panel,
  * `keepShell`: the header and its Engine menu stay): in the Cases table's
- * order and under its words, carried in the URL, with a words box, Close,
- * previous / next and a fold to a rail; a drawer under the breakpoint, opened
- * from the board's header. Dev-only while the module is built.
+ * order and under its words, carried in the URL, with a words box, Close
+ * (the one way back — the board's header has none) and previous / next; a
+ * drawer under the breakpoint, opened from the board's header. Dev-only while the module is built.
  */
 function CaseWorkspace() {
   const { t } = useTranslation();
@@ -281,8 +302,7 @@ function CaseWorkspace() {
   const projects = useAnalysisProjects();
   const cases = useAnalysisCases();
   const compact = useShellCompact();
-  // The list beside the board, as the reader left it — the route's, so it outlives a step to another Case.
-  const [collapsed, setCollapsed] = useState(false);
+  // Under the breakpoint, the list's drawer — the route's, so it outlives a step to another Case.
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   /*
@@ -352,14 +372,12 @@ function CaseWorkspace() {
       <CaseBoard
         key={record.id}
         record={record}
-        projectName={projectName}
-        backPath={projectPath(project.id, context)}
         onOpenSiblings={compact ? () => setDrawerOpen(true) : undefined}
         siblingsOpen={drawerOpen}
       />
       {/* In the main menu's place — the shell's header and its Engine menu stay (`keepShell`); a drawer under the breakpoint. */}
       <BoardLeftPanel
-        collapsed={collapsed && !compact}
+        collapsed={false}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         drawerLabel={t("analysisV2.siblings.title", { name: projectName })}
@@ -385,8 +403,6 @@ function CaseWorkspace() {
               { replace: true },
             )
           }
-          collapsed={collapsed && !compact}
-          onCollapsedChange={compact ? undefined : setCollapsed}
           testId="analysis-case-siblings"
         />
       </BoardLeftPanel>
