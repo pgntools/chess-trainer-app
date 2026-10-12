@@ -45,6 +45,14 @@ describe("translation catalogs", () => {
       "savedAnalyses.table.columns.whiteElo",
       "savedAnalyses.table.columns.blackElo",
       "savedAnalyses.table.columns.eco",
+      // Analysis V2's Cases table's, the same initialisms (CTA-186).
+      "analysisV2.case.columns.whiteElo",
+      "analysisV2.case.columns.blackElo",
+      "analysisV2.case.columns.eco",
+      // Its new-Case dialog's Position sources and FEN field: the initialism is the whole label.
+      "analysisV2.newCase.fromFen",
+      "analysisV2.newCase.fromPgn",
+      "analysisV2.newCase.fen",
       "positionEditor.tabs.fen",
       "positionEditor.tabs.pgn",
       // The quick-load row's file pick: the initialism is the whole label.

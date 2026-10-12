@@ -384,7 +384,9 @@ address) is the plain board.
   the board did not write itself — the board reads its arrival once — so another
   analysis is a new board, the browser's Back between two works, and a save's
   own URL write (`onPointUrl`) is not taken for an arrival.
-- **Where it lives**: the shell's **board left panel**
+- **Where it lives** (Analysis V2's Case board registers the same slot with
+  `keepShell`, CTA-186 — the panel in the main menu's place alone, the header
+  and footer kept; this workspace keeps today's whole window): the shell's **board left panel**
   (`views/main/boardLeftPanel.tsx` — `BoardLeftPanel`, `BoardLeftPanelOutlet`,
   `useBoardLeftPanelWidth`), a slot like the right-hand one — **not** the main
   menu's `LeftPanel` slot, which stays unused. While a panel is registered the

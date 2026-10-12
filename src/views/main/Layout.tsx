@@ -21,7 +21,7 @@ import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
 import { useRightPanelHidden } from './rightPanelSlot';
 import { LeftPanelOutlet, LeftPanelProvider } from './leftPanel';
 import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from './boardLeftPanel';
-import { useBoardLeftPanelWidth } from './boardLeftPanelSlot';
+import { useBoardLeftPanelKeepsShell, useBoardLeftPanelWidth } from './boardLeftPanelSlot';
 import { useShellCompact } from './shellCompact';
 import { ARTICLE_MAX_WIDTH_PX, descriptionKeyOf, isArticleRoute, isFullWidthRoute, pageMetaOf, pageTitleOf, screenIdOf, titleKeyOf } from './routeHandle';
 import { createPageTitleStore, PageTitleContext } from './pageTitle';
@@ -291,6 +291,9 @@ const DefaultLayoutViewport = () => {
     */
     const leftPanelWidth = useBoardLeftPanelWidth()
     const leftPanelOpen = leftPanelWidth > 0 && !compact
+    // A panel that keeps the shell (CTA-186) takes the main menu's place alone: the header and footer stay.
+    const keepsShell = useBoardLeftPanelKeepsShell()
+    const focused = leftPanelOpen && !keepsShell
     const leftPanelPx = leftPanelOpen ? leftPanelWidth + BOARD_PANEL_GAP_PX : 0
     const [bodyDimentions, setBodyDimentions] = useState<Rect>({ width: 0, height: 0 })
 
@@ -552,7 +555,7 @@ const DefaultLayoutViewport = () => {
             }}
         >
             <SkipLink onSkip={focusMain} />
-            {!leftPanelOpen && <Header compact={compact} onOpenNav={openNav} />}
+            {!focused && <Header compact={compact} onOpenNav={openNav} />}
 
             <Box
                  data-testid="layout-wrapper"
@@ -828,7 +831,7 @@ const DefaultLayoutViewport = () => {
 
             </Box>
 
-            {!leftPanelOpen && <Footer />}
+            {!focused && <Footer />}
 
         </Box>
         </PageTitleContext.Provider>

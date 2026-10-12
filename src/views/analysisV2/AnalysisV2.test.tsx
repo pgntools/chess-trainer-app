@@ -24,6 +24,7 @@ import { parsePgnTree } from "../../lib/pgn";
 import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { boardOptions } from "../board/boardTestHarness";
+import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../main/boardLeftPanel";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 
 vi.mock("../../lib/engines/builtin", async (importOriginal) =>
@@ -71,13 +72,16 @@ const mount = (entry: string) =>
     <AppThemeWithLang>
       <MemoryRouter initialEntries={[entry]}>
         <RightPanelProvider>
-          <Routes>
-            <Route path="/analysis" element={<ProjectsBrowser />} />
-            <Route path="/analysis/projects/:projectId" element={<ProjectScreen />} />
-            <Route path="/analysis/projects/:projectId/cases/:caseId" element={<CaseWorkspace />} />
-          </Routes>
-          <Where />
-          <RightPanelOutlet />
+          <BoardLeftPanelProvider>
+            <Routes>
+              <Route path="/analysis" element={<ProjectsBrowser />} />
+              <Route path="/analysis/projects/:projectId" element={<ProjectScreen />} />
+              <Route path="/analysis/projects/:projectId/cases/:caseId" element={<CaseWorkspace />} />
+            </Routes>
+            <Where />
+            <BoardLeftPanelOutlet compact={false} />
+            <RightPanelOutlet />
+          </BoardLeftPanelProvider>
         </RightPanelProvider>
       </MemoryRouter>
     </AppThemeWithLang>,
@@ -526,6 +530,44 @@ describe("a Case's board (CTA-186)", () => {
     mount(`/analysis/projects/${project.id}/cases/cply`);
     expect(await screen.findByTestId("board")).toHaveAttribute("data-position", AFTER_E4);
     expect(boardOptions().boardOrientation).toBe("black");
+  });
+
+  it("lists the Project's Cases beside it — the table's order and words carried there and back", async () => {
+    const project = (await createAnalysisProject("Club", null))!;
+    await addAnalysisCases([
+      gameCase(project.id),
+      positionCaseOfFen({ id: "cpos", projectId: project.id, name: "Endgame" }, ENDGAME),
+      positionCaseOfFen({ id: "cstart", projectId: project.id, name: "Opening" }, START),
+    ]);
+    const user = userEvent.setup();
+    mount(`/analysis/projects/${project.id}?sort=name&dir=asc`);
+    const table = await screen.findByRole("table", { name: "Cases" });
+    await user.click(within(table).getByRole("link", { name: "Open Endgame" }));
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
+
+    // By name: Carlsen – Caruana…, Endgame, Opening — the open one current.
+    const list = await screen.findByRole("navigation", { name: "Cases of Club" });
+    expect(within(list).getAllByRole("treeitem").map((item) => item.textContent)).toEqual([
+      expect.stringContaining("Carlsen"),
+      expect.stringContaining("Endgame"),
+      expect.stringContaining("Opening"),
+    ]);
+    expect(screen.getByTestId("analysis-case-siblings-tree-cpos")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Previous case" })).toHaveAttribute(
+      "href",
+      `/analysis/projects/${project.id}/cases/cgame?sort=name&dir=asc`,
+    );
+    await user.click(screen.getByRole("link", { name: "Next case" }));
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cstart?sort=name&dir=asc`);
+    expect(await screen.findByTestId("analysis-case-name")).toHaveTextContent("Opening");
+
+    // The list's words are the URL's, and Close takes them back to the table.
+    await user.type(screen.getByRole("searchbox", { name: "Filter cases" }), "endgame");
+    expect(where()).toContain("q=endgame");
+    expect(screen.queryByTestId("analysis-case-siblings-tree-cgame")).toBeNull();
+    await user.click(within(screen.getByTestId("analysis-case-siblings")).getByRole("link", { name: "Back to Club" }));
+    expect(where()).toBe(`/analysis/projects/${project.id}?sort=name&dir=asc&q=endgame`);
+    expect(await screen.findByRole("searchbox", { name: "Filter cases" })).toHaveValue("endgame");
   });
 
   it("says a Case that is not in the Project, and leads back to it", async () => {

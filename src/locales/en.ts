@@ -3117,6 +3117,16 @@ const en = {
       },
       accessibilitySoon: "The board's accessibility options will be here.",
     },
+    siblings: {
+      title: "Cases of {{name}}",
+      close: "Back to {{name}}",
+      collapse: "Fold the list",
+      expand: "Open the list",
+      previous: "Previous case",
+      next: "Next case",
+      toggle: "The project's cases",
+      hint: "Up and down arrows to move, Enter to open a case.",
+    },
     workspace: {
       tabs: {
         moves: "Moves",

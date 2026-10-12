@@ -34,7 +34,7 @@ import {
 } from "../../lib/analysisProjects";
 import { newRecordId } from "../../lib/recordId";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
-import { browserPath, casePath } from "./paths";
+import { browserPath, caseListContextOf, casePath } from "./paths";
 import { useAnalysisCases, useAnalysisProjects } from "./useAnalysisProjects";
 
 /** The dialog open over the Cases, and the Case it is about. */
@@ -223,7 +223,8 @@ function ProjectScreen() {
                 ? { page: table.page, rowsPerPage: table.rowsPerPage, onPageChange: table.setPage, onRowsPerPageChange: table.setRowsPerPage }
                 : undefined
             }
-            caseLink={(row) => ({ component: RouterLink, to: casePath(project.id, row.id) })}
+            // The board lists the Project's Cases in this table's order, under its words.
+            caseLink={(row) => ({ component: RouterLink, to: casePath(project.id, row.id, caseListContextOf(searchParams)) })}
             onCaseAction={onCaseAction}
             canMove={projects.length > 1}
             picked={picked}

@@ -2520,6 +2520,16 @@ const he: typeof en = {
       },
       accessibilitySoon: "כאן יהיו אפשרויות הנגישות של הלוח.",
     },
+    siblings: {
+      title: "המקרים של {{name}}",
+      close: "חזרה אל {{name}}",
+      collapse: "קיפול הרשימה",
+      expand: "פתיחת הרשימה",
+      previous: "המקרה הקודם",
+      next: "המקרה הבא",
+      toggle: "המקרים של הפרויקט",
+      hint: "החיצים למעלה ולמטה לתנועה, Enter לפתיחת מקרה.",
+    },
     workspace: {
       tabs: {
         moves: "מסעים",
