@@ -12,6 +12,15 @@ paths:
 
 # Jobs — the background job runner, its store and the Jobs screen (`/jobs`)
 
+> **Not Jobs V2.** Analysis V2 has background jobs of its own (CTA-188) — a
+> Case's computer analysis, a clone of this module with its own record,
+> store (in `chessapp.analysisProjects`), runner and lock, view
+> (`/analysis/jobs`) and indicator: [`analysis-v2.md`](./analysis-v2.md) §6.
+> This module is untouched by it, but for optional props on its blocks
+> (`JobsTable` and `JobSummary` generic over a job's fields, the New Job
+> form's and dialog's additions) and `jobLiveAnalysis`'s argument widened —
+> each absent, today's behaviour.
+
 A **job** is work the app does in the background, app-wide, while the reader
 goes on with anything else. One kind so far: a game's **computer analysis**
 (CTA-171) — Stockfish run once over the game's mainline, every finished

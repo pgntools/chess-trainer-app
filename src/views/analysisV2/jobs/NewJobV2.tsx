@@ -127,7 +127,10 @@ function NewJobV2({ open, onClose, testId }: { open: NewJobV2Case | null; onClos
   const presetOf = (id: string): EnginePreset => withDefaultPreset(presets ?? []).find((preset) => preset.id === id) ?? withDefaultPreset([])[0];
   const single = target.kind === "case";
   // Into the Case: one variant, the first ticked.
-  const shownOptions = single && options.outputs.length !== 1 ? { ...options, outputs: [options.outputs[0] ?? "light"] } : options;
+  const shownOptions = useMemo(
+    (): ComputerAnalysisOptions => (single && options.outputs.length !== 1 ? { ...options, outputs: [options.outputs[0] ?? "light"] } : options),
+    [single, options],
+  );
 
   const existing = open === null ? undefined : jobV2OfCase(jobs, open.record.id);
   const tree = shown?.tree;

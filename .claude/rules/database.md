@@ -59,7 +59,7 @@ wrapper's main features would go unused. §10 says when that changes.
 | `src/lib/playedGameStore.ts` | The `chessapp.engine` database (object store `games`) and its store, in one file (one store, one database). |
 | `src/lib/libraryDb.ts` | The `chessapp.library` database (object stores `collections`, `indexes`, `games`, `folders`), version 2. |
 | `src/lib/jobStore.ts` | The `chessapp.jobs` database (object store `jobs`) and its store, in one file (CTA-173) — the background jobs, their checkpoints ([`jobs.md`](./jobs.md)). |
-| `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database (object stores `folders`, `projects`, `cases`) — Analysis V2's (CTA-186), dev-only while it is built ([`analysis-v2.md`](./analysis-v2.md)). Its stores: `analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts`; its records `analysisProjects.ts`. |
+| `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, version 2 (object stores `folders`, `projects`, `cases`, and since CTA-188 `jobs` and `projectLinks`) — Analysis V2's (CTA-186), dev-only while it is built ([`analysis-v2.md`](./analysis-v2.md)). Its stores: `analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts`, `jobV2Store.ts` (Jobs V2), `analysisProjectLinkStore.ts`; its records `analysisProjects.ts` and `jobsV2.ts`. |
 | `src/lib/enginePresetStore.ts` | The `chessapp.enginePresets` database (object stores `presets`, `selections`) and its two stores, in one file (CTA-179) — the engine option presets and the one each engine runs ([`docs/engine.md`](../../docs/engine.md) §9). |
 | `src/lib/libraryCollectionStore.ts` | The Library's hand-written collection store (§1.4) — not an `idbRecordStore`, because it reads a collection's rows and games lazily. |
 | `src/lib/savedAnalysisStore.ts`, `savedAnalysisFolderStore.ts`, `savedRepertoireStore.ts`, `savedRepertoireFolderStore.ts`, `libraryFolderStore.ts` | The other record stores: each one's caps, idempotency comparison and operations, over the factory. |
@@ -88,14 +88,18 @@ wrapper's main features would go unused. §10 says when that changes.
 | | | `selections` | `enginePresetStore.ts` | `EnginePresetSelection` (one per engine id) | oldest first | — |
 | **Analysis V2** (CTA-186, dev-only) | `chessapp.analysisProjects` | `folders` | `analysisProjectFolderStore.ts` | `ProjectFolder` (a `GameFolder`) | oldest first | 100 |
 | | | `projects` | `analysisProjectStore.ts` | `AnalysisProject` | newest first | 1,000 (a new one refused) |
-| | | `cases` | `analysisCaseStore.ts` | `AnalysisCase` (its source, the tree as PGN, the SAN path, the orientation — autosaved) | newest first | 10,000 (a batch past it refused) |
+| | | `cases` | `analysisCaseStore.ts` | `AnalysisCase` (its source, the tree as PGN, the SAN path, the orientation — autosaved; the Jobs V2 merges its tree holds, CTA-188) | newest first | 10,000 (a batch past it refused) |
+| | | `jobs` (CTA-188) | `jobV2Store.ts` | `JobV2` (Jobs V2 — a Case's computer analysis, its checkpoint) | newest first | 100 (the oldest finished dropped; refused when every one is unfinished) |
+| | | `projectLinks` (CTA-188) | `analysisProjectLinkStore.ts` | `ProjectLink` (one Project links to another) | oldest first | 10,000 |
 
 Every database is at **version 1** but the Library's, at **version 2** (CTA-88
-added its `folders` store; the upgrade only created it). Every object store is
+added its `folders` store; the upgrade only created it), and Analysis V2's, at
+**version 2** (CTA-188 added `jobs` and `projectLinks`; the upgrade only
+created them). Every object store is
 keyed by `keyPath: "id"`, and **none has an index**. Each database is also the
 name of its `BroadcastChannel` (the analyses' two stores share one channel, and
 so do the repertoires', the engine presets' and the Library's — the Library's collection listener
-ignores the folder store's `{ store }` messages; Analysis V2's three stores
+ignores the folder store's `{ store }` messages; Analysis V2's five stores
 share theirs too).
 
 ### 1.1 Why one database per module
@@ -293,12 +297,12 @@ course can be most of a megabyte each) are far below that.
   IndexedDB in memory, so the stores' own code is what runs.
 - **Teardown** (`setup.ts`, after every test): unmount, clear
   `localStorage`, then — for every record store — wait for its writes to land
-  (`settled…`, three times: a folder delete queues its records' unfiling behind
-  it), `reset…`, and delete the six databases (`deleteAnalysisDb`,
+  (`settled…`, five times: a folder delete queues its records' unfiling behind
+  it, and Analysis V2's deletes their Cases', Jobs V2's and links' — CTA-188), `reset…`, and delete the six databases (`deleteAnalysisDb`,
   `deleteEngineDb`, `deleteRepertoireDb`, `deleteJobsDb`,
   `deleteEnginePresetsDb`, `deleteAnalysisProjectsDb`) — the page's job
-  runner (`stopJobRunner`, CTA-173) stopped first, since it writes the jobs
-  and the analyses. The Library's folder store is
+  runners (`stopJobRunner`, CTA-173; `stopJobV2Runner`, CTA-188) stopped first, since they write the jobs
+  and their results. The Library's folder store is
   settled and reset there with the others; its database is deleted by the
   Library's own tests (`resetLibraryCollectionStore`, in their `beforeEach`).
   Without the wait, a write a screen left in flight lands in the next test's

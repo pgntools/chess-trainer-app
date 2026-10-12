@@ -35,7 +35,7 @@ import type { GameTree } from "./gameTree";
  * per page, started by the app shell in dev only (`JobsV2Shell.tsx`'s
  * `JobV2Runner`), running **one Jobs V2 job at a time**, oldest queued first,
  * over `lib/jobV2Store.ts`. A V1 job and a V2 job may run at the same time —
- * each runner its own engine. The reference is `.claude/rules/analysis-v2.md` §7.
+ * each runner its own engine. The reference is `.claude/rules/analysis-v2.md` §6.
  *
  * - **One tab runs Jobs V2**: it holds its own Web Lock,
  *   {@link JOB_V2_RUNNER_LOCK}, for the page's life; another tab's waits.

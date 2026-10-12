@@ -10,7 +10,7 @@ import { newRecordId } from "./recordId";
  * `lib/analysisProjectsDb.ts`), one record per {@link JobV2}, newest first,
  * over [`idbRecordStore.ts`](./idbRecordStore.ts). A clone of the legacy
  * `lib/jobStore.ts` (`chessapp.jobs`), which it never touches; the runner is
- * `lib/jobV2Runner.ts`, the reference `.claude/rules/analysis-v2.md` §7.
+ * `lib/jobV2Runner.ts`, the reference `.claude/rules/analysis-v2.md` §6.
  *
  * Every read is the kept snapshot — `undefined` until the first read lands —
  * and every write a promise of `undefined` or a {@link JobV2Problem}; nothing

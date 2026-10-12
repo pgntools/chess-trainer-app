@@ -30,7 +30,7 @@ import { parsePgnTree } from "./pgn";
  * (`lib/jobs.ts`, `.claude/rules/jobs.md`), named "Jobs V2" everywhere so the
  * two are never confused; it reuses that module's pure parts (the statuses,
  * the positions, the checkpoint's reader, the progress) and never its store
- * or runner. The reference is `.claude/rules/analysis-v2.md` §7.
+ * or runner. The reference is `.claude/rules/analysis-v2.md` §6.
  *
  * What differs from a V1 job:
  *

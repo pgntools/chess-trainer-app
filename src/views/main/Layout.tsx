@@ -34,7 +34,7 @@ import LanguageSwitch from '../../theme/LanguageSwitch';
 import chessFavicon from '../../assets/chess-favicon.svg';
 
 /*
-    Jobs V2 (CTA-188, `.claude/rules/analysis-v2.md` §7) — Analysis V2's own
+    Jobs V2 (CTA-188, `.claude/rules/analysis-v2.md` §6) — Analysis V2's own
     background jobs: its runner beside V1's and its indicator beside V1's,
     dev-only. The condition is inline, so in a production build — where
     `import.meta.env.DEV` is the literal `false` — the dynamic imports are dead
