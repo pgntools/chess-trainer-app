@@ -3027,6 +3027,13 @@ const en = {
         /** The shell's warning when a running job found the API unreachable — once per run. */
         unreachable: "The lichess evaluation API did not answer, so {{name}} goes on with the engine. If the API is not running, turn it off in the Jobs settings.",
         open: "Jobs settings",
+        /** Sending the engine's evals to the API — its write mode, `POST /evals`. */
+        write: {
+          label: "Send the engine's evaluations to the API",
+          help: "Each position a job's engine searches is stored in the API, beside lichess's — kept where it is deeper than what the API holds. The API must be started in write mode (--write).",
+          notWritable: "{{url}} is not in write mode, so it will refuse them. Start it with --write.",
+        },
+        writeRefused: "The lichess evaluation API did not take the engine's evaluations, so {{name}} goes on without sending them. Check that the API runs in write mode, or turn writing off in the Jobs settings.",
       },
     },
     /** The links between Cases (CTA-188), on a Case's Info tab, and its Link a case picker. */

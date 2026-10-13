@@ -409,7 +409,12 @@ describe("the Jobs settings (CTA-193)", () => {
     await user.type(address, "http://127.0.0.1:8000");
     await user.click(within(settings).getByRole("button", { name: "Connect" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/health", expect.anything()));
-    expect(JSON.parse(localStorage.getItem(JOBS_SETTINGS_STORAGE_KEY) ?? "{}").evalApi).toEqual({ enabled: true, url: "http://127.0.0.1:8000" });
+    expect(JSON.parse(localStorage.getItem(JOBS_SETTINGS_STORAGE_KEY) ?? "{}").evalApi).toEqual({ enabled: true, url: "http://127.0.0.1:8000", write: false });
+
+    // Sending the engine's evaluations: kept, and said refused by an API not in write mode (its /health says so).
+    await user.click(within(settings).getByRole("checkbox", { name: /send the engine's evaluations/i }));
+    expect(readJobsSettings().evalApi.write).toBe(true);
+    expect(await within(settings).findByText(/is not in write mode/i)).toBeInTheDocument();
     await expectNoAxeViolations(baseElement);
 
     // A reload keeps them.
@@ -420,6 +425,7 @@ describe("the Jobs settings (CTA-193)", () => {
     expect(within(again).getByRole("combobox", { name: /preset for new jobs/i })).toHaveTextContent("Deep analysis");
     expect(within(again).getByRole("switch", { name: /use the lichess evaluation api/i })).toBeChecked();
     expect(within(again).getByRole("textbox", { name: /api address/i })).toHaveValue("http://127.0.0.1:8000");
+    expect(within(again).getByRole("checkbox", { name: /send the engine's evaluations/i })).toBeChecked();
   });
 
   it("starts a New Job V2 with the default engine and preset — and as before once that preset is gone", async () => {

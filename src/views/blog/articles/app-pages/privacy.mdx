@@ -17,7 +17,7 @@ Everything below lives in your own browser and is read only by the App running i
 - `chessapp.engine` — the chess engine you chose in Settings → Engine.
 - `chessapp.engineServer` — the address of an engine server on your own computer, if you turned one on in Settings → Engine.
 - `chessapp.engineSettings` — the engine's search settings you chose in the top bar's Engine menu: lines, depth, move time, infinite analysis, threads and hash.
-- `chessapp.jobsSettings` — the Jobs settings you chose in Analysis → Jobs: the default engine and preset for new jobs, and whether to use a lichess evaluation API and its address.
+- `chessapp.jobsSettings` — the Jobs settings you chose in Analysis → Jobs: the default engine and preset for new jobs, and whether to use a lichess evaluation API, its address and whether to send it the engine's evaluations.
 - `i18nextLng` — the language you chose (English or Hebrew).
 - `mui-mode`, with `mui-color-scheme-light` and `mui-color-scheme-dark` — light, dark or system colour mode. The MUI interface library keeps these.
 
@@ -41,7 +41,7 @@ The App sets **no cookies**. See the [Cookies Notice](/cookies) for the details.
 
 - No accounts, no sign-in, no profile.
 - No analytics, advertising or tracking, and no third-party scripts, fonts or images: everything the App loads comes from the site it is served from.
-- The Stockfish chess engine runs inside your browser, in a local Web Worker. Your positions are not sent anywhere to be analysed — unless you turn on an **engine server** in Settings → Engine: then the positions you analyse, and your engine settings, go to the address you gave, a server you run yourself (usually on your own computer). It is off by default, and while it is off the App never contacts it. Likewise, if you turn on the **lichess evaluation API** in the Jobs settings, the positions of the background jobs you start go to the address you gave, a server you run yourself, to look up their evaluations; it is off by default too. We receive nothing either way.
+- The Stockfish chess engine runs inside your browser, in a local Web Worker. Your positions are not sent anywhere to be analysed — unless you turn on an **engine server** in Settings → Engine: then the positions you analyse, and your engine settings, go to the address you gave, a server you run yourself (usually on your own computer). It is off by default, and while it is off the App never contacts it. Likewise, if you turn on the **lichess evaluation API** in the Jobs settings, the positions of the background jobs you start go to the address you gave, a server you run yourself, to look up their evaluations — and, if you also tick sending the engine's evaluations, what the engine found for them is stored there; both are off by default too. We receive nothing either way.
 - We do not sell or share your data, because we do not receive it.
 
 ## Why the App stores these items, and on what basis

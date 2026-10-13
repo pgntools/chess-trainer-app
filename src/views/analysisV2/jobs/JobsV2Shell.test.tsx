@@ -155,7 +155,7 @@ describe("the shell's warning when the lichess evaluation API did not answer (CT
         </MemoryRouter>
       </AppThemeWithLang>,
     );
-    act(() => reportLichessEvalUnreachable({ jobId: "j1", name: "Alice – Bob" }));
+    act(() => reportLichessEvalUnreachable({ jobId: "j1", name: "Alice – Bob", kind: "read" }));
     const warning = await screen.findByRole("alert");
     expect(warning).toHaveTextContent(
       "The lichess evaluation API did not answer, so Alice – Bob goes on with the engine. If the API is not running, turn it off in the Jobs settings.",
@@ -163,5 +163,20 @@ describe("the shell's warning when the lichess evaluation API did not answer (CT
     await expectNoAxeViolations(baseElement);
     await user.click(screen.getByRole("link", { name: "Jobs settings" }));
     await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/analysis/jobs?tab=settings"));
+  });
+
+  it("says when the API did not take the engine's evaluations — the job goes on without sending them", async () => {
+    render(
+      <AppThemeWithLang>
+        <MemoryRouter initialEntries={["/analysis"]}>
+          <JobV2Runner />
+        </MemoryRouter>
+      </AppThemeWithLang>,
+    );
+    act(() => reportLichessEvalUnreachable({ jobId: "j1", name: "Alice – Bob", kind: "write" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The lichess evaluation API did not take the engine's evaluations, so Alice – Bob goes on without sending them.",
+    );
+    expect(screen.getByRole("link", { name: "Jobs settings" })).toBeInTheDocument();
   });
 });

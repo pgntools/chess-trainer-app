@@ -4,10 +4,12 @@ import { Chess } from "chess.js";
 import {
   checkLichessEvalApi,
   LICHESS_EVAL_API_TIMEOUT_MS,
+  lichessEvalEntryOf,
   lichessEvalFen,
   lichessEvalFrom,
   lookupLichessEval,
   positionResultOfLichessEval,
+  writeLichessEval,
   type LichessEval,
 } from "./lichessEvalApi";
 
@@ -164,7 +166,7 @@ describe("checkLichessEvalApi", () => {
   it("is ok for GET /health's answer", async () => {
     const fetchMock = stubFetch(async () => json({ status: "ok", positions: 416_000_000, sql_enabled: true, write_enabled: false }));
     const health = await checkLichessEvalApi(API);
-    expect(health).toMatchObject({ ok: true, positions: 416_000_000 });
+    expect(health).toMatchObject({ ok: true, positions: 416_000_000, writeEnabled: false });
     expect(String(fetchMock.mock.calls[0][0])).toBe(`${API}/health`);
   });
 
@@ -217,5 +219,60 @@ describe("positionResultOfLichessEval", () => {
     expect(result?.lines).toEqual([{ score: { kind: "cp", value: 20 }, depth: 40, pv: ["e2e4"] }]);
     const none: LichessEval = { depth: 40, lines: [{ score: { kind: "cp", value: 0 }, moves: [] }] };
     expect(positionResultOfLichessEval({ fen: START, multiPv: 1 }, none, 30)).toBeUndefined();
+  });
+});
+
+describe("lichessEvalEntryOf", () => {
+  it("writes a searched result as a POST /evals entry — White's view, its lines' moves, line 1's depth, nodes in thousands", () => {
+    const entry = lichessEvalEntryOf(
+      {
+        fen: START,
+        lines: [
+          { score: { kind: "cp", value: 31 }, depth: 22, pv: ["e2e4", "e7e5"] },
+          { score: { kind: "mate", value: -3 }, depth: 22, pv: ["f2f3", "e7e5"] },
+        ],
+      },
+      { nodes: 1_234_567, engine: "Stockfish 19 Lite" },
+    );
+    expect(entry).toEqual({
+      fen: START,
+      depth: 22,
+      knodes: 1235,
+      pov: "white",
+      pvs: [
+        { cp: 31, line: "e2e4 e7e5" },
+        { mate: -3, line: "f2f3 e7e5" },
+      ],
+      engine: "Stockfish 19 Lite",
+    });
+  });
+
+  it("is nothing for a result without a line to send — a finished position, a stored eval", () => {
+    expect(lichessEvalEntryOf({ fen: START, lines: [{ score: { kind: "mate", value: 0 }, depth: 0, pv: [] }] }, {})).toBeUndefined();
+    expect(lichessEvalEntryOf({ fen: START, lines: [{ score: { kind: "cp", value: 10 }, depth: 30, pv: [] }] }, {})).toBeUndefined();
+  });
+});
+
+describe("writeLichessEval", () => {
+  const entry = { fen: START, depth: 22, knodes: 1, pov: "white" as const, pvs: [{ cp: 31, line: "e2e4" }] };
+
+  it("POSTs the entry to /evals as JSON, and is true once the API took it", async () => {
+    const fetchMock = stubFetch(async () => json({ stored: 1, skipped: 0, results: [] }));
+    expect(await writeLichessEval(API, entry)).toBe(true);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API}/evals`);
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({ entries: [entry] });
+  });
+
+  it("is false when the API is not in write mode, wants a token, refuses the entry or does not answer", async () => {
+    for (const status of [403, 401, 422]) {
+      stubFetch(async () => json({ detail: "no" }, status));
+      expect(await writeLichessEval(API, entry)).toBe(false);
+    }
+    stubFetch(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    expect(await writeLichessEval(API, entry)).toBe(false);
   });
 });

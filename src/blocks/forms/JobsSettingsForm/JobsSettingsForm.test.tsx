@@ -9,10 +9,10 @@ import type { EngineServerFormStatus } from "../EngineServerForm";
 import JobsSettingsForm from "./JobsSettingsForm";
 import { API_URL, BOARD_DEFAULT, DEEP_DEFAULT, ENGINES, NOT_AN_EVAL_API, ONLINE, PRESETS, UNREACHABLE } from "./fixtures";
 
-type Mount = { defaultPreset?: JobsDefaultPreset | null; enabled?: boolean; status?: EngineServerFormStatus };
+type Mount = { defaultPreset?: JobsDefaultPreset | null; enabled?: boolean; status?: EngineServerFormStatus; write?: boolean; writable?: boolean };
 
-const mount = ({ defaultPreset = null, enabled = false, status }: Mount = {}) => {
-  const props = { onDefaultPresetChange: vi.fn(), onEnabledChange: vi.fn(), onAddressChange: vi.fn(), onConnect: vi.fn() };
+const mount = ({ defaultPreset = null, enabled = false, status, write = false, writable }: Mount = {}) => {
+  const props = { onDefaultPresetChange: vi.fn(), onEnabledChange: vi.fn(), onAddressChange: vi.fn(), onConnect: vi.fn(), onWriteChange: vi.fn() };
   const { container } = render(
     <JobsSettingsForm
       defaultPreset={defaultPreset}
@@ -31,6 +31,7 @@ const mount = ({ defaultPreset = null, enabled = false, status }: Mount = {}) =>
         example: API_URL,
         status,
       }}
+      evalApiWrite={{ checked: write, onChange: props.onWriteChange, writable }}
       testId="jobs-settings"
     />,
   );
@@ -94,8 +95,27 @@ describe("JobsSettingsForm", () => {
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
+  it("offers sending the engine's evaluations only while the API is on, and says when it is not in write mode", async () => {
+    const user = userEvent.setup();
+    mount();
+    expect(screen.queryByRole("checkbox", { name: /send the engine's evaluations/i })).not.toBeInTheDocument();
+    cleanup();
+    const { onWriteChange } = mount({ enabled: true, status: ONLINE });
+    const send = screen.getByRole("checkbox", { name: /send the engine's evaluations/i });
+    expect(send).not.toBeChecked();
+    await user.click(send);
+    expect(onWriteChange).toHaveBeenCalledWith(true);
+    cleanup();
+    mount({ enabled: true, status: ONLINE, write: true, writable: false });
+    expect(screen.getByRole("checkbox", { name: /send the engine's evaluations/i })).toBeChecked();
+    expect(screen.getByText(/is not in write mode/i)).toBeInTheDocument();
+    cleanup();
+    mount({ enabled: true, status: ONLINE, write: true, writable: true });
+    expect(screen.queryByText(/is not in write mode/i)).not.toBeInTheDocument();
+  });
+
   it("has no axe violations, on and off, in Hebrew too", async () => {
-    mount({ defaultPreset: DEEP_DEFAULT, enabled: true, status: ONLINE });
+    mount({ defaultPreset: DEEP_DEFAULT, enabled: true, status: ONLINE, write: true, writable: false });
     await expectNoAxeViolations();
     cleanup();
     await i18n.changeLanguage("he");

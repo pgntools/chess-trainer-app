@@ -89,7 +89,7 @@ other screen hands a game to Analysis as a new Case** (§1.1).
 | `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, **version 3** (CTA-188): object stores `folders`, `projects`, `cases`, `jobs` (Jobs V2) and `caseLinks`, one `BroadcastChannel`. |
 | `src/lib/jobsV2.ts`, `jobV2Store.ts`, `jobV2Runner.ts` | **Jobs V2** (CTA-188, §6): the record (`JobV2`, `jobV2Of`, `jobV2From`, `jobV2AnalysisOf` / `jobV2MergedPgn` — the merge into a Case, `jobV2OfCase`, `jobV2OutputName`), the store (`enqueueJobV2`, `pauseJobV2`, `cancelJobV2`, `resumeJobV2`, `removeJobV2`, `removeJobsV2Of`, `interruptRunningJobsV2`, `MAX_JOBS_V2` 100) and the runner (`createJobV2Runner`, `startJobV2Runner` / `stopJobV2Runner`, its lock `chessapp.analysisProjects.jobs.runner`). Since CTA-192 `jobsV2.ts` also holds what the legacy jobs' record shared with it: the statuses (`JobStatus`), `JobPosition`, the `can…` predicates, `jobSearchOf`, `jobProgress`, `jobMoveLabel`, the checkpoint's reader. `lib/jobV2LiveAnalysis.ts` (`jobV2LiveAnalysis`): a job's results so far — the eval graph's points, the verdicts and report over the moves judged, the latest finished position (§6.5). |
 | `src/lib/jobV2Live.ts` | **A running job's live engine progress** (CTA-190, §6.7): `JobV2Live` (the snapshot), `createJobV2LiveFeed` (the runner's throttled feed), `jobV2LiveSnapshot` / `subscribeJobV2Live` (read by `views/analysisV2/jobs/useJobV2Live.ts`), the channel `chessapp.analysisProjects.jobs.live` — in memory, never stored. |
-| `src/lib/jobsSettings.ts`, `src/lib/lichessEvalApi.ts` | **The Jobs settings and the lichess evaluation API** (CTA-193, §6.9): the preference `chessapp.jobsSettings` (`readJobsSettings`, `storeJobsDefaultPreset`, `storeLichessEvalApi`, `lichessEvalApiUrl`), the API's status (`connectLichessEvalApi`, read never stored) and the runner's word that it did not answer (`reportLichessEvalUnreachable` / `subscribeLichessEvalUnreachable`); the client — `lichessEvalFen` (the 4-field FEN), `lookupLichessEval` (`GET /fen`), `checkLichessEvalApi` (`GET /health`), `positionResultOfLichessEval` (an eval as a `PositionResult`). |
+| `src/lib/jobsSettings.ts`, `src/lib/lichessEvalApi.ts` | **The Jobs settings and the lichess evaluation API** (CTA-193, §6.9): the preference `chessapp.jobsSettings` (`readJobsSettings`, `storeJobsDefaultPreset`, `storeLichessEvalApi`, `lichessEvalApiUrl`), the API's status (`connectLichessEvalApi`, read never stored) and the runner's word that it did not answer (`reportLichessEvalUnreachable` / `subscribeLichessEvalUnreachable`); the client — `lichessEvalFen` (the 4-field FEN), `lookupLichessEval` (`GET /fen`), `checkLichessEvalApi` (`GET /health`), `positionResultOfLichessEval` (an eval as a `PositionResult`), `lichessEvalEntryOf` / `writeLichessEval` (`POST /evals`, the engine's evals sent back). |
 | `src/lib/analysisCaseLinkStore.ts` | **The links between Cases** (CTA-188, §7): `linkAnalysisCases`, `addCaseLinks` (several at once — a job's new Cases), `unlinkAnalysisCases`, `removeLinksOfCases`, `importCaseLinks`; the record `CaseLink` and `caseLinksOf` in `analysisProjects.ts`. |
 | `src/lib/analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts` | **The stores** over `idbRecordStore` ([`database.md`](./database.md) §3): folders oldest first, Projects and Cases newest first; every operation a promise of `undefined` or `"storage"` / `"too-many"`. |
 | `src/lib/retiredDatabases.ts` | **The databases the app no longer keeps** (CTA-192): `chessapp.analyses` and `chessapp.jobs`, the legacy module's, deleted on every load (`src/main.tsx`, `deleteRetiredDatabases`). |
@@ -715,11 +715,26 @@ preferences, one `localStorage` key, `chessapp.jobsSettings`
   run, and the runner says so once (`reportLichessEvalUnreachable`): the
   shell's `JobV2Runner` shows a warning snackbar — the API did not answer,
   turn it off in the Jobs settings — with a link there.
+- **Sending the engine's evaluations** — a checkbox under the API's details
+  while it is on (`evalApi.write`, off by default; `lichessEvalApiWriteUrl`):
+  each position **the engine searched** in a job (never one the API
+  answered, a terminal one or a stored `[%eval]`) is sent after its search
+  as one `POST /evals` entry (`lichessEvalEntryOf`, `writeLichessEval`):
+  its FEN, line 1's depth, the nodes the engine last reported in thousands,
+  `pov: "white"`, its lines' scores and UCI moves (none past a line with no
+  move, never `mate 0`), the engine's name. The API stores it when deeper
+  than what it holds, else skips it — both taken. The API must run in write
+  mode (`api.py --write`): `GET /health`'s `write_enabled` is kept in the
+  status, and the form says when a ticked box meets an API that is not.
+  **A write not taken** (403 — no write mode, 401 — a token wanted, 422, no
+  answer) — the run goes on without sending, said once
+  (`reportLichessEvalUnreachable`, `kind: "write"`, its own warning); a
+  lookup that fails stops the writes too. A write token
+  (`LICHESS_API_WRITE_TOKEN`) is not supported — run the API without one.
 - **CORS**: the browser asks another origin, so the API must answer with
-  CORS headers — added in its own repository (out of this one's scope); the
-  tests stub `fetch`.
-- Nothing is written back to the API (`POST /evals` is not used), and only
-  Jobs ask it.
+  CORS headers (`--cors-origins`, `*` by default, in its own repository);
+  the tests stub `fetch`.
+- Only Jobs ask it or write to it.
 
 ### 6.8 Invariants and testing
 

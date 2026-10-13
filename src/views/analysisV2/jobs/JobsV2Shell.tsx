@@ -28,8 +28,9 @@ import { liveOfJob, useJobV2Live } from "./useJobV2Live";
  * render, so the pre-render starts none) and never stopped by one: a
  * StrictMode remount must not leave a job half run. It draws nothing — but
  * for **a warning when the lichess evaluation API did not answer** during a
- * job's run (CTA-193, once per run — the job goes on with the engine), whose
- * button opens the Jobs settings, where it is turned off.
+ * job's run (CTA-193, once per run — the job goes on with the engine), or
+ * **did not take the engine's evals** (writing on — the job goes on without
+ * sending them), whose button opens the Jobs settings, where it is turned off.
  */
 export function JobV2Runner() {
   const { t } = useTranslation();
@@ -41,13 +42,15 @@ export function JobV2Runner() {
   }, []);
   useEffect(
     () =>
-      subscribeLichessEvalUnreachable(({ name }) => {
+      subscribeLichessEvalUnreachable(({ name, kind }) => {
         const path = jobsV2SettingsPath();
         show({
           severity: "warning",
           duration: 10_000,
           testId: "analysis-v2-jobs-eval-api-unreachable",
-          message: t("analysisV2.jobs.settings.unreachable", { name: name || t("jobs.untitled") }),
+          message: t(kind === "write" ? "analysisV2.jobs.settings.writeRefused" : "analysisV2.jobs.settings.unreachable", {
+            name: name || t("jobs.untitled"),
+          }),
           action: {
             label: t("analysisV2.jobs.settings.open"),
             onClick: () => navigate(path),

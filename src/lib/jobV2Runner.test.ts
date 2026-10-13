@@ -285,12 +285,13 @@ describe("the Jobs V2 runner (CTA-188)", () => {
 
   describe("the lichess evaluation API first (CTA-193)", () => {
     const API = "http://10.0.0.3:8000";
-    const turnApiOn = () =>
-      localStorage.setItem(JOBS_SETTINGS_STORAGE_KEY, JSON.stringify({ defaultPreset: null, evalApi: { enabled: true, url: API } }));
+    const turnApiOn = (write = false) =>
+      localStorage.setItem(JOBS_SETTINGS_STORAGE_KEY, JSON.stringify({ defaultPreset: null, evalApi: { enabled: true, url: API, write } }));
 
     /** The API's answer for a FEN asked: a found eval (a legal line, White's view) at `depth`, or what `answer` says. */
-    const apiAnswering = (answer: (fen: string) => "found" | "missing" | number = () => "found", depth = 40) => {
-      const fetchMock = vi.fn(async (url: string) => {
+    const apiAnswering = (answer: (fen: string) => "found" | "missing" | number = () => "found", depth = 40, writeStatus = 200) => {
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === "POST") return new Response(JSON.stringify({ stored: 1, skipped: 0, results: [] }), { status: writeStatus });
         const fen = new URL(url).searchParams.get("fen") ?? "";
         const said = answer(fen);
         if (said === "missing") return new Response(JSON.stringify({ detail: "position not found" }), { status: 404 });
@@ -361,7 +362,66 @@ describe("the Jobs V2 runner (CTA-188)", () => {
       off();
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(heard).toHaveBeenCalledTimes(1);
-      expect(heard).toHaveBeenCalledWith({ jobId: "job", name: "Alice – Bob" });
+      expect(heard).toHaveBeenCalledWith({ jobId: "job", name: "Alice – Bob", kind: "read" });
+    });
+
+    /** The entries the job sent to `POST /evals`. */
+    const posted = (fetchMock: ReturnType<typeof apiAnswering>) =>
+      fetchMock.mock.calls
+        .filter(([, init]) => init?.method === "POST")
+        .map(([url, init]) => ({ url, entries: JSON.parse(String(init?.body)).entries }));
+
+    it("sends each position the engine searched to POST /evals while writing is on — never one the API answered", async () => {
+      turnApiOn(true);
+      const { projectId } = await seed();
+      const job = jobOf(projectId, { kind: "project", projectId });
+      const missing = job.positions[0].fen;
+      const fetchMock = apiAnswering((fen) => (missing.startsWith(fen) ? "missing" : "found"));
+      await addJobV2(job);
+      start();
+      await searched(1);
+      const pv = legalMove(missing);
+      engine().say({ fen: missing, depth: 20, multipv: 1, positionEvaluation: "20", nodes: 2_500_000, pv });
+      engine().say({ fen: missing, bestMove: pv });
+      await vi.waitFor(() => expect(findJobV2("job")?.status).toBe("done"));
+      expect(posted(fetchMock)).toEqual([
+        {
+          url: `${API}/evals`,
+          entries: [{ fen: missing, depth: 20, knodes: 2500, pov: "white", pvs: [{ cp: 20, line: pv }], engine: "Stockfish 19 Lite" }],
+        },
+      ]);
+    });
+
+    it("sends nothing while writing is off", async () => {
+      turnApiOn(false);
+      const { projectId } = await seed();
+      const job = jobOf(projectId, { kind: "project", projectId });
+      const fetchMock = apiAnswering(() => "missing");
+      await addJobV2(job);
+      start();
+      await answerAll(job);
+      await vi.waitFor(() => expect(findJobV2("job")?.status).toBe("done"));
+      expect(posted(fetchMock)).toEqual([]);
+    });
+
+    it("goes on without sending when the API does not take a write — said once, and nothing more sent this run", async () => {
+      turnApiOn(true);
+      const heard = vi.fn();
+      const off = subscribeLichessEvalUnreachable(heard);
+      const { projectId } = await seed();
+      const job = jobOf(projectId, { kind: "project", projectId });
+      // Started without --write: every POST /evals is a 403.
+      const fetchMock = apiAnswering(() => "missing", 40, 403);
+      await addJobV2(job);
+      start();
+      await answerAll(job);
+      await vi.waitFor(() => expect(findJobV2("job")?.status).toBe("done"));
+      off();
+      expect(posted(fetchMock)).toHaveLength(1);
+      expect(heard).toHaveBeenCalledTimes(1);
+      expect(heard).toHaveBeenCalledWith({ jobId: "job", name: "Alice – Bob", kind: "write" });
+      // Lookups go on: every position was still asked about.
+      expect(fetchMock.mock.calls.filter(([, init]) => init?.method !== "POST").length).toBeGreaterThan(1);
     });
 
     it("asks nothing while the API is off", async () => {

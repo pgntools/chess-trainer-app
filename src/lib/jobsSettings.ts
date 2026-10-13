@@ -11,7 +11,9 @@ import { normalizeEngineServerUrl } from "./engineServer";
  *   V2), and stays stored.
  * - **The lichess evaluation API** (`lib/lichessEvalApi.ts`) — on or off and
  *   its address. **Off by default, and while off the app never contacts it.**
- *   On, a job asks it about each position before the engine.
+ *   On, a job asks it about each position before the engine — and, with
+ *   **write** ticked too, sends it what the engine found for each position
+ *   it searched (`POST /evals`, the API's write mode).
  *
  * One `localStorage` key, {@link JOBS_SETTINGS_STORAGE_KEY}, as JSON; a
  * storage that refuses the write keeps the change for this visit. The API's
@@ -33,13 +35,16 @@ export type JobsDefaultPreset = { engineId: string; presetId: string };
 export type JobsSettings = {
   /** `null`: the board's engine and its selected preset. */
   defaultPreset: JobsDefaultPreset | null;
-  /** The lichess evaluation API — on or off, and its address (kept while off, for the next time). */
-  evalApi: { enabled: boolean; url: string };
+  /**
+   * The lichess evaluation API — on or off, its address (kept while off, for
+   * the next time), and whether a job sends it the engine's evals (`write`).
+   */
+  evalApi: { enabled: boolean; url: string; write: boolean };
 };
 
 export const DEFAULT_JOBS_SETTINGS: JobsSettings = {
   defaultPreset: null,
-  evalApi: { enabled: false, url: DEFAULT_LICHESS_EVAL_API_URL },
+  evalApi: { enabled: false, url: DEFAULT_LICHESS_EVAL_API_URL, write: false },
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
@@ -55,6 +60,7 @@ export const jobsSettingsFrom = (raw: unknown): JobsSettings => {
     evalApi: {
       enabled: api.enabled === true,
       url: (typeof api.url === "string" ? normalizeEngineServerUrl(api.url) : null) ?? DEFAULT_LICHESS_EVAL_API_URL,
+      write: api.write === true,
     },
   };
 };
@@ -107,6 +113,18 @@ export const lichessEvalApiUrl = (): string | undefined => {
   return evalApi.enabled ? evalApi.url : undefined;
 };
 
+/** The API's address while it is on **and** writing is ticked — where a job sends the engine's evals — else `undefined`. */
+export const lichessEvalApiWriteUrl = (): string | undefined => {
+  const { evalApi } = readJobsSettings();
+  return evalApi.enabled && evalApi.write ? evalApi.url : undefined;
+};
+
+/** Tick or untick sending the engine's evals to the API. */
+export const storeLichessEvalApiWrite = (on: boolean): void => {
+  const settings = readJobsSettings();
+  write({ ...settings, evalApi: { ...settings.evalApi, write: on } });
+};
+
 // --- The API's status, read never stored ---
 
 export type LichessEvalApiOfflineReason = "unreachable" | "not-an-eval-api";
@@ -114,7 +132,15 @@ export type LichessEvalApiOfflineReason = "unreachable" | "not-an-eval-api";
 export type LichessEvalApiStatus =
   | { state: "off" }
   | { state: "connecting"; url: string }
-  | { state: "online"; url: string; positions: number; checkedAt: number; latencyMs: number }
+  | {
+      state: "online";
+      url: string;
+      positions: number;
+      /** Whether it was started in write mode (`--write`) — `POST /evals` refused otherwise. */
+      writeEnabled: boolean;
+      checkedAt: number;
+      latencyMs: number;
+    }
   | { state: "offline"; url: string; reason: LichessEvalApiOfflineReason };
 
 let status: LichessEvalApiStatus = { state: "off" };
@@ -143,7 +169,7 @@ export const connectLichessEvalApi = async (): Promise<void> => {
   if (mine !== attempt) return; // a newer check answers instead
   setStatus(
     health.ok
-      ? { state: "online", url, positions: health.positions, checkedAt: Date.now(), latencyMs: health.latencyMs }
+      ? { state: "online", url, positions: health.positions, writeEnabled: health.writeEnabled, checkedAt: Date.now(), latencyMs: health.latencyMs }
       : { state: "offline", url, reason: health.reason },
   );
 };
@@ -159,7 +185,10 @@ export const ensureLichessEvalApiChecked = (): void => {
  */
 export const storeLichessEvalApi = (enabled: boolean, url?: string): Promise<void> => {
   const { evalApi } = readJobsSettings();
-  write({ ...readJobsSettings(), evalApi: { enabled, url: (url === undefined ? null : normalizeEngineServerUrl(url)) ?? evalApi.url } });
+  write({
+    ...readJobsSettings(),
+    evalApi: { ...evalApi, enabled, url: (url === undefined ? null : normalizeEngineServerUrl(url)) ?? evalApi.url },
+  });
   return connectLichessEvalApi();
 };
 
@@ -190,12 +219,16 @@ export const subscribeJobsSettings = (listener: () => void): (() => void) => {
 
 // --- A running job's word that the API did not answer ---
 
-/** The job whose run found the API unreachable. */
-export type LichessEvalUnreachable = { jobId: string; name: string };
+/**
+ * The job whose run found the API of no use: it did not answer a lookup
+ * (`read` — the run goes on with the engine alone), or did not take the
+ * engine's evals (`write` — the run goes on without sending them).
+ */
+export type LichessEvalUnreachable = { jobId: string; name: string; kind: "read" | "write" };
 
 const unreachableListeners = new Set<(event: LichessEvalUnreachable) => void>();
 
-/** **The runner's**: the API did not answer during this job's run — once per run; the run goes on with the engine. */
+/** **The runner's**: the API did not answer, or took no write, during this job's run — once per run and kind. */
 export const reportLichessEvalUnreachable = (event: LichessEvalUnreachable): void => {
   unreachableListeners.forEach((listener) => listener(event));
 };

@@ -1,7 +1,8 @@
 import Box from "@mui/material/Box";
 import { useTranslation } from "react-i18next";
 
-import { SelectField, SettingsSection, SwitchField } from "../../../design-system/components/forms";
+import { StatusText } from "../../../design-system/components/feedback";
+import { CheckboxField, SelectField, SettingsSection, SwitchField } from "../../../design-system/components/forms";
 import type { EngineEntry } from "../../../lib/engines";
 import type { JobsDefaultPreset } from "../../../lib/jobsSettings";
 import { engineSelectOptions } from "../EnginePicker";
@@ -20,9 +21,17 @@ export type JobsSettingsFormProps = {
   /** The lichess evaluation API's switch, address and Connect — `EngineServerForm`'s, its words the API's. */
   evalApi: Omit<EngineServerFormProps, "localeKey" | "testId" | "children">;
   /**
+   * **Sending the engine's evals to the API** (its write mode, `POST /evals`)
+   * — a checkbox under the API's details while it is on. `writable`: what
+   * the API's last check said of its write mode — `false` says it will refuse
+   * them; absent while unknown.
+   */
+  evalApiWrite: { checked: boolean; onChange: (checked: boolean) => void; writable?: boolean };
+  /**
    * The root. The default's section is `<testId>-default` (its switch
    * `-default-enable`, the selects `-default-engine` and `-default-preset`);
-   * the API's `<testId>-eval-api`, with `EngineServerForm`'s parts under it.
+   * the API's `<testId>-eval-api`, with `EngineServerForm`'s parts under it,
+   * the write checkbox `-eval-api-write` and its warning `-eval-api-not-writable`.
    */
   testId: string;
 };
@@ -37,7 +46,9 @@ export type JobsSettingsFormProps = {
  * - **The lichess evaluation API** (`EngineServerForm` with the API's words):
  *   off by default — while off the app never contacts it; on, its address,
  *   Connect (`GET /health`) and the connection chip. A job then asks it about
- *   each position before the engine.
+ *   each position before the engine; with **Send the engine's evaluations
+ *   to the API** ticked, it sends what the engine found (said when the
+ *   API's check says it is not in write mode).
  *
  * Presentational: the settings, the engines, the presets and every change
  * arrive as props.
@@ -49,6 +60,7 @@ function JobsSettingsForm({
   engines,
   presets,
   evalApi,
+  evalApiWrite,
   testId,
 }: JobsSettingsFormProps) {
   const { t } = useTranslation();
@@ -89,7 +101,20 @@ function JobsSettingsForm({
           </>
         )}
       </SettingsSection>
-      <EngineServerForm {...evalApi} localeKey="analysisV2.jobs.settings.evalApi" testId={`${testId}-eval-api`} />
+      <EngineServerForm {...evalApi} localeKey="analysisV2.jobs.settings.evalApi" testId={`${testId}-eval-api`}>
+        <CheckboxField
+          label={t("analysisV2.jobs.settings.write.label")}
+          help={t("analysisV2.jobs.settings.write.help")}
+          checked={evalApiWrite.checked}
+          onChange={evalApiWrite.onChange}
+          testId={`${testId}-eval-api-write`}
+        />
+        {evalApiWrite.checked && evalApiWrite.writable === false && (
+          <StatusText tone="warning" testId={`${testId}-eval-api-not-writable`}>
+            {t("analysisV2.jobs.settings.write.notWritable", { url: `⁦${evalApi.status?.url ?? evalApi.address}⁩` })}
+          </StatusText>
+        )}
+      </EngineServerForm>
     </Box>
   );
 }

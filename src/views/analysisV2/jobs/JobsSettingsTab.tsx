@@ -18,6 +18,7 @@ import {
   lichessEvalApiStatus,
   storeJobsDefaultPreset,
   storeLichessEvalApi,
+  storeLichessEvalApiWrite,
   type LichessEvalApiStatus,
 } from "../../../lib/jobsSettings";
 import { useEngineChoice } from "../../shared/useEngineChoice";
@@ -54,7 +55,9 @@ const formStatusOf = (status: LichessEvalApiStatus): EngineServerFormStatus | un
  * - **the lichess evaluation API** — off by default; on, its address, kept
  *   and checked by Connect (or Enter), each press answered on the button as
  *   Settings → Engine's engine server is (a spinner for at least
- *   {@link CONNECT_MIN_CHECKING_MS}, then a check mark or a warning).
+ *   {@link CONNECT_MIN_CHECKING_MS}, then a check mark or a warning); and,
+ *   under it, whether a job sends the engine's evals there — said when its
+ *   last check found it not in write mode.
  */
 function JobsSettingsTab() {
   const { t } = useTranslation();
@@ -112,6 +115,11 @@ function JobsSettingsTab() {
           addressInvalid: addressUrl === null,
           example: DEFAULT_LICHESS_EVAL_API_URL,
           status: formStatusOf(status),
+        }}
+        evalApiWrite={{
+          checked: settings.evalApi.write,
+          onChange: storeLichessEvalApiWrite,
+          writable: status.state === "online" ? status.writeEnabled : undefined,
         }}
         testId="analysis-v2-jobs-settings-form"
       />

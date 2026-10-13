@@ -8,10 +8,12 @@ import {
   jobsSettingsFrom,
   lichessEvalApiStatus,
   lichessEvalApiUrl,
+  lichessEvalApiWriteUrl,
   readJobsSettings,
   reportLichessEvalUnreachable,
   storeJobsDefaultPreset,
   storeLichessEvalApi,
+  storeLichessEvalApiWrite,
   subscribeJobsSettings,
   subscribeLichessEvalUnreachable,
 } from "./jobsSettings";
@@ -28,7 +30,7 @@ describe("the Jobs settings", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     expect(readJobsSettings()).toEqual(DEFAULT_JOBS_SETTINGS);
-    expect(DEFAULT_JOBS_SETTINGS.evalApi).toEqual({ enabled: false, url: DEFAULT_LICHESS_EVAL_API_URL });
+    expect(DEFAULT_JOBS_SETTINGS.evalApi).toEqual({ enabled: false, url: DEFAULT_LICHESS_EVAL_API_URL, write: false });
     expect(lichessEvalApiUrl()).toBeUndefined();
     await connectLichessEvalApi();
     expect(lichessEvalApiStatus()).toEqual({ state: "off" });
@@ -60,6 +62,7 @@ describe("the Jobs settings", () => {
     expect(jobsSettingsFrom({ evalApi: { enabled: true, url: "http://example.org:8000/" } }).evalApi).toEqual({
       enabled: true,
       url: "http://example.org:8000",
+      write: false,
     });
     localStorage.setItem(JOBS_SETTINGS_STORAGE_KEY, "{not json");
     expect(readJobsSettings()).toEqual(DEFAULT_JOBS_SETTINGS);
@@ -97,8 +100,26 @@ describe("the Jobs settings", () => {
     await storeLichessEvalApi(true, "http://10.0.0.9:8000");
     await storeLichessEvalApi(false);
     expect(lichessEvalApiUrl()).toBeUndefined();
-    expect(readJobsSettings().evalApi).toEqual({ enabled: false, url: "http://10.0.0.9:8000" });
+    expect(readJobsSettings().evalApi).toEqual({ enabled: false, url: "http://10.0.0.9:8000", write: false });
     expect(lichessEvalApiStatus()).toEqual({ state: "off" });
+  });
+});
+
+describe("sending the engine's evals to the API", () => {
+  it("is off by default, kept when ticked, and only where the API is on", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ status: "ok", positions: 1, write_enabled: true })));
+    expect(lichessEvalApiWriteUrl()).toBeUndefined();
+    storeLichessEvalApiWrite(true);
+    expect(readJobsSettings().evalApi.write).toBe(true);
+    expect(lichessEvalApiWriteUrl()).toBeUndefined();
+    await storeLichessEvalApi(true, "http://10.0.0.3:8000");
+    expect(lichessEvalApiWriteUrl()).toBe("http://10.0.0.3:8000");
+    // The API's check says whether it takes writes; turning it off and on keeps the tick.
+    expect(lichessEvalApiStatus()).toMatchObject({ state: "online", writeEnabled: true });
+    await storeLichessEvalApi(false);
+    expect(lichessEvalApiWriteUrl()).toBeUndefined();
+    await storeLichessEvalApi(true);
+    expect(lichessEvalApiWriteUrl()).toBe("http://10.0.0.3:8000");
   });
 });
 
@@ -106,10 +127,10 @@ describe("the runner's word that the API did not answer", () => {
   it("reaches every listener until it unsubscribes", () => {
     const listener = vi.fn();
     const off = subscribeLichessEvalUnreachable(listener);
-    reportLichessEvalUnreachable({ jobId: "j1", name: "Alice – Bob" });
+    reportLichessEvalUnreachable({ jobId: "j1", name: "Alice – Bob", kind: "read" });
     off();
-    reportLichessEvalUnreachable({ jobId: "j2", name: "Carol – Dan" });
+    reportLichessEvalUnreachable({ jobId: "j2", name: "Carol – Dan", kind: "write" });
     expect(listener).toHaveBeenCalledTimes(1);
-    expect(listener).toHaveBeenCalledWith({ jobId: "j1", name: "Alice – Bob" });
+    expect(listener).toHaveBeenCalledWith({ jobId: "j1", name: "Alice – Bob", kind: "read" });
   });
 });

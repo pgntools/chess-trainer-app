@@ -14,7 +14,11 @@ import type { Score } from "./engineAnalysis";
  *   who mates — `Score`'s own convention) and in UCI, the API's castling
  *   written king-takes-rook (`e1h1`), which {@link positionResultOfLichessEval}
  *   turns into the engine's `e1g1`. Not there is a 404.
- * - **`GET /health`** — `{ status: "ok", positions, … }`, what Connect checks.
+ * - **`GET /health`** — `{ status: "ok", positions, write_enabled, … }`, what
+ *   Connect checks.
+ * - **`POST /evals`** — the API's write mode (`api.py --write`): an engine's
+ *   eval of a position stored beside lichess's, kept when deeper than what it
+ *   holds (CTA-193's follow-up).
  *
  * Every request gives up after {@link LICHESS_EVAL_API_TIMEOUT_MS}. The
  * settings (on or off, the address) are `lib/jobsSettings.ts`'s.
@@ -74,14 +78,24 @@ export const lichessEvalFrom = (body: unknown): LichessEval | undefined => {
   return { depth: deepest.depth, lines: lines as LichessEvalLine[] };
 };
 
-/** `fetch` with the API's timeout, also given up when `signal` is. */
-const fetchWithTimeout = async (url: string, signal?: AbortSignal): Promise<Response> => {
+/** `fetch` with the API's timeout, also given up when `signal` is — a GET, or a POST of `body` as JSON. */
+const fetchWithTimeout = async (url: string, signal?: AbortSignal, body?: unknown): Promise<Response> => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LICHESS_EVAL_API_TIMEOUT_MS);
   const onAbort = () => controller.abort();
   signal?.addEventListener("abort", onAbort);
   try {
-    return await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
+    return await fetch(
+      url,
+      body === undefined
+        ? { signal: controller.signal, headers: { Accept: "application/json" } }
+        : {
+            method: "POST",
+            signal: controller.signal,
+            headers: { Accept: "application/json", "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          },
+    );
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener("abort", onAbort);
@@ -107,9 +121,9 @@ export const lookupLichessEval = async (baseUrl: string, fen: string, signal?: A
   }
 };
 
-/** What `GET /health` answered: the positions it holds and how long it took, or why it is no use. */
+/** What `GET /health` answered: the positions it holds, whether it takes writes and how long it took, or why it is no use. */
 export type LichessEvalHealth =
-  | { ok: true; positions: number; latencyMs: number }
+  | { ok: true; positions: number; writeEnabled: boolean; latencyMs: number }
   | { ok: false; reason: "unreachable" | "not-an-eval-api" };
 
 /** **Check the API** — `GET /health`, `{ status: "ok", positions }` within the timeout. Never throws. */
@@ -120,7 +134,7 @@ export const checkLichessEvalApi = async (baseUrl: string): Promise<LichessEvalH
     const body: unknown = response.ok ? await response.json().catch(() => undefined) : undefined;
     const latencyMs = Math.round(performance.now() - sent);
     return isRecord(body) && body.status === "ok" && isInteger(body.positions)
-      ? { ok: true, positions: body.positions, latencyMs }
+      ? { ok: true, positions: body.positions, writeEnabled: body.write_enabled === true, latencyMs }
       : { ok: false, reason: "not-an-eval-api" };
   } catch {
     return { ok: false, reason: "unreachable" };
@@ -179,4 +193,58 @@ export const positionResultOfLichessEval = (
   const gap = lines.findIndex((line) => line.pv.length === 0);
   const kept = gap === -1 ? lines : lines.slice(0, gap);
   return kept.length === 0 ? undefined : { fen: position.fen, lines: kept };
+};
+
+/** One entry of `POST /evals`: a position's eval as an engine searched it, its scores White's view. */
+export type LichessEvalEntry = {
+  fen: string;
+  depth: number;
+  /** Nodes searched, in thousands. */
+  knodes: number;
+  pov: "white";
+  pvs: ({ cp: number; line: string } | { mate: number; line: string })[];
+  engine?: string;
+};
+
+/**
+ * **A searched position's result as a `POST /evals` entry** — its lines that
+ * have moves (the API wants at least one, and no `mate 0`), up to the first
+ * that has none; the depth line 1's. `undefined` when no line is left — a
+ * finished position, a stored `[%eval]` without its line.
+ */
+export const lichessEvalEntryOf = (
+  result: PositionResult,
+  { nodes, engine }: { nodes?: number; engine?: string },
+): LichessEvalEntry | undefined => {
+  const lines: PositionLine[] = [];
+  for (const line of result.lines) {
+    if (line.pv.length === 0 || (line.score.kind === "mate" && line.score.value === 0)) break;
+    lines.push(line);
+  }
+  if (lines.length === 0) return undefined;
+  return {
+    fen: result.fen,
+    depth: Math.max(1, lines[0].depth),
+    knodes: Math.max(0, Math.round((nodes ?? 0) / 1000)),
+    pov: "white",
+    pvs: lines.map(({ score, pv }) =>
+      score.kind === "mate" ? { mate: score.value, line: pv.join(" ") } : { cp: Math.round(score.value), line: pv.join(" ") },
+    ),
+    ...(engine === undefined ? {} : { engine: engine.slice(0, 100) }),
+  };
+};
+
+/**
+ * **Send an eval to the API** (`POST /evals`, one entry). `true` once the
+ * API took it — stored, or skipped as no deeper than what it holds; `false`
+ * for no usable answer: a timeout, a network error, write mode off (403), a
+ * token wanted (401), an entry refused (422). Never throws.
+ */
+export const writeLichessEval = async (baseUrl: string, entry: LichessEvalEntry, signal?: AbortSignal): Promise<boolean> => {
+  try {
+    const response = await fetchWithTimeout(`${baseUrl}/evals`, signal, { entries: [entry] });
+    return response.ok;
+  } catch {
+    return false;
+  }
 };

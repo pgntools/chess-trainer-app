@@ -6,10 +6,15 @@ import type { EngineServerConnectFeedback, EngineServerFormStatus } from "../Eng
 import JobsSettingsForm from "./JobsSettingsForm";
 import { API_URL, BOARD_DEFAULT, CONNECTING, DEEP_DEFAULT, ENGINES, NOT_AN_EVAL_API, ONLINE, PRESETS, UNREACHABLE } from "./fixtures";
 
-type DemoState = { defaultPreset: JobsDefaultPreset | null; enabled: boolean; address: string };
+type DemoState = { defaultPreset: JobsDefaultPreset | null; enabled: boolean; address: string; write?: boolean };
 
 /** The settings with every control live; the API's status is the demo's, fixed. */
-const demo = (initial: DemoState, status?: EngineServerFormStatus, connectFeedback: EngineServerConnectFeedback = "idle") => (
+const demo = (
+  initial: DemoState,
+  status?: EngineServerFormStatus,
+  connectFeedback: EngineServerConnectFeedback = "idle",
+  writable?: boolean,
+) => (
   <WithState<DemoState> initial={initial}>
     {(state, set) => (
       <JobsSettingsForm
@@ -29,6 +34,7 @@ const demo = (initial: DemoState, status?: EngineServerFormStatus, connectFeedba
           example: API_URL,
           status: state.enabled ? status : undefined,
         }}
+        evalApiWrite={{ checked: state.write === true, onChange: (write) => set({ ...state, write }), writable }}
         testId="gallery-jobs-settings"
       />
     )}
@@ -48,6 +54,8 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "Connect pressed — the API answered", render: () => demo(on, ONLINE, "answered") },
     { name: "The API unreachable — with Try again", render: () => demo(on, UNREACHABLE, "failed") },
     { name: "Something answered, but not the evaluation API", render: () => demo(on, NOT_AN_EVAL_API) },
+    { name: "Sending the engine's evaluations — the API in write mode", render: () => demo({ ...on, write: true }, ONLINE, "idle", true) },
+    { name: "Sending the engine's evaluations — the API not in write mode", render: () => demo({ ...on, write: true }, ONLINE, "idle", false) },
     { name: "Not an address", render: () => demo({ ...on, address: "10.0.0.3:8000" }, UNREACHABLE) },
   ],
 };
