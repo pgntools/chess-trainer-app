@@ -37,6 +37,7 @@ import { useEngineSearchSettings } from "../../shared/useEngineSearchSettings";
 import { useSelectedEnginePreset } from "../../shared/useSelectedEnginePreset";
 import { jobsV2Path } from "../paths";
 import { useAnalysisProjects, useJobsV2 } from "../useAnalysisProjects";
+import { defaultPresetInEffect, useJobsSettings } from "./useJobsSettings";
 
 /** The Case a New Job V2 is for — its record, the tree on its board, and its name as shown. */
 export type NewJobV2Case = { record: AnalysisCase; tree: GameTree; name: string };
@@ -63,7 +64,9 @@ const seedOptions = (engineId: string, preset: EnginePreset, settings: EngineSea
  * - **asks first when the Case has a job** (`jobV2OfCase`: Start a new
  *   analysis / Check existing — the Jobs V2 view at it);
  * - **the engine and its preset**, each a select as the top bar's Engine menu
- *   offers them, **prefill** the depth and time per move (the preset's) and
+ *   offers them — seeded from **the Jobs settings' default** where one is set
+ *   and still there (CTA-193), else the board's engine and its selected
+ *   preset — **prefill** the depth and time per move (the preset's) and
  *   Threads, Hash and lines (the global search settings) — all editable for
  *   this one job; changing the engine or the preset prefills them again;
  * - **Where to save the results** (`JobTargetFields`): new Cases in the
@@ -89,6 +92,7 @@ function NewJobV2({ open, onClose, testId }: { open: NewJobV2Case | null; onClos
   const { settings } = useEngineSearchSettings();
   const presets = useSyncExternalStore(subscribeEnginePresets, enginePresetsSnapshot, enginePresetsSnapshot);
   const selections = useSyncExternalStore(subscribeEnginePresetSelections, enginePresetSelectionsSnapshot, enginePresetSelectionsSnapshot);
+  const jobsSettings = useJobsSettings();
 
   const [engineId, setEngineId] = useState(() => resolveEngine(chosenEngine).id);
   const [presetId, setPresetId] = useState(() => selectedPresetOf(presets ?? [], selections ?? [], resolveEngine(chosenEngine).id).id);
@@ -111,8 +115,12 @@ function NewJobV2({ open, onClose, testId }: { open: NewJobV2Case | null; onClos
   if ((open !== null) !== wasOpen) {
     setWasOpen(open !== null);
     if (open !== null) {
-      const engine = resolveEngine(chosenEngine).id;
-      const preset = selectedPresetOf(presets ?? [], selections ?? [], engine);
+      // The Jobs settings' default where one applies (CTA-193), else the board's engine and its selected preset.
+      const preferred = defaultPresetInEffect(jobsSettings, presets);
+      const engine = preferred?.engineId ?? resolveEngine(chosenEngine).id;
+      const preset =
+        withDefaultPreset(presets ?? []).find((each) => each.id === preferred?.presetId) ??
+        selectedPresetOf(presets ?? [], selections ?? [], engine);
       setEngineId(engine);
       setPresetId(preset.id);
       setOptions(seedOptions(engine, preset, settings));

@@ -52,3 +52,6 @@ export const casePath = (projectId: string, caseId: string, context = ""): strin
 /** The Jobs V2 view (CTA-188), at one job — or none. */
 export const jobsV2Path = (jobId?: string): string =>
   jobId === undefined ? `${ANALYSIS_V2_PATH}/jobs` : `${ANALYSIS_V2_PATH}/jobs?job=${encodeURIComponent(jobId)}`;
+
+/** The Jobs V2 view on its Settings tab (CTA-193) — the default engine and preset, the lichess evaluation API. */
+export const jobsV2SettingsPath = (): string => `${ANALYSIS_V2_PATH}/jobs?tab=settings`;

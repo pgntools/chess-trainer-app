@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
@@ -13,6 +13,7 @@ import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../../lib/computerAnalysis
 import { createEnginePreset, selectEnginePreset, setEnginePresetSearch } from "../../../lib/enginePresetStore";
 import { resolveEngine } from "../../../lib/engines";
 import { jobV2MergedPgn, jobV2Of, withCheckpointV2, type JobV2, type JobV2Target } from "../../../lib/jobsV2";
+import { JOBS_SETTINGS_STORAGE_KEY, readJobsSettings, storeJobsDefaultPreset } from "../../../lib/jobsSettings";
 import { JOB_V2_LIVE_CHANNEL, type JobV2Live } from "../../../lib/jobV2Live";
 import { addJobV2, findJobV2, jobsV2Snapshot, loadJobsV2 } from "../../../lib/jobV2Store";
 import { parsePgnTree } from "../../../lib/pgn";
@@ -360,5 +361,86 @@ describe("the Jobs V2 view's live engine progress (CTA-190)", () => {
       runnerTab.postMessage({ live: null });
       runnerTab.close();
     }
+  });
+});
+
+describe("the Jobs settings (CTA-193)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("is the Jobs V2 view's Settings tab: a default engine and preset, and the lichess evaluation API — off, asking nothing", async () => {
+    const deep = await createEnginePreset("Deep analysis");
+    if (!("id" in deep)) throw new Error("no preset");
+    const fetchMock = vi.fn(async (url: string) =>
+      url.endsWith("/health") ? new Response(JSON.stringify({ status: "ok", positions: 416_000_000 }), { status: 200 }) : new Response("", { status: 404 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    const { baseElement, unmount } = mount("/analysis/jobs");
+    await screen.findByRole("table", { name: "Jobs" });
+
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(where()).toBe("/analysis/jobs?tab=settings");
+    const settings = await screen.findByRole("tabpanel", { name: "Settings" });
+    const useDefault = within(settings).getByRole("switch", { name: /use a default engine and preset/i });
+    const useApi = within(settings).getByRole("switch", { name: /use the lichess evaluation api/i });
+    expect(useDefault).not.toBeChecked();
+    expect(useApi).not.toBeChecked();
+    expect(within(settings).queryByRole("textbox", { name: /api address/i })).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // A default: the board's engine and its preset, then another preset picked.
+    await user.click(useDefault);
+    expect(readJobsSettings().defaultPreset).toEqual({ engineId: resolveEngine().id, presetId: "default" });
+    await user.click(within(settings).getByRole("combobox", { name: /preset for new jobs/i }));
+    await user.click(await screen.findByRole("option", { name: "Deep analysis" }));
+    expect(readJobsSettings().defaultPreset).toEqual({ engineId: resolveEngine().id, presetId: deep.id });
+
+    // The API on: its address, checked at once with GET /health.
+    await user.click(useApi);
+    const address = within(settings).getByRole("textbox", { name: /api address/i });
+    expect(address).toHaveValue("http://10.0.0.3:8000");
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("http://10.0.0.3:8000/health", expect.anything()));
+    expect(await within(settings).findByText(/^Connected · \d+ ms$/)).toBeInTheDocument();
+
+    // Another address, kept and checked by Connect.
+    await user.clear(address);
+    await user.type(address, "http://127.0.0.1:8000");
+    await user.click(within(settings).getByRole("button", { name: "Connect" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/health", expect.anything()));
+    expect(JSON.parse(localStorage.getItem(JOBS_SETTINGS_STORAGE_KEY) ?? "{}").evalApi).toEqual({ enabled: true, url: "http://127.0.0.1:8000" });
+    await expectNoAxeViolations(baseElement);
+
+    // A reload keeps them.
+    unmount();
+    mount("/analysis/jobs?tab=settings");
+    const again = await screen.findByRole("tabpanel", { name: "Settings" });
+    expect(within(again).getByRole("switch", { name: /use a default engine and preset/i })).toBeChecked();
+    expect(within(again).getByRole("combobox", { name: /preset for new jobs/i })).toHaveTextContent("Deep analysis");
+    expect(within(again).getByRole("switch", { name: /use the lichess evaluation api/i })).toBeChecked();
+    expect(within(again).getByRole("textbox", { name: /api address/i })).toHaveValue("http://127.0.0.1:8000");
+  });
+
+  it("starts a New Job V2 with the default engine and preset — and as before once that preset is gone", async () => {
+    const { project } = await seed();
+    const deep = await createEnginePreset("Deep analysis");
+    if (!("id" in deep)) throw new Error("no preset");
+    await setEnginePresetSearch(deep.id, { depth: 14 });
+    storeJobsDefaultPreset({ engineId: resolveEngine().id, presetId: deep.id });
+    const user = await openJobsTab(project.id);
+
+    await user.click(screen.getByRole("button", { name: "New job" }));
+    let dialog = await screen.findByRole("dialog", { name: "New job — Jobs V2" });
+    expect(within(dialog).getByRole("combobox", { name: "Preset" })).toHaveTextContent("Deep analysis");
+    expect(within(dialog).getByRole("slider", { name: "Depth" })).toHaveValue("14");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // A default naming a preset no longer there: the board's engine and its selected preset.
+    storeJobsDefaultPreset({ engineId: resolveEngine().id, presetId: "gone" });
+    await user.click(screen.getByRole("button", { name: "New job" }));
+    dialog = await screen.findByRole("dialog", { name: "New job — Jobs V2" });
+    expect(within(dialog).getByRole("combobox", { name: "Preset" })).toHaveTextContent("Default");
   });
 });

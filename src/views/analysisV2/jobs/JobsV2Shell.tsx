@@ -3,15 +3,17 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import { keyframes, useTheme } from "@mui/material/styles";
-import { Link as RouterLink } from "react-router";
+import { Link as RouterLink, useHref, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { visuallyHidden } from "../../../design-system/components/a11y";
+import { useSnackbar } from "../../../design-system/components/feedback";
 import { IconAction } from "../../../design-system/components/toolbars";
 import { formatEngineCount } from "../../../lib/engineAnalysis";
 import { jobProgress, type JobStatus, type JobV2 } from "../../../lib/jobsV2";
 import { startJobV2Runner } from "../../../lib/jobV2Runner";
-import { jobsV2Path } from "../paths";
+import { subscribeLichessEvalUnreachable } from "../../../lib/jobsSettings";
+import { jobsV2Path, jobsV2SettingsPath } from "../paths";
 import { useJobsV2 } from "../useAnalysisProjects";
 import { liveOfJob, useJobV2Live } from "./useJobV2Live";
 
@@ -24,12 +26,38 @@ import { liveOfJob, useJobV2Live } from "./useJobV2Live";
 /**
  * **The Jobs V2 runner, mounted once** — started from an effect (never during
  * render, so the pre-render starts none) and never stopped by one: a
- * StrictMode remount must not leave a job half run. It draws nothing.
+ * StrictMode remount must not leave a job half run. It draws nothing — but
+ * for **a warning when the lichess evaluation API did not answer** during a
+ * job's run (CTA-193, once per run — the job goes on with the engine), whose
+ * button opens the Jobs settings, where it is turned off.
  */
 export function JobV2Runner() {
+  const { t } = useTranslation();
+  const { show } = useSnackbar();
+  const navigate = useNavigate();
+  const base = useHref("/");
   useEffect(() => {
     startJobV2Runner();
   }, []);
+  useEffect(
+    () =>
+      subscribeLichessEvalUnreachable(({ name }) => {
+        const path = jobsV2SettingsPath();
+        show({
+          severity: "warning",
+          duration: 10_000,
+          testId: "analysis-v2-jobs-eval-api-unreachable",
+          message: t("analysisV2.jobs.settings.unreachable", { name: name || t("jobs.untitled") }),
+          action: {
+            label: t("analysisV2.jobs.settings.open"),
+            onClick: () => navigate(path),
+            href: base === "/" ? path : `${base}${path}`,
+            testId: "analysis-v2-jobs-eval-api-settings",
+          },
+        });
+      }),
+    [base, navigate, show, t],
+  );
   return null;
 }
 
