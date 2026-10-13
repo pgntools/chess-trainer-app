@@ -11,6 +11,7 @@ paths:
   - "src/blocks/trees/CaseSiblings/**"
   - "src/blocks/panels/CaseDetails/**"
   - "src/lib/analysisProjectRows.ts"
+  - "src/lib/analysisProjectPicks*"
   - "src/blocks/tables/CasesTable/**"
   - "src/lib/analysisCaseRows.ts"
   - "src/blocks/dialogs/NewCaseDialog/**"
@@ -28,7 +29,7 @@ paths:
   - "src/blocks/dialogs/CasePickerDialog/**"
 ---
 
-# Analysis V2 — Projects and Cases (CTA-186), Jobs V2 and linked Cases (CTA-188), Jobs V2's live progress (CTA-190)
+# Analysis V2 — Projects and Cases (CTA-186), Jobs V2 and linked Cases (CTA-188), Jobs V2's live progress (CTA-190), the browser's Cases and picks (CTA-191)
 
 A new analysis module, part of renewing the codebase: the reader's analysis
 organised into **Projects** filed in nested **folders**, each Project holding
@@ -59,6 +60,7 @@ Projects; that was a planning mistake, replaced before it shipped.)
 | Path | What lives there |
 | --- | --- |
 | `src/lib/analysisProjects.ts` | **The records**, pure: `ProjectFolder` (a `GameFolder`, `lib/savedGameFolders.ts`'s model and reads), `AnalysisProject`, `AnalysisCase` and its `AnalysisCaseSource`; the normalisers `projectFolderFrom`, `analysisProjectFrom`, `analysisCaseFrom`; the constructors `gameCaseOf`, `positionCaseOfFen`, `positionCaseOfGame`, `copiedCase`; `caseStateOf` / `sameCaseState` (the autosave's state and its idempotency); `caseDerivedName`, `gameCaseDerivedName`; `projectsHere`, `projectsUnder`, `casesOf`, `caseCountsOf`; the caps (`MAX_PROJECT_FOLDERS` 100, `MAX_ANALYSIS_PROJECTS` 1,000, `MAX_ANALYSIS_CASES` 10,000). |
+| `src/lib/analysisProjectPicks.ts` | **The browser's picks** (CTA-191, §3.1): one set of ids over folders, Projects and Cases — `projectPicksOf` (each box's state), `toggleProjectPick` / `setProjectPicks` (a row's tick, select-all's), `projectPickTargetOf`, `projectPicksDeletion` (what a delete takes and how many of each go). Pure. |
 | `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, **version 3** (CTA-188): object stores `folders`, `projects`, `cases`, `jobs` (Jobs V2) and `caseLinks`, one `BroadcastChannel`. |
 | `src/lib/jobsV2.ts`, `jobV2Store.ts`, `jobV2Runner.ts` | **Jobs V2** (CTA-188, §6): the record (`JobV2`, `jobV2Of`, `jobV2From`, `jobV2AnalysisOf` / `jobV2MergedPgn` — the merge into a Case, `jobV2OfCase`, `jobV2OutputName`), the store (`enqueueJobV2`, `pauseJobV2`, `cancelJobV2`, `resumeJobV2`, `removeJobV2`, `removeJobsV2Of`, `interruptRunningJobsV2`, `MAX_JOBS_V2` 100) and the runner (`createJobV2Runner`, `startJobV2Runner` / `stopJobV2Runner`, its lock `chessapp.analysisProjects.jobs.runner`). V1's pure parts reused: `lib/jobs.ts`'s statuses, positions, checkpoint reader and progress, `lib/jobLiveAnalysis.ts` (its argument widened to `LiveAnalysisJob`). |
 | `src/lib/jobV2Live.ts` | **A running job's live engine progress** (CTA-190, §6.7): `JobV2Live` (the snapshot), `createJobV2LiveFeed` (the runner's throttled feed), `jobV2LiveSnapshot` / `subscribeJobV2Live` (read by `views/analysisV2/jobs/useJobV2Live.ts`), the channel `chessapp.analysisProjects.jobs.live` — in memory, never stored. |
@@ -69,7 +71,7 @@ Projects; that was a planning mistake, replaced before it shipped.)
 | `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board; the Case view's links and their picker, §7), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings — `useJobsV2`, `useCaseLinks` too), `paths.ts` (the addresses — `jobsV2Path`). `jobs/` (CTA-188): `JobsV2Screen.tsx` (`/analysis/jobs`, behind `JobsV2Main.tsx`), `JobV2Reports.tsx` (a done job's report, another's results so far), `NewJobV2.tsx` (the popup's screen side), `JobsV2Shell.tsx` (`JobV2Runner`, `JobsV2Indicator` — the shell's, loaded lazily), `useJobV2Live.ts` (the live progress, `liveOfJob` — CTA-190). |
 | `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/forms/JobTargetFields/`, `src/blocks/lists/CaseJobs/`, `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/`; since CTA-190 `src/blocks/panels/JobEngineProgress/` | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and so, for Jobs V2, V1's `JobsTable`, `JobSummary` (generic over a job's fields), `NewJobDialog` and `ComputerAnalysisForm` (optional props: the engine and preset selects, one variant, a section before the form; `JobSummary`'s `live` slot, CTA-190), each unchanged without them. |
 | `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts`, `src/views/shared/AnalysisEvalReport.tsx` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws, the eval graph and report the Case view's Graph tab shows. The legacy screens import them from here. |
-| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links on its Info tab, the Jobs V2 view), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the dev-only database). |
+| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectRows.test.ts` (the browser's rows — its Cases, CTA-191), `src/lib/analysisProjectPicks.test.ts` (its picks, CTA-191), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links on its Info tab, the Jobs V2 view), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the dev-only database). |
 
 Locale keys: `analysisV2.*` (`browser`, `folder`, `project`, `case`,
 `newCase`, `workspace`; `jobs`, `links` — CTA-188; `jobs.live`, `jobs.indicator.liveDepth` / `liveNodes` — CTA-190), `nav.folders.analysisV2`, `nav.analysisProjects`,
@@ -159,14 +161,49 @@ table** (`ProjectsTable`, the legacy saved analyses' — CTA-144): its trail
 (`Breadcrumbs`, links), then its folders first at every level, each **opened
 in place** by its chevron or a click on its row (its name a link into it, how
 many Projects are under it), and its Projects (the name a link to its Cases,
-how many it holds, when it changed). Name, Cases and Updated each sort (`?sort=`
-/ `?dir=`, Name by default; folders by name, or by when they changed under
-Updated); a **words box** (`?q=`) keeps the Projects and folders whose name
-holds every word — everything in a matching folder with it — and opens the
-folders above a match; paged past 25 (`projectTreeRows` over
-`lib/folderTreeRows.ts`). Which folders the reader opened is the screen's
-state. **New folder** and
-**New project** in the header; a new Project opens at once.
+how many it holds, when it changed) — **each opened in place too** (CTA-191),
+by its chevron ("Show the cases of …") or a click on its row, its **Cases**
+indented under it: the name (`caseDisplayName`) a link to the Case's board,
+its kind (Game / Position) and when it changed; a click on a Case's row opens
+it as well. A Project with no Case has no chevron. Name, Cases and Updated
+each sort (`?sort=` / `?dir=`, Name by default; folders and a Project's Cases
+by name, or by when they changed under Updated); a **words box** (`?q=`)
+keeps the folders, Projects and Cases whose name holds every word —
+everything in a matching folder, every Case of a matching Project, only the
+named Cases of a Project kept for them — and opens the folders and the
+Project above a match (a row the reader opened or closed by hand keeps its
+state); paged past 25 (`projectTreeRows` over `lib/folderTreeRows.ts`). Which
+folders and Projects the reader opened is the screen's state. **New folder**
+and **New project** in the header; a new Project opens at once.
+
+**Deleting is by checkboxes**, as in the legacy Saved analyses (CTA-147;
+`lib/analysisProjectPicks.ts`):
+
+- **Every row has a box** — folders, Projects and Cases — over **one set of
+  ids**. Ticking a folder ticks its whole subtree (sub-folders, Projects,
+  Cases); ticking a Project ticks its Cases. A folder's or a Project's box is
+  **checked or partly ticked from what is under it** (its leaves: each Case,
+  each Project without one; an empty folder only by its own box or one
+  above). **Unticking** an item un-ticks everything under it and **every
+  container above it**; what was picked through them stays picked.
+- **Select-all** in the header covers the rows the words leave, closed ones'
+  too: the leaves the words keep, so a container is ticked through them,
+  never more.
+- **The picks persist** across opening and closing rows and across folders;
+  a pick of a record deleted (here or in another tab) falls out.
+- **The selection bar** in the header (`SelectionBar`): how many are ticked —
+  every folder, Project and Case that would go —, Clear, and **Delete the
+  picked items**, which asks first (`DeleteManyDialog`: "Delete N items?",
+  how many folders, Projects and Cases), then deletes the picked Cases
+  (`removeAnalysisCases`), the checked Projects with their Cases
+  (`removeAnalysisProjects`) and the checked folders **deep**, with
+  everything in them (`removeProjectFoldersDeep`) — their Jobs V2 and links
+  with them, as the stores do. A refusal is said in the dialog and the picks
+  stay. Standing inside a folder that goes, the reader steps to the nearest
+  one that survives.
+- **No row deletes itself** (CTA-191 took the per-row Delete away, and with it
+  the folder delete's choice to keep what it held: a ticked folder always
+  goes whole).
 
 **New project** is a popup (`NewProjectDialog`): a name (required — picking a
 file with none typed names it after the file) and, optionally, a `.pgn`
@@ -185,8 +222,9 @@ popup says why; a game that will not parse is left out.
 
 | On | Rename | Move | Duplicate | Delete |
 | --- | --- | --- | --- | --- |
-| a folder | `FolderNameDialog` | `FolderMoveDialog`, its subtree left out | — | a confirmation with a choice: **keep** what it holds (sub-folders and Projects move up a level, `removeProjectFolder`) or **delete it too** (the subtree, its Projects and their Cases, `removeProjectFolderDeep`), naming how many Projects |
-| a Project | `FolderNameDialog` | `FolderMoveDialog` | named "‹name› (copy)", beside it, **with its Cases** (`duplicateAnalysisProject`) | a confirmation that names how many Cases go with it |
+| a folder | `FolderNameDialog` | `FolderMoveDialog`, its subtree left out | — | its box, then the selection bar's Delete — always with everything in it |
+| a Project | `FolderNameDialog` | `FolderMoveDialog` | named "‹name› (copy)", beside it, **with its Cases** (`duplicateAnalysisProject`) | its box — its Cases with it |
+| a Case | (its Project's screen, §3.2) | (§3.2) | (§3.2) | its box |
 
 A refused write is an `InlineAlert` under the header. A `?folder=` that names
 no folder says so, with a way back.
@@ -302,8 +340,8 @@ is dropped).
 
 | Store | Order | Cap | Operations |
 | --- | --- | --- | --- |
-| `folders` | oldest first | 100 | `createProjectFolder`, `renameProjectFolder`, `moveProjectFolder` (never into its subtree), `removeProjectFolder` (keeps the contents: sub-folders re-parent, Projects re-filed up — `refileProjectsIn`), `removeProjectFolderDeep` (the subtree, `removeProjectsInFolders`), `addProjectFolders` (an import's, all or nothing) |
-| `projects` | newest first | 1,000 | `createAnalysisProject` (a name required), `renameAnalysisProject`, `moveAnalysisProject`, `duplicateAnalysisProject` (its Cases first, all or nothing), `removeAnalysisProject(s)` (their Cases with them — `removeCasesOfProjects`), `importAnalysisProjects` |
+| `folders` | oldest first | 100 | `createProjectFolder`, `renameProjectFolder`, `moveProjectFolder` (never into its subtree), `removeProjectFolder` (keeps the contents: sub-folders re-parent, Projects re-filed up — `refileProjectsIn`; no screen calls it since CTA-191), `removeProjectFolderDeep` / `removeProjectFoldersDeep` (the subtrees, in one write, `removeProjectsInFolders` — the browser's delete of the picks), `addProjectFolders` (an import's, all or nothing) |
+| `projects` | newest first | 1,000 | `createAnalysisProject` (a name required), `renameAnalysisProject`, `moveAnalysisProject`, `duplicateAnalysisProject` (its Cases first, all or nothing), `removeAnalysisProject` / `removeAnalysisProjects` (their Cases with them — `removeCasesOfProjects`), `importAnalysisProjects` |
 | `cases` | newest first | 10,000 | `addAnalysisCases` (all or nothing), `renameAnalysisCase`, `moveAnalysisCase`, `duplicateAnalysisCase`, `removeAnalysisCases` (their Jobs V2 with them), `saveCaseState` (the autosave, in place — never the tree of a state behind a merge, §6.6), `mergeIntoAnalysisCase` (a Jobs V2 merge, §6.6), `importAnalysisCases` |
 | `jobs` (CTA-188) | newest first | 100 (the oldest finished dropped; refused when every one is unfinished) | Jobs V2 (§6.2) |
 | `caseLinks` (CTA-188) | oldest first | 50,000 | `linkAnalysisCases` / `addCaseLinks` (no self-link, no pair twice), `unlinkAnalysisCases`, `removeLinksOfCases`, `importCaseLinks` (§7) |

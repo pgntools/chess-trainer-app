@@ -1,2 +1,2 @@
 export { default as ProjectsTable } from "./ProjectsTable";
-export type { ProjectAction, ProjectFolderAction, ProjectsTableProps } from "./ProjectsTable";
+export type { ProjectAction, ProjectFolderAction, ProjectsTablePick, ProjectsTableProps } from "./ProjectsTable";

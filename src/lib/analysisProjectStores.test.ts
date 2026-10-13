@@ -21,6 +21,7 @@ import {
   projectFoldersSnapshot,
   removeProjectFolder,
   removeProjectFolderDeep,
+  removeProjectFoldersDeep,
   renameProjectFolder,
   resetProjectFolderStore,
 } from "./analysisProjectFolderStore";
@@ -32,6 +33,7 @@ import {
   loadAnalysisProjects,
   moveAnalysisProject,
   removeAnalysisProject,
+  removeAnalysisProjects,
   renameAnalysisProject,
   resetAnalysisProjectStore,
 } from "./analysisProjectStore";
@@ -134,6 +136,25 @@ describe("Analysis V2's stores (CTA-186)", () => {
       expect(folders.map((folder) => folder.id)).toEqual([other.id]);
       expect(projects.map((project) => project.id)).toEqual([kept.id]);
       expect(cases.map((record) => record.id)).toEqual(["c3"]);
+    });
+
+    it("deleted deep together — the browser's picks (CTA-191) — take every subtree, unknown ids left alone", async () => {
+      const a = (await createProjectFolder("A", null))!;
+      const b = (await createProjectFolder("B", a.id))!;
+      const c = (await createProjectFolder("C", null))!;
+      const other = (await createProjectFolder("Other", null))!;
+      const inB = (await createAnalysisProject("In B", b.id))!;
+      const inC = (await createAnalysisProject("In C", c.id))!;
+      const loose = (await createAnalysisProject("Loose", null))!;
+      const kept = (await createAnalysisProject("Kept", null))!;
+      await addAnalysisCases([aCase("c1", inB.id), aCase("c2", inC.id), aCase("c3", loose.id), aCase("c4", kept.id)]);
+
+      expect(await removeProjectFoldersDeep([a.id, b.id, c.id, "gone"])).toBeUndefined();
+      expect(await removeAnalysisProjects([loose.id, "gone"])).toBeUndefined();
+      const { folders, projects, cases } = await reload();
+      expect(folders.map((folder) => folder.id)).toEqual([other.id]);
+      expect(projects.map((project) => project.id)).toEqual([kept.id]);
+      expect(cases.map((record) => record.id)).toEqual(["c4"]);
     });
 
     it("from an import are all or nothing under the cap", async () => {

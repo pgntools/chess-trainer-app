@@ -160,8 +160,8 @@ export const duplicateAnalysisProject = async (
 export const removeAnalysisProject = async (id: string): Promise<AnalysisProjectProblem | undefined> =>
   removeAnalysisProjects([id]);
 
-/** Delete Projects and their Cases (and the Cases' Jobs V2 and links). */
-const removeAnalysisProjects = async (
+/** Delete Projects and their Cases (and the Cases' Jobs V2 and links) — the browser's delete of the picks (CTA-191). Unknown ids are a no-op. */
+export const removeAnalysisProjects = async (
   ids: readonly string[],
 ): Promise<AnalysisProjectProblem | undefined> => {
   if (ids.length === 0) return undefined;

@@ -1,10 +1,12 @@
-import { projectRowOf, projectTreeRows, type ProjectTreeRow } from "../../../lib/analysisProjectRows";
+import type { ProjectPickModel } from "../../../lib/analysisProjectPicks";
+import { projectRowOf, projectTreeRows, type ProjectCaseRow, type ProjectTreeRow } from "../../../lib/analysisProjectRows";
 import type { AnalysisProject, ProjectFolder } from "../../../lib/analysisProjects";
 
 /*
   Analysis V2's browser as tree rows (CTA-186), walked by
-  `projectTreeRows` as the screen walks them. Imported only by the block's
-  gallery and its test.
+  `projectTreeRows` as the screen walks them — the Projects' Cases too, and
+  the model their picks are read against (CTA-191). Imported only by the
+  block's gallery and its test.
 */
 
 const AT = "2026-10-12T09:30:00.000Z";
@@ -22,6 +24,13 @@ const project = (id: string, name: string, folderId: string | null, updatedAt = 
   createdAt: AT,
   updatedAt,
 });
+const caseRow = (id: string, projectId: string, name: string, type: "game" | "position" = "game", updated = AT): ProjectCaseRow => ({
+  id,
+  projectId,
+  name,
+  type,
+  updated,
+});
 
 export const FOLDERS: readonly ProjectFolder[] = [folder("fopen", "Openings"), folder("fsic", "Sicilian", "fopen"), folder("fend", "Endgames")];
 
@@ -32,14 +41,25 @@ export const PROJECTS: readonly AnalysisProject[] = [
   project("ploose", "Club games", null, "2026-10-10T09:30:00.000Z"),
 ];
 
-const CASES: Readonly<Record<string, number>> = { pnaj: 4, pcaro: 2, prook: 7, ploose: 0 };
+export const CASES: readonly ProjectCaseRow[] = [
+  caseRow("cnaj1", "pnaj", "Fischer – Spassky, Reykjavik, 1972"),
+  caseRow("cnaj2", "pnaj", "Black to move, move 14", "position"),
+  caseRow("ccaro1", "pcaro", "Advance variation"),
+  caseRow("ccaro2", "pcaro", "Karpov – Kasparov, Linares, 1992"),
+  caseRow("crook1", "prook", "Lucena position", "position"),
+];
 
-/** The tree walked with the folders in `open` opened, and the words `text`. */
-export const treeRows = (open: readonly string[] = [], text = ""): ProjectTreeRow[] =>
+/** What the picks are read against — the browser's folders, Projects and Cases. */
+export const MODEL: ProjectPickModel = { folders: FOLDERS, projects: PROJECTS, cases: CASES };
+
+/** The tree walked with the folders in `open` and the Projects in `openProjects` opened, and the words `text`. */
+export const treeRows = (open: readonly string[] = [], text = "", openProjects: readonly string[] = []): ProjectTreeRow[] =>
   projectTreeRows({
     folders: FOLDERS,
-    rows: PROJECTS.map((item) => projectRowOf(item, CASES[item.id] ?? 0)),
+    rows: PROJECTS.map((item) => projectRowOf(item, CASES.filter((row) => row.projectId === item.id).length)),
+    cases: CASES,
     isOpen: (id, auto) => open.includes(id) || auto,
+    isProjectOpen: (id, auto) => openProjects.includes(id) || auto,
     column: "name",
     direction: "asc",
     text,
@@ -48,7 +68,9 @@ export const treeRows = (open: readonly string[] = [], text = ""): ProjectTreeRo
 export const HEBREW_ROWS: ProjectTreeRow[] = projectTreeRows({
   folders: [folder("fheb", "פתיחות")],
   rows: [projectRowOf(project("pheb", "הגנה סיציליאנית", "fheb"), 2)],
+  cases: [caseRow("cheb1", "pheb", "קספרוב – טופלוב, וייק אן זה, 1999"), caseRow("cheb2", "pheb", "שחור לשחק, מסע 20", "position")],
   isOpen: () => true,
+  isProjectOpen: () => true,
   column: "name",
   direction: "asc",
   text: "",
