@@ -7,10 +7,9 @@ import { ENGINE_STORAGE_KEY } from "../../lib/engineChoice";
 import { ENGINE_SERVER_STORAGE_KEY } from "../../lib/engineServer";
 import { ENGINE_SEARCH_SETTINGS_STORAGE_KEY } from "../../lib/engineSearchSettings";
 import { ENGINE_PRESETS_DB_NAME } from "../../lib/enginePresetStore";
-import { JOBS_DB_NAME } from "../../lib/jobStore";
 import { LIBRARY_DB_NAME } from "../../lib/libraryDb";
 import { ANALYSIS_PROJECTS_DB_NAME } from "../../lib/analysisProjectsDb";
-import enabledSource from "../../lib/analysisProjectsEnabled.ts?raw";
+import { RETIRED_DATABASES } from "../../lib/retiredDatabases";
 import { THEME_STORAGE_KEY } from "../../theme/themeChoice";
 import { LANGUAGE_STORAGE_KEY } from "../../i18n";
 import { legalDocument, legalLanguages, LEGAL_PAGES } from "./legalDocuments";
@@ -31,13 +30,12 @@ const STORED = [
   DEVELOPMENT_NOTICE_KEY,
   // The IndexedDB databases (`chessapp.engine` is also the engine choice's key).
   "chessapp.engine",
-  "chessapp.analyses",
   "chessapp.repertoires",
   LIBRARY_DB_NAME,
-  // The background jobs (CTA-173).
-  JOBS_DB_NAME,
   // The engine option presets (CTA-179).
   ENGINE_PRESETS_DB_NAME,
+  // Analysis V2 — its Projects, Cases, jobs and links (CTA-186, shipped in CTA-192).
+  ANALYSIS_PROJECTS_DB_NAME,
 ];
 
 /** The pages that disclose what the app stores — another in-app page (a Terms page, an About) need not. */
@@ -80,11 +78,13 @@ describe("the legal pages' documents (CTA-159)", () => {
     }
   });
 
-  it("leave out a dev-only module's database until it ships — and fail the day it does (CTA-186)", () => {
-    // Analysis V2 is dev-only while it is built: no production build opens its database, so the pages do not name it.
-    expect(enabledSource).toMatch(/ANALYSIS_PROJECTS_ENABLED: boolean = import\.meta\.env\.DEV;/);
-    // Shipping it changes that line: then its database joins STORED, a line in both pages in both languages.
-    expect(STORED).not.toContain(ANALYSIS_PROJECTS_DB_NAME);
+  it("name no database the app no longer keeps — each load deletes them (CTA-192)", () => {
+    for (const page of DISCLOSURE_PAGES) {
+      for (const language of supportedLanguages) {
+        const text = sourceOf(page, language);
+        for (const name of RETIRED_DATABASES) expect(text, `${page} (${language}) leaves out ${name}`).not.toContain(`\`${name}\``);
+      }
+    }
   });
 
   it("states that no cookies are set, and the Privacy Policy links the Cookies Notice and back", () => {

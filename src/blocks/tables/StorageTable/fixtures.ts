@@ -15,10 +15,10 @@ export const BROWSER_WITHOUT_INDEXEDDB: BrowserStorageEstimate = { usage: 1000, 
 /** One section per database — each ends on a bolder line. */
 export const CATEGORIES: readonly StorageCategory[] = [
   { id: "playedGames", section: "engine", records: 128, payload: 412_331 },
-  { id: "analyses", section: "analyses", records: 42, payload: 96_004 },
   { id: "repertoires", section: "repertoires", records: 7, payload: 1_203_455 },
   { id: "collectionGames", section: "library", records: 12_904, payload: 23_551_873 },
-  { id: "jobs", section: "jobs", records: 3, payload: 184_220 },
+  { id: "analysisCases", section: "analysisProjects", records: 42, payload: 96_004 },
+  { id: "jobsV2", section: "analysisProjects", records: 3, payload: 184_220 },
 ];
 
 /** Every store still being read. */

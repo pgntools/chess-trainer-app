@@ -50,10 +50,10 @@ describe("the language in the address", () => {
   });
 
   it("moves to the same place in another language, query and hash kept", () => {
-    const at = { pathname: "/chess-trainer-app/tools/analysis", search: "?fen=x", hash: "#a" };
-    expect(switchedLanguageUrl(at, BASE, "he")).toBe("/chess-trainer-app/he/tools/analysis?fen=x#a");
-    const back = { pathname: "/chess-trainer-app/he/tools/analysis", search: "?fen=x", hash: "" };
-    expect(switchedLanguageUrl(back, BASE, "en")).toBe("/chess-trainer-app/tools/analysis?fen=x");
+    const at = { pathname: "/chess-trainer-app/analysis/projects/p1", search: "?q=x", hash: "#a" };
+    expect(switchedLanguageUrl(at, BASE, "he")).toBe("/chess-trainer-app/he/analysis/projects/p1?q=x#a");
+    const back = { pathname: "/chess-trainer-app/he/analysis/projects/p1", search: "?q=x", hash: "" };
+    expect(switchedLanguageUrl(back, BASE, "en")).toBe("/chess-trainer-app/analysis/projects/p1?q=x");
     expect(switchedLanguageUrl({ pathname: "/chess-trainer-app/he", search: "", hash: "" }, BASE, "en")).toBe("/chess-trainer-app/");
     expect(switchedLanguageUrl({ pathname: "/", search: "", hash: "" }, "/", "he")).toBe("/he/");
   });

@@ -13,16 +13,12 @@ import { ProgressLine } from "../../../design-system/components/states";
 import { tableDate } from "../../../design-system/components/tables";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 import type { ComputerAnalysisVariant } from "../../../lib/computerAnalysis";
-import { canCancelJob, canPauseJob, canResumeJob, jobMoveLabel, jobProgress, type Job } from "../../../lib/jobs";
+import { canCancelJob, canPauseJob, canResumeJob, jobMoveLabel, jobProgress, type JobV2 } from "../../../lib/jobsV2";
 import { JOB_STATUS_TONES } from "../../tables";
 
-/**
- * What the panel reads of a job — a V1 `Job`, or a Jobs V2 one (CTA-188),
- * which shares these fields: its outputs need only their variant, its error
- * only a code.
- */
+/** What the panel reads of a job: its outputs need only their variant, its error only a code. */
 export type JobSummaryJob = Pick<
-  Job,
+  JobV2,
   "kind" | "status" | "positions" | "checkpoint" | "startedAt" | "finishedAt" | "createdAt" | "options" | "engine"
 > & {
   source: { name: string };
@@ -33,7 +29,7 @@ export type JobSummaryJob = Pick<
 /** One more line of the Parameters tab — Jobs V2's preset and target. */
 export type JobSummaryFact = { id: string; label: string; value: ReactNode };
 
-export type JobSummaryProps<J extends JobSummaryJob = Job> = {
+export type JobSummaryProps<J extends JobSummaryJob = JobV2> = {
   job: J;
   /** The saved analysis it was sent from, on the Analysis Board — absent for a board never saved. */
   sourceLink?: LinkTarget;
@@ -87,12 +83,11 @@ const stamp = (value: string | null): ReactNode => {
  * The tab picked is the panel's own, kept while another job is opened.
  *
  * Presentational: the job, its links and its actions are props; its words are
- * the app's (`jobs.*`). Any job with a {@link JobSummaryJob}'s fields — Jobs
- * V2's too (CTA-188), its preset and target as `extraFacts`, its outputs as
- * `links`, and its engine's live progress under the progress bar as `live`
- * (CTA-190).
+ * the app's (`jobs.*`). Jobs V2's preset and target come as `extraFacts`
+ * (CTA-188), its outputs as `links`, and its engine's live progress under the
+ * progress bar as `live` (CTA-190).
  */
-function JobSummary<J extends JobSummaryJob = Job>({
+function JobSummary<J extends JobSummaryJob = JobV2>({
   job,
   sourceLink,
   sourceLabel,

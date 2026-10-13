@@ -3,8 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ANALYSIS_PROJECTS_DB_NAME } from "./analysisProjectsDb";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "./computerAnalysis";
 import { done } from "./idb";
-import type { JobStatus } from "./jobs";
-import { jobV2Of, MAX_JOBS_V2, type JobV2, type JobV2Request } from "./jobsV2";
+import { jobV2Of, type JobStatus, MAX_JOBS_V2, type JobV2, type JobV2Request } from "./jobsV2";
 import {
   addJobV2,
   cancelJobV2,

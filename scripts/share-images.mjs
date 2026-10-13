@@ -33,7 +33,7 @@ const RTL = new Set(["he"]);
 const CARDS = {
   default: { name: "app.brandText", line: "pageDescriptions.home" },
   engine: { name: "pages.playWithEngine", line: "pageDescriptions.playWithEngine" },
-  analysis: { name: "pages.analysisBoard", line: "pageDescriptions.analysisBoard" },
+  analysis: { name: "nav.folders.analysisV2", line: "pageDescriptions.analysisProjects" },
   openings: { name: "pages.openings", line: "pageDescriptions.openings" },
   repertoires: { name: "nav.folders.repertoires", line: "pageDescriptions.repertoires" },
   library: { name: "pages.library", line: "pageDescriptions.library" },

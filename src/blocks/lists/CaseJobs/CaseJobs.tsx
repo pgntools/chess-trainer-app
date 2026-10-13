@@ -8,8 +8,7 @@ import { useTranslation } from "react-i18next";
 import { linkProps, type LinkTarget } from "../../../design-system/components/link";
 import { LoadingLine, ProgressLine } from "../../../design-system/components/states";
 import { tableDate } from "../../../design-system/components/tables";
-import { jobMoveLabel, jobProgress } from "../../../lib/jobs";
-import type { JobV2 } from "../../../lib/jobsV2";
+import { jobMoveLabel, jobProgress, type JobV2 } from "../../../lib/jobsV2";
 import { JOB_STATUS_TONES } from "../../tables";
 
 export type CaseJobsProps = {

@@ -12,12 +12,12 @@ import {
 import type { EvalPoint } from "./computerAnalysisTree";
 import { pvToSan } from "./engineAnalysis";
 import type { GameTree } from "./gameTree";
-import { jobSearchOf, type Job, type JobSource } from "./jobs";
+import { jobSearchOf, type JobV2 } from "./jobsV2";
 
 /*
-  **A job's results so far, read live** (CTA-174) — what the Jobs screen's
-  panel shows of a job not done (CTA-178; the Analysis Board's Computer
-  analysis tab's until CTA-177), the way lichess's eval graph
+  **A Jobs V2 job's results so far, read live** (CTA-174, the legacy Jobs'
+  until CTA-192) — what the Jobs V2 view's panel shows of a job not done,
+  the way lichess's eval graph
   fills in as its server analysis goes. Pure: the job's source re-parsed
   (`jobSearchOf`, as the runner does) and its checkpoint read — every finished
   position a point of the graph, every move whose both positions are finished
@@ -25,10 +25,10 @@ import { jobSearchOf, type Job, type JobSource } from "./jobs";
 */
 
 /** A graph point, with the FEN of the position it is the eval of — how a board finds its own node for it. */
-export type LiveEvalPoint = EvalPoint & { fen: string };
+type LiveEvalPoint = EvalPoint & { fen: string };
 
 /** The last position finished, as the reader is told it. */
-export type LiveLatest = {
+type LiveLatest = {
   /** The move that led to it ("12... Nf6"); absent for the start position. */
   move?: string;
   /** Line 1: its score (White's view), its depth, and its moves numbered as a reader writes them ("9... Be7 10. Be3"). */
@@ -36,7 +36,7 @@ export type LiveLatest = {
   moves: string;
 };
 
-export type JobLiveAnalysis = {
+export type JobV2LiveAnalysis = {
   /** The source re-parsed — the tree the points' node ids are in (a `?at=` is read off it). */
   tree: GameTree;
   /** In ply order: the finished positions' evals, each move's verdict where it has one. */
@@ -71,18 +71,15 @@ const numberedLine = (fen: string, sans: readonly string[]): string => {
     .join(" ");
 };
 
-/**
- * What a job's results so far are read from — a V1 job, or a Jobs V2 one
- * (CTA-188), which shares these fields.
- */
-export type LiveAnalysisJob = Pick<Job, "options" | "positions" | "checkpoint"> & { source: Pick<JobSource, "pgn"> };
+/** What a job's results so far are read from. */
+type LiveAnalysisJob = Pick<JobV2, "options" | "positions" | "checkpoint"> & { source: Pick<JobV2["source"], "pgn"> };
 
 /**
  * **A job's results so far** — `undefined` when its source no longer reads, or
  * its positions are not the record's (the checkpoint would be about another
  * game). Cheap enough per checkpoint; a screen memoises it on the job.
  */
-export const jobLiveAnalysis = (job: LiveAnalysisJob): JobLiveAnalysis | undefined => {
+export const jobV2LiveAnalysis = (job: LiveAnalysisJob): JobV2LiveAnalysis | undefined => {
   const search = jobSearchOf(job.source, job.options);
   if (search === undefined) return undefined;
   const { tree, positions } = search;

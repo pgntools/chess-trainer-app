@@ -1,5 +1,4 @@
 import type { SvgIconComponent } from "@mui/icons-material";
-import AccountTreeRoundedIcon from "@mui/icons-material/AccountTreeRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import BiotechRoundedIcon from "@mui/icons-material/BiotechRounded";
 import ConstructionRoundedIcon from "@mui/icons-material/ConstructionRounded";
@@ -109,14 +108,11 @@ export const navFolders = (): readonly NavFolder[] => [
     icon: SnippetFolderRoundedIcon,
   },
   /*
-    Analyses: the saved list — the Lobby, whose New button opens the board —
-    and the background jobs that analyse its games (CTA-173, CTA-174).
+    Analysis V2 (CTA-186, shipped in CTA-192): the Projects browser — Projects
+    in folders, their Cases each a board — and Jobs V2, a Case's computer
+    analysis in the background (CTA-188).
   */
-  {
-    id: "analysis",
-    labelKey: "nav.folders.analysisBoard",
-    icon: AccountTreeRoundedIcon,
-  },
+  { id: "analysis-v2", labelKey: "nav.folders.analysisV2", icon: BiotechRoundedIcon },
   {
     id: "openings",
     labelKey: "nav.folders.openings",
@@ -161,10 +157,6 @@ export const navFolders = (): readonly NavFolder[] => [
     gallery (CTA-107). A spread gated on `import.meta.env.DEV`, so a
     production build has no such folder.
   */
-  // Analysis V2 (CTA-186) — its own folder, dev-only while it is built.
-  ...(import.meta.env.DEV
-    ? [{ id: "analysis-v2", labelKey: "nav.folders.analysisV2", icon: BiotechRoundedIcon }]
-    : []),
   // The MDX editor's own folder (CTA-137) — its article lobby and the editor; only under `yarn mdx-editor:start`.
   ...(MDX_EDITOR_ENABLED ? [{ id: "mdx-editor", labelKey: "nav.folders.mdxEditor", icon: EditNoteRoundedIcon }] : []),
   ...(import.meta.env.DEV

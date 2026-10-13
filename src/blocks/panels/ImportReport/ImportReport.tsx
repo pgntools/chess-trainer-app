@@ -2,13 +2,14 @@ import Box from "@mui/material/Box";
 import { useTranslation } from "react-i18next";
 
 import { InlineAlert } from "../../../design-system/components/feedback";
-import type { ExportCategory } from "../../../lib/dataExport";
-import { OFFERED_EXPORT_CATEGORIES } from "../../../lib/exportCategories";
+import { EXPORT_CATEGORIES, type ExportCategory } from "../../../lib/dataExport";
 import type { ImportResult, ImportResults } from "../../../lib/dataImportTarget";
 
 export type ImportReportProps = {
   /** What came of each category the import wrote — `applyImport`'s answer. */
   results: ImportResults;
+  /** How many saved analyses the zip held and the import skipped (an export from before CTA-192). Absent, none. */
+  skippedAnalyses?: number;
   /** The prefix of its ids: the report `<testId>-done`, each line `<testId>-result-<category>`. */
   testId: string;
 };
@@ -47,9 +48,9 @@ const resultText = (t: Translate, category: ExportCategory, result: ImportResult
  * Presentational: the results are props. Its words are the app's
  * (`settings.import.result.*`).
  */
-function ImportReport({ results, testId }: ImportReportProps) {
+function ImportReport({ results, skippedAnalyses = 0, testId }: ImportReportProps) {
   const { t } = useTranslation();
-  const reported = OFFERED_EXPORT_CATEGORIES.filter((category) => results[category] !== undefined);
+  const reported = EXPORT_CATEGORIES.filter((category) => results[category] !== undefined);
   const allDone = reported.every((category) => results[category]?.status === "done");
   return (
     <InlineAlert severity={allDone ? "success" : "warning"} testId={`${testId}-done`}>
@@ -63,6 +64,9 @@ function ImportReport({ results, testId }: ImportReportProps) {
           )
         );
       })}
+      {skippedAnalyses > 0 && (
+        <Box data-testid={`${testId}-skipped-analyses`}>{t("settings.import.result.skippedAnalyses", { count: skippedAnalyses })}</Box>
+      )}
     </InlineAlert>
   );
 }

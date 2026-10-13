@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
-import { CAPS, CLASHING_APP, DUMP, EMPTY_APP, TIGHT_CAPS } from "./fixtures";
+import { CAPS, CLASHING_APP, DUMP, EMPTY_APP, OLD_DUMP, TIGHT_CAPS } from "./fixtures";
 import ImportDialog, { type ImportDialogProps } from "./ImportDialog";
 
 const mount = (props: Partial<ImportDialogProps> = {}) => {
@@ -31,7 +31,7 @@ describe("ImportDialog", () => {
 
   it("offers Merge, Override or Skip for a clashing category, a named group described by the choice", () => {
     mount();
-    const group = screen.getByTestId("imp-analyses-choice");
+    const group = screen.getByTestId("imp-analysisProjects-choice");
     expect(group).toHaveRole("radiogroup");
     expect(group).toHaveAccessibleName("2 folders are already here:");
     expect(within(group).getByRole("radio", { name: "Merge" })).toBeChecked();
@@ -71,7 +71,19 @@ describe("ImportDialog", () => {
     mount({ dump: { ...DUMP, categories: ["games"] } });
     await userEvent.click(screen.getByRole("checkbox", { name: /Games/ }));
     expect(screen.getByRole("button", { name: "Import" })).toBeDisabled();
-    expect(screen.getByRole("checkbox", { name: /Analyses/ })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: /Analysis projects/ })).toBeDisabled();
+  });
+
+  it("says an older zip's saved analyses are no longer supported, and only then (CTA-192)", () => {
+    const { unmount } = render(
+      <ImportDialog fileName="old.zip" dump={OLD_DUMP} current={EMPTY_APP} caps={CAPS} onCancel={vi.fn()} onImport={vi.fn()} testId="imp" />,
+    );
+    expect(screen.getByTestId("imp-skipped-analyses")).toHaveTextContent(
+      "The file holds 3 saved analyses from an older version. Saved analyses are no longer supported, so they are skipped",
+    );
+    unmount();
+    mount();
+    expect(screen.queryByTestId("imp-skipped-analyses")).toBeNull();
   });
 
   it("passes axe", async () => {

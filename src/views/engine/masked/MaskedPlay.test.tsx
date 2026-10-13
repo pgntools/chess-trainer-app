@@ -308,10 +308,7 @@ describe("Masked Pieces — the game view's shape", () => {
     );
     mount("/engine/masked?saved=done");
     expect(screen.getByTestId("masked-play-ended")).toHaveTextContent("Game over · 0-1");
-    expect(screen.getByTestId("masked-play-open-analysis")).toHaveAttribute(
-      "href",
-      `/tools/analysis?game=${encodeURIComponent("play/games/done")}`,
-    );
+    expect(screen.getByTestId("masked-play-open-analysis")).toHaveTextContent("Open in analysis");
   });
 });
 
@@ -319,8 +316,8 @@ describe("Masked Pieces — accessibility (CTA-109)", () => {
   it("passes axe with its Masking tab open, the engine's reply played", async () => {
     mount();
     drag("e2", "e4");
-    // Answered, so Play's thinking spinners (views/tools/analysis/, not
-    // migrated here — a known gap in ACCESSIBILITY.md) are not on screen.
+    // Answered, so Play's thinking spinners (not migrated here — a known gap
+    // in ACCESSIBILITY.md) are not on screen.
     const engine = FakeEngine.latest();
     act(() => {
       engine.say({ fen: engine.lastSearch, uciMessage: "info", depth: 12, multipv: 1, positionEvaluation: "20", pv: "e7e5" });

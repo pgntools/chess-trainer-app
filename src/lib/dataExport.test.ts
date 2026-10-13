@@ -2,9 +2,9 @@ import { strFromU8, unzipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 
 import { positionCaseOfFen } from "./analysisProjects";
-import { DEFAULT_ANALYSIS_SETTINGS } from "./analysisSettings";
 import {
   buildExport,
+  EXPORT_CATEGORIES,
   exportFileName,
   exportedCollections,
   hasExportSelection,
@@ -19,8 +19,7 @@ import type { CollectionSummary } from "./libraryCollections";
 import { splitPgnGames } from "./pgn";
 import type { PlayedGame } from "./playedGames";
 import { DEFAULT_REPERTOIRE_SETTINGS } from "./repertoireSettings";
-import type { SavedAnalysis } from "./savedAnalyses";
-import type { AnalysisFolder } from "./savedAnalysisFolders";
+import type { GameFolder } from "./savedGameFolders";
 import type { RepertoireFolder } from "./savedRepertoireFolders";
 import type { SavedRepertoire } from "./savedRepertoires";
 
@@ -40,25 +39,7 @@ const played = (id: string, extra: Partial<PlayedGame> = {}): PlayedGame => ({
   ...extra,
 });
 
-const analysis = (id: string, folderId: string | null, extra: Partial<SavedAnalysis> = {}): SavedAnalysis => ({
-  id,
-  pgn: pgn(`Analysis ${id}`, "1. d4 (1. c4) d5 *"),
-  settings: DEFAULT_ANALYSIS_SETTINGS,
-  path: ["d4", "d5"],
-  orientation: "black",
-  description: `notes on ${id}`,
-  showArrows: true,
-  arrowWidthSource: "games",
-  arrowPalette: "lichess",
-  showMoveMarks: true,
-  name: `Analysis ${id}`,
-  folderId,
-  savedAt: AT,
-  updatedAt: AT,
-  ...extra,
-});
-
-const folder = (id: string, name: string, parentId: string | null = null): AnalysisFolder => ({
+const folder = (id: string, name: string, parentId: string | null = null): GameFolder => ({
   id,
   name,
   parentId,
@@ -96,8 +77,6 @@ const summary = (
 
 const EMPTY: ExportSource = {
   playedGames: [],
-  analyses: [],
-  analysisFolders: [],
   repertoires: [],
   repertoireFolders: [],
   collections: [],
@@ -112,7 +91,6 @@ const EMPTY: ExportSource = {
 const ALL: ExportSelection = {
   collections: true,
   games: true,
-  analyses: true,
   repertoires: true,
   enginePresets: true,
   analysisProjects: true,
@@ -121,7 +99,6 @@ const ALL: ExportSelection = {
 const NONE: ExportSelection = {
   collections: false,
   games: false,
-  analyses: false,
   repertoires: false,
   enginePresets: false,
   analysisProjects: false,
@@ -150,26 +127,20 @@ describe("buildExport", () => {
   it("writes every category, and nothing for a category not ticked", () => {
     const source: Partial<ExportSource> = {
       playedGames: [played("g1")],
-      analyses: [analysis("a1", null)],
       repertoires: [repertoire("r1", null)],
       collections: [{ summary: summary("u1", "Mine", "uploaded", 1), games: [pgn("C1")] }],
     };
-    expect(build(source).files.map((file) => file.path)).toEqual([
-      "games.pgn",
-      "analyses.pgn",
-      "collections/mine.pgn",
-      "repertoires/unfiled.pgn",
-    ]);
-    expect(build(source, { analyses: true }).files.map((file) => file.path)).toEqual(["analyses.pgn"]);
+    expect(build(source).files.map((file) => file.path)).toEqual(["games.pgn", "collections/mine.pgn", "repertoires/unfiled.pgn"]);
+    expect(build(source, { repertoires: true }).files.map((file) => file.path)).toEqual(["repertoires/unfiled.pgn"]);
     expect(build(source, {}).files).toEqual([]);
   });
 
   it("lists an empty ticked category but writes no file for it", () => {
     const bundle = build({}, ALL);
-    expect(bundle.manifest.categories).toEqual(["collections", "games", "analyses", "repertoires", "enginePresets", "analysisProjects"]);
+    expect(bundle.manifest.categories).toEqual(["collections", "games", "repertoires", "enginePresets", "analysisProjects"]);
     expect(bundle.files).toEqual([]);
     expect(bundle.manifest.files).toEqual([]);
-    expect(bundle.manifest.folders).toEqual({ analyses: [], repertoires: [], collections: [] });
+    expect(bundle.manifest.folders).toEqual({ repertoires: [], collections: [] });
   });
 
   it("writes Analysis V2's folders and Projects, each with its Cases, as one JSON file (CTA-186)", () => {
@@ -240,36 +211,9 @@ describe("buildExport", () => {
     expect(bundle.manifest.formatVersion).toBe(5);
   });
 
-  it("records each analysis' name, description, orientation, path and folder path", () => {
-    const folders = [folder("f1", "Openings"), folder("f2", "Sicilian", "f1")];
-    const bundle = build(
-      {
-        analyses: [analysis("a1", "f2"), analysis("a2", null), analysis("a3", "gone")],
-        analysisFolders: folders,
-      },
-      { analyses: true },
-    );
-    const entry = bundle.manifest.files[0];
-    if (entry.kind !== "analyses") throw new Error("not the analyses file");
-    expect(entry.records[0]).toMatchObject({
-      id: "a1",
-      index: 0,
-      name: "Analysis a1",
-      description: "notes on a1",
-      orientation: "black",
-      arrowWidthSource: "games",
-      arrowPalette: "lichess",
-      showMoveMarks: true,
-      path: ["d4", "d5"],
-      folderPath: ["Openings", "Sicilian"],
-    });
-    // Unfiled, and a folder that is gone, both read as the top level.
-    expect(entry.records[1].folderPath).toEqual([]);
-    expect(entry.records[2].folderPath).toEqual([]);
-    // The whole tree rides along, so an empty folder survives.
-    expect(bundle.manifest.folders.analyses).toEqual([["Openings"], ["Openings", "Sicilian"]]);
-    // Side lines survive: the stored text is joined, not re-written.
-    expect(fileText(bundle, "analyses.pgn")).toContain("(1. c4)");
+  it("writes no saved analyses — that category went with the legacy Analysis Board (CTA-192)", () => {
+    expect(EXPORT_CATEGORIES).not.toContain("analyses");
+    expect(build({}, ALL).files.map((file) => file.path)).not.toContain("analyses.pgn");
   });
 
   it("writes one repertoire file per folder, plus Unfiled, mapping each game back", () => {

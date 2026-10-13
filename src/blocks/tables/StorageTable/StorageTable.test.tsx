@@ -38,21 +38,23 @@ describe("StorageTable", () => {
     expect(data.getAllByRole("columnheader").map((head) => head.textContent)).toEqual(["Category", "Records", "Estimated payload"]);
     expect(screen.getByTestId("storage-collectionGames-records")).toHaveTextContent("12904");
     expect(screen.getByTestId("storage-repertoires-payload")).toHaveTextContent(formatBytes(1_203_455));
-    expect(screen.getByTestId("storage-analyses-records")).toHaveStyle({ textAlign: "end" });
+    expect(screen.getByTestId("storage-analysisCases-records")).toHaveStyle({ textAlign: "end" });
   });
 
   it("closes each database's section with a bolder line, never the last", () => {
     mount();
-    for (const id of ["playedGames", "analyses", "repertoires", "collectionGames"]) {
+    for (const id of ["playedGames", "repertoires", "collectionGames"]) {
       expect(screen.getByTestId(`storage-${id}-records`)).toHaveStyle({ borderBottomWidth: "2px" });
     }
-    expect(screen.getByTestId("storage-jobs-records")).not.toHaveStyle({ borderBottomWidth: "2px" });
+    // Analysis's Cases and jobs share one database: one section, no line between them.
+    expect(screen.getByTestId("storage-analysisCases-records")).not.toHaveStyle({ borderBottomWidth: "2px" });
+    expect(screen.getByTestId("storage-jobsV2-records")).not.toHaveStyle({ borderBottomWidth: "2px" });
   });
 
   it("says … for every count still being read", () => {
     mount({ categories: READING });
     expect(screen.getByTestId("storage-playedGames-records")).toHaveTextContent("…");
-    expect(screen.getByTestId("storage-analyses-payload")).toHaveTextContent("…");
+    expect(screen.getByTestId("storage-analysisCases-payload")).toHaveTextContent("…");
   });
 
   it("passes axe", async () => {

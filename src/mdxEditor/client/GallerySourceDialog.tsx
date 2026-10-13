@@ -12,7 +12,8 @@ import { splitPgnGames } from "../../lib/pgn";
 import { isBrowserOnly, sourceAddressOf, sourcePathOf, type SourceAddress } from "../../lib/embedSource";
 import { loadUploadedCollections } from "../../lib/libraryCollectionStore";
 import { loadPlayedGames, playedGamesSnapshot } from "../../lib/playedGameStore";
-import { loadSavedAnalyses, savedAnalysesSnapshot } from "../../lib/savedAnalysisStore";
+import { analysisCasesSnapshot, loadAnalysisCases } from "../../lib/analysisCaseStore";
+import { analysisProjectsSnapshot, loadAnalysisProjects } from "../../lib/analysisProjectStore";
 import { loadSavedRepertoires, savedRepertoiresSnapshot } from "../../lib/savedRepertoireStore";
 import { findShippedCollection, shippedCollections } from "../../lib/shippedCollections";
 import { addressEntriesOf, addressOptionsOf, type AddressEntry } from "./addressOptions";
@@ -29,7 +30,7 @@ const ID = GALLERY_ID;
 const KIND_NAMES: Readonly<Record<SourceAddress["kind"], string>> = {
   collection: "The Library",
   libraryGame: "The Library",
-  analysis: "A saved analysis",
+  case: "An Analysis case",
   playedGame: "A played game",
   repertoire: "A repertoire",
 };
@@ -87,12 +88,13 @@ function GallerySourceDialog({
   useEffect(() => {
     if (choice !== "address" || records !== undefined) return;
     let live = true;
-    void Promise.all([loadUploadedCollections(), loadSavedAnalyses(), loadSavedRepertoires(), loadPlayedGames()]).then(([uploaded]) => {
+    void Promise.all([loadUploadedCollections(), loadAnalysisCases(), loadAnalysisProjects(), loadSavedRepertoires(), loadPlayedGames()]).then(([uploaded]) => {
       if (!live) return;
       setRecords(
         addressEntriesOf({
           collections: [...shippedCollections, ...uploaded],
-          analyses: savedAnalysesSnapshot() ?? [],
+          cases: analysisCasesSnapshot() ?? [],
+          projects: analysisProjectsSnapshot() ?? [],
           repertoires: savedRepertoiresSnapshot() ?? [],
           playedGames: playedGamesSnapshot() ?? [],
         }),
@@ -110,7 +112,7 @@ function GallerySourceDialog({
     if (named === undefined) {
       return setLookup({
         looking: false,
-        problem: "An address is a screen's, as the address bar shows it: /library/<collection>, /library/<collection>/<n>, /tools/analysis?analysis=<id>, /engine/play?saved=<id> or /repertoires/<id>.",
+        problem: "An address is a screen's, as the address bar shows it: /library/<collection>, /library/<collection>/<n>, /analysis/projects/<project>/cases/<case>, /engine/play?saved=<id> or /repertoires/<id>.",
       });
     }
     setLookup({ looking: true });
@@ -207,7 +209,7 @@ function GallerySourceDialog({
                     { value: "paste" as const, label: "Paste a PGN" },
                   ]
                 : []),
-              { value: "address", label: "An address in the app — a Library collection or game, a saved analysis, a played game, a repertoire" },
+              { value: "address", label: "An address in the app — a Library collection or game, an Analysis case, a played game, a repertoire" },
             ]}
             value={choice}
             onChange={setChoice}
@@ -269,10 +271,10 @@ function GallerySourceDialog({
                 // A record picked by its name is looked up at once: its address is the field's now.
                 onPick={(option) => void lookUp(option.value)}
                 options={suggestions}
-                placeholder="A name to find, or /library/candidates2026, /tools/analysis?analysis=…"
+                placeholder="A name to find, or /library/candidates2026, /analysis/projects/…"
                 dir="ltr"
                 error={lookup?.looking === false}
-                helperText={lookup?.looking === false ? lookup.problem : "Start typing a collection, analysis, repertoire or played game's name — or copy its address from the address bar, the host and all."}
+                helperText={lookup?.looking === false ? lookup.problem : "Start typing a collection, case, repertoire or played game's name — or copy its address from the address bar, the host and all."}
                 testId={`${ID}-address`}
               />
               <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>

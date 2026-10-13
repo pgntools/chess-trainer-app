@@ -15,15 +15,14 @@ import {
   uploadedCollectionsSnapshot,
 } from "../../lib/libraryCollectionStore";
 import { downloadBinaryFile } from "../../lib/pgnExport";
+import { analysisProjectsSnapshot, subscribeAnalysisProjects } from "../../lib/analysisProjectStore";
 import { playedGamesSnapshot, subscribePlayedGames } from "../../lib/playedGameStore";
-import { savedAnalysesSnapshot, subscribeSavedAnalyses } from "../../lib/savedAnalysisStore";
 import {
   savedRepertoiresSnapshot,
   subscribeSavedRepertoires,
 } from "../../lib/savedRepertoireStore";
 import { shippedCollections } from "../../lib/shippedCollections";
 import { RightPanel } from "../main/rightPanel";
-import { useAnalysisProjectsCount } from "./useAnalysisProjectsCount";
 
 /**
  * **Export** (`/settings/export`, CTA-86) — the reader's data out, as one zip
@@ -46,7 +45,6 @@ import { useAnalysisProjectsCount } from "./useAnalysisProjectsCount";
 const INITIAL: ExportSelection = {
   collections: false,
   games: false,
-  analyses: false,
   repertoires: false,
   enginePresets: false,
   analysisProjects: false,
@@ -79,11 +77,10 @@ function ExportTab() {
         ? undefined
         : uploaded + (selection.shippedCollections ? shippedCollections.length : 0),
     games: useCount(subscribePlayedGames, playedGamesSnapshot),
-    analyses: useCount(subscribeSavedAnalyses, savedAnalysesSnapshot),
     repertoires: useCount(subscribeSavedRepertoires, savedRepertoiresSnapshot),
     enginePresets: useCount(subscribeEnginePresets, enginePresetsSnapshot),
-    // Analysis V2's Projects (CTA-186) — offered only in a build with the module.
-    analysisProjects: useAnalysisProjectsCount(),
+    // Analysis V2's Projects (CTA-186).
+    analysisProjects: useCount(subscribeAnalysisProjects, analysisProjectsSnapshot),
   };
 
   const tick = (patch: Partial<ExportSelection>) => {

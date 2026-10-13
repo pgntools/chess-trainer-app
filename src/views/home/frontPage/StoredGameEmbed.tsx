@@ -7,28 +7,25 @@ import Typography from "@mui/material/Typography";
 
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { demoTreeOfGameTree, startLineOf } from "../../../lib/demoTree";
-import {
-  isAnalysisReference,
-  isReferenceRead,
-  loadReferencedGames,
-  resolveGameReference,
-} from "../../../lib/gameReference";
+import { CASE_REFERENCE_KEY, isReferenceRead, loadReferencedGames, resolveGameReference } from "../../../lib/gameReference";
 import { gameTag } from "../../../lib/gameModel";
 import { parsePgnTree } from "../../../lib/pgn";
 import { gameReferenceOf, sourceAddressOf } from "../../../lib/embedSource";
 import { slugify } from "../../../lib/pgnText";
-import { loadSavedAnalyses, savedAnalysesSnapshot } from "../../../lib/savedAnalysisStore";
+import { casePath } from "../../analysisV2/paths";
+import { useSendToAnalysis } from "../../analysisV2/useSendToAnalysis";
 import DemoBoard from "../../shared/DemoBoard";
 
 /**
  * **A real stored game, embedded in the front page** (CTA-126) —
  * `<StoredGameEmbed reference="…" />`, where `reference` is a `?game=`
  * reference (`lib/gameReference.ts`): `library/<collection>/<n>` for a Library
- * game, `analysis/saved/<id>` for a saved analysis, `play/games/<id>` for a
- * game against the engine. The embed resolves it **exactly as the Analysis
- * Board does** — it waits for the store's read, then looks the game up — and
- * shows it on a `DemoBoard` the reader steps through, under its players and
- * event, with a link that opens the same reference on the Analysis Board.
+ * game, `case/<project>/<case>` for an Analysis case, `play/games/<id>` for a
+ * game against the engine. The embed waits for the store's read, then looks
+ * the game up, and shows it on a `DemoBoard` the reader steps through, under
+ * its players and event, with **Open in Analysis**: a Case's own board, or —
+ * any other game — a new Case of it in a Project the reader picks
+ * (`useSendToAnalysis`, CTA-192).
  *
  * A reference that names nothing (a reader without that record, a mistyped
  * one) says so in place of the board; nothing else on the page waits for it.
@@ -42,11 +39,11 @@ import DemoBoard from "../../shared/DemoBoard";
  */
 
 type StoredGameEmbedProps = {
-  /** A `?game=` reference — `library/capablanca/1`. */
+  /** A stored game's reference — `library/capablanca/1`. */
   reference?: string;
   /**
    * Or the game's app path (CTA-140, `lib/embedSource.ts`) — a Library game
-   * (`/library/<c>/<n>`), a saved analysis (`/tools/analysis?analysis=<id>`),
+   * (`/library/<c>/<n>`), an Analysis case (`/analysis/projects/<p>/cases/<c>`),
    * a played game (`/engine/play?saved=<id>`). `reference` wins.
    */
   src?: string;
@@ -58,9 +55,6 @@ type StoredGameEmbedProps = {
   showNextMoveArrow?: boolean;
 };
 
-const isRead = (reference: string) =>
-  (!isAnalysisReference(reference) || savedAnalysesSnapshot() !== undefined) && isReferenceRead(reference);
-
 export function StoredGameEmbed({ reference: given, src, startMove, shownAs, showNextMoveArrow }: StoredGameEmbedProps) {
   const address = given === undefined && src !== undefined ? sourceAddressOf(src) : undefined;
   // A path that names no stored game resolves to nothing, and says so — by the path it was given.
@@ -71,16 +65,13 @@ export function StoredGameEmbed({ reference: given, src, startMove, shownAs, sho
 /** The board over a resolved reference. */
 function StoredGame({ reference, startMove, shownAs, showNextMoveArrow }: Omit<StoredGameEmbedProps, "src" | "reference"> & { reference: string }) {
   const { t } = useTranslation();
-  const [readReference, setReadReference] = useState<string | null>(() => (isRead(reference) ? reference : null));
+  const [readReference, setReadReference] = useState<string | null>(() => (isReferenceRead(reference) ? reference : null));
   const ready = readReference === reference;
 
   useEffect(() => {
     if (ready) return;
     let live = true;
-    void Promise.all([
-      isAnalysisReference(reference) ? loadSavedAnalyses() : undefined,
-      loadReferencedGames(reference),
-    ]).then(() => {
+    void loadReferencedGames(reference).then(() => {
       if (live) setReadReference(reference);
     });
     return () => {
@@ -100,6 +91,7 @@ function StoredGame({ reference, startMove, shownAs, showNextMoveArrow }: Omit<S
   }, [ready, reference]);
   const root = useMemo(() => (tree ? demoTreeOfGameTree(tree) : undefined), [tree]);
 
+  const analysis = useSendToAnalysis(`home-game-${slugify(reference) || "game"}-send`);
   const slug = slugify(reference) || "game";
   const testId = `home-game-${slug}`;
   if (tree === undefined) {
@@ -126,6 +118,9 @@ function StoredGame({ reference, startMove, shownAs, showNextMoveArrow }: Omit<S
     .join(", ");
   const result = gameTag(tree.headers, "Result");
   const players = `${white} – ${black}`;
+  // A Case's reference names its own board; any other game is handed to Analysis as a new one.
+  const [key, ...caseRest] = reference.split("/");
+  const caseSegments = key === CASE_REFERENCE_KEY && caseRest.length === 2 ? caseRest : undefined;
 
   return (
     <Box data-testid={testId} sx={{ display: "grid", gap: 1, minWidth: 0, maxWidth: 480 }}>
@@ -154,16 +149,29 @@ function StoredGame({ reference, startMove, shownAs, showNextMoveArrow }: Omit<S
         initialLine={startLineOf(root, startMove, tree.startFen)}
         nextMoveArrows={showNextMoveArrow}
       />
-      <Button
-        component={RouterLink}
-        to={`/tools/analysis?game=${encodeURIComponent(reference)}`}
-        variant="outlined"
-        size="small"
-        data-testid={`${testId}-open`}
-        sx={{ justifySelf: "start" }}
-      >
-        {t("home.embed.open")}
-      </Button>
+      {caseSegments === undefined ? (
+        <Button
+          onClick={() => analysis.send({ games: [{ tree }], projectName: t("home.embed.projectName") })}
+          variant="outlined"
+          size="small"
+          data-testid={`${testId}-open`}
+          sx={{ justifySelf: "start" }}
+        >
+          {t("home.embed.open")}
+        </Button>
+      ) : (
+        <Button
+          component={RouterLink}
+          to={casePath(caseSegments[0], caseSegments[1])}
+          variant="outlined"
+          size="small"
+          data-testid={`${testId}-open`}
+          sx={{ justifySelf: "start" }}
+        >
+          {t("home.embed.open")}
+        </Button>
+      )}
+      {analysis.dialog}
     </Box>
   );
 }

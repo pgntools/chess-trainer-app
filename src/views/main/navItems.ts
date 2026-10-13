@@ -7,7 +7,6 @@ import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import FolderSpecialRoundedIcon from "@mui/icons-material/FolderSpecialRounded";
 import WidgetsRoundedIcon from "@mui/icons-material/WidgetsRounded";
-import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import MemoryRoundedIcon from "@mui/icons-material/MemoryRounded";
 import SupportAgentRoundedIcon from "@mui/icons-material/SupportAgentRounded";
@@ -86,24 +85,12 @@ export const navItems = (): readonly NavItem[] => [
     folder: "library",
   },
   /*
-    The Analyses folder: its Lobby — the saved list — and the Jobs screen
-    (CTA-173) that runs a game's computer analysis in the background. The
-    Analysis Board has no nav entry: it is reached from the Lobby's New
-    button, and every `?fen=`, `?game=` and `?analysis=` hand-off lands on
-    its route, `/tools/analysis`.
+    Analysis V2 (CTA-186, shipped in CTA-192): its Projects browser, and Jobs
+    V2 beside it (CTA-188). A Case's board is reached from its Project's
+    table, and every game handed to Analysis lands on one.
   */
-  {
-    to: "/tools/analysis/saved",
-    labelKey: "nav.lobby",
-    icon: HistoryRoundedIcon,
-    folder: "analysis",
-  },
-  {
-    to: "/jobs",
-    labelKey: "nav.jobs",
-    icon: WorkHistoryRoundedIcon,
-    folder: "analysis",
-  },
+  { to: "/analysis", labelKey: "nav.analysisProjects", icon: FolderSpecialRoundedIcon, folder: "analysis-v2" },
+  { to: "/analysis/jobs", labelKey: "nav.analysisJobs", icon: WorkHistoryRoundedIcon, folder: "analysis-v2" },
   /*
     The Openings explorer — the board itself, since nothing on it is
     saved: the top-level Openings folder is a single entry (`navFolders.ts`)
@@ -140,13 +127,6 @@ export const navItems = (): readonly NavItem[] => [
     icon: DashboardRoundedIcon,
     folder: "blog",
   },
-  // Analysis V2 (CTA-186): its Projects browser, and Jobs V2 beside it (CTA-188) — dev-only while it is built.
-  ...(import.meta.env.DEV
-    ? [
-        { to: "/analysis", labelKey: "nav.analysisProjects", icon: FolderSpecialRoundedIcon, folder: "analysis-v2" },
-        { to: "/analysis/jobs", labelKey: "nav.analysisJobs", icon: WorkHistoryRoundedIcon, folder: "analysis-v2" },
-      ]
-    : []),
   // The Development section — dev-only: the design gallery (CTA-107), the theme editor (CTA-115) and the MDX editor.
   // The MDX editor (CTA-137), in its own folder — only under `yarn mdx-editor:start` (src/mdxEditor/enabled.ts).
   ...(MDX_EDITOR_ENABLED

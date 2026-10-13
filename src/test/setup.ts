@@ -55,18 +55,13 @@ if (!globalThis.ResizeObserver) {
   cache hits.
 */
 const recordStores = async () => {
-  const [played, analyses, analysisFolders, analysisDb, repertoires, repertoireFolders, repertoireDb, libraryFolders, jobs, jobRunner, presets, projectFolders, projects, cases, projectsDb, jobsV2, jobV2Runner, caseLinks] =
+  const [played, repertoires, repertoireFolders, repertoireDb, libraryFolders, presets, projectFolders, projects, cases, projectsDb, jobsV2, jobV2Runner, caseLinks] =
     await Promise.all([
       import("../lib/playedGameStore"),
-      import("../lib/savedAnalysisStore"),
-      import("../lib/savedAnalysisFolderStore"),
-      import("../lib/savedAnalysisDb"),
       import("../lib/savedRepertoireStore"),
       import("../lib/savedRepertoireFolderStore"),
       import("../lib/savedRepertoireDb"),
       import("../lib/libraryFolderStore"),
-      import("../lib/jobStore"),
-      import("../lib/jobRunner"),
       import("../lib/enginePresetStore"),
       // Analysis V2 (CTA-186): its folders, Projects and Cases.
       import("../lib/analysisProjectFolderStore"),
@@ -81,16 +76,13 @@ const recordStores = async () => {
   // The search settings in effect (CTA-185) read the presets — imported lazily, as the stores are.
   const { resetEngineSearchSettings } = await import("../lib/engineSearchInEffect");
   return {
-    // The page's job runner (CTA-173), stopped before the stores settle: it writes to them.
-    stop: [jobRunner.stopJobRunner, jobV2Runner.stopJobV2Runner],
+    // The page's job runner (CTA-173, CTA-188), stopped before the stores settle: it writes to them.
+    stop: [jobV2Runner.stopJobV2Runner],
     settled: [
-      analyses.settledSavedAnalyses,
-      analysisFolders.settledAnalysisFolders,
       played.settledPlayedGames,
       repertoires.settledSavedRepertoires,
       repertoireFolders.settledRepertoireFolders,
       libraryFolders.settledLibraryFolders,
-      jobs.settledJobs,
       presets.settledEnginePresets,
       presets.settledEnginePresetSelections,
       projectFolders.settledProjectFolders,
@@ -100,13 +92,10 @@ const recordStores = async () => {
       caseLinks.settledCaseLinks,
     ],
     reset: [
-      analyses.resetSavedAnalysisStore,
-      analysisFolders.resetAnalysisFolderStore,
       played.resetPlayedGameStore,
       repertoires.resetSavedRepertoireStore,
       repertoireFolders.resetRepertoireFolderStore,
       libraryFolders.resetLibraryFolderStore,
-      jobs.resetJobStore,
       presets.resetEnginePresetStore,
       presets.resetEnginePresetSelectionStore,
       projectFolders.resetProjectFolderStore,
@@ -117,7 +106,7 @@ const recordStores = async () => {
       // A depth or move time still landing goes with the presets.
       resetEngineSearchSettings,
     ],
-    remove: [analysisDb.deleteAnalysisDb, played.deleteEngineDb, repertoireDb.deleteRepertoireDb, jobs.deleteJobsDb, presets.deleteEnginePresetsDb, projectsDb.deleteAnalysisProjectsDb],
+    remove: [played.deleteEngineDb, repertoireDb.deleteRepertoireDb, presets.deleteEnginePresetsDb, projectsDb.deleteAnalysisProjectsDb],
   };
 };
 

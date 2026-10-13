@@ -10,7 +10,6 @@ import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS, type ComputerAnalysisOptions } from 
 import { resolveEngine } from "./engines";
 import { createEnginePreset, selectEnginePreset, setEnginePresetValue } from "./enginePresetStore";
 import { mainline } from "./gameTree";
-import { JOB_RUNNER_LOCK } from "./jobRunner";
 import { jobV2Of, type JobV2, type JobV2Target } from "./jobsV2";
 import { createJobV2LiveFeed, jobV2LiveSnapshot } from "./jobV2Live";
 import { createJobV2Runner, JOB_V2_RUNNER_LOCK, type JobV2Runner, type JobV2RunnerDeps } from "./jobV2Runner";
@@ -74,8 +73,8 @@ afterEach(async () => {
 });
 
 describe("the Jobs V2 runner (CTA-188)", () => {
-  it("holds a lock of its own, not V1's", () => {
-    expect(JOB_V2_RUNNER_LOCK).not.toBe(JOB_RUNNER_LOCK);
+  it("holds a lock of its own, in its database's namespace", () => {
+    expect(JOB_V2_RUNNER_LOCK).toBe("chessapp.analysisProjects.jobs.runner");
   });
 
   it("searches every position, then saves each ticked variant as a new Game Case in the source's Project", async () => {

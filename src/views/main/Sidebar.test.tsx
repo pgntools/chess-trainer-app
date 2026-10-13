@@ -136,13 +136,13 @@ describe("sidebar navigation", () => {
   }, 90000);
 
   it("marks only the current route as the current page", () => {
-    renderAt("/tools/analysis/saved");
+    renderAt("/analysis/jobs");
 
-    // The Analyses folder's Lobby (CTA-174) — a screen inside an open folder.
+    // Analysis's Jobs (CTA-188) — a screen inside an open folder.
     const active = screen
-      .getAllByRole("link", { name: i18n.t("nav.lobby") })
-      .find((link) => link.getAttribute("href") === "/tools/analysis/saved");
-    if (active === undefined) throw new Error("no Lobby link to the saved list");
+      .getAllByRole("link", { name: i18n.t("nav.analysisJobs") })
+      .find((link) => link.getAttribute("href") === "/analysis/jobs");
+    if (active === undefined) throw new Error("no Jobs link");
     expect(active).toHaveAttribute("aria-current", "page");
 
     const others = screen.getAllByRole("link").filter((link) => link !== active);
@@ -258,7 +258,7 @@ describe("the folder tree", () => {
   });
 
   it("has no Games folder, and the Library holds its two screens (CTA-75)", async () => {
-    renderAt("/tools/analysis");
+    renderAt("/openings");
     const user = userEvent.setup();
 
     expect(navFolders().map((folder) => folder.id)).not.toContain("games");
@@ -443,10 +443,10 @@ describe("the tree nests folders to any depth", () => {
           children: [
             {
               kind: "screen",
-              id: "/tools/analysis",
-              labelKey: "nav.analysisBoard",
+              id: "/analysis/jobs",
+              labelKey: "nav.analysisJobs",
               icon: GridViewRoundedIcon,
-              to: "/tools/analysis",
+              to: "/analysis/jobs",
             },
           ],
         },
@@ -468,7 +468,7 @@ describe("the tree nests folders to any depth", () => {
 
   it("renders a sub-folder as its own collapsible row, inside the level above", () => {
     // The screen two levels down, so the whole chain is the open one.
-    const { container } = renderAt("/tools/analysis", nested);
+    const { container } = renderAt("/analysis/jobs", nested);
 
     expect(outer()).toHaveAttribute("aria-expanded", "true");
     expect(inner()).toHaveAttribute("aria-expanded", "true");
@@ -479,12 +479,12 @@ describe("the tree nests folders to any depth", () => {
       within(outerBody).getByRole("button", { name: i18n.t("nav.folders.engine") }),
     ).toBeInTheDocument();
     expect(
-      within(outerBody).getByRole("link", { name: i18n.t("nav.analysisBoard") }),
+      within(outerBody).getByRole("link", { name: i18n.t("nav.analysisJobs") }),
     ).toBeInTheDocument();
   });
 
   it("collapses one level without touching the level above it", async () => {
-    renderAt("/tools/analysis", nested);
+    renderAt("/analysis/jobs", nested);
     const user = userEvent.setup();
 
     await user.click(inner());
@@ -496,7 +496,7 @@ describe("the tree nests folders to any depth", () => {
     // The deep screen is gone; the outer folder's own screen stays.
     await waitFor(() =>
       expect(
-        screen.queryByRole("link", { name: i18n.t("nav.analysisBoard") }),
+        screen.queryByRole("link", { name: i18n.t("nav.analysisJobs") }),
       ).toBeNull(),
     );
     expect(
@@ -505,12 +505,12 @@ describe("the tree nests folders to any depth", () => {
   });
 
   it("expands the whole ancestor chain of a screen two levels down", () => {
-    renderAt("/tools/analysis", nested);
+    renderAt("/analysis/jobs", nested);
 
     expect(outer()).toHaveAttribute("aria-expanded", "true");
     expect(inner()).toHaveAttribute("aria-expanded", "true");
     expect(
-      screen.getByRole("link", { name: i18n.t("nav.analysisBoard") }),
+      screen.getByRole("link", { name: i18n.t("nav.analysisJobs") }),
     ).toHaveAttribute("aria-current", "page");
   });
 

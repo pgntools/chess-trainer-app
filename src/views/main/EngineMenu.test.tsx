@@ -41,10 +41,10 @@ function Where() {
 const mount = (board?: BoardEngineState, compact = false) =>
   render(
     <AppThemeWithLang>
-      <MemoryRouter initialEntries={["/tools/analysis"]}>
+      <MemoryRouter initialEntries={["/openings"]}>
         <EngineMenu compact={compact} />
         <Routes>
-          <Route path="/tools/analysis" element={board === undefined ? null : <Board state={board} />} />
+          <Route path="/openings" element={board === undefined ? null : <Board state={board} />} />
           <Route path="*" element={null} />
         </Routes>
         <Where />

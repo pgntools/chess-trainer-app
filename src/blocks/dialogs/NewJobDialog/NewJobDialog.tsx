@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 
 import { BaseDialog, type ExtraDialogProps } from "../../../design-system/components/dialogs";
 import { StatusText } from "../../../design-system/components/feedback";
-import type { JobStatus } from "../../../lib/jobs";
+import type { JobStatus } from "../../../lib/jobsV2";
 import { ComputerAnalysisForm, computerAnalysisStartNote, type ComputerAnalysisFormProps } from "../../forms/ComputerAnalysisForm";
 
 export type NewJobDialogProps = Omit<ComputerAnalysisFormProps, "testId" | "onStart"> & {

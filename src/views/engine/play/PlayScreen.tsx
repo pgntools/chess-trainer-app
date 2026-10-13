@@ -18,12 +18,13 @@ import { BackButton } from "../../../design-system/components/navigation";
 import { IconAction } from "../../../design-system/components/toolbars";
 
 import { isAnyMasked, maskedPieces } from "../../../lib/pieceMask";
-import { PLAY_REFERENCE_KEY } from "../../../lib/gameReference";
+import { findPlayedGame } from "../../../lib/playedGameStore";
 import {
-  PLAYED_GAMES_PATH,
   playedGameResult,
+  playedGameToTree,
   type PlayedGameMask,
 } from "../../../lib/playedGames";
+import { useSendToAnalysis } from "../../analysisV2/useSendToAnalysis";
 import type { BoardPanelTab } from "../../board/core/BoardPanel";
 import BoardShell from "../../board/core/BoardShell";
 import { useVariationsExplorer } from "../../explorer/useVariationsExplorer";
@@ -193,6 +194,17 @@ function PlayScreen({
     autosave has named a record — hangs on.
   */
   const result = playedGameResult(core.tree, state.resigned);
+
+  /*
+    The game just ended, into Analysis as a new Game Case (CTA-192): the
+    record as kept — its tags too — once the autosave has landed it.
+  */
+  const analysis = useSendToAnalysis(`${id}-send`);
+  const openInAnalysis = () => {
+    const saved = findPlayedGame(state.savedId);
+    const tree = (saved === undefined ? undefined : playedGameToTree(saved)) ?? core.tree;
+    analysis.send({ games: [{ tree, orientation: core.orientation }], projectName: t("playEngine.sendTo.projectName") });
+  };
 
   return (
     <>
@@ -366,10 +378,7 @@ function PlayScreen({
                   </Box>
                   {state.savedId !== null && (
                     <Button
-                      component={RouterLink}
-                      to={`/tools/analysis?game=${encodeURIComponent(
-                        `${PLAY_REFERENCE_KEY}/${PLAYED_GAMES_PATH}/${state.savedId}`,
-                      )}`}
+                      onClick={openInAnalysis}
                       size="small"
                       variant="contained"
                       data-testid={`${id}-open-analysis`}
@@ -378,6 +387,7 @@ function PlayScreen({
                       {t("playEngine.game.openAnalysis")}
                     </Button>
                   )}
+                  {analysis.dialog}
                 </>
               )}
               {/* Play's status — the engine thinking, or the reader's move. */}

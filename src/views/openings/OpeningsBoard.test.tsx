@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useEffect } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import i18n from "../../i18n";
-import { analysisHandOffOf } from "../../lib/analysisHandOff";
+import { analysisCasesSnapshot } from "../../lib/analysisCaseStore";
+import { caseTree } from "../../lib/analysisProjects";
+import { analysisProjectsSnapshot } from "../../lib/analysisProjectStore";
 import { mainline, treeToPgn } from "../../lib/gameTree";
 import { HOVERED_MOVE_ARROW_COLOR, KNOWN_MOVE_ARROW_COLOR } from "../../lib/openings";
 import { expectNoAxeViolations } from "../../test/axe";
@@ -61,16 +62,12 @@ import OpeningsBoard from "./OpeningsBoard";
   The Openings explorer (CTA-78): a v2 board — its shared square and panel
   are asserted with the other v2 boards (`boards.test.tsx`,
   `panelPropagation.test.tsx`) — with the book beside it, nothing saved,
-  and the whole tree handed on to the Analysis Board.
+  and the whole tree handed on to Analysis as a new Case (CTA-192).
 */
 
-/** Where the router is, and the state it carries — what a hand-off left behind. */
-let lastState: unknown = null;
+/** Where the router is. */
 function Where() {
   const location = useLocation();
-  useEffect(() => {
-    lastState = location.state;
-  }, [location.state]);
   return <div data-testid="where">{`${location.pathname}${location.search}`}</div>;
 }
 const where = () => screen.getByTestId("where").textContent ?? "";
@@ -110,7 +107,6 @@ const arrowTo = (to: string) => boardOptions().arrows?.find((arrow) => arrow.end
 beforeEach(async () => {
   localStorage.clear();
   FakeEngine.reset();
-  lastState = null;
   await i18n.changeLanguage("en");
 });
 
@@ -217,7 +213,7 @@ describe("the Openings explorer — the book", () => {
 });
 
 describe("the Openings explorer — hand-offs", () => {
-  it("hands the whole tree to the Analysis Board, with the position and the side", async () => {
+  it("hands the whole tree to Analysis as a new Case, at the position on screen and facing its side (CTA-192)", async () => {
     mount();
     drag("e2", "e4");
     drag("e7", "e5");
@@ -231,11 +227,18 @@ describe("the Openings explorer — hand-offs", () => {
 
     fireEvent.click(screen.getByTestId("openings-open-analysis"));
 
-    await waitFor(() => expect(where()).toBe("/tools/analysis?at=e4%2Cc5"));
-    const handOff = analysisHandOffOf(lastState);
-    expect(handOff?.orientation).toBe("black");
-    expect(treeToPgn(handOff!.tree)).toContain("1. e4 e5 (1... c5)");
-    expect(mainline(handOff!.tree).map((node) => node.san)).toEqual(["e4", "e5"]);
+    // A new Project offered first, named after the opening on screen — "Openings" where the book names none (this stub's never does).
+    const picker = await screen.findByRole("dialog", { name: "Open in Analysis" });
+    expect(within(picker).getByRole("textbox", { name: "The new project's name" })).toHaveValue("Openings");
+    fireEvent.click(within(picker).getByRole("button", { name: "Open" }));
+
+    await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/[^/]+\/cases\/[^/]+$/));
+    const [made] = analysisCasesSnapshot() ?? [];
+    expect(analysisProjectsSnapshot()?.map((project) => project.name)).toEqual(["Openings"]);
+    expect(made).toMatchObject({ type: "game", orientation: "black", path: ["e4", "c5"] });
+    const tree = caseTree(made)!;
+    expect(treeToPgn(tree)).toContain("1. e4 e5 (1... c5)");
+    expect(mainline(tree).map((node) => node.san)).toEqual(["e4", "e5"]);
   });
 
   it("hands the position on screen to Play with Engine as ?fen=", async () => {

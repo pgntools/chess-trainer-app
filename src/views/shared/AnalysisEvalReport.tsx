@@ -9,9 +9,8 @@ import { ExpandToggle } from "../../design-system/components/navigation";
 import type { MoveVerdictKind } from "../../lib/computerAnalysis";
 import { evalSeriesOf, reportFromTree, type EvalPoint } from "../../lib/computerAnalysisTree";
 import type { Turn } from "../../lib/engineAnalysis";
-import { gameTag } from "../../lib/gameModel";
+import { ANALYSIS_PLACEHOLDER_PLAYER, gameTag } from "../../lib/gameModel";
 import { plyLabel, type GameTree } from "../../lib/gameTree";
-import { SAVED_ANALYSIS_PLAYER } from "../../lib/savedAnalyses";
 
 type AnalysisEvalReportProps = {
   /** The game on the board, and where it stands — the mainline's ply, 0 at the start or off the mainline. */
@@ -26,7 +25,7 @@ type AnalysisEvalReportProps = {
 /** A player's name from the tags — none for the placeholders a board's own analysis is written with (`Analysis`, `?`). */
 const playerOf = (tree: GameTree, key: "White" | "Black"): string | undefined => {
   const name = gameTag(tree.headers, key);
-  return name === SAVED_ANALYSIS_PLAYER ? undefined : name;
+  return name === ANALYSIS_PLACEHOLDER_PLAYER ? undefined : name;
 };
 
 /** The verdicts a report's counts step through, in the order the reader steps: after the move on the board, then round again. */

@@ -3,7 +3,6 @@ import { libraryGameReference, loadReferencedGames, resolveGameReference } from 
 import { loadUploadedCollections, loadUploadedGames } from "../../lib/libraryCollectionStore";
 import type { CollectionSummary, TournamentFormat } from "../../lib/libraryCollections";
 import { pgnFileOf } from "../../lib/pgnExport";
-import { loadSavedAnalyses } from "../../lib/savedAnalysisStore";
 import { loadSavedRepertoires, savedRepertoiresSnapshot } from "../../lib/savedRepertoireStore";
 import { findShippedCollection } from "../../lib/shippedCollections";
 import { guessTournamentKindOfGames, type TournamentGuess } from "../../lib/tournamentKind";
@@ -53,9 +52,9 @@ export const guessOf = (games: readonly string[]): TournamentGuess | undefined =
 
 /**
  * **What an app address names, in words** (CTA-140) — the Components
- * gallery's "an address in the app": a Library collection or game, a saved
- * analysis, a played game or a repertoire, read from its store — or why it
- * is not here.
+ * gallery's "an address in the app": a Library collection or game, an
+ * Analysis case, a played game or a repertoire, read from its store — or why
+ * it is not here.
  */
 export const describeAddress = async (address: SourceAddress): Promise<{ label: string } | { problem: string }> => {
   if (address.kind === "collection") {
@@ -74,17 +73,16 @@ export const describeAddress = async (address: SourceAddress): Promise<{ label: 
     return saved === undefined ? { problem: `This browser has no repertoire ${address.id}.` } : { label: saved.name.trim() || "An untitled repertoire" };
   }
   const reference = gameReferenceOf(address) ?? "";
-  if (address.kind === "analysis") await loadSavedAnalyses();
   await loadReferencedGames(reference);
   const game = resolveGameReference(reference);
   if (game !== undefined) return { label: game.name };
-  return { problem: `This browser has no ${address.kind === "analysis" ? "saved analysis" : "played game"} ${address.id}.` };
+  return { problem: address.kind === "case" ? `This browser has no case ${address.caseId} in the project ${address.projectId}.` : `This browser has no played game ${address.id}.` };
 };
 
 /**
  * **What an app address names, as PGN text** — the record as it is kept,
  * tags, comments, annotations and side lines and all: a collection's games
- * one after another, one game's, an analysis', a played game's or a
+ * one after another, one game's, a Case's, a played game's or a
  * repertoire's. What the gallery's "paste inline" writes into the code in
  * place of the address. `undefined` where it is not here.
  */
@@ -103,7 +101,6 @@ export const pgnTextOf = async (address: SourceAddress): Promise<string | undefi
     return saved === undefined ? undefined : pgnFileOf([saved.pgn]);
   }
   const reference = gameReferenceOf(address) ?? "";
-  if (address.kind === "analysis") await loadSavedAnalyses();
   await loadReferencedGames(reference);
   const game = resolveGameReference(reference);
   return game === undefined ? undefined : pgnFileOf([game.pgn]);

@@ -9,9 +9,9 @@ import {
   subscribeUploadedCollections,
   uploadedCollectionsSnapshot,
 } from "../../lib/libraryCollectionStore";
-import { jobsSnapshot, subscribeJobs } from "../../lib/jobStore";
+import { analysisCasesSnapshot, subscribeAnalysisCases } from "../../lib/analysisCaseStore";
+import { jobsV2Snapshot, subscribeJobsV2 } from "../../lib/jobV2Store";
 import { playedGamesSnapshot, subscribePlayedGames } from "../../lib/playedGameStore";
-import { savedAnalysesSnapshot, subscribeSavedAnalyses } from "../../lib/savedAnalysisStore";
 import { savedRepertoiresSnapshot, subscribeSavedRepertoires } from "../../lib/savedRepertoireStore";
 import {
   estimatedLibraryGamesPayload,
@@ -34,8 +34,8 @@ import { RightPanel } from "../main/rightPanel";
  * The quota is not shown; a note says it is in the browser's developer
  * tools.
  *
- * The reader's data is **four sections, one per database's heavy store** —
- * Engine games, Analyses, Repertoires and Library games — separated by a
+ * The reader's data is **four sections, one per database** — Engine games,
+ * Repertoires, Library games, and Analysis's Cases and jobs — separated by a
  * bolder line. The folders and the collections' summaries are tiny beside
  * what they file, and the shipped collections are fetched over the
  * network, not stored: none of them is listed — the origin usage's business
@@ -68,16 +68,16 @@ function StorageTab() {
   const { t } = useTranslation();
 
   const playedGames = useRows(subscribePlayedGames, playedGamesSnapshot);
-  const analyses = useRows(subscribeSavedAnalyses, savedAnalysesSnapshot);
   const repertoires = useRows(subscribeSavedRepertoires, savedRepertoiresSnapshot);
-  const jobs = useRows(subscribeJobs, jobsSnapshot);
+  const cases = useRows(subscribeAnalysisCases, analysisCasesSnapshot);
+  const jobs = useRows(subscribeJobsV2, jobsV2Snapshot);
   // The summaries are not shown — they are tiny beside their games — but the
   // games row counts and sizes are derived from them.
   const collections = useRows(subscribeUploadedCollections, uploadedCollectionsSnapshot);
 
   const playedPayload = usePayload(playedGames);
-  const analysesPayload = usePayload(analyses);
   const repertoiresPayload = usePayload(repertoires);
+  const casesPayload = usePayload(cases);
   const jobsPayload = usePayload(jobs);
 
   const [browser, setBrowser] = useState<BrowserStorageEstimate | undefined>();
@@ -113,19 +113,20 @@ function StorageTab() {
   const gamesPayload = games !== undefined && games.collections === collections ? games.payload : undefined;
 
   /*
-    The reader's data, five sections — one per database's heavy store: the
-    engine's played games (chessapp.engine), the analyses
-    (chessapp.analyses), the repertoires (chessapp.repertoires), the
-    Library's games (chessapp.library) and the background jobs
-    (chessapp.jobs, CTA-173 — a computer analysis's checkpoint is its bulk). The folders and the collections'
-    summaries are tiny beside what they file, and are not listed.
+    The reader's data, four sections — one per database: the engine's
+    played games (chessapp.engine), the repertoires (chessapp.repertoires),
+    the Library's games (chessapp.library) and Analysis's Cases and its
+    background jobs (chessapp.analysisProjects, CTA-192 — a computer
+    analysis's checkpoint is a job's bulk). The folders, the Projects, the
+    links and the collections' summaries are tiny beside what they file, and
+    are not listed.
   */
   const categories: StorageCategory[] = [
     { id: "playedGames", section: "engine", records: playedGames?.length, payload: playedPayload },
-    { id: "analyses", section: "analyses", records: analyses?.length, payload: analysesPayload },
     { id: "repertoires", section: "repertoires", records: repertoires?.length, payload: repertoiresPayload },
     { id: "collectionGames", section: "library", records: gamesCount, payload: gamesPayload },
-    { id: "jobs", section: "jobs", records: jobs?.length, payload: jobsPayload },
+    { id: "analysisCases", section: "analysisProjects", records: cases?.length, payload: casesPayload },
+    { id: "jobsV2", section: "analysisProjects", records: jobs?.length, payload: jobsPayload },
   ];
 
   return (

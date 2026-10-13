@@ -60,8 +60,8 @@ describe("the migrated screens' outlines (CTA-112)", () => {
     ["/settings/support", "Settings"],
     // CTA-113: the rest of the app.
     ["/", "Get started"],
-    ["/tools/analysis", "Analysis Board"],
-    ["/tools/analysis/saved", "Saved analyses"],
+    ["/analysis", "Projects"],
+    ["/analysis/jobs", "Jobs V2"],
     ["/repertoires", "Repertoires"],
     ["/repertoires/new", "Add a repertoire"],
     ["/openings", "Openings"],

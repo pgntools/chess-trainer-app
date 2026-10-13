@@ -885,7 +885,7 @@ describe("the shell under its breakpoint (CTA-118)", () => {
     await user.click(navButton());
     await screen.findByRole("dialog", { name: i18n.t("nav.ariaLabel") });
 
-    await act(() => router.navigate("/tools/analysis"));
+    await act(() => router.navigate("/openings"));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 

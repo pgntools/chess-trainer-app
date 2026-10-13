@@ -2,6 +2,7 @@ import { removeLinksOfCases } from "./analysisCaseLinkStore";
 import { CASES_STORE, ANALYSIS_PROJECTS_CHANNEL, openAnalysisProjectsDb } from "./analysisProjectsDb";
 import {
   analysisCaseFrom,
+  caseDerivedName,
   copiedCase,
   isBehindMerges,
   MAX_CASE_NAME,
@@ -10,7 +11,10 @@ import {
   type CaseState,
   MAX_ANALYSIS_CASES,
 } from "./analysisProjects";
+import type { CatalogGame } from "./gameCatalog";
+import { mainlineGame } from "./gameTree";
 import { idbRecordStore } from "./idbRecordStore";
+import { parsePgnTree } from "./pgn";
 import { removeJobsV2Of } from "./jobV2Store";
 import { newRecordId } from "./recordId";
 
@@ -55,6 +59,40 @@ export const settledAnalysisCases = cases.settled;
 export const resetAnalysisCaseStore = cases.reset;
 
 const write = cases.write;
+
+/** Each Case as a stored game, built once per record (a record that will not parse is `null`). */
+const catalogEntries = new WeakMap<AnalysisCase, CatalogGame | null>();
+
+/**
+ * **A Case as a stored game** (CTA-192) — what `case/<projectId>/<caseId>`
+ * names (`lib/gameReference.ts`): an article's embed reads a Case by it. Out
+ * of what has been read (`loadAnalysisCases` first); `undefined` for a Case
+ * that is not there, is in another Project, or whose PGN will not parse. The
+ * name is English and only a fallback (the embed's heading, the MDX editor's
+ * label): the Case's own, else its game's players.
+ */
+export const findAnalysisCaseGame = (segments: readonly string[]): CatalogGame | undefined => {
+  if (segments.length !== 2) return undefined;
+  const [projectId, caseId] = segments;
+  const record = analysisCasesSnapshot()?.find((candidate) => candidate.id === caseId && candidate.projectId === projectId);
+  if (record === undefined) return undefined;
+  let entry = catalogEntries.get(record);
+  if (entry === undefined) {
+    try {
+      const derived = caseDerivedName(record);
+      entry = {
+        id: record.id,
+        name: record.name || (derived.kind === "game" ? derived.text : "") || "Analysis case",
+        pgn: record.pgn,
+        game: mainlineGame(parsePgnTree(record.pgn)),
+      };
+    } catch {
+      entry = null;
+    }
+    catalogEntries.set(record, entry);
+  }
+  return entry ?? undefined;
+};
 
 /** **Add Cases** at the top, all or nothing under the cap. An id already there is left as it is. */
 export const addAnalysisCases = async (added: readonly AnalysisCase[]): Promise<AnalysisCaseProblem | undefined> => {

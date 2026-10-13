@@ -42,7 +42,7 @@ const demo = (rows: readonly PlayedGameRow[], extra: { loading?: boolean; filter
           }}
           picked={state.picked}
           onPickedChange={(picked) => set((before) => ({ ...before, picked }))}
-          analysisLink={(row) => ({ href: `#analysis-${row.id}` })}
+          onAnalyse={() => {}}
           continueLink={(row) => ({ href: `#continue-${row.id}` })}
           testId="gallery-played-games"
           {...extra}

@@ -3,36 +3,27 @@ import {
   COMPUTER_ANALYSIS_VARIANTS,
   computerAnalysisOptionsFrom,
   moveVerdicts,
+  type AnalysisPosition,
   type ComputerAnalysisOptions,
   type ComputerAnalysisVariant,
+  type PositionLine,
   type PositionResult,
 } from "./computerAnalysis";
 import { computerAnalysisTree } from "./computerAnalysisTree";
+import type { Score } from "./engineAnalysis";
 import { annotatorOf } from "./engineEvals";
 import type { UciOptionValue } from "./engineTypes";
 import { treeToPgn, type GameTree } from "./gameTree";
-import {
-  JOB_STATUSES,
-  jobPositionsOf,
-  jobSearchOf,
-  positionResultFrom,
-  type JobEngine,
-  type JobPosition,
-  type JobStatus,
-} from "./jobs";
 import { parsePgnTree } from "./pgn";
 
 /**
  * **Jobs V2, the record** (CTA-188) — Analysis V2's own background jobs: a
  * **Case's computer analysis**, run by its own runner (`lib/jobV2Runner.ts`)
  * and kept in Analysis V2's database (`lib/jobV2Store.ts`, the `jobs` object
- * store of `chessapp.analysisProjects`). A clone of the legacy Jobs
- * (`lib/jobs.ts`, `.claude/rules/jobs.md`), named "Jobs V2" everywhere so the
- * two are never confused; it reuses that module's pure parts (the statuses,
- * the positions, the checkpoint's reader, the progress) and never its store
- * or runner. The reference is `.claude/rules/analysis-v2.md` §6.
- *
- * What differs from a V1 job:
+ * store of `chessapp.analysisProjects`). Begun as a clone of the legacy Jobs
+ * (CTA-173, removed in CTA-192, which folded its pure parts in here: the
+ * statuses, the positions, the checkpoint's reader, the progress). The
+ * reference is `.claude/rules/analysis-v2.md` §6.
  *
  * - **its source is a Case** — its Project, its id, its name and the PGN as
  *   sent (the tree on the board then);
@@ -55,7 +46,97 @@ import { parsePgnTree } from "./pgn";
  * ```
  */
 
-/** What went wrong — V1's, and `target`: where the results were to go is gone (the other Project, the source Case). `analysisV2.jobs.errors.<code>`. */
+const JOB_STATUSES = ["queued", "running", "paused", "interrupted", "done", "failed", "cancelled"] as const;
+export type JobStatus = (typeof JOB_STATUSES)[number];
+
+/**
+ * One position the job searches, as the screen shows it: its FEN, its ply,
+ * the mainline move played from it (the "current move" while it is searched)
+ * and whether that move is analysed. The runner works from
+ * `analysisPositionsOf` over the parsed source; these are its words for the
+ * reader, and the FENs it checks a resumed job against.
+ */
+export type JobPosition = { fen: string; ply: number; san?: string; analysed: boolean };
+
+/** The engine that ran the job — the one actually running, which the job's choice may have fallen back from. */
+type JobEngine = { id: string; name: string; version: string };
+
+/** The statuses a job ends in. */
+export const isFinishedJob = (job: { status: JobStatus }): boolean =>
+  job.status === "done" || job.status === "failed" || job.status === "cancelled";
+
+/** Waiting for the runner, or being run. */
+const isActiveJob = (job: { status: JobStatus }): boolean => job.status === "queued" || job.status === "running";
+
+/** Cancel stops a job that has not ended. */
+export const canCancelJob = (job: { status: JobStatus }): boolean =>
+  job.status === "queued" || job.status === "running" || job.status === "paused" || job.status === "interrupted";
+
+/** Pause stops a job waiting or being run, its checkpoint kept, until the reader resumes it (CTA-178). */
+export const canPauseJob = (job: { status: JobStatus }): boolean => isActiveJob(job);
+
+/** Resume queues a job the reader paused, or a reload or a failure stopped — it goes on from its checkpoint. */
+export const canResumeJob = (job: { status: JobStatus }): boolean =>
+  job.status === "paused" || job.status === "interrupted" || job.status === "failed";
+
+/** The positions of a parsed source, as the record keeps them. */
+const jobPositionsOf = (positions: readonly AnalysisPosition[]): JobPosition[] =>
+  positions.map((position) => ({
+    fen: position.fen,
+    ply: position.ply,
+    ...(position.move === undefined ? {} : { san: position.move.san }),
+    analysed: position.analysed,
+  }));
+
+/** The source's tree and the positions the options name — `undefined` for a PGN that does not read. */
+export const jobSearchOf = (
+  source: { pgn: string },
+  options: ComputerAnalysisOptions,
+): { tree: GameTree; positions: AnalysisPosition[] } | undefined => {
+  let tree: GameTree;
+  try {
+    tree = parsePgnTree(source.pgn);
+  } catch {
+    return undefined;
+  }
+  return { tree, positions: analysisPositionsOf(tree, options) };
+};
+
+/** **How far a job has got**: positions with a result, of how many, and the first one still to search. */
+export type JobProgress = {
+  done: number;
+  total: number;
+  /** The position searched now (or next); absent once every one has a result. */
+  current?: JobPosition;
+  /** `done / total` as 0–100. */
+  percent: number;
+};
+
+export const jobProgress = (job: { positions: readonly JobPosition[]; checkpoint: readonly (PositionResult | null)[] }): JobProgress => {
+  const total = job.positions.length;
+  const done = job.checkpoint.filter((entry) => entry !== null).length;
+  const next = job.checkpoint.findIndex((entry) => entry === null);
+  return {
+    done,
+    total,
+    ...(next === -1 ? {} : { current: job.positions[next] }),
+    percent: total === 0 ? 100 : Math.round((done / total) * 100),
+  };
+};
+
+/**
+ * The move a position's search is about, as a reader numbers it — "7. Nf3",
+ * "7... Nc6", from the FEN's own move number; the position itself ("after
+ * 40... Kg7") has no move, so `undefined`.
+ */
+export const jobMoveLabel = (position: Pick<JobPosition, "fen" | "san">): string | undefined => {
+  if (position.san === undefined) return undefined;
+  const [, turn, , , , fullmove] = position.fen.split(" ");
+  const number = Number(fullmove) || 1;
+  return `${number}${turn === "b" ? "..." : "."} ${position.san}`;
+};
+
+/** What went wrong — the engine's, the store's, and `target`: where the results were to go is gone (the other Project, the source Case). `analysisV2.jobs.errors.<code>`. */
 export const JOB_V2_ERRORS = ["source", "engine", "storage", "too-many", "target"] as const;
 export type JobV2Error = (typeof JOB_V2_ERRORS)[number];
 
@@ -211,7 +292,7 @@ export const jobV2MergedPgn = (job: JobV2, pgn: string): string | undefined => {
 /**
  * **The job a Case's New job leads to** when it has one: of the Case's jobs,
  * the newest unfinished, else the newest done, else the newest — so the popup
- * asks first (Start a new analysis / Check existing), as V1's does.
+ * asks first (Start a new analysis / Check existing).
  */
 export const jobV2OfCase = (jobs: readonly JobV2[] | undefined, caseId: string): JobV2 | undefined => {
   if (jobs === undefined) return undefined;
@@ -235,6 +316,30 @@ const idOf = (value: unknown): string | undefined => (typeof value === "string" 
 
 const isoOr = (value: unknown, fallback: string | null): string | null =>
   typeof value === "string" && !Number.isNaN(Date.parse(value)) ? value : fallback;
+
+const scoreFrom = (value: unknown): Score | undefined => {
+  if (!isRow(value) || typeof value.value !== "number" || !Number.isFinite(value.value)) return undefined;
+  return value.kind === "cp" || value.kind === "mate" ? { kind: value.kind, value: value.value } : undefined;
+};
+
+const lineFrom = (value: unknown): PositionLine | undefined => {
+  if (!isRow(value)) return undefined;
+  const score = scoreFrom(value.score);
+  if (score === undefined) return undefined;
+  const depth = typeof value.depth === "number" && Number.isFinite(value.depth) ? value.depth : 0;
+  const pv = Array.isArray(value.pv) ? value.pv.filter((move): move is string => typeof move === "string") : [];
+  return { score, depth, pv };
+};
+
+/** A stored position result, read back strictly: its FEN and at least line 1. */
+const positionResultFrom = (value: unknown): PositionResult | undefined => {
+  if (!isRow(value) || typeof value.fen !== "string" || !Array.isArray(value.lines)) return undefined;
+  const lines = value.lines.map(lineFrom);
+  // A line that will not read cuts the list there: what follows would be out of order.
+  const cut = lines.findIndex((line) => line === undefined);
+  const kept = (cut === -1 ? lines : lines.slice(0, cut)) as PositionLine[];
+  return kept.length === 0 ? undefined : { fen: value.fen, lines: kept };
+};
 
 const sourceFrom = (value: unknown): JobV2Source | undefined => {
   if (!isRow(value) || typeof value.pgn !== "string") return undefined;
@@ -297,7 +402,7 @@ const outputsFrom = (value: unknown): JobV2Output[] =>
 /**
  * **A stored Jobs V2 record, read back** — dropped without an id, the kind, a
  * source (its Case named) or its positions; every other field leniently, as
- * V1's `jobFrom`: an unknown status `interrupted` (never run unasked), a
+ * the legacy jobs were: an unknown status `interrupted` (never run unasked), a
  * checkpoint entry that will not read or is about another FEN as missing, a
  * target that will not read as new Cases beside the source, a preset as none.
  */

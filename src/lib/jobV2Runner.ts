@@ -17,8 +17,9 @@ import { BOARD_OWNED_OPTIONS, resolveEnginePreset } from "./enginePresets";
 import type { EngineDescriptor, EngineHandle, EngineOption } from "./engineTypes";
 import { engineSettingBoundsOf } from "./engineSettings";
 import { getEngine, isHostedEngineId, resolveEngine } from "./engines";
-import { jobMoveLabel, jobSearchOf } from "./jobs";
 import {
+  jobMoveLabel,
+  jobSearchOf,
   jobV2AnalysisOf,
   jobV2MergedPgn,
   jobV2OutputName,
@@ -33,12 +34,10 @@ import { newRecordId } from "./recordId";
 import type { GameTree } from "./gameTree";
 
 /**
- * **The Jobs V2 runner** (CTA-188) — Analysis V2's own, a clone of the legacy
- * `lib/jobRunner.ts` (`.claude/rules/jobs.md` §3), which it never touches: one
- * per page, started by the app shell in dev only (`JobsV2Shell.tsx`'s
- * `JobV2Runner`), running **one Jobs V2 job at a time**, oldest queued first,
- * over `lib/jobV2Store.ts`. A V1 job and a V2 job may run at the same time —
- * each runner its own engine. The reference is `.claude/rules/analysis-v2.md` §6.
+ * **The Jobs V2 runner** (CTA-188) — Analysis V2's own: one per page, started
+ * by the app shell (`JobsV2Shell.tsx`'s `JobV2Runner`), running **one Jobs V2
+ * job at a time**, oldest queued first, over `lib/jobV2Store.ts`. The
+ * reference is `.claude/rules/analysis-v2.md` §6.
  *
  * - **One tab runs Jobs V2**: it holds its own Web Lock,
  *   {@link JOB_V2_RUNNER_LOCK}, for the page's life; another tab's waits.
@@ -88,7 +87,7 @@ export type JobV2Runner = {
   idle: () => Promise<void>;
 };
 
-/** The name of the lock only one tab's Jobs V2 runner holds — not V1's (`chessapp.jobs.runner`). */
+/** The name of the lock only one tab's Jobs V2 runner holds. */
 export const JOB_V2_RUNNER_LOCK = "chessapp.analysisProjects.jobs.runner";
 
 const HANDSHAKE_TIMEOUT_MS = 30_000;
@@ -284,7 +283,7 @@ export const createJobV2Runner = ({
     input: { tree: GameTree },
     descriptor: EngineDescriptor,
   ): Promise<JobV2Output[]> => {
-    // The engine that ran it names the annotator, as V1's outputs do.
+    // The engine that ran it names the annotator.
     const ran: JobV2 = { ...job, engine: { id: descriptor.id, name: descriptor.name, version: descriptor.version } };
     const { target } = job;
     if (target.kind === "case") {

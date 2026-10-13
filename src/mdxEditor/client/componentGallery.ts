@@ -80,13 +80,13 @@ export const SOURCE_WORDS: Readonly<Record<SourceKind, string>> = {
   pgn: "a PGN",
   collection: "a whole Library collection, /library/<collection>",
   libraryGame: "one Library game, /library/<collection>/<n>",
-  analysis: "a saved analysis, /tools/analysis?analysis=<id>",
+  case: "an Analysis case, /analysis/projects/<project>/cases/<case>",
   playedGame: "a game played against the engine, /engine/play?saved=<id>",
   repertoire: "a repertoire, /repertoires/<id>",
 };
 
 /** What every board that shows one stored game reads. */
-const ONE_GAME: readonly SourceKind[] = ["libraryGame", "analysis", "playedGame"];
+const ONE_GAME: readonly SourceKind[] = ["libraryGame", "case", "playedGame"];
 /** What every tournament table reads. */
 const TABLE: readonly SourceKind[] = ["pgn", "collection"];
 
@@ -112,8 +112,8 @@ export const GALLERY: readonly GalleryFolder[] = [
         id: "inline-pgn-game",
         component: "InlinePgnGame",
         label: "A game, its moves beside it",
-        summary: "A window of a game on a board, its moves beside it, side lines nested — from a PGN, the Library, an analysis, a played game or a repertoire's tree",
-        reads: ["pgn", "libraryGame", "collection", "analysis", "playedGame", "repertoire"],
+        summary: "A window of a game on a board, its moves beside it, side lines nested — from a PGN, the Library, an Analysis case, a played game or a repertoire's tree",
+        reads: ["pgn", "libraryGame", "collection", "case", "playedGame", "repertoire"],
         sample: { file: "writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn" },
         pgnName: "game",
         markup: (target) =>
@@ -125,7 +125,7 @@ export const GALLERY: readonly GalleryFolder[] = [
         label: "A game, its moves in two columns beside it",
         summary:
           "<InlinePgnGame> with its moves as the Analysis Board lists them — numbered pairs, side lines a row under their pair — beside the board in a box no taller than it, scrolling",
-        reads: ["pgn", "libraryGame", "collection", "analysis", "playedGame", "repertoire"],
+        reads: ["pgn", "libraryGame", "collection", "case", "playedGame", "repertoire"],
         sample: { file: "writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn" },
         pgnName: "game",
         markup: (target) =>
@@ -139,7 +139,7 @@ export const GALLERY: readonly GalleryFolder[] = [
         label: "A game, its moves in two columns under it",
         summary:
           "The same numbered pairs under the board, in a box half its height, scrolling — for boards side by side in a <BoardRow>",
-        reads: ["pgn", "libraryGame", "collection", "analysis", "playedGame", "repertoire"],
+        reads: ["pgn", "libraryGame", "collection", "case", "playedGame", "repertoire"],
         sample: { file: "writing-an-article/inline-pgn/rubinstein-capablanca-1911.pgn" },
         pgnName: "game",
         markup: (target) =>
@@ -151,7 +151,7 @@ export const GALLERY: readonly GalleryFolder[] = [
         id: "stored-game-embed",
         component: "StoredGameEmbed",
         label: "A stored game",
-        summary: "One stored game on a board, its players over it, with a link to open it — a Library game, a saved analysis, a played game",
+        summary: "One stored game on a board, its players over it, with a link to open it — a Library game, an Analysis case, a played game",
         reads: ONE_GAME,
         sample: { address: "/library/capablanca/2" },
         markup: (target) => `<StoredGameEmbed ${sourceProp(target)} />`,

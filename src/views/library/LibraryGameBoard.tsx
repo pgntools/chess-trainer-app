@@ -26,8 +26,7 @@ import { IconAction, ToggleIconAction } from "../../design-system/components/too
 import { downloadPgn } from "../../lib/pgnExport";
 import { indexGame } from "../../lib/collectionIndex";
 import { initialPlyOf } from "../../lib/gameNavigation";
-import { libraryGameReference } from "../../lib/gameReference";
-import { mainlineGame, sanPathTo, treeToPgn, type GameTree } from "../../lib/gameTree";
+import { mainlineGame, treeToPgn, type GameTree } from "../../lib/gameTree";
 import {
   insertCollectionGame,
   replaceCollectionGame,
@@ -39,13 +38,12 @@ import {
 } from "../../lib/libraryCollections";
 import { slugify } from "../../lib/pgnText";
 import { atParamOf, nodeAtParam, REPERTOIRE_AT_PARAM } from "../../lib/repertoireLink";
-import { newSavedAnalysisId, savedAnalysisOf } from "../../lib/savedAnalyses";
-import { saveAnalysis } from "../../lib/savedAnalysisStore";
 import BoardShell from "../board/core/BoardShell";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import type { PlayerPlates } from "../shared/PlayerPlate";
 import { playerResultsOf } from "../shared/playerResults";
 import { useAnalysisSession } from "../board/core/useAnalysisSession";
+import { useSendToAnalysis } from "../analysisV2/useSendToAnalysis";
 import { usePageTitle } from "../main/pageTitle";
 import { useUnsavedWorkGuard } from "../main/unsavedWork";
 
@@ -61,9 +59,9 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  * | Tree view | `useVariationsExplorer` — Moves, Map, the comment block, the next-moves bar, the arrows, the move menu; editing on, *Play chances…* off |
  * | Shell | `BoardShell` / `BoardPanel` — tabs Moves (with the next-move arrows' switch) · Map · Info · Export (no Engine tab since CTA-181: the search settings are the top bar's Engine menu, the eval bar the header's engine menu) |
  *
- * The Export tab also hands the game to the **Analysis Board**
- * (`?game=library/<collection>/<n>`, CTA-77) at the position on screen
- * (`?at=`) — the game as the collection holds it, not this session's changes.
+ * The Export tab also hands the game to **Analysis** (CTA-77, a Case since
+ * CTA-192: a Project picked, `useSendToAnalysis`) at the position on screen —
+ * the game as the collection holds it, not this session's changes.
  *
  * The players are **plated beside the board** (CTA-105), at the left end of
  * the captured-pieces strips: each one's result of the game, a thin
@@ -81,8 +79,8 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  *   place in the collection), **Save as copy** (a copy inserted right after
  *   it, and the board goes on in the copy) or **Discard** — each write taking
  *   the game's new index row with it (`indexGame`), so the table is in step;
- * - a **shipped** collection's game is read-only: **Save as copy** writes it
- *   into **Saved analyses** and opens it there (`?analysis=<id>`), or
+ * - a **shipped** collection's game is read-only: **Save as copy** makes it
+ *   a Game Case in a Project the reader picks and opens it there (CTA-192), or
  *   **Discard**.
  *
  * `?at=` — the moves from the start as SAN — is read on arrival and written
@@ -187,27 +185,24 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
     session.rebase(tree);
   };
 
-  /** **Save as copy** — beside the original in an upload; into Saved analyses from a shipped file. */
+  /** Into Analysis: a Game Case in a Project the reader picks, a new one named after the collection. */
+  const analysis = useSendToAnalysis("library-game-send");
+
+  /** **Save as copy** — beside the original in an upload; into Analysis from a shipped file. */
   const saveCopy = async () => {
     if (shipped) {
-      const record = {
-        ...savedAnalysisOf(
-          newSavedAnalysisId(),
-          core.tree,
-          sanPathTo(core.tree, core.nodeId),
-          session.settings,
-          core.orientation,
-        ),
-        name: t("library.shippedChanges.copyName", { name: title }),
-        showArrows,
-        showMoveMarks,
-      };
-      const failed = await saveAnalysis(record);
-      if (failed !== undefined) {
-        setProblem(failed);
-        return;
-      }
-      navigate(`/tools/analysis?analysis=${encodeURIComponent(record.id)}`);
+      analysis.send({
+        games: [
+          {
+            tree: core.tree,
+            nodeId: core.nodeId,
+            orientation: core.orientation,
+            name: t("library.shippedChanges.copyName", { name: title }),
+            display: { showArrows, showMoveMarks },
+          },
+        ],
+        projectName: collection.name,
+      });
       return;
     }
     const pgn = treeToPgn(core.tree);
@@ -245,6 +240,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
               link={{ component: RouterLink, to: tablePath }}
               testId="library-game-back"
             />
+            {analysis.dialog}
             {/* The players live on the board's plates (CTA-105); the header's
                 own line is the caption. */}
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>
@@ -356,11 +352,13 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
                     size="small"
                     variant="outlined"
                     startIcon={<OpenInNewRoundedIcon fontSize="small" />}
-                    component={RouterLink}
-                    to={`/tools/analysis?${new URLSearchParams({
-                      game: libraryGameReference(collection.id, number),
-                      ...(linkedAt === "" ? {} : { [REPERTOIRE_AT_PARAM]: linkedAt }),
-                    }).toString()}`}
+                    onClick={() =>
+                      analysis.send({
+                        // The game as the collection holds it, at the position on screen.
+                        games: [{ tree, nodeId: nodeAtParam(tree, linkedAt), orientation: core.orientation }],
+                        projectName: collection.name,
+                      })
+                    }
                     data-testid="library-game-open-analysis"
                   >
                     {t("library.game.openAnalysis")}

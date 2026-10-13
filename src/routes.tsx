@@ -7,9 +7,10 @@ import { default as HomeScreen  } from './views/home/Main'
 import { default as PlayWithEngineScreen  } from './views/engine/play/Main'
 import { default as PlayedGamesScreen  } from './views/engine/games/Main'
 import { default as MaskedPlayScreen  } from './views/engine/masked/Main'
-import { default as AnalysisBoardScreen  } from './views/tools/analysis/Main'
-import { default as SavedAnalysesScreen  } from './views/tools/analysis/saved/Main'
-import { default as AnalysisSettingsScreen  } from './views/tools/analysis/saved/AnalysisSettingsScreenMain'
+import { default as ProjectsBrowserScreen  } from './views/analysisV2/ProjectsBrowserMain'
+import { default as ProjectScreen  } from './views/analysisV2/ProjectScreenMain'
+import { default as CaseWorkspaceScreen  } from './views/analysisV2/CaseWorkspaceMain'
+import { default as JobsV2Screen  } from './views/analysisV2/jobs/JobsV2Main'
 import { default as OpeningsScreen  } from './views/openings/Main'
 import { default as LibraryScreen  } from './views/library/LibraryHomeMain'
 import { default as LibraryUploadScreen  } from './views/library/LibraryUploadMain'
@@ -22,7 +23,6 @@ import { default as RepertoireBoardScreen  } from './views/repertoires/Repertoir
 import { default as RepertoireSettingsScreen  } from './views/repertoires/RepertoireSettingsScreenMain'
 import { default as RepertoireGameScreen  } from './views/repertoires/RepertoireGameMain'
 import { default as SettingsScreen  } from './views/settings/SettingsMain'
-import { default as JobsScreen  } from './views/jobs/JobsMain'
 import { default as BlogScreen  } from './views/blog/BlogMain'
 import { CookiesMain as CookiesScreen, PrivacyMain as PrivacyScreen } from './views/legal/LegalMain'
 import { LEGAL_PAGES_SHOWN } from './views/legal/legalPagesShown'
@@ -32,8 +32,7 @@ import { MDX_EDITOR_ENABLED } from "./mdxEditor/enabled";
 
 /**
  * The **Development** section's routes (`chessboard.md` §9.5) — the design
- * gallery (CTA-107), the theme editor (CTA-115), the MDX editor and Analysis
- * V2 while it is built (CTA-186).
+ * gallery (CTA-107), the theme editor (CTA-115) and the MDX editor.
  *
  * Dev-only, and this array is the whole of the gate. Two things make it
  * provable rather than hopeful:
@@ -77,30 +76,6 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
         path: "/dev/theme-editor",
         element: devScreen(() => import("./views/dev/themeEditor/Main")),
         handle: { ...FULL_WIDTH_ROUTE, title: "pages.themeEditor" },
-      },
-      // Analysis V2 (CTA-186, `.claude/rules/analysis-v2.md`): Projects in
-      // nested folders, their Cases, a Case's board — dev-only while it is
-      // built (`lib/analysisProjectsEnabled.ts` gates its Export / Import the same way).
-      {
-        path: "/analysis",
-        element: devScreen(() => import("./views/analysisV2/ProjectsBrowserMain")),
-        handle: { ...FULL_WIDTH_ROUTE, title: "pages.analysisProjects" },
-      },
-      {
-        path: "/analysis/projects/:projectId",
-        element: devScreen(() => import("./views/analysisV2/ProjectScreenMain")),
-        handle: { ...FULL_WIDTH_ROUTE, title: "pages.analysisProject" },
-      },
-      {
-        path: "/analysis/projects/:projectId/cases/:caseId",
-        element: devScreen(() => import("./views/analysisV2/CaseWorkspaceMain")),
-        handle: { title: "pages.analysisCase" },
-      },
-      // Jobs V2 (CTA-188): a Case's computer analysis, Analysis V2's own background jobs — `?job=<id>` the job open.
-      {
-        path: "/analysis/jobs",
-        element: devScreen(() => import("./views/analysisV2/jobs/JobsV2Main")),
-        handle: { title: "pages.analysisJobs" },
       },
       // The MDX editor (src/mdxEditor/): an article's MDX beside its live
       // rendering, with every component an article embeds. Compiled in the
@@ -169,26 +144,35 @@ export const appRoutes: RouteObject[] = [
           element: <MaskedPlayScreen />,
           handle: { title: "pages.maskedPieces" }
         },
+        // Analysis V2 (CTA-186, shipped in CTA-192 — `.claude/rules/analysis-v2.md`):
+        // Projects in nested folders (`?folder=`), each holding Cases — a Game or
+        // a Position — each Case its own autosaved board; the browser and a
+        // Project are full-width, the Case's board a board route.
         {
-          path: "/tools/analysis",
-          element: <AnalysisBoardScreen />,
-          handle: { title: "pages.analysisBoard" }
+          path: "/analysis",
+          element: <ProjectsBrowserScreen />,
+          handle: { ...FULL_WIDTH_ROUTE, title: "pages.analysisProjects" }
         },
-        // The reader's own analysis boards, kept in IndexedDB
-        // (`lib/savedAnalysisStore.ts`), filed into nested folders.
         {
-          path: "/tools/analysis/saved",
-          element: <SavedAnalysesScreen />,
-          handle: { title: "pages.savedAnalyses" }
+          path: "/analysis/projects/:projectId",
+          element: <ProjectScreen />,
+          handle: { ...FULL_WIDTH_ROUTE, title: "pages.analysisProject" }
         },
-        // A saved analysis' title, description, side, arrows and folder (CTA-73).
         {
-          path: "/tools/analysis/saved/:id/settings",
-          element: <AnalysisSettingsScreen />,
-          handle: { title: "pages.analysisSettings" }
+          path: "/analysis/projects/:projectId/cases/:caseId",
+          element: <CaseWorkspaceScreen />,
+          handle: { title: "pages.analysisCase" }
         },
-        // The Openings explorer (CTA-78): a v2 board with the opening book.
-        // It keeps nothing — its Analysis button hands the tree on.
+        // Jobs V2 (CTA-188): a Case's computer analysis in the background, run
+        // app-wide by `lib/jobV2Runner.ts` (mounted by the shell, not here) —
+        // `?job=<id>` the job open.
+        {
+          path: "/analysis/jobs",
+          element: <JobsV2Screen />,
+          handle: { title: "pages.analysisJobs" }
+        },
+        // The Openings explorer (CTA-78): a board with the opening book.
+        // It keeps nothing — its Analysis button hands the tree on, as a Case.
         {
           path: "/openings",
           element: <OpeningsScreen />,
@@ -291,14 +275,6 @@ export const appRoutes: RouteObject[] = [
               },
             ]
           : []),
-        // The background jobs (CTA-173): a game's computer analysis, run
-        // app-wide by `lib/jobRunner.ts` (mounted by the shell, not here), with
-        // its progress, report and outputs. `?job=<id>` opens one.
-        {
-          path: "/jobs",
-          element: <JobsScreen />,
-          handle: { title: "pages.jobs" }
-        },
         // Settings (CTA-86): one tab per segment — Export today. `/settings`
         // and an unknown tab land on the first.
         {
