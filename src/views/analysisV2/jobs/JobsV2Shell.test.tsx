@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, useLocation } from "react-router";
 
 import i18n from "../../../i18n";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../../lib/computerAnalysis";
@@ -10,7 +11,8 @@ import { addJobV2, loadJobsV2, updateJobV2 } from "../../../lib/jobV2Store";
 import { expectNoAxeViolations } from "../../../test/axe";
 import { stubReducedMotion } from "../../../test/reducedMotion";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
-import { JobsV2Indicator } from "./JobsV2Shell";
+import { reportLichessEvalUnreachable } from "../../../lib/jobsSettings";
+import { JobsV2Indicator, JobV2Runner } from "./JobsV2Shell";
 
 const jobOf = (id: string, status: JobStatus): JobV2 => ({
   ...jobV2Of(id, {
@@ -134,5 +136,47 @@ describe("the indicator's live engine progress (CTA-190)", () => {
     act(() => publishLive("other", 30, 1_000));
     expect(screen.getByRole("link", { name: "Jobs V2 1/5, Alice – Bob" })).toBeInTheDocument();
     expect(screen.getByTestId("analysis-v2-jobs-indicator-heartbeat")).toHaveAttribute("data-live", "false");
+  });
+});
+
+describe("the shell's warning when the lichess evaluation API did not answer (CTA-193)", () => {
+  function Where() {
+    const location = useLocation();
+    return <div data-testid="where">{`${location.pathname}${location.search}`}</div>;
+  }
+
+  it("says so once per word from the runner — the job goes on with the engine — and opens the Jobs settings", async () => {
+    const user = userEvent.setup();
+    const { baseElement } = render(
+      <AppThemeWithLang>
+        <MemoryRouter initialEntries={["/analysis"]}>
+          <JobV2Runner />
+          <Where />
+        </MemoryRouter>
+      </AppThemeWithLang>,
+    );
+    act(() => reportLichessEvalUnreachable({ jobId: "j1", name: "Alice – Bob", kind: "read" }));
+    const warning = await screen.findByRole("alert");
+    expect(warning).toHaveTextContent(
+      "The lichess evaluation API did not answer, so Alice – Bob goes on with the engine. If the API is not running, turn it off in the Jobs settings.",
+    );
+    await expectNoAxeViolations(baseElement);
+    await user.click(screen.getByRole("link", { name: "Jobs settings" }));
+    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/analysis/jobs?tab=settings"));
+  });
+
+  it("says when the API did not take the engine's evaluations — the job goes on without sending them", async () => {
+    render(
+      <AppThemeWithLang>
+        <MemoryRouter initialEntries={["/analysis"]}>
+          <JobV2Runner />
+        </MemoryRouter>
+      </AppThemeWithLang>,
+    );
+    act(() => reportLichessEvalUnreachable({ jobId: "j1", name: "Alice – Bob", kind: "write" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The lichess evaluation API did not take the engine's evaluations, so Alice – Bob goes on without sending them.",
+    );
+    expect(screen.getByRole("link", { name: "Jobs settings" })).toBeInTheDocument();
   });
 });

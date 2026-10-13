@@ -29,6 +29,7 @@ import { MAX_VARIATIONS_OFFERED } from "../../../lib/engineAnalysis";
 import type { DeviceEngineLimits } from "../../../lib/engineSettings";
 import type { EngineOption } from "../../../lib/engineTypes";
 import type { EngineEntry } from "../../../lib/engines";
+import { engineSelectOptions } from "../EnginePicker";
 import { engineOptionState, optionSlug } from "../EngineSettingsForm";
 import { computerAnalysisStartNote } from "./startNote";
 
@@ -295,22 +296,7 @@ function ComputerAnalysisForm({
               label={t("computerAnalysis.form.engineSelect")}
               value={engineChoice.engineId}
               onChange={engineChoice.onEngineChange}
-              options={engineChoice.engines.map(({ descriptor, availability }) => ({
-                value: descriptor.id,
-                disabled: !availability.available,
-                label: (
-                  <Box component="span" sx={{ display: "grid", minWidth: 0 }}>
-                    <bdi dir="ltr">
-                      {descriptor.name} ({descriptor.version})
-                    </bdi>
-                    {!availability.available && (
-                      <Typography component="span" variant="caption" sx={{ whiteSpace: "normal" }}>
-                        {t(`enginePicker.unavailable.${availability.reason}`)}
-                      </Typography>
-                    )}
-                  </Box>
-                ),
-              }))}
+              options={engineSelectOptions(engineChoice.engines, t)}
               fullWidth
               testId={`${testId}-engine-select`}
             />

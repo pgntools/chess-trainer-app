@@ -154,12 +154,13 @@ Only preferences — two written by libraries, the rest by us:
 | `chessapp.engine` | `lib/engineChoice.ts` (CTA-153), through `views/shared/useEngineChoice.ts` | the engine picked in Settings → Engine — a registry id, stored raw: an id that names no registered engine, or one this page cannot run, *reads* as the default (`engineChoiceId`) and stays stored |
 | `chessapp.engineServer` | `lib/engineServer.ts`, through `views/shared/useEngineServer.ts` and `useEngineModule` | the engine server's address (`http://127.0.0.1:8800` unless moved) — **absent unless the reader turned it on** in Settings → Engine, and while absent nothing contacts any server; its status (online, its engines) is read, never stored |
 | `chessapp.engineSettings` | `lib/engineSearchSettings.ts` (CTA-181), through `views/shared/useEngineSearchSettings.ts` | the engine's search settings every board uses, set in the top bar's Engine menu — JSON `{ multiPv, threads, hashMb }` — the depth and move time are the presets' since CTA-185 (`EnginePreset.search`; an older `depth`, `moveTimeMs` or `infinite` here read as nothing) — read back field by field (a missing or unreadable one its default, a number held to `ENGINE_SEARCH_SETTING_BOUNDS`); Threads and Hash kept as asked, never cut back to the engine running. Not in the export zip — a preference. Absent until the reader changes one |
+| `chessapp.jobsSettings` | `lib/jobsSettings.ts` (CTA-193), through `views/analysisV2/jobs/useJobsSettings.ts` and the Jobs V2 runner | the Jobs settings, set on the Jobs V2 view's Settings tab — JSON `{ defaultPreset: { engineId, presetId } \| null, evalApi: { enabled, url, write } }`, read back field by field (what does not read is its default): the default engine and preset for new jobs, and the lichess evaluation API (and whether a job sends it the engine's evals) — **off unless the reader turns it on**, and while off nothing contacts it; its status is read, never stored. Absent until the reader changes one |
 
 Nothing else in `src/` touches `localStorage`, and nothing reads the old
 `chessapp.*.v1` keys — do not reuse those names.
 `grep -rn localStorage src --include=*.ts --include=*.tsx | grep -v test`
 should show only comments, `theme/themeChoice.ts`, `lib/engineChoice.ts`,
-`lib/engineServer.ts` and `lib/engineSearchSettings.ts`.
+`lib/engineServer.ts`, `lib/engineSearchSettings.ts` and `lib/jobsSettings.ts`.
 
 The one `sessionStorage` key is `chessapp.developmentNoticeDismissed`
 (`lib/developmentNotice.ts`, CTA-155): the in-development notice was dismissed in

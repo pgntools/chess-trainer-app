@@ -16,6 +16,7 @@ export * from "./EngineServerForm";
 export * from "./EngineSettingsForm";
 export * from "./FenInput";
 export * from "./JobTargetFields";
+export * from "./JobsSettingsForm";
 export * from "./ExportCategoriesForm";
 export * from "./MaskEditor";
 export * from "./MergeSplitChoice";

@@ -23,9 +23,12 @@ paths:
   - "src/lib/jobV2Store*"
   - "src/lib/jobV2Runner*"
   - "src/lib/jobV2Live*"
+  - "src/lib/jobsSettings*"
+  - "src/lib/lichessEvalApi*"
   - "src/blocks/panels/JobEngineProgress/**"
   - "src/lib/analysisCaseLinkStore*"
   - "src/blocks/forms/JobTargetFields/**"
+  - "src/blocks/forms/JobsSettingsForm/**"
   - "src/blocks/lists/CaseJobs/**"
   - "src/blocks/lists/CaseLinks/**"
   - "src/blocks/dialogs/CasePickerDialog/**"
@@ -52,7 +55,7 @@ paths:
   - "src/views/home/frontPage/StoredGameEmbed*"
 ---
 
-# Analysis V2 — Projects and Cases (CTA-186), Jobs V2 and linked Cases (CTA-188), Jobs V2's live progress (CTA-190), the browser's Cases and picks (CTA-191), shipped (CTA-192)
+# Analysis V2 — Projects and Cases (CTA-186), Jobs V2 and linked Cases (CTA-188), Jobs V2's live progress (CTA-190), the browser's Cases and picks (CTA-191), shipped (CTA-192), the Jobs settings and the lichess evaluation API (CTA-193)
 
 **The app's analysis module**: the reader's analysis organised into
 **Projects** filed in nested **folders**, each Project holding **Cases** — a
@@ -86,17 +89,18 @@ other screen hands a game to Analysis as a new Case** (§1.1).
 | `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, **version 3** (CTA-188): object stores `folders`, `projects`, `cases`, `jobs` (Jobs V2) and `caseLinks`, one `BroadcastChannel`. |
 | `src/lib/jobsV2.ts`, `jobV2Store.ts`, `jobV2Runner.ts` | **Jobs V2** (CTA-188, §6): the record (`JobV2`, `jobV2Of`, `jobV2From`, `jobV2AnalysisOf` / `jobV2MergedPgn` — the merge into a Case, `jobV2OfCase`, `jobV2OutputName`), the store (`enqueueJobV2`, `pauseJobV2`, `cancelJobV2`, `resumeJobV2`, `removeJobV2`, `removeJobsV2Of`, `interruptRunningJobsV2`, `MAX_JOBS_V2` 100) and the runner (`createJobV2Runner`, `startJobV2Runner` / `stopJobV2Runner`, its lock `chessapp.analysisProjects.jobs.runner`). Since CTA-192 `jobsV2.ts` also holds what the legacy jobs' record shared with it: the statuses (`JobStatus`), `JobPosition`, the `can…` predicates, `jobSearchOf`, `jobProgress`, `jobMoveLabel`, the checkpoint's reader. `lib/jobV2LiveAnalysis.ts` (`jobV2LiveAnalysis`): a job's results so far — the eval graph's points, the verdicts and report over the moves judged, the latest finished position (§6.5). |
 | `src/lib/jobV2Live.ts` | **A running job's live engine progress** (CTA-190, §6.7): `JobV2Live` (the snapshot), `createJobV2LiveFeed` (the runner's throttled feed), `jobV2LiveSnapshot` / `subscribeJobV2Live` (read by `views/analysisV2/jobs/useJobV2Live.ts`), the channel `chessapp.analysisProjects.jobs.live` — in memory, never stored. |
+| `src/lib/jobsSettings.ts`, `src/lib/lichessEvalApi.ts` | **The Jobs settings and the lichess evaluation API** (CTA-193, §6.9): the preference `chessapp.jobsSettings` (`readJobsSettings`, `storeJobsDefaultPreset`, `storeLichessEvalApi`, `lichessEvalApiUrl`), the API's status (`connectLichessEvalApi`, read never stored) and the runner's word that it did not answer (`reportLichessEvalUnreachable` / `subscribeLichessEvalUnreachable`); the client — `lichessEvalFen` (the 4-field FEN), `lookupLichessEval` (`GET /fen`), `checkLichessEvalApi` (`GET /health`), `positionResultOfLichessEval` (an eval as a `PositionResult`), `lichessEvalEntryOf` / `writeLichessEval` (`POST /evals`, the engine's evals sent back). |
 | `src/lib/analysisCaseLinkStore.ts` | **The links between Cases** (CTA-188, §7): `linkAnalysisCases`, `addCaseLinks` (several at once — a job's new Cases), `unlinkAnalysisCases`, `removeLinksOfCases`, `importCaseLinks`; the record `CaseLink` and `caseLinksOf` in `analysisProjects.ts`. |
 | `src/lib/analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts` | **The stores** over `idbRecordStore` ([`database.md`](./database.md) §3): folders oldest first, Projects and Cases newest first; every operation a promise of `undefined` or `"storage"` / `"too-many"`. |
 | `src/lib/retiredDatabases.ts` | **The databases the app no longer keeps** (CTA-192): `chessapp.analyses` and `chessapp.jobs`, the legacy module's, deleted on every load (`src/main.tsx`, `deleteRetiredDatabases`). |
 | `src/views/analysisV2/useSendToAnalysis.tsx` | **A game handed to Analysis** (CTA-192, §1.1): `useSendToAnalysis(testId)` → `{ send, dialog }` — the Project picker, the Game Cases written, the Case (or Project) opened. Every other screen's way in. |
-| `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board; the Case view's links and their picker, §7), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings — `useJobsV2`, `useCaseLinks` too), `paths.ts` (the addresses — `jobsV2Path`). `jobs/` (CTA-188): `JobsV2Screen.tsx` (`/analysis/jobs`, behind `JobsV2Main.tsx`), `JobV2Reports.tsx` (a done job's report, another's results so far), `NewJobV2.tsx` (the popup's screen side), `JobsV2Shell.tsx` (`JobV2Runner`, `JobsV2Indicator` — the shell's), `useJobV2Live.ts` (the live progress, `liveOfJob` — CTA-190). |
-| `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/forms/JobTargetFields/`, `src/blocks/lists/CaseJobs/`, `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/`; since CTA-190 `src/blocks/panels/JobEngineProgress/` | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and so, for Jobs V2, `JobsTable`, `JobSummary` (generic over a job's fields), `NewJobDialog`, `ComputerAnalysisForm` (the engine and preset selects, one variant, a section before the form; `JobSummary`'s `live` slot, CTA-190), `ComputerAnalysisReport` and `EvalGraph` — built for the legacy Jobs, Jobs V2's since CTA-192. |
+| `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board; the Case view's links and their picker, §7), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings — `useJobsV2`, `useCaseLinks` too), `paths.ts` (the addresses — `jobsV2Path`). `jobs/` (CTA-188): `JobsV2Screen.tsx` (`/analysis/jobs`, behind `JobsV2Main.tsx`), `JobV2Reports.tsx` (a done job's report, another's results so far), `NewJobV2.tsx` (the popup's screen side), `JobsV2Shell.tsx` (`JobV2Runner`, `JobsV2Indicator` — the shell's), `useJobV2Live.ts` (the live progress, `liveOfJob` — CTA-190), `JobsSettingsTab.tsx` and `useJobsSettings.ts` (the Jobs settings, CTA-193). |
+| `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/forms/JobTargetFields/`, `src/blocks/lists/CaseJobs/`, `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/`; since CTA-190 `src/blocks/panels/JobEngineProgress/`; since CTA-193 `src/blocks/forms/JobsSettingsForm/` (over `EngineServerForm`, its words by `localeKey`) | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and so, for Jobs V2, `JobsTable`, `JobSummary` (generic over a job's fields), `NewJobDialog`, `ComputerAnalysisForm` (the engine and preset selects, one variant, a section before the form; `JobSummary`'s `live` slot, CTA-190), `ComputerAnalysisReport` and `EvalGraph` — built for the legacy Jobs, Jobs V2's since CTA-192. |
 | `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts`, `src/views/shared/AnalysisEvalReport.tsx` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws, the eval graph and report the Case view's Graph tab shows. |
-| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectRows.test.ts` (the browser's rows — its Cases, CTA-191), `src/lib/analysisProjectPicks.test.ts` (its picks, CTA-191), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links on its Info tab, the Jobs V2 view), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the database named in both pages, the retired ones in neither), `src/lib/retiredDatabases.test.ts`; **the hand-offs** (§1.1): `OpeningsBoard.test.tsx`, `PlayWithEngine.test.tsx`, `PlayedGames.test.tsx`, `Library.test.tsx` (the game board's Open in Analysis and a shipped game's copy), `LibraryPicks.test.tsx` (the batch), `StoredGameEmbed.test.tsx` and `EmbedSource.test.tsx` (an embed's Case address and its Open in Analysis), `ProjectPickerDialog.test.tsx` (the New project entry). |
+| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectRows.test.ts` (the browser's rows — its Cases, CTA-191), `src/lib/analysisProjectPicks.test.ts` (its picks, CTA-191), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), `jobsSettings.test.ts` and `lichessEvalApi.test.ts` (CTA-193: the settings, the client — the FEN, the mapping, a 404, the timeout, a bad body), the runner's API cases in `jobV2Runner.test.ts`, `JobsSettingsForm.test.tsx`, `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links on its Info tab, the Jobs V2 view; the Jobs settings tab and New Job V2's default, CTA-193), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190; the API's warning, CTA-193), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the database named in both pages, the retired ones in neither), `src/lib/retiredDatabases.test.ts`; **the hand-offs** (§1.1): `OpeningsBoard.test.tsx`, `PlayWithEngine.test.tsx`, `PlayedGames.test.tsx`, `Library.test.tsx` (the game board's Open in Analysis and a shipped game's copy), `LibraryPicks.test.tsx` (the batch), `StoredGameEmbed.test.tsx` and `EmbedSource.test.tsx` (an embed's Case address and its Open in Analysis), `ProjectPickerDialog.test.tsx` (the New project entry). |
 
 Locale keys: `analysisV2.*` (`browser`, `folder`, `project`, `case`,
-`newCase`, `workspace`; `jobs`, `links` — CTA-188; `jobs.live`, `jobs.indicator.liveDepth` / `liveNodes` — CTA-190), `nav.folders.analysisV2`, `nav.analysisProjects`,
+`newCase`, `workspace`; `jobs`, `links` — CTA-188; `jobs.live`, `jobs.indicator.liveDepth` / `liveNodes` — CTA-190; `jobs.tabs`, `jobs.settings` — CTA-193), `nav.folders.analysisV2`, `nav.analysisProjects`,
 `nav.analysisJobs`, `pages.analysisProjects` / `analysisProject` / `analysisCase` / `analysisJobs`, the
 New Job form's additions under `computerAnalysis.form.*` (`engineSelect`, `preset`, `presetHelp`,
 `variant`, `variantHelpSingle`), the hand-off's `analysisV2.sendTo.*` and
@@ -533,6 +537,9 @@ Every write idempotent.
   declared**, and beside them **the job's preset**
   (`resolveEnginePreset(job.preset.values, …)`, those three never taken from
   it). The protocol discipline is the handle's ([`chessboard.md`](./chessboard.md) §4.1).
+- **The lichess evaluation API first** (CTA-193, §6.9), while the Jobs
+  settings turn it on: a position not answered without a search (below) is
+  looked up there before the engine is built or asked.
 - **Each position**: `search(fen, { depth, movetime })`, every `info` for that
   FEN folded in, the early stop one `stop()`, the `bestmove` ending it; a
   mate or stalemate, and a position whose move is not analysed and whose
@@ -567,7 +574,10 @@ for the Case **on the board** — its tree as the board holds it:
   existing* (the Jobs V2 view at it).
 - **The engine and its preset, each a select** (as the top bar's Engine menu
   offers them: `describeEngines()`, every preset; `ComputerAnalysisForm`'s
-  `engineChoice`) **prefill** the depth and time per move from the preset
+  `engineChoice`) — seeded from **the Jobs settings' default** where one is
+  set and its engine runs here and its preset is still there
+  (`defaultPresetInEffect`, CTA-193), else the board's engine and its
+  selected preset — **prefill** the depth and time per move from the preset
   (`presetSearchOf`) and Threads, Hash and lines from the global search
   settings; all stay editable for this one job; changing the engine (its
   selected preset with it) or the preset prefills the two again. The rest of
@@ -588,7 +598,8 @@ for the Case **on the board** — its tree as the board holds it:
 
 ### 6.5 The Jobs V2 view — `/analysis/jobs` (`?job=<id>`)
 
-`JobsV2Screen`: the list (`JobsTable` over
+`JobsV2Screen`: two tabs over the square (CTA-193) — **Jobs**, the list, and
+**Settings** (`?tab=settings`, §6.9); the list (`JobsTable` over
 `JobV2`) in the square, newest first, Resume / Pause / Cancel / Delete; one
 job (`JobSummary` over `JobV2`) in the aside — its status, progress, why it
 failed, **Open the Case** (its source, while it is there), **links to its
@@ -663,6 +674,70 @@ server's alike (both reach `parseEngineLine`).
   update. The header's indicator beats (an opacity cycle on the theme's
   `transitions.duration.complex`, still under reduced motion) and adds
   "depth 22, 3.1M nodes" to its name, unannounced.
+
+### 6.9 The Jobs settings and the lichess evaluation API (CTA-193)
+
+The Jobs V2 view's **Settings** tab (`/analysis/jobs?tab=settings`,
+`JobsSettingsTab.tsx` over the `JobsSettingsForm` block) holds Jobs V2's own
+preferences, one `localStorage` key, `chessapp.jobsSettings`
+(`lib/jobsSettings.ts`; [`database.md`](./database.md) §2, both legal pages):
+
+- **The default engine and preset for new jobs** — a switch, *Use a default
+  engine and preset*, turned on from the board's engine and its selected
+  preset, then the two selects. New Job V2 seeds from it (§6.4); unset — or
+  naming an engine that does not run here or a preset gone — a new job starts
+  as before, and the pair stays stored.
+- **The lichess evaluation API** — a FastAPI server over the lichess
+  evaluation database (the `lichess-eval-db-api` repository, outside this
+  one): `EngineServerForm` with its words (`localeKey`
+  `analysisV2.jobs.settings.evalApi`) — **off by default, and while off the
+  app never contacts it**; on, its address (the reader's network's
+  `http://10.0.0.3:8000` offered first, kept while off), Connect (or Enter)
+  checking `GET /health` (`{ status: "ok", positions }`) within 5 s, the chip
+  *Connected · N ms* / *Not connected* and the reason. Its status is read,
+  never stored.
+- **The runner asks it first** (`lib/jobV2Runner.ts`): for a position not
+  answered without a search (a terminal one, a deep enough stored
+  `[%eval]`), `GET /fen?fen=<4-field FEN>&best=true` (`lookupLichessEval`,
+  5 s, given up when the job stops) — the FEN its first four fields with the
+  en passant square only where a capture there is legal
+  (`lichessEvalFen`: after 1.e4 c5, `-`), as the dataset writes it. Its
+  deepest eval **at the job's depth or deeper** is the position's result
+  (`positionResultOfLichessEval`): its lines up to the position's `MultiPV`,
+  each the eval's depth and score (White's view, as `Score`), its UCI line
+  with the API's king-takes-rook castling (`e1h1`) written as the engine's
+  (`e1g1`) and cut at a move that does not play — checkpointed like a search,
+  so the outputs read like an engine's (§6.6). No engine is built until a
+  position needs one: a job the API answers whole starts none. **A 404, a
+  422 or a shallower eval** — the engine searches it. **No usable answer**
+  (a timeout, a network error, another status, a body that is not the API's)
+  — the run goes on with the engine, the API left alone for the rest of that
+  run, and the runner says so once (`reportLichessEvalUnreachable`): the
+  shell's `JobV2Runner` shows a warning snackbar — the API did not answer,
+  turn it off in the Jobs settings — with a link there.
+- **The evaluations Write API** — *Enable evaluations Write API*, a checkbox
+  under the API's details while it is on (`evalApi.write`, off by default;
+  `lichessEvalApiWriteUrl`), and while ticked **Test connection**: `GET
+  /health` again for the address in the field, its button answering a
+  check mark only when `write_enabled` is true, and a line saying which:
+  each position **the engine searched** in a job (never one the API
+  answered, a terminal one or a stored `[%eval]`) is sent after its search
+  as one `POST /evals` entry (`lichessEvalEntryOf`, `writeLichessEval`):
+  its FEN, line 1's depth, the nodes the engine last reported in thousands,
+  `pov: "white"`, its lines' scores and UCI moves (none past a line with no
+  move, never `mate 0`), the engine's name. The API stores it when deeper
+  than what it holds, else skips it — both taken. The API must run in write
+  mode (`api.py --write`): `GET /health`'s `write_enabled` is kept in the
+  status (Connect's check too), and the form says it in words either way.
+  **A write not taken** (403 — no write mode, 401 — a token wanted, 422, no
+  answer) — the run goes on without sending, said once
+  (`reportLichessEvalUnreachable`, `kind: "write"`, its own warning); a
+  lookup that fails stops the writes too. A write token
+  (`LICHESS_API_WRITE_TOKEN`) is not supported — run the API without one.
+- **CORS**: the browser asks another origin, so the API must answer with
+  CORS headers (`--cors-origins`, `*` by default, in its own repository);
+  the tests stub `fetch`.
+- Only Jobs ask it or write to it.
 
 ### 6.8 Invariants and testing
 

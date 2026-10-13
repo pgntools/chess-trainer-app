@@ -29,6 +29,14 @@ import {
   type JobV2Output,
 } from "./jobsV2";
 import { createJobV2LiveFeed, type JobV2Live, type JobV2LiveFeed } from "./jobV2Live";
+import { lichessEvalApiUrl, lichessEvalApiWriteUrl, reportLichessEvalUnreachable } from "./jobsSettings";
+import {
+  lichessEvalEntryOf,
+  lookupLichessEval,
+  positionResultOfLichessEval,
+  writeLichessEval,
+  type LichessEvalLookup,
+} from "./lichessEvalApi";
 import { interruptRunningJobsV2, jobsV2Snapshot, loadJobsV2, subscribeJobsV2, updateJobV2 } from "./jobV2Store";
 import { newRecordId } from "./recordId";
 import type { GameTree } from "./gameTree";
@@ -49,6 +57,15 @@ import type { GameTree } from "./gameTree";
  *   options, clamped to what the engine declared, and **the job's own preset**
  *   (`job.preset.values`, met against the engine) — never the preset selected
  *   when it runs.
+ * - **The lichess evaluation API first** (CTA-193), while the Jobs settings
+ *   turn it on (`lib/jobsSettings.ts`): a position the API holds at the job's
+ *   depth or deeper is its result — its lines up to the position's `MultiPV`
+ *   — and no engine searches it; one it lacks, or holds shallower, is
+ *   searched. An API that does not answer is said once
+ *   (`reportLichessEvalUnreachable`, the shell's warning) and left alone for
+ *   the rest of the run, which goes on with the engine. With **write** ticked
+ *   too, each position the engine searched is sent to it (`POST /evals`);
+ *   a write it does not take is said once, and the run sends no more.
  * - **A checkpoint after every position** — and, while a position is
  *   searched, **its live progress** (CTA-190): the engine's depth, nodes,
  *   nps, time and best line off each `info` line, a throttled in-memory
@@ -170,8 +187,8 @@ export const createJobV2Runner = ({
     });
 
   /**
-   * **One position's search**: its lines, line 1 first — `undefined` when the
-   * run was stopped. Stopped early by `shouldStopEarly`; failed when the
+   * **One position's search**: its lines, line 1 first, and the nodes the
+   * engine last reported — `undefined` when the run was stopped. Stopped early by `shouldStopEarly`; failed when the
    * engine goes quiet for longer than the silence timeout, or ends the search
    * without a single scored line. Every word the engine says about it goes to
    * the live feed (CTA-190), cleared however the search ends.
@@ -183,7 +200,7 @@ export const createJobV2Runner = ({
     position: AnalysisPosition,
     options: ComputerAnalysisOptions,
     signal: Abort,
-  ): Promise<PositionLine[] | undefined> =>
+  ): Promise<{ lines: PositionLine[]; nodes?: number } | undefined> =>
     new Promise((resolve, reject) => {
       let lines: (PositionLine | undefined)[] = [];
       let stopping = false;
@@ -254,7 +271,7 @@ export const createJobV2Runner = ({
         }
         // Lines the search never reached past a gap are out of order: they end there.
         const gap = lines.findIndex((line) => line === undefined);
-        resolve((gap === -1 ? lines : lines.slice(0, gap)) as PositionLine[]);
+        resolve({ lines: (gap === -1 ? lines : lines.slice(0, gap)) as PositionLine[], nodes: live.nodes });
       });
       signal.onAbort.add(onAbort);
       listen();
@@ -271,6 +288,22 @@ export const createJobV2Runner = ({
     }
     return undefined;
   };
+
+  /** `call` with an `AbortSignal` given up at once when the run is stopped. */
+  const untilAborted = async <T>(signal: Abort, call: (aborted: AbortSignal) => Promise<T>): Promise<T> => {
+    const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    signal.onAbort.add(onAbort);
+    try {
+      return await call(controller.signal);
+    } finally {
+      signal.onAbort.delete(onAbort);
+    }
+  };
+
+  /** Ask the lichess evaluation API about a position. */
+  const askEvalApi = (url: string, fen: string, signal: Abort): Promise<LichessEvalLookup> =>
+    untilAborted(signal, (aborted) => lookupLichessEval(url, fen, aborted));
 
   /**
    * **The results, by the job's target** — each ticked variant a new Game
@@ -351,11 +384,26 @@ export const createJobV2Runner = ({
       }
 
       const results: (PositionResult | undefined)[] = job.checkpoint.map((entry) => entry ?? undefined);
+      // The lichess evaluation API, while it is on — until it fails to answer once in this run (CTA-193).
+      let evalApi = lichessEvalApiUrl();
+      // Where the engine's evals go, while writing is ticked — until a write is not taken once in this run.
+      let evalApiWrite = lichessEvalApiWriteUrl();
       for (const [index, position] of source.positions.entries()) {
         if (!stillRunning(id, signal)) return;
         if (results[index] !== undefined) continue;
 
         let result = resultWithoutSearch(position, job.options);
+        if (result === undefined && evalApi !== undefined) {
+          const answer = await askEvalApi(evalApi, position.fen, signal);
+          if (!stillRunning(id, signal)) return;
+          if (answer.kind === "found") result = positionResultOfLichessEval(position, answer.eval, job.options.depth);
+          else if (answer.kind === "unreachable") {
+            // An API that does not answer a lookup takes no write either.
+            evalApi = undefined;
+            evalApiWrite = undefined;
+            reportLichessEvalUnreachable({ jobId: id, name: job.source.name, kind: "read" });
+          }
+        }
         if (result === undefined) {
           if (handle === undefined) {
             try {
@@ -386,9 +434,20 @@ export const createJobV2Runner = ({
             });
             for (const [name, value] of Object.entries(send)) engine.setOption(name, value);
           }
-          const lines = await searchPosition(handle, job, index, position, job.options, signal);
-          if (lines === undefined || !stillRunning(id, signal)) return;
-          result = { fen: position.fen, lines };
+          const searched = await searchPosition(handle, job, index, position, job.options, signal);
+          if (searched === undefined || !stillRunning(id, signal)) return;
+          result = { fen: position.fen, lines: searched.lines };
+          // The engine's eval sent to the API, where writing is on — only what the engine searched, never the API's own.
+          const entry = evalApiWrite === undefined ? undefined : lichessEvalEntryOf(result, { nodes: searched.nodes, engine: descriptor.name });
+          if (evalApiWrite !== undefined && entry !== undefined) {
+            const url = evalApiWrite;
+            const taken = await untilAborted(signal, (aborted) => writeLichessEval(url, entry, aborted));
+            if (!stillRunning(id, signal)) return;
+            if (!taken) {
+              evalApiWrite = undefined;
+              reportLichessEvalUnreachable({ jobId: id, name: job.source.name, kind: "write" });
+            }
+          }
         }
 
         results[index] = result;

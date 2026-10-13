@@ -1,0 +1,198 @@
+---
+title: Using Local Lichess Evaluation Database
+summary: "416 million positions already searched by Stockfish, on your own machine: let a background job look each position up before the engine searches it — and store the engine's own evaluations beside lichess's."
+date: 2026-10-13
+tags: [jobs, analysis, setup]
+draft: true
+---
+
+Lichess publishes an [evaluation database](https://database.lichess.org/#evals): about **416 million positions**, each searched by Stockfish, many of them very deep (the starting position to depth 75). With a copy of it on your own machine, the app's **background jobs** — a case's computer analysis — can look each position up there first, and ask the engine only for what the database does not hold deeply enough. An opening, a well-known middlegame and a lot of what is played between strong players are answered in milliseconds instead of seconds.
+
+The database is served by a small HTTP server of its own, the **lichess evaluation API** (the `lichess-eval-db-api` repository). The app talks to it from the Jobs settings: **off by default — while it is off, the app never contacts it**.
+
+Optionally, the API can also **keep the evaluations your engine makes**: turn on its write mode and every position a job's engine searches is stored there too, beside lichess's — so the next job, or the next game reaching that position, finds it.
+
+## What you need
+
+- **The API's source** — [github.com/pgntools/lichess-eval-db-api](https://github.com/pgntools/lichess-eval-db-api).
+- **Python 3.10 or newer.**
+- **Disk**: about 22 GB for the download, 107 GiB once decompressed, and 33 GiB for the finished database — plus tens of GB of temporary space while it is built.
+- **About 10 GB of free memory** while the database is built. Looking positions up needs very little.
+- **`zstd`**, to decompress the download.
+- **An hour and a half or so**, once, for the import.
+
+## 1. Get the API and build the database
+
+Clone the API and install what it needs into a virtual environment of its own:
+
+```sh
+git clone git@github.com:pgntools/lichess-eval-db-api.git
+cd lichess-eval-db-api
+python3 -m venv venv
+venv/bin/pip install -r requirements.txt
+```
+
+Download lichess's evaluations (about 22 GB) and decompress them (about 107 GiB):
+
+```sh
+curl -O https://database.lichess.org/lichess_db_eval.jsonl.zst
+zstd -d lichess_db_eval.jsonl.zst          # → lichess_db_eval.jsonl
+```
+
+Build the database — this is the long step, so let it run in the background and follow its log:
+
+```sh
+nohup venv/bin/python -u index_db.py > import.log 2>&1 &
+tail -f import.log
+```
+
+It writes `lichess_evals.duckdb`, a single file of about 33 GiB. On a 4-core machine with an SSD it took just under 90 minutes: about half an hour of reading and sorting (the file stays tiny meanwhile), then about an hour of writing. If it runs out of memory, the repository's `dbimport.md` explains how to give it less (`--memory-limit`, `--threads`).
+
+Check the result:
+
+```sh
+venv/bin/python search_db.py stats      # Positions: 416,442,401
+```
+
+## 2. Start the API
+
+On the machine that holds the database:
+
+```sh
+venv/bin/python api.py
+```
+
+It listens on `http://127.0.0.1:8000` — **this machine only**. That is all you need when the app runs in a browser on the same machine.
+
+To reach it from **another machine on your network** (the database on a home server, the app on your laptop), bind it to that machine's address — for example `10.0.0.3`:
+
+```sh
+venv/bin/python api.py --host 10.0.0.3
+```
+
+Add `--write` to turn on **write mode** — needed only if you want the app to store your engine's evaluations (§5):
+
+```sh
+venv/bin/python api.py --host 10.0.0.3 --write
+```
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `--host` | `127.0.0.1` | The address it listens on. The default accepts this machine only; give the machine's network address (or `0.0.0.0`) to reach it from others. |
+| `--port` | `8000` | The port. |
+| `--write` | off | Write mode: the API takes evaluations (`POST /evals`) and keeps them in a small database of its own, `local_evals.duckdb`. |
+| `--cors-origins` | `*` (every site) | Which sites' pages may call it, comma-separated. Leave it, or name the app's address — `http://localhost:5173`, `https://chessapp.dev` — exactly as the browser's address bar shows it. |
+
+Leave it running while you use the app; stop it with Ctrl+C. To check it answers:
+
+```sh
+curl http://10.0.0.3:8000/health
+# {"status":"ok","positions":416442401,"sql_enabled":true,"write_enabled":true}
+```
+
+`write_enabled` says whether it was started with `--write`.
+
+### Keep it on a network you trust
+
+- **Reading has no password.** Anyone who can reach the address can look positions up. Bind it to `127.0.0.1`, or to an address on your home network only — never to the internet.
+- **In write mode, anyone who can reach it can store evaluations.** The API can require a token for writes (`LICHESS_API_WRITE_TOKEN`), but **the app does not send one** — so run it without that variable, on a network where you are the only writer.
+- The API also answers arbitrary read-only SQL (`POST /sql`); the app never uses it. Start the API with `LICHESS_API_ENABLE_SQL=0` in front of the command to switch it off.
+
+## 3. Connect the app to it
+
+Open **Analysis V2 → Jobs** in the sidebar, then the **Settings** tab ([open it](/analysis/jobs?tab=settings)). Under **Lichess evaluation API**:
+
+1. Turn on **Use the lichess evaluation API**. While it is off, the app never contacts the API.
+2. Type the API's address — `http://10.0.0.3:8000`, or `http://127.0.0.1:8000` on the same machine — and press **Connect** (or Enter).
+3. The chip beside the switch says **Connected · N ms** — how long the API took to answer — and the button shows a check mark. Under the address, when it was last checked.
+
+> 📷 **Screenshot placeholder** — *the Jobs settings tab: "Use the lichess evaluation API" on, the address filled in, the chip saying "Connected · 31 ms".*
+
+The switch and the address are kept in this browser, and the address stays when you turn the API off, for the next time.
+
+## 4. Run a job
+
+Nothing else changes in how you start a job: open a case, its **Jobs** tab, **New job**, choose where the results go, **Start computer analysis**. While the job runs, for every position of the game:
+
+1. **A finished position** (mate, stalemate) needs no one: it is scored at once.
+2. **The API is asked.** If it holds the position **at the job's depth or deeper**, its evaluation is the position's result — as many of its lines as the job asks for (**Lines**), each with its score and its moves. The engine is not asked.
+3. **Otherwise the engine searches it**, as without the API — the position is not in the database, or its evaluation there is shallower than the job's depth.
+
+So the job's **Depth** decides how much the database answers: lichess's evaluations are mostly deep, and a job at depth 20–30 finds most of the positions the database has. A job the API answers completely never even starts the engine.
+
+The results are the same either way: the annotated cases, the verdicts (inaccuracy, mistake, blunder), the accuracy and the evaluation graph read the API's evaluations exactly as they read the engine's.
+
+> 📷 **Screenshot placeholder** — *the Jobs V2 view with a finished job: its report and evaluation graph, most positions answered by the API.*
+
+### If the API does not answer
+
+A job never fails because of the API. If it does not answer — it is not running, the address is wrong, it took longer than 5 seconds, or it answered something that is not the API — **the job goes on with the engine**, does not ask the API again for the rest of that run, and a warning says so once:
+
+> *The lichess evaluation API did not answer, so … goes on with the engine. If the API is not running, turn it off in the Jobs settings.*
+
+Its **Jobs settings** button takes you straight to the switch. The next job — or the same one resumed — asks the API again.
+
+## 5. Store your engine's evaluations (write mode)
+
+With write mode on, every position a job's **engine** searches is also stored in the API, beside lichess's. Positions the API itself answered are never sent back.
+
+1. Start the API with `--write` (§2).
+2. In the Jobs settings, with the API on, tick **Enable evaluations Write API**.
+3. Press **Test connection**. The app asks the API's `/health` again: a **check mark** and *"… is in write mode (write_enabled)"* mean it will take them; a **warning** and *"… is not in write mode (write_enabled is false)"* mean it was started without `--write`.
+
+> 📷 **Screenshot placeholder** — *the Lichess evaluation API section with "Enable evaluations Write API" ticked and Test connection answered: "… is in write mode (write_enabled)".*
+
+What is sent for each searched position: the position, the depth reached, how many nodes the engine searched, every line it kept with its score and moves, and the engine's name (for example *Stockfish 19 Lite*).
+
+What the API does with it:
+
+| Compared with what it already holds for that position | Result |
+| --- | --- |
+| Nothing yet | **stored** |
+| Deeper than every evaluation it holds (lichess's or yours) | **stored** — replaces your earlier one, and is returned instead of lichess's |
+| As deep, or shallower | **skipped** — nothing changes |
+
+A stored evaluation is returned by the very next lookup — so a later job reaching the same position at that depth or less is answered by the API.
+
+Your evaluations live in `local_evals.duckdb` next to the API, **separate from lichess's database**, which is never modified — re-importing a newer lichess dump keeps them. That file is their only copy: back it up yourself (copy it while the API is stopped). There is no way to delete an entry through the API.
+
+### If the API does not take them
+
+If a write is refused — the API is not in write mode, it wants a token, or it does not answer — the job **goes on without sending**, stops sending for the rest of that run, and says so once:
+
+> *The lichess evaluation API did not take the engine's evaluations, so … goes on without sending them. Check that the API runs in write mode, or turn writing off in the Jobs settings.*
+
+## A default engine for new jobs
+
+The same Settings tab has one more setting, **Use a default engine and preset**. Off, a new job starts with the board's engine and its selected preset, as always. On, every new job starts with the engine and preset you pick there — still editable in the New job form. If that engine cannot run in this browser, or the preset has been deleted, new jobs start as if it were off.
+
+## Using it from chessapp.dev
+
+The published site is served over **HTTPS**, and a browser will not let an HTTPS page fetch from a plain `http://` address on your network — it blocks it as *mixed content*, before the request leaves the page. Three ways around it:
+
+- **The API on the same machine as the browser**, at `http://127.0.0.1:8000` or `http://localhost:8000`. Chrome, Edge and Firefox treat your own machine as secure, so the page may reach it (Safari may not). Your browser may ask whether the site may reach apps and services on your device — allow it.
+- **Run the app yourself** (`yarn dev` in the app's source), which is served over plain `http://` and can reach the API anywhere on your network.
+- **Put the API behind HTTPS** — a reverse proxy with a certificate in front of it — and use its `https://` address.
+
+In every case the API must allow the site in `--cors-origins` (it allows every site by default).
+
+## Troubleshooting
+
+| What you see | What to check |
+| --- | --- |
+| **Not connected** — *… did not answer* | Is `api.py` running, on the address in the field? Started with `--host` matching the address you typed? From chessapp.dev, see *Using it from chessapp.dev* above. A firewall between the two machines? |
+| *… answered, but not as the lichess evaluation API* | The address points at something else — another program on that port, or the app itself. |
+| `curl` answers but the app does not connect | The browser refused the answer: the site is not in `--cors-origins`, or it is an HTTPS page asking a plain `http://` address. The browser's developer console names which. |
+| The engine still searches positions you expected the API to answer | The job's **Depth** is above the evaluation the database holds for them, or the positions are not in it — lichess has evaluated many positions, not all. |
+| Test connection: *not in write mode* | Restart the API with `--write`. |
+| The warning *did not take the engine's evaluations* | The API is not in write mode, or it was started with `LICHESS_API_WRITE_TOKEN` — the app sends no token. |
+| A second write-mode API will not start | Only one process can hold `local_evals.duckdb` open: stop the other one. |
+
+## Under the hood
+
+For the curious — how the app asks:
+
+- **A lookup** is `GET /fen?fen=…&best=true` with the position's first four FEN fields — no move counters, and the en passant square only when a capture there is legal (after 1.e4 c5 the FEN says `-`, not `c6`), which is how the database writes positions. A 404 means it is not there.
+- **Scores** come back from White's point of view, as the app keeps them; lichess writes castling as *king takes rook* (`e1h1`), which the app turns into the engine's `e1g1`.
+- **A write** is `POST /evals` with one entry per searched position, its scores from White's point of view (`"pov": "white"`).
+- **Connect** and **Test connection** ask `GET /health`. Every request gives up after 5 seconds.

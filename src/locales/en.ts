@@ -2983,6 +2983,61 @@ const en = {
         liveDepth: "depth {{depth}}",
         liveNodes: "{{nodes}} nodes",
       },
+      /** The Jobs V2 view's two tabs (CTA-193): the list, and the Jobs settings. */
+      tabs: {
+        label: "Jobs V2",
+        list: "Jobs",
+        settings: "Settings",
+      },
+      /** The Jobs settings (CTA-193, `lib/jobsSettings.ts`): the default engine and preset, and the lichess evaluation API. */
+      settings: {
+        intro: "How new jobs start, and where a job looks a position up before the engine searches it. Kept in this browser.",
+        default: {
+          title: "New jobs",
+          description: "The engine and preset a new job starts with. You can still change them in the New job form.",
+          enable: "Use a default engine and preset",
+          enableHelp: "Off: a new job starts with the board's engine and its selected preset.",
+          engine: "Engine for new jobs",
+          preset: "Preset for new jobs",
+        },
+        /** The lichess evaluation API — `EngineServerForm`'s words (its `localeKey`), the same keys as `settings.engine.server`. */
+        evalApi: {
+          title: "Lichess evaluation API",
+          description:
+            "A server over the lichess evaluation database — millions of positions already searched by Stockfish. With it on, a job asks it about each position first, and the engine searches only those it does not hold deep enough.",
+          enable: "Use the lichess evaluation API",
+          enableHelp: "While this is off, the app never contacts it.",
+          address: "API address",
+          addressHelp: "Where the API listens — {{example}} unless you moved it.",
+          addressInvalid: "Enter an address like {{example}}.",
+          connect: "Connect",
+          indicator: {
+            connecting: "Connecting…",
+            online: "Connected · {{ms}} ms",
+            offline: "Not connected",
+          },
+          retry: "Try again",
+          status: {
+            connecting: "Connecting to {{url}}…",
+            unreachable: "{{url}} did not answer. Is the API running, and does it allow this site to ask it (CORS)?",
+            "not-an-eval-api": "{{url}} answered, but not as the lichess evaluation API.",
+            checkedAt: "Checked at {{time}}.",
+          },
+        },
+        /** The shell's warning when a running job found the API unreachable — once per run. */
+        unreachable: "The lichess evaluation API did not answer, so {{name}} goes on with the engine. If the API is not running, turn it off in the Jobs settings.",
+        open: "Jobs settings",
+        /** Sending the engine's evals to the API — its write mode, `POST /evals`. */
+        write: {
+          label: "Enable evaluations Write API",
+          /** Checks `GET /health`'s `write_enabled`. */
+          test: "Test connection",
+          writable: "{{url}} is in write mode (write_enabled): it takes the engine's evaluations.",
+          help: "Each position a job's engine searches is stored in the API, beside lichess's — kept where it is deeper than what the API holds. The API must be started in write mode (--write).",
+          notWritable: "{{url}} is not in write mode (write_enabled is false), so it will refuse the engine's evaluations. Start it with --write.",
+        },
+        writeRefused: "The lichess evaluation API did not take the engine's evaluations, so {{name}} goes on without sending them. Check that the API runs in write mode, or turn writing off in the Jobs settings.",
+      },
     },
     /** The links between Cases (CTA-188), on a Case's Info tab, and its Link a case picker. */
     links: {

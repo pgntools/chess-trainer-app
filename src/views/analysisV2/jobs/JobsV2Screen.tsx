@@ -9,6 +9,7 @@ import { JobEngineProgress, JobSummary } from "../../../blocks/panels";
 import { JobsTable } from "../../../blocks/tables";
 import { ConfirmDialog } from "../../../design-system/components/dialogs";
 import { EmptyState } from "../../../design-system/components/states";
+import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 import { ListScreenHeader } from "../../../design-system/components/toolbars";
 import type { JobV2 } from "../../../lib/jobsV2";
 import { cancelJobV2, pauseJobV2, removeJobV2, resumeJobV2 } from "../../../lib/jobV2Store";
@@ -16,6 +17,7 @@ import { useOwnPageHeading } from "../../main/pageTitle";
 import { RightPanel } from "../../main/rightPanel";
 import { casePath, jobsV2Path, projectPath } from "../paths";
 import { useAnalysisCases, useAnalysisProjects, useJobsV2 } from "../useAnalysisProjects";
+import JobsSettingsTab from "./JobsSettingsTab";
 import { JobV2LiveReport, JobV2Report } from "./JobV2Reports";
 import { liveOfJob, useJobV2Live } from "./useJobV2Live";
 
@@ -38,15 +40,33 @@ import { liveOfJob, useJobV2Live } from "./useJobV2Live";
  *
  * Pause, Cancel, Resume and Delete are store writes; the runner acts on them.
  * Delete asks first and keeps the job's results.
+ *
+ * **Two tabs over the square** (CTA-193): *Jobs*, the list, and *Settings*
+ * (`?tab=settings`, `JobsSettingsTab`) — the default engine and preset for
+ * new jobs and the lichess evaluation API. The panel keeps the job either way.
  */
+/** The square's two tabs (CTA-193). */
+type JobsV2Tab = "list" | "settings";
+
 function JobsV2Screen() {
   useOwnPageHeading();
   const { t } = useTranslation();
   const jobs = useJobsV2();
   const projects = useAnalysisProjects();
   const cases = useAnalysisCases();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get("job");
+  const tab: JobsV2Tab = searchParams.get("tab") === "settings" ? "settings" : "list";
+  const showTab = (next: string) =>
+    setSearchParams(
+      (current) => {
+        const params = new URLSearchParams(current);
+        if (next === "settings") params.set("tab", "settings");
+        else params.delete("tab");
+        return params;
+      },
+      { replace: true },
+    );
   const selected = selectedId === null ? undefined : jobs?.find((job) => job.id === selectedId);
   const [deleting, setDeleting] = useState<JobV2 | undefined>();
   const live = liveOfJob(useJobV2Live(), selected);
@@ -107,17 +127,37 @@ function JobsV2Screen() {
             {t("analysisV2.jobs.intro")}
           </Typography>
         </ListScreenHeader>
-        <JobsTable<JobV2>
-          rows={jobs ?? []}
-          loading={jobs === undefined}
-          rowLink={linkTo}
-          selectedId={selectedId}
-          onCancel={(job) => void cancelJobV2(job.id)}
-          onPause={(job) => void pauseJobV2(job.id)}
-          onResume={(job) => void resumeJobV2(job.id)}
-          onDelete={setDeleting}
-          testId="analysis-v2-jobs-table"
+        <PanelTabs
+          tabs={[
+            { id: "list", label: t("analysisV2.jobs.tabs.list") },
+            { id: "settings", label: t("analysisV2.jobs.tabs.settings") },
+          ]}
+          value={tab}
+          onChange={showTab}
+          fullWidth={false}
+          ariaLabel={t("analysisV2.jobs.tabs.label")}
+          idPrefix="analysis-v2-jobs-tabs"
+          testId="analysis-v2-jobs-tabs"
         />
+        {tab === "list" ? (
+          <Box {...tabPanelProps("analysis-v2-jobs-tabs", "list")} sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+            <JobsTable<JobV2>
+              rows={jobs ?? []}
+              loading={jobs === undefined}
+              rowLink={linkTo}
+              selectedId={selectedId}
+              onCancel={(job) => void cancelJobV2(job.id)}
+              onPause={(job) => void pauseJobV2(job.id)}
+              onResume={(job) => void resumeJobV2(job.id)}
+              onDelete={setDeleting}
+              testId="analysis-v2-jobs-table"
+            />
+          </Box>
+        ) : (
+          <Box {...tabPanelProps("analysis-v2-jobs-tabs", "settings")} sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+            <JobsSettingsTab />
+          </Box>
+        )}
       </Box>
 
       <RightPanel>
