@@ -1,4 +1,4 @@
-import type { JobStatus } from "../../../lib/jobs";
+import type { JobStatus } from "../../../lib/jobsV2";
 
 /**
  * A job status's colour, a theme palette path (CTA-173) — the Jobs table's

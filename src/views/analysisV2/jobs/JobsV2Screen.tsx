@@ -20,9 +20,9 @@ import { JobV2LiveReport, JobV2Report } from "./JobV2Reports";
 import { liveOfJob, useJobV2Live } from "./useJobV2Live";
 
 /**
- * **The Jobs V2 view** (`/analysis/jobs`, CTA-188, dev-only) — Analysis V2's
- * background jobs, a Case's computer analysis each, run by `lib/jobV2Runner.ts`;
- * V1's Jobs screen (`views/jobs/JobsScreen.tsx`, `/jobs`) cloned, not shared:
+ * **The Jobs V2 view** (`/analysis/jobs`, CTA-188) — Analysis V2's
+ * background jobs, a Case's computer analysis each, run by `lib/jobV2Runner.ts`
+ * (the legacy Jobs screen's successor, CTA-192):
  *
  * - **The square: the list** (`JobsTable`, over Jobs V2), newest first — each
  *   job's Case, status, progress and times, and Resume / Pause / Cancel /

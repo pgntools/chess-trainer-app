@@ -9,18 +9,16 @@ import { useTranslation } from "react-i18next";
 import { visuallyHidden } from "../../../design-system/components/a11y";
 import { IconAction } from "../../../design-system/components/toolbars";
 import { formatEngineCount } from "../../../lib/engineAnalysis";
-import { jobProgress, type JobStatus } from "../../../lib/jobs";
-import type { JobV2 } from "../../../lib/jobsV2";
+import { jobProgress, type JobStatus, type JobV2 } from "../../../lib/jobsV2";
 import { startJobV2Runner } from "../../../lib/jobV2Runner";
 import { jobsV2Path } from "../paths";
 import { useJobsV2 } from "../useAnalysisProjects";
 import { liveOfJob, useJobV2Live } from "./useJobV2Live";
 
 /*
-  **Jobs V2 in the app shell** (CTA-188, dev-only) — what `views/main/Layout.tsx`
-  loads lazily under `import.meta.env.DEV` (a production build has neither the
-  chunk nor the code): the runner, mounted beside V1's, and the header's
-  indicator, beside V1's `JobsIndicator`, which stays untouched.
+  **Jobs V2 in the app shell** (CTA-188; the app's one job runner since
+  CTA-192 removed the legacy Jobs) — what `views/main/Layout.tsx` mounts: the
+  runner, and the header's indicator.
 */
 
 /**
@@ -52,7 +50,7 @@ const heartbeat = keyframes`
 const statusesOf = (jobs: readonly JobV2[]): ReadonlyMap<string, JobStatus> => new Map(jobs.map((job) => [job.id, job.status]));
 
 /**
- * **The shell's Jobs V2 indicator** — V1's `JobsIndicator`, cloned: while a
+ * **The shell's Jobs V2 indicator** (CTA-173, CTA-188): while a
  * Jobs V2 job runs, a link to the Jobs V2 view with its progress ("Jobs V2
  * 12/80", the Case's name after it out of sight), or the count queued; an
  * icon alone under the breakpoint, named in full; nothing while none runs or

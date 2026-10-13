@@ -43,7 +43,6 @@ const en = {
     lobby: "Lobby",
     /** Play with Engine with the pieces in disguise (`/engine/masked`, CTA-79), beside the Lobby in the Engine folder. */
     maskedPlay: "Masked Pieces",
-    analysisBoard: "Analysis Board",
     /** The Openings explorer (CTA-78) — shown under the folder's own name, a single entry. */
     openings: "Openings explorer",
     /** The reader's own repertoires (CTA-61) — shown under the folder's own name, a single entry (CTA-84). */
@@ -69,19 +68,16 @@ const en = {
     designSystem: "Design system",
     /** The dev-only theme editor (CTA-115), in the Development folder. */
     themeEditor: "Theme editor",
-    /** Analysis V2 (CTA-186), dev-only: its Projects browser — and Jobs V2 beside it (CTA-188). */
+    /** Analysis V2 (CTA-186): its Projects browser — and Jobs V2 beside it (CTA-188). */
     analysisProjects: "Projects",
     analysisJobs: "Jobs",
     /** The MDX editor (CTA-137, `yarn mdx-editor:start` only): its article lobby and the editor itself, in its own folder — and its Components gallery (CTA-140). */
     mdxArticles: "Articles",
     mdxEditor: "Editor",
     mdxComponents: "Components gallery",
-    /** The Jobs screen (CTA-173), in the Analyses folder beside its Lobby. */
-    jobs: "Jobs",
     /** Sidebar folders — groupings over the routes, never routes themselves. */
     folders: {
       engine: "Engine",
-      analysisBoard: "Analyses",
       openings: "Openings",
       repertoires: "Repertoires",
       /** The Blog (CTA-126) — MDX articles in nested folders, named by their data. */
@@ -108,7 +104,9 @@ const en = {
       missing: "The game this page embeds is not here.",
       label: "{{players}} — game board",
       start: "Play the game's first move",
-      open: "Open on the Analysis Board",
+      open: "Open in Analysis",
+      /** The new project offered for a game an article embeds, opened in Analysis (CTA-192). */
+      projectName: "Games from articles",
       white: "White",
       black: "Black",
     },
@@ -205,9 +203,6 @@ const en = {
     playWithEngine: "Play with Engine",
     lobby: "Lobby",
     maskedPieces: "Masked Pieces",
-    analysisBoard: "Analysis Board",
-    savedAnalyses: "Saved analyses",
-    analysisSettings: "Analysis settings",
     openings: "Openings explorer",
     repertoires: "My repertoires",
     newRepertoire: "New repertoire",
@@ -222,17 +217,15 @@ const en = {
     settings: "Settings",
     designSystem: "Design system",
     themeEditor: "Theme editor",
-    /** Analysis V2 (CTA-186), dev-only. */
+    /** Analysis V2 (CTA-186). */
     analysisProjects: "Projects",
     analysisProject: "Project",
     analysisCase: "Case",
-    /** Jobs V2 (CTA-188), dev-only. */
+    /** Jobs V2 (CTA-188). */
     analysisJobs: "Jobs V2",
     mdxEditor: "MDX editor",
     mdxArticles: "MDX editor — articles",
     mdxComponents: "MDX editor — components gallery",
-    /** The background jobs (CTA-173). */
-    jobs: "Jobs",
     /** The legal pages (CTA-159), reached from the footer. */
     privacy: "Privacy Policy",
     cookies: "Cookies Notice",
@@ -249,8 +242,7 @@ const en = {
     playWithEngine: "Play a game against Stockfish in your browser, at the strength you choose, with the evaluation and the moves beside the board.",
     lobby: "Your games against the engine, newest first — carry one on or review it, or start a new game from any position.",
     maskedPieces: "Play the engine with the pieces in disguise, and train your board vision by remembering what stands where.",
-    analysisBoard: "Analyse a game or a position with Stockfish: side lines, comments, arrows and the engine's best lines, kept in your browser.",
-    savedAnalyses: "Your analysis boards, kept in your browser and filed in folders.",
+    analysisProjects: "Analyse games and positions with Stockfish, in projects filed in folders: each case its own board, side lines, comments and the engine's lines kept in your browser.",
     openings: "Explore the chess openings move by move: every named line, and where each move leads.",
     repertoires: "Your opening repertoires, and a trainer that plays against you from them.",
     newRepertoire: "Bring in an opening repertoire from a PGN file or pasted text.",
@@ -260,7 +252,7 @@ const en = {
     /** A shipped collection's own page (`/library/<collection>`) — its name and its count. */
     collectionNamed: "{{name}}: {{games}} chess games to search, filter by player, opening, event and date, and replay on a board.",
     settings: "Export your data as one zip and bring it back, see how much space it takes, and choose how the app looks.",
-    jobs: "Your background jobs — a game's computer analysis — with their progress, results and reports.",
+    analysisJobs: "Your background jobs — a case's computer analysis — with their progress, the engine live, results and reports.",
     privacy: "What chessapp.dev keeps on your device, what it never collects, and your rights under the GDPR and Israel's Protection of Privacy Law.",
     cookies: "chessapp.dev sets no cookies. Every item it stores in your browser — preferences and your own chess data — and why.",
   },
@@ -273,7 +265,7 @@ const en = {
     defaultImageAlt: "chessapp.dev — a chessboard beside the app's name",
     sections: {
       engine: "Play with Engine — a chessboard beside the section's name",
-      analysis: "Analysis Board — a chessboard beside the section's name",
+      analysis: "Analysis V2 — a chessboard beside the section's name",
       openings: "Openings explorer — a chessboard beside the section's name",
       repertoires: "Repertoires — a chessboard beside the section's name",
       library: "Library — a chessboard beside the section's name",
@@ -710,6 +702,10 @@ const en = {
    * numbers, and stay language-independent.
    */
   playEngine: {
+    sendTo: {
+      /** The new project offered for a game against the engine opened in Analysis. */
+      projectName: "Games against the engine",
+    },
     tabs: {
       engine: "Engine",
       /** Play with Engine v2's (CTA-74) — the variations explorer's move list. */
@@ -748,8 +744,8 @@ const en = {
       /** The footer's line for an ending decided on the board (CTA-91). */
       ended: "Game over · {{result}}",
       /**
-       * The game-over button (CTA-91): the ended game, opened on the
-       * Analysis Board.
+       * The game-over button (CTA-91): the ended game, opened in Analysis
+       * as a new case (CTA-192).
        */
       openAnalysis: "Open in analysis",
     },
@@ -892,167 +888,7 @@ const en = {
       storage: "The game could not be saved — this browser's storage refused it.",
     },
   },
-  /**
-   * The **Saved analyses** screen — the boards the reader has worked on at the
-   * Analysis Board (`views/tools/analysis/saved/`): how many side lines were
-   * tried, and how far in the reader had got.
-   */
-  savedAnalyses: {
-    title: "Saved analyses",
-    count: "Analyses: {{count}}",
-    loading: "Reading your saved analyses…",
-    empty:
-      "No saved analyses yet. Work on a board at the Analysis Board and save it, and it appears here.",
-    hint: "Every analysis you save on the Analysis Board is kept here — side lines, comments and all — filed into your folders. Open one to pick it up where you left it.",
-    /** Said plainly: this is a browser, not a backup — as the Uploads screen does. */
-    storage:
-      "Saved analyses are kept in this browser only. Clearing site data removes them, and they do not follow you to another device.",
-    /**
-     * A board that is not a game: one begun from an empty board or from a
-     * position carries no players to name it by, so it is named for what it is.
-     */
-    untitled: "Analysis board",
-    /** Plural forms, because a one-move analysis is a real row here. */
-    moves_one: "{{count}} move",
-    moves_other: "{{count}} moves",
-    /** Every move past the mainline — the side lines the reader tried and kept. */
-    variations_one: "{{count}} variation",
-    variations_other: "{{count}} variations",
-    /** Where the reader stopped, as a half-move count from the start position. */
-    atPly: "at ply {{ply}}",
-    /** A stored record whose PGN no longer parses: it can only be deleted. */
-    unreadable: "This analysis could not be read.",
-    /**
-     * The three-way view toggle in the top bar: the list the screen shipped
-     * with, and the library list screen's own two board sizes.
-     */
-    view: {
-      label: "View",
-      list: "List",
-      compact: "Small boards",
-      comfortable: "Big boards",
-    },
-    /** Opens it on the Analysis Board — the one destination (CTA-73). */
-    open: "Open",
-    /**
-     * The top-bar button to the Analysis Board — the screen the sidebar's
-     * single Analysis entry hides (CTA-58), so the board is reached from here.
-     */
-    new: "New",
-    /**
-     * The panel's new-analysis form (CTA-87): the shared position editor, and
-     * the Start that opens the board on the edited position.
-     */
-    newAnalysis: {
-      title: "New analysis",
-      start: "Start",
-      /** Above Start while the position in the editor cannot be analyzed. */
-      illegal: "Start is off until the position in the board editor can be analyzed.",
-      /** The editor's resets, in the form's header — the panel says "board", the buttons need not. */
-      new: "New",
-      clear: "Clear",
-      flip: "Flip",
-      /** The `.pgn` file pick beside the FEN field. */
-      pgnFile: "PGN",
-      /** The paste box under the editor — the file pick is above it, so no "or". */
-      pasteLabel: "Paste PGN text",
-    },
-    /** Picking analyses and taking them out as one `.pgn`, side lines and all. */
-    select: "Select this analysis",
-    selectAll: "Select all analyses",
-    selected: "{{count}} selected",
-    /** The pager under the list and the table (CTA-113) — the design system's page sizes. */
-    rowsPerPage: "Analyses per page",
-    /**
-     * The list view's games table (CTA-144): one row per analysis, its columns
-     * the game's own fields read off its tags, every one a sort header.
-     */
-    table: {
-      label: "Saved analyses in this folder",
-      actions: "Actions",
-      columns: {
-        name: "Name",
-        white: "White",
-        whiteElo: "Elo",
-        black: "Black",
-        blackElo: "Elo",
-        result: "Result",
-        date: "Date",
-        event: "Event",
-        round: "Round",
-        eco: "ECO",
-        opening: "Opening",
-        moves: "Moves",
-        updated: "Updated",
-      },
-      /** The words box over the table — names, players, event, opening and notes. */
-      filter: "Filter analyses",
-      filterClear: "Clear the words",
-      /** The filter leaves no row — told apart from an empty folder. */
-      noMatch: "No analysis matches the filter.",
-      clearFilter: "Clear the filter",
-      /** A folder row's chevron — it opens or closes the folder in place. */
-      expand: "Open {{name}}",
-      collapse: "Close {{name}}",
-      /** Read with the table: how its folders, sort and picks are worked. */
-      hint: "Folders come first: a folder's arrow opens it in place, its name goes into it. Sort by a column from its header button. Tick an analysis' box to pick it; a folder's box picks its whole subtree with it.",
-    },
-    download: "Download selected as PGN",
-    deleteSelected: "Delete selected",
-    /**
-     * Deleting the picks, asked first (CTA-147: a picked folder goes with
-     * everything under it — its analyses, its sub-folders).
-     */
-    bulkDelete: {
-      title_one: "Delete {{count}} analysis?",
-      title_other: "Delete {{count}} analyses?",
-      /** Only folders picked — empty ones or a whole folder tree with nothing readable in it. */
-      titleFolders_one: "Delete {{count}} picked folder?",
-      titleFolders_other: "Delete {{count}} picked folders?",
-      text: "They are removed from this browser. This can't be undone.",
-      /** Beside the analyses: what the picked folders take with them. */
-      textWithFolders_one: "The picked folder goes too, with every analysis and sub-folder in it. This can't be undone.",
-      textWithFolders_other: "The {{count}} picked folders go too, with every analysis and sub-folder in them. This can't be undone.",
-      /** Only folders picked. */
-      textFoldersOnly: "They go with every analysis and sub-folder in them. This can't be undone.",
-      confirm: "Delete",
-    },
-    /**
-     * The nested folders (CTA-73) — the `folder` keys the shared folder
-     * components (`views/shared/folders/`) read through `labelKey`.
-     */
-    folder: {
-      untitled: "Untitled folder",
-      root: "All analyses",
-      newFolder: "New folder",
-      renameFolder: "Rename folder",
-      moveFolder: "Move folder",
-      /** Filing one analysis — the key the shared move dialog reads. */
-      moveGame: "Move analysis",
-      /** The folder list's name in the move dialog (CTA-113). */
-      picker: "Folders",
-      download: "Download this folder as PGN",
-      unfiled: "Unfiled",
-      topLevel: "Top level",
-      name: "Name",
-      save: "Save",
-      cancel: "Cancel",
-      count_one: "{{count}} analysis",
-      count_other: "{{count}} analyses",
-      empty: "This folder is empty.",
-    },
-  },
   analysis: {
-    /** The Analysis Board's tabs (CTA-73; the Position tab CTA-87). */
-    tabs: {
-      moves: "Moves",
-      /** A tree's written `[%eval]`s — the eval graph and the computer analysis report (CTA-183). */
-      evaluations: "Evaluations",
-      map: "Map",
-      load: "Load",
-      export: "Export",
-      arrows: "Arrows",
-    },
     /**
      * The header's Play toggle (CTA-73): the engine plays the side not at
      * the bottom of the board, its best move each turn, until paused (or the
@@ -1069,138 +905,16 @@ const en = {
       /** …or the reader's turn. */
       yourMove: "Your move",
     },
-    /** Saving a board that is not a saved analysis yet: a name and a folder. */
-    save: {
-      open: "Save this analysis",
-      title: "Save analysis",
-      name: "Name",
-      folder: "Folder",
-      confirm: "Save",
-    },
-    /**
-     * The changes strip over a saved analysis — the `ChangesStrip` block with
-     * this block's words (no protection: an analysis has none).
-     */
-    changes: {
-      title: "Unsaved changes",
-      saveOpen: "Unsaved changes — save or discard them",
-      saveNothing: "No unsaved changes",
-      added_one: "{{count}} move added",
-      added_other: "{{count}} moves added",
-      edited: "Lines or comments edited",
-      update: "Update analysis",
-      updateHelp: "Make these changes part of this saved analysis.",
-      copy: "Save as copy",
-      copyHelp: "Keep the saved analysis as it is, and save a copy with your changes.",
-      discard: "Discard",
-      copyName: "{{name}} (copy)",
-      problem: {
-        storage: "It could not be saved — this browser's storage is full or unavailable.",
-        "too-many": "There is no room for another analysis in this browser.",
-      },
-    },
     /** The Load tab: a PGN (file or paste) or a FEN onto the board, unsaved. */
     load: {
       pgnTitle: "Load a game",
       pgnHelp: "It opens as a new analysis; save it to keep it. A file of several games can be merged into one tree or saved as a games collection in the Library.",
       loaded: "Loaded — a new analysis, not saved yet.",
-      /** The popup a PGN of several games opens (CTA-101). */
-      popup: {
-        title_one: "This PGN holds {{count}} game",
-        title_other: "This PGN holds {{count}} games",
-        explain:
-          "Merge them into one tree on the board, keep them as a collection of games in the Library, or save each one as an analysis.",
-        skipped_one: "{{count}} game has no moves or could not be read, and is left out of a merge.",
-        skipped_other: "{{count}} games have no moves or could not be read, and are left out of a merge.",
-        merge: "Merge games",
-        mergeHelp:
-          "One tree: the first game's line is the mainline, and wherever another game leaves it becomes a side line, each move there tagged with how many games played it. Comments and move marks are kept. Not saved until you save it.",
-        mergeUnavailable:
-          "These games start from different positions, so they cannot share one tree.",
-        collection: "Save as games collection",
-        collectionHelp:
-          "Every game is kept as it is, in a new collection at the top of the Library, named after the games' event or the file; you go to its table.",
-        /** The third choice (CTA-141): each game its own saved analysis, in a new folder. */
-        analyses: "Save to Saved analyses",
-        analysesHelp:
-          "Every game — a position on its own too — becomes a saved analysis, comments, side lines and arrows kept, in a new folder of Saved analyses; you go to the folder.",
-        folderTitle: "Save to Saved analyses",
-        folderName: "Folder name",
-        /** The folder's name when a pasted text's games share no event. */
-        folderDefault: "Analysed games",
-        folderCount_one: "{{count}} game will be saved as an analysis in a new folder.",
-        folderCount_other: "{{count}} games will be saved as analyses in a new folder.",
-        folderSkipped_one: "{{count}} game could not be read, and is left out.",
-        folderSkipped_other: "{{count}} games could not be read, and are left out.",
-        folderSave: "Save",
-        folderBack: "Back",
-        indexing: "Checking games… {{done}} of {{total}}",
-        cancel: "Cancel",
-        problem: {
-          unreadable: "No game could be read in that.",
-          index: "The games could not be checked. Nothing was saved.",
-          /** The games were checked, then the write itself failed (CTA-141). */
-          write: "The games were checked, but could not be written. Nothing was saved.",
-          storage: "It could not be saved — this browser's storage is full or unavailable.",
-          folder: "No new folder could be made — Saved analyses holds at most {{max}} folders. Nothing was saved.",
-          tooMany: "Saved analyses holds at most {{max}} analyses, and these would pass it. Nothing was saved.",
-          analysesStorage: "The browser refused to store the games — its storage may be full. Nothing was saved.",
-        },
-      },
       problem: {
         empty: "There is no PGN in that.",
         "too-large": "That is too large to load.",
         unreadable: "That could not be read as PGN.",
       },
-    },
-    /** The link to a saved analysis' settings — on the board's header and every list row. */
-    settingsLink: {
-      open: "Analysis settings",
-      unsaved: "Save or discard your changes first",
-    },
-    /**
-     * The workspace an analysis opened from the saved list opens in (CTA-145):
-     * the list's tree beside the board, and the header's previous / next.
-     */
-    folderView: {
-      /** The Close button — it goes back to the list. */
-      close: "Close — back to Saved analyses",
-      /** The header button that opens the tree, under a narrow window. */
-      toggle: "Saved analyses",
-      /** The drawer's name under a narrow window. */
-      drawer: "Saved analyses",
-      /** The panel's button that folds it to a rail at the start edge. */
-      collapse: "Fold the panel away",
-      /** The rail's button that opens the panel again. */
-      expand: "Open the folder's analyses",
-      previous: "Previous analysis in the folder",
-      next: "Next analysis in the folder",
-      /** Why the others cannot be opened while the board holds unsaved changes. */
-      locked: "Save or discard your changes to open another analysis.",
-      /** A folder's row that lists more of its analyses. */
-      showMore: "Show {{count}} more",
-    },
-    /** A saved analysis' settings screen (`/tools/analysis/saved/<id>/settings`). */
-    settingsScreen: {
-      title: "Analysis settings",
-      missing: "There is no such analysis in this browser.",
-      back: "Back to saved analyses",
-      sections: {
-        general: "General",
-        board: "Board",
-        folder: "Folder",
-      },
-      name: "Title",
-      description: "Description",
-      descriptionHelp: "Your notes on this analysis — shown under its title on the board.",
-      color: "Side",
-      white: "White",
-      black: "Black",
-      colorHelp: "The side the board opens facing. Flipping the board while you work does not change it.",
-      arrowsHelp: "Whether the board opens drawing the next moves' arrows. The board's own switch changes them for a session.",
-      moveMarksHelp: "Whether the board opens drawing a move's mark (!!, !, !?, ?!, ?, ??) on its square. The board's own switch changes it for a session.",
-      save: "Save",
-      cancel: "Cancel",
     },
     /** The Export tab: what the PGN keeps. */
     export: {
@@ -1249,10 +963,6 @@ const en = {
     },
     /** The pinned next-moves bar under the moves list — a fork's choices (CTA-54). */
     nextMoves: "Next moves",
-    /** The empty-tree hint of the flowing tree view (the Openings explorer, a Library repertoire line). */
-    tree: {
-      empty: "Play a move, or set a position up from the Position tab.",
-    },
     settings: {
       title: "Analysis",
       engineOn: "Analyse with the engine",
@@ -1412,8 +1122,12 @@ const en = {
     controls: {
       /** Hand this position off to Play with Engine as `?fen=`. */
       playFromHere: "Play from here",
-      /** Hand the whole explored tree to the Analysis Board, as a new board. */
-      analysis: "Open on the Analysis Board — everything explored here, as a new unsaved board",
+      /** Hand the whole explored tree to Analysis, as a new case. */
+      analysis: "Open in Analysis — everything explored here, as a new case in a project",
+    },
+    sendTo: {
+      /** The new project offered when the position has no opening's name. */
+      projectName: "Openings",
     },
     /** The Load tab's merge choice — no split: nothing on this screen is saved. */
     load: {
@@ -1521,27 +1235,25 @@ const en = {
         deleteSelected: "Delete selected games from the collection",
         pick: "Select {{title}}",
         /**
-         * The Analyse hand-off (CTA-77): the picked games saved to Saved
-         * analyses, one analysis each, in a new folder named after the
-         * collection, the count and the filters that are on.
+         * The Analyse hand-off (CTA-77, Analysis V2 since CTA-192): the picked
+         * games as cases, one each, in a project the reader picks — a new
+         * one offered, named after the collection, the count and the
+         * filters that are on.
          */
         analyse: "Analyse",
-        analyseHint: "Save the selected games to Saved analyses, each its own analysis, in a new folder",
-        analysing: "Saving the selected games to Saved analyses…",
-        /** The side a player filter names, as the folder name carries it. */
+        analyseHint: "Add the selected games to Analysis, each its own case, in a project",
+        analysing: "Reading the selected games…",
+        /** The side a player filter names, as the new project's name carries it. */
         white: "white",
         black: "black",
-        done_one: "{{count}} game added to Saved analyses, in “{{folder}}”.",
-        done_other: "{{count}} games added to Saved analyses, in “{{folder}}”.",
+        done_one: "{{count}} game added to Analysis, in “{{project}}”.",
+        done_other: "{{count}} games added to Analysis, in “{{project}}”.",
         skipped_one: "{{count}} game could not be read and was left out.",
         skipped_other: "{{count}} games could not be read and were left out.",
-        openFolder: "Open folder",
+        openProject: "Open project",
         problem: {
           read: "The games could not be read. Nothing was saved.",
           none: "None of the selected games can be read. Nothing was saved.",
-          folder: "No new folder could be made — Saved analyses holds at most {{max}} folders. Nothing was saved.",
-          tooMany: "Saved analyses holds at most {{max}} analyses, and these would pass it. Nothing was saved.",
-          storage: "The browser refused to store the games — its storage may be full. Nothing was saved.",
         },
         /**
          * The Save-as-collection hand-off (CTA-122): the picked games written
@@ -1586,7 +1298,7 @@ const en = {
         body: "They are removed from “{{name}}” in this browser, and the games after them move up. This cannot be undone.",
         problem: "They could not be deleted — this browser's storage is unavailable, or the games have changed.",
       },
-      shippedNote: "This collection ships with the app. Its games are read-only: changes you make on a game are saved as a copy in Saved analyses.",
+      shippedNote: "This collection ships with the app. Its games are read-only: changes you make on a game are saved as a copy in Analysis.",
       uploadedNote: "You added this collection; it is kept in this browser only. Changes to a game can update it in place or be saved as a copy next to it.",
       /** The header's gear, to the collection's settings (CTA-121). */
       settings: "Collection settings",
@@ -1930,8 +1642,8 @@ const en = {
       moveMarks: "Move marks on the board",
       unreadable: "This game could not be read.",
       /** The Export tab's hand-off to the Analysis Board. */
-      openAnalysis: "Open in Analysis Board",
-      openAnalysisHelp: "Opens this game on the Analysis Board, at the position on screen.",
+      openAnalysis: "Open in Analysis",
+      openAnalysisHelp: "Opens this game in Analysis as a new case in a project, at the position on screen.",
       openAnalysisChanged: "Opens the game as the collection holds it, at the position on screen — your unsaved changes stay here.",
     },
     /**
@@ -1963,9 +1675,9 @@ const en = {
      */
     shippedChanges: {
       title: "Unsaved changes",
-      readOnly: "This game ships with the app and cannot be changed: save your changes as a copy in Saved analyses.",
+      readOnly: "This game ships with the app and cannot be changed: save your changes as a copy in Analysis.",
       copy: "Save as copy",
-      copyHelp: "Save this game with your changes as a new analysis in Saved analyses.",
+      copyHelp: "Save this game with your changes as a new case in a project in Analysis.",
       copyName: "{{name}} (copy)",
       discard: "Discard",
       problem: {
@@ -2382,7 +2094,6 @@ const en = {
       categories: {
         collections: "Collections",
         games: "Games",
-        analyses: "Analyses",
         repertoires: "Repertoires",
         enginePresets: "Engine presets",
         analysisProjects: "Analysis projects",
@@ -2395,7 +2106,7 @@ const en = {
       failed: "The export could not be saved. Nothing was downloaded.",
       unreadable: "The games of “{{name}}” could not be read. Nothing was downloaded.",
       panel:
-        "Games and Analyses are one PGN file each; every collection is a file of its own; repertoires are one file per folder, plus one for the unfiled ones. Engine presets are one JSON file, with the preset each engine runs. Your uploaded collections always go with Collections — the ones the app ships only when you ask. Nothing is changed or removed.",
+        "Games are one PGN file; every collection is a file of its own; repertoires are one file per folder, plus one for the unfiled ones. Engine presets are one JSON file, with the preset each engine runs, and Analysis projects one too — their folders, cases and links. Your uploaded collections always go with Collections — the ones the app ships only when you ask. Nothing is changed or removed.",
     },
     /** The Import tab (CTA-89): an Export's zip read back into the app. */
     import: {
@@ -2417,6 +2128,9 @@ const en = {
         cancel: "Cancel",
         shipped_one: "The file holds {{count}} built-in collection. It is not imported: it ships with the app.",
         shipped_other: "The file holds {{count}} built-in collections. They are not imported: they ship with the app.",
+        /** An export from before CTA-192 — the legacy saved analyses, no longer kept. */
+        skippedAnalyses_one: "The file holds {{count}} saved analysis from an older version. Saved analyses are no longer supported, so it is skipped; everything else can be imported.",
+        skippedAnalyses_other: "The file holds {{count}} saved analyses from an older version. Saved analyses are no longer supported, so they are skipped; everything else can be imported.",
         conflicts_one: "{{count}} folder is already here:",
         conflicts_other: "{{count}} folders are already here:",
         counts: "{{incoming}} in the file · {{existing}} here",
@@ -2442,7 +2156,6 @@ const en = {
       top: {
         collections: "Top level",
         games: "Your played games",
-        analyses: "Unfiled",
         repertoires: "Unfiled",
         enginePresets: "Your engine presets",
         analysisProjects: "Top level",
@@ -2455,6 +2168,8 @@ const en = {
         storage: "{{category}}: the browser refused to store it. Part of it may have been written.",
         tooMany: "{{category}}: not imported — the limit was reached while importing.",
         indexing: "{{category}}: a collection's games could not be indexed. The collections before it were imported.",
+        skippedAnalyses_one: "{{count}} saved analysis from an older version was skipped: saved analyses are no longer supported.",
+        skippedAnalyses_other: "{{count}} saved analyses from an older version were skipped: saved analyses are no longer supported.",
       },
       /** The dialog for a file that cannot be imported. */
       incompatible: {
@@ -2470,7 +2185,7 @@ const en = {
         },
         advice: "You can still bring its PGN files in by hand:",
         collections: "a collection — the Library's upload",
-        analyses: "analyses and played games — the Analysis Board's Load tab",
+        analyses: "analyses and played games — a new project in Analysis, from the PGN file",
         repertoires: "repertoires — Add repertoire",
         files: "The PGN files in it:",
         noFiles: "It holds no PGN files.",
@@ -2500,10 +2215,10 @@ const en = {
         payload: "Estimated payload",
         categories: {
           playedGames: "Engine games",
-          analyses: "Analyses",
           repertoires: "Repertoires",
           collectionGames: "Library games",
-          jobs: "Background jobs",
+          analysisCases: "Analysis cases",
+          jobsV2: "Analysis jobs",
         },
       },
       note:
@@ -2772,7 +2487,7 @@ const en = {
       range: "Variation range",
       rangeHelp: "How far below the best line another line may score and still be kept.",
       variants: "Variants to save",
-      variantsHelp: "Each one ticked is saved as a new saved analysis, all from one run of the engine.",
+      variantsHelp: "Each one ticked is saved as a new case, all from one run of the engine.",
       /** Jobs V2 (CTA-188): the engine and its preset, each a select, and one variant for a merge into the Case. */
       engineSelect: "Engine",
       preset: "Preset",
@@ -2791,14 +2506,10 @@ const en = {
       problem: {
         invalid: "There is nothing to analyse in the chosen moves.",
         storage: "The job could not be kept — the browser refused the write.",
-        "too-many": "Too many jobs are waiting. Let some finish, or cancel them on the Jobs screen.",
+        "too-many": "Too many jobs are waiting. Let some finish, or cancel them in Analysis's Jobs.",
       },
     },
-    /**
-     * The report and graph at the top of the Analysis Board's Moves tab
-     * (CTA-177, the Computer analysis tab's before), and a job's results so
-     * far (`jobLiveAnalysis`, CTA-174 — the Jobs screen's since CTA-178).
-     */
+    /** A job's report and its results so far (`jobV2LiveAnalysis`, CTA-174, CTA-178). */
     board: {
       liveGraph: "Evaluation graph so far",
       latest: "Latest: after",
@@ -2807,32 +2518,27 @@ const en = {
       reportTitle: "Report",
       reportToggle: "Show or hide the report",
     },
-    /** The New Job dialog and the Analyse icons that open it (CTA-177, `NewJobDialog`). */
+    /** The New Job dialog (CTA-177, `NewJobDialog`) — Jobs V2's popup's since CTA-188. */
     newJob: {
-      analyse: "Analyse with the computer",
-      analyseNamed: "Analyse {{name}} with the computer",
       title: "New job",
       game: "Game:",
       intro: "The engine goes over the game's main line in the background, while you go on with anything else.",
       cancel: "Cancel",
-      queued: "Computer analysis of {{name}} queued.",
-      openJob: "Open in Jobs",
       existing: {
-        text: "{{name}} already has a computer analysis — the job: {{status}}. Start a new one, or check the existing one on the Jobs screen?",
+        text: "{{name}} already has a computer analysis — the job: {{status}}. Start a new one, or check the existing one in Jobs?",
         startNew: "Start a new analysis",
         check: "Check existing",
       },
     },
   },
   /**
-   * **The Jobs screen** (`/jobs`, CTA-173): the background jobs — a game's
-   * computer analysis — their progress, and the shell's indicator of the one
-   * running.
+   * **A background job's words** (CTA-173) — the list's and the panel's
+   * (`JobsTable`, `JobSummary`), read by Jobs V2's view (`analysisV2.jobs.*`
+   * its own words).
    */
   jobs: {
     title: "Jobs",
     count: "Jobs: {{count}}",
-    intro: "A computer analysis runs here in the background, one at a time, while you go on with anything else. Each finished position is kept, so a job a reload cut short resumes where it stopped.",
     loading: "Reading your jobs…",
     empty: "No jobs yet. Send a game to computer analysis from the Analysis Board.",
     untitled: "Untitled game",
@@ -2858,7 +2564,6 @@ const en = {
     },
     reportTitle: "Report",
     reportReading: "Reading the report…",
-    reportMissing: "The saved analyses this job made are gone, so its report cannot be shown.",
     /** A job not done: its results so far (CTA-178, `JobLiveReport`). */
     liveTitle: "Results so far",
     liveEmpty: "No results yet — no position has been analysed.",
@@ -2921,26 +2626,24 @@ const en = {
       started: "Started",
       finished: "Finished",
     },
-    /** The shell's indicator (the header): the job running, linking to the screen. */
-    indicator: {
-      running: "Analysing {{done}}/{{total}}",
-      queued: "{{count}} queued",
-      label: "Jobs: {{name}}, {{done}} of {{total}} positions",
-      labelQueued: "Jobs: {{count}} queued",
-      started: "Computer analysis started: {{name}}.",
-      paused: "Computer analysis paused: {{name}}.",
-      done: "Computer analysis finished: {{name}}.",
-      failed: "Computer analysis failed: {{name}}.",
-      cancelled: "Computer analysis cancelled: {{name}}.",
-    },
   },
   /**
    * **Analysis V2** (CTA-186): Projects in nested folders, each holding its
-   * Cases — a Game or a Position — and the Case's board. Dev-only while it
-   * is built.
+   * Cases — a Game or a Position — and the Case's board (shipped in CTA-192).
    */
   analysisV2: {
     cancel: "Cancel",
+    sendTo: {
+      title: "Open in Analysis",
+      addTitle_one: "Add {{count}} game to Analysis",
+      addTitle_other: "Add {{count}} games to Analysis",
+      open: "Open",
+      add_one: "Add {{count}} case",
+      add_other: "Add {{count}} cases",
+      storage: "That could not be saved — the browser refused it.",
+      tooManyCases: "That could not be saved — Analysis holds at most {{max}} cases.",
+      tooManyProjects: "No project could be made — the browser refused it, or there are {{max}} already.",
+    },
     save: "Save",
     loading: "Reading your projects…",
     browser: {
@@ -3079,6 +2782,9 @@ const en = {
       missing: "There is no such case in this project.",
       back: "Back to {{name}}",
       problem: "That could not be saved — the browser refused it, or there are too many cases.",
+      newProject: "New project",
+      newProjectName: "The new project's name",
+      newProjectNameHelp: "A project needs a name.",
     },
     newProject: {
       title: "New project",
@@ -3183,7 +2889,7 @@ const en = {
     /** Jobs V2 (CTA-188): a Case's computer analysis — the Jobs V2 view, the Case's Jobs tab, the New Job V2 popup, the shell's indicator. */
     jobs: {
       title: "Jobs V2",
-      intro: "A Case's computer analysis runs here in the background, one at a time — Analysis V2's own jobs, apart from the Jobs screen's. Each finished position is kept, so a job a reload cut short resumes where it stopped.",
+      intro: "A Case's computer analysis runs here in the background, one at a time. Each finished position is kept, so a job a reload cut short resumes where it stopped.",
       loading: "Reading the jobs…",
       newJob: "New job",
       newJobTitle: "New job — Jobs V2",

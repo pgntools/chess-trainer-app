@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { strFromU8, unzipSync } from "fflate";
 
 import i18n from "../../i18n";
-import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
+import { createAnalysisProject } from "../../lib/analysisProjectStore";
 import { indexedRowOf } from "../../lib/collectionIndex";
 import type { ExportManifest } from "../../lib/dataExport";
 import { createEnginePreset, selectEnginePreset } from "../../lib/enginePresetStore";
@@ -15,7 +15,6 @@ import { createLibraryFolder } from "../../lib/libraryFolderStore";
 import { downloadBinaryFile } from "../../lib/pgnExport";
 import { savePlayedGame } from "../../lib/playedGameStore";
 import { DEFAULT_REPERTOIRE_SETTINGS } from "../../lib/repertoireSettings";
-import { saveAnalysis } from "../../lib/savedAnalysisStore";
 import { createRepertoireFolder } from "../../lib/savedRepertoireFolderStore";
 import { saveRepertoire } from "../../lib/savedRepertoireStore";
 import { shippedCollections } from "../../lib/shippedCollections";
@@ -54,24 +53,8 @@ const seed = async () => {
     savedAt: AT,
     updatedAt: AT,
   });
-  for (const id of ["a1", "a2"]) {
-    await saveAnalysis({
-      id,
-      pgn: pgn(`Analysis ${id}`),
-      settings: DEFAULT_ANALYSIS_SETTINGS,
-      path: [],
-      orientation: "white",
-      description: "",
-      showArrows: true,
-      arrowWidthSource: "none",
-      arrowPalette: "classic",
-      showMoveMarks: true,
-      name: id,
-      folderId: null,
-      savedAt: AT,
-      updatedAt: AT,
-    });
-  }
+  // Two Analysis projects (CTA-186, shipped in CTA-192).
+  for (const name of ["Openings", "Endgames"]) await createAnalysisProject(name, null);
   const folder = await createRepertoireFolder("Openings");
   for (const [id, folderId] of [["r1", folder?.id ?? null], ["r2", null], ["r3", null]] as const) {
     await saveRepertoire({
@@ -151,7 +134,7 @@ describe("the Export tab", () => {
     renderAt("/settings/export");
 
     await waitFor(() => expect(count("games")).toHaveTextContent("(1)"));
-    await waitFor(() => expect(count("analyses")).toHaveTextContent("(2)"));
+    await waitFor(() => expect(count("analysisProjects")).toHaveTextContent("(2)"));
     await waitFor(() => expect(count("repertoires")).toHaveTextContent("(3)"));
     await waitFor(() => expect(count("collections")).toHaveTextContent("(2)"));
     await waitFor(() => expect(count("enginePresets")).toHaveTextContent("(1)"));
@@ -164,7 +147,7 @@ describe("the Export tab", () => {
   it("starts with nothing ticked and Export off; the shipped box waits on Collections", async () => {
     renderAt("/settings/export");
     const run = await screen.findByTestId("settings-export-run");
-    for (const category of ["collections", "games", "analyses", "repertoires", "enginePresets"]) {
+    for (const category of ["collections", "games", "repertoires", "enginePresets", "analysisProjects"]) {
       expect(box(`settings-export-${category}`)).not.toBeChecked();
     }
     expect(run).toBeDisabled();

@@ -3,18 +3,18 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
-import type { Job } from "../../../lib/jobs";
+import type { JobV2 } from "../../../lib/jobsV2";
 import { expectNoAxeViolations } from "../../../test/axe";
-import { DONE, FAILED, RUNNING, UNSAVED } from "./fixtures";
+import { DONE, FAILED, RUNNING, SOURCE_GONE } from "./fixtures";
 import JobSummary from "./JobSummary";
 
-const mount = (job: Job) => {
+const mount = (job: JobV2) => {
   const handlers = { onCancel: vi.fn(), onPause: vi.fn(), onResume: vi.fn(), onDelete: vi.fn() };
   render(
     <JobSummary
       job={job}
-      sourceLink={job.source.analysisId === null ? undefined : { href: `/tools/analysis?analysis=${job.source.analysisId}` }}
-      outputLink={(output) => ({ href: `/tools/analysis?analysis=${output.analysisId}` })}
+      sourceLink={job === SOURCE_GONE ? undefined : { href: `/analysis/projects/project-1/cases/${job.source.caseId}` }}
+      outputLink={(output) => ({ href: `/analysis/projects/project-1/cases/${output.caseId}` })}
       {...handlers}
       testId="job"
     >
@@ -60,14 +60,14 @@ describe("JobSummary (CTA-173)", () => {
 
   it("links to the source and to each output, and shows what goes under it", () => {
     mount(DONE);
-    expect(screen.getByRole("link", { name: "Open the analysed game" })).toHaveAttribute("href", "/tools/analysis?analysis=analysis-1");
-    expect(screen.getByRole("link", { name: "Open the Light analysis" })).toHaveAttribute("href", "/tools/analysis?analysis=out-light");
-    expect(screen.getByRole("link", { name: "Open the Medium analysis" })).toHaveAttribute("href", "/tools/analysis?analysis=out-medium");
+    expect(screen.getByRole("link", { name: "Open the analysed game" })).toHaveAttribute("href", "/analysis/projects/project-1/cases/case-1");
+    expect(screen.getByRole("link", { name: "Open the Light analysis" })).toHaveAttribute("href", "/analysis/projects/project-1/cases/out-light");
+    expect(screen.getByRole("link", { name: "Open the Medium analysis" })).toHaveAttribute("href", "/analysis/projects/project-1/cases/out-medium");
     expect(screen.getByText("the report")).toBeInTheDocument();
   });
 
-  it("has no source link for a board never saved, and calls the game untitled", () => {
-    mount(UNSAVED);
+  it("has no source link once its source is gone, and calls an unnamed game untitled", () => {
+    mount(SOURCE_GONE);
     expect(screen.queryByRole("link", { name: "Open the analysed game" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Untitled game" })).toBeInTheDocument();
   });
@@ -138,7 +138,7 @@ describe("JobSummary (CTA-173)", () => {
     const progress = screen.getByTestId("job-progress");
     expect(progress.compareDocumentPosition(screen.getByTestId("live")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     unmount();
-    // Without it — V1's Jobs screen — nothing there.
+    // Without it, nothing there.
     mount(RUNNING);
     expect(screen.queryByTestId("live")).not.toBeInTheDocument();
   });

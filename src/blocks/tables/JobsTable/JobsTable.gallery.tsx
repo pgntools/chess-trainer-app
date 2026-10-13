@@ -1,10 +1,10 @@
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import type { BlockFamilyId } from "../../families";
-import type { Job } from "../../../lib/jobs";
+import type { JobV2 } from "../../../lib/jobsV2";
 import { HEBREW, JOBS } from "./fixtures";
 import JobsTable from "./JobsTable";
 
-const demo = (rows: readonly Job[], loading = false) => (
+const demo = (rows: readonly JobV2[], loading = false) => (
   <JobsTable
     rows={rows}
     rowLink={(job) => ({ href: `?job=${job.id}` })}

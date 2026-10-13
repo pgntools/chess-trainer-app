@@ -10,7 +10,8 @@ import {
 } from "../../lib/libraryCollectionStore";
 import { createLibraryFolder, libraryFoldersSnapshot, loadLibraryFolders } from "../../lib/libraryFolderStore";
 import { peekShippedGames, peekShippedRows, shippedCollections } from "../../lib/shippedCollections";
-import { findSavedAnalysis, savedAnalysesSnapshot } from "../../lib/savedAnalysisStore";
+import { analysisCasesSnapshot } from "../../lib/analysisCaseStore";
+import { analysisProjectsSnapshot } from "../../lib/analysisProjectStore";
 import { downloadPgn } from "../../lib/pgnExport";
 import { boardOptions } from "../board/boardTestHarness";
 import {
@@ -52,7 +53,7 @@ vi.mock("../../lib/openings", async (importOriginal) => {
 });
 
 /*
-  The Library (CTA-75), through its screens — here the list (collections and folders), a collection's table, a game on its analysis board — Update / Save as copy in an upload, Save as copy into Saved analyses from a shipped file — and a collection's settings. The other
+  The Library (CTA-75), through its screens — here the list (collections and folders), a collection's table, a game on its analysis board — Update / Save as copy in an upload, Save as copy into Analysis from a shipped file — and a collection's settings. The other
   Library screen tests are `Library.test.tsx`, `LibraryFilters.test.tsx`,
   `LibraryPicks.test.tsx` and `LibraryImport.test.tsx`, one file once,
   split so the suite's shards can share it (CTA-124); what they share is
@@ -560,16 +561,32 @@ describe("a collection's table", () => {
   });
 });
 
+/** The one Case Analysis holds, once the hand-off wrote it — and its Project. */
+const sentCase = () => {
+  const [record] = analysisCasesSnapshot() ?? [];
+  const project = analysisProjectsSnapshot()?.find((candidate) => candidate.id === record?.projectId);
+  return { record, project };
+};
+
 describe("a game on its analysis board", () => {
-  it("hands the game to the Analysis Board from its Export tab, at the position on screen", async () => {
+  it("hands the game to Analysis from its Export tab as a new Case, at the position on screen (CTA-192)", async () => {
     const mine = await upload();
     await mountGame(`/library/${mine.id}/1?at=e4`);
     expect(screen.getByTestId("library-game-arrows")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("library-game-panel-tab-export"));
-    expect(screen.getByTestId("library-game-open-analysis")).toHaveAttribute(
-      "href",
-      `/tools/analysis?game=library%2F${mine.id}%2F1&at=e4`,
-    );
+    fireEvent.click(screen.getByTestId("library-game-open-analysis"));
+
+    // A Project picked: a new one first, named after the collection.
+    const picker = await screen.findByRole("dialog", { name: "Open in Analysis" });
+    expect(within(picker).getByRole("textbox", { name: "The new project's name" })).toHaveValue(mine.name);
+    fireEvent.click(within(picker).getByRole("button", { name: "Open" }));
+
+    await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/[^/]+\/cases\/[^/]+$/));
+    const { record, project } = sentCase();
+    expect(project?.name).toBe(mine.name);
+    expect(where()).toBe(`/analysis/projects/${project?.id}/cases/${record.id}`);
+    // The game as the collection holds it, opened where the board stood.
+    expect(record).toMatchObject({ type: "game", path: ["e4"], source: { kind: "pgn", pgn: expect.stringContaining("1. e4 e5") } });
   });
 
   it("switches the next-move arrows from its Moves tab", async () => {
@@ -600,9 +617,9 @@ describe("a game on its analysis board", () => {
     drag("c7", "c5");
     fireEvent.click(screen.getByTestId("library-game-save"));
     fireEvent.click(screen.getByTestId("library-game-changes-copy"));
-    await waitFor(() => expect(where()).toContain("/tools/analysis?analysis="));
-    const [copy] = savedAnalysesSnapshot() ?? [];
-    expect(findSavedAnalysis(copy.id)?.showMoveMarks).toBe(false);
+    fireEvent.click(within(await screen.findByRole("dialog", { name: "Open in Analysis" })).getByRole("button", { name: "Open" }));
+    await waitFor(() => expect(where()).toContain("/analysis/projects/"));
+    expect(sentCase().record.display.showMoveMarks).toBe(false);
   });
 
   it("is the v2 board, with the explorer's tabs and the engine", async () => {
@@ -702,7 +719,7 @@ describe("a game on its analysis board", () => {
     expect(where()).toBe(`/library/${mine.id}/2?at=e4%2Ce5%2CNf3`);
   });
 
-  it("keeps a shipped game read-only: its copy goes to Saved analyses", async () => {
+  it("keeps a shipped game read-only: its copy goes to Analysis as a new Case (CTA-192)", async () => {
     await mountGame("/library/capablanca/1");
     drag("e2", "e4");
     drag("c7", "c5");
@@ -711,12 +728,13 @@ describe("a game on its analysis board", () => {
     expect(screen.getByTestId("library-game-changes-read-only")).toBeInTheDocument();
     expect(screen.queryByTestId("library-game-changes-update")).toBeNull();
     fireEvent.click(screen.getByTestId("library-game-changes-copy"));
+    fireEvent.click(within(await screen.findByRole("dialog", { name: "Open in Analysis" })).getByRole("button", { name: "Open" }));
 
-    await waitFor(() => expect(where()).toContain("/tools/analysis?analysis="));
-    const [copy] = savedAnalysesSnapshot() ?? [];
-    expect(copy.name).toBe("Capablanca, Jose – Eschevarria, C. (copy)");
-    expect(findSavedAnalysis(copy.id)?.pgn).toContain("1... c5");
-    expect(where()).toBe(`/tools/analysis?analysis=${copy.id}`);
+    await waitFor(() => expect(where()).toContain("/analysis/projects/"));
+    const { record, project } = sentCase();
+    expect(record.name).toBe("Capablanca, Jose – Eschevarria, C. (copy)");
+    expect(record.pgn).toContain("1... c5");
+    expect(where()).toBe(`/analysis/projects/${project?.id}/cases/${record.id}`);
   });
 
   it("discards the changes back to the game as it arrived", async () => {

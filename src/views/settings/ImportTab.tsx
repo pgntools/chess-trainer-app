@@ -1,4 +1,3 @@
-import { OFFERED_EXPORT_CATEGORIES } from "../../lib/exportCategories";
 import { useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -44,12 +43,13 @@ type Status =
   | { kind: "choosing"; fileName: string; dump: ImportDump; current: ImportCurrent }
   | { kind: "incompatible"; fileName: string; problem: ImportProblem; pgnFiles: readonly string[] }
   | { kind: "working"; indexing?: { name: string; done: number; total: number } }
-  | { kind: "done"; results: ImportResults };
+  | { kind: "done"; results: ImportResults; skippedAnalyses: number };
 
 /** Where each kind of PGN is brought in by hand, for a zip that cannot be imported. */
 const MANUAL_ROUTES: Readonly<Record<ManualImport, string>> = {
   collections: "/library/new",
-  analyses: "/tools/analysis",
+  // A new Project from the PGN — Analysis's browser (CTA-192).
+  analyses: "/analysis",
   repertoires: "/repertoires/new",
 };
 
@@ -60,7 +60,7 @@ function ImportTab() {
   // The button empties its input after each pick, so the same file can be picked again.
   const onPicked = async (file: File) => {
     setStatus({ kind: "reading" });
-    const reading = readImport(new Uint8Array(await file.arrayBuffer()), { categories: OFFERED_EXPORT_CATEGORIES });
+    const reading = readImport(new Uint8Array(await file.arrayBuffer()));
     if (!reading.ok) {
       setStatus({ kind: "incompatible", fileName: file.name, problem: reading.problem, pgnFiles: reading.pgnFiles });
       return;
@@ -76,7 +76,7 @@ function ImportTab() {
       index: (games, name) =>
         indexCollection(games, (done, total) => setStatus({ kind: "working", indexing: { name, done, total } })),
     });
-    setStatus({ kind: "done", results });
+    setStatus({ kind: "done", results, skippedAnalyses: dump.skippedAnalyses });
   };
 
   const busy = status.kind === "reading" || status.kind === "working";
@@ -115,7 +115,9 @@ function ImportTab() {
           />
         )}
 
-        {status.kind === "done" && <ImportReport results={status.results} testId="settings-import" />}
+        {status.kind === "done" && (
+          <ImportReport results={status.results} skippedAnalyses={status.skippedAnalyses} testId="settings-import" />
+        )}
       </Box>
 
       {status.kind === "choosing" && (

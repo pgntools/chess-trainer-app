@@ -43,7 +43,6 @@ import { storeEngineId } from "../../lib/engineChoice";
 import { storeEngineSearchSettings } from "../../lib/engineSearchInEffect";
 import { EngineMenu } from "../main/EngineMenu";
 import { loadPlayedGames, playedGamesSnapshot } from "../../lib/playedGameStore";
-import AnalysisBoard from "../tools/analysis/AnalysisBoard";
 import PlayWithEngine from "../engine/play/PlayWithEngine";
 import LibraryGameBoard from "../library/LibraryGameBoard";
 import OpeningsBoard from "../openings/OpeningsBoard";
@@ -68,7 +67,7 @@ const LibraryGame = () => (
   />
 );
 
-/** A Case of Analysis V2 (CTA-186), on its board — dev-only while the module is built. */
+/** A Case of Analysis V2 (CTA-186), on its board. */
 const CASE_FIXTURE = gameCaseOf({ id: "fixture-case", projectId: "fixture-project", name: "" }, parsePgnTree('[White "A"]\n[Black "B"]\n\n1. e4 e5 *'));
 const AnalysisCase = () => <CaseBoard record={CASE_FIXTURE} />;
 const BOARDS: readonly {
@@ -95,7 +94,6 @@ const BOARDS: readonly {
   otherTab: string;
 }[] = [
   // Analysis v2 shipped as the Analysis Board (CTA-73); it stays in the set.
-  { name: "Analysis Board", id: "analysis", Screen: AnalysisBoard, engineOff: true, otherTab: "map" },
   // Play with Engine, a v2 screen since CTA-74.
   { name: "Play with Engine", id: "play-with-engine", Screen: PlayWithEngine, engineTab: true, otherTab: "engine" },
   { name: "Library game", id: "library-game", Screen: LibraryGame, engineOff: true, otherTab: "map" },
@@ -382,9 +380,9 @@ describe("reduced motion, on every board (CTA-111)", () => {
   });
 });
 
-describe("the Analysis Board (Analysis v2, shipped)", () => {
+describe("an Analysis case's board (Analysis V2, CTA-186)", () => {
   it("never moves a piece, whatever the engine says", () => {
-    renderBoard(AnalysisBoard);
+    renderBoard(AnalysisCase);
 
     const before = boardOptions().position;
     engineReports({ depth: 12, cp: 10, pv: "e2e4" });
@@ -395,7 +393,7 @@ describe("the Analysis Board (Analysis v2, shipped)", () => {
   });
 
   it("accepts moves for both colours, from any node", () => {
-    renderBoard(AnalysisBoard);
+    renderBoard(AnalysisCase);
 
     expect(drag("e2", "e4")).toBe(true);
     expect(drag("e7", "e5")).toBe(true);

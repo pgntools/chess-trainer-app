@@ -269,7 +269,7 @@ export const playedGameResult = (
 };
 
 /** The played games' catalog path — their `?game=play/<path>/<id>` segment. */
-export const PLAYED_GAMES_PATH = "games";
+const PLAYED_GAMES_PATH = "games";
 
 /** A fresh id — the shared minter; ids are unique within a store. */
 export { newRecordId as newPlayedGameId } from "./recordId";

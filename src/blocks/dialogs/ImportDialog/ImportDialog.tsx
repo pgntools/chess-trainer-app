@@ -11,8 +11,7 @@ import { BaseDialog, type ExtraDialogProps } from "../../../design-system/compon
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { CheckboxField, RadioGroupField } from "../../../design-system/components/forms";
 import { ExpandToggle } from "../../../design-system/components/navigation";
-import type { ExportCategory } from "../../../lib/dataExport";
-import { OFFERED_EXPORT_CATEGORIES } from "../../../lib/exportCategories";
+import { EXPORT_CATEGORIES, type ExportCategory } from "../../../lib/dataExport";
 import {
   CONFLICT_CHOICES,
   defaultImportChoices,
@@ -43,7 +42,7 @@ export type ImportDialogProps = {
    * The prefix of every id it sets: the dialog `<testId>-dialog`, a category
    * `<testId>-<category>` (its box `-tick`, `-count`, `-choice`, `-preview`,
    * `-refused`), a clash `<testId>-<category>-conflict-<i>` (`-toggle`,
-   * `-effective`, `-choice`), `<testId>-shipped`, `<testId>-games-drops`,
+   * `-effective`, `-choice`), `<testId>-shipped`, `<testId>-skipped-analyses`, `<testId>-games-drops`,
    * `<testId>-cancel`, `<testId>-run`.
    */
   testId: string;
@@ -138,7 +137,7 @@ function ImportDialog({ fileName, dump, current, caps, onCancel, onImport, testI
     setChoices((was) => ({ ...was, [category]: { ...was[category], ...next } }));
 
   const exported = new Date(dump.exportedAt);
-  const writable = OFFERED_EXPORT_CATEGORIES.some((category) => {
+  const writable = EXPORT_CATEGORIES.some((category) => {
     const planned = writes[category];
     return planned !== undefined && planned.refused === undefined;
   });
@@ -169,8 +168,14 @@ function ImportDialog({ fileName, dump, current, caps, onCancel, onImport, testI
             {t("settings.import.dialog.from", { date: exported.toLocaleDateString(i18n.language), version: dump.appVersion })}
           </Typography>
         )}
+        {/* An export from before CTA-192: its saved analyses are no longer supported. */}
+        {dump.skippedAnalyses > 0 && (
+          <InlineAlert severity="info" dense testId={`${testId}-skipped-analyses`}>
+            {t("settings.import.dialog.skippedAnalyses", { count: dump.skippedAnalyses })}
+          </InlineAlert>
+        )}
 
-        {OFFERED_EXPORT_CATEGORIES.map((category, at) => {
+        {EXPORT_CATEGORIES.map((category, at) => {
           const planned = plan.categories[category];
           const chosen = choices[category];
           const ticked = planned !== undefined && chosen.ticked;

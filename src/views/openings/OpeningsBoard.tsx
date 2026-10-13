@@ -14,18 +14,18 @@ import { SwitchField } from "../../design-system/components/forms";
 import { IconAction } from "../../design-system/components/toolbars";
 import { downloadPgn } from "../../lib/pgnExport";
 import { useChessTokens } from "../../design-system/theme";
-import { analysisHandOffState, lineTreeOf } from "../../lib/analysisHandOff";
 import { parseFen } from "../../lib/fen";
 import type { GameTree } from "../../lib/gameTree";
-import { atParamOf, atParamSans, nodeAtParam, REPERTOIRE_AT_PARAM } from "../../lib/repertoireLink";
+import { atParamOf, atParamSans, lineTreeOf, nodeAtParam, REPERTOIRE_AT_PARAM } from "../../lib/repertoireLink";
 import BoardShell from "../board/core/BoardShell";
 import { turnOf } from "../board/core/useBoardCore";
 import { useOpeningBookModule } from "../board/core/useOpeningBookModule";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
 import { ClearBoardButton } from "../shared/ClearBoardButton";
-import AnalysisLoad from "../tools/analysis/AnalysisLoad";
 import { useAnalysisSession } from "../board/core/useAnalysisSession";
+import { useSendToAnalysis } from "../analysisV2/useSendToAnalysis";
 import { openingArrowsOf } from "./openingArrows";
+import OpeningsLoad from "./OpeningsLoad";
 
 /**
  * **The Openings explorer** (`/openings`, CTA-78) — an opening played through
@@ -43,12 +43,12 @@ import { openingArrowsOf } from "./openingArrows";
  *
  * **Nothing is kept.** An opening is explored, not filed: there is no Save,
  * no changes strip and no folders, and the Load tab merges a text of several
- * games but never splits it into saved analyses. What the reader wants to
- * keep goes on to the **Analysis Board** — the header's button hands the
- * whole tree over (side lines, comments), with the position on screen and the
- * orientation, as a new unsaved board there (`lib/analysisHandOff.ts`: the
- * router's location state, beside `?at=`). "Play from here" hands the
- * position on screen to Play with Engine as `?fen=`.
+ * games but never splits it. What the reader wants to
+ * keep goes on to **Analysis** — the header's button hands the whole tree
+ * over (side lines, comments) as a new Game Case in a Project the reader
+ * picks, opened at the position on screen and facing the board's side
+ * (`useSendToAnalysis`, CTA-192). "Play from here" hands the position on
+ * screen to Play with Engine as `?fen=`.
  *
  * **Arrivals, read once**: `?fen=` (`CurrentOpening`'s ECO chip — validated with `parseFen`; a position turns
  * the board to the side to move) and **`?at=`** — the moves from that start as
@@ -148,18 +148,13 @@ function OpeningsBoard() {
     engine.clearAnalysis();
   };
 
-  /** Everything explored here, onto the Analysis Board as a new unsaved board. */
+  /** Everything explored here, into Analysis as a new Game Case — opened at the position on screen. */
+  const analysis = useSendToAnalysis("openings-send");
   const openInAnalysis = () =>
-    navigate(
-      {
-        pathname: "/tools/analysis",
-        search:
-          linkedAt === ""
-            ? ""
-            : createSearchParams({ [REPERTOIRE_AT_PARAM]: linkedAt }).toString(),
-      },
-      { state: analysisHandOffState(core.tree, core.orientation) },
-    );
+    analysis.send({
+      games: [{ tree: core.tree, nodeId: core.nodeId, orientation: core.orientation }],
+      projectName: currentOpening.opening?.name ?? t("openings.sendTo.projectName"),
+    });
 
   return (
     <BoardShell
@@ -178,6 +173,7 @@ function OpeningsBoard() {
             <IconAction label={t("openings.controls.analysis")} onClick={openInAnalysis} testId="openings-open-analysis">
               <AccountTreeRoundedIcon fontSize="small" />
             </IconAction>
+            {analysis.dialog}
             <IconAction
               label={t("openings.controls.playFromHere")}
               onClick={() =>
@@ -253,13 +249,12 @@ function OpeningsBoard() {
             label: t("openings.tabs.load"),
             content: (
               <>
-                <AnalysisLoad
+                <OpeningsLoad
                   onLoadTree={loadTree}
                   onLoadFen={(fen) => {
                     core.loadFen(fen);
                     engine.clearAnalysis();
                   }}
-                  choiceLabelKey="openings.load.choice"
                 />
                 {/* Back to the tree's own start — the Engine tab's, until CTA-181. */}
                 <ClearBoardButton

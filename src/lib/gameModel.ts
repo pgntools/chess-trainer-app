@@ -59,6 +59,15 @@ export type Game = {
 const PLACEHOLDER_TAGS = new Set(["", "?", "??", "???", "-", "????.??.??", "*"]);
 
 /**
+ * The `White` / `Black` tag an analysis board wrote when its tree was not a
+ * game's — PGN has no way to say "nobody in particular", and a tag pair has
+ * to be there. The legacy Saved analyses wrote it (CTA-73, removed in
+ * CTA-192), so a PGN exported from them carries it still: a report or a
+ * player's line reads it as no name.
+ */
+export const ANALYSIS_PLACEHOLDER_PLAYER = "Analysis";
+
+/**
  * A tag's value, or `undefined` when it is missing or a spec placeholder.
  * `chess.js` fills the seven-tag roster with those placeholders even for a PGN
  * that carried no tags at all, so reading `headers.White` directly would put a

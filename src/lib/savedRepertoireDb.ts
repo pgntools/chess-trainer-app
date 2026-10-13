@@ -4,8 +4,7 @@ import { idbDatabase } from "./idb";
  * **The database the reader's repertoires live in** — IndexedDB,
  * `chessapp.repertoires`, with two object stores: `repertoires` (one record
  * per repertoire, `lib/savedRepertoireStore.ts`) and `folders` (one per
- * folder, `lib/savedRepertoireFolderStore.ts`). The analyses' shape
- * (`lib/savedAnalysisDb.ts`) again: one database for a list and its folders,
+ * folder, `lib/savedRepertoireFolderStore.ts`): one database for a list and its folders,
  * because the same screens read both. Opened through `lib/idb.ts`; the app's
  * storage as a whole is `.claude/rules/database.md`.
  *

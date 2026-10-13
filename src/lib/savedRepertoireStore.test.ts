@@ -1,11 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { savedAnalysisOf } from "./savedAnalyses";
-import { saveAnalysis, savedAnalysesSnapshot } from "./savedAnalysisStore";
+import { analysisProjectsSnapshot, createAnalysisProject } from "./analysisProjectStore";
 import { playedGamesSnapshot, savePlayedGame } from "./playedGameStore";
 import { playedGameOf } from "./playedGames";
 import { DEFAULT_ENGINE_SETTINGS } from "./engineSettings";
-import { DEFAULT_ANALYSIS_SETTINGS } from "./analysisSettings";
 import { treeFromGame } from "./gameTree";
 import {
   readRepertoireText,
@@ -116,22 +114,20 @@ describe("the saved-repertoires store", () => {
     expect(ids()).toEqual(["a"]);
   });
 
-  it("lives in its own database: a wipe leaves games and analyses untouched", async () => {
+  it("lives in its own database: a wipe leaves games and analysis projects untouched", async () => {
     const game = parsePgnGame("1. e4 e5 *");
     await savePlayedGame(playedGameOf("g1", treeFromGame(game), [], DEFAULT_ENGINE_SETTINGS));
-    await saveAnalysis(
-      savedAnalysisOf("a1", treeFromGame(game), [], DEFAULT_ANALYSIS_SETTINGS, "white"),
-    );
+    await createAnalysisProject("Openings", null);
     await saveRepertoire(record("r1"));
 
     const games = playedGamesSnapshot() ?? [];
-    const analyses = savedAnalysesSnapshot() ?? [];
-    expect([games.length, analyses.length]).toEqual([1, 1]);
+    const projects = analysisProjectsSnapshot() ?? [];
+    expect([games.length, projects.length]).toEqual([1, 1]);
 
     expect(await clearSavedRepertoires()).toBeUndefined();
     expect(savedRepertoiresSnapshot()).toEqual([]);
     expect(playedGamesSnapshot()).toEqual(games);
-    expect(savedAnalysesSnapshot()).toEqual(analyses);
+    expect(analysisProjectsSnapshot()).toEqual(projects);
   });
 
   it("edits a title and settings in place, keeping the list order", async () => {

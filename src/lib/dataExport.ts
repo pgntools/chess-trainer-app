@@ -1,8 +1,6 @@
 import { strToU8, zipSync } from "fflate";
 
 import type { AnalysisCase, AnalysisProject, CaseLink, ProjectFolder } from "./analysisProjects";
-import type { AnalysisSettings } from "./analysisSettings";
-import type { ArrowPaletteId, ArrowWidthSource } from "./arrowSettings";
 import type { EnginePreset, EnginePresetSelection } from "./enginePresets";
 import type { EngineSettings } from "./engineSettings";
 import type { CollectionSummary, TournamentFormat } from "./libraryCollections";
@@ -11,8 +9,6 @@ import { isoDate, pgnFileOf } from "./pgnExport";
 import { slugify } from "./pgnText";
 import type { PlayedGame, PlayedGameEngine, PlayedGameMask } from "./playedGames";
 import type { RepertoireSettings } from "./repertoireSettings";
-import type { SavedAnalysis } from "./savedAnalyses";
-import { analysisFolderPath, type AnalysisFolder } from "./savedAnalysisFolders";
 import { flattenGameFolders, gameFolderPath, type GameFolder } from "./savedGameFolders";
 import {
   repertoiresInFolder,
@@ -35,11 +31,13 @@ import type { RepertoireStats, SavedRepertoire } from "./savedRepertoires";
  * | Category | Files | One game per |
  * | --- | --- | --- |
  * | Games | `games.pgn` | played game (Play with Engine, Masked Pieces) |
- * | Analyses | `analyses.pgn` | saved analysis |
  * | Collections | `collections/<folder>/…/<name>.pgn`, one per collection, in directories mirroring the Library's folders; shipped ones in `collections/built-in/` | game of the collection |
  * | Repertoires | `repertoires/<folder>.pgn` per folder, and `repertoires/unfiled.pgn` | repertoire |
  * | Engine presets | `engine-presets.json` — every preset and the one each engine runs (CTA-179) | — |
- * | Analysis projects | `analysis-projects.json` — Analysis V2's folders, Projects and their Cases (CTA-186; only in a build with the module) | — |
+ * | Analysis projects | `analysis-projects.json` — Analysis V2's folders, Projects and their Cases, and the links between Cases (CTA-186, CTA-188) | — |
+ *
+ * (A zip from before CTA-192 may carry `analyses.pgn` — the legacy saved
+ * analyses; the export writes none, and the import skips it, saying so.)
  *
  * Every PGN is the stored text joined as it stands (`pgnFileOf`) — nothing is
  * re-serialised, so a record this build cannot read still exports byte for
@@ -68,6 +66,8 @@ import type { RepertoireStats, SavedRepertoire } from "./savedRepertoires";
  * reader refuses, so it says "newer" rather than "malformed". Version 4 added
  * Analysis V2's projects (CTA-186), for the same reason. Version 5 added the
  * links between their Cases (CTA-188) to that file — an older reader would drop them.
+ * CTA-192 dropped the `analyses` category (the legacy saved analyses) without
+ * a bump: an older reader of a new zip simply finds none.
  */
 export const EXPORT_FORMAT_VERSION = 5;
 
@@ -78,12 +78,11 @@ type CollectionSource = CollectionSummary["source"];
 
 /**
  * Every category the format knows — the engine presets since CTA-179,
- * Analysis V2's projects since CTA-186. Which of them a build offers the
- * reader is `lib/exportCategories.ts`'s (Analysis V2 is dev-only while it is
- * built); this file stays free of the build, since Node reads it too (the
+ * Analysis V2's projects since CTA-186; the legacy saved analyses' went in
+ * CTA-192. This file stays free of the build, since Node reads it too (the
  * browser pass's seed).
  */
-export const EXPORT_CATEGORIES = ["collections", "games", "analyses", "repertoires", "enginePresets", "analysisProjects"] as const;
+export const EXPORT_CATEGORIES = ["collections", "games", "repertoires", "enginePresets", "analysisProjects"] as const;
 export type ExportCategory = (typeof EXPORT_CATEGORIES)[number];
 
 /** What the reader ticked. */
@@ -102,8 +101,6 @@ export type ExportCollection = {
 /** Every record the export may draw on. A category not ticked may be left empty. */
 export type ExportSource = {
   playedGames: readonly PlayedGame[];
-  analyses: readonly SavedAnalysis[];
-  analysisFolders: readonly AnalysisFolder[];
   repertoires: readonly SavedRepertoire[];
   repertoireFolders: readonly RepertoireFolder[];
   collections: readonly ExportCollection[];
@@ -113,7 +110,7 @@ export type ExportSource = {
   enginePresets: readonly EnginePreset[];
   /** Which preset each engine runs. */
   enginePresetSelections: readonly EnginePresetSelection[];
-  /** Analysis V2 (CTA-186): its folders, Projects and Cases — empty in a build without the module. */
+  /** Analysis V2 (CTA-186): its folders, Projects and Cases. */
   projectFolders: readonly ProjectFolder[];
   analysisProjects: readonly AnalysisProject[];
   analysisCases: readonly AnalysisCase[];
@@ -171,23 +168,6 @@ type PlayedGameEntry = Placed & {
   updatedAt: string;
 };
 
-type AnalysisEntry = Placed & {
-  id: string;
-  name: string;
-  description: string;
-  orientation: "white" | "black";
-  showArrows: boolean;
-  arrowWidthSource: ArrowWidthSource;
-  arrowPalette: ArrowPaletteId;
-  showMoveMarks: boolean;
-  settings: AnalysisSettings;
-  path: readonly string[];
-  /** Folder names from the top down; `[]` is Unfiled. */
-  folderPath: readonly string[];
-  savedAt: string;
-  updatedAt: string;
-};
-
 type RepertoireEntry = Placed & {
   id: string;
   name: string;
@@ -200,7 +180,6 @@ type RepertoireEntry = Placed & {
 
 type ExportFileEntry =
   | { path: string; kind: "games"; records: PlayedGameEntry[] }
-  | { path: string; kind: "analyses"; records: AnalysisEntry[] }
   | {
       path: string;
       kind: "collection";
@@ -251,8 +230,6 @@ export type ExportManifest = {
   includeShippedCollections: boolean;
   /** The folder trees, whole — present for a category that was exported. */
   folders: {
-    /** Every analysis folder as its path of names, parents before children. */
-    analyses?: string[][];
     /** Every repertoire folder's name (one level), in name order. */
     repertoires?: string[];
     /** Every Library folder as its path of names, parents before children (Built-in is not one). */
@@ -407,33 +384,6 @@ export const buildExport = (
   if (selection.games) {
     const { pgns, entries: records } = placed(source.playedGames, playedGameEntry);
     if (records.length > 0) add(pgnFileOf(pgns), { path: "games.pgn", kind: "games", records });
-  }
-
-  if (selection.analyses) {
-    const known = new Map(source.analysisFolders.map((folder) => [folder.id, folder]));
-    const { pgns, entries: records } = placed(source.analyses, (analysis, place): AnalysisEntry => ({
-      ...place,
-      id: analysis.id,
-      name: analysis.name,
-      description: analysis.description,
-      orientation: analysis.orientation,
-      showArrows: analysis.showArrows,
-      arrowWidthSource: analysis.arrowWidthSource,
-      arrowPalette: analysis.arrowPalette,
-      showMoveMarks: analysis.showMoveMarks,
-      settings: analysis.settings,
-      path: analysis.path,
-      folderPath:
-        analysis.folderId !== null && known.has(analysis.folderId)
-          ? analysisFolderPath(source.analysisFolders, analysis.folderId).map((step) => step.name)
-          : [],
-      savedAt: analysis.savedAt,
-      updatedAt: analysis.updatedAt,
-    }));
-    folders.analyses = folderPaths(source.analysisFolders);
-    if (records.length > 0) {
-      add(pgnFileOf(pgns), { path: "analyses.pgn", kind: "analyses", records });
-    }
   }
 
   if (selection.collections) {

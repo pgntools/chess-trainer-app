@@ -6,7 +6,9 @@ paths:
   - "src/lib/analysisProjectFolderStore*"
   - "src/lib/analysisCaseStore*"
   - "src/lib/analysisProjectsDb.ts"
-  - "src/lib/exportCategories.ts"
+  - "src/lib/retiredDatabases*"
+  - "src/views/main/boardLeftPanel*"
+  - "src/views/main/shellCompact.ts"
   - "src/blocks/tables/ProjectsTable/**"
   - "src/blocks/trees/CaseSiblings/**"
   - "src/blocks/panels/CaseDetails/**"
@@ -27,18 +29,38 @@ paths:
   - "src/blocks/lists/CaseJobs/**"
   - "src/blocks/lists/CaseLinks/**"
   - "src/blocks/dialogs/CasePickerDialog/**"
+  - "src/lib/jobV2LiveAnalysis*"
+  - "src/blocks/tables/JobsTable/**"
+  - "src/blocks/panels/JobSummary/**"
+  - "src/blocks/panels/ComputerAnalysisReport/**"
+  - "src/blocks/panels/EvalGraph/**"
+  - "src/blocks/dialogs/NewJobDialog/**"
+  - "src/blocks/forms/ComputerAnalysisForm/**"
+  - "src/blocks/forms/ArrowSettingsFields/**"
+  - "src/blocks/forms/PgnInput/**"
+  - "src/blocks/forms/FenInput/**"
+  - "src/blocks/lists/FolderActions/**"
+  - "src/blocks/lists/FolderPicker/**"
+  - "src/blocks/dialogs/Folder*/**"
+  - "src/lib/savedGameFolders*"
+  - "src/lib/analysisSettings*"
+  - "src/lib/arrowSettings*"
+  - "src/lib/gameCatalog*"
+  - "src/lib/gameReference*"
+  - "src/lib/embedSource*"
+  - "src/views/home/frontPage/embedSource*"
+  - "src/views/home/frontPage/StoredGameEmbed*"
 ---
 
-# Analysis V2 — Projects and Cases (CTA-186), Jobs V2 and linked Cases (CTA-188), Jobs V2's live progress (CTA-190), the browser's Cases and picks (CTA-191)
+# Analysis V2 — Projects and Cases (CTA-186), Jobs V2 and linked Cases (CTA-188), Jobs V2's live progress (CTA-190), the browser's Cases and picks (CTA-191), shipped (CTA-192)
 
-A new analysis module, part of renewing the codebase: the reader's analysis
-organised into **Projects** filed in nested **folders**, each Project holding
-**Cases** — a **Game** or a **Position** — and each Case its own board,
-**autosaved** as the reader works. lichess's Studies and Chapters are the UX
-reference. The legacy Analysis module (`/tools/analysis`,
-`views/tools/analysis/`, `chessapp.analyses` — [`analysis-board.md`](./analysis-board.md))
-stays untouched and is the code and UI reference; it will be removed in a
-later issue, so **V2 imports nothing from `views/tools/analysis/`**.
+**The app's analysis module**: the reader's analysis organised into
+**Projects** filed in nested **folders**, each Project holding **Cases** — a
+**Game** or a **Position** — and each Case its own board, **autosaved** as
+the reader works. lichess's Studies and Chapters are the UX reference. Built
+dev-only beside the legacy Analysis Board, Saved analyses and Jobs (CTA-73 …
+CTA-178), it **shipped in their place in CTA-192**, which removed them (§8);
+the "V2" in its names stays (dropping it is a later issue).
 
 ```
 folders (nested) ──▶ Projects ──▶ Cases (game | position) ──▶ the Case's board
@@ -47,11 +69,11 @@ folders (nested) ──▶ Projects ──▶ Cases (game | position) ──▶ 
                                    links (Case → Case, across Projects)
 ```
 
-**Jobs V2** (CTA-188, §6) are the module's own background jobs — a Case's
-computer analysis, a clone of the legacy Jobs ([`jobs.md`](./jobs.md)), never
-sharing its store, runner or screen; **links** (§7) are a directed
+**Jobs V2** (CTA-188, §6) are the app's background jobs — a Case's computer
+analysis (the legacy Jobs' successor); **links** (§7) are a directed
 many-to-many relation between Cases, across Projects. (CTA-188 first linked
-Projects; that was a planning mistake, replaced before it shipped.)
+Projects; that was a planning mistake, replaced before it shipped.) **Every
+other screen hands a game to Analysis as a new Case** (§1.1).
 
 ---
 
@@ -62,22 +84,25 @@ Projects; that was a planning mistake, replaced before it shipped.)
 | `src/lib/analysisProjects.ts` | **The records**, pure: `ProjectFolder` (a `GameFolder`, `lib/savedGameFolders.ts`'s model and reads), `AnalysisProject`, `AnalysisCase` and its `AnalysisCaseSource`; the normalisers `projectFolderFrom`, `analysisProjectFrom`, `analysisCaseFrom`; the constructors `gameCaseOf`, `positionCaseOfFen`, `positionCaseOfGame`, `copiedCase`; `caseStateOf` / `sameCaseState` (the autosave's state and its idempotency); `caseDerivedName`, `gameCaseDerivedName`; `projectsHere`, `projectsUnder`, `casesOf`, `caseCountsOf`; the caps (`MAX_PROJECT_FOLDERS` 100, `MAX_ANALYSIS_PROJECTS` 1,000, `MAX_ANALYSIS_CASES` 10,000). |
 | `src/lib/analysisProjectPicks.ts` | **The browser's picks** (CTA-191, §3.1): one set of ids over folders, Projects and Cases — `projectPicksOf` (each box's state), `toggleProjectPick` / `setProjectPicks` (a row's tick, select-all's), `projectPickTargetOf`, `projectPicksDeletion` (what a delete takes and how many of each go). Pure. |
 | `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, **version 3** (CTA-188): object stores `folders`, `projects`, `cases`, `jobs` (Jobs V2) and `caseLinks`, one `BroadcastChannel`. |
-| `src/lib/jobsV2.ts`, `jobV2Store.ts`, `jobV2Runner.ts` | **Jobs V2** (CTA-188, §6): the record (`JobV2`, `jobV2Of`, `jobV2From`, `jobV2AnalysisOf` / `jobV2MergedPgn` — the merge into a Case, `jobV2OfCase`, `jobV2OutputName`), the store (`enqueueJobV2`, `pauseJobV2`, `cancelJobV2`, `resumeJobV2`, `removeJobV2`, `removeJobsV2Of`, `interruptRunningJobsV2`, `MAX_JOBS_V2` 100) and the runner (`createJobV2Runner`, `startJobV2Runner` / `stopJobV2Runner`, its lock `chessapp.analysisProjects.jobs.runner`). V1's pure parts reused: `lib/jobs.ts`'s statuses, positions, checkpoint reader and progress, `lib/jobLiveAnalysis.ts` (its argument widened to `LiveAnalysisJob`). |
+| `src/lib/jobsV2.ts`, `jobV2Store.ts`, `jobV2Runner.ts` | **Jobs V2** (CTA-188, §6): the record (`JobV2`, `jobV2Of`, `jobV2From`, `jobV2AnalysisOf` / `jobV2MergedPgn` — the merge into a Case, `jobV2OfCase`, `jobV2OutputName`), the store (`enqueueJobV2`, `pauseJobV2`, `cancelJobV2`, `resumeJobV2`, `removeJobV2`, `removeJobsV2Of`, `interruptRunningJobsV2`, `MAX_JOBS_V2` 100) and the runner (`createJobV2Runner`, `startJobV2Runner` / `stopJobV2Runner`, its lock `chessapp.analysisProjects.jobs.runner`). Since CTA-192 `jobsV2.ts` also holds what the legacy jobs' record shared with it: the statuses (`JobStatus`), `JobPosition`, the `can…` predicates, `jobSearchOf`, `jobProgress`, `jobMoveLabel`, the checkpoint's reader. `lib/jobV2LiveAnalysis.ts` (`jobV2LiveAnalysis`): a job's results so far — the eval graph's points, the verdicts and report over the moves judged, the latest finished position (§6.5). |
 | `src/lib/jobV2Live.ts` | **A running job's live engine progress** (CTA-190, §6.7): `JobV2Live` (the snapshot), `createJobV2LiveFeed` (the runner's throttled feed), `jobV2LiveSnapshot` / `subscribeJobV2Live` (read by `views/analysisV2/jobs/useJobV2Live.ts`), the channel `chessapp.analysisProjects.jobs.live` — in memory, never stored. |
 | `src/lib/analysisCaseLinkStore.ts` | **The links between Cases** (CTA-188, §7): `linkAnalysisCases`, `addCaseLinks` (several at once — a job's new Cases), `unlinkAnalysisCases`, `removeLinksOfCases`, `importCaseLinks`; the record `CaseLink` and `caseLinksOf` in `analysisProjects.ts`. |
 | `src/lib/analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts` | **The stores** over `idbRecordStore` ([`database.md`](./database.md) §3): folders oldest first, Projects and Cases newest first; every operation a promise of `undefined` or `"storage"` / `"too-many"`. |
-| `src/lib/analysisProjectsEnabled.ts` | **The flag**: `ANALYSIS_PROJECTS_ENABLED = import.meta.env.DEV` — the module's Export / Import category in Settings — and **`analysisProjectStores()`**, the one way Settings reaches the three stores: dynamic imports under an *inline* `if (import.meta.env.DEV)`, `undefined` in a production build. Inline, because a dynamic import behind an imported constant is still followed by the bundler and its chunks emitted (orphaned) — one in a branch dead as written is not. Shipping the module is these two conditions (and §8). |
-| `src/lib/exportCategories.ts` | `OFFERED_EXPORT_CATEGORIES` — the Export / Import categories this build offers (Analysis V2's only with the flag); apart from `lib/dataExport.ts`, which Node reads too (the browser pass's seed). |
-| `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board; the Case view's links and their picker, §7), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings — `useJobsV2`, `useCaseLinks` too), `paths.ts` (the addresses — `jobsV2Path`). `jobs/` (CTA-188): `JobsV2Screen.tsx` (`/analysis/jobs`, behind `JobsV2Main.tsx`), `JobV2Reports.tsx` (a done job's report, another's results so far), `NewJobV2.tsx` (the popup's screen side), `JobsV2Shell.tsx` (`JobV2Runner`, `JobsV2Indicator` — the shell's, loaded lazily), `useJobV2Live.ts` (the live progress, `liveOfJob` — CTA-190). |
-| `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/forms/JobTargetFields/`, `src/blocks/lists/CaseJobs/`, `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/`; since CTA-190 `src/blocks/panels/JobEngineProgress/` | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and so, for Jobs V2, V1's `JobsTable`, `JobSummary` (generic over a job's fields), `NewJobDialog` and `ComputerAnalysisForm` (optional props: the engine and preset selects, one variant, a section before the form; `JobSummary`'s `live` slot, CTA-190), each unchanged without them. |
-| `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts`, `src/views/shared/AnalysisEvalReport.tsx` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws, the eval graph and report the Case view's Graph tab shows. The legacy screens import them from here. |
-| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectRows.test.ts` (the browser's rows — its Cases, CTA-191), `src/lib/analysisProjectPicks.test.ts` (its picks, CTA-191), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links on its Info tab, the Jobs V2 view), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the dev-only database). |
+| `src/lib/retiredDatabases.ts` | **The databases the app no longer keeps** (CTA-192): `chessapp.analyses` and `chessapp.jobs`, the legacy module's, deleted on every load (`src/main.tsx`, `deleteRetiredDatabases`). |
+| `src/views/analysisV2/useSendToAnalysis.tsx` | **A game handed to Analysis** (CTA-192, §1.1): `useSendToAnalysis(testId)` → `{ send, dialog }` — the Project picker, the Game Cases written, the Case (or Project) opened. Every other screen's way in. |
+| `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board; the Case view's links and their picker, §7), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings — `useJobsV2`, `useCaseLinks` too), `paths.ts` (the addresses — `jobsV2Path`). `jobs/` (CTA-188): `JobsV2Screen.tsx` (`/analysis/jobs`, behind `JobsV2Main.tsx`), `JobV2Reports.tsx` (a done job's report, another's results so far), `NewJobV2.tsx` (the popup's screen side), `JobsV2Shell.tsx` (`JobV2Runner`, `JobsV2Indicator` — the shell's), `useJobV2Live.ts` (the live progress, `liveOfJob` — CTA-190). |
+| `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/forms/JobTargetFields/`, `src/blocks/lists/CaseJobs/`, `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/`; since CTA-190 `src/blocks/panels/JobEngineProgress/` | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and so, for Jobs V2, `JobsTable`, `JobSummary` (generic over a job's fields), `NewJobDialog`, `ComputerAnalysisForm` (the engine and preset selects, one variant, a section before the form; `JobSummary`'s `live` slot, CTA-190), `ComputerAnalysisReport` and `EvalGraph` — built for the legacy Jobs, Jobs V2's since CTA-192. |
+| `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts`, `src/views/shared/AnalysisEvalReport.tsx` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws, the eval graph and report the Case view's Graph tab shows. |
+| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectRows.test.ts` (the browser's rows — its Cases, CTA-191), `src/lib/analysisProjectPicks.test.ts` (its picks, CTA-191), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links on its Info tab, the Jobs V2 view), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the database named in both pages, the retired ones in neither), `src/lib/retiredDatabases.test.ts`; **the hand-offs** (§1.1): `OpeningsBoard.test.tsx`, `PlayWithEngine.test.tsx`, `PlayedGames.test.tsx`, `Library.test.tsx` (the game board's Open in Analysis and a shipped game's copy), `LibraryPicks.test.tsx` (the batch), `StoredGameEmbed.test.tsx` and `EmbedSource.test.tsx` (an embed's Case address and its Open in Analysis), `ProjectPickerDialog.test.tsx` (the New project entry). |
 
 Locale keys: `analysisV2.*` (`browser`, `folder`, `project`, `case`,
 `newCase`, `workspace`; `jobs`, `links` — CTA-188; `jobs.live`, `jobs.indicator.liveDepth` / `liveNodes` — CTA-190), `nav.folders.analysisV2`, `nav.analysisProjects`,
 `nav.analysisJobs`, `pages.analysisProjects` / `analysisProject` / `analysisCase` / `analysisJobs`, the
 New Job form's additions under `computerAnalysis.form.*` (`engineSelect`, `preset`, `presetHelp`,
-`variant`, `variantHelpSingle`), and the
+`variant`, `variantHelpSingle`), the hand-off's `analysisV2.sendTo.*` and
+`analysisV2.case.newProject*` (CTA-192), each sending screen's new Project name
+(`openings.sendTo.projectName`, `playEngine.sendTo.projectName`,
+`home.embed.projectName`), and the
 category's `settings.export.categories.analysisProjects` /
 `settings.import.top.analysisProjects` — in both catalogs. `options.id` is
 `analysis-case`; the test ids are `analysis-v2-*` (the lists and the Cases table) and
@@ -87,37 +112,61 @@ Jobs tab and popup), `analysis-v2-jobs-*` (the Jobs V2 view and indicator — th
 
 ---
 
-## 1. Dev-only while it is built
+## 1. In the app (shipped in CTA-192)
 
-- **Routes**: four entries in `routes.tsx`'s `devRoutes`, each a
-  `React.lazy` import behind `import.meta.env.DEV`, so a production build has
-  no route and no chunk of it. The browser and a Project are
-  `FULL_WIDTH_ROUTE`s; the Case's board and Jobs V2 (`/analysis/jobs`,
-  CTA-188 — the list in the square, a job in the aside) are board routes.
-- **Sidebar**: its own folder, *Analysis V2* (`analysis-v2`), with two
-  entries, *Projects* (`/analysis`) and *Jobs* (`/analysis/jobs`, CTA-188) —
-  spreads in `navFolders()` / `navItems()` gated on `import.meta.env.DEV`.
-- **The shell's Jobs V2 runner and indicator** (CTA-188): `Layout.tsx` loads
-  `views/analysisV2/jobs/JobsV2Shell.tsx` with `lazy` behind an **inline**
-  `import.meta.env.DEV`, so a production build emits no chunk of it — the
-  runner beside V1's `JobRunner`, the indicator beside V1's `JobsIndicator`
-  (both untouched).
-- **Export / Import**: the `analysisProjects` category exists in the format,
-  but only a build with the flag offers it (`lib/exportCategories.ts`), reads
-  its stores (`analysisProjectStores()` — `lib/dataExportSource.ts`,
-  `lib/dataImportTarget.ts`, `views/settings/useAnalysisProjectsCount.ts`)
-  or reads its file out of a zip (`readImport`'s `categories`).
-- **Not yet**: a pre-rendered page, an e2e a11y route, the legal pages'
-  mention of `chessapp.analysisProjects` — `legalDocuments.test.ts` fails the
-  day the flag stops being `import.meta.env.DEV`, to say the database must
-  join the pages then.
-- **Verify** after `yarn build`: `grep -rlE "analysisProjectStore|analysisCaseStore|chessapp\.analysisProjects|analysis-case|/analysis/projects|ProjectsBrowser|CaseWorkspace|jobV2Store|jobV2Runner|analysisCaseLinkStore|/analysis/jobs|JobsV2|analysis-v2-jobs" dist/`
-  finds nothing — no route, chunk, store, runner, lock or database name. The format's own
-  code (`dataExport.ts` / `dataImport.ts`, the file name
-  `analysis-projects.json`, its `caseLinks` field and the stores' method
-  names it calls, `loadCaseLinks` / `importCaseLinks`) and the catalogs' words are in the main chunk.
+- **Routes**: four entries in `routes.tsx`'s shipped table — the browser
+  (`/analysis`) and a Project (`/analysis/projects/<id>`) are
+  `FULL_WIDTH_ROUTE`s; a Case's board (`…/cases/<caseId>`) and Jobs V2
+  (`/analysis/jobs` — the list in the square, a job in the aside) are board
+  routes. `/analysis` and `/analysis/jobs` are static, so the pre-render
+  writes them in every language, with their `pageDescriptions.analysisProjects`
+  / `analysisJobs` ([`static-pages.md`](./static-pages.md)); the share
+  section `analysis` is everything under `/analysis` (`src/assets/share/sections.ts`).
+- **Sidebar**: the folder *Analysis V2* (`analysis-v2`, `nav.folders.analysisV2`)
+  after the Library, with *Projects* (`/analysis`) and *Jobs* (`/analysis/jobs`).
+- **The shell** mounts `JobV2Runner` and `JobsV2Indicator`
+  (`views/analysisV2/jobs/JobsV2Shell.tsx`) — the app's one job runner and
+  its header indicator.
+- **Export / Import**: the `analysisProjects` category, offered always (§5).
+- **The legal pages** name `chessapp.analysisProjects`, in both languages;
+  `legalDocuments.test.ts` holds them to it, and to naming neither retired
+  database.
+- **The browser pass** seeds a Project at the top level (a Game Case) and one
+  in a folder (a Position Case) through its export zip (`e2e/a11y/seedZip.ts`)
+  and visits the browser, a Project, a Case and Jobs V2 (`e2e/a11y/routes.ts`).
+- **The legacy module's databases are deleted** on every load
+  (`lib/retiredDatabases.ts`): `chessapp.analyses`, `chessapp.jobs`.
 
----
+### 1.1 A game handed to Analysis — `useSendToAnalysis`
+
+**Every other screen reaches Analysis by making a Case** — one hook,
+`views/analysisV2/useSendToAnalysis.tsx`: `send({ games, projectName, onSent? })`
+opens a **Project picker** (`ProjectPickerDialog` with its `newProject`
+entry: *New project* first, chosen at first, named `projectName`, a name
+required), and its submit makes a **Game Case** of each game (`gameCaseOf`,
+then the sending board's `nodeId` as the Case's `path`, its `orientation`, its
+`display` where given) in the Project picked — or a new one at the top level —
+in one all-or-nothing `addAnalysisCases` (a Project made for it taken back on
+a refusal, said in the dialog, which stays open). Then the caller's
+`onSent`, or — without one — one game **opens its Case**, several the
+Project. The screen renders `dialog` once.
+
+| Sender | What it sends | New Project's name |
+| --- | --- | --- |
+| Openings explorer's Analysis button | the whole tree, at the node on screen, facing the board's side | the opening on screen, else `openings.sendTo.projectName` |
+| Play with Engine's / Masked Pieces' game over | the record as kept (its tags), facing the board's side | `playEngine.sendTo.projectName` |
+| the Lobby's row Analyse (`PlayedGamesTable`'s `onAnalyse`) | the played game | the same |
+| the Library game board's Export tab, *Open in Analysis* | the game as the collection holds it, at the position on screen | the collection's name |
+| a shipped Library game's *Save as copy* | the board's tree, named "… (copy)", its arrows and move marks as `display` | the collection's name |
+| the Library's picks, *Analyse* (`onSent`: a snackbar with *Open project*) | each readable picked game, named by its chapter | `batchFolderNameOf` (the collection, the count, the filters) |
+| an embed's *Open in Analysis* (`StoredGameEmbed`) | the stored game — a Case's own reference is a plain link to its board instead | `home.embed.projectName` |
+
+**An embed reads a Case** by its address, `/analysis/projects/<p>/cases/<c>`
+(`lib/embedSource.ts`, the `case` kind), resolved as the reference
+`case/<p>/<c>` (`lib/gameReference.ts` → `findAnalysisCaseGame` in
+`analysisCaseStore.ts`, out of what has been read — `loadReferencedGames`
+first): the MDX embeds, the MDX editor's address field and its lookups
+(`addressOptions.ts`, the group *Analysis cases*; `libraryLookup.ts`).
 
 ## 2. The model
 
@@ -262,20 +311,20 @@ then says a Project that is not there.
 ### 3.3 A Case's board — `/analysis/projects/<id>/cases/<caseId>`
 
 **Composed from the board core** ([`chessboard.md`](./chessboard.md) §9), as
-the Analysis Board is: `useAnalysisSession` (the core, the engine — off at the
+the legacy Analysis Board was: `useAnalysisSession` (the core, the engine — off at the
 start, the reader's global search settings — and Play), `useVariationsExplorer`
 (the move list, map, comment block, next-move arrows, the PGN's shapes;
 editing on, *Play chances…* off), `BoardShell` and its panel — tabs **Moves ·
 Map · Settings · Export** (`PgnExportPanel`; **Display** — `CaseDisplayTab`,
 the board's state, shown on the left panel's Case view (below) since CTA-186's
 last round: the next-move arrows and the move marks on top, then inner
-tabs — **Arrows**, the Analysis Board's width source and palette
+tabs — **Arrows**, the width source and palette (§3.4)
 (`ArrowSettingsFields`), **Engine** — the engine's lines (`BoardPanel`'s
 `showVariations`) — and **Accessibility**, the board's accessibility options,
 a placeholder for now — all kept with the Case as its `display`, autosaved;
 **Settings** is `CaseSettingsTab`: the side the board faces, White / Black
 (the Case's orientation), the eval bar (its `display`) and *Write evaluations
-into the game* (the session's, as on the Analysis Board)), and the header:
+into the game* (the session's — [`pgn-annotations.md`](./pgn-annotations.md))), and the header:
 the name, the opening, a refused save (nothing else), Play and the engine's on / off as a
 **small switch** labelled with the top bar's Engine icon (`SmartToyRounded`, read as "Engine") — not the other boards' play / pause and options menu
 (`BoardEngineControls`), whose choices are the Settings tab here.
@@ -316,14 +365,43 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
   PGN tags as saved (`GameInfo`, the Library game board's Info tab; "no
   tags" when it has none) and under them **its links** (CTA-188, §7),
   **Graph**, the eval graph and report of the tree
-  on the board (`views/shared/AnalysisEvalReport.tsx`, the Analysis Board's
-  Evaluations tab — live, a click moves the board; disabled while the tree
+  on the board (`views/shared/AnalysisEvalReport.tsx` — live, a click moves the board; disabled while the tree
   carries no `[%eval]`), **Display**, how the board draws (`CaseDisplayTab`,
   out of the right-hand panel), **Jobs** (CTA-188, §6.4) — and previous / next at
   its foot, which keep the view and its open tab (the screen's state). The
   board draws the left panel (`CaseBoard`'s `leftPanel`, given the tree on
   screen), so the Graph follows it and Display sets it. Back drops
   `?view=` and keeps the rest of the context. A reload keeps the screen.
+
+### 3.4 The next-move arrows — the Display tab's Arrows (CTA-98, CTA-168, CTA-180)
+
+The Case board's arrows, kept with the Case as its `display` (a new Case:
+on, None, Classic, move marks on); every other board keeps the classic,
+colour-only arrows. `ArrowSettingsFields` (the block), `lib/arrowSettings.ts`,
+`lib/nextMoveWeights.ts`, drawn by the explorer's overlay on the play-chance
+arrows' absolute scale (`chanceArrowWidth` over 0–1):
+
+| Width source | Read from | Width |
+| --- | --- | --- |
+| **None** | — | the library arrows, colour only |
+| **Evaluation** | `[%eval X]` in the move's own comment, or the trailing `+1.31 (21 ply)` shape — turned to the mover's view | **two groups** (CTA-180): within 1 cp of the best (`EVAL_BEST_CP`) the *best* group, widest, in the palette's mainline colour wherever it is in the tree; every other *worse* — the side-line colour, at most `EVAL_WORSE_MAX_WEIGHT` (0.6) wide, thinner with the square root of its loss, a hairline at 300 cp (`EVAL_HAIRLINE_CP`); a mate for the mover best, against it a hairline |
+| **Games** | `games:N` / `[%games N]` (`lib/gamesTag.ts`) | `N / Σ N` over the tagged moves |
+| **Play chance** | `prc:N` / `[%prc N]` | the marks scaled to 100% over the tagged moves |
+| **Lines ahead** | nothing (`linesWithin`, 8 plies) | each move's share — always offered |
+
+- **A tag's radio is disabled while no move in the tree carries it**
+  (`arrowWidthSourcesIn`); a choice whose tag is gone is kept, shown checked
+  and disabled with a note, and the board draws as None until it is back. At
+  a branch where some moves carry the tag the untagged ones are gray, half
+  transparent, a fixed modest width (`UNTAGGED_ARROW_CHANCE`); where none do,
+  the ordinary palette arrows.
+- **Colours** (`NEXT_MOVE_ARROW_PALETTES`, `nextMoveArrows.ts`): **Classic**
+  (every board's), **Lichess** (its brushes), **Colour-blind safe**
+  (Okabe–Ito) — mainline / side line / hovered; under **Evaluation** the best
+  group takes the mainline colour and every worse move the side-line one.
+- **Move marks on the board** (CTA-168): the move on screen's mark drawn as a
+  badge on its square ([`pgn-annotations.md`](./pgn-annotations.md) §4); off,
+  none (the move list shows the glyphs either way).
 
 ---
 
@@ -332,8 +410,7 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
 `chessapp.analysisProjects`, **version 3** (CTA-188 — an upgrade from 1 only
 creates `jobs` and `caseLinks`, every folder, Project and Case kept; version 2
 existed on CTA-188's branch alone, its `projectLinks` store left unread by 3),
-a database of its own (apart from
-`chessapp.analyses`, so the legacy module's removal takes nothing of it) —
+a database of its own —
 [`database.md`](./database.md) §1. Every row is read through its normaliser
 (a field an older row lacks reads as its default; a row without its identity
 is dropped).
@@ -363,67 +440,110 @@ with its `folderPath` and its **Cases** as stored, and — since manifest
 version **5** (CTA-188) — the **links between the Cases** as stored (a link
 to a Case not exported left out). Version 4 added the file (a v3 zip reads
 through the table, its upgrade the stamp alone); version 5 its links (a v4
-zip reads with none). Jobs V2 are not exported (as V1's jobs are not —
-[`import-export.md`](./import-export.md) §1.1); their results are Cases, which are. On the way
+zip reads with none). Jobs V2 are not exported
+([`import-export.md`](./import-export.md) §1.1); their results are Cases, which are. On the way
 in, folders are matched by their path of names and created where missing;
-Projects clash by their folder like the analyses (Merge / Override / Skip, a
+Projects clash by their folder like the collections (Merge / Override / Skip, a
 folder's own choice over the category's); each Project brings its Cases, each
 filed in it; an Override's Projects take their Cases with them; the Projects'
 and the Cases' caps both refuse the category. **The links** come after the
 Cases: the zip's whose two Cases the app holds afterwards (Case ids are kept
 by an import), the links of the Cases the import replaces or removes dropped
-first (`importCaseLinks`). A build without the module leaves the file unread.
+first (`importCaseLinks`). (An older zip's `analyses.pgn` — the legacy
+saved analyses — is counted, skipped and said, §8.)
 
 ---
 
 ## 6. Jobs V2 — a Case's computer analysis (CTA-188)
 
-A **clone** of the legacy Jobs ([`jobs.md`](./jobs.md), CTA-171/173/177/178),
-named "Jobs V2" everywhere so the two are never confused. V1 is not modified
-(its blocks only gained optional props); **a V1 job and a V2 job may run at
-the same time**, each runner with its own lock and engine. Like the rest of
-Analysis V2 it imports nothing from `views/tools/analysis/` or `views/jobs/`;
-it reuses `lib/jobs.ts`'s pure parts (statuses, `JobPosition`, the checkpoint
-reader, `jobProgress`, the `can…` predicates) and `lib/jobLiveAnalysis.ts`.
+**The app's background jobs**: work done app-wide while the reader goes on
+with anything else — one kind, a Case's **computer analysis** (Stockfish over
+the game's mainline, every finished position checkpointed, each ticked
+variant — light, medium, full — written as a new Case or merged into the
+source). Begun as a clone of the legacy Jobs (CTA-171/173/177/178), which
+CTA-192 removed, folding their shared pure parts into `lib/jobsV2.ts`. The
+analysis rules themselves (positions, early stop, verdicts, the annotated
+trees, the report read back) are [`pgn-annotations.md`](./pgn-annotations.md) §6.
+
+```
+queued ──▶ running ──▶ done
+   ▲          │ ├────▶ failed ──────┐
+   │          │ └────▶ cancelled    │
+   │          ▼ (a reload)          │
+   ├──── interrupted ◀──────────────┘   Resume: paused, interrupted, failed → queued
+   │
+   └──── paused ◀── Pause: queued, running
+```
 
 ### 6.1 The record — `lib/jobsV2.ts`
 
-V1's `ComputerAnalysisJob` with these differences:
-
 | Field | What |
 | --- | --- |
+| `id`, `kind` (`"computer-analysis"`), `status` | |
+| `createdAt`, `updatedAt`, `startedAt`, `finishedAt` | ISO; `startedAt` the first run's, kept across a resume; `finishedAt` done, failed or cancelled. |
+| `engine` | `{ id, name, version }` of the engine that **actually ran** — the options' choice, or the one it fell back to; `null` until it first runs. |
+| `positions` | A `JobPosition` per searched position — FEN, ply, the move played from it (`san`), whether that move is analysed: the screen's words, and the FENs a resumed job is checked against. **The record keeps FENs, never node ids** (they do not survive a PGN round trip). |
+| `checkpoint` | A `PositionResult` per position, by index, `null` where it has none — **the checkpoint unit** — always as long as `positions`; an entry about another FEN reads as missing. |
 | `source` | `{ projectId, caseId, name, pgn }` — the Case, its name as shown, its tree **as the board held it when sent**. |
 | `options` | `ComputerAnalysisOptions` — the engine (`engine`) and the search **as the popup left it**: depth, move time, Threads, Hash, lines. |
 | `preset` | `{ id, name, values }` — the engine's preset the job was given, its values (`presetSentValues`) as they were then. **The runner sends these**, never whatever preset is selected when it runs. |
 | `target` | `{ kind: "project", projectId }` (new Cases beside the source), `{ kind: "other", projectId }` (new Cases in another Project — a row from before the rename, `linked`, reads as it), or `{ kind: "case" }` (merged into the source Case — **one** variant: `jobV2Of` refuses more). Every new Case is linked from the source Case. |
 | `outputs` | `{ variant, projectId, caseId }` — the new Cases, or the source Case merged into. |
-| `error` | V1's codes and **`target`**: where the results were to go is gone (the other Project, the source Case). |
+| `error` | `source` (the PGN no longer reads, or its positions changed), `engine` (no handle, no `uci` answer, silence, no scored line), `storage`, `too-many` (the Cases' cap), **`target`** (where the results were to go is gone — the other Project, the source Case) — `analysisV2.jobs.errors.<code>`. |
 
-`jobV2From` reads a row leniently as `jobFrom` does: dropped without an id,
-the kind, its Case or its positions; a target that will not read is new Cases
-beside the source, a preset that will not read none.
+`jobV2From` reads a row leniently: dropped without an id, the kind, its Case
+or its positions; an unknown status reads as `interrupted` (never run
+unasked); a target that will not read is new Cases beside the source, a
+preset that will not read none; the options are clamped as a form's are.
 
 ### 6.2 The store — `lib/jobV2Store.ts`
 
-The `jobs` object store of this database, V1's operations cloned
-(`enqueueJobV2` — the popup's one call — `addJobV2`, `updateJobV2`,
+The `jobs` object store of this database (`enqueueJobV2` — the popup's one
+call, answering the job's id or `"invalid"`, `"storage"`, `"too-many"` —
+`addJobV2`, `updateJobV2`,
 `pauseJobV2`, `cancelJobV2`, `resumeJobV2`, `removeJobV2`,
 `interruptRunningJobsV2`, `findJobV2`), the cap `MAX_JOBS_V2` (100), and
 `removeJobsV2Of({ projectIds, caseIds })` — what a Case's or Project's
-delete calls. Every write idempotent; **every operation a store write** the
-runner acts on.
+delete calls. Past the cap the oldest **finished** jobs go; when every job
+kept is unfinished it refuses. Pause, Cancel, Resume and Delete are **store
+writes, never calls into the runner** — the runner, in whichever tab holds
+it, reads the change and acts, so one tab's screen cancels another tab's run.
+Every write idempotent.
 
 ### 6.3 The runner — `lib/jobV2Runner.ts`
 
-V1's runner cloned (`jobs.md` §3): one per page, started by the shell's
-`JobV2Runner` (dev only), **its own Web Lock**
-`chessapp.analysisProjects.jobs.runner`, a reload's `running` read as
-`interrupted` and never resumed unasked, one job at a time oldest first, its
-own engine (the job's, falling back as a board does), Threads, Hash and each
-position's MultiPV clamped to what the engine declared, **the job's preset**
-(`resolveEnginePreset(job.preset.values, …)`), a checkpoint per position, a
-job no longer `running` or gone stopped at once. At the end, **by its
-target**:
+- **One per page, started by the shell** (`JobV2Runner`, an effect — never
+  during render, so the pre-render starts none; never stopped by an effect
+  cleanup, so a StrictMode remount does not leave a job half run). **Nothing
+  at module scope** (`engines/noWorkerAtImport.test.ts`).
+- **One tab runs jobs**: it holds the Web Lock
+  `chessapp.analysisProjects.jobs.runner` for the page's life; another tab's
+  waits and takes over when this one closes (where there is no Web Locks
+  API — jsdom — every runner runs). **Taking over** turns every `running` job
+  into `interrupted` (`interruptRunningJobsV2`): **never resumed unasked** —
+  an engine run is heavy on CPU; the reader presses Resume.
+- **One job at a time, the oldest queued first.** A run claims its job,
+  re-parses the source (`jobSearchOf`) and checks its positions against the
+  record's — a mismatch fails it `source`.
+- **Its own engine**: `resolveEngine(options.engine)` — the default where that
+  engine is gone or cannot run here, as a board falls back; a `hosted:…` id
+  waits for the engine server's list first; built lazily, separate from any
+  board's. After the `uci` answer (30 s) `Threads`, `Hash` and before each
+  search `MultiPV` (the position's own), **each clamped to what the engine
+  declared**, and beside them **the job's preset**
+  (`resolveEnginePreset(job.preset.values, …)`, those three never taken from
+  it). The protocol discipline is the handle's ([`chessboard.md`](./chessboard.md) §4.1).
+- **Each position**: `search(fen, { depth, movetime })`, every `info` for that
+  FEN folded in, the early stop one `stop()`, the `bestmove` ending it; a
+  mate or stalemate, and a position whose move is not analysed and whose
+  stored `[%eval]` is as deep as asked, are not searched. Then **the
+  checkpoint**, only while the job is still `running`.
+- **Stopping**: the job no longer `running` or `queued`, or gone, aborts the
+  run at once — `stop()`, the handle terminated, nothing more written.
+- **Failing**: no handle, no `uci` answer in 30 s, 120 s of silence, or a
+  search ending with no scored line → `failed`, `engine`; the checkpoint
+  stays, so Resume goes on from it.
+- **At the end**, the handle terminated, **by its target**:
 
 - `project` / `other` — the Project must still be there (else `target`);
   each ticked variant a new **Game Case** (`gameCaseOf` over
@@ -444,15 +564,16 @@ for the Case **on the board** — its tree as the board holds it:
 
 - **It asks first** when the Case has a job (`jobV2OfCase`: the newest
   unfinished, else done, else newest) — *Start a new analysis* / *Check
-  existing* (the Jobs V2 view at it) — as V1's does.
+  existing* (the Jobs V2 view at it).
 - **The engine and its preset, each a select** (as the top bar's Engine menu
   offers them: `describeEngines()`, every preset; `ComputerAnalysisForm`'s
   `engineChoice`) **prefill** the depth and time per move from the preset
   (`presetSearchOf`) and Threads, Hash and lines from the global search
   settings; all stay editable for this one job; changing the engine (its
   selected preset with it) or the preset prefills the two again. The rest of
-  the form is V1's: lines, the early stop's depth, the variation range, the
-  side, the first and last move, the thresholds, the variants.
+  the form (`ComputerAnalysisForm`): lines, the early stop's depth, the
+  variation range, the side, the first and last move, the thresholds, the
+  variants.
 - **Where to save the results** (`JobTargetFields`, a section before the
   form): **new Cases in this Project**; **another project** — a **new** one
   (its name asked, "<Case> — analysis" offered — named after the Case, not
@@ -467,7 +588,7 @@ for the Case **on the board** — its tree as the board holds it:
 
 ### 6.5 The Jobs V2 view — `/analysis/jobs` (`?job=<id>`)
 
-V1's Jobs screen cloned (`JobsV2Screen`): the list (`JobsTable` over
+`JobsV2Screen`: the list (`JobsTable` over
 `JobV2`) in the square, newest first, Resume / Pause / Cancel / Delete; one
 job (`JobSummary` over `JobV2`) in the aside — its status, progress, why it
 failed, **Open the Case** (its source, while it is there), **links to its
@@ -475,14 +596,15 @@ results** (each new Case; the other Project; the source Case "the analysis
 merged in"), its parameters with **the preset** and **where the results go**
 (`extraFacts`), and on Results a done job's **report and eval graph** read
 back from its first output Case (`JobV2Report`, the graph read only) or
-another's **results so far** (`JobV2LiveReport`, `jobLiveAnalysis`); while
+another's **results so far** (`JobV2LiveReport`, `jobV2LiveAnalysis` — it
+fills in with every checkpoint; nothing in it a live region); while
 it runs, **its engine live** under the progress bar (§6.7). Delete asks
 first and keeps the Cases.
 
-**The header indicator** is a decision of this issue: **a V2 indicator
-beside V1's** (`JobsV2Indicator`, dev only) — "Jobs V2 12/80" while one
-runs, "Jobs V2: N queued", a link to the Jobs V2 view, announced only on a
-change of status; V1's `JobsIndicator` is untouched. While the engine reports
+**The header indicator** (`JobsV2Indicator`) — "Jobs V2 12/80" while one
+runs, "Jobs V2: N queued", a link to the Jobs V2 view, announced politely
+and only on a change of status (never the progress, nothing for the first
+read); under the breakpoint an icon alone, named in full. While the engine reports
 on the running job (§6.7) its spinner **beats** and the numbers join its name.
 
 ### 6.6 Merging into the source Case
@@ -540,8 +662,28 @@ server's alike (both reach `parseEngineLine`).
   its status region announces the move and every tenth depth, never each
   update. The header's indicator beats (an opacity cycle on the theme's
   `transitions.duration.complex`, still under reduced motion) and adds
-  "depth 22, 3.1M nodes" to its name, unannounced. V1's runner, screen,
-  indicator and `JobSummary` without `live` are untouched.
+  "depth 22, 3.1M nodes" to its name, unannounced.
+
+### 6.8 Invariants and testing
+
+1. **The runner is the shell's, never a board's** — one per page, one job at
+   a time, one tab running jobs. **The store is the only channel** between a
+   screen and it.
+2. **A checkpoint per finished position**; a resume never searches a position
+   that has one; **never resumed unasked**.
+3. **A job builds its own engine handle** and terminates it when it ends, is
+   cancelled, deleted or fails. **Nothing at module scope.**
+
+- **The runner** (`jobV2Runner.test.ts`) mocks `lib/engines/builtin` with
+  the harness's `builtinEnginesMock` and drives each `FakeEngine` by hand —
+  `engine.say({ fen, depth, multipv, positionEvaluation, pv })` then
+  `{ fen, bestMove }` — with `createJobV2Runner({ useLock: false })`, stopped
+  and awaited after each test; wait with `vi.waitFor` on the store.
+- **The teardown** (`src/test/setup.ts`) stops the page's runner
+  (`stopJobV2Runner`) before the stores settle, then deletes
+  `chessapp.analysisProjects` with the others.
+- **The screens** (`JobsV2.test.tsx`) seed the store (`addJobV2`, a partial
+  checkpoint through `withCheckpointV2`) and assert by role and name.
 
 ## 7. Links between Cases (CTA-188)
 
@@ -569,13 +711,19 @@ replaced by this before it shipped — the database's version 3 leaves a
 version-2 store of them unread, and a job row's `linked` target reads as
 `other`.
 
-## 8. Shipping it, later
+## 8. What CTA-192 removed
 
-1. `ANALYSIS_PROJECTS_ENABLED` to `true`; the routes out of `devRoutes`, the
-   nav spreads ungated, the shell's Jobs V2 runner and indicator imported
-   as V1's are.
-2. The database in both legal pages in both languages, and in
-   `legalDocuments.test.ts`'s `STORED` (that test fails until then).
-3. The routes in `e2e/a11y/routes.ts`, their pre-rendered pages
-   ([`static-pages.md`](./static-pages.md)), `pageDescriptions.*` for them.
-4. The legacy module's removal (its own issue): nothing here imports it.
+The legacy Analysis Board (`/tools/analysis`), Saved analyses
+(`/tools/analysis/saved`, a record's settings screen) and Jobs (`/jobs`) —
+their screens, stores (`chessapp.analyses`, `chessapp.jobs`, deleted on
+load), blocks (`SavedAnalysesTable`, `SavedAnalysesList`, `AnalysesTree`),
+locale keys and rules files (`analysis-board.md`, `jobs.md`). What V2 used
+was folded in: the jobs' record into `jobsV2.ts`, their live analysis into
+`jobV2LiveAnalysis.ts`; `JobsTable`, `JobSummary`, `NewJobDialog`,
+`ComputerAnalysisForm`, `ComputerAnalysisReport` and `EvalGraph` are Jobs V2's
+now. The Load tab moved into the Openings explorer (`OpeningsLoad.tsx`), the
+`?at=` line builder into `lib/repertoireLink.ts` (`lineTreeOf`), the
+placeholder player into `lib/gameModel.ts` (`ANALYSIS_PLACEHOLDER_PLAYER`).
+Export lost the `analyses` category; Import counts an older zip's
+`analyses.pgn` (`ImportDump.skippedAnalyses`), skips it and says so. The old
+URLs are unknown routes — no redirect.

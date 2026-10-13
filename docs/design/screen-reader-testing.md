@@ -264,7 +264,7 @@ Its patterns and blocks, each on its page, the way a screen would use them:
 4. Header: **"Toggle light and dark mode, button"**; Space switches the
    scheme, the focus stays on it. The language select names itself.
 
-### 3.7 Saved analyses — `/tools/analysis/saved` (CTA-113)
+### 3.7 Saved analyses (CTA-113) — removed in CTA-192, kept as the record of the check
 
 Seed: save two analyses, one in a folder.
 
@@ -285,7 +285,7 @@ Seed: save two analyses, one in a folder.
 8. The side panel: **"New analysis"**, level 2; the position editor's fields,
    the FEN and PGN boxes named, **Start**.
 
-### 3.8 The Analysis Board — `/tools/analysis` (CTA-113)
+### 3.8 The Analysis Board (CTA-113) — removed in CTA-192, kept as the record of the check
 
 1. **"Analysis Board, heading level 1"** (out of sight; the shell's).
 2. The panel: **"Board panel, tab list"**; each tab named, the selected one

@@ -1,5 +1,8 @@
 import { MAX_ANALYSIS_CASES, MAX_ANALYSIS_PROJECTS, MAX_PROJECT_FOLDERS } from "./analysisProjects";
-import { analysisProjectStores } from "./analysisProjectsEnabled";
+import { importAnalysisCases, loadAnalysisCases } from "./analysisCaseStore";
+import { importCaseLinks, loadCaseLinks } from "./analysisCaseLinkStore";
+import { addProjectFolders, loadProjectFolders } from "./analysisProjectFolderStore";
+import { importAnalysisProjects, loadAnalysisProjects } from "./analysisProjectStore";
 import type { IndexedRow } from "./collectionIndex";
 import type {
   CapProblem,
@@ -18,8 +21,6 @@ import {
 } from "./libraryCollectionStore";
 import { addLibraryFolders, loadLibraryFolders, MAX_LIBRARY_FOLDERS } from "./libraryFolderStore";
 import { importPlayedGames, loadPlayedGames, MAX_PLAYED_GAMES } from "./playedGameStore";
-import { addAnalysisFolders, loadAnalysisFolders, MAX_ANALYSIS_FOLDERS } from "./savedAnalysisFolderStore";
-import { importAnalyses, loadSavedAnalyses, MAX_SAVED_ANALYSES } from "./savedAnalysisStore";
 import {
   addRepertoireFolders,
   loadRepertoireFolders,
@@ -39,17 +40,15 @@ import { importRepertoires, loadSavedRepertoires, MAX_SAVED_REPERTOIRES } from "
  * answers a problem, and so does this.
  */
 
-/** Analysis V2's folders, Projects and Cases — none in a build without the module. */
+/** Analysis V2's folders, Projects, Cases and links. */
 const loadAnalysisProjectsCurrent = async (): Promise<
   Pick<ImportCurrent, "projectFolders" | "analysisProjects" | "analysisCases" | "caseLinks">
 > => {
-  const stores = await analysisProjectStores();
-  if (stores === undefined) return { projectFolders: [], analysisProjects: [], analysisCases: [], caseLinks: [] };
   const [projectFolders, analysisProjects, analysisCases, caseLinks] = await Promise.all([
-    stores.folders.loadProjectFolders(),
-    stores.projects.loadAnalysisProjects(),
-    stores.cases.loadAnalysisCases(),
-    stores.links.loadCaseLinks(),
+    loadProjectFolders(),
+    loadAnalysisProjects(),
+    loadAnalysisCases(),
+    loadCaseLinks(),
   ]);
   return { projectFolders, analysisProjects, analysisCases, caseLinks };
 };
@@ -58,8 +57,6 @@ const loadAnalysisProjectsCurrent = async (): Promise<
 export const loadImportCurrent = async (): Promise<ImportCurrent> => {
   const [
     playedGames,
-    analyses,
-    analysisFolders,
     repertoires,
     repertoireFolders,
     collections,
@@ -69,8 +66,6 @@ export const loadImportCurrent = async (): Promise<ImportCurrent> => {
     analysisProjects,
   ] = await Promise.all([
     loadPlayedGames(),
-    loadSavedAnalyses(),
-    loadAnalysisFolders(),
     loadSavedRepertoires(),
     loadRepertoireFolders(),
     loadUploadedCollections(),
@@ -81,8 +76,6 @@ export const loadImportCurrent = async (): Promise<ImportCurrent> => {
   ]);
   return {
     playedGames,
-    analyses,
-    analysisFolders,
     repertoires,
     repertoireFolders,
     collections,
@@ -96,9 +89,8 @@ export const loadImportCurrent = async (): Promise<ImportCurrent> => {
 /** The stores' caps. The three folder stores share one, which `folders` is. */
 export const IMPORT_CAPS: ImportCaps = {
   playedGames: MAX_PLAYED_GAMES,
-  analyses: MAX_SAVED_ANALYSES,
   repertoires: MAX_SAVED_REPERTOIRES,
-  folders: Math.min(MAX_ANALYSIS_FOLDERS, MAX_REPERTOIRE_FOLDERS, MAX_LIBRARY_FOLDERS, MAX_PROJECT_FOLDERS),
+  folders: Math.min(MAX_REPERTOIRE_FOLDERS, MAX_LIBRARY_FOLDERS, MAX_PROJECT_FOLDERS),
   enginePresets: MAX_ENGINE_PRESETS,
   analysisProjects: MAX_ANALYSIS_PROJECTS,
   analysisCases: MAX_ANALYSIS_CASES,
@@ -176,11 +168,6 @@ export const applyImport = async (writes: ImportWrites, options: ApplyOptions): 
   await run("collections", writes.collections, (planned) => applyCollections(planned, options));
   await run("games", writes.games, ({ add, remove }) => importPlayedGames(add, remove));
   await run(
-    "analyses",
-    writes.analyses,
-    async ({ folders, add, remove }) => (await addAnalysisFolders(folders)) ?? (await importAnalyses(add, remove)),
-  );
-  await run(
     "repertoires",
     writes.repertoires,
     async ({ folders, add, remove }) => (await addRepertoireFolders(folders)) ?? (await importRepertoires(add, remove)),
@@ -191,13 +178,11 @@ export const applyImport = async (writes: ImportWrites, options: ApplyOptions): 
   });
   // Analysis V2 (CTA-186): the folders, then the Projects, then their Cases, then the links between the Cases (CTA-188).
   await run("analysisProjects", writes.analysisProjects, async ({ folders, add, remove, cases, links }) => {
-    const stores = await analysisProjectStores();
-    if (stores === undefined) return "storage";
     return (
-      (await stores.folders.addProjectFolders(folders)) ??
-      (await stores.projects.importAnalysisProjects({ add, remove })) ??
-      (await stores.cases.importAnalysisCases(cases)) ??
-      (await stores.links.importCaseLinks(links))
+      (await addProjectFolders(folders)) ??
+      (await importAnalysisProjects({ add, remove })) ??
+      (await importAnalysisCases(cases)) ??
+      (await importCaseLinks(links))
     );
   });
   return results;

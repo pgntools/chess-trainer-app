@@ -2,7 +2,6 @@
 paths:
   - "src/views/openings/**"
   - "src/lib/openings*"
-  - "src/lib/analysisHandOff*"
   - "src/views/board/core/useOpeningBookModule.ts"
   - "src/views/shared/useCurrentOpening*"
   - "src/blocks/panels/CurrentOpening/**"
@@ -18,7 +17,7 @@ paths:
 `/openings` is where an opening is **played through beside the book**: a
 full analysis board with eco.json's continuations from the position on
 screen listed beside it, and a hand-off that takes everything explored to
-the Analysis Board. This file is the whole reference for it: what it is
+Analysis as a new Case. This file is the whole reference for it: what it is
 made of, the opening book underneath, the URL, the Analysis hand-off, the
 rules that keep it correct, how to test it, how to debug it and how to
 extend it. It is written for people and for LLM sessions alike. It loads
@@ -28,11 +27,11 @@ This file is the authority for the Openings explorer and the opening book.
 Everything the screen shares with the other boards is elsewhere:
 [`chessboard.md`](./chessboard.md) (the board, the engine protocol, testing,
 the core) and [`tree-views.md`](./tree-views.md) (the variations explorer);
-the receiving end of the hand-off is [`analysis-board.md`](./analysis-board.md).
+the receiving end of the hand-off is [`analysis-v2.md`](./analysis-v2.md) §1.1.
 
 > **An explorer keeps nothing.** The screen has no Save, no
-> folders and no store. Whatever the reader wants to keep goes to the
-> Analysis Board (§5), which saves explicitly. **Do not add persistence here**
+> folders and no store. Whatever the reader wants to keep goes to Analysis
+> as a Case (§5), which autosaves. **Do not add persistence here**
 > (§9.5 says what to do instead).
 
 ---
@@ -45,18 +44,17 @@ the receiving end of the hand-off is [`analysis-board.md`](./analysis-board.md).
 | `src/blocks/lists/OpeningBookList/` | **The Book tab** (a block since CTA-113). Presentational: a named list, each row (SAN, the opening's name, the ECO chip) a button that plays its move; the row the pointer **or the keyboard's focus** is on is reported, so its arrow recolours. |
 | `src/views/openings/openingArrows.ts` | **The board's one arrow set.** `openingArrowsOf(treeArrows, book, hoveredSan)` joins the explorer's next-move arrows with the book's. Pure. |
 | `src/views/openings/Main.tsx` | Layout-only wrapper that `routes.tsx` routes to (`openings-wrapper`). |
-| `src/lib/analysisHandOff.ts` | **The hand-off to the Analysis Board** (§5): `analysisHandOffState` / `analysisHandOffOf`, and `lineTreeOf` (one SAN line played from a start, used by this screen's `?at=` arrival). Pure, non-throwing. |
+| `src/views/analysisV2/useSendToAnalysis.tsx` | **The hand-off to Analysis** (§5): the Project picker, the Case made and opened ([`analysis-v2.md`](./analysis-v2.md) §1.1). `lineTreeOf` (one SAN line played from a start, this screen's `?at=` arrival) is `lib/repertoireLink.ts`'s. |
 | `src/lib/openings.ts` | **The opening book**, pure (§2): `loadOpeningBook`, `getPositionBook`, `findOpening`, `nextMoveOpenings` / `knownMoveOpenings`, `openingOfLine`, `stickyOpening`, and the two arrow colours. |
 | `src/views/board/core/useOpeningBookModule.ts` | **The book as a capability module** (`chessboard.md` §9.2.2): the loaded book, the continuations from a FEN, their arrows, the hovered move. This screen is its one consumer. |
-| `src/views/shared/useCurrentOpening.ts` + `src/blocks/panels/CurrentOpening/` | The live "current opening" line every game screen's panel carries (sticky) — the hook reads the book, the block draws it — whose ECO chip links **into** this screen (`/openings?fen=`) — on the Analysis Board as one line of link text that opens a new tab (`oneLine`, CTA-148, [`analysis-board.md`](./analysis-board.md) §1). |
+| `src/views/shared/useCurrentOpening.ts` + `src/blocks/panels/CurrentOpening/` | The live "current opening" line every game screen's panel carries (sticky) — the hook reads the book, the block draws it — whose ECO chip links **into** this screen (`/openings?fen=`) — as one line of link text that opens a new tab where a board asks for it (`oneLine`, CTA-148). |
 | `src/views/shared/useOpeningBook.ts` | The book for the saved lists' cards (`openingOfLine` under each card). Not used here. |
 | `src/data/openings/eco{A..E}.json` | The vendored book, ~3.2 MB, five lazy chunks. |
 | `scripts/vendorOpenings.mjs` | Re-vendors the book from an eco.json checkout (§2.1). Manual, not part of the build. |
 | `src/data/openings/eco-evals.pgn` | **The book as one evaluated PGN** (CTA-184, §9.4.1): every eco.json line in one tree, every move's `[%eval]` from the lichess evaluation database, the best move first at every branch. Committed; **no screen imports it yet** — data for a future Openings update. Written by a standalone tool, **not this repository's code**: `eco-json-lichess-evaluation`, a repository of its own (§9.4.1). |
-| `src/views/tools/analysis/AnalysisBoard.tsx`, `useAnalysisBoard.ts` | The **receiving** end of the hand-off: `arrivalOf(params, location.state)` and the `handOff` start option (§5.3). |
-| `src/views/board/core/useAnalysisSession.ts` | The session this screen composes (core + engine + Play + a baseline), shared with the Analysis Board and the Library's game board. |
-| `src/views/tools/analysis/AnalysisLoad.tsx`, `src/views/shared/ClearBoardButton.tsx`; the blocks `PgnExportPanel`, `BoardEngineControls`, `PlayToggleButton`, `EngineThinking` | The Analysis Board's tabs and header pieces, reused as they are (the engine's play / pause and its menu since CTA-181; Clear under Load). `AnalysisLoad` takes an optional `onCollectionSaved` (the Analysis module's popup, CTA-101) and a `choiceLabelKey` for this screen's inline choice (§3.4). |
-| Tests | `src/views/openings/OpeningsBoard.test.tsx` (the screen), `openingArrows.test.ts`, `src/lib/analysisHandOff.test.ts`, `src/lib/openings.test.ts`, `src/lib/ecoEvalsPgn.test.ts` (the evaluated PGN against the shards and the Analysis Board's readers), `src/views/shared/useCurrentOpening.test.tsx`, `src/blocks/lists/OpeningBookList/OpeningBookList.test.tsx`, the hand-off arrivals in `src/views/tools/analysis/AnalysisBoard.test.tsx`, and the two propagation tests (`src/views/board/boards.test.tsx`, `panelPropagation.test.tsx`). |
+| `src/views/board/core/useAnalysisSession.ts` | The session this screen composes (core + engine + Play + a baseline), shared with Analysis's Case board and the Library's game board. |
+| `src/views/openings/OpeningsLoad.tsx`, `src/views/shared/ClearBoardButton.tsx`; the blocks `PgnExportPanel`, `BoardEngineControls`, `PlayToggleButton`, `EngineThinking` | The Load tab (the legacy Analysis Board's until CTA-192, merge-only here: §3.4) and the shared header pieces (the engine's play / pause and its menu since CTA-181; Clear under Load). |
+| Tests | `src/views/openings/OpeningsBoard.test.tsx` (the screen, the hand-off's Case), `openingArrows.test.ts`, `src/lib/repertoireLink.test.ts` (`lineTreeOf`), `src/lib/openings.test.ts`, `src/lib/ecoEvalsPgn.test.ts` (the evaluated PGN against the shards and the boards' readers), `src/views/shared/useCurrentOpening.test.tsx`, `src/blocks/lists/OpeningBookList/OpeningBookList.test.tsx`, and the two propagation tests (`src/views/board/boards.test.tsx`, `panelPropagation.test.tsx`). |
 
 Routes and nav: `routes.tsx` routes `/openings` to `views/openings/Main`. The
 sidebar's **Openings** folder is `singleEntry` (`navFolders.ts`)
@@ -64,8 +62,8 @@ over one screen, `/openings` (`navItems.ts`, `nav.openings`), so it renders
 as one row under the folder's name.
 
 Locale keys: `openings.*` in `src/locales/en.ts` / `he.ts` (`tabs`, `current`
-— read by `CurrentOpening`, `book`, `controls`, `load.choice`; the engine's
-play / pause and menu are `boardEngine.*`, CTA-181). Anything the screen shares with the Analysis Board is read
+— read by `CurrentOpening`, `book`, `controls`, `load.choice`, `sendTo` (the new Project's name); the engine's
+play / pause and menu are `boardEngine.*`, CTA-181). Anything the screen shares with the other boards is read
 from `analysis.*` (the Load tab's errors, the engine settings, the arrows
 switch's label, the export). `he` is typed `typeof en`, so a missing key is a
 compile error.
@@ -90,12 +88,12 @@ compile error.
                                          ▼
                  BoardShell id="openings" / BoardPanel (tabs, header, footer)
                                          │
-             header: Analysis ─▶ /tools/analysis?at=…  + location state (lib/analysisHandOff)
+             header: Analysis ─▶ a new Case of the tree, in a Project picked (useSendToAnalysis)
                      Play from here ─▶ /engine/play?fen=<position on screen>
 ```
 
 - **A board with no behaviour hook of its own** (`chessboard.md` §9.4,
-  the Library's game board's recipe): the session is the Analysis Board's
+  the Library's game board's recipe): the session is the shared analysis session
   (`useAnalysisSession`), the book is one capability module
   (`useOpeningBookModule`), and the tree view is the shared explorer
   (`useVariationsExplorer`). What is the screen's own — the Book tab, the
@@ -109,10 +107,10 @@ compile error.
   `extensionIds` / `addedIds` — the options `tree-views.md` §2 lists for a
   board that keeps no record (its Map stays: only Play with Engine's game
   view has none, CTA-91).
-- **The engine is on at the start**, as on the Analysis Board: the pinned
+- **The engine is on at the start**, as on Analysis's Case board: the pinned
   best variations, the eval bar and per-FEN evals in the move list. **Play**
   (off at the start) makes it play the side not at the bottom until paused,
-  exactly as on the Analysis Board (`usePlayToggle`).
+  exactly as on Analysis's Case board (`usePlayToggle`).
 - `options.id` is **`openings`**, and every test id is prefixed `openings-`
   (`openings-screen`, `openings-board`, `openings-panel`,
   `openings-panel-tab-<id>`, `openings-book-move-<san>`, …).
@@ -203,7 +201,7 @@ Three React entry points share that one promise. Pick by what you need:
 | **Book** (`book`) | `OpeningBookList` over `book.nextMoves` | A click is `core.playVariation([san])` under the node on screen. A known move is followed, and a new one from an earlier node branches. Hover sets `book.setHoveredMove`. |
 | **Moves** (`moves`) | the next-move arrows switch (`openings-arrows`), then `explorer.moves` | Kept mounted. The move menu edits (`onEditTree: core.replaceTree`); *Play chances…* is off. |
 | **Map** (`map`) | `explorer.map` (`linked: true`) | Kept mounted. |
-| **Load** (`load`) | `AnalysisLoad` **without `onCollectionSaved`**, `choiceLabelKey="openings.load.choice"`, then **Clear** (`openings-clear`, the Engine tab's until CTA-181) | One game or a merge replaces the tree (`core.loadTree` + `engine.clearAnalysis`); a FEN is `core.loadFen` (it turns the board). **Clear** is `core.reset()` + `engine.clearAnalysis()`: back to the tree's **own start** (`startFenRef`): the `?fen=` position, or a loaded game's start — not the standard position. Several games get the inline, merge-only choice — **no popup and no collection**, because this screen keeps nothing — and the merge writes **no `[%games]` tags** (CTA-101). |
+| **Load** (`load`) | `OpeningsLoad`, then **Clear** (`openings-clear`, the Engine tab's until CTA-181) | One game or a merge replaces the tree (`core.loadTree` + `engine.clearAnalysis`); a FEN is `core.loadFen` (it turns the board). **Clear** is `core.reset()` + `engine.clearAnalysis()`: back to the tree's **own start** (`startFenRef`): the `?fen=` position, or a loaded game's start — not the standard position. Several games get the inline, merge-only choice — **no popup and no collection**, because this screen keeps nothing — and the merge writes **no `[%games]` tags** (CTA-101). |
 | **Export** (`export`) | the `PgnExportPanel` block | FEN, and the PGN with or without comments, NAGs and side lines. |
 
 ### 3.2 The arrows — `openingArrowsOf`
@@ -232,7 +230,7 @@ still drawn: the book is the screen's point, and the switch is the tree's.
   that link does nothing visible**: the route does not remount, the arrival
   was read once, and the write-back (§4.2) replaces the pushed `?fen=` with
   the board's own URL (leaving one extra history entry). This is a known
-  limitation, not a feature; see §9.8.
+  limitation, not a feature; see §9.7.
 - **Analysis** (`openings-open-analysis`): §5.
 - **Play from here** (`openings-play-from-here`):
   `navigate("/engine/play?fen=<core.fen>")`. Play with Engine takes the
@@ -240,7 +238,7 @@ still drawn: the book is the screen's point, and the switch is the tree's.
   Black.
 - **Play** (`openings-play`) and the **engine's play / pause**
   (`openings-setting-engine`, with its menu `openings-engine-menu` — the eval
-  bar; `BoardEngineControls`, CTA-181): the Analysis Board's. The search
+  bar; `BoardEngineControls`, CTA-181): every analysis board's. The search
   settings are the top bar's Engine menu — no Engine tab here. Play is disabled while
   the engine is off, and a step back pauses it.
 
@@ -249,7 +247,7 @@ still drawn: the book is the screen's point, and the switch is the tree's.
 No Save, no changes strip (`openings-changes` must never render), no
 `beforeunload` prompt (nothing is lost that a reader was promised to keep),
 no folders, no `?openings=<id>`, no `/openings/saved`, and no Load popup or
-games collection (`AnalysisLoad` without `onCollectionSaved` keeps the inline
+games collection (`OpeningsLoad` keeps the inline
 merge-only `MergeSplitChoice`, and its merge counts nothing).
 
 ---
@@ -281,76 +279,28 @@ On every step, with **history replace**:
 Both are **derived from the tree**, not remembered from the arrival. So a
 Load (a new start position, or none) or a Clear rewrites the link correctly
 with no bookkeeping. **The link carries one line, not the tree.** Side lines
-are not in it; the Analysis hand-off (§5) is how a tree travels.
+are not in it; the hand-off to Analysis (§5) is how a tree travels.
 
 ---
 
-## 5. The Analysis hand-off — `lib/analysisHandOff.ts`
+## 5. The hand-off to Analysis — a new Case
 
-### 5.1 Why location state
+The header's **Analysis** button (`openings-open-analysis`) hands everything
+explored — the whole tree, side lines and comments, a non-standard start — to
+Analysis as a **new Game Case**, through `useSendToAnalysis` ([`analysis-v2.md`](./analysis-v2.md) §1.1):
 
-`?fen=` carries a position, and `?game=` carries a reference into a store
-([`analysis-board.md`](./analysis-board.md) §3). An explored tree is neither: it is
-too big for a URL and lives in no store. So it travels in the **router's
-location state**, with the position on screen as the usual `?at=`:
+- a **Project picker** opens (`openings-send`): *New project* first, named
+  after the opening on screen (`useCurrentOpening`'s name, else
+  `openings.sendTo.projectName`), or a Project the reader has;
+- its **Open** makes the Case (`gameCaseOf` over `core.tree`) with the node on
+  screen as its `path` and the board's orientation, and navigates to its
+  board (`/analysis/projects/<p>/cases/<c>`), where it autosaves;
+- a refused write is said in the picker, which stays open, and a Project made
+  for it is taken back.
 
-```ts
-navigate(
-  { pathname: "/tools/analysis", search: "?at=e4,c5" },          // or no search at the start
-  { state: analysisHandOffState(core.tree, core.orientation) },  // { analysisHandOff: { pgn, orientation } }
-);
-```
-
-- The tree goes as **PGN** (`treeToPgn`: side lines, comments, NAGs and a
-  non-standard start as `SetUp`/`FEN`). The state is then plain text, which
-  the browser's history can structured-clone and which survives a reload.
-  Never put a `GameTree` object in state: node ids and the per-tree
-  `WeakMap` index do not survive a clone.
-- `analysisHandOffOf(state)` reads it back with `parsePgnTree`, and is
-  **non-throwing**: anything that is not a hand-off, or whose PGN does not
-  parse, is `undefined`, and the board opens as if nothing were there.
-
-### 5.2 Trade-offs, on purpose
-
-- **Not a shareable link.** Copying the Analysis Board's URL gives `?at=`
-  without the tree. A new tab or a middle-click carries no state. The button
-  is a `navigate`, not a link, for that reason.
-- **Survives a reload** of the same history entry (the browser keeps an
-  entry's state).
-- A sessionStorage slot was the alternative. It was rejected because it
-  needs cleanup, leaks between tabs and has a "read once" race; router state
-  has none of that.
-
-### 5.3 The receiving end — the Analysis Board
-
-- `AnalysisBoard.tsx`: `arrivalOf(params, location.state)` adds
-  `handOff: analysisHandOffOf(state)` to the start.
-- `useAnalysisBoard.ts`: **precedence** is `?analysis=` (a record) > **the
-  hand-off** > `?game=` > `?fen=` > blank. A hand-off takes its own
-  orientation, ignores `?move=`, and honours `?at=` (`nodeAtParam` against
-  the handed-over tree).
-- It is a **new, unsaved board**, the way a PGN loaded in the Load tab
-  arrives: `loadedUnsaved` starts `true`, so Save opens the name-and-folder
-  dialog (the name is seeded from the tags, which an explored tree usually
-  lacks) and a reload or a closed tab asks first (`beforeunload`).
-- **The state rides along the board's own URL writes**
-  (`setSearchParams(…, { replace: true, state: urlState })`), so a reload
-  keeps the tree, until a Load, a Clear or a save makes the board something
-  else (`clearArrivalUrl` / `pointUrlAt` set `urlState` to `null`).
-- **Gotcha, and why the effect compares presence**: the write-back effect
-  checks `stateKept === (urlState !== null)`, not `location.state ===
-  urlState`. `BrowserRouter` hands back a **clone** of the state, never the
-  object written, so an identity check would rewrite the URL forever.
-  `MemoryRouter` (the tests) keeps the object, so only a real browser shows
-  that bug.
-
-### 5.4 Using the hand-off from another screen
-
-Any screen holding a `GameTree` can open it on the Analysis Board the same
-way: `analysisHandOffState(tree, orientation)` as the state, and
-`atParamOf(tree, nodeId)` as `?at=`. There is nothing to register. Do not
-change the state's shape without keeping `analysisHandOffOf` able to read
-the old one: a reload may still be holding it.
+The Case is the tree's home from then on: a reload, a link, a bookmark all
+reach it — the router-state hand-off it replaced (CTA-78 … CTA-191) carried
+none of those.
 
 ---
 
@@ -362,7 +312,7 @@ the old one: a reload may still be holding it.
 2. **One panel, one square.** `BoardShell` / `BoardPanel`, under both
    propagation tests (`boards.test.tsx`, `panelPropagation.test.tsx`).
 3. **Nothing is kept.** No store, no autosave, no Load split. Keeping means
-   handing off to the Analysis Board.
+   handing off to Analysis as a Case.
 4. **One arrow set, built in one place**: `openingArrowsOf`. Never pass
    `book.arrows` and `explorer.arrows` side by side.
 5. **The book is lazy and shared.** Only `loadOpeningBook` imports the
@@ -372,8 +322,7 @@ the old one: a reload may still be holding it.
    React, the game model or any screen.
 7. **The URL is derived from the tree**, written with history replace.
    `?fen=` is validated with `parseFen`. A position turns the board.
-8. **The hand-off is plain data** (PGN + orientation) and is read
-   non-throwingly. `?fen=` and `?game=` are unchanged by it.
+8. **The hand-off makes a Case** through `useSendToAnalysis` — never a store or a route of this screen's own.
 9. **The board never mirrors**, and SAN and ECO tokens take `dir="ltr"`
    (root `CLAUDE.md`, *Theming*).
 
@@ -384,8 +333,8 @@ the old one: a reload may still be holding it.
 - **Screen**: `src/views/openings/OpeningsBoard.test.tsx`. It mounts
   `OpeningsBoard` at `/openings` in a `MemoryRouter` with
   `RightPanelProvider`, a catch-all route, and a `Where` probe that records
-  the path and (in an effect) the location state, which is how the hand-off
-  is asserted.
+  the path; the hand-off is asserted by the Case it writes (the store's
+  snapshot) and the Case address it lands on.
 - **Stubs**: `lib/engines/builtin` → `builtinEnginesMock` (each shipped engine a `FakeEngine`), `react-chessboard` →
   `reactChessboardMock()` (both from `views/board/boardTestHarness.tsx`;
   `boardOptions()` reads what the board was last given, which is how drops,
@@ -399,17 +348,14 @@ the old one: a reload may still be holding it.
   (`waitFor(… openings-book-move-e4 …)`) before asserting book rows or book
   arrows.
 - **Pure parts**: `openingArrows.test.ts` (dedupe, colours, hover) and
-  `lib/analysisHandOff.test.ts` (a structured-clone round trip, bad states,
-  `lineTreeOf` stopping at an illegal SAN).
-- **The receiving end**: `AnalysisBoard.test.tsx`, *a whole tree handed over
-  by the Openings explorer* (mount with `{ pathname, search, state }`).
+  `lib/repertoireLink.test.ts` (`lineTreeOf` stopping at an illegal SAN).
 - **Shared skeleton**: the Openings explorer is a row of both propagation
   tests (`id: "openings"`), which assert the square, the panel, the pinned
   lines, the engine's play / pause and the search of the position on screen,
   the global search settings reaching it (CTA-181).
 - Commands:
-  `npx vitest run src/views/openings src/lib/analysisHandOff.test.ts src/lib/openings.test.ts`,
-  `npx vitest run src/views/tools/analysis/AnalysisBoard.test.tsx src/views/board`,
+  `npx vitest run src/views/openings src/lib/repertoireLink.test.ts src/lib/openings.test.ts`,
+  `npx vitest run src/views/board`,
   then `yarn test:run`.
 - Anything that needs real layout (arrow placement, the board's size) is a
   browser check, not jsdom (`chessboard.md` §8).
@@ -424,12 +370,9 @@ the old one: a reload may still be holding it.
 | The Book tab stays empty in a test | the test asserted before the book promise settled, or the mock has no entry for that exact FEN (the key includes the clocks) | `waitFor` on a row; the mock's FEN keys |
 | A move shows two arrows on one square pair | something is drawing `book.arrows` beside `openingArrowsOf` | `boardOptions` in `OpeningsBoard.tsx` |
 | A book move's arrow is blue, not green | the tree already has that move as a side line: the tree's arrow wins, by design | §3.2 |
-| The Analysis Board opens blank after the Analysis button | the state was dropped: a new tab, a middle-click, a `navigate` without `state`, or the PGN did not parse (`analysisHandOffOf` → `undefined`) | `location.state` on arrival; `analysisHandOffOf` |
-| The Analysis Board loops rewriting its URL (browser only) | the write-back compared state by identity | §5.3, the gotcha |
-| A reload of the Analysis Board loses the handed-over tree | a URL write went out without `state: urlState` | `AnalysisBoard.tsx` write-back effect |
 | `/openings?at=…` opens at the start | the `?at=` SANs are not legal from the `?fen=` start (or `?fen=` is missing for a non-standard start): `lineTreeOf` stops at the first bad SAN | the link's `fen` and `at` |
 | Clear goes to a position that is not the standard start | by design: Clear returns to the tree's own start (`?fen=` or a loaded game's) | §3.1 |
-| Clicking the ECO chip on `/openings` does nothing | known: same route, no remount, arrival read once (§3.3) | §9.8 |
+| Clicking the ECO chip on `/openings` does nothing | known: same route, no remount, arrival read once (§3.3) | §9.7 |
 | Hebrew UI shows SAN reversed | a token lost its `dir="ltr"` | `blocks/lists/OpeningBookList` |
 
 ---
@@ -512,8 +455,8 @@ What the file is — so a reader of it here knows without the tool:
   ECO and name where the position is an eco.json entry, left off when the
   nearest named move above has the same, then `[%eval pawns,depth]` in the
   app's own format (`formatEval`, [`pgn-annotations.md`](./pgn-annotations.md)
-  §2), so the Analysis Board's arrows (width source *Evaluation*) and its
-  Evaluations tab read it. The deepest stored evaluation's first line; a
+  §2), so a Case board's arrows (width source *Evaluation*) and its Graph
+  tab read it. The deepest stored evaluation's first line; a
   position the database lacks stays unevaluated.
 - **The game**: the Seven Tag Roster with neutral values, `Event "eco.json
   opening tree"`, `Annotator "lichess evaluation database <version>"`; the
@@ -530,29 +473,17 @@ What the file is — so a reader of it here knows without the tool:
 
 ### 9.5 "Can we save openings again?"
 
-Do not bring back a saved-openings store. Keeping a tree is the Analysis
-Board's job: the Analysis button hands it over, and the reader saves it
-there, with folders, settings and IndexedDB storage. If a faster path is
-wanted, add a button that hands off and opens the save dialog on arrival (a
-flag in the hand-off state, read by `useAnalysisBoard`), rather than a
-second store.
+Do not bring back a saved-openings store. Keeping a tree is Analysis's job:
+the Analysis button makes it a Case in a Project, autosaved, filed in
+folders. Any other screen holding a `GameTree` does the same through
+`useSendToAnalysis` ([`analysis-v2.md`](./analysis-v2.md) §1.1).
 
-### 9.6 Handing a tree from another screen
-
-See §5.4. If the Analysis Board should also accept a tree from elsewhere
-with different semantics (for example, not "unsaved"), add a field to the
-state and handle it in `useAnalysisBoard`'s start, keeping old states
-readable.
-
-### 9.7 A link that carries the whole tree
+### 9.6 A link that carries the whole tree
 
 `?at=` carries one line, and that is deliberate: a tree does not fit in a
-URL. If shareable trees are ever needed, they belong in a store with a
-`?game=` key (`lib/gameReference.ts`, one registry line:
-[`analysis-board.md`](./analysis-board.md) §3.1),
-not in a longer query string.
+URL. A shareable tree is a Case — its address is the link.
 
-### 9.8 Following a `?fen=` that changes while mounted
+### 9.7 Following a `?fen=` that changes while mounted
 
 The screen reads its URL once. To make an in-app link to `/openings?fen=…`
 (the ECO chip on this very screen) start a fresh board, either hide the

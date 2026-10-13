@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import type { AnalysisCase, AnalysisProject } from "../../lib/analysisProjects";
 import type { CollectionSummary } from "../../lib/libraryCollections";
 import type { PlayedGame } from "../../lib/playedGames";
-import type { SavedAnalysis } from "../../lib/savedAnalyses";
 import type { SavedRepertoire } from "../../lib/savedRepertoires";
 import { ADDRESS_GROUP_LIMIT, addressEntriesOf, addressOptionsOf, type AddressRecords } from "./addressOptions";
 
@@ -13,7 +13,8 @@ const repertoire = (id: string, name: string) => ({ id, name, pgn: pgn("?", "?")
 
 const RECORDS: AddressRecords = {
   collections: [collection("candidates2026", "Candidates 2026"), collection("u1", "ספרדית — משחקים")],
-  analyses: [],
+  cases: [],
+  projects: [],
   repertoires: [repertoire("caro", "My Caro-Kann"), repertoire("blank", "  ")],
   playedGames: [{ id: "g1", pgn: pgn("You", "Stockfish", "Play with Engine"), savedAt: "2026-10-07T10:00:00.000Z" } as PlayedGame],
 };
@@ -51,11 +52,29 @@ describe("addressOptions (CTA-150)", () => {
     expect(valuesOf("https://chessapp.dev/library/candidates2026")).toEqual([]);
   });
 
-  it("cuts each group short, so thousands of analyses stay a short list", () => {
-    const analyses = Array.from({ length: 5000 }, (_, index) => ({ id: `a${index}`, pgn: pgn(`Player ${index}`, "Opponent"), name: "", description: "" }) as SavedAnalysis);
-    const many = addressEntriesOf({ ...RECORDS, analyses });
+  it("offers an Analysis case by its name or its game's players, and finds it by its Project's name too (CTA-192)", () => {
+    const record = (id: string, name: string, white: string) =>
+      ({ id, name, type: "game", projectId: "p1", source: { kind: "pgn", pgn: pgn(white, "Lee"), startPath: [], fen: "" }, pgn: "" }) as unknown as AnalysisCase;
+    const withCases = addressEntriesOf({
+      ...RECORDS,
+      cases: [record("c1", "", "Kim"), record("c2", "My study", "Ann")],
+      projects: [{ id: "p1", name: "Najdorf" } as AnalysisProject],
+    });
+    expect(addressOptionsOf(withCases, "najdorf").map(({ value, label, group }) => [value, label, group])).toEqual([
+      ["/analysis/projects/p1/cases/c1", "Kim – Lee, Club", "Analysis cases"],
+      ["/analysis/projects/p1/cases/c2", "My study", "Analysis cases"],
+    ]);
+  });
+
+  it("cuts each group short, so thousands of cases stay a short list", () => {
+    const cases = Array.from(
+      { length: 5000 },
+      (_, index) =>
+        ({ id: `c${index}`, name: "", type: "game", projectId: "p", source: { kind: "pgn", pgn: pgn(`Player ${index}`, "Opponent"), startPath: [], fen: "" }, pgn: "" }) as unknown as AnalysisCase,
+    );
+    const many = addressEntriesOf({ ...RECORDS, cases });
     const found = addressOptionsOf(many, "opponent");
-    expect(found.filter((option) => option.group === "Saved analyses")).toHaveLength(ADDRESS_GROUP_LIMIT);
-    expect(addressOptionsOf(many, "player 4999").map((option) => option.value)).toEqual(["/tools/analysis?analysis=a4999"]);
+    expect(found.filter((option) => option.group === "Analysis cases")).toHaveLength(ADDRESS_GROUP_LIMIT);
+    expect(addressOptionsOf(many, "player 4999").map((option) => option.value)).toEqual(["/analysis/projects/p/cases/c4999"]);
   });
 });

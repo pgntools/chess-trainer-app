@@ -2,7 +2,6 @@ import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 
 import { positionCaseOfFen, type AnalysisCase, type AnalysisProject } from "./analysisProjects";
-import { DEFAULT_ANALYSIS_SETTINGS } from "./analysisSettings";
 import { buildExport, zipExport, type ExportSelection, type ExportSource } from "./dataExport";
 import {
   defaultImportChoices,
@@ -21,7 +20,6 @@ import { DEFAULT_ENGINE_SETTINGS } from "./engineSettings";
 import type { CollectionSummary } from "./libraryCollections";
 import type { PlayedGame } from "./playedGames";
 import { DEFAULT_REPERTOIRE_SETTINGS } from "./repertoireSettings";
-import type { SavedAnalysis } from "./savedAnalyses";
 import type { GameFolder } from "./savedGameFolders";
 import type { RepertoireFolder } from "./savedRepertoireFolders";
 import type { SavedRepertoire } from "./savedRepertoires";
@@ -50,23 +48,19 @@ const played = (id: string, updatedAt = AT): PlayedGame => ({
   resigned: "black",
 });
 
-const analysis = (id: string, folderId: string | null, extra: Partial<SavedAnalysis> = {}): SavedAnalysis => ({
+/** An Analysis V2 Project (CTA-186) — the category the nested-folder cases below run over. */
+const project = (id: string, folderId: string | null, extra: Partial<AnalysisProject> = {}): AnalysisProject => ({
   id,
-  pgn: pgn(`Analysis ${id}`, "1. d4 (1. c4) d5 *"),
-  settings: DEFAULT_ANALYSIS_SETTINGS,
-  path: ["d4", "d5"],
-  orientation: "black",
-  description: `notes on ${id}`,
-  showArrows: false,
-  arrowWidthSource: "eval",
-  arrowPalette: "colorblind",
-  showMoveMarks: false,
-  name: `Analysis ${id}`,
+  name: `Project ${id}`,
   folderId,
-  savedAt: AT,
+  createdAt: AT,
   updatedAt: AT,
   ...extra,
 });
+
+const CASE_FEN = "8/8/4k3/8/8/4K3/4P3/8 w - - 0 1";
+const aCase = (id: string, projectId: string): AnalysisCase =>
+  positionCaseOfFen({ id, projectId, name: `Case ${id}`, now: new Date(AT) }, CASE_FEN);
 
 const folder = (id: string, name: string, parentId: string | null = null): GameFolder => ({
   id,
@@ -103,8 +97,6 @@ const uploaded = (id: string, name: string, folderId: string | null = null): Col
 /** What the exporting app held: every category, nested and empty folders, a shipped collection. */
 const SOURCE: ExportSource = {
   playedGames: [played("g2", LATER), played("g1")],
-  analyses: [analysis("a1", null), analysis("a2", "fo"), analysis("a3", "fs")],
-  analysisFolders: [folder("fo", "Openings"), folder("fs", "Sicilian", "fo"), folder("fe", "Endgames")],
   repertoires: [repertoire("r1", "rw"), repertoire("r2", null)],
   repertoireFolders: [repFolder("rw", "White"), repFolder("rb", "Black")],
   collections: [
@@ -115,15 +107,14 @@ const SOURCE: ExportSource = {
   collectionFolders: [folder("lc", "Club"), folder("lb", "Blitz", "lc")],
   enginePresets: [],
   enginePresetSelections: [],
-  projectFolders: [],
-  analysisProjects: [],
-  analysisCases: [],
+  projectFolders: [folder("fo", "Openings"), folder("fs", "Sicilian", "fo"), folder("fe", "Endgames")],
+  analysisProjects: [project("p1", null), project("p2", "fo"), project("p3", "fs")],
+  analysisCases: [aCase("c1", "p1"), aCase("c2", "p2"), aCase("c3", "p3")],
 };
 
 const ALL: ExportSelection = {
   collections: true,
   games: true,
-  analyses: true,
   repertoires: true,
   enginePresets: true,
   analysisProjects: true,
@@ -135,8 +126,6 @@ const zipOf = (source: Partial<ExportSource> = SOURCE, selection: ExportSelectio
     buildExport(
       {
         playedGames: [],
-        analyses: [],
-        analysisFolders: [],
         repertoires: [],
         repertoireFolders: [],
         collections: [],
@@ -155,8 +144,6 @@ const zipOf = (source: Partial<ExportSource> = SOURCE, selection: ExportSelectio
 
 const EMPTY: ImportCurrent = {
   playedGames: [],
-  analyses: [],
-  analysisFolders: [],
   repertoires: [],
   repertoireFolders: [],
   collections: [],
@@ -171,8 +158,6 @@ const EMPTY: ImportCurrent = {
 /** The exporting app as the import sees it — what a second import of the same zip meets. */
 const SAME: ImportCurrent = {
   playedGames: SOURCE.playedGames,
-  analyses: SOURCE.analyses,
-  analysisFolders: SOURCE.analysisFolders,
   repertoires: SOURCE.repertoires,
   repertoireFolders: SOURCE.repertoireFolders,
   collections: SOURCE.collections.filter((c) => c.summary.source === "uploaded").map((c) => c.summary),
@@ -184,7 +169,7 @@ const SAME: ImportCurrent = {
   analysisCases: SOURCE.analysisCases,
 };
 
-const CAPS: ImportCaps = { playedGames: 100, analyses: 20_000, repertoires: 500, folders: 100, enginePresets: 50, analysisProjects: 1_000, analysisCases: 10_000 };
+const CAPS: ImportCaps = { playedGames: 100, repertoires: 500, folders: 100, enginePresets: 50, analysisProjects: 1_000, analysisCases: 10_000 };
 
 const dumpOf = (bytes: Uint8Array = zipOf()): ImportDump => {
   const reading = readImport(bytes);
@@ -217,16 +202,17 @@ describe("reading a zip", () => {
   it("reads back every category, every folder by its path, and counts the shipped collections", () => {
     const dump = dumpOf();
     expect(dump.appVersion).toBe("9.9.9");
-    expect(dump.categories).toEqual(["collections", "games", "analyses", "repertoires", "enginePresets", "analysisProjects"]);
+    expect(dump.categories).toEqual(["collections", "games", "repertoires", "enginePresets", "analysisProjects"]);
     expect(dump.games).toEqual(SOURCE.playedGames);
-    expect(dump.analyses.map(({ record, folder }) => [record.id, folder])).toEqual([
-      ["a1", []],
-      ["a2", ["Openings"]],
-      ["a3", ["Openings", "Sicilian"]],
+    expect(dump.analysisProjects.map(({ record, folder }) => [record.id, folder])).toEqual([
+      ["p1", []],
+      ["p2", ["Openings"]],
+      ["p3", ["Openings", "Sicilian"]],
     ]);
     // Everything a record carries beside its folder comes back.
-    expect(dump.analyses[0].record).toEqual(analysis("a1", null));
-    expect(dump.analysisFolders).toEqual([["Endgames"], ["Openings"], ["Openings", "Sicilian"]]);
+    expect(dump.analysisProjects[0].record).toEqual({ ...project("p1", null), cases: [aCase("c1", "p1")] });
+    expect(dump.projectFolders).toEqual([["Endgames"], ["Openings"], ["Openings", "Sicilian"]]);
+    expect(dump.skippedAnalyses).toBe(0);
     expect(dump.repertoires.map(({ record, folder }) => [record, folder])).toEqual([
       [repertoire("r1", null), ["White"]],
       [repertoire("r2", null), []],
@@ -363,12 +349,40 @@ describe("reading a zip", () => {
   });
 
   it("holds only the categories the manifest lists", () => {
-    const dump = dumpOf(zipOf(SOURCE, { ...ALL, collections: false, repertoires: false, enginePresets: false, analysisProjects: false }));
-    expect(dump.categories).toEqual(["games", "analyses"]);
+    const dump = dumpOf(zipOf(SOURCE, { ...ALL, collections: false, repertoires: false, enginePresets: false }));
+    expect(dump.categories).toEqual(["games", "analysisProjects"]);
     expect(importPlanOf(dump, EMPTY).categories).toEqual({
       games: expect.anything(),
-      analyses: expect.anything(),
+      analysisProjects: expect.anything(),
     });
+  });
+
+  it("skips an older zip's saved analyses, counting them, and reads everything else (CTA-192)", () => {
+    // An export from before CTA-192: `analyses.pgn` and its manifest entry, as that build wrote them.
+    const files = unzipSync(zipOf());
+    files["analyses.pgn"] = strToU8(`${pgn("Analysis a1")}\n\n${pgn("Analysis a2")}`);
+    const old = rezip(zipSync(files), (m) => ({
+      ...m,
+      categories: [...(m.categories as string[]), "analyses"],
+      folders: { ...(m.folders as Record<string, unknown>), analyses: [["Openings"]] },
+      files: [
+        ...(m.files as unknown[]),
+        {
+          path: "analyses.pgn",
+          kind: "analyses",
+          records: [
+            { index: 0, games: 1, id: "a1", name: "One", folderPath: [] },
+            { index: 1, games: 1, id: "a2", name: "Two", folderPath: ["Openings"] },
+          ],
+        },
+      ],
+    }));
+    const dump = dumpOf(old);
+    expect(dump.skippedAnalyses).toBe(2);
+    expect(dump.categories).toEqual(["collections", "games", "repertoires", "enginePresets", "analysisProjects"]);
+    expect(dump.games).toEqual(SOURCE.playedGames);
+    expect(dump.analysisProjects.map(({ record }) => record.id)).toEqual(["p1", "p2", "p3"]);
+    expect(Object.keys(writesOf(dump, EMPTY))).not.toContain("analyses");
   });
 
   it.each([
@@ -379,7 +393,7 @@ describe("reading a zip", () => {
     ["a newer version", rezip(zipOf(), (m) => ({ ...m, formatVersion: 6 })), { kind: "newer", version: 6 }],
     ["no version", rezip(zipOf(), (m) => ({ ...m, formatVersion: undefined })), { kind: "malformed" }],
     ["no files list", rezip(zipOf(), (m) => ({ ...m, files: undefined })), { kind: "malformed" }],
-    ["a missing file", rezip(zipOf(), (m) => m, ["analyses.pgn"]), { kind: "missing-file", path: "analyses.pgn" }],
+    ["a missing file", rezip(zipOf(), (m) => m, ["repertoires/white.pgn"]), { kind: "missing-file", path: "repertoires/white.pgn" }],
     [
       "records that do not add up to the file",
       rezip(zipOf(), (m) => ({
@@ -395,10 +409,10 @@ describe("reading a zip", () => {
       rezip(zipOf(), (m) => ({
         ...m,
         files: (m.files as { path: string; records?: Record<string, unknown>[] }[]).map((f) =>
-          f.path === "analyses.pgn" ? { ...f, records: f.records?.map((r) => ({ ...r, id: "" })) } : f,
+          f.path === "games.pgn" ? { ...f, records: f.records?.map((r) => ({ ...r, id: "" })) } : f,
         ),
       })),
-      { kind: "unreadable", path: "analyses.pgn" },
+      { kind: "unreadable", path: "games.pgn" },
     ],
     [
       "a collection whose games do not match its count",
@@ -465,22 +479,22 @@ describe("into an empty app", () => {
 
     expect(writes.games?.writes).toEqual({ add: SOURCE.playedGames, remove: [] });
 
-    const analyses = writes.analyses?.writes;
+    const projects = writes.analysisProjects?.writes;
     const pathOf = (id: string | null, folders: readonly GameFolder[]): string[] => {
       const found = folders.find((f) => f.id === id);
       return found === undefined ? [] : [...pathOf(found.parentId, folders), found.name];
     };
-    expect(analyses?.folders.map((f) => pathOf(f.id, analyses.folders))).toEqual([
+    expect(projects?.folders.map((f) => pathOf(f.id, projects.folders))).toEqual([
       ["Endgames"],
       ["Openings"],
       ["Openings", "Sicilian"],
     ]);
-    expect(analyses?.add.map((a) => [a.id, pathOf(a.folderId, analyses.folders)])).toEqual([
-      ["a1", []],
-      ["a2", ["Openings"]],
-      ["a3", ["Openings", "Sicilian"]],
+    expect(projects?.add.map((a) => [a.id, pathOf(a.folderId, projects.folders)])).toEqual([
+      ["p1", []],
+      ["p2", ["Openings"]],
+      ["p3", ["Openings", "Sicilian"]],
     ]);
-    expect(analyses?.add[2]).toEqual({ ...analysis("a3", null), folderId: analyses?.add[2].folderId });
+    expect(projects?.add[2]).toEqual({ ...project("p3", null), folderId: projects?.add[2].folderId });
 
     const repertoires = writes.repertoires?.writes;
     expect(repertoires?.folders.map((f) => f.name)).toEqual(["Black", "White"]);
@@ -496,7 +510,7 @@ describe("into an empty app", () => {
     // The shipped one is never among them.
     expect(collections?.add.map((c) => c.id)).not.toContain("worldcup");
 
-    expect(writes.analyses?.report).toEqual({ added: 3, replaced: 0, skipped: 0, folders: 3 });
+    expect(writes.analysisProjects?.report).toEqual({ added: 3, replaced: 0, skipped: 0, folders: 3 });
   });
 
   it("writes nothing of a category left unticked", () => {
@@ -504,7 +518,7 @@ describe("into an empty app", () => {
     const choices = defaultImportChoices(importPlanOf(dump, EMPTY));
     const writes = importWritesOf(dump, EMPTY, { ...choices, games: { ...choices.games, ticked: false } }, { caps: CAPS });
     expect(writes.games).toBeUndefined();
-    expect(writes.analyses).toBeDefined();
+    expect(writes.analysisProjects).toBeDefined();
   });
 });
 
@@ -513,14 +527,14 @@ describe("conflicts", () => {
     const current: ImportCurrent = {
       ...EMPTY,
       playedGames: [played("x1")],
-      analyses: [analysis("x2", "mine-openings"), analysis("x3", "gone")],
-      analysisFolders: [folder("mine-openings", "Openings"), folder("mine-sic", "Najdorf", "mine-openings")],
+      analysisProjects: [project("x2", "mine-openings"), project("x3", "gone")],
+      projectFolders: [folder("mine-openings", "Openings"), folder("mine-sic", "Najdorf", "mine-openings")],
       repertoireFolders: [repFolder("mine-black", "Black")],
     };
     const plan = importPlanOf(dumpOf(), current);
     expect(plan.categories.games?.conflicts).toEqual([{ key: "[]", path: [], incoming: 2, existing: 1 }]);
     // A record filed in a folder that is gone counts at the top level.
-    expect(plan.categories.analyses?.conflicts).toEqual([
+    expect(plan.categories.analysisProjects?.conflicts).toEqual([
       { key: "[]", path: [], incoming: 1, existing: 1 },
       { key: folderKey(["Openings"]), path: ["Openings"], incoming: 1, existing: 1 },
     ]);
@@ -535,58 +549,55 @@ describe("conflicts", () => {
 });
 
 describe("the choices", () => {
-  /** The app: an Openings folder holding a1 (changed since) and its own x1; Unfiled holding x2. */
+  /** The app: an Openings folder holding p1 (changed since) and its own x1; the top level holding x2. */
   const current: ImportCurrent = {
     ...EMPTY,
-    analyses: [
-      analysis("a1", "mine", { name: "Changed here" }),
-      analysis("x1", "mine"),
-      analysis("x2", null),
-    ],
-    analysisFolders: [folder("mine", "Openings")],
+    analysisProjects: [project("p1", "mine", { name: "Changed here" }), project("x1", "mine"), project("x2", null)],
+    projectFolders: [folder("mine", "Openings")],
   };
-  const dump = () => dumpOf(zipOf({ analyses: SOURCE.analyses, analysisFolders: SOURCE.analysisFolders }));
+  const dump = () =>
+    dumpOf(zipOf({ projectFolders: SOURCE.projectFolders, analysisProjects: SOURCE.analysisProjects, analysisCases: SOURCE.analysisCases }));
   const choose = (choice: "merge" | "override" | "skip", folders: Record<string, "merge" | "override" | "skip"> = {}) =>
-    ({ analyses: { ticked: true, choice, folders } }) as Partial<ImportChoices>;
+    ({ analysisProjects: { ticked: true, choice, folders } }) as Partial<ImportChoices>;
 
   it("Merge adds into the existing folder and keeps a record the app already has", () => {
     const writes = writesOf(dump(), current, choose("merge"));
-    expect(writes.analyses?.writes.remove).toEqual([]);
-    expect(writes.analyses?.writes.add.map((a) => [a.id, a.folderId])).toEqual([
-      ["a2", "mine"],
-      ["a3", "new2"],
+    expect(writes.analysisProjects?.writes.remove).toEqual([]);
+    expect(writes.analysisProjects?.writes.add.map((a) => [a.id, a.folderId])).toEqual([
+      ["p2", "mine"],
+      ["p3", "new2"],
     ]);
     // Endgames and Sicilian (under the app's Openings) are new; Openings is not.
-    expect(writes.analyses?.writes.folders.map((f) => [f.id, f.name, f.parentId])).toEqual([
+    expect(writes.analysisProjects?.writes.folders.map((f) => [f.id, f.name, f.parentId])).toEqual([
       ["new1", "Endgames", null],
       ["new2", "Sicilian", "mine"],
     ]);
-    expect(writes.analyses?.report).toEqual({ added: 2, replaced: 0, skipped: 1, folders: 2 });
+    expect(writes.analysisProjects?.report).toEqual({ added: 2, replaced: 0, skipped: 1, folders: 2 });
   });
 
   it("Override replaces the folder's records, and a same-id record anywhere, with the dump's", () => {
     const writes = writesOf(dump(), current, choose("override"));
-    expect(new Set(writes.analyses?.writes.remove)).toEqual(new Set(["a1", "x1", "x2"]));
-    expect(writes.analyses?.writes.add.map((a) => [a.id, a.name, a.folderId])).toEqual([
-      ["a1", "Analysis a1", null],
-      ["a2", "Analysis a2", "mine"],
-      ["a3", "Analysis a3", "new2"],
+    expect(new Set(writes.analysisProjects?.writes.remove)).toEqual(new Set(["p1", "x1", "x2"]));
+    expect(writes.analysisProjects?.writes.add.map((a) => [a.id, a.name, a.folderId])).toEqual([
+      ["p1", "Project p1", null],
+      ["p2", "Project p2", "mine"],
+      ["p3", "Project p3", "new2"],
     ]);
-    expect(writes.analyses?.report).toEqual({ added: 3, replaced: 3, skipped: 0, folders: 2 });
+    expect(writes.analysisProjects?.report).toEqual({ added: 3, replaced: 3, skipped: 0, folders: 2 });
   });
 
   it("Skip writes nothing into a clashing folder, but still creates the new ones", () => {
     const writes = writesOf(dump(), current, choose("skip"));
-    expect(writes.analyses?.writes.add.map((a) => a.id)).toEqual(["a3"]);
-    expect(writes.analyses?.writes.folders.map((f) => f.name)).toEqual(["Endgames", "Sicilian"]);
-    expect(writes.analyses?.report).toEqual({ added: 1, replaced: 0, skipped: 2, folders: 2 });
+    expect(writes.analysisProjects?.writes.add.map((a) => a.id)).toEqual(["p3"]);
+    expect(writes.analysisProjects?.writes.folders.map((f) => f.name)).toEqual(["Endgames", "Sicilian"]);
+    expect(writes.analysisProjects?.report).toEqual({ added: 1, replaced: 0, skipped: 2, folders: 2 });
   });
 
   it("a folder's own choice beats the category's", () => {
     const writes = writesOf(dump(), current, choose("skip", { [folderKey(["Openings"])]: "override" }));
-    expect(new Set(writes.analyses?.writes.remove)).toEqual(new Set(["a1", "x1"]));
-    expect(writes.analyses?.writes.add.map((a) => a.id)).toEqual(["a2", "a3"]);
-    expect(writes.analyses?.report).toEqual({ added: 2, replaced: 2, skipped: 1, folders: 2 });
+    expect(new Set(writes.analysisProjects?.writes.remove)).toEqual(new Set(["p1", "x1"]));
+    expect(writes.analysisProjects?.writes.add.map((a) => a.id)).toEqual(["p2", "p3"]);
+    expect(writes.analysisProjects?.report).toEqual({ added: 2, replaced: 2, skipped: 1, folders: 2 });
   });
 
   it("the played games clash as a whole", () => {
@@ -602,7 +613,7 @@ describe("the choices", () => {
 
   it("re-importing the same zip with Merge changes nothing", () => {
     const writes = writesOf(dumpOf(), SAME);
-    for (const category of ["games", "analyses", "repertoires", "collections"] as const) {
+    for (const category of ["games", "repertoires", "collections", "analysisProjects"] as const) {
       const planned = writes[category]?.writes;
       expect(planned?.add, category).toEqual([]);
       expect(planned?.remove, category).toEqual([]);
@@ -615,14 +626,14 @@ describe("caps", () => {
   it("refuses a category that would pass its records' cap", () => {
     const writes = writesOf(dumpOf(), { ...EMPTY, repertoires: [repertoire("x1", null)] }, {}, { ...CAPS, repertoires: 2 });
     expect(writes.repertoires?.refused).toEqual({ kind: "records", max: 2, total: 3 });
-    expect(writes.analyses?.refused).toBeUndefined();
+    expect(writes.analysisProjects?.refused).toBeUndefined();
   });
 
   it("refuses a category that would pass its folders' cap", () => {
     const current: ImportCurrent = { ...EMPTY, collectionFolders: [folder("x", "Mine")] };
     const writes = writesOf(dumpOf(), current, {}, { ...CAPS, folders: 2 });
     expect(writes.collections?.refused).toEqual({ kind: "folders", max: 2, total: 3 });
-    expect(writes.analyses?.refused).toEqual({ kind: "folders", max: 2, total: 3 });
+    expect(writes.analysisProjects?.refused).toEqual({ kind: "folders", max: 2, total: 3 });
     expect(writes.repertoires?.refused).toBeUndefined();
   });
 
@@ -852,12 +863,6 @@ describe("Analysis V2's projects (CTA-186)", () => {
     const dump = dumpOf(v4);
     expect(dump.analysisProjects.map(({ record }) => record.id)).toEqual(["p1", "p2"]);
     expect(dump.caseLinks).toEqual([]);
-  });
-
-  it("are left unread by a build that does not offer them", () => {
-    const reading = readImport(projectsZip(), { categories: ["games"] });
-    expect(reading.ok && reading.dump.categories).toEqual(["games"]);
-    expect(reading.ok && reading.dump.analysisProjects).toEqual([]);
   });
 
   it("read a version-3 zip — from before them — through the table, and refuse a miscounted file", () => {

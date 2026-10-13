@@ -1,15 +1,13 @@
 import { ANALYSIS_PROJECTS_CHANNEL, JOBS_V2_STORE, openAnalysisProjectsDb } from "./analysisProjectsDb";
 import { idbRecordStore } from "./idbRecordStore";
-import { canCancelJob, canPauseJob, canResumeJob, isFinishedJob } from "./jobs";
-import { jobV2From, jobV2Of, MAX_JOBS_V2, type JobV2, type JobV2Request } from "./jobsV2";
+import { canCancelJob, canPauseJob, canResumeJob, isFinishedJob, jobV2From, jobV2Of, MAX_JOBS_V2, type JobV2, type JobV2Request } from "./jobsV2";
 import { newRecordId } from "./recordId";
 
 /**
  * **Where Jobs V2 are kept** (CTA-188) — the `jobs` object store of Analysis
- * V2's database, `chessapp.analysisProjects` (version 2,
+ * V2's database, `chessapp.analysisProjects` (version 3,
  * `lib/analysisProjectsDb.ts`), one record per {@link JobV2}, newest first,
- * over [`idbRecordStore.ts`](./idbRecordStore.ts). A clone of the legacy
- * `lib/jobStore.ts` (`chessapp.jobs`), which it never touches; the runner is
+ * over [`idbRecordStore.ts`](./idbRecordStore.ts); the runner is
  * `lib/jobV2Runner.ts`, the reference `.claude/rules/analysis-v2.md` §6.
  *
  * Every read is the kept snapshot — `undefined` until the first read lands —

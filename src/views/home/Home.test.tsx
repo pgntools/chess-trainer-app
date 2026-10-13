@@ -121,19 +121,16 @@ describe("the front page's nav cards — the landing page as it was", () => {
     expect(cardLinks().map((link) => link.getAttribute("href"))).not.toContain("/openings/saved");
   });
 
-  it("shows an Analyses section — a Lobby card to the saved list and a Jobs card — and none to the board", async () => {
+  it("shows an Analysis section — a Projects card and a Jobs card (CTA-192)", async () => {
     renderHome();
     await screen.findByTestId("home-nav-cards");
 
-    // The sidebar's Analyses folder (CTA-174): its Lobby and Jobs, under the folder's own heading.
-    expect(within(screen.getByTestId("home-nav-cards")).getByRole("heading", { level: 3, name: "Analyses" })).toBeInTheDocument();
-    const analysis = within(screen.getByTestId("home-section-analysis")).getAllByRole("link");
-    expect(analysis.map((link) => link.getAttribute("href"))).toEqual(["/tools/analysis/saved", "/jobs"]);
-    expect(analysis[0]).toHaveTextContent("Lobby");
+    // The sidebar's Analysis V2 folder: its Projects browser and Jobs V2, under the folder's own heading.
+    expect(within(screen.getByTestId("home-nav-cards")).getByRole("heading", { level: 3, name: "Analysis V2" })).toBeInTheDocument();
+    const analysis = within(screen.getByTestId("home-section-analysis-v2")).getAllByRole("link");
+    expect(analysis.map((link) => link.getAttribute("href"))).toEqual(["/analysis", "/analysis/jobs"]);
+    expect(analysis[0]).toHaveTextContent("Projects");
     expect(analysis[1]).toHaveTextContent("Jobs");
-
-    // The board view has no card: it is the saved list's New button.
-    expect(cardLinks().map((link) => link.getAttribute("href"))).not.toContain("/tools/analysis");
   });
 
   it("still shows a card per screen of every other section, each under a section heading", async () => {

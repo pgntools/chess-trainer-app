@@ -10,7 +10,7 @@ A chess trainer that runs entirely in the browser — no account, no server of i
 own. Live at **[chessapp.dev](https://chessapp.dev)**.
 
 - **Play with Engine** — a game against Stockfish, with a strength setting, and **Masked Pieces**, the same game with the pieces disguised.
-- **Analysis Board** — a game tree with side lines, comments and engine lines; saved analyses.
+- **Analysis** — projects of games and positions, each a board with side lines, comments and engine lines, autosaved; computer analysis of a game in the background.
 - **Openings explorer** — the opening book, move by move.
 - **Repertoires** — build your lines, then drill them against a trainer.
 - **Library** — collections of master games and tournaments, from your own PGN files.

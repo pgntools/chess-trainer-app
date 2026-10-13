@@ -3,8 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ANALYSIS_PROJECTS_DB_NAME } from "./analysisProjectsDb";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "./computerAnalysis";
 import { done } from "./idb";
-import type { JobStatus } from "./jobs";
-import { jobV2Of, MAX_JOBS_V2, type JobV2, type JobV2Request } from "./jobsV2";
+import { jobV2Of, type JobStatus, MAX_JOBS_V2, type JobV2, type JobV2Request } from "./jobsV2";
 import {
   addJobV2,
   cancelJobV2,
@@ -72,7 +71,7 @@ describe("the Jobs V2 store (CTA-188)", () => {
     expect((await reload()).map((job) => job.id)).toEqual(["good"]);
   });
 
-  it("changes a job in place; pauses, cancels and resumes as V1's do, a change of nothing writing nothing", async () => {
+  it("changes a job in place; pauses, cancels and resumes, a change of nothing writing nothing", async () => {
     await addJobV2(jobOf("live", "running"));
     await addJobV2(jobOf("over", "done"));
     await addJobV2(jobOf("cut", "interrupted"));

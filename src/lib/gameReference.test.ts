@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { addAnalysisCases } from "./analysisCaseStore";
+import { gameCaseOf } from "./analysisProjects";
 import { indexedRowOf } from "./collectionIndex";
 import { DEFAULT_ENGINE_SETTINGS } from "./engineSettings";
 import { addCollection, resetLibraryCollectionStore } from "./libraryCollectionStore";
@@ -8,7 +10,7 @@ import { savePlayedGame } from "./playedGameStore";
 import { playedGameOf } from "./playedGames";
 import { parsePgnGame, parsePgnTree } from "./pgn";
 import {
-  ANALYSIS_REFERENCE_KEY,
+  CASE_REFERENCE_KEY,
   isReferenceRead,
   LIBRARY_REFERENCE_KEY,
   libraryGameReference,
@@ -18,17 +20,17 @@ import {
 } from "./gameReference";
 
 /**
- * The `?game=` carrier: a key, a store's catalog path and an id, resolved
- * against that store. The two producers' own tests
- * (`savedAnalysisStore.test.ts`, `playedGames.test.ts`) cover their round
- * trips; this covers what the carrier refuses.
+ * A stored game's reference: a key, a store's catalog path and an id,
+ * resolved against that store. The played games' own test
+ * (`playedGames.test.ts`) covers its round trip; this covers what the
+ * reference refuses, a Library game and an Analysis case (CTA-192).
  */
 
 beforeEach(() => localStorage.clear());
 
 describe("resolveGameReference", () => {
   it("knows exactly the three stores' keys", () => {
-    expect(ANALYSIS_REFERENCE_KEY).toBe("analysis");
+    expect(CASE_REFERENCE_KEY).toBe("case");
     expect(PLAY_REFERENCE_KEY).toBe("play");
     expect(LIBRARY_REFERENCE_KEY).toBe("library");
   });
@@ -87,6 +89,24 @@ describe("a Library game (CTA-77)", () => {
 
   it("is read at once for no reference", () => {
     expect(isReferenceRead(null)).toBe(true);
+  });
+});
+
+describe("an Analysis case (CTA-192)", () => {
+  it("resolves case/<project>/<case> once the Cases are read — and nothing in another Project", async () => {
+    const tree = parsePgnTree('[White "Kim"]\n[Black "Lee"]\n\n1. e4 e5 *');
+    await addAnalysisCases([gameCaseOf({ id: "c1", projectId: "p1", name: "" }, tree)]);
+    await loadReferencedGames("case/p1/c1");
+    expect(isReferenceRead("case/p1/c1")).toBe(true);
+    expect(resolveGameReference("case/p1/c1")).toMatchObject({ id: "c1", name: "Kim – Lee" });
+    expect(resolveGameReference("case/p2/c1")).toBeUndefined();
+    expect(resolveGameReference("case/p1/missing")).toBeUndefined();
+  });
+
+  it("is named by the Case's own name first", async () => {
+    await addAnalysisCases([gameCaseOf({ id: "c9", projectId: "p1", name: "My study" }, parsePgnTree("1. d4 *"))]);
+    await loadReferencedGames("case/p1/c9");
+    expect(resolveGameReference("case/p1/c9")?.name).toBe("My study");
   });
 });
 

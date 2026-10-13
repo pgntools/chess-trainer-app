@@ -1,8 +1,8 @@
 /**
  * **Where an article's component reads its games from** (CTA-140) — one
  * address for every resource the app keeps, so one component draws a PGN
- * of the article's own, a Library collection or one game of it, a saved
- * analysis, a game played against the engine, or a repertoire alike, and
+ * of the article's own, a Library collection or one game of it, an
+ * Analysis case, a game played against the engine, or a repertoire alike, and
  * only its `src` changes.
  *
  * An address is the **app path** the resource's own screen has, as the
@@ -13,10 +13,9 @@
  * | --- | --- |
  * | `/library/<collection>` | a Library collection — its games |
  * | `/library/<collection>/<n>` | one game of it |
- * | `/tools/analysis?analysis=<id>` | a saved analysis |
+ * | `/analysis/projects/<project>/cases/<case>` | an Analysis case (CTA-192) |
  * | `/engine/play?saved=<id>` | a game played against the engine |
  * | `/repertoires/<id>` | a repertoire |
- * | `/tools/analysis?game=<reference>` | any game the Analysis Board opens by reference (`lib/gameReference.ts`) |
  *
  * Pure: the stores are read by the embeds (`views/home/frontPage/embedSource.tsx`).
  */
@@ -24,7 +23,7 @@
 export type SourceAddress =
   | { kind: "collection"; collection: string }
   | { kind: "libraryGame"; collection: string; number: number }
-  | { kind: "analysis"; id: string }
+  | { kind: "case"; projectId: string; caseId: string }
   | { kind: "playedGame"; id: string }
   | { kind: "repertoire"; id: string };
 
@@ -39,19 +38,8 @@ const decoded = (segment: string): string => {
   }
 };
 
-/** A `?game=` reference (`library/<c>/<n>`, `analysis/saved/<id>`, `play/games/<id>`) as an address. */
-const referenceAddressOf = (reference: string): SourceAddress | undefined => {
-  const parts = reference.split("/").filter(Boolean).map(decoded);
-  if (parts[0] === "library" && parts.length === 3 && /^\d+$/.test(parts[2]) && Number(parts[2]) >= 1) {
-    return { kind: "libraryGame", collection: parts[1], number: Number(parts[2]) };
-  }
-  if (parts[0] === "analysis" && parts[1] === "saved" && parts.length === 3) return { kind: "analysis", id: parts[2] };
-  if (parts[0] === "play" && parts[1] === "games" && parts.length === 3) return { kind: "playedGame", id: parts[2] };
-  return undefined;
-};
-
 /** The screens an address can start at — whatever comes before the first (a host, the base, `/he`) is not the address. */
-const SCREENS = /\/(library|repertoires|tools\/analysis|engine\/play)(?=[/?#]|$)/;
+const SCREENS = /\/(library|repertoires|analysis\/projects|engine\/play)(?=[/?#]|$)/;
 
 /**
  * The address a text names — `undefined` for anything that is not one (a
@@ -71,11 +59,8 @@ export const sourceAddressOf = (text: string): SourceAddress | undefined => {
     return undefined;
   }
   if (parts[0] === "repertoires") return parts.length === 2 ? { kind: "repertoire", id: parts[1] } : undefined;
-  if (parts[0] === "tools" && parts[1] === "analysis" && parts.length === 2) {
-    const analysis = url.searchParams.get("analysis");
-    if (analysis !== null && analysis !== "") return { kind: "analysis", id: analysis };
-    const game = url.searchParams.get("game");
-    return game === null ? undefined : referenceAddressOf(game);
+  if (parts[0] === "analysis" && parts[1] === "projects" && parts[3] === "cases" && parts.length === 5) {
+    return { kind: "case", projectId: parts[2], caseId: parts[4] };
   }
   if (parts[0] === "engine" && parts[1] === "play" && parts.length === 2) {
     const saved = url.searchParams.get("saved");
@@ -91,8 +76,8 @@ export const sourcePathOf = (address: SourceAddress): string => {
       return `/library/${encodeURIComponent(address.collection)}`;
     case "libraryGame":
       return `/library/${encodeURIComponent(address.collection)}/${address.number}`;
-    case "analysis":
-      return `/tools/analysis?analysis=${encodeURIComponent(address.id)}`;
+    case "case":
+      return `/analysis/projects/${encodeURIComponent(address.projectId)}/cases/${encodeURIComponent(address.caseId)}`;
     case "playedGame":
       return `/engine/play?saved=${encodeURIComponent(address.id)}`;
     case "repertoire":
@@ -100,13 +85,13 @@ export const sourcePathOf = (address: SourceAddress): string => {
   }
 };
 
-/** The `?game=` reference of an address that names one stored game — `undefined` for a collection or a repertoire. */
+/** The reference (`lib/gameReference.ts`) of an address that names one stored game — `undefined` for a collection or a repertoire. */
 export const gameReferenceOf = (address: SourceAddress): string | undefined => {
   switch (address.kind) {
     case "libraryGame":
       return `library/${address.collection}/${address.number}`;
-    case "analysis":
-      return `analysis/saved/${address.id}`;
+    case "case":
+      return `case/${address.projectId}/${address.caseId}`;
     case "playedGame":
       return `play/games/${address.id}`;
     default:
@@ -116,7 +101,7 @@ export const gameReferenceOf = (address: SourceAddress): string | undefined => {
 
 /**
  * Whether only this browser has what an address names — the reader's own
- * analyses, played games, repertoires and uploaded collections. An article
+ * Cases, played games, repertoires and uploaded collections. An article
  * that names one shows "not in this browser" to every other reader, the
  * published site included; a shipped collection is there for everyone.
  */

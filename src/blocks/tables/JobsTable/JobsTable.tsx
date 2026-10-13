@@ -12,18 +12,15 @@ import { ProgressLine } from "../../../design-system/components/states";
 import { tableDate } from "../../../design-system/components/tables";
 import { IconAction } from "../../../design-system/components/toolbars";
 import { DataTable, type DataTableColumn } from "../../../design-system/patterns/tables";
-import { canCancelJob, canPauseJob, canResumeJob, jobMoveLabel, jobProgress, type Job } from "../../../lib/jobs";
+import { canCancelJob, canPauseJob, canResumeJob, jobMoveLabel, jobProgress, type JobV2 } from "../../../lib/jobsV2";
 import { JOB_STATUS_TONES } from "./jobStatusTones";
 
-/**
- * What the list reads of a job — a V1 `Job`, or a Jobs V2 one (CTA-188), which
- * shares these fields.
- */
-export type JobsTableJob = Pick<Job, "id" | "status" | "positions" | "checkpoint" | "startedAt" | "finishedAt"> & {
+/** What the list reads of a job. */
+export type JobsTableJob = Pick<JobV2, "id" | "status" | "positions" | "checkpoint" | "startedAt" | "finishedAt"> & {
   source: { name: string };
 };
 
-export type JobsTableProps<J extends JobsTableJob = Job> = {
+export type JobsTableProps<J extends JobsTableJob = JobV2> = {
   /** The jobs, in the order shown (the store's: newest first). */
   rows: readonly J[];
   /** Where a job's row goes — its details (`?job=<id>`). */
@@ -57,7 +54,7 @@ const Stamp = ({ value }: { value: string | null }) => {
 };
 
 /**
- * **The Jobs screen's list** (CTA-173): a row per background job — what it
+ * **The Jobs V2 view's list** (CTA-173, CTA-188): a row per background job — what it
  * analyses (a link to its details), its status in words, how far it has got
  * (a bar named for the job, "12 of 80 positions · 7. Nf3"), when it started
  * and ended — and, always visible at the row's end, **Resume** (one the
@@ -67,9 +64,8 @@ const Stamp = ({ value }: { value: string | null }) => {
  *
  * Presentational: the jobs, the link and the four actions are props; the
  * screen reads the store and writes it. Its words are the app's (`jobs.*`).
- * Any job with a {@link JobsTableJob}'s fields — Jobs V2's too (CTA-188).
  */
-function JobsTable<J extends JobsTableJob = Job>({
+function JobsTable<J extends JobsTableJob = JobV2>({
   rows,
   rowLink,
   selectedId,

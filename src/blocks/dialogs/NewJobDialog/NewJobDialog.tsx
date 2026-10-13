@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 
 import { BaseDialog, type ExtraDialogProps } from "../../../design-system/components/dialogs";
 import { StatusText } from "../../../design-system/components/feedback";
-import type { JobStatus } from "../../../lib/jobs";
+import type { JobStatus } from "../../../lib/jobsV2";
 import { ComputerAnalysisForm, computerAnalysisStartNote, type ComputerAnalysisFormProps } from "../../forms/ComputerAnalysisForm";
 
 export type NewJobDialogProps = Omit<ComputerAnalysisFormProps, "testId" | "onStart"> & {
@@ -27,7 +27,7 @@ export type NewJobDialogProps = Omit<ComputerAnalysisFormProps, "testId" | "onSt
   onStart: () => void;
   /** The dialog's title — absent, "New job" (Jobs V2's popup names itself, CTA-188). */
   title?: string;
-  /** The line under the game's — absent, V1's (`computerAnalysis.newJob.intro`). */
+  /** The line under the game's — absent, `computerAnalysis.newJob.intro`. */
   intro?: string;
   /**
    * A section before the form — Jobs V2's *Where to save the results*
@@ -50,19 +50,19 @@ export type NewJobDialogProps = Omit<ComputerAnalysisFormProps, "testId" | "onSt
 
 /**
  * **New Job** (CTA-177) — the one way a game's computer analysis is started,
- * from the Analyse icon on the Analysis Board's header and on every saved
- * analysis in the list: `ComputerAnalysisForm` (every option the job takes)
+ * from a Case's Jobs tab (the New Job V2 popup, CTA-188):
+ * `ComputerAnalysisForm` (every option the job takes)
  * in a dialog, its **Start** in the actions row beside Cancel, why Start is
  * off said there (`computerAnalysisStartNote`) and a refusal too.
  *
  * When the game has a job already (`existing`) the dialog first asks:
  * **Start a new analysis** turns it to the form, the focus put on the game's
  * line so it is not lost with the button; **Check existing** is the screen's
- * (the Jobs screen at that job).
+ * (the Jobs V2 view at that job).
  *
  * Presentational: the options, the engine, the game's name and every outcome
  * are props; the queueing, the snackbar and the closing are the screen's
- * (`views/tools/analysis/NewJob.tsx`). Its words are `computerAnalysis.newJob.*`
+ * (`views/analysisV2/jobs/NewJobV2.tsx`). Its words are `computerAnalysis.newJob.*`
  * and the form's `computerAnalysis.form.*`.
  */
 function NewJobDialog({

@@ -3,6 +3,11 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS, type PositionResult } from "./computerAnalysis";
 import { findNode, mainline, treeToPgn } from "./gameTree";
 import {
+  canCancelJob,
+  canPauseJob,
+  canResumeJob,
+  jobMoveLabel,
+  jobProgress,
   jobV2AnalysisOf,
   jobV2From,
   jobV2MergedPgn,
@@ -109,5 +114,46 @@ describe("Jobs V2, the record (CTA-188)", () => {
     expect(jobV2OfCase(jobs.slice(0, 1), "c")?.id).toBe("4");
     expect(jobV2OfCase(jobs, "none")).toBeUndefined();
     expect(jobV2OfCase(undefined, "c")).toBeUndefined();
+  });
+});
+
+/* Folded in from the legacy jobs' record (CTA-173, removed in CTA-192). */
+describe("Jobs V2 — progress, actions and the checkpoint read back", () => {
+  it("counts its progress off the checkpoint, the current move the first without a result", () => {
+    let job = jobV2Of("j", request(), AT)!;
+    expect(jobProgress(job)).toEqual({ done: 0, total: 5, current: job.positions[0], percent: 0 });
+    const result: PositionResult = { fen: job.positions[0].fen, lines: [{ score: { kind: "cp", value: 30 }, depth: 20, pv: ["e2e4"] }] };
+    job = withCheckpointV2(job, 0, result, AT);
+    expect(jobProgress(job)).toMatchObject({ done: 1, total: 5, current: { san: "e5" }, percent: 20 });
+  });
+
+  it("numbers a position's move as a reader does, and a position without one as nothing", () => {
+    const job = jobV2Of("j", request(), AT)!;
+    expect(jobMoveLabel(job.positions[0])).toBe("1. e4");
+    expect(jobMoveLabel(job.positions[1])).toBe("1... e5");
+    expect(jobMoveLabel(job.positions[4])).toBeUndefined();
+  });
+
+  it("is cancelled while it has not ended, paused while it waits or runs, and resumed when stopped", () => {
+    expect(["queued", "running", "paused", "interrupted"].every((status) => canCancelJob({ status } as never))).toBe(true);
+    expect(["done", "failed", "cancelled"].some((status) => canCancelJob({ status } as never))).toBe(false);
+    expect(["paused", "interrupted", "failed"].every((status) => canResumeJob({ status } as never))).toBe(true);
+    expect(["queued", "running", "done", "cancelled"].some((status) => canResumeJob({ status } as never))).toBe(false);
+    expect(["queued", "running"].every((status) => canPauseJob({ status } as never))).toBe(true);
+    expect(["paused", "interrupted", "done", "failed", "cancelled"].some((status) => canPauseJob({ status } as never))).toBe(false);
+  });
+
+  it("keeps a checkpoint entry only for its own position, and pads the checkpoint to the positions", () => {
+    const job = jobV2Of("j", request(), AT)!;
+    const line = { score: { kind: "cp", value: 12 }, depth: 18, pv: ["e7e5"] };
+    const stored = {
+      ...job,
+      checkpoint: [
+        { fen: job.positions[0].fen, lines: [line] },
+        { fen: "another fen", lines: [line] },
+        { fen: job.positions[2].fen, lines: [{ score: { kind: "pawns", value: 1 } }] },
+      ],
+    };
+    expect(jobV2From(stored)!.checkpoint).toEqual([{ fen: job.positions[0].fen, lines: [line] }, null, null, null, null]);
   });
 });

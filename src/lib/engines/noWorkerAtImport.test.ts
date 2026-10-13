@@ -32,9 +32,7 @@ describe("importing the engine layer", () => {
     await import("../engineServer");
     const registry = await import(".");
     await import("../../views/board/core/useEngineModule");
-    // The background job runner (CTA-173): started by the shell's effect, never at import.
-    await import("../jobRunner");
-    // Jobs V2's runner (CTA-188), likewise.
+    // The background job runner (CTA-173, Jobs V2's since CTA-188): started by the shell's effect, never at import.
     await import("../jobV2Runner");
 
     // Listing, describing and resolving are reads of data.

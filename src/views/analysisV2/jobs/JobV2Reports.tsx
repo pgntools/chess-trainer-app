@@ -9,7 +9,7 @@ import { caseTree } from "../../../lib/analysisProjects";
 import { evalSeriesOf, reportFromTree } from "../../../lib/computerAnalysisTree";
 import { gameTag } from "../../../lib/gameModel";
 import { plyLabel, type GameTree } from "../../../lib/gameTree";
-import { jobLiveAnalysis } from "../../../lib/jobLiveAnalysis";
+import { jobV2LiveAnalysis } from "../../../lib/jobV2LiveAnalysis";
 import type { JobV2 } from "../../../lib/jobsV2";
 import { useAnalysisCases } from "../useAnalysisProjects";
 
@@ -22,8 +22,7 @@ const pointLabel = (tree: GameTree) => (point: { ply: number; san?: string }) =>
 /**
  * **A finished Jobs V2 job's report and eval graph** (CTA-188), read back
  * from its first output — a new Case, or the source Case merged into — through
- * `reportFromTree` and `evalSeriesOf`, so nothing about the run is kept twice
- * (V1's `JobReport`, cloned: Analysis V2 imports nothing from `views/jobs/`).
+ * `reportFromTree` and `evalSeriesOf`, so nothing about the run is kept twice.
  * The graph is read only; the summary's links open the Cases. An output gone
  * says so.
  */
@@ -56,15 +55,15 @@ export function JobV2Report({ job, testId }: { job: JobV2; testId: string }) {
 }
 
 /**
- * **A Jobs V2 job's results so far** (CTA-188) — V1's `JobLiveReport`, cloned:
- * `jobLiveAnalysis` over the job as the store holds it, filling in with every
+ * **A Jobs V2 job's results so far** (CTA-178, CTA-188):
+ * `jobV2LiveAnalysis` over the job as the store holds it, filling in with every
  * checkpoint — the eval graph spanning the run (read only), the latest
  * finished position and the report over the moves judged. Nothing in it is a
  * live region. Before the first position, "No results yet".
  */
 export function JobV2LiveReport({ job, testId }: { job: JobV2; testId: string }) {
   const { t } = useTranslation();
-  const live = useMemo(() => jobLiveAnalysis(job), [job]);
+  const live = useMemo(() => jobV2LiveAnalysis(job), [job]);
   if (live === undefined || live.points.length === 0) {
     return (
       <Typography variant="body2" data-testid={`${testId}-empty`} sx={{ color: "text.secondary" }}>

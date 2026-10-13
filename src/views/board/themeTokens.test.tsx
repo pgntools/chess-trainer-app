@@ -80,7 +80,8 @@ vi.mock("../../design-system/themes/registry", async (importOriginal) => {
 });
 
 import { boardOptions } from "./boardTestHarness";
-import AnalysisBoard from "../tools/analysis/AnalysisBoard";
+import { CaseBoard } from "../analysisV2/CaseWorkspace";
+import { gameCaseOf } from "../../lib/analysisProjects";
 import PlayWithEngine from "../engine/play/PlayWithEngine";
 import MaskedPlay from "../engine/masked/MaskedPlay";
 import LibraryGameBoard from "../library/LibraryGameBoard";
@@ -100,8 +101,12 @@ const LibraryGame = () => (
   <LibraryGameBoard collection={LIBRARY_FIXTURE} number={1} tree={parsePgnTree(LIBRARY_FIXTURE.games[0])} />
 );
 
+/** A Case of Analysis V2 (CTA-186) at its start, on its board. */
+const CASE_FIXTURE = gameCaseOf({ id: "fixture-case", projectId: "fixture-project", name: "" }, parsePgnTree("*"));
+const AnalysisCase = () => <CaseBoard record={CASE_FIXTURE} />;
+
 const BOARDS: readonly { name: string; Screen: () => ReactNode }[] = [
-  { name: "Analysis Board", Screen: AnalysisBoard },
+  { name: "Analysis case", Screen: AnalysisCase },
   { name: "Play with Engine", Screen: PlayWithEngine },
   { name: "Masked Pieces", Screen: MaskedPlay },
   { name: "Library game", Screen: LibraryGame },
@@ -166,7 +171,7 @@ describe.each(BOARDS)("the $name, under a theme", ({ Screen }) => {
 
 describe("the arrows and overlays, under a theme", () => {
   it("draws the next-move arrows in the theme's palette", () => {
-    renderBoard(AnalysisBoard);
+    renderBoard(AnalysisCase);
     drag("e2", "e4");
     drag("e7", "e5");
     fireEvent.keyDown(document, { key: "ArrowLeft" });

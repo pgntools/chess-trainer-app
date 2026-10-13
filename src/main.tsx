@@ -10,6 +10,7 @@ import './index.css'
 // reader on another theme downloads nothing.
 import '@fontsource-variable/jetbrains-mono'
 import App from './App.tsx'
+import { deleteRetiredDatabases } from './lib/retiredDatabases'
 
 /*
   A page the build rendered ahead of time (CTA-136, `src/entry-server.tsx`)
@@ -20,6 +21,9 @@ import App from './App.tsx'
   canonical, the previews') are for those who read only the HTML, and stay.
 */
 for (const element of document.head.querySelectorAll('title, meta[name="description"]')) element.remove()
+
+// The legacy Analysis Board's and Jobs' databases, gone with their module (CTA-192).
+void deleteRetiredDatabases()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

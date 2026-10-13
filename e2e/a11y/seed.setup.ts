@@ -23,7 +23,7 @@ setup("seed the app through its own Import", async ({ page }) => {
   // Every category came in: the report has no warning and no refusal.
   const report = page.getByTestId("settings-import-done");
   await expect(report).toBeVisible({ timeout: 60_000 });
-  for (const category of ["games", "analyses", "repertoires", "collections"]) {
+  for (const category of ["games", "repertoires", "collections", "analysisProjects"]) {
     await expect(page.getByTestId(`settings-import-result-${category}`), category).toBeVisible();
   }
 

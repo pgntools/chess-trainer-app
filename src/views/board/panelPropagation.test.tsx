@@ -61,7 +61,6 @@ vi.mock("../../lib/openings", async (importOriginal) => {
   );
 });
 
-import AnalysisBoard from "../tools/analysis/AnalysisBoard";
 import PlayWithEngine from "../engine/play/PlayWithEngine";
 import LibraryGameBoard from "../library/LibraryGameBoard";
 import OpeningsBoard from "../openings/OpeningsBoard";
@@ -86,26 +85,23 @@ const LibraryGame = () => (
 );
 
 
-/** A Case of Analysis V2 (CTA-186), on its board — dev-only while the module is built. */
+/** A Case of Analysis V2 (CTA-186), on its board. */
 const CASE_FIXTURE = gameCaseOf({ id: "fixture-case", projectId: "fixture-project", name: "" }, parsePgnTree('[White "A"]\n[Black "B"]\n\n1. e4 e5 *'));
 const AnalysisCase = () => <CaseBoard record={CASE_FIXTURE} />;
 
 /** Every board composed from the core, by the id its panel carries. */
 const BOARDS: readonly { name: string; panelId: string; Screen: () => ReactNode }[] =
   [
-    // Analysis v2, shipped as the Analysis Board (CTA-73) and kept under the
-    // assertion it was built to pass.
-    { name: "Analysis Board", panelId: "analysis-panel", Screen: AnalysisBoard },
     // Play with Engine, a v2 screen since CTA-74.
     { name: "Play with Engine", panelId: "play-with-engine-panel", Screen: PlayWithEngine },
-    // The Library's game board (CTA-75), composed as the Analysis Board is.
+    // The Library's game board (CTA-75).
     { name: "Library game", panelId: "library-game-panel", Screen: LibraryGame },
     // The Openings explorer (CTA-78), in Openings v2's place.
     { name: "Openings explorer", panelId: "openings-panel", Screen: OpeningsBoard },
     // Masked Pieces (CTA-79), Play with Engine's screen in a costume — in the
     // dev boards' place.
     { name: "Masked Pieces", panelId: "masked-play-panel", Screen: MaskedPlay },
-    // Analysis V2's Case board (CTA-186), composed as the Analysis Board is.
+    // Analysis V2's Case board (CTA-186) — the app's analysis board since CTA-192.
     { name: "Analysis V2 case", panelId: "analysis-case-panel", Screen: AnalysisCase },
   ];
 

@@ -98,7 +98,7 @@ const NO_IDS: ReadonlySet<string> = new Set();
 
 /**
  * **Analysis V2's folders, Projects and Cases as one tree table** (CTA-186,
- * CTA-191) — the legacy saved analyses' (`SavedAnalysesTable`): folders
+ * CTA-191) — the legacy saved analyses' (CTA-144, removed in CTA-192): folders
  * first at every level, each opened in place by its chevron or a click on
  * its row, its name a link into it, with how many Projects are under it and
  * its actions (rename, move — `FolderActions`); a Project opened in place

@@ -2,10 +2,31 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { strToU8, zipSync } from "fflate";
+import { strToU8, unzipSync, zipSync } from "fflate";
 
 import i18n from "../../i18n";
-import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
+import {
+  addAnalysisCases,
+  loadAnalysisCases,
+  resetAnalysisCaseStore,
+  settledAnalysisCases,
+} from "../../lib/analysisCaseStore";
+import { resetCaseLinkStore, settledCaseLinks } from "../../lib/analysisCaseLinkStore";
+import {
+  createProjectFolder,
+  loadProjectFolders,
+  resetProjectFolderStore,
+  settledProjectFolders,
+} from "../../lib/analysisProjectFolderStore";
+import { gameCaseOf } from "../../lib/analysisProjects";
+import { deleteAnalysisProjectsDb } from "../../lib/analysisProjectsDb";
+import {
+  analysisProjectsSnapshot,
+  createAnalysisProject,
+  loadAnalysisProjects,
+  resetAnalysisProjectStore,
+  settledAnalysisProjects,
+} from "../../lib/analysisProjectStore";
 import { indexedRowOf } from "../../lib/collectionIndex";
 import { buildExport, zipExport, type ExportSource } from "../../lib/dataExport";
 import { exportZip } from "../../lib/dataExportSource";
@@ -47,21 +68,7 @@ import {
 } from "../../lib/playedGameStore";
 import type { PlayedGame } from "../../lib/playedGames";
 import { DEFAULT_REPERTOIRE_SETTINGS } from "../../lib/repertoireSettings";
-import type { SavedAnalysis } from "../../lib/savedAnalyses";
-import { deleteAnalysisDb } from "../../lib/savedAnalysisDb";
-import {
-  createAnalysisFolder,
-  loadAnalysisFolders,
-  resetAnalysisFolderStore,
-  settledAnalysisFolders,
-} from "../../lib/savedAnalysisFolderStore";
-import {
-  loadSavedAnalyses,
-  resetSavedAnalysisStore,
-  saveAnalysis,
-  savedAnalysesSnapshot,
-  settledSavedAnalyses,
-} from "../../lib/savedAnalysisStore";
+import { parsePgnTree } from "../../lib/pgn";
 import { deleteRepertoireDb } from "../../lib/savedRepertoireDb";
 import {
   addRepertoireFolders,
@@ -114,22 +121,6 @@ const played = (id: string, updatedAt = AT): PlayedGame => ({
   updatedAt,
 });
 
-const analysis = (id: string, folderId: string | null): SavedAnalysis => ({
-  id,
-  pgn: pgn(`Analysis ${id}`),
-  settings: DEFAULT_ANALYSIS_SETTINGS,
-  path: ["e4"],
-  orientation: "black",
-  description: `notes on ${id}`,
-  showArrows: false,
-  arrowWidthSource: "none",
-  arrowPalette: "classic",
-  showMoveMarks: true,
-  name: `Analysis ${id}`,
-  folderId,
-  savedAt: AT,
-  updatedAt: AT,
-});
 
 const repertoire = (id: string, folderId: string | null, updatedAt = AT): SavedRepertoire => ({
   id,
@@ -146,11 +137,16 @@ const repertoire = (id: string, folderId: string | null, updatedAt = AT): SavedR
 /** Every category, nested folders and empty ones. */
 const seed = async () => {
   await savePlayedGame(played("g1"));
-  const openings = await createAnalysisFolder("Openings", null);
-  const sicilian = await createAnalysisFolder("Sicilian", openings?.id ?? null);
-  await createAnalysisFolder("Empty", null);
-  await saveAnalysis(analysis("a1", null));
-  await saveAnalysis(analysis("a2", sicilian?.id ?? null));
+  // Analysis V2 (CTA-186): a Project at the top level and one two folders down, each with a Game Case.
+  const openings = await createProjectFolder("Openings", null);
+  const sicilian = await createProjectFolder("Sicilian", openings?.id ?? null);
+  await createProjectFolder("Empty", null);
+  const loose = await createAnalysisProject("Loose", null);
+  const najdorf = await createAnalysisProject("Najdorf", sicilian?.id ?? null);
+  await addAnalysisCases([
+    gameCaseOf({ id: "c1", projectId: loose?.id ?? "", name: "" }, parsePgnTree(pgn("Case 1"))),
+    gameCaseOf({ id: "c2", projectId: najdorf?.id ?? "", name: "" }, parsePgnTree(pgn("Case 2"))),
+  ]);
   const white = await createRepertoireFolder("White");
   await createRepertoireFolder("Unused");
   await saveRepertoire(repertoire("r1", white?.id ?? null));
@@ -171,8 +167,10 @@ const seed = async () => {
 const wipe = async () => {
   await Promise.all([
     settledPlayedGames(),
-    settledSavedAnalyses(),
-    settledAnalysisFolders(),
+    settledProjectFolders(),
+    settledAnalysisProjects(),
+    settledAnalysisCases(),
+    settledCaseLinks(),
     settledSavedRepertoires(),
     settledRepertoireFolders(),
     settledLibraryFolders(),
@@ -181,8 +179,10 @@ const wipe = async () => {
   ]);
   for (const reset of [
     resetPlayedGameStore,
-    resetSavedAnalysisStore,
-    resetAnalysisFolderStore,
+    resetProjectFolderStore,
+    resetAnalysisProjectStore,
+    resetAnalysisCaseStore,
+    resetCaseLinkStore,
     resetSavedRepertoireStore,
     resetRepertoireFolderStore,
     resetLibraryFolderStore,
@@ -193,7 +193,7 @@ const wipe = async () => {
   }
   await Promise.all([
     deleteEngineDb(),
-    deleteAnalysisDb(),
+    deleteAnalysisProjectsDb(),
     deleteRepertoireDb(),
     deleteEnginePresetsDb(),
     resetLibraryCollectionStore(),
@@ -202,11 +202,12 @@ const wipe = async () => {
 
 /** Everything the app holds, each folder by its path — what a round trip must give back. */
 const everything = async () => {
-  const [games, analyses, analysisFolders, repertoires, repertoireFolders, collections, libraryFolders, presets, selections] =
+  const [games, projects, projectFolders, cases, repertoires, repertoireFolders, collections, libraryFolders, presets, selections] =
     await Promise.all([
       loadPlayedGames(),
-      loadSavedAnalyses(),
-      loadAnalysisFolders(),
+      loadAnalysisProjects(),
+      loadProjectFolders(),
+      loadAnalysisCases(),
       loadSavedRepertoires(),
       loadRepertoireFolders(),
       loadUploadedCollections(),
@@ -220,8 +221,9 @@ const everything = async () => {
   };
   return {
     games,
-    analyses: analyses.map(({ folderId, ...rest }) => ({ ...rest, folder: pathOf(analysisFolders, folderId) })),
-    analysisFolders: analysisFolders.map((folder) => pathOf(analysisFolders, folder.id)).sort(),
+    projects: projects.map(({ folderId, ...rest }) => ({ ...rest, folder: pathOf(projectFolders, folderId) })),
+    projectFolders: projectFolders.map((folder) => pathOf(projectFolders, folder.id)).sort(),
+    cases: [...cases].sort((a, b) => a.id.localeCompare(b.id)),
     repertoires: repertoires.map(({ folderId, ...rest }) => ({
       ...rest,
       folder: repertoireFolders.find((folder) => folder.id === folderId)?.name ?? null,
@@ -243,7 +245,7 @@ const everything = async () => {
   };
 };
 
-const ALL = { collections: true, games: true, analyses: true, repertoires: true, enginePresets: true, analysisProjects: true, shippedCollections: false };
+const ALL = { collections: true, games: true, repertoires: true, enginePresets: true, analysisProjects: true, shippedCollections: false };
 
 const exported = async () => (await exportZip(ALL, { appVersion: "1.2.3" })).bytes;
 
@@ -253,8 +255,6 @@ const built = (source: Partial<ExportSource>) =>
     buildExport(
       {
         playedGames: [],
-        analyses: [],
-        analysisFolders: [],
         repertoires: [],
         repertoireFolders: [],
         collections: [],
@@ -325,21 +325,22 @@ describe("the Import tab", () => {
     await pick(bytes);
     await dialog();
     expect(screen.getByTestId("settings-import-games-count")).toHaveTextContent("(1)");
-    expect(screen.getByTestId("settings-import-analyses-count")).toHaveTextContent("(2)");
+    expect(screen.getByTestId("settings-import-analysisProjects-count")).toHaveTextContent("(2)");
     expect(screen.getByTestId("settings-import-repertoires-count")).toHaveTextContent("(2)");
     expect(screen.getByTestId("settings-import-collections-count")).toHaveTextContent("(1)");
     expect(screen.getByTestId("settings-import-enginePresets-count")).toHaveTextContent("(1)");
 
     const done = await importAndWait();
-    expect(within(done).getByTestId("settings-import-result-analyses")).toHaveTextContent(
-      "Analyses: 2 added, 0 replaced, 0 skipped, 3 folders created.",
+    expect(within(done).getByTestId("settings-import-result-analysisProjects")).toHaveTextContent(
+      "Analysis projects: 2 added, 0 replaced, 0 skipped, 3 folders created.",
     );
     expect(screen.queryByTestId("settings-import-dialog")).not.toBeInTheDocument();
 
     const after = await everything();
     expect(after.games).toEqual(before.games);
-    expect(after.analyses).toEqual(before.analyses);
-    expect(after.analysisFolders).toEqual([["Empty"], ["Openings"], ["Openings", "Sicilian"]]);
+    expect(after.projects).toEqual(before.projects);
+    expect(after.projectFolders).toEqual([["Empty"], ["Openings"], ["Openings", "Sicilian"]]);
+    expect(after.cases).toEqual(before.cases);
     expect(after.repertoires).toEqual(before.repertoires);
     expect(after.repertoireFolders).toEqual(["Unused", "White"]);
     expect(after.collections).toEqual(before.collections);
@@ -407,7 +408,7 @@ describe("the Import tab", () => {
     const before = await everything();
     const snapshots = [
       playedGamesSnapshot(),
-      savedAnalysesSnapshot(),
+      analysisProjectsSnapshot(),
       savedRepertoiresSnapshot(),
       repertoireFoldersSnapshot(),
       enginePresetsSnapshot(),
@@ -418,7 +419,7 @@ describe("the Import tab", () => {
     await pick(bytes);
     await dialog();
     // Every category clashes at its top level, and Merge is the choice.
-    expect(radio("settings-import-analyses-choice", "Merge")).toBeChecked();
+    expect(radio("settings-import-analysisProjects-choice", "Merge")).toBeChecked();
     const done = await importAndWait();
     expect(within(done).getByTestId("settings-import-result-games")).toHaveTextContent(
       "Games: 0 added, 0 replaced, 1 skipped, 0 folders created.",
@@ -428,7 +429,7 @@ describe("the Import tab", () => {
     // Not a write that happened to change nothing: no write at all, the same arrays.
     const now = [
       playedGamesSnapshot(),
-      savedAnalysesSnapshot(),
+      analysisProjectsSnapshot(),
       savedRepertoiresSnapshot(),
       repertoireFoldersSnapshot(),
       enginePresetsSnapshot(),
@@ -454,7 +455,7 @@ describe("the Import tab", () => {
     expect(after.games).toEqual([]);
     expect(after.repertoires).toEqual([]);
     expect(after.repertoireFolders).toEqual([]);
-    expect(after.analyses.map((record) => record.id).sort()).toEqual(["a1", "a2"]);
+    expect(after.projects.map((record) => record.name).sort()).toEqual(["Loose", "Najdorf"]);
   });
 
   it("lists the clashing folders, and a folder's own choice beats the category's", async () => {
@@ -486,6 +487,28 @@ describe("the Import tab", () => {
     await importAndWait();
     const after = await everything();
     expect(after.repertoires.map((record) => [record.id, record.folder])).toEqual([["r1", "White"]]);
+  });
+
+  it("says an older zip's saved analyses are no longer supported, and imports the rest (CTA-192)", async () => {
+    // An export from before CTA-192, carrying `analyses.pgn` beside a played game.
+    const files = unzipSync(built({ playedGames: [played("g1")] }));
+    files["analyses.pgn"] = strToU8(pgn("Analysis a1"));
+    const manifest = JSON.parse(new TextDecoder().decode(files["manifest.json"])) as { categories: string[]; files: unknown[] };
+    manifest.categories.push("analyses");
+    manifest.files.push({ path: "analyses.pgn", kind: "analyses", records: [{ index: 0, games: 1, id: "a1", folderPath: [] }] });
+    files["manifest.json"] = strToU8(JSON.stringify(manifest));
+
+    renderImport();
+    await pick(zipSync(files));
+    await dialog();
+    expect(screen.getByTestId("settings-import-skipped-analyses")).toHaveTextContent(
+      "The file holds 1 saved analysis from an older version. Saved analyses are no longer supported, so it is skipped; everything else can be imported.",
+    );
+    const done = await importAndWait();
+    expect(within(done).getByTestId("settings-import-skipped-analyses")).toHaveTextContent(
+      "1 saved analysis from an older version was skipped: saved analyses are no longer supported.",
+    );
+    expect((await loadPlayedGames()).map((game) => game.id)).toEqual(["g1"]);
   });
 
   it("says the shipped collections in a zip are not imported", async () => {
@@ -585,10 +608,10 @@ describe("the Import tab — accessibility (CTA-109)", () => {
     await expectNoAxeViolations();
 
     // A clash's choice is a radio group: the arrow keys move it.
-    const merge = radio("settings-import-analyses-choice", "Merge");
+    const merge = radio("settings-import-analysisProjects-choice", "Merge");
     merge.focus();
     await userEvent.keyboard("{ArrowRight}");
-    expect(radio("settings-import-analyses-choice", "Override")).toBeChecked();
+    expect(radio("settings-import-analysisProjects-choice", "Override")).toBeChecked();
     // A category's box is a checkbox: Space unticks it.
     tick("games").focus();
     await userEvent.keyboard(" ");

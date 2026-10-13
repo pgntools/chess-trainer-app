@@ -3,7 +3,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 
 import i18n from "../../i18n";
-import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
+import { addAnalysisCases, loadAnalysisCases } from "../../lib/analysisCaseStore";
+import { gameCaseOf } from "../../lib/analysisProjects";
+import { createAnalysisProject } from "../../lib/analysisProjectStore";
 import { indexedRowOf } from "../../lib/collectionIndex";
 import { DEFAULT_ENGINE_SETTINGS } from "../../lib/engineSettings";
 import {
@@ -12,11 +14,10 @@ import {
 } from "../../lib/libraryCollectionStore";
 import { createLibraryFolder } from "../../lib/libraryFolderStore";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../lib/computerAnalysis";
-import { enqueueComputerAnalysis, loadJobs } from "../../lib/jobStore";
+import { enqueueJobV2, loadJobsV2 } from "../../lib/jobV2Store";
+import { parsePgnTree } from "../../lib/pgn";
 import { loadPlayedGames, savePlayedGame } from "../../lib/playedGameStore";
 import { DEFAULT_REPERTOIRE_SETTINGS } from "../../lib/repertoireSettings";
-import { createAnalysisFolder } from "../../lib/savedAnalysisFolderStore";
-import { loadSavedAnalyses, saveAnalysis } from "../../lib/savedAnalysisStore";
 import { createRepertoireFolder } from "../../lib/savedRepertoireFolderStore";
 import { loadSavedRepertoires, saveRepertoire } from "../../lib/savedRepertoireStore";
 import {
@@ -48,7 +49,7 @@ const stubEstimate = (estimate?: Record<string, unknown>) => {
 };
 
 /**
- * A seeded app: a played game, two analyses (one in a folder), three
+ * A seeded app: a played game, two Analysis cases (in a Project), three
  * repertoires (one in a folder), two collections (three games), and two
  * Library folders — the folders and summaries are seeded too, so the tests
  * can assert the table counts just the heavy stores.
@@ -62,25 +63,10 @@ const seed = async () => {
     savedAt: AT,
     updatedAt: AT,
   });
-  const analysisFolder = await createAnalysisFolder("Openings", null);
-  for (const [id, folderId] of [["a1", analysisFolder?.id ?? null], ["a2", null]] as const) {
-    await saveAnalysis({
-      id,
-      pgn: pgn(`Analysis ${id}`),
-      settings: DEFAULT_ANALYSIS_SETTINGS,
-      path: [],
-      orientation: "white",
-      description: "",
-      showArrows: true,
-      arrowWidthSource: "none",
-      arrowPalette: "classic",
-      showMoveMarks: true,
-      name: id,
-      folderId,
-      savedAt: AT,
-      updatedAt: AT,
-    });
-  }
+  const project = await createAnalysisProject("Openings", null);
+  await addAnalysisCases(
+    ["c1", "c2"].map((id) => gameCaseOf({ id, projectId: project?.id ?? "", name: id }, parsePgnTree(pgn(`Case ${id}`)))),
+  );
   const repertoireFolder = await createRepertoireFolder("Lines");
   for (const [id, folderId] of [["r1", repertoireFolder?.id ?? null], ["r2", null], ["r3", null]] as const) {
     await saveRepertoire({
@@ -172,41 +158,44 @@ describe("the Storage tab", () => {
     expect(screen.getByTestId("settings-storage-indexeddb")).toHaveTextContent("Not available");
   });
 
-  it("counts and sizes the five sections over the real stores", async () => {
+  it("counts and sizes the four sections over the real stores", async () => {
     const gamesRows = await seed();
-    // A background job (CTA-173): its checkpoint is what it weighs.
-    await enqueueComputerAnalysis({
-      source: { analysisId: null, name: "A game", folderId: null, pgn: "1. e4 e5 *" },
+    // A background job (CTA-173, Jobs V2's since CTA-188): its checkpoint is what it weighs.
+    await enqueueJobV2({
+      source: { projectId: "p", caseId: "c1", name: "A game", pgn: "1. e4 e5 *" },
       options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, outputs: ["light"] },
+      preset: { id: "", name: "", values: {} },
+      target: { kind: "project", projectId: "p" },
     });
     renderAt("/settings/storage");
 
     await landed("playedGames", "1");
-    await landed("analyses", "2");
     await landed("repertoires", "3");
     await landed("collectionGames", "3");
-    await landed("jobs", "1");
+    await landed("analysisCases", "2");
+    await landed("jobsV2", "1");
 
     // The folders and the collections' summaries are seeded, and the shipped
     // collections are files fetched over the network: the table counts just
     // the heavy stores, so none of them is listed.
-    expect(screen.queryByTestId("settings-storage-analysisFolders-records")).toBeNull();
+    expect(screen.queryByTestId("settings-storage-projectFolders-records")).toBeNull();
+    expect(screen.queryByTestId("settings-storage-analysisProjects-records")).toBeNull();
     expect(screen.queryByTestId("settings-storage-repertoireFolders-records")).toBeNull();
     expect(screen.queryByTestId("settings-storage-libraryFolders-records")).toBeNull();
     expect(screen.queryByTestId("settings-storage-collections-records")).toBeNull();
 
-    const [played, analyses, repertoires] = await Promise.all([
+    const [played, cases, repertoires] = await Promise.all([
       loadPlayedGames(),
-      loadSavedAnalyses(),
+      loadAnalysisCases(),
       loadSavedRepertoires(),
     ]);
     const payload = (rows: readonly unknown[]) =>
       formatBytes(rows.reduce<number>((total, row) => total + estimatedPayloadBytes(row), 0));
 
     expect(screen.getByTestId("settings-storage-playedGames-payload")).toHaveTextContent(payload(played));
-    expect(screen.getByTestId("settings-storage-analyses-payload")).toHaveTextContent(payload(analyses));
+    expect(screen.getByTestId("settings-storage-analysisCases-payload")).toHaveTextContent(payload(cases));
     expect(screen.getByTestId("settings-storage-repertoires-payload")).toHaveTextContent(payload(repertoires));
-    expect(screen.getByTestId("settings-storage-jobs-payload")).toHaveTextContent(payload(await loadJobs()));
+    expect(screen.getByTestId("settings-storage-jobsV2-payload")).toHaveTextContent(payload(await loadJobsV2()));
 
     // The Library's games are estimated from their index rows, never read.
     const gamesPayload = formatBytes(gamesRows.reduce((total, row) => total + estimatedGamePgnBytes(row), 0));
@@ -215,19 +204,20 @@ describe("the Storage tab", () => {
     );
   });
 
-  it("separates the five sections with a bolder line", async () => {
+  it("separates the four sections with a bolder line — Analysis's Cases and jobs one database, one section", async () => {
     await seed();
     renderAt("/settings/storage");
 
     await landed("collectionGames", "3");
-    for (const id of ["playedGames", "analyses", "repertoires", "collectionGames"]) {
+    for (const id of ["playedGames", "repertoires", "collectionGames"]) {
       expect(screen.getByTestId(`settings-storage-${id}-records`)).toHaveStyle({ borderBottomWidth: "2px" });
     }
+    expect(screen.getByTestId("settings-storage-analysisCases-records")).not.toHaveStyle({ borderBottomWidth: "2px" });
     // The last row closes the table, not a section. (MUI's default 1px
     // border hides behind a CSS variable jsdom's parser drops —
     // `chessboard.md` §8 — so the absence of the separator is what is
     // asserted, not the default's width.)
-    expect(screen.getByTestId("settings-storage-jobs-records")).not.toHaveStyle({
+    expect(screen.getByTestId("settings-storage-jobsV2-records")).not.toHaveStyle({
       borderBottomWidth: "2px",
     });
   });

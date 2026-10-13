@@ -346,7 +346,7 @@ describe("sanPathTo / nodeAtSanPath — a portable place in a tree", () => {
   /*
     A node id is minted per tree (`nextId`), so it means nothing once the same
     game has been round-tripped through PGN and re-parsed — which is exactly what
-    a saved analysis does (`lib/savedAnalyses.ts`). SAN identifies a move
+    an Analysis case does (`lib/analysisProjects.ts`). SAN identifies a move
     uniquely within its position, which is the property `addMove` already rests
     on, so a path of it is what travels.
   */

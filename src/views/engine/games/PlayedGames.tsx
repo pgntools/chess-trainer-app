@@ -16,17 +16,16 @@ import {
 import { DeleteManyDialog } from "../../../design-system/components/dialogs";
 import { useTableUrlState } from "../../../design-system/components/tables";
 import { ListScreenHeader } from "../../../design-system/components/toolbars";
-import { PLAY_REFERENCE_KEY } from "../../../lib/gameReference";
 import { mainline } from "../../../lib/gameTree";
 import { openingOfLine } from "../../../lib/openings";
 import { removePlayedGame } from "../../../lib/playedGameStore";
 import {
-  PLAYED_GAMES_PATH,
   playedGameSummary,
   type PlayedGameSummary,
   playedGameToTree,
   type PlayedGameRow,
 } from "../../../lib/playedGames";
+import { useSendToAnalysis } from "../../analysisV2/useSendToAnalysis";
 import { RightPanel } from "../../main/rightPanel";
 import { useOpeningBook } from "../../shared/useOpeningBook";
 import NewGameForm from "./NewGameForm";
@@ -156,8 +155,16 @@ function PlayedGames() {
 
   const filtered = side !== "all" || opening !== null;
 
+  /** A game into Analysis as a new Game Case — a Project picked (CTA-192). */
+  const sendTo = useSendToAnalysis("played-games-send");
+  const analyse = (row: PlayedGameRow) => {
+    const tree = parsed.find((entry) => entry.saved.id === row.id)?.tree;
+    if (tree !== undefined) sendTo.send({ games: [{ tree }], projectName: t("playEngine.sendTo.projectName") });
+  };
+
   return (
     <>
+      {sendTo.dialog}
       <Box
         data-testid="played-games-screen"
         sx={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}
@@ -202,11 +209,7 @@ function PlayedGames() {
           }}
           picked={picked}
           onPickedChange={setPicked}
-          analysisLink={(row) => ({
-            component: RouterLink,
-            // The `?game=` reference `lib/gameReference.ts` resolves against the store's catalog.
-            to: `/tools/analysis?game=${encodeURIComponent(`${PLAY_REFERENCE_KEY}/${PLAYED_GAMES_PATH}/${row.id}`)}`,
-          })}
+          onAnalyse={analyse}
           continueLink={(row) => ({
             component: RouterLink,
             // A masked game continues where it was begun, in the same disguise.

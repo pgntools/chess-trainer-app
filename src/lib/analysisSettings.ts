@@ -9,10 +9,10 @@
  * the ones in effect asks whether to put them back ("Engine options
  * changed").
  *
- * It lived in `views/tools/analysis/useAnalysisBoard.ts` until a saved analysis
- * had to record it, and then moved here for the reason
- * [`engineSettings.ts`](./engineSettings.ts) exists: `lib/savedAnalyses.ts` is
- * plain data and cannot import a hook.
+ * It lived in the legacy Analysis Board's hook until a saved analysis had to
+ * record it (both removed in CTA-192), and then moved here for the reason
+ * [`engineSettings.ts`](./engineSettings.ts) exists: a record is plain data
+ * and cannot import a hook.
  *
  * As there, it is **not** a description of the running engine. Which knobs the
  * worker actually has is the handle's `options`' business

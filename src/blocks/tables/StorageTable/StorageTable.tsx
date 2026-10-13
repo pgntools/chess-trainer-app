@@ -8,7 +8,7 @@ import { formatBytes } from "../../../lib/formatBytes";
 import type { BrowserStorageEstimate } from "../../../lib/storageDiagnostics";
 
 /** One kind of the reader's records, as the Storage tab counts it. */
-export type StorageCategoryId = "playedGames" | "analyses" | "repertoires" | "collectionGames" | "jobs";
+export type StorageCategoryId = "playedGames" | "repertoires" | "collectionGames" | "analysisCases" | "jobsV2";
 
 export type StorageCategory = {
   id: StorageCategoryId;

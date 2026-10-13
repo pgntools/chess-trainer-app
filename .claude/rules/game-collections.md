@@ -35,12 +35,12 @@ reference for the module: what a collection is, where each part lives, the
 rules that keep it fast and correct, and how to extend it. It is meant for
 people and for LLM sessions alike. It loads automatically when you work on
 the files in its `paths:` list. Anything outside the module that touches it
-(the `?game=` registry, the Analysis Board, Saved analyses) points back here.
+(the game-reference registry, Analysis's hand-off, the embeds) points back here.
 
 This file is the authority for the Library; the board rules
 ([`chessboard.md`](./chessboard.md), [`tree-views.md`](./tree-views.md)) are
-the authority for the game board, and [`analysis-board.md`](./analysis-board.md)
-for the Analysis Board and Saved analyses it hands games to.
+the authority for the game board, and [`analysis-v2.md`](./analysis-v2.md)
+for Analysis, which it hands games to as Cases (§1.1 there).
 
 > **"Game" collections, deliberately.** Everything here is a collection of
 > **games**: PGN text with moves, a table of players and results, and an
@@ -67,7 +67,7 @@ for the Analysis Board and Saved analyses it hands games to.
 | `src/lib/libraryCollectionStore.ts` | **Uploaded collections, in IndexedDB** (`chessapp.library`). Reads: `uploadedCollectionsSnapshot`, `subscribeUploadedCollections`, `loadUploadedCollections`, `peekUploadedRows` / `loadUploadedRows`, `peekUploadedGames` / `loadUploadedGames`. Writes: `addCollection` (into a folder, optionally — with the settings an import restores, CTA-121), `removeCollection`, `moveCollection` (Move to…), `updateCollectionSettings` (the settings screen, CTA-121 — the summary alone), `refileCollectionsIn` (a folder deleted), `replaceCollectionGame` (Update), `insertCollectionGame` (Save as copy), `appendCollectionGames` (Add games), `removeCollectionGames` (delete picked). Also `newCollectionId` and `resetLibraryCollectionStore` (for tests). |
 | `src/lib/libraryFolderStore.ts` | **The reader's folders** (CTA-88), the `folders` object store over `idbRecordStore`: `libraryFoldersSnapshot`, `subscribeLibraryFolders`, `loadLibraryFolders`, `createLibraryFolder`, `renameLibraryFolder`, `moveLibraryFolder` (never into its own subtree), `removeLibraryFolder` (keeps the contents), `BUILT_IN_FOLDER_ID`, `MAX_LIBRARY_FOLDERS` (100). A folder is the app's one nested-folder model, `GameFolder` (`lib/savedGameFolders.ts`). |
 | `src/lib/folderTreeRows.ts` | **A folder tree as table rows**, pure and generic over anything with a `folderId`: folders first, a pinned folder first, sizes over subtrees, closed folders' contents left out, the filter that opens the way to a match. |
-| `src/lib/libraryGameCatalog.ts` | **A Library game as a `?game=` reference**: `library/<collection>/<n>`. `findLibraryGame`, `libraryReferenceRead`, `loadLibraryReferenceGames`, `libraryReferencePathOf`. Registered in `lib/gameReference.ts`. |
+| `src/lib/libraryGameCatalog.ts` | **A Library game as a stored-game reference** (an embed's): `library/<collection>/<n>`. `findLibraryGame`, `libraryReferenceRead`, `loadLibraryReferenceGames`, `libraryReferencePathOf`. Registered in `lib/gameReference.ts`. |
 | `src/data/library/` | The shipped files: `<Stem>.pgn`, `<Stem>.index.json`, `manifest.json`, and a `README.md` for whoever adds a file. |
 | `scripts/wirepgn.js` | **The wiring CLI** (`yarn wirepgn`): wire, `--list`, `--check`, `--rebuild`, `--remove`, `--dir`. |
 | `src/views/library/LibraryHome.tsx` | `/library`: the folder tree table (Built-in and the reader's folders), the name filter, the sort, each row's actions and the folder dialogs. |
@@ -90,7 +90,7 @@ for the Analysis Board and Saved analyses it hands games to.
 | `src/views/library/indexCollection.ts` | Runs the worker with progress and cancel, with a jsdom fallback. |
 | `src/views/library/LibraryMiss.tsx` | The "no such collection / game" screen. |
 | `src/views/library/*Main.tsx` | Layout-only wrappers that `routes.tsx` routes to. |
-| Tests | `src/lib/libraryCollections.test.ts`, `collectionZip.test.ts`, `collectionIndex.test.ts`, `openingTree.test.ts`, `openingTreePgn.test.ts`, `shippedCollections.test.ts`, `libraryCollectionStore.test.ts`, `libraryFolderStore.test.ts` (folder CRUD, `folderId`, the v1 → v2 upgrade), `folderTreeRows.test.ts`, `wirepgn.test.ts`, `gameReference.test.ts` (the `library` key), `src/views/library/Library.test.tsx` (the list, folders, a table, a game, settings), `LibraryFilters.test.tsx` (the panel's filters, the opening-moves board), `LibraryPicks.test.tsx` (download, Analyse, Save as collection), `LibraryImport.test.tsx` (adding a collection, the import popup), `LibraryTournament.test.tsx` (the tournament view, the list's trophy, the settings' suggestion — CTA-142) — sharing `libraryTestKit.tsx`, `src/lib/tournamentParticipants.test.ts`, and `views/tools/analysis/AnalysisBoard.test.tsx` (a `?game=library/…` arrival). |
+| Tests | `src/lib/libraryCollections.test.ts`, `collectionZip.test.ts`, `collectionIndex.test.ts`, `openingTree.test.ts`, `openingTreePgn.test.ts`, `shippedCollections.test.ts`, `libraryCollectionStore.test.ts`, `libraryFolderStore.test.ts` (folder CRUD, `folderId`, the v1 → v2 upgrade), `folderTreeRows.test.ts`, `wirepgn.test.ts`, `gameReference.test.ts` (the `library` key), `src/views/library/Library.test.tsx` (the list, folders, a table, a game, settings), `LibraryFilters.test.tsx` (the panel's filters, the opening-moves board), `LibraryPicks.test.tsx` (download, Analyse, Save as collection), `LibraryImport.test.tsx` (adding a collection, the import popup), `LibraryTournament.test.tsx` (the tournament view, the list's trophy, the settings' suggestion — CTA-142) — sharing `libraryTestKit.tsx`, `src/lib/tournamentParticipants.test.ts`, and `src/lib/gameReference.test.ts` (a `library/…` reference resolved). |
 
 Locale keys all live under `library.*` in `src/locales/en.ts` / `he.ts`
 (`he` is typed `typeof en`, so a missing key is a compile error). The only
@@ -113,7 +113,7 @@ a collection =   ──▶ rows:  CollectionRow[]  (its INDEX, one per game)    
 
 - **A collection is one PGN text of many games**, such as a tournament or one
   player's games, held as **one PGN chunk per game, in file order**. It is not
-  a single game (that goes to the Analysis Board) and not a position.
+  a single game (that is an Analysis Case) and not a position.
 - **Folders over collections, never inside them** (CTA-88). The Library is a
   tree of folders holding collections; each collection is a table, and each
   row is a game. A collection is not a folder: it holds games, not folders or
@@ -133,7 +133,7 @@ a collection =   ──▶ rows:  CollectionRow[]  (its INDEX, one per game)    
   expected, and it is why picks are cleared after a delete (§6.5).
 - **`source` decides what may be written.** A **shipped** collection is
   read-only everywhere: no Update, no Add games, no delete, and its game's
-  "Save as copy" goes to Saved analyses. An **uploaded** collection (made from
+  "Save as copy" goes to Analysis as a new Case. An **uploaded** collection (made from
   a file, a paste, or empty) is the reader's own and takes every write.
 - **Sizing target: 5,000–10,000 games per collection.** A 10,000-game index is
   about 4.8 MB (one JSON parse; 3.0 MB measured over the 5,722-game fixture,
@@ -188,9 +188,9 @@ collection comes in, and read afterwards.
                                                   │
         ┌─────────────────────────┬───────────────┴──────────────┬─────────────────────────────┐
         ▼                         ▼                              ▼                             ▼
-   /library                 /library/<id>                  /library/<id>/<n>             /tools/analysis?game=library/<id>/<n>
-   LibraryHome              CollectionScreen               LibraryGameScreen →           (lib/libraryGameCatalog.ts via
-   (summaries only)         + CollectionFilters            LibraryGameBoard              lib/gameReference.ts)
+   /library                 /library/<id>                  /library/<id>/<n>             Analysis: a new Case (the Export tab's
+   LibraryHome              CollectionScreen               LibraryGameScreen →           Open in Analysis, a shipped game's copy,
+   (summaries only)         + CollectionFilters            LibraryGameBoard              the picks' Analyse — useSendToAnalysis)
                             + OpeningFilterBoard           (useAnalysisSession + explorer)
                             (rows only)                    (games)
 ```
@@ -318,8 +318,8 @@ files. Malformed, duplicate or file-less entries are left out.
 A 10,000-game collection is about 10 million characters. `localStorage` holds
 about 5 million for the **whole origin**, shared with every other store.
 IndexedDB's quota is a share of the disk. Every store of the reader's data is
-IndexedDB now — the Library (`chessapp.library`), the saved analyses
-(`chessapp.analyses`), the engine games and the repertoires; the whole
+IndexedDB now — the Library (`chessapp.library`), Analysis
+(`chessapp.analysisProjects`), the engine games and the repertoires; the whole
 map is [`database.md`](./database.md). The connection is opened through the
 shared `lib/idb.ts`.
 
@@ -407,7 +407,7 @@ queued writes, idempotent no-ops, the channel) over the `folders` object store.
 | `createLibraryFolder(name, parentId)` | At the top level or inside any folder, to any depth. Hands the folder back, or `undefined` for an empty name, a parent that is not there, or the cap (100). Names are trimmed to 100 characters. |
 | `renameLibraryFolder(id, name)` | In place; an empty or unchanged name is a no-op. |
 | `moveLibraryFolder(id, parentId)` | Refuses the folder's own subtree and a parent that is not there. |
-| `removeLibraryFolder(id)` | **Keeps the contents**: its sub-folders and the collections filed directly in it move up to its parent (the top level for a top-level folder). This differs from Saved analyses, where the analyses become Unfiled, because the Library has no Unfiled — the parent is the nearest place. |
+| `removeLibraryFolder(id)` | **Keeps the contents**: its sub-folders and the collections filed directly in it move up to its parent (the top level for a top-level folder). This differed from the legacy Saved analyses (removed in CTA-192), where the analyses became Unfiled, because the Library has no Unfiled — the parent is the nearest place. |
 
 **Built-in is not a record.** `BUILT_IN_FOLDER_ID` (`"builtin"`, which
 `newRecordId` — always starting `g` — can never mint) is a folder the list
@@ -657,12 +657,6 @@ words box, **the table the one region that scrolls**, its header sticky.
 - **Empty** (`library-upload-empty`): `addCollection(name || "New collection",
   [], [])`, then its table. An empty table says "no games yet"
   (`library.table.noGames`).
-- **From the Analysis module** (CTA-101): a PGN of several games brought into
-  the Analysis Board's Load tab or the analyses Lobby's form opens a popup
-  whose **Save as games collection** does this screen's work in place — the
-  same reading, index pass (progress, Cancel) and naming rule, `addCollection`
-  at the top level — and lands on the new table
-  ([`analysis-board.md`](./analysis-board.md) §1, `MultiGameDialog.tsx`).
 - **`?into=<id>`** (the table's **Add games**, `library-table-add-games`): the
   same screen without the name field or the empty button, a title "Add games
   to ‹name›", the same reading, popup and check, then `appendCollectionGames` —
@@ -798,7 +792,7 @@ carries the filter, not a hand-made selection.
     the play chance the repertoire trainer reads). The command form, not the
     `prc:N` the play-chance dialog writes; both read back
     ([`pgn-annotations.md`](./pgn-annotations.md) §3).
-  - The file opens on the Analysis Board through Load, and round-trips
+  - The file opens in Analysis (a new Project from it), and round-trips
     through `parsePgnTree` / `treeToPgn` unchanged.
 
 #### 6.4.2 The settings screen — `/library/<collection>/settings` (CTA-121)
@@ -919,18 +913,18 @@ game), no move replayed; the Games tab, as ever, reads the rows alone.
   numbers have shifted and a kept pick would name a different game. A failed
   write shows its problem in the dialog. The whole collection is deleted
   from `/library`, never from its table.
-- **Analyse** (`library-picks-analyse`, shipped and uploaded alike): saves the
-  picks to **Saved analyses** as one new top-level folder, named by
-  `batchFolderNameOf` (`Tal — 12 games (Petrosian, white, B90, 1.e4
-  c5)`, within the folder name's 100 characters, the filter summary cut
-  first), with one analysis per game in collection order, **all or nothing**.
-  It creates the folder first, then `addAnalyses(batchAnalysesOf(…))` with
-  each PGN **as stored**, not re-parsed (a re-write through a tree would take
-  about a minute on a 5,722-game pick). If the write fails, the folder is
-  removed again. **Unreadable games are left out** and the notice says how
+- **Analyse** (`library-picks-analyse`, shipped and uploaded alike; Analysis
+  V2 since CTA-192): the picks to **Analysis** — a Project picker
+  (`useSendToAnalysis`, `library-picks-send`) offering a new Project first,
+  named by `batchFolderNameOf` (`Tal — 12 games (Petrosian, white, B90, 1.e4
+  c5)`, within the Project name's 100 characters, the filter summary cut
+  first), or one the reader has — and one **Game Case** per readable game in
+  collection order, named by its chapter, **all or nothing** (a new Project
+  taken back on a refusal, said in the picker). Each game is parsed once to
+  make its Case. **Unreadable games are left out** and the notice says how
   many. The app's snackbar (`useSnackbar`, `library-picks-analyse-notice`)
-  links to `/tools/analysis/saved?folder=<id>` (a real link,
-  `library-picks-analyse-open`), and the picks stay.
+  links to `/analysis/projects/<id>` (a real link,
+  `library-picks-analyse-open`); the table and the picks stay.
 - **Save as collection** (`library-picks-collection`, CTA-122, shipped and
   uploaded alike — the result is always a new **uploaded** collection): the
   name asked first in `SaveAsCollectionDialog` (`library-picks-collection-dialog`),
@@ -962,8 +956,8 @@ Board), `useVariationsExplorer` (editing on, *Play chances…* off), and
 - **Tabs**: Moves (the **next-move arrows switch** `library-game-arrows` at
   its top, and under it the **move marks switch** `library-game-move-marks` —
   the move on screen's `!` / `??` badge on the board, CTA-168; both on at the
-  start, the session's, and a shipped game's Save as copy keeps both in the
-  saved analysis) · Map · Info (the tags, `GameInfo`) · Export — no Engine
+  start, the session's, and a shipped game's Save as copy keeps both as the
+  Case's display) · Map · Info (the tags, `GameInfo`) · Export — no Engine
   tab since CTA-181: the search settings are the top bar's Engine menu, one
   set for every board.
 - **Header**: back (to `state.from`, else the table), "Game n of m" and
@@ -986,23 +980,24 @@ Board), `useVariationsExplorer` (editing on, *Play chances…* off), and
   (`replaceCollectionGame` + `indexGame`), Save as copy
   (`insertCollectionGame` right after it, and the board moves to the copy
   with the same `?at=`) or Discard. **Shipped** (`readOnly`): Save as copy
-  into **Saved analyses** ("‹players› (copy)"), then open it on the Analysis
-  Board; or Discard. Leaving with unsaved changes triggers `beforeunload`.
-- **Export tab → Analysis Board** (`library-game-open-analysis`): a
-  link to `/tools/analysis?game=library/<collection>/<n>&at=<position>`. It
-  opens **the game as the collection holds it**. Unsaved session changes stay
+  into **Analysis** — a Game Case "‹players› (copy)" in a Project picked
+  (a new one named after the collection first), opened at once; or Discard. Leaving with unsaved changes triggers `beforeunload`.
+- **Export tab → Open in Analysis** (`library-game-open-analysis`): a new
+  Case in a Project picked (`library-game-send`), at the position on screen.
+  It takes **the game as the collection holds it**. Unsaved session changes stay
   behind, and the caption under the button says so while there are any.
 
-### 6.7 The `?game=library/…` reference — `lib/libraryGameCatalog.ts`
+### 6.7 The `library/…` game reference — `lib/libraryGameCatalog.ts`
 
 `catalogsByKey` in `lib/gameReference.ts` maps `library` to
 `findLibraryGame(segments)`, where `segments` is `[collectionId, n]`. It
 answers from what has been read (`peekShippedGames` / `peekUploadedGames`),
 parses the one game's mainline (`parsePgnGame`), and returns `undefined` for
 anything unread, missing, non-numeric or out of range. Because games load
-lazily, **`AnalysisBoardRoute` waits**: `isReferenceRead(game)` decides whether
-to show "reading…", and `loadReferencedGames(game)` fetches the shipped PGN or
-reads the upload. It waits the same way for the saved analyses.
+lazily, **a reader waits** (an embed, the MDX editor's lookup):
+`isReferenceRead(game)` decides whether to show "reading…", and
+`loadReferencedGames(game)` fetches the shipped PGN or reads the upload. It
+waits the same way for Analysis's Cases (`case/<p>/<c>`).
 
 ---
 

@@ -15,6 +15,6 @@ Gallery: `/dev/design/patterns/forms`.
   `submitLabel`, `submitVariant?`, `fileVariant?`, `size?`, `disabled?`,
   `busy?`, `problem?`, `testId`, `testIds?` (the parts' own ids).
 - **Variations** — file and paste; paste only; busy; a problem; disabled.
-- **Used by** — the `PgnInput` block (the Analysis Board's Load tab, the new
-  analysis form, the repertoire and Library uploads).
+- **Used by** — the `PgnInput` block (the Openings explorer's Load tab, a new
+  Case and a new Project in Analysis, the repertoire and Library uploads).
 - **Replaces** — four hand-built file button + paste box pairs.

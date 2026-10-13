@@ -5,9 +5,8 @@
  * works over a file that exports components alone.
  */
 
-import { gameTag, type GameHeaders } from "../../lib/gameModel";
+import { ANALYSIS_PLACEHOLDER_PLAYER, gameTag, type GameHeaders } from "../../lib/gameModel";
 import { eloOf } from "../../lib/libraryCollections";
-import { SAVED_ANALYSIS_PLAYER } from "../../lib/savedAnalyses";
 import type { PlayerPlates } from "./PlayerPlate";
 
 /** What a drawn game's plate shows for either player — the half sign, one character. */
@@ -36,7 +35,7 @@ export const playerResultsOf = (result: string): { white?: string; black?: strin
 export const playerPlatesOf = (headers: GameHeaders): PlayerPlates | undefined => {
   const named = (key: string) => {
     const name = gameTag(headers, key);
-    return name === SAVED_ANALYSIS_PLAYER ? undefined : name;
+    return name === ANALYSIS_PLACEHOLDER_PLAYER ? undefined : name;
   };
   const white = named("White");
   const black = named("Black");

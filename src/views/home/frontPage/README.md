@@ -25,8 +25,8 @@ nothing is fetched or compiled in the browser.
 - **One component, any source** (CTA-140): every table and every `<InlinePgnGame…>`
   read their games from `pgn={games}` — a PGN of the article's own — or
   from `src="<address>"`: a Library collection (`/library/<c>`) or one game
-  of it (`/library/<c>/<n>`), a saved analysis
-  (`/tools/analysis?analysis=<id>`), a played game (`/engine/play?saved=<id>`),
+  of it (`/library/<c>/<n>`), an Analysis case
+  (`/analysis/projects/<p>/cases/<c>`), a played game (`/engine/play?saved=<id>`),
   a repertoire (`/repertoires/<id>`) — pasted as the address bar shows it,
   host and all. A Library source's names and results link into the Library
   (`playerLink`, `gameLink`, `teamLink`, on by default). **Only shipped

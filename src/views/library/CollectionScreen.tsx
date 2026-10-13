@@ -10,7 +10,7 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import { Link as RouterLink, useHref, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
-import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
+import { MAX_PROJECT_NAME } from "../../lib/analysisProjects";
 import type { IndexedRow } from "../../lib/collectionIndex";
 import { addCollection, removeCollectionGames, updateCollectionSettings } from "../../lib/libraryCollectionStore";
 import {
@@ -41,15 +41,11 @@ import {
 } from "../../lib/openingTree";
 import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
-import { batchAnalysesOf, newSavedAnalysisId } from "../../lib/savedAnalyses";
-import {
-  createAnalysisFolder,
-  MAX_ANALYSIS_FOLDER_NAME,
-  MAX_ANALYSIS_FOLDERS,
-  removeAnalysisFolder,
-} from "../../lib/savedAnalysisFolderStore";
-import { addAnalyses, MAX_SAVED_ANALYSES } from "../../lib/savedAnalysisStore";
+import type { GameTree } from "../../lib/gameTree";
+import { parsePgnTree } from "../../lib/pgn";
 import { repertoireGameNamesOf } from "../../lib/savedRepertoires";
+import { useSendToAnalysis } from "../analysisV2/useSendToAnalysis";
+import { projectPath } from "../analysisV2/paths";
 import { RightPanel } from "../main/rightPanel";
 import { SaveAsCollectionDialog } from "../../blocks/dialogs";
 import { CollectionFilters, TournamentSuggestion } from "../../blocks/forms";
@@ -101,17 +97,15 @@ import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
  * the upload screen on this collection (`/library/new?into=<id>`): a file or
  * a paste, checked as an upload is, added at the end.
  *
- * **Analyse** (CTA-77), beside the export bar, hands the picks to **Saved
- * analyses**: one new top-level folder, named after the collection, the
- * count and the filters that are on (`batchFolderNameOf`), and every picked
- * game saved into it as its own analysis, in collection order, all or
- * nothing — the Analysis Board's split (`AnalysisLoad.tsx`) over games
- * already read: the folder first, then the records (`batchAnalysesOf`, the
- * stored PGN as it is), the folder taken back out if they cannot be written.
- * A game the index marks unreadable is **left out, and the notice says how
- * many** — it would open on no board — rather than refusing the whole batch.
- * The app's snackbar (`useSnackbar`) says how many went where, with a link
- * to the folder; the picks stay.
+ * **Analyse** (CTA-77), beside the export bar, hands the picks to
+ * **Analysis** (CTA-192): a Project the reader picks — a new one offered
+ * first, named after the collection, the count and the filters that are on
+ * (`batchFolderNameOf`) — and every picked game a Game Case in it, in
+ * collection order, all or nothing (`useSendToAnalysis`). A game the index
+ * marks unreadable, or that will not parse, is **left out, and the notice
+ * says how many** — it would open on no board — rather than refusing the
+ * whole batch. The app's snackbar (`useSnackbar`) says how many went where,
+ * with a link to the Project; the picks stay.
  *
  * **Save as collection** (CTA-122), the fourth action on the picks, shipped
  * and uploaded collections alike: the picked games written as one **new
@@ -285,7 +279,8 @@ function CollectionTable({
     navigate(`/library/${encodeURIComponent(collection.id)}?tab=info`, { replace: true });
   };
 
-  /** The picks into Saved analyses: a new folder, a record per readable game — or nothing. */
+  /** The picks into Analysis: a Game Case per readable game, in a Project the reader picks. */
+  const sendTo = useSendToAnalysis("library-picks-send");
   const analysePicked = async () => {
     const failure = (message: string) =>
       show({ message, severity: "error", duration: null, testId: "library-picks-analyse-notice" });
@@ -295,60 +290,53 @@ function CollectionTable({
       if (games === null) return failure(t("library.table.picks.problem.read"));
       const unreadable = new Set(rows.filter((row) => row.unreadable).map((row) => row.number));
       const numbers = [...picked].sort((a, b) => a - b);
-      const kept = numbers.filter((number) => games[number - 1] !== undefined && !unreadable.has(number));
-      const skipped = numbers.length - kept.length;
-      if (kept.length === 0) return failure(t("library.table.picks.problem.none"));
-
-      const chunks = kept.map((number) => games[number - 1]);
+      const chunks = numbers.flatMap((number) => {
+        const pgn = games[number - 1];
+        return pgn === undefined || unreadable.has(number) ? [] : [pgn];
+      });
       const names = repertoireGameNamesOf(chunks);
-      const folderName = batchFolderNameOf(
-        collection.name,
-        { text, result, player, color, opening: openingName, event, from, to, line },
-        {
-          games: t("library.games", { count: kept.length }),
-          white: t("library.table.picks.white"),
-          black: t("library.table.picks.black"),
-        },
-        MAX_ANALYSIS_FOLDER_NAME,
-      );
-      const folder = await createAnalysisFolder(folderName, null);
-      if (folder === undefined) {
-        return failure(t("library.table.picks.problem.folder", { max: MAX_ANALYSIS_FOLDERS }));
-      }
-      const failed = await addAnalyses(
-        batchAnalysesOf(
-          newSavedAnalysisId,
-          chunks.map((pgn, index) => ({ pgn, name: names[index] })),
-          folder.id,
-          DEFAULT_ANALYSIS_SETTINGS,
+      const sent = chunks.flatMap((pgn, index): { tree: GameTree; name: string }[] => {
+        try {
+          return [{ tree: parsePgnTree(pgn), name: names[index] }];
+        } catch {
+          return [];
+        }
+      });
+      const skipped = numbers.length - sent.length;
+      if (sent.length === 0) return failure(t("library.table.picks.problem.none"));
+
+      sendTo.send({
+        games: sent,
+        projectName: batchFolderNameOf(
+          collection.name,
+          { text, result, player, color, opening: openingName, event, from, to, line },
+          {
+            games: t("library.games", { count: sent.length }),
+            white: t("library.table.picks.white"),
+            black: t("library.table.picks.black"),
+          },
+          MAX_PROJECT_NAME,
         ),
-      );
-      if (failed !== undefined) {
-        // All or nothing: no empty folder is left behind.
-        await removeAnalysisFolder(folder.id);
-        return failure(
-          failed === "too-many"
-            ? t("library.table.picks.problem.tooMany", { max: MAX_SAVED_ANALYSES })
-            : t("library.table.picks.problem.storage"),
-        );
-      }
-      const folderPath = `/tools/analysis/saved?folder=${encodeURIComponent(folder.id)}`;
-      show({
-        severity: "success",
-        duration: 10_000,
-        testId: "library-picks-analyse-notice",
-        action: {
-          label: t("library.table.picks.openFolder"),
-          onClick: () => navigate(folderPath),
-          href: hrefOf(folderPath),
-          testId: "library-picks-analyse-open",
+        onSent: (project, cases) => {
+          const path = projectPath(project.id);
+          show({
+            severity: "success",
+            duration: 10_000,
+            testId: "library-picks-analyse-notice",
+            action: {
+              label: t("library.table.picks.openProject"),
+              onClick: () => navigate(path),
+              href: hrefOf(path),
+              testId: "library-picks-analyse-open",
+            },
+            message: [
+              t("library.table.picks.done", { count: cases.length, project: project.name }),
+              skipped > 0 ? t("library.table.picks.skipped", { count: skipped }) : "",
+            ]
+              .filter(Boolean)
+              .join(" "),
+          });
         },
-        message: [
-          t("library.table.picks.done", { count: kept.length, folder: folder.name }),
-          skipped > 0 ? t("library.table.picks.skipped", { count: skipped }) : "",
-        ]
-          .filter(Boolean)
-          .join(" "),
       });
     } finally {
       setAnalysing(false);
@@ -695,6 +683,7 @@ function CollectionTable({
         confirmTestId="library-picks-delete-confirm"
       />
       {/* CTA-122: the picks as a new collection — the write is all-or-nothing, so the dialog closes on success, not on save. */}
+      {sendTo.dialog}
       <SaveAsCollectionDialog
         open={savingAs}
         initial={saveName}

@@ -4,8 +4,7 @@ import { MemoryRouter } from "react-router";
 
 import i18n from "../../../i18n";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../../lib/computerAnalysis";
-import type { JobStatus } from "../../../lib/jobs";
-import { jobV2Of, withCheckpointV2, type JobV2 } from "../../../lib/jobsV2";
+import { jobV2Of, withCheckpointV2, type JobStatus, type JobV2 } from "../../../lib/jobsV2";
 import { createJobV2LiveFeed, type JobV2LiveFeed } from "../../../lib/jobV2Live";
 import { addJobV2, loadJobsV2, updateJobV2 } from "../../../lib/jobV2Store";
 import { expectNoAxeViolations } from "../../../test/axe";

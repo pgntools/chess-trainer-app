@@ -90,17 +90,20 @@ describe("the shipped nav tree", () => {
     expect(folderPath("/masked/play")).toEqual([]);
   });
 
-  it("files the Lobby and Jobs in the Analyses folder, a folder rather than a single entry (CTA-174)", () => {
-    const analysis = navFolders().find((folder) => folder.id === "analysis");
+  it("files Analysis's Projects and Jobs in its folder, after the Library — shipped, not a dev-only spread (CTA-192)", () => {
+    const ids = navFolders().map((folder) => folder.id);
+    expect(ids.indexOf("analysis-v2")).toBe(ids.indexOf("library") + 1);
+    const analysis = navFolders().find((folder) => folder.id === "analysis-v2");
     expect(analysis?.singleEntry).toBeFalsy();
-    expect(analysis?.labelKey).toBe("nav.folders.analysisBoard");
-    expect(navItemsInFolder("analysis").map((item) => [item.to, item.labelKey])).toEqual([
-      ["/tools/analysis/saved", "nav.lobby"],
-      ["/jobs", "nav.jobs"],
+    expect(analysis?.labelKey).toBe("nav.folders.analysisV2");
+    expect(navItemsInFolder("analysis-v2").map((item) => [item.to, item.labelKey])).toEqual([
+      ["/analysis", "nav.analysisProjects"],
+      ["/analysis/jobs", "nav.analysisJobs"],
     ]);
-    // Jobs has no top-level folder of its own any more, and opens the Analyses chain.
-    expect(navFolders().map((folder) => folder.id)).not.toContain("jobs");
-    expect(folderPath("/jobs")).toEqual(["analysis"]);
+    expect(folderPath("/analysis/jobs")).toEqual(["analysis-v2"]);
+    // The legacy Analyses folder went with its screens.
+    expect(ids).not.toContain("analysis");
+    expect(folderPath("/jobs")).toEqual([]);
   });
 
   it("files Export, Import, Storage, Appearance and Engine in a Settings folder, a folder rather than a single entry (CTA-86, CTA-89, CTA-94, CTA-107, CTA-153)", () => {

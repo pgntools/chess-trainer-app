@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { mainline } from "./gameTree";
 import { parsePgnTree } from "./pgn";
-import { atParamOf, nodeAtParam } from "./repertoireLink";
+import { atParamOf, lineTreeOf, nodeAtParam } from "./repertoireLink";
 
 const tree = parsePgnTree("1. e4 c6 2. d4 d5 3. e5 Bf5 (3... c5 4. dxc5) 4. Nf3 *");
 const [e4] = tree.moves;
@@ -23,5 +24,17 @@ describe("a permanent link to a position", () => {
     expect(nodeAtParam(tree, "")).toBeNull();
     expect(nodeAtParam(tree, null)).toBeNull();
     expect(nodeAtParam(tree, " e4 , c6 ")).toBe(e4.children[0].id);
+  });
+});
+
+describe("lineTreeOf", () => {
+  const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+
+  it("plays a line from a start position", () => {
+    expect(mainline(lineTreeOf(AFTER_E4, ["c5", "Nf3"])).map((node) => node.san)).toEqual(["c5", "Nf3"]);
+  });
+
+  it("stops at the first move that is not legal there", () => {
+    expect(mainline(lineTreeOf(AFTER_E4, ["c5", "Ke5", "Nf3"])).map((node) => node.san)).toEqual(["c5"]);
   });
 });

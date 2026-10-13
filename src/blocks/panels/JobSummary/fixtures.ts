@@ -1,18 +1,20 @@
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS, type ComputerAnalysisReport } from "../../../lib/computerAnalysis";
-import { computerAnalysisJobOf, type Job } from "../../../lib/jobs";
+import { jobV2Of, type JobV2 } from "../../../lib/jobsV2";
 
 /*
-  One background job in the states its summary shows differently (CTA-173),
-  typed with `lib/jobs.ts`'s own. Imported only by the block's gallery and its test.
+  One Jobs V2 job in the states its summary shows differently (CTA-173,
+  CTA-188), typed with `lib/jobsV2.ts`'s own. Imported only by the block's gallery and its test.
 */
 
 const PGN = '[White "Carlsen, Magnus"]\n[Black "Nepomniachtchi, Ian"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *';
 
-const base = computerAnalysisJobOf(
+const base = jobV2Of(
   "job",
   {
-    source: { analysisId: "analysis-1", name: "Carlsen – Nepomniachtchi", folderId: null, pgn: PGN },
+    source: { projectId: "project-1", caseId: "case-1", name: "Carlsen – Nepomniachtchi", pgn: PGN },
     options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, depth: 22, moveTimeMs: 15000, multiPv: 3, threads: 4, hashMb: 256, outputs: ["light", "medium"] },
+    preset: { id: "default", name: "Default", values: {} },
+    target: { kind: "project", projectId: "project-1" },
   },
   new Date("2026-10-10T12:00:00Z"),
 )!;
@@ -24,9 +26,9 @@ const finished = (count: number) =>
 
 const engine = { id: "stockfish-19-lite-multi", name: "Stockfish 19 Lite (multi-thread)", version: "19" };
 
-export const RUNNING: Job = { ...base, status: "running", startedAt: "2026-10-10T12:01:00.000Z", engine, checkpoint: finished(2) };
+export const RUNNING: JobV2 = { ...base, status: "running", startedAt: "2026-10-10T12:01:00.000Z", engine, checkpoint: finished(2) };
 
-export const DONE: Job = {
+export const DONE: JobV2 = {
   ...base,
   status: "done",
   startedAt: "2026-10-10T12:01:00.000Z",
@@ -34,15 +36,15 @@ export const DONE: Job = {
   engine,
   checkpoint: finished(base.positions.length),
   outputs: [
-    { variant: "light", analysisId: "out-light" },
-    { variant: "medium", analysisId: "out-medium" },
+    { variant: "light", projectId: "project-1", caseId: "out-light" },
+    { variant: "medium", projectId: "project-1", caseId: "out-medium" },
   ],
 };
 
-export const FAILED: Job = { ...RUNNING, status: "failed", error: "engine", finishedAt: "2026-10-10T12:03:00.000Z" };
+export const FAILED: JobV2 = { ...RUNNING, status: "failed", error: "engine", finishedAt: "2026-10-10T12:03:00.000Z" };
 
-/** A board never saved: no source to link back to. */
-export const UNSAVED: Job = { ...base, source: { ...base.source, analysisId: null, name: "" } };
+/** Its Case deleted since, and named nothing: no source to link back to. */
+export const SOURCE_GONE: JobV2 = { ...base, id: "gone", source: { ...base.source, name: "" } };
 
 /** The finished job's report, as an output reads back. */
 export const REPORT: ComputerAnalysisReport = {

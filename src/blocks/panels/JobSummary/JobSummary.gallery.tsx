@@ -1,18 +1,18 @@
 import Box from "@mui/material/Box";
 
 import type { GalleryModule } from "../../../design-system/gallery/types";
-import type { Job } from "../../../lib/jobs";
+import type { JobV2 } from "../../../lib/jobsV2";
 import type { BlockFamilyId } from "../../families";
 import { ComputerAnalysisReport } from "../ComputerAnalysisReport";
-import { DONE, FAILED, REPORT, RUNNING, UNSAVED } from "./fixtures";
+import { DONE, FAILED, REPORT, RUNNING, SOURCE_GONE } from "./fixtures";
 import JobSummary from "./JobSummary";
 
-const demo = (job: Job, withReport = false) => (
+const demo = (job: JobV2, withReport = false) => (
   <Box sx={{ maxWidth: 400 }}>
     <JobSummary
       job={job}
-      sourceLink={job.source.analysisId === null ? undefined : { href: `?analysis=${job.source.analysisId}` }}
-      outputLink={(output) => ({ href: `?analysis=${output.analysisId}` })}
+      sourceLink={job === SOURCE_GONE ? undefined : { href: `?case=${job.source.caseId}` }}
+      outputLink={(output) => ({ href: `?case=${output.caseId}` })}
       onCancel={() => {}}
       onPause={() => {}}
       onResume={() => {}}
@@ -31,7 +31,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "Running — its progress and the move searched", render: () => demo(RUNNING) },
     { name: "Done — its outputs, and its report under it", render: () => demo(DONE, true) },
     { name: "Failed — why, and Resume", render: () => demo(FAILED) },
-    { name: "Queued, from a board never saved — no source link, no name", render: () => demo(UNSAVED) },
+    { name: "Queued, its Case gone since — no source link, no name", render: () => demo(SOURCE_GONE) },
   ],
 };
 

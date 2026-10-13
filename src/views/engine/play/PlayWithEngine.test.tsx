@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 
 import i18n from "../../../i18n";
+import { analysisCasesSnapshot } from "../../../lib/analysisCaseStore";
 import { storeEngineId } from "../../../lib/engineChoice";
 import { DEFAULT_PRESET_ID } from "../../../lib/enginePresets";
 import { setEnginePresetValue } from "../../../lib/enginePresetStore";
@@ -522,7 +523,7 @@ describe("Play with Engine — the game over", () => {
   /** One move from a back-rank mate: the rook takes the eighth. */
   const MATE_IN_ONE = "6k1/5ppp/8/8/8/8/8/K3R3 w - - 0 1";
 
-  it("states the result once the board decides it, and offers the game to the Analysis Board", async () => {
+  it("states the result once the board decides it, and hands the game to Analysis as a new Case (CTA-192)", async () => {
     mount(`/engine/play?fen=${encodeURIComponent(MATE_IN_ONE)}`);
     // Nothing has ended yet, and nothing is stored to link.
     expect(screen.queryByTestId("play-with-engine-ended")).not.toBeInTheDocument();
@@ -535,11 +536,18 @@ describe("Play with Engine — the game over", () => {
     expect(screen.queryByTestId("play-with-engine-open-analysis")).not.toBeInTheDocument();
 
     await waitFor(() => expect(games()).toHaveLength(1));
-    const [game] = games();
-    expect(screen.getByTestId("play-with-engine-open-analysis")).toHaveAttribute(
-      "href",
-      `/tools/analysis?game=${encodeURIComponent(`play/games/${game.id}`)}`,
-    );
+    click("play-with-engine-open-analysis");
+    // A Project picked — a new one first, named for the games against the engine.
+    const picker = await screen.findByRole("dialog", { name: "Open in Analysis" });
+    expect(within(picker).getByRole("textbox", { name: "The new project's name" })).toHaveValue("Games against the engine");
+    fireEvent.click(within(picker).getByRole("button", { name: "Open" }));
+
+    await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/[^/]+\/cases\/[^/]+$/));
+    const [made] = analysisCasesSnapshot() ?? [];
+    // The record as kept — its tags too — and the mating move.
+    expect(made).toMatchObject({ type: "game", orientation: "white" });
+    expect(made.pgn).toContain("Re8#");
+    expect(made.pgn).toContain('[Result "1-0"]');
   });
 
   it("offers a resigned game too, and takes the whole treatment away on Replay", async () => {
@@ -553,10 +561,7 @@ describe("Play with Engine — the game over", () => {
       "You resigned · 0-1",
     );
     await waitFor(() => expect(games()).toHaveLength(1));
-    expect(screen.getByTestId("play-with-engine-open-analysis")).toHaveAttribute(
-      "href",
-      `/tools/analysis?game=${encodeURIComponent(`play/games/${games()[0].id}`)}`,
-    );
+    expect(screen.getByTestId("play-with-engine-open-analysis")).toHaveTextContent("Open in analysis");
 
     click("play-with-engine-replay");
     click("play-with-engine-confirm-ok");
@@ -570,10 +575,7 @@ describe("Play with Engine — the game over", () => {
     );
     mount("/engine/play?saved=ended");
     expect(screen.getByTestId("play-with-engine-ended")).toHaveTextContent("Game over · 0-1");
-    expect(screen.getByTestId("play-with-engine-open-analysis")).toHaveAttribute(
-      "href",
-      `/tools/analysis?game=${encodeURIComponent("play/games/ended")}`,
-    );
+    expect(screen.getByTestId("play-with-engine-open-analysis")).toBeInTheDocument();
   });
 });
 

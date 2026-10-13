@@ -113,18 +113,24 @@ export const ROUTES: readonly PageRoute[] = [
   { id: "lobby", pattern: "/engine/games", path: "engine/games", ready: byTestId("played-games-row-e2e-on") },
   { id: "play-with-engine", pattern: "/engine/play", path: "engine/play", board: true },
   { id: "masked-pieces", pattern: "/engine/masked", path: "engine/masked", board: true },
-  { id: "analysis-board", pattern: "/tools/analysis", path: "tools/analysis", board: true },
+  // Analysis V2 (CTA-186, shipped in CTA-192): the Projects browser, a Project's Cases, a Case's board and Jobs V2.
   {
-    id: "saved-analyses",
-    pattern: "/tools/analysis/saved",
-    path: "tools/analysis/saved",
-    pieces: true,
-    ready: byTestId(`saved-analyses-item-${SEED.analysisId}`),
+    id: "analysis-projects",
+    pattern: "/analysis",
+    path: "analysis",
+    ready: byTestId(`analysis-v2-list-row-${SEED.projectId}`),
   },
   {
-    id: "saved-analysis-settings",
-    pattern: "/tools/analysis/saved/:id/settings",
-    path: `tools/analysis/saved/${SEED.analysisId}/settings`,
+    id: "analysis-project",
+    pattern: "/analysis/projects/:projectId",
+    path: `analysis/projects/${SEED.projectId}`,
+    ready: byTestId(`analysis-v2-cases-row-${SEED.caseId}`),
+  },
+  {
+    id: "analysis-case",
+    pattern: "/analysis/projects/:projectId/cases/:caseId",
+    path: `analysis/projects/${SEED.projectId}/cases/${SEED.caseId}`,
+    board: true,
   },
   { id: "openings", pattern: "/openings", path: "openings", board: true },
   {
@@ -184,8 +190,8 @@ export const ROUTES: readonly PageRoute[] = [
   // The Blog (CTA-126): its index and a folder; its articles follow, read from their files (CTA-135).
   { id: "blog", pattern: "/blog/*", path: "blog" },
   { id: "blog-folder", pattern: "/blog/*", path: "blog/writing-an-article/components" },
-  // The Jobs screen (CTA-173): no job in the seed (a job is not in the export zip), so its empty list.
-  { id: "jobs", pattern: "/jobs", path: "jobs" },
+  // Jobs V2 (CTA-188): no job in the seed (a job is not in the export zip), so its empty list.
+  { id: "analysis-jobs", pattern: "/analysis/jobs", path: "analysis/jobs" },
   // The legal pages (CTA-159): the Privacy Policy and the Cookies Notice, MDX documents reached from the footer —
   // in a build that has them (CTA-182).
   ...(LEGAL_PAGES_BUILT

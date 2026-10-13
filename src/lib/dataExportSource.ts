@@ -1,4 +1,7 @@
-import { analysisProjectStores } from "./analysisProjectsEnabled";
+import { loadAnalysisCases } from "./analysisCaseStore";
+import { loadCaseLinks } from "./analysisCaseLinkStore";
+import { loadProjectFolders } from "./analysisProjectFolderStore";
+import { loadAnalysisProjects } from "./analysisProjectStore";
 import {
   buildExport,
   exportedCollections,
@@ -13,8 +16,6 @@ import { loadUploadedCollections, loadUploadedGames } from "./libraryCollectionS
 import { loadLibraryFolders } from "./libraryFolderStore";
 import type { CollectionSummary } from "./libraryCollections";
 import { loadPlayedGames } from "./playedGameStore";
-import { loadAnalysisFolders } from "./savedAnalysisFolderStore";
-import { loadSavedAnalyses } from "./savedAnalysisStore";
 import { loadRepertoireFolders } from "./savedRepertoireFolderStore";
 import { loadSavedRepertoires } from "./savedRepertoireStore";
 import { findShippedCollection, shippedCollections } from "./shippedCollections";
@@ -60,20 +61,18 @@ const loadCollectionSummaries = async (): Promise<readonly CollectionSummary[]> 
 ];
 
 /**
- * Analysis V2's folders, Projects and Cases (CTA-186) when they are asked
- * for — read through `analysisProjectStores` (`analysisProjectsEnabled.ts`),
- * whose dynamic imports a production build drops: the stores are not in it.
+ * Analysis V2's folders, Projects, Cases and links (CTA-186, CTA-188) when
+ * they are asked for.
  */
 const loadAnalysisProjectsSource = async (
   selection: ExportSelection,
 ): Promise<Pick<ExportSource, "projectFolders" | "analysisProjects" | "analysisCases" | "caseLinks">> => {
-  const stores = selection.analysisProjects ? await analysisProjectStores() : undefined;
-  if (stores === undefined) return { projectFolders: [], analysisProjects: [], analysisCases: [], caseLinks: [] };
+  if (!selection.analysisProjects) return { projectFolders: [], analysisProjects: [], analysisCases: [], caseLinks: [] };
   const [projectFolders, analysisProjects, analysisCases, caseLinks] = await Promise.all([
-    stores.folders.loadProjectFolders(),
-    stores.projects.loadAnalysisProjects(),
-    stores.cases.loadAnalysisCases(),
-    stores.links.loadCaseLinks(),
+    loadProjectFolders(),
+    loadAnalysisProjects(),
+    loadAnalysisCases(),
+    loadCaseLinks(),
   ]);
   return { projectFolders, analysisProjects, analysisCases, caseLinks };
 };
@@ -86,8 +85,6 @@ const loadAnalysisProjectsSource = async (
 const loadExportSource = async (selection: ExportSelection): Promise<ExportSource> => {
   const [
     playedGames,
-    analyses,
-    analysisFolders,
     repertoires,
     repertoireFolders,
     summaries,
@@ -97,8 +94,6 @@ const loadExportSource = async (selection: ExportSelection): Promise<ExportSourc
     analysisProjects,
   ] = await Promise.all([
     selection.games ? loadPlayedGames() : NOTHING,
-    selection.analyses ? loadSavedAnalyses() : NOTHING,
-    selection.analyses ? loadAnalysisFolders() : NOTHING,
     selection.repertoires ? loadSavedRepertoires() : NOTHING,
     selection.repertoires ? loadRepertoireFolders() : NOTHING,
     selection.collections ? loadCollectionSummaries() : NOTHING,
@@ -117,8 +112,6 @@ const loadExportSource = async (selection: ExportSelection): Promise<ExportSourc
 
   return {
     playedGames,
-    analyses,
-    analysisFolders,
     repertoires,
     repertoireFolders,
     collections,

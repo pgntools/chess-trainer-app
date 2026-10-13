@@ -11,13 +11,11 @@ import { idbDatabase } from "./idb";
  * 2, on CTA-188's branch only, had a `projectLinks` store instead — left
  * where it is, unread: a store is never dropped.)
  * One database for them, because a folder, the Projects filed in it, their
- * Cases and their jobs are read by the same screens; a database of its own, apart
- * from the legacy `chessapp.analyses`, so the legacy module's removal takes
- * nothing of it. Opened through `lib/idb.ts`; the app's storage as a whole is
- * `.claude/rules/database.md`.
- *
- * Dev-only while the module is built (`analysisProjectsEnabled.ts`): only
- * its screens and the Export / Import (behind the same flag) open it.
+ * Cases and their jobs are read by the same screens; a database of its own
+ * (the legacy analyses' went with their module in CTA-192, deleted on load —
+ * `lib/retiredDatabases.ts`). Opened through `lib/idb.ts`; the app's storage
+ * as a whole is `.claude/rules/database.md`. Shipped in CTA-192 (dev-only
+ * until then).
  */
 
 export const ANALYSIS_PROJECTS_DB_NAME = "chessapp.analysisProjects";

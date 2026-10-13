@@ -1,3 +1,4 @@
+import { analysisCasesSnapshot, findAnalysisCaseGame, loadAnalysisCases } from "./analysisCaseStore";
 import { findCatalogGame, type CatalogGame } from "./gameCatalog";
 import {
   findLibraryGame,
@@ -6,38 +7,28 @@ import {
   loadLibraryReferenceGames,
 } from "./libraryGameCatalog";
 import { loadPlayedGames, playedGamesCatalog, playedGamesSnapshot } from "./playedGameStore";
-import { findSavedAnalysisGame } from "./savedAnalysisStore";
 
 /**
- * How a **whole game** crosses to the Analysis Board: `?game=<key>/<path>/<id>`.
+ * **A stored game, by reference**: `<key>/<path>/<id>` — what an article's
+ * embed (`views/home/frontPage/`) and the MDX editor read a game by.
  *
- * A FEN is short enough to put in a URL; a game is not — a played game
- * carries its side lines, an analysis its comments — so what travels is a
- * *reference into a store's catalog* (`lib/gameCatalog.ts`), and the
- * destination looks the game up for itself. It keeps everything the `?fen=`
- * hand-off is good for:
- *
- * - it is a **query parameter**, so the link survives being bookmarked, shared
- *   and reloaded, where router state would not;
- * - the destination **validates** it (an unknown reference resolves to
- *   `undefined` and is ignored, exactly as an unparsable FEN is) and takes the
- *   result as *initial* state, because arriving at the URL mounts the screen;
- * - it is **additive**: `?fen=` is untouched.
+ * A game is too big for a URL — a played game carries its side lines, a
+ * Case its comments — so what travels is a *reference into a store's
+ * catalog* (`lib/gameCatalog.ts`), and the reader looks the game up for
+ * itself; one that names nothing resolves to `undefined` and says so.
  *
  * The registry below is the single place a key meets its store, and it has
- * three entries: the reader's saved analyses (`lib/savedAnalyses.ts`), their
+ * three entries: Analysis V2's Cases (`case/<projectId>/<caseId>`, CTA-192 —
+ * the legacy saved analyses' `analysis/saved/<id>` before it), the reader's
  * games against the engine (`lib/playedGames.ts`, CTA-74) and a Library
- * collection's games (`lib/libraryGameCatalog.ts`, `library/<collection>/<n>`
- * — the Export tab's hand-off on a Library game's board, CTA-77). **A line in
- * it is the whole cost of a new producer of games.**
- *
- * The pre-CTA-75 `pgn/…` key went with the old Library, and its
- * `library/<folder>/<id>` links name no collection and number now; such a
- * link resolves to nothing, and the board opens as if `?game=` were not there.
+ * collection's games (`lib/libraryGameCatalog.ts`, `library/<collection>/<n>`,
+ * CTA-77). **A line in it is the whole cost of a new producer of games.**
+ * (Until CTA-192 a reference crossed to the Analysis Board as `?game=`; a
+ * game handed to Analysis now becomes a Case, `useSendToAnalysis`.)
  */
 
-/** The section key the reader's saved analysis boards carry. */
-export const ANALYSIS_REFERENCE_KEY = "analysis";
+/** The section key Analysis V2's Cases carry (CTA-192): `case/<projectId>/<caseId>`. */
+export const CASE_REFERENCE_KEY = "case";
 
 /** The section key Play with Engine's games carry (CTA-74). */
 export const PLAY_REFERENCE_KEY = "play";
@@ -54,14 +45,13 @@ export const libraryGameReference = (collectionId: string, number: number): stri
  * of it (`<path>/<id>`). *Called* rather than held, because the stores change
  * while the app runs and a game saved a moment ago has to be as referenceable
  * as an old one. Every store here is read asynchronously, and each resolves
- * out of what has been read — so the Analysis Board waits for that read
- * before it resolves a reference. The played games memoise their whole
- * catalog on their snapshot; the saved analyses — thousands of records since CTA-77, in
- * IndexedDB — parse only the one named, out of what has been read (so the
- * Analysis Board waits for that read before it resolves one).
+ * out of what has been read — so a reader waits for that read
+ * (`isReferenceRead` / `loadReferencedGames`) before it resolves a reference.
+ * The played games memoise their whole catalog on their snapshot; the Cases
+ * parse only the one named.
  */
 const catalogsByKey: Record<string, (segments: readonly string[]) => CatalogGame | undefined> = {
-  [ANALYSIS_REFERENCE_KEY]: findSavedAnalysisGame,
+  [CASE_REFERENCE_KEY]: findAnalysisCaseGame,
   [PLAY_REFERENCE_KEY]: (segments) => findCatalogGame(segments, playedGamesCatalog()),
   [LIBRARY_REFERENCE_KEY]: findLibraryGame,
 };
@@ -70,30 +60,23 @@ const referenceSegments = (reference: string): string[] =>
   reference.split("/").filter(Boolean);
 
 /**
- * Whether a reference names the saved analyses — the one store read
- * asynchronously, which a screen resolving it has to wait for.
- */
-export const isAnalysisReference = (reference: string | null | undefined): boolean =>
-  reference !== null &&
-  reference !== undefined &&
-  referenceSegments(reference)[0] === ANALYSIS_REFERENCE_KEY;
-
-/**
- * Whether what a `play` or Library reference names has been read — the
- * played games (IndexedDB) and a Library collection's games are read
- * asynchronously, like the saved analyses. Anything else is ready at once.
+ * Whether what a reference names has been read — the Cases and the played
+ * games (IndexedDB) and a Library collection's games are read
+ * asynchronously. Anything else is ready at once.
  */
 export const isReferenceRead = (reference: string | null | undefined): boolean => {
   if (reference === null || reference === undefined) return true;
   const [sectionKey, ...rest] = referenceSegments(reference);
+  if (sectionKey === CASE_REFERENCE_KEY) return analysisCasesSnapshot() !== undefined;
   if (sectionKey === PLAY_REFERENCE_KEY) return playedGamesSnapshot() !== undefined;
   return sectionKey !== LIBRARY_REFERENCE_KEY || libraryReferenceRead(rest);
 };
 
-/** Read what a `play` or Library reference names (a no-op for any other). Never rejects. */
+/** Read what a reference names (a no-op for an unknown key). Never rejects. */
 export const loadReferencedGames = async (reference: string | null | undefined): Promise<void> => {
   if (reference === null || reference === undefined) return;
   const [sectionKey, ...rest] = referenceSegments(reference);
+  if (sectionKey === CASE_REFERENCE_KEY) await loadAnalysisCases();
   if (sectionKey === PLAY_REFERENCE_KEY) await loadPlayedGames();
   if (sectionKey === LIBRARY_REFERENCE_KEY) await loadLibraryReferenceGames(rest);
 };

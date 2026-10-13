@@ -20,7 +20,7 @@ const mount = (props: Partial<PlayedGamesTableProps> = {}) => {
       paging={{ page: 0, rowsPerPage: 50, onPageChange: handlers.onPageChange, onRowsPerPageChange: handlers.onRowsPerPageChange }}
       picked={new Set()}
       onPickedChange={handlers.onPickedChange}
-      analysisLink={(row: PlayedGameRow) => ({ href: `#analysis-${row.id}` })}
+      onAnalyse={() => {}}
       continueLink={(row: PlayedGameRow) => ({ href: `#continue-${row.id}` })}
       testId="games"
       {...props}
@@ -87,13 +87,16 @@ describe("PlayedGamesTable", () => {
     expect(screen.queryByTestId("games-masked-live")).toBeNull();
   });
 
-  it("offers Analysis on every readable game and Continue only on one still on, each named by its row", () => {
-    mount();
+  it("offers Analysis on every readable game and Continue only on one still on, each named by its row", async () => {
+    const onAnalyse = vi.fn();
+    mount({ onAnalyse });
     const continued = screen.getByRole("link", { name: `Continue the game Human – Stockfish level 5 of ${at("live")}` });
     expect(continued).toBe(screen.getByTestId("games-continue-live"));
     expect(continued).toHaveAttribute("href", "#continue-live");
-    expect(screen.getByTestId("games-analysis-mated")).toHaveAttribute("href", "#analysis-mated");
-    expect(screen.getByTestId("games-analysis-mated")).toHaveAccessibleName(`Analyse the game Stockfish level 3 – Human of ${at("mated")}`);
+    const analyse = screen.getByRole("button", { name: `Analyse the game Stockfish level 3 – Human of ${at("mated")}` });
+    expect(analyse).toBe(screen.getByTestId("games-analysis-mated"));
+    await userEvent.setup().click(analyse);
+    expect(onAnalyse).toHaveBeenCalledWith(expect.objectContaining({ id: "mated" }));
     expect(screen.queryByTestId("games-continue-mated")).toBeNull();
     expect(screen.queryByTestId("games-continue-resigned")).toBeNull();
   });

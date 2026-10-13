@@ -229,9 +229,9 @@ export const pathTo = (tree: GameTree, id: string | null): VariationNode[] => {
  * **A node id is not portable and this is.** Ids are minted per tree
  * (`nextId`), so the id a reader was standing on means nothing once the same
  * game has been round-tripped through PGN and re-parsed — which is exactly what
- * a saved analysis does (`lib/savedAnalyses.ts`). SAN, on the other hand,
+ * an Analysis case does (`lib/analysisProjects.ts`). SAN, on the other hand,
  * identifies a move uniquely within its position, which is the property
- * {@link addMove} already rests on. So a saved analysis records where the reader
+ * {@link addMove} already rests on. So a Case records where the reader
  * was as this path and {@link nodeAtSanPath} finds it again.
  */
 export const sanPathTo = (tree: GameTree, id: string | null): string[] =>

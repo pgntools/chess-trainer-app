@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 
 import i18n from "../../../i18n";
+import { analysisCasesSnapshot } from "../../../lib/analysisCaseStore";
 import { DEFAULT_PRESET_ID } from "../../../lib/enginePresets";
 import { setEnginePresetValue } from "../../../lib/enginePresetStore";
 import { approximateElo, DEFAULT_ENGINE_SETTINGS } from "../../../lib/engineSettings";
@@ -217,7 +218,7 @@ describe("Lobby — the list", () => {
     expect(a[0]).toHaveAttribute("dir", "auto");
   });
 
-  it("continues a game on Play with Engine, and hands it to the Analysis Board", async () => {
+  it("continues a game on Play with Engine, and hands it to Analysis as a new Case (CTA-192)", async () => {
     await store("a", "1. e4 *");
     mount();
     // Icon-only links: the link is the icon, its name the label — naming its row (CTA-109).
@@ -228,13 +229,18 @@ describe("Lobby — the list", () => {
       "href",
       "/engine/play?saved=a",
     );
-    expect(screen.getByTestId("played-games-analysis-a")).toHaveAccessibleName(
-      `Analyse the game Human – Stockfish 19 Lite Elo 1500 of ${whenPlayed("2026-09-20T10:00:00Z")}`,
-    );
-    expect(screen.getByTestId("played-games-analysis-a")).toHaveAttribute(
-      "href",
-      `/tools/analysis?game=${encodeURIComponent("play/games/a")}`,
-    );
+    const analyse = screen.getByRole("button", {
+      name: `Analyse the game Human – Stockfish 19 Lite Elo 1500 of ${whenPlayed("2026-09-20T10:00:00Z")}`,
+    });
+    expect(analyse).toBe(screen.getByTestId("played-games-analysis-a"));
+    fireEvent.click(analyse);
+    const picker = await screen.findByRole("dialog", { name: "Open in Analysis" });
+    expect(within(picker).getByRole("textbox", { name: "The new project's name" })).toHaveValue("Games against the engine");
+    fireEvent.click(within(picker).getByRole("button", { name: "Open" }));
+    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent(/^\/analysis\/projects\/[^/]+\/cases\/[^/]+$/));
+    const [made] = analysisCasesSnapshot() ?? [];
+    expect(made).toMatchObject({ type: "game" });
+    expect(made.pgn).toContain("1. e4");
   });
 
   it("hides Continue on a game that has ended, and keeps it on one still on (CTA-90)", async () => {
@@ -475,11 +481,8 @@ describe("Lobby — a masked game (CTA-79)", () => {
       "href",
       "/engine/play?saved=plain",
     );
-    // The PGN is the true game: the Analysis Board reads it as any other.
-    expect(screen.getByTestId("played-games-analysis-m")).toHaveAttribute(
-      "href",
-      `/tools/analysis?game=${encodeURIComponent("play/games/m")}`,
-    );
+    // The PGN is the true game: Analysis takes it as any other.
+    expect(screen.getByTestId("played-games-analysis-m")).toBeInTheDocument();
   });
 });
 

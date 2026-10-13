@@ -41,9 +41,10 @@ device, per the research in `docs/indexed-db.md`:
   label marked as an estimate. A number the browser does not report reads
   "not available", never zero. The quota is not shown; a note says it is in
   the browser's developer tools.
-- **The reader's data, five sections** — one per database's heavy store:
-  Engine games, Analyses, Repertoires, Library games, Background jobs
-  (`chessapp.jobs`, CTA-173 — not exported, `import-export.md` §1.1) — separated by a bolder
+- **The reader's data, four sections** — one per database: Engine games,
+  Repertoires, Library games, and Analysis's Cases with its background jobs
+  (`chessapp.analysisProjects`, one section; the jobs not exported,
+  `import-export.md` §1.1) — separated by a bolder
   line, each with its exact record count and its **estimated payload**
   (`lib/storageDiagnostics.ts`), never presented as a disk or IndexedDB
   size: the browser may compress, deduplicate and add index overhead, so
@@ -101,7 +102,7 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   `localStorage` (`chessapp.engine`, [`database.md`](./database.md) §2), read
   through `views/shared/useEngineChoice.ts` (`useSyncExternalStore`, so every
   mounted board follows). Every board passes it as `useEngineModule({ engine })`
-  — the Analysis Board, the Library's game and the Openings explorer
+  — Analysis's Case board, the Library's game and the Openings explorer
   (`useAnalysisSession`), the repertoire player, Play with Engine and Masked
   Pieces (`usePlayGame`) and the Lobby's new-game form — and so uses it from its
   next search; the old engine is terminated.
