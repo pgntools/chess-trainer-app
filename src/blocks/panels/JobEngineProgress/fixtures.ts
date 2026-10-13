@@ -41,3 +41,23 @@ export const MATE: JobV2Live = {
   score: { kind: "mate", value: -3 },
   line: ["Qh4+", "g3", "Qxg3#"],
 };
+
+/** The time the demos measure "heard … ago" to: 3 s after {@link DEEP} was heard — a heartbeat just in. */
+export const HEARD_RECENTLY = DEEP.heardAt + 3_000;
+
+/** Deep in a long quiet stretch (CTA-194): no line for minutes, the engine last heard 42 s before {@link SILENT_NOW}. */
+export const SILENT: JobV2Live = {
+  ...DEEP,
+  move: "16. Bg3",
+  depth: 32,
+  seldepth: 51,
+  nodes: 912_345_678,
+  nps: 1_480_000,
+  hashfull: 999,
+  elapsedMs: 616_400,
+  score: { kind: "cp", value: 87 },
+  line: ["Bg3", "Rd7", "f3", "gxf3", "gxf3", "Bf5"],
+};
+
+/** The time {@link SILENT}'s demo is measured to. */
+export const SILENT_NOW = SILENT.heardAt + 42_000;

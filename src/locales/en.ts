@@ -2969,6 +2969,10 @@ const en = {
         line: "Best line",
         announce: "Engine searching {{move}}.",
         announceDepth: "Engine searching {{move}}, depth {{depth}}.",
+        alive: "Engine alive",
+        heardNow: "heard just now",
+        heardSeconds: "heard {{seconds}} s ago",
+        heardMinutes: "heard {{minutes}} min ago",
       },
       indicator: {
         running: "Jobs V2 {{done}}/{{total}}",

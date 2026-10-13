@@ -49,9 +49,9 @@ afterEach(() => {
 });
 
 /** What this tab's runner would publish while it searches the running job's second position. */
-const publishLive = (jobId: string, depth: number, nodes?: number) => {
+const publishLive = (jobId: string, depth: number, nodes?: number, heardAt = Date.now()) => {
   feed ??= createJobV2LiveFeed({ intervalMs: 0 });
-  feed.update({ jobId, index: 1, move: "1... e5", depth, nodes, elapsedMs: 1_000, line: [], heardAt: Date.now() });
+  feed.update({ jobId, index: 1, move: "1... e5", depth, nodes, elapsedMs: 1_000, line: [], heardAt });
 };
 
 describe("the shell's Jobs V2 indicator (CTA-188)", () => {
@@ -106,6 +106,25 @@ describe("the indicator's live engine progress (CTA-190)", () => {
     act(() => feed?.clear());
     expect(link).toHaveAccessibleName("Jobs V2 1/5, Alice – Bob");
     expect(heartbeat).toHaveAttribute("data-beating", "false");
+  });
+
+  it("beats once each time the engine is heard — through a long quiet stretch, on each heartbeat (CTA-194)", async () => {
+    await addJobV2(firstDone(jobOf("live", "running")));
+    mount();
+    await screen.findByRole("link", { name: "Jobs V2 1/5, Alice – Bob" });
+    const at = Date.now();
+    act(() => publishLive("live", 32, 9_000_000, at));
+    const heartbeat = () => screen.getByTestId("analysis-v2-jobs-indicator-heartbeat");
+    expect(heartbeat()).toHaveAttribute("data-pulse", "1");
+    act(() => publishLive("live", 32, 9_000_000, at + 200)); // within the beat: none started
+    expect(heartbeat()).toHaveAttribute("data-pulse", "1");
+    // A heartbeat 15 s on, then another: the numbers are the same, the spinner beats again.
+    act(() => publishLive("live", 32, 9_000_000, at + 15_000));
+    expect(heartbeat()).toHaveAttribute("data-pulse", "2");
+    act(() => publishLive("live", 32, 9_000_000, at + 30_000));
+    expect(heartbeat()).toHaveAttribute("data-pulse", "3");
+    expect(heartbeat()).toHaveAttribute("data-beating", "true");
+    expect(screen.getByTestId("analysis-v2-jobs-indicator-status")).toHaveTextContent("");
   });
 
   it("names the numbers on the icon alone too, under the breakpoint", async () => {

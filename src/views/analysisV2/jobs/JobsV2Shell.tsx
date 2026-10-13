@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import { keyframes, useTheme } from "@mui/material/styles";
 import { Link as RouterLink, useHref, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 
+import { useEnginePulse } from "../../../blocks/panels";
 import { visuallyHidden } from "../../../design-system/components/a11y";
 import { useSnackbar } from "../../../design-system/components/feedback";
 import { IconAction } from "../../../design-system/components/toolbars";
@@ -72,12 +72,6 @@ const ANNOUNCED: Partial<Record<JobStatus, "started" | "paused" | "done" | "fail
   cancelled: "cancelled",
 };
 
-/** The heartbeat while the engine reports — the spinner's opacity, nothing that moves. */
-const heartbeat = keyframes`
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-`;
-
 const statusesOf = (jobs: readonly JobV2[]): ReadonlyMap<string, JobStatus> => new Map(jobs.map((job) => [job.id, job.status]));
 
 /**
@@ -89,15 +83,17 @@ const statusesOf = (jobs: readonly JobV2[]): ReadonlyMap<string, JobStatus> => n
  * progress, nothing for the first read of the store.
  *
  * **While the engine reports on the running job's position** (CTA-190,
- * `useJobV2Live` — this tab's runner or another's), its spinner **beats**: an
- * opacity cycle timed by the theme's `transitions.duration.complex`, which the
- * theme makes 0 under `prefers-reduced-motion` — then it stays still; and the
- * live numbers join its name ("Jobs V2 12/80, Alice – Bob, depth 22, 3.1M
- * nodes"), never announced.
+ * `useJobV2Live` — this tab's runner or another's), its spinner **beats once
+ * each time the engine is heard** — an `info` line or, through a long quiet
+ * stretch deep in a search, an engine server's heartbeat (CTA-194,
+ * `useEnginePulse`): an opacity beat timed by the theme's
+ * `transitions.duration.complex`, which the theme makes 0 under
+ * `prefers-reduced-motion` — then it stays still; and the live numbers join
+ * its name ("Jobs V2 12/80, Alice – Bob, depth 22, 3.1M nodes"), never
+ * announced.
  */
 export function JobsV2Indicator({ compact }: { compact: boolean }) {
   const { t } = useTranslation();
-  const theme = useTheme();
   const jobs = useJobsV2();
   const liveSnapshot = useJobV2Live();
   const [seen, setSeen] = useState<{ jobs: readonly JobV2[]; statuses: ReadonlyMap<string, JobStatus> } | undefined>();
@@ -137,20 +133,17 @@ export function JobsV2Indicator({ compact }: { compact: boolean }) {
     progress !== undefined
       ? t("analysisV2.jobs.indicator.running", { done: progress.done, total: progress.total })
       : t("analysisV2.jobs.indicator.queued", { count: queued });
-  const beat = theme.transitions.duration.complex * 4;
-  const beating = live !== undefined && beat > 0;
+  const pulse = useEnginePulse(live?.heardAt);
   const spinner = (
     <Box
       component="span"
       aria-hidden="true"
       data-testid="analysis-v2-jobs-indicator-heartbeat"
       data-live={live !== undefined}
-      data-beating={beating}
-      sx={{
-        display: "inline-flex",
-        // Under reduced motion the theme's durations are 0: no animation, the spinner stays still.
-        animation: beating ? `${heartbeat} ${beat}ms ease-in-out infinite` : "none",
-      }}
+      data-beating={pulse.beating}
+      data-pulse={pulse.pulse}
+      // Under reduced motion the theme's durations are 0: no animation, the spinner stays still.
+      sx={{ display: "inline-flex", animation: pulse.animation }}
     >
       <CircularProgress size={14} variant={progress === undefined ? "indeterminate" : "determinate"} value={progress?.percent} />
     </Box>
