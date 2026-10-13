@@ -106,6 +106,26 @@ export type EngineMessage = {
    * single-PV search and on every non-`info` message.
    */
   multipv?: number;
+  /*
+    The search's progress, read off an `info` line where the engine reports it
+    (CTA-190 — Jobs V2's live progress). Absent on a line without it and on
+    every non-`info` message; a consumer that reads none of them sees today's
+    message.
+  */
+  /** Nodes searched so far. */
+  nodes?: number;
+  /** Nodes per second. */
+  nps?: number;
+  /** Milliseconds since the search began. */
+  time?: number;
+  /** The selective depth — the deepest line looked at. */
+  seldepth?: number;
+  /** How full the hash table is, in permille. */
+  hashfull?: number;
+  /** The root move being searched now (`e2e4`). */
+  currmove?: string;
+  /** Its number among the root moves, 1-based. */
+  currmovenumber?: number;
   /**
    * The FEN this message is about.
    *

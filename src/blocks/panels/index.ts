@@ -15,6 +15,8 @@ export * from "./EngineThinking";
 export * from "./EvalGraph";
 export * from "./GameInfo";
 export * from "./ImportReport";
+// CTA-190: a running Jobs V2 job's live engine progress, under its progress bar.
+export * from "./JobEngineProgress";
 export * from "./JobSummary";
 export * from "./PgnExportPanel";
 export * from "./PlayToggleButton";

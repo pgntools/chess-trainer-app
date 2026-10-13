@@ -309,7 +309,10 @@ What follows is `EngineHandle` — every engine, whatever it runs on.
 
 A parsed message (`EngineMessage`) has `bestMove` (`"e2e4"`, `"e7e8q"`),
 `ponder`, `positionEvaluation` (centipawns, a **string**), `possibleMate`,
-`pv`, `depth`, `multipv` (1-based) and `fen` — **the position this result is
+`pv`, `depth`, `multipv` (1-based), where an `info` line reports them the
+search's progress — `nodes`, `nps`, `time` (ms), `seldepth`, `hashfull`,
+`currmove` / `currmovenumber` (CTA-190, read before the `pv` only, absent
+otherwise) — and `fen` — **the position this result is
 for**, stamped on by the wrapper. Without it a result for the position on
 screen cannot be told from one still draining out of the search it replaced.
 

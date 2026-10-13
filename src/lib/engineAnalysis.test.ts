@@ -3,6 +3,7 @@ import { DEFAULT_POSITION } from "chess.js";
 import {
   EVAL_BAR_MARGIN,
   evalBarFraction,
+  formatEngineCount,
   formatScore,
   pvToSan,
   scoreFromUci,
@@ -172,5 +173,17 @@ describe("variationNumbering", () => {
 
   it("is empty for an empty line", () => {
     expect(variationNumbering(DEFAULT_POSITION, 0)).toStrictEqual([]);
+  });
+});
+
+describe("formatEngineCount (CTA-190)", () => {
+  it("writes a count as it is read at a glance, one decimal, a trailing .0 dropped", () => {
+    expect(formatEngineCount(0)).toBe("0");
+    expect(formatEngineCount(950)).toBe("950");
+    expect(formatEngineCount(1000)).toBe("1k");
+    expect(formatEngineCount(12_345)).toBe("12.3k");
+    expect(formatEngineCount(2_400_000)).toBe("2.4M");
+    expect(formatEngineCount(3_141_592)).toBe("3.1M");
+    expect(formatEngineCount(1_100_000_000)).toBe("1.1G");
   });
 });

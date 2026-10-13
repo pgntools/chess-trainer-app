@@ -5,7 +5,7 @@ import Typography from "@mui/material/Typography";
 import { Link as RouterLink, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
-import { JobSummary } from "../../../blocks/panels";
+import { JobEngineProgress, JobSummary } from "../../../blocks/panels";
 import { JobsTable } from "../../../blocks/tables";
 import { ConfirmDialog } from "../../../design-system/components/dialogs";
 import { EmptyState } from "../../../design-system/components/states";
@@ -17,6 +17,7 @@ import { RightPanel } from "../../main/rightPanel";
 import { casePath, jobsV2Path, projectPath } from "../paths";
 import { useAnalysisCases, useAnalysisProjects, useJobsV2 } from "../useAnalysisProjects";
 import { JobV2LiveReport, JobV2Report } from "./JobV2Reports";
+import { liveOfJob, useJobV2Live } from "./useJobV2Live";
 
 /**
  * **The Jobs V2 view** (`/analysis/jobs`, CTA-188, dev-only) — Analysis V2's
@@ -29,7 +30,9 @@ import { JobV2LiveReport, JobV2Report } from "./JobV2Reports";
  * - **The panel: one job** (`JobSummary`) — its status and progress, why it
  *   failed, a link to its source Case and to its results (the new Cases, the
  *   other Project, or the source Case merged into), every option it was given
- *   with **the engine and the preset**, where the results go; a finished
+ *   with **the engine and the preset**, where the results go; while it runs,
+ *   **the engine's live progress** under the progress bar (CTA-190,
+ *   `JobEngineProgress` over `useJobV2Live`); a finished
  *   job's **report and eval graph** (`JobV2Report`), another's **results so
  *   far** (`JobV2LiveReport`).
  *
@@ -46,6 +49,7 @@ function JobsV2Screen() {
   const selectedId = searchParams.get("job");
   const selected = selectedId === null ? undefined : jobs?.find((job) => job.id === selectedId);
   const [deleting, setDeleting] = useState<JobV2 | undefined>();
+  const live = liveOfJob(useJobV2Live(), selected);
   const nameOf = (job: JobV2) => job.source.name || t("jobs.untitled");
   const projectName = (id: string) => {
     const project = projects?.find((candidate) => candidate.id === id);
@@ -137,6 +141,7 @@ function JobsV2Screen() {
                 },
                 { id: "target", label: t("analysisV2.jobs.facts.target"), value: targetText(selected) },
               ]}
+              live={live === undefined ? undefined : <JobEngineProgress live={live} testId="analysis-v2-jobs-engine" />}
               errorText={selected.error === null ? undefined : t(`analysisV2.jobs.errors.${selected.error}`)}
               onCancel={() => void cancelJobV2(selected.id)}
               onPause={() => void pauseJobV2(selected.id)}

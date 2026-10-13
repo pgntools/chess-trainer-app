@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { EngineHandle, EngineMessage, UciTransport } from "./engineTypes";
-import { DEFAULT_MAX_DEPTH, parseEngineOption, UciEngine } from "./uciEngine";
+import { DEFAULT_MAX_DEPTH, parseEngineLine, parseEngineOption, UciEngine } from "./uciEngine";
 
 /*
   `UciEngine` over a transport that is only a log and a way to say things back:
@@ -577,5 +577,60 @@ describe("UciEngine's depth limit — the descriptor's maxDepth", () => {
     high.transport.say("bestmove e2e4");
     high.engine.search("fen", { depth: 99 });
     expect(high.transport.sent.at(-1)).toBe("go depth 40");
+  });
+});
+
+describe("parseEngineLine's search progress (CTA-190)", () => {
+  it("reads nodes, nps, time, seldepth and hashfull off an info line", () => {
+    const message = parseEngineLine(
+      "info depth 22 seldepth 31 multipv 1 score cp 35 nodes 3141592 nps 2400000 hashfull 457 tbhits 0 time 1309 pv e2e4 e7e5 g1f3",
+      "fen",
+    );
+    expect(message).toMatchObject({
+      depth: 22,
+      seldepth: 31,
+      multipv: 1,
+      positionEvaluation: "35",
+      nodes: 3141592,
+      nps: 2400000,
+      hashfull: 457,
+      time: 1309,
+      pv: "e2e4 e7e5 g1f3",
+      fen: "fen",
+    });
+    expect(message.currmove).toBeUndefined();
+  });
+
+  it("reads the root move being searched, and its number apart from it", () => {
+    const message = parseEngineLine("info depth 24 currmove g1f3 currmovenumber 3", "fen");
+    expect(message).toMatchObject({ depth: 24, currmove: "g1f3", currmovenumber: 3 });
+    expect(message.nodes).toBeUndefined();
+  });
+
+  it("leaves every progress field out of a line without them — today's message", () => {
+    for (const line of ["info depth 12 score cp 40 pv e2e4 e7e5", "bestmove e2e4 ponder e7e5", "uciok"]) {
+      const message = parseEngineLine(line, undefined);
+      for (const field of ["nodes", "nps", "time", "seldepth", "hashfull", "currmove", "currmovenumber"] as const) {
+        expect(message[field], `${field} of "${line}"`).toBeUndefined();
+      }
+    }
+  });
+
+  it("takes nothing from an info string or from the moves of a pv", () => {
+    expect(parseEngineLine("info string nodes 5 time 7 hashfull 9", undefined)).toMatchObject({
+      nodes: undefined,
+      time: undefined,
+      hashfull: undefined,
+    });
+    // A pv only ever holds moves, but nothing after it is read as a field.
+    expect(parseEngineLine("info depth 3 nodes 10 pv e2e4 time 99", undefined)).toMatchObject({ nodes: 10, time: undefined });
+  });
+
+  it("reaches a subscriber through the engine, as every other field does", () => {
+    const { engine, transport } = ready();
+    const seen = collect(engine);
+    engine.search("fen", { depth: 12 });
+    transport.say("info depth 9 seldepth 14 score cp 10 nodes 52000 nps 260000 time 200 pv d2d4");
+    expect(seen.at(-1)).toMatchObject({ fen: "fen", depth: 9, seldepth: 14, nodes: 52000, nps: 260000, time: 200 });
   });
 });

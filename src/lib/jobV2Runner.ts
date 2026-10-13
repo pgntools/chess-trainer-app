@@ -11,12 +11,13 @@ import {
   type PositionLine,
   type PositionResult,
 } from "./computerAnalysis";
+import { pvToSan } from "./engineAnalysis";
 import { connectEngineServer, readEngineServerUrl } from "./engineServer";
 import { BOARD_OWNED_OPTIONS, resolveEnginePreset } from "./enginePresets";
 import type { EngineDescriptor, EngineHandle, EngineOption } from "./engineTypes";
 import { engineSettingBoundsOf } from "./engineSettings";
 import { getEngine, isHostedEngineId, resolveEngine } from "./engines";
-import { jobSearchOf } from "./jobs";
+import { jobMoveLabel, jobSearchOf } from "./jobs";
 import {
   jobV2AnalysisOf,
   jobV2MergedPgn,
@@ -26,6 +27,7 @@ import {
   type JobV2Error,
   type JobV2Output,
 } from "./jobsV2";
+import { createJobV2LiveFeed, type JobV2Live, type JobV2LiveFeed } from "./jobV2Live";
 import { interruptRunningJobsV2, jobsV2Snapshot, loadJobsV2, subscribeJobsV2, updateJobV2 } from "./jobV2Store";
 import { newRecordId } from "./recordId";
 import type { GameTree } from "./gameTree";
@@ -48,7 +50,10 @@ import type { GameTree } from "./gameTree";
  *   options, clamped to what the engine declared, and **the job's own preset**
  *   (`job.preset.values`, met against the engine) — never the preset selected
  *   when it runs.
- * - **A checkpoint after every position.**
+ * - **A checkpoint after every position** — and, while a position is
+ *   searched, **its live progress** (CTA-190): the engine's depth, nodes,
+ *   nps, time and best line off each `info` line, a throttled in-memory
+ *   snapshot every tab hears (`lib/jobV2Live.ts`), never a store write.
  * - **At the end, by its target**: each ticked variant a new **Game Case** in
  *   the source's Project or another (one `addAnalysisCases`), named
  *   `jobV2OutputName` and **linked from the source Case** (`addCaseLinks` — a
@@ -72,6 +77,8 @@ export type JobV2RunnerDeps = {
   /** Whether to take the Web Lock (absent: where the browser has one). */
   useLock?: boolean;
   now?: () => Date;
+  /** Where the running position's live progress goes (CTA-190) — absent, a throttled feed to this tab and the others. */
+  liveFeed?: JobV2LiveFeed;
 };
 
 export type JobV2Runner = {
@@ -86,6 +93,8 @@ export const JOB_V2_RUNNER_LOCK = "chessapp.analysisProjects.jobs.runner";
 
 const HANDSHAKE_TIMEOUT_MS = 30_000;
 const SILENCE_TIMEOUT_MS = 120_000;
+/** How many moves of the best line the live progress carries. */
+const LIVE_LINE_MOVES = 6;
 
 /** The registry's engine for `id`, after the engine server's list has been read for one of its engines. */
 const registryEngineFor = async (id: string): Promise<EngineDescriptor> => {
@@ -117,6 +126,7 @@ export const createJobV2Runner = ({
   silenceTimeoutMs = SILENCE_TIMEOUT_MS,
   useLock = typeof navigator !== "undefined" && navigator.locks !== undefined,
   now = () => new Date(),
+  liveFeed = createJobV2LiveFeed(),
 }: JobV2RunnerDeps = {}): JobV2Runner => {
   let stopped = false;
   let current: { id: string; abort: Abort; run: Promise<void> } | undefined;
@@ -164,10 +174,13 @@ export const createJobV2Runner = ({
    * **One position's search**: its lines, line 1 first — `undefined` when the
    * run was stopped. Stopped early by `shouldStopEarly`; failed when the
    * engine goes quiet for longer than the silence timeout, or ends the search
-   * without a single scored line.
+   * without a single scored line. Every word the engine says about it goes to
+   * the live feed (CTA-190), cleared however the search ends.
    */
   const searchPosition = (
     handle: EngineHandle,
+    job: JobV2,
+    index: number,
     position: AnalysisPosition,
     options: ComputerAnalysisOptions,
     signal: Abort,
@@ -176,10 +189,22 @@ export const createJobV2Runner = ({
       let lines: (PositionLine | undefined)[] = [];
       let stopping = false;
       let timer: ReturnType<typeof setTimeout> | undefined;
+      const startedAt = now().getTime();
+      const jobPosition = job.positions[index];
+      let live: JobV2Live = {
+        jobId: job.id,
+        index,
+        move: jobPosition === undefined ? undefined : jobMoveLabel(jobPosition),
+        depth: 0,
+        elapsedMs: 0,
+        line: [],
+        heardAt: startedAt,
+      };
       const finish = () => {
         clearTimeout(timer);
         off();
         signal.onAbort.delete(onAbort);
+        liveFeed.clear();
       };
       const listen = () => {
         clearTimeout(timer);
@@ -195,6 +220,7 @@ export const createJobV2Runner = ({
       const off = handle.onMessage((message) => {
         if (message.fen !== position.fen) return;
         listen();
+        const best = lines[0];
         if (message.pv !== undefined && message.depth !== undefined) {
           lines = withSearchInfo(lines, message, position.turn);
           if (!stopping && shouldStopEarly(lines, position.turn, message.depth, options)) {
@@ -202,7 +228,26 @@ export const createJobV2Runner = ({
             handle.stop();
           }
         }
-        if (message.bestMove === undefined) return;
+        if (message.bestMove === undefined) {
+          // A field a line does not carry keeps what an earlier one said (a `currmove` line has no nodes).
+          const heardAt = now().getTime();
+          const first = lines[0];
+          live = {
+            ...live,
+            depth: message.depth || live.depth,
+            seldepth: message.seldepth ?? live.seldepth,
+            nodes: message.nodes ?? live.nodes,
+            nps: message.nps ?? live.nps,
+            hashfull: message.hashfull ?? live.hashfull,
+            // The engine's own clock where it says; else the runner's, never going back.
+            elapsedMs: message.time ?? Math.max(live.elapsedMs, heardAt - startedAt),
+            score: first?.score,
+            line: first === best ? live.line : pvToSan(position.fen, first?.pv.slice(0, LIVE_LINE_MOVES).join(" ") ?? ""),
+            heardAt,
+          };
+          liveFeed.update(live);
+          return;
+        }
         finish();
         if (lines[0] === undefined) {
           reject(new JobFailure("engine"));
@@ -342,7 +387,7 @@ export const createJobV2Runner = ({
             });
             for (const [name, value] of Object.entries(send)) engine.setOption(name, value);
           }
-          const lines = await searchPosition(handle, position, job.options, signal);
+          const lines = await searchPosition(handle, job, index, position, job.options, signal);
           if (lines === undefined || !stillRunning(id, signal)) return;
           result = { fen: position.fen, lines };
         }
@@ -433,6 +478,7 @@ export const createJobV2Runner = ({
     stopped = true;
     unsubscribe?.();
     if (current !== undefined) abort(current.abort);
+    liveFeed.clear();
     releaseLock?.();
     lockAbort?.abort();
   };

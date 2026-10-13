@@ -19,6 +19,8 @@ paths:
   - "src/lib/jobsV2*"
   - "src/lib/jobV2Store*"
   - "src/lib/jobV2Runner*"
+  - "src/lib/jobV2Live*"
+  - "src/blocks/panels/JobEngineProgress/**"
   - "src/lib/analysisCaseLinkStore*"
   - "src/blocks/forms/JobTargetFields/**"
   - "src/blocks/lists/CaseJobs/**"
@@ -26,7 +28,7 @@ paths:
   - "src/blocks/dialogs/CasePickerDialog/**"
 ---
 
-# Analysis V2 — Projects and Cases (CTA-186), Jobs V2 and linked Cases (CTA-188)
+# Analysis V2 — Projects and Cases (CTA-186), Jobs V2 and linked Cases (CTA-188), Jobs V2's live progress (CTA-190)
 
 A new analysis module, part of renewing the codebase: the reader's analysis
 organised into **Projects** filed in nested **folders**, each Project holding
@@ -59,17 +61,18 @@ Projects; that was a planning mistake, replaced before it shipped.)
 | `src/lib/analysisProjects.ts` | **The records**, pure: `ProjectFolder` (a `GameFolder`, `lib/savedGameFolders.ts`'s model and reads), `AnalysisProject`, `AnalysisCase` and its `AnalysisCaseSource`; the normalisers `projectFolderFrom`, `analysisProjectFrom`, `analysisCaseFrom`; the constructors `gameCaseOf`, `positionCaseOfFen`, `positionCaseOfGame`, `copiedCase`; `caseStateOf` / `sameCaseState` (the autosave's state and its idempotency); `caseDerivedName`, `gameCaseDerivedName`; `projectsHere`, `projectsUnder`, `casesOf`, `caseCountsOf`; the caps (`MAX_PROJECT_FOLDERS` 100, `MAX_ANALYSIS_PROJECTS` 1,000, `MAX_ANALYSIS_CASES` 10,000). |
 | `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, **version 3** (CTA-188): object stores `folders`, `projects`, `cases`, `jobs` (Jobs V2) and `caseLinks`, one `BroadcastChannel`. |
 | `src/lib/jobsV2.ts`, `jobV2Store.ts`, `jobV2Runner.ts` | **Jobs V2** (CTA-188, §6): the record (`JobV2`, `jobV2Of`, `jobV2From`, `jobV2AnalysisOf` / `jobV2MergedPgn` — the merge into a Case, `jobV2OfCase`, `jobV2OutputName`), the store (`enqueueJobV2`, `pauseJobV2`, `cancelJobV2`, `resumeJobV2`, `removeJobV2`, `removeJobsV2Of`, `interruptRunningJobsV2`, `MAX_JOBS_V2` 100) and the runner (`createJobV2Runner`, `startJobV2Runner` / `stopJobV2Runner`, its lock `chessapp.analysisProjects.jobs.runner`). V1's pure parts reused: `lib/jobs.ts`'s statuses, positions, checkpoint reader and progress, `lib/jobLiveAnalysis.ts` (its argument widened to `LiveAnalysisJob`). |
+| `src/lib/jobV2Live.ts` | **A running job's live engine progress** (CTA-190, §6.7): `JobV2Live` (the snapshot), `createJobV2LiveFeed` (the runner's throttled feed), `jobV2LiveSnapshot` / `subscribeJobV2Live` (read by `views/analysisV2/jobs/useJobV2Live.ts`), the channel `chessapp.analysisProjects.jobs.live` — in memory, never stored. |
 | `src/lib/analysisCaseLinkStore.ts` | **The links between Cases** (CTA-188, §7): `linkAnalysisCases`, `addCaseLinks` (several at once — a job's new Cases), `unlinkAnalysisCases`, `removeLinksOfCases`, `importCaseLinks`; the record `CaseLink` and `caseLinksOf` in `analysisProjects.ts`. |
 | `src/lib/analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts` | **The stores** over `idbRecordStore` ([`database.md`](./database.md) §3): folders oldest first, Projects and Cases newest first; every operation a promise of `undefined` or `"storage"` / `"too-many"`. |
 | `src/lib/analysisProjectsEnabled.ts` | **The flag**: `ANALYSIS_PROJECTS_ENABLED = import.meta.env.DEV` — the module's Export / Import category in Settings — and **`analysisProjectStores()`**, the one way Settings reaches the three stores: dynamic imports under an *inline* `if (import.meta.env.DEV)`, `undefined` in a production build. Inline, because a dynamic import behind an imported constant is still followed by the bundler and its chunks emitted (orphaned) — one in a branch dead as written is not. Shipping the module is these two conditions (and §8). |
 | `src/lib/exportCategories.ts` | `OFFERED_EXPORT_CATEGORIES` — the Export / Import categories this build offers (Analysis V2's only with the flag); apart from `lib/dataExport.ts`, which Node reads too (the browser pass's seed). |
-| `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board; the Case view's links and their picker, §7), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings — `useJobsV2`, `useCaseLinks` too), `paths.ts` (the addresses — `jobsV2Path`). `jobs/` (CTA-188): `JobsV2Screen.tsx` (`/analysis/jobs`, behind `JobsV2Main.tsx`), `JobV2Reports.tsx` (a done job's report, another's results so far), `NewJobV2.tsx` (the popup's screen side), `JobsV2Shell.tsx` (`JobV2Runner`, `JobsV2Indicator` — the shell's, loaded lazily). |
-| `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/forms/JobTargetFields/`, `src/blocks/lists/CaseJobs/`, `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/` | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and so, for Jobs V2, V1's `JobsTable`, `JobSummary` (generic over a job's fields), `NewJobDialog` and `ComputerAnalysisForm` (optional props: the engine and preset selects, one variant, a section before the form), each unchanged without them. |
+| `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board; the Case view's links and their picker, §7), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings — `useJobsV2`, `useCaseLinks` too), `paths.ts` (the addresses — `jobsV2Path`). `jobs/` (CTA-188): `JobsV2Screen.tsx` (`/analysis/jobs`, behind `JobsV2Main.tsx`), `JobV2Reports.tsx` (a done job's report, another's results so far), `NewJobV2.tsx` (the popup's screen side), `JobsV2Shell.tsx` (`JobV2Runner`, `JobsV2Indicator` — the shell's, loaded lazily), `useJobV2Live.ts` (the live progress, `liveOfJob` — CTA-190). |
+| `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/forms/JobTargetFields/`, `src/blocks/lists/CaseJobs/`, `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/`; since CTA-190 `src/blocks/panels/JobEngineProgress/` | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and so, for Jobs V2, V1's `JobsTable`, `JobSummary` (generic over a job's fields), `NewJobDialog` and `ComputerAnalysisForm` (optional props: the engine and preset selects, one variant, a section before the form; `JobSummary`'s `live` slot, CTA-190), each unchanged without them. |
 | `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts`, `src/views/shared/AnalysisEvalReport.tsx` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws, the eval graph and report the Case view's Graph tab shows. The legacy screens import them from here. |
-| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links on its Info tab, the Jobs V2 view), `JobsV2Shell.test.tsx` (the indicator), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the dev-only database). |
+| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links on its Info tab, the Jobs V2 view), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the dev-only database). |
 
 Locale keys: `analysisV2.*` (`browser`, `folder`, `project`, `case`,
-`newCase`, `workspace`; `jobs`, `links` — CTA-188), `nav.folders.analysisV2`, `nav.analysisProjects`,
+`newCase`, `workspace`; `jobs`, `links` — CTA-188; `jobs.live`, `jobs.indicator.liveDepth` / `liveNodes` — CTA-190), `nav.folders.analysisV2`, `nav.analysisProjects`,
 `nav.analysisJobs`, `pages.analysisProjects` / `analysisProject` / `analysisCase` / `analysisJobs`, the
 New Job form's additions under `computerAnalysis.form.*` (`engineSelect`, `preset`, `presetHelp`,
 `variant`, `variantHelpSingle`), and the
@@ -77,7 +80,8 @@ category's `settings.export.categories.analysisProjects` /
 `settings.import.top.analysisProjects` — in both catalogs. `options.id` is
 `analysis-case`; the test ids are `analysis-v2-*` (the lists and the Cases table) and
 `analysis-case-*` (the board), `analysis-case-jobs-*` and `analysis-case-new-job-*` (the Case's
-Jobs tab and popup), `analysis-v2-jobs-*` (the Jobs V2 view and indicator).
+Jobs tab and popup), `analysis-v2-jobs-*` (the Jobs V2 view and indicator — the live engine section
+`analysis-v2-jobs-engine-*`, the indicator's `analysis-v2-jobs-indicator-heartbeat`, CTA-190).
 
 ---
 
@@ -433,13 +437,15 @@ results** (each new Case; the other Project; the source Case "the analysis
 merged in"), its parameters with **the preset** and **where the results go**
 (`extraFacts`), and on Results a done job's **report and eval graph** read
 back from its first output Case (`JobV2Report`, the graph read only) or
-another's **results so far** (`JobV2LiveReport`, `jobLiveAnalysis`). Delete
-asks first and keeps the Cases.
+another's **results so far** (`JobV2LiveReport`, `jobLiveAnalysis`); while
+it runs, **its engine live** under the progress bar (§6.7). Delete asks
+first and keeps the Cases.
 
 **The header indicator** is a decision of this issue: **a V2 indicator
 beside V1's** (`JobsV2Indicator`, dev only) — "Jobs V2 12/80" while one
 runs, "Jobs V2: N queued", a link to the Jobs V2 view, announced only on a
-change of status; V1's `JobsIndicator` is untouched.
+change of status; V1's `JobsIndicator` is untouched. While the engine reports
+on the running job (§6.7) its spinner **beats** and the numbers join its name.
 
 ### 6.6 Merging into the source Case
 
@@ -460,6 +466,44 @@ searched (a mainline changed since) is left unannotated.
   (`CaseState.merges`), and **`saveCaseState` never writes the tree of a state
   behind a merge** (`isBehindMerges`) — only its place, side and display — so
   the older tree is never written back.
+
+### 6.7 Live engine progress (CTA-190)
+
+A position at depth 30 or a long move time takes minutes, and the checkpoint
+moves only once per position — so a running job shows **what its engine is
+saying now**, from the engine's own `info` lines (real callbacks, never an
+animation standing in for them), for an in-browser engine and an engine
+server's alike (both reach `parseEngineLine`).
+
+- **Parsed**: `EngineMessage` carries, optionally, `nodes`, `nps`, `time`,
+  `seldepth`, `hashfull`, `currmove` / `currmovenumber` — read off an `info`
+  line, before its `pv` only ([`chessboard.md`](./chessboard.md) §4); absent,
+  today's message.
+- **Published, never stored**: the runner's `searchPosition` builds a
+  `JobV2Live` from every word about its position — the job and position
+  index, the move label (the progress caption's, `jobMoveLabel`), depth /
+  seldepth, nodes, nps, hashfull (a field a line lacks keeps the last one —
+  a `currmove` line has no counts), the elapsed time (the engine's `time`,
+  else the runner's clock, never going back), the best line's score and
+  first six moves in SAN, the time heard — into a **throttled feed**
+  (`createJobV2LiveFeed`: the first word at once, then at most one per
+  250 ms, the interval's last), **cleared** however the position ends —
+  its `bestmove`, the job paused, cancelled, deleted or failed, the runner
+  stopped. The jobs store is still written once per position.
+- **Every tab**: the feed posts each snapshot on
+  `chessapp.analysisProjects.jobs.live` (`BroadcastChannel`; the runner lives
+  in the one tab holding the lock), again every second while a position is
+  searched; another tab drops a snapshot nothing has followed for 4 s (the
+  runner's tab closed).
+- **Shown only for a `running` job it names** (`liveOfJob`): the Jobs V2
+  view's panel, under the progress bar, `JobEngineProgress` through
+  `JobSummary`'s `live` slot — the move, depth / seldepth, nodes, nps
+  ("2.4M"), the time on this position, the hash, the best line and score;
+  its status region announces the move and every tenth depth, never each
+  update. The header's indicator beats (an opacity cycle on the theme's
+  `transitions.duration.complex`, still under reduced motion) and adds
+  "depth 22, 3.1M nodes" to its name, unannounced. V1's runner, screen,
+  indicator and `JobSummary` without `live` are untouched.
 
 ## 7. Links between Cases (CTA-188)
 

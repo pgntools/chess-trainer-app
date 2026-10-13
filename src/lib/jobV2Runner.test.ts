@@ -12,8 +12,9 @@ import { createEnginePreset, selectEnginePreset, setEnginePresetValue } from "./
 import { mainline } from "./gameTree";
 import { JOB_RUNNER_LOCK } from "./jobRunner";
 import { jobV2Of, type JobV2, type JobV2Target } from "./jobsV2";
-import { createJobV2Runner, JOB_V2_RUNNER_LOCK, type JobV2Runner } from "./jobV2Runner";
-import { addJobV2, findJobV2, pauseJobV2, resumeJobV2 } from "./jobV2Store";
+import { createJobV2LiveFeed, jobV2LiveSnapshot } from "./jobV2Live";
+import { createJobV2Runner, JOB_V2_RUNNER_LOCK, type JobV2Runner, type JobV2RunnerDeps } from "./jobV2Runner";
+import { addJobV2, findJobV2, pauseJobV2, resumeJobV2, subscribeJobsV2 } from "./jobV2Store";
 import { parsePgnTree } from "./pgn";
 
 vi.mock("./engines/builtin", async (importOriginal) =>
@@ -48,7 +49,7 @@ const legalMove = (fen: string): string => {
 };
 
 let runner: JobV2Runner | undefined;
-const start = () => (runner = createJobV2Runner({ useLock: false }));
+const start = (deps: JobV2RunnerDeps = {}) => (runner = createJobV2Runner({ useLock: false, ...deps }));
 const engine = () => FakeEngine.latest();
 const searched = (count: number) => vi.waitFor(() => expect(engine().searches).toHaveLength(count));
 
@@ -206,5 +207,78 @@ describe("the Jobs V2 runner (CTA-188)", () => {
     await vi.waitFor(() => expect(FakeEngine.instances).toHaveLength(2));
     await searched(1);
     expect(engine().searches).toEqual([job.positions[1].fen]);
+  });
+
+  describe("its live progress (CTA-190)", () => {
+    it("publishes the engine's depth, nodes, nps, time, hash and best line off its info lines — no store write per line", async () => {
+      const { projectId } = await seed();
+      const job = jobOf(projectId, { kind: "project", projectId });
+      await addJobV2(job);
+      start({ liveFeed: createJobV2LiveFeed({ intervalMs: 0 }) });
+      await searched(1);
+      const { fen } = job.positions[0];
+      const pv = legalMove(fen);
+
+      let writes = 0;
+      const off = subscribeJobsV2(() => (writes += 1));
+      for (let depth = 1; depth <= 30; depth += 1) {
+        engine().say({ fen, depth, seldepth: depth + 6, nodes: depth * 1000, nps: 500_000, time: depth * 10, hashfull: 120, multipv: 1, positionEvaluation: "35", pv });
+      }
+      // A `currmove` line carries no counts: the last ones stand.
+      engine().say({ fen, depth: 30, currmove: pv, currmovenumber: 1 });
+      expect(jobV2LiveSnapshot()).toMatchObject({
+        jobId: "job",
+        index: 0,
+        depth: 30,
+        seldepth: 36,
+        nodes: 30_000,
+        nps: 500_000,
+        hashfull: 120,
+        elapsedMs: 300,
+        score: { kind: "cp", value: 35 },
+      });
+      expect(jobV2LiveSnapshot()?.line).toHaveLength(1);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(writes).toBe(0);
+      off();
+
+      // The position ends: the snapshot goes, the checkpoint is the one write.
+      engine().say({ fen, bestMove: pv });
+      expect(jobV2LiveSnapshot()).toBeUndefined();
+      await searched(2);
+      expect(findJobV2("job")?.checkpoint.filter((entry) => entry !== null)).toHaveLength(1);
+      expect(jobV2LiveSnapshot()).toBeUndefined();
+      // The next position's first word is live again, its own index and move.
+      const next = job.positions[1];
+      engine().say({ fen: next.fen, depth: 4, nodes: 900 });
+      expect(jobV2LiveSnapshot()).toMatchObject({ index: 1, move: "1... e5", depth: 4, nodes: 900 });
+    });
+
+    it("throttles what it publishes — the first word at once, then the interval's last", async () => {
+      const { projectId } = await seed();
+      const job = jobOf(projectId, { kind: "project", projectId });
+      await addJobV2(job);
+      const publish = vi.fn();
+      start({ liveFeed: createJobV2LiveFeed({ intervalMs: 80, publish }) });
+      await searched(1);
+      const { fen } = job.positions[0];
+      for (let depth = 1; depth <= 20; depth += 1) engine().say({ fen, depth, nodes: depth });
+      expect(publish).toHaveBeenCalledTimes(1);
+      expect(publish.mock.calls[0][0]).toMatchObject({ depth: 1 });
+      await vi.waitFor(() => expect(publish).toHaveBeenCalledTimes(2));
+      expect(publish.mock.calls[1][0]).toMatchObject({ depth: 20, nodes: 20 });
+    });
+
+    it("clears it when the job is paused mid-search", async () => {
+      const { projectId } = await seed();
+      const job = jobOf(projectId, { kind: "project", projectId });
+      await addJobV2(job);
+      start({ liveFeed: createJobV2LiveFeed({ intervalMs: 0 }) });
+      await searched(1);
+      engine().say({ fen: job.positions[0].fen, depth: 8, nodes: 4000 });
+      expect(jobV2LiveSnapshot()).toMatchObject({ jobId: "job", depth: 8 });
+      await pauseJobV2("job");
+      await vi.waitFor(() => expect(jobV2LiveSnapshot()).toBeUndefined());
+    });
   });
 });

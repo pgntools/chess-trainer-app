@@ -130,5 +130,16 @@ describe("JobSummary (CTA-173)", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Parameters" }));
     expect(screen.getByTestId("job-facts")).toHaveTextContent("PresetDeep");
   });
-});
 
+  it("shows a running job's live engine section under its progress bar only when given one (CTA-190)", () => {
+    const { unmount } = render(
+      <JobSummary job={RUNNING} onCancel={vi.fn()} onPause={vi.fn()} onResume={vi.fn()} onDelete={vi.fn()} live={<p data-testid="live">depth 22</p>} testId="job" />,
+    );
+    const progress = screen.getByTestId("job-progress");
+    expect(progress.compareDocumentPosition(screen.getByTestId("live")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    unmount();
+    // Without it — V1's Jobs screen — nothing there.
+    mount(RUNNING);
+    expect(screen.queryByTestId("live")).not.toBeInTheDocument();
+  });
+});
