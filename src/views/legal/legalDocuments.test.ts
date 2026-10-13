@@ -6,6 +6,7 @@ import { DEVELOPMENT_NOTICE_KEY } from "../../lib/developmentNotice";
 import { ENGINE_STORAGE_KEY } from "../../lib/engineChoice";
 import { ENGINE_SERVER_STORAGE_KEY } from "../../lib/engineServer";
 import { ENGINE_SEARCH_SETTINGS_STORAGE_KEY } from "../../lib/engineSearchSettings";
+import { JOBS_SETTINGS_STORAGE_KEY } from "../../lib/jobsSettings";
 import { ENGINE_PRESETS_DB_NAME } from "../../lib/enginePresetStore";
 import { LIBRARY_DB_NAME } from "../../lib/libraryDb";
 import { ANALYSIS_PROJECTS_DB_NAME } from "../../lib/analysisProjectsDb";
@@ -25,6 +26,8 @@ const STORED = [
   ENGINE_SERVER_STORAGE_KEY,
   // The engine's search settings, every board's (CTA-181).
   ENGINE_SEARCH_SETTINGS_STORAGE_KEY,
+  // The Jobs settings — the default engine and preset, the lichess evaluation API (CTA-193).
+  JOBS_SETTINGS_STORAGE_KEY,
   LANGUAGE_STORAGE_KEY,
   "mui-mode",
   DEVELOPMENT_NOTICE_KEY,
