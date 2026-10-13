@@ -119,11 +119,11 @@ describe("the top bar's Engine menu (CTA-181)", () => {
     expect(button()).toHaveFocus();
   });
 
-  it("links to Settings → Engine, and closes on the way", async () => {
+  it("links to Settings → Engine at its foot, and closes on the way", async () => {
     const user = userEvent.setup();
     mount();
     await user.click(button());
-    await user.click(await screen.findByRole("link", { name: "Settings" }));
+    await user.click(await screen.findByRole("link", { name: "Advanced settings" }));
     expect(screen.getByTestId("where")).toHaveTextContent("/settings/engine");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
@@ -210,15 +210,16 @@ describe("the top bar's Engine menu (CTA-181)", () => {
       const user = userEvent.setup();
       mount();
       const dialog = await openMenu(user);
-      expect(within(dialog).queryByRole("region", { name: "Unsaved changes to Default" })).toBeNull();
+      expect(within(dialog).queryByRole("button", { name: "Save" })).toBeNull();
       within(dialog).getByRole("slider", { name: "Search depth" }).focus();
       await user.keyboard("{ArrowLeft}");
       expect(readEngineSearchSettings().depth).toBe(19);
       await settledEnginePresets();
       expect(enginePresetsSnapshot()).toEqual([]);
-      const strip = within(dialog).getByRole("region", { name: "Unsaved changes to Default" });
-      await user.click(within(strip).getByRole("button", { name: "Save" }));
-      await waitFor(() => expect(within(dialog).queryByRole("region", { name: "Unsaved changes to Default" })).toBeNull());
+      // No strip, no texts — the actions alone in the title row (CTA-189).
+      expect(within(dialog).queryByRole("region", { name: "Unsaved changes to Default" })).toBeNull();
+      await user.click(within(dialog).getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(within(dialog).queryByRole("button", { name: "Save" })).toBeNull());
       expect(selectedPresetOf(enginePresetsSnapshot() ?? [], enginePresetSelectionsSnapshot() ?? [], DEFAULT_ENGINE_ID).search).toEqual({
         depth: 19,
         moveTimeMs: 0,

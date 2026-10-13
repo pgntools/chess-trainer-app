@@ -295,7 +295,7 @@ const he: typeof en = {
     button: "מנוע",
     engine: "מנוע",
     preset: "פריסט",
-    settingsLink: "הגדרות",
+    advancedSettings: "הגדרות מתקדמות",
     depthTyped: "עומק החיפוש, בהקלדה",
     moveTimeTyped: "זמן למסע בשניות, בהקלדה",
     threadsTyped: "תהליכונים, בהקלדה",

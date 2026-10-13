@@ -10,6 +10,7 @@ import { Link as RouterLink, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { EngineSearchSettingsForm } from "../../blocks/forms";
+import { EnginePresetChanges } from "../../blocks/panels";
 import { saveEnginePresetDraft, saveEnginePresetDraftAsNew } from "../../lib/enginePresetDraft";
 import { selectEnginePreset } from "../../lib/enginePresetStore";
 import { searchSettingLimitsOf, searchSettingTypedLimitsOf } from "../../lib/engineSearchSettings";
@@ -40,8 +41,10 @@ const breathe = keyframes`
  * it answers, the engine server's), the preset selected for that engine as
  * Settings → Engine's presets section selects it (`selectEnginePreset`) —
  * an unsaved change of the preset (its depth, move time, Threads, Hash —
- * `lib/enginePresetDraft.ts`) bringing the Save / Save as new preset strip
- * under them (CTA-185) — and a "Settings" link to Settings → Engine at the title row's other end. Until CTA-181 each board had the search
+ * `lib/enginePresetDraft.ts`) bringing **Save and Save as new preset to the
+ * title row's inline-end corner** (CTA-189; the strip with its texts until
+ * then) — and an "Advanced settings" link to Settings → Engine at the
+ * popup's foot. Until CTA-181 each board had the search
  * settings on its own Engine tab.
  *
  * **The button is the board on screen's engine** (`useBoardEngineState`,
@@ -136,14 +139,20 @@ export function EngineMenu({ compact = false }: { compact?: boolean }) {
         slotProps={{ paper: { role: "dialog", "aria-labelledby": titleId, "data-testid": "header-engine-menu" } as object }}
       >
         <Box sx={{ p: 2, width: 640, maxWidth: "calc(100vw - 32px)", display: "grid", gap: 1.5 }}>
-          {/* The title, and at the row's other end the way to Settings → Engine (CTA-185). */}
-          <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 2 }}>
+          {/* The title, and at the row's other end the preset's unsaved changes saved (CTA-189) — only while there are any. */}
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
             <Typography id={titleId} variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>
               {t("engineMenu.title")}
             </Typography>
-            <Link component={RouterLink} to="/settings/engine" variant="body2" data-testid="engine-menu-settings-link">
-              {t("engineMenu.settingsLink")}
-            </Link>
+            {preset.changed && (
+              <EnginePresetChanges
+                variant="actions"
+                presetName={preset.name}
+                onSave={() => void saveEnginePresetDraft()}
+                onSaveAs={(name) => void saveEnginePresetDraftAsNew(name)}
+                testId="engine-menu-changes"
+              />
+            )}
           </Box>
           <EngineSearchSettingsForm
             settings={settings}
@@ -156,13 +165,14 @@ export function EngineMenu({ compact = false }: { compact?: boolean }) {
             presets={preset.presets}
             presetId={preset.id}
             onPresetChange={(presetId) => void selectEnginePreset(descriptor.id, presetId)}
-            changes={
-              preset.changed
-                ? { onSave: () => void saveEnginePresetDraft(), onSaveAs: (name) => void saveEnginePresetDraftAsNew(name) }
-                : undefined
-            }
             testId="engine-menu"
           />
+          {/* The way to Settings → Engine, at the foot (CTA-189). */}
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <Link component={RouterLink} to="/settings/engine" variant="body2" data-testid="engine-menu-settings-link">
+              {t("engineMenu.advancedSettings")}
+            </Link>
+          </Box>
         </Box>
       </Popover>
     </>
