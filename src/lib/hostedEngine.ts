@@ -1,4 +1,11 @@
-import type { EngineHandle, EngineMessageCallback, EngineOption, SearchOptions, UciOptionValue } from "./engineTypes";
+import type {
+  EngineHandle,
+  EngineMessage,
+  EngineMessageCallback,
+  EngineOption,
+  SearchOptions,
+  UciOptionValue,
+} from "./engineTypes";
 import { DEFAULT_MAX_DEPTH, isSettableOption, parseEngineLine, uciValueText } from "./uciEngine";
 
 /**
@@ -310,8 +317,15 @@ export class HostedEngine implements EngineHandle {
       this.fail(new Error(`engine server: ${String(event.detail ?? "the engine stopped")}`));
       return;
     }
+    const fen = typeof event.fen === "string" ? event.fen : undefined;
+    if (event.type === "heartbeat") {
+      // The engine is silent but alive (CTA-194): no line of its own — the Jobs V2 runner's silence timer reads it.
+      const heartbeat: EngineMessage = { uciMessage: "", fen, heartbeat: true };
+      this.callbacks.forEach((callback) => callback(heartbeat));
+      return;
+    }
     if (typeof event.uci !== "string") return; // `start`, `superseded`: nothing a board reads
-    const message = parseEngineLine(event.uci, typeof event.fen === "string" ? event.fen : undefined);
+    const message = parseEngineLine(event.uci, fen);
     this.callbacks.forEach((callback) => callback(message));
   }
 

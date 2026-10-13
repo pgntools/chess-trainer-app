@@ -324,6 +324,25 @@ describe("useEngineModule — a finished search reported (CTA-167)", () => {
     );
   });
 
+  it("takes nothing from an engine server's heartbeat — no line, depth, move or finished search (CTA-194)", () => {
+    const onSearchFinished = vi.fn();
+    const onBestMove = vi.fn();
+    const { result } = mount(start({ onSearchFinished, onBestMove }));
+    const engine = FakeEngine.latest();
+    act(() => engine.say({ fen: START, depth: 18, multipv: 1, positionEvaluation: "25", pv: "e2e4" }));
+    const before = result.current.analysis;
+
+    act(() => engine.say({ fen: START, heartbeat: true }));
+    expect(result.current.analysis).toBe(before);
+    expect(result.current.searching).toBe(true);
+    expect(onBestMove).not.toHaveBeenCalled();
+    expect(onSearchFinished).not.toHaveBeenCalled();
+
+    // The search goes on to its bestmove as ever.
+    act(() => engine.say({ fen: START, bestMove: "e2e4" }));
+    expect(onSearchFinished).toHaveBeenCalledWith(expect.objectContaining({ fen: START, depth: 18 }));
+  });
+
   it("reports nothing for a search stopped before its first scored line", () => {
     const onSearchFinished = vi.fn();
     mount(start({ onSearchFinished }));

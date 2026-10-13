@@ -412,6 +412,22 @@ modules and no board change:
   stops the running one, which still ends with its `bestmove`; options applied
   only between searches and only when changed), and every request carries a
   rising `seq`, so one overtaken in flight by a newer one is ignored there.
+- **A quiet search is heard as alive** (CTA-194). Stockfish prints nothing
+  while it searches one root move — at depth 32+ with several lines and one
+  thread, minutes — so when its engine has said nothing for `heartbeatS`
+  (15 s by default) the server asks it `isready` mid-search (UCI allows it;
+  Stockfish 18 and 19 answer at once), consumes the `readyok` and sends a
+  `heartbeat` event, `{type, fen}` — proof the engine's UCI loop answers, not
+  just that its process exists; a hung or dead engine sends none. `HostedEngine`
+  hands it on as an `EngineMessage` with `heartbeat: true`, an empty
+  `uciMessage` and the FEN, nothing else: `useEngineModule` drops it, and only
+  the Jobs V2 runner reads it — its silence timer (120 s) starts again and
+  its live snapshot's `heardAt` moves on, the Jobs V2 panel's engine section
+  and the header indicator beating with it ([`analysis-v2.md`](../.claude/rules/analysis-v2.md) §6.3, §6.7).
+  An older server and every in-browser engine send none, and are held to the
+  silence timeout as before. (The wait for `readyok` after a large `Hash`,
+  before the search starts, sends none: it is bounded at 30 s, inside the
+  runner's 120.)
 - **Options travel with every search**; whether one is taken is judged
   against what the binary declared, by `UciEngine`'s rule (`isSettableOption`).
   They are there at once (`whenOptionsReady` fires immediately) — the server's

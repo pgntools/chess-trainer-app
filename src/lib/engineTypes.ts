@@ -137,6 +137,15 @@ export type EngineMessage = {
    * computed for a position the player has navigated away from.
    */
   fen?: string;
+  /**
+   * **Not a line of the engine's: word that it is alive** (CTA-194) — an
+   * engine server's `heartbeat` event, sent while its engine has been silent
+   * on {@link fen}'s search for a while (deep in a search it says nothing
+   * for minutes); `uciMessage` is empty and no other field is set. Only the
+   * Jobs V2 runner reads it (its silence timer); every other consumer reads
+   * no depth, line or move off it. Absent on every other message.
+   */
+  heartbeat?: true;
 };
 
 /** Callback registered with {@link EngineHandle.onMessage}. */

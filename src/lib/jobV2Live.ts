@@ -36,7 +36,12 @@ export type JobV2Live = {
   /** The best line so far: its score (White's view) and its first moves in SAN. */
   score?: Score;
   line: readonly string[];
-  /** When the engine last said anything about this position (ms since the epoch). */
+  /**
+   * When the engine was last heard about this position (ms since the epoch) —
+   * an `info` line, or an engine server's heartbeat through a long silence
+   * (CTA-194), each published, so every tab sees it. The panel's pulse and
+   * "heard 3 s ago" read it.
+   */
   heardAt: number;
 };
 

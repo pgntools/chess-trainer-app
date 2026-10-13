@@ -283,6 +283,58 @@ describe("the Jobs V2 runner (CTA-188)", () => {
     });
   });
 
+  describe("an engine server's heartbeat (CTA-194)", () => {
+    const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    it("keeps a quiet search alive past the silence timeout — heard, no line, depth or score changed — and it finishes on its bestmove", async () => {
+      const { projectId } = await seed();
+      const job = jobOf(projectId, { kind: "project", projectId });
+      await addJobV2(job);
+      let clock = Date.parse("2026-10-14T10:00:00Z");
+      start({ silenceTimeoutMs: 300, liveFeed: createJobV2LiveFeed({ intervalMs: 0 }), now: () => new Date(clock) });
+      await searched(1);
+      const { fen } = job.positions[0];
+      const pv = legalMove(fen);
+      engine().say({ fen, depth: 32, seldepth: 40, nodes: 9_000_000, multipv: 1, positionEvaluation: "35", pv });
+      const heard = jobV2LiveSnapshot()!;
+
+      // Three times the timeout without a line — a heartbeat every half of it.
+      for (let beat = 1; beat <= 6; beat += 1) {
+        await pause(150);
+        clock += 15_000;
+        engine().say({ fen, heartbeat: true });
+        expect(jobV2LiveSnapshot()).toMatchObject({ depth: 32, seldepth: 40, nodes: 9_000_000, score: heard.score, line: heard.line, heardAt: clock });
+      }
+      expect(findJobV2("job")?.status).toBe("running");
+
+      engine().say({ fen, bestMove: pv });
+      for (let index = 1; index < job.positions.length; index += 1) {
+        await searched(index + 1);
+        const next = job.positions[index].fen;
+        const move = legalMove(next);
+        engine().say({ fen: next, depth: 20, multipv: 1, positionEvaluation: "20", pv: move });
+        engine().say({ fen: next, bestMove: move });
+      }
+      await vi.waitFor(() => expect(findJobV2("job")?.status).toBe("done"));
+      expect(findJobV2("job")?.checkpoint[0]?.lines[0]).toMatchObject({ depth: 32 });
+    });
+
+    it("still fails `engine` after the silence timeout without one — and a heartbeat about another position is not one", async () => {
+      const { projectId } = await seed();
+      const job = jobOf(projectId, { kind: "project", projectId });
+      await addJobV2(job);
+      start({ silenceTimeoutMs: 200 });
+      await searched(1);
+      const { fen } = job.positions[0];
+      engine().say({ fen, depth: 32, multipv: 1, positionEvaluation: "35", pv: legalMove(fen) });
+      for (let beat = 1; beat <= 4; beat += 1) {
+        await pause(100);
+        engine().say({ fen: job.positions[1].fen, heartbeat: true });
+      }
+      await vi.waitFor(() => expect(findJobV2("job")).toMatchObject({ status: "failed", error: "engine" }));
+    });
+  });
+
   describe("the lichess evaluation API first (CTA-193)", () => {
     const API = "http://10.0.0.3:8000";
     const turnApiOn = (write = false) =>
