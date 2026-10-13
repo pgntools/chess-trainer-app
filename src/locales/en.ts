@@ -3029,9 +3029,12 @@ const en = {
         open: "Jobs settings",
         /** Sending the engine's evals to the API — its write mode, `POST /evals`. */
         write: {
-          label: "Send the engine's evaluations to the API",
+          label: "Enable evaluations Write API",
+          /** Checks `GET /health`'s `write_enabled`. */
+          test: "Test connection",
+          writable: "{{url}} is in write mode (write_enabled): it takes the engine's evaluations.",
           help: "Each position a job's engine searches is stored in the API, beside lichess's — kept where it is deeper than what the API holds. The API must be started in write mode (--write).",
-          notWritable: "{{url}} is not in write mode, so it will refuse them. Start it with --write.",
+          notWritable: "{{url}} is not in write mode (write_enabled is false), so it will refuse the engine's evaluations. Start it with --write.",
         },
         writeRefused: "The lichess evaluation API did not take the engine's evaluations, so {{name}} goes on without sending them. Check that the API runs in write mode, or turn writing off in the Jobs settings.",
       },

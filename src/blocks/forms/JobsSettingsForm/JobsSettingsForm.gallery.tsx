@@ -14,6 +14,7 @@ const demo = (
   status?: EngineServerFormStatus,
   connectFeedback: EngineServerConnectFeedback = "idle",
   writable?: boolean,
+  testFeedback: EngineServerConnectFeedback = "idle",
 ) => (
   <WithState<DemoState> initial={initial}>
     {(state, set) => (
@@ -34,7 +35,7 @@ const demo = (
           example: API_URL,
           status: state.enabled ? status : undefined,
         }}
-        evalApiWrite={{ checked: state.write === true, onChange: (write) => set({ ...state, write }), writable }}
+        evalApiWrite={{ checked: state.write === true, onChange: (write) => set({ ...state, write }), writable, onTest: () => {}, testFeedback }}
         testId="gallery-jobs-settings"
       />
     )}
@@ -54,8 +55,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "Connect pressed — the API answered", render: () => demo(on, ONLINE, "answered") },
     { name: "The API unreachable — with Try again", render: () => demo(on, UNREACHABLE, "failed") },
     { name: "Something answered, but not the evaluation API", render: () => demo(on, NOT_AN_EVAL_API) },
-    { name: "Sending the engine's evaluations — the API in write mode", render: () => demo({ ...on, write: true }, ONLINE, "idle", true) },
-    { name: "Sending the engine's evaluations — the API not in write mode", render: () => demo({ ...on, write: true }, ONLINE, "idle", false) },
+    { name: "Write API on — not tested yet", render: () => demo({ ...on, write: true }, ONLINE) },
+    { name: "Write API — Test connection pressed, the check out", render: () => demo({ ...on, write: true }, ONLINE, "idle", undefined, "checking") },
+    { name: "Write API — Test connection: in write mode", render: () => demo({ ...on, write: true }, ONLINE, "idle", true, "answered") },
+    { name: "Write API — Test connection: not in write mode", render: () => demo({ ...on, write: true }, ONLINE, "idle", false, "failed") },
     { name: "Not an address", render: () => demo({ ...on, address: "10.0.0.3:8000" }, UNREACHABLE) },
   ],
 };

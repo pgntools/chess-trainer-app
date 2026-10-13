@@ -412,9 +412,18 @@ describe("the Jobs settings (CTA-193)", () => {
     expect(JSON.parse(localStorage.getItem(JOBS_SETTINGS_STORAGE_KEY) ?? "{}").evalApi).toEqual({ enabled: true, url: "http://127.0.0.1:8000", write: false });
 
     // Sending the engine's evaluations: kept, and said refused by an API not in write mode (its /health says so).
-    await user.click(within(settings).getByRole("checkbox", { name: /send the engine's evaluations/i }));
+    await user.click(within(settings).getByRole("checkbox", { name: /enable evaluations write api/i }));
     expect(readJobsSettings().evalApi.write).toBe(true);
     expect(await within(settings).findByText(/is not in write mode/i)).toBeInTheDocument();
+
+    // Test connection: GET /health again — now in write mode.
+    fetchMock.mockImplementation(async () => new Response(JSON.stringify({ status: "ok", positions: 416_000_000, write_enabled: true }), { status: 200 }));
+    const calls = fetchMock.mock.calls.length;
+    await user.click(within(settings).getByRole("button", { name: "Test connection" }));
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(calls));
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe("http://127.0.0.1:8000/health");
+    expect(await within(settings).findByText(/is in write mode \(write_enabled\)/i)).toBeInTheDocument();
+    await waitFor(() => expect(within(settings).getByRole("button", { name: "Test connection" })).toHaveAttribute("data-feedback", "answered"));
     await expectNoAxeViolations(baseElement);
 
     // A reload keeps them.
@@ -425,7 +434,7 @@ describe("the Jobs settings (CTA-193)", () => {
     expect(within(again).getByRole("combobox", { name: /preset for new jobs/i })).toHaveTextContent("Deep analysis");
     expect(within(again).getByRole("switch", { name: /use the lichess evaluation api/i })).toBeChecked();
     expect(within(again).getByRole("textbox", { name: /api address/i })).toHaveValue("http://127.0.0.1:8000");
-    expect(within(again).getByRole("checkbox", { name: /send the engine's evaluations/i })).toBeChecked();
+    expect(within(again).getByRole("checkbox", { name: /enable evaluations write api/i })).toBeChecked();
   });
 
   it("starts a New Job V2 with the default engine and preset — and as before once that preset is gone", async () => {

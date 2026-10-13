@@ -56,8 +56,10 @@ const formStatusOf = (status: LichessEvalApiStatus): EngineServerFormStatus | un
  *   and checked by Connect (or Enter), each press answered on the button as
  *   Settings → Engine's engine server is (a spinner for at least
  *   {@link CONNECT_MIN_CHECKING_MS}, then a check mark or a warning); and,
- *   under it, whether a job sends the engine's evals there — said when its
- *   last check found it not in write mode.
+ *   under it, **Enable evaluations Write API** — whether a job sends the
+ *   engine's evals there — and, while ticked, **Test connection**, which
+ *   checks `GET /health` again and answers on its button whether the API is
+ *   in write mode (`write_enabled`), saying so in words under it.
  */
 function JobsSettingsTab() {
   const { t } = useTranslation();
@@ -74,25 +76,40 @@ function JobsSettingsTab() {
   const [address, setAddress] = useState(settings.evalApi.url);
   const addressUrl = normalizeEngineServerUrl(address);
   const [connectFeedback, setConnectFeedback] = useState<EngineServerConnectFeedback>("idle");
-  // The press being answered: a newer one takes the button over, and an unmounted tab answers none.
-  const press = useRef(0);
+  const [testFeedback, setTestFeedback] = useState<EngineServerConnectFeedback>("idle");
+  // The press being answered, per button: a newer one takes the button over, and an unmounted tab answers none.
+  const connectPress = useRef(0);
+  const testPress = useRef(0);
   useEffect(
     () => () => {
-      press.current = -1;
+      connectPress.current = -1;
+      testPress.current = -1;
     },
     [],
   );
-  const connect = async () => {
+  /**
+   * Keep the address in the field and check the API (`GET /health`), the
+   * answer on the button pressed: Connect's when it answers at all, Test
+   * connection's when it answers in write mode (`write_enabled`).
+   */
+  const check = async (
+    press: { current: number },
+    setFeedback: (feedback: EngineServerConnectFeedback) => void,
+    succeeded: (status: LichessEvalApiStatus) => boolean,
+  ) => {
     if (addressUrl === null) return;
     const mine = ++press.current;
     setAddress(addressUrl);
-    setConnectFeedback("checking");
+    setFeedback("checking");
     await Promise.all([storeLichessEvalApi(true, addressUrl), wait(CONNECT_MIN_CHECKING_MS)]);
     if (press.current !== mine) return;
-    setConnectFeedback(lichessEvalApiStatus().state === "online" ? "answered" : "failed");
+    setFeedback(succeeded(lichessEvalApiStatus()) ? "answered" : "failed");
     await wait(CONNECT_FEEDBACK_MS);
-    if (press.current === mine) setConnectFeedback("idle");
+    if (press.current === mine) setFeedback("idle");
   };
+  const connect = () => check(connectPress, setConnectFeedback, (checked) => checked.state === "online");
+  const testWrite = () =>
+    check(testPress, setTestFeedback, (checked) => checked.state === "online" && checked.writeEnabled);
 
   return (
     <Box data-testid="analysis-v2-jobs-settings" sx={{ display: "grid", gap: 2, pt: 1 }}>
@@ -120,6 +137,8 @@ function JobsSettingsTab() {
           checked: settings.evalApi.write,
           onChange: storeLichessEvalApiWrite,
           writable: status.state === "online" ? status.writeEnabled : undefined,
+          onTest: () => void testWrite(),
+          testFeedback,
         }}
         testId="analysis-v2-jobs-settings-form"
       />

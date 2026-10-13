@@ -715,8 +715,11 @@ preferences, one `localStorage` key, `chessapp.jobsSettings`
   run, and the runner says so once (`reportLichessEvalUnreachable`): the
   shell's `JobV2Runner` shows a warning snackbar — the API did not answer,
   turn it off in the Jobs settings — with a link there.
-- **Sending the engine's evaluations** — a checkbox under the API's details
-  while it is on (`evalApi.write`, off by default; `lichessEvalApiWriteUrl`):
+- **The evaluations Write API** — *Enable evaluations Write API*, a checkbox
+  under the API's details while it is on (`evalApi.write`, off by default;
+  `lichessEvalApiWriteUrl`), and while ticked **Test connection**: `GET
+  /health` again for the address in the field, its button answering a
+  check mark only when `write_enabled` is true, and a line saying which:
   each position **the engine searched** in a job (never one the API
   answered, a terminal one or a stored `[%eval]`) is sent after its search
   as one `POST /evals` entry (`lichessEvalEntryOf`, `writeLichessEval`):
@@ -725,7 +728,7 @@ preferences, one `localStorage` key, `chessapp.jobsSettings`
   move, never `mate 0`), the engine's name. The API stores it when deeper
   than what it holds, else skips it — both taken. The API must run in write
   mode (`api.py --write`): `GET /health`'s `write_enabled` is kept in the
-  status, and the form says when a ticked box meets an API that is not.
+  status (Connect's check too), and the form says it in words either way.
   **A write not taken** (403 — no write mode, 401 — a token wanted, 422, no
   answer) — the run goes on without sending, said once
   (`reportLichessEvalUnreachable`, `kind: "write"`, its own warning); a
