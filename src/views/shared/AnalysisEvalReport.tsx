@@ -50,8 +50,7 @@ const nextOfKind = (points: readonly EvalPoint[], side: Turn, kind: MoveVerdictK
  * that kind** after the mainline move on the board, round again from the
  * first (`onStep`, lichess's).
  *
- * Shared since CTA-186 — Analysis V2's Case board shows it on its Case view's
- * Graph tab — so the legacy module's removal takes nothing V2 needs.
+ * Analysis V2's Case board shows it on its Case view's Graph tab (CTA-186).
  */
 function AnalysisEvalReport({ tree, mainlinePly, currentNodeId, onGoToNode, testId = "analysis-computer" }: AnalysisEvalReportProps) {
   const { t } = useTranslation();

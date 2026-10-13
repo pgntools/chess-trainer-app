@@ -1,5 +1,10 @@
 # Analyses — the Analysis Board's panel and Saved analyses
 
+> **Historical.** The legacy Analysis Board, Saved analyses and Jobs were
+> removed in CTA-192, Analysis V2 shipped in their place
+> ([`.claude/rules/analysis-v2.md`](../../.claude/rules/analysis-v2.md)). This
+> file records the components as they were.
+
 `src/views/tools/analysis/` and `saved/`: the Analysis Board's right-hand
 panel (`/tools/analysis`), Saved analyses (`/tools/analysis/saved`, with the
 new-analysis form in its panel) and a saved analysis' settings

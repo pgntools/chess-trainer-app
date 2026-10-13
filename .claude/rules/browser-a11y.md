@@ -76,7 +76,7 @@ included — leave it off.
 
 | File (`e2e/a11y/`) | Does |
 | --- | --- |
-| `seedZip.ts` | The data: a played game still on, a mated, a resigned, a masked and an unreadable one; two saved analyses, two repertoires and two uploaded collections (each kind once at the top level, once in a folder). Built by the app's own `buildExport` / `zipExport` — no store, no schema of the suite's own. `SEED` names the ids the routes use. |
+| `seedZip.ts` | The data: a played game still on, a mated, a resigned, a masked and an unreadable one; two Analysis projects with a Case each (a Game, a Position), two repertoires and two uploaded collections (each kind once at the top level, once in a folder). Built by the app's own `buildExport` / `zipExport` — no store, no schema of the suite's own. `SEED` names the ids the routes use. |
 | `seed.setup.ts` | The `setup` project: puts the zip in through **Settings → Import** and saves the browser's storage (localStorage **and IndexedDB**) as the state every test starts from. |
 | `routes.ts` | `ROUTES` — every shipped route (21 pages): its path (**no leading slash**, or the base is dropped), the pattern in `src/routes.tsx` it visits an instance of, what shows it has its data, whether it draws a `board` or `pieces`. |
 | `blogRoutes.ts` | **The Blog's articles, read from their files** (CTA-135) with the build's own frontmatter reader — one line each in `ROUTES` (`blog-<path, dashed>`, pattern `/blog/*`), `board` from the embeds it uses, drafts left out. By hand in `routes.ts`: `BLOG_READY` (an article's ready test id) and `BLOG_SAMPLE` — the articles checked under the whole matrix; the rest are `oncePerLanguage` (default theme, light, both languages — `visits()` in `matrix.ts`). |

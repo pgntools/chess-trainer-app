@@ -45,7 +45,7 @@ explorer, [`tree-views.md`](./tree-views.md); the stores
 | `RepertoireGame.tsx` | `/repertoires/<id>/games/<end\|backtrack>`: a game over the same player. |
 | **`RepertoirePlayer.tsx`** | **The screen**: the core, the engine module, `useTrainerModule`, `useRepertoireGame` and the explorer, in `BoardShell` / `BoardPanel`. |
 | `useRepertoireGame.ts` | A game's session state: the rules, the score, lines finished, coverage. |
-| `src/blocks/panels/ChangesStrip/` | The strip: Update / Save as copy / Discard (also the Analysis Board's and the Library's, under their `labelKey`). |
+| `src/blocks/panels/ChangesStrip/` | The strip: Update / Save as copy / Discard (also the Library's, under its `labelKey`). |
 | `RepertoireGamesMenu.tsx` | The Games menu, on the player and on every list row and card. |
 | `RepertoireSettingsScreen.tsx` + `RepertoireSettingsSections.tsx` | `/repertoires/<id>/settings`: one draft, written on Save. |
 | `useSavedRepertoires.ts` | The store binding (`undefined` until read). |
@@ -57,7 +57,7 @@ explorer, [`tree-views.md`](./tree-views.md); the stores
 | `src/lib/repertoireTrainer.ts` | The trainer's policy and the session model: `TrainerPolicy`, `pickTrainerMove`, `playChancePolicy`, `repertoireMovesAt`, `nodeIdsOf` / `extensionIdsOf`, `judgeDrop`, the `DrillScore` tally. Pure. |
 | `src/lib/repertoireGames.ts` | The games: `RepertoireGameId` (`end`, `backtrack`), the menu order, `repertoireGamePath`, and Backtracking's `coverageOf`, `backtrackingPolicy`, `requiredMovesAt`, `backtrackTarget`. Pure. |
 | `src/lib/playChance.ts` | **Play chances** (lichess-tools' `prc:N`); its header is the reference for the rules (§4). Pure. |
-| `src/lib/repertoireLink.ts` | `?at=`: `atParamOf` / `nodeAtParam` — also used by the Analysis Board, the Library and the Openings explorer. |
+| `src/lib/repertoireLink.ts` | `?at=`: `atParamOf` / `nodeAtParam` — also used by the Library and the Openings explorer (with `lineTreeOf`, its `?at=` arrival). |
 | `src/test/fixtures/pgn/` | The repertoire fixtures: `sicilian-2c3-sampler.pgn` (a Chessable-style export: 14 games, no side lines), `d2d4Variations.pgn` (a lichess study, 13 chapters) and `live-chess-2026-09-18.pgn` (one tree of 7,859 nodes). |
 | Tests | `Repertoires.test.tsx`, `RepertoireFolders.test.tsx`, `RepertoireUpload.test.tsx`, `RepertoireBoard.test.tsx`, `RepertoirePlayer.test.tsx`, `RepertoireGames.test.tsx`, `RepertoireAnnotations.test.tsx`, `RepertoirePlayChance.test.tsx`, `RepertoireSettings.test.tsx`, `RepertoirePropagation.test.tsx`; `src/lib/savedRepertoires.test.ts`, `savedRepertoireStore.test.ts`, `savedRepertoireFolders.test.ts`, `repertoireSettings.test.ts`, `repertoireTrainer.test.ts`, `repertoireGames.test.ts`, `repertoireLink.test.ts`, `playChance.test.ts`, `pgnRepertoireExamples.test.ts`. |
 

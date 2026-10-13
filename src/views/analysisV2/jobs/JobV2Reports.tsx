@@ -22,8 +22,7 @@ const pointLabel = (tree: GameTree) => (point: { ply: number; san?: string }) =>
 /**
  * **A finished Jobs V2 job's report and eval graph** (CTA-188), read back
  * from its first output — a new Case, or the source Case merged into — through
- * `reportFromTree` and `evalSeriesOf`, so nothing about the run is kept twice
- * (V1's `JobReport`, cloned: Analysis V2 imports nothing from `views/jobs/`).
+ * `reportFromTree` and `evalSeriesOf`, so nothing about the run is kept twice.
  * The graph is read only; the summary's links open the Cases. An output gone
  * says so.
  */
@@ -56,7 +55,7 @@ export function JobV2Report({ job, testId }: { job: JobV2; testId: string }) {
 }
 
 /**
- * **A Jobs V2 job's results so far** (CTA-188) — V1's `JobLiveReport`, cloned:
+ * **A Jobs V2 job's results so far** (CTA-178, CTA-188):
  * `jobV2LiveAnalysis` over the job as the store holds it, filling in with every
  * checkpoint — the eval graph spanning the run (read only), the latest
  * finished position and the report over the moves judged. Nothing in it is a

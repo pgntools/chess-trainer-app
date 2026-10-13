@@ -9,7 +9,7 @@ import JobsTable, { type JobsTableProps } from "./JobsTable";
 
 const mount = (props: Partial<JobsTableProps> = {}) => {
   const handlers = { onCancel: vi.fn(), onPause: vi.fn(), onResume: vi.fn(), onDelete: vi.fn() };
-  render(<JobsTable rows={JOBS} rowLink={(job) => ({ href: `/jobs?job=${job.id}` })} {...handlers} testId="jobs" {...props} />);
+  render(<JobsTable rows={JOBS} rowLink={(job) => ({ href: `/analysis/jobs?job=${job.id}` })} {...handlers} testId="jobs" {...props} />);
   return handlers;
 };
 
@@ -39,7 +39,7 @@ describe("JobsTable (CTA-173)", () => {
 
   it("links each game to its details", () => {
     mount();
-    expect(screen.getByRole("link", { name: "Show the job Ding – Gukesh" })).toHaveAttribute("href", "/jobs?job=queued");
+    expect(screen.getByRole("link", { name: "Show the job Ding – Gukesh" })).toHaveAttribute("href", "/analysis/jobs?job=queued");
   });
 
   it("offers Cancel on the unfinished jobs, Pause on the active ones, Resume on the stopped ones, Delete on all — each named for its job", async () => {

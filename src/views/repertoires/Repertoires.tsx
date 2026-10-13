@@ -37,12 +37,12 @@ import { useSavedRepertoires } from "./useSavedRepertoires";
  * **Repertoires** (`/repertoires`) — the reader's own repertoires, newest
  * first, as rows or as preview boards at the saved lists' two card sizes (CTA-61).
  *
- * Since CTA-113 it is the design system's composition, as its sister screen
- * Saved analyses is (`views/tools/analysis/saved/SavedAnalyses.tsx`): a
+ * Since CTA-113 it is the design system's composition (as the legacy Saved
+ * analyses screen was, until CTA-192): a
  * `ListScreenHeader` (the title the page's `h1`, the count, the folder's
  * back, rename and delete, Add, the `SelectionBar` and the `ViewToggle`) over
- * the **`RepertoiresList`** block — the same rows, cards and folder actions
- * as the analyses'. The differences:
+ * the **`RepertoiresList`** block — rows, cards and folder actions. The differences
+ * from the legacy saved list:
  *
  * - **Deleting is in bulk, and in every view** (CTA-68). No row or card
  *   carries a delete of its own: each carries a pick — the cards too, so the

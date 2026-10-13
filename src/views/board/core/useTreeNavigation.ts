@@ -105,8 +105,8 @@ export const useTreeNavigation = (
     Two ways to seed the selection, both read once and never again.
 
     `initialNodeId` is a **reopened analysis**: the node the reader was standing
-    on, already resolved against this tree by `useAnalysisBoard` (a stored path
-    of SAN, not an id — see `lib/savedAnalyses.ts`). It wins, because it can name
+    on, already resolved against this tree by its screen (a stored path of SAN,
+    not an id — a Case's `path`, `lib/analysisProjects.ts`). It wins, because it can name
     a place inside a side line, which is the one thing a ply cannot say.
 
     `initialPly` is a `?move=` arrival: the mainline ply the URL named. The state

@@ -59,7 +59,7 @@ const caseOfSpec = (spec: NewCaseSpec, projectId: string, now: Date): AnalysisCa
  * per game stays here, the list grown.
  *
  * The route waits for the stores' first read, then says a Project that is
- * not there. Dev-only while the module is built.
+ * not there.
  */
 function ProjectScreen() {
   const { t } = useTranslation();

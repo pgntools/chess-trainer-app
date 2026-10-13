@@ -97,8 +97,8 @@ type Dialog =
  * folders, Projects and Cases go. A new Project opens at once.
  *
  * Reads the stores (`useAnalysisProjects.ts`) and writes through their
- * operations; a refused write is said under the header. Dev-only while the
- * module is built (`.claude/rules/analysis-v2.md`).
+ * operations; a refused write is said under the header
+ * (`.claude/rules/analysis-v2.md`).
  */
 function ProjectsBrowser() {
   const { t, i18n } = useTranslation();

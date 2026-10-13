@@ -4,7 +4,7 @@ paths:
   - "src/views/shared/**"
   - "src/views/explorer/**"
   - "src/views/engine/**"
-  - "src/views/tools/analysis/**"
+  - "src/views/analysisV2/**"
   - "src/views/openings/**"
   - "src/views/repertoires/**"
   - "src/views/library/**"
@@ -60,7 +60,7 @@ when the work is board-shaped but sits outside its paths:
 | File | Module |
 | --- | --- |
 | [`tree-views.md`](./tree-views.md) | `src/views/explorer/` — how a board shows its game tree (move list, map, comments, next-move arrows) |
-| [`analysis-board.md`](./analysis-board.md) | the Analysis Board, Saved analyses, the `?game=` hand-off |
+| [`analysis-v2.md`](./analysis-v2.md) | Analysis — Projects, Cases and a Case's board, Jobs V2, the hand-off of a game from any screen |
 | [`play-with-engine.md`](./play-with-engine.md) | Play with Engine, the Lobby, the played games |
 | [`masked-pieces.md`](./masked-pieces.md) | Masked Pieces — Play with Engine in a costume |
 | [`repertoires.md`](./repertoires.md) | the Repertoires section — the list, the player, the trainer and its games |
@@ -116,7 +116,7 @@ return <Chessboard options={chessboardOptions} />;
 - **Always set `options.id`** to a stable string, **unique on the page** (the
   default `"chessboard"` collides; the id is also the DOM id and is used by
   drag sensors). A list screen that renders a board per card takes the item's
-  id — `saved-analyses-preview-<id>`, `repertoires-preview-<id>`; the front page's demo boards (CTA-126) take
+  id — `repertoires-preview-<id>`; the front page's demo boards (CTA-126) take
   theirs from what they show — `front-page-game-<reference, slugified>`,
   `front-page-repertoire-<id>` (or `-sample-<sample>`), so a page embeds each
   item once.
@@ -402,7 +402,7 @@ what shares it.
   The position editor and the preview boards carry none. A strip's left end
   can carry a **player plate** (CTA-105) — the player's result, Elo and name
   — as an optional prop down `BoardShell` → `EngineBoardSquare` → the strips,
-  which only the Library's game board and the Analysis Board (CTA-148) pass; the plate truncates where the
+  which only the Library's game board and Analysis's Case board pass; the plate truncates where the
   row runs short, the pieces keep the right edge, and the height arithmetic
   above is untouched.
 - **A screen that scrolls inside the square divides it itself**: a flex column,
@@ -412,7 +412,7 @@ what shares it.
   (`alignContent: "start"` does not stop it), the cards are squashed and
   clipped by `Card`'s `overflow: hidden`, and nothing ever overflows to scroll.
 - **A position turns the board; a game does not.** A `?fen=` arrival faces the
-  side to move; a game (`?game=`, a Library game, a loaded PGN) opens facing
+  side to move; a game (a Game Case, a Library game, a loaded PGN) opens facing
   White, because a PGN's side to move at ply 0 says nothing about which side is
   studied. `useBoardCore`'s `loadFen` turns, `loadTree` and `reset` do not.
 - **`options.pieces` is the only honest place to disguise a piece**
@@ -501,7 +501,7 @@ vi.mock("../../lib/engines/builtin", async (importOriginal) =>
 
 ## 9. The board core
 
-Every game board — the Analysis Board, Play with Engine, Masked Pieces, the
+Every game board — Analysis's Case board, Play with Engine, Masked Pieces, the
 Library's game board, the Openings explorer and the repertoire player — is
 **composed from one core** in `src/views/board/core/`: a base hook, capability
 modules the screen opts into, and one shell/panel layer with slots. The
@@ -667,8 +667,8 @@ the top bar's Engine menu, [`docs/engine.md`](../../docs/engine.md) §5.2): a
 board passes them in and keeps no copy; nothing it reads back through
 `onUciOptionsReady` is written into them (only Play's strength takes the
 clamp). The engine's on / off is the board header's play / pause
-(`BoardEngineControls`, its menu the eval bar and — the Analysis Board's —
-Write evaluations).
+(`BoardEngineControls`, its menu the eval bar; the Case board's on / off a
+header switch, its eval bar and Write evaluations its Settings tab).
 
 **The engine's reply is `onBestMove`, and that is the whole Play/Analysis
 difference.** A board that passes none has no branch that moves a piece. One
@@ -696,14 +696,14 @@ useAutosave({ enabled: boolean, record: T | undefined, save: (record: T) => void
 Write-on-change and nothing else. `record` is `undefined` while there is
 nothing worth writing; **the store's own idempotency** keeps a mount or a
 settings clamp from re-ordering a list. The record is built by the screen.
-Play with Engine, Masked Pieces and Analysis V2's Case board (CTA-186) use it; the Analysis Board, the Library and
+Play with Engine, Masked Pieces and Analysis V2's Case board (CTA-186) use it; the Library and
 the repertoires save **explicitly**, and the Openings explorer keeps nothing.
 
 #### 9.2.4 Where a board writes
 
 Each board writes its own store through its own record constructor, over
 `lib/idbRecordStore.ts` ([`database.md`](./database.md)): the played games
-(`lib/playedGameStore.ts`), the saved analyses, the repertoires, the Library's
+(`lib/playedGameStore.ts`), Analysis's Cases, the repertoires, the Library's
 collections. A board under development in a Development section (§9.5) writes
 **dev-prefixed databases** over the same factory, so a bug there can never
 damage a real record.
@@ -761,7 +761,7 @@ node on screen and it is that side's turn. Play pauses on any step that is not
 one move forward, a change of side (the flip — the reader's side *is* the
 orientation), the engine switched off, the game over, or `finished` (a
 resignation). Pressing Play at the engine's turn with a search of that position
-finished plays at once. The Analysis Board, the Library's game board and the
+finished plays at once. The Case board, the Library's game board and the
 Openings explorer start it off — and, since CTA-148, their engine too, so Play
 is disabled until the reader switches it on; Play with Engine starts it on. The header
 button and status line are the `PlayToggleButton` / `EngineThinking` blocks
@@ -827,20 +827,19 @@ the detail.
 
 | Board | Session | Engine reply | Book | Saving | Tabs | Tree view |
 | --- | --- | --- | --- | --- | --- | --- |
-| **Analysis Board** `/tools/analysis` | `useAnalysisSession` (+ the saved record: `useAnalysisBoard`) | Play (off; engine off at start, CTA-148) | — | explicit: Save → changes strip or name-and-folder dialog | Moves · Map · Load · Export · Arrows | explorer, editing on, *Play chances…* off, `addedIds` |
-| **Play with Engine** `/engine/play` | `usePlayGame` | Play (on from the start) | — | `useAutosave` → played games | Moves · Engine (the strength alone, CTA-181; no Map, CTA-91) | explorer, as the Analysis Board without `addedIds`, and without the `map` option — no Map is drawn |
+| **Play with Engine** `/engine/play` | `usePlayGame` | Play (on from the start) | — | `useAutosave` → played games | Moves · Engine (the strength alone, CTA-181; no Map, CTA-91) | explorer, as the Case board, and without the `map` option — no Map is drawn |
 | **Masked Pieces** `/engine/masked` | `usePlayGame` (the same `PlayScreen`) | as Play with Engine | — | as Play with Engine, the costume on the record | + Masking | as Play with Engine, plus `mask` |
-| **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off; engine off at start) | — | explicit: Update / Save as copy (shipped: copy to Saved analyses) | Moves · Map · Info · Export | as the Analysis Board |
-| **Openings explorer** `/openings` | `useAnalysisSession` | Play (off; engine off at start) | `useOpeningBookModule` | nothing is kept; hands the tree to the Analysis Board | Book · Moves · Map · Load · Export | explorer, as the Analysis Board without `addedIds` |
-| **Analysis V2 Case** `/analysis/projects/<id>/cases/<caseId>` (dev-only, CTA-186) | `useAnalysisSession` | Play (off; engine off at start) | — | **`useAutosave`** → the Case (`saveCaseState`: tree, SAN path, orientation, display) | Moves · Map · Settings · Export (the engine's on / off a header switch, its eval bar and Write evaluations the Settings tab — no `BoardEngineControls`; how it draws, Display, on its left panel's Case view) | explorer, editing on, *Play chances…* off ([`analysis-v2.md`](./analysis-v2.md)) |
+| **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off; engine off at start) | — | explicit: Update / Save as copy (shipped: a new Case in Analysis) | Moves · Map · Info · Export | as the Case board |
+| **Openings explorer** `/openings` | `useAnalysisSession` | Play (off; engine off at start) | `useOpeningBookModule` | nothing is kept; hands the tree to Analysis as a Case | Book · Moves · Map · Load · Export | explorer, as the Case board |
+| **Analysis V2 Case** `/analysis/projects/<id>/cases/<caseId>` (CTA-186, shipped in CTA-192) | `useAnalysisSession` | Play (off; engine off at start) | — | **`useAutosave`** → the Case (`saveCaseState`: tree, SAN path, orientation, display) | Moves · Map · Settings · Export (the engine's on / off a header switch, its eval bar and Write evaluations the Settings tab — no `BoardEngineControls`; how it draws, Display, on its left panel's Case view) | explorer, editing on, *Play chances…* off ([`analysis-v2.md`](./analysis-v2.md)) |
 | **Repertoire player** `/repertoires/<id>` (+ `/games/<game>`) | the core + `useTrainerModule` | none — the trainer is the opponent | — | explicit: Update / Save as copy (a game never writes) | Moves · (Score) · Map · Settings | the full explorer; editing and comments in the player only |
 
 **No analysis board has an Engine tab** (CTA-181): the search settings are the
 top bar's Engine menu, one set for every board; each board's header carries
 the engine's play / pause and its menu (`BoardEngineControls` — the eval bar,
-and on the Analysis Board *Write evaluations into the game*). Play with Engine
+and on the Case board, its Settings tab instead, *Write evaluations into the game*). Play with Engine
 and Masked Pieces keep an Engine tab for the opponent's strength alone. Clear
-moved to the Load tab (the Analysis Board, the Openings explorer) and the
+moved to the Load tab (the Openings explorer) and the
 Settings tab (the repertoire player).
 
 Next-move arrows are one helper, `nextMoveArrowsOf` — the mainline's move
@@ -889,7 +888,7 @@ a second panel, or a locale block repeating `moveList.*` / `variations.*` /
 - **Repeat the layout arithmetic** of §5 outside `EngineBoardSquare.tsx`.
 - **Mirror under RTL.** A panel token that must stay LTR takes the `dir`
   attribute, not a CSS declaration (the RTL stylis plugin flips it).
-- **Share an `options.id`** — `analysis`, `analysis-case`, `play-with-engine`, `masked-play`,
+- **Share an `options.id`** — `analysis-case`, `play-with-engine`, `masked-play`,
   `openings`, `library-game`, `repertoire-board`, `repertoire-game`, and the
   front page's `front-page-game-…` / `front-page-repertoire-…` (CTA-126).
 - **Change a shared piece incompatibly.** Under `views/shared/`,

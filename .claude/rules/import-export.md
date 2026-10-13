@@ -39,7 +39,7 @@ testing. The Settings section itself (its routes, tabs and nav) is
 | `src/blocks/dialogs/ImportDialog/` | The choice dialog, a block (CTA-109): categories, counts, Merge / Override / Skip (`RadioGroupField`), the clashing folders and their own choices, the preview and the cap warnings. The caps arrive as a prop (`IMPORT_CAPS`, passed by the tab). |
 | `src/blocks/dialogs/IncompatibleImportDialog/` | The dialog for a zip that cannot be imported, a block (CTA-109); its links arrive as `LinkTarget`s. |
 | `src/blocks/panels/ImportReport/` | The report, a line per category, a block (CTA-109). |
-| Store operations added for the import | `importPlayedGames`, `importAnalyses`, `importRepertoires` (remove + add in one write, merged by date — `mergedNewestFirst` in `lib/idbRecordStore.ts`); `addAnalysisFolders`, `addRepertoireFolders`, `addLibraryFolders` (all or nothing under the cap). The collections use `addCollection` (with its id and folder) and `removeCollection`. |
+| Store operations added for the import | `importPlayedGames`, `importRepertoires` (remove + add in one write, merged by date — `mergedNewestFirst` in `lib/idbRecordStore.ts`), `importAnalysisProjects`, `importAnalysisCases`, `importCaseLinks`; `addRepertoireFolders`, `addLibraryFolders`, `addProjectFolders` (all or nothing under the cap). The collections use `addCollection` (with its id and folder) and `removeCollection`. |
 | Tests | `src/lib/dataExport.test.ts`, `src/lib/dataImport.test.ts`, `src/views/settings/Settings.test.tsx` (the section and Export), `src/views/settings/ImportTab.test.tsx` (Import over the real stores). |
 
 Locale keys: `settings.export.*` and `settings.import.*` (`settings.import.dialog.*`,
@@ -53,15 +53,22 @@ both catalogs. Test ids: `settings-export-*`, `settings-import-*`.
 | Category | File(s) | One PGN game per |
 | --- | --- | --- |
 | Games | `games.pgn` | played game (`lib/playedGameStore.ts`, Play with Engine and Masked Pieces) |
-| Analyses | `analyses.pgn` | saved analysis (`lib/savedAnalysisStore.ts`) |
 | Collections | `collections/<folder>/…/<name>.pgn`, one per collection, in directories mirroring the Library's folders; shipped ones in `collections/built-in/` | game of the collection |
 | Repertoires | `repertoires/<folder>.pgn` per folder (name order), then `repertoires/unfiled.pgn` | repertoire |
 | Engine presets (CTA-179) | `engine-presets.json` — `{ presets, selections }`: every stored preset (`lib/enginePresets.ts`) and the preset each engine runs | — (JSON, not PGN) |
-| Analysis projects (CTA-186) — **only in a build with Analysis V2** (dev-only while it is built: `lib/exportCategories.ts`'s `OFFERED_EXPORT_CATEGORIES`, `readImport`'s `categories`) | `analysis-projects.json` — `{ folders, projects, links }`: every folder as its path of names, every Project as stored with its `folderPath` and its Cases as stored, and the links between their Cases (CTA-188, version 5 — a link to a Case not exported left out) ([`analysis-v2.md`](./analysis-v2.md) §5). Jobs V2 are not exported, as V1's jobs are not (§1.1) | — (JSON, not PGN) |
+| Analysis projects (CTA-186) | `analysis-projects.json` — `{ folders, projects, links }`: every folder as its path of names, every Project as stored with its `folderPath` and its Cases as stored, and the links between their Cases (CTA-188, version 5 — a link to a Case not exported left out) ([`analysis-v2.md`](./analysis-v2.md) §5). Jobs V2 are not exported (§1.1) | — (JSON, not PGN) |
+
+**An older zip's saved analyses** (`analyses.pgn`, the legacy Analysis
+Board's — the `analyses` category CTA-192 removed, no format bump: an older
+reader of a new zip simply finds none). The export writes none; `readImport`
+counts the records of an `analyses` file (`ImportDump.skippedAnalyses`) and
+never reads the file — everything else imports. The dialog says so before
+(`<testId>-skipped-analyses`, `settings.import.dialog.skippedAnalyses`) and the
+report after (`ImportReport`'s `skippedAnalyses`, `settings.import.result.skippedAnalyses`).
 
 - **The stored PGN is joined as it stands** (`pgnFileOf`) — never re-parsed or
   re-serialised, so a record this build cannot read still exports byte for
-  byte, and a file loads back into the Library and the Analysis Board.
+  byte, and a file loads back into the Library and into Analysis (a new Project from it).
 - **A file with no games is not written**; a ticked, empty category is still
   listed in the manifest's `categories`.
 - **File names** are `slugify`d, fall back to the record's id (collections) or
@@ -86,16 +93,16 @@ both catalogs. Test ids: `settings-export-*`, `settings-import-*`.
 
 ### 1.1 What is not in the zip — the background jobs
 
-The `chessapp.jobs` database ([`jobs.md`](./jobs.md), CTA-173) is **not
-exported, and an import writes none**. A job is the state of work under way —
-a queue entry, the engine's per-position checkpoint, the ids of the Saved
-analyses it made — not the reader's chess. What it produced **is** exported:
-each finished job's variants are Saved analyses, in `analyses.pgn` with
-every `[%eval]`, verdict and report, and a saved analysis shows its report
-and eval graph from its PGN alone (`reportFromTree`). Carried to another
-browser, a job would name analyses by ids the import may have replaced
-(Override), queue engine work the reader did not start there, and hold an
-interrupted run no one asked to resume. The engine choice, likewise, is a
+The Jobs V2 records (the `jobs` store of `chessapp.analysisProjects`,
+[`analysis-v2.md`](./analysis-v2.md) §6) are **not exported, and an import
+writes none**. A job is the state of work under way — a queue entry, the
+engine's per-position checkpoint, the ids of the Cases it made — not the
+reader's chess. What it produced **is** exported: each finished job's
+variants are Cases, in `analysis-projects.json` with every `[%eval]`, verdict
+and report, and a Case shows its report and eval graph from its PGN alone
+(`reportFromTree`). Carried to another browser, a job would name Cases by ids
+the import may have replaced (Override), queue engine work the reader did not
+start there, and hold an interrupted run no one asked to resume. The engine choice, likewise, is a
 preference and stays out ([`settings.md`](./settings.md) §4) — its presets,
 and the preset each engine runs, are data and go (CTA-179). Settings →
 Storage still counts the jobs.
@@ -108,20 +115,19 @@ Storage still counts the jobs.
   "formatVersion": 5,            // EXPORT_FORMAT_VERSION — bump on any change an older reader would misread (§6)
   "appVersion": "0.4.0",         // __APP_VERSION__
   "exportedAt": "…ISO 8601…",
-  "categories": ["collections", "games", "analyses", "repertoires", "enginePresets"],
+  "categories": ["collections", "games", "repertoires", "enginePresets", "analysisProjects"],
   "includeShippedCollections": false,
   "folders": {                   // whole trees, so an empty folder survives
-    "analyses": [["Openings"], ["Openings", "Sicilian"]],
     "repertoires": ["Black", "White"],
     "collections": [["Club"], ["Club", "Blitz"]]   // the Library's folders; Built-in is not one
   },
   "files": [
     { "path": "games.pgn", "kind": "games", "records": [{ "index": 0, "games": 1, "id": "…", "settings": {…}, "path": [], … }] },
-    { "path": "analyses.pgn", "kind": "analyses", "records": [{ "index": 0, "games": 1, "name": "…", "description": "…", "orientation": "white", "path": […], "folderPath": ["Openings"], … }] },
     { "path": "collections/built-in/world-cup.pgn", "kind": "collection", "collection": { "id": "…", "name": "…", "source": "shipped", "games": 674 } },
     { "path": "collections/club/blitz/friday.pgn", "kind": "collection", "collection": { "id": "u…", "name": "Friday", "source": "uploaded", "games": 12, "folderPath": ["Club", "Blitz"], "description": "…", "tournament": { "enabled": true, "type": "swiss" } } },
     { "path": "repertoires/unfiled.pgn", "kind": "repertoires", "folder": null, "records": [{ "index": 0, "games": 1, "name": "…", "settings": {…}, … }] },
-    { "path": "engine-presets.json", "kind": "engine-presets", "presets": 2 }   // CTA-179: the file's presets, counted
+    { "path": "engine-presets.json", "kind": "engine-presets", "presets": 2 },  // CTA-179: the file's presets, counted
+    { "path": "analysis-projects.json", "kind": "analysis-projects", "projects": 3 }   // CTA-186: the file's Projects, counted
   ]
 }
 ```
@@ -192,7 +198,8 @@ off with nothing ticked; a failure is an `Alert`, never a throw.
    when that does not add up, §7), each record's `games` from its `index`, in
    order and covering the file exactly, the record rebuilt from its manifest
    entry and its PGN and run through **its store's normaliser**
-   (`playedGameFrom`, `savedAnalysisFrom`, `savedRepertoireFrom`). An uploaded
+   (`playedGameFrom`, `savedRepertoireFrom`, `analysisProjectFrom` /
+   `analysisCaseFrom`). An uploaded
    collection's games must number its `games`. A shipped collection is only
    counted.
 2. **The plan** lays the dump beside the app: each category's count and its
@@ -308,8 +315,8 @@ file** the manifest names, or an **unreadable** one (its games do not match the
 manifest's records or count, or a record its normaliser refuses) — and the
 zip's `.pgn` files. `IncompatibleImportDialog` says which, and that the files
 can still come in by hand: collections through the Library's upload
-(`/library/new`), analyses and played games through the Analysis Board's Load
-tab (`/tools/analysis`), repertoires through Add repertoire
+(`/library/new`), analyses and played games through a new Project in
+Analysis (`/analysis`), repertoires through Add repertoire
 (`/repertoires/new`), listing the `.pgn` files. **Nothing is written.**
 
 **Cutting a file back into games.** The export counted each record's games
@@ -333,9 +340,8 @@ that the import prefers when present — an added field, so no bump (§6).
 | Store | Cap | Past it |
 | --- | --- | --- |
 | Played games | 500 (`MAX_PLAYED_GAMES`, CTA-100) | **Imported anyway**: the store drops its oldest, and the dialog warns how many. |
-| Analyses | 20,000 | The category is **refused**. |
 | Repertoires | 500 | The category is **refused**. |
-| Folders (analyses', repertoires', the Library's) | 100 each | The category is **refused**. |
+| Folders (repertoires', the Library's) | 100 each | The category is **refused**. |
 | Engine presets | 50 (`MAX_ENGINE_PRESETS`, CTA-179) | The category is **refused**. |
 | Analysis projects (CTA-186) | 1,000 Projects, 10,000 Cases, 100 folders | The category is **refused**. |
 
@@ -370,7 +376,7 @@ in the meantime still never takes a partial category.
 ## 10. Testing
 
 - `lib/dataExport.test.ts` — the builder: every category (the engine presets' JSON file, CTA-179), empty categories,
-  folder mapping (nested analyses, one-level repertoires, a dangling folder,
+  folder mapping (nested Project folders, one-level repertoires, a dangling folder,
   the Library's folders as directories with `built-in` reserved), name
   collisions, the shipped toggle, a legacy multi-game repertoire, and a zip
   that unzips back to what was built.

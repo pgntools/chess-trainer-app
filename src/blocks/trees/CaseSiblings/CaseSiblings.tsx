@@ -45,7 +45,7 @@ export type CaseSiblingsProps = {
 
 /**
  * **A Project's Cases beside a Case's board** (CTA-186) — the legacy Saved
- * analyses' tree (`AnalysesTree`, CTA-145) for Analysis V2, where a Project
+ * analyses' tree (CTA-145, removed in CTA-192) for Analysis V2, where a Project
  * has no folders: its Cases as one flat `TreeView` (each named, a Game's or a
  * Position's icon, the open one current and brought into view, every row a
  * link to its board), a words box above it, a Close back to the Project at

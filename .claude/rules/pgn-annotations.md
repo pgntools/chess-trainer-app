@@ -76,7 +76,7 @@ annotations. Every board reads through `parsePgnTree` / `parsePgnTrees`
   comes back out as `$1`. Every PGN reader takes both.
 - A `; line comment` is written as `{ … }`; a `}` inside one is dropped (it
   would close the brace).
-- Export options (`PgnExportOptions`, the Analysis Board's Export tab, CTA-73)
+- Export options (`PgnExportOptions`, every board's Export tab, `PgnExportPanel`, CTA-73)
   strip **all comments** (and with them every command and tag of §2–§3), **all
   NAGs**, or **all side lines**.
 
@@ -118,21 +118,21 @@ then the value, pinned LTR. The value is **shown as written, never
 interpreted** — no `[%eval]` feeds the eval bar today — save that an
 `[%eval]` value with a depth after a comma (`0.17,20`) is two chips, Eval
 and Depth (CTA-167). Two readings go
-beyond the chip: the Analysis Board's arrows, which can be sized by
+beyond the chip: the Case board's arrows, which can be sized by
 `[%eval]` (CTA-98, §3), and lichess's shapes, `[%cal]` / `[%csl]`, which
 **every board draws instead of a chip** (CTA-143, below). One command is
-also **written** by the app: `[%eval]`, the Analysis Board's engine
+also **written** by the app: `[%eval]`, the Case board's engine
 evaluations (CTA-167, below).
 
 | Command | Example | Chip label (`annotations.keys.*`) | Does anything else read it? |
 | --- | --- | --- | --- |
-| `%eval` | `[%eval 6.91]`, `[%eval #-3]`, `[%eval 0.17,20]` (a depth: Eval and Depth chips) | Eval | **yes** — the Analysis Board's *Evaluation* arrow widths (§3); **written** by its engine (CTA-167, below) |
+| `%eval` | `[%eval 6.91]`, `[%eval #-3]`, `[%eval 0.17,20]` (a depth: Eval and Depth chips) | Eval | **yes** — the Case board's *Evaluation* arrow widths (§3); **written** by its engine (CTA-167, below) |
 | `%clk` | `[%clk 0:22:33]` | Clock | no |
 | `%emt` | `[%emt 0:00:12]` | Time spent | no |
 | `%cal` | `[%cal Ge2e4,Rd7d5]` | none — drawn, not chipped (CTA-143) | **yes** — drawn on every explorer board and an article's `<InlinePgnGame>` (below), and written by drawing on an editing board |
 | `%csl` | `[%csl Gd4,Re5]` | none — drawn, not chipped (CTA-143) | **yes** — drawn as circles, as `%cal` |
 | `%prc` | `[%prc 40]` | Play chance | **yes** — the trainer and the arrows (§3) |
-| `%games` | `[%games 12]` | Games | **yes** — the Analysis Board's *Games* arrow widths (§3) |
+| `%games` | `[%games 12]` | Games | **yes** — the Case board's *Games* arrow widths (§3) |
 | any other `%key` | `[%foo bar]` | the key itself | no — kept and written back |
 
 A key must start with a letter (`[A-Za-z][\w-]*`). Commands are part of the
@@ -194,10 +194,10 @@ reads empty — the block lists no row for it and is not shown where it is all
 there is — and `hasComments` (the move list's comment mark) does not count
 it. The board says what it says.
 
-### `[%eval]` written — the Analysis Board's engine (CTA-167), `lib/engineEvals.ts`
+### `[%eval]` written — an analysis board's engine (CTA-167), `lib/engineEvals.ts`
 
-The Analysis Board's engine menu (beside its play / pause, CTA-181 — the Engine tab's before) has **Write evaluations into the game**
-(off by default — [`analysis-board.md`](./analysis-board.md) §1). While it is
+A Case board's Settings tab (the legacy Analysis Board's engine menu until CTA-192) has **Write evaluations into the game**
+(off by default — [`analysis-v2.md`](./analysis-v2.md) §3.3). While it is
 on, each search that **finishes** — at the moment `useEngineModule` records
 the score in `evalsByFen` (`onSearchFinished`) — is written into the tree:
 
@@ -222,7 +222,7 @@ Two plain-text shapes are also read out of the prose, into chips:
 
 The assessment is optional; it is one of `+-` `-+` `+/-` `-/+` `+/=` `=/+`
 `=` `∞`. The trailing shape's eval counts as the move's evaluation for the
-Analysis Board's arrows, as `[%eval]` does (`evalOf`, `lib/nextMoveWeights.ts`).
+Case board's arrows, as `[%eval]` does (`evalOf`, `lib/nextMoveWeights.ts`).
 
 ---
 
@@ -243,7 +243,7 @@ from either convention reads the same.
 | **Means** | How often the repertoire trainer plays that move there. The four rules — no marks: by lines within 8 plies; all marked: scaled to 100%; some marked: the rest share the remainder by lines; `prc:0`: never (unless all are 0) — are in the module note of `lib/playChance.ts`. |
 | **Set by** | The move menu's *Play chances…* (`PlayChanceDialog`, per branch, `setPlayChances`) — or typed into a comment. |
 | **Shown** | A *Play chance* chip, never as prose (`withoutPlayChance`). With `arrows.chances`, and **only where the branch carries a mark**, the board's arrows become the **chance overlay** (`ChanceArrows`: white, magenta border, width by chance) and the next-moves bar prints each move's percentage — the repertoire player. |
-| **Offered on** | Boards where a trainer plays by it; the Analysis Board turns the menu item off (`playChances: false`, CTA-73). |
+| **Offered on** | Boards where a trainer plays by it; the Case board turns the menu item off (`playChances: false`, CTA-73). |
 | **Also written by** | The Library opening board's *Save tree as PGN* (CTA-99), as `[%prc P]` — each move's share of its position's games, `round(child / parent × 100)`, in one comment after `[%games N]` when both are asked for. |
 
 ### `games` — how many games went through a move (CTA-98), `lib/gamesTag.ts`
@@ -255,7 +255,7 @@ from either convention reads the same.
 | **On which move** | The move it counts — the candidate at a branch — as `prc`. |
 | **Read** | `gamesOf(node)`: its `comments`, then `preComments`; **the first one wins**. |
 | **Shown** | A *Games* chip (`annotations.keys.games`), never as prose (`withoutGames`). |
-| **Means** | With the Analysis Board's width source on *Games*, each tagged move's arrow is its share of the tagged moves' games at the branch. The repertoire player still sizes by `prc` only (`arrows.chances`). |
+| **Means** | With the Case board's width source on *Games*, each tagged move's arrow is its share of the tagged moves' games at the branch. The repertoire player still sizes by `prc` only (`arrows.chances`). |
 | **Export** | Comment text: the Export tab's *comments off* strips it with every other comment. |
 
 ### The arrows these weigh — one overlay, three kinds of source
@@ -267,7 +267,7 @@ knows nothing of where it came from:
 | --- | --- | --- |
 | Repertoire player | the move's play chance | `prc` marks → `playChances` (`useVariationsExplorer`, `arrows.chances`) |
 | Library collection lobby's opening board | the share of the position's games that played the move | `child.count / node.count`, counted from the collection's rows (`lib/openingTree.ts`, `OpeningFilterBoard.tsx`, CTA-92) — **not** from any PGN annotation |
-| Analysis Board (CTA-98) | the chosen width source's weight | `nextMoveWeights` (`lib/nextMoveWeights.ts`, `arrows.widthSource`): `[%eval]` as loss vs the best tagged move (within 1 cp the best group, widest and in the mainline colour; the rest thinner by loss in the side-line colour — CTA-180), `games` as a share, `prc` scaled among the tagged moves, or the lines within 8 plies; the arrows in the Arrows tab's palette, an untagged move gray ([`analysis-board.md`](./analysis-board.md) §1.1) |
+| Case board (CTA-98) | the chosen width source's weight | `nextMoveWeights` (`lib/nextMoveWeights.ts`, `arrows.widthSource`): `[%eval]` as loss vs the best tagged move (within 1 cp the best group, widest and in the mainline colour; the rest thinner by loss in the side-line colour — CTA-180), `games` as a share, `prc` scaled among the tagged moves, or the lines within 8 plies; the arrows in the Arrows tab's palette, an untagged move gray ([`analysis-board.md`](./analysis-board.md) §1.1) |
 
 ### Written today: the Library's `[%games N]` (CTA-99)
 
@@ -278,7 +278,7 @@ played the move from that position — on every move below the board's position,
 in the command form, first in the move's one comment
 (`{ [%games 12] [%prc 40] }` when `prc` is asked for too). It is **read** by
 `gamesOf` (CTA-98): a *Games* chip in the comment block, and — opened on the
-Analysis Board with its width source on *Games* — each move's arrow sized by
+Case board with its width source on *Games* — each move's arrow sized by
 its share. `mergeTrees` writes it too (§1 *Merging*, CTA-101).
 
 ---
@@ -359,9 +359,8 @@ black by `getContrastText`, pinned LTR with the SVG `direction` attribute.
 It is drawn on **every explorer board** (`useVariationsExplorer`'s `overlay`,
 `${testId}-move-glyph`, above the PGN's circles, whether or not the comment
 block is shown — the list shows the glyph either way; the explorer's
-`moveMarks: false` leaves it off, which the Analysis Board's *Show move marks
-on the board* switch in its Arrows tab — kept per saved analysis as
-`showMoveMarks` — and the Library game board's switch on its Moves tab pass) and on the Blog's
+`moveMarks: false` leaves it off, which a Case board's *move marks* switch on its Display tab — kept per Case in its
+`display` — and the Library game board's switch on its Moves tab pass) and on the Blog's
 `<InlinePgnGame>` boards (`ExcerptBoard`); below the promotion picker. A
 move with no move mark draws nothing, and an `$N` edit through *Add
 annotation…* redraws it at once.
@@ -380,7 +379,7 @@ annotation…* redraws it at once.
 | `src/views/explorer/ShapesDialog.tsx` | The move menu's *Arrows and circles…* (CTA-143). |
 | `src/lib/playChance.ts` | `prc`: reading, writing, the chance rules. |
 | `src/lib/gamesTag.ts` | `games`: `gamesInText`, `withoutGames`, `gamesOf`. |
-| `src/lib/nextMoveWeights.ts` | The Analysis Board's arrow widths from `[%eval]`, `games`, `prc` or the lines ahead; which of them a tree carries. |
+| `src/lib/nextMoveWeights.ts` | The Case board's arrow widths from `[%eval]`, `games`, `prc` or the lines ahead; which of them a tree carries. |
 | `src/lib/engineEvals.ts` | `[%eval]` **written** (CTA-167): `formatEval`, `withEval` (placement and the override by depth), `annotatorOf` / `withAnnotator`, `recordEvaluation` (§2). |
 | `src/lib/computerAnalysis.ts` | **Computer analysis**, the pure core (CTA-172, §6): the options and their normaliser, `analysisPositionsOf`, the search rules `shouldStopEarly` / `prunedLines` / `withSearchInfo`, `moveVerdicts`, `playerReports`, the lichess accuracy. |
 | `src/lib/computerAnalysisTree.ts` | The light / medium / full trees (`computerAnalysisTree`), the opening-comment report, the `AnalysedPlies` / `AnalysedSide` scope tags, and the read-back: `reportFromTree`, `evalSeriesOf` (§6). |
@@ -486,7 +485,7 @@ comments, NAGs), plus:
 
 ### Reading it back — `reportFromTree`, `evalSeriesOf`
 
-A saved analysis shows its report and graph **from the tree alone**, with
+A Case shows its report and graph **from the tree alone**, with
 no job record, and so does **a lichess export** (`[%eval]` on every move
 with no depth, its own NAGs and comments, no scope tags):
 

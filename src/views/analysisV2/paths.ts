@@ -1,6 +1,5 @@
 /**
- * **Analysis V2's addresses** (CTA-186) — dev-only while it is built
- * (`routes.tsx`'s `devRoutes`): the Projects browser at `/analysis`
+ * **Analysis V2's addresses** (CTA-186, shipped in CTA-192): the Projects browser at `/analysis`
  * (`?folder=<id>` the folder on screen), a Project's Cases at
  * `/analysis/projects/<id>`, a Case's board at
  * `/analysis/projects/<id>/cases/<caseId>`, and Jobs V2 at `/analysis/jobs`

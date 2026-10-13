@@ -32,7 +32,7 @@ import type { EngineEntry } from "../../../lib/engines";
 import { engineOptionState, optionSlug } from "../EngineSettingsForm";
 import { computerAnalysisStartNote } from "./startNote";
 
-/** Why Start could not queue the job — `enqueueComputerAnalysis`'s answers (`lib/jobStore.ts`). */
+/** Why Start could not queue the job — `enqueueJobV2`'s answers (`lib/jobV2Store.ts`). */
 export type ComputerAnalysisStartProblem = "invalid" | "storage" | "too-many";
 
 /**
@@ -94,8 +94,7 @@ export type ComputerAnalysisFormProps = {
   problem?: ComputerAnalysisStartProblem;
   /**
    * The engine and preset selects at the head of the Engine section (CTA-188,
-   * Jobs V2) — absent, none: the engine is named in words (`engineName`), as
-   * V1's dialog has it.
+   * Jobs V2) — absent, none: the engine is named in words (`engineName`).
    */
   engineChoice?: ComputerAnalysisEngineChoice;
   /**

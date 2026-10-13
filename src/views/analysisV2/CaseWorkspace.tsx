@@ -347,7 +347,7 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
  * `keepShell`: the header and its Engine menu stay): in the Cases table's
  * order and under its words, carried in the URL, with a words box, Close
  * (the one way back — the board's header has none) and previous / next; a
- * drawer under the breakpoint, opened from the board's header. Dev-only while the module is built.
+ * drawer under the breakpoint, opened from the board's header.
  */
 function CaseWorkspace() {
   const { t } = useTranslation();

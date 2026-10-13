@@ -68,7 +68,7 @@ const en = {
     designSystem: "Design system",
     /** The dev-only theme editor (CTA-115), in the Development folder. */
     themeEditor: "Theme editor",
-    /** Analysis V2 (CTA-186), dev-only: its Projects browser — and Jobs V2 beside it (CTA-188). */
+    /** Analysis V2 (CTA-186): its Projects browser — and Jobs V2 beside it (CTA-188). */
     analysisProjects: "Projects",
     analysisJobs: "Jobs",
     /** The MDX editor (CTA-137, `yarn mdx-editor:start` only): its article lobby and the editor itself, in its own folder — and its Components gallery (CTA-140). */
@@ -217,11 +217,11 @@ const en = {
     settings: "Settings",
     designSystem: "Design system",
     themeEditor: "Theme editor",
-    /** Analysis V2 (CTA-186), dev-only. */
+    /** Analysis V2 (CTA-186). */
     analysisProjects: "Projects",
     analysisProject: "Project",
     analysisCase: "Case",
-    /** Jobs V2 (CTA-188), dev-only. */
+    /** Jobs V2 (CTA-188). */
     analysisJobs: "Jobs V2",
     mdxEditor: "MDX editor",
     mdxArticles: "MDX editor — articles",
@@ -2509,11 +2509,7 @@ const en = {
         "too-many": "Too many jobs are waiting. Let some finish, or cancel them in Analysis's Jobs.",
       },
     },
-    /**
-     * The report and graph at the top of the Analysis Board's Moves tab
-     * (CTA-177, the Computer analysis tab's before), and a job's results so
-     * far (`jobLiveAnalysis`, CTA-174 — the Jobs screen's since CTA-178).
-     */
+    /** A job's report and its results so far (`jobV2LiveAnalysis`, CTA-174, CTA-178). */
     board: {
       liveGraph: "Evaluation graph so far",
       latest: "Latest: after",
@@ -2522,7 +2518,7 @@ const en = {
       reportTitle: "Report",
       reportToggle: "Show or hide the report",
     },
-    /** The New Job dialog and the Analyse icons that open it (CTA-177, `NewJobDialog`). */
+    /** The New Job dialog (CTA-177, `NewJobDialog`) — Jobs V2's popup's since CTA-188. */
     newJob: {
       title: "New job",
       game: "Game:",
@@ -2536,9 +2532,9 @@ const en = {
     },
   },
   /**
-   * **The Jobs screen** (`/jobs`, CTA-173): the background jobs — a game's
-   * computer analysis — their progress, and the shell's indicator of the one
-   * running.
+   * **A background job's words** (CTA-173) — the list's and the panel's
+   * (`JobsTable`, `JobSummary`), read by Jobs V2's view (`analysisV2.jobs.*`
+   * its own words).
    */
   jobs: {
     title: "Jobs",
@@ -2633,8 +2629,7 @@ const en = {
   },
   /**
    * **Analysis V2** (CTA-186): Projects in nested folders, each holding its
-   * Cases — a Game or a Position — and the Case's board. Dev-only while it
-   * is built.
+   * Cases — a Game or a Position — and the Case's board (shipped in CTA-192).
    */
   analysisV2: {
     cancel: "Cancel",

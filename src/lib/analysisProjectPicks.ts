@@ -3,7 +3,7 @@ import { projectFolderSubtree, type AnalysisCase, type AnalysisProject, type Pro
 
 /**
  * **Analysis V2's picks in the Projects browser** (CTA-191) — the legacy
- * saved analyses' (`analysisPicksOf` in `savedAnalysisFolders.ts`, CTA-147)
+ * saved analyses' (CTA-147, removed in CTA-192)
  * one level deeper: folders hold Projects, Projects hold Cases, and **one set
  * of ids** picks any of them.
  *

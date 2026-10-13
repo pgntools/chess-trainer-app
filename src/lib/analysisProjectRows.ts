@@ -3,7 +3,7 @@ import { folderTreeRows, type FolderTreeRow } from "./folderTreeRows";
 
 /**
  * **Analysis V2's Projects browser as a tree table** (CTA-186) — the legacy
- * saved analyses' (`savedAnalysisRows.ts`, CTA-144): the folders and the
+ * saved analyses' (CTA-144, removed in CTA-192): the folders and the
  * Projects filed in them as one table's rows over `folderTreeRows`, folders
  * first at every level, each opened in place, sorted by a column, and
  * narrowed by a words box that opens the folders above a match. Since

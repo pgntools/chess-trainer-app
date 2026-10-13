@@ -34,11 +34,11 @@ covers what it adds. The board core, the engine protocol and testing are
 | `src/blocks/tables/PlayedGamesTable/`, `src/blocks/forms/PlayedGamesFilters/` | The Lobby's table and filters as blocks (CTA-109): the columns, the sort (`lib`'s `sortedPlayedGames`), the row actions named by the row (`whenPlayed`), the unreadable row; the side and opening filters. |
 | `src/views/engine/games/NewGameForm.tsx` | The Lobby's right-hand panel: **Game** and **Board editor** tabs, and **Start**. |
 | `src/views/engine/games/usePlayedGames.ts` | The `useSyncExternalStore` binding (`undefined` until read). |
-| `src/lib/playedGames.ts` | **The record**, pure: `PlayedGame`, `playedGameOf`, `playedGameFrom` (the normaliser), `playedGameSummary` (with the per-side names and Elo the table's columns derive), `playedGameResult`, `resultOfFen`, `playedGameHeaders` (the PGN tags), `playedGameCatalogOf` (`?game=play/games/<id>`), and the table's own sort (CTA-100): `PLAYED_GAME_COLUMNS`, `PlayedGameRow`, `sortedPlayedGames`. |
+| `src/lib/playedGames.ts` | **The record**, pure: `PlayedGame`, `playedGameOf`, `playedGameFrom` (the normaliser), `playedGameSummary` (with the per-side names and Elo the table's columns derive), `playedGameResult`, `resultOfFen`, `playedGameHeaders` (the PGN tags), `playedGameCatalogOf` (the `play/games/<id>` game reference an embed reads), and the table's own sort (CTA-100): `PLAYED_GAME_COLUMNS`, `PlayedGameRow`, `sortedPlayedGames`. |
 | `src/lib/playedGameStore.ts` | **The store** — `chessapp.engine`, object store `games`, over `idbRecordStore`; capped at `MAX_PLAYED_GAMES` (500, CTA-100). |
 | `src/lib/engineSettings.ts` | `EngineSettings`, the defaults, `ENGINE_SETTING_BOUNDS` (the ceilings: depth 99 — typed; the slider's top `DEPTH_SLIDER_MAX`, 50, CTA-185 — move time 24 h (86,400 s) — typed; the slider's last time mark 600 s, CTA-185 — — the marked slider's last time mark, CTA-163, CTA-185 — Threads 32, Hash 1024 MB — CTA-160, [`docs/engine.md`](../../docs/engine.md) §5.1), the move-time marks and their slot mapping (`MOVE_TIME_MARKS_S`, `moveTimeSliderValueOf` / `moveTimeOfSliderValue` — lichess's snap marks — 1, 5, 10, 30, 60, 300, 600 s since CTA-185 — the ∞ mark unlimited, 0 s the instant reply as 1 ms, shown on the first mark), `deviceEngineLimits` (what the device can give: Threads and Hash), `engineLimitsOf` (the device's for an in-browser build, what an engine server's engine declares — CTA-175), `HOSTED_ENGINE_SETTING_BOUNDS` / `engineSettingBoundsOf` (an engine server's engine's wider Threads and Hash bounds), `SETTING_UCI_OPTION` / `uciOptionsOf` (`UCI_Elo` always, `Skill Level` only `bySkill` — an engine without an Elo — and no `UCI_LimitStrength`, the preset's since CTA-181; Hash and Threads held to the ceilings of the engine that runs) / `withClampedStrength` (the strength alone takes the clamp back), `approximateElo`, the non-throwing `engineSettingsFrom` (marking the fields a row lacked). The search settings themselves are `lib/engineSearchSettings.ts`'s, the reader's global set. |
 | `src/lib/newGameLink.ts` | The new-game link: `newGameParams` (the form → query) and its reader (query → options, each field validated and clamped on its own). |
-| `src/views/board/core/usePlayToggle.ts` | **Play** (`chessboard.md` §9.2.6), shared with the Analysis Board. |
+| `src/views/board/core/usePlayToggle.ts` | **Play** (`chessboard.md` §9.2.6), shared with the other analysis boards. |
 | Tests | `PlayWithEngine.test.tsx`, `EngineSettings.test.tsx`, `views/engine/games/PlayedGames.test.tsx` (the Lobby's table, the form, the Board editor tab), `src/lib/playedGames.test.ts` (the record, the store and the table's sort), `newGameLink.test.ts`, and the two propagation tests in `src/views/board/`. |
 
 Routes and nav: `/engine/play` has **no nav entry** — it is reached from the
@@ -84,9 +84,10 @@ prefixed `play-with-engine-`. Locale keys: `playEngine.*` (the screen) and
   (CTA-91, lichess's game-over treatment): once `playedGameResult` is
   decided — a resignation, or the mainline's final position on the board —
   the footer states the result beside an **Open in analysis** button, which
-  appears with the one autosave that names a record (`?game=play/games/<id>`,
-  the Lobby's Analysis reference; the true PGN, unmasked — Masked Pieces'
-  documented reveal). **Replay** starts a new game and takes the whole
+  appears with the one autosave that names a record: it hands the record as
+  kept (its tags too) to Analysis as a new Case, in a Project the reader picks
+  (`useSendToAnalysis`, CTA-192 — [`analysis-v2.md`](./analysis-v2.md) §1.1;
+  the true PGN, unmasked — Masked Pieces' documented reveal). **Replay** starts a new game and takes the whole
   treatment away.
 - **It saves itself** — no Save button. `useAutosave` writes on every change;
   the id is stable for the life of a game; once written, the URL is
@@ -139,7 +140,8 @@ was begun on.
 - **The row's controls** (CTA-100's follow-up): a **pick checkbox** — the
   collection table's own pattern — first, and at the row's end, in one
   always-visible actions column (CTA-109), the icon-only **Analysis** (the flask,
-  `/tools/analysis?game=play/games/<id>`, the true PGN, unmasked) and the
+  a new Case in Analysis — `PlayedGamesTable`'s `onAnalyse`, the screen's
+  `useSendToAnalysis`; the true PGN, unmasked) and the
   icon-only **Continue** (the play arrow, `?saved=<id>` — on
   `/engine/masked` for a masked game, which carries a *Masked* chip in its
   own column; **only while the game is still on** — a row whose result is

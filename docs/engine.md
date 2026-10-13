@@ -89,7 +89,7 @@ and the helper threads it starts are same-origin. Checked 2026-10-07 in
 Chromium against the production swa build served with those headers:
 `self.crossOriginIsolated === true` on every page tried (front page, `/he/`,
 the Blog, Library, Openings, Settings), every engine gives lines on the
-Analysis Board (the multi-thread one starts its helper workers), and nothing is
+Analysis Board of the time (the multi-thread one starts its helper workers), and nothing is
 logged or blocked.
 
 - **GitHub Pages is unchanged**: no headers, `crossOriginIsolated` false, the
@@ -224,7 +224,7 @@ real browser before tuning further.
 The settings a search runs under — **lines (MultiPV), depth, move time,
 Threads and Hash** (infinite analysis too until CTA-185) — are **one set for
 every board**, not a board's (`EngineSearchSettings`, the defaults the
-Analysis Board's own — depth 20, three lines, no time limit, one thread,
+legacy Analysis Board's own — depth 20, three lines, no time limit, one thread,
 16 MB), kept in **two homes since CTA-185**:
 
 - **the lines, Threads and Hash** — a preference in `localStorage`
@@ -290,7 +290,7 @@ settings ("Engine options changed", below) waits for the presets first
   (`moveTimeSliderValueOf`), 0 the instant reply; on the slider's ∞ mark (no
   limit) the move-time box is off; depth's never is — every search stops at
   one or the other.
-- **Every board reads it**: the Analysis Board, the Library's game and the
+- **Every board reads it**: Analysis's Case board, the Library's game and the
   Openings explorer (`useAnalysisSession`), the repertoire player, Play with
   Engine and Masked Pieces (`usePlayGame`), and the Lobby's new-game form's
   handshake. No board has an Engine tab for them any more; Play's keeps the
@@ -577,7 +577,7 @@ options* (`guides/understanding-stockfish-uci-options.mdx`).
   blocks' own tests (`EngineSearchSettingsForm`, `BoardEngineControls`,
   `EngineOptionsChangedDialog`), and every board's in
   `src/views/board/boards.test.tsx` (the settings reach it, its state reaches
-  the top bar); the dialog on the Analysis Board's and Play with Engine's own
+  the top bar); the dialog on Play with Engine's own
   tests.
 - The presets (§9): `src/lib/enginePresets.test.ts` (the records, the
   selection, `resolveEnginePreset`, the form's rows, the dependencies, the
@@ -585,7 +585,7 @@ options* (`guides/understanding-stockfish-uci-options.mdx`).
   `presetLimitsStrength`), `enginePresetStore.test.ts`
   (create, rename, duplicate, delete, select, the cap, the import's write),
   `blocks/forms/EnginePresetForm/EnginePresetForm.test.tsx`, and Settings →
-  Engine's `EngineTab.test.tsx`; the job runner's in `jobRunner.test.ts`.
+  Engine's `EngineTab.test.tsx`; the job runner's in `jobV2Runner.test.ts`.
 - **The seam every board's test stubs is the registry's** — `lib/engines/builtin`,
   replaced with the shared harness's `builtinEnginesMock` (`boardTestHarness.tsx`,
   `chessboard.md` §8):

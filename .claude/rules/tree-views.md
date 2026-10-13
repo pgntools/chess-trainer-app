@@ -7,7 +7,7 @@ paths:
   - "src/views/shared/VariationLine.tsx"
   - "src/views/shared/moveSelection.ts"
   - "src/views/shared/nextMoveArrows.ts"
-  - "src/views/tools/analysis/NextMovesBar.tsx"
+  - "src/views/shared/NextMovesBar.tsx"
 ---
 
 # Tree views — how a board screen shows its game tree
@@ -16,7 +16,7 @@ How a board screen **attaches a view of its game tree** — the move list, the
 map, the comments, the next-move arrows — instead of wiring them inline. The
 shared explorer in [`src/views/explorer/`](../../src/views/explorer/)
 implements it, and every board that shows a game tree is built on it: the
-Analysis Board, Play with Engine and Masked Pieces, the Library's game board,
+Analysis's Case board, Play with Engine and Masked Pieces, the Library's game board,
 the Openings explorer and the repertoire player with its games.
 
 What a move's annotations *are* — comments, `[%cmd]`s, the `prc` tag, NAG
@@ -119,7 +119,7 @@ const parts = useVariationsExplorer({
 | **Side lines hung under their move**, clickable | `moves` | always | `TreeMoveList` → `VariationLine` |
 | **Comment marker** on a commented move — not on one whose comments only draw shapes (CTA-143) | `moves` | always | `hasComments`, `annotatedPlies`, `markCommentedNodes` |
 | **Annotation glyphs** (NAGs, CTA-97) after the SAN — in the mainline's cells, the side lines and the map's labels, on every board, read-only ones included: the move mark first (`!` `!!` green, `?` orange, `??` red, `!?` magenta, `?!` blue, a shade per scheme), then the evaluation and the features, plain; a code outside the table as `$N` | `moves`, `map` | always | `NagGlyphs` + `nagToneSx.ts` (`views/shared/`), the map's `.map-nag` tspans, over `lib/moveAnnotations.ts`'s table (`nagGlyph`, `nagsInPrintOrder`, `nagTone`); a mainline cell reads `GameMove.nags` (`mainlineGame` carries it), a side-line token and a map label their node's |
-| **The move mark on the board** (CTA-168): the move on screen's first move mark (`!!` `!` `!?` `?!` `?` `??`, `□` / `⊗` too) as lichess's round badge in the top corner of the square it landed on, in the theme's `chess.nag` tone, above the PGN's circles; nothing for a move without one | `overlay` (`${testId}-move-glyph`) | `moveMarks` (on by default; the Analysis Board's and the Library game's switch) | `MoveGlyphBadge` (`views/shared/`) over `moveMarkBadge` ([`pgn-annotations.md`](./pgn-annotations.md) §4) |
+| **The move mark on the board** (CTA-168): the move on screen's first move mark (`!!` `!` `!?` `?!` `?` `??`, `□` / `⊗` too) as lichess's round badge in the top corner of the square it landed on, in the theme's `chess.nag` tone, above the PGN's circles; nothing for a move without one | `overlay` (`${testId}-move-glyph`) | `moveMarks` (on by default; a Case's Display switch and the Library game's) | `MoveGlyphBadge` (`views/shared/`) over `moveMarkBadge` ([`pgn-annotations.md`](./pgn-annotations.md) §4) |
 | **Evals** on the mainline's cells only | `moves` | `evalsByFen` | `MoveList`'s `mainlineEvalsOnly` |
 | **Masked notation** — every printed move in coordinates when the mask hides its piece | all but `arrows` / `overlay` | `mask` | `maskSanLine` / `maskNodeSan`; [`masked-pieces.md`](./masked-pieces.md) §4 |
 | **Extension tint** on moves added this session | `moves` | `extensionIds` | the selection store |
@@ -130,7 +130,7 @@ const parts = useVariationsExplorer({
 | **The PGN's shapes** (CTA-143): the `[%cal]` arrows and `[%csl]` circles of the comments at the position on screen (the game's opening comment at the start), in the theme's `chess.drawing` brushes — **with** the next-move arrows, the required move's and the chance / width overlay, a later arrow on the same squares drawn over an earlier | `arrows`, `overlay` (`${testId}-shape-circles`) | `annotations` | `shapesOf` (`lib/boardShapes.ts`), `ShapeCircles` (`views/shared/`) |
 | **Drawing shapes into the comment** (CTA-143, a lichess study's): a right-drag an arrow, a right-click a circle, the brush by the modifiers (plain green, Shift red, Alt blue, both yellow); drawn again it comes off, in another brush recoloured; the arrow previewed while drawing. The library's own right-drag arrows are off (`allowDrawingArrows: false`), so nothing lingers in its state — every shape is drawn from the comment. A board that does not edit keeps the library's temporary drawing | `boardOptions` (`onSquareMouseDown`, `onMouseOverSquare`, `onSquareMouseUp`), `arrows` | `onEditTree` and `annotations` | `toggleShape`, `brushOfKeys` + `setComments` ([`pgn-annotations.md`](./pgn-annotations.md) §2) |
 | **Comment editing** in the block (add, edit, delete) | `annotations` | `onEditTree` | `CommentDialog` + `setComments` |
-| **Next-moves bar**: the continuations at a branch; hovering one draws its arrow | `nextMoves` | always (nothing where there is no choice) | `views/tools/analysis/NextMovesBar.tsx` |
+| **Next-moves bar**: the continuations at a branch; hovering one draws its arrow | `nextMoves` | always (nothing where there is no choice) | `views/shared/NextMovesBar.tsx` |
 | **Next-move arrows**: mainline green, side lines blue, the hovered move red | `arrows` | `arrows.show` (off: only a hovered move's arrow) | `views/shared/nextMoveArrows.ts` |
 | **Play-chance arrows**: white with a magenta border, width by chance, a percentage per move in the bar | `overlay` (+ `nextMoves`) | `arrows.chances`, and only where the branch carries a `prc` mark | `ChanceArrows` over `chanceArrows.ts` |
 | **Width-sized arrows** (CTA-98): each continuation sized by a tag in its comment (`eval`, `games`, `prc`) or by the lines ahead, filled in the palette's colours; a move without the tag, where others have it, gray and half-transparent; a branch where none has it draws the ordinary arrows | `overlay` | `arrows.widthSource`, only while `arrows.show` | `ChanceArrows` with its `colors` (`weightedArrowColors`), over `lib/nextMoveWeights.ts` |
@@ -175,8 +175,8 @@ repertoire games pass nothing; a game never writes.
 | Board | Options | Placement |
 | --- | --- | --- |
 | **Repertoire player** | `onEditTree` (player only), `annotations` (player, once read), `arrows: { show, chances, required }`, `map: { tree, nodeId, coverage, addedIds, linked }` (none in Get to the end), `extensionIds` | `moves` behind "reading…", `map` once read, `nextMoves` on the Moves tab with Autoplay off |
-| **Analysis Board** | `onEditTree: core.replaceTree`, `playChances: false`, `annotations: true`, `moveMarks` (its Arrows tab's switch, CTA-168), `arrows: { show, widthSource, palette }` (its Arrows tab, CTA-98), `map: { addedIds, linked: true }`, `extensionIds` (the same set) | Moves and Map tabs (kept mounted); footer: `annotations`, the changes strip, Play's status line, `nextMoves` (Moves tab) |
-| **Library game** | as the Analysis Board, with `arrows: { show }` — classic, colour only — and `moveMarks` from its Moves tab's switch | as the Analysis Board |
+| **Analysis case** | `onEditTree: core.replaceTree`, `playChances: false`, `annotations: true`, `moveMarks` and `arrows: { show, widthSource, palette }` (its Display tab, kept with the Case — [`analysis-v2.md`](./analysis-v2.md) §3.4), `map: { linked: true }` | Moves and Map tabs (kept mounted); footer: `annotations`, Play's status line, `nextMoves` (Moves tab) |
+| **Library game** | as the Analysis case, with `arrows: { show }` — classic, colour only — `moveMarks` from its Moves tab's switch, and `addedIds` / `extensionIds` against the game as it arrived | as the Analysis case, and the changes strip |
 | **Openings explorer** | the same without `addedIds` / `extensionIds` — nothing is added against a record | as above, without the strip |
 | **Play with Engine** | the same without `addedIds` / `extensionIds`, and without `map` — nothing is added against a record, and (CTA-91) no Map is drawn or offered | Moves tab only (kept mounted); footer: `annotations`, Play's status line, the game-over result and its *Open in analysis* button (CTA-91), `nextMoves` (Moves tab) |
 | **Masked Pieces** | Play with Engine's, plus `mask` while its notation switch is on | Play with Engine's |

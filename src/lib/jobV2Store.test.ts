@@ -71,7 +71,7 @@ describe("the Jobs V2 store (CTA-188)", () => {
     expect((await reload()).map((job) => job.id)).toEqual(["good"]);
   });
 
-  it("changes a job in place; pauses, cancels and resumes as V1's do, a change of nothing writing nothing", async () => {
+  it("changes a job in place; pauses, cancels and resumes, a change of nothing writing nothing", async () => {
     await addJobV2(jobOf("live", "running"));
     await addJobV2(jobOf("over", "done"));
     await addJobV2(jobOf("cut", "interrupted"));

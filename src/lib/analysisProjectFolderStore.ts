@@ -12,8 +12,8 @@ import { newRecordId } from "./recordId";
 
 /**
  * **Analysis V2's folders** (CTA-186) — the `folders` object store of
- * `chessapp.analysisProjects`, oldest first, the legacy analyses' folder
- * store's rules (`savedAnalysisFolderStore.ts`): {@link createProjectFolder}
+ * `chessapp.analysisProjects`, oldest first, the app's folder store's rules
+ * (the Library's, `libraryFolderStore.ts`): {@link createProjectFolder}
  * hands back what it made, {@link moveProjectFolder} refuses the folder's own
  * subtree, {@link removeProjectFolder} keeps what it held — sub-folders and
  * Projects move up a level — and {@link removeProjectFolderDeep} takes the

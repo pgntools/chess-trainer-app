@@ -61,7 +61,7 @@ const seedOptions = (engineId: string, preset: EnginePreset, settings: EngineSea
  * opened from the Case view's Jobs tab (`CaseJobs`' New job):
  *
  * - **asks first when the Case has a job** (`jobV2OfCase`: Start a new
- *   analysis / Check existing — the Jobs V2 view at it), as V1's does;
+ *   analysis / Check existing — the Jobs V2 view at it);
  * - **the engine and its preset**, each a select as the top bar's Engine menu
  *   offers them, **prefill** the depth and time per move (the preset's) and
  *   Threads, Hash and lines (the global search settings) — all editable for
