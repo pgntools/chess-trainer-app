@@ -261,12 +261,14 @@ settings ("Engine options changed", below) waits for the presets first
   and, while it answers, the engine server's; one this page cannot run listed
   disabled with its reason), stored through `useEngineChoice().setEngineId` as
   Settings → Engine stores it; the preset one of that engine's, selected with
-  `selectEnginePreset` as Settings → Engine's presets section does — and a
-  "Settings" link to Settings → Engine. **The depth and move time sit under the
+  `selectEnginePreset` as Settings → Engine's presets section does — and an
+  "Advanced settings" link to Settings → Engine at the popup's foot (CTA-189).
+  **The depth and move time sit under the
   preset**, theirs (`SearchLimitsFields`, the block Settings → Engine's preset
   form shows too); a change in the menu edits that preset's unsaved draft,
-  and the `EnginePresetChanges` strip under the preset select saves it (Save,
-  Save as new preset — CTA-185).
+  and the `EnginePresetChanges` actions in the title row — Save, Save as new
+  preset, no strip, no texts (CTA-189; a strip under the preset select until
+  then, CTA-185) — save it.
   Threads and Hash are offered up to what the engine running takes
   (`searchSettingLimitsOf`: one thread for a single-thread build, the device's
   for a multi-thread one, an engine server's declaration) — a stored value

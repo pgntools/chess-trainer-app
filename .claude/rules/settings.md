@@ -126,8 +126,10 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   language button — a robot and "Engine", styled as the language switch;
   under the engine and its preset, **each a select there too** (CTA-185: the
   same `describeEngines()` list and `setEngineId` as this tab, the engine's
-  presets and `selectEnginePreset` as §4.1's section), with a "Settings" link
-  back here; depth and move time typed as well as slid),
+  presets and `selectEnginePreset` as §4.1's section), with an "Advanced
+  settings" link back here at the popup's foot (CTA-189), and the preset's
+  unsaved changes saved from its title row (§4.1); depth and move time typed
+  as well as slid),
   `localStorage` `chessapp.engineSettings` (`lib/engineSearchSettings.ts`), a
   preference like the choice and likewise not in the zip
   ([`docs/engine.md`](../../docs/engine.md) §5.2).
@@ -236,12 +238,13 @@ whole design):
   here or in the top bar's Engine menu — edits **one unsaved draft** of the
   chosen engine's selected preset, kept in memory and **in effect at once**
   (every board takes it from its next search; a background job runs the
-  saved preset). While it differs from what is saved, an
-  `EnginePresetChanges` strip under the preset picker (and under the menu's
-  preset select) offers **Save** — the draft into the preset, Threads and
+  saved preset). While it differs from what is saved, the `EnginePresetChanges`
+  block offers **Save** — the draft into the preset, Threads and
   Hash into the global request — and **Save as new preset** — a new preset
   named in a dialog ("‹preset› (copy)" to start), selected for the engine,
-  the preset edited left as it was. A reload drops the draft; so, silently,
+  the preset edited left as it was: the strip under this section's preset
+  picker here, the actions alone in the Engine menu's title row (CTA-189 —
+  no strip there). A reload drops the draft; so, silently,
   does choosing another preset or engine; a draft brought back to what is
   saved is none. The lines (the menu's) are still written at once. A
   refused save is an `InlineAlert` above the form.

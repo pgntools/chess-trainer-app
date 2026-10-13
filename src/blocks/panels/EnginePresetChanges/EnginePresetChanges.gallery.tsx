@@ -7,9 +7,9 @@ import { DEEP_NAME, DEFAULT_NAME, LONG_NAME } from "./fixtures";
 
 const noop = () => {};
 
-const demo = (presetName: string, testId: string) => (
+const demo = (presetName: string, testId: string, variant: "strip" | "actions" = "strip") => (
   <Box sx={{ width: 420 }}>
-    <EnginePresetChanges presetName={presetName} onSave={noop} onSaveAs={noop} testId={testId} />
+    <EnginePresetChanges presetName={presetName} variant={variant} onSave={noop} onSaveAs={noop} testId={testId} />
   </Box>
 );
 
@@ -20,6 +20,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "Default changed — save, or save as a new preset", render: () => demo(DEFAULT_NAME, "gallery-preset-changes") },
     { name: "A preset of the reader's own", render: () => demo(DEEP_NAME, "gallery-preset-changes-own") },
     { name: "A long name", render: () => demo(LONG_NAME, "gallery-preset-changes-long") },
+    {
+      name: "The actions alone — the Engine menu's title row (CTA-189)",
+      render: () => demo(DEEP_NAME, "gallery-preset-changes-actions", "actions"),
+    },
   ],
 };
 

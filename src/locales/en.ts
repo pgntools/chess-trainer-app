@@ -407,7 +407,8 @@ const en = {
     button: "Engine",
     engine: "Engine",
     preset: "Preset",
-    settingsLink: "Settings",
+    /** The link to Settings → Engine at the popup's foot (CTA-189). */
+    advancedSettings: "Advanced settings",
     /** The number boxes at the depth and move-time sliders' ends (CTA-185). */
     depthTyped: "Search depth, typed",
     moveTimeTyped: "Move time in seconds, typed",

@@ -27,7 +27,6 @@ const mount = (
     engineId = LITE.id,
     presetId = "default",
     typedLimits = undefined as { threads: number; hashMb: number } | undefined,
-    changes = undefined as { onSave: () => void; onSaveAs: (name: string) => void } | undefined,
   } = {},
 ) => {
   const onChange = vi.fn();
@@ -45,7 +44,6 @@ const mount = (
       presets={PRESETS}
       presetId={presetId}
       onPresetChange={onPresetChange}
-      changes={changes}
       testId="engine-menu"
     />,
   );
@@ -272,23 +270,10 @@ describe("EngineSearchSettingsForm — the top bar's Engine menu (CTA-181)", () 
     });
   });
 
-  it("shows the preset's unsaved changes under its select — Save and Save as new preset — only while there are any (CTA-185)", async () => {
-    const user = userEvent.setup();
-    const onSave = vi.fn();
-    mount(SETTINGS, MULTI_THREAD_LIMITS, { presetId: "p-deep", changes: { onSave, onSaveAs: vi.fn() } });
-    const strip = screen.getByRole("region", { name: "Unsaved changes to deep-search" });
-    expect(within(strip).getByRole("button", { name: "Save as new preset" })).toBeInTheDocument();
-    await user.click(within(strip).getByRole("button", { name: "Save" }));
-    expect(onSave).toHaveBeenCalledTimes(1);
-    // Under the preset select, above the depth.
-    const select = screen.getByTestId("engine-menu-preset");
-    expect(select.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(strip.compareDocumentPosition(screen.getByTestId("engine-menu-depth")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it("shows no changes strip without changes", () => {
+  it("shows no changes strip — the popup's Save actions are the screen's, in its title row (CTA-189)", () => {
     mount();
     expect(screen.queryByRole("region", { name: /^Unsaved changes/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
   });
 
   it("passes axe", async () => {
