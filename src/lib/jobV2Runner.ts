@@ -29,6 +29,8 @@ import {
   type JobV2Output,
 } from "./jobsV2";
 import { createJobV2LiveFeed, type JobV2Live, type JobV2LiveFeed } from "./jobV2Live";
+import { lichessEvalApiUrl, reportLichessEvalUnreachable } from "./jobsSettings";
+import { lookupLichessEval, positionResultOfLichessEval, type LichessEvalLookup } from "./lichessEvalApi";
 import { interruptRunningJobsV2, jobsV2Snapshot, loadJobsV2, subscribeJobsV2, updateJobV2 } from "./jobV2Store";
 import { newRecordId } from "./recordId";
 import type { GameTree } from "./gameTree";
@@ -49,6 +51,13 @@ import type { GameTree } from "./gameTree";
  *   options, clamped to what the engine declared, and **the job's own preset**
  *   (`job.preset.values`, met against the engine) — never the preset selected
  *   when it runs.
+ * - **The lichess evaluation API first** (CTA-193), while the Jobs settings
+ *   turn it on (`lib/jobsSettings.ts`): a position the API holds at the job's
+ *   depth or deeper is its result — its lines up to the position's `MultiPV`
+ *   — and no engine searches it; one it lacks, or holds shallower, is
+ *   searched. An API that does not answer is said once
+ *   (`reportLichessEvalUnreachable`, the shell's warning) and left alone for
+ *   the rest of the run, which goes on with the engine.
  * - **A checkpoint after every position** — and, while a position is
  *   searched, **its live progress** (CTA-190): the engine's depth, nodes,
  *   nps, time and best line off each `info` line, a throttled in-memory
@@ -272,6 +281,18 @@ export const createJobV2Runner = ({
     return undefined;
   };
 
+  /** Ask the lichess evaluation API about a position — given up at once when the run is stopped. */
+  const askEvalApi = async (url: string, fen: string, signal: Abort): Promise<LichessEvalLookup> => {
+    const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    signal.onAbort.add(onAbort);
+    try {
+      return await lookupLichessEval(url, fen, controller.signal);
+    } finally {
+      signal.onAbort.delete(onAbort);
+    }
+  };
+
   /**
    * **The results, by the job's target** — each ticked variant a new Game
    * Case in the source's Project or another, linked from the source Case, or
@@ -351,11 +372,22 @@ export const createJobV2Runner = ({
       }
 
       const results: (PositionResult | undefined)[] = job.checkpoint.map((entry) => entry ?? undefined);
+      // The lichess evaluation API, while it is on — until it fails to answer once in this run (CTA-193).
+      let evalApi = lichessEvalApiUrl();
       for (const [index, position] of source.positions.entries()) {
         if (!stillRunning(id, signal)) return;
         if (results[index] !== undefined) continue;
 
         let result = resultWithoutSearch(position, job.options);
+        if (result === undefined && evalApi !== undefined) {
+          const answer = await askEvalApi(evalApi, position.fen, signal);
+          if (!stillRunning(id, signal)) return;
+          if (answer.kind === "found") result = positionResultOfLichessEval(position, answer.eval, job.options.depth);
+          else if (answer.kind === "unreachable") {
+            evalApi = undefined;
+            reportLichessEvalUnreachable({ jobId: id, name: job.source.name });
+          }
+        }
         if (result === undefined) {
           if (handle === undefined) {
             try {
