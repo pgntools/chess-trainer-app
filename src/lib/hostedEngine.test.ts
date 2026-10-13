@@ -159,6 +159,24 @@ describe("HostedEngine", () => {
     expect(analyseCalls()[0].body?.options).toEqual({ UCI_LimitStrength: false, SyzygyPath: "/tb/syzygy" });
   });
 
+  it("hands on the search's progress from each relayed info line — nodes, nps, time (CTA-190)", async () => {
+    analyse = (body) =>
+      ndjson([
+        { type: "start", fen: body.fen, engine: "stockfish-19", applied: {}, refused: [] },
+        {
+          type: "info",
+          fen: body.fen,
+          depth: 18,
+          uci: "info depth 18 seldepth 24 multipv 1 score cp 31 nodes 4200000 nps 3500000 hashfull 210 time 1200 pv e2e4 e7e5",
+        },
+        { type: "bestmove", fen: body.fen, bestmove: "e2e4", ponder: null, stopped: false, uci: "bestmove e2e4" },
+      ]);
+    const { engine, messages } = engineWith();
+    engine.search(START, { depth: 18 });
+    await vi.waitFor(() => expect(messages.at(-1)?.bestMove).toBe("e2e4"));
+    expect(messages[0]).toMatchObject({ fen: START, depth: 18, seldepth: 24, nodes: 4_200_000, nps: 3_500_000, hashfull: 210, time: 1200 });
+  });
+
   it("reads lines however the stream is cut", async () => {
     analyse = (body) => ndjson(searchEvents(body.fen as string), 7);
     const { engine, messages } = engineWith();

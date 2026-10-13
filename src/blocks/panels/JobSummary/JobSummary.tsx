@@ -45,6 +45,8 @@ export type JobSummaryProps<J extends JobSummaryJob = Job> = {
   links?: ReactNode;
   /** More facts, after the engine's — Jobs V2's preset and target. */
   extraFacts?: readonly JobSummaryFact[];
+  /** Under the progress bar, while the job runs: its engine's live progress — Jobs V2's `JobEngineProgress` (CTA-190). Absent, nothing there. */
+  live?: ReactNode;
   /** Why it failed, in words — absent, `jobs.errors.<code>`. */
   errorText?: string;
   onCancel: () => void;
@@ -87,7 +89,8 @@ const stamp = (value: string | null): ReactNode => {
  * Presentational: the job, its links and its actions are props; its words are
  * the app's (`jobs.*`). Any job with a {@link JobSummaryJob}'s fields — Jobs
  * V2's too (CTA-188), its preset and target as `extraFacts`, its outputs as
- * `links`.
+ * `links`, and its engine's live progress under the progress bar as `live`
+ * (CTA-190).
  */
 function JobSummary<J extends JobSummaryJob = Job>({
   job,
@@ -96,6 +99,7 @@ function JobSummary<J extends JobSummaryJob = Job>({
   outputLink,
   links,
   extraFacts = [],
+  live,
   errorText,
   onCancel,
   onPause,
@@ -171,6 +175,8 @@ function JobSummary<J extends JobSummaryJob = Job>({
         }
         testId={`${testId}-progress`}
       />
+
+      {live}
 
       {job.status === "failed" && job.error !== null && (
         <InlineAlert severity="error" dense testId={`${testId}-error`}>

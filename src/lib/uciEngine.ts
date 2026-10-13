@@ -90,6 +90,16 @@ export const parseEngineLine = (line: string, fen: string | undefined): EngineMe
   */
   const score = line.match(/\bscore\s+(cp|mate)\s+(-?\d+)/);
   const multipv = line.match(/\bmultipv\s+(\d+)/)?.[1];
+  /*
+    The progress fields (CTA-190) are read only off an `info` line, and only
+    before its `pv`, so nothing in a line of moves or an `info string` is
+    taken for one.
+  */
+  const progress = /^info\s/.test(line) && !/^info\s+string\b/.test(line) ? ` ${line.split(/\spv\s/)[0]}` : "";
+  const count = (name: string): number | undefined => {
+    const value = progress.match(new RegExp(`\\s${name}\\s+(\\d+)`))?.[1];
+    return value === undefined ? undefined : Number(value);
+  };
 
   return {
     uciMessage: line,
@@ -101,6 +111,13 @@ export const parseEngineLine = (line: string, fen: string | undefined): EngineMe
     // The leading space keeps this off `seldepth`.
     depth: Number(line.match(/ depth\s+(\S+)/)?.[1] ?? 0),
     multipv: multipv === undefined ? undefined : Number(multipv),
+    nodes: count("nodes"),
+    nps: count("nps"),
+    time: count("time"),
+    seldepth: count("seldepth"),
+    hashfull: count("hashfull"),
+    currmove: progress.match(/\scurrmove\s+(\S+)/)?.[1],
+    currmovenumber: count("currmovenumber"),
     fen,
   };
 };

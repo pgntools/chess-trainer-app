@@ -13,6 +13,7 @@ import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../../lib/computerAnalysis
 import { createEnginePreset, selectEnginePreset, setEnginePresetSearch } from "../../../lib/enginePresetStore";
 import { resolveEngine } from "../../../lib/engines";
 import { jobV2MergedPgn, jobV2Of, withCheckpointV2, type JobV2, type JobV2Target } from "../../../lib/jobsV2";
+import { JOB_V2_LIVE_CHANNEL, type JobV2Live } from "../../../lib/jobV2Live";
 import { addJobV2, findJobV2, jobsV2Snapshot, loadJobsV2 } from "../../../lib/jobV2Store";
 import { parsePgnTree } from "../../../lib/pgn";
 import { expectNoAxeViolations } from "../../../test/axe";
@@ -309,5 +310,55 @@ describe("the Jobs V2 view (CTA-188)", () => {
     const confirm = await screen.findByRole("dialog", { name: "Delete this job?" });
     await user.click(within(confirm).getByRole("button", { name: "Delete" }));
     await waitFor(async () => expect((await loadJobsV2()).map((each) => each.id)).toEqual(["job"]));
+  });
+});
+
+describe("the Jobs V2 view's live engine progress (CTA-190)", () => {
+  const liveOf = (depth: number, nodes: number): JobV2Live => ({
+    jobId: "live",
+    index: 1,
+    move: "1... e5",
+    depth,
+    seldepth: depth + 9,
+    nodes,
+    nps: 2_400_000,
+    hashfull: 457,
+    elapsedMs: 12_340,
+    score: { kind: "cp", value: 35 },
+    line: ["e5", "Nf3"],
+    heardAt: Date.now(),
+  });
+
+  it("shows the running job's engine — heard from the runner's tab — under its progress, and none once it is paused", async () => {
+    const { project } = await seed();
+    const job = finishedJob(project.id, { kind: "case" }, "live");
+    await addJobV2({ ...job, status: "running", checkpoint: job.checkpoint.map((entry, index) => (index === 0 ? entry : null)) });
+    const user = userEvent.setup();
+    const { baseElement } = mount("/analysis/jobs?job=live");
+    const summary = await screen.findByTestId("analysis-v2-jobs-summary");
+    expect(within(summary).queryByRole("region", { name: "Engine" })).not.toBeInTheDocument();
+
+    // The runner lives in another tab: its snapshot crosses on the channel.
+    const runnerTab = new BroadcastChannel(JOB_V2_LIVE_CHANNEL);
+    try {
+      runnerTab.postMessage({ live: liveOf(18, 900_000) });
+      const engine = await within(summary).findByRole("region", { name: "Engine" });
+      expect(within(engine).getByTestId("analysis-v2-jobs-engine-move")).toHaveTextContent("Searching 1... e5");
+      expect(within(engine).getByTestId("analysis-v2-jobs-engine-facts-depth")).toHaveTextContent("18/27");
+      runnerTab.postMessage({ live: liveOf(22, 3_141_592) });
+      await waitFor(() => expect(within(engine).getByTestId("analysis-v2-jobs-engine-facts-nodes")).toHaveTextContent("3.1M"));
+      expect(within(engine).getByTestId("analysis-v2-jobs-engine-facts-depth")).toHaveTextContent("22/31");
+      expect(within(engine).getByTestId("analysis-v2-jobs-engine-facts-nps")).toHaveTextContent("2.4M nodes/s");
+      expect(within(engine).getByTestId("analysis-v2-jobs-engine-facts-time")).toHaveTextContent("12.3 s");
+      expect(within(engine).getByTestId("analysis-v2-jobs-engine-line")).toHaveTextContent("+0.35 e5 Nf3");
+      await expectNoAxeViolations(baseElement);
+
+      // Paused: the job's record says so before any word from the runner — the section goes.
+      await user.click(within(summary).getByRole("button", { name: "Pause" }));
+      await waitFor(() => expect(within(summary).queryByRole("region", { name: "Engine" })).not.toBeInTheDocument());
+    } finally {
+      runnerTab.postMessage({ live: null });
+      runnerTab.close();
+    }
   });
 });

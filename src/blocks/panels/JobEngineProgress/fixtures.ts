@@ -1,0 +1,43 @@
+import type { JobV2Live } from "../../../lib/jobV2Live";
+
+/*
+  A running Jobs V2 job's live engine progress (CTA-190), typed with
+  `src/lib/`'s own snapshot. Imported only by the block's gallery and its test.
+*/
+
+/** Deep in a search: every number the engine reports, a best line with its score. */
+export const DEEP: JobV2Live = {
+  jobId: "job",
+  index: 12,
+  move: "7. Nf3",
+  depth: 22,
+  seldepth: 31,
+  nodes: 3_141_592,
+  nps: 2_400_000,
+  hashfull: 457,
+  elapsedMs: 12_340,
+  score: { kind: "cp", value: 35 },
+  line: ["Nc6", "Bb5", "a6", "Ba4", "Nf6", "O-O"],
+  heardAt: Date.UTC(2026, 9, 13, 12, 0, 0),
+};
+
+/** A search just begun, on the game's last position (no move judged from it): no counts yet, no line. */
+export const STARTING: JobV2Live = {
+  jobId: "job",
+  index: 0,
+  depth: 0,
+  elapsedMs: 0,
+  line: [],
+  heardAt: Date.UTC(2026, 9, 13, 12, 0, 0),
+};
+
+/** A mate found for Black. */
+export const MATE: JobV2Live = {
+  ...DEEP,
+  move: "31... Qh4",
+  depth: 18,
+  seldepth: 24,
+  hashfull: undefined,
+  score: { kind: "mate", value: -3 },
+  line: ["Qh4+", "g3", "Qxg3#"],
+};

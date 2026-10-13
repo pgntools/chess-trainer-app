@@ -150,6 +150,23 @@ export const formatScore = (score: Score | null): string => {
 };
 
 /**
+ * A count the engine reports — nodes, nodes per second — as it is read at a
+ * glance: `"950"`, `"12.3k"`, `"2.4M"`, `"1.1G"` (CTA-190, a Jobs V2 job's
+ * live progress). One decimal, a trailing `.0` dropped.
+ */
+export const formatEngineCount = (value: number): string => {
+  if (!Number.isFinite(value) || value < 1000) return String(Math.max(0, Math.round(Number.isFinite(value) ? value : 0)));
+  const units = ["k", "M", "G", "T"];
+  let scaled = value;
+  let unit = -1;
+  while (unit < units.length - 1 && Math.round(scaled / 100) >= 10) {
+    scaled /= 1000;
+    unit += 1;
+  }
+  return `${scaled.toFixed(1).replace(/\.0$/, "")}${units[unit]}`;
+};
+
+/**
  * How much of the evaluation bar White fills, as a fraction in `[0, 1]`.
  *
  * The centipawn curve is the logistic one lichess uses, so the bar moves the way
