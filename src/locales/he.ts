@@ -2450,6 +2450,10 @@ const he: typeof en = {
         line: "הקו הטוב ביותר",
         announce: "המנוע מחפש את {{move}}.",
         announceDepth: "המנוע מחפש את {{move}}, עומק {{depth}}.",
+        alive: "המנוע פעיל",
+        heardNow: "נשמע זה עתה",
+        heardSeconds: "נשמע לפני {{seconds}} שנ׳",
+        heardMinutes: "נשמע לפני {{minutes}} דק׳",
       },
       indicator: {
         running: "משימות V2 {{done}}/{{total}}",

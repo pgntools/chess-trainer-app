@@ -177,6 +177,18 @@ describe("HostedEngine", () => {
     expect(messages[0]).toMatchObject({ fen: START, depth: 18, seldepth: 24, nodes: 4_200_000, nps: 3_500_000, hashfull: 210, time: 1200 });
   });
 
+  it("hands on a heartbeat as a message stamped with its position — no line, depth or move of its own (CTA-194)", async () => {
+    const [start, info, bestmove] = searchEvents(START);
+    analyse = () => ndjson([start, info, { type: "heartbeat", fen: START }, { type: "heartbeat", fen: START }, bestmove]);
+    const { engine, messages, onFailure } = engineWith();
+    engine.search(START, { depth: 30 });
+    await vi.waitFor(() => expect(messages.at(-1)?.bestMove).toBe("e2e4"));
+    expect(messages.map((message) => message.heartbeat ?? false)).toEqual([false, true, true, false]);
+    expect(messages[1]).toEqual({ uciMessage: "", fen: START, heartbeat: true });
+    expect(messages[0].heartbeat).toBeUndefined();
+    expect(onFailure).not.toHaveBeenCalled();
+  });
+
   it("reads lines however the stream is cut", async () => {
     analyse = (body) => ndjson(searchEvents(body.fen as string), 7);
     const { engine, messages } = engineWith();

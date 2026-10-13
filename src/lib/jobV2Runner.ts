@@ -88,7 +88,7 @@ export type JobV2RunnerDeps = {
   engineFor?: (id: string) => Promise<EngineDescriptor>;
   /** How long the engine has to answer `uci` before the job fails. */
   handshakeTimeoutMs?: number;
-  /** How long a search may go without a word from the engine before the job fails. */
+  /** How long a search may go without a word from the engine — a line or an engine server's heartbeat — before the job fails. */
   silenceTimeoutMs?: number;
   /** Whether to take the Web Lock (absent: where the browser has one). */
   useLock?: boolean;
@@ -192,6 +192,13 @@ export const createJobV2Runner = ({
    * engine goes quiet for longer than the silence timeout, or ends the search
    * without a single scored line. Every word the engine says about it goes to
    * the live feed (CTA-190), cleared however the search ends.
+   *
+   * **Quiet is not silent** (CTA-194): deep in a search Stockfish says nothing
+   * for minutes, so an engine server sends a `heartbeat` while its engine is
+   * alive but quiet — heard like an `info` line (the timer starts again, the
+   * live snapshot's `heardAt` moves on), changing no line, depth or score. An
+   * engine that sends none — an in-browser one, an older engine server — is
+   * held to the silence timeout as before, and so is a server whose engine died.
    */
   const searchPosition = (
     handle: EngineHandle,
@@ -236,6 +243,13 @@ export const createJobV2Runner = ({
       const off = handle.onMessage((message) => {
         if (message.fen !== position.fen) return;
         listen();
+        if (message.heartbeat) {
+          // The engine server's word that its engine is alive through a long silence (CTA-194): heard, nothing more.
+          const heardAt = now().getTime();
+          live = { ...live, elapsedMs: Math.max(live.elapsedMs, heardAt - startedAt), heardAt };
+          liveFeed.update(live);
+          return;
+        }
         const best = lines[0];
         if (message.pv !== undefined && message.depth !== undefined) {
           lines = withSearchInfo(lines, message, position.turn);

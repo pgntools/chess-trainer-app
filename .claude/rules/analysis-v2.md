@@ -97,10 +97,10 @@ other screen hands a game to Analysis as a new Case** (§1.1).
 | `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board; the Case view's links and their picker, §7), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings — `useJobsV2`, `useCaseLinks` too), `paths.ts` (the addresses — `jobsV2Path`). `jobs/` (CTA-188): `JobsV2Screen.tsx` (`/analysis/jobs`, behind `JobsV2Main.tsx`), `JobV2Reports.tsx` (a done job's report, another's results so far), `NewJobV2.tsx` (the popup's screen side), `JobsV2Shell.tsx` (`JobV2Runner`, `JobsV2Indicator` — the shell's), `useJobV2Live.ts` (the live progress, `liveOfJob` — CTA-190), `JobsSettingsTab.tsx` and `useJobsSettings.ts` (the Jobs settings, CTA-193). |
 | `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/forms/JobTargetFields/`, `src/blocks/lists/CaseJobs/`, `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/`; since CTA-190 `src/blocks/panels/JobEngineProgress/`; since CTA-193 `src/blocks/forms/JobsSettingsForm/` (over `EngineServerForm`, its words by `localeKey`) | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and so, for Jobs V2, `JobsTable`, `JobSummary` (generic over a job's fields), `NewJobDialog`, `ComputerAnalysisForm` (the engine and preset selects, one variant, a section before the form; `JobSummary`'s `live` slot, CTA-190), `ComputerAnalysisReport` and `EvalGraph` — built for the legacy Jobs, Jobs V2's since CTA-192. |
 | `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts`, `src/views/shared/AnalysisEvalReport.tsx` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws, the eval graph and report the Case view's Graph tab shows. |
-| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectRows.test.ts` (the browser's rows — its Cases, CTA-191), `src/lib/analysisProjectPicks.test.ts` (its picks, CTA-191), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), `jobsSettings.test.ts` and `lichessEvalApi.test.ts` (CTA-193: the settings, the client — the FEN, the mapping, a 404, the timeout, a bad body), the runner's API cases in `jobV2Runner.test.ts`, `JobsSettingsForm.test.tsx`, `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links on its Info tab, the Jobs V2 view; the Jobs settings tab and New Job V2's default, CTA-193), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190; the API's warning, CTA-193), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the database named in both pages, the retired ones in neither), `src/lib/retiredDatabases.test.ts`; **the hand-offs** (§1.1): `OpeningsBoard.test.tsx`, `PlayWithEngine.test.tsx`, `PlayedGames.test.tsx`, `Library.test.tsx` (the game board's Open in Analysis and a shipped game's copy), `LibraryPicks.test.tsx` (the batch), `StoredGameEmbed.test.tsx` and `EmbedSource.test.tsx` (an embed's Case address and its Open in Analysis), `ProjectPickerDialog.test.tsx` (the New project entry). |
+| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectRows.test.ts` (the browser's rows — its Cases, CTA-191), `src/lib/analysisProjectPicks.test.ts` (its picks, CTA-191), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), the engine server's heartbeat in `jobV2Runner.test.ts`, `hostedEngine.test.ts`, `JobEngineProgress.test.tsx` and `JobsV2Shell.test.tsx` (CTA-194), `jobsSettings.test.ts` and `lichessEvalApi.test.ts` (CTA-193: the settings, the client — the FEN, the mapping, a 404, the timeout, a bad body), the runner's API cases in `jobV2Runner.test.ts`, `JobsSettingsForm.test.tsx`, `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links on its Info tab, the Jobs V2 view; the Jobs settings tab and New Job V2's default, CTA-193), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190; the API's warning, CTA-193), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the database named in both pages, the retired ones in neither), `src/lib/retiredDatabases.test.ts`; **the hand-offs** (§1.1): `OpeningsBoard.test.tsx`, `PlayWithEngine.test.tsx`, `PlayedGames.test.tsx`, `Library.test.tsx` (the game board's Open in Analysis and a shipped game's copy), `LibraryPicks.test.tsx` (the batch), `StoredGameEmbed.test.tsx` and `EmbedSource.test.tsx` (an embed's Case address and its Open in Analysis), `ProjectPickerDialog.test.tsx` (the New project entry). |
 
 Locale keys: `analysisV2.*` (`browser`, `folder`, `project`, `case`,
-`newCase`, `workspace`; `jobs`, `links` — CTA-188; `jobs.live`, `jobs.indicator.liveDepth` / `liveNodes` — CTA-190; `jobs.tabs`, `jobs.settings` — CTA-193), `nav.folders.analysisV2`, `nav.analysisProjects`,
+`newCase`, `workspace`; `jobs`, `links` — CTA-188; `jobs.live`, `jobs.indicator.liveDepth` / `liveNodes` — CTA-190; `jobs.live.alive` / `heardNow` / `heardSeconds` / `heardMinutes` — CTA-194; `jobs.tabs`, `jobs.settings` — CTA-193), `nav.folders.analysisV2`, `nav.analysisProjects`,
 `nav.analysisJobs`, `pages.analysisProjects` / `analysisProject` / `analysisCase` / `analysisJobs`, the
 New Job form's additions under `computerAnalysis.form.*` (`engineSelect`, `preset`, `presetHelp`,
 `variant`, `variantHelpSingle`), the hand-off's `analysisV2.sendTo.*` and
@@ -550,6 +550,18 @@ Every write idempotent.
 - **Failing**: no handle, no `uci` answer in 30 s, 120 s of silence, or a
   search ending with no scored line → `failed`, `engine`; the checkpoint
   stays, so Resume goes on from it.
+- **Quiet is not silent** (CTA-194): deep in a search Stockfish prints
+  nothing for minutes (at depth 32+, MultiPV 5, one thread, one root move
+  took 191 s), so an engine server's engine sends a **heartbeat** while it is
+  alive but quiet — the server's `isready` answered mid-search, every 15 s of
+  silence ([`docs/engine.md`](../../docs/engine.md) §8). `HostedEngine` hands
+  it on as an `EngineMessage` with `heartbeat: true`; the runner hears one
+  about the position it searches as it hears an `info` line — the silence
+  timer starts again, the live snapshot's `heardAt` moves on — and changes no
+  line, depth or score. A server whose engine died sends none and fails
+  within the timeout as before; so does an older server, and an in-browser
+  engine never sends one. Every other `onMessage` consumer ignores it
+  (`useEngineModule` returns on it).
 - **At the end**, the handle terminated, **by its target**:
 
 - `project` / `other` — the Project must still be there (else `target`);
@@ -668,12 +680,21 @@ server's alike (both reach `parseEngineLine`).
   runner's tab closed).
 - **Shown only for a `running` job it names** (`liveOfJob`): the Jobs V2
   view's panel, under the progress bar, `JobEngineProgress` through
-  `JobSummary`'s `live` slot — the move, depth / seldepth, nodes, nps
-  ("2.4M"), the time on this position, the hash, the best line and score;
-  its status region announces the move and every tenth depth, never each
-  update. The header's indicator beats (an opacity cycle on the theme's
-  `transitions.duration.complex`, still under reduced motion) and adds
-  "depth 22, 3.1M nodes" to its name, unannounced.
+  `JobSummary`'s `live` slot — the move, **that the engine is alive** (a
+  mark that beats once each time it is heard, and "Engine alive · heard 3 s
+  ago" from `heardAt` on the block's own one-second clock — CTA-194), depth /
+  seldepth, nodes, nps ("2.4M"), the time on this position, the hash, the
+  best line and score; its status region announces the move and every tenth
+  depth, never each update, the beat or the time since. The header's
+  indicator beats with it and adds "depth 22, 3.1M nodes" to its name,
+  unannounced.
+- **The beat** (`useEnginePulse`, `blocks/panels/JobEngineProgress/enginePulse.ts`,
+  CTA-194): one opacity beat each time `heardAt` moves on — an `info` line or
+  a heartbeat — four of the theme's `transitions.duration.complex` long and
+  never cut short (a word heard during a beat starts none), so a busy engine
+  beats steadily and a quiet one once per heartbeat; timed by `heardAt`, so
+  every tab beats alike; still under reduced motion (the words carry it).
+  The heartbeat is published like a line, so another tab sees it too.
 
 ### 6.9 The Jobs settings and the lichess evaluation API (CTA-193)
 

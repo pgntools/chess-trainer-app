@@ -315,6 +315,8 @@ export const useEngineModule = ({
   */
   useEffect(() => {
     const unsubscribe = ensureEngine().onMessage((message) => {
+      // An engine server's word that a silent engine is alive (CTA-194) — nothing for a board.
+      if (message.heartbeat) return;
       const { fen: searchedFen, pv, depth: reached, multipv, bestMove } = message;
       /*
         `fen` has no UCI equivalent — the wrapper stamps it on. Without it there

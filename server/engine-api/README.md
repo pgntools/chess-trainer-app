@@ -32,6 +32,7 @@ engine's path. `ENGINE_API_CONFIG` names another file.
 | `maxHashMb` | 4096 | The most `Hash` one session may set (MB). |
 | `maxDepth` | 99 | The deepest `go depth`. |
 | `maxMovetimeMs` | 600000 | The longest `go movetime`. |
+| `heartbeatS` | 15 | Seconds of silence from a searching engine before its stream hears a `heartbeat` (below). More than 0. |
 | `allowedOrigins` | `[]` | Origins allowed besides this machine's (`localhost`, `127.0.0.1`, any port — always allowed). `https://chessapp.dev` and `https://pgntools.github.io` let the deployed sites use it (the second trusts every site under `pgntools.github.io`). |
 | `legacyEngine` | the first | The engine behind the legacy `/eval`. |
 
@@ -96,6 +97,7 @@ echoed verbatim on every event.
 ```
 {"type":"start","fen":"…","engine":"stockfish-19","applied":{"MultiPV":3,"Threads":4,"Hash":256},"refused":[]}
 {"type":"info","fen":"…","depth":18,"seldepth":24,"multipv":1,"score":{"cp":31},"nodes":…,"nps":…,"hashfull":…,"timeMs":…,"pv":["f1b5","a7a6"],"uci":"info depth 18 …"}
+{"type":"heartbeat","fen":"…"}
 {"type":"bestmove","fen":"…","bestmove":"f1b5","ponder":"a7a6","stopped":false,"uci":"bestmove f1b5 ponder a7a6"}
 ```
 
@@ -104,6 +106,15 @@ echoed verbatim on every event.
   through with `string`.
 - It **always ends** with `bestmove`, `superseded` (never started) or `error`
   (the engine died — the session is gone).
+- **`heartbeat`** — the engine is searching but has printed nothing for
+  `heartbeatS`. Stockfish says nothing while it searches one root move, which
+  deep in a search with several lines is minutes, so the server asks it
+  `isready` mid-search and sends a `heartbeat` when its `readyok` comes back
+  (the `readyok` itself is not relayed): the engine's UCI loop answers, not
+  merely its process lives. Again after each further `heartbeatS` of silence;
+  never after `bestmove`, and none from an engine that died or hung (a probe
+  not yet answered is not sent again). It carries no `uci`. The app's Jobs
+  V2 runner reads it to tell a deep search from a dead engine (CTA-194).
 - A finished game: `info depth 0 score mate 0`, then `bestmove (none)`.
 - **Hanging up stops the search.**
 
@@ -142,4 +153,4 @@ The engine now starts on the first request, not with the server.
 | `engine_api/uci.py` | `UciProcess` and the `option` / `info` / `bestmove` parsers |
 | `engine_api/legacy.py` | the cloned routes |
 | `engine_api/config.py` | `engines.local.json` |
-| `tests/` | pure tests, and sessions and HTTP over a real engine (skipped where none is configured) |
+| `tests/` | pure tests, and sessions and HTTP over a real engine (skipped where none is configured); `quiet_engine.py`, a stand-in UCI engine that goes quiet while it searches (the heartbeat's tests) |

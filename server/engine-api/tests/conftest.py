@@ -7,8 +7,11 @@ engine — the first one in the engine config (`engines.local.json`, or
 
 from __future__ import annotations
 
+import contextlib
 import os
 import socket
+import stat
+import sys
 import threading
 import time
 from collections.abc import Iterator
@@ -68,13 +71,29 @@ def settings(engine_spec: EngineSpec) -> Settings:
     return small_settings(engine_spec)
 
 
+def quiet_engine(folder: Path, mode: str = "silent") -> EngineSpec:
+    """`tests/quiet_engine.py` as an engine binary — one that goes quiet while it searches (CTA-194)."""
+    script = Path(__file__).with_name("quiet_engine.py")
+    launcher = folder / f"quiet-{mode}"
+    launcher.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{script}" {mode}\n')
+    launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR)
+    return EngineSpec(id=f"quiet-{mode}", path=str(launcher))
+
+
 @pytest.fixture(scope="module")
 def server_url(engine_spec: EngineSpec) -> Iterator[str]:
     """A real server on a free port — streaming and hang-ups behave as they do for a browser."""
+    with serve(small_settings(engine_spec)) as url:
+        yield url
+
+
+@contextlib.contextmanager
+def serve(settings: Settings) -> Iterator[str]:
+    """`settings` served on a free port, until the block ends."""
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
         port = probe.getsockname()[1]
-    config = uvicorn.Config(create_app(small_settings(engine_spec)), host="127.0.0.1", port=port, log_level="warning")
+    config = uvicorn.Config(create_app(settings), host="127.0.0.1", port=port, log_level="warning")
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
@@ -83,6 +102,8 @@ def server_url(engine_spec: EngineSpec) -> Iterator[str]:
         if time.monotonic() > deadline or not thread.is_alive():
             raise RuntimeError("the test server did not start")
         time.sleep(0.05)
-    yield f"http://127.0.0.1:{port}"
-    server.should_exit = True
-    thread.join(timeout=10)
+    try:
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.should_exit = True
+        thread.join(timeout=10)
