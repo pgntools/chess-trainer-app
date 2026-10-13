@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
 import { SettingsSection, SwitchField, TextInputField } from "../../../design-system/components/forms";
 import type { EngineServerOfflineReason } from "../../../lib/engineServer";
+import type { LichessEvalApiOfflineReason } from "../../../lib/jobsSettings";
 
 /** What is known of the server, as the form shows it. */
 export type EngineServerFormStatus =
@@ -23,7 +24,7 @@ export type EngineServerFormStatus =
       /** How long that answer took, in ms. */
       latencyMs: number;
     }
-  | { state: "offline"; url: string; reason: EngineServerOfflineReason };
+  | { state: "offline"; url: string; reason: EngineServerOfflineReason | LichessEvalApiOfflineReason };
 
 /** Connect's answer to its last press. */
 export type EngineServerConnectFeedback = "idle" | "checking" | "answered" | "failed";
@@ -52,6 +53,15 @@ export type EngineServerFormProps = {
   /** Under the details while it is on — Settings → Engine puts the server's engines here (an `EnginePicker`). */
   children?: ReactNode;
   /**
+   * The catalog block its words come from — the same keys as
+   * `settings.engine.server`'s (`title`, `description`, `enable`, `enableHelp`,
+   * `address`, `addressHelp`, `addressInvalid`, `connect`, `retry`,
+   * `indicator.*`, `status.connecting`, `status.checkedAt`, `status.<reason>`).
+   * Absent: `settings.engine.server` — the engine server's. The Jobs
+   * settings' lichess evaluation API (CTA-193) is the other.
+   */
+  localeKey?: string;
+  /**
    * The section. The switch is `<testId>-enable`, the connection chip
    * `-indicator` (in the live region `-indicator-region`), the field
    * `-address`, the button `-connect` (its feedback in `data-feedback`), the
@@ -73,9 +83,9 @@ const CONNECT_ICON: Record<EngineServerConnectFeedback, ReactNode> = {
 
 /** The chip's look for each state: the theme's colours, a dot — or, while connecting, a spinner. */
 const INDICATOR = {
-  connecting: { color: "default", key: "settings.engine.server.indicator.connecting" },
-  online: { color: "success", key: "settings.engine.server.indicator.online" },
-  offline: { color: "warning", key: "settings.engine.server.indicator.offline" },
+  connecting: { color: "default", key: "indicator.connecting" },
+  online: { color: "success", key: "indicator.online" },
+  offline: { color: "warning", key: "indicator.offline" },
 } as const;
 
 /**
@@ -111,6 +121,7 @@ function EngineServerForm({
   example,
   status,
   children,
+  localeKey = "settings.engine.server",
   testId,
 }: EngineServerFormProps) {
   const { t, i18n } = useTranslation();
@@ -118,14 +129,14 @@ function EngineServerForm({
 
   return (
     <SettingsSection
-      title={t("settings.engine.server.title")}
-      description={t("settings.engine.server.description")}
+      title={t(`${localeKey}.title`)}
+      description={t(`${localeKey}.description`)}
       testId={testId}
     >
       <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
         <SwitchField
-          label={t("settings.engine.server.enable")}
-          help={t("settings.engine.server.enableHelp")}
+          label={t(`${localeKey}.enable`)}
+          help={t(`${localeKey}.enableHelp`)}
           checked={enabled}
           onChange={onEnabledChange}
           size="medium"
@@ -144,7 +155,7 @@ function EngineServerForm({
                     <CircleIcon aria-hidden sx={{ fontSize: 12 }} />
                   )
                 }
-                label={t(indicator.key, status.state === "online" ? { ms: status.latencyMs } : undefined)}
+                label={t(`${localeKey}.${indicator.key}`, status.state === "online" ? { ms: status.latencyMs } : undefined)}
                 data-testid={`${testId}-indicator`}
                 data-state={status.state}
               />
@@ -165,14 +176,14 @@ function EngineServerForm({
           >
             <Box sx={{ flex: "1 1 16rem", minWidth: 0 }}>
               <TextInputField
-                label={t("settings.engine.server.address")}
+                label={t(`${localeKey}.address`)}
                 value={address}
                 onChange={onAddressChange}
                 dir="ltr"
                 placeholder={example}
                 error={addressInvalid}
                 helperText={t(
-                  addressInvalid ? "settings.engine.server.addressInvalid" : "settings.engine.server.addressHelp",
+                  addressInvalid ? `${localeKey}.addressInvalid` : `${localeKey}.addressHelp`,
                   { example: ltr(example) },
                 )}
                 testId={`${testId}-address`}
@@ -188,18 +199,18 @@ function EngineServerForm({
               data-feedback={connectFeedback}
               sx={{ mt: 1, minHeight: 40 }}
             >
-              {t("settings.engine.server.connect")}
+              {t(`${localeKey}.connect`)}
             </Button>
           </Box>
           <Box data-testid={`${testId}-status`}>
             {status?.state === "connecting" && (
               <StatusText tone="neutral" testId={`${testId}-connecting`}>
-                {t("settings.engine.server.status.connecting", { url: ltr(status.url) })}
+                {t(`${localeKey}.status.connecting`, { url: ltr(status.url) })}
               </StatusText>
             )}
             {status?.state === "online" && (
               <StatusText tone="neutral" testId={`${testId}-online`}>
-                {t("settings.engine.server.status.checkedAt", {
+                {t(`${localeKey}.status.checkedAt`, {
                   time: ltr(new Date(status.checkedAt).toLocaleTimeString(i18n.language)),
                 })}
               </StatusText>
@@ -211,12 +222,12 @@ function EngineServerForm({
                 dense
                 action={
                   <Button size="small" color="inherit" onClick={onConnect} data-testid={`${testId}-retry`}>
-                    {t("settings.engine.server.retry")}
+                    {t(`${localeKey}.retry`)}
                   </Button>
                 }
                 testId={`${testId}-offline`}
               >
-                {t(`settings.engine.server.status.${status.reason}`, { url: ltr(status.url) })}
+                {t(`${localeKey}.status.${status.reason}`, { url: ltr(status.url) })}
               </InlineAlert>
             )}
           </Box>
