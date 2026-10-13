@@ -146,12 +146,16 @@ export const removeProjectFolder = async (
  * choice: its whole subtree of folders, every Project filed in them and
  * their Cases. An unknown id is a no-op.
  */
-export const removeProjectFolderDeep = async (id: string): Promise<ProjectFolderProblem | undefined> => {
-  let gone = new Set<string>();
+export const removeProjectFolderDeep = (id: string): Promise<ProjectFolderProblem | undefined> => removeProjectFoldersDeep([id]);
+
+/** **Folders deleted deep**, in one write — each with its whole subtree, every Project in it and their Cases (CTA-191: the browser's delete of the picks). Unknown ids are a no-op. */
+export const removeProjectFoldersDeep = async (ids: readonly string[]): Promise<ProjectFolderProblem | undefined> => {
+  const gone = new Set<string>();
   const problem = await write((current) => {
-    if (!current.some((folder) => folder.id === id)) return current;
-    gone = projectFolderSubtree(current, id);
-    return current.filter((folder) => !gone.has(folder.id));
+    for (const id of ids) {
+      if (current.some((folder) => folder.id === id)) for (const under of projectFolderSubtree(current, id)) gone.add(under);
+    }
+    return gone.size === 0 ? current : current.filter((folder) => !gone.has(folder.id));
   });
   if (problem !== undefined || gone.size === 0) return problem;
   return removeProjectsInFolders(gone);

@@ -214,7 +214,7 @@ describe("the Projects browser (CTA-186)", () => {
     expect(analysisCasesSnapshot()![0].pgn).toContain('[White "Ding"]');
   });
 
-  it("renames, moves, duplicates and deletes a Project — saying how many Cases go with it", async () => {
+  it("renames, moves and duplicates a Project — no row deletes itself", async () => {
     const folder = (await createProjectFolder("Endgames", null))!;
     const project = (await createAnalysisProject("Najdorf", null))!;
     await addAnalysisCases([gameCase(project.id, "c1"), gameCase(project.id, "c2")]);
@@ -239,33 +239,104 @@ describe("the Projects browser (CTA-186)", () => {
     expect(screen.queryByRole("link", { name: "Open Sicilian (copy)" })).toBeNull();
     expect(screen.getByTestId(`analysis-v2-list-row-folder-${folder.id}`)).toHaveTextContent("1 project");
 
-    await user.click(screen.getByRole("button", { name: "Delete Sicilian" }));
-    expect(screen.getByRole("dialog")).toHaveTextContent("Its 2 cases are deleted with it.");
-    await user.click(screen.getByRole("button", { name: "Delete" }));
-    await waitFor(() => expect(screen.queryByRole("link", { name: "Open Sicilian" })).toBeNull());
-    await waitFor(() => expect(analysisCasesSnapshot()).toHaveLength(2));
+    expect(screen.queryByRole("button", { name: "Delete Sicilian" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete Endgames" })).toBeNull();
   });
 
-  it("deletes a folder keeping what it holds one level up — or with everything in it", async () => {
+  it("deletes the picks together — a folder whole, a Project with its Cases, a Case — after saying how many of each", async () => {
+    const outer = (await createProjectFolder("Openings", null))!;
+    const inner = (await createProjectFolder("Sicilian", outer.id))!;
+    const najdorf = (await createAnalysisProject("Najdorf", inner.id))!;
+    const club = (await createAnalysisProject("Club games", null))!;
+    const kept = (await createAnalysisProject("Kept", null))!;
+    await addAnalysisCases([
+      gameCase(najdorf.id, "c1"),
+      gameCase(club.id, "c2"),
+      { ...positionCaseOfFen({ id: "c3", projectId: club.id, name: "Endgame" }, ENDGAME) },
+      gameCase(kept.id, "c4"),
+    ]);
+    const user = userEvent.setup();
+    const { baseElement } = mount("/analysis");
+
+    const deletePicked = await screen.findByRole("button", { name: "Delete the picked items" });
+    expect(deletePicked).toBeDisabled();
+    // Openings ticked: its sub-folder, Najdorf and its Case go with it.
+    await user.click(screen.getByRole("checkbox", { name: "Pick Openings" }));
+    expect(screen.getByTestId("analysis-v2-selection")).toHaveTextContent("4 selected");
+    // One of Club games' Cases: the Project is partly ticked, not taken.
+    await user.click(screen.getByRole("button", { name: "Show the cases of Club games" }));
+    await user.click(screen.getByRole("checkbox", { name: "Pick Endgame" }));
+    expect(screen.getByRole("checkbox", { name: "Pick Club games" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Pick Club games" })).toHaveAttribute("data-indeterminate", "true");
+    expect(screen.getByTestId("analysis-v2-selection")).toHaveTextContent("5 selected");
+    await expectNoAxeViolations(baseElement);
+
+    await user.click(deletePicked);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Delete 5 items?");
+    expect(dialog).toHaveTextContent("This deletes 2 folders, 1 project, and 2 cases");
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(analysisCasesSnapshot()?.map((record) => record.id).sort()).toEqual(["c2", "c4"]));
+    expect(projectFoldersSnapshot()).toEqual([]);
+    expect(analysisProjectsSnapshot()?.map((project) => project.name).sort()).toEqual(["Club games", "Kept"]);
+    // The picks went with what they named.
+    expect(screen.getByRole("button", { name: "Delete the picked items" })).toBeDisabled();
+  });
+
+  it("steps out of a folder the picks deleted to the nearest one that survives", async () => {
     const outer = (await createProjectFolder("Outer", null))!;
     const inner = (await createProjectFolder("Inner", outer.id))!;
-    await createAnalysisProject("Kept", inner.id);
+    const deepest = (await createProjectFolder("Deepest", inner.id))!;
+    await createAnalysisProject("Kept", outer.id);
     const user = userEvent.setup();
-    mount(`/analysis?folder=${outer.id}`);
+    mount(`/analysis?folder=${deepest.id}`);
 
-    await user.click(await screen.findByRole("button", { name: "Delete Inner" }));
-    expect(screen.getByRole("radio", { name: /Keep it/ })).toBeChecked();
-    await user.click(screen.getByRole("button", { name: "Delete" }));
-    expect(await screen.findByRole("link", { name: "Open Kept" })).toBeInTheDocument();
-    expect(analysisProjectsSnapshot()![0].folderId).toBe(outer.id);
-
-    // Now the outer folder, deep, from inside it: the reader steps out to where it was.
-    await createProjectFolder("Again", outer.id);
-    await user.click(await screen.findByRole("button", { name: "Delete Again" }));
-    await user.click(screen.getByRole("radio", { name: /Delete it too/ }));
-    await user.click(screen.getByRole("button", { name: "Delete" }));
-    await waitFor(() => expect(screen.queryByRole("button", { name: "Delete Again" })).toBeNull());
+    // From inside Deepest, up to Outer: tick Inner there, delete — the reader stood inside it.
+    await user.click(await screen.findByRole("link", { name: "Outer" }));
+    expect(where()).toBe(`/analysis?folder=${outer.id}`);
+    await user.click(await screen.findByRole("checkbox", { name: "Pick Inner" }));
+    await user.click(screen.getByRole("link", { name: "Go into Inner" }));
+    expect(where()).toBe(`/analysis?folder=${inner.id}`);
+    // The picks outlived the step into the folder.
+    expect(screen.getByTestId("analysis-v2-selection")).toHaveTextContent("2 selected");
+    await user.click(screen.getByRole("button", { name: "Delete the picked items" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("This deletes 2 folders —");
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(where()).toBe(`/analysis?folder=${outer.id}`));
+    expect(projectFoldersSnapshot()?.map((folder) => folder.name)).toEqual(["Outer"]);
     expect(analysisProjectsSnapshot()).toHaveLength(1);
+  });
+
+  it("opens a Project in place, its Cases under it — a Case's name opens its board — and finds a Case by words", async () => {
+    const outer = (await createProjectFolder("Openings", null))!;
+    const project = (await createAnalysisProject("Najdorf", outer.id))!;
+    await addAnalysisCases([gameCase(project.id, "cgame"), positionCaseOfFen({ id: "cpos", projectId: project.id, name: "" }, ENDGAME)]);
+    const user = userEvent.setup();
+    mount("/analysis");
+    const table = await screen.findByRole("table", { name: "Folders, projects and cases" });
+
+    // The words name a Case: its Project and folder opened for it, the other Case left out.
+    const words = screen.getByRole("searchbox", { name: "Filter folders, projects and cases" });
+    await user.type(words, "caruana");
+    expect(within(table).getByTestId("analysis-v2-list-row-case-cgame")).toBeInTheDocument();
+    expect(within(table).queryByTestId("analysis-v2-list-row-case-cpos")).toBeNull();
+    await user.clear(words);
+
+    // Opened by hand: the folder's chevron, then a click on the Project's row.
+    await user.click(within(table).getByRole("button", { name: "Open Openings" }));
+    await user.click(within(table).getByTestId(`analysis-v2-list-row-${project.id}`));
+    const game = within(table).getByTestId("analysis-v2-list-row-case-cgame");
+    expect(game).toHaveTextContent("Carlsen – Caruana, Club Championship, 2024");
+    expect(game).toHaveTextContent("Game");
+    expect(within(table).getByTestId("analysis-v2-list-row-case-cpos")).toHaveTextContent("Black to move, move 41Position");
+    expect(where()).toBe("/analysis");
+    await user.click(within(table).getByRole("button", { name: "Hide the cases of Najdorf" }));
+    expect(within(table).queryByTestId("analysis-v2-list-row-case-cgame")).toBeNull();
+    await user.click(within(table).getByRole("button", { name: "Show the cases of Najdorf" }));
+
+    await user.click(within(table).getByRole("link", { name: "Open Carlsen – Caruana, Club Championship, 2024" }));
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cgame`);
   });
 
   it("opens a folder in place, and finds a Project by words — the folders above it opened", async () => {
@@ -275,7 +346,7 @@ describe("the Projects browser (CTA-186)", () => {
     await createAnalysisProject("Club games", null);
     const user = userEvent.setup();
     const { baseElement } = mount("/analysis");
-    const table = await screen.findByRole("table", { name: "Folders and projects" });
+    const table = await screen.findByRole("table", { name: "Folders, projects and cases" });
     const shown = () =>
       within(table)
         .getAllByTestId(/^analysis-v2-list-row-(?!.*-toggle(-icon)?$)/)
@@ -290,16 +361,16 @@ describe("the Projects browser (CTA-186)", () => {
     expect(where()).toBe("/analysis");
 
     // The words: Najdorf, inside two folders — both opened for it, the rest left out.
-    await user.type(screen.getByRole("searchbox", { name: "Filter folders and projects" }), "najdorf");
+    await user.type(screen.getByRole("searchbox", { name: "Filter folders, projects and cases" }), "najdorf");
     expect(shown()).toEqual([
       expect.stringContaining("Openings"),
       expect.stringContaining("Sicilian"),
       expect.stringContaining("Najdorf ideas"),
     ]);
     expect(where()).toBe("/analysis?q=najdorf");
-    await user.clear(screen.getByRole("searchbox", { name: "Filter folders and projects" }));
-    await user.type(screen.getByRole("searchbox", { name: "Filter folders and projects" }), "zzz");
-    expect(screen.getByTestId("analysis-v2-list-no-match")).toHaveTextContent("No folder or project matches the filter.");
+    await user.clear(screen.getByRole("searchbox", { name: "Filter folders, projects and cases" }));
+    await user.type(screen.getByRole("searchbox", { name: "Filter folders, projects and cases" }), "zzz");
+    expect(screen.getByTestId("analysis-v2-list-no-match")).toHaveTextContent("No folder, project or case matches the filter.");
   });
 
   it("will not move a folder into its own subtree", async () => {
