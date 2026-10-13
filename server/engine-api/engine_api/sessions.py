@@ -13,6 +13,10 @@ server so a client never has to sequence anything.
 Options follow the app's `UciEngine` discipline: only declared, settable
 ones; only while the engine is idle; and only the ones that changed — a
 re-sent `Hash` would clear the very memory a session exists to keep.
+
+A search the engine is silent on for `heartbeatS` hears a `heartbeat` — the
+engine's `readyok` to an `isready` asked mid-search (`Session._relay`) — so a
+client can tell a deep search from a dead engine (CTA-194).
 """
 
 from __future__ import annotations
@@ -27,7 +31,7 @@ from typing import Any
 
 from .config import Settings
 from .engines import EngineInfo, capped
-from .uci import EngineTerminated, Handshake, UciOption, UciProcess, parse_bestmove, parse_info
+from .uci import READY_TIMEOUT_S, EngineTerminated, Handshake, UciOption, UciProcess, parse_bestmove, parse_info
 
 log = logging.getLogger(__name__)
 
@@ -276,23 +280,69 @@ class Session:
             search.finish()
 
     async def _relay(self, search: Search) -> None:
-        while True:
-            line = await self.process.next_line()
-            if line.startswith("info"):
-                search.emit({"type": "info", "fen": search.fen, **parse_info(line), "uci": line})
-            elif line.startswith("bestmove"):
-                best, ponder = parse_bestmove(line)
-                search.emit(
-                    {
-                        "type": "bestmove",
-                        "fen": search.fen,
-                        "bestmove": best,
-                        "ponder": ponder,
-                        "stopped": self._stop_sent,
-                        "uci": line,
-                    }
-                )
-                return
+        """The engine's lines about `search`, to its `bestmove` — and through a long silence, heartbeats.
+
+        Stockfish says nothing while it searches one root move: deep in a
+        search with several lines that is minutes, which a client cannot tell
+        from an engine that died. So after `heartbeat_s` without a line the
+        relay asks `isready`, which a UCI engine answers while it searches
+        (Stockfish 18 and 19 at once), and the `readyok` — consumed here — is
+        a `heartbeat` event: the engine's UCI loop answers, not merely its
+        process exists. A probe not yet answered is not sent again, so a hung
+        engine, like a dead one, sends none.
+        """
+        probing = False
+        pending: asyncio.Future[str] | None = None
+        try:
+            while True:
+                # One read kept across the waits: a timed-out read is never cancelled, so no line is lost.
+                pending = pending or asyncio.ensure_future(self.process.next_line())
+                done, _ = await asyncio.wait({pending}, timeout=self.settings.heartbeat_s)
+                if not done:
+                    if not probing and self.process.alive:
+                        probing = True
+                        self.process.send("isready")
+                    continue
+                line = pending.result()
+                pending = None
+                if line == "readyok":
+                    if probing:
+                        probing = False
+                        search.emit({"type": "heartbeat", "fen": search.fen})
+                elif line.startswith("info"):
+                    search.emit({"type": "info", "fen": search.fen, **parse_info(line), "uci": line})
+                elif line.startswith("bestmove"):
+                    best, ponder = parse_bestmove(line)
+                    search.emit(
+                        {
+                            "type": "bestmove",
+                            "fen": search.fen,
+                            "bestmove": best,
+                            "ponder": ponder,
+                            "stopped": self._stop_sent,
+                            "uci": line,
+                        }
+                    )
+                    if probing:
+                        await self._settle_probe()
+                    return
+        finally:
+            if pending is not None:
+                pending.cancel()
+
+    async def _settle_probe(self) -> None:
+        """A probe the search ended before answering: its `readyok` is taken now, not by the next search's `isready`."""
+
+        async def answered() -> None:
+            while await self.process.next_line() != "readyok":
+                pass
+
+        try:
+            await asyncio.wait_for(answered(), READY_TIMEOUT_S)
+        except (TimeoutError, EngineTerminated):
+            # An engine that does not answer `isready` when idle cannot be trusted with another search.
+            log.warning("session %s: the engine did not answer isready after its search", self.id)
+            self.closed = True
 
     def _lookup(self, name: str) -> UciOption | None:
         return self.options.get(name) or next(

@@ -40,6 +40,8 @@ class Settings:
     max_hash_mb: int = 4096
     max_depth: int = 99
     max_movetime_ms: int = 600_000
+    # A search's stream hears a `heartbeat` after this long with no word from the engine
+    heartbeat_s: float = 15.0
     # Origins allowed besides localhost / 127.0.0.1 (any port), which always are
     allowed_origins: tuple[str, ...] = ()
     # The engine behind the legacy `/eval` and `/config` (default: the first)
@@ -56,6 +58,7 @@ _KEYS = {
     "maxHashMb": ("max_hash_mb", int),
     "maxDepth": ("max_depth", int),
     "maxMovetimeMs": ("max_movetime_ms", int),
+    "heartbeatS": ("heartbeat_s", float),
     "legacyEngine": ("legacy_engine", str),
 }
 
@@ -79,6 +82,8 @@ def settings_from(data: dict) -> Settings:
     if "allowedOrigins" in data:
         kwargs["allowed_origins"] = tuple(str(o).rstrip("/") for o in data["allowedOrigins"])
     settings = Settings(engines=tuple(specs), **kwargs)
+    if settings.heartbeat_s <= 0:
+        raise ConfigError("heartbeatS must be more than 0")
     if settings.legacy_engine is not None and settings.engine(settings.legacy_engine) is None:
         raise ConfigError(f"legacyEngine {settings.legacy_engine!r} is not one of the engines")
     return settings

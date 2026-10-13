@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import anyio
 import pytest
@@ -13,7 +14,7 @@ from engine_api.engines import probe_all
 from engine_api.sessions import Limit, Search, Session, SessionManager, SessionsFull
 from engine_api.uci import UciOption
 
-from .conftest import AFTER_E4, AFTER_E4_E5, CHECKMATED, START, small_settings
+from .conftest import AFTER_E4, AFTER_E4_E5, CHECKMATED, START, quiet_engine, small_settings
 
 pytestmark = pytest.mark.anyio
 
@@ -211,3 +212,78 @@ async def test_a_stop_overtaken_by_a_newer_search_does_not_stop_it(session: Sess
     session.stop(seq=4)  # the stop for the previous search, arriving late
     events = await drain(newer)
     assert events[-1]["type"] == "bestmove" and events[-1]["stopped"] is False
+
+
+# --- the heartbeat (CTA-194) ------------------------------------------------
+
+
+@pytest.fixture
+async def quiet(tmp_path: Path) -> AsyncIterator[SessionManager]:
+    """A manager over engines that go quiet while they search (`tests/quiet_engine.py`) — a heartbeat every 0.1 s."""
+    settings = Settings(engines=tuple(quiet_engine(tmp_path, mode) for mode in ("silent", "hung", "slow")), heartbeat_s=0.1)
+    manager = SessionManager(settings, await probe_all(settings))
+    yield manager
+    await manager.close_all()
+
+
+def kinds(events: list[dict]) -> list[str]:
+    return [event["type"] for event in events]
+
+
+async def test_a_search_the_engine_is_silent_on_hears_heartbeats_then_ends_with_its_bestmove(quiet: SessionManager):
+    session = await quiet.create("quiet-silent")
+    events = await drain(run(session, START, Limit(movetime_ms=700)))
+    assert kinds(events)[:2] == ["start", "info"]
+    assert kinds(events)[-1] == "bestmove"  # none after it
+    heartbeats = [event for event in events if event["type"] == "heartbeat"]
+    assert 3 <= len(heartbeats) <= 7
+    assert all(event == {"type": "heartbeat", "fen": START} for event in heartbeats)
+
+
+async def test_a_probe_the_search_ended_before_answering_is_taken_before_the_next_search(quiet: SessionManager):
+    session = await quiet.create("quiet-slow")
+    events = await drain(run(session, START, Limit(movetime_ms=150)))  # probed at 0.1 s, answered at 0.4 s
+    assert kinds(events) == ["start", "info", "bestmove"]
+    await asyncio.sleep(0.5)
+    assert session.process.lines.empty()  # the late `readyok` is gone — the next `isready` will not take it
+    after = await drain(session.analyse(AFTER_E4, AFTER_E4, Limit(movetime_ms=50), {"MultiPV": 2}))
+    assert after[0]["applied"] == {"MultiPV": 2}
+    assert kinds(after)[-1] == "bestmove"
+    assert not session.dead
+
+
+async def test_an_engine_whose_uci_loop_hangs_sends_no_heartbeat(quiet: SessionManager):
+    session = await quiet.create("quiet-hung")
+    search = run(session, START, Limit(infinite=True))
+    await asyncio.sleep(0.6)
+    session.process._proc.kill()  # type: ignore[union-attr]
+    events = await drain(search)
+    assert "heartbeat" not in kinds(events)
+    assert kinds(events)[-1] == "error"
+
+
+async def test_an_engine_that_dies_mid_search_sends_no_heartbeat(quiet: SessionManager):
+    session = await quiet.create("quiet-silent")
+    search = run(session, START, Limit(infinite=True))
+    await asyncio.sleep(0.05)
+    session.process._proc.kill()  # type: ignore[union-attr]
+    await asyncio.sleep(0.4)
+    events = await drain(search)
+    assert kinds(events) == ["start", "info", "error"]
+
+
+async def test_stockfish_answers_isready_mid_search_and_goes_on(settings: Settings):
+    """The probe against the real engine: heartbeats through its silences, and the session still sound after."""
+    eager = small_settings(settings.engines[0], heartbeat_s=0.01)
+    manager = SessionManager(eager, await probe_all(eager))
+    try:
+        session = await manager.create(eager.engines[0].id)
+        events = await drain(session.analyse(START, START, Limit(movetime_ms=1500), {"MultiPV": 3}))
+        assert "heartbeat" in kinds(events)
+        assert kinds(events)[-1] == "bestmove"
+        after = await drain(session.analyse(AFTER_E4, AFTER_E4, Limit(depth=8), {"MultiPV": 1}))
+        assert after[0]["applied"] == {"MultiPV": 1}
+        assert kinds(after)[-1] == "bestmove"
+        assert [e["depth"] for e in after if e["type"] == "info" and "score" in e][-1] == 8
+    finally:
+        await manager.close_all()

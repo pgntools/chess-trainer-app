@@ -136,6 +136,10 @@ class TestConfig:
         assert settings.max_sessions == 3
         assert settings.allowed_origins == ("https://chessapp.dev",)
         assert settings.engine("b") == EngineSpec(id="b", path="/b", name="B")
+        assert settings.heartbeat_s == 15.0
+
+    def test_reads_the_heartbeat_interval(self):
+        assert settings_from({"engines": [{"id": "a", "path": "/a"}], "heartbeatS": 5}).heartbeat_s == 5.0
 
     @pytest.mark.parametrize(
         "data",
@@ -145,6 +149,7 @@ class TestConfig:
             {"engines": [{"id": "a"}]},
             {"engines": [{"id": "a", "path": "/a"}, {"id": "a", "path": "/b"}]},
             {"engines": [{"id": "a", "path": "/a"}], "legacyEngine": "z"},
+            {"engines": [{"id": "a", "path": "/a"}], "heartbeatS": 0},
         ],
     )
     def test_refuses_a_bad_config(self, data):

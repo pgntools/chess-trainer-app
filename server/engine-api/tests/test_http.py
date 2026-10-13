@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
+from pathlib import Path
 
 import httpx
 import pytest
 
-from .conftest import AFTER_E4, CHECKMATED, START
+from engine_api.config import Settings
+
+from .conftest import AFTER_E4, CHECKMATED, START, quiet_engine, serve
 
 
 @pytest.fixture(scope="module")
@@ -167,3 +170,16 @@ def test_seq_orders_requests_that_overtake_each_other(client: httpx.Client, sess
     assert [json.loads(l) for l in stale.text.splitlines()] == [{"type": "superseded", "fen": START}]
     assert client.post(f"/v1/sessions/{session}/stop", json={"seq": 3}).status_code == 204
     assert client.post(f"/v1/sessions/{session}/stop").status_code == 204  # no body: no seq
+
+
+def test_a_silent_search_streams_heartbeats_between_its_lines(tmp_path: Path):
+    """CTA-194: an engine quiet for longer than `heartbeatS` — the stream hears it is alive."""
+    with serve(Settings(engines=(quiet_engine(tmp_path),), heartbeat_s=0.1)) as url, httpx.Client(base_url=url, timeout=10) as client:
+        session = client.post("/v1/sessions", json={"engine": "quiet-silent"}).json()["session"]
+        body = {"fen": START, "limit": {"movetimeMs": 600}}
+        with client.stream("POST", f"/v1/sessions/{session}/analyse", json=body) as response:
+            events = events_of(response)
+    kinds = [event["type"] for event in events]
+    assert kinds[:2] == ["start", "info"] and kinds[-1] == "bestmove"
+    assert kinds.count("heartbeat") >= 3
+    assert {"type": "heartbeat", "fen": START} in events
