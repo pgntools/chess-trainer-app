@@ -86,8 +86,8 @@ export type CollectionSummary = {
 
 /**
  * The formats a collection can be marked as (CTA-121; CTA-142 added
- * `doubleElimination`, `teamSwiss` and `teamKnockout`) — every one a table
- * draws, and `arena`, stored but not selectable yet (no table). In the
+ * `doubleElimination`, `teamSwiss` and `teamKnockout`; `arena` its table in
+ * CTA-204) — every one a table draws. In the
  * order the settings offer them. **Only ever added to**: a stored mark and an
  * export zip are checked against this list, so a value taken out would make
  * an older record unreadable.
@@ -105,21 +105,15 @@ export const TOURNAMENT_FORMATS = [
 
 export type TournamentFormat = (typeof TOURNAMENT_FORMATS)[number];
 
-/** The formats with a table (CTA-142) — every one but `arena`: what the settings let a reader pick, and the tournament view draws. */
-export type TournamentTableFormat = Exclude<TournamentFormat, "arena">;
-
-/** Whether a format has a table to draw (CTA-142) — every one but `arena`. */
-export const isTableFormat = (format: TournamentFormat): format is TournamentTableFormat => format !== "arena";
-
 /**
  * The format a guessed kind of tournament is marked as (CTA-142,
  * `lib/tournamentKind.ts`) — the same word: every kind the guesser names is
- * a format a collection can be marked as (an arena among them, which has no
- * table yet), which this function's type holds it to.
+ * a format a collection can be marked as (an arena among them — its
+ * standings table since CTA-204), which this function's type holds it to.
  */
 export const formatOfKind = (kind: TournamentKind): TournamentFormat => kind;
 
-/** A collection marked as a tournament (CTA-121): every format but `arena` is live (CTA-142). */
+/** A collection marked as a tournament (CTA-121): every format live (CTA-142; the arena's table, CTA-204). */
 export type CollectionTournament = {
   enabled: boolean;
   type: TournamentFormat;

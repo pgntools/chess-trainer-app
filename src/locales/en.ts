@@ -1334,8 +1334,6 @@ const en = {
       tournamentHelp: "A tournament's games can be shown as standings and crosstables.",
       tournamentBlocked:
         "A collection can be marked as a tournament only when every game in it shares one Event. First narrow the collection to the games of one tournament event.",
-      /** Arena (CTA-142): markable, its view showing no standings table yet. */
-      comingLater: "no standings table yet",
       type: "Tournament type",
       save: "Save",
       cancel: "Cancel",
@@ -1446,7 +1444,6 @@ const en = {
         misfit: "The games do not read as {{type}}.",
         misfitSuggest: "The games do not read as {{type}} — they look like {{guess}}: {{reason}}.",
         changeType: "Change the type",
-        noTable: "{{type}} has no standings table yet — every player's record is on the Participants tab.",
       },
       /** The Participants tab. */
       participants: {
@@ -1832,6 +1829,44 @@ const en = {
       noMatch: "Round {{round}}: no match in the file",
       legend: {
         unfinished: "a match with a game unfinished",
+      },
+    },
+    /**
+     * An arena's standings (CTA-204): the scoring switch, the score sheet's
+     * column, each game's words (its number in the player's sheet), what
+     * made its score, and the legend.
+     */
+    arena: {
+      scoring: "Scoring",
+      scorings: {
+        lichess: "Lichess points",
+        game: "Game points",
+      },
+      columns: {
+        sheet: "Score sheet",
+        games: "G",
+        gamesName: "Games",
+        performance: "Perf",
+        performanceName: "Performance",
+      },
+      game: {
+        white: "Game {{number}}, White against {{opponent}}: {{result}}",
+        black: "Game {{number}}, Black against {{opponent}}: {{result}}",
+      },
+      /** A game's words and what made its score, after a comma. */
+      withNotes: "{{game}}, {{notes}}",
+      notes: {
+        scored: "scored {{score}}",
+        fire: "on fire, double points",
+        berserk: "berserk",
+        berserkScored: "berserk, one point more",
+        berserkShort: "berserk, no extra point in under 7 moves",
+        quickDraw: "no points for a draw in the first 10 moves",
+        drawStreak: "no points for a draw in a draw streak",
+      },
+      legend: {
+        fire: "on fire: after two wins in a row, a win scores 4 and a draw 2",
+        berserk: "berserk: a win scores one point more",
       },
     },
   },

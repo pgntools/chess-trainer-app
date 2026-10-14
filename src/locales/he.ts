@@ -999,7 +999,6 @@ const he: typeof en = {
       tournamentHelp: "אפשר להציג את משחקי טורניר כטבלאות תוצאות וטבלאות מפגשים.",
       tournamentBlocked:
         "אפשר לסמן אוסף כטורניר רק כשכל המשחקים בו חולקים אירוע אחד. קודם צמצמו את האוסף למשחקי אירוע טורניר אחד.",
-      comingLater: "עדיין בלי טבלת דירוג",
       type: "סוג הטורניר",
       save: "שמירה",
       cancel: "ביטול",
@@ -1088,7 +1087,6 @@ const he: typeof en = {
         misfit: "המשחקים אינם נקראים כ{{type}}.",
         misfitSuggest: "המשחקים אינם נקראים כ{{type}} — הם נראים כמו {{guess}}: {{reason}}.",
         changeType: "שינוי הסוג",
-        noTable: "ל{{type}} אין עדיין טבלת דירוג — הרישום של כל שחקן נמצא בלשונית המשתתפים.",
       },
       participants: {
         title: "משתתפים",
@@ -1413,6 +1411,38 @@ const he: typeof en = {
       noMatch: "סיבוב {{round}}: אין מפגש בקובץ",
       legend: {
         unfinished: "מפגש שבו משחק לא הסתיים",
+      },
+    },
+    arena: {
+      scoring: "ניקוד",
+      scorings: {
+        lichess: "נקודות Lichess",
+        game: "נקודות משחק",
+      },
+      columns: {
+        sheet: "גיליון ניקוד",
+        games: "מש׳",
+        gamesName: "משחקים",
+        performance: "ביצוע",
+        performanceName: "דירוג ביצוע",
+      },
+      game: {
+        white: "משחק {{number}}, בלבן מול {{opponent}}: {{result}}",
+        black: "משחק {{number}}, בשחור מול {{opponent}}: {{result}}",
+      },
+      withNotes: "{{game}}, {{notes}}",
+      notes: {
+        scored: "{{score}} נקודות",
+        fire: "ברצף לוהט, נקודות כפולות",
+        berserk: "ברזרק",
+        berserkScored: "ברזרק, נקודה נוספת",
+        berserkShort: "ברזרק, בלי נקודה נוספת בפחות מ-7 מסעים",
+        quickDraw: "אין נקודות לתיקו ב-10 המסעים הראשונים",
+        drawStreak: "אין נקודות לתיקו ברצף תיקו",
+      },
+      legend: {
+        fire: "ברצף לוהט: אחרי שני ניצחונות ברציפות, ניצחון שווה 4 ותיקו 2",
+        berserk: "ברזרק: ניצחון שווה נקודה אחת יותר",
       },
     },
   },
