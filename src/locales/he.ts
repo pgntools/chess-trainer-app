@@ -266,6 +266,8 @@ const he: typeof en = {
   variations: {
     title: "וריאציות",
     depth: "עומק {{depth}}",
+    depthProgress: "עומק <ltr>{{depth}}/{{target}}</ltr>",
+    depthProgressName: "עומק {{depth}} מתוך {{target}}",
     thinking: "ממתינים למנוע…",
     partial: "{{shown}} מתוך {{requested}} וריאציות עד כה.",
     expand: "וריאציה {{rank}}, {{score}} — להצגת הווריאציה במלואה",

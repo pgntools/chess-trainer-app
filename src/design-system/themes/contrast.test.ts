@@ -34,15 +34,15 @@ describe("the contrast report", () => {
     for (const scheme of ["light", "dark"] as const) {
       const checks = required(scheme);
       const count = (token: string) => checks.filter((check) => check.token === `${scheme}.${token}`).length;
-      // text.secondary on a raised row, and both text colours on the three surfaces.
+      // text.secondary on a raised row, both text colours on the three surfaces, and text.primary on a progress fill (CTA-195).
       expect(count("text.secondary")).toBe(4);
-      expect(count("text.primary")).toBe(3);
+      expect(count("text.primary")).toBe(4);
       // primary: its contrastText on it, and it as text on the three surfaces.
       expect(count("primary.main")).toBe(4);
       expect(count("secondary.main")).toBe(1);
       expect(count("focusRing")).toBe(3);
       expect(count("controlBorder")).toBe(3);
-      expect(checks).toHaveLength(34);
+      expect(checks).toHaveLength(35);
     }
   });
 

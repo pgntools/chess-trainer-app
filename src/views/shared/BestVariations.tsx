@@ -2,17 +2,18 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import Checkbox from "@mui/material/Checkbox";
-import Chip from "@mui/material/Chip";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Skeleton from "@mui/material/Skeleton";
 import Typography from "@mui/material/Typography";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import { MIN_TARGET_PX, MONOSPACE_FONT_FAMILY } from "../../design-system/theme";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
+import { ProgressChip } from "../../design-system/components/states";
 import {
   formatScore,
   variationNumbering,
   type Analysis,
+  type SearchProgress,
 } from "../../lib/engineAnalysis";
 import { maskSanLine, type PieceMask } from "../../lib/pieceMask";
 import { fitWholeMoves } from "./fitWholeMoves";
@@ -46,6 +47,10 @@ import { moveSx, sanTokenSx } from "./moveTokenSx";
  * belongs to the position it was made on: the same position's
  * search deepening (same FEN) keeps it, a new analysed position starts every
  * row collapsed.
+ *
+ * The depth chip shows how far the running search has got (CTA-195): given a
+ * `progress`, it reads "Depth 18/24" and fills toward where the search stops
+ * — see `DepthChip`; without one it reads "Depth 18", as it always has.
  *
  * The header is the block's own control (CTA-56): a small checkbox where a
  * plain title used to sit — checked by default. Clearing it hides the lines
@@ -127,7 +132,83 @@ type BestVariationsProps = {
    * re-seeded checkbox. Absent: nothing is reported, today's behaviour.
    */
   onShowLinesChange?: (shown: boolean) => void;
+  /**
+   * **The search under way, and where it stops** (CTA-195) — present while the
+   * engine searches the position on screen (`useEngineModule`'s
+   * `searchProgress`). The depth chip then reads "Depth 18/24" and fills from
+   * its inline start toward its end: the depth reached over the target, or —
+   * with a move time — the time spent over it, whichever is further along, so
+   * a search the clock ends early is not left looking part-done. Absent — the
+   * search finished, or a caller that passes none — the chip reads "Depth 18"
+   * as it always has.
+   */
+  progress?: SearchProgress;
 };
+
+/** How often a move-time search's clock moves the fill (CTA-195). */
+const CLOCK_TICK_MS = 250;
+
+/**
+ * The time a search has been running, ticked while `running` — 0 when not,
+ * and 0 again for each new search (`key`). Read off the clock in the interval,
+ * never during render; a reading kept from another search is not this one's.
+ */
+function useSearchClock(running: boolean, key: string): number {
+  const [reading, setReading] = useState<{ key: string; ms: number } | null>(null);
+  useEffect(() => {
+    if (!running) return;
+    const started = Date.now();
+    const id = setInterval(() => setReading({ key, ms: Date.now() - started }), CLOCK_TICK_MS);
+    return () => clearInterval(id);
+  }, [running, key]);
+  return running && reading?.key === key ? reading.ms : 0;
+}
+
+/**
+ * The depth chip (CTA-56; its fill CTA-195): "Depth 18" once a search is done,
+ * and while one runs "Depth 18/24", filled as far as the search has got toward
+ * where it stops — the further along of the depth and, with a move time, the
+ * clock (see `progress`). The numbers are pinned LTR; the fill starts at the
+ * chip's inline start. Named "Depth 18 of 24", never announced at each step.
+ */
+function DepthChip({ analysis, progress }: { analysis: Analysis; progress?: SearchProgress }) {
+  const { t } = useTranslation();
+  const timed = progress !== undefined && progress.moveTimeMs > 0;
+  const elapsedMs = useSearchClock(
+    timed,
+    `${analysis.fen}|${progress?.targetDepth}|${progress?.moveTimeMs}`,
+  );
+
+  if (progress === undefined) {
+    return (
+      <ProgressChip
+        testId="analysis-depth"
+        label={t("variations.depth", { depth: analysis.depth })}
+      />
+    );
+  }
+
+  const { targetDepth, moveTimeMs } = progress;
+  const byDepth = targetDepth > 0 ? analysis.depth / targetDepth : 0;
+  const byTime = timed ? elapsedMs / moveTimeMs : 0;
+  return (
+    <ProgressChip
+      testId="analysis-depth"
+      value={Math.min(1, Math.max(byDepth, byTime)) * 100}
+      progressLabel={t("variations.depthProgressName", {
+        depth: analysis.depth,
+        target: targetDepth,
+      })}
+      label={
+        <Trans
+          i18nKey="variations.depthProgress"
+          values={{ depth: analysis.depth, target: targetDepth }}
+          components={{ ltr: <bdi dir="ltr" /> }}
+        />
+      }
+    />
+  );
+}
 
 const sanSx = {
   unicodeBidi: "isolate",
@@ -318,6 +399,7 @@ function BestVariations({
   onSelectMove,
   initialShowLines,
   onShowLinesChange,
+  progress,
 }: BestVariationsProps) {
   const { t } = useTranslation();
 
@@ -450,12 +532,7 @@ function BestVariations({
             })}
           </Typography>
         )}
-        <Chip
-          size="small"
-          variant="outlined"
-          data-testid="analysis-depth"
-          label={t("variations.depth", { depth: analysis.depth })}
-        />
+        <DepthChip analysis={analysis} progress={progress} />
       </Box>
 
       {/*

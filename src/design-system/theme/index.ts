@@ -4,3 +4,4 @@ export { usePrefersReducedMotion } from "./reducedMotion";
 export { ltrCache, rtlCache } from "./rtlCache";
 export { MONOSPACE_FONT_FAMILY } from "./typography";
 export { MIN_TARGET_PX } from "./accessibility";
+export { progressFillOf } from "./progressFill";

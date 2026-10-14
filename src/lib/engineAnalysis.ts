@@ -57,6 +57,17 @@ export type Analysis = {
   lines: EngineLine[];
 };
 
+/**
+ * **A search under way, and where it stops** (CTA-195) — what the variations
+ * box's depth chip fills toward: the depth the search was asked for (clamped to
+ * the engine's `maxDepth`) and its move time, 0 for none — it stops at
+ * whichever comes first. Only a bounded search has one.
+ */
+export type SearchProgress = {
+  targetDepth: number;
+  moveTimeMs: number;
+};
+
 /** Nothing said yet — the state before a search, and after one is abandoned. */
 export const EMPTY_ANALYSIS: Analysis = { fen: "", depth: 0, lines: [] };
 

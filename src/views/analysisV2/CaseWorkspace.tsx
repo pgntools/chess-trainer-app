@@ -270,6 +270,8 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
             </>
           ),
           analysis: engine.analysis,
+          // The depth chip fills toward where the search stops (CTA-195).
+          searchProgress: engine.searchProgress,
           // The engine's lines, as the Display tab says.
           showVariations: display.showVariations,
           requestedMultiPv: session.settings.multiPv,

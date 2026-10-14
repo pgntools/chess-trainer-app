@@ -204,6 +204,8 @@ function OpeningsBoard() {
           </>
         ),
         analysis: engine.analysis,
+        // The depth chip fills toward where the search stops (CTA-195).
+        searchProgress: engine.searchProgress,
         requestedMultiPv: session.settings.multiPv,
         engineOn: session.engineOn,
         onPlayVariation: core.playVariation,

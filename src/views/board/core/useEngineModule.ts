@@ -26,6 +26,7 @@ import {
   withEngineLine,
   type Analysis,
   type Score,
+  type SearchProgress,
 } from "../../../lib/engineAnalysis";
 import { isTerminal, turnOf } from "./useBoardCore";
 
@@ -191,6 +192,14 @@ export type EngineModule = {
    * behaviour.
    */
   searching: boolean;
+  /**
+   * **Where the running search stops** (CTA-195) — its target depth, held to
+   * the engine's `capabilities.maxDepth` as the wrapper holds the `go`, and its
+   * move time — while {@link searching}, and only for a bounded search (an
+   * infinite one has no target). What the variations box's depth chip fills
+   * toward (`BoardPanel`'s `searchProgress`). Absent otherwise.
+   */
+  searchProgress: SearchProgress | undefined;
 };
 
 export const useEngineModule = ({
@@ -506,12 +515,18 @@ export const useEngineModule = ({
   const currentAnalysis: Analysis =
     enabled && analysis.fen === fen ? analysis : { fen, depth: 0, lines: [] };
 
+  const searching = enabled && !isTerminal(fen) && finishedRequest !== searchRequest;
+  // Where it stops (CTA-195) — the depth as the wrapper sends it; one object per target, so a chip re-renders only on a change.
+  const targetDepth = Math.min(depth, descriptor.capabilities.maxDepth);
+  const bounds = useMemo<SearchProgress>(() => ({ targetDepth, moveTimeMs }), [targetDepth, moveTimeMs]);
+
   return {
     descriptor,
     analysis: currentAnalysis,
     evalsByFen: evals,
     engineOptions,
     clearAnalysis,
-    searching: enabled && !isTerminal(fen) && finishedRequest !== searchRequest,
+    searching,
+    searchProgress: searching && !infinite ? bounds : undefined,
   };
 };

@@ -316,7 +316,7 @@ Every component in `components/` (CTA-108) — and every pattern and block
 | Forms | `FieldLabel`, `SwitchField`, `CheckboxField`, `SideToggle`, `SliderField`, `SelectField`, `SearchField`, `DateRangeFields`, `FileInputButton`, `SettingsSection`, `SettingsFrame` + `useDraft` | [`sections/forms.md`](./sections/forms.md) |
 | Autocompletes | `ChipsAutocomplete`, `SelectAutocomplete` | [`sections/autocompletes.md`](./sections/autocompletes.md) |
 | Feedback | `SnackbarProvider` + `useSnackbar` (mounted once in `src/main.tsx`), `InlineAlert`, `FeedbackStrip`, `StatusText` | [`sections/feedback.md`](./sections/feedback.md) |
-| States | `LoadingLine`, `LoadingSpinnerLine`, `EmptyState`, `MissState`, `ProgressLine` | [`sections/states.md`](./sections/states.md) |
+| States | `LoadingLine`, `LoadingSpinnerLine`, `EmptyState`, `MissState`, `ProgressLine`, `ProgressChip` (CTA-195) | [`sections/states.md`](./sections/states.md) |
 | Toolbars | `IconAction`, `ToggleIconAction`, `ListScreenHeader`, `ActionBar` | [`sections/toolbars.md`](./sections/toolbars.md) |
 | Navigation | `BackButton`, `Breadcrumbs`, `ExpandToggle` | [`sections/navigation.md`](./sections/navigation.md) |
 | Tabs | `PanelTabs` | [`sections/tabs.md`](./sections/tabs.md) |
