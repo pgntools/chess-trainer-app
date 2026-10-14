@@ -29,7 +29,7 @@ describe("a build with no site operator (CTA-182)", () => {
     }
   });
 
-  it("links to neither from the footer, and keeps the source link", () => {
+  it("links to neither from the footer, and keeps the version's source link", () => {
     render(
       <AppThemeWithLang>
         <MemoryRouter>
@@ -40,6 +40,6 @@ describe("a build with no site operator (CTA-182)", () => {
     const footer = within(screen.getByTestId("layout-footer"));
     expect(footer.queryByRole("link", { name: "Privacy Policy" })).toBeNull();
     expect(footer.queryByRole("link", { name: "Cookies Notice" })).toBeNull();
-    expect(footer.getByRole("link", { name: "Source" })).toBeInTheDocument();
+    expect(footer.getByRole("link", { name: `v${__APP_VERSION__}` })).toBeInTheDocument();
   });
 });

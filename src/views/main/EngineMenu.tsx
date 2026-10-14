@@ -15,11 +15,50 @@ import { saveEnginePresetDraft, saveEnginePresetDraftAsNew } from "../../lib/eng
 import { selectEnginePreset } from "../../lib/enginePresetStore";
 import { searchSettingLimitsOf, searchSettingTypedLimitsOf } from "../../lib/engineSearchSettings";
 import { describeEngines, resolveEngine } from "../../lib/engines";
+import { SwitchField } from "../../design-system/components/forms";
+import { EVAL_SOURCES, type EvalSource } from "../../lib/evalSources";
+import EvalSourceConnectionDot from "../shared/EvalSourceConnectionDot";
 import { useEngineChoice } from "../shared/useEngineChoice";
 import { useEngineSearchSettings } from "../shared/useEngineSearchSettings";
 import { useEngineServer } from "../shared/useEngineServer";
+import { useEvalSourceConnection } from "../shared/useEvalSourceConnection";
 import { useSelectedEnginePreset } from "../shared/useSelectedEnginePreset";
 import { useBoardEngineState } from "./boardEngineState";
+
+/** The eval sources that tell their connection — a switch each at the popup's foot (CTA-199). */
+const CONNECTED_SOURCES = EVAL_SOURCES.filter((source) => source.connection !== undefined);
+
+/**
+ * **An eval source at the popup's foot** (CTA-199): its on / off switch, named
+ * by its title, and its connection — the dot Settings → Engine's tab shows and
+ * its words, a status region so a change is heard. The address stays in
+ * Settings → Engine.
+ */
+function EvalSourceSwitch({ source }: { source: EvalSource }) {
+  const { t } = useTranslation();
+  const connection = useEvalSourceConnection(source.connection) ?? "disabled";
+  return (
+    <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 1.5 }}>
+      <SwitchField
+        label={t(source.titleKey)}
+        checked={connection !== "disabled"}
+        onChange={(enabled) => source.connection?.setEnabled(enabled)}
+        size="small"
+        testId={`engine-menu-eval-source-${source.id}`}
+      />
+      <Box
+        role="status"
+        sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}
+        data-testid={`engine-menu-eval-source-${source.id}-status`}
+      >
+        <EvalSourceConnectionDot connection={connection} testId={`engine-menu-eval-source-${source.id}-dot`} />
+        <Typography variant="caption" color="text.secondary">
+          {t(`engineMenu.evalSource.${connection}`)}
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
 
 /** The icon's breath while a search runs — its opacity, nothing that moves. */
 const breathe = keyframes`
@@ -43,8 +82,8 @@ const breathe = keyframes`
  * an unsaved change of the preset (its depth, move time, Threads, Hash —
  * `lib/enginePresetDraft.ts`) bringing **Save and Save as new preset to the
  * title row's inline-end corner** (CTA-189; the strip with its texts until
- * then) — and an "Advanced settings" link to Settings → Engine at the
- * popup's foot. Until CTA-181 each board had the search
+ * then) — and at the popup's foot each eval source's on / off switch and
+ * connection (CTA-199) beside an "Advanced settings" link to Settings → Engine. Until CTA-181 each board had the search
  * settings on its own Engine tab.
  *
  * **The button is the board on screen's engine** (`useBoardEngineState`,
@@ -167,8 +206,24 @@ export function EngineMenu({ compact = false }: { compact?: boolean }) {
             onPresetChange={(presetId) => void selectEnginePreset(descriptor.id, presetId)}
             testId="engine-menu"
           />
-          {/* The way to Settings → Engine, at the foot (CTA-189). */}
-          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          {/* The foot: each eval source's switch and connection (CTA-199), then the way to Settings → Engine (CTA-189). */}
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 1,
+              pt: 1.5,
+              borderTop: "1px solid",
+              borderColor: "divider",
+            }}
+          >
+            <Box sx={{ display: "grid", gap: 0.5 }}>
+              {CONNECTED_SOURCES.map((source) => (
+                <EvalSourceSwitch key={source.id} source={source} />
+              ))}
+            </Box>
             <Link component={RouterLink} to="/settings/engine" variant="body2" data-testid="engine-menu-settings-link">
               {t("engineMenu.advancedSettings")}
             </Link>

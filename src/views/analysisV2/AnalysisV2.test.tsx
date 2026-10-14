@@ -581,7 +581,10 @@ describe("a Case's board (CTA-186)", () => {
     await user.click(within(settings).getByRole("radio", { name: "Black" }));
     expect(boardOptions().boardOrientation).toBe("black");
     await user.click(within(settings).getByRole("switch", { name: "Show evaluation bar" }));
-    expect(within(settings).getByRole("switch", { name: "Write evaluations into the game" })).toBeInTheDocument();
+    // Write evaluations: on for a Case, and kept with it like the rest (CTA-199).
+    const write = within(settings).getByRole("switch", { name: "Write evaluations into the game" });
+    expect(write).toBeChecked();
+    await user.click(write);
 
     await waitFor(() =>
       expect(analysisCasesSnapshot()![0].display).toEqual({
@@ -591,6 +594,7 @@ describe("a Case's board (CTA-186)", () => {
         showMoveMarks: false,
         showEvalBar: false,
         showVariations: false,
+        writeEvals: false,
       }),
     );
     await waitFor(() => expect(analysisCasesSnapshot()![0].orientation).toBe("black"));
@@ -602,6 +606,7 @@ describe("a Case's board (CTA-186)", () => {
     await screen.findByTestId("board");
     expect(boardOptions().arrows).toEqual([]);
     expect(boardOptions().boardOrientation).toBe("black");
+    expect(within(screen.getByTestId("analysis-case-settings")).getByRole("switch", { name: "Write evaluations into the game" })).not.toBeChecked();
     await user.click(screen.getByRole("tab", { name: "Display" }));
     expect(screen.getByRole("switch", { name: "Show next move arrows" })).not.toBeChecked();
   });
@@ -677,7 +682,7 @@ describe("a Case's board (CTA-186)", () => {
     expect(boardOptions().boardOrientation).toBe("black");
   });
 
-  it("lists the Project's Cases beside it — the table's order and words carried there and back", async () => {
+  it("opens a Case on its own view, Back to the Project's Cases beside it — the table's order and words carried there and back (CTA-199)", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     await addAnalysisCases([
       gameCase(project.id),
@@ -690,6 +695,11 @@ describe("a Case's board (CTA-186)", () => {
     await user.click(within(table).getByRole("link", { name: "Open Endgame" }));
     expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
 
+    // A Case opens on its own view (CTA-199); Back is the list.
+    await screen.findByRole("navigation", { name: /^Details of Endgame/ });
+    await user.click(screen.getByRole("link", { name: "Back to the cases" }));
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc&view=list`);
+
     // By name: Carlsen – Caruana…, Endgame, Opening — the open one current.
     const list = await screen.findByRole("navigation", { name: "Cases of Club" });
     expect(within(list).getAllByRole("treeitem").map((item) => item.textContent)).toEqual([
@@ -700,10 +710,10 @@ describe("a Case's board (CTA-186)", () => {
     expect(screen.getByTestId("analysis-case-siblings-tree-cpos")).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Previous case" })).toHaveAttribute(
       "href",
-      `/analysis/projects/${project.id}/cases/cgame?sort=name&dir=asc`,
+      `/analysis/projects/${project.id}/cases/cgame?sort=name&dir=asc&view=list`,
     );
     await user.click(screen.getByRole("link", { name: "Next case" }));
-    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cstart?sort=name&dir=asc`);
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cstart?sort=name&dir=asc&view=list`);
     expect(await screen.findByTestId("analysis-case-name")).toHaveTextContent("Opening");
 
     // The list's words are the URL's, and Close takes them back to the table.
@@ -715,22 +725,39 @@ describe("a Case's board (CTA-186)", () => {
     expect(await screen.findByRole("searchbox", { name: "Filter cases" })).toHaveValue("endgame");
   });
 
-  it("opens a Case's own view from the list — its tags on Info — and Back returns to the list", async () => {
+  it("opens a Case's own view from the list — Settings first, its tags on Info — and Back returns to the list", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     await addAnalysisCases([gameCase(project.id), positionCaseOfFen({ id: "cpos", projectId: project.id, name: "Endgame" }, ENDGAME)]);
     const user = userEvent.setup();
-    mount(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
+    mount(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc&view=list`);
     await screen.findByRole("navigation", { name: "Cases of Club" });
 
     // A row picked: that Case, the panel on its own view.
     await user.click(screen.getByTestId("analysis-case-siblings-tree-cgame"));
-    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cgame?sort=name&dir=asc&view=case`);
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cgame?sort=name&dir=asc`);
     const details = await screen.findByRole("navigation", { name: /^Details of Carlsen – Caruana/ });
+    // Settings, first and open (CTA-199): the board's settings — no longer the right-hand panel's — then Info and Linked cases.
+    expect(within(details).getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
+    expect(within(details).getByTestId("analysis-case-settings")).toBeInTheDocument();
+    expect(within(screen.getByRole("tablist", { name: "Board panel" })).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Moves",
+      "Map",
+      "Export",
+    ]);
+    expect(within(within(details).getByRole("tablist", { name: "Case settings" })).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Info",
+      "Linked cases",
+    ]);
     expect(within(details).getByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("analysis-case-details-info-Event")).toHaveTextContent("Club Championship");
     expect(screen.getByTestId("analysis-case-details-info-White")).toHaveTextContent("Carlsen");
     await expectNoAxeViolations(details);
-    expect(within(details).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Info", "Graph", "Display", "Jobs"]);
+    expect(within(within(details).getByRole("tablist", { name: "Case details" })).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Settings",
+      "Graph",
+      "Display",
+      "Jobs",
+    ]);
     // No evaluations in the game: Graph is off.
     expect(within(details).getByRole("tab", { name: "Graph" })).toBeDisabled();
     await user.click(within(details).getByRole("tab", { name: "Display" }));
@@ -738,15 +765,15 @@ describe("a Case's board (CTA-186)", () => {
 
     // Previous / next keep the view, and its open tab; a Position from a FEN has no game tags.
     await user.click(within(details).getByRole("link", { name: "Next case" }));
-    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc&view=case`);
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
     expect(await screen.findByRole("tab", { name: "Display" })).toHaveAttribute("aria-selected", "true");
-    await user.click(screen.getByRole("tab", { name: "Info" }));
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
     expect(screen.getByTestId("analysis-case-details-title")).toHaveTextContent("Endgame");
     expect(screen.queryByTestId("analysis-case-details-info-Event")).toBeNull();
 
-    // Back: the list again, the table's context kept, the view dropped.
+    // Back: the list again, the table's context kept.
     await user.click(screen.getByRole("link", { name: "Back to the cases" }));
-    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc&view=list`);
     expect(await screen.findByRole("navigation", { name: "Cases of Club" })).toBeInTheDocument();
   });
 

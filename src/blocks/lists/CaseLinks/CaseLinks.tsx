@@ -6,6 +6,7 @@ import AddLinkRoundedIcon from "@mui/icons-material/AddLinkRounded";
 import LinkOffRoundedIcon from "@mui/icons-material/LinkOffRounded";
 import { useTranslation } from "react-i18next";
 
+import { visuallyHidden } from "../../../design-system/components/a11y";
 import { linkProps, type LinkTarget } from "../../../design-system/components/link";
 import { StatusText } from "../../../design-system/components/feedback";
 import { IconAction } from "../../../design-system/components/toolbars";
@@ -25,6 +26,11 @@ export type CaseLinksProps = {
   /** Why the last Unlink was refused — said under the lists. */
   problem?: string;
   /**
+   * Keep the heading for a screen reader but out of sight — under a tab that
+   * already says "Linked cases" (CTA-199). Absent, shown.
+   */
+  titleHidden?: boolean;
+  /**
    * The root; the heading `-title`, Link a case `-link`, none `-empty`, the
    * two lists `-to` and `-from`, a row `-<to|from>-<linkId>`, its Unlink
    * `-<to|from>-<linkId>-unlink`, a refusal `-problem`.
@@ -33,7 +39,7 @@ export type CaseLinksProps = {
 };
 
 /**
- * **A Case's links** (CTA-188) — on its Info tab (`CaseDetails`): the Cases it
+ * **A Case's links** (CTA-188) — on its Linked cases tab (`CaseDetails`, CTA-199): the Cases it
  * **links to** and the ones **linked from** it, across Projects — each a link
  * to that Case with its Project's name, and an **Unlink** named for it — and
  * **Link a case**, the screen's picker. A Jobs V2 computer analysis links its
@@ -42,7 +48,7 @@ export type CaseLinksProps = {
  * Presentational: the rows, Unlink and Link a case are props; the screen
  * reads and writes the links' store. Its words are `analysisV2.links.*`.
  */
-function CaseLinks({ linksTo, linkedFrom, onUnlink, onLink, problem, testId }: CaseLinksProps) {
+function CaseLinks({ linksTo, linkedFrom, onUnlink, onLink, problem, titleHidden = false, testId }: CaseLinksProps) {
   const { t } = useTranslation();
   const none = linksTo.length === 0 && linkedFrom.length === 0;
 
@@ -85,7 +91,7 @@ function CaseLinks({ linksTo, linkedFrom, onUnlink, onLink, problem, testId }: C
   return (
     <Box component="section" aria-labelledby={`${testId}-title`} data-testid={testId} sx={{ display: "grid", gap: 1 }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
-        <Typography id={`${testId}-title`} component="h3" variant="subtitle2" sx={{ fontWeight: 700 }}>
+        <Typography id={`${testId}-title`} component="h3" variant="subtitle2" sx={titleHidden ? visuallyHidden : { fontWeight: 700 }}>
           {t("analysisV2.links.title")}
         </Typography>
         {onLink !== undefined && (

@@ -29,14 +29,15 @@ export const caseListContextOf = (params: URLSearchParams): string => {
 };
 
 /**
- * **Which screen of the Case board's left panel** — the Project's Cases
- * (`CaseSiblings`) or the Case's own view (`CaseDetails`, `?view=case`) — added
- * to the table's context for a Case's address. Never carried back to the table.
+ * **Which screen of the Case board's left panel** — the Case's own view
+ * (`CaseDetails`), where a Case opens (CTA-199), or the Project's Cases
+ * (`CaseSiblings`, `?view=list`) — added to the table's context for a Case's
+ * address. Never carried back to the table.
  */
 export const withCaseView = (context: string, details: boolean): string => {
   const params = new URLSearchParams(context);
-  if (details) params.set("view", "case");
-  else params.delete("view");
+  if (details) params.delete("view");
+  else params.set("view", "list");
   const query = params.toString();
   return query === "" ? "" : `?${query}`;
 };

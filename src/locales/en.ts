@@ -91,7 +91,7 @@ const en = {
       settings: "Settings",
       /** The dev-only Development section (`chessboard.md` §9.5). */
       development: "Development",
-      analysisV2: "Analysis V2",
+      analysisV2: "Analysis",
       /** The MDX editor's own folder (CTA-137) — only under `yarn mdx-editor:start`. */
       mdxEditor: "MDX editor",
     },
@@ -408,6 +408,8 @@ const en = {
     preset: "Preset",
     /** The link to Settings → Engine at the popup's foot (CTA-189). */
     advancedSettings: "Advanced settings",
+    /** An eval source's connection beside its switch at the popup's foot (CTA-199). */
+    evalSource: { disabled: "Off", "not-connected": "Not connected", connected: "Connected" },
     /** The number boxes at the depth and move-time sliders' ends (CTA-185). */
     depthTyped: "Search depth, typed",
     moveTimeTyped: "Move time in seconds, typed",
@@ -2255,6 +2257,12 @@ const en = {
       evalSources: {
         intro:
           "Evaluation sources: positions already searched, asked before the engine. Every analysis search — on the boards and in Jobs — asks the ones turned on first, whichever engine runs, and the engine searches only what they do not hold deep enough. An engine playing its move in a game always searches itself.",
+        /** A source's connection, said after its tab's name — its dot's words (CTA-199). */
+        connection: {
+          disabled: "turned off",
+          "not-connected": "not connected",
+          connected: "connected",
+        },
       },
       /** The tab's inner tabs: the Stockfish connectors (CTA-198), then one per eval source. */
       tabs: { label: "Where the engine runs", connectors: "Stockfish connectors" },
@@ -2881,10 +2889,16 @@ const en = {
       back: "Back to the cases",
       tabs: {
         label: "Case details",
-        info: "Info",
+        settings: "Settings",
         display: "Display",
         graph: "Graph",
         jobs: "Jobs",
+      },
+      /** The Settings tab's own tabs, under the board's settings (CTA-199). */
+      sections: {
+        label: "Case settings",
+        info: "Info",
+        links: "Linked cases",
       },
     },
     siblings: {
@@ -2899,7 +2913,6 @@ const en = {
       tabs: {
         moves: "Moves",
         map: "Map",
-        settings: "Settings",
         export: "Export",
       },
       engine: "Engine",
@@ -3046,7 +3059,10 @@ const en = {
         title: "Link a case",
         submit: "Link",
         project: "Project",
+        /** The Project field cleared — Cases from every Project (CTA-199). */
+        anyProject: "Any project",
         cases: "Case",
+        casesPlaceholder: "Type its name, or paste its id or address",
         none: "There is no other case to link to.",
       },
     },
@@ -3098,8 +3114,6 @@ const en = {
     },
   },
   footer: {
-    /** Label on the link out to the project's source repository. */
-    source: "Source",
     /** The legal pages' links (CTA-159). */
     privacy: "Privacy Policy",
     cookies: "Cookies Notice",

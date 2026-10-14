@@ -240,7 +240,9 @@ describe("a Case's links, on its Info tab (CTA-188)", () => {
     mount(`/analysis/projects/${project.id}/cases/cgame?view=case`);
     await screen.findByTestId("board");
 
-    const info = screen.getByRole("tabpanel", { name: "Info" });
+    // Settings' own Linked cases tab (CTA-199).
+    await user.click(screen.getByRole("tab", { name: "Linked cases" }));
+    const info = screen.getByRole("tabpanel", { name: "Linked cases" });
     const to = within(info).getByRole("region", { name: "Links to" });
     expect(within(to).getByRole("link", { name: "Carlsen – Caruana - computer analysis (light)" })).toHaveAttribute(
       "href",
@@ -258,11 +260,18 @@ describe("a Case's links, on its Info tab (CTA-188)", () => {
     // Link a case: its own Project first, then another's.
     await user.click(screen.getByRole("button", { name: "Link a case" }));
     const picker = await screen.findByRole("dialog", { name: "Link a case" });
-    expect(within(picker).getByRole("combobox", { name: "Project" })).toHaveTextContent("Club");
-    expect(within(within(picker).getByRole("list", { name: "Case" })).getByRole("button", { name: "Opening trap" })).toBeInTheDocument();
-    await user.click(within(picker).getByRole("combobox", { name: "Project" }));
+    expect(within(picker).getByRole("combobox", { name: "Project" })).toHaveValue("Club");
+    const caseField = within(picker).getByRole("combobox", { name: "Case" });
+    await user.click(caseField);
+    expect(screen.getByRole("option", { name: "Opening trap" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    // Another Project's Case, typed to find (CTA-199).
+    const projectField = within(picker).getByRole("combobox", { name: "Project" });
+    await user.clear(projectField);
+    await user.type(projectField, "Endg");
     await user.click(screen.getByRole("option", { name: "Endgames" }));
-    await user.click(within(within(picker).getByRole("list", { name: "Case" })).getByRole("button", { name: "Rook ending" }));
+    await user.click(caseField);
+    await user.click(screen.getByRole("option", { name: "Rook ending" }));
     await user.click(within(picker).getByRole("button", { name: "Link" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Link a case" })).toBeNull());
     expect((await loadCaseLinks()).map(({ fromId, toId }) => [fromId, toId])).toEqual([

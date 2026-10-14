@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
@@ -18,13 +18,18 @@ import type { Game } from "../../../lib/gameModel";
 import { GameInfo } from "../GameInfo";
 
 /** The view's tabs, in order. */
-export type CaseDetailsTab = "info" | "graph" | "display" | "jobs";
+export type CaseDetailsTab = "settings" | "graph" | "display" | "jobs";
+
+/** The Settings tab's own tabs, under the board's settings (CTA-199). */
+type CaseSettingsSection = "info" | "links";
 
 export type CaseDetailsProps = {
   /** The Case on the board. */
   row: CaseRow;
-  /** Its game, for the Info tab's PGN tags — none for a Case that carries no tags. */
+  /** Its game, for the Info section's PGN tags — none for a Case that carries no tags. */
   game: Game | undefined;
+  /** The Settings tab's head (CTA-199) — the board's settings, the screen's (`CaseSettingsTab`). Absent, none. */
+  settings?: ReactNode;
   /**
    * The Graph tab's content — the eval graph and report of the tree on the
    * board. Absent while the tree carries no `[%eval]`: the tab is disabled.
@@ -32,11 +37,11 @@ export type CaseDetailsProps = {
   graph?: ReactNode;
   /** The Display tab's content — how the board draws, the screen's. Absent, no such tab. */
   display?: ReactNode;
-  /** Under the tags on the Info tab (CTA-188) — the Case's links (`CaseLinks`), the screen's. Absent, none. */
+  /** The Linked cases section (CTA-188; its own since CTA-199) — the Case's links and Link a case (`CaseLinks`), the screen's. Absent, no such section. */
   links?: ReactNode;
   /** The Jobs tab's content (CTA-188) — the Case's Jobs V2 and New job, the screen's (`CaseJobs`). Absent, no such tab. */
   jobs?: ReactNode;
-  /** The open tab — the screen's, so it outlives a step to another Case. The Graph tab, disabled, reads as Info. */
+  /** The open tab — the screen's, so it outlives a step to another Case. The Graph tab, disabled, reads as Settings. */
   tab: CaseDetailsTab;
   onTabChange: (tab: CaseDetailsTab) => void;
   /** Where Back goes — the Project's Cases, the list beside the board. */
@@ -46,8 +51,9 @@ export type CaseDetailsProps = {
   next: LinkTarget | undefined;
   /**
    * The root; its parts `-back`, `-title`, `-tabs` (each tab `-tab-<id>`),
-   * `-info` (the tags, each `-info-<Tag>`, none `-info-empty`), `-graph`, `-display`, `-jobs`,
-   * `-siblings`, `-previous`, `-next`.
+   * `-settings` (its sections `-sections`, each tab `-sections-tab-<id>`;
+   * `-info` — the tags, each `-info-<Tag>`, none `-info-empty` — and `-links`),
+   * `-graph`, `-display`, `-jobs`, `-siblings`, `-previous`, `-next`.
    */
   testId: string;
 };
@@ -56,9 +62,10 @@ export type CaseDetailsProps = {
  * **A Case's own view beside its board** (CTA-186) — the second screen of
  * the Case board's left panel, opened from a row of the Project's Cases
  * (`CaseSiblings`): Back to that list at the head's start — where the list
- * has Close — the Case's name and type, its details in tabs — **Info**, its
- * PGN tags (`GameInfo`, the Library game board's Info tab) and, under them,
- * its links (the screen's, CTA-188), **Graph**, the
+ * has Close — the Case's name and type, its details in tabs — **Settings**
+ * (CTA-199: the board's settings, the screen's, then its own tabs — **Info**,
+ * the PGN tags (`GameInfo`, the Library game board's Info tab), and **Linked
+ * cases**, its links and Link a case (the screen's, CTA-188)), **Graph**, the
  * board's eval graph and report (the screen's, disabled while the tree has no
  * evaluations, as the Analysis Board's Evaluations tab), **Display**, how
  * the board draws (the screen's), **Jobs**, the Case's Jobs V2 (CTA-188, the
@@ -66,12 +73,15 @@ export type CaseDetailsProps = {
  * Presentational: the game, the graph, the display, the open tab and the links arrive from
  * the screen; its words are `analysisV2.caseDetails.*`.
  */
-function CaseDetails({ row, game, graph, display, links, jobs, tab: asked, onTabChange, backLink, previous, next, testId }: CaseDetailsProps) {
+function CaseDetails({ row, game, settings, graph, display, links, jobs, tab: asked, onTabChange, backLink, previous, next, testId }: CaseDetailsProps) {
   const { t } = useTranslation();
   const tab: CaseDetailsTab =
     (asked === "graph" && graph === undefined) || (asked === "display" && display === undefined) || (asked === "jobs" && jobs === undefined)
-      ? "info"
+      ? "settings"
       : asked;
+  // The Settings tab's section — the view's own, opening on Info; Linked cases only where the screen gives them.
+  const [askedSection, setSection] = useState<CaseSettingsSection>("info");
+  const section: CaseSettingsSection = askedSection === "links" && links === undefined ? "info" : askedSection;
   // The arrows point along the reading direction, which runs right to left under RTL.
   const rtl = useTheme().direction === "rtl";
   const Back = rtl ? ArrowForwardRoundedIcon : ArrowBackRoundedIcon;
@@ -98,7 +108,7 @@ function CaseDetails({ row, game, graph, display, links, jobs, tab: asked, onTab
       <Box sx={{ flexShrink: 0, pb: 1 }}>
         <PanelTabs
           tabs={[
-            { id: "info", label: t("analysisV2.caseDetails.tabs.info") },
+            { id: "settings", label: t("analysisV2.caseDetails.tabs.settings") },
             { id: "graph", label: t("analysisV2.caseDetails.tabs.graph"), disabled: graph === undefined },
             ...(display === undefined ? [] : [{ id: "display", label: t("analysisV2.caseDetails.tabs.display") }]),
             ...(jobs === undefined ? [] : [{ id: "jobs", label: t("analysisV2.caseDetails.tabs.jobs") }]),
@@ -112,10 +122,29 @@ function CaseDetails({ row, game, graph, display, links, jobs, tab: asked, onTab
       </Box>
       {/* The open tab's content scrolls; the head, the tabs and the foot stay. */}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-        {tab === "info" && (
-          <Box {...tabPanelProps(testId, "info")} sx={{ px: 1, display: "grid", gap: 2 }}>
-            <GameInfo game={game} testId={`${testId}-info`} />
-            {links}
+        {tab === "settings" && (
+          <Box {...tabPanelProps(testId, "settings")} data-testid={`${testId}-settings`} sx={{ display: "grid", gap: 1 }}>
+            {settings}
+            <PanelTabs
+              tabs={[
+                { id: "info", label: t("analysisV2.caseDetails.sections.info") },
+                ...(links === undefined ? [] : [{ id: "links", label: t("analysisV2.caseDetails.sections.links") }]),
+              ]}
+              value={section}
+              onChange={(id) => setSection(id as CaseSettingsSection)}
+              ariaLabel={t("analysisV2.caseDetails.sections.label")}
+              idPrefix={`${testId}-sections`}
+              testId={`${testId}-sections`}
+            />
+            {section === "info" ? (
+              <Box {...tabPanelProps(`${testId}-sections`, "info")} sx={{ px: 1 }}>
+                <GameInfo game={game} testId={`${testId}-info`} />
+              </Box>
+            ) : (
+              <Box {...tabPanelProps(`${testId}-sections`, "links")} data-testid={`${testId}-links`} sx={{ px: 1 }}>
+                {links}
+              </Box>
+            )}
           </Box>
         )}
         {tab === "graph" && (

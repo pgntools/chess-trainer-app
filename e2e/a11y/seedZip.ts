@@ -83,6 +83,7 @@ const DISPLAY: CaseDisplay = {
   showMoveMarks: true,
   showEvalBar: true,
   showVariations: true,
+  writeEvals: true,
 };
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

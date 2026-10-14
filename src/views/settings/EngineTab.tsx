@@ -27,6 +27,7 @@ import { RightPanel } from "../main/rightPanel";
 import { useEngineServer } from "../shared/useEngineServer";
 import EnginePresetsSection from "./EnginePresetsSection";
 import EvalSourceTab from "./EvalSourceTab";
+import EvalSourceTabLabel from "./EvalSourceTabLabel";
 
 /** How long Connect's spinner shows at least — a local server answers in milliseconds, too fast to see. */
 const CONNECT_MIN_CHECKING_MS = 400;
@@ -156,7 +157,7 @@ function EngineTab() {
         <PanelTabs
           tabs={[
             { id: "connectors", label: t("settings.engine.tabs.connectors") },
-            ...SOURCE_TABS.map((source) => ({ id: `source-${source.id}`, label: t(source.titleKey) })),
+            ...SOURCE_TABS.map((source) => ({ id: `source-${source.id}`, label: <EvalSourceTabLabel source={source} /> })),
           ]}
           value={kind}
           onChange={(id) => setKind(id as EngineKindTab)}

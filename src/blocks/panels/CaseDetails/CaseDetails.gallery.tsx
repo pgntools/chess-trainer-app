@@ -10,7 +10,7 @@ import { EvalGraph } from "../EvalGraph";
 import CaseDetails, { type CaseDetailsTab } from "./CaseDetails";
 import { EVAL_POINTS, GAME, GAME_ROW, HEBREW_ROW, POSITION_ROW } from "./fixtures";
 
-const demo = (row: CaseRow, game: Game | undefined, { ends = false, graph = false, tab = "info" as CaseDetailsTab } = {}) => (
+const demo = (row: CaseRow, game: Game | undefined, { ends = false, graph = false, tab = "settings" as CaseDetailsTab } = {}) => (
   <WithState<CaseDetailsTab> initial={tab}>
     {(open, setOpen) => (
       <Box sx={{ width: 400, height: 420, display: "flex", flexDirection: "column" }}>

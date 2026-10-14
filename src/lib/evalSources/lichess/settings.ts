@@ -1,5 +1,6 @@
 import { normalizeEngineServerUrl } from "../../engineServer";
 import { clearEvalSourceBackOff } from "../backOff";
+import type { EvalSourceConnection } from "../types";
 import { checkLichessEvalApi } from "./api";
 
 /**
@@ -172,6 +173,14 @@ const setStatus = (next: LichessEvalApiStatus) => {
   status = next;
   notify();
 };
+
+/**
+ * Its connection at a glance (CTA-199, the dot on its tab): off — `disabled`;
+ * on and answering — `connected`; on otherwise (checking, not answering, not
+ * checked yet) — `not-connected`.
+ */
+export const lichessEvalApiConnection = (): EvalSourceConnection =>
+  lichessEvalApiUrl() === undefined ? "disabled" : status.state === "online" ? "connected" : "not-connected";
 
 /** Check the API (`GET /health`), now. Resolves once the status is known again. */
 export const connectLichessEvalApi = async (): Promise<void> => {

@@ -5,17 +5,21 @@ import { lichessEvalEntryOf, lookupLichessEval, positionResultOfLichessEval, wri
 import {
   LICHESS_EVAL_API_STORAGE_KEY,
   LICHESS_EVAL_SOURCE_ID,
+  ensureLichessEvalApiChecked,
+  lichessEvalApiConnection,
   lichessEvalApiUrl,
   lichessEvalApiWriteUrl,
   resetLichessEvalApiSettings,
+  storeLichessEvalApi,
+  subscribeLichessEvalApi,
 } from "./settings";
 
 /**
  * **The lichess evaluation API as an eval source** (CTA-196) — the whole of
  * what the layer knows of it: on or off (`settings.ts`), a lookup
  * (`GET /fen`, its deepest eval when as deep as asked, its lines up to the
- * asked `MultiPV`), a write (`POST /evals`, while writing is ticked) and its
- * tab of Settings → Engine.
+ * asked `MultiPV`), a write (`POST /evals`, while writing is ticked), its
+ * tab of Settings → Engine and the connection its tab's dot shows (CTA-199).
  */
 export const lichessEvalSource: EvalSource = {
   id: LICHESS_EVAL_SOURCE_ID,
@@ -40,5 +44,11 @@ export const lichessEvalSource: EvalSource = {
     return writeLichessEval(url, entry, signal);
   },
   SettingsSection: lazy(() => import("./LichessEvalApiSection")),
+  connection: {
+    read: lichessEvalApiConnection,
+    subscribe: subscribeLichessEvalApi,
+    ensureChecked: ensureLichessEvalApiChecked,
+    setEnabled: (enabled) => void storeLichessEvalApi(enabled),
+  },
   reset: resetLichessEvalApiSettings,
 };

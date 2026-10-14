@@ -58,7 +58,7 @@ const he: typeof en = {
       blog: "בלוג",
       settings: "הגדרות",
       development: "פיתוח",
-      analysisV2: "ניתוח V2",
+      analysisV2: "ניתוח",
       mdxEditor: "עורך MDX",
     },
   },
@@ -293,6 +293,7 @@ const he: typeof en = {
     engine: "מנוע",
     preset: "פריסט",
     advancedSettings: "הגדרות מתקדמות",
+    evalSource: { disabled: "כבוי", "not-connected": "לא מחובר", connected: "מחובר" },
     depthTyped: "עומק החיפוש, בהקלדה",
     moveTimeTyped: "זמן למסע בשניות, בהקלדה",
     threadsTyped: "תהליכונים, בהקלדה",
@@ -1772,6 +1773,11 @@ const he: typeof en = {
       evalSources: {
         intro:
           "מקורות הערכה: עמדות שכבר נותחו, שנשאלות לפני המנוע. כל ניתוח — בלוחות ובמשימות — שואל קודם את המקורות הפעילים, יהיה המנוע אשר יהיה, והמנוע מנתח רק את מה שאין להם בעומק מספיק. מנוע שבוחר את המסע שלו במשחק תמיד מנתח בעצמו.",
+        connection: {
+          disabled: "כבוי",
+          "not-connected": "לא מחובר",
+          connected: "מחובר",
+        },
       },
       tabs: { label: "היכן המנוע רץ", connectors: "מחברי Stockfish" },
       connectors: { browser: "דפדפן", api: "API" },
@@ -2355,10 +2361,15 @@ const he: typeof en = {
       back: "חזרה לרשימת המקרים",
       tabs: {
         label: "פרטי המקרה",
-        info: "מידע",
+        settings: "הגדרות",
         display: "תצוגה",
         graph: "גרף",
         jobs: "משימות",
+      },
+      sections: {
+        label: "הגדרות המקרה",
+        info: "מידע",
+        links: "מקרים מקושרים",
       },
     },
     siblings: {
@@ -2373,7 +2384,6 @@ const he: typeof en = {
       tabs: {
         moves: "מסעים",
         map: "מפה",
-        settings: "הגדרות",
         export: "ייצוא",
       },
       engine: "מנוע",
@@ -2515,7 +2525,9 @@ const he: typeof en = {
         title: "קישור למקרה",
         submit: "קישור",
         project: "פרויקט",
+        anyProject: "כל פרויקט",
         cases: "מקרה",
+        casesPlaceholder: "הקלידו את שמו, או הדביקו את המזהה או הכתובת שלו",
         none: "אין מקרה אחר לקשר אליו.",
       },
     },
@@ -2558,7 +2570,6 @@ const he: typeof en = {
     },
   },
   footer: {
-    source: "מקור",
     privacy: "מדיניות פרטיות",
     cookies: "הודעת עוגיות",
   },

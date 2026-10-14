@@ -27,8 +27,12 @@ Gallery: `/dev/design/autocompletes`.
   options carry a `group`.
 - **Props** — `label`, `value: string | null`, `onChange(string | null)`,
   `options: { value, label, group? }[]`, `placeholder?`, `optionDir?`
-  (`ltr` for ECO codes and SAN), `clearable?` (default true), `disabled?`,
-  `fullWidth?`, `testId` (`-input`). A value no option holds reads as none.
+  (`ltr` for ECO codes and SAN), `clearable?` (default true), `matches?(option,
+  text)` (what answers the text — absent, its words hold it; CTA-199: an id
+  pasted), `maxShown?` (at most this many listed — a list of thousands
+  narrowed by typing, CTA-199), `disabled?`, `fullWidth?`, `testId`
+  (`-input`). A value no option holds reads as none; options are keyed by
+  value, so two may share their words.
 - **Variations** — grouped with LTR options; flat with a value; not clearable.
 - **Replaces** — the select-style pickers over long lists (every opening,
   every event) that are `TextField select`s today.

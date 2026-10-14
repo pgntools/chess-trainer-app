@@ -90,12 +90,12 @@ describe("app shell footer", () => {
     expect(screen.getAllByTestId("layout-footer")).toHaveLength(1);
   });
 
-  it("shows the app version injected at build time", () => {
+  it("shows the app version injected at build time, as the repo link's text (CTA-199)", () => {
     renderShell();
     // `__APP_VERSION__` is Vite's `define` from package.json — Vitest replaces
     // it here the same way it does in the component.
     expect(__APP_VERSION__).toMatch(/^\d+\.\d+\.\d+/);
-    expect(screen.getByTestId("layout-footer")).toHaveTextContent(
+    expect(screen.getByTestId("layout-footer-repo-link")).toHaveTextContent(
       `v${__APP_VERSION__}`,
     );
   });
@@ -109,20 +109,6 @@ describe("app shell footer", () => {
     );
     expect(link).toHaveAttribute("target", "_blank");
     expect(link.getAttribute("rel")).toContain("noopener");
-  });
-
-  it("labels the repo link from the catalog in both languages", async () => {
-    const first = renderShell();
-    expect(screen.getByTestId("layout-footer-repo-link")).toHaveTextContent(
-      i18n.t("footer.source"),
-    );
-    first.unmount();
-
-    await i18n.changeLanguage("he");
-    renderShell();
-    expect(screen.getByTestId("layout-footer-repo-link")).toHaveTextContent(
-      "מקור",
-    );
   });
 
   it("links to the Privacy Policy and the Cookies Notice, in both languages (CTA-159)", async () => {

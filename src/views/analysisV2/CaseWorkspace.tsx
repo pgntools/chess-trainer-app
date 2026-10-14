@@ -55,6 +55,7 @@ import { playerPlatesOf } from "../shared/playerResults";
 import AnalysisEvalReport from "../shared/AnalysisEvalReport";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
 import CaseDisplayTab from "./CaseDisplayTab";
+import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
 import CaseSettingsTab from "./CaseSettingsTab";
 import NewJobV2, { type NewJobV2Case } from "./jobs/NewJobV2";
 import { browserPath, caseListContextOf, casePath, jobsV2Path, projectPath, withCaseView } from "./paths";
@@ -74,6 +75,8 @@ export type CaseBoardView = {
   hasEvaluations: boolean;
   /** How the board draws (`CaseDisplayTab`, the board's state) — the Case view's Display tab. */
   display: ReactNode;
+  /** The board's settings (`CaseSettingsTab`) — the head of the Case view's Settings tab (CTA-199). */
+  settings: ReactNode;
 };
 
 type CaseBoardProps = {
@@ -95,10 +98,10 @@ type CaseBoardProps = {
  * analysis session (`useAnalysisSession`: the core, the engine — off at the
  * start, the reader's global search settings — and Play), the variations
  * explorer (Moves, Map, the comment block, the next-move arrows, editing on),
- * one `BoardShell` and its panel (Moves · Map · Settings · Export — Settings
- * the side the board faces, the eval bar and the evaluations written,
- * `CaseSettingsTab`; how it draws, `CaseDisplayTab`, is the left panel's Case
- * view's Display tab),
+ * one `BoardShell` and its panel (Moves · Map · Export — the side the board
+ * faces, the eval bar and the evaluations written, `CaseSettingsTab`, are the
+ * left panel's Case view's Settings tab since CTA-199, and how it draws,
+ * `CaseDisplayTab`, its Display tab),
  * the engine's on / off a small switch in its header. Read from its record
  * **once**, as it mounts: the tree, the move it was left on and the way it
  * faced — a Game at its start facing White, a Position facing the side to
@@ -121,6 +124,8 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
     tree: start.tree,
     nodeId: start.nodeId ?? undefined,
     orientation: start.orientation,
+    // Write evaluations into the game: the Case's own, kept with its display (CTA-199) — the search settings are the reader's global ones.
+    settings: { ...DEFAULT_ANALYSIS_SETTINGS, writeEvals: record.display.writeEvals },
   });
   const { core, engine } = session;
   const currentOpening = useCurrentOpening(core.fen);
@@ -262,7 +267,7 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
                 thinking={session.thinking}
                 onToggle={session.togglePlaying}
               />
-              {/* The engine's on / off — a small switch; its other choices are the Settings tab's. */}
+              {/* The engine's on / off — a small switch; its other choices are the Case view's Settings tab's. */}
               <Box sx={{ flexShrink: 0 }}>
                 <SwitchField
                   size="small"
@@ -297,22 +302,6 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
           tabs: [
             { id: "moves", label: t("analysisV2.workspace.tabs.moves"), content: explorer.moves },
             { id: "map", label: t("analysisV2.workspace.tabs.map"), content: explorer.map },
-            {
-              id: "settings",
-              label: t("analysisV2.workspace.tabs.settings"),
-              content: (
-                <CaseSettingsTab
-                  orientation={core.orientation}
-                  onOrientationChange={(side) => {
-                    if (side !== core.orientation) core.flipBoard();
-                  }}
-                  showEvalBar={display.showEvalBar}
-                  onShowEvalBarChange={(showEvalBar) => changeDisplay({ showEvalBar })}
-                  writeEvals={session.settings.writeEvals}
-                  onWriteEvalsChange={session.setWriteEvals}
-                />
-              ),
-            },
             {
               id: "export",
               label: t("analysisV2.workspace.tabs.export"),
@@ -355,6 +344,21 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
             engineLines={engineMoves !== undefined}
           />
         ),
+        settings: (
+          <CaseSettingsTab
+            orientation={core.orientation}
+            onOrientationChange={(side) => {
+              if (side !== core.orientation) core.flipBoard();
+            }}
+            showEvalBar={display.showEvalBar}
+            onShowEvalBarChange={(showEvalBar) => changeDisplay({ showEvalBar })}
+            writeEvals={session.settings.writeEvals}
+            onWriteEvalsChange={(writeEvals) => {
+              session.setWriteEvals(writeEvals);
+              changeDisplay({ writeEvals });
+            }}
+          />
+        ),
       })}
     </>
   );
@@ -382,7 +386,7 @@ function CaseWorkspace() {
   // Under the breakpoint, the list's drawer — the route's, so it outlives a step to another Case.
   const [drawerOpen, setDrawerOpen] = useState(false);
   // The Case view's open tab — the route's too, so stepping to another Case keeps it.
-  const [detailsTab, setDetailsTab] = useState<CaseDetailsTab>("info");
+  const [detailsTab, setDetailsTab] = useState<CaseDetailsTab>("settings");
   // The New Job V2 popup (CTA-188), open for the Case on the board — its tree as the board held it.
   const [newJob, setNewJob] = useState<NewJobV2Case | null>(null);
   const jobs = useJobsV2();
@@ -425,11 +429,12 @@ function CaseWorkspace() {
   );
 
   /*
-    The panel's two screens: the Project's Cases, and — a row of them picked,
-    `?view=case` — the Case's own view, whose Back returns to the list. Its
-    Info tab reads the tags of the Case as saved, parsed only while it shows.
+    The panel's two screens: the Case's own view — where a Case opens
+    (CTA-199) — whose Back goes to the Project's Cases (`?view=list`), and the
+    list, a row of which opens that Case's view. Its Info tab reads the tags of
+    the Case as saved, parsed only while it shows.
   */
-  const details = searchParams.get("view") === "case";
+  const details = searchParams.get("view") !== "list";
   const openPgn = cases?.find((candidate) => candidate.id === caseId && candidate.projectId === projectId)?.pgn;
   const infoGame = useMemo(() => {
     if (!details || openPgn === undefined) return undefined;
@@ -518,6 +523,7 @@ function CaseWorkspace() {
               <CaseDetails
                 row={row}
                 game={infoGame}
+                settings={view.settings}
                 graph={
                   view.hasEvaluations ? (
                     <AnalysisEvalReport
@@ -544,6 +550,7 @@ function CaseWorkspace() {
                       setPicking(true);
                     }}
                     problem={unlinkProblem}
+                    titleHidden
                     testId="analysis-case-links"
                   />
                 }

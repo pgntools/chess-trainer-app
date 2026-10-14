@@ -246,7 +246,7 @@ describe("Settings → Engine — where the engine runs", () => {
     const kinds = within(main()).getByRole("tablist", { name: "Where the engine runs" });
     expect(within(kinds).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
       "Stockfish connectors",
-      "Lichess evaluation API",
+      "Lichess evaluation API, turned off",
     ]);
     expect(within(main()).getByRole("tab", { name: "Stockfish connectors" })).toHaveAttribute("aria-selected", "true");
     const panel = within(main()).getByRole("tabpanel", { name: "Stockfish connectors" });

@@ -33,6 +33,31 @@ describe("SelectAutocomplete", () => {
     expect(within(screen.getByRole("listbox")).getAllByRole("option").map((option) => option.textContent)).toEqual(["C42 Petrov"]);
   });
 
+  it("matches as asked and shows at most maxShown (CTA-199)", () => {
+    const byValue = (option: { value: string }, text: string) => text === "" || option.value === text;
+    render(<SelectAutocomplete label="Opening" value={null} onChange={() => {}} options={OPTIONS} matches={byValue} maxShown={2} testId="probe" />);
+    const input = screen.getByTestId("probe-input");
+    fireEvent.focus(input);
+    fireEvent.mouseDown(input);
+    expect(within(screen.getByRole("listbox")).getAllByRole("option")).toHaveLength(2);
+    fireEvent.change(input, { target: { value: "C42" } });
+    expect(within(screen.getByRole("listbox")).getAllByRole("option").map((option) => option.textContent)).toEqual(["C42 Petrov"]);
+  });
+
+  it("keeps two options that share their words apart (CTA-199)", () => {
+    const onChange = vi.fn();
+    const twins = [
+      { value: "a", label: "Same", group: "One" },
+      { value: "b", label: "Same", group: "Two" },
+    ];
+    render(<SelectAutocomplete label="Case" value={null} onChange={onChange} options={twins} testId="probe" />);
+    fireEvent.mouseDown(screen.getByTestId("probe-input"));
+    const options = within(screen.getByRole("listbox")).getAllByRole("option");
+    expect(options).toHaveLength(2);
+    fireEvent.click(options[1]);
+    expect(onChange).toHaveBeenCalledWith("b");
+  });
+
   it("clears to null, and reads a value no option holds as none", () => {
     const onChange = vi.fn();
     const { unmount } = render(<SelectAutocomplete label="Opening" value="B90" onChange={onChange} options={OPTIONS} testId="probe" />);
