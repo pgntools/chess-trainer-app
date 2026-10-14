@@ -240,7 +240,9 @@ describe("a Case's links, on its Info tab (CTA-188)", () => {
     mount(`/analysis/projects/${project.id}/cases/cgame?view=case`);
     await screen.findByTestId("board");
 
-    const info = screen.getByRole("tabpanel", { name: "Info" });
+    // Settings' own Linked cases tab (CTA-199).
+    await user.click(screen.getByRole("tab", { name: "Linked cases" }));
+    const info = screen.getByRole("tabpanel", { name: "Linked cases" });
     const to = within(info).getByRole("region", { name: "Links to" });
     expect(within(to).getByRole("link", { name: "Carlsen – Caruana - computer analysis (light)" })).toHaveAttribute(
       "href",

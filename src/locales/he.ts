@@ -2361,10 +2361,15 @@ const he: typeof en = {
       back: "חזרה לרשימת המקרים",
       tabs: {
         label: "פרטי המקרה",
-        info: "מידע",
+        settings: "הגדרות",
         display: "תצוגה",
         graph: "גרף",
         jobs: "משימות",
+      },
+      sections: {
+        label: "הגדרות המקרה",
+        info: "מידע",
+        links: "מקרים מקושרים",
       },
     },
     siblings: {
@@ -2379,7 +2384,6 @@ const he: typeof en = {
       tabs: {
         moves: "מסעים",
         map: "מפה",
-        settings: "הגדרות",
         export: "ייצוא",
       },
       engine: "מנוע",

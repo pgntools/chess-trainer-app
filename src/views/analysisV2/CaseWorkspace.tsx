@@ -74,6 +74,8 @@ export type CaseBoardView = {
   hasEvaluations: boolean;
   /** How the board draws (`CaseDisplayTab`, the board's state) — the Case view's Display tab. */
   display: ReactNode;
+  /** The board's settings (`CaseSettingsTab`) — the head of the Case view's Settings tab (CTA-199). */
+  settings: ReactNode;
 };
 
 type CaseBoardProps = {
@@ -95,10 +97,10 @@ type CaseBoardProps = {
  * analysis session (`useAnalysisSession`: the core, the engine — off at the
  * start, the reader's global search settings — and Play), the variations
  * explorer (Moves, Map, the comment block, the next-move arrows, editing on),
- * one `BoardShell` and its panel (Moves · Map · Settings · Export — Settings
- * the side the board faces, the eval bar and the evaluations written,
- * `CaseSettingsTab`; how it draws, `CaseDisplayTab`, is the left panel's Case
- * view's Display tab),
+ * one `BoardShell` and its panel (Moves · Map · Export — the side the board
+ * faces, the eval bar and the evaluations written, `CaseSettingsTab`, are the
+ * left panel's Case view's Settings tab since CTA-199, and how it draws,
+ * `CaseDisplayTab`, its Display tab),
  * the engine's on / off a small switch in its header. Read from its record
  * **once**, as it mounts: the tree, the move it was left on and the way it
  * faced — a Game at its start facing White, a Position facing the side to
@@ -262,7 +264,7 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
                 thinking={session.thinking}
                 onToggle={session.togglePlaying}
               />
-              {/* The engine's on / off — a small switch; its other choices are the Settings tab's. */}
+              {/* The engine's on / off — a small switch; its other choices are the Case view's Settings tab's. */}
               <Box sx={{ flexShrink: 0 }}>
                 <SwitchField
                   size="small"
@@ -297,22 +299,6 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
           tabs: [
             { id: "moves", label: t("analysisV2.workspace.tabs.moves"), content: explorer.moves },
             { id: "map", label: t("analysisV2.workspace.tabs.map"), content: explorer.map },
-            {
-              id: "settings",
-              label: t("analysisV2.workspace.tabs.settings"),
-              content: (
-                <CaseSettingsTab
-                  orientation={core.orientation}
-                  onOrientationChange={(side) => {
-                    if (side !== core.orientation) core.flipBoard();
-                  }}
-                  showEvalBar={display.showEvalBar}
-                  onShowEvalBarChange={(showEvalBar) => changeDisplay({ showEvalBar })}
-                  writeEvals={session.settings.writeEvals}
-                  onWriteEvalsChange={session.setWriteEvals}
-                />
-              ),
-            },
             {
               id: "export",
               label: t("analysisV2.workspace.tabs.export"),
@@ -355,6 +341,18 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
             engineLines={engineMoves !== undefined}
           />
         ),
+        settings: (
+          <CaseSettingsTab
+            orientation={core.orientation}
+            onOrientationChange={(side) => {
+              if (side !== core.orientation) core.flipBoard();
+            }}
+            showEvalBar={display.showEvalBar}
+            onShowEvalBarChange={(showEvalBar) => changeDisplay({ showEvalBar })}
+            writeEvals={session.settings.writeEvals}
+            onWriteEvalsChange={session.setWriteEvals}
+          />
+        ),
       })}
     </>
   );
@@ -382,7 +380,7 @@ function CaseWorkspace() {
   // Under the breakpoint, the list's drawer — the route's, so it outlives a step to another Case.
   const [drawerOpen, setDrawerOpen] = useState(false);
   // The Case view's open tab — the route's too, so stepping to another Case keeps it.
-  const [detailsTab, setDetailsTab] = useState<CaseDetailsTab>("info");
+  const [detailsTab, setDetailsTab] = useState<CaseDetailsTab>("settings");
   // The New Job V2 popup (CTA-188), open for the Case on the board — its tree as the board held it.
   const [newJob, setNewJob] = useState<NewJobV2Case | null>(null);
   const jobs = useJobsV2();
@@ -519,6 +517,7 @@ function CaseWorkspace() {
               <CaseDetails
                 row={row}
                 game={infoGame}
+                settings={view.settings}
                 graph={
                   view.hasEvaluations ? (
                     <AnalysisEvalReport
@@ -545,6 +544,7 @@ function CaseWorkspace() {
                       setPicking(true);
                     }}
                     problem={unlinkProblem}
+                    titleHidden
                     testId="analysis-case-links"
                   />
                 }

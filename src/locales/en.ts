@@ -2889,10 +2889,16 @@ const en = {
       back: "Back to the cases",
       tabs: {
         label: "Case details",
-        info: "Info",
+        settings: "Settings",
         display: "Display",
         graph: "Graph",
         jobs: "Jobs",
+      },
+      /** The Settings tab's own tabs, under the board's settings (CTA-199). */
+      sections: {
+        label: "Case settings",
+        info: "Info",
+        links: "Linked cases",
       },
     },
     siblings: {
@@ -2907,7 +2913,6 @@ const en = {
       tabs: {
         moves: "Moves",
         map: "Map",
-        settings: "Settings",
         export: "Export",
       },
       engine: "Engine",

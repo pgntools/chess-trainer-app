@@ -720,7 +720,7 @@ describe("a Case's board (CTA-186)", () => {
     expect(await screen.findByRole("searchbox", { name: "Filter cases" })).toHaveValue("endgame");
   });
 
-  it("opens a Case's own view from the list — its tags on Info — and Back returns to the list", async () => {
+  it("opens a Case's own view from the list — Settings first, its tags on Info — and Back returns to the list", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     await addAnalysisCases([gameCase(project.id), positionCaseOfFen({ id: "cpos", projectId: project.id, name: "Endgame" }, ENDGAME)]);
     const user = userEvent.setup();
@@ -731,11 +731,28 @@ describe("a Case's board (CTA-186)", () => {
     await user.click(screen.getByTestId("analysis-case-siblings-tree-cgame"));
     expect(where()).toBe(`/analysis/projects/${project.id}/cases/cgame?sort=name&dir=asc`);
     const details = await screen.findByRole("navigation", { name: /^Details of Carlsen – Caruana/ });
+    // Settings, first and open (CTA-199): the board's settings — no longer the right-hand panel's — then Info and Linked cases.
+    expect(within(details).getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
+    expect(within(details).getByTestId("analysis-case-settings")).toBeInTheDocument();
+    expect(within(screen.getByRole("tablist", { name: "Board panel" })).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Moves",
+      "Map",
+      "Export",
+    ]);
+    expect(within(within(details).getByRole("tablist", { name: "Case settings" })).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Info",
+      "Linked cases",
+    ]);
     expect(within(details).getByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("analysis-case-details-info-Event")).toHaveTextContent("Club Championship");
     expect(screen.getByTestId("analysis-case-details-info-White")).toHaveTextContent("Carlsen");
     await expectNoAxeViolations(details);
-    expect(within(details).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Info", "Graph", "Display", "Jobs"]);
+    expect(within(within(details).getByRole("tablist", { name: "Case details" })).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Settings",
+      "Graph",
+      "Display",
+      "Jobs",
+    ]);
     // No evaluations in the game: Graph is off.
     expect(within(details).getByRole("tab", { name: "Graph" })).toBeDisabled();
     await user.click(within(details).getByRole("tab", { name: "Display" }));
@@ -745,7 +762,7 @@ describe("a Case's board (CTA-186)", () => {
     await user.click(within(details).getByRole("link", { name: "Next case" }));
     expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
     expect(await screen.findByRole("tab", { name: "Display" })).toHaveAttribute("aria-selected", "true");
-    await user.click(screen.getByRole("tab", { name: "Info" }));
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
     expect(screen.getByTestId("analysis-case-details-title")).toHaveTextContent("Endgame");
     expect(screen.queryByTestId("analysis-case-details-info-Event")).toBeNull();
 
