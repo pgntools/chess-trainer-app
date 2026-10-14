@@ -1,4 +1,5 @@
 import { normalizeEngineServerUrl } from "../../engineServer";
+import { ENGINE_SETTING_BOUNDS } from "../../engineSettings";
 import { clearEvalSourceBackOff } from "../backOff";
 import type { EvalSourceConnection } from "../types";
 import { checkLichessEvalApi } from "./api";
@@ -13,6 +14,9 @@ import { checkLichessEvalApi } from "./api";
  *   — the boards' and Jobs V2's alike.
  * - **Write** — every engine search that finished at its target depth is sent
  *   to it (`POST /evals`, the API's write mode); what it answered never is.
+ * - **Minimum depth to write** (CTA-202) — a search shallower than it is not
+ *   sent, so a quick one never dilutes the lichess database (which holds
+ *   depth 35 and deeper); 35 by default.
  *
  * One `localStorage` key, {@link LICHESS_EVAL_API_STORAGE_KEY}, as JSON; a
  * storage that refuses the write keeps the change for this visit. **A reader
@@ -36,6 +40,12 @@ export const LICHESS_EVAL_SOURCE_ID = "lichess";
 /** The API on the reader's own machine, at its default port — what the address field offers first. */
 export const DEFAULT_LICHESS_EVAL_API_URL = "http://127.0.0.1:8000";
 
+/** **The minimum depth to write** by default (CTA-202) — the lichess database's own shallowest. */
+export const DEFAULT_LICHESS_MIN_WRITE_DEPTH = 35;
+
+/** What the minimum depth to write may be: a whole number from 1 to the engines' own clamp (99). */
+export const LICHESS_MIN_WRITE_DEPTH_RANGE = { min: 1, max: ENGINE_SETTING_BOUNDS.depth.max } as const;
+
 export type LichessEvalApiSettings = {
   /** Whether the reader turned it on. */
   enabled: boolean;
@@ -43,15 +53,25 @@ export type LichessEvalApiSettings = {
   url: string;
   /** Whether the engine's evals are sent to it. */
   write: boolean;
+  /** The shallowest search sent to it — line 1's depth (CTA-202). */
+  minWriteDepth: number;
 };
 
 export const DEFAULT_LICHESS_EVAL_API_SETTINGS: LichessEvalApiSettings = {
   enabled: false,
   url: DEFAULT_LICHESS_EVAL_API_URL,
   write: false,
+  minWriteDepth: DEFAULT_LICHESS_MIN_WRITE_DEPTH,
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
+
+/** A minimum depth to write as kept: a number rounded and held to the range; anything else the default. */
+const minWriteDepthOf = (raw: unknown): number => {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return DEFAULT_LICHESS_MIN_WRITE_DEPTH;
+  const { min, max } = LICHESS_MIN_WRITE_DEPTH_RANGE;
+  return Math.min(max, Math.max(min, Math.round(raw)));
+};
 
 /** Settings read leniently: what does not read is its default. */
 export const lichessEvalApiSettingsFrom = (raw: unknown): LichessEvalApiSettings => {
@@ -60,6 +80,7 @@ export const lichessEvalApiSettingsFrom = (raw: unknown): LichessEvalApiSettings
     enabled: raw.enabled === true,
     url: (typeof raw.url === "string" ? normalizeEngineServerUrl(raw.url) : null) ?? DEFAULT_LICHESS_EVAL_API_URL,
     write: raw.write === true,
+    minWriteDepth: minWriteDepthOf(raw.minWriteDepth),
   };
 };
 
@@ -143,6 +164,13 @@ export const lichessEvalApiWriteUrl = (): string | undefined => {
 
 /** Tick or untick sending the engine's evals to the API. */
 export const storeLichessEvalApiWrite = (on: boolean): void => write({ ...readLichessEvalApiSettings(), write: on });
+
+/** The shallowest search sent to the API (CTA-202) — held to {@link LICHESS_MIN_WRITE_DEPTH_RANGE}. */
+export const storeLichessEvalApiMinWriteDepth = (depth: number): void =>
+  write({ ...readLichessEvalApiSettings(), minWriteDepth: minWriteDepthOf(depth) });
+
+/** The shallowest search sent to the API now — line 1's depth (CTA-202). */
+export const lichessEvalApiMinWriteDepth = (): number => readLichessEvalApiSettings().minWriteDepth;
 
 // --- The API's status, read never stored ---
 

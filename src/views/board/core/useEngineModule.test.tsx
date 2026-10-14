@@ -501,7 +501,8 @@ describe("useEngineModule — the eval sources first (CTA-196)", () => {
 
   /** The lichess evaluation API on, answering every position at `depth` (or a 404, `missing`) — and, `write`, taking the board's evals. */
   const apiOn = ({ depth = 40, write = false, missing = false } = {}) => {
-    localStorage.setItem("chessapp.lichessEvalApi", JSON.stringify({ enabled: true, url: API, write }));
+    // Any depth written (CTA-202's minimum at 1): the fake engine's searches are shallow.
+    localStorage.setItem("chessapp.lichessEvalApi", JSON.stringify({ enabled: true, url: API, write, minWriteDepth: 1 }));
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.method === "POST") return new Response(JSON.stringify({ stored: 1 }), { status: 200 });
       if (missing) return new Response("{}", { status: 404 });

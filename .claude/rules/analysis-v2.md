@@ -758,8 +758,9 @@ with it is unchanged:
   link to Settings → Engine.
 - **Write-back** (`recordInEvalSources`): while the API's *Enable evaluations
   Write API* is ticked, each position **the engine searched** in a job (never
-  one a source answered, a terminal one or a stored `[%eval]`) is sent after
-  its search as one `POST /evals` entry — its FEN, line 1's depth, the nodes
+  one a source answered, a terminal one or a stored `[%eval]`, nor one
+  shallower than the API's *Minimum depth to write*, 35 by default — skipped,
+  not refused, CTA-202) is sent after its search as one `POST /evals` entry — its FEN, line 1's depth, the nodes
   in thousands, `pov: "white"`, its lines' scores and UCI moves, the engine's
   name. **A write not taken** (403 — no write mode, 401, 422, no answer) —
   the run goes on without sending to it, said once (`kind: "write"`). A write

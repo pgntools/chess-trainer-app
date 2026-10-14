@@ -8,15 +8,17 @@ import { useTranslation } from "react-i18next";
 
 import { EngineServerForm, type EngineServerConnectFeedback, type EngineServerFormStatus } from "../../../blocks/forms";
 import { StatusText } from "../../../design-system/components/feedback";
-import { CheckboxField } from "../../../design-system/components/forms";
+import { CheckboxField, TextInputField } from "../../../design-system/components/forms";
 import { normalizeEngineServerUrl } from "../../engineServer";
 import {
   DEFAULT_LICHESS_EVAL_API_SETTINGS,
   DEFAULT_LICHESS_EVAL_API_URL,
   ensureLichessEvalApiChecked,
+  LICHESS_MIN_WRITE_DEPTH_RANGE,
   lichessEvalApiStatus,
   readLichessEvalApiSettings,
   storeLichessEvalApi,
+  storeLichessEvalApiMinWriteDepth,
   storeLichessEvalApiWrite,
   subscribeLichessEvalApi,
   type LichessEvalApiStatus,
@@ -44,6 +46,13 @@ const formStatusOf = (status: LichessEvalApiStatus): EngineServerFormStatus | un
   }
 };
 
+/** A typed minimum depth to write — a whole number in the range — else `undefined`. */
+const minWriteDepthOf = (text: string): number | undefined => {
+  const depth = Number(text);
+  const { min, max } = LICHESS_MIN_WRITE_DEPTH_RANGE;
+  return text.trim() !== "" && Number.isInteger(depth) && depth >= min && depth <= max ? depth : undefined;
+};
+
 /** Test connection's icon for each answer — none while idle. Beside the words below it, so `aria-hidden`. */
 const TEST_ICON: Record<EngineServerConnectFeedback, ReactNode> = {
   idle: undefined,
@@ -64,14 +73,17 @@ const TEST_ICON: Record<EngineServerConnectFeedback, ReactNode> = {
  *   server's is (a spinner for at least {@link CONNECT_MIN_CHECKING_MS}, then
  *   a check mark or a warning), the connection chip and the reason;
  * - **Enable evaluations Write API** under it — whether every engine search
- *   that finished at its target depth is sent there — and, while ticked,
- *   **Test connection**, which checks `GET /health` again and answers on its
- *   button whether the API is in write mode (`write_enabled`), saying so in
- *   words under it.
+ *   that finished at its target depth is sent there — then **Minimum depth
+ *   to write** (CTA-202), the shallowest search sent, a number typed (the
+ *   text the field's own, a whole number in range what is stored), disabled
+ *   while writing is not ticked — and, while ticked, **Test connection**,
+ *   which checks `GET /health` again and answers on its button whether the
+ *   API is in write mode (`write_enabled`), saying so in words under it.
  *
  * The section is `testId`; `EngineServerForm`'s parts under it, the write
- * checkbox `-write`, its Test connection `-write-test` (its feedback in
- * `data-feedback`), and what the check said, `-writable` or `-not-writable`.
+ * checkbox `-write`, the minimum depth `-min-depth`, its Test connection
+ * `-write-test` (its feedback in `data-feedback`), and what the check said,
+ * `-writable` or `-not-writable`.
  */
 function LichessEvalApiSection({ testId }: { testId: string }) {
   const { t } = useTranslation();
@@ -85,6 +97,14 @@ function LichessEvalApiSection({ testId }: { testId: string }) {
   useEffect(ensureLichessEvalApiChecked, []);
 
   const [address, setAddress] = useState(settings.url);
+  // The minimum depth as typed — a stored change from elsewhere (another tab) replaces it.
+  const [depthText, setDepthText] = useState(String(settings.minWriteDepth));
+  const [shownDepth, setShownDepth] = useState(settings.minWriteDepth);
+  if (shownDepth !== settings.minWriteDepth) {
+    setShownDepth(settings.minWriteDepth);
+    if (minWriteDepthOf(depthText) !== settings.minWriteDepth) setDepthText(String(settings.minWriteDepth));
+  }
+  const depthInvalid = minWriteDepthOf(depthText) === undefined;
   const addressUrl = normalizeEngineServerUrl(address);
   const [connectFeedback, setConnectFeedback] = useState<EngineServerConnectFeedback>("idle");
   const [testFeedback, setTestFeedback] = useState<EngineServerConnectFeedback>("idle");
@@ -145,6 +165,27 @@ function LichessEvalApiSection({ testId }: { testId: string }) {
         onChange={storeLichessEvalApiWrite}
         testId={`${testId}-write`}
       />
+      <Box sx={{ maxWidth: 240 }}>
+        <TextInputField
+          label={t(`${WORDS}.write.minDepth.label`)}
+          value={depthText}
+          type="number"
+          dir="ltr"
+          disabled={!settings.write}
+          onChange={(text) => {
+            setDepthText(text);
+            const depth = minWriteDepthOf(text);
+            if (depth !== undefined && depth !== settings.minWriteDepth) storeLichessEvalApiMinWriteDepth(depth);
+          }}
+          error={settings.write && depthInvalid}
+          helperText={
+            settings.write && depthInvalid
+              ? t(`${WORDS}.write.minDepth.invalid`, LICHESS_MIN_WRITE_DEPTH_RANGE)
+              : t(`${WORDS}.write.minDepth.help`)
+          }
+          testId={`${testId}-min-depth`}
+        />
+      </Box>
       {settings.write && (
         <Box sx={{ display: "grid", justifyItems: "start", gap: 1 }}>
           <Button
