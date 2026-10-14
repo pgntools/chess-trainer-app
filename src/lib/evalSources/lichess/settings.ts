@@ -32,8 +32,8 @@ const LEGACY_STORAGE_KEY = "chessapp.jobsSettings";
 /** The eval source's id — the back-off's key. */
 export const LICHESS_EVAL_SOURCE_ID = "lichess";
 
-/** Where the API is served on the reader's network today — what the address field offers first. */
-export const DEFAULT_LICHESS_EVAL_API_URL = "http://10.0.0.3:8000";
+/** The API on the reader's own machine, at its default port — what the address field offers first. */
+export const DEFAULT_LICHESS_EVAL_API_URL = "http://127.0.0.1:8000";
 
 export type LichessEvalApiSettings = {
   /** Whether the reader turned it on. */

@@ -76,18 +76,18 @@ describe("the lichess evaluation API in Settings → Engine (CTA-196)", () => {
     // On: its address, checked at once with GET /health.
     await user.click(within(api).getByRole("switch", { name: /use the lichess evaluation api/i }));
     const address = within(api).getByRole("textbox", { name: /api address/i });
-    expect(address).toHaveValue("http://10.0.0.3:8000");
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("http://10.0.0.3:8000/health", expect.anything()));
+    expect(address).toHaveValue("http://127.0.0.1:8000");
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/health", expect.anything()));
     expect(await within(api).findByText(/^Connected · \d+ ms$/)).toBeInTheDocument();
 
     // Another address, kept and checked by Connect.
     await user.clear(address);
-    await user.type(address, "http://127.0.0.1:8000");
+    await user.type(address, "http://10.0.0.3:8000");
     await user.click(within(api).getByRole("button", { name: "Connect" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/health", expect.anything()));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("http://10.0.0.3:8000/health", expect.anything()));
     expect(JSON.parse(localStorage.getItem(LICHESS_EVAL_API_STORAGE_KEY) ?? "{}")).toEqual({
       enabled: true,
-      url: "http://127.0.0.1:8000",
+      url: "http://10.0.0.3:8000",
       write: false,
     });
 
@@ -101,7 +101,7 @@ describe("the lichess evaluation API in Settings → Engine (CTA-196)", () => {
     const calls = fetchMock.mock.calls.length;
     await user.click(within(api).getByRole("button", { name: "Test connection" }));
     await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(calls));
-    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe("http://127.0.0.1:8000/health");
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe("http://10.0.0.3:8000/health");
     expect(await within(api).findByText(/is in write mode \(write_enabled\)/i)).toBeInTheDocument();
     await waitFor(() => expect(within(api).getByRole("button", { name: "Test connection" })).toHaveAttribute("data-feedback", "answered"));
     await expectNoAxeViolations(baseElement);
@@ -111,7 +111,7 @@ describe("the lichess evaluation API in Settings → Engine (CTA-196)", () => {
     renderEngineTab();
     const again = await section();
     expect(within(again).getByRole("switch", { name: /use the lichess evaluation api/i })).toBeChecked();
-    expect(within(again).getByRole("textbox", { name: /api address/i })).toHaveValue("http://127.0.0.1:8000");
+    expect(within(again).getByRole("textbox", { name: /api address/i })).toHaveValue("http://10.0.0.3:8000");
     expect(within(again).getByRole("checkbox", { name: /enable evaluations write api/i })).toBeChecked();
   });
 

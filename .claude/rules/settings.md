@@ -162,7 +162,7 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   (`lib/evalSources/lichess/LichessEvalApiSection.tsx`, moved here from the
   Jobs settings, where CTA-193 put it) — `EngineServerForm` with its words
   (`evalSources.lichess`): **off by default, and while off the app never
-  contacts it**; on, its address (`http://10.0.0.3:8000` offered first, kept
+  contacts it**; on, its address (`http://127.0.0.1:8000`, the reader's own machine, offered first, kept
   while off), Connect (or Enter) checking `GET /health` — each press answered
   on the button, as the engine server's — the chip and the reason; under it
   **Enable evaluations Write API** and, while ticked, **Test connection**
