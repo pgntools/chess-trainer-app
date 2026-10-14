@@ -7,7 +7,7 @@ tags: [engine, setup]
 
 Every board in the app can search with Stockfish running **natively on your own computer** instead of in the browser: the full engine, every thread your machine has, a bigger hash — several times the speed of the browser build. The app talks to it through a small **engine server** that comes with the app's source and listens on your machine only.
 
-You choose between the two in [Settings → Engine](/settings/engine): **Browser** for the builds that run in the page, **API** for the engines on your server.
+You choose between the two in [Settings → Engine](/settings/engine), on its **Stockfish connectors** tab: **Browser** for the builds that run in the page, **API** for the engines on your server.
 
 ## What you need
 
@@ -64,7 +64,7 @@ It listens on `http://127.0.0.1:8800` — your machine only (`ENGINE_API_PORT` m
 
 ## 4. Connect the app to it
 
-Open [Settings → Engine](/settings/engine), and on the **API** tab:
+Open [Settings → Engine](/settings/engine), and on the **Stockfish connectors** tab, under **API**:
 
 1. Turn on **Use an engine server**. While it is off, the app never contacts the server.
 2. Leave the address as it is (`http://127.0.0.1:8800`) unless you moved the port, and press **Connect**.

@@ -57,10 +57,10 @@ afterEach(() => {
 });
 
 describe("the lichess evaluation API in Settings → Engine (CTA-196)", () => {
-  it("is a tab of its own, beside Browser and API — and ?source=lichess opens on it", async () => {
+  it("is a tab of its own, beside Stockfish connectors — and ?source=lichess opens on it", async () => {
     renderEngineTab();
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(
-      expect.arrayContaining(["Browser", "API", "Lichess evaluation API"]),
+      expect.arrayContaining(["Stockfish connectors", "Lichess evaluation API"]),
     );
     expect(screen.getByRole("tab", { name: "Lichess evaluation API" })).toHaveAttribute("aria-selected", "false");
     expect(screen.queryByRole("region", { name: "Lichess evaluation API" })).toBeNull();

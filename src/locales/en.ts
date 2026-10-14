@@ -2256,8 +2256,10 @@ const en = {
         intro:
           "Evaluation sources: positions already searched, asked before the engine. Every analysis search — on the boards and in Jobs — asks the ones turned on first, whichever engine runs, and the engine searches only what they do not hold deep enough. An engine playing its move in a game always searches itself.",
       },
-      /** Where the engines run — the tab's two inner tabs. */
-      tabs: { label: "Where the engine runs", browser: "Browser", api: "API" },
+      /** The tab's inner tabs: the Stockfish connectors (CTA-198), then one per eval source. */
+      tabs: { label: "Where the engine runs", connectors: "Stockfish connectors" },
+      /** The Stockfish connectors tab's two headings — where the engine runs, one choice across both. */
+      connectors: { browser: "Browser", api: "API" },
       /** The right-hand panel: the chosen engine-server engine's limits, under its options form. */
       uci: {
         note: "The options above are what the engine declared in its uci reply, as the server sent it. Threads and Hash are capped by the server; a search goes no deeper than {{maxDepth}}.",
@@ -2271,7 +2273,7 @@ const en = {
         failed: "The change could not be saved.",
         full: "There are {{max}} presets already — delete one first.",
       },
-      /** The panel on the API tab while no server engine is chosen: a pointer to the Blog's guide. */
+      /** The panel on the Stockfish connectors tab while no server engine is chosen: a pointer to the Blog's guide. */
       setup: {
         title: "Add an engine on this computer",
         intro: "Any UCI engine — Stockfish 18 or 19, native — can run on your own machine and serve every board here.",

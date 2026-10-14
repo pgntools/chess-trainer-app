@@ -61,8 +61,8 @@ export interface EvalSource {
   /** Send it what an engine found — `true` once it took it, `false` for no usable answer. Never throws. */
   record?(result: PositionResult, meta: EvalRecordMeta, signal?: AbortSignal): Promise<boolean>;
   /**
-   * **Its settings** — its own inner tab of Settings → Engine, beside Browser
-   * and API, named by {@link titleKey} (`views/settings/EngineTab.tsx` adds a
+   * **Its settings** — its own inner tab of Settings → Engine, beside
+   * Stockfish connectors, named by {@link titleKey} (`views/settings/EngineTab.tsx` adds a
    * tab per source that has them, in registry order; `?source=<id>` opens
    * it) — a lazy component, so the runner and the boards never load it.
    * Absent: no tab.

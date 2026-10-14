@@ -6,8 +6,8 @@ import { useTranslation } from "react-i18next";
 import type { EvalSource } from "../../lib/evalSources";
 
 /**
- * **An eval source's tab of Settings → Engine** (CTA-196) — beside Browser and
- * API, one per registered source that has settings (`EngineTab.tsx`): a line
+ * **An eval source's tab of Settings → Engine** (CTA-196) — beside Stockfish
+ * connectors, one per registered source that has settings (`EngineTab.tsx`): a line
  * saying what an eval source is for, then the source's own section
  * (`EvalSource.SettingsSection`, lazy, `eval-source-<id>`). The tab names no
  * source: removing one from the registry removes its tab.
