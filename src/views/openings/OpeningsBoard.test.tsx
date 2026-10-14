@@ -141,6 +141,13 @@ describe("the Openings explorer — the board", () => {
     expect(boardOptions().position).toBe(START);
   });
 
+  it("opens a ?fen= of the pieces alone, White to move, as lichess does (CTA-200)", () => {
+    const placement = AFTER_E4.split(" ")[0];
+    mount(`/openings?fen=${encodeURIComponent(placement)}`);
+    expect(boardOptions().position).toBe(`${placement} w - - 0 1`);
+    expect(boardOptions().boardOrientation).toBe("white");
+  });
+
   it("writes every step back as ?at=, and replays such a link on arrival", () => {
     const { unmount } = mount();
     drag("e2", "e4");

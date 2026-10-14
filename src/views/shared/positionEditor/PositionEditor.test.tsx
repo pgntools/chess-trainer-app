@@ -511,6 +511,15 @@ describe("PositionEditor — FEN in and out", () => {
     expect(screen.queryByTestId("editor-fen-error")).not.toBeInTheDocument();
   });
 
+  it("sets a position up from the pieces alone, completed as lichess does (CTA-200)", async () => {
+    renderEditor();
+
+    await setUpFen("7k/8/8/8/8/8/8/K7");
+
+    expect(position()).toBe("7k/8/8/8/8/8/8/K7 w - - 0 1");
+    expect(screen.queryByTestId("editor-fen-error")).not.toBeInTheDocument();
+  });
+
   it("reports a FEN it cannot read, and leaves the board alone", async () => {
     renderEditor();
     const before = position();

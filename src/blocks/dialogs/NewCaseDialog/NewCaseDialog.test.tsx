@@ -67,6 +67,19 @@ describe("NewCaseDialog (CTA-186)", () => {
     await expectNoAxeViolations(baseElement);
   });
 
+  it("makes a Position of the pieces alone, completed as lichess does (CTA-200)", async () => {
+    const onCreate = vi.fn();
+    mount({ onCreate });
+    await userEvent.click(screen.getByRole("radio", { name: "Position" }));
+    const field = screen.getByRole("textbox", { name: "FEN" });
+    expect(field).toHaveAccessibleDescription(/the pieces alone are enough/);
+    const placement = "1r3rk1/2pbqp2/2np3p/1pb1p1pn/4P3/1BPPNNB1/1P3PPP/R2Q1RK1";
+    fireEvent.change(field, { target: { value: placement } });
+    expect(field).not.toHaveAttribute("aria-invalid", "true");
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    expect(onCreate).toHaveBeenCalledWith([{ type: "position", fen: `${placement} w - - 0 1`, name: "" }]);
+  });
+
   it("makes a Position of a PGN at the move the reader picks", async () => {
     const onCreate = vi.fn();
     mount({ onCreate });
