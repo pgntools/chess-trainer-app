@@ -3,7 +3,7 @@
 How the app talks to a chess engine, which engines ship, and how to add one.
 Written for CTA-151 (pluggable engines) / CTA-152 (this layer: the abstraction,
 the registry and the newer builds), reviewed and trimmed in CTA-160 (the 2019
-build removed, the test seam moved onto the registry — §11). The boards' side
+build removed, the test seam moved onto the registry — §12). The boards' side
 of it — the lifecycle rules `useEngineModule` keeps — is §4 and §9.2.1 of
 [`.claude/rules/chessboard.md`](../.claude/rules/chessboard.md).
 
@@ -24,7 +24,8 @@ of it — the lifecycle rules `useEngineModule` keeps — is §4 and §9.2.1 of
 | `UciEngine` | `src/lib/uciEngine.ts` | The UCI protocol over a transport: option discovery, the `setoption` / `stop` deferral, the pinned-option rule, FEN stamping, the depth clamp (`maxDepth`, default `DEFAULT_MAX_DEPTH` = 99), `go infinite`. Also `parseEngineOption`, pure. |
 | `WorkerTransport` | `src/lib/workerTransport.ts` | `new Worker(url)` as a transport. **Nothing outside it may assume a Worker.** |
 | `EngineDescriptor` | `src/lib/engineTypes.ts` | `{ id, name, version, requires?, capabilities: { maxDepth, strength, multiThread }, create() }`. |
-| the registry | `src/lib/engines/` | `ids.ts` (the default's id, name and version — what a record and a preference name it by), `builtin.ts` (the shipped descriptors — and the tests' seam, §10), `registry.ts` (get, availability, describe, resolve), `index.ts`. |
+| the registry | `src/lib/engines/` | `ids.ts` (the default's id, name and version — what a record and a preference name it by), `builtin.ts` (the shipped descriptors — and the tests' seam, §11), `registry.ts` (get, availability, describe, resolve), `index.ts`. |
+| the eval sources | `src/lib/evalSources/` | `withEvalSources(handle)` — the `EngineHandle` every board's engine is built behind (`useEngineModule`): an analysis search asks the enabled eval sources (the lichess evaluation API) first, the engine only on a miss (CTA-196, §10). |
 
 **Nothing runs at module scope.** A descriptor is data until `create()`; a
 transport makes its Worker in its constructor. The pre-render
@@ -563,7 +564,122 @@ options* (`guides/understanding-stockfish-uci-options.mdx`).
   `options`, a spin its number, words as they are; a button refused, as the
   server refuses one).
 
-## 10. Testing
+## 10. Eval sources — evaluations asked before the engine (CTA-196)
+
+An **eval source** is somewhere positions have already been searched — today
+one, the **lichess evaluation API** (CTA-193: a server over lichess's
+Stockfish-evaluated positions, `lichess-eval-db-api`, run by the reader). Every
+analysis search the app runs **asks the enabled sources first**, whichever
+engine runs (a shipped WASM build or an engine server's), and the engine
+searches only what no source holds deep enough. The layer is generic and names
+no source; each source is **a plugin**.
+
+```
+                         src/lib/evalSources/
+useEngineModule ──▶ withEvalSources(handle) ──┐
+                     (the decorator)           ├──▶ askEvalSources / recordInEvalSources ──▶ EVAL_SOURCES (registry.ts)
+jobV2Runner ─────────────────────────────────┘                                              └─ lichess/   (the plugin)
+EngineTab ──▶ EvalSourcesSettings ──▶ each source's SettingsSection (lazy)
+```
+
+### 10.1 The layer — `src/lib/evalSources/`
+
+| File | What |
+| --- | --- |
+| `types.ts` | `EvalSource`: `id`, `labelKey` (its name in a warning), `storageKeys` (what it keeps — the legal pages must name each; `legalDocuments.test.ts` reads them from the registry), `isEnabled()` (**off, never contacted**), `lookup({ fen, depth, multiPv }, signal)` → `found` (a `PositionResult`: lines at `depth` or deeper, line 1 first, UCI moves as the engine writes them, scores White's view) / `missing` (absent, or shallower) / `unreachable` (no usable answer) — never throws; optional `writesEnabled()` and `record(result, meta, signal)` (write-back), `SettingsSection` (its section of Settings → Engine, a lazy component), `reset()` (tests). |
+| `registry.ts` | `EVAL_SOURCES` — the order they are asked in. **One line per source.** |
+| `evalSources.ts` | `askEvalSources(query, { signal, skip })` — the enabled sources in order until one is `found`, listing the `unreachable`; `recordInEvalSources(result, meta)` — to every source taking writes, the refusers returned; `reportEvalSourceUnreachable` / `subscribeEvalSourceUnreachable` — a job's warning (the shell's snackbar, naming the source, linking to Settings → Engine); `resetEvalSources()` (the test teardown). |
+| `backOff.ts` | **The boards' back-off**: a source that did not answer a board's lookup (or refused its write) is left alone by every board for `EVAL_SOURCE_BACKOFF_MS` (60 s) — one 5 s timeout a minute, not one per move; a failed read stops writes too. A source's settings changing clears it (`clearEvalSourceBackOff`). |
+| `withEvalSources.ts` | **The decorator** — an `EngineHandle` over another (below). |
+
+### 10.2 The decorator — `withEvalSources(handle, { engine, maxDepth })`
+
+`useEngineModule` builds every board's engine behind it (`ensureEngine`), so
+`useEngineModule`, `scoreFromUci`, the variations box, the eval chips, the
+CTA-195 depth progress, Play and `onSearchFinished` read it unchanged.
+
+- **On `search(fen, options)`, for an eligible search**, it asks the sources
+  (the target `min(depth, maxDepth)`, the `MultiPV` last set through it). A
+  **hit** comes out of `onMessage` as the engine's own would: an `info depth …
+  multipv … score … pv …` line per line — the score **the side to move's**, as
+  UCI writes it (`scoreFromUci` flips it back) — then a `bestmove`, each
+  stamped with the searched `fen` and **`evalSource`** (the source's id; absent
+  on an engine's message). The engine is not asked. A **miss**, a shallower
+  eval or **no answer** — the engine searches, as it would have. While the
+  sources are asked, the previous position's engine search is stopped.
+- **No stale answer**: a new `search`, a `stop()` or `terminate()` aborts the
+  lookup in flight (its `AbortSignal`) and ignores its answer — a position
+  navigated away from never shows its lines on the next one or plays its
+  move.
+- **Write-back**: an eligible search **the engine** finished **at its target
+  depth** (line 1's depth ≥ the target at its `bestmove`) is sent to every
+  source taking writes, in the background (`recordInEvalSources`) — never a
+  source's own answer, never a search stopped short.
+- `setOption`, `options`, `whenOptionsReady`, `terminate` are the engine's.
+
+**Eligibility — the one rule, in the decorator and nowhere else.** A search is
+asked about (and written back) when it is:
+
+1. **bounded** — to a depth, never `infinite`;
+2. **not an engine choosing its move in a game** — `SearchOptions.evalSources`
+   is not `false`. `useEngineModule`'s `evalSources` start field (default
+   `true`) sets it; **`usePlayGame` passes `false`**, so Play with Engine's and
+   Masked Pieces' engine always searches. (An analysis board's Play toggle —
+   the Case board, the Library, the Openings explorer — plays from its
+   analysis search, a source's hit included: the engine at full strength
+   would.)
+3. **on an engine not limited in strength** — no `UCI_LimitStrength` on, no
+   `Skill Level` below its top, as last set through the handle (a preset may
+   set them on any board).
+
+**The Jobs V2 runner** calls the layer itself — it asks before it builds an
+engine at all (a job a source answers whole starts none) — and keeps CTA-193's
+rule: a source that does not answer is said once
+(`reportEvalSourceUnreachable`, `kind: "read"`) and skipped for the rest of
+the run, writes to it too; a write refused is said once (`kind: "write"`) and
+not tried again that run.
+
+### 10.3 The lichess evaluation API — `src/lib/evalSources/lichess/`
+
+| File | What |
+| --- | --- |
+| `api.ts` | The client (CTA-193): `lichessEvalFen` (the 4-field FEN, en passant only where a capture is legal), `lookupLichessEval` (`GET /fen?fen=…&best=true`; 404 / 422 `missing`), `checkLichessEvalApi` (`GET /health`, `write_enabled`), `positionResultOfLichessEval` (the API's king-takes-rook castling turned into the engine's), `lichessEvalEntryOf` / `writeLichessEval` (`POST /evals`). 5 s per request. |
+| `settings.ts` | `chessapp.lichessEvalApi` (`localStorage`): `{ enabled, url, write }`, **off by default**; its status (`connectLichessEvalApi`, read never stored); **the migration** — a reader's `chessapp.jobsSettings.evalApi` moved here on the first read, the field taken out of the Jobs settings (which keep any field they do not read until then). A change clears the boards' back-off. |
+| `source.ts` | `lichessEvalSource` — the `EvalSource`. |
+| `LichessEvalApiSection.tsx` | Its section of Settings → Engine (lazy): `EngineServerForm` with its words (`localeKey` `evalSources.lichess`), Connect, the chip, *Enable evaluations Write API* and *Test connection*. |
+
+Locale keys: `evalSources.lichess.*` (the plugin's), `evalSources.*` (the
+layer's warnings), `settings.engine.evalSources.intro` (the tab's line).
+`yarn lint`'s MUI lock covers `src/lib/evalSources/**/*.tsx` as it does a
+screen.
+
+### 10.4 Adding or removing a source
+
+- **Adding**: a folder beside `lichess/` with its `EvalSource` (and, if it has
+  settings, its `SettingsSection` — lazy — and its keys under
+  `evalSources.<id>`), and **one line in `registry.ts`**. Its stored keys go in
+  `storageKeys` and in both legal pages, in both languages. Nothing in the
+  engine layer, `useEngineModule`, the boards, the runner or Settings → Engine
+  changes.
+- **Removing** the lichess evaluation API: delete `src/lib/evalSources/lichess/`,
+  its line in `registry.ts`, and its locale keys (`evalSources.lichess` in
+  `en.ts` and `he.ts`) — the app builds and the boards search with the engine
+  alone. (Its tests are in the folder; the legal pages' line about it is then
+  out of date and worth removing too — the test no longer requires it.)
+
+### 10.5 Testing
+
+`src/lib/evalSources/withEvalSources.test.ts` (a hit at depth, a shallower one
+and a miss, no answer and the back-off, a superseding search, `stop()`
+mid-lookup, the eligibility rule, write-back — never of a hit, a game's or a
+short search), `evalSources.test.ts` (the order, the skip, the writes),
+`lichess/api.test.ts` (the client), `lichess/settings.test.ts` (the settings,
+the status, the migration), `lichess/LichessEvalApiSection.test.tsx` (Settings
+→ Engine), the board end to end in `views/board/core/useEngineModule.test.tsx`,
+the runner's in `lib/jobV2Runner.test.ts`, the shell's warning in
+`JobsV2Shell.test.tsx`.
+
+## 11. Testing
 
 - `src/lib/uciEngine.test.ts` — `UciEngine` over a fake transport (no Worker):
   the option parser, discovery, the discipline, searching, stamping, teardown,
@@ -621,11 +737,11 @@ options* (`guides/understanding-stockfish-uci-options.mdx`).
 - jsdom has no `Worker` and no cross-origin isolation; for the real thing, drive
   the worker in a browser (see `public/stockfish/README.md`).
 
-## 11. The review of CTA-160 — what was decided
+## 12. The review of CTA-160 — what was decided
 
 | Finding | Decision |
 | --- | --- |
-| The test seam was the 2019 build's default export (`lib/engine.ts`, mocked in 28 files) | **Moved** to the registry's descriptors (§10); `lib/engine.ts` and `engine.test.ts` deleted (its cases are `uciEngine.test.ts`'s, over a transport). |
+| The test seam was the 2019 build's default export (`lib/engine.ts`, mocked in 28 files) | **Moved** to the registry's descriptors (§11); `lib/engine.ts` and `engine.test.ts` deleted (its cases are `uciEngine.test.ts`'s, over a transport). |
 | `UciEngine`'s dead surface — public `isReady`, `onReady()`, `init()`, `supportsOption()` | **Cut.** The handshake is `uci` alone (`isready` / `readyok` were read by nothing). |
 | Runtime registration (`registerEngine`, `subscribeEngines`, `listEngines`) and `EngineKind` | **Cut** — only tests used them. The engine server (§8) lists its engines through `lib/engines/hosted.ts` instead. |
 | `useEngineModule`'s local `getEngine` shadowing the registry's export | **Renamed** `ensureEngine`. |
