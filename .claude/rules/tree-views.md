@@ -103,6 +103,7 @@ const parts = useVariationsExplorer({
   arrows?: {
     show: boolean; chances?: boolean; required?: readonly VariationNode[];
     widthSource?: ArrowWidthSource,       // CTA-98: what sizes the arrows — absent/"none", colour only
+    engineMoves?: readonly WeightedMove[], // CTA-197: moves by their squares (the engine's lines' first), drawn in place of the continuations — absent/empty, today's arrows
     palette?: ArrowPaletteId,             // CTA-98: the arrows' colours — absent, "classic"
   },
   map?: { tree?: GameTree; nodeId?: string | null; coverage?: MapCoverage; addedIds?: ReadonlySet<string>; linked?: boolean },
@@ -134,6 +135,7 @@ const parts = useVariationsExplorer({
 | **Next-move arrows**: mainline green, side lines blue, the hovered move red | `arrows` | `arrows.show` (off: only a hovered move's arrow) | `views/shared/nextMoveArrows.ts` |
 | **Play-chance arrows**: white with a magenta border, width by chance, a percentage per move in the bar | `overlay` (+ `nextMoves`) | `arrows.chances`, and only where the branch carries a `prc` mark | `ChanceArrows` over `chanceArrows.ts` |
 | **Width-sized arrows** (CTA-98): each continuation sized by a tag in its comment (`eval`, `games`, `prc`) or by the lines ahead, filled in the palette's colours; a move without the tag, where others have it, gray and half-transparent; a branch where none has it draws the ordinary arrows | `overlay` | `arrows.widthSource`, only while `arrows.show` | `ChanceArrows` with its `colors` (`weightedArrowColors`), over `lib/nextMoveWeights.ts` |
+| **Engine-move arrows** (CTA-197, a Case board's *Variations*): moves by their squares, not tree nodes — the engine's listed lines' first moves — sized and coloured by quality as under `eval`, **in place of** the continuations' arrows; a hovered continuation among them answers in the overlay, one that is not keeps its library arrow | `overlay` (`${testId}-engine-arrows-overlay`) | `arrows.engineMoves`, only while `arrows.show` | `ChanceArrows` over `engineLineWeights` (`lib/nextMoveWeights.ts`) |
 | **Arrow palette** (CTA-98): the mainline / side-line / hovered colours of every next-move arrow, library or overlay | `arrows`, `overlay` | `arrows.palette` | `NEXT_MOVE_ARROW_PALETTES` (`nextMoveArrows.ts`) |
 | **Required moves**: purple, in place of every other arrow | `arrows` | `arrows.required` | `REQUIRED_MOVE_ARROW_COLOR` |
 | **Map**: the tree as an SVG — tab and full screen, zoom, pan, fit, "where am I", following the reader, move labels, dots coloured by side | `map` | `map` | `TreeMap` over `lib/treeMap.ts` |
@@ -162,7 +164,8 @@ repertoire games pass nothing; a game never writes.
   menu and the comment block uses `dir="ltr"`, comment prose `dir="auto"`.
   The glyphs sit inside the SAN's own `dir="ltr"` token.
 - **One set of arrows at a time**: required moves beat the chance overlay,
-  which beats the width-sized overlay, which beats the library arrows. **The
+  which beats the engine-move overlay, which beats the width-sized overlay,
+  which beats the library arrows. **The
   PGN's shapes are not in that contest** (CTA-143): they are drawn beside
   whichever set won, the circles composed into the same `overlay`. The
   screen passes `widthSource: "none"` for a tag its tree does not carry —
@@ -175,7 +178,7 @@ repertoire games pass nothing; a game never writes.
 | Board | Options | Placement |
 | --- | --- | --- |
 | **Repertoire player** | `onEditTree` (player only), `annotations` (player, once read), `arrows: { show, chances, required }`, `map: { tree, nodeId, coverage, addedIds, linked }` (none in Get to the end), `extensionIds` | `moves` behind "reading…", `map` once read, `nextMoves` on the Moves tab with Autoplay off |
-| **Analysis case** | `onEditTree: core.replaceTree`, `playChances: false`, `annotations: true`, `moveMarks` and `arrows: { show, widthSource, palette }` (its Display tab, kept with the Case — [`analysis-v2.md`](./analysis-v2.md) §3.4), `map: { linked: true }` | Moves and Map tabs (kept mounted); footer: `annotations`, Play's status line, `nextMoves` (Moves tab) |
+| **Analysis case** | `onEditTree: core.replaceTree`, `playChances: false`, `annotations: true`, `moveMarks` and `arrows: { show, widthSource, engineMoves, palette }` (its Display tab, kept with the Case — [`analysis-v2.md`](./analysis-v2.md) §3.4), `map: { linked: true }` | Moves and Map tabs (kept mounted); footer: `annotations`, Play's status line, `nextMoves` (Moves tab) |
 | **Library game** | as the Analysis case, with `arrows: { show }` — classic, colour only — `moveMarks` from its Moves tab's switch, and `addedIds` / `extensionIds` against the game as it arrived | as the Analysis case, and the changes strip |
 | **Openings explorer** | the same without `addedIds` / `extensionIds` — nothing is added against a record | as above, without the strip |
 | **Play with Engine** | the same without `addedIds` / `extensionIds`, and without `map` — nothing is added against a record, and (CTA-91) no Map is drawn or offered | Moves tab only (kept mounted); footer: `annotations`, Play's status line, the game-over result and its *Open in analysis* button (CTA-91), `nextMoves` (Moves tab) |
