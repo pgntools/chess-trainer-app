@@ -72,6 +72,15 @@ export type IdbRecordStoreOptions<Row> = {
   order: "newest-first" | "oldest-first";
   /** The `BroadcastChannel` other tabs hear this store's writes on. */
   channel: string;
+  /**
+   * **The whole list mended after every read** (CTA-203) — what one row's
+   * normaliser cannot do because it needs the others (the Cases' order, given
+   * to a record from before by its Project's). It keeps the list's ids and
+   * their order, answering the same array when there is nothing to mend; a
+   * row it replaces is written back before the read lands (a refusal is
+   * ignored — the next read mends it again). Absent, nothing is mended.
+   */
+  repair?: (rows: readonly Row[]) => readonly Row[];
 };
 
 /**
@@ -108,6 +117,7 @@ export const idbRecordStore = <Row extends { id: string }>({
   normalise,
   order,
   channel: channelName,
+  repair,
 }: IdbRecordStoreOptions<Row>): IdbRecordStore<Row> => {
   let rows: readonly Row[] | undefined;
   /** Each row's `seq`, by id — what a write keeps where it can. */
@@ -145,7 +155,22 @@ export const idbRecordStore = <Row extends { id: string }>({
       read.push(row);
     }
     seqs = nextSeqs;
-    return read;
+    if (repair === undefined) return read;
+
+    const mended = repair(read);
+    const mendedRows = mended.filter((row, index) => row !== read[index]);
+    if (mendedRows.length > 0) {
+      try {
+        const db = await openDb();
+        const tx = db.transaction(store, "readwrite");
+        const objects = tx.objectStore(store);
+        for (const row of mendedRows) objects.put({ id: row.id, seq: nextSeqs.get(row.id) ?? 0, value: row } satisfies Stored);
+        await committed(tx);
+      } catch {
+        // Kept mended in memory; the next read mends it again.
+      }
+    }
+    return mended;
   };
 
   const settleRead = (read: readonly Row[]) => {

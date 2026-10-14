@@ -7,6 +7,7 @@ import {
   importAnalysisCases,
   loadAnalysisCases,
   moveAnalysisCase,
+  moveAnalysisCaseInOrder,
   removeAnalysisCases,
   renameAnalysisCase,
   resetAnalysisCaseStore,
@@ -47,8 +48,9 @@ import {
   resetCaseLinkStore,
   unlinkAnalysisCases,
 } from "./analysisCaseLinkStore";
-import { ANALYSIS_PROJECTS_DB_NAME, deleteAnalysisProjectsDb } from "./analysisProjectsDb";
+import { ANALYSIS_PROJECTS_DB_NAME, CASES_STORE, deleteAnalysisProjectsDb, openAnalysisProjectsDb } from "./analysisProjectsDb";
 import {
+  casesInOrder,
   caseStateOf,
   MAX_ANALYSIS_CASES,
   positionCaseOfFen,
@@ -57,6 +59,7 @@ import {
 } from "./analysisProjects";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "./computerAnalysis";
 import { emptyTree } from "./gameTree";
+import { committed, done } from "./idb";
 import { jobV2Of } from "./jobsV2";
 import { addJobV2, jobsV2Snapshot, loadJobsV2, resetJobV2Store } from "./jobV2Store";
 
@@ -353,6 +356,115 @@ describe("Analysis V2's stores (CTA-186)", () => {
       expect(caseLinksSnapshot()?.map((link) => link.id)).toEqual(["l1", "l4"]);
       await importCaseLinks({ add: [{ id: "l5", fromId: "c3", toId: "c1", createdAt: "" }], removeOf: ["c2"] });
       expect(caseLinksSnapshot()?.map((link) => link.id)).toEqual(["l5"]);
+    });
+  });
+
+  describe("a Project's order (CTA-203)", () => {
+    /** The Project's Cases in its order, each `id:order`. */
+    const line = (projectId: string, cases = analysisCasesSnapshot()!) =>
+      casesInOrder(cases, projectId).map((record) => `${record.id}:${record.order}`);
+
+    it("puts every new Case last — added, moved in, duplicated — and closes the gap one leaves", async () => {
+      const p1 = (await createAnalysisProject("One", null))!;
+      const p2 = (await createAnalysisProject("Two", null))!;
+      await addAnalysisCases([aCase("a", p1.id), aCase("b", p1.id)]);
+      await addAnalysisCases([aCase("c", p1.id), aCase("x", p2.id)]);
+      expect(line(p1.id)).toEqual(["a:1", "b:2", "c:3"]);
+
+      await moveAnalysisCase("a", p2.id);
+      expect(line(p1.id)).toEqual(["b:1", "c:2"]);
+      expect(line(p2.id)).toEqual(["x:1", "a:2"]);
+
+      const copy = (await duplicateAnalysisCase("b", p1.id, "B (copy)"))!;
+      expect(line(p1.id)).toEqual(["b:1", "c:2", `${copy.id}:3`]);
+
+      await removeAnalysisCases(["b"]);
+      expect(line(p1.id)).toEqual(["c:1", `${copy.id}:2`]);
+      const { cases } = await reload();
+      expect(line(p1.id, cases)).toEqual(["c:1", `${copy.id}:2`]);
+    });
+
+    it("moves a Case up, down, to the top and to the bottom — across pages, kept across a reload, no date touched", async () => {
+      const p1 = (await createAnalysisProject("Tutorial", null))!;
+      await addAnalysisCases(Array.from({ length: 30 }, (_, index) => aCase(`c${index + 1}`, p1.id)));
+      const dates = analysisCasesSnapshot()!.map((record) => record.updatedAt);
+
+      // c26 is on the second page of 25; its top is the first page's first row.
+      await moveAnalysisCaseInOrder("c26", "top");
+      expect(line(p1.id).slice(0, 2)).toEqual(["c26:1", "c1:2"]);
+      await moveAnalysisCaseInOrder("c1", "bottom");
+      expect(line(p1.id).slice(-2)).toEqual(["c30:29", "c1:30"]);
+      await moveAnalysisCaseInOrder("c2", "up");
+      expect(line(p1.id).slice(0, 3)).toEqual(["c2:1", "c26:2", "c3:3"]);
+      await moveAnalysisCaseInOrder("c2", "down");
+      expect(line(p1.id).slice(0, 3)).toEqual(["c26:1", "c2:2", "c3:3"]);
+
+      // Past an end, or an unknown Case: nothing written.
+      const before = analysisCasesSnapshot();
+      await moveAnalysisCaseInOrder("c26", "up");
+      await moveAnalysisCaseInOrder("c26", "top");
+      await moveAnalysisCaseInOrder("c1", "down");
+      await moveAnalysisCaseInOrder("c1", "bottom");
+      await moveAnalysisCaseInOrder("gone", "up");
+      expect(analysisCasesSnapshot()).toBe(before);
+
+      expect(analysisCasesSnapshot()!.map((record) => record.updatedAt)).toEqual(dates);
+      const { cases } = await reload();
+      expect(line(p1.id, cases)).toEqual(line(p1.id, before));
+    });
+
+    it("gives the Cases stored before their place by date as it reads them, and writes it back", async () => {
+      const db = await openAnalysisProjectsDb();
+      const put = db.transaction(CASES_STORE, "readwrite");
+      // A record from before the order: no `order` at all.
+      const old = (id: string, projectId: string, day: number): Partial<AnalysisCase> => {
+        const record: Partial<AnalysisCase> = { ...aCase(id, projectId), createdAt: `2026-01-0${day}T10:00:00.000Z` };
+        delete record.order;
+        return record;
+      };
+      put.objectStore(CASES_STORE).put({ id: "b", seq: 3, value: old("b", "p1", 2) });
+      put.objectStore(CASES_STORE).put({ id: "c", seq: 2, value: old("c", "p1", 3) });
+      put.objectStore(CASES_STORE).put({ id: "a", seq: 1, value: old("a", "p1", 1) });
+      put.objectStore(CASES_STORE).put({ id: "x", seq: 4, value: old("x", "p2", 1) });
+      await committed(put);
+      resetAnalysisCaseStore();
+
+      expect(line("p1", await loadAnalysisCases())).toEqual(["a:1", "b:2", "c:3"]);
+      expect(line("p2")).toEqual(["x:1"]);
+      // Written back: the stored rows hold it, and a new Case goes after them.
+      const stored = await done(db.transaction(CASES_STORE).objectStore(CASES_STORE).get("c"));
+      expect((stored as { value: { order: number } }).value.order).toBe(3);
+      await addAnalysisCases([aCase("d", "p1")]);
+      const { cases } = await reload();
+      expect(line("p1", cases)).toEqual(["a:1", "b:2", "c:3", "d:4"]);
+    });
+
+    it("imports the zip's order into a Project it fills, puts it last in one that keeps Cases, and dates an older zip's", async () => {
+      await addAnalysisCases([aCase("kept1", "merge"), aCase("kept2", "merge")]);
+      const placed = (id: string, projectId: string, order: number): AnalysisCase => ({ ...aCase(id, projectId), order });
+      await importAnalysisCases({
+        add: [
+          placed("z2", "fresh", 2),
+          placed("z1", "fresh", 1),
+          placed("m2", "merge", 2),
+          placed("m1", "merge", 1),
+          { ...aCase("o2", "older"), createdAt: "2026-01-02T00:00:00.000Z" },
+          { ...aCase("o1", "older"), createdAt: "2026-01-01T00:00:00.000Z" },
+        ],
+        remove: [],
+      });
+      expect(line("fresh")).toEqual(["z1:1", "z2:2"]);
+      expect(line("merge")).toEqual(["kept1:1", "kept2:2", "m1:3", "m2:4"]);
+      expect(line("older")).toEqual(["o1:1", "o2:2"]);
+    });
+
+    it("duplicates a Project with its Cases in their order", async () => {
+      const p1 = (await createAnalysisProject("One", null))!;
+      await addAnalysisCases([aCase("a", p1.id, "A"), aCase("b", p1.id, "B"), aCase("c", p1.id, "C")]);
+      await moveAnalysisCaseInOrder("c", "top");
+      const copy = (await duplicateAnalysisProject(p1.id, "Copy"))!;
+      const names = casesInOrder(analysisCasesSnapshot()!, copy.id).map((record) => `${record.name}:${record.order}`);
+      expect(names).toEqual(["C:1", "A:2", "B:3"]);
     });
   });
 

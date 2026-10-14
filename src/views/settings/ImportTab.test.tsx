@@ -367,9 +367,13 @@ describe("the Import tab", () => {
     await cases.addAnalysisCases([
       positionCaseOfFen({ id: "c1", projectId: najdorf.id, name: "Endgame" }, "8/8/4k3/8/8/4K3/4P3/8 b - - 0 41"),
       positionCaseOfFen({ id: "c2", projectId: loose.id, name: "Rook ending" }, "8/8/4k3/8/8/4K3/4R3/8 b - - 0 41"),
+      positionCaseOfFen({ id: "c3", projectId: najdorf.id, name: "Chapter 1" }, "8/8/4k3/8/8/4K3/4P3/8 w - - 0 41"),
     ]);
+    // The reader's order (CTA-203): Chapter 1 first.
+    await cases.moveAnalysisCaseInOrder("c3", "top");
     await links.linkAnalysisCases("c1", "c2");
     const before = { projects: await projects.loadAnalysisProjects(), cases: await cases.loadAnalysisCases() };
+    expect(before.cases.find((record) => record.id === "c3")!.order).toBe(1);
     const bytes = await exported();
 
     await Promise.all([folders.settledProjectFolders(), projects.settledAnalysisProjects(), cases.settledAnalysisCases(), links.settledCaseLinks()]);
@@ -396,10 +400,38 @@ describe("the Import tab", () => {
     expect(afterProjects.find((project) => project.id === najdorf.id)!.folderId).toBe(
       afterFolders.find((folder) => folder.name === "Openings")!.id,
     );
-    // Each Case as it was — in the order the import files them, Project by Project.
+    // Each Case as it was — its place in its Project's order too — in the order the import files them, Project by Project.
     const byId = (list: readonly { id: string }[]) => [...list].sort((a, b) => a.id.localeCompare(b.id));
     expect(byId(await cases.loadAnalysisCases())).toEqual(byId(before.cases));
     expect((await links.loadCaseLinks()).map(({ fromId, toId }) => [fromId, toId])).toEqual([["c1", "c2"]]);
+  });
+
+  it("gives the Cases of a zip from before the Projects' order their place by date, oldest first (CTA-203)", async () => {
+    const projects = await import("../../lib/analysisProjectStore");
+    const cases = await import("../../lib/analysisCaseStore");
+    const db = await import("../../lib/analysisProjectsDb");
+    const { positionCaseOfFen } = await import("../../lib/analysisProjects");
+    const project = (await projects.createAnalysisProject("Old", null))!;
+    const made = (id: string, day: number) =>
+      positionCaseOfFen({ id, projectId: project.id, name: id, now: new Date(`2026-01-0${day}T10:00:00.000Z`) }, "8/8/4k3/8/8/4K3/4P3/8 b - - 0 41");
+    await cases.addAnalysisCases([made("second", 2), made("first", 1), made("third", 3)]);
+    // An older zip: its Cases carry no order.
+    const files = unzipSync(await exported());
+    const file = JSON.parse(new TextDecoder().decode(files["analysis-projects.json"])) as { projects: { cases: Record<string, unknown>[] }[] };
+    for (const entry of file.projects) for (const record of entry.cases) delete record.order;
+    files["analysis-projects.json"] = strToU8(JSON.stringify(file));
+
+    await Promise.all([projects.settledAnalysisProjects(), cases.settledAnalysisCases()]);
+    projects.resetAnalysisProjectStore();
+    cases.resetAnalysisCaseStore();
+    await db.deleteAnalysisProjectsDb();
+
+    renderImport();
+    await pick(zipSync(files));
+    await dialog();
+    await importAndWait();
+    const order = Object.fromEntries((await cases.loadAnalysisCases()).map((record) => [record.id, record.order]));
+    expect(order).toEqual({ first: 1, second: 2, third: 3 });
   });
 
   it("changes nothing when the same zip is imported again with Merge", async () => {

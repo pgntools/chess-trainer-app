@@ -2,14 +2,16 @@ import type { AnalysisCase, AnalysisCaseType } from "./analysisProjects";
 import { collectionRowOf } from "./libraryCollections";
 
 /**
- * **A Case as a table row** (CTA-186) — a Project's Cases table: the Case's
- * name and type, the game's own fields read off its tags (the Library's
- * `collectionRowOf`, no `chess.js`), and when it last changed. A **Position**
+ * **A Case as a table row** (CTA-186) — a Project's Cases table: its place in
+ * the Project's order (`#`, CTA-203), the Case's name and type, the game's own
+ * fields read off its tags (the Library's `collectionRowOf`, no `chess.js`),
+ * and when it last changed. A **Position**
  * fills none of the game's columns — they are blank, and sort last. Pure.
  */
 
 /** The table's columns, in order — every one a sort header. */
 export const CASE_COLUMNS = [
+  "order",
   "name",
   "type",
   "white",
@@ -33,6 +35,8 @@ export type CaseRow = {
   /** The Case's id — the row's key and its link. */
   id: string;
   record: AnalysisCase;
+  /** Its place in the Project's order (CTA-203) — the `#` column. */
+  order: number;
   /** The name the reader reads — its own, else derived (`caseDisplayName`, in the reader's language). */
   name: string;
   type: AnalysisCaseType;
@@ -55,7 +59,7 @@ export type CaseRow = {
 
 /** A Case's row, named as the screen names it. */
 export const caseRowOf = (record: AnalysisCase, name: string): CaseRow => {
-  const base: CaseRow = { id: record.id, record, name, type: record.type, updated: record.updatedAt };
+  const base: CaseRow = { id: record.id, record, order: record.order, name, type: record.type, updated: record.updatedAt };
   if (record.type !== "game") return base;
   const game = collectionRowOf(record.pgn, 1);
   return {
@@ -74,7 +78,7 @@ export const caseRowOf = (record: AnalysisCase, name: string): CaseRow => {
   };
 };
 
-/** Which way a column opens: dates, ratings and lengths high first; words A first. */
+/** Which way a column opens: dates, ratings and lengths high first; the order from 1, words A first. */
 export const caseFirstDirection = (column: CaseColumn): "asc" | "desc" =>
   column === "updated" || column === "date" || column === "whiteElo" || column === "blackElo" || column === "moves"
     ? "desc"

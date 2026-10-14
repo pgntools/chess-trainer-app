@@ -9,6 +9,7 @@ import {
   addAnalysisCases,
   analysisCasesSnapshot,
   loadAnalysisCases,
+  moveAnalysisCaseInOrder,
   resetAnalysisCaseStore,
   settledAnalysisCases,
 } from "../../lib/analysisCaseStore";
@@ -483,7 +484,7 @@ describe("a Project's Cases (CTA-186)", () => {
     expect(boardOptions().boardOrientation).toBe("black");
   });
 
-  it("renames, moves, duplicates and deletes a Case", async () => {
+  it("renames, moves and duplicates a Case — and no row deletes itself (CTA-203)", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     const other = (await createAnalysisProject("Other", null))!;
     await addAnalysisCases([gameCase(project.id)]);
@@ -506,9 +507,92 @@ describe("a Project's Cases (CTA-186)", () => {
     expect(screen.queryByRole("link", { name: "Open Brilliancy (copy)" })).toBeNull();
     expect(analysisCasesSnapshot()!.find((record) => record.name === "Brilliancy (copy)")!.projectId).toBe(other.id);
 
-    await user.click(screen.getByRole("button", { name: "Delete Brilliancy" }));
-    await user.click(screen.getByRole("button", { name: "Delete" }));
-    expect(await screen.findByTestId("analysis-v2-cases-empty")).toBeInTheDocument();
+    // Deleting is the picks' alone.
+    expect(screen.queryByRole("button", { name: "Delete Brilliancy" })).toBeNull();
+    expect(screen.queryByTestId("analysis-v2-case-delete")).toBeNull();
+  });
+
+  describe("their order (CTA-203)", () => {
+    /** `count` Position Cases, `Case 1` first in the order. */
+    const tutorial = async (count: number) => {
+      const project = (await createAnalysisProject("Tutorial", null))!;
+      await addAnalysisCases(
+        Array.from({ length: count }, (_, index) =>
+          positionCaseOfFen({ id: `c${index + 1}`, projectId: project.id, name: `Case ${index + 1}` }, ENDGAME),
+        ),
+      );
+      return project;
+    };
+    const rowIds = () => screen.getAllByTestId(/^analysis-v2-cases-row-/).map((row) => row.dataset.testid!.replace("analysis-v2-cases-row-", ""));
+
+    it("opens sorted by #, and moves a Case from its row — the focus kept on it, its place said, the page following it", async () => {
+      const project = await tutorial(30);
+      const dates = analysisCasesSnapshot()!.map((record) => record.updatedAt);
+      const user = userEvent.setup();
+      // 25 a page, so 30 Cases take two.
+      const { baseElement } = mount(`/analysis/projects/${project.id}?rows=25`);
+      const table = await screen.findByRole("table", { name: "Cases" });
+      expect(within(table).getByRole("columnheader", { name: "Order" })).toHaveAttribute("aria-sort", "ascending");
+      expect(rowIds().slice(0, 3)).toEqual(["c1", "c2", "c3"]);
+      await expectNoAxeViolations(baseElement);
+
+      // Up to the first place: up and top are off there, so the focus takes its way down.
+      await user.click(screen.getByRole("button", { name: "Move Case 2 up" }));
+      await waitFor(() => expect(rowIds().slice(0, 3)).toEqual(["c2", "c1", "c3"]));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Move Case 2 down" })).toHaveFocus());
+      expect(screen.getByTestId("analysis-v2-cases-moved")).toHaveTextContent("Case 2 is now number 1 of 30.");
+
+      // By the keyboard: the same action keeps the focus.
+      screen.getByRole("button", { name: "Move Case 3 down" }).focus();
+      await user.keyboard("{Enter}");
+      await waitFor(() => expect(rowIds().slice(0, 4)).toEqual(["c2", "c1", "c4", "c3"]));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Move Case 3 down" })).toHaveFocus());
+
+      // To the bottom, on the second page: the page follows it.
+      await user.click(screen.getByRole("button", { name: "Move Case 1 to the bottom" }));
+      await waitFor(() => expect(where()).toContain("page=1"));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Move Case 1 up" })).toHaveFocus());
+      expect(rowIds().at(-1)).toBe("c1");
+      expect(screen.getByTestId("analysis-v2-cases-moved")).toHaveTextContent("Case 1 is now number 30 of 30.");
+
+      // Kept, and no Case's date touched.
+      expect(analysisCasesSnapshot()!.map((record) => record.updatedAt)).toEqual(dates);
+      await reload();
+      const order = Object.fromEntries(analysisCasesSnapshot()!.map((record) => [record.id, record.order]));
+      expect([order.c2, order.c4, order.c3, order.c1]).toEqual([1, 2, 3, 30]);
+    });
+
+    it("reorders only under # ascending with no words — saying why otherwise", async () => {
+      const project = await tutorial(3);
+      const user = userEvent.setup();
+      mount(`/analysis/projects/${project.id}`);
+      const table = await screen.findByRole("table", { name: "Cases" });
+      expect(screen.getByRole("button", { name: "Move Case 2 up" })).toBeEnabled();
+
+      await user.click(within(table).getByRole("button", { name: "Name" }));
+      expect(screen.getByRole("button", { name: "Move Case 2 up — sort by # ascending to reorder" })).toBeDisabled();
+      await user.click(within(table).getByRole("button", { name: "Order" }));
+      expect(where()).not.toContain("sort=");
+      expect(screen.getByRole("button", { name: "Move Case 2 up" })).toBeEnabled();
+
+      await user.type(screen.getByRole("searchbox", { name: "Filter cases" }), "case");
+      expect(screen.getByRole("button", { name: "Move Case 2 up — clear the filter to reorder" })).toBeDisabled();
+    });
+
+    it("lists the Project's Cases beside a Case's board in the same order", async () => {
+      const project = await tutorial(3);
+      await moveAnalysisCaseInOrder("c3", "top");
+      const user = userEvent.setup();
+      mount(`/analysis/projects/${project.id}/cases/c1?view=list`);
+      const list = await screen.findByRole("navigation", { name: "Cases of Tutorial" });
+      expect(within(list).getAllByRole("treeitem").map((item) => item.textContent)).toEqual([
+        expect.stringContaining("Case 3"),
+        expect.stringContaining("Case 1"),
+        expect.stringContaining("Case 2"),
+      ]);
+      await user.click(screen.getByRole("link", { name: "Next case" }));
+      expect(where()).toBe(`/analysis/projects/${project.id}/cases/c2?view=list`);
+    });
   });
 
   it("says a Project that is not there, once the stores are read", async () => {

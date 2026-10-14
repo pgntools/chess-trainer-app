@@ -7,7 +7,7 @@ import {
 import { ANALYSIS_PROJECTS_CHANNEL, openAnalysisProjectsDb, PROJECTS_STORE } from "./analysisProjectsDb";
 import {
   analysisProjectFrom,
-  casesOf,
+  casesInOrder,
   copiedCase,
   MAX_PROJECT_NAME,
   type AnalysisCase,
@@ -138,8 +138,8 @@ export const duplicateAnalysisProject = async (
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
   };
-  // In the original's order, which the copies keep at the top of the list.
-  const copies: AnalysisCase[] = casesOf(await loadAnalysisCases(), id).map((record) =>
+  // In the original's order (CTA-203), which the copies take as they are added.
+  const copies: AnalysisCase[] = casesInOrder(await loadAnalysisCases(), id).map((record) =>
     copiedCase(record, newRecordId(now), copy.id, record.name, now),
   );
   if ((await addAnalysisCases(copies)) !== undefined) return undefined;

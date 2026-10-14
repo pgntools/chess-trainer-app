@@ -201,6 +201,13 @@ as it was. **Nothing throws.**
 emit — which is how every store keeps its idempotency (an identical re-save,
 an unknown id, a no-op rename).
 
+A store may pass a **`repair`** (CTA-203): the whole list mended after every
+read, for what one row's normaliser cannot do because it needs the others —
+the Cases' `order`, given to a record from before by its Project's
+(`withCaseOrders`). It keeps the ids and their order, answers the same array
+when there is nothing to mend, and a row it replaces is written back before
+the read lands (a refusal ignored: the next read mends it again).
+
 ### 3.3 One record per row, and a `seq` for the order
 
 Each row is stored as `{ id, seq, value }`. `seq` is the list's order (high =

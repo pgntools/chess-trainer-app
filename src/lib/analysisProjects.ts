@@ -236,6 +236,14 @@ export type AnalysisCase = {
    * (`saveCaseState`). `[]` for a Case none was merged into.
    */
   merges: readonly string[];
+  /**
+   * **Its place in its Project's order** (CTA-203) — the reader's, 1 the
+   * first: a Project can be a tutorial, its Cases its chapters. A new Case
+   * goes last (the store sets it — `addAnalysisCases`); reordering it is not
+   * an edit, so `updatedAt` stays. `0` is a record from before, given its
+   * place by {@link withCaseOrders} as the store reads it.
+   */
+  order: number;
   /** ISO 8601. */
   createdAt: string;
   /** ISO 8601 — any change, the autosave's too. */
@@ -290,6 +298,7 @@ export const analysisCaseFrom = (value: unknown): AnalysisCase | undefined => {
     orientation: value.orientation === "black" ? "black" : "white",
     display: caseDisplayFrom(value.display),
     merges: sanList(value.merges),
+    order: typeof value.order === "number" && Number.isInteger(value.order) && value.order > 0 ? value.order : 0,
     createdAt,
     updatedAt: stringOr(value.updatedAt, createdAt),
   };
@@ -298,6 +307,118 @@ export const analysisCaseFrom = (value: unknown): AnalysisCase | undefined => {
 /** The Cases of one Project, in the caller's order. */
 export const casesOf = (cases: readonly AnalysisCase[], projectId: string): AnalysisCase[] =>
   cases.filter((record) => record.projectId === projectId);
+
+/* ------------------------------------------------------------------ *
+ * A Project's order (CTA-203)
+ * ------------------------------------------------------------------ */
+
+const compareText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+/**
+ * **A Project's order**: by `order`, a Case without one (`0`) after every
+ * Case with one; ties — which only an older record or an import can make —
+ * oldest first, then by id, so the order is total.
+ */
+export const byCaseOrder = (a: Pick<AnalysisCase, "order" | "createdAt" | "id">, b: Pick<AnalysisCase, "order" | "createdAt" | "id">): number => {
+  if (a.order !== b.order) {
+    if (a.order === 0) return 1;
+    if (b.order === 0) return -1;
+    return a.order - b.order;
+  }
+  return compareText(a.createdAt, b.createdAt) || compareText(a.id, b.id);
+};
+
+/** The Cases of one Project in its order. */
+export const casesInOrder = (cases: readonly AnalysisCase[], projectId: string): AnalysisCase[] =>
+  casesOf(cases, projectId).sort(byCaseOrder);
+
+/** Each Project's highest `order`, by Project id. */
+const highestOrders = (cases: readonly AnalysisCase[]): Map<string, number> => {
+  const highest = new Map<string, number>();
+  for (const record of cases) highest.set(record.projectId, Math.max(highest.get(record.projectId) ?? 0, record.order));
+  return highest;
+};
+
+/**
+ * **Cases put last in their Projects** — each given the next `order` after
+ * the highest its Project holds in `current`, in the order they come:
+ * every new Case, one moved in from another Project, a copy, a job's result.
+ */
+export const appendedCases = (current: readonly AnalysisCase[], added: readonly AnalysisCase[]): AnalysisCase[] => {
+  const highest = highestOrders(current);
+  return added.map((record) => {
+    const order = (highest.get(record.projectId) ?? 0) + 1;
+    highest.set(record.projectId, order);
+    return record.order === order ? record : { ...record, order };
+  });
+};
+
+/**
+ * **Every Case given its place** — a record from before (`order` `0`) put
+ * after the highest its Project holds, oldest first, so a Project of them
+ * alone reads 1 (the oldest), 2, …. The same array back when every Case has
+ * one. What the store runs over every read (and writes back), and an
+ * import over the Cases it brings.
+ */
+export const withCaseOrders = (cases: readonly AnalysisCase[]): readonly AnalysisCase[] => {
+  const missing = cases.filter((record) => record.order === 0);
+  if (missing.length === 0) return cases;
+  const placed = new Map(
+    appendedCases(
+      cases.filter((record) => record.order !== 0),
+      [...missing].sort(byCaseOrder),
+    ).map((record) => [record.id, record]),
+  );
+  return cases.map((record) => placed.get(record.id) ?? record);
+};
+
+/**
+ * **These Projects' orders closed up** — their Cases numbered 1, 2, … in
+ * their order, after a Case left (deleted, moved away). Only a Case whose
+ * number changes is a new object; the same array back when none does.
+ */
+export const compactedCaseOrders = (cases: readonly AnalysisCase[], projectIds: Iterable<string>): readonly AnalysisCase[] => {
+  const numbers = new Map<string, number>();
+  for (const projectId of new Set(projectIds)) {
+    casesInOrder(cases, projectId).forEach((record, index) => numbers.set(record.id, index + 1));
+  }
+  let changed = false;
+  const next = cases.map((record) => {
+    const order = numbers.get(record.id);
+    if (order === undefined || order === record.order) return record;
+    changed = true;
+    return { ...record, order };
+  });
+  return changed ? next : cases;
+};
+
+/** Where a reorder takes a Case in its Project: one place up or down, or to either end. */
+export type CaseOrderMove = "up" | "down" | "top" | "bottom";
+
+/**
+ * **A Case moved in its Project's order** — its Project then numbered 1, 2,
+ * … again; nothing else about any Case changes (`updatedAt` neither). The
+ * same array back for an unknown Case, or a move past an end.
+ */
+export const reorderedCases = (cases: readonly AnalysisCase[], id: string, move: CaseOrderMove): readonly AnalysisCase[] => {
+  const record = cases.find((candidate) => candidate.id === id);
+  if (record === undefined) return cases;
+  const line = casesInOrder(cases, record.projectId);
+  const from = line.indexOf(record);
+  const to = move === "up" ? from - 1 : move === "down" ? from + 1 : move === "top" ? 0 : line.length - 1;
+  if (to < 0 || to >= line.length || to === from) return cases;
+  line.splice(from, 1);
+  line.splice(to, 0, record);
+  const numbers = new Map(line.map((entry, index) => [entry.id, index + 1]));
+  let changed = false;
+  const next = cases.map((entry) => {
+    const order = numbers.get(entry.id);
+    if (order === undefined || order === entry.order) return entry;
+    changed = true;
+    return { ...entry, order };
+  });
+  return changed ? next : cases;
+};
 
 /** How many Cases each Project holds, by Project id. */
 export const caseCountsOf = (cases: readonly AnalysisCase[]): Map<string, number> => {
@@ -383,6 +504,8 @@ const caseOf = (
   orientation,
   display: { ...DEFAULT_CASE_DISPLAY },
   merges: [],
+  // Its place is the store's to give — last in its Project (`addAnalysisCases`).
+  order: 0,
   createdAt: now.toISOString(),
   updatedAt: now.toISOString(),
 });
@@ -450,7 +573,7 @@ export const sameCaseState = (record: AnalysisCase, state: CaseState): boolean =
   sameDisplay(record.display, state.display) &&
   sameList(record.path, state.path);
 
-/** A Case copied under a new id into a Project — its source, analysis and place; its name as given. */
+/** A Case copied under a new id into a Project — its source, analysis and place on the board; its name as given. Its place in the Project's order is the store's to give. */
 export const copiedCase = (
   record: AnalysisCase,
   id: string,
@@ -463,6 +586,7 @@ export const copiedCase = (
   projectId,
   name: name.trim().slice(0, MAX_CASE_NAME),
   path: [...record.path],
+  order: 0,
   createdAt: now.toISOString(),
   updatedAt: now.toISOString(),
 });

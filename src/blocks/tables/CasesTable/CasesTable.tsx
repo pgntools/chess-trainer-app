@@ -1,19 +1,23 @@
 import { useMemo, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import ArrowDownwardRoundedIcon from "@mui/icons-material/ArrowDownwardRounded";
+import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DriveFileMoveRoundedIcon from "@mui/icons-material/DriveFileMoveRounded";
 import DriveFileRenameOutlineRoundedIcon from "@mui/icons-material/DriveFileRenameOutlineRounded";
 import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
 import SportsEsportsOutlinedIcon from "@mui/icons-material/SportsEsportsOutlined";
+import VerticalAlignBottomRoundedIcon from "@mui/icons-material/VerticalAlignBottomRounded";
+import VerticalAlignTopRoundedIcon from "@mui/icons-material/VerticalAlignTopRounded";
 import { useTranslation } from "react-i18next";
 
+import { visuallyHidden } from "../../../design-system/components/a11y";
 import type { LinkTarget } from "../../../design-system/components/link";
 import { tableDate } from "../../../design-system/components/tables";
 import { IconAction } from "../../../design-system/components/toolbars";
 import { DataTable, type DataTableColumn, type DataTablePaging, type DataTableSort } from "../../../design-system/patterns/tables";
-import type { AnalysisCase } from "../../../lib/analysisProjects";
+import { byCaseOrder, type AnalysisCase } from "../../../lib/analysisProjects";
 import {
   CASE_COLUMNS,
   caseFirstDirection,
@@ -23,13 +27,25 @@ import {
   type CaseRow,
 } from "../../../lib/analysisCaseRows";
 
-/** What a Case's row can do. */
-export type CaseAction = "rename" | "move" | "duplicate" | "delete";
+/**
+ * What a Case's row can do: move it in the Project's order — one place up or
+ * down, to the top or the bottom (CTA-203) — rename it, move it to another
+ * Project, duplicate it. Deleting is the picks' (CTA-203 took the row's away).
+ */
+export type CaseAction = "up" | "down" | "top" | "bottom" | "rename" | "move" | "duplicate";
+
+/** The actions that move a Case in the Project's order. */
+const REORDERS: ReadonlySet<CaseAction> = new Set(["up", "down", "top", "bottom"]);
 
 export type CasesTableProps = {
   /** The Project's Cases as rows (`caseRowOf`), in any order — the table sorts them. */
   rows: readonly CaseRow[];
-  /** The sort — the header that shows its arrow. */
+  /**
+   * The sort — the header that shows its arrow. **The rows reorder only under
+   * `#` ascending with no words** (CTA-203): the Project's order itself, every
+   * Case in it; under any other sort, or `filtered`, the four reorder actions
+   * are off, their tooltips saying why.
+   */
   sort: DataTableSort<CaseColumn>;
   /** A header was clicked: the column, and the direction it asks for (a new column opens its own way). */
   onSort: (column: CaseColumn, direction: "asc" | "desc") => void;
@@ -60,15 +76,28 @@ export type CasesTableProps = {
   testId: string;
 };
 
-const ACTIONS: readonly { action: CaseAction; icon: typeof DeleteOutlineRoundedIcon }[] = [
+const ACTIONS: readonly { action: CaseAction; icon: typeof ContentCopyRoundedIcon }[] = [
+  { action: "up", icon: ArrowUpwardRoundedIcon },
+  { action: "down", icon: ArrowDownwardRoundedIcon },
+  { action: "top", icon: VerticalAlignTopRoundedIcon },
+  { action: "bottom", icon: VerticalAlignBottomRoundedIcon },
   { action: "rename", icon: DriveFileRenameOutlineRoundedIcon },
   { action: "move", icon: DriveFileMoveRoundedIcon },
   { action: "duplicate", icon: ContentCopyRoundedIcon },
-  { action: "delete", icon: DeleteOutlineRoundedIcon },
 ];
 
 /** The columns kept to one line and cut at a width: a name, an event, an opening. */
 const WIDTHS: Partial<Record<CaseColumn, number>> = { name: 240, event: 160, opening: 200 };
+
+/** A column's header: an abbreviation in view (`#`), its full name read in its place and shown on hover. */
+const abbreviated = (header: string, name: string) => (
+  <Box component="span" title={name} sx={{ position: "relative" }}>
+    <span aria-hidden="true">{header}</span>
+    <Box component="span" sx={visuallyHidden}>
+      {name}
+    </Box>
+  </Box>
+);
 
 /** A reader's words on one line, cut with an ellipsis — the whole of it on hover. */
 function OneLine({ value }: { value: string }) {
@@ -80,17 +109,19 @@ function OneLine({ value }: { value: string }) {
 }
 
 /**
- * **A Project's Cases as a table** (CTA-186) — the games table's columns: the
+ * **A Project's Cases as a table** (CTA-186) — `#`, its place in the
+ * Project's order (CTA-203), then the games table's columns: the
  * Case's Name (its link to the board) and Type, then White, Elo, Black, Elo,
  * Result, Date, Event, Round, ECO, Opening, Moves read off a Game's tags —
  * **blank for a Position** — and Updated; every header sorts (a missing value
  * last either way, ties newest first), the rows paged; each row's actions
- * rename, move to another Project, duplicate and delete; a box per row and
+ * move it up, down, to the top or the bottom of the order (only under `#`
+ * ascending with no words — the first Case never up, the last never down),
+ * rename, move to another Project and duplicate; a box per row and
  * select-all in the header (over the rows the words box leaves) for the
- * screen's bulk delete; the words box in its filters slot, and a no-match row
- * with its Clear. Presentational: the
- * rows, the sort, the page and the callbacks are props; its words are the
- * app's (`analysisV2.*`).
+ * screen's bulk delete — the only delete; the words box in its filters slot,
+ * and a no-match row with its Clear. Presentational: the rows, the sort, the
+ * page and the callbacks are props; its words are the app's (`analysisV2.*`).
  */
 function CasesTable({
   rows,
@@ -109,8 +140,18 @@ function CasesTable({
 }: CasesTableProps) {
   const { t } = useTranslation();
 
+  // Reordering is the Project's order on screen: `#` ascending, no words — then every Case is a row.
+  const sortOff = sort.column !== "order" || sort.direction !== "asc";
+  const reorderOff = sortOff && filtered ? "Both" : sortOff ? "Sort" : filtered ? "Filter" : undefined;
+  const ends = useMemo(() => {
+    if (rows.length === 0) return undefined;
+    const ordered = rows.map((row) => row.record).sort(byCaseOrder);
+    return { first: ordered[0].id, last: ordered[ordered.length - 1].id };
+  }, [rows]);
+
   const columns = useMemo<DataTableColumn<CaseRow, CaseColumn>[]>(() => {
     const direction: Partial<Record<CaseColumn, "auto" | "ltr">> = {
+      order: "ltr",
       name: "auto",
       white: "auto",
       black: "auto",
@@ -122,7 +163,7 @@ function CasesTable({
       eco: "ltr",
       updated: "ltr",
     };
-    const numeric = (id: CaseColumn) => id === "whiteElo" || id === "blackElo" || id === "moves";
+    const numeric = (id: CaseColumn) => id === "order" || id === "whiteElo" || id === "blackElo" || id === "moves";
     const render = (id: CaseColumn): ((row: CaseRow) => ReactNode) => {
       switch (id) {
         case "name":
@@ -150,7 +191,7 @@ function CasesTable({
     };
     return CASE_COLUMNS.map((id) => ({
       id,
-      header: t(`analysisV2.case.columns.${id}`),
+      header: id === "order" ? abbreviated("#", t("analysisV2.case.columns.order")) : t(`analysisV2.case.columns.${id}`),
       sortable: true,
       firstDirection: caseFirstDirection(id),
       sortValue: (row: CaseRow) => (id === "type" ? t(`analysisV2.case.${row.type === "game" ? "typeGame" : "typePosition"}`) : caseSortValue(row, id)),
@@ -175,18 +216,22 @@ function CasesTable({
       rowLinkLabel={(row) => t("analysisV2.case.openNamed", { name: row.name })}
       rowActions={(row) => (
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
-          {ACTIONS.map(({ action, icon: Icon }) => (
-            <IconAction
-              key={action}
-              label={t(`analysisV2.case.${action}Named`, { name: row.name })}
-              onClick={() => onCaseAction(action, row.record)}
-              disabled={action === "move" && !canMove}
-              color={action === "delete" ? "error" : "default"}
-              testId={`${testId}-${action}-${row.id}`}
-            >
-              <Icon fontSize="small" />
-            </IconAction>
-          ))}
+          {ACTIONS.map(({ action, icon: Icon }) => {
+            const label = t(`analysisV2.case.${action}Named`, { name: row.name });
+            const reorder = REORDERS.has(action);
+            const atEnd = (action === "up" || action === "top" ? ends?.first : ends?.last) === row.id;
+            return (
+              <IconAction
+                key={action}
+                label={reorder && reorderOff !== undefined ? t(`analysisV2.case.reorderOff${reorderOff}`, { action: label }) : label}
+                onClick={() => onCaseAction(action, row.record)}
+                disabled={reorder ? reorderOff !== undefined || atEnd : action === "move" && !canMove}
+                testId={`${testId}-${action}-${row.id}`}
+              >
+                <Icon fontSize="small" />
+              </IconAction>
+            );
+          })}
         </Box>
       )}
       actionsLabel={t("analysisV2.case.actions")}
