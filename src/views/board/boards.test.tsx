@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import type { ReactNode } from "react";
 
@@ -39,6 +39,7 @@ vi.mock("../../lib/openings", async (importOriginal) => {
 });
 
 import { boardOptions, FakeEngine } from "./boardTestHarness";
+import { HOVERED_NEXT_MOVE_ARROW_COLOR } from "../shared/nextMoveArrows";
 import { storeEngineId } from "../../lib/engineChoice";
 import { storeEngineSearchSettings } from "../../lib/engineSearchInEffect";
 import { EngineMenu } from "../main/EngineMenu";
@@ -249,6 +250,41 @@ describe("every v2 board, from the same core", () => {
     );
 
     unmount();
+    },
+  );
+
+  it.each(BOARDS.filter((board) => board.linesShown !== false))(
+    "$name draws a hovered line move's arrow over its own, and takes it away after (CTA-201)",
+    ({ id, Screen, engineOff }) => {
+      const { unmount } = renderBoard(Screen);
+      if (engineOff) toggleEngine(id);
+      engineReports({ depth: 14, multipv: 1, cp: 42, pv: "e2e4 e7e5 g1f3" });
+
+      const before = boardOptions().arrows ?? [];
+      const move = within(screen.getByTestId(`${id}-panel-variations`)).getByTestId(
+        "variation-1-move-3",
+      );
+
+      // A move two deep in the line: its own squares, on the board as it stands.
+      fireEvent.mouseEnter(move);
+      expect(boardOptions().arrows).toEqual([
+        ...before,
+        { startSquare: "g1", endSquare: "f3", color: HOVERED_NEXT_MOVE_ARROW_COLOR },
+      ]);
+      fireEvent.mouseLeave(move);
+      expect(boardOptions().arrows ?? []).toEqual(before);
+
+      // The keyboard's focus shows the same arrow.
+      act(() => move.focus());
+      expect(boardOptions().arrows).toContainEqual({
+        startSquare: "g1",
+        endSquare: "f3",
+        color: HOVERED_NEXT_MOVE_ARROW_COLOR,
+      });
+      act(() => move.blur());
+      expect(boardOptions().arrows ?? []).toEqual(before);
+
+      unmount();
     },
   );
 
@@ -475,6 +511,30 @@ describe("Masked Pieces (CTA-79)", () => {
     });
     expect(screen.getByTestId("masked-play-panel-variations")).toBeInTheDocument();
     expect(screen.getByTestId("masked-play-panel-status-score")).toHaveTextContent("+0.42");
+  });
+
+  it("draws a hovered line move's arrow under the costume — squares only (CTA-201)", () => {
+    renderBoard(MaskedPlay);
+    engineReports({ depth: 14, multipv: 1, cp: 42, pv: "g1f3 g8f6" });
+    act(() => {
+      screen.getByTestId("masked-play-panel-tab-masking").click();
+    });
+    act(() => {
+      screen.getByTestId("mask-setting-lines").querySelector("input")!.click();
+    });
+
+    const move = screen.getByTestId("variation-1-move-1");
+    expect(move).not.toHaveTextContent("N");
+    fireEvent.mouseEnter(move);
+    expect(boardOptions().arrows).toContainEqual({
+      startSquare: "g1",
+      endSquare: "f3",
+      color: HOVERED_NEXT_MOVE_ARROW_COLOR,
+    });
+    fireEvent.mouseLeave(move);
+    expect(boardOptions().arrows ?? []).not.toContainEqual(
+      expect.objectContaining({ startSquare: "g1", endSquare: "f3" }),
+    );
   });
 
   it("saves its game with the engine games, costume and all", async () => {

@@ -11,8 +11,10 @@ import { Trans, useTranslation } from "react-i18next";
 import { ProgressChip } from "../../design-system/components/states";
 import {
   formatScore,
+  lineMoveSquares,
   variationNumbering,
   type Analysis,
+  type MoveSquares,
   type SearchProgress,
 } from "../../lib/engineAnalysis";
 import { maskSanLine, type PieceMask } from "../../lib/pieceMask";
@@ -74,6 +76,14 @@ import { moveSx, sanTokenSx } from "./moveTokenSx";
  *   mask never touches that (`lib/pieceMask.ts`); what the token *prints* is
  *   what is disguised. This holds in both states: a move visible is a move
  *   playable, collapsed or expanded.
+ *
+ * **A move hovered or focused is a move shown** (CTA-201): given
+ * `onHoverMove`, pointing at a move — or tabbing onto it — reports its two
+ * squares, even several moves deep in the line (replayed from the analysed
+ * position, `lineMoveSquares`), and `null` once the pointer leaves, focus
+ * moves on, the position changes or the lines go away; the board draws it as
+ * an arrow (`BoardShell`). The squares are the true move's — a mask disguises
+ * what a token prints, never where a piece goes.
  *
  * **The block holds its height while the engine thinks.** It always renders one
  * row per requested line (`requested`): a rank not in yet is a placeholder row
@@ -143,7 +153,22 @@ type BestVariationsProps = {
    * as it always has.
    */
   progress?: SearchProgress;
+  /**
+   * **The move under the pointer or the focus** (CTA-201): its two squares
+   * while a move of a line is hovered or focused, `null` when that ends — the
+   * pointer or the focus leaving, a new analysed position, the lines hidden,
+   * this block unmounted. Reported on change only. Absent: nothing is
+   * reported, today's behaviour.
+   */
+  onHoverMove?: (move: MoveSquares | null) => void;
 };
+
+/**
+ * A move a line's token is under the pointer or the focus — its rank and
+ * index in the line, stamped with the FEN it was hovered on, so a new analysed
+ * position drops it the way it drops an expansion.
+ */
+type HoveredMove = { fen: string; rank: number; index: number };
 
 /** How often a move-time search's clock moves the fill (CTA-195). */
 const CLOCK_TICK_MS = 250;
@@ -300,12 +325,15 @@ function VariationMoves({
   expanded,
   moves,
   onSelectMove,
+  onHoverMove,
 }: {
   rank: number;
   expanded: boolean;
   /** The printed text of each move (numbered, maybe masked), and its true SAN. */
   moves: readonly { text: string; san: string }[];
   onSelectMove?: (san: readonly string[]) => void;
+  /** The move under the pointer or the focus, by index; `null` when it leaves. */
+  onHoverMove?: (index: number | null) => void;
 }) {
   const box = useRef<HTMLSpanElement>(null);
 
@@ -344,30 +372,43 @@ function VariationMoves({
         ...(expanded ? {} : { whiteSpace: "nowrap", overflow: "hidden" }),
       }}
     >
-      {moves.map(({ text, san }, index) => (
-        <Fragment key={index}>
-          {/*
-            A plain space between the tokens, so the line reads as one
-            sentence and wraps at the panel's edge.
-          */}
-          {index > 0 && " "}
-          {onSelectMove === undefined ? (
-            <span data-move="">{text}</span>
-          ) : (
-            <ButtonBase
-              dir="ltr"
-              data-move=""
-              data-testid={`variation-${rank}-move-${index + 1}`}
-              data-san={san}
-              onClick={() => onSelectMove(moves.slice(0, index + 1).map((move) => move.san))}
-              // A pointer target of 24 px at least (CTA-113): a move was 17 px tall.
-              sx={{ ...moveSx, ...sanTokenSx, minHeight: MIN_TARGET_PX, minWidth: MIN_TARGET_PX, verticalAlign: "baseline" }}
-            >
-              {text}
-            </ButtonBase>
-          )}
-        </Fragment>
-      ))}
+      {moves.map(({ text, san }, index) => {
+        // Pointing at a move, or tabbing onto it, shows it on the board (CTA-201).
+        const hover =
+          onHoverMove === undefined
+            ? {}
+            : {
+                onMouseEnter: () => onHoverMove(index),
+                onMouseLeave: () => onHoverMove(null),
+                onFocus: () => onHoverMove(index),
+                onBlur: () => onHoverMove(null),
+              };
+        return (
+          <Fragment key={index}>
+            {/*
+              A plain space between the tokens, so the line reads as one
+              sentence and wraps at the panel's edge.
+            */}
+            {index > 0 && " "}
+            {onSelectMove === undefined ? (
+              <span data-move="" {...hover}>{text}</span>
+            ) : (
+              <ButtonBase
+                dir="ltr"
+                data-move=""
+                data-testid={`variation-${rank}-move-${index + 1}`}
+                data-san={san}
+                {...hover}
+                onClick={() => onSelectMove(moves.slice(0, index + 1).map((move) => move.san))}
+                // A pointer target of 24 px at least (CTA-113): a move was 17 px tall.
+                sx={{ ...moveSx, ...sanTokenSx, minHeight: MIN_TARGET_PX, minWidth: MIN_TARGET_PX, verticalAlign: "baseline" }}
+              >
+                {text}
+              </ButtonBase>
+            )}
+          </Fragment>
+        );
+      })}
       {/*
         The cut, marked — shown by `fitWholeMoves` only where moves were left
         out. Its glyph is generated content, so the line's text stays its moves.
@@ -400,6 +441,7 @@ function BestVariations({
   initialShowLines,
   onShowLinesChange,
   progress,
+  onHoverMove,
 }: BestVariationsProps) {
   const { t } = useTranslation();
 
@@ -476,6 +518,35 @@ function BestVariations({
     placeholder of the same height when it is not (see the component note).
     At least one, so a `requested` of 0 still has somewhere to say it waits.
   */
+  /*
+    The move under the pointer or the focus (CTA-201), and its squares — read
+    off the line as it is now, so a search deepening under a still pointer
+    moves the arrow with the move the token shows. A hover from another
+    position, or with the lines hidden, is no hover at all.
+  */
+  const [hovered, setHovered] = useState<HoveredMove | null>(null);
+  const hoveredLine =
+    showLines && hovered !== null && hovered.fen === analysis.fen
+      ? lines.find((line) => line.multipv === hovered.rank)
+      : undefined;
+  const hoveredSquares =
+    hovered === null || hoveredLine === undefined
+      ? null
+      : lineMoveSquares(analysis.fen, hoveredLine.san, hovered.index);
+  const hoveredFrom = hoveredSquares?.from;
+  const hoveredTo = hoveredSquares?.to;
+
+  /*
+    Reported on change only: a move while there is one, and `null` when it
+    goes — whatever took it away, unmounting this block included (the engine
+    switched off under the pointer).
+  */
+  useEffect(() => {
+    if (onHoverMove === undefined || hoveredFrom === undefined || hoveredTo === undefined) return;
+    onHoverMove({ from: hoveredFrom, to: hoveredTo });
+    return () => onHoverMove(null);
+  }, [onHoverMove, hoveredFrom, hoveredTo]);
+
   const slots = Array.from({ length: Math.max(requested, 1) }, (_, index) => ({
     rank: index + 1,
     line: lines.find((line) => line.multipv === index + 1),
@@ -623,6 +694,16 @@ function BestVariations({
                   expanded={isExpanded}
                   moves={display.map((san, index) => ({ text: `${prefixes[index]}${san}`, san: line.san[index] }))}
                   onSelectMove={onSelectMove}
+                  onHoverMove={
+                    onHoverMove === undefined
+                      ? undefined
+                      : (index) =>
+                          setHovered(
+                            index === null
+                              ? null
+                              : { fen: analysis.fen, rank: line.multipv, index },
+                          )
+                  }
                 />
                 {/*
                   The disclosure arrow (CTA-56): lichess's expand icon, sitting
