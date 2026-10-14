@@ -301,7 +301,7 @@ selection bar counts them and deletes them together, asked first
 
 - **Game** — a PGN pasted or picked (`PgnInput`); several games show a list
   to pick one from, and *One case per game (N)*, which makes them all.
-- **Position** — **from a FEN** (checked as it is typed, `parseFen`) or
+- **Position** — **from a FEN** (checked as it is typed, `parseFen` — the pieces alone are enough, its missing fields completed as lichess does: White to move, no castling or en passant, `0 1`; CTA-200) or
   **from a PGN** at a move picked from its mainline (*Start at*), the moves
   before it kept.
 - A name, optional (none for one-per-game).

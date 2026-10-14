@@ -28,9 +28,20 @@ export class FenParseError extends Error {
 }
 
 /**
+ * The fields a FEN may leave off, after the piece placement, and what each
+ * defaults to — lichess's (chessops `parseFen`): White to move, no castling, no
+ * en passant square, the move counters at their start.
+ */
+const FEN_FIELD_DEFAULTS = ["w", "-", "-", "0", "1"] as const;
+
+/**
  * Validate a pasted FEN and return it normalised — trimmed, with runs of
  * whitespace collapsed to single spaces, which is what a FEN copied out of a
  * wrapped text box needs before anything will take it.
+ *
+ * A partial FEN is completed rather than refused, as lichess does: the piece
+ * placement alone (or any of the first five fields) is a position, its missing
+ * trailing fields taken from `FEN_FIELD_DEFAULTS`. What comes back is always all six.
  *
  * Validated twice on purpose. `validateFen` checks the notation; constructing a
  * `Chess` is what proves the position can actually be played from, and it
@@ -38,12 +49,23 @@ export class FenParseError extends Error {
  * lets through.
  */
 export const parseFen = (text: string): string => {
-  const fen = text.trim().replace(/\s+/g, " ");
-  if (fen === "") throw new FenParseError("No FEN text found.");
+  const given = text.trim().replace(/\s+/g, " ");
+  if (given === "") throw new FenParseError("No FEN text found.");
 
-  const validation = validateFen(fen);
-  if (!validation.ok) {
-    throw new FenParseError(validation.error ?? "Invalid FEN.");
+  const fields = given.split(" ");
+  const fen =
+    fields.length > FEN_FIELD_DEFAULTS.length
+      ? given
+      : [...fields, ...FEN_FIELD_DEFAULTS.slice(fields.length - 1)].join(" ");
+
+  // `validateFen` reads the fields last to first, so the placement is checked on
+  // its own before the rest: text that is not a FEN at all is named as such, not
+  // as a bad castling field.
+  for (const candidate of [[fields[0], ...FEN_FIELD_DEFAULTS].join(" "), fen]) {
+    const validation = validateFen(candidate);
+    if (!validation.ok) {
+      throw new FenParseError(validation.error ?? "Invalid FEN.");
+    }
   }
 
   try {

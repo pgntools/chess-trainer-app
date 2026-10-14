@@ -2849,7 +2849,7 @@ const en = {
       gameNumber: "Game {{number}}",
       perGame: "One case per game ({{count}})",
       fen: "FEN",
-      fenHelp: "Pieces, side to move, castling, en passant, the move counters.",
+      fenHelp: "Pieces, side to move, castling, en passant, the move counters — the pieces alone are enough (White to move).",
       fenProblem: "Not a position to play from: {{detail}}",
       ply: "Start at",
       plyHelp: "The position after this move; the moves before it stay.",
