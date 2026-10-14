@@ -621,7 +621,7 @@ const engine = useEngineModule({
   onBestMove?: (bestMove: string, searchedFen: string) => void,
   onSearchFinished?: (finished: { fen, score, depth, engine }) => void,  // CTA-167 — absent: nothing called
 });
-// → { descriptor, analysis, evalsByFen, engineOptions, clearAnalysis, searching }
+// → { descriptor, analysis, evalsByFen, engineOptions, clearAnalysis, searching, searchProgress }
 ```
 
 It owns all of §4: the lazy ref, subscribe-first, terminate on unmount; **the
@@ -660,7 +660,13 @@ on, not terminal, and the search last asked for not yet answered with its
 `bestmove` (an infinite one never is until stopped). The board's session
 publishes it with the switch to the shell (`usePublishBoardEngineState`,
 `views/main/boardEngineState.ts`) and the top bar's Engine icon shows off / on /
-searching. **What a board searches with is the reader's global search settings**
+searching. **`searchProgress`** (CTA-195) is where that search stops — its
+target depth, held to the engine's `capabilities.maxDepth`, and its move time —
+while `searching`, and absent under infinite analysis: every board passes it to
+`BoardPanel` (`searchProgress`), whose variations block's depth chip then reads
+"Depth 18/24" and fills toward it (a `ProgressChip`, the further along of the
+depth and the move-time clock), "Depth 24" again once the search answers.
+**What a board searches with is the reader's global search settings**
 (depth, move time, lines, Threads, Hash — `useEngineSearchSettings`, every
 search stopping at its depth or move time since CTA-185,
 the top bar's Engine menu, [`docs/engine.md`](../../docs/engine.md) §5.2): a
@@ -810,6 +816,7 @@ BoardShell
 | `mask` | `PieceMask?` | Masked notation in the block (Masked Pieces). |
 | `showVariations` | `boolean?` | Whether the block shows at all — on by default. While the lines are hidden — by this, or by the block's own header checkbox — the status row's score chip hides with them (CTA-91), on every board; the row itself, and the engine-off dash, stay. |
 | `initialShowLines` | `boolean?` | The seed for the block's own show-lines checkbox (CTA-90) — what a new game starts with; the header checkbox stays the live control. |
+| `searchProgress` | `SearchProgress?` | The engine module's `searchProgress` (CTA-195): the block's depth chip fills toward the target while present. Absent: "Depth N", as before. |
 | `tabs` | `readonly { id, label, content, disabled? }[]` | One is rendered at a time unless `keepMounted` names it; the screen keeps `activeTab` off a disabled tab. |
 | `keepMounted` | `readonly string[]?` | Tabs that mount on first open and stay mounted, hidden — for a body whose mount is the cost (a 9,000-move list). Showing one again scrolls its current move into view. |
 | `activeTab` / `onTabChange` | | The screen's state. |

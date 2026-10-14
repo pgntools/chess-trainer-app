@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DEFAULT_POSITION } from "chess.js";
 import i18n from "../../i18n";
@@ -7,7 +7,9 @@ import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { pvToSan } from "../../lib/engineAnalysis";
 import { MASK_PRESETS } from "../../lib/pieceMask";
 import BestVariations from "./BestVariations";
-import type { Analysis, EngineLine } from "../../lib/engineAnalysis";
+import type { Analysis, EngineLine, SearchProgress } from "../../lib/engineAnalysis";
+import { expectNoAxeViolations } from "../../test/axe";
+import { stubReducedMotion } from "../../test/reducedMotion";
 import type { PieceMask } from "../../lib/pieceMask";
 
 const line = (
@@ -636,5 +638,133 @@ describe("the space the variations take while the engine thinks", () => {
 
     const partial = screen.getByTestId("variations-partial");
     expect(partial.parentElement).toContainElement(screen.getByTestId("analysis-depth"));
+  });
+});
+
+/*
+  The depth chip's fill (CTA-195): while a search runs, how far it has got
+  toward where it stops — the depth over the target, or the clock over the
+  move time, whichever is further along.
+*/
+describe("the depth chip's progress", () => {
+  const searchingAt = (depth: number): Analysis => ({
+    fen: DEFAULT_POSITION,
+    depth,
+    lines: [line(1, 20, "e2e4", depth)],
+  });
+
+  const renderSearching = (analysis: Analysis, progress?: SearchProgress) =>
+    render(
+      <AppThemeWithLang>
+        <BestVariations analysis={analysis} requested={1} progress={progress} />
+      </AppThemeWithLang>,
+    );
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("reads the depth over the target while searching, filled in proportion, named in words", async () => {
+    renderSearching(searchingAt(18), { targetDepth: 24, moveTimeMs: 0 });
+
+    const chip = screen.getByRole("progressbar", { name: "Depth 18 of 24" });
+    expect(chip).toHaveTextContent("Depth 18/24");
+    expect(chip).toHaveAttribute("aria-valuenow", "75");
+    expect(screen.getByTestId("analysis-depth-fill")).toHaveAttribute("data-value", "75");
+    // A progress with a name, never a live region reading out each depth.
+    expect(chip).not.toHaveAttribute("aria-live");
+    expect(screen.queryByRole("status")).toBeNull();
+    await expectNoAxeViolations();
+  });
+
+  it("with a move time, fills by the clock when the clock is further along than the depth", () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    renderSearching(searchingAt(6), { targetDepth: 24, moveTimeMs: 2000 });
+    const chip = () => screen.getByRole("progressbar", { name: "Depth 6 of 24" });
+    // At the start the depth leads: 6 of 24.
+    expect(chip()).toHaveAttribute("aria-valuenow", "25");
+
+    // A second of two in: the clock is further along than the depth.
+    act(() => vi.advanceTimersByTime(1000));
+    expect(chip()).toHaveAttribute("aria-valuenow", "50");
+    // Past the move time it reads full, never more.
+    act(() => vi.advanceTimersByTime(1500));
+    expect(chip()).toHaveAttribute("aria-valuenow", "100");
+    expect(chip()).toHaveTextContent("Depth 6/24");
+  });
+
+  it("with a move time, fills by the depth when the depth is further along than the clock", () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    renderSearching(searchingAt(20), { targetDepth: 24, moveTimeMs: 10_000 });
+    act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByRole("progressbar", { name: "Depth 20 of 24" })).toHaveAttribute("aria-valuenow", "83");
+  });
+
+  it("starts the clock again for a new position", () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    const progress = { targetDepth: 24, moveTimeMs: 2000 };
+    const { rerender } = renderSearching(searchingAt(0), progress);
+    act(() => vi.advanceTimersByTime(1500));
+    expect(screen.getByRole("progressbar", { name: "Depth 0 of 24" })).toHaveAttribute("aria-valuenow", "75");
+
+    const after = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    rerender(
+      <AppThemeWithLang>
+        <BestVariations analysis={{ fen: after, depth: 0, lines: [] }} requested={1} progress={progress} />
+      </AppThemeWithLang>,
+    );
+    expect(screen.getByRole("progressbar", { name: "Depth 0 of 24" })).toHaveAttribute("aria-valuenow", "0");
+  });
+
+  it("once the search has finished, reads the depth reached with no fill — as it always has", () => {
+    const { rerender } = renderSearching(searchingAt(22), { targetDepth: 24, moveTimeMs: 0 });
+    expect(screen.getByRole("progressbar", { name: "Depth 22 of 24" })).toBeInTheDocument();
+
+    rerender(
+      <AppThemeWithLang>
+        <BestVariations analysis={searchingAt(24)} requested={1} />
+      </AppThemeWithLang>,
+    );
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.queryByTestId("analysis-depth-fill")).toBeNull();
+    expect(screen.getByTestId("analysis-depth")).toHaveTextContent(/^Depth 24$/);
+  });
+
+  it("with no target given, renders the chip as it always has", async () => {
+    renderSearching(searchingAt(18));
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.queryByTestId("analysis-depth-fill")).toBeNull();
+    expect(screen.getByTestId("analysis-depth")).toHaveTextContent(/^Depth 18$/);
+    await expectNoAxeViolations();
+  });
+
+  it("under Hebrew keeps the numbers left to right and starts the fill at the inline start", async () => {
+    await i18n.changeLanguage("he");
+    renderSearching(searchingAt(18), { targetDepth: 24, moveTimeMs: 0 });
+
+    const chip = screen.getByRole("progressbar", { name: "עומק 18 מתוך 24" });
+    expect(chip).toHaveTextContent("עומק 18/24");
+    const numbers = chip.querySelector("bdi");
+    expect(numbers).toHaveAttribute("dir", "ltr");
+    expect(numbers).toHaveTextContent(/^18\/24$/);
+    // The fill is held to the chip's inline start — a logical offset, which follows the direction.
+    expect(ownRule(screen.getByTestId("analysis-depth-fill"))).toMatch(/inset-inline-start: 0/);
+    await expectNoAxeViolations();
+  });
+
+  /** The element's own rule — jsdom's computed style leaves the `transition` shorthand out (as `EvalBar.test.tsx`). */
+  const ownRule = (element: HTMLElement) => {
+    const name = [...element.classList].pop() ?? "";
+    return [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules].map((rule) => rule.cssText)).find((text) => text.startsWith(`.${name} `)) ?? "";
+  };
+
+  it("slides the fill through the theme's transition, and not at all under reduced motion", () => {
+    const moving = renderSearching(searchingAt(12), { targetDepth: 24, moveTimeMs: 0 });
+    expect(ownRule(screen.getByTestId("analysis-depth-fill"))).toMatch(/transition: width \d+ms/);
+    moving.unmount();
+    stubReducedMotion();
+    renderSearching(searchingAt(12), { targetDepth: 24, moveTimeMs: 0 });
+    expect(ownRule(screen.getByTestId("analysis-depth-fill"))).toMatch(/transition: none/);
   });
 });

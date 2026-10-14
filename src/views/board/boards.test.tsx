@@ -322,6 +322,27 @@ describe("the global search settings reach every board (CTA-181)", () => {
     unmount();
   });
 
+  it.each(BOARDS.filter((board) => board.linesShown !== false))(
+    "$name fills its depth chip toward the top bar's depth while it searches (CTA-195)",
+    ({ id, Screen, engineOff }) => {
+      storeEngineSearchSettings({ depth: 20, moveTimeMs: 0 });
+      const { unmount } = renderBoard(Screen);
+      if (engineOff) toggleEngine(id);
+      engineReports({ depth: 15, multipv: 1, cp: 10, pv: "e2e4" });
+
+      const block = screen.getByTestId(`${id}-panel-variations`);
+      const chip = within(block).getByRole("progressbar", { name: "Depth 15 of 20" });
+      expect(chip).toHaveTextContent("Depth 15/20");
+      expect(chip).toHaveAttribute("aria-valuenow", "75");
+
+      // The search answered: the depth reached, no fill — as before.
+      engineFinishes("e2e4");
+      expect(within(block).queryByRole("progressbar")).not.toBeInTheDocument();
+      expect(within(block).getByTestId("analysis-depth")).toHaveTextContent(/^Depth 15$/);
+      unmount();
+    },
+  );
+
   it.each(BOARDS)("$name tells the top bar what its engine is doing", ({ id, Screen, engineOff }) => {
     const { unmount } = render(
       <AppThemeWithLang>

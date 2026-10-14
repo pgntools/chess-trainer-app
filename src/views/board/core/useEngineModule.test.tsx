@@ -456,3 +456,41 @@ describe("useEngineModule — searching", () => {
     expect(result.current.searching).toBe(false);
   });
 });
+
+/*
+  Where the running search stops (CTA-195) — what the variations box's depth
+  chip fills toward: there while a bounded search runs, gone with it.
+*/
+describe("useEngineModule — searchProgress", () => {
+  const answer = () =>
+    act(() => {
+      FakeEngine.latest().say({ fen: START, uciMessage: "bestmove", bestMove: "e2e4" });
+    });
+
+  it("names the target depth and the move time while a search runs, and nothing once it answers", () => {
+    const { result } = mount(start({ depth: 24, moveTimeMs: 3000 }));
+    expect(result.current.searchProgress).toEqual({ targetDepth: 24, moveTimeMs: 3000 });
+    answer();
+    expect(result.current.searchProgress).toBeUndefined();
+  });
+
+  it("holds the target to the engine's deepest depth, as the wrapper holds the go", () => {
+    const { result } = mount(start({ depth: 500 }));
+    expect(result.current.searchProgress?.targetDepth).toBe(result.current.descriptor.capabilities.maxDepth);
+  });
+
+  it("is absent while the engine is off, and under infinite analysis, which has no target", () => {
+    const { result, rerender } = mount(start({ enabled: false }));
+    expect(result.current.searchProgress).toBeUndefined();
+    rerender(start({ infinite: true }));
+    expect(result.current.searching).toBe(true);
+    expect(result.current.searchProgress).toBeUndefined();
+  });
+
+  it("is the same object while the target does not change", () => {
+    const { result, rerender } = mount(start({ depth: 20 }));
+    const first = result.current.searchProgress;
+    rerender(start({ depth: 20 }));
+    expect(result.current.searchProgress).toBe(first);
+  });
+});

@@ -362,6 +362,13 @@ const en = {
      */
     title: "Variations",
     depth: "Depth {{depth}}",
+    /**
+     * The depth chip while the engine searches (CTA-195): the depth reached
+     * over the depth the search stops at — the numbers inside `<ltr>`, pinned
+     * left to right — and its spoken name, the same in words.
+     */
+    depthProgress: "Depth <ltr>{{depth}}/{{target}}</ltr>",
+    depthProgressName: "Depth {{depth}} of {{target}}",
     thinking: "Waiting for the engine…",
     partial: "{{shown}} of {{requested}} lines so far.",
     /**
