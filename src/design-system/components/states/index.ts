@@ -8,3 +8,4 @@ export * from "./LoadingSpinnerLine";
 export * from "./EmptyState";
 export * from "./MissState";
 export * from "./ProgressLine";
+export * from "./ProgressChip";

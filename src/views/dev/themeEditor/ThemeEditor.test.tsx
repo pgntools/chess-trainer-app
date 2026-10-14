@@ -159,10 +159,11 @@ describe("the theme editor", { timeout: 60_000 }, () => {
 
     await openSection("Palette — light");
     await retype("Text", "#dddddd");
-    expect(screen.getByTestId("theme-editor-badge-palette-light")).toHaveTextContent("3");
-    expect(tab("Palette — light")).toHaveAccessibleName("Palette — light, 3 contrast failures");
-    expect(summary).toHaveTextContent(/\(3 required\)/);
-    expect(screen.getByRole("textbox", { name: "Text" })).toHaveAccessibleDescription(/at worst — text\.primary on background\.\w+, needs 4\.5:1\. 3 of 3 checks fail AA\./);
+    // The three surfaces and the progress fill (CTA-195).
+    expect(screen.getByTestId("theme-editor-badge-palette-light")).toHaveTextContent("4");
+    expect(tab("Palette — light")).toHaveAccessibleName("Palette — light, 4 contrast failures");
+    expect(summary).toHaveTextContent(/\(4 required\)/);
+    expect(screen.getByRole("textbox", { name: "Text" })).toHaveAccessibleDescription(/at worst — text\.primary on [^,]+, needs 4\.5:1\. 4 of 4 checks fail AA\./);
   });
 
   it("goes to a failing token from the summary", async () => {

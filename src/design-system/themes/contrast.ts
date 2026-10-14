@@ -1,6 +1,7 @@
 import { decomposeColor, getContrastRatio, recomposeColor, type Theme } from "@mui/material/styles";
 
 import { buildTheme } from "../theme/buildTheme";
+import { progressFillOf } from "../theme/progressFill";
 import type { ThemeDefinition } from "./types";
 
 /*
@@ -84,6 +85,9 @@ const schemeChecks = (scheme: "light" | "dark", theme: Theme): Measure[] => {
   // CTA-113: the engine lines, the move list's rows — the paper under action.hover.
   const row = over(palette.action.hover, palette.background.paper);
   add("text.secondary", "text.secondary on a raised row (the paper under action.hover)", palette.text.secondary, row, "row", "text");
+  // CTA-195: a progress chip's text over its fill — the paper under the tinted primary.
+  const fill = over(progressFillOf(palette), palette.background.paper);
+  add("text.primary", "text.primary on a progress fill (the paper under the tinted primary)", palette.text.primary, fill, "progressFill", "text");
   for (const surface of SURFACES) {
     const background = palette.background[surface];
     add("text.primary", `text.primary on background.${surface}`, palette.text.primary, background, surface, "text");

@@ -57,3 +57,20 @@ Gallery: `/dev/design/states`.
 - **Variations** — determinate; success (a coverage bar); indeterminate.
 - **Replaces** — the `LinearProgress` bars of indexing, import and the
   Backtracking coverage line.
+
+## ProgressChip
+
+- **Purpose** — a small outlined chip that fills as something progresses
+  (CTA-195): its words in view, and behind them a tint of the primary
+  (`progressFillOf`, `theme/progressFill.ts`) reaching from the chip's inline
+  start as far as its value — no separate bar. With a value it is a
+  `progressbar` named by `progressLabel`, reporting `aria-valuenow`, and not a
+  live region; the text over the fill is `text.primary`, measured over it in
+  every theme (`themes/contrast.ts`); the fill moves through
+  `theme.transitions`, so it steps under reduced motion.
+- **Props** — `label` (the words in view), `value?` (0–100, clamped; absent: a
+  plain outlined chip), `progressLabel` (the accessible name, required with a
+  `value` — CTA-111), `testId` (`-fill`).
+- **Variations** — filling; empty; full; no value (plain).
+- **Used by** — the variations box's depth chip while the engine searches
+  (`views/shared/BestVariations.tsx`): "Depth 18/24", named "Depth 18 of 24".
