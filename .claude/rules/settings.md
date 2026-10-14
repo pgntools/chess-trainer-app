@@ -22,7 +22,7 @@ app's data takes, CTA-94), **Appearance** (the theme, CTA-107) and **Engine**
 | --- | --- | --- |
 | Route | `routes.tsx` — `/settings` and `/settings/:tab` | Both render `SettingsMain.tsx`; `/settings` and an unknown tab redirect to the first tab (Export). |
 | Screen | `views/settings/SettingsScreen.tsx` | The title, a tab strip (each `Tab` a `RouterLink` to `/settings/<id>`), the active tab's content scrolling under it. |
-| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (Browser / API inner tabs: the `EnginePicker` and `EngineServerForm` blocks; beside them a tab per eval source, `EvalSourceTab.tsx` — CTA-196; in its right-hand panel `EnginePresetsSection.tsx`, the `EnginePresetForm` block — CTA-179), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
+| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (the Stockfish connectors inner tab — a Browser and an API section: the `EnginePicker` and `EngineServerForm` blocks, CTA-198; beside them a tab per eval source, `EvalSourceTab.tsx` — CTA-196; in its right-hand panel `EnginePresetsSection.tsx`, the `EnginePresetForm` block — CTA-179), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
 | Nav | `navFolders()` — `settings` (`nav.folders.settings`, `pinToBottom`); `navItems()` — one entry per tab (`nav.settingsExport`, `nav.settingsImport`, `nav.settingsStorage`, `nav.settingsAppearance`, `nav.settingsEngine`, `nav.settingsSupport`) | A folder, **not** `singleEntry`, so a tab is one more entry in it. Pinned to the sidebar's foot, under a divider, apart from the screens (`Sidebar.tsx`). |
 | Locale | `settings.*` in `en.ts` / `he.ts` | `settings.title`, `settings.tabs.<id>`, then each tab's own block (`settings.export.*`, `settings.import.*`, `settings.storage.*`, `settings.appearance.*`, `settings.engine.*` — the presets' section `settings.engine.presets.*`). The themes' own names are `appearance.themes.<id>`; the picker's words are `enginePicker.*`, the presets form's `enginePresets.*`. |
 
@@ -135,13 +135,14 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   `localStorage` `chessapp.engineSettings` (`lib/engineSearchSettings.ts`), a
   preference like the choice and likewise not in the zip
   ([`docs/engine.md`](../../docs/engine.md) §5.2).
-- **Inner tabs** (`PanelTabs`, the tab's own state — it opens on API when
-  the stored choice is a server engine, on an eval source's when
-  `?source=<id>` names one): **Browser**, the page's own builds above;
-  **API**, the engine server below; then **a tab per eval source** (below —
-  today *Lichess evaluation API*).
-- **The engine server on this computer** — the `EngineServerForm` block on
-  the API tab ([`docs/engine.md`](../../docs/engine.md) §8): native Stockfish
+- **Inner tabs** (`PanelTabs`, the tab's own state — it opens on Stockfish
+  connectors unless `?source=<id>` names an eval source's): **Stockfish
+  connectors** (CTA-198), where the engine runs, one engine choice under two
+  `h2` headings, each its `section` — **Browser**, the page's own builds
+  above, then **API**, the engine server below; then **a tab per eval
+  source** (below — today *Lichess evaluation API*).
+- **The engine server on this computer** — the `EngineServerForm` block in
+  the API section ([`docs/engine.md`](../../docs/engine.md) §8): native Stockfish
   binaries served by `yarn api:start` (`server/engine-api/`). **Off by
   default, and while off nothing contacts any server** — a deployed site that
   probed `127.0.0.1` would probe every visitor's machine. On, its address
@@ -155,10 +156,11 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   the field, when it last answered, or what to check with Try again. While it
   answers, its engines (`hosted:<id>`, `lib/engines/hosted.ts`) are **listed
   under it** — a second `EnginePicker` ("Engines on this server") on the same
-  choice; the Browser tab's list keeps the page's builds.
+  choice; the Browser section's list keeps the page's builds. Choosing in
+  either list unselects the other's.
 - **The eval sources** (CTA-196, [`docs/engine.md`](../../docs/engine.md)
-  §10) — **an inner tab per registered source** with settings, after Browser
-  and API, titled by its `titleKey` (`EvalSourceTab.tsx`): a line saying what
+  §10) — **an inner tab per registered source** with settings, after Stockfish
+  connectors, titled by its `titleKey` (`EvalSourceTab.tsx`): a line saying what
   they are, then the source's own section (`EvalSource.SettingsSection`, lazy,
   in registry order — the Engine tab names no source). `?source=<id>` opens
   the tab on it — where the jobs' warning and the Jobs settings' link go. Today one: **the lichess evaluation API**
@@ -180,8 +182,8 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   page's build or a server's engine alike, in a column that **scrolls on its
   own** (`engine-panel`: the shell's aside does not scroll). For a server
   engine, under the form, the depth it allows and that `Threads` and `Hash`
-  are under the server's ceilings. On the API tab with no server engine
-  chosen, the form has **the Blog's guide** above it
+  are under the server's ceilings. On the Stockfish connectors tab with no
+  server engine chosen, the form has **the Blog's guide** above it
   (`/blog/guides/local-engine`, *Run a chess engine on your own computer* —
   the whole setup). Offline, the server's engines are gone, and a choice of
   one reads as the default — still stored, back when the server is. (The
@@ -190,7 +192,7 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
 
 ### 4.1 The engine's options, in presets (CTA-179)
 
-In the right-hand panel, whichever inner tab the engine was chosen on, **the
+In the right-hand panel, whichever list the engine was chosen in, **the
 chosen engine's options** (`EnginePresetsSection.tsx` over the
 `EnginePresetForm` block; [`docs/engine.md`](../../docs/engine.md) §9 is the
 whole design):
@@ -285,12 +287,13 @@ whole design):
   applying at once and surviving a remount, a stored id that is gone or cannot
   run falling back without being discarded (the 2019 id too), the keyboard,
   Hebrew, axe — and the engine server (over a fake `GET /v1/engines`): the
-  Browser / API tabs, off by default with no request made, turned on (the
+  Stockfish connectors tab (its Browser and API sections, one choice across
+  both pickers), off by default with no request made, turned on (the
   address kept, the chip, the server's engines listed and chosen), the panel
   (the chosen engine's options form, scrolling on its own; the guide's link
-  on API),
+  while no server engine is chosen),
   Connect answered on the button, a bad address refused and a new one kept
-  with Enter, a stored server engine opening the API tab and falling back
+  with Enter, a stored server engine listed checked and falling back
   when the server is turned off, Hebrew, axe. The top bar's Engine menu
   choosing the engine and a preset (CTA-185) is
   `views/main/EngineMenu.test.tsx`. `src/lib/engineChoice.test.ts`

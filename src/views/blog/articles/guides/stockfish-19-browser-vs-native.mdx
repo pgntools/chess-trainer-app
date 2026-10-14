@@ -33,14 +33,14 @@ Both run the same Stockfish 19 code. They differ in the **neural network** each 
 
 ## Choosing an engine
 
-Open [Settings › Engine](/settings/engine). It has two tabs:
+Open [Settings › Engine](/settings/engine). Its **Stockfish connectors** tab has two sections, one choice across both:
 
 - **Browser** lists the builds that run in the page. **Stockfish 19 Lite** (single-thread) is the default, and it works everywhere. The multi-thread build needs a page the host has made *cross-origin isolated*: chessapp.dev is, so it can be chosen there. Where the page is not isolated, the build is listed but disabled, with the reason beside it.
 - **API** lists the engines of your engine server while it is connected. The panel on the right shows what the chosen engine **declared**: each UCI option, its type, its default and its range.
 
-<ArticleImage src={browserShot} alt="Settings, Engine tab, Browser: Stockfish 19 Lite single-thread chosen, the multi-thread build below it" caption="The Browser tab: the builds that run in the page." width="90%" />
+<ArticleImage src={browserShot} alt="Settings, Engine tab, Browser: Stockfish 19 Lite single-thread chosen, the multi-thread build below it" caption="Browser: the builds that run in the page." width="90%" />
 
-<ArticleImage src={apiShot} alt="Settings, Engine tab, API: the engine server connected, Stockfish 19 chosen, and its UCI options in the panel on the right" caption="The API tab: the server's engines, and the options the chosen one declared." width="90%" />
+<ArticleImage src={apiShot} alt="Settings, Engine tab, API: the engine server connected, Stockfish 19 chosen, and its UCI options in the panel on the right" caption="API: the server's engines, and the options the chosen one declared." width="90%" />
 
 The choice applies to every board from its next search: the Analysis Board, the Openings explorer, the Library's games, the repertoires, Play with Engine and computer analysis jobs. A game against the engine is played to the end by the engine it started with.
 
