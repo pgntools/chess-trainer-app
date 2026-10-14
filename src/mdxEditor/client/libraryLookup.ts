@@ -24,6 +24,7 @@ export const FORMAT_WORDS: Record<TournamentFormat, string> = {
   teamSwiss: "a team event",
   teamKnockout: "a team knockout",
   arena: "an arena",
+  lichessArena: "a Lichess arena",
 };
 
 /** A collection's summary — a shipped one's, or an upload's once the Library's list is read. */

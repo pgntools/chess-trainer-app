@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { arenaOf, defaultArenaScoring, isLichessExport, pliesOfGames, startOf, type Arena } from "./arena";
+import { arenaOf, isLichessExport, pliesOfGames, startOf, type Arena } from "./arena";
 import type { GameHeaders } from "./gameModel";
 
 /** A game between two players, `minute` minutes into the arena — Lichess's tags. */
@@ -173,18 +173,13 @@ describe("arenaOf — the standings", () => {
   });
 });
 
-describe("the scoring a table opens with", () => {
-  it("is Lichess points for a Lichess export — every game on lichess.org, with its UTC date and time", () => {
-    const games = adaPlays([["1-0"], ["0-1"]]);
-    expect(isLichessExport(games)).toBe(true);
-    expect(defaultArenaScoring(games)).toBe("lichess");
-  });
-
-  it("is game points for anything else", () => {
+describe("isLichessExport", () => {
+  it("is every game on lichess.org, with its UTC date and time — what makes the guess a Lichess arena", () => {
     const [first, second] = adaPlays([["1-0"], ["0-1"]]);
-    expect(defaultArenaScoring([first, { ...second, Site: "Online" }])).toBe("game");
-    expect(defaultArenaScoring([first, { ...second, UTCTime: "" }])).toBe("game");
-    expect(defaultArenaScoring([])).toBe("game");
+    expect(isLichessExport([first, second])).toBe(true);
+    expect(isLichessExport([first, { ...second, Site: "Online" }])).toBe(false);
+    expect(isLichessExport([first, { ...second, UTCTime: "" }])).toBe(false);
+    expect(isLichessExport([])).toBe(false);
   });
 });
 

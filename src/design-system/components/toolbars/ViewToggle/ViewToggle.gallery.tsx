@@ -7,17 +7,11 @@ import WithState from "../../../gallery/WithState";
 import ViewToggle from "./ViewToggle";
 
 type View = "list" | "compact" | "comfortable";
-type Scoring = "lichess" | "game";
 
 const OPTIONS = [
   { value: "list", label: "List", icon: <ViewListRounded fontSize="small" /> },
   { value: "compact", label: "Small boards", icon: <ViewComfyRounded fontSize="small" /> },
   { value: "comfortable", label: "Large boards", icon: <ViewModuleRounded fontSize="small" /> },
-] as const;
-
-const WORDS = [
-  { value: "lichess", label: "Lichess points" },
-  { value: "game", label: "Game points" },
 ] as const;
 
 const gallery: GalleryModule = {
@@ -30,16 +24,6 @@ const gallery: GalleryModule = {
         <WithState<View> initial="list">
           {(view, setView) => (
             <ViewToggle<View> value={view} onChange={setView} options={OPTIONS} ariaLabel="View" testId="gallery-view-toggle" />
-          )}
-        </WithState>
-      ),
-    },
-    {
-      name: "Words instead of icons — a table's scoring (CTA-204)",
-      render: () => (
-        <WithState<Scoring> initial="lichess">
-          {(scoring, setScoring) => (
-            <ViewToggle<Scoring> value={scoring} onChange={setScoring} options={WORDS} ariaLabel="Scoring" testId="gallery-view-toggle-words" />
           )}
         </WithState>
       ),

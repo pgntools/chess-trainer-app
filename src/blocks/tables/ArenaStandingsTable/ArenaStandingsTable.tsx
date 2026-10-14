@@ -9,22 +9,18 @@ import { useTranslation } from "react-i18next";
 import { visuallyHidden } from "../../../design-system/components/a11y";
 import { linkProps, type LinkTarget } from "../../../design-system/components/link";
 import { Flag, LabelChip } from "../../../design-system/components/tables";
-import { ViewToggle } from "../../../design-system/components/toolbars";
 import { DataTable, type DataTableColumn, type TablePaging } from "../../../design-system/patterns/tables";
 import { MIN_TARGET_PX } from "../../../design-system/theme";
-import { ARENA_SCORINGS, type Arena, type ArenaGame, type ArenaScoring, type ArenaStanding } from "../../../lib/arena";
+import type { Arena, ArenaGame, ArenaScoring, ArenaStanding } from "../../../lib/arena";
 import { flagOfFederation, formatPoints, titleBadgeOf, type TournamentLinks } from "../tournamentTable";
 
 export type ArenaStandingsTableProps = TournamentLinks & {
   /**
    * The arena — `arenaOf(headers, { scoring })` (`lib/arena.ts`), ranked by
-   * its points, then performance. `undefined` while its games are read.
+   * its points, then performance; drawn as it was scored (`arena.scoring`).
+   * `undefined` while its games are read.
    */
   arena: Arena | undefined;
-  /** How it is scored — the switch over the table shows it. */
-  scoring: ArenaScoring;
-  /** The switch was turned: the caller scores the arena again (`arenaOf`) and hands it back. */
-  onScoringChange: (scoring: ArenaScoring) => void;
   /** The table's accessible name — the event's ("Titled Arena June '26 — standings"). */
   ariaLabel: string;
   /** `dense` tightens the rows. */
@@ -32,8 +28,7 @@ export type ArenaStandingsTableProps = TournamentLinks & {
   /** Cut the rows into pages, the pager under the table. Absent, every row shows. */
   paging?: TablePaging;
   /**
-   * The root, and every id under it: `-scoring` (the switch; its buttons
-   * `-scoring-lichess`, `-scoring-game`), `-table` (the `DataTable`:
+   * The root, and every id under it: `-table` (the `DataTable`:
    * `-table-frame`, `-table-loading`, `-table-empty`, `-table-pager`),
    * `-row-<player id, slugged>`, a row's score sheet `-sheet-<player id,
    * slugged>` (its game links `-sheet-<…>-link-<n>`), `-legend` (an entry
@@ -162,24 +157,24 @@ function SheetMark({ glyph, label, link, testId }: { glyph: ReactNode; label: st
  * score — a link to the game where `gameLink` gives one), the points, the
  * games and the performance.
  *
- * Over it, **the scoring switch** — *Lichess points* (a win 2, a draw 1; on
+ * Scored as the arena was — **Lichess arena points** (a win 2, a draw 1; on
  * fire after two wins in a row, a win 4 and a draw 2 — those games on the
  * theme's warning fill; a berserk game marked with a bolt, a berserked win
- * one more) or *Game points* (1, ½, 0). The caller scores the arena
- * (`arenaOf`) and keeps the switch's state; the legend under the table
- * explains the marks the sheet shows.
+ * one more) or **game points** (1, ½, 0): the collection's type decides
+ * (Lichess arena or Arena). The legend under the table explains the marks
+ * the sheet shows.
  *
  * Each mark is read by its words ("Game 3, White against msb2: win, scored
  * 5, on fire, berserk, one point more"), never by its colour alone.
  * Presentational: its words are the app's (`tournament.*`).
  */
-function ArenaStandingsTable({ arena, scoring, onScoringChange, ariaLabel, density, paging, playerLink, gameLink, testId }: ArenaStandingsTableProps) {
+function ArenaStandingsTable({ arena, ariaLabel, density, paging, playerLink, gameLink, testId }: ArenaStandingsTableProps) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
 
   const names = useMemo(() => new Map(arena?.standings.map(({ player }) => [player.id, player.name])), [arena]);
-  // The marks follow the arena as scored — the switch may be a render ahead of it.
-  const scored = arena?.scoring ?? scoring;
+  // The marks follow the arena as scored; game points while it is read (nothing is drawn then).
+  const scored: ArenaScoring = arena?.scoring ?? "game";
 
   const columns = useMemo((): DataTableColumn<ArenaStanding, Column>[] => {
     const number = (value: number | undefined) => (value === undefined ? "—" : value.toLocaleString(language));
@@ -301,15 +296,6 @@ function ArenaStandingsTable({ arena, scoring, onScoringChange, ariaLabel, densi
         rowId={(standing) => standing.player.id}
         sorted
         rowTestId={(standing) => `${testId}-row-${slugOf(standing)}`}
-        toolbar={
-          <ViewToggle<ArenaScoring>
-            value={scoring}
-            onChange={onScoringChange}
-            options={ARENA_SCORINGS.map((value) => ({ value, label: t(`tournament.arena.scorings.${value}`) }))}
-            ariaLabel={t("tournament.arena.scoring")}
-            testId={`${testId}-scoring`}
-          />
-        }
         paging={paging}
         loading={arena === undefined}
         loadingLabel={t("tournament.loading")}

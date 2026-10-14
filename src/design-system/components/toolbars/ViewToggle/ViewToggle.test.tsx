@@ -30,19 +30,4 @@ describe("ViewToggle", () => {
     await user.keyboard("{Enter}");
     expect(onChange).toHaveBeenCalledWith("cards");
   });
-
-  it("shows an option with no icon as its words, which name its button (CTA-204)", async () => {
-    const onChange = vi.fn();
-    const user = userEvent.setup();
-    const words = [
-      { value: "lichess", label: "Lichess points" },
-      { value: "game", label: "Game points" },
-    ];
-    render(<ViewToggle value="lichess" onChange={onChange} options={words} ariaLabel="Scoring" testId="probe" />);
-    expect(screen.getByRole("group", { name: "Scoring" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Lichess points" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByTestId("probe-game")).toHaveTextContent("Game points");
-    await user.click(screen.getByRole("button", { name: "Game points" }));
-    expect(onChange).toHaveBeenCalledWith("game");
-  });
 });

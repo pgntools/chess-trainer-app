@@ -18,7 +18,7 @@ import { LoadingLine } from "../../design-system/components/states";
 import { PanelTabs, tabPanelProps } from "../../design-system/components/tabs";
 import { IconAction, ListScreenHeader } from "../../design-system/components/toolbars";
 import type { DataTableSort } from "../../design-system/patterns/tables";
-import { arenaOf, defaultArenaScoring, isArenaScoring, pliesOfGames, type ArenaScoring } from "../../lib/arena";
+import { arenaOf, pliesOfGames, type ArenaScoring } from "../../lib/arena";
 import { gameTag, type GameHeaders } from "../../lib/gameModel";
 import {
   collectionMetadataOf,
@@ -121,41 +121,21 @@ const useTabbedRead = (read: SourceRead, collectionId: string): SourceRead => {
   );
 };
 
-/** `?scoring=` — an arena table's scoring (CTA-204), in the URL so Back from a game finds it; absent, the games' own default. */
-const SCORING_PARAM = "scoring";
-
 /**
  * **An arena's standings** (CTA-204) — the Library's alone (no Blog embed):
- * `arenaOf` over the collection's games, each one's length counted off its
- * movetext for Lichess's edge cases, scored as the switch says. The scoring
- * is the URL's — Lichess points for a Lichess export, game points for any
- * other file, unless `?scoring=` says otherwise (written with history
- * replace, only where it differs from that default). 50 rows a page.
+ * `arenaOf` over the collection's games, scored as its type says — an Arena
+ * in game points, a Lichess arena in Lichess arena points (each game's
+ * length counted off its movetext for Lichess's edge cases). 50 rows a page.
  */
-function ArenaTable({ read }: { read: SourceRead }) {
+function ArenaTable({ read, scoring }: { read: SourceRead; scoring: ArenaScoring }) {
   const { t } = useTranslation();
-  const location = useLocation();
-  const [params, setParams] = useSearchParams();
   const paging = useEmbedPaging(50);
   const headers = read.status === "ready" ? read.headers : undefined;
   const games = read.status === "ready" ? read.games : undefined;
   const library = read.status === "ready" ? read.library : undefined;
   const plies = useMemo(() => (games === undefined ? undefined : pliesOfGames(games)), [games]);
-  const fallback = useMemo((): ArenaScoring => (headers === undefined ? "lichess" : defaultArenaScoring(headers)), [headers]);
-  const asked = params.get(SCORING_PARAM);
-  const scoring = isArenaScoring(asked) ? asked : fallback;
   const arena = useMemo(() => (headers === undefined || plies === undefined ? undefined : arenaOf(headers, { scoring, plies })), [headers, plies, scoring]);
   const toPlayer = useCallback((player: TournamentPlayer) => library?.toPlayers([player.name]), [library]);
-  const onScoringChange = (next: ArenaScoring) =>
-    setParams(
-      (before) => {
-        const after = new URLSearchParams(before);
-        if (next === fallback) after.delete(SCORING_PARAM);
-        else after.set(SCORING_PARAM, next);
-        return after;
-      },
-      { replace: true, state: location.state },
-    );
 
   if (read.status === "missing" || read.status === "unreadable") {
     return (
@@ -168,8 +148,6 @@ function ArenaTable({ read }: { read: SourceRead }) {
   return (
     <ArenaStandingsTable
       arena={arena}
-      scoring={scoring}
-      onScoringChange={onScoringChange}
       ariaLabel={t("tournament.embed.standings", { event: (read.status === "ready" ? read.event : undefined) ?? t("tournament.embed.untitled") })}
       density="dense"
       paging={read.status === "ready" ? paging : undefined}
@@ -195,7 +173,9 @@ function TournamentTable({ read, type }: { read: SourceRead; type: TournamentFor
     case "teamSwiss":
       return <TeamStandingsView read={read} rowsPerPage={50} />;
     case "arena":
-      return <ArenaTable read={read} />;
+      return <ArenaTable read={read} scoring="game" />;
+    case "lichessArena":
+      return <ArenaTable read={read} scoring="lichess" />;
   }
 }
 
@@ -220,12 +200,16 @@ const factsOf = (summary: CollectionSummary, rows: readonly CollectionRow[], hea
   };
 };
 
+/** The two arena types (CTA-204): the same pairing, two scorings — either is the reader's choice for the other's games. */
+const ARENA_TYPES: readonly TournamentFormat[] = ["arena", "lichessArena"];
+
 /** Said over the table when the games do not read as the type they are marked as — with the type they look like. */
 function Misfit({ collection, headers, type }: { collection: CollectionSummary; headers: readonly GameHeaders[]; type: TournamentFormat }) {
   const { t } = useTranslation();
   const location = useLocation();
   const guess = useMemo(() => guessTournamentKind(headers), [headers]);
-  if (guess === undefined || formatOfKind(guess.kind) === type) return null;
+  const looksLike = guess === undefined ? undefined : formatOfKind(guess.kind);
+  if (guess === undefined || looksLike === type || (looksLike !== undefined && ARENA_TYPES.includes(looksLike) && ARENA_TYPES.includes(type))) return null;
   const words = {
     type: t(`library.settings.formats.${type}`),
     guess: t(`library.settings.formats.${formatOfKind(guess.kind)}`),

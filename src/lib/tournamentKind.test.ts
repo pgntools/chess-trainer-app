@@ -59,6 +59,13 @@ describe("guessTournamentKind", () => {
       ["A", "B"], ["B", "A"], ["A", "B"], ["A", "C"], ["C", "A"], ["B", "C"], ["D", "E"], ["A", "D"], ["E", "B"],
     ].map(([white, black]) => arenaGame(white, black));
     expect(guessTournamentKind(arena)).toMatchObject({ kind: "arena", reason: "5 players, 9 games and no rounds: an arena", facts: { competitors: 5, games: 9, rounds: 0 } });
+    // The same games exported by Lichess — every one on lichess.org, timed — are a Lichess arena (CTA-204).
+    const lichess = arena.map((headers, index) => ({ ...headers, Site: `https://lichess.org/g${index}`, UTCDate: "2026.06.27", UTCTime: `20:0${index}:00` }));
+    expect(guessTournamentKind(lichess)).toMatchObject({
+      kind: "lichessArena",
+      reason: "5 players, 9 games and no rounds, every one on lichess.org: a Lichess arena",
+      facts: { competitors: 5, games: 9, rounds: 0 },
+    });
     // A few games with no rounds — fewer than players — is still a Swiss's top boards, not an arena.
     expect(guessTournamentKind(arena.slice(6))?.kind).toBe("swiss");
     // Every pair met: a round robin, rounds or not.

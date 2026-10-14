@@ -82,11 +82,8 @@ Gallery: `/dev/design/toolbars`.
 - **Purpose** — a list's view switch (list · compact cards · cards): an
   exclusive `ToggleButtonGroup` of icons, each named, its tooltip describing
   it (CTA-113).
-- **Props** — `value`, `onChange`, `options` (`{ value, label, icon? }` —
-  an option with no icon shows its `label` as the button's words, CTA-204:
-  the arena table's scoring, *Lichess points* · *Game points*),
+- **Props** — `value`, `onChange`, `options` (`{ value, label, icon }`),
   `ariaLabel`, `testId` (each button `<testId>-<value>`).
-- **Variations** — icons (the saved lists' views); words.
 - **Replaces** — `SavedListViewToggle` (Saved analyses, Repertoires).
 
 ## SelectionBar

@@ -1338,7 +1338,7 @@ const en = {
       save: "Save",
       cancel: "Cancel",
       problem: "The settings could not be saved — this browser's storage may be full or unavailable.",
-      /** The formats (CTA-121; CTA-142 added the double elimination and the two team ones) — every one but Arena selectable. */
+      /** The formats (CTA-121; CTA-142 added the double elimination and the two team ones; CTA-204 the Lichess arena). */
       formats: {
         swiss: "Swiss system",
         roundRobin: "Round robin",
@@ -1348,6 +1348,7 @@ const en = {
         teamSwiss: "Team Swiss / round robin",
         teamKnockout: "Team knockout",
         arena: "Arena",
+        lichessArena: "Lichess arena",
       },
       /** Each format's one-line description, under the type's radios. */
       formatDescriptions: {
@@ -1362,7 +1363,9 @@ const en = {
         teamSwiss:
           "teams meet on every board at once, a match a round, ranked by match points then board points. Best for Olympiads and team championships.",
         teamKnockout: "teams meet in matches of several legs, the loser of each out. Best for team cups and the final stages of team events.",
-        arena: "continuous, time-based online pairing focused on volume and win streaks. Best for fast online play.",
+        arena: "continuous, time-based online pairing, scored in game points (1, ½, 0). Best for fast online play.",
+        lichessArena:
+          "Lichess's arena, scored its way: a win 2, a draw 1, double on a run of wins, berserk worth a point more. Best for a tournament exported from lichess.org.",
       },
       /**
        * The type the games look like (CTA-142, `lib/tournamentKind.ts`): the
@@ -1398,6 +1401,8 @@ const en = {
           teamSwissNoRounds: "{{competitors}} teams, each meeting a few of the others",
           /** CTA-142: no round numbers, more games than players — Lichess's arenas. */
           arena: "{{competitors}} players, {{games}} games and no rounds",
+          /** CTA-204: the same, every game a Lichess export's. */
+          lichessArena: "{{competitors}} players, {{games}} games and no rounds, every one played on lichess.org",
         },
       },
     },
@@ -1832,16 +1837,11 @@ const en = {
       },
     },
     /**
-     * An arena's standings (CTA-204): the scoring switch, the score sheet's
-     * column, each game's words (its number in the player's sheet), what
-     * made its score, and the legend.
+     * An arena's standings (CTA-204): the score sheet's column, each game's
+     * words (its number in the player's sheet), what made its score, and
+     * the legend.
      */
     arena: {
-      scoring: "Scoring",
-      scorings: {
-        lichess: "Lichess points",
-        game: "Game points",
-      },
       columns: {
         sheet: "Score sheet",
         games: "G",

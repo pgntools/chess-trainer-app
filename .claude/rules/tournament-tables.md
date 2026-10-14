@@ -86,7 +86,7 @@ lib    src/lib/                          tournamentOf · knockoutOf · matchOf �
 | Two-player match | `matchOf(headers)` | `StandingsTable` | `MatchTable` | `<MatchTable>` | `match` (Clutch Chess 2026) |
 | Team Swiss / round robin | `teamTournamentOf(headers)` | `StandingsTable` | `TeamStandingsTable` | `<TeamStandingsTable>` | `team` (World Rapid Team 2026); the article `tournaments/olympiad-2026` (both Olympiads, with flags) |
 | Team knockout | `knockoutOf(headers)` — teams detected | `Bracket` | `KnockoutBracket` | `<KnockoutBracket>` | `team` (World Blitz Team final) |
-| **Arena** — **the Library's only** (CTA-204: no embed, no demo page) | `arenaOf(headers, { scoring, plies })` (`lib/arena.ts`, §4.2) | `DataTable` | `ArenaStandingsTable` | — | — |
+| **Arena**, **Lichess arena** — **the Library's only** (CTA-204: no embed, no demo page) | `arenaOf(headers, { scoring, plies })` (`lib/arena.ts`, §4.2): `game`, `lichess` | `DataTable` | `ArenaStandingsTable` | — | — |
 | **A Library collection** (Swiss, round robin or match) — **the same embeds, `src="/library/<c>"`** (CTA-140) | the collection's games' tags → `tournamentOf` / `matchOf` | as above | `SwissStandingsTable`, `RoundRobinCrossTable`, `MatchTable` with `playerLink` / `gameLink` | `<SwissStandingsTable src="/library/<c>">` (…); the older `<CollectionTournamentTable _id>`, an alias | `from-a-collection` (the shipped Candidates 2026, `/library/candidates2026`) |
 | **A Library collection**: a knockout (players or teams) | `knockoutOf` | `Bracket` (its `link`s, its `games` row) | `KnockoutBracket` with `playerLink` / `gameLink` | `<KnockoutBracket src="/library/<c>">`; the older `<CollectionKnockoutBracket _id>`, an alias | `knockout-from-a-collection` (`/library/netherlands2026`, `/library/worldblitzteam2026`) |
 | **A Library collection**: a double elimination | `knockoutOf(headers, { losersFromRound: 51 })` | `Bracket` ×2 | `KnockoutBracket` with `playerLink` / `gameLink` | `<KnockoutBracket src="/library/<c>" losersFromRound="51">`; the older `<CollectionDoubleEliminationBracket _id>`, an alias | `double-elimination-from-a-collection` (`/library/esportsplayin2026`) |
@@ -102,13 +102,15 @@ screen can use it): `guessTournamentKind(headers)` → `{ kind, reason, facts }`
 or team knockout (each round's field among the round before's, fewer at the
 end), a round robin (≥ 90 % of the pairs met; twice for a double), an
 **arena** (no round number in any game and more games than players —
-Lichess writes `Round "-"`; CTA-142), else a Swiss or a team event. `reason` is one English line (the MDX editor's);
+Lichess writes `Round "-"`; CTA-142) — a **Lichess arena** where every game
+is a Lichess export's (`isLichessExport`: `Site` on lichess.org, timed by
+`UTCDate` / `UTCTime`; CTA-204) — else a Swiss or a team event. `reason` is one English line (the MDX editor's);
 `facts` (competitors, rounds, a knockout's field round by round, twice, teams)
 let a screen say it in the reader's language
 (`library.settings.suggestion.reasons.*`). Its kinds are exactly the
 Library's stored formats (`formatOfKind`, `lib/libraryCollections.ts`) —
-an arena among them, whose table is the Library's alone (CTA-204, §4.2): the
-MDX editor offers the Swiss standings for one (players ranked by points). Used by the MDX editor (Components' Add a
+the two arenas among them, whose table is the Library's alone (CTA-204, §4.2): the
+MDX editor offers the Swiss standings for either (players ranked by points). Used by the MDX editor (Components' Add a
 component, the Components gallery), the Library's settings (the suggested
 type), its tournament view (the misfit's suggestion) and `wirepgn
 --tournament`. Held to every TWIC file the Blog ships
@@ -163,7 +165,7 @@ the standings of the games in it, and the article says so.
 | Round-robin crosstable | game points | Sonneborn-Berger (Buchholz is near-constant when everyone meets everyone) | |
 | Team standings | **match points**: 2 a won match, 1 a drawn (the Olympiad's, `TEAM_MATCH_POINTS`) | **board points** (the games' points summed) | the team's name |
 | Match | game points, every game 1 — an event that weighs its games (Clutch Chess) keeps its own score, which no tag carries | | |
-| Arena (§4.2) | **Lichess arena points** (streaks, berserk) or **game points** — the table's switch | **performance** (Lichess's: the opponents' ratings ±500, averaged) | |
+| Arena, Lichess arena (§4.2) | **game points** (an Arena) or **Lichess arena points** (streaks, berserk — a Lichess arena) | **performance** (Lichess's: the opponents' ratings ±500, averaged) | |
 
 After the tie-breaks: the higher rating, then the name — so the order is total
 and every rank unique. An unfinished game counts for no tie-break; a team
@@ -333,7 +335,8 @@ same way; only the player links differ (the view's open its Games tab,
 | `knockout`, `teamKnockout` | `KnockoutView` (teams detected from the tags) |
 | `doubleElimination` | `KnockoutView` with `losersFromRound` 51 |
 | `teamSwiss` | `TeamStandingsView`, 50 rows a page |
-| `arena` | the Library's own `ArenaTable` (`ArenaStandingsTable` over `arenaOf`, §4.2), 50 rows a page — no Blog view or embed |
+| `arena` | the Library's own `ArenaTable` (`ArenaStandingsTable` over `arenaOf`, §4.2) in game points, 50 rows a page — no Blog view or embed |
+| `lichessArena` | the same, in Lichess arena points (CTA-204) |
 
 Its Participants tab reads every player's record with
 `lib/tournamentParticipants.ts` (`participantsOf` over `tournamentOf`, so a
@@ -347,11 +350,15 @@ ends, so the table is each player's **score sheet** — every game in the
 order played — and its total. `arenaOf(headers, { scoring, plies })`
 (`lib/arena.ts`, tags only) reads it; the block is `ArenaStandingsTable`
 (`DataTable`: rank, the player as the row's header, rating, the sheet, points,
-games, performance) under a **scoring switch** (`ViewToggle`'s words), and the
-Library's tournament view draws it for a collection marked Arena
-(`ArenaTable` in `TournamentCollection.tsx`). **No MDX embed** — the Blog and
-the MDX editor's catalog and gallery keep offering the Swiss standings for
-an arena.
+games, performance), and the Library's tournament view draws it
+(`ArenaTable` in `TournamentCollection.tsx`). **Two stored types, one table,
+no switch**: a collection marked **Arena** is scored in game points, one
+marked **Lichess arena** (`lichessArena`, appended to `TOURNAMENT_FORMATS`)
+in Lichess arena points — the reader picks the scoring with the type. The
+guess names a Lichess export's arena a Lichess arena, any other an Arena;
+the tournament view says no misfit between the two (the same pairing, two
+scorings — the reader's choice). **No MDX embed** — the Blog and the MDX
+editor's catalog and gallery keep offering the Swiss standings for either.
 
 **Lichess arena points**, each player's games replayed in the order they
 began (`UTCDate` + `UTCTime` ascending — Lichess exports newest first; a game
@@ -375,12 +382,6 @@ name. The marks: a score on fire on the theme's `warning` fill (its
 `contrastText`), a berserk game a bolt, every mark read by its words ("Game
 3, White against msb2: win, scored 5, on fire, double points, berserk, one
 point more"); the legend names the marks shown.
-
-**The scoring the table opens with** is Lichess points for a Lichess export
-(`isLichessExport`: every game's `Site` on lichess.org, timed), else game
-points (`defaultArenaScoring`); the switch writes `?scoring=` with history
-replace, only where it differs from that default, so Back from a game finds
-it; a value that is no scoring is ignored.
 
 **Checked against Lichess** (the issue's two samples, titled arenas of
 3,417 and 4,138 games, and a 2019 Daily SuperBlitz, against

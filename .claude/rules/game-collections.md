@@ -78,7 +78,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/views/library/CollectionScreen.tsx` | `/library/<collection>`: the table, the picks, the export bar, Analyse, Add games, and deleting games — or, for a collection that reads as a tournament, the tournament view (its Games tab this same table, CTA-142). |
 | `src/views/library/TournamentCollection.tsx`, `tournamentTabs.ts` | **The tournament view** (CTA-142, §6.4.3): Info, Participants and Games tabs, the tab the URL's (`tournamentTabOf`). |
 | `src/lib/tournamentParticipants.ts` | **Each player's record** (CTA-142): `participantsOf` (score, games, W / D / L, performance, longest unbeaten run — over `tournamentOf`, tags only), `topPlayersOf` (the standouts). |
-| `src/lib/arena.ts`, `src/blocks/tables/ArenaStandingsTable/` | **An arena's standings** (CTA-204): `arenaOf` (each player's score sheet in the order played, scored as Lichess arena points or game points — tags only, the games' lengths counted off their movetext), `defaultArenaScoring` / `isLichessExport`, `pliesOfGames`; the block draws it under the scoring switch. The rules: `tournament-tables.md` §4.2. |
+| `src/lib/arena.ts`, `src/blocks/tables/ArenaStandingsTable/` | **An arena's standings** (CTA-204): `arenaOf` (each player's score sheet in the order played, scored as Lichess arena points or game points — tags only, the games' lengths counted off their movetext), `isLichessExport` (what makes the guess a Lichess arena), `pliesOfGames`; the block draws it as scored — an Arena in game points, a Lichess arena in Lichess arena points. The rules: `tournament-tables.md` §4.2. |
 | `src/blocks/cards/TournamentInfo/`, `tables/ParticipantsTable/`, `panels/TopPlayers/`, `lists/TeamRosters/` | The tournament view's blocks (CTA-142): the event's facts, every player's record (sortable), the standouts, a team event's teams and their players. |
 | `src/blocks/forms/CollectionSettingsForm/` | A collection's settings form, a block (CTA-121): the title, the description, and the tournament mark with its formats (every one selectable since CTA-142, each with its table — the arena's since CTA-204) and the type the games look like (`TournamentSuggestion`, its Apply) — presentational, wired by the settings screen. |
 | `src/views/library/CollectionSettingsScreen.tsx` | `/library/<collection>/settings` (CTA-121): the `CollectionSettingsForm` block over one draft, saved whole through `updateCollectionSettings` — uploads only; a shipped id is the miss. |
@@ -246,7 +246,7 @@ node scripts/wirepgn.js --list | --check | --rebuild | --remove <id>
    collection opens in the tournament view (§6.4.3) and shows a trophy in
    the list (§6.2) for every reader. `--tournament <type>` names the format
    (`swiss`, `roundRobin`, `knockout`, `doubleElimination`, `match`,
-   `teamSwiss`, `teamKnockout`, `arena`); bare, or
+   `teamSwiss`, `teamKnockout`, `arena`, `lichessArena`); bare, or
    `auto`, takes the guess from the games' tags (`guessTournamentKind`,
    `src/lib/tournamentKind.ts`) and prints it with its reason; `none` takes
    a mark off. It refuses games that do not share one `Event`
@@ -815,10 +815,12 @@ the `CollectionSettingsForm` block; the screen owns the draft and the write.
 - **Every format** (CTA-142; CTA-121 had Swiss and Round robin only). On,
   the type is radios: Swiss (the default when first switched on), Round
   robin, Knockout, Double elimination, Match play, Team Swiss / round robin,
-  Team knockout and **Arena** — selectable since the guess recognises an
-  arena, and since CTA-204 drawn on its Info tab as an arena's standings
-  (§6.4.3; its label is its name alone, the "no standings table yet" of
-  CTA-142 gone). Its Participants tab is whole too (each player's score,
+  Team knockout, **Arena** and **Lichess arena** — Arena selectable since
+  the guess recognises an arena, and since CTA-204 drawn on its Info tab as
+  an arena's standings in game points (§6.4.3; its label is its name alone,
+  the "no standings table yet" of CTA-142 gone); **Lichess arena**
+  (`lichessArena`, CTA-204) the same table in Lichess arena points, the type
+  the guess names for a Lichess export. Its Participants tab is whole too (each player's score,
   W / D / L, performance — game points). Each format's one-line description
   sits under the group, all at once.
 - **The suggested type** (CTA-142, `TournamentSuggestion`): the screen reads
@@ -865,12 +867,10 @@ the tab's panel (`tabPanelProps`, `library-tournament-panel-<tab>`):
   standings** (CTA-204, the Library's own: `ArenaTable` over `arenaOf` and
   the `ArenaStandingsTable` block — no Blog embed): a row per player, their
   **score sheet** in the order played, the points, games and performance,
-  under a **scoring switch** — *Lichess points* (streaks on fire, berserk;
-  the default for a Lichess export: every game's `Site` on lichess.org and
-  timed by `UTCDate` / `UTCTime`) or *Game points* (1 / ½ / 0, the default
-  for any other file) — kept in the URL as `?scoring=` (history replace,
-  only where it differs from the default), so Back from a game finds it;
-  50 rows a page. The rules are `tournament-tables.md` §4.2. Names link to the **Games tab filtered by that player**
+  50 rows a page — in **game points** (1 / ½ / 0) for an **Arena**, in
+  **Lichess arena points** (streaks on fire, berserk) for a **Lichess
+  arena**: the type is the scoring, no switch; and no misfit is said
+  between the two. The rules are `tournament-tables.md` §4.2. Names link to the **Games tab filtered by that player**
   (a team's to all its players), results to the game on the Library's board
   (its back returning here). Games whose guess (`guessTournamentKind`) is
   another type get an `InlineAlert` saying so and naming the type they look

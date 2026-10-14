@@ -8,7 +8,8 @@ import { POINTS, positiveInteger, tournamentOf, type PlayerGame, type Tournament
  * rounds, every player paired again as soon as their game ends, so the
  * standings are each player's **score sheet** — every game in the order it
  * was played — and its total. What the Library's tournament view draws for
- * a collection marked as an Arena.
+ * a collection marked as an Arena (game points) or a Lichess arena (Lichess
+ * arena points).
  *
  * Two scorings, one reader:
  *
@@ -46,9 +47,6 @@ import { POINTS, positiveInteger, tournamentOf, type PlayerGame, type Tournament
 /** How a table scores an arena: Lichess's arena points, or plain game points. */
 export const ARENA_SCORINGS = ["lichess", "game"] as const;
 export type ArenaScoring = (typeof ARENA_SCORINGS)[number];
-
-/** Whether a word (a URL's `?scoring=`) is a scoring — anything else is ignored. */
-export const isArenaScoring = (value: string | null | undefined): value is ArenaScoring => (ARENA_SCORINGS as readonly (string | null | undefined)[]).includes(value);
 
 /** A draw in fewer plies than this scores nothing (Lichess: "within the first 10 moves"). */
 export const QUICK_DRAW_PLIES = 20;
@@ -118,14 +116,11 @@ const LICHESS_SITE = /^https?:\/\/(?:www\.)?lichess\.org\//i;
 
 /**
  * Whether the games are a **Lichess export** — every one played on
- * lichess.org (`Site`) and timed (`UTCDate`, `UTCTime`): what makes Lichess
- * points the table's first scoring.
+ * lichess.org (`Site`) and timed (`UTCDate`, `UTCTime`): what makes the
+ * guess a Lichess arena rather than an arena (`lib/tournamentKind.ts`).
  */
 export const isLichessExport = (headers: readonly GameHeaders[]): boolean =>
   headers.length > 0 && headers.every((game) => LICHESS_SITE.test(gameTag(game, "Site") ?? "") && startOf(game) !== undefined);
-
-/** The scoring a table opens with: Lichess points for a Lichess export, game points for anything else. */
-export const defaultArenaScoring = (headers: readonly GameHeaders[]): ArenaScoring => (isLichessExport(headers) ? "lichess" : "game");
 
 /** Each game's length in plies, counted off its movetext as text (the Library's own count) — no move replayed. */
 export const pliesOfGames = (games: readonly string[]): number[] => games.map((pgn) => mainlinePlies(readPgnParts(pgn).movetext));

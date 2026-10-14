@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
-import type { Arena, ArenaScoring } from "../../../lib/arena";
 import { expectNoAxeViolations } from "../../../test/axe";
 import { readText } from "../../../test/readText";
 import ArenaStandingsTable, { type ArenaStandingsTableProps } from "./ArenaStandingsTable";
@@ -14,19 +13,11 @@ const mount = (props: Partial<ArenaStandingsTableProps> = {}) =>
   render(
     <ArenaStandingsTable
       arena={TITLED_ARENA.lichess}
-      scoring="lichess"
-      onScoringChange={() => {}}
       ariaLabel="Titled Arena — standings"
       testId="t"
       {...props}
     />,
   );
-
-/** The block with its switch live: the arena scored again on every turn, as a screen does. */
-function Live({ arenas }: { arenas: Readonly<Record<ArenaScoring, Arena>> }) {
-  const [scoring, setScoring] = useState<ArenaScoring>("lichess");
-  return <ArenaStandingsTable arena={arenas[scoring]} scoring={scoring} onScoringChange={setScoring} ariaLabel="Arena" testId="t" />;
-}
 
 /** Each row by its accessible name: a title read in full, a federation by its country. */
 const names = () => screen.getAllByRole("rowheader").map((header) => readText(header));
@@ -101,14 +92,8 @@ describe("ArenaStandingsTable", () => {
     );
   });
 
-  it("switches to game points from the keyboard: 1, ½, 0, no fire or berserk, ranked again", async () => {
-    const user = userEvent.setup();
-    render(<Live arenas={TITLED_ARENA} />);
-    const scoring = screen.getByRole("group", { name: "Scoring" });
-    expect(within(scoring).getByRole("button", { name: "Lichess points" })).toHaveAttribute("aria-pressed", "true");
-    within(scoring).getByRole("button", { name: "Lichess points" }).focus();
-    await user.keyboard("{ArrowRight}{Enter}");
-    expect(within(scoring).getByRole("button", { name: "Game points" })).toHaveAttribute("aria-pressed", "true");
+  it("draws an arena scored in game points as 1, ½, 0 — no fire or berserk — ranked by them", () => {
+    mount({ arena: TITLED_ARENA.game });
     expect(names().map((name) => name.split(" ").at(-1))).toEqual(["States", "BrightFalcon", "Germany", "States", "Armenia", "newcomer"]);
     expect(glyphs("penguingim1")).toEqual(["1", "1", "1", "½", "1"]);
     expect(pointsOf("penguingim1")).toBe("4.5");
@@ -125,16 +110,6 @@ describe("ArenaStandingsTable", () => {
     expect(third.getAttribute("href")).toMatch(/^#game-\d+$/);
   });
 
-  it("calls the switch's change and nothing else — the caller scores the arena again", async () => {
-    const onScoringChange = vi.fn();
-    const user = userEvent.setup();
-    mount({ onScoringChange });
-    await user.click(screen.getByRole("button", { name: "Game points" }));
-    expect(onScoringChange).toHaveBeenCalledWith("game");
-    await user.click(screen.getByRole("button", { name: "Lichess points" }));
-    expect(onScoringChange).toHaveBeenCalledTimes(1);
-  });
-
   it("pages a long arena, each row keeping its rank", async () => {
     const user = userEvent.setup();
     function Paged() {
@@ -142,8 +117,6 @@ describe("ArenaStandingsTable", () => {
       return (
         <ArenaStandingsTable
           arena={BIG_ARENA.lichess}
-          scoring="lichess"
-          onScoringChange={() => {}}
           paging={{ page, rowsPerPage: 50, onPageChange: setPage, onRowsPerPageChange: () => {}, labelRowsPerPage: "Rows per page" }}
           ariaLabel="Big Arena"
           testId="t"
@@ -170,8 +143,6 @@ describe("ArenaStandingsTable", () => {
   it("speaks Hebrew", async () => {
     await i18n.changeLanguage("he");
     mount({ arena: HEBREW_ARENA.lichess, ariaLabel: "ארנה" });
-    expect(screen.getByRole("group", { name: "ניקוד" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "נקודות Lichess" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("columnheader", { name: "גיליון ניקוד" })).toBeInTheDocument();
   });
 
