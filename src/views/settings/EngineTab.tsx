@@ -239,9 +239,10 @@ function EngineTab() {
               <Typography variant="subtitle2" component="h2">
                 {t("settings.engine.setup.title")}
               </Typography>
+              {/* A link in a sentence: the theme's underline, never "hover" — colour alone fails high-contrast (axe's link-in-text-block). */}
               <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 {t("settings.engine.setup.intro")}{" "}
-                <Link component={RouterLink} to={LOCAL_ENGINE_GUIDE_PATH} underline="hover" data-testid="engine-setup-guide">
+                <Link component={RouterLink} to={LOCAL_ENGINE_GUIDE_PATH} data-testid="engine-setup-guide">
                   {t("settings.engine.setup.guide")}
                 </Link>
               </Typography>
