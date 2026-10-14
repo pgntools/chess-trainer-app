@@ -10,6 +10,7 @@ import { gamesInText, gamesOf, withoutGames } from "./gamesTag";
 import { nodeAtSanPath, findNode, setComments, type GameTree } from "./gameTree";
 import {
   arrowWidthSourcesIn,
+  engineLineWeights,
   EVAL_BEST_CP,
   EVAL_HAIRLINE_CP,
   EVAL_WORSE_MAX_WEIGHT,
@@ -17,6 +18,7 @@ import {
   nextMoveWeights,
   parseEval,
 } from "./nextMoveWeights";
+import type { EngineLine, Score } from "./engineAnalysis";
 import { parsePgnTree } from "./pgn";
 
 /*
@@ -181,11 +183,90 @@ describe("nextMoveWeights — games, prc and lines", () => {
   });
 });
 
+describe("engineLineWeights — the Variations source (CTA-197)", () => {
+  const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  // After 1. e4 — Black to move.
+  const BLACK_TO_MOVE = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+  const line = (multipv: number, san: string[], score: Score | null): EngineLine => ({ multipv, score, depth: 20, san });
+  const cp = (value: number): Score => ({ kind: "cp", value });
+  const mate = (value: number): Score => ({ kind: "mate", value });
+
+  it("draws each line's first move, by its squares, whether or not any tree holds it", () => {
+    const moves = engineLineWeights(START, [line(1, ["e4", "e5"], cp(30)), line(2, ["Nf3"], cp(25))])!;
+    expect(moves.map(({ id, from, to }) => [id, from, to])).toEqual([
+      ["e2e4", "e2", "e4"],
+      ["g1f3", "g1", "f3"],
+    ]);
+  });
+
+  it("sizes them by Evaluation's rule — the best group 1, the others narrower by their loss, a hairline at 300 cp", () => {
+    const [best, tie, ten, worse, lost] = engineLineWeights(START, [
+      line(1, ["e4"], cp(40)),
+      line(2, ["d4"], cp(40 - EVAL_BEST_CP)),
+      line(3, ["Nf3"], cp(30)),
+      line(4, ["c4"], cp(-60)),
+      line(5, ["g4"], cp(40 - EVAL_HAIRLINE_CP - 50)),
+    ])!.map(({ weight }) => weight as number);
+    expect([best, tie]).toEqual([1, 1]);
+    expect(ten).toBeLessThan(EVAL_WORSE_MAX_WEIGHT);
+    expect(ten).toBeGreaterThan(worse);
+    expect(worse).toBeGreaterThan(0);
+    expect(lost).toBe(0);
+  });
+
+  it("reads the scores as the side to move sees them — Black's best is White's lowest", () => {
+    const [e5, c5, a5] = engineLineWeights(BLACK_TO_MOVE, [
+      line(1, ["e5"], cp(30)),
+      line(2, ["c5"], cp(-10)),
+      line(3, ["a5"], cp(120)),
+    ])!.map(({ weight }) => weight);
+    expect(c5).toBe(1);
+    expect(e5).toBeLessThan(1);
+    expect(a5).toBeLessThan(e5 as number);
+  });
+
+  it("counts a mate for the mover as best and a mate against it as 0", () => {
+    const [mating, even, mated] = engineLineWeights(START, [
+      line(1, ["e4"], mate(5)),
+      line(2, ["d4"], cp(0)),
+      line(3, ["f3"], mate(-2)),
+    ])!.map(({ weight }) => weight);
+    expect(mating).toBe(1);
+    expect(even).toBeLessThan(1);
+    expect(mated).toBe(0);
+  });
+
+  it("weighs a line without a score null, skips holes, repeats and moves illegal here", () => {
+    const moves = engineLineWeights(START, [
+      line(1, ["e4"], cp(20)),
+      undefined,
+      line(3, ["e4", "c5"], cp(10)),
+      line(4, ["Nc6"], cp(0)),
+      line(5, ["d4"], null),
+      line(6, [], cp(0)),
+    ])!;
+    expect(moves.map(({ id, weight }) => [id, weight])).toEqual([
+      ["e2e4", 1],
+      ["d2d4", null],
+    ]);
+  });
+
+  it("has nothing to draw with no lines, no scores or a FEN it cannot read", () => {
+    expect(engineLineWeights(START, [])).toBeUndefined();
+    expect(engineLineWeights(START, [line(1, ["e4"], null)])).toBeUndefined();
+    expect(engineLineWeights("not a fen", [line(1, ["e4"], cp(0))])).toBeUndefined();
+  });
+
+  it("is not a tree source — the tree's continuations weigh nothing under it", () => {
+    expect(nextMoveWeights(parsePgnTree("1. e4 e5 *").moves, "variations")).toBeUndefined();
+  });
+});
+
 describe("arrowWidthSourcesIn — the sources a tree offers", () => {
-  it("always offers none and lines, and each tag some move carries anywhere", () => {
-    expect(arrowWidthSourcesIn(parsePgnTree("1. e4 e5 *"))).toEqual(new Set(["none", "lines"]));
+  it("always offers none, lines and variations, and each tag some move carries anywhere", () => {
+    expect(arrowWidthSourcesIn(parsePgnTree("1. e4 e5 *"))).toEqual(new Set(["none", "lines", "variations"]));
     const tree = parsePgnTree("1. e4 e5 (1... c5 2. Nf3 {prc:40} (2. c3 {[%eval 0.2]})) *");
-    expect(arrowWidthSourcesIn(tree)).toEqual(new Set(["none", "lines", "prc", "eval"]));
+    expect(arrowWidthSourcesIn(tree)).toEqual(new Set(["none", "lines", "variations", "prc", "eval"]));
   });
 
   it("follows the tree as a comment is edited", () => {
@@ -200,6 +281,7 @@ describe("arrowWidthSourcesIn — the sources a tree offers", () => {
 describe("the record's arrow settings, read back", () => {
   it("keeps a known value and reads anything else as the default", () => {
     expect(arrowWidthSourceFrom("eval")).toBe("eval");
+    expect(arrowWidthSourceFrom("variations")).toBe("variations");
     expect(arrowWidthSourceFrom("width")).toBe(DEFAULT_ARROW_WIDTH_SOURCE);
     expect(arrowWidthSourceFrom(undefined)).toBe("none");
     expect(arrowPaletteFrom("colorblind")).toBe("colorblind");

@@ -23,7 +23,7 @@ import { gameCaseOf, positionCaseOfFen, type AnalysisCase } from "../../lib/anal
 import { parsePgnTree } from "../../lib/pgn";
 import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
-import { boardOptions } from "../board/boardTestHarness";
+import { boardOptions, FakeEngine } from "../board/boardTestHarness";
 import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../main/boardLeftPanel";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 
@@ -604,6 +604,67 @@ describe("a Case's board (CTA-186)", () => {
     expect(boardOptions().boardOrientation).toBe("black");
     await user.click(screen.getByRole("tab", { name: "Display" }));
     expect(screen.getByRole("switch", { name: "Show next move arrows" })).not.toBeChecked();
+  });
+
+  it("draws the engine's listed lines as the arrows under Variations — None while it is off or has no lines here (CTA-197)", async () => {
+    FakeEngine.reset();
+    const project = (await createAnalysisProject("Club", null))!;
+    await addAnalysisCases([gameCase(project.id)]);
+    const user = userEvent.setup();
+    mount(`/analysis/projects/${project.id}/cases/cgame?view=case`);
+    await screen.findByTestId("board");
+    const engineArrows = () => screen.queryByTestId("analysis-case-engine-arrows-overlay");
+    const engineArrowTargets = () =>
+      [...engineArrows()!.querySelectorAll("path")].map((path) => path.getAttribute("data-to"));
+
+    await user.click(screen.getByRole("tab", { name: "Display" }));
+    const display = screen.getByTestId("analysis-case-display");
+    const variations = within(display).getByRole("radio", { name: /^Variations/ });
+    expect(variations).toBeEnabled();
+    await user.click(variations);
+    // The engine off: drawn as None — the tree's own arrow, 1. e4 — and the note says why.
+    expect(variations).toBeChecked();
+    expect(engineArrows()).toBeNull();
+    expect(boardOptions().arrows!.map((arrow) => arrow.endSquare)).toEqual(["e4"]);
+    expect(within(display).getByTestId("analysis-case-display-width-drawn-as-none")).toHaveTextContent(
+      i18n.t("analysis.arrows.drawnAsNoneEngine"),
+    );
+    await expectNoAxeViolations(display);
+
+    // On, but no lines yet: still None.
+    act(() => screen.getByTestId("analysis-case-setting-engine").click());
+    const engine = FakeEngine.latest();
+    await waitFor(() => expect(engine.lastSearch).toBe(START));
+    expect(engineArrows()).toBeNull();
+
+    // Its lines for the position on screen: an arrow per line's first move — 1. d4 is in no tree — the best widest.
+    const report = (multipv: number, cp: number, pv: string) =>
+      act(() =>
+        engine.say({ fen: START, uciMessage: "info", depth: 18, multipv, positionEvaluation: String(cp), pv }),
+      );
+    report(1, 35, "e2e4 e7e5");
+    report(2, 20, "d2d4 d7d5");
+    expect(engineArrowTargets()).toEqual(["e4", "d4"]);
+    expect(boardOptions().arrows).toEqual([]);
+    const width = (square: string) =>
+      Number(engineArrows()!.querySelector(`path[data-to="${square}"]`)!.getAttribute("stroke-width"));
+    expect(width("e4")).toBeGreaterThan(width("d4"));
+    expect(within(display).queryByTestId("analysis-case-display-width-drawn-as-none")).toBeNull();
+    // A deeper search follows: 1. Nf3 joins.
+    report(3, 34, "g1f3");
+    expect(engineArrowTargets()).toEqual(["e4", "d4", "f3"]);
+
+    // A step: the lines are the last position's, so none are drawn until the new ones arrive.
+    fireEvent.click(screen.getByTestId("board-control-next"));
+    expect(screen.getByTestId("board")).toHaveAttribute("data-position", AFTER_E4);
+    expect(engineArrows()).toBeNull();
+
+    // Off: None again, the choice kept with the Case.
+    fireEvent.click(screen.getByTestId("board-control-previous"));
+    act(() => screen.getByTestId("analysis-case-setting-engine").click());
+    expect(engineArrows()).toBeNull();
+    expect(boardOptions().arrows!.map((arrow) => arrow.endSquare)).toEqual(["e4"]);
+    await waitFor(() => expect(analysisCasesSnapshot()![0].display.arrowWidthSource).toBe("variations"));
   });
 
   it("opens a Position from a PGN where it starts, its moves before it kept", async () => {

@@ -947,6 +947,7 @@ const en = {
         games: "Games",
         prc: "Play chance",
         lines: "Lines ahead",
+        variations: "Variations",
       },
       sourceHelp: {
         none: "Colour only — the arrows every board draws.",
@@ -954,11 +955,15 @@ const en = {
         games: "The [%games N] in each move's comment: each move's share of the games.",
         prc: "The prc:N in each move's comment: the play chances, scaled to 100%.",
         lines: "How many lines follow each move within the next 8 plies — no tag needed.",
+        variations: "The engine's listed lines, while it is on: each line's first move, the best the widest, the others narrower by what they give up.",
       },
       /** Under a width source no move in the tree carries. */
       unavailable: "No move in this analysis carries this tag.",
       drawnAsNone:
         "No move in this analysis carries the chosen tag, so the arrows are drawn as None until one does.",
+      /** Under Variations, while the engine is off or has no lines for the position on screen (CTA-197). */
+      drawnAsNoneEngine:
+        "The engine is off or has not reported its lines for this position yet, so the arrows are drawn as None until it does.",
       palette: "Next move arrows colours",
       palettes: {
         classic: "Classic",

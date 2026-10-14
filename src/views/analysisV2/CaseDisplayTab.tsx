@@ -28,11 +28,14 @@ function CaseDisplayTab({
   display,
   onChange,
   available,
+  engineLines,
 }: {
   display: CaseDisplay;
   onChange: (patch: Partial<CaseDisplay>) => void;
   /** The width sources the tree on screen carries (`arrowWidthSourcesIn`). */
   available: ReadonlySet<ArrowWidthSource>;
+  /** Whether the engine's lines for the position on screen are in hand — what Variations draws (CTA-197). */
+  engineLines: boolean;
 }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<DisplayTab>("arrows");
@@ -77,6 +80,7 @@ function CaseDisplayTab({
             widthSource={display.arrowWidthSource}
             onWidthSourceChange={(arrowWidthSource) => onChange({ arrowWidthSource })}
             available={available}
+            engineLines={engineLines}
             palette={display.arrowPalette}
             onPaletteChange={(arrowPalette) => onChange({ arrowPalette })}
             testId="analysis-case-display"

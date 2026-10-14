@@ -6,7 +6,7 @@ import type { ArrowWidthSource } from "../../../lib/arrowSettings";
 */
 
 /** A tree with evaluations and game counts, but no play chances. */
-export const EVAL_AND_GAMES: ReadonlySet<ArrowWidthSource> = new Set(["none", "eval", "games", "lines"]);
+export const EVAL_AND_GAMES: ReadonlySet<ArrowWidthSource> = new Set(["none", "eval", "games", "lines", "variations"]);
 
-/** A tree with no tags at all — only None and Lines ahead. */
-export const UNTAGGED: ReadonlySet<ArrowWidthSource> = new Set(["none", "lines"]);
+/** A tree with no tags at all — only None, Lines ahead and the engine's Variations. */
+export const UNTAGGED: ReadonlySet<ArrowWidthSource> = new Set(["none", "lines", "variations"]);

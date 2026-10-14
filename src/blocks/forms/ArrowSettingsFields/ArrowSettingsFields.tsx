@@ -15,6 +15,13 @@ export type ArrowSettingsFieldsProps = {
    * drawn as None. Absent (a record's settings screen), every source is on.
    */
   available?: ReadonlySet<ArrowWidthSource>;
+  /**
+   * Whether the engine's lines for the position on screen are in hand — what
+   * the Variations source draws (CTA-197). `false` with it chosen: the same
+   * note says the arrows are drawn as None until the engine reports them.
+   * Absent, no note for it.
+   */
+  engineLines?: boolean;
   palette: ArrowPaletteId;
   onPaletteChange: (next: ArrowPaletteId) => void;
   /**
@@ -37,10 +44,23 @@ export type ArrowSettingsFieldsProps = {
  * Presentational: the choices arrive, each change leaves as a callback. Its
  * words are the Analysis Board's (`analysis.arrows.*`).
  */
-function ArrowSettingsFields({ widthSource, onWidthSourceChange, available, palette, onPaletteChange, testId }: ArrowSettingsFieldsProps) {
+function ArrowSettingsFields({
+  widthSource,
+  onWidthSourceChange,
+  available,
+  engineLines,
+  palette,
+  onPaletteChange,
+  testId,
+}: ArrowSettingsFieldsProps) {
   const { t } = useTranslation();
   const { arrowPalettes } = useChessTokens();
-  const drawnAsNone = available !== undefined && !available.has(widthSource);
+  const drawnAsNone =
+    available !== undefined && !available.has(widthSource)
+      ? "analysis.arrows.drawnAsNone"
+      : widthSource === "variations" && engineLines === false
+        ? "analysis.arrows.drawnAsNoneEngine"
+        : undefined;
 
   return (
     <Box sx={{ display: "grid", gap: 2 }}>
@@ -68,9 +88,9 @@ function ArrowSettingsFields({ widthSource, onWidthSourceChange, available, pale
           })}
           testId={`${testId}-width`}
         />
-        {drawnAsNone && (
+        {drawnAsNone !== undefined && (
           <StatusText tone="warning" testId={`${testId}-width-drawn-as-none`}>
-            {t("analysis.arrows.drawnAsNone")}
+            {t(drawnAsNone)}
           </StatusText>
         )}
       </Box>

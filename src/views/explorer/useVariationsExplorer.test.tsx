@@ -495,6 +495,55 @@ describe("useVariationsExplorer — the width source and palette (CTA-98)", () =
     }
   });
 
+  it("draws the engine's moves in place of the continuations, by quality — a move the tree lacks too (CTA-197)", () => {
+    const { lichess } = NEXT_MOVE_ARROW_PALETTES;
+    // At 2. …: the engine likes 2. Nf3 and 2. Bc4 (not in the tree) alike, 2. d4 less.
+    const engineMoves = [
+      { id: "g1f3", from: "g1", to: "f3", weight: 1 },
+      { id: "f1c4", from: "f1", to: "c4", weight: 1 },
+      { id: "d2d4", from: "d2", to: "d4", weight: 0.3 },
+    ] as const;
+    mountWeighted({
+      nodeId: at(tagged, "e4", "e5"),
+      arrows: { show: true, widthSource: "games", engineMoves, palette: "lichess" },
+    });
+    // The tree's own arrows stand down — neither the library's nor the width source's.
+    expect(parts.arrows).toEqual([]);
+    expect(screen.queryByTestId("x-width-arrows-overlay")).toBeNull();
+    const overlay = screen.getByTestId("x-engine-arrows-overlay");
+    const engineArrow = (square: string) => overlay.querySelector(`path[data-to="${square}"]`)!;
+    expect([...overlay.querySelectorAll("path")].map((path) => path.getAttribute("data-to"))).toEqual(["f3", "c4", "d4"]);
+    expect(engineArrow("f3")).toHaveAttribute("fill", lichess.mainline);
+    expect(engineArrow("c4")).toHaveAttribute("fill", lichess.mainline);
+    expect(engineArrow("d4")).toHaveAttribute("fill", lichess.sideline);
+    const width = (square: string) => Number(engineArrow(square).getAttribute("stroke-width"));
+    expect(width("f3")).toBe(width("c4"));
+    expect(width("f3")).toBeGreaterThan(width("d4"));
+
+    // A hovered continuation answers in the overlay when it is one of the engine's, as a library arrow when not.
+    fireEvent.mouseEnter(screen.getByTestId(`next-move-${at(tagged, "e4", "e5", "Nf3")}`));
+    expect(engineArrow("f3")).toHaveAttribute("fill", lichess.hovered);
+    expect(parts.arrows).toEqual([]);
+    fireEvent.mouseEnter(screen.getByTestId(`next-move-${at(tagged, "e4", "e5", "Nc3")}`));
+    expect(parts.arrows).toEqual([{ startSquare: "b1", endSquare: "c3", color: lichess.hovered }]);
+  });
+
+  it("draws the continuations as before with no engine moves, and nothing of the engine's with the arrows off", () => {
+    const engineMoves = [{ id: "g1f3", from: "g1", to: "f3", weight: 1 }] as const;
+    const { unmount } = mountWeighted({
+      nodeId: at(tagged, "e4", "e5"),
+      arrows: { show: true, widthSource: "games", engineMoves: [], palette: "lichess" },
+    });
+    expect(screen.getByTestId("x-width-arrows-overlay")).toBeInTheDocument();
+    unmount();
+    mountWeighted({
+      nodeId: at(tagged, "e4", "e5"),
+      arrows: { show: false, widthSource: "games", engineMoves, palette: "lichess" },
+    });
+    expect(parts.overlay).toBeNull();
+    expect(parts.arrows).toEqual([]);
+  });
+
   it("sizes by the lines ahead with no tag at all", () => {
     mountWeighted({
       nodeId: at(tagged, "e4", "e5", "Nf3", "Nc6"),

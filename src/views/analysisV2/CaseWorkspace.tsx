@@ -39,7 +39,7 @@ import {
   type CaseState,
 } from "../../lib/analysisProjects";
 import { jobV2AnalysisOf } from "../../lib/jobsV2";
-import { arrowWidthSourcesIn } from "../../lib/nextMoveWeights";
+import { arrowWidthSourcesIn, engineLineWeights } from "../../lib/nextMoveWeights";
 import { evalSeriesOf } from "../../lib/computerAnalysisTree";
 import { emptyTree, mainlineGame, sanPathTo, type GameTree } from "../../lib/gameTree";
 import { downloadPgn } from "../../lib/pgnExport";
@@ -157,6 +157,20 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
   const changeDisplay = (patch: Partial<CaseDisplay>) => setDisplay((current) => ({ ...current, ...patch }));
   const availableWidthSources = useMemo(() => arrowWidthSourcesIn(core.tree), [core.tree]);
   const drawnWidthSource = availableWidthSources.has(display.arrowWidthSource) ? display.arrowWidthSource : "none";
+  /*
+    Under Variations (CTA-197) the arrows are the engine's listed lines' first
+    moves — only while it is on, and only lines for the position on screen,
+    so a stale position's are never drawn. Without them, drawn as None.
+  */
+  const variations = drawnWidthSource === "variations";
+  const { analysis } = engine;
+  const engineMoves = useMemo(
+    () =>
+      variations && session.engineOn && analysis.fen === core.fen
+        ? engineLineWeights(core.fen, analysis.lines)
+        : undefined,
+    [variations, session.engineOn, analysis, core.fen],
+  );
 
   const name = caseDisplayName(record, t);
   usePageTitle(name);
@@ -188,7 +202,7 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
     playChances: false,
     annotations: true,
     moveMarks: display.showMoveMarks,
-    arrows: { show: display.showArrows, widthSource: drawnWidthSource, palette: display.arrowPalette },
+    arrows: { show: display.showArrows, widthSource: drawnWidthSource, engineMoves, palette: display.arrowPalette },
     map: { linked: true },
   });
   const boardOptions: ChessboardOptions = { ...explorer.boardOptions, arrows: explorer.arrows };
@@ -333,7 +347,14 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
         mainlinePly: core.mainlineNodes.findIndex((node) => node.id === core.nodeId) + 1,
         goToNode: core.goToNode,
         hasEvaluations,
-        display: <CaseDisplayTab display={display} onChange={changeDisplay} available={availableWidthSources} />,
+        display: (
+          <CaseDisplayTab
+            display={display}
+            onChange={changeDisplay}
+            available={availableWidthSources}
+            engineLines={engineMoves !== undefined}
+          />
+        ),
       })}
     </>
   );
