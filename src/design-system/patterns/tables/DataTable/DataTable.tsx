@@ -495,6 +495,7 @@ function DataTable<R, C extends string = string>({
                     return (
                       <TableCell
                         key={column.id}
+                        {...(column.rowHeader === true && { component: "th", scope: "row" })}
                         dir={column.dir}
                         data-testid={column.cellTestId?.(row)}
                         sx={{

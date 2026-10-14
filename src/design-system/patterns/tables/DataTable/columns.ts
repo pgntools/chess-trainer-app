@@ -28,6 +28,12 @@ export type DataTableColumn<R, C extends string = string> = {
   /** Let the text wrap. By default a cell keeps to one line and a long one scrolls the table sideways. */
   wrap?: boolean;
   /**
+   * The column names its row (CTA-204): each cell a row header (`th
+   * scope="row"`), so a screen reader names the row with every cell of it —
+   * a standings table's player. Absent, a plain cell.
+   */
+  rowHeader?: boolean;
+  /**
    * The cell's own test id, on the cell itself — for a screen whose tests
    * name its cells from before it moved onto the table (`settings-storage-games-records`).
    * Absent, a cell has none.
