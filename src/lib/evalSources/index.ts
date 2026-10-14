@@ -3,7 +3,14 @@
   evaluations every analysis search asks before its engine — the generic
   layer, which names no source; the sources are `registry.ts`'s.
 */
-export type { EvalLookup, EvalQuery, EvalRecordMeta, EvalSource } from "./types";
+export type {
+  EvalLookup,
+  EvalQuery,
+  EvalRecordMeta,
+  EvalSource,
+  EvalSourceConnection,
+  EvalSourceConnectionState,
+} from "./types";
 export { EVAL_SOURCES } from "./registry";
 export {
   askEvalSources,

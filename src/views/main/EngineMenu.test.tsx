@@ -16,6 +16,7 @@ import {
 } from "../../lib/enginePresetStore";
 import { readEngineSearchSettings, storeEngineSearchSettings } from "../../lib/engineSearchInEffect";
 import { DEFAULT_ENGINE_ID } from "../../lib/engines";
+import { LICHESS_EVAL_API_STORAGE_KEY, readLichessEvalApiSettings } from "../../lib/evalSources/lichess/settings";
 import { expectNoAxeViolations } from "../../test/axe";
 import { stubReducedMotion } from "../../test/reducedMotion";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
@@ -111,7 +112,7 @@ describe("the top bar's Engine menu (CTA-181)", () => {
     await user.keyboard("{ArrowRight}");
     expect(readEngineSearchSettings().depth).toBe(21);
     // No infinite analysis: every search stops at its depth or move time (CTA-185).
-    expect(within(dialog).queryByRole("switch")).toBeNull();
+    expect(within(dialog).queryByRole("switch", { name: /infinite/i })).toBeNull();
     await expectNoAxeViolations(dialog);
 
     await user.keyboard("{Escape}");
@@ -126,6 +127,36 @@ describe("the top bar's Engine menu (CTA-181)", () => {
     await user.click(await screen.findByRole("link", { name: "Advanced settings" }));
     expect(screen.getByTestId("where")).toHaveTextContent("/settings/engine");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("has the lichess evaluation API's switch and connection at its foot — the address kept (CTA-199)", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ status: "ok", positions: 1 }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    localStorage.setItem(LICHESS_EVAL_API_STORAGE_KEY, JSON.stringify({ enabled: false, url: "http://10.0.0.3:8000", write: false }));
+    const user = userEvent.setup();
+    mount();
+    const menu = await openMenu(user);
+    const toggle = within(menu).getByRole("switch", { name: "Lichess evaluation API" });
+    const status = screen.getByTestId("engine-menu-eval-source-lichess-status");
+    expect(toggle).not.toBeChecked();
+    expect(status).toHaveTextContent("Off");
+    expect(screen.getByTestId("engine-menu-eval-source-lichess-dot")).toHaveAttribute("data-connection", "disabled");
+    // No address here — that stays in Settings → Engine.
+    expect(within(menu).queryByRole("textbox", { name: /api address/i })).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await user.click(toggle);
+    expect(toggle).toBeChecked();
+    await waitFor(() => expect(status).toHaveTextContent("Connected"));
+    expect(screen.getByTestId("engine-menu-eval-source-lichess-dot")).toHaveAttribute("data-connection", "connected");
+    expect(fetchMock).toHaveBeenCalledWith("http://10.0.0.3:8000/health", expect.anything());
+    expect(readLichessEvalApiSettings()).toMatchObject({ enabled: true, url: "http://10.0.0.3:8000" });
+
+    await user.click(toggle);
+    expect(toggle).not.toBeChecked();
+    expect(status).toHaveTextContent("Off");
+    expect(readLichessEvalApiSettings()).toMatchObject({ enabled: false, url: "http://10.0.0.3:8000" });
+    await expectNoAxeViolations(menu);
   });
 
   it("shows the board on screen's engine: off neutral, on in the theme's colour, searching breathing", () => {

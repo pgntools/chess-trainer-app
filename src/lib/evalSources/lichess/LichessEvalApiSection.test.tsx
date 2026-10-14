@@ -40,11 +40,18 @@ const renderEngineTab = (path = "/settings/engine") =>
     </AppThemeWithLang>,
   );
 
+/** Its tab — named by its title, then its connection ("…, connected", CTA-199). */
+const sourceTab = (name = "Lichess evaluation API") =>
+  screen.getByRole("tab", { name: (accessibleName) => accessibleName.startsWith(`${name}, `) });
+
 /** The section, on its own inner tab of Settings → Engine — opened, its lazy chunk landed. */
 const section = async (name = "Lichess evaluation API") => {
-  await userEvent.setup().click(screen.getByRole("tab", { name }));
+  await userEvent.setup().click(sourceTab(name));
   return screen.findByRole("region", { name });
 };
+
+/** The tab's connection dot. */
+const dot = () => screen.getByTestId("eval-source-connection-lichess");
 
 const health = (body: Record<string, unknown>) => new Response(JSON.stringify(body), { status: 200 });
 
@@ -60,14 +67,47 @@ describe("the lichess evaluation API in Settings → Engine (CTA-196)", () => {
   it("is a tab of its own, beside Stockfish connectors — and ?source=lichess opens on it", async () => {
     renderEngineTab();
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(
-      expect.arrayContaining(["Stockfish connectors", "Lichess evaluation API"]),
+      expect.arrayContaining(["Stockfish connectors", "Lichess evaluation API, turned off"]),
     );
-    expect(screen.getByRole("tab", { name: "Lichess evaluation API" })).toHaveAttribute("aria-selected", "false");
+    expect(sourceTab()).toHaveAttribute("aria-selected", "false");
     expect(screen.queryByRole("region", { name: "Lichess evaluation API" })).toBeNull();
     cleanup();
     renderEngineTab("/settings/engine?source=lichess");
-    expect(screen.getByRole("tab", { name: "Lichess evaluation API" })).toHaveAttribute("aria-selected", "true");
+    expect(sourceTab()).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByRole("region", { name: "Lichess evaluation API" })).toBeInTheDocument();
+  });
+
+  it("shows its connection on its tab: gray off, green connected, yellow not answering (CTA-199)", async () => {
+    const fetchMock = vi.fn(async () => health({ status: "ok", positions: 1 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderEngineTab();
+    expect(dot()).toHaveAttribute("data-connection", "disabled");
+    expect(screen.getByRole("tab", { name: "Lichess evaluation API, turned off" })).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const api = await section();
+    await user.click(within(api).getByRole("switch", { name: /use the lichess evaluation api/i }));
+    await waitFor(() => expect(dot()).toHaveAttribute("data-connection", "connected"));
+    expect(screen.getByRole("tab", { name: "Lichess evaluation API, connected" })).toBeInTheDocument();
+
+    // It stops answering: Try again finds it gone.
+    fetchMock.mockImplementation(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    await user.click(within(api).getByRole("button", { name: "Connect" }));
+    await waitFor(() => expect(dot()).toHaveAttribute("data-connection", "not-connected"));
+    expect(screen.getByRole("tab", { name: "Lichess evaluation API, not connected" })).toBeInTheDocument();
+  });
+
+  it("checks a turned-on API as the Engine tab opens, so the dot is true before its tab is (CTA-199)", async () => {
+    const fetchMock = vi.fn(async () => health({ status: "ok", positions: 1 }));
+    vi.stubGlobal("fetch", fetchMock);
+    localStorage.setItem(LICHESS_EVAL_API_STORAGE_KEY, JSON.stringify({ enabled: true, url: "http://10.0.0.3:8000", write: false }));
+    renderEngineTab();
+    expect(sourceTab()).toHaveAttribute("aria-selected", "false");
+    await waitFor(() => expect(dot()).toHaveAttribute("data-connection", "connected"));
+    expect(fetchMock).toHaveBeenCalledWith("http://10.0.0.3:8000/health", expect.anything());
   });
 
   it("is off by default — no address, and nothing asked", async () => {

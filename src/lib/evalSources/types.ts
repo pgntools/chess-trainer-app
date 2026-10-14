@@ -36,6 +36,25 @@ export type EvalRecordMeta = {
 };
 
 /**
+ * A source's connection at a glance (CTA-199) — the dot on its tab of
+ * Settings → Engine: **disabled** (turned off), **not-connected** (on, but not
+ * answering — or not checked yet), **connected** (on and answering).
+ */
+export type EvalSourceConnection = "disabled" | "not-connected" | "connected";
+
+/** How a source tells its connection — read, followed, checked once, and switched on or off. */
+export type EvalSourceConnectionState = {
+  /** The connection now — the same value until it changes (`useSyncExternalStore`). */
+  read(): EvalSourceConnection;
+  /** Call `listener` when it may have changed. Returns the unsubscribe. */
+  subscribe(listener: () => void): () => void;
+  /** Check it once, where the reader turned the source on — call it from an effect. */
+  ensureChecked(): void;
+  /** Turn the source on or off — what else it keeps (an address) kept as it is. */
+  setEnabled(enabled: boolean): void;
+};
+
+/**
  * **A source of ready-made evaluations** — asked about a position before an
  * engine searches it; one registry entry (`registry.ts`) each. The lichess
  * evaluation API (`lichess/`) is the one there is.
@@ -68,6 +87,8 @@ export interface EvalSource {
    * Absent: no tab.
    */
   readonly SettingsSection?: ComponentType<{ testId: string }>;
+  /** **Its connection** (CTA-199) — the dot on its tab. Absent: no dot. */
+  readonly connection?: EvalSourceConnectionState;
   /** **For tests**: forget this visit's state (a status, a cache) — the teardown's, beside clearing `localStorage`. */
   reset?(): void;
 }

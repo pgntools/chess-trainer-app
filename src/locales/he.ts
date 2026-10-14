@@ -293,6 +293,7 @@ const he: typeof en = {
     engine: "מנוע",
     preset: "פריסט",
     advancedSettings: "הגדרות מתקדמות",
+    evalSource: { disabled: "כבוי", "not-connected": "לא מחובר", connected: "מחובר" },
     depthTyped: "עומק החיפוש, בהקלדה",
     moveTimeTyped: "זמן למסע בשניות, בהקלדה",
     threadsTyped: "תהליכונים, בהקלדה",
@@ -1772,6 +1773,11 @@ const he: typeof en = {
       evalSources: {
         intro:
           "מקורות הערכה: עמדות שכבר נותחו, שנשאלות לפני המנוע. כל ניתוח — בלוחות ובמשימות — שואל קודם את המקורות הפעילים, יהיה המנוע אשר יהיה, והמנוע מנתח רק את מה שאין להם בעומק מספיק. מנוע שבוחר את המסע שלו במשחק תמיד מנתח בעצמו.",
+        connection: {
+          disabled: "כבוי",
+          "not-connected": "לא מחובר",
+          connected: "מחובר",
+        },
       },
       tabs: { label: "היכן המנוע רץ", connectors: "מחברי Stockfish" },
       connectors: { browser: "דפדפן", api: "API" },

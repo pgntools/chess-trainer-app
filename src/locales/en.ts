@@ -408,6 +408,8 @@ const en = {
     preset: "Preset",
     /** The link to Settings → Engine at the popup's foot (CTA-189). */
     advancedSettings: "Advanced settings",
+    /** An eval source's connection beside its switch at the popup's foot (CTA-199). */
+    evalSource: { disabled: "Off", "not-connected": "Not connected", connected: "Connected" },
     /** The number boxes at the depth and move-time sliders' ends (CTA-185). */
     depthTyped: "Search depth, typed",
     moveTimeTyped: "Move time in seconds, typed",
@@ -2255,6 +2257,12 @@ const en = {
       evalSources: {
         intro:
           "Evaluation sources: positions already searched, asked before the engine. Every analysis search — on the boards and in Jobs — asks the ones turned on first, whichever engine runs, and the engine searches only what they do not hold deep enough. An engine playing its move in a game always searches itself.",
+        /** A source's connection, said after its tab's name — its dot's words (CTA-199). */
+        connection: {
+          disabled: "turned off",
+          "not-connected": "not connected",
+          connected: "connected",
+        },
       },
       /** The tab's inner tabs: the Stockfish connectors (CTA-198), then one per eval source. */
       tabs: { label: "Where the engine runs", connectors: "Stockfish connectors" },
