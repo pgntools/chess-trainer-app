@@ -2,12 +2,18 @@ import { removeLinksOfCases } from "./analysisCaseLinkStore";
 import { CASES_STORE, ANALYSIS_PROJECTS_CHANNEL, openAnalysisProjectsDb } from "./analysisProjectsDb";
 import {
   analysisCaseFrom,
+  appendedCases,
+  byCaseOrder,
   caseDerivedName,
+  compactedCaseOrders,
   copiedCase,
   isBehindMerges,
   MAX_CASE_NAME,
+  reorderedCases,
   sameCaseState,
+  withCaseOrders,
   type AnalysisCase,
+  type CaseOrderMove,
   type CaseState,
   MAX_ANALYSIS_CASES,
 } from "./analysisProjects";
@@ -31,6 +37,12 @@ import { newRecordId } from "./recordId";
  * takes its Jobs V2 and its links with it (CTA-188, `lib/jobV2Store.ts`,
  * `lib/analysisCaseLinkStore.ts`), and a Jobs V2
  * computer analysis is merged into one by {@link mergeIntoAnalysisCase}.
+ *
+ * **Each Project's Cases have the reader's order** (CTA-203, `order`): a Case
+ * added or moved in goes last, one deleted or moved away closes the gap
+ * behind it, {@link moveAnalysisCaseInOrder} reorders — and a record from
+ * before is given its place as the store reads it (`withCaseOrders`, written
+ * back). The list itself stays newest first; the order is a field.
  */
 
 export type AnalysisCaseProblem = "storage" | "too-many";
@@ -41,6 +53,7 @@ const cases = idbRecordStore<AnalysisCase>({
   normalise: analysisCaseFrom,
   order: "newest-first",
   channel: ANALYSIS_PROJECTS_CHANNEL,
+  repair: withCaseOrders,
 });
 
 /** The Cases, newest first — `undefined` until the first read lands. Stable between changes. */
@@ -94,7 +107,10 @@ export const findAnalysisCaseGame = (segments: readonly string[]): CatalogGame |
   return entry ?? undefined;
 };
 
-/** **Add Cases** at the top, all or nothing under the cap. An id already there is left as it is. */
+/**
+ * **Add Cases** at the top, all or nothing under the cap, each **last in its
+ * Project's order**, in the order given. An id already there is left as it is.
+ */
 export const addAnalysisCases = async (added: readonly AnalysisCase[]): Promise<AnalysisCaseProblem | undefined> => {
   if (added.length === 0) return undefined;
   let tooMany = false;
@@ -106,10 +122,19 @@ export const addAnalysisCases = async (added: readonly AnalysisCase[]): Promise<
       tooMany = true;
       return current;
     }
-    return [...fresh, ...current];
+    return [...appendedCases(current, fresh), ...current];
   });
   return tooMany ? "too-many" : problem;
 };
+
+/**
+ * **A Case moved in its Project's order** (CTA-203): one place up or down, or
+ * to the top or the bottom — its Project numbered 1, 2, … again, no
+ * `updatedAt` touched (it is not an edit of the analysis). An unknown Case, or
+ * a move past an end, writes nothing.
+ */
+export const moveAnalysisCaseInOrder = (id: string, move: CaseOrderMove): Promise<AnalysisCaseProblem | undefined> =>
+  write((current) => reorderedCases(current, id, move));
 
 /** Rename a Case in place — `""` gives it back its derived name. An unchanged name is a no-op. */
 export const renameAnalysisCase = (
@@ -127,7 +152,7 @@ export const renameAnalysisCase = (
   });
 };
 
-/** Move a Case to another Project. The same Project, or an unknown Case, is a no-op. */
+/** Move a Case to another Project — last in its order, the gap it leaves closed. The same Project, or an unknown Case, is a no-op. */
 export const moveAnalysisCase = (
   id: string,
   projectId: string,
@@ -136,8 +161,10 @@ export const moveAnalysisCase = (
   write((current) => {
     const existing = current.find((record) => record.id === id);
     if (existing === undefined || existing.projectId === projectId) return current;
-    return current.map((record) =>
-      record.id === id ? { ...record, projectId, updatedAt: now.toISOString() } : record,
+    const [moved] = appendedCases(current, [{ ...existing, projectId, updatedAt: now.toISOString() }]);
+    return compactedCaseOrders(
+      current.map((record) => (record.id === id ? moved : record)),
+      [existing.projectId],
     );
   });
 
@@ -158,13 +185,21 @@ export const duplicateAnalysisCase = async (
   return (await addAnalysisCases([copy])) === undefined ? copy : undefined;
 };
 
-/** Delete Cases by id, their Jobs V2 (a running one stopped by the runner, which reads it gone) and their links. Unknown ids are a no-op. */
+/**
+ * Delete Cases by id — their Projects' orders closed up behind them —, their
+ * Jobs V2 (a running one stopped by the runner, which reads it gone) and their
+ * links. Unknown ids are a no-op.
+ */
 export const removeAnalysisCases = async (ids: readonly string[]): Promise<AnalysisCaseProblem | undefined> => {
   if (ids.length === 0) return undefined;
   const gone = new Set(ids);
   const problem = await write((current) => {
     const next = current.filter((record) => !gone.has(record.id));
-    return next.length === current.length ? current : next;
+    if (next.length === current.length) return current;
+    return compactedCaseOrders(
+      next,
+      current.filter((record) => gone.has(record.id)).map((record) => record.projectId),
+    );
   });
   return problem ?? (await removeJobsV2Of({ caseIds: ids })) ?? removeLinksOfCases(ids);
 };
@@ -248,7 +283,10 @@ export const mergeIntoAnalysisCase = async (
 /**
  * **An import's Cases** (Settings → Import): the ids to remove first, then the
  * Cases to add, in one write — all or nothing under the cap. An added id the
- * store still holds replaces it.
+ * store still holds replaces it. **Their order** (CTA-203): into a Project
+ * that keeps Cases of its own (a Merge) they go last, in the zip's order; into
+ * one they fill, the zip's order is kept — a Case from an older zip, with
+ * none, given its place by date (`withCaseOrders`).
  */
 export const importAnalysisCases = async ({
   add,
@@ -267,7 +305,10 @@ export const importAnalysisCases = async ({
       tooMany = true;
       return current;
     }
-    return [...add, ...kept];
+    const keptProjects = new Set(kept.map((record) => record.projectId));
+    const intoKept = add.filter((record) => keptProjects.has(record.projectId));
+    const appended = new Map(appendedCases(kept, [...intoKept].sort(byCaseOrder)).map((record) => [record.id, record]));
+    return withCaseOrders([...add.map((record) => appended.get(record.id) ?? record), ...kept]);
   });
   return tooMany ? "too-many" : problem;
 };

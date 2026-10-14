@@ -143,7 +143,10 @@ Storage still counts the jobs.
   older reader ignores it and a game without one was played by the default
   engine; the `elo` setting is the same kind of addition);
   an analysis' `showArrows`, `arrowWidthSource`, `arrowPalette` and
-  `showMoveMarks` (CTA-168 — optional, absent reads as on, no bump); a
+  `showMoveMarks` (CTA-168 — optional, absent reads as on, no bump); an
+  Analysis Case's `order`, its place in its Project (CTA-203 — optional, no
+  bump: an older zip's Cases are given theirs by date, oldest first,
+  [`analysis-v2.md`](./analysis-v2.md) §5); a
   repertoire's `previewFen` and `stats`; an uploaded collection's
   `description` and `tournament` mark, CTA-121) — not a
   played game's engine evals, and not a collection's `addedAt`, which an

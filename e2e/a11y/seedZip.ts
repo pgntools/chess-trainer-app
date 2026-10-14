@@ -104,6 +104,7 @@ const GAME_CASE: AnalysisCase = {
   orientation: "white",
   display: DISPLAY,
   merges: [],
+  order: 1,
   createdAt: AT,
   updatedAt: LATER,
 };
@@ -122,6 +123,7 @@ const POSITION_CASE: AnalysisCase = {
   orientation: "white",
   display: DISPLAY,
   merges: [],
+  order: 1,
   createdAt: AT,
   updatedAt: AT,
 };

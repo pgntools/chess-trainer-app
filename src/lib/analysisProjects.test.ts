@@ -3,12 +3,16 @@ import { describe, expect, it } from "vitest";
 import {
   analysisCaseFrom,
   analysisProjectFrom,
+  appendedCases,
+  byCaseOrder,
   caseCountsOf,
   caseDerivedName,
   caseNode,
   caseStateOf,
   caseTree,
+  casesInOrder,
   casesOf,
+  compactedCaseOrders,
   copiedCase,
   DEFAULT_CASE_DISPLAY,
   gameCaseDerivedName,
@@ -18,7 +22,10 @@ import {
   positionCaseOfGame,
   projectsHere,
   projectsUnder,
+  reorderedCases,
   sameCaseState,
+  withCaseOrders,
+  type AnalysisCase,
   type AnalysisProject,
   type ProjectFolder,
 } from "./analysisProjects";
@@ -151,7 +158,77 @@ describe("Analysis V2's records (CTA-186)", () => {
         path: [],
         orientation: "white",
         source: { kind: "pgn", pgn: "1. e4 *", startPath: [], fen: "" },
+        order: 0,
       });
+    });
+
+    it("keeps its place in its Project's order — a record from before, or a bad one, has none (CTA-203)", () => {
+      expect(analysisCaseFrom({ ...made, order: 3 })?.order).toBe(3);
+      expect(analysisCaseFrom({ ...made, order: undefined })?.order).toBe(0);
+      expect(analysisCaseFrom({ ...made, order: -1 })?.order).toBe(0);
+      expect(analysisCaseFrom({ ...made, order: 1.5 })?.order).toBe(0);
+      expect(analysisCaseFrom({ ...made, order: "2" })?.order).toBe(0);
+    });
+  });
+
+  describe("a Project's order (CTA-203)", () => {
+    /** A Case of Project `projectId`, made on day `day`, at `order`. */
+    const at = (id: string, projectId: string, day: number, order: number): AnalysisCase => ({
+      ...positionCaseOfFen({ id, projectId, name: "", now: new Date(`2026-10-${String(day).padStart(2, "0")}T10:00:00.000Z`) }, POSITION),
+      order,
+    });
+    const ids = (cases: readonly AnalysisCase[], projectId = "p1") => casesInOrder(cases, projectId).map((record) => `${record.id}:${record.order}`);
+
+    it("is made by the store — a new Case and a copy have no place yet", () => {
+      const made = positionCaseOfFen({ id: "n", projectId: "p1", name: "" }, POSITION);
+      expect(made.order).toBe(0);
+      expect(copiedCase({ ...made, order: 5 }, "copy", "p1", "Copy").order).toBe(0);
+    });
+
+    it("sorts by order, a Case without one last, ties oldest first", () => {
+      const cases = [at("b", "p1", 2, 0), at("c", "p1", 3, 2), at("a", "p1", 1, 0), at("d", "p1", 4, 1), at("e", "p1", 1, 1)];
+      expect([...cases].sort(byCaseOrder).map((record) => record.id)).toEqual(["e", "d", "c", "a", "b"]);
+    });
+
+    it("puts new Cases last in their Projects, in the order they come", () => {
+      const current = [at("a", "p1", 1, 1), at("b", "p1", 2, 4), at("x", "p2", 1, 1)];
+      const added = appendedCases(current, [at("n1", "p1", 5, 0), at("n2", "p2", 5, 9), at("n3", "p1", 5, 0), at("n4", "p3", 5, 0)]);
+      expect(added.map((record) => `${record.id}:${record.order}`)).toEqual(["n1:5", "n2:2", "n3:6", "n4:1"]);
+    });
+
+    it("gives a record from before its place by date, oldest first, after the Cases that have one", () => {
+      const old = [at("b", "p1", 2, 0), at("a", "p1", 1, 0), at("c", "p1", 3, 0)];
+      expect(ids(withCaseOrders(old))).toEqual(["a:1", "b:2", "c:3"]);
+      const mixed = [at("new", "p1", 9, 1), at("old", "p1", 1, 0), at("other", "p2", 1, 0)];
+      expect(ids(withCaseOrders(mixed))).toEqual(["new:1", "old:2"]);
+      expect(ids(withCaseOrders(mixed), "p2")).toEqual(["other:1"]);
+      const placed = [at("a", "p1", 1, 1)];
+      expect(withCaseOrders(placed)).toBe(placed);
+    });
+
+    it("moves a Case up, down, to the top and to the bottom — never past an end, never touching a date", () => {
+      const cases = [at("a", "p1", 1, 1), at("b", "p1", 2, 2), at("c", "p1", 3, 3), at("d", "p1", 4, 4), at("x", "p2", 1, 1)];
+      expect(ids(reorderedCases(cases, "c", "up"))).toEqual(["a:1", "c:2", "b:3", "d:4"]);
+      expect(ids(reorderedCases(cases, "b", "down"))).toEqual(["a:1", "c:2", "b:3", "d:4"]);
+      expect(ids(reorderedCases(cases, "c", "top"))).toEqual(["c:1", "a:2", "b:3", "d:4"]);
+      expect(ids(reorderedCases(cases, "b", "bottom"))).toEqual(["a:1", "c:2", "d:3", "b:4"]);
+      expect(reorderedCases(cases, "a", "up")).toBe(cases);
+      expect(reorderedCases(cases, "a", "top")).toBe(cases);
+      expect(reorderedCases(cases, "d", "down")).toBe(cases);
+      expect(reorderedCases(cases, "d", "bottom")).toBe(cases);
+      expect(reorderedCases(cases, "gone", "up")).toBe(cases);
+      const moved = reorderedCases(cases, "d", "top");
+      expect(moved.find((record) => record.id === "x")).toBe(cases[4]);
+      expect(moved.map((record) => record.updatedAt)).toEqual(cases.map((record) => record.updatedAt));
+    });
+
+    it("closes up a Project's order after a Case leaves it", () => {
+      const cases = [at("a", "p1", 1, 1), at("c", "p1", 3, 3), at("d", "p1", 4, 7), at("x", "p2", 1, 5)];
+      const closed = compactedCaseOrders(cases, ["p1"]);
+      expect(ids(closed)).toEqual(["a:1", "c:2", "d:3"]);
+      expect(closed[0]).toBe(cases[0]);
+      expect(ids(closed, "p2")).toEqual(["x:5"]);
+      expect(compactedCaseOrders(closed, ["p1"])).toBe(closed);
     });
   });
 

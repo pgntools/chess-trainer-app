@@ -43,9 +43,16 @@ describe("a Case as a table row (CTA-186)", () => {
 
   it("leaves a Position's game columns blank", () => {
     const row = caseRowOf(POSITION, "Black to move, move 41");
-    expect(row).toEqual({ id: "cpos", record: POSITION, name: "Black to move, move 41", type: "position", updated: POSITION.updatedAt });
+    expect(row).toEqual({ id: "cpos", record: POSITION, order: 0, name: "Black to move, move 41", type: "position", updated: POSITION.updatedAt });
     expect(caseSortValue(row, "white")).toBeUndefined();
     expect(caseSortValue(row, "updated")).toBe(POSITION.updatedAt);
+  });
+
+  it("carries the Case's place in its Project's order — the '#' column, opening from 1 (CTA-203)", () => {
+    const row = caseRowOf({ ...GAME, order: 4 }, "Game name");
+    expect(row.order).toBe(4);
+    expect(caseSortValue(row, "order")).toBe(4);
+    expect(caseFirstDirection("order")).toBe("asc");
   });
 
   it("opens dates, ratings and lengths high first, words A first; ties newest first", () => {

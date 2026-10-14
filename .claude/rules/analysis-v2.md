@@ -84,7 +84,7 @@ other screen hands a game to Analysis as a new Case** (§1.1).
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/analysisProjects.ts` | **The records**, pure: `ProjectFolder` (a `GameFolder`, `lib/savedGameFolders.ts`'s model and reads), `AnalysisProject`, `AnalysisCase` and its `AnalysisCaseSource`; the normalisers `projectFolderFrom`, `analysisProjectFrom`, `analysisCaseFrom`; the constructors `gameCaseOf`, `positionCaseOfFen`, `positionCaseOfGame`, `copiedCase`; `caseStateOf` / `sameCaseState` (the autosave's state and its idempotency); `caseDerivedName`, `gameCaseDerivedName`; `projectsHere`, `projectsUnder`, `casesOf`, `caseCountsOf`; the caps (`MAX_PROJECT_FOLDERS` 100, `MAX_ANALYSIS_PROJECTS` 1,000, `MAX_ANALYSIS_CASES` 10,000). |
+| `src/lib/analysisProjects.ts` | **The records**, pure: `ProjectFolder` (a `GameFolder`, `lib/savedGameFolders.ts`'s model and reads), `AnalysisProject`, `AnalysisCase` and its `AnalysisCaseSource`; the normalisers `projectFolderFrom`, `analysisProjectFrom`, `analysisCaseFrom`; the constructors `gameCaseOf`, `positionCaseOfFen`, `positionCaseOfGame`, `copiedCase`; `caseStateOf` / `sameCaseState` (the autosave's state and its idempotency); `caseDerivedName`, `gameCaseDerivedName`; `projectsHere`, `projectsUnder`, `casesOf`, `caseCountsOf`; a Project's order (CTA-203, §2.1) — `byCaseOrder`, `casesInOrder`, `appendedCases`, `withCaseOrders` (the backfill), `compactedCaseOrders`, `reorderedCases`; the caps (`MAX_PROJECT_FOLDERS` 100, `MAX_ANALYSIS_PROJECTS` 1,000, `MAX_ANALYSIS_CASES` 10,000). |
 | `src/lib/analysisProjectPicks.ts` | **The browser's picks** (CTA-191, §3.1): one set of ids over folders, Projects and Cases — `projectPicksOf` (each box's state), `toggleProjectPick` / `setProjectPicks` (a row's tick, select-all's), `projectPickTargetOf`, `projectPicksDeletion` (what a delete takes and how many of each go). Pure. |
 | `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, **version 3** (CTA-188): object stores `folders`, `projects`, `cases`, `jobs` (Jobs V2) and `caseLinks`, one `BroadcastChannel`. |
 | `src/lib/jobsV2.ts`, `jobV2Store.ts`, `jobV2Runner.ts` | **Jobs V2** (CTA-188, §6): the record (`JobV2`, `jobV2Of`, `jobV2From`, `jobV2AnalysisOf` / `jobV2MergedPgn` — the merge into a Case, `jobV2OfCase`, `jobV2OutputName`), the store (`enqueueJobV2`, `pauseJobV2`, `cancelJobV2`, `resumeJobV2`, `removeJobV2`, `removeJobsV2Of`, `interruptRunningJobsV2`, `MAX_JOBS_V2` 100) and the runner (`createJobV2Runner`, `startJobV2Runner` / `stopJobV2Runner`, its lock `chessapp.analysisProjects.jobs.runner`). Since CTA-192 `jobsV2.ts` also holds what the legacy jobs' record shared with it: the statuses (`JobStatus`), `JobPosition`, the `can…` predicates, `jobSearchOf`, `jobProgress`, `jobMoveLabel`, the checkpoint's reader. `lib/jobV2LiveAnalysis.ts` (`jobV2LiveAnalysis`): a job's results so far — the eval graph's points, the verdicts and report over the moves judged, the latest finished position (§6.5). |
@@ -197,10 +197,34 @@ first): the MDX embeds, the MDX editor's address field and its lookups
   - its **name**, optional: `""` is derived — a Game from its tags (*White –
     Black, Event, year*, the parts the tags name), a Position from its side to
     move and move number ("Black to move, move 41"), in the reader's language
-    (`caseDisplayName`).
+    (`caseDisplayName`);
+  - its **place in its Project's order**, `order` (CTA-203, §2.1).
 - **To change a Case's type or source**, the reader duplicates it or makes a
-  new one; rename, move to another Project, duplicate and delete are the
-  operations.
+  new one; rename, move to another Project, duplicate, reorder and delete are
+  the operations.
+
+### 2.1 A Project's order (CTA-203)
+
+A Project can be a tutorial — Chapter 1, Chapter 2, … — so **its Cases have
+an order the reader sets**: `order`, a number on each Case, 1 the first,
+within its Project (not "position": that is the Position Case). The store's
+list stays newest first; the order is a field, read by `byCaseOrder` (a Case
+without one last, ties oldest first then by id, so it is total).
+
+- **A Case that arrives goes last** (`appendedCases`, in `addAnalysisCases`):
+  a new one, a hand-off's (`useSendToAnalysis`), one moved in from another
+  Project, a duplicate, a Jobs V2 result. A duplicated Project's copies keep
+  the original's order. The constructors leave `order` `0`; the store gives it.
+- **A Case that leaves closes the gap** (`compactedCaseOrders`): deleted, or
+  moved to another Project — its old Project numbered 1, 2, … again.
+- **Reordering** (`moveAnalysisCaseInOrder(id, "up" | "down" | "top" |
+  "bottom")`, over `reorderedCases`) moves it and numbers its Project again;
+  **it is not an edit** — `updatedAt` stays. Past an end it writes nothing.
+- **A record from before has none** (`0`): the store gives every such Case its
+  place **as it reads** (`withCaseOrders`, the record store's `repair`, written
+  back) — after the Cases of its Project that have one, oldest first, so a
+  Project of them alone reads 1 (the oldest), 2, …. An import does the same
+  for an older zip's (§5).
 - **The engine search settings stay global** (the top bar's Engine menu); a
   Case keeps none of its own.
 
@@ -286,12 +310,13 @@ no folder says so, with a way back.
 ### 3.2 A Project — `/analysis/projects/<id>`
 
 Its Cases as a **table** (`CasesTable`, rows from `lib/analysisCaseRows.ts`):
+**`#`** (its place in the Project's order, §2.1 — the header read "Order"),
 Name (the link to its board) and Type, then the games table's columns —
 White, Elo, Black, Elo, Result, Date, Event, Round, ECO, Opening, Moves, read
 off a Game's tags (**blank for a Position**) — and Updated. Every header
 sorts (a blank last either way, ties newest first); the sort and the page
 are the URL's (`useTableUrlState`: `?sort=`, `?dir=`, `?page=`, `?rows=`;
-Updated, newest first, by default), paged past 25. A **words box** over it
+**`#` ascending by default**, CTA-203 — Updated before), paged past 25. A **words box** over it
 (`?q=`, `filteredCaseRows`) keeps the rows holding every word typed — the
 name, the type, a Game's players, Elos, result, date, event, round, ECO and
 opening — with a no-match row and its Clear. **Picks**: a box per row and
@@ -308,10 +333,22 @@ selection bar counts them and deletes them together, asked first
 
 One new Case opens on its board; several stay on the list. A Case is renamed
 (`""` gives it back its derived name), moved to another Project
-(`ProjectPickerDialog`, its own left out; off while there is no other),
-duplicated into this Project or another under a name ("‹name› (copy)"), and
-deleted after a confirmation. The route waits for the stores' first read,
-then says a Project that is not there.
+(`ProjectPickerDialog`, its own left out; off while there is no other) and
+duplicated into this Project or another under a name ("‹name› (copy)").
+**No row deletes itself** (CTA-203 took the bin away): the boxes and the
+selection bar's Delete are the one way. The route waits for the stores' first
+read, then says a Project that is not there.
+
+**Reordering** (CTA-203): each row's **Move up**, **Move down**, **Move to
+top** and **Move to bottom** — on only while the table is sorted by `#`
+ascending with no words typed (the Project's order itself, every Case a row);
+under any other sort or a filter they are off, their tooltip and name saying
+why ("sort by # ascending to reorder", "clear the filter to reorder"). Up and
+top are off on the first Case, down and bottom on the last. The order is the
+Project's, not the page's: a Case moved past the page's edge takes the page
+with it. The focus stays on the moved Case's same action (that action off at
+its new end, the nearest one still on), and its new place is announced ("…
+is now number 3 of 12.", a hidden `status`).
 
 ### 3.3 A Case's board — `/analysis/projects/<id>/cases/<caseId>`
 
@@ -355,7 +392,8 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
   (`CaseSiblings` in the shell's board left panel, `BoardLeftPanel`'s
   `keepShell` — unlike the legacy workspace, **the header and footer stay**,
   and with them the top bar's Engine menu): the Cases as a list of links, the
-  open one current, in the **Cases table's order and under its words** — the
+  open one current, in the **Cases table's order and under its words** — by
+  default the Project's order (CTA-203) — the
   table's `?sort=` / `?dir=` / `?q=` carried into the Case's URL
   (`caseListContextOf`, `paths.ts`) and back by its **Close**, at the head's
   start before the Project's name — the one way back, the board's header has
@@ -440,7 +478,7 @@ is dropped).
 | --- | --- | --- | --- |
 | `folders` | oldest first | 100 | `createProjectFolder`, `renameProjectFolder`, `moveProjectFolder` (never into its subtree), `removeProjectFolder` (keeps the contents: sub-folders re-parent, Projects re-filed up — `refileProjectsIn`; no screen calls it since CTA-191), `removeProjectFolderDeep` / `removeProjectFoldersDeep` (the subtrees, in one write, `removeProjectsInFolders` — the browser's delete of the picks), `addProjectFolders` (an import's, all or nothing) |
 | `projects` | newest first | 1,000 | `createAnalysisProject` (a name required), `renameAnalysisProject`, `moveAnalysisProject`, `duplicateAnalysisProject` (its Cases first, all or nothing), `removeAnalysisProject` / `removeAnalysisProjects` (their Cases with them — `removeCasesOfProjects`), `importAnalysisProjects` |
-| `cases` | newest first | 10,000 | `addAnalysisCases` (all or nothing), `renameAnalysisCase`, `moveAnalysisCase`, `duplicateAnalysisCase`, `removeAnalysisCases` (their Jobs V2 with them), `saveCaseState` (the autosave, in place — never the tree of a state behind a merge, §6.6), `mergeIntoAnalysisCase` (a Jobs V2 merge, §6.6), `importAnalysisCases` |
+| `cases` | newest first | 10,000 | `addAnalysisCases` (all or nothing; each last in its Project's order), `moveAnalysisCaseInOrder` (CTA-203, §2.1 — no `updatedAt`), `renameAnalysisCase`, `moveAnalysisCase`, `duplicateAnalysisCase`, `removeAnalysisCases` (their Jobs V2 with them; the gap closed), `saveCaseState` (the autosave, in place — never the tree of a state behind a merge, §6.6), `mergeIntoAnalysisCase` (a Jobs V2 merge, §6.6), `importAnalysisCases` |
 | `jobs` (CTA-188) | newest first | 100 (the oldest finished dropped; refused when every one is unfinished) | Jobs V2 (§6.2) |
 | `caseLinks` (CTA-188) | oldest first | 50,000 | `linkAnalysisCases` / `addCaseLinks` (no self-link, no pair twice), `unlinkAnalysisCases`, `removeLinksOfCases`, `importCaseLinks` (§7) |
 
@@ -461,7 +499,11 @@ with its `folderPath` and its **Cases** as stored, and — since manifest
 version **5** (CTA-188) — the **links between the Cases** as stored (a link
 to a Case not exported left out). Version 4 added the file (a v3 zip reads
 through the table, its upgrade the stamp alone); version 5 its links (a v4
-zip reads with none). Jobs V2 are not exported
+zip reads with none). **A Case's `order`** (CTA-203) travels with it — an
+optional field, no format bump: into a Project the import fills the zip's
+order is kept, into one that keeps Cases of its own (Merge) the arriving ones
+go last in the zip's order, and an older zip's Cases, with none, get their
+place by date, oldest first (`importAnalysisCases`, `withCaseOrders`). Jobs V2 are not exported
 ([`import-export.md`](./import-export.md) §1.1); their results are Cases, which are. On the way
 in, folders are matched by their path of names and created where missing;
 Projects clash by their folder like the collections (Merge / Override / Skip, a

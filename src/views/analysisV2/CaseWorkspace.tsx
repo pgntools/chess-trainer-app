@@ -400,14 +400,14 @@ function CaseWorkspace() {
   /*
     The Project's Cases beside the board (`CaseSiblings`), in the order and
     under the words the Cases table had when the Case was opened from it —
-    carried in this URL (`?sort=`, `?dir=`, `?q=`, `caseListContextOf`). The
-    list's own words box writes `?q=` back, so Close returns to the table as
-    the list left it.
+    carried in this URL (`?sort=`, `?dir=`, `?q=`, `caseListContextOf`; no
+    sort is the Project's order, CTA-203). The list's own words box writes
+    `?q=` back, so Close returns to the table as the list left it.
   */
   const context = caseListContextOf(searchParams);
   const text = searchParams.get("q") ?? "";
   const sortParam = searchParams.get("sort");
-  const column: CaseColumn = (CASE_COLUMNS as readonly string[]).includes(sortParam ?? "") ? (sortParam as CaseColumn) : "updated";
+  const column: CaseColumn = (CASE_COLUMNS as readonly string[]).includes(sortParam ?? "") ? (sortParam as CaseColumn) : "order";
   const dirParam = searchParams.get("dir");
   const direction = dirParam === "asc" || dirParam === "desc" ? dirParam : caseFirstDirection(column);
   const ordered = useMemo(

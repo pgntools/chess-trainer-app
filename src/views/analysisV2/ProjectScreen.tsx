@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
@@ -9,7 +9,8 @@ import { useTranslation } from "react-i18next";
 
 import { NewCaseDialog, ProjectPickerDialog, type NewCaseSpec } from "../../blocks/dialogs";
 import { CasesTable, caseDisplayName, type CaseAction } from "../../blocks/tables";
-import { ConfirmDialog, DeleteManyDialog, FormDialog } from "../../design-system/components/dialogs";
+import { visuallyHidden } from "../../design-system/components/a11y";
+import { DeleteManyDialog, FormDialog } from "../../design-system/components/dialogs";
 import { InlineAlert } from "../../design-system/components/feedback";
 import { SearchField, TextInputField } from "../../design-system/components/forms";
 import { BackButton } from "../../design-system/components/navigation";
@@ -21,16 +22,19 @@ import {
   addAnalysisCases,
   duplicateAnalysisCase,
   moveAnalysisCase,
+  moveAnalysisCaseInOrder,
   removeAnalysisCases,
   renameAnalysisCase,
 } from "../../lib/analysisCaseStore";
 import {
+  casesInOrder,
   casesOf,
   gameCaseOf,
   positionCaseOfFen,
   positionCaseOfGame,
   type AnalysisCase,
   type AnalysisProject,
+  type CaseOrderMove,
 } from "../../lib/analysisProjects";
 import { newRecordId } from "../../lib/recordId";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
@@ -38,7 +42,19 @@ import { browserPath, caseListContextOf, casePath } from "./paths";
 import { useAnalysisCases, useAnalysisProjects } from "./useAnalysisProjects";
 
 /** The dialog open over the Cases, and the Case it is about. */
-type Dialog = { kind: "new" } | { kind: "rename" | "move" | "duplicate" | "delete"; record: AnalysisCase };
+type Dialog = { kind: "new" } | { kind: "rename" | "move" | "duplicate"; record: AnalysisCase };
+
+/** Where a reorder takes the Case at `from` in a Project of `count` Cases. */
+const placeAfter = (move: CaseOrderMove, from: number, count: number): number =>
+  move === "up" ? from - 1 : move === "down" ? from + 1 : move === "top" ? 0 : count - 1;
+
+/** A reorder action that is off where the Case now stands (the first never up) — the way it can still go, in turn. */
+const FOCUS_FALLBACK: Record<CaseOrderMove, readonly CaseOrderMove[]> = {
+  up: ["up", "top", "down", "bottom"],
+  top: ["top", "up", "down", "bottom"],
+  down: ["down", "bottom", "up", "top"],
+  bottom: ["bottom", "down", "up", "top"],
+};
 
 /** A Case made of what the reader asked for in the new-Case dialog. */
 const caseOfSpec = (spec: NewCaseSpec, projectId: string, now: Date): AnalysisCase => {
@@ -54,9 +70,12 @@ const caseOfSpec = (spec: NewCaseSpec, projectId: string, now: Date): AnalysisCa
  * in the URL), each row's name a link to its board, and **New
  * case** (`NewCaseDialog`: a Game or a Position, from a PGN or a FEN). A
  * Case is renamed (empty gives it back its derived name), moved to another
- * Project, duplicated into this one or another (`ProjectPickerDialog`), and
- * deleted after a confirmation. A single new Case opens on its board; one
- * per game stays here, the list grown.
+ * Project, duplicated into this one or another (`ProjectPickerDialog`) and
+ * **moved in the Project's order** (CTA-203) — the table opens sorted by it
+ * (`#`), and only so, with no words, do the row's arrows reorder: the page
+ * follows the Case, the focus stays on its action, and its new place is
+ * announced. Cases are deleted by their boxes, together, asked first. A
+ * single new Case opens on its board; one per game stays here, the list grown.
  *
  * The route waits for the stores' first read, then says a Project that is
  * not there.
@@ -77,6 +96,10 @@ function ProjectScreen() {
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set());
   const [deletingPicked, setDeletingPicked] = useState(false);
   const [deleteProblem, setDeleteProblem] = useState<string | null>(null);
+  /** A reordered Case's action, focused once its row is on screen again (CTA-203), and its new place, announced. */
+  const pendingFocus = useRef<{ id: string; move: CaseOrderMove } | null>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const [announcement, setAnnouncement] = useState("");
   // The words box, in the URL (`?q=`), as the saved analyses' table keeps it.
   const [searchParams] = useSearchParams();
   const text = searchParams.get("q") ?? "";
@@ -96,12 +119,27 @@ function ProjectScreen() {
   );
   const table = useTableUrlState({
     columns: CASE_COLUMNS,
-    defaultSort: "updated",
+    defaultSort: "order",
     firstDirection: caseFirstDirection,
     count: shown.length,
   });
   // The picks still on this Project's Cases — a pick of a Case deleted or moved away is no pick.
   const pickedHere = useMemo(() => rows.filter((row) => picked.has(row.id)), [rows, picked]);
+
+  // A reordered Case keeps the focus on its action — after the store's write and the page that follows it have rendered.
+  useEffect(() => {
+    const pending = pendingFocus.current;
+    if (pending === null || tableRef.current === null) return;
+    const buttons = [...tableRef.current.querySelectorAll<HTMLButtonElement>("button[data-testid]")];
+    for (const move of FOCUS_FALLBACK[pending.move]) {
+      const button = buttons.find((candidate) => candidate.dataset.testid === `analysis-v2-cases-${move}-${pending.id}`);
+      if (button === undefined) return;
+      if (button.disabled) continue;
+      button.focus();
+      pendingFocus.current = null;
+      return;
+    }
+  });
 
   if (projects === undefined || cases === undefined) {
     return (
@@ -128,7 +166,24 @@ function ProjectScreen() {
     setDialog(null);
   };
 
+  const reorder = async (move: CaseOrderMove, record: AnalysisCase) => {
+    // The order is the Project's, not the page's: the page follows the Case.
+    const line = casesInOrder(cases, project.id);
+    const to = placeAfter(move, line.indexOf(record), line.length);
+    pendingFocus.current = { id: record.id, move };
+    const failed = await moveAnalysisCaseInOrder(record.id, move);
+    setProblem(failed === undefined ? null : caseProblem);
+    if (failed !== undefined) return;
+    const page = Math.floor(to / table.rowsPerPage);
+    if (page !== table.page) table.setPage(page);
+    setAnnouncement(t("analysisV2.case.moved", { name: named(record), place: to + 1, count: line.length }));
+  };
+
   const onCaseAction = (action: CaseAction, record: AnalysisCase) => {
+    if (action === "up" || action === "down" || action === "top" || action === "bottom") {
+      void reorder(action, record);
+      return;
+    }
     if (action === "rename") setRename(record.name);
     setDialog({ kind: action, record });
   };
@@ -213,7 +268,11 @@ function ProjectScreen() {
             {problem}
           </InlineAlert>
         )}
-        <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        {/* A reorder's new place, heard (CTA-203). */}
+        <Box role="status" sx={visuallyHidden} data-testid="analysis-v2-cases-moved">
+          {announcement}
+        </Box>
+        <Box ref={tableRef} sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           <CasesTable
             rows={shown}
             sort={{ column: table.sort, direction: table.direction }}
@@ -322,21 +381,6 @@ function ProjectScreen() {
         cancelLabel={t("analysisV2.cancel")}
         error={deleteProblem ?? undefined}
         testId="analysis-v2-cases-delete-many"
-      />
-
-      <ConfirmDialog
-        open={dialog?.kind === "delete"}
-        onClose={() => setDialog(null)}
-        onConfirm={() => {
-          if (dialog?.kind !== "delete") return;
-          void removeAnalysisCases([dialog.record.id]).then((failed) => done(failed !== undefined));
-        }}
-        title={dialog?.kind === "delete" ? t("analysisV2.case.deleteTitle", { name: named(dialog.record) }) : ""}
-        message={t("analysisV2.case.deleteMessage")}
-        confirmLabel={t("analysisV2.case.deleteConfirm")}
-        cancelLabel={t("analysisV2.cancel")}
-        tone="destructive"
-        testId="analysis-v2-case-delete"
       />
     </>
   );
