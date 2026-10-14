@@ -182,7 +182,7 @@ describe("Analysis V2's records (CTA-186)", () => {
   });
 
   describe("how a Case's board draws (its Display tab)", () => {
-    it("starts with every option on, sized by nothing, in classic colours — as an older record reads", () => {
+    it("starts with every option on, sized by nothing, in classic colours, evaluations written — as an older record reads", () => {
       const made = positionCaseOfFen({ id: "c1", projectId: "p1", name: "" }, POSITION);
       expect(made.display).toEqual(DEFAULT_CASE_DISPLAY);
       expect(DEFAULT_CASE_DISPLAY).toEqual({
@@ -192,6 +192,7 @@ describe("Analysis V2's records (CTA-186)", () => {
         showMoveMarks: true,
         showEvalBar: true,
         showVariations: true,
+        writeEvals: true,
       });
       const older: Record<string, unknown> = { ...made };
       delete older.display;
@@ -202,9 +203,9 @@ describe("Analysis V2's records (CTA-186)", () => {
       const made = positionCaseOfFen({ id: "c1", projectId: "p1", name: "" }, POSITION);
       const read = analysisCaseFrom({
         ...made,
-        display: { showArrows: false, arrowWidthSource: "games", arrowPalette: "nonsense", showEvalBar: "yes", showVariations: false },
+        display: { showArrows: false, arrowWidthSource: "games", arrowPalette: "nonsense", showEvalBar: "yes", showVariations: false, writeEvals: false },
       });
-      expect(read?.display).toEqual({ ...DEFAULT_CASE_DISPLAY, showArrows: false, arrowWidthSource: "games", showVariations: false });
+      expect(read?.display).toEqual({ ...DEFAULT_CASE_DISPLAY, showArrows: false, arrowWidthSource: "games", showVariations: false, writeEvals: false });
     });
 
     it("is part of the autosave's state — a change of it is a change", () => {
@@ -212,6 +213,7 @@ describe("Analysis V2's records (CTA-186)", () => {
       const made = gameCaseOf({ id: "c1", projectId: "p1", name: "" }, tree);
       expect(sameCaseState(made, caseStateOf(tree, null, "white"))).toBe(true);
       expect(sameCaseState(made, caseStateOf(tree, null, "white", { ...DEFAULT_CASE_DISPLAY, showEvalBar: false }))).toBe(false);
+      expect(sameCaseState(made, caseStateOf(tree, null, "white", { ...DEFAULT_CASE_DISPLAY, writeEvals: false }))).toBe(false);
     });
   });
 

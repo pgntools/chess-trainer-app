@@ -164,8 +164,9 @@ export type AnalysisCaseSource =
  * **How a Case's board draws** (CTA-186, its Display tab): the next-move
  * arrows on or off, what sizes them and their colours (the Analysis Board's
  * Arrows settings, `lib/arrowSettings.ts`), the move marks on the board, and
- * the engine's eval bar and lines. Kept with the Case, autosaved like its
- * analysis.
+ * the engine's eval bar and lines — and, beside them on its Settings tab,
+ * whether the engine's evaluations are written into the game (CTA-199). Kept
+ * with the Case, autosaved like its analysis.
  */
 export type CaseDisplay = {
   showArrows: boolean;
@@ -176,9 +177,11 @@ export type CaseDisplay = {
   showEvalBar: boolean;
   /** The engine's lines pinned above the panel's tabs. */
   showVariations: boolean;
+  /** *Write evaluations into the game* (CTA-167; kept with the Case, on by default, since CTA-199) — each finished search's `[%eval]` on its move. */
+  writeEvals: boolean;
 };
 
-/** A new Case's display — and an older record's, which has none: arrows, marks, eval bar and lines on, sized by nothing, classic colours. */
+/** A new Case's display — and an older record's, which has none: arrows, marks, eval bar and lines on, sized by nothing, classic colours, evaluations written. */
 export const DEFAULT_CASE_DISPLAY: CaseDisplay = {
   showArrows: true,
   arrowWidthSource: DEFAULT_ARROW_WIDTH_SOURCE,
@@ -186,6 +189,7 @@ export const DEFAULT_CASE_DISPLAY: CaseDisplay = {
   showMoveMarks: true,
   showEvalBar: true,
   showVariations: true,
+  writeEvals: true,
 };
 
 /** A stored display, each field read back leniently — a missing or unknown one its default. */
@@ -198,6 +202,7 @@ const caseDisplayFrom = (value: unknown): CaseDisplay => {
     showMoveMarks: typeof row.showMoveMarks === "boolean" ? row.showMoveMarks : DEFAULT_CASE_DISPLAY.showMoveMarks,
     showEvalBar: typeof row.showEvalBar === "boolean" ? row.showEvalBar : DEFAULT_CASE_DISPLAY.showEvalBar,
     showVariations: typeof row.showVariations === "boolean" ? row.showVariations : DEFAULT_CASE_DISPLAY.showVariations,
+    writeEvals: typeof row.writeEvals === "boolean" ? row.writeEvals : DEFAULT_CASE_DISPLAY.writeEvals,
   };
 };
 
@@ -207,7 +212,8 @@ const sameDisplay = (a: CaseDisplay, b: CaseDisplay): boolean =>
   a.arrowPalette === b.arrowPalette &&
   a.showMoveMarks === b.showMoveMarks &&
   a.showEvalBar === b.showEvalBar &&
-  a.showVariations === b.showVariations;
+  a.showVariations === b.showVariations &&
+  a.writeEvals === b.writeEvals;
 
 export type AnalysisCase = {
   id: string;

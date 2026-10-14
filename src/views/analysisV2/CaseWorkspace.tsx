@@ -55,6 +55,7 @@ import { playerPlatesOf } from "../shared/playerResults";
 import AnalysisEvalReport from "../shared/AnalysisEvalReport";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
 import CaseDisplayTab from "./CaseDisplayTab";
+import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
 import CaseSettingsTab from "./CaseSettingsTab";
 import NewJobV2, { type NewJobV2Case } from "./jobs/NewJobV2";
 import { browserPath, caseListContextOf, casePath, jobsV2Path, projectPath, withCaseView } from "./paths";
@@ -123,6 +124,8 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
     tree: start.tree,
     nodeId: start.nodeId ?? undefined,
     orientation: start.orientation,
+    // Write evaluations into the game: the Case's own, kept with its display (CTA-199) — the search settings are the reader's global ones.
+    settings: { ...DEFAULT_ANALYSIS_SETTINGS, writeEvals: record.display.writeEvals },
   });
   const { core, engine } = session;
   const currentOpening = useCurrentOpening(core.fen);
@@ -350,7 +353,10 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
             showEvalBar={display.showEvalBar}
             onShowEvalBarChange={(showEvalBar) => changeDisplay({ showEvalBar })}
             writeEvals={session.settings.writeEvals}
-            onWriteEvalsChange={session.setWriteEvals}
+            onWriteEvalsChange={(writeEvals) => {
+              session.setWriteEvals(writeEvals);
+              changeDisplay({ writeEvals });
+            }}
           />
         ),
       })}

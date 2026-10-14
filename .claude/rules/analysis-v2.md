@@ -191,8 +191,9 @@ first): the MDX embeds, the MDX editor's address field and its lookups
     stands, as SAN from the start — `sanPathTo` / `nodeAtSanPath`; node ids do
     not survive a PGN round trip), `orientation`, and `display` — how its
     board draws (`CaseDisplay`: the arrows on or off, their width source and
-    palette, the move marks, the eval bar, the engine's lines; a record from
-    before reads the defaults);
+    palette, the move marks, the eval bar, the engine's lines — and, CTA-199,
+    whether the engine's evaluations are written, `writeEvals`, on; a record
+    from before reads the defaults);
   - its **name**, optional: `""` is derived — a Game from its tags (*White –
     Black, Event, year*, the parts the tags name), a Position from its side to
     move and move number ("Black to move, move 41"), in the reader's language
@@ -329,7 +330,8 @@ tabs — **Arrows**, the width source and palette (§3.4)
 a placeholder for now — all kept with the Case as its `display`, autosaved;
 **Settings** — the Case view's first tab since CTA-199 — opens with `CaseSettingsTab`: the side the board faces, White / Black
 (the Case's orientation), the eval bar (its `display`) and *Write evaluations
-into the game* (the session's — [`pgn-annotations.md`](./pgn-annotations.md))), and the header:
+into the game* (on by default and kept with the Case as its `display.writeEvals`
+since CTA-199 — the session starts from it; [`pgn-annotations.md`](./pgn-annotations.md))), and the header:
 the name, the opening, a refused save (nothing else), Play and the engine's on / off as a
 **small switch** labelled with the top bar's Engine icon (`SmartToyRounded`, read as "Engine") — not the other boards' play / pause and options menu
 (`BoardEngineControls`), whose choices are the Case view's Settings tab here.

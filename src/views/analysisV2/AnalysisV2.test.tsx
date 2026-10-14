@@ -581,7 +581,10 @@ describe("a Case's board (CTA-186)", () => {
     await user.click(within(settings).getByRole("radio", { name: "Black" }));
     expect(boardOptions().boardOrientation).toBe("black");
     await user.click(within(settings).getByRole("switch", { name: "Show evaluation bar" }));
-    expect(within(settings).getByRole("switch", { name: "Write evaluations into the game" })).toBeInTheDocument();
+    // Write evaluations: on for a Case, and kept with it like the rest (CTA-199).
+    const write = within(settings).getByRole("switch", { name: "Write evaluations into the game" });
+    expect(write).toBeChecked();
+    await user.click(write);
 
     await waitFor(() =>
       expect(analysisCasesSnapshot()![0].display).toEqual({
@@ -591,6 +594,7 @@ describe("a Case's board (CTA-186)", () => {
         showMoveMarks: false,
         showEvalBar: false,
         showVariations: false,
+        writeEvals: false,
       }),
     );
     await waitFor(() => expect(analysisCasesSnapshot()![0].orientation).toBe("black"));
@@ -602,6 +606,7 @@ describe("a Case's board (CTA-186)", () => {
     await screen.findByTestId("board");
     expect(boardOptions().arrows).toEqual([]);
     expect(boardOptions().boardOrientation).toBe("black");
+    expect(within(screen.getByTestId("analysis-case-settings")).getByRole("switch", { name: "Write evaluations into the game" })).not.toBeChecked();
     await user.click(screen.getByRole("tab", { name: "Display" }));
     expect(screen.getByRole("switch", { name: "Show next move arrows" })).not.toBeChecked();
   });
