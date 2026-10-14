@@ -369,12 +369,10 @@ describe("the Jobs settings (CTA-193)", () => {
     vi.unstubAllGlobals();
   });
 
-  it("is the Jobs V2 view's Settings tab: a default engine and preset, and the lichess evaluation API — off, asking nothing", async () => {
+  it("is the Jobs V2 view's Settings tab: a default engine and preset — and a link to Settings → Engine for the eval sources (CTA-196)", async () => {
     const deep = await createEnginePreset("Deep analysis");
     if (!("id" in deep)) throw new Error("no preset");
-    const fetchMock = vi.fn(async (url: string) =>
-      url.endsWith("/health") ? new Response(JSON.stringify({ status: "ok", positions: 416_000_000 }), { status: 200 }) : new Response("", { status: 404 }),
-    );
+    const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
     const { baseElement, unmount } = mount("/analysis/jobs");
@@ -384,10 +382,10 @@ describe("the Jobs settings (CTA-193)", () => {
     expect(where()).toBe("/analysis/jobs?tab=settings");
     const settings = await screen.findByRole("tabpanel", { name: "Settings" });
     const useDefault = within(settings).getByRole("switch", { name: /use a default engine and preset/i });
-    const useApi = within(settings).getByRole("switch", { name: /use the lichess evaluation api/i });
     expect(useDefault).not.toBeChecked();
-    expect(useApi).not.toBeChecked();
-    expect(within(settings).queryByRole("textbox", { name: /api address/i })).toBeNull();
+    // The lichess evaluation API is the app's now: no control of it here, only the way to it.
+    expect(within(settings).queryByRole("switch", { name: /lichess evaluation api/i })).toBeNull();
+    expect(within(settings).getByRole("link", { name: "Settings → Engine" })).toHaveAttribute("href", "/settings/engine?source=lichess");
     expect(fetchMock).not.toHaveBeenCalled();
 
     // A default: the board's engine and its preset, then another preset picked.
@@ -396,45 +394,18 @@ describe("the Jobs settings (CTA-193)", () => {
     await user.click(within(settings).getByRole("combobox", { name: /preset for new jobs/i }));
     await user.click(await screen.findByRole("option", { name: "Deep analysis" }));
     expect(readJobsSettings().defaultPreset).toEqual({ engineId: resolveEngine().id, presetId: deep.id });
-
-    // The API on: its address, checked at once with GET /health.
-    await user.click(useApi);
-    const address = within(settings).getByRole("textbox", { name: /api address/i });
-    expect(address).toHaveValue("http://10.0.0.3:8000");
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("http://10.0.0.3:8000/health", expect.anything()));
-    expect(await within(settings).findByText(/^Connected · \d+ ms$/)).toBeInTheDocument();
-
-    // Another address, kept and checked by Connect.
-    await user.clear(address);
-    await user.type(address, "http://127.0.0.1:8000");
-    await user.click(within(settings).getByRole("button", { name: "Connect" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/health", expect.anything()));
-    expect(JSON.parse(localStorage.getItem(JOBS_SETTINGS_STORAGE_KEY) ?? "{}").evalApi).toEqual({ enabled: true, url: "http://127.0.0.1:8000", write: false });
-
-    // Sending the engine's evaluations: kept, and said refused by an API not in write mode (its /health says so).
-    await user.click(within(settings).getByRole("checkbox", { name: /enable evaluations write api/i }));
-    expect(readJobsSettings().evalApi.write).toBe(true);
-    expect(await within(settings).findByText(/is not in write mode/i)).toBeInTheDocument();
-
-    // Test connection: GET /health again — now in write mode.
-    fetchMock.mockImplementation(async () => new Response(JSON.stringify({ status: "ok", positions: 416_000_000, write_enabled: true }), { status: 200 }));
-    const calls = fetchMock.mock.calls.length;
-    await user.click(within(settings).getByRole("button", { name: "Test connection" }));
-    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(calls));
-    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe("http://127.0.0.1:8000/health");
-    expect(await within(settings).findByText(/is in write mode \(write_enabled\)/i)).toBeInTheDocument();
-    await waitFor(() => expect(within(settings).getByRole("button", { name: "Test connection" })).toHaveAttribute("data-feedback", "answered"));
+    expect(JSON.parse(localStorage.getItem(JOBS_SETTINGS_STORAGE_KEY) ?? "{}").defaultPreset).toEqual({
+      engineId: resolveEngine().id,
+      presetId: deep.id,
+    });
     await expectNoAxeViolations(baseElement);
 
-    // A reload keeps them.
+    // A reload keeps it.
     unmount();
     mount("/analysis/jobs?tab=settings");
     const again = await screen.findByRole("tabpanel", { name: "Settings" });
     expect(within(again).getByRole("switch", { name: /use a default engine and preset/i })).toBeChecked();
     expect(within(again).getByRole("combobox", { name: /preset for new jobs/i })).toHaveTextContent("Deep analysis");
-    expect(within(again).getByRole("switch", { name: /use the lichess evaluation api/i })).toBeChecked();
-    expect(within(again).getByRole("textbox", { name: /api address/i })).toHaveValue("http://127.0.0.1:8000");
-    expect(within(again).getByRole("checkbox", { name: /enable evaluations write api/i })).toBeChecked();
   });
 
   it("starts a New Job V2 with the default engine and preset — and as before once that preset is gone", async () => {

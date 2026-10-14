@@ -15,6 +15,7 @@ paths:
   - "src/lib/engineTypes*"
   - "src/lib/engineAnalysis*"
   - "src/lib/engines/**"
+  - "src/lib/evalSources/**"
   - "src/lib/gameTree*"
   - "src/lib/gameNavigation*"
   - "src/lib/capturedPieces*"
@@ -291,6 +292,15 @@ GitHub Pages at `/chess-trainer-app/`, where a bare `/stockfish/…` 404s, and
 `new Worker()` reports that as an async `error` event rather than throwing — the board simply never evaluates.
 **Nothing in this layer runs at module scope** (the pre-render imports it under
 Node; `engines/noWorkerAtImport.test.ts`).
+
+**Every board's engine is built behind the eval sources** (CTA-196,
+`withEvalSources`, `src/lib/evalSources/`, [`docs/engine.md`](../../docs/engine.md)
+§10): an analysis search asks the sources the reader turned on (the lichess
+evaluation API) first, and a hit at the target depth comes out of
+`onMessage` as the engine's own lines and `bestmove` would (stamped `fen`,
+and `evalSource`); a board whose engine chooses its move in a game passes
+`useEngineModule({ evalSources: false })` (`usePlayGame`), and a
+strength-limited engine is never answered.
 
 ### API
 

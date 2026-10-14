@@ -11,7 +11,7 @@ import {
   positionResultOfLichessEval,
   writeLichessEval,
   type LichessEval,
-} from "./lichessEvalApi";
+} from "./api";
 
 const API = "http://10.0.0.3:8000";
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

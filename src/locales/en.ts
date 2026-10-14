@@ -2246,6 +2246,11 @@ const en = {
       intro:
         "Choose the engine the boards use. It applies to every board from its next search and is remembered on this device. A game against the engine is played by the engine it began with, and a saved game goes on with its own.",
       note: "An engine that cannot run on this host is listed anyway, with what it needs.",
+      /** The eval sources (CTA-196, `lib/evalSources/`): what every analysis search asks before its engine. */
+      evalSources: {
+        intro:
+          "Evaluation sources: positions already searched, asked before the engine. Every analysis search — on the boards and in Jobs — asks the ones turned on first, whichever engine runs, and the engine searches only what they do not hold deep enough. An engine playing its move in a game always searches itself.",
+      },
       /** Where the engines run — the tab's two inner tabs. */
       tabs: { label: "Where the engine runs", browser: "Browser", api: "API" },
       /** The right-hand panel: the chosen engine-server engine's limits, under its options form. */
@@ -3000,9 +3005,9 @@ const en = {
         list: "Jobs",
         settings: "Settings",
       },
-      /** The Jobs settings (CTA-193, `lib/jobsSettings.ts`): the default engine and preset, and the lichess evaluation API. */
+      /** The Jobs settings (CTA-193, `lib/jobsSettings.ts`): the default engine and preset; the eval sources' pointer (CTA-196). */
       settings: {
-        intro: "How new jobs start, and where a job looks a position up before the engine searches it. Kept in this browser.",
+        intro: "How new jobs start. Kept in this browser.",
         default: {
           title: "New jobs",
           description: "The engine and preset a new job starts with. You can still change them in the New job form.",
@@ -3011,43 +3016,13 @@ const en = {
           engine: "Engine for new jobs",
           preset: "Preset for new jobs",
         },
-        /** The lichess evaluation API — `EngineServerForm`'s words (its `localeKey`), the same keys as `settings.engine.server`. */
-        evalApi: {
-          title: "Lichess evaluation API",
+        /** The eval sources a job asks first (CTA-196) — set for the whole app in Settings → Engine. */
+        evalSources: {
+          title: "Evaluation sources",
           description:
-            "A server over the lichess evaluation database — millions of positions already searched by Stockfish. With it on, a job asks it about each position first, and the engine searches only those it does not hold deep enough.",
-          enable: "Use the lichess evaluation API",
-          enableHelp: "While this is off, the app never contacts it.",
-          address: "API address",
-          addressHelp: "Where the API listens — {{example}} unless you moved it.",
-          addressInvalid: "Enter an address like {{example}}.",
-          connect: "Connect",
-          indicator: {
-            connecting: "Connecting…",
-            online: "Connected · {{ms}} ms",
-            offline: "Not connected",
-          },
-          retry: "Try again",
-          status: {
-            connecting: "Connecting to {{url}}…",
-            unreachable: "{{url}} did not answer. Is the API running, and does it allow this site to ask it (CORS)?",
-            "not-an-eval-api": "{{url}} answered, but not as the lichess evaluation API.",
-            checkedAt: "Checked at {{time}}.",
-          },
+            "A job asks the evaluation sources you turned on about each position before its engine searches it, as every board does. They are set for the whole app in",
+          link: "Settings → Engine",
         },
-        /** The shell's warning when a running job found the API unreachable — once per run. */
-        unreachable: "The lichess evaluation API did not answer, so {{name}} goes on with the engine. If the API is not running, turn it off in the Jobs settings.",
-        open: "Jobs settings",
-        /** Sending the engine's evals to the API — its write mode, `POST /evals`. */
-        write: {
-          label: "Enable evaluations Write API",
-          /** Checks `GET /health`'s `write_enabled`. */
-          test: "Test connection",
-          writable: "{{url}} is in write mode (write_enabled): it takes the engine's evaluations.",
-          help: "Each position a job's engine searches is stored in the API, beside lichess's — kept where it is deeper than what the API holds. The API must be started in write mode (--write).",
-          notWritable: "{{url}} is not in write mode (write_enabled is false), so it will refuse the engine's evaluations. Start it with --write.",
-        },
-        writeRefused: "The lichess evaluation API did not take the engine's evaluations, so {{name}} goes on without sending them. Check that the API runs in write mode, or turn writing off in the Jobs settings.",
       },
     },
     /** The links between Cases (CTA-188), on a Case's Info tab, and its Link a case picker. */
@@ -3066,6 +3041,52 @@ const en = {
         project: "Project",
         cases: "Case",
         none: "There is no other case to link to.",
+      },
+    },
+  },
+  /**
+   * **The eval sources** (CTA-196, `lib/evalSources/`): the layer's own words —
+   * a job's warning, naming the source — and each source's, under its id.
+   */
+  evalSources: {
+    /** The shell's warning when a source did not answer during a job — once per run. */
+    unreachable: "{{source}} did not answer, so {{name}} goes on with the engine. If it is not running, turn it off in Settings → Engine.",
+    /** The shell's warning when a source did not take the engine's evaluations — once per run. */
+    writeRefused:
+      "{{source}} did not take the engine's evaluations, so {{name}} goes on without sending them. Check that it takes writes, or turn writing off in Settings → Engine.",
+    open: "Engine settings",
+    /** The lichess evaluation API (CTA-193) — its plugin's words: `EngineServerForm`'s keys (its `localeKey`), and `write.*`. */
+    lichess: {
+      name: "The lichess evaluation API",
+      title: "Lichess evaluation API",
+      description:
+        "A server over the lichess evaluation database — millions of positions already searched by Stockfish. With it on, every analysis search asks it about the position first, and the engine searches only what it does not hold deep enough.",
+      enable: "Use the lichess evaluation API",
+      enableHelp: "While this is off, the app never contacts it.",
+      address: "API address",
+      addressHelp: "Where the API listens — {{example}} unless you moved it.",
+      addressInvalid: "Enter an address like {{example}}.",
+      connect: "Connect",
+      indicator: {
+        connecting: "Connecting…",
+        online: "Connected · {{ms}} ms",
+        offline: "Not connected",
+      },
+      retry: "Try again",
+      status: {
+        connecting: "Connecting to {{url}}…",
+        unreachable: "{{url}} did not answer. Is the API running, and does it allow this site to ask it (CORS)?",
+        "not-an-eval-api": "{{url}} answered, but not as the lichess evaluation API.",
+        checkedAt: "Checked at {{time}}.",
+      },
+      /** Sending the engine's evals to the API — its write mode, `POST /evals`. */
+      write: {
+        label: "Enable evaluations Write API",
+        /** Checks `GET /health`'s `write_enabled`. */
+        test: "Test connection",
+        writable: "{{url}} is in write mode (write_enabled): it takes the engine's evaluations.",
+        help: "Every engine search that reaches its target depth — on a board or in a job — is stored in the API, beside lichess's, where it is deeper than what the API holds. What the API answered is never sent back. The API must be started in write mode (--write).",
+        notWritable: "{{url}} is not in write mode (write_enabled is false), so it will refuse the engine's evaluations. Start it with --write.",
       },
     },
   },

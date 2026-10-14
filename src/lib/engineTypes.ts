@@ -83,6 +83,14 @@ export type SearchOptions =
       depth: number;
       /** Milliseconds to spend, beside the depth limit — whichever comes first. 0 or absent means no time limit. */
       movetime?: number;
+      /**
+       * **Whether the eval sources may answer it** (CTA-196, `lib/evalSources/`)
+       * — read by the decorator in front of a board's engine
+       * (`withEvalSources`), never sent to an engine. `false`: an engine
+       * choosing its move in a game (Play with Engine, Masked Pieces), which
+       * always searches. Absent: an analysis search, asked first.
+       */
+      evalSources?: boolean;
     }
   | { infinite: true };
 
@@ -146,6 +154,12 @@ export type EngineMessage = {
    * no depth, line or move off it. Absent on every other message.
    */
   heartbeat?: true;
+  /**
+   * **Not the engine's search: an eval source's answer** (CTA-196) — the id of
+   * the source (`lib/evalSources/`) whose stored eval this line or `bestmove`
+   * replays, the engine never asked. Absent on every message an engine sent.
+   */
+  evalSource?: string;
 };
 
 /** Callback registered with {@link EngineHandle.onMessage}. */

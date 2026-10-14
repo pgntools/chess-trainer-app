@@ -13,7 +13,8 @@ import { mainline } from "./gameTree";
 import { jobV2Of, type JobV2, type JobV2Target } from "./jobsV2";
 import { createJobV2LiveFeed, jobV2LiveSnapshot } from "./jobV2Live";
 import { createJobV2Runner, JOB_V2_RUNNER_LOCK, type JobV2Runner, type JobV2RunnerDeps } from "./jobV2Runner";
-import { JOBS_SETTINGS_STORAGE_KEY, subscribeLichessEvalUnreachable } from "./jobsSettings";
+import { subscribeEvalSourceUnreachable } from "./evalSources";
+import { LICHESS_EVAL_API_STORAGE_KEY } from "./evalSources/lichess/settings";
 import { addJobV2, findJobV2, pauseJobV2, resumeJobV2, subscribeJobsV2 } from "./jobV2Store";
 import { parsePgnTree } from "./pgn";
 
@@ -335,10 +336,13 @@ describe("the Jobs V2 runner (CTA-188)", () => {
     });
   });
 
-  describe("the lichess evaluation API first (CTA-193)", () => {
+  describe("the lichess evaluation API first (CTA-193) — through the eval-source layer (CTA-196)", () => {
     const API = "http://10.0.0.3:8000";
     const turnApiOn = (write = false) =>
-      localStorage.setItem(JOBS_SETTINGS_STORAGE_KEY, JSON.stringify({ defaultPreset: null, evalApi: { enabled: true, url: API, write } }));
+      localStorage.setItem(LICHESS_EVAL_API_STORAGE_KEY, JSON.stringify({ enabled: true, url: API, write }));
+    /** What a job's warning carried: its job, name and kind, and the source's id. */
+    const warnings = (heard: ReturnType<typeof vi.fn>) =>
+      heard.mock.calls.map(([event]) => ({ jobId: event.jobId, name: event.name, kind: event.kind, source: event.source.id }));
 
     /** The API's answer for a FEN asked: a found eval (a legal line, White's view) at `depth`, or what `answer` says. */
     const apiAnswering = (answer: (fen: string) => "found" | "missing" | number = () => "found", depth = 40, writeStatus = 200) => {
@@ -404,7 +408,7 @@ describe("the Jobs V2 runner (CTA-188)", () => {
       });
       vi.stubGlobal("fetch", fetchMock);
       const heard = vi.fn();
-      const off = subscribeLichessEvalUnreachable(heard);
+      const off = subscribeEvalSourceUnreachable(heard);
       const { projectId } = await seed();
       const job = jobOf(projectId, { kind: "project", projectId });
       await addJobV2(job);
@@ -413,8 +417,7 @@ describe("the Jobs V2 runner (CTA-188)", () => {
       await vi.waitFor(() => expect(findJobV2("job")?.status).toBe("done"));
       off();
       expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect(heard).toHaveBeenCalledTimes(1);
-      expect(heard).toHaveBeenCalledWith({ jobId: "job", name: "Alice – Bob", kind: "read" });
+      expect(warnings(heard)).toEqual([{ jobId: "job", name: "Alice – Bob", kind: "read", source: "lichess" }]);
     });
 
     /** The entries the job sent to `POST /evals`. */
@@ -459,7 +462,7 @@ describe("the Jobs V2 runner (CTA-188)", () => {
     it("goes on without sending when the API does not take a write — said once, and nothing more sent this run", async () => {
       turnApiOn(true);
       const heard = vi.fn();
-      const off = subscribeLichessEvalUnreachable(heard);
+      const off = subscribeEvalSourceUnreachable(heard);
       const { projectId } = await seed();
       const job = jobOf(projectId, { kind: "project", projectId });
       // Started without --write: every POST /evals is a 403.
@@ -470,8 +473,7 @@ describe("the Jobs V2 runner (CTA-188)", () => {
       await vi.waitFor(() => expect(findJobV2("job")?.status).toBe("done"));
       off();
       expect(posted(fetchMock)).toHaveLength(1);
-      expect(heard).toHaveBeenCalledTimes(1);
-      expect(heard).toHaveBeenCalledWith({ jobId: "job", name: "Alice – Bob", kind: "write" });
+      expect(warnings(heard)).toEqual([{ jobId: "job", name: "Alice – Bob", kind: "write", source: "lichess" }]);
       // Lookups go on: every position was still asked about.
       expect(fetchMock.mock.calls.filter(([, init]) => init?.method !== "POST").length).toBeGreaterThan(1);
     });

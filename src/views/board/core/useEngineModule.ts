@@ -19,6 +19,7 @@ import {
 } from "../../../lib/enginePresetStore";
 import { ensureEngineServerChecked, engineServerStatus, subscribeEngineServer } from "../../../lib/engineServer";
 import { resolveEngine } from "../../../lib/engines";
+import { withEvalSources } from "../../../lib/evalSources";
 import {
   EMPTY_ANALYSIS,
   pvToSan,
@@ -72,6 +73,13 @@ import { isTerminal, turnOf } from "./useBoardCore";
  *   Threads, Hash and MultiPV never are. A value the preset stops setting
  *   goes back to the engine's default. A change applies from the next
  *   search, never into a running one (the handle's discipline, §4.1).
+ * - **The eval sources first** (CTA-196, `lib/evalSources/`): the handle is
+ *   built behind `withEvalSources`, so an analysis search asks the sources the
+ *   reader turned on (the lichess evaluation API) before its engine — a hit
+ *   at the target depth or deeper arrives as the engine's own lines would,
+ *   and a finished search is sent back where a source takes writes. A board
+ *   whose engine chooses its move in a game passes
+ *   {@link EngineModuleStart.evalSources} `false`.
  * - **Option pushes before the search.** The `setOption` effect is declared
  *   ahead of the search effect, so on any render where both run the options go
  *   out before the `go` that should honour them. The handle's `setOption`
@@ -159,6 +167,15 @@ export type EngineModuleStart = {
    * {@link onBestMove}: it is a dependency of the subscription.
    */
   onSearchFinished?: (finished: FinishedSearch) => void;
+  /**
+   * **Whether the eval sources may answer this board's searches** (CTA-196,
+   * `lib/evalSources/`, docs/engine.md §10). Absent or `true`: an analysis
+   * board — every search asks the sources the reader turned on first, and a
+   * finished one is sent back. `false`: **an engine choosing its move in a
+   * game** — Play with Engine and Masked Pieces — which always searches
+   * itself. (A strength-limited engine is never answered either way.)
+   */
+  evalSources?: boolean;
 };
 
 /** One finished search, as {@link EngineModuleStart.onSearchFinished} reports it. */
@@ -213,6 +230,7 @@ export const useEngineModule = ({
   onUciOptionsReady,
   onBestMove,
   onSearchFinished,
+  evalSources = true,
 }: EngineModuleStart): EngineModule => {
   /*
     The engine server's engines come and go with its status (docs/engine.md §8):
@@ -270,7 +288,11 @@ export const useEngineModule = ({
 
     current?.handle.terminate();
     latestScoreRef.current = null;
-    const handle = descriptor.create();
+    // The eval sources in front of it (CTA-196): an analysis search asks them first.
+    const handle = withEvalSources(descriptor.create(), {
+      engine: descriptor.name,
+      maxDepth: descriptor.capabilities.maxDepth,
+    });
     engineRef.current = { descriptor, handle };
     return handle;
   }, [descriptor]);
@@ -497,12 +519,12 @@ export const useEngineModule = ({
     if (isTerminal(fen)) return;
 
     requestRef.current = searchRequest;
-    ensureEngine().search(fen, infinite ? { infinite: true } : { depth, movetime: moveTimeMs });
+    ensureEngine().search(fen, infinite ? { infinite: true } : { depth, movetime: moveTimeMs, evalSources });
     // `uciOptions` and the preset are dependencies so that changing a setting
     // restarts the search and is reflected in the lines immediately, rather
     // than waiting for the next move — which is what "takes effect on the
     // next search" means in practice.
-  }, [ensureEngine, enabled, fen, depth, moveTimeMs, infinite, uciOptions, presetValues, searchRequest]);
+  }, [ensureEngine, enabled, fen, depth, moveTimeMs, infinite, evalSources, uciOptions, presetValues, searchRequest]);
 
   const clearAnalysis = useCallback(() => setAnalysis(EMPTY_ANALYSIS), []);
 

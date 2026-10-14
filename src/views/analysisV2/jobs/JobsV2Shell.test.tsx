@@ -11,7 +11,7 @@ import { addJobV2, loadJobsV2, updateJobV2 } from "../../../lib/jobV2Store";
 import { expectNoAxeViolations } from "../../../test/axe";
 import { stubReducedMotion } from "../../../test/reducedMotion";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
-import { reportLichessEvalUnreachable } from "../../../lib/jobsSettings";
+import { EVAL_SOURCES, reportEvalSourceUnreachable } from "../../../lib/evalSources";
 import { JobsV2Indicator, JobV2Runner } from "./JobsV2Shell";
 
 const jobOf = (id: string, status: JobStatus): JobV2 => ({
@@ -158,13 +158,15 @@ describe("the indicator's live engine progress (CTA-190)", () => {
   });
 });
 
-describe("the shell's warning when the lichess evaluation API did not answer (CTA-193)", () => {
+describe("the shell's warning when an eval source did not answer (CTA-193, CTA-196)", () => {
+  const lichess = EVAL_SOURCES.find((source) => source.id === "lichess")!;
+
   function Where() {
     const location = useLocation();
     return <div data-testid="where">{`${location.pathname}${location.search}`}</div>;
   }
 
-  it("says so once per word from the runner — the job goes on with the engine — and opens the Jobs settings", async () => {
+  it("says so once per word from the runner, naming the source — the job goes on with the engine — and opens Settings → Engine", async () => {
     const user = userEvent.setup();
     const { baseElement } = render(
       <AppThemeWithLang>
@@ -174,17 +176,17 @@ describe("the shell's warning when the lichess evaluation API did not answer (CT
         </MemoryRouter>
       </AppThemeWithLang>,
     );
-    act(() => reportLichessEvalUnreachable({ jobId: "j1", name: "Alice – Bob", kind: "read" }));
+    act(() => reportEvalSourceUnreachable({ jobId: "j1", name: "Alice – Bob", kind: "read", source: lichess }));
     const warning = await screen.findByRole("alert");
     expect(warning).toHaveTextContent(
-      "The lichess evaluation API did not answer, so Alice – Bob goes on with the engine. If the API is not running, turn it off in the Jobs settings.",
+      "The lichess evaluation API did not answer, so Alice – Bob goes on with the engine. If it is not running, turn it off in Settings → Engine.",
     );
     await expectNoAxeViolations(baseElement);
-    await user.click(screen.getByRole("link", { name: "Jobs settings" }));
-    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/analysis/jobs?tab=settings"));
+    await user.click(screen.getByRole("link", { name: "Engine settings" }));
+    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/settings/engine?source=lichess"));
   });
 
-  it("says when the API did not take the engine's evaluations — the job goes on without sending them", async () => {
+  it("says when a source did not take the engine's evaluations — the job goes on without sending them", async () => {
     render(
       <AppThemeWithLang>
         <MemoryRouter initialEntries={["/analysis"]}>
@@ -192,10 +194,10 @@ describe("the shell's warning when the lichess evaluation API did not answer (CT
         </MemoryRouter>
       </AppThemeWithLang>,
     );
-    act(() => reportLichessEvalUnreachable({ jobId: "j1", name: "Alice – Bob", kind: "write" }));
+    act(() => reportEvalSourceUnreachable({ jobId: "j1", name: "Alice – Bob", kind: "write", source: lichess }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "The lichess evaluation API did not take the engine's evaluations, so Alice – Bob goes on without sending them.",
     );
-    expect(screen.getByRole("link", { name: "Jobs settings" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Engine settings" })).toBeInTheDocument();
   });
 });
