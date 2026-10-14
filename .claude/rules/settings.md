@@ -170,14 +170,19 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   contacts it**; on, its address (`http://127.0.0.1:8000`, the reader's own machine, offered first, kept
   while off), Connect (or Enter) checking `GET /health` — each press answered
   on the button, as the engine server's — the chip and the reason; under it
-  **Enable evaluations Write API** and, while ticked, **Test connection**
-  (`write_enabled`, answered on its button and in words). One global setting,
+  **Enable evaluations Write API**, **Minimum depth to write** (CTA-202 — a
+  number, 35 by default, disabled while writing is not ticked) and, while
+  ticked, **Test connection** (`write_enabled`, answered on its button and in
+  words). One global setting,
   `chessapp.lichessEvalApi` ([`database.md`](./database.md) §2; a reader's
   old `chessapp.jobsSettings.evalApi` moved there on the first read). On,
   **every analysis search asks it first** — every board's engine lines and
   Jobs V2 — whichever engine runs; an engine choosing its move in a game
   never does. With writing ticked, every engine search that reached its
-  target depth is sent to it; what it answered never is.
+  target depth **and the minimum depth to write** is sent to it (a shallower
+  one is skipped, not refused — so the lichess database is never diluted by
+  quick searches; a target depth below the minimum writes nothing); what it
+  answered never is.
 - **The right-hand panel is the chosen engine's options** (§4.1) — for a
   page's build or a server's engine alike, in a column that **scrolls on its
   own** (`engine-panel`: the shell's aside does not scroll). For a server

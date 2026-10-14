@@ -614,7 +614,9 @@ CTA-195 depth progress, Play and `onSearchFinished` read it unchanged.
 - **Write-back**: an eligible search **the engine** finished **at its target
   depth** (line 1's depth ≥ the target at its `bestmove`) is sent to every
   source taking writes, in the background (`recordInEvalSources`) — never a
-  source's own answer, never a search stopped short.
+  source's own answer, never a search stopped short. A source may keep a
+  floor of its own: the lichess API takes nothing shallower than its
+  **minimum depth to write** (35 by default, CTA-202; §10.3).
 - `setOption`, `options`, `whenOptionsReady`, `terminate` are the engine's.
 
 **Eligibility — the one rule, in the decorator and nowhere else.** A search is
@@ -644,9 +646,9 @@ not tried again that run.
 | File | What |
 | --- | --- |
 | `api.ts` | The client (CTA-193): `lichessEvalFen` (the 4-field FEN, en passant only where a capture is legal), `lookupLichessEval` (`GET /fen?fen=…&best=true`; 404 / 422 `missing`), `checkLichessEvalApi` (`GET /health`, `write_enabled`), `positionResultOfLichessEval` (the API's king-takes-rook castling turned into the engine's), `lichessEvalEntryOf` / `writeLichessEval` (`POST /evals`). 5 s per request. |
-| `settings.ts` | `chessapp.lichessEvalApi` (`localStorage`): `{ enabled, url, write }`, **off by default**; its status (`connectLichessEvalApi`, read never stored); **the migration** — a reader's `chessapp.jobsSettings.evalApi` moved here on the first read, the field taken out of the Jobs settings (which keep any field they do not read until then). A change clears the boards' back-off. |
-| `source.ts` | `lichessEvalSource` — the `EvalSource`. |
-| `LichessEvalApiSection.tsx` | Its tab of Settings → Engine, *Lichess evaluation API* (lazy): `EngineServerForm` with its words (`localeKey` `evalSources.lichess`), Connect, the chip, *Enable evaluations Write API* and *Test connection*. |
+| `settings.ts` | `chessapp.lichessEvalApi` (`localStorage`): `{ enabled, url, write, minWriteDepth }`, **off by default**; `minWriteDepth` (CTA-202) the shallowest search written — 35 by default (the lichess database's own shallowest), a missing or unreadable value 35, a number held to 1–99, so settings stored before it need no migration; its status (`connectLichessEvalApi`, read never stored); **the migration** — a reader's `chessapp.jobsSettings.evalApi` moved here on the first read, the field taken out of the Jobs settings (which keep any field they do not read until then). A change clears the boards' back-off. |
+| `source.ts` | `lichessEvalSource` — the `EvalSource`. Its `record` sends nothing whose line 1 is shallower than `minWriteDepth` (CTA-202) — the one write path, the boards' and Jobs V2's — and answers `true`: too shallow is not a refusal (no back-off, no warning). |
+| `LichessEvalApiSection.tsx` | Its tab of Settings → Engine, *Lichess evaluation API* (lazy): `EngineServerForm` with its words (`localeKey` `evalSources.lichess`), Connect, the chip, *Enable evaluations Write API*, *Minimum depth to write* (a number, disabled while writing is not ticked, CTA-202) and *Test connection*. |
 
 Locale keys: `evalSources.lichess.*` (the plugin's), `evalSources.*` (the
 layer's warnings), `settings.engine.evalSources.intro` (the tab's line).
@@ -674,7 +676,8 @@ and a miss, no answer and the back-off, a superseding search, `stop()`
 mid-lookup, the eligibility rule, write-back — never of a hit, a game's or a
 short search), `evalSources.test.ts` (the order, the skip, the writes),
 `lichess/api.test.ts` (the client), `lichess/settings.test.ts` (the settings,
-the status, the migration), `lichess/LichessEvalApiSection.test.tsx` (Settings
+the status, the migration, the minimum depth to write), `lichess/source.test.ts`
+(the write held to the minimum depth), `lichess/LichessEvalApiSection.test.tsx` (Settings
 → Engine), the board end to end in `views/board/core/useEngineModule.test.tsx`,
 the runner's in `lib/jobV2Runner.test.ts`, the shell's warning in
 `JobsV2Shell.test.tsx`.

@@ -145,6 +145,7 @@ describe("the lichess evaluation API in Settings → Engine (CTA-196)", () => {
       enabled: true,
       url: "http://10.0.0.3:8000",
       write: false,
+      minWriteDepth: 35,
     });
 
     // Writing: kept, and said refused by an API not in write mode (its /health says so).
@@ -169,6 +170,33 @@ describe("the lichess evaluation API in Settings → Engine (CTA-196)", () => {
     expect(within(again).getByRole("switch", { name: /use the lichess evaluation api/i })).toBeChecked();
     expect(within(again).getByRole("textbox", { name: /api address/i })).toHaveValue("http://10.0.0.3:8000");
     expect(within(again).getByRole("checkbox", { name: /enable evaluations write api/i })).toBeChecked();
+  });
+
+  it("takes a minimum depth to write under the write tick — 35 by default, disabled until writing is ticked (CTA-202)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => health({ status: "ok", positions: 1, write_enabled: true })));
+    localStorage.setItem(LICHESS_EVAL_API_STORAGE_KEY, JSON.stringify({ enabled: true, url: "http://10.0.0.3:8000", write: false }));
+    const user = userEvent.setup();
+    const { baseElement } = renderEngineTab();
+    const api = await section();
+    const depth = within(api).getByRole("spinbutton", { name: "Minimum depth to write" });
+    expect(depth).toHaveValue(35);
+    expect(depth).toBeDisabled();
+    expect(within(api).getByText(/shallower than this is not sent/i)).toBeInTheDocument();
+
+    await user.click(within(api).getByRole("checkbox", { name: /enable evaluations write api/i }));
+    expect(depth).toBeEnabled();
+    await user.clear(depth);
+    expect(within(api).getByText("A whole number from 1 to 99.")).toBeInTheDocument();
+    expect(depth).toHaveAttribute("aria-invalid", "true");
+    expect(readLichessEvalApiSettings().minWriteDepth).toBe(35);
+    await user.type(depth, "40");
+    expect(readLichessEvalApiSettings().minWriteDepth).toBe(40);
+    expect(depth).toHaveAttribute("aria-invalid", "false");
+    await user.clear(depth);
+    await user.type(depth, "150");
+    expect(readLichessEvalApiSettings().minWriteDepth).toBe(15);
+    expect(within(api).getByText("A whole number from 1 to 99.")).toBeInTheDocument();
+    await expectNoAxeViolations(baseElement);
   });
 
   it("says why the API is not connected, with Try again", async () => {

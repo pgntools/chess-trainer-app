@@ -3108,7 +3108,13 @@ const en = {
         /** Checks `GET /health`'s `write_enabled`. */
         test: "Test connection",
         writable: "{{url}} is in write mode (write_enabled): it takes the engine's evaluations.",
-        help: "Every engine search that reaches its target depth — on a board or in a job — is stored in the API, beside lichess's, where it is deeper than what the API holds. What the API answered is never sent back. The API must be started in write mode (--write).",
+        help: "Every engine search that reaches its target depth — on a board or in a job — is stored in the API, beside lichess's, where it is deeper than what the API holds, and only from the minimum depth to write up. What the API answered is never sent back. The API must be started in write mode (--write).",
+        /** The shallowest search sent (CTA-202) — the lichess database holds depth 35 and deeper. */
+        minDepth: {
+          label: "Minimum depth to write",
+          help: "A search shallower than this is not sent, so it never dilutes the lichess evaluations (depth 35 and deeper). Where the Engine menu's depth is lower, nothing is sent.",
+          invalid: "A whole number from {{min}} to {{max}}.",
+        },
         notWritable: "{{url}} is not in write mode (write_enabled is false), so it will refuse the engine's evaluations. Start it with --write.",
       },
     },

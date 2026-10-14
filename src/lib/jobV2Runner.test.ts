@@ -338,8 +338,9 @@ describe("the Jobs V2 runner (CTA-188)", () => {
 
   describe("the lichess evaluation API first (CTA-193) — through the eval-source layer (CTA-196)", () => {
     const API = "http://10.0.0.3:8000";
-    const turnApiOn = (write = false) =>
-      localStorage.setItem(LICHESS_EVAL_API_STORAGE_KEY, JSON.stringify({ enabled: true, url: API, write }));
+    /** The API on — writing, `write`, anything as deep as `minWriteDepth` (1 here: the fake engine's searches are shallow; CTA-202). */
+    const turnApiOn = (write = false, minWriteDepth = 1) =>
+      localStorage.setItem(LICHESS_EVAL_API_STORAGE_KEY, JSON.stringify({ enabled: true, url: API, write, minWriteDepth }));
     /** What a job's warning carried: its job, name and kind, and the source's id. */
     const warnings = (heard: ReturnType<typeof vi.fn>) =>
       heard.mock.calls.map(([event]) => ({ jobId: event.jobId, name: event.name, kind: event.kind, source: event.source.id }));
@@ -445,6 +446,26 @@ describe("the Jobs V2 runner (CTA-188)", () => {
           entries: [{ fen: missing, depth: 20, knodes: 2500, pov: "white", pvs: [{ cp: 20, line: pv }], engine: "Stockfish 19 Lite" }],
         },
       ]);
+    });
+
+    it("sends nothing shallower than the minimum depth to write — and that is no refusal, no warning (CTA-202)", async () => {
+      turnApiOn(true, 35);
+      const heard = vi.fn();
+      const off = subscribeEvalSourceUnreachable(heard);
+      const { projectId } = await seed();
+      const job = jobOf(projectId, { kind: "project", projectId });
+      const missing = job.positions[0].fen;
+      const fetchMock = apiAnswering((fen) => (missing.startsWith(fen) ? "missing" : "found"));
+      await addJobV2(job);
+      start();
+      await searched(1);
+      const pv = legalMove(missing);
+      engine().say({ fen: missing, depth: 20, multipv: 1, positionEvaluation: "20", nodes: 2_500_000, pv });
+      engine().say({ fen: missing, bestMove: pv });
+      await vi.waitFor(() => expect(findJobV2("job")?.status).toBe("done"));
+      off();
+      expect(posted(fetchMock)).toEqual([]);
+      expect(warnings(heard)).toEqual([]);
     });
 
     it("sends nothing while writing is off", async () => {

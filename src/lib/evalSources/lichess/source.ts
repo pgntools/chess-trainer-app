@@ -7,6 +7,7 @@ import {
   LICHESS_EVAL_SOURCE_ID,
   ensureLichessEvalApiChecked,
   lichessEvalApiConnection,
+  lichessEvalApiMinWriteDepth,
   lichessEvalApiUrl,
   lichessEvalApiWriteUrl,
   resetLichessEvalApiSettings,
@@ -18,7 +19,8 @@ import {
  * **The lichess evaluation API as an eval source** (CTA-196) — the whole of
  * what the layer knows of it: on or off (`settings.ts`), a lookup
  * (`GET /fen`, its deepest eval when as deep as asked, its lines up to the
- * asked `MultiPV`), a write (`POST /evals`, while writing is ticked), its
+ * asked `MultiPV`), a write (`POST /evals`, while writing is ticked, of a
+ * search at least as deep as its minimum depth to write — CTA-202), its
  * tab of Settings → Engine and the connection its tab's dot shows (CTA-199).
  */
 export const lichessEvalSource: EvalSource = {
@@ -39,8 +41,8 @@ export const lichessEvalSource: EvalSource = {
   async record(result, meta, signal) {
     const url = lichessEvalApiWriteUrl();
     const entry = lichessEvalEntryOf(result, meta);
-    // Nothing to send (a finished position, no line with a move) is not a refusal.
-    if (url === undefined || entry === undefined) return true;
+    // Nothing to send (a finished position, no line with a move, a search shallower than the minimum) is not a refusal.
+    if (url === undefined || entry === undefined || entry.depth < lichessEvalApiMinWriteDepth()) return true;
     return writeLichessEval(url, entry, signal);
   },
   SettingsSection: lazy(() => import("./LichessEvalApiSection")),
