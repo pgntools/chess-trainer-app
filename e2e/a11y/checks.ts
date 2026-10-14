@@ -93,6 +93,12 @@ export const open = async (
     await (onScreen ? expect(page.getByTestId("variation-1-line")).toBeVisible({ timeout: 45_000 }) : expect(page.getByTestId("variation-1-line")).toBeAttached({ timeout: 45_000 }));
   }
   await page.evaluate(() => document.fonts.ready.then(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())))));
+  // A colour still fading — a button enabled as its store lands (the Library's New folder) — is
+  // measured mid-way, a hair under its theme's contrast: let every CSS transition end. Only
+  // transitions: an animation (a spinner, a pulse) may never finish.
+  await page.evaluate(() =>
+    Promise.allSettled(document.getAnimations().filter((animation) => animation instanceof CSSTransition).map((animation) => animation.finished)),
+  );
 };
 
 /** What one page's check found, for the summary. */
