@@ -246,6 +246,39 @@ export const pvToSan = (fen: string, pv: string): string[] => {
   return san;
 };
 
+/** A move as the board draws it: the square it leaves and the one it lands on. */
+export type MoveSquares = { from: string; to: string };
+
+/**
+ * The squares of a line's move `index` (0-based), by replaying the SANs before
+ * it from `fen` (CTA-201) — the variations box hands the board its line's
+ * first move this way when the line is hovered. `null` where the line will
+ * not play that far: the line and the position have come apart, as `pvToSan`
+ * puts it.
+ */
+export const lineMoveSquares = (
+  fen: string,
+  san: readonly string[],
+  index: number,
+): MoveSquares | null => {
+  if (index < 0 || index >= san.length) return null;
+
+  let chess: Chess;
+  try {
+    chess = new Chess(fen);
+  } catch {
+    return null;
+  }
+
+  try {
+    for (let i = 0; i < index; i++) chess.move(san[i]);
+    const { from, to } = chess.move(san[index]);
+    return { from, to };
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Where a SAN line's moves sit in the game's numbering, as one prefix per
  * move: `"23. "` on White's, `"23... "` on Black's move when it is the

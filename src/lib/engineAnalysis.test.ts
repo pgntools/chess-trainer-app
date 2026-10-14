@@ -5,6 +5,7 @@ import {
   evalBarFraction,
   formatEngineCount,
   formatScore,
+  lineMoveSquares,
   pvToSan,
   scoreFromUci,
   variationNumbering,
@@ -148,6 +149,28 @@ describe("pvToSan", () => {
     expect(pvToSan(DEFAULT_POSITION, "")).toEqual([]);
     expect(pvToSan(DEFAULT_POSITION, "   ")).toEqual([]);
     expect(pvToSan("not a fen", "e2e4")).toEqual([]);
+  });
+});
+
+describe("lineMoveSquares (CTA-201)", () => {
+  it("reads a move deep in the line, replayed from the position", () => {
+    const line = ["e4", "e5", "Nf3", "Nc6"];
+    expect(lineMoveSquares(DEFAULT_POSITION, line, 0)).toEqual({ from: "e2", to: "e4" });
+    expect(lineMoveSquares(DEFAULT_POSITION, line, 3)).toEqual({ from: "b8", to: "c6" });
+  });
+
+  it("reads a promotion as its two squares", () => {
+    expect(lineMoveSquares("8/P6k/8/8/8/8/8/K7 w - - 0 1", ["a8=Q"], 0)).toEqual({
+      from: "a7",
+      to: "a8",
+    });
+  });
+
+  it("is null where the line will not play that far", () => {
+    expect(lineMoveSquares(DEFAULT_POSITION, ["e4", "e4", "Nf3"], 2)).toBeNull();
+    expect(lineMoveSquares(DEFAULT_POSITION, ["e4"], 1)).toBeNull();
+    expect(lineMoveSquares(DEFAULT_POSITION, ["e4"], -1)).toBeNull();
+    expect(lineMoveSquares("not a fen", ["e4"], 0)).toBeNull();
   });
 });
 

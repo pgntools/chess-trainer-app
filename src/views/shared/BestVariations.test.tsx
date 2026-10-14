@@ -35,12 +35,13 @@ type PlayableProps = {
   onSelectMove?: (san: readonly string[]) => void;
   initialShowLines?: boolean;
   onShowLinesChange?: (shown: boolean) => void;
+  onHoverMove?: (move: { from: string; to: string } | null) => void;
 };
 
 const renderVariations = (
   analysis: Analysis,
   requested = 3,
-  { mask, onSelectMove, initialShowLines, onShowLinesChange }: PlayableProps = {},
+  { mask, onSelectMove, initialShowLines, onShowLinesChange, onHoverMove }: PlayableProps = {},
 ) =>
   render(
     <AppThemeWithLang>
@@ -51,6 +52,7 @@ const renderVariations = (
         onSelectMove={onSelectMove}
         initialShowLines={initialShowLines}
         onShowLinesChange={onShowLinesChange}
+        onHoverMove={onHoverMove}
       />
     </AppThemeWithLang>,
   );
@@ -766,5 +768,88 @@ describe("the depth chip's progress", () => {
     stubReducedMotion();
     renderSearching(searchingAt(12), { targetDepth: 24, moveTimeMs: 0 });
     expect(ownRule(screen.getByTestId("analysis-depth-fill"))).toMatch(/transition: none/);
+  });
+});
+
+describe("a line hovered or focused shows its first move (CTA-201)", () => {
+  const analysis: Analysis = {
+    fen: DEFAULT_POSITION,
+    depth: 18,
+    lines: [line(1, 32, "e2e4 e7e5 g1f3 b8c6"), line(2, 18, "d2d4 d7d5")],
+  };
+
+  it("reports the line's first move whichever of its moves is hovered, and null when the pointer leaves", async () => {
+    const user = userEvent.setup();
+    const onHoverMove = vi.fn();
+    renderVariations(analysis, 2, { onSelectMove: vi.fn(), onHoverMove });
+    expect(onHoverMove).not.toHaveBeenCalled();
+
+    await user.hover(screen.getByRole("button", { name: "Nc6" }));
+    expect(onHoverMove).toHaveBeenLastCalledWith({ from: "e2", to: "e4" });
+    expect(onHoverMove).not.toHaveBeenCalledWith({ from: "b8", to: "c6" });
+
+    await user.hover(screen.getByRole("button", { name: "1. d4" }));
+    expect(onHoverMove).toHaveBeenLastCalledWith({ from: "d2", to: "d4" });
+
+    await user.unhover(screen.getByRole("button", { name: "1. d4" }));
+    expect(onHoverMove).toHaveBeenLastCalledWith(null);
+  });
+
+  it("reports a focused line's first move, and null when focus moves off the lines", async () => {
+    const onHoverMove = vi.fn();
+    renderVariations(analysis, 2, { onSelectMove: vi.fn(), onHoverMove });
+
+    act(() => screen.getByRole("button", { name: "d5" }).focus());
+    expect(onHoverMove).toHaveBeenLastCalledWith({ from: "d2", to: "d4" });
+
+    act(() => screen.getByRole("button", { name: "d5" }).blur());
+    expect(onHoverMove).toHaveBeenLastCalledWith(null);
+  });
+
+  it("reports the true squares under a mask", async () => {
+    const user = userEvent.setup();
+    const onHoverMove = vi.fn();
+    renderVariations(analysis, 2, {
+      mask: MASK_PRESETS.nonPawns,
+      onSelectMove: vi.fn(),
+      onHoverMove,
+    });
+
+    await user.hover(screen.getByTestId("variation-1-move-3"));
+    expect(onHoverMove).toHaveBeenLastCalledWith({ from: "e2", to: "e4" });
+  });
+
+  it("drops the hover when the position changes, and when the block goes away", async () => {
+    const user = userEvent.setup();
+    const onHoverMove = vi.fn();
+    const { rerender, unmount } = renderVariations(analysis, 2, {
+      onSelectMove: vi.fn(),
+      onHoverMove,
+    });
+    const next = (fen: string) => (
+      <AppThemeWithLang>
+        <BestVariations
+          analysis={{ fen, depth: 18, lines: [] }}
+          requested={2}
+          onSelectMove={() => {}}
+          onHoverMove={onHoverMove}
+        />
+      </AppThemeWithLang>
+    );
+
+    await user.hover(screen.getByRole("button", { name: "1. e4" }));
+    expect(onHoverMove).toHaveBeenLastCalledWith({ from: "e2", to: "e4" });
+    rerender(next("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"));
+    expect(onHoverMove).toHaveBeenLastCalledWith(null);
+
+    rerender(
+      <AppThemeWithLang>
+        <BestVariations analysis={analysis} requested={2} onSelectMove={() => {}} onHoverMove={onHoverMove} />
+      </AppThemeWithLang>,
+    );
+    await user.hover(screen.getByRole("button", { name: "1. d4" }));
+    expect(onHoverMove).toHaveBeenLastCalledWith({ from: "d2", to: "d4" });
+    unmount();
+    expect(onHoverMove).toHaveBeenLastCalledWith(null);
   });
 });
