@@ -677,7 +677,7 @@ describe("a Case's board (CTA-186)", () => {
     expect(boardOptions().boardOrientation).toBe("black");
   });
 
-  it("lists the Project's Cases beside it — the table's order and words carried there and back", async () => {
+  it("opens a Case on its own view, Back to the Project's Cases beside it — the table's order and words carried there and back (CTA-199)", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     await addAnalysisCases([
       gameCase(project.id),
@@ -690,6 +690,11 @@ describe("a Case's board (CTA-186)", () => {
     await user.click(within(table).getByRole("link", { name: "Open Endgame" }));
     expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
 
+    // A Case opens on its own view (CTA-199); Back is the list.
+    await screen.findByRole("navigation", { name: /^Details of Endgame/ });
+    await user.click(screen.getByRole("link", { name: "Back to the cases" }));
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc&view=list`);
+
     // By name: Carlsen – Caruana…, Endgame, Opening — the open one current.
     const list = await screen.findByRole("navigation", { name: "Cases of Club" });
     expect(within(list).getAllByRole("treeitem").map((item) => item.textContent)).toEqual([
@@ -700,10 +705,10 @@ describe("a Case's board (CTA-186)", () => {
     expect(screen.getByTestId("analysis-case-siblings-tree-cpos")).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Previous case" })).toHaveAttribute(
       "href",
-      `/analysis/projects/${project.id}/cases/cgame?sort=name&dir=asc`,
+      `/analysis/projects/${project.id}/cases/cgame?sort=name&dir=asc&view=list`,
     );
     await user.click(screen.getByRole("link", { name: "Next case" }));
-    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cstart?sort=name&dir=asc`);
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cstart?sort=name&dir=asc&view=list`);
     expect(await screen.findByTestId("analysis-case-name")).toHaveTextContent("Opening");
 
     // The list's words are the URL's, and Close takes them back to the table.
@@ -719,12 +724,12 @@ describe("a Case's board (CTA-186)", () => {
     const project = (await createAnalysisProject("Club", null))!;
     await addAnalysisCases([gameCase(project.id), positionCaseOfFen({ id: "cpos", projectId: project.id, name: "Endgame" }, ENDGAME)]);
     const user = userEvent.setup();
-    mount(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
+    mount(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc&view=list`);
     await screen.findByRole("navigation", { name: "Cases of Club" });
 
     // A row picked: that Case, the panel on its own view.
     await user.click(screen.getByTestId("analysis-case-siblings-tree-cgame"));
-    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cgame?sort=name&dir=asc&view=case`);
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cgame?sort=name&dir=asc`);
     const details = await screen.findByRole("navigation", { name: /^Details of Carlsen – Caruana/ });
     expect(within(details).getByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("analysis-case-details-info-Event")).toHaveTextContent("Club Championship");
@@ -738,15 +743,15 @@ describe("a Case's board (CTA-186)", () => {
 
     // Previous / next keep the view, and its open tab; a Position from a FEN has no game tags.
     await user.click(within(details).getByRole("link", { name: "Next case" }));
-    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc&view=case`);
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
     expect(await screen.findByRole("tab", { name: "Display" })).toHaveAttribute("aria-selected", "true");
     await user.click(screen.getByRole("tab", { name: "Info" }));
     expect(screen.getByTestId("analysis-case-details-title")).toHaveTextContent("Endgame");
     expect(screen.queryByTestId("analysis-case-details-info-Event")).toBeNull();
 
-    // Back: the list again, the table's context kept, the view dropped.
+    // Back: the list again, the table's context kept.
     await user.click(screen.getByRole("link", { name: "Back to the cases" }));
-    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc&view=list`);
     expect(await screen.findByRole("navigation", { name: "Cases of Club" })).toBeInTheDocument();
   });
 

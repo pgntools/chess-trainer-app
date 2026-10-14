@@ -361,10 +361,11 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
   Under the shell's breakpoint it is a drawer, opened from a list button in
   the board's header; the drawer is the route's state, so it outlives a step
   to another Case. Nothing locks it: a Case autosaves.
-- **The panel's second screen, the Case's own view** (`CaseDetails`): a row
-  of the list picked — the open Case's too — opens that Case with
-  `?view=case` (`withCaseView`, `paths.ts`; never carried back to the table),
-  and the panel shows the Case — **Back** to the list where the list has
+- **The panel's other screen, the Case's own view** (`CaseDetails`) — **where
+  a Case opens** (CTA-199: no `?view=`; the list is `?view=list`,
+  `withCaseView`, `paths.ts`, never carried back to the table; an older
+  `?view=case` reads as the view). A row of the list picked — the open Case's
+  too — opens that Case on it, and the panel shows the Case — **Back** to the list where the list has
   Close, its name and type, its details in **tabs** — **Info**, the Case's
   PGN tags as saved (`GameInfo`, the Library game board's Info tab; "no
   tags" when it has none) and under them **its links** (CTA-188, §7),
@@ -374,8 +375,8 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
   out of the right-hand panel), **Jobs** (CTA-188, §6.4) — and previous / next at
   its foot, which keep the view and its open tab (the screen's state). The
   board draws the left panel (`CaseBoard`'s `leftPanel`, given the tree on
-  screen), so the Graph follows it and Display sets it. Back drops
-  `?view=` and keeps the rest of the context. A reload keeps the screen.
+  screen), so the Graph follows it and Display sets it. Back sets
+  `?view=list` and keeps the rest of the context. A reload keeps the screen.
 
 ### 3.4 The next-move arrows — the Display tab's Arrows (CTA-98, CTA-168, CTA-180, CTA-197)
 

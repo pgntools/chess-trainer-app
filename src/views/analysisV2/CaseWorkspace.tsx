@@ -425,11 +425,12 @@ function CaseWorkspace() {
   );
 
   /*
-    The panel's two screens: the Project's Cases, and — a row of them picked,
-    `?view=case` — the Case's own view, whose Back returns to the list. Its
-    Info tab reads the tags of the Case as saved, parsed only while it shows.
+    The panel's two screens: the Case's own view — where a Case opens
+    (CTA-199) — whose Back goes to the Project's Cases (`?view=list`), and the
+    list, a row of which opens that Case's view. Its Info tab reads the tags of
+    the Case as saved, parsed only while it shows.
   */
-  const details = searchParams.get("view") === "case";
+  const details = searchParams.get("view") !== "list";
   const openPgn = cases?.find((candidate) => candidate.id === caseId && candidate.projectId === projectId)?.pgn;
   const infoGame = useMemo(() => {
     if (!details || openPgn === undefined) return undefined;
