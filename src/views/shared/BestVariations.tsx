@@ -77,13 +77,13 @@ import { moveSx, sanTokenSx } from "./moveTokenSx";
  *   what is disguised. This holds in both states: a move visible is a move
  *   playable, collapsed or expanded.
  *
- * **A move hovered or focused is a move shown** (CTA-201): given
- * `onHoverMove`, pointing at a move — or tabbing onto it — reports its two
- * squares, even several moves deep in the line (replayed from the analysed
- * position, `lineMoveSquares`), and `null` once the pointer leaves, focus
- * moves on, the position changes or the lines go away; the board draws it as
- * an arrow (`BoardShell`). The squares are the true move's — a mask disguises
- * what a token prints, never where a piece goes.
+ * **A line hovered or focused shows its first move** (CTA-201): given
+ * `onHoverMove`, pointing at any move of a line — or tabbing onto it —
+ * reports the squares of the line's *first* move, the move the engine
+ * suggests here, and `null` once the pointer leaves, focus moves on, the
+ * position changes or the lines go away; the board draws it as an arrow
+ * (`BoardShell`). The squares are the true move's — a mask disguises what a
+ * token prints, never where a piece goes.
  *
  * **The block holds its height while the engine thinks.** It always renders one
  * row per requested line (`requested`): a rank not in yet is a placeholder row
@@ -154,8 +154,9 @@ type BestVariationsProps = {
    */
   progress?: SearchProgress;
   /**
-   * **The move under the pointer or the focus** (CTA-201): its two squares
-   * while a move of a line is hovered or focused, `null` when that ends — the
+   * **The line under the pointer or the focus** (CTA-201): the squares of its
+   * first move while any move of the line is hovered or focused, `null` when
+   * that ends — the
    * pointer or the focus leaving, a new analysed position, the lines hidden,
    * this block unmounted. Reported on change only. Absent: nothing is
    * reported, today's behaviour.
@@ -164,11 +165,11 @@ type BestVariationsProps = {
 };
 
 /**
- * A move a line's token is under the pointer or the focus — its rank and
- * index in the line, stamped with the FEN it was hovered on, so a new analysed
- * position drops it the way it drops an expansion.
+ * The line one of whose moves is under the pointer or the focus — its rank,
+ * stamped with the FEN it was hovered on, so a new analysed position drops it
+ * the way it drops an expansion.
  */
-type HoveredMove = { fen: string; rank: number; index: number };
+type HoveredLine = { fen: string; rank: number };
 
 /** How often a move-time search's clock moves the fill (CTA-195). */
 const CLOCK_TICK_MS = 250;
@@ -325,15 +326,15 @@ function VariationMoves({
   expanded,
   moves,
   onSelectMove,
-  onHoverMove,
+  onHoverLine,
 }: {
   rank: number;
   expanded: boolean;
   /** The printed text of each move (numbered, maybe masked), and its true SAN. */
   moves: readonly { text: string; san: string }[];
   onSelectMove?: (san: readonly string[]) => void;
-  /** The move under the pointer or the focus, by index; `null` when it leaves. */
-  onHoverMove?: (index: number | null) => void;
+  /** Whether one of the line's moves is under the pointer or the focus. */
+  onHoverLine?: (hovered: boolean) => void;
 }) {
   const box = useRef<HTMLSpanElement>(null);
 
@@ -373,15 +374,15 @@ function VariationMoves({
       }}
     >
       {moves.map(({ text, san }, index) => {
-        // Pointing at a move, or tabbing onto it, shows it on the board (CTA-201).
+        // Pointing at a move, or tabbing onto it, shows the line's first move on the board (CTA-201).
         const hover =
-          onHoverMove === undefined
+          onHoverLine === undefined
             ? {}
             : {
-                onMouseEnter: () => onHoverMove(index),
-                onMouseLeave: () => onHoverMove(null),
-                onFocus: () => onHoverMove(index),
-                onBlur: () => onHoverMove(null),
+                onMouseEnter: () => onHoverLine(true),
+                onMouseLeave: () => onHoverLine(false),
+                onFocus: () => onHoverLine(true),
+                onBlur: () => onHoverLine(false),
               };
         return (
           <Fragment key={index}>
@@ -519,12 +520,12 @@ function BestVariations({
     At least one, so a `requested` of 0 still has somewhere to say it waits.
   */
   /*
-    The move under the pointer or the focus (CTA-201), and its squares — read
-    off the line as it is now, so a search deepening under a still pointer
-    moves the arrow with the move the token shows. A hover from another
-    position, or with the lines hidden, is no hover at all.
+    The line under the pointer or the focus (CTA-201), and its first move's
+    squares — read off the line as it is now, so a search deepening under a
+    still pointer moves the arrow if the line's first move changes. A hover
+    from another position, or with the lines hidden, is no hover at all.
   */
-  const [hovered, setHovered] = useState<HoveredMove | null>(null);
+  const [hovered, setHovered] = useState<HoveredLine | null>(null);
   const hoveredLine =
     showLines && hovered !== null && hovered.fen === analysis.fen
       ? lines.find((line) => line.multipv === hovered.rank)
@@ -532,7 +533,7 @@ function BestVariations({
   const hoveredSquares =
     hovered === null || hoveredLine === undefined
       ? null
-      : lineMoveSquares(analysis.fen, hoveredLine.san, hovered.index);
+      : lineMoveSquares(analysis.fen, hoveredLine.san, 0);
   const hoveredFrom = hoveredSquares?.from;
   const hoveredTo = hoveredSquares?.to;
 
@@ -694,14 +695,12 @@ function BestVariations({
                   expanded={isExpanded}
                   moves={display.map((san, index) => ({ text: `${prefixes[index]}${san}`, san: line.san[index] }))}
                   onSelectMove={onSelectMove}
-                  onHoverMove={
+                  onHoverLine={
                     onHoverMove === undefined
                       ? undefined
-                      : (index) =>
+                      : (isHovered) =>
                           setHovered(
-                            index === null
-                              ? null
-                              : { fen: analysis.fen, rank: line.multipv, index },
+                            isHovered ? { fen: analysis.fen, rank: line.multipv } : null,
                           )
                   }
                 />

@@ -251,10 +251,10 @@ export type MoveSquares = { from: string; to: string };
 
 /**
  * The squares of a line's move `index` (0-based), by replaying the SANs before
- * it from `fen` (CTA-201) — what the variations box hands the board when a
- * move deep in a line is hovered, so its arrow is drawn on the board as it
- * stands. `null` where the line will not play that far: the line and the
- * position have come apart, as `pvToSan` puts it.
+ * it from `fen` (CTA-201) — the variations box hands the board its line's
+ * first move this way when the line is hovered. `null` where the line will
+ * not play that far: the line and the position have come apart, as `pvToSan`
+ * puts it.
  */
 export const lineMoveSquares = (
   fen: string,

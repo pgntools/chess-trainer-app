@@ -43,8 +43,8 @@ import type { BoardCore } from "./useBoardCore";
  *
  * ## The variations box's hovered move
  *
- * A move hovered or focused in the pinned variations box is drawn as one
- * arrow (CTA-201), on every board: the panel reports its squares
+ * A line hovered or focused in the pinned variations box draws its first
+ * move as one arrow (CTA-201), on every board: the panel reports its squares
  * (`BoardPanel`'s `onHoverVariationMove`, which this shell owns) and the
  * arrow goes **on top of** the screen's own arrows, in the theme's hover
  * colour (`chess.arrowPalettes.classic.hovered`, the colour a hovered

@@ -791,9 +791,10 @@ Renders the shared `views/shared/EngineBoardSquare` (eval bar, captured
 strips, board, promotion picker) and derives its props from the core and the
 modules; the captured-pieces summary is computed here from the core's line.
 The screen's `boardOptions` slot takes arrows, `pieces`, anything else; the
-panel is portalled into the shell's right-hand aside (`RightPanel`). **A move
-hovered or focused in the pinned variations box is drawn as one arrow**
-(CTA-201) — the panel reports its squares (`onHoverVariationMove`, which the
+panel is portalled into the shell's right-hand aside (`RightPanel`). **A line
+hovered or focused in the pinned variations box draws its first move as one
+arrow** (CTA-201) — any move of the line under the pointer or the focus; the
+panel reports the first move's squares (`onHoverVariationMove`, which the
 shell owns: a screen cannot pass it), the shell appends it to the screen's
 arrows in `chess.arrowPalettes.classic.hovered` (standing in for a screen
 arrow on the same squares), and the screen's arrows are back as they were
@@ -834,7 +835,7 @@ BoardShell
 | `showVariations` | `boolean?` | Whether the block shows at all — on by default. While the lines are hidden — by this, or by the block's own header checkbox — the status row's score chip hides with them (CTA-91), on every board; the row itself, and the engine-off dash, stay. |
 | `initialShowLines` | `boolean?` | The seed for the block's own show-lines checkbox (CTA-90) — what a new game starts with; the header checkbox stays the live control. |
 | `searchProgress` | `SearchProgress?` | The engine module's `searchProgress` (CTA-195): the block's depth chip fills toward the target while present. Absent: "Depth N", as before. |
-| `onHoverVariationMove` | `((move: MoveSquares \| null) => void)?` | The block's move under the pointer or the focus (CTA-201) — its two squares, any depth into the line (`lineMoveSquares`), `null` when the hover, the position or the block goes. `BoardShell` passes its own and draws the arrow. Absent: nothing reported. |
+| `onHoverVariationMove` | `((move: MoveSquares \| null) => void)?` | The block's line under the pointer or the focus (CTA-201) — its first move's two squares, whichever of its moves is hovered, `null` when the hover, the position or the block goes. `BoardShell` passes its own and draws the arrow. Absent: nothing reported. |
 | `tabs` | `readonly { id, label, content, disabled? }[]` | One is rendered at a time unless `keepMounted` names it; the screen keeps `activeTab` off a disabled tab. |
 | `keepMounted` | `readonly string[]?` | Tabs that mount on first open and stay mounted, hidden — for a body whose mount is the cost (a 9,000-move list). Showing one again scrolls its current move into view. |
 | `activeTab` / `onTabChange` | | The screen's state. |

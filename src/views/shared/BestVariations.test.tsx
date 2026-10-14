@@ -771,21 +771,22 @@ describe("the depth chip's progress", () => {
   });
 });
 
-describe("a move hovered or focused (CTA-201)", () => {
+describe("a line hovered or focused shows its first move (CTA-201)", () => {
   const analysis: Analysis = {
     fen: DEFAULT_POSITION,
     depth: 18,
     lines: [line(1, 32, "e2e4 e7e5 g1f3 b8c6"), line(2, 18, "d2d4 d7d5")],
   };
 
-  it("reports the hovered move's squares — deep in the line too — and null when the pointer leaves", async () => {
+  it("reports the line's first move whichever of its moves is hovered, and null when the pointer leaves", async () => {
     const user = userEvent.setup();
     const onHoverMove = vi.fn();
     renderVariations(analysis, 2, { onSelectMove: vi.fn(), onHoverMove });
     expect(onHoverMove).not.toHaveBeenCalled();
 
     await user.hover(screen.getByRole("button", { name: "Nc6" }));
-    expect(onHoverMove).toHaveBeenLastCalledWith({ from: "b8", to: "c6" });
+    expect(onHoverMove).toHaveBeenLastCalledWith({ from: "e2", to: "e4" });
+    expect(onHoverMove).not.toHaveBeenCalledWith({ from: "b8", to: "c6" });
 
     await user.hover(screen.getByRole("button", { name: "1. d4" }));
     expect(onHoverMove).toHaveBeenLastCalledWith({ from: "d2", to: "d4" });
@@ -794,17 +795,14 @@ describe("a move hovered or focused (CTA-201)", () => {
     expect(onHoverMove).toHaveBeenLastCalledWith(null);
   });
 
-  it("reports a move the keyboard focuses, and null when focus moves off the lines", async () => {
-    const user = userEvent.setup();
+  it("reports a focused line's first move, and null when focus moves off the lines", async () => {
     const onHoverMove = vi.fn();
     renderVariations(analysis, 2, { onSelectMove: vi.fn(), onHoverMove });
 
-    act(() => screen.getByRole("button", { name: "1. e4" }).focus());
-    expect(onHoverMove).toHaveBeenLastCalledWith({ from: "e2", to: "e4" });
-    await user.tab();
-    expect(onHoverMove).toHaveBeenLastCalledWith({ from: "e7", to: "e5" });
+    act(() => screen.getByRole("button", { name: "d5" }).focus());
+    expect(onHoverMove).toHaveBeenLastCalledWith({ from: "d2", to: "d4" });
 
-    act(() => screen.getByRole("button", { name: "e5" }).blur());
+    act(() => screen.getByRole("button", { name: "d5" }).blur());
     expect(onHoverMove).toHaveBeenLastCalledWith(null);
   });
 
@@ -818,7 +816,7 @@ describe("a move hovered or focused (CTA-201)", () => {
     });
 
     await user.hover(screen.getByTestId("variation-1-move-3"));
-    expect(onHoverMove).toHaveBeenLastCalledWith({ from: "g1", to: "f3" });
+    expect(onHoverMove).toHaveBeenLastCalledWith({ from: "e2", to: "e4" });
   });
 
   it("drops the hover when the position changes, and when the block goes away", async () => {

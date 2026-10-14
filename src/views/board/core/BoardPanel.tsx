@@ -148,8 +148,8 @@ export type BoardPanelProps = {
    */
   searchProgress?: SearchProgress;
   /**
-   * The block's hovered or focused move (CTA-201) — its two squares, `null`
-   * when the hover ends — reported to whoever draws it: `BoardShell` passes
+   * The first move of the block's hovered or focused line (CTA-201) — its
+   * two squares, `null` when the hover ends — reported to whoever draws it: `BoardShell` passes
    * its own, so every board draws the arrow. Absent: nothing is reported.
    */
   onHoverVariationMove?: (move: MoveSquares | null) => void;
