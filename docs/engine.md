@@ -579,14 +579,14 @@ no source; each source is **a plugin**.
 useEngineModule ──▶ withEvalSources(handle) ──┐
                      (the decorator)           ├──▶ askEvalSources / recordInEvalSources ──▶ EVAL_SOURCES (registry.ts)
 jobV2Runner ─────────────────────────────────┘                                              └─ lichess/   (the plugin)
-EngineTab ──▶ EvalSourcesSettings ──▶ each source's SettingsSection (lazy)
+EngineTab ──▶ a tab per source (EvalSourceTab) ──▶ its SettingsSection (lazy)
 ```
 
 ### 10.1 The layer — `src/lib/evalSources/`
 
 | File | What |
 | --- | --- |
-| `types.ts` | `EvalSource`: `id`, `labelKey` (its name in a warning), `storageKeys` (what it keeps — the legal pages must name each; `legalDocuments.test.ts` reads them from the registry), `isEnabled()` (**off, never contacted**), `lookup({ fen, depth, multiPv }, signal)` → `found` (a `PositionResult`: lines at `depth` or deeper, line 1 first, UCI moves as the engine writes them, scores White's view) / `missing` (absent, or shallower) / `unreachable` (no usable answer) — never throws; optional `writesEnabled()` and `record(result, meta, signal)` (write-back), `SettingsSection` (its section of Settings → Engine, a lazy component), `reset()` (tests). |
+| `types.ts` | `EvalSource`: `id`, `labelKey` (its name in a warning), `titleKey` (its name as its tab's title), `storageKeys` (what it keeps — the legal pages must name each; `legalDocuments.test.ts` reads them from the registry), `isEnabled()` (**off, never contacted**), `lookup({ fen, depth, multiPv }, signal)` → `found` (a `PositionResult`: lines at `depth` or deeper, line 1 first, UCI moves as the engine writes them, scores White's view) / `missing` (absent, or shallower) / `unreachable` (no usable answer) — never throws; optional `writesEnabled()` and `record(result, meta, signal)` (write-back), `SettingsSection` (its own inner tab of Settings → Engine, beside Browser and API — `?source=<id>` opens on it; a lazy component), `reset()` (tests). |
 | `registry.ts` | `EVAL_SOURCES` — the order they are asked in. **One line per source.** |
 | `evalSources.ts` | `askEvalSources(query, { signal, skip })` — the enabled sources in order until one is `found`, listing the `unreachable`; `recordInEvalSources(result, meta)` — to every source taking writes, the refusers returned; `reportEvalSourceUnreachable` / `subscribeEvalSourceUnreachable` — a job's warning (the shell's snackbar, naming the source, linking to Settings → Engine); `resetEvalSources()` (the test teardown). |
 | `backOff.ts` | **The boards' back-off**: a source that did not answer a board's lookup (or refused its write) is left alone by every board for `EVAL_SOURCE_BACKOFF_MS` (60 s) — one 5 s timeout a minute, not one per move; a failed read stops writes too. A source's settings changing clears it (`clearEvalSourceBackOff`). |
@@ -646,7 +646,7 @@ not tried again that run.
 | `api.ts` | The client (CTA-193): `lichessEvalFen` (the 4-field FEN, en passant only where a capture is legal), `lookupLichessEval` (`GET /fen?fen=…&best=true`; 404 / 422 `missing`), `checkLichessEvalApi` (`GET /health`, `write_enabled`), `positionResultOfLichessEval` (the API's king-takes-rook castling turned into the engine's), `lichessEvalEntryOf` / `writeLichessEval` (`POST /evals`). 5 s per request. |
 | `settings.ts` | `chessapp.lichessEvalApi` (`localStorage`): `{ enabled, url, write }`, **off by default**; its status (`connectLichessEvalApi`, read never stored); **the migration** — a reader's `chessapp.jobsSettings.evalApi` moved here on the first read, the field taken out of the Jobs settings (which keep any field they do not read until then). A change clears the boards' back-off. |
 | `source.ts` | `lichessEvalSource` — the `EvalSource`. |
-| `LichessEvalApiSection.tsx` | Its section of Settings → Engine (lazy): `EngineServerForm` with its words (`localeKey` `evalSources.lichess`), Connect, the chip, *Enable evaluations Write API* and *Test connection*. |
+| `LichessEvalApiSection.tsx` | Its tab of Settings → Engine, *Lichess evaluation API* (lazy): `EngineServerForm` with its words (`localeKey` `evalSources.lichess`), Connect, the chip, *Enable evaluations Write API* and *Test connection*. |
 
 Locale keys: `evalSources.lichess.*` (the plugin's), `evalSources.*` (the
 layer's warnings), `settings.engine.evalSources.intro` (the tab's line).
@@ -656,7 +656,7 @@ screen.
 ### 10.4 Adding or removing a source
 
 - **Adding**: a folder beside `lichess/` with its `EvalSource` (and, if it has
-  settings, its `SettingsSection` — lazy — and its keys under
+  settings, its `SettingsSection` — lazy, its own tab, titled by `titleKey` — and its keys under
   `evalSources.<id>`), and **one line in `registry.ts`**. Its stored keys go in
   `storageKeys` and in both legal pages, in both languages. Nothing in the
   engine layer, `useEngineModule`, the boards, the runner or Settings → Engine

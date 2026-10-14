@@ -15,11 +15,12 @@ import {
  * what the layer knows of it: on or off (`settings.ts`), a lookup
  * (`GET /fen`, its deepest eval when as deep as asked, its lines up to the
  * asked `MultiPV`), a write (`POST /evals`, while writing is ticked) and its
- * section of Settings → Engine.
+ * tab of Settings → Engine.
  */
 export const lichessEvalSource: EvalSource = {
   id: LICHESS_EVAL_SOURCE_ID,
   labelKey: "evalSources.lichess.name",
+  titleKey: "evalSources.lichess.title",
   storageKeys: [LICHESS_EVAL_API_STORAGE_KEY],
   isEnabled: () => lichessEvalApiUrl() !== undefined,
   async lookup({ fen, depth, multiPv }, signal) {

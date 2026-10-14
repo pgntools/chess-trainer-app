@@ -22,7 +22,7 @@ app's data takes, CTA-94), **Appearance** (the theme, CTA-107) and **Engine**
 | --- | --- | --- |
 | Route | `routes.tsx` — `/settings` and `/settings/:tab` | Both render `SettingsMain.tsx`; `/settings` and an unknown tab redirect to the first tab (Export). |
 | Screen | `views/settings/SettingsScreen.tsx` | The title, a tab strip (each `Tab` a `RouterLink` to `/settings/<id>`), the active tab's content scrolling under it. |
-| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (Browser / API inner tabs: the `EnginePicker` and `EngineServerForm` blocks; under them `EvalSourcesSettings.tsx`, every eval source's section — CTA-196; in its right-hand panel `EnginePresetsSection.tsx`, the `EnginePresetForm` block — CTA-179), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
+| Tabs | `SETTINGS_TABS` in `SettingsScreen.tsx` (the strip `PanelTabs`, its tabs links) | `export` → `ExportTab.tsx` (the `ExportCategoriesForm` block), `import` → `ImportTab.tsx` (the `ImportDialog`, `IncompatibleImportDialog` and `ImportReport` blocks), `storage` → `StorageTab.tsx` (the `StorageTable` block), `appearance` → `AppearanceTab.tsx`, `engine` → `EngineTab.tsx` (Browser / API inner tabs: the `EnginePicker` and `EngineServerForm` blocks; beside them a tab per eval source, `EvalSourceTab.tsx` — CTA-196; in its right-hand panel `EnginePresetsSection.tsx`, the `EnginePresetForm` block — CTA-179), `support` → `SupportTab.tsx` (the logo, a line and a numbered, emoji-led list: a GitHub issue, an email). The blocks are in `src/blocks/` (CTA-109, [`docs/design/migration.md`](../../docs/design/migration.md)). |
 | Nav | `navFolders()` — `settings` (`nav.folders.settings`, `pinToBottom`); `navItems()` — one entry per tab (`nav.settingsExport`, `nav.settingsImport`, `nav.settingsStorage`, `nav.settingsAppearance`, `nav.settingsEngine`, `nav.settingsSupport`) | A folder, **not** `singleEntry`, so a tab is one more entry in it. Pinned to the sidebar's foot, under a divider, apart from the screens (`Sidebar.tsx`). |
 | Locale | `settings.*` in `en.ts` / `he.ts` | `settings.title`, `settings.tabs.<id>`, then each tab's own block (`settings.export.*`, `settings.import.*`, `settings.storage.*`, `settings.appearance.*`, `settings.engine.*` — the presets' section `settings.engine.presets.*`). The themes' own names are `appearance.themes.<id>`; the picker's words are `enginePicker.*`, the presets form's `enginePresets.*`. |
 
@@ -135,9 +135,11 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   `localStorage` `chessapp.engineSettings` (`lib/engineSearchSettings.ts`), a
   preference like the choice and likewise not in the zip
   ([`docs/engine.md`](../../docs/engine.md) §5.2).
-- **Two inner tabs say where the engine runs** (`PanelTabs`, the tab's own
-  state — it opens on API when the stored choice is a server engine):
-  **Browser**, the page's own builds above; **API**, the engine server below.
+- **Inner tabs** (`PanelTabs`, the tab's own state — it opens on API when
+  the stored choice is a server engine, on an eval source's when
+  `?source=<id>` names one): **Browser**, the page's own builds above;
+  **API**, the engine server below; then **a tab per eval source** (below —
+  today *Lichess evaluation API*).
 - **The engine server on this computer** — the `EngineServerForm` block on
   the API tab ([`docs/engine.md`](../../docs/engine.md) §8): native Stockfish
   binaries served by `yarn api:start` (`server/engine-api/`). **Off by
@@ -155,10 +157,11 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   under it** — a second `EnginePicker` ("Engines on this server") on the same
   choice; the Browser tab's list keeps the page's builds.
 - **The eval sources** (CTA-196, [`docs/engine.md`](../../docs/engine.md)
-  §10) — under the inner tabs, whichever is open (`EvalSourcesSettings.tsx`):
-  a line saying what they are, then **each registered source's own section**
-  (`EvalSource.SettingsSection`, lazy, in registry order — the tab names no
-  source). Today one: **the lichess evaluation API**
+  §10) — **an inner tab per registered source** with settings, after Browser
+  and API, titled by its `titleKey` (`EvalSourceTab.tsx`): a line saying what
+  they are, then the source's own section (`EvalSource.SettingsSection`, lazy,
+  in registry order — the Engine tab names no source). `?source=<id>` opens
+  the tab on it — where the jobs' warning and the Jobs settings' link go. Today one: **the lichess evaluation API**
   (`lib/evalSources/lichess/LichessEvalApiSection.tsx`, moved here from the
   Jobs settings, where CTA-193 put it) — `EngineServerForm` with its words
   (`evalSources.lichess`): **off by default, and while off the app never

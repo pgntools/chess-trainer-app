@@ -385,7 +385,7 @@ describe("the Jobs settings (CTA-193)", () => {
     expect(useDefault).not.toBeChecked();
     // The lichess evaluation API is the app's now: no control of it here, only the way to it.
     expect(within(settings).queryByRole("switch", { name: /lichess evaluation api/i })).toBeNull();
-    expect(within(settings).getByRole("link", { name: "Settings → Engine" })).toHaveAttribute("href", "/settings/engine");
+    expect(within(settings).getByRole("link", { name: "Settings → Engine" })).toHaveAttribute("href", "/settings/engine?source=lichess");
     expect(fetchMock).not.toHaveBeenCalled();
 
     // A default: the board's engine and its preset, then another preset picked.

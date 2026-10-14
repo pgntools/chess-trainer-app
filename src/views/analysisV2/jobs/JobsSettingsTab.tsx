@@ -13,13 +13,19 @@ import {
   subscribeEnginePresets,
 } from "../../../lib/enginePresetStore";
 import { describeEngines, resolveEngine } from "../../../lib/engines";
+import { EVAL_SOURCES } from "../../../lib/evalSources";
 import { storeJobsDefaultPreset } from "../../../lib/jobsSettings";
 import { useEngineChoice } from "../../shared/useEngineChoice";
 import { useSelectedEnginePreset } from "../../shared/useSelectedEnginePreset";
 import { defaultPresetInEffect, useJobsSettings } from "./useJobsSettings";
 
-/** Settings → Engine — where the eval sources a job asks first are set, for the whole app (CTA-196). */
-const ENGINE_SETTINGS_PATH = "/settings/engine";
+/**
+ * Settings → Engine — where the eval sources a job asks first are set, for
+ * the whole app (CTA-196): on the first source's own tab, where one has one.
+ */
+const firstSourceTab = EVAL_SOURCES.find((source) => source.SettingsSection !== undefined);
+const ENGINE_SETTINGS_PATH =
+  firstSourceTab === undefined ? "/settings/engine" : `/settings/engine?source=${encodeURIComponent(firstSourceTab.id)}`;
 
 /**
  * **The Jobs settings** (CTA-193) — the Jobs V2 view's Settings tab

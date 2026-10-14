@@ -65,7 +65,7 @@ export type EngineServerFormProps = {
    * `address`, `addressHelp`, `addressInvalid`, `connect`, `retry`,
    * `indicator.*`, `status.connecting`, `status.checkedAt`, `status.<reason>`).
    * Absent: `settings.engine.server` — the engine server's. An eval source's
-   * section of Settings → Engine (CTA-196 — the lichess evaluation API's,
+   * tab of Settings → Engine (CTA-196 — the lichess evaluation API's,
    * `evalSources.lichess`) is the other.
    */
   localeKey?: string;

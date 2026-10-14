@@ -45,6 +45,8 @@ export interface EvalSource {
   readonly id: string;
   /** The catalog key of its name, as a warning says it ("The lichess evaluation API"). */
   readonly labelKey: string;
+  /** The catalog key of its name as a title — its tab of Settings → Engine ("Lichess evaluation API"). */
+  readonly titleKey: string;
   /**
    * What it keeps in this browser (`localStorage` keys, IndexedDB names) —
    * the legal pages must name each (`legalDocuments.test.ts` reads them here).
@@ -59,9 +61,11 @@ export interface EvalSource {
   /** Send it what an engine found — `true` once it took it, `false` for no usable answer. Never throws. */
   record?(result: PositionResult, meta: EvalRecordMeta, signal?: AbortSignal): Promise<boolean>;
   /**
-   * **Its settings**, a section of Settings → Engine (`views/settings/EvalSourcesSettings.tsx`
-   * renders every source's, in registry order) — a lazy component, so the
-   * runner and the boards never load it. Absent: nothing shown.
+   * **Its settings** — its own inner tab of Settings → Engine, beside Browser
+   * and API, named by {@link titleKey} (`views/settings/EngineTab.tsx` adds a
+   * tab per source that has them, in registry order; `?source=<id>` opens
+   * it) — a lazy component, so the runner and the boards never load it.
+   * Absent: no tab.
    */
   readonly SettingsSection?: ComponentType<{ testId: string }>;
   /** **For tests**: forget this visit's state (a status, a cache) — the teardown's, beside clearing `localStorage`. */

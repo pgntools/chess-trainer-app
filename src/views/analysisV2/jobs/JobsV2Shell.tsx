@@ -44,7 +44,8 @@ export function JobV2Runner() {
   useEffect(
     () =>
       subscribeEvalSourceUnreachable(({ name, kind, source }) => {
-        const path = ENGINE_SETTINGS_PATH;
+        // Settings → Engine, on the source's own tab.
+        const path = `${ENGINE_SETTINGS_PATH}?source=${encodeURIComponent(source.id)}`;
         show({
           severity: "warning",
           duration: 10_000,

@@ -3,7 +3,7 @@ import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link as RouterLink } from "react-router";
+import { Link as RouterLink, useSearchParams } from "react-router";
 
 import {
   EngineServerForm,
@@ -22,11 +22,12 @@ import {
 } from "../../lib/engineServer";
 import { readStoredEngineId } from "../../lib/engineChoice";
 import { HOSTED_ENGINE_PREFIX, describeEngines } from "../../lib/engines";
+import { EVAL_SOURCES } from "../../lib/evalSources";
 import { useEngineChoice } from "../shared/useEngineChoice";
 import { RightPanel } from "../main/rightPanel";
 import { useEngineServer } from "../shared/useEngineServer";
 import EnginePresetsSection from "./EnginePresetsSection";
-import EvalSourcesSettings from "./EvalSourcesSettings";
+import EvalSourceTab from "./EvalSourceTab";
 
 /** How long Connect's spinner shows at least — a local server answers in milliseconds, too fast to see. */
 const CONNECT_MIN_CHECKING_MS = 400;
@@ -38,8 +39,14 @@ const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, 
 /** The Blog's guide to the engine server — `articles/guides/local-engine.mdx`. */
 export const LOCAL_ENGINE_GUIDE_PATH = "/blog/guides/local-engine";
 
-/** The tab's two inner tabs: the page's own builds, and the engine server's. */
-type EngineKindTab = "browser" | "api";
+/**
+ * The tab's inner tabs: the page's own builds, the engine server's — and one
+ * per eval source with settings (CTA-196), `source-<id>`.
+ */
+type EngineKindTab = "browser" | "api" | `source-${string}`;
+
+/** The eval sources that have a tab, in registry order. */
+const SOURCE_TABS = EVAL_SOURCES.filter((source) => source.SettingsSection !== undefined);
 
 /** The server's status as the form shows it — absent while it is off. */
 const formStatusOf = (status: EngineServerStatus): EngineServerFormStatus | undefined => {
@@ -67,15 +74,17 @@ const formStatusOf = (status: EngineServerStatus): EngineServerFormStatus | unde
  * (`EngineServerForm`, `lib/engineServer.ts`, §8 of the engine doc): off by
  * default; turned on, its address is kept and checked, and while it answers
  * its engines are listed under it — a second `EnginePicker` on the same
- * choice. The tab opens on API when the stored choice is a server engine.
+ * choice. The tab opens on API when the stored choice is a server engine
+ * (an eval source's tab when the address names one, `?source=<id>`).
  * The address being typed is this screen's until Connect (or Enter) keeps and
  * checks it — and **every press is answered on the button**: a spinner for at
  * least {@link CONNECT_MIN_CHECKING_MS}, then a check mark or a warning for
  * {@link CONNECT_FEEDBACK_MS}.
  *
- * Under both, **the eval sources** (`EvalSourcesSettings`, CTA-196): each
- * registered source's own section — the lichess evaluation API's — which
- * every analysis search asks before its engine, whichever engine runs.
+ * Beside them, **a tab per eval source** (`EvalSourceTab`, CTA-196) — the
+ * lichess evaluation API's — which every analysis search asks before its
+ * engine, whichever engine runs; `?source=<id>` opens on it (where the jobs'
+ * warning and the Jobs settings link to).
  *
  * In the right-hand panel, **the chosen engine's options, kept in presets**
  * (`EnginePresetsSection`, CTA-179): every option it declares, editable in
@@ -120,10 +129,17 @@ function EngineTab() {
     if (press.current === mine) setConnectFeedback("idle");
   };
 
-  // Which inner tab: the API's while the stored choice is an engine-server engine (it is where that engine is listed).
-  const [kind, setKind] = useState<EngineKindTab>(() =>
-    readStoredEngineId()?.startsWith(HOSTED_ENGINE_PREFIX) ? "api" : "browser",
-  );
+  /*
+    Which inner tab: an eval source's when the address names one (`?source=`,
+    read once — the jobs' warning links there); else the API's while the stored
+    choice is an engine-server engine (it is where that engine is listed).
+  */
+  const [searchParams] = useSearchParams();
+  const [kind, setKind] = useState<EngineKindTab>(() => {
+    const asked = SOURCE_TABS.find((source) => source.id === searchParams.get("source"));
+    if (asked !== undefined) return `source-${asked.id}`;
+    return readStoredEngineId()?.startsWith(HOSTED_ENGINE_PREFIX) ? "api" : "browser";
+  });
   // The chosen engine-server engine's own description, as the server sent it — the panel's table.
   const chosenOnServer =
     status.state === "online"
@@ -140,6 +156,7 @@ function EngineTab() {
           tabs={[
             { id: "browser", label: t("settings.engine.tabs.browser") },
             { id: "api", label: t("settings.engine.tabs.api") },
+            ...SOURCE_TABS.map((source) => ({ id: `source-${source.id}`, label: t(source.titleKey) })),
           ]}
           value={kind}
           onChange={(id) => setKind(id as EngineKindTab)}
@@ -184,7 +201,14 @@ function EngineTab() {
             </EngineServerForm>
           </Box>
         )}
-        <EvalSourcesSettings />
+        {SOURCE_TABS.map(
+          (source) =>
+            kind === `source-${source.id}` && (
+              <Box key={source.id} {...tabPanelProps("engine-kind", kind)}>
+                <EvalSourceTab source={source} />
+              </Box>
+            ),
+        )}
       </Box>
 
       <RightPanel>

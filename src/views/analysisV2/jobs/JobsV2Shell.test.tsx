@@ -183,7 +183,7 @@ describe("the shell's warning when an eval source did not answer (CTA-193, CTA-1
     );
     await expectNoAxeViolations(baseElement);
     await user.click(screen.getByRole("link", { name: "Engine settings" }));
-    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/settings/engine"));
+    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/settings/engine?source=lichess"));
   });
 
   it("says when a source did not take the engine's evaluations — the job goes on without sending them", async () => {

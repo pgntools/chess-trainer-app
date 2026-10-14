@@ -55,8 +55,8 @@ const TEST_ICON: Record<EngineServerConnectFeedback, ReactNode> = {
 /**
  * **The lichess evaluation API in Settings → Engine** (CTA-193; moved here
  * from the Jobs settings and made the app's in CTA-196) — the eval source's
- * own section, rendered from the registry
- * (`views/settings/EvalSourcesSettings.tsx`) over `settings.ts`:
+ * own section, rendered from the registry as its own inner tab, *Lichess
+ * evaluation API* (`views/settings/EvalSourceTab.tsx`), over `settings.ts`:
  *
  * - **the API** — `EngineServerForm` with its words: off by default, and
  *   while off the app never contacts it; on, its address, kept and checked by

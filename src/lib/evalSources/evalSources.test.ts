@@ -10,6 +10,7 @@ const RESULT = { fen: FEN, lines: [{ score: { kind: "cp" as const, value: 31 }, 
 const source = (id: string, lookup: EvalLookup | Error, { enabled = true, writes = false, takes = true } = {}): EvalSource => ({
   id,
   labelKey: `test.${id}`,
+  titleKey: `test.${id}`,
   storageKeys: [],
   isEnabled: () => enabled,
   lookup: vi.fn(async () => {

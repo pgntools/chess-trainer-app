@@ -17,6 +17,7 @@ const stubSource = ({ enabled = true, writes = false, takes = true } = {}) => {
   const source: EvalSource = {
     id: "stub",
     labelKey: "evalSources.lichess.name",
+    titleKey: "evalSources.lichess.title",
     storageKeys: [],
     isEnabled: () => enabled,
     lookup: (query, signal) => new Promise((resolve) => asked.push({ query, signal, answer: resolve })),
