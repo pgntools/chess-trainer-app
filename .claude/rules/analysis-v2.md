@@ -377,7 +377,7 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
   screen), so the Graph follows it and Display sets it. Back drops
   `?view=` and keeps the rest of the context. A reload keeps the screen.
 
-### 3.4 The next-move arrows — the Display tab's Arrows (CTA-98, CTA-168, CTA-180)
+### 3.4 The next-move arrows — the Display tab's Arrows (CTA-98, CTA-168, CTA-180, CTA-197)
 
 The Case board's arrows, kept with the Case as its `display` (a new Case:
 on, None, Classic, move marks on); every other board keeps the classic,
@@ -392,6 +392,7 @@ arrows' absolute scale (`chanceArrowWidth` over 0–1):
 | **Games** | `games:N` / `[%games N]` (`lib/gamesTag.ts`) | `N / Σ N` over the tagged moves |
 | **Play chance** | `prc:N` / `[%prc N]` | the marks scaled to 100% over the tagged moves |
 | **Lines ahead** | nothing (`linesWithin`, 8 plies) | each move's share — always offered |
+| **Variations** (CTA-197) | the engine's listed lines (MultiPV), not the tree — each line's first move, in the tree or not (`engineLineWeights`) | **Evaluation's rule** on the lines' scores, as the side to move sees them: within 1 cp of the best line widest, in the mainline colour; the rest thinner by loss to a hairline at 300 cp, in the side-line colour; a mate for the mover best, against it a hairline — always offered |
 
 - **A tag's radio is disabled while no move in the tree carries it**
   (`arrowWidthSourcesIn`); a choice whose tag is gone is kept, shown checked
@@ -399,10 +400,20 @@ arrows' absolute scale (`chanceArrowWidth` over 0–1):
   a branch where some moves carry the tag the untagged ones are gray, half
   transparent, a fixed modest width (`UNTAGGED_ARROW_CHANCE`); where none do,
   the ordinary palette arrows.
+- **Variations draws the engine, not the tree**: while the engine is on and
+  its lines are for the position on screen (`Analysis.fen === core.fen`, so
+  a stale position's are never drawn), `CaseWorkspace` hands their weighted
+  first moves to the explorer as `arrows.engineMoves` — drawn in the
+  overlay (`${testId}-engine-arrows-overlay`) in place of the tree's
+  continuations, following each new depth and position. Off, or before its
+  first lines here, the choice is kept and saved and the board draws as None,
+  the same *drawn as None* note saying the engine is off or has not reported
+  (`ArrowSettingsFields`' `engineLines`); the radio is never disabled.
 - **Colours** (`NEXT_MOVE_ARROW_PALETTES`, `nextMoveArrows.ts`): **Classic**
   (every board's), **Lichess** (its brushes), **Colour-blind safe**
-  (Okabe–Ito) — mainline / side line / hovered; under **Evaluation** the best
-  group takes the mainline colour and every worse move the side-line one.
+  (Okabe–Ito) — mainline / side line / hovered; under **Evaluation** and
+  **Variations** the best group takes the mainline colour and every worse
+  move the side-line one.
 - **Move marks on the board** (CTA-168): the move on screen's mark drawn as a
   badge on its square ([`pgn-annotations.md`](./pgn-annotations.md) §4); off,
   none (the move list shows the glyphs either way).

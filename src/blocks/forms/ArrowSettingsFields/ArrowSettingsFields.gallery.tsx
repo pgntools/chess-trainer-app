@@ -9,7 +9,7 @@ import { EVAL_AND_GAMES, UNTAGGED } from "./fixtures";
 
 type State = { source: ArrowWidthSource; palette: ArrowPaletteId };
 
-const demo = (initial: State, available?: ReadonlySet<ArrowWidthSource>) => (
+const demo = (initial: State, available?: ReadonlySet<ArrowWidthSource>, engineLines?: boolean) => (
   <WithState<State> initial={initial}>
     {(state, set) => (
       <Box sx={{ width: 340 }}>
@@ -17,6 +17,7 @@ const demo = (initial: State, available?: ReadonlySet<ArrowWidthSource>) => (
           widthSource={state.source}
           onWidthSourceChange={(source) => set((before) => ({ ...before, source }))}
           available={available}
+          engineLines={engineLines}
           palette={state.palette}
           onPaletteChange={(palette) => set((before) => ({ ...before, palette }))}
           testId="gallery-arrows"
@@ -33,6 +34,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "A record's settings — every source offered", render: () => demo({ source: "none", palette: "classic" }) },
     { name: "On the board — play chances off (no move carries them)", render: () => demo({ source: "eval", palette: "lichess" }, EVAL_AND_GAMES) },
     { name: "A chosen source the tree has lost — drawn as None", render: () => demo({ source: "games", palette: "colorblind" }, UNTAGGED) },
+    { name: "Variations with the engine off — drawn as None", render: () => demo({ source: "variations", palette: "classic" }, UNTAGGED, false) },
   ],
 };
 
