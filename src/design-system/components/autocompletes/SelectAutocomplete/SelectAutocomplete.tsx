@@ -18,6 +18,13 @@ export type SelectAutocompleteProps = {
   optionDir?: "ltr" | "auto";
   /** Choosing nothing is allowed (the default): a clear button. */
   clearable?: boolean;
+  /**
+   * Whether an option answers what was typed (CTA-199) — `text` as typed,
+   * `""` for nothing. Absent: its words hold the text, ignoring case (MUI's own).
+   */
+  matches?: (option: AutocompleteOption, text: string) => boolean;
+  /** At most this many options shown at once — a list of thousands narrowed by typing (CTA-199). Absent: every match. */
+  maxShown?: number;
   disabled?: boolean;
   fullWidth?: boolean;
   /** On the root; the text input is `<testId>-input`. */
@@ -28,7 +35,8 @@ export type SelectAutocompleteProps = {
  * **One choice out of many, typed to find** (CTA-108) — the select-style
  * pickers over long lists (every opening, every event): single, typed to
  * filter, grouped when the options carry a `group`. A value no option holds
- * reads as none.
+ * reads as none. A list of thousands takes `maxShown` (and `matches`, for a
+ * match its words alone cannot make — an id pasted).
  */
 function SelectAutocomplete({
   label,
@@ -38,6 +46,8 @@ function SelectAutocomplete({
   placeholder,
   optionDir = "auto",
   clearable = true,
+  matches,
+  maxShown,
   disabled = false,
   fullWidth = true,
   testId,
@@ -55,6 +65,22 @@ function SelectAutocomplete({
       fullWidth={fullWidth}
       groupBy={grouped ? (option) => option.group ?? "" : undefined}
       isOptionEqualToValue={(option, current) => option.value === current.value}
+      // Keyed by value: two options may share their words.
+      getOptionKey={(option) => option.value}
+      filterOptions={
+        matches === undefined && maxShown === undefined
+          ? undefined
+          : (all, { inputValue }) => {
+              const answers =
+                matches ?? ((option: AutocompleteOption, text: string) => option.label.toLocaleLowerCase().includes(text.trim().toLocaleLowerCase()));
+              const kept: AutocompleteOption[] = [];
+              for (const option of all) {
+                if (maxShown !== undefined && kept.length >= maxShown) break;
+                if (answers(option, inputValue)) kept.push(option);
+              }
+              return kept;
+            }
+      }
       getOptionLabel={(option) => option.label}
       data-testid={testId}
       renderOption={({ key, ...props }, option) => (

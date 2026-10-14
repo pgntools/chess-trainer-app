@@ -3059,7 +3059,10 @@ const en = {
         title: "Link a case",
         submit: "Link",
         project: "Project",
+        /** The Project field cleared — Cases from every Project (CTA-199). */
+        anyProject: "Any project",
         cases: "Case",
+        casesPlaceholder: "Type its name, or paste its id or address",
         none: "There is no other case to link to.",
       },
     },

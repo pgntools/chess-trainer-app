@@ -804,10 +804,15 @@ Project).
   *Links to* and *Linked from*, each Case a link to its board with its
   Project's name, and **Unlink** (`unlinkAnalysisCases`); none, "No linked
   cases yet". A refused Unlink is said under them.
-- **Link a case** opens `CasePickerDialog`: a Project (the Case's own first;
-  Projects with nothing to pick left out), then one of its Cases — every Case
-  but this one and those it links to already — and **Link**
-  (`linkAnalysisCases`, this Case → that one). A refusal stays in the dialog.
+- **Link a case** (the Linked cases tab) opens `CasePickerDialog`, two
+  autocompletes built for hundreds of Projects and thousands of Cases
+  (CTA-199): a Project typed to find (the Case's own first; Projects with
+  nothing to pick left out; cleared, any Project), then a Case typed to find
+  among its Cases — every Project's, grouped, with none chosen — or **by its
+  id, or its address pasted, in any Project** (which becomes the chosen one);
+  at most 50 listed at once. Every Case but this one and those it links to
+  already; **Link** (`linkAnalysisCases`, this Case → that one). A refusal
+  stays in the dialog.
 - Export / Import carry them (§5).
 
 CTA-188 first linked **Projects** (a `projectLinks` store, the Project

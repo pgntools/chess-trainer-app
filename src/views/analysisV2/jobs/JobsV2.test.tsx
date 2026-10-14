@@ -260,11 +260,18 @@ describe("a Case's links, on its Info tab (CTA-188)", () => {
     // Link a case: its own Project first, then another's.
     await user.click(screen.getByRole("button", { name: "Link a case" }));
     const picker = await screen.findByRole("dialog", { name: "Link a case" });
-    expect(within(picker).getByRole("combobox", { name: "Project" })).toHaveTextContent("Club");
-    expect(within(within(picker).getByRole("list", { name: "Case" })).getByRole("button", { name: "Opening trap" })).toBeInTheDocument();
-    await user.click(within(picker).getByRole("combobox", { name: "Project" }));
+    expect(within(picker).getByRole("combobox", { name: "Project" })).toHaveValue("Club");
+    const caseField = within(picker).getByRole("combobox", { name: "Case" });
+    await user.click(caseField);
+    expect(screen.getByRole("option", { name: "Opening trap" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    // Another Project's Case, typed to find (CTA-199).
+    const projectField = within(picker).getByRole("combobox", { name: "Project" });
+    await user.clear(projectField);
+    await user.type(projectField, "Endg");
     await user.click(screen.getByRole("option", { name: "Endgames" }));
-    await user.click(within(within(picker).getByRole("list", { name: "Case" })).getByRole("button", { name: "Rook ending" }));
+    await user.click(caseField);
+    await user.click(screen.getByRole("option", { name: "Rook ending" }));
     await user.click(within(picker).getByRole("button", { name: "Link" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Link a case" })).toBeNull());
     expect((await loadCaseLinks()).map(({ fromId, toId }) => [fromId, toId])).toEqual([
