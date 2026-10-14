@@ -58,7 +58,7 @@ const he: typeof en = {
       blog: "בלוג",
       settings: "הגדרות",
       development: "פיתוח",
-      analysisV2: "ניתוח V2",
+      analysisV2: "ניתוח",
       mdxEditor: "עורך MDX",
     },
   },
@@ -2558,7 +2558,6 @@ const he: typeof en = {
     },
   },
   footer: {
-    source: "מקור",
     privacy: "מדיניות פרטיות",
     cookies: "הודעת עוגיות",
   },

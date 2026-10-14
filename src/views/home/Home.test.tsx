@@ -126,7 +126,7 @@ describe("the front page's nav cards — the landing page as it was", () => {
     await screen.findByTestId("home-nav-cards");
 
     // The sidebar's Analysis V2 folder: its Projects browser and Jobs V2, under the folder's own heading.
-    expect(within(screen.getByTestId("home-nav-cards")).getByRole("heading", { level: 3, name: "Analysis V2" })).toBeInTheDocument();
+    expect(within(screen.getByTestId("home-nav-cards")).getByRole("heading", { level: 3, name: "Analysis" })).toBeInTheDocument();
     const analysis = within(screen.getByTestId("home-section-analysis-v2")).getAllByRole("link");
     expect(analysis.map((link) => link.getAttribute("href"))).toEqual(["/analysis", "/analysis/jobs"]);
     expect(analysis[0]).toHaveTextContent("Projects");

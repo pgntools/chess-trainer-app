@@ -91,7 +91,7 @@ const en = {
       settings: "Settings",
       /** The dev-only Development section (`chessboard.md` §9.5). */
       development: "Development",
-      analysisV2: "Analysis V2",
+      analysisV2: "Analysis",
       /** The MDX editor's own folder (CTA-137) — only under `yarn mdx-editor:start`. */
       mdxEditor: "MDX editor",
     },
@@ -3098,8 +3098,6 @@ const en = {
     },
   },
   footer: {
-    /** Label on the link out to the project's source repository. */
-    source: "Source",
     /** The legal pages' links (CTA-159). */
     privacy: "Privacy Policy",
     cookies: "Cookies Notice",
