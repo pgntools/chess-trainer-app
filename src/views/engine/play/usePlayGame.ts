@@ -277,6 +277,8 @@ export const usePlayGame = (
     ),
     onUciOptionsReady,
     onBestMove: play.onBestMove,
+    // The engine chooses its move in a game: it always searches itself, never an eval source (CTA-196).
+    evalSources: false,
   });
   usePublishBoardEngineState(boardEngineStateOf(engineOn, engine.searching));
 

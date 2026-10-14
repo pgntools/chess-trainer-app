@@ -12,8 +12,8 @@ import { IconAction } from "../../../design-system/components/toolbars";
 import { formatEngineCount } from "../../../lib/engineAnalysis";
 import { jobProgress, type JobStatus, type JobV2 } from "../../../lib/jobsV2";
 import { startJobV2Runner } from "../../../lib/jobV2Runner";
-import { subscribeLichessEvalUnreachable } from "../../../lib/jobsSettings";
-import { jobsV2Path, jobsV2SettingsPath } from "../paths";
+import { subscribeEvalSourceUnreachable } from "../../../lib/evalSources";
+import { jobsV2Path } from "../paths";
 import { useJobsV2 } from "../useAnalysisProjects";
 import { liveOfJob, useJobV2Live } from "./useJobV2Live";
 
@@ -27,10 +27,11 @@ import { liveOfJob, useJobV2Live } from "./useJobV2Live";
  * **The Jobs V2 runner, mounted once** — started from an effect (never during
  * render, so the pre-render starts none) and never stopped by one: a
  * StrictMode remount must not leave a job half run. It draws nothing — but
- * for **a warning when the lichess evaluation API did not answer** during a
- * job's run (CTA-193, once per run — the job goes on with the engine), or
- * **did not take the engine's evals** (writing on — the job goes on without
- * sending them), whose button opens the Jobs settings, where it is turned off.
+ * for **a warning when an eval source** (CTA-193's lichess evaluation API,
+ * `lib/evalSources/` since CTA-196) **did not answer** during a job's run
+ * (once per run — the job goes on with the engine), or **did not take the
+ * engine's evals** (writing on — the job goes on without sending them), naming
+ * the source, whose button opens Settings → Engine, where it is turned off.
  */
 export function JobV2Runner() {
   const { t } = useTranslation();
@@ -42,17 +43,18 @@ export function JobV2Runner() {
   }, []);
   useEffect(
     () =>
-      subscribeLichessEvalUnreachable(({ name, kind }) => {
-        const path = jobsV2SettingsPath();
+      subscribeEvalSourceUnreachable(({ name, kind, source }) => {
+        const path = ENGINE_SETTINGS_PATH;
         show({
           severity: "warning",
           duration: 10_000,
           testId: "analysis-v2-jobs-eval-api-unreachable",
-          message: t(kind === "write" ? "analysisV2.jobs.settings.writeRefused" : "analysisV2.jobs.settings.unreachable", {
+          message: t(kind === "write" ? "evalSources.writeRefused" : "evalSources.unreachable", {
+            source: t(source.labelKey),
             name: name || t("jobs.untitled"),
           }),
           action: {
-            label: t("analysisV2.jobs.settings.open"),
+            label: t("evalSources.open"),
             onClick: () => navigate(path),
             href: base === "/" ? path : `${base}${path}`,
             testId: "analysis-v2-jobs-eval-api-settings",
@@ -63,6 +65,9 @@ export function JobV2Runner() {
   );
   return null;
 }
+
+/** Settings → Engine — where the eval sources are turned off. */
+const ENGINE_SETTINGS_PATH = "/settings/engine";
 
 const ANNOUNCED: Partial<Record<JobStatus, "started" | "paused" | "done" | "failed" | "cancelled">> = {
   running: "started",

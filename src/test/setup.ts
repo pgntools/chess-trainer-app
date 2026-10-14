@@ -135,8 +135,9 @@ afterEach(async () => {
   // delete its Projects', their Cases', their Jobs V2 and their links
   // (CTA-188) — so none reaches the next test.
   const stores = await recordStores();
-  // The Jobs settings (CTA-193) are a preference too, and the eval API's status goes with them.
+  // The Jobs settings (CTA-193) are a preference too; so are the eval sources' (CTA-196), their status and the boards' back-off with them.
   (await import("../lib/jobsSettings")).resetJobsSettings();
+  (await import("../lib/evalSources")).resetEvalSources();
   for (const stop of stores.stop) stop();
   for (let round = 0; round < 5; round += 1) {
     await Promise.all(stores.settled.map((settled) => settled()));

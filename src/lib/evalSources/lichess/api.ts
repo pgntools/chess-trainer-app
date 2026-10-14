@@ -1,13 +1,14 @@
 import { Chess, type Square } from "chess.js";
 
-import type { PositionLine, PositionResult } from "./computerAnalysis";
-import type { Score } from "./engineAnalysis";
+import type { PositionLine, PositionResult } from "../../computerAnalysis";
+import type { Score } from "../../engineAnalysis";
 
 /**
- * **The lichess evaluation database API** (CTA-193) — a FastAPI server over
- * lichess's Stockfish-evaluated positions (the `lichess-eval-db-api`
- * repository), which a Jobs V2 job asks about each position before searching
- * it with the engine. This module is the client, pure but for `fetch`:
+ * **The lichess evaluation database API** (CTA-193; application-wide, an eval
+ * source, since CTA-196) — a FastAPI server over lichess's Stockfish-evaluated
+ * positions (the `lichess-eval-db-api` repository), which every analysis
+ * search asks about its position before the engine searches it. This module
+ * is the client, pure but for `fetch`:
  *
  * - **`GET /fen?fen=<4-field FEN>&best=true`** — the deepest eval of a
  *   position, its lines White's point of view (`cp` or `mate`, mate signed by
@@ -21,7 +22,7 @@ import type { Score } from "./engineAnalysis";
  *   holds (CTA-193's follow-up).
  *
  * Every request gives up after {@link LICHESS_EVAL_API_TIMEOUT_MS}. The
- * settings (on or off, the address) are `lib/jobsSettings.ts`'s.
+ * settings (on or off, the address, writing) are `settings.ts`'s.
  */
 
 /** How long a request waits for the API before calling it unreachable. */
@@ -169,7 +170,7 @@ const engineMovesOf = (fen: string, moves: readonly string[]): string[] => {
 };
 
 /**
- * **An API eval as a position's result** — when it is as deep as the job asks
+ * **An API eval as a position's result** — when it is as deep as the search asks
  * (`depth >= minDepth`): its lines, the first `multiPv`, each with the eval's
  * depth and its moves as the engine writes them. A line that has no playable
  * move is dropped, and with no line 1 left there is no result. `undefined`

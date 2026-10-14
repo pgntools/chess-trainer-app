@@ -494,3 +494,66 @@ describe("useEngineModule — searchProgress", () => {
     expect(result.current.searchProgress).toBe(first);
   });
 });
+
+describe("useEngineModule — the eval sources first (CTA-196)", () => {
+  const API = "http://10.0.0.3:8000";
+  const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+
+  /** The lichess evaluation API on, answering every position at `depth` (or a 404, `missing`) — and, `write`, taking the board's evals. */
+  const apiOn = ({ depth = 40, write = false, missing = false } = {}) => {
+    localStorage.setItem("chessapp.lichessEvalApi", JSON.stringify({ enabled: true, url: API, write }));
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return new Response(JSON.stringify({ stored: 1 }), { status: 200 });
+      if (missing) return new Response("{}", { status: 404 });
+      // A legal line for whoever is to move.
+      const line = (new URL(url).searchParams.get("fen") ?? "").split(" ")[1] === "b" ? "e7e5 g1f3" : "e2e4 e7e5";
+      return new Response(
+        JSON.stringify({ positions: [{ evals: [{ depth, knodes: 1, pvs: [{ cp: 31, mate: null, line }] }] }] }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  };
+
+  it("shows an analysis board the API's lines at the target depth or deeper — its engine never searches", async () => {
+    const fetchMock = apiOn();
+    const { result } = mount(start({ depth: 20 }));
+    await vi.waitFor(() => expect(result.current.analysis.lines).toHaveLength(1));
+    expect(result.current.analysis.lines[0]).toMatchObject({ depth: 40, score: { kind: "cp", value: 31 } });
+    expect(result.current.searching).toBe(false);
+    expect(result.current.evalsByFen.get(START)).toEqual({ kind: "cp", value: 31 });
+    expect(String(fetchMock.mock.calls[0][0])).toContain(`${API}/fen?fen=`);
+    expect(FakeEngine.latest().searches).toEqual([]);
+  });
+
+  it("searches with the engine on a miss, and sends a search finished at its target depth back while writing is on", async () => {
+    const fetchMock = apiOn({ missing: true, write: true });
+    mount(start({ depth: 20 }));
+    await vi.waitFor(() => expect(FakeEngine.latest().searches).toEqual([START]));
+    act(() => {
+      FakeEngine.latest().say({ fen: START, depth: 20, multipv: 1, positionEvaluation: "25", pv: "e2e4" });
+      FakeEngine.latest().say({ fen: START, bestMove: "e2e4" });
+    });
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
+    const [url, init] = fetchMock.mock.calls.find(([, call]) => call?.method === "POST")!;
+    expect(url).toBe(`${API}/evals`);
+    expect(JSON.parse(String(init?.body)).entries[0]).toMatchObject({ fen: START, depth: 20, pvs: [{ cp: 25, line: "e2e4" }] });
+  });
+
+  it("never asks for an engine choosing its move in a game (evalSources: false) — and a hit never reaches a new position", async () => {
+    const fetchMock = apiOn();
+    const game = mount(start({ evalSources: false }));
+    expect(FakeEngine.latest().searches).toEqual([START]);
+    expect(fetchMock).not.toHaveBeenCalled();
+    game.unmount();
+
+    const { result, rerender } = mount(start());
+    // The reader moves on before the API answers: its answer is for a position no longer on screen.
+    rerender(start({ fen: AFTER_E4 }));
+    await vi.waitFor(() => expect(result.current.analysis.lines).toHaveLength(1));
+    expect(result.current.analysis.fen).toBe(AFTER_E4);
+    expect(result.current.analysis.lines[0]?.san[0]).toBe("e5");
+    expect(result.current.evalsByFen.has(START)).toBe(false);
+  });
+});

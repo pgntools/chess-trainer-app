@@ -11,7 +11,6 @@ import { useTranslation } from "react-i18next";
 import { InlineAlert, StatusText } from "../../../design-system/components/feedback";
 import { SettingsSection, SwitchField, TextInputField } from "../../../design-system/components/forms";
 import type { EngineServerOfflineReason } from "../../../lib/engineServer";
-import type { LichessEvalApiOfflineReason } from "../../../lib/jobsSettings";
 
 /** What is known of the server, as the form shows it. */
 export type EngineServerFormStatus =
@@ -24,7 +23,15 @@ export type EngineServerFormStatus =
       /** How long that answer took, in ms. */
       latencyMs: number;
     }
-  | { state: "offline"; url: string; reason: EngineServerOfflineReason | LichessEvalApiOfflineReason };
+  | {
+      state: "offline";
+      url: string;
+      /**
+       * Why — the engine server's own reasons, or another form's (an eval
+       * source's, CTA-196): a key under `<localeKey>.status`.
+       */
+      reason: EngineServerOfflineReason | (string & {});
+    };
 
 /** Connect's answer to its last press. */
 export type EngineServerConnectFeedback = "idle" | "checking" | "answered" | "failed";
@@ -57,8 +64,9 @@ export type EngineServerFormProps = {
    * `settings.engine.server`'s (`title`, `description`, `enable`, `enableHelp`,
    * `address`, `addressHelp`, `addressInvalid`, `connect`, `retry`,
    * `indicator.*`, `status.connecting`, `status.checkedAt`, `status.<reason>`).
-   * Absent: `settings.engine.server` — the engine server's. The Jobs
-   * settings' lichess evaluation API (CTA-193) is the other.
+   * Absent: `settings.engine.server` — the engine server's. An eval source's
+   * section of Settings → Engine (CTA-196 — the lichess evaluation API's,
+   * `evalSources.lichess`) is the other.
    */
   localeKey?: string;
   /**

@@ -26,6 +26,7 @@ import { useEngineChoice } from "../shared/useEngineChoice";
 import { RightPanel } from "../main/rightPanel";
 import { useEngineServer } from "../shared/useEngineServer";
 import EnginePresetsSection from "./EnginePresetsSection";
+import EvalSourcesSettings from "./EvalSourcesSettings";
 
 /** How long Connect's spinner shows at least — a local server answers in milliseconds, too fast to see. */
 const CONNECT_MIN_CHECKING_MS = 400;
@@ -72,7 +73,11 @@ const formStatusOf = (status: EngineServerStatus): EngineServerFormStatus | unde
  * least {@link CONNECT_MIN_CHECKING_MS}, then a check mark or a warning for
  * {@link CONNECT_FEEDBACK_MS}.
  *
- * Under both, **the chosen engine's options, kept in presets**
+ * Under both, **the eval sources** (`EvalSourcesSettings`, CTA-196): each
+ * registered source's own section — the lichess evaluation API's — which
+ * every analysis search asks before its engine, whichever engine runs.
+ *
+ * In the right-hand panel, **the chosen engine's options, kept in presets**
  * (`EnginePresetsSection`, CTA-179): every option it declares, editable in
  * the preset it runs, the boards' own read-only.
  *
@@ -179,6 +184,7 @@ function EngineTab() {
             </EngineServerForm>
           </Box>
         )}
+        <EvalSourcesSettings />
       </Box>
 
       <RightPanel>

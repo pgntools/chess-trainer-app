@@ -1,48 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
 import type { JobsDefaultPreset } from "../../../lib/jobsSettings";
 import { expectNoAxeViolations } from "../../../test/axe";
-import type { EngineServerConnectFeedback, EngineServerFormStatus } from "../EngineServerForm";
 import JobsSettingsForm from "./JobsSettingsForm";
-import { API_URL, BOARD_DEFAULT, DEEP_DEFAULT, ENGINES, NOT_AN_EVAL_API, ONLINE, PRESETS, UNREACHABLE } from "./fixtures";
+import { BOARD_DEFAULT, DEEP_DEFAULT, ENGINES, EVAL_SOURCES_LINK, PRESETS } from "./fixtures";
 
-type Mount = {
-  defaultPreset?: JobsDefaultPreset | null;
-  enabled?: boolean;
-  status?: EngineServerFormStatus;
-  write?: boolean;
-  writable?: boolean;
-  testFeedback?: EngineServerConnectFeedback;
-};
-
-const mount = ({ defaultPreset = null, enabled = false, status, write = false, writable, testFeedback = "idle" }: Mount = {}) => {
-  const props = { onDefaultPresetChange: vi.fn(), onEnabledChange: vi.fn(), onAddressChange: vi.fn(), onConnect: vi.fn(), onWriteChange: vi.fn(), onTest: vi.fn() };
-  const { container } = render(
+const mount = ({ defaultPreset = null }: { defaultPreset?: JobsDefaultPreset | null } = {}) => {
+  const onDefaultPresetChange = vi.fn();
+  render(
     <JobsSettingsForm
       defaultPreset={defaultPreset}
-      onDefaultPresetChange={props.onDefaultPresetChange}
+      onDefaultPresetChange={onDefaultPresetChange}
       initialDefault={BOARD_DEFAULT}
       engines={ENGINES}
       presets={PRESETS}
-      evalApi={{
-        enabled,
-        onEnabledChange: props.onEnabledChange,
-        address: API_URL,
-        onAddressChange: props.onAddressChange,
-        onConnect: props.onConnect,
-        connectFeedback: "idle",
-        addressInvalid: false,
-        example: API_URL,
-        status,
-      }}
-      evalApiWrite={{ checked: write, onChange: props.onWriteChange, writable, onTest: props.onTest, testFeedback }}
+      evalSourcesLink={EVAL_SOURCES_LINK}
       testId="jobs-settings"
     />,
   );
-  return { ...props, container };
+  return { onDefaultPresetChange };
 };
 
 describe("JobsSettingsForm", () => {
@@ -50,13 +29,10 @@ describe("JobsSettingsForm", () => {
     await i18n.changeLanguage("en");
   });
 
-  it("starts with no default and the API off — no address, no Connect", () => {
+  it("starts with no default — no engine or preset select", () => {
     mount();
     expect(screen.getByRole("switch", { name: /use a default engine and preset/i })).not.toBeChecked();
     expect(screen.queryByRole("combobox", { name: /^engine/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: /use the lichess evaluation api/i })).not.toBeChecked();
-    expect(screen.queryByRole("textbox", { name: /api address/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Connect" })).not.toBeInTheDocument();
   });
 
   it("turns a default on from the board's engine and preset", async () => {
@@ -84,57 +60,16 @@ describe("JobsSettingsForm", () => {
     expect(screen.getByRole("option", { name: /multi-thread/i })).toHaveAttribute("aria-disabled", "true");
   });
 
-  it("shows the API's address, Connect and its connection in the API's own words", async () => {
-    const user = userEvent.setup();
-    const { onConnect } = mount({ enabled: true, status: ONLINE });
-    expect(screen.getByRole("textbox", { name: /api address/i })).toHaveValue(API_URL);
-    expect(within(screen.getByTestId("jobs-settings-eval-api-indicator-region")).getByText("Connected · 31 ms")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Connect" }));
-    expect(onConnect).toHaveBeenCalled();
-  });
-
-  it.each([
-    [UNREACHABLE, /did not answer/i],
-    [NOT_AN_EVAL_API, /not as the lichess evaluation api/i],
-  ])("says why the API is not connected", (status, words) => {
-    mount({ enabled: true, status });
-    expect(screen.getByText(words)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
-  });
-
-  it("offers the evaluations Write API only while the API is on — and Test connection only while it is ticked", async () => {
-    const user = userEvent.setup();
+  it("holds no API controls — it says the eval sources are set in Settings → Engine, and links there (CTA-196)", () => {
     mount();
-    expect(screen.queryByRole("checkbox", { name: /enable evaluations write api/i })).not.toBeInTheDocument();
-    cleanup();
-    const { onWriteChange } = mount({ enabled: true, status: ONLINE });
-    const writeApi = screen.getByRole("checkbox", { name: "Enable evaluations Write API" });
-    expect(writeApi).not.toBeChecked();
-    expect(screen.queryByRole("button", { name: "Test connection" })).not.toBeInTheDocument();
-    await user.click(writeApi);
-    expect(onWriteChange).toHaveBeenCalledWith(true);
-  });
-
-  it("tests the connection for write mode, and says what write_enabled was", async () => {
-    const user = userEvent.setup();
-    const { onTest } = mount({ enabled: true, status: ONLINE, write: true });
-    expect(screen.getByRole("checkbox", { name: "Enable evaluations Write API" })).toBeChecked();
-    await user.click(screen.getByRole("button", { name: "Test connection" }));
-    expect(onTest).toHaveBeenCalled();
-    cleanup();
-    mount({ enabled: true, status: ONLINE, write: true, writable: true, testFeedback: "answered" });
-    expect(screen.getByRole("button", { name: "Test connection" })).toHaveAttribute("data-feedback", "answered");
-    expect(screen.getByText(/is in write mode \(write_enabled\)/i)).toBeInTheDocument();
-    cleanup();
-    mount({ enabled: true, status: ONLINE, write: true, writable: false, testFeedback: "failed" });
-    expect(screen.getByText(/is not in write mode \(write_enabled is false\)/i)).toBeInTheDocument();
-    cleanup();
-    mount({ enabled: true, status: ONLINE, write: true, testFeedback: "checking" });
-    expect(screen.getByRole("button", { name: "Test connection" })).toBeDisabled();
+    expect(screen.queryByRole("switch", { name: /lichess evaluation api/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: /api address/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Evaluation sources" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Settings → Engine" })).toHaveAttribute("href", EVAL_SOURCES_LINK.href);
   });
 
   it("has no axe violations, on and off, in Hebrew too", async () => {
-    mount({ defaultPreset: DEEP_DEFAULT, enabled: true, status: ONLINE, write: true, writable: false });
+    mount({ defaultPreset: DEEP_DEFAULT });
     await expectNoAxeViolations();
     cleanup();
     await i18n.changeLanguage("he");
