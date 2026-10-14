@@ -232,25 +232,33 @@ const stubServer = (state: { down: boolean } = { down: false }) => {
   return fetchMock;
 };
 
-const openApiTab = async () => userEvent.click(within(main()).getByRole("tab", { name: "API" }));
-
 const turnServerOn = async () => {
   await userEvent.click(within(main()).getByRole("switch", { name: "Use an engine server" }));
   await waitFor(() => expect(screen.getByTestId("engine-server-indicator")).toHaveAttribute("data-state", "online"));
 };
 
 describe("Settings → Engine — where the engine runs", () => {
-  it("opens on Browser, the page's own builds; API holds the engine server, off", async () => {
+  it("opens on Stockfish connectors: Browser, the page's own builds, then API, the engine server, off", async () => {
     const fetchMock = stubServer();
     renderEngine();
 
-    expect(within(main()).getByRole("tab", { name: "Browser" })).toHaveAttribute("aria-selected", "true");
-    expect(within(main()).getByRole("tabpanel", { name: "Browser" })).toContainElement(screen.getByRole("radiogroup", { name: "Engine" }));
-
-    await openApiTab();
-
-    expect(within(main()).getByRole("tab", { name: "API" })).toHaveAttribute("aria-selected", "true");
-    expect(within(main()).getByRole("switch", { name: "Use an engine server" })).not.toBeChecked();
+    // One tab for both kinds, then the eval sources' — no Browser or API tab (CTA-198).
+    const kinds = within(main()).getByRole("tablist", { name: "Where the engine runs" });
+    expect(within(kinds).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Stockfish connectors",
+      "Lichess evaluation API",
+    ]);
+    expect(within(main()).getByRole("tab", { name: "Stockfish connectors" })).toHaveAttribute("aria-selected", "true");
+    const panel = within(main()).getByRole("tabpanel", { name: "Stockfish connectors" });
+    // Each kind under a heading of its own, in that order.
+    expect(within(panel).getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(
+      expect.arrayContaining(["Browser", "API"]),
+    );
+    const browser = within(panel).getByRole("region", { name: "Browser" });
+    const api = within(panel).getByRole("region", { name: "API" });
+    expect(browser.compareDocumentPosition(api) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(browser).toContainElement(screen.getByRole("radiogroup", { name: "Engine" }));
+    expect(within(api).getByRole("switch", { name: "Use an engine server" })).not.toBeChecked();
     expect(within(main()).queryByRole("textbox", { name: "Server address" })).toBeNull();
     // Off, nothing contacts any server.
     expect(fetchMock).not.toHaveBeenCalled();
@@ -260,7 +268,6 @@ describe("Settings → Engine — where the engine runs", () => {
   it("turned on, keeps the address, says it is connected, and lists the server's engines to choose from", async () => {
     stubServer();
     renderEngine();
-    await openApiTab();
     await turnServerOn();
 
     expect(localStorage.getItem(ENGINE_SERVER_STORAGE_KEY)).toBe("http://127.0.0.1:8800");
@@ -280,10 +287,29 @@ describe("Settings → Engine — where the engine runs", () => {
     expect(localStorage.getItem(ENGINE_STORAGE_KEY)).toBe("hosted:stockfish-19");
   });
 
+  it("is one choice across both pickers — a server engine unselects the build, and back", async () => {
+    stubServer();
+    renderEngine();
+    await turnServerOn();
+    const builds = within(main()).getByRole("radiogroup", { name: "Engine" });
+    const onServer = within(main()).getByRole("radiogroup", { name: "Engines on this server" });
+    expect(within(builds).getByRole("radio", { name: SINGLE })).toBeChecked();
+
+    await userEvent.click(within(onServer).getByRole("radio", { name: "Stockfish 19" }));
+
+    expect(within(onServer).getByRole("radio", { name: "Stockfish 19" })).toBeChecked();
+    expect(within(builds).queryByRole("radio", { checked: true })).toBeNull();
+
+    await userEvent.click(within(builds).getByRole("radio", { name: SINGLE }));
+
+    expect(within(builds).getByRole("radio", { name: SINGLE })).toBeChecked();
+    expect(within(onServer).queryByRole("radio", { checked: true })).toBeNull();
+    expect(screen.getByTestId("engine-in-use")).toHaveTextContent(DEFAULT_ENGINE_ID);
+  });
+
   it("shows in the panel what the chosen server engine declared — in its options form", async () => {
     stubServer();
     renderEngine();
-    await openApiTab();
     await turnServerOn();
     await userEvent.click(within(main()).getByRole("radio", { name: "Stockfish 19" }));
 
@@ -300,24 +326,24 @@ describe("Settings → Engine — where the engine runs", () => {
     expect(aside()).toHaveTextContent("a search goes no deeper than 99");
   });
 
-  it("points the panel to the guide on API with none chosen, above the options form", async () => {
+  it("points the panel to the guide while no server engine is chosen, above the options form", async () => {
     stubServer();
     renderEngine();
 
-    // On Browser, the panel is the chosen build's options form.
     expect(within(aside()).getByRole("region", { name: `Engine options — ${SINGLE}` })).toBeInTheDocument();
-
-    await openApiTab();
-
     expect(within(aside()).getByRole("heading", { name: "Add an engine on this computer" })).toBeInTheDocument();
     expect(within(aside()).getByRole("link", { name: "Read the guide." })).toHaveAttribute("href", LOCAL_ENGINE_GUIDE_PATH);
+
+    // A server engine chosen, the panel is its options alone.
+    await turnServerOn();
+    await userEvent.click(within(main()).getByRole("radio", { name: "Stockfish 19" }));
+    expect(within(aside()).queryByRole("link", { name: "Read the guide." })).toBeNull();
   });
 
   it("answers every Connect on the button — a check mark when the server answers, a warning when not", async () => {
     const server = { down: false };
     stubServer(server);
     renderEngine();
-    await openApiTab();
     await turnServerOn();
     const connect = within(main()).getByRole("button", { name: "Connect" });
 
@@ -338,7 +364,6 @@ describe("Settings → Engine — where the engine runs", () => {
   it("refuses an address that is not one, and keeps a new one with Enter", async () => {
     const fetchMock = stubServer();
     renderEngine();
-    await openApiTab();
     await turnServerOn();
     const field = within(main()).getByRole("textbox", { name: "Server address" });
 
@@ -353,14 +378,14 @@ describe("Settings → Engine — where the engine runs", () => {
     expect(fetchMock).toHaveBeenLastCalledWith("http://127.0.0.1:9000/v1/engines", expect.anything());
   });
 
-  it("opens on API when the stored choice is a server engine — and turned off, falls back without forgetting it", async () => {
+  it("opens on Stockfish connectors when the stored choice is a server engine — and turned off, falls back without forgetting it", async () => {
     stubServer();
     localStorage.setItem(ENGINE_SERVER_STORAGE_KEY, "http://127.0.0.1:8800");
     localStorage.setItem(ENGINE_STORAGE_KEY, "hosted:stockfish-18");
     await connectEngineServer();
     renderEngine();
 
-    expect(within(main()).getByRole("tab", { name: "API" })).toHaveAttribute("aria-selected", "true");
+    expect(within(main()).getByRole("tab", { name: "Stockfish connectors" })).toHaveAttribute("aria-selected", "true");
     expect(within(main()).getByRole("radio", { name: "Stockfish 18" })).toBeChecked();
     expect(screen.getByTestId("engine-in-use")).toHaveTextContent("hosted:stockfish-18");
 
@@ -374,16 +399,18 @@ describe("Settings → Engine — where the engine runs", () => {
     stubServer();
     await i18n.changeLanguage("he");
     renderEngine();
-    await userEvent.click(within(main()).getByRole("tab", { name: "API" }));
+
+    expect(within(main()).getByRole("tab", { name: "מחברי Stockfish" })).toHaveAttribute("aria-selected", "true");
+    expect(within(main()).getByRole("heading", { name: "דפדפן" })).toBeInTheDocument();
+    expect(within(main()).getByRole("heading", { name: "API" })).toBeInTheDocument();
 
     expect(within(main()).getByRole("switch", { name: "שימוש בשרת מנוע" })).toBeInTheDocument();
     expect(within(aside()).getByRole("link", { name: "למדריך." })).toBeInTheDocument();
   });
 
-  it("passes axe on the API tab, connected, with an engine chosen", async () => {
+  it("passes axe on Stockfish connectors, connected, with a server engine chosen", async () => {
     stubServer();
     renderEngine();
-    await openApiTab();
     await turnServerOn();
     await userEvent.click(within(main()).getByRole("radio", { name: "Stockfish 19" }));
     await expectNoAxeViolations();
@@ -551,7 +578,6 @@ describe("Settings → Engine — the engine's options, in presets (CTA-179)", (
   it("offers an engine server's engine what it declares — a file path among them", async () => {
     stubServer();
     renderEngine();
-    await openApiTab();
     await turnServerOn();
     await userEvent.click(within(main()).getByRole("radio", { name: "Stockfish 19" }));
 

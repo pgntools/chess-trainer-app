@@ -65,8 +65,8 @@ describe("translation catalogs", () => {
       "tournament.columns.rank",
       "tournament.columns.buchholz",
       "tournament.columns.sonnebornBerger",
-      // Settings → Engine's tab for the engine server — the initialism is the whole label.
-      "settings.engine.tabs.api",
+      // Settings → Engine's heading for the engine server (CTA-198) — the initialism is the whole label.
+      "settings.engine.connectors.api",
       // An engine's option with no default or range: a dash, in any language.
       "engineOptionsTable.none",
       // A preset's option's range, "min–max" (CTA-179): the two values and a dash.
