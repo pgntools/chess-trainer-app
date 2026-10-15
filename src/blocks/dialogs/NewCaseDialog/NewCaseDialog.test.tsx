@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { strToU8, zipSync } from "fflate";
 
 import { mainline } from "../../../lib/gameTree";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
-import { ENDGAME_FEN, ONE_GAME, TWO_GAMES } from "./fixtures";
+import { ENDGAME_FEN, ONE_GAME, TWO_GAMES, TWO_STARTS } from "./fixtures";
 import NewCaseDialog, { type NewCaseDialogProps } from "./NewCaseDialog";
 
 const mount = (props: Partial<NewCaseDialogProps> = {}) =>
@@ -38,19 +39,131 @@ describe("NewCaseDialog (CTA-186)", () => {
     expect(specs[0].tree.moves[0].children).toHaveLength(2);
   });
 
-  it("asks which game of several — or makes one Case per game", async () => {
+  it("asks what several games make — Select one by default, picked in an autocomplete", async () => {
+    const onCreate = vi.fn();
+    const { baseElement } = mount({ onCreate });
+    await paste(TWO_GAMES);
+    expect(screen.getByText("A case is represented by a single PGN file.")).toBeInTheDocument();
+    const choice = screen.getByRole("radiogroup", { name: "What to make of these 2 games" });
+    expect(within(choice).getByRole("radio", { name: "Select one game" })).toBeChecked();
+    // The first game is picked; typing narrows the list.
+    const field = screen.getByRole("combobox", { name: "Game" });
+    expect(field).toHaveValue("Carlsen – Caruana, Club Championship");
+    await userEvent.clear(field);
+    await userEvent.type(field, "ding");
+    const options = within(screen.getByRole("listbox")).getAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual(["Ding – Nepomniachtchi, Club Championship"]);
+    await userEvent.click(options[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    expect(onCreate.mock.calls[0][0]).toHaveLength(1);
+    expect(onCreate.mock.calls[0][0][0].tree.headers.White).toBe("Ding");
+    await expectNoAxeViolations(baseElement);
+  });
+
+  it("makes one Case per game, with no name to type", async () => {
     const onCreate = vi.fn();
     mount({ onCreate });
     await paste(TWO_GAMES);
-    const games = screen.getByRole("list", { name: "Games in the PGN" });
-    await userEvent.click(within(games).getByRole("button", { name: /Ding/ }));
-    await userEvent.click(screen.getByRole("button", { name: "Create" }));
-    expect(onCreate.mock.calls[0][0][0].tree.headers.White).toBe("Ding");
-
-    await userEvent.click(screen.getByRole("checkbox", { name: "One case per game (2)" }));
+    await userEvent.click(screen.getByRole("radio", { name: "One case per game (2)" }));
     expect(screen.queryByRole("textbox", { name: "Name (optional)" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Game" })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
-    expect(onCreate.mock.calls[1][0].map((spec: { type: string }) => spec.type)).toEqual(["game", "game"]);
+    expect(onCreate.mock.calls[0][0].map((spec: { type: string; name: string }) => [spec.type, spec.name])).toEqual([
+      ["game", ""],
+      ["game", ""],
+    ]);
+  });
+
+  it("merges them into one Case — a plain merge, or tagged with games and play chances where they part (CTA-208)", async () => {
+    const onCreate = vi.fn();
+    const { baseElement } = mount({ onCreate });
+    await paste(TWO_GAMES);
+    await userEvent.click(screen.getByRole("radio", { name: "Merge them into one case" }));
+    expect(screen.queryByRole("combobox", { name: "Game" })).toBeNull();
+    const games = screen.getByRole("checkbox", { name: "Games — [%games N]" });
+    const prc = screen.getByRole("checkbox", { name: "Play chance — [%prc P]" });
+    expect(games).not.toBeChecked();
+    expect(prc).not.toBeChecked();
+    await expectNoAxeViolations(baseElement);
+
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    const [[[plain]]] = onCreate.mock.calls;
+    expect(plain.type).toBe("game");
+    expect(plain.tree.moves.map((node: { san: string; comments?: string[] }) => [node.san, node.comments])).toEqual([
+      ["e4", undefined],
+      ["d4", undefined],
+    ]);
+    // Named from the first game's event; a tree of many games has no result.
+    expect(plain.name).toBe("");
+    expect(plain.tree.headers).toEqual({ Event: "Club Championship", Result: "*" });
+
+    await userEvent.click(games);
+    await userEvent.click(prc);
+    await userEvent.type(screen.getByRole("textbox", { name: "Name (optional)" }), "Openings");
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    const tagged = onCreate.mock.calls[1][0][0];
+    expect(tagged.name).toBe("Openings");
+    expect(tagged.tree.headers.Event).toBe("Openings");
+    expect(tagged.tree.moves.map((node: { comments?: string[] }) => node.comments)).toEqual([
+      ["[%games 1] [%prc 50]"],
+      ["[%games 1] [%prc 50]"],
+    ]);
+    // The trunk under each stays clean.
+    expect(tagged.tree.moves[1].children[0].comments).toBeUndefined();
+  });
+
+  it("does not offer Merge for games from different starts, and says why — opened on a PGN already read", () => {
+    mount({ initialPgn: TWO_STARTS });
+    expect(screen.getByText("2 games read")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Merge them into one case" })).toBeDisabled();
+    expect(screen.getByRole("radiogroup", { name: "What to make of these 2 games" })).toHaveAccessibleDescription(
+      /Merge is off: the games do not all start from the same position\./,
+    );
+  });
+
+  it("reads a zip's .pgn files together, and names a merge after the file", async () => {
+    const onCreate = vi.fn();
+    mount({ onCreate });
+    const zip = zipSync({ "b.pgn": strToU8(ONE_GAME), "a/c.pgn": strToU8(TWO_GAMES) });
+    await userEvent.upload(screen.getByTestId("probe-pgn-input"), new File([zip], "club.zip", { type: "application/zip" }));
+    expect(await screen.findByText("3 games read")).toBeInTheDocument();
+    // Its texts are not pasted into the box.
+    expect(screen.getByRole("textbox", { name: "Paste a PGN" })).toHaveValue("");
+    await userEvent.click(screen.getByRole("radio", { name: "Merge them into one case" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    const [[[spec]]] = onCreate.mock.calls;
+    expect(spec.name).toBe("club");
+    expect(spec.tree.headers).toEqual({ Event: "club", Result: "*" });
+    expect(spec.tree.moves.map((node: { san: string }) => node.san)).toEqual(["e4", "d4"]);
+  });
+
+  it("refuses a zip with no .pgn in it, in words", async () => {
+    mount();
+    const zip = zipSync({ "notes.txt": strToU8("hi") });
+    await userEvent.upload(screen.getByTestId("probe-pgn-input"), new File([zip], "notes.zip", { type: "application/zip" }));
+    expect(await screen.findByText("There is no .pgn file in that zip.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+  });
+
+  it("makes a Position of one game of several — no merge — then its move", async () => {
+    const onCreate = vi.fn();
+    mount({ onCreate });
+    await userEvent.click(screen.getByRole("radio", { name: "Position" }));
+    await userEvent.click(screen.getByRole("radio", { name: "PGN" }));
+    await paste(TWO_GAMES);
+    expect(screen.getByText("A case is represented by a single PGN file.")).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "Merge them into one case" })).toBeNull();
+    const field = screen.getByRole("combobox", { name: "Game" });
+    await userEvent.clear(field);
+    await userEvent.type(field, "ding");
+    await userEvent.click(within(screen.getByRole("listbox")).getByRole("option"));
+    await userEvent.click(screen.getByRole("combobox", { name: "Start at" }));
+    await userEvent.click(screen.getByRole("option", { name: "1… d5" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    const [[[spec]]] = onCreate.mock.calls;
+    expect(spec.type).toBe("position");
+    expect(spec.tree.headers.White).toBe("Ding");
+    expect(spec.nodeId).toBe(mainline(spec.tree)[1].id);
   });
 
   it("makes a Position of a FEN, checked as it is typed", async () => {

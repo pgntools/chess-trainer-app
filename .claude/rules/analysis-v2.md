@@ -331,11 +331,25 @@ select-all in the header (over the rows the words leave); the header's
 selection bar counts them and deletes them together, asked first
 (`DeleteManyDialog`, a failure said in it with the picks kept). **New case** opens `NewCaseDialog`:
 
-- **Game** — a PGN pasted or picked (`PgnInput`); several games show a list
-  to pick one from, and *One case per game (N)*, which makes them all.
+- **Game** — a PGN pasted or a `.pgn` or `.zip` picked (`PgnInput`, `zip`;
+  a zip's `.pgn` files read together as one list of games, in its order —
+  `readZipGameTrees`, `lib/collectionZip.ts`; a zip unreadable, with no
+  `.pgn`, no game or too large refused in words). **Several games**
+  (CTA-208): the dialog says *A case is represented by a single PGN file*
+  and asks — **Merge them into one case** (`mergeTrees`; offered only when
+  the games share a start, else disabled with the reason; two optional
+  boxes, *Games* `[%games N]` and *Play chance* `[%prc P]` —
+  `round(child / parent × 100)` — on branch candidates only, both in one
+  comment, games first), **Select one game** (the default: an autocomplete
+  over the games — "White – Black, Event, Date" or "Game N" — at most 50
+  listed, typing narrows, as `CasePickerDialog`'s) or **One case per game
+  (N)**, which makes them all. A merge left unnamed takes the file's name
+  (without `.pgn` / `.zip`), else the first game's event; its tree's
+  headers are that name as `Event` and `Result "*"`.
 - **Position** — **from a FEN** (checked as it is typed, `parseFen` — the pieces alone are enough, its missing fields completed as lichess does: White to move, no castling or en passant, `0 1`; CTA-200) or
   **from a PGN** at a move picked from its mainline (*Start at*), the moves
-  before it kept.
+  before it kept — a PGN (or zip) of several games picking its game in the
+  same autocomplete first, no merge (CTA-208).
 - A name, optional (none for one-per-game).
 
 One new Case opens on its board; several stay on the list. A Case is renamed

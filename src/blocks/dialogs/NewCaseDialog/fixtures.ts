@@ -20,3 +20,13 @@ export const TWO_GAMES = `${ONE_GAME}
 1. d4 d5 2. c4 1/2-1/2`;
 
 export const ENDGAME_FEN = "8/8/4k3/8/8/4K3/4P3/8 b - - 0 41";
+
+/** Two games that start apart — the first from the standard start, the second from an endgame: no merge (CTA-208). */
+export const TWO_STARTS = `${ONE_GAME}
+
+[Event "Endgame drill"]
+[SetUp "1"]
+[FEN "8/8/4k3/8/8/4K3/4P3/8 w - - 0 1"]
+[Result "*"]
+
+1. Kd3 *`;
