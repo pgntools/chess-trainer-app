@@ -309,6 +309,13 @@ no folder says so, with a way back.
 
 ### 3.2 A Project — `/analysis/projects/<id>`
 
+Under its header (the Back button kept), **the browser's trail** (CTA-207,
+`Breadcrumbs`, the same name and labels — `analysisV2.browser.trail` /
+`root`): the top level, every folder from the top down to the Project's
+(`projectFolderPath`), each a link to the browser there, then the Project's
+name, current; a Project at the top level — or in a folder gone — reads root
+› Project. The screen waits for the folders' first read too.
+
 Its Cases as a **table** (`CasesTable`, rows from `lib/analysisCaseRows.ts`):
 **`#`** (its place in the Project's order, §2.1 — the header read "Order"),
 Name (the link to its board) and Type, then the games table's columns —
