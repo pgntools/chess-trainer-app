@@ -12,7 +12,9 @@
  * a focused view of the board, and closing it (the screen stops registering
  * the panel) brings the shell back. A panel that asks `keepShell` (CTA-186,
  * Analysis V2's Case board) takes the **main menu's place alone**: the header
- * and the footer stay.
+ * and the footer stay. A **full-width route** may register one too (CTA-213,
+ * the Analysis Project view, `keepShell`): the column goes before the whole
+ * body, with the same drawer under the breakpoint.
  *
  * `rightPanel.tsx`'s trio again, aimed at the board's other side:
  * `BoardLeftPanelProvider` (the shell, above the router `<Outlet />`),
