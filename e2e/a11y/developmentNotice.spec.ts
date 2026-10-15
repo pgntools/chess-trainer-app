@@ -6,9 +6,14 @@ import { localizedPath } from "./checks";
 /*
   The in-development notice (CTA-155), the one page the pass opens *without*
   dismissing it ahead (`checks.ts`'s `dismissDevelopmentNotice`): a modal that
-  opens on the first load of a session, audited by axe with colour contrast and
-  target size on, closed by Dismiss, and still closed after a reload.
+  opens on the first load, audited by axe with colour contrast and target size
+  on, closed by Dismiss, and still closed after a reload, on another screen and
+  in another tab — kept for 30 days in `localStorage` (CTA-210). So it starts
+  from an empty browser, not the seed's saved state: that one was saved with the
+  notice dismissed.
 */
+
+test.use({ storageState: { cookies: [], origins: [] } });
 
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
 
@@ -27,12 +32,16 @@ for (const [language, title, dismiss] of [
     await dialog.getByRole("button", { name: dismiss }).click();
     await expect(dialog).toBeHidden();
 
-    // The same session: a reload and another screen do not bring it back.
+    // A reload, another screen and another tab do not bring it back.
     await page.reload();
     await expect(page.locator("main h1").first()).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.goto(localizedPath("settings/export", language));
     await expect(page.locator("main h1").first()).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
+    const tab = await page.context().newPage();
+    await tab.goto(localizedPath("", language));
+    await expect(tab.locator("main h1").first()).toBeVisible();
+    await expect(tab.getByRole("dialog")).toHaveCount(0);
   });
 }

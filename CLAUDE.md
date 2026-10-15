@@ -284,13 +284,16 @@ first read lands — a screen arriving by a URL naming a record waits for it.
 Writes are promises and never throw. Only preferences live in `localStorage` —
 the colour mode, the theme choice, the language, the engine choice, the engine
 server's address, the engine's search settings (CTA-181), the Jobs settings (CTA-193)
-and the lichess evaluation API's settings (CTA-196)
-([`database.md`](.claude/rules/database.md) §2).
-The one thing in `sessionStorage` is the in-development notice's dismissal
-(CTA-155: `lib/developmentNotice.ts`, the shell's `views/main/DevelopmentNotice.tsx`
-over the `DevelopmentNoticeDialog` block — logo, badge, an emoji list) — a modal on the first load of a
-session, absent from the pre-render; a test starts with it dismissed
-(`src/test/setup.ts`), and so does the browser pass (`e2e/a11y/checks.ts`).
+and the lichess evaluation API's settings (CTA-196) — and, beside them, the
+in-development notice's dismissal
+([`database.md`](.claude/rules/database.md) §2). The shipped app keeps nothing in `sessionStorage` (the dev-only MDX editor keeps its draft there).
+The notice (CTA-155: `lib/developmentNotice.ts`, the shell's `views/main/DevelopmentNotice.tsx`
+over the `DevelopmentNoticeDialog` block — logo, badge, an emoji list) is a modal
+on the first load, absent from the pre-render; once dismissed it stays closed
+for 30 days (CTA-210 — the time of the dismissal in `localStorage`,
+`DEVELOPMENT_NOTICE_DISMISSAL_MS`), in every tab and after a restart. A test
+starts with it dismissed (`src/test/setup.ts`, a fresh time after each
+`localStorage.clear()`), and so does the browser pass (`e2e/a11y/checks.ts`).
 
 ### Accessibility: WCAG 2.2 AA, carried by the design system
 

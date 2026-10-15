@@ -8,7 +8,7 @@ const en = {
     brandMark: "CT",
     brandText: "chessapp.dev",
   },
-  /** The notice every session opens with (CTA-155) — `blocks/dialogs/DevelopmentNoticeDialog`. */
+  /** The notice the app opens with until it is dismissed, for 30 days (CTA-155, CTA-210) — `blocks/dialogs/DevelopmentNoticeDialog`. */
   developmentNotice: {
     title: "{{name}} is still in development",
     badge: "Early beta",
