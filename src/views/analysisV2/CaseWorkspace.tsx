@@ -389,8 +389,17 @@ function CaseWorkspace() {
   const compact = useShellCompact();
   // Under the breakpoint, the list's drawer — the route's, so it outlives a step to another Case.
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // The Case view's open tab — the route's too, so stepping to another Case keeps it. A Case view opens on Info (CTA-211).
+  /*
+    The Case view's open tab — every Case opens on Info (CTA-211): a step to
+    another Case (previous / next, a row of the list) goes back to it,
+    adjusted during render against the Case it was set for.
+  */
   const [detailsTab, setDetailsTab] = useState<CaseDetailsTab>("info");
+  const [tabCaseId, setTabCaseId] = useState(caseId);
+  if (tabCaseId !== caseId) {
+    setTabCaseId(caseId);
+    setDetailsTab("info");
+  }
   // The New Job V2 popup (CTA-188), open for the Case on the board — its tree as the board held it.
   const [newJob, setNewJob] = useState<NewJobV2Case | null>(null);
   const jobs = useJobsV2();

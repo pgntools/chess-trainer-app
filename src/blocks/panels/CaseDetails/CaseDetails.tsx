@@ -47,7 +47,7 @@ export type CaseDetailsProps = {
   linkCount?: number;
   /** The Jobs tab's content (CTA-188) — the Case's Jobs V2 and New job, the screen's (`CaseJobs`). Absent, no such tab. */
   jobs?: ReactNode;
-  /** The open tab — the screen's, so it outlives a step to another Case. A tab not given (Graph disabled) reads as Info. */
+  /** The open tab — the screen's (which opens every Case on Info, CTA-211). A tab not given (Graph disabled) reads as Info. */
   tab: CaseDetailsTab;
   onTabChange: (tab: CaseDetailsTab) => void;
   /** Where Back goes — the Project's Cases, the list beside the board. */

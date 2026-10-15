@@ -924,13 +924,11 @@ describe("a Case's board (CTA-186)", () => {
     await user.click(within(details).getByRole("tab", { name: "Display" }));
     expect(screen.getByTestId("analysis-case-display")).toBeInTheDocument();
 
-    // Previous / next keep the view, and its open tab; a Position from a FEN has no game tags.
+    // Previous / next keep the view, and open the next Case on Info (CTA-211); a Position from a FEN has no game tags.
     await user.click(within(details).getByRole("link", { name: "Next case" }));
     expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
-    expect(await screen.findByRole("tab", { name: "Display" })).toHaveAttribute("aria-selected", "true");
-    await user.click(screen.getByRole("tab", { name: "Info" }));
+    expect(await screen.findByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("analysis-case-details-title")).toHaveTextContent("Endgame");
-    expect(screen.queryByTestId("analysis-case-details-info-Event")).toBeNull();
     expect(screen.queryByTestId("analysis-case-details-info-Event")).toBeNull();
 
     // Back: the list again, the table's context kept.

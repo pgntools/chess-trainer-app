@@ -434,7 +434,8 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
   on the board (`views/shared/AnalysisEvalReport.tsx` — live, a click moves the board; disabled while the tree
   carries no `[%eval]`), **Display**, how the board draws (`CaseDisplayTab`,
   out of the right-hand panel), **Jobs** (CTA-188, §6.4) — and previous / next at
-  its foot, which keep the view and its open tab (the screen's state). The
+  its foot, which keep the view — every Case opens on Info, a step to
+  another one going back to it (CTA-211; the tab the screen's state). The
   board draws the left panel (`CaseBoard`'s `leftPanel`, given the tree on
   screen), so the Graph follows it and Display sets it. Back sets
   `?view=list` and keeps the rest of the context. A reload keeps the screen.
