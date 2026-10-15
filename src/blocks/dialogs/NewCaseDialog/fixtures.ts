@@ -20,3 +20,8 @@ export const TWO_GAMES = `${ONE_GAME}
 1. d4 d5 2. c4 1/2-1/2`;
 
 export const ENDGAME_FEN = "8/8/4k3/8/8/4K3/4P3/8 b - - 0 41";
+
+/** 1,001 one-move games — past the dialog's limit of a case each (CTA-208). */
+export const OVER_LIMIT = Array.from({ length: 1001 }, (_, index) => `[Event "Game ${index + 1}"]\n\n1. ${index % 2 === 0 ? "e4" : "d4"} *`).join(
+  "\n\n",
+);

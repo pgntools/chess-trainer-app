@@ -350,9 +350,10 @@ selection bar counts them and deletes them together, asked first
   never goes into the paste box (a large one there froze the page); a file
   refused leaves the input, its problem under it. **Several games** (CTA-208): the dialog says *A case is
   represented by a single PGN file* and asks — **One case per game (N)**
-  (the default; off, with the reason, past **1,000 games** —
-  `MAX_CASES_AT_ONCE` in the dialog: "too many — make a collection of them
-  in the Library instead") or **Select games**, which opens **the games
+  (the default; off past **1,000 games** — `MAX_CASES_AT_ONCE` in the
+  dialog — a red ✕ in the option itself, "max (1,000) entries limit
+  exceeded", part of its name; the group's one help line is a case each's,
+  none under Select games) or **Select games**, which opens **the games
   picker** at once (`GamesPickerDialog`, a wide popup: the Library's
   `CollectionGamesTable` with no links over `collectionRowOf` rows — built
   the first time it opens, ~0.3 s for 15,905 games — under a words box,

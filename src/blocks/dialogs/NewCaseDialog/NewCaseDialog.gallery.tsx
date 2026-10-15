@@ -1,7 +1,7 @@
 import DialogFrame from "../../../design-system/gallery/DialogFrame";
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import type { BlockFamilyId } from "../../families";
-import { TWO_GAMES } from "./fixtures";
+import { OVER_LIMIT, TWO_GAMES } from "./fixtures";
 import NewCaseDialog from "./NewCaseDialog";
 
 const noop = () => {};
@@ -44,6 +44,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
     {
       name: "A file read — its plate in the input's place, × to pick another",
       render: () => framed({ initialPgn: TWO_GAMES, initialFileName: "club-championship.pgn" }, "gallery-new-case-file"),
+    },
+    {
+      name: "More than 1,000 games — One case per game off, its limit marked in red",
+      render: () => framed({ initialPgn: OVER_LIMIT, initialFileName: "smith-morra.pgn" }, "gallery-new-case-limit"),
     },
     { name: "A refused write", render: () => framed({ problem: "The case could not be saved." }, "gallery-new-case-problem") },
     { name: "Writing", render: () => framed({ busy: true }, "gallery-new-case-busy") },

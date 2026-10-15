@@ -46,6 +46,8 @@ describe("NewCaseDialog (CTA-186)", () => {
     expect(screen.getByText("A case is represented by a single PGN file.")).toBeInTheDocument();
     const choice = screen.getByRole("radiogroup", { name: "What to make of these 2 games" });
     expect(within(choice).getByRole("radio", { name: "One case per game (2)" })).toBeChecked();
+    expect(screen.queryByTestId("probe-many-limit")).toBeNull();
+    expect(choice).toHaveAccessibleDescription("Every game becomes a case of its own, named from its tags.");
     // Two choices: no merge (it is to live elsewhere).
     expect(within(choice).getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual(["perGame", "select"]);
     await expectNoAxeViolations(baseElement);
@@ -59,6 +61,8 @@ describe("NewCaseDialog (CTA-186)", () => {
     await userEvent.click(within(picker).getByRole("button", { name: "Select" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Select games" })).toBeNull());
     expect(screen.getByTestId("probe-chosen")).toHaveTextContent("Game: Ding – Nepomniachtchi, Club Championship");
+    // Select games has no long help under it.
+    expect(screen.getByRole("radiogroup", { name: "What to make of these 2 games" })).not.toHaveAccessibleDescription();
     // One game selected: one Case, named as typed.
     await userEvent.type(screen.getByRole("textbox", { name: "Name (optional)" }), "Catalan");
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
@@ -198,10 +202,10 @@ describe("NewCaseDialog (CTA-186)", () => {
     mount();
     await paste(manyGames(1_001));
     expect(screen.getByText("1001 games read")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "One case per game (1001)" })).toBeDisabled();
-    expect(screen.getByRole("radiogroup", { name: "What to make of these 1001 games" })).toHaveAccessibleDescription(
-      /too many games for a case each — more than 1,000\. Make a collection of them in the Library instead/,
-    );
+    // Off, with a red mark in the option — its words part of the radio's name; no help under the group.
+    expect(screen.getByRole("radio", { name: "One case per game (1001) max (1,000) entries limit exceeded" })).toBeDisabled();
+    expect(screen.getByTestId("probe-many-limit")).toHaveTextContent("max (1,000) entries limit exceeded");
+    expect(screen.getByRole("radiogroup", { name: "What to make of these 1001 games" })).not.toHaveAccessibleDescription();
     expect(screen.getByRole("radio", { name: "Select games" })).toBeChecked();
     expect(screen.getByTestId("probe-chosen")).toHaveTextContent("No game selected yet.");
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();

@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import HighlightOffRoundedIcon from "@mui/icons-material/HighlightOffRounded";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import { useTranslation } from "react-i18next";
 
@@ -119,8 +120,8 @@ const moveLabel = (startFen: string, ply: number, san: string): string => {
  * paste box back; its text never goes into the paste box (a large one there
  * froze the page). A file refused leaves the input, its problem under it. **Several games** — a Case being a single
  * PGN, the dialog says so and asks what to make of them: for a Game, **one
- * Case per game** (the default — off, saying why, past
- * {@link MAX_CASES_AT_ONCE}: a collection's work) or **select games**, which
+ * Case per game** (the default — off past {@link MAX_CASES_AT_ONCE}, a red
+ * mark in the option saying the limit is exceeded) or **select games**, which
  * opens a wide picker (`GamesPickerDialog`: the games in a table — words,
  * sort, pages, ticks) and makes a Case of each game selected; a Position
  * chooses its one game there, then its move.
@@ -466,7 +467,26 @@ function NewCaseDialog({
           <RadioGroupField<ManyChoice>
             label={t("analysisV2.newCase.many.label", { number: entries.length })}
             options={[
-              { value: "perGame", label: t("analysisV2.newCase.many.perGame", { number: entries.length }), disabled: !perGameFits },
+              {
+                value: "perGame",
+                label: perGameFits ? (
+                  t("analysisV2.newCase.many.perGame", { number: entries.length })
+                ) : (
+                  <>
+                    {t("analysisV2.newCase.many.perGame", { number: entries.length })}{" "}
+                    {/* Past the cap: a red mark and its words in the option itself — read with its name. */}
+                    <Box
+                      component="span"
+                      data-testid={`${testId}-many-limit`}
+                      sx={{ color: "error.main", display: "inline-flex", alignItems: "center", gap: 0.5, verticalAlign: "bottom" }}
+                    >
+                      <HighlightOffRoundedIcon aria-hidden fontSize="small" />
+                      {t("analysisV2.newCase.many.perGameLimit", { max: MAX_CASES_AT_ONCE.toLocaleString(i18n.language) })}
+                    </Box>
+                  </>
+                ),
+                disabled: !perGameFits,
+              },
               { value: "select", label: t("analysisV2.newCase.many.select") },
             ]}
             value={choice}
@@ -475,10 +495,7 @@ function NewCaseDialog({
               // Choosing to select is choosing the games: the picker opens on them.
               if (next === "select") openPicker("many");
             }}
-            help={[
-              t(`analysisV2.newCase.many.${choice}Help`),
-              ...(perGameFits ? [] : [t("analysisV2.newCase.many.perGameUnavailable", { max: MAX_CASES_AT_ONCE.toLocaleString(i18n.language) })]),
-            ].join(" ")}
+            help={choice === "perGame" ? t("analysisV2.newCase.many.perGameHelp") : undefined}
             disabled={busy || working}
             testId={`${testId}-many`}
           />
