@@ -27,3 +27,8 @@ export const ROWS: readonly CaseRow[] = [
 export const HEBREW_ROWS: readonly CaseRow[] = [
   caseRowOf(positionCaseOfFen({ id: "cheb", projectId: "p1", name: "עמדת לוסנה", now: NOW }, "1K1k4/1P6/8/8/8/8/r7/2R5 w - - 0 1"), "עמדת לוסנה"),
 ];
+
+/** A Project of 250 Cases — past one page of the list (CTA-211): "Chapter 1" … "Chapter 250", ids `c1` … `c250`. */
+export const MANY_ROWS: readonly CaseRow[] = Array.from({ length: 250 }, (_, index) =>
+  caseRowOf(positionCaseOfFen({ id: `c${index + 1}`, projectId: "p1", name: "", now: NOW }, "8/8/4k3/8/8/4K3/4P3/8 b - - 0 41"), `Chapter ${index + 1}`),
+);

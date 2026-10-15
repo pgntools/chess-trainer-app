@@ -5,7 +5,7 @@ import WithState from "../../../design-system/gallery/WithState";
 import type { CaseRow } from "../../../lib/analysisCaseRows";
 import type { BlockFamilyId } from "../../families";
 import CaseSiblings from "./CaseSiblings";
-import { HEBREW_ROWS, ROWS } from "./fixtures";
+import { HEBREW_ROWS, MANY_ROWS, ROWS } from "./fixtures";
 
 const href = (id: string) => ({ href: `#case-${id}` });
 
@@ -40,6 +40,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
   demos: [
     { name: "A Project's Cases, the second on the board — type to narrow them", render: () => demo(ROWS, "cpos") },
     { name: "A Hebrew name (switch to RTL — the arrows turn)", render: () => demo(HEBREW_ROWS, "cheb") },
+    { name: "A Project of 250 Cases, the 150th on the board — 100 a page, opened on its page (CTA-211)", render: () => demo(MANY_ROWS, "c150") },
   ],
 };
 

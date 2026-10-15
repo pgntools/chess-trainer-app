@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
@@ -12,16 +12,26 @@ import { useTranslation } from "react-i18next";
 import { StatusText } from "../../../design-system/components/feedback";
 import { SearchField } from "../../../design-system/components/forms";
 import type { LinkTarget } from "../../../design-system/components/link";
+import { TablePager } from "../../../design-system/components/tables";
 import { IconAction } from "../../../design-system/components/toolbars";
 import { TreeView, type TreeNode } from "../../../design-system/patterns/trees";
 import type { CaseRow } from "../../../lib/analysisCaseRows";
 
 const NO_OPEN: ReadonlySet<string> = new Set();
 
+/** How many Cases a page of the list shows (CTA-211) — a Project may hold thousands. */
+export const CASE_SIBLINGS_PAGE_SIZE = 100;
+
+/** The page that holds the open Case — the first where the rows leave it out. */
+const pageHolding = (rows: readonly CaseRow[], currentId: string): number => {
+  const at = rows.findIndex((row) => row.id === currentId);
+  return at < 0 ? 0 : Math.floor(at / CASE_SIBLINGS_PAGE_SIZE);
+};
+
 export type CaseSiblingsProps = {
   /** The Project the Cases are in — the panel's title. */
   projectName: string;
-  /** Its Cases as the list shows them: in the table's order, narrowed by the words. */
+  /** Its Cases as the list shows them: in the table's order, narrowed by the words — all of them; the block pages them. */
   rows: readonly CaseRow[];
   /** The Case on the board — marked current. */
   currentId: string;
@@ -38,7 +48,7 @@ export type CaseSiblingsProps = {
   /**
    * The root; its parts `-close`, `-title`,
    * `-filter` (and `-filter-clear`), `-no-match`, `-tree` (each row
-   * `-tree-<id>`), `-siblings`, `-previous`, `-next`.
+   * `-tree-<id>`), `-pager` (past one page), `-siblings`, `-previous`, `-next`.
    */
   testId: string;
 };
@@ -50,8 +60,14 @@ export type CaseSiblingsProps = {
  * Position's icon, the open one current and brought into view, every row a
  * link to its board), a words box above it, a Close back to the Project at
  * the head's start, and previous / next at its foot, sticky under the list.
- * Nothing locks it: a Case autosaves. Presentational: the rows arrive ordered
- * and narrowed by the screen; its words are the app's (`analysisV2.siblings.*`).
+ * **Paged, 100 Cases a page** (CTA-211, `CASE_SIBLINGS_PAGE_SIZE`): past one
+ * page a `TablePager` under the list — "101–200 of 1,234", previous / next
+ * page, no size to choose. It opens on the page holding the open Case, goes
+ * to that Case's page again whenever the Case or the words change, and
+ * paging by hand changes no Case. Nothing locks it: a Case autosaves.
+ * Presentational: the rows arrive ordered and narrowed by the screen, and
+ * the block pages them (the page is its own); its words are the app's
+ * (`analysisV2.siblings.*`).
  */
 function CaseSiblings({
   projectName,
@@ -65,7 +81,22 @@ function CaseSiblings({
   onTextChange,
   testId,
 }: CaseSiblingsProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  /*
+    The page on screen: the open Case's, again whenever the Case or the words
+    change — adjusted during render against the ones it was set for — else
+    wherever the reader paged to. A page past the last (rows gone) is the last.
+  */
+  const [paged, setPaged] = useState(() => ({ currentId, text, page: pageHolding(rows, currentId) }));
+  let asked = paged.page;
+  if (paged.currentId !== currentId || paged.text !== text) {
+    asked = pageHolding(rows, currentId);
+    setPaged({ currentId, text, page: asked });
+  }
+  const lastPage = Math.max(0, Math.ceil(rows.length / CASE_SIBLINGS_PAGE_SIZE) - 1);
+  const page = Math.min(asked, lastPage);
+  const pageRows = useMemo(() => rows.slice(page * CASE_SIBLINGS_PAGE_SIZE, (page + 1) * CASE_SIBLINGS_PAGE_SIZE), [rows, page]);
+  const number = (value: number) => value.toLocaleString(i18n.language);
   // Previous / next point along the reading direction, which runs right to left under RTL.
   const rtl = useTheme().direction === "rtl";
   const Previous = rtl ? NavigateNextRoundedIcon : NavigateBeforeRoundedIcon;
@@ -74,21 +105,24 @@ function CaseSiblings({
 
   const nodes = useMemo(
     (): TreeNode[] =>
-      rows.map((row) => ({
+      pageRows.map((row) => ({
         id: row.id,
         label: row.name,
         dir: "auto",
         icon: row.type === "game" ? <SportsEsportsOutlinedIcon fontSize="small" /> : <ExtensionOutlinedIcon fontSize="small" />,
         link: linkOf(row),
       })),
-    [rows, linkOf],
+    [pageRows, linkOf],
   );
 
-  // The open Case is brought into view: a Project may hold many.
+  // The open Case is brought into view on its page: a page holds a hundred. Another page starts at its top.
   const scrollerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    scrollerRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView?.({ block: "nearest" });
-  }, [currentId]);
+    const scroller = scrollerRef.current;
+    const current = scroller?.querySelector('[aria-current="page"]');
+    if (current) current.scrollIntoView?.({ block: "nearest" });
+    else if (scroller) scroller.scrollTop = 0;
+  }, [currentId, page]);
 
   return (
     <Box component="nav" aria-label={title} data-testid={testId} sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
@@ -126,6 +160,19 @@ function CaseSiblings({
           testId={`${testId}-tree`}
         />
       </Box>
+      {rows.length > CASE_SIBLINGS_PAGE_SIZE && (
+        <TablePager
+          count={rows.length}
+          page={page}
+          rowsPerPage={CASE_SIBLINGS_PAGE_SIZE}
+          pageSizes={[CASE_SIBLINGS_PAGE_SIZE]}
+          onPageChange={(next) => setPaged((before) => ({ ...before, page: next }))}
+          onRowsPerPageChange={() => {}}
+          labelRowsPerPage={t("analysisV2.siblings.rowsPerPage")}
+          labelDisplayedRows={({ from, to, count }) => t("analysisV2.siblings.pageRows", { from: number(from), to: number(to), total: number(count) })}
+          testId={`${testId}-pager`}
+        />
+      )}
       {/* Sticky at the foot, like the board panel's controls: the list scrolls above it. */}
       <Box
         data-testid={`${testId}-siblings`}

@@ -2980,17 +2980,17 @@ const en = {
       back: "Back to the cases",
       tabs: {
         label: "Case details",
+        /** First, where a Case view opens (CTA-211). */
+        info: "Info",
         settings: "Settings",
         display: "Display",
         graph: "Graph",
         jobs: "Jobs",
       },
-      /** The Settings tab's own tabs, under the board's settings (CTA-199). */
-      sections: {
-        label: "Case settings",
-        info: "Info",
-        links: "Linked cases",
-      },
+      /** The Info tab's button and the dialog it opens (CTA-211). */
+      links: "Linked cases ({{count}})",
+      linksTitle: "Linked cases",
+      linksClose: "Close",
     },
     siblings: {
       title: "Cases of {{name}}",
@@ -2999,6 +2999,9 @@ const en = {
       next: "Next case",
       toggle: "The project's cases",
       hint: "Up and down arrows to move, Enter to open a case.",
+      /** The list's pager, 100 Cases a page (CTA-211): "101–200 of 1,234". */
+      pageRows: "{{from}}–{{to}} of {{total}}",
+      rowsPerPage: "Cases per page",
     },
     workspace: {
       tabs: {

@@ -43,6 +43,27 @@ describe("TablePager", () => {
     expect(onRowsPerPageChange).toHaveBeenCalledWith(TABLE_PAGE_SIZES[2]);
   });
 
+  it("offers no size to choose when given one alone — the count and the arrows only (CTA-211)", () => {
+    const onPageChange = vi.fn();
+    render(
+      <TablePager
+        count={1234}
+        page={1}
+        rowsPerPage={100}
+        onPageChange={onPageChange}
+        onRowsPerPageChange={() => {}}
+        labelRowsPerPage="Rows per page"
+        pageSizes={[100]}
+        testId="probe"
+      />,
+    );
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.getByTestId("probe")).not.toHaveTextContent("Rows per page");
+    expect(screen.getByTestId("probe")).toHaveTextContent("101–200 of 1,234");
+    fireEvent.click(screen.getByRole("button", { name: /previous page/i }));
+    expect(onPageChange).toHaveBeenCalledWith(0);
+  });
+
   it("words the count the caller's way when asked", () => {
     render(
       <TablePager
