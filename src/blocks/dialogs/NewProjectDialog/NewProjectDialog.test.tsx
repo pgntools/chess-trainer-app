@@ -44,4 +44,20 @@ describe("NewProjectDialog (CTA-186)", () => {
     mount({ problem: "No game could be read in that file." });
     expect(screen.getByTestId("probe-problem")).toHaveTextContent("No game could be read in that file.");
   });
+
+  it("tells the screen a file was picked, with the name as it then stands (CTA-208)", async () => {
+    const onFilePicked = vi.fn();
+    mount({ onFilePicked });
+    const file = pgnFile();
+    await userEvent.upload(screen.getByTestId("probe-file-input"), file);
+    // No name typed: the file's.
+    expect(onFilePicked).toHaveBeenLastCalledWith(file.name.replace(/\.pgn$/i, ""), file);
+
+    await userEvent.click(screen.getByTestId("probe-picked-remove"));
+    const name = screen.getByRole("textbox", { name: "Name" });
+    await userEvent.clear(name);
+    await userEvent.type(name, "Najdorf");
+    await userEvent.upload(screen.getByTestId("probe-file-input"), file);
+    expect(onFilePicked).toHaveBeenLastCalledWith("Najdorf", file);
+  });
 });

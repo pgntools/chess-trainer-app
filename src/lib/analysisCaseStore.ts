@@ -64,6 +64,8 @@ export const subscribeAnalysisCases = cases.subscribe;
 
 /** The Cases, read now if they have not been. */
 export const loadAnalysisCases = cases.load;
+/** The browser's words for the last write of Cases it refused — `"QuotaExceededError: …"` (CTA-208). */
+export const lastAnalysisCaseWriteError = cases.lastWriteError;
 
 /** Resolves once every write issued so far has landed — what a test waits on before it resets. */
 export const settledAnalysisCases = cases.settled;
@@ -110,15 +112,20 @@ export const findAnalysisCaseGame = (segments: readonly string[]): CatalogGame |
 /**
  * **Add Cases** at the top, all or nothing under the cap, each **last in its
  * Project's order**, in the order given. An id already there is left as it is.
+ * `pastCap` (CTA-208): the reader was told the batch takes the app past
+ * {@link MAX_ANALYSIS_CASES} and chose to go on — the cap is not applied.
  */
-export const addAnalysisCases = async (added: readonly AnalysisCase[]): Promise<AnalysisCaseProblem | undefined> => {
+export const addAnalysisCases = async (
+  added: readonly AnalysisCase[],
+  { pastCap = false }: { pastCap?: boolean } = {},
+): Promise<AnalysisCaseProblem | undefined> => {
   if (added.length === 0) return undefined;
   let tooMany = false;
   const problem = await write((current) => {
     const known = new Set(current.map((record) => record.id));
     const fresh = added.filter((record) => !known.has(record.id));
     if (fresh.length === 0) return current;
-    if (current.length + fresh.length > MAX_ANALYSIS_CASES) {
+    if (!pastCap && current.length + fresh.length > MAX_ANALYSIS_CASES) {
       tooMany = true;
       return current;
     }

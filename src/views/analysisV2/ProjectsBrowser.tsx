@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 
 import { CollectionImportDialog, FolderMoveDialog, FolderNameDialog, NewProjectDialog } from "../../blocks/dialogs";
 import { ProjectsTable, caseDisplayName, type ProjectAction, type ProjectFolderAction } from "../../blocks/tables";
-import { DeleteManyDialog } from "../../design-system/components/dialogs";
+import { ConfirmDialog, DeleteManyDialog, ProgressDialog, useCancellableJob } from "../../design-system/components/dialogs";
 import { InlineAlert } from "../../design-system/components/feedback";
 import { SearchField } from "../../design-system/components/forms";
 import { TABLE_PAGE_SIZES, useTableUrlState } from "../../design-system/components/tables";
@@ -23,7 +23,7 @@ import {
   removeProjectFoldersDeep,
   renameProjectFolder,
 } from "../../lib/analysisProjectFolderStore";
-import { addAnalysisCases, removeAnalysisCases } from "../../lib/analysisCaseStore";
+import { addAnalysisCases, lastAnalysisCaseWriteError, loadAnalysisCases, removeAnalysisCases } from "../../lib/analysisCaseStore";
 import {
   createAnalysisProject,
   duplicateAnalysisProject,
@@ -52,6 +52,8 @@ import {
 import {
   caseCountsOf,
   gameCaseOf,
+  MAX_ANALYSIS_CASES,
+  type AnalysisCase,
   projectFolderPath,
   projectFolderSubtree,
   type AnalysisProject,
@@ -59,7 +61,7 @@ import {
 } from "../../lib/analysisProjects";
 import { isZipFile, readCollectionZip } from "../../lib/collectionZip";
 import { collectionImportFileOf, type CollectionImportSource } from "../../lib/libraryCollections";
-import { parsePgnTree } from "../../lib/pgn";
+import { mapInSlices, parsePgnGameEntries } from "../../lib/pgnGames";
 import { newRecordId } from "../../lib/recordId";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import { browserPath, casePath, projectPath } from "./paths";
@@ -116,6 +118,11 @@ function ProjectsBrowser() {
   const [creating, setCreating] = useState(false);
   const [createProblem, setCreateProblem] = useState<string | null>(null);
   const [choosing, setChoosing] = useState<{ name: string; source: CollectionImportSource } | null>(null);
+  /** Making a Project's Cases (CTA-208): the games read, then the Cases made — in slices, the progress shown — then written. */
+  const job = useCancellableJob();
+  const [stage, setStage] = useState<"parse" | "build">("parse");
+  /** A batch that would take the app past its cap of Cases, asked about before any work is done. */
+  const [overCap, setOverCap] = useState<{ name: string; games: readonly string[]; existing: number } | null>(null);
 
   const currentFolder = folderId === null ? null : folders?.find((folder) => folder.id === folderId);
   usePageTitle(currentFolder ? currentFolder.name || t("analysisV2.folder.untitled") : undefined);
@@ -306,47 +313,104 @@ function ProjectsBrowser() {
   const folderProblem = t("analysisV2.folder.problem");
   const projectProblem = t("analysisV2.project.problem");
 
+  const number = (value: number) => value.toLocaleString(i18n.language);
+
   /**
    * **A new Project, with a Game Case per game** — none for a name alone.
-   * All or nothing: Cases the store refuses take the Project back. A game
-   * that will not parse is left out. Then the Project opens.
+   * The games are read and their Cases made in slices, the progress shown
+   * (`ProgressDialog`, Cancel on until the write), a game that will not parse
+   * left out; then the Project and its Cases are written, all or nothing —
+   * Cases the store refuses take the Project back, and the problem is said
+   * exactly: the app's cap of Cases, with the numbers, or the browser's own
+   * words for its refusal. Then the Project opens. `pastCap`: the reader
+   * chose to go past the cap.
    */
-  const makeProject = async (name: string, games: readonly string[]) => {
-    setCreating(true);
+  const makeProject = async (name: string, games: readonly string[], pastCap = false) => {
+    setCreateProblem(null);
     const now = new Date();
-    const trees = games.flatMap((pgn) => {
-      try {
-        return [parsePgnTree(pgn)];
-      } catch {
-        return [];
+    if (games.length === 0) {
+      setCreating(true);
+      const made = await createAnalysisProject(name, here, now);
+      setCreating(false);
+      if (made === undefined) {
+        setCreateProblem(projectProblem);
+        return;
       }
-    });
-    const made = await createAnalysisProject(name, here, now);
-    let failed = made === undefined ? projectProblem : null;
-    if (made !== undefined && trees.length > 0) {
-      const cases = trees.map((tree) => gameCaseOf({ id: newRecordId(now), projectId: made.id, name: "", now }, tree));
-      if ((await addAnalysisCases(cases)) !== undefined) {
-        await removeAnalysisProject(made.id);
-        failed = t("analysisV2.case.problem");
-      }
+      setDialog(null);
+      navigate(projectPath(made.id));
+      return;
     }
-    setCreating(false);
-    if (failed !== null || made === undefined) {
-      setCreateProblem(failed);
+    const outcome = await job.run<AnalysisCase[], { problem: string } | { projectId: string }>({
+      work: async (signal, report) => {
+        setStage("parse");
+        const trees = await parsePgnGameEntries(
+          games.map((text, index) => ({ number: index + 1, text, headers: {} })),
+          { signal, onProgress: (done, total) => report({ done, total }), onUnreadable: () => {} },
+        );
+        setStage("build");
+        report({ done: 0, total: trees.length });
+        // The Project's id is known only once it is written: the Cases take it then.
+        return mapInSlices(trees, (tree) => gameCaseOf({ id: newRecordId(now), projectId: "", name: "", now }, tree), {
+          signal,
+          onProgress: (done, total) => report({ done, total }),
+        });
+      },
+      write: async (made) => {
+        const project = await createAnalysisProject(name, here, now);
+        if (project === undefined) return { problem: projectProblem };
+        const filed = made.map((record) => ({ ...record, projectId: project.id }));
+        const refused = filed.length === 0 ? undefined : await addAnalysisCases(filed, { pastCap });
+        if (refused === undefined) return { projectId: project.id };
+        await removeAnalysisProject(project.id);
+        if (refused === "too-many") {
+          const existing = (await loadAnalysisCases()).length;
+          return {
+            problem: t("analysisV2.newProject.problem.tooMany", {
+              count: number(filed.length),
+              existing: number(existing),
+              max: number(MAX_ANALYSIS_CASES),
+            }),
+          };
+        }
+        return {
+          problem: t("analysisV2.newProject.problem.storage", {
+            detail: lastAnalysisCaseWriteError() ?? t("analysisV2.newProject.problem.noReason"),
+          }),
+        };
+      },
+    });
+    if (outcome.status === "cancelled") return;
+    if (outcome.status === "failed") {
+      console.error("ProjectsBrowser: the new Project's games could not be made into cases.", outcome.error);
+      setCreateProblem(t("analysisV2.case.problem"));
+      return;
+    }
+    if ("problem" in outcome.value) {
+      setCreateProblem(outcome.value.problem);
       return;
     }
     setChoosing(null);
     setDialog(null);
-    navigate(projectPath(made.id));
+    navigate(projectPath(outcome.value.projectId));
   };
 
-  /** The dialog's Create: a name alone, one game, or — several — the choice of which. */
-  const createProject = async (name: string, file: File | undefined) => {
+  /** Before any work: a batch that would take the app past its cap of Cases asks first, with the numbers (CTA-208). */
+  const startProject = async (name: string, games: readonly string[]) => {
     setCreateProblem(null);
-    if (file === undefined) {
-      await makeProject(name, []);
+    const existing = (await loadAnalysisCases()).length;
+    if (existing + games.length > MAX_ANALYSIS_CASES) {
+      setOverCap({ name, games, existing });
       return;
     }
+    await makeProject(name, games);
+  };
+
+  /**
+   * A picked file's games, as the Library reads them — a .pgn's, or each .pgn
+   * in a zip's — with the source the import popup shows; a problem said in
+   * the dialog, and `undefined`, where there is no game to read.
+   */
+  const readProjectFile = async (file: File): Promise<{ games: string[]; source: CollectionImportSource } | undefined> => {
     const said = (problem: string) =>
       setCreateProblem(t(`analysisV2.newProject.problem.${FILE_PROBLEMS[problem] ?? "unreadable"}`));
     // The texts it holds: a .pgn's one, or each .pgn in a zip (as the Library reads one).
@@ -356,7 +420,7 @@ function ProjectsBrowser() {
         const zipped = readCollectionZip(new Uint8Array(await file.arrayBuffer()));
         if (!zipped.ok) {
           said(zipped.problem);
-          return;
+          return undefined;
         }
         texts = zipped.entries.map((entry) => ({ text: entry.text, size: entry.size, name: entry.path, stem: entry.stem }));
       } else {
@@ -364,23 +428,45 @@ function ProjectsBrowser() {
       }
     } catch {
       said("file");
-      return;
+      return undefined;
     }
     const read = texts.map(({ text, size, name: fileName, stem }) => collectionImportFileOf(text, size, fileName, stem));
     const games = read.flatMap(({ file: entry }) => entry.games);
     if (games.length === 0) {
       const [first] = read;
       said(first !== undefined && !first.reading.ok ? first.reading.problem : "unreadable");
+      return undefined;
+    }
+    return { games, source: { name: file.name, size: file.size, zip: isZipFile(file), files: read.map(({ file: entry }) => entry) } };
+  };
+
+  /** The dialog's Create: a name alone, one game, or — several — the choice of which. */
+  const createProject = async (name: string, file: File | undefined) => {
+    setCreateProblem(null);
+    if (file === undefined) {
+      await makeProject(name, []);
       return;
     }
-    if (games.length === 1) {
-      await makeProject(name, games);
+    const read = await readProjectFile(file);
+    if (read === undefined) return;
+    if (read.games.length === 1) {
+      await startProject(name, read.games);
       return;
     }
-    setChoosing({
-      name,
-      source: { name: file.name, size: file.size, zip: isZipFile(file), files: read.map(({ file: entry }) => entry) },
-    });
+    setChoosing({ name, source: read.source });
+  };
+
+  /**
+   * **A file picked** (CTA-208): several games — or several .pgn files in a
+   * zip — go straight to the choice of which, no Create to press; one game
+   * waits for Create, the name still the reader's to change.
+   */
+  const pickProjectFile = async (name: string, file: File) => {
+    setCreateProblem(null);
+    setCreating(true);
+    const read = await readProjectFile(file);
+    setCreating(false);
+    if (read !== undefined && read.games.length > 1) setChoosing({ name, source: read.source });
   };
 
   return (
@@ -524,6 +610,7 @@ function ProjectsBrowser() {
           setDialog(null);
         }}
         onCreate={(name, file) => void createProject(name, file)}
+        onFilePicked={(name, file) => void pickProjectFile(name, file)}
         busy={creating}
         problem={choosing === null ? createProblem : null}
         testId="analysis-v2-new-project-dialog"
@@ -532,7 +619,17 @@ function ProjectsBrowser() {
       {choosing !== null && (
         <CollectionImportDialog
           source={choosing.source}
-          choiceOnly={{ title: t("analysisV2.newProject.chooseTitle"), confirmLabel: t("analysisV2.newProject.chooseConfirm") }}
+          choiceOnly={{
+            title: t("analysisV2.newProject.chooseTitle"),
+            confirmLabel: t("analysisV2.newProject.chooseConfirm"),
+            // CTA-208: the games picked by hand, among those the filters keep.
+            selectGames: {
+              select: t("analysisV2.newCase.choose"),
+              change: t("analysisV2.newCase.chooseAgain"),
+              clear: t("analysisV2.newProject.selectAll"),
+              selected: (count) => t("analysisV2.newProject.selected", { count, number: count.toLocaleString(i18n.language) }),
+            },
+          }}
           problem={createProblem ?? undefined}
           onCancel={() => {
             setCreateProblem(null);
@@ -543,11 +640,55 @@ function ProjectsBrowser() {
             const games = choosing.source.files.flatMap((file, index) =>
               (kept[index] ?? []).map((row) => file.games[row.number - 1]).filter((pgn): pgn is string => pgn !== undefined),
             );
-            void makeProject(choosing.name, games);
+            void startProject(choosing.name, games);
           }}
           testId="analysis-v2-choose-games"
         />
       )}
+
+      {/* Making the Cases (CTA-208): over the dialog it came from, which keeps its filters and picks. */}
+      <ProgressDialog
+        open={job.busy}
+        title={t("analysisV2.newProject.progress.title")}
+        progress={job.phase === "writing" ? null : job.progress}
+        caption={
+          job.phase === "writing"
+            ? t("analysisV2.newProject.progress.save")
+            : t(stage === "parse" ? "analysisV2.newProject.progress.parse" : "analysisV2.newProject.progress.build", {
+                done: number(job.progress?.done ?? 0),
+                total: number(job.progress?.total ?? 0),
+              })
+        }
+        cancelLabel={t("analysisV2.cancel")}
+        onCancel={() => void job.cancel()}
+        cancelDisabled={job.phase === "writing"}
+        testId="analysis-v2-new-project-progress"
+      />
+      {/* Past the app's cap of Cases: said with the numbers before any work, and the reader's to allow. */}
+      <ConfirmDialog
+        open={overCap !== null}
+        onClose={() => setOverCap(null)}
+        onConfirm={() => {
+          if (overCap === null) return;
+          setOverCap(null);
+          void makeProject(overCap.name, overCap.games, true);
+        }}
+        title={t("analysisV2.newProject.overCap.title")}
+        message={
+          overCap === null
+            ? undefined
+            : t("analysisV2.newProject.overCap.message", {
+                count: number(overCap.games.length),
+                existing: number(overCap.existing),
+                total: number(overCap.existing + overCap.games.length),
+                max: number(MAX_ANALYSIS_CASES),
+              })
+        }
+        confirmLabel={t("analysisV2.newProject.overCap.confirm")}
+        cancelLabel={t("analysisV2.cancel")}
+        width="sm"
+        testId="analysis-v2-new-project-over-cap"
+      />
 
       {/* A Project renamed, or duplicated under a name. */}
       <FolderNameDialog

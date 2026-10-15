@@ -2913,6 +2913,24 @@ const en = {
       gamesHelp: "One game becomes the project's case. Several — or a zip of .pgn files: you choose which, each becoming a case.",
       chooseTitle: "Choose the games for the project",
       chooseConfirm: "Create project",
+      /** The games picked by hand among those the filters keep (CTA-208). */
+      selected_one: "{{number}} game picked.",
+      selected_other: "{{number}} games picked.",
+      selectAll: "Use every game the filters keep",
+      /** Making the Cases of many games (CTA-208). */
+      progress: {
+        title: "Creating the project",
+        parse: "Reading the games: {{done}} of {{total}}",
+        build: "Making the cases: {{done}} of {{total}}",
+        save: "Saving the cases…",
+      },
+      /** Past the app's cap of Cases — asked before any work (CTA-208). */
+      overCap: {
+        title: "More cases than the app's limit",
+        message:
+          "These games make {{count}} cases. With the {{existing}} already kept, that is {{total}} — past the app's limit of {{max}}. The limit keeps Analysis quick: every case is read whenever it opens. Create the project anyway?",
+        confirm: "Create anyway",
+      },
       problem: {
         file: "The file could not be read.",
         empty: "There is no game in that file.",
@@ -2920,6 +2938,9 @@ const en = {
         tooLarge: "That file is too large.",
         zip: "That zip could not be read.",
         zipEmpty: "There is no .pgn file in that zip.",
+        tooMany: "Not created: {{count}} cases with the {{existing}} already kept pass the app's limit of {{max}} cases.",
+        storage: "Not created — the browser refused to save the cases: {{detail}}",
+        noReason: "it gave no reason",
       },
     },
     newCase: {
@@ -2930,15 +2951,29 @@ const en = {
       fromPgn: "PGN",
       fromFenHelp: "The position, as a FEN.",
       fromPgnHelp: "A game — the case starts at the move you pick, the moves before it kept.",
-      pgnFile: "Choose a .pgn file",
+      pgnFile: "Choose a .pgn or .zip file",
       pgnPaste: "Paste a PGN",
       pgnRead: "Read",
+      removeFile: "Remove {{name}}",
       read_one: "{{count}} game read",
       read_other: "{{count}} games read",
-      games: "Games in the PGN",
-      versus: "vs",
       gameNumber: "Game {{number}}",
-      perGame: "One case per game ({{count}})",
+      chosenNone: "No game selected yet.",
+      chosenGame: "Game: {{game}}",
+      chosenCount_one: "{{number}} game selected — a case each.",
+      chosenCount_other: "{{number}} games selected — a case each.",
+      choose: "Select games…",
+      chooseAgain: "Change the selection…",
+      chooseOther: "Choose another game…",
+      /** A PGN of several games (CTA-208): what the one Case is to be. */
+      many: {
+        single: "A case is represented by a single PGN file.",
+        label: "What to make of these {{number}} games",
+        select: "Select games",
+        perGame: "One case per game ({{number}})",
+        perGameHelp: "Every game becomes a case of its own, named from its tags.",
+        perGameLimit: "max ({{max}}) entries limit exceeded",
+      },
       fen: "FEN",
       fenHelp: "Pieces, side to move, castling, en passant, the move counters — the pieces alone are enough (White to move).",
       fenProblem: "Not a position to play from: {{detail}}",
@@ -2951,6 +2986,28 @@ const en = {
       problem: {
         empty: "There is no game in it.",
         unreadable: "This PGN cannot be read.",
+        file: "The file could not be read.",
+        tooLarge: "That file is too large.",
+        zip: "That zip could not be read.",
+        zipEmpty: "There is no .pgn file in that zip.",
+        gameUnreadable: "That game cannot be read — pick another.",
+      },
+      /** The games picker — a file's games in a table, to pick from (CTA-208). */
+      picker: {
+        titleMany: "Select games",
+        titleOne: "Choose a game",
+        filter: "Find games",
+        filterClear: "Clear",
+        count: "{{picked}} of {{total}} games selected",
+        oneHint: "Click a game to choose it.",
+        submit: "Select",
+        tooMany: "That is too many — at most {{max}} games make cases here. For more, make a collection of them in the Library instead.",
+      },
+      /** Reading a large file, and every game for a case each (CTA-208). */
+      progress: {
+        label: "Reading the games",
+        file: "Reading the file…",
+        parse: "{{done}} of {{total}} games read",
       },
     },
     display: {

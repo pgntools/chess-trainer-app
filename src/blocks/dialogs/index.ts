@@ -11,6 +11,7 @@ export * from "./EngineOptionsChangedDialog";
 export * from "./FolderDeleteDialog";
 export * from "./FolderMoveDialog";
 export * from "./FolderNameDialog";
+export * from "./GamesPickerDialog";
 export * from "./ImportDialog";
 export * from "./IncompatibleImportDialog";
 export * from "./NewCaseDialog";

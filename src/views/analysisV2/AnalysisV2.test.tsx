@@ -35,6 +35,11 @@ vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
   return reactChessboardMock();
 });
+// The Cases' writes pass through as they are — a test can hold one open to see the save under way (CTA-208).
+vi.mock("../../lib/analysisCaseStore", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/analysisCaseStore")>();
+  return { ...actual, addAnalysisCases: vi.fn(actual.addAnalysisCases) };
+});
 vi.mock("../../lib/openings", async (importOriginal) => {
   const { openingsMock } = await import("../board/boardTestHarness");
   return openingsMock(importOriginal as () => Promise<typeof import("../../lib/openings")>);
@@ -142,6 +147,9 @@ describe("the Projects browser (CTA-186)", () => {
     await user.click(await screen.findByRole("button", { name: "New project" }));
     await user.upload(screen.getByTestId("analysis-v2-new-project-dialog-file-input"), new File([GAME], "club.pgn"));
     expect(screen.getByRole("textbox", { name: "Name" })).toHaveValue("club");
+    // One game: nothing to choose, so it waits for Create (CTA-208).
+    await waitFor(() => expect(screen.getByRole("button", { name: "Create" })).toBeEnabled());
+    expect(screen.queryByTestId("analysis-v2-choose-games")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Create" }));
     await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/g/));
     expect(analysisProjectsSnapshot()).toEqual([expect.objectContaining({ name: "club" })]);
@@ -160,8 +168,7 @@ describe("the Projects browser (CTA-186)", () => {
       screen.getByTestId("analysis-v2-new-project-dialog-file-input"),
       new File([zip], "club.zip", { type: "application/zip" }),
     );
-    expect(screen.getByRole("textbox", { name: "Name" })).toHaveValue("club");
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    // Several games: straight on to the choice, no Create to press (CTA-208).
     const choice = await screen.findByTestId("analysis-v2-choose-games");
     expect(screen.getByTestId("analysis-v2-choose-games-file-0")).toHaveTextContent("club/one.pgn");
     expect(screen.getByTestId("analysis-v2-choose-games-count")).toHaveTextContent("2 of 2");
@@ -179,7 +186,7 @@ describe("the Projects browser (CTA-186)", () => {
       screen.getByTestId("analysis-v2-new-project-dialog-file-input"),
       new File([zipSync({ "notes.txt": strToU8("hello") })], "notes.zip", { type: "application/zip" }),
     );
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    // Said as soon as it is picked.
     expect(await screen.findByTestId("analysis-v2-new-project-dialog-problem")).toHaveTextContent(
       "There is no .pgn file in that zip.",
     );
@@ -197,7 +204,6 @@ describe("the Projects browser (CTA-186)", () => {
       screen.getByTestId("analysis-v2-new-project-dialog-file-input"),
       new File([`${GAME}\n\n${SECOND}\n\n${THIRD}`], "club.pgn"),
     );
-    await user.click(screen.getByRole("button", { name: "Create" }));
 
     const choice = await screen.findByTestId("analysis-v2-choose-games");
     expect(within(choice).getByText("Choose the games for the project")).toBeInTheDocument();
@@ -213,6 +219,118 @@ describe("the Projects browser (CTA-186)", () => {
     expect(analysisProjectsSnapshot()).toEqual([expect.objectContaining({ name: "Club" })]);
     expect(analysisCasesSnapshot()).toHaveLength(1);
     expect(analysisCasesSnapshot()![0].pgn).toContain('[White "Ding"]');
+  });
+
+  it("makes a Project of the games picked by hand, among those the filters keep (CTA-208)", async () => {
+    const SECOND = GAME.replace("Carlsen", "Ding").replace("Caruana", "Nepomniachtchi");
+    const THIRD = GAME.replace("Carlsen", "Firouzja").replace("Caruana", "Gukesh");
+    const user = userEvent.setup();
+    mount("/analysis");
+    await user.click(await screen.findByRole("button", { name: "New project" }));
+    await user.type(screen.getByRole("textbox", { name: "Name" }), "Club");
+    await user.upload(
+      screen.getByTestId("analysis-v2-new-project-dialog-file-input"),
+      new File([`${GAME}\n\n${SECOND}\n\n${THIRD}`], "club.pgn"),
+    );
+
+    const choice = await screen.findByTestId("analysis-v2-choose-games");
+    await user.type(within(choice).getByRole("combobox", { name: "Players" }), "Ding{Enter}Firouzja{Enter}");
+    expect(screen.getByTestId("analysis-v2-choose-games-count")).toHaveTextContent("2 of 3");
+    await user.click(within(choice).getByRole("button", { name: "Select games…" }));
+    const picker = screen.getByRole("dialog", { name: "Select games" });
+    // The picker's table holds what the filters keep: Carlsen's game is not in it.
+    expect(within(picker).queryByRole("checkbox", { name: "Select Carlsen – Caruana" })).toBeNull();
+    await user.click(within(picker).getByRole("checkbox", { name: "Select Firouzja – Gukesh" }));
+    await user.click(within(picker).getByRole("button", { name: "Select" }));
+    expect(await screen.findByText("1 game picked.")).toBeInTheDocument();
+    expect(screen.getByTestId("analysis-v2-choose-games-count")).toHaveTextContent("1 of 3");
+    await user.click(await screen.findByRole("button", { name: "Create project" }));
+
+    await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/g/));
+    expect(analysisCasesSnapshot()).toHaveLength(1);
+    expect(analysisCasesSnapshot()![0].pgn).toContain('[White "Firouzja"]');
+  });
+
+  describe("making a Project of many games (CTA-208)", () => {
+    const THREE = () => {
+      const SECOND = GAME.replace("Carlsen", "Ding").replace("Caruana", "Nepomniachtchi");
+      const THIRD = GAME.replace("Carlsen", "Firouzja").replace("Caruana", "Gukesh");
+      return new File([`${GAME}\n\n${SECOND}\n\n${THIRD}`], "club.pgn");
+    };
+    const openChoice = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(await screen.findByRole("button", { name: "New project" }));
+      await user.type(screen.getByRole("textbox", { name: "Name" }), "Club");
+      await user.upload(screen.getByTestId("analysis-v2-new-project-dialog-file-input"), THREE());
+      return screen.findByTestId("analysis-v2-choose-games");
+    };
+
+    it("shows the progress while it makes the cases — Cancel off once it saves", async () => {
+      const { addAnalysisCases: actualAdd } = await vi.importActual<typeof import("../../lib/analysisCaseStore")>("../../lib/analysisCaseStore");
+      let release: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      vi.mocked(addAnalysisCases).mockImplementationOnce(async (...args) => {
+        await gate;
+        return actualAdd(...args);
+      });
+      const user = userEvent.setup();
+      mount("/analysis");
+      const choice = await openChoice(user);
+      await user.click(within(choice).getByRole("button", { name: "Create project" }));
+      const progress = await screen.findByRole("dialog", { name: "Creating the project" });
+      expect(within(progress).getByText("Saving the cases…")).toBeInTheDocument();
+      expect(within(progress).getByRole("button", { name: "Cancel" })).toBeDisabled();
+      act(() => release());
+      await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/g/));
+      expect(analysisCasesSnapshot()).toHaveLength(3);
+    });
+
+    it("asks before going past the app's limit of cases, with the numbers — and goes on only when told to", async () => {
+      const kept = (await createAnalysisProject("Kept", null))!;
+      await addAnalysisCases(
+        Array.from({ length: 9_999 }, (_, index) => positionCaseOfFen({ id: `k${index}`, projectId: kept.id, name: "" }, "8/8/4k3/8/8/4K3/4P3/8 w - - 0 1")),
+      );
+      const user = userEvent.setup();
+      mount("/analysis");
+      const choice = await openChoice(user);
+      await user.click(within(choice).getByRole("button", { name: "Create project" }));
+      const ask = await screen.findByRole("dialog", { name: "More cases than the app's limit" });
+      expect(ask).toHaveTextContent(
+        "These games make 3 cases. With the 9,999 already kept, that is 10,002 — past the app's limit of 10,000.",
+      );
+      // Asked before any work: nothing written while it waits.
+      expect(analysisProjectsSnapshot()).toHaveLength(1);
+      await user.click(within(ask).getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "More cases than the app's limit" })).toBeNull());
+      expect(analysisProjectsSnapshot()).toHaveLength(1);
+
+      await user.click(await screen.findByRole("button", { name: "Create project" }));
+      await user.click(within(await screen.findByRole("dialog", { name: "More cases than the app's limit" })).getByRole("button", { name: "Create anyway" }));
+      await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/g/), { timeout: 15_000 });
+      expect(analysisCasesSnapshot()).toHaveLength(10_002);
+    }, 60_000);
+
+    it("says the browser's own words when it refuses to save the cases, and keeps nothing", async () => {
+      const put = IDBObjectStore.prototype.put;
+      const spy = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (this: IDBObjectStore, ...args) {
+        if (this.name === "cases") throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+        return put.apply(this, args);
+      });
+      try {
+        const user = userEvent.setup();
+        mount("/analysis");
+        const choice = await openChoice(user);
+        await user.click(within(choice).getByRole("button", { name: "Create project" }));
+        expect(await screen.findByTestId("analysis-v2-choose-games-problem")).toHaveTextContent(
+          "Not created — the browser refused to save the cases: QuotaExceededError: The quota has been exceeded.",
+        );
+      } finally {
+        spy.mockRestore();
+      }
+      await waitFor(() => expect(analysisProjectsSnapshot()).toEqual([]));
+      expect(analysisCasesSnapshot()).toEqual([]);
+    });
   });
 
   it("renames, moves and duplicates a Project — no row deletes itself", async () => {

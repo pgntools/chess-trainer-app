@@ -17,6 +17,7 @@ import type { GameHeaders } from "../../../lib/gameModel";
 import { readPgnTags } from "../../../lib/pgn";
 import { guessTournamentKind, type TournamentGuess } from "../../../lib/tournamentKind";
 import { TournamentMarkFields } from "../../forms/TournamentMarkFields";
+import { GamesPickerDialog } from "../GamesPickerDialog";
 import {
   canBeTournament,
   collectionFacetsOf,
@@ -86,7 +87,18 @@ export type CollectionImportDialogProps = {
    * mark — under the host's title and button. Absent, the Library's popup as
    * it was.
    */
-  choiceOnly?: { title: string; confirmLabel: string };
+  choiceOnly?: {
+    title: string;
+    confirmLabel: string;
+    /**
+     * **The games picked by hand** (CTA-208): a *Select games…* button opens
+     * the games picker (`GamesPickerDialog`) over the games the filters keep;
+     * the games picked there are the ones kept. The host's words: the
+     * button, its *Change*, the way back to every game the filters keep, and
+     * the line saying how many are picked. Absent, no picker.
+     */
+    selectGames?: { select: string; change: string; clear: string; selected: (count: number) => string };
+  };
   /** Cancel, Escape or the backdrop. */
   onCancel: () => void;
   /**
@@ -102,7 +114,8 @@ export type CollectionImportDialogProps = {
    * fields' prefix: `-mark-tournament-switch`, `-mark-suggestion`,
    * `-mark-type-<format>`), `-auto-type`, `-event-types` (the table; each
    * row `-event-types-row-<n>`, its select `-event-types-type-<n>`, in
-   * order), `-count`, `-problem`, `-cancel`, `-confirm`.
+   * order), `-select` (the picker's button; `-select-clear`, `-selected`, the
+   * picker `-picker`), `-count`, `-problem`, `-cancel`, `-confirm`.
    */
   testId: string;
   dialogProps?: ExtraDialogProps;
@@ -145,6 +158,13 @@ export type CollectionImportDialogProps = {
  *   reads the games' tags — read once, when first needed — so it is known
  *   before anything is indexed.
  *
+ * - **Games picked by hand** (CTA-208, `choiceOnly.selectGames` — Analysis's
+ *   new Project): *Select games…* opens the games picker over **the games the
+ *   filters keep** (numbered across the files, a zip's too), and the games
+ *   picked there are the ones kept — the count says so, *Change the
+ *   selection…* reopens it, and a way back keeps every game the filters do.
+ *   A pick the filters later leave out is not kept.
+ *
  * Presentational: the index pass and the writes are the screen's — it hands
  * `onImport` the kept rows and the split choice, and shows its progress in a
  * `ProgressDialog` in this one's place. Its words are the Library's
@@ -176,6 +196,9 @@ function CollectionImportDialog({
   const [eventTypes, setEventTypes] = useState<Readonly<Record<string, string>>>({});
   /** Whether the reader has touched the mark — until then its type follows the guess. */
   const [markTouched, setMarkTouched] = useState(false);
+  /** The games picked by hand (CTA-208), by their number across the files — `null`: every game the filters keep. */
+  const [picks, setPicks] = useState<ReadonlySet<number> | null>(null);
+  const [picking, setPicking] = useState(false);
 
   const allRows = useMemo(() => source.files.flatMap((file) => file.rows), [source]);
   const metadata = useMemo(() => collectionMetadataOf(allRows), [allRows]);
@@ -200,8 +223,28 @@ function CollectionImportDialog({
     () => ({ text: "", result: "", player: players, minElo, maxElo, from: dates.from, to: dates.to }),
     [players, minElo, maxElo, dates],
   );
+  /** Where each file's games start in the numbering across the files — a zip's files each number theirs from 1. */
+  const offsets = useMemo(() => {
+    const starts: number[] = [];
+    let total = 0;
+    for (const file of source.files) {
+      starts.push(total);
+      total += file.rows.length;
+    }
+    return starts;
+  }, [source]);
   /** Each file's rows the filters keep. */
-  const kept = useMemo(() => source.files.map((file) => filteredRows(file.rows, filter)), [source, filter]);
+  const filtered = useMemo(() => source.files.map((file) => filteredRows(file.rows, filter)), [source, filter]);
+  /** The picker's rows: the games the filters keep, numbered across the files. */
+  const pickable = useMemo(
+    () => filtered.flatMap((rows, index) => rows.map((row) => ({ ...row, number: (offsets[index] ?? 0) + row.number }))),
+    [filtered, offsets],
+  );
+  /** Each file's rows kept: the filters', narrowed to the games picked by hand when there are picks. */
+  const kept = useMemo(
+    () => (picks === null ? filtered : filtered.map((rows, index) => rows.filter((row) => picks.has((offsets[index] ?? 0) + row.number)))),
+    [filtered, picks, offsets],
+  );
   const keptCount = kept.reduce((sum, rows) => sum + rows.length, 0);
   const filtering = players.length > 0 || minElo !== undefined || maxElo !== undefined || dates.from !== "" || dates.to !== "";
   const eventsShown = metadata.events.slice(0, 3).join(", ");
@@ -558,6 +601,24 @@ function CollectionImportDialog({
           </Typography>
         )}
 
+        {choiceOnly?.selectGames !== undefined && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+            <Button variant="outlined" size="small" onClick={() => setPicking(true)} disabled={pickable.length === 0} data-testid={id("select")}>
+              {picks === null ? choiceOnly.selectGames.select : choiceOnly.selectGames.change}
+            </Button>
+            {picks !== null && (
+              <>
+                <Typography variant="body2" data-testid={id("selected")} sx={{ color: "text.secondary" }}>
+                  {choiceOnly.selectGames.selected(keptCount)}
+                </Typography>
+                <Button size="small" onClick={() => setPicks(null)} data-testid={id("select-clear")}>
+                  {choiceOnly.selectGames.clear}
+                </Button>
+              </>
+            )}
+          </Box>
+        )}
+
         <Typography variant="body2" role="status" sx={{ fontWeight: 600 }} data-testid={id("count")}>
           {t("library.upload.options.count", { kept: keptCount, count: metadata.games })}
         </Typography>
@@ -568,6 +629,21 @@ function CollectionImportDialog({
           </InlineAlert>
         )}
       </Box>
+      {choiceOnly?.selectGames !== undefined && (
+        <GamesPickerDialog
+          open={picking}
+          rows={pickable}
+          mode="many"
+          initialPicked={picks === null ? [] : pickable.filter((row) => picks.has(row.number)).map((row) => row.number)}
+          onSubmit={(numbers) => {
+            setPicks(new Set(numbers));
+            setPicking(false);
+          }}
+          onClose={() => setPicking(false)}
+          testId={id("picker")}
+          dialogProps={dialogProps}
+        />
+      )}
     </BaseDialog>
   );
 }

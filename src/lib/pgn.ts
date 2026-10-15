@@ -198,6 +198,18 @@ const commentText = (raw: string): string | undefined => {
 };
 
 /**
+ * Moves already worked out, by the position they were played from and their
+ * SAN as written — shared across the games of one batch, so a file of games
+ * from one opening asks chess.js once per move of their common start
+ * (CTA-208). Only the first {@link CACHED_PLIES} plies are kept, where games
+ * repeat each other, which bounds it.
+ */
+export type PgnMoveCache = Map<string, Omit<VariationNode, "id" | "ply" | "children">>;
+
+/** How deep a {@link PgnMoveCache} reaches. */
+const CACHED_PLIES = 24;
+
+/**
  * Parse one game *with its variations* into a {@link GameTree}.
  *
  * The walk is a stack over `(` and `)`. A variation is an alternative to the
@@ -216,7 +228,7 @@ const commentText = (raw: string): string | undefined => {
  * because "illegal move in a variation" is otherwise indistinguishable from a
  * screen that silently dropped half the file.
  */
-export const parsePgnTree = (pgn: string, gameNumber?: number): GameTree => {
+export const parsePgnTree = (pgn: string, gameNumber?: number, moveCache?: PgnMoveCache): GameTree => {
   const { headers, movetext } = splitTags(pgn);
   const startFen = headers.FEN?.trim() || DEFAULT_POSITION;
 
@@ -371,6 +383,24 @@ export const parsePgnTree = (pgn: string, gameNumber?: number): GameTree => {
 
     if (RESULTS.has(token)) continue;
 
+    // A move already played from this position, in an earlier game of the batch: no chess.js.
+    const ply = (cursor.parentId === null ? 0 : (byId.get(cursor.parentId)?.ply ?? 0)) + 1;
+    const cacheKey = moveCache !== undefined && ply <= CACHED_PLIES ? `${cursor.fen} ${token}` : undefined;
+    const cached = cacheKey === undefined ? undefined : moveCache?.get(cacheKey);
+    if (cached !== undefined) {
+      const node = add(cursor.parentId, cached);
+      if (pending.length > 0) {
+        const before = (node.preComments ??= []);
+        for (const text of pending) if (!holdsComment(before, text)) before.push(text);
+        pending = [];
+      }
+      annotated = node;
+      if (suffix !== "") addNag(SUFFIX_NAGS[suffix]);
+      previous = cursor;
+      cursor = { parentId: node.id, fen: cached.fen };
+      continue;
+    }
+
     // One instance, reloaded only when the walk jumps — into or out of a
     // variation. Along a line the position is already the one the last move
     // left, and a FEN parse per move was most of what remained of the cost.
@@ -385,13 +415,9 @@ export const parsePgnTree = (pgn: string, gameNumber?: number): GameTree => {
       throw new PgnParseError(`Illegal move "${token}".`, gameNumber);
     }
 
-    const node = add(cursor.parentId, {
-      san: move.san,
-      from: move.from,
-      to: move.to,
-      fen: move.after,
-      captured: move.captured,
-    });
+    const played = { san: move.san, from: move.from, to: move.to, fen: move.after, captured: move.captured };
+    if (cacheKey !== undefined) moveCache?.set(cacheKey, played);
+    const node = add(cursor.parentId, played);
     if (pending.length > 0) {
       const before = (node.preComments ??= []);
       for (const text of pending) if (!holdsComment(before, text)) before.push(text);

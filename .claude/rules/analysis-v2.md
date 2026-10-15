@@ -17,6 +17,7 @@ paths:
   - "src/blocks/tables/CasesTable/**"
   - "src/lib/analysisCaseRows.ts"
   - "src/blocks/dialogs/NewCaseDialog/**"
+  - "src/blocks/dialogs/GamesPickerDialog/**"
   - "src/blocks/dialogs/NewProjectDialog/**"
   - "src/blocks/dialogs/ProjectPickerDialog/**"
   - "src/lib/jobsV2*"
@@ -95,7 +96,7 @@ other screen hands a game to Analysis as a new Case** (§1.1).
 | `src/lib/retiredDatabases.ts` | **The databases the app no longer keeps** (CTA-192): `chessapp.analyses` and `chessapp.jobs`, the legacy module's, deleted on every load (`src/main.tsx`, `deleteRetiredDatabases`). |
 | `src/views/analysisV2/useSendToAnalysis.tsx` | **A game handed to Analysis** (CTA-192, §1.1): `useSendToAnalysis(testId)` → `{ send, dialog }` — the Project picker, the Game Cases written, the Case (or Project) opened. Every other screen's way in. |
 | `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board; the Case view's links and their picker, §7), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings — `useJobsV2`, `useCaseLinks` too), `paths.ts` (the addresses — `jobsV2Path`). `jobs/` (CTA-188): `JobsV2Screen.tsx` (`/analysis/jobs`, behind `JobsV2Main.tsx`), `JobV2Reports.tsx` (a done job's report, another's results so far), `NewJobV2.tsx` (the popup's screen side), `JobsV2Shell.tsx` (`JobV2Runner`, `JobsV2Indicator` — the shell's), `useJobV2Live.ts` (the live progress, `liveOfJob` — CTA-190), `JobsSettingsTab.tsx` and `useJobsSettings.ts` (the Jobs settings, CTA-193). |
-| `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/forms/JobTargetFields/`, `src/blocks/lists/CaseJobs/`, `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/`; since CTA-190 `src/blocks/panels/JobEngineProgress/`; since CTA-193 `src/blocks/forms/JobsSettingsForm/` (the default engine and preset, and a link to Settings → Engine for the eval sources — CTA-196) | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and so, for Jobs V2, `JobsTable`, `JobSummary` (generic over a job's fields), `NewJobDialog`, `ComputerAnalysisForm` (the engine and preset selects, one variant, a section before the form; `JobSummary`'s `live` slot, CTA-190), `ComputerAnalysisReport` and `EvalGraph` — built for the legacy Jobs, Jobs V2's since CTA-192. |
+| `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `GamesPickerDialog/` (CTA-208), `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/forms/JobTargetFields/`, `src/blocks/lists/CaseJobs/`, `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/`; since CTA-190 `src/blocks/panels/JobEngineProgress/`; since CTA-193 `src/blocks/forms/JobsSettingsForm/` (the default engine and preset, and a link to Settings → Engine for the eval sources — CTA-196) | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and so, for Jobs V2, `JobsTable`, `JobSummary` (generic over a job's fields), `NewJobDialog`, `ComputerAnalysisForm` (the engine and preset selects, one variant, a section before the form; `JobSummary`'s `live` slot, CTA-190), `ComputerAnalysisReport` and `EvalGraph` — built for the legacy Jobs, Jobs V2's since CTA-192. |
 | `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts`, `src/views/shared/AnalysisEvalReport.tsx` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws, the eval graph and report the Case view's Graph tab shows. |
 | Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectRows.test.ts` (the browser's rows — its Cases, CTA-191), `src/lib/analysisProjectPicks.test.ts` (its picks, CTA-191), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), the engine server's heartbeat in `jobV2Runner.test.ts`, `hostedEngine.test.ts`, `JobEngineProgress.test.tsx` and `JobsV2Shell.test.tsx` (CTA-194), `jobsSettings.test.ts` (CTA-193; the old `evalApi` kept for its move, CTA-196), `lib/evalSources/lichess/api.test.ts` (the client — the FEN, the mapping, a 404, the timeout, a bad body) and the rest of the layer's tests ([`docs/engine.md`](../../docs/engine.md) §10.5), the runner's API cases in `jobV2Runner.test.ts` (through the layer), `JobsSettingsForm.test.tsx`, `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links in its Linked cases dialog, the Jobs V2 view; the Jobs settings tab — its link to Settings → Engine, CTA-196 — and New Job V2's default, CTA-193), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190; an eval source's warning, CTA-193, CTA-196), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the database named in both pages, the retired ones in neither), `src/lib/retiredDatabases.test.ts`; **the hand-offs** (§1.1): `OpeningsBoard.test.tsx`, `PlayWithEngine.test.tsx`, `PlayedGames.test.tsx`, `Library.test.tsx` (the game board's Open in Analysis and a shipped game's copy), `LibraryPicks.test.tsx` (the batch), `StoredGameEmbed.test.tsx` and `EmbedSource.test.tsx` (an embed's Case address and its Open in Analysis), `ProjectPickerDialog.test.tsx` (the New project entry). |
 
@@ -288,15 +289,36 @@ file with none typed names it after the file) and, optionally, a `.pgn`
 whose games become its Cases (`collectionImportFileOf` reads it):
 
 - **no file** — an empty Project;
-- **one game** — a Project with that game as its one Game Case;
-- **several** — the Library's import popup opens on them
+- **one game** — a Project with that game as its one Game Case, on Create
+  (the name still the reader's to change); a file that will not read is said
+  as soon as it is picked;
+- **several** — as soon as the file is picked (CTA-208, `onFilePicked`:
+  no Create to press — a `.pgn` of several games, or a zip of several
+  files), the Library's import popup opens on them
   (`CollectionImportDialog` with `choiceOnly`: what came in, the Elo / date /
-  player filters and the count, no *Split by event*, no tournament mark),
+  player filters and the count, no *Split by event*, no tournament mark) —
+  and **Select games…** (CTA-208, `choiceOnly.selectGames`) opens the games
+  picker (`GamesPickerDialog`, New case's) over **the games the filters
+  keep**, numbered across a zip's files: the games picked there are the ones
+  kept ("N games picked.", *Change the selection…*, *Use every game the
+  filters keep*; a pick the filters later leave out is not kept) —
   and **Create project** makes a Game Case per game kept, in file order;
   Cancel goes back to the name.
 
+**Making the Cases** (CTA-208): the games read in ~50 ms slices
+(`parsePgnGameEntries`, a game that will not parse left out), their Cases
+made the same way (`mapInSlices`), under a `ProgressDialog` over the popup
+it came from ("Reading the games: 4,200 of 15,905", "Making the cases: …",
+then "Saving the cases…" — Cancel on until the save, `useCancellableJob`),
+then the Project and its Cases written. **Past the app's cap of Cases**
+(`MAX_ANALYSIS_CASES`, 10,000 — the Cases kept plus these) it **asks
+first**, before any work, with the numbers ("These games make 15,905 cases.
+With the 0 already kept, that is 15,905 — past the app's limit of 10,000…"),
+and *Create anyway* writes past it (`addAnalysisCases(…, { pastCap: true })`).
 All or nothing: Cases the store refuses take the Project back, and the
-popup says why; a game that will not parse is left out.
+popup says **exactly why** — the cap with its numbers, or the browser's own
+words for its refusal (`lastAnalysisCaseWriteError`, the record store's
+`lastWriteError`: "QuotaExceededError: …").
 
 | On | Rename | Move | Duplicate | Delete |
 | --- | --- | --- | --- | --- |
@@ -331,11 +353,43 @@ select-all in the header (over the rows the words leave); the header's
 selection bar counts them and deletes them together, asked first
 (`DeleteManyDialog`, a failure said in it with the picks kept). **New case** opens `NewCaseDialog`:
 
-- **Game** — a PGN pasted or picked (`PgnInput`); several games show a list
-  to pick one from, and *One case per game (N)*, which makes them all.
+- **Game** — a PGN pasted or a `.pgn` or `.zip` picked (`PgnInput`, `zip`;
+  a zip's `.pgn` files read together as one list of games, in its order —
+  `readCollectionZip`; a zip unreadable, with no `.pgn`, no game or too
+  large refused in words). **A file read takes the input's place** as a
+  plate — its name, size and "N games read", and × (*Remove ‹name›*), which
+  brings the file button and the paste box back to pick another; its text
+  never goes into the paste box (a large one there froze the page); a file
+  refused leaves the input, its problem under it. **Several games** (CTA-208): the dialog says *A case is
+  represented by a single PGN file* and asks — **One case per game (N)**
+  (the default; off past **1,000 games** — `MAX_CASES_AT_ONCE` in the
+  dialog — a red ✕ in the option itself, "max (1,000) entries limit
+  exceeded", part of its name; the group's one help line is a case each's,
+  none under Select games) or **Select games**, which opens **the games
+  picker** at once (`GamesPickerDialog`, a wide popup: the Library's
+  `CollectionGamesTable` with no links over `collectionRowOf` rows — built
+  the first time it opens, ~0.3 s for 15,905 games — under a words box,
+  every column a sort, paged, ticks with select-all over what the words
+  leave, at most 1,000, the count said; **Select** hands them back), then
+  says what is selected, with *Change the selection…*; each game selected is
+  a Case — one, with the name typed. **No merge here**: merging many games
+  into one Case was built and taken out again in CTA-208 — a 15,905-game
+  file merges into a tree of ~900k moves no Case board is built for; it is
+  to live elsewhere. **Built for thousands of games** (`lib/pgnGames.ts`):
+  what is read is only **indexed** — each game's text and tags
+  (`indexPgnGames`, ~135 ms for 15,905 games), no move read — and only a
+  single Case's game is parsed (a few ms); a game that will not play is
+  said when chosen (*That game cannot be read*). **Several Cases** parse
+  their games on Create (`parsePgnGameEntries`: ~50 ms slices, the page
+  given back between them, a move cache shared across the batch — ~21%
+  fewer chess.js calls), a progress bar counting them ("400 of 1,000 games
+  read"), Create off and Cancel on, which stops it; a game that will not
+  play stops it, said with its number in the file.
 - **Position** — **from a FEN** (checked as it is typed, `parseFen` — the pieces alone are enough, its missing fields completed as lichess does: White to move, no castling or en passant, `0 1`; CTA-200) or
   **from a PGN** at a move picked from its mainline (*Start at*), the moves
-  before it kept.
+  before it kept — a PGN (or zip) of several games choosing its game in the
+  games picker first (*Choose another game…*: no ticks, a click chooses;
+  the first game until then — CTA-208).
 - A name, optional (none for one-per-game).
 
 One new Case opens on its board; several stay on the list. A Case is renamed

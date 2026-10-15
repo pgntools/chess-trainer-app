@@ -197,4 +197,55 @@ describe("CollectionImportDialog — a plain choice of games (CTA-186)", () => {
     expect(onImport).toHaveBeenCalledWith(expect.any(Array), false, {});
     await expectNoAxeViolations(screen.getByRole("dialog"));
   });
+
+  it("picks games by hand among those the filters keep — numbered across a zip's files (CTA-208)", async () => {
+    const onImport = vi.fn();
+    render(
+      <CollectionImportDialog
+        source={ZIP}
+        choiceOnly={{
+          title: "Choose the games for the project",
+          confirmLabel: "Create project",
+          selectGames: {
+            select: "Select games…",
+            change: "Change the selection…",
+            clear: "Use every game the filters keep",
+            selected: (count) => `${count} picked.`,
+          },
+        }}
+        onCancel={() => {}}
+        onImport={onImport}
+        testId="import"
+      />,
+    );
+    // The filters first: from May 2023, Carl – Amy, Bob – Dana and the zip's second file's one game.
+    fireEvent.change(screen.getByTestId("import-from"), { target: { value: "2023-05-01" } });
+    expect(screen.getByTestId("import-count")).toHaveTextContent("3 of 4");
+
+    await userEvent.click(screen.getByRole("button", { name: "Select games…" }));
+    const picker = screen.getByRole("dialog", { name: "Select games" });
+    // Only the games the filters keep, numbered across the files.
+    const rows = within(within(picker).getByRole("table", { name: "Games" })).getAllByRole("row").slice(1);
+    expect(rows.map((row) => within(row).getAllByRole("cell")[1]?.textContent)).toEqual(["2", "3", "4"]);
+    await userEvent.click(within(picker).getByRole("checkbox", { name: "Select Carl – Amy" }));
+    await userEvent.click(within(picker).getByRole("checkbox", { name: "Select כהן – לוי" }));
+    await userEvent.click(within(picker).getByRole("button", { name: "Select" }));
+    await screen.findByRole("button", { name: "Change the selection…" });
+    expect(screen.getByTestId("import-selected")).toHaveTextContent("2 picked.");
+    expect(screen.getByTestId("import-count")).toHaveTextContent("2 of 4");
+
+    // A pick the filters then leave out is not kept.
+    fireEvent.change(screen.getByTestId("import-from"), { target: { value: "2024-01-01" } });
+    expect(screen.getByTestId("import-count")).toHaveTextContent("1 of 4");
+    await userEvent.click(screen.getByRole("button", { name: "Create project" }));
+    const [[kept]] = onImport.mock.calls;
+    // Each file's own rows, by their own numbers.
+    expect(kept.map((rows: { number: number }[]) => rows.map((row) => row.number))).toEqual([[], [1]]);
+
+    // Back to every game the filters keep.
+    await userEvent.click(screen.getByRole("button", { name: "Use every game the filters keep" }));
+    expect(screen.queryByTestId("import-selected")).toBeNull();
+    expect(screen.getByTestId("import-count")).toHaveTextContent("2 of 4");
+    await expectNoAxeViolations(screen.getByRole("dialog"));
+  });
 });
