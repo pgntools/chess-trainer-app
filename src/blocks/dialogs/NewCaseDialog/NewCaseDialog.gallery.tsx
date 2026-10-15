@@ -7,7 +7,12 @@ import NewCaseDialog from "./NewCaseDialog";
 const noop = () => {};
 
 const framed = (
-  { busy = false, problem = null, initialPgn }: { busy?: boolean; problem?: string | null; initialPgn?: string },
+  {
+    busy = false,
+    problem = null,
+    initialPgn,
+    initialFileName,
+  }: { busy?: boolean; problem?: string | null; initialPgn?: string; initialFileName?: string },
   testId: string,
 ) => (
   <DialogFrame height={760}>
@@ -19,6 +24,7 @@ const framed = (
         busy={busy}
         problem={problem}
         initialPgn={initialPgn}
+        initialFileName={initialFileName}
         testId={testId}
         dialogProps={dialogProps}
       />
@@ -34,6 +40,10 @@ const gallery: GalleryModule<BlockFamilyId> = {
     {
       name: "A PGN of several games — select one (an autocomplete) or one case per game",
       render: () => framed({ initialPgn: TWO_GAMES }, "gallery-new-case-many"),
+    },
+    {
+      name: "A file read — its plate in the input's place, × to pick another",
+      render: () => framed({ initialPgn: TWO_GAMES, initialFileName: "club-championship.pgn" }, "gallery-new-case-file"),
     },
     { name: "A refused write", render: () => framed({ problem: "The case could not be saved." }, "gallery-new-case-problem") },
     { name: "Writing", render: () => framed({ busy: true }, "gallery-new-case-busy") },

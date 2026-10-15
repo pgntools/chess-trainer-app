@@ -83,9 +83,10 @@ describe("NewCaseDialog (CTA-186)", () => {
     mount({ onCreate });
     const zip = zipSync({ "b.pgn": strToU8(ONE_GAME), "a/c.pgn": strToU8(TWO_GAMES) });
     await userEvent.upload(screen.getByTestId("probe-pgn-input"), new File([zip], "club.zip", { type: "application/zip" }));
-    expect(await screen.findByText("3 games read")).toBeInTheDocument();
-    // Its texts are not pasted into the box.
-    expect(screen.getByRole("textbox", { name: "Paste a PGN" })).toHaveValue("");
+    expect(await screen.findByText(/3 games read/)).toBeInTheDocument();
+    // The file's plate in the input's place.
+    expect(screen.getByTestId("probe-file")).toHaveTextContent("club.zip");
+    expect(screen.queryByRole("textbox", { name: "Paste a PGN" })).toBeNull();
     await userEvent.click(screen.getByRole("radio", { name: "One case per game (3)" }));
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
     await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
@@ -96,16 +97,42 @@ describe("NewCaseDialog (CTA-186)", () => {
     ]);
   });
 
-  it("puts a picked .pgn into the paste box only when it holds one game", async () => {
-    mount();
-    const input = screen.getByTestId("probe-pgn-input");
-    await userEvent.upload(input, new File([TWO_GAMES], "club.pgn", { type: "application/x-chess-pgn" }));
-    expect(await screen.findByText("2 games read")).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Paste a PGN" })).toHaveValue("");
+  it("shows a file read as a plate in the input's place — × brings the input back, to pick another", async () => {
+    const onCreate = vi.fn();
+    const { baseElement } = mount({ onCreate });
+    await userEvent.upload(screen.getByTestId("probe-pgn-input"), new File([TWO_GAMES], "club.pgn", { type: "application/x-chess-pgn" }));
+    const plate = await screen.findByTestId("probe-file");
+    expect(plate).toHaveTextContent("club.pgn");
+    expect(plate).toHaveTextContent(/\d+ B · 2 games read/);
+    // No file button, no paste box — and the text was never put in it.
+    expect(screen.queryByRole("textbox", { name: "Paste a PGN" })).toBeNull();
+    expect(screen.queryByTestId("probe-pgn-input")).toBeNull();
+    await expectNoAxeViolations(baseElement);
 
-    await userEvent.upload(input, new File([ONE_GAME], "one.pgn", { type: "application/x-chess-pgn" }));
-    expect(await screen.findByText("1 game read")).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Paste a PGN" })).toHaveValue(ONE_GAME);
+    await userEvent.click(screen.getByRole("button", { name: "Remove club.pgn" }));
+    expect(screen.queryByTestId("probe-file")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Game" })).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Paste a PGN" })).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+
+    await userEvent.upload(screen.getByTestId("probe-pgn-input"), new File([ONE_GAME], "one.pgn", { type: "application/x-chess-pgn" }));
+    expect(await screen.findByTestId("probe-file")).toHaveTextContent(/one\.pgn.*1 game read/);
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    expect(onCreate.mock.calls[0][0][0].tree.headers.White).toBe("Carlsen");
+  });
+
+  it("opens on a file's plate when given the file's name with its PGN (the gallery's)", () => {
+    mount({ initialPgn: TWO_GAMES, initialFileName: "club.pgn" });
+    expect(screen.getByTestId("probe-file")).toHaveTextContent(/club\.pgn.*2 games read/);
+    expect(screen.queryByRole("textbox", { name: "Paste a PGN" })).toBeNull();
+    expect(screen.getByRole("combobox", { name: "Game" })).toBeInTheDocument();
+  });
+
+  it("says a one-game file that will not read under its plate", async () => {
+    mount();
+    await userEvent.upload(screen.getByTestId("probe-pgn-input"), new File(["1. e4 e5 2. Qxf7 *"], "bad.pgn", { type: "application/x-chess-pgn" }));
+    expect(await screen.findByTestId("probe-file-problem")).toHaveTextContent("This PGN cannot be read.");
+    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
   });
 
   it("reads only the tags of several games — one that will not read is said when picked, or when a case each reaches it", async () => {
@@ -193,6 +220,9 @@ describe("NewCaseDialog (CTA-186)", () => {
     await userEvent.upload(screen.getByTestId("probe-pgn-input"), new File([zip], "notes.zip", { type: "application/zip" }));
     expect(await screen.findByText("There is no .pgn file in that zip.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+    // Refused, the input stays — to pick another.
+    expect(screen.queryByTestId("probe-file")).toBeNull();
+    expect(screen.getByTestId("probe-pgn-input")).toBeInTheDocument();
   });
 
   it("makes a Position of one game of several — no case each — then its move", async () => {

@@ -334,9 +334,11 @@ selection bar counts them and deletes them together, asked first
 - **Game** — a PGN pasted or a `.pgn` or `.zip` picked (`PgnInput`, `zip`;
   a zip's `.pgn` files read together as one list of games, in its order —
   `readCollectionZip`; a zip unreadable, with no `.pgn`, no game or too
-  large refused in words; a picked file's text put in the paste box only
-  when it holds one game — a zip's never, a large one there freezes the
-  page). **Several games** (CTA-208): the dialog says *A case is
+  large refused in words). **A file read takes the input's place** as a
+  plate — its name, size and "N games read", and × (*Remove ‹name›*), which
+  brings the file button and the paste box back to pick another; its text
+  never goes into the paste box (a large one there froze the page); a file
+  refused leaves the input, its problem under it. **Several games** (CTA-208): the dialog says *A case is
   represented by a single PGN file* and asks — **Select one game** (the
   default: an autocomplete over the games — "White – Black, Event, Date" or
   "Game N" — at most 50 listed, typing narrows, as `CasePickerDialog`'s) or

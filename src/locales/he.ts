@@ -2377,6 +2377,7 @@ const he: typeof en = {
       pgnFile: "בחירת קובץ ‎.pgn או ‎.zip",
       pgnPaste: "הדבקת PGN",
       pgnRead: "קריאה",
+      removeFile: "הסרת {{name}}",
       read_one: "נקרא משחק אחד",
       read_other: "נקראו {{count}} משחקים",
       game: "משחק",

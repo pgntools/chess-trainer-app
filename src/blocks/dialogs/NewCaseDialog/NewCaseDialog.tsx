@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import { useTranslation } from "react-i18next";
 
 import { SelectAutocomplete, type AutocompleteOption } from "../../../design-system/components/autocompletes";
 import { FormDialog, type ExtraDialogProps } from "../../../design-system/components/dialogs";
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { ProgressLine } from "../../../design-system/components/states";
+import { IconAction } from "../../../design-system/components/toolbars";
 import { RadioGroupField, SelectField, TextInputField } from "../../../design-system/components/forms";
 import type { UploadProblem } from "../../../design-system/patterns/forms";
 import { MAX_ANALYSIS_CASES } from "../../../lib/analysisProjects";
 import { isZipFile, readCollectionZip, type CollectionZipProblem } from "../../../lib/collectionZip";
 import { FenParseError, parseFen } from "../../../lib/fen";
+import { formatBytes } from "../../../lib/formatBytes";
 import { gameTag } from "../../../lib/gameModel";
 import { mainline, plyLabel, type GameTree } from "../../../lib/gameTree";
 import { PgnParseError, parsePgnTree } from "../../../lib/pgn";
@@ -40,11 +44,14 @@ export type NewCaseDialogProps = {
   problem?: string | null;
   /** A PGN already read as the dialog opens — the gallery's samples. Absent: it opens empty. */
   initialPgn?: string;
+  /** The file `initialPgn` came from: the dialog opens on its plate (the gallery's). Absent: as pasted. */
+  initialFileName?: string;
   /**
    * The prefix of its ids: the dialog `<testId>` (its parts FormDialog's
    * `-submit`, `-cancel`), the type `<testId>-type`, the source
-   * `<testId>-from`, the PGN `<testId>-pgn` (PgnInput's parts), the FEN
-   * `<testId>-fen`; a PGN of several games — the note `<testId>-many-note`,
+   * `<testId>-from`, the PGN `<testId>-pgn` (PgnInput's parts) — once a file
+   * is read, its plate `<testId>-file` in its place (`-file-remove`, and a
+   * one-game file's problem `-file-problem`) — the FEN `<testId>-fen`; a PGN of several games — the note `<testId>-many-note`,
    * the choice `<testId>-many` (its radios `-many-select`, `-many-perGame`),
    * the game `<testId>-game` (its input `<testId>-game-input`) and its
    * problem `<testId>-game-problem`; the progress `<testId>-progress`, a
@@ -102,8 +109,10 @@ const moveLabel = (startFen: string, ply: number, san: string): string => {
  * typed) or **from a PGN** at a move the reader picks, the moves before it
  * kept. A PGN is pasted or a `.pgn` or a `.zip` picked (`PgnInput`) — a
  * zip's `.pgn` files read together as one list of games, in its order
- * (CTA-208); a picked file's text goes into the paste box only when it holds
- * one game (a large one there would freeze the page). **Several games** — a Case being a single
+ * (CTA-208). **A file read takes the input's place** as a plate — its name,
+ * size and games, and × to remove it, which brings the file button and the
+ * paste box back; its text never goes into the paste box (a large one there
+ * froze the page). A file refused leaves the input, its problem under it. **Several games** — a Case being a single
  * PGN, the dialog says so and asks what to make of them: for a Game,
  * **select one** or **one Case per game** (off, saying why, past the app's
  * cap of Cases); a Position selects one, then its move. The game is
@@ -123,15 +132,28 @@ const moveLabel = (startFen: string, ply: number, san: string): string => {
  * back what the reader asked for ({@link NewCaseSpec}); making and writing
  * the Cases is the screen's. Its words are the app's (`analysisV2.newCase.*`).
  */
-function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, initialPgn, testId, dialogProps }: NewCaseDialogProps) {
+function NewCaseDialog({
+  open,
+  onClose,
+  onCreate,
+  busy = false,
+  problem = null,
+  initialPgn,
+  initialFileName,
+  testId,
+  dialogProps,
+}: NewCaseDialogProps) {
   const { t, i18n } = useTranslation();
   const [type, setType] = useState<CaseType>("game");
   const [from, setFrom] = useState<PositionSource>("fen");
-  const [pasted, setPasted] = useState(initialPgn ?? "");
+  const [pasted, setPasted] = useState(initialFileName === undefined ? (initialPgn ?? "") : "");
   const [entries, setEntries] = useState<readonly PgnGameEntry[]>(() => (initialPgn === undefined ? [] : indexPgnGames([initialPgn])));
   const [readProblem, setReadProblem] = useState<UploadProblem | null>(null);
   const [selectedGame, setSelectedGame] = useState(0);
   const [many, setMany] = useState<ManyChoice>("select");
+  /** The file the games were read from — shown as a plate in the input's place. */
+  const initialFile = initialPgn !== undefined && initialFileName !== undefined ? { name: initialFileName, size: initialPgn.length } : null;
+  const [file, setFile] = useState<{ name: string; size: number } | null>(initialFile);
   const [ply, setPly] = useState(0);
   const [fen, setFen] = useState("");
   const [name, setName] = useState("");
@@ -149,13 +171,14 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
     if (open) {
       setType("game");
       setFrom("fen");
-      setPasted(initialPgn ?? "");
+      setPasted(initialFileName === undefined ? (initialPgn ?? "") : "");
       setEntries(initialPgn === undefined ? [] : indexPgnGames([initialPgn]));
       setReadProblem(null);
       setParseProblem(null);
       setWork(null);
       setSelectedGame(0);
       setMany("select");
+      setFile(initialFile);
       setPly(0);
       setFen("");
       setName("");
@@ -167,11 +190,12 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
     setReadProblem(problem);
   };
 
-  /** The games of the texts, indexed: the first picked, the choice back to Select one. Answers how many. */
+  /** The games of the texts, indexed: the first picked, the choice back to Select one; none, the file is forgotten. Answers how many. */
   const read = (texts: readonly string[]): number => {
     const indexed = indexPgnGames(texts);
     setParseProblem(null);
     if (indexed.length === 0) {
+      setFile(null);
       refuse({ message: t("analysisV2.newCase.problem.empty") });
       return 0;
     }
@@ -192,16 +216,18 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
         const bytes = new Uint8Array(await file.arrayBuffer());
         await nextTask();
         const zipped = readCollectionZip(bytes);
-        // A zip's texts are not put in the paste box — there may be many, and large.
-        setPasted("");
-        if (zipped.ok) read(zipped.entries.map((entry) => entry.text));
-        else refuse({ message: t(`analysisV2.newCase.problem.${ZIP_PROBLEMS[zipped.problem]}`) });
+        if (!zipped.ok) {
+          setFile(null);
+          refuse({ message: t(`analysisV2.newCase.problem.${ZIP_PROBLEMS[zipped.problem]}`) });
+          return;
+        }
+        if (read(zipped.entries.map((entry) => entry.text)) > 0) setFile({ name: file.name, size: file.size });
         return;
       }
-      const text = await file.text();
-      // A file of several games stays out of the paste box too: a large one there freezes the page.
-      setPasted(read([text]) > 1 ? "" : text);
+      // Never into the paste box: a large text there froze the page.
+      if (read([await file.text()]) > 0) setFile({ name: file.name, size: file.size });
     } catch {
+      setFile(null);
       refuse({ message: t("analysisV2.newCase.problem.file") });
     } finally {
       setWork(null);
@@ -227,6 +253,17 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
       if (running.current === controller) running.current = null;
       if (!controller.signal.aborted) setWork(null);
     }
+  };
+
+  /** × on the plate: the file and its games gone, the input back. */
+  const removeFile = () => {
+    setFile(null);
+    setEntries([]);
+    setReadProblem(null);
+    setParseProblem(null);
+    setSelectedGame(0);
+    setMany("select");
+    setPly(0);
   };
 
   const close = () => {
@@ -332,7 +369,37 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
             testId={`${testId}-from`}
           />
         )}
-        {usesPgn ? (
+        {usesPgn && file !== null ? (
+          <Box sx={{ display: "grid", gap: 1 }}>
+            <Box
+              data-testid={`${testId}-file`}
+              sx={{ display: "flex", alignItems: "center", gap: 1.5, p: 1.5, border: 1, borderColor: "divider", borderRadius: 1 }}
+            >
+              <InsertDriveFileOutlinedIcon aria-hidden sx={{ color: "text.secondary" }} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="body2" dir="auto" sx={{ fontWeight: 600, overflowWrap: "anywhere" }}>
+                  {file.name}
+                </Typography>
+                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                  {`${formatBytes(file.size)} · ${t("analysisV2.newCase.read", { count: entries.length })}`}
+                </Typography>
+              </Box>
+              <IconAction
+                label={t("analysisV2.newCase.removeFile", { name: file.name })}
+                onClick={removeFile}
+                disabled={busy || working}
+                testId={`${testId}-file-remove`}
+              >
+                <CloseRoundedIcon fontSize="small" />
+              </IconAction>
+            </Box>
+            {entries.length === 1 && pickedProblem !== null && (
+              <InlineAlert severity="error" detail={pickedProblem.detail} testId={`${testId}-file-problem`}>
+                {pickedProblem.message}
+              </InlineAlert>
+            )}
+          </Box>
+        ) : usesPgn ? (
           <PgnInput
             labels={{
               file: t("analysisV2.newCase.pgnFile"),

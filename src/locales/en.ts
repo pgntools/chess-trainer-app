@@ -2918,6 +2918,7 @@ const en = {
       pgnFile: "Choose a .pgn or .zip file",
       pgnPaste: "Paste a PGN",
       pgnRead: "Read",
+      removeFile: "Remove {{name}}",
       read_one: "{{count}} game read",
       read_other: "{{count}} games read",
       game: "Game",
