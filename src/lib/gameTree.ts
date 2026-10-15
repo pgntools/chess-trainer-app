@@ -8,7 +8,6 @@ import {
 } from "./gameModel";
 import { startNumbering } from "./gameNavigation";
 import { gamesOf, withoutGames } from "./gamesTag";
-import { withoutPlayChance } from "./playChanceTag";
 import { TreeManager } from "./treeManager";
 
 /**
@@ -723,25 +722,14 @@ export const linePgn = (tree: GameTree, id: string | null): string => {
  * inputs' own `games` tags are taken out of what is joined (`withoutGames`),
  * everywhere, and only the summed one is written. Absent, nothing is counted —
  * the merge is exactly what it always was.
- *
- * **Play chances** (`options.playChances`, CTA-208) write, on the same branch
- * candidates only, each move's share of its position's games as
- * `[%prc P]` (`lib/playChance.ts`) — `round(child / parent × 100)`, the
- * parent the games through the move before (at the first move, every game
- * merged), counted as above — the Library's *Save tree as PGN* rule
- * (`lib/openingTreePgn.ts`). The inputs' own `prc` tags are taken out
- * (`withoutPlayChance`). With both asked, one tag pair, games first:
- * `[%games 12] [%prc 40]`.
  */
 export const mergeTrees = (
   trees: readonly GameTree[],
   startFen: string,
   headers: GameHeaders = {},
-  options: { countGames?: boolean; playChances?: boolean } = {},
+  options: { countGames?: boolean } = {},
 ): GameTree => {
-  const writingGames = options.countGames === true;
-  const writingChances = options.playChances === true;
-  const counting = writingGames || writingChances;
+  const counting = options.countGames === true;
   const moves: VariationNode[] = [];
   let nextId = 1;
   let comments: string[] | undefined;
@@ -755,16 +743,10 @@ export const mergeTrees = (
   const tally = new Map<VariationNode, { total: number; tree: number; value: number }>();
   let treeIndex = 0;
 
-  /** Every game merged, each once at its larger value — the share's whole at the first move. */
-  let rootTotal = 0;
-
-  /** The comments as they are joined — without the tags this merge writes. */
+  /** The comments as they are joined — without their `games` tags while counting. */
   const cleaned = (list: readonly string[] | undefined): readonly string[] | undefined => {
     if (!counting || list === undefined) return list;
-    const kept = list
-      .map((text) => (writingGames ? withoutGames(text) : text))
-      .map((text) => (writingChances ? withoutPlayChance(text) : text))
-      .filter((text) => text !== "");
+    const kept = list.map(withoutGames).filter((text) => text !== "");
     return kept.length === 0 ? undefined : kept;
   };
 
@@ -815,7 +797,6 @@ export const mergeTrees = (
   for (const tree of trees) {
     if (tree.startFen !== startFen) continue;
     treeIndex += 1;
-    if (counting) rootTotal += Math.max(1, ...tree.moves.map((node) => gamesOf(node) ?? 1));
     added.first = undefined;
     into(moves, tree.moves, 1);
     const firstAdded = added.first as VariationNode | undefined;
@@ -836,21 +817,15 @@ export const mergeTrees = (
 
   if (counting) {
     // Only where the games part: each move of a position left by two or more.
-    const stack: { siblings: VariationNode[]; parentTotal: number }[] = [{ siblings: moves, parentTotal: rootTotal }];
-    for (let next = stack.pop(); next !== undefined; next = stack.pop()) {
-      const { siblings, parentTotal } = next;
+    const stack: VariationNode[][] = [moves];
+    for (let siblings = stack.pop(); siblings !== undefined; siblings = stack.pop()) {
       for (const node of siblings) {
-        const total = tally.get(node)?.total ?? 1;
         if (siblings.length > 1) {
-          const marks: string[] = [];
-          if (writingGames) marks.push(`[%games ${total}]`);
-          // A re-merge whose own tags disagree could pass 100; a share never does.
-          if (writingChances) marks.push(`[%prc ${Math.min(100, Math.round((total / parentTotal) * 100))}]`);
-          const tag = marks.join(" ");
+          const tag = `[%games ${tally.get(node)?.total ?? 1}]`;
           const [head, ...rest] = node.comments ?? [];
           node.comments = head === undefined ? [tag] : [`${tag} ${head}`, ...rest];
         }
-        stack.push({ siblings: node.children, parentTotal: total });
+        stack.push(node.children);
       }
     }
   }
