@@ -18,6 +18,8 @@ export * from "./ImportReport";
 // CTA-190: a running Jobs V2 job's live engine progress, under its progress bar.
 export * from "./JobEngineProgress";
 export * from "./JobSummary";
+// CTA-209: a Library game's own view beside its board — the game board's left panel.
+export * from "./LibraryGameDetails";
 export * from "./PgnExportPanel";
 export * from "./PlayToggleButton";
 // CTA-206: a repertoire's own view beside its board — the player's left panel.
