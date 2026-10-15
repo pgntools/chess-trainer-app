@@ -108,18 +108,51 @@ afterEach(() => {
 });
 
 describe("reaching a game", () => {
-  it("is a menu on the repertoire's own view, and on its row in the list", async () => {
-    await storeRepertoire("r", CARO);
+  it("is the left panel's Games tab on the repertoire's own view (CTA-206), with no menu in the header", async () => {
+    await storeRepertoire("r", CARO, "Caro");
     await mount("/repertoires/r");
-    fireEvent.click(screen.getByTestId("repertoire-board-games"));
-    expect(screen.getByTestId("repertoire-board-games-end")).toHaveAttribute(
-      "href",
+    expect(screen.queryByTestId("repertoire-board-games")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Games" }));
+    const list = screen.getByRole("list", { name: "Games of Caro" });
+    expect(within(list).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
       "/repertoires/r/games/end",
-    );
-    expect(screen.getByTestId("repertoire-board-games-backtrack")).toHaveAttribute(
-      "href",
       "/repertoires/r/games/backtrack",
-    );
+    ]);
+    // On the repertoire's own view no game is current, and there is no way "back".
+    expect(within(list).queryByRole("link", { current: "page" })).toBeNull();
+    expect(screen.queryByTestId("repertoire-board-details-games-back")).not.toBeInTheDocument();
+  });
+
+  it("keeps the Games tab open into a game and from one game to the other, the open game current", async () => {
+    await storeRepertoire("r", CARO, "Caro");
+    await mount("/repertoires/r");
+    fireEvent.click(screen.getByRole("tab", { name: "Games" }));
+    fireEvent.click(screen.getByTestId("repertoire-board-details-games-end"));
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+    });
+
+    // A game now — a fresh session, the same left tab.
+    expect(boardOptions().id).toBe(ID);
+    expect(screen.getByRole("tab", { name: "Games" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("link", { current: "page" })).toHaveTextContent("Get to the end");
+    expect(screen.getByTestId(`${ID}-details-games-back`)).toHaveAttribute("href", "/repertoires/r");
+
+    fireEvent.click(screen.getByTestId(`${ID}-details-games-backtrack`));
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+    });
+    expect(screen.getByRole("tab", { name: "Games" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("link", { current: "page" })).toHaveTextContent("Backtracking");
+    expect(screen.getByTestId(`${ID}-details-game-title`)).toHaveTextContent("Backtracking");
+
+    // And back to the repertoire's own view, still on Games.
+    fireEvent.click(screen.getByTestId(`${ID}-details-games-back`));
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+    });
+    expect(boardOptions().id).toBe("repertoire-board");
+    expect(screen.getByRole("tab", { name: "Games" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("is the same menu in the list", async () => {
@@ -135,12 +168,19 @@ describe("reaching a game", () => {
   it("opens on the Score tab, with the trainer playing and no Autoplay switch", async () => {
     await mount(`/repertoires/${await storeRepertoire("r", CARO, "Caro")}/games/end`);
     expect(boardOptions().id).toBe(ID);
-    expect(screen.getByTestId(`${ID}-title`)).toHaveTextContent("Get to the end");
+    // The left panel's head names the game, under the repertoire's name (CTA-206).
+    expect(screen.getByTestId(`${ID}-details-title`)).toHaveTextContent("Caro");
+    expect(screen.getByTestId(`${ID}-details-game-title`)).toHaveTextContent("Get to the end");
     expect(screen.getByTestId(`${ID}-score`)).toBeVisible();
     expect(tally()).toEqual(["0", "0"]);
-    fireEvent.click(screen.getByTestId(`${ID}-panel-tab-settings`));
-    expect(screen.queryByTestId(`${ID}-setting-autoplay`)).not.toBeInTheDocument();
-    expect(screen.getByTestId(`${ID}-back`)).toHaveAttribute("href", "/repertoires/r");
+    // Its Settings tab — the left panel's, open — has no Autoplay; the right panel no Settings tab.
+    expect(screen.queryByTestId(`${ID}-panel-tab-settings`)).not.toBeInTheDocument();
+    expect(screen.getByTestId(`${ID}-details-arrows`)).toBeInTheDocument();
+    expect(screen.queryByTestId(`${ID}-details-autoplay`)).not.toBeInTheDocument();
+    // The way back to the repertoire is the Games tab's (the header's Back went).
+    expect(screen.queryByTestId(`${ID}-back`)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Games" }));
+    expect(screen.getByTestId(`${ID}-details-games-back`)).toHaveAttribute("href", "/repertoires/r");
   });
 
   it("says so for a game there is no such thing as", async () => {
@@ -203,7 +243,7 @@ describe("Get to the end", () => {
     fireEvent.click(screen.getByTestId(`${ID}-panel-tab-moves`));
     expect(screen.getByTestId("move-ply-8")).toHaveAttribute("data-extension", "true");
 
-    fireEvent.click(screen.getByTestId(`${ID}-restart`));
+    fireEvent.click(screen.getByTestId(`${ID}-details-restart`));
     play(["e2", "e4"], ["d2", "d4"], ["e4", "e5"], ["g1", "f3"]);
     fireEvent.click(screen.getByTestId(`${ID}-panel-tab-score`));
     expect(lines()).toBe("2 lines finished");
@@ -216,7 +256,7 @@ describe("Get to the end", () => {
 describe("Backtracking", () => {
   it("covers one line, goes back to the next, and ends when every line is covered", async () => {
     await mount(`/repertoires/${await storeRepertoire("r", CARO)}/games/backtrack`);
-    expect(screen.getByTestId(`${ID}-title`)).toHaveTextContent("Backtracking");
+    expect(screen.getByTestId(`${ID}-details-game-title`)).toHaveTextContent("Backtracking");
     expect(lines()).toBe("Lines covered: 0 of 2");
 
     play(["e2", "e4"], ["d2", "d4"], ["e4", "e5"]);

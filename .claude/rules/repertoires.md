@@ -41,13 +41,15 @@ explorer, [`tree-views.md`](./tree-views.md); the stores
 | `src/blocks/lists/RepertoiresList/`, the folder blocks (`FolderActions`, `Folder*Dialog`), `useRepertoireFolders.ts` | The list's rows and cards, folders and repertoires (CTA-113); the name / delete dialogs; the bulk delete is `DeleteManyDialog`; the folder store's binding. |
 | `RepertoireUpload.tsx` | `/repertoires/new`: a `.pgn` file or pasted text, through **one** function. |
 | `RepertoireMergeSplit.tsx` (over the `MergeSplitChoice` block) | The merge-or-split choice a text of several games gets — on upload, and on the route of a record saved before the one-game rule. |
-| `RepertoireBoard.tsx` | `/repertoires/<id>`: the miss, the legacy choice, else the player. |
-| `RepertoireGame.tsx` | `/repertoires/<id>/games/<end\|backtrack>`: a game over the same player. |
-| **`RepertoirePlayer.tsx`** | **The screen**: the core, the engine module, `useTrainerModule`, `useRepertoireGame` and the explorer, in `BoardShell` / `BoardPanel`. |
+| `RepertoireBoard.tsx` | `/repertoires/<id>` **and** `/repertoires/<id>/games/<end\|backtrack>` — one component for both routes (CTA-206): the miss (an unknown id or game), the legacy choice, else the player, keyed by the repertoire and the game; it holds the left panel's open tab and drawer, above the keyed player. |
+| `RepertoireGame.tsx`, `RepertoireGameMain.tsx` | The game route's — `RepertoireBoard` and its wrapper, re-exported, so React keeps the one component (and the left tab) across a step between the repertoire and a game. |
+| **`RepertoirePlayer.tsx`** | **The screen**: the core, the engine module, `useTrainerModule`, `useRepertoireGame` and the explorer, in `BoardShell` / `BoardPanel`, and the left panel (`BoardLeftPanel` + `RepertoireDetails`). |
+| `src/blocks/panels/RepertoireDetails/` | **The left panel** (CTA-206): the head (name, description or the game's title, the opening), and the Settings, Games and Jobs tabs — presentational, the session's state the player's. |
 | `useRepertoireGame.ts` | A game's session state: the rules, the score, lines finished, coverage. |
 | `src/blocks/panels/ChangesStrip/` | The strip: Update / Save as copy / Discard (also the Library's, under its `labelKey`). |
-| `RepertoireGamesMenu.tsx` | The Games menu, on the player and on every list row and card. |
+| `RepertoireGamesMenu.tsx` | The Games menu, on every list row and card (the player lists the games on its left panel's Games tab since CTA-206). |
 | `RepertoireSettingsScreen.tsx` + `RepertoireSettingsSections.tsx` | `/repertoires/<id>/settings`: one draft, written on Save. |
+| `RepertoireSettingsDialog.tsx`, `repertoireSettingsDraft.ts` | The same settings as a popup over the player (CTA-206, the left panel's gear), with a note that they are permanent; the sections and the draft, shared with the screen. |
 | `useSavedRepertoires.ts` | The store binding (`undefined` until read). |
 | `repertoireTestKit.tsx` | The tests' shared mount, fixtures and `FAKE_TIMERS`. |
 | `src/lib/savedRepertoires.ts` | **The record**, pure: `readRepertoireText`, `savedRepertoireOf`, `mergedRepertoireOf`, `splitRepertoiresOf`, `isMultiGameRepertoire`, `withRepertoireTree` (Update), `repertoireCopyOf` (Save as copy), `savedRepertoireFrom` (the normaliser). |
@@ -148,19 +150,51 @@ RepertoireGame.tsx ──┴─▶ RepertoirePlayer.tsx ── download: treeToP
   node on screen and tinted (`success.main`) in the list and ringed on the
   map: `extensionIdsOf(sessionTree, nodeIdsOf(original))` is the whole of the
   tracking. Past a line's end the reader moves both colours.
-- **Tabs: Moves · (Score) · Map · Settings** (a game adds Score; Get to the
-  end has no Map; no Engine tab since CTA-181 — the search settings are the
-  top bar's Engine menu). Settings holds the side (default the main colour; a
-  change restarts), Autoplay, the next-move arrows, the play-chance arrows and
-  **Clear** (the Engine tab's until CTA-181).
-  Moves stays mounted (`keepMounted`), so a 9,000-move list never re-mounts.
-- **The header**: the opening line, the description, the Games menu, Play,
-  the engine's play / pause with its menu (the eval bar — `BoardEngineControls`,
-  CTA-181; a switch in Settings before), Restart (back to the start,
-  extensions kept), the download (the session tree as PGN) and the settings
-  link.
+- **Two panels** (CTA-206): the right one is the board's tools, the left one
+  the repertoire's own view.
+- **The right panel's tabs: Moves · (Score) · Map** (a game adds Score; Get
+  to the end has no Map; no Engine tab since CTA-181 — the search settings
+  are the top bar's Engine menu; no Settings tab since CTA-206). Moves stays
+  mounted (`keepMounted`), so a 9,000-move list never re-mounts; its footer
+  is the comment block, the changes strip, the next-moves bar or the
+  trainer's status.
+- **The right panel's header**, in this order: under the shell's
+  breakpoint the button that opens the left panel's drawer; the opening on
+  screen (`CurrentOpening` — its ECO chip and name) at its start; then, at
+  its end, Save (the changes strip), Play and the engine's on / off — a small switch with the top
+  bar's Engine icon, as the Case board's (no `BoardEngineControls` and its
+  menu since CTA-206; the eval bar is the left panel's).
+- **The left panel** (`RepertoireDetails` in the shell's board left panel,
+  `BoardLeftPanel`'s `keepShell`, as Analysis's Case view — the header and
+  its Engine menu stay; a drawer under the breakpoint): a head — **Back**
+  at its start (up a level: the repertoire to the list, into its folder; a
+  game to the repertoire), the name, and at its end **Restart** (back to
+  the start, extensions kept), the **download** (the session tree as PGN)
+  and a gear opening the record's own, **permanent** settings in a popup
+  (`RepertoireSettingsDialog.tsx`: the settings screen's sections over the
+  same draft, `repertoireSettingsDraft.ts`, written on Save — a note saying
+  they are kept with the repertoire, unlike the Settings tab, which lasts
+  the session; the name and description show at once, the main colour and
+  the arrows' defaults at the next opening; the screen,
+  `/repertoires/<id>/settings`, is still the list's gear's); under them the
+  description on one line (the whole on hover) or, in a game, the game's
+  title — then three tabs:
+  - **Settings** — the side (default the main colour; a change restarts),
+    Autoplay (the player's only; the header's Play is the same state), the
+    next-move arrows, the play-chance arrows (the player's only) and the
+    eval bar. **No Clear** since CTA-206: the changes strip's Discard drops
+    the session's additions.
+  - **Games** — Get to the end and Backtracking, each a link with a line on
+    what it does; in a game, that game current (`aria-current`) and **Back to
+    the repertoire** first (where the header's Back was).
+  - **Jobs** — an empty state: repertoire jobs are a later issue.
+  The open tab and the drawer are the route's (`RepertoireBoard.tsx`), held
+  above the keyed player — both routes are one component — so they outlive a
+  change of game; the session's state (side, Autoplay, arrows) stays the
+  player's, handed to the block as props.
 - **Arrows are the reader's call**: the player opens as `showArrows` says (on
-  by default), a game without them; Settings switches them for the session.
+  by default), a game without them; the left panel's Settings switches them
+  for the session.
   With `chanceArrows` on (off by default, never in a game) and a branch that
   carries `prc` marks, the chance overlay draws the fork instead and the
   next-moves bar prints each move's percentage. With Autoplay off the footer
@@ -169,8 +203,8 @@ RepertoireGame.tsx ──┴─▶ RepertoirePlayer.tsx ── download: treeToP
   lines and the eval bar, no `onBestMove`. A line clicked there is
   exploration; the trainer does not answer it. It searches with the reader's
   global search settings (the top bar's Engine menu), stopping at their depth
-  or move time. The Settings tab's Clear drops the session's
-  additions.
+  or move time. Its on / off is the header's switch, its eval bar the left
+  panel's Settings tab's.
 - **The comment block** (the explorer's `AnnotationsBar`) shows what is
   written at the position on screen — the move with its marks, the comment
   opening its line, the comments after it, and their attributes as chips
@@ -259,8 +293,9 @@ extension's rules, so a study prepared for one behaves the same in the other.
 ## 5. The games — `/repertoires/<id>/games/<game>`
 
 A game is the player with rules (`lib/repertoireGames.ts`, state in
-`useRepertoireGame`): the trainer always plays, Autoplay is gone, a **Score**
-tab opens first, and the trainer runs in **game mode** (`drill`): each of the
+`useRepertoireGame`): the trainer always plays, Autoplay (and the play-chance
+arrows) are gone from the left panel's Settings, a **Score** tab opens first
+on the right, the left panel's Games tab marks the game current, and the trainer runs in **game mode** (`drill`): each of the
 reader's moves inside the repertoire is judged *before* it is made — a
 repertoire move is right; any other legal move is wrong and **taken back**
 (never an extension), the status saying "try again". **One verdict per

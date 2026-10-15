@@ -97,7 +97,7 @@ describe("bringing a repertoire in", () => {
 
     const record = await stored();
     expect(record.name).toBe("Caro-Kann");
-    expect(await screen.findByTestId("repertoire-board-name")).toHaveTextContent(
+    expect(await screen.findByTestId("repertoire-board-details-title")).toHaveTextContent(
       "Caro-Kann",
     );
   });
@@ -171,7 +171,7 @@ describe("a text of several games", () => {
 
     const record = await stored();
     expect(record).toMatchObject({ name: "Caro-Kann", stats: { moves: 4, variations: 1 } });
-    expect(await screen.findByTestId("repertoire-board-name")).toHaveTextContent("Caro-Kann");
+    expect(await screen.findByTestId("repertoire-board-details-title")).toHaveTextContent("Caro-Kann");
   });
 
   it("splits into one repertoire per game, in a folder of their own, and opens it", async () => {

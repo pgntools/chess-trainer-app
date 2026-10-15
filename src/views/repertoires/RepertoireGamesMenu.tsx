@@ -9,8 +9,9 @@ import { REPERTOIRE_GAMES, repertoireGamePath } from "../../lib/repertoireGames"
 
 /**
  * **The games a repertoire can be played as** (CTA-63) — one button and a menu
- * of `REPERTOIRE_GAMES`, on the repertoire's own view and on its row and card
- * in the list: an `IconAction` that says it opens a menu, and an
+ * of `REPERTOIRE_GAMES`, on a repertoire's row and card in the list (the
+ * repertoire's own view lists them on its left panel's Games tab since
+ * CTA-206, `RepertoireDetails`): an `IconAction` that says it opens a menu, and an
  * `AnchoredMenu` (CTA-113) hung from it. Each entry is a link, so a game is a
  * URL like any other screen.
  */

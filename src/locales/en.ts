@@ -1972,6 +1972,9 @@ const en = {
       save: "Save",
       cancel: "Cancel",
       problem: "It could not be saved — this browser's storage is full or unavailable.",
+      /** The popup over the board (CTA-206): these settings are kept, unlike the Settings tab's. */
+      permanentNote:
+        "These are the repertoire's own settings: saved with it, and used every time it opens. The Settings tab beside the board changes this session only.",
     },
     /**
      * A text of several games: a repertoire is one game (a mainline with side
@@ -2029,8 +2032,42 @@ const en = {
       open: "Games",
       /** The button on a list's row or card, named for its repertoire (CTA-113). */
       openNamed: "Games of {{name}}",
-      end: { title: "Get to the end" },
-      backtrack: { title: "Backtracking" },
+      end: {
+        title: "Get to the end",
+        description: "The trainer plays your repertoire's lines at random; reach the end of one to finish it.",
+      },
+      backtrack: {
+        title: "Backtracking",
+        description: "Cover every line: when one ends, play goes back to the deepest position with a line still to play.",
+      },
+    },
+    /** The left panel beside the board — the repertoire's own view and its games (CTA-206). */
+    details: {
+      label: "Details of {{name}}",
+      /** The board header's button that opens the panel in a drawer, under the shell's breakpoint. */
+      toggle: "The repertoire's details",
+      tabs: {
+        label: "Repertoire details",
+        settings: "Settings",
+        games: "Games",
+        jobs: "Jobs",
+      },
+      /** The head's Back, on the repertoire's own view — to the list. */
+      back: "Back to the repertoires",
+      /** The head's gear: the record's own settings screen. */
+      recordSettings: "Repertoire settings",
+      evalBarHelp: "The engine's score beside the board while the engine is on.",
+      /** The board header's engine switch — its icon's name. */
+      engine: "Engine",
+      games: {
+        label: "Games of {{name}}",
+        /** On a game, the way back to the repertoire's own view. */
+        back: "Back to the repertoire",
+        backHelp: "Explore it freely, without a game's rules.",
+      },
+      jobs: {
+        empty: "Repertoire jobs are coming: work that runs over a whole repertoire in the background will be started from here.",
+      },
     },
     play: {
       side: "Your side",
@@ -2041,7 +2078,6 @@ const en = {
       autoplayOn: "Play — the trainer answers your moves",
       autoplayOff: "Pause — you move both sides",
       download: "Download with your additions as PGN",
-      back: "Back to the board",
       sideHelp:
         "The trainer plays the other side. Changing it starts again from the first move; what you added is kept.",
       /** The switch that draws the next-move arrows — off by default. */
@@ -2056,7 +2092,6 @@ const en = {
       autoplayHelp:
         "The trainer answers your moves from the repertoire, picking among its lines at random. Off, you move both sides.",
       tabs: {
-        settings: "Settings",
         score: "Score",
         map: "Map",
       },

@@ -1,15 +1,8 @@
-import Box from "@mui/material/Box";
-
-import RepertoireGame from "./RepertoireGame";
+import Main from "./RepertoireBoardMain";
 
 /**
- * Layout-only wrapper, as on every other screen — the shell already insets and
- * squares the area this fills (`Layout.tsx`).
+ * The game route's wrapper — the repertoire's own view's (CTA-206): one
+ * component for both routes, so React keeps it, and the left panel's open
+ * tab with it, across a step between the repertoire and a game.
  */
-const Main = () => (
-  <Box data-testid="repertoire-game-wrapper" sx={{ height: "100%" }}>
-    <RepertoireGame />
-  </Box>
-);
-
 export default Main;

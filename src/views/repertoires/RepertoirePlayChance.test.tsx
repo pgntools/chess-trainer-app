@@ -112,8 +112,8 @@ describe("play chances", () => {
     expect(screen.getByTestId("move-comment-icon-6")).toBeInTheDocument();
 
     // Autoplay on: a draw of 0 would take Bf5, but it is marked never.
-    fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-settings"));
-    fireEvent.click(screen.getByTestId("repertoire-board-setting-autoplay").querySelector("input")!);
+    fireEvent.click(screen.getByTestId("repertoire-board-details-tab-settings"));
+    fireEvent.click(screen.getByTestId("repertoire-board-details-autoplay").querySelector("input")!);
     fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-moves"));
     for (const [from, to] of [["e2", "e4"], ["d2", "d4"], ["e4", "e5"]]) {
       drop(from, to);
@@ -142,8 +142,8 @@ describe("↑ / ↓ in the player — switching the trainer's reply", () => {
 
   it("cycle the siblings, and the trainer goes on from the one chosen", async () => {
     await mountIdle(`/repertoires/${await storeRepertoire("r", TWO_REPLIES)}`);
-    fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-settings"));
-    fireEvent.click(screen.getByTestId("repertoire-board-setting-autoplay").querySelector("input")!);
+    fireEvent.click(screen.getByTestId("repertoire-board-details-tab-settings"));
+    fireEvent.click(screen.getByTestId("repertoire-board-details-autoplay").querySelector("input")!);
     fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-moves"));
 
     drop("e2", "e4");

@@ -93,7 +93,7 @@ const mountIdle = async (path: string) => {
 const mount = async (path: string) => {
   await mountIdle(path);
   openSettings();
-  fireEvent.click(screen.getByTestId("repertoire-board-setting-autoplay").querySelector("input")!);
+  fireEvent.click(screen.getByTestId("repertoire-board-details-autoplay").querySelector("input")!);
   fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-moves"));
 };
 
@@ -105,7 +105,7 @@ const drop = (from: string, to: string) =>
 
 /** Open the Settings tab, where the side and the arrows live. */
 const openSettings = () =>
-  fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-settings"));
+  fireEvent.click(screen.getByTestId("repertoire-board-details-tab-settings"));
 
 /** Switch the engine on — the header's play / pause (CTA-181). */
 const engineOn = () => {
@@ -144,7 +144,7 @@ describe("the repertoire player, Autoplay on", () => {
 
     expect(boardOptions().id).toBe("repertoire-board");
     expect(screen.getByTestId("repertoire-board-panel")).toBeInTheDocument();
-    expect(screen.getByTestId("repertoire-board-name")).toHaveTextContent("Caro");
+    expect(screen.getByTestId("repertoire-board-details-title")).toHaveTextContent("Caro");
     expect(screen.getByTestId("board")).toHaveAttribute("data-orientation", "white");
     // A drill shows no answer until asked: the engine is off — no lines, no
     // bar, no search — and the status row says so.
@@ -154,20 +154,21 @@ describe("the repertoire player, Autoplay on", () => {
     expect(screen.getByTestId("repertoire-board-panel-status")).toHaveTextContent(
       i18n.t("analysis.settings.engineOff"),
     );
-    // Moves · Map · Settings — no Engine tab since CTA-181: the search settings are the top bar's.
-    const tabs = screen.getAllByRole("tab");
+    // Moves · Map — no Engine tab since CTA-181 (the search settings are the
+    // top bar's), no Settings tab since CTA-206 (the left panel's).
+    const tabs = within(screen.getByTestId("repertoire-board-panel")).getAllByRole("tab");
     expect(tabs.map((tab) => tab.getAttribute("data-testid"))).toEqual([
       "repertoire-board-panel-tab-moves",
       "repertoire-board-panel-tab-map",
-      "repertoire-board-panel-tab-settings",
     ]);
-    // Its switch is the header's play / pause, and off.
-    expect(screen.getByRole("button", { name: i18n.t("boardEngine.toggle") })).toHaveAttribute("aria-pressed", "false");
+    // Its switch is the header's — a small on / off switch, as the Case board's (CTA-206) — and off.
+    expect(screen.getByRole("switch", { name: "Engine" })).not.toBeChecked();
+    expect(screen.queryByRole("button", { name: i18n.t("boardEngine.menu") })).not.toBeInTheDocument();
     openSettings();
     // Autoplay is off by default: the reader moves both sides, and the footer
     // is the next-moves bar rather than the trainer's status.
     expect(
-      screen.getByTestId("repertoire-board-setting-autoplay").querySelector("input"),
+      screen.getByTestId("repertoire-board-details-autoplay").querySelector("input"),
     ).not.toBeChecked();
     expect(screen.queryByTestId("repertoire-board-status")).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-moves"));
@@ -214,7 +215,7 @@ describe("the repertoire player, Autoplay on", () => {
     expect(position()).toBe(fenAfter("e4", "c6"));
 
     openSettings();
-    fireEvent.click(screen.getByTestId("repertoire-board-side-black"));
+    fireEvent.click(screen.getByTestId("repertoire-board-details-side-black"));
     // Back at the start, facing Black, and the trainer thinking as White.
     expect(position()).toBe(new Chess().fen());
     expect(screen.getByTestId("board")).toHaveAttribute("data-orientation", "black");
@@ -302,7 +303,7 @@ describe("the repertoire player, Autoplay on", () => {
     // Switched off for the session in the Settings tab — the record is untouched.
     const stored = savedRepertoiresSnapshot();
     openSettings();
-    fireEvent.click(screen.getByTestId("repertoire-board-arrows").querySelector("input")!);
+    fireEvent.click(screen.getByTestId("repertoire-board-details-arrows").querySelector("input")!);
     expect(boardOptions().arrows).toEqual([]);
     await landed();
     expect(savedRepertoiresSnapshot()).toBe(stored);
@@ -314,7 +315,7 @@ describe("the repertoire player, Autoplay on", () => {
     await mountIdle("/repertoires/r");
     expect(boardOptions().arrows).toEqual([]);
     openSettings();
-    expect(screen.getByTestId("repertoire-board-arrows").querySelector("input")).not.toBeChecked();
+    expect(screen.getByTestId("repertoire-board-details-arrows").querySelector("input")).not.toBeChecked();
   });
 
   it("opens a game without arrows whatever the setting says", async () => {
@@ -344,7 +345,7 @@ describe("the repertoire player, Autoplay on", () => {
     // The record is untouched.
     const stored = savedRepertoiresSnapshot();
     openSettings();
-    fireEvent.click(screen.getByTestId("repertoire-board-chance-arrows").querySelector("input")!);
+    fireEvent.click(screen.getByTestId("repertoire-board-details-chance-arrows").querySelector("input")!);
     expect(boardOptions().arrows).toEqual([]);
     const overlay = screen.getByTestId("repertoire-board-chance-arrows-overlay");
     const likely = overlay.querySelector('path[data-from="g1"]')!;
@@ -392,7 +393,7 @@ describe("the repertoire player, Autoplay on", () => {
     // The same switch's other half: the percentages print beside the SANs.
     expect(screen.getByTestId("analysis-next-moves")).toHaveTextContent("97.8%");
     openSettings();
-    expect(screen.getByTestId("repertoire-board-chance-arrows").querySelector("input")).toBeChecked();
+    expect(screen.getByTestId("repertoire-board-details-chance-arrows").querySelector("input")).toBeChecked();
   });
 
   it("opens a game without the chance arrows whatever the setting says", async () => {
@@ -411,14 +412,14 @@ describe("the repertoire player, Autoplay on", () => {
     expect(screen.queryByTestId("analysis-next-moves")).not.toBeInTheDocument();
     // And no switch for it in the game's Settings — a drill must not show the
     // answer's odds.
-    fireEvent.click(screen.getByTestId("repertoire-game-panel-tab-settings"));
-    expect(screen.queryByTestId("repertoire-game-chance-arrows")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("repertoire-game-details-tab-settings"));
+    expect(screen.queryByTestId("repertoire-game-details-chance-arrows")).not.toBeInTheDocument();
   });
 
   it("shows the best variations once the engine is switched on, and never moves for it", async () => {
     await mount(`/repertoires/${await storeRepertoire("r", CARO)}`);
     engineOn();
-    expect(screen.getByTestId("repertoire-board-setting-engine")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("switch", { name: "Engine" })).toBeChecked();
 
     const engine = FakeEngine.latest();
     expect(engine.lastSearch).toBe(new Chess().fen());
@@ -443,13 +444,16 @@ describe("the repertoire player, Autoplay on", () => {
     wait();
     expect(position()).toBe(new Chess().fen());
 
-    // Its menu holds the eval bar; the search settings are the top bar's (CTA-181).
-    fireEvent.click(screen.getByRole("button", { name: i18n.t("boardEngine.menu") }));
-    fireEvent.click(within(screen.getByTestId("repertoire-board-setting-evalbar")).getByRole("switch"));
+    // The eval bar is the left panel's Settings tab's (CTA-206 — the header's engine menu before);
+    // the search settings are the top bar's (CTA-181).
+    openSettings();
+    fireEvent.click(within(screen.getByTestId("repertoire-board-details")).getByRole("switch", { name: /Show evaluation bar/ }));
     expect(screen.queryByTestId("eval-bar")).not.toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId("repertoire-board-details")).getByRole("switch", { name: /Show evaluation bar/ }));
+    expect(screen.getByTestId("eval-bar")).toBeInTheDocument();
   });
 
-  it("clears the session's additions from the Settings tab (the Engine tab's Clear, CTA-181)", async () => {
+  it("has no Clear any more (CTA-206): the changes strip's Discard drops the session's additions", async () => {
     await mount(`/repertoires/${await storeRepertoire("r", CARO)}`);
     drop("e2", "e4");
     wait();
@@ -457,31 +461,46 @@ describe("the repertoire player, Autoplay on", () => {
     expect(document.querySelector('[data-san="d3"]')).not.toBeNull();
 
     openSettings();
-    fireEvent.click(screen.getByTestId("analysis-clear"));
-    fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-moves"));
-    expect(position()).toBe(new Chess().fen());
+    expect(screen.queryByRole("button", { name: i18n.t("analysis.settings.clear") })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("repertoire-board-save"));
+    fireEvent.click(screen.getByTestId("repertoire-board-changes-discard"));
     expect(document.querySelector('[data-san="d3"]')).toBeNull();
   });
 
-  it("keeps the side and the arrows in a Settings tab beside Moves", async () => {
-    await mountIdle(`/repertoires/${await storeRepertoire("r", CARO)}`);
-    for (const tab of ["moves", "settings"]) {
-      expect(screen.getByTestId(`repertoire-board-panel-tab-${tab}`)).toBeInTheDocument();
-    }
-    // Not in the header any more, and not on screen until the tab is opened.
+  it("keeps the side and the arrows in the left panel's Settings tab, beside the Moves on the right (CTA-206)", async () => {
+    const id = await storeRepertoire("r", CARO, "Caro");
+    await updateRepertoireSettings(id, "Caro", { ...findSavedRepertoire(id)!.settings, description: "My notes" });
+    await mountIdle(`/repertoires/${id}`);
+    // The right panel is the board's tools: no Settings tab, and its header
+    // no name, description, Games menu, settings gear, Restart or download…
+    expect(screen.queryByTestId("repertoire-board-panel-tab-settings")).not.toBeInTheDocument();
     const header = screen.getByTestId("repertoire-board-panel-header");
-    expect(header.querySelector('[data-testid="repertoire-board-side"]')).toBeNull();
-    expect(screen.queryByTestId("repertoire-board-arrows")).not.toBeInTheDocument();
+    for (const gone of ["name", "description", "games", "settings", "side", "restart", "download"]) {
+      expect(header.querySelector(`[data-testid="repertoire-board-${gone}"]`)).toBeNull();
+    }
+    // …its actions stay, and the opening on screen is its, with its ECO chip.
+    for (const kept of ["save", "play"]) {
+      expect(within(header).getByTestId(`repertoire-board-${kept}`)).toBeInTheDocument();
+    }
+    expect(within(header).getByTestId("repertoire-board-opening")).toBeInTheDocument();
 
-    const list = screen.getByTestId("move-list");
-    openSettings();
-    expect(screen.getByTestId("repertoire-board-settings")).toBeInTheDocument();
-    expect(screen.getByTestId("repertoire-board-side-white")).toHaveAttribute("aria-pressed", "true");
-    // The move list is kept mounted, hidden, while Settings shows.
-    expect(screen.getByTestId("repertoire-board-panel-content-moves")).not.toBeVisible();
+    // The left panel: the head, then Settings open — beside the move list, both on screen.
+    const details = screen.getByRole("region", { name: "Details of Caro" });
+    expect(within(details).getByRole("heading", { name: "Caro" })).toBeInTheDocument();
+    expect(within(details).getByTestId("repertoire-board-details-description")).toHaveTextContent("My notes");
+    expect(within(details).queryByTestId("repertoire-board-details-opening")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("repertoire-board-details-side-white")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("repertoire-board-details-arrows")).toBeInTheDocument();
+    expect(screen.getByTestId("repertoire-board-panel-content-moves")).toBeVisible();
+    // Restart and the download are the head's, beside the record's own settings — a popup (below).
+    expect(within(details).getByRole("button", { name: i18n.t("repertoires.play.restart") })).toBeInTheDocument();
+    expect(within(details).getByRole("button", { name: i18n.t("repertoires.play.download") })).toBeInTheDocument();
+    expect(within(details).getByRole("button", { name: "Repertoire settings" })).toHaveAttribute("aria-haspopup", "dialog");
 
-    fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-moves"));
-    expect(screen.getByTestId("move-list")).toBe(list);
+    // Jobs: nothing yet.
+    fireEvent.click(screen.getByRole("tab", { name: "Jobs" }));
+    expect(screen.getByTestId("repertoire-board-details-jobs-empty")).toBeInTheDocument();
   });
 
   it("restarts at the start position and keeps the extensions", async () => {
@@ -490,7 +509,7 @@ describe("the repertoire player, Autoplay on", () => {
     wait();
     drop("d2", "d3");
 
-    fireEvent.click(screen.getByTestId("repertoire-board-restart"));
+    fireEvent.click(screen.getByTestId("repertoire-board-details-restart"));
     expect(position()).toBe(new Chess().fen());
     expect(document.querySelector('[data-san="d3"][data-extension="true"]')).not.toBeNull();
   });
@@ -503,7 +522,7 @@ describe("the repertoire player, Autoplay on", () => {
     wait();
     drop("d2", "d3");
 
-    fireEvent.click(screen.getByTestId("repertoire-board-download"));
+    fireEvent.click(screen.getByTestId("repertoire-board-details-download"));
     expect(downloadPgn).toHaveBeenCalledTimes(1);
     const [stem, pgns] = vi.mocked(downloadPgn).mock.calls[0];
     expect(stem).toBe("my-caro");
@@ -741,7 +760,7 @@ describe("keeping a session's changes", () => {
     // Opened: its own route, at the position the reader was on, nothing unsaved.
     expect(path()).toBe(`/repertoires/${copy.id}`);
     expect(atParam()).toBe("e4,c6,d3");
-    expect(screen.getByTestId("repertoire-board-name")).toHaveTextContent("Caro (copy)");
+    expect(screen.getByTestId("repertoire-board-details-title")).toHaveTextContent("Caro (copy)");
     expect(position()).toBe(fenAfter("e4", "c6", "d3"));
     expect(screen.queryByTestId(BAR)).not.toBeInTheDocument();
   });
@@ -1045,17 +1064,26 @@ describe("the move menu on the player's map (CTA-67)", () => {
 describe("the header's Play button (CTA-65)", () => {
   const play = () => screen.getByTestId("repertoire-board-play");
   const settingsSwitch = () =>
-    screen.getByTestId("repertoire-board-setting-autoplay").querySelector("input")!;
+    screen.getByTestId("repertoire-board-details-autoplay").querySelector("input")!;
 
   it("sits in the header, off, offering to play", async () => {
     await mountIdle(`/repertoires/${await storeRepertoire("r", CARO)}`);
     expect(play()).toHaveAttribute("aria-pressed", "false");
     expect(play()).toHaveAccessibleName(i18n.t("repertoires.play.autoplayOn"));
-    // Beside Restart, before it.
-    expect(
-      play().compareDocumentPosition(screen.getByTestId("repertoire-board-restart")) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+  });
+
+  it("orders the header: the opening at its start, then Save, Play and the engine's switch (CTA-206)", async () => {
+    await mountIdle(`/repertoires/${await storeRepertoire("r", CARO)}`);
+    const header = screen.getByTestId("repertoire-board-panel-header");
+    const order = [
+      within(header).getByTestId("repertoire-board-opening"),
+      within(header).getByTestId("repertoire-board-save"),
+      play(),
+      within(header).getByRole("switch", { name: "Engine" }),
+    ];
+    for (let index = 1; index < order.length; index += 1) {
+      expect(order[index - 1].compareDocumentPosition(order[index]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
   });
 
   it("toggles Autoplay: pressed while on, the trainer answering, and back off", async () => {
@@ -1094,7 +1122,7 @@ describe("the header's Play button (CTA-65)", () => {
   it("makes the trainer reply at once when switched on at its turn", async () => {
     await mountIdle(`/repertoires/${await storeRepertoire("r", CARO)}`);
     openSettings();
-    fireEvent.click(screen.getByTestId("repertoire-board-side-black"));
+    fireEvent.click(screen.getByTestId("repertoire-board-details-side-black"));
     // Autoplay is off, so White (the trainer's side) has not moved.
     wait();
     expect(position()).toBe(new Chess().fen());
@@ -1108,7 +1136,7 @@ describe("the header's Play button (CTA-65)", () => {
   it("is absent from a game, where the trainer always plays", async () => {
     await mountIdle(`/repertoires/${await storeRepertoire("r", CARO)}/games/end`);
     expect(screen.queryByTestId("repertoire-game-play")).not.toBeInTheDocument();
-    expect(screen.getByTestId("repertoire-game-restart")).toBeInTheDocument();
+    expect(screen.getByTestId("repertoire-game-details-restart")).toBeInTheDocument();
   });
 });
 

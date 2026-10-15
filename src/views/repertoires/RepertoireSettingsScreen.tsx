@@ -1,4 +1,3 @@
-import { useState, type ComponentType } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { Link as RouterLink, useLocation, useNavigate, useParams } from "react-router";
@@ -9,15 +8,8 @@ import { SettingsFrame, SettingsSection } from "../../design-system/components/f
 import { MissState } from "../../design-system/components/states";
 import type { RepertoireFolder } from "../../lib/savedRepertoireFolders";
 import type { SavedRepertoire } from "../../lib/savedRepertoires";
-import { fileRepertoire, updateRepertoireSettings } from "../../lib/savedRepertoireStore";
 import { RightPanel } from "../main/rightPanel";
-import {
-  BoardSection,
-  FolderSection,
-  GeneralSection,
-  type RepertoireSettingsDraft,
-  type RepertoireSettingsSectionProps,
-} from "./RepertoireSettingsSections";
+import { REPERTOIRE_SETTINGS_SECTIONS, useRepertoireSettingsDraft } from "./repertoireSettingsDraft";
 import { ReadingRepertoires } from "./RepertoireBoard";
 import { useRepertoireFolders } from "./useRepertoireFolders";
 import { useSavedRepertoires } from "./useSavedRepertoires";
@@ -39,19 +31,9 @@ import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
  * page's `h1`, each section an `h2`), the analyses' settings screen's shape.
  *
  * Adding an option never touches this file unless it needs a new *section*;
- * then it is one entry in {@link SECTIONS}.
+ * then it is one entry in `REPERTOIRE_SETTINGS_SECTIONS`
+ * (`repertoireSettingsDraft.ts`, shared with the player's popup — CTA-206).
  */
-
-/** The sections, top to bottom. A new group of options is one entry here. */
-const SECTIONS: readonly {
-  id: string;
-  labelKey: string;
-  Body: ComponentType<RepertoireSettingsSectionProps>;
-}[] = [
-  { id: "general", labelKey: "repertoires.settings.sections.general", Body: GeneralSection },
-  { id: "board", labelKey: "repertoires.settings.sections.board", Body: BoardSection },
-  { id: "folder", labelKey: "repertoires.settings.sections.folder", Body: FolderSection },
-];
 
 function RepertoireSettingsScreen() {
   const { id } = useParams();
@@ -96,40 +78,9 @@ function SettingsForm({
   const back =
     typeof from === "string" ? from : `/repertoires/${encodeURIComponent(saved.id)}`;
 
-  // A `folderId` naming a folder that is gone reads as Unfiled, as the list
-  // reads it, so the tree preselects what the reader actually sees.
-  const [draft, setDraft] = useState<RepertoireSettingsDraft>(() => ({
-    name: saved.name,
-    settings: saved.settings,
-    folderId:
-      saved.folderId !== null && folders.some((folder) => folder.id === saved.folderId)
-        ? saved.folderId
-        : null,
-  }));
-  const [failed, setFailed] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const onChange: RepertoireSettingsSectionProps["onChange"] = (patch) =>
-    setDraft((current) => ({
-      name: patch.name ?? current.name,
-      settings: { ...current.settings, ...patch.settings },
-      // `null` is a real choice (Unfiled), so absence is told by `undefined`.
-      folderId: patch.folderId === undefined ? current.folderId : patch.folderId,
-    }));
-
+  const { draft, onChange, save: write, busy, failed } = useRepertoireSettingsDraft(saved, folders);
   const save = async () => {
-    setBusy(true);
-    const problem =
-      (await updateRepertoireSettings(saved.id, draft.name.trim(), {
-        ...draft.settings,
-        description: draft.settings.description.trim(),
-      })) ?? (await fileRepertoire(saved.id, draft.folderId));
-    setBusy(false);
-    if (problem !== undefined) {
-      setFailed(true);
-      return;
-    }
-    navigate(back);
+    if (await write()) navigate(back);
   };
 
   return (
@@ -160,7 +111,7 @@ function SettingsForm({
             }
             testId="repertoire-settings"
           >
-            {SECTIONS.map(({ id, labelKey, Body }) => (
+            {REPERTOIRE_SETTINGS_SECTIONS.map(({ id, labelKey, Body }) => (
               <SettingsSection key={id} title={t(labelKey)} testId={`repertoire-settings-section-${id}`}>
                 <Body draft={draft} onChange={onChange} />
               </SettingsSection>
