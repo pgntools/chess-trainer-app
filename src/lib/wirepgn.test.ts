@@ -121,6 +121,8 @@ describe("wirepgn", () => {
     // Any format, an arena too (CTA-142) — but not a word that is none.
     expect(run(file, "--tournament", "arena").code).toBe(0);
     expect(mark()).toBe("arena");
+    expect(run(file, "--tournament", "lichessArena").code).toBe(0);
+    expect(mark()).toBe("lichessArena");
   }, 60_000);
 
   it("refuses to mark games that do not share one Event", () => {

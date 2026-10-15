@@ -10,7 +10,7 @@ import { TournamentInfo, type TournamentFacts } from "../../blocks/cards";
 import { suggestionReasonOf } from "../../blocks/forms";
 import { TeamRosters, type TeamRoster } from "../../blocks/lists";
 import { TopPlayers } from "../../blocks/panels";
-import { PARTICIPANTS_DEFAULT_SORT, ParticipantsTable, type ParticipantsColumn } from "../../blocks/tables";
+import { ArenaStandingsTable, PARTICIPANTS_DEFAULT_SORT, ParticipantsTable, type ParticipantsColumn } from "../../blocks/tables";
 import { InlineAlert } from "../../design-system/components/feedback";
 import type { LinkTarget } from "../../design-system/components/link";
 import { BackButton } from "../../design-system/components/navigation";
@@ -18,6 +18,7 @@ import { LoadingLine } from "../../design-system/components/states";
 import { PanelTabs, tabPanelProps } from "../../design-system/components/tabs";
 import { IconAction, ListScreenHeader } from "../../design-system/components/toolbars";
 import type { DataTableSort } from "../../design-system/patterns/tables";
+import { arenaOf, pliesOfGames, type ArenaScoring } from "../../lib/arena";
 import { gameTag, type GameHeaders } from "../../lib/gameModel";
 import {
   collectionMetadataOf,
@@ -31,7 +32,9 @@ import { teamPlayersOf, teamTournamentOf } from "../../lib/teamTournament";
 import { roundPartsOf, type TournamentPlayer } from "../../lib/tournament";
 import { guessTournamentKind } from "../../lib/tournamentKind";
 import { participantsOf, topPlayersOf } from "../../lib/tournamentParticipants";
+import { slugify } from "../../lib/pgnText";
 import { EmbedSource, type SourceRead } from "../home/frontPage/embedSource";
+import { useEmbedPaging } from "../home/frontPage/pgnTournament";
 import { KnockoutView, StandingsView, TeamStandingsView } from "../home/frontPage/tournamentEmbedViews";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import { HideRightPanel, RightPanel } from "../main/rightPanel";
@@ -118,9 +121,45 @@ const useTabbedRead = (read: SourceRead, collectionId: string): SourceRead => {
   );
 };
 
-/** The tournament's table for its type — the Blog's Library-backed views. */
-function TournamentTable({ read, type }: { read: SourceRead; type: TournamentFormat }) {
+/**
+ * **An arena's standings** (CTA-204) — the Library's alone (no Blog embed):
+ * `arenaOf` over the collection's games, scored as its type says — an Arena
+ * in game points, a Lichess arena in Lichess arena points (each game's
+ * length counted off its movetext for Lichess's edge cases). 50 rows a page.
+ */
+function ArenaTable({ read, scoring }: { read: SourceRead; scoring: ArenaScoring }) {
   const { t } = useTranslation();
+  const paging = useEmbedPaging(50);
+  const headers = read.status === "ready" ? read.headers : undefined;
+  const games = read.status === "ready" ? read.games : undefined;
+  const library = read.status === "ready" ? read.library : undefined;
+  const plies = useMemo(() => (games === undefined ? undefined : pliesOfGames(games)), [games]);
+  const arena = useMemo(() => (headers === undefined || plies === undefined ? undefined : arenaOf(headers, { scoring, plies })), [headers, plies, scoring]);
+  const toPlayer = useCallback((player: TournamentPlayer) => library?.toPlayers([player.name]), [library]);
+
+  if (read.status === "missing" || read.status === "unreadable") {
+    return (
+      <InlineAlert severity="warning" testId="library-tournament-arena-unreadable">
+        {t("library.tournament.table.unreadable")}
+      </InlineAlert>
+    );
+  }
+  const collectionId = read.status === "ready" ? read.library?.collectionId : read.collectionId;
+  return (
+    <ArenaStandingsTable
+      arena={arena}
+      ariaLabel={t("tournament.embed.standings", { event: (read.status === "ready" ? read.event : undefined) ?? t("tournament.embed.untitled") })}
+      density="dense"
+      paging={read.status === "ready" ? paging : undefined}
+      playerLink={library === undefined ? undefined : toPlayer}
+      gameLink={library?.toGame}
+      testId={`tournament-collection-${slugify(collectionId ?? "") || "collection"}-arena`}
+    />
+  );
+}
+
+/** The tournament's table for its type — the Blog's Library-backed views, and the Library's own arena table. */
+function TournamentTable({ read, type }: { read: SourceRead; type: TournamentFormat }) {
   switch (type) {
     case "swiss":
     case "roundRobin":
@@ -134,11 +173,9 @@ function TournamentTable({ read, type }: { read: SourceRead; type: TournamentFor
     case "teamSwiss":
       return <TeamStandingsView read={read} rowsPerPage={50} />;
     case "arena":
-      return (
-        <InlineAlert severity="info" testId="library-tournament-no-table">
-          {t("library.tournament.table.noTable", { type: t("library.settings.formats.arena") })}
-        </InlineAlert>
-      );
+      return <ArenaTable read={read} scoring="game" />;
+    case "lichessArena":
+      return <ArenaTable read={read} scoring="lichess" />;
   }
 }
 
@@ -163,12 +200,16 @@ const factsOf = (summary: CollectionSummary, rows: readonly CollectionRow[], hea
   };
 };
 
+/** The two arena types (CTA-204): the same pairing, two scorings — either is the reader's choice for the other's games. */
+const ARENA_TYPES: readonly TournamentFormat[] = ["arena", "lichessArena"];
+
 /** Said over the table when the games do not read as the type they are marked as — with the type they look like. */
 function Misfit({ collection, headers, type }: { collection: CollectionSummary; headers: readonly GameHeaders[]; type: TournamentFormat }) {
   const { t } = useTranslation();
   const location = useLocation();
   const guess = useMemo(() => guessTournamentKind(headers), [headers]);
-  if (guess === undefined || formatOfKind(guess.kind) === type) return null;
+  const looksLike = guess === undefined ? undefined : formatOfKind(guess.kind);
+  if (guess === undefined || looksLike === type || (looksLike !== undefined && ARENA_TYPES.includes(looksLike) && ARENA_TYPES.includes(type))) return null;
   const words = {
     type: t(`library.settings.formats.${type}`),
     guess: t(`library.settings.formats.${formatOfKind(guess.kind)}`),

@@ -30,8 +30,9 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
   only when the sorted column's `sortValue` changes):
   `DataTableColumn<R, C> = { id, header, sortable?, align?: "start" | "end",
   firstDirection?, width?, render(row), sortValue?(row), dir?: "ltr" | "auto",
-  wrap?, cellTestId?(row) }` (`cellTestId`, CTA-109: a test id on the cell
-  itself, for a screen whose tests name its cells). `render` returns the cell's **content**; the cell (alignment,
+  wrap?, cellTestId?(row), rowHeader? }` (`cellTestId`, CTA-109: a test id on the cell
+  itself, for a screen whose tests name its cells; `rowHeader`, CTA-204: its
+  cells the rows' headers, `th scope="row"` — a standings table's player). `render` returns the cell's **content**; the cell (alignment,
   tabular figures for `end`, direction, one line unless `wrap`) is the
   table's.
 - **Props** — `columns`, `rows` (every row the filters leave, all pages),

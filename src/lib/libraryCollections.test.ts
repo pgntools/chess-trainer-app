@@ -481,7 +481,8 @@ describe("the tournament mark, read from what is at hand (CTA-142)", () => {
 
   it("keeps CTA-121's five formats and adds the three with tables, arena last", () => {
     for (const format of ["swiss", "roundRobin", "knockout", "arena", "match"]) expect(TOURNAMENT_FORMATS).toContain(format);
-    expect(TOURNAMENT_FORMATS.at(-1)).toBe("arena");
+    // Only ever appended: the Lichess arena after the arena (CTA-204).
+    expect(TOURNAMENT_FORMATS.slice(-2)).toEqual(["arena", "lichessArena"]);
     expect(formatOfKind("teamKnockout")).toBe("teamKnockout");
   });
 });

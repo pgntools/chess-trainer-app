@@ -221,7 +221,7 @@ describe("a tournament collection's view", () => {
   });
 });
 
-describe("an arena (CTA-142)", () => {
+describe("an arena (CTA-142; its table, CTA-204)", () => {
   // Lichess's way: Round "-" everywhere, more games than players, the same pairs again.
   const ARENA = [
     ["Ann", "Bea"], ["Bea", "Ann"], ["Ann", "Bea"], ["Ann", "Cid"], ["Cid", "Ann"], ["Bea", "Cid"], ["Dan", "Eve"], ["Ann", "Dan"], ["Eve", "Bea"],
@@ -233,20 +233,86 @@ describe("an arena (CTA-142)", () => {
     expect(await screen.findByTestId("library-table-suggestion-text")).toHaveTextContent("Arena: 5 players, 9 games and no rounds.");
   });
 
-  it("marked so, shows its event and says it has no standings table yet — every player's record on Participants", async () => {
+  /** The arena's table, by its ids — the collection's slug and `-arena` (CTA-204). */
+  const arenaTable = (id: string) => `tournament-collection-${id}-arena`;
+  /** The names in the arena's rows, in rank order — each row header's words. */
+  const ranked = (id: string) => within(screen.getByTestId(arenaTable(id))).getAllByRole("rowheader").map((header) => readText(header));
+
+  it("marked so, shows its event and its standings in game points — and every player's record on Participants", async () => {
     const user = userEvent.setup();
     const arena = await marked("arena", ARENA, "Titled Arena");
     mount(`/library/${arena.id}`);
-    expect(await screen.findByTestId("library-tournament-no-table")).toHaveTextContent(
-      "Arena has no standings table yet — every player's record is on the Participants tab.",
-    );
+    const table = await screen.findByRole("table", { name: "Titled Arena — standings" });
+    expect(screen.queryByTestId("library-tournament-no-table")).toBeNull();
+    // No scoring switch: the type is the scoring (CTA-204).
+    expect(screen.queryByRole("group", { name: "Scoring" })).toBeNull();
+    // Ann: two wins and four draws; Bea: four draws; Dan a win and a draw.
+    expect(ranked(arena.id)).toEqual(["Ann", "Bea", "Dan", "Cid", "Eve"]);
+    expect(within(within(table).getAllByRole("row")[1]).getAllByRole("cell")[3]).toHaveTextContent("4.0");
     expect(screen.getByTestId("library-tournament-info-facts-type")).toHaveTextContent("Arena");
     // No rounds to count.
     expect(screen.queryByTestId("library-tournament-info-facts-rounds")).toBeNull();
+    // A name opens the Games tab filtered by that player.
+    expect(within(table).getByRole("link", { name: "Ann" })).toHaveAttribute("href", `/library/${arena.id}?tab=games&player=Ann`);
     await user.click(tab("participants"));
-    const table = await screen.findByRole("table", { name: "Titled Arena — Participants" });
-    expect(within(table).getAllByRole("row")).toHaveLength(6);
-    expect(readText(within(table).getAllByRole("row")[1])).toMatch(/Ann/);
+    const participants = await screen.findByRole("table", { name: "Titled Arena — Participants" });
+    expect(within(participants).getAllByRole("row")).toHaveLength(6);
+    expect(readText(within(participants).getAllByRole("row")[1])).toMatch(/Ann/);
+  });
+
+  // A Lichess export: newest first, each game on lichess.org with its UTC time — Bea wins three in a row (on fire), Ann berserks; Cid and Dan never meet (so not a round robin).
+  const LICHESS = [
+    { white: "Ann", black: "Cid", result: "1-0", time: "20:00:00", tags: '[WhiteBerserk "true"]' },
+    { white: "Bea", black: "Dan", result: "1-0", time: "20:00:00" },
+    { white: "Cid", black: "Bea", result: "0-1", time: "20:03:00" },
+    { white: "Dan", black: "Ann", result: "1/2-1/2", time: "20:03:00" },
+    { white: "Bea", black: "Ann", result: "1-0", time: "20:06:00" },
+    { white: "Ann", black: "Cid", result: "1-0", time: "20:09:00" },
+  ]
+    .reverse()
+    .map(
+      ({ white, black, result, time, tags }, index) =>
+        `[Event "Lichess Arena"]\n[Site "https://lichess.org/g${index}"]\n[Round "-"]\n[White "${white}"]\n[Black "${black}"]\n[Result "${result}"]\n[UTCDate "2026.06.27"]\n[UTCTime "${time}"]${tags === undefined ? "" : `\n${tags}`}\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O 9. h3 Na5 10. Bc2 c5 ${result}`,
+    );
+
+  it("is suggested as a Lichess arena when every game is a Lichess export's", async () => {
+    const arena = await keep("Lichess Arena", LICHESS);
+    await mountTable(`/library/${arena.id}`);
+    expect(await screen.findByTestId("library-table-suggestion-text")).toHaveTextContent(
+      "Lichess arena: 4 players, 6 games and no rounds, every one played on lichess.org.",
+    );
+  });
+
+  it("marked a Lichess arena, scores Lichess arena points — on fire, berserk — and a game's link opens it", async () => {
+    const arena = await marked("lichessArena", LICHESS, "Lichess Arena");
+    mount(`/library/${arena.id}?tab=info`);
+    await screen.findByRole("table", { name: "Lichess Arena — standings" });
+    expect(screen.getByTestId("library-tournament-info-facts-type")).toHaveTextContent("Lichess arena");
+    expect(screen.queryByTestId("library-tournament-misfit")).toBeNull();
+    // Bea: 2 + 2 + 4 on fire; Ann: 3 berserked + 1 + 0 + 2.
+    expect(ranked(arena.id)).toEqual(["Bea", "Ann", "Dan", "Cid"]);
+    expect(within(screen.getByTestId(`${arenaTable(arena.id)}-row-Ann`)).getAllByRole("cell")[3]).toHaveTextContent("6");
+    expect(readText(screen.getByTestId(`${arenaTable(arena.id)}-sheet-Bea`))).toContain("Game 3, White against Ann: win, scored 4, on fire, double points");
+    expect(readText(screen.getByTestId(`${arenaTable(arena.id)}-sheet-Ann`))).toContain("Game 1, White against Cid: win, scored 3, berserk, one point more");
+    fireEvent.click(screen.getByTestId(`${arenaTable(arena.id)}-sheet-Bea-link-0`));
+    await waitFor(() => expect(where()).toMatch(new RegExp(`^/library/${arena.id}/\\d+$`)));
+  });
+
+  it("marked an Arena, scores the same Lichess games in game points — the reader's choice, no misfit said", async () => {
+    const arena = await marked("arena", LICHESS, "Lichess Arena");
+    mount(`/library/${arena.id}?tab=info`);
+    await screen.findByRole("table", { name: "Lichess Arena — standings" });
+    // Ann: 1, ½, 0, 1.
+    expect(within(screen.getByTestId(`${arenaTable(arena.id)}-row-Ann`)).getAllByRole("cell")[3]).toHaveTextContent("2.5");
+    expect(readText(screen.getByTestId(`${arenaTable(arena.id)}-sheet-Bea`))).not.toContain("on fire");
+    expect(screen.queryByTestId("library-tournament-misfit")).toBeNull();
+  });
+
+  it("has no axe violations", async () => {
+    const arena = await marked("lichessArena", LICHESS, "Lichess Arena");
+    mount(`/library/${arena.id}?tab=info`);
+    await screen.findByRole("table", { name: "Lichess Arena — standings" });
+    await expectNoAxeViolations(screen.getByTestId("library-tournament-table-section"));
   });
 });
 

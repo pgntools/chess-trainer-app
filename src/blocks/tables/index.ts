@@ -25,3 +25,5 @@ export * from "./MatchTable";
 export * from "./TeamStandingsTable";
 // CTA-142: the Library's tournament view — each player's record on its Participants tab.
 export * from "./ParticipantsTable";
+// CTA-204: an arena's standings — each player's score sheet, scored as Lichess arena points or game points.
+export * from "./ArenaStandingsTable";

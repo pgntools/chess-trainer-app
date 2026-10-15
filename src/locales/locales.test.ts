@@ -76,6 +76,8 @@ describe("translation catalogs", () => {
       "engineMenu.hashMb",
       // A Case's job on its Jobs tab, "date · where its results go" (CTA-188): the two values and a dot.
       "analysisV2.jobs.caseJob",
+      // An arena game's words and what made its score (CTA-204): the two values and a comma.
+      "tournament.arena.withNotes",
     ]);
 
     const untranslated = leafKeys(en).filter(

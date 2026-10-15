@@ -79,6 +79,14 @@ describe("DataTable", () => {
       expect(elo).toHaveStyle({ textAlign: "end" });
     });
 
+    it("makes a `rowHeader` column's cells the rows' headers, which name each row (CTA-204)", () => {
+      mount({ columns: [{ ...COLUMNS[0], rowHeader: true }, COLUMNS[1]] });
+      const header = within(screen.getByTestId("t-row-a")).getByRole("rowheader");
+      expect(header).toHaveTextContent("Tal");
+      expect(header).toHaveAttribute("scope", "row");
+      expect(within(screen.getByTestId("t-row-a")).getAllByRole("cell").map((cell) => cell.textContent)).toEqual(["2700"]);
+    });
+
     it("leaves a column without `sortable` as a plain header", () => {
       mount({ columns: [{ ...COLUMNS[0], sortable: false }, COLUMNS[1]], onSort: vi.fn() });
       expect(screen.queryByTestId("t-sort-name")).toBeNull();

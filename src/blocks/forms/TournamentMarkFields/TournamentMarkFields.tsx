@@ -3,7 +3,7 @@ import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 
 import { RadioGroupField, SwitchField } from "../../../design-system/components/forms";
-import { isTableFormat, formatOfKind, TOURNAMENT_FORMATS, type CollectionTournament } from "../../../lib/libraryCollections";
+import { formatOfKind, TOURNAMENT_FORMATS, type CollectionTournament } from "../../../lib/libraryCollections";
 import type { TournamentGuess } from "../../../lib/tournamentKind";
 import { TournamentSuggestion } from "../TournamentSuggestion";
 
@@ -35,8 +35,8 @@ export type TournamentMarkFieldsProps = {
  * settings section, taken out so the import popup asks it too): the
  * switch — off, with its reason, where the games do not share one `Event` —
  * the type the games look like with an Apply (`TournamentSuggestion`), and,
- * while on, the formats as radios — every one selectable, Arena's label
- * saying it has no standings table yet — each one's line under the group. Presentational: the mark
+ * while on, the formats as radios — every one selectable, each with its
+ * table (the arena's since CTA-204) — each one's line under the group. Presentational: the mark
  * and the verdict are props, a change leaves whole. Its words are the
  * Library's (`library.settings.*`).
  */
@@ -66,14 +66,7 @@ function TournamentMarkFields({ value, onChange, canBeTournament, suggestion, di
         <>
           <RadioGroupField
             label={t("library.settings.type")}
-            options={TOURNAMENT_FORMATS.map((format) => ({
-              value: format,
-              label:
-                // Arena — selectable, but no table yet — says so in its own label.
-                isTableFormat(format)
-                  ? t(`library.settings.formats.${format}`)
-                  : `${t(`library.settings.formats.${format}`)} — ${t("library.settings.comingLater")}`,
-            }))}
+            options={TOURNAMENT_FORMATS.map((format) => ({ value: format, label: t(`library.settings.formats.${format}`) }))}
             value={value.type}
             onChange={(type) => onChange({ enabled: true, type })}
             disabled={disabled}

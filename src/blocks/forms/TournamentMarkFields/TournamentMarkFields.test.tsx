@@ -28,10 +28,10 @@ describe("TournamentMarkFields", () => {
     await expectNoAxeViolations(document.body);
   });
 
-  it("offers every format — Arena too, its label saying it has no standings table yet — and changes the type", async () => {
+  it("offers every format — Arena too, named plainly now it has its table (CTA-204) — and changes the type", async () => {
     render(<Live initial={KNOCKOUT} />);
     expect(screen.getByTestId("probe-type-arena")).toBeEnabled();
-    expect(screen.getByTestId("probe-type-arena")).toHaveAccessibleName(/no standings table yet/);
+    expect(screen.getByTestId("probe-type-arena")).toHaveAccessibleName("Arena");
     await userEvent.click(screen.getByTestId("probe-type-match"));
     expect(screen.getByTestId("probe-type-match")).toBeChecked();
   });

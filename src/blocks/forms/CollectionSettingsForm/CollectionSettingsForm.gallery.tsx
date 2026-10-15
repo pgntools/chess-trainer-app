@@ -25,7 +25,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
   title: "CollectionSettingsForm",
   demos: [
     { name: "A collection never marked — the tournament switch off", render: () => live(PLAIN, true) },
-    { name: "Marked as a Swiss — every format with a table, Arena not selectable yet", render: () => live(SWISS, true) },
+    { name: "Marked as a Swiss — every format offered, each with its table", render: () => live(SWISS, true) },
     { name: "A round robin", render: () => live(ROUND_ROBIN, true) },
     { name: "A team knockout (CTA-142)", render: () => live(TEAM_KNOCKOUT, true) },
     {
