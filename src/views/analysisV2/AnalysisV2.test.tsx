@@ -73,7 +73,7 @@ function Where() {
   return <div data-testid="where">{`${location.pathname}${location.search}`}</div>;
 }
 
-const mount = (entry: string) =>
+const mount = (entry: string, { compact = false } = {}) =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={[entry]}>
@@ -85,7 +85,7 @@ const mount = (entry: string) =>
               <Route path="/analysis/projects/:projectId/cases/:caseId" element={<CaseWorkspace />} />
             </Routes>
             <Where />
-            <BoardLeftPanelOutlet compact={false} />
+            <BoardLeftPanelOutlet compact={compact} />
             <RightPanelOutlet />
           </BoardLeftPanelProvider>
         </RightPanelProvider>
@@ -667,6 +667,56 @@ describe("a Project's Cases (CTA-186)", () => {
     // Deleting is the picks' alone.
     expect(screen.queryByRole("button", { name: "Delete Brilliancy" })).toBeNull();
     expect(screen.queryByTestId("analysis-v2-case-delete")).toBeNull();
+  });
+
+  it("has a panel of its own beside the Cases — headed by the Project, two tabs, an example switch that toggles (CTA-213)", async () => {
+    const project = (await createAnalysisProject("Najdorf", null))!;
+    const user = userEvent.setup();
+    const { baseElement } = mount(`/analysis/projects/${project.id}`);
+
+    const panel = await screen.findByRole("region", { name: "Details of Najdorf" });
+    expect(screen.getByTestId("layout-board-left-panel")).toContainElement(panel);
+    expect(within(panel).getByRole("heading", { level: 2, name: "Najdorf" })).toBeInTheDocument();
+    expect(within(panel).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Options"]);
+    expect(within(panel).getByRole("tabpanel", { name: "General" })).toHaveTextContent("The project's details will be shown here.");
+    // Wide, no button opens it: it is the column.
+    expect(screen.queryByRole("button", { name: "The project's details" })).toBeNull();
+
+    await user.click(within(panel).getByRole("tab", { name: "Options" }));
+    const toggle = within(within(panel).getByRole("tabpanel", { name: "Options" })).getByRole("switch", { name: "Example option" });
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
+    expect(toggle).toBeChecked();
+    await expectNoAxeViolations(baseElement);
+  });
+
+  it("opens its panel in a drawer from the header under the shell's breakpoint, closed on Escape (CTA-213)", async () => {
+    const wideWindow = window.matchMedia;
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: /max-width/.test(query),
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    try {
+      const project = (await createAnalysisProject("Najdorf", null))!;
+      const user = userEvent.setup();
+      mount(`/analysis/projects/${project.id}`, { compact: true });
+      const opener = await screen.findByRole("button", { name: "The project's details" });
+      expect(screen.queryByRole("region", { name: "Details of Najdorf" })).toBeNull();
+      await user.click(opener);
+      const sheet = await screen.findByRole("dialog", { name: "Details of Najdorf" });
+      expect(within(sheet).getByRole("heading", { level: 2, name: "Najdorf" })).toBeInTheDocument();
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Details of Najdorf" })).toBeNull());
+    } finally {
+      window.matchMedia = wideWindow;
+    }
   });
 
   describe("their order (CTA-203)", () => {

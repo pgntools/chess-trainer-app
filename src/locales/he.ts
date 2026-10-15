@@ -2496,6 +2496,18 @@ const he: typeof en = {
       linksTitle: "מקרים מקושרים",
       linksClose: "סגירה",
     },
+    projectDetails: {
+      label: "הפרטים של {{name}}",
+      toggle: "פרטי הפרויקט",
+      tabs: {
+        label: "פרטי הפרויקט",
+        general: "כללי",
+        options: "אפשרויות",
+      },
+      placeholder: "פרטי הפרויקט יוצגו כאן.",
+      exampleOption: "אפשרות לדוגמה",
+      exampleOptionHelp: "מתג לדוגמה — הוא עדיין לא משנה דבר.",
+    },
     siblings: {
       title: "המקרים של {{name}}",
       close: "חזרה אל {{name}}",

@@ -4,10 +4,12 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { NewCaseDialog, ProjectPickerDialog, type NewCaseSpec } from "../../blocks/dialogs";
+import { ProjectDetails, type ProjectDetailsTab } from "../../blocks/panels";
 import { CasesTable, caseDisplayName, type CaseAction } from "../../blocks/tables";
 import { visuallyHidden } from "../../design-system/components/a11y";
 import { DeleteManyDialog, FormDialog } from "../../design-system/components/dialogs";
@@ -38,7 +40,9 @@ import {
   type CaseOrderMove,
 } from "../../lib/analysisProjects";
 import { newRecordId } from "../../lib/recordId";
+import { BoardLeftPanel } from "../main/boardLeftPanel";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
+import { useShellCompact } from "../main/shellCompact";
 import { browserPath, caseListContextOf, casePath } from "./paths";
 import { useAnalysisCases, useAnalysisProjects, useProjectFolders } from "./useAnalysisProjects";
 
@@ -82,6 +86,13 @@ const caseOfSpec = (spec: NewCaseSpec, projectId: string, now: Date): AnalysisCa
  * not there. Under the header, the browser's trail (CTA-207): the top
  * level, every folder down to the Project's, each a link to the browser
  * there, and the Project itself.
+ *
+ * **Its own panel, in the main menu's place** (CTA-213, `ProjectDetails` in
+ * the shell's left panel, `keepShell`: the header and footer stay, as on the
+ * Case view) — a frame for now: the Project's name, a General tab's
+ * placeholder and an Options tab's example switch, held here and kept
+ * nowhere. Under the shell's breakpoint it is a drawer, opened from the
+ * header.
  */
 function ProjectScreen() {
   const { t } = useTranslation();
@@ -104,6 +115,11 @@ function ProjectScreen() {
   const pendingFocus = useRef<{ id: string; move: CaseOrderMove } | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const [announcement, setAnnouncement] = useState("");
+  // The left panel (CTA-213): under the breakpoint a drawer; its open tab and its example switch, the screen's alone.
+  const compact = useShellCompact();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsTab, setDetailsTab] = useState<ProjectDetailsTab>("general");
+  const [exampleOption, setExampleOption] = useState(false);
   // The words box, in the URL (`?q=`), as the saved analyses' table keeps it.
   const [searchParams] = useSearchParams();
   const text = searchParams.get("q") ?? "";
@@ -228,6 +244,18 @@ function ProjectScreen() {
           }
           actions={
             <>
+              {compact && (
+                // Under the breakpoint the Project's panel is a drawer; wide, the column in the main menu's place.
+                <IconAction
+                  label={t("analysisV2.projectDetails.toggle")}
+                  onClick={() => setDetailsOpen(true)}
+                  popupOpen={detailsOpen}
+                  popupKind="dialog"
+                  testId="analysis-v2-project-details-toggle"
+                >
+                  <InfoOutlinedIcon fontSize="small" />
+                </IconAction>
+              )}
               <Button
                 size="small"
                 variant="contained"
@@ -326,6 +354,23 @@ function ProjectScreen() {
           />
         </Box>
       </Box>
+
+      <BoardLeftPanel
+        collapsed={false}
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        drawerLabel={t("analysisV2.projectDetails.label", { name: projectName })}
+        keepShell
+      >
+        <ProjectDetails
+          name={projectName}
+          tab={detailsTab}
+          onTabChange={setDetailsTab}
+          exampleOption={exampleOption}
+          onExampleOptionChange={setExampleOption}
+          testId="analysis-v2-project-details"
+        />
+      </BoardLeftPanel>
 
       <NewCaseDialog
         open={dialog?.kind === "new"}
