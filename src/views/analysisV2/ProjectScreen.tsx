@@ -13,7 +13,7 @@ import { visuallyHidden } from "../../design-system/components/a11y";
 import { DeleteManyDialog, FormDialog } from "../../design-system/components/dialogs";
 import { InlineAlert } from "../../design-system/components/feedback";
 import { SearchField, TextInputField } from "../../design-system/components/forms";
-import { BackButton } from "../../design-system/components/navigation";
+import { BackButton, Breadcrumbs } from "../../design-system/components/navigation";
 import { MissState } from "../../design-system/components/states";
 import { TABLE_PAGE_SIZES, useTableUrlState } from "../../design-system/components/tables";
 import { IconAction, ListScreenHeader, SelectionBar } from "../../design-system/components/toolbars";
@@ -32,6 +32,7 @@ import {
   gameCaseOf,
   positionCaseOfFen,
   positionCaseOfGame,
+  projectFolderPath,
   type AnalysisCase,
   type AnalysisProject,
   type CaseOrderMove,
@@ -39,7 +40,7 @@ import {
 import { newRecordId } from "../../lib/recordId";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import { browserPath, caseListContextOf, casePath } from "./paths";
-import { useAnalysisCases, useAnalysisProjects } from "./useAnalysisProjects";
+import { useAnalysisCases, useAnalysisProjects, useProjectFolders } from "./useAnalysisProjects";
 
 /** The dialog open over the Cases, and the Case it is about. */
 type Dialog = { kind: "new" } | { kind: "rename" | "move" | "duplicate"; record: AnalysisCase };
@@ -78,7 +79,9 @@ const caseOfSpec = (spec: NewCaseSpec, projectId: string, now: Date): AnalysisCa
  * single new Case opens on its board; one per game stays here, the list grown.
  *
  * The route waits for the stores' first read, then says a Project that is
- * not there.
+ * not there. Under the header, the browser's trail (CTA-207): the top
+ * level, every folder down to the Project's, each a link to the browser
+ * there, and the Project itself.
  */
 function ProjectScreen() {
   const { t } = useTranslation();
@@ -86,6 +89,7 @@ function ProjectScreen() {
   useOwnPageHeading();
   const { projectId = "" } = useParams();
   const projects = useAnalysisProjects();
+  const folders = useProjectFolders();
   const cases = useAnalysisCases();
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [rename, setRename] = useState("");
@@ -141,7 +145,7 @@ function ProjectScreen() {
     }
   });
 
-  if (projects === undefined || cases === undefined) {
+  if (projects === undefined || folders === undefined || cases === undefined) {
     return (
       <Typography data-testid="analysis-v2-loading" sx={{ color: "text.secondary", p: 2 }}>
         {t("analysisV2.loading")}
@@ -204,6 +208,8 @@ function ProjectScreen() {
   };
 
   const named = (record: AnalysisCase) => caseDisplayName(record, t);
+  // The folders above the Project, the top first — none for a Project at the top level or in a folder gone.
+  const chain = project.folderId === null ? [] : projectFolderPath(folders, project.folderId);
 
   return (
     <>
@@ -263,6 +269,21 @@ function ProjectScreen() {
           }
           testId="analysis-v2-project-header"
         />
+        <Box sx={{ flexShrink: 0, py: 0.5 }}>
+          <Breadcrumbs
+            ariaLabel={t("analysisV2.browser.trail")}
+            crumbs={[
+              { id: "root", label: t("analysisV2.browser.root"), link: { component: RouterLink, to: browserPath(null) } },
+              ...chain.map((folder) => ({
+                id: folder.id,
+                label: folder.name || t("analysisV2.folder.untitled"),
+                link: { component: RouterLink, to: browserPath(folder.id) },
+              })),
+            ]}
+            current={projectName}
+            testId="analysis-v2-project-trail"
+          />
+        </Box>
         {problem !== null && (
           <InlineAlert severity="error" testId="analysis-v2-problem">
             {problem}

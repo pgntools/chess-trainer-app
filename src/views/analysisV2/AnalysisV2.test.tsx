@@ -432,6 +432,45 @@ describe("a Project's Cases (CTA-186)", () => {
     expect(within(table).getAllByTestId(/^analysis-v2-cases-row-/)).toHaveLength(2);
   });
 
+  it("shows the trail to a nested Project — every folder a link into the browser, the Project current (CTA-207)", async () => {
+    const outer = (await createProjectFolder("Openings", null))!;
+    const inner = (await createProjectFolder("Sicilian", outer.id))!;
+    const project = (await createAnalysisProject("Najdorf", inner.id))!;
+    const user = userEvent.setup();
+    const { baseElement } = mount(`/analysis/projects/${project.id}`);
+
+    const trail = await screen.findByRole("navigation", { name: "Folders" });
+    expect(within(trail).getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "All projects",
+      "Openings",
+      "Sicilian",
+    ]);
+    expect(within(trail).getByRole("link", { name: "All projects" })).toHaveAttribute("href", "/analysis");
+    expect(within(trail).getByRole("link", { name: "Openings" })).toHaveAttribute("href", `/analysis?folder=${outer.id}`);
+    expect(within(trail).getByRole("link", { name: "Sicilian" })).toHaveAttribute("href", `/analysis?folder=${inner.id}`);
+    const current = within(trail).getByText("Najdorf");
+    expect(current).toHaveAttribute("aria-current", "page");
+    expect(current.closest("a")).toBeNull();
+    // The Back button stays beside it.
+    expect(screen.getByTestId("analysis-v2-project-back")).toBeInTheDocument();
+    await expectNoAxeViolations(baseElement);
+
+    await user.click(within(trail).getByRole("link", { name: "Openings" }));
+    expect(where()).toBe(`/analysis?folder=${outer.id}`);
+  });
+
+  it("trails a Project at the top level from the root alone, in Hebrew too (CTA-207)", async () => {
+    await i18n.changeLanguage("he");
+    const project = (await createAnalysisProject("נאיידורף", null))!;
+    const { baseElement } = mount(`/analysis/projects/${project.id}`);
+
+    const trail = await screen.findByRole("navigation", { name: "תיקיות" });
+    expect(within(trail).getAllByRole("link").map((link) => link.textContent)).toEqual(["כל הפרויקטים"]);
+    expect(within(trail).getByRole("link", { name: "כל הפרויקטים" })).toHaveAttribute("href", "/analysis");
+    expect(screen.getByTestId("analysis-v2-project-trail-current")).toHaveTextContent("נאיידורף");
+    await expectNoAxeViolations(baseElement);
+  });
+
   it("deletes the picked Cases together — some, or all — after asking", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     await addAnalysisCases([gameCase(project.id, "c1"), gameCase(project.id, "c2"), gameCase(project.id, "c3")]);
