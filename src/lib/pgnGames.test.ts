@@ -22,10 +22,10 @@ const FILE = `[Event "A"]
 1. e4 c5 2. Nf3 d6 *`;
 
 describe("indexPgnGames (CTA-208)", () => {
-  it("lists every game of the texts by its tags and start, reading no move", () => {
+  it("lists every game of the texts by its tags, reading no move", () => {
     const entries = indexPgnGames([FILE, "", '[Event "D"]\n\n1. d4 Ke2?? *']);
     expect(entries.map((entry) => entry.headers.Event)).toEqual(["A", "B", "C", "D"]);
-    expect(entries.map((entry) => entry.startFen)).toEqual([DEFAULT_POSITION, ENDGAME, DEFAULT_POSITION, DEFAULT_POSITION]);
+    expect(entries[1].headers.FEN).toBe(ENDGAME);
     expect(entries[0].headers.White).toBe("Carlsen");
     // The text of each is what parsePgnTree reads.
     expect(entries[0].text).toBe(splitPgnGames(FILE)[0]);

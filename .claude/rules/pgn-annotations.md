@@ -371,7 +371,8 @@ annotation…* redraws it at once.
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/pgn.ts` | The tokenizer and `parsePgnTree(s)`: comments, `;` comments, `$N`, suffixes onto the node. |
+| `src/lib/pgn.ts` | The tokenizer and `parsePgnTree(s)`: comments, `;` comments, `$N`, suffixes onto the node; `parsePgnTree`'s optional `PgnMoveCache` (CTA-208) — a move already played from a position, in an earlier game of a batch, taken from it rather than from chess.js (the first 24 plies; the same tree either way). |
+| `src/lib/pgnGames.ts` | A file of thousands of games read in two steps (CTA-208): `indexPgnGames` (each game's text and tags, no move read) and `parsePgnGameEntries` (every tree, in slices that give the page back, with progress, abort and one move cache) — Analysis's New case. |
 | `src/lib/gameTree.ts` | The node fields; `setComments` / `commentsAt`, `setNags`; `addLine` (a whole line in one rebuild, as `addMove` would add it — CTA-172); `mergeTrees`' joining and its `games` counting; `treeToPgn` and `PgnExportOptions`; `moveTreeToPgn` — the same writer over moves with no board (`PgnMove`: SAN, ply, annotations). |
 | `src/lib/openingTreePgn.ts` | The Library's *Save tree as PGN*: an opening tree's counts written as `[%games N]` / `[%prc P]` (§3). |
 | `src/lib/moveAnnotations.ts` | `readComment` (commands, the eval shapes, `prc` and `games` → chips; `[%cal]` / `[%csl]` out of the prose, no chip), `annotationsAt`; the NAG table and its rules. |

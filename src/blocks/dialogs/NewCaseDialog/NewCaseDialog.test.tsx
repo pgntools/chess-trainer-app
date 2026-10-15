@@ -6,7 +6,7 @@ import { strToU8, zipSync } from "fflate";
 import { mainline } from "../../../lib/gameTree";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
-import { ENDGAME_FEN, ONE_GAME, TWO_GAMES, TWO_STARTS } from "./fixtures";
+import { ENDGAME_FEN, ONE_GAME, TWO_GAMES } from "./fixtures";
 import NewCaseDialog, { type NewCaseDialogProps } from "./NewCaseDialog";
 
 const mount = (props: Partial<NewCaseDialogProps> = {}) =>
@@ -46,6 +46,8 @@ describe("NewCaseDialog (CTA-186)", () => {
     expect(screen.getByText("A case is represented by a single PGN file.")).toBeInTheDocument();
     const choice = screen.getByRole("radiogroup", { name: "What to make of these 2 games" });
     expect(within(choice).getByRole("radio", { name: "Select one game" })).toBeChecked();
+    // Two choices: no merge (it is to live elsewhere).
+    expect(within(choice).getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual(["select", "perGame"]);
     // The first game is picked; typing narrows the list.
     const field = screen.getByRole("combobox", { name: "Game" });
     expect(field).toHaveValue("Carlsen – Caruana, Club Championship");
@@ -76,56 +78,7 @@ describe("NewCaseDialog (CTA-186)", () => {
     ]);
   });
 
-  it("merges them into one Case — a plain merge, or tagged with games and play chances where they part (CTA-208)", async () => {
-    const onCreate = vi.fn();
-    const { baseElement } = mount({ onCreate });
-    await paste(TWO_GAMES);
-    await userEvent.click(screen.getByRole("radio", { name: "Merge them into one case" }));
-    expect(screen.queryByRole("combobox", { name: "Game" })).toBeNull();
-    const games = screen.getByRole("checkbox", { name: "Games — [%games N]" });
-    const prc = screen.getByRole("checkbox", { name: "Play chance — [%prc P]" });
-    expect(games).not.toBeChecked();
-    expect(prc).not.toBeChecked();
-    await expectNoAxeViolations(baseElement);
-
-    await userEvent.click(screen.getByRole("button", { name: "Create" }));
-    await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
-    const [[[plain]]] = onCreate.mock.calls;
-    expect(plain.type).toBe("game");
-    expect(plain.tree.moves.map((node: { san: string; comments?: string[] }) => [node.san, node.comments])).toEqual([
-      ["e4", undefined],
-      ["d4", undefined],
-    ]);
-    // Named from the first game's event; a tree of many games has no result.
-    expect(plain.name).toBe("");
-    expect(plain.tree.headers).toEqual({ Event: "Club Championship", Result: "*" });
-
-    await userEvent.click(games);
-    await userEvent.click(prc);
-    await userEvent.type(screen.getByRole("textbox", { name: "Name (optional)" }), "Openings");
-    await userEvent.click(screen.getByRole("button", { name: "Create" }));
-    await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(2));
-    const tagged = onCreate.mock.calls[1][0][0];
-    expect(tagged.name).toBe("Openings");
-    expect(tagged.tree.headers.Event).toBe("Openings");
-    expect(tagged.tree.moves.map((node: { comments?: string[] }) => node.comments)).toEqual([
-      ["[%games 1] [%prc 50]"],
-      ["[%games 1] [%prc 50]"],
-    ]);
-    // The trunk under each stays clean.
-    expect(tagged.tree.moves[1].children[0].comments).toBeUndefined();
-  });
-
-  it("does not offer Merge for games from different starts, and says why — opened on a PGN already read", () => {
-    mount({ initialPgn: TWO_STARTS });
-    expect(screen.getByText("2 games read")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Merge them into one case" })).toBeDisabled();
-    expect(screen.getByRole("radiogroup", { name: "What to make of these 2 games" })).toHaveAccessibleDescription(
-      /Merge is off: the games do not all start from the same position\./,
-    );
-  });
-
-  it("reads a zip's .pgn files together, and names a merge after the file", async () => {
+  it("reads a zip's .pgn files together, in its order — a case each here", async () => {
     const onCreate = vi.fn();
     mount({ onCreate });
     const zip = zipSync({ "b.pgn": strToU8(ONE_GAME), "a/c.pgn": strToU8(TWO_GAMES) });
@@ -133,13 +86,14 @@ describe("NewCaseDialog (CTA-186)", () => {
     expect(await screen.findByText("3 games read")).toBeInTheDocument();
     // Its texts are not pasted into the box.
     expect(screen.getByRole("textbox", { name: "Paste a PGN" })).toHaveValue("");
-    await userEvent.click(screen.getByRole("radio", { name: "Merge them into one case" }));
+    await userEvent.click(screen.getByRole("radio", { name: "One case per game (3)" }));
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
     await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
-    const [[[spec]]] = onCreate.mock.calls;
-    expect(spec.name).toBe("club");
-    expect(spec.tree.headers).toEqual({ Event: "club", Result: "*" });
-    expect(spec.tree.moves.map((node: { san: string }) => node.san)).toEqual(["e4", "d4"]);
+    expect(onCreate.mock.calls[0][0].map((spec: { tree: { headers: { White?: string } } }) => spec.tree.headers.White)).toEqual([
+      "Carlsen",
+      "Carlsen",
+      "Ding",
+    ]);
   });
 
   it("puts a picked .pgn into the paste box only when it holds one game", async () => {
@@ -154,7 +108,7 @@ describe("NewCaseDialog (CTA-186)", () => {
     expect(screen.getByRole("textbox", { name: "Paste a PGN" })).toHaveValue(ONE_GAME);
   });
 
-  it("reads only the tags of several games — one that will not read is said when picked, or when a merge reaches it", async () => {
+  it("reads only the tags of several games — one that will not read is said when picked, or when a case each reaches it", async () => {
     const onCreate = vi.fn();
     mount({ onCreate });
     const broken = `${TWO_GAMES}\n\n[Event "Broken"]\n[White "Bad"]\n[Black "Moves"]\n\n1. e4 e5 2. Qxf7 *`;
@@ -169,35 +123,69 @@ describe("NewCaseDialog (CTA-186)", () => {
     expect(screen.getByTestId("probe-game-problem-detail")).toHaveTextContent(/Game 3.*Qxf7/);
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
 
-    await userEvent.click(screen.getByRole("radio", { name: "Merge them into one case" }));
+    await userEvent.click(screen.getByRole("radio", { name: "One case per game (3)" }));
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
     expect(await screen.findByTestId("probe-parse-problem")).toHaveTextContent("This PGN cannot be read.");
     expect(screen.getByTestId("probe-parse-problem-detail")).toHaveTextContent(/Qxf7/);
     expect(onCreate).not.toHaveBeenCalled();
   });
 
-  it("on a file of more games than the app keeps cases: no case each, and a merge counted on a progress bar", async () => {
-    const onCreate = vi.fn();
-    mount({ onCreate });
-    const many = Array.from({ length: 10_001 }, (_, index) => `[Event "Game ${index}"]\n\n1. ${index % 2 === 0 ? "e4" : "d4"} *`).join("\n\n");
-    await paste(many);
+  /** So many one-move games, as one PGN. */
+  const manyGames = (count: number) =>
+    Array.from({ length: count }, (_, index) => `[Event "Game ${index}"]\n\n1. ${index % 2 === 0 ? "e4" : "d4"} *`).join("\n\n");
+
+  it("offers no case each for more games than the app keeps cases, and says why", async () => {
+    mount();
+    await paste(manyGames(10_001));
     expect(screen.getByText("10001 games read")).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "One case per game (10001)" })).toBeDisabled();
     expect(screen.getByRole("radiogroup", { name: "What to make of these 10001 games" })).toHaveAccessibleDescription(
       /One case per game is off: the app keeps at most 10,000 cases\./,
     );
+    expect(screen.getByRole("radio", { name: "Select one game" })).toBeChecked();
+  });
 
-    await userEvent.click(screen.getByRole("radio", { name: "Merge them into one case" }));
-    await userEvent.click(screen.getByRole("button", { name: "Create" }));
-    const bar = await screen.findByRole("progressbar", { name: "Reading the games" });
-    expect(bar).toHaveAccessibleDescription(/of 10,001 games read|Merging the games/);
-    // Cancel stays on while it reads; Create does not.
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
-    await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1), { timeout: 30_000 });
-    expect(onCreate.mock.calls[0][0][0].tree.moves.map((node: { san: string }) => node.san)).toEqual(["e4", "d4"]);
+  it("counts a case each's parse of every game on a progress bar, Cancel on and Create off", async () => {
+    const onCreate = vi.fn();
+    mount({ onCreate });
+    await paste(manyGames(3_000));
+    await userEvent.click(screen.getByRole("radio", { name: "One case per game (3000)" }));
+    // The parse waits a task before its first slice: held there, the bar is on screen.
+    vi.useFakeTimers({ toFake: ["setTimeout"] });
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "Create" }));
+      const bar = screen.getByRole("progressbar", { name: "Reading the games" });
+      expect(bar).toHaveAccessibleDescription("0 of 3,000 games read");
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+      expect(onCreate).not.toHaveBeenCalled();
+      await vi.runAllTimersAsync();
+    } finally {
+      vi.useRealTimers();
+    }
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
+    expect(onCreate.mock.calls[0][0]).toHaveLength(3_000);
     expect(screen.queryByRole("progressbar", { name: "Reading the games" })).toBeNull();
-  }, 60_000);
+  });
+
+  it("stops the parse on Cancel, creating nothing", async () => {
+    const onCreate = vi.fn();
+    const onClose = vi.fn();
+    mount({ onCreate, onClose });
+    await paste(manyGames(3_000));
+    await userEvent.click(screen.getByRole("radio", { name: "One case per game (3000)" }));
+    vi.useFakeTimers({ toFake: ["setTimeout"] });
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "Create" }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(onClose).toHaveBeenCalledTimes(1);
+      await vi.runAllTimersAsync();
+    } finally {
+      vi.useRealTimers();
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(onCreate).not.toHaveBeenCalled();
+  });
 
   it("refuses a zip with no .pgn in it, in words", async () => {
     mount();
@@ -207,14 +195,14 @@ describe("NewCaseDialog (CTA-186)", () => {
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
   });
 
-  it("makes a Position of one game of several — no merge — then its move", async () => {
+  it("makes a Position of one game of several — no case each — then its move", async () => {
     const onCreate = vi.fn();
     mount({ onCreate });
     await userEvent.click(screen.getByRole("radio", { name: "Position" }));
     await userEvent.click(screen.getByRole("radio", { name: "PGN" }));
     await paste(TWO_GAMES);
     expect(screen.getByText("A case is represented by a single PGN file.")).toBeInTheDocument();
-    expect(screen.queryByRole("radio", { name: "Merge them into one case" })).toBeNull();
+    expect(screen.queryByRole("radio", { name: "One case per game (2)" })).toBeNull();
     const field = screen.getByRole("combobox", { name: "Game" });
     await userEvent.clear(field);
     await userEvent.type(field, "ding");

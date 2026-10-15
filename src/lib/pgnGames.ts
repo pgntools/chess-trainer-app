@@ -1,5 +1,3 @@
-import { DEFAULT_POSITION } from "chess.js";
-
 import type { GameHeaders } from "./gameModel";
 import type { GameTree } from "./gameTree";
 import { parsePgnTree, readPgnTags, splitPgnGames, type PgnMoveCache } from "./pgn";
@@ -9,11 +7,11 @@ import { parsePgnTree, readPgnTags, splitPgnGames, type PgnMoveCache } from "./p
  * on a PGN of thousands of games. Building a game's tree asks chess.js about
  * every move (~60 µs each), so a 15,905-game file took ~110 s in one go and
  * froze the page; reading its tags takes milliseconds. So a file is first
- * **indexed** — each game's text, its tags and its start, no move read
- * ({@link indexPgnGames}) — which is all a list of the games, their names and
- * whether they share a start need; and only the games a choice needs are
- * **parsed**: the one picked (`parsePgnTree`), or all of them for a merge or
- * a Case each ({@link parsePgnGameEntries}), in slices that give the page back
+ * **indexed** — each game's text and its tags, no move read
+ * ({@link indexPgnGames}) — which is all a list of the games and their names
+ * need; and only the games a choice needs are **parsed**: the one picked
+ * (`parsePgnTree`), or all of them for a Case each
+ * ({@link parsePgnGameEntries}), in slices that give the page back
  * between them, with progress and a way to stop.
  */
 
@@ -22,18 +20,13 @@ export type PgnGameEntry = {
   /** The game's own text, tags and moves — what `parsePgnTree` reads. */
   text: string;
   headers: GameHeaders;
-  /** The position it starts from: its `FEN` tag, else the standard start — as `parsePgnTree` reads it. */
-  startFen: string;
 };
 
 /** Every game of the texts — a pasted PGN, a file, a zip's `.pgn`s — in order, by its tags alone. A text with no game adds none. */
 export const indexPgnGames = (texts: readonly string[]): PgnGameEntry[] => {
   const entries: PgnGameEntry[] = [];
   for (const text of texts) {
-    for (const chunk of splitPgnGames(text)) {
-      const headers = readPgnTags(chunk);
-      entries.push({ text: chunk, headers, startFen: headers.FEN?.trim() || DEFAULT_POSITION });
-    }
+    for (const chunk of splitPgnGames(text)) entries.push({ text: chunk, headers: readPgnTags(chunk) });
   }
   return entries;
 };

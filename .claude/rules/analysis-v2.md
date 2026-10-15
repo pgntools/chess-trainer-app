@@ -336,33 +336,28 @@ selection bar counts them and deletes them together, asked first
   `readCollectionZip`; a zip unreadable, with no `.pgn`, no game or too
   large refused in words; a picked file's text put in the paste box only
   when it holds one game — a zip's never, a large one there freezes the
-  page). **Built for thousands of games** (`lib/pgnGames.ts`): what is read
-  is only **indexed** — each game's text, tags and start (`indexPgnGames`,
-  ~135 ms for 15,905 games), no move read — and only the game picked is
-  parsed (a few ms); a game that will not play is said when picked
-  (*That game cannot be read*). **Merge** and **One case per game** parse
-  every game on Create (`parsePgnGameEntries`: ~50 ms slices, the page
-  given back between them, a move cache shared across the batch — ~21%
-  fewer chess.js calls), a progress bar counting them ("4,200 of 15,905
-  games read", then "Merging the games…"), Create off and Cancel on, which
-  stops it; a game that will not play stops it, said with its number. A
-  file of more games than the Cases' cap (`MAX_ANALYSIS_CASES`) has *One
-  case per game* off, with the reason. **Several games**
-  (CTA-208): the dialog says *A case is represented by a single PGN file*
-  and asks — **Merge them into one case** (`mergeTrees`; offered only when
-  the games share a start, else disabled with the reason; two optional
-  boxes, *Games* `[%games N]` and *Play chance* `[%prc P]` —
-  `round(child / parent × 100)` — on branch candidates only, both in one
-  comment, games first), **Select one game** (the default: an autocomplete
-  over the games — "White – Black, Event, Date" or "Game N" — at most 50
-  listed, typing narrows, as `CasePickerDialog`'s) or **One case per game
-  (N)**, which makes them all. A merge left unnamed takes the file's name
-  (without `.pgn` / `.zip`), else the first game's event; its tree's
-  headers are that name as `Event` and `Result "*"`.
+  page). **Several games** (CTA-208): the dialog says *A case is
+  represented by a single PGN file* and asks — **Select one game** (the
+  default: an autocomplete over the games — "White – Black, Event, Date" or
+  "Game N" — at most 50 listed, typing narrows, as `CasePickerDialog`'s) or
+  **One case per game (N)**, which makes them all (off, with the reason,
+  for more games than the Cases' cap, `MAX_ANALYSIS_CASES`). **No merge
+  here**: merging many games into one Case was built and taken out again
+  in CTA-208 — a 15,905-game file merges into a tree of ~900k moves no Case
+  board is built for; it is to live elsewhere. **Built for thousands of
+  games** (`lib/pgnGames.ts`): what is read is only **indexed** — each
+  game's text and tags (`indexPgnGames`, ~135 ms for 15,905 games), no move
+  read — and only the game picked is parsed (a few ms); a game that will
+  not play is said when picked (*That game cannot be read*). **One case per
+  game** parses every game on Create (`parsePgnGameEntries`: ~50 ms slices,
+  the page given back between them, a move cache shared across the batch —
+  ~21% fewer chess.js calls), a progress bar counting them ("4,200 of
+  15,905 games read"), Create off and Cancel on, which stops it; a game
+  that will not play stops it, said with its number.
 - **Position** — **from a FEN** (checked as it is typed, `parseFen` — the pieces alone are enough, its missing fields completed as lichess does: White to move, no castling or en passant, `0 1`; CTA-200) or
   **from a PGN** at a move picked from its mainline (*Start at*), the moves
   before it kept — a PGN (or zip) of several games picking its game in the
-  same autocomplete first, no merge (CTA-208).
+  same autocomplete first (CTA-208).
 - A name, optional (none for one-per-game).
 
 One new Case opens on its board; several stay on the list. A Case is renamed

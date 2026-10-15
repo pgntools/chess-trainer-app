@@ -7,13 +7,13 @@ import { SelectAutocomplete, type AutocompleteOption } from "../../../design-sys
 import { FormDialog, type ExtraDialogProps } from "../../../design-system/components/dialogs";
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { ProgressLine } from "../../../design-system/components/states";
-import { CheckboxField, FieldLabel, RadioGroupField, SelectField, TextInputField } from "../../../design-system/components/forms";
+import { RadioGroupField, SelectField, TextInputField } from "../../../design-system/components/forms";
 import type { UploadProblem } from "../../../design-system/patterns/forms";
 import { MAX_ANALYSIS_CASES } from "../../../lib/analysisProjects";
 import { isZipFile, readCollectionZip, type CollectionZipProblem } from "../../../lib/collectionZip";
 import { FenParseError, parseFen } from "../../../lib/fen";
 import { gameTag } from "../../../lib/gameModel";
-import { mainline, mergeTrees, plyLabel, type GameTree } from "../../../lib/gameTree";
+import { mainline, plyLabel, type GameTree } from "../../../lib/gameTree";
 import { PgnParseError, parsePgnTree } from "../../../lib/pgn";
 import { indexPgnGames, parsePgnGameEntries, type PgnGameEntry } from "../../../lib/pgnGames";
 import { PgnInput } from "../../forms/PgnInput";
@@ -32,7 +32,7 @@ export type NewCaseSpec =
 export type NewCaseDialogProps = {
   open: boolean;
   onClose: () => void;
-  /** Create — one spec (a game picked, or the games merged), or one per game when the reader asked for a Case per game. */
+  /** Create — one spec (the game picked), or one per game when the reader asked for a Case per game. */
   onCreate: (specs: NewCaseSpec[]) => void;
   /** The Cases are being written: the buttons off. */
   busy?: boolean;
@@ -45,11 +45,11 @@ export type NewCaseDialogProps = {
    * `-submit`, `-cancel`), the type `<testId>-type`, the source
    * `<testId>-from`, the PGN `<testId>-pgn` (PgnInput's parts), the FEN
    * `<testId>-fen`; a PGN of several games — the note `<testId>-many-note`,
-   * the choice `<testId>-many` (its radios `-many-merge`, `-many-select`,
-   * `-many-perGame`), the merge's tags `<testId>-tag-games` and
-   * `<testId>-tag-prc`, the game `<testId>-game` (its input
-   * `<testId>-game-input`); the ply `<testId>-ply`, the name `<testId>-name`,
-   * the problem `<testId>-problem`.
+   * the choice `<testId>-many` (its radios `-many-select`, `-many-perGame`),
+   * the game `<testId>-game` (its input `<testId>-game-input`) and its
+   * problem `<testId>-game-problem`; the progress `<testId>-progress`, a
+   * Case-each parse's problem `<testId>-parse-problem`; the ply
+   * `<testId>-ply`, the name `<testId>-name`, the problem `<testId>-problem`.
    */
   testId: string;
   dialogProps?: ExtraDialogProps;
@@ -57,8 +57,8 @@ export type NewCaseDialogProps = {
 
 type CaseType = "game" | "position";
 type PositionSource = "fen" | "pgn";
-/** What a PGN of several games makes: one tree of them all, the one game picked, or a Case each. */
-type ManyChoice = "merge" | "select" | "perGame";
+/** What a PGN of several games makes: the one game picked, or a Case each. */
+type ManyChoice = "select" | "perGame";
 
 /** At most this many games listed at once — typing narrows thousands (the Case picker's, CTA-199). */
 const GAMES_SHOWN = 50;
@@ -70,8 +70,8 @@ const ZIP_PROBLEMS: Record<CollectionZipProblem, string> = {
   "too-large": "tooLarge",
 };
 
-/** What is being worked on: the file read, the games parsed (so many of so many), the parsed games merged. */
-type Work = { kind: "file" } | { kind: "parse"; done: number; total: number } | { kind: "merge" };
+/** What is being worked on: the file read, or the games parsed — so many of so many. */
+type Work = { kind: "file" } | { kind: "parse"; done: number; total: number };
 
 /** Let the page paint the progress before a stretch of work. */
 const nextTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -102,25 +102,22 @@ const moveLabel = (startFen: string, ply: number, san: string): string => {
  * typed) or **from a PGN** at a move the reader picks, the moves before it
  * kept. A PGN is pasted or a `.pgn` or a `.zip` picked (`PgnInput`) — a
  * zip's `.pgn` files read together as one list of games, in its order
- * (`readZipGameTrees`, CTA-208); a picked file's text goes into the paste box
- * only when it holds one game (a large one there would freeze the page). **Several games** — a Case being a single
+ * (CTA-208); a picked file's text goes into the paste box only when it holds
+ * one game (a large one there would freeze the page). **Several games** — a Case being a single
  * PGN, the dialog says so and asks what to make of them: for a Game,
- * **merge** them into one tree (`mergeTrees`, offered only where they share
- * a start, else off and saying why; optionally tagging each move where the
- * games part with `[%games N]` and / or `[%prc P]`), **select one**, or
- * **one Case per game**; a Position selects one, then its move. The game is
+ * **select one** or **one Case per game** (off, saying why, past the app's
+ * cap of Cases); a Position selects one, then its move. The game is
  * picked in an autocomplete built for thousands — at most
  * {@link GAMES_SHOWN} listed, typing narrows.
  *
  * **Built for files of thousands of games** (CTA-208): a PGN read is only
  * indexed — each game's tags and start (`indexPgnGames`), milliseconds for
- * 15,000 games — and only the game picked is parsed; a merge or a Case per
- * game parses them all on Create (`parsePgnGameEntries`), in slices that give
+ * 15,000 games — and only the game picked is parsed; a Case per game parses
+ * them all on Create (`parsePgnGameEntries`), in slices that give
  * the page back, a progress bar counting the games, Cancel stopping it. A
- * game that will not read is said when it is picked, or when a merge or a
- * Case each reaches it. The name is optional: left
- * empty, the Case is named from its game or position — a merge from the
- * file picked, else from the first game's event.
+ * game that will not read is said when it is picked, or when a Case each
+ * reaches it. The name is optional: left empty, the Case is named from its
+ * game or position.
  *
  * Presentational: it reads the text with `src/lib/`'s pure parsers and hands
  * back what the reader asked for ({@link NewCaseSpec}); making and writing
@@ -135,15 +132,11 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
   const [readProblem, setReadProblem] = useState<UploadProblem | null>(null);
   const [selectedGame, setSelectedGame] = useState(0);
   const [many, setMany] = useState<ManyChoice>("select");
-  const [tagGames, setTagGames] = useState(false);
-  const [tagPrc, setTagPrc] = useState(false);
-  /** The file the games came from, without its extension — a merge's name when none is typed. */
-  const [fileStem, setFileStem] = useState<string | null>(null);
   const [ply, setPly] = useState(0);
   const [fen, setFen] = useState("");
   const [name, setName] = useState("");
   const [work, setWork] = useState<Work | null>(null);
-  /** A merge's or a Case-each's parse that met a game it could not read. */
+  /** A Case-each's parse that met a game it could not read. */
   const [parseProblem, setParseProblem] = useState<UploadProblem | null>(null);
   /** The parse under way — Cancel, or the dialog going, stops it. */
   const running = useRef<AbortController | null>(null);
@@ -163,9 +156,6 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
       setWork(null);
       setSelectedGame(0);
       setMany("select");
-      setTagGames(false);
-      setTagPrc(false);
-      setFileStem(null);
       setPly(0);
       setFen("");
       setName("");
@@ -196,7 +186,6 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
   const readFiles = async (files: File[]) => {
     const file = files[0];
     if (file === undefined) return;
-    setFileStem(file.name.replace(/\.(pgn|zip)$/i, ""));
     setWork({ kind: "file" });
     try {
       if (isZipFile(file)) {
@@ -271,12 +260,11 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
   const line = useMemo(() => (game === undefined ? [] : mainline(game)), [game]);
   const usesPgn = type === "game" || from === "pgn";
   const several = usesPgn && entries.length > 1;
-  const mergeable = useMemo(() => entries.length > 1 && entries.every((entry) => entry.startFen === entries[0].startFen), [entries]);
   // More games than the app keeps Cases: a Case each would be refused once every game was parsed.
   const perGameFits = entries.length <= MAX_ANALYSIS_CASES;
   // A Position is one game's; a choice the games cannot make is no choice.
   const choice: ManyChoice =
-    !several || type === "position" || (many === "merge" && !mergeable) || (many === "perGame" && !perGameFits) ? "select" : many;
+    !several || type === "position" || (many === "perGame" && !perGameFits) ? "select" : many;
   const manyAtOnce = choice === "perGame";
 
   const gameOptions = useMemo((): AutocompleteOption[] => {
@@ -286,7 +274,7 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
   }, [entries, several, t]);
 
   const working = work !== null;
-  // A merge or a Case each needs every game, parsed on Create; the others the one picked.
+  // A Case each needs every game, parsed on Create; the others the one picked.
   const ready =
     !working && (usesPgn ? (choice === "select" ? game !== undefined : entries.length > 1) : fen.trim() !== "" && fenProblem === null);
 
@@ -295,22 +283,6 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
     if (manyAtOnce) {
       const games = await parseAll();
       if (games !== undefined) onCreate(games.map((tree) => ({ type: "game", tree, name: "" })));
-    } else if (choice === "merge") {
-      const games = await parseAll();
-      if (games === undefined) return;
-      setWork({ kind: "merge" });
-      await nextTask();
-      const named = name.trim() !== "" ? name : (fileStem ?? "");
-      // A tree of many games: the name (or the first game's event) its Event, no result of its own.
-      const event = named.trim() !== "" ? named : gameTag(entries[0].headers, "Event");
-      const tree = mergeTrees(
-        games,
-        entries[0].startFen,
-        { ...(event !== undefined && event !== "" ? { Event: event } : {}), Result: "*" },
-        { countGames: tagGames, playChances: tagPrc },
-      );
-      setWork(null);
-      onCreate([{ type: "game", tree, name: named }]);
     } else if (type === "game" && game !== undefined) {
       onCreate([{ type: "game", tree: game, name }]);
     } else if (from === "pgn" && game !== undefined) {
@@ -370,11 +342,7 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
             onFiles={(files) => void readFiles(files)}
             zip
             pasted={pasted}
-            onPastedChange={(text) => {
-              setPasted(text);
-              // Typed over, the text is no longer the file's.
-              setFileStem(null);
-            }}
+            onPastedChange={setPasted}
             onSubmit={() => {
               read([pasted]);
             }}
@@ -409,7 +377,6 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
           <RadioGroupField<ManyChoice>
             label={t("analysisV2.newCase.many.label", { number: entries.length })}
             options={[
-              { value: "merge", label: t("analysisV2.newCase.many.merge"), disabled: !mergeable },
               { value: "select", label: t("analysisV2.newCase.many.select") },
               { value: "perGame", label: t("analysisV2.newCase.many.perGame", { number: entries.length }), disabled: !perGameFits },
             ]}
@@ -417,33 +384,11 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
             onChange={setMany}
             help={[
               t(`analysisV2.newCase.many.${choice}Help`),
-              ...(mergeable ? [] : [t("analysisV2.newCase.many.mergeUnavailable")]),
               ...(perGameFits ? [] : [t("analysisV2.newCase.many.perGameUnavailable", { max: MAX_ANALYSIS_CASES.toLocaleString(i18n.language) })]),
             ].join(" ")}
             disabled={busy || working}
             testId={`${testId}-many`}
           />
-        )}
-        {choice === "merge" && (
-          <Box component="fieldset" sx={{ border: 0, p: 0, m: 0, minWidth: 0, display: "grid", gap: 1 }}>
-            <FieldLabel component="legend">{t("analysisV2.newCase.tags.label")}</FieldLabel>
-            <CheckboxField
-              label={t("analysisV2.newCase.tags.games")}
-              help={t("analysisV2.newCase.tags.gamesHelp")}
-              checked={tagGames}
-              onChange={setTagGames}
-              disabled={busy || working}
-              testId={`${testId}-tag-games`}
-            />
-            <CheckboxField
-              label={t("analysisV2.newCase.tags.prc")}
-              help={t("analysisV2.newCase.tags.prcHelp")}
-              checked={tagPrc}
-              onChange={setTagPrc}
-              disabled={busy || working}
-              testId={`${testId}-tag-prc`}
-            />
-          </Box>
         )}
         {choice === "select" && several && (
           <SelectAutocomplete
@@ -504,9 +449,7 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
             caption={
               work.kind === "file"
                 ? t("analysisV2.newCase.progress.file")
-                : work.kind === "merge"
-                  ? t("analysisV2.newCase.progress.merge")
-                  : t("analysisV2.newCase.progress.parse", { done: work.done.toLocaleString(i18n.language), total: work.total.toLocaleString(i18n.language) })
+                : t("analysisV2.newCase.progress.parse", { done: work.done.toLocaleString(i18n.language), total: work.total.toLocaleString(i18n.language) })
             }
             announce
             testId={`${testId}-progress`}

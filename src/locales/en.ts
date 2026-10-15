@@ -2927,22 +2927,11 @@ const en = {
       many: {
         single: "A case is represented by a single PGN file.",
         label: "What to make of these {{number}} games",
-        merge: "Merge them into one case",
         select: "Select one game",
         perGame: "One case per game ({{number}})",
-        mergeHelp: "One tree: the first game's line is the mainline, and every other move is a side line where the games part.",
         selectHelp: "The case is the one game you pick.",
         perGameHelp: "Every game becomes a case of its own, named from its tags.",
-        mergeUnavailable: "Merge is off: the games do not all start from the same position.",
         perGameUnavailable: "One case per game is off: the app keeps at most {{max}} cases.",
-      },
-      /** The merge's optional tags, on each move where the games part. */
-      tags: {
-        label: "Tags on each move where the games part (optional)",
-        games: "Games — [%games N]",
-        gamesHelp: "How many of the games played the move.",
-        prc: "Play chance — [%prc P]",
-        prcHelp: "The move's share of its position's games, as a percentage — what the repertoire trainer plays by.",
       },
       fen: "FEN",
       fenHelp: "Pieces, side to move, castling, en passant, the move counters — the pieces alone are enough (White to move).",
@@ -2962,12 +2951,11 @@ const en = {
         zipEmpty: "There is no .pgn file in that zip.",
         gameUnreadable: "That game cannot be read — pick another.",
       },
-      /** Reading a large file, and every game for a merge or a case each (CTA-208). */
+      /** Reading a large file, and every game for a case each (CTA-208). */
       progress: {
         label: "Reading the games",
         file: "Reading the file…",
         parse: "{{done}} of {{total}} games read",
-        merge: "Merging the games…",
       },
     },
     display: {
