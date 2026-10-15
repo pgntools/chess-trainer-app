@@ -1267,7 +1267,6 @@ const he: typeof en = {
     game: {
       tabs: {
         moves: "מהלכים",
-        map: "מפה",
         export: "ייצוא",
       },
       of: "משחק {{number}} מתוך {{count}}",

@@ -601,6 +601,8 @@ describe("a game on its analysis board", () => {
     // The Moves tab has no switch since CTA-209.
     expect(within(screen.getByTestId("library-game-panel")).queryByRole("switch", { name: "Next-move arrows" })).toBeNull();
     expect(boardOptions().arrows).toHaveLength(1);
+    // A game opens on Info (CTA-212).
+    fireEvent.click(screen.getByTestId("library-game-details-tab-settings"));
     fireEvent.click(screen.getByTestId("library-game-details-arrows"));
     expect(boardOptions().arrows).toEqual([]);
     // Another tab and back: the session's choice holds.
@@ -614,12 +616,14 @@ describe("a game on its analysis board", () => {
     const marked = await keep("Marked", ['[Event "Club"]\n[White "Amy"]\n[Black "Bob"]\n[Result "*"]\n\n1. e4! e5 *']);
     await mountGame(`/library/${marked.id}/1?at=e4`);
     expect(screen.getByTestId("library-game-move-glyph")).toHaveAttribute("data-square", "e4");
+    fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
     fireEvent.click(screen.getByRole("switch", { name: "Move marks on the board" }));
     expect(screen.queryByTestId("library-game-move-glyph")).toBeNull();
   });
 
   it("keeps the move marks switch in a shipped game's copy", async () => {
     await mountGame("/library/capablanca/1");
+    fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
     fireEvent.click(screen.getByRole("switch", { name: "Move marks on the board" }));
     // 1. e4 is the game's own; 1... c5 is the change.
     drag("e2", "e4");
@@ -636,9 +640,10 @@ describe("a game on its analysis board", () => {
     await mountGame(`/library/${mine.id}/1`);
     expect(screen.getByTestId("library-game-board")).toBeInTheDocument();
     expect(boardOptions().id).toBe("library-game");
-    for (const tab of ["moves", "map", "export"]) {
-      expect(screen.getByTestId(`library-game-panel-tab-${tab}`)).toBeInTheDocument();
-    }
+    // Moves · Export — no Map since CTA-212.
+    const tabs = within(screen.getByTestId("library-game-panel")).getAllByRole("tab");
+    expect(tabs.map((tab) => tab.dataset.testid)).toEqual(["library-game-panel-tab-moves", "library-game-panel-tab-export"]);
+    expect(screen.queryByTestId("library-game-panel-tab-map")).not.toBeInTheDocument();
     // The tags are the left panel's Info tab's since CTA-209.
     expect(screen.queryByTestId("library-game-panel-tab-info")).not.toBeInTheDocument();
     // The engine is the header's: an on / off switch, as the Case board's (CTA-209) — no play / pause
@@ -678,18 +683,19 @@ describe("a game on its analysis board", () => {
     expect(where()).toContain("q=Amy");
   });
 
-  it("shows the game's tags on its left panel's Info tab, and keeps the open tab across a step to another game (CTA-209)", async () => {
+  it("opens its left panel on Info, the game's tags, and keeps the open tab across a step to another game (CTA-209, CTA-212)", async () => {
     const mine = await upload();
     await mountGame(`/library/${mine.id}/1`);
-    expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
-    fireEvent.click(screen.getByRole("tab", { name: "Info" }));
     const details = screen.getByRole("region", { name: "Details of Zed – Amy" });
+    expect(within(details).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Info", "Settings"]);
+    expect(within(details).getByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
     expect(within(details).getByText("Zed")).toBeInTheDocument();
+    fireEvent.click(within(details).getByRole("tab", { name: "Settings" }));
     fireEvent.click(within(details).getByRole("link", { name: "Next game" }));
-    // A fresh board for game 2, its left panel still on Info.
+    // A fresh board for game 2, its left panel still on Settings.
     const next = await screen.findByRole("region", { name: "Details of Amy – Bob" });
-    expect(within(next).getByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
-    expect(within(next).getByText("Bob")).toBeInTheDocument();
+    expect(within(next).getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
+    expect(within(next).getByRole("switch", { name: "Next-move arrows" })).toBeInTheDocument();
   });
 
   it("switches the eval bar from its left panel's Settings tab, while the header's switch has the engine on (CTA-209)", async () => {
@@ -698,6 +704,7 @@ describe("a game on its analysis board", () => {
     expect(screen.queryByTestId("eval-bar")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("switch", { name: "Engine" }));
     expect(screen.getByTestId("eval-bar")).toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId("library-game-details")).getByRole("tab", { name: "Settings" }));
     fireEvent.click(within(screen.getByTestId("library-game-details")).getByRole("switch", { name: /Show evaluation bar/ }));
     expect(screen.queryByTestId("eval-bar")).not.toBeInTheDocument();
     fireEvent.click(within(screen.getByTestId("library-game-details")).getByRole("switch", { name: /Show evaluation bar/ }));
@@ -712,8 +719,9 @@ describe("a game on its analysis board", () => {
     const toggle = within(screen.getByTestId("library-game-panel-header")).getByRole("button", { name: "The game's details" });
     fireEvent.click(toggle);
     const drawer = await screen.findByRole("dialog", { name: "Details of Zed – Amy" });
-    expect(within(drawer).getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
-    expect(within(drawer).getByTestId("library-game-details-arrows")).toBeInTheDocument();
+    expect(within(drawer).getByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
+    expect(within(drawer).getByText("Zed")).toBeInTheDocument();
+    expect(within(drawer).getByRole("link", { name: "Next game" })).toBeInTheDocument();
     fireEvent.keyDown(drawer, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Details of Zed – Amy" })).not.toBeInTheDocument());
   });

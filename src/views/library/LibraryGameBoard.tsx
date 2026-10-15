@@ -58,9 +58,9 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  * | Capability | Taken |
  * | --- | --- |
  * | Base + engine + Play + baseline | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (off until switched on), `usePlayToggle` (off at the start) |
- * | Tree view | `useVariationsExplorer` — Moves, Map, the comment block, the next-moves bar, the arrows, the move menu; editing on, *Play chances…* off |
- * | Shell | `BoardShell` / `BoardPanel` — tabs Moves · Map · Export (no Engine tab since CTA-181: the search settings are the top bar's Engine menu) |
- * | Left panel | `BoardLeftPanel`, `keepShell` (CTA-209) — the `LibraryGameDetails` block: Back, the game's title and caption, previous / next; tabs Settings (the next-move arrows, the move marks, the eval bar) · Info (the tags) |
+ * | Tree view | `useVariationsExplorer` — Moves, the comment block, the next-moves bar, the arrows, the move menu; editing on, *Play chances…* off; no `map` option, so no Map (CTA-212) |
+ * | Shell | `BoardShell` / `BoardPanel` — tabs Moves · Export (no Engine tab since CTA-181: the search settings are the top bar's Engine menu; no Map since CTA-212) |
+ * | Left panel | `BoardLeftPanel`, `keepShell` (CTA-209) — the `LibraryGameDetails` block: Back, the game's title and caption; tabs Info (the tags, where a game opens — CTA-212) · Settings (the next-move arrows, the move marks, the eval bar); previous / next at its foot |
  *
  * The Export tab also hands the game to **Analysis** (CTA-77, a Case since
  * CTA-192: a Project picked, `useSendToAnalysis`) at the position on screen —
@@ -75,8 +75,9 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  * and the repertoire player's: the shell's header and its Engine menu kept
  * (`keepShell`), a drawer under the breakpoint opened from the right panel's
  * header. Its head is Back to the table (`state.from`, kept), the game's
- * title (`gameTitleOf`), "Game n of m · event · round · date · result" and
- * previous / next (keeping `location.state`); its tabs Settings and Info. Its
+ * title (`gameTitleOf`) and "Game n of m · event · round · date · result";
+ * its tabs Info (where a game opens) and Settings; previous / next (keeping
+ * `location.state`) at its foot (CTA-212). Its
  * open tab and drawer are the route's (`LibraryGameScreen`), above this keyed
  * board, so they outlive a step to another game. The right panel's header
  * keeps the drawer's button, the opening on screen, Save, Play and the
@@ -101,7 +102,7 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  * (`initialPlyOf`), else at its start.
  */
 
-const KEEP_MOUNTED = ["moves", "map"] as const;
+const KEEP_MOUNTED = ["moves"] as const;
 
 type LibraryGameBoardProps = {
   collection: LibraryCollection;
@@ -177,7 +178,6 @@ function LibraryGameBoard({
     annotations: true,
     moveMarks: showMoveMarks,
     arrows: { show: showArrows },
-    map: { addedIds: session.extensionIds, linked: true },
   });
   const boardOptions: ChessboardOptions = { ...explorer.boardOptions, arrows: explorer.arrows };
   const topLine = engine.analysis.lines.find((line) => line !== undefined);
@@ -383,7 +383,6 @@ function LibraryGameBoard({
               label: t("library.game.tabs.moves"),
               content: explorer.moves,
             },
-            { id: "map", label: t("library.game.tabs.map"), content: explorer.map },
             {
               id: "export",
               label: t("library.game.tabs.export"),
