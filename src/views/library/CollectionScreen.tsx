@@ -57,7 +57,7 @@ import { BackButton } from "../../design-system/components/navigation";
 import { LoadingLine } from "../../design-system/components/states";
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZES } from "../../design-system/components/tables";
 import { HintButton, IconAction, ListScreenHeader, SelectionBar } from "../../design-system/components/toolbars";
-import OpeningFilterBoard from "./OpeningFilterBoard";
+import OpeningFilterBoard from "../shared/OpeningFilterBoard";
 import { TournamentCollection, type TournamentTabs } from "./TournamentCollection";
 import LibraryMiss from "./LibraryMiss";
 import { loadCollectionGames, useCollectionRows, useTournamentGuess } from "./useLibraryCollections";
@@ -658,7 +658,7 @@ function CollectionTable({
                   node={openingNode}
                   line={line}
                   onLine={(next) => setState({ [OPENING_LINE_PARAM]: openingLineParamOf(next) })}
-                  collectionName={collection.name}
+                  treeName={collection.name}
                 />
               )
             }
