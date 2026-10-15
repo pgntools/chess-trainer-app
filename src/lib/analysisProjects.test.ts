@@ -18,6 +18,7 @@ import {
   gameCaseDerivedName,
   gameCaseOf,
   moveNumberOf,
+  onlyCasePathDiffers,
   positionCaseOfFen,
   positionCaseOfGame,
   projectsHere,
@@ -292,6 +293,20 @@ describe("Analysis V2's records (CTA-186)", () => {
       expect(sameCaseState(made, caseStateOf(tree, null, "white", { ...DEFAULT_CASE_DISPLAY, showEvalBar: false }))).toBe(false);
       expect(sameCaseState(made, caseStateOf(tree, null, "white", { ...DEFAULT_CASE_DISPLAY, writeEvals: false }))).toBe(false);
     });
+  });
+
+  it("tells a step — the move on screen alone changed — from every other change (CTA-222)", () => {
+    const tree = parsePgnTree(GAME);
+    const [e4, e5] = mainline(tree);
+    const at = (nodeId: string | null) => caseStateOf(tree, nodeId, "white");
+    expect(onlyCasePathDiffers(at(null), at(e4.id))).toBe(true);
+    expect(onlyCasePathDiffers(at(e4.id), at(e5.id))).toBe(true);
+    // The same state is no step; so are the tree, the side, the display and the merges.
+    expect(onlyCasePathDiffers(at(e4.id), at(e4.id))).toBe(false);
+    expect(onlyCasePathDiffers(at(e4.id), caseStateOf(parsePgnTree("1. d4"), null, "white"))).toBe(false);
+    expect(onlyCasePathDiffers(at(e4.id), caseStateOf(tree, e5.id, "black"))).toBe(false);
+    expect(onlyCasePathDiffers(at(e4.id), caseStateOf(tree, e5.id, "white", { ...DEFAULT_CASE_DISPLAY, showArrows: false }))).toBe(false);
+    expect(onlyCasePathDiffers(at(e4.id), caseStateOf(tree, e5.id, "white", DEFAULT_CASE_DISPLAY, ["job-1"]))).toBe(false);
   });
 
   it("counts and lists a Project's Cases", () => {

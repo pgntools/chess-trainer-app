@@ -573,6 +573,19 @@ export const sameCaseState = (record: AnalysisCase, state: CaseState): boolean =
   sameDisplay(record.display, state.display) &&
   sameList(record.path, state.path);
 
+/**
+ * Whether a state differs from what a Case holds **only in the move on
+ * screen** (CTA-222) — the tree, the merges, the orientation and the display
+ * the same. Such a change is the reader stepping through the game:
+ * `saveCaseState` writes it quietly, the open board's screen not redrawn for it.
+ */
+export const onlyCasePathDiffers = (record: CaseState, state: CaseState): boolean =>
+  record.pgn === state.pgn &&
+  sameList(record.merges ?? [], state.merges ?? []) &&
+  record.orientation === state.orientation &&
+  sameDisplay(record.display, state.display) &&
+  !sameList(record.path, state.path);
+
 /** A Case copied under a new id into a Project — its source, analysis and place on the board; its name as given. Its place in the Project's order is the store's to give. */
 export const copiedCase = (
   record: AnalysisCase,

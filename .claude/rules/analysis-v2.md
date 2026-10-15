@@ -454,7 +454,13 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
   tree as PGN (`core.pgn`, memoised on the tree), the SAN path to the node on
   screen and the orientation — through `saveCaseState` on every change;
   `sameCaseState` makes a state the record holds a no-op (no write, no
-  re-order). **No saved / saving status**: the header speaks only when the
+  re-order). **A step is a quiet write** (CTA-222): a state that differs only
+  in the move on screen (`onlyCasePathDiffers` — the reader stepping with the
+  arrows or the panel's buttons) is written at once like any other, so a
+  reload or a closed tab finds the last one, but this tab's subscribers are
+  not called for it (the record store's `quiet`, [`database.md`](./database.md)
+  §3.2) — the route is not redrawn a moment after every arrow press, which was
+  the step's lag behind the Library board. **No saved / saving status**: the header speaks only when the
   browser refuses a write, in the error colour (a `status` region, mounted
   throughout, so it is announced).
 - **Reopening — a reload, another visit — restores** the tree, the move and
@@ -476,7 +482,10 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
   block pages the rows it is given and holds the page: it opens on the page
   holding the open Case, goes to that Case's page again when the Case changes
   (previous / next, a row) or the words do — the first page where they leave
-  it out — and paging by hand changes no Case. It does not fold.
+  it out — and paging by hand changes no Case. It does not fold. The route
+  builds the list's element itself, outside the board's `leftPanel` callback,
+  so a step — which redraws the board and calls that callback — hands React
+  the same element and leaves the list alone (CTA-222).
   Under the shell's breakpoint it is a drawer, opened from a list button in
   the board's header; the drawer is the route's state, so it outlives a step
   to another Case. Nothing locks it: a Case autosaves.
