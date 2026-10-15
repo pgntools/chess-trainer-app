@@ -1,8 +1,6 @@
 import { strFromU8, unzipSync } from "fflate";
 
-import type { GameTree } from "./gameTree";
 import { MAX_COLLECTION_CHARS } from "./libraryCollections";
-import { EmptyPgnError, parsePgnTreesOfTexts } from "./pgn";
 
 /** Why a zip is not a collection: unreadable, no `.pgn` in it, or too large. */
 export type CollectionZipProblem = "zip" | "zip-empty" | "too-large";
@@ -76,29 +74,4 @@ export const readCollectionZip = (bytes: Uint8Array): CollectionZipReading => {
     read.push({ path: name, stem: base.replace(/\.pgn$/i, ""), size, text: strFromU8(inflated) });
   }
   return { ok: true, entries: read };
-};
-
-/** Why a zip gives no games: its own problems, no game in any `.pgn`, or a game that will not read. */
-export type ZipGamesProblem = CollectionZipProblem | "empty" | "unreadable";
-
-export type ZipGamesReading =
-  | { ok: true; games: GameTree[] }
-  | { ok: false; problem: ZipGamesProblem; detail?: string };
-
-/**
- * **A zip's games, as one list** (CTA-208 — Analysis's New case): every
- * `.pgn` in it ({@link readCollectionZip}, its bounds and refusals) read
- * together, side lines kept, in the zip's order (`parsePgnTreesOfTexts`). A
- * game that will not read refuses the whole zip, its parser's words the
- * `detail` — as a pasted PGN is refused. Never throws.
- */
-export const readZipGameTrees = (bytes: Uint8Array): ZipGamesReading => {
-  const zipped = readCollectionZip(bytes);
-  if (!zipped.ok) return zipped;
-  try {
-    return { ok: true, games: parsePgnTreesOfTexts(zipped.entries.map((entry) => entry.text)) };
-  } catch (error) {
-    if (error instanceof EmptyPgnError) return { ok: false, problem: "empty" };
-    return { ok: false, problem: "unreadable", detail: error instanceof Error ? error.message : undefined };
-  }
 };

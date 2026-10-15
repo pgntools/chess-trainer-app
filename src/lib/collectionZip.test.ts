@@ -1,7 +1,7 @@
 import { strToU8, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 
-import { isZipFile, readCollectionZip, readZipGameTrees } from "./collectionZip";
+import { isZipFile, readCollectionZip } from "./collectionZip";
 
 const PGN = '[Event "Club"]\n\n1. e4 e5 *\n';
 
@@ -54,29 +54,5 @@ describe("isZipFile", () => {
     expect(isZipFile({ name: "x.ZIP" })).toBe(true);
     expect(isZipFile({ name: "x", type: "application/zip" })).toBe(true);
     expect(isZipFile({ name: "x.pgn", type: "text/plain" })).toBe(false);
-  });
-});
-
-describe("readZipGameTrees (CTA-208)", () => {
-  it("reads every .pgn's games as one list, in the zip's order, side lines kept", () => {
-    const two = '[Event "A"]\n\n1. d4 (1. c4) d5 *\n\n[Event "B"]\n\n1. Nf3 *\n';
-    const zip = zipSync({ "b/one.pgn": strToU8(PGN), "a/two.pgn": strToU8(two), "empty.pgn": strToU8("  \n") });
-    const reading = readZipGameTrees(zip);
-    expect(reading.ok).toBe(true);
-    if (!reading.ok) return;
-    expect(reading.games.map((game) => game.moves[0].san)).toEqual(["e4", "d4", "Nf3"]);
-    expect(reading.games[1].moves.map((node) => node.san)).toEqual(["d4", "c4"]);
-  });
-
-  it("refuses a zip that is not one, has no .pgn, or no game", () => {
-    expect(readZipGameTrees(strToU8("not a zip"))).toEqual({ ok: false, problem: "zip" });
-    expect(readZipGameTrees(zipSync({ "notes.txt": strToU8("hi") }))).toEqual({ ok: false, problem: "zip-empty" });
-    expect(readZipGameTrees(zipSync({ "a.pgn": strToU8("\n") }))).toEqual({ ok: false, problem: "empty" });
-  });
-
-  it("refuses the whole zip over a game that will not read, saying why", () => {
-    const reading = readZipGameTrees(zipSync({ "a.pgn": strToU8(PGN), "b.pgn": strToU8("1. e4 e5 2. Qxf7 *") }));
-    expect(reading).toMatchObject({ ok: false, problem: "unreadable" });
-    expect(reading.ok ? undefined : reading.detail).toMatch(/Qxf7/);
   });
 });

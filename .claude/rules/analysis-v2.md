@@ -333,10 +333,21 @@ selection bar counts them and deletes them together, asked first
 
 - **Game** — a PGN pasted or a `.pgn` or `.zip` picked (`PgnInput`, `zip`;
   a zip's `.pgn` files read together as one list of games, in its order —
-  `readZipGameTrees`, `lib/collectionZip.ts`; a zip unreadable, with no
-  `.pgn`, no game or too large refused in words; a picked file's text put
-  in the paste box only when it holds one game — a zip's never, a large
-  one there freezes the page). **Several games**
+  `readCollectionZip`; a zip unreadable, with no `.pgn`, no game or too
+  large refused in words; a picked file's text put in the paste box only
+  when it holds one game — a zip's never, a large one there freezes the
+  page). **Built for thousands of games** (`lib/pgnGames.ts`): what is read
+  is only **indexed** — each game's text, tags and start (`indexPgnGames`,
+  ~135 ms for 15,905 games), no move read — and only the game picked is
+  parsed (a few ms); a game that will not play is said when picked
+  (*That game cannot be read*). **Merge** and **One case per game** parse
+  every game on Create (`parsePgnGameEntries`: ~50 ms slices, the page
+  given back between them, a move cache shared across the batch — ~21%
+  fewer chess.js calls), a progress bar counting them ("4,200 of 15,905
+  games read", then "Merging the games…"), Create off and Cancel on, which
+  stops it; a game that will not play stops it, said with its number. A
+  file of more games than the Cases' cap (`MAX_ANALYSIS_CASES`) has *One
+  case per game* off, with the reason. **Several games**
   (CTA-208): the dialog says *A case is represented by a single PGN file*
   and asks — **Merge them into one case** (`mergeTrees`; offered only when
   the games share a start, else disabled with the reason; two optional

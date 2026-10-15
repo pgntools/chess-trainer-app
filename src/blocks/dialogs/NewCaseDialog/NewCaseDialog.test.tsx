@@ -68,6 +68,8 @@ describe("NewCaseDialog (CTA-186)", () => {
     expect(screen.queryByRole("textbox", { name: "Name (optional)" })).toBeNull();
     expect(screen.queryByRole("combobox", { name: "Game" })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    // Every game is parsed on Create — in slices, so the call comes after.
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
     expect(onCreate.mock.calls[0][0].map((spec: { type: string; name: string }) => [spec.type, spec.name])).toEqual([
       ["game", ""],
       ["game", ""],
@@ -87,6 +89,7 @@ describe("NewCaseDialog (CTA-186)", () => {
     await expectNoAxeViolations(baseElement);
 
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
     const [[[plain]]] = onCreate.mock.calls;
     expect(plain.type).toBe("game");
     expect(plain.tree.moves.map((node: { san: string; comments?: string[] }) => [node.san, node.comments])).toEqual([
@@ -101,6 +104,7 @@ describe("NewCaseDialog (CTA-186)", () => {
     await userEvent.click(prc);
     await userEvent.type(screen.getByRole("textbox", { name: "Name (optional)" }), "Openings");
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(2));
     const tagged = onCreate.mock.calls[1][0][0];
     expect(tagged.name).toBe("Openings");
     expect(tagged.tree.headers.Event).toBe("Openings");
@@ -131,6 +135,7 @@ describe("NewCaseDialog (CTA-186)", () => {
     expect(screen.getByRole("textbox", { name: "Paste a PGN" })).toHaveValue("");
     await userEvent.click(screen.getByRole("radio", { name: "Merge them into one case" }));
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
     const [[[spec]]] = onCreate.mock.calls;
     expect(spec.name).toBe("club");
     expect(spec.tree.headers).toEqual({ Event: "club", Result: "*" });
@@ -148,6 +153,51 @@ describe("NewCaseDialog (CTA-186)", () => {
     expect(await screen.findByText("1 game read")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Paste a PGN" })).toHaveValue(ONE_GAME);
   });
+
+  it("reads only the tags of several games — one that will not read is said when picked, or when a merge reaches it", async () => {
+    const onCreate = vi.fn();
+    mount({ onCreate });
+    const broken = `${TWO_GAMES}\n\n[Event "Broken"]\n[White "Bad"]\n[Black "Moves"]\n\n1. e4 e5 2. Qxf7 *`;
+    await paste(broken);
+    // Listed by its tags, though its moves do not play.
+    expect(screen.getByText("3 games read")).toBeInTheDocument();
+    const field = screen.getByRole("combobox", { name: "Game" });
+    await userEvent.clear(field);
+    await userEvent.type(field, "bad");
+    await userEvent.click(within(screen.getByRole("listbox")).getByRole("option"));
+    expect(screen.getByTestId("probe-game-problem")).toHaveTextContent("That game cannot be read — pick another.");
+    expect(screen.getByTestId("probe-game-problem-detail")).toHaveTextContent(/Game 3.*Qxf7/);
+    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("radio", { name: "Merge them into one case" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    expect(await screen.findByTestId("probe-parse-problem")).toHaveTextContent("This PGN cannot be read.");
+    expect(screen.getByTestId("probe-parse-problem-detail")).toHaveTextContent(/Qxf7/);
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
+  it("on a file of more games than the app keeps cases: no case each, and a merge counted on a progress bar", async () => {
+    const onCreate = vi.fn();
+    mount({ onCreate });
+    const many = Array.from({ length: 10_001 }, (_, index) => `[Event "Game ${index}"]\n\n1. ${index % 2 === 0 ? "e4" : "d4"} *`).join("\n\n");
+    await paste(many);
+    expect(screen.getByText("10001 games read")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "One case per game (10001)" })).toBeDisabled();
+    expect(screen.getByRole("radiogroup", { name: "What to make of these 10001 games" })).toHaveAccessibleDescription(
+      /One case per game is off: the app keeps at most 10,000 cases\./,
+    );
+
+    await userEvent.click(screen.getByRole("radio", { name: "Merge them into one case" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    const bar = await screen.findByRole("progressbar", { name: "Reading the games" });
+    expect(bar).toHaveAccessibleDescription(/of 10,001 games read|Merging the games/);
+    // Cancel stays on while it reads; Create does not.
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1), { timeout: 30_000 });
+    expect(onCreate.mock.calls[0][0][0].tree.moves.map((node: { san: string }) => node.san)).toEqual(["e4", "d4"]);
+    expect(screen.queryByRole("progressbar", { name: "Reading the games" })).toBeNull();
+  }, 60_000);
 
   it("refuses a zip with no .pgn in it, in words", async () => {
     mount();

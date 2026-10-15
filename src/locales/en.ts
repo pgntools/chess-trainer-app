@@ -2934,6 +2934,7 @@ const en = {
         selectHelp: "The case is the one game you pick.",
         perGameHelp: "Every game becomes a case of its own, named from its tags.",
         mergeUnavailable: "Merge is off: the games do not all start from the same position.",
+        perGameUnavailable: "One case per game is off: the app keeps at most {{max}} cases.",
       },
       /** The merge's optional tags, on each move where the games part. */
       tags: {
@@ -2959,6 +2960,14 @@ const en = {
         tooLarge: "That file is too large.",
         zip: "That zip could not be read.",
         zipEmpty: "There is no .pgn file in that zip.",
+        gameUnreadable: "That game cannot be read — pick another.",
+      },
+      /** Reading a large file, and every game for a merge or a case each (CTA-208). */
+      progress: {
+        label: "Reading the games",
+        file: "Reading the file…",
+        parse: "{{done}} of {{total}} games read",
+        merge: "Merging the games…",
       },
     },
     display: {

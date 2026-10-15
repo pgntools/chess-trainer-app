@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
@@ -6,13 +6,16 @@ import { useTranslation } from "react-i18next";
 import { SelectAutocomplete, type AutocompleteOption } from "../../../design-system/components/autocompletes";
 import { FormDialog, type ExtraDialogProps } from "../../../design-system/components/dialogs";
 import { InlineAlert } from "../../../design-system/components/feedback";
+import { ProgressLine } from "../../../design-system/components/states";
 import { CheckboxField, FieldLabel, RadioGroupField, SelectField, TextInputField } from "../../../design-system/components/forms";
 import type { UploadProblem } from "../../../design-system/patterns/forms";
-import { isZipFile, readZipGameTrees, type ZipGamesProblem } from "../../../lib/collectionZip";
+import { MAX_ANALYSIS_CASES } from "../../../lib/analysisProjects";
+import { isZipFile, readCollectionZip, type CollectionZipProblem } from "../../../lib/collectionZip";
 import { FenParseError, parseFen } from "../../../lib/fen";
 import { gameTag } from "../../../lib/gameModel";
 import { mainline, mergeTrees, plyLabel, type GameTree } from "../../../lib/gameTree";
-import { PgnParseError, parsePgnTrees, splitPgnGames } from "../../../lib/pgn";
+import { PgnParseError, parsePgnTree } from "../../../lib/pgn";
+import { indexPgnGames, parsePgnGameEntries, type PgnGameEntry } from "../../../lib/pgnGames";
 import { PgnInput } from "../../forms/PgnInput";
 
 /**
@@ -61,26 +64,24 @@ type ManyChoice = "merge" | "select" | "perGame";
 const GAMES_SHOWN = 50;
 
 /** A zip's refusal as the catalog words it. */
-const ZIP_PROBLEMS: Record<ZipGamesProblem, string> = {
+const ZIP_PROBLEMS: Record<CollectionZipProblem, string> = {
   zip: "zip",
   "zip-empty": "zipEmpty",
   "too-large": "tooLarge",
-  empty: "empty",
-  unreadable: "unreadable",
 };
 
-/** The games of a PGN the dialog opens on, or none where it does not read. */
-const initialGamesOf = (text: string | undefined): GameTree[] => {
-  if (text === undefined) return [];
-  try {
-    return parsePgnTrees(text);
-  } catch {
-    return [];
-  }
-};
+/** What is being worked on: the file read, the games parsed (so many of so many), the parsed games merged. */
+type Work = { kind: "file" } | { kind: "parse"; done: number; total: number } | { kind: "merge" };
+
+/** Let the page paint the progress before a stretch of work. */
+const nextTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/** A parse error's words, for an alert's detail. */
+const detailOf = (error: unknown): string | undefined =>
+  error instanceof PgnParseError || error instanceof Error ? error.message : undefined;
 
 /** A game as the picker lists it: "White – Black, Event, Date", or its number before its event and date. */
-const gameLabel = (game: GameTree, index: number, numbered: (index: number) => string): string => {
+const gameLabel = (game: Pick<GameTree, "headers">, index: number, numbered: (index: number) => string): string => {
   const white = gameTag(game.headers, "White");
   const black = gameTag(game.headers, "Black");
   const players = white !== undefined || black !== undefined ? `${white ?? "?"} – ${black ?? "?"}` : numbered(index);
@@ -109,7 +110,15 @@ const moveLabel = (startFen: string, ply: number, san: string): string => {
  * games part with `[%games N]` and / or `[%prc P]`), **select one**, or
  * **one Case per game**; a Position selects one, then its move. The game is
  * picked in an autocomplete built for thousands — at most
- * {@link GAMES_SHOWN} listed, typing narrows. The name is optional: left
+ * {@link GAMES_SHOWN} listed, typing narrows.
+ *
+ * **Built for files of thousands of games** (CTA-208): a PGN read is only
+ * indexed — each game's tags and start (`indexPgnGames`), milliseconds for
+ * 15,000 games — and only the game picked is parsed; a merge or a Case per
+ * game parses them all on Create (`parsePgnGameEntries`), in slices that give
+ * the page back, a progress bar counting the games, Cancel stopping it. A
+ * game that will not read is said when it is picked, or when a merge or a
+ * Case each reaches it. The name is optional: left
  * empty, the Case is named from its game or position — a merge from the
  * file picked, else from the first game's event.
  *
@@ -118,11 +127,11 @@ const moveLabel = (startFen: string, ply: number, san: string): string => {
  * the Cases is the screen's. Its words are the app's (`analysisV2.newCase.*`).
  */
 function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, initialPgn, testId, dialogProps }: NewCaseDialogProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [type, setType] = useState<CaseType>("game");
   const [from, setFrom] = useState<PositionSource>("fen");
   const [pasted, setPasted] = useState(initialPgn ?? "");
-  const [games, setGames] = useState<readonly GameTree[]>(() => initialGamesOf(initialPgn));
+  const [entries, setEntries] = useState<readonly PgnGameEntry[]>(() => (initialPgn === undefined ? [] : indexPgnGames([initialPgn])));
   const [readProblem, setReadProblem] = useState<UploadProblem | null>(null);
   const [selectedGame, setSelectedGame] = useState(0);
   const [many, setMany] = useState<ManyChoice>("select");
@@ -133,6 +142,12 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
   const [ply, setPly] = useState(0);
   const [fen, setFen] = useState("");
   const [name, setName] = useState("");
+  const [work, setWork] = useState<Work | null>(null);
+  /** A merge's or a Case-each's parse that met a game it could not read. */
+  const [parseProblem, setParseProblem] = useState<UploadProblem | null>(null);
+  /** The parse under way — Cancel, or the dialog going, stops it. */
+  const running = useRef<AbortController | null>(null);
+  useEffect(() => () => running.current?.abort(), []);
 
   // A dialog opened afresh starts empty — adjusted during render, as the screens' strips are.
   const [wasOpen, setWasOpen] = useState(open);
@@ -142,8 +157,10 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
       setType("game");
       setFrom("fen");
       setPasted(initialPgn ?? "");
-      setGames(initialGamesOf(initialPgn));
+      setEntries(initialPgn === undefined ? [] : indexPgnGames([initialPgn]));
       setReadProblem(null);
+      setParseProblem(null);
+      setWork(null);
       setSelectedGame(0);
       setMany("select");
       setTagGames(false);
@@ -155,56 +172,78 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
     }
   }
 
-  /** Games read: the first picked, the choice back to Select one. */
-  const accept = (trees: GameTree[]) => {
-    setGames(trees);
+  const refuse = (problem: UploadProblem) => {
+    setEntries([]);
+    setReadProblem(problem);
+  };
+
+  /** The games of the texts, indexed: the first picked, the choice back to Select one. Answers how many. */
+  const read = (texts: readonly string[]): number => {
+    const indexed = indexPgnGames(texts);
+    setParseProblem(null);
+    if (indexed.length === 0) {
+      refuse({ message: t("analysisV2.newCase.problem.empty") });
+      return 0;
+    }
+    setEntries(indexed);
     setReadProblem(null);
     setSelectedGame(0);
     setMany("select");
     setPly(0);
-  };
-
-  const refuse = (problem: UploadProblem) => {
-    setGames([]);
-    setReadProblem(problem);
-  };
-
-  const read = (text: string) => {
-    try {
-      const trees = parsePgnTrees(text);
-      if (trees.length === 0) {
-        refuse({ message: t("analysisV2.newCase.problem.empty") });
-        return;
-      }
-      accept(trees);
-    } catch (error) {
-      refuse({
-        message: t("analysisV2.newCase.problem.unreadable"),
-        detail: error instanceof PgnParseError || error instanceof Error ? error.message : undefined,
-      });
-    }
+    return indexed.length;
   };
 
   const readFiles = async (files: File[]) => {
     const file = files[0];
     if (file === undefined) return;
     setFileStem(file.name.replace(/\.(pgn|zip)$/i, ""));
+    setWork({ kind: "file" });
     try {
       if (isZipFile(file)) {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        await nextTask();
+        const zipped = readCollectionZip(bytes);
         // A zip's texts are not put in the paste box — there may be many, and large.
         setPasted("");
-        const reading = readZipGameTrees(new Uint8Array(await file.arrayBuffer()));
-        if (reading.ok) accept(reading.games);
-        else refuse({ message: t(`analysisV2.newCase.problem.${ZIP_PROBLEMS[reading.problem]}`), detail: reading.detail });
+        if (zipped.ok) read(zipped.entries.map((entry) => entry.text));
+        else refuse({ message: t(`analysisV2.newCase.problem.${ZIP_PROBLEMS[zipped.problem]}`) });
         return;
       }
       const text = await file.text();
       // A file of several games stays out of the paste box too: a large one there freezes the page.
-      setPasted(splitPgnGames(text).length > 1 ? "" : text);
-      read(text);
+      setPasted(read([text]) > 1 ? "" : text);
     } catch {
       refuse({ message: t("analysisV2.newCase.problem.file") });
+    } finally {
+      setWork(null);
     }
+  };
+
+  /** Every game parsed, in slices, the bar counting them — `undefined` when stopped, or a game would not read (said). */
+  const parseAll = async (): Promise<GameTree[] | undefined> => {
+    const controller = new AbortController();
+    running.current = controller;
+    setParseProblem(null);
+    setWork({ kind: "parse", done: 0, total: entries.length });
+    try {
+      await nextTask();
+      return await parsePgnGameEntries(entries, {
+        signal: controller.signal,
+        onProgress: (done, total) => setWork({ kind: "parse", done, total }),
+      });
+    } catch (error) {
+      if (!controller.signal.aborted) setParseProblem({ message: t("analysisV2.newCase.problem.unreadable"), detail: detailOf(error) });
+      return undefined;
+    } finally {
+      if (running.current === controller) running.current = null;
+      if (!controller.signal.aborted) setWork(null);
+    }
+  };
+
+  const close = () => {
+    running.current?.abort();
+    setWork(null);
+    onClose();
   };
 
   const fenProblem = useMemo(() => {
@@ -217,37 +256,60 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
     }
   }, [fen]);
 
-  const game: GameTree | undefined = games[selectedGame];
+  // Only the game picked is parsed — one game, a few milliseconds.
+  const picked = useMemo((): { tree: GameTree } | { problem: UploadProblem } | undefined => {
+    const entry = entries[selectedGame];
+    if (entry === undefined) return undefined;
+    try {
+      return { tree: parsePgnTree(entry.text, entries.length > 1 ? selectedGame + 1 : undefined) };
+    } catch (error) {
+      return { problem: { message: t("analysisV2.newCase.problem.unreadable"), detail: detailOf(error) } };
+    }
+  }, [entries, selectedGame, t]);
+  const game: GameTree | undefined = picked !== undefined && "tree" in picked ? picked.tree : undefined;
+  const pickedProblem = picked !== undefined && "problem" in picked ? picked.problem : null;
   const line = useMemo(() => (game === undefined ? [] : mainline(game)), [game]);
   const usesPgn = type === "game" || from === "pgn";
-  const several = usesPgn && games.length > 1;
-  const mergeable = useMemo(() => games.length > 1 && games.every((tree) => tree.startFen === games[0].startFen), [games]);
-  // A Position is one game's; a merge the games cannot make is no choice.
-  const choice: ManyChoice = !several || type === "position" || (many === "merge" && !mergeable) ? "select" : many;
+  const several = usesPgn && entries.length > 1;
+  const mergeable = useMemo(() => entries.length > 1 && entries.every((entry) => entry.startFen === entries[0].startFen), [entries]);
+  // More games than the app keeps Cases: a Case each would be refused once every game was parsed.
+  const perGameFits = entries.length <= MAX_ANALYSIS_CASES;
+  // A Position is one game's; a choice the games cannot make is no choice.
+  const choice: ManyChoice =
+    !several || type === "position" || (many === "merge" && !mergeable) || (many === "perGame" && !perGameFits) ? "select" : many;
   const manyAtOnce = choice === "perGame";
 
   const gameOptions = useMemo((): AutocompleteOption[] => {
     if (!several) return [];
     const numbered = (index: number) => t("analysisV2.newCase.gameNumber", { number: index + 1 });
-    return games.map((tree, index) => ({ value: String(index), label: gameLabel(tree, index, numbered) }));
-  }, [games, several, t]);
+    return entries.map((entry, index) => ({ value: String(index), label: gameLabel(entry, index, numbered) }));
+  }, [entries, several, t]);
 
-  const ready = usesPgn ? game !== undefined : fen.trim() !== "" && fenProblem === null;
+  const working = work !== null;
+  // A merge or a Case each needs every game, parsed on Create; the others the one picked.
+  const ready =
+    !working && (usesPgn ? (choice === "select" ? game !== undefined : entries.length > 1) : fen.trim() !== "" && fenProblem === null);
 
-  const submit = () => {
+  const submit = async () => {
     if (!ready || busy) return;
     if (manyAtOnce) {
-      onCreate(games.map((tree) => ({ type: "game", tree, name: "" })));
+      const games = await parseAll();
+      if (games !== undefined) onCreate(games.map((tree) => ({ type: "game", tree, name: "" })));
     } else if (choice === "merge") {
+      const games = await parseAll();
+      if (games === undefined) return;
+      setWork({ kind: "merge" });
+      await nextTask();
       const named = name.trim() !== "" ? name : (fileStem ?? "");
       // A tree of many games: the name (or the first game's event) its Event, no result of its own.
-      const event = named.trim() !== "" ? named : gameTag(games[0].headers, "Event");
+      const event = named.trim() !== "" ? named : gameTag(entries[0].headers, "Event");
       const tree = mergeTrees(
         games,
-        games[0].startFen,
+        entries[0].startFen,
         { ...(event !== undefined && event !== "" ? { Event: event } : {}), Result: "*" },
         { countGames: tagGames, playChances: tagPrc },
       );
+      setWork(null);
       onCreate([{ type: "game", tree, name: named }]);
     } else if (type === "game" && game !== undefined) {
       onCreate([{ type: "game", tree: game, name }]);
@@ -261,8 +323,8 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
   return (
     <FormDialog
       open={open}
-      onClose={onClose}
-      onSubmit={submit}
+      onClose={close}
+      onSubmit={() => void submit()}
       title={t("analysisV2.newCase.title")}
       submitLabel={t("analysisV2.newCase.create")}
       cancelLabel={t("analysisV2.newCase.cancel")}
@@ -313,12 +375,15 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
               // Typed over, the text is no longer the file's.
               setFileStem(null);
             }}
-            onSubmit={() => read(pasted)}
+            onSubmit={() => {
+              read([pasted]);
+            }}
             submitVariant="outlined"
             fileVariant="outlined"
-            disabled={busy}
-            busy={games.length > 0 ? t("analysisV2.newCase.read", { count: games.length }) : undefined}
-            problem={readProblem}
+            disabled={busy || working}
+            busy={entries.length > 0 ? t("analysisV2.newCase.read", { count: entries.length }) : undefined}
+            // One game that will not read is the text's problem; one of several is said where it is picked.
+            problem={readProblem ?? (entries.length === 1 ? pickedProblem : null)}
             testId={`${testId}-pgn`}
           />
         ) : (
@@ -331,7 +396,7 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
             helperText={
               fenProblem === null ? t("analysisV2.newCase.fenHelp") : t("analysisV2.newCase.fenProblem", { detail: fenProblem })
             }
-            disabled={busy}
+            disabled={busy || working}
             testId={`${testId}-fen`}
           />
         )}
@@ -342,19 +407,20 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
         )}
         {several && type === "game" && (
           <RadioGroupField<ManyChoice>
-            label={t("analysisV2.newCase.many.label", { number: games.length })}
+            label={t("analysisV2.newCase.many.label", { number: entries.length })}
             options={[
               { value: "merge", label: t("analysisV2.newCase.many.merge"), disabled: !mergeable },
               { value: "select", label: t("analysisV2.newCase.many.select") },
-              { value: "perGame", label: t("analysisV2.newCase.many.perGame", { number: games.length }) },
+              { value: "perGame", label: t("analysisV2.newCase.many.perGame", { number: entries.length }), disabled: !perGameFits },
             ]}
             value={choice}
             onChange={setMany}
             help={[
               t(`analysisV2.newCase.many.${choice}Help`),
               ...(mergeable ? [] : [t("analysisV2.newCase.many.mergeUnavailable")]),
+              ...(perGameFits ? [] : [t("analysisV2.newCase.many.perGameUnavailable", { max: MAX_ANALYSIS_CASES.toLocaleString(i18n.language) })]),
             ].join(" ")}
-            disabled={busy}
+            disabled={busy || working}
             testId={`${testId}-many`}
           />
         )}
@@ -366,7 +432,7 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
               help={t("analysisV2.newCase.tags.gamesHelp")}
               checked={tagGames}
               onChange={setTagGames}
-              disabled={busy}
+              disabled={busy || working}
               testId={`${testId}-tag-games`}
             />
             <CheckboxField
@@ -374,7 +440,7 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
               help={t("analysisV2.newCase.tags.prcHelp")}
               checked={tagPrc}
               onChange={setTagPrc}
-              disabled={busy}
+              disabled={busy || working}
               testId={`${testId}-tag-prc`}
             />
           </Box>
@@ -392,9 +458,14 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
             options={gameOptions}
             clearable={false}
             maxShown={GAMES_SHOWN}
-            disabled={busy}
+            disabled={busy || working}
             testId={`${testId}-game`}
           />
+        )}
+        {choice === "select" && several && pickedProblem !== null && (
+          <InlineAlert severity="error" detail={pickedProblem.detail} testId={`${testId}-game-problem`}>
+            {t("analysisV2.newCase.problem.gameUnreadable")}
+          </InlineAlert>
         )}
         {type === "position" && from === "pgn" && game !== undefined && (
           <SelectField
@@ -410,7 +481,7 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
             ]}
             optionDir="ltr"
             helperText={t("analysisV2.newCase.plyHelp")}
-            disabled={busy}
+            disabled={busy || working}
             fullWidth
             testId={`${testId}-ply`}
           />
@@ -422,9 +493,29 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
             onChange={setName}
             dir="auto"
             helperText={t("analysisV2.case.nameHelp")}
-            disabled={busy}
+            disabled={busy || working}
             testId={`${testId}-name`}
           />
+        )}
+        {work !== null && (
+          <ProgressLine
+            label={t("analysisV2.newCase.progress.label")}
+            value={work.kind === "parse" && work.total > 0 ? (work.done / work.total) * 100 : undefined}
+            caption={
+              work.kind === "file"
+                ? t("analysisV2.newCase.progress.file")
+                : work.kind === "merge"
+                  ? t("analysisV2.newCase.progress.merge")
+                  : t("analysisV2.newCase.progress.parse", { done: work.done.toLocaleString(i18n.language), total: work.total.toLocaleString(i18n.language) })
+            }
+            announce
+            testId={`${testId}-progress`}
+          />
+        )}
+        {parseProblem !== null && (
+          <InlineAlert severity="error" detail={parseProblem.detail} testId={`${testId}-parse-problem`}>
+            {parseProblem.message}
+          </InlineAlert>
         )}
         {problem !== null && (
           <InlineAlert severity="error" testId={`${testId}-problem`}>
