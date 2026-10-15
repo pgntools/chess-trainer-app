@@ -23,14 +23,14 @@ const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag2
 
 /**
  * **The in-development notice, dismissed ahead** (CTA-155): a modal that opens
- * on the first load of a session would cover every route the pass audits and
- * hide the page behind it. `sessionStorage` is not part of the saved browser
- * state (`storageState` keeps `localStorage` and IndexedDB), so each page sets
- * the key itself, before its scripts run — the app's own key, the one
- * `lib/developmentNotice.ts` reads.
+ * until it is dismissed would cover every route the pass audits and hide the
+ * page behind it. Each page dismisses it itself, before its scripts run — the
+ * app's own key, the one `lib/developmentNotice.ts` reads: the time of the
+ * dismissal in `localStorage`, now, so the 30 days it lasts (CTA-210) never run
+ * out under a saved browser state.
  */
 export const dismissDevelopmentNotice = async (page: Page): Promise<void> => {
-  await page.addInitScript(() => sessionStorage.setItem("chessapp.developmentNoticeDismissed", "1"));
+  await page.addInitScript(() => localStorage.setItem("chessapp.developmentNoticeDismissed", String(Date.now())));
 };
 
 /**
