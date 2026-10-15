@@ -26,8 +26,8 @@ export type CaseLinksProps = {
   /** Why the last Unlink was refused — said under the lists. */
   problem?: string;
   /**
-   * Keep the heading for a screen reader but out of sight — under a tab that
-   * already says "Linked cases" (CTA-199). Absent, shown.
+   * Keep the heading for a screen reader but out of sight — under a title that
+   * already says "Linked cases" (the Case view's dialog, CTA-211). Absent, shown.
    */
   titleHidden?: boolean;
   /**
@@ -39,7 +39,7 @@ export type CaseLinksProps = {
 };
 
 /**
- * **A Case's links** (CTA-188) — on its Linked cases tab (`CaseDetails`, CTA-199): the Cases it
+ * **A Case's links** (CTA-188) — in its Linked cases dialog (`CaseDetails`' Info tab, CTA-211): the Cases it
  * **links to** and the ones **linked from** it, across Projects — each a link
  * to that Case with its Project's name, and an **Unlink** named for it — and
  * **Link a case**, the screen's picker. A Jobs V2 computer analysis links its

@@ -682,12 +682,16 @@ describe("a Case's board (CTA-186)", () => {
     await screen.findByTestId("board");
     expect(boardOptions().arrows!.length).toBeGreaterThan(0);
 
+    // The next-move arrows off — none drawn: the Settings tab's switch since CTA-211.
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    await user.click(within(screen.getByTestId("analysis-case-settings")).getByRole("switch", { name: "Show next move arrows" }));
+    expect(boardOptions().arrows).toEqual([]);
+
     await user.click(screen.getByRole("tab", { name: "Display" }));
     const display = screen.getByTestId("analysis-case-display");
     expect(await expectNoAxeViolations(display)).toBeUndefined();
-    // The common options: the next-move arrows off — none drawn — and the move marks off.
-    await user.click(within(display).getByRole("switch", { name: "Show next move arrows" }));
-    expect(boardOptions().arrows).toEqual([]);
+    // The common option: the move marks off — the arrows' switch is no longer here.
+    expect(within(display).queryByRole("switch", { name: "Show next move arrows" })).toBeNull();
     await user.click(within(display).getByRole("switch", { name: "Show move marks on the board" }));
 
     // The inner tabs: Arrows (the width source and palette), Engine, Accessibility.
@@ -732,9 +736,10 @@ describe("a Case's board (CTA-186)", () => {
     await screen.findByTestId("board");
     expect(boardOptions().arrows).toEqual([]);
     expect(boardOptions().boardOrientation).toBe("black");
-    expect(within(screen.getByTestId("analysis-case-settings")).getByRole("switch", { name: "Write evaluations into the game" })).not.toBeChecked();
-    await user.click(screen.getByRole("tab", { name: "Display" }));
-    expect(screen.getByRole("switch", { name: "Show next move arrows" })).not.toBeChecked();
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    const reopened = screen.getByTestId("analysis-case-settings");
+    expect(within(reopened).getByRole("switch", { name: "Write evaluations into the game" })).not.toBeChecked();
+    expect(within(reopened).getByRole("switch", { name: "Show next move arrows" })).not.toBeChecked();
   });
 
   it("draws the engine's listed lines as the arrows under Variations — None while it is off or has no lines here (CTA-197)", async () => {
@@ -851,7 +856,35 @@ describe("a Case's board (CTA-186)", () => {
     expect(await screen.findByRole("searchbox", { name: "Filter cases" })).toHaveValue("endgame");
   });
 
-  it("opens a Case's own view from the list — Settings first, its tags on Info — and Back returns to the list", async () => {
+  it("pages a Project of more than 100 Cases, 100 at a time — on the open Case's page, following it as the reader steps (CTA-211)", async () => {
+    const project = (await createAnalysisProject("Club", null))!;
+    await addAnalysisCases(
+      Array.from({ length: 120 }, (_, index) => positionCaseOfFen({ id: `c${index + 1}`, projectId: project.id, name: `Chapter ${index + 1}` }, ENDGAME)),
+    );
+    const user = userEvent.setup();
+    mount(`/analysis/projects/${project.id}/cases/c101?view=list`);
+    const list = await screen.findByRole("navigation", { name: "Cases of Club" });
+    // The Project's order: Chapter 101 on the second page, current.
+    const pager = () => screen.getByTestId("analysis-case-siblings-pager");
+    expect(pager()).toHaveTextContent("101–120 of 120");
+    expect(within(list).getAllByRole("treeitem")).toHaveLength(20);
+    expect(screen.getByTestId("analysis-case-siblings-tree-c101")).toHaveAttribute("aria-current", "page");
+
+    // A step to the previous Case lands on its page.
+    await user.click(screen.getByRole("link", { name: "Previous case" }));
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/c100?view=list`);
+    await waitFor(() => expect(pager()).toHaveTextContent("1–100 of 120"));
+    expect(screen.getByTestId("analysis-case-siblings-tree-c100")).toHaveAttribute("aria-current", "page");
+    expect(within(screen.getByRole("navigation", { name: "Cases of Club" })).getAllByRole("treeitem")).toHaveLength(100);
+
+    // Paging by hand changes no Case.
+    await user.click(within(pager()).getByRole("button", { name: /next page/i }));
+    expect(pager()).toHaveTextContent("101–120 of 120");
+    expect(where()).toBe(`/analysis/projects/${project.id}/cases/c100?view=list`);
+    expect(screen.getByTestId("analysis-case-name")).toHaveTextContent("Chapter 100");
+  });
+
+  it("opens a Case's own view from the list — on Info, its tags and Linked cases (n) — and Back returns to the list", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     await addAnalysisCases([gameCase(project.id), positionCaseOfFen({ id: "cpos", projectId: project.id, name: "Endgame" }, ENDGAME)]);
     const user = userEvent.setup();
@@ -862,28 +895,28 @@ describe("a Case's board (CTA-186)", () => {
     await user.click(screen.getByTestId("analysis-case-siblings-tree-cgame"));
     expect(where()).toBe(`/analysis/projects/${project.id}/cases/cgame?sort=name&dir=asc`);
     const details = await screen.findByRole("navigation", { name: /^Details of Carlsen – Caruana/ });
-    // Settings, first and open (CTA-199): the board's settings — no longer the right-hand panel's — then Info and Linked cases.
-    expect(within(details).getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
-    expect(within(details).getByTestId("analysis-case-settings")).toBeInTheDocument();
+    // Info, first and open (CTA-211): the tags, then Linked cases (n) — a dialog of its links.
+    expect(within(details).getByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("analysis-case-details-info-Event")).toHaveTextContent("Club Championship");
+    expect(screen.getByTestId("analysis-case-details-info-White")).toHaveTextContent("Carlsen");
+    expect(within(details).getByRole("button", { name: "Linked cases (0)" })).toBeInTheDocument();
     expect(within(screen.getByRole("tablist", { name: "Board panel" })).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
       "Moves",
       "Map",
       "Export",
     ]);
-    expect(within(within(details).getByRole("tablist", { name: "Case settings" })).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
-      "Info",
-      "Linked cases",
-    ]);
-    expect(within(details).getByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTestId("analysis-case-details-info-Event")).toHaveTextContent("Club Championship");
-    expect(screen.getByTestId("analysis-case-details-info-White")).toHaveTextContent("Carlsen");
     await expectNoAxeViolations(details);
     expect(within(within(details).getByRole("tablist", { name: "Case details" })).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Info",
       "Settings",
       "Graph",
       "Display",
       "Jobs",
     ]);
+    // Settings: the board's settings alone — no inner tabs (CTA-211).
+    await user.click(within(details).getByRole("tab", { name: "Settings" }));
+    expect(within(details).getByTestId("analysis-case-settings")).toBeInTheDocument();
+    expect(within(details).getAllByRole("tablist")).toHaveLength(1);
     // No evaluations in the game: Graph is off.
     expect(within(details).getByRole("tab", { name: "Graph" })).toBeDisabled();
     await user.click(within(details).getByRole("tab", { name: "Display" }));
@@ -893,8 +926,9 @@ describe("a Case's board (CTA-186)", () => {
     await user.click(within(details).getByRole("link", { name: "Next case" }));
     expect(where()).toBe(`/analysis/projects/${project.id}/cases/cpos?sort=name&dir=asc`);
     expect(await screen.findByRole("tab", { name: "Display" })).toHaveAttribute("aria-selected", "true");
-    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    await user.click(screen.getByRole("tab", { name: "Info" }));
     expect(screen.getByTestId("analysis-case-details-title")).toHaveTextContent("Endgame");
+    expect(screen.queryByTestId("analysis-case-details-info-Event")).toBeNull();
     expect(screen.queryByTestId("analysis-case-details-info-Event")).toBeNull();
 
     // Back: the list again, the table's context kept.

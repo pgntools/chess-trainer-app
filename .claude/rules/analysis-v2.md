@@ -97,7 +97,7 @@ other screen hands a game to Analysis as a new Case** (§1.1).
 | `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board; the Case view's links and their picker, §7), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings — `useJobsV2`, `useCaseLinks` too), `paths.ts` (the addresses — `jobsV2Path`). `jobs/` (CTA-188): `JobsV2Screen.tsx` (`/analysis/jobs`, behind `JobsV2Main.tsx`), `JobV2Reports.tsx` (a done job's report, another's results so far), `NewJobV2.tsx` (the popup's screen side), `JobsV2Shell.tsx` (`JobV2Runner`, `JobsV2Indicator` — the shell's), `useJobV2Live.ts` (the live progress, `liveOfJob` — CTA-190), `JobsSettingsTab.tsx` and `useJobsSettings.ts` (the Jobs settings, CTA-193). |
 | `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/forms/JobTargetFields/`, `src/blocks/lists/CaseJobs/`, `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/`; since CTA-190 `src/blocks/panels/JobEngineProgress/`; since CTA-193 `src/blocks/forms/JobsSettingsForm/` (the default engine and preset, and a link to Settings → Engine for the eval sources — CTA-196) | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and so, for Jobs V2, `JobsTable`, `JobSummary` (generic over a job's fields), `NewJobDialog`, `ComputerAnalysisForm` (the engine and preset selects, one variant, a section before the form; `JobSummary`'s `live` slot, CTA-190), `ComputerAnalysisReport` and `EvalGraph` — built for the legacy Jobs, Jobs V2's since CTA-192. |
 | `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts`, `src/views/shared/AnalysisEvalReport.tsx` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws, the eval graph and report the Case view's Graph tab shows. |
-| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectRows.test.ts` (the browser's rows — its Cases, CTA-191), `src/lib/analysisProjectPicks.test.ts` (its picks, CTA-191), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), the engine server's heartbeat in `jobV2Runner.test.ts`, `hostedEngine.test.ts`, `JobEngineProgress.test.tsx` and `JobsV2Shell.test.tsx` (CTA-194), `jobsSettings.test.ts` (CTA-193; the old `evalApi` kept for its move, CTA-196), `lib/evalSources/lichess/api.test.ts` (the client — the FEN, the mapping, a 404, the timeout, a bad body) and the rest of the layer's tests ([`docs/engine.md`](../../docs/engine.md) §10.5), the runner's API cases in `jobV2Runner.test.ts` (through the layer), `JobsSettingsForm.test.tsx`, `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links on its Linked cases tab, the Jobs V2 view; the Jobs settings tab — its link to Settings → Engine, CTA-196 — and New Job V2's default, CTA-193), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190; an eval source's warning, CTA-193, CTA-196), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the database named in both pages, the retired ones in neither), `src/lib/retiredDatabases.test.ts`; **the hand-offs** (§1.1): `OpeningsBoard.test.tsx`, `PlayWithEngine.test.tsx`, `PlayedGames.test.tsx`, `Library.test.tsx` (the game board's Open in Analysis and a shipped game's copy), `LibraryPicks.test.tsx` (the batch), `StoredGameEmbed.test.tsx` and `EmbedSource.test.tsx` (an embed's Case address and its Open in Analysis), `ProjectPickerDialog.test.tsx` (the New project entry). |
+| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectRows.test.ts` (the browser's rows — its Cases, CTA-191), `src/lib/analysisProjectPicks.test.ts` (its picks, CTA-191), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), the engine server's heartbeat in `jobV2Runner.test.ts`, `hostedEngine.test.ts`, `JobEngineProgress.test.tsx` and `JobsV2Shell.test.tsx` (CTA-194), `jobsSettings.test.ts` (CTA-193; the old `evalApi` kept for its move, CTA-196), `lib/evalSources/lichess/api.test.ts` (the client — the FEN, the mapping, a 404, the timeout, a bad body) and the rest of the layer's tests ([`docs/engine.md`](../../docs/engine.md) §10.5), the runner's API cases in `jobV2Runner.test.ts` (through the layer), `JobsSettingsForm.test.tsx`, `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links in its Linked cases dialog, the Jobs V2 view; the Jobs settings tab — its link to Settings → Engine, CTA-196 — and New Job V2's default, CTA-193), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190; an eval source's warning, CTA-193, CTA-196), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the database named in both pages, the retired ones in neither), `src/lib/retiredDatabases.test.ts`; **the hand-offs** (§1.1): `OpeningsBoard.test.tsx`, `PlayWithEngine.test.tsx`, `PlayedGames.test.tsx`, `Library.test.tsx` (the game board's Open in Analysis and a shipped game's copy), `LibraryPicks.test.tsx` (the batch), `StoredGameEmbed.test.tsx` and `EmbedSource.test.tsx` (an embed's Case address and its Open in Analysis), `ProjectPickerDialog.test.tsx` (the New project entry). |
 
 Locale keys: `analysisV2.*` (`browser`, `folder`, `project`, `case`,
 `newCase`, `workspace`; `jobs`, `links` — CTA-188; `jobs.live`, `jobs.indicator.liveDepth` / `liveNodes` — CTA-190; `jobs.live.alive` / `heardNow` / `heardSeconds` / `heardMinutes` — CTA-194; `jobs.tabs`, `jobs.settings` — CTA-193; the eval sources' words are `evalSources.*`, CTA-196), `nav.folders.analysisV2`, `nav.analysisProjects`,
@@ -367,13 +367,15 @@ editing on, *Play chances…* off), `BoardShell` and its panel — tabs **Moves 
 Map · Export** (`PgnExportPanel`; **Settings** moved to the left panel's Case
 view in CTA-199, below; **Display** — `CaseDisplayTab`,
 the board's state, shown on the left panel's Case view (below) since CTA-186's
-last round: the next-move arrows and the move marks on top, then inner
+last round: the move marks on top (the next-move arrows' on / off moved to
+Settings in CTA-211), then inner
 tabs — **Arrows**, the width source and palette (§3.4)
 (`ArrowSettingsFields`), **Engine** — the engine's lines (`BoardPanel`'s
 `showVariations`) — and **Accessibility**, the board's accessibility options,
 a placeholder for now — all kept with the Case as its `display`, autosaved;
-**Settings** — the Case view's first tab since CTA-199 — opens with `CaseSettingsTab`: the side the board faces, White / Black
-(the Case's orientation), the eval bar (its `display`) and *Write evaluations
+**Settings** — the Case view's tab since CTA-199, the board's settings alone since CTA-211 (`CaseSettingsTab`): the side the board faces, White / Black
+(the Case's orientation), *Show next move arrows* (its `display.showArrows`,
+CTA-211 — the Display tab's before), the eval bar (its `display`) and *Write evaluations
 into the game* (on by default and kept with the Case as its `display.writeEvals`
 since CTA-199 — the session starts from it; [`pgn-annotations.md`](./pgn-annotations.md))), and the header:
 the name, the opening, a refused save (nothing else), Play and the engine's on / off as a
@@ -405,7 +407,14 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
   (`caseListContextOf`, `paths.ts`) and back by its **Close**, at the head's
   start before the Project's name — the one way back, the board's header has
   none; a words box (writing `?q=`) and previous / next over the list as shown
-  (the whole of it when the words leave the open Case out). It does not fold.
+  (the whole of it when the words leave the open Case out). **Paged, 100 a
+  page** (CTA-211 — a Project may hold thousands; `CASE_SIBLINGS_PAGE_SIZE`):
+  past one page a `TablePager` under the list, its one size fixed
+  (`pageSizes={[100]}`: "101–200 of 1,234" and the arrows, no select). The
+  block pages the rows it is given and holds the page: it opens on the page
+  holding the open Case, goes to that Case's page again when the Case changes
+  (previous / next, a row) or the words do — the first page where they leave
+  it out — and paging by hand changes no Case. It does not fold.
   Under the shell's breakpoint it is a drawer, opened from a list button in
   the board's header; the drawer is the route's state, so it outlives a step
   to another Case. Nothing locks it: a Case autosaves.
@@ -414,11 +423,14 @@ the name, the opening, a refused save (nothing else), Play and the engine's on /
   `withCaseView`, `paths.ts`, never carried back to the table; an older
   `?view=case` reads as the view). A row of the list picked — the open Case's
   too — opens that Case on it, and the panel shows the Case — **Back** to the list where the list has
-  Close, its name and type, its details in **tabs** — **Settings** (CTA-199,
-  first: the board's settings, `CaseSettingsTab`, then its own tabs — **Info**,
-  the Case's PGN tags as saved (`GameInfo`, the Library game board's Info
-  tab; "no tags" when it has none), and **Linked cases**, **its links** and
-  Link a case (CTA-188, §7; `CaseLinks`, its heading out of sight)),
+  Close, its name and type, its details in **tabs** — **Info** (CTA-211,
+  first, where a Case view opens: the Case's PGN tags as saved — `GameInfo`,
+  the Library game board's Info tab; "no tags" when it has none — then a
+  **Linked cases (n)** button, n its links both ways, opening a dialog
+  (`BaseDialog`) of **its links** and Link a case — CTA-188, §7; `CaseLinks`,
+  its heading out of sight under the dialog's title; Link a case opens
+  `CasePickerDialog` over it), **Settings** (CTA-199: the board's settings,
+  `CaseSettingsTab`, alone — its inner Info / Linked cases tabs went in CTA-211),
   **Graph**, the eval graph and report of the tree
   on the board (`views/shared/AnalysisEvalReport.tsx` — live, a click moves the board; disabled while the tree
   carries no `[%eval]`), **Display**, how the board draws (`CaseDisplayTab`,
@@ -850,11 +862,11 @@ Project).
 
 - **Made** by a Jobs V2 computer analysis — its source Case links to every
   new Case it makes (§6.3) — and by the reader's **Link a case**.
-- **Shown on the Case view's Linked cases tab** — Settings' own, beside Info (CTA-199; `CaseLinks`):
+- **Shown in the Case view's Linked cases dialog** — opened by the Info tab's *Linked cases (n)* (CTA-211; `CaseLinks`):
   *Links to* and *Linked from*, each Case a link to its board with its
   Project's name, and **Unlink** (`unlinkAnalysisCases`); none, "No linked
   cases yet". A refused Unlink is said under them.
-- **Link a case** (the Linked cases tab) opens `CasePickerDialog`, two
+- **Link a case** (in that dialog) opens `CasePickerDialog` over it, two
   autocompletes built for hundreds of Projects and thousands of Cases
   (CTA-199): a Project typed to find (the Case's own first; Projects with
   nothing to pick left out; cleared, any Project), then a Case typed to find

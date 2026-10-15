@@ -223,7 +223,7 @@ describe("a merge into an open Case (CTA-188)", () => {
   });
 });
 
-describe("a Case's links, on its Info tab (CTA-188)", () => {
+describe("a Case's links, in a dialog off its Info tab (CTA-188, CTA-211)", () => {
   it("lists the Cases it links to and is linked from — across Projects — unlinks, and links another by Project and Case", async () => {
     const { project } = await seed();
     const other = (await createAnalysisProject("Endgames", null))!;
@@ -240,9 +240,10 @@ describe("a Case's links, on its Info tab (CTA-188)", () => {
     mount(`/analysis/projects/${project.id}/cases/cgame?view=case`);
     await screen.findByTestId("board");
 
-    // Settings' own Linked cases tab (CTA-199).
-    await user.click(screen.getByRole("tab", { name: "Linked cases" }));
-    const info = screen.getByRole("tabpanel", { name: "Linked cases" });
+    // The Info tab's Linked cases (n), a count of both ways, opens them in a dialog (CTA-211).
+    expect(screen.getByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("button", { name: "Linked cases (2)" }));
+    const info = await screen.findByRole("dialog", { name: "Linked cases" });
     const to = within(info).getByRole("region", { name: "Links to" });
     expect(within(to).getByRole("link", { name: "Carlsen – Caruana - computer analysis (light)" })).toHaveAttribute(
       "href",
@@ -279,6 +280,9 @@ describe("a Case's links, on its Info tab (CTA-188)", () => {
       ["cgame", "cfrom"],
     ]);
     expect(within(screen.getByRole("region", { name: "Links to" })).getByRole("link", { name: "Rook ending" })).toBeInTheDocument();
+    // Closed, the count is the links' now.
+    await user.click(within(screen.getByRole("dialog", { name: "Linked cases" })).getByRole("button", { name: "Close" }));
+    expect(await screen.findByRole("button", { name: "Linked cases (2)" })).toBeInTheDocument();
   });
 
   it("is gone with the Project screen: a Project shows no links", async () => {

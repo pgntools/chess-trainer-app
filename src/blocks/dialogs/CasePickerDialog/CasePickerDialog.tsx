@@ -49,7 +49,7 @@ const caseIdIn = (text: string): string => {
 
 /**
  * **A Case to link to** (CTA-188) — a Case's *Link a case* (its Linked cases
- * tab): two autocompletes, built for hundreds of Projects and thousands of
+ * dialog, CTA-211): two autocompletes, built for hundreds of Projects and thousands of
  * Cases (CTA-199) — a **Project**, typed to find (the Case's own chosen at
  * first; cleared, any Project), then a **Case**, typed to find among that
  * Project's (every Project's, under their names, while none is chosen) — or

@@ -2424,16 +2424,15 @@ const he: typeof en = {
       back: "חזרה לרשימת המקרים",
       tabs: {
         label: "פרטי המקרה",
+        info: "מידע",
         settings: "הגדרות",
         display: "תצוגה",
         graph: "גרף",
         jobs: "משימות",
       },
-      sections: {
-        label: "הגדרות המקרה",
-        info: "מידע",
-        links: "מקרים מקושרים",
-      },
+      links: "מקרים מקושרים ({{count}})",
+      linksTitle: "מקרים מקושרים",
+      linksClose: "סגירה",
     },
     siblings: {
       title: "המקרים של {{name}}",
@@ -2442,6 +2441,8 @@ const he: typeof en = {
       next: "המקרה הבא",
       toggle: "המקרים של הפרויקט",
       hint: "החיצים למעלה ולמטה לתנועה, Enter לפתיחת מקרה.",
+      pageRows: "{{from}}–{{to}} מתוך {{total}}",
+      rowsPerPage: "מקרים בעמוד",
     },
     workspace: {
       tabs: {

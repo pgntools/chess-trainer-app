@@ -75,7 +75,7 @@ export type CaseBoardView = {
   hasEvaluations: boolean;
   /** How the board draws (`CaseDisplayTab`, the board's state) — the Case view's Display tab. */
   display: ReactNode;
-  /** The board's settings (`CaseSettingsTab`) — the head of the Case view's Settings tab (CTA-199). */
+  /** The board's settings (`CaseSettingsTab`) — the Case view's Settings tab (CTA-199; alone since CTA-211). */
   settings: ReactNode;
 };
 
@@ -350,6 +350,8 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
             onOrientationChange={(side) => {
               if (side !== core.orientation) core.flipBoard();
             }}
+            showArrows={display.showArrows}
+            onShowArrowsChange={(showArrows) => changeDisplay({ showArrows })}
             showEvalBar={display.showEvalBar}
             onShowEvalBarChange={(showEvalBar) => changeDisplay({ showEvalBar })}
             writeEvals={session.settings.writeEvals}
@@ -385,12 +387,12 @@ function CaseWorkspace() {
   const compact = useShellCompact();
   // Under the breakpoint, the list's drawer — the route's, so it outlives a step to another Case.
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // The Case view's open tab — the route's too, so stepping to another Case keeps it.
-  const [detailsTab, setDetailsTab] = useState<CaseDetailsTab>("settings");
+  // The Case view's open tab — the route's too, so stepping to another Case keeps it. A Case view opens on Info (CTA-211).
+  const [detailsTab, setDetailsTab] = useState<CaseDetailsTab>("info");
   // The New Job V2 popup (CTA-188), open for the Case on the board — its tree as the board held it.
   const [newJob, setNewJob] = useState<NewJobV2Case | null>(null);
   const jobs = useJobsV2();
-  // The Case's links (CTA-188) — on its Info tab — the Link a case picker, and a refused link's words.
+  // The Case's links (CTA-188) — a dialog off its Info tab (CTA-211) — the Link a case picker, and a refused link's words.
   const links = useCaseLinks();
   const [picking, setPicking] = useState(false);
   const [linkBusy, setLinkBusy] = useState(false);
@@ -554,6 +556,7 @@ function CaseWorkspace() {
                     testId="analysis-case-links"
                   />
                 }
+                linkCount={ends.to.length + ends.from.length}
                 jobs={
                   <CaseJobs
                     jobs={jobs?.filter((job) => job.source.caseId === record.id)}
