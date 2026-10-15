@@ -129,10 +129,10 @@ describe("a repertoire's settings screen", () => {
       expect(screen.queryByTestId("repertoire-board-reading")).not.toBeInTheDocument(),
     );
     expect(screen.getByTestId("board")).toHaveAttribute("data-orientation", "white");
-    expect(screen.queryByTestId("repertoire-board-description")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("repertoire-board-details-description")).not.toBeInTheDocument();
 
-    // From the board's own gear, and back to the board on Save.
-    await userEvent.click(screen.getByTestId("repertoire-board-settings"));
+    // From the left panel's link (CTA-206 — the header's gear before), and back to the board on Save.
+    await userEvent.click(screen.getByRole("link", { name: "Repertoire settings" }));
     await userEvent.click(screen.getByTestId("repertoire-settings-color-black"));
     fireEvent.change(screen.getByTestId("repertoire-settings-description"), {
       target: { value: "Play it from Black." },
@@ -140,13 +140,13 @@ describe("a repertoire's settings screen", () => {
     await userEvent.click(screen.getByTestId("repertoire-settings-save"));
 
     // The write lands, then the board: back on it, its tree read.
-    await screen.findByTestId("repertoire-board-description");
+    await screen.findByTestId("repertoire-board-details-description");
     await waitFor(() =>
       expect(screen.queryByTestId("repertoire-board-reading")).not.toBeInTheDocument(),
     );
     expect(boardOptions().id).toBe("repertoire-board");
     expect(screen.getByTestId("board")).toHaveAttribute("data-orientation", "black");
-    expect(screen.getByTestId("repertoire-board-description")).toHaveTextContent(
+    expect(screen.getByTestId("repertoire-board-details-description")).toHaveTextContent(
       "Play it from Black.",
     );
   });

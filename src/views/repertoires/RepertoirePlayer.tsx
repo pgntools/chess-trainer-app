@@ -8,21 +8,19 @@ import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { BoardEngineControls, ChangesStrip, CurrentOpening } from "../../blocks/panels";
+import { BoardEngineControls, ChangesStrip, RepertoireDetails, type RepertoireDetailsTab } from "../../blocks/panels";
 import type { ChessboardOptions } from "react-chessboard";
 
 import { analysisUciOptionsOf } from "../../lib/analysisSettings";
-import { FieldLabel, SideToggle, SwitchField } from "../../design-system/components/forms";
-import { BackButton } from "../../design-system/components/navigation";
 import { IconAction, ToggleIconAction } from "../../design-system/components/toolbars";
 import { emptyTree, pathTo, type GameTree } from "../../lib/gameTree";
 import { downloadPgn } from "../../lib/pgnExport";
 import { atParamOf, nodeAtParam, REPERTOIRE_AT_PARAM } from "../../lib/repertoireLink";
 import { slugify } from "../../lib/pgnText";
-import type { RepertoireGameId } from "../../lib/repertoireGames";
+import { repertoireGamePath, type RepertoireGameId } from "../../lib/repertoireGames";
 import {
   drillAccuracy,
   extensionIdsOf,
@@ -46,15 +44,15 @@ import { useBoardCore } from "../board/core/useBoardCore";
 import { useEngineModule } from "../board/core/useEngineModule";
 import { useEngineChoice } from "../shared/useEngineChoice";
 import { useEngineSearchSettings } from "../shared/useEngineSearchSettings";
-import { ClearBoardButton } from "../shared/ClearBoardButton";
 import { boardEngineStateOf, usePublishBoardEngineState } from "../main/boardEngineState";
 import { useTrainerModule, type TrainerStatus } from "../board/core/useTrainerModule";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
-import RepertoireGamesMenu from "./RepertoireGamesMenu";
 import { useRepertoireGame } from "./useRepertoireGame";
 import { usePageTitle } from "../main/pageTitle";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
 import { useUnsavedWorkGuard } from "../main/unsavedWork";
+import { BoardLeftPanel } from "../main/boardLeftPanel";
+import { useShellCompact } from "../main/shellCompact";
 
 /**
  * **A repertoire, played** (CTA-63) — the one screen behind a repertoire's own
@@ -106,14 +104,21 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  *   a session change like any other — the Save button, the strip, the Map
  *   and `?at=` all follow the edited tree. The Map's written moves carry the
  *   same menu (CTA-67), in the tab and full screen, and redraw as it edits.
- * - **Tabs: Moves · (Score) · Map · Settings.** Settings holds the
- *   side, Autoplay (player only — and the header's **Play** button, a second
- *   control over the same state), the next-move arrows and Clear (the
- *   engine's switch is the header's play / pause, and the Engine tab went,
- *   with CTA-181); Score is a
- *   game's; the Map (the explorer's `TreeMap.tsx`) is the player's — its
- *   dots links to their positions — and Backtracking's, with the coverage.
- *   Get to the end has none.
+ * - **The right panel is the board's tools: Moves · (Score) · Map.** Score
+ *   is a game's; the Map (the explorer's `TreeMap.tsx`) is the player's —
+ *   its dots links to their positions — and Backtracking's, with the
+ *   coverage. Get to the end has none.
+ * - **The left panel is the repertoire's own view** (CTA-206, the
+ *   `RepertoireDetails` block in the shell's board left panel, `keepShell`,
+ *   as Analysis's Case view; a drawer under the breakpoint, opened from the
+ *   header): the name, the description and the opening on screen, then
+ *   **Settings** — the side, Autoplay (player only — and the header's
+ *   **Play** button, a second control over the same state), the next-move
+ *   arrows, the play-chance arrows, Clear and a link to the record's
+ *   settings — **Games**, each game a link (the one being played current, a
+ *   way back to the player first), and **Jobs**, nothing yet. Its open tab
+ *   and its drawer are the route's (`RepertoireBoard.tsx`), above this keyed
+ *   screen, so they outlive a change of game. The session's state stays here.
  * - **The player's URL is a permanent link** to the position on screen:
  *   `?at=<SANs from the start>` (`lib/repertoireLink.ts`), read once when the
  *   tree lands, written back on every step with history replace.
@@ -195,10 +200,20 @@ const NOTHING_YET: GameTree = emptyTree();
 function RepertoirePlayer({
   saved,
   game,
+  detailsTab,
+  onDetailsTabChange,
+  drawerOpen,
+  onDrawerOpenChange,
 }: {
   saved: SavedRepertoire;
   /** A game to play; none is the repertoire's own view. */
   game?: RepertoireGameId;
+  /** The left panel's open tab — the route's, so it outlives a change of game. */
+  detailsTab: RepertoireDetailsTab;
+  onDetailsTabChange: (tab: RepertoireDetailsTab) => void;
+  /** Under the shell's breakpoint: whether the left panel's drawer is open — the route's too. */
+  drawerOpen: boolean;
+  onDrawerOpenChange: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
   // The repertoire is the page (CTA-112): "Sicilian — Repertoire — …".
@@ -330,6 +345,7 @@ function RepertoirePlayer({
     );
   }, [linkedAt, searchParams, setSearchParams]);
   const location = useLocation();
+  const compact = useShellCompact();
 
   const [tab, setTab] = useState(game === undefined ? "moves" : "score");
 
@@ -549,352 +565,242 @@ function RepertoirePlayer({
     </Typography>
   );
 
+  /*
+    The left panel (CTA-206): the repertoire's own view — its head, the
+    session's settings, the games and the jobs — in the main menu's place,
+    the shell's header and its Engine menu kept (`keepShell`, as Analysis's
+    Case view); a drawer under the breakpoint. Its tab and drawer are the
+    route's; the session's state is this screen's, handed in as props.
+  */
+  const name = saved.name || t("repertoires.untitled");
+  const leftPanel = (
+    <BoardLeftPanel
+      collapsed={false}
+      open={drawerOpen}
+      onClose={() => onDrawerOpenChange(false)}
+      drawerLabel={t("repertoires.details.label", { name })}
+      keepShell
+    >
+      <RepertoireDetails
+        name={name}
+        description={saved.settings.description}
+        opening={currentOpening}
+        tab={detailsTab}
+        onTabChange={onDetailsTabChange}
+        side={side}
+        onSideChange={changeSide}
+        autoplay={game === undefined ? autoplay : undefined}
+        onAutoplayChange={changeAutoplay}
+        showArrows={showArrows}
+        onShowArrowsChange={setShowArrows}
+        chanceArrows={game === undefined ? chanceArrows : undefined}
+        onChanceArrowsChange={setChanceArrows}
+        onClear={clear}
+        // Back to this position, link and all.
+        settingsLink={{ component: RouterLink, to: `${boardPath}/settings`, state: { from: `${boardPath}${location.search}` } }}
+        gameLink={(next) => ({ component: RouterLink, to: repertoireGamePath(saved.id, next) })}
+        currentGame={game}
+        repertoireLink={game === undefined ? undefined : { component: RouterLink, to: boardPath }}
+        testId={`${id}-details`}
+      />
+    </BoardLeftPanel>
+  );
+
   return (
-    <BoardShell
-      id={id}
-      // The reader's moves go through the trainer's wrappers, which note that
-      // a move was made (the one thing the trainer replies to) and, in a game,
-      // judge it first.
-      core={{
-        ...core,
-        onPieceDrop: trainer.onPieceDrop,
-        resolvePromotion: trainer.resolvePromotion,
-      }}
-      score={topLine?.score ?? null}
-      showEvalBar={engineOn && showEvalBar}
-      boardOptions={boardOptions}
-      overlay={explorer.overlay}
-      panel={{
-        header: (
-          <>
-            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-              <Typography
-                variant="subtitle2"
-                data-testid={`${id}-name`}
-                sx={{ fontWeight: 700, lineHeight: 1.3 }}
-                noWrap
-              >
-                {saved.name || t("repertoires.untitled")}
-              </Typography>
-              {game !== undefined ? (
-                <Typography
-                  variant="caption"
-                  data-testid={`${id}-title`}
-                  sx={{ color: "text.secondary", display: "block" }}
-                  noWrap
-                >
-                  {t(`repertoires.games.${game}.title`)}
-                </Typography>
-              ) : (
-                saved.settings.description !== "" && (
-                  // The reader's own notes on it: one line here, all of it on hover.
-                  <Typography
-                    variant="caption"
-                    data-testid={`${id}-description`}
-                    dir="auto"
-                    title={saved.settings.description}
-                    sx={{ color: "text.secondary", display: "block" }}
-                    noWrap
-                  >
-                    {saved.settings.description}
-                  </Typography>
-                )
-              )}
-              <CurrentOpening {...currentOpening} testId={`${id}-opening`} />
-            </Box>
-            {shown === "loading" && (
-              <CircularProgress
-                size={16}
-                data-testid={`${id}-reading`}
-                aria-label={t("repertoires.detail.loading")}
-                sx={{ flexShrink: 0 }}
-              />
-            )}
-            {game === undefined && (
-              <RepertoireGamesMenu id={saved.id} testId={`${id}-games`} />
-            )}
-            {game === undefined && (
-              <ToggleIconAction
-                label={t(changed ? "repertoires.changes.saveOpen" : "repertoires.changes.saveNothing")}
-                onClick={() => setChangesOpen((open) => !open)}
-                disabled={!changed}
-                active={changed}
-                // Pressed while its changes strip is open.
-                pressed={changed ? changesOpen : null}
-                testId={`${id}-save`}
-              >
-                <SaveRoundedIcon fontSize="small" />
-              </ToggleIconAction>
-            )}
-            {game === undefined && (
-              // A second control over the Settings tab's Autoplay: one state, so
-              // the two cannot disagree. A game's trainer always plays — no toggle.
-              <IconAction
-                label={t(autoplay ? "repertoires.play.autoplayOff" : "repertoires.play.autoplayOn")}
-                onClick={() => changeAutoplay(!autoplay)}
-                pressed={autoplay}
-                testId={`${id}-play`}
-              >
-                {autoplay ? <PauseRoundedIcon fontSize="small" /> : <PlayArrowRoundedIcon fontSize="small" />}
-              </IconAction>
-            )}
-            {/* The engine's play / pause and its menu — the eval bar (CTA-181). */}
-            <BoardEngineControls
-              engineOn={engineOn}
-              onEngineOnChange={setEngineOn}
-              showEvalBar={showEvalBar}
-              onShowEvalBarChange={setShowEvalBar}
-              testId={id}
-            />
-            <IconAction label={t("repertoires.play.restart")} onClick={restart} testId={`${id}-restart`}>
-              <RestartAltRoundedIcon fontSize="small" />
-            </IconAction>
-            <IconAction
-              label={t("repertoires.play.download")}
-              onClick={download}
-              disabled={shown !== "ready"}
-              testId={`${id}-download`}
-            >
-              <DownloadRoundedIcon fontSize="small" />
-            </IconAction>
-            {game === undefined ? (
-              <IconAction
-                label={t("repertoires.settings.open")}
-                // Back to this position, link and all.
-                link={{ component: RouterLink, to: `${boardPath}/settings`, state: { from: `${boardPath}${location.search}` } }}
-                testId={`${id}-settings`}
-              >
-                <SettingsRoundedIcon fontSize="small" />
-              </IconAction>
-            ) : (
-              <BackButton
-                label={t("repertoires.play.back")}
-                link={{ component: RouterLink, to: boardPath }}
-                edge={false}
-                testId={`${id}-back`}
-              />
-            )}
-          </>
-        ),
-        analysis: engine.analysis,
-        // The depth chip fills toward where the search stops (CTA-195).
-        searchProgress: engine.searchProgress,
-        requestedMultiPv: settings.multiPv,
-        engineOn,
-        onPlayVariation: core.playVariation,
-        activeTab: tab,
-        onTabChange: setTab,
-        keepMounted: KEEP_MOUNTED,
-        tabs: [
-          {
-            id: "moves",
-            label: t("repertoires.detail.tabs.moves"),
-            content:
-              reading ||
-              (shown === "unreadable" ? (
-                <Typography variant="body2" sx={{ p: 1, color: "text.secondary" }}>
-                  {t("repertoires.detail.unreadable")}
-                </Typography>
-              ) : (
-                explorer.moves
-              )),
-          },
-          ...(game !== undefined
-            ? [
-                {
-                  id: "score",
-                  label: t("repertoires.play.tabs.score"),
-                  content: (
-                    <PlayScore
-                      id={id}
-                      score={rules.score}
-                      onReset={rules.resetScore}
-                      lines={
-                        game === "backtrack"
-                          ? t("repertoires.play.score.covered", {
-                              covered: rules.coverage.total - rules.coverage.under(null),
-                              total: rules.coverage.total,
-                            })
-                          : t("repertoires.play.score.finished", {
-                              count: rules.linesFinished,
-                            })
-                      }
-                      onStartOver={
-                        game === "backtrack"
-                          ? () => {
-                              rules.resetCoverage();
-                              restart();
-                            }
-                          : undefined
-                      }
-                    />
-                  ),
-                },
-              ]
-            : []),
-          // The map of the whole repertoire — the player's, and Backtracking's
-          // with its coverage: where you are, how much is left.
-          ...(hasMap
-            ? [
-                {
-                  id: "map",
-                  label: t("repertoires.play.tabs.map"),
-                  content: shown === "ready" ? explorer.map : reading || null,
-                },
-              ]
-            : []),
-          {
-            id: "settings",
-            label: t("repertoires.play.tabs.settings"),
-            content: (
-              <PlaySettings
-                id={id}
-                side={side}
-                onSideChange={changeSide}
-                autoplay={game === undefined ? autoplay : undefined}
-                onAutoplayChange={changeAutoplay}
-                showArrows={showArrows}
-                onShowArrowsChange={setShowArrows}
-                chanceArrows={game === undefined ? chanceArrows : undefined}
-                onChanceArrowsChange={setChanceArrows}
-                onClear={clear}
-              />
-            ),
-          },
-        ],
-        // The trainer's status while it plays; otherwise, reading the file,
-        // the moves on offer from here (CTA-54).
-        footer:
-          shown !== "ready" ? undefined : (
+    <>
+      {leftPanel}
+      <BoardShell
+        id={id}
+        // The reader's moves go through the trainer's wrappers, which note that
+        // a move was made (the one thing the trainer replies to) and, in a game,
+        // judge it first.
+        core={{
+          ...core,
+          onPieceDrop: trainer.onPieceDrop,
+          resolvePromotion: trainer.resolvePromotion,
+        }}
+        score={topLine?.score ?? null}
+        showEvalBar={engineOn && showEvalBar}
+        boardOptions={boardOptions}
+        overlay={explorer.overlay}
+        panel={{
+          header: (
             <>
-              {explorer.annotations}
-              {changed && changesOpen && (
-                <ChangesStrip
-                  testId={`${id}-changes`}
-                  labelKey="repertoires.changes"
-                  summary={
-                    // An edit alone (a line promoted or deleted) adds nothing.
-                    extensionIds.size === 0
-                      ? t("repertoires.changes.edited")
-                      : t("repertoires.changes.added", { count: extensionIds.size })
-                  }
-                  problem={saveProblem}
-                  // A protected repertoire (its settings' default): no
-                  // Update — its settings instead, where that is switched off.
-                  protectedLink={
-                    saved.settings.protected
-                      ? { component: RouterLink, to: `${boardPath}/settings`, state: { from: `${boardPath}${location.search}` } }
-                      : undefined
-                  }
-                  onUpdate={updateRecord}
-                  onCopy={saveCopy}
-                  onDiscard={discard}
+              {compact && (
+                // Under the breakpoint the repertoire's own view is a drawer; wide, the board's own column.
+                <IconAction
+                  label={t("repertoires.details.toggle")}
+                  onClick={() => onDrawerOpenChange(true)}
+                  popupOpen={drawerOpen}
+                  popupKind="dialog"
+                  testId={`${id}-details-toggle`}
+                >
+                  <TuneRoundedIcon fontSize="small" />
+                </IconAction>
+              )}
+              {/* The name, the description and the opening are the left panel's head (CTA-206). */}
+              <Box sx={{ flexGrow: 1 }} />
+              {shown === "loading" && (
+                <CircularProgress
+                  size={16}
+                  data-testid={`${id}-reading`}
+                  aria-label={t("repertoires.detail.loading")}
+                  sx={{ flexShrink: 0 }}
                 />
               )}
-              {game !== undefined || autoplay ? (
-                statusLine
-              ) : tab === "moves" ? (
-                explorer.nextMoves
-              ) : null}
+              {game === undefined && (
+                <ToggleIconAction
+                  label={t(changed ? "repertoires.changes.saveOpen" : "repertoires.changes.saveNothing")}
+                  onClick={() => setChangesOpen((open) => !open)}
+                  disabled={!changed}
+                  active={changed}
+                  // Pressed while its changes strip is open.
+                  pressed={changed ? changesOpen : null}
+                  testId={`${id}-save`}
+                >
+                  <SaveRoundedIcon fontSize="small" />
+                </ToggleIconAction>
+              )}
+              {game === undefined && (
+                // A second control over the Settings tab's Autoplay: one state, so
+                // the two cannot disagree. A game's trainer always plays — no toggle.
+                <IconAction
+                  label={t(autoplay ? "repertoires.play.autoplayOff" : "repertoires.play.autoplayOn")}
+                  onClick={() => changeAutoplay(!autoplay)}
+                  pressed={autoplay}
+                  testId={`${id}-play`}
+                >
+                  {autoplay ? <PauseRoundedIcon fontSize="small" /> : <PlayArrowRoundedIcon fontSize="small" />}
+                </IconAction>
+              )}
+              {/* The engine's play / pause and its menu — the eval bar (CTA-181). */}
+              <BoardEngineControls
+                engineOn={engineOn}
+                onEngineOnChange={setEngineOn}
+                showEvalBar={showEvalBar}
+                onShowEvalBarChange={setShowEvalBar}
+                testId={id}
+              />
+              <IconAction label={t("repertoires.play.restart")} onClick={restart} testId={`${id}-restart`}>
+                <RestartAltRoundedIcon fontSize="small" />
+              </IconAction>
+              <IconAction
+                label={t("repertoires.play.download")}
+                onClick={download}
+                disabled={shown !== "ready"}
+                testId={`${id}-download`}
+              >
+                <DownloadRoundedIcon fontSize="small" />
+              </IconAction>
             </>
           ),
-      }}
-    />
-  );
-}
-
-/** One on/off setting: the switch, and a line on what it does. */
-/**
- * The Settings tab: the session's knobs — side, Autoplay (the player's only),
- * arrows, the play-chance arrows' switch (the player's only too) — one
- * labelled row each, and Clear. (The engine's switch is the header's play /
- * pause since CTA-181.) Presentational: the screen owns the state, since
- * changing side restarts the session.
- */
-function PlaySettings({
-  id,
-  side,
-  onSideChange,
-  autoplay,
-  onAutoplayChange,
-  showArrows,
-  onShowArrowsChange,
-  chanceArrows,
-  onChanceArrowsChange,
-  onClear,
-}: {
-  id: string;
-  side: Side;
-  onSideChange: (next: Side | null) => void;
-  /** `undefined` where there is no switch — a game always plays. */
-  autoplay: boolean | undefined;
-  onAutoplayChange: (next: boolean) => void;
-  showArrows: boolean;
-  onShowArrowsChange: (next: boolean) => void;
-  /** `undefined` where there is no switch — a game must not show the odds. */
-  chanceArrows: boolean | undefined;
-  onChanceArrowsChange: (next: boolean) => void;
-  /** Clear — the session's additions dropped (the Engine tab's, until CTA-181). */
-  onClear: () => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <Box
-      data-testid={`${id}-session`}
-      sx={{ display: "flex", flexDirection: "column", gap: 2, p: 1 }}
-    >
-      <Box>
-        <FieldLabel component="span" id={`${id}-side-label`}>
-          {t("repertoires.play.side")}
-        </FieldLabel>
-        <SideToggle
-          value={side}
-          onChange={onSideChange}
-          labels={{ white: t("repertoires.play.white"), black: t("repertoires.play.black") }}
-          ariaLabel={t("repertoires.play.side")}
-          testId={`${id}-side`}
-        />
-        <Typography variant="caption" sx={{ display: "block", color: "text.secondary", mt: 0.5 }}>
-          {t("repertoires.play.sideHelp")}
-        </Typography>
-      </Box>
-      {autoplay !== undefined && (
-        <SwitchField
-          size="small"
-          // The player's tests reach the input inside the switch.
-          testIdOn="control"
-          testId={`${id}-setting-autoplay`}
-          checked={autoplay}
-          onChange={onAutoplayChange}
-          label={t("repertoires.play.autoplay")}
-          help={t("repertoires.play.autoplayHelp")}
-        />
-      )}
-      <SwitchField
-          size="small"
-          // The player's tests reach the input inside the switch.
-          testIdOn="control"
-        testId={`${id}-arrows`}
-        checked={showArrows}
-        onChange={onShowArrowsChange}
-        label={t("repertoires.play.arrows")}
-        help={t("repertoires.play.arrowsHelp")}
+          analysis: engine.analysis,
+          // The depth chip fills toward where the search stops (CTA-195).
+          searchProgress: engine.searchProgress,
+          requestedMultiPv: settings.multiPv,
+          engineOn,
+          onPlayVariation: core.playVariation,
+          activeTab: tab,
+          onTabChange: setTab,
+          keepMounted: KEEP_MOUNTED,
+          tabs: [
+            {
+              id: "moves",
+              label: t("repertoires.detail.tabs.moves"),
+              content:
+                reading ||
+                (shown === "unreadable" ? (
+                  <Typography variant="body2" sx={{ p: 1, color: "text.secondary" }}>
+                    {t("repertoires.detail.unreadable")}
+                  </Typography>
+                ) : (
+                  explorer.moves
+                )),
+            },
+            ...(game !== undefined
+              ? [
+                  {
+                    id: "score",
+                    label: t("repertoires.play.tabs.score"),
+                    content: (
+                      <PlayScore
+                        id={id}
+                        score={rules.score}
+                        onReset={rules.resetScore}
+                        lines={
+                          game === "backtrack"
+                            ? t("repertoires.play.score.covered", {
+                                covered: rules.coverage.total - rules.coverage.under(null),
+                                total: rules.coverage.total,
+                              })
+                            : t("repertoires.play.score.finished", {
+                                count: rules.linesFinished,
+                              })
+                        }
+                        onStartOver={
+                          game === "backtrack"
+                            ? () => {
+                                rules.resetCoverage();
+                                restart();
+                              }
+                            : undefined
+                        }
+                      />
+                    ),
+                  },
+                ]
+              : []),
+            // The map of the whole repertoire — the player's, and Backtracking's
+            // with its coverage: where you are, how much is left.
+            ...(hasMap
+              ? [
+                  {
+                    id: "map",
+                    label: t("repertoires.play.tabs.map"),
+                    content: shown === "ready" ? explorer.map : reading || null,
+                  },
+                ]
+              : []),
+          ],
+          // The trainer's status while it plays; otherwise, reading the file,
+          // the moves on offer from here (CTA-54).
+          footer:
+            shown !== "ready" ? undefined : (
+              <>
+                {explorer.annotations}
+                {changed && changesOpen && (
+                  <ChangesStrip
+                    testId={`${id}-changes`}
+                    labelKey="repertoires.changes"
+                    summary={
+                      // An edit alone (a line promoted or deleted) adds nothing.
+                      extensionIds.size === 0
+                        ? t("repertoires.changes.edited")
+                        : t("repertoires.changes.added", { count: extensionIds.size })
+                    }
+                    problem={saveProblem}
+                    // A protected repertoire (its settings' default): no
+                    // Update — its settings instead, where that is switched off.
+                    protectedLink={
+                      saved.settings.protected
+                        ? { component: RouterLink, to: `${boardPath}/settings`, state: { from: `${boardPath}${location.search}` } }
+                        : undefined
+                    }
+                    onUpdate={updateRecord}
+                    onCopy={saveCopy}
+                    onDiscard={discard}
+                  />
+                )}
+                {game !== undefined || autoplay ? (
+                  statusLine
+                ) : tab === "moves" ? (
+                  explorer.nextMoves
+                ) : null}
+              </>
+            ),
+        }}
       />
-      {chanceArrows !== undefined && (
-        <SwitchField
-          size="small"
-          // The player's tests reach the input inside the switch.
-          testIdOn="control"
-          testId={`${id}-chance-arrows`}
-          checked={chanceArrows}
-          onChange={onChanceArrowsChange}
-          label={t("repertoires.play.chanceArrows")}
-          help={t("repertoires.play.chanceArrowsHelp")}
-        />
-      )}
-      {/* The Clear the Engine tab had (CTA-181 took the tab away). */}
-      <ClearBoardButton testId="analysis-clear" onClear={onClear} />
-    </Box>
+    </>
   );
 }
 
