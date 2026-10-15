@@ -57,6 +57,12 @@ export interface IdbRecordStore<Row extends { id: string }> {
   write: (update: (rows: readonly Row[]) => readonly Row[]) => Promise<IdbRecordStoreProblem | undefined>;
   /** Resolves once every write issued so far has landed (or been refused). Never rejects. */
   settled: () => Promise<void>;
+  /**
+   * The browser's own words for the last write it refused (CTA-208) —
+   * `"QuotaExceededError: …"` — so a screen can say exactly why; `undefined`
+   * before any refusal.
+   */
+  lastWriteError: () => string | undefined;
   /** **For tests**: forget everything read — the database itself is the caller's to delete. */
   reset: () => void;
 }
@@ -209,6 +215,13 @@ export const idbRecordStore = <Row extends { id: string }>({
 
   const announce = () => channel?.postMessage({ store });
 
+  let lastError: string | undefined;
+  /** An error as the browser names it: `name: message`, or what it says of itself. */
+  const describe = (error: unknown): string =>
+    error instanceof Error || (typeof DOMException !== "undefined" && error instanceof DOMException)
+      ? [error.name, error.message].filter((part) => part !== "").join(": ")
+      : String(error);
+
   const write = (
     update: (rows: readonly Row[]) => readonly Row[],
   ): Promise<IdbRecordStoreProblem | undefined> => {
@@ -229,7 +242,8 @@ export const idbRecordStore = <Row extends { id: string }>({
           for (const id of gone) objects.delete(id);
           for (const row of puts) objects.put({ id: row.id, seq: nextSeqs.get(row.id) ?? 0, value: row } satisfies Stored);
           await committed(tx);
-        } catch {
+        } catch (error) {
+          lastError = describe(error);
           return "storage";
         }
       }
@@ -271,5 +285,5 @@ export const idbRecordStore = <Row extends { id: string }>({
 
   const settled = (): Promise<void> => queue.then(() => undefined);
 
-  return { snapshot: () => rows, subscribe, load, write, settled, reset };
+  return { snapshot: () => rows, subscribe, load, write, settled, reset, lastWriteError: () => lastError };
 };

@@ -33,44 +33,80 @@ export const indexPgnGames = (texts: readonly string[]): PgnGameEntry[] => {
   return entries;
 };
 
-export type ParseGamesOptions = {
-  /** After each slice: how many games are read, of how many. */
+export type SlicedWorkOptions = {
+  /** After each slice: how many items are done, of how many. */
   onProgress?: (done: number, total: number) => void;
-  /** Aborted, the parse stops at the next slice and rejects with the signal's reason. */
+  /** Aborted, the work stops at the next slice and rejects with the signal's reason. */
   signal?: AbortSignal;
   /** How long one slice may hold the page, in ms. */
   sliceMs?: number;
+};
+
+export type ParseGamesOptions = SlicedWorkOptions & {
+  /**
+   * A game that will not read: present, it is told here and **left out**
+   * (the others parsed on); absent, the parse rejects on it.
+   */
+  onUnreadable?: (entry: PgnGameEntry, error: unknown) => void;
 };
 
 /** Let the page paint and take input before the next slice. */
 const nextTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 /**
- * Every entry's tree, in order — parsed in slices of about `sliceMs` (50),
- * the page given back between them, `onProgress` told after each. One move
- * cache spans the batch (`PgnMoveCache`), so the games' shared start is
- * worked out once. A game that will not read rejects with its
- * `PgnParseError`, numbered by its place among the texts' games (`number` —
- * a few games picked out of many keep theirs); an abort rejects with the
- * signal's reason.
+ * **Work over many items without holding the page** (CTA-208) — `work` on
+ * each in order, in slices of about `sliceMs` (50), the page given back
+ * between them, `onProgress` told after each; an abort rejects with the
+ * signal's reason at the next slice. `work` answering `undefined` leaves the
+ * item out of the result.
  */
-export const parsePgnGameEntries = async (
-  entries: readonly PgnGameEntry[],
-  { onProgress, signal, sliceMs = 50 }: ParseGamesOptions = {},
-): Promise<GameTree[]> => {
-  const trees: GameTree[] = [];
-  const cache: PgnMoveCache = new Map();
-  while (trees.length < entries.length) {
+export const mapInSlices = async <T, R>(
+  items: readonly T[],
+  work: (item: T, index: number) => R | undefined,
+  { onProgress, signal, sliceMs = 50 }: SlicedWorkOptions = {},
+): Promise<R[]> => {
+  const results: R[] = [];
+  let done = 0;
+  while (done < items.length) {
     signal?.throwIfAborted();
     const sliceEnd = performance.now() + sliceMs;
     do {
-      const entry = entries[trees.length];
+      const result = work(items[done], done);
+      if (result !== undefined) results.push(result);
+      done += 1;
+    } while (done < items.length && performance.now() < sliceEnd);
+    onProgress?.(done, items.length);
+    if (done < items.length) await nextTask();
+  }
+  return results;
+};
+
+/**
+ * Every entry's tree, in order — parsed in slices ({@link mapInSlices}), one
+ * move cache across the batch (`PgnMoveCache`), so the games' shared start
+ * is worked out once. A game that will not read rejects with its
+ * `PgnParseError`, numbered by its place among the texts' games (`number` —
+ * a few games picked out of many keep theirs) — or, with `onUnreadable`, is
+ * left out. An abort rejects with the signal's reason.
+ */
+export const parsePgnGameEntries = (
+  entries: readonly PgnGameEntry[],
+  { onUnreadable, ...sliced }: ParseGamesOptions = {},
+): Promise<GameTree[]> => {
+  const cache: PgnMoveCache = new Map();
+  return mapInSlices(
+    entries,
+    (entry) => {
       // One game alone, as it came, is not numbered — as `parsePgnTrees` does not number it.
       const numbered = entries.length > 1 || entry.number > 1;
-      trees.push(parsePgnTree(entry.text, numbered ? entry.number : undefined, cache));
-    } while (trees.length < entries.length && performance.now() < sliceEnd);
-    onProgress?.(trees.length, entries.length);
-    if (trees.length < entries.length) await nextTask();
-  }
-  return trees;
+      if (onUnreadable === undefined) return parsePgnTree(entry.text, numbered ? entry.number : undefined, cache);
+      try {
+        return parsePgnTree(entry.text, numbered ? entry.number : undefined, cache);
+      } catch (error) {
+        onUnreadable(entry, error);
+        return undefined;
+      }
+    },
+    sliced,
+  );
 };

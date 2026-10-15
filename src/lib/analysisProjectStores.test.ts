@@ -5,6 +5,7 @@ import {
   analysisCasesSnapshot,
   duplicateAnalysisCase,
   importAnalysisCases,
+  lastAnalysisCaseWriteError,
   loadAnalysisCases,
   moveAnalysisCase,
   moveAnalysisCaseInOrder,
@@ -277,6 +278,12 @@ describe("Analysis V2's stores (CTA-186)", () => {
       expect(await loadAnalysisCases()).toEqual([]);
     });
 
+    it("go past the cap only when the reader chose to (CTA-208)", async () => {
+      const many = Array.from({ length: MAX_ANALYSIS_CASES + 1 }, (_, index) => aCase(`c${index}`, "p1"));
+      expect(await addAnalysisCases(many, { pastCap: true })).toBeUndefined();
+      expect(await loadAnalysisCases()).toHaveLength(MAX_ANALYSIS_CASES + 1);
+    });
+
     it("say a refused write, and keep the list as it was", async () => {
       await addAnalysisCases([aCase("c1", "p1")]);
       const before = analysisCasesSnapshot();
@@ -289,6 +296,8 @@ describe("Analysis V2's stores (CTA-186)", () => {
         put.mockRestore();
       }
       expect(analysisCasesSnapshot()).toBe(before);
+      // The browser's own words for it (CTA-208).
+      expect(lastAnalysisCaseWriteError()).toBe("QuotaExceededError: full");
     });
   });
 

@@ -199,6 +199,10 @@ stays one record. It resolves once the transaction has **committed** —
 kept list changes only after the commit, so a refused write leaves the screen
 as it was. **Nothing throws.**
 
+The browser's own words for the last refusal are kept (CTA-208):
+`lastWriteError()` — `"QuotaExceededError: …"` — so a screen can say exactly
+why (the Cases' `lastAnalysisCaseWriteError`, New project's message).
+
 `update` returning **the same array** is "nothing to do": no transaction, no
 emit — which is how every store keeps its idempotency (an identical re-save,
 an unknown id, a no-op rename).

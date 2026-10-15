@@ -2902,6 +2902,20 @@ const en = {
       selected_one: "{{number}} game picked.",
       selected_other: "{{number}} games picked.",
       selectAll: "Use every game the filters keep",
+      /** Making the Cases of many games (CTA-208). */
+      progress: {
+        title: "Creating the project",
+        parse: "Reading the games: {{done}} of {{total}}",
+        build: "Making the cases: {{done}} of {{total}}",
+        save: "Saving the cases…",
+      },
+      /** Past the app's cap of Cases — asked before any work (CTA-208). */
+      overCap: {
+        title: "More cases than the app's limit",
+        message:
+          "These games make {{count}} cases. With the {{existing}} already kept, that is {{total}} — past the app's limit of {{max}}. The limit keeps Analysis quick: every case is read whenever it opens. Create the project anyway?",
+        confirm: "Create anyway",
+      },
       problem: {
         file: "The file could not be read.",
         empty: "There is no game in that file.",
@@ -2909,6 +2923,9 @@ const en = {
         tooLarge: "That file is too large.",
         zip: "That zip could not be read.",
         zipEmpty: "There is no .pgn file in that zip.",
+        tooMany: "Not created: {{count}} cases with the {{existing}} already kept pass the app's limit of {{max}} cases.",
+        storage: "Not created — the browser refused to save the cases: {{detail}}",
+        noReason: "it gave no reason",
       },
     },
     newCase: {

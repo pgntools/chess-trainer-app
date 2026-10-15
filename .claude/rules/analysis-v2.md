@@ -305,8 +305,20 @@ whose games become its Cases (`collectionImportFileOf` reads it):
   and **Create project** makes a Game Case per game kept, in file order;
   Cancel goes back to the name.
 
+**Making the Cases** (CTA-208): the games read in ~50 ms slices
+(`parsePgnGameEntries`, a game that will not parse left out), their Cases
+made the same way (`mapInSlices`), under a `ProgressDialog` over the popup
+it came from ("Reading the games: 4,200 of 15,905", "Making the cases: …",
+then "Saving the cases…" — Cancel on until the save, `useCancellableJob`),
+then the Project and its Cases written. **Past the app's cap of Cases**
+(`MAX_ANALYSIS_CASES`, 10,000 — the Cases kept plus these) it **asks
+first**, before any work, with the numbers ("These games make 15,905 cases.
+With the 0 already kept, that is 15,905 — past the app's limit of 10,000…"),
+and *Create anyway* writes past it (`addAnalysisCases(…, { pastCap: true })`).
 All or nothing: Cases the store refuses take the Project back, and the
-popup says why; a game that will not parse is left out.
+popup says **exactly why** — the cap with its numbers, or the browser's own
+words for its refusal (`lastAnalysisCaseWriteError`, the record store's
+`lastWriteError`: "QuotaExceededError: …").
 
 | On | Rename | Move | Duplicate | Delete |
 | --- | --- | --- | --- | --- |
