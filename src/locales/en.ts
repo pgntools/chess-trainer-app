@@ -3049,6 +3049,20 @@ const en = {
       linksTitle: "Linked cases",
       linksClose: "Close",
     },
+    /** The Project view's left panel (CTA-213) — a frame: placeholder tabs and an example switch, its content a later issue. */
+    projectDetails: {
+      label: "Details of {{name}}",
+      /** The Project view's header button that opens the panel in a drawer, under the shell's breakpoint. */
+      toggle: "The project's details",
+      tabs: {
+        label: "Project details",
+        general: "General",
+        options: "Options",
+      },
+      placeholder: "The project's details will be shown here.",
+      exampleOption: "Example option",
+      exampleOptionHelp: "An example switch — it changes nothing yet.",
+    },
     siblings: {
       title: "Cases of {{name}}",
       close: "Back to {{name}}",
