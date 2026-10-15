@@ -81,8 +81,10 @@ The comparison ended on five open questions; each has one answer here.
 - **Props** — `count`, `page`, `rowsPerPage`, `onPageChange(page)`,
   `onRowsPerPageChange(rows)`, `labelRowsPerPage`, `labelDisplayedRows?`
   (absent: the theme's locale bundle words it, as MUI's arrows' names are),
-  `testId`. Also exports `TABLE_PAGE_SIZES`, `DEFAULT_TABLE_PAGE_SIZE`.
-- **Variations** — the locale's count words; the caller's.
+  `pageSizes?` (absent: `TABLE_PAGE_SIZES`; one alone is a fixed page — no
+  select, no "Rows per page", for a narrow panel, CTA-211), `testId`. Also
+  exports `TABLE_PAGE_SIZES`, `DEFAULT_TABLE_PAGE_SIZE`.
+- **Variations** — the locale's count words; the caller's; a fixed page.
 - **Replaces** — the Lobby's 10 / 25 / 50 and the collection's 50 / 100 / 250
   `TablePagination`s.
 

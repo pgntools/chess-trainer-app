@@ -26,6 +26,25 @@ const gallery: GalleryModule = {
       ),
     },
     {
+      name: "A fixed page — one size, no select (a side panel's list, CTA-211)",
+      render: () => (
+        <WithState initial={{ page: 1 }}>
+          {(state, set) => (
+            <TablePager
+              count={1234}
+              page={state.page}
+              rowsPerPage={100}
+              onPageChange={(page) => set({ page })}
+              onRowsPerPageChange={() => {}}
+              labelRowsPerPage="Cases per page"
+              pageSizes={[100]}
+              testId="gallery-pager-fixed"
+            />
+          )}
+        </WithState>
+      ),
+    },
+    {
       name: "The caller's own count words",
       render: () => (
         <TablePager
