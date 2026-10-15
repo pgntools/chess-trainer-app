@@ -27,6 +27,7 @@ import {
 import { parsePgnGame } from "./pgn";
 import { committed } from "./idb";
 import { openRepertoireDb, REPERTOIRES_STORE } from "./savedRepertoireDb";
+import { localStorageKeys } from "../test/localStorageKeys";
 
 /* `src/test/setup.ts` deletes the databases between tests, and forgets what each store read. */
 
@@ -45,7 +46,7 @@ describe("the saved-repertoires store", () => {
     expect(findSavedRepertoire("a")).toEqual(record("a", "Caro"));
 
     // What a reload sees: IndexedDB read back through the normaliser, and nothing in localStorage.
-    expect(localStorage.length).toBe(0);
+    expect(localStorageKeys()).toEqual([]);
     resetSavedRepertoireStore();
     expect(savedRepertoiresSnapshot()).toBeUndefined();
     expect(await loadSavedRepertoires()).toEqual([record("a", "Caro")]);

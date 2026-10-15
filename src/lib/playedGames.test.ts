@@ -15,6 +15,7 @@ import {
   savePlayedGame,
 } from "./playedGameStore";
 import { MASK_PRESETS, withMaskEntry } from "./pieceMask";
+import { localStorageKeys } from "../test/localStorageKeys";
 import {
   DEFAULT_PLAYED_GAME_ENGINE,
   playedGameEngineFrom,
@@ -152,7 +153,7 @@ describe("the played games' store", () => {
 
   it("keeps its own database, and nothing in localStorage", async () => {
     await savePlayedGame(record("a", "1. e4 *"));
-    expect(localStorage.length).toBe(0);
+    expect(localStorageKeys()).toEqual([]);
     // Forget what was read: a second read comes from IndexedDB itself.
     resetPlayedGameStore();
     expect(playedGamesSnapshot()).toBeUndefined();
