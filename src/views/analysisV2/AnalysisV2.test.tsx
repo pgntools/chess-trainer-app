@@ -682,17 +682,18 @@ describe("a Case's board (CTA-186)", () => {
     await screen.findByTestId("board");
     expect(boardOptions().arrows!.length).toBeGreaterThan(0);
 
-    // The next-move arrows off — none drawn: the Settings tab's switch since CTA-211.
+    // The next-move arrows off — none drawn — and the move marks off: the Settings tab's switches since CTA-211.
     await user.click(screen.getByRole("tab", { name: "Settings" }));
     await user.click(within(screen.getByTestId("analysis-case-settings")).getByRole("switch", { name: "Show next move arrows" }));
     expect(boardOptions().arrows).toEqual([]);
+    await user.click(within(screen.getByTestId("analysis-case-settings")).getByRole("switch", { name: "Show move marks on the board" }));
 
     await user.click(screen.getByRole("tab", { name: "Display" }));
     const display = screen.getByTestId("analysis-case-display");
     expect(await expectNoAxeViolations(display)).toBeUndefined();
-    // The common option: the move marks off — the arrows' switch is no longer here.
+    // Neither switch is here any more.
     expect(within(display).queryByRole("switch", { name: "Show next move arrows" })).toBeNull();
-    await user.click(within(display).getByRole("switch", { name: "Show move marks on the board" }));
+    expect(within(display).queryByRole("switch", { name: "Show move marks on the board" })).toBeNull();
 
     // The inner tabs: Arrows (the width source and palette), Engine, Accessibility.
     const inner = within(display).getByRole("tablist", { name: "Display settings" });
@@ -740,6 +741,7 @@ describe("a Case's board (CTA-186)", () => {
     const reopened = screen.getByTestId("analysis-case-settings");
     expect(within(reopened).getByRole("switch", { name: "Write evaluations into the game" })).not.toBeChecked();
     expect(within(reopened).getByRole("switch", { name: "Show next move arrows" })).not.toBeChecked();
+    expect(within(reopened).getByRole("switch", { name: "Show move marks on the board" })).not.toBeChecked();
   });
 
   it("draws the engine's listed lines as the arrows under Variations — None while it is off or has no lines here (CTA-197)", async () => {

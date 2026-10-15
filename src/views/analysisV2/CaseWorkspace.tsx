@@ -352,6 +352,8 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
             }}
             showArrows={display.showArrows}
             onShowArrowsChange={(showArrows) => changeDisplay({ showArrows })}
+            showMoveMarks={display.showMoveMarks}
+            onShowMoveMarksChange={(showMoveMarks) => changeDisplay({ showMoveMarks })}
             showEvalBar={display.showEvalBar}
             onShowEvalBarChange={(showEvalBar) => changeDisplay({ showEvalBar })}
             writeEvals={session.settings.writeEvals}

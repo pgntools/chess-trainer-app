@@ -367,15 +367,14 @@ editing on, *Play chances…* off), `BoardShell` and its panel — tabs **Moves 
 Map · Export** (`PgnExportPanel`; **Settings** moved to the left panel's Case
 view in CTA-199, below; **Display** — `CaseDisplayTab`,
 the board's state, shown on the left panel's Case view (below) since CTA-186's
-last round: the move marks on top (the next-move arrows' on / off moved to
-Settings in CTA-211), then inner
-tabs — **Arrows**, the width source and palette (§3.4)
+last round: inner tabs (the next-move arrows' and the move marks' on / off,
+on top of it before, moved to Settings in CTA-211) — **Arrows**, the width source and palette (§3.4)
 (`ArrowSettingsFields`), **Engine** — the engine's lines (`BoardPanel`'s
 `showVariations`) — and **Accessibility**, the board's accessibility options,
 a placeholder for now — all kept with the Case as its `display`, autosaved;
 **Settings** — the Case view's tab since CTA-199, the board's settings alone since CTA-211 (`CaseSettingsTab`): the side the board faces, White / Black
-(the Case's orientation), *Show next move arrows* (its `display.showArrows`,
-CTA-211 — the Display tab's before), the eval bar (its `display`) and *Write evaluations
+(the Case's orientation), *Show next move arrows* and *Show move marks on the board* (its
+`display.showArrows` / `showMoveMarks`, CTA-211 — the Display tab's before), the eval bar (its `display`) and *Write evaluations
 into the game* (on by default and kept with the Case as its `display.writeEvals`
 since CTA-199 — the session starts from it; [`pgn-annotations.md`](./pgn-annotations.md))), and the header:
 the name, the opening, a refused save (nothing else), Play and the engine's on / off as a
