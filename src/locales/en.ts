@@ -2898,6 +2898,10 @@ const en = {
       gamesHelp: "One game becomes the project's case. Several — or a zip of .pgn files: you choose which, each becoming a case.",
       chooseTitle: "Choose the games for the project",
       chooseConfirm: "Create project",
+      /** The games picked by hand among those the filters keep (CTA-208). */
+      selected_one: "{{number}} game picked.",
+      selected_other: "{{number}} games picked.",
+      selectAll: "Use every game the filters keep",
       problem: {
         file: "The file could not be read.",
         empty: "There is no game in that file.",

@@ -292,7 +292,12 @@ whose games become its Cases (`collectionImportFileOf` reads it):
 - **one game** — a Project with that game as its one Game Case;
 - **several** — the Library's import popup opens on them
   (`CollectionImportDialog` with `choiceOnly`: what came in, the Elo / date /
-  player filters and the count, no *Split by event*, no tournament mark),
+  player filters and the count, no *Split by event*, no tournament mark) —
+  and **Select games…** (CTA-208, `choiceOnly.selectGames`) opens the games
+  picker (`GamesPickerDialog`, New case's) over **the games the filters
+  keep**, numbered across a zip's files: the games picked there are the ones
+  kept ("N games picked.", *Change the selection…*, *Use every game the
+  filters keep*; a pick the filters later leave out is not kept) —
   and **Create project** makes a Game Case per game kept, in file order;
   Cancel goes back to the name.
 

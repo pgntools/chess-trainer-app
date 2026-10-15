@@ -2,14 +2,14 @@ import DialogFrame from "../../../design-system/gallery/DialogFrame";
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import type { CollectionImportSource } from "../../../lib/libraryCollections";
 import type { BlockFamilyId } from "../../families";
-import CollectionImportDialog from "./CollectionImportDialog";
+import CollectionImportDialog, { type CollectionImportDialogProps } from "./CollectionImportDialog";
 import { ONE_EVENT, ONE_FILE, PASTE, ZIP } from "./fixtures";
 
 const noop = () => {};
 
 const framed = (
   source: CollectionImportSource,
-  extra: { intoName?: string; problem?: string; choiceOnly?: { title: string; confirmLabel: string } } = {},
+  extra: { intoName?: string; problem?: string; choiceOnly?: CollectionImportDialogProps["choiceOnly"] } = {},
 ) => (
   <DialogFrame height={620}>
     {(dialogProps) => (
@@ -29,6 +29,22 @@ const gallery: GalleryModule<BlockFamilyId> = {
     {
       name: "A plain choice of games — Analysis V2's new Project (CTA-186): no split, no mark",
       render: () => framed(ONE_FILE, { choiceOnly: { title: "Choose the games for the project", confirmLabel: "Create project" } }),
+    },
+    {
+      name: "…and games picked by hand among those the filters keep (CTA-208) — Select games… opens the picker",
+      render: () =>
+        framed(ZIP, {
+          choiceOnly: {
+            title: "Choose the games for the project",
+            confirmLabel: "Create project",
+            selectGames: {
+              select: "Select games…",
+              change: "Change the selection…",
+              clear: "Use every game the filters keep",
+              selected: (count) => `${count} games picked.`,
+            },
+          },
+        }),
     },
     { name: "The last try failed", render: () => framed(ONE_FILE, { problem: "The browser refused to store the games — its storage may be full." }) },
     // Split by event (CTA-127): the zip's first file carries two events, so

@@ -215,6 +215,37 @@ describe("the Projects browser (CTA-186)", () => {
     expect(analysisCasesSnapshot()![0].pgn).toContain('[White "Ding"]');
   });
 
+  it("makes a Project of the games picked by hand, among those the filters keep (CTA-208)", async () => {
+    const SECOND = GAME.replace("Carlsen", "Ding").replace("Caruana", "Nepomniachtchi");
+    const THIRD = GAME.replace("Carlsen", "Firouzja").replace("Caruana", "Gukesh");
+    const user = userEvent.setup();
+    mount("/analysis");
+    await user.click(await screen.findByRole("button", { name: "New project" }));
+    await user.type(screen.getByRole("textbox", { name: "Name" }), "Club");
+    await user.upload(
+      screen.getByTestId("analysis-v2-new-project-dialog-file-input"),
+      new File([`${GAME}\n\n${SECOND}\n\n${THIRD}`], "club.pgn"),
+    );
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    const choice = await screen.findByTestId("analysis-v2-choose-games");
+    await user.type(within(choice).getByRole("combobox", { name: "Players" }), "Ding{Enter}Firouzja{Enter}");
+    expect(screen.getByTestId("analysis-v2-choose-games-count")).toHaveTextContent("2 of 3");
+    await user.click(within(choice).getByRole("button", { name: "Select games…" }));
+    const picker = screen.getByRole("dialog", { name: "Select games" });
+    // The picker's table holds what the filters keep: Carlsen's game is not in it.
+    expect(within(picker).queryByRole("checkbox", { name: "Select Carlsen – Caruana" })).toBeNull();
+    await user.click(within(picker).getByRole("checkbox", { name: "Select Firouzja – Gukesh" }));
+    await user.click(within(picker).getByRole("button", { name: "Select" }));
+    expect(await screen.findByText("1 game picked.")).toBeInTheDocument();
+    expect(screen.getByTestId("analysis-v2-choose-games-count")).toHaveTextContent("1 of 3");
+    await user.click(await screen.findByRole("button", { name: "Create project" }));
+
+    await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/g/));
+    expect(analysisCasesSnapshot()).toHaveLength(1);
+    expect(analysisCasesSnapshot()![0].pgn).toContain('[White "Firouzja"]');
+  });
+
   it("renames, moves and duplicates a Project — no row deletes itself", async () => {
     const folder = (await createProjectFolder("Endgames", null))!;
     const project = (await createAnalysisProject("Najdorf", null))!;

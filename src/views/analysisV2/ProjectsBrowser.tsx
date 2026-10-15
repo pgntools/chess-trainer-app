@@ -532,7 +532,17 @@ function ProjectsBrowser() {
       {choosing !== null && (
         <CollectionImportDialog
           source={choosing.source}
-          choiceOnly={{ title: t("analysisV2.newProject.chooseTitle"), confirmLabel: t("analysisV2.newProject.chooseConfirm") }}
+          choiceOnly={{
+            title: t("analysisV2.newProject.chooseTitle"),
+            confirmLabel: t("analysisV2.newProject.chooseConfirm"),
+            // CTA-208: the games picked by hand, among those the filters keep.
+            selectGames: {
+              select: t("analysisV2.newCase.choose"),
+              change: t("analysisV2.newCase.chooseAgain"),
+              clear: t("analysisV2.newProject.selectAll"),
+              selected: (count) => t("analysisV2.newProject.selected", { count, number: count.toLocaleString(i18n.language) }),
+            },
+          }}
           problem={createProblem ?? undefined}
           onCancel={() => {
             setCreateProblem(null);
