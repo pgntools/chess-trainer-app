@@ -107,6 +107,18 @@ writes no tags. It writes the `games` tag (§3):
   **first in the move's first comment** (`{ [%games 3] Prose. }`).
 - Without the option nothing is counted and the merge is what it always was.
 
+**Play chances** (`mergeTrees`' `{ playChances: true }`, CTA-208) — passed by
+Analysis's New case merge, alone or beside `countGames` (each a box there).
+It writes the `prc` tag (§3) on **the same branch candidates only**:
+`[%prc P]`, the move's share of its position's games, `round(child / parent
+× 100)` — the games counted as above, the parent the move before's count
+(at the first move, every game merged) — the *Save tree as PGN* rule. The
+inputs' own `prc` tags are taken out (`withoutPlayChance`, from
+`lib/playChanceTag.ts`, which `playChance.ts` re-exports — apart so
+`gameTree.ts` imports it without a cycle). Both asked: one pair, games first,
+`{ [%games 3] [%prc 75] Prose. }`. A game's own side lines count it at both
+moves, so a branch's shares can add past 100 — the trainer scales them.
+
 ---
 
 ## 2. Commands inside a comment — `[%key value]`
@@ -244,7 +256,7 @@ from either convention reads the same.
 | **Set by** | The move menu's *Play chances…* (`PlayChanceDialog`, per branch, `setPlayChances`) — or typed into a comment. |
 | **Shown** | A *Play chance* chip, never as prose (`withoutPlayChance`). With `arrows.chances`, and **only where the branch carries a mark**, the board's arrows become the **chance overlay** (`ChanceArrows`: white, magenta border, width by chance) and the next-moves bar prints each move's percentage — the repertoire player. |
 | **Offered on** | Boards where a trainer plays by it; the Case board turns the menu item off (`playChances: false`, CTA-73). |
-| **Also written by** | The Library opening board's *Save tree as PGN* (CTA-99), as `[%prc P]` — each move's share of its position's games, `round(child / parent × 100)`, in one comment after `[%games N]` when both are asked for. |
+| **Also written by** | The Library opening board's *Save tree as PGN* (CTA-99), as `[%prc P]` — each move's share of its position's games, `round(child / parent × 100)`, in one comment after `[%games N]` when both are asked for; and `mergeTrees`' `playChances` (CTA-208, §1 *Merging*) — Analysis's New case merge — on branch candidates only. |
 
 ### `games` — how many games went through a move (CTA-98), `lib/gamesTag.ts`
 
@@ -372,12 +384,13 @@ annotation…* redraws it at once.
 | Path | What lives there |
 | --- | --- |
 | `src/lib/pgn.ts` | The tokenizer and `parsePgnTree(s)`: comments, `;` comments, `$N`, suffixes onto the node. |
-| `src/lib/gameTree.ts` | The node fields; `setComments` / `commentsAt`, `setNags`; `addLine` (a whole line in one rebuild, as `addMove` would add it — CTA-172); `mergeTrees`' joining and its `games` counting; `treeToPgn` and `PgnExportOptions`; `moveTreeToPgn` — the same writer over moves with no board (`PgnMove`: SAN, ply, annotations). |
+| `src/lib/gameTree.ts` | The node fields; `setComments` / `commentsAt`, `setNags`; `addLine` (a whole line in one rebuild, as `addMove` would add it — CTA-172); `mergeTrees`' joining, its `games` counting and its `prc` shares (CTA-208); `treeToPgn` and `PgnExportOptions`; `moveTreeToPgn` — the same writer over moves with no board (`PgnMove`: SAN, ply, annotations). |
 | `src/lib/openingTreePgn.ts` | The Library's *Save tree as PGN*: an opening tree's counts written as `[%games N]` / `[%prc P]` (§3). |
 | `src/lib/moveAnnotations.ts` | `readComment` (commands, the eval shapes, `prc` and `games` → chips; `[%cal]` / `[%csl]` out of the prose, no chip), `annotationsAt`; the NAG table and its rules. |
 | `src/lib/boardShapes.ts` | `[%cal]` / `[%csl]`: `shapesOf` (reading), `toggleShape` (a drawn shape written into the comments), `clearShapes` (*Remove all*), `brushOfKeys`, `withoutShapes` (what `hasComments` reads) — CTA-126, CTA-143. |
 | `src/views/explorer/ShapesDialog.tsx` | The move menu's *Arrows and circles…* (CTA-143). |
 | `src/lib/playChance.ts` | `prc`: reading, writing, the chance rules. |
+| `src/lib/playChanceTag.ts` | `prc`'s readers (`playChanceInText`, `withoutPlayChance`), apart so `gameTree.ts`' merge can use them (CTA-208); `playChance.ts` re-exports them. |
 | `src/lib/gamesTag.ts` | `games`: `gamesInText`, `withoutGames`, `gamesOf`. |
 | `src/lib/nextMoveWeights.ts` | The Case board's arrow widths from `[%eval]`, `games`, `prc` or the lines ahead; which of them a tree carries. |
 | `src/lib/engineEvals.ts` | `[%eval]` **written** (CTA-167): `formatEval`, `withEval` (placement and the override by depth), `annotatorOf` / `withAnnotator`, `recordEvaluation` (§2). |

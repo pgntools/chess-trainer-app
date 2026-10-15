@@ -431,3 +431,22 @@ export const parsePgnTrees = (pgn: string): GameTree[] => {
     parsePgnTree(chunk, chunks.length > 1 ? index + 1 : undefined),
   );
 };
+
+/**
+ * **Several PGN texts' games as one list** (CTA-208) — a zip's `.pgn` files,
+ * read together in their order: each text through {@link parsePgnTrees}, a
+ * text with no game passed over. No game in any of them throws
+ * {@link EmptyPgnError}; a game that will not read throws, as one text's does.
+ */
+export const parsePgnTreesOfTexts = (texts: readonly string[]): GameTree[] => {
+  const trees: GameTree[] = [];
+  for (const text of texts) {
+    try {
+      for (const tree of parsePgnTrees(text)) trees.push(tree);
+    } catch (error) {
+      if (!(error instanceof EmptyPgnError)) throw error;
+    }
+  }
+  if (trees.length === 0) throw new EmptyPgnError();
+  return trees;
+};

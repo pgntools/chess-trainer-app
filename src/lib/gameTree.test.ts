@@ -523,6 +523,53 @@ describe("mergeTrees", () => {
       expect(treeToPgn(plain)).not.toContain("{");
     });
   });
+
+  describe("play chances (CTA-208)", () => {
+    const trees = [
+      parsePgnTree("1. e4 e5 2. Nf3 Nc6 *"),
+      parsePgnTree("1. e4 c5 2. Nf3 *"),
+      parsePgnTree("1. e4 e5 2. Bc4 *"),
+      parsePgnTree("1. d4 d5 *"),
+    ];
+    const at = (tree: GameTree, ...sans: string[]) => findNode(tree, nodeAtSanPath(tree, sans))!;
+
+    it("tags each branch candidate with its share of its position's games", () => {
+      const merged = mergeTrees(trees, DEFAULT_POSITION, {}, { playChances: true });
+      // The first move's whole is every game merged.
+      expect(at(merged, "e4").comments).toEqual(["[%prc 75]"]);
+      expect(at(merged, "d4").comments).toEqual(["[%prc 25]"]);
+      expect(at(merged, "e4", "e5").comments).toEqual(["[%prc 67]"]);
+      expect(at(merged, "e4", "c5").comments).toEqual(["[%prc 33]"]);
+      expect(at(merged, "e4", "e5", "Nf3").comments).toEqual(["[%prc 50]"]);
+      expect(at(merged, "e4", "e5", "Bc4").comments).toEqual(["[%prc 50]"]);
+      // The trunk stays clean.
+      expect(at(merged, "e4", "c5", "Nf3").comments).toBeUndefined();
+      expect(at(merged, "d4", "d5").comments).toBeUndefined();
+    });
+
+    it("writes both in one comment, games first, before the move's own words", () => {
+      const merged = mergeTrees(
+        [parsePgnTree("1. e4 {King's pawn.} *"), parsePgnTree("1. d4 *"), parsePgnTree("1. e4 *")],
+        DEFAULT_POSITION,
+        {},
+        { countGames: true, playChances: true },
+      );
+      expect(at(merged, "e4").comments).toEqual(["[%games 2] [%prc 67] King's pawn."]);
+      expect(at(merged, "d4").comments).toEqual(["[%games 1] [%prc 33]"]);
+    });
+
+    it("takes the inputs' own prc tags out, and leaves their games tags alone when only chances are asked", () => {
+      const merged = mergeTrees(
+        [parsePgnTree("1. e4 { prc:90 games:4 } *"), parsePgnTree("1. d4 { [%prc 10] } *")],
+        DEFAULT_POSITION,
+        {},
+        { playChances: true },
+      );
+      // e4 counts as its 4 games: 4 of 5.
+      expect(at(merged, "e4").comments).toEqual(["[%prc 80] games:4"]);
+      expect(at(merged, "d4").comments).toEqual(["[%prc 20]"]);
+    });
+  });
 });
 
 

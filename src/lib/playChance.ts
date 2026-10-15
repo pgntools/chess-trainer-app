@@ -1,4 +1,8 @@
 import { findNode, setComments, type GameTree, type VariationNode } from "./gameTree";
+import { clampPercent, playChanceInText, withoutPlayChance } from "./playChanceTag";
+
+// The tag's readers live apart so `gameTree.ts` can use them (CTA-208); read here as they always were.
+export { playChanceInText, withoutPlayChance };
 
 /**
  * **Play chances** (CTA-69) — how likely the trainer is to play each of the
@@ -43,32 +47,6 @@ import { findNode, setComments, type GameTree, type VariationNode } from "./game
 
 /** How deep lichess-tools looks when it weighs a move by its lines. */
 const LINE_COUNT_PLIES = 8;
-
-/** `prc:40`, a whole token; and `[%prc 40]`, the command form. */
-const PRC_TEXT = /(^|\s)prc:\s*(\d+(?:\.\d+)?)(?=\s|$)/i;
-const PRC_COMMAND = /\[%prc\s+(\d+(?:\.\d+)?)\s*\]/i;
-const PRC_ANY = /(^|\s)prc:\s*\d+(?:\.\d+)?(?=\s|$)|\[%prc\s+\d+(?:\.\d+)?\s*\]/gi;
-
-const clampPercent = (value: number) => Math.min(100, Math.max(0, value));
-
-/** The `prc` a comment carries, or `undefined`. */
-export const playChanceInText = (text: string): number | undefined => {
-  const plain = PRC_TEXT.exec(text);
-  if (plain !== null) return clampPercent(Number(plain[2]));
-  const command = PRC_COMMAND.exec(text);
-  if (command !== null) return clampPercent(Number(command[1]));
-  return undefined;
-};
-
-/** The comment with its `prc` marks taken out — what the prose is. */
-export const withoutPlayChance = (text: string): string =>
-  // A comment with no mark comes back exactly as it was.
-  playChanceInText(text) === undefined
-    ? text
-    : text
-        .replace(PRC_ANY, (_, space: string | undefined) => space ?? "")
-        .replace(/[ \t]{2,}/g, " ")
-        .trim();
 
 /** The chance a move is marked with — its comments after, then before, it. */
 export const playChanceOf = (node: VariationNode): number | undefined => {
