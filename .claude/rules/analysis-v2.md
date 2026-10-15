@@ -334,7 +334,9 @@ selection bar counts them and deletes them together, asked first
 - **Game** — a PGN pasted or a `.pgn` or `.zip` picked (`PgnInput`, `zip`;
   a zip's `.pgn` files read together as one list of games, in its order —
   `readZipGameTrees`, `lib/collectionZip.ts`; a zip unreadable, with no
-  `.pgn`, no game or too large refused in words). **Several games**
+  `.pgn`, no game or too large refused in words; a picked file's text put
+  in the paste box only when it holds one game — a zip's never, a large
+  one there freezes the page). **Several games**
   (CTA-208): the dialog says *A case is represented by a single PGN file*
   and asks — **Merge them into one case** (`mergeTrees`; offered only when
   the games share a start, else disabled with the reason; two optional

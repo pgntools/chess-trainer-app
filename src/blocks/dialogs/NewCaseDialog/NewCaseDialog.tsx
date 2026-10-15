@@ -12,7 +12,7 @@ import { isZipFile, readZipGameTrees, type ZipGamesProblem } from "../../../lib/
 import { FenParseError, parseFen } from "../../../lib/fen";
 import { gameTag } from "../../../lib/gameModel";
 import { mainline, mergeTrees, plyLabel, type GameTree } from "../../../lib/gameTree";
-import { PgnParseError, parsePgnTrees } from "../../../lib/pgn";
+import { PgnParseError, parsePgnTrees, splitPgnGames } from "../../../lib/pgn";
 import { PgnInput } from "../../forms/PgnInput";
 
 /**
@@ -101,7 +101,8 @@ const moveLabel = (startFen: string, ply: number, san: string): string => {
  * typed) or **from a PGN** at a move the reader picks, the moves before it
  * kept. A PGN is pasted or a `.pgn` or a `.zip` picked (`PgnInput`) — a
  * zip's `.pgn` files read together as one list of games, in its order
- * (`readZipGameTrees`, CTA-208). **Several games** — a Case being a single
+ * (`readZipGameTrees`, CTA-208); a picked file's text goes into the paste box
+ * only when it holds one game (a large one there would freeze the page). **Several games** — a Case being a single
  * PGN, the dialog says so and asks what to make of them: for a Game,
  * **merge** them into one tree (`mergeTrees`, offered only where they share
  * a start, else off and saying why; optionally tagging each move where the
@@ -198,7 +199,8 @@ function NewCaseDialog({ open, onClose, onCreate, busy = false, problem = null, 
         return;
       }
       const text = await file.text();
-      setPasted(text);
+      // A file of several games stays out of the paste box too: a large one there freezes the page.
+      setPasted(splitPgnGames(text).length > 1 ? "" : text);
       read(text);
     } catch {
       refuse({ message: t("analysisV2.newCase.problem.file") });

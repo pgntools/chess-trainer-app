@@ -137,6 +137,18 @@ describe("NewCaseDialog (CTA-186)", () => {
     expect(spec.tree.moves.map((node: { san: string }) => node.san)).toEqual(["e4", "d4"]);
   });
 
+  it("puts a picked .pgn into the paste box only when it holds one game", async () => {
+    mount();
+    const input = screen.getByTestId("probe-pgn-input");
+    await userEvent.upload(input, new File([TWO_GAMES], "club.pgn", { type: "application/x-chess-pgn" }));
+    expect(await screen.findByText("2 games read")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Paste a PGN" })).toHaveValue("");
+
+    await userEvent.upload(input, new File([ONE_GAME], "one.pgn", { type: "application/x-chess-pgn" }));
+    expect(await screen.findByText("1 game read")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Paste a PGN" })).toHaveValue(ONE_GAME);
+  });
+
   it("refuses a zip with no .pgn in it, in words", async () => {
     mount();
     const zip = zipSync({ "notes.txt": strToU8("hi") });
