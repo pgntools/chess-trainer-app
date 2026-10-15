@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { strToU8, zipSync } from "fflate";
 
@@ -39,36 +39,69 @@ describe("NewCaseDialog (CTA-186)", () => {
     expect(specs[0].tree.moves[0].children).toHaveLength(2);
   });
 
-  it("asks what several games make — Select one by default, picked in an autocomplete", async () => {
+  it("asks what several games make — a case each by default, or the games selected in a wide picker", async () => {
     const onCreate = vi.fn();
     const { baseElement } = mount({ onCreate });
     await paste(TWO_GAMES);
     expect(screen.getByText("A case is represented by a single PGN file.")).toBeInTheDocument();
     const choice = screen.getByRole("radiogroup", { name: "What to make of these 2 games" });
-    expect(within(choice).getByRole("radio", { name: "Select one game" })).toBeChecked();
+    expect(within(choice).getByRole("radio", { name: "One case per game (2)" })).toBeChecked();
     // Two choices: no merge (it is to live elsewhere).
-    expect(within(choice).getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual(["select", "perGame"]);
-    // The first game is picked; typing narrows the list.
-    const field = screen.getByRole("combobox", { name: "Game" });
-    expect(field).toHaveValue("Carlsen – Caruana, Club Championship");
-    await userEvent.clear(field);
-    await userEvent.type(field, "ding");
-    const options = within(screen.getByRole("listbox")).getAllByRole("option");
-    expect(options.map((option) => option.textContent)).toEqual(["Ding – Nepomniachtchi, Club Championship"]);
-    await userEvent.click(options[0]);
+    expect(within(choice).getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual(["perGame", "select"]);
+    await expectNoAxeViolations(baseElement);
+
+    // Choosing to select opens the picker on the games.
+    await userEvent.click(within(choice).getByRole("radio", { name: "Select games" }));
+    const picker = screen.getByRole("dialog", { name: "Select games" });
+    expect(within(picker).getByTestId("probe-picker-count")).toHaveTextContent("0 of 2 games selected");
+    await userEvent.click(within(picker).getByRole("checkbox", { name: "Select Ding – Nepomniachtchi" }));
+    expect(within(picker).getByTestId("probe-picker-count")).toHaveTextContent("1 of 2 games selected");
+    await userEvent.click(within(picker).getByRole("button", { name: "Select" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Select games" })).toBeNull());
+    expect(screen.getByTestId("probe-chosen")).toHaveTextContent("Game: Ding – Nepomniachtchi, Club Championship");
+    // One game selected: one Case, named as typed.
+    await userEvent.type(screen.getByRole("textbox", { name: "Name (optional)" }), "Catalan");
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
     expect(onCreate.mock.calls[0][0]).toHaveLength(1);
+    expect(onCreate.mock.calls[0][0][0]).toMatchObject({ type: "game", name: "Catalan" });
     expect(onCreate.mock.calls[0][0][0].tree.headers.White).toBe("Ding");
-    await expectNoAxeViolations(baseElement);
+  });
+
+  it("makes a case of each game selected, in the file's order", async () => {
+    const onCreate = vi.fn();
+    mount({ onCreate });
+    await paste(`${TWO_GAMES}\n\n[Event "Third"]\n[White "Gukesh"]\n[Black "Ding"]\n\n1. Nf3 *`);
+    await userEvent.click(screen.getByRole("radio", { name: "Select games" }));
+    const picker = screen.getByRole("dialog", { name: "Select games" });
+    // Found by words, then picked — a click on the row ticks it too.
+    await userEvent.type(within(picker).getByRole("searchbox", { name: "Find games" }), "gukesh");
+    await userEvent.click(within(picker).getByText("Gukesh"));
+    await userEvent.clear(within(picker).getByRole("searchbox", { name: "Find games" }));
+    await userEvent.click(within(picker).getByRole("checkbox", { name: "Select Carlsen – Caruana" }));
+    await userEvent.click(within(picker).getByRole("button", { name: "Select" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Select games" })).toBeNull());
+    expect(screen.getByTestId("probe-chosen")).toHaveTextContent("2 games selected — a case each.");
+    expect(screen.queryByRole("textbox", { name: "Name (optional)" })).toBeNull();
+    // Opened again, it holds the selection.
+    await userEvent.click(screen.getByRole("button", { name: "Change the selection…" }));
+    expect(within(screen.getByRole("dialog", { name: "Select games" })).getByTestId("probe-picker-count")).toHaveTextContent("2 of 3");
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Select games" })).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Select games" })).toBeNull());
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
+    expect(onCreate.mock.calls[0][0].map((spec: { tree: { headers: { White?: string } } }) => spec.tree.headers.White)).toEqual([
+      "Carlsen",
+      "Gukesh",
+    ]);
   });
 
   it("makes one Case per game, with no name to type", async () => {
     const onCreate = vi.fn();
     mount({ onCreate });
     await paste(TWO_GAMES);
-    await userEvent.click(screen.getByRole("radio", { name: "One case per game (2)" }));
+    expect(screen.getByRole("radio", { name: "One case per game (2)" })).toBeChecked();
     expect(screen.queryByRole("textbox", { name: "Name (optional)" })).toBeNull();
-    expect(screen.queryByRole("combobox", { name: "Game" })).toBeNull();
+    expect(screen.queryByTestId("probe-chosen")).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
     // Every game is parsed on Create — in slices, so the call comes after.
     await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
@@ -111,7 +144,7 @@ describe("NewCaseDialog (CTA-186)", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Remove club.pgn" }));
     expect(screen.queryByTestId("probe-file")).toBeNull();
-    expect(screen.queryByRole("combobox", { name: "Game" })).toBeNull();
+    expect(screen.queryByRole("radiogroup", { name: "What to make of these 2 games" })).toBeNull();
     expect(screen.getByRole("textbox", { name: "Paste a PGN" })).toHaveValue("");
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
 
@@ -125,7 +158,7 @@ describe("NewCaseDialog (CTA-186)", () => {
     mount({ initialPgn: TWO_GAMES, initialFileName: "club.pgn" });
     expect(screen.getByTestId("probe-file")).toHaveTextContent(/club\.pgn.*2 games read/);
     expect(screen.queryByRole("textbox", { name: "Paste a PGN" })).toBeNull();
-    expect(screen.getByRole("combobox", { name: "Game" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "One case per game (2)" })).toBeChecked();
   });
 
   it("says a one-game file that will not read under its plate", async () => {
@@ -142,10 +175,10 @@ describe("NewCaseDialog (CTA-186)", () => {
     await paste(broken);
     // Listed by its tags, though its moves do not play.
     expect(screen.getByText("3 games read")).toBeInTheDocument();
-    const field = screen.getByRole("combobox", { name: "Game" });
-    await userEvent.clear(field);
-    await userEvent.type(field, "bad");
-    await userEvent.click(within(screen.getByRole("listbox")).getByRole("option"));
+    await userEvent.click(screen.getByRole("radio", { name: "Select games" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Bad – Moves" }));
+    await userEvent.click(screen.getByRole("button", { name: "Select" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Select games" })).toBeNull());
     expect(screen.getByTestId("probe-game-problem")).toHaveTextContent("That game cannot be read — pick another.");
     expect(screen.getByTestId("probe-game-problem-detail")).toHaveTextContent(/Game 3.*Qxf7/);
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
@@ -161,28 +194,38 @@ describe("NewCaseDialog (CTA-186)", () => {
   const manyGames = (count: number) =>
     Array.from({ length: count }, (_, index) => `[Event "Game ${index}"]\n\n1. ${index % 2 === 0 ? "e4" : "d4"} *`).join("\n\n");
 
-  it("offers no case each for more games than the app keeps cases, and says why", async () => {
+  it("offers no case each for more than 1,000 games — a collection's work — and selects instead", async () => {
     mount();
-    await paste(manyGames(10_001));
-    expect(screen.getByText("10001 games read")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "One case per game (10001)" })).toBeDisabled();
-    expect(screen.getByRole("radiogroup", { name: "What to make of these 10001 games" })).toHaveAccessibleDescription(
-      /One case per game is off: the app keeps at most 10,000 cases\./,
+    await paste(manyGames(1_001));
+    expect(screen.getByText("1001 games read")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "One case per game (1001)" })).toBeDisabled();
+    expect(screen.getByRole("radiogroup", { name: "What to make of these 1001 games" })).toHaveAccessibleDescription(
+      /too many games for a case each — more than 1,000\. Make a collection of them in the Library instead/,
     );
-    expect(screen.getByRole("radio", { name: "Select one game" })).toBeChecked();
-  });
+    expect(screen.getByRole("radio", { name: "Select games" })).toBeChecked();
+    expect(screen.getByTestId("probe-chosen")).toHaveTextContent("No game selected yet.");
+    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+
+    // Select-all takes every game: past the cap, Select is off and says why.
+    await userEvent.click(screen.getByRole("button", { name: "Select games…" }));
+    const picker = screen.getByRole("dialog", { name: "Select games" });
+    await userEvent.click(within(picker).getByRole("checkbox", { name: "Select all games shown by the filters" }));
+    expect(within(picker).getByTestId("probe-picker-count")).toHaveTextContent("1,001 of 1,001 games selected");
+    expect(within(picker).getByTestId("probe-picker-too-many")).toHaveTextContent("at most 1,000 games");
+    expect(within(picker).getByRole("button", { name: "Select" })).toBeDisabled();
+  }, 30_000);
 
   it("counts a case each's parse of every game on a progress bar, Cancel on and Create off", async () => {
     const onCreate = vi.fn();
     mount({ onCreate });
-    await paste(manyGames(3_000));
-    await userEvent.click(screen.getByRole("radio", { name: "One case per game (3000)" }));
+    await paste(manyGames(1_000));
+    expect(screen.getByRole("radio", { name: "One case per game (1000)" })).toBeChecked();
     // The parse waits a task before its first slice: held there, the bar is on screen.
     vi.useFakeTimers({ toFake: ["setTimeout"] });
     try {
       fireEvent.click(screen.getByRole("button", { name: "Create" }));
       const bar = screen.getByRole("progressbar", { name: "Reading the games" });
-      expect(bar).toHaveAccessibleDescription("0 of 3,000 games read");
+      expect(bar).toHaveAccessibleDescription("0 of 1,000 games read");
       expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
       expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
       expect(onCreate).not.toHaveBeenCalled();
@@ -191,16 +234,15 @@ describe("NewCaseDialog (CTA-186)", () => {
       vi.useRealTimers();
     }
     await vi.waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
-    expect(onCreate.mock.calls[0][0]).toHaveLength(3_000);
-    expect(screen.queryByRole("progressbar", { name: "Reading the games" })).toBeNull();
+    expect(onCreate.mock.calls[0][0]).toHaveLength(1_000);
+    await waitFor(() => expect(screen.queryByRole("progressbar", { name: "Reading the games" })).toBeNull());
   });
 
   it("stops the parse on Cancel, creating nothing", async () => {
     const onCreate = vi.fn();
     const onClose = vi.fn();
     mount({ onCreate, onClose });
-    await paste(manyGames(3_000));
-    await userEvent.click(screen.getByRole("radio", { name: "One case per game (3000)" }));
+    await paste(manyGames(1_000));
     vi.useFakeTimers({ toFake: ["setTimeout"] });
     try {
       fireEvent.click(screen.getByRole("button", { name: "Create" }));
@@ -233,11 +275,15 @@ describe("NewCaseDialog (CTA-186)", () => {
     await paste(TWO_GAMES);
     expect(screen.getByText("A case is represented by a single PGN file.")).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: "One case per game (2)" })).toBeNull();
-    const field = screen.getByRole("combobox", { name: "Game" });
-    await userEvent.clear(field);
-    await userEvent.type(field, "ding");
-    await userEvent.click(within(screen.getByRole("listbox")).getByRole("option"));
-    await userEvent.click(screen.getByRole("combobox", { name: "Start at" }));
+    // The first game, until another is chosen — in the picker, a click on it.
+    expect(screen.getByTestId("probe-chosen")).toHaveTextContent("Game: Carlsen – Caruana");
+    await userEvent.click(screen.getByRole("button", { name: "Choose another game…" }));
+    const picker = screen.getByRole("dialog", { name: "Choose a game" });
+    expect(within(picker).queryByRole("checkbox")).toBeNull();
+    await userEvent.click(within(picker).getByText("Ding"));
+    // The picker closes: the dialog under it is reachable again.
+    await userEvent.click(await screen.findByRole("combobox", { name: "Start at" }));
+    expect(screen.getByTestId("probe-chosen")).toHaveTextContent("Game: Ding – Nepomniachtchi");
     await userEvent.click(screen.getByRole("option", { name: "1… d5" }));
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
     const [[[spec]]] = onCreate.mock.calls;

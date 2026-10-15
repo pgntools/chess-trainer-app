@@ -1,26 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import { useTranslation } from "react-i18next";
 
-import { SelectAutocomplete, type AutocompleteOption } from "../../../design-system/components/autocompletes";
 import { FormDialog, type ExtraDialogProps } from "../../../design-system/components/dialogs";
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { ProgressLine } from "../../../design-system/components/states";
 import { IconAction } from "../../../design-system/components/toolbars";
 import { RadioGroupField, SelectField, TextInputField } from "../../../design-system/components/forms";
 import type { UploadProblem } from "../../../design-system/patterns/forms";
-import { MAX_ANALYSIS_CASES } from "../../../lib/analysisProjects";
 import { isZipFile, readCollectionZip, type CollectionZipProblem } from "../../../lib/collectionZip";
 import { FenParseError, parseFen } from "../../../lib/fen";
 import { formatBytes } from "../../../lib/formatBytes";
 import { gameTag } from "../../../lib/gameModel";
 import { mainline, plyLabel, type GameTree } from "../../../lib/gameTree";
+import { collectionRowOf, type CollectionRow } from "../../../lib/libraryCollections";
 import { PgnParseError, parsePgnTree } from "../../../lib/pgn";
 import { indexPgnGames, parsePgnGameEntries, type PgnGameEntry } from "../../../lib/pgnGames";
 import { PgnInput } from "../../forms/PgnInput";
+import { GamesPickerDialog } from "../GamesPickerDialog";
 
 /**
  * What the reader asked for — the screen makes the Case(s) of it (an id, its
@@ -52,8 +53,9 @@ export type NewCaseDialogProps = {
    * `<testId>-from`, the PGN `<testId>-pgn` (PgnInput's parts) — once a file
    * is read, its plate `<testId>-file` in its place (`-file-remove`, and a
    * one-game file's problem `-file-problem`) — the FEN `<testId>-fen`; a PGN of several games — the note `<testId>-many-note`,
-   * the choice `<testId>-many` (its radios `-many-select`, `-many-perGame`),
-   * the game `<testId>-game` (its input `<testId>-game-input`) and its
+   * the choice `<testId>-many` (its radios `-many-perGame`, `-many-select`),
+   * the games chosen `<testId>-chosen` and its button `<testId>-choose`, the
+   * picker `<testId>-picker` (`GamesPickerDialog`'s parts), a chosen game's
    * problem `<testId>-game-problem`; the progress `<testId>-progress`, a
    * Case-each parse's problem `<testId>-parse-problem`; the ply
    * `<testId>-ply`, the name `<testId>-name`, the problem `<testId>-problem`.
@@ -64,11 +66,14 @@ export type NewCaseDialogProps = {
 
 type CaseType = "game" | "position";
 type PositionSource = "fen" | "pgn";
-/** What a PGN of several games makes: the one game picked, or a Case each. */
-type ManyChoice = "select" | "perGame";
+/** What a PGN of several games makes: a Case each, or a Case of each game selected. */
+type ManyChoice = "perGame" | "select";
 
-/** At most this many games listed at once — typing narrows thousands (the Case picker's, CTA-199). */
-const GAMES_SHOWN = 50;
+/** At most this many Cases made at once — more is a collection's work, not Analysis's (CTA-208). */
+const MAX_CASES_AT_ONCE = 1000;
+
+/** The choice a file of so many games starts on: a Case each, where they are not too many. */
+const manyFor = (count: number): ManyChoice => (count <= MAX_CASES_AT_ONCE ? "perGame" : "select");
 
 /** A zip's refusal as the catalog words it. */
 const ZIP_PROBLEMS: Record<CollectionZipProblem, string> = {
@@ -113,16 +118,17 @@ const moveLabel = (startFen: string, ply: number, san: string): string => {
  * size and games, and × to remove it, which brings the file button and the
  * paste box back; its text never goes into the paste box (a large one there
  * froze the page). A file refused leaves the input, its problem under it. **Several games** — a Case being a single
- * PGN, the dialog says so and asks what to make of them: for a Game,
- * **select one** or **one Case per game** (off, saying why, past the app's
- * cap of Cases); a Position selects one, then its move. The game is
- * picked in an autocomplete built for thousands — at most
- * {@link GAMES_SHOWN} listed, typing narrows.
+ * PGN, the dialog says so and asks what to make of them: for a Game, **one
+ * Case per game** (the default — off, saying why, past
+ * {@link MAX_CASES_AT_ONCE}: a collection's work) or **select games**, which
+ * opens a wide picker (`GamesPickerDialog`: the games in a table — words,
+ * sort, pages, ticks) and makes a Case of each game selected; a Position
+ * chooses its one game there, then its move.
  *
  * **Built for files of thousands of games** (CTA-208): a PGN read is only
  * indexed — each game's tags and start (`indexPgnGames`), milliseconds for
- * 15,000 games — and only the game picked is parsed; a Case per game parses
- * them all on Create (`parsePgnGameEntries`), in slices that give
+ * 15,000 games — and only a single Case's game is parsed; several Cases
+ * parse theirs on Create (`parsePgnGameEntries`), in slices that give
  * the page back, a progress bar counting the games, Cancel stopping it. A
  * game that will not read is said when it is picked, or when a Case each
  * reaches it. The name is optional: left empty, the Case is named from its
@@ -149,8 +155,14 @@ function NewCaseDialog({
   const [pasted, setPasted] = useState(initialFileName === undefined ? (initialPgn ?? "") : "");
   const [entries, setEntries] = useState<readonly PgnGameEntry[]>(() => (initialPgn === undefined ? [] : indexPgnGames([initialPgn])));
   const [readProblem, setReadProblem] = useState<UploadProblem | null>(null);
+  /** A Position's game, by its place in `entries`. */
   const [selectedGame, setSelectedGame] = useState(0);
-  const [many, setMany] = useState<ManyChoice>("select");
+  const [many, setMany] = useState<ManyChoice>(() => manyFor(initialPgn === undefined ? 0 : indexPgnGames([initialPgn]).length));
+  /** Select games: the games selected, by number (1-based), in the file's order. */
+  const [chosen, setChosen] = useState<readonly number[]>([]);
+  const [picker, setPicker] = useState<"many" | "one" | null>(null);
+  /** The picker has been opened on these games — its rows are built then, and kept. */
+  const [rowsBuilt, setRowsBuilt] = useState(false);
   /** The file the games were read from — shown as a plate in the input's place. */
   const initialFile = initialPgn !== undefined && initialFileName !== undefined ? { name: initialFileName, size: initialPgn.length } : null;
   const [file, setFile] = useState<{ name: string; size: number } | null>(initialFile);
@@ -177,7 +189,10 @@ function NewCaseDialog({
       setParseProblem(null);
       setWork(null);
       setSelectedGame(0);
-      setMany("select");
+      setMany(manyFor(initialPgn === undefined ? 0 : indexPgnGames([initialPgn]).length));
+      setChosen([]);
+      setPicker(null);
+      setRowsBuilt(false);
       setFile(initialFile);
       setPly(0);
       setFen("");
@@ -202,7 +217,9 @@ function NewCaseDialog({
     setEntries(indexed);
     setReadProblem(null);
     setSelectedGame(0);
-    setMany("select");
+    setMany(manyFor(indexed.length));
+    setChosen([]);
+    setRowsBuilt(false);
     setPly(0);
     return indexed.length;
   };
@@ -234,15 +251,15 @@ function NewCaseDialog({
     }
   };
 
-  /** Every game parsed, in slices, the bar counting them — `undefined` when stopped, or a game would not read (said). */
-  const parseAll = async (): Promise<GameTree[] | undefined> => {
+  /** The games parsed, in slices, the bar counting them — `undefined` when stopped, or a game would not read (said). */
+  const parseAll = async (games: readonly PgnGameEntry[]): Promise<GameTree[] | undefined> => {
     const controller = new AbortController();
     running.current = controller;
     setParseProblem(null);
-    setWork({ kind: "parse", done: 0, total: entries.length });
+    setWork({ kind: "parse", done: 0, total: games.length });
     try {
       await nextTask();
-      return await parsePgnGameEntries(entries, {
+      return await parsePgnGameEntries(games, {
         signal: controller.signal,
         onProgress: (done, total) => setWork({ kind: "parse", done, total }),
       });
@@ -262,7 +279,8 @@ function NewCaseDialog({
     setReadProblem(null);
     setParseProblem(null);
     setSelectedGame(0);
-    setMany("select");
+    setChosen([]);
+    setRowsBuilt(false);
     setPly(0);
   };
 
@@ -282,43 +300,47 @@ function NewCaseDialog({
     }
   }, [fen]);
 
-  // Only the game picked is parsed — one game, a few milliseconds.
+  const usesPgn = type === "game" || from === "pgn";
+  const several = usesPgn && entries.length > 1;
+  // More games than a Case each may make: the reader selects them, or makes a collection.
+  const perGameFits = entries.length <= MAX_CASES_AT_ONCE;
+  // A Position is one game's; a choice the games cannot make is no choice.
+  const choice: ManyChoice | null = !several || type === "position" ? null : many === "perGame" && !perGameFits ? "select" : many;
+  const manyAtOnce = choice === "perGame" || (choice === "select" && chosen.length > 1);
+  /** The one game a Case is made of: a Position's, the one game selected, or the text's only game. */
+  const singleIndex = choice === "select" ? (chosen.length === 1 ? chosen[0] - 1 : -1) : choice === null ? (several ? selectedGame : 0) : -1;
+
+  // Only that game is parsed — one game, a few milliseconds.
   const picked = useMemo((): { tree: GameTree } | { problem: UploadProblem } | undefined => {
-    const entry = entries[selectedGame];
+    const entry = entries[singleIndex];
     if (entry === undefined) return undefined;
     try {
-      return { tree: parsePgnTree(entry.text, entries.length > 1 ? selectedGame + 1 : undefined) };
+      return { tree: parsePgnTree(entry.text, entries.length > 1 ? entry.number : undefined) };
     } catch (error) {
       return { problem: { message: t("analysisV2.newCase.problem.unreadable"), detail: detailOf(error) } };
     }
-  }, [entries, selectedGame, t]);
+  }, [entries, singleIndex, t]);
   const game: GameTree | undefined = picked !== undefined && "tree" in picked ? picked.tree : undefined;
   const pickedProblem = picked !== undefined && "problem" in picked ? picked.problem : null;
   const line = useMemo(() => (game === undefined ? [] : mainline(game)), [game]);
-  const usesPgn = type === "game" || from === "pgn";
-  const several = usesPgn && entries.length > 1;
-  // More games than the app keeps Cases: a Case each would be refused once every game was parsed.
-  const perGameFits = entries.length <= MAX_ANALYSIS_CASES;
-  // A Position is one game's; a choice the games cannot make is no choice.
-  const choice: ManyChoice =
-    !several || type === "position" || (many === "perGame" && !perGameFits) ? "select" : many;
-  const manyAtOnce = choice === "perGame";
 
-  const gameOptions = useMemo((): AutocompleteOption[] => {
-    if (!several) return [];
-    const numbered = (index: number) => t("analysisV2.newCase.gameNumber", { number: index + 1 });
-    return entries.map((entry, index) => ({ value: String(index), label: gameLabel(entry, index, numbered) }));
-  }, [entries, several, t]);
+  // The picker's rows — every game's tags and move count, ~0.3 s for 15,000 — built the first time it opens.
+  const rows = useMemo((): CollectionRow[] => (rowsBuilt ? entries.map((entry) => collectionRowOf(entry.text, entry.number)) : []), [entries, rowsBuilt]);
+  const openPicker = (mode: "many" | "one") => {
+    setRowsBuilt(true);
+    setPicker(mode);
+  };
+  const numbered = (index: number) => t("analysisV2.newCase.gameNumber", { number: index + 1 });
 
   const working = work !== null;
-  // A Case each needs every game, parsed on Create; the others the one picked.
-  const ready =
-    !working && (usesPgn ? (choice === "select" ? game !== undefined : entries.length > 1) : fen.trim() !== "" && fenProblem === null);
+  // Several Cases parse their games on Create; one Case needs its one game read.
+  const ready = !working && (usesPgn ? (manyAtOnce ? choice !== "perGame" || perGameFits : game !== undefined) : fen.trim() !== "" && fenProblem === null);
 
   const submit = async () => {
     if (!ready || busy) return;
     if (manyAtOnce) {
-      const games = await parseAll();
+      const wanted = choice === "perGame" ? entries : chosen.map((number) => entries[number - 1]);
+      const games = await parseAll(wanted);
       if (games !== undefined) onCreate(games.map((tree) => ({ type: "game", tree, name: "" })));
     } else if (type === "game" && game !== undefined) {
       onCreate([{ type: "game", tree: game, name }]);
@@ -440,41 +462,48 @@ function NewCaseDialog({
             {t("analysisV2.newCase.many.single")}
           </Typography>
         )}
-        {several && type === "game" && (
+        {choice !== null && (
           <RadioGroupField<ManyChoice>
             label={t("analysisV2.newCase.many.label", { number: entries.length })}
             options={[
-              { value: "select", label: t("analysisV2.newCase.many.select") },
               { value: "perGame", label: t("analysisV2.newCase.many.perGame", { number: entries.length }), disabled: !perGameFits },
+              { value: "select", label: t("analysisV2.newCase.many.select") },
             ]}
             value={choice}
-            onChange={setMany}
+            onChange={(next) => {
+              setMany(next);
+              // Choosing to select is choosing the games: the picker opens on them.
+              if (next === "select") openPicker("many");
+            }}
             help={[
               t(`analysisV2.newCase.many.${choice}Help`),
-              ...(perGameFits ? [] : [t("analysisV2.newCase.many.perGameUnavailable", { max: MAX_ANALYSIS_CASES.toLocaleString(i18n.language) })]),
+              ...(perGameFits ? [] : [t("analysisV2.newCase.many.perGameUnavailable", { max: MAX_CASES_AT_ONCE.toLocaleString(i18n.language) })]),
             ].join(" ")}
             disabled={busy || working}
             testId={`${testId}-many`}
           />
         )}
-        {choice === "select" && several && (
-          <SelectAutocomplete
-            label={t("analysisV2.newCase.game")}
-            placeholder={t("analysisV2.newCase.gamePlaceholder")}
-            value={String(selectedGame)}
-            onChange={(next) => {
-              if (next === null) return;
-              setSelectedGame(Number(next));
-              setPly(0);
-            }}
-            options={gameOptions}
-            clearable={false}
-            maxShown={GAMES_SHOWN}
-            disabled={busy || working}
-            testId={`${testId}-game`}
-          />
+        {several && choice !== "perGame" && (
+          <Box data-testid={`${testId}-chosen`} sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+            <Typography variant="body2" dir="auto" sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
+              {choice === "select" && chosen.length !== 1
+                ? chosen.length === 0
+                  ? t("analysisV2.newCase.chosenNone")
+                  : t("analysisV2.newCase.chosenCount", { count: chosen.length, number: chosen.length.toLocaleString(i18n.language) })
+                : t("analysisV2.newCase.chosenGame", { game: gameLabel(entries[singleIndex] ?? entries[0], singleIndex, numbered) })}
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => openPicker(choice === "select" ? "many" : "one")}
+              disabled={busy || working}
+              data-testid={`${testId}-choose`}
+            >
+              {t(choice === "select" ? (chosen.length === 0 ? "analysisV2.newCase.choose" : "analysisV2.newCase.chooseAgain") : "analysisV2.newCase.chooseOther")}
+            </Button>
+          </Box>
         )}
-        {choice === "select" && several && pickedProblem !== null && (
+        {several && singleIndex >= 0 && pickedProblem !== null && (
           <InlineAlert severity="error" detail={pickedProblem.detail} testId={`${testId}-game-problem`}>
             {t("analysisV2.newCase.problem.gameUnreadable")}
           </InlineAlert>
@@ -533,6 +562,25 @@ function NewCaseDialog({
           </InlineAlert>
         )}
       </Box>
+      <GamesPickerDialog
+        open={picker !== null}
+        rows={rows}
+        mode={picker ?? "many"}
+        initialPicked={picker === "one" ? [] : chosen}
+        max={MAX_CASES_AT_ONCE}
+        onSubmit={(numbers) => {
+          if (picker === "one") {
+            setSelectedGame(numbers[0] - 1);
+            setPly(0);
+          } else {
+            setChosen(numbers);
+          }
+          setPicker(null);
+        }}
+        onClose={() => setPicker(null)}
+        testId={`${testId}-picker`}
+        dialogProps={dialogProps}
+      />
     </FormDialog>
   );
 }

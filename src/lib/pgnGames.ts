@@ -17,6 +17,8 @@ import { parsePgnTree, readPgnTags, splitPgnGames, type PgnMoveCache } from "./p
 
 /** One game of a PGN text, read as far as its tags. */
 export type PgnGameEntry = {
+  /** Its place among the texts' games, 1-based — what a problem with it is numbered by. */
+  number: number;
   /** The game's own text, tags and moves — what `parsePgnTree` reads. */
   text: string;
   headers: GameHeaders;
@@ -26,7 +28,7 @@ export type PgnGameEntry = {
 export const indexPgnGames = (texts: readonly string[]): PgnGameEntry[] => {
   const entries: PgnGameEntry[] = [];
   for (const text of texts) {
-    for (const chunk of splitPgnGames(text)) entries.push({ text: chunk, headers: readPgnTags(chunk) });
+    for (const chunk of splitPgnGames(text)) entries.push({ number: entries.length + 1, text: chunk, headers: readPgnTags(chunk) });
   }
   return entries;
 };
@@ -48,8 +50,9 @@ const nextTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
  * the page given back between them, `onProgress` told after each. One move
  * cache spans the batch (`PgnMoveCache`), so the games' shared start is
  * worked out once. A game that will not read rejects with its
- * `PgnParseError`, numbered by its place in the list; an abort rejects with
- * the signal's reason.
+ * `PgnParseError`, numbered by its place among the texts' games (`number` —
+ * a few games picked out of many keep theirs); an abort rejects with the
+ * signal's reason.
  */
 export const parsePgnGameEntries = async (
   entries: readonly PgnGameEntry[],
@@ -57,13 +60,14 @@ export const parsePgnGameEntries = async (
 ): Promise<GameTree[]> => {
   const trees: GameTree[] = [];
   const cache: PgnMoveCache = new Map();
-  const numbered = entries.length > 1;
   while (trees.length < entries.length) {
     signal?.throwIfAborted();
     const sliceEnd = performance.now() + sliceMs;
     do {
-      const index = trees.length;
-      trees.push(parsePgnTree(entries[index].text, numbered ? index + 1 : undefined, cache));
+      const entry = entries[trees.length];
+      // One game alone, as it came, is not numbered — as `parsePgnTrees` does not number it.
+      const numbered = entries.length > 1 || entry.number > 1;
+      trees.push(parsePgnTree(entry.text, numbered ? entry.number : undefined, cache));
     } while (trees.length < entries.length && performance.now() < sliceEnd);
     onProgress?.(trees.length, entries.length);
     if (trees.length < entries.length) await nextTask();

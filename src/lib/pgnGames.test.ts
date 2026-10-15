@@ -27,6 +27,7 @@ describe("indexPgnGames (CTA-208)", () => {
     expect(entries.map((entry) => entry.headers.Event)).toEqual(["A", "B", "C", "D"]);
     expect(entries[1].headers.FEN).toBe(ENDGAME);
     expect(entries[0].headers.White).toBe("Carlsen");
+    expect(entries.map((entry) => entry.number)).toEqual([1, 2, 3, 4]);
     // The text of each is what parsePgnTree reads.
     expect(entries[0].text).toBe(splitPgnGames(FILE)[0]);
   });
@@ -61,6 +62,11 @@ describe("parsePgnGameEntries (CTA-208)", () => {
     const parsing = parsePgnGameEntries(indexPgnGames([`${FILE}\n\n[Event "D"]\n\n1. e4 e5 2. Qxf7 *`]));
     await expect(parsing).rejects.toBeInstanceOf(PgnParseError);
     await expect(parsing).rejects.toThrow('Game 4: Illegal move "Qxf7".');
+  });
+
+  it("numbers a game picked out of many by its place among them", async () => {
+    const [, , , bad] = indexPgnGames([`${FILE}\n\n[Event "D"]\n\n1. e4 e5 2. Qxf7 *`]);
+    await expect(parsePgnGameEntries([bad])).rejects.toThrow('Game 4: Illegal move "Qxf7".');
   });
 });
 
