@@ -9,6 +9,7 @@ import {
   copiedCase,
   isBehindMerges,
   MAX_CASE_NAME,
+  onlyCasePathDiffers,
   reorderedCases,
   sameCaseState,
   withCaseOrders,
@@ -233,29 +234,43 @@ export const removeCasesOfProjects = async (projectIds: readonly string[]): Prom
  * lists and the state does not, `isBehindMerges`) never writes its tree: the
  * record keeps the merged one, and only the place, the orientation and the
  * display are written. The board takes the merge in and writes again.
+ *
+ * **A step is written quietly** (CTA-222, `onlyCasePathDiffers`): a state that
+ * differs only in the move on screen — the reader stepping through the game —
+ * is written at once, as every state is, but this tab's subscribers are not
+ * called for it (the record store's `quiet`): the board already shows it, and
+ * a redraw of the route per arrow press is what made stepping lag. Other tabs
+ * are told as ever.
  */
 export const saveCaseState = (
   id: string,
   state: CaseState,
   now: Date = new Date(),
-): Promise<AnalysisCaseProblem | undefined> =>
-  write((current) => {
-    const existing = current.find((record) => record.id === id);
-    if (existing === undefined || sameCaseState(existing, state)) return current;
-    const behind = isBehindMerges(existing, state);
-    return current.map((record) =>
-      record.id === id
-        ? {
-            ...record,
-            ...(behind ? {} : { pgn: state.pgn, merges: [...(state.merges ?? [])] }),
-            path: [...state.path],
-            orientation: state.orientation,
-            display: { ...state.display },
-            updatedAt: now.toISOString(),
-          }
-        : record,
-    );
-  });
+): Promise<AnalysisCaseProblem | undefined> => {
+  // A step alone — the move on screen, nothing else — is written quietly (CTA-222): the board already shows it.
+  let step = false;
+  return write(
+    (current) => {
+      const existing = current.find((record) => record.id === id);
+      if (existing === undefined || sameCaseState(existing, state)) return current;
+      step = onlyCasePathDiffers(existing, state);
+      const behind = isBehindMerges(existing, state);
+      return current.map((record) =>
+        record.id === id
+          ? {
+              ...record,
+              ...(behind ? {} : { pgn: state.pgn, merges: [...(state.merges ?? [])] }),
+              path: [...state.path],
+              orientation: state.orientation,
+              display: { ...state.display },
+              updatedAt: now.toISOString(),
+            }
+          : record,
+      );
+    },
+    { quiet: () => step },
+  );
+};
 
 /**
  * **A Jobs V2 computer analysis merged into a Case** (CTA-188): `edit` takes
