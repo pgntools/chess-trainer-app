@@ -1646,7 +1646,6 @@ const en = {
     game: {
       tabs: {
         moves: "Moves",
-        map: "Map",
         export: "Export",
       },
       of: "Game {{number}} of {{count}}",

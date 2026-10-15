@@ -87,7 +87,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/blocks/dialogs/OpeningTreePgnDialog/` | *Save tree as PGN*'s choice: No, or Add tags — `games`, `prc`, or both (`FormDialog`, CTA-113). |
 | `src/blocks/dialogs/SaveAsCollectionDialog/` | *Save as collection*'s name dialog (CTA-122): the derived name to edit, the count under it, a busy state and a problem slot — presentational, the write the screen's (`CollectionScreen.tsx`). |
 | `src/views/library/LibraryGameScreen.tsx` → `LibraryGameBoard.tsx` | `/library/<collection>/<n>`: resolve and parse the game, then the analysis board; the screen holds the left panel's open tab and drawer (CTA-209). |
-| `src/blocks/panels/LibraryGameDetails/` | The game board's **left panel** (CTA-209): Back, the game's title and caption, previous / next, and the Settings and Info tabs — presentational, the session's state the board's. |
+| `src/blocks/panels/LibraryGameDetails/` | The game board's **left panel** (CTA-209): Back, the game's title and caption, the Info and Settings tabs (Info first and the default) and previous / next at its foot (CTA-212) — presentational, the session's state the board's. |
 | `src/views/library/useLibraryCollections.ts` | The React bindings: `useUploadedCollections`, `useLibraryFolders`, `useCollectionSummary`, `useCollectionRows`, `useCollectionGames`, `loadCollectionGames`, `useTournamentGuess` (CTA-142: the kind of tournament the games look like, read off their tags when asked). |
 | `src/views/library/indexCollection.ts` | Runs the worker with progress and cancel, with a jsdom fallback. |
 | `src/views/library/LibraryMiss.tsx` | The "no such collection / game" screen. |
@@ -966,9 +966,11 @@ Board), `useVariationsExplorer` (editing on, *Play chances…* off), and
 
 - **Two panels** (CTA-209), as the Case board's and the repertoire player's:
   the right one is the board's tools, the left one the game's own view.
-- **The right panel's tabs**: Moves · Map · Export — no Engine tab since
+- **The right panel's tabs**: Moves · Export — no Engine tab since
   CTA-181 (the search settings are the top bar's Engine menu, one set for
-  every board), and the tags on the left panel's Info tab since CTA-209.
+  every board), the tags on the left panel's Info tab since CTA-209, and no
+  Map since CTA-212 (the board passes the explorer no `map` option; every
+  other board's Map is unchanged).
 - **The right panel's header**, in this order: under the shell's breakpoint
   the button that opens the left panel's drawer (`library-game-details-toggle`);
   the current opening (`CurrentOpening`); then Save, Play and the engine's
@@ -980,16 +982,20 @@ Board), `useVariationsExplorer` (editing on, *Play chances…* off), and
   `BoardLeftPanel`'s `keepShell` — the header and its Engine menu stay; a
   drawer under the breakpoint; `library-game-details`): a head — **Back** at
   its start (to `state.from`, else the table), the game's title
-  (`gameTitleOf`, its `h2`) and at its end **previous / next** (keeping
-  `location.state`; disabled buttons at either end); under them "Game n of m"
-  and event/round/date/result on one line — then two tabs:
-  - **Settings** (the default) — the **next-move arrows**
+  (`gameTitleOf`, its `h2`); under them "Game n of m" and
+  event/round/date/result on one line — then two tabs:
+  - **Info** (first, and where a game opens — CTA-212) — the tags (`GameInfo`).
+  - **Settings** — the **next-move arrows**
     (`library-game-details-arrows`), the **move marks**
     (`library-game-details-move-marks` — the move on screen's `!` / `??`
     badge on the board, CTA-168; both on at the start, the session's, and a
     shipped game's Save as copy keeps both as the Case's display) and the
     **eval bar** (`library-game-details-evalbar`).
-  - **Info** — the tags (`GameInfo`).
+
+  and at its foot, sticky under the scrolling tab, **previous / next**
+  (`library-game-details-siblings`, CTA-212 — the head's end before; keeping
+  `location.state`; disabled buttons at either end; their arrows following
+  the reading direction under RTL), as the Case view's (`CaseDetails`).
   The open tab and the drawer are the route's (`LibraryGameScreen`); the
   session's state (arrows, marks, eval bar) stays the board's, handed to the
   block as props.

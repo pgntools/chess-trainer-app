@@ -172,11 +172,12 @@ describe("a Library game — accessible", () => {
     engine.focus();
     await user.keyboard(" ");
     expect(engine).toBeChecked();
-    // The left panel's tabs, by the arrow keys.
-    const settings = within(details).getByRole("tab", { name: i18n.t("library.game.details.tabs.settings") });
-    settings.focus();
+    // The left panel's tabs, by the arrow keys — from Info, where a game opens (CTA-212).
+    const info = within(details).getByRole("tab", { name: i18n.t("library.game.details.tabs.info") });
+    expect(info).toHaveAttribute("aria-selected", "true");
+    info.focus();
     await user.keyboard("{ArrowRight}{Enter}");
-    expect(within(details).getByRole("tab", { name: i18n.t("library.game.details.tabs.info") })).toHaveAttribute("aria-selected", "true");
+    expect(within(details).getByRole("tab", { name: i18n.t("library.game.details.tabs.settings") })).toHaveAttribute("aria-selected", "true");
     await expectNoAxeViolations(details);
   });
 

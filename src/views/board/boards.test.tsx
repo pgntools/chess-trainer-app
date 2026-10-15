@@ -103,7 +103,7 @@ const BOARDS: readonly {
   // Play with Engine, a v2 screen since CTA-74.
   { name: "Play with Engine", id: "play-with-engine", Screen: PlayWithEngine, engineTab: true, otherTab: "engine" },
   // The Library's game board (CTA-75) — its engine a header switch since CTA-209.
-  { name: "Library game", id: "library-game", Screen: LibraryGame, engineOff: true, engineSwitch: true, otherTab: "map" },
+  { name: "Library game", id: "library-game", Screen: LibraryGame, engineOff: true, engineSwitch: true, otherTab: "export" },
   // The Openings explorer (CTA-78), in Openings v2's place.
   { name: "Openings explorer", id: "openings", Screen: OpeningsBoard, engineOff: true, otherTab: "map" },
   // Masked Pieces (CTA-79): Play with Engine's screen in a costume — its

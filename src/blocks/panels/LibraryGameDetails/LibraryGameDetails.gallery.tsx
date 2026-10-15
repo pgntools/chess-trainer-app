@@ -23,7 +23,7 @@ const demo = ({
   caption = CAPTION,
   number = 2,
   count = 45,
-  tab = "settings" as LibraryGameDetailsTab,
+  tab = "info" as LibraryGameDetailsTab,
 }: {
   title?: string;
   collectionName?: string;
@@ -64,13 +64,13 @@ const gallery: GalleryModule<BlockFamilyId> = {
   section: "panels",
   title: "LibraryGameDetails",
   demos: [
-    { name: "A game, on Settings", render: () => demo() },
-    { name: "Its tags on Info", render: () => demo({ tab: "info" }) },
+    { name: "A game — its tags on Info, previous / next at the foot", render: () => demo() },
+    { name: "On Settings", render: () => demo({ tab: "settings" }) },
     { name: "The first game — no previous", render: () => demo({ number: 1 }) },
     { name: "The only game — neither", render: () => demo({ number: 1, count: 1 }) },
     { name: "No event, round, date or result", render: () => demo({ caption: "" }) },
     { name: "Long names — the title wraps, the caption is one line", render: () => demo({ title: LONG_TITLE, caption: LONG_CAPTION }) },
-    { name: "Hebrew names (switch to RTL — the way back turns)", render: () => demo({ title: HEBREW_TITLE, collectionName: HEBREW_COLLECTION }) },
+    { name: "Hebrew names (switch to RTL — the way back, previous and next turn)", render: () => demo({ title: HEBREW_TITLE, collectionName: HEBREW_COLLECTION }) },
   ],
 };
 

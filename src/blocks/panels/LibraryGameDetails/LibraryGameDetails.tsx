@@ -15,7 +15,7 @@ import type { Game } from "../../../lib/gameModel";
 import { GameInfo } from "../GameInfo";
 
 /** The panel's tabs, in order. */
-export type LibraryGameDetailsTab = "settings" | "info";
+export type LibraryGameDetailsTab = "info" | "settings";
 
 export type LibraryGameDetailsProps = {
   /** The game's title, as shown — the panel's heading (the players, `gameTitleOf`). */
@@ -30,9 +30,9 @@ export type LibraryGameDetailsProps = {
   caption: string;
   /** Back, at the head's start: to the collection's table, as the reader left it. */
   backLink: LinkTarget;
-  /** The previous game — `undefined` on the first. */
+  /** The previous game, at the foot — `undefined` on the first. */
   previousLink: LinkTarget | undefined;
-  /** The next game — `undefined` on the last. */
+  /** The next game, at the foot — `undefined` on the last. */
   nextLink: LinkTarget | undefined;
 
   /** The open tab — the screen's, held above the board so it outlives a step to another game. */
@@ -52,10 +52,10 @@ export type LibraryGameDetailsProps = {
   game: Game;
 
   /**
-   * The root; its parts `-back`, `-title`, `-previous`, `-next`, `-caption`,
-   * `-tabs` (each tab `<testId>-tab-<id>`), `-settings` (`-arrows`,
-   * `-move-marks`, `-evalbar`), `-info` (the tags, `GameInfo`'s
-   * `<testId>-info-…`).
+   * The root; its parts `-back`, `-title`, `-caption`, `-tabs` (each tab
+   * `<testId>-tab-<id>`), `-info` (the tags, `GameInfo`'s `<testId>-info-…`),
+   * `-settings` (`-arrows`, `-move-marks`, `-evalbar`), `-siblings` (the
+   * foot: `-previous`, `-next`).
    */
   testId: string;
 };
@@ -64,13 +64,17 @@ export type LibraryGameDetailsProps = {
  * **A Library game's own view beside its board** (CTA-209) — the left panel
  * of the Library's game board (`/library/<collection>/<n>`), what
  * `RepertoireDetails` is to the repertoire player: a head — Back to the
- * collection at its start, the game's title, the previous and next game at
- * its end, and "Game n of m · event · round · date · result" on one line
- * under them; then two tabs (the opening on screen is the board panel's):
+ * collection at its start and the game's title, and "Game n of m · event ·
+ * round · date · result" on one line under them; then two tabs (the opening
+ * on screen is the board panel's):
  *
+ * - **Info** — the game's PGN tags (`GameInfo`); first, where a game opens
+ *   (CTA-212).
  * - **Settings** — the session's knobs: the next-move arrows, the move marks
  *   and the eval bar.
- * - **Info** — the game's PGN tags (`GameInfo`).
+ *
+ * and at its foot, sticky under the scrolling tab, the previous and the next
+ * game (CTA-212 — the head's end before), as the Case view's (`CaseDetails`).
  *
  * Presentational: the session's state, the links and the open tab arrive from
  * the screen; its words are `library.game.*`.
@@ -96,8 +100,11 @@ function LibraryGameDetails({
   testId,
 }: LibraryGameDetailsProps) {
   const { t } = useTranslation();
-  // The way back points along the reading direction, which runs right to left under RTL.
-  const Back = useTheme().direction === "rtl" ? ArrowForwardRoundedIcon : ArrowBackRoundedIcon;
+  // The way back, previous and next point along the reading direction, which runs right to left under RTL.
+  const rtl = useTheme().direction === "rtl";
+  const Back = rtl ? ArrowForwardRoundedIcon : ArrowBackRoundedIcon;
+  const Previous = rtl ? NavigateNextRoundedIcon : NavigateBeforeRoundedIcon;
+  const Next = rtl ? NavigateBeforeRoundedIcon : NavigateNextRoundedIcon;
   const place = t("library.game.of", { number, count });
   const line = caption === "" ? place : `${place} · ${caption}`;
 
@@ -125,23 +132,6 @@ function LibraryGameDetails({
         >
           {title}
         </Typography>
-        {/* Previous and next keep their place on the first and the last game, disabled. */}
-        <IconAction
-          label={t("library.game.previous")}
-          link={previousLink}
-          disabled={previousLink === undefined}
-          testId={`${testId}-previous`}
-        >
-          <NavigateBeforeRoundedIcon fontSize="small" />
-        </IconAction>
-        <IconAction
-          label={t("library.game.next")}
-          link={nextLink}
-          disabled={nextLink === undefined}
-          testId={`${testId}-next`}
-        >
-          <NavigateNextRoundedIcon fontSize="small" />
-        </IconAction>
       </Box>
       <Box sx={{ flexShrink: 0, pb: 1, minWidth: 0 }}>
         <Typography
@@ -158,8 +148,8 @@ function LibraryGameDetails({
       <Box sx={{ flexShrink: 0, pb: 1 }}>
         <PanelTabs
           tabs={[
-            { id: "settings", label: t("library.game.details.tabs.settings") },
             { id: "info", label: t("library.game.details.tabs.info") },
+            { id: "settings", label: t("library.game.details.tabs.settings") },
           ]}
           value={tab}
           onChange={(id) => onTabChange(id as LibraryGameDetailsTab)}
@@ -169,8 +159,13 @@ function LibraryGameDetails({
           tabTestIdPrefix={testId}
         />
       </Box>
-      {/* The open tab's content scrolls; the head and the tabs stay. */}
+      {/* The open tab's content scrolls; the head, the tabs and the foot stay. */}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        {tab === "info" && (
+          <Box {...tabPanelProps(testId, "info")} data-testid={`${testId}-info-tab`}>
+            <GameInfo game={game} testId={`${testId}-info`} />
+          </Box>
+        )}
         {tab === "settings" && (
           <Box
             {...tabPanelProps(testId, "settings")}
@@ -206,11 +201,28 @@ function LibraryGameDetails({
             />
           </Box>
         )}
-        {tab === "info" && (
-          <Box {...tabPanelProps(testId, "info")} data-testid={`${testId}-info-tab`}>
-            <GameInfo game={game} testId={`${testId}-info`} />
-          </Box>
-        )}
+      </Box>
+      {/* Sticky at the foot, as the Case view's; on the first and the last game each keeps its place, disabled. */}
+      <Box
+        data-testid={`${testId}-siblings`}
+        sx={{ flexShrink: 0, display: "flex", justifyContent: "center", gap: 1, pt: 1, mt: 1, borderTop: "1px solid", borderColor: "divider" }}
+      >
+        <IconAction
+          label={t("library.game.previous")}
+          link={previousLink}
+          disabled={previousLink === undefined}
+          testId={`${testId}-previous`}
+        >
+          <Previous fontSize="small" />
+        </IconAction>
+        <IconAction
+          label={t("library.game.next")}
+          link={nextLink}
+          disabled={nextLink === undefined}
+          testId={`${testId}-next`}
+        >
+          <Next fontSize="small" />
+        </IconAction>
       </Box>
     </Box>
   );

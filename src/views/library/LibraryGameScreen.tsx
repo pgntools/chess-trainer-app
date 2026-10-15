@@ -29,7 +29,7 @@ function LibraryGameScreen() {
   const { t } = useTranslation();
   const state = useCollectionGames(collectionId);
   // The left panel's open tab and, under the breakpoint, its drawer (CTA-209).
-  const [detailsTab, setDetailsTab] = useState<LibraryGameDetailsTab>("settings");
+  const [detailsTab, setDetailsTab] = useState<LibraryGameDetailsTab>("info");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const summary = state.status === "ready" ? state.summary : undefined;
   const games = state.status === "ready" ? state.value : undefined;
