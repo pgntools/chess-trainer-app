@@ -2049,9 +2049,13 @@ const en = {
         games: "Games",
         jobs: "Jobs",
       },
-      /** The Settings tab's link to the record's own settings screen. */
+      /** The head's Back, on the repertoire's own view — to the list. */
+      back: "Back to the repertoires",
+      /** The head's gear: the record's own settings screen. */
       recordSettings: "Repertoire settings",
-      recordSettingsHelp: "The title, description, main colour, folder and board options are on the repertoire's settings screen.",
+      evalBarHelp: "The engine's score beside the board while the engine is on.",
+      /** The board header's engine switch — its icon's name. */
+      engine: "Engine",
       games: {
         label: "Games of {{name}}",
         /** On a game, the way back to the repertoire's own view. */

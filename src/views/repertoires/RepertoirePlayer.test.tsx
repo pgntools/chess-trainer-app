@@ -161,8 +161,9 @@ describe("the repertoire player, Autoplay on", () => {
       "repertoire-board-panel-tab-moves",
       "repertoire-board-panel-tab-map",
     ]);
-    // Its switch is the header's play / pause, and off.
-    expect(screen.getByRole("button", { name: i18n.t("boardEngine.toggle") })).toHaveAttribute("aria-pressed", "false");
+    // Its switch is the header's — a small on / off switch, as the Case board's (CTA-206) — and off.
+    expect(screen.getByRole("switch", { name: "Engine" })).not.toBeChecked();
+    expect(screen.queryByRole("button", { name: i18n.t("boardEngine.menu") })).not.toBeInTheDocument();
     openSettings();
     // Autoplay is off by default: the reader moves both sides, and the footer
     // is the next-moves bar rather than the trainer's status.
@@ -418,7 +419,7 @@ describe("the repertoire player, Autoplay on", () => {
   it("shows the best variations once the engine is switched on, and never moves for it", async () => {
     await mount(`/repertoires/${await storeRepertoire("r", CARO)}`);
     engineOn();
-    expect(screen.getByTestId("repertoire-board-setting-engine")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("switch", { name: "Engine" })).toBeChecked();
 
     const engine = FakeEngine.latest();
     expect(engine.lastSearch).toBe(new Chess().fen());
@@ -443,13 +444,16 @@ describe("the repertoire player, Autoplay on", () => {
     wait();
     expect(position()).toBe(new Chess().fen());
 
-    // Its menu holds the eval bar; the search settings are the top bar's (CTA-181).
-    fireEvent.click(screen.getByRole("button", { name: i18n.t("boardEngine.menu") }));
-    fireEvent.click(within(screen.getByTestId("repertoire-board-setting-evalbar")).getByRole("switch"));
+    // The eval bar is the left panel's Settings tab's (CTA-206 — the header's engine menu before);
+    // the search settings are the top bar's (CTA-181).
+    openSettings();
+    fireEvent.click(within(screen.getByTestId("repertoire-board-details")).getByRole("switch", { name: /Show evaluation bar/ }));
     expect(screen.queryByTestId("eval-bar")).not.toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId("repertoire-board-details")).getByRole("switch", { name: /Show evaluation bar/ }));
+    expect(screen.getByTestId("eval-bar")).toBeInTheDocument();
   });
 
-  it("clears the session's additions from the Settings tab (the Engine tab's Clear, CTA-181)", async () => {
+  it("has no Clear any more (CTA-206): the changes strip's Discard drops the session's additions", async () => {
     await mount(`/repertoires/${await storeRepertoire("r", CARO)}`);
     drop("e2", "e4");
     wait();
@@ -457,9 +461,9 @@ describe("the repertoire player, Autoplay on", () => {
     expect(document.querySelector('[data-san="d3"]')).not.toBeNull();
 
     openSettings();
-    fireEvent.click(screen.getByTestId("repertoire-board-details-clear"));
-    fireEvent.click(screen.getByTestId("repertoire-board-panel-tab-moves"));
-    expect(position()).toBe(new Chess().fen());
+    expect(screen.queryByRole("button", { name: i18n.t("analysis.settings.clear") })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("repertoire-board-save"));
+    fireEvent.click(screen.getByTestId("repertoire-board-changes-discard"));
     expect(document.querySelector('[data-san="d3"]')).toBeNull();
   });
 
@@ -1063,11 +1067,21 @@ describe("the header's Play button (CTA-65)", () => {
     await mountIdle(`/repertoires/${await storeRepertoire("r", CARO)}`);
     expect(play()).toHaveAttribute("aria-pressed", "false");
     expect(play()).toHaveAccessibleName(i18n.t("repertoires.play.autoplayOn"));
-    // Beside Restart, before it.
-    expect(
-      play().compareDocumentPosition(screen.getByTestId("repertoire-board-restart")) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+  });
+
+  it("orders the header: Restart and the download at its start, then Save, Play and the engine's switch (CTA-206)", async () => {
+    await mountIdle(`/repertoires/${await storeRepertoire("r", CARO)}`);
+    const header = screen.getByTestId("repertoire-board-panel-header");
+    const order = [
+      within(header).getByRole("button", { name: i18n.t("repertoires.play.restart") }),
+      within(header).getByRole("button", { name: i18n.t("repertoires.play.download") }),
+      within(header).getByTestId("repertoire-board-save"),
+      play(),
+      within(header).getByRole("switch", { name: "Engine" }),
+    ];
+    for (let index = 1; index < order.length; index += 1) {
+      expect(order[index - 1].compareDocumentPosition(order[index]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
   });
 
   it("toggles Autoplay: pressed while on, the trainer answering, and back off", async () => {

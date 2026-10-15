@@ -11,10 +11,13 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { BoardEngineControls, ChangesStrip, RepertoireDetails, type RepertoireDetailsTab } from "../../blocks/panels";
+import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
+import { ChangesStrip, RepertoireDetails, type RepertoireDetailsTab } from "../../blocks/panels";
 import type { ChessboardOptions } from "react-chessboard";
 
 import { analysisUciOptionsOf } from "../../lib/analysisSettings";
+import { visuallyHidden } from "../../design-system/components/a11y";
+import { SwitchField } from "../../design-system/components/forms";
 import { IconAction, ToggleIconAction } from "../../design-system/components/toolbars";
 import { emptyTree, pathTo, type GameTree } from "../../lib/gameTree";
 import { downloadPgn } from "../../lib/pgnExport";
@@ -69,7 +72,7 @@ import { useShellCompact } from "../main/shellCompact";
  * | Base | `useBoardCore({ orientation })` | facing the reader's side; both colours move from any node — a reader tries moves against the file, and past a line's end plays both |
  * | Trainer | `useTrainerModule` | the opponent: in the player behind the **Autoplay** setting (off by default), always on in a game — see that file for the "replies to a move, never to a position" rule |
  * | Game | `useRepertoireGame` | a game's score, finished lines and coverage; inert in the player |
- * | Engine | the header's play / pause, **off by default**, **no reply** (`BoardEngineControls`, with the eval bar in its menu; the search settings the top bar's Engine menu — CTA-181) | the pinned best-variations block and the eval bar when asked for; it never moves a piece |
+ * | Engine | the header's on / off switch, **off by default**, **no reply** (as the Case board's; the eval bar the left panel's Settings tab's — CTA-206; the search settings the top bar's Engine menu — CTA-181) | the pinned best-variations block and the eval bar when asked for; it never moves a piece |
  * | Autosave | ❌ | the session is the reader's, the record is the file's |
  * | Tree view | `useVariationsExplorer` (`views/explorer/`, CTA-72) | the Moves and Map tabs, the comment block, the next-moves bar and the arrows — the shared explorer, given what is the player's as options ([`.claude/rules/tree-views.md`](../../../.claude/rules/tree-views.md)) |
  *
@@ -81,8 +84,8 @@ import { useShellCompact } from "../main/shellCompact";
  * - **Every move the repertoire does not have is an extension** — added under
  *   the node on screen and tinted in the move list; `extensionIdsOf` against
  *   the ids the repertoire arrived with (or last saved), recomputed, never
- *   tracked. The header's download writes them out; the Settings tab's "Clear"
- *   drops them.
+ *   tracked. The header's download writes them out; the changes strip's
+ *   Discard drops them.
  * - **Changes are kept on the reader's say-so** (the player's; a game never
  *   writes). While the session's tree differs from the record, the header's
  *   **Save** button (disabled while nothing has changed) takes the primary
@@ -111,12 +114,13 @@ import { useShellCompact } from "../main/shellCompact";
  * - **The left panel is the repertoire's own view** (CTA-206, the
  *   `RepertoireDetails` block in the shell's board left panel, `keepShell`,
  *   as Analysis's Case view; a drawer under the breakpoint, opened from the
- *   header): the name, the description and the opening on screen, then
- *   **Settings** — the side, Autoplay (player only — and the header's
- *   **Play** button, a second control over the same state), the next-move
- *   arrows, the play-chance arrows, Clear and a link to the record's
- *   settings — **Games**, each game a link (the one being played current, a
- *   way back to the player first), and **Jobs**, nothing yet. Its open tab
+ *   header): Back (up a level) and the record's settings (a gear) around
+ *   the name, the description and the opening on screen, then **Settings** —
+ *   the side, Autoplay (player only — and the header's **Play** button, a
+ *   second control over the same state), the next-move arrows, the
+ *   play-chance arrows and the eval bar — **Games**, each game a link (the
+ *   one being played current, a way back to the player first), and
+ *   **Jobs**, nothing yet. Its open tab
  *   and its drawer are the route's (`RepertoireBoard.tsx`), above this keyed
  *   screen, so they outlive a change of game. The session's state stays here.
  * - **The player's URL is a permanent link** to the position on screen:
@@ -525,12 +529,6 @@ function RepertoirePlayer({
   // Leaving with changes unsaved — a reload, a closed tab — asks first.
   useUnsavedWorkGuard(changed);
 
-  /** "Clear" (the Settings tab's, the Engine tab's until CTA-181): the repertoire as the record has it, from the start. */
-  const clear = () => {
-    loadTree(repertoire);
-    requestReply(null);
-  };
-
   const download = () =>
     downloadPgn(slugify(saved.name) || "repertoire", [core.pgn]);
 
@@ -595,9 +593,20 @@ function RepertoirePlayer({
         onShowArrowsChange={setShowArrows}
         chanceArrows={game === undefined ? chanceArrows : undefined}
         onChanceArrowsChange={setChanceArrows}
-        onClear={clear}
+        showEvalBar={showEvalBar}
+        onShowEvalBarChange={setShowEvalBar}
         // Back to this position, link and all.
         settingsLink={{ component: RouterLink, to: `${boardPath}/settings`, state: { from: `${boardPath}${location.search}` } }}
+        // Up one level: a game to its repertoire, the repertoire to the list — into its folder.
+        backLink={{
+          component: RouterLink,
+          to:
+            game !== undefined
+              ? boardPath
+              : saved.folderId === null
+                ? "/repertoires"
+                : `/repertoires?${new URLSearchParams({ folder: saved.folderId })}`,
+        }}
         gameLink={(next) => ({ component: RouterLink, to: repertoireGamePath(saved.id, next) })}
         currentGame={game}
         repertoireLink={game === undefined ? undefined : { component: RouterLink, to: boardPath }}
@@ -638,7 +647,18 @@ function RepertoirePlayer({
                   <TuneRoundedIcon fontSize="small" />
                 </IconAction>
               )}
-              {/* The name, the description and the opening are the left panel's head (CTA-206). */}
+              {/* Restart and the download at the toolbar's start; the name, the description and the opening are the left panel's head (CTA-206). */}
+              <IconAction label={t("repertoires.play.restart")} onClick={restart} testId={`${id}-restart`}>
+                <RestartAltRoundedIcon fontSize="small" />
+              </IconAction>
+              <IconAction
+                label={t("repertoires.play.download")}
+                onClick={download}
+                disabled={shown !== "ready"}
+                testId={`${id}-download`}
+              >
+                <DownloadRoundedIcon fontSize="small" />
+              </IconAction>
               <Box sx={{ flexGrow: 1 }} />
               {shown === "loading" && (
                 <CircularProgress
@@ -673,25 +693,31 @@ function RepertoirePlayer({
                   {autoplay ? <PauseRoundedIcon fontSize="small" /> : <PlayArrowRoundedIcon fontSize="small" />}
                 </IconAction>
               )}
-              {/* The engine's play / pause and its menu — the eval bar (CTA-181). */}
-              <BoardEngineControls
-                engineOn={engineOn}
-                onEngineOnChange={setEngineOn}
-                showEvalBar={showEvalBar}
-                onShowEvalBarChange={setShowEvalBar}
-                testId={id}
-              />
-              <IconAction label={t("repertoires.play.restart")} onClick={restart} testId={`${id}-restart`}>
-                <RestartAltRoundedIcon fontSize="small" />
-              </IconAction>
-              <IconAction
-                label={t("repertoires.play.download")}
-                onClick={download}
-                disabled={shown !== "ready"}
-                testId={`${id}-download`}
-              >
-                <DownloadRoundedIcon fontSize="small" />
-              </IconAction>
+              {/* The engine's on / off — a small switch, as the Case board's; the eval bar is the left panel's Settings tab's. */}
+              <Box sx={{ flexShrink: 0 }}>
+                <SwitchField
+                  size="small"
+                  // The top bar's Engine icon for the word — "Engine" on a hover, and read from the
+                  // hidden word (a label of an SVG title alone is no label to every reader) —
+                  // neutral at its 0.56 while off, the primary colour while on.
+                  label={
+                    <Box component="span" title={t("repertoires.details.engine")} sx={{ display: "flex" }}>
+                      <SmartToyRoundedIcon
+                        fontSize="small"
+                        color={engineOn ? "primary" : "inherit"}
+                        aria-hidden
+                        sx={{ display: "block", opacity: engineOn ? 1 : 0.56 }}
+                      />
+                      <Box component="span" sx={visuallyHidden}>
+                        {t("repertoires.details.engine")}
+                      </Box>
+                    </Box>
+                  }
+                  checked={engineOn}
+                  onChange={setEngineOn}
+                  testId={`${id}-setting-engine`}
+                />
+              </Box>
             </>
           ),
           analysis: engine.analysis,

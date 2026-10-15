@@ -4,8 +4,8 @@ import userEvent from "@testing-library/user-event";
 
 import i18n from "../../i18n";
 import { isMultiGameRepertoire, repertoireTreeOf } from "../../lib/savedRepertoires";
-import { findSavedRepertoire, savedRepertoiresSnapshot } from "../../lib/savedRepertoireStore";
-import { repertoireFoldersSnapshot } from "../../lib/savedRepertoireFolderStore";
+import { fileRepertoire, findSavedRepertoire, savedRepertoiresSnapshot } from "../../lib/savedRepertoireStore";
+import { createRepertoireFolder, repertoireFoldersSnapshot } from "../../lib/savedRepertoireFolderStore";
 import { boardOptions, FakeEngine } from "../board/boardTestHarness";
 import {
   CARO,
@@ -82,9 +82,9 @@ describe("a repertoire's own view — the player, on the v2 board", () => {
     }
     // The session's settings are the left panel's (CTA-206), not a tab of this one.
     expect(screen.queryByTestId("repertoire-board-panel-tab-settings")).not.toBeInTheDocument();
-    // No Engine tab (CTA-181): the engine is the header's play / pause, its search the top bar's.
+    // No Engine tab (CTA-181): the engine is the header's on / off switch (CTA-206), its search the top bar's.
     expect(screen.queryByTestId("repertoire-board-panel-tab-engine")).not.toBeInTheDocument();
-    expect(screen.getByTestId("repertoire-board-setting-engine")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("switch", { name: "Engine" })).not.toBeChecked();
     // The player (CTA-63): its games the left panel's Games tab (CTA-206), no game running.
     expect(screen.getByTestId("repertoire-board-details-tab-games")).toBeInTheDocument();
     expect(screen.queryByTestId("repertoire-board-panel-tab-score")).not.toBeInTheDocument();
@@ -147,6 +147,24 @@ describe("a repertoire's own view — the player, on the v2 board", () => {
     expect(within(screen.getByTestId("layout-board-left-panel")).getByRole("region", { name: "Details of Caro" })).toBeInTheDocument();
     // Wide there is no drawer to open.
     expect(screen.queryByTestId("repertoire-board-details-toggle")).not.toBeInTheDocument();
+  });
+
+  it("goes Back up a level from its left panel: the repertoire to its folder in the list, a game to the repertoire (CTA-206)", async () => {
+    const id = await storeRepertoire("r", CARO, "Caro");
+    const folder = (await createRepertoireFolder("Openings"))!;
+    await fileRepertoire(id, folder.id);
+    await renderSection(`/repertoires/${id}`);
+    await ready();
+    expect(screen.getByRole("link", { name: "Back to the repertoires" })).toHaveAttribute(
+      "href",
+      `/repertoires?folder=${encodeURIComponent(folder.id)}`,
+    );
+
+    await userEvent.click(screen.getByRole("tab", { name: "Games" }));
+    await userEvent.click(screen.getByTestId("repertoire-board-details-games-end"));
+    // In a game the head's Back and the Games tab's both lead to the repertoire.
+    const backs = await screen.findAllByRole("link", { name: /^Back to the repertoire(?!s)/ });
+    expect(backs.map((link) => link.getAttribute("href"))).toEqual([`/repertoires/${id}`, `/repertoires/${id}`]);
   });
 
   it("puts its left panel in a drawer under the breakpoint, opened from the board's header (CTA-206)", async () => {

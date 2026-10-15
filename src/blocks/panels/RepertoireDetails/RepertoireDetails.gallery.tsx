@@ -8,7 +8,7 @@ import type { BlockFamilyId } from "../../families";
 import RepertoireDetails, { type RepertoireDetailsTab, type RepertoireSide } from "./RepertoireDetails";
 import { CARO_KANN, DESCRIPTION, HEBREW_DESCRIPTION, HEBREW_NAME, NAME } from "./fixtures";
 
-type Session = { tab: RepertoireDetailsTab; side: RepertoireSide; autoplay: boolean; arrows: boolean; chances: boolean };
+type Session = { tab: RepertoireDetailsTab; side: RepertoireSide; autoplay: boolean; arrows: boolean; chances: boolean; evalBar: boolean };
 
 const demo = ({
   name = NAME,
@@ -25,7 +25,7 @@ const demo = ({
   tab?: RepertoireDetailsTab;
   game?: RepertoireGameId;
 } = {}) => (
-  <WithState<Session> initial={{ tab, side: "black", autoplay: false, arrows: true, chances: false }}>
+  <WithState<Session> initial={{ tab, side: "black", autoplay: false, arrows: true, chances: false, evalBar: true }}>
     {(session, setSession) => (
       <Box sx={{ width: 400, height: 520, display: "flex", flexDirection: "column" }}>
         <RepertoireDetails
@@ -43,8 +43,10 @@ const demo = ({
           onShowArrowsChange={(next) => setSession((now) => ({ ...now, arrows: next }))}
           chanceArrows={game === undefined ? session.chances : undefined}
           onChanceArrowsChange={(next) => setSession((now) => ({ ...now, chances: next }))}
-          onClear={() => {}}
+          showEvalBar={session.evalBar}
+          onShowEvalBarChange={(next) => setSession((now) => ({ ...now, evalBar: next }))}
           settingsLink={{ href: "#settings" }}
+          backLink={{ href: game === undefined ? "#repertoires" : "#repertoire" }}
           gameLink={(id) => ({ href: `#games-${id}` })}
           currentGame={game}
           repertoireLink={game === undefined ? undefined : { href: "#repertoire" }}

@@ -157,23 +157,28 @@ RepertoireGame.tsx ──┴─▶ RepertoirePlayer.tsx ── download: treeToP
   mounted (`keepMounted`), so a 9,000-move list never re-mounts; its footer
   is the comment block, the changes strip, the next-moves bar or the
   trainer's status.
-- **The right panel's header — its actions only**: Save (the changes
-  strip), Play, the engine's play / pause with its menu (the eval bar —
-  `BoardEngineControls`, CTA-181), Restart (back to the start, extensions
-  kept) and the download (the session tree as PGN); under the shell's
-  breakpoint, first, the button that opens the left panel's drawer.
+- **The right panel's header — its actions only**, in this order: under
+  the shell's breakpoint the button that opens the left panel's drawer;
+  Restart (back to the start, extensions kept) and the download (the
+  session tree as PGN) at its start; then, at its end, Save (the changes
+  strip), Play and the engine's on / off — a small switch with the top
+  bar's Engine icon, as the Case board's (no `BoardEngineControls` and its
+  menu since CTA-206; the eval bar is the left panel's).
 - **The left panel** (`RepertoireDetails` in the shell's board left panel,
   `BoardLeftPanel`'s `keepShell`, as Analysis's Case view — the header and
-  its Engine menu stay; a drawer under the breakpoint): a head — the name,
-  the description on one line (the whole on hover) or, in a game, the
-  game's title, and the opening on screen — then three tabs:
+  its Engine menu stay; a drawer under the breakpoint): a head — **Back**
+  at its start (up a level: the repertoire to the list, into its folder; a
+  game to the repertoire), the name, and at its end a gear to the record's
+  own settings screen (`/repertoires/<id>/settings`, back to this position
+  — the record's title, description, folder and board are edited there,
+  not here); under them the description on one line (the whole on hover)
+  or, in a game, the game's title, and the opening on screen — then three
+  tabs:
   - **Settings** — the side (default the main colour; a change restarts),
     Autoplay (the player's only; the header's Play is the same state), the
-    next-move arrows, the play-chance arrows (the player's only), **Clear**
-    (the Engine tab's until CTA-181), and a link to the record's own
-    settings screen (`/repertoires/<id>/settings`, back to this position) —
-    the record's title, description, folder and board are edited there, not
-    here.
+    next-move arrows, the play-chance arrows (the player's only) and the
+    eval bar. **No Clear** since CTA-206: the changes strip's Discard drops
+    the session's additions.
   - **Games** — Get to the end and Backtracking, each a link with a line on
     what it does; in a game, that game current (`aria-current`) and **Back to
     the repertoire** first (where the header's Back was).
@@ -193,8 +198,8 @@ RepertoireGame.tsx ──┴─▶ RepertoirePlayer.tsx ── download: treeToP
   lines and the eval bar, no `onBestMove`. A line clicked there is
   exploration; the trainer does not answer it. It searches with the reader's
   global search settings (the top bar's Engine menu), stopping at their depth
-  or move time. The left panel's Settings tab's Clear drops the session's
-  additions.
+  or move time. Its on / off is the header's switch, its eval bar the left
+  panel's Settings tab's.
 - **The comment block** (the explorer's `AnnotationsBar`) shows what is
   written at the position on screen — the move with its marks, the comment
   opening its line, the comments after it, and their attributes as chips

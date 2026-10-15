@@ -1,5 +1,4 @@
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
@@ -8,13 +7,13 @@ import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
-import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import SportsEsportsOutlinedIcon from "@mui/icons-material/SportsEsportsOutlined";
 import WorkHistoryOutlinedIcon from "@mui/icons-material/WorkHistoryOutlined";
 import { useTranslation } from "react-i18next";
 
 import { FieldLabel, SideToggle, SwitchField } from "../../../design-system/components/forms";
+import { IconAction } from "../../../design-system/components/toolbars";
 import { linkProps, type LinkTarget } from "../../../design-system/components/link";
 import { EmptyState } from "../../../design-system/components/states";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
@@ -50,10 +49,13 @@ export type RepertoireDetailsProps = {
   /** The play-chance arrows — `undefined` where there are none: a game must not show the odds. */
   chanceArrows: boolean | undefined;
   onChanceArrowsChange: (on: boolean) => void;
-  /** Clear — the session's additions dropped, back to the repertoire as it arrived. */
-  onClear: () => void;
-  /** The repertoire's own settings screen — the record's title, description, folder and board. */
+  /** The eval bar beside the board while the engine is on (the board header's engine menu before). */
+  showEvalBar: boolean;
+  onShowEvalBarChange: (on: boolean) => void;
+  /** The repertoire's own settings screen — the record's title, description, folder and board; a gear at the head's end. */
   settingsLink: LinkTarget;
+  /** Back, at the head's start: to the repertoires (the repertoire's own view), to the repertoire (a game). */
+  backLink: LinkTarget;
 
   /** Where each game is played. */
   gameLink: (game: RepertoireGameId) => LinkTarget;
@@ -63,9 +65,10 @@ export type RepertoireDetailsProps = {
   repertoireLink?: LinkTarget;
 
   /**
-   * The root; its parts `-title`, `-description`, `-game-title`, `-opening`,
-   * `-tabs` (each tab `<testId>-tab-<id>`), `-settings` (`-side`, `-autoplay`,
-   * `-arrows`, `-chance-arrows`, `-clear`, `-record-settings`), `-games`
+   * The root; its parts `-back`, `-title`, `-record-settings`, `-description`,
+   * `-game-title`, `-opening`, `-tabs` (each tab `<testId>-tab-<id>`),
+   * `-settings` (`-side`, `-autoplay`, `-arrows`, `-chance-arrows`,
+   * `-evalbar`), `-games`
    * (`-games-back`, each game `-games-<id>`), `-jobs` (`-jobs-empty`).
    */
   testId: string;
@@ -76,11 +79,12 @@ export type RepertoireDetailsProps = {
  * the repertoire player (`/repertoires/<id>`) and its games
  * (`/repertoires/<id>/games/<game>`), Analysis's `CaseDetails` for a
  * repertoire: a head — the repertoire's name, its description (or, in a game,
- * the game's title) and the opening on screen — then three tabs:
+ * the game's title) and the opening on screen, Back at its start and the
+ * record's settings — a gear — at its end; then three tabs:
  *
  * - **Settings** — the session's knobs: the side, Autoplay (the repertoire's
  *   own view only), the next-move arrows, the play-chance arrows (the own
- *   view only) and Clear; then a link to the record's own settings screen.
+ *   view only) and the eval bar.
  * - **Games** — every game (`REPERTOIRE_GAMES`), each a link with what it
  *   does, the one being played current; in a game, a way back to the
  *   repertoire's own view first.
@@ -104,8 +108,10 @@ function RepertoireDetails({
   onShowArrowsChange,
   chanceArrows,
   onChanceArrowsChange,
-  onClear,
+  showEvalBar,
+  onShowEvalBarChange,
   settingsLink,
+  backLink,
   gameLink,
   currentGame,
   repertoireLink,
@@ -122,16 +128,28 @@ function RepertoireDetails({
       data-testid={testId}
       sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}
     >
-      <Box sx={{ flexShrink: 0, pb: 1, minWidth: 0 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, pb: 0.5 }}>
+        <IconAction
+          label={t(currentGame === undefined ? "repertoires.details.back" : "repertoires.details.games.back")}
+          link={backLink}
+          testId={`${testId}-back`}
+        >
+          <Back fontSize="small" />
+        </IconAction>
         <Typography
           component="h2"
           variant="subtitle2"
           dir="auto"
           data-testid={`${testId}-title`}
-          sx={{ fontWeight: 700, lineHeight: 1.3, overflowWrap: "anywhere" }}
+          sx={{ flexGrow: 1, minWidth: 0, fontWeight: 700, lineHeight: 1.3, overflowWrap: "anywhere" }}
         >
           {name}
         </Typography>
+        <IconAction label={t("repertoires.details.recordSettings")} link={settingsLink} testId={`${testId}-record-settings`}>
+          <SettingsRoundedIcon fontSize="small" />
+        </IconAction>
+      </Box>
+      <Box sx={{ flexShrink: 0, pb: 1, minWidth: 0 }}>
         {currentGame !== undefined ? (
           <Typography
             variant="caption"
@@ -227,24 +245,15 @@ function RepertoireDetails({
                 help={t("repertoires.play.chanceArrowsHelp")}
               />
             )}
-            <Box>
-              <Button variant="outlined" startIcon={<RestartAltRoundedIcon />} onClick={onClear} data-testid={`${testId}-clear`}>
-                {t("analysis.settings.clear")}
-              </Button>
-            </Box>
-            <Box sx={{ borderTop: "1px solid", borderColor: "divider", pt: 2 }}>
-              <Button
-                variant="text"
-                startIcon={<SettingsRoundedIcon />}
-                data-testid={`${testId}-record-settings`}
-                {...linkProps(settingsLink)}
-              >
-                {t("repertoires.details.recordSettings")}
-              </Button>
-              <Typography variant="caption" sx={{ display: "block", color: "text.secondary", mt: 0.5 }}>
-                {t("repertoires.details.recordSettingsHelp")}
-              </Typography>
-            </Box>
+            <SwitchField
+              size="small"
+              testIdOn="control"
+              testId={`${testId}-evalbar`}
+              checked={showEvalBar}
+              onChange={onShowEvalBarChange}
+              label={t("analysis.settings.evalBar")}
+              help={t("repertoires.details.evalBarHelp")}
+            />
           </Box>
         )}
         {tab === "games" && (

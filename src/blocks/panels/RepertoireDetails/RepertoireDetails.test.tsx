@@ -27,8 +27,10 @@ function Held({ initialTab = "settings", ...given }: Given) {
       onShowArrowsChange={() => {}}
       chanceArrows={false}
       onChanceArrowsChange={() => {}}
-      onClear={() => {}}
+      showEvalBar
+      onShowEvalBarChange={() => {}}
       settingsLink={{ href: "/repertoires/r1/settings" }}
+      backLink={{ href: "/repertoires" }}
       gameLink={(game) => ({ href: `/repertoires/r1/games/${game}` })}
       testId="probe"
       {...given}
@@ -56,19 +58,40 @@ describe("RepertoireDetails (CTA-206)", () => {
     await expectNoAxeViolations(container);
   });
 
-  it("holds the session's settings and links to the record's own settings screen", async () => {
+  it("heads with Back at its start and the record's settings, a gear, at its end", () => {
+    render(<Held />);
+    const heading = screen.getByRole("heading", { name: NAME });
+    const back = screen.getByRole("link", { name: "Back to the repertoires" });
+    const settings = screen.getByRole("link", { name: "Repertoire settings" });
+    expect(back).toHaveAttribute("href", "/repertoires");
+    expect(settings).toHaveAttribute("href", "/repertoires/r1/settings");
+    // Back, the name, the gear — in that order, on one row.
+    expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(heading.compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Nothing of the record's settings — and no Clear — in the Settings tab.
+    const panel = screen.getByRole("tabpanel", { name: "Settings" });
+    expect(within(panel).queryByRole("link")).toBeNull();
+    expect(within(panel).queryByRole("button", { name: "Clear the board" })).toBeNull();
+  });
+
+  it("names Back for the repertoire in a game", () => {
+    render(<Held currentGame="end" backLink={{ href: "/repertoires/r1" }} />);
+    expect(screen.getByRole("link", { name: "Back to the repertoire" })).toHaveAttribute("href", "/repertoires/r1");
+  });
+
+  it("holds the session's settings, the eval bar's among them", async () => {
     const onSideChange = vi.fn();
     const onAutoplayChange = vi.fn();
     const onShowArrowsChange = vi.fn();
     const onChanceArrowsChange = vi.fn();
-    const onClear = vi.fn();
+    const onShowEvalBarChange = vi.fn();
     render(
       <Held
         onSideChange={onSideChange}
         onAutoplayChange={onAutoplayChange}
         onShowArrowsChange={onShowArrowsChange}
         onChanceArrowsChange={onChanceArrowsChange}
-        onClear={onClear}
+        onShowEvalBarChange={onShowEvalBarChange}
       />,
     );
     const panel = screen.getByRole("tabpanel", { name: "Settings" });
@@ -80,9 +103,8 @@ describe("RepertoireDetails (CTA-206)", () => {
     expect(onShowArrowsChange).toHaveBeenCalledWith(false);
     await userEvent.click(within(panel).getByRole("switch", { name: /Show play chances/ }));
     expect(onChanceArrowsChange).toHaveBeenCalledWith(true);
-    await userEvent.click(within(panel).getByRole("button", { name: "Clear the board" }));
-    expect(onClear).toHaveBeenCalledTimes(1);
-    expect(within(panel).getByRole("link", { name: "Repertoire settings" })).toHaveAttribute("href", "/repertoires/r1/settings");
+    await userEvent.click(within(panel).getByRole("switch", { name: /Show evaluation bar/ }));
+    expect(onShowEvalBarChange).toHaveBeenCalledWith(false);
   });
 
   it("leaves out Autoplay and the play chances where the screen gives none — a game", () => {
