@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import i18n from "../../i18n";
 import { stubReducedMotion } from "../../test/reducedMotion";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
+import { BoardLeftPanelProvider } from "../main/boardLeftPanel";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 
 /*
@@ -65,6 +66,10 @@ const LibraryGame = () => (
     collection={LIBRARY_FIXTURE}
     number={1}
     tree={parsePgnTree(LIBRARY_FIXTURE.games[0])}
+    detailsTab="settings"
+    onDetailsTabChange={() => {}}
+    drawerOpen={false}
+    onDrawerOpenChange={() => {}}
   />
 );
 
@@ -87,8 +92,8 @@ const BOARDS: readonly {
   engineTab?: true;
   /**
    * The engine's on / off a small switch in its header, its other choices a
-   * Settings tab — Analysis V2's Case board (CTA-186) — not the play / pause
-   * and its menu every other board has.
+   * Settings tab — Analysis V2's Case board (CTA-186) and the Library's game
+   * board (CTA-209) — not the play / pause and its menu every other board has.
    */
   engineSwitch?: true;
   /** A tab beside Moves, to open in the tab-panel test. */
@@ -97,7 +102,8 @@ const BOARDS: readonly {
   // Analysis v2 shipped as the Analysis Board (CTA-73); it stays in the set.
   // Play with Engine, a v2 screen since CTA-74.
   { name: "Play with Engine", id: "play-with-engine", Screen: PlayWithEngine, engineTab: true, otherTab: "engine" },
-  { name: "Library game", id: "library-game", Screen: LibraryGame, engineOff: true, otherTab: "map" },
+  // The Library's game board (CTA-75) — its engine a header switch since CTA-209.
+  { name: "Library game", id: "library-game", Screen: LibraryGame, engineOff: true, engineSwitch: true, otherTab: "map" },
   // The Openings explorer (CTA-78), in Openings v2's place.
   { name: "Openings explorer", id: "openings", Screen: OpeningsBoard, engineOff: true, otherTab: "map" },
   // Masked Pieces (CTA-79): Play with Engine's screen in a costume — its
@@ -111,10 +117,12 @@ const renderBoard = (Screen: () => ReactNode, entry = "/dev") =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={[entry]}>
-        <RightPanelProvider>
-          <Screen />
-          <RightPanelOutlet />
-        </RightPanelProvider>
+        <BoardLeftPanelProvider>
+          <RightPanelProvider>
+            <Screen />
+            <RightPanelOutlet />
+          </RightPanelProvider>
+        </BoardLeftPanelProvider>
       </MemoryRouter>
     </AppThemeWithLang>,
   );
@@ -200,7 +208,7 @@ describe("every v2 board, from the same core", () => {
     if (engineTab) expect(screen.getByTestId(`${id}-panel-tab-engine`)).toBeInTheDocument();
     else expect(screen.queryByTestId(`${id}-panel-tab-engine`)).not.toBeInTheDocument();
     if (engineSwitch) {
-      // The Case board's engine: a switch in its header, and no menu (CTA-186).
+      // The Case board's and the Library game's engine: a switch in its header, and no menu (CTA-186, CTA-209).
       expect(screen.getByRole("switch", { name: i18n.t("analysisV2.workspace.engine") })).toHaveAttribute("data-testid", `${id}-setting-engine`);
       expect(screen.queryByTestId(`${id}-engine-menu`)).not.toBeInTheDocument();
     } else {
@@ -383,11 +391,13 @@ describe("the global search settings reach every board (CTA-181)", () => {
     const { unmount } = render(
       <AppThemeWithLang>
         <MemoryRouter initialEntries={["/dev"]}>
-          <RightPanelProvider>
-            <EngineMenu />
-            <Screen />
-            <RightPanelOutlet />
-          </RightPanelProvider>
+          <BoardLeftPanelProvider>
+            <RightPanelProvider>
+              <EngineMenu />
+              <Screen />
+              <RightPanelOutlet />
+            </RightPanelProvider>
+          </BoardLeftPanelProvider>
         </MemoryRouter>
       </AppThemeWithLang>,
     );

@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link as RouterLink, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
+import type { LibraryGameDetailsTab } from "../../blocks/panels";
 import { LoadingLine, MissState } from "../../design-system/components/states";
 import type { GameTree } from "../../lib/gameTree";
 import type { LibraryCollection } from "../../lib/libraryCollections";
@@ -19,12 +20,17 @@ import { useCollectionGames } from "./useLibraryCollections";
  *
  * The board is keyed by collection and number, so the previous / next game
  * mounts a fresh session rather than re-seeding one — every arrival option of
- * the core is read on its first render only.
+ * the core is read on its first render only. The left panel's open tab and
+ * its drawer (CTA-209) are held here, above the key, so they outlive the
+ * step — as the repertoire player's are held by its route.
  */
 function LibraryGameScreen() {
   const { collectionId, game } = useParams();
   const { t } = useTranslation();
   const state = useCollectionGames(collectionId);
+  // The left panel's open tab and, under the breakpoint, its drawer (CTA-209).
+  const [detailsTab, setDetailsTab] = useState<LibraryGameDetailsTab>("settings");
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const summary = state.status === "ready" ? state.summary : undefined;
   const games = state.status === "ready" ? state.value : undefined;
   const collection = useMemo(
@@ -68,6 +74,10 @@ function LibraryGameScreen() {
       collection={collection}
       number={number}
       tree={tree}
+      detailsTab={detailsTab}
+      onDetailsTabChange={setDetailsTab}
+      drawerOpen={drawerOpen}
+      onDrawerOpenChange={setDrawerOpen}
     />
   );
 }

@@ -1268,7 +1268,6 @@ const he: typeof en = {
       tabs: {
         moves: "מהלכים",
         map: "מפה",
-        info: "פרטים",
         export: "ייצוא",
       },
       of: "משחק {{number}} מתוך {{count}}",
@@ -1281,6 +1280,19 @@ const he: typeof en = {
       openAnalysis: "פתיחה בניתוח",
       openAnalysisHelp: "פותח את המשחק בניתוח כמקרה חדש בפרויקט, בעמדה שעל המסך.",
       openAnalysisChanged: "פותח את המשחק כפי שהוא שמור באוסף, בעמדה שעל המסך — השינויים שלא נשמרו נשארים כאן.",
+      details: {
+        label: "פרטי {{name}}",
+        toggle: "פרטי המשחק",
+        tabs: {
+          label: "פרטי המשחק",
+          settings: "הגדרות",
+          info: "פרטים",
+        },
+        arrowsHelp: "המהלכים הבאים של המשחק ושל הווריאציות שלו, כחצים על הלוח.",
+        moveMarksHelp: "סימון המהלך שעל המסך — !, ?? וכדומה — על המשבצת שלו.",
+        evalBarHelp: "ציון המנוע ליד הלוח כשהמנוע פועל.",
+        engine: "מנוע",
+      },
     },
     changes: {
       title: "שינויים שלא נשמרו",

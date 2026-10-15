@@ -1647,7 +1647,6 @@ const en = {
       tabs: {
         moves: "Moves",
         map: "Map",
-        info: "Info",
         export: "Export",
       },
       of: "Game {{number}} of {{count}}",
@@ -1661,6 +1660,22 @@ const en = {
       openAnalysis: "Open in Analysis",
       openAnalysisHelp: "Opens this game in Analysis as a new case in a project, at the position on screen.",
       openAnalysisChanged: "Opens the game as the collection holds it, at the position on screen — your unsaved changes stay here.",
+      /** The left panel beside the board — the game's own view (CTA-209). */
+      details: {
+        label: "Details of {{name}}",
+        /** The board header's button that opens the panel in a drawer, under the shell's breakpoint. */
+        toggle: "The game's details",
+        tabs: {
+          label: "Game details",
+          settings: "Settings",
+          info: "Info",
+        },
+        arrowsHelp: "The next moves of the game and its side lines, as arrows on the board.",
+        moveMarksHelp: "The mark of the move on screen — !, ?? and the like — on its square.",
+        evalBarHelp: "The engine's score beside the board while the engine is on.",
+        /** The board header's engine switch — its icon's name. */
+        engine: "Engine",
+      },
     },
     /**
      * The changes strip over a game of an **uploaded** collection — Update
