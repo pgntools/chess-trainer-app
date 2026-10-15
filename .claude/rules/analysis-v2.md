@@ -289,8 +289,12 @@ file with none typed names it after the file) and, optionally, a `.pgn`
 whose games become its Cases (`collectionImportFileOf` reads it):
 
 - **no file** — an empty Project;
-- **one game** — a Project with that game as its one Game Case;
-- **several** — the Library's import popup opens on them
+- **one game** — a Project with that game as its one Game Case, on Create
+  (the name still the reader's to change); a file that will not read is said
+  as soon as it is picked;
+- **several** — as soon as the file is picked (CTA-208, `onFilePicked`:
+  no Create to press — a `.pgn` of several games, or a zip of several
+  files), the Library's import popup opens on them
   (`CollectionImportDialog` with `choiceOnly`: what came in, the Elo / date /
   player filters and the count, no *Split by event*, no tournament mark) —
   and **Select games…** (CTA-208, `choiceOnly.selectGames`) opens the games

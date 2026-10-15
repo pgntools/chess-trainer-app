@@ -142,6 +142,9 @@ describe("the Projects browser (CTA-186)", () => {
     await user.click(await screen.findByRole("button", { name: "New project" }));
     await user.upload(screen.getByTestId("analysis-v2-new-project-dialog-file-input"), new File([GAME], "club.pgn"));
     expect(screen.getByRole("textbox", { name: "Name" })).toHaveValue("club");
+    // One game: nothing to choose, so it waits for Create (CTA-208).
+    await waitFor(() => expect(screen.getByRole("button", { name: "Create" })).toBeEnabled());
+    expect(screen.queryByTestId("analysis-v2-choose-games")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Create" }));
     await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/g/));
     expect(analysisProjectsSnapshot()).toEqual([expect.objectContaining({ name: "club" })]);
@@ -160,8 +163,7 @@ describe("the Projects browser (CTA-186)", () => {
       screen.getByTestId("analysis-v2-new-project-dialog-file-input"),
       new File([zip], "club.zip", { type: "application/zip" }),
     );
-    expect(screen.getByRole("textbox", { name: "Name" })).toHaveValue("club");
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    // Several games: straight on to the choice, no Create to press (CTA-208).
     const choice = await screen.findByTestId("analysis-v2-choose-games");
     expect(screen.getByTestId("analysis-v2-choose-games-file-0")).toHaveTextContent("club/one.pgn");
     expect(screen.getByTestId("analysis-v2-choose-games-count")).toHaveTextContent("2 of 2");
@@ -179,7 +181,7 @@ describe("the Projects browser (CTA-186)", () => {
       screen.getByTestId("analysis-v2-new-project-dialog-file-input"),
       new File([zipSync({ "notes.txt": strToU8("hello") })], "notes.zip", { type: "application/zip" }),
     );
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    // Said as soon as it is picked.
     expect(await screen.findByTestId("analysis-v2-new-project-dialog-problem")).toHaveTextContent(
       "There is no .pgn file in that zip.",
     );
@@ -197,7 +199,6 @@ describe("the Projects browser (CTA-186)", () => {
       screen.getByTestId("analysis-v2-new-project-dialog-file-input"),
       new File([`${GAME}\n\n${SECOND}\n\n${THIRD}`], "club.pgn"),
     );
-    await user.click(screen.getByRole("button", { name: "Create" }));
 
     const choice = await screen.findByTestId("analysis-v2-choose-games");
     expect(within(choice).getByText("Choose the games for the project")).toBeInTheDocument();
@@ -226,7 +227,6 @@ describe("the Projects browser (CTA-186)", () => {
       screen.getByTestId("analysis-v2-new-project-dialog-file-input"),
       new File([`${GAME}\n\n${SECOND}\n\n${THIRD}`], "club.pgn"),
     );
-    await user.click(screen.getByRole("button", { name: "Create" }));
 
     const choice = await screen.findByTestId("analysis-v2-choose-games");
     await user.type(within(choice).getByRole("combobox", { name: "Players" }), "Ding{Enter}Firouzja{Enter}");

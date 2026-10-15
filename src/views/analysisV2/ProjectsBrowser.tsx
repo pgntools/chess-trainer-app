@@ -340,13 +340,12 @@ function ProjectsBrowser() {
     navigate(projectPath(made.id));
   };
 
-  /** The dialog's Create: a name alone, one game, or — several — the choice of which. */
-  const createProject = async (name: string, file: File | undefined) => {
-    setCreateProblem(null);
-    if (file === undefined) {
-      await makeProject(name, []);
-      return;
-    }
+  /**
+   * A picked file's games, as the Library reads them — a .pgn's, or each .pgn
+   * in a zip's — with the source the import popup shows; a problem said in
+   * the dialog, and `undefined`, where there is no game to read.
+   */
+  const readProjectFile = async (file: File): Promise<{ games: string[]; source: CollectionImportSource } | undefined> => {
     const said = (problem: string) =>
       setCreateProblem(t(`analysisV2.newProject.problem.${FILE_PROBLEMS[problem] ?? "unreadable"}`));
     // The texts it holds: a .pgn's one, or each .pgn in a zip (as the Library reads one).
@@ -356,7 +355,7 @@ function ProjectsBrowser() {
         const zipped = readCollectionZip(new Uint8Array(await file.arrayBuffer()));
         if (!zipped.ok) {
           said(zipped.problem);
-          return;
+          return undefined;
         }
         texts = zipped.entries.map((entry) => ({ text: entry.text, size: entry.size, name: entry.path, stem: entry.stem }));
       } else {
@@ -364,23 +363,45 @@ function ProjectsBrowser() {
       }
     } catch {
       said("file");
-      return;
+      return undefined;
     }
     const read = texts.map(({ text, size, name: fileName, stem }) => collectionImportFileOf(text, size, fileName, stem));
     const games = read.flatMap(({ file: entry }) => entry.games);
     if (games.length === 0) {
       const [first] = read;
       said(first !== undefined && !first.reading.ok ? first.reading.problem : "unreadable");
+      return undefined;
+    }
+    return { games, source: { name: file.name, size: file.size, zip: isZipFile(file), files: read.map(({ file: entry }) => entry) } };
+  };
+
+  /** The dialog's Create: a name alone, one game, or — several — the choice of which. */
+  const createProject = async (name: string, file: File | undefined) => {
+    setCreateProblem(null);
+    if (file === undefined) {
+      await makeProject(name, []);
       return;
     }
-    if (games.length === 1) {
-      await makeProject(name, games);
+    const read = await readProjectFile(file);
+    if (read === undefined) return;
+    if (read.games.length === 1) {
+      await makeProject(name, read.games);
       return;
     }
-    setChoosing({
-      name,
-      source: { name: file.name, size: file.size, zip: isZipFile(file), files: read.map(({ file: entry }) => entry) },
-    });
+    setChoosing({ name, source: read.source });
+  };
+
+  /**
+   * **A file picked** (CTA-208): several games — or several .pgn files in a
+   * zip — go straight to the choice of which, no Create to press; one game
+   * waits for Create, the name still the reader's to change.
+   */
+  const pickProjectFile = async (name: string, file: File) => {
+    setCreateProblem(null);
+    setCreating(true);
+    const read = await readProjectFile(file);
+    setCreating(false);
+    if (read !== undefined && read.games.length > 1) setChoosing({ name, source: read.source });
   };
 
   return (
@@ -524,6 +545,7 @@ function ProjectsBrowser() {
           setDialog(null);
         }}
         onCreate={(name, file) => void createProject(name, file)}
+        onFilePicked={(name, file) => void pickProjectFile(name, file)}
         busy={creating}
         problem={choosing === null ? createProblem : null}
         testId="analysis-v2-new-project-dialog"

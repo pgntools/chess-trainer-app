@@ -16,6 +16,12 @@ export type NewProjectDialogProps = {
   onClose: () => void;
   /** Create — the name, and the `.pgn` (or a zip of them) picked, if any: its games become the Project's Cases. */
   onCreate: (name: string, file: File | undefined) => void;
+  /**
+   * A file was picked (CTA-208) — the name as it then stands (the file's,
+   * where none was typed) and the file: the screen reads it, and may go on
+   * at once (several games: the choice of which). Absent, nothing until Create.
+   */
+  onFilePicked?: (name: string, file: File) => void;
   /** The file is being read, or the Project written: the buttons off. */
   busy?: boolean;
   /** What went wrong, worded by the screen — an alert in the dialog. */
@@ -38,10 +44,11 @@ const stemOf = (file: File): string => file.name.replace(/\.(pgn|zip)$/i, "");
  * zip of them,** whose games come in as its Cases: one game, one Game Case; several, a
  * choice of which (the screen opens the Library's import popup on them,
  * filters and all), each a Case. Picking a file with no name typed names the
- * Project after the file. Presentational: reading the file and writing are
+ * Project after the file — and, where the screen listens (`onFilePicked`,
+ * CTA-208), a file of several games goes straight on to that choice. Presentational: reading the file and writing are
  * the screen's; its words are the app's (`analysisV2.newProject.*`).
  */
-function NewProjectDialog({ open, onClose, onCreate, busy = false, problem = null, testId, dialogProps }: NewProjectDialogProps) {
+function NewProjectDialog({ open, onClose, onCreate, onFilePicked, busy = false, problem = null, testId, dialogProps }: NewProjectDialogProps) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
   const [file, setFile] = useState<File | undefined>(undefined);
@@ -93,7 +100,9 @@ function NewProjectDialog({ open, onClose, onCreate, busy = false, problem = nul
                 onFiles={([picked]) => {
                   if (picked === undefined) return;
                   setFile(picked);
-                  if (name.trim() === "") setName(stemOf(picked));
+                  const named = name.trim() === "" ? stemOf(picked) : name;
+                  setName(named);
+                  onFilePicked?.(named, picked);
                 }}
                 variant="outlined"
                 size="small"
