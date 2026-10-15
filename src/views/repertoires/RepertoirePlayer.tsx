@@ -3,16 +3,14 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
-import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
-import { ChangesStrip, RepertoireDetails, type RepertoireDetailsTab } from "../../blocks/panels";
+import { ChangesStrip, CurrentOpening, RepertoireDetails, type RepertoireDetailsTab } from "../../blocks/panels";
 import type { ChessboardOptions } from "react-chessboard";
 
 import { analysisUciOptionsOf } from "../../lib/analysisSettings";
@@ -50,6 +48,8 @@ import { useEngineSearchSettings } from "../shared/useEngineSearchSettings";
 import { boardEngineStateOf, usePublishBoardEngineState } from "../main/boardEngineState";
 import { useTrainerModule, type TrainerStatus } from "../board/core/useTrainerModule";
 import { useVariationsExplorer } from "../explorer/useVariationsExplorer";
+import RepertoireSettingsDialog from "./RepertoireSettingsDialog";
+import { useRepertoireFolders } from "./useRepertoireFolders";
 import { useRepertoireGame } from "./useRepertoireGame";
 import { usePageTitle } from "../main/pageTitle";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
@@ -114,8 +114,9 @@ import { useShellCompact } from "../main/shellCompact";
  * - **The left panel is the repertoire's own view** (CTA-206, the
  *   `RepertoireDetails` block in the shell's board left panel, `keepShell`,
  *   as Analysis's Case view; a drawer under the breakpoint, opened from the
- *   header): Back (up a level) and the record's settings (a gear) around
- *   the name, the description and the opening on screen, then **Settings** —
+ *   header): Back (up a level), the name, Restart, the download and the
+ *   record's settings (a gear, a popup) over the description — the opening
+ *   on screen, its ECO chip and name, is the board header's, at its start — then **Settings** —
  *   the side, Autoplay (player only — and the header's **Play** button, a
  *   second control over the same state), the next-move arrows, the
  *   play-chance arrows and the eval bar — **Games**, each game a link (the
@@ -571,6 +572,9 @@ function RepertoirePlayer({
     route's; the session's state is this screen's, handed in as props.
   */
   const name = saved.name || t("repertoires.untitled");
+  // The repertoire's own, permanent settings — the left panel's gear opens them in a popup.
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const folders = useRepertoireFolders();
   const leftPanel = (
     <BoardLeftPanel
       collapsed={false}
@@ -582,7 +586,9 @@ function RepertoirePlayer({
       <RepertoireDetails
         name={name}
         description={saved.settings.description}
-        opening={currentOpening}
+        onRestart={restart}
+        onDownload={download}
+        downloadDisabled={shown !== "ready"}
         tab={detailsTab}
         onTabChange={onDetailsTabChange}
         side={side}
@@ -596,7 +602,8 @@ function RepertoirePlayer({
         showEvalBar={showEvalBar}
         onShowEvalBarChange={setShowEvalBar}
         // Back to this position, link and all.
-        settingsLink={{ component: RouterLink, to: `${boardPath}/settings`, state: { from: `${boardPath}${location.search}` } }}
+        onOpenSettings={() => setSettingsOpen(true)}
+        settingsOpen={settingsOpen}
         // Up one level: a game to its repertoire, the repertoire to the list — into its folder.
         backLink={{
           component: RouterLink,
@@ -614,10 +621,14 @@ function RepertoirePlayer({
       />
     </BoardLeftPanel>
   );
+  const settingsDialog = settingsOpen && folders !== undefined && (
+    <RepertoireSettingsDialog saved={saved} folders={folders} onClose={() => setSettingsOpen(false)} />
+  );
 
   return (
     <>
       {leftPanel}
+      {settingsDialog}
       <BoardShell
         id={id}
         // The reader's moves go through the trainer's wrappers, which note that
@@ -647,19 +658,10 @@ function RepertoirePlayer({
                   <TuneRoundedIcon fontSize="small" />
                 </IconAction>
               )}
-              {/* Restart and the download at the toolbar's start; the name, the description and the opening are the left panel's head (CTA-206). */}
-              <IconAction label={t("repertoires.play.restart")} onClick={restart} testId={`${id}-restart`}>
-                <RestartAltRoundedIcon fontSize="small" />
-              </IconAction>
-              <IconAction
-                label={t("repertoires.play.download")}
-                onClick={download}
-                disabled={shown !== "ready"}
-                testId={`${id}-download`}
-              >
-                <DownloadRoundedIcon fontSize="small" />
-              </IconAction>
-              <Box sx={{ flexGrow: 1 }} />
+              {/* The opening on screen at the toolbar's start — its ECO chip and name, as every board shows it (CTA-206); the name, the description, Restart and the download are the left panel's. */}
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <CurrentOpening {...currentOpening} testId={`${id}-opening`} />
+              </Box>
               {shown === "loading" && (
                 <CircularProgress
                   size={16}

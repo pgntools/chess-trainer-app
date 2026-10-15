@@ -472,28 +472,31 @@ describe("the repertoire player, Autoplay on", () => {
     await updateRepertoireSettings(id, "Caro", { ...findSavedRepertoire(id)!.settings, description: "My notes" });
     await mountIdle(`/repertoires/${id}`);
     // The right panel is the board's tools: no Settings tab, and its header
-    // no name, description, opening, Games menu or settings gear.
+    // no name, description, Games menu, settings gear, Restart or download…
     expect(screen.queryByTestId("repertoire-board-panel-tab-settings")).not.toBeInTheDocument();
     const header = screen.getByTestId("repertoire-board-panel-header");
-    for (const gone of ["name", "description", "opening", "games", "settings", "side"]) {
+    for (const gone of ["name", "description", "games", "settings", "side", "restart", "download"]) {
       expect(header.querySelector(`[data-testid="repertoire-board-${gone}"]`)).toBeNull();
     }
-    // …its actions stay.
-    for (const kept of ["save", "play", "restart", "download"]) {
+    // …its actions stay, and the opening on screen is its, with its ECO chip.
+    for (const kept of ["save", "play"]) {
       expect(within(header).getByTestId(`repertoire-board-${kept}`)).toBeInTheDocument();
     }
+    expect(within(header).getByTestId("repertoire-board-opening")).toBeInTheDocument();
 
     // The left panel: the head, then Settings open — beside the move list, both on screen.
     const details = screen.getByRole("region", { name: "Details of Caro" });
     expect(within(details).getByRole("heading", { name: "Caro" })).toBeInTheDocument();
     expect(within(details).getByTestId("repertoire-board-details-description")).toHaveTextContent("My notes");
-    expect(within(details).getByTestId("repertoire-board-details-opening")).toBeInTheDocument();
+    expect(within(details).queryByTestId("repertoire-board-details-opening")).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("repertoire-board-details-side-white")).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("repertoire-board-details-arrows")).toBeInTheDocument();
     expect(screen.getByTestId("repertoire-board-panel-content-moves")).toBeVisible();
-    // The record's own settings are a link away, back to this position.
-    expect(within(details).getByRole("link", { name: "Repertoire settings" })).toHaveAttribute("href", `/repertoires/${id}/settings`);
+    // Restart and the download are the head's, beside the record's own settings — a popup (below).
+    expect(within(details).getByRole("button", { name: i18n.t("repertoires.play.restart") })).toBeInTheDocument();
+    expect(within(details).getByRole("button", { name: i18n.t("repertoires.play.download") })).toBeInTheDocument();
+    expect(within(details).getByRole("button", { name: "Repertoire settings" })).toHaveAttribute("aria-haspopup", "dialog");
 
     // Jobs: nothing yet.
     fireEvent.click(screen.getByRole("tab", { name: "Jobs" }));
@@ -506,7 +509,7 @@ describe("the repertoire player, Autoplay on", () => {
     wait();
     drop("d2", "d3");
 
-    fireEvent.click(screen.getByTestId("repertoire-board-restart"));
+    fireEvent.click(screen.getByTestId("repertoire-board-details-restart"));
     expect(position()).toBe(new Chess().fen());
     expect(document.querySelector('[data-san="d3"][data-extension="true"]')).not.toBeNull();
   });
@@ -519,7 +522,7 @@ describe("the repertoire player, Autoplay on", () => {
     wait();
     drop("d2", "d3");
 
-    fireEvent.click(screen.getByTestId("repertoire-board-download"));
+    fireEvent.click(screen.getByTestId("repertoire-board-details-download"));
     expect(downloadPgn).toHaveBeenCalledTimes(1);
     const [stem, pgns] = vi.mocked(downloadPgn).mock.calls[0];
     expect(stem).toBe("my-caro");
@@ -1069,12 +1072,11 @@ describe("the header's Play button (CTA-65)", () => {
     expect(play()).toHaveAccessibleName(i18n.t("repertoires.play.autoplayOn"));
   });
 
-  it("orders the header: Restart and the download at its start, then Save, Play and the engine's switch (CTA-206)", async () => {
+  it("orders the header: the opening at its start, then Save, Play and the engine's switch (CTA-206)", async () => {
     await mountIdle(`/repertoires/${await storeRepertoire("r", CARO)}`);
     const header = screen.getByTestId("repertoire-board-panel-header");
     const order = [
-      within(header).getByRole("button", { name: i18n.t("repertoires.play.restart") }),
-      within(header).getByRole("button", { name: i18n.t("repertoires.play.download") }),
+      within(header).getByTestId("repertoire-board-opening"),
       within(header).getByTestId("repertoire-board-save"),
       play(),
       within(header).getByRole("switch", { name: "Engine" }),
@@ -1134,7 +1136,7 @@ describe("the header's Play button (CTA-65)", () => {
   it("is absent from a game, where the trainer always plays", async () => {
     await mountIdle(`/repertoires/${await storeRepertoire("r", CARO)}/games/end`);
     expect(screen.queryByTestId("repertoire-game-play")).not.toBeInTheDocument();
-    expect(screen.getByTestId("repertoire-game-restart")).toBeInTheDocument();
+    expect(screen.getByTestId("repertoire-game-details-restart")).toBeInTheDocument();
   });
 });
 

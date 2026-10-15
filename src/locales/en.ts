@@ -1972,6 +1972,9 @@ const en = {
       save: "Save",
       cancel: "Cancel",
       problem: "It could not be saved — this browser's storage is full or unavailable.",
+      /** The popup over the board (CTA-206): these settings are kept, unlike the Settings tab's. */
+      permanentNote:
+        "These are the repertoire's own settings: saved with it, and used every time it opens. The Settings tab beside the board changes this session only.",
     },
     /**
      * A text of several games: a repertoire is one game (a mainline with side

@@ -7,6 +7,8 @@ import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import SportsEsportsOutlinedIcon from "@mui/icons-material/SportsEsportsOutlined";
 import WorkHistoryOutlinedIcon from "@mui/icons-material/WorkHistoryOutlined";
@@ -18,7 +20,6 @@ import { linkProps, type LinkTarget } from "../../../design-system/components/li
 import { EmptyState } from "../../../design-system/components/states";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 import { REPERTOIRE_GAMES, type RepertoireGameId } from "../../../lib/repertoireGames";
-import { CurrentOpening, type CurrentOpeningProps } from "../CurrentOpening";
 
 /** The panel's tabs, in order. */
 export type RepertoireDetailsTab = "settings" | "games" | "jobs";
@@ -31,8 +32,12 @@ export type RepertoireDetailsProps = {
   name: string;
   /** The reader's own notes on it — one line, all of it on hover; `""` none. Shown on the repertoire's own view only. */
   description: string;
-  /** The opening at the position on screen (the screen's `useCurrentOpening`). */
-  opening: Omit<CurrentOpeningProps, "testId" | "oneLine">;
+  /** Restart — back to the start position, the reader's additions kept. */
+  onRestart: () => void;
+  /** Download the session's tree, additions and all, as PGN. */
+  onDownload: () => void;
+  /** Nothing to download yet (the tree still being read). */
+  downloadDisabled: boolean;
 
   /** The open tab — the screen's, held above the player so it outlives a change of game. */
   tab: RepertoireDetailsTab;
@@ -52,8 +57,10 @@ export type RepertoireDetailsProps = {
   /** The eval bar beside the board while the engine is on (the board header's engine menu before). */
   showEvalBar: boolean;
   onShowEvalBarChange: (on: boolean) => void;
-  /** The repertoire's own settings screen — the record's title, description, folder and board; a gear at the head's end. */
-  settingsLink: LinkTarget;
+  /** Open the repertoire's own, permanent settings — the record's title, description, folder and board — in a popup; a gear at the head's end. */
+  onOpenSettings: () => void;
+  /** Whether that popup is open — the gear's `aria-expanded`. */
+  settingsOpen: boolean;
   /** Back, at the head's start: to the repertoires (the repertoire's own view), to the repertoire (a game). */
   backLink: LinkTarget;
 
@@ -66,7 +73,7 @@ export type RepertoireDetailsProps = {
 
   /**
    * The root; its parts `-back`, `-title`, `-record-settings`, `-description`,
-   * `-game-title`, `-opening`, `-tabs` (each tab `<testId>-tab-<id>`),
+   * `-restart`, `-download`, `-game-title`, `-tabs` (each tab `<testId>-tab-<id>`),
    * `-settings` (`-side`, `-autoplay`, `-arrows`, `-chance-arrows`,
    * `-evalbar`), `-games`
    * (`-games-back`, each game `-games-<id>`), `-jobs` (`-jobs-empty`).
@@ -79,8 +86,9 @@ export type RepertoireDetailsProps = {
  * the repertoire player (`/repertoires/<id>`) and its games
  * (`/repertoires/<id>/games/<game>`), Analysis's `CaseDetails` for a
  * repertoire: a head — the repertoire's name, its description (or, in a game,
- * the game's title) and the opening on screen, Back at its start and the
- * record's settings — a gear — at its end; then three tabs:
+ * the game's title), Back at its start and, at its end, Restart, the
+ * download and the record's own settings — a gear opening the screen's
+ * popup; then three tabs (the opening on screen is the board panel's):
  *
  * - **Settings** — the session's knobs: the side, Autoplay (the repertoire's
  *   own view only), the next-move arrows, the play-chance arrows (the own
@@ -97,7 +105,9 @@ export type RepertoireDetailsProps = {
 function RepertoireDetails({
   name,
   description,
-  opening,
+  onRestart,
+  onDownload,
+  downloadDisabled,
   tab,
   onTabChange,
   side,
@@ -110,7 +120,8 @@ function RepertoireDetails({
   onChanceArrowsChange,
   showEvalBar,
   onShowEvalBarChange,
-  settingsLink,
+  onOpenSettings,
+  settingsOpen,
   backLink,
   gameLink,
   currentGame,
@@ -145,7 +156,19 @@ function RepertoireDetails({
         >
           {name}
         </Typography>
-        <IconAction label={t("repertoires.details.recordSettings")} link={settingsLink} testId={`${testId}-record-settings`}>
+        <IconAction label={t("repertoires.play.restart")} onClick={onRestart} testId={`${testId}-restart`}>
+          <RestartAltRoundedIcon fontSize="small" />
+        </IconAction>
+        <IconAction label={t("repertoires.play.download")} onClick={onDownload} disabled={downloadDisabled} testId={`${testId}-download`}>
+          <DownloadRoundedIcon fontSize="small" />
+        </IconAction>
+        <IconAction
+          label={t("repertoires.details.recordSettings")}
+          onClick={onOpenSettings}
+          popupOpen={settingsOpen}
+          popupKind="dialog"
+          testId={`${testId}-record-settings`}
+        >
           <SettingsRoundedIcon fontSize="small" />
         </IconAction>
       </Box>
@@ -174,7 +197,6 @@ function RepertoireDetails({
             </Typography>
           )
         )}
-        <CurrentOpening {...opening} testId={`${testId}-opening`} />
       </Box>
       <Box sx={{ flexShrink: 0, pb: 1 }}>
         <PanelTabs

@@ -243,7 +243,7 @@ describe("Get to the end", () => {
     fireEvent.click(screen.getByTestId(`${ID}-panel-tab-moves`));
     expect(screen.getByTestId("move-ply-8")).toHaveAttribute("data-extension", "true");
 
-    fireEvent.click(screen.getByTestId(`${ID}-restart`));
+    fireEvent.click(screen.getByTestId(`${ID}-details-restart`));
     play(["e2", "e4"], ["d2", "d4"], ["e4", "e5"], ["g1", "f3"]);
     fireEvent.click(screen.getByTestId(`${ID}-panel-tab-score`));
     expect(lines()).toBe("2 lines finished");

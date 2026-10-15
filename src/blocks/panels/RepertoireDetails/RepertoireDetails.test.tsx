@@ -7,7 +7,7 @@ import i18n from "../../../i18n";
 import AppThemeWithLang from "../../../theme/AppThemeWithLang";
 import { expectNoAxeViolations } from "../../../test/axe";
 import RepertoireDetails, { type RepertoireDetailsProps, type RepertoireDetailsTab } from "./RepertoireDetails";
-import { CARO_KANN, DESCRIPTION, HEBREW_NAME, NAME } from "./fixtures";
+import { DESCRIPTION, HEBREW_NAME, NAME } from "./fixtures";
 
 type Given = Partial<Omit<RepertoireDetailsProps, "tab" | "onTabChange">> & { initialTab?: RepertoireDetailsTab };
 
@@ -18,7 +18,9 @@ function Held({ initialTab = "settings", ...given }: Given) {
     <RepertoireDetails
       name={NAME}
       description={DESCRIPTION}
-      opening={{ opening: CARO_KANN, loading: false, ecoLink: { href: "/openings" } }}
+      onRestart={() => {}}
+      onDownload={() => {}}
+      downloadDisabled={false}
       side="white"
       onSideChange={() => {}}
       autoplay={false}
@@ -29,7 +31,8 @@ function Held({ initialTab = "settings", ...given }: Given) {
       onChanceArrowsChange={() => {}}
       showEvalBar
       onShowEvalBarChange={() => {}}
-      settingsLink={{ href: "/repertoires/r1/settings" }}
+      onOpenSettings={() => {}}
+      settingsOpen={false}
       backLink={{ href: "/repertoires" }}
       gameLink={(game) => ({ href: `/repertoires/r1/games/${game}` })}
       testId="probe"
@@ -45,33 +48,51 @@ beforeEach(async () => {
 });
 
 describe("RepertoireDetails (CTA-206)", () => {
-  it("heads with the name, the description on one line and the opening, and opens on Settings", async () => {
+  it("heads with the name and the description on one line, and opens on Settings", async () => {
     const { container } = render(<Held />);
     expect(screen.getByRole("region", { name: `Details of ${NAME}` })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: NAME })).toBeInTheDocument();
     // One line, the whole of it on hover.
     expect(screen.getByTestId("probe-description")).toHaveAttribute("title", DESCRIPTION);
-    expect(screen.getByTestId("probe-opening")).toHaveTextContent("Caro-Kann Defense: Advance Variation");
     const tabs = screen.getByRole("tablist", { name: "Repertoire details" });
     expect(within(tabs).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Settings", "Games", "Jobs"]);
     expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
     await expectNoAxeViolations(container);
   });
 
-  it("heads with Back at its start and the record's settings, a gear, at its end", () => {
-    render(<Held />);
-    const heading = screen.getByRole("heading", { name: NAME });
+  it("heads with Back at its start, then the name, Restart, the download and the record's settings — a gear — at its end", async () => {
+    const onRestart = vi.fn();
+    const onDownload = vi.fn();
+    const onOpenSettings = vi.fn();
+    render(<Held onRestart={onRestart} onDownload={onDownload} onOpenSettings={onOpenSettings} />);
     const back = screen.getByRole("link", { name: "Back to the repertoires" });
-    const settings = screen.getByRole("link", { name: "Repertoire settings" });
+    const heading = screen.getByRole("heading", { name: NAME });
+    const restart = screen.getByRole("button", { name: "Restart from the start position" });
+    const download = screen.getByRole("button", { name: "Download with your additions as PGN" });
+    const settings = screen.getByRole("button", { name: "Repertoire settings" });
     expect(back).toHaveAttribute("href", "/repertoires");
-    expect(settings).toHaveAttribute("href", "/repertoires/r1/settings");
-    // Back, the name, the gear — in that order, on one row.
-    expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(heading.compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // Nothing of the record's settings — and no Clear — in the Settings tab.
+    const order = [back, heading, restart, download, settings];
+    for (let index = 1; index < order.length; index += 1) {
+      expect(order[index - 1].compareDocumentPosition(order[index]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    await userEvent.click(restart);
+    expect(onRestart).toHaveBeenCalledTimes(1);
+    await userEvent.click(download);
+    expect(onDownload).toHaveBeenCalledTimes(1);
+    // The record's own settings open in the screen's popup.
+    expect(settings).toHaveAttribute("aria-haspopup", "dialog");
+    await userEvent.click(settings);
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    // Nothing of the record's settings — and no Clear — in the Settings tab; no opening in the head.
     const panel = screen.getByRole("tabpanel", { name: "Settings" });
     expect(within(panel).queryByRole("link")).toBeNull();
     expect(within(panel).queryByRole("button", { name: "Clear the board" })).toBeNull();
+    expect(screen.queryByTestId("probe-opening")).toBeNull();
+  });
+
+  it("holds the download off while there is nothing to download", () => {
+    render(<Held downloadDisabled />);
+    expect(screen.getByRole("button", { name: "Download with your additions as PGN" })).toBeDisabled();
   });
 
   it("names Back for the repertoire in a game", () => {
