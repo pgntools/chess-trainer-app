@@ -267,6 +267,79 @@ describe("a full-width route (CTA-107)", () => {
     expect(screen.getByTestId("layout-board-square-body")).toContainElement(screen.getByTestId("screen"));
     expect(screen.getByTestId("layout-board-square-sidebar")).toBeInTheDocument();
   });
+
+  /** A full-width screen with a left panel of its own that keeps the shell — the Analysis Project view's (CTA-213). */
+  const WideWithPanel = () => {
+    const [shown, setShown] = useState(true);
+    const [open, setOpen] = useState(false);
+    return (
+      <div data-testid="wide-screen">
+        <button onClick={() => setShown((on) => !on)}>toggle</button>
+        <button onClick={() => setOpen(true)}>open drawer</button>
+        {shown && (
+          <BoardLeftPanel collapsed={false} open={open} onClose={() => setOpen(false)} drawerLabel="Project details" keepShell>
+            <p data-testid="panel-content">The project</p>
+          </BoardLeftPanel>
+        )}
+      </div>
+    );
+  };
+
+  it("draws a registered left panel in the main menu's place, before the whole body — the header and footer kept (CTA-213)", async () => {
+    renderShell([{ path: "wide", element: <WideWithPanel />, handle: FULL_WIDTH_ROUTE }], ["/wide"]);
+    const column = await screen.findByTestId("layout-board-left-panel");
+    expect(within(column).getByTestId("panel-content")).toBeInTheDocument();
+    expect(column).toHaveStyle({ width: `${BOARD_LEFT_PANEL_WIDTH_PX}px` });
+    const order = [...screen.getByTestId("layout-board-viewport").children].map((child) => child.getAttribute("data-testid"));
+    expect(order).toEqual(["layout-board-left-panel", "layout-full-body"]);
+    expect(screen.queryByTestId("layout-board-square-body")).toBeNull();
+    expect(screen.queryByTestId("layout-sidebar-container")).toBeNull();
+    expect(screen.getByTestId("layout-header")).toBeInTheDocument();
+    expect(screen.getByTestId("layout-footer")).toBeInTheDocument();
+
+    // Gone with the screen's panel: the main menu is back, the body whole.
+    fireEvent.click(screen.getByRole("button", { name: "toggle" }));
+    expect(screen.queryByTestId("layout-board-left-panel")).toBeNull();
+    expect(screen.getByTestId("layout-sidebar-container")).toBeInTheDocument();
+  });
+
+  it("draws no column for a full-width route that registers none", () => {
+    renderShell(routes, ["/wide"]);
+    expect(screen.queryByTestId("layout-board-left-panel")).toBeNull();
+    expect([...screen.getByTestId("layout-board-viewport").children].map((child) => child.getAttribute("data-testid"))).toEqual(["layout-full-body"]);
+  });
+
+  describe("under the breakpoint", () => {
+    const wideWindow = window.matchMedia;
+    beforeEach(() => {
+      window.matchMedia = ((query: string) =>
+        ({
+          matches: /max-width/.test(query),
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    });
+    afterEach(() => {
+      window.matchMedia = wideWindow;
+    });
+
+    it("makes a full-width route's left panel a drawer the screen opens (CTA-213)", async () => {
+      const user = userEvent.setup();
+      renderShell([{ path: "wide", element: <WideWithPanel />, handle: FULL_WIDTH_ROUTE }], ["/wide"]);
+      expect(screen.queryByTestId("layout-board-left-panel")).toBeNull();
+      expect(screen.queryByTestId("panel-content")).toBeNull();
+      await user.click(screen.getByRole("button", { name: "open drawer" }));
+      const sheet = await screen.findByRole("dialog", { name: "Project details" });
+      expect(within(sheet).getByTestId("panel-content")).toBeInTheDocument();
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Project details" })).toBeNull());
+    });
+  });
 });
 
 describe("an article route — the front page, the Blog (CTA-130)", () => {

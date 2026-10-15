@@ -286,7 +286,9 @@ const DefaultLayoutViewport = () => {
       footer (`focused`): the room for a column, a square and the panel beside
       it is not there with the menu's 280 px taken. Closing the panel brings the
       shell back. Stacked there is no column (the screen draws a drawer, and the
-      header and its menu button stay).
+      header and its menu button stay). A full-width route may register one
+      too (CTA-213, the Analysis Project view, `keepShell`): the column goes
+      before the whole body, which takes what it leaves.
     */
     const leftPanelWidth = useBoardLeftPanelWidth()
     const leftPanelOpen = leftPanelWidth > 0 && !compact
@@ -647,7 +649,14 @@ const DefaultLayoutViewport = () => {
                             overflowY: compact ? "auto" : "hidden",
                         }}
                    >
-                        {!fullWidth && <BoardLeftPanelOutlet compact={compact} />}
+                        {/*
+                            A screen's own left panel — a board's, and since
+                            CTA-213 a full-width route's too (the Analysis
+                            Project view): a column before the body, the
+                            drawer under the breakpoint; nothing while none
+                            is registered.
+                        */}
+                        <BoardLeftPanelOutlet compact={compact} />
                         {fullWidth ? (
                             <Box
                                 {...mainProps}

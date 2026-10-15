@@ -22,6 +22,8 @@ export * from "./JobSummary";
 export * from "./LibraryGameDetails";
 export * from "./PgnExportPanel";
 export * from "./PlayToggleButton";
+// CTA-213: a Project's own panel beside its Cases — the Project view's left panel.
+export * from "./ProjectDetails";
 // CTA-206: a repertoire's own view beside its board — the player's left panel.
 export * from "./RepertoireDetails";
 export * from "./TopPlayers";
