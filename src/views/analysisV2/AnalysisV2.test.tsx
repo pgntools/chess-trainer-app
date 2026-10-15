@@ -524,7 +524,10 @@ describe("a Project's Cases (CTA-186)", () => {
       return project;
     };
     const rowIds = () => screen.getAllByTestId(/^analysis-v2-cases-row-/).map((row) => row.dataset.testid!.replace("analysis-v2-cases-row-", ""));
+    /** A row's own button — looked up in the row, not across a page of 25 rows of them. */
+    const moveButton = (id: string, name: string) => within(screen.getByTestId(`analysis-v2-cases-row-${id}`)).getByRole("button", { name });
 
+    // A full page of rows and an axe audit over it: ~4 s alone, past 20 s under a loaded run of the whole suite.
     it("opens sorted by #, and moves a Case from its row — the focus kept on it, its place said, the page following it", async () => {
       const project = await tutorial(30);
       const dates = analysisCasesSnapshot()!.map((record) => record.updatedAt);
@@ -537,21 +540,21 @@ describe("a Project's Cases (CTA-186)", () => {
       await expectNoAxeViolations(baseElement);
 
       // Up to the first place: up and top are off there, so the focus takes its way down.
-      await user.click(screen.getByRole("button", { name: "Move Case 2 up" }));
+      await user.click(moveButton("c2", "Move Case 2 up"));
       await waitFor(() => expect(rowIds().slice(0, 3)).toEqual(["c2", "c1", "c3"]));
-      await waitFor(() => expect(screen.getByRole("button", { name: "Move Case 2 down" })).toHaveFocus());
+      await waitFor(() => expect(moveButton("c2", "Move Case 2 down")).toHaveFocus());
       expect(screen.getByTestId("analysis-v2-cases-moved")).toHaveTextContent("Case 2 is now number 1 of 30.");
 
       // By the keyboard: the same action keeps the focus.
-      screen.getByRole("button", { name: "Move Case 3 down" }).focus();
+      moveButton("c3", "Move Case 3 down").focus();
       await user.keyboard("{Enter}");
       await waitFor(() => expect(rowIds().slice(0, 4)).toEqual(["c2", "c1", "c4", "c3"]));
-      await waitFor(() => expect(screen.getByRole("button", { name: "Move Case 3 down" })).toHaveFocus());
+      await waitFor(() => expect(moveButton("c3", "Move Case 3 down")).toHaveFocus());
 
       // To the bottom, on the second page: the page follows it.
-      await user.click(screen.getByRole("button", { name: "Move Case 1 to the bottom" }));
+      await user.click(moveButton("c1", "Move Case 1 to the bottom"));
       await waitFor(() => expect(where()).toContain("page=1"));
-      await waitFor(() => expect(screen.getByRole("button", { name: "Move Case 1 up" })).toHaveFocus());
+      await waitFor(() => expect(moveButton("c1", "Move Case 1 up")).toHaveFocus());
       expect(rowIds().at(-1)).toBe("c1");
       expect(screen.getByTestId("analysis-v2-cases-moved")).toHaveTextContent("Case 1 is now number 30 of 30.");
 
@@ -560,7 +563,7 @@ describe("a Project's Cases (CTA-186)", () => {
       await reload();
       const order = Object.fromEntries(analysisCasesSnapshot()!.map((record) => [record.id, record.order]));
       expect([order.c2, order.c4, order.c3, order.c1]).toEqual([1, 2, 3, 30]);
-    });
+    }, 60_000);
 
     it("reorders only under # ascending with no words — saying why otherwise", async () => {
       const project = await tutorial(3);
