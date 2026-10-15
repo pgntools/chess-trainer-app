@@ -86,7 +86,8 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/views/library/OpeningFilterBoard.tsx` | The opening-moves board (`options.id` `library-filter-board`), and its *Save tree as PGN* link. |
 | `src/blocks/dialogs/OpeningTreePgnDialog/` | *Save tree as PGN*'s choice: No, or Add tags — `games`, `prc`, or both (`FormDialog`, CTA-113). |
 | `src/blocks/dialogs/SaveAsCollectionDialog/` | *Save as collection*'s name dialog (CTA-122): the derived name to edit, the count under it, a busy state and a problem slot — presentational, the write the screen's (`CollectionScreen.tsx`). |
-| `src/views/library/LibraryGameScreen.tsx` → `LibraryGameBoard.tsx` | `/library/<collection>/<n>`: resolve and parse the game, then the analysis board. |
+| `src/views/library/LibraryGameScreen.tsx` → `LibraryGameBoard.tsx` | `/library/<collection>/<n>`: resolve and parse the game, then the analysis board; the screen holds the left panel's open tab and drawer (CTA-209). |
+| `src/blocks/panels/LibraryGameDetails/` | The game board's **left panel** (CTA-209): Back, the game's title and caption, previous / next, and the Settings and Info tabs — presentational, the session's state the board's. |
 | `src/views/library/useLibraryCollections.ts` | The React bindings: `useUploadedCollections`, `useLibraryFolders`, `useCollectionSummary`, `useCollectionRows`, `useCollectionGames`, `loadCollectionGames`, `useTournamentGuess` (CTA-142: the kind of tournament the games look like, read off their tags when asked). |
 | `src/views/library/indexCollection.ts` | Runs the worker with progress and cancel, with a jsdom fallback. |
 | `src/views/library/LibraryMiss.tsx` | The "no such collection / game" screen. |
@@ -954,7 +955,8 @@ game), no move replayed; the Games tab, as ever, reads the rows alone.
 `LibraryGameScreen` resolves the games, checks the number (otherwise the
 miss) and parses the game **with its side lines** (`parsePgnTree`). An
 unreadable game says so. The board is keyed by collection and number, so
-previous / next mounts a fresh session.
+previous / next mounts a fresh session — the left panel's open tab and its
+drawer (CTA-209) are held here, above the key, so they outlive the step.
 
 `LibraryGameBoard` is a **board with no behaviour hook of its own** (the
 authority is [`chessboard.md`](./chessboard.md) §9.4):
@@ -962,17 +964,36 @@ authority is [`chessboard.md`](./chessboard.md) §9.4):
 Board), `useVariationsExplorer` (editing on, *Play chances…* off), and
 `BoardShell` / `BoardPanel` with `options.id` `library-game`.
 
-- **Tabs**: Moves (the **next-move arrows switch** `library-game-arrows` at
-  its top, and under it the **move marks switch** `library-game-move-marks` —
-  the move on screen's `!` / `??` badge on the board, CTA-168; both on at the
-  start, the session's, and a shipped game's Save as copy keeps both as the
-  Case's display) · Map · Info (the tags, `GameInfo`) · Export — no Engine
-  tab since CTA-181: the search settings are the top bar's Engine menu, one
-  set for every board.
-- **Header**: back (to `state.from`, else the table), "Game n of m" and
-  event/round/date/result, the current opening, previous / next, Save, Play
-  and the engine's play / pause with its menu (the eval bar —
-  `BoardEngineControls`, CTA-181). The players are not in it (CTA-105): they are
+- **Two panels** (CTA-209), as the Case board's and the repertoire player's:
+  the right one is the board's tools, the left one the game's own view.
+- **The right panel's tabs**: Moves · Map · Export — no Engine tab since
+  CTA-181 (the search settings are the top bar's Engine menu, one set for
+  every board), and the tags on the left panel's Info tab since CTA-209.
+- **The right panel's header**, in this order: under the shell's breakpoint
+  the button that opens the left panel's drawer (`library-game-details-toggle`);
+  the current opening (`CurrentOpening`); then Save, Play and the engine's
+  on / off — a small switch with the top bar's Engine icon
+  (`library-game-setting-engine`), as the Case board's (no
+  `BoardEngineControls` and its menu since CTA-209; the eval bar is the left
+  panel's).
+- **The left panel** (`LibraryGameDetails` in the shell's board left panel,
+  `BoardLeftPanel`'s `keepShell` — the header and its Engine menu stay; a
+  drawer under the breakpoint; `library-game-details`): a head — **Back** at
+  its start (to `state.from`, else the table), the game's title
+  (`gameTitleOf`, its `h2`) and at its end **previous / next** (keeping
+  `location.state`; disabled buttons at either end); under them "Game n of m"
+  and event/round/date/result on one line — then two tabs:
+  - **Settings** (the default) — the **next-move arrows**
+    (`library-game-details-arrows`), the **move marks**
+    (`library-game-details-move-marks` — the move on screen's `!` / `??`
+    badge on the board, CTA-168; both on at the start, the session's, and a
+    shipped game's Save as copy keeps both as the Case's display) and the
+    **eval bar** (`library-game-details-evalbar`).
+  - **Info** — the tags (`GameInfo`).
+  The open tab and the drawer are the route's (`LibraryGameScreen`); the
+  session's state (arrows, marks, eval bar) stays the board's, handed to the
+  block as props.
+- **The players** are not in either header (CTA-105): they are
   **plated beside the board**, at the left end of the captured-pieces strips
   — each one's result of the game, a thin separator, their Elo and their
   name (`1 | 2850 Carlsen, Magnus`; the half sign for a draw, nothing for
@@ -1087,7 +1108,7 @@ the index instead (§10.1).
   `keep(name, games)` and `upload()` (the three `GAMES`) add a collection;
   `keepCarlsen()` adds the 5,722-game fixture with **tag-only rows** (the
   full index pass would take a minute), its text imported only then;
-  `mountTable` / `mountGame` wait for their screen; `resetLibrary` is every
+  `mountTable` / `mountGame` wait for their screen (`mount` and `mountGame` take `{ compact }` — the game board's left panel a drawer, with `useShellCompact` mocked in the file, CTA-209); `resetLibrary` is every
   file's `beforeEach`.
 - **jsdom has no `Worker`**, so `indexCollection` uses the in-thread path.
   Uploads in tests are real index passes, so keep pasted texts small.

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import i18n from "../../i18n";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
+import { BoardLeftPanelProvider } from "../main/boardLeftPanel";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 
 /*
@@ -81,6 +82,10 @@ const LibraryGame = () => (
     collection={LIBRARY_FIXTURE}
     number={1}
     tree={parsePgnTree(LIBRARY_FIXTURE.games[0])}
+    detailsTab="settings"
+    onDetailsTabChange={() => {}}
+    drawerOpen={false}
+    onDrawerOpenChange={() => {}}
   />
 );
 
@@ -109,10 +114,12 @@ const renderBoard = (Screen: () => ReactNode) =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={["/dev"]}>
-        <RightPanelProvider>
-          <Screen />
-          <RightPanelOutlet />
-        </RightPanelProvider>
+        <BoardLeftPanelProvider>
+          <RightPanelProvider>
+            <Screen />
+            <RightPanelOutlet />
+          </RightPanelProvider>
+        </BoardLeftPanelProvider>
       </MemoryRouter>
     </AppThemeWithLang>,
   );

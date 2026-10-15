@@ -111,7 +111,7 @@ describe("a tournament collection's view", () => {
 
     await user.click(within(table).getAllByRole("link", { name: /^Round \d+, White against/ })[0]);
     await screen.findByTestId("library-game-board");
-    await user.click(screen.getByTestId("library-game-back"));
+    await user.click(screen.getByTestId("library-game-details-back"));
     await screen.findByTestId("library-tournament-screen");
     expect(tab("info")).toHaveAttribute("aria-selected", "true");
     expect(where()).toBe("/library/candidates2026");

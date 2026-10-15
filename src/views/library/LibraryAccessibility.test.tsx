@@ -9,6 +9,7 @@ import { addCollection, resetLibraryCollectionStore } from "../../lib/libraryCol
 import { createLibraryFolder, resetLibraryFolderStore } from "../../lib/libraryFolderStore";
 import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
+import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from "../main/boardLeftPanel";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 
 /*
@@ -51,16 +52,19 @@ const mount = (entry: string) =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={[entry]}>
-        <RightPanelProvider>
-          <Routes>
-            <Route path="/library" element={<LibraryHome />} />
-            <Route path="/library/new" element={<LibraryUpload />} />
-            <Route path="/library/:collectionId" element={<CollectionScreen />} />
-            <Route path="/library/:collectionId/settings" element={<CollectionSettingsScreen />} />
-            <Route path="/library/:collectionId/:game" element={<LibraryGameScreen />} />
-          </Routes>
-          <RightPanelOutlet />
-        </RightPanelProvider>
+        <BoardLeftPanelProvider>
+          <RightPanelProvider>
+            <Routes>
+              <Route path="/library" element={<LibraryHome />} />
+              <Route path="/library/new" element={<LibraryUpload />} />
+              <Route path="/library/:collectionId" element={<CollectionScreen />} />
+              <Route path="/library/:collectionId/settings" element={<CollectionSettingsScreen />} />
+              <Route path="/library/:collectionId/:game" element={<LibraryGameScreen />} />
+            </Routes>
+            <BoardLeftPanelOutlet compact={false} />
+            <RightPanelOutlet />
+          </RightPanelProvider>
+        </BoardLeftPanelProvider>
       </MemoryRouter>
     </AppThemeWithLang>,
   );
@@ -154,19 +158,26 @@ describe("adding a collection — accessible", () => {
 });
 
 describe("a Library game — accessible", () => {
-  it("works its header from the keyboard", async () => {
+  it("works its header and its left panel from the keyboard, and the panel passes axe (CTA-209)", async () => {
     const user = userEvent.setup();
     const club = await keep("Club games");
     mount(`/library/${club.id}/2`);
     await screen.findByTestId("library-game-board");
-    const next = screen.getByRole("link", { name: i18n.t("library.game.next") });
+    const details = screen.getByRole("region", { name: i18n.t("library.game.details.label", { name: "Amy – Bob" }) });
+    const next = within(details).getByRole("link", { name: i18n.t("library.game.next") });
     expect(next).toHaveAttribute("href", `/library/${club.id}/3`);
-    // The engine's play / pause (CTA-181) — it starts off (CTA-148).
-    const engine = screen.getByRole("button", { name: i18n.t("boardEngine.toggle") });
-    expect(engine).toHaveAttribute("aria-pressed", "false");
+    // The engine's on / off, a header switch (CTA-209, as the Case board's) — it starts off (CTA-148).
+    const engine = screen.getByRole("switch", { name: i18n.t("library.game.details.engine") });
+    expect(engine).not.toBeChecked();
     engine.focus();
-    await user.keyboard("{Enter}");
-    expect(engine).toHaveAttribute("aria-pressed", "true");
+    await user.keyboard(" ");
+    expect(engine).toBeChecked();
+    // The left panel's tabs, by the arrow keys.
+    const settings = within(details).getByRole("tab", { name: i18n.t("library.game.details.tabs.settings") });
+    settings.focus();
+    await user.keyboard("{ArrowRight}{Enter}");
+    expect(within(details).getByRole("tab", { name: i18n.t("library.game.details.tabs.info") })).toHaveAttribute("aria-selected", "true");
+    await expectNoAxeViolations(details);
   });
 
   it("says a game will not read, with the way back, and passes axe", async () => {

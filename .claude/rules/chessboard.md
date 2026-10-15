@@ -683,8 +683,9 @@ the top bar's Engine menu, [`docs/engine.md`](../../docs/engine.md) §5.2): a
 board passes them in and keeps no copy; nothing it reads back through
 `onUciOptionsReady` is written into them (only Play's strength takes the
 clamp). The engine's on / off is the board header's play / pause
-(`BoardEngineControls`, its menu the eval bar; the Case board's on / off a
-header switch, its eval bar and Write evaluations its Settings tab).
+(`BoardEngineControls`, its menu the eval bar; the Case board's, the
+repertoire player's and the Library game's on / off a header switch, the eval
+bar their left panel's Settings tab's — and the Case board's Write evaluations).
 
 **The engine's reply is `onBestMove`, and that is the whole Play/Analysis
 difference.** A board that passes none has no branch that moves a piece. One
@@ -855,7 +856,7 @@ the detail.
 | --- | --- | --- | --- | --- | --- | --- |
 | **Play with Engine** `/engine/play` | `usePlayGame` | Play (on from the start) | — | `useAutosave` → played games | Moves · Engine (the strength alone, CTA-181; no Map, CTA-91) | explorer, as the Case board, and without the `map` option — no Map is drawn |
 | **Masked Pieces** `/engine/masked` | `usePlayGame` (the same `PlayScreen`) | as Play with Engine | — | as Play with Engine, the costume on the record | + Masking | as Play with Engine, plus `mask` |
-| **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off; engine off at start) | — | explicit: Update / Save as copy (shipped: a new Case in Analysis) | Moves · Map · Info · Export | as the Case board |
+| **Library game** `/library/<c>/<n>` | `useAnalysisSession` | Play (off; engine off at start) | — | explicit: Update / Save as copy (shipped: a new Case in Analysis) | Moves · Map · Export (Back, the game's title and caption, previous / next, the next-move arrows, the move marks, the eval bar and the tags (Info) its left panel's `LibraryGameDetails`, `keepShell`; the engine's on / off a header switch, as the Case board's, no `BoardEngineControls` — CTA-209) | as the Case board |
 | **Openings explorer** `/openings` | `useAnalysisSession` | Play (off; engine off at start) | `useOpeningBookModule` | nothing is kept; hands the tree to Analysis as a Case | Book · Moves · Map · Load · Export | explorer, as the Case board |
 | **Analysis V2 Case** `/analysis/projects/<id>/cases/<caseId>` (CTA-186, shipped in CTA-192) | `useAnalysisSession` | Play (off; engine off at start) | — | **`useAutosave`** → the Case (`saveCaseState`: tree, SAN path, orientation, display) | Moves · Map · Export (the engine's on / off a header switch, its eval bar and Write evaluations its left panel's Case view's Settings tab, CTA-199 — no `BoardEngineControls`; how it draws, Display, there too) | explorer, editing on, *Play chances…* off ([`analysis-v2.md`](./analysis-v2.md)) |
 | **Repertoire player** `/repertoires/<id>` (+ `/games/<game>`) | the core + `useTrainerModule` | none — the trainer is the opponent | — | explicit: Update / Save as copy (a game never writes) | Moves · (Score) · Map (the session's settings — the eval bar too —, the games and Jobs its left panel's `RepertoireDetails`, `keepShell`; the engine's on / off a header switch, as the Case board's, no `BoardEngineControls` — CTA-206) | the full explorer; editing and comments in the player only |
@@ -864,8 +865,9 @@ the detail.
 top bar's Engine menu, one set for every board; each board's header carries
 the engine's play / pause and its menu (`BoardEngineControls` — the eval bar,
 and on the Case board, its Settings tab instead, *Write evaluations into the game*;
-the Case board and the repertoire player have an on / off switch instead, their
-eval bar their left panel's Settings tab's — CTA-199, CTA-206). Play with Engine
+the Case board, the repertoire player and the Library's game board have an on /
+off switch instead, their eval bar their left panel's Settings tab's — CTA-199,
+CTA-206, CTA-209). Play with Engine
 and Masked Pieces keep an Engine tab for the opponent's strength alone. Clear
 moved to the Load tab (the Openings explorer); the repertoire player's went
 in CTA-206 (its changes strip's Discard does that).

@@ -52,6 +52,10 @@ vi.mock("../../lib/openings", async (importOriginal) => {
   return openingsMock(importOriginal as () => Promise<typeof import("../../lib/openings")>);
 });
 
+/** Whether the window is under the shell's breakpoint — wide unless a test says otherwise. */
+const shell = vi.hoisted(() => ({ compact: false }));
+vi.mock("../main/shellCompact", () => ({ useShellCompact: () => shell.compact }));
+
 /*
   The Library (CTA-75), through its screens — here the list (collections and folders), a collection's table, a game on its analysis board — Update / Save as copy in an upload, Save as copy into Analysis from a shipped file — and a collection's settings. The other
   Library screen tests are `Library.test.tsx`, `LibraryFilters.test.tsx`,
@@ -61,7 +65,10 @@ vi.mock("../../lib/openings", async (importOriginal) => {
   with the other v2 boards (`boards.test.tsx`, `panelPropagation.test.tsx`).
 */
 
-beforeEach(resetLibrary);
+beforeEach(async () => {
+  shell.compact = false;
+  await resetLibrary();
+});
 
 describe("the Library's collections", () => {
   it("lists the ten shipped collections, then the reader's uploads", async () => {
@@ -521,10 +528,10 @@ describe("a collection's table", () => {
     await mountTable(`/library/${mine.id}`);
     fireEvent.click(screen.getByTestId("library-table-row-2"));
     expect(where()).toBe(`/library/${mine.id}/2`);
-    // The players are plated beside the board (CTA-105); the header's own
-    // line is the caption.
-    expect(await screen.findByTestId("library-game-caption")).toHaveTextContent("Game 2 of 3");
-    expect(screen.queryByTestId("library-game-title")).toBeNull();
+    // The players are plated beside the board (CTA-105), and named as the
+    // left panel's heading, over its caption (CTA-209).
+    expect(await screen.findByTestId("library-game-details-caption")).toHaveTextContent("Game 2 of 3");
+    expect(screen.getByRole("heading", { name: "Amy – Bob" })).toBeInTheDocument();
   });
 
   it("marks a game its index could not read", async () => {
@@ -572,7 +579,6 @@ describe("a game on its analysis board", () => {
   it("hands the game to Analysis from its Export tab as a new Case, at the position on screen (CTA-192)", async () => {
     const mine = await upload();
     await mountGame(`/library/${mine.id}/1?at=e4`);
-    expect(screen.getByTestId("library-game-arrows")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("library-game-panel-tab-export"));
     fireEvent.click(screen.getByTestId("library-game-open-analysis"));
 
@@ -589,19 +595,22 @@ describe("a game on its analysis board", () => {
     expect(record).toMatchObject({ type: "game", path: ["e4"], source: { kind: "pgn", pgn: expect.stringContaining("1. e4 e5") } });
   });
 
-  it("switches the next-move arrows from its Moves tab", async () => {
+  it("switches the next-move arrows from its left panel's Settings tab (CTA-209)", async () => {
     const mine = await upload();
     await mountGame(`/library/${mine.id}/1`);
+    // The Moves tab has no switch since CTA-209.
+    expect(within(screen.getByTestId("library-game-panel")).queryByRole("switch", { name: "Next-move arrows" })).toBeNull();
     expect(boardOptions().arrows).toHaveLength(1);
-    fireEvent.click(screen.getByTestId("library-game-arrows"));
+    fireEvent.click(screen.getByTestId("library-game-details-arrows"));
     expect(boardOptions().arrows).toEqual([]);
-    fireEvent.click(screen.getByTestId("library-game-panel-tab-map"));
-    // The Moves tab stays mounted, hidden; the Map tab has no switch of its own.
-    expect(screen.getAllByTestId("library-game-arrows")).toHaveLength(1);
-    expect(screen.getByTestId("library-game-arrows")).not.toBeVisible();
+    // Another tab and back: the session's choice holds.
+    fireEvent.click(screen.getByTestId("library-game-details-tab-info"));
+    expect(screen.queryByTestId("library-game-details-arrows")).toBeNull();
+    fireEvent.click(screen.getByTestId("library-game-details-tab-settings"));
+    expect(screen.getByRole("switch", { name: "Next-move arrows" })).not.toBeChecked();
   });
 
-  it("switches the move marks on the board from its Moves tab (CTA-168)", async () => {
+  it("switches the move marks on the board from its left panel's Settings tab (CTA-168, CTA-209)", async () => {
     const marked = await keep("Marked", ['[Event "Club"]\n[White "Amy"]\n[Black "Bob"]\n[Result "*"]\n\n1. e4! e5 *']);
     await mountGame(`/library/${marked.id}/1?at=e4`);
     expect(screen.getByTestId("library-game-move-glyph")).toHaveAttribute("data-square", "e4");
@@ -627,16 +636,86 @@ describe("a game on its analysis board", () => {
     await mountGame(`/library/${mine.id}/1`);
     expect(screen.getByTestId("library-game-board")).toBeInTheDocument();
     expect(boardOptions().id).toBe("library-game");
-    for (const tab of ["moves", "map", "info", "export"]) {
+    for (const tab of ["moves", "map", "export"]) {
       expect(screen.getByTestId(`library-game-panel-tab-${tab}`)).toBeInTheDocument();
     }
-    // The engine is the header's (CTA-181): its play / pause and its menu — the search settings the top bar's.
+    // The tags are the left panel's Info tab's since CTA-209.
+    expect(screen.queryByTestId("library-game-panel-tab-info")).not.toBeInTheDocument();
+    // The engine is the header's: an on / off switch, as the Case board's (CTA-209) — no play / pause
+    // and menu; the search settings are the top bar's (CTA-181).
     expect(screen.queryByTestId("library-game-panel-tab-engine")).not.toBeInTheDocument();
-    expect(screen.getByTestId("library-game-setting-engine")).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByTestId("library-game-engine-menu")).toBeInTheDocument();
-    expect(screen.getByTestId("library-game-play")).toBeInTheDocument();
-    expect(screen.getByTestId("library-game-caption")).toHaveTextContent("Game 1 of 3");
-    expect(screen.getByTestId("library-game-previous")).toHaveAttribute("aria-disabled", "true");
+    const header = within(screen.getByTestId("library-game-panel-header"));
+    expect(header.getByRole("switch", { name: "Engine" })).not.toBeChecked();
+    expect(screen.queryByTestId("library-game-engine-menu")).not.toBeInTheDocument();
+    expect(header.getByTestId("library-game-play")).toBeInTheDocument();
+    expect(header.getByTestId("library-game-save")).toBeInTheDocument();
+    expect(header.getByTestId("library-game-current-opening")).toBeInTheDocument();
+    // Back, the caption and previous / next are the left panel's head's (CTA-209).
+    expect(header.queryByRole("link", { name: /^Back to/ })).toBeNull();
+    expect(header.queryByRole("link", { name: "Next game" })).toBeNull();
+    expect(screen.getByTestId("library-game-details-caption")).toHaveTextContent("Game 1 of 3");
+    expect(screen.getByTestId("library-game-details-previous")).toBeDisabled();
+  });
+
+  it("heads its left panel with Back, the game's title and caption and previous / next, every link keeping the table's URL (CTA-209)", async () => {
+    const mine = await upload();
+    // Arrived from a filtered table, which Back returns to.
+    mount(`/library/${mine.id}`);
+    await screen.findByTestId("library-table");
+    fireEvent.change(screen.getByTestId("library-table-filter"), { target: { value: "Amy" } });
+    fireEvent.click(await screen.findByTestId("library-table-row-2"));
+    const details = await screen.findByRole("region", { name: "Details of Amy – Bob" });
+    expect(within(details).getByRole("heading", { name: "Amy – Bob" })).toBeInTheDocument();
+    expect(within(details).getByTestId("library-game-details-caption")).toHaveTextContent("Game 2 of 3 · Club · 1 · 1-0");
+    expect(within(details).getByRole("link", { name: "Previous game" })).toHaveAttribute("href", `/library/${mine.id}/1`);
+    fireEvent.click(within(details).getByRole("link", { name: "Next game" }));
+    expect(where()).toBe(`/library/${mine.id}/3`);
+    const third = await screen.findByRole("region", { name: "Details of Bob – Zed" });
+    expect(within(third).getByRole("button", { name: "Next game" })).toBeDisabled();
+    // The step kept the route's state: Back still goes to the table as it was left.
+    fireEvent.click(within(third).getByRole("link", { name: `Back to ${mine.name}` }));
+    await screen.findByTestId("library-table");
+    expect(where()).toContain("q=Amy");
+  });
+
+  it("shows the game's tags on its left panel's Info tab, and keeps the open tab across a step to another game (CTA-209)", async () => {
+    const mine = await upload();
+    await mountGame(`/library/${mine.id}/1`);
+    expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(screen.getByRole("tab", { name: "Info" }));
+    const details = screen.getByRole("region", { name: "Details of Zed – Amy" });
+    expect(within(details).getByText("Zed")).toBeInTheDocument();
+    fireEvent.click(within(details).getByRole("link", { name: "Next game" }));
+    // A fresh board for game 2, its left panel still on Info.
+    const next = await screen.findByRole("region", { name: "Details of Amy – Bob" });
+    expect(within(next).getByRole("tab", { name: "Info" })).toHaveAttribute("aria-selected", "true");
+    expect(within(next).getByText("Bob")).toBeInTheDocument();
+  });
+
+  it("switches the eval bar from its left panel's Settings tab, while the header's switch has the engine on (CTA-209)", async () => {
+    const mine = await upload();
+    await mountGame(`/library/${mine.id}/1`);
+    expect(screen.queryByTestId("eval-bar")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: "Engine" }));
+    expect(screen.getByTestId("eval-bar")).toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId("library-game-details")).getByRole("switch", { name: /Show evaluation bar/ }));
+    expect(screen.queryByTestId("eval-bar")).not.toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId("library-game-details")).getByRole("switch", { name: /Show evaluation bar/ }));
+    expect(screen.getByTestId("eval-bar")).toBeInTheDocument();
+  });
+
+  it("puts its left panel in a drawer under the breakpoint, opened from the board's header (CTA-209)", async () => {
+    shell.compact = true;
+    const mine = await upload();
+    await mountGame(`/library/${mine.id}/1`, { compact: true });
+    expect(screen.queryByRole("region", { name: "Details of Zed – Amy" })).not.toBeInTheDocument();
+    const toggle = within(screen.getByTestId("library-game-panel-header")).getByRole("button", { name: "The game's details" });
+    fireEvent.click(toggle);
+    const drawer = await screen.findByRole("dialog", { name: "Details of Zed – Amy" });
+    expect(within(drawer).getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
+    expect(within(drawer).getByTestId("library-game-details-arrows")).toBeInTheDocument();
+    fireEvent.keyDown(drawer, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Details of Zed – Amy" })).not.toBeInTheDocument());
   });
 
   it("plates each player's result, Elo and name beside the strips", async () => {

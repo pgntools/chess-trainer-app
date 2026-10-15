@@ -2,26 +2,26 @@ import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
-import NavigateBeforeRoundedIcon from "@mui/icons-material/NavigateBeforeRounded";
-import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
+import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useCurrentOpening } from "../shared/useCurrentOpening";
 import type { ChessboardOptions } from "react-chessboard";
 
 import {
-  BoardEngineControls,
   ChangesStrip,
   CurrentOpening,
   EngineThinking,
-  GameInfo,
+  LibraryGameDetails,
   PgnExportPanel,
   PlayToggleButton,
+  type LibraryGameDetailsTab,
 } from "../../blocks/panels";
+import { visuallyHidden } from "../../design-system/components/a11y";
 import { SwitchField } from "../../design-system/components/forms";
-import { BackButton } from "../../design-system/components/navigation";
 import { IconAction, ToggleIconAction } from "../../design-system/components/toolbars";
 import { downloadPgn } from "../../lib/pgnExport";
 import { indexGame } from "../../lib/collectionIndex";
@@ -44,7 +44,9 @@ import type { PlayerPlates } from "../shared/PlayerPlate";
 import { playerResultsOf } from "../shared/playerResults";
 import { useAnalysisSession } from "../board/core/useAnalysisSession";
 import { useSendToAnalysis } from "../analysisV2/useSendToAnalysis";
+import { BoardLeftPanel } from "../main/boardLeftPanel";
 import { usePageTitle } from "../main/pageTitle";
+import { useShellCompact } from "../main/shellCompact";
 import { useUnsavedWorkGuard } from "../main/unsavedWork";
 
 /**
@@ -57,7 +59,8 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  * | --- | --- |
  * | Base + engine + Play + baseline | `useAnalysisSession` — the Analysis Board's own session: `useBoardCore`, `useEngineModule` (off until switched on), `usePlayToggle` (off at the start) |
  * | Tree view | `useVariationsExplorer` — Moves, Map, the comment block, the next-moves bar, the arrows, the move menu; editing on, *Play chances…* off |
- * | Shell | `BoardShell` / `BoardPanel` — tabs Moves (with the next-move arrows' switch) · Map · Info · Export (no Engine tab since CTA-181: the search settings are the top bar's Engine menu, the eval bar the header's engine menu) |
+ * | Shell | `BoardShell` / `BoardPanel` — tabs Moves · Map · Export (no Engine tab since CTA-181: the search settings are the top bar's Engine menu) |
+ * | Left panel | `BoardLeftPanel`, `keepShell` (CTA-209) — the `LibraryGameDetails` block: Back, the game's title and caption, previous / next; tabs Settings (the next-move arrows, the move marks, the eval bar) · Info (the tags) |
  *
  * The Export tab also hands the game to **Analysis** (CTA-77, a Case since
  * CTA-192: a Project picked, `useSendToAnalysis`) at the position on screen —
@@ -66,10 +69,19 @@ import { useUnsavedWorkGuard } from "../main/unsavedWork";
  * The players are **plated beside the board** (CTA-105), at the left end of
  * the captured-pieces strips: each one's result of the game, a thin
  * separator, their Elo and their name (`1 | 2850 Carlsen, Magnus`), the top
- * plate the player the orientation puts at the top. The panel's header names
- * the game no more — its first line is the "Game n of m" caption — and
- * `gameTitleOf` stays for the export's file stem and the shipped "Save as
- * copy" name.
+ * plate the player the orientation puts at the top.
+ *
+ * **The left panel** (CTA-209) is the game's own view, as the Case board's
+ * and the repertoire player's: the shell's header and its Engine menu kept
+ * (`keepShell`), a drawer under the breakpoint opened from the right panel's
+ * header. Its head is Back to the table (`state.from`, kept), the game's
+ * title (`gameTitleOf`), "Game n of m · event · round · date · result" and
+ * previous / next (keeping `location.state`); its tabs Settings and Info. Its
+ * open tab and drawer are the route's (`LibraryGameScreen`), above this keyed
+ * board, so they outlive a step to another game. The right panel's header
+ * keeps the drawer's button, the opening on screen, Save, Play and the
+ * engine's on / off — a switch, as the Case board's (CTA-199); the eval bar's
+ * switch is the left panel's Settings tab's.
  *
  * **Nothing is written unless the reader asks**, and what may be written
  * depends on where the collection came from — the changes strip, opened by
@@ -97,9 +109,23 @@ type LibraryGameBoardProps = {
   number: number;
   /** The game, parsed with its side lines. */
   tree: GameTree;
+  /** The left panel's open tab — the route's, so it outlives a step to another game. */
+  detailsTab: LibraryGameDetailsTab;
+  onDetailsTabChange: (tab: LibraryGameDetailsTab) => void;
+  /** Under the shell's breakpoint: whether the left panel's drawer is open — the route's too. */
+  drawerOpen: boolean;
+  onDrawerOpenChange: (open: boolean) => void;
 };
 
-function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
+function LibraryGameBoard({
+  collection,
+  number,
+  tree,
+  detailsTab,
+  onDetailsTabChange,
+  drawerOpen,
+  onDrawerOpenChange,
+}: LibraryGameBoardProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -114,6 +140,7 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
   const { core, engine } = session;
   // The opening on screen, for the panel header (CTA-113: a hook and the `CurrentOpening` block).
   const currentOpening = useCurrentOpening(core.fen);
+  const compact = useShellCompact();
 
   const [tab, setTab] = useState("moves");
   const [showArrows, setShowArrows] = useState(true);
@@ -223,193 +250,207 @@ function LibraryGameBoard({ collection, number, tree }: LibraryGameBoardProps) {
   const saveLabel = t(session.changed ? "library.changes.saveOpen" : "library.changes.saveNothing");
   const labelKey = shipped ? "library.shippedChanges" : "library.changes";
 
+  /*
+    The left panel (CTA-209): the game's own view — its head and the
+    session's settings and tags — in the main menu's place, the shell's
+    header and its Engine menu kept (`keepShell`, as the Case board's and the
+    repertoire player's); a drawer under the breakpoint. Its tab and drawer
+    are the route's; the session's state is this board's, handed in as props.
+  */
+  const game = useMemo(() => mainlineGame(core.tree), [core.tree]);
+  const leftPanel = (
+    <BoardLeftPanel
+      collapsed={false}
+      open={drawerOpen}
+      onClose={() => onDrawerOpenChange(false)}
+      drawerLabel={t("library.game.details.label", { name: title })}
+      keepShell
+    >
+      <LibraryGameDetails
+        title={title}
+        collectionName={collection.name}
+        number={number}
+        count={collection.games.length}
+        caption={caption}
+        backLink={{ component: RouterLink, to: tablePath }}
+        previousLink={number <= 1 ? undefined : { component: RouterLink, to: gamePath(number - 1), state: location.state }}
+        nextLink={
+          number >= collection.games.length
+            ? undefined
+            : { component: RouterLink, to: gamePath(number + 1), state: location.state }
+        }
+        tab={detailsTab}
+        onTabChange={onDetailsTabChange}
+        showArrows={showArrows}
+        onShowArrowsChange={setShowArrows}
+        showMoveMarks={showMoveMarks}
+        onShowMoveMarksChange={setShowMoveMarks}
+        showEvalBar={session.showEvalBar}
+        onShowEvalBarChange={session.setShowEvalBar}
+        game={game}
+        testId="library-game-details"
+      />
+    </BoardLeftPanel>
+  );
+
   return (
-    <BoardShell
-      id="library-game"
-      core={core}
-      score={topLine?.score ?? null}
-      showEvalBar={session.engineOn && session.showEvalBar}
-      boardOptions={boardOptions}
-      playerPlates={playerPlates}
-      overlay={explorer.overlay}
-      panel={{
-        header: (
-          <>
-            <BackButton
-              label={t("library.game.back", { name: collection.name })}
-              link={{ component: RouterLink, to: tablePath }}
-              testId="library-game-back"
-            />
-            {analysis.dialog}
-            {/* The players live on the board's plates (CTA-105); the header's
-                own line is the caption. */}
-            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-              <Typography
-                variant="caption"
-                data-testid="library-game-caption"
-                dir="auto"
-                title={caption}
-                sx={{ color: "text.secondary", display: "block" }}
-                noWrap
+    <>
+      {leftPanel}
+      <BoardShell
+        id="library-game"
+        core={core}
+        score={topLine?.score ?? null}
+        showEvalBar={session.engineOn && session.showEvalBar}
+        boardOptions={boardOptions}
+        playerPlates={playerPlates}
+        overlay={explorer.overlay}
+        panel={{
+          header: (
+            <>
+              {compact && (
+                // Under the breakpoint the game's own view is a drawer; wide, the board's own column.
+                <IconAction
+                  label={t("library.game.details.toggle")}
+                  onClick={() => onDrawerOpenChange(true)}
+                  popupOpen={drawerOpen}
+                  popupKind="dialog"
+                  testId="library-game-details-toggle"
+                >
+                  <TuneRoundedIcon fontSize="small" />
+                </IconAction>
+              )}
+              {analysis.dialog}
+              {/* The opening on screen at the toolbar's start; the game's title, caption and previous / next are the left panel's. */}
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <CurrentOpening {...currentOpening} testId="library-game-current-opening" />
+              </Box>
+              <ToggleIconAction
+                label={saveLabel}
+                onClick={() => setChangesOpen((open) => !open)}
+                disabled={!session.changed}
+                active={session.changed}
+                // Pressed while its changes strip is open.
+                pressed={session.changed ? changesOpen : null}
+                testId="library-game-save"
               >
-                {t("library.game.of", { number, count: collection.games.length })}
-                {caption === "" ? "" : ` · ${caption}`}
-              </Typography>
-              <CurrentOpening {...currentOpening} testId="library-game-current-opening" />
-            </Box>
-            <IconAction
-              label={t("library.game.previous")}
-              link={{ component: RouterLink, to: gamePath(number - 1), state: location.state }}
-              disabled={number <= 1}
-              testId="library-game-previous"
-            >
-              <NavigateBeforeRoundedIcon fontSize="small" />
-            </IconAction>
-            <IconAction
-              label={t("library.game.next")}
-              link={{ component: RouterLink, to: gamePath(number + 1), state: location.state }}
-              disabled={number >= collection.games.length}
-              testId="library-game-next"
-            >
-              <NavigateNextRoundedIcon fontSize="small" />
-            </IconAction>
-            <ToggleIconAction
-              label={saveLabel}
-              onClick={() => setChangesOpen((open) => !open)}
-              disabled={!session.changed}
-              active={session.changed}
-              // Pressed while its changes strip is open.
-              pressed={session.changed ? changesOpen : null}
-              testId="library-game-save"
-            >
-              <SaveRoundedIcon fontSize="small" />
-            </ToggleIconAction>
-            <PlayToggleButton
-              testId="library-game-play"
-              engineOn={session.engineOn}
-              playing={session.playing}
-              thinking={session.thinking}
-              onToggle={session.togglePlaying}
-            />
-            {/* The engine's play / pause and its menu — the eval bar (CTA-181). */}
-            <BoardEngineControls
-              engineOn={session.engineOn}
-              onEngineOnChange={session.setEngineOn}
-              showEvalBar={session.showEvalBar}
-              onShowEvalBarChange={session.setShowEvalBar}
-              testId="library-game"
-            />
-          </>
-        ),
-        analysis: engine.analysis,
-        // The depth chip fills toward where the search stops (CTA-195).
-        searchProgress: engine.searchProgress,
-        requestedMultiPv: session.settings.multiPv,
-        engineOn: session.engineOn,
-        onPlayVariation: core.playVariation,
-        activeTab: tab,
-        onTabChange: setTab,
-        keepMounted: KEEP_MOUNTED,
-        tabs: [
-          {
-            id: "moves",
-            label: t("library.game.tabs.moves"),
-            content: (
-              <>
-                <Box sx={{ px: 1 }}>
-                  <SwitchField
-                    size="small"
-                    label={t("library.game.arrows")}
-                    checked={showArrows}
-                    onChange={setShowArrows}
-                    testIdOn="control"
-                    testId="library-game-arrows"
-                  />
-                  <SwitchField
-                    size="small"
-                    label={t("library.game.moveMarks")}
-                    checked={showMoveMarks}
-                    onChange={setShowMoveMarks}
-                    testIdOn="control"
-                    testId="library-game-move-marks"
-                  />
-                </Box>
-                {explorer.moves}
-              </>
-            ),
-          },
-          { id: "map", label: t("library.game.tabs.map"), content: explorer.map },
-          {
-            id: "info",
-            label: t("library.game.tabs.info"),
-            content: <GameInfo game={mainlineGame(core.tree)} testId="game-info" />,
-          },
-          {
-            id: "export",
-            label: t("library.game.tabs.export"),
-            content: (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <Box sx={{ display: "grid", gap: 0.5, justifyItems: "start" }}>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<OpenInNewRoundedIcon fontSize="small" />}
-                    onClick={() =>
-                      analysis.send({
-                        // The game as the collection holds it, at the position on screen.
-                        games: [{ tree, nodeId: nodeAtParam(tree, linkedAt), orientation: core.orientation }],
-                        projectName: collection.name,
-                      })
-                    }
-                    data-testid="library-game-open-analysis"
-                  >
-                    {t("library.game.openAnalysis")}
-                  </Button>
-                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                    {t(session.changed ? "library.game.openAnalysisChanged" : "library.game.openAnalysisHelp")}
-                  </Typography>
-                </Box>
-                <PgnExportPanel
-                  fen={core.fen}
-                  tree={core.tree}
-                  onDownload={(pgn) => downloadPgn(slugify(title) || "game", [pgn])}
-                  testId="analysis"
+                <SaveRoundedIcon fontSize="small" />
+              </ToggleIconAction>
+              <PlayToggleButton
+                testId="library-game-play"
+                engineOn={session.engineOn}
+                playing={session.playing}
+                thinking={session.thinking}
+                onToggle={session.togglePlaying}
+              />
+              {/* The engine's on / off — a small switch, as the Case board's; the eval bar is the left panel's Settings tab's. */}
+              <Box sx={{ flexShrink: 0 }}>
+                <SwitchField
+                  size="small"
+                  // The top bar's Engine icon for the word — "Engine" on a hover, and read from the
+                  // hidden word — neutral at its 0.56 while off, the primary colour while on.
+                  label={
+                    <Box component="span" title={t("library.game.details.engine")} sx={{ display: "flex" }}>
+                      <SmartToyRoundedIcon
+                        fontSize="small"
+                        color={session.engineOn ? "primary" : "inherit"}
+                        aria-hidden
+                        sx={{ display: "block", opacity: session.engineOn ? 1 : 0.56 }}
+                      />
+                      <Box component="span" sx={visuallyHidden}>
+                        {t("library.game.details.engine")}
+                      </Box>
+                    </Box>
+                  }
+                  checked={session.engineOn}
+                  onChange={session.setEngineOn}
+                  testId="library-game-setting-engine"
                 />
               </Box>
-            ),
-          },
-        ],
-        footer: (
-          <>
-            {explorer.annotations}
-            {session.changed && changesOpen && (
-              <ChangesStrip
-                testId="library-game-changes"
-                labelKey={labelKey}
-                readOnly={shipped}
-                summary={
-                  session.extensionIds.size === 0
-                    ? t("library.changes.edited")
-                    : t("library.changes.added", { count: session.extensionIds.size })
-                }
-                problem={problem}
-                onUpdate={() => void update()}
-                onCopy={() => void saveCopy()}
-                onDiscard={discard}
-              />
-            )}
-            {session.playing && (
-              <EngineThinking
-                testId="analysis-play"
-                thinking={session.thinking}
-                depth={engine.analysis.fen === core.fen ? engine.analysis.depth : 0}
-              />
-            )}
-            {tab === "moves" && explorer.nextMoves}
-          </>
-        ),
-      }}
-    />
+            </>
+          ),
+          analysis: engine.analysis,
+          // The depth chip fills toward where the search stops (CTA-195).
+          searchProgress: engine.searchProgress,
+          requestedMultiPv: session.settings.multiPv,
+          engineOn: session.engineOn,
+          onPlayVariation: core.playVariation,
+          activeTab: tab,
+          onTabChange: setTab,
+          keepMounted: KEEP_MOUNTED,
+          tabs: [
+            {
+              id: "moves",
+              label: t("library.game.tabs.moves"),
+              content: explorer.moves,
+            },
+            { id: "map", label: t("library.game.tabs.map"), content: explorer.map },
+            {
+              id: "export",
+              label: t("library.game.tabs.export"),
+              content: (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <Box sx={{ display: "grid", gap: 0.5, justifyItems: "start" }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<OpenInNewRoundedIcon fontSize="small" />}
+                      onClick={() =>
+                        analysis.send({
+                          // The game as the collection holds it, at the position on screen.
+                          games: [{ tree, nodeId: nodeAtParam(tree, linkedAt), orientation: core.orientation }],
+                          projectName: collection.name,
+                        })
+                      }
+                      data-testid="library-game-open-analysis"
+                    >
+                      {t("library.game.openAnalysis")}
+                    </Button>
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      {t(session.changed ? "library.game.openAnalysisChanged" : "library.game.openAnalysisHelp")}
+                    </Typography>
+                  </Box>
+                  <PgnExportPanel
+                    fen={core.fen}
+                    tree={core.tree}
+                    onDownload={(pgn) => downloadPgn(slugify(title) || "game", [pgn])}
+                    testId="analysis"
+                  />
+                </Box>
+              ),
+            },
+          ],
+          footer: (
+            <>
+              {explorer.annotations}
+              {session.changed && changesOpen && (
+                <ChangesStrip
+                  testId="library-game-changes"
+                  labelKey={labelKey}
+                  readOnly={shipped}
+                  summary={
+                    session.extensionIds.size === 0
+                      ? t("library.changes.edited")
+                      : t("library.changes.added", { count: session.extensionIds.size })
+                  }
+                  problem={problem}
+                  onUpdate={() => void update()}
+                  onCopy={() => void saveCopy()}
+                  onDiscard={discard}
+                />
+              )}
+              {session.playing && (
+                <EngineThinking
+                  testId="analysis-play"
+                  thinking={session.thinking}
+                  depth={engine.analysis.fen === core.fen ? engine.analysis.depth : 0}
+                />
+              )}
+              {tab === "moves" && explorer.nextMoves}
+            </>
+          ),
+        }}
+      />
+    </>
   );
 }
 

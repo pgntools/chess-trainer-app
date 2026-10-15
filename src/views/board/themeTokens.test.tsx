@@ -9,6 +9,7 @@ import { buildTheme } from "../../design-system/theme";
 import { defaultTheme, type ChessTokens } from "../../design-system/themes";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 import { THEME_STORAGE_KEY } from "../../theme/themeChoice";
+import { BoardLeftPanelProvider } from "../main/boardLeftPanel";
 import { RightPanelOutlet, RightPanelProvider } from "../main/rightPanel";
 
 /*
@@ -98,7 +99,15 @@ const LIBRARY_FIXTURE = {
   games: ['[White "A"]\n[Black "B"]\n\n1. e4 e5 *'],
 };
 const LibraryGame = () => (
-  <LibraryGameBoard collection={LIBRARY_FIXTURE} number={1} tree={parsePgnTree(LIBRARY_FIXTURE.games[0])} />
+  <LibraryGameBoard
+    collection={LIBRARY_FIXTURE}
+    number={1}
+    tree={parsePgnTree(LIBRARY_FIXTURE.games[0])}
+    detailsTab="settings"
+    onDetailsTabChange={() => {}}
+    drawerOpen={false}
+    onDrawerOpenChange={() => {}}
+  />
 );
 
 /** A Case of Analysis V2 (CTA-186) at its start, on its board. */
@@ -117,10 +126,12 @@ const renderBoard = (Screen: () => ReactNode) =>
   render(
     <AppThemeWithLang>
       <MemoryRouter initialEntries={["/board"]}>
-        <RightPanelProvider>
-          <Screen />
-          <RightPanelOutlet />
-        </RightPanelProvider>
+        <BoardLeftPanelProvider>
+          <RightPanelProvider>
+            <Screen />
+            <RightPanelOutlet />
+          </RightPanelProvider>
+        </BoardLeftPanelProvider>
       </MemoryRouter>
     </AppThemeWithLang>,
   );
