@@ -28,12 +28,12 @@ export type DevelopmentNoticeDialogProps = {
 };
 
 /**
- * **The app is still in development** (CTA-155) — told once, as a modal, on
- * the first load of a session: the logo and the title for a header, an *Early
- * beta* badge, a line saying to use it with caution, and a list of what to
- * expect — what is saved lives in this browser only, so export it; things may
- * change or break. One button, Dismiss; the shell keeps the dismissal for the
- * session (`lib/developmentNotice.ts`).
+ * **The app is still in development** (CTA-155) — told as a modal on the
+ * first load: the logo and the title for a header, an *Early beta* badge, a
+ * line saying to use it with caution, and a list of what to expect — what is
+ * saved lives in this browser only, so export it; things may change or break.
+ * One button, Dismiss; the shell keeps the dismissal for 30 days
+ * (`lib/developmentNotice.ts`, CTA-210).
  *
  * Presentational: whether it is open is a prop. Its words are the app's
  * (`developmentNotice.*`); the logo is decorative, the title names the dialog.

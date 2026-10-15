@@ -144,7 +144,7 @@ it is in [`game-collections.md`](./game-collections.md) §4.
 
 ## 2. What stays in `localStorage`
 
-Only preferences — two written by libraries, the rest by us:
+Preferences — two written by libraries, the rest by us — and one note to the app itself, the in-development notice's dismissal:
 
 | Key | Written by | What |
 | --- | --- | --- |
@@ -156,17 +156,19 @@ Only preferences — two written by libraries, the rest by us:
 | `chessapp.engineSettings` | `lib/engineSearchSettings.ts` (CTA-181), through `views/shared/useEngineSearchSettings.ts` | the engine's search settings every board uses, set in the top bar's Engine menu — JSON `{ multiPv, threads, hashMb }` — the depth and move time are the presets' since CTA-185 (`EnginePreset.search`; an older `depth`, `moveTimeMs` or `infinite` here read as nothing) — read back field by field (a missing or unreadable one its default, a number held to `ENGINE_SEARCH_SETTING_BOUNDS`); Threads and Hash kept as asked, never cut back to the engine running. Not in the export zip — a preference. Absent until the reader changes one |
 | `chessapp.jobsSettings` | `lib/jobsSettings.ts` (CTA-193), through `views/analysisV2/jobs/useJobsSettings.ts` | the Jobs settings, set on the Jobs V2 view's Settings tab — JSON `{ defaultPreset: { engineId, presetId } \| null }`, read back field by field (what does not read is its default): the default engine and preset for new jobs. A field it does not read is kept on a write (an old `evalApi`, until the lichess evaluation API's settings move it out — CTA-196). Absent until the reader changes one |
 | `chessapp.lichessEvalApi` | `lib/evalSources/lichess/settings.ts` (CTA-196 — the Jobs settings' `evalApi` until then, moved here on the first read), through its Settings → Engine tab, the boards' engine (`withEvalSources`) and the Jobs V2 runner | the lichess evaluation API, an eval source every analysis search asks first — JSON `{ enabled, url, write, minWriteDepth }`, read back field by field: **off unless the reader turns it on**, and while off nothing contacts it; its address; whether every engine search that reached its target depth is sent to it; the shallowest one sent (`minWriteDepth`, CTA-202 — 35 when absent or unreadable). Its status is read, never stored. Absent until the reader changes one ([`docs/engine.md`](../../docs/engine.md) §10) |
+| `chessapp.developmentNoticeDismissed` | `lib/developmentNotice.ts` (CTA-155; here since CTA-210), through the shell's `views/main/DevelopmentNotice.tsx` | when the in-development notice was last dismissed — epoch milliseconds, as a string: closed while less than `DEVELOPMENT_NOTICE_DISMISSAL_MS` (30 days) has passed, in every tab and after a restart, then shown again; a missing, unreadable or future-dated value is no dismissal. A dismissal wakes the other open tabs through the window's `storage` event; where `localStorage` is refused, it lasts the page's life in memory. Not in the export zip. Absent until the reader dismisses it |
 
 Nothing else in `src/` touches `localStorage`, and nothing reads the old
 `chessapp.*.v1` keys — do not reuse those names.
 `grep -rn localStorage src --include=*.ts --include=*.tsx | grep -v test`
 should show only comments, `theme/themeChoice.ts`, `lib/engineChoice.ts`,
-`lib/engineServer.ts`, `lib/engineSearchSettings.ts`, `lib/jobsSettings.ts` and
-`lib/evalSources/lichess/settings.ts`.
+`lib/engineServer.ts`, `lib/engineSearchSettings.ts`, `lib/jobsSettings.ts`,
+`lib/evalSources/lichess/settings.ts` and `lib/developmentNotice.ts`.
 
-The one `sessionStorage` key is `chessapp.developmentNoticeDismissed`
-(`lib/developmentNotice.ts`, CTA-155): the in-development notice was dismissed in
-this browser session — not a preference, so it is not kept across visits.
+The shipped app keeps nothing in `sessionStorage` (the dev-only MDX editor
+keeps its draft there). The in-development notice's dismissal was its one key
+until CTA-210 moved it here; a `"1"` an older visit left there is never read,
+so that reader sees the notice once more and then not for a month.
 
 ---
 

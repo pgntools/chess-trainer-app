@@ -111,14 +111,15 @@ const recordStores = async () => {
 };
 
 /*
-  The in-development notice (CTA-155) is a modal that opens on the first load
-  of a session, and a modal hides the rest of the page from a screen reader's
-  queries. So a test starts in a session where it was already dismissed; the
-  notice's own tests remove the key to meet it.
+  The in-development notice (CTA-155) is a modal that opens until it is
+  dismissed (for a month — CTA-210), and a modal hides the rest of the page
+  from a screen reader's queries. So a test starts with it dismissed just now —
+  a fresh time in `localStorage`, written after the last test's
+  `localStorage.clear()` (below); the notice's own tests remove the key to meet it.
 */
 beforeEach(() => {
   resetDevelopmentNotice();
-  sessionStorage.setItem(DEVELOPMENT_NOTICE_KEY, "1");
+  localStorage.setItem(DEVELOPMENT_NOTICE_KEY, String(Date.now()));
 });
 
 afterEach(async () => {

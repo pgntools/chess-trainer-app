@@ -16,6 +16,7 @@ import {
   resetRepertoireFolderStore,
 } from "./savedRepertoireFolderStore";
 import { readRepertoireText, savedRepertoireOf } from "./savedRepertoires";
+import { localStorageKeys } from "../test/localStorageKeys";
 import {
   fileRepertoire,
   saveRepertoire,
@@ -69,7 +70,7 @@ describe("repertoire folders — the store", () => {
     const made = await createRepertoireFolder("  Caro  ");
     expect(made?.name).toBe("Caro");
     expect(repertoireFoldersSnapshot()).toEqual([made]);
-    expect(localStorage.length).toBe(0);
+    expect(localStorageKeys()).toEqual([]);
     resetRepertoireFolderStore();
     expect(await loadRepertoireFolders()).toEqual([made]);
 
