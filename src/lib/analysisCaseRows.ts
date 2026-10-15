@@ -1,5 +1,9 @@
+import { DEFAULT_POSITION } from "chess.js";
+
 import type { AnalysisCase, AnalysisCaseType } from "./analysisProjects";
+import { mainline } from "./gameTree";
 import { collectionRowOf } from "./libraryCollections";
+import { parsePgnTree } from "./pgn";
 
 /**
  * **A Case as a table row** (CTA-186) — a Project's Cases table: its place in
@@ -125,5 +129,53 @@ export const filteredCaseRows = (
       .join(" ")
       .toLocaleLowerCase();
     return words.every((word) => haystack.includes(word));
+  });
+};
+
+/** Each Case's line, by id, with the PGN it was read from — re-read only when that changes. */
+const lines = new Map<string, { pgn: string; line: readonly string[] | undefined }>();
+
+/**
+ * **A Case's opening line** (CTA-214) — a Game's mainline as SAN from the
+ * standard start, what a Project's Games tree merges (`openingTreeOf`) and
+ * its `?line=` filters by, as the Library's index keeps a game's `line`
+ * (`lib/collectionIndex.ts`). `undefined` for a Position, a game from a
+ * set-up position, one with no moves and a PGN that does not read.
+ *
+ * Parsed once per Case and kept while its PGN is the same — an edit on its
+ * board, a job merged in — so a Project's screen re-rendering parses nothing.
+ */
+export const caseLineOf = (record: AnalysisCase): readonly string[] | undefined => {
+  if (record.type !== "game") return undefined;
+  const kept = lines.get(record.id);
+  if (kept !== undefined && kept.pgn === record.pgn) return kept.line;
+  let line: readonly string[] | undefined;
+  try {
+    const tree = parsePgnTree(record.pgn);
+    const nodes = mainline(tree);
+    if (tree.startFen === DEFAULT_POSITION && nodes.length > 0) line = nodes.map((node) => node.san);
+  } catch {
+    line = undefined;
+  }
+  lines.set(record.id, { pgn: record.pgn, line });
+  return line;
+};
+
+/** A row as the opening tree reads it: its line, and its result (`*` for none). */
+export const caseTreeRowOf = (row: CaseRow): { line?: readonly string[]; result: string } => ({
+  line: caseLineOf(row.record),
+  result: row.result ?? "*",
+});
+
+/**
+ * **The Games tree's filter** (CTA-214) — the rows whose line begins with
+ * `line`, as the Library's `filteredRows` keeps a game: a row with no line is
+ * out once one is set. An empty line keeps every row (the same array).
+ */
+export const caseRowsOnLine = (rows: readonly CaseRow[], line: readonly string[]): readonly CaseRow[] => {
+  if (line.length === 0) return rows;
+  return rows.filter((row) => {
+    const own = caseLineOf(row.record);
+    return own !== undefined && own.length >= line.length && line.every((san, index) => own[index] === san);
   });
 };

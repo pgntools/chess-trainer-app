@@ -83,7 +83,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/blocks/forms/CollectionSettingsForm/` | A collection's settings form, a block (CTA-121): the title, the description, and the tournament mark with its formats (every one selectable since CTA-142, each with its table — the arena's since CTA-204) and the type the games look like (`TournamentSuggestion`, its Apply) — presentational, wired by the settings screen. |
 | `src/views/library/CollectionSettingsScreen.tsx` | `/library/<collection>/settings` (CTA-121): the `CollectionSettingsForm` block over one draft, saved whole through `updateCollectionSettings` — uploads only; a shipped id is the miss. |
 | `src/blocks/forms/CollectionFilters/` | The table's right-hand panel (a block since CTA-113): players (several names at once, OR'd — CTA-95) and side, the opening board (a slot), then opening, event, dates and result. |
-| `src/views/library/OpeningFilterBoard.tsx` | The opening-moves board (`options.id` `library-filter-board`), and its *Save tree as PGN* link. |
+| `src/views/shared/OpeningFilterBoard.tsx` | The opening-moves board (`options.id` `library-filter-board`), and its *Save tree as PGN* link — shared since CTA-214 with an Analysis Project's Games tree (its names, words and test ids props, the Library's the defaults). |
 | `src/blocks/dialogs/OpeningTreePgnDialog/` | *Save tree as PGN*'s choice: No, or Add tags — `games`, `prc`, or both (`FormDialog`, CTA-113). |
 | `src/blocks/dialogs/SaveAsCollectionDialog/` | *Save as collection*'s name dialog (CTA-122): the derived name to edit, the count under it, a busy state and a problem slot — presentational, the write the screen's (`CollectionScreen.tsx`). |
 | `src/views/library/LibraryGameScreen.tsx` → `LibraryGameBoard.tsx` | `/library/<collection>/<n>`: resolve and parse the game, then the analysis board; the screen holds the left panel's open tab and drawer (CTA-209). |
@@ -740,6 +740,16 @@ A new filter or sort resets the page. **Picks are not in the URL**: a link
 carries the filter, not a hand-made selection.
 
 #### 6.4.1 The opening-moves board — `OpeningFilterBoard.tsx`, `lib/openingTree.ts`
+
+**Shared** (CTA-214): `views/shared/OpeningFilterBoard.tsx` draws an
+Analysis Project's Games tree too ([`analysis-v2.md`](./analysis-v2.md) §3.2),
+over its Game Cases. Presentational over `line` / `node` / `onLine`; what
+names its games are props, the Library's the defaults — `treeName` (the
+saved tree's `Event` and file name; the Library passes the collection's),
+`fileFallback` (`collection`), `captions` (the heading and captions,
+`library.filters.moves.*`) and `testId` (`library-filter` — every id below
+and the board's `options.id` `<testId>-board`). A change to it changes both
+screens.
 
 - The tree is merged **from the rows the other filters leave**
   (`openingTreeOf(narrowed)`), so filtering by a player and side shows that

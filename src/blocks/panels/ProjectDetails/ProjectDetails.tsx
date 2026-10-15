@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
@@ -7,7 +8,7 @@ import { SwitchField } from "../../../design-system/components/forms";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 
 /** The panel's tabs, in order. */
-export type ProjectDetailsTab = "general" | "options";
+export type ProjectDetailsTab = "general" | "gamesTree" | "options";
 
 export type ProjectDetailsProps = {
   /** The Project's name, as the screen shows it (its untitled name for one with none). */
@@ -19,8 +20,15 @@ export type ProjectDetailsProps = {
   exampleOption: boolean;
   onExampleOptionChange: (on: boolean) => void;
   /**
+   * The Games tree tab's board (CTA-214) — the screen's, over the Project's
+   * Game Cases. Absent while no Game Case has a line: the tab says there are
+   * no games to show.
+   */
+  gamesTree?: ReactNode;
+  /**
    * The root; its parts `-title`, `-tabs` (each tab `-tab-<id>`), `-general`,
-   * `-options` and the switch's input `-example-option`.
+   * `-games-tree` (its empty line `-games-tree-empty`), `-options` and the
+   * switch's input `-example-option`.
    */
   testId: string;
 };
@@ -28,14 +36,23 @@ export type ProjectDetailsProps = {
 /**
  * **A Project's own panel beside its Cases** (CTA-213) — the Project view's
  * left panel, in the main menu's place, as `CaseDetails` is beside a Case's
- * board: the Project's name at its head, then tabs. **A frame for now**: its
- * content is a later issue, so **General** holds a placeholder line and
- * **Options** an example switch.
+ * board: the Project's name at its head, then tabs. **General** holds a
+ * placeholder line and **Options** an example switch, their content a later
+ * issue; **Games tree** (CTA-214) the opening-moves board over the Project's
+ * Game Cases, which filters its Cases table — a slot the screen fills.
  *
- * Presentational: the open tab and the switch's state arrive from the
- * screen; its words are `analysisV2.projectDetails.*`.
+ * Presentational: the open tab, the switch's state and the board arrive from
+ * the screen; its words are `analysisV2.projectDetails.*`.
  */
-function ProjectDetails({ name, tab, onTabChange, exampleOption, onExampleOptionChange, testId }: ProjectDetailsProps) {
+function ProjectDetails({
+  name,
+  tab,
+  onTabChange,
+  exampleOption,
+  onExampleOptionChange,
+  gamesTree,
+  testId,
+}: ProjectDetailsProps) {
   const { t } = useTranslation();
 
   return (
@@ -61,6 +78,7 @@ function ProjectDetails({ name, tab, onTabChange, exampleOption, onExampleOption
         <PanelTabs
           tabs={[
             { id: "general", label: t("analysisV2.projectDetails.tabs.general") },
+            { id: "gamesTree", label: t("analysisV2.projectDetails.tabs.gamesTree") },
             { id: "options", label: t("analysisV2.projectDetails.tabs.options") },
           ]}
           value={tab}
@@ -78,6 +96,15 @@ function ProjectDetails({ name, tab, onTabChange, exampleOption, onExampleOption
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
               {t("analysisV2.projectDetails.placeholder")}
             </Typography>
+          </Box>
+        )}
+        {tab === "gamesTree" && (
+          <Box {...tabPanelProps(testId, "gamesTree")} data-testid={`${testId}-games-tree`} sx={{ px: 1, py: 1 }}>
+            {gamesTree ?? (
+              <Typography variant="body2" sx={{ color: "text.secondary" }} data-testid={`${testId}-games-tree-empty`}>
+                {t("analysisV2.projectDetails.noGames")}
+              </Typography>
+            )}
           </Box>
         )}
         {tab === "options" && (

@@ -19,7 +19,14 @@ import { BackButton, Breadcrumbs } from "../../design-system/components/navigati
 import { MissState } from "../../design-system/components/states";
 import { TABLE_PAGE_SIZES, useTableUrlState } from "../../design-system/components/tables";
 import { IconAction, ListScreenHeader, SelectionBar } from "../../design-system/components/toolbars";
-import { CASE_COLUMNS, caseFirstDirection, caseRowOf, filteredCaseRows } from "../../lib/analysisCaseRows";
+import {
+  CASE_COLUMNS,
+  caseFirstDirection,
+  caseRowOf,
+  caseRowsOnLine,
+  caseTreeRowOf,
+  filteredCaseRows,
+} from "../../lib/analysisCaseRows";
 import {
   addAnalysisCases,
   duplicateAnalysisCase,
@@ -39,10 +46,19 @@ import {
   type AnalysisProject,
   type CaseOrderMove,
 } from "../../lib/analysisProjects";
+import {
+  OPENING_LINE_PARAM,
+  openingLineOfParam,
+  openingLineParamOf,
+  openingNodeAt,
+  openingNodeOn,
+  openingTreeOf,
+} from "../../lib/openingTree";
 import { newRecordId } from "../../lib/recordId";
 import { BoardLeftPanel } from "../main/boardLeftPanel";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import { useShellCompact } from "../main/shellCompact";
+import OpeningFilterBoard from "../shared/OpeningFilterBoard";
 import { browserPath, caseListContextOf, casePath } from "./paths";
 import { useAnalysisCases, useAnalysisProjects, useProjectFolders } from "./useAnalysisProjects";
 
@@ -93,6 +109,14 @@ const caseOfSpec = (spec: NewCaseSpec, projectId: string, now: Date): AnalysisCa
  * placeholder and an Options tab's example switch, held here and kept
  * nowhere. Under the shell's breakpoint it is a drawer, opened from the
  * header.
+ *
+ * **Its Games tree tab** (CTA-214) is the Library's opening-moves board
+ * (`OpeningFilterBoard`) over the Project's Game Cases — each its mainline
+ * from the standard start (`caseLineOf`), merged from the Cases the words
+ * leave (`openingTreeOf`). The line played on it narrows the table to the
+ * Cases that began that way, and travels in the URL as `?line=`, cut back
+ * where no Case of the Project follows it; while it is set, the rows do not
+ * reorder, as under words. The panel opens on that tab when the URL has one.
  */
 function ProjectScreen() {
   const { t } = useTranslation();
@@ -118,11 +142,12 @@ function ProjectScreen() {
   // The left panel (CTA-213): under the breakpoint a drawer; its open tab and its example switch, the screen's alone.
   const compact = useShellCompact();
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [detailsTab, setDetailsTab] = useState<ProjectDetailsTab>("general");
   const [exampleOption, setExampleOption] = useState(false);
-  // The words box, in the URL (`?q=`), as the saved analyses' table keeps it.
+  // The words box, in the URL (`?q=`), as the saved analyses' table keeps it; the Games tree's line too (`?line=`).
   const [searchParams] = useSearchParams();
   const text = searchParams.get("q") ?? "";
+  const requestedLine = searchParams.get(OPENING_LINE_PARAM) ?? "";
+  const [detailsTab, setDetailsTab] = useState<ProjectDetailsTab>(() => (requestedLine === "" ? "general" : "gamesTree"));
 
   const project: AnalysisProject | undefined = projects?.find((candidate) => candidate.id === projectId);
   const projectName = project === undefined ? undefined : project.name || t("analysisV2.project.untitled");
@@ -133,10 +158,20 @@ function ProjectScreen() {
     () => (cases === undefined ? [] : casesOf(cases, projectId).map((record) => caseRowOf(record, caseDisplayName(record, t)))),
     [cases, projectId, t],
   );
-  const shown = useMemo(
+  // The Games tree (CTA-214): the line followed as far as the Project's games go — a stale link lands where they part —
+  // the tree merged from the Cases the words leave, and the table those of them on the line.
+  const projectTree = useMemo(() => openingTreeOf(rows.map(caseTreeRowOf)), [rows]);
+  const line = useMemo(
+    () => openingNodeAt(projectTree, openingLineOfParam(requestedLine)).line,
+    [projectTree, requestedLine],
+  );
+  const worded = useMemo(
     () => filteredCaseRows(rows, text, (type) => t(type === "game" ? "analysisV2.case.typeGame" : "analysisV2.case.typePosition")),
     [rows, text, t],
   );
+  const wordedTree = useMemo(() => openingTreeOf(worded.map(caseTreeRowOf)), [worded]);
+  const lineNode = useMemo(() => openingNodeOn(wordedTree, line), [wordedTree, line]);
+  const shown = useMemo(() => caseRowsOnLine(worded, line), [worded, line]);
   const table = useTableUrlState({
     columns: CASE_COLUMNS,
     defaultSort: "order",
@@ -348,8 +383,8 @@ function ProjectScreen() {
                 />
               ) : undefined
             }
-            filtered={text.trim() !== ""}
-            onClearFilter={() => table.setParams({ q: null })}
+            filtered={text.trim() !== "" || line.length > 0}
+            onClearFilter={() => table.setParams({ q: null, [OPENING_LINE_PARAM]: null })}
             testId="analysis-v2-cases"
           />
         </Box>
@@ -368,6 +403,26 @@ function ProjectScreen() {
           onTabChange={setDetailsTab}
           exampleOption={exampleOption}
           onExampleOptionChange={setExampleOption}
+          gamesTree={
+            // The board once some Game Case has a line; else the tab says there are no games.
+            projectTree.count > 0 ? (
+              <OpeningFilterBoard
+                node={lineNode}
+                line={line}
+                onLine={(next) => table.setParams({ [OPENING_LINE_PARAM]: next.length === 0 ? null : openingLineParamOf(next) })}
+                treeName={projectName}
+                fileFallback="project"
+                captions={{
+                  title: t("analysisV2.projectDetails.tree.title"),
+                  start: t("analysisV2.projectDetails.tree.start"),
+                  end: t("analysisV2.projectDetails.tree.end"),
+                  single: t("analysisV2.projectDetails.tree.single"),
+                  none: t("analysisV2.projectDetails.tree.none"),
+                }}
+                testId="analysis-v2-project-tree"
+              />
+            ) : undefined
+          }
           testId="analysis-v2-project-details"
         />
       </BoardLeftPanel>

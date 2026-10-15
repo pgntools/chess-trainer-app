@@ -3056,9 +3056,21 @@ const en = {
       tabs: {
         label: "Project details",
         general: "General",
+        /** CTA-214: the opening-moves board over the Project's Game Cases, filtering its table. */
+        gamesTree: "Games tree",
         options: "Options",
       },
       placeholder: "The project's details will be shown here.",
+      /** The Games tree tab while no Game Case has moves from the standard start. */
+      noGames: "No games to show — this project has no game cases played from the start position.",
+      /** The Games tree's board, its words naming the Project's games (the Library's own say "collection"). */
+      tree: {
+        title: "Opening moves",
+        start: "Play a move to keep the cases that began with it",
+        end: "No game in the project goes further here",
+        single: "Only one game in the project goes further here",
+        none: "No game the words leave was played this way",
+      },
       exampleOption: "Example option",
       exampleOptionHelp: "An example switch — it changes nothing yet.",
     },

@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { caseFirstDirection, caseRowOf, caseSortValue, filteredCaseRows, newestCaseFirst } from "./analysisCaseRows";
+import {
+  caseFirstDirection,
+  caseLineOf,
+  caseRowOf,
+  caseRowsOnLine,
+  caseSortValue,
+  caseTreeRowOf,
+  filteredCaseRows,
+  newestCaseFirst,
+} from "./analysisCaseRows";
 import { gameCaseOf, positionCaseOfFen } from "./analysisProjects";
 import { parsePgnTree } from "./pgn";
 
@@ -72,5 +81,49 @@ describe("a Case as a table row (CTA-186)", () => {
     expect(ids("position")).toEqual(["cpos"]);
     expect(ids("move")).toEqual(["cpos"]);
     expect(ids("carlsen position")).toEqual([]);
+  });
+});
+
+describe("a Case's opening line (CTA-214)", () => {
+  const now = new Date("2026-10-15T10:00:00.000Z");
+  const game = (id: string, movetext: string, result = "*") =>
+    gameCaseOf({ id, projectId: "p1", name: "", now }, parsePgnTree(`[Result "${result}"]\n\n${movetext} ${result}`));
+
+  it("is a Game's mainline as SAN from the standard start, side lines left out", () => {
+    expect(caseLineOf(game("a", "1. e4 (1. d4 d5) e5 2. Nf3"))).toEqual(["e4", "e5", "Nf3"]);
+  });
+
+  it("is none for a Position, a set-up start or a game of no moves", () => {
+    expect(caseLineOf(POSITION)).toBeUndefined();
+    const setUp = gameCaseOf(
+      { id: "s", projectId: "p1", name: "", now },
+      parsePgnTree(`[SetUp "1"]\n[FEN "8/8/4k3/8/8/4K3/4P3/8 w - - 0 41"]\n\n41. Kd3 *`),
+    );
+    expect(caseLineOf(setUp)).toBeUndefined();
+    expect(caseLineOf(game("empty", ""))).toBeUndefined();
+  });
+
+  it("is read again once the Case's PGN changes, kept while it does not", () => {
+    const first = game("same", "1. e4 e5");
+    const line = caseLineOf(first);
+    expect(caseLineOf({ ...first })).toBe(line);
+    expect(caseLineOf({ ...first, pgn: game("same", "1. d4 d5").pgn })).toEqual(["d4", "d5"]);
+  });
+
+  it("feeds the opening tree its line and result", () => {
+    expect(caseTreeRowOf(caseRowOf(game("r", "1. e4", "1-0"), "r"))).toEqual({ line: ["e4"], result: "1-0" });
+    expect(caseTreeRowOf(caseRowOf(POSITION, "p"))).toEqual({ line: undefined, result: "*" });
+  });
+
+  it("narrows rows to those whose line begins with the one played — a row of none out once it is set", () => {
+    const rows = [
+      caseRowOf(game("sicilian", "1. e4 c5 2. Nf3"), "Sicilian"),
+      caseRowOf(game("open", "1. e4 e5"), "Open"),
+      caseRowOf(game("short", "1. e4"), "Short"),
+      caseRowOf(POSITION, "Position"),
+    ];
+    expect(caseRowsOnLine(rows, [])).toBe(rows);
+    expect(caseRowsOnLine(rows, ["e4"]).map((row) => row.id)).toEqual(["sicilian", "open", "short"]);
+    expect(caseRowsOnLine(rows, ["e4", "c5"]).map((row) => row.id)).toEqual(["sicilian"]);
   });
 });
