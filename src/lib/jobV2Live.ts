@@ -1,4 +1,4 @@
-import type { Score } from "./engineAnalysis";
+import type { EngineSessionLive } from "./jobs/engineSession";
 
 /**
  * **A running Jobs V2 job's live engine progress** (CTA-190) — what the
@@ -16,34 +16,13 @@ import type { Score } from "./engineAnalysis";
  *   re-sends the last snapshot every {@link JOB_V2_LIVE_HEARTBEAT_MS} so a
  *   long silent depth is not taken for that.
  *
+ * The snapshot is the engine session's live payload (`lib/jobs/engineSession.ts`,
+ * CTA-218), which the runner hands this feed.
+ *
  * Read with {@link jobV2LiveSnapshot} / {@link subscribeJobV2Live}
  * (`views/analysisV2/jobs/useJobV2Live.ts`). Nothing runs at import.
  */
-export type JobV2Live = {
-  jobId: string;
-  /** The position being searched — its index in the job's `positions`. */
-  index: number;
-  /** The move judged from that position ("7. Nf3"), as the panel's progress caption names it — `undefined` at the game's last position. */
-  move?: string;
-  depth: number;
-  seldepth?: number;
-  nodes?: number;
-  nps?: number;
-  /** How full the engine's hash table is, in permille, where it says. */
-  hashfull?: number;
-  /** Milliseconds spent on this position — the engine's own `time`, else the runner's clock. */
-  elapsedMs: number;
-  /** The best line so far: its score (White's view) and its first moves in SAN. */
-  score?: Score;
-  line: readonly string[];
-  /**
-   * When the engine was last heard about this position (ms since the epoch) —
-   * an `info` line, or an engine server's heartbeat through a long silence
-   * (CTA-194), each published, so every tab sees it. The panel's pulse and
-   * "heard 3 s ago" read it.
-   */
-  heardAt: number;
-};
+export type JobV2Live = EngineSessionLive;
 
 /** The `BroadcastChannel` the snapshot crosses tabs on. */
 export const JOB_V2_LIVE_CHANNEL = "chessapp.analysisProjects.jobs.live";
