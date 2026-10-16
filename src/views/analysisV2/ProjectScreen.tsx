@@ -234,20 +234,23 @@ function ProjectScreen() {
         <ListScreenHeader
           // The whole trail in the title's place (CTA-224), the Project's name its current crumb and the page's h1.
           heading={
-            <Breadcrumbs
-              ariaLabel={t("analysisV2.browser.trail")}
-              crumbs={[
-                { id: "root", label: t("analysisV2.browser.root"), link: { component: RouterLink, to: browserPath(null) } },
-                ...chain.map((folder) => ({
-                  id: folder.id,
-                  label: folder.name || t("analysisV2.folder.untitled"),
-                  link: { component: RouterLink, to: browserPath(folder.id) },
-                })),
-              ]}
-              current={projectName}
-              currentComponent="h1"
-              testId="analysis-v2-project-trail"
-            />
+            // A little room between the trail and the shell's header above it.
+            <Box sx={{ pt: 1 }}>
+              <Breadcrumbs
+                ariaLabel={t("analysisV2.browser.trail")}
+                crumbs={[
+                  { id: "root", label: t("analysisV2.browser.root"), link: { component: RouterLink, to: browserPath(null) } },
+                  ...chain.map((folder) => ({
+                    id: folder.id,
+                    label: folder.name || t("analysisV2.folder.untitled"),
+                    link: { component: RouterLink, to: browserPath(folder.id) },
+                  })),
+                ]}
+                current={projectName}
+                currentComponent="h1"
+                testId="analysis-v2-project-trail"
+              />
+            </Box>
           }
           count={t("analysisV2.browser.caseCount", { count: rows.length })}
           wrap
