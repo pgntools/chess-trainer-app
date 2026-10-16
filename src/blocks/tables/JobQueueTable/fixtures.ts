@@ -82,3 +82,10 @@ export const HEBREW: readonly JobRowView[] = [
 export const MANY: readonly JobRowView[] = Array.from({ length: 60 }, (_, index) =>
   jobRow(`many-${index}`, index % 3 === 0 ? "done" : "queued", { title: `Job ${index + 1}` }),
 );
+
+/** The kinds the kind filter offers — the three the fixtures' rows are of. */
+export const KINDS: readonly { value: string; label: string }[] = [
+  { value: "analysis.computer-analysis", label: "Computer analysis" },
+  { value: "repertoire.evaluation", label: "Repertoire evaluation" },
+  { value: "library.collection-merge", label: "Collection merge" },
+];

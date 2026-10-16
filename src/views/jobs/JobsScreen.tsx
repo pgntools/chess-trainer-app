@@ -6,11 +6,17 @@ import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { Link as RouterLink } from "react-router";
 import { useTranslation } from "react-i18next";
 
-import { JobQueueFilters, NO_JOB_QUEUE_FILTERS, type JobQueueFilterValues } from "../../blocks/forms";
-import { JobQueueTable, type JobRowView } from "../../blocks/tables";
+import {
+  JOB_QUEUE_DEFAULT_SORT,
+  JobQueueTable,
+  NO_JOB_QUEUE_FILTERS,
+  type JobQueueColumn,
+  type JobQueueFilterValues,
+  type JobRowView,
+} from "../../blocks/tables";
+import type { DataTableSort } from "../../design-system/patterns/tables";
 import { ConfirmDialog, DeleteManyDialog } from "../../design-system/components/dialogs";
 import { ListScreenHeader } from "../../design-system/components/toolbars";
-import { JOB_ENTITY_TYPES } from "../../lib/jobs/entityTypes";
 import { JOB_KIND_LOCALE_KEYS } from "../../lib/jobs/kinds";
 import { jobRuntime } from "../../lib/jobs/runtime";
 import { useOwnPageHeading } from "../main/pageTitle";
@@ -20,11 +26,11 @@ import { useJobEntitiesVersion, useJobRecords } from "./useJobs";
 
 /**
  * **The Jobs screen** (`/jobs`, CTA-221) — every background job of every
- * kind, full width: the `JobQueueTable` block, newest first — title (its own
- * page), kind, what it is applied to (linked; a deleted one said so), status,
- * progress and when it was created — with each row's Pause / Resume / Cancel
- * / Delete, filters by status, kind and what it is applied to, and picks to
- * delete several at once. Every delete asks first. Pause, Resume, Cancel and
+ * kind, full width: the `JobQueueTable` block — title (its own page), kind,
+ * status, progress and when it was created — every column sortable (newest
+ * first to start), paged, the status's and the kind's filters over their
+ * columns, each row's Pause / Resume / Cancel / Delete, and picks to delete
+ * several at once. What a job is applied to is its page's. Every delete asks first. Pause, Resume, Cancel and
  * Delete are the runtime's commands — store writes any tab can make, which
  * the tab running the job acts on.
  */
@@ -38,26 +44,33 @@ function JobsScreen() {
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   const [deleting, setDeleting] = useState<JobRowView | undefined>();
   const [deletingPicked, setDeletingPicked] = useState(false);
+  const [sort, setSort] = useState<DataTableSort<JobQueueColumn>>(JOB_QUEUE_DEFAULT_SORT);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
 
   const rows = useMemo(() => {
     void entities;
+    // The table sorts them; newest first is only the order they arrive in.
     return newestFirst(jobs ?? [])
-      .filter(
-        (job) =>
-          (filters.status === "" || job.status === filters.status) &&
-          (filters.kind === "" || job.kind === filters.kind) &&
-          (filters.entityType === "" || job.subjects.some((subject) => subject.type === filters.entityType)),
-      )
+      .filter((job) => (filters.status === "" || job.status === filters.status) && (filters.kind === "" || job.kind === filters.kind))
       .map((job) => jobRowOf(t, job));
   }, [jobs, filters, t, entities]);
-  const filtered = filters.status !== "" || filters.kind !== "" || filters.entityType !== "";
   const kinds = useMemo(
     () => Object.keys(JOB_KIND_LOCALE_KEYS).map((id) => ({ value: id, label: kindLabelOf(t, id) })),
     [t],
   );
-  const entityTypes = useMemo(() => JOB_ENTITY_TYPES.map((type) => ({ value: type, label: t(`jobs.entities.${type}`) })), [t]);
+  // Held, so the table's columns are not made again on every render.
+  const headerFilters = useMemo(
+    () => ({
+      values: filters,
+      onChange: (patch: Partial<JobQueueFilterValues>) => {
+        setFilters((current) => ({ ...current, ...patch }));
+        setPage(0);
+      },
+      kinds,
+    }),
+    [filters, kinds],
+  );
   const runtime = jobRuntime();
   const pickedCount = [...picked].filter((id) => jobs?.some((job) => job.id === id)).length;
 
@@ -93,37 +106,25 @@ function JobsScreen() {
         onCancel={(job) => void runtime.cancel(job.id)}
         onDelete={setDeleting}
         picks={{ picked, onChange: setPicked, onDeletePicked: () => setDeletingPicked(true) }}
-        paging={
-          rows.length > 25
-            ? {
-                page,
-                rowsPerPage,
-                onPageChange: setPage,
-                onRowsPerPageChange: (next) => {
-                  setRowsPerPage(next);
-                  setPage(0);
-                },
-              }
-            : undefined
-        }
-        filters={
-          <JobQueueFilters
-            values={filters}
-            onChange={(patch) => {
-              setFilters((current) => ({ ...current, ...patch }));
-              setPage(0);
-            }}
-            onClear={() => {
-              setFilters(NO_JOB_QUEUE_FILTERS);
-              setPage(0);
-            }}
-            kinds={kinds}
-            entityTypes={entityTypes}
-            testId="jobs-filters"
-          />
-        }
-        filtered={filtered}
-        onClearFilters={() => setFilters(NO_JOB_QUEUE_FILTERS)}
+        sort={sort}
+        onSort={(column, direction) => {
+          setSort({ column, direction });
+          setPage(0);
+        }}
+        paging={{
+          page,
+          rowsPerPage,
+          onPageChange: setPage,
+          onRowsPerPageChange: (next) => {
+            setRowsPerPage(next);
+            setPage(0);
+          },
+        }}
+        filters={headerFilters}
+        onClearFilters={() => {
+          setFilters(NO_JOB_QUEUE_FILTERS);
+          setPage(0);
+        }}
         testId="jobs-table"
       />
 

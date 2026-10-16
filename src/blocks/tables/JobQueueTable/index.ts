@@ -1,5 +1,9 @@
 export { default as JobQueueTable } from "./JobQueueTable";
-export type { JobQueuePaging, JobQueuePicks, JobQueueTableProps } from "./JobQueueTable";
+export { JOB_QUEUE_DEFAULT_SORT } from "./jobQueueSort";
+export type { JobQueueColumn } from "./jobQueueSort";
+export type { JobQueueFiltersInHeaders, JobQueuePaging, JobQueuePicks, JobQueueTableProps } from "./JobQueueTable";
+export { jobQueueFiltered, NO_JOB_QUEUE_FILTERS } from "./filterValues";
+export type { JobQueueFilterOption, JobQueueFilterValues } from "./filterValues";
 export { JobProgressBar, JobStamp, JobStatusText, JobSubjects } from "./jobParts";
 export { JOB_STATUS_TONES } from "./jobStatusTones";
 export { JOB_VIEW_STATUSES, jobPercent, jobStampText } from "./jobView";

@@ -5,7 +5,6 @@ paths:
   - "src/test/jobsKit.ts"
   - "src/lib/jobsSettings*"
   - "src/blocks/tables/JobQueueTable/**"
-  - "src/blocks/forms/JobQueueFilters/**"
   - "src/blocks/panels/JobDetailsPanel/**"
   - "src/blocks/lists/JobOutputsList/**"
   - "src/blocks/lists/JobHistory/**"
@@ -55,7 +54,7 @@ and `/testing` (`eslint.config.js`, `JOBS_RUNTIME_INTERNALS`).
 | `src/lib/jobs/entityTypes.ts`, `entities.ts` | **The entity registry**: `analysis-case`, `analysis-project`, `repertoire`, `library-collection` — each a label, an app path and an existence check over its store's snapshot; `subscribeJobEntities`. A kind names types and never imports a screen. |
 | `src/lib/jobs/subjectDeletion.ts` | **The deletion rule's hook**: the stores call `removeUnfinishedJobsOf`; the runtime registers itself (a delete before it exists is held). |
 | `src/views/jobs/` | **The screens**: `JobsScreen` (`/jobs`), `JobScreen` (`/jobs/<id>`), `JobsSettingsScreen` (`/jobs/settings`), `JobsShell` (the runtime's start, the eval sources' warning, the header indicator), `useJobs.ts` (the runtime's React hooks over the page's runtime), `jobViews.ts` (a record mapped onto the blocks' view models), `kindViews.ts` + `kindViewTypes.ts` (each kind's views), `kinds/` (those views), `useNewJob.ts` + `NewJobHost.tsx`, `paths.ts`, `useJobsSettings.ts`. |
-| `src/blocks/…` | The generic blocks (CTA-217) — `JobQueueTable`, `JobQueueFilters`, `JobDetailsPanel`, `JobOutputsList`, `JobHistory`, `NewJobFrame`, `JobsIndicatorView` — and `EntityJobs` (CTA-221); the kinds' — `ComputerAnalysisForm`, `JobTargetFields`, `JobEngineProgress`, `ComputerAnalysisReport`, `EvalGraph`, `RepertoireEvaluationForm` / `Report`, `CollectionMergeForm` / `Summary`; `JobsSettingsForm`. Block-local view models: no block imports the runtime. |
+| `src/blocks/…` | The generic blocks (CTA-217) — `JobQueueTable` (its filters in its headers since CTA-221, `JobQueueFilters` gone), `JobDetailsPanel`, `JobOutputsList`, `JobHistory`, `NewJobFrame`, `JobsIndicatorView` — and `EntityJobs` (CTA-221); the kinds' — `ComputerAnalysisForm`, `JobTargetFields`, `JobEngineProgress`, `ComputerAnalysisReport`, `EvalGraph`, `RepertoireEvaluationForm` / `Report`, `CollectionMergeForm` / `Summary`; `JobsSettingsForm`. Block-local view models: no block imports the runtime. |
 | `src/test/jobsKit.ts` | The kinds' test kit (§6). |
 
 Routes and nav: `/jobs`, `/jobs/settings` and `/jobs/<id>` (full width,
@@ -163,10 +162,14 @@ without views still lists, runs and offers its outputs generically.
 
 ## 4. The screens
 
-- **`/jobs`** — `JobQueueTable`, full width, newest first: title (its page),
-  kind, subjects (linked; a deleted one said so), status, progress, created;
-  per row Pause / Resume / Cancel / Delete; filters by status, kind and
-  entity type; picks to delete several. Every delete asks first.
+- **`/jobs`** — `JobQueueTable`, full width: title (its page), kind,
+  status, progress, created — **every column sortable** (newest first to
+  start), **paged** (25 / 50 / 100 / 250, 50 to start); **the filters stand
+  over their columns** — the status under Status's label, the kind under
+  Kind's (`DataTable`'s `column.filter`), Clear above the table while one is
+  on; per row Pause / Resume / Cancel / Delete; picks to delete several.
+  Every delete asks first. What a job is applied to is its page's, not a
+  column.
 - **`/jobs/<id>`** — `JobDetailsPanel` (the title the page's `h1` and its
   title, `usePageTitle`): status and actions; progress, the kind's live view
   under it while it runs (the engine kinds' `JobEngineProgress`); why it

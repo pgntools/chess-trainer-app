@@ -113,14 +113,14 @@ afterEach(async () => {
 });
 
 describe("the Jobs screen — /jobs (CTA-221)", () => {
-  it("lists every job with its kind, what it is applied to and its status — and pauses, resumes and deletes one, asking first", async () => {
+  it("lists every job with its kind and its status — and pauses, resumes and deletes one, asking first", async () => {
     const id = await queueAnalysis();
     mountAt("/jobs");
     const table = await screen.findByTestId("jobs-table");
     const link = await within(table).findByRole("link", { name: "Open the job Alice – Bob" });
     expect(link).toHaveAttribute("href", `/jobs/${id}`);
     expect(within(table).getByTestId(`jobs-table-kind-${id}`)).toHaveTextContent("Computer analysis");
-    expect(within(table).getByTestId(`jobs-table-subjects-${id}`)).toHaveTextContent("Alice – Bob");
+    expect(screen.queryByRole("columnheader", { name: /Applied to/ })).toBeNull();
     expect(within(table).getByTestId(`jobs-table-status-${id}`)).toHaveTextContent("Queued");
 
     const user = userEvent.setup();
@@ -137,10 +137,23 @@ describe("the Jobs screen — /jobs (CTA-221)", () => {
     expect(jobRuntime().snapshot()).toEqual([]);
   });
 
-  it("filters by kind, and passes axe", async () => {
+  it("filters by status from over its column, sorts and pages — and passes axe", async () => {
     await queueAnalysis();
     mountAt("/jobs");
     await screen.findByRole("link", { name: "Open the job Alice – Bob" });
+    const user = userEvent.setup();
+    // The status's filter stands under the Status header.
+    const status = within(screen.getByRole("columnheader", { name: /Status/ })).getByRole("combobox", { name: "Status" });
+    await user.click(status);
+    await user.click(await screen.findByRole("option", { name: "Done" }));
+    expect(await screen.findByTestId("jobs-table-no-match")).toHaveTextContent("No job matches the filters.");
+    await user.click(screen.getByTestId("jobs-table-clear-filters"));
+    expect(await screen.findByRole("link", { name: "Open the job Alice – Bob" })).toBeInTheDocument();
+    // Sorted newest first to start; a header turns it; the pager is always there.
+    expect(screen.getByRole("columnheader", { name: /Created/ })).toHaveAttribute("aria-sort", "descending");
+    await user.click(screen.getByTestId("jobs-table-sort-title"));
+    expect(screen.getByRole("columnheader", { name: /Title/ })).toHaveAttribute("aria-sort", "ascending");
+    expect(screen.getByRole("combobox", { name: /Jobs per page/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Jobs" })).toBeInTheDocument();
     await expectNoAxeViolations();
   });

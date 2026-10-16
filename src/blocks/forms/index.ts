@@ -17,8 +17,6 @@ export * from "./EngineSettingsForm";
 export * from "./FenInput";
 export * from "./JobTargetFields";
 export * from "./JobsSettingsForm";
-// CTA-217: the Jobs queue's filters — status, kind and entity type.
-export * from "./JobQueueFilters";
 export * from "./ExportCategoriesForm";
 export * from "./MaskEditor";
 export * from "./MergeSplitChoice";
