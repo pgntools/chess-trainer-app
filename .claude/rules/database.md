@@ -54,11 +54,12 @@ wrapper's main features would go unused. §10 says when that changes.
 | `src/lib/savedRepertoireDb.ts` | The `chessapp.repertoires` database (object stores `repertoires`, `folders`). |
 | `src/lib/playedGameStore.ts` | The `chessapp.engine` database (object store `games`) and its store, in one file (one store, one database). |
 | `src/lib/libraryDb.ts` | The `chessapp.library` database (object stores `collections`, `indexes`, `games`, `folders`), version 2. |
-| `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, version 3 (object stores `folders`, `projects`, `cases`, and since CTA-188 `jobs` and `caseLinks`) — Analysis's (CTA-186, shipped in CTA-192 — [`analysis-v2.md`](./analysis-v2.md)), the background jobs included. Its stores: `analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts`, `jobV2Store.ts` (Jobs V2), `analysisCaseLinkStore.ts`; its records `analysisProjects.ts` and `jobsV2.ts`. |
+| `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, version 3 (object stores `folders`, `projects`, `cases`, and since CTA-188 `caseLinks` — and `jobs`, Jobs V2's, retired in CTA-221 and left unread) — Analysis's (CTA-186, shipped in CTA-192 — [`analysis-v2.md`](./analysis-v2.md)), . Its stores: `analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts`, `analysisCaseLinkStore.ts`; its records `analysisProjects.ts`. |
+| `src/lib/jobs/runtime.ts` | The `chessapp.backgroundJobs` database (CTA-221) — **the Jobs module's, written by the `@pgntools/jobs-runtime` package's own adapter** (`indexedDbJobStore`: object stores `jobs`, `parts`, `artifacts`, its own version, its own `BroadcastChannel` `chessapp.backgroundJobs.store`; not through `lib/idb.ts` — the one exception, the runtime's own code). The app reads it only through the runtime ([`jobs.md`](./jobs.md)). |
 | `src/lib/enginePresetStore.ts` | The `chessapp.enginePresets` database (object stores `presets`, `selections`) and its two stores, in one file (CTA-179) — the engine option presets and the one each engine runs ([`docs/engine.md`](../../docs/engine.md) §9). |
 | `src/lib/libraryCollectionStore.ts` | The Library's hand-written collection store (§1.4) — not an `idbRecordStore`, because it reads a collection's rows and games lazily. |
 | `src/lib/savedRepertoireStore.ts`, `savedRepertoireFolderStore.ts`, `libraryFolderStore.ts` | The other record stores: each one's caps, idempotency comparison and operations, over the factory. |
-| `src/lib/playedGames.ts`, `savedRepertoires.ts`, `savedRepertoireFolders.ts`, `libraryCollections.ts`, `analysisProjects.ts`, `jobsV2.ts`, `enginePresets.ts` | **The records** — what each row is, and its **normaliser** (`playedGameFrom`, `savedRepertoireFrom`, `repertoireFolderFrom`, `analysisProjectFrom`, `analysisCaseFrom`, `jobV2From`, `enginePresetFrom`, `enginePresetSelectionFrom`): the schema, read back leniently. Pure. |
+| `src/lib/playedGames.ts`, `savedRepertoires.ts`, `savedRepertoireFolders.ts`, `libraryCollections.ts`, `analysisProjects.ts`, `enginePresets.ts` | **The records** — what each row is, and its **normaliser** (`playedGameFrom`, `savedRepertoireFrom`, `repertoireFolderFrom`, `analysisProjectFrom`, `analysisCaseFrom`, `enginePresetFrom`, `enginePresetSelectionFrom`): the schema, read back leniently. Pure. |
 | `src/views/engine/games/usePlayedGames.ts`, `views/repertoires/useSavedRepertoires.ts` / `useRepertoireFolders.ts`, `views/analysisV2/useAnalysisProjects.ts` | The `useSyncExternalStore` bindings — `undefined` until the store's first read lands. |
 | `src/views/shared/useStoreRead.ts` | "Can this route mount yet?" — a URL naming a record waits for its store's first read. |
 | `src/views/engine/play/PlayedGameRead.tsx` | The play routes' wait (`?saved=`), over `useStoreRead`. |
@@ -68,7 +69,7 @@ wrapper's main features would go unused. §10 says when that changes.
 
 ---
 
-## 1. The map — six modules, six databases
+## 1. The map — seven modules, seven databases
 
 | Module | Database | Object store | Store module | Row | Order | Cap |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -81,8 +82,9 @@ wrapper's main features would go unused. §10 says when that changes.
 | | | `selections` | `enginePresetStore.ts` | `EnginePresetSelection` (one per engine id) | oldest first | — |
 | **Analysis V2** (CTA-186, shipped in CTA-192) | `chessapp.analysisProjects` | `folders` | `analysisProjectFolderStore.ts` | `ProjectFolder` (a `GameFolder`) | oldest first | 100 |
 | | | `projects` | `analysisProjectStore.ts` | `AnalysisProject` | newest first | 1,000 (a new one refused) |
-| | | `cases` | `analysisCaseStore.ts` | `AnalysisCase` (its source, the tree as PGN, the SAN path, the orientation — autosaved; the Jobs V2 merges its tree holds, CTA-188) | newest first | 10,000 (a batch past it refused) |
-| | | `jobs` (CTA-188) | `jobV2Store.ts` | `JobV2` (Jobs V2 — a Case's computer analysis, its checkpoint) | newest first | 100 (the oldest finished dropped; refused when every one is unfinished) |
+| | | `cases` | `analysisCaseStore.ts` | `AnalysisCase` (its source, the tree as PGN, the SAN path, the orientation — autosaved; the computer-analysis merges its tree holds, CTA-188) | newest first | 10,000 (a batch past it refused) |
+| | | `jobs` (CTA-188) | — | Jobs V2's — **retired in CTA-221, unread**, kept so the version stays 3 (its records dropped, not migrated) | — | — |
+| **Jobs** (CTA-221) | `chessapp.backgroundJobs` | `jobs`, `parts`, `artifacts` | the runtime's (`@pgntools/jobs-runtime/browser`), over `lib/jobs/runtime.ts` | `JobRecord` (a job's input, its checkpoint, its outbox and outputs, attempts, history) — a file output's parts and sealed blob | the runtime's | 200 jobs (the oldest finished pruned with their files; an enqueue refused when every one is unfinished) |
 | | | `caseLinks` (CTA-188) | `analysisCaseLinkStore.ts` | `CaseLink` (one Case links to another, across Projects) | oldest first | 50,000 |
 
 Every database is at **version 1** but the Library's, at **version 2** (CTA-88
@@ -94,7 +96,11 @@ keyed by `keyPath: "id"`, and **none has an index**. Each database is also the
 name of its `BroadcastChannel` (the repertoires' two stores share one channel, and
 so do the engine presets' and the Library's — the Library's collection listener
 ignores the folder store's `{ store }` messages; Analysis V2's five stores
-share theirs too).
+share theirs too). **`chessapp.backgroundJobs` (CTA-221) is the exception to
+all of this**: the jobs runtime's own adapter opens and versions it, indexes
+its artifacts by job, and announces its writes on its own channel — the app
+never opens it but through the runtime (`lib/jobs/runtime.ts`,
+[`jobs.md`](./jobs.md)), and it is not exported ([`import-export.md`](./import-export.md)).
 
 ### 1.1 Why one database per module
 
@@ -154,8 +160,8 @@ Preferences — two written by libraries, the rest by us — and one note to the
 | `chessapp.engine` | `lib/engineChoice.ts` (CTA-153), through `views/shared/useEngineChoice.ts` | the engine picked in Settings → Engine — a registry id, stored raw: an id that names no registered engine, or one this page cannot run, *reads* as the default (`engineChoiceId`) and stays stored |
 | `chessapp.engineServer` | `lib/engineServer.ts`, through `views/shared/useEngineServer.ts` and `useEngineModule` | the engine server's address (`http://127.0.0.1:8800` unless moved) — **absent unless the reader turned it on** in Settings → Engine, and while absent nothing contacts any server; its status (online, its engines) is read, never stored |
 | `chessapp.engineSettings` | `lib/engineSearchSettings.ts` (CTA-181), through `views/shared/useEngineSearchSettings.ts` | the engine's search settings every board uses, set in the top bar's Engine menu — JSON `{ multiPv, threads, hashMb }` — the depth and move time are the presets' since CTA-185 (`EnginePreset.search`; an older `depth`, `moveTimeMs` or `infinite` here read as nothing) — read back field by field (a missing or unreadable one its default, a number held to `ENGINE_SEARCH_SETTING_BOUNDS`); Threads and Hash kept as asked, never cut back to the engine running. Not in the export zip — a preference. Absent until the reader changes one |
-| `chessapp.jobsSettings` | `lib/jobsSettings.ts` (CTA-193), through `views/analysisV2/jobs/useJobsSettings.ts` | the Jobs settings, set on the Jobs V2 view's Settings tab — JSON `{ defaultPreset: { engineId, presetId } \| null }`, read back field by field (what does not read is its default): the default engine and preset for new jobs. A field it does not read is kept on a write (an old `evalApi`, until the lichess evaluation API's settings move it out — CTA-196). Absent until the reader changes one |
-| `chessapp.lichessEvalApi` | `lib/evalSources/lichess/settings.ts` (CTA-196 — the Jobs settings' `evalApi` until then, moved here on the first read), through its Settings → Engine tab, the boards' engine (`withEvalSources`) and the Jobs V2 runner | the lichess evaluation API, an eval source every analysis search asks first — JSON `{ enabled, url, write, minWriteDepth }`, read back field by field: **off unless the reader turns it on**, and while off nothing contacts it; its address; whether every engine search that reached its target depth is sent to it; the shallowest one sent (`minWriteDepth`, CTA-202 — 35 when absent or unreadable). Its status is read, never stored. Absent until the reader changes one ([`docs/engine.md`](../../docs/engine.md) §10) |
+| `chessapp.jobsSettings` | `lib/jobsSettings.ts` (CTA-193), through `views/jobs/useJobsSettings.ts` | the Jobs settings, set on `/jobs/settings` (the Jobs V2 view's Settings tab until CTA-221, the key kept) — JSON `{ defaultPreset: { engineId, presetId } \| null }`, read back field by field (what does not read is its default): the default engine and preset for new jobs. A field it does not read is kept on a write (an old `evalApi`, until the lichess evaluation API's settings move it out — CTA-196). Absent until the reader changes one |
+| `chessapp.lichessEvalApi` | `lib/evalSources/lichess/settings.ts` (CTA-196 — the Jobs settings' `evalApi` until then, moved here on the first read), through its Settings → Engine tab, the boards' engine (`withEvalSources`) and the engine jobs' session (`lib/jobs/engineSession.ts`) | the lichess evaluation API, an eval source every analysis search asks first — JSON `{ enabled, url, write, minWriteDepth }`, read back field by field: **off unless the reader turns it on**, and while off nothing contacts it; its address; whether every engine search that reached its target depth is sent to it; the shallowest one sent (`minWriteDepth`, CTA-202 — 35 when absent or unreadable). Its status is read, never stored. Absent until the reader changes one ([`docs/engine.md`](../../docs/engine.md) §10) |
 | `chessapp.developmentNoticeDismissed` | `lib/developmentNotice.ts` (CTA-155; here since CTA-210), through the shell's `views/main/DevelopmentNotice.tsx` | when the in-development notice was last dismissed — epoch milliseconds, as a string: closed while less than `DEVELOPMENT_NOTICE_DISMISSAL_MS` (30 days) has passed, in every tab and after a restart, then shown again; a missing, unreadable or future-dated value is no dismissal. A dismissal wakes the other open tabs through the window's `storage` event; where `localStorage` is refused, it lasts the page's life in memory. Not in the export zip. Absent until the reader dismisses it |
 
 Nothing else in `src/` touches `localStorage`, and nothing reads the old
@@ -309,11 +315,11 @@ course can be most of a megabyte each) are far below that.
 - **Teardown** (`setup.ts`, after every test): unmount, clear
   `localStorage`, then — for every record store — wait for its writes to land
   (`settled…`, five times: a folder delete queues its records' unfiling behind
-  it, and Analysis V2's deletes their Cases', Jobs V2's and links' — CTA-188), `reset…`, and delete the record stores' databases (
+  it, and Analysis V2's deletes their Cases', their unfinished jobs' and links' — CTA-188, CTA-221), `reset…`, and delete the record stores' databases (
   `deleteEngineDb`, `deleteRepertoireDb`,
-  `deleteEnginePresetsDb`, `deleteAnalysisProjectsDb`) — the page's job
-  runner (`stopJobV2Runner`, CTA-188) stopped first, since it writes the jobs
-  and their results. The Library's folder store is
+  `deleteEnginePresetsDb`, `deleteAnalysisProjectsDb`, and the jobs'
+  `deleteJobsDb`) — the page's job runtime (`stopJobRuntime`, CTA-221)
+  stopped first, since its jobs write the jobs and their results. The Library's folder store is
   settled and reset there with the others; its database is deleted by the
   Library's own tests (`resetLibraryCollectionStore`, in their `beforeEach`).
   Without the wait, a write a screen left in flight lands in the next test's

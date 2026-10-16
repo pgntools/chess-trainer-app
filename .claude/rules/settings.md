@@ -42,9 +42,10 @@ device, per the research in `docs/indexed-db.md`:
   label marked as an estimate. A number the browser does not report reads
   "not available", never zero. The quota is not shown; a note says it is in
   the browser's developer tools.
-- **The reader's data, four sections** — one per database: Engine games,
-  Repertoires, Library games, and Analysis's Cases with its background jobs
-  (`chessapp.analysisProjects`, one section; the jobs not exported,
+- **The reader's data, five sections** — one per database: Engine games,
+  Repertoires, Library games, Analysis's Cases (`chessapp.analysisProjects`)
+  and the background jobs (`chessapp.backgroundJobs`, CTA-221 — the jobs'
+  records with the sizes of the files they made; not exported,
   `import-export.md` §1.1) — separated by a bolder
   line, each with its exact record count and its **estimated payload**
   (`lib/storageDiagnostics.ts`), never presented as a disk or IndexedDB
@@ -163,7 +164,9 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   connectors, titled by its `titleKey` (`EvalSourceTab.tsx`): a line saying what
   they are, then the source's own section (`EvalSource.SettingsSection`, lazy,
   in registry order — the Engine tab names no source). `?source=<id>` opens
-  the tab on it — where the jobs' warning and the Jobs settings' link go. Today one: **the lichess evaluation API**
+  the tab on it — where the jobs' warning and the Jobs settings' link
+  (`/jobs/settings`, CTA-221 — the Jobs settings' home since, out of
+  Analysis; [`jobs.md`](./jobs.md) §4) go. Today one: **the lichess evaluation API**
   (`lib/evalSources/lichess/LichessEvalApiSection.tsx`, moved here from the
   Jobs settings, where CTA-193 put it) — `EngineServerForm` with its words
   (`evalSources.lichess`): **off by default, and while off the app never
@@ -177,7 +180,7 @@ registry (`src/lib/engines/`, [`docs/engine.md`](../../docs/engine.md)):
   `chessapp.lichessEvalApi` ([`database.md`](./database.md) §2; a reader's
   old `chessapp.jobsSettings.evalApi` moved there on the first read). On,
   **every analysis search asks it first** — every board's engine lines and
-  Jobs V2 — whichever engine runs; an engine choosing its move in a game
+  every engine job's positions (the engine session, `lib/jobs/engineSession.ts`) — whichever engine runs; an engine choosing its move in a game
   never does. With writing ticked, every engine search that reached its
   target depth **and the minimum depth to write** is sent to it (a shallower
   one is skipped, not refused — so the lichess database is never diluted by
