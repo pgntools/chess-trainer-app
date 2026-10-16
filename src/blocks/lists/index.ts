@@ -8,6 +8,9 @@ export * from "./CaseJobs";
 export * from "./CaseLinks";
 export * from "./FolderActions";
 export * from "./FolderPicker";
+// CTA-217: the Jobs module's generic blocks — a job's outputs, and its attempts and history.
+export * from "./JobHistory";
+export * from "./JobOutputsList";
 export * from "./OpeningBookList";
 export * from "./RepertoiresList";
 export { SAVED_LIST_DEFAULT_VIEW, SAVED_LIST_VIEWS, type SavedListView } from "./savedListView";
