@@ -6,13 +6,13 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import ProjectDetails, { type ProjectDetailsTab } from "./ProjectDetails";
-import { HEBREW_NAME, NAME } from "./fixtures";
+import { CLOSE_LINK, HEBREW_NAME, NAME } from "./fixtures";
 
 /** The block with its tab and its switch held, as the screen holds them. */
 function Held({ name = NAME }: { name?: string }) {
   const [tab, setTab] = useState<ProjectDetailsTab>("general");
   const [on, setOn] = useState(false);
-  return <ProjectDetails name={name} tab={tab} onTabChange={setTab} exampleOption={on} onExampleOptionChange={setOn} testId="probe" />;
+  return <ProjectDetails name={name} closeLink={CLOSE_LINK} tab={tab} onTabChange={setTab} exampleOption={on} onExampleOptionChange={setOn} testId="probe" />;
 }
 
 beforeEach(async () => {
@@ -31,9 +31,20 @@ describe("ProjectDetails (CTA-213)", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("leads back to the Projects list by a Close at its head, before the name (CTA-224)", () => {
+    render(<Held />);
+    const close = screen.getByRole("link", { name: `Close ${NAME}` });
+    expect(close).toHaveAttribute("href", "/analysis?folder=openings");
+    expect(close).toHaveAttribute("data-testid", "probe-close");
+    const heading = screen.getByRole("heading", { level: 2, name: NAME });
+    expect(close.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("holds an example switch on Options, reached and toggled by the keyboard", async () => {
     const user = userEvent.setup();
     const { container } = render(<Held />);
+    await user.tab();
+    expect(screen.getByRole("link", { name: `Close ${NAME}` })).toHaveFocus();
     await user.tab();
     expect(screen.getByRole("tab", { name: "General" })).toHaveFocus();
     await user.keyboard("{ArrowRight}");
@@ -56,5 +67,6 @@ describe("ProjectDetails (CTA-213)", () => {
     render(<Held name={HEBREW_NAME} />);
     expect(screen.getByRole("heading", { level: 2, name: HEBREW_NAME })).toHaveAttribute("dir", "auto");
     expect(screen.getByRole("tab", { name: i18n.t("analysisV2.projectDetails.tabs.options") })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: i18n.t("analysisV2.projectDetails.close", { name: HEBREW_NAME }) })).toBeInTheDocument();
   });
 });

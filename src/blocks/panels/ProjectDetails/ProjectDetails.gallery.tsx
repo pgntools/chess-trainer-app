@@ -4,7 +4,7 @@ import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
 import type { BlockFamilyId } from "../../families";
 import ProjectDetails, { type ProjectDetailsTab } from "./ProjectDetails";
-import { HEBREW_NAME, LONG_NAME, NAME } from "./fixtures";
+import { CLOSE_LINK, HEBREW_NAME, LONG_NAME, NAME } from "./fixtures";
 
 const demo = (name: string, tab: ProjectDetailsTab = "general") => (
   <WithState<{ tab: ProjectDetailsTab; on: boolean }> initial={{ tab, on: false }}>
@@ -12,6 +12,7 @@ const demo = (name: string, tab: ProjectDetailsTab = "general") => (
       <Box sx={{ width: 400, height: 320, display: "flex", flexDirection: "column" }}>
         <ProjectDetails
           name={name}
+          closeLink={CLOSE_LINK}
           tab={state.tab}
           onTabChange={(next) => setState({ ...state, tab: next })}
           exampleOption={state.on}

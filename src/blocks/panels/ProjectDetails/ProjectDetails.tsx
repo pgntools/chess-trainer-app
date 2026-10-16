@@ -1,10 +1,12 @@
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { useTranslation } from "react-i18next";
 
 import { SwitchField } from "../../../design-system/components/forms";
+import type { LinkTarget } from "../../../design-system/components/link";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
+import { IconAction } from "../../../design-system/components/toolbars";
 
 /** The panel's tabs, in order. */
 export type ProjectDetailsTab = "general" | "options";
@@ -12,6 +14,8 @@ export type ProjectDetailsTab = "general" | "options";
 export type ProjectDetailsProps = {
   /** The Project's name, as the screen shows it (its untitled name for one with none). */
   name: string;
+  /** Where Close goes — the Projects list, at the folder holding the Project (CTA-224). */
+  closeLink: LinkTarget;
   /** The open tab — the screen's. */
   tab: ProjectDetailsTab;
   onTabChange: (tab: ProjectDetailsTab) => void;
@@ -19,7 +23,7 @@ export type ProjectDetailsProps = {
   exampleOption: boolean;
   onExampleOptionChange: (on: boolean) => void;
   /**
-   * The root; its parts `-title`, `-tabs` (each tab `-tab-<id>`), `-general`,
+   * The root; its parts `-close`, `-title`, `-tabs` (each tab `-tab-<id>`), `-general`,
    * `-options` and the switch's input `-example-option`.
    */
   testId: string;
@@ -28,14 +32,16 @@ export type ProjectDetailsProps = {
 /**
  * **A Project's own panel beside its Cases** (CTA-213) — the Project view's
  * left panel, in the main menu's place, as `CaseDetails` is beside a Case's
- * board: the Project's name at its head, then tabs. **A frame for now**: its
+ * board: a Close back to the Projects list and the Project's name at its
+ * head (CTA-224 — `CaseSiblings`' Close, the Project view's one way back),
+ * then tabs. **A frame for now**: its
  * content is a later issue, so **General** holds a placeholder line and
  * **Options** an example switch.
  *
  * Presentational: the open tab and the switch's state arrive from the
  * screen; its words are `analysisV2.projectDetails.*`.
  */
-function ProjectDetails({ name, tab, onTabChange, exampleOption, onExampleOptionChange, testId }: ProjectDetailsProps) {
+function ProjectDetails({ name, closeLink, tab, onTabChange, exampleOption, onExampleOptionChange, testId }: ProjectDetailsProps) {
   const { t } = useTranslation();
 
   return (
@@ -46,7 +52,9 @@ function ProjectDetails({ name, tab, onTabChange, exampleOption, onExampleOption
       sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, pb: 1 }}>
-        <FolderOpenOutlinedIcon fontSize="small" color="action" aria-hidden />
+        <IconAction label={t("analysisV2.projectDetails.close", { name })} link={closeLink} testId={`${testId}-close`}>
+          <CloseRoundedIcon fontSize="small" />
+        </IconAction>
         <Typography
           component="h2"
           variant="subtitle2"

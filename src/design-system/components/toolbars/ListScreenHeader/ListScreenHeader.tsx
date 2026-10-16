@@ -2,8 +2,14 @@ import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
-export type ListScreenHeaderProps = {
-  title: ReactNode;
+/**
+ * The title — the header's own `h1` — **or** a `heading` node of the
+ * screen's own that holds the page's `h1` itself (CTA-224: a Project's
+ * breadcrumbs trail, its current crumb the heading), in the title's place.
+ */
+type ListScreenHeaderTitle = { title: ReactNode; heading?: undefined } | { heading: ReactNode; title?: undefined };
+
+export type ListScreenHeaderProps = ListScreenHeaderTitle & {
   /** The caption under the title — "12 games", "3 of 12". */
   count?: ReactNode;
   /** A back button, first in the row (a `BackButton`). */
@@ -19,9 +25,9 @@ export type ListScreenHeaderProps = {
   wrap?: boolean;
   /** A second row under the first — filters, a search box. */
   children?: ReactNode;
-  /** The title's direction: `auto` for a name the reader typed. */
+  /** The title's direction: `auto` for a name the reader typed. Not read with a `heading`. */
   titleDir?: "auto" | "ltr" | "rtl";
-  /** The root's test id; the parts are `-title`, `-count` and `-actions`. */
+  /** The root's test id; the parts are `-title` (no `heading`), `-heading` (a `heading`'s box), `-count` and `-actions`. */
   testId: string;
 };
 
@@ -29,7 +35,8 @@ export type ListScreenHeaderProps = {
  * **A list screen's top bar** (CTA-108): back, the title over its count,
  * the actions — over a bottom divider, fixed above the one region that
  * scrolls. Five screens wrote it with three spacings; this is the one
- * (`pb: 1.5`, `mb: 0.5`, `gap: 1`). The title is the screen's heading (`h1`).
+ * (`pb: 1.5`, `mb: 0.5`, `gap: 1`). The title is the screen's heading (`h1`)
+ * — or, given a `heading` instead, that node, which brings its own `h1`.
  *
  * **The row always wraps** (CTA-118): the title box may shrink to nothing
  * (`minWidth: 0`, so a long title ellipses), and with the actions pinned
@@ -38,7 +45,7 @@ export type ListScreenHeaderProps = {
  * one can read. Wrapping moves the actions to a line of their own instead;
  * with room for both nothing wraps, so no window that fits them changes.
  */
-function ListScreenHeader({ title, count, back, actions, wrap = false, children, titleDir, testId }: ListScreenHeaderProps) {
+function ListScreenHeader({ title, heading, count, back, actions, wrap = false, children, titleDir, testId }: ListScreenHeaderProps) {
   return (
     <Box
       data-testid={testId}
@@ -47,16 +54,20 @@ function ListScreenHeader({ title, count, back, actions, wrap = false, children,
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
         {back}
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          <Typography
-            variant="subtitle1"
-            component="h1"
-            dir={titleDir}
-            noWrap={!wrap}
-            data-testid={`${testId}-title`}
-            sx={{ fontWeight: 700, lineHeight: 1.3 }}
-          >
-            {title}
-          </Typography>
+          {heading === undefined ? (
+            <Typography
+              variant="subtitle1"
+              component="h1"
+              dir={titleDir}
+              noWrap={!wrap}
+              data-testid={`${testId}-title`}
+              sx={{ fontWeight: 700, lineHeight: 1.3 }}
+            >
+              {title}
+            </Typography>
+          ) : (
+            <Box data-testid={`${testId}-heading`}>{heading}</Box>
+          )}
           {count !== undefined && (
             <Typography
               variant="caption"

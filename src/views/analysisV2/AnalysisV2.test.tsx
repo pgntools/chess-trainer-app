@@ -550,7 +550,7 @@ describe("a Project's Cases (CTA-186)", () => {
     expect(within(table).getAllByTestId(/^analysis-v2-cases-row-/)).toHaveLength(2);
   });
 
-  it("shows the trail to a nested Project — every folder a link into the browser, the Project current (CTA-207)", async () => {
+  it("heads the screen with the trail to a nested Project — every folder a link into the browser, the Project current, the h1 (CTA-207, CTA-224)", async () => {
     const outer = (await createProjectFolder("Openings", null))!;
     const inner = (await createProjectFolder("Sicilian", outer.id))!;
     const project = (await createAnalysisProject("Najdorf", inner.id))!;
@@ -566,11 +566,19 @@ describe("a Project's Cases (CTA-186)", () => {
     expect(within(trail).getByRole("link", { name: "All projects" })).toHaveAttribute("href", "/analysis");
     expect(within(trail).getByRole("link", { name: "Openings" })).toHaveAttribute("href", `/analysis?folder=${outer.id}`);
     expect(within(trail).getByRole("link", { name: "Sicilian" })).toHaveAttribute("href", `/analysis?folder=${inner.id}`);
-    const current = within(trail).getByText("Najdorf");
+    // The Project's name, current, is the page's one h1 — the trail stands in the header's title (CTA-224).
+    const current = within(trail).getByRole("heading", { level: 1, name: "Najdorf" });
     expect(current).toHaveAttribute("aria-current", "page");
     expect(current.closest("a")).toBeNull();
-    // The Back button stays beside it.
-    expect(screen.getByTestId("analysis-v2-project-back")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toEqual([current]);
+    const header = screen.getByTestId("analysis-v2-project-header");
+    expect(header).toContainElement(trail);
+    expect(screen.getAllByRole("navigation", { name: "Folders" })).toHaveLength(1);
+    expect(within(header).getByTestId("analysis-v2-project-header-count")).toHaveTextContent("0 cases");
+    expect(within(header).getByRole("button", { name: "New case" })).toBeInTheDocument();
+    // No Back: the trail's links and the panel's Close lead back.
+    expect(screen.queryByTestId("analysis-v2-project-back")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Back to the projects" })).toBeNull();
     await expectNoAxeViolations(baseElement);
 
     await user.click(within(trail).getByRole("link", { name: "Openings" }));
@@ -585,7 +593,7 @@ describe("a Project's Cases (CTA-186)", () => {
     const trail = await screen.findByRole("navigation", { name: "תיקיות" });
     expect(within(trail).getAllByRole("link").map((link) => link.textContent)).toEqual(["כל הפרויקטים"]);
     expect(within(trail).getByRole("link", { name: "כל הפרויקטים" })).toHaveAttribute("href", "/analysis");
-    expect(screen.getByTestId("analysis-v2-project-trail-current")).toHaveTextContent("נאיידורף");
+    expect(within(trail).getByRole("heading", { level: 1, name: "נאיידורף" })).toHaveAttribute("dir", "auto");
     await expectNoAxeViolations(baseElement);
   });
 
@@ -677,6 +685,8 @@ describe("a Project's Cases (CTA-186)", () => {
     const panel = await screen.findByRole("region", { name: "Details of Najdorf" });
     expect(screen.getByTestId("layout-board-left-panel")).toContainElement(panel);
     expect(within(panel).getByRole("heading", { level: 2, name: "Najdorf" })).toBeInTheDocument();
+    // Its Close leads to the browser, at the top level for this Project (CTA-224).
+    expect(within(panel).getByRole("link", { name: "Close Najdorf" })).toHaveAttribute("href", "/analysis");
     expect(within(panel).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Options"]);
     expect(within(panel).getByRole("tabpanel", { name: "General" })).toHaveTextContent("The project's details will be shown here.");
     // Wide, no button opens it: it is the column.
@@ -688,6 +698,18 @@ describe("a Project's Cases (CTA-186)", () => {
     await user.click(toggle);
     expect(toggle).toBeChecked();
     await expectNoAxeViolations(baseElement);
+  });
+
+  it("closes its panel back to the browser at the folder holding the Project (CTA-224)", async () => {
+    const folder = (await createProjectFolder("Openings", null))!;
+    const project = (await createAnalysisProject("Najdorf", folder.id))!;
+    const user = userEvent.setup();
+    mount(`/analysis/projects/${project.id}`);
+    const panel = await screen.findByRole("region", { name: "Details of Najdorf" });
+    const close = within(panel).getByRole("link", { name: "Close Najdorf" });
+    expect(close).toHaveAttribute("href", `/analysis?folder=${folder.id}`);
+    await user.click(close);
+    expect(where()).toBe(`/analysis?folder=${folder.id}`);
   });
 
   it("opens its panel in a drawer from the header under the shell's breakpoint, closed on Escape (CTA-213)", async () => {

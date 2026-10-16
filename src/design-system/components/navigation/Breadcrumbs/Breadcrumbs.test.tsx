@@ -49,4 +49,18 @@ describe("Breadcrumbs", () => {
     render(<Breadcrumbs ariaLabel="Folders" crumbs={[{ id: "root", label: "All", link: { href: "/x" } }]} current="Here" testId="probe" />);
     expect(screen.getByRole("link", { name: "All" })).toHaveAttribute("href", "/x");
   });
+
+  it("renders the current place as the element asked for — a heading (CTA-224)", () => {
+    render(<Breadcrumbs ariaLabel="Folders" crumbs={[{ id: "root", label: "All", link: { href: "/x" } }]} current="Here" currentComponent="h1" testId="probe" />);
+    const nav = screen.getByRole("navigation", { name: "Folders" });
+    const heading = within(nav).getByRole("heading", { level: 1, name: "Here" });
+    expect(heading).toHaveAttribute("aria-current", "page");
+    expect(heading).toHaveAttribute("data-testid", "probe-current");
+  });
+
+  it("is no heading by default", () => {
+    render(<Breadcrumbs ariaLabel="Folders" crumbs={[]} current="Here" testId="probe" />);
+    expect(screen.queryByRole("heading")).toBeNull();
+    expect(screen.getByTestId("probe-current").tagName).toBe("P");
+  });
 });

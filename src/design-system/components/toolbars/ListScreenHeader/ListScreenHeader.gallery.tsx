@@ -4,7 +4,7 @@ import CreateNewFolderOutlinedIcon from "@mui/icons-material/CreateNewFolderOutl
 
 import type { GalleryModule } from "../../../gallery/types";
 import { SearchField } from "../../forms";
-import { BackButton } from "../../navigation";
+import { BackButton, Breadcrumbs } from "../../navigation";
 import IconAction from "../IconAction/IconAction";
 import ListScreenHeader from "./ListScreenHeader";
 
@@ -65,6 +65,34 @@ const gallery: GalleryModule = {
         >
           <SearchField value="" onChange={noop} placeholder="Filter by name" clearLabel="Clear" testId="gallery-header-search" />
         </ListScreenHeader>
+      ),
+    },
+    {
+      name: "A trail in the title's place, its current crumb the heading (CTA-224)",
+      render: () => (
+        <ListScreenHeader
+          heading={
+            <Breadcrumbs
+              ariaLabel="Folders"
+              crumbs={[
+                { id: "root", label: "Projects", onClick: noop },
+                { id: "openings", label: "Openings", onClick: noop },
+                { id: "sicilian", label: "The Sicilian, every line a club player meets", onClick: noop },
+              ]}
+              current="Najdorf — the English Attack, 6. Be3 e5 7. Nb3 Be6 8. f3 and every sideline since 2020"
+              currentComponent="h1"
+              testId="gallery-header-trail"
+            />
+          }
+          count="12 cases"
+          wrap
+          actions={
+            <Button size="small" variant="contained" startIcon={<AddRoundedIcon />}>
+              New case
+            </Button>
+          }
+          testId="gallery-header-trail-demo"
+        />
       ),
     },
   ],

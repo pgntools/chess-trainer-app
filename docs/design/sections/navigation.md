@@ -25,9 +25,12 @@ turn.
   text with `aria-current="page"`, names `dir="auto"`.
 - **Props** — `crumbs: { id, label, onClick?, link? }[]`, `current`,
   `ariaLabel`, `separator?` (default `/`), `testId` (each crumb
-  `<testId>-<id>`, the current one `-current`).
+  `<testId>-<id>`, the current one `-current`), `currentComponent?` (the
+  element the current place is — `"h1"` where the trail is a screen's title,
+  CTA-224, and then it wraps anywhere; default a `p`).
 - **Variations** — a nested folder; the top alone; a chevron separator with
-  the steps as links.
+  the steps as links; as a list screen's title (`ListScreenHeader`'s
+  `heading`, its current crumb the `h1`).
 - **Replaces** — the hand-built `SavedFolderBreadcrumb`, and its missing last
   separator ([Shared.md → SavedFolderBreadcrumb](../Shared.md#savedfolderbreadcrumb)).
 

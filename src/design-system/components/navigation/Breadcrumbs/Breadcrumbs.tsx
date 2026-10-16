@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ElementType, ReactNode } from "react";
 import MuiBreadcrumbs from "@mui/material/Breadcrumbs";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
@@ -29,16 +29,30 @@ export type BreadcrumbsProps = {
   testId: string;
   /** The current place's own test id (CTA-113: a folder trail named it by the folder's id). */
   currentTestId?: string;
+  /**
+   * The element the current place is rendered as — `"h1"` where the trail
+   * stands in for a screen's title (CTA-224: a Project's header), so the
+   * place is the page's heading. Default: a `p`, as before.
+   */
+  currentComponent?: ElementType;
 };
 
 /**
  * **Where the reader is in a nested tree** (CTA-108) — MUI's `Breadcrumbs`,
  * which the hand-built folder trail re-created (and got the last separator
  * wrong). Every step above is a link-styled button (or a real link); the
- * current place is text. Names take `dir="auto"`, and the trail runs the
- * reading direction's way.
+ * current place is text (or, `currentComponent`, a heading). Names take
+ * `dir="auto"`, and the trail runs the reading direction's way.
  */
-function Breadcrumbs({ crumbs, current, ariaLabel, separator, testId, currentTestId = `${testId}-current` }: BreadcrumbsProps) {
+function Breadcrumbs({
+  crumbs,
+  current,
+  ariaLabel,
+  separator,
+  testId,
+  currentTestId = `${testId}-current`,
+  currentComponent,
+}: BreadcrumbsProps) {
   return (
     <MuiBreadcrumbs aria-label={ariaLabel} separator={separator} data-testid={testId} sx={{ typography: "body2" }}>
       {crumbs.map((crumb) => (
@@ -57,10 +71,12 @@ function Breadcrumbs({ crumbs, current, ariaLabel, separator, testId, currentTes
       ))}
       <Typography
         variant="body2"
+        {...(currentComponent === undefined ? {} : { component: currentComponent })}
         aria-current="page"
         dir="auto"
         data-testid={currentTestId}
-        sx={{ color: "text.primary", fontWeight: 600 }}
+        // A heading is a screen's title, a reader's name: it wraps anywhere rather than run out of the row.
+        sx={{ color: "text.primary", fontWeight: 600, ...(currentComponent === undefined ? {} : { overflowWrap: "anywhere" }) }}
       >
         {current}
       </Typography>

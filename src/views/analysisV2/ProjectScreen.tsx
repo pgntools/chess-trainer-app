@@ -15,7 +15,7 @@ import { visuallyHidden } from "../../design-system/components/a11y";
 import { DeleteManyDialog, FormDialog } from "../../design-system/components/dialogs";
 import { InlineAlert } from "../../design-system/components/feedback";
 import { SearchField, TextInputField } from "../../design-system/components/forms";
-import { BackButton, Breadcrumbs } from "../../design-system/components/navigation";
+import { Breadcrumbs } from "../../design-system/components/navigation";
 import { MissState } from "../../design-system/components/states";
 import { TABLE_PAGE_SIZES, useTableUrlState } from "../../design-system/components/tables";
 import { IconAction, ListScreenHeader, SelectionBar } from "../../design-system/components/toolbars";
@@ -83,13 +83,14 @@ const caseOfSpec = (spec: NewCaseSpec, projectId: string, now: Date): AnalysisCa
  * single new Case opens on its board; one per game stays here, the list grown.
  *
  * The route waits for the stores' first read, then says a Project that is
- * not there. Under the header, the browser's trail (CTA-207): the top
- * level, every folder down to the Project's, each a link to the browser
- * there, and the Project itself.
+ * not there. **Its header's title is the browser's whole trail** (CTA-207,
+ * CTA-224): the top level, every folder down to the Project's, each a link
+ * to the browser there, and the Project itself — the page's `h1`; no Back.
  *
  * **Its own panel, in the main menu's place** (CTA-213, `ProjectDetails` in
  * the shell's left panel, `keepShell`: the header and footer stay, as on the
- * Case view) — a frame for now: the Project's name, a General tab's
+ * Case view) — its Close the way back to the browser, at the folder holding
+ * the Project (CTA-224); a frame for now: the Project's name, a General tab's
  * placeholder and an Options tab's example switch, held here and kept
  * nowhere. Under the shell's breakpoint it is a drawer, opened from the
  * header.
@@ -231,17 +232,25 @@ function ProjectScreen() {
     <>
       <Box data-testid="analysis-v2-project" sx={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
         <ListScreenHeader
-          title={projectName}
-          titleDir="auto"
-          count={t("analysisV2.browser.caseCount", { count: rows.length })}
-          wrap
-          back={
-            <BackButton
-              label={t("analysisV2.project.back")}
-              link={{ component: RouterLink, to: browserPath(project.folderId) }}
-              testId="analysis-v2-project-back"
+          // The whole trail in the title's place (CTA-224), the Project's name its current crumb and the page's h1.
+          heading={
+            <Breadcrumbs
+              ariaLabel={t("analysisV2.browser.trail")}
+              crumbs={[
+                { id: "root", label: t("analysisV2.browser.root"), link: { component: RouterLink, to: browserPath(null) } },
+                ...chain.map((folder) => ({
+                  id: folder.id,
+                  label: folder.name || t("analysisV2.folder.untitled"),
+                  link: { component: RouterLink, to: browserPath(folder.id) },
+                })),
+              ]}
+              current={projectName}
+              currentComponent="h1"
+              testId="analysis-v2-project-trail"
             />
           }
+          count={t("analysisV2.browser.caseCount", { count: rows.length })}
+          wrap
           actions={
             <>
               {compact && (
@@ -297,21 +306,6 @@ function ProjectScreen() {
           }
           testId="analysis-v2-project-header"
         />
-        <Box sx={{ flexShrink: 0, py: 0.5 }}>
-          <Breadcrumbs
-            ariaLabel={t("analysisV2.browser.trail")}
-            crumbs={[
-              { id: "root", label: t("analysisV2.browser.root"), link: { component: RouterLink, to: browserPath(null) } },
-              ...chain.map((folder) => ({
-                id: folder.id,
-                label: folder.name || t("analysisV2.folder.untitled"),
-                link: { component: RouterLink, to: browserPath(folder.id) },
-              })),
-            ]}
-            current={projectName}
-            testId="analysis-v2-project-trail"
-          />
-        </Box>
         {problem !== null && (
           <InlineAlert severity="error" testId="analysis-v2-problem">
             {problem}
@@ -364,6 +358,7 @@ function ProjectScreen() {
       >
         <ProjectDetails
           name={projectName}
+          closeLink={{ component: RouterLink, to: browserPath(project.folderId) }}
           tab={detailsTab}
           onTabChange={setDetailsTab}
           exampleOption={exampleOption}
