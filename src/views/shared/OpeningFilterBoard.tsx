@@ -20,14 +20,16 @@ import { MIN_TARGET_PX, useChessTokens } from "../../design-system/theme";
 import type { ResultTone } from "../../design-system/themes";
 import { ForceLTR } from "../../theme/ForceLTR";
 import ChanceArrows from "../explorer/ChanceArrows";
-import { useBoardSquareOptions } from "../shared/boardColors";
-import PromotionPicker, { type PromotionChoice } from "../shared/PromotionPicker";
-import { moveSx, sanTokenSx } from "../shared/moveTokenSx";
+import { useBoardSquareOptions } from "./boardColors";
+import PromotionPicker, { type PromotionChoice } from "./PromotionPicker";
+import { moveSx, sanTokenSx } from "./moveTokenSx";
 
 /**
- * **The opening-moves filter** (CTA-76) — a small board at the foot of a
- * collection table's filters: the reader plays an opening on it, and the
- * table keeps the games that began that way.
+ * **The opening-moves filter** (CTA-76) — a small board beside a table of
+ * games: the reader plays an opening on it, and the table keeps the games
+ * that began that way. The Library's collection table has it at the foot of
+ * its filters; an Analysis Project its Games tree tab, over its Game Cases
+ * (CTA-214) — one board, shared, each naming its tree and its test ids.
  *
  * Presentational over an opening tree (`lib/openingTree.ts`, merged from the
  * games the table's other filters leave): `line` is the moves played so far,
@@ -107,18 +109,58 @@ function ResultBar({ node }: { node: OpeningTreeNode }) {
   );
 }
 
+/** The board's words that name its games — the Library's by default (`library.filters.moves.*`). */
+export type OpeningFilterBoardCaptions = {
+  /** Its heading. */
+  title: string;
+  /** The caption at the start. */
+  start: string;
+  /** No game goes further. */
+  end: string;
+  /** One game goes further, alone — the tree's cut. */
+  single: string;
+  /** No game the other filters leave was played this way. */
+  none: string;
+};
+
 type OpeningFilterBoardProps = {
   /** The moves played, already matched against the collection's tree. */
   line: readonly string[];
   /** The node `line` reaches. */
   node: OpeningTreeNode;
   onLine: (line: string[]) => void;
-  /** The collection's name — the saved tree's `Event` and its file name. */
-  collectionName: string;
+  /** The games' name — a collection's, a Project's: the saved tree's `Event` and its file name. */
+  treeName: string;
+  /** The file's name when `treeName` makes none (`<it>-tree.pgn`). */
+  fileFallback?: string;
+  /** Its words naming the games — a Project's Cases rather than a collection's (CTA-214). */
+  captions?: OpeningFilterBoardCaptions;
+  /**
+   * The prefix of its ids (`library-filter` by default, the Library's): the
+   * board `<testId>-board`, the root `<testId>-moves`, its controls and
+   * caption `<testId>-moves-…`, a move `<testId>-move-<san>`, the arrows
+   * `<testId>-arrows`.
+   */
+  testId?: string;
 };
 
-function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilterBoardProps) {
+function OpeningFilterBoard({
+  line,
+  node,
+  onLine,
+  treeName,
+  fileFallback = "collection",
+  captions,
+  testId = "library-filter",
+}: OpeningFilterBoardProps) {
   const { t } = useTranslation();
+  const words: OpeningFilterBoardCaptions = captions ?? {
+    title: t("library.filters.moves.title"),
+    start: t("library.filters.moves.start"),
+    end: t("library.filters.moves.end"),
+    single: t("library.filters.moves.single"),
+    none: t("library.filters.moves.none"),
+  };
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const squareOptions = useBoardSquareOptions();
   const [saving, setSaving] = useState(false);
@@ -171,7 +213,7 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
   const options: ChessboardOptions = {
     // The theme's squares (CTA-107).
     ...squareOptions,
-    id: "library-filter-board",
+    id: `${testId}-board`,
     position: fen,
     boardOrientation: orientation,
     allowDrawingArrows: false,
@@ -181,24 +223,24 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
 
   const saveTree = (tags: OpeningTreePgnTags) => {
     setSaving(false);
-    downloadPgn(`${slugify(collectionName) || "collection"}-tree`, [
-      openingTreeToPgn(line, node, tags, { Event: collectionName }),
+    downloadPgn(`${slugify(treeName) || fileFallback}-tree`, [
+      openingTreeToPgn(line, node, tags, { Event: treeName }),
     ]);
   };
 
   const numbered = line.map((san, index) => (index % 2 === 0 ? `${index / 2 + 1}. ${san}` : san)).join(" ");
 
   return (
-    <Box data-testid="library-filter-moves" sx={{ display: "grid", gap: 1 }}>
+    <Box data-testid={`${testId}-moves`} sx={{ display: "grid", gap: 1 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
         <Typography variant="body2" sx={{ flexGrow: 1, fontWeight: 600 }}>
-          {t("library.filters.moves.title")}
+          {words.title}
         </Typography>
         <IconAction
           label={t("library.filters.moves.reset")}
           disabled={line.length === 0}
           onClick={() => onLine([])}
-          testId="library-filter-moves-reset"
+          testId={`${testId}-moves-reset`}
         >
           <FirstPageRoundedIcon fontSize="small" />
         </IconAction>
@@ -206,14 +248,14 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
           label={t("library.filters.moves.back")}
           disabled={line.length === 0}
           onClick={() => onLine(line.slice(0, -1))}
-          testId="library-filter-moves-back"
+          testId={`${testId}-moves-back`}
         >
           <NavigateBeforeRoundedIcon fontSize="small" />
         </IconAction>
         <IconAction
           label={t("library.filters.moves.flip")}
           onClick={() => setOrientation((side) => (side === "white" ? "black" : "white"))}
-          testId="library-filter-moves-flip"
+          testId={`${testId}-moves-flip`}
         >
           <SwapVertRoundedIcon fontSize="small" />
         </IconAction>
@@ -222,7 +264,7 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
       <ForceLTR sx={{ position: "relative", width: "100%", aspectRatio: "1 / 1" }}>
         <Chessboard options={options} />
         <ChanceArrows
-          testId="library-filter-arrows"
+          testId={`${testId}-arrows`}
           nodes={continuations}
           chances={continuations.map((move) => move.node.count / node.count)}
           hoveredId={hovered}
@@ -243,17 +285,17 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
         <Typography
           variant="caption"
           dir="ltr"
-          data-testid="library-filter-moves-line"
+          data-testid={`${testId}-moves-line`}
           sx={{ flexGrow: 1, minWidth: 0, color: "text.secondary", minHeight: "1.5em", unicodeBidi: "isolate" }}
         >
-          {line.length === 0 ? t("library.filters.moves.start") : numbered}
+          {line.length === 0 ? words.start : numbered}
         </Typography>
         <Link
           component="button"
           type="button"
           variant="caption"
           onClick={() => setSaving(true)}
-          data-testid="library-filter-moves-save"
+          data-testid={`${testId}-moves-save`}
           // A target of at least 24 px (WCAG 2.5.8) — in a panel at its true width it sits close to the line beside it.
           sx={{ flexShrink: 0, whiteSpace: "nowrap", minHeight: MIN_TARGET_PX, display: "inline-flex", alignItems: "center" }}
         >
@@ -264,23 +306,17 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
         open={saving}
         onClose={() => setSaving(false)}
         onSave={saveTree}
-        testId="library-filter-moves-save-dialog"
-        partsTestId="library-filter-moves-save"
+        testId={`${testId}-moves-save-dialog`}
+        partsTestId={`${testId}-moves-save`}
       />
 
       {continuations.length === 0 ? (
-        <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid="library-filter-moves-end">
-          {t(
-            node.count === 0
-              ? "library.filters.moves.none"
-              : node.continues
-                ? "library.filters.moves.single"
-                : "library.filters.moves.end",
-          )}
+        <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid={`${testId}-moves-end`}>
+          {node.count === 0 ? words.none : node.continues ? words.single : words.end}
         </Typography>
       ) : (
         <Box
-          data-testid="library-filter-moves-list"
+          data-testid={`${testId}-moves-list`}
           sx={{ display: "grid", gridTemplateColumns: "auto auto 1fr", alignItems: "center", columnGap: 1, rowGap: 0.25 }}
           onMouseLeave={() => setHovered(null)}
         >
@@ -288,7 +324,7 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
             <Box key={move.id} sx={{ display: "contents" }}>
               <ButtonBase
                 dir="ltr"
-                data-testid={`library-filter-move-${move.san}`}
+                data-testid={`${testId}-move-${move.san}`}
                 onClick={() => play(move.san)}
                 onMouseEnter={() => setHovered(move.id)}
                 // At least a 24 px target (WCAG 2.5.8): the rows sit close in a narrow panel.
@@ -299,7 +335,7 @@ function OpeningFilterBoard({ line, node, onLine, collectionName }: OpeningFilte
               <Typography
                 variant="caption"
                 sx={{ color: "text.secondary", textAlign: "end", whiteSpace: "nowrap" }}
-                data-testid={`library-filter-move-count-${move.san}`}
+                data-testid={`${testId}-move-count-${move.san}`}
               >
                 {t("library.games", { count: move.node.count })} · {percent(move.node.count, node.count)}%
               </Typography>

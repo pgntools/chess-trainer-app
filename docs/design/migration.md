@@ -270,7 +270,7 @@ every column is named).
 | The language `Select` | `theme/LanguageSwitch.tsx` | A compact header select with an icon in its value and no visible label (`aria-label`); `SelectField` draws a labelled outlined field. |
 | The collection's opening box | `blocks/forms/CollectionFilters` | A free-text single `Autocomplete` (an ECO code's start) — `SelectAutocomplete` chooses one value, `ChipsAutocomplete` many. |
 | The import popup's Elo range slider | `blocks/dialogs/CollectionImportDialog` | Two thumbs on one span; `SliderField` is one value. |
-| The filter board's continuations (SAN buttons with result bars) and the board | `views/library/OpeningFilterBoard.tsx` | A board piece: it replays a line in `chess.js` and draws play-chance arrows. |
+| The filter board's continuations (SAN buttons with result bars) and the board | `views/shared/OpeningFilterBoard.tsx` | A board piece: it replays a line in `chess.js` and draws play-chance arrows. |
 | `NagDialog`'s glyph toggles, `PlayChanceDialog`'s chances grid | `views/explorer/` | Move-annotation grids with no generic job; inside `BaseDialog` / `FormDialog`. |
 | `PlayScore` (the repertoire game's score board) | `views/repertoires/RepertoirePlayer.tsx` | A game's own score and accuracy line. |
 | The single `Button`s (Start, Open in analysis, the quick loads) | the screens | One MUI job each, nothing to compose. (*Add games* and *Analyse* had a tooltip too: `HintButton` since CTA-116.) |

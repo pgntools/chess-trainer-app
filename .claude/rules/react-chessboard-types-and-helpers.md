@@ -12,7 +12,7 @@ paths:
   - "src/views/repertoires/RepertoirePlayer.tsx"
   - "src/views/repertoires/Repertoires.tsx"
   - "src/views/library/LibraryGameBoard.tsx"
-  - "src/views/library/OpeningFilterBoard.tsx"
+  - "src/views/shared/OpeningFilterBoard.tsx"
   - "src/views/dev/themeEditor/PreviewBoard.tsx"
   - "src/lib/pieceMask*"
   - "docs/vendor/react-chessboard/**"

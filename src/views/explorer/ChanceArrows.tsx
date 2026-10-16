@@ -16,7 +16,7 @@ import {
  * Rendered inside the board's relative box — the `overlay` slot
  * `EngineBoardSquare` hands a screen, the promotion picker's precedent — so
  * `position: absolute; inset: 0` covers the board exactly. The Library's
- * opening-moves filter board (`views/library/OpeningFilterBoard.tsx`, CTA-92)
+ * opening-moves filter board (`views/shared/OpeningFilterBoard.tsx`, CTA-92)
  * renders it in its own relative box the same way, its arrows' magnitude a
  * move's share of the games. The `viewBox` is
  * `0 0 8 8`, one unit per square: the overlay scales with the responsive board

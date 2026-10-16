@@ -272,7 +272,7 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 > **Migrated (CTA-113)** — the reset / back / flip buttons are `IconAction`s; the board, arrows and move list stay (a board piece).
 
-- **Name and location** — `OpeningFilterBoard`, `src/views/library/OpeningFilterBoard.tsx` (controls row `:186-226`, caption row `:248-268`)
+- **Name and location** — `OpeningFilterBoard`, `src/views/shared/OpeningFilterBoard.tsx` (controls row `:186-226`, caption row `:248-268`)
 - **Family** — toolbar / action bar
 - **MUI atoms** — Box, Typography, Tooltip, IconButton, Link (`component="button"`)
 - **What it does** — Around the small board (out of scope): a title with reset, back and flip; under it the moves played (or a start prompt) and **Save tree as PGN**; then the continuations list or an end message (no game, one game goes on, the games end here).
@@ -287,7 +287,7 @@ bodies and header pieces. **In [`Repertoires.md`](./Repertoires.md)**:
 
 > **Migrated (CTA-113)** — stays in `OpeningFilterBoard` — a board piece's list of SAN buttons with result bars (§4.4).
 
-- **Name and location** — inline in `OpeningFilterBoard`, `src/views/library/OpeningFilterBoard.tsx:281-307`, with the inner `ResultBar` (`:73`)
+- **Name and location** — inline in `OpeningFilterBoard`, `src/views/shared/OpeningFilterBoard.tsx:281-307`, with the inner `ResultBar` (`:73`)
 - **Family** — list
 - **MUI atoms** — Box, ButtonBase, Typography
 - **What it does** — The moves the filtered games played from here, lichess-explorer style: the SAN (click plays, hover draws its arrow), the games and share, a White / draw / Black bar.

@@ -669,7 +669,7 @@ describe("a Project's Cases (CTA-186)", () => {
     expect(screen.queryByTestId("analysis-v2-case-delete")).toBeNull();
   });
 
-  it("has a panel of its own beside the Cases — headed by the Project, two tabs, an example switch that toggles (CTA-213)", async () => {
+  it("has a panel of its own beside the Cases — headed by the Project, its tabs, an example switch that toggles (CTA-213)", async () => {
     const project = (await createAnalysisProject("Najdorf", null))!;
     const user = userEvent.setup();
     const { baseElement } = mount(`/analysis/projects/${project.id}`);
@@ -677,7 +677,7 @@ describe("a Project's Cases (CTA-186)", () => {
     const panel = await screen.findByRole("region", { name: "Details of Najdorf" });
     expect(screen.getByTestId("layout-board-left-panel")).toContainElement(panel);
     expect(within(panel).getByRole("heading", { level: 2, name: "Najdorf" })).toBeInTheDocument();
-    expect(within(panel).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Options"]);
+    expect(within(panel).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Games tree", "Options"]);
     expect(within(panel).getByRole("tabpanel", { name: "General" })).toHaveTextContent("The project's details will be shown here.");
     // Wide, no button opens it: it is the column.
     expect(screen.queryByRole("button", { name: "The project's details" })).toBeNull();
@@ -717,6 +717,101 @@ describe("a Project's Cases (CTA-186)", () => {
     } finally {
       window.matchMedia = wideWindow;
     }
+  });
+
+  describe("the Games tree (CTA-214)", () => {
+    const named = (projectId: string, id: string, name: string, movetext: string, result = "*") =>
+      gameCaseOf({ id, projectId, name }, parsePgnTree(`[Result "${result}"]\n\n${movetext} ${result}`));
+    /** A Project of three games from the start — two of 1. e4 — and a Position. */
+    const openings = async () => {
+      const project = (await createAnalysisProject("Openings", null))!;
+      await addAnalysisCases([
+        named(project.id, "csic", "Sicilian", "1. e4 c5 2. Nf3", "1-0"),
+        named(project.id, "copen", "Open", "1. e4 e5 2. Nf3 (2. Bc4) Nc6", "1/2-1/2"),
+        named(project.id, "cqg", "Queen's Gambit", "1. d4 d5 2. c4", "0-1"),
+        positionCaseOfFen({ id: "cpos", projectId: project.id, name: "Ending" }, ENDGAME),
+      ]);
+      return project;
+    };
+    const tree = () => within(screen.getByTestId("analysis-v2-project-tree-moves"));
+    const rowIds = () =>
+      screen.getAllByTestId(/^analysis-v2-cases-row-/).map((row) => row.dataset.testid!.replace("analysis-v2-cases-row-", ""));
+
+    it("merges the Project's Game Cases on its own tab, and the line played on it filters the table", async () => {
+      const project = await openings();
+      const user = userEvent.setup();
+      const { baseElement } = mount(`/analysis/projects/${project.id}`);
+      const panel = await screen.findByRole("region", { name: "Details of Openings" });
+      await user.click(within(panel).getByRole("tab", { name: "Games tree" }));
+      expect(boardOptions().id).toBe("analysis-v2-project-tree-board");
+      expect(tree().getByTestId("analysis-v2-project-tree-move-count-e4")).toHaveTextContent("2 games · 67%");
+      expect(tree().getByTestId("analysis-v2-project-tree-move-count-d4")).toHaveTextContent("1 game · 33%");
+      expect(rowIds()).toHaveLength(4);
+      await expectNoAxeViolations(baseElement);
+
+      // A move played narrows the table to the Cases that began that way — a Position is out — and is the URL's.
+      await user.click(tree().getByRole("button", { name: "e4" }));
+      expect(where()).toContain("line=e4");
+      expect(rowIds().sort()).toEqual(["copen", "csic"]);
+      expect(tree().getByTestId("analysis-v2-project-tree-moves-line")).toHaveTextContent("1. e4");
+      // A filtered table does not reorder.
+      expect(screen.getByRole("button", { name: "Move Open up — clear the filter to reorder" })).toBeDisabled();
+
+      // Only a move some game played is taken from the board.
+      let accepted: boolean | undefined;
+      act(() => {
+        accepted = boardOptions().onPieceDrop!({ sourceSquare: "d7", targetSquare: "d5" });
+      });
+      expect(accepted).toBe(false);
+      act(() => {
+        accepted = boardOptions().onPieceDrop!({ sourceSquare: "c7", targetSquare: "c5" });
+      });
+      expect(accepted).toBe(true);
+      await waitFor(() => expect(rowIds()).toEqual(["csic"]));
+      expect(where()).toContain("line=e4%2Cc5");
+
+      // The words narrow the tree as well as the table.
+      await user.click(tree().getByRole("button", { name: "Take back a move" }));
+      await user.type(screen.getByRole("searchbox", { name: "Filter cases" }), "open");
+      expect(tree().getByTestId("analysis-v2-project-tree-move-count-e5")).toHaveTextContent("1 game · 100%");
+      expect(tree().queryByTestId("analysis-v2-project-tree-move-c5")).toBeNull();
+
+      // Clearing the filter clears the line too.
+      await user.clear(screen.getByRole("searchbox", { name: "Filter cases" }));
+      await user.type(screen.getByRole("searchbox", { name: "Filter cases" }), "nobody");
+      await user.click(screen.getByTestId("analysis-v2-cases-no-match-clear"));
+      expect(where()).not.toContain("line=");
+      expect(rowIds()).toHaveLength(4);
+      expect(tree().getByTestId("analysis-v2-project-tree-moves-save")).toHaveTextContent("Save tree as PGN");
+    });
+
+    it("opens on its tab from a ?line= link, cut back where no Case follows it — and follows the Cases live", async () => {
+      const project = await openings();
+      mount(`/analysis/projects/${project.id}?line=e4,c5,d4`);
+      const panel = await screen.findByRole("tabpanel", { name: "Games tree" });
+      expect(within(panel).getByTestId("analysis-v2-project-tree-moves-line")).toHaveTextContent("1. e4 c5");
+      expect(rowIds()).toEqual(["csic"]);
+
+      // A Case arriving on the line joins the table and the tree.
+      await act(async () => {
+        await addAnalysisCases([named(project.id, "csic2", "Another Sicilian", "1. e4 c5 2. Nc3")]);
+      });
+      await waitFor(() => expect(rowIds().sort()).toEqual(["csic", "csic2"]));
+      expect(tree().getByTestId("analysis-v2-project-tree-move-count-Nf3")).toHaveTextContent("1 game · 50%");
+    });
+
+    it("says there are no games while no Game Case is played from the start", async () => {
+      const project = (await createAnalysisProject("Endings", null))!;
+      await addAnalysisCases([positionCaseOfFen({ id: "cpos", projectId: project.id, name: "Ending" }, ENDGAME)]);
+      const user = userEvent.setup();
+      mount(`/analysis/projects/${project.id}`);
+      const panel = await screen.findByRole("region", { name: "Details of Endings" });
+      await user.click(within(panel).getByRole("tab", { name: "Games tree" }));
+      expect(within(panel).getByRole("tabpanel", { name: "Games tree" })).toHaveTextContent(
+        "No games to show — this project has no game cases played from the start position.",
+      );
+      expect(screen.queryByTestId("analysis-v2-project-tree-moves")).toBeNull();
+    });
   });
 
   describe("their order (CTA-203)", () => {

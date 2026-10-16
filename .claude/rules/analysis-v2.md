@@ -343,9 +343,44 @@ shell's board left panel, `keepShell` — the header and footer stay, as on the
 Case view; the shell draws a registered left panel on a `FULL_WIDTH_ROUTE`
 too, before the whole body): the Project's name as its heading, then tabs —
 **General** (a placeholder line) and **Options** (an example switch, held by
-the screen and kept nowhere). A frame: its content is a later issue. Under
+the screen and kept nowhere), General's and Options' content a later issue —
+and, between them, **Games tree** (CTA-214, below). Under
 the shell's breakpoint it is a drawer, opened from an Info button in the
 header (*The project's details*) and closed like the Case view's.
+
+**The Games tree** (CTA-214) is the Library's opening-moves board —
+`views/shared/OpeningFilterBoard.tsx`, one component, moved out of
+`views/library/` ([`game-collections.md`](./game-collections.md) §6.4.1), its
+words (`captions`, `analysisV2.projectDetails.tree.*`), the saved tree's name
+(`treeName` — the Project's: `[Event]` and `<slug or "project">-tree-<date>.pgn`)
+and its test ids (`testId`, `analysis-v2-project-tree`) its props — in
+`ProjectDetails`' `gamesTree` slot, so the block stays presentational. Every
+part as in the Library: the play-chance arrows, the move list with each
+move's games, share and W / D / B bar, only moves some game played taken,
+the promotion picker, back / reset / flip, the cut where the games stop
+branching, the caption and *Save tree as PGN*.
+- **Its games** are the Project's Game Cases, each its **mainline as SAN
+  from the standard start** (`caseLineOf`, `lib/analysisCaseRows.ts`) — kept
+  per Case while its PGN is the same, so an edit on its board or a job merged
+  in is read again and a re-render parses nothing. A Position, a game from a
+  set-up position, one of no moves or an unreadable PGN has none: out of the
+  tree, and out of the table while a line is set (`caseRowsOnLine`, as the
+  Library's `filteredRows` treats a row with no line).
+- **Merged from the Cases the words leave** (`openingTreeOf(worded)`), so
+  typing words narrows the tree too; the line itself is cut back against
+  the tree of **every** Case of the Project (a stale link lands where they
+  part), and travels as `?line=` (`OPENING_LINE_PARAM`, the `?at=` encoding,
+  written with history replace, the page reset).
+- **The table** keeps the Cases on the line, under the words; while a line is
+  set it counts as `filtered` — the reorder arrows off (*clear the filter to
+  reorder*) and the no-match row's Clear clearing the words and the line.
+- **Live**: it is drawn from the Cases' store snapshot, so a Case added,
+  deleted, moved or edited shows at once.
+- No Game Case with a line → the tab says there are no games to show
+  (`analysisV2.projectDetails.noGames`) instead of a board. A `?line=` in the
+  URL opens the panel on this tab.
+- The Case board's sibling list (`caseListContextOf`) carries the table's
+  sort and words, not its line.
 
 Its Cases as a **table** (`CasesTable`, rows from `lib/analysisCaseRows.ts`):
 **`#`** (its place in the Project's order, §2.1 — the header read "Order"),
