@@ -29,3 +29,4 @@ export * from "./SearchLimitsFields";
 export * from "./TournamentSuggestion";
 export * from "./TournamentMarkFields";
 export * from "./RepertoireEvaluationForm";
+export * from "./CollectionMergeForm";
