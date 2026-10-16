@@ -9,7 +9,7 @@ import FormDialog from "./FormDialog";
 const noop = () => {};
 
 /** A name field: Enter saves, Save is off while the name is empty. */
-const nameDemo = (busy: boolean) => (
+const nameDemo = (busy: boolean, withNote = false) => (
   <WithState initial={{ name: "Openings", saved: null as string | null }}>
     {(state, set) => (
       <DialogFrame height={260}>
@@ -23,6 +23,7 @@ const nameDemo = (busy: boolean) => (
             cancelLabel="Cancel"
             submitDisabled={state.name.trim() === ""}
             busy={busy}
+            submitNote={withNote ? (state.name.trim() === "" ? "Name the folder to save it." : "Saved beside the others.") : undefined}
             testId="gallery-form-name"
             dialogProps={dialogProps}
           >
@@ -50,6 +51,7 @@ const gallery: GalleryModule = {
   title: "FormDialog",
   demos: [
     { name: "One-line field — Enter submits", render: () => nameDemo(false) },
+    { name: "A note beside Save, read with it — clear the name to see why Save is off", render: () => nameDemo(false, true) },
     {
       name: "Multiline, width sm — Ctrl / ⌘ + Enter submits",
       render: () => (
