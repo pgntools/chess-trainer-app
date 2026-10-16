@@ -17,6 +17,9 @@ export * from "./GameInfo";
 export * from "./ImportReport";
 // CTA-190: a running Jobs V2 job's live engine progress, under its progress bar.
 export * from "./JobEngineProgress";
+// CTA-217: the Jobs module's generic blocks — a job whole, and the header indicator's presentation.
+export * from "./JobDetailsPanel";
+export * from "./JobsIndicatorView";
 export * from "./JobSummary";
 // CTA-209: a Library game's own view beside its board — the game board's left panel.
 export * from "./LibraryGameDetails";

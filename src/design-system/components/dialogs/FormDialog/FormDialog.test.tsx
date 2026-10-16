@@ -86,4 +86,18 @@ describe("FormDialog", () => {
     fireEvent.click(screen.getByTestId("old-cancel"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("says why Save is off beside it, read with the button (CTA-217) — and without a note, the buttons alone", () => {
+    renderForm({ submitDisabled: true, submitNote: "Choose a kind of job." });
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    expect(save).toHaveAccessibleDescription("Choose a kind of job.");
+    expect(screen.getByTestId("probe-submit-note")).toHaveTextContent("Choose a kind of job.");
+  });
+
+  it("has no note and no description by default", () => {
+    renderForm();
+    expect(screen.queryByTestId("probe-submit-note")).toBeNull();
+    expect(screen.getByRole("button", { name: "Save" })).not.toHaveAttribute("aria-describedby");
+  });
 });

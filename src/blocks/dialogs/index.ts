@@ -16,6 +16,8 @@ export * from "./ImportDialog";
 export * from "./IncompatibleImportDialog";
 export * from "./NewCaseDialog";
 export * from "./NewJobDialog";
+// CTA-217: the Jobs module's New job — the kinds that apply to an entity, then the chosen kind's form, over FormDialog.
+export * from "./NewJobFrame";
 export * from "./NewProjectDialog";
 export * from "./OpeningTreePgnDialog";
 export * from "./ProjectPickerDialog";

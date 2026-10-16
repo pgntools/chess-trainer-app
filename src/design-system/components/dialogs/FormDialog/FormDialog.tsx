@@ -20,8 +20,14 @@ export type FormDialogProps = {
   submitDisabled?: boolean;
   /** The save is under way: both buttons off, a spinner in Save, no closing. */
   busy?: boolean;
+  /**
+   * Words beside the buttons, read with Save (`aria-describedby`) — why it is
+   * off, or a refusal (CTA-217: the New job frame's "Choose a kind of job").
+   * Absent, the actions row is the buttons alone.
+   */
+  submitNote?: ReactNode;
   width?: "xs" | "sm";
-  /** The root's test id; the parts are `-form`, `-cancel` and `-submit`. */
+  /** The root's test id; the parts are `-form`, `-cancel`, `-submit` and `-submit-note`. */
   testId: string;
   /** The submit button's own test id, for a screen whose tests named it before (CTA-113: `…-name-save`). Absent, `<testId>-submit`. */
   submitTestId?: string;
@@ -47,6 +53,7 @@ function FormDialog({
   cancelLabel,
   submitDisabled = false,
   busy = false,
+  submitNote,
   width = "xs",
   testId,
   submitTestId = `${testId}-submit`,
@@ -54,6 +61,7 @@ function FormDialog({
   dialogProps,
 }: FormDialogProps) {
   const formId = useId();
+  const noteId = useId();
   const blocked = submitDisabled || busy;
 
   const submit = (event: FormEvent) => {
@@ -73,6 +81,26 @@ function FormDialog({
     }
   };
 
+  const buttons = (
+    <>
+      <Button onClick={onClose} disabled={busy} data-testid={cancelTestId}>
+        {cancelLabel}
+      </Button>
+      <Button
+        type="submit"
+        form={formId}
+        variant="contained"
+        disabled={blocked}
+        aria-busy={busy || undefined}
+        aria-describedby={submitNote === undefined ? undefined : noteId}
+        startIcon={busy ? <CircularProgress aria-hidden size={16} color="inherit" /> : undefined}
+        data-testid={submitTestId}
+      >
+        {submitLabel}
+      </Button>
+    </>
+  );
+
   return (
     <BaseDialog
       open={open}
@@ -84,22 +112,16 @@ function FormDialog({
       testId={testId}
       dialogProps={dialogProps}
       actions={
-        <>
-          <Button onClick={onClose} disabled={busy} data-testid={cancelTestId}>
-            {cancelLabel}
-          </Button>
-          <Button
-            type="submit"
-            form={formId}
-            variant="contained"
-            disabled={blocked}
-            aria-busy={busy || undefined}
-            startIcon={busy ? <CircularProgress aria-hidden size={16} color="inherit" /> : undefined}
-            data-testid={submitTestId}
-          >
-            {submitLabel}
-          </Button>
-        </>
+        submitNote === undefined ? (
+          buttons
+        ) : (
+          <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end", gap: 1, width: "100%" }}>
+            <Box id={noteId} data-testid={`${testId}-submit-note`} sx={{ flex: "1 1 12rem", minWidth: 0, typography: "body2", color: "text.secondary" }}>
+              {submitNote}
+            </Box>
+            <Box sx={{ display: "flex", gap: 1 }}>{buttons}</Box>
+          </Box>
+        )
       }
     >
       <Box
