@@ -2716,7 +2716,6 @@ const en = {
           source: "The Case sent for analysis could not be read again.",
           engine: "The engine stopped answering. Resume to try again from the last finished position.",
           storage: "The results could not be saved — the browser refused the write. Free some space, then resume.",
-          "too-many": "The Cases are at their limit, so the results could not be saved. Delete some, then resume.",
           target: "Where the results were to go is gone — the project or the Case was deleted.",
         },
       },
@@ -3137,6 +3136,34 @@ const en = {
    */
   analysisV2: {
     cancel: "Cancel",
+    /**
+     * **A Project's soft limit of Cases** (CTA-225): an interactive add that
+     * would take a Project past it asks first, suggesting a Library collection.
+     */
+    caseLimit: {
+      title: "A large project",
+      messageNew: "These games make {{number}} cases — and a project of more than {{max}} cases is slow to open and to work in.",
+      messageExisting_one:
+        "This game makes a case. With the {{existing}} the project holds already, it would hold {{total}} — and a project of more than {{max}} cases is slow to open and to work in.",
+      messageExisting_other:
+        "These games make {{number}} cases. With the {{existing}} the project holds already, it would hold {{total}} — and a project of more than {{max}} cases is slow to open and to work in.",
+      suggestion:
+        "For a large set of games a Library collection suits better: its table is built for thousands of games, filtered and sorted, and any of them opens on a board or goes to Analysis from there.",
+      inLibrary:
+        "These games are in the Library already. Saved as a collection of their own, they stay together there — and a few at a time go to Analysis.",
+      collection: "Create a Library collection instead",
+      collectionFromLibrary: "Save them as a Library collection instead",
+      anyway: "Create anyway",
+      progress: {
+        title: "Creating the collection",
+        index: "Reading the games: {{done}} of {{total}}",
+        save: "Saving the collection…",
+      },
+      problem: {
+        index: "The games could not be read for the collection. Nothing was created.",
+        storage: "The collection could not be created — the browser refused to save it. Nothing was created.",
+      },
+    },
     sendTo: {
       title: "Open in Analysis",
       addTitle_one: "Add {{count}} game to Analysis",
@@ -3145,7 +3172,6 @@ const en = {
       add_one: "Add {{count}} case",
       add_other: "Add {{count}} cases",
       storage: "That could not be saved — the browser refused it.",
-      tooManyCases: "That could not be saved — Analysis holds at most {{max}} cases.",
       tooManyProjects: "No project could be made — the browser refused it, or there are {{max}} already.",
     },
     save: "Save",
@@ -3316,13 +3342,6 @@ const en = {
         build: "Making the cases: {{done}} of {{total}}",
         save: "Saving the cases…",
       },
-      /** Past the app's cap of Cases — asked before any work (CTA-208). */
-      overCap: {
-        title: "More cases than the app's limit",
-        message:
-          "These games make {{count}} cases. With the {{existing}} already kept, that is {{total}} — past the app's limit of {{max}}. The limit keeps Analysis quick: every case is read whenever it opens. Create the project anyway?",
-        confirm: "Create anyway",
-      },
       problem: {
         file: "The file could not be read.",
         empty: "There is no game in that file.",
@@ -3330,7 +3349,6 @@ const en = {
         tooLarge: "That file is too large.",
         zip: "That zip could not be read.",
         zipEmpty: "There is no .pgn file in that zip.",
-        tooMany: "Not created: {{count}} cases with the {{existing}} already kept pass the app's limit of {{max}} cases.",
         storage: "Not created — the browser refused to save the cases: {{detail}}",
         noReason: "it gave no reason",
       },

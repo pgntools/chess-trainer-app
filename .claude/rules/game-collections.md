@@ -930,7 +930,10 @@ game), no move replayed; the Games tab, as ever, reads the rows alone.
   c5)`, within the Project name's 100 characters, the filter summary cut
   first), or one the reader has — and one **Game Case** per readable game in
   collection order, named by its chapter, **all or nothing** (a new Project
-  taken back on a refusal, said in the picker). Each game is parsed once to
+  taken back on a refusal, said in the picker) — **past the Project's limit
+  of 1,000 Cases** (CTA-225, [`analysis-v2.md`](./analysis-v2.md) §3.5) asked
+  first, its collection button *Save them as a Library collection instead*:
+  the picked games, as stored, a new collection of their own. Each game is parsed once to
   make its Case. **Unreadable games are left out** and the notice says how
   many. The app's snackbar (`useSnackbar`, `library-picks-analyse-notice`)
   links to `/analysis/projects/<id>` (a real link,

@@ -16,7 +16,6 @@ import {
   type AnalysisCase,
   type CaseOrderMove,
   type CaseState,
-  MAX_ANALYSIS_CASES,
 } from "./analysisProjects";
 import type { CatalogGame } from "./gameCatalog";
 import { mainlineGame } from "./gameTree";
@@ -31,8 +30,9 @@ import { newRecordId } from "./recordId";
  * `chessapp.analysisProjects` (`lib/analysisProjectsDb.ts`), over the shared
  * [`idbRecordStore.ts`](./idbRecordStore.ts), newest first.
  *
- * Every operation is a promise of `undefined` or a named problem —
- * `"storage"` (IndexedDB refused the write), `"too-many"` (past the cap) —
+ * Every operation is a promise of `undefined` or `"storage"` (IndexedDB
+ * refused the write) — **no cap**: a Project's limit of Cases (CTA-225,
+ * `MAX_CASES_PER_PROJECT`) is a warning the screens give, never a refusal —
  * and an operation that changes nothing writes nothing (the same array back:
  * no transaction, no emit). Nothing throws. The autosave
  * ({@link saveCaseState}) writes only what changed, in place. A Case deleted
@@ -48,6 +48,7 @@ import { newRecordId } from "./recordId";
  * back). The list itself stays newest first; the order is a field.
  */
 
+/** `"too-many"` is never the Cases' own (CTA-225) — the links' cap and the Projects', whose stores share this type. */
 export type AnalysisCaseProblem = "storage" | "too-many";
 
 const cases = idbRecordStore<AnalysisCase>({
@@ -113,28 +114,19 @@ export const findAnalysisCaseGame = (segments: readonly string[]): CatalogGame |
 };
 
 /**
- * **Add Cases** at the top, all or nothing under the cap, each **last in its
- * Project's order**, in the order given. An id already there is left as it is.
- * `pastCap` (CTA-208): the reader was told the batch takes the app past
- * {@link MAX_ANALYSIS_CASES} and chose to go on — the cap is not applied.
+ * **Add Cases** at the top, all or nothing, each **last in its Project's
+ * order**, in the order given. An id already there is left as it is. No cap
+ * (CTA-225): a Project past its limit of Cases was asked about by the screen
+ * that adds them, and a job's outputs, a duplicate or a move are never asked.
  */
-export const addAnalysisCases = async (
-  added: readonly AnalysisCase[],
-  { pastCap = false }: { pastCap?: boolean } = {},
-): Promise<AnalysisCaseProblem | undefined> => {
+export const addAnalysisCases = async (added: readonly AnalysisCase[]): Promise<AnalysisCaseProblem | undefined> => {
   if (added.length === 0) return undefined;
-  let tooMany = false;
-  const problem = await write((current) => {
+  return write((current) => {
     const known = new Set(current.map((record) => record.id));
     const fresh = added.filter((record) => !known.has(record.id));
     if (fresh.length === 0) return current;
-    if (!pastCap && current.length + fresh.length > MAX_ANALYSIS_CASES) {
-      tooMany = true;
-      return current;
-    }
     return [...appendedCases(current, fresh), ...current];
   });
-  return tooMany ? "too-many" : problem;
 };
 
 /**
@@ -180,8 +172,8 @@ export const moveAnalysisCase = (
 
 /**
  * **Duplicate a Case** into a Project (its own or another) under `name`, and
- * hand the copy back — `undefined` when nothing was made: an unknown Case, the
- * cap, a refused write.
+ * hand the copy back — `undefined` when nothing was made: an unknown Case, a
+ * refused write.
  */
 export const duplicateAnalysisCase = async (
   id: string,
@@ -314,7 +306,7 @@ export const mergeIntoAnalysisCase = async (
 
 /**
  * **An import's Cases** (Settings → Import): the ids to remove first, then the
- * Cases to add, in one write — all or nothing under the cap. An added id the
+ * Cases to add, in one write — all or nothing, no cap (CTA-225). An added id the
  * store still holds replaces it. **Their order** (CTA-203): into a Project
  * that keeps Cases of its own (a Merge) they go last, in the zip's order; into
  * one they fill, the zip's order is kept — a Case from an older zip, with
@@ -328,19 +320,13 @@ export const importAnalysisCases = async ({
   remove: readonly string[];
 }): Promise<AnalysisCaseProblem | undefined> => {
   if (add.length === 0 && remove.length === 0) return undefined;
-  let tooMany = false;
-  const problem = await write((current) => {
+  return write((current) => {
     const gone = new Set([...remove, ...add.map((record) => record.id)]);
     const kept = current.filter((record) => !gone.has(record.id));
     if (add.length === 0 && kept.length === current.length) return current;
-    if (kept.length + add.length > MAX_ANALYSIS_CASES) {
-      tooMany = true;
-      return current;
-    }
     const keptProjects = new Set(kept.map((record) => record.projectId));
     const intoKept = add.filter((record) => keptProjects.has(record.projectId));
     const appended = new Map(appendedCases(kept, [...intoKept].sort(byCaseOrder)).map((record) => [record.id, record]));
     return withCaseOrders([...add.map((record) => appended.get(record.id) ?? record), ...kept]);
   });
-  return tooMany ? "too-many" : problem;
 };

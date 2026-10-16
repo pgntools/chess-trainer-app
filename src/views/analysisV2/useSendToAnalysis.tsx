@@ -3,20 +3,21 @@ import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPickerDialog } from "../../blocks/dialogs";
-import { addAnalysisCases } from "../../lib/analysisCaseStore";
+import { addAnalysisCases, loadAnalysisCases } from "../../lib/analysisCaseStore";
 import {
+  casesOf,
   gameCaseOf,
-  MAX_ANALYSIS_CASES,
   MAX_ANALYSIS_PROJECTS,
   type AnalysisCase,
   type AnalysisProject,
   type CaseDisplay,
 } from "../../lib/analysisProjects";
 import { createAnalysisProject, loadAnalysisProjects, removeAnalysisProject } from "../../lib/analysisProjectStore";
-import { sanPathTo, type GameTree } from "../../lib/gameTree";
+import { sanPathTo, treeToPgn, type GameTree } from "../../lib/gameTree";
 import { newRecordId } from "../../lib/recordId";
 import { casePath, projectPath } from "./paths";
 import { useAnalysisProjects } from "./useAnalysisProjects";
+import { useProjectCaseLimit } from "./useProjectCaseLimit";
 
 /** One game handed to Analysis — a Game Case of it. */
 type SentGame = {
@@ -29,12 +30,16 @@ type SentGame = {
   name?: string;
   /** How the sending board drew — its arrows, its move marks — kept as the Case's display; absent, the defaults. */
   display?: Partial<CaseDisplay>;
+  /** The game as its store keeps it — what a Library collection of the games takes instead (CTA-225). Absent, the tree's PGN. */
+  pgn?: string;
 };
 
 export type SendRequest = {
   games: readonly SentGame[];
   /** The name a new Project is offered under — the sending screen's words for what it sends. */
   projectName: string;
+  /** The games come out of the Library (its picks) — past a Project's limit of Cases the dialog says so (CTA-225). */
+  inLibrary?: boolean;
   /**
    * What follows the writing — the screen stays, and says so (the Library's
    * picks). Absent, one game opens its Case, several the Project's Cases.
@@ -54,9 +59,13 @@ export type SendRequest = {
  * refused, the refusal said in the dialog, which stays open). Then the
  * caller's `onSent`, or — without one — one game **opens its Case** (at the
  * node the sending board stood on, facing its side), several the Project.
+ * **Past the Project's limit of Cases** (CTA-225 — its Cases and these over
+ * `MAX_CASES_PER_PROJECT`, a new Project's none) it asks first
+ * (`useProjectCaseLimit`): a Library collection of the games instead (the
+ * picker closed, no Project made), the Cases anyway, or back to the picker.
  *
  * Render `dialog` once in the screen. `testId` prefixes the dialog's ids
- * (`ProjectPickerDialog`'s).
+ * (`ProjectPickerDialog`'s; the limit's `<testId>-case-limit`).
  */
 export const useSendToAnalysis = (testId: string): { send: (request: SendRequest) => void; dialog: ReactNode } => {
   const { t } = useTranslation();
@@ -65,6 +74,7 @@ export const useSendToAnalysis = (testId: string): { send: (request: SendRequest
   const [request, setRequest] = useState<SendRequest | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const caseLimit = useProjectCaseLimit(`${testId}-case-limit`);
 
   const send = (next: SendRequest) => {
     if (next.games.length === 0) return;
@@ -91,7 +101,7 @@ export const useSendToAnalysis = (testId: string): { send: (request: SendRequest
     if (problem !== undefined) {
       // All or nothing: no empty Project is left behind.
       if (made) await removeAnalysisProject(project.id);
-      refused(problem === "too-many" ? t("analysisV2.sendTo.tooManyCases", { max: MAX_ANALYSIS_CASES }) : t("analysisV2.sendTo.storage"));
+      refused(t("analysisV2.sendTo.storage"));
       return;
     }
     setRequest(null);
@@ -100,41 +110,60 @@ export const useSendToAnalysis = (testId: string): { send: (request: SendRequest
     else navigate(projectPath(project.id));
   };
 
-  const run = async (projectId: string | null, projectName: string) => {
-    if (request === null || busy) return;
+  const run = async (sent: SendRequest, projectId: string | null, projectName: string) => {
     setBusy(true);
     try {
       if (projectId === null) {
         const made = await createAnalysisProject(projectName, null);
         if (made === undefined) return refused(t("analysisV2.sendTo.tooManyProjects", { max: MAX_ANALYSIS_PROJECTS }));
-        return await write(request, made, true);
+        return await write(sent, made, true);
       }
       const project = projects?.find((candidate) => candidate.id === projectId);
-      if (project !== undefined) await write(request, project, false);
+      if (project !== undefined) await write(sent, project, false);
     } finally {
       setBusy(false);
     }
+  };
+
+  /** The picker's choice — past the Project's limit of Cases asked about first, before any Project is made (CTA-225). */
+  const choose = async (projectId: string | null, projectName: string) => {
+    if (request === null || busy) return;
+    const sent = request;
+    const existing = projectId === null ? 0 : casesOf(await loadAnalysisCases(), projectId).length;
+    caseLimit.check({
+      existing,
+      count: sent.games.length,
+      collectionName: projectId === null ? projectName : sent.projectName,
+      games: () => sent.games.map((game) => game.pgn ?? treeToPgn(game.tree)),
+      inLibrary: sent.inLibrary,
+      proceed: () => void run(sent, projectId, projectName),
+      onCollection: () => setRequest(null),
+    });
   };
 
   const count = request?.games.length ?? 1;
   // One game and nothing else to do: the Case opens. Otherwise the games are added.
   const opens = count === 1 && request?.onSent === undefined;
   const dialog = (
-    <ProjectPickerDialog
-      open={request !== null}
-      title={opens ? t("analysisV2.sendTo.title") : t("analysisV2.sendTo.addTitle", { count })}
-      submitLabel={opens ? t("analysisV2.sendTo.open") : t("analysisV2.sendTo.add", { count })}
-      projects={projects ?? []}
-      current=""
-      newProject={{ initialName: request?.projectName ?? "", onSubmit: (projectName) => void run(null, projectName) }}
-      onSubmit={(projectId) => void run(projectId, "")}
-      onClose={() => {
-        if (!busy) setRequest(null);
-      }}
-      busy={busy}
-      problem={problem}
-      testId={testId}
-    />
+    <>
+      <ProjectPickerDialog
+        open={request !== null}
+        title={opens ? t("analysisV2.sendTo.title") : t("analysisV2.sendTo.addTitle", { count })}
+        submitLabel={opens ? t("analysisV2.sendTo.open") : t("analysisV2.sendTo.add", { count })}
+        projects={projects ?? []}
+        current=""
+        newProject={{ initialName: request?.projectName ?? "", onSubmit: (projectName) => void choose(null, projectName) }}
+        onSubmit={(projectId) => void choose(projectId, "")}
+        onClose={() => {
+          if (!busy) setRequest(null);
+        }}
+        busy={busy}
+        problem={problem}
+        testId={testId}
+      />
+      {/* Past the Project's limit of Cases (CTA-225), over the picker. */}
+      {caseLimit.dialog}
+    </>
   );
 
   return { send, dialog };

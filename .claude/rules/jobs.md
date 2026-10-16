@@ -142,7 +142,8 @@ without views still lists, runs and offers its outputs generically.
 
 - **The computer analysis** is Jobs V2's behaviour (its input, its
   positions-and-checkpoint state, its error codes `source`, `engine`,
-  `storage`, `too-many`, `target`); its state adds the engine that ran it,
+  `storage`, `target` — `too-many` went with the app's cap of Cases, CTA-225:
+  a Case is never refused for a count); its state adds the engine that ran it,
   the annotator its outputs — and an open board's merge — name. An open Case
   board takes a merge its record lists in (`CaseWorkspace`, `analysisOf` over
   the job's record).

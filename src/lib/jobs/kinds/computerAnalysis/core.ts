@@ -42,7 +42,7 @@ export const ANALYSIS_PROJECT_ENTITY = "analysis-project";
 export type EntityRef = { type: string; id: string };
 
 /** What went wrong — the engine's, the store's, and `target`: where the results were to go is gone. */
-export const COMPUTER_ANALYSIS_ERRORS = ["source", "engine", "storage", "too-many", "target"] as const;
+export const COMPUTER_ANALYSIS_ERRORS = ["source", "engine", "storage", "target"] as const;
 export type ComputerAnalysisErrorCode = (typeof COMPUTER_ANALYSIS_ERRORS)[number];
 
 /** A job of this kind ended for a reason. */

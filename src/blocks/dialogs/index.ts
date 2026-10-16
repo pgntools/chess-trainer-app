@@ -19,5 +19,7 @@ export * from "./NewCaseDialog";
 export * from "./NewJobFrame";
 export * from "./NewProjectDialog";
 export * from "./OpeningTreePgnDialog";
+// CTA-225: a Project past its soft limit of Cases — a Library collection suggested, Create anyway, Cancel.
+export * from "./ProjectCaseLimitDialog";
 export * from "./ProjectPickerDialog";
 export * from "./SaveAsCollectionDialog";

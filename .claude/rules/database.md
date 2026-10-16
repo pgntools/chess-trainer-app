@@ -82,7 +82,7 @@ wrapper's main features would go unused. §10 says when that changes.
 | | | `selections` | `enginePresetStore.ts` | `EnginePresetSelection` (one per engine id) | oldest first | — |
 | **Analysis V2** (CTA-186, shipped in CTA-192) | `chessapp.analysisProjects` | `folders` | `analysisProjectFolderStore.ts` | `ProjectFolder` (a `GameFolder`) | oldest first | 100 |
 | | | `projects` | `analysisProjectStore.ts` | `AnalysisProject` | newest first | 1,000 (a new one refused) |
-| | | `cases` | `analysisCaseStore.ts` | `AnalysisCase` (its source, the tree as PGN, the SAN path, the orientation — autosaved; the computer-analysis merges its tree holds, CTA-188) | newest first | 10,000 (a batch past it refused) |
+| | | `cases` | `analysisCaseStore.ts` | `AnalysisCase` (its source, the tree as PGN, the SAN path, the orientation — autosaved; the computer-analysis merges its tree holds, CTA-188) | newest first | none (CTA-225 — a Project's soft limit of 1,000 is a warning the screens give, [`analysis-v2.md`](./analysis-v2.md) §3.5; the app-wide 10,000 is gone) |
 | | | `jobs` (CTA-188) | — | Jobs V2's — **retired in CTA-221, unread**, kept so the version stays 3 (its records dropped, not migrated) | — | — |
 | **Jobs** (CTA-221) | `chessapp.backgroundJobs` | `jobs`, `parts`, `artifacts` | the runtime's (`@pgntools/jobs-runtime/browser`), over `lib/jobs/runtime.ts` | `JobRecord` (a job's input, its checkpoint, its outbox and outputs, attempts, history) — a file output's parts and sealed blob | the runtime's | 200 jobs (the oldest finished pruned with their files; an enqueue refused when every one is unfinished) |
 | | | `caseLinks` (CTA-188) | `analysisCaseLinkStore.ts` | `CaseLink` (one Case links to another, across Projects) | oldest first | 50,000 |
@@ -438,7 +438,7 @@ forty lines.
 ### 10.2 When to consider it — any one of these
 
 - **A store is too big to load whole.** Memory or the first read's time
-  becomes the problem — e.g. Cases well past the 10,000 cap, or a
+  becomes the problem — e.g. Cases in the tens of thousands (no cap since CTA-225), or a
   wish to hold every Library game as its own row — and screens need to read
   **a page from the database** (`orderBy("seq").offset().limit()`) instead
   of slicing an in-memory list.

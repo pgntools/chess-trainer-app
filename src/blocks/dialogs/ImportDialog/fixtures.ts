@@ -104,7 +104,7 @@ export const HEBREW_DUMP: ImportDump = {
 export const HEBREW_APP: ImportCurrent = { ...EMPTY_APP, projectFolders: [folder("hf", "פתיחות")] };
 
 /** The shipped caps. */
-export const CAPS: ImportCaps = { playedGames: 500, repertoires: 500, folders: 100, enginePresets: 50, analysisProjects: 1_000, analysisCases: 10_000 };
+export const CAPS: ImportCaps = { playedGames: 500, repertoires: 500, folders: 100, enginePresets: 50, analysisProjects: 1_000 };
 
 /** Caps a small app would pass: the played games' warning, the repertoires refused. */
-export const TIGHT_CAPS: ImportCaps = { playedGames: 1, repertoires: 1, folders: 100, enginePresets: 50, analysisProjects: 1_000, analysisCases: 10_000 };
+export const TIGHT_CAPS: ImportCaps = { playedGames: 1, repertoires: 1, folders: 100, enginePresets: 50, analysisProjects: 1_000 };

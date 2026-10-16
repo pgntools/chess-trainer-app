@@ -169,7 +169,7 @@ const SAME: ImportCurrent = {
   analysisCases: SOURCE.analysisCases,
 };
 
-const CAPS: ImportCaps = { playedGames: 100, repertoires: 500, folders: 100, enginePresets: 50, analysisProjects: 1_000, analysisCases: 10_000 };
+const CAPS: ImportCaps = { playedGames: 100, repertoires: 500, folders: 100, enginePresets: 50, analysisProjects: 1_000 };
 
 const dumpOf = (bytes: Uint8Array = zipOf()): ImportDump => {
   const reading = readImport(bytes);
@@ -816,18 +816,15 @@ describe("Analysis V2's projects (CTA-186)", () => {
     expect(writes).toEqual({ folders: [], add: [], remove: [], cases: { add: [], remove: [] }, links: { add: [], removeOf: [] } });
   });
 
-  it("refuse the category past the Projects' or the Cases' cap", () => {
+  it("refuse the category past the Projects' cap — never for its Cases, which have none (CTA-225)", () => {
     const dump = dumpOf(projectsZip());
     expect(writesOf(dump, EMPTY, undefined, { ...CAPS, analysisProjects: 1 }).analysisProjects?.refused).toEqual({
       kind: "records",
       max: 1,
       total: 2,
     });
-    expect(writesOf(dump, EMPTY, undefined, { ...CAPS, analysisCases: 2 }).analysisProjects?.refused).toEqual({
-      kind: "records",
-      max: 2,
-      total: 3,
-    });
+    // Any number of Cases goes in: the Projects' cap alone refuses.
+    expect(writesOf(dump, EMPTY, undefined, CAPS).analysisProjects?.refused).toBeUndefined();
   });
 
   it("carry the links between their Cases (CTA-188): the zip's whose two ends the app holds afterwards, the replaced Cases' own gone", () => {
