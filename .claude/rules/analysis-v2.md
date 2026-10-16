@@ -72,18 +72,19 @@ other screen hands a game to Analysis as a new Case** (§1.1).
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/analysisProjects.ts` | **The records**, pure: `ProjectFolder` (a `GameFolder`, `lib/savedGameFolders.ts`'s model and reads), `AnalysisProject`, `AnalysisCase` and its `AnalysisCaseSource`; the normalisers `projectFolderFrom`, `analysisProjectFrom`, `analysisCaseFrom`; the constructors `gameCaseOf`, `positionCaseOfFen`, `positionCaseOfGame`, `copiedCase`; `caseStateOf` / `sameCaseState` (the autosave's state and its idempotency); `caseDerivedName`, `gameCaseDerivedName`; `projectsHere`, `projectsUnder`, `casesOf`, `caseCountsOf`; a Project's order (CTA-203, §2.1) — `byCaseOrder`, `casesInOrder`, `appendedCases`, `withCaseOrders` (the backfill), `compactedCaseOrders`, `reorderedCases`; the caps (`MAX_PROJECT_FOLDERS` 100, `MAX_ANALYSIS_PROJECTS` 1,000, `MAX_ANALYSIS_CASES` 10,000). |
+| `src/lib/analysisProjects.ts` | **The records**, pure: `ProjectFolder` (a `GameFolder`, `lib/savedGameFolders.ts`'s model and reads), `AnalysisProject`, `AnalysisCase` and its `AnalysisCaseSource`; the normalisers `projectFolderFrom`, `analysisProjectFrom`, `analysisCaseFrom`; the constructors `gameCaseOf`, `positionCaseOfFen`, `positionCaseOfGame`, `copiedCase`; `caseStateOf` / `sameCaseState` (the autosave's state and its idempotency); `caseDerivedName`, `gameCaseDerivedName`; `projectsHere`, `projectsUnder`, `casesOf`, `caseCountsOf`; a Project's order (CTA-203, §2.1) — `byCaseOrder`, `casesInOrder`, `appendedCases`, `withCaseOrders` (the backfill), `compactedCaseOrders`, `reorderedCases`; the caps (`MAX_PROJECT_FOLDERS` 100, `MAX_ANALYSIS_PROJECTS` 1,000) and **a Project's soft limit of Cases** (`MAX_CASES_PER_PROJECT` 1,000, `passesProjectCaseLimit` — CTA-225, §3.5; the app-wide `MAX_ANALYSIS_CASES` of 10,000 is gone). |
 | `src/lib/analysisProjectPicks.ts` | **The browser's picks** (CTA-191, §3.1): one set of ids over folders, Projects and Cases — `projectPicksOf` (each box's state), `toggleProjectPick` / `setProjectPicks` (a row's tick, select-all's), `projectPickTargetOf`, `projectPicksDeletion` (what a delete takes and how many of each go). Pure. |
 | `src/lib/analysisProjectsDb.ts` | The `chessapp.analysisProjects` database, **version 3** (CTA-188): object stores `folders`, `projects`, `cases`, `jobs` (Jobs V2's — retired in CTA-221, unread, kept so the version stays 3) and `caseLinks`, one `BroadcastChannel`. |
 | `src/lib/jobs/kinds/computerAnalysis/` | **A Case's computer analysis, a job kind of the Jobs module** (CTA-218's core, CTA-221's adapter — [`jobs.md`](./jobs.md)): its input (the Case's tree as sent), its state, its outputs (new Game Cases linked from the source, or the merge into it — `analysisOf` / `mergedPgnOf`). The Case's side: its Jobs tab (§6), `mergeIntoAnalysisCase`, an open board taking a merge in (§6). |
 | `src/lib/analysisCaseLinkStore.ts` | **The links between Cases** (CTA-188, §7): `linkAnalysisCases`, `addCaseLinks` (several at once — a job's new Cases), `unlinkAnalysisCases`, `removeLinksOfCases`, `importCaseLinks`; the record `CaseLink` and `caseLinksOf` in `analysisProjects.ts`. |
-| `src/lib/analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts` | **The stores** over `idbRecordStore` ([`database.md`](./database.md) §3): folders oldest first, Projects and Cases newest first; every operation a promise of `undefined` or `"storage"` / `"too-many"`. |
+| `src/lib/analysisProjectFolderStore.ts`, `analysisProjectStore.ts`, `analysisCaseStore.ts` | **The stores** over `idbRecordStore` ([`database.md`](./database.md) §3): folders oldest first, Projects and Cases newest first; every operation a promise of `undefined` or `"storage"` / `"too-many"` — the Cases' never `"too-many"` (no cap since CTA-225). |
 | `src/lib/retiredDatabases.ts` | **The databases the app no longer keeps** (CTA-192): `chessapp.analyses` and `chessapp.jobs`, the legacy module's, deleted on every load (`src/main.tsx`, `deleteRetiredDatabases`). |
 | `src/views/analysisV2/useSendToAnalysis.tsx` | **A game handed to Analysis** (CTA-192, §1.1): `useSendToAnalysis(testId)` → `{ send, dialog }` — the Project picker, the Game Cases written, the Case (or Project) opened. Every other screen's way in. |
+| `src/views/analysisV2/useProjectCaseLimit.tsx` | **A Project's limit of Cases, asked about** (CTA-225, §3.5): `useProjectCaseLimit(testId)` → `{ check, dialog }` — New project's, New case's and `useSendToAnalysis`' one check before any work: under the limit straight on, past it the `ProjectCaseLimitDialog` (a Library collection of the games instead, Create anyway, Cancel). |
 | `src/views/analysisV2/` | **The screens**: `ProjectsBrowser.tsx` (`/analysis`), `ProjectScreen.tsx` (`/analysis/projects/<id>`), `CaseWorkspace.tsx` (`/analysis/projects/<id>/cases/<caseId>`; its `CaseBoard` the board; the Case view's links and their picker, §7), each behind a layout-only `…Main.tsx`; `useAnalysisProjects.ts` (the store bindings — `useCaseLinks` too), `paths.ts` (the addresses). (Jobs V2's `jobs/` folder went in CTA-221: the Jobs screens are `views/jobs/`, [`jobs.md`](./jobs.md).) |
-| `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/panels/ProjectDetails/` (CTA-213), `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `GamesPickerDialog/` (CTA-208), `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`); since CTA-188 `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/` | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and `ComputerAnalysisReport` and `EvalGraph` (the Case view's Graph tab). The computer-analysis job's blocks (its form, `JobTargetFields`, `JobEngineProgress`) and the Case's Jobs tab's `EntityJobs` are [`jobs.md`](./jobs.md)'s. |
+| `src/blocks/tables/ProjectsTable/` (its rows `lib/analysisProjectRows.ts`), `src/blocks/trees/CaseSiblings/`, `src/blocks/panels/CaseDetails/`, `src/blocks/panels/ProjectDetails/` (CTA-213), `src/blocks/tables/CasesTable/` (`caseDisplayName`; its rows `lib/analysisCaseRows.ts`), `src/blocks/dialogs/NewProjectDialog/`, `NewCaseDialog/`, `GamesPickerDialog/` (CTA-208), `ProjectPickerDialog/` (and the Library's `CollectionImportDialog`, `choiceOnly`), `ProjectCaseLimitDialog/` (CTA-225, §3.5); since CTA-188 `src/blocks/lists/CaseLinks/`, `src/blocks/dialogs/CasePickerDialog/` | The blocks, built in the gallery on fixtures first ([`docs/design/hierarchy.md`](../../docs/design/hierarchy.md)). The folder dialogs (`FolderNameDialog`, `FolderMoveDialog`) and `FolderActions` are the app's own, reused — and `ComputerAnalysisReport` and `EvalGraph` (the Case view's Graph tab). The computer-analysis job's blocks (its form, `JobTargetFields`, `JobEngineProgress`) and the Case's Jobs tab's `EntityJobs` are [`jobs.md`](./jobs.md)'s. |
 | `src/views/board/core/useAnalysisSession.ts`, `useTreeNavigation.ts`, `src/views/shared/nextMoveArrows.ts`, `src/views/shared/AnalysisEvalReport.tsx` | **Moved out of the legacy module** (CTA-186) so that its removal takes nothing V2 needs — the session the Case's board composes, the core's navigation, the next-move arrows the explorer draws, the eval graph and report the Case view's Graph tab shows. |
-| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectRows.test.ts` (the browser's rows — its Cases, CTA-191), `src/lib/analysisProjectPicks.test.ts` (its picks, CTA-191), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), the engine server's heartbeat in `jobV2Runner.test.ts`, `hostedEngine.test.ts`, `JobEngineProgress.test.tsx` and `JobsV2Shell.test.tsx` (CTA-194), `jobsSettings.test.ts` (CTA-193; the old `evalApi` kept for its move, CTA-196), `lib/evalSources/lichess/api.test.ts` (the client — the FEN, the mapping, a 404, the timeout, a bad body) and the rest of the layer's tests ([`docs/engine.md`](../../docs/engine.md) §10.5), the runner's API cases in `jobV2Runner.test.ts` (through the layer), `JobsSettingsForm.test.tsx`, `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links in its Linked cases dialog, the Jobs V2 view; the Jobs settings tab — its link to Settings → Engine, CTA-196 — and New Job V2's default, CTA-193), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190; an eval source's warning, CTA-193, CTA-196), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the database named in both pages, the retired ones in neither), `src/lib/retiredDatabases.test.ts`; **the hand-offs** (§1.1): `OpeningsBoard.test.tsx`, `PlayWithEngine.test.tsx`, `PlayedGames.test.tsx`, `Library.test.tsx` (the game board's Open in Analysis and a shipped game's copy), `LibraryPicks.test.tsx` (the batch), `StoredGameEmbed.test.tsx` and `EmbedSource.test.tsx` (an embed's Case address and its Open in Analysis), `ProjectPickerDialog.test.tsx` (the New project entry). |
+| Tests | `src/lib/analysisProjects.test.ts` (records), `src/lib/analysisProjectRows.test.ts` (the browser's rows — its Cases, CTA-191), `src/lib/analysisProjectPicks.test.ts` (its picks, CTA-191), `src/lib/analysisProjectStores.test.ts` (the stores — the Case links, a delete's jobs and links, the database's upgrade from versions 1 and 2, CTA-188), `src/lib/jobsV2.test.ts`, `jobV2Store.test.ts`, `jobV2Runner.test.ts` (Jobs V2; its live progress and throttling, CTA-190), `jobV2Live.test.ts` (the feed, the channel, a stale snapshot dropped), the engine server's heartbeat in `jobV2Runner.test.ts`, `hostedEngine.test.ts`, `JobEngineProgress.test.tsx` and `JobsV2Shell.test.tsx` (CTA-194), `jobsSettings.test.ts` (CTA-193; the old `evalApi` kept for its move, CTA-196), `lib/evalSources/lichess/api.test.ts` (the client — the FEN, the mapping, a 404, the timeout, a bad body) and the rest of the layer's tests ([`docs/engine.md`](../../docs/engine.md) §10.5), the runner's API cases in `jobV2Runner.test.ts` (through the layer), `JobsSettingsForm.test.tsx`, `uciEngine.test.ts` (the progress fields parsed), `src/views/analysisV2/jobs/JobsV2.test.tsx` (the Case's Jobs tab and popup, a merge into an open Case, a Case's links in its Linked cases dialog, the Jobs V2 view; the Jobs settings tab — its link to Settings → Engine, CTA-196 — and New Job V2's default, CTA-193), `JobsV2Shell.test.tsx` (the indicator; its heartbeat and live name, CTA-190; an eval source's warning, CTA-193, CTA-196), the blocks' own, `src/views/analysisV2/AnalysisV2.test.tsx` (the three screens over the real stores), `src/lib/dataExport.test.ts` / `dataImport.test.ts` / `src/views/settings/ImportTab.test.tsx` (the category), `src/views/board/boards.test.tsx` and `panelPropagation.test.tsx` (the Case's board in the set), `src/views/legal/legalDocuments.test.ts` (the database named in both pages, the retired ones in neither), `src/lib/retiredDatabases.test.ts`; **the hand-offs** (§1.1): `OpeningsBoard.test.tsx`, `PlayWithEngine.test.tsx`, `PlayedGames.test.tsx`, `Library.test.tsx` (the game board's Open in Analysis and a shipped game's copy), `LibraryPicks.test.tsx` (the batch), `StoredGameEmbed.test.tsx` and `EmbedSource.test.tsx` (an embed's Case address and its Open in Analysis), `ProjectPickerDialog.test.tsx` (the New project entry); **a Project's limit of Cases** (CTA-225, §3.5): `analysisProjectStores.test.ts` (no cap past 10,000), `ProjectCaseLimitDialog.test.tsx`, `AnalysisV2.test.tsx` (New project, New case), `useSendToAnalysis.test.tsx` (the hand-off), `dataImport.test.ts` (an import of any number). |
 
 Locale keys: `analysisV2.*` (`browser`, `folder`, `project`, `case`,
 `newCase`, `workspace`; `links` — CTA-188; `caseJobs`, the Case's Jobs tab — CTA-221; a job's words are `jobs.*`, [`jobs.md`](./jobs.md)), `nav.folders.analysisV2`, `nav.analysisProjects`,
@@ -134,7 +135,12 @@ then the sending board's `nodeId` as the Case's `path`, its `orientation`, its
 in one all-or-nothing `addAnalysisCases` (a Project made for it taken back on
 a refusal, said in the dialog, which stays open). Then the caller's
 `onSent`, or — without one — one game **opens its Case**, several the
-Project. The screen renders `dialog` once.
+Project. The screen renders `dialog` once. **Past the chosen Project's
+limit of Cases** (§3.5 — its Cases and these over 1,000, a new Project's
+none) the picker's submit asks first, before any Project is made: a Library
+collection of the games instead (each `SentGame`'s `pgn` where the sender
+gives it — the Library's picks, the games as stored, `inLibrary` wording the
+dialog — else the tree's), the Cases anyway, or back to the picker.
 
 | Sender | What it sends | New Project's name |
 | --- | --- | --- |
@@ -290,15 +296,15 @@ whose games become its Cases (`collectionImportFileOf` reads it):
 made the same way (`mapInSlices`), under a `ProgressDialog` over the popup
 it came from ("Reading the games: 4,200 of 15,905", "Making the cases: …",
 then "Saving the cases…" — Cancel on until the save, `useCancellableJob`),
-then the Project and its Cases written. **Past the app's cap of Cases**
-(`MAX_ANALYSIS_CASES`, 10,000 — the Cases kept plus these) it **asks
-first**, before any work, with the numbers ("These games make 15,905 cases.
-With the 0 already kept, that is 15,905 — past the app's limit of 10,000…"),
-and *Create anyway* writes past it (`addAnalysisCases(…, { pastCap: true })`).
-All or nothing: Cases the store refuses take the Project back, and the
-popup says **exactly why** — the cap with its numbers, or the browser's own
-words for its refusal (`lastAnalysisCaseWriteError`, the record store's
-`lastWriteError`: "QuotaExceededError: …").
+then the Project and its Cases written. **Past the Project's limit of
+Cases** (§3.5 — more than 1,000 games kept; the app's cap of 10,000 the
+CTA-208 popup asked about went in CTA-225) it **asks first**, before any
+work and before the Project is made ("These games make 15,905 cases — and a
+project of more than 1,000 cases is slow…"): a Library collection of them
+instead, *Create anyway*, or back to the choice. All or nothing: Cases the
+store refuses take the Project back, and the popup says **exactly why** —
+the browser's own words for its refusal (`lastAnalysisCaseWriteError`, the
+record store's `lastWriteError`: "QuotaExceededError: …").
 
 | On | Rename | Move | Duplicate | Delete |
 | --- | --- | --- | --- | --- |
@@ -389,7 +395,12 @@ selection bar counts them and deletes them together, asked first
   the first game until then — CTA-208).
 - A name, optional (none for one-per-game).
 
-One new Case opens on its board; several stay on the list. A Case is renamed
+One new Case opens on its board; several stay on the list. **A batch that
+takes the Project past its limit of Cases** (§3.5 — the Cases it holds and
+these over 1,000; one game into a Project of 1,000 is enough) asks first, on
+Create: a Library collection of the batch's games instead (each Case's tree
+as PGN, named after the Project; New case closed), the Cases anyway, or back
+to the dialog. A Case is renamed
 (`""` gives it back its derived name), moved to another Project
 (`ProjectPickerDialog`, its own left out; off while there is no other) and
 duplicated into this Project or another under a name ("‹name› (copy)").
@@ -541,6 +552,39 @@ arrows' absolute scale (`chanceArrowWidth` over 0–1):
   badge on its square ([`pgn-annotations.md`](./pgn-annotations.md) §4); off,
   none (the move list shows the glyphs either way).
 
+### 3.5 A Project's limit of Cases (CTA-225)
+
+**The limit is a Project's, and soft**: `MAX_CASES_PER_PROJECT`, 1,000
+(`lib/analysisProjects.ts`). A Project past it is slow — every Case of it is
+read and listed — and a large set of games is what the Library is for. **The
+store never refuses for a count** (`addAnalysisCases`, `importAnalysisCases`:
+no cap; the app-wide 10,000 of CTA-186 and CTA-208's `pastCap` are gone).
+
+- **Who asks** — the interactive adds alone, before any work, through one
+  hook, `useProjectCaseLimit` (`check({ existing, count, collectionName,
+  games, inLibrary?, proceed, onCollection? })`): **New project** from a file
+  (§3.1, `existing` 0 — the Project is made only after), **New case** (§3.2,
+  the Project's Cases), and **Send to Analysis** (§1.1, the chosen Project's,
+  a new one's 0). At or under 1,000 it goes straight on.
+- **Never asked**: a duplicate or a move of a Case or a Project, a
+  computer-analysis job's outputs (its `too-many` error went with the cap),
+  Settings → Import. They always go in.
+- **The popup** (`ProjectCaseLimitDialog`, a block — `analysisV2.caseLimit.*`):
+  how many Cases the add makes and — into a Project that has some — how many
+  it would hold; that a Project past 1,000 is slow; a Library collection
+  suggested. Three actions:
+  - **Create a Library collection instead** (the primary): the same games
+    indexed as the Library's import does (`indexCollection`, a
+    `ProgressDialog` over the popup, Cancel on until the write) and kept as
+    **one collection** at the Library's top level, named as the new Project
+    would have been (else the Project's, else the sender's `projectName`),
+    then opened (`/library/<id>`). No Case is made and no Project; a refusal
+    is said in the popup. Games out of the Library (its picks, `inLibrary`)
+    word it *Save them as a Library collection instead* and say they are
+    there already; their PGNs are the stored ones, never re-written.
+  - **Create anyway**: the Cases written past 1,000, as they would have been.
+  - **Cancel**: back to the dialog it came from, nothing made.
+
 ---
 
 ## 4. The store
@@ -557,7 +601,7 @@ is dropped).
 | --- | --- | --- | --- |
 | `folders` | oldest first | 100 | `createProjectFolder`, `renameProjectFolder`, `moveProjectFolder` (never into its subtree), `removeProjectFolder` (keeps the contents: sub-folders re-parent, Projects re-filed up — `refileProjectsIn`; no screen calls it since CTA-191), `removeProjectFolderDeep` / `removeProjectFoldersDeep` (the subtrees, in one write, `removeProjectsInFolders` — the browser's delete of the picks), `addProjectFolders` (an import's, all or nothing) |
 | `projects` | newest first | 1,000 | `createAnalysisProject` (a name required), `renameAnalysisProject`, `moveAnalysisProject`, `duplicateAnalysisProject` (its Cases first, all or nothing), `removeAnalysisProject` / `removeAnalysisProjects` (their Cases with them — `removeCasesOfProjects`), `importAnalysisProjects` |
-| `cases` | newest first | 10,000 | `addAnalysisCases` (all or nothing; each last in its Project's order), `moveAnalysisCaseInOrder` (CTA-203, §2.1 — no `updatedAt`), `renameAnalysisCase`, `moveAnalysisCase`, `duplicateAnalysisCase`, `removeAnalysisCases` (their unfinished jobs with them — the Jobs module's deletion rule, CTA-221; the gap closed), `saveCaseState` (the autosave, in place — never the tree of a state behind a merge, §6.6), `mergeIntoAnalysisCase` (a computer-analysis job's merge, §6), `importAnalysisCases` |
+| `cases` | newest first | **none** (CTA-225 — a Project's soft limit of 1,000 is the screens' warning, §3.5) | `addAnalysisCases` (all or nothing; each last in its Project's order), `moveAnalysisCaseInOrder` (CTA-203, §2.1 — no `updatedAt`), `renameAnalysisCase`, `moveAnalysisCase`, `duplicateAnalysisCase`, `removeAnalysisCases` (their unfinished jobs with them — the Jobs module's deletion rule, CTA-221; the gap closed), `saveCaseState` (the autosave, in place — never the tree of a state behind a merge, §6.6), `mergeIntoAnalysisCase` (a computer-analysis job's merge, §6), `importAnalysisCases` |
 | `jobs` (CTA-188) | — | — | Jobs V2's — **retired in CTA-221**, left unread (the database stays at version 3; an upgrade never drops a store). The jobs are `chessapp.backgroundJobs`, [`jobs.md`](./jobs.md). |
 | `caseLinks` (CTA-188) | oldest first | 50,000 | `linkAnalysisCases` / `addCaseLinks` (no self-link, no pair twice), `unlinkAnalysisCases`, `removeLinksOfCases`, `importCaseLinks` (§7) |
 
@@ -590,7 +634,8 @@ in, folders are matched by their path of names and created where missing;
 Projects clash by their folder like the collections (Merge / Override / Skip, a
 folder's own choice over the category's); each Project brings its Cases, each
 filed in it; an Override's Projects take their Cases with them; the Projects'
-and the Cases' caps both refuse the category. **The links** come after the
+cap refuses the category — the Cases have none (CTA-225): an import takes any
+number, unwarned. **The links** come after the
 Cases: the zip's whose two Cases the app holds afterwards (Case ids are kept
 by an import), the links of the Cases the import replaces or removes dropped
 first (`importCaseLinks`). (An older zip's `analyses.pgn` — the legacy

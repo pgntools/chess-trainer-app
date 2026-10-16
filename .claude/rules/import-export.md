@@ -354,7 +354,7 @@ that the import prefers when present — an added field, so no bump (§6).
 | Repertoires | 500 | The category is **refused**. |
 | Folders (repertoires', the Library's) | 100 each | The category is **refused**. |
 | Engine presets | 50 (`MAX_ENGINE_PRESETS`, CTA-179) | The category is **refused**. |
-| Analysis projects (CTA-186) | 1,000 Projects, 10,000 Cases, 100 folders | The category is **refused**. |
+| Analysis projects (CTA-186) | 1,000 Projects, 100 folders — **no cap on the Cases** (CTA-225: any number goes in, unwarned; a Project's limit of 1,000 is the interactive adds' warning alone) | The category is **refused**. |
 
 The totals are counted after the choices (an Override's removals, the skipped
 records), shown in the dialog before anything is written, and a refused
