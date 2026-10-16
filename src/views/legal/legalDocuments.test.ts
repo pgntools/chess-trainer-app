@@ -11,6 +11,7 @@ import { EVAL_SOURCES } from "../../lib/evalSources";
 import { ENGINE_PRESETS_DB_NAME } from "../../lib/enginePresetStore";
 import { LIBRARY_DB_NAME } from "../../lib/libraryDb";
 import { ANALYSIS_PROJECTS_DB_NAME } from "../../lib/analysisProjectsDb";
+import { JOBS_DB } from "../../lib/jobs/runtime";
 import { RETIRED_DATABASES } from "../../lib/retiredDatabases";
 import { THEME_STORAGE_KEY } from "../../theme/themeChoice";
 import { LANGUAGE_STORAGE_KEY } from "../../i18n";
@@ -40,8 +41,10 @@ const STORED = [
   LIBRARY_DB_NAME,
   // The engine option presets (CTA-179).
   ENGINE_PRESETS_DB_NAME,
-  // Analysis V2 — its Projects, Cases, jobs and links (CTA-186, shipped in CTA-192).
+  // Analysis V2 — its Projects, Cases and links (CTA-186, shipped in CTA-192).
   ANALYSIS_PROJECTS_DB_NAME,
+  // The background jobs (CTA-221) — the jobs runtime's database.
+  JOBS_DB,
 ];
 
 /** The pages that disclose what the app stores — another in-app page (a Terms page, an About) need not. */

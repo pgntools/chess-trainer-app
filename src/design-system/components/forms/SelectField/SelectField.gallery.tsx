@@ -25,6 +25,16 @@ const gallery: GalleryModule = {
       ),
     },
     {
+      name: "Its label read, not drawn — a filter under its column's header (labelHidden, CTA-221)",
+      render: () => (
+        <WithState initial="">
+          {(value, setValue) => (
+            <SelectField label="Opening" labelHidden value={value} onChange={setValue} options={OPENINGS} emptyOption="All openings" optionDir="ltr" testId="gallery-select-hidden" />
+          )}
+        </WithState>
+      ),
+    },
+    {
       name: "A required choice, full width",
       render: () => (
         <WithState initial="1-0">

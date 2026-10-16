@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { linkProps } from "../../../design-system/components/link";
 import { ProgressLine } from "../../../design-system/components/states";
-import { JOB_STATUS_TONES } from "../JobsTable/jobStatusTones";
+import { JOB_STATUS_TONES } from "./jobStatusTones";
 import { jobPercent, jobStampText, type JobProgressView, type JobSubjectView, type JobViewStatus } from "./jobView";
 
 /*

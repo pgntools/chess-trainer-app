@@ -5,8 +5,6 @@ import { projectFoldersSnapshot, subscribeProjectFolders } from "../../lib/analy
 import { caseLinksSnapshot, subscribeCaseLinks } from "../../lib/analysisCaseLinkStore";
 import { analysisProjectsSnapshot, subscribeAnalysisProjects } from "../../lib/analysisProjectStore";
 import type { AnalysisCase, AnalysisProject, CaseLink, ProjectFolder } from "../../lib/analysisProjects";
-import type { JobV2 } from "../../lib/jobsV2";
-import { jobsV2Snapshot, subscribeJobsV2 } from "../../lib/jobV2Store";
 
 /**
  * **Analysis V2's stores as React state** (CTA-186) — `useSyncExternalStore`
@@ -29,5 +27,3 @@ export const useAnalysisCases = (): readonly AnalysisCase[] | undefined =>
 export const useCaseLinks = (): readonly CaseLink[] | undefined =>
   useSyncExternalStore(subscribeCaseLinks, caseLinksSnapshot, caseLinksSnapshot);
 
-/** Jobs V2, newest first (CTA-188). */
-export const useJobsV2 = (): readonly JobV2[] | undefined => useSyncExternalStore(subscribeJobsV2, jobsV2Snapshot, jobsV2Snapshot);

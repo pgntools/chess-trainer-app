@@ -5,13 +5,14 @@ import { idbDatabase } from "./idb";
  * `chessapp.analysisProjects`, with five object stores: `folders` (the
  * nested folders, `lib/analysisProjectFolderStore.ts`), `projects`
  * (`lib/analysisProjectStore.ts`), `cases` (`lib/analysisCaseStore.ts`) and,
- * since CTA-188, `jobs` (Jobs V2, `lib/jobV2Store.ts`) and `caseLinks` (the
- * links between Cases, `lib/analysisCaseLinkStore.ts`) — version 3: an upgrade
+ * since CTA-188, `jobs` (Jobs V2's — retired in CTA-221, left unread) and
+ * `caseLinks` (the links between Cases, `lib/analysisCaseLinkStore.ts`) —
+ * version 3: an upgrade
  * only creates what is missing, every folder, Project and Case kept. (Version
  * 2, on CTA-188's branch only, had a `projectLinks` store instead — left
  * where it is, unread: a store is never dropped.)
  * One database for them, because a folder, the Projects filed in it, their
- * Cases and their jobs are read by the same screens; a database of its own
+ * Cases are read by the same screens; a database of its own
  * (the legacy analyses' went with their module in CTA-192, deleted on load —
  * `lib/retiredDatabases.ts`). Opened through `lib/idb.ts`; the app's storage
  * as a whole is `.claude/rules/database.md`. Shipped in CTA-192 (dev-only
@@ -23,8 +24,15 @@ const DB_VERSION = 3;
 export const PROJECT_FOLDERS_STORE = "folders";
 export const PROJECTS_STORE = "projects";
 export const CASES_STORE = "cases";
-/** Jobs V2 (CTA-188) — a Case's computer analysis. */
-export const JOBS_V2_STORE = "jobs";
+/**
+ * **Jobs V2's store** (CTA-188) — **retired, unread** (CTA-221): the
+ * background jobs are the Jobs module's own database since,
+ * `chessapp.backgroundJobs` (`lib/jobs/runtime.ts`), and the old records were
+ * dropped, not migrated (their results are Cases, and stay). It stays in this
+ * list so the database's version does not change: an upgrade never drops a
+ * store, and a list without it would read as a newer schema to nobody's gain.
+ */
+const RETIRED_JOBS_V2_STORE = "jobs";
 /** The directed links between Cases (CTA-188). */
 export const CASE_LINKS_STORE = "caseLinks";
 /** The `BroadcastChannel` the stores announce their writes on. */
@@ -34,7 +42,7 @@ const analysisProjectsDb = idbDatabase(ANALYSIS_PROJECTS_DB_NAME, DB_VERSION, [
   PROJECT_FOLDERS_STORE,
   PROJECTS_STORE,
   CASES_STORE,
-  JOBS_V2_STORE,
+  RETIRED_JOBS_V2_STORE,
   CASE_LINKS_STORE,
 ]);
 

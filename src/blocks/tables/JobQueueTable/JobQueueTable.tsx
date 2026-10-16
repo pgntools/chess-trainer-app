@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
@@ -8,10 +8,14 @@ import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import { useTranslation } from "react-i18next";
 
 import type { LinkTarget } from "../../../design-system/components/link";
+import { SelectField } from "../../../design-system/components/forms";
 import { IconAction, SelectionBar } from "../../../design-system/components/toolbars";
-import { DataTable, type DataTableColumn, type DataTablePaging, type DataTablePicks } from "../../../design-system/patterns/tables";
-import { JobProgressBar, JobStamp, JobStatusText, JobSubjects } from "./jobParts";
-import type { JobRowView } from "./jobView";
+import { DataTable, type DataTableColumn, type DataTablePaging, type DataTablePicks, type DataTableSort } from "../../../design-system/patterns/tables";
+import type { SortDirection } from "../../../design-system/components/tables";
+import type { JobQueueColumn } from "./jobQueueSort";
+import { jobQueueFiltered, type JobQueueFilterOption, type JobQueueFilterValues } from "./filterValues";
+import { JobProgressBar, JobStamp, JobStatusText } from "./jobParts";
+import { JOB_VIEW_STATUSES, jobPercent, type JobRowView } from "./jobView";
 
 /** The queue's picks, for deleting several jobs at once — the screen asks before it deletes. */
 export type JobQueuePicks = {
@@ -23,6 +27,14 @@ export type JobQueuePicks = {
 
 /** The queue's paging — the words are the table's own. */
 export type JobQueuePaging = Omit<DataTablePaging, "labelRowsPerPage" | "labelDisplayedRows">;
+
+/** The filters in the headers — the status's over Status, the kind's over Kind (CTA-221). */
+export type JobQueueFiltersInHeaders = {
+  values: JobQueueFilterValues;
+  onChange: (patch: Partial<JobQueueFilterValues>) => void;
+  /** The kinds there are — the kind filter shows when there are two or more (or one is on). */
+  kinds: readonly JobQueueFilterOption[];
+};
 
 export type JobQueueTableProps = {
   /** The jobs, in the order shown (the screen's: newest first). */
@@ -38,10 +50,15 @@ export type JobQueueTableProps = {
   picks?: JobQueuePicks;
   /** Absent, every row shows. */
   paging?: JobQueuePaging;
-  /** Above the table: the filters (`JobQueueFilters`). */
-  filters?: ReactNode;
-  /** A filter is on — no row then means no match, and `onClearFilters` is offered. */
-  filtered?: boolean;
+  /** The sort shown — the rows arrive unsorted, the table sorts them (`JOB_QUEUE_DEFAULT_SORT` to start). */
+  sort: DataTableSort<JobQueueColumn>;
+  onSort: (column: JobQueueColumn, direction: SortDirection) => void;
+  /**
+   * The filters, each in its column's header under its label (the rows
+   * arrive filtered). A filter on, no row means no match, and
+   * `onClearFilters` is offered — there, and above the table. Absent, none.
+   */
+  filters?: JobQueueFiltersInHeaders;
   onClearFilters?: () => void;
   /** The queue is still being read. */
   loading?: boolean;
@@ -55,16 +72,20 @@ export type JobQueueTableProps = {
   testId: string;
 };
 
-type Column = "title" | "kind" | "subjects" | "status" | "progress" | "created";
+/** A status's place in the order a filter offers them — running first, done last. */
+const STATUS_ORDER = new Map(JOB_VIEW_STATUSES.map((status, index) => [status, index]));
 
 /**
  * **The Jobs queue** (CTA-217) — every background job, of any kind, as a
- * row: its title (the link to its page), its kind, what it is applied to
- * (each subject linked, a deleted one muted and said), its status in words,
- * how far it has got and when it was asked for — and, at the row's end,
- * Resume, Pause, Cancel (where the job allows them) and Delete, each named
- * for its job. Optional picks (a bar counting them, with Delete picked),
- * paging, a filters slot and its no-match row.
+ * row: its title (the link to its page), its kind, its status in words, how
+ * far it has got and when it was asked for — and, at the row's end, Resume,
+ * Pause, Cancel (where the job allows them) and Delete, each named for its
+ * job. **Every column sorts** from its header (CTA-221; newest first to
+ * start), and **the filters stand over their columns** — the status under
+ * Status's label, the kind under Kind's — with Clear above the table while
+ * one is on. What a job is applied to is its page's (`JobDetailsPanel`).
+ * Optional picks (a bar counting them, with Delete picked), paging and the
+ * no-match row.
  *
  * Presentational over `JobRowView` (block-local view models — the screen
  * maps the runtime's records onto them). Its words are `jobs.*`.
@@ -78,49 +99,95 @@ function JobQueueTable({
   onDelete,
   picks,
   paging,
+  sort,
+  onSort,
   filters,
-  filtered = false,
   onClearFilters,
   loading = false,
   testId,
 }: JobQueueTableProps) {
   const { t } = useTranslation();
 
-  const columns = useMemo<DataTableColumn<JobRowView, Column>[]>(
-    () => [
-      { id: "title", header: t("jobs.queue.title"), wrap: true, dir: "auto", render: (job) => job.title },
+  const filtered = filters !== undefined && jobQueueFiltered(filters.values);
+  const columns = useMemo<DataTableColumn<JobRowView, JobQueueColumn>[]>(() => {
+    const statusFilter =
+      filters === undefined ? undefined : (
+        <SelectField
+          label={t("jobs.filters.status")}
+          labelHidden
+          value={filters.values.status}
+          onChange={(status) => filters.onChange({ status: status as JobQueueFilterValues["status"] })}
+          emptyOption={t("jobs.filters.anyStatus")}
+          options={JOB_VIEW_STATUSES.map((status) => ({ value: status, label: t(`jobs.status.${status}`) }))}
+          fullWidth
+          testId={`${testId}-filter-status`}
+        />
+      );
+    // A filter with one choice or none filters nothing: the kind's shows with two kinds (or while it is on).
+    const kindFilter =
+      filters === undefined || (filters.kinds.length < 2 && filters.values.kind === "") ? undefined : (
+        <SelectField
+          label={t("jobs.filters.kind")}
+          labelHidden
+          value={filters.values.kind}
+          onChange={(kind) => filters.onChange({ kind })}
+          emptyOption={t("jobs.filters.anyKind")}
+          options={filters.kinds}
+          fullWidth
+          testId={`${testId}-filter-kind`}
+        />
+      );
+    return [
+      {
+        id: "title",
+        header: t("jobs.queue.title"),
+        sortable: true,
+        sortValue: (job) => job.title.toLocaleLowerCase(),
+        wrap: true,
+        dir: "auto",
+        render: (job) => job.title,
+      },
       {
         id: "kind",
         header: t("jobs.queue.kind"),
+        sortable: true,
+        sortValue: (job) => job.kindLabel.toLocaleLowerCase(),
+        filter: kindFilter,
         cellTestId: (job) => `${testId}-kind-${job.id}`,
         render: (job) => job.kindLabel,
       },
       {
-        id: "subjects",
-        header: t("jobs.queue.subjects"),
-        wrap: true,
-        render: (job) => <JobSubjects subjects={job.subjects} testId={`${testId}-subjects-${job.id}`} />,
-      },
-      {
         id: "status",
         header: t("jobs.queue.status"),
+        sortable: true,
+        sortValue: (job) => STATUS_ORDER.get(job.status) ?? JOB_VIEW_STATUSES.length,
+        filter: statusFilter,
         render: (job) => <JobStatusText status={job.status} testId={`${testId}-status-${job.id}`} />,
       },
       {
         id: "progress",
         header: t("jobs.queue.progressColumn"),
+        sortable: true,
+        firstDirection: "desc",
+        sortValue: (job) => jobPercent(job.status, job.progress),
         width: 200,
         render: (job) => <JobProgressBar title={job.title} status={job.status} progress={job.progress} testId={`${testId}-progress-${job.id}`} />,
       },
-      { id: "created", header: t("jobs.queue.created"), render: (job) => <JobStamp value={job.createdAt} /> },
-    ],
-    [t, testId],
-  );
+      {
+        id: "created",
+        header: t("jobs.queue.created"),
+        sortable: true,
+        firstDirection: "desc",
+        sortValue: (job) => job.createdAt,
+        render: (job) => <JobStamp value={job.createdAt} />,
+      },
+    ];
+  }, [t, testId, filters]);
 
-  // Picks come with the hint that explains them (DataTable's union), or neither does.
-  const pickProps: { picks?: undefined; hint?: undefined } | { picks: DataTablePicks<JobRowView>; hint: string } =
+  // The sort's hint, and the picks' beside it where there are picks (DataTable's union: a sort comes with its hint).
+  const pickProps: { picks?: DataTablePicks<JobRowView>; hint: string } =
     picks === undefined
-      ? {}
+      ? { hint: t("jobs.queue.sortHint") }
       : {
           picks: {
             picked: picks.picked,
@@ -128,16 +195,19 @@ function JobQueueTable({
             selectAllLabel: t("jobs.queue.selectAll"),
             pickLabel: (job) => t("jobs.queue.pick", { name: job.title }),
           },
-          hint: t("jobs.queue.hint"),
+          hint: `${t("jobs.queue.sortHint")} ${t("jobs.queue.hint")}`,
         };
   const pickedCount = picks === undefined ? 0 : rows.reduce((count, job) => (picks.picked.has(job.id) ? count + 1 : count), 0);
 
   return (
-    <DataTable<JobRowView, Column>
+    <DataTable<JobRowView, JobQueueColumn>
       columns={columns}
       rows={rows}
       rowId={(job) => job.id}
-      sorted
+      sort={sort}
+      onSort={onSort}
+      // Ties go by when they were asked for, newest first.
+      tieBreak={(a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)}
       rowLink={rowLink}
       linkColumn="title"
       linkTestId={(job) => `${testId}-link-${job.id}`}
@@ -189,7 +259,15 @@ function JobQueueTable({
         )
       }
       paging={paging === undefined ? undefined : { ...paging, labelRowsPerPage: t("jobs.queue.rowsPerPage") }}
-      filters={filters}
+      filters={
+        filtered && onClearFilters !== undefined ? (
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button size="small" onClick={onClearFilters} data-testid={`${testId}-clear-filters`}>
+              {t("jobs.filters.clear")}
+            </Button>
+          </Box>
+        ) : undefined
+      }
       filtered={filtered}
       noMatchLabel={
         <Box component="span" sx={{ display: "inline-flex", alignItems: "center", flexWrap: "wrap", gap: 1 }}>

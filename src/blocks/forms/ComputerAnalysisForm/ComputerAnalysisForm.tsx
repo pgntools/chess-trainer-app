@@ -29,7 +29,7 @@ import { computerAnalysisStartNote } from "./startNote";
 
 export type { ComputerAnalysisEngineChoice };
 
-/** Why Start could not queue the job — `enqueueJobV2`'s answers (`lib/jobV2Store.ts`). */
+/** Why Start could not queue the job — the runtime's `enqueue` answers (`lib/jobs/runtime.ts`). */
 export type ComputerAnalysisStartProblem = "invalid" | "storage" | "too-many";
 
 export type ComputerAnalysisFormProps = {

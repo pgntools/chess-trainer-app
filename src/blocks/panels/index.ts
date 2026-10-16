@@ -8,19 +8,18 @@ export * from "./BoardEngineControls";
 export * from "./CaseDetails";
 export * from "./ChangesStrip";
 export * from "./EnginePresetChanges";
-// CTA-173: a computer analysis's report and eval graph, and a background job whole — the Jobs screen's, and the Analysis Board's (CTA-174).
+// CTA-173: a computer analysis's report and eval graph — a computer-analysis job's (CTA-221).
 export * from "./ComputerAnalysisReport";
 export * from "./CurrentOpening";
 export * from "./EngineThinking";
 export * from "./EvalGraph";
 export * from "./GameInfo";
 export * from "./ImportReport";
-// CTA-190: a running Jobs V2 job's live engine progress, under its progress bar.
+// CTA-190: a running engine job's live engine progress, under its progress bar.
 export * from "./JobEngineProgress";
 // CTA-217: the Jobs module's generic blocks — a job whole, and the header indicator's presentation.
 export * from "./JobDetailsPanel";
 export * from "./JobsIndicatorView";
-export * from "./JobSummary";
 // CTA-209: a Library game's own view beside its board — the game board's left panel.
 export * from "./LibraryGameDetails";
 export * from "./PgnExportPanel";

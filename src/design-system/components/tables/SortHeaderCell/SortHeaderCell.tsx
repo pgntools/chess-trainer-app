@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import Box from "@mui/material/Box";
 import TableCell from "@mui/material/TableCell";
 import TableSortLabel from "@mui/material/TableSortLabel";
 
@@ -17,6 +19,8 @@ export type SortHeaderCellProps<C extends string> = {
   width?: number | string;
   /** The sort button's test id. */
   testId: string;
+  /** Under the sort button, in the same cell — its column's filter (`DataTable`'s `column.filter`, CTA-221). Absent, nothing. */
+  children?: ReactNode;
 };
 
 /**
@@ -34,6 +38,7 @@ function SortHeaderCell<C extends string>({
   align = "start",
   width,
   testId,
+  children,
 }: SortHeaderCellProps<C>) {
   const active = sort === column;
   return (
@@ -52,6 +57,7 @@ function SortHeaderCell<C extends string>({
       >
         {label}
       </TableSortLabel>
+      {children !== undefined && <Box sx={{ mt: 0.75, textAlign: "start" }}>{children}</Box>}
     </TableCell>
   );
 }

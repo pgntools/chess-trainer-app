@@ -63,6 +63,30 @@ const mount = (props: MountProps = {}) =>
 const shownIds = () => screen.getAllByTestId(/^t-row-/).map((row) => row.getAttribute("data-testid")?.slice("t-row-".length));
 
 describe("DataTable", () => {
+  describe("a column's filter, above its cells (CTA-221)", () => {
+    it("draws a column's filter in its header, under its label and sort button — the others' as ever", async () => {
+      const columns: DataTableColumn<Row, Column>[] = [
+        { ...COLUMNS[0], filter: <input aria-label="Filter players" data-testid="t-name-filter" /> },
+        COLUMNS[1],
+      ];
+      const onSort = vi.fn();
+      mount({ columns, onSort });
+      const header = screen.getByRole("columnheader", { name: /Player/ });
+      expect(header).toContainElement(screen.getByTestId("t-name-filter"));
+      expect(within(header).getByRole("button", { name: "Player" })).toBeInTheDocument();
+      // Typing in the filter never sorts.
+      await userEvent.type(screen.getByRole("textbox", { name: "Filter players" }), "Tal");
+      expect(onSort).not.toHaveBeenCalled();
+      expect(within(screen.getByRole("columnheader", { name: /Elo/ })).queryByRole("textbox")).toBeNull();
+      await expectNoAxeViolations(screen.getByTestId("t"));
+    });
+
+    it("draws one under an unsorted column's words too", () => {
+      mount({ columns: [{ ...COLUMNS[0], sortable: false, filter: <span data-testid="t-plain-filter">filter</span> }, COLUMNS[1]] });
+      expect(screen.getByRole("columnheader", { name: /Player/ })).toContainElement(screen.getByTestId("t-plain-filter"));
+    });
+  });
+
   describe("columns", () => {
     it("renders a header and a cell per column, in the one scrolling frame", () => {
       mount();

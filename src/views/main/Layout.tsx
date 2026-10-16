@@ -13,7 +13,7 @@ import { IconAction } from '../../design-system/components/toolbars';
 import { default as SideBar } from './Sidebar';
 import { Footer } from './Footer';
 import { DevelopmentNotice } from './DevelopmentNotice';
-import { JobsV2Indicator, JobV2Runner } from '../analysisV2/jobs/JobsV2Shell';
+import { JobRuntimeStarter, JobsIndicator } from '../jobs/JobsShell';
 import { EngineMenu } from './EngineMenu';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
@@ -180,8 +180,8 @@ const Header = ({ compact, onOpenNav }: { compact: boolean; onOpenNav: () => voi
                 </Box>
 
                 <Stack direction="row" spacing={compact ? 0.5 : 1} sx={{ alignItems: 'center' }}>
-                    {/* The Jobs V2 job running, if any (CTA-173, CTA-188) — a link to the Jobs V2 view. */}
-                    <JobsV2Indicator compact={compact} />
+                    {/* The job running, if any, or the count queued (CTA-221) — a link to the Jobs screen. */}
+                    <JobsIndicator compact={compact} />
                     {/* The engine's search settings, every board's, and the board on screen's engine (CTA-181); under the breakpoint its robot alone (CTA-185). */}
                     <EngineMenu compact={compact} />
                     {/* Under the breakpoint, the language's short code: the bar has 288px at 320 (CTA-181). */}
@@ -862,8 +862,8 @@ const DefaultLayout = ()=>
                             <DefaultLayoutViewport />
                             {/* Once per session, on whichever route the reader arrives at (CTA-155). */}
                             <DevelopmentNotice />
-                            {/* The Jobs V2 runner (CTA-173, CTA-188): one per page, outliving every route. */}
-                            <JobV2Runner />
+                            {/* The page's job runtime (CTA-221): started once, outliving every route. */}
+                            <JobRuntimeStarter />
                         </BoardLeftPanelProvider>
                     </LeftPanelProvider>
                 </RightPanelProvider>

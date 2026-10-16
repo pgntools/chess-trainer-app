@@ -22,7 +22,7 @@ export type EnginePulse = {
 /**
  * **A mark that beats once each time a running job's engine is heard**
  * (CTA-194) — an `info` line or an engine server's heartbeat, which move
- * `heardAt` on (`lib/jobV2Live.ts`). A beat lasts four of the theme's
+ * `heardAt` on (the engine session's live payload, `lib/jobs/engineSession.ts`). A beat lasts four of the theme's
  * `transitions.duration.complex` and is never cut short: a word heard while
  * one is under way starts none, so a busy engine beats steadily and a quiet
  * one beats once per heartbeat. Opacity only; under reduced motion the

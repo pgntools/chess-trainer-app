@@ -120,7 +120,7 @@ If the API does not answer, the board's engine searches, and the boards leave th
 
 ## 5. Run a job
 
-Nothing else changes in how you start a job: open a case, its **Jobs** tab, **New job**, choose where the results go, **Start computer analysis**. While the job runs, for every position of the game:
+Nothing else changes in how you start a job: open a case, its **Jobs** tab, **New job**, choose where the results go, **Start**. While the job runs, for every position of the game:
 
 1. **A finished position** (mate, stalemate) needs no one: it is scored at once.
 2. **The API is asked.** If it holds the position **at the job's depth or deeper**, its evaluation is the position's result — as many of its lines as the job asks for (**Lines**), each with its score and its moves. The engine is not asked.
@@ -130,7 +130,7 @@ So the job's **Depth** decides how much the database answers: lichess's evaluati
 
 The results are the same either way: the annotated cases, the verdicts (inaccuracy, mistake, blunder), the accuracy and the evaluation graph read the API's evaluations exactly as they read the engine's.
 
-> 📷 **Screenshot placeholder** — *the Jobs V2 view with a finished job: its report and evaluation graph, most positions answered by the API.*
+> 📷 **Screenshot placeholder** — *a finished job's page: its report and evaluation graph, most positions answered by the API.*
 
 ### If the API does not answer
 
@@ -174,7 +174,7 @@ On a board nothing is said: a refused write is dropped, and the boards stop send
 
 ## A default engine for new jobs
 
-The Jobs view's **Settings** tab ([open it](/analysis/jobs?tab=settings)) has a setting of its own, **Use a default engine and preset**. Off, a new job starts with the board's engine and its selected preset, as always. On, every new job starts with the engine and preset you pick there — still editable in the New job form. If that engine cannot run in this browser, or the preset has been deleted, new jobs start as if it were off.
+The **Jobs settings** ([open them](/jobs/settings) — in the sidebar's Jobs folder) have a setting of their own, **Use a default engine and preset**. Off, a new job starts with the board's engine and its selected preset, as always. On, every new job starts with the engine and preset you pick there — still editable in the New job form. If that engine cannot run in this browser, or the preset has been deleted, new jobs start as if it were off.
 
 ## Using it from chessapp.dev
 

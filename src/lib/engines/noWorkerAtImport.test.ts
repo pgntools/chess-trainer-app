@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 describe("importing the engine layer", () => {
-  it("builds no Worker and asks no server — registry, descriptors, the protocol, the transport, the hook, the job runner", async () => {
+  it("builds no Worker and asks no server — registry, descriptors, the protocol, the transport, the hook, the job runtime", async () => {
     const Worker = vi.fn(function () {
       throw new Error("a Worker was constructed at import time");
     });
@@ -32,14 +32,20 @@ describe("importing the engine layer", () => {
     await import("../engineServer");
     const registry = await import(".");
     await import("../../views/board/core/useEngineModule");
-    // The background job runner (CTA-173, Jobs V2's since CTA-188): started by the shell's effect, never at import.
-    await import("../jobV2Runner");
+    // The background jobs (CTA-221): the page's runtime and its kinds — made lazily, started by the shell's effect, never at import.
+    const runtime = await import("../jobs/runtime");
+    await import("../jobs/kinds");
 
     // Listing, describing and resolving are reads of data.
     expect(registry.BUILTIN_ENGINES.length).toBeGreaterThan(1);
     registry.describeEngines();
     registry.resolveEngine("stockfish-19-lite-multi");
     registry.resolveEngine("hosted:stockfish-19");
+    // Making the page's runtime touches nothing either — no database opened until it is started or asked.
+    const open = vi.spyOn(indexedDB, "open");
+    runtime.jobRuntime();
+    expect(open).not.toHaveBeenCalled();
+    open.mockRestore();
 
     expect(Worker).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();

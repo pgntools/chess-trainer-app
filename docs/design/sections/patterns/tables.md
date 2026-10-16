@@ -119,6 +119,16 @@ Gallery: `/dev/design/patterns/tables/DataTable`,
 - **An empty or no-match line is a table row** (`-empty`, `-no-match`): a
   test that counts rows skips it.
 
+## CTA-221 addition to `DataTable`
+
+- **`column.filter?: ReactNode`** — **a column's filter, above its cells**:
+  drawn in the column's header under its label (and its sort button, through
+  `SortHeaderCell`'s `children`), so a filter stands over what it filters,
+  scrolls sideways with its column and sticks with the header. Header cells
+  then align their labels to the top. The filtering stays the caller's (the
+  rows arrive filtered, `filtered` for the no-match row). The Jobs queue's
+  status and kind (`JobQueueTable`) are the first.
+
 ## StandingsTable
 
 - **Purpose** (CTA-120) — a Swiss tournament's standings: a row per

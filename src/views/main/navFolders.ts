@@ -1,6 +1,7 @@
 import type { SvgIconComponent } from "@mui/icons-material";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import BiotechRoundedIcon from "@mui/icons-material/BiotechRounded";
+import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import ConstructionRoundedIcon from "@mui/icons-material/ConstructionRounded";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
@@ -109,10 +110,15 @@ export const navFolders = (): readonly NavFolder[] => [
   },
   /*
     Analysis V2 (CTA-186, shipped in CTA-192): the Projects browser — Projects
-    in folders, their Cases each a board — and Jobs V2, a Case's computer
-    analysis in the background (CTA-188).
+    in folders, their Cases each a board.
   */
   { id: "analysis-v2", labelKey: "nav.folders.analysisV2", icon: BiotechRoundedIcon },
+  /*
+    The Jobs module (CTA-221): the background jobs of every kind — a Case's
+    computer analysis, a repertoire's evaluation, collections merged — and
+    their settings. Its own folder since Jobs left Analysis.
+  */
+  { id: "jobs", labelKey: "nav.folders.jobs", icon: WorkHistoryRoundedIcon },
   {
     id: "openings",
     labelKey: "nav.folders.openings",

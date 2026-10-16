@@ -25,9 +25,8 @@ import { parsePgnTree } from "../../../pgn";
  * session, `lib/jobs/engineSession.ts`), and the outputs are plans the kind's
  * adapter applies.
  *
- * Moved out of Jobs V2's record (`lib/jobsV2.ts`, which re-exports these
- * under their old names until the Jobs module retires it); the behaviour is
- * `.claude/rules/analysis-v2.md` §6's.
+ * Moved out of Jobs V2's record (`lib/jobsV2.ts`, retired in CTA-221); the
+ * kind's adapter is `kind.ts`, and the behaviour `.claude/rules/jobs.md`'s.
  */
 
 /** The kind's id in the Jobs module's registry. */

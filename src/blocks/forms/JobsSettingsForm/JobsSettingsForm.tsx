@@ -34,7 +34,7 @@ export type JobsSettingsFormProps = {
 };
 
 /**
- * **The Jobs settings** (CTA-193), on the Jobs V2 view's Settings tab:
+ * **The Jobs settings** (CTA-193), on the Jobs settings page (`/jobs/settings`, CTA-221):
  *
  * - **New jobs**: a switch, *Use a default engine and preset*; off, a new
  *   job starts with the board's engine and its selected preset (as before);
@@ -60,13 +60,13 @@ function JobsSettingsForm({
   return (
     <Box data-testid={testId} sx={{ display: "grid", gap: 2 }}>
       <SettingsSection
-        title={t("analysisV2.jobs.settings.default.title")}
-        description={t("analysisV2.jobs.settings.default.description")}
+        title={t("jobs.settings.default.title")}
+        description={t("jobs.settings.default.description")}
         testId={`${testId}-default`}
       >
         <SwitchField
-          label={t("analysisV2.jobs.settings.default.enable")}
-          help={t("analysisV2.jobs.settings.default.enableHelp")}
+          label={t("jobs.settings.default.enable")}
+          help={t("jobs.settings.default.enableHelp")}
           checked={defaultPreset !== null}
           onChange={(on) => onDefaultPresetChange(on ? initialDefault : null)}
           size="medium"
@@ -75,7 +75,7 @@ function JobsSettingsForm({
         {defaultPreset !== null && (
           <>
             <SelectField
-              label={t("analysisV2.jobs.settings.default.engine")}
+              label={t("jobs.settings.default.engine")}
               value={defaultPreset.engineId}
               onChange={(engineId) => onDefaultPresetChange({ ...defaultPreset, engineId })}
               options={engineSelectOptions(engines, t)}
@@ -83,7 +83,7 @@ function JobsSettingsForm({
               testId={`${testId}-default-engine`}
             />
             <SelectField
-              label={t("analysisV2.jobs.settings.default.preset")}
+              label={t("jobs.settings.default.preset")}
               value={defaultPreset.presetId}
               onChange={(presetId) => onDefaultPresetChange({ ...defaultPreset, presetId })}
               options={presets.map((preset) => ({ value: preset.id, label: <bdi>{preset.name}</bdi> }))}
@@ -93,11 +93,11 @@ function JobsSettingsForm({
           </>
         )}
       </SettingsSection>
-      <SettingsSection title={t("analysisV2.jobs.settings.evalSources.title")} testId={`${testId}-eval-sources`}>
+      <SettingsSection title={t("jobs.settings.evalSources.title")} testId={`${testId}-eval-sources`}>
         <Typography variant="body2" sx={{ color: "text.secondary" }}>
-          {t("analysisV2.jobs.settings.evalSources.description")}{" "}
+          {t("jobs.settings.evalSources.description")}{" "}
           <Link underline="hover" data-testid={`${testId}-eval-sources-link`} {...linkProps(evalSourcesLink)}>
-            {t("analysisV2.jobs.settings.evalSources.link")}
+            {t("jobs.settings.evalSources.link")}
           </Link>
         </Typography>
       </SettingsSection>

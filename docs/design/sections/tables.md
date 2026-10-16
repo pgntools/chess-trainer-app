@@ -42,7 +42,9 @@ The comparison ended on five open questions; each has one answer here.
 - **Purpose** — a sortable column's header: its label a `TableSortLabel`,
   `aria-sort` on the column in use.
 - **Props** — `column`, `label`, `sort`, `direction`, `onSort(column)`,
-  `align?: "start" | "end"`, `width?`, `testId` (the sort button).
+  `align?: "start" | "end"`, `width?`, `testId` (the sort button);
+  `children?` (CTA-221) — under the sort button in the same cell, its
+  column's filter (`DataTable`'s `column.filter`).
 - **Variations** — start-aligned; end-aligned (the arrow stays on the inner
   side, so the label lines up with its numbers in either direction).
 - **Replaces** — the `TableCell sortDirection` + `TableSortLabel` pair the

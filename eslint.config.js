@@ -96,6 +96,20 @@ const MUI_LOCK_PATTERNS = MUI_LOCK.map(({ atoms, use }) => ({
   message: muiLockMessage(atoms, use),
 }))
 
+/**
+ * The jobs runtime (CTA-221, `.claude/rules/jobs.md`) is consumed through its
+ * public entry points only — `@pgntools/jobs-runtime`, `/browser`, `/react`
+ * and `/testing` — never a file of its `dist/`: its internals are its own,
+ * and a deep import would break on its next release. Every
+ * `no-restricted-imports` entry below repeats it, since a later entry replaces
+ * an earlier one for the files both match.
+ */
+const JOBS_RUNTIME_INTERNALS = {
+  regex: '^@pgntools/jobs-runtime/(?!(browser|react|testing)$)',
+  message:
+    '@pgntools/jobs-runtime: import its public entry points only — the package, /browser, /react or /testing (.claude/rules/jobs.md).',
+}
+
 export default defineConfig([
   // `docs/vendor/**` is upstream source vendored verbatim for reference (see
   // docs/vendor/react-chessboard/README.md). It is never built or imported —
@@ -123,6 +137,13 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // The jobs runtime's internals (CTA-221) — for every file; the tier entries below repeat it.
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [JOBS_RUNTIME_INTERNALS] }],
+    },
+  },
   // The component hierarchy's import rules (CTA-107, CTA-110) — MUI atoms →
   // base components → patterns → blocks → screens, each tier importing only
   // the tiers below it. docs/design/hierarchy.md is the reference. A later
@@ -135,7 +156,7 @@ export default defineConfig([
     // `src/blocks/`. Everything above depends on it, never the reverse.
     files: ['src/design-system/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: [DESIGN_SYSTEM_BOUNDARY] }],
+      'no-restricted-imports': ['error', { patterns: [DESIGN_SYSTEM_BOUNDARY, JOBS_RUNTIME_INTERNALS] }],
     },
   },
   {
@@ -148,6 +169,7 @@ export default defineConfig([
         {
           patterns: [
             DESIGN_SYSTEM_BOUNDARY,
+            JOBS_RUNTIME_INTERNALS,
             {
               regex: '^\\.{1,2}/(.*/)?patterns(/.*)?$',
               message:
@@ -166,7 +188,7 @@ export default defineConfig([
     // so is an eval source's settings section, in its plugin folder (src/lib/evalSources/, CTA-196).
     files: ['src/views/**/*.{ts,tsx}', 'src/mdxEditor/**/*.{ts,tsx}', 'src/lib/evalSources/**/*.tsx'],
     rules: {
-      'no-restricted-imports': ['error', { paths: MUI_LOCK_PATHS, patterns: MUI_LOCK_PATTERNS }],
+      'no-restricted-imports': ['error', { paths: MUI_LOCK_PATHS, patterns: [...MUI_LOCK_PATTERNS, JOBS_RUNTIME_INTERNALS] }],
     },
   },
   {
@@ -183,6 +205,7 @@ export default defineConfig([
           paths: [{ name: 'react-router', message: BLOCK_ROUTER_MESSAGE }, ...MUI_LOCK_PATHS],
           patterns: [
             ...MUI_LOCK_PATTERNS,
+            JOBS_RUNTIME_INTERNALS,
             {
               regex: '^\\.{1,2}/(.*/)?views(/.*)?$',
               message:

@@ -674,6 +674,13 @@
   resolved "https://registry.yarnpkg.com/@oxc-project/types/-/types-0.153.0.tgz#ac7cd0095a6db231a892d41310ddf2e1b2329bfc"
   integrity sha512-jSNrRIyvPVLL5E1z/tS5zLAprosGz/FuI1PWwEOz59j3E4TTTzSpqKb/RDGqJhhW0QHYISGXxq582wGx6T11Tw==
 
+"@pgntools/jobs-runtime@^0.2.1":
+  version "0.2.1"
+  resolved "https://registry.yarnpkg.com/@pgntools/jobs-runtime/-/jobs-runtime-0.2.1.tgz#76ad4cb5c9ed10180894969474511b1a63f1f06d"
+  integrity sha512-4TOIFC1Lr6DRdwEJb1J8dM9UeArwLp3hlDNp2HVPJkcNkiccsmxM/OusG3N9tTXd/4xiROMQ5Sj/r2MRKhoSkA==
+  dependencies:
+    xstate "^5.33.2"
+
 "@playwright/test@^1.63.0":
   version "1.64.0"
   resolved "https://registry.yarnpkg.com/@playwright/test/-/test-1.64.0.tgz#af51c4f1dd5f689b2ff16e6eacf27ac00843f239"
@@ -4784,7 +4791,7 @@ xmlchars@^2.2.0:
   resolved "https://registry.yarnpkg.com/xmlchars/-/xmlchars-2.2.0.tgz#060fe1bcb7f9c76fe2a17db86a9bc3ab894210cb"
   integrity sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==
 
-xstate@^5.32.6:
+xstate@^5.32.6, xstate@^5.33.2:
   version "5.33.2"
   resolved "https://registry.yarnpkg.com/xstate/-/xstate-5.33.2.tgz#ec543abcb1ec79e5784f35d21231d7debff821f7"
   integrity sha512-8tC7yXgeCvpT8gKEeEje6ikJJG1wpnoLiXe+HfECW8m10ubMd3QxKOwWA8KxPJVBcLwfdRoMKYxIBGYKmo37/A==

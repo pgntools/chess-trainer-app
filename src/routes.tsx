@@ -10,7 +10,9 @@ import { default as MaskedPlayScreen  } from './views/engine/masked/Main'
 import { default as ProjectsBrowserScreen  } from './views/analysisV2/ProjectsBrowserMain'
 import { default as ProjectScreen  } from './views/analysisV2/ProjectScreenMain'
 import { default as CaseWorkspaceScreen  } from './views/analysisV2/CaseWorkspaceMain'
-import { default as JobsV2Screen  } from './views/analysisV2/jobs/JobsV2Main'
+import { default as JobsScreen  } from './views/jobs/JobsMain'
+import { default as JobScreen  } from './views/jobs/JobMain'
+import { default as JobsSettingsScreen  } from './views/jobs/JobsSettingsMain'
 import { default as OpeningsScreen  } from './views/openings/Main'
 import { default as LibraryScreen  } from './views/library/LibraryHomeMain'
 import { default as LibraryUploadScreen  } from './views/library/LibraryUploadMain'
@@ -163,13 +165,25 @@ export const appRoutes: RouteObject[] = [
           element: <CaseWorkspaceScreen />,
           handle: { title: "pages.analysisCase" }
         },
-        // Jobs V2 (CTA-188): a Case's computer analysis in the background, run
-        // app-wide by `lib/jobV2Runner.ts` (mounted by the shell, not here) —
-        // `?job=<id>` the job open.
+        // The Jobs module (CTA-221, `.claude/rules/jobs.md`): every background
+        // job of every kind, run app-wide by the page's job runtime
+        // (`lib/jobs/runtime.ts`, started by the shell, not here). `settings`
+        // is a static segment, so it ranks above `:jobId` whatever the order.
+        // Jobs V2's `/analysis/jobs` is an unknown route since (CTA-192's precedent).
         {
-          path: "/analysis/jobs",
-          element: <JobsV2Screen />,
-          handle: { title: "pages.analysisJobs" }
+          path: "/jobs",
+          element: <JobsScreen />,
+          handle: { ...FULL_WIDTH_ROUTE, title: "pages.jobs" }
+        },
+        {
+          path: "/jobs/settings",
+          element: <JobsSettingsScreen />,
+          handle: { ...FULL_WIDTH_ROUTE, title: "pages.jobsSettings" }
+        },
+        {
+          path: "/jobs/:jobId",
+          element: <JobScreen />,
+          handle: { ...FULL_WIDTH_ROUTE, title: "pages.job" }
         },
         // The Openings explorer (CTA-78): a board with the opening book.
         // It keeps nothing — its Analysis button hands the tree on, as a Case.

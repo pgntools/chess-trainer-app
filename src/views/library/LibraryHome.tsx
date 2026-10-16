@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CreateNewFolderRoundedIcon from "@mui/icons-material/CreateNewFolderRounded";
+import MergeTypeRoundedIcon from "@mui/icons-material/MergeTypeRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -32,7 +33,9 @@ import {
 } from "../../blocks/tables";
 import { ConfirmDialog } from "../../design-system/components/dialogs";
 import { SearchField } from "../../design-system/components/forms";
-import { ListScreenHeader } from "../../design-system/components/toolbars";
+import { IconAction, ListScreenHeader } from "../../design-system/components/toolbars";
+import { LIBRARY_COLLECTION_ENTITY } from "../../lib/jobs/entityTypes";
+import { useNewJob } from "../jobs/useNewJob";
 import { RightPanel } from "../main/rightPanel";
 import { loadCollectionGames, useLibraryFolders, useUploadedCollections } from "./useLibraryCollections";
 import { useOwnPageHeading } from "../main/pageTitle";
@@ -222,6 +225,9 @@ function LibraryHome() {
   const [movingCollection, setMovingCollection] = useState<Entry | null>(null);
   const [deletingFolder, setDeletingFolder] = useState<GameFolder | null>(null);
   const [deleting, setDeletingState] = useState<CollectionSummary | null>(null);
+  // The collections picked (CTA-221) — *Merge collections…* with two or more — and New job for one or several.
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const newJob = useNewJob("library-new-job");
   // The collection asked about, held past the dialog's close so its closing transition keeps the words.
   const [askedCollection, setAskedCollection] = useState<CollectionSummary | null>(null);
   const setDeleting = (collection: CollectionSummary | null) => {
@@ -321,6 +327,21 @@ function LibraryHome() {
             onDownloadCollection: (collection) => void download(collection),
             onMoveCollection: setMovingCollection,
             onDeleteCollection: setDeleting,
+            onNewJob: (collection) => newJob.open({ type: LIBRARY_COLLECTION_ENTITY, id: collection.id }),
+          }}
+          picks={{
+            picked,
+            onChange: setPicked,
+            actions: (
+              <IconAction
+                label={t("library.picks.merge")}
+                onClick={() => newJob.open([...picked].map((id) => ({ type: LIBRARY_COLLECTION_ENTITY, id })))}
+                disabled={picked.size < 2}
+                testId="library-picks-merge"
+              >
+                <MergeTypeRoundedIcon fontSize="small" />
+              </IconAction>
+            ),
           }}
           filtered={needle !== ""}
           // CTA-142: from the summaries alone — the list reads no index.
@@ -392,6 +413,7 @@ function LibraryHome() {
         testId="library-collection"
         pickerTestId="library-folder-picker"
       />
+      {newJob.dialog}
       <FolderDeleteDialog
         open={deletingFolder !== null}
         title={`${t("library.folder.deleteFolder")}: ${deletingFolder?.name ?? ""}`}
@@ -413,7 +435,10 @@ function LibraryHome() {
         onClose={() => setDeleting(null)}
         onConfirm={async () => {
           if (deleting === null) return;
-          await removeCollection(deleting.id);
+          const gone = deleting.id;
+          await removeCollection(gone);
+          // A deleted collection is no longer picked.
+          setPicked((current) => (current.has(gone) ? new Set([...current].filter((id) => id !== gone)) : current));
           setDeleting(null);
         }}
         title={t("library.confirmDelete.title", { name: askedCollection?.name ?? "" })}
