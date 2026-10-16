@@ -2,24 +2,11 @@ import { addCaseLinks } from "./analysisCaseLinkStore";
 import { addAnalysisCases, loadAnalysisCases, mergeIntoAnalysisCase } from "./analysisCaseStore";
 import { loadAnalysisProjects } from "./analysisProjectStore";
 import { gameCaseOf } from "./analysisProjects";
-import {
-  shouldStopEarly,
-  terminalResultOf,
-  withSearchInfo,
-  type AnalysisPosition,
-  type ComputerAnalysisOptions,
-  type PositionLine,
-  type PositionResult,
-} from "./computerAnalysis";
-import { pvToSan } from "./engineAnalysis";
-import { connectEngineServer, readEngineServerUrl } from "./engineServer";
-import { BOARD_OWNED_OPTIONS, resolveEnginePreset } from "./enginePresets";
-import type { EngineDescriptor, EngineHandle, EngineOption } from "./engineTypes";
-import { engineSettingBoundsOf } from "./engineSettings";
-import { getEngine, isHostedEngineId, resolveEngine } from "./engines";
+import type { EngineDescriptor } from "./engineTypes";
+import { openEngineSession, type EngineSessionHooks } from "./jobs/engineSession";
+import { ComputerAnalysisError, sourceTreeOf, stepOf, type ComputerAnalysisState } from "./jobs/kinds/computerAnalysis/core";
 import {
   jobMoveLabel,
-  jobSearchOf,
   jobV2AnalysisOf,
   jobV2MergedPgn,
   jobV2OutputName,
@@ -28,8 +15,7 @@ import {
   type JobV2Error,
   type JobV2Output,
 } from "./jobsV2";
-import { createJobV2LiveFeed, type JobV2Live, type JobV2LiveFeed } from "./jobV2Live";
-import { askEvalSources, recordInEvalSources, reportEvalSourceUnreachable, type EvalSourcesAnswer } from "./evalSources";
+import { createJobV2LiveFeed, type JobV2LiveFeed } from "./jobV2Live";
 import { interruptRunningJobsV2, jobsV2Snapshot, loadJobsV2, subscribeJobsV2, updateJobV2 } from "./jobV2Store";
 import { newRecordId } from "./recordId";
 import type { GameTree } from "./gameTree";
@@ -45,21 +31,20 @@ import type { GameTree } from "./gameTree";
  * - **The store is the only channel in** — Pause, Cancel, Resume and Delete,
  *   and a Case or Project deleted taking its jobs: a job no longer `running`
  *   or gone is stopped at once.
- * - **Its own engine**, the job's (`options.engine`, falling back as a board
- *   does); `Threads`, `Hash` and each position's `MultiPV` from the job's
- *   options, clamped to what the engine declared, and **the job's own preset**
- *   (`job.preset.values`, met against the engine) — never the preset selected
- *   when it runs.
+ * - **Its own engine, through the engine session** (`lib/jobs/engineSession.ts`,
+ *   CTA-218 — the engine work every engine job kind shares): the job's
+ *   engine (`options.engine`, falling back as a board does); `Threads`,
+ *   `Hash` and each position's `MultiPV` from the job's options, clamped to
+ *   what the engine declared, and **the job's own preset** — never the preset
+ *   selected when it runs. Each position is one step of the computer-analysis
+ *   kind's core (`lib/jobs/kinds/computerAnalysis/core.ts`, `stepOf`) over the
+ *   session's `evaluate`; the runner has no engine code of its own.
  * - **The eval sources first** (CTA-193's lichess evaluation API, every
  *   source of the layer since CTA-196 — `lib/evalSources/`, turned on in
- *   Settings → Engine): a position a source holds at the job's depth or
- *   deeper is its result — its lines up to the position's `MultiPV` — and no
- *   engine searches it; one none holds, or holds shallower, is searched. A
- *   source that does not answer is said once (`reportEvalSourceUnreachable`,
- *   the shell's warning) and left alone for the rest of the run, which goes on
- *   with the engine. Where a source takes writes, each position the engine
- *   searched is sent to it (`recordInEvalSources`); a write it does not take
- *   is said once, and the run sends it no more.
+ *   Settings → Engine), by the session: a position a source holds at the
+ *   job's depth or deeper is its result, one none holds is searched and sent
+ *   back to the sources that take writes; a source that does not answer is
+ *   said once (the shell's warning) and left alone for the rest of the run.
  * - **A checkpoint after every position** — and, while a position is
  *   searched, **its live progress** (CTA-190): the engine's depth, nodes,
  *   nps, time and best line off each `info` line, a throttled in-memory
@@ -101,45 +86,16 @@ export type JobV2Runner = {
 /** The name of the lock only one tab's Jobs V2 runner holds. */
 export const JOB_V2_RUNNER_LOCK = "chessapp.analysisProjects.jobs.runner";
 
-const HANDSHAKE_TIMEOUT_MS = 30_000;
-const SILENCE_TIMEOUT_MS = 120_000;
-/** How many moves of the best line the live progress carries. */
-const LIVE_LINE_MOVES = 6;
-
-/** The registry's engine for `id`, after the engine server's list has been read for one of its engines. */
-const registryEngineFor = async (id: string): Promise<EngineDescriptor> => {
-  if (isHostedEngineId(id) && getEngine(id) === undefined && readEngineServerUrl() !== undefined) {
-    await connectEngineServer();
-  }
-  return resolveEngine(id);
-};
-
-/** `value` pulled into the bounds an engine declared for an option (unchanged where it gave none). */
-const clampToOption = (option: EngineOption | undefined, value: number): number =>
-  option?.min === undefined || option.max === undefined ? value : Math.min(option.max, Math.max(option.min, value));
-
-/** A job ended for a reason, with what the runner learnt. */
-class JobFailure extends Error {
-  readonly code: JobV2Error;
-  constructor(code: JobV2Error) {
-    super(code);
-    this.code = code;
-  }
-}
-
-/** The stop signal of one run: whether it was asked to stop, and what to do when it is. */
-type Abort = { aborted: boolean; onAbort: Set<() => void> };
-
 export const createJobV2Runner = ({
-  engineFor = registryEngineFor,
-  handshakeTimeoutMs = HANDSHAKE_TIMEOUT_MS,
-  silenceTimeoutMs = SILENCE_TIMEOUT_MS,
+  engineFor,
+  handshakeTimeoutMs,
+  silenceTimeoutMs,
   useLock = typeof navigator !== "undefined" && navigator.locks !== undefined,
   now = () => new Date(),
   liveFeed = createJobV2LiveFeed(),
 }: JobV2RunnerDeps = {}): JobV2Runner => {
   let stopped = false;
-  let current: { id: string; abort: Abort; run: Promise<void> } | undefined;
+  let current: { id: string; controller: AbortController; run: Promise<void> } | undefined;
   let unsubscribe: (() => void) | undefined;
   let releaseLock: (() => void) | undefined;
   const lockAbort = typeof AbortController === "undefined" ? undefined : new AbortController();
@@ -147,173 +103,9 @@ export const createJobV2Runner = ({
 
   const iso = () => now().toISOString();
 
-  const abort = (signal: Abort) => {
-    if (signal.aborted) return;
-    signal.aborted = true;
-    for (const callback of signal.onAbort) callback();
-  };
-
   /** Still this job's run: the record is there, `running`, and nobody asked it to stop. */
-  const stillRunning = (id: string, signal: Abort): boolean =>
+  const stillRunning = (id: string, signal: AbortSignal): boolean =>
     !signal.aborted && jobsV2Snapshot()?.find((row) => row.id === id)?.status === "running";
-
-  /** The engine's `uci` answer, or a failure after the timeout. */
-  const handshake = (handle: EngineHandle, signal: Abort): Promise<void> =>
-    new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        off();
-        reject(new JobFailure("engine"));
-      }, handshakeTimeoutMs);
-      const cleanup = () => {
-        clearTimeout(timer);
-        signal.onAbort.delete(onAbort);
-      };
-      const onAbort = () => {
-        cleanup();
-        off();
-        resolve();
-      };
-      signal.onAbort.add(onAbort);
-      const off = handle.whenOptionsReady(() => {
-        cleanup();
-        resolve();
-      });
-    });
-
-  /**
-   * **One position's search**: its lines, line 1 first, and the nodes the
-   * engine last reported — `undefined` when the run was stopped. Stopped early by `shouldStopEarly`; failed when the
-   * engine goes quiet for longer than the silence timeout, or ends the search
-   * without a single scored line. Every word the engine says about it goes to
-   * the live feed (CTA-190), cleared however the search ends.
-   *
-   * **Quiet is not silent** (CTA-194): deep in a search Stockfish says nothing
-   * for minutes, so an engine server sends a `heartbeat` while its engine is
-   * alive but quiet — heard like an `info` line (the timer starts again, the
-   * live snapshot's `heardAt` moves on), changing no line, depth or score. An
-   * engine that sends none — an in-browser one, an older engine server — is
-   * held to the silence timeout as before, and so is a server whose engine died.
-   */
-  const searchPosition = (
-    handle: EngineHandle,
-    job: JobV2,
-    index: number,
-    position: AnalysisPosition,
-    options: ComputerAnalysisOptions,
-    signal: Abort,
-  ): Promise<{ lines: PositionLine[]; nodes?: number } | undefined> =>
-    new Promise((resolve, reject) => {
-      let lines: (PositionLine | undefined)[] = [];
-      let stopping = false;
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      const startedAt = now().getTime();
-      const jobPosition = job.positions[index];
-      let live: JobV2Live = {
-        jobId: job.id,
-        index,
-        move: jobPosition === undefined ? undefined : jobMoveLabel(jobPosition),
-        depth: 0,
-        elapsedMs: 0,
-        line: [],
-        heardAt: startedAt,
-      };
-      const finish = () => {
-        clearTimeout(timer);
-        off();
-        signal.onAbort.delete(onAbort);
-        liveFeed.clear();
-      };
-      const listen = () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          finish();
-          reject(new JobFailure("engine"));
-        }, silenceTimeoutMs);
-      };
-      const onAbort = () => {
-        finish();
-        resolve(undefined);
-      };
-      const off = handle.onMessage((message) => {
-        if (message.fen !== position.fen) return;
-        listen();
-        if (message.heartbeat) {
-          // The engine server's word that its engine is alive through a long silence (CTA-194): heard, nothing more.
-          const heardAt = now().getTime();
-          live = { ...live, elapsedMs: Math.max(live.elapsedMs, heardAt - startedAt), heardAt };
-          liveFeed.update(live);
-          return;
-        }
-        const best = lines[0];
-        if (message.pv !== undefined && message.depth !== undefined) {
-          lines = withSearchInfo(lines, message, position.turn);
-          if (!stopping && shouldStopEarly(lines, position.turn, message.depth, options)) {
-            stopping = true;
-            handle.stop();
-          }
-        }
-        if (message.bestMove === undefined) {
-          // A field a line does not carry keeps what an earlier one said (a `currmove` line has no nodes).
-          const heardAt = now().getTime();
-          const first = lines[0];
-          live = {
-            ...live,
-            depth: message.depth || live.depth,
-            seldepth: message.seldepth ?? live.seldepth,
-            nodes: message.nodes ?? live.nodes,
-            nps: message.nps ?? live.nps,
-            hashfull: message.hashfull ?? live.hashfull,
-            // The engine's own clock where it says; else the runner's, never going back.
-            elapsedMs: message.time ?? Math.max(live.elapsedMs, heardAt - startedAt),
-            score: first?.score,
-            line: first === best ? live.line : pvToSan(position.fen, first?.pv.slice(0, LIVE_LINE_MOVES).join(" ") ?? ""),
-            heardAt,
-          };
-          liveFeed.update(live);
-          return;
-        }
-        finish();
-        if (lines[0] === undefined) {
-          reject(new JobFailure("engine"));
-          return;
-        }
-        // Lines the search never reached past a gap are out of order: they end there.
-        const gap = lines.findIndex((line) => line === undefined);
-        resolve({ lines: (gap === -1 ? lines : lines.slice(0, gap)) as PositionLine[], nodes: live.nodes });
-      });
-      signal.onAbort.add(onAbort);
-      listen();
-      handle.setOption("MultiPV", clampToOption(handle.options.get("MultiPV"), position.multiPv));
-      handle.search(position.fen, { depth: options.depth, movetime: options.moveTimeMs });
-    });
-
-  /** A position's result without the engine: a finished position's, or a deep enough stored eval's. */
-  const resultWithoutSearch = (position: AnalysisPosition, options: ComputerAnalysisOptions): PositionResult | undefined => {
-    if (position.terminal) return terminalResultOf(position.fen);
-    const stored = position.storedEval;
-    if (!position.analysed && stored?.depth !== undefined && stored.depth >= options.depth) {
-      return { fen: position.fen, lines: [{ score: stored.score, depth: stored.depth, pv: [] }] };
-    }
-    return undefined;
-  };
-
-  /** `call` with an `AbortSignal` given up at once when the run is stopped. */
-  const untilAborted = async <T>(signal: Abort, call: (aborted: AbortSignal) => Promise<T>): Promise<T> => {
-    const controller = new AbortController();
-    const onAbort = () => controller.abort();
-    signal.onAbort.add(onAbort);
-    try {
-      return await call(controller.signal);
-    } finally {
-      signal.onAbort.delete(onAbort);
-    }
-  };
-
-  /** Ask the eval sources about a position, leaving out those this run gave up on. */
-  const askSources = (position: AnalysisPosition, depth: number, skip: ReadonlySet<string>, signal: Abort): Promise<EvalSourcesAnswer> =>
-    untilAborted(signal, (aborted) =>
-      askEvalSources({ fen: position.fen, depth, multiPv: position.multiPv }, { signal: aborted, skip: (source) => skip.has(source.id) }),
-    );
 
   /**
    * **The results, by the job's target** — each ticked variant a new Game
@@ -321,39 +113,35 @@ export const createJobV2Runner = ({
    * the one variant merged into the source Case. A Project or Case gone fails
    * it `target`.
    */
-  const saveOutputs = async (
-    job: JobV2,
-    input: { tree: GameTree },
-    descriptor: EngineDescriptor,
-  ): Promise<JobV2Output[]> => {
+  const saveOutputs = async (job: JobV2, tree: GameTree, descriptor: EngineDescriptor): Promise<JobV2Output[]> => {
     // The engine that ran it names the annotator.
     const ran: JobV2 = { ...job, engine: { id: descriptor.id, name: descriptor.name, version: descriptor.version } };
     const { target } = job;
     if (target.kind === "case") {
       const variant = job.options.outputs[0];
       const problem = await mergeIntoAnalysisCase(job.source.caseId, job.id, (pgn) => jobV2MergedPgn(ran, pgn), now());
-      if (problem === "gone") throw new JobFailure("target");
-      if (problem !== undefined) throw new JobFailure(problem === "too-many" ? "too-many" : "storage");
+      if (problem === "gone") throw new ComputerAnalysisError("target");
+      if (problem !== undefined) throw new ComputerAnalysisError(problem === "too-many" ? "too-many" : "storage");
       return [{ variant, projectId: job.source.projectId, caseId: job.source.caseId }];
     }
-    if (!(await loadAnalysisProjects()).some((project) => project.id === target.projectId)) throw new JobFailure("target");
+    if (!(await loadAnalysisProjects()).some((project) => project.id === target.projectId)) throw new ComputerAnalysisError("target");
     const at = now();
     const records = job.options.outputs.map((variant) =>
       gameCaseOf(
         { id: newRecordId(at), projectId: target.projectId, name: jobV2OutputName(job.source.name, variant), now: at },
-        jobV2AnalysisOf(ran, input.tree, variant),
+        jobV2AnalysisOf(ran, tree, variant),
       ),
     );
     await loadAnalysisCases();
     const problem = await addAnalysisCases(records);
-    if (problem !== undefined) throw new JobFailure(problem === "too-many" ? "too-many" : "storage");
+    if (problem !== undefined) throw new ComputerAnalysisError(problem === "too-many" ? "too-many" : "storage");
     // Each new Case linked from its source — the Cases are made either way, so a refused link does not fail the job.
     await addCaseLinks(records.map((record) => ({ fromId: job.source.caseId, toId: record.id })), at);
     return records.map((record, index) => ({ variant: job.options.outputs[index], projectId: target.projectId, caseId: record.id }));
   };
 
   /** Mark the job failed — only while it is still this run's. */
-  const fail = (id: string, code: JobV2Error, signal: Abort) =>
+  const fail = (id: string, code: JobV2Error, signal: AbortSignal) =>
     stillRunning(id, signal)
       ? updateJobV2(id, (job) =>
           job.status === "running" ? { ...job, status: "failed", error: code, finishedAt: iso(), updatedAt: iso() } : job,
@@ -361,10 +149,14 @@ export const createJobV2Runner = ({
       : Promise.resolve(undefined);
 
   /** **One job, from its checkpoint to its outputs.** */
-  const run = async (queued: JobV2, signal: Abort): Promise<void> => {
+  const run = async (queued: JobV2, signal: AbortSignal): Promise<void> => {
     const { id } = queued;
-    const descriptor = await engineFor(queued.options.engine);
+    const session = await openEngineSession(
+      { jobId: id, name: queued.source.name, search: queued.options, preset: queued.preset.values },
+      { engineFor, handshakeTimeoutMs, silenceTimeoutMs, now },
+    );
     if (signal.aborted) return;
+    const descriptor = session.engine;
     // Claim it: queued → running, unless it was cancelled or deleted meanwhile.
     await updateJobV2(id, (job) =>
       job.status === "queued"
@@ -380,106 +172,47 @@ export const createJobV2Runner = ({
     );
     if (!stillRunning(id, signal)) return;
 
-    let handle: EngineHandle | undefined;
+    // The session's hooks: this run's signal, no lease to renew, the live progress to the feed — cleared after each position.
+    const hooks: EngineSessionHooks = {
+      signal,
+      heartbeat: () => undefined,
+      live: (live) => liveFeed.update(live),
+      endLive: () => liveFeed.clear(),
+    };
     try {
       const job = jobsV2Snapshot()?.find((row) => row.id === id) ?? queued;
-      const source = jobSearchOf(job.source, job.options);
-      // The positions searched must be the ones the record's checkpoint is about.
-      if (
-        source === undefined ||
-        source.positions.length !== job.positions.length ||
-        source.positions.some((position, index) => position.fen !== job.positions[index].fen)
-      ) {
-        throw new JobFailure("source");
-      }
-
-      const results: (PositionResult | undefined)[] = job.checkpoint.map((entry) => entry ?? undefined);
-      // The eval sources this run no longer asks (CTA-193, CTA-196) — each said once — and no longer writes to.
-      const unread = new Set<string>();
-      const unwritten = new Set<string>();
-      for (const [index, position] of source.positions.entries()) {
+      let state: ComputerAnalysisState = { positions: job.positions, checkpoint: job.checkpoint };
+      for (;;) {
         if (!stillRunning(id, signal)) return;
-        if (results[index] !== undefined) continue;
-
-        let result = resultWithoutSearch(position, job.options);
-        if (result === undefined) {
-          const answer = await askSources(position, job.options.depth, unread, signal);
-          if (!stillRunning(id, signal)) return;
-          result = answer.found?.result;
-          for (const gone of answer.unreachable) {
-            // A source that does not answer a lookup takes no write either.
-            unread.add(gone.id);
-            unwritten.add(gone.id);
-            reportEvalSourceUnreachable({ jobId: id, name: job.source.name, kind: "read", source: gone });
-          }
+        // One position: the source checked against the record's positions (a mismatch fails it `source`), then evaluated.
+        const positions = state.positions;
+        const step = await stepOf(state, job, (position, index) =>
+          session.evaluate({ ...position, index, moveLabel: jobMoveLabel(positions[index]) }, hooks),
+        );
+        if (step === undefined || !stillRunning(id, signal)) return;
+        state = step.state;
+        const written = step.checkpointed;
+        if (written !== undefined) {
+          await updateJobV2(id, (row) => (row.status === "running" ? withCheckpointV2(row, written.index, written.result, now()) : row));
         }
-        if (result === undefined) {
-          if (handle === undefined) {
-            try {
-              handle = descriptor.create();
-            } catch {
-              throw new JobFailure("engine");
-            }
-            const engine = handle;
-            signal.onAbort.add(() => engine.stop());
-            await handshake(engine, signal);
-            if (!stillRunning(id, signal)) return;
-            /*
-              Held first to the running engine's own bounds — a job queued for
-              an engine server's engine that fell back to an in-browser build
-              must not ask it for a hash the tab cannot hold (CTA-175) — then
-              to what the engine declared, the last word.
-            */
-            const bounds = engineSettingBoundsOf(descriptor.id);
-            engine.setOption(
-              "Threads",
-              clampToOption(engine.options.get("Threads"), Math.min(job.options.threads, bounds.threads.max)),
-            );
-            engine.setOption("Hash", clampToOption(engine.options.get("Hash"), Math.min(job.options.hashMb, bounds.hashMb.max)));
-            // The preset the job was given — never the one selected now — met against what the engine declared.
-            const { send } = resolveEnginePreset(job.preset.values, engine.options, {
-              inBrowser: descriptor.server === undefined,
-              owned: BOARD_OWNED_OPTIONS,
-            });
-            for (const [name, value] of Object.entries(send)) engine.setOption(name, value);
-          }
-          const searched = await searchPosition(handle, job, index, position, job.options, signal);
-          if (searched === undefined || !stillRunning(id, signal)) return;
-          result = { fen: position.fen, lines: searched.lines };
-          // The engine's eval sent to the sources that take writes — only what the engine searched, never a source's own.
-          const searchedResult = result;
-          const refused = await untilAborted(signal, (aborted) =>
-            recordInEvalSources(
-              searchedResult,
-              { nodes: searched.nodes, engine: descriptor.name },
-              { signal: aborted, skip: (writer) => unwritten.has(writer.id) },
-            ),
-          );
-          if (!stillRunning(id, signal)) return;
-          for (const writer of refused) {
-            unwritten.add(writer.id);
-            reportEvalSourceUnreachable({ jobId: id, name: job.source.name, kind: "write", source: writer });
-          }
-        }
-
-        results[index] = result;
-        const checkpointed = result;
-        await updateJobV2(id, (row) => (row.status === "running" ? withCheckpointV2(row, index, checkpointed, now()) : row));
+        if (step.done) break;
       }
 
-      handle?.terminate();
-      handle = undefined;
+      session.close();
       if (!stillRunning(id, signal)) return;
       const latest = jobsV2Snapshot()?.find((row) => row.id === id) ?? job;
-      const outputs = await saveOutputs({ ...latest, checkpoint: results.map((entry) => entry ?? null) }, source, descriptor);
+      const tree = sourceTreeOf(job);
+      if (tree === undefined) throw new ComputerAnalysisError("source");
+      const outputs = await saveOutputs({ ...latest, checkpoint: state.checkpoint }, tree, descriptor);
       if (!stillRunning(id, signal)) return;
       await updateJobV2(id, (row) =>
         row.status === "running" ? { ...row, status: "done", outputs, finishedAt: iso(), updatedAt: iso() } : row,
       );
     } catch (error) {
-      await fail(id, error instanceof JobFailure ? error.code : "engine", signal);
+      // An engine that failed — no handle, no `uci` answer, silence, no scored line — fails it `engine`.
+      await fail(id, error instanceof ComputerAnalysisError ? error.code : "engine", signal);
     } finally {
-      handle?.terminate();
+      session.close();
     }
   };
 
@@ -495,14 +228,14 @@ export const createJobV2Runner = ({
     if (stopped || current !== undefined) return;
     const next = nextQueued();
     if (next === undefined) return;
-    const signal: Abort = { aborted: false, onAbort: new Set() };
-    const running = run(next, signal)
+    const controller = new AbortController();
+    const running = run(next, controller.signal)
       .catch(() => undefined)
       .finally(() => {
         current = undefined;
         pick();
       });
-    current = { id: next.id, abort: signal, run: running };
+    current = { id: next.id, controller, run: running };
   };
 
   /** The store changed: stop a run its record no longer allows, and take the next job. */
@@ -511,7 +244,7 @@ export const createJobV2Runner = ({
     if (rows === undefined) return;
     if (current !== undefined) {
       const status = rows.find((row) => row.id === current?.id)?.status;
-      if (status !== "running" && status !== "queued") abort(current.abort);
+      if (status !== "running" && status !== "queued") current.controller.abort();
     }
     pick();
   };
@@ -547,7 +280,7 @@ export const createJobV2Runner = ({
   const stop = () => {
     stopped = true;
     unsubscribe?.();
-    if (current !== undefined) abort(current.abort);
+    current?.controller.abort();
     liveFeed.clear();
     releaseLock?.();
     lockAbort?.abort();
