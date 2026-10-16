@@ -16,7 +16,7 @@ import { createAnalysisProject, loadAnalysisProjects, removeAnalysisProject } fr
 import { sanPathTo, treeToPgn, type GameTree } from "../../lib/gameTree";
 import { newRecordId } from "../../lib/recordId";
 import { casePath, projectPath } from "./paths";
-import { useAnalysisProjects } from "./useAnalysisProjects";
+import { useAnalysisProjects, useProjectPickerRows } from "./useAnalysisProjects";
 import { useProjectCaseLimit } from "./useProjectCaseLimit";
 
 /** One game handed to Analysis — a Game Case of it. */
@@ -75,6 +75,8 @@ export const useSendToAnalysis = (testId: string): { send: (request: SendRequest
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const caseLimit = useProjectCaseLimit(`${testId}-case-limit`);
+  // Each Project's folder path and count of Cases — read while the picker is open.
+  const pickerRows = useProjectPickerRows(request !== null);
 
   const send = (next: SendRequest) => {
     if (next.games.length === 0) return;
@@ -150,7 +152,7 @@ export const useSendToAnalysis = (testId: string): { send: (request: SendRequest
         open={request !== null}
         title={opens ? t("analysisV2.sendTo.title") : t("analysisV2.sendTo.addTitle", { count })}
         submitLabel={opens ? t("analysisV2.sendTo.open") : t("analysisV2.sendTo.add", { count })}
-        projects={projects ?? []}
+        projects={pickerRows}
         current=""
         newProject={{ initialName: request?.projectName ?? "", onSubmit: (projectName) => void choose(null, projectName) }}
         onSubmit={(projectId) => void choose(projectId, "")}

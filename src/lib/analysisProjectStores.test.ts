@@ -9,6 +9,7 @@ import {
   loadAnalysisCases,
   moveAnalysisCase,
   moveAnalysisCaseInOrder,
+  moveAnalysisCases,
   removeAnalysisCases,
   renameAnalysisCase,
   resetAnalysisCaseStore,
@@ -438,6 +439,40 @@ describe("Analysis V2's stores (CTA-186)", () => {
       expect(line(p1.id)).toEqual(["c:1", `${copy.id}:2`]);
       const { cases } = await reload();
       expect(line(p1.id, cases)).toEqual(["c:1", `${copy.id}:2`]);
+    });
+
+    it("moves picked Cases into another Project in one write — last, in their order there; the gap closed; the rest skipped (CTA-226)", async () => {
+      const p1 = (await createAnalysisProject("One", null))!;
+      const p2 = (await createAnalysisProject("Two", null))!;
+      await addAnalysisCases([aCase("a", p1.id), aCase("b", p1.id), aCase("c", p1.id), aCase("d", p1.id), aCase("x", p2.id)]);
+      await linkAnalysisCases("a", "x");
+      // d before b in the source's order: they arrive so, whatever order the ids are given in.
+      await moveAnalysisCaseInOrder("d", "top");
+      expect(line(p1.id)).toEqual(["d:1", "a:2", "b:3", "c:4"]);
+      const before = analysisCasesSnapshot()!;
+      const listener = vi.fn();
+      const unsubscribe = subscribeAnalysisCases(listener);
+
+      // An unknown id and one in the target already are skipped.
+      expect(await moveAnalysisCases(["b", "ghost", "x", "d"], p2.id, new Date("2026-10-16T12:00:00.000Z"))).toBeUndefined();
+      expect(listener).toHaveBeenCalledTimes(1);
+      unsubscribe();
+      expect(line(p1.id)).toEqual(["a:1", "c:2"]);
+      expect(line(p2.id)).toEqual(["x:1", "d:2", "b:3"]);
+      const moved = analysisCasesSnapshot()!.find((record) => record.id === "b")!;
+      expect(moved.updatedAt).toBe("2026-10-16T12:00:00.000Z");
+      // The ids stay — and with them the links.
+      expect(analysisCasesSnapshot()!.map((record) => record.id).sort()).toEqual(before.map((record) => record.id).sort());
+      expect(caseLinksSnapshot()).toHaveLength(1);
+
+      // Nothing left to move: no write.
+      const now = analysisCasesSnapshot();
+      expect(await moveAnalysisCases(["x", "ghost"], p2.id)).toBeUndefined();
+      expect(await moveAnalysisCases([], p2.id)).toBeUndefined();
+      expect(analysisCasesSnapshot()).toBe(now);
+
+      const { cases } = await reload();
+      expect(line(p2.id, cases)).toEqual(["x:1", "d:2", "b:3"]);
     });
 
     it("moves a Case up, down, to the top and to the bottom — across pages, kept across a reload, no date touched", async () => {

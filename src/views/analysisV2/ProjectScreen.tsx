@@ -4,8 +4,9 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import DriveFileMoveRoundedIcon from "@mui/icons-material/DriveFileMoveRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router";
+import { Link as RouterLink, useHref, useNavigate, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { NewCaseDialog, ProjectPickerDialog, type NewCaseSpec } from "../../blocks/dialogs";
@@ -13,7 +14,7 @@ import { ProjectDetails, type ProjectDetailsTab } from "../../blocks/panels";
 import { CasesTable, caseDisplayName, type CaseAction } from "../../blocks/tables";
 import { visuallyHidden } from "../../design-system/components/a11y";
 import { DeleteManyDialog, FormDialog } from "../../design-system/components/dialogs";
-import { InlineAlert } from "../../design-system/components/feedback";
+import { InlineAlert, useSnackbar } from "../../design-system/components/feedback";
 import { SearchField, TextInputField } from "../../design-system/components/forms";
 import { Breadcrumbs } from "../../design-system/components/navigation";
 import { MissState } from "../../design-system/components/states";
@@ -23,8 +24,8 @@ import { CASE_COLUMNS, caseFirstDirection, caseRowOf, filteredCaseRows } from ".
 import {
   addAnalysisCases,
   duplicateAnalysisCase,
-  moveAnalysisCase,
   moveAnalysisCaseInOrder,
+  moveAnalysisCases,
   removeAnalysisCases,
   renameAnalysisCase,
 } from "../../lib/analysisCaseStore";
@@ -43,12 +44,12 @@ import { newRecordId } from "../../lib/recordId";
 import { BoardLeftPanel } from "../main/boardLeftPanel";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import { useShellCompact } from "../main/shellCompact";
-import { browserPath, caseListContextOf, casePath } from "./paths";
-import { useAnalysisCases, useAnalysisProjects, useProjectFolders } from "./useAnalysisProjects";
+import { browserPath, caseListContextOf, casePath, projectPath } from "./paths";
+import { useAnalysisCases, useAnalysisProjects, useProjectFolders, useProjectPickerRows } from "./useAnalysisProjects";
 import { useProjectCaseLimit } from "./useProjectCaseLimit";
 
-/** The dialog open over the Cases, and the Case it is about. */
-type Dialog = { kind: "new" } | { kind: "rename" | "move" | "duplicate"; record: AnalysisCase };
+/** The dialog open over the Cases, and the Case it is about — the picks' move is about the picks (CTA-226). */
+type Dialog = { kind: "new" } | { kind: "movePicked" } | { kind: "rename" | "duplicate"; record: AnalysisCase };
 
 /** Where a reorder takes the Case at `from` in a Project of `count` Cases. */
 const placeAfter = (move: CaseOrderMove, from: number, count: number): number =>
@@ -75,13 +76,15 @@ const caseOfSpec = (spec: NewCaseSpec, projectId: string, now: Date): AnalysisCa
  * tags — blank for a Position — and when it changed; the sort and the page
  * in the URL), each row's name a link to its board, and **New
  * case** (`NewCaseDialog`: a Game or a Position, from a PGN or a FEN). A
- * Case is renamed (empty gives it back its derived name), moved to another
- * Project, duplicated into this one or another (`ProjectPickerDialog`) and
- * **moved in the Project's order** (CTA-203) — the table opens sorted by it
- * (`#`), and only so, with no words, do the row's arrows reorder: the page
- * follows the Case, the focus stays on its action, and its new place is
- * announced. Cases are deleted by their boxes, together, asked first. A
- * single new Case opens on its board; one per game stays here, the list grown.
+ * Case is renamed (empty gives it back its derived name), duplicated into
+ * this one or another (`ProjectPickerDialog`) and **moved in the Project's
+ * order** (CTA-203) — the table opens sorted by it (`#`), and only so, with
+ * no words, do the row's arrows reorder: the page follows the Case, the
+ * focus stays on its action, and its new place is announced. Cases are
+ * **moved to another Project** (CTA-226) and **deleted** by their boxes,
+ * together — the move into a Project picked in the picker's table, said in a
+ * snackbar; the delete asked first. A single new Case opens on its board; one
+ * per game stays here, the list grown.
  *
  * The route waits for the stores' first read, then says a Project that is
  * not there. **Its header's title is the browser's whole trail** (CTA-207,
@@ -115,6 +118,16 @@ function ProjectScreen() {
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set());
   const [deletingPicked, setDeletingPicked] = useState(false);
   const [deleteProblem, setDeleteProblem] = useState<string | null>(null);
+  /** The picks' move (CTA-226): its write under way, and a refusal said in its dialog. */
+  const [moving, setMoving] = useState(false);
+  const [moveProblem, setMoveProblem] = useState<string | null>(null);
+  // The picks the move was opened on — kept as it closes, so its title does not change under it.
+  const [movingIds, setMovingIds] = useState<readonly string[]>([]);
+  const { show } = useSnackbar();
+  // The router's base, so the snackbar's link — outside the router — is a real href.
+  const base = useHref("/");
+  // Every Project with its folder path and its count of Cases, for the picker.
+  const pickerRows = useProjectPickerRows(true);
   /** A reordered Case's action, focused once its row is on screen again (CTA-203), and its new place, announced. */
   const pendingFocus = useRef<{ id: string; move: CaseOrderMove } | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -244,6 +257,34 @@ function ProjectScreen() {
   };
 
   const named = (record: AnalysisCase) => caseDisplayName(record, t);
+
+  /** The picks into another Project, in one write — then the picks cleared and the move said; a refusal kept in the dialog. */
+  const movePicked = async (ids: readonly string[], targetId: string) => {
+    const target = projects.find((candidate) => candidate.id === targetId);
+    if (target === undefined || ids.length === 0) return;
+    setMoving(true);
+    const failed = await moveAnalysisCases(ids, target.id);
+    setMoving(false);
+    if (failed !== undefined) {
+      setMoveProblem(caseProblem);
+      return;
+    }
+    setPicked(new Set());
+    setDialog(null);
+    const path = projectPath(target.id);
+    show({
+      severity: "success",
+      duration: 10_000,
+      testId: "analysis-v2-cases-moved-notice",
+      action: {
+        label: t("analysisV2.case.openProject"),
+        onClick: () => navigate(path),
+        href: base === "/" ? path : `${base}${path}`,
+        testId: "analysis-v2-cases-moved-open",
+      },
+      message: t("analysisV2.case.movedPicked", { count: ids.length, project: target.name || t("analysisV2.project.untitled") }),
+    });
+  };
   // The folders above the Project, the top first — none for a Project at the top level or in a folder gone.
   const chain = project.folderId === null ? [] : projectFolderPath(folders, project.folderId);
 
@@ -299,7 +340,7 @@ function ProjectScreen() {
               >
                 {t("analysisV2.case.new")}
               </Button>
-              {/* The picks' count and what they are for — the delete; select-all is the table header's, over the rows the words leave. */}
+              {/* The picks' count and what they are for — the move and the delete; select-all is the table header's, over the rows the words leave. */}
               {rows.length > 0 && (
                 <SelectionBar
                   count={pickedHere.length}
@@ -307,18 +348,35 @@ function ProjectScreen() {
                   onClear={() => setPicked(new Set())}
                   clearLabel={t("analysisV2.case.clearSelected")}
                   actions={
-                    <IconAction
-                      label={t("analysisV2.case.deleteSelected")}
-                      disabled={pickedHere.length === 0}
-                      color="error"
-                      onClick={() => {
-                        setDeleteProblem(null);
-                        setDeletingPicked(true);
-                      }}
-                      testId="analysis-v2-cases-delete-picked"
-                    >
-                      <DeleteOutlineRoundedIcon fontSize="small" />
-                    </IconAction>
+                    <>
+                      {/* Into another Project — none to go to, off (CTA-226). */}
+                      <IconAction
+                        label={t("analysisV2.case.moveSelected")}
+                        disabled={pickedHere.length === 0 || projects.length < 2}
+                        onClick={() => {
+                          setMoveProblem(null);
+                          setMovingIds(pickedHere.map((row) => row.id));
+                          setDialog({ kind: "movePicked" });
+                        }}
+                        popupOpen={dialog?.kind === "movePicked"}
+                        popupKind="dialog"
+                        testId="analysis-v2-cases-move-picked"
+                      >
+                        <DriveFileMoveRoundedIcon fontSize="small" />
+                      </IconAction>
+                      <IconAction
+                        label={t("analysisV2.case.deleteSelected")}
+                        disabled={pickedHere.length === 0}
+                        color="error"
+                        onClick={() => {
+                          setDeleteProblem(null);
+                          setDeletingPicked(true);
+                        }}
+                        testId="analysis-v2-cases-delete-picked"
+                      >
+                        <DeleteOutlineRoundedIcon fontSize="small" />
+                      </IconAction>
+                    </>
                   }
                   testId="analysis-v2-cases"
                   rootTestId="analysis-v2-cases-selection"
@@ -350,7 +408,6 @@ function ProjectScreen() {
             // The board lists the Project's Cases in this table's order, under its words.
             caseLink={(row) => ({ component: RouterLink, to: casePath(project.id, row.id, caseListContextOf(searchParams)) })}
             onCaseAction={onCaseAction}
-            canMove={projects.length > 1}
             picked={picked}
             onPickedChange={setPicked}
             filters={
@@ -425,26 +482,38 @@ function ProjectScreen() {
         />
       </FormDialog>
 
-      {/* Moved to another Project, or duplicated into one — this one by default. */}
+      {/* A Case duplicated into a Project — this one by default. */}
       <ProjectPickerDialog
-        open={dialog?.kind === "move" || dialog?.kind === "duplicate"}
-        title={t(dialog?.kind === "move" ? "analysisV2.case.moveTitle" : "analysisV2.case.duplicateTitle")}
-        submitLabel={t(dialog?.kind === "move" ? "analysisV2.case.move" : "analysisV2.case.duplicate")}
-        projects={projects}
+        open={dialog?.kind === "duplicate"}
+        title={t("analysisV2.case.duplicateTitle")}
+        submitLabel={t("analysisV2.case.duplicate")}
+        projects={pickerRows}
         current={project.id}
-        excludeCurrent={dialog?.kind === "move"}
         initialName={
           dialog?.kind === "duplicate" ? t("analysisV2.case.copyName", { name: named(dialog.record) }) : undefined
         }
         onSubmit={(target, name) => {
-          if (dialog?.kind === "move") {
-            void moveAnalysisCase(dialog.record.id, target).then((failed) => done(failed !== undefined));
-          } else if (dialog?.kind === "duplicate") {
+          if (dialog?.kind === "duplicate") {
             void duplicateAnalysisCase(dialog.record.id, target, name).then((copy) => done(copy === undefined));
           }
         }}
         onClose={() => setDialog(null)}
         testId="analysis-v2-case-target"
+      />
+
+      {/* The picked Cases moved together into another Project (CTA-226) — no limit asked: a move is no new work. */}
+      <ProjectPickerDialog
+        open={dialog?.kind === "movePicked"}
+        title={t("analysisV2.case.movePickedTitle", { count: movingIds.length })}
+        submitLabel={t("analysisV2.case.move")}
+        projects={pickerRows}
+        current={project.id}
+        excludeCurrent
+        onSubmit={(target) => void movePicked(movingIds, target)}
+        onClose={() => setDialog(null)}
+        busy={moving}
+        problem={moveProblem}
+        testId="analysis-v2-cases-move-dialog"
       />
 
       {/* The picked Cases deleted together, asked first; a failure is said in the dialog and the picks stay. */}

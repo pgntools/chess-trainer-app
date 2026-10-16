@@ -7,7 +7,7 @@ import { HEBREW_ROWS, manyRows, ROWS } from "./fixtures";
 
 type State = { column: CaseColumn; direction: "asc" | "desc"; page: number; rowsPerPage: number; picked: ReadonlySet<string> };
 
-const demo = (rows: readonly CaseRow[], { canMove = true, column = "order", direction = "asc", filtered = false }: { canMove?: boolean; column?: CaseColumn; direction?: "asc" | "desc"; filtered?: boolean } = {}) => (
+const demo = (rows: readonly CaseRow[], { column = "order", direction = "asc", filtered = false }: { column?: CaseColumn; direction?: "asc" | "desc"; filtered?: boolean } = {}) => (
   <WithState<State> initial={{ column, direction, page: 0, rowsPerPage: 25, picked: new Set<string>() }}>
     {(state, setState) => (
       <CasesTable
@@ -26,7 +26,6 @@ const demo = (rows: readonly CaseRow[], { canMove = true, column = "order", dire
         }
         caseLink={(row) => ({ href: `#case-${row.id}` })}
         onCaseAction={() => {}}
-        canMove={canMove}
         picked={state.picked}
         onPickedChange={(picked) => setState({ ...state, picked })}
         filtered={filtered}
@@ -43,7 +42,6 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "Games with their tags, and a Position whose game columns are blank — in the Project's order, reorderable", render: () => demo(ROWS) },
     { name: "Sorted by Updated — reordering is off, its tooltips say why", render: () => demo(ROWS, { column: "updated", direction: "desc" }) },
     { name: "Words typed — reordering is off, its tooltips say why", render: () => demo(ROWS, { filtered: true }) },
-    { name: "The only Project — Move is off", render: () => demo(ROWS, { canMove: false }) },
     { name: "Empty", render: () => demo([]) },
     { name: "Sixty Cases, paged", render: () => demo(manyRows(60)) },
     { name: "A Hebrew name (switch to RTL)", render: () => demo(HEBREW_ROWS) },

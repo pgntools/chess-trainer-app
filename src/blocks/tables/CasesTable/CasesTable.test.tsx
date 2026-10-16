@@ -57,9 +57,10 @@ describe("CasesTable (CTA-186)", () => {
   it("pages, and hands each action its Case", async () => {
     const onCaseAction = vi.fn();
     const rows = manyRows(30);
-    mount({ rows, onCaseAction, canMove: false, sort: { column: "name", direction: "asc" }, paging: { page: 0, rowsPerPage: 25, onPageChange: () => {}, onRowsPerPageChange: () => {} } });
+    mount({ rows, onCaseAction, sort: { column: "name", direction: "asc" }, paging: { page: 0, rowsPerPage: 25, onPageChange: () => {}, onRowsPerPageChange: () => {} } });
     expect(screen.getAllByTestId(/^probe-row-/)).toHaveLength(25);
-    expect(screen.getByRole("button", { name: "Move Case 1" })).toBeDisabled();
+    // Moving to another Project is the picks' (CTA-226): no row moves itself.
+    expect(screen.queryByRole("button", { name: "Move Case 1" })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Rename Case 1" }));
     expect(onCaseAction).toHaveBeenCalledWith("rename", rows[0].record);
   });
