@@ -69,9 +69,13 @@ Gallery: `/dev/design/dialogs` — every variation open in its own frame
   new line; Enter mid-composition (an IME) and Shift + Enter do not. A
   `submitDisabled` or `busy` form submits by no route.
 - **Props** — `open`, `onClose`, `onSubmit`, `title`, `children` (the fields),
-  `submitLabel`, `cancelLabel`, `submitDisabled?`, `busy?`, `width?`,
-  `testId`, `dialogProps?`. Ids: `-form`, `-cancel`, `-submit`.
-- **Variations** — one-line (Enter), multiline at `sm` (Ctrl / ⌘ + Enter), busy.
+  `submitLabel`, `cancelLabel`, `submitDisabled?`, `busy?`, `submitNote?`
+  (CTA-217: words beside the buttons, read with Save — why it is off, or a
+  refusal; absent, the actions row is the buttons alone), `width?`,
+  `testId`, `dialogProps?`. Ids: `-form`, `-cancel`, `-submit`,
+  `-submit-note`.
+- **Variations** — one-line (Enter), multiline at `sm` (Ctrl / ⌘ + Enter), busy,
+  a note beside Save.
 - **Replaces** — `FolderNameDialog`, `RepertoireFolderNameDialog`,
   `SaveAnalysisDialog`'s name half (Enter) and `CommentDialog` (Ctrl / ⌘ +
   Enter) — [Shared.md → Dialog](../Shared.md#dialog), "Enter to submit".
