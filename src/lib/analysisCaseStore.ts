@@ -154,21 +154,36 @@ export const renameAnalysisCase = (
   });
 };
 
-/** Move a Case to another Project — last in its order, the gap it leaves closed. The same Project, or an unknown Case, is a no-op. */
-export const moveAnalysisCase = (
-  id: string,
+/**
+ * **Move Cases to another Project** (CTA-226 — the Project view's picks), in
+ * one write: last in its order, in the order they had where they were, the
+ * gaps they leave closed. Unknown ids, and Cases in that Project already, are
+ * skipped; none left is a no-op. Their ids stay, so their links, jobs and
+ * everything else keyed by them are untouched. No limit asked (CTA-225).
+ */
+export const moveAnalysisCases = (
+  ids: readonly string[],
   projectId: string,
   now: Date = new Date(),
-): Promise<AnalysisCaseProblem | undefined> =>
-  write((current) => {
-    const existing = current.find((record) => record.id === id);
-    if (existing === undefined || existing.projectId === projectId) return current;
-    const [moved] = appendedCases(current, [{ ...existing, projectId, updatedAt: now.toISOString() }]);
+): Promise<AnalysisCaseProblem | undefined> => {
+  const wanted = new Set(ids);
+  return write((current) => {
+    const leaving = current.filter((record) => wanted.has(record.id) && record.projectId !== projectId).sort(byCaseOrder);
+    if (leaving.length === 0) return current;
+    const updatedAt = now.toISOString();
+    const moved = new Map(
+      appendedCases(current, leaving.map((record) => ({ ...record, projectId, updatedAt }))).map((record) => [record.id, record]),
+    );
     return compactedCaseOrders(
-      current.map((record) => (record.id === id ? moved : record)),
-      [existing.projectId],
+      current.map((record) => moved.get(record.id) ?? record),
+      leaving.map((record) => record.projectId),
     );
   });
+};
+
+/** Move a Case to another Project — {@link moveAnalysisCases} of one. The same Project, or an unknown Case, is a no-op. */
+export const moveAnalysisCase = (id: string, projectId: string, now: Date = new Date()): Promise<AnalysisCaseProblem | undefined> =>
+  moveAnalysisCases([id], projectId, now);
 
 /**
  * **Duplicate a Case** into a Project (its own or another) under `name`, and

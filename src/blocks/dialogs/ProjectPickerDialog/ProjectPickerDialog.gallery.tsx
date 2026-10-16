@@ -1,27 +1,25 @@
 import DialogFrame from "../../../design-system/gallery/DialogFrame";
 import type { GalleryModule } from "../../../design-system/gallery/types";
-import type { AnalysisProject } from "../../../lib/analysisProjects";
 import type { BlockFamilyId } from "../../families";
-import { HEBREW_PROJECTS, PROJECTS } from "./fixtures";
-import ProjectPickerDialog from "./ProjectPickerDialog";
+import { HEBREW_PROJECTS, MANY_PROJECTS, PROJECTS } from "./fixtures";
+import ProjectPickerDialog, { type ProjectPickerDialogProps } from "./ProjectPickerDialog";
 
 const noop = () => {};
 
-const framed = (projects: readonly AnalysisProject[], duplicate: boolean, testId: string) => (
-  <DialogFrame height={duplicate ? 460 : 380}>
+const framed = (props: Partial<ProjectPickerDialogProps> & Pick<ProjectPickerDialogProps, "projects">, testId: string) => (
+  <DialogFrame height={720}>
     {(dialogProps) => (
       <ProjectPickerDialog
         open
-        title={duplicate ? "Duplicate case" : "Move case to another project"}
-        submitLabel={duplicate ? "Duplicate" : "Move"}
-        projects={projects}
-        current={projects[0].id}
-        excludeCurrent={!duplicate}
-        initialName={duplicate ? "Lucena position (copy)" : undefined}
+        title="Move 3 cases to another project"
+        submitLabel="Move"
+        current={props.projects[0].id}
+        excludeCurrent
         onSubmit={noop}
         onClose={noop}
         testId={testId}
         dialogProps={dialogProps}
+        {...props}
       />
     )}
   </DialogFrame>
@@ -31,29 +29,52 @@ const gallery: GalleryModule<BlockFamilyId> = {
   section: "dialogs",
   title: "ProjectPickerDialog",
   demos: [
-    { name: "Move — the Project it is in left out", render: () => framed(PROJECTS, false, "gallery-project-picker-move") },
-    { name: "Duplicate — a name, its own Project chosen first", render: () => framed(PROJECTS, true, "gallery-project-picker-copy") },
-    { name: "Hebrew names (switch to RTL)", render: () => framed(HEBREW_PROJECTS, true, "gallery-project-picker-he") },
+    { name: "Move the picked Cases — the Project they are in left out (CTA-226)", render: () => framed({ projects: PROJECTS }, "gallery-project-picker-move") },
+    {
+      name: "1,200 Projects in nested folders — find by words, sort, page",
+      render: () => framed({ projects: MANY_PROJECTS }, "gallery-project-picker-many"),
+    },
+    {
+      name: "Duplicate — a name, its own Project chosen first, on its page",
+      render: () =>
+        framed(
+          {
+            projects: MANY_PROJECTS,
+            title: "Duplicate case",
+            submitLabel: "Duplicate",
+            current: "p0777",
+            excludeCurrent: false,
+            initialName: "Lucena position (copy)",
+          },
+          "gallery-project-picker-copy",
+        ),
+    },
     {
       name: "A game handed to Analysis — a new Project offered first (CTA-192)",
-      render: () => (
-        <DialogFrame height={460}>
-          {(dialogProps) => (
-            <ProjectPickerDialog
-              open
-              title="Open in Analysis"
-              submitLabel="Open"
-              projects={PROJECTS}
-              current=""
-              newProject={{ initialName: "Club games — 2 games", onSubmit: noop }}
-              onSubmit={noop}
-              onClose={noop}
-              testId="gallery-project-picker-send"
-              dialogProps={dialogProps}
-            />
-          )}
-        </DialogFrame>
-      ),
+      render: () =>
+        framed(
+          {
+            projects: PROJECTS,
+            title: "Open in Analysis",
+            submitLabel: "Open",
+            current: "",
+            excludeCurrent: false,
+            newProject: { initialName: "Club games — 2 games", onSubmit: noop },
+          },
+          "gallery-project-picker-send",
+        ),
+    },
+    {
+      name: "A refused write — said under the table, busy off",
+      render: () => framed({ projects: PROJECTS, problem: "That could not be saved — the browser refused it." }, "gallery-project-picker-problem"),
+    },
+    {
+      name: "Hebrew names (switch to RTL)",
+      render: () =>
+        framed(
+          { projects: HEBREW_PROJECTS, title: "Duplicate case", submitLabel: "Duplicate", excludeCurrent: false, initialName: "סיום (עותק)" },
+          "gallery-project-picker-he",
+        ),
     },
   ],
 };

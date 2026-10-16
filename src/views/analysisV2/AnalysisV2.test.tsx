@@ -660,6 +660,83 @@ describe("a Project's Cases (CTA-186)", () => {
     expect(analysisCasesSnapshot()).toEqual([]);
   });
 
+  it("moves the picked Cases together into another Project — last there, in their order; the gap closed; the move said (CTA-226)", async () => {
+    const folder = (await createProjectFolder("Openings", null))!;
+    const project = (await createAnalysisProject("Club", null))!;
+    const other = (await createAnalysisProject("Najdorf", folder.id))!;
+    await addAnalysisCases([gameCase(project.id, "c1"), gameCase(project.id, "c2"), gameCase(project.id, "c3"), gameCase(project.id, "c4")]);
+    await addAnalysisCases([gameCase(other.id, "o1")]);
+    const user = userEvent.setup();
+    const { baseElement } = mount(`/analysis/projects/${project.id}`);
+    await screen.findByRole("table", { name: "Cases" });
+    const movePicked = screen.getByRole("button", { name: "Move the picked cases to another project" });
+    expect(movePicked).toBeDisabled();
+    // No row moves itself (CTA-226): the picks do.
+    expect(screen.queryByTestId("analysis-v2-cases-move-c1")).toBeNull();
+
+    // Picked out of order, they move in the Project's.
+    await user.click(within(screen.getByTestId("analysis-v2-cases-row-c3")).getByRole("checkbox"));
+    await user.click(within(screen.getByTestId("analysis-v2-cases-row-c1")).getByRole("checkbox"));
+    await user.click(movePicked);
+    const dialog = screen.getByRole("dialog", { name: "Move 2 cases to another project" });
+    // The Project they are in is not offered; the other with its folder and its count.
+    expect(within(dialog).queryByRole("radio", { name: "Choose Club" })).toBeNull();
+    const row = within(dialog).getByTestId(`analysis-v2-cases-move-dialog-projects-${other.id}`);
+    expect(row).toHaveTextContent("Openings");
+    expect(row).toHaveTextContent("1");
+    await user.click(row);
+    expect(within(dialog).getByTestId("analysis-v2-cases-move-dialog-into")).toHaveTextContent("Into: Openings / Najdorf");
+    await expectNoAxeViolations(baseElement);
+    await user.click(within(dialog).getByRole("button", { name: "Move" }));
+
+    expect(await screen.findByTestId("analysis-v2-cases-moved-notice")).toHaveTextContent("2 cases moved to Najdorf.");
+    expect(screen.getByTestId("analysis-v2-cases-moved-open")).toHaveAttribute("href", `/analysis/projects/${other.id}`);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    const orders = (projectId: string) =>
+      analysisCasesSnapshot()!
+        .filter((record) => record.projectId === projectId)
+        .sort((a, b) => a.order - b.order)
+        .map((record) => `${record.id}:${record.order}`);
+    expect(orders(other.id)).toEqual(["o1:1", "c1:2", "c3:3"]);
+    expect(orders(project.id)).toEqual(["c2:1", "c4:2"]);
+    // The picks are cleared, the rows gone from here.
+    expect(screen.queryByTestId("analysis-v2-cases-row-c1")).toBeNull();
+    expect(screen.queryByTestId("analysis-v2-cases-selected-count")).toBeNull();
+    expect(screen.getByRole("button", { name: "Move the picked cases to another project" })).toBeDisabled();
+  });
+
+  it("keeps the picks and says so in the dialog when the move is refused (CTA-226)", async () => {
+    const project = (await createAnalysisProject("Club", null))!;
+    await createAnalysisProject("Other", null);
+    await addAnalysisCases([gameCase(project.id, "c1")]);
+    const user = userEvent.setup();
+    mount(`/analysis/projects/${project.id}`);
+    await user.click(within(await screen.findByTestId("analysis-v2-cases-row-c1")).getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: "Move the picked cases to another project" }));
+    const dialog = screen.getByRole("dialog", { name: "Move 1 case to another project" });
+    await user.click(within(dialog).getByRole("radio", { name: "Choose Other" }));
+    const put = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(() => {
+      throw new DOMException("Quota", "QuotaExceededError");
+    });
+    try {
+      await user.click(within(dialog).getByRole("button", { name: "Move" }));
+      expect(await within(dialog).findByTestId("analysis-v2-cases-move-dialog-problem")).toHaveTextContent("the browser refused it");
+    } finally {
+      put.mockRestore();
+    }
+    expect(analysisCasesSnapshot()![0].projectId).toBe(project.id);
+    expect(screen.getByTestId("analysis-v2-cases-selected-count")).toHaveTextContent("1 selected");
+  });
+
+  it("offers no move while the reader has no other Project (CTA-226)", async () => {
+    const project = (await createAnalysisProject("Club", null))!;
+    await addAnalysisCases([gameCase(project.id, "c1")]);
+    const user = userEvent.setup();
+    mount(`/analysis/projects/${project.id}`);
+    await user.click(within(await screen.findByTestId("analysis-v2-cases-row-c1")).getByRole("checkbox"));
+    expect(screen.getByRole("button", { name: "Move the picked cases to another project" })).toBeDisabled();
+  });
+
   it("makes a Game Case of a pasted PGN and opens it", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     const user = userEvent.setup();
@@ -739,7 +816,7 @@ describe("a Project's Cases (CTA-186)", () => {
     }, 60_000);
   });
 
-  it("renames, moves and duplicates a Case — and no row deletes itself (CTA-203)", async () => {
+  it("renames and duplicates a Case — and no row moves or deletes itself (CTA-203, CTA-226)", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     const other = (await createAnalysisProject("Other", null))!;
     await addAnalysisCases([gameCase(project.id)]);
@@ -751,18 +828,20 @@ describe("a Project's Cases (CTA-186)", () => {
     await user.type(screen.getByRole("textbox", { name: "Name" }), "Brilliancy{Enter}");
     expect(await screen.findByRole("link", { name: "Open Brilliancy" })).toBeInTheDocument();
 
+    // Into its own Project, chosen first.
     await user.click(screen.getByRole("button", { name: "Duplicate Brilliancy" }));
+    expect(screen.getByRole("radio", { name: "Choose Club" })).toBeChecked();
     await user.click(screen.getByRole("button", { name: "Duplicate" }));
     expect(await screen.findByRole("link", { name: "Open Brilliancy (copy)" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Move Brilliancy (copy)" }));
-    await user.click(within(screen.getByRole("list", { name: "Project" })).getByRole("button", { name: "Other" }));
-    await user.click(screen.getByRole("button", { name: "Move" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(screen.queryByRole("link", { name: "Open Brilliancy (copy)" })).toBeNull();
-    expect(analysisCasesSnapshot()!.find((record) => record.name === "Brilliancy (copy)")!.projectId).toBe(other.id);
+    // Or into another, picked in the table.
+    await user.click(screen.getByRole("button", { name: "Duplicate Brilliancy" }));
+    await user.click(screen.getByRole("radio", { name: "Choose Other" }));
+    await user.click(screen.getByRole("button", { name: "Duplicate" }));
+    await waitFor(() => expect(analysisCasesSnapshot()!.filter((record) => record.projectId === other.id)).toHaveLength(1));
 
-    // Deleting is the picks' alone.
+    // Moving and deleting are the picks' alone.
+    expect(screen.queryByRole("button", { name: "Move Brilliancy" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete Brilliancy" })).toBeNull();
     expect(screen.queryByTestId("analysis-v2-case-delete")).toBeNull();
   });

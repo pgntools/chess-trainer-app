@@ -4,7 +4,6 @@ import Button from "@mui/material/Button";
 import ArrowDownwardRoundedIcon from "@mui/icons-material/ArrowDownwardRounded";
 import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
-import DriveFileMoveRoundedIcon from "@mui/icons-material/DriveFileMoveRounded";
 import DriveFileRenameOutlineRoundedIcon from "@mui/icons-material/DriveFileRenameOutlineRounded";
 import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
 import SportsEsportsOutlinedIcon from "@mui/icons-material/SportsEsportsOutlined";
@@ -29,10 +28,11 @@ import {
 
 /**
  * What a Case's row can do: move it in the Project's order — one place up or
- * down, to the top or the bottom (CTA-203) — rename it, move it to another
- * Project, duplicate it. Deleting is the picks' (CTA-203 took the row's away).
+ * down, to the top or the bottom (CTA-203) — rename it, duplicate it.
+ * Moving to another Project and deleting are the picks' (CTA-226 and CTA-203
+ * took the row's away).
  */
-export type CaseAction = "up" | "down" | "top" | "bottom" | "rename" | "move" | "duplicate";
+export type CaseAction = "up" | "down" | "top" | "bottom" | "rename" | "duplicate";
 
 /** The actions that move a Case in the Project's order. */
 const REORDERS: ReadonlySet<CaseAction> = new Set(["up", "down", "top", "bottom"]);
@@ -54,8 +54,6 @@ export type CasesTableProps = {
   /** Where a Case's Name goes — its board. */
   caseLink: (row: CaseRow) => LinkTarget;
   onCaseAction: (action: CaseAction, record: AnalysisCase) => void;
-  /** Moving a Case needs another Project to go to — off while there is none. */
-  canMove?: boolean;
   /** The picked Cases' ids — a box per row, select-all in the header over every row the filter leaves. */
   picked: ReadonlySet<string>;
   onPickedChange: (picked: Set<string>) => void;
@@ -82,7 +80,6 @@ const ACTIONS: readonly { action: CaseAction; icon: typeof ContentCopyRoundedIco
   { action: "top", icon: VerticalAlignTopRoundedIcon },
   { action: "bottom", icon: VerticalAlignBottomRoundedIcon },
   { action: "rename", icon: DriveFileRenameOutlineRoundedIcon },
-  { action: "move", icon: DriveFileMoveRoundedIcon },
   { action: "duplicate", icon: ContentCopyRoundedIcon },
 ];
 
@@ -117,9 +114,9 @@ function OneLine({ value }: { value: string }) {
  * last either way, ties newest first), the rows paged; each row's actions
  * move it up, down, to the top or the bottom of the order (only under `#`
  * ascending with no words — the first Case never up, the last never down),
- * rename, move to another Project and duplicate; a box per row and
- * select-all in the header (over the rows the words box leaves) for the
- * screen's bulk delete — the only delete; the words box in its filters slot,
+ * rename and duplicate; a box per row and select-all in the header (over
+ * the rows the words box leaves) for the screen's bulk move and delete — the
+ * only ones (CTA-226); the words box in its filters slot,
  * and a no-match row with its Clear. Presentational: the rows, the sort, the
  * page and the callbacks are props; its words are the app's (`analysisV2.*`).
  */
@@ -130,7 +127,6 @@ function CasesTable({
   paging,
   caseLink,
   onCaseAction,
-  canMove = true,
   picked,
   onPickedChange,
   filters,
@@ -225,7 +221,7 @@ function CasesTable({
                 key={action}
                 label={reorder && reorderOff !== undefined ? t(`analysisV2.case.reorderOff${reorderOff}`, { action: label }) : label}
                 onClick={() => onCaseAction(action, row.record)}
-                disabled={reorder ? reorderOff !== undefined || atEnd : action === "move" && !canMove}
+                disabled={reorder && (reorderOff !== undefined || atEnd)}
                 testId={`${testId}-${action}-${row.id}`}
               >
                 <Icon fontSize="small" />

@@ -1,9 +1,10 @@
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 import { analysisCasesSnapshot, subscribeAnalysisCases } from "../../lib/analysisCaseStore";
 import { projectFoldersSnapshot, subscribeProjectFolders } from "../../lib/analysisProjectFolderStore";
 import { caseLinksSnapshot, subscribeCaseLinks } from "../../lib/analysisCaseLinkStore";
 import { analysisProjectsSnapshot, subscribeAnalysisProjects } from "../../lib/analysisProjectStore";
+import { projectPickerRowsOf, type ProjectPickerRow } from "../../lib/analysisProjectPickerRows";
 import type { AnalysisCase, AnalysisProject, CaseLink, ProjectFolder } from "../../lib/analysisProjects";
 
 /**
@@ -27,3 +28,19 @@ export const useAnalysisCases = (): readonly AnalysisCase[] | undefined =>
 export const useCaseLinks = (): readonly CaseLink[] | undefined =>
   useSyncExternalStore(subscribeCaseLinks, caseLinksSnapshot, caseLinksSnapshot);
 
+
+const unsubscribed = () => () => {};
+
+/**
+ * **The Project picker's rows** (CTA-226, `ProjectPickerDialog`): every
+ * Project with its folder path and its count of Cases. The folders and the
+ * Cases are subscribed to only while `active` (the picker open) — a screen
+ * that hands games to Analysis does not read every Case to sit idle — and
+ * read as kept otherwise, so a closing picker keeps its rows.
+ */
+export const useProjectPickerRows = (active: boolean): readonly ProjectPickerRow[] => {
+  const projects = useAnalysisProjects();
+  const folders = useSyncExternalStore(active ? subscribeProjectFolders : unsubscribed, projectFoldersSnapshot, projectFoldersSnapshot);
+  const cases = useSyncExternalStore(active ? subscribeAnalysisCases : unsubscribed, analysisCasesSnapshot, analysisCasesSnapshot);
+  return useMemo(() => projectPickerRowsOf(projects ?? [], folders ?? [], cases ?? []), [projects, folders, cases]);
+};
