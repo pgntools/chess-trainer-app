@@ -116,9 +116,11 @@ type CaseBoardProps = {
  * **Every change autosaves** (`useAutosave` → `saveCaseState`): the tree
  * (side lines, comments, NAGs, `[%eval]`s), the move on screen, the
  * orientation and how the board draws, written in place as the reader works — a state the record
- * already holds writes nothing — so reopening the Case finds it where it was
- * left. There is no Save button and no saved / saving status — the header
- * speaks only when the browser refuses a write.
+ * already holds writes nothing, and a step alone is written quietly
+ * (`saveCaseState`, CTA-222: this tab's screens are not redrawn for it) — so
+ * reopening the Case finds it where it was left. There is no Save button and
+ * no saved / saving status — the header speaks only when the browser refuses
+ * a write.
  */
 export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = false }: CaseBoardProps) {
   const { t } = useTranslation();
@@ -190,9 +192,9 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
 
   /*
     The autosave: what the board holds now, as the record keeps it. `core.pgn`
-    is memoised on the tree, so a step writes the path alone; the store
-    compares before it writes, so a mount, or a state the record already
-    holds, writes nothing.
+    is memoised on the tree, so a step writes the path alone — quietly, the
+    route not redrawn for it (CTA-222); the store compares before it writes,
+    so a mount, or a state the record already holds, writes nothing.
   */
   const state = useMemo(
     (): CaseState => ({ pgn: core.pgn, path: sanPathTo(core.tree, core.nodeId), orientation: core.orientation, display, merges: merged }),
@@ -529,6 +531,37 @@ function CaseWorkspace() {
   const walk = shown.some((row) => row.id === record.id) ? shown : ordered;
   const at = walk.findIndex((row) => row.id === record.id);
 
+  /*
+    The Project's Cases, made here rather than inside `leftPanel`: nothing in
+    the list moves with the board, so `CaseBoard`, calling `leftPanel` on every
+    step, hands back this same element and React leaves the list — a hundred
+    rows a page — alone (CTA-222).
+  */
+  const siblings = (
+    <CaseSiblings
+      projectName={projectName}
+      rows={shown}
+      currentId={record.id}
+      linkOf={(sibling) => linkTo(sibling.id, true)}
+      closeLink={{ component: RouterLink, to: projectPath(project.id, context) }}
+      previous={at > 0 ? linkTo(walk[at - 1].id) : undefined}
+      next={at >= 0 && at < walk.length - 1 ? linkTo(walk[at + 1].id) : undefined}
+      text={text}
+      onTextChange={(next) =>
+        setSearchParams(
+          (params) => {
+            const updated = new URLSearchParams(params);
+            if (next === "") updated.delete("q");
+            else updated.set("q", next);
+            return updated;
+          },
+          { replace: true },
+        )
+      }
+      testId="analysis-case-siblings"
+    />
+  );
+
   return (
     <>
       <CaseBoard
@@ -605,28 +638,7 @@ function CaseWorkspace() {
                 testId="analysis-case-details"
               />
             ) : (
-              <CaseSiblings
-                projectName={projectName}
-                rows={shown}
-                currentId={record.id}
-                linkOf={(sibling) => linkTo(sibling.id, true)}
-                closeLink={{ component: RouterLink, to: projectPath(project.id, context) }}
-                previous={at > 0 ? linkTo(walk[at - 1].id) : undefined}
-                next={at >= 0 && at < walk.length - 1 ? linkTo(walk[at + 1].id) : undefined}
-                text={text}
-                onTextChange={(next) =>
-                  setSearchParams(
-                    (params) => {
-                      const updated = new URLSearchParams(params);
-                      if (next === "") updated.delete("q");
-                      else updated.set("q", next);
-                      return updated;
-                    },
-                    { replace: true },
-                  )
-                }
-                testId="analysis-case-siblings"
-              />
+              siblings
             )}
           </BoardLeftPanel>
         )}

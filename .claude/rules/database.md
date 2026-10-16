@@ -213,6 +213,19 @@ why (the Cases' `lastAnalysisCaseWriteError`, New project's message).
 emit — which is how every store keeps its idempotency (an identical re-save,
 an unknown id, a no-op rename).
 
+A write may be **quiet** (CTA-222, `write(update, { quiet })` — `quiet` asked
+once the update has run, so it can decide from the rows it found): committed,
+kept and announced to other tabs like any other, but **this tab's
+subscribers are not called** — for a write the screen on view already shows.
+The kept list is the new one all the same, so the next render that reads the
+snapshot reads it, and the next write that is not quiet tells everyone. The
+one user is the Cases' autosave of a step (`saveCaseState`, the move on screen
+alone — [`analysis-v2.md`](./analysis-v2.md) §3.3): written at once, because a
+write put off to a later moment does not survive a reload — **IndexedDB
+takes no write made as the page unloads** (`pagehide`, `visibilitychange`:
+the document is torn down before the transaction runs; measured in Chrome,
+CTA-222).
+
 A store may pass a **`repair`** (CTA-203): the whole list mended after every
 read, for what one row's normaliser cannot do because it needs the others —
 the Cases' `order`, given to a record from before by its Project's
@@ -230,8 +243,9 @@ gone are `delete`d.
 
 ### 3.4 Other tabs
 
-Each write is announced on the store's `BroadcastChannel`; a tab that hears
-one re-reads the store (queued behind its own writes) and re-renders.
+Each write — a quiet one too — is announced on the store's `BroadcastChannel`;
+a tab that hears one re-reads the store (queued behind its own writes) and
+re-renders.
 
 ### 3.5 `settled()` and `reset()`
 

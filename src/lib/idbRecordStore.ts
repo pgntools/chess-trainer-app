@@ -35,6 +35,15 @@ import { committed, done } from "./idb";
  *
  * Each write is announced on a `BroadcastChannel`, and a tab that hears one
  * reads the store again (queued behind its own writes).
+ *
+ * ### A quiet write (CTA-222)
+ *
+ * A write may be **quiet**: committed, kept and announced to other tabs like
+ * any other, but this tab's subscribers are not called — so a write the screen
+ * on view already shows (the Case board's move on screen, on every arrow
+ * press) costs it no re-render. The kept list is the new one all the same, so
+ * the next render that reads the snapshot for any reason reads it, and the
+ * next write that is not quiet tells every subscriber.
  */
 
 /** What went wrong with a write. */
@@ -54,7 +63,10 @@ export interface IdbRecordStore<Row extends { id: string }> {
    * Change the list: `update` gets the current rows and answers the next ones
    * (the same array for "nothing to do"). Queued behind every earlier write.
    */
-  write: (update: (rows: readonly Row[]) => readonly Row[]) => Promise<IdbRecordStoreProblem | undefined>;
+  write: (
+    update: (rows: readonly Row[]) => readonly Row[],
+    options?: IdbRecordStoreWriteOptions,
+  ) => Promise<IdbRecordStoreProblem | undefined>;
   /** Resolves once every write issued so far has landed (or been refused). Never rejects. */
   settled: () => Promise<void>;
   /**
@@ -66,6 +78,16 @@ export interface IdbRecordStore<Row extends { id: string }> {
   /** **For tests**: forget everything read — the database itself is the caller's to delete. */
   reset: () => void;
 }
+
+/** How a write tells of itself — absent, as every write always has. */
+export type IdbRecordStoreWriteOptions = {
+  /**
+   * Whether this write is **quiet** (CTA-222): its subscribers in this tab are
+   * not called, other tabs are still told. Asked once the update has run, so
+   * the update can decide it from the rows it found. Absent: not quiet.
+   */
+  quiet?: () => boolean;
+};
 
 export type IdbRecordStoreOptions<Row> = {
   /** The database the store lives in — opened once, and shared by its stores. */
@@ -224,6 +246,7 @@ export const idbRecordStore = <Row extends { id: string }>({
 
   const write = (
     update: (rows: readonly Row[]) => readonly Row[],
+    { quiet }: IdbRecordStoreWriteOptions = {},
   ): Promise<IdbRecordStoreProblem | undefined> => {
     const run = queue.then(async (): Promise<IdbRecordStoreProblem | undefined> => {
       const current = await load();
@@ -249,7 +272,7 @@ export const idbRecordStore = <Row extends { id: string }>({
       }
       seqs = nextSeqs;
       rows = next;
-      emit();
+      if (quiet?.() !== true) emit();
       announce();
       return undefined;
     });

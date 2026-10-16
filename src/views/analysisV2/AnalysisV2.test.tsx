@@ -841,6 +841,30 @@ describe("a Case's board (CTA-186)", () => {
     expect(boardOptions().boardOrientation).toBe("black");
   });
 
+  it("keeps every step of the arrow keys at once, as quiet writes — and a reload finds the last (CTA-222)", async () => {
+    const project = (await createAnalysisProject("Club", null))!;
+    await addAnalysisCases([gameCase(project.id)]);
+    const user = userEvent.setup();
+    const view = mount(`/analysis/projects/${project.id}/cases/cgame?view=list`);
+    expect(await screen.findByTestId("board")).toHaveAttribute("data-position", START);
+
+    await user.keyboard("{ArrowRight}{ArrowRight}{ArrowRight}");
+    await waitFor(() => expect(analysisCasesSnapshot()![0].path).toEqual(["e4", "e5", "Nf3"]));
+    await user.keyboard("{ArrowLeft}");
+    await waitFor(() => expect(analysisCasesSnapshot()![0].path).toEqual(["e4", "e5"]));
+    // The list beside the board is the one it was.
+    expect(within(screen.getByTestId("analysis-case-siblings")).getByText(/Carlsen – Caruana/)).toBeInTheDocument();
+
+    view.unmount();
+    await reload();
+    expect(analysisCasesSnapshot()![0].path).toEqual(["e4", "e5"]);
+    mount(`/analysis/projects/${project.id}/cases/cgame`);
+    expect(await screen.findByTestId("board")).toHaveAttribute(
+      "data-position",
+      "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+    );
+  });
+
   it("draws as its Display and Settings tabs say — arrows, move marks, lines, eval bar, side — and keeps it with the Case", async () => {
     const project = (await createAnalysisProject("Club", null))!;
     await addAnalysisCases([gameCase(project.id)]);

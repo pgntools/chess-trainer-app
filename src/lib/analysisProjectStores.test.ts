@@ -14,6 +14,7 @@ import {
   resetAnalysisCaseStore,
   saveCaseState,
   settledAnalysisCases,
+  subscribeAnalysisCases,
 } from "./analysisCaseStore";
 import {
   addProjectFolders,
@@ -59,10 +60,11 @@ import {
   type AnalysisCase,
 } from "./analysisProjects";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "./computerAnalysis";
-import { emptyTree } from "./gameTree";
+import { emptyTree, mainline } from "./gameTree";
 import { committed, done } from "./idb";
 import { COMPUTER_ANALYSIS_KIND } from "./jobs/kinds/computerAnalysis/core";
 import { jobRuntime, startJobRuntime } from "./jobs/runtime";
+import { parsePgnTree } from "./pgn";
 
 const FEN = "8/8/4k3/8/8/4K3/4P3/8 w - - 0 1";
 
@@ -263,6 +265,39 @@ describe("Analysis V2's stores (CTA-186)", () => {
       const { cases } = await reload();
       expect(cases.map((record) => record.id)).toEqual(["c1", "c2"]);
       expect(cases[0].orientation).toBe("black");
+    });
+
+    it("write a step — the move on screen alone — quietly: kept, read back, other tabs told, this tab's subscribers left alone (CTA-222)", async () => {
+      const tree = parsePgnTree("1. e4 e5 2. Nf3");
+      const [e4, e5] = mainline(tree);
+      await addAnalysisCases([aCase("c1", "p1")]);
+      await saveCaseState("c1", caseStateOf(tree, e4.id, "white"));
+      const heard = vi.fn();
+      const unsubscribe = subscribeAnalysisCases(heard);
+      const announce = vi.spyOn(BroadcastChannel.prototype, "postMessage");
+      try {
+        // A step: written and kept, and other tabs told — but no subscriber here is called.
+        expect(await saveCaseState("c1", caseStateOf(tree, e5.id, "white"))).toBeUndefined();
+        expect(analysisCasesSnapshot()![0].path).toEqual(["e4", "e5"]);
+        expect(announce).toHaveBeenCalledTimes(1);
+        expect(heard).not.toHaveBeenCalled();
+
+        // Anything else — here the side the board faces — tells them, as ever.
+        await saveCaseState("c1", caseStateOf(tree, e5.id, "black"));
+        expect(heard).toHaveBeenCalledTimes(1);
+        await saveCaseState("c1", caseStateOf(parsePgnTree("1. d4"), null, "black"));
+        expect(heard).toHaveBeenCalledTimes(2);
+        await saveCaseState("c1", caseStateOf(tree, e4.id, "black"));
+        expect(heard).toHaveBeenCalledTimes(3);
+        await saveCaseState("c1", caseStateOf(tree, null, "black"));
+        expect(heard).toHaveBeenCalledTimes(3);
+      } finally {
+        unsubscribe();
+        announce.mockRestore();
+      }
+
+      const { cases } = await reload();
+      expect(cases[0]).toMatchObject({ path: [], orientation: "black", pgn: caseStateOf(tree, null, "black").pgn });
     });
 
     it("are deleted by id", async () => {
