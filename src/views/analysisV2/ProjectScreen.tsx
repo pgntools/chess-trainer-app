@@ -45,6 +45,7 @@ import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import { useShellCompact } from "../main/shellCompact";
 import { browserPath, caseListContextOf, casePath } from "./paths";
 import { useAnalysisCases, useAnalysisProjects, useProjectFolders } from "./useAnalysisProjects";
+import { useProjectCaseLimit } from "./useProjectCaseLimit";
 
 /** The dialog open over the Cases, and the Case it is about. */
 type Dialog = { kind: "new" } | { kind: "rename" | "move" | "duplicate"; record: AnalysisCase };
@@ -98,6 +99,8 @@ const caseOfSpec = (spec: NewCaseSpec, projectId: string, now: Date): AnalysisCa
 function ProjectScreen() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  /** A batch that would take the Project past its limit of Cases asks first (CTA-225). */
+  const caseLimit = useProjectCaseLimit("analysis-v2-new-case-limit");
   useOwnPageHeading();
   const { projectId = "" } = useParams();
   const projects = useAnalysisProjects();
@@ -209,10 +212,8 @@ function ProjectScreen() {
     setDialog({ kind: action, record });
   };
 
-  const create = async (specs: NewCaseSpec[]) => {
+  const write = async (made: AnalysisCase[]) => {
     setBusy(true);
-    const now = new Date();
-    const made = specs.map((spec) => caseOfSpec(spec, project.id, now));
     const failed = await addAnalysisCases(made);
     setBusy(false);
     if (failed !== undefined) {
@@ -222,6 +223,24 @@ function ProjectScreen() {
     setCreateProblem(null);
     setDialog(null);
     if (made.length === 1) navigate(casePath(project.id, made[0].id));
+  };
+
+  /**
+   * New case's Create: the Cases made, then — past the Project's limit of
+   * Cases (CTA-225) — asked first: a Library collection of the same games
+   * instead (each Case's tree as PGN), the Cases anyway, or nothing.
+   */
+  const create = (specs: NewCaseSpec[]) => {
+    const now = new Date();
+    const made = specs.map((spec) => caseOfSpec(spec, project.id, now));
+    caseLimit.check({
+      existing: casesOf(cases, project.id).length,
+      count: made.length,
+      collectionName: projectName,
+      games: () => made.map((record) => record.pgn),
+      proceed: () => void write(made),
+      onCollection: () => setDialog(null),
+    });
   };
 
   const named = (record: AnalysisCase) => caseDisplayName(record, t);
@@ -370,10 +389,13 @@ function ProjectScreen() {
         />
       </BoardLeftPanel>
 
+      {/* Past the Project's limit of Cases (CTA-225), over New case. */}
+      {caseLimit.dialog}
+
       <NewCaseDialog
         open={dialog?.kind === "new"}
         onClose={() => setDialog(null)}
-        onCreate={(specs) => void create(specs)}
+        onCreate={create}
         busy={busy}
         problem={createProblem}
         testId="analysis-v2-new-case-dialog"

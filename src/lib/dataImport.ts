@@ -598,9 +598,8 @@ export type ImportCaps = {
   folders: number;
   /** The engine presets' library. */
   enginePresets: number;
-  /** Analysis V2's Projects, and their Cases across every Project (CTA-186). */
+  /** Analysis V2's Projects (CTA-186) — their Cases have no cap since CTA-225: an import takes any number. */
   analysisProjects: number;
-  analysisCases: number;
 };
 
 /** A folder path as a map key. `[]` — the top level — is `"[]"`. */
@@ -1041,7 +1040,6 @@ export const importWritesOf = (
     const removedCases = current.analysisCases
       .filter((entry) => gone.has(entry.projectId) || arriving.has(entry.id))
       .map((entry) => entry.id);
-    const totalCases = current.analysisCases.length - removedCases.length + addedCases.length;
     // The Cases held once it is written — a link of the zip's comes only where both its ends are.
     const removedSet = new Set(removedCases);
     const held = new Set([
@@ -1050,11 +1048,7 @@ export const importWritesOf = (
     ]);
     const refused =
       folderCapOf(current.projectFolders.length, created.length, caps.folders) ??
-      (total > caps.analysisProjects
-        ? { kind: "records" as const, max: caps.analysisProjects, total }
-        : totalCases > caps.analysisCases
-          ? { kind: "records" as const, max: caps.analysisCases, total: totalCases }
-          : undefined);
+      (total > caps.analysisProjects ? { kind: "records" as const, max: caps.analysisProjects, total } : undefined);
     writes.analysisProjects = {
       writes: {
         folders: created.map((folder) => nestedFolder(folder, at)),

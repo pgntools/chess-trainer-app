@@ -1,4 +1,4 @@
-import { MAX_ANALYSIS_CASES, MAX_ANALYSIS_PROJECTS, MAX_PROJECT_FOLDERS } from "./analysisProjects";
+import { MAX_ANALYSIS_PROJECTS, MAX_PROJECT_FOLDERS } from "./analysisProjects";
 import { importAnalysisCases, loadAnalysisCases } from "./analysisCaseStore";
 import { importCaseLinks, loadCaseLinks } from "./analysisCaseLinkStore";
 import { addProjectFolders, loadProjectFolders } from "./analysisProjectFolderStore";
@@ -93,7 +93,6 @@ export const IMPORT_CAPS: ImportCaps = {
   folders: Math.min(MAX_REPERTOIRE_FOLDERS, MAX_LIBRARY_FOLDERS, MAX_PROJECT_FOLDERS),
   enginePresets: MAX_ENGINE_PRESETS,
   analysisProjects: MAX_ANALYSIS_PROJECTS,
-  analysisCases: MAX_ANALYSIS_CASES,
 };
 
 /** Why a category was not (wholly) written. */

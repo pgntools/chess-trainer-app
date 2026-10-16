@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 
 import { CollectionImportDialog, FolderMoveDialog, FolderNameDialog, NewProjectDialog } from "../../blocks/dialogs";
 import { ProjectsTable, caseDisplayName, type ProjectAction, type ProjectFolderAction } from "../../blocks/tables";
-import { ConfirmDialog, DeleteManyDialog, ProgressDialog, useCancellableJob } from "../../design-system/components/dialogs";
+import { DeleteManyDialog, ProgressDialog, useCancellableJob } from "../../design-system/components/dialogs";
 import { InlineAlert } from "../../design-system/components/feedback";
 import { SearchField } from "../../design-system/components/forms";
 import { TABLE_PAGE_SIZES, useTableUrlState } from "../../design-system/components/tables";
@@ -23,7 +23,7 @@ import {
   removeProjectFoldersDeep,
   renameProjectFolder,
 } from "../../lib/analysisProjectFolderStore";
-import { addAnalysisCases, lastAnalysisCaseWriteError, loadAnalysisCases, removeAnalysisCases } from "../../lib/analysisCaseStore";
+import { addAnalysisCases, lastAnalysisCaseWriteError, removeAnalysisCases } from "../../lib/analysisCaseStore";
 import {
   createAnalysisProject,
   duplicateAnalysisProject,
@@ -52,7 +52,6 @@ import {
 import {
   caseCountsOf,
   gameCaseOf,
-  MAX_ANALYSIS_CASES,
   type AnalysisCase,
   projectFolderPath,
   projectFolderSubtree,
@@ -66,6 +65,7 @@ import { newRecordId } from "../../lib/recordId";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 import { browserPath, casePath, projectPath } from "./paths";
 import { useAnalysisCases, useAnalysisProjects, useProjectFolders } from "./useAnalysisProjects";
+import { useProjectCaseLimit } from "./useProjectCaseLimit";
 
 /** Why a picked file brought no game in — an `analysisV2.newProject.problem.*` key's last part. */
 const FILE_PROBLEMS: Readonly<Record<string, string>> = {
@@ -121,8 +121,8 @@ function ProjectsBrowser() {
   /** Making a Project's Cases (CTA-208): the games read, then the Cases made — in slices, the progress shown — then written. */
   const job = useCancellableJob();
   const [stage, setStage] = useState<"parse" | "build">("parse");
-  /** A batch that would take the app past its cap of Cases, asked about before any work is done. */
-  const [overCap, setOverCap] = useState<{ name: string; games: readonly string[]; existing: number } | null>(null);
+  /** A file of games that would take the new Project past its limit of Cases, asked about before any work is done (CTA-225). */
+  const caseLimit = useProjectCaseLimit("analysis-v2-new-project-case-limit");
 
   const currentFolder = folderId === null ? null : folders?.find((folder) => folder.id === folderId);
   usePageTitle(currentFolder ? currentFolder.name || t("analysisV2.folder.untitled") : undefined);
@@ -320,12 +320,10 @@ function ProjectsBrowser() {
    * The games are read and their Cases made in slices, the progress shown
    * (`ProgressDialog`, Cancel on until the write), a game that will not parse
    * left out; then the Project and its Cases are written, all or nothing —
-   * Cases the store refuses take the Project back, and the problem is said
-   * exactly: the app's cap of Cases, with the numbers, or the browser's own
-   * words for its refusal. Then the Project opens. `pastCap`: the reader
-   * chose to go past the cap.
+   * Cases the store refuses take the Project back, and the browser's own
+   * words for its refusal are said. Then the Project opens.
    */
-  const makeProject = async (name: string, games: readonly string[], pastCap = false) => {
+  const makeProject = async (name: string, games: readonly string[]) => {
     setCreateProblem(null);
     const now = new Date();
     if (games.length === 0) {
@@ -359,19 +357,9 @@ function ProjectsBrowser() {
         const project = await createAnalysisProject(name, here, now);
         if (project === undefined) return { problem: projectProblem };
         const filed = made.map((record) => ({ ...record, projectId: project.id }));
-        const refused = filed.length === 0 ? undefined : await addAnalysisCases(filed, { pastCap });
+        const refused = filed.length === 0 ? undefined : await addAnalysisCases(filed);
         if (refused === undefined) return { projectId: project.id };
         await removeAnalysisProject(project.id);
-        if (refused === "too-many") {
-          const existing = (await loadAnalysisCases()).length;
-          return {
-            problem: t("analysisV2.newProject.problem.tooMany", {
-              count: number(filed.length),
-              existing: number(existing),
-              max: number(MAX_ANALYSIS_CASES),
-            }),
-          };
-        }
         return {
           problem: t("analysisV2.newProject.problem.storage", {
             detail: lastAnalysisCaseWriteError() ?? t("analysisV2.newProject.problem.noReason"),
@@ -394,15 +382,24 @@ function ProjectsBrowser() {
     navigate(projectPath(outcome.value.projectId));
   };
 
-  /** Before any work: a batch that would take the app past its cap of Cases asks first, with the numbers (CTA-208). */
-  const startProject = async (name: string, games: readonly string[]) => {
+  /**
+   * Before any work: games that would take the new Project past its limit of
+   * Cases ask first (CTA-225) — a Library collection of them instead (no
+   * Project made), the Project anyway, or nothing.
+   */
+  const startProject = (name: string, games: readonly string[]) => {
     setCreateProblem(null);
-    const existing = (await loadAnalysisCases()).length;
-    if (existing + games.length > MAX_ANALYSIS_CASES) {
-      setOverCap({ name, games, existing });
-      return;
-    }
-    await makeProject(name, games);
+    caseLimit.check({
+      existing: 0,
+      count: games.length,
+      collectionName: name,
+      games: () => games,
+      proceed: () => void makeProject(name, games),
+      onCollection: () => {
+        setChoosing(null);
+        setDialog(null);
+      },
+    });
   };
 
   /**
@@ -450,7 +447,7 @@ function ProjectsBrowser() {
     const read = await readProjectFile(file);
     if (read === undefined) return;
     if (read.games.length === 1) {
-      await startProject(name, read.games);
+      startProject(name, read.games);
       return;
     }
     setChoosing({ name, source: read.source });
@@ -640,7 +637,7 @@ function ProjectsBrowser() {
             const games = choosing.source.files.flatMap((file, index) =>
               (kept[index] ?? []).map((row) => file.games[row.number - 1]).filter((pgn): pgn is string => pgn !== undefined),
             );
-            void startProject(choosing.name, games);
+            startProject(choosing.name, games);
           }}
           testId="analysis-v2-choose-games"
         />
@@ -664,31 +661,8 @@ function ProjectsBrowser() {
         cancelDisabled={job.phase === "writing"}
         testId="analysis-v2-new-project-progress"
       />
-      {/* Past the app's cap of Cases: said with the numbers before any work, and the reader's to allow. */}
-      <ConfirmDialog
-        open={overCap !== null}
-        onClose={() => setOverCap(null)}
-        onConfirm={() => {
-          if (overCap === null) return;
-          setOverCap(null);
-          void makeProject(overCap.name, overCap.games, true);
-        }}
-        title={t("analysisV2.newProject.overCap.title")}
-        message={
-          overCap === null
-            ? undefined
-            : t("analysisV2.newProject.overCap.message", {
-                count: number(overCap.games.length),
-                existing: number(overCap.existing),
-                total: number(overCap.existing + overCap.games.length),
-                max: number(MAX_ANALYSIS_CASES),
-              })
-        }
-        confirmLabel={t("analysisV2.newProject.overCap.confirm")}
-        cancelLabel={t("analysisV2.cancel")}
-        width="sm"
-        testId="analysis-v2-new-project-over-cap"
-      />
+      {/* Past the new Project's limit of Cases (CTA-225): a Library collection suggested, before any work. */}
+      {caseLimit.dialog}
 
       {/* A Project renamed, or duplicated under a name. */}
       <FolderNameDialog

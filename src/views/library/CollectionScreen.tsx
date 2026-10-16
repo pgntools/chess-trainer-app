@@ -295,9 +295,10 @@ function CollectionTable({
         return pgn === undefined || unreadable.has(number) ? [] : [pgn];
       });
       const names = repertoireGameNamesOf(chunks);
-      const sent = chunks.flatMap((pgn, index): { tree: GameTree; name: string }[] => {
+      const sent = chunks.flatMap((pgn, index): { tree: GameTree; name: string; pgn: string }[] => {
         try {
-          return [{ tree: parsePgnTree(pgn), name: names[index] }];
+          // The game as stored travels too: past a Project's limit of Cases, a collection of them takes it as it is (CTA-225).
+          return [{ tree: parsePgnTree(pgn), name: names[index], pgn }];
         } catch {
           return [];
         }
@@ -307,6 +308,7 @@ function CollectionTable({
 
       sendTo.send({
         games: sent,
+        inLibrary: true,
         projectName: batchFolderNameOf(
           collection.name,
           { text, result, player, color, opening: openingName, event, from, to, line },

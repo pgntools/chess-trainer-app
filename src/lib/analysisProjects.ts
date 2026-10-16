@@ -74,8 +74,18 @@ export const MAX_PROJECT_NAME = 100;
 /** The stores' caps (CTA-186) — here, so the import plans against them without opening a store. */
 export const MAX_PROJECT_FOLDERS = 100;
 export const MAX_ANALYSIS_PROJECTS = 1_000;
-/** Across every Project. */
-export const MAX_ANALYSIS_CASES = 10_000;
+
+/**
+ * **A Project's soft limit of Cases** (CTA-225 — the app-wide cap of 10,000
+ * before it): past it a Project is slow to open and work in, so an
+ * interactive add that would take one past it asks first and suggests a
+ * Library collection. The store never refuses for it; nothing else asks.
+ */
+export const MAX_CASES_PER_PROJECT = 1_000;
+
+/** Whether `adding` Cases would take a Project holding `existing` past {@link MAX_CASES_PER_PROJECT}. */
+export const passesProjectCaseLimit = (existing: number, adding: number): boolean =>
+  existing + adding > MAX_CASES_PER_PROJECT;
 
 export type AnalysisProject = {
   id: string;

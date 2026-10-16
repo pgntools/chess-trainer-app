@@ -54,7 +54,8 @@ import { ANALYSIS_PROJECTS_DB_NAME, CASES_STORE, deleteAnalysisProjectsDb, openA
 import {
   casesInOrder,
   caseStateOf,
-  MAX_ANALYSIS_CASES,
+  MAX_CASES_PER_PROJECT,
+  passesProjectCaseLimit,
   positionCaseOfFen,
   caseLinksOf,
   type AnalysisCase,
@@ -306,17 +307,21 @@ describe("Analysis V2's stores (CTA-186)", () => {
       expect(analysisCasesSnapshot()!.map((record) => record.id)).toEqual(["c2"]);
     });
 
-    it("stop at the cap, all or nothing", async () => {
-      const many = Array.from({ length: MAX_ANALYSIS_CASES + 1 }, (_, index) => aCase(`c${index}`, "p1"));
-      expect(await addAnalysisCases(many)).toBe("too-many");
-      expect(await importAnalysisCases({ add: many, remove: [] })).toBe("too-many");
-      expect(await loadAnalysisCases()).toEqual([]);
+    it("take any number — no cap past 10,000, across Projects or in one (CTA-225)", async () => {
+      const many = Array.from({ length: 10_001 }, (_, index) => aCase(`c${index}`, "p1"));
+      expect(await addAnalysisCases(many)).toBeUndefined();
+      expect(await loadAnalysisCases()).toHaveLength(10_001);
+      const more = Array.from({ length: 10_001 }, (_, index) => aCase(`i${index}`, "p2"));
+      expect(await importAnalysisCases({ add: more, remove: [] })).toBeUndefined();
+      expect(await loadAnalysisCases()).toHaveLength(20_002);
     });
 
-    it("go past the cap only when the reader chose to (CTA-208)", async () => {
-      const many = Array.from({ length: MAX_ANALYSIS_CASES + 1 }, (_, index) => aCase(`c${index}`, "p1"));
-      expect(await addAnalysisCases(many, { pastCap: true })).toBeUndefined();
-      expect(await loadAnalysisCases()).toHaveLength(MAX_ANALYSIS_CASES + 1);
+    it("name a Project's soft limit of 1,000 Cases, which the store never applies (CTA-225)", () => {
+      expect(MAX_CASES_PER_PROJECT).toBe(1_000);
+      expect(passesProjectCaseLimit(0, 1_000)).toBe(false);
+      expect(passesProjectCaseLimit(999, 1)).toBe(false);
+      expect(passesProjectCaseLimit(999, 2)).toBe(true);
+      expect(passesProjectCaseLimit(0, 1_001)).toBe(true);
     });
 
     it("say a refused write, and keep the list as it was", async () => {

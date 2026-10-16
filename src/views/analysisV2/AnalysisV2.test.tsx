@@ -21,6 +21,7 @@ import {
   resetAnalysisProjectStore,
 } from "../../lib/analysisProjectStore";
 import { gameCaseOf, positionCaseOfFen, type AnalysisCase } from "../../lib/analysisProjects";
+import { loadUploadedCollections, loadUploadedGames, resetLibraryCollectionStore } from "../../lib/libraryCollectionStore";
 import { parsePgnTree } from "../../lib/pgn";
 import { expectNoAxeViolations } from "../../test/axe";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
@@ -105,6 +106,16 @@ const reload = async () => {
 
 const gameCase = (projectId: string, id = "cgame"): AnalysisCase =>
   gameCaseOf({ id, projectId, name: "" }, parsePgnTree(GAME));
+
+/** `count` short games, one PGN text — a file past a Project's limit of Cases (CTA-225). */
+const manyGames = (count: number) =>
+  Array.from({ length: count }, (_, index) => `[Event "Bulk"]\n[White "W${index}"]\n[Black "B${index}"]\n[Result "*"]\n\n1. e4 *`).join("\n\n");
+
+/** `count` Position Cases in a Project — a Project at, or near, its limit of Cases. */
+const fillProject = (projectId: string, count: number) =>
+  addAnalysisCases(
+    Array.from({ length: count }, (_, index) => positionCaseOfFen({ id: `k${index}`, projectId, name: "" }, "8/8/4k3/8/8/4K3/4P3/8 w - - 0 1")),
+  );
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
@@ -286,30 +297,56 @@ describe("the Projects browser (CTA-186)", () => {
       expect(analysisCasesSnapshot()).toHaveLength(3);
     });
 
-    it("asks before going past the app's limit of cases, with the numbers — and goes on only when told to", async () => {
-      const kept = (await createAnalysisProject("Kept", null))!;
-      await addAnalysisCases(
-        Array.from({ length: 9_999 }, (_, index) => positionCaseOfFen({ id: `k${index}`, projectId: kept.id, name: "" }, "8/8/4k3/8/8/4K3/4P3/8 w - - 0 1")),
-      );
-      const user = userEvent.setup();
-      mount("/analysis");
-      const choice = await openChoice(user);
+    /** New project from a file of 1,001 games, every one kept, to its Create project. */
+    const chooseMany = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(await screen.findByRole("button", { name: "New project" }));
+      await user.type(screen.getByRole("textbox", { name: "Name" }), "Bulk");
+      await user.upload(screen.getByTestId("analysis-v2-new-project-dialog-file-input"), new File([manyGames(1_001)], "bulk.pgn"));
+      const choice = await screen.findByTestId("analysis-v2-choose-games", {}, { timeout: 15_000 });
       await user.click(within(choice).getByRole("button", { name: "Create project" }));
-      const ask = await screen.findByRole("dialog", { name: "More cases than the app's limit" });
-      expect(ask).toHaveTextContent(
-        "These games make 3 cases. With the 9,999 already kept, that is 10,002 — past the app's limit of 10,000.",
+      return screen.findByRole("dialog", { name: "A large project" });
+    };
+
+    it("asks before a Project past its limit of 1,000 cases (CTA-225) — Cancel makes nothing, Create anyway makes them all", async () => {
+      // Other Projects' Cases do not count: the limit is a Project's.
+      const kept = (await createAnalysisProject("Kept", null))!;
+      await fillProject(kept.id, 1_000);
+      const user = userEvent.setup();
+      const { baseElement } = mount("/analysis");
+      const ask = await chooseMany(user);
+      expect(within(ask).getByTestId("analysis-v2-new-project-case-limit-message")).toHaveTextContent(
+        "These games make 1,001 cases — and a project of more than 1,000 cases is slow to open and to work in.",
       );
+      expect(within(ask).getByRole("button", { name: "Create a Library collection instead" })).toBeInTheDocument();
+      await expectNoAxeViolations(baseElement);
       // Asked before any work: nothing written while it waits.
       expect(analysisProjectsSnapshot()).toHaveLength(1);
       await user.click(within(ask).getByRole("button", { name: "Cancel" }));
-      await waitFor(() => expect(screen.queryByRole("dialog", { name: "More cases than the app's limit" })).toBeNull());
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "A large project" })).toBeNull());
       expect(analysisProjectsSnapshot()).toHaveLength(1);
 
       await user.click(await screen.findByRole("button", { name: "Create project" }));
-      await user.click(within(await screen.findByRole("dialog", { name: "More cases than the app's limit" })).getByRole("button", { name: "Create anyway" }));
-      await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/g/), { timeout: 15_000 });
-      expect(analysisCasesSnapshot()).toHaveLength(10_002);
-    }, 60_000);
+      await user.click(within(await screen.findByRole("dialog", { name: "A large project" })).getByRole("button", { name: "Create anyway" }));
+      await waitFor(() => expect(where()).toMatch(/^\/analysis\/projects\/g/), { timeout: 30_000 });
+      const made = analysisProjectsSnapshot()!.find((project) => project.name === "Bulk")!;
+      expect(analysisCasesSnapshot()!.filter((record) => record.projectId === made.id)).toHaveLength(1_001);
+    }, 90_000);
+
+    it("makes a Library collection of the games instead — no Project, no Case (CTA-225)", async () => {
+      await resetLibraryCollectionStore();
+      const user = userEvent.setup();
+      mount("/analysis");
+      const ask = await chooseMany(user);
+      await user.click(within(ask).getByRole("button", { name: "Create a Library collection instead" }));
+      await waitFor(() => expect(where()).toMatch(/^\/library\/u/), { timeout: 60_000 });
+      const [collection] = await loadUploadedCollections();
+      expect(collection).toMatchObject({ name: "Bulk", count: 1_001 });
+      expect(where()).toBe(`/library/${collection.id}`);
+      // The games as the file wrote them.
+      expect((await loadUploadedGames(collection.id))![0]).toContain('[White "W0"]');
+      expect(analysisProjectsSnapshot()).toEqual([]);
+      expect(analysisCasesSnapshot()).toEqual([]);
+    }, 90_000);
 
     it("says the browser's own words when it refuses to save the cases, and keeps nothing", async () => {
       const put = IDBObjectStore.prototype.put;
@@ -647,6 +684,59 @@ describe("a Project's Cases (CTA-186)", () => {
     await user.click(screen.getByRole("button", { name: "Create" }));
     expect(await screen.findByTestId("board")).toHaveAttribute("data-position", ENDGAME);
     expect(boardOptions().boardOrientation).toBe("black");
+  });
+
+  describe("past the Project's limit of 1,000 cases (CTA-225)", () => {
+    /** New case with one pasted game, to its Create. */
+    const createOne = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(await screen.findByRole("button", { name: "New case" }));
+      await pastePgn(GAME);
+      await user.click(screen.getByRole("button", { name: "Create" }));
+    };
+
+    it("asks first, counting the Cases the Project holds — Create anyway writes the Case past it", async () => {
+      const project = (await createAnalysisProject("Club", null))!;
+      await fillProject(project.id, 1_000);
+      const user = userEvent.setup();
+      const { baseElement } = mount(`/analysis/projects/${project.id}`);
+      await createOne(user);
+      const ask = await screen.findByRole("dialog", { name: "A large project" });
+      expect(within(ask).getByTestId("analysis-v2-new-case-limit-message")).toHaveTextContent(
+        "This game makes a case. With the 1,000 the project holds already, it would hold 1,001",
+      );
+      await expectNoAxeViolations(baseElement);
+      expect(analysisCasesSnapshot()).toHaveLength(1_000);
+      await user.click(within(ask).getByRole("button", { name: "Create anyway" }));
+      await waitFor(() => expect(where()).toMatch(new RegExp(`^/analysis/projects/${project.id}/cases/g`)));
+      expect(analysisCasesSnapshot()).toHaveLength(1_001);
+    }, 60_000);
+
+    it("makes a Library collection of the games instead, and no Case", async () => {
+      await resetLibraryCollectionStore();
+      const project = (await createAnalysisProject("Club", null))!;
+      await fillProject(project.id, 1_000);
+      const user = userEvent.setup();
+      mount(`/analysis/projects/${project.id}`);
+      await createOne(user);
+      await user.click(within(await screen.findByRole("dialog", { name: "A large project" })).getByRole("button", { name: "Create a Library collection instead" }));
+      await waitFor(() => expect(where()).toMatch(/^\/library\/u/));
+      const [collection] = await loadUploadedCollections();
+      expect(collection).toMatchObject({ name: "Club", count: 1 });
+      expect((await loadUploadedGames(collection.id))![0]).toContain('[White "Carlsen"]');
+      expect(analysisCasesSnapshot()).toHaveLength(1_000);
+      expect(screen.queryByRole("dialog", { name: "New case" })).toBeNull();
+    }, 60_000);
+
+    it("opens no popup for a batch that keeps the Project at 1,000", async () => {
+      const project = (await createAnalysisProject("Club", null))!;
+      await fillProject(project.id, 999);
+      const user = userEvent.setup();
+      mount(`/analysis/projects/${project.id}`);
+      await createOne(user);
+      await waitFor(() => expect(where()).toMatch(new RegExp(`^/analysis/projects/${project.id}/cases/g`)));
+      expect(screen.queryByRole("dialog", { name: "A large project" })).toBeNull();
+      expect(analysisCasesSnapshot()).toHaveLength(1_000);
+    }, 60_000);
   });
 
   it("renames, moves and duplicates a Case — and no row deletes itself (CTA-203)", async () => {

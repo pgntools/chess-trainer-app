@@ -49,7 +49,8 @@ import {
  *   merged into the source Case (a merge the Case holds is a no-op). A
  *   Project or Case gone fails it `target`.
  * - **Errors** keep Jobs V2's codes — `source`, `engine`, `storage`,
- *   `too-many`, `target` (`jobs.kinds.computerAnalysis.errors.*`). An engine
+ *   `target` (`jobs.kinds.computerAnalysis.errors.*`; `too-many` went with the
+ *   app's cap of Cases, CTA-225 — a Case is never refused for a count). An engine
  *   server gone away is retried (3 attempts from 30 s); every other error
  *   fails at once, its checkpoint kept.
  */
@@ -179,7 +180,7 @@ export const computerAnalysisKind = ({ engine }: ComputerAnalysisKindDeps = {}):
         at,
       );
       if (problem === "gone") throw new ComputerAnalysisError("target");
-      if (problem !== undefined) throw new ComputerAnalysisError(problem === "too-many" ? "too-many" : "storage");
+      if (problem !== undefined) throw new ComputerAnalysisError("storage");
       return { key: plan.key, kind: "entity", ref: { type: ANALYSIS_CASE_ENTITY, id: plan.caseId }, label: input.source.name };
     }
     if (!(await loadAnalysisProjects()).some((project) => project.id === plan.projectId)) throw new ComputerAnalysisError("target");
@@ -193,7 +194,7 @@ export const computerAnalysisKind = ({ engine }: ComputerAnalysisKindDeps = {}):
     await loadAnalysisCases();
     // Its id is the job's and the variant's: a Case already there (an earlier apply) is this one, made.
     const problem = await addAnalysisCases([record]);
-    if (problem !== undefined) throw new ComputerAnalysisError(problem === "too-many" ? "too-many" : "storage");
+    if (problem !== undefined) throw new ComputerAnalysisError("storage");
     // Linked from its source — the Case is made either way, so a refused link does not fail the job.
     await addCaseLinks([{ fromId: input.source.caseId, toId: record.id }], at);
     return { key: plan.key, kind: "entity", ref: { type: ANALYSIS_CASE_ENTITY, id: record.id }, label: plan.name };
