@@ -42,7 +42,7 @@ export type CaseLinksProps = {
  * **A Case's links** (CTA-188) — in its Linked cases dialog (`CaseDetails`' Info tab, CTA-211): the Cases it
  * **links to** and the ones **linked from** it, across Projects — each a link
  * to that Case with its Project's name, and an **Unlink** named for it — and
- * **Link a case**, the screen's picker. A Jobs V2 computer analysis links its
+ * **Link a case**, the screen's picker. A computer-analysis job links its
  * source to every new Case it makes. None: a line saying so.
  *
  * Presentational: the rows, Unlink and Link a case are props; the screen

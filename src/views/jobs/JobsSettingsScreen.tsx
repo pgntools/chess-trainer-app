@@ -4,19 +4,23 @@ import Typography from "@mui/material/Typography";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router";
 
-import { JobsSettingsForm } from "../../../blocks/forms";
-import { selectedPresetOf } from "../../../lib/enginePresets";
+import { JobsSettingsForm } from "../../blocks/forms";
+import { BackButton } from "../../design-system/components/navigation";
+import { ListScreenHeader } from "../../design-system/components/toolbars";
+import { selectedPresetOf } from "../../lib/enginePresets";
 import {
   enginePresetSelectionsSnapshot,
   enginePresetsSnapshot,
   subscribeEnginePresetSelections,
   subscribeEnginePresets,
-} from "../../../lib/enginePresetStore";
-import { describeEngines, resolveEngine } from "../../../lib/engines";
-import { EVAL_SOURCES } from "../../../lib/evalSources";
-import { storeJobsDefaultPreset } from "../../../lib/jobsSettings";
-import { useEngineChoice } from "../../shared/useEngineChoice";
-import { useSelectedEnginePreset } from "../../shared/useSelectedEnginePreset";
+} from "../../lib/enginePresetStore";
+import { describeEngines, resolveEngine } from "../../lib/engines";
+import { EVAL_SOURCES } from "../../lib/evalSources";
+import { storeJobsDefaultPreset } from "../../lib/jobsSettings";
+import { useOwnPageHeading } from "../main/pageTitle";
+import { useEngineChoice } from "../shared/useEngineChoice";
+import { useSelectedEnginePreset } from "../shared/useSelectedEnginePreset";
+import { JOBS_PATH } from "./paths";
 import { defaultPresetInEffect, useJobsSettings } from "./useJobsSettings";
 
 /**
@@ -28,17 +32,19 @@ const ENGINE_SETTINGS_PATH =
   firstSourceTab === undefined ? "/settings/engine" : `/settings/engine?source=${encodeURIComponent(firstSourceTab.id)}`;
 
 /**
- * **The Jobs settings** (CTA-193) — the Jobs V2 view's Settings tab
- * (`/analysis/jobs?tab=settings`), the `JobsSettingsForm` block over
- * `lib/jobsSettings.ts`: **the default engine and preset for new jobs** —
- * turned on from the board's engine and its selected preset; a stored pair
- * whose engine or preset is gone shows off (and New Job V2 starts as before).
+ * **The Jobs settings** (CTA-193; `/jobs/settings` since CTA-221 — the Jobs
+ * V2 view's Settings tab before), the `JobsSettingsForm` block over
+ * `lib/jobsSettings.ts` (`chessapp.jobsSettings`, the key kept): **the
+ * default engine and preset for new engine-lane jobs** — turned on from the
+ * board's engine and its selected preset; a stored pair whose engine or
+ * preset is gone shows off (and a new job starts as before).
  *
  * The lichess evaluation API left this tab in CTA-196 — it is the app's,
  * every analysis search asks it, and it is set in Settings → Engine; the tab
  * says so and links there.
  */
-function JobsSettingsTab() {
+function JobsSettingsScreen() {
+  useOwnPageHeading();
   const { t } = useTranslation();
   const settings = useJobsSettings();
   const presets = useSyncExternalStore(subscribeEnginePresets, enginePresetsSnapshot, enginePresetsSnapshot);
@@ -50,10 +56,16 @@ function JobsSettingsTab() {
   const named = useSelectedEnginePreset(boardEngine);
 
   return (
-    <Box data-testid="analysis-v2-jobs-settings" sx={{ display: "grid", gap: 2, pt: 1 }}>
-      <Typography variant="body2" sx={{ color: "text.secondary" }}>
-        {t("analysisV2.jobs.settings.intro")}
-      </Typography>
+    <Box data-testid="jobs-settings" sx={{ display: "grid", gap: 2, pb: 4, minWidth: 0 }}>
+      <ListScreenHeader
+        title={t("jobs.settings.title")}
+        back={<BackButton label={t("jobs.backToJobs")} link={{ component: RouterLink, to: JOBS_PATH }} testId="jobs-settings-back" />}
+        testId="jobs-settings-header"
+      >
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
+          {t("jobs.settings.intro")}
+        </Typography>
+      </ListScreenHeader>
       <JobsSettingsForm
         defaultPreset={defaultPreset}
         onDefaultPresetChange={storeJobsDefaultPreset}
@@ -61,10 +73,10 @@ function JobsSettingsTab() {
         engines={describeEngines()}
         presets={named.presets}
         evalSourcesLink={{ component: RouterLink, to: ENGINE_SETTINGS_PATH }}
-        testId="analysis-v2-jobs-settings-form"
+        testId="jobs-settings-form"
       />
     </Box>
   );
 }
 
-export default JobsSettingsTab;
+export default JobsSettingsScreen;

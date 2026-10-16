@@ -25,7 +25,7 @@ export type ShareSection = {
 
 export const SHARE_SECTIONS: readonly ShareSection[] = [
   { id: "engine", paths: ["/engine"] },
-  // Analysis (CTA-192): its Projects, their Cases and Jobs V2 — every page under `/analysis`.
+  // Analysis (CTA-192): its Projects and their Cases — every page under `/analysis`. (The Jobs module's `/jobs`, CTA-221, has no card of its own: the site's.)
   { id: "analysis", paths: ["/analysis"] },
   { id: "openings", paths: ["/openings"] },
   { id: "repertoires", paths: ["/repertoires"] },

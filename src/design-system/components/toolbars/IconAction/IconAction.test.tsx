@@ -46,12 +46,12 @@ describe("IconAction", () => {
   it("is a real link when given one", () => {
     render(
       <MemoryRouter>
-        <IconAction label="Analysis" link={{ component: RouterLink, to: "/analysis/jobs?job=x" }} testId="probe">
+        <IconAction label="Analysis" link={{ component: RouterLink, to: "/jobs/x" }} testId="probe">
           <svg />
         </IconAction>
       </MemoryRouter>,
     );
-    expect(screen.getByRole("link", { name: "Analysis" })).toHaveAttribute("href", "/analysis/jobs?job=x");
+    expect(screen.getByRole("link", { name: "Analysis" })).toHaveAttribute("href", "/jobs/x");
   });
 
   it("says it opens a menu, and whether it is open (CTA-113)", () => {

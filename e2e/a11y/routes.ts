@@ -190,8 +190,11 @@ export const ROUTES: readonly PageRoute[] = [
   // The Blog (CTA-126): its index and a folder; its articles follow, read from their files (CTA-135).
   { id: "blog", pattern: "/blog/*", path: "blog" },
   { id: "blog-folder", pattern: "/blog/*", path: "blog/writing-an-article/components" },
-  // Jobs V2 (CTA-188): no job in the seed (a job is not in the export zip), so its empty list.
-  { id: "analysis-jobs", pattern: "/analysis/jobs", path: "analysis/jobs" },
+  // The Jobs module (CTA-221): no job in the seed (a job is not in the export zip), so the empty list, and its settings.
+  // A job's own page: the seed cannot carry one, so its miss ("No such job") — a job's page whole is audited with axe in `src/views/jobs/Jobs.test.tsx`.
+  { id: "jobs", pattern: "/jobs", path: "jobs" },
+  { id: "jobs-settings", pattern: "/jobs/settings", path: "jobs/settings" },
+  { id: "job", pattern: "/jobs/:jobId", path: "jobs/none", ready: byTestId("job-missing") },
   // The legal pages (CTA-159): the Privacy Policy and the Cookies Notice, MDX documents reached from the footer —
   // in a build that has them (CTA-182).
   ...(LEGAL_PAGES_BUILT

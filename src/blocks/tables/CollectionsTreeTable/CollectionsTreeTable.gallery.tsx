@@ -1,7 +1,9 @@
 import Box from "@mui/material/Box";
+import MergeTypeRoundedIcon from "@mui/icons-material/MergeTypeRounded";
 
 import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
+import { IconAction } from "../../../design-system/components/toolbars";
 import type { DataTableSort } from "../../../design-system/patterns/tables";
 import type { BlockFamilyId } from "../../families";
 import { isPotentialTournament, readsAsTournament } from "../../../lib/libraryCollections";
@@ -12,15 +14,16 @@ import {
   type LibraryTreeColumn,
 } from "./libraryTreeColumns";
 
-type State = { open: Set<string>; sort: DataTableSort<LibraryTreeColumn> };
+type State = { open: Set<string>; sort: DataTableSort<LibraryTreeColumn>; picked: Set<string> };
 
 const noop = () => {};
 
-const demo = (initialOpen: string[]) => (
+const demo = (initialOpen: string[], { picks = false }: { picks?: boolean } = {}) => (
   <WithState<State>
     initial={{
       open: new Set(initialOpen),
       sort: { column: "name", direction: "asc" },
+      picked: new Set(picks ? ["tal"] : []),
     }}
   >
     {(state, set) => (
@@ -68,7 +71,21 @@ const demo = (initialOpen: string[]) => (
             onDownloadCollection: noop,
             onMoveCollection: noop,
             onDeleteCollection: noop,
+            ...(picks ? { onNewJob: noop } : {}),
           }}
+          picks={
+            picks
+              ? {
+                  picked: state.picked,
+                  onChange: (picked) => set((before) => ({ ...before, picked })),
+                  actions: (
+                    <IconAction label="Merge collections…" onClick={noop} disabled={state.picked.size < 2} testId="gallery-library-tree-merge">
+                      <MergeTypeRoundedIcon fontSize="small" />
+                    </IconAction>
+                  ),
+                }
+              : undefined
+          }
           isTournament={(collection) => readsAsTournament(collection)}
           isPotentialTournament={(collection) => isPotentialTournament(collection)}
           testId="gallery-library-tree"
@@ -91,6 +108,8 @@ const gallery: GalleryModule<BlockFamilyId> = {
       render: () => demo([BUILT_IN, "gopenings", "gsicilian"]),
     },
     { name: "All closed", render: () => demo([]) },
+    // CTA-221: the collections picked (Merge collections… with two or more) and New job on each collection's row.
+    { name: "Collections picked, and New job on each", render: () => demo([BUILT_IN, "gopenings"], { picks: true }) },
   ],
 };
 

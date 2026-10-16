@@ -2,8 +2,8 @@
  * **Analysis V2's addresses** (CTA-186, shipped in CTA-192): the Projects browser at `/analysis`
  * (`?folder=<id>` the folder on screen), a Project's Cases at
  * `/analysis/projects/<id>`, a Case's board at
- * `/analysis/projects/<id>/cases/<caseId>`, and Jobs V2 at `/analysis/jobs`
- * (`?job=<id>` the job open, CTA-188).
+ * `/analysis/projects/<id>/cases/<caseId>`. (Jobs V2's `/analysis/jobs` is
+ * gone — the Jobs module's `/jobs`, CTA-221, `views/jobs/paths.ts`.)
  */
 
 const ANALYSIS_V2_PATH = "/analysis";
@@ -49,8 +49,3 @@ export const projectPath = (projectId: string, context = ""): string =>
 /** A Case's board — with the Cases table's context, when there is one. */
 export const casePath = (projectId: string, caseId: string, context = ""): string =>
   `${ANALYSIS_V2_PATH}/projects/${encodeURIComponent(projectId)}/cases/${encodeURIComponent(caseId)}${context}`;
-
-/** The Jobs V2 view (CTA-188), at one job — or none. */
-export const jobsV2Path = (jobId?: string): string =>
-  jobId === undefined ? `${ANALYSIS_V2_PATH}/jobs` : `${ANALYSIS_V2_PATH}/jobs?job=${encodeURIComponent(jobId)}`;
-

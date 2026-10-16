@@ -1,14 +1,14 @@
 import { useSyncExternalStore } from "react";
 
-import { withDefaultPreset, type EnginePreset } from "../../../lib/enginePresets";
-import { resolveEngine } from "../../../lib/engines";
+import { withDefaultPreset, type EnginePreset } from "../../lib/enginePresets";
+import { resolveEngine } from "../../lib/engines";
 import {
   DEFAULT_JOBS_SETTINGS,
   readJobsSettings,
   subscribeJobsSettings,
   type JobsDefaultPreset,
   type JobsSettings,
-} from "../../../lib/jobsSettings";
+} from "../../lib/jobsSettings";
 
 /** **The Jobs settings, live** (CTA-193, `lib/jobsSettings.ts`) — the pre-render reads the defaults. */
 export const useJobsSettings = (): JobsSettings =>

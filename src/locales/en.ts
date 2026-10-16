@@ -70,7 +70,9 @@ const en = {
     themeEditor: "Theme editor",
     /** Analysis V2 (CTA-186): its Projects browser — and Jobs V2 beside it (CTA-188). */
     analysisProjects: "Projects",
-    analysisJobs: "Jobs",
+    /** The Jobs module (CTA-221): every background job, and the Jobs settings — its own folder. */
+    jobs: "Jobs",
+    jobsSettings: "Settings",
     /** The MDX editor (CTA-137, `yarn mdx-editor:start` only): its article lobby and the editor itself, in its own folder — and its Components gallery (CTA-140). */
     mdxArticles: "Articles",
     mdxEditor: "Editor",
@@ -92,6 +94,8 @@ const en = {
       /** The dev-only Development section (`chessboard.md` §9.5). */
       development: "Development",
       analysisV2: "Analysis",
+      /** The Jobs module (CTA-221). */
+      jobs: "Jobs",
       /** The MDX editor's own folder (CTA-137) — only under `yarn mdx-editor:start`. */
       mdxEditor: "MDX editor",
     },
@@ -221,8 +225,10 @@ const en = {
     analysisProjects: "Projects",
     analysisProject: "Project",
     analysisCase: "Case",
-    /** Jobs V2 (CTA-188). */
-    analysisJobs: "Jobs V2",
+    /** The Jobs module (CTA-221). */
+    jobs: "Jobs",
+    job: "Job",
+    jobsSettings: "Jobs settings",
     mdxEditor: "MDX editor",
     mdxArticles: "MDX editor — articles",
     mdxComponents: "MDX editor — components gallery",
@@ -252,7 +258,9 @@ const en = {
     /** A shipped collection's own page (`/library/<collection>`) — its name and its count. */
     collectionNamed: "{{name}}: {{games}} chess games to search, filter by player, opening, event and date, and replay on a board.",
     settings: "Export your data as one zip and bring it back, see how much space it takes, and choose how the app looks.",
-    analysisJobs: "Your background jobs — a case's computer analysis — with their progress, the engine live, results and reports.",
+    jobs: "Your background jobs — a case's computer analysis, a repertoire's evaluation, collections merged — with their progress, the engine live, and what they made.",
+    job: "One background job: its progress, the engine live, why it failed or waits, what it made, and its history.",
+    jobsSettings: "How new background jobs start: the default engine and preset, and the evaluation sources they ask first.",
     privacy: "What chessapp.dev keeps on your device, what it never collects, and your rights under the GDPR and Israel's Protection of Privacy Law.",
     cookies: "chessapp.dev sets no cookies. Every item it stores in your browser — preferences and your own chess data — and why.",
   },
@@ -1169,6 +1177,17 @@ const en = {
     filterClear: "Clear the filter",
     /** How the folder table is worked, read with it (CTA-113). */
     treeHint: "Tab through each row's chevron, which opens or closes a folder, its link and its actions. Sort by a column from its header button.",
+    /** New job for one collection (CTA-221) — a row action. */
+    newJobNamed: "New job for {{name}}",
+    /** The collections picked (CTA-221) — *Merge collections…* with two or more. */
+    picks: {
+      selectAll: "Pick every collection shown",
+      pick: "Pick {{name}}",
+      picked_one: "{{count}} collection picked",
+      picked_other: "{{count}} collections picked",
+      clear: "Clear the picks",
+      merge: "Merge collections…",
+    },
     /** `/library` — the collections. */
     title: "Library",
     count_one: "{{count}} collection",
@@ -2080,6 +2099,10 @@ const en = {
         backHelp: "Explore it freely, without a game's rules.",
       },
       jobs: {
+        /** The repertoire's jobs (CTA-221) and its one kind, the evaluation. */
+        evaluate: "Evaluate with engine…",
+        list: "This repertoire's jobs",
+        none: "No jobs for this repertoire yet.",
         empty: "Repertoire jobs are coming: work that runs over a whole repertoire in the background will be started from here.",
       },
     },
@@ -2316,7 +2339,7 @@ const en = {
           repertoires: "Repertoires",
           collectionGames: "Library games",
           analysisCases: "Analysis cases",
-          jobsV2: "Analysis jobs",
+          jobs: "Background jobs",
         },
       },
       note:
@@ -2617,7 +2640,7 @@ const en = {
       problem: {
         invalid: "There is nothing to analyse in the chosen moves.",
         storage: "The job could not be kept — the browser refused the write.",
-        "too-many": "Too many jobs are waiting. Let some finish, or cancel them in Analysis's Jobs.",
+        "too-many": "Too many jobs are kept, none of them finished. Let some finish, or delete some in Jobs.",
       },
     },
     /** A job's report and its results so far (`jobV2LiveAnalysis`, CTA-174, CTA-178). */
@@ -2629,23 +2652,11 @@ const en = {
       reportTitle: "Report",
       reportToggle: "Show or hide the report",
     },
-    /** The New Job dialog (CTA-177, `NewJobDialog`) — Jobs V2's popup's since CTA-188. */
-    newJob: {
-      title: "New job",
-      game: "Game:",
-      intro: "The engine goes over the game's main line in the background, while you go on with anything else.",
-      cancel: "Cancel",
-      existing: {
-        text: "{{name}} already has a computer analysis — the job: {{status}}. Start a new one, or check the existing one in Jobs?",
-        startNew: "Start a new analysis",
-        check: "Check existing",
-      },
-    },
   },
   /**
-   * **A background job's words** (CTA-173) — the list's and the panel's
-   * (`JobsTable`, `JobSummary`), read by Jobs V2's view (`analysisV2.jobs.*`
-   * its own words).
+   * **The Jobs module's words** (CTA-221; CTA-173's background jobs before) —
+   * the screens, the generic blocks, each kind's (`kinds.<key>`), the engine
+   * live and the Jobs settings.
    */
   jobs: {
     /**
@@ -2653,7 +2664,62 @@ const en = {
      * its errors, its New-job form and its report.
      */
     kinds: {
-      "computer-analysis": "Computer analysis",
+      /** **A kind no longer registered** (CTA-221) — its jobs are kept, never run; they can only be deleted. */
+      unknown: "Unknown kind ({{id}})",
+      /** The computer analysis (CTA-188 — Jobs V2's, the Jobs module's kind since CTA-221): New job's form, its parameters, its results. */
+      computerAnalysis: {
+        name: "Computer analysis",
+        description: "Stockfish goes over the Case's main line in the background — every finished position kept — and its results become new Cases or are merged into this one.",
+        newJobIntro: "The Case's mainline is analysed in the background; its results go where you choose below.",
+        existing: "This Case has a computer analysis already — {{status}}.",
+        openExisting: "Open it",
+        caseGone: "The Case is not there any more.",
+        defaultProjectName: "{{name}} — analysis",
+        target: {
+          title: "Where to save the results",
+          kind: "Results go to",
+          kinds: {
+            project: "New Cases in this project ({{name}})",
+            other: "Another project",
+            case: "Into this Case",
+          },
+          help: {
+            project: "Each variant ticked becomes a new Game Case beside this one, linked from it.",
+            other: "Each variant ticked becomes a new Game Case in another project, linked from this one.",
+            case: "One variant: its evaluations, mistakes and comments are merged into this Case. Your own moves, lines and comments stay.",
+          },
+          other: "Which project",
+          otherNew: "A new project",
+          otherExisting: "An existing project",
+          name: "The new project's name",
+          nameRequired: "A new project needs a name.",
+          nameHelp: "Filed beside {{name}}.",
+          project: "Project",
+          projectHelp: "The new Cases are filed there.",
+        },
+        targetProblem: {
+          name: "Name the new project to start.",
+          project: "Pick a project to start.",
+        },
+        projectGone: "a project deleted since",
+        reportMissing: "The Case holding this job's results is gone, so its report cannot be shown.",
+        facts: {
+          preset: "Preset",
+          target: "Results go to",
+        },
+        targetFacts: {
+          project: "New Cases in {{name}}",
+          other: "New Cases in {{name}} (another project)",
+          case: "Merged into the Case",
+        },
+        errors: {
+          source: "The Case sent for analysis could not be read again.",
+          engine: "The engine stopped answering. Resume to try again from the last finished position.",
+          storage: "The results could not be saved — the browser refused the write. Free some space, then resume.",
+          "too-many": "The Cases are at their limit, so the results could not be saved. Delete some, then resume.",
+          target: "Where the results were to go is gone — the project or the Case was deleted.",
+        },
+      },
       /** The repertoire evaluation (CTA-219): `RepertoireEvaluationForm`, `RepertoireEvaluationReport`. */
       repertoireEvaluation: {
         name: "Repertoire evaluation",
@@ -2662,6 +2728,16 @@ const en = {
         errors: {
           source: "The repertoire's PGN could not be read.",
           engine: "The engine gave no evaluation. Resume to go on from the last position evaluated.",
+          storage: "The evaluated repertoire could not be saved — the browser refused the write. Free some space, then resume.",
+          "too-many": "The repertoires are at their limit, so the evaluated one could not be saved. Delete some, then resume.",
+        },
+        repertoireGone: "The repertoire is not there any more.",
+        facts: {
+          side: "The repertoire's side",
+          plies: "Ply limit",
+          report: "The report",
+          repertoire: "A new repertoire",
+          pgnFile: "The annotated PGN",
         },
         form: {
           side: "The repertoire's side",
@@ -2684,6 +2760,7 @@ const en = {
         },
         report: {
           title: "Repertoire evaluation report",
+          rowsPerPage: "Moves per page",
           summary: "Verdicts",
           progress: "{{done}} of {{total}} positions evaluated.",
           verdicts: {
@@ -2723,6 +2800,16 @@ const en = {
         errors: {
           source: "A collection to merge is no longer in the Library.",
           state: "The merge's progress did not match its collections; start it again.",
+          storage: "The merged collection could not be added to the Library — the browser refused the write. The PGN file is ready to download.",
+          read: "A collection could not be read. Resume to try again.",
+        },
+        pickTwo: "Pick two or more collections in the Library to merge them.",
+        facts: {
+          sources: "Collections",
+          dedupe: "Duplicates",
+          name: "Name",
+          pgnFile: "The merged PGN",
+          collection: "A Library collection",
         },
         dedupe: {
           none: "Keep every game",
@@ -2770,17 +2857,10 @@ const en = {
         },
       },
     },
-    title: "Jobs",
     count: "Jobs: {{count}}",
     loading: "Reading your jobs…",
-    empty: "No jobs yet. Send a game to computer analysis from the Analysis Board.",
     untitled: "Untitled game",
-    progress: "{{done}} of {{total}} positions",
-    noneSelected: "Pick a job to see its details, its report and its evaluation graph.",
     missing: "There is no such job — it may have been deleted.",
-    links: "Links",
-    openSource: "Open the analysed game",
-    openOutput: "Open the {{variant}} analysis",
     resume: "Resume",
     pause: "Pause",
     cancel: "Cancel",
@@ -2800,12 +2880,6 @@ const en = {
     /** A job not done: its results so far (CTA-178, `JobLiveReport`). */
     liveTitle: "Results so far",
     liveEmpty: "No results yet — no position has been analysed.",
-    /** The job panel's tabs (CTA-178, `JobSummary`). */
-    tabs: {
-      label: "Job details",
-      results: "Results",
-      params: "Parameters",
-    },
     status: {
       queued: "Queued",
       running: "Running",
@@ -2815,26 +2889,14 @@ const en = {
       failed: "Failed",
       cancelled: "Cancelled",
     },
+    /** The runtime's own errors (CTA-221) — a kind's are `kinds.<key>.errors`. */
     errors: {
-      source: "The game sent for analysis could not be read again.",
-      engine: "The engine stopped answering. Resume to try again from the last finished position.",
-      storage: "The analyses could not be saved — the browser refused the write. Free some space, then resume.",
-      "too-many": "Saved analyses is full, so the results could not be saved. Delete some, then resume.",
+      timeout: "A step took too long without a word — tried again where the kind allows it.",
     },
     sides: {
       both: "Both sides",
       w: "White only",
       b: "Black only",
-    },
-    table: {
-      source: "Game",
-      status: "Status",
-      progress: "Progress",
-      started: "Started",
-      finished: "Finished",
-      actions: "Actions",
-      open: "Show the job {{name}}",
-      progressOf: "Progress of {{name}}",
     },
     facts: {
       title: "The job's options",
@@ -2861,6 +2923,68 @@ const en = {
      * a job's details, outputs and history, the New job frame and the header
      * indicator — every kind of job, over the jobs runtime.
      */
+    /** What a job can be applied to (CTA-221, `lib/jobs/entities.ts`) — a subject's word where it has no name. */
+    entities: {
+      "analysis-case": "Case",
+      "analysis-project": "Project",
+      repertoire: "Repertoire",
+      "library-collection": "Collection",
+    },
+    /** The Jobs screens (CTA-221): `/jobs`, `/jobs/<id>`, `/jobs/settings`. */
+    screen: {
+      title: "Jobs",
+      intro: "Every background job — a Case's computer analysis, a repertoire's evaluation, collections merged. Each step is kept, so a job paused, or cut short by a closed tab, goes on from where it stopped.",
+      settings: "Jobs settings",
+      confirmDelete: "The job “{{name}}” and its progress go. What it made — Cases, repertoires, collections — stays; its files go with it.",
+      confirmDeletePicked_one: "Delete {{count}} job?",
+      confirmDeletePicked_other: "Delete {{count}} jobs?",
+      confirmDeletePickedBody: "The picked jobs and their progress go — a running one is stopped. What they made stays; their files go with them.",
+    },
+    queued: "Queued: {{name}}.",
+    openJob: "Open job",
+    backToJobs: "Back to Jobs",
+    missingTitle: "No such job",
+    /** The Jobs settings (CTA-193; `/jobs/settings` since CTA-221): the default engine and preset; the eval sources' pointer (CTA-196). */
+    settings: {
+      title: "Jobs settings",
+      intro: "How new jobs start. Kept in this browser.",
+      default: {
+        title: "New jobs",
+        description: "The engine and preset a new engine job starts with — a computer analysis, a repertoire evaluation. You can still change them in the New job form.",
+        enable: "Use a default engine and preset",
+        enableHelp: "Off: a new job starts with the board's engine and its selected preset.",
+        engine: "Engine for new jobs",
+        preset: "Preset for new jobs",
+      },
+      /** The eval sources a job asks first (CTA-196) — set for the whole app in Settings → Engine. */
+      evalSources: {
+        title: "Evaluation sources",
+        description:
+          "An engine job asks the evaluation sources you turned on about each position before its engine searches it, as every board does. They are set for the whole app in",
+        link: "Settings → Engine",
+      },
+    },
+    /** An engine job's engine, live (CTA-190, CTA-194 — `JobEngineProgress`). */
+    live: {
+      title: "Engine",
+      facts: "The engine's search so far",
+      searching: "Searching",
+      finalPosition: "the final position",
+      depth: "Depth",
+      nodes: "Nodes",
+      nps: "Speed",
+      npsValue: "{{value}} nodes/s",
+      time: "Time on this position",
+      hash: "Hash",
+      hashValue: "{{value}}% full",
+      line: "Best line",
+      announce: "Engine searching {{move}}.",
+      announceDepth: "Engine searching {{move}}, depth {{depth}}.",
+      alive: "Engine alive",
+      heardNow: "heard just now",
+      heardSeconds: "heard {{seconds}} s ago",
+      heardMinutes: "heard {{minutes}} min ago",
+    },
     queue: {
       label: "Jobs",
       title: "Title",
@@ -2922,6 +3046,12 @@ const en = {
       code: "Code: {{code}}",
     },
     outputs: {
+      downloadFailed: "{{name}} could not be downloaded — its file is not there, or the browser refused it.",
+      /** A data output's name, by its key — absent, "Report". */
+      data: {
+        report: "Report",
+        summary: "Summary",
+      },
       title: "Outputs",
       empty: "No outputs yet — they come when the job is done.",
       pending: "Pending",
@@ -2935,6 +3065,25 @@ const en = {
       },
     },
     history: {
+      /** The runtime's events, in words (`JobHistory`'s `describe`) — an unknown one shows its type. */
+      eventTypes: {
+        enqueued: "Queued",
+        claimed: "Started",
+        planned: "Planned",
+        checkpointed: "Checkpoint",
+        finalized: "Outputs decided",
+        "output-applied": "Output made",
+        "retry-scheduled": "Retry scheduled",
+        "pause-requested": "Pause asked for",
+        paused: "Paused",
+        resumed: "Resumed",
+        cancelled: "Cancelled",
+        requeued: "Queued again after a closed tab",
+        interrupted: "Stopped by a closed tab",
+        "lease-released": "Handed back",
+        failed: "Failed",
+        done: "Done",
+      },
       title: "History",
       show: "Show the history",
       hide: "Hide the history",
@@ -2954,6 +3103,14 @@ const en = {
       },
     },
     newJob: {
+      noForm: "This kind cannot be started here.",
+      /** Queueing refused — the runtime's answer. */
+      problem: {
+        "unknown-kind": "This kind of job is not known here.",
+        invalid: "There is nothing to do with these settings.",
+        storage: "The job could not be kept — the browser refused the write.",
+        "too-many": "Too many jobs are kept, none of them finished. Let some finish, or delete some in Jobs.",
+      },
       title: "New job",
       for: "For",
       kinds: "Kind of job",
@@ -2964,6 +3121,8 @@ const en = {
       cancel: "Cancel",
     },
     indicator: {
+      liveDepth: "depth {{depth}}",
+      liveNodes: "{{nodes}} nodes",
       running: "Jobs {{done}}/{{total}}",
       queued: "Jobs: {{count}} queued",
       label: "Jobs: {{name}}, {{done}} of {{total}}",
@@ -3319,132 +3478,10 @@ const en = {
       engine: "Engine",
       problem: "Not saved — the browser refused it.",
     },
-    /** Jobs V2 (CTA-188): a Case's computer analysis — the Jobs V2 view, the Case's Jobs tab, the New Job V2 popup, the shell's indicator. */
-    jobs: {
-      title: "Jobs V2",
-      intro: "A Case's computer analysis runs here in the background, one at a time. Each finished position is kept, so a job a reload cut short resumes where it stopped.",
-      loading: "Reading the jobs…",
-      newJob: "New job",
-      newJobTitle: "New job — Jobs V2",
-      newJobIntro: "The Case's mainline is analysed in the background; its results go where you choose below.",
-      caseNone: "No jobs for this Case yet.",
-      caseList: "This Case's jobs",
-      caseJob: "{{date}} · {{target}}",
-      targets: {
-        project: "new Cases in its project",
-        other: "new Cases in another project",
-        case: "into this Case",
-      },
-      target: {
-        title: "Where to save the results",
-        kind: "Results go to",
-        kinds: {
-          project: "New Cases in this project ({{name}})",
-          other: "Another project",
-          case: "Into this Case",
-        },
-        help: {
-          project: "Each variant ticked becomes a new Game Case beside this one, linked from it.",
-          other: "Each variant ticked becomes a new Game Case in another project, linked from this one.",
-          case: "One variant: its evaluations, mistakes and comments are merged into this Case. Your own moves, lines and comments stay.",
-        },
-        other: "Which project",
-        otherNew: "A new project",
-        otherExisting: "An existing project",
-        name: "The new project's name",
-        nameRequired: "A new project needs a name.",
-        nameHelp: "Filed beside {{name}}.",
-        project: "Project",
-        projectHelp: "The new Cases are filed there.",
-      },
-      targetProblem: {
-        name: "Name the new project to start.",
-        project: "Pick a project to start.",
-      },
-      defaultProjectName: "{{name}} — analysis",
-      queued: "Jobs V2: the computer analysis of {{name}} is queued.",
-      openJob: "Open in Jobs V2",
-      openSource: "Open the Case",
-      openCase: "Open the {{variant}} Case",
-      openMerged: "Open the Case, the analysis merged in",
-      openProject: "Open {{name}}",
-      projectGone: "a project deleted since",
-      reportMissing: "The Case holding this job's results is gone, so its report cannot be shown.",
-      confirmDelete: "The job “{{name}}” and its progress go. The Cases it made or merged into stay.",
-      facts: {
-        preset: "Preset",
-        target: "Results go to",
-      },
-      targetFacts: {
-        project: "New Cases in {{name}}",
-        other: "New Cases in {{name}} (another project)",
-        case: "Merged into the Case",
-      },
-      errors: {
-        source: "The Case sent for analysis could not be read again.",
-        engine: "The engine stopped answering. Resume to try again from the last finished position.",
-        storage: "The results could not be saved — the browser refused the write. Free some space, then resume.",
-        "too-many": "The Cases are at their limit, so the results could not be saved. Delete some, then resume.",
-        target: "Where the results were to go is gone — the project or the Case was deleted.",
-      },
-      live: {
-        title: "Engine",
-        facts: "The engine's search so far",
-        searching: "Searching",
-        finalPosition: "the final position",
-        depth: "Depth",
-        nodes: "Nodes",
-        nps: "Speed",
-        npsValue: "{{value}} nodes/s",
-        time: "Time on this position",
-        hash: "Hash",
-        hashValue: "{{value}}% full",
-        line: "Best line",
-        announce: "Engine searching {{move}}.",
-        announceDepth: "Engine searching {{move}}, depth {{depth}}.",
-        alive: "Engine alive",
-        heardNow: "heard just now",
-        heardSeconds: "heard {{seconds}} s ago",
-        heardMinutes: "heard {{minutes}} min ago",
-      },
-      indicator: {
-        running: "Jobs V2 {{done}}/{{total}}",
-        queued: "Jobs V2: {{count}} queued",
-        label: "Jobs V2: {{name}}, {{done}} of {{total}} positions",
-        labelQueued: "Jobs V2: {{count}} queued",
-        started: "Jobs V2 started: {{name}}.",
-        paused: "Jobs V2 paused: {{name}}.",
-        done: "Jobs V2 finished: {{name}}.",
-        failed: "Jobs V2 failed: {{name}}.",
-        cancelled: "Jobs V2 cancelled: {{name}}.",
-        liveDepth: "depth {{depth}}",
-        liveNodes: "{{nodes}} nodes",
-      },
-      /** The Jobs V2 view's two tabs (CTA-193): the list, and the Jobs settings. */
-      tabs: {
-        label: "Jobs V2",
-        list: "Jobs",
-        settings: "Settings",
-      },
-      /** The Jobs settings (CTA-193, `lib/jobsSettings.ts`): the default engine and preset; the eval sources' pointer (CTA-196). */
-      settings: {
-        intro: "How new jobs start. Kept in this browser.",
-        default: {
-          title: "New jobs",
-          description: "The engine and preset a new job starts with. You can still change them in the New job form.",
-          enable: "Use a default engine and preset",
-          enableHelp: "Off: a new job starts with the board's engine and its selected preset.",
-          engine: "Engine for new jobs",
-          preset: "Preset for new jobs",
-        },
-        /** The eval sources a job asks first (CTA-196) — set for the whole app in Settings → Engine. */
-        evalSources: {
-          title: "Evaluation sources",
-          description:
-            "A job asks the evaluation sources you turned on about each position before its engine searches it, as every board does. They are set for the whole app in",
-          link: "Settings → Engine",
-        },
-      },
+    /** A Case's Jobs tab (CTA-188; the Jobs module's `EntityJobs` since CTA-221). */
+    caseJobs: {
+      list: "This Case's jobs",
+      none: "No jobs for this Case yet.",
     },
     /** The links between Cases (CTA-188), on a Case's Info tab, and its Link a case picker. */
     links: {

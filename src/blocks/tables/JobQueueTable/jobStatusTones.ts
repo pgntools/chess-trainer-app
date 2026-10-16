@@ -1,11 +1,11 @@
-import type { JobStatus } from "../../../lib/jobsV2";
+import type { JobViewStatus } from "./jobView";
 
 /**
- * A job status's colour, a theme palette path (CTA-173) — the Jobs table's
- * and the job's summary. The status's words carry it; the colour only
+ * A job status's colour, a theme palette path (CTA-173; the Jobs module's
+ * blocks' since CTA-221). The status's words carry it; the colour only
  * repeats them.
  */
-export const JOB_STATUS_TONES: Readonly<Record<JobStatus, string>> = {
+export const JOB_STATUS_TONES: Readonly<Record<JobViewStatus, string>> = {
   queued: "text.secondary",
   running: "info.main",
   paused: "warning.main",

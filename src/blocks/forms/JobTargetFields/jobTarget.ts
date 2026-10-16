@@ -1,14 +1,14 @@
-import type { JobV2TargetKind } from "../../../lib/jobsV2";
+import type { ComputerAnalysisTargetKind } from "../../../lib/jobs/kinds/computerAnalysis/core";
 
 /**
- * **Where a Jobs V2 computer analysis is to go, as the popup holds it**
+ * **Where a computer-analysis job's results are to go, as the popup holds it**
  * (CTA-188): the kind — new Cases in the source's Project, another Project,
  * or merged into the source Case — and, for another Project, whether a new one
  * is made (its name) or an existing one taken (its id). Kept whole while the
  * reader moves between the kinds, so a name typed is not lost.
  */
 export type JobTargetChoice = {
-  kind: JobV2TargetKind;
+  kind: ComputerAnalysisTargetKind;
   otherMode: "new" | "existing";
   newName: string;
   projectId: string | null;

@@ -22,7 +22,7 @@ const demo = (row: CaseRow, game: Game | undefined, { ends = false, graph = fals
           display={<Typography variant="body2" sx={{ p: 1 }}>The screen's display settings go here.</Typography>}
           links={<Typography variant="body2">The Case's links go here (CaseLinks).</Typography>}
           linkCount={2}
-          jobs={<Typography variant="body2" sx={{ p: 1 }}>The Case's Jobs V2 go here (CaseJobs).</Typography>}
+          jobs={<Typography variant="body2" sx={{ p: 1 }}>The Case's jobs go here (EntityJobs).</Typography>}
           tab={open}
           onTabChange={setOpen}
           backLink={{ href: "#cases" }}

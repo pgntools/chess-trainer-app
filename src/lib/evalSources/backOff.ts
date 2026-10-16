@@ -5,7 +5,7 @@
  * costs one timeout a minute, not one on every move. A source's settings
  * changing (turned on again, a new address) clears it
  * ({@link clearEvalSourceBackOff}). The jobs keep their own rule — once per
- * run (`lib/jobV2Runner.ts`).
+ * run (the engine session, `lib/jobs/engineSession.ts`).
  *
  * Module state, nothing at import; its own module so a source can clear it
  * without importing the registry.

@@ -2,7 +2,7 @@ import Box from "@mui/material/Box";
 import { useTranslation } from "react-i18next";
 
 import { RadioGroupField, SelectField, SettingsSection, TextInputField } from "../../../design-system/components/forms";
-import type { JobV2TargetKind } from "../../../lib/jobsV2";
+import type { ComputerAnalysisTargetKind } from "../../../lib/jobs/kinds/computerAnalysis/core";
 import type { JobTargetChoice, JobTargetProject } from "./jobTarget";
 
 export type JobTargetFieldsProps = {
@@ -21,7 +21,7 @@ export type JobTargetFieldsProps = {
   testId: string;
 };
 
-const KINDS: readonly JobV2TargetKind[] = ["project", "other", "case"];
+const KINDS: readonly ComputerAnalysisTargetKind[] = ["project", "other", "case"];
 
 /**
  * **Where to save the results** (CTA-188) — the New Job V2 popup's first
@@ -34,30 +34,30 @@ const KINDS: readonly JobV2TargetKind[] = ["project", "other", "case"];
  *
  * Presentational: the choice, the Projects and the change are props; the
  * screen makes the Project, and holds the form to one variant for
- * the Case. Its words are `analysisV2.jobs.target.*`.
+ * the Case. Its words are `jobs.kinds.computerAnalysis.target.*`.
  */
 function JobTargetFields({ value, onChange, projectName, projects, testId }: JobTargetFieldsProps) {
   const { t } = useTranslation();
   const nameMissing = value.kind === "other" && value.otherMode === "new" && value.newName.trim() === "";
 
   return (
-    <SettingsSection title={t("analysisV2.jobs.target.title")} testId={testId}>
-      <RadioGroupField<JobV2TargetKind>
-        label={t("analysisV2.jobs.target.kind")}
-        options={KINDS.map((kind) => ({ value: kind, label: t(`analysisV2.jobs.target.kinds.${kind}`, { name: projectName }) }))}
+    <SettingsSection title={t("jobs.kinds.computerAnalysis.target.title")} testId={testId}>
+      <RadioGroupField<ComputerAnalysisTargetKind>
+        label={t("jobs.kinds.computerAnalysis.target.kind")}
+        options={KINDS.map((kind) => ({ value: kind, label: t(`jobs.kinds.computerAnalysis.target.kinds.${kind}`, { name: projectName }) }))}
         value={value.kind}
         onChange={(kind) => onChange({ kind })}
-        help={t(`analysisV2.jobs.target.help.${value.kind}`)}
+        help={t(`jobs.kinds.computerAnalysis.target.help.${value.kind}`)}
         testId={`${testId}-kind`}
       />
       {value.kind === "other" && (
         <Box sx={{ display: "grid", gap: 1.5, paddingInlineStart: 2 }}>
           <RadioGroupField<"new" | "existing">
             row
-            label={t("analysisV2.jobs.target.other")}
+            label={t("jobs.kinds.computerAnalysis.target.other")}
             options={[
-              { value: "new", label: t("analysisV2.jobs.target.otherNew") },
-              { value: "existing", label: t("analysisV2.jobs.target.otherExisting"), disabled: projects.length === 0 },
+              { value: "new", label: t("jobs.kinds.computerAnalysis.target.otherNew") },
+              { value: "existing", label: t("jobs.kinds.computerAnalysis.target.otherExisting"), disabled: projects.length === 0 },
             ]}
             value={value.otherMode}
             onChange={(otherMode) => onChange({ otherMode })}
@@ -65,21 +65,21 @@ function JobTargetFields({ value, onChange, projectName, projects, testId }: Job
           />
           {value.otherMode === "new" ? (
             <TextInputField
-              label={t("analysisV2.jobs.target.name")}
+              label={t("jobs.kinds.computerAnalysis.target.name")}
               value={value.newName}
               onChange={(newName) => onChange({ newName })}
               error={nameMissing}
-              helperText={nameMissing ? t("analysisV2.jobs.target.nameRequired") : t("analysisV2.jobs.target.nameHelp", { name: projectName })}
+              helperText={nameMissing ? t("jobs.kinds.computerAnalysis.target.nameRequired") : t("jobs.kinds.computerAnalysis.target.nameHelp", { name: projectName })}
               dir="auto"
               testId={`${testId}-name`}
             />
           ) : (
             <SelectField
-              label={t("analysisV2.jobs.target.project")}
+              label={t("jobs.kinds.computerAnalysis.target.project")}
               value={value.projectId ?? ""}
               onChange={(projectId) => onChange({ projectId })}
               options={projects.map((project) => ({ value: project.id, label: <bdi>{project.name || t("analysisV2.project.untitled")}</bdi> }))}
-              helperText={t("analysisV2.jobs.target.projectHelp")}
+              helperText={t("jobs.kinds.computerAnalysis.target.projectHelp")}
               fullWidth
               testId={`${testId}-project`}
             />

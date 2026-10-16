@@ -61,8 +61,9 @@ const pgnFileName = (stem: string, now: Date = new Date()): string =>
  *
  * Non-throwing, like everything else that touches the platform here: a browser
  * that refuses the download reports it rather than taking the screen down.
+ * A job's file (CTA-221, `runtime.readArtifact`) is saved through it too.
  */
-const downloadBlob = (fileName: string, blob: () => Blob): boolean => {
+export const downloadBlob = (fileName: string, blob: () => Blob): boolean => {
   try {
     const url = URL.createObjectURL(blob());
     const anchor = document.createElement("a");

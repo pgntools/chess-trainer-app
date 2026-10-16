@@ -8,18 +8,19 @@ import {
   type MoveVerdict,
   type PositionLine,
   type PositionResult,
-} from "./computerAnalysis";
-import type { EvalPoint } from "./computerAnalysisTree";
-import { pvToSan } from "./engineAnalysis";
-import type { GameTree } from "./gameTree";
-import { jobSearchOf, type JobV2 } from "./jobsV2";
+} from "../../../computerAnalysis";
+import type { EvalPoint } from "../../../computerAnalysisTree";
+import { pvToSan } from "../../../engineAnalysis";
+import type { GameTree } from "../../../gameTree";
+import { searchOf, type ComputerAnalysisInput, type ComputerAnalysisState } from "./core";
 
 /*
-  **A Jobs V2 job's results so far, read live** (CTA-174, the legacy Jobs'
-  until CTA-192) — what the Jobs V2 view's panel shows of a job not done,
+  **A computer analysis's results so far, read live** (CTA-174, the legacy
+  Jobs' until CTA-192, Jobs V2's until the Jobs module took it — CTA-221) —
+  what a job's page shows of one not done,
   the way lichess's eval graph
   fills in as its server analysis goes. Pure: the job's source re-parsed
-  (`jobSearchOf`, as the runner does) and its checkpoint read — every finished
+  (`searchOf`, as a step does) and its checkpoint read — every finished
   position a point of the graph, every move whose both positions are finished
   a verdict (`moveVerdicts` skips the rest).
 */
@@ -36,7 +37,7 @@ type LiveLatest = {
   moves: string;
 };
 
-export type JobV2LiveAnalysis = {
+export type ComputerAnalysisLive = {
   /** The source re-parsed — the tree the points' node ids are in (a `?at=` is read off it). */
   tree: GameTree;
   /** In ply order: the finished positions' evals, each move's verdict where it has one. */
@@ -72,15 +73,18 @@ const numberedLine = (fen: string, sans: readonly string[]): string => {
 };
 
 /** What a job's results so far are read from. */
-type LiveAnalysisJob = Pick<JobV2, "options" | "positions" | "checkpoint"> & { source: Pick<JobV2["source"], "pgn"> };
+type LiveAnalysisJob = Pick<ComputerAnalysisState, "positions" | "checkpoint"> & {
+  options: ComputerAnalysisInput["options"];
+  source: Pick<ComputerAnalysisInput["source"], "pgn">;
+};
 
 /**
  * **A job's results so far** — `undefined` when its source no longer reads, or
  * its positions are not the record's (the checkpoint would be about another
  * game). Cheap enough per checkpoint; a screen memoises it on the job.
  */
-export const jobV2LiveAnalysis = (job: LiveAnalysisJob): JobV2LiveAnalysis | undefined => {
-  const search = jobSearchOf(job.source, job.options);
+export const liveAnalysisOf = (job: LiveAnalysisJob): ComputerAnalysisLive | undefined => {
+  const search = searchOf(job.source, job.options);
   if (search === undefined) return undefined;
   const { tree, positions } = search;
   if (positions.length !== job.checkpoint.length || positions.some((position, index) => position.fen !== job.positions[index]?.fen)) {

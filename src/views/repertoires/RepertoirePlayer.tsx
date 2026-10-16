@@ -56,6 +56,12 @@ import { useCurrentOpening } from "../shared/useCurrentOpening";
 import { useUnsavedWorkGuard } from "../main/unsavedWork";
 import { BoardLeftPanel } from "../main/boardLeftPanel";
 import { useShellCompact } from "../main/shellCompact";
+import { EntityJobs } from "../../blocks/lists";
+import { REPERTOIRE_ENTITY } from "../../lib/jobs/entityTypes";
+import { isJobOf, jobRowOf, newestFirst } from "../jobs/jobViews";
+import { jobPath } from "../jobs/paths";
+import { useJobRecords } from "../jobs/useJobs";
+import { useNewJob } from "../jobs/useNewJob";
 
 /**
  * **A repertoire, played** (CTA-63) — the one screen behind a repertoire's own
@@ -223,6 +229,18 @@ function RepertoirePlayer({
   const { t } = useTranslation();
   // The repertoire is the page (CTA-112): "Sicilian — Repertoire — …".
   usePageTitle(saved.name || t("repertoires.untitled"));
+  // The repertoire's jobs (CTA-221) — its Jobs tab — and New job for it, *Evaluate with engine…*.
+  const newJob = useNewJob("repertoire-new-job");
+  const jobRecords = useJobRecords();
+  const repertoireJobs = useMemo(
+    () =>
+      jobRecords === undefined
+        ? undefined
+        : newestFirst(jobRecords)
+            .filter((job) => isJobOf(job, { type: REPERTOIRE_ENTITY, id: saved.id }))
+            .map((job) => jobRowOf(t, job)),
+    [jobRecords, saved.id, t],
+  );
   // `options.id`, and the root of every test id here.
   const id = game === undefined ? "repertoire-board" : "repertoire-game";
   const boardPath = `/repertoires/${encodeURIComponent(saved.id)}`;
@@ -617,6 +635,17 @@ function RepertoirePlayer({
         gameLink={(next) => ({ component: RouterLink, to: repertoireGamePath(saved.id, next) })}
         currentGame={game}
         repertoireLink={game === undefined ? undefined : { component: RouterLink, to: boardPath }}
+        jobs={
+          <EntityJobs
+            jobs={repertoireJobs}
+            jobLink={(job) => ({ component: RouterLink, to: jobPath(job.id) })}
+            onNewJob={() => newJob.open({ type: REPERTOIRE_ENTITY, id: saved.id })}
+            newJobLabel={t("repertoires.details.jobs.evaluate")}
+            label={t("repertoires.details.jobs.list")}
+            emptyText={t("repertoires.details.jobs.none")}
+            testId={`${id}-details-jobs-list`}
+          />
+        }
         testId={`${id}-details`}
       />
     </BoardLeftPanel>
@@ -629,6 +658,7 @@ function RepertoirePlayer({
     <>
       {leftPanel}
       {settingsDialog}
+      {newJob.dialog}
       <BoardShell
         id={id}
         // The reader's moves go through the trainer's wrappers, which note that

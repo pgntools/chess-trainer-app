@@ -23,7 +23,7 @@ describe("a build with no site operator (CTA-182)", () => {
   it("has no /privacy or /cookies route — they fall to no screen", () => {
     expect(paths(appRoutes)).not.toContain("/privacy");
     expect(paths(appRoutes)).not.toContain("/cookies");
-    expect(paths(appRoutes)).toContain("/analysis/jobs");
+    expect(paths(appRoutes)).toContain("/jobs");
     for (const path of ["/privacy", "/cookies"]) {
       expect(matchRoutes(appRoutes, path)?.at(-1)?.route.path, path).not.toBe(path);
     }

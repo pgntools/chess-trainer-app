@@ -55,7 +55,7 @@ if (!globalThis.ResizeObserver) {
   cache hits.
 */
 const recordStores = async () => {
-  const [played, repertoires, repertoireFolders, repertoireDb, libraryFolders, presets, projectFolders, projects, cases, projectsDb, jobsV2, jobV2Runner, caseLinks] =
+  const [played, repertoires, repertoireFolders, repertoireDb, libraryFolders, presets, projectFolders, projects, cases, projectsDb, jobs, caseLinks] =
     await Promise.all([
       import("../lib/playedGameStore"),
       import("../lib/savedRepertoireStore"),
@@ -68,16 +68,16 @@ const recordStores = async () => {
       import("../lib/analysisProjectStore"),
       import("../lib/analysisCaseStore"),
       import("../lib/analysisProjectsDb"),
-      // Jobs V2 and the links between Cases (CTA-188), in the same database.
-      import("../lib/jobV2Store"),
-      import("../lib/jobV2Runner"),
+      // The page's job runtime (CTA-221) — its own database, chessapp.backgroundJobs.
+      import("../lib/jobs/runtime"),
+      // The links between Cases (CTA-188), in Analysis's database.
       import("../lib/analysisCaseLinkStore"),
     ]);
   // The search settings in effect (CTA-185) read the presets — imported lazily, as the stores are.
   const { resetEngineSearchSettings } = await import("../lib/engineSearchInEffect");
   return {
-    // The page's job runner (CTA-173, CTA-188), stopped before the stores settle: it writes to them.
-    stop: [jobV2Runner.stopJobV2Runner],
+    // The page's job runtime (CTA-221), stopped before the stores settle: its jobs write to them.
+    stop: [jobs.stopJobRuntime],
     settled: [
       played.settledPlayedGames,
       repertoires.settledSavedRepertoires,
@@ -88,7 +88,6 @@ const recordStores = async () => {
       projectFolders.settledProjectFolders,
       projects.settledAnalysisProjects,
       cases.settledAnalysisCases,
-      jobsV2.settledJobsV2,
       caseLinks.settledCaseLinks,
     ],
     reset: [
@@ -101,12 +100,11 @@ const recordStores = async () => {
       projectFolders.resetProjectFolderStore,
       projects.resetAnalysisProjectStore,
       cases.resetAnalysisCaseStore,
-      jobsV2.resetJobV2Store,
       caseLinks.resetCaseLinkStore,
       // A depth or move time still landing goes with the presets.
       resetEngineSearchSettings,
     ],
-    remove: [played.deleteEngineDb, repertoireDb.deleteRepertoireDb, presets.deleteEnginePresetsDb, projectsDb.deleteAnalysisProjectsDb],
+    remove: [played.deleteEngineDb, repertoireDb.deleteRepertoireDb, presets.deleteEnginePresetsDb, projectsDb.deleteAnalysisProjectsDb, jobs.deleteJobsDb],
   };
 };
 
@@ -133,13 +131,13 @@ afterEach(async () => {
   // its folder store is forgotten here with the others.) First
   // the writes a screen left in flight land, five times over — a folder's
   // delete queues its records' unfiling behind it, and Analysis V2's deep
-  // delete its Projects', their Cases', their Jobs V2 and their links
+  // delete its Projects', their Cases', their unfinished jobs and their links
   // (CTA-188) — so none reaches the next test.
   const stores = await recordStores();
   // The Jobs settings (CTA-193) are a preference too; so are the eval sources' (CTA-196), their status and the boards' back-off with them.
   (await import("../lib/jobsSettings")).resetJobsSettings();
   (await import("../lib/evalSources")).resetEvalSources();
-  for (const stop of stores.stop) stop();
+  await Promise.all(stores.stop.map((stop) => stop()));
   for (let round = 0; round < 5; round += 1) {
     await Promise.all(stores.settled.map((settled) => settled()));
   }

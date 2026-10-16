@@ -498,9 +498,9 @@ describe("the repertoire player, Autoplay on", () => {
     expect(within(details).getByRole("button", { name: i18n.t("repertoires.play.download") })).toBeInTheDocument();
     expect(within(details).getByRole("button", { name: "Repertoire settings" })).toHaveAttribute("aria-haspopup", "dialog");
 
-    // Jobs: nothing yet.
+    // Jobs (CTA-221): the repertoire's jobs and Evaluate with engine… (the list itself is the Jobs tests', on real timers).
     fireEvent.click(screen.getByRole("tab", { name: "Jobs" }));
-    expect(screen.getByTestId("repertoire-board-details-jobs-empty")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Evaluate with engine…" })).toBeInTheDocument();
   });
 
   it("restarts at the start position and keeps the extensions", async () => {

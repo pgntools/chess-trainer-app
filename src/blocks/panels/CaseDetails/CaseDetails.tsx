@@ -45,7 +45,7 @@ export type CaseDetailsProps = {
   links?: ReactNode;
   /** How many links the Case has, both ways — the button's count. */
   linkCount?: number;
-  /** The Jobs tab's content (CTA-188) — the Case's Jobs V2 and New job, the screen's (`CaseJobs`). Absent, no such tab. */
+  /** The Jobs tab's content (CTA-188) — the Case's jobs and New job, the screen's (`EntityJobs`, CTA-221). Absent, no such tab. */
   jobs?: ReactNode;
   /** The open tab — the screen's (which opens every Case on Info, CTA-211). A tab not given (Graph disabled) reads as Info. */
   tab: CaseDetailsTab;
@@ -75,7 +75,7 @@ export type CaseDetailsProps = {
  * the screen's, CTA-199), **Graph**, the
  * board's eval graph and report (the screen's, disabled while the tree has no
  * evaluations, as the Analysis Board's Evaluations tab), **Display**, how
- * the board draws (the screen's), **Jobs**, the Case's Jobs V2 (CTA-188, the
+ * the board draws (the screen's), **Jobs**, the Case's jobs (CTA-188; the Jobs module's since CTA-221, the
  * screen's) — and previous / next at its foot, sticky as the list's.
  * Presentational: the game, the graph, the display, the open tab and the links arrive from
  * the screen; its words are `analysisV2.caseDetails.*`.
