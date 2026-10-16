@@ -112,7 +112,15 @@ export const navFolders = (): readonly NavFolder[] => [
     Analysis V2 (CTA-186, shipped in CTA-192): the Projects browser — Projects
     in folders, their Cases each a board.
   */
-  { id: "analysis-v2", labelKey: "nav.folders.analysisV2", icon: BiotechRoundedIcon },
+  {
+    id: "analysis-v2",
+    labelKey: "nav.folders.analysisV2",
+    icon: BiotechRoundedIcon,
+    // One destination (CTA-227): the folder renders as one clickable row,
+    // "Analysis", to the Projects lobby — a Project and its Cases are
+    // reached from its rows, not from here.
+    singleEntry: true,
+  },
   /*
     The Jobs module (CTA-221): the background jobs of every kind — a Case's
     computer analysis, a repertoire's evaluation, collections merged — and

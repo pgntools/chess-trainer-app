@@ -90,13 +90,25 @@ describe("the shipped nav tree", () => {
     expect(folderPath("/masked/play")).toEqual([]);
   });
 
-  it("files Analysis's Projects in its folder, after the Library — shipped, not a dev-only spread (CTA-192)", () => {
+  it("draws Analysis as one row to the Projects lobby, after the Library — shipped, not a dev-only spread (CTA-192, CTA-227)", () => {
     const ids = navFolders().map((folder) => folder.id);
     expect(ids.indexOf("analysis-v2")).toBe(ids.indexOf("library") + 1);
     const analysis = navFolders().find((folder) => folder.id === "analysis-v2");
-    expect(analysis?.singleEntry).toBeFalsy();
+    expect(analysis?.singleEntry).toBe(true);
     expect(analysis?.labelKey).toBe("nav.folders.analysisV2");
     expect(navItemsInFolder("analysis-v2").map((item) => [item.to, item.labelKey])).toEqual([["/analysis", "nav.analysisProjects"]]);
+    // Folded to one top-level screen row, named by the folder, with its icon,
+    // right after the Library — no folder to open, no nested "Projects".
+    const tree = navTree();
+    const library = tree.findIndex((node) => node.kind === "folder" && node.id === "library");
+    expect(tree[library + 1]).toMatchObject({
+      kind: "screen",
+      to: "/analysis",
+      labelKey: "nav.folders.analysisV2",
+      icon: analysis?.icon,
+    });
+    expect(tree[library + 1].children).toBeUndefined();
+    expect(folderPath("/analysis")).toEqual([]);
     // The legacy Analyses folder went with its screens.
     expect(ids).not.toContain("analysis");
   });
