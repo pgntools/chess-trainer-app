@@ -2648,6 +2648,75 @@ const en = {
    * its own words).
    */
   jobs: {
+    /**
+     * **The Jobs module's kinds** (CTA-215): each kind's own words — its name,
+     * its errors, its New-job form and its report.
+     */
+    kinds: {
+      "computer-analysis": "Computer analysis",
+      /** The repertoire evaluation (CTA-219): `RepertoireEvaluationForm`, `RepertoireEvaluationReport`. */
+      repertoireEvaluation: {
+        name: "Repertoire evaluation",
+        title: "Evaluate {{name}}",
+        description: "The engine goes over every position of the repertoire up to a ply limit — each once, however many lines reach it — and judges every move your side plays.",
+        errors: {
+          source: "The repertoire's PGN could not be read.",
+          engine: "The engine gave no evaluation. Resume to go on from the last position evaluated.",
+        },
+        form: {
+          side: "The repertoire's side",
+          sideHelp: "Its moves are judged; the other side's moves only lead to the next position.",
+          white: "White",
+          black: "Black",
+          moves: "Moves",
+          maxPlies: "Ply limit",
+          maxPliesValue: "{{plies}} plies, to move {{move}}",
+          maxPliesHelp: "Moves further than this many half-moves from the start are not evaluated.",
+          thresholds: "Verdicts",
+          outputs: "Outputs",
+          outputsHelp: "Each one ticked is made from the same run of the engine.",
+          report: "A report",
+          reportHelp: "Always made: every move with its evaluation before and after and a verdict, the flagged ones first.",
+          repertoire: "A new repertoire",
+          repertoireHelp: "“{{name}}”: the repertoire with every evaluation and verdict written into its moves.",
+          pgnFile: "The annotated PGN, as a file",
+          pgnFileHelp: "The same annotated repertoire, to download.",
+        },
+        report: {
+          title: "Repertoire evaluation report",
+          summary: "Verdicts",
+          progress: "{{done}} of {{total}} positions evaluated.",
+          verdicts: {
+            blunder: "Blunder",
+            missedMate: "Missed mate",
+            mistake: "Mistake",
+            inaccuracy: "Inaccuracy",
+            good: "Good",
+            pending: "Not evaluated yet",
+          },
+          missedMateIn: "Missed mate in {{count}}",
+          flaggedOnly: "Flagged moves only",
+          flaggedOnlyHelp: "Inaccuracies, mistakes, blunders and missed mates.",
+          moves: "The repertoire's moves",
+          evalsFrom: "Evaluations from {{side}}'s side.",
+          white: "White",
+          black: "Black",
+          line: "Line",
+          move: "Move",
+          before: "Before",
+          after: "After",
+          verdict: "Verdict",
+          best: "Best move",
+          start: "Start position",
+          otherPaths_one: "and {{count}} more line",
+          otherPaths_other: "and {{count}} more lines",
+          openMove: "{{move}}, after {{line}} — open it in the repertoire",
+          openFirstMove: "{{move}} — open it in the repertoire",
+          empty: "The repertoire plays no move of its side within the ply limit.",
+          noMatch: "No move is flagged.",
+        },
+      },
+    },
     title: "Jobs",
     count: "Jobs: {{count}}",
     loading: "Reading your jobs…",
@@ -2683,9 +2752,6 @@ const en = {
       label: "Job details",
       results: "Results",
       params: "Parameters",
-    },
-    kinds: {
-      "computer-analysis": "Computer analysis",
     },
     status: {
       queued: "Queued",

@@ -26,3 +26,4 @@ export * from "./PositionFields";
 export * from "./SearchLimitsFields";
 export * from "./TournamentSuggestion";
 export * from "./TournamentMarkFields";
+export * from "./RepertoireEvaluationForm";
