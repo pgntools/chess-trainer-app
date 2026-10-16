@@ -14,7 +14,8 @@ import {
 } from "../../lib/libraryCollectionStore";
 import { createLibraryFolder } from "../../lib/libraryFolderStore";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../lib/computerAnalysis";
-import { enqueueJobV2, loadJobsV2 } from "../../lib/jobV2Store";
+import { COMPUTER_ANALYSIS_KIND } from "../../lib/jobs/kinds/computerAnalysis/core";
+import { jobRuntime } from "../../lib/jobs/runtime";
 import { parsePgnTree } from "../../lib/pgn";
 import { loadPlayedGames, savePlayedGame } from "../../lib/playedGameStore";
 import { DEFAULT_REPERTOIRE_SETTINGS } from "../../lib/repertoireSettings";
@@ -158,22 +159,26 @@ describe("the Storage tab", () => {
     expect(screen.getByTestId("settings-storage-indexeddb")).toHaveTextContent("Not available");
   });
 
-  it("counts and sizes the four sections over the real stores", async () => {
+  it("counts and sizes the five sections over the real stores", async () => {
     const gamesRows = await seed();
-    // A background job (CTA-173, Jobs V2's since CTA-188): its checkpoint is what it weighs.
-    await enqueueJobV2({
-      source: { projectId: "p", caseId: "c1", name: "A game", pgn: "1. e4 e5 *" },
-      options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, outputs: ["light"] },
-      preset: { id: "", name: "", values: {} },
-      target: { kind: "project", projectId: "p" },
-    });
+    // A background job (CTA-221 — the jobs runtime's database): its record is what it weighs. Queued for later, so it never runs here.
+    await jobRuntime().enqueue(
+      COMPUTER_ANALYSIS_KIND,
+      {
+        source: { projectId: "p", caseId: "c1", name: "A game", pgn: "1. e4 e5 *" },
+        options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, outputs: ["light"] },
+        preset: { id: "", name: "", values: {} },
+        target: { kind: "project", projectId: "p" },
+      },
+      { runAfter: new Date(Date.now() + 86_400_000) },
+    );
     renderAt("/settings/storage");
 
     await landed("playedGames", "1");
     await landed("repertoires", "3");
     await landed("collectionGames", "3");
     await landed("analysisCases", "2");
-    await landed("jobsV2", "1");
+    await landed("jobs", "1");
 
     // The folders and the collections' summaries are seeded, and the shipped
     // collections are files fetched over the network: the table counts just
@@ -195,7 +200,7 @@ describe("the Storage tab", () => {
     expect(screen.getByTestId("settings-storage-playedGames-payload")).toHaveTextContent(payload(played));
     expect(screen.getByTestId("settings-storage-analysisCases-payload")).toHaveTextContent(payload(cases));
     expect(screen.getByTestId("settings-storage-repertoires-payload")).toHaveTextContent(payload(repertoires));
-    expect(screen.getByTestId("settings-storage-jobsV2-payload")).toHaveTextContent(payload(await loadJobsV2()));
+    expect(screen.getByTestId("settings-storage-jobs-payload")).toHaveTextContent(payload(jobRuntime().snapshot() ?? []));
 
     // The Library's games are estimated from their index rows, never read.
     const gamesPayload = formatBytes(gamesRows.reduce((total, row) => total + estimatedGamePgnBytes(row), 0));
@@ -204,7 +209,7 @@ describe("the Storage tab", () => {
     );
   });
 
-  it("separates the four sections with a bolder line — Analysis's Cases and jobs one database, one section", async () => {
+  it("separates the five sections with a bolder line — one database, one section", async () => {
     await seed();
     renderAt("/settings/storage");
 
@@ -212,12 +217,12 @@ describe("the Storage tab", () => {
     for (const id of ["playedGames", "repertoires", "collectionGames"]) {
       expect(screen.getByTestId(`settings-storage-${id}-records`)).toHaveStyle({ borderBottomWidth: "2px" });
     }
-    expect(screen.getByTestId("settings-storage-analysisCases-records")).not.toHaveStyle({ borderBottomWidth: "2px" });
+    expect(screen.getByTestId("settings-storage-analysisCases-records")).toHaveStyle({ borderBottomWidth: "2px" });
     // The last row closes the table, not a section. (MUI's default 1px
     // border hides behind a CSS variable jsdom's parser drops —
     // `chessboard.md` §8 — so the absence of the separator is what is
     // asserted, not the default's width.)
-    expect(screen.getByTestId("settings-storage-jobsV2-records")).not.toHaveStyle({
+    expect(screen.getByTestId("settings-storage-jobs-records")).not.toHaveStyle({
       borderBottomWidth: "2px",
     });
   });

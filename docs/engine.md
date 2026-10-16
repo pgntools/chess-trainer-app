@@ -422,9 +422,10 @@ modules and no board change:
   just that its process exists; a hung or dead engine sends none. `HostedEngine`
   hands it on as an `EngineMessage` with `heartbeat: true`, an empty
   `uciMessage` and the FEN, nothing else: `useEngineModule` drops it, and only
-  the Jobs V2 runner reads it — its silence timer (120 s) starts again and
-  its live snapshot's `heardAt` moves on, the Jobs V2 panel's engine section
-  and the header indicator beating with it ([`analysis-v2.md`](../.claude/rules/analysis-v2.md) §6.3, §6.7).
+  the engine jobs' session reads it (`lib/jobs/engineSession.ts`) — its
+  silence timer (120 s) starts again, the step's `ctx.heartbeat()` is called
+  and its live payload's `heardAt` moves on, a job page's engine section and
+  the header indicator beating with it ([`jobs.md`](../.claude/rules/jobs.md) §3).
   An older server and every in-browser engine send none, and are held to the
   silence timeout as before. (The wait for `readyok` after a large `Hash`,
   before the search starts, sends none: it is bounded at 30 s, inside the
@@ -578,7 +579,7 @@ no source; each source is **a plugin**.
                          src/lib/evalSources/
 useEngineModule ──▶ withEvalSources(handle) ──┐
                      (the decorator)           ├──▶ askEvalSources / recordInEvalSources ──▶ EVAL_SOURCES (registry.ts)
-jobV2Runner ─────────────────────────────────┘                                              └─ lichess/   (the plugin)
+engineSession (jobs) ────────────────────────┘                                              └─ lichess/   (the plugin)
 EngineTab ──▶ a tab per source (EvalSourceTab) ──▶ its SettingsSection (lazy)
 ```
 
@@ -634,7 +635,8 @@ asked about (and written back) when it is:
    `Skill Level` below its top, as last set through the handle (a preset may
    set them on any board).
 
-**The Jobs V2 runner** calls the layer itself — it asks before it builds an
+**The engine jobs' session** (`lib/jobs/engineSession.ts`, every engine-lane
+job kind's — [`jobs.md`](../.claude/rules/jobs.md)) calls the layer itself — it asks before it builds an
 engine at all (a job a source answers whole starts none) — and keeps CTA-193's
 rule: a source that does not answer is said once
 (`reportEvalSourceUnreachable`, `kind: "read"`) and skipped for the rest of
@@ -647,7 +649,7 @@ not tried again that run.
 | --- | --- |
 | `api.ts` | The client (CTA-193): `lichessEvalFen` (the 4-field FEN, en passant only where a capture is legal), `lookupLichessEval` (`GET /fen?fen=…&best=true`; 404 / 422 `missing`), `checkLichessEvalApi` (`GET /health`, `write_enabled`), `positionResultOfLichessEval` (the API's king-takes-rook castling turned into the engine's), `lichessEvalEntryOf` / `writeLichessEval` (`POST /evals`). 5 s per request. |
 | `settings.ts` | `chessapp.lichessEvalApi` (`localStorage`): `{ enabled, url, write, minWriteDepth }`, **off by default**; `minWriteDepth` (CTA-202) the shallowest search written — 35 by default (the lichess database's own shallowest), a missing or unreadable value 35, a number held to 1–99, so settings stored before it need no migration; its status (`connectLichessEvalApi`, read never stored); **the migration** — a reader's `chessapp.jobsSettings.evalApi` moved here on the first read, the field taken out of the Jobs settings (which keep any field they do not read until then). A change clears the boards' back-off. |
-| `source.ts` | `lichessEvalSource` — the `EvalSource`. Its `record` sends nothing whose line 1 is shallower than `minWriteDepth` (CTA-202) — the one write path, the boards' and Jobs V2's — and answers `true`: too shallow is not a refusal (no back-off, no warning). |
+| `source.ts` | `lichessEvalSource` — the `EvalSource`. Its `record` sends nothing whose line 1 is shallower than `minWriteDepth` (CTA-202) — the one write path, the boards' and the jobs' — and answers `true`: too shallow is not a refusal (no back-off, no warning). |
 | `LichessEvalApiSection.tsx` | Its tab of Settings → Engine, *Lichess evaluation API* (lazy): `EngineServerForm` with its words (`localeKey` `evalSources.lichess`), Connect, the chip, *Enable evaluations Write API*, *Minimum depth to write* (a number, disabled while writing is not ticked, CTA-202) and *Test connection*. |
 
 Locale keys: `evalSources.lichess.*` (the plugin's), `evalSources.*` (the
@@ -679,8 +681,7 @@ short search), `evalSources.test.ts` (the order, the skip, the writes),
 the status, the migration, the minimum depth to write), `lichess/source.test.ts`
 (the write held to the minimum depth), `lichess/LichessEvalApiSection.test.tsx` (Settings
 → Engine), the board end to end in `views/board/core/useEngineModule.test.tsx`,
-the runner's in `lib/jobV2Runner.test.ts`, the shell's warning in
-`JobsV2Shell.test.tsx`.
+the engine session's in `lib/jobs/engineSession.test.ts`.
 
 ## 11. Testing
 
@@ -720,7 +721,7 @@ the runner's in `lib/jobV2Runner.test.ts`, the shell's warning in
   `presetLimitsStrength`), `enginePresetStore.test.ts`
   (create, rename, duplicate, delete, select, the cap, the import's write),
   `blocks/forms/EnginePresetForm/EnginePresetForm.test.tsx`, and Settings →
-  Engine's `EngineTab.test.tsx`; the job runner's in `jobV2Runner.test.ts`.
+  Engine's `EngineTab.test.tsx`; the engine jobs' in `lib/jobs/engineSession.test.ts`.
 - **The seam every board's test stubs is the registry's** — `lib/engines/builtin`,
   replaced with the shared harness's `builtinEnginesMock` (`boardTestHarness.tsx`,
   `chessboard.md` §8):

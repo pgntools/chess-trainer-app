@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import type { ChessboardOptions } from "react-chessboard";
 
 import { CasePickerDialog } from "../../blocks/dialogs";
-import { CaseJobs, CaseLinks } from "../../blocks/lists";
+import { CaseLinks, EntityJobs } from "../../blocks/lists";
 import { caseDisplayName } from "../../blocks/tables";
 import { CaseDetails, type CaseDetailsTab } from "../../blocks/panels";
 import { CaseSiblings } from "../../blocks/trees";
@@ -38,7 +38,9 @@ import {
   type CaseDisplay,
   type CaseState,
 } from "../../lib/analysisProjects";
-import { jobV2AnalysisOf } from "../../lib/jobsV2";
+import { ANALYSIS_CASE_ENTITY } from "../../lib/jobs/entityTypes";
+import { analysisOf } from "../../lib/jobs/kinds/computerAnalysis/core";
+import { readComputerAnalysisJob } from "../../lib/jobs/kinds/computerAnalysis/kind";
 import { arrowWidthSourcesIn, engineLineWeights } from "../../lib/nextMoveWeights";
 import { evalSeriesOf } from "../../lib/computerAnalysisTree";
 import { emptyTree, mainlineGame, sanPathTo, type GameTree } from "../../lib/gameTree";
@@ -57,9 +59,13 @@ import { useCurrentOpening } from "../shared/useCurrentOpening";
 import CaseDisplayTab from "./CaseDisplayTab";
 import { DEFAULT_ANALYSIS_SETTINGS } from "../../lib/analysisSettings";
 import CaseSettingsTab from "./CaseSettingsTab";
-import NewJobV2, { type NewJobV2Case } from "./jobs/NewJobV2";
-import { browserPath, caseListContextOf, casePath, jobsV2Path, projectPath, withCaseView } from "./paths";
-import { useAnalysisCases, useAnalysisProjects, useCaseLinks, useJobsV2 } from "./useAnalysisProjects";
+import { isJobOf, jobRowOf, newestFirst } from "../jobs/jobViews";
+import { jobPath } from "../jobs/paths";
+import { useNewJob } from "../jobs/useNewJob";
+import { useJobRecords } from "../jobs/useJobs";
+import type { ComputerAnalysisContext } from "../jobs/kinds/ComputerAnalysisNewJob";
+import { browserPath, caseListContextOf, casePath, projectPath, withCaseView } from "./paths";
+import { useAnalysisCases, useAnalysisProjects, useCaseLinks } from "./useAnalysisProjects";
 
 /** The tabs that stay mounted once opened — a long move list is costly to mount, and the Map keeps its pan. */
 const KEEP_MOUNTED = ["moves", "map"] as const;
@@ -139,19 +145,21 @@ export function CaseBoard({ record, leftPanel, onOpenSiblings, siblingsOpen = fa
     analysis applied to the tree as it stands, or — its job gone — the
     record's tree loaded.
   */
-  const jobs = useJobsV2();
+  const jobs = useJobRecords();
   const [merged, setMerged] = useState<readonly string[]>(record.merges);
   const pending = record.merges.filter((id) => !merged.includes(id));
   if (pending.length > 0 && jobs !== undefined) {
     setMerged(record.merges);
     for (const id of pending) {
-      const job = jobs.find((candidate) => candidate.id === id);
-      const variant = job?.options.outputs[0];
-      if (job === undefined || variant === undefined) {
+      const found = jobs.find((candidate) => candidate.id === id);
+      const job = found === undefined ? undefined : readComputerAnalysisJob(found);
+      const variant = job?.input.options.outputs[0];
+      if (job === undefined || job.state === null || variant === undefined) {
         core.loadTree(caseTree(record) ?? core.tree);
         break;
       }
-      core.annotateTree((tree) => jobV2AnalysisOf(job, tree, variant));
+      const { input, state } = job;
+      core.annotateTree((tree) => analysisOf(state, input, tree, variant, state.engine));
     }
   }
   const [tab, setTab] = useState("moves");
@@ -402,9 +410,18 @@ function CaseWorkspace() {
     setTabCaseId(caseId);
     setDetailsTab("info");
   }
-  // The New Job V2 popup (CTA-188), open for the Case on the board — its tree as the board held it.
-  const [newJob, setNewJob] = useState<NewJobV2Case | null>(null);
-  const jobs = useJobsV2();
+  // New job (CTA-221) for the Case on the board — its tree as the board holds it; its jobs, newest first.
+  const newJob = useNewJob("analysis-case-new-job");
+  const jobs = useJobRecords();
+  const caseJobs = useMemo(
+    () =>
+      jobs === undefined || caseId === undefined
+        ? undefined
+        : newestFirst(jobs)
+            .filter((job) => isJobOf(job, { type: ANALYSIS_CASE_ENTITY, id: caseId }))
+            .map((job) => jobRowOf(t, job)),
+    [jobs, caseId, t],
+  );
   // The Case's links (CTA-188) — a dialog off its Info tab (CTA-211) — the Link a case picker, and a refused link's words.
   const links = useCaseLinks();
   const [picking, setPicking] = useState(false);
@@ -602,10 +619,14 @@ function CaseWorkspace() {
                 }
                 linkCount={ends.to.length + ends.from.length}
                 jobs={
-                  <CaseJobs
-                    jobs={jobs?.filter((job) => job.source.caseId === record.id)}
-                    jobLink={(job) => ({ component: RouterLink, to: jobsV2Path(job.id) })}
-                    onNewJob={() => setNewJob({ record, tree: view.tree, name: row.name })}
+                  <EntityJobs
+                    jobs={caseJobs}
+                    jobLink={(job) => ({ component: RouterLink, to: jobPath(job.id) })}
+                    onNewJob={() =>
+                      newJob.open({ type: ANALYSIS_CASE_ENTITY, id: record.id }, { tree: view.tree, name: row.name } satisfies ComputerAnalysisContext)
+                    }
+                    label={t("analysisV2.caseJobs.list")}
+                    emptyText={t("analysisV2.caseJobs.none")}
                     testId="analysis-case-jobs"
                   />
                 }
@@ -622,7 +643,7 @@ function CaseWorkspace() {
           </BoardLeftPanel>
         )}
       />
-      <NewJobV2 open={newJob} onClose={() => setNewJob(null)} testId="analysis-case-new-job" />
+      {newJob.dialog}
       <CasePickerDialog
         open={picking}
         projects={projects}

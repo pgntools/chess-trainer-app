@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 
-import type { VisibleLabel } from "../../a11y";
+import { visuallyHidden, type VisibleLabel } from "../../a11y";
 
 /**
  * A select's floor: 160 px, or its container where that is narrower (CTA-116)
@@ -34,6 +34,13 @@ export type SelectFieldProps = {
    * clicked it before it moved onto this field (CTA-113).
    */
   testIdOn?: "input" | "display";
+  /**
+   * **The label read, not drawn** (CTA-221) — for a select whose place names
+   * it already: a filter under its column's header ("Status" above, "Any
+   * status" in it). The label stays the combobox's accessible name; the
+   * outline has no notch for it. Absent, the label shows, as ever.
+   */
+  labelHidden?: boolean;
 };
 
 /**
@@ -56,6 +63,7 @@ function SelectField({
   optionDir,
   testId,
   testIdOn = "input",
+  labelHidden = false,
 }: SelectFieldProps) {
   const known = value === "" || options.some((option) => option.value === value);
   return (
@@ -74,7 +82,8 @@ function SelectField({
           displayEmpty: emptyOption !== undefined,
           ...(testIdOn === "display" && { SelectDisplayProps: { "data-testid": testId } as object }),
         },
-        inputLabel: { shrink: true },
+        inputLabel: { shrink: true, ...(labelHidden && { sx: visuallyHidden }) },
+        ...(labelHidden && { input: { notched: false } }),
       }}
       sx={{ minWidth: SELECT_MIN_WIDTH }}
     >

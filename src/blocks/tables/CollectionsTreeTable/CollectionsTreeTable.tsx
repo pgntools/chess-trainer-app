@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
@@ -7,12 +8,13 @@ import FolderRoundedIcon from "@mui/icons-material/FolderRounded";
 import FolderSpecialRoundedIcon from "@mui/icons-material/FolderSpecialRounded";
 import TableChartOutlinedIcon from "@mui/icons-material/TableChartOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import WorkHistoryOutlinedIcon from "@mui/icons-material/WorkHistoryOutlined";
 import { useTranslation } from "react-i18next";
 
 import { visuallyHidden } from "../../../design-system/components/a11y";
 import type { LinkTarget } from "../../../design-system/components/link";
 import { tableDate } from "../../../design-system/components/tables";
-import { IconAction } from "../../../design-system/components/toolbars";
+import { IconAction, SelectionBar } from "../../../design-system/components/toolbars";
 import {
   DataTable,
   type DataTableColumn,
@@ -41,6 +43,8 @@ export type CollectionsTreeActions = {
   onDownloadCollection: (collection: LibraryEntry) => void;
   onMoveCollection: (collection: LibraryEntry) => void;
   onDeleteCollection: (collection: LibraryEntry) => void;
+  /** New job for one collection (CTA-221) — an action on every collection's row. Absent, none. */
+  onNewJob?: (collection: LibraryEntry) => void;
 };
 
 export type CollectionsTreeTableProps = {
@@ -79,6 +83,13 @@ export type CollectionsTreeTableProps = {
    * collection's `library-row-<id>` (its link `library-collection-<id>`, its
    * actions `library-collection-actions-<id>` → `library-collection-<action>-<id>`).
    */
+  /**
+   * **Collections picked** (CTA-221) — a checkbox on every collection's row
+   * (never a folder's), select-all in the header, and a bar counting them
+   * with the screen's `actions` (the Library's *Merge collections…*). The
+   * ids are the collections'. Absent, no picks.
+   */
+  picks?: { picked: ReadonlySet<string>; onChange: (picked: Set<string>) => void; actions?: ReactNode };
   testId: string;
 };
 
@@ -117,6 +128,7 @@ function CollectionsTreeTable({
   filtered = false,
   isTournament,
   isPotentialTournament,
+  picks,
   testId,
 }: CollectionsTreeTableProps) {
   const { t, i18n } = useTranslation();
@@ -265,6 +277,15 @@ function CollectionsTreeTable({
         >
           <DownloadRoundedIcon fontSize="small" />
         </IconAction>
+        {actions.onNewJob !== undefined && (
+          <IconAction
+            label={t("library.newJobNamed", { name: item.name })}
+            onClick={() => actions.onNewJob?.(item)}
+            testId={`library-collection-new-job-${item.id}`}
+          >
+            <WorkHistoryOutlinedIcon fontSize="small" />
+          </IconAction>
+        )}
         {own && (
           <IconAction
             label={t("savedList.folder.moveNamed", { name: item.name })}
@@ -286,6 +307,10 @@ function CollectionsTreeTable({
       </Box>
     );
   };
+
+  // The picks are the collections' ids; the table's rows are keyed `item-<id>`.
+  const pickedKeys = picks === undefined ? undefined : new Set([...picks.picked].map((id) => `item-${id}`));
+  const pickedCount = picks?.picked.size ?? 0;
 
   return (
     <DataTable<Row, LibraryTreeColumn>
@@ -330,6 +355,32 @@ function CollectionsTreeTable({
       }
       rowActions={rowActions}
       actionsLabel={t("library.columns.actions")}
+      {...(picks === undefined || pickedKeys === undefined
+        ? {}
+        : {
+            picks: {
+              picked: pickedKeys,
+              onChange: (next: Set<string>) =>
+                picks.onChange(new Set([...next].filter((key) => key.startsWith("item-")).map((key) => key.slice("item-".length)))),
+              selectAllLabel: t("library.picks.selectAll"),
+              pickLabel: (row: Row) => t("library.picks.pick", { name: nameOf(row) }),
+              canPick: (row: Row) => row.kind === "item",
+              pickTestId: (row: Row) => (row.kind === "item" ? `library-pick-${row.item.id}` : `library-pick-folder-${row.folder.id}`),
+            },
+          })}
+      toolbar={
+        picks === undefined || pickedCount === 0 ? undefined : (
+          <SelectionBar
+            count={pickedCount}
+            countLabel={t("library.picks.picked", { count: pickedCount })}
+            onClear={() => picks.onChange(new Set())}
+            clearLabel={t("library.picks.clear")}
+            actions={picks.actions}
+            testId="library-picks-bar"
+            rootTestId="library-picks-bar"
+          />
+        )
+      }
       density="dense"
       emptyLabel={<span data-testid="library-no-matches">{t("library.noMatches")}</span>}
       filtered={filtered}

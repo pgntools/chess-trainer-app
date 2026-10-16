@@ -103,7 +103,9 @@ Gallery: `/dev/design/forms`.
   It is at least 160 px wide **or as wide as its container where that is
   narrower** (`min-width: min(160px, 100%)`, CTA-116), so a grid of selects in
   a half-panel column — the mask editor's twelve — fits without `fullWidth`.
-- **Variations** — with an "any" choice; required, full width; in a column
+  `labelHidden?` (CTA-221): the label read, not drawn — a filter under its
+  column's header, whose place names it — the outline without a notch.
+- **Variations** — with an "any" choice; its label hidden (a column filter); required, full width; in a column
   narrower than its floor; disabled with a helper.
 - **Replaces** — the `TextField select` filters (the Lobby's opening, the
   collection's result) and the Masking tab's native `Select`.

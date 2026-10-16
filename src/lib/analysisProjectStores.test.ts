@@ -62,8 +62,8 @@ import {
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "./computerAnalysis";
 import { emptyTree, mainline } from "./gameTree";
 import { committed, done } from "./idb";
-import { jobV2Of } from "./jobsV2";
-import { addJobV2, jobsV2Snapshot, loadJobsV2, resetJobV2Store } from "./jobV2Store";
+import { COMPUTER_ANALYSIS_KIND } from "./jobs/kinds/computerAnalysis/core";
+import { jobRuntime, startJobRuntime } from "./jobs/runtime";
 import { parsePgnTree } from "./pgn";
 
 const FEN = "8/8/4k3/8/8/4K3/4P3/8 w - - 0 1";
@@ -363,7 +363,7 @@ describe("Analysis V2's stores (CTA-186)", () => {
       ]);
     });
 
-    it("go with either Case — a Case deleted, or its Project — as its jobs do", async () => {
+    it("go with either Case — a Case deleted, or its Project — as its unfinished jobs do (CTA-221's deletion rule)", async () => {
       const p1 = (await createAnalysisProject("One", null))!;
       const p2 = (await createAnalysisProject("Two", null))!;
       await addAnalysisCases([aCase("c1", p1.id), aCase("c2", p2.id), aCase("c3", p2.id)]);
@@ -372,15 +372,22 @@ describe("Analysis V2's stores (CTA-186)", () => {
         { fromId: "c3", toId: "c1" },
         { fromId: "c2", toId: "c3" },
       ]);
-      const job = jobV2Of("j1", {
-        source: { projectId: p1.id, caseId: "c1", name: "x", pgn: "1. e4 e5 *" },
-        options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, outputs: ["light"] },
-        preset: { id: "default", name: "Default", values: {} },
-        target: { kind: "project", projectId: p1.id },
-      })!;
-      await addJobV2(job);
+      // A job of the Case, queued to run much later — unfinished, and never claimed meanwhile.
+      const queued = await jobRuntime().enqueue(
+        COMPUTER_ANALYSIS_KIND,
+        {
+          source: { projectId: p1.id, caseId: "c1", name: "x", pgn: "1. e4 e5 *" },
+          options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, outputs: ["light"] },
+          preset: { id: "default", name: "Default", values: {} },
+          target: { kind: "project", projectId: p1.id },
+        },
+        { runAfter: new Date(Date.now() + 86_400_000) },
+      );
+      expect(queued).toHaveProperty("id");
+      startJobRuntime();
+      await vi.waitFor(() => expect(jobRuntime().snapshot()).toHaveLength(1));
       await removeAnalysisCases(["c1"]);
-      expect(jobsV2Snapshot()).toEqual([]);
+      await vi.waitFor(() => expect(jobRuntime().snapshot()).toEqual([]));
       expect(caseLinksSnapshot()?.map(({ fromId, toId }) => [fromId, toId])).toEqual([["c2", "c3"]]);
       await removeAnalysisProject(p2.id);
       expect(caseLinksSnapshot()).toEqual([]);
@@ -519,7 +526,6 @@ describe("Analysis V2's stores (CTA-186)", () => {
       resetProjectFolderStore();
       resetAnalysisProjectStore();
       resetAnalysisCaseStore();
-      resetJobV2Store();
       resetCaseLinkStore();
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
         const open = indexedDB.open(ANALYSIS_PROJECTS_DB_NAME, version);
@@ -546,7 +552,6 @@ describe("Analysis V2's stores (CTA-186)", () => {
       expect(cases.map((record) => record.id)).toEqual(["c"]);
       // A Case from before reads as holding no merge.
       expect(cases[0].merges).toEqual([]);
-      expect(await loadJobsV2()).toEqual([]);
       expect(await loadCaseLinks()).toEqual([]);
       expect(await linkAnalysisCases("c", "d")).toBeUndefined();
     };

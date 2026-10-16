@@ -4,10 +4,13 @@
  * records and folders (a folder's actions, the folder picker, the saved
  * analyses and the repertoires as rows or cards).
  */
-export * from "./CaseJobs";
 export * from "./CaseLinks";
 export * from "./FolderActions";
 export * from "./FolderPicker";
+// CTA-217: the Jobs module's generic blocks — a job's outputs, and its attempts and history; CTA-221: one entity's jobs.
+export * from "./EntityJobs";
+export * from "./JobHistory";
+export * from "./JobOutputsList";
 export * from "./OpeningBookList";
 export * from "./RepertoiresList";
 export { SAVED_LIST_DEFAULT_VIEW, SAVED_LIST_VIEWS, type SavedListView } from "./savedListView";

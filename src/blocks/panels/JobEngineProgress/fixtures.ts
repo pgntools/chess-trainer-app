@@ -1,4 +1,4 @@
-import type { JobV2Live } from "../../../lib/jobV2Live";
+import type { EngineSessionLive } from "../../../lib/jobs/engineSession";
 
 /*
   A running Jobs V2 job's live engine progress (CTA-190), typed with
@@ -6,7 +6,7 @@ import type { JobV2Live } from "../../../lib/jobV2Live";
 */
 
 /** Deep in a search: every number the engine reports, a best line with its score. */
-export const DEEP: JobV2Live = {
+export const DEEP: EngineSessionLive = {
   jobId: "job",
   index: 12,
   move: "7. Nf3",
@@ -22,7 +22,7 @@ export const DEEP: JobV2Live = {
 };
 
 /** A search just begun, on the game's last position (no move judged from it): no counts yet, no line. */
-export const STARTING: JobV2Live = {
+export const STARTING: EngineSessionLive = {
   jobId: "job",
   index: 0,
   depth: 0,
@@ -32,7 +32,7 @@ export const STARTING: JobV2Live = {
 };
 
 /** A mate found for Black. */
-export const MATE: JobV2Live = {
+export const MATE: EngineSessionLive = {
   ...DEEP,
   move: "31... Qh4",
   depth: 18,
@@ -46,7 +46,7 @@ export const MATE: JobV2Live = {
 export const HEARD_RECENTLY = DEEP.heardAt + 3_000;
 
 /** Deep in a long quiet stretch (CTA-194): no line for minutes, the engine last heard 42 s before {@link SILENT_NOW}. */
-export const SILENT: JobV2Live = {
+export const SILENT: EngineSessionLive = {
   ...DEEP,
   move: "16. Bg3",
   depth: 32,

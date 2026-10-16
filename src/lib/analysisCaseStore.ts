@@ -22,7 +22,8 @@ import type { CatalogGame } from "./gameCatalog";
 import { mainlineGame } from "./gameTree";
 import { idbRecordStore } from "./idbRecordStore";
 import { parsePgnTree } from "./pgn";
-import { removeJobsV2Of } from "./jobV2Store";
+import { ANALYSIS_CASE_ENTITY, ANALYSIS_PROJECT_ENTITY } from "./jobs/entityTypes";
+import { removeUnfinishedJobsOf } from "./jobs/subjectDeletion";
 import { newRecordId } from "./recordId";
 
 /**
@@ -35,9 +36,10 @@ import { newRecordId } from "./recordId";
  * and an operation that changes nothing writes nothing (the same array back:
  * no transaction, no emit). Nothing throws. The autosave
  * ({@link saveCaseState}) writes only what changed, in place. A Case deleted
- * takes its Jobs V2 and its links with it (CTA-188, `lib/jobV2Store.ts`,
- * `lib/analysisCaseLinkStore.ts`), and a Jobs V2
- * computer analysis is merged into one by {@link mergeIntoAnalysisCase}.
+ * takes its unfinished jobs (the Jobs module's deletion rule, CTA-221,
+ * `lib/jobs/subjectDeletion.ts`) and its links (`lib/analysisCaseLinkStore.ts`)
+ * with it, and a computer-analysis job is merged into one by
+ * {@link mergeIntoAnalysisCase}.
  *
  * **Each Project's Cases have the reader's order** (CTA-203, `order`): a Case
  * added or moved in goes last, one deleted or moved away closes the gap
@@ -195,8 +197,8 @@ export const duplicateAnalysisCase = async (
 
 /**
  * Delete Cases by id — their Projects' orders closed up behind them —, their
- * Jobs V2 (a running one stopped by the runner, which reads it gone) and their
- * links. Unknown ids are a no-op.
+ * unfinished jobs (the Jobs module's deletion rule, CTA-221 — a running one
+ * aborted; finished ones kept) and their links. Unknown ids are a no-op.
  */
 export const removeAnalysisCases = async (ids: readonly string[]): Promise<AnalysisCaseProblem | undefined> => {
   if (ids.length === 0) return undefined;
@@ -209,10 +211,13 @@ export const removeAnalysisCases = async (ids: readonly string[]): Promise<Analy
       current.filter((record) => gone.has(record.id)).map((record) => record.projectId),
     );
   });
-  return problem ?? (await removeJobsV2Of({ caseIds: ids })) ?? removeLinksOfCases(ids);
+  if (problem !== undefined) return problem;
+  // The deletion rule (CTA-221): their unfinished jobs go, a running one aborted; finished ones stay.
+  await removeUnfinishedJobsOf(ids.map((id) => ({ type: ANALYSIS_CASE_ENTITY, id })));
+  return removeLinksOfCases(ids);
 };
 
-/** Delete every Case of these Projects, their Jobs V2 and their links — a Project deleted takes its Cases with it. */
+/** Delete every Case of these Projects, their unfinished jobs (and the Projects') and their links — a Project deleted takes its Cases with it. */
 export const removeCasesOfProjects = async (projectIds: readonly string[]): Promise<AnalysisCaseProblem | undefined> => {
   if (projectIds.length === 0) return undefined;
   const gone = new Set(projectIds);
@@ -222,7 +227,12 @@ export const removeCasesOfProjects = async (projectIds: readonly string[]): Prom
     caseIds.push(...current.filter((record) => gone.has(record.projectId)).map((record) => record.id));
     return next.length === current.length ? current : next;
   });
-  return problem ?? (await removeJobsV2Of({ projectIds, caseIds })) ?? removeLinksOfCases(caseIds);
+  if (problem !== undefined) return problem;
+  await removeUnfinishedJobsOf([
+    ...projectIds.map((id) => ({ type: ANALYSIS_PROJECT_ENTITY, id })),
+    ...caseIds.map((id) => ({ type: ANALYSIS_CASE_ENTITY, id })),
+  ]);
+  return removeLinksOfCases(caseIds);
 };
 
 /**
@@ -230,7 +240,7 @@ export const removeCasesOfProjects = async (projectIds: readonly string[]): Prom
  * stands, the orientation — and how its board draws, written in place. A state the Case already holds
  * writes nothing; an unknown Case (deleted meanwhile) is a no-op.
  *
- * **A state from before a merge** (CTA-188 — a Jobs V2 merge the record
+ * **A state from before a merge** (CTA-188 — a computer analysis's merge the record
  * lists and the state does not, `isBehindMerges`) never writes its tree: the
  * record keeps the merged one, and only the place, the orientation and the
  * display are written. The board takes the merge in and writes again.
@@ -273,7 +283,7 @@ export const saveCaseState = (
 };
 
 /**
- * **A Jobs V2 computer analysis merged into a Case** (CTA-188): `edit` takes
+ * **A computer-analysis job merged into a Case** (CTA-188; the Jobs module's `analysis.computer-analysis` since CTA-221): `edit` takes
  * the Case's tree as the store holds it **now** (its PGN) and answers the
  * merged one — the reader's moves, side lines and comments kept — and the
  * record lists `mergeId` in its `merges`, so an open board takes it in and its

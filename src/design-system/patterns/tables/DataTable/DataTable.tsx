@@ -369,6 +369,7 @@ function DataTable<R, C extends string = string>({
       </Box>
     );
 
+  const hasFilters = columns.some((column) => column.filter !== undefined);
   const colSpan = columns.length + (picks === undefined ? 0 : 1) + (rowActions === undefined ? 0 : 1);
   const noMatch = filtered && noMatchLabel !== undefined;
 
@@ -390,7 +391,8 @@ function DataTable<R, C extends string = string>({
         {...name}
       >
         <TableHead>
-          <TableRow>
+          {/* Labels at the top of every header cell, the columns' filters (where they have one) under theirs. */}
+          <TableRow sx={hasFilters ? { "& > .MuiTableCell-root": { verticalAlign: "top" } } : undefined}>
             {picks !== undefined && (
               <PickHeaderCell
                 total={pickable.length}
@@ -425,10 +427,13 @@ function DataTable<R, C extends string = string>({
                   align={column.align}
                   width={column.width}
                   testId={`${testId}-sort-${column.id}`}
-                />
+                >
+                  {column.filter}
+                </SortHeaderCell>
               ) : (
                 <TableCell key={column.id} sx={{ width: column.width, ...(column.align === "end" && { textAlign: "end" }) }}>
                   {column.header}
+                  {column.filter !== undefined && <Box sx={{ mt: 0.75, textAlign: "start" }}>{column.filter}</Box>}
                 </TableCell>
               ),
             )}

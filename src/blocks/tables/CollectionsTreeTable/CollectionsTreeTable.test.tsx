@@ -151,6 +151,40 @@ describe("CollectionsTreeTable", () => {
     await expectNoAxeViolations(screen.getByTestId("probe"));
   });
 
+  it("picks collections — never a folder — and hands the bar the screen's actions (CTA-221)", async () => {
+    const onChange = vi.fn();
+    mount({ picks: { picked: new Set(["tal"]), onChange, actions: <button type="button">Merge collections…</button> } });
+    expect(screen.getByTestId("library-picks-bar")).toHaveTextContent("1 collection picked");
+    expect(screen.getByRole("button", { name: "Merge collections…" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Pick Tal" })).toBeChecked();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Pick Club games" }));
+    expect(onChange).toHaveBeenLastCalledWith(new Set(["tal", "uclub"]));
+    // A folder has no pick.
+    expect(screen.queryByRole("checkbox", { name: "Pick Openings" })).toBeNull();
+    await expectNoAxeViolations();
+  });
+
+  it("offers New job on every collection's row where the screen gives one, and nowhere else (CTA-221)", async () => {
+    const { actions } = mount();
+    expect(screen.queryByRole("button", { name: "New job for Tal" })).toBeNull();
+    const onNewJob = vi.fn();
+    render(
+      <CollectionsTreeTable
+        rows={rowsOpen(new Set([BUILT_IN]))}
+        sort={{ column: "name", direction: "asc" }}
+        onSort={() => {}}
+        onToggle={() => {}}
+        collectionLink={(entry) => ({ href: `/library/${entry.id}` })}
+        onOpenCollection={() => {}}
+        builtInFolderId={BUILT_IN}
+        actions={{ ...actions, onNewJob }}
+        testId="with-jobs"
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "New job for Tal" }));
+    expect(onNewJob).toHaveBeenCalledWith(expect.objectContaining({ id: "tal" }));
+  });
+
   it("marks nothing without the verdict", () => {
     mount();
     expect(screen.queryByTestId("library-tournament-icon-ucup")).toBeNull();

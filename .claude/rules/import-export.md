@@ -93,19 +93,27 @@ report after (`ImportReport`'s `skippedAnalyses`, `settings.import.result.skippe
 
 ### 1.1 What is not in the zip — the background jobs
 
-The Jobs V2 records (the `jobs` store of `chessapp.analysisProjects`,
-[`analysis-v2.md`](./analysis-v2.md) §6) are **not exported, and an import
-writes none**. A job is the state of work under way — a queue entry, the
-engine's per-position checkpoint, the ids of the Cases it made — not the
-reader's chess. What it produced **is** exported: each finished job's
-variants are Cases, in `analysis-projects.json` with every `[%eval]`, verdict
-and report, and a Case shows its report and eval graph from its PGN alone
-(`reportFromTree`). Carried to another browser, a job would name Cases by ids
-the import may have replaced (Override), queue engine work the reader did not
-start there, and hold an interrupted run no one asked to resume. The engine choice, likewise, is a
+The jobs — the Jobs module's `chessapp.backgroundJobs` database (CTA-221,
+[`jobs.md`](./jobs.md): every job's record, and the files its outputs are —
+a merged PGN, an annotated repertoire's PGN) — are **not exported, and an
+import writes none**. A job is the state of work under way on this device —
+a queue entry, its checkpoint, its leases and attempts, the ids of what it
+made — not the reader's chess. What it produced **is** exported, as the
+reader's data it is: a computer analysis's variants are Cases (in
+`analysis-projects.json` with every `[%eval]`, verdict and report — a Case
+shows its report and eval graph from its PGN alone, `reportFromTree`); an
+evaluated repertoire is a repertoire; a merge's Library collection is a
+collection. **Its files are not exported either**: a merged PGN is the
+games of collections that are exported themselves, and a file is the job's
+to download — save it from the job's page to keep it. Carried to another
+browser, a job would name entities by ids the import may have replaced
+(Override), queue engine work the reader did not start there, and hold an
+interrupted run no one asked to resume. (Jobs V2's records, in
+`chessapp.analysisProjects`, were never exported either; CTA-221 dropped
+them.) The engine choice, likewise, is a
 preference and stays out ([`settings.md`](./settings.md) §4) — its presets,
 and the preset each engine runs, are data and go (CTA-179). Settings →
-Storage still counts the jobs.
+Storage still counts the jobs, their files with them.
 
 ## 2. `manifest.json`
 

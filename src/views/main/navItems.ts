@@ -14,6 +14,7 @@ import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
 import SportsEsportsRoundedIcon from "@mui/icons-material/SportsEsportsRounded";
 import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import ViewListRoundedIcon from "@mui/icons-material/ViewListRounded";
 import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
@@ -85,12 +86,17 @@ export const navItems = (): readonly NavItem[] => [
     folder: "library",
   },
   /*
-    Analysis V2 (CTA-186, shipped in CTA-192): its Projects browser, and Jobs
-    V2 beside it (CTA-188). A Case's board is reached from its Project's
-    table, and every game handed to Analysis lands on one.
+    Analysis V2 (CTA-186, shipped in CTA-192): its Projects browser. A Case's
+    board is reached from its Project's table, and every game handed to
+    Analysis lands on one.
   */
   { to: "/analysis", labelKey: "nav.analysisProjects", icon: FolderSpecialRoundedIcon, folder: "analysis-v2" },
-  { to: "/analysis/jobs", labelKey: "nav.analysisJobs", icon: WorkHistoryRoundedIcon, folder: "analysis-v2" },
+  /*
+    The Jobs module (CTA-221): every background job, and the Jobs settings —
+    its own folder, out of Analysis. A job's own page is reached from the list.
+  */
+  { to: "/jobs", labelKey: "nav.jobs", icon: WorkHistoryRoundedIcon, folder: "jobs" },
+  { to: "/jobs/settings", labelKey: "nav.jobsSettings", icon: TuneRoundedIcon, folder: "jobs" },
   /*
     The Openings explorer — the board itself, since nothing on it is
     saved: the top-level Openings folder is a single entry (`navFolders.ts`)

@@ -209,9 +209,10 @@ export const RESULTS = ["1-0", "0-1", "1/2-1/2", "*"] as const;
 /**
  * A movetext's **mainline** moves as text: comments, side lines, NAGs, move
  * numbers and the result are dropped and what is left is one token per move.
- * Never throws; a broken movetext yields what it has.
+ * Never throws; a broken movetext yields what it has. (Exported for the
+ * collection merge's same-game identity, CTA-220.)
  */
-const mainlineTokens = (movetext: string): string[] => {
+export const mainlineTokens = (movetext: string): string[] => {
   let depth = 0;
   let text = "";
   let index = 0;

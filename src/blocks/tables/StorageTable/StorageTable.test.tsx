@@ -43,12 +43,11 @@ describe("StorageTable", () => {
 
   it("closes each database's section with a bolder line, never the last", () => {
     mount();
-    for (const id of ["playedGames", "repertoires", "collectionGames"]) {
+    // Five databases, five sections (CTA-221: the jobs a database of their own, out of Analysis's).
+    for (const id of ["playedGames", "repertoires", "collectionGames", "analysisCases"]) {
       expect(screen.getByTestId(`storage-${id}-records`)).toHaveStyle({ borderBottomWidth: "2px" });
     }
-    // Analysis's Cases and jobs share one database: one section, no line between them.
-    expect(screen.getByTestId("storage-analysisCases-records")).not.toHaveStyle({ borderBottomWidth: "2px" });
-    expect(screen.getByTestId("storage-jobsV2-records")).not.toHaveStyle({ borderBottomWidth: "2px" });
+    expect(screen.getByTestId("storage-jobs-records")).not.toHaveStyle({ borderBottomWidth: "2px" });
   });
 
   it("says … for every count still being read", () => {

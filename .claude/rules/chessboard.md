@@ -61,7 +61,8 @@ when the work is board-shaped but sits outside its paths:
 | File | Module |
 | --- | --- |
 | [`tree-views.md`](./tree-views.md) | `src/views/explorer/` — how a board shows its game tree (move list, map, comments, next-move arrows) |
-| [`analysis-v2.md`](./analysis-v2.md) | Analysis — Projects, Cases and a Case's board, Jobs V2, the hand-off of a game from any screen |
+| [`analysis-v2.md`](./analysis-v2.md) | Analysis — Projects, Cases and a Case's board, its Jobs tab, the hand-off of a game from any screen |
+| [`jobs.md`](./jobs.md) | Jobs — the background jobs on `@pgntools/jobs-runtime`: the kinds, the engine session, the screens, the deletion rule, testing |
 | [`play-with-engine.md`](./play-with-engine.md) | Play with Engine, the Lobby, the played games |
 | [`masked-pieces.md`](./masked-pieces.md) | Masked Pieces — Play with Engine in a costume |
 | [`repertoires.md`](./repertoires.md) | the Repertoires section — the list, the player, the trainer and its games |

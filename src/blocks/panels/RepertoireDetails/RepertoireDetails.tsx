@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
@@ -70,6 +71,8 @@ export type RepertoireDetailsProps = {
   currentGame?: RepertoireGameId;
   /** On a game: the way back to the repertoire's own view. Absent, no such entry. */
   repertoireLink?: LinkTarget;
+  /** The Jobs tab's content (CTA-221) — the repertoire's jobs and *Evaluate with engine…*, the screen's (`EntityJobs`). Absent, an empty state. */
+  jobs?: ReactNode;
 
   /**
    * The root; its parts `-back`, `-title`, `-record-settings`, `-description`,
@@ -96,7 +99,8 @@ export type RepertoireDetailsProps = {
  * - **Games** — every game (`REPERTOIRE_GAMES`), each a link with what it
  *   does, the one being played current; in a game, a way back to the
  *   repertoire's own view first.
- * - **Jobs** — nothing yet: repertoire jobs are a later issue.
+ * - **Jobs** — the repertoire's jobs and *Evaluate with engine…* (CTA-221,
+ *   the screen's `jobs`); absent, an empty state.
  *
  * Presentational: the session's state, the links and the open tab arrive from
  * the screen; its words are `repertoires.details.*`, `repertoires.play.*` and
@@ -126,6 +130,7 @@ function RepertoireDetails({
   gameLink,
   currentGame,
   repertoireLink,
+  jobs,
   testId,
 }: RepertoireDetailsProps) {
   const { t } = useTranslation();
@@ -317,9 +322,11 @@ function RepertoireDetails({
         )}
         {tab === "jobs" && (
           <Box {...tabPanelProps(testId, "jobs")} data-testid={`${testId}-jobs`}>
-            <EmptyState icon={<WorkHistoryOutlinedIcon />} testId={`${testId}-jobs-empty`}>
-              {t("repertoires.details.jobs.empty")}
-            </EmptyState>
+            {jobs ?? (
+              <EmptyState icon={<WorkHistoryOutlinedIcon />} testId={`${testId}-jobs-empty`}>
+                {t("repertoires.details.jobs.empty")}
+              </EmptyState>
+            )}
           </Box>
         )}
       </Box>

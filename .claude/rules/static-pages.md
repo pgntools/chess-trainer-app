@@ -54,13 +54,15 @@ yarn check:pages                                         holds dist/ to it (CI, 
   `shippedCollections`. Not a reader's record, not a single Library game
   (decided): those, and any unknown path, reach the app through the host's
   fallback. A new static route is pre-rendered with no edit; a new param route
-  is not, unless listed there. **`/analysis/jobs`** (Jobs V2, CTA-188 —
-  shipped with Analysis in CTA-192, as `/analysis` is) is such a static route:
-  pre-rendered as its reading state (the jobs are the reader's, read in an
-  effect), `?job=` and all left to the app; its share image is the Analysis
-  section's (`src/assets/share/sections.ts`, everything under `/analysis`); a
-  Project's and a Case's pages are the reader's records, never pre-rendered. Nothing of the job runner runs
-  under Node — the shell starts it from an effect.
+  is not, unless listed there. **`/jobs` and `/jobs/settings`** (the Jobs
+  module, CTA-221 — Jobs V2's `/analysis/jobs` before, an unknown route since)
+  are such static routes: pre-rendered as their reading state (the jobs are
+  the reader's, read once the runtime is started in an effect); a job's own
+  page (`/jobs/<id>`), a Project's and a Case's are the reader's records,
+  never pre-rendered; `/jobs` has no share card of its own (the site's,
+  `src/assets/share/sections.ts`). Nothing of the jobs runtime runs under
+  Node — it is made lazily, touching nothing, and the shell starts it from an
+  effect.
 - **How**: react-router's static handler under the base + language prefix,
   the same tree as `main.tsx`'s, and React 19's `prerender` with an unbounded
   `progressiveChunkSize` — it waits for every lazy article chunk and writes

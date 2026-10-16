@@ -161,7 +161,14 @@ describe("RepertoireDetails (CTA-206)", () => {
     await expectNoAxeViolations(container);
   });
 
-  it("says repertoire jobs are coming, on Jobs", async () => {
+  it("shows the screen's jobs on Jobs, where it gives them (CTA-221)", async () => {
+    render(<Held jobs={<p data-testid="probe-jobs-slot">The repertoire's jobs</p>} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Jobs" }));
+    expect(screen.getByRole("tabpanel", { name: "Jobs" })).toContainElement(screen.getByTestId("probe-jobs-slot"));
+    expect(screen.queryByTestId("probe-jobs-empty")).toBeNull();
+  });
+
+  it("says repertoire jobs are coming, on Jobs, where the screen gives none", async () => {
     render(<Held />);
     await userEvent.click(screen.getByRole("tab", { name: "Jobs" }));
     expect(screen.getByRole("tabpanel", { name: "Jobs" })).toContainElement(screen.getByTestId("probe-jobs-empty"));
