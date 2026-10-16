@@ -217,6 +217,30 @@ const withEngineLine = (
   return editComments(grown, existing.id, (comments) => withEval(comments, line.score, line.depth));
 };
 
+/**
+ * **One move's verdict written into a tree**, as every variant writes it: its
+ * comment ("Mistake. Nf3 was best.") after the move's own — a verdict comment
+ * this writer left before taken out first — and its NAG, which replaces the
+ * move's move-quality NAG (the others stay). A move with no verdict loses an
+ * old verdict comment and gains nothing. Pure and id-preserving; shared with
+ * the repertoire evaluation's annotated tree (CTA-219).
+ */
+export const withMoveVerdict = (
+  tree: GameTree,
+  verdict: Pick<MoveVerdict, "nodeId" | "kind" | "missedMateIn" | "bestSan">,
+): GameTree => {
+  const comment = verdictComment(verdict);
+  let next = editComments(tree, verdict.nodeId, (comments) => [
+    ...comments.filter((text) => !VERDICT_COMMENT.test(text)),
+    ...(comment === undefined ? [] : [comment]),
+  ]);
+  if (verdict.kind !== null) {
+    const nags = findNode(next, verdict.nodeId)?.nags ?? [];
+    next = setNags(next, verdict.nodeId, [VERDICT_NAG[verdict.kind], ...nags.filter((nag) => !isMoveMark(nag))]);
+  }
+  return next;
+};
+
 export type ComputerAnalysisTreeInput = {
   /** The tree analysed; every output keeps all it has. */
   source: GameTree;
@@ -272,17 +296,7 @@ export const computerAnalysisTree = ({
   });
 
   // The mainline's annotations first, while the tree is small: each edit copies the path to its move.
-  for (const { verdict } of placed) {
-    const comment = verdictComment(verdict);
-    tree = editComments(tree, verdict.nodeId, (comments) => [
-      ...comments.filter((text) => !VERDICT_COMMENT.test(text)),
-      ...(comment === undefined ? [] : [comment]),
-    ]);
-    if (verdict.kind !== null) {
-      const nags = findNode(tree, verdict.nodeId)?.nags ?? [];
-      tree = setNags(tree, verdict.nodeId, [VERDICT_NAG[verdict.kind], ...nags.filter((nag) => !isMoveMark(nag))]);
-    }
-  }
+  for (const { verdict } of placed) tree = withMoveVerdict(tree, verdict);
 
   for (const { verdict, index, position, played } of placed) {
     if (variant !== "full" && verdict.kind === null) continue;
