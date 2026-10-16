@@ -3,6 +3,8 @@
   Imported only by the block's gallery and its test.
 */
 
+import type { LinkTarget } from "../../../design-system/components/link";
+
 /** A Project's name. */
 export const NAME = "Najdorf — the English Attack";
 
@@ -11,3 +13,6 @@ export const LONG_NAME = "The Najdorf Sicilian with 6. Be3 e5 7. Nb3 Be6 8. f3, 
 
 /** A Hebrew one, read under the app's own direction. */
 export const HEBREW_NAME = "פתיחות — הנאידורף";
+
+/** Where Close goes — the Projects list, at the folder holding the Project. */
+export const CLOSE_LINK: LinkTarget = { href: "/analysis?folder=openings" };

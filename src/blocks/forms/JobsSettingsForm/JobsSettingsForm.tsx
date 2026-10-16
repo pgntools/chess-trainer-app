@@ -94,9 +94,10 @@ function JobsSettingsForm({
         )}
       </SettingsSection>
       <SettingsSection title={t("jobs.settings.evalSources.title")} testId={`${testId}-eval-sources`}>
+        {/* A link in a sentence: the theme's underline, never "hover" — colour alone fails high-contrast (axe's link-in-text-block). */}
         <Typography variant="body2" sx={{ color: "text.secondary" }}>
           {t("jobs.settings.evalSources.description")}{" "}
-          <Link underline="hover" data-testid={`${testId}-eval-sources-link`} {...linkProps(evalSourcesLink)}>
+          <Link data-testid={`${testId}-eval-sources-link`} {...linkProps(evalSourcesLink)}>
             {t("jobs.settings.evalSources.link")}
           </Link>
         </Typography>

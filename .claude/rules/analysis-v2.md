@@ -311,17 +311,25 @@ no folder says so, with a way back.
 
 ### 3.2 A Project — `/analysis/projects/<id>`
 
-Under its header (the Back button kept), **the browser's trail** (CTA-207,
+**Its header's title is the browser's whole trail** (CTA-207, CTA-224 —
 `Breadcrumbs`, the same name and labels — `analysisV2.browser.trail` /
-`root`): the top level, every folder from the top down to the Project's
-(`projectFolderPath`), each a link to the browser there, then the Project's
-name, current; a Project at the top level — or in a folder gone — reads root
-› Project. The screen waits for the folders' first read too.
+`root` — as `ListScreenHeader`'s `heading`): the top level, every folder
+from the top down to the Project's (`projectFolderPath`), each a link to the
+browser there, then the Project's name, current and **the page's one `h1`**
+(`currentComponent="h1"`; it wraps rather than cut); a Project at the top
+level — or in a folder gone — reads root › Project. The Cases count under it,
+the actions at the row's end; **no Back button** (CTA-224 took it, and the
+trail's own row under the header) — the trail's links and the panel's Close
+lead back. The screen waits for the folders' first read too.
 
 **Its own panel, in the main menu's place** (CTA-213, `ProjectDetails` in the
 shell's board left panel, `keepShell` — the header and footer stay, as on the
 Case view; the shell draws a registered left panel on a `FULL_WIDTH_ROUTE`
-too, before the whole body): the Project's name as its heading, then tabs —
+too, before the whole body): a **Close** at its head (CTA-224 — an
+`IconAction`, *Close ‹name›*, `analysisV2.projectDetails.close`; the block's
+`closeLink`, the browser at the folder holding the Project, where Back led;
+the Case list's Close, `CaseSiblings`', its model) before the Project's
+name as its heading, then tabs —
 **General** (a placeholder line) and **Options** (an example switch, held by
 the screen and kept nowhere). A frame: its content is a later issue. Under
 the shell's breakpoint it is a drawer, opened from an Info button in the

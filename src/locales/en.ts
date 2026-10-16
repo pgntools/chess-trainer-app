@@ -3444,6 +3444,8 @@ const en = {
     /** The Project view's left panel (CTA-213) — a frame: placeholder tabs and an example switch, its content a later issue. */
     projectDetails: {
       label: "Details of {{name}}",
+      /** The panel's Close, at its head (CTA-224): back to the Projects list, at the folder holding the Project. */
+      close: "Close {{name}}",
       /** The Project view's header button that opens the panel in a drawer, under the shell's breakpoint. */
       toggle: "The project's details",
       tabs: {

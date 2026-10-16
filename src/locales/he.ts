@@ -2871,6 +2871,7 @@ const he: typeof en = {
     },
     projectDetails: {
       label: "הפרטים של {{name}}",
+      close: "סגירת {{name}}",
       toggle: "פרטי הפרויקט",
       tabs: {
         label: "פרטי הפרויקט",

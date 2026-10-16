@@ -51,4 +51,24 @@ describe("ListScreenHeader", () => {
     expect(screen.queryByTestId("probe-actions")).toBeNull();
     expect(screen.getByTestId("probe-title")).toHaveAttribute("dir", "auto");
   });
+
+  it("takes a heading node of the screen's own in the title's place (CTA-224)", () => {
+    render(
+      <ListScreenHeader
+        heading={
+          <nav aria-label="Trail">
+            <a href="/x">All</a> / <h1>Sicilian</h1>
+          </nav>
+        }
+        count="3 cases"
+        actions={<button>New case</button>}
+        testId="probe"
+      />,
+    );
+    expect(screen.queryByTestId("probe-title")).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByTestId("probe-heading")).toContainElement(screen.getByRole("heading", { level: 1, name: "Sicilian" }));
+    expect(screen.getByTestId("probe-count")).toHaveTextContent("3 cases");
+    expect(screen.getByTestId("probe-actions")).toHaveTextContent("New case");
+  });
 });
