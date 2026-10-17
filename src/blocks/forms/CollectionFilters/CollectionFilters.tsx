@@ -81,7 +81,8 @@ function CollectionFilters({ facets, values, onChange, onClear, openingBoard, on
           {t("library.filters.clear")}
         </Button>
         {onCollapse !== undefined && (
-          <IconAction label={t("library.filters.collapse")} onClick={onCollapse} expanded edge="end" testId={id("collapse")}>
+          // No `edge`: its negative margin would stand out of the panel's scrolling column and scroll it sideways.
+          <IconAction label={t("library.filters.collapse")} onClick={onCollapse} expanded testId={id("collapse")}>
             {/*
               Towards the inline end, where the panel folds. The language's own
               direction, not the theme's: a screen's panel is drawn from inside
