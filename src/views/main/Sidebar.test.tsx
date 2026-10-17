@@ -273,6 +273,18 @@ describe("the folder tree", () => {
     ).toHaveAttribute("href", "/library/new");
   });
 
+  it("draws Analysis as one link to the Projects lobby, current on it — no folder, no Projects row (CTA-227)", () => {
+    renderAt("/analysis");
+    const analysis = i18n.t("nav.folders.analysisV2");
+
+    expect(screen.queryByRole("button", { name: analysis })).not.toBeInTheDocument();
+    const row = screen.getByRole("link", { name: analysis });
+    expect(row).toHaveAttribute("href", "/analysis");
+    expect(row).toHaveAttribute("aria-current", "page");
+    expect(row).not.toHaveAttribute("aria-expanded");
+    expect(screen.queryByRole("link", { name: i18n.t("nav.analysisProjects") })).not.toBeInTheDocument();
+  });
+
   it("starts with everything shut on a route that is no screen", () => {
     renderAt("/");
 

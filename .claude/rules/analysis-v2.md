@@ -112,9 +112,13 @@ Jobs tab and its New job).
   the share section `analysis` is everything under `/analysis`
   (`src/assets/share/sections.ts`). Jobs V2's `/analysis/jobs` is an unknown
   route since CTA-221 (the jobs are `/jobs`, [`jobs.md`](./jobs.md)).
-- **Sidebar**: the folder *Analysis V2* (`analysis-v2`, `nav.folders.analysisV2`)
-  after the Library, with *Projects* (`/analysis`); the Jobs module has its
-  own folder after it.
+- **Sidebar**: one row, *Analysis*, after the Library, straight to the
+  Projects lobby (`/analysis`) — the folder `analysis-v2`
+  (`nav.folders.analysisV2`) is `singleEntry` (CTA-227), folded to its one
+  screen (`nav.analysisProjects`, declared but not drawn) under its own name
+  and icon, as Openings and Repertoires are: no toggle, no nested *Projects*.
+  Active on `/analysis` only (an exact match — a Project or a Case lights no
+  row); the Jobs module has its own folder after it.
 - **Export / Import**: the `analysisProjects` category, offered always (§5).
 - **The legal pages** name `chessapp.analysisProjects`, in both languages;
   `legalDocuments.test.ts` holds them to it, and to naming neither retired

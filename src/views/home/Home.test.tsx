@@ -121,15 +121,16 @@ describe("the front page's nav cards — the landing page as it was", () => {
     expect(cardLinks().map((link) => link.getAttribute("href"))).not.toContain("/openings/saved");
   });
 
-  it("shows an Analysis section — a Projects card (CTA-192) — and a Jobs section of its own (CTA-221)", async () => {
+  it("shows one Analysis card, to the Projects lobby (CTA-192, CTA-227) — and a Jobs section of its own (CTA-221)", async () => {
     renderHome();
     await screen.findByTestId("home-nav-cards");
 
-    // The sidebar's Analysis V2 folder: its Projects browser, under the folder's own heading.
+    // The sidebar's Analysis row — one destination, as Openings is: one card
+    // under the folder's own heading and name, to the Projects lobby.
     expect(within(screen.getByTestId("home-nav-cards")).getByRole("heading", { level: 3, name: "Analysis" })).toBeInTheDocument();
-    const analysis = within(screen.getByTestId("home-section-analysis-v2")).getAllByRole("link");
+    const analysis = within(screen.getByTestId("home-nav-cards")).getAllByRole("link", { name: "Analysis" });
     expect(analysis.map((link) => link.getAttribute("href"))).toEqual(["/analysis"]);
-    expect(analysis[0]).toHaveTextContent("Projects");
+    expect(cardLinks().map((link) => link.textContent)).not.toContain("Projects");
     // The Jobs folder (CTA-221): every job, and the Jobs settings.
     const jobs = within(screen.getByTestId("home-section-jobs")).getAllByRole("link");
     expect(jobs.map((link) => link.getAttribute("href"))).toEqual(["/jobs", "/jobs/settings"]);
