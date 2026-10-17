@@ -148,7 +148,8 @@ function CollectionsTreeTable({
         return (
           <Box
             component="span"
-            sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}
+            // `relative` holds the trophy's hidden word inside the table's scroll box, not the page's.
+            sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, position: "relative" }}
           >
             <Box
               component="span"
