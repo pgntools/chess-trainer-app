@@ -5,7 +5,8 @@ import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { useTranslation } from "react-i18next";
 
-import { CheckboxField, RadioGroupField, SettingsSection, TextInputField } from "../../../design-system/components/forms";
+import { SelectAutocomplete } from "../../../design-system/components/autocompletes";
+import { RadioGroupField, SettingsSection, TextInputField } from "../../../design-system/components/forms";
 import { IconAction } from "../../../design-system/components/toolbars";
 import {
   COLLECTION_MERGE_DEDUPE_MODES,
@@ -14,26 +15,36 @@ import {
   type CollectionMergeDedupe,
   type CollectionMergeSettings,
   type CollectionMergeSource,
-} from "../../../lib/jobs/kinds/collectionMerge/core";
-import { MAX_COLLECTION_CHARS } from "../../../lib/libraryCollections";
+} from "../../../lib/collectionMerge";
 
 /** A collection picked to merge, with how many games it holds. */
 export type CollectionMergeFormSource = CollectionMergeSource & { count: number };
 
+/** A collection the reader may add — a shipped one (Built-in) or their own. */
+export type CollectionMergeFormCandidate = CollectionMergeFormSource & { builtIn: boolean };
+
 export type CollectionMergeFormProps = {
-  /** The collections picked, in the order their games are written — two or more. */
+  /** The collections picked, in the order their games are written. */
   sources: readonly CollectionMergeFormSource[];
-  /** The collections reordered, or one removed — the whole list, as it now is. */
+  /** The collections reordered, one removed or one added — the whole list, as it now is. */
   onSourcesChange: (sources: CollectionMergeFormSource[]) => void;
-  /** The dedupe mode, the name (`""` — the default, "<first> + <n> more") and the outputs. */
+  /**
+   * The collections the reader may add — every other one in the Library,
+   * Built-in and their own; those already picked are left out here. Empty:
+   * no picker.
+   */
+  candidates: readonly CollectionMergeFormCandidate[];
+  /** The dedupe mode and the name (`""` — the default, "<first> + <n> more"). */
   settings: CollectionMergeSettings;
-  /** A change, as a patch — the screen holds the settings (`collectionMergeSettingsFrom`). */
+  /** A change, as a patch — the screen holds the settings. */
   onChange: (patch: Partial<CollectionMergeSettings>) => void;
+  /** The merge is under way: nothing changes. */
+  disabled?: boolean;
   /**
    * The root. The collections `-sources` (a row `-source-<id>`, its actions
-   * `-up-<id>`, `-down-<id>`, `-remove-<id>`; the note at two `-minimum`), the
-   * dedupe radios `-dedupe` (each `-dedupe-<mode>`), the name `-name`, the
-   * outputs `-output-pgn`, `-output-collection`.
+   * `-up-<id>`, `-down-<id>`, `-remove-<id>`; the note at two `-minimum`),
+   * the picker `-add` (its input `-add-input`), the dedupe radios `-dedupe`
+   * (each `-dedupe-<mode>`), the name `-name`.
    */
   testId: string;
 };
@@ -54,24 +65,28 @@ const moved = (sources: readonly CollectionMergeFormSource[], from: number, to: 
 };
 
 /**
- * **A collection merge's New-job form** (CTA-220, the Jobs module's
- * `library.collection-merge` kind): the collections picked, in the order
- * their games are written — each with its game count, moved up or down or
- * removed (never below two: the last two cannot be, and a note says why); how
- * duplicates are told, a radio each with what it keeps and drops; the name,
- * the default "<first> + <n> more" (in the reader's language) where it is
- * left empty; and what is made — the merged PGN as a file always (ticked, not
- * to be unticked), and *Also add as a Library collection*.
+ * **A collection merge's form** (CTA-220; the Library's own since CTA-232,
+ * in `CollectionMergeDialog`): the collections picked, in the order their
+ * games are written — each with its game count, moved up or down or removed
+ * (never below two once there are two: the last two cannot be, and a note
+ * says why); a picker over the Library's other collections, Built-in and the
+ * reader's own, typed to find, to add one at the end; how duplicates are
+ * told, a radio each with what it keeps and drops; and the new collection's
+ * name, the default "<first> + <n> more" (in the reader's language) where it
+ * is left empty.
  *
- * Presentational: the collections and the settings arrive, a change leaves
- * as the new list or a patch; Start and its refusals are the New-job frame's.
- * Its words are `jobs.kinds.collectionMerge.*`.
+ * Presentational: the collections, the candidates and the settings arrive, a
+ * change leaves as the new list or a patch; Merge and its refusals are the
+ * dialog's. Its words are `library.merge.*`.
  */
-function CollectionMergeForm({ sources, onSourcesChange, settings, onChange, testId }: CollectionMergeFormProps) {
+function CollectionMergeForm({ sources, onSourcesChange, candidates, settings, onChange, disabled = false, testId }: CollectionMergeFormProps) {
   const { t, i18n } = useTranslation();
-  const words = (key: string, options?: Record<string, unknown>) => t(`jobs.kinds.collectionMerge.form.${key}`, options);
+  const words = (key: string, options?: Record<string, unknown>) => t(`library.merge.${key}`, options);
   const defaultName = defaultMergeName(sources, (count) => words("more", { count }));
   const atMinimum = sources.length <= MIN_MERGE_SOURCES;
+  const picked = new Set(sources.map((source) => source.id));
+  const addable = candidates.filter((candidate) => !picked.has(candidate.id));
+  const count = (value: number) => value.toLocaleString(i18n.language);
 
   return (
     <Box data-testid={testId} sx={{ display: "grid", gap: 2 }}>
@@ -97,13 +112,13 @@ function CollectionMergeForm({ sources, onSourcesChange, settings, onChange, tes
                   {source.name}
                 </Typography>
                 <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  {words("games", { count: source.count, formatted: source.count.toLocaleString(i18n.language) })}
+                  {words("games", { count: source.count, formatted: count(source.count) })}
                 </Typography>
               </Box>
               <IconAction
                 label={words("moveUp", { name: source.name })}
                 onClick={() => onSourcesChange(moved(sources, index, index - 1))}
-                disabled={index === 0}
+                disabled={disabled || index === 0}
                 testId={`${testId}-up-${source.id}`}
               >
                 <ArrowUpwardRoundedIcon fontSize="small" />
@@ -111,7 +126,7 @@ function CollectionMergeForm({ sources, onSourcesChange, settings, onChange, tes
               <IconAction
                 label={words("moveDown", { name: source.name })}
                 onClick={() => onSourcesChange(moved(sources, index, index + 1))}
-                disabled={index === sources.length - 1}
+                disabled={disabled || index === sources.length - 1}
                 testId={`${testId}-down-${source.id}`}
               >
                 <ArrowDownwardRoundedIcon fontSize="small" />
@@ -119,7 +134,7 @@ function CollectionMergeForm({ sources, onSourcesChange, settings, onChange, tes
               <IconAction
                 label={words("remove", { name: source.name })}
                 onClick={() => onSourcesChange(sources.filter((each) => each.id !== source.id))}
-                disabled={atMinimum}
+                disabled={disabled || atMinimum}
                 testId={`${testId}-remove-${source.id}`}
               >
                 <CloseRoundedIcon fontSize="small" />
@@ -127,10 +142,29 @@ function CollectionMergeForm({ sources, onSourcesChange, settings, onChange, tes
             </Box>
           ))}
         </Box>
-        {atMinimum && (
+        {sources.length === MIN_MERGE_SOURCES && (
           <Typography variant="caption" sx={{ color: "text.secondary" }} data-testid={`${testId}-minimum`}>
             {words("minimum")}
           </Typography>
+        )}
+        {addable.length > 0 && (
+          <SelectAutocomplete
+            label={words("add")}
+            value={null}
+            onChange={(id) => {
+              const chosen = addable.find((candidate) => candidate.id === id);
+              if (chosen !== undefined) onSourcesChange([...sources, { id: chosen.id, name: chosen.name, count: chosen.count }]);
+            }}
+            options={addable.map((candidate) => ({
+              value: candidate.id,
+              label: `${candidate.name} — ${words("games", { count: candidate.count, formatted: count(candidate.count) })}`,
+              group: words(candidate.builtIn ? "builtIn" : "yours"),
+            }))}
+            placeholder={words("addPlaceholder")}
+            maxShown={200}
+            disabled={disabled}
+            testId={`${testId}-add`}
+          />
         )}
       </SettingsSection>
 
@@ -141,7 +175,7 @@ function CollectionMergeForm({ sources, onSourcesChange, settings, onChange, tes
             value: mode,
             label: (
               <>
-                {t(`jobs.kinds.collectionMerge.dedupe.${mode}`)}
+                {words(`dedupeModes.${mode}`)}
                 <Box component="span" sx={{ display: "block", typography: "caption", color: "text.secondary", mb: 0.5 }}>
                   {words(MODE_HELP[mode])}
                 </Box>
@@ -150,6 +184,7 @@ function CollectionMergeForm({ sources, onSourcesChange, settings, onChange, tes
           }))}
           value={settings.dedupe}
           onChange={(dedupe) => onChange({ dedupe })}
+          disabled={disabled}
           testId={`${testId}-dedupe`}
         />
       </SettingsSection>
@@ -161,19 +196,9 @@ function CollectionMergeForm({ sources, onSourcesChange, settings, onChange, tes
           onChange={(name) => onChange({ name })}
           placeholder={defaultName}
           helperText={words("nameHelp", { name: defaultName })}
+          disabled={disabled}
           dir="auto"
           testId={`${testId}-name`}
-        />
-      </SettingsSection>
-
-      <SettingsSection title={words("outputs")} testId={`${testId}-outputs`}>
-        <CheckboxField label={words("pgnFile")} help={words("pgnFileHelp")} checked disabled onChange={() => {}} testId={`${testId}-output-pgn`} />
-        <CheckboxField
-          label={words("collection")}
-          help={words("collectionHelp", { limit: MAX_COLLECTION_CHARS.toLocaleString(i18n.language) })}
-          checked={settings.outputs.collection}
-          onChange={(collection) => onChange({ outputs: { ...settings.outputs, collection } })}
-          testId={`${testId}-output-collection`}
         />
       </SettingsSection>
     </Box>

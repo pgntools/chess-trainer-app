@@ -5,10 +5,8 @@ import en from "../../../locales/en";
 import he from "../../../locales/he";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../computerAnalysis";
 import { JOB_ENTITY_TYPES } from "../entityTypes";
-import { COLLECTION_MERGE_KIND } from "./collectionMerge/core";
-import { COLLECTION_MERGE_ERRORS } from "./collectionMerge/kind";
 import { COMPUTER_ANALYSIS_ERRORS, COMPUTER_ANALYSIS_KIND } from "./computerAnalysis/core";
-import { jobKinds, jobKindLocaleKey, JOB_KIND_LOCALE_KEYS } from ".";
+import { isRegisteredJobKind, jobKinds, jobKindLocaleKey, JOB_KIND_LOCALE_KEYS, RETIRED_JOB_KIND_LOCALE_KEYS } from ".";
 import { DEFAULT_REPERTOIRE_EVALUATION_SETTINGS, REPERTOIRE_EVALUATION_KIND } from "./repertoireEvaluation/core";
 import { REPERTOIRE_EVALUATION_ERRORS } from "./repertoireEvaluation/kind";
 
@@ -19,10 +17,7 @@ import { REPERTOIRE_EVALUATION_ERRORS } from "./repertoireEvaluation/kind";
   parses its own plan's state back as it planned it.
 */
 
-const kinds = jobKinds({
-  readArtifact: async () => undefined,
-  libraryReader: { count: async () => 2, read: async () => [] },
-});
+const kinds = jobKinds();
 
 /** A sample input each kind plans from. */
 const SAMPLES: Record<string, unknown> = {
@@ -40,22 +35,12 @@ const SAMPLES: Record<string, unknown> = {
     preset: null,
     ...DEFAULT_REPERTOIRE_EVALUATION_SETTINGS,
   },
-  [COLLECTION_MERGE_KIND]: {
-    sources: [
-      { id: "a", name: "A" },
-      { id: "b", name: "B" },
-    ],
-    dedupe: "none",
-    name: "Merged",
-    outputs: { collection: false },
-  },
 };
 
 /** Each kind's error codes — every one worded. */
 const ERRORS: Record<string, readonly string[]> = {
   [COMPUTER_ANALYSIS_KIND]: COMPUTER_ANALYSIS_ERRORS,
   [REPERTOIRE_EVALUATION_KIND]: REPERTOIRE_EVALUATION_ERRORS,
-  [COLLECTION_MERGE_KIND]: COLLECTION_MERGE_ERRORS,
 };
 
 const read = (catalog: unknown, path: string): unknown =>
@@ -66,8 +51,20 @@ const ctx = { jobId: "j", attempt: 1, signal: new AbortController().signal } as 
 
 describe("the kind registry (CTA-221)", () => {
   it("registers each kind once, every one with a locale key", () => {
-    expect(kinds.map((kind) => kind.id)).toEqual([COMPUTER_ANALYSIS_KIND, REPERTOIRE_EVALUATION_KIND, COLLECTION_MERGE_KIND]);
+    expect(kinds.map((kind) => kind.id)).toEqual([COMPUTER_ANALYSIS_KIND, REPERTOIRE_EVALUATION_KIND]);
     expect(Object.keys(JOB_KIND_LOCALE_KEYS).sort()).toEqual(kinds.map((kind) => kind.id).sort());
+  });
+
+  it("retires the collection merge (CTA-232): not registered, its old name in both catalogs", () => {
+    expect(kinds.map((kind) => kind.id)).not.toContain("library.collection-merge");
+    expect(isRegisteredJobKind("library.collection-merge")).toBe(false);
+    expect(isRegisteredJobKind(COMPUTER_ANALYSIS_KIND)).toBe(true);
+    // A name the prototype carries is no kind.
+    expect(isRegisteredJobKind("toString")).toBe(false);
+    for (const [id, key] of Object.entries(RETIRED_JOB_KIND_LOCALE_KEYS)) {
+      expect(JOB_KIND_LOCALE_KEYS[id]).toBeUndefined();
+      for (const catalog of [en, he]) expect(typeof read(catalog, `jobs.retiredKinds.${key}`), id).toBe("string");
+    }
   });
 
   it.each(kinds.map((kind) => [kind.id, kind] as const))("%s has its words in both catalogs — its name, its description, its every error", (id, kind) => {

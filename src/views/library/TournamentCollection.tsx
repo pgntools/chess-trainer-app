@@ -4,6 +4,7 @@ import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import KeyboardDoubleArrowRightRoundedIcon from "@mui/icons-material/KeyboardDoubleArrowRightRounded";
 import LeaderboardOutlinedIcon from "@mui/icons-material/LeaderboardOutlined";
+import MergeTypeRoundedIcon from "@mui/icons-material/MergeTypeRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { Link as RouterLink, useLocation, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -424,6 +425,7 @@ function TournamentOverview({
   tabs,
   detailsToggle,
   onOpenSettings,
+  onMergeWith,
   ...fold
 }: {
   collection: CollectionSummary;
@@ -432,6 +434,7 @@ function TournamentOverview({
   tabs: TournamentTabs;
   detailsToggle?: ReactNode;
   onOpenSettings: () => void;
+  onMergeWith: () => void;
 } & StatisticsFold) {
   const { t } = useTranslation();
   // The collection's name is the page's `h1`, and its title (CTA-112).
@@ -453,6 +456,10 @@ function TournamentOverview({
                   <SettingsRoundedIcon fontSize="small" />
                 </IconAction>
               )}
+              {/* The whole collection merged with others into a new one (CTA-232). */}
+              <IconAction label={t("library.merge.mergeWith")} onClick={onMergeWith} testId="library-table-merge-with">
+                <MergeTypeRoundedIcon fontSize="small" />
+              </IconAction>
             </>
           }
           testId="library-table-header"
@@ -482,6 +489,7 @@ export function TournamentCollection({
   games,
   detailsToggle,
   onOpenSettings,
+  onMergeWith,
   ...fold
 }: {
   collection: CollectionSummary;
@@ -491,6 +499,8 @@ export function TournamentCollection({
   detailsToggle?: ReactNode;
   /** The Settings gear's and *Change the type*'s: the page's left panel on Options (CTA-231). */
   onOpenSettings: () => void;
+  /** *Merge with…* (CTA-232): the merge dialog on this collection — the Info and Participants tabs' header; the Games tab's is the table's. */
+  onMergeWith: () => void;
 } & StatisticsFold) {
   const [params] = useSearchParams();
   const tab = tournamentTabOf(params);
@@ -505,6 +515,7 @@ export function TournamentCollection({
       tabs={tabs}
       detailsToggle={detailsToggle}
       onOpenSettings={onOpenSettings}
+      onMergeWith={onMergeWith}
       {...fold}
     />
   );

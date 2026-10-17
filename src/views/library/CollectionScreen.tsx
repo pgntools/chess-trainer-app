@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import LibraryAddRoundedIcon from "@mui/icons-material/LibraryAddRounded";
 import PostAddRoundedIcon from "@mui/icons-material/PostAddRounded";
+import MergeTypeRoundedIcon from "@mui/icons-material/MergeTypeRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
@@ -44,7 +45,6 @@ import {
 import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
 import type { GameTree } from "../../lib/gameTree";
-import { LIBRARY_COLLECTION_ENTITY } from "../../lib/jobs/entityTypes";
 import { parsePgnTree, readPgnTags } from "../../lib/pgn";
 import { repertoireGameNamesOf } from "../../lib/savedRepertoires";
 import { useSendToAnalysis } from "../analysisV2/useSendToAnalysis";
@@ -54,7 +54,6 @@ import { RightPanel } from "../main/rightPanel";
 import { useShellCompact } from "../main/shellCompact";
 import { SaveAsCollectionDialog } from "../../blocks/dialogs";
 import { CollectionFilters, CollectionFiltersRail, TournamentSuggestion } from "../../blocks/forms";
-import { EntityJobs } from "../../blocks/lists";
 import { CollectionDetails, type CollectionDetailsGeneral, type CollectionDetailsTab } from "../../blocks/panels";
 import { CollectionGamesTable, COLLECTION_DEFAULT_SORT, collectionFirstDirection } from "../../blocks/tables";
 import { DeleteManyDialog } from "../../design-system/components/dialogs";
@@ -69,11 +68,8 @@ import LibraryMiss from "./LibraryMiss";
 import { loadCollectionGames, useCollectionGames, useCollectionRows, useTournamentGuess } from "./useLibraryCollections";
 import CollectionSettingsPanel from "./CollectionSettingsPanel";
 import { tournamentFactsOf } from "./tournamentFacts";
+import { useCollectionMerge } from "./useCollectionMerge";
 import { useCollectionSettings } from "./useCollectionSettings";
-import { isJobOf, jobRowOf, newestFirst } from "../jobs/jobViews";
-import { jobPath } from "../jobs/paths";
-import { useJobRecords } from "../jobs/useJobs";
-import { useNewJob } from "../jobs/useNewJob";
 import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
 
 /**
@@ -168,6 +164,7 @@ function CollectionTable({
   tabs,
   detailsToggle,
   onOpenSettings,
+  onMergeWith,
   filtersFolded,
   onFiltersFoldedChange,
 }: {
@@ -179,6 +176,8 @@ function CollectionTable({
   detailsToggle?: ReactNode;
   /** The Settings gear's: the page's left panel on Options (CTA-231). */
   onOpenSettings: () => void;
+  /** *Merge with…* (CTA-232): the merge dialog on this collection, the rest picked in it. */
+  onMergeWith: () => void;
   /** The filters' panel folded to the shell's rail (CTA-230) — the page's state, so a tournament's change of tab keeps it. */
   filtersFolded: boolean;
   onFiltersFoldedChange: (folded: boolean) => void;
@@ -561,6 +560,10 @@ function CollectionTable({
                         <SettingsRoundedIcon fontSize="small" />
                       </IconAction>
                     )}
+                    {/* The whole collection merged with others into a new one (CTA-232) — shipped and uploaded alike. */}
+                    <IconAction label={t("library.merge.mergeWith")} onClick={onMergeWith} testId="library-table-merge-with">
+                      <MergeTypeRoundedIcon fontSize="small" />
+                    </IconAction>
                     <IconAction
                       label={t("library.table.picks.download")}
                       disabled={picked.size === 0}
@@ -747,7 +750,7 @@ function CollectionTable({
  * view) and **its own panel in the main menu's place** (CTA-229,
  * `CollectionDetails` in the shell's board left panel, `keepShell`: the
  * header and footer stay, as on the Project view) — its Close the way back
- * to the Library — with, since CTA-231, its content:
+ * to the Library — with, since CTA-231, its content (two tabs since CTA-232):
  *
  * - **General** — a tournament's event card (its facts from the rows at
  *   once, the games' tags — the site, the teams — once read: General reads
@@ -756,10 +759,11 @@ function CollectionTable({
  * - **Options** — the collection's settings (`CollectionSettingsPanel`, the
  *   draft held here, `useCollectionSettings`), in place of the
  *   `/library/<c>/settings` screen; the header's gear and a tournament's
- *   *Change the type* open it (and, under the breakpoint, the drawer);
- * - **Jobs** — the collection's jobs and New job for it (`EntityJobs`,
- *   `useNewJob` over the `library-collection` entity), in place of the
- *   Library row's New job.
+ *   *Change the type* open it (and, under the breakpoint, the drawer).
+ *
+ * No Jobs tab since CTA-232: the collection's one job was the merge, which
+ * is the header's *Merge with…* now (`useCollectionMerge`, this collection
+ * first, the rest picked in its dialog).
  *
  * The open tab is held here (above the tournament view's tabs, so a change
  * of tab keeps it) and kept nowhere. Under the shell's breakpoint it is a
@@ -815,18 +819,9 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
     [tournament, collection, rows, headers],
   );
 
-  // The collection's jobs (CTA-231) — its Jobs tab — and New job for it.
-  const newJob = useNewJob("library-collection-new-job");
-  const jobRecords = useJobRecords();
-  const jobs = useMemo(
-    () =>
-      jobRecords === undefined
-        ? undefined
-        : newestFirst(jobRecords)
-            .filter((job) => isJobOf(job, { type: LIBRARY_COLLECTION_ENTITY, id: collection.id }))
-            .map((job) => jobRowOf(t, job)),
-    [jobRecords, collection.id, t],
-  );
+  // *Merge with…* (CTA-232): this collection first, the rest picked in the dialog.
+  const merge = useCollectionMerge("library-collection-merge");
+  const mergeWith = () => merge.open([collection.id]);
 
   // Under the breakpoint the panel is a drawer; wide, the column in the main menu's place.
   const detailsToggle = compact ? (
@@ -849,14 +844,30 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
           rows={rows}
           detailsToggle={detailsToggle}
           onOpenSettings={openSettings}
+          onMergeWith={mergeWith}
           statisticsFolded={statisticsFolded}
           onStatisticsFoldedChange={setStatisticsFolded}
           games={(tabs) => (
-            <CollectionTable collection={collection} rows={rows} tabs={tabs} detailsToggle={detailsToggle} onOpenSettings={openSettings} {...fold} />
+            <CollectionTable
+              collection={collection}
+              rows={rows}
+              tabs={tabs}
+              detailsToggle={detailsToggle}
+              onOpenSettings={openSettings}
+              onMergeWith={mergeWith}
+              {...fold}
+            />
           )}
         />
       ) : (
-        <CollectionTable collection={collection} rows={rows} detailsToggle={detailsToggle} onOpenSettings={openSettings} {...fold} />
+        <CollectionTable
+          collection={collection}
+          rows={rows}
+          detailsToggle={detailsToggle}
+          onOpenSettings={openSettings}
+          onMergeWith={mergeWith}
+          {...fold}
+        />
       )}
       <BoardLeftPanel
         collapsed={false}
@@ -877,20 +888,10 @@ function CollectionPage({ collection, rows }: { collection: CollectionSummary; r
               <CollectionSettingsPanel collection={collection} canMark={canBeTournament(rows)} settings={settings} />
             ) : undefined
           }
-          jobs={
-            <EntityJobs
-              jobs={jobs}
-              jobLink={(job) => ({ component: RouterLink, to: jobPath(job.id) })}
-              onNewJob={() => newJob.open({ type: LIBRARY_COLLECTION_ENTITY, id: collection.id })}
-              label={t("library.collectionDetails.jobs.list")}
-              emptyText={t("library.collectionDetails.jobs.none")}
-              testId="library-collection-details-jobs-list"
-            />
-          }
           testId="library-collection-details"
         />
       </BoardLeftPanel>
-      {newJob.dialog}
+      {merge.dialog}
     </>
   );
 }

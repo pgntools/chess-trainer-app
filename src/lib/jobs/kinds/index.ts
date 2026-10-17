@@ -1,8 +1,6 @@
 import type { JobKind } from "@pgntools/jobs-runtime";
 
 import type { EngineSessionDeps } from "../engineSession";
-import { collectionMergeKind } from "./collectionMerge/kind";
-import type { CollectionMergeReader } from "./collectionMerge/core";
 import { computerAnalysisKind } from "./computerAnalysis/kind";
 import { repertoireEvaluationKind } from "./repertoireEvaluation/kind";
 
@@ -14,32 +12,44 @@ import { repertoireEvaluationKind } from "./repertoireEvaluation/kind";
  * (`views/jobs/kindViews.ts`) and an entry point on its entity's screen.
  * Nothing in the runtime, the store, the Jobs screens or the shell changes.
  *
- * A factory, not a list: the merge's collection output reads the file the
- * runtime sealed (`readArtifact`), and a test hands the engine kinds its own
- * engine and timeouts.
+ * A factory, not a list: a test hands the engine kinds its own engine and
+ * timeouts.
+ *
+ * **Retiring a kind** (CTA-232, the collection merge): its line goes, and
+ * its id moves to {@link RETIRED_JOB_KIND_LOCALE_KEYS} — a reader's stored
+ * jobs of it stay, which the runtime keeps but never claims (it can only
+ * delete them), and the Jobs screens list under their old name, offering
+ * Delete alone.
  */
 
 export type JobKindDeps = {
-  readArtifact: (artifactId: string) => Promise<Blob | undefined>;
   /** The engine kinds' engine session — a test's engine and timeouts. */
   engine?: EngineSessionDeps;
-  /** The merge's Library — a test's in memory. */
-  libraryReader?: CollectionMergeReader;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- a registry holds kinds of every input and state, as the runtime's options do
-export const jobKinds = (deps: JobKindDeps): readonly JobKind<any, any, any>[] => [
+export const jobKinds = (deps: JobKindDeps = {}): readonly JobKind<any, any, any>[] => [
   computerAnalysisKind({ engine: deps.engine }),
   repertoireEvaluationKind({ engine: deps.engine }),
-  collectionMergeKind({ readArtifact: deps.readArtifact, reader: deps.libraryReader }),
 ];
 
 /** Each kind's words — `jobs.kinds.<key>.name`, `.description`, `.errors.<code>`. */
 export const JOB_KIND_LOCALE_KEYS: Readonly<Record<string, string>> = {
   "analysis.computer-analysis": "computerAnalysis",
   "repertoire.evaluation": "repertoireEvaluation",
+};
+
+/**
+ * **The kinds the app ran once and runs no more** — each its name's key,
+ * `jobs.retiredKinds.<key>`: `library.collection-merge` (CTA-220 / CTA-221,
+ * retired in CTA-232 — merging is the Library's own action now).
+ */
+export const RETIRED_JOB_KIND_LOCALE_KEYS: Readonly<Record<string, string>> = {
   "library.collection-merge": "collectionMerge",
 };
 
 /** A kind's locale key — `undefined` for a kind no longer registered. */
 export const jobKindLocaleKey = (kindId: string): string | undefined => JOB_KIND_LOCALE_KEYS[kindId];
+
+/** Whether the app runs this kind — a stored job of any other is kept, never run, and can only be deleted. */
+export const isRegisteredJobKind = (kindId: string): boolean => Object.hasOwn(JOB_KIND_LOCALE_KEYS, kindId);

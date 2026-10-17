@@ -2,8 +2,8 @@ import type { JobRowView, JobViewStatus } from "./jobView";
 
 /*
   The Jobs queue's rows (CTA-217), typed with the block's own view models —
-  a job of every status, of each of the three kinds, a deleted subject and a
-  Hebrew title. Imported only by the block's gallery and its test.
+  a job of every status, of each of the two kinds, a deleted subject, a job
+  of a retired kind and a Hebrew title. Imported only by the block's gallery and its test.
 */
 
 const CONTROLS: Record<JobViewStatus, Pick<JobRowView, "canPause" | "canResume" | "canCancel">> = {
@@ -42,15 +42,12 @@ export const INTERRUPTED = jobRow("interrupted", "interrupted", { title: "Firouz
 export const FAILED = jobRow("failed", "failed", { title: "Anand – Kramnik" });
 export const CANCELLED = jobRow("cancelled", "cancelled", { title: "Topalov – Svidler", progress: { done: 3, total: 80 } });
 export const DONE = jobRow("done", "done", {
-  title: "Merge: Tata Steel 2026 + Wijk 2025",
-  kindLabel: "Collection merge",
-  subjects: [
-    { label: "Tata Steel 2026", link: { href: "#collection-1" } },
-    { label: "Wijk 2025", deleted: true },
-  ],
+  title: "My Najdorf — evaluation",
+  kindLabel: "Repertoire evaluation",
+  subjects: [{ label: "My Najdorf", deleted: true }],
   progress: { done: 1680, total: 1680 },
 });
-/** A job whose kind is no longer registered — it can only be deleted. */
+/** A job whose kind is no longer registered — it can only be deleted (a retired kind's says its old name, CTA-232). */
 export const UNKNOWN_KIND = jobRow("unknown", "interrupted", {
   title: "An old job",
   kindLabel: "Unknown kind (old.kind)",
@@ -69,12 +66,8 @@ export const HEBREW: readonly JobRowView[] = [
     subjects: [{ label: "גלפנד – סמירין", link: { href: "#case-he" } }],
   }),
   jobRow("long", "queued", {
-    title: "A very long title for a merge of many collections whose names go on and on — Candidates 2024, Candidates 2022",
-    subjects: [
-      { label: "Candidates 2024", link: { href: "#c-2024" } },
-      { label: "Candidates 2022", link: { href: "#c-2022" } },
-      { label: "Candidates 2020–21", link: { href: "#c-2020" } },
-    ],
+    title: "A very long title for an analysis of a game whose players' names go on and on — Candidates 2024, round 14, board 3",
+    subjects: [{ label: "Candidates 2024, round 14, board 3", link: { href: "#c-2024" } }],
   }),
 ];
 
@@ -83,9 +76,8 @@ export const MANY: readonly JobRowView[] = Array.from({ length: 60 }, (_, index)
   jobRow(`many-${index}`, index % 3 === 0 ? "done" : "queued", { title: `Job ${index + 1}` }),
 );
 
-/** The kinds the kind filter offers — the three the fixtures' rows are of. */
+/** The kinds the kind filter offers — the two the fixtures' rows are of. */
 export const KINDS: readonly { value: string; label: string }[] = [
   { value: "analysis.computer-analysis", label: "Computer analysis" },
   { value: "repertoire.evaluation", label: "Repertoire evaluation" },
-  { value: "library.collection-merge", label: "Collection merge" },
 ];
