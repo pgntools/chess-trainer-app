@@ -77,6 +77,11 @@ export const JOB_ENTITIES: Readonly<Record<JobEntityType, JobEntity>> = {
     link: (id) => (repertoireOf(id) === undefined ? undefined : `/repertoires/${encodeURIComponent(id)}`),
     exists: (id) => present(savedRepertoiresSnapshot(), repertoireOf(id)),
   },
+  /*
+    No kind applies to a collection since CTA-232 (the merge, its one kind, is
+    retired): kept for a reader's stored merge jobs — their subjects named and
+    linked, an unfinished one removed with its collection (the deletion rule).
+  */
   [LIBRARY_COLLECTION_ENTITY]: {
     type: LIBRARY_COLLECTION_ENTITY,
     label: (id) => named(collectionOf(id)?.name),

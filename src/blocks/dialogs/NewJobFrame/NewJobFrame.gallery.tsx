@@ -48,7 +48,7 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "One kind — a Case's computer analysis", render: () => framed(CASE_KINDS, "analysis.computer-analysis", { subjectLabel: "Carlsen – Nepomniachtchi" }) },
     {
       name: "The form blocks Start (startBlockedNote)",
-      render: () => framed(COLLECTION_KINDS, "library.collection-merge", { subjectLabel: "2 collections", startBlockedNote: "Pick at least two collections." }),
+      render: () => framed(COLLECTION_KINDS, "library.opening-report", { subjectLabel: "Tata Steel 2026", startBlockedNote: "Choose an engine first." }),
     },
     { name: "Being queued (busy)", render: () => framed(REPERTOIRE_KINDS, "repertoire.evaluation", { busy: true }) },
     { name: "Refused", render: () => framed(REPERTOIRE_KINDS, "repertoire.evaluation", { problem: "The job could not be queued — the browser refused the write." }) },

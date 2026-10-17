@@ -6,8 +6,6 @@
 */
 
 import type { LinkTarget } from "../../../design-system/components/link";
-import type { JobRowView } from "../../tables";
-import { jobRow } from "../../tables/JobQueueTable/fixtures";
 import type { CollectionDetailsGeneral } from "./CollectionDetails";
 
 /** A collection's name. */
@@ -78,9 +76,3 @@ export const TOURNAMENT: CollectionDetailsGeneral = {
   },
   description: "Eight players, two cycles — the winner plays the world champion.",
 };
-
-/** The collection's jobs — a merge running, one done. */
-export const JOBS: readonly JobRowView[] = [
-  jobRow("merge-running", "running", { title: "Club nights 2026 + Spring open", createdAt: "2026-10-16T09:30:00.000Z" }),
-  jobRow("merge-done", "done", { title: "Club nights 2026 + Autumn open", createdAt: "2026-10-12T18:05:00.000Z" }),
-];

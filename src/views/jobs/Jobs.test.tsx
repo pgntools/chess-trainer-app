@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, matchRoutes, RouterProvider } from "react-router";
+import { createJobRuntime, type JobKind, type JobOutput } from "@pgntools/jobs-runtime";
+import { indexedDbJobStore } from "@pgntools/jobs-runtime/browser";
+import { manualClock, memoryLock } from "@pgntools/jobs-runtime/testing";
 
 import i18n from "../../i18n";
 import { addAnalysisCases } from "../../lib/analysisCaseStore";
@@ -10,15 +13,15 @@ import { gameCaseOf } from "../../lib/analysisProjects";
 import { indexedRowOf } from "../../lib/collectionIndex";
 import { DEFAULT_COMPUTER_ANALYSIS_OPTIONS } from "../../lib/computerAnalysis";
 import { addCollection, resetLibraryCollectionStore } from "../../lib/libraryCollectionStore";
-import { COLLECTION_MERGE_KIND, mergedCollectionId } from "../../lib/jobs/kinds/collectionMerge/core";
 import { COMPUTER_ANALYSIS_KIND } from "../../lib/jobs/kinds/computerAnalysis/core";
-import { jobRuntime, startJobRuntime } from "../../lib/jobs/runtime";
+import { JOBS_DB, jobRuntime, startJobRuntime } from "../../lib/jobs/runtime";
 import { JOBS_SETTINGS_STORAGE_KEY } from "../../lib/jobsSettings";
 import { parsePgnTree } from "../../lib/pgn";
 import { addRepertoires } from "../../lib/savedRepertoireStore";
 import { savedRepertoireOf } from "../../lib/savedRepertoires";
 import { REPERTOIRE_EVALUATION_KIND } from "../../lib/jobs/kinds/repertoireEvaluation/core";
 import { expectNoAxeViolations } from "../../test/axe";
+import { runToEnd } from "../../test/jobsKit";
 import AppThemeWithLang from "../../theme/AppThemeWithLang";
 
 vi.mock("../../lib/engines/builtin", async (importOriginal) =>
@@ -33,10 +36,12 @@ import { appRoutes } from "../../routes";
 
 /*
   **The Jobs screens** (CTA-221) — `/jobs`, `/jobs/<id>`, `/jobs/settings`,
-  the header's indicator and the Library's *Merge collections…*, inside the
+  the header's indicator and New job from an entity's screen, inside the
   real shell over the page's real runtime (`lib/jobs/runtime.ts`, IndexedDB
   through fake-indexeddb). A job seeded to wait an hour (`runAfter`) stays
-  queued; a merge of two small uploads runs to its end for real.
+  queued. A reader's jobs of the retired collection merge (CTA-232) are
+  seeded by a runtime that still knows the kind, then read by the page's,
+  which does not.
 */
 
 const PGN = '[White "Alice"]\n[Black "Bob"]\n\n1. e4 e5 2. Nf3 Nc6 *';
@@ -84,22 +89,66 @@ const keepTwo = async () => {
   return added;
 };
 
-/** A merge of the two, run to its end — its file, its summary and a Library collection of it. */
-const mergeDone = async () => {
+/** The retired kind's id (CTA-232) — the collection merge, a job until merging became the Library's own action. */
+const RETIRED_MERGE = "library.collection-merge";
+
+type RetiredMergeInput = { name: string; sources: { id: string; name: string }[] };
+
+/** The merge kind as it was registered — enough of it to leave a reader's stored jobs behind: its file, its summary. */
+const retiredMergeKind: JobKind<RetiredMergeInput, { written: boolean }> = {
+  id: RETIRED_MERGE,
+  version: 1,
+  lane: "cpu",
+  appliesTo: ["library-collection"],
+  resumable: true,
+  autoResume: true,
+  retry: { maxAttempts: 1, backoff: { initialMs: 1_000, factor: 2, maxMs: 1_000, jitter: false } },
+  parseInput: (value) => value as RetiredMergeInput,
+  parseState: (value) => value as { written: boolean },
+  title: (input) => input.name,
+  subjects: (input) => input.sources.map((source) => ({ type: "library-collection", id: source.id })),
+  plan: async () => ({ state: { written: false }, progress: { done: 0, total: 2 } }),
+  step: async (_state, _input, ctx) => {
+    await ctx.artifacts.writePart("pgn", 0, `${game(1)}\n\n${game(2)}\n\n`);
+    return { state: { written: true }, progress: { done: 2, total: 2 }, done: true };
+  },
+  finalize: async (_state, input, ctx) => {
+    const name = `${input.name}.pgn`;
+    const sealed = await ctx.artifacts.seal("pgn", { name, mimeType: "application/x-chess-pgn" });
+    return [
+      { key: "pgn-file", kind: "artifact", artifactId: sealed.artifactId, name, mimeType: "application/x-chess-pgn", size: sealed.size },
+      { key: "summary", kind: "data", schema: "library.collection-merge.summary@1", value: { name: input.name } },
+    ];
+  },
+  applyOutput: async (plan) => plan as unknown as JobOutput,
+};
+
+/**
+ * **A reader's merge job from before CTA-232**: two uploads, and a job of
+ * the retired kind over them, written by a runtime that still knows it —
+ * left queued, or run to its end (its file and its summary) — then that
+ * runtime gone. The page's runtime reads it as any record.
+ */
+const seedRetiredMerge = async (finished: boolean) => {
   const [a, b] = await keepTwo();
-  startJobRuntime();
-  const queued = await jobRuntime().enqueue(COLLECTION_MERGE_KIND, {
-    sources: [
-      { id: a.id, name: a.name },
-      { id: b.id, name: b.name },
-    ],
-    dedupe: "identical-pgn",
-    name: "Merged",
-    outputs: { collection: true },
+  const clock = manualClock();
+  const before = createJobRuntime({
+    namespace: "test.beforeCta232",
+    kinds: [retiredMergeKind],
+    lanes: { cpu: { concurrency: 1 } },
+    store: indexedDbJobStore({ name: JOBS_DB }),
+    lock: memoryLock(),
+    clock,
   });
+  const queued = await before.enqueue(RETIRED_MERGE, { name: "Merged", sources: [{ id: a.id, name: a.name }, { id: b.id, name: b.name }] });
   if (!("id" in queued)) throw new Error("not queued");
-  await vi.waitFor(() => expect(jobRuntime().snapshot()?.find((job) => job.id === queued.id)?.status).toBe("done"), { timeout: 20_000 });
-  return queued.id;
+  if (finished) {
+    before.start();
+    await runToEnd(before, clock, queued.id);
+    expect(before.snapshot()?.find((job) => job.id === queued.id)?.status).toBe("done");
+  }
+  await before.stop();
+  return { id: queued.id, a, b };
 };
 
 beforeEach(async () => {
@@ -166,26 +215,29 @@ describe("the Jobs screen — /jobs (CTA-221)", () => {
 });
 
 describe("one job — /jobs/<id> (CTA-221)", () => {
-  it("shows a finished merge whole: its outputs — the collection a link, the file downloaded through an object URL, the summary drawn — and its history", async () => {
-    const id = await mergeDone();
+  it("shows a reader's finished merge job of the retired kind whole (CTA-232): its subjects, its file to download, its history — Delete alone", async () => {
+    const { id, a } = await seedRetiredMerge(true);
     const created = vi.fn((blob: Blob) => (void blob, "blob:merged"));
     vi.stubGlobal("URL", Object.assign(Object.create(URL), URL, { createObjectURL: created, revokeObjectURL: vi.fn() }));
     mountAt(`/jobs/${id}`);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Merged" })).toBeInTheDocument();
     expect(screen.getByTestId("job-details-status")).toHaveTextContent("Done");
-    const outputs = screen.getByTestId("job-outputs");
-    expect(within(outputs).getByRole("link", { name: "Merged" })).toHaveAttribute("href", `/library/${mergedCollectionId(id)}`);
-    expect(within(screen.getByTestId("job-data-summary")).getByTestId("job-data-summary-totals")).toBeInTheDocument();
+    expect(screen.getByTestId("job-details")).toHaveTextContent("Merge collections (retired)");
+    expect(await screen.findByRole("link", { name: a.name })).toHaveAttribute("href", `/library/${a.id}`);
+    // A command the runtime would refuse is not offered.
+    expect(screen.queryByRole("button", { name: /^Resume/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /^Delete/ })).toBeEnabled();
 
+    const outputs = screen.getByTestId("job-outputs");
     const user = userEvent.setup();
     await user.click(within(outputs).getByRole("button", { name: "Download Merged.pgn" }));
     await waitFor(() => expect(created).toHaveBeenCalled());
-    const blob = created.mock.calls[0][0];
-    expect((await blob.text()).match(/\[Event/g)).toHaveLength(3);
+    expect((await created.mock.calls[0][0].text()).match(/\[Event/g)).toHaveLength(2);
 
     await user.click(within(screen.getByTestId("job-history")).getByRole("button", { name: "History" }));
     expect(within(screen.getByTestId("job-history")).getAllByText("Done").length).toBeGreaterThan(0);
+    await expectNoAxeViolations();
   });
 
   it("says so for a job that is not there", async () => {
@@ -225,48 +277,32 @@ describe("the header's indicator (CTA-221)", () => {
   });
 });
 
-describe("Merge collections… from the Library's picks (CTA-221)", () => {
-  it("offers the merge with two collections picked, queues it, and leads to the job", async () => {
-    const [a, b] = await keepTwo();
-    const router = mountAt("/library");
+describe("a reader's queued merge job of the retired kind (CTA-232)", () => {
+  it("lists under its old name, never runs, offers Delete alone — and the indicator does not count it", async () => {
+    const { id } = await seedRetiredMerge(false);
+    mountAt("/jobs");
+    const table = await screen.findByTestId("jobs-table");
+    expect(await within(table).findByTestId(`jobs-table-kind-${id}`)).toHaveTextContent("Merge collections (retired)");
+    expect(within(table).getByTestId(`jobs-table-status-${id}`)).toHaveTextContent("Queued");
+    expect(screen.queryByRole("button", { name: "Pause Merged" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cancel Merged" })).toBeNull();
+    // The kind filter offers it, beside the kinds the app runs.
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("checkbox", { name: `Pick ${a.name}` }));
-    expect(screen.getByRole("button", { name: "Merge collections…" })).toBeDisabled();
-    await user.click(screen.getByRole("checkbox", { name: `Pick ${b.name}` }));
-    await user.click(screen.getByRole("button", { name: "Merge collections…" }));
+    await user.click(within(screen.getByRole("columnheader", { name: /Kind/ })).getByRole("combobox", { name: "Kind" }));
+    expect(await screen.findByRole("option", { name: "Merge collections (retired)" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    // The page's runtime leaves it where it is.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(jobRuntime().snapshot()?.find((job) => job.id === id)?.status).toBe("queued");
+    expect(screen.queryByTestId("jobs-indicator")).toBeNull();
 
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("radio", { name: /Merge collections/ })).toBeChecked();
-    await user.click(within(dialog).getByRole("button", { name: "Start" }));
-    const open = await screen.findByRole("link", { name: "Open job" });
-    const job = jobRuntime().snapshot()?.find((each) => each.kind === COLLECTION_MERGE_KIND);
-    expect(job?.subjects.map((subject) => subject.id)).toEqual([a.id, b.id]);
-    expect(open).toHaveAttribute("href", `/jobs/${job?.id}`);
-    expect(router.state.location.pathname).toBe("/library");
+    await user.click(screen.getByRole("button", { name: "Delete Merged" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(jobRuntime().snapshot()).toEqual([]));
   });
 });
 
 describe("New job from an entity's screen (CTA-221)", () => {
-  it("lists a collection's jobs on its page's Jobs tab and opens New job for it (CTA-231)", async () => {
-    const [a, b] = await keepTwo();
-    const queued = await jobRuntime().enqueue(
-      COLLECTION_MERGE_KIND,
-      { sources: [{ id: a.id, name: a.name }, { id: b.id, name: b.name }], dedupe: "identical-pgn", name: "Merged", outputs: { collection: true } },
-      { runAfter: new Date(Date.now() + 3_600_000) },
-    );
-    if (!("id" in queued)) throw new Error("not queued");
-    mountAt(`/library/${a.id}`);
-    const user = userEvent.setup();
-    await user.click(await screen.findByRole("tab", { name: "Jobs" }));
-    const jobs = screen.getByRole("tabpanel", { name: "Jobs" });
-    expect(await within(jobs).findByRole("link", { name: "Merged" })).toHaveAttribute("href", `/jobs/${queued.id}`);
-    // No row's New job on the Library's list: the collection's page has it.
-    await user.click(within(jobs).getByRole("button", { name: "New job" }));
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("radio", { name: /Merge collections/ })).toBeChecked();
-  });
-
-
   it("starts a Case's computer analysis from its Jobs tab — the tree on its board — and lists it there", async () => {
     const project = (await createAnalysisProject("Openings", null))!;
     await addAnalysisCases([gameCaseOf({ id: "case", projectId: project.id, name: "Alice – Bob" }, parsePgnTree(PGN))]);

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { JobsIndicatorView, useJobStatusAnnouncement } from "../../blocks/panels";
 import { useSnackbar } from "../../design-system/components/feedback";
 import { subscribeEvalSourceUnreachable } from "../../lib/evalSources";
+import { isRegisteredJobKind } from "../../lib/jobs/kinds";
 import { startJobRuntime } from "../../lib/jobs/runtime";
 import { jobTitleOf } from "./jobViews";
 import { kindViewsOf } from "./kindViews";
@@ -78,11 +79,13 @@ export function JobsIndicator({ compact }: { compact: boolean }) {
   const jobs = useJobRecords();
   const announced = useMemo(() => jobs?.map((job) => ({ id: job.id, title: jobTitleOf(t, job), status: job.status })), [jobs, t]);
   const announcement = useJobStatusAnnouncement(announced);
+  // A job of a kind no longer registered (a retired kind's, CTA-232) never runs: it is not waiting.
+  const runnable = useMemo(() => jobs?.filter((job) => isRegisteredJobKind(job.kind)), [jobs]);
   const running = useMemo(
-    () => jobs?.filter((job) => job.status === "running").sort((a, b) => (b.startedAt ?? "").localeCompare(a.startedAt ?? ""))[0],
-    [jobs],
+    () => runnable?.filter((job) => job.status === "running").sort((a, b) => (b.startedAt ?? "").localeCompare(a.startedAt ?? ""))[0],
+    [runnable],
   );
-  const queued = jobs?.filter((job) => job.status === "queued").length ?? 0;
+  const queued = runnable?.filter((job) => job.status === "queued").length ?? 0;
   const live = useJobLiveOf(running?.id ?? "");
   const summary = running === undefined || live === undefined ? undefined : kindViewsOf(running.kind).liveSummary?.(live, t);
   return (

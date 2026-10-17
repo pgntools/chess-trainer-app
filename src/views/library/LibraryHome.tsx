@@ -36,10 +36,9 @@ import {
 import { ConfirmDialog } from "../../design-system/components/dialogs";
 import { SearchField } from "../../design-system/components/forms";
 import { IconAction, ListScreenHeader } from "../../design-system/components/toolbars";
-import { LIBRARY_COLLECTION_ENTITY } from "../../lib/jobs/entityTypes";
-import { useNewJob } from "../jobs/useNewJob";
 import { RightPanel } from "../main/rightPanel";
 import { useShellCompact } from "../main/shellCompact";
+import { useCollectionMerge } from "./useCollectionMerge";
 import { loadCollectionGames, useLibraryFolders, useUploadedCollections } from "./useLibraryCollections";
 import { useOwnPageHeading } from "../main/pageTitle";
 
@@ -68,8 +67,9 @@ import { useOwnPageHeading } from "../main/pageTitle";
  * - **One New folder**, the header's (CTA-231): its name and its parent —
  *   the reader's folders in a picker, the top level by default. A folder's
  *   row makes no sub-folder and takes no upload (the upload screen picks
- *   the folder), and a collection's row has no New job: its page's Jobs tab
- *   has it. The picks' *Merge collections…* is the list's one job.
+ *   the folder), and a collection's row has no New job. The picks' *Merge
+ *   collections…* (two or more) merges them into a new collection
+ *   (`useCollectionMerge`, CTA-232 — a job until then).
  *
  * **Listing fetches nothing.** A shipped collection's name and game count are
  * its manifest entry (`src/data/library/manifest.json`); an upload's are its
@@ -254,9 +254,9 @@ function LibraryHome() {
   const [movingCollection, setMovingCollection] = useState<Entry | null>(null);
   const [deletingFolder, setDeletingFolder] = useState<GameFolder | null>(null);
   const [deleting, setDeletingState] = useState<CollectionSummary | null>(null);
-  // The collections picked (CTA-221) — *Merge collections…* with two or more.
+  // The collections picked (CTA-221) — *Merge collections…* with two or more, a direct action since CTA-232.
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
-  const newJob = useNewJob("library-new-job");
+  const merge = useCollectionMerge("library-merge");
   // The collection asked about, held past the dialog's close so its closing transition keeps the words.
   const [askedCollection, setAskedCollection] = useState<CollectionSummary | null>(null);
   const setDeleting = (collection: CollectionSummary | null) => {
@@ -361,7 +361,7 @@ function LibraryHome() {
             actions: (
               <IconAction
                 label={t("library.picks.merge")}
-                onClick={() => newJob.open([...picked].map((id) => ({ type: LIBRARY_COLLECTION_ENTITY, id })))}
+                onClick={() => merge.open([...picked])}
                 disabled={picked.size < 2}
                 testId="library-picks-merge"
               >
@@ -475,7 +475,7 @@ function LibraryHome() {
         testId="library-collection"
         pickerTestId="library-folder-picker"
       />
-      {newJob.dialog}
+      {merge.dialog}
       <FolderDeleteDialog
         open={deletingFolder !== null}
         title={`${t("library.folder.deleteFolder")}: ${deletingFolder?.name ?? ""}`}

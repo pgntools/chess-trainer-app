@@ -163,7 +163,7 @@ describe("CollectionsTreeTable", () => {
     await expectNoAxeViolations();
   });
 
-  it("offers no New job on a collection's row — its page's Jobs tab has it (CTA-231)", () => {
+  it("offers no New job on a collection's row (CTA-231, CTA-232)", () => {
     mount();
     expect(screen.queryByRole("button", { name: /New job/ })).toBeNull();
     expect(screen.queryByTestId("library-collection-new-job-tal")).toBeNull();

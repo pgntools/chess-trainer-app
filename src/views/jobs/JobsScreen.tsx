@@ -55,10 +55,9 @@ function JobsScreen() {
       .filter((job) => (filters.status === "" || job.status === filters.status) && (filters.kind === "" || job.kind === filters.kind))
       .map((job) => jobRowOf(t, job));
   }, [jobs, filters, t, entities]);
-  const kinds = useMemo(
-    () => Object.keys(JOB_KIND_LOCALE_KEYS).map((id) => ({ value: id, label: kindLabelOf(t, id) })),
-    [t],
-  );
+  // The kinds the app runs, then any other a stored job is of (a retired kind's, CTA-232) — as one string, so a progress write keeps them.
+  const kindIds = useMemo(() => [...new Set([...Object.keys(JOB_KIND_LOCALE_KEYS), ...(jobs ?? []).map((job) => job.kind)])].join("\n"), [jobs]);
+  const kinds = useMemo(() => kindIds.split("\n").map((id) => ({ value: id, label: kindLabelOf(t, id) })), [kindIds, t]);
   // Held, so the table's columns are not made again on every render.
   const headerFilters = useMemo(
     () => ({

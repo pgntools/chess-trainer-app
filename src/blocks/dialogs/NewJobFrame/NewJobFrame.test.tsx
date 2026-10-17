@@ -51,9 +51,9 @@ describe("NewJobFrame (CTA-217)", () => {
   it("reports a choice from the keyboard", async () => {
     const user = userEvent.setup();
     const { onKindChange } = mount({ kinds: COLLECTION_KINDS.map((kind) => ({ ...kind, disabledReason: undefined })) });
-    screen.getByRole("radio", { name: "Collection merge" }).focus();
+    screen.getByRole("radio", { name: "Opening report" }).focus();
     await user.keyboard(" ");
-    expect(onKindChange).toHaveBeenLastCalledWith("library.collection-merge");
+    expect(onKindChange).toHaveBeenLastCalledWith("library.opening-report");
     await user.keyboard("{ArrowDown}");
     expect(onKindChange).toHaveBeenLastCalledWith("library.move-search");
   });

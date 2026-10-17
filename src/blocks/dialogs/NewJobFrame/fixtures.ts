@@ -28,11 +28,12 @@ export const REPERTOIRE_KINDS: readonly NewJobKindOption[] = [
   },
 ];
 
+/** Two kinds over a Library collection — samples only: no kind applies to a collection since CTA-232. */
 export const COLLECTION_KINDS: readonly NewJobKindOption[] = [
   {
-    id: "library.collection-merge",
-    name: "Collection merge",
-    description: "The picked collections as one PGN, duplicates left out — and, if you like, a new collection.",
+    id: "library.opening-report",
+    name: "Opening report",
+    description: "Every game's opening searched by the engine; the collection's repertoire, scored.",
   },
   {
     id: "library.move-search",

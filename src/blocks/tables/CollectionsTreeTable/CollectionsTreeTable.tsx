@@ -32,7 +32,7 @@ export type LibraryEntry = CollectionSummary & { folderId: string | null };
  * What a row's actions do — a folder's, and a collection's. No new
  * sub-folder or upload into a folder (CTA-231): the header's New folder
  * picks the parent, the upload screen the folder. No New job on a
- * collection: its page's Jobs tab has it.
+ * collection (CTA-231; no kind applies to one since CTA-232).
  */
 export type CollectionsTreeActions = {
   onDownloadFolder: (folder: GameFolder) => void;
@@ -85,8 +85,8 @@ export type CollectionsTreeTableProps = {
   /**
    * **Collections picked** (CTA-221) — a checkbox on every collection's row
    * (never a folder's), select-all in the header, and a bar counting them
-   * with the screen's `actions` (the Library's *Merge collections…*). The
-   * ids are the collections'. Absent, no picks.
+   * with the screen's `actions` (the Library's *Merge collections…*, a direct
+   * action since CTA-232). The ids are the collections'. Absent, no picks.
    */
   picks?: { picked: ReadonlySet<string>; onChange: (picked: Set<string>) => void; actions?: ReactNode };
   testId: string;
