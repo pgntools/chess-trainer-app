@@ -8,7 +8,7 @@ import { expectNoAxeViolations } from "../../../test/axe";
 import CollectionDetails, { type CollectionDetailsGeneral, type CollectionDetailsTab } from "./CollectionDetails";
 import { CLOSE_LINK, EMPTY, HEBREW_NAME, NAME, ONE_EVENT, SHIPPED, SOURCED, SOURCED_TOURNAMENT, TOURNAMENT, UPLOADED } from "./fixtures";
 
-/** The block with its tab held, as the screen holds it; the settings and the jobs stand-ins of the screen's. */
+/** The block with its tab held, as the screen holds it; the settings a stand-in of the screen's. */
 function Held({
   name = NAME,
   general = UPLOADED,
@@ -29,7 +29,6 @@ function Held({
       onTabChange={setTab}
       general={general}
       options={readOnly ? undefined : <label>Title <input defaultValue={name} /></label>}
-      jobs={<p>The jobs list</p>}
       testId="probe"
     />
   );
@@ -39,12 +38,12 @@ beforeEach(async () => {
   await i18n.changeLanguage("en");
 });
 
-describe("CollectionDetails (CTA-229, CTA-231)", () => {
+describe("CollectionDetails (CTA-229, CTA-231, CTA-232)", () => {
   it("is headed by the collection's name and opens on General: its description and its facts", async () => {
     const { container } = render(<Held />);
     expect(screen.getByRole("region", { name: `Details of ${NAME}` })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: NAME })).toBeInTheDocument();
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Options", "Jobs"]);
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Options"]);
     expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
     const general = screen.getByRole("tabpanel", { name: "General" });
     expect(within(general).getByTestId("probe-description")).toHaveTextContent("Every Tuesday at the club");
@@ -131,7 +130,7 @@ describe("CollectionDetails (CTA-229, CTA-231)", () => {
     expect(close.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("holds the screen's settings on Options and its jobs on Jobs, reached by the keyboard", async () => {
+  it("holds the screen's settings on Options, reached by the keyboard — no Jobs tab (CTA-232)", async () => {
     const user = userEvent.setup();
     const { container } = render(<Held />);
     await user.tab();
@@ -142,9 +141,7 @@ describe("CollectionDetails (CTA-229, CTA-231)", () => {
     expect(screen.getByRole("tab", { name: "Options" })).toHaveAttribute("aria-selected", "true");
     expect(within(screen.getByRole("tabpanel", { name: "Options" })).getByRole("textbox", { name: "Title" })).toHaveValue(NAME);
     await expectNoAxeViolations(container);
-    await user.keyboard("{ArrowRight}{Enter}");
-    expect(screen.getByRole("tab", { name: "Jobs" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tabpanel", { name: "Jobs" })).toHaveTextContent("The jobs list");
+    expect(screen.queryByRole("tab", { name: "Jobs" })).toBeNull();
   });
 
   it("says a shipped collection is read-only on Options", () => {
@@ -155,16 +152,16 @@ describe("CollectionDetails (CTA-229, CTA-231)", () => {
 
   it("hands the open tab back to the screen", async () => {
     const onTabChange = vi.fn();
-    render(<CollectionDetails name={NAME} closeLink={CLOSE_LINK} tab="general" onTabChange={onTabChange} general={UPLOADED} jobs={null} testId="probe" />);
-    await userEvent.click(screen.getByRole("tab", { name: "Jobs" }));
-    expect(onTabChange).toHaveBeenCalledWith("jobs");
+    render(<CollectionDetails name={NAME} closeLink={CLOSE_LINK} tab="general" onTabChange={onTabChange} general={UPLOADED} testId="probe" />);
+    await userEvent.click(screen.getByRole("tab", { name: "Options" }));
+    expect(onTabChange).toHaveBeenCalledWith("options");
   });
 
   it("speaks Hebrew under Hebrew", async () => {
     await i18n.changeLanguage("he");
     render(<Held name={HEBREW_NAME} />);
     expect(screen.getByRole("heading", { level: 2, name: HEBREW_NAME })).toHaveAttribute("dir", "auto");
-    expect(screen.getByRole("tab", { name: i18n.t("library.collectionDetails.tabs.jobs") })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: i18n.t("library.collectionDetails.tabs.options") })).toBeInTheDocument();
     expect(screen.getByTestId("probe-facts-source")).toHaveTextContent(i18n.t("library.collectionDetails.general.sources.uploaded"));
     expect(screen.getByRole("link", { name: i18n.t("library.collectionDetails.close", { name: HEBREW_NAME }) })).toBeInTheDocument();
   });

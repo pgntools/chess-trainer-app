@@ -6,9 +6,7 @@
 */
 
 import type { LinkTarget } from "../../../design-system/components/link";
-import type { JobRowView } from "../../tables";
 import { MERGED, TWIC } from "../../cards/CollectionSource/fixtures";
-import { jobRow } from "../../tables/JobQueueTable/fixtures";
 import type { CollectionDetailsGeneral } from "./CollectionDetails";
 
 /** A collection's name. */
@@ -85,9 +83,3 @@ export const SOURCED: CollectionDetailsGeneral = { ...UPLOADED, sources: TWIC };
 
 /** The tournament, its games from two TWIC issues and a few naming none (CTA-233). */
 export const SOURCED_TOURNAMENT: CollectionDetailsGeneral = { ...TOURNAMENT, sources: MERGED };
-
-/** The collection's jobs — a merge running, one done. */
-export const JOBS: readonly JobRowView[] = [
-  jobRow("merge-running", "running", { title: "Club nights 2026 + Spring open", createdAt: "2026-10-16T09:30:00.000Z" }),
-  jobRow("merge-done", "done", { title: "Club nights 2026 + Autumn open", createdAt: "2026-10-12T18:05:00.000Z" }),
-];

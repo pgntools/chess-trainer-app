@@ -16,9 +16,10 @@ import { registerSubjectRemover } from "./subjectDeletion";
  * - **Namespace `chessapp.backgroundJobs`** — its database, lock and channel
  *   names. (`chessapp.jobs` is the legacy Jobs' database, removed in CTA-192
  *   and deleted on load by `lib/retiredDatabases.ts`.)
- * - **Two lanes, one job each**: `engine` (the computer analysis, the
- *   repertoire evaluation) and `cpu` (the collection merge), so a merge runs
- *   beside an engine job.
+ * - **One lane, one job at a time**: `engine` (the computer analysis, the
+ *   repertoire evaluation). The `cpu` lane went with the collection merge, its
+ *   one kind (CTA-232): a stored job of an unregistered kind has no lane and
+ *   is never claimed.
  * - **At most 200 jobs**: past it the oldest finished go, with their files;
  *   an enqueue is refused when every one is unfinished.
  * - **Made lazily, started by the shell in an effect** (`views/jobs/JobsShell.tsx`)
@@ -34,7 +35,7 @@ const JOBS_NAMESPACE = "chessapp.backgroundJobs";
 export const JOBS_DB: string = JOBS_NAMESPACE;
 
 /** The lanes and their concurrency. */
-export const JOB_LANES = { engine: { concurrency: 1 }, cpu: { concurrency: 1 } } as const;
+export const JOB_LANES = { engine: { concurrency: 1 } } as const;
 
 /** How many jobs are kept. */
 const MAX_JOBS = 200;
@@ -46,7 +47,7 @@ export const jobRuntime = (): JobRuntime => {
   if (runtime === undefined) {
     const made: JobRuntime = createJobRuntime({
       namespace: JOBS_NAMESPACE,
-      kinds: jobKinds({ readArtifact: (artifactId) => made.readArtifact(artifactId) }),
+      kinds: jobKinds(),
       lanes: JOB_LANES,
       store: indexedDbJobStore({ name: JOBS_DB }),
       lock: webLocksLeader(),

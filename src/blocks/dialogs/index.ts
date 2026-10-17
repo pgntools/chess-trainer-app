@@ -6,6 +6,8 @@
  */
 export * from "./CasePickerDialog";
 export * from "./CollectionImportDialog";
+// CTA-232: Library collections merged — the merge's form, then its result (Open collection, Download PGN).
+export * from "./CollectionMergeDialog";
 export * from "./DevelopmentNoticeDialog";
 export * from "./EngineOptionsChangedDialog";
 export * from "./FolderDeleteDialog";

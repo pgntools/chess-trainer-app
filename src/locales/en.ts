@@ -256,7 +256,7 @@ const en = {
     /** A shipped collection's own page (`/library/<collection>`) — its name and its count. */
     collectionNamed: "{{name}}: {{games}} chess games to search, filter by player, opening, event and date, and replay on a board.",
     settings: "Export your data as one zip and bring it back, see how much space it takes, and choose how the app looks.",
-    jobs: "Your background jobs — a case's computer analysis, a repertoire's evaluation, collections merged — with their progress, the engine live, and what they made.",
+    jobs: "Your background jobs — a case's computer analysis, a repertoire's evaluation — with their progress, the engine live, and what they made.",
     job: "One background job: its progress, the engine live, why it failed or waits, what it made, and its history.",
     jobsSettings: "How new background jobs start: the default engine and preset, and the evaluation sources they ask first.",
     privacy: "What chessapp.dev keeps on your device, what it never collects, and your rights under the GDPR and Israel's Protection of Privacy Law.",
@@ -1173,14 +1173,73 @@ const en = {
     filterClear: "Clear the filter",
     /** How the folder table is worked, read with it (CTA-113). */
     treeHint: "Tab through each row's chevron, which opens or closes a folder, its link and its actions. Sort by a column from its header button.",
-    /** The collections picked (CTA-221) — *Merge collections…* with two or more. */
+    /** The collections picked (CTA-221) — the header's Merge (two or more) and Delete (CTA-232). */
     picks: {
       selectAll: "Pick every collection shown",
       pick: "Pick {{name}}",
       picked_one: "{{count}} collection picked",
       picked_other: "{{count}} collections picked",
       clear: "Clear the picks",
-      merge: "Merge collections…",
+      merge: "Merge",
+      delete: "Delete",
+    },
+    /**
+     * **Collections merged** (CTA-232 — a job of the Jobs module before,
+     * CTA-220): the `CollectionMergeDialog` block — the collections, the
+     * dedupe mode, the name — from the header's *Merge* and a
+     * collection page's *Merge with…*; the merge kept as a new collection.
+     */
+    merge: {
+      title: "Merge collections",
+      mergeWith: "Merge with…",
+      submit: "Merge",
+      cancel: "Cancel",
+      close: "Close",
+      pickTwo: "Add at least one more collection to merge.",
+      sources: "Collections to merge",
+      sourcesHelp: "Their games are written in this order.",
+      games_one: "{{formatted}} game",
+      games_other: "{{formatted}} games",
+      moveUp: "Move {{name}} up",
+      moveDown: "Move {{name}} down",
+      remove: "Remove {{name}}",
+      minimum: "At least two collections are merged, so neither of these can be removed.",
+      add: "Add a collection",
+      addPlaceholder: "Type to find one of your collections",
+      builtIn: "Built-in",
+      yours: "Your collections",
+      dedupe: "Duplicates",
+      dedupeModes: {
+        none: "Keep every game",
+        "identical-pgn": "Drop exact copies",
+        "same-game": "Drop the same game",
+      },
+      noneHelp: "Every game of every collection is kept, copies and all.",
+      identicalHelp: "A game whose PGN is word for word one already kept is left out. The same game with other comments stays.",
+      sameGameHelp: "A game with the same moves, White, Black and date as one already kept is left out, whatever its comments, glyphs or side lines. Two different games of the same players on the same day both stay.",
+      name: "Name",
+      nameHelp: "The new collection's name. Left empty: “{{name}}”.",
+      more: "{{count}} more",
+      progress: {
+        title: "Merging collections",
+        read: "Reading the collections…",
+        index: "Checking the games: {{done}} of {{total}}",
+        save: "Saving the collection…",
+      },
+      problem: {
+        read: "A collection could not be read. Nothing was made.",
+        index: "The games could not be checked. Nothing was made.",
+        storage: "It could not be saved — this browser's storage is full or unavailable.",
+      },
+      done: {
+        title: "Collections merged",
+        summary_one: "“{{name}}” holds {{formatted}} game.",
+        summary_other: "“{{name}}” holds {{formatted}} games.",
+        duplicates_one: "{{formatted}} duplicate was left out.",
+        duplicates_other: "{{formatted}} duplicates were left out.",
+        open: "Open collection",
+        download: "Download PGN",
+      },
     },
     /** `/library` — the collections. */
     title: "Library",
@@ -1282,7 +1341,6 @@ const en = {
         label: "Collection details",
         general: "General",
         options: "Options",
-        jobs: "Jobs",
       },
       /** General (CTA-231): a collection that is not a tournament — its description and what its index says of it. */
       general: {
@@ -1301,11 +1359,6 @@ const en = {
       readOnly: "A built-in collection is read-only: its title, description and tournament type cannot be changed.",
       /** The settings on Options — saved where they are. */
       saved: "Saved.",
-      /** Jobs (CTA-231): the collection's jobs and New job for it. */
-      jobs: {
-        list: "This collection's jobs",
-        none: "No jobs for this collection yet.",
-      },
     },
     /** The table screen — `/library/<collection>`. */
     table: {
@@ -1628,10 +1681,16 @@ const en = {
         },
       },
     },
+    /** The header's Delete (CTA-232): the picked uploads — one named, several counted. */
     confirmDelete: {
       title: "Delete {{name}}?",
-      body_one: "Its {{count}} game is removed from this browser. This cannot be undone.",
-      body_other: "Its {{count}} games are removed from this browser. This cannot be undone.",
+      titleMany_one: "Delete {{count}} collection?",
+      titleMany_other: "Delete {{count}} collections?",
+      body_one: "{{count}} game is removed from this browser. This cannot be undone.",
+      body_other: "{{count}} games are removed from this browser. This cannot be undone.",
+      builtInKept_one: "The built-in collection picked is read-only and stays.",
+      builtInKept_other: "The {{count}} built-in collections picked are read-only and stay.",
+      problem: "Some could not be deleted — this browser's storage is unavailable. Those left are still picked.",
       cancel: "Cancel",
       confirm: "Delete",
     },
@@ -2735,6 +2794,13 @@ const en = {
      * **The Jobs module's kinds** (CTA-215): each kind's own words — its name,
      * its errors, its New-job form and its report.
      */
+    /**
+     * **A retired kind's name** (CTA-232) — a reader's stored jobs of a kind the app
+     * runs no more (`RETIRED_JOB_KIND_LOCALE_KEYS`): kept, never run, deleted only.
+     */
+    retiredKinds: {
+      collectionMerge: "Merge collections (retired)",
+    },
     kinds: {
       /** **A kind no longer registered** (CTA-221) — its jobs are kept, never run; they can only be deleted. */
       unknown: "Unknown kind ({{id}})",
@@ -2864,69 +2930,6 @@ const en = {
           noMatch: "No move is flagged.",
         },
       },
-      /** The collection merge (CTA-220): `CollectionMergeForm`, `CollectionMergeSummary`. */
-      collectionMerge: {
-        name: "Merge collections",
-        description: "Two or more Library collections read into one PGN file, in the order picked — duplicates dropped as you choose.",
-        errors: {
-          source: "A collection to merge is no longer in the Library.",
-          state: "The merge's progress did not match its collections; start it again.",
-          storage: "The merged collection could not be added to the Library — the browser refused the write. The PGN file is ready to download.",
-          read: "A collection could not be read. Resume to try again.",
-        },
-        pickTwo: "Pick two or more collections in the Library to merge them.",
-        facts: {
-          sources: "Collections",
-          dedupe: "Duplicates",
-          name: "Name",
-          pgnFile: "The merged PGN",
-          collection: "A Library collection",
-        },
-        dedupe: {
-          none: "Keep every game",
-          "identical-pgn": "Drop exact copies",
-          "same-game": "Drop the same game",
-        },
-        form: {
-          sources: "Collections to merge",
-          sourcesHelp: "Their games are written in this order.",
-          games_one: "{{formatted}} game",
-          games_other: "{{formatted}} games",
-          moveUp: "Move {{name}} up",
-          moveDown: "Move {{name}} down",
-          remove: "Remove {{name}}",
-          minimum: "At least two collections are merged, so neither of these can be removed.",
-          dedupe: "Duplicates",
-          noneHelp: "Every game of every collection is written, copies and all.",
-          identicalHelp: "A game whose PGN is word for word one already written is left out. The same game with other comments stays.",
-          sameGameHelp: "A game with the same moves, White, Black and date as one already written is left out, whatever its comments, glyphs or side lines. Two different games of the same players on the same day both stay.",
-          name: "Name",
-          nameHelp: "The PGN file's name, and the new collection's. Left empty: “{{name}}”.",
-          more: "{{count}} more",
-          outputs: "Outputs",
-          pgnFile: "The merged PGN, as a file",
-          pgnFileHelp: "Always made, to download from the job.",
-          collection: "Also add as a Library collection",
-          collectionHelp: "A new collection of the merged games — when they come to at most {{limit}} characters of PGN, the most a collection holds.",
-        },
-        summary: {
-          title: "Merge summary",
-          totals: "In all",
-          collection: "Collection",
-          read: "Read",
-          written: "Written",
-          duplicates: "Duplicates",
-          unreadable: "Unreadable",
-          perSource: "Games per collection",
-          dedupe: "Duplicates: {{mode}}",
-          chars: "{{chars}} characters of PGN",
-          added: "Added to the Library as “{{name}}”.",
-          open: "Open {{name}}",
-          tooLarge: "Not added to the Library: the merged PGN is {{chars}} characters, over the {{limit}} a collection may hold. The file has every game.",
-          empty: "Not added to the Library: no game was written.",
-          noSources: "No collection was read.",
-        },
-      },
     },
     count: "Jobs: {{count}}",
     loading: "Reading your jobs…",
@@ -3004,7 +3007,7 @@ const en = {
     /** The Jobs screens (CTA-221): `/jobs`, `/jobs/<id>`, `/jobs/settings`. */
     screen: {
       title: "Jobs",
-      intro: "Every background job — a Case's computer analysis, a repertoire's evaluation, collections merged. Each step is kept, so a job paused, or cut short by a closed tab, goes on from where it stopped.",
+      intro: "Every background job — a Case's computer analysis, a repertoire's evaluation. Each step is kept, so a job paused, or cut short by a closed tab, goes on from where it stopped.",
       settings: "Jobs settings",
       confirmDelete: "The job “{{name}}” and its progress go. What it made — Cases, repertoires, collections — stays; its files go with it.",
       confirmDeletePicked_one: "Delete {{count}} job?",

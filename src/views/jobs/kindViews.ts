@@ -1,8 +1,6 @@
-import { COLLECTION_MERGE_KIND } from "../../lib/jobs/kinds/collectionMerge/core";
 import { COMPUTER_ANALYSIS_KIND } from "../../lib/jobs/kinds/computerAnalysis/core";
 import { REPERTOIRE_EVALUATION_KIND } from "../../lib/jobs/kinds/repertoireEvaluation/core";
 import type { JobKindViews } from "./kindViewTypes";
-import { CollectionMergeData, CollectionMergeNewJob, CollectionMergeParameters } from "./kinds/CollectionMergeViews";
 import ComputerAnalysisNewJob from "./kinds/ComputerAnalysisNewJob";
 import { ComputerAnalysisDetails, ComputerAnalysisParameters } from "./kinds/ComputerAnalysisViews";
 import { engineLiveSummary } from "./kinds/engineLive";
@@ -32,12 +30,7 @@ const JOB_KIND_VIEWS: Readonly<Record<string, JobKindViews>> = {
     Data: RepertoireEvaluationData,
     liveSummary: engineLiveSummary,
   },
-  [COLLECTION_MERGE_KIND]: {
-    NewJob: CollectionMergeNewJob,
-    Parameters: CollectionMergeParameters,
-    Data: CollectionMergeData,
-  },
 };
 
-/** A kind's views — none for a kind not registered here. */
+/** A kind's views — none for a kind not registered here (a retired kind's stored jobs are drawn generically). */
 export const kindViewsOf = (kindId: string): JobKindViews => JOB_KIND_VIEWS[kindId] ?? {};

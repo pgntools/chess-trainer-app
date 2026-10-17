@@ -12,10 +12,10 @@ import { IconAction } from "../../../design-system/components/toolbars";
 import type { CollectionMetadata, CollectionSources, CollectionSummary } from "../../../lib/libraryCollections";
 import { CollectionSource, TournamentInfo, type TournamentFacts } from "../../cards";
 
-/** The panel's tabs, in order. */
-export type CollectionDetailsTab = "general" | "options" | "jobs";
+/** The panel's tabs, in order — no Jobs since CTA-232 (the merge, its one job, is a Library action). */
+export type CollectionDetailsTab = "general" | "options";
 
-const COLLECTION_DETAILS_TABS: readonly CollectionDetailsTab[] = ["general", "options", "jobs"];
+const COLLECTION_DETAILS_TABS: readonly CollectionDetailsTab[] = ["general", "options"];
 
 /**
  * What General shows (CTA-231): a tournament's event card — the facts its
@@ -58,14 +58,12 @@ export type CollectionDetailsProps = {
    * Absent — a shipped collection, read-only — a line saying so.
    */
   options?: ReactNode;
-  /** The Jobs tab's content — the collection's jobs and New job, the screen's (`EntityJobs`). */
-  jobs: ReactNode;
   /**
    * The root; its parts `-close`, `-title`, `-tabs` (each tab `-tab-<id>`),
    * `-general` (a tournament's card `-tournament`, else the description
    * `-description` and the facts `-facts`, each `-facts-<id>`; under either
    * the source card `-source`), `-options`
-   * (`-options-read-only` without settings) and `-jobs`.
+   * (`-options-read-only` without settings).
    */
   testId: string;
 };
@@ -112,7 +110,7 @@ function CollectionFacts({
  * place, on both its views (the games table and a tournament's Info /
  * Participants / Games), as `ProjectDetails` is beside a Project's Cases: a
  * Close back to the Library and the collection's name at its head (the
- * page's one way back — no header Back), then three tabs:
+ * page's one way back — no header Back), then two tabs:
  *
  * - **General** — a tournament's event card (`TournamentInfo`: the reader's
  *   description, the type, the event, the site, the dates, the rounds and
@@ -125,13 +123,14 @@ function CollectionFacts({
  * - **Options** — the collection's settings (the screen's form: the title,
  *   the description, the tournament mark); a shipped collection's a line
  *   saying it is read-only.
- * - **Jobs** — the collection's jobs and New job for it (the screen's
- *   `EntityJobs`).
  *
- * Presentational: the open tab, the facts, the settings and the jobs arrive
+ * (A third, Jobs — the collection's jobs and New job — went in CTA-232 with
+ * the merge job: merging is the Library's own action now.)
+ *
+ * Presentational: the open tab, the facts and the settings arrive
  * from the screen; its words are `library.collectionDetails.*`.
  */
-function CollectionDetails({ name, closeLink, tab, onTabChange, general, options, jobs, testId }: CollectionDetailsProps) {
+function CollectionDetails({ name, closeLink, tab, onTabChange, general, options, testId }: CollectionDetailsProps) {
   const { t } = useTranslation();
 
   return (
@@ -206,11 +205,6 @@ function CollectionDetails({ name, closeLink, tab, onTabChange, general, options
                 {t("library.collectionDetails.readOnly")}
               </Typography>
             )}
-          </Box>
-        )}
-        {tab === "jobs" && (
-          <Box {...tabPanelProps(testId, "jobs")} data-testid={`${testId}-jobs`} sx={{ py: 1 }}>
-            {jobs}
           </Box>
         )}
       </Box>

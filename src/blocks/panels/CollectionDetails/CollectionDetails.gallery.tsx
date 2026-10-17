@@ -5,14 +5,12 @@ import type { GalleryModule } from "../../../design-system/gallery/types";
 import WithState from "../../../design-system/gallery/WithState";
 import type { BlockFamilyId } from "../../families";
 import { CollectionSettingsForm, type CollectionSettingsDraft } from "../../forms";
-import { EntityJobs } from "../../lists";
-import type { JobRowView } from "../../tables";
 import CollectionDetails, { type CollectionDetailsGeneral, type CollectionDetailsTab } from "./CollectionDetails";
-import { CLOSE_LINK, EMPTY, HEBREW_NAME, JOBS, LONG_NAME, NAME, ONE_EVENT, SHIPPED, SOURCED, SOURCED_TOURNAMENT, TOURNAMENT, UPLOADED } from "./fixtures";
+import { CLOSE_LINK, EMPTY, HEBREW_NAME, LONG_NAME, NAME, ONE_EVENT, SHIPPED, SOURCED, SOURCED_TOURNAMENT, TOURNAMENT, UPLOADED } from "./fixtures";
 
-type Demo = { name?: string; general?: CollectionDetailsGeneral; tab?: CollectionDetailsTab; readOnly?: boolean; jobs?: readonly JobRowView[] | undefined };
+type Demo = { name?: string; general?: CollectionDetailsGeneral; tab?: CollectionDetailsTab; readOnly?: boolean };
 
-const demo = ({ name = NAME, general = UPLOADED, tab = "general", readOnly = false, jobs = JOBS }: Demo) => (
+const demo = ({ name = NAME, general = UPLOADED, tab = "general", readOnly = false }: Demo) => (
   <WithState<{ tab: CollectionDetailsTab; draft: CollectionSettingsDraft }> initial={{ tab, draft: { name, description: "", tournament: { enabled: false, type: "swiss" } } }}>
     {(state, setState) => (
       <Box sx={{ width: 400, height: 520, display: "flex", flexDirection: "column" }}>
@@ -34,16 +32,6 @@ const demo = ({ name = NAME, general = UPLOADED, tab = "general", readOnly = fal
               </SettingsFrame>
             )
           }
-          jobs={
-            <EntityJobs
-              jobs={jobs}
-              jobLink={(job) => ({ href: `#job-${job.id}` })}
-              onNewJob={() => {}}
-              label="This collection's jobs"
-              emptyText="No jobs for this collection yet."
-              testId="gallery-collection-details-jobs-list"
-            />
-          }
           testId="gallery-collection-details"
         />
       </Box>
@@ -64,8 +52,6 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "A tournament from two sources", render: () => demo({ name: "FIDE Candidates 2026", general: SOURCED_TOURNAMENT }) },
     { name: "Options: the settings", render: () => demo({ tab: "options" }) },
     { name: "Options of a shipped file: read-only", render: () => demo({ name: "Tal", general: SHIPPED, tab: "options", readOnly: true }) },
-    { name: "Jobs: a merge running, one done", render: () => demo({ tab: "jobs" }) },
-    { name: "Jobs: none yet", render: () => demo({ tab: "jobs", jobs: [] }) },
     { name: "A long name, wrapping in the head", render: () => demo({ name: LONG_NAME }) },
     { name: "A Hebrew name (switch to RTL)", render: () => demo({ name: HEBREW_NAME }) },
   ],

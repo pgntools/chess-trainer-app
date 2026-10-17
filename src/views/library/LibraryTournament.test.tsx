@@ -354,7 +354,7 @@ describe("the tournament view's own panel (CTA-229; its content CTA-231)", () =>
     const details = () => screen.getByRole("region", { name: "Details of Club games" });
     expect(screen.getByTestId("layout-board-left-panel")).toContainElement(details());
     expect(within(details()).getByRole("heading", { level: 2, name: "Club games" })).toBeInTheDocument();
-    expect(within(details()).getAllByRole("tab").map((each) => each.textContent)).toEqual(["General", "Options", "Jobs"]);
+    expect(within(details()).getAllByRole("tab").map((each) => each.textContent)).toEqual(["General", "Options"]);
     expect(within(screen.getByTestId("library-table-header")).queryByRole("link", { name: "All collections" })).toBeNull();
     await user.click(within(details()).getByRole("tab", { name: "Options" }));
     const name = await within(details()).findByTestId("library-settings-form-name");

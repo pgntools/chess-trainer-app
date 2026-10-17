@@ -32,4 +32,3 @@ export * from "./ProjectDetails";
 export * from "./RepertoireDetails";
 export * from "./TopPlayers";
 export * from "./RepertoireEvaluationReport";
-export * from "./CollectionMergeSummary";
