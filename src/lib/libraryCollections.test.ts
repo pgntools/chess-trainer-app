@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  activeFilterCount,
   activeFilterSummary,
   batchFolderNameOf,
   collectionIdOfStem,
@@ -256,6 +257,27 @@ describe("the side panel's filters", () => {
     expect(subCoded.openings).toEqual(["B13e Caro-Kann", "C44 King's Pawn Game", "C44r Scotch Game", "Queen's Pawn"]);
     const bare = collectionRowsOf({ games: ["1. e4 *"] });
     expect(collectionFacetsOf(bare)).toEqual({ players: [], openings: [], events: [], results: ["*"], dates: undefined });
+  });
+});
+
+describe("activeFilterCount — the folded panel's badge (CTA-230)", () => {
+  const none = { player: [], color: "", opening: "", event: "", from: "", to: "", result: "", line: "" } as const;
+
+  it("is zero with nothing on, and counts each filter once", () => {
+    expect(activeFilterCount({ ...none, player: [] })).toBe(0);
+    expect(activeFilterCount({ ...none, player: ["Tal", "Smyslov"] })).toBe(1);
+    expect(activeFilterCount({ ...none, player: ["Tal"], color: "white" })).toBe(2);
+    expect(activeFilterCount({ ...none, player: [], opening: "B9", event: "Candidates", result: "1-0", line: "e4,c5" })).toBe(4);
+  });
+
+  it("counts a date range as one, whichever ends are set", () => {
+    expect(activeFilterCount({ ...none, player: [], from: "1960-01-01" })).toBe(1);
+    expect(activeFilterCount({ ...none, player: [], from: "1960-01-01", to: "1961-12-31" })).toBe(1);
+  });
+
+  it("leaves out a side with no player and blank names — the rows do not read them", () => {
+    expect(activeFilterCount({ ...none, player: [], color: "black" })).toBe(0);
+    expect(activeFilterCount({ ...none, player: [" "], opening: "  " })).toBe(0);
   });
 });
 

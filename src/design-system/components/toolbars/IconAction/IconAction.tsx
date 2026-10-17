@@ -34,6 +34,12 @@ export type IconActionProps = {
    * `aria-haspopup` saying which. Absent, a menu: today's behaviour.
    */
   popupKind?: "menu" | "dialog";
+  /**
+   * A disclosure (CTA-230): `aria-expanded` saying whether the region it
+   * shows and hides is open now — a panel folded to a rail — with no
+   * `aria-haspopup`. Absent, nothing; `popupOpen` wins where both are given.
+   */
+  expanded?: boolean;
   testId: string;
 };
 
@@ -55,6 +61,7 @@ function IconAction({
   edge = false,
   popupOpen,
   popupKind = "menu",
+  expanded,
   testId,
 }: IconActionProps) {
   return (
@@ -66,7 +73,7 @@ function IconAction({
           aria-label={label}
           aria-pressed={pressed}
           aria-haspopup={popupOpen === undefined ? undefined : popupKind}
-          aria-expanded={popupOpen}
+          aria-expanded={popupOpen ?? expanded}
           color={pressed === true ? "primary" : (color ?? "default")}
           disabled={disabled}
           onClick={onClick}

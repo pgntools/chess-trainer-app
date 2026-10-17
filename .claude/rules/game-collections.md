@@ -56,7 +56,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`, `eventGroupsOf` (rows grouped by their `Event` — the import's *Split by event*, CTA-127). **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together); since CTA-142 every format selectable — `arena` too, its standings table since CTA-204 — `formatOfKind` (a guess's kind as a format), the summary's kept verdict `sharedEvent`, and `readsAsTournament` (the verdict from what is at hand — the list's, which reads no index), `isPotentialTournament` (an upload never marked either way whose games share one event). |
+| `src/lib/libraryCollections.ts` | **The model, pure**: `CollectionSource`, `CollectionSummary`, `LibraryCollection`, `CollectionRow`, `COLLECTION_COLUMNS`, `collectionRowOf` (the tag half of a row, no `chess.js`), `sortedRows`, `RowFilter` / `filteredRows` (with the import popup's `minElo` / `maxElo`, CTA-103), `CollectionFilterValues` / `COLLECTION_FILTER_PARAMS`, `collectionFacetsOf`, `openingLabelOf`, `dateBounds`, `activeFilterSummary` / `batchFolderNameOf` (the Analyse folder name), `activeFilterCount` (the folded panel's badge, CTA-230), `collectionNameOfStem` / `collectionIdOfStem`, `collectionGamesOf` (**the one rule for cutting a text into games**), `readCollectionText` (a file or a paste), `MAX_COLLECTION_CHARS`, `MAX_COLLECTION_DESCRIPTION_CHARS`, `MAX_COLLECTION_NAME_CHARS` (the derived-name cap, CTA-122), and the import popup's pieces (CTA-103): `collectionImportFileOf` / `CollectionImportFile` / `CollectionImportSource` (a text's games with tag-only rows), `collectionMetadataOf` (games, players, events, the Elo and date spans), `playersOf`, `sharedEventOf`, `eventGroupsOf` (rows grouped by their `Event` — the import's *Split by event*, CTA-127). **The tournament mark** (CTA-121): `TOURNAMENT_FORMATS` / `TournamentFormat` / `CollectionTournament` on a summary, `canBeTournament` (the games' verdict off the rows alone), `isTournamentCollection` (the stored mark and the games' verdict together); since CTA-142 every format selectable — `arena` too, its standings table since CTA-204 — `formatOfKind` (a guess's kind as a format), the summary's kept verdict `sharedEvent`, and `readsAsTournament` (the verdict from what is at hand — the list's, which reads no index), `isPotentialTournament` (an upload never marked either way whose games share one event). |
 | `src/lib/collectionZip.ts` | **A picked `.zip`** (CTA-102, CTA-103): `readCollectionZip` (every `.pgn` in it, bounded, non-throwing), `isZipFile`. |
 | `src/lib/collectionIndex.ts` | **The index**: `IndexedRow`, `indexedRowOf` (tags + a `parsePgnTree` pass), `indexGame` (one game, with the app's book), `buildCollectionIndex` / `buildCollectionIndexAsync`, `numberedRows`, `textHash`, `OpeningLookup` / `loadOpeningLookup`, and the file format: `encodeCollectionIndex` / `decodeCollectionIndex`, `COLLECTION_INDEX_FORMAT` / `COLLECTION_INDEX_VERSION`. |
 | `src/lib/collectionIndex.worker.ts` | The index pass for an upload, off the main thread. |
@@ -82,7 +82,8 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/blocks/cards/TournamentInfo/`, `tables/ParticipantsTable/`, `panels/TopPlayers/`, `lists/TeamRosters/` | The tournament view's blocks (CTA-142): the event's facts, every player's record (sortable), the standouts, a team event's teams and their players. |
 | `src/blocks/forms/CollectionSettingsForm/` | A collection's settings form, a block (CTA-121): the title, the description, and the tournament mark with its formats (every one selectable since CTA-142, each with its table — the arena's since CTA-204) and the type the games look like (`TournamentSuggestion`, its Apply) — presentational, wired by the settings screen. |
 | `src/views/library/CollectionSettingsScreen.tsx` | `/library/<collection>/settings` (CTA-121): the `CollectionSettingsForm` block over one draft, saved whole through `updateCollectionSettings` — uploads only; a shipped id is the miss. |
-| `src/blocks/forms/CollectionFilters/` | The table's right-hand panel (a block since CTA-113): players (several names at once, OR'd — CTA-95) and side, the opening board (a slot), then opening, event, dates and result. |
+| `src/blocks/forms/CollectionFilters/` | The table's right-hand panel (a block since CTA-113): players (several names at once, OR'd — CTA-95) and side, the opening board (a slot), then opening, event, dates and result; its Hide button folds it to a rail (CTA-230, §6.4). |
+| `src/blocks/forms/CollectionFiltersRail/` | The panel folded (CTA-230): the shell's right-hand rail's one button, Show filters, a badge counting the filters still on (`activeFilterCount`). |
 | `src/views/library/OpeningFilterBoard.tsx` | The opening-moves board (`options.id` `library-filter-board`), and its *Save tree as PGN* link. |
 | `src/blocks/dialogs/OpeningTreePgnDialog/` | *Save tree as PGN*'s choice: No, or Add tags — `games`, `prc`, or both (`FormDialog`, CTA-113). |
 | `src/blocks/dialogs/SaveAsCollectionDialog/` | *Save as collection*'s name dialog (CTA-122): the derived name to edit, the count under it, a busy state and a problem slot — presentational, the write the screen's (`CollectionScreen.tsx`). |
@@ -93,7 +94,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/views/library/indexCollection.ts` | Runs the worker with progress and cancel, with a jsdom fallback. |
 | `src/views/library/LibraryMiss.tsx` | The "no such collection / game" screen. |
 | `src/views/library/*Main.tsx` | Layout-only wrappers that `routes.tsx` routes to. |
-| Tests | `src/lib/libraryCollections.test.ts`, `collectionZip.test.ts`, `collectionIndex.test.ts`, `openingTree.test.ts`, `openingTreePgn.test.ts`, `shippedCollections.test.ts`, `libraryCollectionStore.test.ts`, `libraryFolderStore.test.ts` (folder CRUD, `folderId`, the v1 → v2 upgrade), `folderTreeRows.test.ts`, `wirepgn.test.ts`, `gameReference.test.ts` (the `library` key), `src/views/library/Library.test.tsx` (the list, folders, a table, a game, settings), `LibraryFilters.test.tsx` (the panel's filters, the opening-moves board), `LibraryPicks.test.tsx` (download, Analyse, Save as collection), `LibraryImport.test.tsx` (adding a collection, the import popup), `LibraryTournament.test.tsx` (the tournament view, the list's trophy, the settings' suggestion — CTA-142) — sharing `libraryTestKit.tsx`, `src/lib/tournamentParticipants.test.ts`, and `src/lib/gameReference.test.ts` (a `library/…` reference resolved). |
+| Tests | `src/lib/libraryCollections.test.ts`, `collectionZip.test.ts`, `collectionIndex.test.ts`, `openingTree.test.ts`, `openingTreePgn.test.ts`, `shippedCollections.test.ts`, `libraryCollectionStore.test.ts`, `libraryFolderStore.test.ts` (folder CRUD, `folderId`, the v1 → v2 upgrade), `folderTreeRows.test.ts`, `wirepgn.test.ts`, `gameReference.test.ts` (the `library` key), `src/views/library/Library.test.tsx` (the list, folders, a table, a game, settings), `LibraryFilters.test.tsx` (the panel's filters, the opening-moves board, the panel folded to a rail — CTA-230), `LibraryPicks.test.tsx` (download, Analyse, Save as collection), `LibraryImport.test.tsx` (adding a collection, the import popup), `LibraryTournament.test.tsx` (the tournament view, the list's trophy, the settings' suggestion — CTA-142) — sharing `libraryTestKit.tsx`, `src/lib/tournamentParticipants.test.ts`, and `src/lib/gameReference.test.ts` (a `library/…` reference resolved). |
 
 Locale keys all live under `library.*` in `src/locales/en.ts` / `he.ts`
 (`he` is typed `typeof en`, so a missing key is a compile error). The only
@@ -554,6 +555,15 @@ words box, **the table the one region that scrolls**, its header sticky.
   and the reader can still close or open any of them while the words stay.
   The count reads "N of M collections" while the filter is on; nothing left
   is `library-no-matches`.
+- **The right-hand panel, About the Library** (`library-about`: its heading
+  and the `library.hint` text), **arrives folded to the shell's rail**
+  (CTA-230 — `RightPanel`'s `collapsed` / `rail`, as a collection's filters
+  fold, §6.4): the rail's one button, *Show About the Library*
+  (`library-about-rail-expand`, `aria-expanded` false), opens it; its
+  heading's *Hide About the Library* (`library-about-collapse`) folds it
+  again, each handing the focus to the other. For the visit only — every
+  arrival is folded. Under the shell's breakpoint there is no rail: the
+  panel is stacked under the table, open, with no Hide.
 - **Listing still fetches nothing** (§7): the rows are summaries, the folders
   and the manifest. Downloads read games only when clicked.
 
@@ -674,7 +684,29 @@ the summary has one — the collection's **description** (CTA-121,
 `library-table-description`), then the `CollectionGamesTable`
 block — the `SearchField` in its filters slot, the one region that scrolls
 (both directions, a sticky header), the pager pinned under it. The right-hand panel (`RightPanel`) holds the
-filters and, at its foot, the shipped/uploaded note. An **uploaded**
+filters and, at its foot, the shipped/uploaded note.
+
+**The filters fold to a rail** (CTA-230): on a wide window the panel's
+header ends with **Hide filters** (`library-filter-collapse`, `aria-expanded`
+true, its double arrow pointing the inline end — the language's direction,
+`i18n.dir()`, not the theme's: the panel is drawn from inside the board's
+`ForceLTR`). Pressed, the screen registers its panel `collapsed` with a
+`rail` (`RightPanel`'s optional pair, `views/main/rightPanel.tsx`): the shell
+draws the aside as a rail of `RIGHT_PANEL_COLLAPSED_PX` (48) at the inline
+end — the right, the left under Hebrew — and the table's area takes the rest
+of the aside's room (`Layout.tsx`, as `HideRightPanel` takes all of it), so
+more of its columns fit. The rail holds the `CollectionFiltersRail` block
+(`library-filters-rail`): **Show filters** (`-expand`, `aria-expanded` false)
+with a badge counting the filters still on — `activeFilterCount`: the players
+(however many names), the side (with a player), the opening, the event, the
+date range (either end), the result and the opening line; the words box is
+not one; none, no badge — the count in its name too ("Show filters — 2
+filters on"). Each button hands the focus to the other once drawn. Opening
+again draws the panel as it was: its values are the URL's. **For the visit
+only**: `CollectionPage`'s state (so a tournament's change of tab keeps it),
+kept nowhere — the page opens with the panel open. **Under the shell's
+breakpoint nothing changes**: no Hide, and `RightPanel` shows its children
+whatever `collapsed` says, stacked under the table. An **uploaded**
 collection's header also carries the **Settings gear** (`library-table-settings`,
 CTA-121), a link to `/library/<collection>/settings` that passes `state.from`
 so the settings screen's Save and Cancel return to the same filtered view.

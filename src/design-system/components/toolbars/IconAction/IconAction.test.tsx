@@ -84,4 +84,19 @@ describe("IconAction", () => {
     expect(screen.getByTestId("probe")).toHaveAttribute("aria-haspopup", "dialog");
     expect(screen.getByTestId("probe")).toHaveAttribute("aria-expanded", "true");
   });
+  it("says whether the region it discloses is open, opening no popup (CTA-230)", () => {
+    const { rerender } = render(
+      <IconAction label="Show filters" expanded={false} testId="probe">
+        <svg />
+      </IconAction>,
+    );
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByTestId("probe")).not.toHaveAttribute("aria-haspopup");
+    rerender(
+      <IconAction label="Hide filters" expanded testId="probe">
+        <svg />
+      </IconAction>,
+    );
+    expect(screen.getByTestId("probe")).toHaveAttribute("aria-expanded", "true");
+  });
 });

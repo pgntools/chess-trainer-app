@@ -62,4 +62,23 @@ describe("CollectionFilters (CTA-113)", () => {
     await user.keyboard("{Enter}");
     expect(onClear).toHaveBeenCalledTimes(1);
   });
+
+  it("folds to a rail by a button after Clear, only where it is asked to (CTA-230)", async () => {
+    const user = userEvent.setup();
+    const onCollapse = vi.fn();
+    const { unmount } = render(
+      <CollectionFilters facets={FULL_FACETS} values={NO_FILTERS} onChange={() => {}} onClear={() => {}} onCollapse={onCollapse} testId="library-filter" rootTestId="library-filters" />,
+    );
+    const hide = screen.getByRole("button", { name: "Hide filters" });
+    expect(hide).toHaveAttribute("aria-expanded", "true");
+    expect(hide).not.toHaveAttribute("aria-haspopup");
+    hide.focus();
+    await user.keyboard("{Enter}");
+    expect(onCollapse).toHaveBeenCalledTimes(1);
+    await expectNoAxeViolations(screen.getByTestId("library-filters"));
+    unmount();
+
+    mount();
+    expect(screen.queryByRole("button", { name: "Hide filters" })).toBeNull();
+  });
 });

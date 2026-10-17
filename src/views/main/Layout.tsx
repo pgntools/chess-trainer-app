@@ -17,7 +17,7 @@ import { JobRuntimeStarter, JobsIndicator } from '../jobs/JobsShell';
 import { EngineMenu } from './EngineMenu';
 import { BoardWidgetContext } from './service';
 import { RightPanelOutlet, RightPanelProvider } from './rightPanel';
-import { useRightPanelHidden } from './rightPanelSlot';
+import { RIGHT_PANEL_COLLAPSED_PX, useRightPanelCollapsed, useRightPanelHidden } from './rightPanelSlot';
 import { LeftPanelOutlet, LeftPanelProvider } from './leftPanel';
 import { BoardLeftPanelOutlet, BoardLeftPanelProvider } from './boardLeftPanel';
 import { useBoardLeftPanelKeepsShell, useBoardLeftPanelWidth } from './boardLeftPanelSlot';
@@ -376,15 +376,26 @@ const DefaultLayoutViewport = () => {
       only no panel under it.
     */
     const asideHidden = useRightPanelHidden();
+    /*
+      A panel folded to a rail (`RightPanel`'s `collapsed`, CTA-230 — the
+      Library collection's filters): the aside is a thin rail at the inline
+      end, and the screen's area takes the rest of the aside's room — what
+      spanning it gives, less the rail and the gap before it — so the row is
+      as wide as with the panel open and nothing else moves. Wide only:
+      stacked, the panel stays under the square.
+    */
+    const asideCollapsed = useRightPanelCollapsed() && !asideHidden && !compact;
     const areaDimentions = useMemo<Rect>(() => {
-        if (!asideHidden || compact || boardDimentions.width === 0) return boardDimentions;
+        if (!(asideHidden || asideCollapsed) || compact || boardDimentions.width === 0) return boardDimentions;
         const inner = bodyDimentions.width - BOARD_INSET_PX * 2 - leftPanelPx;
         const aside = Math.min(
             PANEL_MAX_WIDTH_PX,
             Math.max(PANEL_MIN_WIDTH_PX, inner - boardDimentions.width - BOARD_PANEL_GAP_PX),
         );
-        return { width: boardDimentions.width + BOARD_PANEL_GAP_PX + aside, height: boardDimentions.height };
-    }, [asideHidden, compact, boardDimentions, bodyDimentions, leftPanelPx])
+        const spanned = boardDimentions.width + BOARD_PANEL_GAP_PX + aside;
+        const width = asideCollapsed ? spanned - BOARD_PANEL_GAP_PX - RIGHT_PANEL_COLLAPSED_PX : spanned;
+        return { width, height: boardDimentions.height };
+    }, [asideHidden, asideCollapsed, compact, boardDimentions, bodyDimentions, leftPanelPx])
 
 
 
@@ -760,7 +771,7 @@ const DefaultLayoutViewport = () => {
                                   on a wide window, where the square is bound by
                                   height long before it is bound by width.
                                 */
-                                flexGrow: compact ? 0 : 1,
+                                flexGrow: compact || asideCollapsed ? 0 : 1,
                                 flexShrink: 0,
                                 /*
                                   From nothing, not from its content (CTA-142):
@@ -772,7 +783,7 @@ const DefaultLayoutViewport = () => {
                                   grows into exactly what the square leaves,
                                   held between its min and max.
                                 */
-                                ...(compact ? {} : { flexBasis: 0 }),
+                                ...(compact || asideCollapsed ? {} : { flexBasis: 0 }),
                                 /*
                                   A column, and it does not scroll itself: a
                                   panel that wants a section pinned to the foot
@@ -787,7 +798,8 @@ const DefaultLayoutViewport = () => {
                                 flexDirection: "column",
                                 minHeight: 0,
                                 overflow: "hidden",
-                                p: 2,
+                                // A rail holds its buttons; an open panel, its content.
+                                p: asideCollapsed ? 0.5 : 2,
                                 bgcolor: "background.paper",
                                 borderColor: "divider",
                                 /*
@@ -806,6 +818,12 @@ const DefaultLayoutViewport = () => {
                                         minWidth: 0,
                                         minHeight: `${STACKED_PANEL_MIN_HEIGHT_PX}px`,
                                         borderBlockStart: "1px solid",
+                                    }
+                                    : asideCollapsed
+                                    ? {
+                                        // The rail (CTA-230): its own width, the rest the area's.
+                                        width: `${RIGHT_PANEL_COLLAPSED_PX}px`,
+                                        borderInlineStart: "1px solid",
                                     }
                                     : {
                                         minWidth: `${PANEL_MIN_WIDTH_PX}px`,

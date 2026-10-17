@@ -13,7 +13,7 @@
  * | --- | --- | --- |
  * | `RightPanelProvider` | the shell, above the router `<Outlet />` | owns the slot |
  * | `RightPanelOutlet`   | the shell, inside its aside | renders whatever a route registered, or `fallback` |
- * | `RightPanel`         | **a route/screen** | registers its children into the aside |
+ * | `RightPanel`         | **a route/screen** | registers its children into the aside — or, `collapsed`, a rail (CTA-230) |
  * | `HideRightPanel`     | **a route/screen** | no aside — the screen's area spans its room (CTA-142) |
  *
  * A screen uses it like this — no props to thread, no shell edit:
@@ -64,6 +64,7 @@ import {
 import { createPortal } from 'react-dom';
 
 import { createPanelSlot, PanelSlotContext, usePanelSlot } from './rightPanelSlot';
+import { useShellCompact } from './shellCompact';
 
 /**
  * Owns one slot for the subtree below it. The shell mounts this above its
@@ -140,9 +141,30 @@ export function RightPanelOutlet({ fallback }: { fallback?: ReactNode }) {
  * One panel at a time — if two mounted routes register at once the later host
  * wins and both sets of content land in it. Render one `<RightPanel>` per
  * screen.
+ *
+ * **Folded to a rail** (CTA-230, the Library collection's filters): while
+ * `collapsed`, on a wide window, the shell draws the aside as a thin rail of
+ * `RIGHT_PANEL_COLLAPSED_PX` at the inline end and gives the rest of its room
+ * to the screen's area (as `HideRightPanel` gives all of it), and the panel
+ * renders `rail` there in place of `children` — the screen's expand button.
+ * Under the shell's breakpoint there is no rail: the panel is stacked under
+ * the square, `children` as ever. Both absent, today's panel.
  */
-export function RightPanel({ children }: { children: ReactNode }) {
+export function RightPanel({
+    children,
+    collapsed = false,
+    rail,
+}: {
+    children: ReactNode;
+    /** Wide: fold the aside to a rail showing `rail`. Absent, the panel as it always was. */
+    collapsed?: boolean;
+    /** What the rail holds while `collapsed` — the button that opens the panel again. */
+    rail?: ReactNode;
+}) {
     const slot = usePanelSlot('RightPanel');
+    // The shell's own breakpoint: stacked, it draws no rail, so the panel shows its children.
+    const compact = useShellCompact();
+    const folded = collapsed && !compact;
 
     /*
       A layout effect, not `useEffect`: the shell has to swap the fallback for
@@ -156,11 +178,18 @@ export function RightPanel({ children }: { children: ReactNode }) {
         return () => slot.release();
     }, [slot]);
 
+    // Apart from `acquire`, so folding and opening again never take the host away.
+    useLayoutEffect(() => {
+        if (!collapsed) return;
+        slot.collapse();
+        return () => slot.uncollapse();
+    }, [slot, collapsed]);
+
     const host = useSyncExternalStore(slot.subscribe, slot.getHost, slot.getHost);
 
     // `null` on the very first render — `acquire()` above is what makes the
     // outlet render a host at all. The next render, in the same commit, has it.
-    return host === null ? null : createPortal(children, host);
+    return host === null ? null : createPortal(folded ? rail : children, host);
 }
 
 /**

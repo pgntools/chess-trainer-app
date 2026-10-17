@@ -109,7 +109,9 @@ Gallery: `/dev/design/toolbars`.
 - `IconAction` — `popupOpen?` (a menu button: `aria-haspopup="menu"`,
   `aria-expanded`); `popupKind="dialog"` for a popover of controls rather
   than a menu (`aria-haspopup="dialog"` — the top bar's Engine menu and a
-  board's engine menu, CTA-181).
+  board's engine menu, CTA-181); `expanded?` for a disclosure — `aria-expanded`
+  with no `aria-haspopup` (a panel folded to a rail and opened again: the
+  Library collection's filters, CTA-230).
 - `ToggleIconAction` — `pressed?: boolean | null`: `null` for a Save that
   opens a dialog, so it carries no `aria-pressed`.
 - `ListScreenHeader` — used by every list screen; a title the tests read by

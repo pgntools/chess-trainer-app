@@ -184,6 +184,36 @@ describe("the Library's collections", () => {
   });
 });
 
+describe("the lobby's About panel folded to a rail (CTA-230)", () => {
+  it("arrives folded, and opens and folds again by its two buttons, the focus going on to the other", async () => {
+    const user = userEvent.setup();
+    mount("/library");
+    const show = await screen.findByRole("button", { name: "Show About the Library" });
+    expect(show).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByTestId("library-about")).toBeNull();
+
+    await user.click(show);
+    const about = screen.getByTestId("library-about");
+    expect(within(about).getByRole("heading", { level: 2, name: "About the Library" })).toBeInTheDocument();
+    const hide = within(about).getByRole("button", { name: "Hide About the Library" });
+    expect(hide).toHaveAttribute("aria-expanded", "true");
+    await waitFor(() => expect(hide).toHaveFocus());
+
+    await user.keyboard("{Enter}");
+    const again = screen.getByRole("button", { name: "Show About the Library" });
+    await waitFor(() => expect(again).toHaveFocus());
+    expect(screen.queryByTestId("library-about")).toBeNull();
+  });
+
+  it("has nothing to fold under the shell's breakpoint — the panel stays under the table, open", async () => {
+    shell.compact = true;
+    mount("/library", { compact: true });
+    const about = await screen.findByTestId("library-about");
+    expect(within(about).queryByRole("button", { name: "Hide About the Library" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Show About the Library" })).toBeNull();
+  });
+});
+
 describe("the Library's folders (CTA-88)", () => {
   /** The table's rows, as their test ids, in the order on screen. */
   const listRows = () =>
