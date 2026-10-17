@@ -13,6 +13,9 @@ paths:
   - "src/blocks/dialogs/CollectionImportDialog/**"
   - "src/blocks/dialogs/OpeningTreePgnDialog/**"
   - "src/blocks/dialogs/SaveAsCollectionDialog/**"
+  - "src/blocks/dialogs/CollectionMergeDialog/**"
+  - "src/blocks/forms/CollectionMergeForm/**"
+  - "src/lib/collectionMerge*"
   - "src/blocks/forms/TournamentSuggestion/**"
   - "src/blocks/cards/TournamentInfo/**"
   - "src/blocks/tables/ParticipantsTable/**"
@@ -75,7 +78,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/blocks/tables/CollectionGamesTable/` | A collection's games as a `DataTable` (CTA-113): the columns, `sortedRows`, the picks with select-all in the header, the White cell's link, the unreadable mark. |
 | `src/views/library/LibraryUpload.tsx` | `/library/new`: a new collection (file, paste, or empty), filed in a folder (the picker, the top level by default — no `?folder=` since CTA-231), and `?into=<id>` to add games to an existing one. |
 | `src/views/library/ImportOptionsDialog.tsx` | The import-options popup's job (CTA-103): the `CollectionImportDialog` block (what came in, the Elo / date / player filters, the count, the *Split by event* switch — CTA-127), then the index pass over the kept games in a `ProgressDialog` (`useCancellableJob`) and the writes — the split's folders through `createLibraryFolder`, taken back with the collections when a write fails. |
-| `src/views/library/CollectionScreen.tsx` | `/library/<collection>`: the table, the picks, the export bar, Analyse, Add games, and deleting games — or, for a collection that reads as a tournament, the tournament view (its Games tab this same table, CTA-142); on both, the page's left panel (`CollectionPage`, CTA-229; its General, Options and Jobs, CTA-231 — §6.4). |
+| `src/views/library/CollectionScreen.tsx` | `/library/<collection>`: the table, the picks, the export bar, Analyse, Add games, and deleting games — or, for a collection that reads as a tournament, the tournament view (its Games tab this same table, CTA-142); on both, the page's left panel (`CollectionPage`, CTA-229; its General and Options, CTA-231 — §6.4) and the header's *Merge with…* (CTA-232, §6.5.1). |
 | `src/views/library/TournamentCollection.tsx`, `tournamentTabs.ts`, `tournamentFacts.ts` | **The tournament view** (CTA-142, §6.4.3): Info, Participants and Games tabs, the tab the URL's (`tournamentTabOf`); the event's facts (`tournamentFactsOf`, the left panel's General since CTA-231). |
 | `src/lib/tournamentParticipants.ts` | **Each player's record** (CTA-142): `participantsOf` (score, games, W / D / L, performance, longest unbeaten run — over `tournamentOf`, tags only), `topPlayersOf` (the standouts). |
 | `src/lib/arena.ts`, `src/blocks/tables/ArenaStandingsTable/` | **An arena's standings** (CTA-204): `arenaOf` (each player's score sheet in the order played, scored as Lichess arena points or game points — tags only, the games' lengths counted off their movetext), `isLichessExport` (what makes the guess a Lichess arena), `pliesOfGames`; the block draws it as scored — an Arena in game points, a Lichess arena in Lichess arena points. The rules: `tournament-tables.md` §4.2. |
@@ -86,15 +89,18 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/blocks/forms/CollectionFiltersRail/` | The panel folded (CTA-230): the shell's right-hand rail's one button, Show filters, a badge counting the filters still on (`activeFilterCount`). |
 | `src/views/library/OpeningFilterBoard.tsx` | The opening-moves board (`options.id` `library-filter-board`), and its *Save tree as PGN* link. |
 | `src/blocks/dialogs/OpeningTreePgnDialog/` | *Save tree as PGN*'s choice: No, or Add tags — `games`, `prc`, or both (`FormDialog`, CTA-113). |
+| `src/lib/collectionMerge.ts` | **Collections merged, the pure part** (CTA-232 — the hashing and dedupe modes CTA-220's, from the retired merge job): `mergeCollectionGames(sources, dedupe)` (the games in order, normalised, duplicates counted and left out, the PGN's length), `gameKeyOf` / `fnv1a64` / `normalisedGameText`, the dedupe modes, `defaultMergeName` / `mergeNameOf`, `MIN_MERGE_SOURCES`. No store, no `chess.js`. |
+| `src/views/library/useCollectionMerge.tsx` | **Merge, the screens' hook** (CTA-232, §6.5.1): `{ open(ids), dialog }` — the sources read (`loadCollectionGames`), merged, held to `MAX_COLLECTION_CHARS`, indexed (`indexCollection`) and kept (`addCollection`) in one `useCancellableJob` run under a `ProgressDialog`, then the result. |
+| `src/blocks/dialogs/CollectionMergeDialog/`, `src/blocks/forms/CollectionMergeForm/` | The merge's dialog (the form, Merge, a refusal; done, Open collection and Download PGN) and its form (the sources in order with a picker over the Library's others, the dedupe mode, the name) — presentational (CTA-232; the form CTA-220's, a New-job form until then). |
 | `src/blocks/dialogs/SaveAsCollectionDialog/` | *Save as collection*'s name dialog (CTA-122): the derived name to edit, the count under it, a busy state and a problem slot — presentational, the write the screen's (`CollectionScreen.tsx`). |
 | `src/views/library/LibraryGameScreen.tsx` → `LibraryGameBoard.tsx` | `/library/<collection>/<n>`: resolve and parse the game, then the analysis board; the screen holds the left panel's open tab and drawer (CTA-209). |
-| `src/blocks/panels/CollectionDetails/` | The collection page's **left panel** (CTA-229, its content CTA-231), on both its views: a Close back to `/library`, the collection's name (its `h2`), then three tabs — General (a tournament's `TournamentInfo` card, else the description and the index's facts), Options (the screen's settings; a shipped collection's a read-only line) and Jobs (the screen's `EntityJobs`); presentational, the open tab, the facts, the settings and the jobs the screen's. |
+| `src/blocks/panels/CollectionDetails/` | The collection page's **left panel** (CTA-229, its content CTA-231), on both its views: a Close back to `/library`, the collection's name (its `h2`), then two tabs — General (a tournament's `TournamentInfo` card, else the description and the index's facts) and Options (the screen's settings; a shipped collection's a read-only line) — its Jobs tab gone with the merge job (CTA-232); presentational, the open tab, the facts and the settings the screen's. |
 | `src/blocks/panels/LibraryGameDetails/` | The game board's **left panel** (CTA-209): Back, the game's title and caption, the Info and Settings tabs (Info first and the default) and previous / next at its foot (CTA-212) — presentational, the session's state the board's. |
 | `src/views/library/useLibraryCollections.ts` | The React bindings: `useUploadedCollections`, `useLibraryFolders`, `useCollectionSummary`, `useCollectionRows`, `useCollectionGames`, `loadCollectionGames`, `useTournamentGuess` (CTA-142: the kind of tournament the games look like, read off their tags when asked). |
 | `src/views/library/indexCollection.ts` | Runs the worker with progress and cancel, with a jsdom fallback. |
 | `src/views/library/LibraryMiss.tsx` | The "no such collection / game" screen. |
 | `src/views/library/*Main.tsx` | Layout-only wrappers that `routes.tsx` routes to. |
-| Tests | `src/lib/libraryCollections.test.ts`, `collectionZip.test.ts`, `collectionIndex.test.ts`, `openingTree.test.ts`, `openingTreePgn.test.ts`, `shippedCollections.test.ts`, `libraryCollectionStore.test.ts`, `libraryFolderStore.test.ts` (folder CRUD, `folderId`, the v1 → v2 upgrade), `folderTreeRows.test.ts`, `wirepgn.test.ts`, `gameReference.test.ts` (the `library` key), `src/views/library/Library.test.tsx` (the list, folders, a table, a game, the collection page's panel and its settings), `LibraryFilters.test.tsx` (the panel's filters, the opening-moves board, the panel folded to a rail — CTA-230), `LibraryPicks.test.tsx` (download, Analyse, Save as collection), `LibraryImport.test.tsx` (adding a collection, the import popup), `LibraryTournament.test.tsx` (the tournament view, the list's trophy, the settings' suggestion — CTA-142; the event's card on General, the Participants panel folded — CTA-231) — sharing `libraryTestKit.tsx`, `src/lib/tournamentParticipants.test.ts`, and `src/lib/gameReference.test.ts` (a `library/…` reference resolved). |
+| Tests | `src/lib/libraryCollections.test.ts`, `collectionZip.test.ts`, `collectionIndex.test.ts`, `openingTree.test.ts`, `openingTreePgn.test.ts`, `shippedCollections.test.ts`, `libraryCollectionStore.test.ts`, `libraryFolderStore.test.ts` (folder CRUD, `folderId`, the v1 → v2 upgrade), `folderTreeRows.test.ts`, `wirepgn.test.ts`, `gameReference.test.ts` (the `library` key), `src/views/library/Library.test.tsx` (the list, folders, a table, a game, the collection page's panel and its settings), `LibraryFilters.test.tsx` (the panel's filters, the opening-moves board, the panel folded to a rail — CTA-230), `LibraryPicks.test.tsx` (download, Analyse, Save as collection), `LibraryImport.test.tsx` (adding a collection, the import popup), `LibraryTournament.test.tsx` (the tournament view, the list's trophy, the settings' suggestion — CTA-142; the event's card on General, the Participants panel folded — CTA-231), `LibraryMerge.test.tsx` (the merge from the lobby's picks and a collection page's *Merge with…*, a refusal, Cancel — CTA-232) — sharing `libraryTestKit.tsx`, `src/lib/collectionMerge.test.ts`, `src/lib/tournamentParticipants.test.ts`, and `src/lib/gameReference.test.ts` (a `library/…` reference resolved). |
 
 Locale keys all live under `library.*` in `src/locales/en.ts` / `he.ts`
 (`he` is typed `typeof en`, so a missing key is a compile error). The only
@@ -547,9 +553,10 @@ words box, **the table the one region that scrolls**, its header sticky.
     `FolderPicker` in `library-collection-move-dialog`, the top level its
     "none") and *Delete* (`-delete-`, confirmed in `library-delete-dialog`);
   - a shipped collection: *Download* only.
-  - **No *New job*** on a collection's row since CTA-231: its page's Jobs tab
-    has it (§6.4). The picks' *Merge collections…* (`library-picks-merge`, two
-    or more picked) is the list's one job.
+  - **No *New job*** on a collection's row since CTA-231 (and no kind applies
+    to a collection since CTA-232). The picks' *Merge collections…*
+    (`library-picks-merge`, two or more picked) merges them into a new
+    collection — a direct action since CTA-232, a job before (§6.5.1).
 - **One New folder** (`library-new-folder`), the header's (CTA-231): the
   shared `FolderNameDialog` (`library-folder-name-*`) asks the name and —
   its optional `parents` — the parent: the reader's folders in a
@@ -726,8 +733,8 @@ Project view's (`ProjectDetails`): registered by `CollectionPage` through
 `BoardLeftPanel` (`collapsed={false}`, `keepShell` — the header and footer
 stay), on **both** views — this table and the tournament view (§6.4.3), every
 tab of it. At its head a **Close** to `/library` — **the page's one way back**:
-neither view's header has a Back — and the collection's name (`h2`); then three
-tabs (CTA-231):
+neither view's header has a Back — and the collection's name (`h2`); then two
+tabs (CTA-231; a third, Jobs, went in CTA-232 with the merge job):
 
 - **General** (`-general`) — a tournament's **event card** (`TournamentInfo`,
   `library-collection-details-tournament`, its heading an `h3`: the reader's
@@ -742,14 +749,14 @@ tabs (CTA-231):
   out.
 - **Options** (`-options`) — an upload's **settings** (§6.4.2); a shipped
   collection's a line saying it is read-only (`-options-read-only`).
-- **Jobs** (`-jobs`) — the collection's **jobs** and **New job** for it
-  (`EntityJobs`, `library-collection-details-jobs-list`; `useNewJob` over the
-  `library-collection` entity — the merge kind, the only one that applies),
-  newest first, each a link to its page. Deleting the collection still takes
-  its unfinished jobs (`removeCollection`, `jobs.md`'s deletion rule).
 
 The open tab and the settings' draft are `CollectionPage`'s state, above the
 tournament view's tabs (so a change of tab keeps them), kept nowhere.
+**Merge with…** (`library-table-merge-with`, CTA-232) — in both views'
+headers (the games table's beside its gear, the tournament view's Info and
+Participants beside theirs), shipped and uploaded alike — opens the merge
+dialog on this collection, the rest picked in it (§6.5.1).
+
 **Under the shell's breakpoint** it is a drawer (`layout-board-left-drawer`,
 named "Details of ‹name›"), opened by the header's first action
 (`library-collection-details-toggle`, "The collection's details") — and by
@@ -1046,6 +1053,47 @@ teams) while it is open (CTA-231).
   collection's table (`library-picks-collection-open`); the picks stay —
   this write renumbers nothing.
 
+#### 6.5.1 Merge — collections into a new one (CTA-232)
+
+**A direct Library action, not a job** (it was the Jobs module's
+`library.collection-merge` kind, CTA-220 / CTA-221, until CTA-232 — what
+became of a reader's stored merge jobs is `jobs.md` §3.1). Two entry points
+open one dialog (`useCollectionMerge`, the `CollectionMergeDialog` block):
+the lobby's picks — *Merge collections…* (`library-picks-merge`, two or more
+ticked, in the order ticked; `library-merge`) — and a collection page's
+**Merge with…** (`library-table-merge-with`, §6.4; that collection alone,
+`library-collection-merge`).
+
+- **The dialog**: the collections in order — each moved up or down, removed
+  (never below two once there are two), and a **picker over the Library's
+  other collections** (`SelectAutocomplete`, Built-in and the reader's own
+  grouped, typed to find) to add one at the end; the **dedupe mode** — keep
+  every game, drop exact copies (the default), drop the same game (the
+  mainline's moves with White, Black and Date); the **name**, "<first> +
+  <n> more" where left empty. Merge is off below two collections, a note
+  saying why.
+- **Merge** is one `useCancellableJob` run under a `ProgressDialog`
+  (`<testId>-progress`, Cancel on until the write): each source's games read
+  as the Library holds them (`loadCollectionGames` — a shipped PGN fetched
+  and cut once, an upload's record), **merged** (`mergeCollectionGames`:
+  normalised, hashed, joined in order — about 0.02 ms a game, **no
+  `chess.js` pass**: every source was indexed when it came in, and the
+  indexer marks an unreadable game itself), held to `MAX_COLLECTION_CHARS`
+  (past it, the upload's own `library.upload.problem.too-large`, in the
+  dialog, nothing made), then **kept as an upload is**: the index pass in its
+  worker (`indexCollection` — the merge's one real cost, an upload's of the
+  same size) and `addCollection` — **always a new collection**, at the
+  Library's top level, never one of the sources. The games are the sources'
+  own chunks (cut by `collectionGamesOf` when they came in), never a text cut
+  again.
+- **Done**, the dialog says what was made — the name, the games, the
+  duplicates left out (`role="status"`) — with **Open collection** (a link,
+  closing the dialog) and **Download PGN** (`downloadPgn`, the merged games as
+  one `.pgn`, named by the merge's slug). No job, no job output, no summary.
+- A refusal — a source gone or unreadable, the index pass failing, the
+  write refused — is said in the dialog (`library.merge.problem.*`); Cancel
+  makes nothing and leaves the dialog as it was.
+
 ### 6.6 `/library/<collection>/<n>` — the game board
 
 `LibraryGameScreen` resolves the games, checks the number (otherwise the
@@ -1188,10 +1236,11 @@ the index instead (§10.1).
 ## 9. Testing
 
 - **Where**: pure logic in `src/lib/*.test.ts` (listed in §0). Screens in
-  five files under `src/views/library/` — `Library.test.tsx`,
+  six files under `src/views/library/` — `Library.test.tsx`,
   `LibraryFilters.test.tsx`, `LibraryPicks.test.tsx`, `LibraryImport.test.tsx`
   (one file until CTA-124, split so the suite's shards and workers can share
-  what was its longest file) and `LibraryTournament.test.tsx` (CTA-142) — each mounting every Library route through
+  what was its longest file), `LibraryTournament.test.tsx` (CTA-142) and
+  `LibraryMerge.test.tsx` (CTA-232) — each mounting every Library route through
   `libraryTestKit.tsx`'s `mount`: a `MemoryRouter` with `RightPanelProvider`
   and a probe (`where()` returns the current path and search). A new screen
   test goes in the file whose screen it drives; a helper two of them need, in
@@ -1229,7 +1278,12 @@ the index instead (§10.1).
   suggestion, the list's trophy, the settings' suggestion and Apply, and an
   unmarked collection unchanged. The shipped team Swiss's 1,650 games make
   its test the slowest; give such a test a timeout of its own.
-- Commands: `npx vitest run src/views/library/` (the five screen files),
+- **The merge** (CTA-232): `src/lib/collectionMerge.test.ts` (the hashing,
+  the modes, the merge) and `LibraryMerge.test.tsx` (both entry points, the
+  result's Open collection and Download PGN, the refusal past the limit —
+  `MAX_COLLECTION_CHARS` mocked down to a few dozen games — and Cancel, the
+  index pass held by a mocked `indexCollection`).
+- Commands: `npx vitest run src/views/library/` (the six screen files),
   `npx vitest run src/lib/libraryCollectionStore.test.ts`,
   `npx vitest run src/lib/libraryFolderStore.test.ts`, then `yarn test:run`.
 
