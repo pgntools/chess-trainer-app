@@ -3007,6 +3007,10 @@ const en = {
       created: "Asked for",
       started: "Started",
       finished: "Finished",
+      /** A job queued by *Continue with current settings* (CTA-236): the job it continues, removed since. */
+      continues: "Continues",
+      continuesValue_one: "{{title}}, asked for {{date}} — one position carried over, analysed with its settings",
+      continuesValue_other: "{{title}}, asked for {{date}} — {{count}} positions carried over, analysed with its settings",
     },
     /**
      * **The Jobs module's generic blocks** (CTA-217): the queue, its filters,
@@ -3188,6 +3192,27 @@ const en = {
         cancelled: "Cancelled",
         interrupted: "Interrupted",
       },
+    },
+    /**
+     * **Resume, against the settings in effect** (CTA-236,
+     * `JobSettingsChangedDialog`): an engine job whose engine settings differ
+     * from the ones a new job would be given now.
+     */
+    settingsChanged: {
+      title: "Engine settings changed",
+      message: "“{{name}}” was queued with other engine settings than the ones in effect now — the job's, then the current:",
+      /** One row: the setting, the job's value, the current one. */
+      change: "{{setting}}: {{job}} → {{current}}",
+      notSent: "not set",
+      on: "on",
+      off: "off",
+      megabytes: "{{value}} MB",
+      note: "With the current settings the job is queued again as a new job: the positions it has analysed are kept, the rest are analysed with the current settings.",
+      keep: "Continue with the job's settings",
+      current: "Continue with current settings",
+      cancel: "Cancel",
+      /** The new job queued, the old one removed. */
+      continued: "Continued with the current settings: {{name}}.",
     },
     newJob: {
       noForm: "This kind cannot be started here.",

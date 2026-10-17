@@ -76,6 +76,8 @@ describe("translation catalogs", () => {
       "engineMenu.hashMb",
       // An arena game's words and what made its score (CTA-204): the two values and a comma.
       "tournament.arena.withNotes",
+      // Resume's settings dialog's Hash value (CTA-236): a number and its unit, as the job's page writes it.
+      "jobs.settingsChanged.megabytes",
     ]);
 
     const untranslated = leafKeys(en).filter(

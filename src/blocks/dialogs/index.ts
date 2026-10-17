@@ -16,6 +16,8 @@ export * from "./FolderNameDialog";
 export * from "./GamesPickerDialog";
 export * from "./ImportDialog";
 export * from "./IncompatibleImportDialog";
+// CTA-236: Resume on an engine job whose settings differ from the current ones — the job's, the current, Cancel.
+export * from "./JobSettingsChangedDialog";
 export * from "./NewCaseDialog";
 // CTA-217: the Jobs module's New job — the kinds that apply to an entity, then the chosen kind's form, over FormDialog.
 export * from "./NewJobFrame";
