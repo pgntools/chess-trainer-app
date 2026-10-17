@@ -18,6 +18,13 @@ import type { UciOptionValue } from "../../../engineTypes";
 import { commentsAt, plyLabel, setComments, treeToPgn, type GameTree, type VariationNode } from "../../../gameTree";
 import { parsePgnTree } from "../../../pgn";
 import { TreeManager } from "../../../treeManager";
+import {
+  jobContinuationFrom,
+  recordedJobEngineSettingsFrom,
+  type JobContinuation,
+  type JobEngineSettings,
+  type RecordedJobEngineSettings,
+} from "../../engineJobSettings";
 
 /**
  * **The repertoire evaluation, the pure core** (CTA-219, a kind of the Jobs
@@ -96,6 +103,14 @@ export type RepertoireEvaluationInput = RepertoireEvaluationSettings & {
   /** The engine, a registry id (`lib/engines/`). */
   engine: string;
   preset: RepertoireEvaluationPreset | null;
+  /** The job this one continues with the settings in effect then (CTA-236) — absent for a job started from its form. */
+  continues?: JobContinuation;
+  /**
+   * That job's results, by position key (CTA-236): the plan gives each
+   * planned position the seed's result for its key, so it is not searched
+   * again; a result for no planned position is ignored.
+   */
+  seed?: Record<string, PositionResult>;
 };
 
 /** The ply limit's range: a move to the 40th. */
@@ -179,6 +194,8 @@ export const parseRepertoireEvaluationInput = (value: unknown): RepertoireEvalua
   if (!isRow(value)) return undefined;
   if (typeof value.repertoireId !== "string" || value.repertoireId === "" || typeof value.pgn !== "string") return undefined;
   const engine = typeof value.engine === "string" && value.engine !== "" ? value.engine : DEFAULT_COMPUTER_ANALYSIS_OPTIONS.engine;
+  const continues = jobContinuationFrom(value.continues);
+  const seed = seedFrom(value.seed);
   return {
     repertoireId: value.repertoireId,
     name: typeof value.name === "string" ? value.name : "",
@@ -186,7 +203,19 @@ export const parseRepertoireEvaluationInput = (value: unknown): RepertoireEvalua
     engine,
     preset: presetFrom(value.preset),
     ...repertoireEvaluationSettingsFrom(value, engine),
+    ...(continues === undefined ? {} : { continues }),
+    ...(seed === undefined ? {} : { seed }),
   };
+};
+
+/**
+ * **The engine settings a stored input carries** (CTA-236) — its engine, its
+ * preset, its search; a field it does not carry left out, so Resume never
+ * calls it different.
+ */
+export const recordedEngineSettingsOf = (value: unknown): RecordedJobEngineSettings => {
+  const row = isRow(value) ? value : {};
+  return recordedJobEngineSettingsFrom(row.engine, row.preset, row.search);
 };
 
 /* ─── The plan ────────────────────────────────────────────────────────── */
@@ -297,7 +326,9 @@ const pathOf = (node: VariationNode | null, parents: ReadonlyMap<string, Variati
  * after it (what it left) — each once by its key, however many lines reach
  * it, with the moves the repertoire plays from it and the paths reaching it.
  * In order of how early they are reached, so a job part-way through has
- * judged the opening first. `undefined` for a PGN that does not read.
+ * judged the opening first. A job that continues another (CTA-236) starts
+ * with the seed's result for each planned position it has one for, so only
+ * the rest is searched. `undefined` for a PGN that does not read.
  */
 export const planOf = (
   input: RepertoireEvaluationInput,
@@ -358,7 +389,12 @@ export const planOf = (
     version: REPERTOIRE_EVALUATION_STATE_VERSION,
     fingerprint: fingerprintOf(input),
     positions,
-    results: {},
+    results: Object.fromEntries(
+      positions.flatMap((position) => {
+        const seeded = input.seed?.[position.key];
+        return seeded === undefined ? [] : [[position.key, { fen: position.fen, lines: seeded.lines }] as const];
+      }),
+    ),
   };
   return { state, progress: progressOf(state) };
 };
@@ -443,6 +479,18 @@ const positionFrom = (value: unknown): PlannedPosition | undefined => {
   };
 };
 
+/** A stored seed read back: each result whose FEN is its key's and that has a line. `undefined` for none. */
+const seedFrom = (value: unknown): Record<string, PositionResult> | undefined => {
+  if (!isRow(value)) return undefined;
+  const seed: Record<string, PositionResult> = {};
+  for (const [key, raw] of Object.entries(value)) {
+    if (!isRow(raw) || typeof raw.fen !== "string" || positionKeyOf(raw.fen) !== key || !Array.isArray(raw.lines)) continue;
+    const lines = raw.lines.flatMap((line) => lineFrom(line) ?? []);
+    if (lines.length > 0) seed[key] = { fen: raw.fen, lines };
+  }
+  return Object.keys(seed).length === 0 ? undefined : seed;
+};
+
 /**
  * **A stored state, read leniently** (the kind's `parseState`): `undefined` —
  * re-plan — for another shape version, a kind version that is not this one,
@@ -467,6 +515,40 @@ export const parseRepertoireEvaluationState = (
     if (lines.length > 0) results[key] = { fen, lines };
   }
   return { version: REPERTOIRE_EVALUATION_STATE_VERSION, fingerprint: value.fingerprint, positions, results };
+};
+
+/**
+ * **A job continued with other engine settings** (CTA-236) — the input of the
+ * new job *Continue with current settings* queues: the same repertoire, side,
+ * ply limit, lines, thresholds and outputs, the engine, preset and search
+ * `current` names (held to that engine's bounds), the old job named, and its
+ * results so far as the seed. The new input plans its own fingerprint, so
+ * {@link stateFor} keeps the seeded state.
+ */
+export const continuedInputOf = (
+  input: RepertoireEvaluationInput,
+  state: Pick<RepertoireEvaluationState, "results"> | null,
+  current: JobEngineSettings,
+  continues: JobContinuation,
+): RepertoireEvaluationInput => {
+  const settings = repertoireEvaluationSettingsFrom(
+    {
+      ...input,
+      search: { ...input.search, depth: current.depth, moveTimeMs: current.moveTimeMs, threads: current.threads, hashMb: current.hashMb },
+    },
+    current.engine,
+  );
+  const seed = state?.results ?? {};
+  return {
+    repertoireId: input.repertoireId,
+    name: input.name,
+    pgn: input.pgn,
+    engine: current.engine,
+    preset: { id: current.preset.id, name: current.preset.name, values: current.preset.values },
+    ...settings,
+    continues,
+    ...(Object.keys(seed).length === 0 ? {} : { seed }),
+  };
 };
 
 /* ─── One step ────────────────────────────────────────────────────────── */

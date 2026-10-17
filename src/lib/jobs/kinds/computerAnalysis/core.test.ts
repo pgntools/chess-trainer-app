@@ -7,6 +7,7 @@ import {
   ANALYSIS_CASE_ENTITY,
   ANALYSIS_PROJECT_ENTITY,
   analysisOf,
+  continuedInputOf,
   COMPUTER_ANALYSIS_KIND,
   ComputerAnalysisError,
   COMPUTER_ANALYSIS_KIND_VERSION,
@@ -19,6 +20,7 @@ import {
   planOf,
   progressOf,
   readInput,
+  recordedEngineSettingsOf,
   sourceTreeOf,
   stepOf,
   subjectsOf,
@@ -27,6 +29,7 @@ import {
   type ComputerAnalysisState,
   type PositionEvaluator,
 } from "./core";
+import type { JobEngineSettings } from "../../engineJobSettings";
 import coreSource from "./core.ts?raw";
 
 const PGN = '[White "Alice"]\n[Black "Bob"]\n\n1. e4 e5 2. Nf3 Nc6 *';
@@ -242,6 +245,76 @@ describe("the computer-analysis kind's core (CTA-218)", () => {
       expect(merged).toContain("[%eval");
       expect(mergedPgnOf(state, input, "1. e4 e5 *")).toContain("[%eval");
       expect(treeToPgn(parsePgnTree(merged!))).toBe(merged);
+    });
+  });
+
+  describe("continued with other engine settings (CTA-236)", () => {
+    const current: JobEngineSettings = {
+      engine: "stockfish-19-lite",
+      preset: { id: "fast", name: "Fast", values: { Contempt: 10 } },
+      depth: 14,
+      moveTimeMs: 2_000,
+      threads: 1,
+      hashMb: 32,
+    };
+    const continues = { jobId: "old", title: "Alice – Bob", createdAt: "2026-10-01T10:00:00.000Z" };
+
+    it("reads the engine settings a stored input carries — and none it does not", () => {
+      expect(recordedEngineSettingsOf(inputOf())).toEqual({
+        engine: DEFAULT_COMPUTER_ANALYSIS_OPTIONS.engine,
+        preset: { id: "deep", name: "Deep", values: { "Move Overhead": 250 } },
+        depth: 20,
+        moveTimeMs: 30_000,
+        threads: 1,
+        hashMb: 64,
+      });
+      // An older record with no preset and only some of the search.
+      expect(recordedEngineSettingsOf({ source: {}, options: { depth: 18, threads: "two" } })).toEqual({ depth: 18 });
+      expect(recordedEngineSettingsOf(null)).toEqual({});
+    });
+
+    it("keeps the source, target and form, takes the current engine, preset and search, and seeds the results so far", () => {
+      const input = parseInput(inputOf({ options: { ...DEFAULT_COMPUTER_ANALYSIS_OPTIONS, outputs: ["light", "full"], multiPv: 2, minDepth: 18 } }))!;
+      const { state } = planOf(input)!;
+      const part = { checkpoint: state.checkpoint.map((entry, index) => (index < 2 ? resultAt(state.positions[index].fen, 30 + index) : entry)) };
+      const next = continuedInputOf(input, part, current, continues);
+      expect(next.source).toEqual(input.source);
+      expect(next.target).toEqual(input.target);
+      expect(next.preset).toEqual(current.preset);
+      expect(next.options).toMatchObject({ engine: "stockfish-19-lite", depth: 14, minDepth: 14, moveTimeMs: 2_000, threads: 1, hashMb: 32, multiPv: 2, outputs: ["light", "full"] });
+      expect(next.continues).toEqual(continues);
+      expect(next.seed).toEqual([resultAt(state.positions[0].fen, 30), resultAt(state.positions[1].fen, 31)]);
+      // A job never planned carries nothing.
+      expect(continuedInputOf(input, null, current, continues).seed).toBeUndefined();
+    });
+
+    it("plans from the seed: the positions it has a result for are done, only the rest are searched", async () => {
+      const input = parseInput(inputOf())!;
+      const { state } = planOf(input)!;
+      const part = { checkpoint: state.checkpoint.map((entry, index) => (index < 3 ? resultAt(state.positions[index].fen) : entry)) };
+      // Through the store: the input as JSON, read back as the runtime reads it.
+      const next = parseInput(JSON.parse(JSON.stringify(continuedInputOf(input, part, current, continues))))!;
+      expect(next.continues).toEqual(continues);
+      const planned = planOf(next)!;
+      expect(planned.progress).toEqual({ done: 3, total: 5, label: "2... Nc6" });
+      const evaluate = evaluator();
+      let at = planned.state;
+      for (;;) {
+        const step = (await stepOf(at, next, evaluate))!;
+        at = step.state;
+        if (step.done) break;
+      }
+      expect(evaluate.mock.calls.map(([, index]) => index)).toEqual([3, 4]);
+    });
+
+    it("ignores a seed's result for no planned position, and one that will not read", () => {
+      const input = parseInput(inputOf())!;
+      const { state } = planOf(input)!;
+      const read = readInput({ ...inputOf(), seed: [resultAt("8/8/8/8/8/8/8/K6k w - - 0 1"), { fen: state.positions[1].fen, lines: [] }, 7, resultAt(state.positions[0].fen)] })!;
+      expect(read.seed).toEqual([resultAt("8/8/8/8/8/8/8/K6k w - - 0 1"), resultAt(state.positions[0].fen)]);
+      expect(planOf(read)!.state.checkpoint).toEqual([resultAt(state.positions[0].fen), null, null, null, null]);
+      expect(readInput({ ...inputOf(), seed: "nothing", continues: { title: "no id" } })).not.toHaveProperty("seed");
+      expect(readInput({ ...inputOf(), continues: { title: "no id" } })).not.toHaveProperty("continues");
     });
   });
 

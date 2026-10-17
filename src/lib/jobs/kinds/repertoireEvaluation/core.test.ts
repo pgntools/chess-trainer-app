@@ -13,6 +13,7 @@ import { parsePgnTree } from "../../../pgn";
 import { TreeManager } from "../../../treeManager";
 import {
   annotatedTreeOf,
+  continuedInputOf,
   DEFAULT_REPERTOIRE_EVALUATION_SETTINGS,
   evaluatedPgnFileName,
   evaluatedRepertoireId,
@@ -23,6 +24,7 @@ import {
   parseRepertoireEvaluationState,
   planOf,
   positionKeyOf,
+  recordedEngineSettingsOf,
   REPERTOIRE_EVALUATION_REPORT_SCHEMA,
   RepertoireEvaluationError,
   reportOf,
@@ -33,6 +35,7 @@ import {
   type RepertoireEvaluationState,
   type RepertoireEvaluator,
 } from "./core";
+import type { JobEngineSettings } from "../../engineJobSettings";
 
 /** An input over `pgn`, the defaults for the rest. */
 const inputOf = (pgn: string, overrides: Partial<RepertoireEvaluationInput> = {}): RepertoireEvaluationInput => ({
@@ -378,6 +381,72 @@ describe("the annotated tree and the outputs (CTA-219)", () => {
     expect(evaluatedRepertoireId("Job-42")).toBe(evaluatedRepertoireId("job42"));
     expect(evaluatedPgnFileName('a/b:c* "d"')).toBe("a b c d-evaluated.pgn");
     expect(evaluatedPgnFileName("  ")).toBe("repertoire-evaluated.pgn");
+  });
+});
+
+describe("continued with other engine settings (CTA-236)", () => {
+  const current: JobEngineSettings = {
+    engine: "stockfish-19-lite",
+    preset: { id: "fast", name: "Fast", values: { Contempt: 10 } },
+    depth: 14,
+    moveTimeMs: 2_000,
+    threads: 1,
+    hashMb: 32,
+  };
+  const continues = { jobId: "old", title: "Queen's Gambit", createdAt: "2026-10-01T10:00:00.000Z" };
+
+  it("reads the engine settings a stored input carries — and none it does not", () => {
+    const preset = { id: "deep", name: "Deep", values: { "Move Overhead": 250 } };
+    expect(recordedEngineSettingsOf(inputOf("1. d4 *", { preset }))).toEqual({
+      engine: "stockfish-19-lite",
+      preset,
+      depth: DEFAULT_REPERTOIRE_EVALUATION_SETTINGS.search.depth,
+      moveTimeMs: DEFAULT_REPERTOIRE_EVALUATION_SETTINGS.search.moveTimeMs,
+      threads: DEFAULT_REPERTOIRE_EVALUATION_SETTINGS.search.threads,
+      hashMb: DEFAULT_REPERTOIRE_EVALUATION_SETTINGS.search.hashMb,
+    });
+    // No preset (`null`) and no search: an older record never chose them.
+    expect(recordedEngineSettingsOf({ repertoireId: "rep1", pgn: "", engine: "stockfish-19-lite", preset: null })).toEqual({ engine: "stockfish-19-lite" });
+  });
+
+  it("keeps the repertoire and the form, takes the current engine, preset and search, and plans from the results so far", async () => {
+    const input = inputOf(SHARED, { maxPlies: 6, search: { ...DEFAULT_REPERTOIRE_EVALUATION_SETTINGS.search, multiPv: 2 } });
+    const planned = planOf(input)!.state;
+    // Two positions searched under the old settings.
+    const { evaluate } = fakeEngine();
+    let state: RepertoireEvaluationState = planned;
+    for (let at = 0; at < 2; at += 1) state = (await stepOf(state, input, evaluate)).state;
+
+    const next = continuedInputOf(input, state, current, continues);
+    expect(next).toMatchObject({ repertoireId: "rep1", name: "Queen's Gambit", pgn: SHARED, side: "w", maxPlies: 6, engine: "stockfish-19-lite" });
+    expect(next.preset).toEqual(current.preset);
+    expect(next.search).toEqual({ depth: 14, moveTimeMs: 2_000, threads: 1, hashMb: 32, multiPv: 2 });
+    expect(next.continues).toEqual(continues);
+    // The search changed, so the old state is another plan's — the seed carries its results over.
+    expect(stateFor(next, state)).toBeUndefined();
+    const read = parseRepertoireEvaluationInput(JSON.parse(JSON.stringify(next)))!;
+    expect(read.seed).toEqual(state.results);
+    const seeded = planOf(read)!;
+    expect(seeded.progress.done).toBe(2);
+    expect(seeded.state.results).toEqual(state.results);
+    // Only the rest is searched, and the seeded state is this input's own.
+    const rest = fakeEngine();
+    const end = await runToEnd(read, rest.evaluate);
+    expect(rest.calls).toHaveLength(planned.positions.length - 2);
+    expect(rest.calls).not.toContain(Object.keys(state.results)[0]);
+    expect(stateFor(read, end)).toBe(end);
+  });
+
+  it("ignores a seed's result for no planned position, under another key, or with no line", () => {
+    const fen = fenAfter(SHARED, ["e4"]);
+    const result = { fen, lines: [{ score: { kind: "cp" as const, value: 10 }, depth: 20, pv: [] }] };
+    const read = parseRepertoireEvaluationInput({
+      ...inputOf(SHARED, { maxPlies: 2 }),
+      seed: { [positionKeyOf(fen)]: result, wrong: result, [positionKeyOf(fenAfter(SHARED, ["e4", "e5"]))]: { fen: fenAfter(SHARED, ["e4", "e5"]), lines: [] }, "8/8/8/8/8/8/8/K6k w - -": { fen: "8/8/8/8/8/8/8/K6k w - - 0 1", lines: result.lines } },
+    })!;
+    expect(Object.keys(read.seed ?? {})).toEqual([positionKeyOf(fen), "8/8/8/8/8/8/8/K6k w - -"]);
+    expect(planOf(read)!.state.results).toEqual({ [positionKeyOf(fen)]: result });
+    expect(parseRepertoireEvaluationInput({ ...inputOf(SHARED), seed: [] })).not.toHaveProperty("seed");
   });
 });
 
