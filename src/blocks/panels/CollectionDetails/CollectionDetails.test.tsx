@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import CollectionDetails, { type CollectionDetailsGeneral, type CollectionDetailsTab } from "./CollectionDetails";
-import { CLOSE_LINK, EMPTY, HEBREW_NAME, NAME, ONE_EVENT, SHIPPED, TOURNAMENT, UPLOADED } from "./fixtures";
+import { CLOSE_LINK, EMPTY, HEBREW_NAME, NAME, ONE_EVENT, SHIPPED, SOURCED, SOURCED_TOURNAMENT, TOURNAMENT, UPLOADED } from "./fixtures";
 
 /** The block with its tab held, as the screen holds it; the settings and the jobs stand-ins of the screen's. */
 function Held({
@@ -89,6 +89,29 @@ describe("CollectionDetails (CTA-229, CTA-231)", () => {
     expect(within(card).getByTestId("probe-tournament-facts-type")).toHaveTextContent("Round robin");
     expect(within(card).getByTestId("probe-tournament-facts-rounds")).toHaveTextContent("14");
     expect(screen.queryByTestId("probe-facts")).toBeNull();
+    await expectNoAxeViolations(container);
+  });
+
+  it("shows where the games come from under a collection's facts, and no card when they name none (CTA-233)", async () => {
+    const { container, unmount } = render(<Held general={SOURCED} />);
+    const general = screen.getByRole("tabpanel", { name: "General" });
+    const card = within(general).getByRole("region", { name: "Source" });
+    expect(within(card).getByRole("heading", { level: 3, name: "Source" })).toBeInTheDocument();
+    expect(within(card).getByTestId("probe-source-source-0-SourceTitle")).toHaveTextContent("The Week in Chess 1662");
+    expect(screen.getByTestId("probe-facts").compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await expectNoAxeViolations(container);
+    unmount();
+    render(<Held />);
+    expect(screen.queryByRole("region", { name: "Source" })).toBeNull();
+    expect(screen.queryByTestId("probe-source")).toBeNull();
+  });
+
+  it("shows a tournament's sources under its event card (CTA-233)", async () => {
+    const { container } = render(<Held name="FIDE Candidates 2026" general={SOURCED_TOURNAMENT} />);
+    const card = screen.getByRole("region", { name: "Sources" });
+    expect(within(card).getByRole("heading", { level: 3, name: "Sources" })).toBeInTheDocument();
+    expect(within(card).getAllByRole("listitem")).toHaveLength(2);
+    expect(screen.getByTestId("probe-tournament").compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await expectNoAxeViolations(container);
   });
 

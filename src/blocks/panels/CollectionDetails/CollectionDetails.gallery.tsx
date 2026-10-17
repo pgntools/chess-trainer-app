@@ -8,7 +8,7 @@ import { CollectionSettingsForm, type CollectionSettingsDraft } from "../../form
 import { EntityJobs } from "../../lists";
 import type { JobRowView } from "../../tables";
 import CollectionDetails, { type CollectionDetailsGeneral, type CollectionDetailsTab } from "./CollectionDetails";
-import { CLOSE_LINK, EMPTY, HEBREW_NAME, JOBS, LONG_NAME, NAME, ONE_EVENT, SHIPPED, TOURNAMENT, UPLOADED } from "./fixtures";
+import { CLOSE_LINK, EMPTY, HEBREW_NAME, JOBS, LONG_NAME, NAME, ONE_EVENT, SHIPPED, SOURCED, SOURCED_TOURNAMENT, TOURNAMENT, UPLOADED } from "./fixtures";
 
 type Demo = { name?: string; general?: CollectionDetailsGeneral; tab?: CollectionDetailsTab; readOnly?: boolean; jobs?: readonly JobRowView[] | undefined };
 
@@ -60,6 +60,8 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "One event, never described", render: () => demo({ general: ONE_EVENT }) },
     { name: "An empty collection", render: () => demo({ general: EMPTY }) },
     { name: "A tournament — General: the event's card", render: () => demo({ name: "FIDE Candidates 2026", general: TOURNAMENT }) },
+    { name: "An upload naming its source — the Source card", render: () => demo({ general: SOURCED }) },
+    { name: "A tournament from two sources", render: () => demo({ name: "FIDE Candidates 2026", general: SOURCED_TOURNAMENT }) },
     { name: "Options: the settings", render: () => demo({ tab: "options" }) },
     { name: "Options of a shipped file: read-only", render: () => demo({ name: "Tal", general: SHIPPED, tab: "options", readOnly: true }) },
     { name: "Jobs: a merge running, one done", render: () => demo({ tab: "jobs" }) },

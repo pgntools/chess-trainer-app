@@ -13,6 +13,7 @@ import {
   collectionFacetsOf,
   collectionRowsOf,
   collectionMetadataOf,
+  collectionSourcesOf,
   dateBounds,
   eventGroupsOf,
   openingLabelOf,
@@ -25,6 +26,7 @@ import {
   isPotentialTournament,
   readsAsTournament,
   sharedEventOf,
+  sourceTagsOf,
   sortedRows,
   formatOfKind,
   TOURNAMENT_FORMATS,
@@ -94,6 +96,57 @@ describe("collectionRowOf", () => {
     expect(row.eco).toBeUndefined();
     expect(collectionRowOf(C, 3).date).toBeUndefined();
     expect(collectionRowOf("1. e4 *", 4).result).toBe("*");
+  });
+});
+
+describe("where the games come from — their Source tags (CTA-233)", () => {
+  const twic = (issue: number, extra = "") =>
+    `[Event "Open"]\n[SourceTitle "The Week in Chess ${issue}"]\n[Source "Mark Crowther"]\n[SourceDate "2026.09.${issue - 1655}"]\n${extra}[White "A"]\n[Black "B"]\n[Result "1-0"]\n\n1. e4 e5 1-0`;
+
+  it("reads every tag whose name starts Source, a placeholder or an empty one left out", () => {
+    expect(sourceTagsOf({ SourceTitle: " TWIC 1662 ", Source: "Mark Crowther", SourceDate: "????.??.??", SourceQuality: "", SourceURL: "https://x", White: "A" })).toEqual({
+      SourceTitle: "TWIC 1662",
+      Source: "Mark Crowther",
+      SourceURL: "https://x",
+    });
+    expect(sourceTagsOf({ White: "A", Source: "?" })).toBeUndefined();
+    expect(collectionRowOf(twic(1662), 1).sourceTags).toEqual({ SourceTitle: "The Week in Chess 1662", Source: "Mark Crowther", SourceDate: "2026.09.7" });
+    expect(collectionRowOf(A, 1).sourceTags).toBeUndefined();
+  });
+
+  it("is absent when no game names a source", () => {
+    expect(collectionSourcesOf([])).toBeUndefined();
+    expect(collectionSourcesOf([collectionRowOf(A, 1), collectionRowOf(B, 2)])).toBeUndefined();
+  });
+
+  it("gives one source over every game, its tags in PGN's order and any other after them by name", () => {
+    const rows = [1, 2, 3].map((number) => collectionRowOf(twic(1662, '[SourceZeta "z"]\n[SourceAlpha "a"]\n[SourceVersion "2"]\n'), number));
+    expect(collectionSourcesOf(rows)).toEqual({
+      entries: [
+        {
+          tags: [
+            { name: "SourceTitle", value: "The Week in Chess 1662" },
+            { name: "Source", value: "Mark Crowther" },
+            { name: "SourceDate", value: "2026.09.7" },
+            { name: "SourceVersion", value: "2" },
+            { name: "SourceAlpha", value: "a" },
+            { name: "SourceZeta", value: "z" },
+          ],
+          games: 3,
+        },
+      ],
+      untagged: 0,
+    });
+  });
+
+  it("lists each distinct source in the order the games meet it, with its games, and counts those naming none", () => {
+    const rows = [twic(1662), twic(1661), A, twic(1662), twic(1661), twic(1662)].map((pgn, index) => collectionRowOf(pgn, index + 1));
+    const sources = collectionSourcesOf(rows);
+    expect(sources?.entries.map((entry) => [entry.tags[0]?.value, entry.games])).toEqual([
+      ["The Week in Chess 1662", 3],
+      ["The Week in Chess 1661", 2],
+    ]);
+    expect(sources?.untagged).toBe(1);
   });
 });
 

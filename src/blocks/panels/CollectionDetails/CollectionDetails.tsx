@@ -9,8 +9,8 @@ import { KeyValueList, type KeyValueRow } from "../../../design-system/component
 import { tableDate } from "../../../design-system/components/tables";
 import { PanelTabs, tabPanelProps } from "../../../design-system/components/tabs";
 import { IconAction } from "../../../design-system/components/toolbars";
-import type { CollectionMetadata, CollectionSummary } from "../../../lib/libraryCollections";
-import { TournamentInfo, type TournamentFacts } from "../../cards";
+import type { CollectionMetadata, CollectionSources, CollectionSummary } from "../../../lib/libraryCollections";
+import { CollectionSource, TournamentInfo, type TournamentFacts } from "../../cards";
 
 /** The panel's tabs, in order. */
 export type CollectionDetailsTab = "general" | "options" | "jobs";
@@ -20,9 +20,10 @@ const COLLECTION_DETAILS_TABS: readonly CollectionDetailsTab[] = ["general", "op
 /**
  * What General shows (CTA-231): a tournament's event card — the facts its
  * games give (`TournamentInfo`) — or, for any other collection, its
- * description and what its index says of it.
+ * description and what its index says of it; under either, where the games
+ * come from (CTA-233).
  */
-export type CollectionDetailsGeneral =
+export type CollectionDetailsGeneral = (
   | { kind: "tournament"; facts: TournamentFacts; description?: string }
   | {
       kind: "collection";
@@ -32,7 +33,15 @@ export type CollectionDetailsGeneral =
       /** When an upload was added (ISO 8601). Absent for a shipped file. */
       addedAt?: string;
       description?: string;
-    };
+    }
+) & {
+  /**
+   * The games' `Source…` tags (`collectionSourcesOf` over the rows, CTA-233)
+   * — the `CollectionSource` card under the rest. Absent when no game names
+   * a source (or the index is from before the column): no card.
+   */
+  sources?: CollectionSources;
+};
 
 export type CollectionDetailsProps = {
   /** The collection's name, as the screen shows it. */
@@ -54,7 +63,8 @@ export type CollectionDetailsProps = {
   /**
    * The root; its parts `-close`, `-title`, `-tabs` (each tab `-tab-<id>`),
    * `-general` (a tournament's card `-tournament`, else the description
-   * `-description` and the facts `-facts`, each `-facts-<id>`), `-options`
+   * `-description` and the facts `-facts`, each `-facts-<id>`; under either
+   * the source card `-source`), `-options`
    * (`-options-read-only` without settings) and `-jobs`.
    */
   testId: string;
@@ -108,7 +118,9 @@ function CollectionFacts({
  *   description, the type, the event, the site, the dates, the rounds and
  *   the counts); any other collection's description (or a line saying it
  *   has none) and its facts — where it comes from, its games, players,
- *   events, dates, ratings and when it was added.
+ *   events, dates, ratings and when it was added. Under either, where the
+ *   games come from — their `Source…` tags (`CollectionSource`, CTA-233),
+ *   when any game names one.
  * - **Options** — the collection's settings (the screen's form: the title,
  *   the description, the tournament mark); a shipped collection's a line
  *   saying it is read-only.
@@ -172,6 +184,7 @@ function CollectionDetails({ name, closeLink, tab, onTabChange, general, options
                 <CollectionFacts general={general} testId={`${testId}-facts`} />
               </>
             )}
+            {general.sources !== undefined && <CollectionSource sources={general.sources} headingLevel="h3" testId={`${testId}-source`} />}
           </Box>
         )}
         {tab === "options" && (
