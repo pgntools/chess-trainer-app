@@ -41,7 +41,7 @@ export const where = () => screen.getByTestId("where").textContent ?? "";
 
 /** How the shell is drawn around the routes. */
 type MountOptions = {
-  /** Under the shell's breakpoint: the game board's left panel a drawer (the screen asks `useShellCompact` itself — a test mocks it). */
+  /** Under the shell's breakpoint: the game board's and the collection page's left panel a drawer (the screen asks `useShellCompact` itself — a test mocks it). */
   compact?: boolean;
 };
 
@@ -132,8 +132,8 @@ export const cleanupAndMount = (entry: string) => {
 };
 
 /** Mount a collection's table and wait for its rows. */
-export const mountTable = async (entry: string) => {
-  mount(entry);
+export const mountTable = async (entry: string, options?: MountOptions) => {
+  mount(entry, options);
   await screen.findByTestId("library-table");
 };
 

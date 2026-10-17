@@ -1239,9 +1239,27 @@ const en = {
       /** The folder list's name in the move dialog (CTA-113). */
       picker: "Folders",
     },
+    /**
+     * The collection page's own panel (CTA-229), in the main menu's place on both
+     * its views: its Close back to the Library, its name, two tabs — a frame for now.
+     */
+    collectionDetails: {
+      label: "Details of {{name}}",
+      /** The panel's Close, at its head: back to the Library — the page's one way back. */
+      close: "Close {{name}}",
+      /** The collection page's header button that opens the panel in a drawer, under the shell's breakpoint. */
+      toggle: "The collection's details",
+      tabs: {
+        label: "Collection details",
+        general: "General",
+        options: "Options",
+      },
+      placeholder: "The collection's details will be shown here.",
+      exampleOption: "Example option",
+      exampleOptionHelp: "An example switch — it changes nothing yet.",
+    },
     /** The table screen — `/library/<collection>`. */
     table: {
-      back: "All collections",
       /** The games table's accessible name (CTA-113). */
       label: "Games",
       filter: "Filter games",

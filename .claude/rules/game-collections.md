@@ -75,7 +75,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/blocks/tables/CollectionGamesTable/` | A collection's games as a `DataTable` (CTA-113): the columns, `sortedRows`, the picks with select-all in the header, the White cell's link, the unreadable mark. |
 | `src/views/library/LibraryUpload.tsx` | `/library/new`: a new collection (file, paste, or empty), filed in a folder (`?folder=<id>`, the picker), and `?into=<id>` to add games to an existing one. |
 | `src/views/library/ImportOptionsDialog.tsx` | The import-options popup's job (CTA-103): the `CollectionImportDialog` block (what came in, the Elo / date / player filters, the count, the *Split by event* switch — CTA-127), then the index pass over the kept games in a `ProgressDialog` (`useCancellableJob`) and the writes — the split's folders through `createLibraryFolder`, taken back with the collections when a write fails. |
-| `src/views/library/CollectionScreen.tsx` | `/library/<collection>`: the table, the picks, the export bar, Analyse, Add games, and deleting games — or, for a collection that reads as a tournament, the tournament view (its Games tab this same table, CTA-142). |
+| `src/views/library/CollectionScreen.tsx` | `/library/<collection>`: the table, the picks, the export bar, Analyse, Add games, and deleting games — or, for a collection that reads as a tournament, the tournament view (its Games tab this same table, CTA-142); on both, the page's left panel (`CollectionPage`, CTA-229 — §6.4). |
 | `src/views/library/TournamentCollection.tsx`, `tournamentTabs.ts` | **The tournament view** (CTA-142, §6.4.3): Info, Participants and Games tabs, the tab the URL's (`tournamentTabOf`). |
 | `src/lib/tournamentParticipants.ts` | **Each player's record** (CTA-142): `participantsOf` (score, games, W / D / L, performance, longest unbeaten run — over `tournamentOf`, tags only), `topPlayersOf` (the standouts). |
 | `src/lib/arena.ts`, `src/blocks/tables/ArenaStandingsTable/` | **An arena's standings** (CTA-204): `arenaOf` (each player's score sheet in the order played, scored as Lichess arena points or game points — tags only, the games' lengths counted off their movetext), `isLichessExport` (what makes the guess a Lichess arena), `pliesOfGames`; the block draws it as scored — an Arena in game points, a Lichess arena in Lichess arena points. The rules: `tournament-tables.md` §4.2. |
@@ -87,6 +87,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/blocks/dialogs/OpeningTreePgnDialog/` | *Save tree as PGN*'s choice: No, or Add tags — `games`, `prc`, or both (`FormDialog`, CTA-113). |
 | `src/blocks/dialogs/SaveAsCollectionDialog/` | *Save as collection*'s name dialog (CTA-122): the derived name to edit, the count under it, a busy state and a problem slot — presentational, the write the screen's (`CollectionScreen.tsx`). |
 | `src/views/library/LibraryGameScreen.tsx` → `LibraryGameBoard.tsx` | `/library/<collection>/<n>`: resolve and parse the game, then the analysis board; the screen holds the left panel's open tab and drawer (CTA-209). |
+| `src/blocks/panels/CollectionDetails/` | The collection page's **left panel** (CTA-229), on both its views: a Close back to `/library`, the collection's name (its `h2`), then two tabs — General (a placeholder line) and Options (an example switch) — a frame, its content a later issue; presentational, the open tab and the switch the screen's. |
 | `src/blocks/panels/LibraryGameDetails/` | The game board's **left panel** (CTA-209): Back, the game's title and caption, the Info and Settings tabs (Info first and the default) and previous / next at its foot (CTA-212) — presentational, the session's state the board's. |
 | `src/views/library/useLibraryCollections.ts` | The React bindings: `useUploadedCollections`, `useLibraryFolders`, `useCollectionSummary`, `useCollectionRows`, `useCollectionGames`, `loadCollectionGames`, `useTournamentGuess` (CTA-142: the kind of tournament the games look like, read off their tags when asked). |
 | `src/views/library/indexCollection.ts` | Runs the worker with progress and cancel, with a jsdom fallback. |
@@ -667,8 +668,8 @@ words box, **the table the one region that scrolls**, its header sticky.
 
 ### 6.4 `/library/<collection>` — the table
 
-**Layout.** A flex column: the `ListScreenHeader` (a `BackButton`, name +
-count, Add games, the `SelectionBar`, Analyse), then — under the header, when
+**Layout.** A flex column: the `ListScreenHeader` (name + count, Add games,
+the `SelectionBar`, Analyse — no Back since CTA-229), then — under the header, when
 the summary has one — the collection's **description** (CTA-121,
 `library-table-description`), then the `CollectionGamesTable`
 block — the `SearchField` in its filters slot, the one region that scrolls
@@ -677,6 +678,22 @@ filters and, at its foot, the shipped/uploaded note. An **uploaded**
 collection's header also carries the **Settings gear** (`library-table-settings`,
 CTA-121), a link to `/library/<collection>/settings` that passes `state.from`
 so the settings screen's Save and Cancel return to the same filtered view.
+
+**The page's own panel** (CTA-229, `CollectionDetails`,
+`library-collection-details`), in the main menu's place, as the Analysis
+Project view's (`ProjectDetails`): registered by `CollectionPage` through
+`BoardLeftPanel` (`collapsed={false}`, `keepShell` — the header and footer
+stay), on **both** views — this table and the tournament view (§6.4.3), every
+tab of it. At its head a **Close** to `/library` — **the page's one way back**:
+neither view's header has a Back — and the collection's name (`h2`); then two
+tabs, **a frame for now**: General (a placeholder line) and Options (an example
+switch, read by nothing). The open tab and the switch are `CollectionPage`'s
+state, above the tournament view's tabs (so a change of tab keeps them), kept
+nowhere. **Under the shell's breakpoint** it is a drawer
+(`layout-board-left-drawer`, named "Details of ‹name›"), opened by the header's
+first action (`library-collection-details-toggle`, "The collection's details").
+The right-hand panel (the filters) is untouched; the settings route and the
+game board have their own screens.
 
 **The tournament suggestion** (CTA-142, `library-table-suggestion`): an
 upload **never marked either way** (`tournament` absent) whose games share
@@ -846,8 +863,8 @@ URL is the miss.
 A collection that **reads as a tournament** (`isTournamentCollection` over
 its summary and rows) opens at `/library/<collection>` on a view of its own;
 any other keeps the table of §6.4, unchanged. One header (`ListScreenHeader`:
-back, the name — the page's one `h1` — the count, an upload's Settings
-gear), a `PanelTabs` strip (`library-tournament-tabs`, its tabs links), and
+the name — the page's one `h1` — the count, an upload's Settings gear; no
+Back since CTA-229, the page's left panel beside it, §6.4), a `PanelTabs` strip (`library-tournament-tabs`, its tabs links), and
 the tab's panel (`tabPanelProps`, `library-tournament-panel-<tab>`):
 
 - **The tab is the URL's** — `?tab=info|participants|games`, each tab a link
@@ -1117,7 +1134,7 @@ the index instead (§10.1).
   `keep(name, games)` and `upload()` (the three `GAMES`) add a collection;
   `keepCarlsen()` adds the 5,722-game fixture with **tag-only rows** (the
   full index pass would take a minute), its text imported only then;
-  `mountTable` / `mountGame` wait for their screen (`mount` and `mountGame` take `{ compact }` — the game board's left panel a drawer, with `useShellCompact` mocked in the file, CTA-209); `resetLibrary` is every
+  `mountTable` / `mountGame` wait for their screen (`mount`, `mountTable` and `mountGame` take `{ compact }` — the game board's and the collection page's left panel a drawer, with `useShellCompact` mocked in the file, CTA-209, CTA-229); `resetLibrary` is every
   file's `beforeEach`.
 - **jsdom has no `Worker`**, so `indexCollection` uses the in-thread path.
   Uploads in tests are real index passes, so keep pasted texts small.

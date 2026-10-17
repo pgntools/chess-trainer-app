@@ -13,7 +13,6 @@ import { TopPlayers } from "../../blocks/panels";
 import { ArenaStandingsTable, PARTICIPANTS_DEFAULT_SORT, ParticipantsTable, type ParticipantsColumn } from "../../blocks/tables";
 import { InlineAlert } from "../../design-system/components/feedback";
 import type { LinkTarget } from "../../design-system/components/link";
-import { BackButton } from "../../design-system/components/navigation";
 import { LoadingLine } from "../../design-system/components/states";
 import { PanelTabs, tabPanelProps } from "../../design-system/components/tabs";
 import { IconAction, ListScreenHeader } from "../../design-system/components/toolbars";
@@ -44,7 +43,8 @@ import { tournamentTabOf, TOURNAMENT_TABS, type TournamentTab } from "./tourname
  * **A tournament collection** (`/library/<collection>`, CTA-142) — a
  * collection that reads as a tournament (`isTournamentCollection`: its mark
  * on, its games sharing one `Event`) opens here instead of on its games
- * table: one header (the name, the `h1`), and three tabs —
+ * table: one header (the name, the `h1`; no Back since CTA-229 — the page's
+ * left panel's Close is the way back to the Library), and three tabs —
  *
  * - **Info** (the default): the event at a glance (`TournamentInfo`) and the
  *   tournament's table for the type it is marked as — the Blog's own
@@ -380,11 +380,13 @@ function TournamentOverview({
   rows,
   tab,
   tabs,
+  detailsToggle,
 }: {
   collection: CollectionSummary;
   rows: readonly CollectionRow[];
   tab: "info" | "participants";
   tabs: TournamentTabs;
+  detailsToggle?: ReactNode;
 }) {
   const { t } = useTranslation();
   const location = useLocation();
@@ -398,21 +400,23 @@ function TournamentOverview({
           title={<span data-testid="library-table-name">{collection.name}</span>}
           titleDir="auto"
           count={<span data-testid="library-table-count">{t("library.games", { count: rows.length })}</span>}
-          back={<BackButton label={t("library.table.back")} link={{ component: RouterLink, to: "/library" }} testId="library-table-back" />}
           actions={
-            collection.source === "uploaded" ? (
-              <IconAction
-                label={t("library.table.settings")}
-                link={{
-                  component: RouterLink,
-                  to: `/library/${encodeURIComponent(collection.id)}/settings`,
-                  state: { from: `${location.pathname}${location.search}` },
-                }}
-                testId="library-table-settings"
-              >
-                <SettingsRoundedIcon fontSize="small" />
-              </IconAction>
-            ) : undefined
+            <>
+              {detailsToggle}
+              {collection.source === "uploaded" && (
+                <IconAction
+                  label={t("library.table.settings")}
+                  link={{
+                    component: RouterLink,
+                    to: `/library/${encodeURIComponent(collection.id)}/settings`,
+                    state: { from: `${location.pathname}${location.search}` },
+                  }}
+                  testId="library-table-settings"
+                >
+                  <SettingsRoundedIcon fontSize="small" />
+                </IconAction>
+              )}
+            </>
           }
           testId="library-table-header"
         />
@@ -439,14 +443,17 @@ export function TournamentCollection({
   collection,
   rows,
   games,
+  detailsToggle,
 }: {
   collection: CollectionSummary;
   rows: readonly CollectionRow[];
   games: (tabs: TournamentTabs) => ReactNode;
+  /** The button opening the page's left panel in a drawer, under the shell's breakpoint (CTA-229) — first among the header's actions. */
+  detailsToggle?: ReactNode;
 }) {
   const [params] = useSearchParams();
   const tab = tournamentTabOf(params);
   const tabs = useTournamentTabs(tab);
   if (tab === "games") return <>{games(tabs)}</>;
-  return <TournamentOverview key={tab} collection={collection} rows={rows} tab={tab} tabs={tabs} />;
+  return <TournamentOverview key={tab} collection={collection} rows={rows} tab={tab} tabs={tabs} detailsToggle={detailsToggle} />;
 }

@@ -921,8 +921,20 @@ const he: typeof en = {
       deleteCounts: "בתיקייה {{games}} אוספים ו־{{subFolders}} תתי־תיקיות.",
       picker: "תיקיות",
     },
+    collectionDetails: {
+      label: "הפרטים של {{name}}",
+      close: "סגירת {{name}}",
+      toggle: "פרטי האוסף",
+      tabs: {
+        label: "פרטי האוסף",
+        general: "כללי",
+        options: "אפשרויות",
+      },
+      placeholder: "פרטי האוסף יוצגו כאן.",
+      exampleOption: "אפשרות לדוגמה",
+      exampleOptionHelp: "מתג לדוגמה — הוא עדיין לא משנה דבר.",
+    },
     table: {
-      back: "כל האוספים",
       label: "משחקים",
       filter: "סינון משחקים",
       result: "תוצאה",
