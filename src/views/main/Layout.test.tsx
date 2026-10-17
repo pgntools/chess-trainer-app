@@ -16,6 +16,7 @@ import { HideRightPanel, RightPanel } from "./rightPanel";
 import { LeftPanel } from "./leftPanel";
 import { BoardLeftPanel } from "./boardLeftPanel";
 import { BOARD_LEFT_PANEL_COLLAPSED_PX, BOARD_LEFT_PANEL_WIDTH_PX } from "./boardLeftPanelSlot";
+import { RIGHT_PANEL_COLLAPSED_PX } from "./rightPanelSlot";
 import { ForceLTR } from "../../theme/ForceLTR";
 import { ARTICLE_MAX_WIDTH_PX, ARTICLE_ROUTE, FULL_WIDTH_ROUTE } from "./routeHandle";
 
@@ -239,6 +240,105 @@ describe("a screen that spans the aside (CTA-142)", () => {
   it("grows the aside from nothing, so wide content never sets its width and overflows the row", () => {
     renderShell();
     expect(screen.getByTestId("layout-board-square-sidebar")).toHaveStyle({ flexBasis: "0" });
+  });
+});
+
+describe("a panel folded to a rail (CTA-230)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** A screen whose panel folds to a rail and opens again, keeping a count of its own. */
+  const Folding = () => {
+    const [collapsed, setCollapsed] = useState(true);
+    const [count, setCount] = useState(0);
+    return (
+      <div data-testid="screen">
+        <button onClick={() => setCount((c) => c + 1)}>bump {count}</button>
+        <RightPanel collapsed={collapsed} rail={<button onClick={() => setCollapsed(false)}>open panel</button>}>
+          <button onClick={() => setCollapsed(true)}>fold panel</button>
+          <p data-testid="panel-content">The filters</p>
+        </RightPanel>
+      </div>
+    );
+  };
+
+  it("draws the aside as a rail holding the rail's content, and the area takes the rest of its room — open again, as before, without a remount", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(800, 600));
+    renderShell([{ index: true, element: <Folding /> }]);
+
+    const aside = screen.getByTestId("layout-board-square-sidebar");
+    expect(aside).toHaveStyle({ width: `${RIGHT_PANEL_COLLAPSED_PX}px` });
+    expect(within(aside).getByRole("button", { name: "open panel" })).toBeInTheDocument();
+    expect(screen.queryByTestId("panel-content")).toBeNull();
+    const area = screen.getByTestId("layout-board-square-body");
+    // The square 432, its gap and the aside's 320, less the rail's 48 and the gap before it: 704 — the row as wide as ever.
+    await waitFor(() => expect(area).toHaveStyle({ width: "704px", height: "432px" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "bump 0" }));
+    fireEvent.click(screen.getByRole("button", { name: "open panel" }));
+    expect(within(aside).getByTestId("panel-content")).toBeInTheDocument();
+    expect(aside).toHaveStyle({ minWidth: "320px", flexBasis: "0" });
+    await waitFor(() => expect(area).toHaveStyle({ width: "432px", height: "432px" }));
+    // The aside is the same element and the screen kept its state.
+    expect(screen.getByTestId("layout-board-square-sidebar")).toBe(aside);
+    expect(screen.getByRole("button", { name: "bump 1" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "fold panel" }));
+    await waitFor(() => expect(area).toHaveStyle({ width: "704px" }));
+  });
+
+  it("gives the area the aside's capped room on a wide window, less the rail", async () => {
+    const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    grbc.mockReturnValue(rect(1400, 600));
+    renderShell([{ index: true, element: <Folding /> }]);
+    // The square 568, the gap, the aside's 560 cap, less the gap and the rail: 1080.
+    await waitFor(() => expect(screen.getByTestId("layout-board-square-body")).toHaveStyle({ width: "1080px", height: "568px" }));
+  });
+
+  it("leaves every panel that does not fold as it was", () => {
+    renderShell([{ index: true, element: <RightPanel><p data-testid="panel-content">Moves</p></RightPanel> }]);
+    const aside = screen.getByTestId("layout-board-square-sidebar");
+    expect(within(aside).getByTestId("panel-content")).toBeInTheDocument();
+    expect(aside).toHaveStyle({ minWidth: "320px", maxWidth: "560px", flexBasis: "0" });
+  });
+
+  it("mirrors with the app: the rail is the aside, outside the board's ForceLTR", async () => {
+    await i18n.changeLanguage("he");
+    renderShell([{ index: true, element: <Folding /> }]);
+    const aside = screen.getByTestId("layout-board-square-sidebar");
+    expect(aside.className).toMatch(/muirtl-/);
+    expect(aside.closest("[dir='ltr']")).toBeNull();
+  });
+
+  describe("under the breakpoint", () => {
+    const wideWindow = window.matchMedia;
+    beforeEach(() => {
+      window.matchMedia = ((query: string) =>
+        ({
+          matches: /max-width/.test(query),
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    });
+    afterEach(() => {
+      window.matchMedia = wideWindow;
+    });
+
+    it("draws no rail: the panel stays stacked under the square, its content shown", async () => {
+      const grbc = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+      grbc.mockReturnValue(rect(500, 900));
+      renderShell([{ index: true, element: <Folding /> }]);
+      const aside = screen.getByTestId("layout-board-square-sidebar");
+      expect(within(aside).getByTestId("panel-content")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "open panel" })).toBeNull();
+      expect(aside).toHaveStyle({ minHeight: "420px" });
+      await waitFor(() => expect(screen.getByTestId("layout-board-square-body")).toHaveStyle({ width: "468px", height: "468px" }));
+    });
   });
 });
 
