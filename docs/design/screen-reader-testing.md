@@ -342,8 +342,10 @@ Seed: a folder "Openings" holding one upload.
    ascending"**, "Games", "Added".
 4. A folder row: **"Open Openings, button, collapsed"**; Enter: **expanded**,
    its collections appear under it. Its actions, each named by the folder:
-   "Add a collection here", "New sub-folder", "Download", "Rename", "Move
-   to…", "Delete".
+   "Download", "Rename", "Move to…", "Delete" (CTA-231: no "Add a
+   collection here" or "New sub-folder" — the header's **New folder** asks
+   for the name, then **"Make it in, list"**: "Top level" (current), then
+   every folder, indented).
 5. A collection row: its name **a link**; its actions "Download ‹name›",
    "Move ‹name› to…", "Delete ‹name›". Delete asks: **"Delete ‹name›?"**, a
    red confirm; Escape returns the focus.

@@ -199,8 +199,9 @@ without views still lists, runs and offers its outputs generically.
   **Open job** leads to `/jobs/<id>`. Entry points: a Case's Jobs tab
   (`EntityJobs`, the Case's jobs; its tree as the board holds it, as
   `context`), the repertoire player's Jobs tab (*Evaluate with engine…*), the
-  Library's picks (*Merge collections…*, two or more) and a collection's row
-  (*New job*).
+  Library's picks (*Merge collections…*, two or more) and a collection page's
+  Jobs tab (`EntityJobs`, the collection's jobs and *New job* — CTA-231; its
+  row's *New job* before).
 
 ---
 
