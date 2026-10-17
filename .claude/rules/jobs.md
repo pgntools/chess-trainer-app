@@ -231,7 +231,7 @@ left as they are** — no migration, no deletion — and read as follows:
   **Open job** leads to `/jobs/<id>`. Entry points: a Case's Jobs tab
   (`EntityJobs`, the Case's jobs; its tree as the board holds it, as
   `context`) and the repertoire player's Jobs tab (*Evaluate with
-  engine…*). The Library's picks' *Merge collections…* and a collection
+  engine…*). The Library's picks' merge and a collection
   page's Jobs tab (CTA-221, CTA-231) went with the merge kind (CTA-232):
   merging is the Library's own action, and a collection page has no Jobs
   tab.

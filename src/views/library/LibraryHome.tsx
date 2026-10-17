@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CreateNewFolderRoundedIcon from "@mui/icons-material/CreateNewFolderRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import KeyboardDoubleArrowRightRoundedIcon from "@mui/icons-material/KeyboardDoubleArrowRightRounded";
 import MergeTypeRoundedIcon from "@mui/icons-material/MergeTypeRounded";
@@ -33,7 +34,7 @@ import {
   type LibraryEntry,
   type LibraryTreeColumn,
 } from "../../blocks/tables";
-import { ConfirmDialog } from "../../design-system/components/dialogs";
+import { DeleteManyDialog } from "../../design-system/components/dialogs";
 import { SearchField } from "../../design-system/components/forms";
 import { IconAction, ListScreenHeader } from "../../design-system/components/toolbars";
 import { RightPanel } from "../main/rightPanel";
@@ -67,9 +68,10 @@ import { useOwnPageHeading } from "../main/pageTitle";
  * - **One New folder**, the header's (CTA-231): its name and its parent —
  *   the reader's folders in a picker, the top level by default. A folder's
  *   row makes no sub-folder and takes no upload (the upload screen picks
- *   the folder), and a collection's row has no New job. The picks' *Merge
- *   collections…* (two or more) merges them into a new collection
- *   (`useCollectionMerge`, CTA-232 — a job until then).
+ *   the folder), and a collection's row has no New job. Beside them, *Merge
+ *   collections…* (two or more ticked) opens the merge on the collections
+ *   ticked, in that order (`useCollectionMerge`, CTA-232 — a job of the
+ *   picks' bar until then).
  *
  * **Listing fetches nothing.** A shipped collection's name and game count are
  * its manifest entry (`src/data/library/manifest.json`); an upload's are its
@@ -253,15 +255,40 @@ function LibraryHome() {
   const [movingFolder, setMovingFolder] = useState<GameFolder | null>(null);
   const [movingCollection, setMovingCollection] = useState<Entry | null>(null);
   const [deletingFolder, setDeletingFolder] = useState<GameFolder | null>(null);
-  const [deleting, setDeletingState] = useState<CollectionSummary | null>(null);
-  // The collections picked (CTA-221) — *Merge collections…* with two or more, a direct action since CTA-232.
+  // The picked uploads asked about (CTA-232) — the header's Delete; held past the dialog's close so its closing transition keeps the words.
+  const [deletingPicks, setDeletingPicks] = useState(false);
+  const [deleteAsked, setDeleteAsked] = useState<{ uploads: readonly CollectionSummary[]; builtIn: number }>({ uploads: [], builtIn: 0 });
+  const [deleteProblem, setDeleteProblem] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  // The collections picked (CTA-221) — the header's *Merge collections…* opens on them (a direct action since CTA-232).
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
-  const merge = useCollectionMerge("library-merge");
-  // The collection asked about, held past the dialog's close so its closing transition keeps the words.
-  const [askedCollection, setAskedCollection] = useState<CollectionSummary | null>(null);
-  const setDeleting = (collection: CollectionSummary | null) => {
-    if (collection !== null) setAskedCollection(collection);
-    setDeletingState(collection);
+  // The ticked collections are the merge's: no picker in its dialog.
+  const merge = useCollectionMerge("library-merge", { picker: false });
+  // The picked collections, in the list's order: the uploads may be deleted, Built-in's never.
+  const pickedEntries = entries.filter((entry) => picked.has(entry.id));
+  const pickedUploads = pickedEntries.filter((entry) => entry.source === "uploaded");
+  const askDeletePicks = () => {
+    setDeleteAsked({ uploads: pickedUploads, builtIn: pickedEntries.length - pickedUploads.length });
+    setDeleteProblem(false);
+    setDeletingPicks(true);
+  };
+  /** Every picked upload deleted, one by one; the gone ones unpicked, a refusal said in the dialog. */
+  const deletePicks = async () => {
+    setDeleteBusy(true);
+    const gone = new Set<string>();
+    let refused = false;
+    for (const collection of deleteAsked.uploads) {
+      if ((await removeCollection(collection.id)) === undefined) gone.add(collection.id);
+      else refused = true;
+    }
+    setPicked((current) => new Set([...current].filter((id) => !gone.has(id))));
+    setDeleteBusy(false);
+    if (refused) {
+      setDeleteAsked((asked) => ({ ...asked, uploads: asked.uploads.filter((each) => !gone.has(each.id)) }));
+      setDeleteProblem(true);
+      return;
+    }
+    setDeletingPicks(false);
   };
 
   const collectionsUnder = (folder: GameFolder) => gamesInFolder(entries, allFolders, folder.id);
@@ -325,6 +352,31 @@ function LibraryHome() {
               >
                 {t("library.add")}
               </Button>
+              {/* Merge and Delete (CTA-232): the ticked collections' — Merge two or more in the order ticked; Delete only while some are ticked. */}
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<MergeTypeRoundedIcon />}
+                onClick={() => merge.open([...picked])}
+                disabled={picked.size < 2}
+                data-testid="library-header-merge"
+              >
+                {t("library.picks.merge")}
+              </Button>
+              {picked.size > 0 && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteOutlineRoundedIcon />}
+                  onClick={askDeletePicks}
+                  // Built-in collections are read-only: nothing to delete among them alone.
+                  disabled={pickedUploads.length === 0}
+                  data-testid="library-header-delete"
+                >
+                  {t("library.picks.delete")}
+                </Button>
+              )}
             </>
           }
           testId="library-header"
@@ -353,21 +405,10 @@ function LibraryHome() {
             onDeleteFolder: startDeleteFolder,
             onDownloadCollection: (collection) => void download(collection),
             onMoveCollection: setMovingCollection,
-            onDeleteCollection: setDeleting,
           }}
           picks={{
             picked,
             onChange: setPicked,
-            actions: (
-              <IconAction
-                label={t("library.picks.merge")}
-                onClick={() => merge.open([...picked])}
-                disabled={picked.size < 2}
-                testId="library-picks-merge"
-              >
-                <MergeTypeRoundedIcon fontSize="small" />
-              </IconAction>
-            ),
           }}
           filtered={needle !== ""}
           // CTA-142: from the summaries alone — the list reads no index.
@@ -492,22 +533,27 @@ function LibraryHome() {
         onClose={() => setDeletingFolder(null)}
         testId="library-folder"
       />
-      <ConfirmDialog
-        open={deleting !== null}
-        onClose={() => setDeleting(null)}
-        onConfirm={async () => {
-          if (deleting === null) return;
-          const gone = deleting.id;
-          await removeCollection(gone);
-          // A deleted collection is no longer picked.
-          setPicked((current) => (current.has(gone) ? new Set([...current].filter((id) => id !== gone)) : current));
-          setDeleting(null);
+      <DeleteManyDialog
+        open={deletingPicks}
+        onClose={() => {
+          if (!deleteBusy) setDeletingPicks(false);
         }}
-        title={t("library.confirmDelete.title", { name: askedCollection?.name ?? "" })}
-        message={t("library.confirmDelete.body", { count: askedCollection?.count ?? 0 })}
+        onConfirm={() => void deletePicks()}
+        title={
+          deleteAsked.uploads.length === 1
+            ? t("library.confirmDelete.title", { name: deleteAsked.uploads[0].name })
+            : t("library.confirmDelete.titleMany", { count: deleteAsked.uploads.length })
+        }
+        message={
+          <>
+            {t("library.confirmDelete.body", { count: deleteAsked.uploads.reduce((sum, each) => sum + each.count, 0) })}
+            {deleteAsked.builtIn > 0 && ` ${t("library.confirmDelete.builtInKept", { count: deleteAsked.builtIn })}`}
+          </>
+        }
+        error={deleteProblem ? t("library.confirmDelete.problem") : undefined}
+        busy={deleteBusy}
         confirmLabel={t("library.confirmDelete.confirm")}
         cancelLabel={t("library.confirmDelete.cancel")}
-        tone="destructive"
         testId="library-delete-dialog"
         confirmTestId="library-delete-confirm"
       />

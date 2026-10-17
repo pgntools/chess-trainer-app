@@ -48,7 +48,7 @@ vi.mock("./indexCollection", async (importOriginal) => {
 
 /*
   **Collections merged — a direct Library action** (CTA-232): the lobby's
-  picks (*Merge collections…*, two or more) and a collection page's *Merge
+  header's *Merge* (two or more ticked) and a collection page's *Merge
   with…* (that collection first, the rest picked in the dialog) open one
   dialog; Merge reads, merges and indexes, then keeps a new collection —
   the result offering Open collection and Download PGN; a merge past the
@@ -70,14 +70,14 @@ beforeEach(async () => {
 /** The dialog, once open. */
 const mergeDialog = () => screen.findByRole("dialog", { name: "Merge collections" });
 
-describe("Merge collections… from the Library's picks (CTA-232)", () => {
+describe("Merge in the Library's header, over the picks (CTA-232)", () => {
   it("merges two picked collections into a new one — duplicates left out — then opens it", async () => {
     const user = userEvent.setup();
     const club = await upload();
     const spring = await keepSpring();
     mount("/library");
     await user.click(await screen.findByRole("checkbox", { name: `Pick ${club.name}` }));
-    const merge = screen.getByRole("button", { name: "Merge collections…" });
+    const merge = screen.getByRole("button", { name: "Merge" });
     expect(merge).toBeDisabled();
     await user.click(screen.getByRole("checkbox", { name: `Pick ${spring.name}` }));
     await user.click(merge);
@@ -85,6 +85,8 @@ describe("Merge collections… from the Library's picks (CTA-232)", () => {
     const dialog = await mergeDialog();
     const sources = within(dialog).getByRole("list", { name: "Collections to merge" });
     expect(within(sources).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["1.Club games3 games", "2.Spring open2 games"]);
+    // The picks are the merge's: no picker in the dialog.
+    expect(within(dialog).queryByRole("combobox", { name: "Add a collection" })).toBeNull();
     expect(within(dialog).getByRole("radio", { name: /^Drop exact copies/ })).toBeChecked();
     expect(within(dialog).getByRole("textbox", { name: "Name" })).toHaveAttribute("placeholder", "Club games + 1 more");
     await expectNoAxeViolations(dialog);
@@ -115,7 +117,7 @@ describe("Merge collections… from the Library's picks (CTA-232)", () => {
     mount("/library");
     await user.click(await screen.findByRole("checkbox", { name: `Pick ${big.name}` }));
     await user.click(screen.getByRole("checkbox", { name: `Pick ${club.name}` }));
-    await user.click(screen.getByRole("button", { name: "Merge collections…" }));
+    await user.click(screen.getByRole("button", { name: "Merge" }));
     const dialog = await mergeDialog();
     await user.click(within(dialog).getByRole("button", { name: "Merge" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(
@@ -133,7 +135,7 @@ describe("Merge collections… from the Library's picks (CTA-232)", () => {
     mount("/library");
     await user.click(await screen.findByRole("checkbox", { name: `Pick ${club.name}` }));
     await user.click(screen.getByRole("checkbox", { name: `Pick ${spring.name}` }));
-    await user.click(screen.getByRole("button", { name: "Merge collections…" }));
+    await user.click(screen.getByRole("button", { name: "Merge" }));
     await user.click(within(await mergeDialog()).getByRole("button", { name: "Merge" }));
 
     const progress = await screen.findByTestId("library-merge-progress");

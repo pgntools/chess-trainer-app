@@ -91,7 +91,7 @@ for Analysis, which it hands games to as Cases (§1.1 there).
 | `src/blocks/dialogs/OpeningTreePgnDialog/` | *Save tree as PGN*'s choice: No, or Add tags — `games`, `prc`, or both (`FormDialog`, CTA-113). |
 | `src/lib/collectionMerge.ts` | **Collections merged, the pure part** (CTA-232 — the hashing and dedupe modes CTA-220's, from the retired merge job): `mergeCollectionGames(sources, dedupe)` (the games in order, normalised, duplicates counted and left out, the PGN's length), `gameKeyOf` / `fnv1a64` / `normalisedGameText`, the dedupe modes, `defaultMergeName` / `mergeNameOf`, `MIN_MERGE_SOURCES`. No store, no `chess.js`. |
 | `src/views/library/useCollectionMerge.tsx` | **Merge, the screens' hook** (CTA-232, §6.5.1): `{ open(ids), dialog }` — the sources read (`loadCollectionGames`), merged, held to `MAX_COLLECTION_CHARS`, indexed (`indexCollection`) and kept (`addCollection`) in one `useCancellableJob` run under a `ProgressDialog`, then the result. |
-| `src/blocks/dialogs/CollectionMergeDialog/`, `src/blocks/forms/CollectionMergeForm/` | The merge's dialog (the form, Merge, a refusal; done, Open collection and Download PGN) and its form (the sources in order with a picker over the Library's others, the dedupe mode, the name) — presentational (CTA-232; the form CTA-220's, a New-job form until then). |
+| `src/blocks/dialogs/CollectionMergeDialog/`, `src/blocks/forms/CollectionMergeForm/` | The merge's dialog (the form, Merge, a refusal; done, Open collection and Download PGN) and its form (the sources in order — with a picker over the Library's others from *Merge with…* —, the dedupe mode, the name) — presentational (CTA-232; the form CTA-220's, a New-job form until then). |
 | `src/blocks/dialogs/SaveAsCollectionDialog/` | *Save as collection*'s name dialog (CTA-122): the derived name to edit, the count under it, a busy state and a problem slot — presentational, the write the screen's (`CollectionScreen.tsx`). |
 | `src/views/library/LibraryGameScreen.tsx` → `LibraryGameBoard.tsx` | `/library/<collection>/<n>`: resolve and parse the game, then the analysis board; the screen holds the left panel's open tab and drawer (CTA-209). |
 | `src/blocks/panels/CollectionDetails/` | The collection page's **left panel** (CTA-229, its content CTA-231), on both its views: a Close back to `/library`, the collection's name (its `h2`), then two tabs — General (a tournament's `TournamentInfo` card, else the description and the index's facts) and Options (the screen's settings; a shipped collection's a read-only line) — its Jobs tab gone with the merge job (CTA-232); presentational, the open tab, the facts and the settings the screen's. |
@@ -551,12 +551,24 @@ words box, **the table the one region that scrolls**, its header sticky.
     warning first (above, CTA-142), then *Download*
     (`library-collection-download-<id>`), *Move to…* (`-move-`, the shared
     `FolderPicker` in `library-collection-move-dialog`, the top level its
-    "none") and *Delete* (`-delete-`, confirmed in `library-delete-dialog`);
+    "none") — no row *Delete* since CTA-232: the header's Delete deletes the
+    picked collections (below);
   - a shipped collection: *Download* only.
   - **No *New job*** on a collection's row since CTA-231 (and no kind applies
-    to a collection since CTA-232). The picks' *Merge collections…*
-    (`library-picks-merge`, two or more picked) merges them into a new
-    collection — a direct action since CTA-232, a job before (§6.5.1).
+    to a collection since CTA-232).
+- **The picks' actions are the header's** (CTA-232), after *New folder* and
+  *Add collection* — the checkboxes on the collections' rows (never a
+  folder's) choose what they act on, and the picks' bar only counts them:
+  - **Merge** (`library-header-merge`, a text button) — off until two or
+    more are ticked; merges them, in the order ticked, into a new collection
+    (§6.5.1 — a job of the picks' bar before CTA-232).
+  - **Delete** (`library-header-delete`) — **drawn only while something is
+    ticked**; deletes every ticked **upload** after one confirmation
+    (`library-delete-dialog`, a `DeleteManyDialog`: one named — "Delete
+    Club games?" —, several counted, and their games; a built-in one ticked
+    beside them said to stay, read-only), one `removeCollection` each, the
+    deleted ones unticked; a refusal said in the dialog, the rest still
+    ticked. With only built-in collections ticked it is off.
 - **One New folder** (`library-new-folder`), the header's (CTA-231): the
   shared `FolderNameDialog` (`library-folder-name-*`) asks the name and —
   its optional `parents` — the parent: the reader's folders in a
@@ -1059,13 +1071,16 @@ teams) while it is open (CTA-231).
 `library.collection-merge` kind, CTA-220 / CTA-221, until CTA-232 — what
 became of a reader's stored merge jobs is `jobs.md` §3.1). Two entry points
 open one dialog (`useCollectionMerge`, the `CollectionMergeDialog` block):
-the lobby's picks — *Merge collections…* (`library-picks-merge`, two or more
-ticked, in the order ticked; `library-merge`) — and a collection page's
-**Merge with…** (`library-table-merge-with`, §6.4; that collection alone,
-`library-collection-merge`).
+the lobby's header — **Merge** (`library-header-merge`, two or more ticked,
+in the order ticked; `library-merge`), its dialog with **no picker** (the
+ticked collections are the merge's: `useCollectionMerge`'s `picker: false`)
+— and a collection page's **Merge with…** (`library-table-merge-with`,
+§6.4; that collection alone, `library-collection-merge`), its dialog with
+the picker to add the rest.
 
 - **The dialog**: the collections in order — each moved up or down, removed
-  (never below two once there are two), and a **picker over the Library's
+  (never below two once there are two), and — from *Merge with…* only — a
+  **picker over the Library's
   other collections** (`SelectAutocomplete`, Built-in and the reader's own
   grouped, typed to find) to add one at the end; the **dedupe mode** — keep
   every game, drop exact copies (the default), drop the same game (the

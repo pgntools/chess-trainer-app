@@ -54,7 +54,7 @@ export type CollectionMergeDialogProps = {
 
 /**
  * **Library collections merged** (CTA-232 — the Jobs module's merge kind
- * before) — the dialog the Library's picks (*Merge collections…*, two or
+ * before) — the dialog the Library header's *Merge* (two or
  * more ticked) and a collection page's *Merge with…* (that collection
  * first) open: the `CollectionMergeForm` — the collections in order, a
  * picker to add more, the dedupe mode, the name — and Merge, off below two

@@ -29,6 +29,9 @@ class MergeRefused extends Error {
   }
 }
 
+/** No collection to add — the dialog without its picker. */
+const NO_CANDIDATES: readonly CollectionMergeFormCandidate[] = [];
+
 /** A merge done, with its games kept for Download PGN. */
 type Done = CollectionMergeDone & { pgns: readonly string[] };
 
@@ -36,7 +39,7 @@ type Done = CollectionMergeDone & { pgns: readonly string[] };
  * **Library collections merged — a direct action** (CTA-232; a job of the
  * Jobs module before, CTA-220 / CTA-221). `open(ids)` opens the
  * `CollectionMergeDialog` on those collections, in that order — the
- * Library's picks (*Merge collections…*, two or more) or a collection page's
+ * Library header's *Merge* (two or more ticked) or a collection page's
  * *Merge with…* (that collection alone, the picker to add the rest). Merge:
  *
  * 1. reads each source's games as the Library holds them (a shipped
@@ -51,11 +54,17 @@ type Done = CollectionMergeDone & { pgns: readonly string[] };
  *    write, then `addCollection` — a new collection at the Library's top
  *    level, always.
  *
+ * `picker: false` leaves the dialog's *Add a collection* out — the lobby's,
+ * whose ticked collections (two or more) are the merge's.
+ *
  * Done, the dialog says what was made, with **Open collection** and
  * **Download PGN** (the merged games as one `.pgn`). Render `dialog` once
  * in the screen; `testId` prefixes its ids (`<testId>`, `<testId>-progress`).
  */
-export const useCollectionMerge = (testId: string): { open: (ids: readonly string[]) => void; dialog: ReactNode } => {
+export const useCollectionMerge = (
+  testId: string,
+  { picker = true }: { picker?: boolean } = {},
+): { open: (ids: readonly string[]) => void; dialog: ReactNode } => {
   const { t, i18n } = useTranslation();
   const job = useCancellableJob();
   const uploaded = useUploadedCollections();
@@ -158,7 +167,7 @@ export const useCollectionMerge = (testId: string): { open: (ids: readonly strin
           setProblem(undefined);
           setSources(next);
         }}
-        candidates={candidates}
+        candidates={picker ? candidates : NO_CANDIDATES}
         settings={settings}
         onChange={(patch) => {
           setProblem(undefined);

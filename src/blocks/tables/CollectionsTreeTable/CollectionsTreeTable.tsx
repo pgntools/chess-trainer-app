@@ -43,7 +43,8 @@ export type CollectionsTreeActions = {
   ) => void;
   onDownloadCollection: (collection: LibraryEntry) => void;
   onMoveCollection: (collection: LibraryEntry) => void;
-  onDeleteCollection: (collection: LibraryEntry) => void;
+  /** An upload's row delete — absent, none (the Library deletes its picked collections from its header since CTA-232). */
+  onDeleteCollection?: (collection: LibraryEntry) => void;
 };
 
 export type CollectionsTreeTableProps = {
@@ -85,8 +86,9 @@ export type CollectionsTreeTableProps = {
   /**
    * **Collections picked** (CTA-221) — a checkbox on every collection's row
    * (never a folder's), select-all in the header, and a bar counting them
-   * with the screen's `actions` (the Library's *Merge collections…*, a direct
-   * action since CTA-232). The ids are the collections'. Absent, no picks.
+   * with the screen's optional `actions` (the Library passes none since
+   * CTA-232: its Merge and Delete are its header's). The ids are the
+   * collections'. Absent, no picks.
    */
   picks?: { picked: ReadonlySet<string>; onChange: (picked: Set<string>) => void; actions?: ReactNode };
   testId: string;
@@ -283,10 +285,10 @@ function CollectionsTreeTable({
             <DriveFileMoveRoundedIcon fontSize="small" />
           </IconAction>
         )}
-        {own && (
+        {own && actions.onDeleteCollection !== undefined && (
           <IconAction
             label={t("savedList.folder.deleteNamed", { name: item.name })}
-            onClick={() => actions.onDeleteCollection(item)}
+            onClick={() => actions.onDeleteCollection?.(item)}
             testId={`library-collection-delete-${item.id}`}
           >
             <DeleteOutlineRoundedIcon fontSize="small" />

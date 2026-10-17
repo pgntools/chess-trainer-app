@@ -1173,19 +1173,20 @@ const en = {
     filterClear: "Clear the filter",
     /** How the folder table is worked, read with it (CTA-113). */
     treeHint: "Tab through each row's chevron, which opens or closes a folder, its link and its actions. Sort by a column from its header button.",
-    /** The collections picked (CTA-221) — *Merge collections…* with two or more. */
+    /** The collections picked (CTA-221) — the header's Merge (two or more) and Delete (CTA-232). */
     picks: {
       selectAll: "Pick every collection shown",
       pick: "Pick {{name}}",
       picked_one: "{{count}} collection picked",
       picked_other: "{{count}} collections picked",
       clear: "Clear the picks",
-      merge: "Merge collections…",
+      merge: "Merge",
+      delete: "Delete",
     },
     /**
      * **Collections merged** (CTA-232 — a job of the Jobs module before,
      * CTA-220): the `CollectionMergeDialog` block — the collections, the
-     * dedupe mode, the name — from the picks' *Merge collections…* and a
+     * dedupe mode, the name — from the header's *Merge* and a
      * collection page's *Merge with…*; the merge kept as a new collection.
      */
     merge: {
@@ -1653,10 +1654,16 @@ const en = {
         },
       },
     },
+    /** The header's Delete (CTA-232): the picked uploads — one named, several counted. */
     confirmDelete: {
       title: "Delete {{name}}?",
-      body_one: "Its {{count}} game is removed from this browser. This cannot be undone.",
-      body_other: "Its {{count}} games are removed from this browser. This cannot be undone.",
+      titleMany_one: "Delete {{count}} collection?",
+      titleMany_other: "Delete {{count}} collections?",
+      body_one: "{{count}} game is removed from this browser. This cannot be undone.",
+      body_other: "{{count}} games are removed from this browser. This cannot be undone.",
+      builtInKept_one: "The built-in collection picked is read-only and stays.",
+      builtInKept_other: "The {{count}} built-in collections picked are read-only and stay.",
+      problem: "Some could not be deleted — this browser's storage is unavailable. Those left are still picked.",
       cancel: "Cancel",
       confirm: "Delete",
     },

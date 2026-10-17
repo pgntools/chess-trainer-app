@@ -163,6 +163,15 @@ describe("CollectionsTreeTable", () => {
     await expectNoAxeViolations();
   });
 
+  it("draws no collection's delete without its handler (CTA-232: the Library deletes its picks from its header)", () => {
+    const fn = vi.fn();
+    mount({
+      actions: { onDownloadFolder: fn, onRenameFolder: fn, onMoveFolder: fn, onDeleteFolder: fn, onDownloadCollection: fn, onMoveCollection: fn },
+    });
+    expect(screen.getByTestId("library-collection-download-uclub")).toBeInTheDocument();
+    expect(screen.queryByTestId("library-collection-delete-uclub")).toBeNull();
+  });
+
   it("offers no New job on a collection's row (CTA-231, CTA-232)", () => {
     mount();
     expect(screen.queryByRole("button", { name: /New job/ })).toBeNull();

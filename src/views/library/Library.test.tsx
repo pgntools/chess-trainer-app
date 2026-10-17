@@ -140,7 +140,7 @@ describe("the Library's collections", () => {
     expect(screen.queryByTestId("library-collection-alekhine")).toBeNull();
   });
 
-  it("keeps each row's download and delete in a column beside its link, not inside it", async () => {
+  it("keeps each row's download in a column beside its link, not inside it — and no delete there (CTA-232)", async () => {
     const mine = await upload();
     mount("/library");
     for (const id of ["capablanca", mine.id]) {
@@ -148,21 +148,36 @@ describe("the Library's collections", () => {
       expect(screen.getByTestId(`library-collection-${id}`)).not.toContainElement(actions);
       expect(actions).toContainElement(screen.getByTestId(`library-collection-download-${id}`));
     }
-    expect(screen.getByTestId(`library-collection-actions-${mine.id}`)).toContainElement(
-      screen.getByTestId(`library-collection-delete-${mine.id}`),
-    );
+    expect(screen.queryByTestId(`library-collection-delete-${mine.id}`)).toBeNull();
   });
 
-  it("deletes an uploaded collection from its row, asking first — a shipped one has no delete", async () => {
+  it("deletes the picked uploads from the header's Delete, shown only while some are picked, asking first (CTA-232)", async () => {
+    const user = userEvent.setup();
     const mine = await upload();
+    const other = await keep("Spring open", [GAMES[0]]);
     mount("/library");
-    expect(screen.queryByTestId("library-collection-delete-capablanca")).toBeNull();
-    fireEvent.click(await screen.findByTestId(`library-collection-delete-${mine.id}`));
-    expect(screen.getByTestId("library-delete-dialog")).toHaveTextContent("Delete Club games?");
+    await screen.findByTestId(`library-collection-${mine.id}`);
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+
+    await user.click(screen.getByRole("checkbox", { name: `Pick ${mine.name}` }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(screen.getByTestId("library-delete-dialog")).toHaveTextContent("Delete Club games?3 games are removed from this browser.");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // Several, and a built-in one picked beside them: the uploads go, Built-in's stays.
+    await user.click(screen.getByRole("checkbox", { name: `Pick ${other.name}` }));
+    await user.click(screen.getByRole("checkbox", { name: "Pick Capablanca" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    const dialog = screen.getByTestId("library-delete-dialog");
+    expect(dialog).toHaveTextContent("Delete 2 collections?");
+    expect(dialog).toHaveTextContent("4 games are removed from this browser. This cannot be undone. The built-in collection picked is read-only and stays.");
     fireEvent.click(screen.getByTestId("library-delete-confirm"));
     await waitFor(() => expect(uploadedCollectionsSnapshot()).toEqual([]));
     expect(where()).toBe("/library");
     expect(screen.queryByTestId(`library-collection-${mine.id}`)).toBeNull();
+    // Built-in's alone left picked: Delete has nothing to delete.
+    expect(screen.getByTestId("library-header-delete")).toBeDisabled();
   });
 
   it("downloads a whole collection from its row, reading its games only then", async () => {
