@@ -555,6 +555,15 @@ words box, **the table the one region that scrolls**, its header sticky.
   and the reader can still close or open any of them while the words stay.
   The count reads "N of M collections" while the filter is on; nothing left
   is `library-no-matches`.
+- **The right-hand panel, About the Library** (`library-about`: its heading
+  and the `library.hint` text), **arrives folded to the shell's rail**
+  (CTA-230 — `RightPanel`'s `collapsed` / `rail`, as a collection's filters
+  fold, §6.4): the rail's one button, *Show About the Library*
+  (`library-about-rail-expand`, `aria-expanded` false), opens it; its
+  heading's *Hide About the Library* (`library-about-collapse`) folds it
+  again, each handing the focus to the other. For the visit only — every
+  arrival is folded. Under the shell's breakpoint there is no rail: the
+  panel is stacked under the table, open, with no Hide.
 - **Listing still fetches nothing** (§7): the rows are summaries, the folders
   and the manifest. Downloads read games only when clicked.
 

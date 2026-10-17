@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CreateNewFolderRoundedIcon from "@mui/icons-material/CreateNewFolderRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import KeyboardDoubleArrowRightRoundedIcon from "@mui/icons-material/KeyboardDoubleArrowRightRounded";
 import MergeTypeRoundedIcon from "@mui/icons-material/MergeTypeRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router";
@@ -37,6 +39,7 @@ import { IconAction, ListScreenHeader } from "../../design-system/components/too
 import { LIBRARY_COLLECTION_ENTITY } from "../../lib/jobs/entityTypes";
 import { useNewJob } from "../jobs/useNewJob";
 import { RightPanel } from "../main/rightPanel";
+import { useShellCompact } from "../main/shellCompact";
 import { loadCollectionGames, useLibraryFolders, useUploadedCollections } from "./useLibraryCollections";
 import { useOwnPageHeading } from "../main/pageTitle";
 
@@ -96,9 +99,29 @@ const byKey =
 const stemOf = (name: string, fallback: string) => slugify(name) || fallback;
 
 function LibraryHome() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // The header's title is the page's `h1` (CTA-112).
   useOwnPageHeading();
+  /*
+    The right-hand panel, About the Library, folded to the shell's rail on
+    arrival (CTA-230, as a collection's filters fold): the table has the room
+    until the reader opens it, for this visit only. Under the shell's
+    breakpoint there is no rail — the panel is stacked under the table.
+  */
+  const compact = useShellCompact();
+  const [aboutFolded, setAboutFolded] = useState(true);
+  // The button pressed is gone once the panel folds or opens: the focus goes on to the one that undoes it.
+  const focusAfterFold = useRef<string | null>(null);
+  const foldAbout = (folded: boolean) => {
+    focusAfterFold.current = folded ? "library-about-rail-expand" : "library-about-collapse";
+    setAboutFolded(folded);
+  };
+  useEffect(() => {
+    const target = focusAfterFold.current;
+    if (target === null) return;
+    focusAfterFold.current = null;
+    document.querySelector<HTMLElement>(`[data-testid="${target}"]`)?.focus();
+  }, [aboutFolded]);
   const navigate = useNavigate();
   const uploaded = useUploadedCollections();
   const readerFolders = useLibraryFolders();
@@ -350,10 +373,36 @@ function LibraryHome() {
           testId="library-collections"
         />
       </Box>
-      <RightPanel>
-        <Typography variant="body2" sx={{ color: "text.secondary" }}>
-          {t("library.hint")}
-        </Typography>
+      <RightPanel
+        collapsed={aboutFolded}
+        rail={
+          // Room above the button, as the collection's filters' rail.
+          <Box data-testid="library-about-rail" sx={{ display: "flex", flexDirection: "column", alignItems: "center", pt: 1 }}>
+            <IconAction label={t("library.about.expand")} onClick={() => foldAbout(false)} expanded={false} testId="library-about-rail-expand">
+              <InfoOutlinedIcon fontSize="small" />
+            </IconAction>
+          </Box>
+        }
+      >
+        <Box data-testid="library-about" sx={{ display: "grid", gap: 1, alignContent: "start" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography variant="subtitle2" component="h2" sx={{ flexGrow: 1, fontWeight: 700 }}>
+              {t("library.about.title")}
+            </Typography>
+            {!compact && (
+              <IconAction label={t("library.about.collapse")} onClick={() => foldAbout(true)} expanded testId="library-about-collapse">
+                {/* Towards the inline end, in the language's direction: the panel is drawn from inside the board's `ForceLTR`. */}
+                <KeyboardDoubleArrowRightRoundedIcon
+                  fontSize="small"
+                  style={i18n.dir() === "rtl" ? { transform: "scaleX(-1)" } : undefined}
+                />
+              </IconAction>
+            )}
+          </Box>
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            {t("library.hint")}
+          </Typography>
+        </Box>
       </RightPanel>
       <FolderNameDialog
         open={naming !== null}

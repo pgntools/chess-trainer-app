@@ -1211,6 +1211,12 @@ const en = {
     download: "Download the whole collection as PGN",
     /** An uploaded collection's row — delete it, asked first. */
     delete: "Delete collection",
+    /** The lobby's right-hand panel (CTA-230): folded to a rail on arrival, opened and folded again by these. */
+    about: {
+      title: "About the Library",
+      collapse: "Hide About the Library",
+      expand: "Show About the Library",
+    },
     hint: "A collection is one PGN file of many games — a tournament, a player's games. Open one to sort and filter its games, and open a game to analyse it: side lines, the engine, Play against it, the map and comments. File your collections in folders; the ones that ship with the app are in Built-in.",
     /**
      * The reader's folders (CTA-88) — the keys the shared folder dialogs read
