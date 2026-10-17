@@ -46,9 +46,8 @@ const he: typeof en = {
     designSystem: "מערכת עיצוב",
     themeEditor: "עורך ערכות נושא",
     analysisProjects: "פרויקטים",
-    /** The Jobs module (CTA-221): every background job, and the Jobs settings — its own folder. */
+    /** The Jobs module (CTA-221): every background job — its folder drawn as one row (CTA-228), named by `nav.folders.jobs`. */
     jobs: "משימות",
-    jobsSettings: "הגדרות",
     mdxArticles: "מאמרים",
     mdxEditor: "עורך",
     mdxComponents: "גלריית רכיבים",
