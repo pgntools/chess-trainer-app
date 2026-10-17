@@ -20,7 +20,7 @@ const demo = ({ name = NAME, general = UPLOADED, tab = "general", readOnly = fal
           tab={state.tab}
           onTabChange={(next) => setState({ ...state, tab: next })}
           general={general}
-          options={
+          settings={
             readOnly ? undefined : (
               <SettingsFrame onSave={() => {}} onCancel={() => {}} saveLabel="Save" cancelLabel="Cancel" testId="gallery-collection-details-settings">
                 <CollectionSettingsForm
@@ -50,8 +50,8 @@ const gallery: GalleryModule<BlockFamilyId> = {
     { name: "A tournament — General: the event's card", render: () => demo({ name: "FIDE Candidates 2026", general: TOURNAMENT }) },
     { name: "An upload naming its source — the Source card", render: () => demo({ general: SOURCED }) },
     { name: "A tournament from two sources", render: () => demo({ name: "FIDE Candidates 2026", general: SOURCED_TOURNAMENT }) },
-    { name: "Options: the settings", render: () => demo({ tab: "options" }) },
-    { name: "Options of a shipped file: read-only", render: () => demo({ name: "Tal", general: SHIPPED, tab: "options", readOnly: true }) },
+    { name: "Settings: the form", render: () => demo({ tab: "settings" }) },
+    { name: "Settings of a shipped file: read-only", render: () => demo({ name: "Tal", general: SHIPPED, tab: "settings", readOnly: true }) },
     { name: "A long name, wrapping in the head", render: () => demo({ name: LONG_NAME }) },
     { name: "A Hebrew name (switch to RTL)", render: () => demo({ name: HEBREW_NAME }) },
   ],

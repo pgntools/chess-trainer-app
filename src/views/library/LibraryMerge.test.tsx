@@ -3,6 +3,7 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { loadUploadedCollections, loadUploadedGames, uploadedCollectionsSnapshot } from "../../lib/libraryCollectionStore";
+import { createLibraryFolder } from "../../lib/libraryFolderStore";
 import { downloadPgn } from "../../lib/pgnExport";
 import { expectNoAxeViolations } from "../../test/axe";
 import { GAMES, keep, mount, mountTable, resetLibrary, upload, where } from "./libraryTestKit";
@@ -48,9 +49,9 @@ vi.mock("./indexCollection", async (importOriginal) => {
 
 /*
   **Collections merged — a direct Library action** (CTA-232): the lobby's
-  header's *Merge* (two or more ticked) and a collection page's *Merge
-  with…* (that collection first, the rest picked in the dialog) open one
-  dialog; Merge reads, merges and indexes, then keeps a new collection —
+  header's *Merge* (two or more ticked — a ticked folder's among them,
+  CTA-235) opens its dialog — a collection page's *Merge with…* gone in
+  CTA-235; Merge reads, merges and indexes, then keeps a new collection —
   the result offering Open collection and Download PGN; a merge past the
   Library's limit refused with the upload's words; Cancel while it indexes.
 */
@@ -110,6 +111,27 @@ describe("Merge in the Library's header, over the picks (CTA-232)", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("merges the collections under a ticked folder, in the table's order, after those ticked before it (CTA-235)", async () => {
+    const user = userEvent.setup();
+    const club = await upload();
+    const folder = await createLibraryFolder("Spring", null);
+    await keep("Spring open", [GAMES[0], game(1)], folder!.id);
+    await keep("Spring rapid", [game(2)], folder!.id);
+    mount("/library");
+    await user.click(await screen.findByRole("checkbox", { name: `Pick ${club.name}` }));
+    expect(screen.getByRole("button", { name: "Merge" })).toBeDisabled();
+    await user.click(screen.getByRole("checkbox", { name: "Pick Spring" }));
+    expect(screen.getByTestId("library-picks-bar")).toHaveTextContent("1 folder and 3 collections picked");
+    await user.click(screen.getByRole("button", { name: "Merge" }));
+
+    const sources = within(await mergeDialog()).getByRole("list", { name: "Collections to merge" });
+    expect(within(sources).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "1.Club games3 games",
+      "2.Spring open2 games",
+      "3.Spring rapid1 game",
+    ]);
+  });
+
   it("refuses a merge past the Library's limit with the upload's words, and makes nothing", async () => {
     const user = userEvent.setup();
     const big = await keep("Big open", Array.from({ length: 60 }, (_, index) => game(index, `Player ${index}`)));
@@ -148,49 +170,18 @@ describe("Merge in the Library's header, over the picks (CTA-232)", () => {
   });
 });
 
-describe("Merge with… on a collection's page (CTA-232)", () => {
-  it("opens on this collection alone, Merge off until another is picked from the Library — Built-in and the reader's own", async () => {
-    const user = userEvent.setup();
+describe("no Merge with… on a collection's page (CTA-235)", () => {
+  it("is on neither view's header — an upload's table, a shipped one's, a tournament's Info tab", async () => {
     const club = await upload();
-    await keepSpring();
     await mountTable(`/library/${club.id}`);
-    await user.click(screen.getByRole("button", { name: "Merge with…" }));
-
-    const dialog = await mergeDialog();
-    const sources = within(dialog).getByRole("list", { name: "Collections to merge" });
-    expect(within(sources).getAllByRole("listitem")).toHaveLength(1);
-    const merge = within(dialog).getByRole("button", { name: "Merge" });
-    expect(merge).toBeDisabled();
-    expect(merge).toHaveAccessibleDescription("Add at least one more collection to merge.");
-
-    const picker = within(dialog).getByRole("combobox", { name: "Add a collection" });
-    await user.click(picker);
-    // Built-in's are offered beside the reader's own; this one is not.
-    expect(screen.getByRole("option", { name: /^Capablanca — / })).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: /^Club games — / })).toBeNull();
-    await user.type(picker, "Spring");
-    await user.click(screen.getByRole("option", { name: "Spring open — 2 games" }));
-    expect(within(sources).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["1.Club games3 games", "2.Spring open2 games"]);
-
-    await user.click(within(dialog).getByRole("radio", { name: /^Keep every game/ }));
-    await user.type(within(dialog).getByRole("textbox", { name: "Name" }), "Everything");
-    expect(within(dialog).getByRole("button", { name: "Merge" })).toBeEnabled();
-    await user.click(within(dialog).getByRole("button", { name: "Merge" }));
-    const done = await screen.findByRole("dialog", { name: "Collections merged" }, { timeout: 10_000 });
-    expect(within(done).getByRole("status")).toHaveTextContent(/^“Everything” holds 5 games\.$/);
-    await loadUploadedCollections();
-    expect(uploadedCollectionsSnapshot()?.find((each) => each.name === "Everything")?.count).toBe(5);
-  });
-
-  it("is on a shipped collection's page too, and on a tournament's Info tab", async () => {
-    await mountTable("/library/capablanca");
-    expect(screen.getByRole("button", { name: "Merge with…" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Merge with…" })).toBeNull();
+    expect(screen.queryByTestId("library-table-merge-with")).toBeNull();
     cleanup();
-    const user = userEvent.setup();
+    await mountTable("/library/capablanca");
+    expect(screen.queryByTestId("library-table-merge-with")).toBeNull();
+    cleanup();
     mount("/library/candidates2026");
     await screen.findByTestId("library-tournament-screen");
-    await user.click(screen.getByRole("button", { name: "Merge with…" }));
-    const sources = within(await mergeDialog()).getByRole("list", { name: "Collections to merge" });
-    expect(within(sources).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["1.FIDE Candidates 202656 games"]);
+    expect(screen.queryByTestId("library-table-merge-with")).toBeNull();
   });
 });

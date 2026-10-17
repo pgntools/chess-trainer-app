@@ -9,7 +9,7 @@ import {
   updateCollectionSettings,
   uploadedCollectionsSnapshot,
 } from "../../lib/libraryCollectionStore";
-import { createLibraryFolder, libraryFoldersSnapshot, loadLibraryFolders } from "../../lib/libraryFolderStore";
+import { createLibraryFolder, libraryFoldersSnapshot } from "../../lib/libraryFolderStore";
 import { peekShippedGames, peekShippedRows, shippedCollections } from "../../lib/shippedCollections";
 import { analysisCasesSnapshot } from "../../lib/analysisCaseStore";
 import { analysisProjectsSnapshot } from "../../lib/analysisProjectStore";
@@ -271,12 +271,12 @@ describe("the Library's folders (CTA-88)", () => {
     expect(screen.getByTestId("library-folder-builtin-toggle")).toHaveAttribute("aria-expanded", "true");
     const actions = screen.getByTestId("library-folder-actions-builtin");
     expect(within(actions).getByTestId("library-folder-download-builtin")).toBeInTheDocument();
-    for (const action of ["rename", "move", "delete"]) {
+    for (const action of ["rename", "move"]) {
       expect(screen.queryByTestId(`library-folder-${action}-builtin`)).toBeNull();
       expect(screen.getByTestId(`library-folder-${action}-${box.id}`)).toBeInTheDocument();
     }
-    // CTA-231: no row makes a sub-folder or takes an upload, and no collection's row has New job.
-    for (const action of ["upload", "new"]) {
+    // CTA-231: no row makes a sub-folder or takes an upload, and no collection's row has New job; CTA-235: none deletes a folder.
+    for (const action of ["upload", "new", "delete"]) {
       expect(screen.queryByTestId(`library-folder-${action}-${box.id}`)).toBeNull();
     }
     expect(screen.queryByRole("button", { name: /New job/ })).toBeNull();
@@ -426,30 +426,68 @@ describe("the Library's folders (CTA-88)", () => {
     await waitFor(() => expect(libraryFoldersSnapshot()?.find((row) => row.id === a.id)?.parentId).toBe(c.id));
   });
 
-  it("renames a folder, and deletes one keeping its contents in its parent — asking first when it holds any", async () => {
+  it("renames a folder — and offers no delete on its row: a folder goes through the picks (CTA-235)", async () => {
     const top = await made("Top");
-    const doomed = await made("Doomed", top.id);
-    const kept = await made("Kept", doomed.id);
-    await keep("Inside", GAMES, doomed.id);
-    const empty = await made("Empty");
     mount("/library");
 
     fireEvent.click(await screen.findByTestId(`library-folder-rename-${top.id}`));
     expect(screen.getByTestId("library-folder-name-input")).toHaveValue("Top");
     nameFolder("Renamed");
     await waitFor(() => expect(screen.getByTestId(`library-folder-${top.id}`)).toHaveTextContent("Renamed"));
+    expect(screen.queryByTestId(`library-folder-delete-${top.id}`)).toBeNull();
+    expect(within(screen.getByTestId(`library-folder-actions-${top.id}`)).queryByRole("button", { name: /^Delete/ })).toBeNull();
+  });
 
-    // An empty folder goes at once.
-    fireEvent.click(screen.getByTestId(`library-folder-delete-${empty.id}`));
-    await waitFor(() => expect(screen.queryByTestId(`library-folder-${empty.id}`)).toBeNull());
+  it("ticks a folder with everything under it — none on Built-in — and deletes the ticked folders whole from the header, after one confirmation (CTA-235)", async () => {
+    const user = userEvent.setup();
+    const top = await made("Top");
+    const doomed = await made("Doomed", top.id);
+    const under = await made("Under", doomed.id);
+    await keep("Inside", GAMES, doomed.id);
+    await keep("Deeper", [GAMES[0]], under.id);
+    await keep("Stays", [GAMES[1]], top.id);
+    const loose = await keep("Loose", [GAMES[2]]);
+    mount("/library");
 
+    await screen.findByTestId(`library-folder-${top.id}`);
+    expect(within(screen.getByTestId("library-folder-builtin")).queryByRole("checkbox")).toBeNull();
     fireEvent.click(screen.getByTestId(`library-folder-${top.id}`));
-    fireEvent.click(await screen.findByTestId(`library-folder-delete-${doomed.id}`));
-    expect(screen.getByTestId("library-folder-delete-counts")).toHaveTextContent("1 collections and 1 sub-folders");
-    expect(screen.getByRole("dialog")).toHaveTextContent(i18n.t("library.folder.deleteConfirm"));
-    fireEvent.click(screen.getByTestId("library-folder-delete-confirm"));
-    await waitFor(async () => expect(await folderOf("Inside")).toBe(top.id));
-    expect((await loadLibraryFolders()).find((row) => row.id === kept.id)?.parentId).toBe(top.id);
+    await user.click(await screen.findByRole("checkbox", { name: "Pick Doomed" }));
+    // Top holds Stays too: partly ticked. Inside Doomed, everything is ticked.
+    expect(screen.getByRole("checkbox", { name: "Pick Top" })).toHaveAttribute("data-indeterminate", "true");
+    fireEvent.click(screen.getByTestId(`library-folder-${doomed.id}`));
+    expect(await screen.findByRole("checkbox", { name: "Pick Inside" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Pick Under" })).toBeChecked();
+    expect(screen.getByTestId("library-picks-bar")).toHaveTextContent("2 folders and 2 collections picked");
+
+    await user.click(screen.getByRole("checkbox", { name: `Pick ${loose.name}` }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    const dialog = screen.getByTestId("library-delete-dialog");
+    expect(dialog).toHaveTextContent("Delete 2 folders and 3 collections?");
+    expect(dialog).toHaveTextContent(
+      "The folder goes with everything in it: its sub-folders and the collections in them. 5 games are removed from this browser.",
+    );
+    fireEvent.click(screen.getByTestId("library-delete-confirm"));
+    await waitFor(() => expect(uploadedCollectionsSnapshot()?.map((each) => each.name)).toEqual(["Stays"]));
+    await waitFor(() => expect(libraryFoldersSnapshot()?.map((each) => each.name)).toEqual(["Top"]));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // Nothing is picked any more: no Delete.
+    expect(screen.queryByTestId("library-header-delete")).toBeNull();
+  });
+
+  it("names a lone ticked folder in the question, and deletes an empty one (CTA-235)", async () => {
+    const user = userEvent.setup();
+    const empty = await made("Empty");
+    mount("/library");
+    await user.click(await screen.findByRole("checkbox", { name: "Pick Empty" }));
+    expect(screen.getByTestId("library-picks-bar")).toHaveTextContent("1 folder picked");
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(screen.getByTestId("library-delete-dialog")).toHaveTextContent(
+      "Delete Empty?The folder goes with everything in it: its sub-folders and the collections in them. This cannot be undone.",
+    );
+    fireEvent.click(screen.getByTestId("library-delete-confirm"));
+    await waitFor(() => expect(screen.queryByTestId(`library-folder-${empty.id}`)).toBeNull());
+    expect(libraryFoldersSnapshot()).toEqual([]);
   });
 
   it("filters by name, opening the folders above a match, and shows a folder whose name matches", async () => {
@@ -622,14 +660,14 @@ const sentCase = () => {
 };
 
 describe("a collection page's own panel (CTA-229; its content CTA-231, CTA-232)", () => {
-  it("is in the main menu's place: its Close back to the Library, the name, General and Options (no Jobs) — and no Back in the header", async () => {
+  it("is in the main menu's place: its Close back to the Library, the name, General and Settings (no Jobs; Options until CTA-235) — and no Back in the header", async () => {
     const user = userEvent.setup();
     const mine = await upload();
     await mountTable(`/library/${mine.id}`);
     const details = screen.getByRole("region", { name: "Details of Club games" });
     expect(screen.getByTestId("layout-board-left-panel")).toContainElement(details);
     expect(within(details).getByRole("heading", { level: 2, name: "Club games" })).toBeInTheDocument();
-    expect(within(details).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Options"]);
+    expect(within(details).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Settings"]);
     expect(rowNumbers()).toEqual(["1", "2", "3"]);
     // The header's Back is gone: the panel's Close is the way back.
     const header = screen.getByTestId("library-table-header");
@@ -679,14 +717,14 @@ describe("a collection page's own panel (CTA-229; its content CTA-231, CTA-232)"
     expect(within(screen.getByRole("tabpanel", { name: "General" })).queryByRole("region", { name: /^Sources?$/ })).toBeNull();
   });
 
-  it("shows a shipped collection read-only on Options", async () => {
+  it("shows a shipped collection read-only on Settings", async () => {
     const user = userEvent.setup();
     await mountTable("/library/capablanca");
     const details = screen.getByRole("region", { name: "Details of Capablanca" });
     expect(within(details).getByTestId("library-collection-details-facts-source")).toHaveTextContent("Built-in");
     expect(within(details).queryByTestId("library-collection-details-facts-added")).toBeNull();
-    await user.click(within(details).getByRole("tab", { name: "Options" }));
-    expect(within(details).getByRole("tabpanel", { name: "Options" })).toHaveTextContent("read-only");
+    await user.click(within(details).getByRole("tab", { name: "Settings" }));
+    expect(within(details).getByRole("tabpanel", { name: "Settings" })).toHaveTextContent("read-only");
     expect(screen.queryByTestId("library-settings-form")).toBeNull();
   });
 
@@ -986,23 +1024,23 @@ describe("a game on its analysis board", () => {
   });
 });
 
-describe("a collection's settings (CTA-121) — its page's Options tab (CTA-231)", () => {
-  /** Mount the collection's page, its left panel on Options, the form waited for. */
+describe("a collection's settings (CTA-121) — its page's Settings tab (CTA-231; Options until CTA-235)", () => {
+  /** Mount the collection's page, its left panel on Settings, the form waited for. */
   const mountSettings = async (id: string, { fresh = false } = {}) => {
     if (fresh) cleanupAndMount(`/library/${id}`);
     else mount(`/library/${id}`);
-    fireEvent.click(await screen.findByRole("tab", { name: "Options" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Settings" }));
     await screen.findByTestId("library-settings-form");
   };
 
-  it("edits the collection's title and description from the header's gear, saving them for the list, the table and the panel", async () => {
+  it("edits the collection's title and description on the panel's Settings tab, saving them for the list, the table and the panel", async () => {
     const mine = await upload();
     await mountTable(`/library/${mine.id}?q=Amy`);
-    // The table's header has the gear for an upload: it opens Options, the table and its filter as they were.
-    fireEvent.click(screen.getByTestId("library-table-settings"));
+    // No gear in the header (CTA-235): the panel's tab is the way in — the table and its filter as they were.
+    expect(screen.queryByTestId("library-table-settings")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
     expect(await screen.findByTestId("library-settings-form")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Options" })).toHaveAttribute("aria-selected", "true");
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Options" })).toHaveFocus());
+    expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
     expect(where()).toBe(`/library/${mine.id}?q=Amy`);
     // Nothing changed yet: nothing to save.
     expect(screen.getByTestId("library-settings-save")).toBeDisabled();
@@ -1026,7 +1064,7 @@ describe("a collection's settings (CTA-121) — its page's Options tab (CTA-231)
     await mountSettings(mine.id);
     fireEvent.change(screen.getByTestId("library-settings-form-name"), { target: { value: "Renamed" } });
     fireEvent.click(screen.getByRole("tab", { name: "General" }));
-    fireEvent.click(screen.getByRole("tab", { name: "Options" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
     expect(await screen.findByTestId("library-settings-form-name")).toHaveValue("Renamed");
     fireEvent.click(screen.getByTestId("library-settings-cancel"));
     expect(screen.getByTestId("library-settings-form-name")).toHaveValue("Club games");
@@ -1102,10 +1140,15 @@ describe("a collection's settings (CTA-121) — its page's Options tab (CTA-231)
     });
   });
 
-  it("gives a shipped collection no settings — the table no gear", async () => {
+  it("puts no Settings gear in the header — a shipped collection's or an upload's (CTA-235)", async () => {
     mount("/library/capablanca");
     await screen.findByTestId("library-table");
     expect(screen.queryByTestId("library-table-settings")).toBeNull();
+    const mine = await upload();
+    cleanupAndMount(`/library/${mine.id}`);
+    await screen.findByTestId("library-table");
+    expect(screen.queryByTestId("library-table-settings")).toBeNull();
+    expect(within(screen.getByTestId("library-table-header")).queryByRole("button", { name: "Collection settings" })).toBeNull();
   });
 
   it("has no settings route any more: /library/<c>/settings is no screen of its own (CTA-231)", async () => {

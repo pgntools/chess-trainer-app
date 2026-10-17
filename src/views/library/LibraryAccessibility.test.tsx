@@ -193,17 +193,17 @@ describe("a Library game — accessible", () => {
   });
 });
 
-/** The collection page with its left panel on Options (CTA-231 — the settings screen of CTA-121 before). */
-const mountOptions = async (id: string) => {
+/** The collection page with its left panel on Settings (CTA-231 — the settings screen of CTA-121 before; Options until CTA-235). */
+const mountSettingsTab = async (id: string) => {
   mount(`/library/${id}`);
-  await userEvent.click(await screen.findByRole("tab", { name: "Options" }));
+  await userEvent.click(await screen.findByRole("tab", { name: "Settings" }));
   await screen.findByTestId("library-settings-form");
 };
 
-describe("a collection's settings — accessible (CTA-121; the page's Options tab since CTA-231)", () => {
+describe("a collection's settings — accessible (CTA-121; the page's Settings tab since CTA-231)", () => {
   it("sits under the panel's h2, its sections h2s, and passes axe with the mark off", async () => {
     const club = await keep("Club games");
-    await mountOptions(club.id);
+    await mountSettingsTab(club.id);
     expect(screen.getByRole("heading", { level: 1, name: "Club games" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Club games" })).toBeInTheDocument();
     for (const section of ["General", "Tournament"]) {
@@ -216,7 +216,7 @@ describe("a collection's settings — accessible (CTA-121; the page's Options ta
   it("names the mark by its label and its reason when the games will not allow it, and the types by their names", async () => {
     // GAMES holds two events, so the mark is off with its reason — the message is the switch's description.
     const mixed = await keep("Mixed club");
-    await mountOptions(mixed.id);
+    await mountSettingsTab(mixed.id);
     const blocked = await screen.findByRole("switch", { name: "Mark as tournament" });
     expect(blocked).toBeDisabled();
     expect(blocked).toHaveAccessibleDescription(/only when every game in it shares one Event/);
@@ -228,7 +228,7 @@ describe("a collection's settings — accessible (CTA-121; the page's Options ta
     const one = '[Event "Club"]\n[Date "2023.04.02"]\n[White "Zed"]\n[Black "Amy"]\n[Result "0-1"]\n\n1. e4 e5 0-1';
     const added = await addCollection("One club", [one], [indexedRowOf(one)]);
     if (!("collection" in added)) throw new Error("not added");
-    await mountOptions(added.collection.id);
+    await mountSettingsTab(added.collection.id);
     const mark = await screen.findByRole("switch", { name: "Mark as tournament" });
     mark.focus();
     await userEvent.keyboard(" ");

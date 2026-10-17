@@ -869,17 +869,21 @@ const he: typeof en = {
     filterClear: "ניקוי הסינון",
     treeHint: "Tab עובר בכל שורה בין החץ, שפותח או סוגר תיקייה, הקישור והפעולות. מיון לפי עמודה בלחצן שבכותרת שלה.",
     picks: {
-      selectAll: "לבחור כל אוסף שמוצג",
+      selectAll: "לבחור כל תיקייה וכל אוסף שמוצגים",
       pick: "לבחור את {{name}}",
       picked_one: "אוסף {{count}} נבחר",
       picked_other: "{{count}} אוספים נבחרו",
+      pickedWith: "נבחרו: {{what}}",
+      folders_one: "תיקייה {{count}}",
+      folders_other: "{{count}} תיקיות",
+      collections_one: "אוסף {{count}}",
+      collections_other: "{{count}} אוספים",
       clear: "לנקות את הבחירה",
       merge: "מיזוג",
       delete: "מחיקה",
     },
     merge: {
       title: "מיזוג אוספים",
-      mergeWith: "למזג עם…",
       submit: "למזג",
       cancel: "ביטול",
       close: "סגירה",
@@ -960,7 +964,6 @@ const he: typeof en = {
       moveFolder: "העברת התיקייה",
       moveCollection: "העברת האוסף",
       moveTo: "העברה אל…",
-      deleteFolder: "מחיקת התיקייה",
       download: "הורדת כל מה שבתיקייה כקובץ PGN אחד",
       expand: "פתיחת {{name}}",
       collapse: "סגירת {{name}}",
@@ -968,9 +971,6 @@ const he: typeof en = {
       name: "שם התיקייה",
       save: "שמירה",
       cancel: "ביטול",
-      deleteConfirm:
-        "מחיקת התיקייה שומרת על תוכנה: האוספים ותתי־התיקיות שבה עוברים לתיקייה שמעליה.",
-      deleteCounts: "בתיקייה {{games}} אוספים ו־{{subFolders}} תתי־תיקיות.",
       picker: "תיקיות",
       parent: "ליצור בתוך",
     },
@@ -1004,7 +1004,7 @@ const he: typeof en = {
       tabs: {
         label: "פרטי האוסף",
         general: "כללי",
-        options: "אפשרויות",
+        settings: "הגדרות",
       },
       general: {
         noDescription: "אין תיאור.",
@@ -1095,8 +1095,6 @@ const he: typeof en = {
       },
       shippedNote: "האוסף הזה מגיע עם האפליקציה. משחקיו לקריאה בלבד: שינויים במשחק נשמרים כעותק בניתוח.",
       uploadedNote: "הוספתם את האוסף הזה; הוא נשמר בדפדפן הזה בלבד. שינויים במשחק יכולים לעדכן אותו במקום או להישמר כעותק לצדו.",
-      /** גלגל השיניים בכותרת, אל הגדרות האוסף (CTA-121). */
-      settings: "הגדרות אוסף",
     },
     /**
      * הגדרות אוסף — `/library/<collection>/settings` (CTA-121): המילים של
@@ -1293,10 +1291,12 @@ const he: typeof en = {
     },
     confirmDelete: {
       title: "למחוק את {{name}}?",
-      titleMany_one: "למחוק אוסף {{count}}?",
-      titleMany_other: "למחוק {{count}} אוספים?",
+      titleWhat: "למחוק {{what}}?",
+      folders_one: "התיקייה נמחקת עם כל מה שבתוכה: תיקיות המשנה שלה והאוספים שבהן.",
+      folders_other: "התיקיות נמחקות עם כל מה שבתוכן: תיקיות המשנה שלהן והאוספים שבהן.",
       body_one: "משחק {{count}} יימחק מהדפדפן הזה. אי אפשר לבטל זאת.",
       body_other: "{{count}} משחקים יימחקו מהדפדפן הזה. אי אפשר לבטל זאת.",
+      noGames: "אי אפשר לבטל זאת.",
       builtInKept_one: "האוסף המובנה שנבחר הוא לקריאה בלבד ונשאר.",
       builtInKept_other: "{{count}} האוספים המובנים שנבחרו הם לקריאה בלבד ונשארים.",
       problem: "חלק מהאוספים לא נמחקו — האחסון של הדפדפן לא זמין. אלה שנשארו עדיין מסומנים.",

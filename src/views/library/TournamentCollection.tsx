@@ -4,8 +4,6 @@ import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import KeyboardDoubleArrowRightRoundedIcon from "@mui/icons-material/KeyboardDoubleArrowRightRounded";
 import LeaderboardOutlinedIcon from "@mui/icons-material/LeaderboardOutlined";
-import MergeTypeRoundedIcon from "@mui/icons-material/MergeTypeRounded";
-import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { Link as RouterLink, useLocation, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -207,7 +205,7 @@ function Misfit({
       testId="library-tournament-misfit"
       action={
         collection.source === "uploaded" ? (
-          // The collection's settings: the page's left panel's Options (CTA-231).
+          // The collection's settings: the page's left panel's Settings tab (CTA-231, CTA-235).
           <Link
             component="button"
             type="button"
@@ -425,7 +423,6 @@ function TournamentOverview({
   tabs,
   detailsToggle,
   onOpenSettings,
-  onMergeWith,
   ...fold
 }: {
   collection: CollectionSummary;
@@ -434,7 +431,6 @@ function TournamentOverview({
   tabs: TournamentTabs;
   detailsToggle?: ReactNode;
   onOpenSettings: () => void;
-  onMergeWith: () => void;
 } & StatisticsFold) {
   const { t } = useTranslation();
   // The collection's name is the page's `h1`, and its title (CTA-112).
@@ -447,21 +443,7 @@ function TournamentOverview({
           title={<span data-testid="library-table-name">{collection.name}</span>}
           titleDir="auto"
           count={<span data-testid="library-table-count">{t("library.games", { count: rows.length })}</span>}
-          actions={
-            <>
-              {detailsToggle}
-              {collection.source === "uploaded" && (
-                // The collection's settings are its page's left panel's Options (CTA-231).
-                <IconAction label={t("library.table.settings")} onClick={onOpenSettings} testId="library-table-settings">
-                  <SettingsRoundedIcon fontSize="small" />
-                </IconAction>
-              )}
-              {/* The whole collection merged with others into a new one (CTA-232). */}
-              <IconAction label={t("library.merge.mergeWith")} onClick={onMergeWith} testId="library-table-merge-with">
-                <MergeTypeRoundedIcon fontSize="small" />
-              </IconAction>
-            </>
-          }
+          actions={detailsToggle}
           testId="library-table-header"
         />
         {tabs.strip}
@@ -489,7 +471,6 @@ export function TournamentCollection({
   games,
   detailsToggle,
   onOpenSettings,
-  onMergeWith,
   ...fold
 }: {
   collection: CollectionSummary;
@@ -497,10 +478,8 @@ export function TournamentCollection({
   games: (tabs: TournamentTabs) => ReactNode;
   /** The button opening the page's left panel in a drawer, under the shell's breakpoint (CTA-229) — first among the header's actions. */
   detailsToggle?: ReactNode;
-  /** The Settings gear's and *Change the type*'s: the page's left panel on Options (CTA-231). */
+  /** *Change the type*'s (the Info tab's misfit): the page's left panel on Settings (CTA-231, CTA-235). */
   onOpenSettings: () => void;
-  /** *Merge with…* (CTA-232): the merge dialog on this collection — the Info and Participants tabs' header; the Games tab's is the table's. */
-  onMergeWith: () => void;
 } & StatisticsFold) {
   const [params] = useSearchParams();
   const tab = tournamentTabOf(params);
@@ -515,7 +494,6 @@ export function TournamentCollection({
       tabs={tabs}
       detailsToggle={detailsToggle}
       onOpenSettings={onOpenSettings}
-      onMergeWith={onMergeWith}
       {...fold}
     />
   );

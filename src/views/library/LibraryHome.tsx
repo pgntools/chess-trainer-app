@@ -11,21 +11,33 @@ import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
-import { folderTreeRows, type FolderTreeRow } from "../../lib/folderTreeRows";
+import { folderTreeRows } from "../../lib/folderTreeRows";
 import { moveCollection, removeCollection } from "../../lib/libraryCollectionStore";
 import { isPotentialTournament, readsAsTournament, type CollectionSummary } from "../../lib/libraryCollections";
 import {
   BUILT_IN_FOLDER_ID,
   createLibraryFolder,
   moveLibraryFolder,
-  removeLibraryFolder,
+  removeLibraryFoldersDeep,
   renameLibraryFolder,
 } from "../../lib/libraryFolderStore";
+import {
+  libraryPicksDeletion,
+  libraryPicksOf,
+  libraryPickStateOf,
+  libraryPickTargetOf,
+  librarySelectAllStateOf,
+  librarySelectAllTargets,
+  setLibraryPicks,
+  toggleLibraryPick,
+  type LibraryPickModel,
+  type LibraryPicksDeletion,
+} from "../../lib/libraryPicks";
 import { downloadPgn } from "../../lib/pgnExport";
 import { slugify } from "../../lib/pgnText";
-import { gameFolderChildren, gameFolderPath, gameFolderSubtree, gamesInFolder, type GameFolder } from "../../lib/savedGameFolders";
+import { gameFolderPath, gameFolderSubtree, gamesInFolder, type GameFolder } from "../../lib/savedGameFolders";
 import { shippedCollections } from "../../lib/shippedCollections";
-import { FolderDeleteDialog, FolderMoveDialog, FolderNameDialog } from "../../blocks/dialogs";
+import { FolderMoveDialog, FolderNameDialog } from "../../blocks/dialogs";
 import {
   CollectionsTreeTable,
   LIBRARY_TREE_COLUMNS,
@@ -56,8 +68,7 @@ import { useOwnPageHeading } from "../main/pageTitle";
  *   deleted. Its collections only download.
  * - **The reader's folders** (`lib/libraryFolderStore.ts`) nest to any depth,
  *   and hold the reader's uploads; an upload whose folder is gone sits at the
- *   top level. Deleting a folder keeps what is in it: its sub-folders and
- *   collections move up to its parent.
+ *   top level. A folder is deleted through the picks, whole (CTA-235).
  * - **Columns**: Name, Games (a folder's is its whole subtree's), Added (an
  *   upload's date; a folder's creation; a dash for Built-in), and the row's
  *   actions, always visible (CTA-113, the tables' rule). Name, Games and Added sort (`?sort=`,
@@ -212,7 +223,7 @@ function LibraryHome() {
   const folderLabel = (folder: GameFolder) => (folder.name === "" ? t("library.folder.untitled") : folder.name);
 
   const turned = filterTurns.turned;
-  const { rows, shownItems } = useMemo(() => {
+  const { rows, shownItems, everyRow, ordered } = useMemo(() => {
     const sizeOfFolder = new Map<string, number>();
     for (const folder of allFolders) {
       sizeOfFolder.set(
@@ -235,44 +246,66 @@ function LibraryHome() {
           ? byKey<Entry>((entry) => entry.count, direction, nameTie)
           : byKey<Entry>((entry) => entry.addedAt, direction, nameTie);
     const matches = (name: string) => name.toLocaleLowerCase().includes(needle);
-    return folderTreeRows<Entry>({
-      folders: allFolders,
-      items: entries,
-      isOpen: (id, auto) => (needle === "" ? open.has(id) : auto !== turned.has(id)),
-      compareFolders,
-      compareItems,
-      sizeOf: (entry) => entry.count,
-      pinned: [BUILT_IN_FOLDER_ID],
-      match:
-        needle === ""
-          ? undefined
-          : { folder: (folder) => matches(folder.name), item: (entry) => matches(entry.name) },
-    });
+    const walk = (isOpen: (id: string, auto: boolean) => boolean, words: boolean) =>
+      folderTreeRows<Entry>({
+        folders: allFolders,
+        items: entries,
+        isOpen,
+        compareFolders,
+        compareItems,
+        sizeOf: (entry) => entry.count,
+        pinned: [BUILT_IN_FOLDER_ID],
+        match:
+          !words || needle === ""
+            ? undefined
+            : { folder: (folder) => matches(folder.name), item: (entry) => matches(entry.name) },
+      });
+    const shown = walk((id, auto) => (needle === "" ? open.has(id) : auto !== turned.has(id)), true);
+    return {
+      ...shown,
+      // Select-all's rows (CTA-235): every folder open, the words applied — closed folders' contents too.
+      everyRow: walk(() => true, true).rows,
+      // Every collection in the table's order: a folder ticked picks its own in it.
+      ordered: walk(() => true, false).rows.flatMap((row) => (row.kind === "item" ? [row.item] : [])),
+    };
   }, [allFolders, entries, sort, direction, needle, open, turned]);
 
   // The name dialog: a new folder (its parent picked in it, CTA-231), or a folder renamed.
   const [naming, setNaming] = useState<"new" | { folder: GameFolder } | null>(null);
   const [movingFolder, setMovingFolder] = useState<GameFolder | null>(null);
   const [movingCollection, setMovingCollection] = useState<Entry | null>(null);
-  const [deletingFolder, setDeletingFolder] = useState<GameFolder | null>(null);
-  // The picked uploads asked about (CTA-232) — the header's Delete; held past the dialog's close so its closing transition keeps the words.
+  /*
+    The picks (CTA-221; the reader's folders too since CTA-235, Analysis V2's
+    model — `lib/libraryPicks.ts`): one set of ids over folders and
+    collections, a folder's standing for everything under it, read against
+    the stores' records — so one deleted, here or in another tab, falls out
+    of the count. The collections picked keep the order ticked: the merge's.
+  */
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const pickModel = useMemo<LibraryPickModel>(() => ({ folders, collections: ordered }), [folders, ordered]);
+  const picks = useMemo(() => libraryPicksOf(pickModel, picked), [pickModel, picked]);
+  const deletion = useMemo(() => libraryPicksDeletion(pickModel, picks), [pickModel, picks]);
+  const selectAllTargets = useMemo(() => librarySelectAllTargets(everyRow, BUILT_IN_FOLDER_ID), [everyRow]);
+  const selectAll = librarySelectAllStateOf(picks, selectAllTargets);
+  const anythingPicked = picks.collections.size > 0 || deletion.folderIds.length > 0;
+  // The ticked collections are the merge's, in order: no picker in its dialog.
+  const merge = useCollectionMerge("library-merge");
+  // What the header's Delete asked about — held past the dialog's close so its closing transition keeps the words.
   const [deletingPicks, setDeletingPicks] = useState(false);
-  const [deleteAsked, setDeleteAsked] = useState<{ uploads: readonly CollectionSummary[]; builtIn: number }>({ uploads: [], builtIn: 0 });
+  const [deleteAsked, setDeleteAsked] = useState<LibraryPicksDeletion>(deletion);
   const [deleteProblem, setDeleteProblem] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
-  // The collections picked (CTA-221) — the header's *Merge collections…* opens on them (a direct action since CTA-232).
-  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
-  // The ticked collections are the merge's: no picker in its dialog.
-  const merge = useCollectionMerge("library-merge", { picker: false });
-  // The picked collections, in the list's order: the uploads may be deleted, Built-in's never.
-  const pickedEntries = entries.filter((entry) => picked.has(entry.id));
-  const pickedUploads = pickedEntries.filter((entry) => entry.source === "uploaded");
   const askDeletePicks = () => {
-    setDeleteAsked({ uploads: pickedUploads, builtIn: pickedEntries.length - pickedUploads.length });
+    setDeleteAsked(deletion);
     setDeleteProblem(false);
     setDeletingPicks(true);
   };
-  /** Every picked upload deleted, one by one; the gone ones unpicked, a refusal said in the dialog. */
+  /**
+   * **The picks deleted** (CTA-235): every upload that goes, one by one —
+   * the ticked ones and those under a ticked folder — then the ticked
+   * folders, whole. The gone ones unpicked; a refusal said in the dialog,
+   * the folders then kept and the rest still picked.
+   */
   const deletePicks = async () => {
     setDeleteBusy(true);
     const gone = new Set<string>();
@@ -281,15 +314,36 @@ function LibraryHome() {
       if ((await removeCollection(collection.id)) === undefined) gone.add(collection.id);
       else refused = true;
     }
+    if (!refused && deleteAsked.folderIds.length > 0) {
+      if ((await removeLibraryFoldersDeep(deleteAsked.folderIds)) === undefined) for (const id of deleteAsked.goneFolders) gone.add(id);
+      else refused = true;
+    }
     setPicked((current) => new Set([...current].filter((id) => !gone.has(id))));
     setDeleteBusy(false);
     if (refused) {
-      setDeleteAsked((asked) => ({ ...asked, uploads: asked.uploads.filter((each) => !gone.has(each.id)) }));
+      setDeleteAsked((asked) => {
+        const uploads = asked.uploads.filter((each) => !gone.has(each.id));
+        return { ...asked, uploads, counts: { ...asked.counts, collections: uploads.length, games: uploads.reduce((sum, each) => sum + each.count, 0) } };
+      });
       setDeleteProblem(true);
       return;
     }
     setDeletingPicks(false);
   };
+  /** The dialog's title: one folder (with what is in it) or one collection by its name, else what goes counted ("1 folder and 3 collections"). */
+  const deleteTitle = (() => {
+    const { folderIds, goneFolders, uploads, counts } = deleteAsked;
+    const named = (name: string) => t("library.confirmDelete.title", { name });
+    const folder = folderIds.length === 1 ? folders.find((each) => each.id === folderIds[0]) : undefined;
+    if (folder !== undefined && uploads.every((each) => each.folderId !== null && goneFolders.has(each.folderId))) return named(folderLabel(folder));
+    if (folderIds.length === 0 && uploads.length === 1) return named(uploads[0].name);
+    return t("library.confirmDelete.titleWhat", {
+      what: new Intl.ListFormat(i18n.language, { style: "long", type: "conjunction" }).format([
+        ...(counts.folders === 0 ? [] : [t("library.picks.folders", { count: counts.folders })]),
+        ...(counts.collections === 0 ? [] : [t("library.picks.collections", { count: counts.collections })]),
+      ]),
+    });
+  })();
 
   const collectionsUnder = (folder: GameFolder) => gamesInFolder(entries, allFolders, folder.id);
 
@@ -308,12 +362,6 @@ function LibraryHome() {
       if (read !== null) for (const game of read) games.push(game);
     }
     if (games.length > 0) downloadPgn(stemOf(folderLabel(folder), "folder"), games);
-  };
-
-  /** An empty folder goes at once; one holding anything asks first, saying its contents stay. */
-  const startDeleteFolder = (row: FolderTreeRow<Entry> & { kind: "folder" }) => {
-    if (row.empty) void removeLibraryFolder(row.folder.id);
-    else setDeletingFolder(row.folder);
   };
 
   const setText = (value: string) => setState({ q: value });
@@ -352,18 +400,21 @@ function LibraryHome() {
               >
                 {t("library.add")}
               </Button>
-              {/* Merge and Delete (CTA-232): the ticked collections' — Merge two or more in the order ticked; Delete only while some are ticked. */}
+              {/*
+                Merge and Delete (CTA-232): the picks' — Merge two or more collections in the order ticked (a
+                ticked folder's among them); Delete, only while something is ticked, what goes with the picks.
+              */}
               <Button
                 size="small"
                 variant="outlined"
                 startIcon={<MergeTypeRoundedIcon />}
-                onClick={() => merge.open([...picked])}
-                disabled={picked.size < 2}
+                onClick={() => merge.open([...picks.collections])}
+                disabled={picks.collections.size < 2}
                 data-testid="library-header-merge"
               >
                 {t("library.picks.merge")}
               </Button>
-              {picked.size > 0 && (
+              {anythingPicked && (
                 <Button
                   size="small"
                   variant="outlined"
@@ -371,7 +422,7 @@ function LibraryHome() {
                   startIcon={<DeleteOutlineRoundedIcon />}
                   onClick={askDeletePicks}
                   // Built-in collections are read-only: nothing to delete among them alone.
-                  disabled={pickedUploads.length === 0}
+                  disabled={deletion.uploads.length === 0 && deletion.folderIds.length === 0}
                   data-testid="library-header-delete"
                 >
                   {t("library.picks.delete")}
@@ -402,13 +453,22 @@ function LibraryHome() {
             onDownloadFolder: (folder) => void downloadFolder(folder),
             onRenameFolder: (folder) => setNaming({ folder }),
             onMoveFolder: setMovingFolder,
-            onDeleteFolder: startDeleteFolder,
             onDownloadCollection: (collection) => void download(collection),
             onMoveCollection: setMovingCollection,
           }}
           picks={{
-            picked,
-            onChange: setPicked,
+            pickOf: (row) => {
+              const target = libraryPickTargetOf(row, BUILT_IN_FOLDER_ID);
+              return target === undefined
+                ? undefined
+                : { ...libraryPickStateOf(picks, target), onToggle: () => setPicked((current) => toggleLibraryPick(current, pickModel, target)) };
+            },
+            selectAll: {
+              ...selectAll,
+              onToggleAll: () => setPicked((current) => setLibraryPicks(current, pickModel, selectAllTargets, !selectAll.checked)),
+            },
+            count: { collections: picks.collections.size, folders: deletion.counts.folders },
+            onClear: () => setPicked(new Set()),
           }}
           filtered={needle !== ""}
           // CTA-142: from the summaries alone — the list reads no index.
@@ -517,37 +577,20 @@ function LibraryHome() {
         pickerTestId="library-folder-picker"
       />
       {merge.dialog}
-      <FolderDeleteDialog
-        open={deletingFolder !== null}
-        title={`${t("library.folder.deleteFolder")}: ${deletingFolder?.name ?? ""}`}
-        message={t("library.folder.deleteConfirm")}
-        counts={t("library.folder.deleteCounts", {
-          games: deletingFolder === null ? 0 : collectionsUnder(deletingFolder).length,
-          subFolders: deletingFolder === null ? 0 : gameFolderChildren(folders, deletingFolder.id).length,
-        })}
-        confirmLabel={t("library.folder.deleteFolder")}
-        cancelLabel={t("library.folder.cancel")}
-        onConfirm={() => {
-          if (deletingFolder !== null) void removeLibraryFolder(deletingFolder.id);
-        }}
-        onClose={() => setDeletingFolder(null)}
-        testId="library-folder"
-      />
       <DeleteManyDialog
         open={deletingPicks}
         onClose={() => {
           if (!deleteBusy) setDeletingPicks(false);
         }}
         onConfirm={() => void deletePicks()}
-        title={
-          deleteAsked.uploads.length === 1
-            ? t("library.confirmDelete.title", { name: deleteAsked.uploads[0].name })
-            : t("library.confirmDelete.titleMany", { count: deleteAsked.uploads.length })
-        }
+        title={deleteTitle}
         message={
           <>
-            {t("library.confirmDelete.body", { count: deleteAsked.uploads.reduce((sum, each) => sum + each.count, 0) })}
-            {deleteAsked.builtIn > 0 && ` ${t("library.confirmDelete.builtInKept", { count: deleteAsked.builtIn })}`}
+            {deleteAsked.folderIds.length > 0 && `${t("library.confirmDelete.folders", { count: deleteAsked.folderIds.length })} `}
+            {deleteAsked.counts.collections > 0
+              ? t("library.confirmDelete.body", { count: deleteAsked.counts.games })
+              : t("library.confirmDelete.noGames")}
+            {deleteAsked.builtInKept > 0 && ` ${t("library.confirmDelete.builtInKept", { count: deleteAsked.builtInKept })}`}
           </>
         }
         error={deleteProblem ? t("library.confirmDelete.problem") : undefined}

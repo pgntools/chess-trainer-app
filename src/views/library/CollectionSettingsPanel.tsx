@@ -8,7 +8,7 @@ import type { CollectionSettings } from "./useCollectionSettings";
 import { useTournamentGuess } from "./useLibraryCollections";
 
 /**
- * **A collection's settings on its page** (CTA-231 — the Options tab of
+ * **A collection's settings on its page** (CTA-231 — the Settings tab, Options until CTA-235, of
  * the page's left panel, in place of the `/library/<c>/settings` screen of
  * CTA-121): the `CollectionSettingsForm` block in a `SettingsFrame`, over
  * the page's draft (`useCollectionSettings`) — Save writes it whole, Cancel

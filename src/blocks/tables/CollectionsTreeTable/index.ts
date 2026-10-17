@@ -1,6 +1,7 @@
 export { default as CollectionsTreeTable } from "./CollectionsTreeTable";
 export type {
   CollectionsTreeActions,
+  CollectionsTreePick,
   CollectionsTreeTableProps,
   LibraryEntry,
 } from "./CollectionsTreeTable";

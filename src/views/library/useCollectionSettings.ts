@@ -35,7 +35,7 @@ export type CollectionSettings = {
 
 /**
  * **A collection's settings, as a draft** (CTA-121; the collection page's
- * Options tab since CTA-231, which took over the `/library/<c>/settings`
+ * Settings tab since CTA-231 — Options until CTA-235 —, which took over the `/library/<c>/settings`
  * screen) — its title, description and tournament mark: one draft, held
  * by the page (so a change of tab keeps it), written whole on Save through
  * `updateCollectionSettings` — the summary alone — and taken back by

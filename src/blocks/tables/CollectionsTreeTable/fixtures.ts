@@ -1,9 +1,22 @@
+import type { ReactNode } from "react";
+
 import {
   folderTreeRows,
   type FolderTreeRow,
 } from "../../../lib/folderTreeRows";
+import {
+  libraryPicksDeletion,
+  libraryPicksOf,
+  libraryPickStateOf,
+  libraryPickTargetOf,
+  librarySelectAllStateOf,
+  librarySelectAllTargets,
+  setLibraryPicks,
+  toggleLibraryPick,
+  type LibraryPickModel,
+} from "../../../lib/libraryPicks";
 import type { GameFolder } from "../../../lib/savedGameFolders";
-import type { LibraryEntry } from "./CollectionsTreeTable";
+import type { CollectionsTreeTableProps, LibraryEntry } from "./CollectionsTreeTable";
 
 /*
   The Library tree table's sample tree (CTA-113), walked by `src/lib/`'s own
@@ -85,3 +98,37 @@ export const rowsOpen = (
     sizeOf: (entry) => entry.count,
     pinned: [BUILT_IN],
   }).rows;
+
+/** The picks' model over the sample tree: the reader's folders (Built-in is none) and every collection. */
+const PICK_MODEL: LibraryPickModel = {
+  folders: FOLDERS.filter((each) => each.id !== BUILT_IN),
+  collections: ENTRIES,
+};
+
+/**
+ * **The block's picks over the sample tree** (CTA-235), worked as the screen
+ * works them (`lib/libraryPicks.ts`): a folder's box standing for all under
+ * it, select-all over every leaf.
+ */
+export const picksOver = (
+  picked: ReadonlySet<string>,
+  onChange: (picked: Set<string>) => void,
+  actions?: ReactNode,
+): NonNullable<CollectionsTreeTableProps["picks"]> => {
+  const picks = libraryPicksOf(PICK_MODEL, picked);
+  const deletion = libraryPicksDeletion(PICK_MODEL, picks);
+  const every = librarySelectAllTargets(rowsOpen(new Set(FOLDERS.map((each) => each.id))), BUILT_IN);
+  const all = librarySelectAllStateOf(picks, every);
+  return {
+    pickOf: (row) => {
+      const target = libraryPickTargetOf(row, BUILT_IN);
+      return target === undefined
+        ? undefined
+        : { ...libraryPickStateOf(picks, target), onToggle: () => onChange(toggleLibraryPick(picked, PICK_MODEL, target)) };
+    },
+    selectAll: { ...all, onToggleAll: () => onChange(setLibraryPicks(picked, PICK_MODEL, every, !all.checked)) },
+    count: { collections: picks.collections.size, folders: deletion.counts.folders },
+    onClear: () => onChange(new Set()),
+    actions,
+  };
+};

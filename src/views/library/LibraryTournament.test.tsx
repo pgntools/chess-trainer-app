@@ -109,8 +109,9 @@ describe("a tournament collection's view", () => {
     expect(screen.getByTestId("library-collection-details-tournament-facts-event")).toHaveTextContent("FIDE Candidates 2026");
     expect(screen.getByTestId("library-collection-details-tournament-facts-players")).toHaveTextContent("8");
     expect(screen.queryByTestId("library-tournament-misfit")).toBeNull();
-    // A shipped collection has no settings.
+    // No Settings gear and no Merge with… in the header (CTA-235).
     expect(screen.queryByTestId("library-table-settings")).toBeNull();
+    expect(screen.queryByTestId("library-table-merge-with")).toBeNull();
     // A name links to the Games tab filtered by that player.
     expect(within(table).getByRole("link", { name: "Giri, Anish" })).toHaveAttribute("href", "/library/candidates2026?tab=games&player=Giri%2C%20Anish");
 
@@ -160,10 +161,11 @@ describe("a tournament collection's view", () => {
     mount(`/library/${cup.id}`);
     const misfit = await screen.findByTestId("library-tournament-misfit");
     expect(misfit).toHaveTextContent("The games do not read as Knockout (elimination) — they look like Round robin: 3 players, every pair met.");
-    // Change the type opens the settings: the page's left panel on Options (CTA-231).
+    // Change the type opens the settings: the page's left panel on Settings (CTA-231, CTA-235) — the focus on its tab.
     fireEvent.click(within(misfit).getByRole("button", { name: "Change the type" }));
     expect(await screen.findByTestId("library-settings-form-type-knockout")).toBeChecked();
-    expect(screen.getByRole("tab", { name: "Options" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Settings" })).toHaveFocus());
     expect(where()).toBe(`/library/${cup.id}`);
   });
 
@@ -219,11 +221,13 @@ describe("a tournament collection's view", () => {
     expect(screen.getByTestId("library-table-count")).toHaveTextContent("2 of 3");
   });
 
-  it("carries the settings gear on an upload, opening Options beside the tab it is on", async () => {
+  it("carries no settings gear on an upload (CTA-235) — its panel's Settings tab opens beside the tab it is on", async () => {
     const cup = await marked("roundRobin");
     mount(`/library/${cup.id}?tab=participants`);
     await screen.findByTestId("library-tournament-screen");
-    fireEvent.click(screen.getByTestId("library-table-settings"));
+    expect(screen.queryByTestId("library-table-settings")).toBeNull();
+    expect(screen.queryByTestId("library-table-merge-with")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
     expect(await screen.findByTestId("library-settings-form")).toBeInTheDocument();
     expect(screen.getByTestId("library-settings-form-type-roundRobin")).toBeChecked();
     expect(where()).toBe(`/library/${cup.id}?tab=participants`);
@@ -354,16 +358,16 @@ describe("the tournament view's own panel (CTA-229; its content CTA-231)", () =>
     const details = () => screen.getByRole("region", { name: "Details of Club games" });
     expect(screen.getByTestId("layout-board-left-panel")).toContainElement(details());
     expect(within(details()).getByRole("heading", { level: 2, name: "Club games" })).toBeInTheDocument();
-    expect(within(details()).getAllByRole("tab").map((each) => each.textContent)).toEqual(["General", "Options"]);
+    expect(within(details()).getAllByRole("tab").map((each) => each.textContent)).toEqual(["General", "Settings"]);
     expect(within(screen.getByTestId("library-table-header")).queryByRole("link", { name: "All collections" })).toBeNull();
-    await user.click(within(details()).getByRole("tab", { name: "Options" }));
+    await user.click(within(details()).getByRole("tab", { name: "Settings" }));
     const name = await within(details()).findByTestId("library-settings-form-name");
     await user.clear(name);
     await user.type(name, "Club cup");
 
     await user.click(tab("participants"));
     expect(await screen.findByRole("tabpanel", { name: "Participants" })).toBeInTheDocument();
-    expect(within(details()).getByRole("tab", { name: "Options" })).toHaveAttribute("aria-selected", "true");
+    expect(within(details()).getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
     expect(within(details()).getByTestId("library-settings-form-name")).toHaveValue("Club cup");
 
     await user.click(tab("games"));
@@ -551,17 +555,17 @@ describe("the list's potential tournaments (CTA-142)", () => {
   });
 });
 
-describe("the settings' suggestion — on the page's Options tab (CTA-231)", () => {
-  /** The collection's page, its left panel on Options. */
-  const mountOptions = async (id: string) => {
+describe("the settings' suggestion — on the page's Settings tab (CTA-231; Options until CTA-235)", () => {
+  /** The collection's page, its left panel on Settings. */
+  const mountSettingsTab = async (id: string) => {
     mount(`/library/${id}`);
-    fireEvent.click(await screen.findByRole("tab", { name: "Options" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Settings" }));
     await screen.findByTestId("library-settings-form");
   };
 
   it("suggests the type the games look like, and Apply puts it in the draft for Save", async () => {
     const cup = await upload();
-    await mountOptions(cup.id);
+    await mountSettingsTab(cup.id);
     const text = await screen.findByTestId("library-settings-form-suggestion-text");
     expect(text).toHaveTextContent("Round robin: 3 players, every pair met.");
     // The table offers it too (CTA-142); the form's is the draft's.
@@ -569,14 +573,14 @@ describe("the settings' suggestion — on the page's Options tab (CTA-231)", () 
     expect(screen.getByTestId("library-settings-form-tournament-switch")).toBeChecked();
     expect(screen.getByTestId("library-settings-form-type-roundRobin")).toBeChecked();
     fireEvent.click(screen.getByTestId("library-settings-save"));
-    // Marked, the page turns into its tournament view — the panel still on Options.
+    // Marked, the page turns into its tournament view — the panel still on Settings.
     await screen.findByTestId("library-tournament-screen");
-    expect(screen.getByRole("tab", { name: "Options" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("suggests nothing for games that cannot be a tournament", async () => {
     const mixed = await keep("Mixed", [...GAMES, '[Event "Other"]\n[White "E"]\n[Black "F"]\n\n1. e4 *']);
-    await mountOptions(mixed.id);
+    await mountSettingsTab(mixed.id);
     expect(screen.queryByTestId("library-settings-form-suggestion")).toBeNull();
   });
 });
