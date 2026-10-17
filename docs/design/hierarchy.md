@@ -132,7 +132,7 @@ CTA-113 moved the rest of the app onto blocks:
 | `FolderActions`, `FolderPicker` | lists | A folder's row actions (new, upload, download, rename, move, delete); the flat folder chooser over `PickerList`. |
 | `OpeningBookList` | lists | The Openings explorer's Book tab: eco.json's continuations (`KnownMoveOpening`) as a named list of buttons, the pointed or focused one reported. |
 | `FolderNameDialog`, `FolderMoveDialog`, `FolderDeleteDialog` | dialogs | The three folder trees' dialogs, their words as `labels`. |
-| `CollectionImportDialog`, `OpeningTreePgnDialog` | dialogs | The Library's import options (what came in, the Elo / date / player filters, the count) and *Save tree as PGN*'s choice. |
+| `CollectionImportDialog`, `OpeningTreePgnDialog` | dialogs | The Library's import options (what came in, the Elo / date / player filters, the count, the TAGS field stamped on every imported game — CTA-234) and *Save tree as PGN*'s choice. |
 | `SaveAsCollectionDialog` | dialogs | The collection table's *Save as collection* (CTA-122): the derived name to edit, the count under it, a busy state and a problem slot — the write is the screen's. |
 | `NewJobFrame` | dialogs | **New job** for any kind (CTA-217), over `FormDialog`: the kinds that apply to the entity as radio cards (name, a line on what it does; one that cannot start here says why and is off), the chosen kind's form as `children`, then Start — off until a kind is chosen or while `startBlockedNote` says why, the reason beside it and read with it (`FormDialog`'s `submitNote`), a refusal there as an alert, `busy`. The queueing is the screen's (`useNewJob`). |
 | `ArrowSettingsFields` | forms | A Case's Display tab's Arrows (the legacy Analysis Board's Arrows tab until CTA-192). |
