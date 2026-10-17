@@ -7,7 +7,7 @@ import type { JobDetailsView } from "../../blocks/panels";
 import type { JobRowView, JobSubjectView } from "../../blocks/tables";
 import type { LinkTarget } from "../../design-system/components/link";
 import { jobEntityOf } from "../../lib/jobs/entities";
-import { jobKindLocaleKey } from "../../lib/jobs/kinds";
+import { isRegisteredJobKind, jobKindLocaleKey, RETIRED_JOB_KIND_LOCALE_KEYS } from "../../lib/jobs/kinds";
 
 /*
   **A job record, as the Jobs blocks read it** (CTA-221) — the runtime's
@@ -21,10 +21,16 @@ import { jobKindLocaleKey } from "../../lib/jobs/kinds";
 /** A link to an app path. */
 export const linkTo = (to: string): LinkTarget => ({ component: RouterLink, to });
 
-/** A kind's name in the reader's language — a kind no longer registered says so. */
+/**
+ * A kind's name in the reader's language — a retired kind's under its old
+ * name, said to be retired (CTA-232), any other kind no longer registered
+ * said to be unknown.
+ */
 export const kindLabelOf = (t: TFunction, kindId: string): string => {
   const key = jobKindLocaleKey(kindId);
-  return key === undefined ? t("jobs.kinds.unknown", { id: kindId }) : t(`jobs.kinds.${key}.name`);
+  if (key !== undefined) return t(`jobs.kinds.${key}.name`);
+  const retired = Object.hasOwn(RETIRED_JOB_KIND_LOCALE_KEYS, kindId) ? RETIRED_JOB_KIND_LOCALE_KEYS[kindId] : undefined;
+  return retired === undefined ? t("jobs.kinds.unknown", { id: kindId }) : t(`jobs.retiredKinds.${retired}`);
 };
 
 /** A job's title — "Untitled" for none. */
@@ -39,10 +45,16 @@ const subjectViewOf = (t: TFunction, ref: EntityRef): JobSubjectView => {
   return { label, ...(link === undefined ? {} : { link: linkTo(link) }), ...(exists === false ? { deleted: true } : {}) };
 };
 
-/** The runtime's state machine: Pause from queued or running (no request pending), Resume from paused, interrupted or failed. */
-const canPause = (job: JobRecord) => (job.status === "queued" || job.status === "running") && job.control === undefined;
-const canResume = (job: JobRecord) => job.status === "paused" || job.status === "interrupted" || job.status === "failed";
+/**
+ * The runtime's state machine: Pause from queued or running (no request
+ * pending), Resume from paused, interrupted or failed. A job of a kind no
+ * longer registered (a retired kind's, CTA-232) is never run and the
+ * runtime refuses every command but Delete, so none is offered.
+ */
+const canPause = (job: JobRecord) => isRegisteredJobKind(job.kind) && (job.status === "queued" || job.status === "running") && job.control === undefined;
+const canResume = (job: JobRecord) => isRegisteredJobKind(job.kind) && (job.status === "paused" || job.status === "interrupted" || job.status === "failed");
 const canCancel = (job: JobRecord) =>
+  isRegisteredJobKind(job.kind) &&
   (job.status === "queued" || job.status === "running" || job.status === "paused" || job.status === "interrupted" || job.status === "failed") &&
   job.control !== "cancel";
 

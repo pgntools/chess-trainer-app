@@ -4,10 +4,10 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import i18n from "../../../i18n";
-import { collectionMergeSettingsFrom, type CollectionMergeSettings } from "../../../lib/jobs/kinds/collectionMerge/core";
+import type { CollectionMergeSettings } from "../../../lib/collectionMerge";
 import { expectNoAxeViolations } from "../../../test/axe";
-import CollectionMergeForm, { type CollectionMergeFormSource } from "./CollectionMergeForm";
-import { DEFAULTS, EVERYTHING, FOUR, LONG_NAMES, TWO } from "./fixtures";
+import CollectionMergeForm, { type CollectionMergeFormCandidate, type CollectionMergeFormSource } from "./CollectionMergeForm";
+import { CANDIDATES, DEFAULTS, EVERYTHING, FOUR, LONG_NAMES, ONE, TWO } from "./fixtures";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
@@ -17,11 +17,15 @@ beforeEach(async () => {
 function Harness({
   initialSources = FOUR,
   initialSettings = DEFAULTS,
+  candidates = CANDIDATES,
+  disabled,
   onSources,
   onSettings,
 }: {
   initialSources?: CollectionMergeFormSource[];
   initialSettings?: CollectionMergeSettings;
+  candidates?: readonly CollectionMergeFormCandidate[];
+  disabled?: boolean;
   onSources?: (sources: CollectionMergeFormSource[]) => void;
   onSettings?: (settings: CollectionMergeSettings) => void;
 }) {
@@ -34,9 +38,11 @@ function Harness({
         setSources(next);
         onSources?.(next);
       }}
+      candidates={candidates}
+      disabled={disabled}
       settings={settings}
       onChange={(patch) => {
-        const next = collectionMergeSettingsFrom({ ...settings, ...patch });
+        const next = { ...settings, ...patch };
         setSettings(next);
         onSettings?.(next);
       }}
@@ -50,7 +56,7 @@ const names = () =>
     .getAllByRole("listitem")
     .map((item) => item.textContent);
 
-describe("CollectionMergeForm (CTA-220)", () => {
+describe("CollectionMergeForm (CTA-220, CTA-232)", () => {
   it("lists the collections in order, each with its game count", () => {
     render(<Harness />);
     const items = within(screen.getByRole("list", { name: "Collections to merge" })).getAllByRole("listitem");
@@ -110,25 +116,47 @@ describe("CollectionMergeForm (CTA-220)", () => {
     const name = screen.getByRole("textbox", { name: "Name" });
     expect(name).toHaveValue("");
     expect(name).toHaveAttribute("placeholder", "Mikhail Tal + 3 more");
-    expect(name).toHaveAccessibleDescription("The PGN file's name, and the new collection's. Left empty: “Mikhail Tal + 3 more”.");
+    expect(name).toHaveAccessibleDescription("The new collection's name. Left empty: “Mikhail Tal + 3 more”.");
 
     await user.type(name, "Champions");
     expect(onSettings).toHaveBeenLastCalledWith(expect.objectContaining({ name: "Champions" }));
   });
 
-  it("makes the PGN file always, and the Library collection when ticked", async () => {
+  it("adds a collection from the Library's others, typed to find, at the end — those picked not offered", async () => {
     const user = userEvent.setup();
-    const onSettings = vi.fn();
-    render(<Harness onSettings={onSettings} />);
-    const file = screen.getByRole("checkbox", { name: "The merged PGN, as a file" });
-    expect(file).toBeChecked();
-    expect(file).toBeDisabled();
-    const collection = screen.getByRole("checkbox", { name: "Also add as a Library collection" });
-    expect(collection).not.toBeChecked();
-    expect(collection).toHaveAccessibleDescription(/at most 100,000,000 characters/);
+    const onSources = vi.fn();
+    render(<Harness initialSources={ONE} onSources={onSources} />);
+    // One alone: no minimum note, and Remove is off (a merge never empties itself).
+    expect(screen.queryByTestId("form-minimum")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Mikhail Tal" })).toBeDisabled();
 
-    await user.click(collection);
-    expect(onSettings).toHaveBeenLastCalledWith(expect.objectContaining({ outputs: { collection: true } }));
+    const picker = screen.getByRole("combobox", { name: "Add a collection" });
+    await user.click(picker);
+    const offered = screen.getAllByRole("option").map((option) => option.textContent);
+    expect(offered).not.toContain("Mikhail Tal — 2,636 games");
+    expect(offered).toContain("My club games — 148 games");
+    // Grouped: Built-in, then the reader's own.
+    expect(screen.getByText("Built-in")).toBeInTheDocument();
+    expect(screen.getByText("Your collections")).toBeInTheDocument();
+
+    await user.type(picker, "club");
+    await user.click(screen.getByRole("option", { name: "My club games — 148 games" }));
+    expect(onSources).toHaveBeenLastCalledWith([ONE[0], { id: "ug1abc", name: "My club games", count: 148 }]);
+    expect(names()).toHaveLength(2);
+    expect(screen.getByTestId("form-minimum")).toBeInTheDocument();
+  });
+
+  it("offers no picker when nothing is left to add", () => {
+    render(<Harness initialSources={TWO} candidates={TWO.map((source) => ({ ...source, builtIn: true }))} />);
+    expect(screen.queryByRole("combobox", { name: "Add a collection" })).not.toBeInTheDocument();
+  });
+
+  it("changes nothing while the merge is under way", () => {
+    render(<Harness disabled />);
+    expect(screen.getByRole("button", { name: "Move Tigran Petrosian up" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: /^Drop exact copies/ })).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: "Name" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Add a collection" })).toBeDisabled();
   });
 
   it("is operable by keyboard: Tab to a move, Enter to press it", async () => {
