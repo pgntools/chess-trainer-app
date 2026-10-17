@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import i18n from "../../i18n";
 import {
@@ -574,6 +575,55 @@ const sentCase = () => {
   const project = analysisProjectsSnapshot()?.find((candidate) => candidate.id === record?.projectId);
   return { record, project };
 };
+
+describe("a collection page's own panel (CTA-229)", () => {
+  it("is in the main menu's place: its Close back to the Library, the name, General and Options — and no Back in the header", async () => {
+    const user = userEvent.setup();
+    const mine = await upload();
+    await mountTable(`/library/${mine.id}`);
+    const details = screen.getByRole("region", { name: "Details of Club games" });
+    expect(screen.getByTestId("layout-board-left-panel")).toContainElement(details);
+    expect(within(details).getByRole("heading", { level: 2, name: "Club games" })).toBeInTheDocument();
+    expect(within(details).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["General", "Options"]);
+    expect(within(details).getByRole("tabpanel", { name: "General" })).toHaveTextContent(i18n.t("library.collectionDetails.placeholder"));
+    // The example switch on Options — the screen's state, read by nothing.
+    await user.click(within(details).getByRole("tab", { name: "Options" }));
+    const toggle = within(details).getByRole("switch", { name: "Example option" });
+    await user.click(toggle);
+    expect(toggle).toBeChecked();
+    expect(rowNumbers()).toEqual(["1", "2", "3"]);
+    // The header's Back is gone: the panel's Close is the way back.
+    const header = screen.getByTestId("library-table-header");
+    expect(within(header).queryByRole("link", { name: "All collections" })).toBeNull();
+    expect(screen.queryByTestId("library-table-back")).toBeNull();
+    expect(screen.queryByTestId("library-collection-details-toggle")).toBeNull();
+    const close = within(details).getByRole("link", { name: "Close Club games" });
+    expect(close).toHaveAttribute("href", "/library");
+    await user.click(close);
+    expect(where()).toBe("/library");
+  });
+
+  it("keeps the filters' right-hand panel as before", async () => {
+    const mine = await upload();
+    await mountTable(`/library/${mine.id}`);
+    expect(screen.getByTestId("library-filters")).toBeInTheDocument();
+    expect(screen.getByTestId("library-table-note")).toBeInTheDocument();
+  });
+
+  it("is a drawer under the breakpoint, opened from the header", async () => {
+    shell.compact = true;
+    const mine = await upload();
+    await mountTable(`/library/${mine.id}`, { compact: true });
+    expect(screen.queryByRole("region", { name: "Details of Club games" })).not.toBeInTheDocument();
+    const open = within(screen.getByTestId("library-table-header")).getByRole("button", { name: "The collection's details" });
+    fireEvent.click(open);
+    const drawer = await screen.findByRole("dialog", { name: "Details of Club games" });
+    expect(within(drawer).getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
+    expect(within(drawer).getByRole("link", { name: "Close Club games" })).toHaveAttribute("href", "/library");
+    fireEvent.keyDown(drawer, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Details of Club games" })).not.toBeInTheDocument());
+  });
+});
 
 describe("a game on its analysis board", () => {
   it("hands the game to Analysis from its Export tab as a new Case, at the position on screen (CTA-192)", async () => {

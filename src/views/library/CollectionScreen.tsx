@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import LibraryAddRoundedIcon from "@mui/icons-material/LibraryAddRounded";
@@ -7,6 +7,7 @@ import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { Link as RouterLink, useHref, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -46,14 +47,16 @@ import { parsePgnTree } from "../../lib/pgn";
 import { repertoireGameNamesOf } from "../../lib/savedRepertoires";
 import { useSendToAnalysis } from "../analysisV2/useSendToAnalysis";
 import { projectPath } from "../analysisV2/paths";
+import { BoardLeftPanel } from "../main/boardLeftPanel";
 import { RightPanel } from "../main/rightPanel";
+import { useShellCompact } from "../main/shellCompact";
 import { SaveAsCollectionDialog } from "../../blocks/dialogs";
 import { CollectionFilters, TournamentSuggestion } from "../../blocks/forms";
+import { CollectionDetails, type CollectionDetailsTab } from "../../blocks/panels";
 import { CollectionGamesTable, COLLECTION_DEFAULT_SORT, collectionFirstDirection } from "../../blocks/tables";
 import { DeleteManyDialog } from "../../design-system/components/dialogs";
 import { useSnackbar } from "../../design-system/components/feedback";
 import { SearchField } from "../../design-system/components/forms";
-import { BackButton } from "../../design-system/components/navigation";
 import { LoadingLine } from "../../design-system/components/states";
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZES } from "../../design-system/components/tables";
 import { HintButton, IconAction, ListScreenHeader, SelectionBar } from "../../design-system/components/toolbars";
@@ -140,9 +143,10 @@ import { useOwnPageHeading, usePageTitle } from "../main/pageTitle";
  * (`TournamentCollection.tsx`: Info, Participants, Games); its Games tab is
  * this same table, the tab strip under the header.
  *
- * Built from the design system since CTA-113: a `ListScreenHeader` with a
- * `BackButton`, a `SearchField`, the `CollectionGamesTable` block, a
- * `DeleteManyDialog`.
+ * Built from the design system since CTA-113: a `ListScreenHeader`, a
+ * `SearchField`, the `CollectionGamesTable` block, a `DeleteManyDialog`.
+ * No Back in the header since CTA-229: the page's left panel's Close
+ * (`CollectionDetails`) is the way back to the Library.
  */
 
 const isColumn = (value: string | null): value is CollectionColumn =>
@@ -152,11 +156,14 @@ function CollectionTable({
   collection,
   rows,
   tabs,
+  detailsToggle,
 }: {
   collection: CollectionSummary;
   rows: readonly CollectionRow[];
   /** A tournament collection's Games tab (CTA-142): the strip under the header, the region under it its panel. Absent, today's screen. */
   tabs?: TournamentTabs;
+  /** The button opening the page's left panel in a drawer, under the shell's breakpoint (CTA-229) — first among the actions. */
+  detailsToggle?: ReactNode;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -489,15 +496,9 @@ function CollectionTable({
                 : t("library.table.shown", { shown: shown.length, count: rows.length })}
             </span>
           }
-          back={
-            <BackButton
-              label={t("library.table.back")}
-              link={{ component: RouterLink, to: "/library" }}
-              testId="library-table-back"
-            />
-          }
           actions={
             <>
+              {detailsToggle}
               {collection.source === "uploaded" && (
                 <HintButton
                   hint={t("library.table.addGamesHint")}
@@ -708,6 +709,68 @@ function CollectionTable({
   );
 }
 
+/**
+ * **The collection page** — its view (the games table, or a tournament's
+ * view) and **its own panel in the main menu's place** (CTA-229,
+ * `CollectionDetails` in the shell's board left panel, `keepShell`: the
+ * header and footer stay, as on the Project view) — its Close the way back
+ * to the Library; a frame for now: the collection's name, a General tab's
+ * placeholder and an Options tab's example switch, held here (above the
+ * tournament view's tabs, so a change of tab keeps them) and kept nowhere.
+ * Under the shell's breakpoint it is a drawer, opened from the header.
+ */
+function CollectionPage({ collection, rows }: { collection: CollectionSummary; rows: readonly CollectionRow[] }) {
+  const { t } = useTranslation();
+  const compact = useShellCompact();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsTab, setDetailsTab] = useState<CollectionDetailsTab>("general");
+  const [exampleOption, setExampleOption] = useState(false);
+  // Under the breakpoint the panel is a drawer; wide, the column in the main menu's place.
+  const detailsToggle = compact ? (
+    <IconAction
+      label={t("library.collectionDetails.toggle")}
+      onClick={() => setDetailsOpen(true)}
+      popupOpen={detailsOpen}
+      popupKind="dialog"
+      testId="library-collection-details-toggle"
+    >
+      <InfoOutlinedIcon fontSize="small" />
+    </IconAction>
+  ) : undefined;
+  return (
+    <>
+      {/* A collection that reads as a tournament has a view of its own (CTA-142); its Games tab is this table. */}
+      {isTournamentCollection(collection, rows) ? (
+        <TournamentCollection
+          collection={collection}
+          rows={rows}
+          detailsToggle={detailsToggle}
+          games={(tabs) => <CollectionTable collection={collection} rows={rows} tabs={tabs} detailsToggle={detailsToggle} />}
+        />
+      ) : (
+        <CollectionTable collection={collection} rows={rows} detailsToggle={detailsToggle} />
+      )}
+      <BoardLeftPanel
+        collapsed={false}
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        drawerLabel={t("library.collectionDetails.label", { name: collection.name })}
+        keepShell
+      >
+        <CollectionDetails
+          name={collection.name}
+          closeLink={{ component: RouterLink, to: "/library" }}
+          tab={detailsTab}
+          onTabChange={setDetailsTab}
+          exampleOption={exampleOption}
+          onExampleOptionChange={setExampleOption}
+          testId="library-collection-details"
+        />
+      </BoardLeftPanel>
+    </>
+  );
+}
+
 /** The route: the collection the URL names, or the miss. */
 function CollectionScreen() {
   const { collectionId } = useParams();
@@ -717,18 +780,7 @@ function CollectionScreen() {
     return <LoadingLine testId="library-loading">{t("library.table.loading")}</LoadingLine>;
   }
   if (state.status === "missing") return <LibraryMiss what="collection" />;
-  // A collection that reads as a tournament has a view of its own (CTA-142); its Games tab is this table.
-  if (isTournamentCollection(state.summary, state.value)) {
-    return (
-      <TournamentCollection
-        key={state.summary.id}
-        collection={state.summary}
-        rows={state.value}
-        games={(tabs) => <CollectionTable collection={state.summary} rows={state.value} tabs={tabs} />}
-      />
-    );
-  }
-  return <CollectionTable key={state.summary.id} collection={state.summary} rows={state.value} />;
+  return <CollectionPage key={state.summary.id} collection={state.summary} rows={state.value} />;
 }
 
 export default CollectionScreen;

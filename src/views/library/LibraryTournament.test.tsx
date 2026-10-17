@@ -14,6 +14,8 @@ vi.mock("../../lib/engines/builtin", async (importOriginal) =>
   (await import("../board/boardTestHarness")).builtinEnginesMock(importOriginal),
 );
 
+const shell = vi.hoisted(() => ({ compact: false }));
+vi.mock("../main/shellCompact", () => ({ useShellCompact: () => shell.compact }));
 vi.mock("react-chessboard", async () => {
   const { reactChessboardMock } = await import("../board/boardTestHarness");
   return reactChessboardMock();
@@ -38,7 +40,10 @@ vi.mock("../../lib/openings", async (importOriginal) => {
   unchanged on Games — and an unmarked collection's screen as it was.
 */
 
-beforeEach(resetLibrary);
+beforeEach(async () => {
+  shell.compact = false;
+  await resetLibrary();
+});
 
 /** An upload of `games`, marked as a tournament of `type`. */
 const marked = async (type: TournamentFormat, games = GAMES, name = "Club games") => {
@@ -316,23 +321,69 @@ describe("an arena (CTA-142; its table, CTA-204)", () => {
   });
 });
 
+describe("the tournament view's own panel (CTA-229)", () => {
+  it("is in the main menu's place on every tab, its tab and switch kept across them — and Close, not Back, leads to the Library", async () => {
+    const user = userEvent.setup();
+    const cup = await marked("roundRobin");
+    mount(`/library/${cup.id}`);
+    await screen.findByTestId("library-tournament-screen");
+    const details = () => screen.getByRole("region", { name: "Details of Club games" });
+    expect(screen.getByTestId("layout-board-left-panel")).toContainElement(details());
+    expect(within(details()).getByRole("heading", { level: 2, name: "Club games" })).toBeInTheDocument();
+    expect(within(screen.getByTestId("library-table-header")).queryByRole("link", { name: "All collections" })).toBeNull();
+    await user.click(within(details()).getByRole("tab", { name: "Options" }));
+    await user.click(within(details()).getByRole("switch", { name: "Example option" }));
+
+    await user.click(tab("participants"));
+    expect(await screen.findByRole("tabpanel", { name: "Participants" })).toBeInTheDocument();
+    expect(within(details()).getByRole("tab", { name: "Options" })).toHaveAttribute("aria-selected", "true");
+    expect(within(details()).getByRole("switch", { name: "Example option" })).toBeChecked();
+
+    await user.click(tab("games"));
+    await screen.findByTestId("library-table");
+    expect(within(details()).getByRole("switch", { name: "Example option" })).toBeChecked();
+    expect(within(screen.getByTestId("library-table-header")).queryByRole("link", { name: "All collections" })).toBeNull();
+    expect(screen.getByTestId("library-filters")).toBeInTheDocument();
+
+    await user.click(within(details()).getByRole("link", { name: "Close Club games" }));
+    expect(where()).toBe("/library");
+  });
+
+  it("is a drawer under the breakpoint, opened from the header on Info and on Games", async () => {
+    shell.compact = true;
+    const cup = await marked("roundRobin");
+    mount(`/library/${cup.id}`, { compact: true });
+    await screen.findByTestId("library-tournament-screen");
+    expect(screen.queryByRole("region", { name: "Details of Club games" })).not.toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId("library-table-header")).getByRole("button", { name: "The collection's details" }));
+    const drawer = await screen.findByRole("dialog", { name: "Details of Club games" });
+    expect(within(drawer).getByRole("link", { name: "Close Club games" })).toHaveAttribute("href", "/library");
+    fireEvent.keyDown(drawer, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Details of Club games" })).not.toBeInTheDocument());
+
+    fireEvent.click(tab("games"));
+    await screen.findByTestId("library-table");
+    expect(within(screen.getByTestId("library-table-header")).getByRole("button", { name: "The collection's details" })).toBeInTheDocument();
+  });
+});
+
 describe("a collection that does not read as a tournament", () => {
   it("keeps its games table, with no tabs", async () => {
     const plain = await upload();
     await mountTable(`/library/${plain.id}`);
-    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByTestId("library-tournament-tabs")).toBeNull();
     expect(screen.queryByTestId("library-tournament-screen")).toBeNull();
   });
 
   it("keeps it for a mark whose games no longer share one event", async () => {
     const mixed = await marked("swiss", [...GAMES, '[Event "Other"]\n[White "E"]\n[Black "F"]\n\n1. e4 *'], "Mixed");
     await mountTable(`/library/${mixed.id}`);
-    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByTestId("library-tournament-tabs")).toBeNull();
   });
 
   it("keeps a shipped player's games as a table", async () => {
     await mountTable("/library/capablanca");
-    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByTestId("library-tournament-tabs")).toBeNull();
   });
 });
 

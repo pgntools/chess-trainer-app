@@ -7,6 +7,8 @@ export * from "./BoardEngineControls";
 // CTA-186: a Case's own view beside its board, the second screen of its left panel.
 export * from "./CaseDetails";
 export * from "./ChangesStrip";
+// CTA-229: a Library collection's own panel beside its games — the collection page's left panel.
+export * from "./CollectionDetails";
 export * from "./EnginePresetChanges";
 // CTA-173: a computer analysis's report and eval graph — a computer-analysis job's (CTA-221).
 export * from "./ComputerAnalysisReport";
