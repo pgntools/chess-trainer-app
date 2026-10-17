@@ -44,6 +44,10 @@ export type ListScreenHeaderProps = ListScreenHeaderTitle & {
  * 1.4.10 asks about — crushed the `h1` to zero width, which is a heading no
  * one can read. Wrapping moves the actions to a line of their own instead;
  * with room for both nothing wraps, so no window that fits them changes.
+ * On their own line the actions are held to it (`maxWidth: 100%`) and wrap
+ * among themselves: unshrinkable, they kept their one-line width and ran past
+ * the edge once a screen had more than 288 px of them (a collection's page,
+ * CTA-231 / CTA-232).
  */
 function ListScreenHeader({ title, heading, count, back, actions, wrap = false, children, titleDir, testId }: ListScreenHeaderProps) {
   return (
@@ -81,7 +85,7 @@ function ListScreenHeader({ title, heading, count, back, actions, wrap = false, 
         {actions !== undefined && (
           <Box
             data-testid={`${testId}-actions`}
-            sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, flexWrap: "wrap" }}
+            sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, flexWrap: "wrap", maxWidth: "100%" }}
           >
             {actions}
           </Box>
