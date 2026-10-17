@@ -1657,6 +1657,14 @@ const en = {
         dateHelp: "A game without a date is left out.",
         playerFilter: "Players",
         playersHelp: "Games of any of them — pick from the list or type part of a name.",
+        /** The TAGS field (CTA-234): tag pairs stamped on every imported game. */
+        tags: "Tags",
+        tagsHelp: "Added to every imported game — one tag pair per line, [Name \"Value\"]. A game's own tag of the same name takes this value.",
+        tagsProblem: {
+          syntax: "Line {{line}}: not a tag pair — write it as [Name \"Value\"].",
+          name: "Line {{line}}: a tag's name is letters, digits and _ only.",
+          escape: "Line {{line}}: inside the value, write a quote as \\\" and a backslash as \\\\.",
+        },
         several: "Each file becomes a collection of its own, named by the Event its games share, else by the file's name.",
         severalInto: "Every file's games are added to this collection.",
         /** What a split import makes of a zip's several files (CTA-127). */

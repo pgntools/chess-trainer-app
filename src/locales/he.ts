@@ -1267,6 +1267,14 @@ const he: typeof en = {
         dateHelp: "משחק בלי תאריך לא ייובא.",
         playerFilter: "שחקנים",
         playersHelp: "משחקים של כל אחד מהם — בחרו מהרשימה או הקלידו חלק משם.",
+        /** The TAGS field (CTA-234): tag pairs stamped on every imported game. */
+        tags: "תגיות",
+        tagsHelp: "נוספות לכל משחק שמיובא — זוג תגית אחד בכל שורה, [Name \"Value\"]. תגית של המשחק באותו שם מקבלת את הערך הזה.",
+        tagsProblem: {
+          syntax: "שורה {{line}}: זה לא זוג תגית — כתבו אותו כך: [Name \"Value\"].",
+          name: "שורה {{line}}: שם של תגית הוא אותיות לטיניות, ספרות ו-_ בלבד.",
+          escape: "שורה {{line}}: בתוך הערך, כתבו מירכאות כ-\\\" ולוכסן הפוך כ-\\\\.",
+        },
         several: "כל קובץ הופך לאוסף משלו, שנקרא על שם האירוע המשותף למשחקיו, ואם אין — על שם הקובץ.",
         severalInto: "המשחקים של כל הקבצים נוספים לאוסף הזה.",
         /** What a split import makes of a zip's several files (CTA-127). */

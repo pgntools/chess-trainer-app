@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import "../../../i18n";
+import i18n from "../../../i18n";
 import { expectNoAxeViolations } from "../../../test/axe";
 import type { CollectionImportSource, CollectionRow } from "../../../lib/libraryCollections";
 import CollectionImportDialog from "./CollectionImportDialog";
@@ -194,7 +194,7 @@ describe("CollectionImportDialog — a plain choice of games (CTA-186)", () => {
     expect(screen.queryByTestId("import-split")).toBeNull();
     expect(screen.queryByTestId("import-mark-tournament-switch")).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Create project" }));
-    expect(onImport).toHaveBeenCalledWith(expect.any(Array), false, {});
+    expect(onImport).toHaveBeenCalledWith(expect.any(Array), false, {}, []);
     await expectNoAxeViolations(screen.getByRole("dialog"));
   });
 
@@ -247,5 +247,70 @@ describe("CollectionImportDialog — a plain choice of games (CTA-186)", () => {
     expect(screen.queryByTestId("import-selected")).toBeNull();
     expect(screen.getByTestId("import-count")).toHaveTextContent("2 of 4");
     await expectNoAxeViolations(screen.getByRole("dialog"));
+  });
+});
+
+describe("CollectionImportDialog — the TAGS field (CTA-234)", () => {
+  const TAGS = "Tags";
+
+  it("hands the typed tag pairs to Import, the last of a name winning", async () => {
+    const user = userEvent.setup();
+    const onImport = vi.fn();
+    render(<CollectionImportDialog source={ONE_FILE} tagsField onCancel={() => {}} onImport={onImport} testId="import" />);
+    const field = screen.getByRole("textbox", { name: TAGS });
+    expect(field).toHaveAccessibleDescription(/added to every imported game/i);
+    await expectNoAxeViolations(screen.getByRole("dialog"));
+    await user.click(field);
+    await user.paste('[Site "Warwick ENG"]\n\n[Annotator "Stockfish19"]\n[Site "Leamington"]');
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    expect(onImport.mock.calls[0][3]).toEqual([
+      { name: "Site", value: "Leamington" },
+      { name: "Annotator", value: "Stockfish19" },
+    ]);
+  });
+
+  it("says which line is wrong and why, and keeps Import off until it is fixed", async () => {
+    const user = userEvent.setup();
+    const onImport = vi.fn();
+    render(<CollectionImportDialog source={ONE_FILE} tagsField onCancel={() => {}} onImport={onImport} testId="import" />);
+    const field = screen.getByRole("textbox", { name: TAGS });
+    await user.click(field);
+    await user.paste('[Site "Warwick"]\nSite Warwick\n[Event "a "b""]');
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field).toHaveAccessibleDescription(/Line 2: not a tag pair.*Line 3: inside the value/);
+    expect(screen.getByRole("button", { name: "Import" })).toBeDisabled();
+    await expectNoAxeViolations(screen.getByRole("dialog"));
+
+    await user.clear(field);
+    await user.paste('[Event "a \\"b\\""]');
+    expect(field).toHaveAttribute("aria-invalid", "false");
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    expect(onImport.mock.calls[0][3]).toEqual([{ name: "Event", value: 'a "b"' }]);
+  });
+
+  it("hands no tags when the field is blank — and is not shown without the prop", async () => {
+    const onImport = vi.fn();
+    const { unmount } = render(<CollectionImportDialog source={ONE_FILE} tagsField onCancel={() => {}} onImport={onImport} testId="import" />);
+    await userEvent.click(screen.getByRole("button", { name: "Import" }));
+    expect(onImport.mock.calls[0][3]).toEqual([]);
+    unmount();
+    render(<CollectionImportDialog source={ONE_FILE} onCancel={() => {}} onImport={() => {}} testId="import" />);
+    expect(screen.queryByRole("textbox", { name: TAGS })).toBeNull();
+  });
+
+  it("speaks Hebrew, the tags written left to right", async () => {
+    await i18n.changeLanguage("he");
+    try {
+      const user = userEvent.setup();
+      render(<CollectionImportDialog source={ZIP} tagsField onCancel={() => {}} onImport={() => {}} testId="import" />);
+      const field = screen.getByRole("textbox", { name: "תגיות" });
+      expect(field).toHaveAttribute("dir", "ltr");
+      await user.click(field);
+      await user.paste("Site");
+      expect(field).toHaveAccessibleDescription(/שורה 1/);
+      await expectNoAxeViolations(screen.getByRole("dialog"));
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 });

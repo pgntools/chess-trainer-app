@@ -9,7 +9,7 @@ const noop = () => {};
 
 const framed = (
   source: CollectionImportSource,
-  extra: { intoName?: string; problem?: string; choiceOnly?: CollectionImportDialogProps["choiceOnly"] } = {},
+  extra: { intoName?: string; problem?: string; choiceOnly?: CollectionImportDialogProps["choiceOnly"]; tagsField?: boolean } = {},
 ) => (
   <DialogFrame height={620}>
     {(dialogProps) => (
@@ -46,6 +46,9 @@ const gallery: GalleryModule<BlockFamilyId> = {
           },
         }),
     },
+    // CTA-234: the Library's imports take the TAGS field — type a bad line to see it said and Import turn off.
+    { name: "The Library's import — the TAGS field, tags stamped on every imported game (CTA-234)", render: () => framed(ONE_FILE, { tagsField: true }) },
+    { name: "…on Add games too", render: () => framed(ZIP, { intoName: "Club games", tagsField: true }) },
     { name: "The last try failed", render: () => framed(ONE_FILE, { problem: "The browser refused to store the games — its storage may be full." }) },
     // Split by event (CTA-127): the zip's first file carries two events, so
     // its switch can be tried on in the preview; the one-event file's reads

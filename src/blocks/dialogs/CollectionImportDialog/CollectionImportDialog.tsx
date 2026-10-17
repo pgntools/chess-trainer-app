@@ -10,11 +10,12 @@ import { ChipsAutocomplete } from "../../../design-system/components/autocomplet
 import { BaseDialog, type ExtraDialogProps } from "../../../design-system/components/dialogs";
 import { InlineAlert } from "../../../design-system/components/feedback";
 import { visuallyHidden } from "../../../design-system/components/a11y";
-import { DateRangeFields, SelectField, SwitchField } from "../../../design-system/components/forms";
+import { DateRangeFields, SelectField, SwitchField, TextInputField } from "../../../design-system/components/forms";
 import { DataTable, type DataTableColumn } from "../../../design-system/patterns/tables";
 import { formatBytes } from "../../../lib/formatBytes";
 import type { GameHeaders } from "../../../lib/gameModel";
 import { readPgnTags } from "../../../lib/pgn";
+import { readTagLines, type PgnTag } from "../../../lib/pgnTagStamp";
 import { guessTournamentKind, type TournamentGuess } from "../../../lib/tournamentKind";
 import { TournamentMarkFields } from "../../forms/TournamentMarkFields";
 import { GamesPickerDialog } from "../GamesPickerDialog";
@@ -99,18 +100,26 @@ export type CollectionImportDialogProps = {
      */
     selectGames?: { select: string; change: string; clear: string; selected: (count: number) => string };
   };
+  /**
+   * **The TAGS field** (CTA-234, the Library's imports): tag pairs typed one
+   * a line, `[Name "Value"]`, handed to `onImport` for the host to stamp on
+   * every kept game. A malformed line is said on the field and keeps Import
+   * off. Absent, no field — and no tags.
+   */
+  tagsField?: boolean;
   /** Cancel, Escape or the backdrop. */
   onCancel: () => void;
   /**
    * Import: each file's rows the filters keep, in file order (a file may keep
    * none), and whether *Split by event* is on — a new-collection import's
-   * choice; `false` where the switch is not offered (*Add games*).
+   * choice; `false` where the switch is not offered (*Add games*) — and the
+   * TAGS field's tag pairs (CTA-234; none where it is blank or not shown).
    */
-  onImport: (kept: CollectionRow[][], splitByEvent: boolean, tournament: ImportTournamentChoice) => void;
+  onImport: (kept: CollectionRow[][], splitByEvent: boolean, tournament: ImportTournamentChoice, tags: PgnTag[]) => void;
   /**
    * The root, and its parts: `-source`, `-file-<n>`, `-summary` (`-players`,
    * `-elo`, `-dates`, `-events`), `-elo` (`-elo-value`), `-from`, `-to`,
-   * `-player`, `-several`, `-split` (`-split-help`), `-mark` (the tournament
+   * `-player`, `-tags`, `-several`, `-split` (`-split-help`), `-mark` (the tournament
    * fields' prefix: `-mark-tournament-switch`, `-mark-suggestion`,
    * `-mark-type-<format>`), `-auto-type`, `-event-types` (the table; each
    * row `-event-types-row-<n>`, its select `-event-types-type-<n>`, in
@@ -158,6 +167,14 @@ export type CollectionImportDialogProps = {
  *   reads the games' tags — read once, when first needed — so it is known
  *   before anything is indexed.
  *
+ * - **The TAGS field** (CTA-234, `tagsField` — the Library's imports, never
+ *   Analysis's): tag pairs, one a line, `[Name "Value"]` with the PGN's
+ *   `\"` and `\\` escapes (`readTagLines`), handed to `onImport` — the
+ *   host stamps them on the kept games just before the index pass, so the
+ *   filters, the metadata, the split and the guess read the file as it is.
+ *   A malformed line is said on the field, by its number, and Import is off
+ *   until it is fixed; a name typed twice, the last one wins.
+ *
  * - **Games picked by hand** (CTA-208, `choiceOnly.selectGames` — Analysis's
  *   new Project): *Select games…* opens the games picker over **the games the
  *   filters keep** (numbered across the files, a zip's too), and the games
@@ -175,6 +192,7 @@ function CollectionImportDialog({
   intoName,
   problem,
   choiceOnly,
+  tagsField = false,
   onCancel,
   onImport,
   testId,
@@ -199,6 +217,9 @@ function CollectionImportDialog({
   /** The games picked by hand (CTA-208), by their number across the files — `null`: every game the filters keep. */
   const [picks, setPicks] = useState<ReadonlySet<number> | null>(null);
   const [picking, setPicking] = useState(false);
+  /** The TAGS field's text (CTA-234). */
+  const [tagsText, setTagsText] = useState("");
+  const typedTags = useMemo(() => (tagsField ? readTagLines(tagsText) : { tags: [], problems: [] }), [tagsField, tagsText]);
 
   const allRows = useMemo(() => source.files.flatMap((file) => file.rows), [source]);
   const metadata = useMemo(() => collectionMetadataOf(allRows), [allRows]);
@@ -389,8 +410,8 @@ function CollectionImportDialog({
           </Button>
           <Button
             variant="contained"
-            disabled={keptCount === 0}
-            onClick={() => onImport(kept, splitting, choice())}
+            disabled={keptCount === 0 || typedTags.problems.length > 0}
+            onClick={() => onImport(kept, splitting, choice(), typedTags.tags)}
             data-testid={id("confirm")}
           >
             {choiceOnly !== undefined
@@ -526,6 +547,29 @@ function CollectionImportDialog({
               </Box>
             )}
           </Box>
+        )}
+
+        {/* CTA-234: tags stamped on every imported game — the Library's imports only. */}
+        {tagsField && (
+          <TextInputField
+            label={t("library.upload.options.tags")}
+            value={tagsText}
+            onChange={setTagsText}
+            multiline
+            dir="ltr"
+            placeholder={'[Site "Warwick ENG"]\n[Annotator "Stockfish19"]'}
+            error={typedTags.problems.length > 0}
+            helperText={
+              typedTags.problems.length === 0
+                ? t("library.upload.options.tagsHelp")
+                : typedTags.problems.map((problem) => (
+                    <Box component="span" key={problem.line} sx={{ display: "block" }}>
+                      {t(`library.upload.options.tagsProblem.${problem.reason}`, { line: problem.line })}
+                    </Box>
+                  ))
+            }
+            testId={id("tags")}
+          />
         )}
 
         {/* Offered on every new-collection import, never on Add games — and
